@@ -1,10 +1,8 @@
 from copy import copy
-import os
 import sys
 from textwrap import dedent
 import warnings
 import logging
-_logger = logging.getLogger("theano.tensor.subtensor")
 
 import numpy
 from six.moves import xrange
@@ -32,6 +30,7 @@ if config.cxx:
     except ImportError:
         pass
 
+_logger = logging.getLogger("theano.tensor.subtensor")
 
 # Do a lazy import of the sparse module
 sparse_module_ref = None
@@ -40,6 +39,7 @@ sparse_module_ref = None
 class AdvancedIndexingError(TypeError):
     """
     Raised when Subtensor is asked to perform advanced indexing.
+
     """
 
     def __init__(self, *args):
@@ -53,6 +53,7 @@ class AdvancedIndexingError(TypeError):
 def make_constant(args):
     """
     Convert python litterals to theano constants in subtensor arguments.
+
     """
     def conv(a):
             if a is None:
@@ -69,13 +70,14 @@ def make_constant(args):
 
 
 def get_idx_list(inputs, idx_list, get_count=False):
-    '''
+    """
     Given a list of inputs to the subtensor and its idx_list reorders
     the inputs according to the idx list to get the right values.
 
     If get_counts=True, instead returns the number of inputs consumed
     during this process.
-    '''
+
+    """
 
     # The number of indices
     n = len(inputs) - 1
@@ -103,14 +105,15 @@ def get_idx_list(inputs, idx_list, get_count=False):
 
 
 def get_canonical_form_slice(theslice, length):
-    '''
+    """
     Given a slice [start:stop:step] transform it into a canonical form
     that respects the conventions imposed by python and numpy.
 
     In a canonical form a slice is represented by a canonical form slice,
     in which 0 <= start <= stop <= length and step > 0, and a flag which says
     if the resulting set of numbers needs to be reversed or not.
-    '''
+
+    """
     from theano.tensor import switch, lt, ge, sgn
     if isinstance(theslice, slice):
 
@@ -253,7 +256,8 @@ def get_canonical_form_slice(theslice, length):
 
 
 class Subtensor(Op):
-    """Return a subtensor view
+    """
+    Return a subtensor view.
 
     The inputs array is the tensor x, followed by scalar integer types.
     TODO: WRITEME: how are the scalar integer variables formatted?
@@ -293,16 +297,21 @@ class Subtensor(Op):
     check_input = False
     view_map = {0: [0]}
     _f16_ok = True
+    __props__ = ("idx_list",)
 
     @staticmethod
     def collapse(idxs, cond):
         """
+        Parameters
+        ----------
+        idxs : a list of indices or slices.
+        cond : a callable that returns a bool
 
-        idxs: a list of indices or slices.
-        cond: a callable that returns a bool
-
-        returns: idxs, with the slices flattened out into a list.
-                if cond is true for an entry, does not flatten it.
+        Returns
+        -------
+        list
+            idxs, with the slices flattened out into a list.
+            If cond is true for an entry, does not flatten it.
 
         """
         ret = []
@@ -323,12 +332,14 @@ class Subtensor(Op):
     @staticmethod
     def convert(entry, slice_ok=True):
         """
+        Change references to Variables into references to Types.
+
         The "idx_list" field is unique to each Subtensor instance.
         It is not unique to each Apply node, so it should not refer to
-        specific Variables. This method changes references to Variables
-        into references to Types.
+        specific Variables.
         TODO: WRITEME: This method also accepts "entry" already being a Type;
             when would that happen?
+
         """
         invalid_scal_types = [scal.float64, scal.float32, scal.float16]
         scal_types = [scal.int64, scal.int32, scal.int16, scal.int8]
@@ -336,9 +347,9 @@ class Subtensor(Op):
                         theano.tensor.wscalar, theano.tensor.bscalar]
         invalid_tensor_types = [theano.tensor.fscalar, theano.tensor.dscalar,
                                 theano.tensor.cscalar, theano.tensor.zscalar]
-        if (isinstance(entry, gof.Variable)
-                and (entry.type in invalid_scal_types
-                     or entry.type in invalid_tensor_types)):
+        if (isinstance(entry, gof.Variable) and
+            (entry.type in invalid_scal_types or
+             entry.type in invalid_tensor_types)):
             raise TypeError("Expected an integer")
 
         if isinstance(entry, gof.Variable) and entry.type in scal_types:
@@ -346,13 +357,13 @@ class Subtensor(Op):
         elif isinstance(entry, gof.Type) and entry in scal_types:
             return entry
 
-        if (isinstance(entry, gof.Variable)
-                and entry.type in tensor_types
-                and numpy.all(entry.type.broadcastable)):
+        if (isinstance(entry, gof.Variable) and
+                entry.type in tensor_types and
+                numpy.all(entry.type.broadcastable)):
             return scal.get_scalar_type(entry.type.dtype)
-        elif (isinstance(entry, gof.Type)
-                and entry in tensor_types
-                and numpy.all(entry.broadcastable)):
+        elif (isinstance(entry, gof.Type) and
+              entry in tensor_types and
+              numpy.all(entry.broadcastable)):
             return scal.get_scalar_type(entry.dtype)
         elif slice_ok and isinstance(entry, slice):
             a = entry.start
@@ -389,30 +400,33 @@ class Subtensor(Op):
                          only_process_constants=False):
         """
         Return the idx_list with constant inputs replaced by their
-        python scalar equivalent.  May raise
-        `theano.tensor.NotScalarConstantError` if the idx contains
+        python scalar equivalent.
+        May raise `theano.tensor.NotScalarConstantError` if the idx contains
         non-constant entries.
 
-        If allow_partial is True, then entries that are not constant
-        will stay as their input variable rather than raising an
-        exception.
+        If allow_partial is True, then entries that are not constant will
+        stay as their input variable rather than raising an exception.
 
         None entries are always left as-is.
 
-        Example usage (where v, a are appropriately typed theano variables):
+        Parameters
+        ----------
+        only_process_constants
+            If True, we only attempt to obtain the value of an index/slice if
+            it's directly constant and don't try to dig through dimshuffles,
+            fills, allocs, and other to figure out its value.
 
-            >>> b = a[v, 1:3]
-            >>> b.owner.op.idx_list
-            (Scalar(int64), slice(Scalar(int64), Scalar(int64), None))
-            >>> b.owner.op.get_constant_idx(b.owner.inputs, allow_partial=True)
-            [v, slice(1, 3, None)]
-            >>> b.owner.op.get_constant_idx(b.owner.inputs)
-            NotScalarConstantError: v
+        Examples
+        --------
+        Example usage where v, a are appropriately typed theano variables :
+        >>> b = a[v, 1:3]
+        >>> b.owner.op.idx_list
+        (Scalar(int64), slice(Scalar(int64), Scalar(int64), None))
+        >>> b.owner.op.get_constant_idx(b.owner.inputs, allow_partial=True)
+        [v, slice(1, 3, None)]
+        >>> b.owner.op.get_constant_idx(b.owner.inputs)
+        NotScalarConstantError: v
 
-        :param only_process_constants: If True, we only attempt to obtain
-            the value of an index/slice if it's directly constant and don't
-            try to dig through dimshuffles, fills, allocs, and other to figure
-            out its value.
         """
         real_idx = get_idx_list(inputs, self.idx_list)
 
@@ -425,8 +439,9 @@ class Subtensor(Op):
                              conv(val.step))
             else:
                 try:
-                    return get_scalar_constant_value(val,
-                            only_process_constants=only_process_constants)
+                    return get_scalar_constant_value(
+                        val,
+                        only_process_constants=only_process_constants)
                 except theano.tensor.NotScalarConstantError:
                     if allow_partial:
                         return val
@@ -450,8 +465,13 @@ class Subtensor(Op):
 
     def make_node(self, x, *inputs):
         """
-            x: the tensor to take a subtensor of
-            inputs: a list of theano Scalars
+        Parameters
+        ----------
+        x
+            The tensor to take a subtensor of.
+        inputs
+            A list of theano Scalars.
+
         """
         x = theano.tensor.as_tensor_variable(x)
         inputs = tuple(self.my_as_scalar(a) for a in inputs)
@@ -477,8 +497,8 @@ class Subtensor(Op):
                     % (input.type, expected_type))
 
         # infer the broadcasting pattern
-        padded = (self.get_constant_idx((None,)+inputs, allow_partial=True)
-                  + [slice(None, None, None)] * (x.type.ndim - len(idx_list)))
+        padded = (self.get_constant_idx((None,) + inputs, allow_partial=True) +
+                  [slice(None, None, None)] * (x.type.ndim - len(idx_list)))
         broadcastable = []
         for i, (p, bc) in enumerate(izip(padded, x.type.broadcastable)):
             if isinstance(p, slice):
@@ -528,9 +548,9 @@ class Subtensor(Op):
             if isinstance(idx, slice):
                 # If it is the default (None, None, None) slice, or a variant,
                 # the shape will be xl
-                if ((idx.start in [None, 0])
-                    and (idx.stop in [None, sys.maxsize])
-                    and (idx.step is None or idx.step == 1)):
+                if ((idx.start in [None, 0]) and
+                        (idx.stop in [None, sys.maxsize]) and
+                        (idx.step is None or idx.step == 1)):
                     outshp.append(xl)
                 else:
                     cnf = get_canonical_form_slice(idx, xl)[0]
@@ -556,8 +576,7 @@ class Subtensor(Op):
             first = x.zeros_like().astype(theano.config.floatX)
         else:
             first = IncSubtensor(self.idx_list)(x.zeros_like(), gz, *rest)
-        return ([first]
-                + [DisconnectedType()()] * len(rest))
+        return ([first] + [DisconnectedType()()] * len(rest))
 
     def connection_pattern(self, node):
 
@@ -567,9 +586,6 @@ class Subtensor(Op):
             rval.append([False])
 
         return rval
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.idx_list == other.idx_list
 
     def __hash__(self):
         # TODO: optimize by cache this hash value
@@ -610,8 +626,8 @@ class Subtensor(Op):
     @staticmethod
     def default_helper_c_code_args():
         """
-        Returns a dictionary of default arguments to
-        helper_c_code
+        Returns a dictionary of default arguments to helper_c_code.
+
         """
 
         return {"c_prefix": "PyArray",
@@ -625,7 +641,8 @@ class Subtensor(Op):
         The parameters c_prefix are there to allow reusing this
         function on PyArray and CudaNdarray object.
 
-        This fct take as input the x,
+        This fct take as input the x.
+
         """
 
         default_args = Subtensor.default_helper_c_code_args()
@@ -814,10 +831,10 @@ class Subtensor(Op):
 
                 assert (slicelength <= length);
 
-                xview_offset += %(c_prefix)s_STRIDES(%(x)s)[outer_ii] * start *
-                       %(strides_mul)s;
+                xview_offset += (npy_intp)%(c_prefix)s_STRIDES(%(x)s)[outer_ii]
+                    * start * %(strides_mul)s;
                 xview_dims[inner_ii] = slicelength;
-                xview_strides[inner_ii] = %(c_prefix)s_STRIDES(%(x)s)[outer_ii] * step;
+                xview_strides[inner_ii] = (npy_intp)%(c_prefix)s_STRIDES(%(x)s)[outer_ii] * step;
 
                 inner_ii += 1;
                 spec_pos += 3;
@@ -830,7 +847,7 @@ class Subtensor(Op):
                 {
                     if (idx < %(c_prefix)s_DIMS(%(x)s)[outer_ii])
                     {
-                        xview_offset += %(c_prefix)s_STRIDES(%(x)s)[outer_ii] * idx *
+                        xview_offset += (npy_intp)%(c_prefix)s_STRIDES(%(x)s)[outer_ii] * idx *
                                %(strides_mul)s;
                     }
                     else
@@ -864,7 +881,7 @@ class Subtensor(Op):
 
     @staticmethod
     def helper_c_code_cache_version():
-        return (8,)
+        return (9,)
 
     def c_code(self, node, name, inputs, outputs, sub):  # DEBUG
         if not isinstance(node.inputs[0].type, theano.tensor.TensorType):
@@ -989,16 +1006,25 @@ pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Subtensor),
 
 def set_subtensor(x, y, inplace=False,
                   tolerate_inplace_aliasing=False):
-    """Return x with the given subtensor overwritten by y.
+    """
+    Return x with the given subtensor overwritten by y.
 
-    Example: To replicate the numpy expression "r[10:] = 5", type
+    Parameters
+    ----------
+    x
+        Symbolic variable for the lvalue of = operation.
+    y
+        Symbolic variable for the rvalue of = operation.
+    tolerate_inplace_aliasing
+        See inc_subtensor for documentation.
+
+    Examples
+    --------
+    To replicate the numpy expression "r[10:] = 5", type
 
     >>> r = ivector()
     >>> new_r = set_subtensor(r[10:], 5)
 
-    :param x: symbolic variable for the lvalue of = operation
-    :param y: symbolic variable for the rvalue of = operation
-    :param tolerate_inplace_aliasing: see inc_subtensor for documentation.
     """
     return inc_subtensor(x, y, inplace, set_instead_of_inc=True,
                          tolerate_inplace_aliasing=tolerate_inplace_aliasing)
@@ -1006,20 +1032,32 @@ def set_subtensor(x, y, inplace=False,
 
 def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
                   tolerate_inplace_aliasing=False):
-    """Return x with the given subtensor incremented by y.
+    """
+    Return x with the given subtensor incremented by y.
 
-    :param x: the symbolic result of a Subtensor operation.
-    :param y: the amount by which to increment ths subtensor in question
-    :param tolerate_inplace_aliasing: allow x and y to be views of a single
-        underlying array even while working inplace.  For correct results,
-        x and y must not be overlapping views; if they overlap, the result
-        of this Op will generally be incorrect. This value has no effect if
-        inplace=False.
+    Parameters
+    ----------
+    x
+        The symbolic result of a Subtensor operation.
+    y
+        The amount by which to increment the subtensor in question.
+    inplace
+        Don't use. Theano will do it when possible.
+    set_instead_of_inc
+        If True, do a set_subtensor instead.
+    tolerate_inplace_aliasing:
+        Allow x and y to be views of a single underlying array even while
+        working inplace. For correct results, x and y must not be overlapping
+        views; if they overlap, the result of this Op will generally be
+        incorrect. This value has no effect if inplace=False.
 
-    Example: To replicate the numpy expression "r[10:] += 5", type
+    Examples
+    --------
+    To replicate the numpy expression "r[10:] += 5", type
 
     >>> r = ivector()
     >>> new_r = inc_subtensor(r[10:], 5)
+
     """
     # First of all, y cannot have a higher dimension than x,
     # nor have non-broadcastable dimensions where x is broadcastable.
@@ -1034,8 +1072,7 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
 
     dim_offset = x.ndim - y.ndim
     for dim in xrange(y.ndim):
-        if (x.broadcastable[dim + dim_offset]
-                and not y.broadcastable[dim]):
+        if (x.broadcastable[dim + dim_offset] and not y.broadcastable[dim]):
             # It is acceptable to try to increment a subtensor with a
             # broadcastable dim with a tensor that is not broadcastable
             # on that dimension. However, its length must then be 1.
@@ -1161,7 +1198,8 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
 
 
 class IncSubtensor(Op):
-    """Increment a subtensor.
+    """
+    Increment a subtensor.
 
     This is like numpy's
 
@@ -1169,11 +1207,16 @@ class IncSubtensor(Op):
 
     It is used internally to implement the gradient on SubTensor.
 
-    :param set_instead_of_inc: if True set the subtensor to the value instead
-    of incrementing it by that value.
+    Parameters
+    ----------
+    set_instead_of_inc
+        If True set the subtensor to the value instead of incrementing it by
+        that value.
+
     """
 
     check_input = False
+    __props__ = ("idx_list", "inplace", "set_instead_of_inc")
 
     def __init__(self, idx_list, inplace=False, set_instead_of_inc=False,
                  destroyhandler_tolerate_aliased=None):
@@ -1186,12 +1229,6 @@ class IncSubtensor(Op):
         self.destroyhandler_tolerate_aliased = list(
             destroyhandler_tolerate_aliased)
         self.set_instead_of_inc = set_instead_of_inc
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.idx_list == other.idx_list and
-                self.inplace == other.inplace and
-                self.set_instead_of_inc == other.set_instead_of_inc)
 
     def __hash__(self):
         msg = []
@@ -1232,9 +1269,14 @@ class IncSubtensor(Op):
 
     def make_node(self, x, y, *inputs):
         """
-            x: the tensor to increment
-            y: the value to increment by
-            inputs: TODO WRITEME
+        Parameters
+        ----------
+        x
+            The tensor to increment.
+        y
+            The value to increment by.
+        inputs: TODO WRITEME
+
         """
         x, y = map(theano.tensor.as_tensor_variable, [x, y])
         if y.ndim > x.ndim:
@@ -1418,8 +1460,10 @@ class IncSubtensor(Op):
                 )
 
     def do_type_checking(self, node):
-        """ Should raise NotImplementedError if c_code does not support
+        """
+        Should raise NotImplementedError if c_code does not support
         the types involved in this node.
+
         """
 
         if not isinstance(node.inputs[0].type, theano.tensor.TensorType):
@@ -1434,13 +1478,19 @@ class IncSubtensor(Op):
 
     def copy_of_x(self, x):
         """
-            :param x: a string giving the name of a C variable
-                pointing to an array
+        Parameters
+        ----------
+        x
+            A string giving the name of a C variable pointing to an array.
 
-            :return: C code expression to make a copy of x
+        Returns
+        -------
+        object
+            C code expression to make a copy of x.
 
-            Base class uses PyArrayObject *, subclasses may override for
-            different types of arrays.
+        Base class uses PyArrayObject *, subclasses may override for
+        different types of arrays.
+
         """
         # Parameters of PyArrary_FromAny are:
         # array
@@ -1455,12 +1505,16 @@ class IncSubtensor(Op):
 
     def make_view_array(self, x, view_ndim):
         """
-            :param x: a string identifying an array to be viewed
-            :param view_ndim: a string specifying the number of dimensions
-                to have in the view
+        Parameters
+        ----------
+        x
+            A string identifying an array to be viewed.
+        view_ndim
+            A string specifying the number of dimensions to have in the view.
 
-            This doesn't need to actually set up the view with the
-            right indexing; we'll do that manually later.
+        This doesn't need to actually set up the view with the right indexing;
+        we'll do that manually later.
+
         """
 
         return """Py_INCREF(PyArray_DESCR(%(x)s));
@@ -1478,22 +1532,35 @@ class IncSubtensor(Op):
         """ % locals()
 
     def get_helper_c_code_args(self):
-        """ Return a dictionary of arguments to pass to helper_c_code."""
+        """
+        Return a dictionary of arguments to pass to helper_c_code.
+
+        """
         return Subtensor.default_helper_c_code_args()
 
     def copy_into(self, view, source):
         """
-            view: string, C code expression for an array
-            source: string, C code expression for an array
+        Parameters
+        ----------
+        view : string
+            C code expression for an array.
+        source : string
+            C code expression for an array.
 
-            returns a C code expression to copy source into view, and
-            return 0 on success
+        Returns
+        -------
+        object
+            C code expression to copy source into view, and 0 on success.
+
         """
         return """PyArray_CopyInto(%(view)s, %(source)s)""" % locals()
 
     def add_to_zview(self, name, x, fail):
-        """ Return C code to add x to zview. Should DECREF zview if the
-        add fails."""
+        """
+        Return C code to add x to zview. Should DECREF zview if the
+        add fails.
+
+        """
 
         return """
             PyArrayObject * add_rval = (PyArrayObject*)PyNumber_InPlaceAdd(
@@ -1558,11 +1625,13 @@ class IncSubtensor(Op):
 
 
 def _sum_grad_over_bcasted_dims(x, gx):
-    """Sum of gx over dimensions to reproduce x.broadcastable.
+    """
+    Sum of gx over dimensions to reproduce x.broadcastable.
 
     This is useful to sum gradients over certain dimensions when
     x has been broadcasted, and we need to sum the gradient contributions
     over all duplications.
+
     """
     if gx.broadcastable != x.broadcastable:
         x_dim_added = gx.ndim - x.ndim
@@ -1599,7 +1668,10 @@ def _sum_grad_over_bcasted_dims(x, gx):
 
 
 class AdvancedSubtensor1(Op):
-    """Implement x[ilist] where ilist is a vector of integers."""
+    """
+    Implement x[ilist] where ilist is a vector of integers.
+
+    """
     # sparse_grad doesn't go in here since it only affects the output
     # of the grad() method.
     __props__ = ()
@@ -1707,7 +1779,8 @@ class AdvancedSubtensor1(Op):
             if (i_type != NPY_INTP) {
                 // Cast %(i_name)s to NPY_INTP (expected by PyArray_TakeFrom),
                 // if all values fit.
-                if (!PyArray_CanCastSafely(i_type, NPY_INTP)) {
+                if (!PyArray_CanCastSafely(i_type, NPY_INTP) &&
+                    PyArray_SIZE(%(i_name)s) > 0) {
                     npy_int64 min_val, max_val;
                     PyObject* py_min_val = PyArray_Min(%(i_name)s, NPY_MAXDIMS,
                                                        NULL);
@@ -1778,13 +1851,17 @@ class AdvancedSubtensor1(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 1, 1)
+        return (0, 1, 2)
 
 advanced_subtensor1 = AdvancedSubtensor1()
 
 
 class AdvancedIncSubtensor1(Op):
-    """Increments a subtensor using advanced slicing (list of index)"""
+    """
+    Increments a subtensor using advanced slicing (list of index).
+
+    """
+
     __props__ = ('inplace', 'set_instead_of_inc')
 
     def __init__(self, inplace=False, set_instead_of_inc=False):
@@ -1835,13 +1912,19 @@ class AdvancedIncSubtensor1(Op):
 
     def copy_of_x(self, x):
         """
-            :param x: a string giving the name of a C variable
-                pointing to an array
+        Parameters
+        ----------
+        x : string
+            Gives the name of a C variable pointing to an array.
 
-            :return: C code expression to make a copy of x
+        Returns
+        -------
+        object
+            C code expression to make a copy of x.
 
-            Base class uses PyArrayObject *, subclasses may override for
-            different types of arrays.
+        Base class uses PyArrayObject *, subclasses may override for
+        different types of arrays.
+
         """
         # Parameters of PyArrary_FromAny are:
         # array
@@ -2001,6 +2084,7 @@ def adv_index_broadcastable_pattern(a, idx):
 
     For this, we make a fake ndarray and a fake idx and call use ask numpy
     the output. From this, we find the output broadcast pattern.
+
     """
 
     def replace_slice(v):
@@ -2028,20 +2112,15 @@ def adv_index_broadcastable_pattern(a, idx):
 
 
 class AdvancedSubtensor(Op):
-    """Return a subtensor copy, using advanced indexing.
     """
+    Return a subtensor copy, using advanced indexing.
+
+    """
+
     # Should be used by __getitem__ and __getslice__, as follow:
     # AdvancedSubtensor()(self, *args),
     # if args contains and advanced indexing pattern
-
-    def __eq__(self, other):
-        return self.__class__ == other.__class__
-
-    def __hash__(self):
-        return hash(self.__class__)
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, x, *index):
         x = theano.tensor.as_tensor_variable(x)
@@ -2109,13 +2188,17 @@ advanced_subtensor = AdvancedSubtensor()
 
 
 class AdvancedIncSubtensor(Op):
-    """Increments a subtensor using advanced indexing.
+    """
+    Increments a subtensor using advanced indexing.
 
-    :note: We need the numpy.inplace_increment() function currently
-        numpy's PR 326 to be able to make an inplace version of this
-        op.
+    Notes
+    -----
+    We need the numpy.inplace_increment() function currently
+    numpy's PR 326 to be able to make an inplace version of this op.
 
     """
+
+    __props__ = ("inplace", "set_instead_of_inc")
 
     def __init__(self, inplace=False, set_instead_of_inc=False):
         self.inplace = inplace
@@ -2128,14 +2211,6 @@ class AdvancedIncSubtensor(Op):
                                       ' implemented')
 
         self.allow_legacy_perform = False
-
-    def __hash__(self):
-        return hash((type(self), self.inplace, self.set_instead_of_inc))
-
-    def __eq__(self, other):
-        return (type(self) == type(other)
-                and self.inplace == other.inplace
-                and self.set_instead_of_inc == other.set_instead_of_inc)
 
     def __str__(self):
         return "%s{%s, %s}" % (self.__class__.__name__,

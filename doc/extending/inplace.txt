@@ -55,7 +55,12 @@ Suppose you had an Op which took ``x`` as input and returned
 purpose, you would set the ``view_map`` field as follows:
 
 
-.. code-block:: python
+.. testsetup::
+
+   from theano import Op
+   myop = Op()
+
+.. testcode::
 
    myop.view_map = {0: [0]}
 
@@ -66,7 +71,7 @@ inputs that are viewed by a given output, this feature is currently
 unsupported. Here are more examples:
 
 
-.. code-block:: python
+.. testcode::
 
    myop.view_map = {0: [0]} # first output is a view of first input
    myop.view_map = {0: [1]} # first output is a view of second input
@@ -101,8 +106,11 @@ operation on ``x``.
    modified. Therefore, code using inplace operations would look like
    this:
 
-   .. code-block:: python
+   .. testcode::
 
+      from theano.tensor import dscalars, log
+      from theano.tensor.inplace import add_inplace
+      
       x, y = dscalars('x', 'y')
       r1 = log(x)
 
@@ -144,7 +152,7 @@ Theano needs to be notified of this fact. The syntax is similar to
 that of ``view_map``:
 
 
-.. code-block:: python
+.. testcode::
 
    myop.destroy_map = {0: [0]}
 
@@ -153,7 +161,7 @@ What this means is that the first output (position 0) operates inplace on the
 first input (position 0).
 
 
-.. code-block:: python
+.. testcode::
 
    myop.destroy_map = {0: [0]} # first output operates inplace on first input
    myop.destroy_map = {0: [1]} # first output operates inplace on second input

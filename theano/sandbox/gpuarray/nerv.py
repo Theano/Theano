@@ -8,10 +8,10 @@ from theano.gof import local_optimizer, COp
 from theano.scalar import as_scalar, constant
 
 from . import opt
-from .basic_ops import (as_gpuarray_variable, GpuAllocEmpty)
+from .basic_ops import (as_gpuarray_variable, GpuAllocEmpty,
+                        infer_context_name)
+from .type import gpu_context_type
 from .opt_util import alpha_merge, output_merge
-from .pycuda_helper import ensure_pycuda_context
-
 
 try:
     from nervanagpu.nervanagpu import GPUTensor, NervanaGPU
@@ -41,8 +41,12 @@ def ensure_float(val, name):
 
 
 class Gemm16(COp):
+    """
+    Gemm for float16 using the nervena kernels.
+    """
     __props__ = ('relu', 'inplace')
     _f16_ok = True
+    params_type = gpu_context_type
     KERN_NAMES = ('nn_128x128', 'nn_128x64', 'nn_128x32',
                   'nn_vec_128x128', 'nn_vec_128x64', 'nn_vec_128x32',
                   'tn_128x128', 'tn_128x64', 'tn_128x32',
@@ -61,10 +65,11 @@ class Gemm16(COp):
     def make_node(self, C, alpha, A, B, beta):
         if GPUTensor is None:
             raise RuntimeError("Can't use Gemm16: nervanagpu not found")
+        ctx_name = infer_context_name(C, A, B)
 
-        A = as_gpuarray_variable(A)
-        B = as_gpuarray_variable(B)
-        C = as_gpuarray_variable(C)
+        A = as_gpuarray_variable(A, ctx_name)
+        B = as_gpuarray_variable(B, ctx_name)
+        C = as_gpuarray_variable(C, ctx_name)
 
         alpha = ensure_float(alpha, 'alpha')
         beta = ensure_float(beta, 'beta')
@@ -73,27 +78,8 @@ class Gemm16(COp):
 
         return Apply(self, [C, alpha, A, B, beta], [C.type()])
 
-    def perform(self, node, inputs, outputs):
-        ensure_pycuda_context()
-        C, alpha, A, B, beta = inputs
-        # The nervana code does not support the case where both inputs
-        # are trans, so we need to copy one if them if that is the
-        # case. We copy the smaller one.
-        if A.flags.f_contiguous and B.flags.f_contiguous:
-            if A.size < B.size:
-                A = A.copy()
-            else:
-                B = B.copy()
-        inplace = self.inplace
-        if inplace and not C.flags.c_contiguous:
-            inplace = False
-        if not inplace:
-            C = C.copy()
-        At = to_gputensor(A)
-        Bt = to_gputensor(B)
-        Ct = to_gputensor(C)
-        nerv.dot(At, Bt, Ct, alpha=alpha, beta=beta, relu=False)
-        outputs[0][0] = C
+    def get_params(self, node):
+        return node.inputs[0].type.context
 
     def c_headers(self):
         return ['gpuarray/types.h', 'numpy_compat.h', 'gpuarray_helper.h',
@@ -145,7 +131,7 @@ if (GpuKernel_init(&k_%(name)s, c->ops, c->ctx, 1, &bcode, &sz,
             codel.append("memset(&k_{0}, 0, sizeof(GpuKernel));".format(name))
         codel.append("const char *bcode;")
         codel.append("size_t sz;")
-        codel.append("PyGpuContextObject *c = pygpu_default_context();")
+        codel.append("PyGpuContextObject *c = %s;" % (sub['params'],))
         codel.append("int types[13] = {GA_BUFFER, GA_BUFFER, GA_BUFFER, "
                      "GA_BUFFER, GA_INT, GA_INT, GA_INT, GA_INT, GA_INT, "
                      "GA_INT, GA_FLOAT, GA_FLOAT, GA_INT};")
@@ -162,7 +148,7 @@ if (GpuKernel_init(&k_%(name)s, c->ops, c->ctx, 1, &bcode, &sz,
 
 @opt.register_opt()
 @opt.op_lifter([tensor.Dot])
-def local_dot_to_gemm16(node):
+def local_dot_to_gemm16(node, ctx_name):
     if nerv is None:
         return
     A = node.inputs[0]
@@ -170,19 +156,19 @@ def local_dot_to_gemm16(node):
     if (A.ndim == 2 and B.ndim == 2 and
             A.dtype == 'float16' and B.dtype == 'float16'):
         fgraph = node.inputs[0].fgraph
-        C = GpuAllocEmpty(dtype='float16')(
+        C = GpuAllocEmpty(dtype='float16', context_name=ctx_name)(
             shape_i(A, 0, fgraph), shape_i(B, 1, fgraph))
         return Gemm16()(C, 1.0, A, B, 0.0)
 
 
 @opt.register_opt()
-@alpha_merge(Gemm16, alpha_in=1, beta_in=4, nd=2)
+@alpha_merge(Gemm16, alpha_in=1, beta_in=4)
 def local_gemm16_alpha_merge(node, *inputs):
     return [Gemm16(relu=node.op.relu)(*inputs)]
 
 
 @opt.register_opt()
-@output_merge(Gemm16, alpha_in=1, beta_in=4, out_in=0, nd=2)
+@output_merge(Gemm16, alpha_in=1, beta_in=4, out_in=0)
 def local_gemm16_output_merge(node, *inputs):
     return [Gemm16(relu=node.op.relu)(*inputs)]
 

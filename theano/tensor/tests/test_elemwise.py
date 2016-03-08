@@ -1,13 +1,12 @@
-import six.moves.cPickle as pickle
 from copy import copy
 import unittest
+import math
 
 import numpy
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 from nose.tools import raises
-
 from six.moves import xrange
+import six.moves.cPickle as pickle
 
 import theano
 from theano.compat import imap
@@ -19,7 +18,7 @@ from theano.compile.mode import get_default_mode
 from theano.tensor.elemwise import (CAReduce, Elemwise, DimShuffle,
                                     Prod, ProdWithoutZeros)
 from theano.tests import unittest_tools
-import math
+from theano.tests.unittest_tools import attr
 
 
 def FunctionGraph(i, o):
@@ -160,7 +159,7 @@ class test_Broadcast(unittest.TestCase):
     cop = Elemwise
 
     openmp_minsize = 2*config.openmp_elemwise_minsize
-    openmp_minsize_sqrt = math.ceil(math.sqrt(openmp_minsize))
+    openmp_minsize_sqrt = int(math.ceil(math.sqrt(openmp_minsize)))
 
     # The order is important if you change them.
     linkers = [gof.PerformLinker, gof.CLinker]

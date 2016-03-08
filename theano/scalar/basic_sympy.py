@@ -1,18 +1,16 @@
-import numpy as np
+import itertools as it
 
 from theano.scalar.basic import Apply, ScalarOp, as_scalar, float64, float32, int64
 from theano.gof.utils import remove
 
 imported_sympy = False
 try:
-    import sympy
     from sympy.utilities.codegen import get_default_datatype, codegen
     imported_sympy = True
 except ImportError:
     pass
 
-import itertools as it
-names = ("sympy_func_%d"%i for i in it.count(0))
+names = ("sympy_func_%d" % i for i in it.count(0))
 
 
 def include_line(line):
@@ -30,8 +28,11 @@ def theano_dtype(expr):
 
 
 class SymPyCCode(ScalarOp):
-    """ An Operator that wraps SymPy's C code generation
+    """
+    An Operator that wraps SymPy's C code generation.
 
+    Examples
+    --------
     >>> from sympy.abc import x, y  # SymPy Variables
     >>> from theano.scalar.basic_sympy import SymPyCCode
     >>> op = SymPyCCode([x, y], x + y)
@@ -44,6 +45,7 @@ class SymPyCCode(ScalarOp):
     >>> f = theano.function([xt, yt], zt)
     >>> f(1.0, 2.0)
     3.0
+
     """
 
     def __init__(self, inputs, expr, name=None):
@@ -53,8 +55,8 @@ class SymPyCCode(ScalarOp):
 
     def _sympy_c_code(self):
         [(c_name, c_code), (h_name, c_header)] = codegen(
-                (self.name, self.expr), 'C', 'project_name',
-                header=False, argument_sequence=self.inputs)
+            (self.name, self.expr), 'C', 'project_name',
+            header=False, argument_sequence=self.inputs)
         return c_code
 
     def c_support_code(self):
@@ -64,8 +66,8 @@ class SymPyCCode(ScalarOp):
     def c_headers(self):
         c_code = self._sympy_c_code()
         return [line.replace("#include", "").strip() for line in
-                c_code.split('\n') if include_line(line)
-                and not 'project_name' in line]
+                c_code.split('\n') if include_line(line) and
+                'project_name' not in line]
 
     def c_code(self, node, name, input_names, output_names, sub):
         y, = output_names
@@ -92,7 +94,7 @@ class SymPyCCode(ScalarOp):
     def grad(self, inputs, output_grads):
         return [SymPyCCode(self.inputs,
                            self.expr.diff(inp),
-                           name=self.name+"_grad_%d"%i)(*inputs)
+                           name=self.name + "_grad_%d" % i)(*inputs)
                 for i, inp in enumerate(self.inputs)]
 
     def _info(self):

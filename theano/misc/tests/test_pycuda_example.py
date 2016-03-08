@@ -14,7 +14,6 @@ if not cuda_ndarray.cuda_available:
     from nose.plugins.skip import SkipTest
     raise SkipTest('Optional package cuda disabled')
 
-import theano
 import theano.tensor as T
 from theano.misc.pycuda_example import (PycudaElemwiseSourceModuleOp,
 #                                        PycudaElemwiseKernelOp,

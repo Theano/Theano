@@ -11,7 +11,7 @@ from six import string_types, iteritems, itervalues
 from theano.compile.mode import (Mode, register_mode,
                                  predefined_modes, predefined_linkers,
                                  predefined_optimizers)
-from theano.configparser import config, AddConfigVar, IntParam, BoolParam
+from theano.configparser import config
 from theano.compile.function_module import FunctionMaker
 
 from .profiling import ProfileStats
@@ -20,31 +20,10 @@ run_cthunk = None  # Will be imported only when needed.
 import_time = time.time()
 
 
-AddConfigVar('ProfileMode.n_apply_to_print',
-             "Number of apply instances to print by default",
-             IntParam(15, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('ProfileMode.n_ops_to_print',
-             "Number of ops to print by default",
-             IntParam(20, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('ProfileMode.min_memory_size',
-             "For the memory profile, do not print apply nodes if the size "
-             "of their outputs (in bytes) is lower then this threshold",
-             IntParam(1024, lambda i: i >= 0),
-             in_c_key=False)
-
-AddConfigVar('ProfileMode.profile_memory',
-             """Enable profiling of memory used by Theano functions""",
-             BoolParam(False),
-             in_c_key=False)
-
-
 class Profile_Maker(FunctionMaker):
-    def create(self, input_storage=None, trustme=False):
-        ret = super(Profile_Maker, self).create(input_storage, trustme)
+    def create(self, input_storage=None, trustme=False, storage_map=None):
+        ret = super(Profile_Maker, self).create(input_storage, trustme,
+                                                storage_map)
 
         if (hasattr(theano, 'sandbox') and
                 hasattr(theano.sandbox, 'cuda') and
@@ -122,7 +101,10 @@ class ProfileMode(Mode):
                            profile_stats))
 
     def function_maker(self, i, o, m, *args, **kwargs):
-        """Return an instance of `Profiler_Maker` which init the count"""
+        """
+        Return an instance of `Profiler_Maker` which init the count.
+
+        """
 
         assert m is self
         return Profile_Maker(i, o, self, *args, **kwargs)
@@ -147,7 +129,9 @@ class ProfileMode(Mode):
         self.profile_stats = profile_stats
 
         def profile_thunk(i, node, th):
-            """ Profile only the execution time
+            """
+            Profile only the execution time.
+
             """
             global run_cthunk
             if hasattr(th, 'cthunk'):
@@ -169,7 +153,9 @@ class ProfileMode(Mode):
             self.apply_time[node] += max(dt, 1e-14)
 
         def profile_thunk2(i, node, th):
-            """ Profile the execution time and the memory size.
+            """
+            Profile the execution time and the memory size.
+
             """
             global run_cthunk
             if hasattr(th, 'cthunk'):
@@ -211,7 +197,8 @@ class ProfileMode(Mode):
         self.fn_time = 0
 
     def print_summary(self, **kwargs):
-        """ Print 3 summaries that show where time is spent. The first shows
+        """
+        Print 3 summaries that show where time is spent. The first shows
         an Apply-wise summary, the second an Op-wise summary and the
         third a type-Op-wise summary.
 
@@ -235,10 +222,13 @@ class ProfileMode(Mode):
         There is an hack with the Op-wise summary. Go see it if you
         want to know more.
 
-        :param kwargs: They are passed to print_summary_ expanded.
-                       Currently there is n_apply_to_print,
-                       n_ops_to_print and min_memory_size that are
-                       accepted.
+        Parameters
+        ----------
+        kwargs
+            They are passed to print_summary_ expanded. Currently there is
+            n_apply_to_print, n_ops_to_print and min_memory_size that are
+            accepted.
+
         """
         compile_time = sum([ps.compile_time for ps
                             in self.profile_stats.values()])
@@ -280,18 +270,23 @@ class ProfileMode(Mode):
                             **kwargs)
 
     def print_diff_summary(self, other, **kwargs):
-        """ As print_summary, but print the difference on two different
+        """
+        As print_summary, but print the difference on two different
         profile mode.
 
         TODO: Also we don't print the Apply-wise summary as it don't
         work for now.
         TODO: make comparaison with gpu code.
 
-        :param other: the other instance of ProfileMode that we want
-            to be compared to.
-        :param kwargs: They are passed to print_summary_ expanded.
+        Parameters
+        ----------
+        other
+            The other instance of ProfileMode that we want to be compared to.
+        kwargs
+            They are passed to print_summary_ expanded.
             Currently there is n_apply_to_print, n_ops_to_print and
             min_memory_size that are accepted.
+
         """
 
         def diff_dict(a_time, b_time_):
@@ -343,13 +338,18 @@ class ProfileMode(Mode):
                        min_memory_size=config.ProfileMode.min_memory_size,
                        ):
         """
-        do the actual printing of print_summary and print_diff_summary.
+        Do the actual printing of print_summary and print_diff_summary.
 
-        :param n_apply_to_print: the number of apply to print. Default 15.
+        Parameters
+        ----------
+        n_apply_to_print
+            The number of apply to print. Default 15.
+        n_ops_to_print
+            The number of ops to print. Default 20.
+        min_memory_size
+            Don't print memory profile of apply whose outputs memory size is
+            lower than that.
 
-        :param n_ops_to_print: the number of ops to print. Default 20.
-        :param min_memory_size: Don't print memory profile of apply
-                                whose outputs memory size is lower then that.
         """
 
         print("ProfileMode is deprecated! Use the new profiler.")
@@ -574,7 +574,7 @@ class ProfileMode(Mode):
         if not variable_shape:
             print("\nProfile of Theano intermediate memory disabled. "
                   "To enable, set the Theano flag ProfileMode.profile_memory "
-                  "to True.""")
+                  "to True.")
         else:
             print("""
             The memory profile in ProfileMode is removed!
@@ -696,16 +696,18 @@ Test them first, as they are not guaranteed to always provide a speedup.""")
         if not printed_tip:
             print("  Sorry, no tip for today.")
 
-    def clone(self, link_kwargs=None, message=None):
+    def clone(self, link_kwargs=None, optimizer="", message=None):
         """
         Create a new instance of this Mode.
 
-        Keyword arguments can be provided for the linker,
-        in which case its `clone` method will be called with these
-        arguments.
+        Keyword arguments can be provided for the linker, in which case its
+        `clone` method will be called with these arguments.
+
         """
         new_linker = self.linker.clone(**link_kwargs)
-        new_optimizer = self.provided_optimizer
+        new_optimizer = optimizer
+        if optimizer == "":
+            new_optimizer = self.provided_optimizer
         new_mode = type(self)(linker=new_linker,
                               optimizer=new_optimizer)
         # If self is in the list or profiles to print, then add the
@@ -727,10 +729,11 @@ prof_mode_instance_to_print = [predefined_modes["PROFILE_MODE"]]
 
 
 def atexit_print_default_profile_mode():
-    """Print the summary of the predefined mode ProfileMode if used.
+    """
+    Print the summary of the predefined mode ProfileMode if used.
 
-    This all to have the summary printed at exit when
-    config.mode=ProfileMode
+    This all to have the summary printed at exit when config.mode=ProfileMode.
+
     """
     for prof_mode in prof_mode_instance_to_print:
         if prof_mode.local_time > 0:

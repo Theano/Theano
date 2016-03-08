@@ -120,7 +120,7 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
 
     signals = numpy.random.rand(Ns, Ts, C, Hs, Ws).astype('float32')
     filters = numpy.random.rand(Nf, Tf, C, Hf, Wf).astype('float32')
-    utt.verify_grad(conv3d, [signals, filters], eps=1e-1)
+    utt.verify_grad(conv3d, [signals, filters], eps=1e-1, mode=mode)
 
     ### Additional Test that covers the case of patched implementation for filter with Tf=1
     Ns, Ts, C, Hs, Ws = 3, 10, 3, 32, 32
@@ -165,4 +165,4 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
 
     signals = numpy.random.rand(Ns, Ts, C, Hs, Ws).astype('float32')
     filters = numpy.random.rand(Nf, Tf, C, Hf, Wf).astype('float32')
-    utt.verify_grad(conv3d, [signals, filters], eps=1e-1)
+    utt.verify_grad(conv3d, [signals, filters], eps=1e-1, mode=mode)

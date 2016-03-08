@@ -1,4 +1,5 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
+
 import os
 import shutil
 import sys
@@ -11,7 +12,6 @@ import six.moves.cPickle as pickle
 from six.moves import xrange
 import numpy
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 from nose.tools import assert_raises
 from nose.tools import raises
 from numpy.testing import dec
@@ -24,8 +24,7 @@ from theano.tests import unittest_tools as utt
 import theano.scalar.sharedvar
 from theano.scan_module.scan_op import Scan
 from theano.compat import PY3, OrderedDict
-
-from numpy.testing.noseclasses import KnownFailureTest
+from theano.tests.unittest_tools import attr
 
 
 '''
@@ -45,6 +44,11 @@ if theano.config.mode == 'FAST_COMPILE':
 else:
     mode_with_opt = theano.compile.mode.get_default_mode()
 mode_with_gpu = mode_with_opt.including('gpu', 'scan')
+if theano.config.mode in ('DEBUG_MODE', 'DebugMode'):
+    mode_nodebug = theano.compile.mode.get_mode('FAST_RUN')
+else:
+    mode_nodebug = mode_with_opt
+mode_with_gpu_nodebug = mode_nodebug.including('gpu', 'scan')
 
 
 type_eps = {'float64': 1e-7,
@@ -218,7 +222,7 @@ class T_Scan(unittest.TestCase):
 
     # generator network, only one output , type scalar ; no sequence or
     # non sequence arguments
-    @dec.knownfailureif(
+    @dec.skipif(
         isinstance(theano.compile.mode.get_default_mode(),
                    theano.compile.debugmode.DebugMode),
         ("This test fails in DebugMode, because it is not yet picklable."))
@@ -247,18 +251,12 @@ class T_Scan(unittest.TestCase):
             tmpdir = mkdtemp()
             os.chdir(tmpdir)
 
-            f_out = open('tmp_scan_test_pickle.pkl', 'wb')
-            try:
+            with open('tmp_scan_test_pickle.pkl', 'wb') as f_out:
                 pickle.dump(_my_f, f_out, protocol=-1)
-            finally:
-                f_out.close()
-            f_in = open('tmp_scan_test_pickle.pkl', 'rb')
-            try:
+            with open('tmp_scan_test_pickle.pkl', 'rb') as f_in:
                 my_f = pickle.load(f_in)
-            finally:
-                f_in.close()
         finally:
-            # Get back to the orinal dir, and delete temporary one.
+            # Get back to the original dir, and delete the temporary one.
             os.chdir(origdir)
             if tmpdir is not None:
                 shutil.rmtree(tmpdir)
@@ -708,7 +706,7 @@ class T_Scan(unittest.TestCase):
 
         def inner_fct(mitsot_m2, mitsot_m1, sitsot):
             total = mitsot_m2 + mitsot_m1 + sitsot
-            output = total ** 2
+            output = total ** 1.05
             return output, output
 
         inputs = [tensor.matrix(), tensor.vector()]
@@ -725,6 +723,52 @@ class T_Scan(unittest.TestCase):
         # Take the gradient of the sum of gradients wrt the inputs
         sum_of_grads = sum([g.sum() for g in gradients])
         second_gradients = theano.grad(sum_of_grads, inputs[0])
+
+    def test_verify_second_grad_sitsot(self):
+
+        def get_sum_of_grad(inp):
+
+            scan_outputs, updates = theano.scan(fn=lambda x: x * 2,
+                                                outputs_info=[inp],
+                                                n_steps=5)
+
+            # Take the gradient of each output wrt its corresponding initial
+            # state
+            return theano.grad(scan_outputs.sum(), inp).sum()
+
+        # Call verify_grad to ensure the correctness of the second gradients
+        floatX = theano.config.floatX
+        inputs_test_values = [numpy.random.random((3)).astype(floatX)]
+        theano.tests.unittest_tools.verify_grad(get_sum_of_grad,
+                                                inputs_test_values)
+
+    def test_verify_second_grad_mitsot1(self):
+
+        def inner_fct(mitsot_m2, sitsot):
+            total = mitsot_m2 + sitsot
+            output = total ** 1.02
+            return output, output
+
+        def get_sum_of_grad(input0, input1):
+            outputs_info = [dict(initial=input0, taps=[-2]), input1]
+
+            scan_outputs, updates = theano.scan(fn=inner_fct,
+                                                outputs_info=outputs_info,
+                                                n_steps=3)
+
+            # Take the gradient of each output wrt its corresponding initial
+            # state
+            gradients = [theano.grad(scan_outputs[0].sum(), input0),
+                         theano.grad(scan_outputs[1].sum(), input1)]
+
+            return gradients[0].sum() + gradients[1].sum()
+
+        # Call verify_grad to ensure the correctness of the second gradients
+        floatX = theano.config.floatX
+        inputs_test_values = [numpy.random.random((2, 3)).astype(floatX),
+                              numpy.random.random((3)).astype(floatX)]
+        theano.tests.unittest_tools.verify_grad(get_sum_of_grad,
+                                                inputs_test_values)
 
     def test_grad_two_scans(self):
 
@@ -854,9 +898,9 @@ class T_Scan(unittest.TestCase):
         u0 = theano.tensor.vector('u0')
         u1 = theano.tensor.vector('u1')
         u2 = theano.tensor.vector('u2')
-        mu0 = theano.Param(u0, mutable=False)
-        mu1 = theano.Param(u1, mutable=True)
-        mu2 = theano.Param(u2, mutable=True)
+        mu0 = theano.In(u0, mutable=False)
+        mu1 = theano.In(u1, mutable=True)
+        mu2 = theano.In(u2, mutable=True)
         x0 = theano.tensor.scalar('x0')
         x1 = theano.tensor.scalar('y0')
         W_in = theano.shared(vW_in, 'Win')
@@ -918,9 +962,9 @@ class T_Scan(unittest.TestCase):
         u0 = theano.tensor.vector('u0')
         u1 = theano.tensor.vector('u1')
         u2 = theano.tensor.vector('u2')
-        mu0 = theano.Param(u0, mutable=True)
-        mu1 = theano.Param(u1, mutable=True)
-        mu2 = theano.Param(u2, mutable=True)
+        mu0 = theano.In(u0, mutable=True)
+        mu1 = theano.In(u1, mutable=True)
+        mu2 = theano.In(u2, mutable=True)
         x0 = theano.tensor.scalar('x0')
         x1 = theano.tensor.scalar('y0')
         W_in = theano.shared(vW_in, 'Win')
@@ -1774,8 +1818,16 @@ class T_Scan(unittest.TestCase):
         analytic_grad = reset_rng_grad_fn(v_u, v_x0, vW_in)
         utt.assert_allclose(analytic_grad[0][:2], numpy.zeros((2, 2)))
 
-    @attr('slow')
     def test_grad_multiple_outs_some_disconnected(self):
+        final_cost = self._grad_mout_helper(100, mode_nodebug)
+        assert final_cost < 0.02
+
+    def test_grad_multiple_outs_some_disconnected_2(self):
+        # This is to try the network in DEBUG_MODE, but not fully
+        # train it since that would take 3 hours
+        self._grad_mout_helper(1, None)
+
+    def _grad_mout_helper(self, n_iters, mode):
         # Created on Tue Oct 07 13:28:51 2014
         # @author: vaneetke
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -1817,7 +1869,8 @@ class T_Scan(unittest.TestCase):
             sequences=dict(input=x),
             # corresponds to the return type of one_step
             outputs_info=[dict(initial=h0, taps=[-2, -1]), None],
-            non_sequences=[W_ih, W_hh, b_h, W_ho, b_o])
+            non_sequences=[W_ih, W_hh, b_h, W_ho, b_o],
+            mode=mode)
 
         # target values
         t = tensor.matrix()
@@ -1832,8 +1885,6 @@ class T_Scan(unittest.TestCase):
         gparams = theano.grad(cost, params)
         updates = [(param, param - gparam * learning_rate)
                    for param, gparam in zip(params, gparams)]
-        mode = copy.copy(theano.compile.get_default_mode())
-        mode.check_py_code = False
         learn_rnn_fn = theano.function(inputs=[x, t],
                                        outputs=cost,
                                        updates=updates,
@@ -1848,10 +1899,10 @@ class T_Scan(unittest.TestCase):
         s_v = numpy.sin(x_v)
         t_v = numpy.roll(s_v, -1)[:-1]
         s_v = s_v[:-1]
-        for i in xrange(100):
+        for i in xrange(n_iters):
             cost = learn_rnn_fn(s_v, t_v)
         pred = eval_rnn_fn(s_v)
-        assert cost < 0.02
+        return cost
 
     def test_draw_as_input_to_scan(self):
         trng = theano.tensor.shared_randomstreams.RandomStreams(123)
@@ -2433,6 +2484,43 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(output1, expected_output1)
         utt.assert_allclose(output2, expected_output2)
 
+    def test_use_scan_direct_output2(self):
+        # This test looks for a crash that happened when directly using the
+        # recurrent output of a scan node associated with a state with a
+        # state with broadcastable dimensions
+
+        x = tensor.dcol()
+        seq = tensor.dcol()
+        outputs_info=[x, tensor.zeros_like(x)]
+        (out1, out2), updates = theano.scan(lambda a, b, c : (a + b, a + c),
+                                            sequences=seq,
+                                            outputs_info=outputs_info)
+
+        # Obtain a reference to the scan outputs before the subtensor and
+        # compile a function with them as outputs
+        assert isinstance(out1.owner.op, tensor.subtensor.Subtensor)
+        assert isinstance(out2.owner.op, tensor.subtensor.Subtensor)
+        out1_direct = out1.owner.inputs[0]
+        out2_direct = out2.owner.inputs[0]
+        fct = theano.function([x, seq],
+                              [out1_direct, out2_direct])
+
+        # Test that the function returns valid outputs
+        x_val = numpy.arange(0, 4)[:, None]
+        seq_val = numpy.arange(4, 8)[:, None]
+
+        out1, out2 = fct(x_val, seq_val)
+
+        expected_out1 = numpy.zeros((5, 4, 1))
+        expected_out2 = numpy.zeros((5, 4, 1))
+        for i in range(4):
+            expected_out2[i + 1] = expected_out2[i] + seq_val[i]
+        for i in range(5):
+            expected_out1[i] = expected_out2[i] + x_val
+
+        utt.assert_allclose(out1, expected_out1)
+        utt.assert_allclose(out2, expected_out2)
+
     def test_infer_shape(self):
         # Test for a crash in scan.infer_shape when using both
         # an until condition and random sampling in the inner function.
@@ -2455,6 +2543,46 @@ class T_Scan(unittest.TestCase):
         for i in xrange(-5, 5):
             output, g_output = fct(i)
             assert len(output) == g_output
+
+    def test_infer_shape2(self):
+        # Ensure that the shape inference can remove the Scan node in the
+        # case of a complicated inner graph involving sequences and recurrent
+        # states
+
+        seq = tensor.lvector()
+        sitsot_init = tensor.lscalar()
+        mitsot_init = tensor.lvector()
+
+        def step(seq1, sitsot_m1, mitsot_m2, mitsot_m1):
+            # Every iteration, the sitsot state decreases and the mitsot state
+            # increases such that their total value remains identical. This
+            # is because this value will be used as the shape of a nitsot
+            # output and the outputs of every iteration need to have the same
+            # shape
+            diff = mitsot_m1 + seq1
+            next_mitsot_val = mitsot_m2 + diff
+            next_sitsot_val = sitsot_m1 - diff
+            nitsot_out = tensor.alloc(numpy.asarray(0., 'float32'),
+                                      next_mitsot_val +
+                                      next_sitsot_val)
+            return next_sitsot_val, next_mitsot_val, nitsot_out
+
+        out, updates = theano.scan(fn=step,
+                                   sequences=seq,
+                                   outputs_info=[sitsot_init,
+                                                 {'initial': mitsot_init,
+                                                  'taps': [-2, -1]},
+                                                 None],
+                                   n_steps=5)
+
+        f = theano.function([seq, sitsot_init, mitsot_init], out[2].shape,
+                            mode='FAST_RUN')
+        # When Scan.infer_shape will cover more case, there will no scan left.
+        assert(len(scan_nodes_from_fct(f)) == 1)
+
+        # This generate a scan crash during execution.
+        # output_shape = f(numpy.arange(5), 5, [1, 2])
+        # assert(all(output_shape == (5, 6)))
 
     # The following test will fail in DebugMode if there are
     # some problems in Scan.infer_shape
@@ -2612,7 +2740,7 @@ class T_Scan(unittest.TestCase):
 
                 lb = (inp * t).sum() + beta.sum()
 
-                Mi = tensor.sum(lb) * h[i,D];
+                Mi = tensor.sum(lb) * h[i,D]
                 return Mi
 
             (M), M_updts = theano.scan( predict_mean_i ,
@@ -2660,6 +2788,39 @@ class T_Scan(unittest.TestCase):
 
         utt.assert_allclose(expected_output, scan_output)
         utt.assert_allclose(expected_output, jacobian_outputs)
+
+    @theano.configparser.change_flags(on_opt_error='raise')
+    def test_pushout_seqs2(self):
+        # This test for a bug with PushOutSeqScan that was reported on the
+        # theano-user mailing list where the optimization raised an exception
+        # when applied on this graph.
+        x = tensor.matrix()
+        outputs, updates = theano.scan(
+            lambda x: [x*x, tensor.constant(0).copy().copy()],
+            n_steps=2,
+            sequences=[],
+            non_sequences=[],
+            outputs_info=[x, None])
+
+        # Compile a theano function where any optimization error will lead to
+        # an exception being raised
+        theano.function([x], outputs, updates=updates)
+
+    @theano.configparser.change_flags(on_opt_error='raise')
+    def test_pushout_nonseq(self):
+        # Test case originally reported by Daniel Renshaw. The crashed occured
+        # during the optimization PushOutNonSeqScan when it attempted to
+        # a scan node with two outputs but only providing a replacement for
+        # one of those outputs. This led the optimization to raise an
+        # exception.
+
+        outputs, _ = theano.scan(lambda x: (x * x, x),
+                                 non_sequences=[2], n_steps=2)
+        f = theano.function(inputs=[], outputs=outputs)
+
+        outs = f()
+        expected_outs = [[4, 4], [2, 2]]
+        utt.assert_allclose(outs, expected_outs)
 
     def test_sequence_dict(self):
         # Test that we can specify sequences as a dictionary with
@@ -2960,6 +3121,25 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(vnh0, tnh0, atol=1e-6)
         utt.assert_allclose(vnW, tnW, atol=1e-6)
 
+    def test_pushout_dot(self):
+        W = tensor.matrix('W')
+        h = tensor.matrix('h')
+
+        o, _ = theano.scan(lambda hi, him1, W: (hi, tensor.dot(hi+him1, W)),
+                           outputs_info=[tensor.zeros([h.shape[1]]), None],
+                           sequences=[h],
+                           non_sequences=[W])
+
+        f = theano.function([W, h], o, mode=mode_with_opt)
+
+        scan_nodes = [x for x in f.maker.fgraph.toposort()
+                     if isinstance(x.op,
+                                   theano.scan_module.scan_op.Scan)]
+        assert len(scan_nodes) == 1
+        scan_op = scan_nodes[0].op
+        assert not any(isinstance(n.op, tensor.Dot) for n in
+                       scan_op.fn.maker.fgraph.apply_nodes)
+
     def test_pushout_all(self):
         W1 = tensor.matrix('W1')
         W2 = tensor.matrix('W2')
@@ -2993,6 +3173,43 @@ class T_Scan(unittest.TestCase):
         # elements vector v_out 5 times
         sol[:, :] = v_out
         utt.assert_allclose(sol, f(v_h, v_W1, v_W2))
+
+    def test_pushout_while(self):
+        # Ensure that the optimizations for Scan that push computation out of
+        # the Scan don't alter the result for 'as_while' scans.
+
+        W1 = tensor.matrix('W1')
+        W2 = tensor.matrix('W2')
+        step_indices = tensor.vector('step_indices')
+
+        def lambda_fn(step_idx, W1, W2):
+            until_condition = theano.scan_module.until(step_idx > 2)
+            return tensor.dot(W1, W2), until_condition
+
+        # Compile a function with the optimization
+        o, _ = theano.scan(lambda_fn,
+                           sequences=[step_indices, W1],
+                           non_sequences=[W2],
+                           n_steps=5)
+
+        f = theano.function([W1, W2, step_indices], o, mode=mode_with_opt)
+
+        # Compule an theano function without the optimization
+        o, _ = theano.scan(lambda_fn,
+                           sequences=[step_indices, W1],
+                           non_sequences=[W2],
+                           n_steps=5, mode='FAST_COMPILE')
+
+        f_ref = theano.function([W1, W2, step_indices], o, mode='FAST_COMPILE')
+
+        # Compare the results of the two implementations
+        input_values = [numpy.random.random((5, 5)).astype("float32"),
+                        numpy.random.random((5, 5)).astype("float32"),
+                        numpy.arange(5).astype("float32")]
+
+        out = f(*input_values)
+        out_ref = f_ref(*input_values)
+        utt.assert_allclose(out, out_ref)
 
     def test_pushout(self):
         W1 = tensor.matrix('W1')
@@ -3055,9 +3272,8 @@ class T_Scan(unittest.TestCase):
                     if isinstance(x.op, theano.tensor.Elemwise)]) == 0
 
     def test_alloc_inputs2(self):
-        raise KnownFailureTest((
-            "This tests depends on an optimization for scan "
-            "that has not been implemented yet."))
+        raise SkipTest("This tests depends on an optimization for "
+                       "scan that has not been implemented yet.")
         W1 = tensor.matrix()
         W2 = tensor.matrix()
         h0 = tensor.vector()
@@ -3135,7 +3351,7 @@ class T_Scan(unittest.TestCase):
         # One scan node gets optimnized out
         assert len(lssc) == 1
 
-    @dec.knownfailureif(True,
+    @dec.skipif(True,
                         ("This test fails because not typed outputs_info "
                          "are always gived the smallest dtype. There is "
                          "no upcast of outputs_info in scan for now."))
@@ -3284,8 +3500,9 @@ class T_Scan(unittest.TestCase):
         assert out == 24
 
     def test_infershape_seq_shorter_nsteps(self):
-        raise KnownFailureTest('This is a generic problem with infershape'
-                               ' that has to be discussed and figured out')
+        raise SkipTest("This is a generic problem with "
+                       "infershape that has to be discussed "
+                       "and figured out")
         x = tensor.vector('x')
         [o1, o2], _ = theano.scan(lambda x, y: (x + 1, y + x),
                          sequences=x,
@@ -3605,6 +3822,49 @@ class T_Scan(unittest.TestCase):
                                         n_steps=5)
         rval = theano.function([], y2.sum())()
 
+    def test_savemem_opt_0_step(self):
+        # Test a case where the savemem optimization has the opportunity to
+        # lower the number of steps of a Scan to 0. It tests that the
+        # optimization doesn't do so since Scan nodes with 0
+        # steps are not currently supported and doing so would result in a
+        # crash during the function execution.
+
+        def inner_scan_step(x_t_t, h_tm1, w):
+            return tensor.dot(h_tm1, w) + x_t_t
+
+        def outer_scan_step(x_t, w):
+            h, _ = theano.scan(inner_scan_step,
+                            sequences=[x_t[1:]],
+                            outputs_info=[x_t[0]],
+                            non_sequences=[w],
+                            strict=True,
+                            name="the_inner_scan")
+            return h
+
+        def get_outputs(x, w):
+            features, _ = theano.scan(outer_scan_step,
+                                    sequences=[x],
+                                    non_sequences=[w],
+                                    strict=True,
+                                    name="the_outer_scan")
+
+            return_val =  tensor.grad(features.sum(), w)
+            return return_val
+
+        # Compile the theano function
+        x = tensor.tensor3('x')
+        w = tensor.matrix('w')
+        f = theano.function(inputs=[x, w], outputs=get_outputs(x, w))
+
+        # Test the function to ensure it returns valid results
+        x_value = numpy.random.random((2, 2, 3)).astype(theano.config.floatX)
+        w_value = numpy.random.random((3, 3)).astype(theano.config.floatX)
+        expected_output = numpy.tile(x_value[:, 0].sum(0), (3, 1)).transpose()
+
+        output = f(x_value, w_value)
+        utt.assert_allclose(output, expected_output)
+
+
     def test_grad_multiple_taps_state(self):
         # The test is based on the code provided by Timothy Lillicrap
 
@@ -3740,7 +4000,11 @@ class T_Scan(unittest.TestCase):
         assert numpy.all(exp_out == f(inp))
 
     def test_borrow_bug_jeremiah(self):
-        # This test fails if scan uses wrongly the borrow flag
+        # This tests two things. The first is a bug occuring when scan wrongly
+        # used the borrow flag. The second thing it that Scan's infer_shape()
+        # method will be able to remove the Scan node from the graph in this
+        # case.
+
         inp = numpy.arange(10).reshape(-1, 1).astype(theano.config.floatX)
         exp_out = numpy.zeros((10, 1)).astype(theano.config.floatX)
         exp_out[4:] = inp[:-4]
@@ -3761,7 +4025,16 @@ class T_Scan(unittest.TestCase):
         updates = OrderedDict([(sharedvar, results[0][-1:])])
 
         f = theano.function([seq], results[1], updates=updates)
+
+        # This fails if scan uses wrongly the borrow flag
         assert numpy.all(exp_out == f(inp))
+
+        # This fails if Scan's infer_shape() is unable to remove the Scan
+        # node from the graph.
+        f_infershape = theano.function([seq], results[1].shape,
+                                       mode='FAST_RUN')
+        scan_nodes_infershape = scan_nodes_from_fct(f_infershape)
+        assert(len(scan_nodes_infershape) == 0)
 
     def test_memory_reuse_with_outputs_as_inputs(self):
         # Test the memory pre-allocation feature in scan for the following
@@ -3850,6 +4123,26 @@ class T_Scan(unittest.TestCase):
         # This used to raise an exception with older versions becasue
         # scan could not detect the connection between `m2` and `x`
         tensor.grad(m2.sum(), m)
+
+    def test_disconnected_gradient3(self):
+        # This tests for a crash that would occur sometimes when taking the
+        # gradient through a scan with a non-recurrent output which would
+        # receive a disconnected gradient
+
+        v = tensor.dvector('v')
+
+        def step(seq):
+            out1 = seq + 1
+            out2 = out1 + 1
+            return out1, out2
+
+        [out1, out2], _ = theano.scan(step, sequences=v)
+        gv = tensor.grad(out2.sum(), [v])
+        f = theano.function([v], gv)
+
+        # Ensure the output of the function is valid
+        output = f(numpy.random.random(5))
+        utt.assert_allclose(output, numpy.ones(5))
 
     def test_dot_optimization(self):
         A = tensor.matrix('A')
@@ -4222,11 +4515,17 @@ class T_Scan(unittest.TestCase):
         f = theano.function(inputs=[A, k],
                             outputs=final_result,
                             updates=updates)
-        f([2, 3, .1, 0, 1], 4)
+        f(numpy.asarray([2, 3, .1, 0, 1], dtype=theano.config.floatX), 4)
 
         # There should be 3 outputs greater than 10: prior_result[0] at step 3,
         # and prior_result[1] at steps 2 and 3.
-        assert detect_large_outputs.large_count == 3
+        if theano.config.mode in ["DEBUG_MODE", "DebugMode"]:
+            # DebugMode will run all the intermediate nodes, so we
+            # should expect a multiple of 3, not exactly 3.
+            assert detect_large_outputs.large_count % 3 == 0
+
+        else:
+            assert detect_large_outputs.large_count == 3
 
 
 class ScanGpuTests:
@@ -4507,7 +4806,7 @@ class ScanGpuTests:
 
         l1_out, _ = theano.scan(scan_l, sequences=[l1_base],
                                 outputs_info=[zero_output],
-                                mode=self.mode_with_gpu)
+                                mode=self.mode_with_gpu_nodebug)
 
         l2_out = tensor.dot(l1_out, W)
 
@@ -4518,7 +4817,7 @@ class ScanGpuTests:
 
         # Compile the theano function
         feval_backprop = theano.function([xin, yout], cost, updates=updates,
-                                         mode=self.mode_with_gpu)
+                                         mode=self.mode_with_gpu_nodebug)
 
         # Validate that the PushOutScanOutput optimization has been applied
         # by checking the number of outputs of the grad Scan node in the
@@ -4581,7 +4880,8 @@ class T_Scan_Cuda(unittest.TestCase, ScanGpuTests):
     def __init__(self, *args, **kwargs):
         from theano.sandbox import cuda
         self.gpu_backend = cuda
-        self.mode_with_gpu = mode_with_opt.including('gpu', 'scan')
+        self.mode_with_gpu = mode_with_gpu
+        self.mode_with_gpu_nodebug = mode_with_gpu_nodebug
         super(T_Scan_Cuda, self).__init__(*args, **kwargs)
 
     def setUp(self):
@@ -4641,7 +4941,14 @@ class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
     def __init__(self, *args, **kwargs):
         from theano.sandbox import gpuarray
         self.gpu_backend = gpuarray
+
+        # This is unfortunate, but required
+        def gpu_from_host(v):
+            return gpuarray.GpuFromHost(None)(v)
+        self.gpu_backend.gpu_from_host = gpu_from_host
+
         self.mode_with_gpu = mode_with_opt.including('gpuarray', 'scan')
+        self.mode_with_gpu_nodebug = mode_nodebug.including('gpuarray', 'scan')
         super(T_Scan_Gpuarray, self).__init__(*args, **kwargs)
 
     def setUp(self):

@@ -28,7 +28,6 @@ def _scal_inplace(symbol):
     def chk(pstate, r):
         if not r.owner:
             return False
-        op = r.owner.op
         return r.owner.op == rval
 
     pprint.assign(chk, printing.FunctionPrinter(symbolname.replace('_inplace', '=')))
@@ -283,6 +282,16 @@ def psi_inplace(a):
 @_scal_inplace
 def chi2sf_inplace(x, k):
     """chi squared survival function"""
+
+
+@_scal_inplace
+def j0_inplace(a):
+    """Bessel function of the 0'th kind"""
+
+
+@_scal_inplace
+def j1_inplace(a):
+    """Bessel function of the 0'th kind"""
 
 
 @_scal_inplace

@@ -1,4 +1,6 @@
-"""WRITEME
+"""
+WRITEME
+
 """
 from __future__ import print_function
 import logging
@@ -8,34 +10,19 @@ import numpy
 import theano
 from theano import gof
 import theano.gof.vm
-from theano.configparser import config, AddConfigVar, StrParam
+from theano.configparser import config
 from theano.compile.ops import _output_guard
 from six import string_types
 
 
 _logger = logging.getLogger('theano.compile.mode')
 
-AddConfigVar('optimizer_excluding',
-             ("When using the default mode, we will remove optimizer with "
-              "these tags. Separate tags with ':'."),
-             StrParam("", allow_override=False),
-             in_c_key=False)
-AddConfigVar('optimizer_including',
-             ("When using the default mode, we will add optimizer with "
-              "these tags. Separate tags with ':'."),
-             StrParam("", allow_override=False),
-             in_c_key=False)
-AddConfigVar('optimizer_requiring',
-             ("When using the default mode, we will require optimizer with "
-              "these tags. Separate tags with ':'."),
-             StrParam("", allow_override=False),
-             in_c_key=False)
-
 
 def check_equal(x, y):
     """
-    Returns True iff x[0] and y[0] are equal (checks the dtype and
-    shape if x and y are numpy.ndarray instances). Used internally.
+    Returns True iff x[0] and y[0] are equal (checks the dtype and shape if x
+    and y are numpy.ndarray instances). Used internally.
+
     """
     # I put the import here to allow using theano without scipy.
     import scipy.sparse as sp
@@ -88,6 +75,8 @@ exclude = []
 if not theano.config.cxx:
     exclude = ['cxx_only']
 OPT_NONE = gof.Query(include=[], exclude=exclude)
+# Even if multiple merge optimizer call will be there, this shouldn't
+# impact performance.
 OPT_MERGE = gof.Query(include=['merge'], exclude=exclude)
 OPT_FAST_RUN = gof.Query(include=['fast_run'], exclude=exclude)
 OPT_FAST_RUN_STABLE = OPT_FAST_RUN.requiring('stable')
@@ -110,7 +99,7 @@ OPT_STABILIZE.name = 'OPT_STABILIZE'
 predefined_optimizers = {
     None: OPT_NONE,
     'None': OPT_NONE,
-    'merge': gof.MergeOptimizer(),
+    'merge': OPT_MERGE,
     'fast_run': OPT_FAST_RUN,
     'fast_run_stable': OPT_FAST_RUN_STABLE,
     'fast_compile': OPT_FAST_COMPILE,
@@ -125,17 +114,19 @@ def register_optimizer(name, opt):
 
 
 class AddDestroyHandler(gof.Optimizer):
-    """This optimizer performs two important functions:
+    """
+    This optimizer performs two important functions:
 
     1) It has a 'requirement' of the destroyhandler. This means that the fgraph
     will include it as a feature for this optimization, and keep this feature
-    enabled for subsequent optimizations.  All optimizations that work inplace
+    enabled for subsequent optimizations. All optimizations that work inplace
     on any of their inputs must run *after* this optimization to ensure that
     the DestroyHandler has been included in the fgraph.
 
     2) It tries to replace each output with an Op that purports to destroy it
-    (but it won't I promise).  If this replacement succeeds it means that
-    there is a bug in theano.  It should not be possible to destroy outputs.
+    (but it won't I promise). If this replacement succeeds it means that
+    there is a bug in theano. It should not be possible to destroy outputs.
+
     """
     def apply(self, fgraph):
         for o in fgraph.outputs:
@@ -156,23 +147,26 @@ class AddDestroyHandler(gof.Optimizer):
         fgraph.attach_feature(gof.DestroyHandler())
 
 
-class AddNoOutputFromInplace(gof.Optimizer):
-    """This optimizer adds to the fgraph a feature that will prevent outputs
-    of a fgraph to be created by performing inplace operations on intermediary
-    variables. This is useful when the outputs of the fgraph are preallocated
-    to prevent useless copying of the data. Currently, scan preallocates its
-    outputs
+class AddFeatureOptimizer(gof.Optimizer):
     """
+    This optimizer adds a provided feature to the function graph.
+    """
+
+    def __init__(self, feature):
+        self.feature = feature
+
     def add_requirements(self, fgraph):
-        super(AddNoOutputFromInplace, self).add_requirements(fgraph)
-        fgraph.attach_feature(gof.NoOutputFromInplace())
+        super(AddFeatureOptimizer, self).add_requirements(fgraph)
+        fgraph.attach_feature(self.feature)
 
 
 class PrintCurrentFunctionGraph(gof.Optimizer):
-    """This optimizer is for debugging.
+    """
+    This optimizer is for debugging.
 
     Toss it into the optimization pipeline to see the state of things at any
     given point.
+
     """
     def __init__(self, header):
         self.header = header
@@ -188,8 +182,17 @@ optdb.register('merge1', gof.MergeOptimizer(),
                0, 'fast_run', 'fast_compile', 'merge')
 
 # rearranges elemwise expressions
-optdb.register('canonicalize', gof.EquilibriumDB(),
-               1, 'fast_run', 'fast_compile')
+optdb.register('canonicalize', gof.EquilibriumDB(ignore_newtrees=False),
+               1, 'fast_run', 'fast_compile', 'canonicalize_db')
+# Register in the canonizer Equilibrium as a clean up opt the merge opt.
+# Without this, as the equilibrium have ignore_newtrees=False, we
+# won't merge all nodes if it is set as a global optimizer with
+# final_opt=True.
+
+# We need a new instance of MergeOptimizer to don't have its name
+# changed by other usage of it.
+optdb['canonicalize'].register("merge", gof.opt.MergeOptimizer(), 'fast_run',
+                               "fast_compile", cleanup=True)
 
 optdb.register('merge1.2', gof.MergeOptimizer(),
                1.2, 'fast_run', 'fast_compile', 'merge')
@@ -214,14 +217,11 @@ optdb.register('uncanonicalize', gof.EquilibriumDB(),
 
 # misc special cases for speed that are dependent on the device.
 optdb.register('specialize_device', gof.EquilibriumDB(),
-               48.6, 'fast_run')  # must be after gpu stuff at 48.5
+               48.6, 'fast_compile', 'fast_run')  # must be after gpu stuff at 48.5
 
 # especially constant merge
 optdb.register('merge2', gof.MergeOptimizer(),
                49, 'fast_run', 'merge')
-
-optdb.register('add_no_output_from_inplace', AddNoOutputFromInplace(),
-               49.4)
 
 optdb.register('add_destroy_handler', AddDestroyHandler(),
                49.5, 'fast_run', 'inplace')
@@ -233,18 +233,23 @@ optdb.register('merge3', gof.MergeOptimizer(),
 
 class Mode(object):
     """
-    The Mode represents a way to optimize and then link a computation
-    graph.
+    The Mode represents a way to optimize and then link a computation graph.
 
-     * optimizer -> a structure of type Optimizer. An Optimizer may
-       simplify the math, put similar computations together, improve
-       numerical stability and various other improvements.
-     * linker -> a structure of type Linker. A Linker decides which
-       implementations to use (C or Python, for example) and how to
-       string them together to perform the computation.
+    Parameters
+    ----------
+    optimizer : a structure of type Optimizer
+        An Optimizer may simplify the math, put similar computations together,
+        improve numerical stability and various other improvements.
+    linker : a structure of type Linker
+        A Linker decides which implementations to use (C or Python, for example)
+        and how to string them together to perform the computation.
 
-    See predefined_linkers, predefined_optimizers and also
-    predefined_modes.
+    See Also
+    --------
+    predefined_linkers
+    predefined_optimizers
+    predefined_modes
+
     """
 
     def __init__(self, linker=None, optimizer='default'):
@@ -307,30 +312,60 @@ class Mode(object):
                                               self.provided_optimizer)
         # N.B. opt might be a Query instance, not sure what else it might be...
         #     string? Optimizer? OptDB? who knows???
-        return self.__class__(linker=link, optimizer=opt.including(*tags))
+        return self.clone(optimizer=opt.including(*tags))
+
+    def register(self, *optimizations):
+        """Adds new optimization instances to a mode.
+
+        This method adds new optimization instances to a compilation mode. It
+        works like the `including()` method but takes as inputs optimization
+        instances to add instead of tags.
+
+        Parameters
+        ----------
+        optimizations :
+            Every element of `optimizations` is a tuple containing an
+            optimization instance and a floating point value indicating the
+            position at which to insert the optimization in the mode.
+
+        Returns
+        -------
+        Mode
+            Copy of the current Mode which includes the provided
+            optimizations.
+        """
+
+        link, opt = self.get_linker_optimizer(self.provided_linker,
+                                              self.provided_optimizer)
+        return self.clone(optimizer=opt.register(*optimizations))
 
     def excluding(self, *tags):
         link, opt = self.get_linker_optimizer(self.provided_linker,
                                               self.provided_optimizer)
-        return self.__class__(linker=link, optimizer=opt.excluding(*tags))
+        return self.clone(optimizer=opt.excluding(*tags))
 
     def requiring(self, *tags):
         link, opt = self.get_linker_optimizer(self.provided_linker,
                                               self.provided_optimizer)
-        return self.__class__(linker=link, optimizer=opt.requiring(*tags))
+        return self.clone(optimizer=opt.requiring(*tags))
 
-    def clone(self, link_kwargs=None, **kwargs):
+    def clone(self, link_kwargs=None, optimizer="", **kwargs):
         """
         Create a new instance of this Mode.
 
         Keyword arguments can be provided for the linker,
         in which case its `clone` method will be called with these
         arguments.
+
         """
+        if link_kwargs is None:
+            link_kwargs = {}
         new_linker = self.linker.clone(**link_kwargs)
-        new_optimizer = self.provided_optimizer
+
+        if optimizer == "":
+            optimizer = self.provided_optimizer
         new_mode = type(self)(linker=new_linker,
-                              optimizer=new_optimizer)
+                              optimizer=optimizer)
         return new_mode
 
 
@@ -372,12 +407,17 @@ def get_mode(orig_string):
                 default_mode_class):
             return instanciated_default_mode
 
-    if string in ['Mode', 'ProfileMode', 'DebugMode']:
+    if string in ['Mode', 'ProfileMode', 'DebugMode', 'NanGuardMode']:
         if string == 'DebugMode':
             # need to import later to break circular dependency.
             from .debugmode import DebugMode
             # DebugMode use its own linker.
             ret = DebugMode(optimizer=config.optimizer)
+        elif string == 'NanGuardMode':
+            # need to import later to break circular dependency.
+            from .nanguardmode import NanGuardMode
+            # NanGuardMode use its own linker.
+            ret = NanGuardMode(True, True, True, optimizer=config.optimizer)
         else:
             # This might be required if the string is 'ProfileMode'
             from .profilemode import ProfileMode  # noqa
@@ -412,7 +452,10 @@ def get_default_mode():
 
 
 def register_mode(name, mode):
-    """Add a `Mode` which can be referred to by `name` in `function`."""
+    """
+    Add a `Mode` which can be referred to by `name` in `function`.
+
+    """
     if name in predefined_modes:
         raise ValueError('Mode name already taken: %s' % name)
     predefined_modes[name] = mode

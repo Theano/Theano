@@ -1,4 +1,5 @@
-"""This file implement 3 different version of the elemwise op on the
+"""
+This file implement 3 different version of the elemwise op on the
 gpu. Only NaiveAlgo is used and it is not very naive now.
 
 The elemwise fct are also used with scalar operation! So it can happen
@@ -40,27 +41,36 @@ def get_str_list_logical_scalar(node, value_str='ii_i%i_value',
 
 
 class SupportCodeError(Exception):
-    """It is currently not possible to auto-generate a GPU implementation for
+    """
+    It is currently not possible to auto-generate a GPU implementation for
     an elementwise Op with c_support_code_apply().
-    But we support Op.c_support_code."""
+    But we support Op.c_support_code.
+
+    """
 
 
 class NaiveAlgo(object):
+    """
+    Parameters
+    ----------
+    scalar_op
+        The scalar operation to execute on each element.
+    sync
+        If True, will wait after the kernel launch and check for error call.
+
+    """
+
     verbose = 0  # 1, 2 or 3 for more verbose output.
 
     @property
     def cache_version(self):
         ver = self.scalar_op.c_code_cache_version()
         if ver:
-            return (17, self.verbose, self.sync, ver)
+            return (20, self.verbose, self.sync, ver)
         else:
             return ver
 
     def __init__(self, scalar_op, sync=True, inplace_pattern=None):
-        """
-        :param scalar_op: the scalar operation to execute on each element.
-        :param sync: if True, will wait after the kernel launch and check for error call.
-        """
         if inplace_pattern is None:
             inplace_pattern = {}
         try:
@@ -76,7 +86,9 @@ class NaiveAlgo(object):
     def c_src_kernel(self, node, nodename, nd):
         sio = StringIO()
         # print 'C_SRC_KERNEL', sio.getvalue()
-
+        print("// %s" % str(node.op), file=sio)
+        print("// node.op.destroy_map=%s" % str(
+            getattr(node.op, 'destroy_map', None)), file=sio)
         for ipos, i in enumerate(node.inputs):
             print("//    Input  ", ipos, str(i.type), file=sio)
         for ipos, i in enumerate(node.outputs):
@@ -132,6 +144,8 @@ class NaiveAlgo(object):
 
         # perform the scalar operation on the input and output references
         # TODO: What if the scalar_op needs support_code??
+        for ipos, i in enumerate(node.outputs):
+            print("npy_%s o%d_i;" % (i.dtype, ipos), file=sio)
         task_code = self.scalar_op.c_code(
             Apply(self.scalar_op,
                   [scalar.Scalar(dtype=input.type.dtype).make_variable()
@@ -140,9 +154,11 @@ class NaiveAlgo(object):
                    for output in node.outputs]),
             nodename + '_scalar_',
             get_str_list_logical_scalar(node),
-            ['ii_o%i_data[0]' % ipos for ipos, i in enumerate(node.outputs)],
+            ['o%i_i' % ipos for ipos, i in enumerate(node.outputs)],
             sub=dict(fail='return;'))  # TODO: set a failure code somehow!!!
         print("       ", task_code, file=sio)
+        for ipos, _ in enumerate(node.outputs):
+            print("ii_o%i_data[0] = o%i_i;" % (ipos, ipos), file=sio)
         print("    }", file=sio)
 
         #indent = " "*(4*d+7)
@@ -154,8 +170,10 @@ class NaiveAlgo(object):
         return sio.getvalue()
 
     def c_src_kernel_tiling(self, node, nodename):
-        """ The kernel applies to problems with <= 5 dimensions """
+        """
+        The kernel applies to problems with <= 5 dimensions.
 
+        """
         # The kernel is intended to be structured roughly like this:
         """
         static __global__ void kernel()
@@ -186,6 +204,9 @@ class NaiveAlgo(object):
 
         if nd in (4,):
             # print some leading comments to make the code easier to read
+            print("// %s" % str(node.op), file=sio)
+            print("// node.op.destroy_map=%s" % str(
+                getattr(node.op, 'destroy_map', None)), file=sio)
             for ipos, i in enumerate(node.inputs):
                 print("//    Input  ", ipos, str(i.type), file=sio)
             for ipos, i in enumerate(node.outputs):
@@ -278,8 +299,10 @@ class NaiveAlgo(object):
         return sio.getvalue()
 
     def c_src_kernel_tiling_less_registers(self, node, nodename):
-        """ The kernel applies to problems with <= 5 dimensions """
+        """
+        The kernel applies to problems with <= 5 dimensions.
 
+        """
         nd = node.outputs[0].type.ndim
         n_in = len(node.inputs)
         n_out = len(node.outputs)
@@ -289,6 +312,9 @@ class NaiveAlgo(object):
             return sio.getvalue()
 
         # print some leading comments to make the code easier to read
+        print("// %s" % str(node.op), file=sio)
+        print("// node.op.destroy_map=%s" % str(
+            getattr(node.op, 'destroy_map', None)), file=sio)
         for ipos, i in enumerate(node.inputs):
             print("//    Input  ", ipos, str(i.type), file=sio)
         for ipos, i in enumerate(node.outputs):
@@ -438,6 +464,9 @@ class NaiveAlgo(object):
         sio = StringIO()
         # print 'C_SRC_KERNEL', sio.getvalue()
 
+        print("// %s" % str(node.op), file=sio)
+        print("// node.op.destroy_map=%s" % str(
+            getattr(node.op, 'destroy_map', None)), file=sio)
         for ipos, i in enumerate(node.inputs):
             print("//    Input  ", ipos, str(i.type), file=sio)
         for ipos, i in enumerate(node.outputs):
@@ -463,6 +492,8 @@ class NaiveAlgo(object):
         print("    for (int i = idx; i < numEls; i += numThreads) {", file=sio)
         # perform the scalar operation on the input and output references
         # TODO: What if the scalar_op needs support_code??
+        for ipos, i in enumerate(node.outputs):
+            print("npy_%s o%d_i;" % (i.dtype, ipos), file=sio)
         task_code = self.scalar_op.c_code(
                 Apply(self.scalar_op,
                     [scalar.Scalar(dtype=input.type.dtype).make_variable()
@@ -472,9 +503,11 @@ class NaiveAlgo(object):
                 , nodename + '_scalar_'
                 #, ['i%i_data[i]'%ipos for ipos, i in enumerate(node.inputs)]
                 , get_str_list_logical_scalar(node, data_str='i%i_data[i]')
-                , ['o%i_data[i]'%ipos for ipos, i in enumerate(node.outputs)]
+                , ['o%i_i'%ipos for ipos, i in enumerate(node.outputs)]
                 , sub=dict(fail='return;'))  # TODO: set a failure code somehow!!!
         print("       ", task_code, file=sio)
+        for ipos, _ in enumerate(node.outputs):
+            print("o%i_data[i] = o%i_i;" % (ipos, ipos), file=sio)
         print("    }", file=sio)
         print("}", file=sio)
 
@@ -1049,12 +1082,16 @@ class ErfinvGPU(Erfinv):
     """
     Provides a c-code implementation of the inverse error function for GPU.
 
-    Note: We do not add this c_code to theano.scalar.basic_scipy.Erfinv, as we
+    Notes
+    -----
+    We do not add this c_code to theano.scalar.basic_scipy.Erfinv, as we
     currently rely on Nvidia's cublas library to provide the erfinv
     c-implementation (which requires different c_headers). As it stands,
     theano.scalar.basic_scipy.Erfinv does not have c_code as scipy does not
-    export the required C function
+    export the required C function.
+
     """
+
     def c_headers(self):
         return ['math_functions.h', 'cublas_v2.h']
 
@@ -1070,14 +1107,19 @@ erfinv_gpu = ErfinvGPU(upgrade_to_float_no_complex, name='erfinv_gpu')
 
 class ErfcxGPU(Erfinv):
     """
-    Provides a c-code implementation of the scaled complementary error function for GPU.
+    Provides a c-code implementation of the scaled complementary error function
+    for GPU.
 
-    Note: We do not add this c_code to theano.scalar.basic_scipy.Erfcx, as we
+    Notes
+    -----
+    We do not add this c_code to theano.scalar.basic_scipy.Erfcx, as we
     currently rely on Nvidia's cublas library to provide the erfcx
     c-implementation (which requires different c_headers). As it stands,
     theano.scalar.basic_scipy.Erfcx does not have c_code as scipy does not
-    export the required C function
+    export the required C function.
+
     """
+
     def c_headers(self):
         return ['math_functions.h', 'cublas_v2.h']
 

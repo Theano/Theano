@@ -1,23 +1,23 @@
-@@ -5808,7 +5808,7 @@
+@@ -6667,7 +6667,7 @@
   *             cdef list stack
   *             cdef int offset
   */
--  __pyx_t_4 = ((PyObject *)__pyx_v_self->descr);
-+  __pyx_t_4 = ((PyObject *)PyArray_DESCR(__pyx_v_self));
-   __Pyx_INCREF(__pyx_t_4);
-   __pyx_v_descr = ((PyArray_Descr *)__pyx_t_4);
-   __pyx_t_4 = 0;
-@@ -7337,7 +7337,7 @@
+-  __pyx_t_3 = ((PyObject *)__pyx_v_self->descr);
++  __pyx_t_3 = ((PyObject *)PyArray_DESCR(__pyx_v_self));
+   __Pyx_INCREF(__pyx_t_3);
+   __pyx_v_descr = ((PyArray_Descr *)__pyx_t_3);
+   __pyx_t_3 = 0;
+@@ -8237,7 +8237,7 @@
   *      arr.base = baseptr
-  * 
+  *
   */
 -  Py_XDECREF(__pyx_v_arr->base);
 +  Py_XDECREF(PyArray_BASE(__pyx_v_arr));
- 
+
    /* "numpy.pxd":973
   *          baseptr = <PyObject*>base
-@@ -7346,7 +7346,11 @@
-  * 
+@@ -8246,7 +8246,11 @@
+  *
   * cdef inline object get_array_base(ndarray arr):
   */
 -  __pyx_v_arr->base = __pyx_v_baseptr;
@@ -26,19 +26,19 @@
 +  #else
 +      PyArray_SetBaseObject(__pyx_v_arr, __pyx_v_baseptr);
 +  #endif
- 
+
    __Pyx_RefNannyFinishContext();
  }
-@@ -7376,7 +7376,7 @@
+@@ -8285,7 +8285,7 @@
   *         return None
   *     else:
   */
 -  __pyx_t_1 = ((__pyx_v_arr->base == NULL) != 0);
 +  __pyx_t_1 = ((PyArray_BASE(__pyx_v_arr) == NULL) != 0);
    if (__pyx_t_1) {
- 
+
      /* "numpy.pxd":977
-@@ -7400,8 +7404,8 @@
+@@ -8307,8 +8311,8 @@
   *         return <object>arr.base             # <<<<<<<<<<<<<<
   */
      __Pyx_XDECREF(__pyx_r);

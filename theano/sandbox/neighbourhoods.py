@@ -1,5 +1,6 @@
-"""WARNING: This code is not recommanded. It is not finished, it is
-slower then the version in sandbox/neighbours.py, and it do not work
+"""
+.. warning:: This code is not recommanded. It is not finished, it is
+slower than the version in sandbox/neighbours.py, and it does not work
 on the GPU.
 
 We only keep this version here as it is a little bit more generic, so
@@ -16,62 +17,67 @@ from theano import gof, Op
 
 
 class NeighbourhoodsFromImages(Op):
-    def __init__(self, n_dims_before, dims_neighbourhoods,
-                 strides=None, ignore_border=False, inverse=False):
-        """
-        This extracts neighbourhoods from "images", but in a
-        dimension-generic manner.
+    """
+    This extracts neighbourhoods from "images", but in a dimension-generic
+    manner.
 
-        In the 2D case, this is similar to downsampling, but instead of reducing
-        a group of 2x2 pixels (for example) to a single new pixel in the output,
-        you place those 4 pixels in a row.
+    In the 2D case, this is similar to downsampling, but instead of reducing
+    a group of 2x2 pixels (for example) to a single new pixel in the output,
+    you place those 4 pixels in a row.
 
-        For example, say you have this 2x4 image::
+    For example, say you have this 2x4 image::
 
             [ [ 0.5, 0.6, 0.7, 0.8 ],
               [ 0.1, 0.2, 0.3, 0.4 ] ]
 
-        and you want to extract 2x2 neighbourhoods. This op would then produce::
+    and you want to extract 2x2 neighbourhoods. This op would then produce::
 
             [ [ [ 0.5, 0.6, 0.1, 0.2 ] ], # the first 2x2 group of pixels
               [ [ 0.7, 0.8, 0.3, 0.4 ] ] ] # the second one
 
-        so think of a 2D downsampling where each pixel of the resulting array
-        is replaced by an array containing the (flattened) pixels of the
-        corresponding neighbourhood.
+    So think of a 2D downsampling where each pixel of the resulting array
+    is replaced by an array containing the (flattened) pixels of the
+    corresponding neighbourhood.
 
-        If you provide a stack of 2D image, or multiple stacks, each image
-        will be treated independently, and the first dimensions of the array
-        will be preserved as such.
+    If you provide a stack of 2D images, or multiple stacks, each image
+    will be treated independently, and the first dimensions of the array
+    will be preserved as such.
 
-        This also makes sense in the 1D or 3D case. Below I'll still be calling
-        those "images", by analogy.
+    This also makes sense in the 1D or 3D case. Below I'll still be calling
+    those "images", by analogy.
 
-        In the 1D case, you're
-        extracting subsequences from the original sequence. In the 3D case,
-        you're extracting cuboids. If you ever find a 4D use, tell me! It
-        should be possible, anyhow.
+    In the 1D case, you're extracting subsequences from the original sequence.
+    In the 3D case, you're extracting cuboids.
+    If you ever find a 4D use, tell me! It should be possible, anyhow.
 
-        Parameters
-        ----------
-        n_dims_before : int
-            Number of dimensions preceding the "images".
-        dims_neighbourhoods : tuple of ints
-            Exact shape of windows to be extracted (e.g. (2,2) in the case above).
-            n_dims_before + len(dims_neighbourhoods) should be equal to the
-            number of dimensions in the input given to the op.
-        strides : tuple of int
-            Number of elements to skip when moving to the next neighbourhood,
-            for each dimension of dims_neighbourhoods. There can be overlap
-            between neighbourhoods, or gaps.
-        ignore_border : bool
-            If the dimensions of the neighbourhoods don't exactly divide the
-            dimensions of the "images", you can either fill the last
-            neighbourhood with zeros (False) or drop it entirely (True).
-        inverse : bool
-            You shouldn't have to use this. Only used by child class
-            ImagesFromNeighbourhoods which simply reverses the assignment.
-        """
+    Parameters
+    ----------
+    n_dims_before : int
+        Number of dimensions preceding the "images".
+    dims_neighbourhoods : tuple of ints
+        Exact shape of windows to be extracted (e.g. (2,2) in the case above).
+        n_dims_before + len(dims_neighbourhoods) should be equal to the
+        number of dimensions in the input given to the op.
+    strides : tuple of int
+        Number of elements to skip when moving to the next neighbourhood,
+        for each dimension of dims_neighbourhoods. There can be overlap
+        between neighbourhoods, or gaps.
+    ignore_border : bool
+        If the dimensions of the neighbourhoods don't exactly divide the
+        dimensions of the "images", you can either fill the last
+        neighbourhood with zeros (False) or drop it entirely (True).
+    inverse : bool
+        You shouldn't have to use this. Only used by child class
+        ImagesFromNeighbourhoods which simply reverses the assignment.
+
+    """
+
+    __props__ = ("n_dims_before", "dims_neighbourhoods", "strides",
+                 "ignore_border", "inverse")
+
+    def __init__(self, n_dims_before, dims_neighbourhoods,
+                 strides=None, ignore_border=False, inverse=False):
+
         self.n_dims_before = n_dims_before
         self.dims_neighbourhoods = dims_neighbourhoods
         if strides is not None:
@@ -83,20 +89,6 @@ class NeighbourhoodsFromImages(Op):
         self.inverse = inverse
 
         self.code_string, self.code = self.make_py_code()
-
-    def __eq__(self, other):
-        return type(self) == type(other) and \
-            self.n_dims_before == other.n_dims_before and \
-            self.dims_neighbourhoods == other.dims_neighbourhoods and \
-            self.strides == other.strides and \
-            self.ignore_border == other.ignore_border
-
-    def __hash__(self):
-        return hash(type(self)) ^ \
-            hash(self.n_dims_before) ^ \
-            hash(self.dims_neighbourhoods) ^ \
-            hash(self.strides) ^ \
-            hash(self.ignore_border)
 
     def __str__(self):
         return '%s{%s,%s,%s,%s}' % (self.__class__.__name__,
@@ -124,7 +116,8 @@ class NeighbourhoodsFromImages(Op):
         return dims, num_strides
 
     # for inverse mode
-    # "output" here actually referes to the Op's input shape (but it's inverse mode)
+    # "output" here actually referes to the Op's input shape (but it's inverse
+    # mode)
     def in_shape(self, output_shape):
         out_dims = list(output_shape[:self.n_dims_before])
         num_strides = []
@@ -176,9 +169,10 @@ class NeighbourhoodsFromImages(Op):
             for dim in self.dims_neighbourhoods:
                 prod *= dim
             if x.shape[-1] != prod:
-                raise ValueError("Last dimension of neighbourhoods (%s) is not"
-                                 " the product of the neighbourhoods dimensions"
-                                 " (%s)" % (str(x.shape[-1]), str(prod)))
+                raise ValueError(
+                    "Last dimension of neighbourhoods (%s) is not"
+                    " the product of the neighbourhoods dimensions"
+                    " (%s)" % (str(x.shape[-1]), str(prod)))
         else:
             if len(x.shape) != (self.n_dims_before +
                                 len(self.dims_neighbourhoods)):
@@ -203,6 +197,7 @@ class NeighbourhoodsFromImages(Op):
         exec(self.code)
 
     def make_py_code(self):
+        # TODO : need description for method and return
         code = self._py_outerloops()
         for i in xrange(len(self.strides)):
             code += self._py_innerloop(i)
@@ -210,6 +205,7 @@ class NeighbourhoodsFromImages(Op):
         return code, builtins.compile(code, '<string>', 'exec')
 
     def _py_outerloops(self):
+        # TODO : need description for method, parameter and return
         code_before = ""
         for dim_idx in xrange(self.n_dims_before):
             code_before += ('\t' * (dim_idx)) + \
@@ -218,6 +214,7 @@ class NeighbourhoodsFromImages(Op):
         return code_before
 
     def _py_innerloop(self, inner_dim_no):
+        # TODO : need description for method, parameter and return
         base_indent = ('\t' * (self.n_dims_before + inner_dim_no * 2))
         code_before = base_indent + \
             "for stride_idx_%d in xrange(num_strides[%d]):\n" % \
@@ -237,10 +234,12 @@ class NeighbourhoodsFromImages(Op):
         return code_before
 
     def _py_flattened_idx(self):
+        # TODO : need description for method and return
         return "+".join(["neigh_strides[%d]*neigh_idx_%d" % (i, i)
                         for i in xrange(len(self.strides))])
 
     def _py_assignment(self):
+        # TODO : need description for method and return
         input_idx = "".join(["outer_idx_%d," % (i,)
                             for i in xrange(self.n_dims_before)])
         input_idx += "".join(["dim_%d_offset+neigh_idx_%d," %
@@ -267,6 +266,7 @@ class NeighbourhoodsFromImages(Op):
 
 
 class ImagesFromNeighbourhoods(NeighbourhoodsFromImages):
+    # TODO : need description for class, parameters
     def __init__(self, n_dims_before, dims_neighbourhoods,
                  strides=None, ignore_border=False):
         NeighbourhoodsFromImages.__init__(self, n_dims_before,

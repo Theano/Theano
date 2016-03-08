@@ -16,14 +16,14 @@ if cuda_ndarray.cuda_available == False:
 
 import theano.sandbox.cuda as tcn
 
-from theano.tensor.signal.downsample import (DownsampleFactorMax,
-        DownsampleFactorMaxGrad, DownsampleFactorMaxGradGrad)
+from theano.tensor.signal.pool import (Pool,
+        PoolGrad, DownsampleFactorMaxGradGrad)
 
 import theano.compile.mode
 from theano.tensor.tests.test_blas import BaseGemv, TestBlasStrides, TestGer
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace, gpu_gemv_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace, gpu_ger_no_inplace
-from theano.sandbox.cuda.blas import batched_dot
+from theano.sandbox.cuda.blas import batched_dot, GpuBatchedDot
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
@@ -44,7 +44,8 @@ def my_rand(*shape):
     return theano._asarray(numpy.random.rand(*shape), dtype='float32')
 
 
-class TestBatchedDot(TestCase):
+class TestBatchedDot(unittest_tools.InferShapeTester):
+    mode = mode_with_gpu
 
     def test_batched_dot_correctness(self):
 
@@ -113,6 +114,17 @@ class TestBatchedDot(TestCase):
             [numpy.random.randn(5,7,2).astype(numpy.float32),
              numpy.random.randn(5,2,6).astype(numpy.float32)],
             mode=mode_with_gpu)
+
+    def test_infer_shape(self):
+        # only matrix/matrix is supported
+        admat = tensor.ftensor3()
+        bdmat = tensor.ftensor3()
+        admat_val = my_rand(7, 4, 5)
+        bdmat_val = my_rand(7, 5, 3)
+        self._compile_and_check([admat, bdmat],
+                                [GpuBatchedDot()(admat, bdmat)],
+                                [admat_val, bdmat_val],
+                                GpuBatchedDot)
 
 
 def test_dot22():
@@ -280,7 +292,7 @@ class TestBlasStridesGpu(TestBlasStrides):
 
 if 0:
     # This is commented out because it doesn't make sense...
-    # tcn.blas has no op called DownsampleFactorMax
+    # tcn.blas has no op called Pool
     # tcn.blas has an op called GpuDownsampleFactorMax, but that op requires arguments that are
     # CudaNdarrayType variables... so rethink this test?
     def test_maxpool():
@@ -290,7 +302,7 @@ if 0:
                                          [[[[6, 8, 9], [ 16, 18, 19], [ 21, 23, 24]]]])]:
             for border, ret in [(True, r_true), (False, r_false)]:
                 ret = numpy.array(ret)
-                a = tcn.blas.DownsampleFactorMax((2, 2), border)
+                a = tcn.blas.Pool((2, 2), border)
                 dmatrix4 = tensor.TensorType("float32", (False, False, False, False))
                 b = dmatrix4()
                 f = pfunc([b], [a(b)], mode=mode_with_gpu)
@@ -347,7 +359,7 @@ def test_downsample():
                 continue
             for ignore_border in (True, False):
                 # print 'test_downsample', shp, ds, ignore_border
-                ds_op = DownsampleFactorMax(ds, ignore_border=ignore_border)
+                ds_op = Pool(ds, ignore_border=ignore_border)
 
                 a = tcn.shared_constructor(my_rand(*shp), 'a')
                 f = pfunc([], ds_op(tensor.as_tensor_variable(a)),
@@ -357,7 +369,7 @@ def test_downsample():
                 assert any([isinstance(node.op,
                                        tcn.blas.GpuDownsampleFactorMax)
                     for node in f.maker.fgraph.toposort()])
-                assert any([isinstance(node.op, DownsampleFactorMax)
+                assert any([isinstance(node.op, Pool)
                     for node in f2.maker.fgraph.toposort()])
                 assert numpy.allclose(f(), f2())
 
@@ -382,7 +394,7 @@ def test_downsample():
                 assert any([isinstance(node.op,
                                        tcn.blas.GpuDownsampleFactorMaxGrad)
                             for node in g.maker.fgraph.toposort()])
-                assert any([isinstance(node.op, DownsampleFactorMaxGrad)
+                assert any([isinstance(node.op, PoolGrad)
                             for node in g2.maker.fgraph.toposort()])
                 assert numpy.allclose(g(), g2()), shp
 

@@ -1,24 +1,12 @@
 from __future__ import print_function
+import copy
 import sys
-
-import numpy
 
 from theano.compat import DefaultOrderedDict
 from theano.misc.ordered_set import OrderedSet
 from six import StringIO
 from theano.gof import opt
-from theano.configparser import AddConfigVar, FloatParam
 from theano import config
-
-AddConfigVar('optdb.position_cutoff',
-             'Where to stop eariler during optimization. It represent the'
-             ' position of the optimizer where to stop.',
-             FloatParam(numpy.inf),
-             in_c_key=False)
-AddConfigVar('optdb.max_use_ratio',
-             'A ratio that prevent infinite loop in EquilibriumOptimizer.',
-             FloatParam(5),
-             in_c_key=False)
 
 
 class DB(object):
@@ -36,11 +24,17 @@ class DB(object):
 
     def register(self, name, obj, *tags, **kwargs):
         """
-        :param name: name of the optimizer.
-        :param obj: the optimizer to register.
-        :param tags: tag name that allow to select the optimizer.
-        :param kwargs: If non empty, should contain
-            only use_db_name_as_tag=False.
+
+        Parameters
+        ----------
+        name : str
+            Name of the optimizer.
+        obj
+            The optimizer to register.
+        tags
+            Tag name that allow to select the optimizer.
+        kwargs
+            If non empty, should contain only use_db_name_as_tag=False.
             By default, all optimizations registered in EquilibriumDB
             are selected when the EquilibriumDB name is used as a
             tag. We do not want this behavior for some optimizer like
@@ -111,12 +105,16 @@ multiple time in a DB. Tryed to register "%s" again under the new name "%s".
         add = OrderedSet()
         for obj in variables:
             if isinstance(obj, DB):
-                sq = q.subquery.get(obj.name, q)
-                if sq:
-                    replacement = obj.query(sq)
-                    replacement.name = obj.name
-                    remove.add(obj)
-                    add.add(replacement)
+                def_sub_query = q
+                if q.extra_optimizations:
+                    def_sub_query = copy.copy(q)
+                    def_sub_query.extra_optimizations = []
+                sq = q.subquery.get(obj.name, def_sub_query)
+
+                replacement = obj.query(sq)
+                replacement.name = obj.name
+                remove.add(obj)
+                add.add(replacement)
         variables.difference_update(remove)
         variables.update(add)
         return variables
@@ -149,6 +147,9 @@ multiple time in a DB. Tryed to register "%s" again under the new name "%s".
         for variable in variables:
             return variable
 
+    def __contains__(self, name):
+        return name in self.__db__
+
     def print_summary(self, stream=sys.stdout):
         print("%s (id %i)" % (self.__class__.__name__, id(self)), file=stream)
         print("  names", self._names, file=stream)
@@ -156,19 +157,27 @@ multiple time in a DB. Tryed to register "%s" again under the new name "%s".
 
 
 class Query(object):
+    """
+
+    Parameters
+    ----------
+    position_cutoff : float
+        Used by SequenceDB to keep only optimizer that are positioned before
+        the cut_off point.
+
+    """
 
     def __init__(self, include, require=None, exclude=None,
-                 subquery=None, position_cutoff=None):
-        """
-        :type position_cutoff: float
-        :param position_cutoff: Used by SequenceDB to keep only optimizer that
-                                are positioned before the cut_off point.
-        """
+                 subquery=None, position_cutoff=None,
+                 extra_optimizations=None):
         self.include = OrderedSet(include)
         self.require = require or OrderedSet()
         self.exclude = exclude or OrderedSet()
         self.subquery = subquery or {}
         self.position_cutoff = position_cutoff
+        if extra_optimizations is None:
+            extra_optimizations = []
+        self.extra_optimizations = extra_optimizations
         if isinstance(self.require, (list, tuple)):
             self.require = OrderedSet(self.require)
         if isinstance(self.exclude, (list, tuple)):
@@ -176,9 +185,14 @@ class Query(object):
 
     def __str__(self):
         return ("Query{inc=%s,ex=%s,require=%s,subquery=%s,"
-                "position_cutoff=%d}" %
+                "position_cutoff=%d,extra_opts=%s}" %
                 (self.include, self.exclude, self.require, self.subquery,
-                 self.position_cutoff))
+                 self.position_cutoff, self.extra_optimizations))
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        if not hasattr(self, 'extra_optimizations'):
+            self.extra_optimizations = []
 
     # add all opt with this tag
     def including(self, *tags):
@@ -186,7 +200,8 @@ class Query(object):
                      self.require,
                      self.exclude,
                      self.subquery,
-                     self.position_cutoff)
+                     self.position_cutoff,
+                     self.extra_optimizations)
 
     # remove all opt with this tag
     def excluding(self, *tags):
@@ -194,7 +209,8 @@ class Query(object):
                      self.require,
                      self.exclude.union(tags),
                      self.subquery,
-                     self.position_cutoff)
+                     self.position_cutoff,
+                     self.extra_optimizations)
 
     # keep only opt with this tag.
     def requiring(self, *tags):
@@ -202,58 +218,77 @@ class Query(object):
                      self.require.union(tags),
                      self.exclude,
                      self.subquery,
-                     self.position_cutoff)
+                     self.position_cutoff,
+                     self.extra_optimizations)
+
+    def register(self, *optimizations):
+        return Query(self.include,
+                     self.require,
+                     self.exclude,
+                     self.subquery,
+                     self.position_cutoff,
+                     self.extra_optimizations + list(optimizations))
 
 
 class EquilibriumDB(DB):
-    """A set of potential optimizations which should be applied in an
-        arbitrary order until equilibrium is reached.
+    """
+    A set of potential optimizations which should be applied in an arbitrary
+    order until equilibrium is reached.
 
     Canonicalize, Stabilize, and Specialize are all equilibrium optimizations.
 
-    :param ignore_newtrees: If False, we will apply local opt on new
-        node introduced during local optimization application. This
-        could result in less fgraph iterations, but this don't mean it
-        will be faster globally.
+    Parameters
+    ----------
+    ignore_newtrees
+        If False, we will apply local opt on new node introduced during local
+        optimization application. This could result in less fgraph iterations,
+        but this doesn't mean it will be faster globally.
 
-    .. note::
-
-        We can put LocalOptimizer and Optimizer as EquilibriumOptimizer
-        suppor both.
+    Notes
+    -----
+    We can put LocalOptimizer and Optimizer as EquilibriumOptimizer
+    suppor both.
 
     """
+
     def __init__(self, ignore_newtrees=True):
         super(EquilibriumDB, self).__init__()
         self.ignore_newtrees = ignore_newtrees
         self.__final__ = {}
+        self.__cleanup__ = {}
 
     def register(self, name, obj, *tags, **kwtags):
-        # if name == 'cut_gpua_constant_transfers':
-        #     import ipdb;ipdb.set_trace()
-        if 'final_opt' in kwtags:
-            final_opt = kwtags['final_opt']
-            kwtags.pop('final_opt', None)
-        else:
-            final_opt = False
+        final_opt = kwtags.pop('final_opt', False)
+        cleanup = kwtags.pop('cleanup', False)
+        # An opt should not be final and clean up
+        assert not (final_opt and cleanup)
         super(EquilibriumDB, self).register(name, obj, *tags, **kwtags)
         self.__final__[name] = final_opt
+        self.__cleanup__[name] = cleanup
 
     def query(self, *tags, **kwtags):
         _opts = super(EquilibriumDB, self).query(*tags, **kwtags)
         final_opts = [o for o in _opts if self.__final__.get(o.name, False)]
-        opts = [o for o in _opts if o not in final_opts]
+        cleanup_opts = [o for o in _opts if self.__cleanup__.get(o.name,
+                                                                 False)]
+        opts = [o for o in _opts
+                if o not in final_opts and o not in cleanup_opts]
         if len(final_opts) == 0:
             final_opts = None
+        if len(cleanup_opts) == 0:
+            cleanup_opts = None
         return opt.EquilibriumOptimizer(
             opts,
             max_use_ratio=config.optdb.max_use_ratio,
             ignore_newtrees=self.ignore_newtrees,
             failure_callback=opt.NavigatorOptimizer.warn_inplace,
-            final_optimizers=final_opts)
+            final_optimizers=final_opts,
+            cleanup_optimizers=cleanup_opts)
 
 
 class SequenceDB(DB):
-    """A sequence of potential optimizations.
+    """
+    A sequence of potential optimizations.
 
     Retrieve a sequence of optimizations (a SeqOptimizer) by calling query().
 
@@ -265,6 +300,7 @@ class SequenceDB(DB):
     other tags) fast_run and fast_compile optimizers are drawn is a SequenceDB.
 
     """
+
     seq_opt = opt.SeqOptimizer
 
     def __init__(self, failure_callback=opt.SeqOptimizer.warn):
@@ -274,31 +310,49 @@ class SequenceDB(DB):
 
     def register(self, name, obj, position, *tags):
         super(SequenceDB, self).register(name, obj, *tags)
+        assert isinstance(position, (int, float))
         self.__position__[name] = position
 
     def query(self, *tags, **kwtags):
         """
-        :type position_cutoff: float or int
-        :param position_cutoff: only optimizations with position less than
-                                the cutoff are returned.
+
+        Parameters
+        ----------
+        position_cutoff : float or int
+            Only optimizations with position less than the cutoff are returned.
+
         """
         opts = super(SequenceDB, self).query(*tags, **kwtags)
 
         position_cutoff = kwtags.pop('position_cutoff',
                                      config.optdb.position_cutoff)
+        position_dict = self.__position__
+
         if len(tags) >= 1 and isinstance(tags[0], Query):
             # the call to super should have raise an error with a good message
             assert len(tags) == 1
             if getattr(tags[0], 'position_cutoff', None):
                 position_cutoff = tags[0].position_cutoff
 
-        opts = [o for o in opts if self.__position__[o.name] < position_cutoff]
-        # We want to sort by position and then if collision by name
-        # for deterministic optimization.  Since Python 2.2, sort is
-        # stable, so sort by name first, then by position. This give
-        # the order we want.
-        opts.sort(key=lambda obj: obj.name)
-        opts.sort(key=lambda obj: self.__position__[obj.name])
+            # The Query instance might contain extra optimizations which need
+            # to be added the the sequence of optimizations (don't alter the
+            # original dictionary)
+            if len(tags[0].extra_optimizations) > 0:
+                position_dict = position_dict.copy()
+                for extra_opt in tags[0].extra_optimizations:
+                    # Give a name to the extra optimization (include both the
+                    # class name for descriptiveness and id to avoid name
+                    # collisions)
+                    opt, position = extra_opt
+                    opt.name = "%s_%i" % (opt.__class__, id(opt))
+
+                    # Add the extra optimization to the optimization sequence
+                    if position < position_cutoff:
+                        opts.add(opt)
+                        position_dict[opt.name] = position
+
+        opts = [o for o in opts if position_dict[o.name] < position_cutoff]
+        opts.sort(key=lambda obj: (position_dict[obj.name], obj.name))
         kwargs = {}
         if self.failure_callback:
             kwargs["failure_callback"] = self.failure_callback
@@ -326,11 +380,14 @@ class SequenceDB(DB):
 
 
 class LocalGroupDB(SequenceDB):
-    """This generate a local optimizer of type LocalOptGroup instead
+    """
+    Generate a local optimizer of type LocalOptGroup instead
     of a global optimizer.
 
-    It support the tracks, to only get applied to some Op.
+    It supports the tracks, to only get applied to some Op.
+
     """
+
     seq_opt = opt.LocalOptGroup
 
     def __init__(self, failure_callback=opt.SeqOptimizer.warn):
@@ -342,9 +399,11 @@ class ProxyDB(DB):
     """
     Wrap an existing proxy.
 
-    This is needed as we can't register the same DB mutiple time in
-    different position in a SequentialDB
+    This is needed as we can't register the same DB mutiple times in
+    different positions in a SequentialDB.
+
     """
+
     def __init__(self, db):
         assert isinstance(db, DB), ""
         self.db = db

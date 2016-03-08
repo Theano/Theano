@@ -132,7 +132,7 @@ The following ResultBase represents a double (we only care about the C part).
 .. code-block:: python
 
     class Double(ResultBase):
-      <snip>
+      # <snip>
       def c_declare(self):
         return "double %(name)s;"
       def c_init(self):
@@ -153,7 +153,7 @@ The following ResultBase represents addition of two nonnegative doubles (we only
 .. code-block:: python
 
     class Add(Op):
-      <snip>
+      # <snip>
       def c_var_names(self):
         return "[['x', 'y'], ['z']]"
       def c_validate_update(self):
@@ -170,7 +170,7 @@ Generating a C function
 
 For the example Op, the generated C function will typically look like this:
 
-.. code-block:: python
+.. code-block:: cpp
 
     void add(PyObject* storage_x, PyObject* storage_y, PyObject* storage_z) {
       PyObject* py_x = PyList_GET_ITEM(storage_x, 0); Py_XINCREF(py_x); // automatic
@@ -232,16 +232,16 @@ Here is a sketch of the struct equivalent of the previous function:
       double z; // z.c_declare
 
       void init(PyObject* storage_x, PyObject* storage_y, PyObject* storage_z) {
-        <set the struct members of the same names>
-        <init the struct members corresponding to z>
+        // <set the struct members of the same names>
+        // <init the struct members corresponding to z>
       }
 
       void cleanup(void) {
-        <cleanup z>
+        // <cleanup z>
       }
 
       void run(void) {
-        <same code as before minus z's cleanup>
+        // <same code as before minus z's cleanup>
       }
 
       add() { this->init(); }

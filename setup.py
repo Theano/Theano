@@ -51,9 +51,9 @@ AUTHOR              = "LISA laboratory, University of Montreal"
 AUTHOR_EMAIL        = "theano-dev@googlegroups.com"
 PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
-MINOR               = 7
+MINOR               = 8
 MICRO               = 0
-SUFFIX              = ""  # Should be blank except for rc's, betas, etc.
+SUFFIX              = "rc1"  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
 
 VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
@@ -161,11 +161,13 @@ def do_setup():
           license=LICENSE,
           platforms=PLATFORMS,
           packages=find_packages(),
-          install_requires=['numpy>=1.6.2', 'scipy>=0.11', 'six>=1.9.0'],
+          # 1.7.0 give too much warning related to numpy.diagonal.
+          install_requires=['numpy>=1.7.1', 'scipy>=0.11', 'six>=1.9.0'],
           package_data={
               '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh', '*.pkl',
-                   '*.h', 'ChangeLog'],
-              'theano.misc': ['*.sh']
+                   '*.h', '*.cpp', 'ChangeLog'],
+              'theano.misc': ['*.sh'],
+              'theano.d3viz' : ['html/*','css/*','js/*']
           },
           scripts=['bin/theano-cache', 'bin/theano-nose', 'bin/theano-test'],
           keywords=' '.join([

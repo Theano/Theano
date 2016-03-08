@@ -1,21 +1,8 @@
 import logging
-
-logger = logging.getLogger(__name__)
-import numpy
 import warnings
 from six.moves import xrange
 
-from theano.gof import Op, Apply
-
-from theano.tensor import as_tensor_variable, dot, DimShuffle, Dot
-from theano.tensor.blas import Dot22
-from theano import tensor
-import theano.tensor
-from theano.tensor.opt import (register_stabilize,
-        register_specialize, register_canonicalize)
-from theano.gof import local_optimizer
-from theano.gof.opt import Optimizer
-from theano.gradient import DisconnectedType
+import numpy
 
 try:
     import scipy.linalg
@@ -23,6 +10,13 @@ try:
 except ImportError:
     # some ops (e.g. Cholesky, Solve, A_Xinv_b) won't work
     imported_scipy = False
+
+from theano import tensor
+import theano.tensor
+from theano.tensor import as_tensor_variable
+from theano.gof import Op, Apply
+
+logger = logging.getLogger(__name__)
 
 MATRIX_STRUCTURES = (
     'general',
@@ -37,9 +31,10 @@ MATRIX_STRUCTURES = (
 
 class Cholesky(Op):
     """
-    Return a triangular matrix square root of positive semi-definite `x`
+    Return a triangular matrix square root of positive semi-definite `x`.
 
-    L = cholesky(X, lower=True) implies dot(L, L.T) == X
+    L = cholesky(X, lower=True) implies dot(L, L.T) == X.
+
     """
     # TODO: inplace
     # TODO: for specific dtypes
@@ -96,13 +91,16 @@ class CholeskyGrad(Op):
         return Apply(self, [x, l, dz], [x.type()])
 
     def perform(self, node, inputs, outputs):
-        """Implements the "reverse-mode" gradient [1]_ for the
+        """
+        Implements the "reverse-mode" gradient [1]_ for the
         Cholesky factorization of a positive-definite matrix.
 
+        References
+        ----------
         .. [1] S. P. Smith. "Differentiation of the Cholesky Algorithm".
-               Journal of Computational and Graphical Statistics,
-               Vol. 4, No. 2 (Jun.,1995), pp. 134-147
-               http://www.jstor.org/stable/1390762
+           Journal of Computational and Graphical Statistics,
+           Vol. 4, No. 2 (Jun.,1995), pp. 134-147
+           http://www.jstor.org/stable/1390762
 
         """
         x = inputs[0]
@@ -123,7 +121,6 @@ class CholeskyGrad(Op):
                 F[k, k] /= (2 * L[k, k])
         else:
             F = numpy.triu(dz)
-            M = N - 1
             for k in xrange(N - 1, -1, -1):
                 for j in xrange(k + 1, N):
                     for i in xrange(j, N):
@@ -140,7 +137,10 @@ class CholeskyGrad(Op):
 
 
 class Solve(Op):
-    """Solve a system of linear equations"""
+    """
+    Solve a system of linear equations.
+
+    """
 
     __props__ = ('A_structure', 'lower', 'overwrite_A', 'overwrite_b')
 
@@ -182,7 +182,7 @@ class Solve(Op):
         else:
             rval = scipy.linalg.solve(A, b)
         output_storage[0][0] = rval
-        
+
     # computes shape of x where x = inv(A) * b
     def infer_shape(self, node, shapes):
         Ashape, Bshape = shapes
@@ -202,7 +202,9 @@ solve = Solve()  # general solve
 
 
 class Eigvalsh(Op):
-    """Generalized eigenvalues of a Hermetian positive definite eigensystem
+    """
+    Generalized eigenvalues of a Hermitian positive definite eigensystem.
+
     """
 
     __props__ = ('lower',)
@@ -250,8 +252,10 @@ class Eigvalsh(Op):
 
 
 class EigvalshGrad(Op):
-    """Gradient of generalized eigenvalues of a Hermetian positive definite
-    eigensystem
+    """
+    Gradient of generalized eigenvalues of a Hermitian positive definite
+    eigensystem.
+
     """
 
     # Note: This Op (EigvalshGrad), should be removed and replaced with a graph
@@ -310,17 +314,24 @@ def eigvalsh(a, b, lower=True):
 
 
 def kron(a, b):
-    """ Kronecker product
+    """ Kronecker product.
 
     Same as scipy.linalg.kron(a, b).
 
-    :note: numpy.kron(a, b) != scipy.linalg.kron(a, b)!
-        They don't have the same shape and order when
-        a.ndim != b.ndim != 2.
+    Parameters
+    ----------
+    a: array_like
+    b: array_like
 
-    :param a: array_like
-    :param b: array_like
-    :return: array_like with a.ndim + b.ndim - 2 dimensions.
+    Returns
+    -------
+    array_like with a.ndim + b.ndim - 2 dimensions
+
+    Notes
+    -----
+    numpy.kron(a, b) != scipy.linalg.kron(a, b)!
+    They don't have the same shape and order when
+    a.ndim != b.ndim != 2.
 
     """
     a = tensor.as_tensor_variable(a)
@@ -343,8 +354,12 @@ def kron(a, b):
 
 
 class Expm(Op):
-    """Compute the matrix exponential of a square array
     """
+    Compute the matrix exponential of a square array.
+
+    """
+
+    __props__ = ()
 
     def make_node(self, A):
         assert imported_scipy, (
@@ -370,8 +385,12 @@ class Expm(Op):
 
 
 class ExpmGrad(Op):
-    """Gradient of the matrix exponential of a square array.
     """
+    Gradient of the matrix exponential of a square array.
+
+    """
+
+    __props__ = ()
 
     def make_node(self, A, gw):
         assert imported_scipy, (

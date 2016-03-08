@@ -1,10 +1,8 @@
 """
 Contains a wrapper function for tensor.nnet.ConvOp, which can be used to perform
 generic 2D convolution.
+
 """
-
-__docformat__ = "restructuredtext en"
-
 import warnings
 
 import theano
@@ -12,6 +10,10 @@ import theano.tensor as tensor
 from theano.tensor.nnet import conv
 
 import logging
+
+__docformat__ = "restructuredtext en"
+
+
 _logger = logging.getLogger("theano.tensor.signal.conv")
 
 
@@ -25,25 +27,34 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
 
     Shape parameters are optional and will result in faster execution.
 
-    :type input: dmatrix of dtensor3
-    :param input: symbolic variable for images to be filtered
-    :type filters: dmatrix of dtensor3
-    :param filters: symbolic variable containing filter values
-    :param border_mode: 'valid' or 'full'. see scipy.signal.convolve2d
-    :param subsample: factor by which to subsample output
-    :type image_shape: tuple of length 2 or 3
-    :param image_shape: ([number images,] image height, image width)
-    :type filter_shape: tuple of length 2 or 3
-    :param filter_shape: ([number filters,] filter height, filter width)
-    :param kwargs: see theano.tensor.nnet.conv.conv2d
-    :rtype: symbolic 2D,3D or 4D tensor
-    :return: tensor of filtered images, with shape
-             ([number images,] [number filters,] image height, image width)
+    Parameters
+    ----------
+    input : dmatrix of dtensor3
+        Symbolic variable for images to be filtered.
+    filters : dmatrix of dtensor3
+        Symbolic variable containing filter values.
+    border_mode: {'valid', 'full'}
+        See scipy.signal.convolve2d.
+    subsample
+        Factor by which to subsample output.
+    image_shape : tuple of length 2 or 3
+        ([number images,] image height, image width).
+    filter_shape : tuple of length 2 or 3
+        ([number filters,] filter height, filter width).
+    kwargs
+        See theano.tensor.nnet.conv.conv2d.
+
+    Returns
+    -------
+    symbolic 2D,3D or 4D tensor
+        Tensor of filtered images, with shape
+        ([number images,] [number filters,] image height, image width).
+
     """
     assert input.ndim in (2, 3)
     assert filters.ndim in (2, 3)
 
-    ### use shape information if it is given to us ###
+    # use shape information if it is given to us ###
     if filter_shape and image_shape:
         if input.ndim == 3:
             bsize = image_shape[0]
@@ -60,7 +71,7 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
         nkern, kshp = None, None
         bsize, imshp = None, None
 
-    ### reshape tensors to 4D, for compatibility with ConvOp ###
+    # reshape tensors to 4D, for compatibility with ConvOp ###
     if input.ndim == 3:
         sym_bsize = input.shape[0]
     else:
@@ -71,16 +82,16 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
     else:
         sym_nkern = 1
 
-    new_input_shape = tensor.join(0, tensor.stack(sym_bsize, 1), input.shape[-2:])
+    new_input_shape = tensor.join(0, tensor.stack([sym_bsize, 1]), input.shape[-2:])
     input4D = tensor.reshape(input, new_input_shape, ndim=4)
 
-    new_filter_shape = tensor.join(0, tensor.stack(sym_nkern, 1), filters.shape[-2:])
+    new_filter_shape = tensor.join(0, tensor.stack([sym_nkern, 1]), filters.shape[-2:])
     filters4D = tensor.reshape(filters, new_filter_shape, ndim=4)
 
-    ### perform actual convolution ###
+    # perform actual convolution ###
     op = conv.ConvOp(output_mode=border_mode,
-                dx=subsample[0], dy=subsample[1],
-                imshp=imshp, kshp=kshp, nkern=nkern, bsize=bsize, **kargs)
+                     dx=subsample[0], dy=subsample[1],
+                     imshp=imshp, kshp=kshp, nkern=nkern, bsize=bsize, **kargs)
 
     output = op(input4D, filters4D)
 

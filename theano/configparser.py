@@ -102,7 +102,7 @@ def change_flags(**kwargs):
                 l = [v for v in theano.configparser._config_var_list
                      if v.fullname == k]
                 assert len(l) == 1
-                old_val[k] = l[0].__get__()
+                old_val[k] = l[0].__get__(True, None)
             try:
                 for k in kwargs:
                     l = [v for v in theano.configparser._config_var_list
@@ -116,11 +116,15 @@ def change_flags(**kwargs):
                          if v.fullname == k]
                     assert len(l) == 1
                     l[0].__set__(None, old_val[k])
+
+        # Make sure that the name of the decorated function remains the same.
+        inner.__name__ = f.__name__
+
         return inner
     return change_flags_exec
 
 
-def fetch_val_for_key(key):
+def fetch_val_for_key(key, delete_key=False):
     """Return the overriding config value for a key.
     A successful search returns a string value.
     An unsuccessful search raises a KeyError
@@ -133,6 +137,8 @@ def fetch_val_for_key(key):
 
     # first try to find it in the FLAGS
     try:
+        if delete_key:
+            return THEANO_FLAGS_DICT.pop(key)
         return THEANO_FLAGS_DICT[key]
     except KeyError:
         pass
@@ -140,7 +146,7 @@ def fetch_val_for_key(key):
     # next try to find it in the config file
 
     # config file keys can be of form option, or section.option
-    key_tokens = key.split('.')
+    key_tokens = key.rsplit('.', 1)
     if len(key_tokens) > 2:
         raise KeyError(key)
 
@@ -163,7 +169,7 @@ def _config_print(thing, buf):
     for cv in _config_var_list:
         print(cv, file=buf)
         print("    Doc: ", cv.doc, file=buf)
-        print("    Value: ", cv.__get__(), file=buf)
+        print("    Value: ", cv.__get__(True, None), file=buf)
         print("", file=buf)
 
 
@@ -177,8 +183,8 @@ def get_config_md5():
     """
     all_opts = sorted([c for c in _config_var_list if c.in_c_key],
                       key=lambda cv: cv.fullname)
-    return theano.gof.cc.hash_from_code('\n'.join(
-        ['%s = %s' % (cv.fullname, cv.__get__()) for cv in all_opts]))
+    return theano.gof.utils.hash_from_code('\n'.join(
+        ['%s = %s' % (cv.fullname, cv.__get__(True, None)) for cv in all_opts]))
 
 
 class TheanoConfigParser(object):
@@ -266,14 +272,14 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
         # Trigger a read of the value from config files and env vars
         # This allow to filter wrong value from the user.
         if not callable(configparam.default):
-            configparam.__get__()
+            configparam.__get__(root, type(root), delete_key=True)
         else:
             # We do not want to evaluate now the default value
             # when it is a callable.
             try:
                 fetch_val_for_key(configparam.fullname)
                 # The user provided a value, filter it now.
-                configparam.__get__()
+                configparam.__get__(root, type(root), delete_key=True)
             except KeyError:
                 pass
         setattr(root.__class__, sections[0], configparam)
@@ -290,6 +296,7 @@ class ConfigParam(object):
         self.default = default
         self.filter = filter
         self.allow_override = allow_override
+        self.is_default = True
         # N.B. --
         # self.fullname  # set by AddConfigVar
         # self.doc       # set by AddConfigVar
@@ -300,16 +307,20 @@ class ConfigParam(object):
         # Calling `filter` here may actually be harmful if the default value is
         # invalid and causes a crash or has unwanted side effects.
 
-    def __get__(self, *args):
+    def __get__(self, cls, type_, delete_key=False):
+        if cls is None:
+            return self
         if not hasattr(self, 'val'):
             try:
-                val_str = fetch_val_for_key(self.fullname)
+                val_str = fetch_val_for_key(self.fullname,
+                                            delete_key=delete_key)
+                self.is_default = False
             except KeyError:
                 if callable(self.default):
                     val_str = self.default()
                 else:
                     val_str = self.default
-            self.__set__(None, val_str)
+            self.__set__(cls, val_str)
         # print "RVAL", self.val
         return self.val
 

@@ -13,16 +13,19 @@ from theano.tests import unittest_tools as utt
 
 class Solve(gof.Op):
     """
-    Find the solution to the linear equation Ax=b,
-    where A is a 2d matrix and b is a 1d or 2d matrix.
+    Find the solution to the linear equation Ax=b.
+
+    A is a 2d matrix and b is a 1d or 2d matrix.
     It use numpy.solve to find the solution.
+
     """
 
     # TODO: Add class options to use the performance-enhancing flags
     #     sym_pos, lower, overwrite_a, overwrite_b
 
     # TODO: Add C code that calls the underlying LAPACK routines
-    #      and keeps a memory workspace from call to call as a non-default Op output
+    #      and keeps a memory workspace from call to call as a non-default Op
+    #      output
 
     def __eq__(self, other):
         return type(self) == type(other)

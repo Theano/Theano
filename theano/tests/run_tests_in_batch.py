@@ -265,99 +265,101 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
         fields = ('Fields: computation time; nosetests sequential id;'
                   ' test name; parent class (if any); outcome\n\n')
         path_nosort = os.path.join(sav_dir, 'timeprof_nosort')
-        f_nosort = open(path_nosort, 'w')
-        f_nosort.write('TIME-PROFILING OF THEANO\'S NOSETESTS'
-                       ' (by sequential id)\n\n' + stamp + fields)
-        f_nosort.flush()
-        for test_floor in xrange(1, n_tests + 1, batch_size):
-            for test_id in xrange(test_floor, min(test_floor + batch_size,
-                                                 n_tests + 1)):
-                # Print the test we will start in the raw log to help
-                # debug tests that are too long.
-                f_rawlog.write("\n%s Will run test #%d %s\n" % (
-                    time.ctime(), test_id, data["ids"][test_id]))
-                f_rawlog.flush()
+        # probably this part can be extracted for function with many args
+        with open(path_nosort, 'w') as f_nosort:
+            # begin of saving nosort
+            f_nosort.write('TIME-PROFILING OF THEANO\'S NOSETESTS'
+                           ' (by sequential id)\n\n' + stamp + fields)
+            f_nosort.flush()
+            for test_floor in xrange(1, n_tests + 1, batch_size):
+                for test_id in xrange(test_floor, min(test_floor + batch_size,
+                                                     n_tests + 1)):
+                    # Print the test we will start in the raw log to help
+                    # debug tests that are too long.
+                    f_rawlog.write("\n%s Will run test #%d %s\n" % (
+                        time.ctime(), test_id, data["ids"][test_id]))
+                    f_rawlog.flush()
 
-                p_out = output_subprocess_Popen(
-                    ([python, theano_nose, '-v', '--with-id']
-                     + [str(test_id)] + argv +
-                     ['--disabdocstring']))
-                    # the previous option calls a custom Nosetests plugin
-                    # precluding automatic sustitution of doc. string for
-                    # test name in display
-                    # (see class 'DisabDocString' in file theano-nose)
+                    p_out = output_subprocess_Popen(
+                        ([python, theano_nose, '-v', '--with-id']
+                         + [str(test_id)] + argv +
+                         ['--disabdocstring']))
+                        # the previous option calls a custom Nosetests plugin
+                        # precluding automatic sustitution of doc. string for
+                        # test name in display
+                        # (see class 'DisabDocString' in file theano-nose)
 
-                # recovering and processing data from pipe
-                err = p_out[1]
-                # print the raw log
-                f_rawlog.write(err)
-                f_rawlog.flush()
+                    # recovering and processing data from pipe
+                    err = p_out[1]
+                    # print the raw log
+                    f_rawlog.write(err)
+                    f_rawlog.flush()
 
-                # parsing the output
-                l_err = err.split()
-                try:
-                    pos_id = getIndexOfFirst(l_err, '#')
-                    prof_id = l_err[pos_id]
-                    pos_dot = getIndexOfFirst(l_err, '...')
-                    prof_test = ''
-                    for s in l_err[pos_id + 1: pos_dot]:
-                        prof_test += s + ' '
-                    if 'OK' in err:
-                        pos_ok = getIndexOfLast(l_err, 'OK')
-                        if len(l_err) == pos_ok + 1:
-                            prof_time = float(l_err[pos_ok - 1][0:-1])
-                            prof_pass = 'OK'
-                        elif 'SKIP' in l_err[pos_ok + 1]:
-                            prof_time = 0.
-                            prof_pass = 'SKIPPED TEST'
-                        elif 'KNOWNFAIL' in l_err[pos_ok + 1]:
-                            prof_time = float(l_err[pos_ok - 1][0:-1])
-                            prof_pass = 'OK'
+                    # parsing the output
+                    l_err = err.split()
+                    try:
+                        pos_id = getIndexOfFirst(l_err, '#')
+                        prof_id = l_err[pos_id]
+                        pos_dot = getIndexOfFirst(l_err, '...')
+                        prof_test = ''
+                        for s in l_err[pos_id + 1: pos_dot]:
+                            prof_test += s + ' '
+                        if 'OK' in err:
+                            pos_ok = getIndexOfLast(l_err, 'OK')
+                            if len(l_err) == pos_ok + 1:
+                                prof_time = float(l_err[pos_ok - 1][0:-1])
+                                prof_pass = 'OK'
+                            elif 'SKIP' in l_err[pos_ok + 1]:
+                                prof_time = 0.
+                                prof_pass = 'SKIPPED TEST'
+                            elif 'KNOWNFAIL' in l_err[pos_ok + 1]:
+                                prof_time = float(l_err[pos_ok - 1][0:-1])
+                                prof_pass = 'OK'
+                            else:
+                                prof_time = 0.
+                                prof_pass = 'FAILED TEST'
                         else:
                             prof_time = 0.
                             prof_pass = 'FAILED TEST'
-                    else:
-                        prof_time = 0.
-                        prof_pass = 'FAILED TEST'
-                except Exception:
-                    prof_time = 0
-                    prof_id = '#' + str(test_id)
-                    prof_test = ('FAILED PARSING, see raw log for details'
-                                 ' on test')
-                    prof_pass = ''
-                prof_tuple = (prof_time, prof_id, prof_test, prof_pass)
+                    except Exception:
+                        prof_time = 0
+                        prof_id = '#' + str(test_id)
+                        prof_test = ('FAILED PARSING, see raw log for details'
+                                     ' on test')
+                        prof_pass = ''
+                    prof_tuple = (prof_time, prof_id, prof_test, prof_pass)
 
-                # appending tuple to master list
-                prof_master_nosort.append(prof_tuple)
+                    # appending tuple to master list
+                    prof_master_nosort.append(prof_tuple)
 
-                # write the no sort file
-                s_nosort = ((str(prof_tuple[0]) + 's').ljust(10) +
-                 " " + prof_tuple[1].ljust(7) + " " +
-                 prof_tuple[2] + prof_tuple[3] +
-                 "\n")
-                f_nosort.write(s_nosort)
-                f_nosort.flush()
+                    # write the no sort file
+                    s_nosort = ((str(prof_tuple[0]) + 's').ljust(10) +
+                     " " + prof_tuple[1].ljust(7) + " " +
+                     prof_tuple[2] + prof_tuple[3] +
+                     "\n")
+                    f_nosort.write(s_nosort)
+                    f_nosort.flush()
 
-            print('%s%% time-profiled' % ((test_id * 100) // n_tests))
-        f_rawlog.close()
+                print('%s%% time-profiled' % ((test_id * 100) // n_tests))
+            f_rawlog.close()
 
-        # sorting tests according to running-time
-        prof_master_sort = sorted(prof_master_nosort,
-                                  key=lambda test: test[0], reverse=True)
+            # sorting tests according to running-time
+            prof_master_sort = sorted(prof_master_nosort,
+                                      key=lambda test: test[0], reverse=True)
 
-        # saving results to readable files
-        path_sort = os.path.join(sav_dir, 'timeprof_sort')
-        f_sort = open(path_sort, 'w')
-        f_sort.write('TIME-PROFILING OF THEANO\'S NOSETESTS'
-                     ' (sorted by computation time)\n\n' + stamp + fields)
-        for i in xrange(len(prof_master_nosort)):
-            s_sort = ((str(prof_master_sort[i][0]) + 's').ljust(10) +
-                 " " + prof_master_sort[i][1].ljust(7) + " " +
-                 prof_master_sort[i][2] + prof_master_sort[i][3] +
-                 "\n")
-            f_sort.write(s_sort)
-        f_nosort.close()
-        f_sort.close()
+            # saving results to readable files
+            path_sort = os.path.join(sav_dir, 'timeprof_sort')
+            with open(path_sort, 'w') as f_sort:
+                f_sort.write('TIME-PROFILING OF THEANO\'S NOSETESTS'
+                             ' (sorted by computation time)\n\n' + stamp + fields)
+                for i in xrange(len(prof_master_nosort)):
+                    s_sort = ((str(prof_master_sort[i][0]) + 's').ljust(10) +
+                         " " + prof_master_sort[i][1].ljust(7) + " " +
+                         prof_master_sort[i][2] + prof_master_sort[i][3] +
+                         "\n")
+                    f_sort.write(s_sort)
+
+            # end of saving nosort
 
 if __name__ == '__main__':
     sys.exit(main())

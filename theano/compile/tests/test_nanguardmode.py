@@ -1,8 +1,12 @@
 """
 This test is for testing the NanGuardMode.
 """
-from theano.compile.nanguardmode import NanGuardMode
+import logging
+from nose.tools import assert_raises
+
 import numpy
+
+from theano.compile.nanguardmode import NanGuardMode
 import theano
 import theano.tensor as T
 
@@ -29,21 +33,14 @@ def test_NanGuardMode():
     biga = numpy.tile(
         numpy.asarray(1e20).astype(theano.config.floatX), (3, 5))
 
-    work = [False, False, False]
-
     fun(a)  # normal values
-    try:
-        fun(infa)  # INFs
-    except AssertionError:
-        work[0] = True
-    try:
-        fun(nana)  # NANs
-    except AssertionError:
-        work[1] = True
-    try:
-        fun(biga)  # big values
-    except AssertionError:
-        work[2] = True
 
-    if not (work[0] and work[1] and work[2]):
-        raise AssertionError("NanGuardMode not working.")
+    # Temporarily silence logger
+    _logger = logging.getLogger("theano.compile.nanguardmode")
+    try:
+        _logger.propagate = False
+        assert_raises(AssertionError, fun, infa)  # INFs
+        assert_raises(AssertionError, fun, nana)  # NANs
+        assert_raises(AssertionError, fun, biga)  # big values
+    finally:
+        _logger.propagate = True

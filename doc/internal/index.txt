@@ -5,16 +5,11 @@
 Internal Documentation
 ======================
 
-If you're feeling ambitious, go fix some `pylint
-<http://lgcm.iro.umontreal.ca/auto_theano_pylint/pylint_global.html>` errors!
-
 .. toctree::
    :maxdepth: 2
 
    release
    dev_start_guide
-   lisa_labo
-   mammouth
    metadocumentation
    python
    how_to_release

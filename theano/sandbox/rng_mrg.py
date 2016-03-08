@@ -1,7 +1,7 @@
 """
-Implementation of MRG31k3p random number generator for Theano
+Implementation of MRG31k3p random number generator for Theano.
 
-Generator code in SSJ package (L'Ecuyer & Simard)
+Generator code in SSJ package (L'Ecuyer & Simard).
 http://www.iro.umontreal.ca/~simardr/ssj/indexe.html
 
 """
@@ -11,39 +11,45 @@ import warnings
 import numpy
 from six.moves import xrange
 
-from theano import Op, Apply, shared, config, Variable, Out
+from theano import Op, Apply, shared, config, Variable
 from theano import gradient, function
 from theano import tensor
-from theano.tensor import (raw_random, TensorType, as_tensor_variable,
-                           get_vector_length, cast, opt, scal)
+from theano.tensor import (TensorType, as_tensor_variable, get_vector_length,
+                           cast, opt, scal)
 from theano.tensor import sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
 from theano.gof import local_optimizer
-
 from . import multinomial
 
-from theano.sandbox.cuda import cuda_available, cuda_enabled, GpuOp
-if cuda_available:
-    from theano.sandbox.cuda import (CudaNdarrayType,
-                                     float32_shared_constructor)
-
+import theano.sandbox.cuda
+from theano.sandbox.cuda import GpuOp
 from theano.sandbox.gpuarray.basic_ops import GpuKernelBase, Kernel
 from theano.sandbox.gpuarray.type import GpuArrayType
 from theano.sandbox.gpuarray.fp16_help import write_w
+from theano.sandbox.gpuarray.opt import (register_opt as register_gpua,
+                                         host_from_gpu as host_from_gpua)
+if theano.sandbox.cuda.cuda_available:
+    from theano.sandbox.cuda import (CudaNdarrayType,
+                                     float32_shared_constructor)
 
 
 def matVecModM(A, s, m):
+    # TODO : need description for method, parameter and return
     assert A.dtype == 'int64'
-    return numpy.int32(numpy.sum((A*s) % m, 1) % m)
+    return numpy.int32(numpy.sum((A * s) % m, 1) % m)
 
 
 def multMatVect(v, A, m1, B, m2):
+    # TODO : need description for parameter and return
     """
-    multiply the first half of v by A with a modulo of m1
-    and the second half by B with a modulo of m2
+    Multiply the first half of v by A with a modulo of m1 and the second half
+    by B with a modulo of m2.
 
-    Note: The parameters of dot_modulo are passed implicitly because passing
-    them explicitly takes more time then running the function's C-code.
+    Notes
+    -----
+    The parameters of dot_modulo are passed implicitly because passing them
+    explicitly takes more time than running the function's C-code.
+
     """
     if multMatVect.dot_modulo is None:
         A_sym = tensor.lmatrix('A')
@@ -76,13 +82,10 @@ class DotModulo(Op):
     Efficient and numerically stable implementation of a dot product followed
     by a modulo operation. This performs the same function as matVecModM.
 
-    We do this 2 times on 2 triple inputs and concatenating the output
-    """
-    def __eq__(self, other):
-        return type(self) == type(other)
+    We do this 2 times on 2 triple inputs and concatenating the output.
 
-    def __hash__(self):
-        return hash(type(self))
+    """
+    __props__ = ()
 
     def make_node(self, A, s, m, A2, s2, m2):
         return Apply(self, [A, s, m, A2, s2, m2], [s.type()])
@@ -193,13 +196,13 @@ class DotModulo(Op):
 
 # MRG31k3p
 # generator constants :
-M1 = numpy.asarray(numpy.int32(2147483647))    #2^31 - 1
-M2 = numpy.asarray(numpy.int32(2147462579))    #2^31 - 21069
-MASK12 = numpy.int32(511)                      #2^9 - 1
-MASK13 = numpy.int32(16777215)                 #2^24 - 1
-MASK2 = numpy.int32(65535)                     #2^16 - 1
+M1 = numpy.asarray(numpy.int32(2147483647))    # 2^31 - 1
+M2 = numpy.asarray(numpy.int32(2147462579))    # 2^31 - 21069
+MASK12 = numpy.int32(511)                      # 2^9 - 1
+MASK13 = numpy.int32(16777215)                 # 2^24 - 1
+MASK2 = numpy.int32(65535)                     # 2^16 - 1
 MULT2 = numpy.int32(21069)
-NORM = 4.656612873077392578125e-10;            #1./2^31
+NORM = 4.656612873077392578125e-10  # 1./2^31
 
 # A1p0 = numpy.asarray([[0, 4194304, 129], [1, 0, 0], [0, 1, 0]],
 #                      dtype='int64')
@@ -229,14 +232,17 @@ np_int32_vals = [numpy.int32(i) for i in (0, 7, 9, 15, 16, 22, 24)]
 
 
 def ff_2p134(rstate):
+    # TODO : need description for method, parameter and return
     return multMatVect(rstate, A1p134, M1, A2p134, M2)
 
 
 def ff_2p72(rstate):
+    # TODO : need description for method, parameter and return
     return multMatVect(rstate, A1p72, M1, A2p72, M2)
 
 
 def mrg_next_value(rstate, new_rstate):
+    # TODO : need description for method, parameter and return
     x11, x12, x13, x21, x22, x23 = rstate
     assert type(x11) == numpy.int32
 
@@ -286,6 +292,9 @@ def mrg_next_value(rstate, new_rstate):
 
 
 class mrg_uniform_base(Op):
+    # TODO : need description for class, parameter
+    __props__ = ("output_type", "inplace")
+
     def __init__(self, output_type, inplace=False):
         Op.__init__(self)
         self.output_type = output_type
@@ -293,14 +302,6 @@ class mrg_uniform_base(Op):
         if inplace:
             self.destroy_map = {0: [0]}
         self.warned_numpy_version = False
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.output_type == other.output_type and
-                self.inplace == other.inplace)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.output_type) ^ hash(self.inplace)
 
     def __str__(self):
         if self.inplace:
@@ -319,9 +320,9 @@ class mrg_uniform_base(Op):
                      [rstate.type(), self.output_type()])
 
     def grad(self, inputs, ograd):
-        return [gradient.grad_undefined(
-                    self, k, inp,
-                    'No gradient defined through random sampling op')
+        return [gradient.grad_undefined(self, k, inp,
+                                        'No gradient defined through '
+                                        'random sampling op')
                 for k, inp in enumerate(inputs)]
 
     def R_op(self, inputs, eval_points):
@@ -336,7 +337,7 @@ class mrg_uniform(mrg_uniform_base):
         v_size = as_tensor_variable(size)
         if ndim is None:
             ndim = get_vector_length(v_size)
-        op = cls(TensorType(dtype, (False,)*ndim))
+        op = cls(TensorType(dtype, (False,) * ndim))
         return op(rstate, cast(v_size, 'int32'))
 
     def perform(self, node, inp, out):
@@ -376,9 +377,12 @@ class mrg_uniform(mrg_uniform_base):
         assert isinstance(node.inputs[0].type, TensorType)
         o_rstate, o_sample = out
         if self.inplace:
-            o_rstate_requirement = 'NPY_ARRAY_C_CONTIGUOUS|NPY_ARRAY_ALIGNED'
+            o_rstate_requirement = (
+                'NPY_ARRAY_C_CONTIGUOUS|NPY_ARRAY_ALIGNED')
         else:
-            o_rstate_requirement = 'NPY_ARRAY_ENSURECOPY|NPY_ARRAY_C_CONTIGUOUS|NPY_ARRAY_ALIGNED'
+            o_rstate_requirement = (
+                'NPY_ARRAY_ENSURECOPY|NPY_ARRAY_C_CONTIGUOUS|'
+                'NPY_ARRAY_ALIGNED')
         ndim = self.output_type.ndim
         o_type_num = numpy.asarray(0, dtype=self.output_type.dtype).dtype.num
         fail = sub['fail']
@@ -450,7 +454,9 @@ class mrg_uniform(mrg_uniform_base):
             }
         }
         Py_XDECREF(%(o_rstate)s);
-        %(o_rstate)s = (PyArrayObject*)PyArray_FromAny(py_%(rstate)s, NULL, 0, 0, %(o_rstate_requirement)s,NULL);
+        %(o_rstate)s = (PyArrayObject*)PyArray_FromAny(
+            (PyObject*)%(rstate)s,
+            NULL, 0, 0, %(o_rstate_requirement)s,NULL);
 
         if (PyArray_NDIM(%(o_rstate)s) != 2)
         {
@@ -531,7 +537,7 @@ class mrg_uniform(mrg_uniform_base):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 
 class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
@@ -542,7 +548,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         v_size = as_tensor_variable(size)
         if ndim is None:
             ndim = get_vector_length(v_size)
-        op = cls(CudaNdarrayType((False,)*ndim))
+        op = cls(CudaNdarrayType((False,) * ndim))
         return op(rstate, cast(v_size, 'int32'))
 
     def c_support_code_apply(self, node, nodename):
@@ -660,7 +666,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         int n_elements = 1;
         int n_streams, n_streams_used_in_this_call;
         int must_alloc_sample = ((NULL == %(o_sample)s)
-                || !CudaNdarray_Check(py_%(o_sample)s)
+                || !CudaNdarray_Check((PyObject*)%(o_sample)s)
                 || !CudaNdarray_is_c_contiguous(%(o_sample)s)
                 || (CudaNdarray_NDIM(%(o_sample)s) != %(ndim)s));
 
@@ -696,7 +702,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
                 %(fail)s;
             }
         }
-        if (!CudaNdarray_Check(py_%(rstate)s))
+        if (!CudaNdarray_Check((PyObject*)%(rstate)s))
         {
             PyErr_Format(PyExc_ValueError, "rstate must be cudandarray");
             %(fail)s;
@@ -769,19 +775,22 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (9,)
+        return (10,)
 
 
 class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
     # GpuArray version
     _f16_ok = True
 
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
     @classmethod
     def new(cls, rstate, ndim, dtype, size):
         v_size = as_tensor_variable(size)
         if ndim is None:
             ndim = get_vector_length(v_size)
-        op = cls(GpuArrayType(dtype, (False,)*ndim))
+        op = cls(GpuArrayType(dtype, (False,) * ndim))
         return op(rstate, cast(v_size, 'int32'))
 
     def c_headers(self):
@@ -906,6 +915,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         ndim = self.output_type.ndim
         o_type_num = numpy.asarray(0, dtype=self.output_type.dtype).dtype.num
         fail = sub['fail']
+        ctx = sub['params']
         kname = self.gpu_kernels(node, nodename)[0].objvar
         otypecode = str(self.output_type.typecode)
 
@@ -914,7 +924,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         unsigned int n_elements = 1;
         unsigned int n_streams;
         int must_alloc_sample = ((NULL == %(o_sample)s)
-                || !pygpu_GpuArray_Check(py_%(o_sample)s)
+                || !pygpu_GpuArray_Check((PyObject*)%(o_sample)s)
                 || !(%(o_sample)s->ga.flags & GA_C_CONTIGUOUS)
                 || (PyGpuArray_NDIM(%(o_sample)s) != %(ndim)s));
 
@@ -945,13 +955,13 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         {
             Py_XDECREF(%(o_sample)s);
             %(o_sample)s = pygpu_empty(%(ndim)s, odims, %(otypecode)s, GA_C_ORDER,
-                                       pygpu_default_context(), Py_None);
+                                       %(ctx)s, Py_None);
             if(!%(o_sample)s)
             {
                 %(fail)s;
             }
         }
-        if (!pygpu_GpuArray_Check(py_%(rstate)s))
+        if (!pygpu_GpuArray_Check((PyObject*)%(rstate)s))
         {
             PyErr_Format(PyExc_ValueError, "rstate must be gpuarray");
             %(fail)s;
@@ -1016,22 +1026,26 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (7, self.GpuKernelBase_version)
+        return (8,)
 
 
 def guess_n_streams(size, warn=False):
+    # TODO : need description for parameter 'size'
     """
     Return a guess at a good number of streams.
 
-    :param warn:
-      If True, warn when a guess cannot be made (in which case we
-      return 60 * 256).
+    Parameters
+    ----------
+    warn : bool, optional
+        If True, warn when a guess cannot be made (in which case we
+        return 60 * 256).
+
     """
     # TODO: a smart way of choosing the number of streams, see #612.
     # Note that this code was moved out of `MRG_RandomStreams` so that it can
     # be easily accessed from tests, where we want to disable the warning.
     if (isinstance(size, (tuple, list)) and
-        all([isinstance(i, int) for i in size])):
+            all([isinstance(i, int) for i in size])):
         # We can make a guess.
         r = 1
         for s in size:
@@ -1040,8 +1054,9 @@ def guess_n_streams(size, warn=False):
             r = r // 6  # chosen as fastest for rbm_benchmark
 
         # The purpose of sampling from many streams is to be able to use
-        # the GPU to its full capacity.  It just wastes RAM and stream-initialization time to
-        # allocate more streams than necessary for the GPU.
+        # the GPU to its full capacity. It just wastes RAM and
+        # stream-initialization time to allocate more streams than necessary
+        # for the GPU.
         # XXX: This number is chosen to be good for 280 and 480 architectures,
         #      Better would be to use pycuda to query the number of
         #      processors on the GPU device,
@@ -1049,32 +1064,38 @@ def guess_n_streams(size, warn=False):
         return min(r, 60 * 256)
     else:
         if warn:
-            warnings.warn((
-                "MRG_RandomStreams Can't determine #streams from "
-                "size (%s), guessing 60*256") % str(size),
-                    stacklevel=3)
+            warnings.warn(
+                ("MRG_RandomStreams Can't determine #streams "
+                 "from size (%s), guessing 60*256") % str(size),
+                stacklevel=3)
         return 60 * 256
 
 
 class MRG_RandomStreams(object):
-    """Module component with similar interface to numpy.random (numpy.random.RandomState)"""
+    # TODO : need description for parameter 'use_cuda'
+    """
+    Module component with similar interface to numpy.random
+    (numpy.random.RandomState).
+
+    Parameters
+    ----------
+    seed : int or list of 6 int
+        A default seed to initialize the random state.
+        If a single int is given, it will be replicated 6 times.
+        The first 3 values of the seed must all be less than M1 = 2147483647,
+        and not all 0; and the last 3 values must all be less than
+        M2 = 2147462579, and not all 0.
+
+    """
 
     def updates(self):
+        # TODO : need description for method and return
         return list(self.state_updates)
 
     def __init__(self, seed=12345, use_cuda=None):
-        """
-        :type seed: int or list of 6 int.
-
-        :param seed: a default seed to initialize the random state.
-            If a single int is given, it will be replicated 6 times.
-            The first 3 values of the seed must all be less than M1 = 2147483647,
-            and not all 0; and the last 3 values must all be less than
-            M2 = 2147462579, and not all 0.
-
-        """
         # A list of pairs of the form (input_r, output_r), representing the
-        # update rules of all the random states generated by this RandomStreams.
+        # update rules of all the random states generated
+        # by this RandomStreams.
         self.state_updates = []
 
         super(MRG_RandomStreams, self).__init__()
@@ -1085,11 +1106,12 @@ class MRG_RandomStreams(object):
         self.set_rstate(seed)
 
         if use_cuda is None:
-            self.use_cuda = cuda_enabled
+            self.use_cuda = theano.sandbox.cuda.cuda_enabled
         else:
             self.use_cuda = use_cuda
 
     def set_rstate(self, seed):
+        # TODO : need description for method, parameter
         if isinstance(seed, int):
             if seed == 0:
                 raise ValueError('seed should not be 0', seed)
@@ -1116,14 +1138,18 @@ class MRG_RandomStreams(object):
             raise TypeError("seed should be 1 integer or 6 integers")
 
     def seed(self, seed=None):
-        """Re-initialize each random stream
+        """
+        Re-initialize each random stream.
 
-        :param seed: each random stream will be assigned a unique
-        state that depends deterministically on this value.
+        Parameters
+        ----------
+        seed : None or integer in range 0 to 2**30
+            Each random stream will be assigned a unique state that depends
+            deterministically on this value.
 
-        :type seed: None or integer in range 0 to 2**30
-
-        :rtype: None
+        Returns
+        -------
+        None
 
         """
         if seed is None:
@@ -1142,14 +1168,21 @@ class MRG_RandomStreams(object):
             old_r.set_value(rstates, borrow=True)
 
     def inc_rstate(self):
-        """Update self.rstate to be skipped 2^134 steps forward to the next stream start"""
-        #self.rstate = ff_2p134(self.rstate)
+        """
+        Update self.rstate to be skipped 2^134 steps forward to the next stream
+        start.
+
+        """
+        # self.rstate = ff_2p134(self.rstate)
         self.rstate = multMatVect(self.rstate, A1p134, M1, A2p134, M2)
         assert self.rstate.dtype == numpy.int32
 
     def get_substream_rstates(self, n_streams, dtype, inc_rstate=True):
-        """Initialize a matrix in which each row is a MRG stream state,
+        # TODO : need description for parameter and return
+        """
+        Initialize a matrix in which each row is a MRG stream state,
         and they are spaced by 2**72 samples.
+
         """
         assert isinstance(dtype, str)
         assert n_streams < 2**72
@@ -1169,7 +1202,7 @@ class MRG_RandomStreams(object):
         f.input_storage[5].storage[0] = M2
         for i in xrange(1, n_streams):
             # Inline the following call to bypass Python overhead
-            #rval[i] = ff_2p72(rval[i - 1])
+            # rval[i] = ff_2p72(rval[i - 1])
             v = rval[i - 1]
             f.input_storage[1].storage[0] = v[:3]
             f.input_storage[4].storage[0] = v[3:]
@@ -1191,9 +1224,11 @@ class MRG_RandomStreams(object):
         return rval
 
     def n_streams(self, size):
+        # TODO : need description for method, parameter and return
         return guess_n_streams(size)
 
     def pretty_return(self, node_rstate, new_rstate, sample, size, nstreams):
+        # TODO : need description for method, parameter and return
         sample.rstate = node_rstate
         sample.update = (node_rstate, new_rstate)
         self.state_updates.append((node_rstate, new_rstate, size, nstreams))
@@ -1202,32 +1237,31 @@ class MRG_RandomStreams(object):
 
     def uniform(self, size, low=0.0, high=1.0, ndim=None, dtype=None,
                 nstreams=None):
+        # TODO : need description for parameter 'size', 'ndim', 'nstreams'
         """
         Sample a tensor of given size whose element from a uniform
         distribution between low and high.
 
         If the size argument is ambiguous on the number of dimensions,
-        ndim may be a plain integer to supplement the missing
-        information.
+        ndim may be a plain integer to supplement the missing information.
 
-        :param low:
-          Lower bound of the interval on which values are sampled.  If
-          the ``dtype`` arg is provided, ``low`` will be cast into
-          dtype.  This bound is excluded.
-
-        :param high:
-          Higher bound of the interval on which values are sampled.
-          If the ``dtype`` arg is provided, ``high`` will be cast into
-          dtype.  This bound is excluded.
-
-        :param size:
+        Parameters
+        ----------
+        low
+            Lower bound of the interval on which values are sampled.
+            If the ``dtype`` arg is provided, ``low`` will be cast into
+            dtype. This bound is excluded.
+        high
+            Higher bound of the interval on which values are sampled.
+            If the ``dtype`` arg is provided, ``high`` will be cast into
+            dtype. This bound is excluded.
+        size
           Can be a list of integer or Theano variable (ex: the shape
-          of other Theano Variable)
-
-        :param dtype:
-          The output data type. If dtype is not specified, it will be
-          inferred from the dtype of low and high, but will be at
-          least as precise as floatX.
+          of other Theano Variable).
+        dtype
+            The output data type. If dtype is not specified, it will be
+            inferred from the dtype of low and high, but will be at
+            least as precise as floatX.
 
         """
         low = as_tensor_variable(low)
@@ -1291,6 +1325,7 @@ class MRG_RandomStreams(object):
 
     def binomial(self, size=None, n=1, p=0.5, ndim=None, dtype='int64',
                  nstreams=None):
+        # TODO : need description for method, parameter and return
         if n == 1:
             if dtype == 'float32' and self.use_cuda:
                 x = self.uniform(size=size, dtype=dtype, nstreams=nstreams)
@@ -1302,22 +1337,26 @@ class MRG_RandomStreams(object):
 
     def multinomial(self, size=None, n=1, pvals=None, ndim=None, dtype='int64',
                     nstreams=None):
+        # TODO : need description for parameter and return
         """
-        Sample `n` (currently `n` needs to be 1) times from a multinomial
+        Sample `n` (`n` needs to be >= 1, default 1) times from a multinomial
         distribution defined by probabilities pvals.
 
-        Example : pvals = [[.98, .01, .01], [.01, .98, .01]] will
-        probably result in [[1,0,0],[0,1,0]].
+        Example : pvals = [[.98, .01, .01], [.01, .49, .50]] and n=1 will
+        probably result in [[1,0,0],[0,0,1]]. When setting n=2, this
+        will probably result in [[2,0,0],[0,1,1]].
 
-        .. note::
-            -`size` and `ndim` are only there keep the same signature as other
-            uniform, binomial, normal, etc.
-            todo : adapt multinomial to take that into account
+        Notes
+        -----
+        -`size` and `ndim` are only there keep the same signature as other
+        uniform, binomial, normal, etc.
+        TODO : adapt multinomial to take that into account
 
-            -Does not do any value checking on pvals, i.e. there is no
-             check that the elements are non-negative, less than 1, or
-             sum to 1. passing pvals = [[-2., 2.]] will result in
-             sampling [[0, 0]]
+        -Does not do any value checking on pvals, i.e. there is no
+        check that the elements are non-negative, less than 1, or
+        sum to 1. passing pvals = [[-2., 2.]] will result in
+        sampling [[0, 0]]
+
         """
         if pvals is None:
             raise TypeError("You have to specify pvals")
@@ -1328,40 +1367,89 @@ class MRG_RandomStreams(object):
                     "The specified size contains a dimension with value <= 0",
                     size)
 
-        if n == 1 and pvals.ndim == 2:
-            if size is not None:
-                raise ValueError("Provided a size argument to "
-                        "MRG_RandomStreams.multinomial, which does not use "
-                        "the size argument.")
-            if ndim is not None:
-                raise ValueError("Provided an ndim argument to "
-                        "MRG_RandomStreams.multinomial, which does not use "
-                        "the ndim argument.")
-            ndim, size, bcast = raw_random._infer_ndim_bcast(
-                    ndim, size, pvals[:, 0])
-            assert ndim == 1
-            bcast = bcast + (pvals.type.broadcastable[-1],)
+        if size is not None:
+            raise ValueError(
+                "Provided a size argument to MRG_RandomStreams.multinomial, "
+                "which does not use the size argument.")
+        if ndim is not None:
+            raise ValueError(
+                "Provided an ndim argument to MRG_RandomStreams.multinomial, "
+                "which does not use the ndim argument.")
+        if pvals.ndim == 2:
+            size = pvals[:, 0].shape * n
             unis = self.uniform(size=size, ndim=1, nstreams=nstreams)
             op = multinomial.MultinomialFromUniform(dtype)
-            return op(pvals, unis)
+            n_samples = as_tensor_variable(n)
+            return op(pvals, unis, n_samples)
         else:
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"
-                " implemented with n == 1 and pvals.ndim = 2"))
+                                       " implemented for pvals.ndim = 2"))
+
+    def multinomial_wo_replacement(self, size=None, n=1, pvals=None,
+                                   ndim=None, dtype='int64', nstreams=None):
+        # TODO : need description for parameter
+        """
+        Sample `n` times *WITHOUT replacement* from a multinomial distribution
+        defined by probabilities pvals, and returns the indices of the sampled
+        elements.
+        `n` needs to be in [1, m], where m is the number of elements to select
+        from, i.e. m == pvals.shape[1]. By default n = 1.
+
+        Example : pvals = [[.98, .01, .01], [.01, .49, .50]] and n=1 will
+        probably result in [[0],[2]]. When setting n=2, this
+        will probably result in [[0,1],[2,1]].
+
+        Notes
+        -----
+        -`size` and `ndim` are only there keep the same signature as other
+        uniform, binomial, normal, etc.
+        TODO : adapt multinomial to take that into account
+
+        -Does not do any value checking on pvals, i.e. there is no
+        check that the elements are non-negative, less than 1, or
+        sum to 1. passing pvals = [[-2., 2.]] will result in
+        sampling [[0, 0]]
+
+        """
+        if pvals is None:
+            raise TypeError("You have to specify pvals")
+        pvals = as_tensor_variable(pvals)
+
+        if size is not None:
+            raise ValueError("Provided a size argument to "
+                             "MRG_RandomStreams.multinomial_wo_replacement, "
+                             "which does not use the size argument.")
+        if ndim is not None:
+            raise ValueError("Provided an ndim argument to "
+                             "MRG_RandomStreams.multinomial_wo_replacement, "
+                             "which does not use the ndim argument.")
+        if pvals.ndim == 2:
+            # size = [pvals.shape[0], as_tensor_variable(n)]
+            size = pvals[:, 0].shape * n
+            unis = self.uniform(size=size, ndim=1, nstreams=nstreams)
+            op = multinomial.MultinomialWOReplacementFromUniform(dtype)
+            n_samples = as_tensor_variable(n)
+            return op(pvals, unis, n_samples)
+        else:
+            raise NotImplementedError(
+                "MRG_RandomStreams.multinomial_wo_replacement only implemented"
+                " for pvals.ndim = 2")
 
     def normal(self, size, avg=0.0, std=1.0, ndim=None,
                dtype=None, nstreams=None):
+        # TODO : need description for method
         """
-        :param size:
-          Can be a list of integers or Theano variables (ex: the shape
-          of another Theano Variable)
-
-        :param dtype:
-          The output data type. If dtype is not specified, it will be
-          inferred from the dtype of low and high, but will be at
-          least as precise as floatX.
-
-        :param nstreams:
-          Number of streams.
+        Parameters
+        ----------
+        size
+            Can be a list of integers or Theano variables (ex: the shape
+            of another Theano Variable).
+        dtype
+            The output data type. If dtype is not specified, it will be
+            inferred from the dtype of low and high, but will be at
+            least as precise as floatX.
+        nstreams
+            Number of streams.
 
         """
         # We need an even number of ]0,1[ samples. Then we split them
@@ -1379,7 +1467,8 @@ class MRG_RandomStreams(object):
 
         evened = False
         constant = False
-        if isinstance(size, tuple) and all([isinstance(i, (numpy.integer, int)) for i in size]):
+        if (isinstance(size, tuple) and
+                all([isinstance(i, (numpy.integer, int)) for i in size])):
             constant = True
             # Force dtype because it defaults to float when size is empty
             n_samples = numpy.prod(size, dtype='int64')
@@ -1400,16 +1489,18 @@ class MRG_RandomStreams(object):
             U1 = flattened[:prod(flattened.shape) // 2]
             U2 = flattened[prod(flattened.shape) // 2:]
 
-        #normal_samples = zeros_like(flattened)
+        # normal_samples = zeros_like(flattened)
         sqrt_ln_U1 = sqrt(-2.0 * log(U1))
         # TypeError: 'TensorVariable' object does not support item assignment
         # so this doesn't work...
-        #normal_samples[:n_samples/2] = sqrt_ln_U1 * cos(2.0*numpy.pi*U2)
-        #normal_samples[n_samples/2:] = sqrt_ln_U1 * sin(2.0*numpy.pi*U2)
+        # normal_samples[:n_samples/2] = sqrt_ln_U1 * cos(2.0*numpy.pi*U2)
+        # normal_samples[n_samples/2:] = sqrt_ln_U1 * sin(2.0*numpy.pi*U2)
 
         # so trying this instead
-        first_half = sqrt_ln_U1 * cos(numpy.array(2.0 * numpy.pi, dtype=dtype) * U2)
-        second_half = sqrt_ln_U1 * sin(numpy.array(2.0 * numpy.pi, dtype=dtype) * U2)
+        first_half = sqrt_ln_U1 * cos(
+            numpy.array(2.0 * numpy.pi, dtype=dtype) * U2)
+        second_half = sqrt_ln_U1 * sin(
+            numpy.array(2.0 * numpy.pi, dtype=dtype) * U2)
         normal_samples = join(0, first_half, second_half)
 
         final_samples = None
@@ -1430,15 +1521,13 @@ class MRG_RandomStreams(object):
         assert final_samples.dtype == dtype
         return final_samples
 
-from theano.sandbox.gpuarray.opt import (register_opt as register_gpua,
-                                         host_from_gpu as host_from_gpua)
 
-
-@register_gpua()
+@register_gpua('fast_compile')
 @local_optimizer([mrg_uniform])
 def local_gpua_mrg(node):
+    # TODO : need description for function
     if (type(node.op) == mrg_uniform and
-        isinstance(node.inputs[0].type, GpuArrayType)):
+            isinstance(node.inputs[0].type, GpuArrayType)):
         outs = GPUA_mrg_uniform.new(node.inputs[0],
                                     node.op.output_type.ndim,
                                     node.op.output_type.dtype,
@@ -1451,6 +1540,7 @@ MRG_RNGs = (mrg_uniform, GPU_mrg_uniform, GPUA_mrg_uniform)
 
 @local_optimizer(MRG_RNGs)
 def mrg_random_make_inplace(node):
+
     op = node.op
     if isinstance(op, MRG_RNGs) and not op.inplace:
         # op might be gpu version

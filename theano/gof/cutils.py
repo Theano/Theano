@@ -41,13 +41,16 @@ def compile_cutils_code():
     #endif
     """
 
-    floatadd = ("((%(type)s*)mit->dataptr)[0] = inc_or_set * "
-                "((%(type)s*)mit->dataptr)[0] + ((%(type)s*)it->dataptr)[0];")
+    floatadd = ("((%(type)s*)mit->dataptr)[0] = "
+                "(inc_or_set ? ((%(type)s*)mit->dataptr)[0] : 0)"
+                " + ((%(type)s*)it->dataptr)[0];")
     complexadd = """
-    ((%(type)s*)mit->dataptr)[0].real = inc_or_set *
-       ((%(type)s*)mit->dataptr)[0].real + ((%(type)s*)it->dataptr)[0].real;
-    ((%(type)s*)mit->dataptr)[0].imag = inc_or_set *
-       ((%(type)s*)mit->dataptr)[0].imag + ((%(type)s*)it->dataptr)[0].imag;
+    ((%(type)s*)mit->dataptr)[0].real =
+        (inc_or_set ? ((%(type)s*)mit->dataptr)[0].real : 0)
+        + ((%(type)s*)it->dataptr)[0].real;
+    ((%(type)s*)mit->dataptr)[0].imag =
+        (inc_or_set ? ((%(type)s*)mit->dataptr)[0].imag : 0)
+        + ((%(type)s*)it->dataptr)[0].imag;
     """
 
     fns = ''.join([inplace_map_template % {'type': t, 'typen': t.upper(),
@@ -194,7 +197,10 @@ fail:
 
 
 def compile_cutils():
-    """Do just the compilation of cutils_ext"""
+    """
+    Do just the compilation of cutils_ext.
+
+    """
     code = ("""
         #include <Python.h>
         #include "numpy/arrayobject.h"

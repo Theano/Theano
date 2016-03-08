@@ -14,7 +14,7 @@ from theano.compile.pfunc import pfunc
 from theano import tensor
 from theano import config
 import theano.tensor.nnet.conv as conv
-import theano.tensor.signal.downsample as downsample
+import theano.tensor.signal.pool as pool
 import theano.sandbox.cuda as tcn
 import theano.tests.unittest_tools as utt
 
@@ -225,7 +225,7 @@ def test_conv_nnet1():
     rval_cpu = run_conv_nnet1(False)
     utt.seed_rng()
     rval_gpu = run_conv_nnet1(True)
-    assert numpy.allclose(rval_cpu, rval_gpu, rtol=1e-4, atol=1e-6)
+    utt.assert_allclose(rval_cpu, rval_gpu, rtol=1e-4, atol=1e-6)
 
 
 def run_conv_nnet2(use_gpu):  # pretend we are training LeNet for MNIST
@@ -318,7 +318,7 @@ def test_conv_nnet2():
         utt.seed_rng()
         rval_cpu = run_conv_nnet2(False)
         # print rval_cpu[0], rval_gpu[0],rval_cpu[0]-rval_gpu[0]
-        assert numpy.allclose(rval_cpu, rval_gpu, rtol=1e-4, atol=1e-4)
+        utt.assert_allclose(rval_cpu, rval_gpu, rtol=1e-4, atol=1e-4)
 
 
 def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
@@ -372,7 +372,7 @@ def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
         (n_kern, logical_hid_shape[0] // 2, logical_hid_shape[1] // 2),
         shape_kern1[2:], n_kern1, n_batch, 1, 1, verbose=verbose, version=version)
 
-    ds_op = downsample.DownsampleFactorMax((2, 2), ignore_border=False)
+    ds_op = pool.Pool((2, 2), ignore_border=False)
     if downsample_ops:
         hid = tensor.tanh(ds_op(conv_op(x, w0) + b0.dimshuffle((0, 'x', 'x'))))
     else:
@@ -559,8 +559,8 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
                     rval_gpu - rval_cpu) / rval_gpu))
 
             if not ignore_error:
-                assert numpy.allclose(rval_cpu, rval_gpu,
-                     rtol=1e-5, atol=float_atol)
+                utt.assert_allclose(rval_cpu, rval_gpu,
+                                    rtol=1e-5, atol=float_atol)
 
             # Synchronize parameters to start from the same point next time
             if i < n_train - 1:
@@ -612,7 +612,7 @@ def test_lenet_32():  # CIFAR10 / Shapeset
 
 
 def test_lenet_32_long():  # CIFAR10 / Shapeset
-    # this tests the gradient of downsample on the GPU,
+    # this tests the gradient of pool on the GPU,
     # which does not recieve specific testing
     cmp_run_conv_nnet2_classif(seed, 32, 5, 30, n_train=50,
                                ignore_error=ignore_error, gpu_only=gpu_only,

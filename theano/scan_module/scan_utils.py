@@ -1,7 +1,8 @@
 """
-This module provides utility functions for the Scan Op
+This module provides utility functions for the Scan Op.
 
-See scan.py for details on scan
+See scan.py for details on scan.
+
 """
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu "
@@ -43,6 +44,7 @@ def safe_new(x, tag='', dtype=None):
     by gradient, or the R-op to construct new variables for the inputs of
     the inner graph such that there is no interference between the original
     graph and the newly constructed graph.
+
     """
     if hasattr(x, 'name') and x.name is not None:
         nw_name = x.name + tag
@@ -117,21 +119,28 @@ class until(object):
     between the condition and the list of outputs ( unless we enforce and
     order, but since this was not impose up to know it can make quite a bit
     of code to fail).
+
     """
+
     def __init__(self, condition):
         self.condition = tensor.as_tensor_variable(condition)
         assert self.condition.ndim == 0
 
 
 def traverse(out, x, x_copy, d, visited=None):
-    ''' Function used by scan to parse the tree and figure out which nodes
-    it needs to replace. There are two options :
+    """
+    Function used by scan to parse the tree and figure out which nodes
+    it needs to replace.
+
+    There are two options :
         1) x and x_copy or on host, then you would replace x with x_copy
         2) x is on gpu, x_copy on host, then you need to replace
         host_from_gpu(x) with x_copy
-    This happens because initially shared variables are on GPU .. which is
+    This happens because initially shared variables are on GPU... which is
     fine for the main computational graph but confuses things a bit for the
-    inner graph of scan '''
+    inner graph of scan.
+
+    """
     # ``visited`` is a set of nodes that are already known and don't need to be
     # checked again, speeding up the traversal of multiply-connected graphs.
     # if a ``visited`` set is given, it will be updated in-place so the callee
@@ -147,7 +156,7 @@ def traverse(out, x, x_copy, d, visited=None):
             d[out] = cuda.gpu_from_host(x_copy)
         else:
             assert isinstance(x.type, gpuarray.GpuArrayType)
-            d[out] = gpuarray.gpu_from_host(x_copy)
+            d[out] = gpuarray.GpuFromHost(x.type.context_name)(x_copy)
         return d
     elif out.owner is None:
         return d
@@ -191,25 +200,25 @@ def clone(output,
           share_inputs=True,
           copy_inputs=DEPRECATED_ARG):
     """
-    Function that allows replacing subgraphs of a computational
-    graph. It returns a copy of the initial subgraph with the corresponding
+    Function that allows replacing subgraphs of a computational graph.
+
+    It returns a copy of the initial subgraph with the corresponding
     substitutions.
 
-    :type output: Theano Variables (or Theano expressions)
-    :param outputs: Theano expression that represents the computational
-                    graph
+    Parameters
+    ----------
+    output : Theano Variables (or Theano expressions)
+        Theano expression that represents the computational graph.
+    replace : dict
+        Dictionary describing which subgraphs should be replaced by what.
+    share_inputs : bool
+        If True, use the same inputs (and shared variables) as the original
+        graph. If False, clone them. Note that cloned shared variables still
+        use the same underlying storage, so they will always have the same
+        value.
+    copy_inputs
+        Deprecated, use share_inputs.
 
-    :type replace: dict
-    :param replace: dictionary describing which subgraphs should be
-                    replaced by what
-
-    :type share_inputs: bool
-    :param share_inputs: If True, use the same inputs (and shared variables)
-        as the original graph. If False, clone them. Note that cloned
-        shared variables still use the same underlying storage, so they
-        will always have the same value.
-
-    :param copy_inputs: deprecated, use share_inputs.
     """
     if copy_inputs is not DEPRECATED_ARG:
         warnings.warn('In `clone()` function, the argument `copy_inputs` has been deprecated and renamed into `share_inputs`')
@@ -247,11 +256,219 @@ def clone(output,
     return outs
 
 
+def map_variables(replacer, graphs, additional_inputs=[]):
+    """Construct new graphs based on 'graphs' with some variables replaced
+    according to 'replacer'.
+
+    :param replacer: function that takes a variable and returns its
+         replacement.
+    :param graphs: an iterable of graphs in which to replace variables
+    :param additional_inputs: an iterable of graph inputs not used in any
+         of 'graphs' but possibly used in the graphs returned by `replacer`
+    :return: the new graphs, in the same order as 'graphs'
+
+    Example:
+
+    .. code-block:: python
+
+        tag = "replaceme"
+
+        a = tensor.scalar("a")
+        b = tensor.scalar("b")
+        c = tensor.scalar("c")
+
+        ab = a + b
+        ab.tag.replacement = a * b
+
+        u = ab + c
+        v, = map_variables(lambda graph:
+            return getattr(graph.tag, "replacement", graph),
+            [u])
+
+        # v is now equal to a * b + c
+    """
+
+    # wrap replacer to avoid replacing things we just put there.
+    graphs_seen = set()
+    def wrapped_replacer(graph):
+        if graph in graphs_seen:
+            return graph
+        else:
+            new_graph = replacer(graph)
+            graphs_seen.add(new_graph)
+            return new_graph
+
+    graphs = list(graphs)
+    inputs_ = list(set(gof.graph.inputs(graphs) + list(additional_inputs)))
+
+    # perform any desired replacement of input variables.  these
+    # aren't replaced by the local optimizer approach because they are
+    # not outputs of any Apply node.
+    new_inputs = list(map(wrapped_replacer, inputs_))
+    replacements = [(input_, new_input)
+                    for input_, new_input
+                    in zip(inputs_, new_inputs)
+                    if new_input is not input_]
+    graphs = clone(graphs, share_inputs=True, replace=replacements)
+    inputs_ = list(set(gof.graph.inputs(graphs) + list(additional_inputs)))
+
+    # clone cached constants or FunctionGraph will complain.  this has
+    # to occur in a separate pass from the replacement above because
+    # both may suggest different replacements for the same variables.
+    # since the replacements introduced above may involve cached
+    # constants, the replacement of said constants has to come after.
+    cached_constants = [x for x in inputs_ if getattr(x, "cached", False)]
+    copied_constants = clone(cached_constants, share_inputs=False)
+    replacements = list(zip(cached_constants, copied_constants))
+    inputs_ = list(set(inputs_) - set(cached_constants)) + list(copied_constants)
+    graphs = clone(graphs, share_inputs=True, replace=replacements)
+
+    fg = gof.fg.FunctionGraph(inputs_, graphs, clone=False)
+
+    nodes_seen = set()
+
+    @gof.opt.local_optimizer(None)
+    def local_transform(node):
+        if node in nodes_seen:
+            return False
+
+        # importing Scan into module scope would be circular
+        from theano.scan_module.scan_op import Scan
+        from theano.compile import OpFromGraph
+
+        if isinstance(node.op, (Scan, OpFromGraph)):
+            # recurse on the inner graph
+            (new_inner_inputs,
+             new_outer_inputs,
+             new_inner_outputs) = _map_variables_inner(
+                 wrapped_replacer,
+                 inner_inputs=node.op.inputs,
+                 outer_inputs=node.inputs,
+                 inner_outputs=node.op.outputs,
+                 containing_op=node.op)
+            # reinstantiate the op
+            if isinstance(node.op, Scan):
+                new_op = Scan(new_inner_inputs,
+                              new_inner_outputs,
+                              node.op.info,
+                              # FIXME: infer this someday?
+                              typeConstructor=None)
+            elif isinstance(node.op, OpFromGraph):
+                new_op = OpFromGraph(new_inner_inputs,
+                                     new_inner_outputs,
+                                     **node.op.kwargs)
+            # make a new node to replace the old one
+            new_node = new_op.make_node(*new_outer_inputs)
+            nodes_seen.add(new_node)
+            return new_node.outputs
+        else:
+            nodes_seen.add(node)
+            return list(map(wrapped_replacer, node.outputs))
+
+    topo_transform = gof.opt.TopoOptimizer(local_transform, 'out_to_in')
+    topo_transform.optimize(fg)
+
+    new_graphs = fg.outputs
+    fg.disown()
+    return new_graphs
+
+
+def _map_variables_inner(replacer, inner_inputs, outer_inputs,
+                         inner_outputs, containing_op):
+    # the replacements returned by the replacer may involve variables
+    # that are already owned by the outer fgraph (`fg` in the caller)
+    # and so cannot be added to the inner fgraph (`fg` in the
+    # recursive call).  wrap the replacer to catch these before they
+    # are added.
+
+    # additionally, some of these may be fgraph inputs or shared
+    # variables, which we cannot directly use inside the inner graph.
+    # we need to create inner inputs to access them through.
+
+    outer_to_inner = dict(zip(outer_inputs, inner_inputs))
+    extra_inner_inputs = []
+    extra_outer_inputs = []
+
+    from theano.scan_module import scan_utils
+    from itertools import chain
+    from theano import gof
+
+    def inner_replacer(graph):
+        new_graph = replacer(graph)
+
+        other_inputs = []
+        constants = []
+        for input_ in gof.graph.inputs([new_graph]):
+            if isinstance(input_, gof.Variable):
+                if isinstance(input_, gof.Constant):
+                    constants.append(input_)
+                else:
+                    other_inputs.append(input_)
+
+        # foreign inputs are fgraph inputs and shared variables that we need
+        # to access through inner inputs
+        foreign_inputs = list(set(other_inputs) - set(outer_to_inner.values()))
+
+        # skip further processing if there is nothing to do
+        if not constants and not foreign_inputs:
+            return new_graph
+
+        replacements = []
+
+        # constants just need to be replaced by copies that the inner
+        # `fg` can take ownership of
+        for input_ in constants:
+            new_input = input_.clone()
+            new_input.name = "%s_copied" % new_input.name
+            replacements.append((input_, new_input))
+
+        for outer_input in foreign_inputs:
+            if getattr(outer_input, "update", False):
+                # when theano.scan() constructs a scan node, it detects
+                # shared variables with updates and returns these updates
+                # to the user.  we need to do the same thing for every new
+                # use of such a variable that is introduced.  it's hard to
+                # do that at this point.
+                # shared variables with updates inside the inner graph of
+                # OpFromGraph are not supported at all, so we don't support
+                # introducing those either.
+                raise NotImplementedError(
+                    "Replacement introduces shared variable %s "
+                    "which has an update associated with it into "
+                    "the inner graph of %s. This is not currently "
+                    "supported." % (outer_input, containing_op))
+            # if this foreign input is not already available
+            # as an inner input, connect it through a new
+            # inner input
+            if outer_input not in outer_to_inner.keys():
+                inner_input = scan_utils.safe_new(outer_input, tag="_copy")
+                outer_to_inner[outer_input] = inner_input
+                extra_inner_inputs.append(inner_input)
+                extra_outer_inputs.append(outer_input)
+                # the inner FunctionGraph wants to know its inputs
+                # beforehand, but we don't always know.  so add them
+                # as we discover them.
+                graph.owner.fgraph.add_input(inner_input)
+
+        replacements.extend(outer_to_inner.items())
+
+        new_graph, = theano.clone([new_graph],
+                                  share_inputs=True,
+                                  replace=replacements)
+        return new_graph
+
+    new_inner_outputs = map_variables(inner_replacer, inner_outputs)
+    new_inner_inputs = list(chain(inner_inputs, extra_inner_inputs))
+    new_outer_inputs = list(chain(outer_inputs, extra_outer_inputs))
+
+    return new_inner_inputs, new_outer_inputs, new_inner_outputs
+
+
 def get_updates_and_outputs(ls):
     """
     This function tries to recognize the updates OrderedDict, the
     list of outputs and the stopping condition returned by the
-    lambda expression and arrange them in a predefined order
+    lambda expression and arrange them in a predefined order.
 
     WRITEME: what is the type of ls? how is it formatted?
             if it's not in the predefined order already, how does
@@ -297,6 +514,7 @@ def get_updates_and_outputs(ls):
 
         Return True iff `x` is made only of lists, tuples, dictionaries, Theano
         variables or `theano.scan_module.until` objects.
+
         """
         # Is `x` a container we can iterate on?
         iter_on = None
@@ -389,23 +607,26 @@ def isNaN_or_Inf_or_None(x):
     return isNone or isNaN or isInf or isStr
 
 
-def expand(tensor_var, size):
-    '''
-    Transoforms the shape of a tensor from (d1, d2 ... ) to ( d1+size, d2, ..)
-    by adding 0s at the end of the tensor.
-    '''
-    # Corner case that I might use in an optimization
+def expand_empty(tensor_var, size):
+    """
+    Transforms the shape of a tensor from (d1, d2 ... ) to ( d1+size, d2, ..)
+    by adding uninitialized memory at the end of the tensor.
+
+    """
+
     if size == 0:
         return tensor_var
     shapes = [tensor_var.shape[x] for x in xrange(tensor_var.ndim)]
-    zeros_shape = [size + shapes[0]] + shapes[1:]
-    empty = tensor.zeros(zeros_shape,
-                               dtype=tensor_var.dtype)
-    return tensor.set_subtensor(empty[:shapes[0]], tensor_var)
+    new_shape = [size + shapes[0]] + shapes[1:]
+    empty = tensor.AllocEmpty(tensor_var.dtype)(*new_shape)
+
+    ret = tensor.set_subtensor(empty[:shapes[0]], tensor_var)
+    ret.tag.nan_guard_mode_check = False
+    return ret
 
 
 def equal_computations(xs, ys, in_xs=None, in_ys=None):
-    '''Checks if Theano graphs represent the same computations.
+    """Checks if Theano graphs represent the same computations.
 
     The two lists `xs`, `ys` should have the same number of entries. The
     function checks if for any corresponding pair `(x,y)` from `zip(xs,ys)`
@@ -419,7 +640,7 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
     `ys`, but also represent subgraphs of a computational graph in `xs`
     or `ys`.
 
-    '''
+    """
     assert len(xs) == len(ys)
     if in_xs is None:
         in_xs = []
@@ -459,14 +680,16 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
     # Explore the two graphs, in parallel, depth first, comparing the nodes
     # along the way for equality.
     def compare_nodes(nd_x, nd_y, common, different):
-        ''' Compare two nodes to determine if they perform equal computation.
+        """
+        Compare two nodes to determine if they perform equal computation.
         This is done by comparing the ops, the number of inputs, outputs and
         by ensuring that the inputs themselves are the result of equal
         computation.
 
         NOTE : This function relies on the variable common to cache
         results to be more efficient.
-        '''
+
+        """
 
         if nd_x.op != nd_y.op:
             return False
@@ -536,13 +759,14 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
 
 
 def infer_shape(outs, inputs, input_shapes):
-    '''
-    Compute the shape of the outputs given the shape of the inputs
-    of a theano graph.
+    """
+    Compute the shape of the outputs given the shape of the inputs of a theano
+    graph.
 
     We do it this way to avoid compiling the inner function just to get
     the shape. Changes to ShapeFeature could require changes in this function.
-    '''
+
+    """
     # We use a ShapeFeature because it has all the necessary logic
     # inside.  We don't use the full ShapeFeature interface, but we
     # let it initialize itself with an empty fgraph, otherwise we will
@@ -559,10 +783,10 @@ def infer_shape(outs, inputs, input_shapes):
         shape_feature.set_shape(inp, inp_shp)
 
     def local_traverse(out):
-        '''
+        """
         Go back in the graph, from out, adding computable shapes to shape_of.
-        '''
 
+        """
         if out in shape_feature.shape_of:
             # Its shape is already known
             return
@@ -588,14 +812,18 @@ def infer_shape(outs, inputs, input_shapes):
 
 
 class Validator(object):
+    """
+    Check if variables can be expressed without using variables in invalid.
+
+    Parameters
+    ----------
+    valid_equivalent
+        Provides a dictionary mapping some invalid variables to valid ones that
+        can be used instead.
+
+    """
+
     def __init__(self, valid=None, invalid=None, valid_equivalent=None):
-        '''
-        Check if variables can be expressed without using variables in invalid.
-
-        init_valid_equivalent provides a dictionary mapping some invalid
-        variables to valid ones that can be used instead.
-        '''
-
         if valid is None:
             valid = []
         if invalid is None:
@@ -615,13 +843,14 @@ class Validator(object):
         self.invalid.update(list(valid_equivalent.keys()))
 
     def check(self, out):
-        '''
+        """
         Go backwards in the graph, from out, and check if out is valid.
 
         If out is a valid node, (out, True) is returned.
         If out is not valid, but has an equivalent e, (e, False) is returned.
         If out is not valid and has no equivalent, None is returned.
-        '''
+
+        """
         if out in self.valid:
             return out, True
         elif out in self.valid_equivalent:
@@ -630,16 +859,19 @@ class Validator(object):
             return None
 
         if out.owner is None:
-            # This is an unknown input node, so it is invalid.
-            self.invalid.add(out)
             if isinstance(out, tensor.TensorConstant):
-                # We can clone it to get a valid constant
+                # This might be a constant from the outer graph or a constant
+                # from the inner graph. In all cases, we can clone it to be
+                # certain we have a valid constant
                 cloned_out = out.clone()
                 self.valid.add(cloned_out)
+                self.invalid.add(out)
                 self.valid_equivalent[out] = cloned_out
                 return cloned_out, False
-
-            return None
+            else:
+                # This is an input node and it has not been explicitly marked
+                # as invalid so we can use it
+                return out, True
 
         # Recurse over inputs
         inputs = [self.check(i) for i in out.owner.inputs]
@@ -666,12 +898,13 @@ class Validator(object):
 
 
 def scan_can_remove_outs(op, out_idxs):
-    '''
+    """
     Looks at all outputs defined by indices ``out_idxs`` and see whom can be
     removed from the scan op without affecting the rest. Return two lists,
     the first one with the indices of outs that can be removed, the second
     with the outputs that can not be removed.
-    '''
+
+    """
     non_removable = [o for i, o in enumerate(op.outputs) if i not in
                      out_idxs]
     required_inputs = gof.graph.inputs(non_removable)
@@ -705,7 +938,7 @@ def scan_can_remove_outs(op, out_idxs):
 
 
 def compress_outs(op, not_required, inputs):
-    '''
+    """
     Helpful function that gets a Scan op, a list of indices indicating
     which outputs are not required anymore and should be removed, and
     a list of inputs to the apply node corresponding to the scan op and
@@ -713,7 +946,8 @@ def compress_outs(op, not_required, inputs):
     the indicated outputs are eliminated. Note that eliminating an output
     means removing its inputs from the inner funciton and from the
     node inputs, and changing the dictionary.
-    '''
+
+    """
     info = OrderedDict()
     info['tap_array'] = []
     info['n_seqs'] = op.info['n_seqs']
@@ -851,6 +1085,7 @@ def compress_outs(op, not_required, inputs):
 def find_up(l_node, f_node):
     r"""
     Goes up in the graph and returns True if a node in nodes is found.
+
     """
     if isinstance(l_node, gof.Apply):
         l_outs = l_node.outputs
@@ -865,8 +1100,9 @@ def reconstruct_graph(inputs, outputs, tag=None):
     """
     Different interface to clone, that allows you to pass inputs.
     Compared to clone, this method always replaces the inputs with
-    new variables of the same type, and returns those ( in the same
+    new variables of the same type, and returns those (in the same
     order as the original inputs).
+
     """
     if tag is None:
         tag = ''
@@ -884,7 +1120,11 @@ def reconstruct_graph(inputs, outputs, tag=None):
 
 
 class scan_args(object):
-    """Parses the inputs and outputs of scan in an easy to manipulate format"""
+    """
+    Parses the inputs and outputs of scan in an easy to manipulate format.
+
+    """
+
     def __init__(self, outer_inputs, outer_outputs,
                  _inner_inputs, _inner_outputs, info):
         self.n_steps = outer_inputs[0]
@@ -1069,17 +1309,22 @@ class scan_args(object):
 
 def forced_replace(out, x, y):
     """
-    :param out: Theano Variable
-    :param x: Theano Variable
-    :param y: Theano Variable
+    Check all internal values of the graph that compute the variable ``out``
+    for occurrences of values identical with ``x``. If such occurrences are
+    encountered then they are replaced with variable ``y``.
 
-    This function checks all internal values of the graph that computes the
-    variable ``out`` for occurances of values identical with ``x``. If such
-    occurances are encountered then they are replaced with variable ``y``.
-    For example:
-        out := sigmoid(wu)*(1-sigmoid(wu))
-        x := sigmoid(wu)
-        forced_replace(out, x, y) := y*(1-y)
+    Parameters
+    ----------
+    out : Theano Variable
+    x : Theano Variable
+    y : Theano Variable
+
+    Examples
+    --------
+    out := sigmoid(wu)*(1-sigmoid(wu))
+    x := sigmoid(wu)
+    forced_replace(out, x, y) := y*(1-y)
+
     """
     if out is None:
         return None

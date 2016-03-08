@@ -2,6 +2,10 @@
 :mod:`tensor.extra_ops` --  Tensor Extra Ops
 ===================================================================
 
+.. testsetup:: *
+
+   from theano.tensor.extra_ops import *
+
 .. module:: tensor.extra_ops
    :platform: Unix, Windows
    :synopsis: Tensor Extra Ops

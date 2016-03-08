@@ -1,9 +1,11 @@
 from __future__ import print_function
+
+import numpy as N
 from six.moves import xrange
+
 import theano
 from theano.tensor import basic as T
-import numpy as N
-#from util import strutil
+# from util import strutil
 from theano.tensor.blas_headers import blas_header_text, blas_header_version
 from theano.tensor.blas import ldflags
 from theano.misc import strutil
@@ -42,27 +44,32 @@ from theano.gradient import grad_undefined
 # the output function is only defined when dr, dc, dt are natural numbers.
 
 class Conv3D(theano.Op):
-    """ 3D `convolution` of multiple filters on a minibatch
-        :note: does not flip the kernel, moves kernel with a user specified stride
     """
-    def __eq__(self, other):
-        return type(self) == type(other)
+    3D `convolution` of multiple filters on a minibatch.
 
-    def __hash__(self):
-        return hash(type(self))
+    Notes
+    -----
+    Does not flip the kernel, moves kernel with a user specified stride.
 
-    def __str__(self):
-        return "Conv3D"
+    """
+    __props__ = ()
 
     def c_code_cache_version(self):
         return (3, blas_header_version())
 
     def make_node(self, V, W, b, d):
         """
-            :param V: Visible unit, input(batch,row,column,time,in channel)
-            :param W: Weights, filter(out channel,row,column,time,in channel)
-            :param b: bias, shape == (W.shape[0],)
-            :param d: strides when moving the filter over the input(dx,dy,dt)
+        Parameters
+        ----------
+        V
+            Visible unit, input(batch,row,column,time,in channel)
+        W
+            Weights, filter(out channel,row,column,time,in channel)
+        b
+            bias, shape == (W.shape[0],)
+        d
+            strides when moving the filter over the input(dx,dy,dt)
+
         """
 
         V_ = T.as_tensor_variable(V)
@@ -79,26 +86,28 @@ class Conv3D(theano.Op):
 
     def grad(self, inputs, output_gradients):
         V, W, b, d = inputs
-        dCdH , = output_gradients
+        dCdH, = output_gradients
         # make all of these ops support broadcasting of scalar b to vector b and eplace the zeros_like in all their grads
         # print dCdH.broadcastable
         # print "dCdH.broadcastable"
         # quit(-1)
-        #dCdH = printing.Print("dCdH = ",["shape"])
+        # dCdH = printing.Print("dCdH = ",["shape"])
 
         # Make sure the broadcasting pattern of the gradient is the the same
         # as the initial variable
-        dCdV = ConvTransp3D.convTransp3D(W, T.zeros_like(V[0, 0, 0, 0, :]), d, dCdH, V.shape[1:4])
+        dCdV = theano.tensor.nnet.convTransp3D(
+            W, T.zeros_like(V[0, 0, 0, 0, :]), d, dCdH, V.shape[1:4])
         dCdV = T.patternbroadcast(dCdV, V.broadcastable)
         WShape = W.shape
-        dCdW = ConvGrad3D.convGrad3D(V, d, WShape, dCdH)
+        dCdW = theano.tensor.nnet.convGrad3D(V, d, WShape, dCdH)
         dCdW = T.patternbroadcast(dCdW, W.broadcastable)
         dCdb = T.sum(dCdH, axis=(0, 1, 2, 3))
         dCdb = T.patternbroadcast(dCdb, b.broadcastable)
-        dCdd = grad_undefined(self, 3, inputs[3],
-                "The gradient of Conv3D with respect to the convolution" +\
-                " stride is undefined because Conv3D is only defined for" +\
-                " integer strides.")
+        dCdd = grad_undefined(
+            self, 3, inputs[3],
+            "The gradient of Conv3D with respect to the convolution"
+            " stride is undefined because Conv3D is only defined for"
+            " integer strides.")
 
         if 'name' in dir(dCdH) and dCdH.name is not None:
             dCdH_name = dCdH.name
@@ -120,11 +129,13 @@ class Conv3D(theano.Op):
         else:
             b_name = 'anon_b'
 
-        dCdV.name = 'Conv3D_dCdV(dCdH='+dCdH_name+',V='+V_name+')'
-        dCdW.name = 'Conv3D_dCdW(dCdH='+dCdH_name+',V='+V_name+',W='+W_name+')'
-        dCdb.name = 'Conv3D_dCdb(dCdH='+dCdH_name+',V='+V_name+',W='+W_name+',b='+b_name+')'
+        dCdV.name = 'Conv3D_dCdV(dCdH=' + dCdH_name + ',V=' + V_name + ')'
+        dCdW.name = ('Conv3D_dCdW(dCdH=' + dCdH_name + ',V=' + V_name +
+                     ',W=' + W_name + ')')
+        dCdb.name = ('Conv3D_dCdb(dCdH=' + dCdH_name + ',V=' + V_name +
+                     ',W=' + W_name + ',b=' + b_name + ')')
 
-        return [ dCdV, dCdW, dCdb, dCdd ]
+        return [dCdV, dCdW, dCdb, dCdd]
 
     def perform(self, node, inputs, output_storage):
         V, W, b, d = inputs
@@ -147,11 +158,11 @@ class Conv3D(theano.Op):
         vidDur = V_shape[3]
         filterDur = W_shape[3]
 
-        output_height = T.floor((vidHeight - filterHeight) // dr) + 1
-        output_width = T.floor((vidWidth - filterWidth) // dc) + 1
-        output_dur = T.floor((vidDur - filterDur) // dt) + 1
+        output_height = ((vidHeight - filterHeight) // dr) + 1
+        output_width = ((vidWidth - filterWidth) // dc) + 1
+        output_dur = ((vidDur - filterDur) // dt) + 1
 
-        rval = (batch_size,  output_height, output_width, output_dur, output_channels )
+        rval = (batch_size, output_height, output_width, output_dur, output_channels)
 
         return [rval]
 
@@ -162,7 +173,7 @@ class Conv3D(theano.Op):
         return ldflags()
 
     def c_compile_args(self):
-        flags =  ldflags(libs=False, flags=True)
+        flags = ldflags(libs=False, flags=True)
         return flags
 
     def c_lib_dirs(self):
@@ -177,7 +188,7 @@ class Conv3D(theano.Op):
 
         H = outputs[0]
 
-        codeSource =  """
+        codeSource = """
             ///////////// < code generated by Conv3D >
 
             //printf("\t\t\t\tConv3D c code\\n");
@@ -327,13 +338,13 @@ class Conv3D(theano.Op):
         VV, WV, bv, dv = node.inputs
         HV = node.outputs[0]
         if (theano.config.blas.ldflags and
-            VV.dtype == WV.dtype and HV.dtype == VV.dtype):
+                VV.dtype == WV.dtype and HV.dtype == VV.dtype):
             if VV.dtype == 'float64':
                 gemv = 'dgemv_'
             elif VV.dtype == 'float32':
                 gemv = 'sgemv_'
             else:
-                raise Exception('Unrecognized dtype for convolution '+V.value.dtype)
+                raise Exception('Unrecognized dtype for convolution ' + V.value.dtype)
 
             codeSource += """
             if (inputChannels > 20 && outputChannels > 20 && ws4 == sizeof(ELEM_AT(%(W)s,0)))
@@ -540,28 +551,39 @@ _conv3D = Conv3D()
 
 def conv3D(V, W, b, d):
     """
-    3D "convolution" of multiple filters on a minibatch
+    3D "convolution" of multiple filters on a minibatch.
+
     (does not flip the kernel, moves kernel with a user specified stride)
 
-    :param V: Visible unit, input.
-        dimensions: (batch, row, column, time, in channel)
-    :param W: Weights, filter.
-        dimensions: (out channel, row, column, time ,in channel)
-    :param b: bias, shape == (W.shape[0],)
-    :param d: strides when moving the filter over the input(dx, dy, dt)
+    Parameters
+    ----------
+    V
+        Visible unit, input.
+        Dimensions: (batch, row, column, time, in channel).
+    W
+        Weights, filter.
+        Dimensions: (out channel, row, column, time ,in channel).
+    b
+        Bias, shape == (W.shape[0],).
+    d
+        Strides when moving the filter over the input(dx, dy, dt).
 
-    :note: The order of dimensions does not correspond to the one in `conv2d`.
-           This is for optimization.
+    Notes
+    -----
+    The order of dimensions does not correspond to the one in `conv2d`.
+    This is for optimization.
 
-    :note: The GPU implementation is very slow. You should use
-           :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>` or
-           :func:`conv3d_fft <theano.sandbox.cuda.fftconv.conv3d_fft>` for a
-           GPU graph instead.
+    The GPU implementation is very slow. You should use
+    :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>` or
+    :func:`conv3d_fft <theano.sandbox.cuda.fftconv.conv3d_fft>` for a
+    GPU graph instead.
 
-    :see: Someone made a script that shows how to swap the axes
-          between both 3d convolution implementations in Theano. See
-          the last `attachment
-          <https://groups.google.com/d/msg/theano-users/1S9_bZgHxVw/0cQR9a4riFUJ>`_.
+    See Also
+    --------
+    Someone made a script that shows how to swap the axes
+    between both 3d convolution implementations in Theano. See
+    the last `attachment <https://groups.google.com/d/msg/theano-users/1S9_bZgHxVw/0cQR9a4riFUJ>`_
+
 """
     return _conv3D(V, W, b, d)
 
@@ -578,7 +600,7 @@ def computeH(V, W, b, d):
     outputChannels = W.shape[0]
     inputChannels = V.shape[4]
     if W.shape[4] != inputChannels:
-        raise Exception("W.shape[4] = "+str(W.shape[4])+" but inputChannels = "+str(inputChannels))
+        raise Exception("W.shape[4] = " + str(W.shape[4]) + " but inputChannels = " + str(inputChannels))
     filterHeight = W.shape[1]
     filterWidth = W.shape[2]
     filterDur = W.shape[3]
@@ -593,12 +615,12 @@ def computeH(V, W, b, d):
     assert dy > 0
     assert dt > 0
 
-    outputHeight = int( (vidHeight - filterHeight) / dx )+1
-    outputWidth = int( (vidWidth - filterWidth) / dy )+1
-    outputDur = int( (vidDur - filterDur) / dt ) + 1
+    outputHeight = int((vidHeight - filterHeight) / dx) + 1
+    outputWidth = int((vidWidth - filterWidth) / dy) + 1
+    outputDur = int((vidDur - filterDur) / dt) + 1
 
-    H =  N.zeros( (batchSize,  outputHeight,
-        outputWidth, outputDur, outputChannels ), dtype=V.dtype )
+    H = N.zeros((batchSize, outputHeight,
+                outputWidth, outputDur, outputChannels), dtype=V.dtype)
 
     # H[i,j,x,y,t] = b_j + sum_k sum_l sum_m sum_z W[j,z,k,l,m] V[i,z, dx*x+k,dy*y+l,dt*t+m]
     for i in xrange(0, H.shape[0]):
@@ -617,12 +639,8 @@ def computeH(V, W, b, d):
                                         # if (i,j,x,y,t) == (0,0,0,0,0):
                                         #    print (( W[j,z,k,l,m] , V[i,z,d[0]*x+k,d[1]*y+l,d[2]*t+m] ), (k,l,m) )
                                         w = W[j, k, l, m, z]
-                                        v = V[i, d[0]*x+k, d[1]*y+l, d[2]*t+m, z]
+                                        v = V[i, d[0] * x + k, d[1] * y + l, d[2] * t + m, z]
                                         # if i == 0 and x == 0 and y == 0 and t == 0 and j == 0:
                                         #    print 'setting H[0] += '+str(w*v)+'   W['+str((j,z,k,l,m))+']='+str(w)+'   V['+str((i,d[0]*x+k,d[1]*y+l,d[2]*t+m,z))+']='+str(v)
                                         H[i, x, y, t, j] += w * v
     return H
-
-
-from . import ConvGrad3D
-from . import ConvTransp3D

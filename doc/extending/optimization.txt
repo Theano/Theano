@@ -113,18 +113,16 @@ We will implement it in three ways: using a global optimization, a
 local optimization with a Navigator and then using the PatternSub
 facility.
 
-
 Global optimization
 -------------------
 
 Here is the code for a global optimization implementing the
 simplification described above:
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
+.. testcode::
 
-.. code-block:: python
-
+   import theano
+   from theano import gof
    from theano.gof import toolbox
 
    class Simplify(gof.Optimizer):
@@ -132,7 +130,7 @@ simplification described above:
            fgraph.attach_feature(toolbox.ReplaceValidate())
        def apply(self, fgraph):
            for node in fgraph.toposort():
-               if node.op == div:
+               if node.op == true_div:
                    x, y = node.inputs
                    z = node.outputs[0]
                    if x.owner and x.owner.op == mul:
@@ -181,48 +179,47 @@ pointer-following game you need to get ahold of the nodes of interest
 for the simplification (``x``, ``y``, ``z``, ``a``, ``b``, etc.).
 
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
-
 Test time:
 
->>> x = double('x')
->>> y = double('y')
->>> z = double('z')
->>> a = add(z, mul(div(mul(y, x), y), div(z, x)))
+>>> from theano.scalar import float64, add, mul, true_div
+>>> x = float64('x')
+>>> y = float64('y')
+>>> z = float64('z')
+>>> a = add(z, mul(true_div(mul(y, x), y), true_div(z, x)))
 >>> e = gof.FunctionGraph([x, y, z], [a])
 >>> e
-[add(z, mul(div(mul(y, x), y), div(z, x)))]
+[add(z, mul(true_div(mul(y, x), y), true_div(z, x)))]
 >>> simplify.optimize(e)
 >>> e
-[add(z, mul(x, div(z, x)))]
+[add(z, mul(x, true_div(z, x)))]
 
 Cool! It seems to work. You can check what happens if you put many
 instances of :math:`\frac{xy}{y}` in the graph. Note that it sometimes
 won't work for reasons that have nothing to do with the quality of the
 optimization you wrote. For example, consider the following:
 
->>> x = double('x')
->>> y = double('y')
->>> z = double('z')
->>> a = div(mul(add(y, z), x), add(y, z))
+>>> x = float64('x')
+>>> y = float64('y')
+>>> z = float64('z')
+>>> a = true_div(mul(add(y, z), x), add(y, z))
 >>> e = gof.FunctionGraph([x, y, z], [a])
 >>> e
-[div(mul(add(y, z), x), add(y, z))]
+[true_div(mul(add(y, z), x), add(y, z))]
 >>> simplify.optimize(e)
 >>> e
-[div(mul(add(y, z), x), add(y, z))]
+[true_div(mul(add(y, z), x), add(y, z))]
 
 Nothing happened here. The reason is: ``add(y, z) != add(y,
 z)``. That is the case for efficiency reasons. To fix this problem we
 first need to merge the parts of the graph that represent the same
-computation, using the ``merge_optimizer`` defined in
+computation, using the ``MergeOptimizer`` defined in
 ``theano.gof.opt``.
 
->>> from theano.gof.opt import merge_optimizer
->>> merge_optimizer.optimize(e)
+>>> from theano.gof.opt import MergeOptimizer
+>>> MergeOptimizer().optimize(e)  # doctest: +ELLIPSIS
+(0, ..., None, None, {}, 1, 0)
 >>> e
-[div(mul(*1 -> add(y, z), x), *1)]
+[true_div(mul(*1 -> add(y, z), x), *1)]
 >>> simplify.optimize(e)
 >>> e
 [x]
@@ -251,15 +248,12 @@ Local optimization
 
 The local version of the above code would be the following:
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
-
-.. code-block:: python
+.. testcode::
 
    class LocalSimplify(gof.LocalOptimizer):
        def transform(self, node):
-           if node.op == div:
+           if node.op == true_div:
                x, y = node.inputs
                if x.owner and x.owner.op == mul:
                    a, b = x.owner.inputs
@@ -292,21 +286,18 @@ with a :ref:`navigator`. Basically, a :ref:`navigator` is a global
 optimizer that loops through all nodes in the graph (or a well-defined
 subset of them) and applies one or several local optimizers on them.
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
-
->>> x = double('x')
->>> y = double('y')
->>> z = double('z')
->>> a = add(z, mul(div(mul(y, x), y), div(z, x)))
+>>> x = float64('x')
+>>> y = float64('y')
+>>> z = float64('z')
+>>> a = add(z, mul(true_div(mul(y, x), y), true_div(z, x)))
 >>> e = gof.FunctionGraph([x, y, z], [a])
 >>> e
-[add(z, mul(div(mul(y, x), y), div(z, x)))]
+[add(z, mul(true_div(mul(y, x), y), true_div(z, x)))]
 >>> simplify = gof.TopoOptimizer(local_simplify)
 >>> simplify.optimize(e)
+(<theano.gof.opt.TopoOptimizer object at 0x...>, 1, 5, 3, ..., ..., ...)
 >>> e
-[add(z, mul(x, div(z, x)))]
-
+[add(z, mul(x, true_div(z, x)))]
 
 OpSub, OpRemove, PatternSub
 +++++++++++++++++++++++++++
@@ -331,8 +322,11 @@ Theano defines some shortcuts to make LocalOptimizers:
   Replaces all occurrences of the first pattern by the second pattern.
   See :class:`PatternSub`.
 
+.. testsetup::
 
-.. code-block:: python
+   from theano.scalar import identity
+
+.. testcode::
 
    from theano.gof.opt import OpSub, OpRemove, PatternSub
 
@@ -346,9 +340,9 @@ Theano defines some shortcuts to make LocalOptimizers:
    # The "simplify" operation we've been defining in the past few
    # sections. Note that we need two patterns to account for the
    # permutations of the arguments to mul.
-   local_simplify_1 = PatternSub((div, (mul, 'x', 'y'), 'y'),
+   local_simplify_1 = PatternSub((true_div, (mul, 'x', 'y'), 'y'),
                                  'x')
-   local_simplify_2 = PatternSub((div, (mul, 'x', 'y'), 'x'),
+   local_simplify_2 = PatternSub((true_div, (mul, 'x', 'y'), 'x'),
                                  'y')
 
 .. note::
@@ -437,7 +431,7 @@ A Query is built by the following call:
 
 .. code-block:: python
 
-   theano.gof.Query(include, require = None, exclude = None, subquery = None)
+   theano.gof.Query(include, require=None, exclude=None, subquery=None)
 
 .. class:: Query
 
@@ -476,22 +470,23 @@ Examples
 Here are a few examples of how to use a Query on optdb to produce an
 Optimizer:
 
-.. code-block:: python
+.. testcode::
    
+   from theano.gof import Query
    from theano.compile import optdb
 
    # This is how the optimizer for the fast_run mode is defined
-   fast_run = optdb.query(Query(include = ['fast_run']))
+   fast_run = optdb.query(Query(include=['fast_run']))
 
    # This is how the optimizer for the fast_compile mode is defined
-   fast_compile = optdb.query(Query(include = ['fast_compile']))
+   fast_compile = optdb.query(Query(include=['fast_compile']))
 
    # This is the same as fast_run but no optimizations will replace
    # any operation by an inplace version. This assumes, of course,
    # that all inplace operations are tagged as 'inplace' (as they
    # should!)
-   fast_run_no_inplace = optdb.query(Query(include = ['fast_run'], exclude = ['inplace']))
-   fast_run_no_inplace = fast_run.excluding('inplace')
+   fast_run_no_inplace = optdb.query(Query(include=['fast_run'],
+                                           exclude=['inplace']))
 
 
 Registering an Optimizer
@@ -500,7 +495,7 @@ Registering an Optimizer
 Let's say we have a global optimizer called ``simplify``. We can add
 it to ``optdb`` as follows:
 
-.. code-block:: python
+.. testcode::
 
    # optdb.register(name, optimizer, order, *tags)
    optdb.register('simplify', simplify, 0.5, 'fast_run')
@@ -662,7 +657,8 @@ Detailed profiling of Theano optimizer
 
 You can get more detailed profiling information about the Theano
 optimizer phase by setting to `True` the Theano flags
-:attr:`config.profile_optimizer`.
+:attr:`config.profile_optimizer` (this require `config.profile` to be `True`
+as well).
 
 This will output something like this:
 
@@ -886,7 +882,7 @@ To understand this profile here is some explanation of how optimizations work:
   * 0.028s means it spent that time calls to ``fgraph.validate()``
   * 0.131s means it spent that time for callbacks. This is a mechanism that can trigger other execution when there is a change to the FunctionGraph.
   * ``time      - (name, class, index) - validate time`` tells how the information for each sub-optimizer get printed.
-  * All other instances of ``SeqOptimizer`` are described like this. In particular, some sub-optimizer from OPT_FAST_RUN that are also ``SeqOptimizer``s.
+  * All other instances of ``SeqOptimizer`` are described like this. In particular, some sub-optimizer from OPT_FAST_RUN that are also ``SeqOptimizer``.
 
 
 * The ``SeqOptimizer`` will print some stats at the start:
@@ -965,7 +961,7 @@ To understand this profile here is some explanation of how optimizations work:
     a total of .7s. Its name is ``'canonicalize'``. It is an
     ``EquilibriumOptimizer``. It was executed at index 4 by the
     ``SeqOptimizer``. It spent 0.004s in the *validate* phase.
-  * All other lines are from the profiler of the ``EquilibriumOptimizer`.
+  * All other lines are from the profiler of the ``EquilibriumOptimizer``.
 
   * An ``EquilibriumOptimizer`` does multiple passes on the Apply nodes from
     the graph, trying to apply local and global optimizations.

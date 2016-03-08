@@ -439,20 +439,9 @@ def test_default_conv():
         assert any([isinstance(a.op, cuda.blas.GpuCorrMM)
                     for a in f.maker.fgraph.apply_nodes])
 
-    mode = theano_mode.excluding('local_conv_dnn', 'local_conv_gemm')
-    f = theano.function([img, fil], c, mode=mode)
 
-    assert any([isinstance(a.op, cuda.blas.GpuConv)
-                for a in f.maker.fgraph.apply_nodes])
-
-    mode = theano_mode.excluding('conv_dnn', 'conv_gemm')
-    f = theano.function([img, fil], c, mode=mode)
-
-    assert any([isinstance(a.op, cuda.blas.GpuConv)
-                for a in f.maker.fgraph.apply_nodes])
-
-
-def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
+def _test_full(cls, mode=None, version=[-1], extra_shapes=[],
+               test_bigger_kernels=True):
     seed_rng()
     shapes = get_basic_shapes()
     shapes += get_shapes2()
@@ -481,14 +470,18 @@ def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
             , ((16, 5, 64, 64), (8, 5, 8, 8), (1, 1), (1, 1), (1, 1))  # a big one
             , ((16, 1, 28, 28), (20, 1, 5, 5), (1, 1), (1, 1), (1, 1))  # MNIST LeNET layer 1
             , ((20, 16, 32, 32), (1, 16, 28, 28), (1, 1), (1, 1), (1, 1))  # layer 1 backprop to weights
+            ]
 
-        # other test
-            , ((3, 1, 1, 1), (2, 1, 5, 3), (1, 1), (1, 1), (1, 1))  # kernel bigger then image
+    if test_bigger_kernels:
+        # Shapes where the kernel is larger than the image in some dimension
+        shapes += [
+              ((3, 1, 1, 1), (2, 1, 5, 3), (1, 1), (1, 1), (1, 1))
             , ((3, 2, 1, 1), (4, 2, 1, 1), (1, 1), (1, 1), (1, 1))
             , ((3, 2, 4, 4), (4, 2, 2, 6), (1, 1), (1, 1), (1, 1))
-            , ((3, 2, 4, 4), (4, 2, 8, 6), (1, 1), (1, 1), (1, 1))  # kernel bigger then image
+            , ((3, 2, 4, 4), (4, 2, 8, 6), (1, 1), (1, 1), (1, 1))
             , ((4, 2, 10, 10), (3, 2, 2, 12), (1, 1), (1, 1), (1, 1))
             ]
+
     shapes += [
 #        ((60,1,28,28),(20,1,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 1 layers
 #            , ((60,20,12,12),(30,20,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 2 layers
@@ -516,9 +509,16 @@ def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
 
 
 def test_full():
-    for t in _test_full(None,
-                        mode=theano_mode,
-                        version=[-1]):
+
+    # If using CuDNN version before v3, only run the tests where the
+    # kernels are not larger than the input in any spatial dimension.
+    if cuda.dnn.dnn_available() and cuda.dnn.version() < (3000, 3000):
+        test_bigger_kernels = False
+    else:
+        test_bigger_kernels = True
+
+    for t in _test_full(None, mode=theano_mode, version=[-1],
+                        test_bigger_kernels=test_bigger_kernels):
         yield t
 
 
@@ -531,7 +531,16 @@ def test_gemm_full():
 def test_dnn_full():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
-    for t in _test_full(DnnBase, mode=theano_mode.including("cudnn")):
+
+    # If using CuDNN version before v3, only run the tests where the
+    # kernels are not larger than the input in any spatial dimension.
+    if cuda.dnn.version() < (3000, 3000):
+        test_bigger_kernels = False
+    else:
+        test_bigger_kernels = True
+
+    for t in _test_full(DnnBase, mode=theano_mode.including("cudnn"),
+                        test_bigger_kernels=test_bigger_kernels):
         yield t
 
 
@@ -593,7 +602,8 @@ class TestConv2DGPU(unittest.TestCase):
                 cuda.blas.BaseGpuCorrMM)
 
     def test_logical_shapes(self):
-        seed_rng()
+        # Logical shapes are not supported anymore, so we check that it
+        # raises an Exception.
         for stride in range(1, 4):
             kshp = (10, 2, 10, 10)
             featshp = (3, 10, 11, 11)
@@ -608,23 +618,14 @@ class TestConv2DGPU(unittest.TestCase):
             featshp_logical = (featshp[0], featshp[1], featshp[2] * stride,
                                featshp[3] * stride)
             kshp_rotated = (kshp[1], kshp[0], kshp[2], kshp[3])
-            # print featshp, kshp_rotated, featshp_logical[1:], kshp[2:]
-            image_estimate = tensor.nnet.conv2d(a, kernel_rotated,
-                                                border_mode='full',
-                                                image_shape=featshp,
-                                                filter_shape=kshp_rotated,
-                                                imshp_logical=featshp_logical[1:],
-                                                kshp_logical=kshp[2:])
+            self.assertRaises(ValueError, tensor.nnet.conv2d,
+                              a, kernel_rotated,
+                              border_mode='full',
+                              image_shape=featshp,
+                              filter_shape=kshp_rotated,
+                              imshp_logical=featshp_logical[1:],
+                              kshp_logical=kshp[2:])
 
-            func = theano.function([a, A], image_estimate, mode=theano_mode)
-            # theano.printing.debugprint(func,)
-            assert any([isinstance(node.op, self.conv_ops)
-                        for node in func.maker.fgraph.toposort()])
-
-            a_in = numpy.random.randn(*featshp).astype("float32")
-            A_in = numpy.random.randn(*kshp).astype("float32")
-
-            func(a_in, A_in)
 
     def test_invalid_input_shape(self):
         """
@@ -817,17 +818,8 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsample, op):
 
     # TODO: also test custom pad values
     corr_op = op(mode, subsample)(i, k)
-    # try to compile reference implementation without shape,
-    # so we don't have to compile hundreds of versions
     conv_op = tensor.nnet.conv2d(i, k[:, :, ::-1, ::-1],
                                  border_mode=mode, subsample=subsample)
-    try:
-        conv_op_di = theano.grad(conv_op.sum(), i)
-        conv_op_dk = theano.grad(conv_op.sum(), k)
-    except Exception:
-        # compile with shape information only when needed
-        conv_op = tensor.nnet.conv2d(i, k[:, :, ::-1, ::-1],
-                                     ishape, kshape, mode, subsample)
     conv_op_di = theano.grad(conv_op.sum(), i)
     conv_op_dk = theano.grad(conv_op.sum(), k)
     corr_op_di = theano.grad(corr_op.sum(), i)
@@ -835,18 +827,19 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsample, op):
     outputs = [corr_op, conv_op,
                corr_op_di, conv_op_di,
                corr_op_dk, conv_op_dk]
-    try:
-        conv_op_dik = theano.grad(conv_op_di.sum(), k)
-        conv_op_dki = theano.grad(conv_op_dk.sum(), i)
-        corr_op_dik = theano.grad(corr_op_di.sum(), k)
-        corr_op_dki = theano.grad(corr_op_dk.sum(), i)
-        outputs.extend([corr_op_dik, conv_op_dik,
-                        corr_op_dki, conv_op_dki])
-    except Exception:
-        # skip if the reference implementation can't do it
-        pass
 
-    f = theano.function([i, k], outputs, mode=theano_mode.excluding('conv_dnn', 'conv_gemm'))
+    conv_op_dik = theano.grad(conv_op_di.sum(), k)
+    conv_op_dki = theano.grad(conv_op_dk.sum(), i)
+    corr_op_dik = theano.grad(corr_op_di.sum(), k)
+    corr_op_dki = theano.grad(corr_op_dk.sum(), i)
+    outputs.extend([corr_op_dik, conv_op_dik,
+                    corr_op_dki, conv_op_dki])
+
+    # TODO: fix when the abstractconv tests can pass debug mode.
+    mode = theano_mode
+    if theano.config.mode == 'DEBUG_MODE':
+        mode = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+    f = theano.function([i, k], outputs, mode=mode)
 
     allvals = f(npy_img, npy_kern)
 
@@ -860,7 +853,8 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsample, op):
 
 
 def test_conv_grads():
-    if cuda.device_properties(cuda.active_device_number())['major'] < 3:
+    if (not cuda.dnn.dnn_available() or
+            cuda.device_properties(cuda.active_device_number())['major'] < 3):
         ops = [gemm_op]
     else:
         ops = [gemm_op, dnn_op]

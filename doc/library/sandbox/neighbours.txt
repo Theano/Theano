@@ -9,8 +9,4 @@
    :synopsis: Neighbours Ops
 .. moduleauthor:: LISA
 
-API
-===
-
-.. automodule:: theano.sandbox.neighbours
-    :members:
+:ref:`Moved <libdoc_tensor_nnet_neighbours>`

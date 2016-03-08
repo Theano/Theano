@@ -4,6 +4,8 @@
 #include <string.h>
 #include <gpuarray_api.h>
 #include <numpy_compat.h>
+#include <gpuarray/util.h>
+
 
 static int theano_size_check(PyGpuArrayObject *a, unsigned int nd,
                              const size_t *dims, int typecode) {
@@ -40,6 +42,16 @@ static PyGpuArrayObject *theano_try_copy(PyGpuArrayObject *out,
     out = pygpu_copy(V, GA_C_ORDER);
   }
   return out;
+}
+
+static inline void *PyGpuArray_DEV_DATA(PyGpuArrayObject *a) {
+  /* This is guaranteed to work and return the raw CUDA/OpenCL object on
+   * all recent (as of June 2015) version of libgpuarray. This is also
+   * promised to keep working in future versions. */
+  char * p = *((char **)a->ga.data);
+
+  /* This only works on cuda since we have a real pointer. */
+  return (void *)(p + a->ga.offset);
 }
 
 #endif

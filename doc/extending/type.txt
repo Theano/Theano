@@ -167,6 +167,25 @@ overridden.
 For more details you can go see the documentation for :ref:`type`.
 
 
+Additional definitions
+----------------------
+
+For certain mechanisms, you can register functions and other such
+things to plus your type into theano's mechanisms.  These are optional
+but will allow people to use you type with familiar interfaces.
+
+`transfer()`
+~~~~~~~~~~~~
+
+To plug in additional options for the transfer target, define a
+function which takes a theano variable and a target argument and
+returns eitehr a new transferred variable (which can be the same as
+the input if no transfer is nessecary) or returns None if the transfer
+can't be done.
+
+Then register that function by calling :func:`register_transfer()`
+with it as argument.
+
 Defining double
 ===============
 
@@ -176,9 +195,7 @@ must define ``filter`` and shall override ``values_eq_approx``.
 
 **filter**
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_1
-.. code-block:: python
+.. testcode::
 
     # Note that we shadow Python's function ``filter`` with this
     # definition.
@@ -215,7 +232,7 @@ when ``allow_downcast`` is False, i.e. no precision loss is allowed.
 
 **values_eq_approx**
 
-.. code-block:: python
+.. testcode::
 
    def values_eq_approx(x, y, tolerance=1e-4):
        return abs(x - y) / (abs(x) + abs(y)) < tolerance
@@ -246,9 +263,7 @@ contract. Recall that Type defines default implementations for all
 required methods of the interface, except ``filter``. One way to make
 the Type is to instantiate a plain Type and set the needed fields:
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_1
-.. code-block:: python
+.. testcode::
 
    from theano import gof
 
@@ -260,8 +275,6 @@ the Type is to instantiate a plain Type and set the needed fields:
 Another way to make this Type is to make a subclass of ``gof.Type``
 and define ``filter`` and ``values_eq_approx`` in the subclass:
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_1
 .. code-block:: python
 
    from theano import gof
@@ -285,6 +298,38 @@ There is a small issue with defining ``double`` this way. All
 instances of ``Double`` are technically the same Type. However, different
 ``Double`` Type instances do not compare the same:
 
+.. testsetup::
+
+   from theano import gof
+
+   class Double(gof.Type):
+
+       def filter(self, x, strict=False, allow_downcast=None):
+           if strict:
+               if isinstance(x, float):
+                   return x
+               else:
+                   raise TypeError('Expected a float!')
+           elif allow_downcast:
+               return float(x)
+           else:   # Covers both the False and None cases.
+               x_float = float(x)
+               if x_float == x:
+                   return x_float
+               else:
+                    raise TypeError('The double type cannot accurately represent '
+                                    'value %s (of type %s): you must explicitly '
+                                    'allow downcasting if you want to do this.'
+                                    % (x, type(x)))
+
+       def values_eq_approx(self, x, y, tolerance=1e-4):
+           return abs(x - y) / (abs(x) + abs(y)) < tolerance
+
+       def __str__(self):
+           return "double"
+
+   double = Double()
+
 >>> double1 = Double()
 >>> double2 = Double()
 >>> double1 == double2
@@ -299,10 +344,7 @@ There are several ways to make sure that equality testing works properly:
  #. Define ``Double.__eq__`` so that instances of type Double
     are equal. For example:
 
-    .. If you modify this code, also change :
-    .. theano/tests/test_tutorial.py:T_extending.test_extending_1
-
-    .. code-block:: python
+    .. testcode::
 
         def __eq__(self, other):
             return type(self) is Double and type(other) is Double
@@ -355,9 +397,7 @@ attempt to clear up the confusion:
 Final version
 =============
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_1
-.. code-block:: python
+.. testcode::
 
    from theano import gof
 

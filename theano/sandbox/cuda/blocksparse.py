@@ -1,49 +1,34 @@
+import logging
+
 import numpy
-import theano
-from theano import Apply, tensor, scalar
+from theano import Apply, tensor
 from theano.tensor import discrete_dtypes
 
 from theano.gradient import grad_undefined
 
-from theano.sandbox.cuda import cuda_available, GpuOp, GpuElemwise
+from theano.sandbox.cuda import cuda_available, GpuOp
+
+_logger = logging.getLogger('theano.sandbox.cuda.blocksparse')
 
 if cuda_available:
-    from theano.sandbox.cuda import (basic_ops,
-                                     opt, GpuFromHost,
-                                     HostFromGpu, host_from_gpu,
-                                     GpuDimShuffle)
-    from theano.sandbox.cuda.opt_util import alpha_merge, output_merge
+    from theano.sandbox.cuda import basic_ops
 
 
-class SparseBlockGemvSS(GpuOp):
+class GpuSparseBlockGemv(GpuOp):
     """
-    This op computes the dot product of specified pieces of vectors
-    and matrices, returning pieces of vectors.
-
-    It computes something like this for each j:
-
-      o[j] = sum_over_i(dot(W[i, j], h[i])) + o[j]
-
-    The i and j are taken from the inputIdx and outputIdx lists
-    respectively.
+    GPU version of SparseBlockGemv. Check SparseBlockGemv's docstring for more
+    information.
 
     This should not be directly called since the interface is subject
-    to change without notice.  Use the sparse_block_dot_SS() function
-    for a stable interface.
+    to change without notice.  Use the sandbox.blocksparse.sparse_block_dot()
+    function for a stable interface.
     """
+    __props__ = ('inplace',)
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
-
-    def __str__(self):
-        return "SparseBlockGemvSS%s" % ("{inplace}" if self.inplace else "")
 
     def make_node(self, o, W, h, inputIdx, outputIdx):
         o = basic_ops.as_cuda_ndarray_variable(o)
@@ -208,22 +193,28 @@ static int SparseBlockGemv_copy(PyArrayObject *a, npy_intp *b) {
         static int %(n)s_prep(int b, int i, int j, int outsize) {
           int s = b*i*j;
           if (%(n)s_list_len < s) {
-            cudaFree(%(n)s_inp_list);
-            cudaFree(%(n)s_out_list);
-            cudaFree(%(n)s_W_list);
-            if (cudaMalloc(&%(n)s_inp_list, s*sizeof(float *)) != cudaSuccess) return -1;
-            if (cudaMalloc(&%(n)s_out_list, s*sizeof(float *)) != cudaSuccess) return -1;
-            if (cudaMalloc(&%(n)s_W_list, s*sizeof(float *)) != cudaSuccess) return -1;
+            device_free(%(n)s_inp_list);
+            device_free(%(n)s_out_list);
+            device_free(%(n)s_W_list);
+            %(n)s_inp_list = (const float **) device_malloc(s*sizeof(float *));
+            if (%(n)s_inp_list == NULL) return -1;
+            %(n)s_out_list = (float **) device_malloc(s*sizeof(float *));
+            if (%(n)s_out_list == NULL) return -1;
+            %(n)s_W_list = (const float **) device_malloc(s*sizeof(float *));
+            if (%(n)s_W_list == NULL) return -1;
+
             %(n)s_list_len = s;
           }
           if (%(n)s_iIdx_len < b*i) {
-            cudaFree(%(n)s_iIdx);
-            if (cudaMalloc(&%(n)s_iIdx, b*i*sizeof(npy_intp)) != cudaSuccess) return -1;
+            device_free(%(n)s_iIdx);
+        %(n)s_iIdx = (npy_intp*) device_malloc(b*i*sizeof(npy_intp));
+        if (%(n)s_iIdx == NULL) return -1;
             %(n)s_iIdx_len = b*i;
           }
           if (%(n)s_oIdx_len < b*j) {
-            cudaFree(%(n)s_oIdx);
-            if (cudaMalloc(&%(n)s_oIdx, b*j*sizeof(npy_intp)) != cudaSuccess) return -1;
+            device_free(%(n)s_oIdx);
+            %(n)s_oIdx = (npy_intp*) device_malloc(b*j*sizeof(npy_intp));
+            if (%(n)s_oIdx == NULL) return -1;
             %(n)s_oIdx_len = b*j;
           }
           return 0;
@@ -326,18 +317,18 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
                    W=W, fail=sub['fail'], name=nodename)
 
     def c_code_cache_version(self):
-        return (11,)
+        return (12,)
 
     def grad(self, inputs, grads):
         o, W, h, inputIdx, outputIdx = inputs
         go = grads[0]
 
-        Wgrad = sparse_block_outer_ss(W.zeros_like(),
-                                      h, go, inputIdx, outputIdx)
-        hgrad = sparse_block_gemv_ss(h.zeros_like(),
-                                     W.dimshuffle((1, 0, 3, 2)),
-                                     go,
-                                     outputIdx, inputIdx)
+        Wgrad = gpu_sparse_block_outer(W.zeros_like(),
+                                       h, go, inputIdx, outputIdx)
+        hgrad = gpu_sparse_block_gemv(h.zeros_like(),
+                                      W.dimshuffle((1, 0, 3, 2)),
+                                      go,
+                                      outputIdx, inputIdx)
         return [go, Wgrad, hgrad,
                 grad_undefined(self, 3, inputIdx,
                                "grad of inputIdx makes no sense"),
@@ -345,38 +336,25 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
                                "grad of outputIdx makes no sense")]
 
 
-sparse_block_gemv_ss = SparseBlockGemvSS(False)
-sparse_block_gemv_ss_inplace = SparseBlockGemvSS(True)
+gpu_sparse_block_gemv = GpuSparseBlockGemv(False)
+gpu_sparse_block_gemv_inplace = GpuSparseBlockGemv(True)
 
 
-class SparseBlockOuterSS(GpuOp):
+class GpuSparseBlockOuter(GpuOp):
     """
-    This computes the outer product of two sets of pieces of vectors
-    updating a full matrix with the results.
-
-    It computes something like this:
-
-      o[i, j] = (alpha * outer(x[i], y[j])) + o[i, j]
-
-    The i and j are taken from the xIdx and yIdx lists respectively.
+    GPU version of SparseBlockOuter. See SparseBlockOuter's docstring for more
+    information.
 
     This op should not be called directly since its interface is
     subject to change without notice.  It is involved in the gradient
-    of SparseBlockGemvSS.
+    of GpuSparseBlockGemv. The gradient is not implemented.
     """
+    __props__ = ('inplace',)
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
-
-    def __str__(self):
-        return "SparseBlockOuterSS%s" % ("{inplace}" if self.inplace else "")
 
     def make_node(self, o, x, y, xIdx, yIdx, alpha=None):
         one = tensor.constant(numpy.asarray(1.0, dtype='float32'))
@@ -509,24 +487,27 @@ static size_t %(n)s_yIdx_len;
 static int %(n)s_prep(int b, int i, int j) {
   int s = b*i*j;
   if (%(n)s_list_len < s) {
-    cudaFree(%(n)s_x_list);
-    cudaFree(%(n)s_y_list);
-    cudaFree(%(n)s_out_list);
-    if (cudaMalloc(&%(n)s_x_list, s*sizeof(float *)) != cudaSuccess) return -1;
-    if (cudaMalloc(&%(n)s_y_list, s*sizeof(float *)) != cudaSuccess) return -1;
-    if (cudaMalloc(&%(n)s_out_list, s*sizeof(float *)) != cudaSuccess) return -1;
+    device_free(%(n)s_x_list);
+    device_free(%(n)s_y_list);
+    device_free(%(n)s_out_list);
+    %(n)s_x_list = (const float **) device_malloc(s*sizeof(float *));
+    if (%(n)s_x_list == NULL) return -1;
+    %(n)s_y_list = (const float **) device_malloc(s*sizeof(float *));
+    if (%(n)s_y_list == NULL) return -1;
+    %(n)s_out_list = (float **) device_malloc(s*sizeof(float *));
+    if (%(n)s_out_list == NULL) return -1;
     %(n)s_list_len = s;
   }
   if (%(n)s_xIdx_len < b*i) {
-    cudaFree(%(n)s_xIdx);
-    if (cudaMalloc(&%(n)s_xIdx, b*i*sizeof(npy_intp)) != cudaSuccess)
-      return -1;
+    device_free(%(n)s_xIdx);
+    %(n)s_xIdx = (npy_intp*) device_malloc(b*i*sizeof(npy_intp));
+    if (%(n)s_xIdx == NULL) return -1;
     %(n)s_xIdx_len = b*i;
   }
   if (%(n)s_yIdx_len < b*j) {
-    cudaFree(%(n)s_yIdx);
-    if (cudaMalloc(&%(n)s_yIdx, b*j*sizeof(npy_intp)) != cudaSuccess)
-      return -1;
+    device_free(%(n)s_yIdx);
+    %(n)s_yIdx = (npy_intp*) device_malloc(b*j*sizeof(npy_intp));
+    if (%(n)s_yIdx == NULL) return -1;
     %(n)s_yIdx_len = b*j;
   }
   return 0;
@@ -585,8 +566,10 @@ CudaNdarray_HOST_DIMS(%(x)s)[1], CudaNdarray_HOST_DIMS(%(y)s)[1],
 %(name)s_x_list,
 %(name)s_y_list,
 %(name)s_out_list,
-CudaNdarray_DEV_DATA(%(x)s), CudaNdarray_HOST_STRIDES(%(x)s)[0], CudaNdarray_HOST_STRIDES(%(x)s)[1],
-CudaNdarray_DEV_DATA(%(y)s), CudaNdarray_HOST_STRIDES(%(y)s)[0], CudaNdarray_HOST_STRIDES(%(y)s)[1],
+CudaNdarray_DEV_DATA(%(x)s), CudaNdarray_HOST_STRIDES(%(x)s)[0],
+CudaNdarray_HOST_STRIDES(%(x)s)[1],
+CudaNdarray_DEV_DATA(%(y)s), CudaNdarray_HOST_STRIDES(%(y)s)[0],
+CudaNdarray_HOST_STRIDES(%(y)s)[1],
 CudaNdarray_DEV_DATA(%(out)s),
 CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
 %(name)s_xIdx, PyArray_DIM(%(xIdx)s, 1),
@@ -626,78 +609,8 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
             alpha=alpha, fail=sub['fail'])
 
     def c_code_cache_version(self):
-        return (10,)
+        return (11,)
 
 
-sparse_block_outer_ss = SparseBlockOuterSS(False)
-sparse_block_outer_ss_inplace = SparseBlockOuterSS(True)
-
-
-if cuda_available:
-    @opt.register_opt()
-    @opt.local_optimizer([sparse_block_gemv_ss], inplace=True)
-    def local_inplace_blocksparse_gemv(node):
-        if node.op == sparse_block_gemv_ss:
-            return [sparse_block_gemv_ss_inplace(*node.inputs)]
-
-    @opt.register_opt()
-    @opt.local_optimizer([sparse_block_outer_ss], inplace=True)
-    def local_inplace_blocksparse_outer(node):
-        if node.op == sparse_block_outer_ss:
-            return [sparse_block_outer_ss_inplace(*node.inputs)]
-
-# XXX: these optimisations were badly broken and now require a working
-# beta param (could only be a 0/1 thing for outer_merge, but
-# alpha_merge needs the full range).
-
-#    @opt.register_opt()
-#    @alpha_merge(SparseBlockOuterSS, alpha_in=5, beta_in=?, nd=4)
-#    def local_merge_blocksparse_alpha(node, *inputs):
-#        """
-# GpuElemwise{mul}(lr, SparseBlockOuterSS) -> SparseBlockOuterSS(..., alpha=lr)
-#        """
-#        return [sparse_block_outer_ss(*inputs)]
-
-#    @opt.register_opt()
-#    @output_merge(SparseBlockOuterSS, alpha_in=5, beta_in=? out_in=0, nd=4)
-#    def local_merge_blocksparse_output(node, *inputs):
-#        return [sparse_block_outer_ss(*inputs)]
-
-
-def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):
-    """
-    Compute the dot product (plus bias) of the specified pieces of vectors
-    and matrices.
-
-    Parameters
-    ----------
-    var: shape, comment
-    W: (iBlocks, oBlocks, iSize, oSize), weight matrix
-    h: (batch, iWin, iSize), input from lower layer (sparse)
-    inputIdx: (batch, iWin), indexes of the input blocks
-    b: (oBlocks, oSize), bias vector
-    outputIdx: (batch, oWin), indexes of the output blocks
-
-    returns (batch, oWin, oSize), dot(W[i, j], h[i]) + b[j]
-         but b[j] is only added once
-
-    Notation
-    --------
-    - `batch` is the number of examples in a minibatch (batch size).
-    - `iBlocks` is the total number of blocks in the input (from lower layer).
-    - `iSize` is the size of each of these input blocks.
-    - `iWin` is the number of blocks that will be used as inputs. Which blocks
-      will be used is specified in `inputIdx`.
-    - `oBlocks` is the number or possible output blocks.
-    - `oSize` is the size of each of these output blocks.
-    - `oWin` is the number of output blocks that will actually be computed.
-      Which blocks will be computed is specified in `outputIdx`.
-    """
-    assert inputIdx.ndim == h.ndim - 1
-    assert outputIdx.ndim == inputIdx.ndim
-    if h.ndim == 2:
-        h = h.dimshuffle('x', 0, 1)
-        inputIdx = inputIdx.dimshuffle('x', 0)
-        outputIdx = outputIdx.dimshuffle('x', 0)
-    return sparse_block_gemv_ss(b.take(outputIdx, axis=0), W, h,
-                                inputIdx, outputIdx)
+gpu_sparse_block_outer = GpuSparseBlockOuter(False)
+gpu_sparse_block_outer_inplace = GpuSparseBlockOuter(True)

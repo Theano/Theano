@@ -182,6 +182,7 @@ Here is the state of that vision as of December 3th, 2013 (after Theano release
   * Possible implementation note: allow Theano Variable in the fgraph to
     have more than 1 owner.
 
+* We support Python 2 and Python 3.
 * We have a CUDA backend for tensors of type `float32` only.
 * Efforts have begun towards a generic GPU ndarray (GPU tensor) (started in the
   `libgpuarray <https://github.com/Theano/libgpuarray>`_ project)

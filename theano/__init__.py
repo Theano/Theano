@@ -36,10 +36,10 @@ logging_default_handler.setFormatter(logging_default_formatter)
 theano_logger.addHandler(logging_default_handler)
 theano_logger.setLevel(logging.WARNING)
 
-from theano.configdefaults import config
-
 # Version information.
 from theano.version import version as __version__
+
+from theano.configdefaults import config
 
 # This is the api version for ops that generate C code.  External ops
 # might need manual changes if this number goes up.  An undefined
@@ -107,10 +107,14 @@ if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     if theano.sandbox.cuda.cuda_available:
         import theano.sandbox.cuda.tests.test_driver
 
-        theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
+        if config.enable_initial_driver_test:
+            theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
 
-if config.device.startswith('cuda') or config.device.startswith('opencl') or \
-        config.gpuarray.init_device != '':
+if (config.device.startswith('cuda') or
+        config.device.startswith('opencl') or
+        config.init_gpu_device.startswith('cuda') or
+        config.init_gpu_device.startswith('opencl') or
+        config.contexts != ''):
     import theano.sandbox.gpuarray
 
 # Use config.numpy to call numpy.seterr

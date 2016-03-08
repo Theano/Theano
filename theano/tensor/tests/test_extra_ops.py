@@ -1,23 +1,35 @@
-from nose.plugins.attrib import attr
+import unittest
+
 import numpy as np
 import numpy
-import unittest
 
 import theano
 from theano.tests import unittest_tools as utt
 from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
-                                     BinCountOp, bincount, DiffOp, diff,
-                                     squeeze, compress, RepeatOp, repeat,
-                                     Bartlett, bartlett,
+                                     CpuContiguous, cpu_contiguous, BinCountOp,
+                                     bincount, DiffOp, diff, squeeze, compress,
+                                     RepeatOp, repeat, Bartlett, bartlett,
                                      FillDiagonal, fill_diagonal,
                                      FillDiagonalOffset, fill_diagonal_offset,
                                      to_one_hot, Unique)
 from theano import tensor as T
 from theano import config, tensor, function
-
+from theano.tests.unittest_tools import attr
 
 numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 numpy_16 = bool(numpy_ver >= [1, 6])
+
+
+def test_cpu_contiguous():
+    a = T.fmatrix('a')
+    i = T.iscalar('i')
+    a_val = numpy.asarray(numpy.random.rand(4, 5), dtype='float32')
+    f = theano.function([a, i], cpu_contiguous(a.reshape((5,4))[::i]))
+    topo = f.maker.fgraph.toposort()
+    assert any([isinstance(node.op, CpuContiguous) for node in topo])
+    assert f(a_val, 1).flags['C_CONTIGUOUS']
+    assert f(a_val, 2).flags['C_CONTIGUOUS']
+    assert f(a_val, 3).flags['C_CONTIGUOUS']
 
 
 class TestCumsumOp(utt.InferShapeTester):
@@ -122,40 +134,40 @@ class TestBinCountOp(utt.InferShapeTester):
 
     def test_bincountFn(self):
         w = T.vector('w')
+        def ref(data, w=None, minlength=None):
+            size = data.max() + 1
+            if minlength:
+                size = max(size, minlength)
+            if w is not None:
+                out = np.zeros(size, dtype=w.dtype)
+                for i in range(data.shape[0]):
+                    out[data[i]] += w[i]
+            else:
+                out = np.zeros(size, dtype=a.dtype)
+                for i in range(data.shape[0]):
+                    out[data[i]] += 1
+            return out
         for dtype in ('int8', 'int16', 'int32', 'int64',
                       'uint8', 'uint16', 'uint32', 'uint64'):
             x = T.vector('x', dtype=dtype)
 
-            # uint64 always fails
-            # int64 and uint32 also fail if python int are 32-bit
-            int_bitwidth = theano.gof.python_int_bitwidth()
-            if int_bitwidth == 64:
-                numpy_unsupported_dtypes = ('uint64',)
-            if int_bitwidth == 32:
-                numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
-            # uint64 always fails
-            if dtype in numpy_unsupported_dtypes:
-                self.assertRaises(TypeError, bincount, x)
+            a = np.random.random_integers(50, size=(25)).astype(dtype)
+            weights = np.random.random((25,)).astype(config.floatX)
 
-            else:
-                a = np.random.random_integers(50, size=(25)).astype(dtype)
-                weights = np.random.random((25,)).astype(config.floatX)
+            f1 = theano.function([x], bincount(x))
+            f2 = theano.function([x, w], bincount(x, weights=w))
 
-                f1 = theano.function([x], bincount(x))
-                f2 = theano.function([x, w], bincount(x, weights=w))
-
-                assert (np.bincount(a) == f1(a)).all()
-                assert np.allclose(np.bincount(a, weights=weights),
-                                   f2(a, weights))
-                f3 = theano.function([x], bincount(x, minlength=23))
-                f4 = theano.function([x], bincount(x, minlength=5))
-                assert (np.bincount(a, minlength=23) == f3(a)).all()
-                assert (np.bincount(a, minlength=5) == f4(a)).all()
-                # skip the following test when using unsigned ints
-                if not dtype.startswith('u'):
-                    a[0] = -1
-                    f5 = theano.function([x], bincount(x, assert_nonneg=True))
-                    self.assertRaises(AssertionError, f5, a)
+            assert (ref(a) == f1(a)).all()
+            assert np.allclose(ref(a, weights), f2(a, weights))
+            f3 = theano.function([x], bincount(x, minlength=55))
+            f4 = theano.function([x], bincount(x, minlength=5))
+            assert (ref(a, minlength=55) == f3(a)).all()
+            assert (ref(a, minlength=5) == f4(a)).all()
+            # skip the following test when using unsigned ints
+            if not dtype.startswith('u'):
+                a[0] = -1
+                f5 = theano.function([x], bincount(x, assert_nonneg=True))
+                self.assertRaises(AssertionError, f5, a)
 
     def test_bincountOp(self):
         w = T.vector('w')
@@ -163,7 +175,7 @@ class TestBinCountOp(utt.InferShapeTester):
                       'uint8', 'uint16', 'uint32', 'uint64'):
             # uint64 always fails
             # int64 and uint32 also fail if python int are 32-bit
-            int_bitwidth = theano.gof.python_int_bitwidth()
+            int_bitwidth = theano.configdefaults.python_int_bitwidth()
             if int_bitwidth == 64:
                 numpy_unsupported_dtypes = ('uint64',)
             if int_bitwidth == 32:
@@ -196,7 +208,7 @@ class TestBinCountOp(utt.InferShapeTester):
         for dtype in tensor.discrete_dtypes:
             # uint64 always fails
             # int64 and uint32 also fail if python int are 32-bit
-            int_bitwidth = theano.gof.python_int_bitwidth()
+            int_bitwidth = theano.configdefaults.python_int_bitwidth()
             if int_bitwidth == 64:
                 numpy_unsupported_dtypes = ('uint64',)
             if int_bitwidth == 32:
@@ -396,7 +408,7 @@ class TestRepeatOp(utt.InferShapeTester):
         self.op = RepeatOp()
         # uint64 always fails
         # int64 and uint32 also fail if python int are 32-bit
-        ptr_bitwidth = theano.gof.local_bitwidth()
+        ptr_bitwidth = theano.configdefaults.local_bitwidth()
         if ptr_bitwidth == 64:
             self.numpy_unsupported_dtypes = ('uint64',)
         if ptr_bitwidth == 32:
@@ -411,7 +423,8 @@ class TestRepeatOp(utt.InferShapeTester):
                 for dtype in tensor.discrete_dtypes:
                     r_var = T.scalar(dtype=dtype)
                     r = numpy.asarray(3, dtype=dtype)
-                    if dtype in self.numpy_unsupported_dtypes:
+                    if (dtype == 'uint64' or
+                        (dtype in self.numpy_unsupported_dtypes and r_var.ndim == 1)):
                         self.assertRaises(TypeError,
                                 repeat, x, r_var, axis=axis)
                     else:
@@ -428,11 +441,35 @@ class TestRepeatOp(utt.InferShapeTester):
                             r = np.random.random_integers(
                                     5, size=(10,)).astype(dtype)
 
+                        if dtype in self.numpy_unsupported_dtypes and r_var.ndim == 1:
+                            self.assertRaises(TypeError,
+                                              repeat, x, r_var, axis=axis)
+                        else:
+                            f = theano.function([x, r_var],
+                                                repeat(x, r_var, axis=axis))
+                            assert np.allclose(np.repeat(a, r, axis=axis),
+                                               f(a, r))
+
+                        #check when r is a list of single integer, e.g. [3].
+                        r = np.random.random_integers(10, size=()).astype(dtype) + 2
+                        f = theano.function([x],
+                                            repeat(x, [r], axis=axis))
+                        assert np.allclose(np.repeat(a, r, axis=axis),
+                                           f(a))
+                        assert not np.any([isinstance(n.op, RepeatOp) 
+                                           for n in f.maker.fgraph.toposort()])
+                           
+                        # check when r is  theano tensortype that broadcastable is (True,)
+                        r_var = theano.tensor.TensorType(broadcastable=(True,),
+                                                         dtype=dtype)()
+                        r = np.random.random_integers(5, size=(1,)).astype(dtype)
                         f = theano.function([x, r_var],
                                             repeat(x, r_var, axis=axis))
-                        assert np.allclose(np.repeat(a, r, axis=axis),
+                        assert np.allclose(np.repeat(a, r[0], axis=axis),
                                            f(a, r))
-
+                        assert not np.any([isinstance(n.op, RepeatOp) 
+                                           for n in f.maker.fgraph.toposort()])
+ 
     @attr('slow')
     def test_infer_shape(self):
         for ndim in range(4):
@@ -445,6 +482,7 @@ class TestRepeatOp(utt.InferShapeTester):
                     r_var = T.scalar(dtype=dtype)
                     r = numpy.asarray(3, dtype=dtype)
                     if dtype in self.numpy_unsupported_dtypes:
+                        r_var = T.vector(dtype=dtype)
                         self.assertRaises(TypeError, repeat, x, r_var)
                     else:
                         self._compile_and_check(

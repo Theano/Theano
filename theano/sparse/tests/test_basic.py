@@ -2,7 +2,6 @@ from itertools import product
 import time
 import unittest
 
-from nose.plugins.attrib import attr
 from nose.plugins.skip import SkipTest
 import numpy
 from six.moves import xrange
@@ -19,6 +18,7 @@ from theano import sparse
 from theano import compile, config, gof
 from theano.sparse import enable_sparse
 from theano.tensor.basic import _allclose
+from theano.tests.unittest_tools import attr
 
 if not enable_sparse:
     raise SkipTest('Optional package SciPy not installed')
@@ -65,6 +65,15 @@ def as_sparse_format(data, format):
 
 def eval_outputs(outputs):
     return compile.function([], outputs)()[0]
+
+
+# scipy 0.17 will return sparse values in all cases while previous
+# version sometimes wouldn't.  This will make everything dense so that
+# we can use assert_allclose.
+def as_ndarray(val):
+    if hasattr(val, 'toarray'):
+        return val.toarray()
+    return val
 
 
 def random_lil(shape, dtype, nnz):
@@ -117,7 +126,7 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None,
     if out_dtype is None:
         out_dtype = theano.config.floatX
 
-    assert 0 <= p and p <= 1
+    assert 0 <= p <= 1
     assert len(shape) == 2
     assert out_dtype in sparse.all_dtypes
     assert gap is None or isinstance(gap, (tuple, list))
@@ -2881,6 +2890,11 @@ SqrtTester = elemwise_checker(
     numpy.sqrt,
     gap=(0, 10))
 
+ConjTester = elemwise_checker(
+    sparse.conj,
+    numpy.conj,
+    grad_test=False)
+
 
 class MulSVTester(unittest.TestCase):
     def setUp(self):
@@ -2951,7 +2965,7 @@ class StructuredAddSVTester(unittest.TestCase):
 
                 out = f(spmat, mat)
 
-                utt.assert_allclose(spones.multiply(spmat + mat),
+                utt.assert_allclose(as_ndarray(spones.multiply(spmat + mat)),
                                     out.toarray())
 
 
@@ -3067,7 +3081,7 @@ class SamplingDotTester(utt.InferShapeTester):
         x, y, p = self.a
         expected = p.multiply(numpy.dot(x, y.T))
 
-        utt.assert_allclose(expected, tested.toarray())
+        utt.assert_allclose(as_ndarray(expected), tested.toarray())
         assert tested.format == 'csr'
         assert tested.dtype == expected.dtype
 

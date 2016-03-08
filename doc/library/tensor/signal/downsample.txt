@@ -9,6 +9,7 @@
    :synopsis: ops for performing various forms of downsampling
 .. moduleauthor:: LISA
 
+.. seealso:: :func:`theano.tensor.nnet.neighbours.images2neibs`
 
 .. autofunction:: theano.tensor.signal.downsample.max_pool_2d
 .. autofunction:: theano.tensor.signal.downsample.max_pool_2d_same_size

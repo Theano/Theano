@@ -7,6 +7,7 @@ import theano
 from theano.tensor import dmatrix, iscalar, lscalar, dmatrices
 from theano import tensor
 
+from theano.compile import In
 from theano.compile.sharedvalue import *
 from theano.compile.pfunc import *
 
@@ -25,7 +26,7 @@ class Test_pfunc(unittest.TestCase):
         a = lscalar()
         b = shared(1)
         f1 = pfunc([a], (a + b))
-        f2 = pfunc([Param(a, default=44)], a + b, updates={b: b + 1})
+        f2 = pfunc([In(a, value=44)], a + b, updates={b: b + 1})
         self.assertTrue(b.get_value() == 1)
         self.assertTrue(f1(3) == 4)
         self.assertTrue(f2(3) == 4)
@@ -112,13 +113,13 @@ class Test_pfunc(unittest.TestCase):
         b = shared(7)
         out = a + b
 
-        f = pfunc([Param(a, strict=False)], [out])
+        f = pfunc([In(a, strict=False)], [out])
         # works, rand generates float64 by default
         f(numpy.random.rand(8))
         # works, casting is allowed
         f(numpy.array([1, 2, 3, 4], dtype='int32'))
 
-        f = pfunc([Param(a, strict=True)], [out])
+        f = pfunc([In(a, strict=True)], [out])
         try:
             # fails, f expects float64
             f(numpy.array([1, 2, 3, 4], dtype='int32'))
@@ -130,14 +131,14 @@ class Test_pfunc(unittest.TestCase):
         a_out = a * 2  # assuming the op which makes this "in place" triggers
 
         # using mutable=True will let fip change the value in aval
-        fip = pfunc([Param(a, mutable=True)], [a_out], mode='FAST_RUN')
+        fip = pfunc([In(a, mutable=True)], [a_out], mode='FAST_RUN')
         aval = numpy.random.rand(10)
         aval2 = aval.copy()
         assert numpy.all(fip(aval) == (aval2 * 2))
         assert not numpy.all(aval == aval2)
 
         # using mutable=False should leave the input untouched
-        f = pfunc([Param(a, mutable=False)], [a_out], mode='FAST_RUN')
+        f = pfunc([In(a, mutable=False)], [a_out], mode='FAST_RUN')
         aval = numpy.random.rand(10)
         aval2 = aval.copy()
         assert numpy.all(f(aval) == (aval2 * 2))
@@ -182,9 +183,9 @@ class Test_pfunc(unittest.TestCase):
         a = tensor.wvector('a')  # int16
         b = tensor.bvector('b')  # int8
         c = tensor.bscalar('c')  # int8
-        f = pfunc([Param(a, allow_downcast=True),
-                   Param(b, allow_downcast=False),
-                   Param(c, allow_downcast=None)],
+        f = pfunc([In(a, allow_downcast=True),
+                   In(b, allow_downcast=False),
+                   In(c, allow_downcast=None)],
                   (a + b + c))
 
         # Both values are in range. Since they're not ndarrays (but lists),
@@ -211,9 +212,9 @@ class Test_pfunc(unittest.TestCase):
         b = tensor.fscalar('b')
         c = tensor.fscalar('c')
 
-        f = pfunc([Param(a, allow_downcast=True),
-                   Param(b, allow_downcast=False),
-                   Param(c, allow_downcast=None)],
+        f = pfunc([In(a, allow_downcast=True),
+                   In(b, allow_downcast=False),
+                   In(c, allow_downcast=None)],
                   (a + b + c))
 
         # If the values can be accurately represented, everything is OK
@@ -236,9 +237,9 @@ class Test_pfunc(unittest.TestCase):
         b = tensor.fvector('b')
         c = tensor.fvector('c')
 
-        f = pfunc([Param(a, allow_downcast=True),
-                   Param(b, allow_downcast=False),
-                   Param(c, allow_downcast=None)],
+        f = pfunc([In(a, allow_downcast=True),
+                   In(b, allow_downcast=False),
+                   In(c, allow_downcast=None)],
                   (a + b + c))
 
         # If the values can be accurately represented, everything is OK
@@ -548,7 +549,7 @@ class Test_pfunc(unittest.TestCase):
     def test_default_updates_input(self):
         x = shared(0)
         y = shared(1)
-        if theano.gof.python_int_bitwidth() == 32:
+        if theano.configdefaults.python_int_bitwidth() == 32:
             a = iscalar('a')
         else:
             a = lscalar('a')

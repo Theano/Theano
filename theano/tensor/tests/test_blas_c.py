@@ -12,7 +12,6 @@ from theano.tensor.blas_scipy import ScipyGer
 from theano.tensor.blas import Ger
 
 from theano.tensor.blas_c import CGemv
-from theano.tensor.blas_scipy import ScipyGer
 from theano.tensor.blas import Gemv
 
 from theano.tensor.blas_c import check_force_gemv_init
@@ -131,6 +130,16 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         # scalar
         self.a = tensor.tensor(dtype=dtype, broadcastable=())
 
+    def test_nan_beta_0(self):
+        f = theano.function([self.A, self.x, self.y, self.a],
+                            self.a*self.y + theano.dot(self.A, self.x),
+                            mode=self.mode)
+        Aval = numpy.ones((3, 1), dtype=self.dtype)
+        xval = numpy.ones((1,), dtype=self.dtype)
+        yval = float('NaN') * numpy.ones((3,), dtype=self.dtype)
+        zval = f(Aval, xval, yval, 0)
+        assert not numpy.isnan(zval).any()
+
     def test_optimizations_vm(self):
         ''' Test vector dot matrix '''
         f = theano.function([self.x, self.A],
@@ -141,7 +150,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         self.assertFunctionContains0(f, tensor.dot)
         self.assertFunctionContains1(
             f,
-            CGemv(inplace=True, force_init_beta=True)
+            CGemv(inplace=True)
         )
 
         # Assert they produce the same output
@@ -162,7 +171,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         self.assertFunctionContains0(f, tensor.dot)
         self.assertFunctionContains1(
             f,
-            CGemv(inplace=True, force_init_beta=True)
+            CGemv(inplace=True)
         )
 
         # Assert they produce the same output
@@ -255,6 +264,22 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         self.assertRaises(ValueError, f, A_val, ones_4, ones_5)
         self.assertRaises(ValueError, f, A_val, ones_3, ones_6)
         self.assertRaises(ValueError, f, A_val, ones_4, ones_6)
+
+    def test_multiple_inplace(self):
+        x = tensor.dmatrix('x')
+        y = tensor.dvector('y')
+        z = tensor.dvector('z')
+        f = theano.function([x, y, z],
+                            [tensor.dot(y, x), tensor.dot(z,x)],
+                            mode=mode_blas_opt)
+        vx = numpy.random.rand(3, 3)
+        vy = numpy.random.rand(3)
+        vz = numpy.random.rand(3)
+        out = f(vx, vy, vz)
+        assert numpy.allclose(out[0], numpy.dot(vy, vx))
+        assert numpy.allclose(out[1], numpy.dot(vz, vx))
+        assert len([n for n in f.maker.fgraph.apply_nodes
+                    if isinstance(n.op, tensor.AllocEmpty)]) == 2
 
 
 class TestCGemvFloat32(TestCase, BaseGemv, TestOptimizationMixin):

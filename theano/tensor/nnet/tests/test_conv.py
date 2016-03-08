@@ -2,19 +2,24 @@ from __future__ import print_function
 import time
 
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 import numpy
-
 import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import conv
 from theano.tensor.basic import _allclose, NotScalarConstantError
+from theano.tests.unittest_tools import attr
 
 
 class TestConv2D(utt.InferShapeTester):
+    # This class contains tests for the legacy 2d convolution,
+    # but will also be inherited from for other implementations
     mode = None
     dtype = theano.config.floatX
+    # This will be set to the appropriate function in the inherited classes.
+    # The call to `staticmethod` is necessary to prevent Python from passing
+    # `self` as the first argument.
+    conv2d = staticmethod(conv.conv2d)
 
     def setUp(self):
         super(TestConv2D, self).setUp()
@@ -94,6 +99,8 @@ class TestConv2D(utt.InferShapeTester):
         out_shape2d = numpy.array(N_image_shape[-2:]) +\
                       s * numpy.array(N_filter_shape[-2:]) - s
         out_shape2d = numpy.ceil(out_shape2d / numpy.array(subsample))
+        # avoid numpy deprecation
+        out_shape2d = out_shape2d.astype('int32')
         out_shape = (N_image_shape[0], N_filter_shape[0]) + tuple(out_shape2d)
         ref_output = numpy.zeros(out_shape)
 
@@ -148,6 +155,22 @@ class TestConv2D(utt.InferShapeTester):
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'full')
         # test filter same size as input
 
+    def test_uint_image_shape_datatype(self):
+        """Tests for uint datatype in image_shape.
+
+        """
+        self.validate((2, 2, 3, numpy.uint8(3)), (3, 2, 3, 3), 'valid', verify_grad=False)
+        self.validate((numpy.uint16(2), 2, 3, 3), (3, 2, 3, 3), 'valid', verify_grad=False)
+        self.validate((2, numpy.uint32(2), 3, 3), (3, 2, 3, 3), 'valid', verify_grad=False)
+        
+    def test_uint_filter_shape_datatype(self):
+        """Tests for uint datatype in filter_shape
+
+        """
+        self.validate((3, 2, 3, 3), (2, 2, 3, numpy.uint8(3)), 'valid', verify_grad=False)
+        self.validate((3, 2, 3, 3), (numpy.uint16(2), 2, 3, 3), 'valid', verify_grad=False)
+        self.validate((3, 2, 3, 3), (2, numpy.uint32(2), 3, 3), 'valid', verify_grad=False)
+        
     def test_img_kernel_same_shape(self):
         self.validate((3, 2, 3, 3), (4, 2, 3, 3), 'full')
         self.validate((3, 2, 3, 3), (4, 2, 3, 3), 'valid')
@@ -435,7 +458,7 @@ class TestConv2D(utt.InferShapeTester):
                         input = theano.shared(numpy.random.random(image_shape))
                         filters = theano.shared(numpy.random.random(filter_shape))
 
-                        output = conv.conv2d(input, filters,
+                        output = self.conv2d(input, filters,
                                              image_shape, filter_shape,
                                              border_mode,
                                              unroll_patch=True,
@@ -449,29 +472,6 @@ class TestConv2D(utt.InferShapeTester):
                         t2 = time.time()
                         print(t2 - t1, end=' ')
                     print()
-
-    def test_fail(self):
-        k = theano.shared(numpy.ones((1, 1, 3, 3), dtype='float32'))
-
-        im = T.ftensor4()
-        out = theano.function([im],
-                              T.nnet.conv2d(im, k, image_shape=(1, 1, 10, 10)))
-        self.assertRaises(ValueError, out, numpy.ones((1, 1, 20, 10),
-                                                      dtype='float32'))
-        out = theano.function([im],
-                              T.nnet.conv2d(im, k, filter_shape=(1, 1, 3, 2)))
-        self.assertRaises(ValueError, out, numpy.ones((1, 1, 10, 10),
-                                                      dtype='float32'))
-        out = theano.function([im],
-                              T.nnet.conv2d(im, k, filter_shape=(2, None,
-                                                                 None, None)))
-        self.assertRaises(ValueError, out, numpy.ones((1, 1, 10, 10),
-                                                      dtype='float32'))
-        out = theano.function([im],
-                              T.nnet.conv2d(im, k, image_shape=(1, None,
-                                                                None, None)))
-        self.assertRaises(ValueError, out, numpy.ones((2, 1, 10, 10),
-                                                      dtype='float32'))
 
     def test_infer_shape(self):
     # Note: infer_shape is incomplete and thus input and filter shapes
@@ -488,60 +488,96 @@ class TestConv2D(utt.InferShapeTester):
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         aivec_val = [6, 2, 8, 3]
         bivec_val = [4, 2, 5, 3]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         aivec_val = [3, 6, 7, 5]
         bivec_val = [5, 6, 3, 2]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         aivec_val = [3, 6, 7, 5]
         bivec_val = [5, 6, 2, 3]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         aivec_val = [5, 2, 4, 3]
         bivec_val = [6, 2, 4, 3]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
+
+
+class TestDefaultConv2D(TestConv2D):
+    conv2d = staticmethod(theano.tensor.nnet.conv2d)
+
+# Test that broadcasting of gradients works correctly when using the
+# nnet.conv2d() interface. This was reported in #3763, and uses the example
+# code from that ticket.
+def test_broadcast_grad():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    x1 = T.tensor4('x')
+    x1_data = rng.randn(1, 1, 300, 300)
+    sigma = T.scalar('sigma')
+    sigma_data = 20
+    window_radius = 3
+
+    filter_1d = T.arange(-window_radius, window_radius+1)
+    filter_1d = filter_1d.astype(theano.config.floatX)
+    filter_1d = T.exp(-0.5*filter_1d**2/sigma**2)
+    filter_1d = filter_1d / filter_1d.sum()
+
+    filter_W = filter_1d.dimshuffle(['x', 'x', 0, 'x'])
+
+    y = theano.tensor.nnet.conv2d(x1, filter_W, border_mode='full',
+                                  filter_shape=[1, 1, None, None])
+    theano.grad(y.sum(), sigma)
 
 
 if __name__ == '__main__':

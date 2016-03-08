@@ -1,0 +1,17 @@
+.. _libdoc_gof_graph:
+
+==============================================
+:mod:`graph` -- Interface for the Theano graph
+==============================================
+
+.. module:: graph
+   :platform: Unix, Windows
+   :synopsis: Interface for types of symbolic variables
+.. moduleauthor:: LISA
+
+---------
+Reference
+---------
+
+.. automodule:: theano.gof.graph
+    :members:

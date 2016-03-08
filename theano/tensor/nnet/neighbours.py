@@ -2,42 +2,43 @@
 TODO: implement Images2Neibs.infer_shape() methods
 
 """
-from six.moves import xrange
+
+import numpy
+
 import theano
 from theano import Op, Apply
 import theano.tensor as T
 from theano.gradient import grad_not_implemented
 from theano.gradient import grad_undefined
 
-import numpy
-
 
 class Images2Neibs(Op):
+    """
+    Reshapes the input as a 2D tensor where each row is an pooling
+    example.
+
+    Parameters
+    ----------
+    mode : {'valid', 'ignore_borders', 'wrap_centered'}
+        - 'valid' :
+            Requires an input that is a multiple of the pooling factor
+            (in each direction).
+        - 'ignore_borders' :
+            Same as valid, but will ignore the borders if the shape(s)
+            of the input is not a multiple of the pooling factor(s).
+        - 'wrap_centered' :
+            ?? TODO comment
+
+    """
+
+    __props__ = ("mode",)
+
     def __init__(self, mode='valid'):
-        """
-        :type mode: str
-        :param mode: Possible values:
-            'valid': Requires an input that is a multiple of the
-                pooling factor (in each direction)
-            'ignore_borders': Same as valid, but will ignore the borders
-                if the shape(s) of the input
-                is not a multiple of the pooling factor(s)
-            'wrap_centered' : ?? TODO comment
-        :return:
-            Reshapes the input as a 2D tensor where each row is an
-            pooling example
-        """
         if mode not in ['valid', 'wrap_centered', 'ignore_borders']:
             raise NotImplementedError("Only the mode valid, ignore_borders"
                                       " and wrap_centered have been"
                                       " implemented for the op Images2Neibs")
         self.mode = mode
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.mode == other.mode
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.mode)
 
     def __str__(self):
         return self.__class__.__name__ + "{%s}" % self.mode
@@ -49,31 +50,36 @@ class Images2Neibs(Op):
 
     def make_node(self, ten4, neib_shape, neib_step=None):
         """
-        :param ten4:     a list of lists of images
-                         ten4 is of shape (list 1 dim, list 2 dim,
-                                           row, col)
-        :param neib_shape: (r,c) where r is the height of the neighborhood
-                        in rows and c is the width of the neighborhood
-                        in columns
-        :param neib_step: (dr,dc) where dr is the number of rows to
-                          skip between patch and dc is the number of
-                          columns. When None, this is the same as
-                          neib_shape(patch are disjoint)
+        Parameters
+        ----------
+        ten4 : a list of lists of images
+            ten4 is of shape (list 1 dim, list 2 dim, row, col).
+        neib_shape
+            (r,c) where r is the height of the neighborhood in rows and c is
+            the width of the neighborhood in columns.
+        neib_step
+            (dr,dc) where dr is the number of rows to skip between patch and dc
+            is the number of columns. When None, this is the same as neib_shape
+            (patch are disjoint).
 
-        output:
-            a 2D matrix, written using the following pattern
+        Returns
+        -------
+        matrix
+            A 2D matrix, written using the following pattern::
 
-            idx = 0
-            for i in xrange(list 1 dim)
-                for j in xrange(list 2 dim)
-                    for k in <image column coordinates>
-                        for l in <image row coordinates>
-                            output[idx,:]
-                                 = flattened version of ten4[i,j,l:l+r,k:k+c]
-                            idx += 1
-            (note: the op isn't necessarily implemented internally with these
-            for loops, they're just the easiest way to describe the output
-            pattern)
+                idx = 0
+                for i in xrange(list 1 dim)
+                    for j in xrange(list 2 dim)
+                        for k in <image column coordinates>
+                            for l in <image row coordinates>
+                                output[idx,:]
+                                     = flattened version of ten4[i,j,l:l+r,k:k+c]
+                                idx += 1
+
+            .. note:: The op isn't necessarily implemented internally with these
+                for loops, they're just the easiest way to describe the output
+                pattern.
+
         """
         ten4 = T.as_tensor_variable(ten4)
         neib_shape = T.as_tensor_variable(neib_shape)
@@ -103,6 +109,43 @@ class Images2Neibs(Op):
                 return [neibs2images(gz, neib_shape, x.shape, mode=self.mode),
                         grad_undefined(self, 1, neib_shape),
                         grad_undefined(self, 2, neib_step)]
+
+        if self.mode in ['valid']:
+            # Iterate over neighborhood positions, summing contributions.
+            def pos2map(pidx, pgz, prior_result, neib_shape, neib_step):
+                '''
+                Helper function that adds gradient contribution from a single
+                neighborhood position i,j.
+                pidx = Index of position within neighborhood.
+                pgz  = Gradient of shape (batch_size*num_channels*neibs)
+                prior_result  = Shape (batch_size, num_channnels, rows, cols)
+                neib_shape = Number of rows, cols in a neighborhood.
+                neib_step  = Step sizes from image2neibs.
+                '''
+                nrows, ncols = neib_shape
+                rstep, cstep = neib_step
+                batch_size, num_channels, rows, cols = prior_result.shape
+                i = pidx // ncols
+                j = pidx - (i * ncols)
+                # This position does not touch some img pixels in valid mode.
+                result_indices = prior_result[:, :,
+                                              i:(rows - nrows + i + 1):rstep,
+                                              j:(cols - ncols + j + 1):cstep]
+                newshape = (batch_size, num_channels) + \
+                           ((rows - nrows) // rstep + 1,) + \
+                           ((cols - ncols) // cstep + 1,)
+                return T.inc_subtensor(result_indices, pgz.reshape(newshape))
+            indices = T.arange(neib_shape[0] * neib_shape[1])
+            pgzs = gz.dimshuffle((1, 0))
+            result, _ = theano.scan(fn=pos2map,
+                                    sequences=[indices, pgzs],
+                                    outputs_info=T.zeros(x.shape),
+                                    non_sequences=[neib_shape, neib_step])
+            grad_input = result[-1]
+            return [grad_input,
+                    grad_undefined(self, 1, neib_shape),
+                    grad_undefined(self, 2, neib_step)]
+
         return [grad_not_implemented(self, 0, x),
                 grad_undefined(self, 1, neib_shape),
                 grad_undefined(self, 2, neib_step)]
@@ -209,7 +252,7 @@ class Images2Neibs(Op):
                                 z_col = j + d * i
 
                                 z[0][z_row, z_col] = ten4[n, s, ten4_2, ten4_3]
-                                
+
     def infer_shape(self, node, input_shape):
         in_shape = input_shape[0]
         c, d = node.inputs[1]
@@ -226,7 +269,7 @@ class Images2Neibs(Op):
         z_dim0 = grid_c * grid_d * in_shape[1] * in_shape[0]
         z_dim1 = c * d
         return [(z_dim0, z_dim1)]
-    
+
     def c_code(self, node, name, inp, out, sub):
         ten4, neib_shape, neib_step = inp
         z, = out
@@ -420,64 +463,46 @@ class Images2Neibs(Op):
 
 
 def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
-    """ 
-    Function :func:`images2neibs <theano.sandbox.neighbours.images2neibs>`
-    allows to apply a sliding window operation to a tensor containing 
-    images
-    or other two-dimensional objects. 
-    The sliding window operation loops 
-    over points in input data and stores a rectangular neighbourhood of 
-    each point.   
-    It is possible to assign a step of selecting patches (parameter 
-    `neib_step`). 
+    """
+    Function :func:`images2neibs <theano.tensor.nnet.neighbours.images2neibs>`
+    allows to apply a sliding window operation to a tensor containing
+    images or other two-dimensional objects.
+    The sliding window operation loops over points in input data and stores
+    a rectangular neighbourhood of each point.
+    It is possible to assign a step of selecting patches (parameter `neib_step`).
 
-    :param ten4:     A 4-dimensional tensor which represents 
-                     a list of lists of images.a list of lists of images.
-                     It should have shape (list 1 dim, list 2 dim,
-                     row, col). The first two dimensions can be 
-                     useful to store different channels and batches.
-    :type ten4:      A 4d tensor-like.
-    :param neib_shape: A tuple containing two
-                    values: height and width of the neighbourhood.
-                    It should have shape (r,c) where r is the height of the
-                    neighborhood in rows and c is the width of the neighborhood
-                    in columns
-    :type neib_shape: A 1d tensor-like of 2 values.
-    :param neib_step: (dr,dc) where dr is the number of rows to
-                      skip between patch and dc is the number of
-                      columns. The parameter should be a tuple of two elements: 
-                      number 
-                      of rows and number of columns to skip each iteration. 
-                      Basically, when the step is 1, the neighbourhood of every
-                      first element is taken and every possible rectangular 
-                      subset is returned. By default it is equal to
-                      `neib_shape` in other words, the
-                      patches are disjoint. When the step is greater than 
-                      `neib_shape`, some elements are omitted. When None, this
-                      is the same as
-                      neib_shape(patch are disjoint)
-
-                      .. note:: Currently the step size should be chosen in the way that the 
-                         corresponding dimension :math:`i` (width or height) is equal to 
-                         :math:`n * step\_size_i + neib\_shape_i` for some :math:`n`
-    :type neib_step: A 1d tensor-like of 2 values.
-    :param mode:
-        Possible values:
-
+    Parameters
+    ----------
+    ten4 : A 4d tensor-like
+        A 4-dimensional tensor which represents a list of lists of images.
+        It should have shape (list 1 dim, list 2 dim, row, col). The first
+        two dimensions can be useful to store different channels and batches.
+    neib_shape : A 1d tensor-like of 2 values
+        A tuple containing two values: height and width of the neighbourhood.
+        It should have shape (r,c) where r is the height of the neighborhood
+        in rows and c is the width of the neighborhood in columns.
+    neib_step : A 1d tensor-like of 2 values
+        (dr,dc) where dr is the number of rows to skip between patch and dc is
+        the number of columns. The parameter should be a tuple of two elements:
+        number of rows and number of columns to skip each iteration.
+        Basically, when the step is 1, the neighbourhood of every first element
+        is taken and every possible rectangular subset is returned.
+        By default it is equal to `neib_shape` in other words, the patches are
+        disjoint. When the step is greater than `neib_shape`, some elements are
+        omitted. When None, this is the same as neib_shape (patch are disjoint).
+    mode : {'valid', 'ignore_borders', 'wrap_centered'}
         ``valid``
-           Requires an input that is a multiple of the
-           pooling factor (in each direction)
-
+            Requires an input that is a multiple of the
+            pooling factor (in each direction).
         ``ignore_borders``
-           Same as valid, but will ignore the borders
-           if the shape(s) of the input
-           is not a multiple of the pooling factor(s)
-
+            Same as valid, but will ignore the borders if the shape(s) of
+            the input is not a multiple of the pooling factor(s).
         ``wrap_centered``
-           ?? TODO comment
+            ?? TODO comment
 
-    :type mode: str
-    :return:
+    Returns
+    -------
+    object
         Reshapes the input as a 2D tensor where each row is an
         pooling example. Pseudo-code of the output:
 
@@ -492,29 +517,38 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
                                   = flattened version of ten4[i,j,l:l+r,k:k+c]
                              idx += 1
 
-          .. note:: The operation isn't necessarily implemented internally with 
-             these for loops, they're just the easiest way to describe the 
+          .. note:: The operation isn't necessarily implemented internally with
+             these for loops, they're just the easiest way to describe the
              output pattern.
 
-    Example:
-  
+    Notes
+    -----
+    .. note::
+        Currently the step size should be chosen in the way that the
+        corresponding dimension :math:`i` (width or height) is equal
+        to :math:`n * step\_size_i + neib\_shape_i` for some :math:`n`.
+
+    Examples
+    --------
+
     .. code-block:: python
-  
+
         # Defining variables
         images = T.tensor4('images')
         neibs = images2neibs(images, neib_shape=(5, 5))
-  
-        # Constructing theano function 
+
+        # Constructing theano function
         window_function = theano.function([images], neibs)
-  
+
         # Input tensor (one image 10x10)
         im_val = np.arange(100.).reshape((1, 1, 10, 10))
-  
+
         # Function application
         neibs_val = window_function(im_val)
-  
-    .. note:: The underlying code will construct a 2D tensor of disjoint 
-       patches 5x5. The output has shape 4x25. 
+
+    .. note:: The underlying code will construct a 2D tensor of disjoint
+       patches 5x5. The output has shape 4x25.
+
     """
     return Images2Neibs(mode)(ten4, neib_shape, neib_step)
 
@@ -527,26 +561,37 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
     the output of :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`
     and reconstructs its input.
 
-    :param neibs: matrix like the one obtained by 
-                  :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`
-    :param neib_shape: `neib_shape` that was used in 
-                  :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`
-    :param original_shape: original shape of the 4d tensor given to 
-                  :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`
+    Parameters
+    ----------
+    neibs : 2d tensor
+        Like the one obtained by
+        :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`.
+    neib_shape
+        `neib_shape` that was used in
+        :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`.
+    original_shape
+        Original shape of the 4d tensor given to
+        :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`
 
-    :return: Reconstructs the input of 
-                  :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`,
-                  a 4d tensor of shape `original_shape`.
+    Returns
+    -------
+    object
+        Reconstructs the input of
+        :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`,
+        a 4d tensor of shape `original_shape`.
 
-    .. note:: Currently, the function doesn't support tensors created with
-       `neib_step` different from default value. This means that it may be
-       impossible to compute the gradient of a variable gained by 
-       :func:`images2neibs <theano.sandbox.neigbours.neibs2images>` w.r.t. 
-       its inputs in this case, because it uses 
-       :func:`images2neibs <theano.sandbox.neigbours.neibs2images>` for 
-       gradient computation.
-    
+    Notes
+    -----
+    Currently, the function doesn't support tensors created with
+    `neib_step` different from default value. This means that it may be
+    impossible to compute the gradient of a variable gained by
+    :func:`images2neibs <theano.sandbox.neigbours.neibs2images>` w.r.t.
+    its inputs in this case, because it uses
+    :func:`images2neibs <theano.sandbox.neigbours.neibs2images>` for
+    gradient computation.
 
+    Examples
+    --------
     Example, which uses a tensor gained in example for
     :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`:
 
@@ -559,13 +604,14 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
         im_new_val = inv_window(neibs_val)
 
     .. note:: The code will output the initial image array.
+
     """
     neibs = T.as_tensor_variable(neibs)
     neib_shape = T.as_tensor_variable(neib_shape)
     original_shape = T.as_tensor_variable(original_shape)
 
-    new_neib_shape = T.stack(original_shape[-1] // neib_shape[1],
-                             neib_shape[1])
+    new_neib_shape = T.stack([original_shape[-1] // neib_shape[1],
+                              neib_shape[1]])
     output_2d = images2neibs(neibs.dimshuffle('x', 'x', 0, 1),
                              new_neib_shape, mode=mode)
 

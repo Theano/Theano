@@ -1,6 +1,8 @@
 from __future__ import print_function
+
 import six.moves.cPickle as pickle
-import os, sys
+import os
+import sys
 
 import theano
 from six import iteritems, itervalues
@@ -21,9 +23,8 @@ for dir in dirs:
 
     key = None
     try:
-        f = open(os.path.join(dir, "key.pkl"))
-        key = f.read()
-        f.close()
+        with open(os.path.join(dir, "key.pkl")) as f:
+            key = f.read()
         keys.setdefault(key, 0)
         keys[key] += 1
         del f
@@ -34,9 +35,8 @@ for dir in dirs:
         path = os.path.join(dir, "mod.cpp")
         if not os.path.exists(path):
             path = os.path.join(dir, "mod.cu")
-        f = open(path)
-        mod = f.read()
-        f.close()
+        with open(path) as f:
+            mod = f.read()
         mods.setdefault(mod, ())
         mods[mod] += (key,)
         del mod
@@ -90,6 +90,6 @@ useless = total - uniq
 print("mod.{cpp,cu} total:", total)
 print("mod.{cpp,cu} uniq:", uniq)
 print("mod.{cpp,cu} with more than 1 copy:", more_than_one)
-print("mod.{cpp,cu} useless:", useless, float(useless)/total*100, "%")
+print("mod.{cpp,cu} useless:", useless, float(useless) / total * 100, "%")
 
 print("nb directory", len(dirs))

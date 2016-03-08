@@ -7,6 +7,7 @@ from theano.tests import unittest_tools as utt
 from theano.tensor.nnet.ConvTransp3D import convTransp3D, ConvTransp3D
 from theano.tensor.nnet.ConvGrad3D import convGrad3D, ConvGrad3D
 from theano.tensor.nnet.Conv3D import conv3D, Conv3D
+from theano.tests.unittest_tools import attr
 import numpy as N
 from six.moves import xrange
 import copy
@@ -14,7 +15,6 @@ import theano.sparse
 if theano.sparse.enable_sparse:
     from scipy import sparse
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 
 floatX = theano.config.floatX
 
@@ -412,10 +412,10 @@ class TestConv3D(utt.InferShapeTester):
         H_shape = self.H_shape_func()
 
         # make index maps
-        h = N.zeros(H_shape[1:])
-        r = N.zeros(H_shape[1:])
-        c = N.zeros(H_shape[1:])
-        t = N.zeros(H_shape[1:])
+        h = N.zeros(H_shape[1:], dtype='int32')
+        r = N.zeros(H_shape[1:], dtype='int32')
+        c = N.zeros(H_shape[1:], dtype='int32')
+        t = N.zeros(H_shape[1:], dtype='int32')
 
         for qi in xrange(0, H_shape[4]):
             h[:, :, :, qi] = qi

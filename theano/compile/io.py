@@ -1,5 +1,7 @@
-"""Define `SymbolicInput`, `SymbolicOutput`, `In`, `Out` """
+"""
+Define `SymbolicInput`, `SymbolicOutput`, `In`, `Out`.
 
+"""
 from theano import gof
 from .sharedvalue import SharedVariable
 
@@ -15,52 +17,43 @@ class SymbolicInput(object):
     """
     Represents a symbolic input for use with function or FunctionMaker.
 
-    variable: a Variable instance.
-        This will be assigned a value before running the function,
-        not computed from its owner.
-
-    name: Any type. (If autoname=True, defaults to variable.name).
-        If name is a valid Python identifier, this input can be set by
-        kwarg, and its value can be accessed by self.<name>.
-
-    update: Variable instance (default: None)
-        value (see previous) will be replaced with this expression
-        variable after each function call.  If update is None, the
+    Parameters
+    ----------
+    variable : a Variable instance
+        This will be assigned a value before running the function, not computed
+        from its owner.
+    name : Any type
+        If autoname=True, defaults to variable.name.
+        If name is a valid Python identifier, this input can be set by kwarg,
+        and its value can be accessed by self.<name>.
+    update : Variable instance
+        Defaults to None. Value (see previous) will be replaced with this
+        expression variable after each function call. If update is None, the
         update will be the default value of the input.
+    mutable : bool
+        Defaults to False if update is None, True if update is not None.
+        True: permit the compiled function to modify the python object being
+        passed as the input.
+        False: do not permit the compiled function to modify the python object
+        being passed as the input.
+    strict : bool
+        Defaults to False.
+        True: means that the value you pass for this input must have exactly the
+        right type.
+        False: the value you pass for this input may be cast automatically to
+        the proper type.
+    allow_downcast : bool or None
+        Defaults to None. Only applies when `strict` is False.
+        True: the value you pass for this input can be silently downcasted to
+        fit the right type, which may lose precision.
+        False: the value will only be cast to a more general, or precise, type.
+        None: Almost like False, but allows downcast of Python floats to floatX.
+    autoname : bool
+        Defaults to True. See the name option.
+    implicit : bool
+        Defaults to False. See help(In). Note that 'None' is not allowed here,
+        since we are in the symbolic case.
 
-    mutable: Bool (default: False if update is None, True if update is
-        not None)
-
-        True: permit the compiled function to modify the python object
-        being passed as the input
-
-        False: do not permit the compiled function to modify the
-        python object being passed as the input.
-
-    strict: Bool (default: False)
-
-        True: means that the value you pass for this input must have
-        exactly the right type
-
-        False: the value you pass for this input may be cast
-        automatically to the proper type
-
-    allow_downcast: Bool or None (default: None)
-        Only applies when `strict` is False.
-
-        True: the value you pass for this input can be silently
-        downcasted to fit the right type, which may lose precision.
-
-        False: the value will only be cast to a more general, or
-        precise, type.  None: Almost like False, but allows downcast
-        of Python floats to floatX.
-
-    autoname: Bool (default: True)
-        See the name option.
-
-    implicit: Bool (default: False)
-        See help(In). Note that 'None' is not allowed here, since we
-        are in the symbolic case.
     """
 
     def __init__(self, variable, name=None, update=None, mutable=None,
@@ -76,6 +69,13 @@ class SymbolicInput(object):
         if self.name is not None and not isinstance(self.name, string_types):
             raise TypeError("name must be a string! (got: %s)" % self.name)
         self.update = update
+        if update is not None:
+            if not variable.type == update.type:
+                raise TypeError("Variable '%s' has type %s but an update of "
+                                "type %s. The type of the update should be "
+                                "the same as the type of the variable" %
+                                (variable, variable.type, update.type))
+
         if (mutable is not None):
             self.mutable = mutable
         else:
@@ -105,19 +105,22 @@ class SymbolicInputKit(object):
     A SymbolicInputKit provides the distribute function in order to set or
     initialize several inputs from a single value. Specialized Kits should
     override it.
+
     """
 
     def __init__(self, name):
         if not isinstance(name, string_types):
-            raise TypeError('naem must be a string (got: %s)' % name)
+            raise TypeError('name must be a string (got: %s)' % name)
         self.name = name
         self.sinputs = []
         self.variables = []
 
     def add_input(self, sinput):
         """
-        Add a SymbolicInput to this SymbolicInputKit. It will be given the
-        next available index.
+        Add a SymbolicInput to this SymbolicInputKit.
+
+        It will be given the next available index.
+
         """
         self.sinputs.append(sinput)
         self.variables.append(sinput.variable)
@@ -127,18 +130,20 @@ class SymbolicInputKit(object):
         Given a list of indices corresponding to SymbolicInputs in this kit
         as well as a corresponding list of containers, initialize all the
         containers using the provided value.
+
         """
         raise NotImplementedError
 
     def complete(self, inputs):
         """
-        Given inputs (a list of Variable instances), checks through all
-        the SymbolicInputs in the kit and return a sorted list of
-        indices and a list of their corresponding SymbolicInputs such
-        that each of them represents some variable in the inputs list.
+        Given inputs (a list of Variable instances), checks through all the
+        SymbolicInputs in the kit and return a sorted list of indices and a list
+        of their corresponding SymbolicInputs such that each of them represents
+        some variable in the inputs list.
 
-        Not all the provided inputs will have a corresponding
-        SymbolicInput in the kit.
+        Not all the provided inputs will have a corresponding SymbolicInput in
+        the kit.
+
         """
         ret = []
         for input in inputs:
@@ -157,73 +162,62 @@ class In(SymbolicInput):
     """
     Represents a symbolic input for use with function or FunctionMaker.
 
-    variable: a Variable instance.
-        This will be assigned a value before running the function,
-        not computed from its owner.
-
-    name: Any type. (If autoname=True, defaults to variable.name).
-        If name is a valid Python identifier, this input can be set by
-        kwarg, and its value can be accessed by self.<name>.
-
-    value: Any type.
+    Parameters
+    ----------
+    variable : a Variable instance
+        This will be assigned a value before running the function, not computed
+        from its owner.
+    name : Any type
+        If autoname=True, defaults to variable.name.
+        If name is a valid Python identifier, this input can be set by kwarg,
+        and its value can be accessed by self.<name>.
+    value : Any type
         The initial/default value for this input. If update is None,
         this input acts just like an argument with a default value in
         Python. If update is not None, changes to this value will
         "stick around", whether due to an update or a user's explicit
         action.
-
-    update: Variable instance (default: None)
-        value (see previous) will be replaced with this expression
-        variable after each function call.  If update is None, the
+    update : Variable instance
+        Defaults to None. Value (see previous) will be replaced with this
+        expression variable after each function call. If update is None, the
         update will be the default value of the input.
-
-    mutable: Bool (default: False if update is None, True if update is
-             not None)
-
+    mutable : bool
+        Defaults to False if update is None, True if update is not None.
         True: permit the compiled function to modify the python object
-        being passed as the input
-
+        being passed as the input.
         False: do not permit the compiled function to modify the
         python object being passed as the input.
-
-    borrow: Bool (default: take the same value as mutable)
-
+    borrow : bool
+        Default : take the same value as mutable.
         True: permit the output of the compiled function to be aliased
-        to the input
-
-        False: do not permit any output to be aliased to the input
-
-    strict: Bool (default: False)
-
-        True: means that the value you pass for this input must have
-        exactly the right type
-
-        False: the value you pass for this input may be cast
-        automatically to the proper type
-
-    allow_downcast: Bool or None (default: None)
-        Only applies when `strict` is False.
-
-        True: the value you pass for this input can be silently
-        downcasted to fit the right type, which may lose precision.
-
-        False: the value will only be cast to a more general, or
-        precise, type.  None: Almost like False, but allows downcast
-        of Python floats to floatX.
-
-    autoname: Bool (default: True)
-        See the name option.
-
-    implicit: Bool or None (default: None)
+        to the input.
+        False: do not permit any output to be aliased to the input.
+    strict : bool
+        Defaults to False.
+        True: means that the value you pass for this input must have exactly
+        the right type.
+        False: the value you pass for this input may be cast automatically to
+        the proper type.
+    allow_downcast : bool or None
+        Defaults to None. Only applies when `strict` is False.
+        True: the value you pass for this input can be silently downcasted to
+        fit the right type, which may lose precision.
+        False: the value will only be cast to a more general, or precise, type.
+        None: Almost like False, but allows downcast of Python floats to floatX.
+    autoname : bool
+        Defaults to True. See the name option.
+    implicit : bool or None
+        Defaults to None.
         True: This input is implicit in the sense that the user is not allowed
-            to provide a value for it. Requires 'value' to be set.
+        to provide a value for it. Requires 'value' to be set.
         False: The user can provide a value for this input. Be careful when
-            'value' is a container, because providing an input value will
-            overwrite the content of this container.
+        'value' is a container, because providing an input value will
+        overwrite the content of this container.
         None: Automatically choose between True or False depending on the
-            situation. It will be set to False in all cases except if 'value'
-            is a container (so that there is less risk of accidentally
-            overwriting its content without being aware of it).
+        situation. It will be set to False in all cases except if 'value' is a
+        container (so that there is less risk of accidentally overwriting its
+        content without being aware of it).
+
     """
     # Note: the documentation above is duplicated in doc/topics/function.txt,
     # try to keep it synchronized.
@@ -273,10 +267,14 @@ class SymbolicOutput(object):
     """
     Represents a symbolic output for use with function or FunctionMaker.
 
-    borrow: set this to True to indicate that a reference to
-            function's internal storage may be returned. A value
-            returned for this output might be clobbered by running
-            the function again, but the function might be faster.
+    Parameters
+    ----------
+    borrow : bool
+        Set this to True to indicate that a reference to function's internal
+        storage may be returned. A value returned for this output might be
+        clobbered by running the function again, but the function might be
+        faster.
+
     """
 
     def __init__(self, variable, borrow=False):

@@ -1,6 +1,4 @@
 import copy
-import pdb
-import sys
 import traceback as tb
 import warnings
 
@@ -24,13 +22,14 @@ def equal_slices(s1, s2):
 
 
 class AsTensorError(TypeError):
-    """Raised when as_tensor_variable isn't able to create a
-    TensorVariable.
+    """
+    Raised when as_tensor_variable isn't able to create a TensorVariable.
+
     """
     pass
 
 
-class _tensor_py_operators:
+class _tensor_py_operators(object):
     # UNARY
     def __abs__(self):
         return theano.tensor.basic.abs_(self)
@@ -41,9 +40,9 @@ class _tensor_py_operators:
     # CASTS
     # REMOVED THESE BECAUSE PYTHON appears to require __int__ to return
     # an int. -JB 20081112
-    #def __int__(self): return convert_to_int32(self)
-    #def __float__(self): return convert_to_float64(self)
-    #def __complex__(self): return convert_to_complex128(self)
+    # def __int__(self): return convert_to_int32(self)
+    # def __float__(self): return convert_to_float64(self)
+    # def __complex__(self): return convert_to_complex128(self)
 
     # COMPARISONS
     _is_nonzero = True
@@ -67,7 +66,6 @@ class _tensor_py_operators:
         rval = theano.tensor.basic.ge(self, other)
         rval._is_nonzero = False
         return rval
-
 
     def __nonzero__(self):
         # Python 2.x
@@ -215,7 +213,7 @@ class _tensor_py_operators:
 
     # DO NOT USE THESE BECAUSE INPLACE OPS SHOULD BE INSERTED
     # BY OPTIMIZATIONS ONLY
-    ## ARITHMETIC - INPLACE
+    # ARITHMETIC - INPLACE
     # def __iadd__(self, other):
     #    return _add_inplace(self, other)
     # def __isub__(self, other):
@@ -257,8 +255,11 @@ class _tensor_py_operators:
 
     def transpose(self, *axes):
         """
-        Return `tensor.transpose(self, axes)`
-        or `tensor.transpose(self, axes[0])`
+
+        Returns
+        -------
+        object
+            `tensor.transpose(self, axes)` or `tensor.transpose(self, axes[0])`.
 
         If only one `axes` argument is provided and it is iterable, then it is
         assumed to be the entire axes tuple, and passed intact to
@@ -279,7 +280,8 @@ class _tensor_py_operators:
 
     shape = property(lambda self: theano.tensor.basic.shape(self))
 
-    size = property(lambda self: theano.tensor.basic.prod(self.shape))
+    size = property(lambda self: self.shape[0] if self.ndim == 1 else
+                    theano.tensor.basic.prod(self.shape))
 
     # We can't implement __len__ to provide a better error message.
     def any(self, axis=None, keepdims=False):
@@ -301,16 +303,18 @@ class _tensor_py_operators:
     def reshape(self, shape, ndim=None):
         """Return a reshaped view/copy of this variable.
 
-        :param shape: something that can be converted to a symbolic vector of
-            integers
+        Parameters
+        ----------
+        shape
+            Something that can be converted to a symbolic vector of integers.
+        ndim
+            The length of the shape. Passing None here means for
+            Theano to try and guess the length of `shape`.
 
-        :param ndim: the length of the shape.  Passing None here means for
-            theano to try and guess the length of `shape`.
-
-        * warning-- this has a different signature than numpy's
-                    ndarray.reshape!
-                    in numpy you do not need to wrap the shape arguments
-                    in a tuple, in theano you do need to
+        .. warning:: This has a different signature than numpy's
+                     ndarray.reshape!
+                     In numpy you do not need to wrap the shape arguments
+                     in a tuple, in theano you do need to.
 
         """
 
@@ -326,21 +330,29 @@ class _tensor_py_operators:
         Reorder the dimensions of this variable, optionally inserting
         broadcasted dimensions.
 
-        :param pattern: list/tuple of int mixed with 'x' for broadcastable
-            dimensions
+        Parameters
+        ----------
+        pattern
+            List/tuple of int mixed with 'x' for broadcastable dimensions.
 
+        Examples
+        --------
         For example, to create a 3D view of a [2D] matrix, call
         ``dimshuffle([0,'x',1])``.  This will create a 3D view such that the
         middle dimension is an implicit broadcasted dimension.  To do the same
-        thing on the transpose of that matrix, call
-        ``dimshuffle([1, 'x', 0])``.
+        thing on the transpose of that matrix, call ``dimshuffle([1, 'x', 0])``.
 
+        Notes
+        -----
         This function supports the pattern passed as a tuple, or as a
         variable-length argument (e.g. ``a.dimshuffle(pattern)`` is equivalent
         to ``a.dimshuffle(*pattern)`` where ``pattern`` is a list/tuple of ints
         mixed with 'x' characters).
 
-        For more information, see `DimShuffle`.
+        See Also
+        --------
+        DimShuffle
+
         """
         if (len(pattern) == 1) and (isinstance(pattern[0], (list, tuple))):
             pattern = pattern[0]
@@ -356,6 +368,95 @@ class _tensor_py_operators:
 
     def diagonal(self, offset=0, axis1=0, axis2=1):
         return theano.tensor.basic.diagonal(self, offset, axis1, axis2)
+
+    # Transfer the data to another device
+    def transfer(self, target):
+        """
+        If `target` is `'cpu'` this will transfer to a TensorType (if
+        not already one).  Other types may define additional targets.
+
+        Parameters
+        ----------
+        target : str
+            The desired location of the output variable
+        """
+        return theano.tensor.transfer(self, target)
+
+    # Elemwise
+    def arccos(self):
+        return theano.tensor.arccos(self)
+
+    def arccosh(self):
+        return theano.tensor.arccosh(self)
+
+    def arcsin(self):
+        return theano.tensor.arcsin(self)
+
+    def arcsinh(self):
+        return theano.tensor.arcsinh(self)
+
+    def arctan(self):
+        return theano.tensor.arctan(self)
+
+    def arctanh(self):
+        return theano.tensor.arctanh(self)
+
+    def ceil(self):
+        return theano.tensor.ceil(self)
+
+    def cos(self):
+        return theano.tensor.cos(self)
+
+    def cosh(self):
+        return theano.tensor.cosh(self)
+
+    def deg2rad(self):
+        return theano.tensor.deg2rad(self)
+
+    def exp(self):
+        return theano.tensor.exp(self)
+
+    def exp2(self):
+        return theano.tensor.exp2(self)
+
+    def expm1(self):
+        return theano.tensor.expm1(self)
+
+    def floor(self):
+        return theano.tensor.floor(self)
+
+    def log(self):
+        return theano.tensor.log(self)
+
+    def log10(self):
+        return theano.tensor.log10(self)
+
+    def log1p(self):
+        return theano.tensor.log1p(self)
+
+    def log2(self):
+        return theano.tensor.log2(self)
+
+    def rad2deg(self):
+        return theano.tensor.rad2deg(self)
+
+    def sin(self):
+        return theano.tensor.sin(self)
+
+    def sinh(self):
+        return theano.tensor.sinh(self)
+
+    def sqrt(self):
+        return theano.tensor.sqrt(self)
+
+    def tan(self):
+        return theano.tensor.tan(self)
+
+    def tanh(self):
+        return theano.tensor.tanh(self)
+
+    def trunc(self):
+        return theano.tensor.trunc(self)
 
     # CASTING
     def astype(self, dtype):
@@ -433,8 +534,14 @@ class _tensor_py_operators:
         return theano.tensor.subtensor.take(self, indices, axis, mode)
 
     # COPYING
-    def copy(self):
-        return theano.tensor.basic.tensor_copy(self)
+    def copy(self, name=None):
+        """Return a symbolic copy and optionally assign a name.
+
+        Does not copy the tags.
+        """
+        copied_variable = theano.tensor.basic.tensor_copy(self)
+        copied_variable.name = name
+        return copied_variable
 
     def __iter__(self):
         try:
@@ -451,13 +558,17 @@ class _tensor_py_operators:
     """The rank of this tensor."""
 
     broadcastable = property(lambda self: self.type.broadcastable)
-    """The broadcastable signature of this tensor.
+    """
+    The broadcastable signature of this tensor.
 
-    See :doc:`broadcasting` for details.
+    See Also
+    --------
+    broadcasting
+
     """
 
     dtype = property(lambda self: self.type.dtype)
-    """ The dtype of this tensor.  """
+    """The dtype of this tensor."""
 
     # extra pseudo-operator symbols
     def __dot__(left, right):
@@ -469,13 +580,13 @@ class _tensor_py_operators:
     dot = __dot__
 
     def sum(self, axis=None, dtype=None, keepdims=False, acc_dtype=None):
-        """See `theano.tensor.sum`"""
+        """See `theano.tensor.sum`."""
         return theano.tensor.basic.sum(self, axis=axis,
                                        dtype=dtype, keepdims=keepdims,
                                        acc_dtype=acc_dtype)
 
     def prod(self, axis=None, dtype=None, keepdims=False, acc_dtype=None):
-        """See `theano.tensor.prod`"""
+        """See `theano.tensor.prod`."""
         return theano.tensor.basic.prod(self, axis=axis,
                                         dtype=dtype, keepdims=keepdims,
                                         acc_dtype=acc_dtype)
@@ -491,49 +602,49 @@ class _tensor_py_operators:
                 theano.tensor.basic.abs_(self), L).sum(axis=axis), 1.0 / L)
 
     def mean(self, axis=None, dtype=None, keepdims=False, acc_dtype=None):
-        """See `theano.tensor.mean`"""
+        """See `theano.tensor.mean`."""
         return theano.tensor.basic.mean(self, axis=axis,
                                         dtype=dtype, keepdims=keepdims,
                                         acc_dtype=acc_dtype)
 
     def var(self, axis=None, keepdims=False):
-        """See `theano.tensor.var`"""
+        """See `theano.tensor.var`."""
         return theano.tensor.basic.var(self, axis, keepdims=keepdims)
 
     def std(self, axis=None, keepdims=False):
-        """See `theano.tensor.std`"""
+        """See `theano.tensor.std`."""
         return theano.tensor.basic.std(self, axis, keepdims=keepdims)
 
     def min(self, axis=None, keepdims=False):
-        """See `theano.tensor.min`"""
+        """See `theano.tensor.min`."""
         return theano.tensor.basic.min(self, axis, keepdims=keepdims)
 
     def max(self, axis=None, keepdims=False):
-        """See `theano.tensor.max`"""
+        """See `theano.tensor.max`."""
         return theano.tensor.basic.max(self, axis, keepdims=keepdims)
 
     def argmin(self, axis=None, keepdims=False):
-        """See `theano.tensor.argmin`"""
+        """See `theano.tensor.argmin`."""
         return theano.tensor.basic.argmin(self, axis, keepdims=keepdims)
 
     def argmax(self, axis=None, keepdims=False):
-        """See `theano.tensor.argmax`"""
+        """See `theano.tensor.argmax`."""
         return theano.tensor.basic.argmax(self, axis, keepdims=keepdims)
 
     def nonzero(self, return_matrix=False):
-        """See `theano.tensor.nonzero`"""
+        """See `theano.tensor.nonzero`."""
         return theano.tensor.basic.nonzero(self, return_matrix=return_matrix)
 
     def nonzero_values(self):
-        """See `theano.tensor.nonzero_values`"""
+        """See `theano.tensor.nonzero_values`."""
         return theano.tensor.basic.nonzero_values(self)
 
     def sort(self, axis=-1, kind='quicksort', order=None):
-        """See `theano.tensor.sort`"""
+        """See `theano.tensor.sort`."""
         return theano.tensor.sort(self, axis, kind, order)
 
     def argsort(self, axis=-1, kind='quicksort', order=None):
-        """See `theano.tensor.argsort`"""
+        """See `theano.tensor.argsort`."""
         return theano.tensor.argsort(self, axis, kind, order)
 
     def clip(self, a_min, a_max):
@@ -541,17 +652,17 @@ class _tensor_py_operators:
         return theano.tensor.basic.clip(self, a_min, a_max)
 
     def conj(self):
-        """See `theano.tensor.conj`"""
+        """See `theano.tensor.conj`."""
         return theano.tensor.basic.conj(self)
 
     conjugate = conj
 
     def repeat(self, repeats, axis=None):
-        """See `theano.tensor.repeat`"""
+        """See `theano.tensor.repeat`."""
         return theano.tensor.extra_ops.repeat(self, repeats, axis)
 
     def round(self, mode="half_away_from_zero"):
-        """See `theano.tensor.round`"""
+        """See `theano.tensor.round`."""
         return theano.tensor.basic.round(self, mode)
 
     def trace(self):
@@ -573,12 +684,13 @@ class _tensor_py_operators:
         return theano.tensor.extra_ops.cumprod(self, axis)
 
     def ptp(self, axis=None):
-        """see 'theano.tensor.ptp'"""
+        """See 'theano.tensor.ptp'."""
 
         return theano.tensor.ptp(self, axis)
 
     def swapaxes(self, axis1, axis2):
-        """Return 'tensor.swapaxes(self, axis1, axis2)
+        """
+        Return 'tensor.swapaxes(self, axis1, axis2).
 
         If a matrix is provided with the right axes, its transpose
         will be returned.
@@ -587,32 +699,38 @@ class _tensor_py_operators:
         return theano.tensor.basic.swapaxes(self, axis1, axis2)
 
     def fill(self, value):
-        """Fill inputted tensor with the assigned value"""
+        """Fill inputted tensor with the assigned value."""
         return theano.tensor.basic.fill(self, value)
 
     def choose(self, a, choices, out=None, mode='raise'):
-        """Construct an array from an index array and a set of arrays to choose from."""
+        """
+        Construct an array from an index array and a set of arrays to choose
+        from.
+
+        """
         return theano.tensor.basic.choose(self, a, choices, out=None,
                                           mode='raise')
 
     def squeeze(self):
-        """Remove broadcastable dimensions from
-        the shape of an array.
+        """
+        Remove broadcastable dimensions from the shape of an array.
 
-        It returns the input array, but with the
-        broadcastable dimensions removed. This is
-        always `x` itself or a view into `x`.
+        It returns the input array, but with the broadcastable dimensions
+        removed. This is always `x` itself or a view into `x`.
+
         """
         return theano.tensor.extra_ops.squeeze(self)
 
     def compress(self, a, axis=None):
-        """Return selected slices only
-        """
+        """Return selected slices only."""
         return theano.tensor.extra_ops.compress(self, a, axis=axis)
 
 
 class TensorVariable(_tensor_py_operators, Variable):
-    """Subclass to add the tensor operators to the basic `Variable` class."""
+    """
+    Subclass to add the tensor operators to the basic `Variable` class.
+
+    """
 
     def __init__(self, type, owner=None, index=None, name=None):
         super(TensorVariable, self).__init__(type, owner=owner,
@@ -629,8 +747,8 @@ class TensorVariable(_tensor_py_operators, Variable):
                 while x:
                     file_path = x[-1][0]
                     rm = False
-                    for p in ["theano/tensor/",
-                              "theano/gof/"]:
+                    for p in ["theano/tensor/", "theano\\tensor\\",
+                              "theano/gof/", "theano\\tensor\\"]:
                         if p in file_path:
                             x = x[:-1]
                             nb_rm += 1
@@ -642,14 +760,17 @@ class TensorVariable(_tensor_py_operators, Variable):
             elif config.warn_float64 == "raise":
                 raise Exception(msg)
             elif config.warn_float64 == 'pdb':
-                import pdb; pdb.set_trace()
+                import pdb
+                pdb.set_trace()
 TensorType.Variable = TensorVariable
 
 
 class TensorConstantSignature(tuple):
-    """A Signature object for comparing TensorConstant instances
+    """
+    A Signature object for comparing TensorConstant instances.
 
     An instance is a pair: (Type instance, ndarray).
+
     """
     def __eq__(self, other):
         if type(self) != type(other):
@@ -740,15 +861,16 @@ class TensorConstant(_tensor_py_operators, Constant):
     """Subclass to add the tensor operators to the basic `Constant` class.
 
     To create a TensorConstant, use the `constant` function in this module.
+
     """
     def __init__(self, type, data, name=None):
         Constant.__init__(self, type, data, name)
-        if (isinstance(data, numpy.ndarray) and
-            data.ndim > 0 and
-            len(numpy.unique(data)) == 1):
-            self.tag.unique_value = numpy.unique(data)[0]
-        else:
-            self.tag.unique_value = None
+        self.tag.unique_value = None
+        if isinstance(data, numpy.ndarray) and data.ndim > 0:
+            flat_data = data.ravel()
+            if flat_data.shape[0]:
+                if (flat_data == flat_data[0]).all():
+                    self.tag.unique_value = flat_data[0]
 
     def __str__(self):
         if self.tag.unique_value is not None:

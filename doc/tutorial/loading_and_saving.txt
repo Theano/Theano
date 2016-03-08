@@ -30,15 +30,16 @@ The Basics of Pickling
 The two modules ``pickle`` and ``cPickle`` have the same functionalities, but
 ``cPickle``, coded in C, is much faster.
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_loading_and_saving.test_loading_and_saving_3
-
->>> import cPickle
+>>> from six.moves import cPickle
 
 You can serialize (or *save*, or *pickle*) objects to a file with
 ``cPickle.dump``:
 
->>> f = file('obj.save', 'wb')
+.. testsetup::
+
+   my_obj = object()
+
+>>> f = open('obj.save', 'wb')
 >>> cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
 >>> f.close()
 
@@ -56,7 +57,7 @@ You can serialize (or *save*, or *pickle*) objects to a file with
 To de-serialize (or *load*, or *unpickle*) a pickled file, use
 ``cPickle.load``:
 
->>> f = file('obj.save', 'rb')
+>>> f = open('obj.save', 'rb')
 >>> loaded_obj = cPickle.load(f)
 >>> f.close()
 
@@ -64,17 +65,23 @@ To de-serialize (or *load*, or *unpickle*) a pickled file, use
 You can pickle several objects into the same file, and load them all (in the
 same order):
 
->>> f = file('objects.save', 'wb')
+.. testsetup::
+
+   obj1 = object()
+   obj2 = object()
+   obj3 = object()
+
+>>> f = open('objects.save', 'wb')
 >>> for obj in [obj1, obj2, obj3]:
->>>     cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+...     cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
 >>> f.close()
 
 Then:
 
->>> f = file('objects.save', 'rb')
+>>> f = open('objects.save', 'rb')
 >>> loaded_objects = []
 >>> for i in range(3):
->>>     loaded_objects.append(cPickle.load(f))
+...     loaded_objects.append(cPickle.load(f))
 >>> f.close()
 
 For more details about pickle's usage, see
@@ -102,7 +109,7 @@ along every instance of your model.
 
 For instance, you can define functions along the lines of:
 
-.. code-block:: python
+.. testcode::
 
     def __getstate__(self):
         state = dict(self.__dict__)
@@ -111,7 +118,7 @@ For instance, you can define functions along the lines of:
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-        self.training_set = cPickle.load(file(self.training_set_file, 'rb'))
+        self.training_set = cPickle.load(open(self.training_set_file, 'rb'))
 
 
 Robust Serialization
@@ -129,6 +136,7 @@ just load the parameters manually with `numpy`.
 
 .. code-block:: python
 
+    import numpy
     numpy.load('model.zip')
 
 This approach could be beneficial if you are sharing your model with people who
@@ -153,7 +161,7 @@ don't.
 For instance, if the only parameters you want to save are a weight
 matrix *W* and a bias *b*, you can define:
 
-.. code-block:: python
+.. testcode::
 
     def __getstate__(self):
         return (self.W, self.b)
@@ -167,7 +175,7 @@ If at some point in time *W* is renamed to *weights* and *b* to
 *bias*, the older pickled files will still be usable, if you update these
 functions to reflect the change in name:
 
-.. code-block:: python
+.. testcode::
 
     def __getstate__(self):
         return (self.weights, self.bias)

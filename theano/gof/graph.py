@@ -7,88 +7,94 @@ To read about what theano graphs are from a user perspective, have a look at
 """
 from __future__ import print_function
 
-__docformat__ = "restructuredtext en"
-
 from collections import deque
 from copy import copy
 from itertools import count
 
 import theano
-import warnings
+from theano import config
 from theano.gof import utils
 from six import string_types, integer_types, iteritems
 from theano.misc.ordered_set import OrderedSet
+
+__docformat__ = "restructuredtext en"
 
 # Lazy imports to avoid circular dependencies.
 is_same_graph_with_merge = None
 equal_computations = None
 
-NoContext = object()
+NoParams = object()
 
 
 class Node(utils.object2):
-    """A Node in a theano graph.
-    Graphs contain two kinds of Nodes--
-    Variable and Apply.
+    """
+    A Node in a theano graph.
+
+    Graphs contain two kinds of Nodes -- Variable and Apply.
     Edges in the graph are not explicitly represented.
     Instead each Node keeps track of its parents via
     Variable.owner / Apply.inputs and its children
     via Variable.clients / Apply.outputs.
-    """
-    def get_parents(self):
-        """ Return a list of the parents of this node.
-        Should return a copy--i.e., modifying the return
-        value should not modify the graph structure."""
 
+    """
+
+    def get_parents(self):
+        """
+        Return a list of the parents of this node.
+        Should return a copy--i.e., modifying the return
+        value should not modify the graph structure.
+
+        """
         raise NotImplementedError()
 
 
 class Apply(Node):
     """
-    An :term:`Apply` instance is a node in an expression graph which represents the application
-    of an `Op` to some input `Variable` nodes, producing some output `Variable` nodes.
+    An :term:`Apply` instance is a node in an expression graph which represents
+    the application of an `Op` to some input `Variable` nodes, producing some
+    output `Variable` nodes.
 
-    This class is typically instantiated by an Op's make_node() function, which is typically
-    called by that Op's __call__() function.
+    This class is typically instantiated by an Op's make_node() function, which
+    is typically called by that Op's __call__() function.
 
-    An Apply instance serves as a simple structure with three important attributes:
+    An Apply instance serves as a simple structure with three important
+    attributes:
 
-    - :literal:`inputs` :  a list of `Variable` nodes that represent the arguments of the expression,
+    - :literal:`inputs` :  a list of `Variable` nodes that represent the
+      arguments of the expression,
 
-    - :literal:`outputs` : a list of `Variable` nodes that represent the variable of the expression, and
+    - :literal:`outputs` : a list of `Variable` nodes that represent the
+      variable of the expression, and
 
-    - :literal:`op` : an `Op` instance that determines the nature of the expression being applied.
+    - :literal:`op` : an `Op` instance that determines the nature of the
+      expression being applied.
 
-    The driver `compile.function` uses Apply's inputs attribute together with Variable's owner
-    attribute to search the expression graph and determine which inputs are necessary to
-    compute the function's outputs.
+    The driver `compile.function` uses Apply's inputs attribute together with
+    Variable's owner attribute to search the expression graph and determine
+    which inputs are necessary to compute the function's outputs.
 
     A `Linker` uses the Apply instance's `op` field to compute the variables.
 
-    Comparing with the Python language, an `Apply` instance is theano's version of a function
-    call (or expression instance) whereas `Op` is theano's version of a function definition.
+    Comparing with the Python language, an `Apply` instance is theano's version
+    of a function call (or expression instance) whereas `Op` is theano's version
+    of a function definition.
+
+    Parameters
+    ----------
+    op : `Op` instance
+    inputs : list of Variable instances
+    outputs : list of Variable instances
+
+    Notes
+    -----
+    The owner field of each output in the outputs list will be set to self.
+
+    If an output element has an owner that is neither None nor self, then a
+    ValueError exception will be raised.
 
     """
 
     def __init__(self, op, inputs, outputs):
-        """Initialize attributes
-
-        :Parameters:
-         `op` : `Op` instance
-           initialize self.op
-         `inputs` : list of Variable instances
-           initialize self.inputs
-         `outputs` : list of Variable instances
-           initialize self.outputs
-
-        :note:
-            The owner field of each output in the outputs list will be set to self.
-
-        :note:
-            If an output element has an owner that is neither None nor self, then a ValueError
-            exception will be raised.
-
-        """
         self.op = op
         self.inputs = []
         self.tag = utils.scratchpad()
@@ -118,28 +124,40 @@ class Apply(Node):
             else:
                 raise TypeError("The 'outputs' argument to Apply must contain Variable instances with no owner, not %s" % output)
 
-    def run_context(self):
-        """Returns the context for the node, or NoContext if no context is set.
+    def run_params(self):
         """
-        if hasattr(self.op, 'get_context'):
-            return self.op.get_context(self)
-        return NoContext
+        Returns the params for the node, or NoParams if no params is set.
+
+        """
+        if hasattr(self.op, 'get_params'):
+            return self.op.get_params(self)
+        return NoParams
+
+    def __getstate__(self):
+        d = self.__dict__
+        # ufunc don't pickle/unpickle well
+        if hasattr(self.tag, 'ufunc'):
+            d = copy(self.__dict__)
+            t = d["tag"]
+            del t.ufunc
+            d["tag"] = t
+        return d
 
     def default_output(self):
-        """Returns the default output for this node.
+        """
+        Returns the default output for this node.
 
-        :rtype:
-            Variable instance
+        Returns
+        -------
+        Variable instance
+            An element of self.outputs, typically self.outputs[0].
 
-        :return:
-            an element of self.outputs, typically self.outputs[0].
-
-        :note:
-            may raise AttributeError self.op.default_output is out of range, or if there are
-            multiple outputs and self.op.default_output does not exist.
+        Notes
+        -----
+        May raise AttributeError self.op.default_output is out of range, or if
+        there are multiple outputs and self.op.default_output does not exist.
 
         """
-
         do = getattr(self.op, 'default_output', None)
         if do is None:
             if len(self.outputs) == 1:
@@ -157,7 +175,10 @@ class Apply(Node):
 
     out = property(default_output,
                    doc="alias for self.default_output()")
-    """Alias for self.default_output()"""
+    """
+    Alias for self.default_output().
+
+    """
 
     def __str__(self):
         return op_as_string(self.inputs, self)
@@ -169,13 +190,18 @@ class Apply(Node):
         return self
 
     def clone(self):
-        """Duplicate this Apply instance with inputs = self.inputs.
+        """
+        Duplicate this Apply instance with inputs = self.inputs.
 
-        :return:
-            a new Apply instance (or subclass instance) with new outputs.
+        Returns
+        -------
+        object
+            A new Apply instance (or subclass instance) with new outputs.
 
-        :note:
-            tags are copied from self to the returned instance.
+        Notes
+        -----
+        Tags are copied from self to the returned instance.
+
         """
         cp = self.__class__(self.op, self.inputs,
                             [output.clone() for output in self.outputs])
@@ -183,13 +209,14 @@ class Apply(Node):
         return cp
 
     def clone_with_new_inputs(self, inputs, strict=True):
-        """Duplicate this Apply instance in a new graph.
+        """
+        Duplicate this Apply instance in a new graph.
 
-        :param inputs: list of Variable instances to use as inputs.
-
-        :type strict: Bool
-
-        :param strict:
+        Parameters
+        ----------
+        inputs
+            List of Variable instances to use as inputs.
+        strict : bool
             If True, the type fields of all the inputs must be equal
             to the current ones (or compatible, for instance Tensor /
             CudaNdarray of the same dtype and broadcastable patterns,
@@ -199,7 +226,10 @@ class Apply(Node):
             clone's outputs will have the same types as self.outputs,
             and cloning may not even be possible (it depends on the Op).
 
-        :returns: an Apply instance with the same op but different outputs.
+        Returns
+        -------
+        object
+            An Apply instance with the same op but different outputs.
 
         """
         assert isinstance(inputs, (list, tuple))
@@ -225,62 +255,90 @@ class Apply(Node):
 
     # convenience properties
     nin = property(lambda self: len(self.inputs), doc='same as len(self.inputs)')
-    """property: Number of inputs"""
+    """
+    Property: Number of inputs.
 
+    """
     nout = property(lambda self: len(self.outputs), doc='same as len(self.outputs)')
-    """property: Number of outputs"""
+    """
+    Property: Number of outputs.
 
-    context_type = property(lambda self: self.op.context_type, doc='type to use for the context')
+    """
+    params_type = property(lambda self: self.op.params_type, doc='type to use for the params')
 
 
 class Variable(Node):
     """
-    A :term:`Variable` is a node in an expression graph that represents a variable.
+    A :term:`Variable` is a node in an expression graph that represents a
+    variable.
 
-    The inputs and outputs of every `Apply` (theano.gof.Apply) are `Variable` instances.
-    The input and output arguments to create a `function` are also `Variable` instances.
-    A `Variable` is like a strongly-typed variable in some other languages; each `Variable` contains a
-    reference to a `Type` instance that defines the kind of value the `Variable` can take in a
+    The inputs and outputs of every `Apply` (theano.gof.Apply) are `Variable`
+    instances. The input and output arguments to create a `function` are also
+    `Variable` instances. A `Variable` is like a strongly-typed variable in
+    some other languages; each `Variable` contains a reference to a `Type`
+    instance that defines the kind of value the `Variable` can take in a
     computation.
 
     A `Variable` is a container for four important attributes:
 
-    - :literal:`type` a `Type` instance defining the kind of value this `Variable` can have,
+    - :literal:`type` a `Type` instance defining the kind of value this
+      `Variable` can have,
 
-    - :literal:`owner` either None (for graph roots) or the `Apply` instance of which `self` is an output,
+    - :literal:`owner` either None (for graph roots) or the `Apply` instance
+      of which `self` is an output,
 
-    - :literal:`index` the integer such that :literal:`owner.outputs[index] is this_variable` (ignored if `owner` is None)
+    - :literal:`index` the integer such that :literal:`owner.outputs[index] is
+      this_variable` (ignored if `owner` is None),
 
     - :literal:`name` a string to use in pretty-printing and debugging.
 
-    There are a few kinds of Variables to be aware of: A Variable which is the output of a symbolic
-    computation has a reference to the Apply instance to which it belongs (property: owner) and
-    the position of itself in the owner's output list (property: index).
+    There are a few kinds of Variables to be aware of: A Variable which is the
+    output of a symbolic computation has a reference to the Apply instance to
+    which it belongs (property: owner) and the position of itself in the owner's
+    output list (property: index).
 
-    - `Variable` (this base type) is typically the output of a symbolic computation,
+    - `Variable` (this base type) is typically the output of a symbolic
+      computation.
 
-    - `Constant` (a subclass) which adds a default and un-replaceable :literal:`value`, and
-      requires that owner is None
+    - `Constant` (a subclass) which adds a default and un-replaceable
+      :literal:`value`, and requires that owner is None.
 
-    - `TensorVariable` subclass of Variable that represents a numpy.ndarray object
+    - `TensorVariable` subclass of Variable that represents a numpy.ndarray
+       object.
 
-    - `SharedTensorVariable` Shared version of TensorVariable
+    - `TensorSharedVariable` Shared version of TensorVariable.
 
-    - `SparseVariable` subclass of Variable that represents a scipy.sparse.{csc,csr}_matrix object
+    - `SparseVariable` subclass of Variable that represents
+      a scipy.sparse.{csc,csr}_matrix object.
 
-    - `CudaNdarrayVariable` subclass of Variable that represents our object on the GPU that is a subset of numpy.ndarray
+    - `CudaNdarrayVariable` subclass of Variable that represents our object on
+      the GPU that is a subset of numpy.ndarray.
 
-    - `RandomVariable`
+    - `RandomVariable`.
 
     A Variable which is the output of a symbolic computation will have an owner
     not equal to None.
 
-    Using the Variables' owner field and the Apply nodes' inputs fields, one can navigate a graph
-    from an output all the way to the inputs. The opposite direction is not possible until an
-    FunctionGraph has annotated the Variables with the clients field, ie, before the compilation process
-    has begun a Variable does not know which Apply nodes take it as input.
+    Using the Variables' owner field and the Apply nodes' inputs fields, one can
+    navigate a graph from an output all the way to the inputs. The opposite
+    direction is not possible until a FunctionGraph has annotated the Variables
+    with the clients field, ie, before the compilation process has begun a
+    Variable does not know which Apply nodes take it as input.
 
-    **Code Example**
+    Parameters
+    ----------
+    type : a Type instance
+        The type governs the kind of data that can be associated with this
+        variable.
+    owner : None or Apply instance
+        The Apply instance which computes the value for this variable.
+    index : None or int
+        The position of this Variable in owner.outputs.
+    name : None or str
+        A string for pretty-printing and debugging.
+
+    Examples
+    --------
 
     .. code-block:: python
 
@@ -304,32 +362,20 @@ class Variable(Node):
         e = d + b
         theano.function([d,b], [e])     # this works.  d's default value of 1.5 is ignored.
 
-    The python variables :literal:`a,b,c` all refer to instances of type `Variable`.
-    The `Variable` refered to by `a` is also an instance of `Constant`.
+    The python variables :literal:`a,b,c` all refer to instances of type
+    `Variable`. The `Variable` refered to by `a` is also an instance of
+    `Constant`.
 
-    `compile.function` uses each `Apply` instance's `inputs` attribute
-    together with each Variable's `owner` field to determine which inputs are necessary to compute the function's outputs.
+    `compile.function` uses each `Apply` instance's `inputs` attribute together
+    with each Variable's `owner` field to determine which inputs are necessary
+    to compute the function's outputs.
+
     """
-    #__slots__ = ['type', 'owner', 'index', 'name']
+
+    # __slots__ = ['type', 'owner', 'index', 'name']
     __count__ = count(0)
 
     def __init__(self, type, owner=None, index=None, name=None):
-        """Initialize type, owner, index, name.
-
-        :type type: a Type instance
-        :param type:
-            the type governs the kind of data that can be associated with this variable
-
-        :type owner: None or Apply instance
-        :param owner: the Apply instance which computes the value for this variable
-
-        :type index: None or int
-        :param index: the position of this Variable in owner.outputs
-
-        :type name: None or str
-        :param name: a string for pretty-printing and debugging
-
-        """
         super(Variable, self).__init__()
 
         self.tag = utils.scratchpad()
@@ -346,7 +392,9 @@ class Variable(Node):
         self.auto_name = 'auto_' + str(next(self.__count__))
 
     def __str__(self):
-        """WRITEME"""
+        """Return a str representation of the Variable.
+
+        """
         if self.name is not None:
             return self.name
         if self.owner is not None:
@@ -358,17 +406,46 @@ class Variable(Node):
         else:
             return "<%s>" % str(self.type)
 
-    def __repr__(self):
-        return str(self)
+    def __repr_test_value__(self):
+        """Return a repr of the test value.
+
+        Return a printable representation of the test value. It can be
+        overridden by classes with non printable test_value to provide a
+        suitable representation of the test_value.
+        """
+        return repr(theano.gof.op.get_test_value(self))
+
+    def __repr__(self, firstPass=True):
+        """Return a repr of the Variable.
+
+        Return a printable name or description of the Variable. If
+        config.print_test_value is True it will also print the test_value if
+        any.
+        """
+        to_print = [str(self)]
+        if config.print_test_value and firstPass:
+            try:
+                to_print.append(self.__repr_test_value__())
+            except AttributeError:
+                pass
+        return '\n'.join(to_print)
 
     def clone(self):
-        """Return a new Variable like self.
+        """
+        Return a new Variable like self.
 
-        :rtype: Variable instance
-        :return: a new Variable instance (or subclass instance) with no owner or index.
+        Returns
+        -------
+        Variable instance
+            A new Variable instance (or subclass instance) with no owner or
+            index.
 
-        :note: tags are copied to the returned instance.
-        :note: name is copied to the returned instance.
+        Notes
+        -----
+        Tags are copied to the returned instance.
+
+        Name is copied to the returned instance.
+
         """
         # return copy(self)
         cp = self.__class__(self.type, None, None, self.name)
@@ -397,9 +474,39 @@ class Variable(Node):
         return []
 
     def eval(self, inputs_to_values=None):
-        """ Evaluates this variable.
+        """
+        Evaluates this variable.
 
-        inputs_to_values: a dictionary mapping theano Variables to values.
+        Parameters
+        ----------
+        inputs_to_values
+            A dictionary mapping theano Variables to values.
+
+        Examples
+        --------
+
+        >>> import numpy
+        >>> import theano.tensor as T
+        >>> x = T.dscalar('x')
+        >>> y = T.dscalar('y')
+        >>> z = x + y
+        >>> numpy.allclose(z.eval({x : 16.3, y : 12.1}), 28.4)
+        True
+
+        We passed :func:`eval` a dictionary mapping symbolic theano
+        variables to the values to substitute for them, and it returned
+        the numerical value of the expression.
+
+        Notes
+        -----
+
+        `eval` will be slow the first time you call it on a variable --
+        it needs to call :func:`function` to compile the expression behind
+        the scenes. Subsequent calls to :func:`eval` on that same variable
+        will be fast, because the variable caches the compiled function.
+
+        This way of computing has more overhead than a normal Theano
+        function, so don't use it too much in real scripts.
         """
 
         if inputs_to_values is None:
@@ -409,7 +516,7 @@ class Variable(Node):
             self._fn_cache = dict()
 
         inputs = tuple(sorted(inputs_to_values.keys(), key=id))
-        if not inputs in self._fn_cache:
+        if inputs not in self._fn_cache:
             self._fn_cache[inputs] = theano.function(inputs, self)
         args = [inputs_to_values[param] for param in inputs]
 
@@ -425,21 +532,23 @@ class Variable(Node):
 
 class Constant(Variable):
     """
-    A :term:`Constant` is a `Variable` with a `value` field that cannot be changed at runtime.
+    A :term:`Constant` is a `Variable` with a `value` field that cannot be
+    changed at runtime.
 
-    Constant nodes make eligible numerous optimizations: constant inlining in C code, constant folding, etc.
+    Constant nodes make eligible numerous optimizations: constant inlining in
+    C code, constant folding, etc.
+
+    Notes
+    -----
+    The data field is filtered by what is provided in the constructor for the
+    Constant's type field.
+
+    WRITEME
+
     """
-    #__slots__ = ['data']
+
+    # __slots__ = ['data']
     def __init__(self, type, data, name=None):
-        """Initialize self.
-
-        :note:
-            The data field is filtered by what is provided in the constructor for the Constant's
-            type field.
-
-        WRITEME
-
-        """
         Variable.__init__(self, type, None, None, name)
         self.data = type.filter(data)
 
@@ -459,49 +568,59 @@ class Constant(Variable):
         else:
             name = str(self.data)
             if len(name) > 20:
-                name = name[:10] + '...' + name[-10]
+                name = name[:10] + '...' + name[-10:]
             return 'Constant{%s}' % name
 
     def clone(self):
         """
-        We clone this object, but we don't clone the data to lower memory requirement
-        We suppose that the data will never change.
+        We clone this object, but we don't clone the data to lower memory
+        requirement. We suppose that the data will never change.
+
         """
         cp = self.__class__(self.type, self.data, self.name)
         cp.tag = copy(self.tag)
         return cp
 
     def __set_owner(self, value):
-        """WRITEME
+        """
+        WRITEME
 
-        :Exceptions:
-         - `ValueError`: if `value` is not `None`
+        Raises
+        ------
+        ValueError
+            If `value` is not `None`.
+
         """
         if value is not None:
             raise ValueError("Constant instances cannot have an owner.")
 
     owner = property(lambda self: None, __set_owner)
-    value = property(lambda self: self.data,
-            doc='read-only data access method')
+    value = property(lambda self: self.data, doc='read-only data access method')
 
     # index is not defined, because the `owner` attribute must necessarily be None
 
 
 def stack_search(start, expand, mode='bfs', build_inv=False):
-    """Search through a graph, either breadth- or depth-first
+    """
+    Search through a graph, either breadth- or depth-first.
 
-    :type start: deque
-    :param start: search from these nodes
-    :type expand: callable
-    :param expand:
-        when we get to a node, add expand(node) to the list of nodes to visit.
-        This function should return a list, or None
-    :rtype: list of `Variable` or `Apply` instances (depends on `expend`)
-    :return: the list of nodes in order of traversal.
+    Parameters
+    ----------
+    start : deque
+        Search from these nodes.
+    expand : callable
+        When we get to a node, add expand(node) to the list of nodes to visit.
+        This function should return a list, or None.
 
-    :note:
-        a node will appear at most once in the return value, even if it
-        appears multiple times in the start parameter.
+    Returns
+    -------
+    list of `Variable` or `Apply` instances (depends on `expend`)
+        The list of nodes in order of traversal.
+
+    Notes
+    -----
+    A node will appear at most once in the return value, even if it
+    appears multiple times in the start parameter.
 
     :postcondition: every element of start is transferred to the returned list.
     :postcondition: start is empty.
@@ -535,15 +654,20 @@ def stack_search(start, expand, mode='bfs', build_inv=False):
 
 
 def ancestors(variable_list, blockers=None):
-    """Return the variables that contribute to those in variable_list (inclusive).
+    """
+    Return the variables that contribute to those in variable_list (inclusive).
 
-    :type variable_list: list of `Variable` instances
-    :param variable_list:
-        output `Variable` instances from which to search backward through owners
-    :rtype: list of `Variable` instances
-    :returns:
-        all input nodes, in the order found by a left-recursive depth-first search
-        started at the nodes in `variable_list`.
+    Parameters
+    ----------
+    variable_list : list of `Variable` instances
+        Output `Variable` instances from which to search backward through
+        owners.
+
+    Returns
+    -------
+    list of `Variable` instances
+        All input nodes, in the order found by a left-recursive depth-first
+        search started at the nodes in `variable_list`.
 
     """
     def expand(r):
@@ -554,15 +678,20 @@ def ancestors(variable_list, blockers=None):
 
 
 def inputs(variable_list, blockers=None):
-    """Return the inputs required to compute the given Variables.
+    """
+    Return the inputs required to compute the given Variables.
 
-    :type variable_list: list of `Variable` instances
-    :param variable_list:
-        output `Variable` instances from which to search backward through owners
-    :rtype: list of `Variable` instances
-    :returns:
-        input nodes with no owner, in the order found by a left-recursive depth-first search
-        started at the nodes in `variable_list`.
+    Parameters
+    ----------
+    variable_list : list of `Variable` instances
+        Output `Variable` instances from which to search backward through
+        owners.
+
+    Returns
+    -------
+    list of `Variable` instances
+        Input nodes with no owner, in the order found by a left-recursive
+        depth-first search started at the nodes in `variable_list`.
 
     """
     vlist = ancestors(variable_list, blockers)
@@ -571,7 +700,9 @@ def inputs(variable_list, blockers=None):
 
 
 def variables_and_orphans(i, o):
-    """WRITEME
+    """
+    WRITEME
+
     """
     def expand(r):
         if r.owner and r not in i:
@@ -584,17 +715,24 @@ def variables_and_orphans(i, o):
 
 
 def ops(i, o):
-    """ WRITEME
+    """
+    WRITEME
 
-    :type i: list
-    :param i: input L{Variable}s
-    :type o: list
-    :param o: output L{Variable}s
+    Parameters
+    ----------
+    i : list
+        Input L{Variable}s.
+    o : list
+        Output L{Variable}s.
 
-    :returns:
-        the set of ops that are contained within the subgraph that lies between i and o,
-        including the owners of the L{Variable}s in o and intermediary ops between i and o, but
-        not the owners of the L{Variable}s in i.
+    Returns
+    -------
+    object
+        The set of ops that are contained within the subgraph that lies
+        between i and o, including the owners of the L{Variable}s in o and
+        intermediary ops between i and o, but not the owners of the L{Variable}s
+        in i.
+
     """
     ops = set()
     variables, orphans = variables_and_orphans(i, o)
@@ -606,33 +744,48 @@ def ops(i, o):
 
 
 def variables(i, o):
-    """ WRITEME
+    """
+    WRITEME
 
-    :type i: list
-    :param i: input L{Variable}s
-    :type o: list
-    :param o: output L{Variable}s
+    Parameters
+    ----------
+    i : list
+        Input L{Variable}s.
+    o : list
+        Output L{Variable}s.
 
-    :returns:
-        the set of Variables that are involved in the subgraph that lies between i and o. This
-        includes i, o, orphans(i, o) and all values of all intermediary steps from i to o.
+    Returns
+    -------
+    object
+        The set of Variables that are involved in the subgraph that lies
+        between i and o. This includes i, o, orphans(i, o) and all values of
+        all intermediary steps from i to o.
+
     """
     return variables_and_orphans(i, o)[0]
 
 
 def orphans(i, o):
-    """ WRITEME
+    """
+    WRITEME
 
-    :type i: list
-    :param i: input L{Variable}s
-    :type o: list
-    :param o: output L{Variable}s
+    Parameters
+    ----------
+    i : list
+        Input L{Variable}s.
+    o : list
+        Output L{Variable}s.
 
-    :returns:
-        the set of Variables which one or more Variables in o depend on but are neither in i nor in
-        the subgraph that lies between i and o.
+    Returns
+    -------
+    object
+        The set of Variables which one or more Variables in o depend on but are
+        neither in i nor in the subgraph that lies between i and o.
 
-    e.g. orphans([x], [(x+y).out]) => [y]
+    Examples
+    --------
+    orphans([x], [(x+y).out]) => [y]
+
     """
     return variables_and_orphans(i, o)[1]
 
@@ -641,22 +794,26 @@ def clone(i, o, copy_inputs=True):
     """
     Copies the subgraph contained between i and o.
 
-    :type i: list
-    :param i: input L{Variable}s
-    :type o: list
-    :param o: output L{Variable}s
-    :type copy_inputs: bool
-    :param copy_inputs: if True, the inputs will be copied (defaults to True)
+    Parameters
+    ----------
+    i : list
+        Input L{Variable}s.
+    o : list
+        Output L{Variable}s.
+    copy_inputs : bool
+        If True, the inputs will be copied (defaults to True).
 
-    Returns the inputs and outputs of that copy.
+    Returns
+    -------
+    object
+        The inputs and outputs of that copy.
+
     """
     equiv = clone_get_equiv(i, o, copy_inputs)
     return [equiv[input] for input in i], [equiv[output] for output in o]
 
 
-def clone_get_equiv(inputs, outputs,
-        copy_inputs_and_orphans=True,
-        memo=None):
+def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
     """
     Return a dictionary that maps from Variable and Apply nodes in the
     original graph to a new node (a clone) in a new graph.
@@ -666,20 +823,19 @@ def clone_get_equiv(inputs, outputs,
 
     Parameters
     ----------
-    inputs: a list of Variables
-    outputs: a list of Variables
-    copy_inputs_and_orphans: bool
+    inputs : a list of Variables
+    outputs : a list of Variables
+    copy_inputs_and_orphans : bool
         True means to create the cloned graph from new input and constant
-            nodes (the bottom of a feed-upward graph),
+        nodes (the bottom of a feed-upward graph).
         False means to clone a graph that is rooted at the original input
-            nodes.
-    memo: None or dict
+        nodes.
+    memo : None or dict
         Optionally start with a partly-filled dictionary for the return value.
         If a dictionary is passed, this function will work in-place on that
         dictionary and return it.
 
     """
-
     if memo is None:
         memo = {}
 
@@ -717,30 +873,38 @@ def clone_get_equiv(inputs, outputs,
 
 
 def general_toposort(r_out, deps, debug_print=False,
-                     compute_deps_cache=None, deps_cache=None):
-    """WRITEME
+                     compute_deps_cache=None, deps_cache=None,
+                     clients=None):
+    """
+    WRITEME
 
-    :note:
-        deps(i) should behave like a pure function (no funny business with internal state)
+    Parameters
+    ----------
+    deps
+        A python function that takes a node as input and returns its dependence.
+    compute_deps_cache : optional
+        If provided deps_cache should also be provided. This is a function like
+        deps, but that also cache its results in a dict passed as deps_cache.
+    deps_cache : dict
+        Must be used with compute_deps_cache.
+    clients : dict
+        If a dict is passed it will be filled with a mapping of node
+        -> clients for each node in the subgraph.
 
-    :note:
-        deps(i) will be cached by this function (to be fast)
+    Notes
+    -----
+        deps(i) should behave like a pure function (no funny business with
+        internal state).
 
-    :note:
-        The order of the return value list is determined by the order of nodes returned by the deps() function.
+        deps(i) will be cached by this function (to be fast).
 
-    :param deps: a python function that take a node as input and
-        return its dependence.
-    :param compute_deps_cache: Optional,
-        if provided deps_cache should also be provided. This is a
-        function like deps, but that also cache its results in a dict
-        passed as deps_cache.
-    :param deps_cache: a dict. Must be used with compute_deps_cache.
+        The order of the return value list is determined by the order of nodes
+        returned by the deps() function.
 
-    :note: deps should be provided or can be None and the caller
-        provide compute_deps_cache and deps_cache. The second option
-        remove a Python function call, and allow for more specialized
-        code, so it can be faster.
+        deps should be provided or can be None and the caller provides
+        compute_deps_cache and deps_cache. The second option removes a Python
+        function call, and allows for more specialized code, so it can be
+        faster.
 
     """
     if compute_deps_cache is None:
@@ -764,8 +928,10 @@ def general_toposort(r_out, deps, debug_print=False,
 
     assert isinstance(r_out, (tuple, list, deque))
 
-    reachable, clients = stack_search(deque(r_out), compute_deps_cache,
-                                      'dfs', True)
+    reachable, _clients = stack_search(deque(r_out), compute_deps_cache,
+                                       'dfs', True)
+    if clients is not None:
+        clients.update(_clients)
     sources = deque([r for r in reachable if not deps_cache.get(r, None)])
 
     rset = set()
@@ -775,8 +941,9 @@ def general_toposort(r_out, deps, debug_print=False,
         if node not in rset:
             rlist.append(node)
             rset.add(node)
-            for client in clients.get(node, []):
-                deps_cache[client] = [a for a in deps_cache[client] if a is not node]
+            for client in _clients.get(node, []):
+                deps_cache[client] = [a for a in deps_cache[client]
+                                      if a is not node]
                 if not deps_cache[client]:
                     sources.append(client)
 
@@ -790,19 +957,21 @@ def general_toposort(r_out, deps, debug_print=False,
     return rlist
 
 
-def io_toposort(inputs, outputs, orderings=None):
-    """WRITEME
+def io_toposort(inputs, outputs, orderings=None, clients=None):
+    """
+    WRITEME
 
-    inputs: a list or tuple of Variable instances
-    outputs: a list or tuple of Apply instances
-
-    orderings: a dictionary
-                key: Apply instance
-                value: list of Apply instance
-
-                it is important that the value be
-                a container with a deterministic iteration
-                order. no sets allowed!
+    Parameters
+    ----------
+    inputs : list or tuple of Variable instances
+    outputs : list or tuple of Apply instances
+    orderings : dict
+        Key: Apply instance. Value: list of Apply instance.
+        It is important that the value be a container with a deterministic
+        iteration order. No sets allowed!
+    clients : dict
+        If a dict is provided it will be filled with mappings of
+        node->clients for each node in the subgraph that is sorted
 
     """
     # the inputs are used only here in the function that decides what 'predecessors' to explore
@@ -818,7 +987,7 @@ def io_toposort(inputs, outputs, orderings=None):
         # Also include the cache in the function itself for speed up.
         def compute_deps_cache(obj):
             if obj in deps_cache:
-                return deps_cache[io]
+                return deps_cache[obj]
             rval = []
             if obj not in iset:
                 if isinstance(obj, Variable):
@@ -853,13 +1022,82 @@ def io_toposort(inputs, outputs, orderings=None):
 
     topo = general_toposort(outputs, deps=compute_deps,
                             compute_deps_cache=compute_deps_cache,
-                            deps_cache=deps_cache)
+                            deps_cache=deps_cache, clients=clients)
     return [o for o in topo if isinstance(o, Apply)]
 
 
 default_leaf_formatter = str
-default_node_formatter = lambda op, argstrings: "%s(%s)" % (op.op,
-                                                            ", ".join(argstrings))
+
+
+def default_node_formatter(op, argstrings):
+    return "%s(%s)" % (op.op, ", ".join(argstrings))
+
+
+def io_connection_pattern(inputs, outputs):
+    """
+    Returns the connection pattern of a subgraph defined by given
+    inputs and outputs.
+
+    """
+    inner_nodes = io_toposort(inputs, outputs)
+
+    # Initialize 'connect_pattern_by_var' by establishing each input as
+    # connected only to itself
+    connect_pattern_by_var = {}
+    nb_inputs = len(inputs)
+
+    for i in range(nb_inputs):
+        input = inputs[i]
+        inp_connection_pattern = [i == j for j in range(nb_inputs)]
+        connect_pattern_by_var[input] = inp_connection_pattern
+
+    # Iterate through the nodes used to produce the outputs from the
+    # inputs and, for every node, infer their connection pattern to
+    # every input from the connection patterns of their parents.
+    for n in inner_nodes:
+
+        # Get the connection pattern of the inner node's op. If the op
+        # does not define a connection_pattern method, assume that
+        # every node output is connected to every node input
+        try:
+            op_connection_pattern = n.op.connection_pattern(n)
+        except AttributeError:
+            op_connection_pattern = ([[True] * len(n.outputs)] *
+                                     len(n.inputs))
+
+        # For every output of the inner node, figure out which inputs it
+        # is connected to by combining the connection pattern of the inner
+        # node and the connection patterns of the inner node's inputs.
+        for out_idx in range(len(n.outputs)):
+            out = n.outputs[out_idx]
+            out_connection_pattern = [False] * nb_inputs
+
+            for inp_idx in range(len(n.inputs)):
+                inp = n.inputs[inp_idx]
+
+                if inp in connect_pattern_by_var:
+                    inp_connection_pattern = connect_pattern_by_var[inp]
+
+                    # If the node output is connected to the node input, it
+                    # means it is connected to every inner input that the
+                    # node inputs is connected to
+                    if op_connection_pattern[inp_idx][out_idx]:
+                        out_connection_pattern = [out_connection_pattern[i] or
+                                                  inp_connection_pattern[i]
+                                                  for i in range(nb_inputs)]
+
+            # Store the connection pattern of the node output
+            connect_pattern_by_var[out] = out_connection_pattern
+
+    # Obtain the global connection pattern by combining the
+    # connnection patterns of the individual outputs
+    global_connection_pattern = [[] for o in range(len(inputs))]
+    for out in outputs:
+        out_connection_pattern = connect_pattern_by_var[out]
+        for i in range(len(inputs)):
+            global_connection_pattern[i].append(out_connection_pattern[i])
+
+    return global_connection_pattern
 
 
 def is_same_graph(var1, var2, givens=None, debug=False):
@@ -875,22 +1113,26 @@ def is_same_graph(var1, var2, givens=None, debug=False):
     return the same output. The goal is to verify this assumption, to
     eventually get rid of one of them in the future.
 
-    :param var1: The first Variable to compare.
+    Parameters
+    ----------
+    var1
+        The first Variable to compare.
+    var2
+        The second Variable to compare.
+    givens
+        Similar to the `givens` argument of `theano.function`, it can be used
+        to perform substitutions in the computational graph of `var1` and
+        `var2`. This argument is associated to neither `var1` nor `var2`:
+        substitutions may affect both graphs if the substituted variable
+        is present in both.
+    debug : bool
+        If True, then an exception is raised when we are in a situation where
+        the `equal_computations` implementation cannot be called.
+        This parameter is intended to be used in tests only, to make sure we
+        properly test both implementations.
 
-    :param var2: The second Variable to compare.
-
-    :param givens: Similar to the `givens` argument of `theano.function`, it
-    can be used to perform substitutions in the computational graph of `var1`
-    and `var2`. This argument is associated to neither `var1` nor `var2`:
-    substitutions may affect both graphs if the substituted variable is present
-    in both.
-
-    :param debug: If True, then an exception is raised when we are in a
-    situation where the `equal_computations` implementation cannot be called.
-    This parameter is intended to be used in tests only, to make sure we
-    properly test both implementations.
-
-    Examples:
+    Examples
+    --------
 
         ======  ======  ======  ======
         var1    var2    givens  output
@@ -899,6 +1141,7 @@ def is_same_graph(var1, var2, givens=None, debug=False):
         x + 1   y + 1   {}      False
         x + 1   y + 1   {x: y}  True
         ======  ======  ======  ======
+
     """
     # Lazy import.
     if givens is None:
@@ -942,7 +1185,7 @@ def is_same_graph(var1, var2, givens=None, debug=False):
             inside = dict((v, [in_var(v, k) for k in (1, 2)])
                           for v in (to_replace, replace_by))
             if (inside[to_replace][0] and not inside[to_replace][1] and
-                inside[replace_by][1] and not inside[replace_by][0]):
+                    inside[replace_by][1] and not inside[replace_by][0]):
                 # Substitute variable in `var1` by one from `var2`.
                 in_xs.append(to_replace)
                 in_ys.append(replace_by)
@@ -974,7 +1217,10 @@ def is_same_graph(var1, var2, givens=None, debug=False):
 def op_as_string(i, op,
                  leaf_formatter=default_leaf_formatter,
                  node_formatter=default_node_formatter):
-    """WRITEME"""
+    """
+    WRITEME
+
+    """
     strs = as_string(i, op.inputs, leaf_formatter, node_formatter)
     return node_formatter(op, strs)
 
@@ -982,28 +1228,32 @@ def op_as_string(i, op,
 def as_string(i, o,
               leaf_formatter=default_leaf_formatter,
               node_formatter=default_node_formatter):
-    """WRITEME
-
-    :type i: list
-    :param i: input `Variable` s
-    :type o: list
-    :param o: output `Variable` s
-    :type leaf_formatter: function
-    :param leaf_formatter: takes a `Variable`  and returns a string to describe it
-    :type node_formatter: function
-    :param node_formatter:
-        takes an `Op`  and the list of strings corresponding to its arguments and returns a
-        string to describe it
-
-    :rtype: str
-    :returns:
-        Returns a string representation of the subgraph between i and o. If the same op is used
-        by several other ops, the first occurrence will be marked as :literal:`*n ->
-        description` and all subsequent occurrences will be marked as :literal:`*n`, where n is
-        an id number (ids are attributed in an unspecified order and only exist for viewing
-        convenience).
     """
+    WRITEME
 
+    Parameters
+    ----------
+    i : list
+        Input `Variable` s.
+    o : list
+        Output `Variable` s.
+    leaf_formatter : function
+        Takes a `Variable`  and returns a string to describe it.
+    node_formatter : function
+        Takes an `Op`  and the list of strings corresponding to its arguments
+        and returns a string to describe it.
+
+    Returns
+    -------
+    str
+        Returns a string representation of the subgraph between i and o. If the
+        same op is used by several other ops, the first occurrence will be
+        marked as :literal:`*n -> description` and all subsequent occurrences
+        will be marked as :literal:`*n`, where n is an id number (ids are
+        attributed in an unspecified order and only exist for viewing
+        convenience).
+
+    """
     i = set(i)
 
     orph = orphans(i, o)
@@ -1060,6 +1310,7 @@ def view_roots(r):
     consecutive view_map()s.
 
     WRITEME
+
     """
     owner = r.owner
     if owner is not None:
@@ -1081,9 +1332,12 @@ def view_roots(r):
 
 
 def list_of_nodes(inputs, outputs):
-    """ Return the apply nodes of the graph between inputs and outputs """
+    """
+    Return the apply nodes of the graph between inputs and outputs.
+
+    """
     return stack_search(
-            deque([o.owner for o in outputs]),
-            lambda o: [inp.owner for inp in o.inputs
-                           if inp.owner
-                           and not any(i in inp.owner.outputs for i in inputs)])
+        deque([o.owner for o in outputs]),
+        lambda o: [inp.owner for inp in o.inputs
+                   if inp.owner and
+                   not any(i in inp.owner.outputs for i in inputs)])

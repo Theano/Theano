@@ -2,6 +2,7 @@ from __future__ import print_function
 from functools import partial
 import sys
 import time
+import inspect
 
 import theano
 from theano import config
@@ -10,18 +11,24 @@ from theano.gof import graph
 
 
 class AlreadyThere(Exception):
-    """Raised by a Feature's on_attach callback method if the FunctionGraph
+    """
+    Raised by a Feature's on_attach callback method if the FunctionGraph
     attempting to attach the feature already has a functionally identical
-    feature."""
+    feature.
+
+    """
+
     pass
 
 
 class ReplacementDidntRemovedError(Exception):
-    """This exception should be thrown by replace_all_validate_remove
+    """
+    This exception should be thrown by replace_all_validate_remove
     when an optimization wanted to remove a Variable or a Node from
     the graph, but the replacement it gived didn't do that.
 
     """
+
     pass
 
 
@@ -33,7 +40,10 @@ class Feature(object):
     by various operations on FunctionGraphs. It can be used to enforce
     graph properties at all stages of graph optimization.
 
-    See :func:`theano.gof.toolbox` for common extensions.
+    See Also
+    --------
+    theano.gof.toolbox : for common extensions.
+
     """
 
     def on_attach(self, function_graph):
@@ -50,12 +60,14 @@ class Feature(object):
 
         The feature has great freedom in what it can do with the
         function_graph: it may, for example, add methods to it dynamically.
+
         """
 
     def on_detach(self, function_graph):
         """
         Called by remove_feature(feature).  Should remove any dynamically-added
         functionality that it installed into the function_graph.
+
         """
 
     def on_import(self, function_graph, node, reason):
@@ -65,12 +77,14 @@ class Feature(object):
         Note: on_import is not called when the graph is created. If you
         want to detect the first nodes to be implemented to the graph,
         you should do this by implementing on_attach.
+
         """
 
     def on_prune(self, function_graph, node, reason):
         """
         Called whenever a node is pruned (removed) from the function_graph,
         after it is disconnected from the graph.
+
         """
 
     def on_change_input(self, function_graph, node, i, r, new_r, reason=None):
@@ -81,6 +95,7 @@ class Feature(object):
 
         If you raise an exception in this function, the state of the graph
         might be broken for all intents and purposes.
+
         """
 
     def orderings(self, function_graph):
@@ -91,6 +106,7 @@ class Feature(object):
 
         If you raise an exception in this function, the state of the graph
         might be broken for all intents and purposes.
+
         """
         return OrderedDict()
 
@@ -111,9 +127,12 @@ class GetCheckpoint:
     def __init__(self, history, fgraph):
         self.h = history
         self.fgraph = fgraph
+        self.nb = 0
 
     def __call__(self):
-        return len(self.h.history[self.fgraph])
+        self.h.history[self.fgraph] = []
+        self.nb += 1
+        return self.nb
 
 
 class LambdExtract:
@@ -131,6 +150,13 @@ class LambdExtract:
 
 
 class History(Feature):
+    """Keep an history of changes to an FunctionGraph.
+
+    This history can be reverted up to the last checkpoint.. We can
+    revert to only 1 point in the past. This limit was added to lower
+    the memory usage.
+
+    """
     pickle_rm_attr = ["checkpoint", "revert"]
 
     def __init__(self):
@@ -165,12 +191,14 @@ class History(Feature):
     def revert(self, fgraph, checkpoint):
         """
         Reverts the graph to whatever it was at the provided
-        checkpoint (undoes all replacements).  A checkpoint at any
+        checkpoint (undoes all replacements). A checkpoint at any
         given time can be obtained using self.checkpoint().
+
         """
         h = self.history[fgraph]
         self.history[fgraph] = None
-        while len(h) > checkpoint:
+        assert fgraph.checkpoint.nb == checkpoint
+        while h:
             f = h.pop()
             f()
         self.history[fgraph] = h
@@ -200,7 +228,27 @@ class Validator(Feature):
 
     def validate_(self, fgraph):
         t0 = time.time()
-        ret = fgraph.execute_callbacks('validate')
+        try:
+            ret = fgraph.execute_callbacks('validate')
+        except Exception as e:
+            cf = inspect.currentframe()
+            uf = cf.f_back
+            uf_info = inspect.getframeinfo(uf)
+
+            # If the caller is replace_all_validate, just raise the
+            # exception. replace_all_validate will print out the
+            # verbose output.
+            # Or it has to be done here before raise.
+            if uf_info.function == 'replace_all_validate':
+                raise
+            else:
+                verbose = uf.f_locals.get('verbose', False)
+                if verbose:
+                    r = uf.f_locals.get('r', "")
+                    reason = uf_info.function
+                    print("validate failed on node %s.\n Reason: %s, %s" %
+                          (r, reason, e))
+                raise
         t1 = time.time()
         if fgraph.profile:
             fgraph.profile.validate_time += t1 - t0
@@ -225,6 +273,8 @@ class ReplaceValidate(History, Validator):
             if hasattr(fgraph, attr):
                 raise AlreadyThere("ReplaceValidate feature is already present"
                                    " or in conflict with another plugin.")
+        self._nodes_removed = set()
+        self.fail_validate = False
         History.on_attach(self, fgraph)
         Validator.on_attach(self, fgraph)
         self.unpickle(fgraph)
@@ -241,6 +291,7 @@ class ReplaceValidate(History, Validator):
     def on_detach(self, fgraph):
         History.on_detach(self, fgraph)
         Validator.on_detach(self, fgraph)
+        del self._nodes_removed
         del fgraph.replace_validate
         del fgraph.replace_all_validate
         del fgraph.replace_all_validate_remove
@@ -260,7 +311,18 @@ class ReplaceValidate(History, Validator):
                 msg = str(e)
                 s1 = 'The type of the replacement must be the same'
                 s2 = 'does not belong to this FunctionGraph'
-                if (s1 not in msg and s2 not in msg):
+                s3 = 'maximum recursion depth exceeded'
+                if s3 in msg:
+                    # There is nothing safe we can do to recover from this.
+                    # So don't revert as this raise a different error
+                    # that isn't helpful.
+                    e.args += (
+                        "Please, report this to theano-dev mailing list."
+                        " As a temporary work around, you can raise Python"
+                        " stack limit with:"
+                        " import sys; sys.setrecursionlimit(10000)",)
+                    raise
+                elif (s1 not in msg and s2 not in msg):
                     out = sys.stderr
                     print("<<!! BUG IN FGRAPH.REPLACE OR A LISTENER !!>>",
                           type(e), e, reason, file=out)
@@ -272,18 +334,23 @@ class ReplaceValidate(History, Validator):
             fgraph.validate()
         except Exception as e:
             fgraph.revert(chk)
+            if verbose:
+                print("validate failed on node %s.\n Reason: %s, %s" % (r, reason, e))
             raise
         if verbose:
             print(reason, r, new_r)
+        # The return is needed by replace_all_validate_remove
         return chk
 
     def replace_all_validate_remove(self, fgraph, replacements,
                                     remove, reason=None, warn=True):
-        """As replace_all_validate, revert the replacement if the ops
-        in the list remove are still in the graph. It also print a warning.
+        """
+        As replace_all_validate, revert the replacement if the ops
+        in the list remove are still in the graph. Also print a warning.
 
         """
         chk = fgraph.replace_all_validate(replacements, reason)
+        self._nodes_removed.update(remove)
         for rm in remove:
             if rm in fgraph.apply_nodes or rm in fgraph.variables:
                 fgraph.revert(chk)
@@ -305,6 +372,15 @@ class ReplaceValidate(History, Validator):
         if "history" in d:
             del d["history"]
         return d
+
+    def on_import(self, fgraph, node, reason):
+        if node in self._nodes_removed:
+            self.fail_validate = True
+
+    def validate(self, fgraph):
+        if self.fail_validate:
+            self.fail_validate = False
+            raise theano.gof.InconsistencyError("Trying to reintroduce a removed node")
 
 
 class NodeFinder(Bookkeeper):
@@ -392,18 +468,44 @@ class PrintListener(Feature):
 
 
 class PreserveNames(Feature):
+    """
+    This preserve some variables names during optimization.
+
+    Deprecated. We need to keep it to allow unpickling.
+    """
 
     def on_change_input(self, fgraph, node, i, r, new_r, reason=None):
         if r.name is not None and new_r.name is None:
             new_r.name = r.name
 
 
+class PreserveVariableAttributes(Feature):
+    """
+    This preserve some variables attributes and tag during optimization.
+    """
+
+    def on_change_input(self, fgraph, node, i, r, new_r, reason=None):
+        if r.name is not None and new_r.name is None:
+            new_r.name = r.name
+        if getattr(r.tag, 'nan_guard_mode_check', False) and getattr(
+                new_r.tag, 'nan_guard_mode_check', False) is False:
+            new_r.tag.nan_guard_mode_check = r.tag.nan_guard_mode_check
+
+
 class NoOutputFromInplace(Feature):
+
+    def __init__(self, first_output_idx=0, last_output_idx=None):
+        self.first_idx = first_output_idx
+        self.last_idx = last_output_idx
 
     def validate(self, fgraph):
         if not hasattr(fgraph, 'destroyers'):
             return True
-        for out in list(fgraph.outputs):
+
+        outputs_to_validate = list(fgraph.outputs)[self.first_idx:
+                                                   self.last_idx]
+
+        for out in outputs_to_validate:
 
             if out.owner is None:
                 continue

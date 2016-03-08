@@ -87,14 +87,18 @@ erfc = Erfc(upgrade_to_float_no_complex, name='erfc')
 
 class Erfcx(UnaryScalarOp):
     """
-    Implements the scaled complementary error function exp(x**2)*erfc(x) in a numerically stable way for large x. This
-    is useful for calculating things like log(erfc(x)) = log(erfcx(x)) - x ** 2 without causing underflow. Should only
-    be used if x is known to be large and positive, as using erfcx(x) for large negative x may instead introduce
-    overflow problems.
+    Implements the scaled complementary error function exp(x**2)*erfc(x) in a
+    numerically stable way for large x. This is useful for calculating things
+    like log(erfc(x)) = log(erfcx(x)) - x ** 2 without causing underflow.
+    Should only be used if x is known to be large and positive, as using
+    erfcx(x) for large negative x may instead introduce overflow problems.
 
-    Note: This op can still be executed on GPU, despite not having c_code.  When
+    Notes
+    -----
+    This op can still be executed on GPU, despite not having c_code. When
     running on GPU, sandbox.cuda.opt.local_gpu_elemwise_[0,1] replaces this op
     with sandbox.cuda.elemwise.ErfcxGPU.
+
     """
     def impl(self, x):
         if imported_scipy_special:
@@ -124,7 +128,9 @@ class Erfinv(UnaryScalarOp):
     """
     Implements the inverse error function.
 
-    Note: This op can still be executed on GPU, despite not having c_code.  When
+    Notes
+    -----
+    This op can still be executed on GPU, despite not having c_code. When
     running on GPU, sandbox.cuda.opt.local_gpu_elemwise_[0,1] replaces this op
     with sandbox.cuda.elemwise.ErfinvGPU.
 
@@ -225,18 +231,13 @@ class Gamma(UnaryScalarOp):
         if node.inputs[0].type in float_types:
             return """%(z)s = tgamma(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 gamma = Gamma(upgrade_to_float, name='gamma')
 
 
 class GammaLn(UnaryScalarOp):
     """
     Log gamma function.
+
     """
     @staticmethod
     def st_impl(x):
@@ -268,18 +269,13 @@ class GammaLn(UnaryScalarOp):
             return """%(z)s =
                 lgamma(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 gammaln = GammaLn(upgrade_to_float, name='gammaln')
 
 
 class Psi(UnaryScalarOp):
     """
     Derivative of log gamma function.
+
     """
     @staticmethod
     def st_impl(x):
@@ -296,51 +292,51 @@ class Psi(UnaryScalarOp):
 
     def c_support_code(self):
         return (
-"""
-// For GPU support
-#ifdef __CUDACC__
-#define DEVICE __device__
-#else
-#define DEVICE
-#endif
+            """
+            // For GPU support
+            #ifdef __CUDACC__
+            #define DEVICE __device__
+            #else
+            #define DEVICE
+            #endif
 
-#ifndef _PSIFUNCDEFINED
-#define _PSIFUNCDEFINED
-DEVICE double _psi(double x){
+            #ifndef _PSIFUNCDEFINED
+            #define _PSIFUNCDEFINED
+            DEVICE double _psi(double x){
 
-    /*taken from
-    Bernardo, J. M. (1976). Algorithm AS 103:
-    Psi (Digamma) Function. Applied Statistics. 25 (3), 315-317.
-    http://www.uv.es/~bernardo/1976AppStatist.pdf */
+            /*taken from
+            Bernardo, J. M. (1976). Algorithm AS 103:
+            Psi (Digamma) Function. Applied Statistics. 25 (3), 315-317.
+            http://www.uv.es/~bernardo/1976AppStatist.pdf */
 
-    double y, R, psi_ = 0;
-    double S  = 1.0e-5;
-    double C = 8.5;
-    double S3 = 8.333333333e-2;
-    double S4 = 8.333333333e-3;
-    double S5 = 3.968253968e-3;
-    double D1 = -0.5772156649;
+            double y, R, psi_ = 0;
+            double S  = 1.0e-5;
+            double C = 8.5;
+            double S3 = 8.333333333e-2;
+            double S4 = 8.333333333e-3;
+            double S5 = 3.968253968e-3;
+            double D1 = -0.5772156649;
 
-    y = x;
+            y = x;
 
-    if (y <= 0.0)
-        return psi_;
+            if (y <= 0.0)
+               return psi_;
 
-    if (y <= S )
-        return D1 - 1.0/y;
+            if (y <= S )
+                return D1 - 1.0/y;
 
-    while (y < C){
-        psi_ = psi_ - 1.0 / y;
-        y = y + 1;}
+            while (y < C){
+                psi_ = psi_ - 1.0 / y;
+                y = y + 1;}
 
-    R = 1.0 / y;
-    psi_ = psi_ + log(y) - .5 * R ;
-    R= R*R;
-    psi_ = psi_ - R * (S3 - R * (S4 - R * S5));
+            R = 1.0 / y;
+            psi_ = psi_ + log(y) - .5 * R ;
+            R= R*R;
+            psi_ = psi_ - R * (S3 - R * (S4 - R * S5));
 
-    return psi_;}
-    #endif
-        """ )
+            return psi_;}
+            #endif
+            """)
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
@@ -349,24 +345,18 @@ DEVICE double _psi(double x){
             return """%(z)s =
                 _psi(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 psi = Psi(upgrade_to_float, name='psi')
 
 
 class Chi2SF(BinaryScalarOp):
     """
-    Compute (1 - chi2_cdf(x))
-        ie. chi2 pvalue (chi2 'survival function')
+    Compute (1 - chi2_cdf(x)) ie. chi2 pvalue (chi2 'survival function').
 
     C code is provided in the Theano_lgpl repository.
     This make it faster.
 
     https://github.com/Theano/Theano_lgpl.git
+
     """
 
     @staticmethod
@@ -378,11 +368,62 @@ class Chi2SF(BinaryScalarOp):
             return Chi2SF.st_impl(x, k)
         else:
             super(Chi2SF, self).impl(x, k)
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
 chi2sf = Chi2SF(upgrade_to_float, name='chi2sf')
+
+
+class J1(UnaryScalarOp):
+    """
+    Bessel function of the 1'th kind
+    """
+
+    @staticmethod
+    def st_impl(x):
+        return scipy.special.j1(x)
+
+    def impl(self, x):
+        if imported_scipy_special:
+            return self.st_impl(x)
+        else:
+            super(J1, self).impl(x)
+
+    def grad(self, inp, grads):
+        raise NotImplementedError()
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        if node.inputs[0].type in float_types:
+            return """%(z)s =
+                j1(%(x)s);""" % locals()
+        raise NotImplementedError('only floating point is implemented')
+j1 = J1(upgrade_to_float, name='j1')
+
+
+class J0(UnaryScalarOp):
+    """
+    Bessel function of the 0'th kind
+    """
+
+    @staticmethod
+    def st_impl(x):
+        return scipy.special.j0(x)
+
+    def impl(self, x):
+        if imported_scipy_special:
+            return self.st_impl(x)
+        else:
+            super(J0, self).impl(x)
+
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
+        return [gz * -1 * j1(x)]
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        if node.inputs[0].type in float_types:
+            return """%(z)s =
+                j0(%(x)s);""" % locals()
+        raise NotImplementedError('only floating point is implemented')
+j0 = J0(upgrade_to_float, name='j0')

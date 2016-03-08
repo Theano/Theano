@@ -14,22 +14,28 @@ import hashlib
 import numpy as np
 from six import string_types, integer_types, iteritems
 
-try:
-    import pydot as pd
-    if pd.find_graphviz():
-        pydot_imported = True
-    else:
-        pydot_imported = False
-except ImportError:
-    pydot_imported = False
-
 import theano
 from theano import gof
 from theano import config
 from six.moves import StringIO, reduce
 from theano.gof import Op, Apply
-from theano.compile import Function, debugmode
+from theano.compile import Function, debugmode, SharedVariable
 from theano.compile.profilemode import ProfileMode
+
+pydot_imported = False
+try:
+    # pydot-ng is a fork of pydot that is better maintained
+    import pydot_ng as pd
+    if pd.find_graphviz():
+        pydot_imported = True
+except ImportError:
+    try:
+        # fall back on pydot if necessary
+        import pydot as pd
+        if pd.find_graphviz():
+            pydot_imported = True
+    except ImportError:
+        pass  # tests should not fail on optional dependency
 
 _logger = logging.getLogger("theano.printing")
 VALID_ASSOC = set(['left', 'right', 'either'])
@@ -37,7 +43,7 @@ VALID_ASSOC = set(['left', 'right', 'either'])
 
 def debugprint(obj, depth=-1, print_type=False,
                file=None, ids='CHAR', stop_on_name=False,
-               done=None):
+               done=None, print_storage=False):
     """Print a computation graph as text to stdout or a file.
 
     :type obj: Variable, Apply, or Function instance
@@ -59,6 +65,10 @@ def debugprint(obj, depth=-1, print_type=False,
     :type done: None or dict
     :param done: A dict where we store the ids of printed node.
         Useful to have multiple call to debugprint share the same ids.
+    :type print_storage: bool
+    :param print_storage: If True, this will print the storage map
+        for Theano functions. Combined with allow_gc=False, after the
+        execution of a Theano function, we see the intermediate result.
 
     :returns: string if `file` == 'str', else file arg
 
@@ -90,8 +100,9 @@ def debugprint(obj, depth=-1, print_type=False,
         done = dict()
     results_to_print = []
     profile_list = []
-    order = []
-    if isinstance(obj, (list, tuple)):
+    order = []  # Toposort
+    smap = []  # storage_map
+    if isinstance(obj, (list, tuple, set)):
         lobj = obj
     else:
         lobj = [obj]
@@ -99,36 +110,48 @@ def debugprint(obj, depth=-1, print_type=False,
         if isinstance(obj, gof.Variable):
             results_to_print.append(obj)
             profile_list.append(None)
+            smap.append(None)
+            order.append(None)
         elif isinstance(obj, gof.Apply):
             results_to_print.extend(obj.outputs)
             profile_list.extend([None for item in obj.outputs])
+            smap.extend([None for item in obj.outputs])
+            order.extend([None for item in obj.outputs])
         elif isinstance(obj, Function):
             results_to_print.extend(obj.maker.fgraph.outputs)
             profile_list.extend(
                 [obj.profile for item in obj.maker.fgraph.outputs])
-            order = obj.maker.fgraph.toposort()
+            if print_storage:
+                smap.extend(
+                    [obj.fn.storage_map for item in obj.maker.fgraph.outputs])
+            else:
+                smap.extend(
+                    [None for item in obj.maker.fgraph.outputs])
+            topo = obj.maker.fgraph.toposort()
+            order.extend(
+                [topo for item in obj.maker.fgraph.outputs])
         elif isinstance(obj, gof.FunctionGraph):
             results_to_print.extend(obj.outputs)
-            profile_list.extend([None for item in obj.outputs])
-            order = obj.toposort()
+            profile_list.extend([getattr(obj, 'profile', None)
+                                 for item in obj.outputs])
+            smap.extend([getattr(obj, 'storage_map', None)
+                         for item in obj.outputs])
+            topo = obj.toposort()
+            order.extend([topo for item in obj.outputs])
         elif isinstance(obj, (integer_types, float, np.ndarray)):
             print(obj)
         elif isinstance(obj, (theano.In, theano.Out)):
             results_to_print.append(obj.variable)
             profile_list.append(None)
+            smap.append(None)
+            order.append(None)
         else:
             raise TypeError("debugprint cannot print an object of this type",
                             obj)
 
     scan_ops = []
-    for r, p in zip(results_to_print, profile_list):
-        # Add the parent scan op to the list as well
-        if (hasattr(r.owner, 'op') and
-                isinstance(r.owner.op, theano.scan_module.scan_op.Scan)):
-                    scan_ops.append(r)
-
-        if p is not None:
-            print("""
+    if any([p for p in profile_list if p is not None and p.fct_callcount > 0]):
+        print("""
 Timing Info
 -----------
 --> <time> <% time> - <total time> <% total time>'
@@ -146,10 +169,16 @@ N.B.:
   to remove when optimizing a graph because their <total time> is very low.
 """, file=_file)
 
+    for r, p, s, o in zip(results_to_print, profile_list, smap, order):
+        # Add the parent scan op to the list as well
+        if (hasattr(r.owner, 'op') and
+                isinstance(r.owner.op, theano.scan_module.scan_op.Scan)):
+                    scan_ops.append(r)
+
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
-                             file=_file, order=order, ids=ids,
+                             file=_file, order=o, ids=ids,
                              scan_ops=scan_ops, stop_on_name=stop_on_name,
-                             profile=p)
+                             profile=p, smap=s)
 
     if len(scan_ops) > 0:
         print("", file=_file)
@@ -571,11 +600,12 @@ Print to the terminal a math-like expression.
 default_colorCodes = {'GpuFromHost': 'red',
                       'HostFromGpu': 'red',
                       'Scan': 'yellow',
-                      'Shape': 'cyan',
+                      'Shape': 'brown',
                       'IfElse': 'magenta',
                       'Elemwise': '#FFAABB',  # dark pink
                       'Subtensor': '#FFAAFF',  # purple
-                      'Alloc': '#FFAA22'}  # orange
+                      'Alloc': '#FFAA22',  # orange
+                      'Output': 'blue'}
 
 
 def pydotprint(fct, outfile=None,
@@ -584,7 +614,6 @@ def pydotprint(fct, outfile=None,
                max_label_size=70, scan_graphs=False,
                var_with_name_simple=False,
                print_output_file=True,
-               assert_nb_all_strings=-1,
                return_image=False,
                ):
     """Print to a file the graph of a compiled theano function's ops. Supports
@@ -616,10 +645,6 @@ def pydotprint(fct, outfile=None,
     :param var_with_name_simple: If true and a variable have a name,
                 we will print only the variable name.
                 Otherwise, we concatenate the type to the var name.
-    :param assert_nb_all_strings: Used for tests. If non-negative, assert that
-                the number of unique string nodes in the dot graph is equal to
-                this number. This is used in tests to verify that dot won't
-                merge Theano nodes.
     :param return_image: If True, it will create the image and return it.
         Useful to display the image in ipython notebook.
 
@@ -642,11 +667,20 @@ def pydotprint(fct, outfile=None,
     label each edge between an input and the Apply node with the
     input's index.
 
-    Green boxes are inputs variables to the graph,
-    blue boxes are outputs variables of the graph,
-    grey boxes are variables that are not outputs and are not used,
-    red ellipses are transfers from/to the gpu (ops with names GpuFromHost,
-    HostFromGpu).
+    Variable color code::
+        - Cyan boxes are SharedVariable, inputs and/or outputs) of the graph,
+        - Green boxes are inputs variables to the graph,
+        - Blue boxes are outputs variables of the graph,
+        - Grey boxes are variables that are not outputs and are not used,
+
+    Default apply node code::
+        - Red ellipses are transfers from/to the gpu
+        - Yellow are scan node
+        - Brown are shape node
+        - Magenta are IfElse node
+        - Dark pink are elemwise node
+        - Purple are subtensor
+        - Orange are alloc node
 
     For edges, they are black by default. If a node returns a view
     of an input, we put the corresponding input edge in blue. If it
@@ -693,8 +727,7 @@ def pydotprint(fct, outfile=None,
         topo = fct.toposort()
     if not pydot_imported:
         raise RuntimeError("Failed to import pydot. You must install pydot"
-                           " for `pydotprint` to work.")
-        return
+                           " and graphviz for `pydotprint` to work.")
 
     g = pd.Dot()
 
@@ -732,11 +765,12 @@ def pydotprint(fct, outfile=None,
         right = list(right)
 
     var_str = {}
+    var_id = {}
     all_strings = set()
 
     def var_name(var):
         if var in var_str:
-            return var_str[var]
+            return var_str[var], var_id[var]
 
         if var.name is not None:
             if var_with_name_simple:
@@ -749,40 +783,29 @@ def pydotprint(fct, outfile=None,
                 dstr = dstr[:dstr.index('\n')]
             varstr = '%s %s' % (dstr, str(var.type))
         elif (var in input_update and
-              input_update[var].variable.name is not None):
-            if var_with_name_simple:
-                varstr = input_update[var].variable.name + " UPDATE"
-            else:
-                varstr = (input_update[var].variable.name + " UPDATE " +
-                          str(var.type))
+              input_update[var].name is not None):
+            varstr = input_update[var].name
+            if not var_with_name_simple:
+                varstr += str(var.type)
         else:
             # a var id is needed as otherwise var with the same type will be
             # merged in the graph.
             varstr = str(var.type)
-        if (varstr in all_strings) or with_ids:
-            idx = ' id=' + str(len(var_str))
-            if len(varstr) + len(idx) > max_label_size:
-                varstr = varstr[:max_label_size - 3 - len(idx)] + idx + '...'
-            else:
-                varstr = varstr + idx
-        elif len(varstr) > max_label_size:
+        if len(varstr) > max_label_size:
             varstr = varstr[:max_label_size - 3] + '...'
-            idx = 1
-            while varstr in all_strings:
-                idx += 1
-                suffix = ' id=' + str(idx)
-                varstr = (varstr[:max_label_size - 3 - len(suffix)] +
-                          '...' +
-                          suffix)
         var_str[var] = varstr
+        var_id[var] = str(id(var))
+
         all_strings.add(varstr)
 
-        return varstr
+        return varstr, var_id[var]
+
     apply_name_cache = {}
+    apply_name_id = {}
 
     def apply_name(node):
         if node in apply_name_cache:
-            return apply_name_cache[node]
+            return apply_name_cache[node], apply_name_id[node]
         prof_str = ''
         if mode:
             time = mode.profile_stats[fct].apply_time.get(node, 0)
@@ -825,22 +848,29 @@ def pydotprint(fct, outfile=None,
 
         all_strings.add(applystr)
         apply_name_cache[node] = applystr
-        return applystr
+        apply_name_id[node] = str(id(node))
+
+        return applystr, apply_name_id[node]
 
     # Update the inputs that have an update function
     input_update = {}
+    reverse_input_update = {}
     # Here outputs can be the original list, as we should not change
     # it, we must copy it.
     outputs = list(outputs)
     if isinstance(fct, Function):
-        for i in reversed(fct.maker.expanded_inputs):
+        function_inputs = zip(fct.maker.expanded_inputs, fct.maker.fgraph.inputs)
+        for i, fg_ii in reversed(list(function_inputs)):
             if i.update is not None:
-                input_update[outputs.pop()] = i
+                k = outputs.pop()
+                # Use the fgaph.inputs as it isn't the same as maker.inputs
+                input_update[k] = fg_ii
+                reverse_input_update[fg_ii] = k
 
     apply_shape = 'ellipse'
     var_shape = 'box'
     for node_idx, node in enumerate(topo):
-        astr = apply_name(node)
+        astr, aid = apply_name(node)
 
         use_color = None
         for opName, color in iteritems(colorCodes):
@@ -848,12 +878,14 @@ def pydotprint(fct, outfile=None,
                 use_color = color
 
         if use_color is None:
-            nw_node = pd.Node(astr, shape=apply_shape)
+            nw_node = pd.Node(aid, label=astr, shape=apply_shape)
         elif high_contrast:
-            nw_node = pd.Node(astr, style='filled', fillcolor=use_color,
+            nw_node = pd.Node(aid, label=astr, style='filled',
+                              fillcolor=use_color,
                               shape=apply_shape)
         else:
-            nw_node = pd.Node(astr, color=use_color, shape=apply_shape)
+            nw_node = pd.Node(aid, label=astr,
+                              color=use_color, shape=apply_shape)
         g.add_node(nw_node)
         if cond_highlight:
             if node in middle:
@@ -863,62 +895,99 @@ def pydotprint(fct, outfile=None,
             elif node in right:
                 c2.add_node(nw_node)
 
-        for id, var in enumerate(node.inputs):
-            varstr = var_name(var)
-            label = str(var.type)
+        for idx, var in enumerate(node.inputs):
+            varstr, varid = var_name(var)
+            label = ""
             if len(node.inputs) > 1:
-                label = str(id) + ' ' + label
-            if len(label) > max_label_size:
-                label = label[:max_label_size - 3] + '...'
+                label = str(idx)
             param = {}
-            if hasattr(node.op, 'view_map') and id in reduce(
+            if label:
+                param['label'] = label
+            if hasattr(node.op, 'view_map') and idx in reduce(
                     list.__add__, node.op.view_map.values(), []):
-                    param['color'] = 'blue'
-            elif hasattr(node.op, 'destroy_map') and id in reduce(
+                    param['color'] = colorCodes['Output']
+            elif hasattr(node.op, 'destroy_map') and idx in reduce(
                     list.__add__, node.op.destroy_map.values(), []):
                         param['color'] = 'red'
             if var.owner is None:
+                color = 'green'
+                if isinstance(var, SharedVariable):
+                    # Input are green, output blue
+                    # Mixing blue and green give cyan! (input and output var)
+                    color = "cyan"
                 if high_contrast:
-                    g.add_node(pd.Node(varstr,
+                    g.add_node(pd.Node(varid,
                                        style='filled',
-                                       fillcolor='green',
+                                       fillcolor=color,
+                                       label=varstr,
                                        shape=var_shape))
                 else:
-                    g.add_node(pd.Node(varstr, color='green', shape=var_shape))
-                g.add_edge(pd.Edge(varstr, astr, label=label, **param))
-            elif var.name or not compact:
-                g.add_edge(pd.Edge(varstr, astr, label=label, **param))
+                    g.add_node(pd.Node(varid,
+                                       color=color,
+                                       label=varstr,
+                                       shape=var_shape))
+                g.add_edge(pd.Edge(varid, aid, **param))
+            elif var.name or not compact or var in outputs:
+                g.add_edge(pd.Edge(varid, aid, **param))
             else:
                 # no name, so we don't make a var ellipse
-                g.add_edge(pd.Edge(apply_name(var.owner), astr,
-                           label=label, **param))
+                if label:
+                    label += " "
+                label += str(var.type)
+                if len(label) > max_label_size:
+                    label = label[:max_label_size - 3] + '...'
+                param['label'] = label
+                g.add_edge(pd.Edge(apply_name(var.owner)[1], aid, **param))
 
-        for id, var in enumerate(node.outputs):
-            varstr = var_name(var)
+        for idx, var in enumerate(node.outputs):
+            varstr, varid = var_name(var)
             out = var in outputs
-            label = str(var.type)
+            label = ""
             if len(node.outputs) > 1:
-                label = str(id) + ' ' + label
+                label = str(idx)
             if len(label) > max_label_size:
                 label = label[:max_label_size - 3] + '...'
-            if out:
-                g.add_edge(pd.Edge(astr, varstr, label=label))
+            param = {}
+            if label:
+                param['label'] = label
+            if out or var in input_update:
+                g.add_edge(pd.Edge(aid, varid, **param))
                 if high_contrast:
-                    g.add_node(pd.Node(varstr, style='filled',
-                                       fillcolor='blue', shape=var_shape))
+                    g.add_node(pd.Node(varid, style='filled',
+                                       label=varstr,
+                                       fillcolor=colorCodes['Output'], shape=var_shape))
                 else:
-                    g.add_node(pd.Node(varstr, color='blue', shape=var_shape))
+                    g.add_node(pd.Node(varid, color=colorCodes['Output'],
+                                       label=varstr,
+                                       shape=var_shape))
             elif len(var.clients) == 0:
-                g.add_edge(pd.Edge(astr, varstr, label=label))
+                g.add_edge(pd.Edge(aid, varid, **param))
+                # grey mean that output var isn't used
                 if high_contrast:
-                    g.add_node(pd.Node(varstr, style='filled',
+                    g.add_node(pd.Node(varid, style='filled',
+                                       label=varstr,
                                        fillcolor='grey', shape=var_shape))
                 else:
-                    g.add_node(pd.Node(varstr, color='grey', shape=var_shape))
+                    g.add_node(pd.Node(varid, label=varstr,
+                                       color='grey', shape=var_shape))
             elif var.name or not compact:
-                g.add_edge(pd.Edge(astr, varstr, label=label))
+                if not(not compact):
+                    if label:
+                        label += " "
+                    label += str(var.type)
+                    if len(label) > max_label_size:
+                        label = label[:max_label_size - 3] + '...'
+                    param['label'] = label
+                g.add_edge(pd.Edge(aid, varid, **param))
+                g.add_node(pd.Node(varid, shape=var_shape, label=varstr))
 #            else:
             # don't add egde here as it is already added from the inputs.
+
+    # The var that represent updates, must be linked to the input var.
+    for sha, up in input_update.items():
+        _, shaid = var_name(sha)
+        _, upid = var_name(up)
+        g.add_edge(pd.Edge(shaid, upid, label="UPDATE", color=colorCodes['Output']))
 
     if cond_highlight:
         g.add_subgraph(c1)
@@ -927,9 +996,6 @@ def pydotprint(fct, outfile=None,
 
     if not outfile.endswith('.' + format):
         outfile += '.' + format
-
-    if assert_nb_all_strings != -1:
-        assert len(all_strings) == assert_nb_all_strings, len(all_strings)
 
     if scan_graphs:
         scan_ops = [(idx, x) for idx, x in enumerate(topo)
@@ -946,7 +1012,11 @@ def pydotprint(fct, outfile=None,
             else:
                 new_name = basename + '_' + str(idx)
             new_name = os.path.join(path, new_name + ext)
-            pydotprint(scan_op.op.fn, new_name, compact, format, with_ids,
+            if hasattr(scan_op.op, 'fn'):
+                to_print = scan_op.op.fn
+            else:
+                to_print = scan_op.op.outputs
+            pydotprint(to_print, new_name, compact, format, with_ids,
                        high_contrast, cond_highlight, colorCodes,
                        max_label_size, scan_graphs)
 
@@ -957,7 +1027,8 @@ def pydotprint(fct, outfile=None,
             g.write(outfile, prog='dot', format=format)
         except pd.InvocationException:
             # based on https://github.com/Theano/Theano/issues/2988
-            if map(int, pd.__version__.split(".")) < [1, 0, 28]:
+            version = getattr(pd, '__version__', "")
+            if version and [int(n) for n in version.split(".")] < [1, 0, 28]:
                 raise Exception("Old version of pydot detected, which can "
                                 "cause issues with pydot printing. Try "
                                 "upgrading pydot version to a newer one")
@@ -989,13 +1060,13 @@ def pydotprint_variables(vars,
     if outfile is None:
         outfile = os.path.join(config.compiledir, 'theano.pydotprint.' +
                                config.device + '.' + format)
-    try:
-        import pydot as pd
-    except ImportError:
-        err = ("Failed to import pydot. You must install pydot for " +
-               "`pydotprint_variables` to work.")
-        print(err)
-        return
+    if not pydot_imported:
+        raise RuntimeError("Failed to import pydot. You must install pydot"
+                           " and graphviz for `pydotprint_variables` to work.")
+    if pd.__name__ == "pydot_ng":
+        raise RuntimeError("pydotprint_variables do not support pydot_ng."
+                           "pydotprint_variables is also deprecated, "
+                           "use pydotprint() that support pydot_ng")
     g = pd.Dot()
     my_list = {}
     orphanes = []
@@ -1085,7 +1156,7 @@ def pydotprint_variables(vars,
                 my_list[nd] = varastr
                 color = None
                 if nd in vars:
-                    color = 'blue'
+                    color = colorCodes['Output']
                 elif nd in orphanes:
                     color = 'gray'
                 if color is None:
@@ -1119,11 +1190,12 @@ def pydotprint_variables(vars,
     except pd.InvocationException as e:
         # Some version of pydot are bugged/don't work correctly with
         # empty label. Provide a better user error message.
-        if pd.__version__ == "1.0.28" and "label=]" in e.message:
+        version = getattr(pd, '__version__', "")
+        if version == "1.0.28" and "label=]" in e.message:
             raise Exception("pydot 1.0.28 is know to be bugged. Use another "
                             "working version of pydot")
         elif "label=]" in e.message:
-            raise Exception("Your version of pydot " + pd.__version__ +
+            raise Exception("Your version of pydot " + version +
                             " returned an error. Version 1.0.28 is known"
                             " to be bugged and 1.0.25 to be working with"
                             " Theano. Using another version of pydot could"

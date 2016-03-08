@@ -377,7 +377,7 @@ class T_softplus_opts(unittest.TestCase):
         f = theano.function([x], out, mode=self.m)
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 3
-        assert isinstance(topo[0].op, T.Flatten)
+        assert tensor.is_flat(topo[0].outputs[0])
         assert isinstance(topo[1].op.scalar_op,
                           theano.tensor.nnet.sigm.ScalarSoftplus)
         assert isinstance(topo[2].op.scalar_op, theano.scalar.Neg)

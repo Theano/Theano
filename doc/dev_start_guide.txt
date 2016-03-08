@@ -4,6 +4,19 @@
 Developer Start Guide
 =====================
 
+Contributing
+============
+
+You want to contribute to Theano? That is great! This page explain our
+workflow and some ressource for doing so.
+
+Looking for an idea for a first contribution? Check `github issue
+<https://github.com/Theano/Theano/issues?q=is%3Aopen+is%3Aissue+label%3A%22Easy+fix%22>`
+with a label ``easy fix``. They are good starter. It is recommanded
+that you write on the issue you want to work on it. This help make
+sure it is up to date and see if nobody else is working on it. Also,
+we can sometimes provides more information about it.
+
 Resources
 =========
 
@@ -21,12 +34,11 @@ To get up to speed, you'll need to
 - Learn some non-basic Python to understand what's going on in some of the
   trickier files (like tensor.py).
 - Go through the `NumPy documentation`_.
-- Learn to write reStructuredText_ for epydoc_ and Sphinx_.
+- Learn to write reStructuredText_ for Sphinx_.
 - Learn about how unittest_ and nose_ work
 
 .. _Sphinx: http://sphinx.pocoo.org/
 .. _reStructuredText: http://docutils.sourceforge.net/rst.html
-.. _epydoc: http://epydoc.sourceforge.net/
 .. _NumPy documentation: http://docs.scipy.org/numpy/
 .. _unittest: http://docs.python.org/library/unittest.html
 .. _nose: http://somethingaboutorange.com/mrl/projects/nose/
@@ -148,8 +160,12 @@ of the `master` branch (the principal one) of the central repository
 Submit your changes to the central repository
 ---------------------------------------------
 
-Once your code is ready for others to review, you need to push your
+Once your code is ready for others to review, you need to commit all the changes and then push your
 branch to your github fork first:
+
+.. code-block:: bash
+    
+    git commit -a -m "your message here"
 
 .. code-block:: bash
 

@@ -35,7 +35,7 @@ variables, type this from the command-line:
 
 .. code-block:: bash
 
-    python -c 'import theano; print theano.config' | less
+    python -c 'import theano; print(theano.config)' | less
 
 Environment Variables
 =====================
@@ -51,7 +51,7 @@ Environment Variables
 
     .. code-block:: bash
 
-        THEANO_FLAGS='floatX=float32,device=gpu0,nvcc.fastmath=True'  python <myscript>.py
+        THEANO_FLAGS='floatX=float32,device=gpu0,lib.cnmem=1'  python <myscript>.py
 
     If a value is defined several times in ``THEANO_FLAGS``,
     the right-most definition is used. So, for instance, if
@@ -72,15 +72,15 @@ Environment Variables
         floatX = float32
         device = gpu0
 
-        [nvcc]
-        fastmath = True
+        [lib]
+        cnmem = 1
 
     Configuration attributes that are available directly in ``config``
     (e.g. ``config.device``, ``config.mode``) should be defined in the
     ``[global]`` section.
-    Attributes from a subsection of ``config`` (e.g. ``config.nvcc.fastmath``,
-    ``config.blas.ldflags``) should be defined in their corresponding section
-    (e.g. ``[nvcc]``, ``[blas]``).
+    Attributes from a subsection of ``config`` (e.g. ``config.lib.cnmem``,
+    ``config.dnn.conv.algo_fwd``) should be defined in their corresponding
+    section (e.g. ``[nvcc]``, ``[dnn.conv]``).
 
     Multiple configuration files can be specified by separating them with ':'
     characters (as in $PATH).  Multiple configuration files will be merged,
@@ -98,7 +98,7 @@ import theano and print the config variable, as in:
 
 .. code-block:: bash
 
-    python -c 'import theano; print theano.config' | less
+    python -c 'import theano; print(theano.config)' | less
 
 .. attribute:: device
 
@@ -174,6 +174,14 @@ import theano and print the config variable, as in:
 
     Print active device at when the GPU device is initialized.
 
+.. attribute:: enable_initial_driver_test
+
+    Bool value: either ``True`` or ``False``
+
+    Default: ``True``
+
+    Tests the nvidia driver when a GPU device is initialized.
+
 .. attribute:: floatX
 
     String value: either 'float64' or 'float32'
@@ -208,7 +216,7 @@ import theano and print the config variable, as in:
     significant speed up on functions with many ops that are fast to
     execute, but this increases Theano's memory usage.
 
-.. attribute:: scan.allow_output_prealloc
+.. attribute:: config.scan.allow_output_prealloc
 
     Bool value, either ``True`` or ``False``
 
@@ -218,6 +226,18 @@ import theano and print the config variable, as in:
     pre-allocate memory for its outputs. Enabling the optimization can
     give a significant speed up with Scan at the cost of slightly increased
     memory usage.
+
+.. attribute:: config.scan.allow_gc
+
+    Bool value, either ``True`` or ``False``
+
+    Default: ``False``
+
+    Allow/disallow gc inside of Scan.
+
+    If config.allow_gc is ``True``, but config.scan.allow_gc is
+    ``False``, then we will gc the inner of scan after all
+    iterations. This is the default.
 
 .. attribute:: openmp
 
@@ -360,6 +380,14 @@ import theano and print the config variable, as in:
     The profiling output can be either directed to stderr
     (default), or stdout or an arbitrary file.
 
+.. attribute:: config.profiling.debugprint
+
+    Bool value: either True or False
+
+    Default False
+
+    Do a debugprint of the profiled functions
+
 .. attribute:: config.lib.amdlibm
 
     Bool value: either True or False
@@ -369,6 +397,34 @@ import theano and print the config variable, as in:
     This makes the compilation use the
     `amdlibm <http://developer.amd.com/cpu/libraries/libm/>`__
     library, which is faster than the standard libm.
+
+.. attribute:: config.lib.cnmem
+
+    Float value: >= 0
+
+    Do we enable `CNMeM <https://github.com/NVIDIA/cnmem>`_ or not (a
+    faster CUDA memory allocator). In Theano dev version until 0.7.1
+    is released.
+
+    That library is included in Theano, you do not need to install it.
+
+    The value represents the start size (in MB or % of total GPU
+    memory) of the memory pool. If more memory are needed, it will
+    try to get more, but this can cause more memory fragmentation:
+
+        * 0: not enabled.
+        * 0 < N <= 1: % of the total GPU memory (clipped to .985 for driver memory)
+        * > 0: use that number of MB of memory.
+
+
+    Default 0 (but should change later)
+
+    .. note::
+
+        This could cause memory fragmentation. So if you have a
+        memory error while using cnmem, try to allocate more memory at
+        the start or disable it. If you try this, report your result
+        on :ref`theano-dev`.
 
 .. attribute:: linker
 
@@ -389,14 +445,18 @@ import theano and print the config variable, as in:
 
 .. attribute:: on_opt_error
 
-    String value: 'warn', 'raise' or 'pdb'
+    String value: 'warn', 'raise', 'pdb' or 'ignore'
 
     Default: 'warn'
 
     When a crash occurs while trying to apply some optimization, either warn
     the user and skip this optimization ('warn'), raise the exception
-    ('raise'), or fall into the pdb debugger ('pdb').
+    ('raise'), fall into the pdb debugger ('pdb') or ignore it ('ignore').
+    We suggest to never use 'ignore' except in tests.
 
+   If you encounter a warning, report it on `theano-dev`_.
+
+.. _theano-dev: http://groups.google.com/group/theano-dev
 
 .. attribute:: assert_no_cpu_op
 
@@ -405,7 +465,7 @@ import theano and print the config variable, as in:
     Default: 'ignore'
 
     If there is a CPU op in the computational graph, depending on its value;
-    this flag can either raise a warning, an exception or stop the 
+    this flag can either raise a warning, an exception or stop the
     compilation with pdb.
 
 .. attribute:: on_shape_error
@@ -465,7 +525,7 @@ import theano and print the config variable, as in:
     This is a Python format string that specifies the subdirectory
     of ``config.base_compiledir`` in which to store platform-dependent
     compiled modules. To see a list of all available substitution keys,
-    run ``python -c "import theano; print theano.config"``, and look
+    run ``python -c "import theano; print(theano.config)"``, and look
     for compiledir_format.
 
     This flag's value cannot be modified during the program execution.
@@ -507,24 +567,51 @@ import theano and print the config variable, as in:
 
     A directory with bin/, lib/, include/ folders containing cuda utilities.
 
+.. attribute:: dnn.enabled
+
+  String value: ``auto``, ``True``, ``False``
+
+  Default ``auto``
+
+  If ``auto``, auto detect if cudnn is there, if not, do not use it,
+  but do not raise an error.
+
+  If ``True``, if we can't use cudnn, raise an error.
+
+  If ``False``, do not test if cudnn is there and don't use it.
+  Useful to disable it completely when the auto detection crashes.
+
 .. attribute:: config.dnn.conv.workmem
 
-   String value: 'none', 'small', 'large'
+   Deprecated, use dnn.conv.algo_fwd.
 
-   Default: 'small'
 
-   The default value for the amount of working memory that is
-   tolerated in the convolution implementation in cudnn.
+.. attribute:: config.dnn.conv.workmem_bwd
 
-   'none'
-     Don't allow any extra memory.
+   Deprecated, use dnn.conv.algo_bwd.
 
-   'small'
-     Allow extra memory that is much smaller than the input sizes.
+.. attribute:: config.dnn.conv.algo_fwd
 
-   'large'
-     Allow extra memory that is on the order of the input sizes.
+  String value: ``small``, ``none``, ``large``, ``fft``, ``guess_once``,
+                ``guess_on_shape_change``, ``time_once``,
+                ``time_on_shape_change``.
 
+   Default: ``small``
+
+   3d convolution only support ``none``, ``guess_once``,
+   ``guess_on_shape_change``, ``time_once``, ``time_on_shape_change``.
+
+
+.. attribute:: config.dnn.conv.algo_bwd
+
+   String value: ``none``, ``deterministic``, ``fft``, ``guess_once``,
+                 ``guess_on_shape_change``, ``time_once``,
+                 ``time_on_shape_change``.
+
+   Default: ``none``
+
+   3d convolution only support ``none``, ``guess_once``,
+   ``guess_on_shape_change``, ``time_once``, ``time_on_shape_change``.
 
 .. attribute:: config.gcc.cxxflags
 
@@ -557,9 +644,10 @@ import theano and print the config variable, as in:
     <http://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/#options-for-steering-cuda-compilation>`_)
     mode for compiled cuda code which makes div and sqrt faster at the
     cost of precision.  This also disables support for denormal
-    numbers.
+    numbers. This can cause NaN. So if you have NaN and use this flag,
+    try to disable it.
 
-.. attribute:: optimizer_excluding
+.. attribute:: config.optimizer_excluding
 
     Default: ""
 
@@ -673,6 +761,25 @@ import theano and print the config variable, as in:
     Generate a warning when the destroy_map or view_map tell that an op work
     inplace, but the op did not reuse the input for its output.
 
+.. attribute:: config.NanGuardMode.nan_is_error
+
+    Bool value, default: True
+
+    Controls whether NanGuardMode generates an error when it sees a nan.
+
+.. attribute:: config.NanGuardMode.inf_is_error
+
+    Bool value, default: True
+
+    Controls whether NanGuardMode generates an error when it sees an inf.
+
+.. attribute:: config.NanGuardMode.nan_is_error
+
+    Bool value, default: True
+
+    Controls whether NanGuardMode generates an error when it sees a
+    big value (>1e10).
+
 .. attribute:: numpy
 
     This section contains different attributes for configuring numpy's
@@ -777,9 +884,16 @@ import theano and print the config variable, as in:
    optimization phase. Theano user's do not need to use this. This is
    to help debug shape error in Theano optimization.
 
+.. attribute:: print_test_value
+
+    Bool value, default: False
+
+    If ``'True'``, Theano will override the '__str__' method of its variables
+    to also print the tag.test_value when this is available.
+
 .. attribute:: reoptimize_unpickled_function
 
-    Bool value, default: True
+    Bool value, default: False (changed in master after Theano 0.7 release)
 
     Theano users can use the standard python pickle tools to save a compiled
     theano function. When pickling, both graph before and after the optimization

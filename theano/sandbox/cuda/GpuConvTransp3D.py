@@ -16,7 +16,11 @@ from theano.sandbox.cuda import (CudaNdarrayType, HostFromGpu,
 
 
 class GpuConvTransp3D(GpuOp):
-    """ The gpu version of ConvTransp3D """
+    """
+    The gpu version of ConvTransp3D.
+
+    """
+
     def __eq__(self, other):
         return type(self) == type(other)
 

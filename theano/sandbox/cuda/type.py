@@ -1,4 +1,6 @@
-"""Provide CudaNdarrayType
+"""
+Provide CudaNdarrayType.
+
 """
 from __future__ import print_function
 import os
@@ -31,36 +33,47 @@ class CudaNdarrayType(Type):
     dtype = 'float32'
 
     Variable = None
-    """ This will be set to the Variable type corresponding to this class.
+    """
+    This will be set to the Variable type corresponding to this class.
 
     That variable type is `CudaNdarrayVariable` defined in the
     ``var.py`` file beside this one.
 
-    :note: The var file depends on the file basic_ops.py, which
-    depends on this file.  A cyclic dependency is avoided by not
-    hardcoding ``Variable = CudaNdarrayVariable``.
+    Notes
+    -----
+    The var file depends on the file basic_ops.py, which depends on this file.
+    A cyclic dependency is avoided by not hardcoding
+    ``Variable = CudaNdarrayVariable``.
+
     """
 
     Constant = None
-    """ This will be set to `CudaNdarrayConstant` defined in ``var.py``
+    """
+    This will be set to `CudaNdarrayConstant` defined in ``var.py``.
 
-    :note:
+    Notes
+    -----
     The var file depends on the file basic_ops.py, which depends on this file.
     A cyclic dependency is avoided by not hardcoding this class.
+
     """
 
     SharedVariable = None
-    """ This will be set to `CudaNdarraySharedVariable` defined in ``var.py``
+    """
+    This will be set to `CudaNdarraySharedVariable` defined in ``var.py``.
 
-    :note:
+    Notes
+    -----
     The var file depends on the file basic_ops.py, which depends on this file.
     A cyclic dependency is avoided by not hardcoding this class.
+
     """
 
     if cuda is not None:
         value_zeros = staticmethod(cuda.CudaNdarray.zeros)
     """
-    Create an CudaNdarray full of 0 values
+    Create an CudaNdarray full of 0 values.
+
     """
 
     def __init__(self, broadcastable, name=None, dtype=None):
@@ -68,7 +81,7 @@ class CudaNdarrayType(Type):
             raise TypeError('%s only supports dtype float32 for now. Tried '
                             'using dtype %s for variable %s' %
                             (self.__class__.__name__, dtype, name))
-        self.broadcastable = tuple(broadcastable)
+        self.broadcastable = tuple(bool(b) for b in broadcastable)
         self.name = name
         self.dtype_specs()  # error checking is done there
 
@@ -119,12 +132,14 @@ class CudaNdarrayType(Type):
                         % (self, self.dtype, data, converted_data, self.dtype),
                         data)
 
-    def filter_variable(self, other):
-        """Convert a Variable into a CudaNdarrayType, if compatible.
+    def filter_variable(self, other, allow_convert=True):
+        """
+        Convert a Variable into a CudaNdarrayType, if compatible.
 
         This Variable should either already be a CudaNdarrayType, or be
         a TensorType. It has to have the right number of dimensions,
         broadcastable pattern, and dtype.
+
         """
         if hasattr(other, '_as_CudaNdarrayVariable'):
             other = other._as_CudaNdarrayVariable()
@@ -146,10 +161,17 @@ class CudaNdarrayType(Type):
             raise TypeError('Incompatible number of dimensions.'
                             ' Expected %d, got %d.' % (self.ndim, other.ndim))
         if other.type.broadcastable != self.broadcastable:
-            raise TypeError('Incompatible broadcastable dimensions.'
-                            ' Expected %s, got %s.' %
-                            (str(other.type.broadcastable),
-                             str(self.broadcastable)))
+            if allow_convert:
+                type2 = other.type.clone(broadcastable=self.broadcastable)
+                other2 = type2.convert_variable(other)
+            else:
+                other2 = None
+            if other2 is None:
+                raise TypeError('Incompatible broadcastable dimensions.'
+                                ' Expected %s, got %s.' %
+                                (str(other.type.broadcastable),
+                                 str(self.broadcastable)))
+            other = other2
 
         return theano.sandbox.cuda.basic_ops.GpuFromHost()(other)
 
@@ -202,10 +224,12 @@ class CudaNdarrayType(Type):
         )
 
     def dtype_specs(self):
-        """Return a tuple (python type, c type, numpy typenum) that
-        corresponds to self.dtype.
+        """
+        Return a tuple (python type, c type, numpy typenum) that corresponds
+        to self.dtype.
 
         This function is used internally as part of C code generation.
+
         """
         # TODO: add more type correspondances for e.g. int32, int64, float32,
         # complex64, etc.
@@ -229,7 +253,10 @@ class CudaNdarrayType(Type):
                     self.__class__.__name__, self.dtype))
 
     def __eq__(self, other):
-        """Compare True iff other is the same kind of CudaNdarrayType"""
+        """
+        Compare True iff other is the same kind of CudaNdarrayType.
+
+        """
         return (type(self) == type(other) and
                 other.broadcastable == self.broadcastable)
 
@@ -241,12 +268,16 @@ class CudaNdarrayType(Type):
             return theano.tensor.patternbroadcast(var, self.broadcastable)
 
     def __hash__(self):
-        """Hash equal for same kinds of CudaNdarrayType"""
+        """
+        Hash equal for same kinds of CudaNdarrayType.
+
+        """
         return hash(type(self)) ^ hash(self.broadcastable)
 
     ndim = property(lambda self: len(self.broadcastable),
                     doc="number of dimensions")
-    """Number of dimensions
+    """
+    Number of dimensions.
 
     This read-only property is the preferred way to get the number of
     dimensions of a `CudaNdarrayType`.
@@ -254,12 +285,14 @@ class CudaNdarrayType(Type):
     """
 
     def make_variable(self, name=None):
-        """Return a `TensorVariable` of this type
+        """
+        Return a `TensorVariable` of this type.
 
-        :Parameters:
-         - `name`: str
-           A pretty name to identify this `Variable` when printing and
-           debugging
+        Parameters
+        ----------
+        name : str
+            A pretty name to identify this `Variable` when printing and
+            debugging.
 
         """
         return self.Variable(self, name=name)
@@ -374,7 +407,9 @@ class CudaNdarrayType(Type):
         return sio.getvalue()
 
     def c_extract_out(self, name, sub, check_input=True, check_broadcast=True):
-        """ To allow the hack to skip check_broadcast.
+        """ 
+        To allow the hack to skip check_broadcast.
+
         """
         return """
         if (py_%(name)s == Py_None)
@@ -404,7 +439,10 @@ class CudaNdarrayType(Type):
         """ % locals()
 
     def c_sync(self, name, sub):
-        """Override `CLinkerOp.c_sync` """
+        """
+        Override `CLinkerOp.c_sync`.
+
+        """
         return """
         //std::cerr << "sync\\n";
         if (NULL == %(name)s) {
@@ -426,11 +464,17 @@ class CudaNdarrayType(Type):
         """ % locals()
 
     def c_headers(self):
-        """Override `CLinkerOp.c_headers` """
+        """
+        Override `CLinkerOp.c_headers`.
+
+        """
         return ['cuda_ndarray.cuh']
 
     def c_header_dirs(self):
-        """Override `CLinkerOp.c_headers` """
+        """
+        Override `CLinkerOp.c_headers`.
+
+        """
         ret = [os.path.dirname(cuda_ndarray.__file__)]
         cuda_root = config.cuda.root
         if cuda_root:

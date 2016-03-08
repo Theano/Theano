@@ -6,10 +6,13 @@ import theano.sandbox.cuda as cuda
 
 
 def get_diagonal_subtensor_view(x, i0, i1):
-    """Helper function for DiagonalSubtensor and
-    IncDiagonalSubtensor
+    """
+    Helper function for DiagonalSubtensor and IncDiagonalSubtensor.
 
-    :note: it return a partial view of x, not a partial copy.
+    Notes
+    -----
+    It returns a partial view of x, not a partial copy.
+
     """
     # We have to cast i0 and i0 to int because python 2.4 (and maybe later)
     # do not support indexing with 0-dim, 'int*' ndarrays.
@@ -27,13 +30,24 @@ def get_diagonal_subtensor_view(x, i0, i1):
 
 
 class DiagonalSubtensor(Op):
-    """Return a form a nd diagonal subtensor.
+    """
+    Return a form a nd diagonal subtensor.
 
-    :param x: n-d tensor
-    :param i0: axis index in x
-    :param i1: axis index in x
-    :note: Work on the GPU.
+    Parameters
+    ----------
+    x
+        n-d tensor
+    i0
+        Axis index in x
+    i1
+        Axis index in x
 
+    Notes
+    -----
+    Work on the GPU.
+
+    Extended summary
+    ----------------
     ``x`` is some n-dimensional tensor, but this Op only deals with a
     matrix-shaped slice, using axes i0 and i1. Without loss of
     generality, suppose that ``i0`` picks out our ``row`` dimension,
@@ -73,6 +87,9 @@ class DiagonalSubtensor(Op):
     see what's necessary at that point.
 
     """
+
+    __props__ = ("inplace",)
+
     def __str__(self):
         if self.inplace:
             return "%s{inplace}" % self.__class__.__name__
@@ -82,12 +99,6 @@ class DiagonalSubtensor(Op):
         self.inplace = inplace
         if inplace:
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash((type(self), self.inplace))
 
     def make_node(self, x, i0, i1):
         _i0 = tensor.as_tensor_variable(i0)
@@ -115,8 +126,12 @@ diagonal_subtensor = DiagonalSubtensor(False)
 
 class IncDiagonalSubtensor(Op):
     """
-    The gradient of DiagonalSubtensor
+    The gradient of DiagonalSubtensor.
+
     """
+
+    __props__ = ("inplace",)
+
     def __str__(self):
         if self.inplace:
             return "%s{inplace}" % self.__class__.__name__
@@ -126,12 +141,6 @@ class IncDiagonalSubtensor(Op):
         self.inplace = inplace
         if inplace:
             self.destroy_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash((type(self), self.inplace))
 
     def make_node(self, x, i0, i1, amt):
         _i0 = tensor.as_tensor_variable(i0)
@@ -161,26 +170,39 @@ inc_diagonal_subtensor = IncDiagonalSubtensor(False)
 def conv3d(signals, filters,
            signals_shape=None, filters_shape=None,
            border_mode='valid'):
-    """Convolve spatio-temporal filters with a movie.
+    """
+    Convolve spatio-temporal filters with a movie.
 
     It flips the filters.
 
-    :param signals: timeseries of images whose pixels have color channels.
-            shape: [Ns, Ts, C, Hs, Ws]
-    :param filters: spatio-temporal filters
-            shape: [Nf, Tf, C, Hf, Wf]
-    :param signals_shape: None or a tuple/list with the shape of signals
-    :param filters_shape: None or a tuple/list with the shape of filters
-    :param border_mode: The only one tested is 'valid'.
+    Parameters
+    ----------
+    signals
+        Timeseries of images whose pixels have color channels.
+        Shape: [Ns, Ts, C, Hs, Ws].
+    filters
+        Spatio-temporal filters.
+        Shape: [Nf, Tf, C, Hf, Wf].
+    signals_shape
+        None or a tuple/list with the shape of signals.
+    filters_shape
+        None or a tuple/list with the shape of filters.
+    border_mode
+        The only one tested is 'valid'.
 
-    :note: Another way to define signals: (batch,  time, in channel, row, column)
-           Another way to define filters: (out channel,time,in channel, row, column)
-    :note: For the GPU, you can use this implementation or
-           :func:`conv3d_fft <theano.sandbox.cuda.fftconv.conv3d_fft>`.
+    Notes
+    -----
+    Another way to define signals: (batch,  time, in channel, row, column)
+    Another way to define filters: (out channel,time,in channel, row, column)
 
-    :see: Someone made a script that shows how to swap the axes between
-          both 3d convolution implementations in Theano. See the last
-          `attachment <https://groups.google.com/d/msg/theano-users/1S9_bZgHxVw/0cQR9a4riFUJ>`_.
+    For the GPU, you can use this implementation or
+    :func:`conv3d_fft <theano.sandbox.cuda.fftconv.conv3d_fft>`.
+
+    See Also
+    --------
+    Someone made a script that shows how to swap the axes between
+    both 3d convolution implementations in Theano. See the last
+    `attachment <https://groups.google.com/d/msg/theano-users/1S9_bZgHxVw/0cQR9a4riFUJ>`_
 
     """
 
@@ -202,13 +224,13 @@ def conv3d(signals, filters,
         _signals_shape_5d[2],
         _signals_shape_5d[3],
         _signals_shape_5d[4],
-        )
+    )
     _filters_shape_4d = (
         _filters_shape_5d[0] * _filters_shape_5d[1],
         _filters_shape_5d[2],
         _filters_shape_5d[3],
         _filters_shape_5d[4],
-        )
+    )
 
     if border_mode[1] != border_mode[2]:
         raise NotImplementedError('height and width bordermodes must match')
@@ -222,7 +244,7 @@ def conv3d(signals, filters,
     out_4d = tensor.nnet.conv2d(
         signals.reshape(_signals_shape_4d),
         filters.reshape(_filters_shape_4d),
-        image_shape=conv2d_signal_shape,
+        input_shape=conv2d_signal_shape,
         filter_shape=conv2d_filter_shape,
         border_mode=border_mode[1])  # ignoring border_mode[2]
 
@@ -236,7 +258,7 @@ def conv3d(signals, filters,
             _filters_shape_5d[1],  # Tf
             _signals_shape_5d[3] - _filters_shape_5d[3] + 1,
             _signals_shape_5d[4] - _filters_shape_5d[4] + 1,
-            ))
+        ))
     elif border_mode[1] == 'full':
         out_tmp = out_4d.reshape((
             _signals_shape_5d[0],  # Ns
@@ -245,7 +267,7 @@ def conv3d(signals, filters,
             _filters_shape_5d[1],  # Tf
             _signals_shape_5d[3] + _filters_shape_5d[3] - 1,
             _signals_shape_5d[4] + _filters_shape_5d[4] - 1,
-            ))
+        ))
     elif border_mode[1] == 'same':
         raise NotImplementedError()
     else:
@@ -254,15 +276,15 @@ def conv3d(signals, filters,
     # now sum out along the Tf to get the output
     # but we have to sum on a diagonal through the Tf and Ts submatrix.
     if border_mode[0] == 'valid':
-        if _filters_shape_5d[1]!=1:
-          out_5d = diagonal_subtensor(out_tmp, 1, 3).sum(axis=3)
-        else: # for Tf==1, no sum along Tf, the Ts-axis of the output is unchanged!
-          out_5d = out_tmp.reshape((
-            _signals_shape_5d[0],
-            _signals_shape_5d[1],
-            _filters_shape_5d[0],
-            _signals_shape_5d[3] - _filters_shape_5d[3] + 1,
-            _signals_shape_5d[4] - _filters_shape_5d[4] + 1,
+        if _filters_shape_5d[1] != 1:
+            out_5d = diagonal_subtensor(out_tmp, 1, 3).sum(axis=3)
+        else:  # for Tf==1, no sum along Tf, the Ts-axis of the output is unchanged!
+            out_5d = out_tmp.reshape((
+                _signals_shape_5d[0],
+                _signals_shape_5d[1],
+                _filters_shape_5d[0],
+                _signals_shape_5d[3] - _filters_shape_5d[3] + 1,
+                _signals_shape_5d[4] - _filters_shape_5d[4] + 1,
             ))
     elif border_mode[0] in ('full', 'same'):
         raise NotImplementedError('sequence border mode', border_mode[0])
@@ -272,7 +294,8 @@ def conv3d(signals, filters,
 
 
 def make_gpu_optimizer(op, to_gpu):
-    """This function create optimizer that move some inputs to the GPU
+    """
+    This function create optimizer that move some inputs to the GPU
     for op that work on both CPU and GPU.
 
     The op object is created by calling op(), so good default value
@@ -280,8 +303,12 @@ def make_gpu_optimizer(op, to_gpu):
 
     We suppose the same op work with CPU and GPU inputs.
 
-    :param op: the op that support GPU inputs
-    :param to_gpu: a list of op inputs that are moved to the GPU.
+    Parameters
+    ----------
+    op
+        The op that support GPU inputs.
+    to_gpu
+        A list of op inputs that are moved to the GPU.
 
     """
     @theano.gof.local_optimizer([op, cuda.gpu_from_host])
@@ -289,6 +316,7 @@ def make_gpu_optimizer(op, to_gpu):
         """
         op(host_from_gpu()) -> host_from_gpu(op)
         gpu_from_host(op) -> op(gpu_from_host)
+
         """
         if isinstance(node.op, op):
             # op(host_from_gpu()) -> host_from_gpu(op)
@@ -322,9 +350,9 @@ if cuda.cuda_available:
 
 @theano.gof.local_optimizer([DiagonalSubtensor, IncDiagonalSubtensor])
 def local_inplace_DiagonalSubtensor(node):
-    """ also work for IncDiagonalSubtensor """
+    """Also work for IncDiagonalSubtensor."""
     if (isinstance(node.op, (DiagonalSubtensor, IncDiagonalSubtensor)) and
-        not node.op.inplace):
+            not node.op.inplace):
         new_op = node.op.__class__(inplace=True)
         new_node = new_op(*node.inputs)
         return [new_node]

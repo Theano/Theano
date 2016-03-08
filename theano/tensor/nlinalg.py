@@ -1,37 +1,34 @@
 from __future__ import print_function
-import logging
-import theano
 
-logger = logging.getLogger(__name__)
+import logging
+
 import numpy
 from six.moves import xrange
 
+import theano
+from theano.tensor import as_tensor_variable
 from theano.gof import Op, Apply
-
-from theano.tensor import as_tensor_variable, dot, DimShuffle, Dot
-from theano.tensor.blas import Dot22
-from theano.tensor.opt import (register_stabilize,
-        register_specialize, register_canonicalize)
-from theano.gof import local_optimizer
-from theano.gof.opt import Optimizer
 from theano.gradient import DisconnectedType
 from theano.tensor import basic as tensor
+
+logger = logging.getLogger(__name__)
 
 
 class MatrixPinv(Op):
     """Computes the pseudo-inverse of a matrix :math:`A`.
 
-    The pseudo-inverse of a matrix A, denoted :math:`A^+`, is
+    The pseudo-inverse of a matrix :math:`A`, denoted :math:`A^+`, is
     defined as: "the matrix that 'solves' [the least-squares problem]
     :math:`Ax = b`," i.e., if :math:`\\bar{x}` is said solution, then
     :math:`A^+` is that matrix such that :math:`\\bar{x} = A^+b`.
 
     Note that :math:`Ax=AA^+b`, so :math:`AA^+` is close to the identity matrix.
-    This method is not faster then `matrix_inverse`. Its strength comes from
+    This method is not faster than `matrix_inverse`. Its strength comes from
     that it works for non-square matrices.
     If you have a square matrix though, `matrix_inverse` can be both more
     exact and faster to compute. Also this op does not get optimized into a
     solve op.
+
     """
 
     __props__ = ()
@@ -59,8 +56,11 @@ class MatrixInverse(Op):
     matrix :math:`A_{inv}` such that the dot product :math:`A \cdot A_{inv}`
     and :math:`A_{inv} \cdot A` equals the identity matrix :math:`I`.
 
-    :note: When possible, the call to this op will be optimized to the call
-           of ``solve``.
+    Notes
+    -----
+    When possible, the call to this op will be optimized to the call
+    of ``solve``.
+
     """
 
     __props__ = ()
@@ -86,7 +86,7 @@ class MatrixInverse(Op):
         where :math:`V` corresponds to ``g_outputs`` and :math:`X` to
         ``inputs``. Using the `matrix cookbook
         <http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274>`_,
-        once can deduce that the relation corresponds to
+        one can deduce that the relation corresponds to
 
             .. math:: (X^{-1} \cdot V^{T} \cdot X^{-1})^T.
 
@@ -103,9 +103,9 @@ class MatrixInverse(Op):
             .. math:: \frac{\partial X^{-1}}{\partial X}V,
 
         where :math:`V` corresponds to ``g_outputs`` and :math:`X` to
-        ``inputs``.  Using the `matrix cookbook
+        ``inputs``. Using the `matrix cookbook
         <http://www2.imm.dtu.dk/pubdb/views/publication_details.php?id=3274>`_,
-        once can deduce that the relation corresponds to
+        one can deduce that the relation corresponds to
 
             .. math:: X^{-1} \cdot V \cdot X^{-1}.
 
@@ -124,11 +124,12 @@ matrix_inverse = MatrixInverse()
 
 
 def matrix_dot(*args):
-    """ Shorthand for product between several dots
+    """ Shorthand for product between several dots.
 
     Given :math:`N` matrices :math:`A_0, A_1, .., A_N`, ``matrix_dot`` will
     generate the matrix product between all in the given order, namely
     :math:`A_0 \cdot A_1 \cdot A_2 \cdot .. \cdot A_N`.
+
     """
     rval = args[0]
     for a in args[1:]:
@@ -140,11 +141,8 @@ class AllocDiag(Op):
     """
     Allocates a square matrix with the given vector as its diagonal.
     """
-    def __eq__(self, other):
-        return type(self) == type(other)
 
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, _x):
         x = as_tensor_variable(_x)
@@ -170,20 +168,20 @@ alloc_diag = AllocDiag()
 
 
 class ExtractDiag(Op):
-    """ Return the diagonal of a matrix.
+    """Return the diagonal of a matrix.
 
-    :note: work on the GPU.
+    Notes
+    -----
+    Works on the GPU.
+
     """
+
+    __props__ = ("view",)
+
     def __init__(self, view=False):
         self.view = view
         if self.view:
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.view == other.view
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.view)
 
     def make_node(self, _x):
         if not isinstance(_x, theano.Variable):
@@ -257,15 +255,22 @@ def trace(X):
     """
     Returns the sum of diagonal elements of matrix X.
 
-    :note: work on GPU since 0.6rc4.
+    Notes
+    -----
+    Works on GPU since 0.6rc4.
+
     """
     return extract_diag(X).sum()
 
 
 class Det(Op):
-    """Matrix determinant
-    Input should be a square matrix
     """
+    Matrix determinant. Input should be a square matrix.
+
+    """
+
+    __props__ = ()
+
     def make_node(self, x):
         x = as_tensor_variable(x)
         assert x.ndim == 2
@@ -295,9 +300,11 @@ det = Det()
 
 
 class Eig(Op):
-    """Compute the eigenvalues and right eigenvectors of a square array.
+    """
+    Compute the eigenvalues and right eigenvectors of a square array.
 
     """
+
     _numop = staticmethod(numpy.linalg.eig)
     __props__ = ()
 
@@ -325,6 +332,7 @@ class Eigh(Eig):
     Return the eigenvalues and eigenvectors of a Hermitian or symmetric matrix.
 
     """
+
     _numop = staticmethod(numpy.linalg.eigh)
     __props__ = ('UPLO',)
 
@@ -371,6 +379,7 @@ class Eigh(Eig):
            .. math:: \frac{\partial\,v_{kn}}
                           {\partial a_{ij}} =
                 \sum_{m\ne n}\frac{v_{km}v_{jn}}{w_n-w_m}
+
         """
         x, = inputs
         w, v = self(x)
@@ -391,9 +400,11 @@ def _zero_disconnected(outputs, grads):
 
 
 class EighGrad(Op):
-    """Gradient of an eigensystem of a Hermitian matrix.
+    """
+    Gradient of an eigensystem of a Hermitian matrix.
 
     """
+
     __props__ = ('UPLO',)
 
     def __init__(self, UPLO='L'):
@@ -422,13 +433,16 @@ class EighGrad(Op):
         """
         Implements the "reverse-mode" gradient for the eigensystem of
         a square matrix.
+
         """
         x, w, v, W, V = inputs
         N = x.shape[0]
         outer = numpy.outer
 
-        G = lambda n: sum(v[:, m] * V.T[n].dot(v[:, m]) / (w[n] - w[m])
-                          for m in xrange(N) if m != n)
+        def G(n):
+            return sum(v[:, m] * V.T[n].dot(v[:, m]) / (w[n] - w[m])
+                       for m in xrange(N) if m != n)
+
         g = sum(outer(v[:, n], v[:, n] * W[n] + G(n))
                 for n in xrange(N))
 
@@ -459,10 +473,13 @@ def eigh(a, UPLO='L'):
 class QRFull(Op):
     """
     Full QR Decomposition.
+
     Computes the QR decomposition of a matrix.
     Factor the matrix a as qr, where q is orthonormal
     and r is upper-triangular.
+
     """
+
     _numop = staticmethod(numpy.linalg.qr)
     __props__ = ('mode',)
 
@@ -490,9 +507,12 @@ class QRFull(Op):
 class QRIncomplete(Op):
     """
     Incomplete QR Decomposition.
+
     Computes the QR decomposition of a matrix.
     Factor the matrix a as qr and return a single matrix.
+
     """
+
     _numop = staticmethod(numpy.linalg.qr)
     __props__ = ('mode',)
 
@@ -519,15 +539,12 @@ def qr(a, mode="full"):
     Factor the matrix a as qr, where q
     is orthonormal and r is upper-triangular.
 
-    :type a:
-        array_like, shape (M, N)
-    :param a:
+    Parameters
+    ----------
+    a : array_like, shape (M, N)
         Matrix to be factored.
 
-    :type mode:
-        one of 'reduced', 'complete', 'r', 'raw', 'full' and
-        'economic', optional
-    :keyword mode:
+    mode : {'reduced', 'complete', 'r', 'raw', 'full', 'economic'}, optional
         If K = min(M, N), then
 
         'reduced'
@@ -564,19 +581,18 @@ def qr(a, mode="full"):
            both doing the same thing in the new numpy version but only
            full works on the old previous numpy version.
 
-    :rtype q:
-      matrix of float or complex, optional
-    :return q:
-      A matrix with orthonormal columns. When mode = 'complete' the
-      result is an orthogonal/unitary matrix depending on whether or
-      not a is real/complex. The determinant may be either +/- 1 in
-      that case.
+    Returns
+    -------
+    q : matrix of float or complex, optional
+        A matrix with orthonormal columns. When mode = 'complete' the
+        result is an orthogonal/unitary matrix depending on whether or
+        not a is real/complex. The determinant may be either +/- 1 in
+        that case.
+    r : matrix of float or complex, optional
+        The upper-triangular matrix.
 
-    :rtype r:
-      matrix of float or complex, optional
-    :return r:
-      The upper-triangular matrix.
     """
+
     x = [[2, 1], [3, 4]]
     if isinstance(numpy.linalg.qr(x, mode), tuple):
         return QRFull(mode)(a)
@@ -585,22 +601,26 @@ def qr(a, mode="full"):
 
 
 class SVD(Op):
+    """
+
+    Parameters
+    ----------
+    full_matrices : bool, optional
+        If True (default), u and v have the shapes (M, M) and (N, N),
+        respectively.
+        Otherwise, the shapes are (M, K) and (K, N), respectively,
+        where K = min(M, N).
+    compute_uv : bool, optional
+        Whether or not to compute u and v in addition to s.
+        True by default.
+
+    """
 
     # See doc in the docstring of the function just after this class.
     _numop = staticmethod(numpy.linalg.svd)
     __props__ = ('full_matrices', 'compute_uv')
 
     def __init__(self, full_matrices=True, compute_uv=True):
-        """
-        full_matrices : bool, optional
-            If True (default), u and v have the shapes (M, M) and (N, N),
-            respectively.
-            Otherwise, the shapes are (M, K) and (K, N), respectively,
-            where K = min(M, N).
-        compute_uv : bool, optional
-            Whether or not to compute u and v in addition to s.
-            True by default.
-        """
         self.full_matrices = full_matrices
         self.compute_uv = compute_uv
 
@@ -625,41 +645,28 @@ def svd(a, full_matrices=1, compute_uv=1):
     """
     This function performs the SVD on CPU.
 
-    :type full_matrices: bool, optional
-    :param full_matrices:
+    Parameters
+    ----------
+    full_matrices : bool, optional
         If True (default), u and v have the shapes (M, M) and (N, N),
         respectively.
         Otherwise, the shapes are (M, K) and (K, N), respectively,
         where K = min(M, N).
-    :type compute_uv: bool, optional
-    :param compute_uv:
+    compute_uv : bool, optional
         Whether or not to compute u and v in addition to s.
         True by default.
 
-    :returns: U, V and D matrices.
+    Returns
+    -------
+    U, V,  D : matrices
+
     """
     return SVD(full_matrices, compute_uv)(a)
 
 
-def test_matrix_inverse_solve():
-    if not imported_scipy:
-        raise SkipTest("Scipy needed for the Solve op.")
-    A = theano.tensor.dmatrix('A')
-    b = theano.tensor.dmatrix('b')
-    node = matrix_inverse(A).dot(b).owner
-    [out] = inv_as_solve.transform(node)
-    assert isinstance(out.owner.op, Solve)
-
-
 class lstsq(Op):
-    def __eq__(self, other):
-        return type(self) == type(other)
 
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, x, y, rcond):
         x = theano.tensor.as_tensor_variable(x)
@@ -670,9 +677,6 @@ class lstsq(Op):
                              theano.tensor.lscalar(), theano.tensor.dvector()])
 
     def perform(self, node, inputs, outputs):
-        x = inputs[0]
-        y = inputs[1]
-        rcond = inputs[2]
         zz = numpy.linalg.lstsq(inputs[0], inputs[1], inputs[2])
         outputs[0][0] = zz[0]
         outputs[1][0] = zz[1]
@@ -703,7 +707,7 @@ def norm(x, ord):
             return x[x.nonzero()].shape[0]
         else:
             try:
-                z = tensor.sum(abs(x**ord))**(1./ord)
+                z = tensor.sum(abs(x**ord))**(1. / ord)
             except TypeError:
                 raise ValueError("Invalid norm order for vectors.")
             return z

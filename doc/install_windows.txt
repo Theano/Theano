@@ -1,3 +1,4 @@
+:orphan:
 
 .. _install_windows:
 
@@ -120,7 +121,7 @@ dependencies is to install `Enthought Python Distribution (EPD) <http://enthough
 If you are affiliated with a university (as student or employee), you can
 download the installation for free.
 EPD installation includes, in particular, Python (and the development headers),
-NumPy, SciPy, nose, sphinx, easy_install, pydot (but *not* `Graphviz`_, which is
+NumPy, SciPy, nose, sphinx, easy_install, pydot (but *not* Graphviz, which is
 necessary for it to work), g++, and the MKL
 implementation of blas.
 
@@ -299,7 +300,7 @@ By default neither Python, GCC, nor Visual Studio was added to the
 PATH. Save the following shell script as ``c:\scisoft\env.bat`` to
 configure the system path:
 
-.. code-block:: cmd
+.. code-block:: none
 
    REM configuration of paths
    set VSFORPYTHON="C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0"
@@ -335,7 +336,7 @@ programs are found:
 Finally we need to create a link library for GCC. Open up the Python
 shell and ``cd`` to ``c:\SciSoft``. Then execute:
 
-.. code-block:: cmd
+.. code-block:: none
 
    gendef WinPython-64bit-2.7.9.4\python-2.7.9.amd64\python27.dll
 
@@ -404,7 +405,7 @@ compile C code for CPU execution.
 
 Create a test file containing:
 
-.. code-block:: python
+.. testcode::
 
    import numpy as np
    import time
@@ -419,9 +420,21 @@ Create a test file containing:
    t_start = time.time()
    tAB = mf(A,B)
    t_end = time.time()
-   print "NP time: %f[s], theano time: %f[s] (times should be close when run on CPU!)" %(
-                                              np_end-np_start, t_end-t_start)
-   print "Result difference: %f" % (np.abs(AB-tAB).max(), )
+   print("NP time: %f[s], theano time: %f[s] (times should be close when run on CPU!)" %(
+                                              np_end-np_start, t_end-t_start))
+   print("Result difference: %f" % (np.abs(AB-tAB).max(), ))
+   
+.. testoutput::
+   :hide:
+   :options: +ELLIPSIS
+   
+   NP time: ...[s], theano time: ...[s] (times should be close when run on CPU!)
+   Result difference: ...
+
+.. code-block:: none
+   
+   NP time: 1.480863[s], theano time: 1.475381[s] (times should be close when run on CPU!)
+   Result difference: 0.000000
 
 Then run it. It should execute without problems and the Theano function
 should run at a speed similar to the regular NumPy

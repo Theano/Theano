@@ -1,5 +1,6 @@
 import theano
-from theano.compile.mode import Mode
+from theano.compile.mode import Mode, AddFeatureOptimizer
+from theano.gof.toolbox import NoOutputFromInplace
 import theano.tensor as T
 
 
@@ -18,9 +19,14 @@ def test_no_output_from_implace():
 
     # Ensure that the elemwise op that produces the output is not inplace when
     # using a mode that includes the optimization
-    mode_opt = Mode(linker="cvm", optimizer="fast_run")
-    mode_opt = mode_opt.including("add_no_output_from_inplace")
+    opt = AddFeatureOptimizer(NoOutputFromInplace())
+    mode_opt = Mode(linker="cvm", optimizer="fast_run").register((opt, 49.9))
 
     fct_opt = theano.function([x, y], b, mode=mode_opt)
     op = fct_opt.maker.fgraph.outputs[0].owner.op
     assert (not hasattr(op, 'destroy_map') or 0 not in op.destroy_map)
+
+
+def test_including():
+    mode = theano.Mode(optimizer='merge')
+    mode.including('fast_compile')

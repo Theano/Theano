@@ -56,6 +56,8 @@ class MyType(Type):
 
 class MyOp(Op):
 
+    __props__ = ()
+
     def make_node(self, *inputs):
         inputs = list(map(as_variable, inputs))
         for input in inputs:
@@ -70,12 +72,7 @@ MyOp = MyOp()
 class NoInputOp(Op):
 
     """An Op to test the corner-case of an Op with no input."""
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self):
         return Apply(self, [], [MyType('test')()])
@@ -159,15 +156,11 @@ class TestOp:
 
 
 class TestMakeThunk(unittest.TestCase):
+
     def test_no_c_code(self):
         class IncOnePython(Op):
             """An Op with only a Python (perform) implementation"""
-
-            def __eq__(self, other):
-                return type(self) == type(other)
-
-            def __hash__(self):
-                return hash(type(self))
+            __props__ = ()
 
             def make_node(self, input):
                 input = scalar.as_scalar(input)
@@ -204,12 +197,7 @@ class TestMakeThunk(unittest.TestCase):
     def test_no_perform(self):
         class IncOneC(Op):
             """An Op with only a C (c_code) implementation"""
-
-            def __eq__(self, other):
-                return type(self) == type(other)
-
-            def __hash__(self):
-                return hash(type(self))
+            __props__ = ()
 
             def make_node(self, input):
                 input = scalar.as_scalar(input)
@@ -245,6 +233,26 @@ class TestMakeThunk(unittest.TestCase):
         else:
             self.assertRaises((NotImplementedError, utils.MethodNotDefined),
                               thunk)
+
+    def test_no_make_node(self):
+        class DoubleOp(Op):
+            """An Op without make_node"""
+
+            __props__ = ()
+
+            itypes = [T.dmatrix]
+            otypes = [T.dmatrix]
+
+            def perform(self, node, inputs, outputs):
+                inp = inputs[0]
+                output = outputs[0]
+                output[0] = inp * 2
+
+        x_input = T.dmatrix('x_input')
+        f = theano.function([x_input], DoubleOp()(x_input))
+        inp = numpy.random.rand(5, 4)
+        out = f(inp)
+        assert numpy.allclose(inp * 2, out)
 
 
 def test_test_value_python_objects():

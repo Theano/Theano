@@ -3,23 +3,29 @@ import copy
 from theano import Op
 from theano.gof import local_optimizer
 from theano.sandbox.cuda import cuda_available, GpuOp
-from theano.sandbox.cuda.basic_ops import GpuFlatten
+from theano.sandbox.cuda.basic_ops import gpu_flatten
 from theano.tensor.extra_ops import CumsumOp
 
 if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType
     from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host, HostFromGpu
-    from theano.sandbox.cuda.opt import register_opt as register_gpu_opt
+    from theano.sandbox.cuda import register_opt as register_gpu_opt
 
 
 class GpuCumsum(CumsumOp, GpuOp):
+    """
+
+    Parameters
+    ----------
+    axis
+        Can not be None. If you want the array flatten, do it before.
+
+    """
+
     SUPPORTED_NDIMS = 3
     __props__ = ('axis', 'max_threads_dim0', 'max_grid_size1', 'max_grid_size2')
 
     def __init__(self, axis):
-        """
-        ``axis`` can not be None. If you want the array flatten, do it before.
-        """
         self.axis = axis
         self.max_threads_dim0 = None
         self.max_grid_size1 = None
@@ -415,11 +421,13 @@ class GpuCumsum(CumsumOp, GpuOp):
 
 
 def values_eq_approx_high_tol(a, b):
-    """This fct is needed to don't have DebugMode raise useless
+    """
+    This fct is needed to don't have DebugMode raise useless
     error due to rounding error.
 
     This happen with big input size due to change in the order of
     operation.
+
     """
     rtol = None
     if a.size > 100000:
@@ -445,12 +453,12 @@ def use_gpu_cumsum(node):
         x = gpu_from_host(x)
 
         if axis is None and x.ndim > 1:
-            x = GpuFlatten()(x)
+            x = gpu_flatten(x)
 
         # ``gpu_cumsum`` assume array has been flattened if needed.
         if axis is None:
             axis = 0
 
         ret = host_from_gpu(GpuCumsum(axis)(x))
-        ret.values_eq_approx = values_eq_approx_high_tol
+        ret.tag.values_eq_approx = values_eq_approx_high_tol
         return [ret]

@@ -2,6 +2,7 @@ global-include *.txt
 global-include *.c
 global-include *.cu
 global-include *.cuh
+global-include *.cpp
 global-include *.h
 global-include *.sh
 global-include *.pkl
