@@ -460,7 +460,7 @@ def register_specialize_device(lopt, *tags, **kwargs):
             return register_specialize_device(inner_lopt, lopt, *tags, **kwargs)
         return register
     else:
-        name = (kwargs and kwargs.pop('name')) or lopt.__name__
+        name = (kwargs and kwargs.pop('name', None)) or lopt.__name__
         compile.optdb['specialize_device'].register(name, lopt, 'fast_run', *tags,
                                                     **kwargs)
         return lopt
