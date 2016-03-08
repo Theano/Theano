@@ -337,7 +337,7 @@ class mrg_uniform(mrg_uniform_base):
         v_size = as_tensor_variable(size)
         if ndim is None:
             ndim = get_vector_length(v_size)
-        op = cls(TensorType(dtype, (False,)*ndim))
+        op = cls(TensorType(dtype, (False,) * ndim))
         return op(rstate, v_size)
 
     def perform(self, node, inp, out):
@@ -444,9 +444,9 @@ class mrg_uniform(mrg_uniform_base):
         if (n_elements > M1)
         {
             PyErr_SetString(
-                PyExc_ValueError, 
+                PyExc_ValueError,
                 "rng_mrg cpu-implementation does not support more than (2**31 -1) samples");
-            %(fail)s 
+            %(fail)s
         }
 
         if (must_alloc_sample)
@@ -553,7 +553,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         v_size = as_tensor_variable(size)
         if ndim is None:
             ndim = get_vector_length(v_size)
-        op = cls(CudaNdarrayType((False,)*ndim))
+        op = cls(CudaNdarrayType((False,) * ndim))
         return op(rstate, v_size)
 
     def c_support_code_apply(self, node, nodename):
@@ -686,7 +686,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
                 %(ndim)s, PyArray_DIMS(%(size)s)[0]);
             %(fail)s
         }
-        
+
         for (int i = 0; i < %(ndim)s; ++i)
         {
             odims[i] = *(dtype_%(size)s *)PyArray_GETPTR1(%(size)s, i);
@@ -698,9 +698,9 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         if (n_elements > M1)
         {
             PyErr_SetString(
-                PyExc_ValueError, 
+                PyExc_ValueError,
                 "rng_mrg gpu implementation does not support more than (2**31 -1) samples");
-            %(fail)s 
+            %(fail)s
         }
 
         if (must_alloc_sample)
@@ -800,7 +800,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         v_size = as_tensor_variable(size)
         if ndim is None:
             ndim = get_vector_length(v_size)
-        op = cls(GpuArrayType(dtype, (False,)*ndim))
+        op = cls(GpuArrayType(dtype, (False,) * ndim))
         return op(rstate, v_size)
 
     def c_headers(self):
@@ -950,7 +950,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
                 %(ndim)s, PyArray_DIMS(%(size)s)[0]);
             %(fail)s
         }
-        
+
         for (int i = 0; i < %(ndim)s; ++i)
         {
             odims[i] = *(dtype_%(size)s *)PyArray_GETPTR1(%(size)s, i);
@@ -962,9 +962,9 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         if (n_elements > M1)
         {
             PyErr_SetString(
-                PyExc_ValueError, 
+                PyExc_ValueError,
                 "rng_mrg gpu implementation does not support more than (2**31 -1) samples");
-            %(fail)s 
+            %(fail)s
         }
         if (must_alloc_sample)
         {
