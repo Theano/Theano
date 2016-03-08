@@ -48,45 +48,48 @@ class TestBatchedDot(unittest_tools.InferShapeTester):
     mode = mode_with_gpu
 
     def test_batched_dot_correctness(self):
+        # test both implementations
+        for threshold in [0, 100]:
+            batched_dot = GpuBatchedDot(stream_threshold=threshold)
 
-        def cmp(a_shp, b_shp):
+            def cmp(a_shp, b_shp):
 
-            a=numpy.random.randn(*a_shp).astype(numpy.float32)
-            b=numpy.random.randn(*b_shp).astype(numpy.float32)
+                a=numpy.random.randn(*a_shp).astype(numpy.float32)
+                b=numpy.random.randn(*b_shp).astype(numpy.float32)
 
-            x=tensor.ftensor3()
-            y=tensor.ftensor3()
+                x=tensor.ftensor3()
+                y=tensor.ftensor3()
 
-            f=theano.function([x,y], batched_dot(x,y), mode=mode_with_gpu)
+                f=theano.function([x,y], batched_dot(x,y), mode=mode_with_gpu)
 
-            z0=numpy.asarray(f(a,b))
+                z0=numpy.asarray(f(a,b))
 
-            ga = cuda_ndarray.CudaNdarray(a)
-            gb = cuda_ndarray.CudaNdarray(b)
+                ga = cuda_ndarray.CudaNdarray(a)
+                gb = cuda_ndarray.CudaNdarray(b)
 
-            z1=numpy.asarray(f(ga,gb))
+                z1=numpy.asarray(f(ga,gb))
 
-            z_test = numpy.sum(a[:,:,:,None]*b[:,None,:,:],axis=-2)
+                z_test = numpy.sum(a[:,:,:,None]*b[:,None,:,:],axis=-2)
 
-            unittest_tools.assert_allclose(z0, z_test)
-            unittest_tools.assert_allclose(z1, z_test)
+                unittest_tools.assert_allclose(z0, z_test)
+                unittest_tools.assert_allclose(z1, z_test)
 
-        cmp((5,4,3), (5,3,2))
-        cmp((5,3,3), (5,3,3))
-        cmp((5,2,6), (5,6,3))
+            cmp((5,4,3), (5,3,2))
+            cmp((5,3,3), (5,3,3))
+            cmp((5,2,6), (5,6,3))
 
-        # Test dimensions of 0
-        cmp((0,2,6), (0,6,3))
-        cmp((5,0,3), (5,3,2))
-        cmp((5,4,0), (5,0,2))
-        cmp((5,4,3), (5,3,0))
-        cmp((0,0,0), (0,0,0))
+            # Test dimensions of 0
+            cmp((0,2,6), (0,6,3))
+            cmp((5,0,3), (5,3,2))
+            cmp((5,4,0), (5,0,2))
+            cmp((5,4,3), (5,3,0))
+            cmp((0,0,0), (0,0,0))
 
-        # Test dimensions of 1
-        cmp((1,2,6), (1,6,3))
-        cmp((5,1,3), (5,3,2))
-        cmp((5,4,1), (5,1,2))
-        cmp((5,4,3), (5,3,1))
+            # Test dimensions of 1
+            cmp((1,2,6), (1,6,3))
+            cmp((5,1,3), (5,3,2))
+            cmp((5,4,1), (5,1,2))
+            cmp((5,4,3), (5,3,1))
 
     def test_batched_dot_errors(self):
 
@@ -109,11 +112,12 @@ class TestBatchedDot(unittest_tools.InferShapeTester):
         self.assertRaises(RuntimeError, fail, (5,4,3), (5,2,2))
 
     def test_batched_dot_gradient(self):
-        unittest_tools.verify_grad(
-            batched_dot,
-            [numpy.random.randn(5,7,2).astype(numpy.float32),
-             numpy.random.randn(5,2,6).astype(numpy.float32)],
-            mode=mode_with_gpu)
+        for threshold in [0, 100]:
+            unittest_tools.verify_grad(
+                GpuBatchedDot(stream_threshold=threshold),
+                [numpy.random.randn(5,7,2).astype(numpy.float32),
+                 numpy.random.randn(5,2,6).astype(numpy.float32)],
+                mode=mode_with_gpu)
 
     def test_infer_shape(self):
         # only matrix/matrix is supported
