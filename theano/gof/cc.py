@@ -462,7 +462,7 @@ def get_c_sync(r, name, sub):
 
 def apply_policy(policy, r, name, sub):
     """
-    WRITEME
+    Apply the list of policies to name.r,sub
 
     Parameters
     ----------
@@ -487,7 +487,7 @@ def apply_policy(policy, r, name, sub):
 
 def struct_variable_codeblocks(variable, policies, id, symbol_table, sub):
     """
-    WRITEME
+    Update "sub" dict and create two codeblocks with different failure modes
 
     Parameters
     ----------
@@ -1846,7 +1846,11 @@ def _default_checker(x, y):
     """
     Default checker for DualLinker. This checks that the
     variables contain the same data using ==.
-
+    
+    Parameters
+    -------------
+    x,y 
+	the variables to compare data
     """
     if x[0] != y[0]:
         raise Exception("Output mismatch.",

@@ -701,7 +701,14 @@ def inputs(variable_list, blockers=None):
 
 def variables_and_orphans(i, o):
     """
-    WRITEME
+    Extracts list of variables within input and output nodes ( via dfs travesal) and chooses the "orphans" among them
+
+    Parameters
+    -----------
+    i : list
+         Input L{Variable}s.
+    o : list
+         Output L{Variable}s. 
 
     """
     def expand(r):
@@ -745,7 +752,7 @@ def ops(i, o):
 
 def variables(i, o):
     """
-    WRITEME
+    Extracts list of variables within input and output nodes ( via dfs t     ravesal)
 
     Parameters
     ----------
@@ -767,8 +774,8 @@ def variables(i, o):
 
 def orphans(i, o):
     """
-    WRITEME
-
+    Extracts list of variables within input and output nodes ( via dfs t     ravesal) and returns the "orphans" among them
+    
     Parameters
     ----------
     i : list
@@ -959,7 +966,7 @@ def general_toposort(r_out, deps, debug_print=False,
 
 def io_toposort(inputs, outputs, orderings=None, clients=None):
     """
-    WRITEME
+    Perform topological sort from input and output nodes
 
     Parameters
     ----------
