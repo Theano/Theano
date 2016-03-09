@@ -6140,7 +6140,7 @@ def test_local_expm1():
     f_val = f(x_val)
     f_test = function([x], T.expm1(x), mode=theano.compile.get_default_mode().including('local_expm1'))
 
-    assert numpy.all(f_val == f_test(x_val))
+    assert numpy.allclose(f_val, f_test(x_val))
 
     assert any(isinstance(n.op, T.Elemwise) and isinstance(n.op.scalar_op, theano.scalar.basic.Expm1)
                for n in f.maker.fgraph.toposort())
