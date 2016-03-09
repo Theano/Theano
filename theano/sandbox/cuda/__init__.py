@@ -165,7 +165,6 @@ if compile_cuda_ndarray and cuda_available:
                             os.makedirs(tmpdir)
                     compiler = nvcc_compiler.NVCC_compiler()
                     preargs = ['-O3'] + compiler.compile_args()
-                    preargs += [f for f in config.nvcc.flags.split(' ') if f]
                     compiler.compile_str(
                             'cuda_ndarray',
                             code,

@@ -548,7 +548,7 @@ def local_gpu_lazy_ifelse(node):
 
             for i in range(len(outs)):
                 if (not isinstance(outs[i].type, CudaNdarrayType) and
-                        outs[i].dtype == 'float32'):
+                        getattr(outs[i], 'dtype', None) == 'float32'):
                     outs[i] = as_cuda_ndarray_variable(outs[i])
             outs = gpu_ifelse(c, *outs, return_list=True)
             for i in range(len(outs)):
@@ -1023,11 +1023,11 @@ def local_gpu_flatten(node):
             return [gpu_flatten(host_input.owner.inputs[0], outdim)(
                 as_cuda_ndarray_variable(host_input.owner.inputs[0]))]
     if isinstance(node.op, tensor.Flatten):
-        x, shp= node.inputs
-        outdim = node.op.outdim
+        x, = node.inputs
         if x.owner and isinstance(x.owner.op, HostFromGpu):
+            outdim = node.op.outdim
             gpu_x, = x.owner.inputs
-            return [host_from_gpu(gpu_flatten(host_input.owner.inputs[0], outdim)(gpu_x))]
+            return [host_from_gpu(gpu_flatten(gpu_x, outdim))]
     return False
 
 
