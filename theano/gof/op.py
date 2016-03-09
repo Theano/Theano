@@ -1423,7 +1423,7 @@ class COp(Op):
             # Extract the various properties of the input and output variables
             variables = node.inputs + node.outputs
             variable_names = (["INPUT_%i" % i for i in range(len(node.inputs))] +
-                              ["OUTPUT_%i" % i for i in range(len(node.inputs))])
+                              ["OUTPUT_%i" % i for i in range(len(node.outputs))])
 
             # Generate dtype macros
             for i, v in enumerate(variables):
