@@ -2193,6 +2193,11 @@ def gammaln(a):
 
 
 @_scal_elemwise
+def polygamma(a):
+    """polygamma function"""
+
+
+@_scal_elemwise
 def psi(a):
     """derivative of log gamma function"""
 
