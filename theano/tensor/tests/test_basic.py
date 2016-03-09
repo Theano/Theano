@@ -1681,7 +1681,7 @@ if imported_scipy_special:
     expected_erfcinv = scipy.special.erfcinv
     expected_gamma = scipy.special.gamma
     expected_gammaln = scipy.special.gammaln
-    expected_polygamma = lambda x, k: scipy.special.polygamma(x, k).astype(x.dtype)
+    expected_polygamma = lambda x, k: scipy.special.polygamma(k, x).astype(x.dtype)
     expected_psi = scipy.special.psi
     expected_chi2sf = lambda x, df: scipy.stats.chi2.sf(x, df).astype(x.dtype)
     expected_j0 = scipy.special.j0
