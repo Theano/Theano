@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import unittest
+import functools
 
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
@@ -1040,6 +1041,80 @@ def test_seed_fn():
             assert numpy.allclose(fn2_val1, fn2_val3) == same
             assert numpy.allclose(fn3_val0, fn3_val2) == same
             assert numpy.allclose(fn3_val1, fn3_val3) == same
+
+
+def rng_mrg_overflow(sizes, fct, mode, should_raise_error):
+    for size in sizes:
+        y = fct(size=size)
+        f = theano.function([], y, mode=mode)
+        theano.printing.debugprint(f)
+        if should_raise_error:
+            assert_raises(ValueError, f)
+        else:
+            f()
+
+
+def test_overflow_cpu():
+    # run with THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32
+    rng = MRG_RandomStreams(numpy.random.randint(1234))
+    fct = rng.uniform
+    # should raise error as the size overflows
+    sizes = [(2**31, ), (2**32, ), (2**15, 2**16,), (2, 2**15, 2**15)]
+    rng_mrg_overflow(sizes, fct, config.mode, should_raise_error=True)
+    # should not raise error
+    sizes = [(2**5, ), (2**5, 2**5), (2**5, 2**5, 2**5)]
+    rng_mrg_overflow(sizes, fct, config.mode, should_raise_error=False)
+    # should support int32 sizes
+    sizes = [(numpy.int32(2**10), ),
+             (numpy.int32(2), numpy.int32(2**10), numpy.int32(2**10))]
+    rng_mrg_overflow(sizes, fct, config.mode, should_raise_error=False)
+
+
+def test_overflow_gpu_old_backend():
+    # run with THEANO_FLAGS=mode=FAST_RUN,init_gpu_device=gpu1,device=cpu
+    if not cuda_available:
+        raise SkipTest('Optional package cuda not available')
+    mode = mode_with_gpu
+    seed = 12345
+    rng = MRG_RandomStreams(seed=seed, use_cuda=True)
+    fct = rng.uniform
+    # should raise error as the size overflows
+    sizes = [(2**31, ), (2**32, ), (2**15, 2**16,), (2, 2**15, 2**15)]
+    rng_mrg_overflow(sizes, fct, mode, should_raise_error=True)
+    # should not raise error
+    sizes = [(2**5, ), (2**5, 2**5), (2**5, 2**5, 2**5)]
+    rng_mrg_overflow(sizes, fct, mode, should_raise_error=False)
+    # should support int32 sizes
+    sizes = [(numpy.int32(2**10), ),
+             (numpy.int32(2), numpy.int32(2**10), numpy.int32(2**10))]
+    rng_mrg_overflow(sizes, fct, mode, should_raise_error=False)
+
+
+def test_overflow_gpu_new_backend():
+    # run with THEANO_FLAGS=mode=FAST_RUN,init_gpu_device=cuda1,device=cpu
+    from theano.sandbox.gpuarray.tests.test_basic_ops import \
+        mode_with_gpu as mode
+    from theano.sandbox.gpuarray.type import gpuarray_shared_constructor
+    seed = 12345
+    n_substreams = 7
+    curr_rstate = numpy.array([seed] * 6, dtype='int32')
+    rstate = [curr_rstate.copy()]
+    for j in range(1, n_substreams):
+        rstate.append(rng_mrg.ff_2p72(rstate[-1]))
+    rstate = numpy.asarray(rstate)
+    rstate = gpuarray_shared_constructor(rstate)
+    fct = functools.partial(rng_mrg.GPUA_mrg_uniform.new, rstate,
+                            ndim=None, dtype='float32')
+    # should raise error as the size overflows
+    sizes = [(2**31, ), (2**32, ), (2**15, 2**16,), (2, 2**15, 2**15)]
+    rng_mrg_overflow(sizes, fct, mode, should_raise_error=True)
+    # should not raise error
+    sizes = [(2**5, ), (2**5, 2**5), (2**5, 2**5, 2**5)]
+    rng_mrg_overflow(sizes, fct, mode, should_raise_error=False)
+    # should support int32 sizes
+    sizes = [(numpy.int32(2**10), ),
+             (numpy.int32(2), numpy.int32(2**10), numpy.int32(2**10))]
+    rng_mrg_overflow(sizes, fct, mode, should_raise_error=False)
 
 
 if __name__ == "__main__":
