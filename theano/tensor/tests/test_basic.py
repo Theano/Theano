@@ -1681,7 +1681,7 @@ if imported_scipy_special:
     expected_erfcinv = scipy.special.erfcinv
     expected_gamma = scipy.special.gamma
     expected_gammaln = scipy.special.gammaln
-    expected_polygamma = lambda x, k: scipy.special.polygamma(k, x).astype(x.dtype)
+    expected_polygamma = lambda x, k: scipy.special.polygamma(k, x)
     expected_psi = scipy.special.psi
     expected_chi2sf = lambda x, df: scipy.stats.chi2.sf(x, df).astype(x.dtype)
     expected_j0 = scipy.special.j0
@@ -1826,19 +1826,17 @@ GammalnInplaceTester = makeBroadcastTester(
     inplace=True,
     skip=skip_scipy)
 
-# like chi2sf, polygamma takes two inputs, a value (x) and the order (k).  
-# also not sure how to deal with that here...   
-_good_broadcast_unary_polygamma = dict(
-    normal=(rand_ranged(1, 10, (2, 3)),),
-    empty=(numpy.asarray([], dtype=config.floatX),),)
-_grad_broadcast_unary_polygamma = dict(
-    normal=(rand_ranged(1, 10, (2, 3)),),)
+_good_broadcast_binary_polygamma = dict(
+    normal=(rand_ranged(1, 10, (2, 3)), randint_ranged(1, 10, (2, 3)),),
+    empty=(numpy.asarray([], dtype=config.floatX),randint(0, 10),),)
+_grad_broadcast_binary_polygamma = dict(
+    normal=(rand_ranged(1, 10, (2, 3)),randint_ranged(1, 10, (2, 3)),),)
 
 PolygammaTester = makeBroadcastTester(
     op=tensor.polygamma,
     expected=expected_polygamma,
-    good=_good_broadcast_unary_polygamma,
-    grad=_grad_broadcast_unary_polygamma,
+    good=_good_broadcast_binary_polygamma,
+    grad=_grad_broadcast_binary_polygamma,
     eps=2e-10,
     mode=mode_no_scipy,
     skip=skip_scipy,
@@ -1846,8 +1844,8 @@ PolygammaTester = makeBroadcastTester(
 PolygammaInplaceTester = makeBroadcastTester(
     op=inplace.polygamma_inplace,
     expected=expected_polygamma,
-    good=_good_broadcast_unary_polygamma,
-    grad=_grad_broadcast_unary_polygamma,
+    good=_good_broadcast_binary_polygamma,
+    grad=_grad_broadcast_binary_polygamma,
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True,
