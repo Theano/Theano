@@ -934,6 +934,9 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         """
+        This function must return a thunk, that is a zero-arguments 
+        function that encapsulates the computation to be performed
+        by this op on the arguments of the node.
 
         Parameters
         ----------
