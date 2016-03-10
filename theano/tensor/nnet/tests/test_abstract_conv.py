@@ -64,6 +64,8 @@ class TestGetConvOutShape(unittest.TestCase):
 
 class BaseTestConv2d(unittest.TestCase):
     def setUp(self):
+        if theano.config.blas.ldflags == '':
+            raise SkipTest("BLAS required for reference")
         self.inputs_shapes = [(8, 1, 12, 12), (8, 1, 18, 18), (2, 1, 4, 4),
                               (6, 1, 10, 11), (2, 1, 6, 5), (1, 5, 9, 9)]
         self.filters_shapes = [(5, 1, 2, 2), (4, 1, 3, 3), (2, 1, 3, 3),
