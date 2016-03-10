@@ -224,12 +224,13 @@ class NVCC_compiler(Compiler):
 
         lib_dirs = lib_dirs + std_lib_dirs()
 
-        # config.dnn.include_path add this by default for cudnn in the
-        # new back-end. This should not be used in this back-end. So
-        # just remove them.
-        lib_dirs = [ld for ld in lib_dirs if
-                    not(ld == os.path.join(cuda_root, 'lib') or
-                        ld == os.path.join(cuda_root, 'lib64'))]
+        if sys.platform != 'darwin':
+            # config.dnn.include_path add this by default for cudnn in the
+            # new back-end. This should not be used in this back-end. So
+            # just remove them.
+            lib_dirs = [ld for ld in lib_dirs if
+                        not(ld == os.path.join(cuda_root, 'lib') or
+                            ld == os.path.join(cuda_root, 'lib64'))]
 
         if sys.platform != 'darwin':
             # sometimes, the linker cannot find -lpython so we need to tell it

@@ -338,7 +338,7 @@ AddConfigVar('dnn.include_path',
 
 AddConfigVar('dnn.library_path',
              "Location of the cudnn header (defaults to the cuda root)",
-             StrParam(default_dnn_path('lib64')))
+             StrParam(default_dnn_path('lib' if sys.platform == 'darwin' else 'lib64')))
 
 AddConfigVar('dnn.enabled',
              "'auto', use CuDNN if available, but silently fall back"
