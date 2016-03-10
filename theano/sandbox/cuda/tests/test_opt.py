@@ -26,12 +26,12 @@ if not cuda.cuda_available:
 import theano.sandbox.cuda.cula as cula
 
 from theano.sandbox.cuda import basic_ops
+from theano.sandbox.cuda import device_properties
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.scalar.basic_scipy import erfinv
 
 from theano.tensor.nnet.blocksparse import sparse_block_dot
 from theano.sandbox.cuda.blocksparse import GpuSparseBlockGemv, GpuSparseBlockOuter
-
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
@@ -741,6 +741,32 @@ def test_incsubtensor_mixed():
     packed, = client.outputs[0].clients
     client, idx = packed
     assert isinstance(client.op, cuda.GpuFromHost)
+
+
+def test_incsubtensor_deterministic():
+
+    active_device_no = theano.sandbox.cuda.active_device_number()
+    compute_capability = device_properties(active_device_no)['major']
+    if compute_capability < 2:
+        raise SkipTest("GPU compute capability < 2.")
+
+    original_deterministic_flag_value = theano.config.deterministic
+
+    for (flag_value, expected_answer) in [(True, False), (False, True)]:
+
+        try:
+            theano.config.deterministic = flag_value
+
+            r = tensor.fmatrix()
+            l = tensor.lvector()
+            new_r = tensor.subtensor.inc_subtensor(r[l], numpy.array([[1.0, 1.0]]).astype(numpy.float32))
+            f = theano.function([r, l], new_r, mode=mode_with_gpu)
+
+            toposort = f.maker.fgraph.toposort()
+            assert(expected_answer == any(isinstance(n.op, basic_ops.GpuAdvancedIncSubtensor1_dev20) for n in toposort))
+
+        finally:
+            theano.config.deterministic = original_deterministic_flag_value
 
 
 def test_erfinvgpu():

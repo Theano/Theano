@@ -1689,12 +1689,10 @@ AddConfigVar(
      "deterministic properties of the addition because of the behavior of"
      "floating-point arithmetic."
      "This slows down execution by a large factor."),
-    BoolParam(False, allow_override=False),
+    BoolParam(False, allow_override=True),
     in_c_key=False)
 
 
 # Check if there are remaining flags provided by the user through THEANO_FLAGS.
 for key in THEANO_FLAGS_DICT.keys():
     warnings.warn('Theano does not recognise this flag: {0}'.format(key))
-
-
