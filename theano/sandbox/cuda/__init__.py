@@ -576,13 +576,14 @@ def use(device,
                 cudnn_version = "not available"
                 warn = None
                 try:
-                    (hdr_v, runtime_v) = dnn_version()
-                    cudnn_version = runtime_v
-                    # 4100 should not print warning with cudnn 4 final.
-                    if cudnn_version > 4100:
-                        warn = ("Your CuDNN version is more recent then Theano."
-                                " If you see problems, try updating Theano or"
-                                " downgrading CuDNN to version 4.")
+                    if dnn_available():
+                        (hdr_v, runtime_v) = dnn_version()
+                        cudnn_version = runtime_v
+                        # 4100 should not print warning with cudnn 4 final.
+                        if cudnn_version > 4100:
+                            warn = ("Your CuDNN version is more recent then Theano."
+                                    " If you see problems, try updating Theano or"
+                                    " downgrading CuDNN to version 4.")
                 except Exception:
                     pass
                 print("Using gpu device %d: %s (CNMeM is %s, CuDNN %s)" % (
