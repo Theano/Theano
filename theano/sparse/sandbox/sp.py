@@ -44,12 +44,6 @@ class ConvolutionIndices(Op):
     __props__ = ()
 
     @staticmethod
-    def sparse_eval(inshp, kshp, nkern, strides=(1, 1), mode='valid'):
-        (dx, dy) = strides
-        return convolution_indices.evaluate(inshp, kshp, (dx, dy),
-                                            nkern, mode=mode, ws=False)
-
-    @staticmethod
     def conv_eval(inshp, kshp, strides=(1, 1), mode='valid'):
         (dx, dy) = strides
         return convolution_indices.evaluate(inshp, kshp, (dx, dy),
@@ -73,7 +67,7 @@ class ConvolutionIndices(Op):
         :param mode: 'valid' generates output only when kernel and
                      image overlap overlap fully. Convolution obtained
                      by zero-padding the input
-        :param ws: True if weight sharing, false otherwise
+        :param ws: must be always True
         :param (dx,dy): offset parameter. In the case of no weight sharing,
                         gives the pixel offset between two receptive fields.
                         With weight sharing gives the offset between the
@@ -83,6 +77,9 @@ class ConvolutionIndices(Op):
         :returns: the structure of a sparse matrix, and the logical dimensions
                   of the image which will be the result of filtering.
         """
+        if not ws:
+            raise Exception("ws is obsolete and it must be always True")
+
         (dx, dy) = strides
         N = numpy
 
@@ -265,75 +262,6 @@ class ConvolutionIndices(Op):
         spmat_shape[0] = numpy.asarray(spmatshp)
 
 convolution_indices = ConvolutionIndices()
-
-
-def applySparseFilter(kerns, kshp, nkern, images, imgshp,
-                      step=(1, 1), bias=None, mode='valid'):
-    """
-    "images" is assumed to be a matrix of shape batch_size x img_size,
-    where the second dimension represents each image in raster order
-
-    Output feature map will have shape:
-
-    .. code-block:: python
-
-       batch_size x number of kernels * output_size
-
-    .. note::
-
-        IMPORTANT: note that this means that each feature map is
-        contiguous in memory.
-
-        The memory layout will therefore be:
-        [ <feature_map_0> <feature_map_1> ... <feature_map_n>],
-        where <feature_map> represents a "feature map" in raster order
-
-    Note that the concept of feature map doesn't really apply to
-    sparse filters without weight sharing. Basically, nkern=1 will
-    generate one output img/feature map, nkern=2 a second feature map,
-    etc.
-
-    kerns is a 1D tensor, and assume to be of shape:
-
-    .. code-block:: python
-
-       nkern * N.prod(outshp) x N.prod(kshp)
-
-    Each filter is applied seperately to consecutive output pixels.
-
-    :param kerns: nkern*outsize*ksize vector containing kernels
-    :param kshp: tuple containing actual dimensions of kernel (not symbolic)
-    :param nkern: number of kernels to apply at each pixel in the
-                  input image.  nkern=1 will apply a single unique
-                  filter for each input pixel.
-    :param images: bsize x imgsize matrix containing images on which
-                   to apply filters
-    :param imgshp: tuple containing actual image dimensions (not symbolic)
-    :param step: determines number of pixels between adjacent receptive fields
-                 (tuple containing dx,dy values)
-    :param mode: 'full', 'valid' see CSM.evaluate function for details
-    :return: out1, symbolic result
-    :return: out2, logical shape of the output img (nkern,height,width)
-             (after dot product, not of the sparse matrix!)
-    """
-
-    # inshp contains either 2 entries (height,width) or 3 (nfeatures,h,w)
-    # in the first case, default nfeatures to 1
-    if numpy.size(imgshp) == 2:
-        imgshp = (1,) + imgshp
-
-    # construct indices and index pointers for sparse matrix
-    indices, indptr, spmat_shape, sptype, outshp, kmap = \
-        convolution_indices.sparse_eval(imgshp, kshp, nkern, step, mode)
-
-    # build a sparse weight matrix
-    sparsew = theano.sparse.CSM(sptype, kmap)(kerns, indices,
-                                              indptr, spmat_shape)
-    output = sparse.structured_dot(sparsew, images.T).T
-    if bias is not None:
-        output += bias
-
-    return output, numpy.hstack((nkern, outshp))
 
 
 def convolve(kerns, kshp, nkern, images, imgshp, step=(1, 1), bias=None,
