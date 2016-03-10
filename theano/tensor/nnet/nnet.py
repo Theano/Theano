@@ -736,7 +736,8 @@ class LogSoftmax(gof.Op):
 logsoftmax_op = LogSoftmax()
 
 
-@opt.register_specialize('stabilize', 'fast_compile')
+@opt.register_stabilize('fast_compile')
+@opt.register_specialize('fast_compile')
 @gof.local_optimizer([tensor.Elemwise])
 def local_logsoftmax(node):
     """
@@ -756,7 +757,8 @@ def local_logsoftmax(node):
         return [ret]
 
 
-@opt.register_specialize('stabilize', 'fast_compile')
+@opt.register_stabilize('fast_compile')
+@opt.register_specialize('fast_compile')
 @gof.local_optimizer([SoftmaxGrad])
 def local_logsoftmax_grad(node):
     """
