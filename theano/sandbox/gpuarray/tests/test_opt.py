@@ -13,7 +13,7 @@ from ..basic_ops import (
     GpuAlloc, GpuAllocEmpty, GpuReshape, GpuFromHost, host_from_gpu)
 from ..blas import GpuGemm
 from ..elemwise import GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise
-from ..subtensor import GpuSubtensor
+from ..subtensor import GpuSubtensor, GpuAdvancedIncSubtensor1_dev20
 
 from .config import mode_with_gpu, test_ctx_name
 
@@ -324,6 +324,32 @@ def test_local_gpu_subtensor():
     assert any([type(node.op) is tensor.Subtensor for node in topo])
     assert not any([isinstance(node.op, GpuSubtensor) for node in topo])
     assert any([isinstance(node.op, GpuElemwise) for node in topo])
+
+
+def test_incsubtensor_deterministic():
+
+    active_device_no = theano.sandbox.cuda.active_device_number()
+    compute_capability = theano.sandbox.cuda.device_properties(active_device_no)['major']
+    if compute_capability < 2:
+        raise SkipTest("GPU compute capability < 2.")
+
+    original_deterministic_flag_value = theano.config.deterministic
+
+    for (flag_value, expected_answer) in [(True, False), (False, True)]:
+
+        try:
+            theano.config.deterministic = flag_value
+
+            r = tensor.fmatrix()
+            l = tensor.lvector()
+            new_r = tensor.subtensor.inc_subtensor(r[l], numpy.array([[1.0, 1.0]]).astype(numpy.float32))
+            f = theano.function([r, l], new_r, mode=mode_with_gpu)
+
+            toposort = f.maker.fgraph.toposort()
+            assert(expected_answer == any(isinstance(n.op, GpuAdvancedIncSubtensor1_dev20) for n in toposort))
+
+        finally:
+            theano.config.deterministic = original_deterministic_flag_value
 
 
 def test_local_gpu_elemwise():
