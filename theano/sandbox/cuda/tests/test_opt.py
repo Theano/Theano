@@ -823,7 +823,8 @@ def test_blocksparse_gpu_gemv_opt():
 
     f = theano.function([W, h, iIdx, b, oIdx], o, mode=mode_with_gpu)
 
-    assert isinstance(f.maker.fgraph.toposort()[-2].op, GpuSparseBlockGemv)
+    assert sum(1 for n in f.maker.fgraph.apply_nodes
+               if isinstance(n.op, GpuSparseBlockGemv)) == 1
 
 
 def test_blocksparse_gpu_outer_opt():
@@ -839,7 +840,8 @@ def test_blocksparse_gpu_outer_opt():
                                                                wrt=W)],
                         mode=mode_with_gpu)
 
-    assert isinstance(f.maker.fgraph.toposort()[-2].op, GpuSparseBlockOuter)
+    assert sum(1 for n in f.maker.fgraph.apply_nodes
+               if isinstance(n.op, GpuSparseBlockOuter)) == 1
 
 
 class test_diag(theano.tensor.tests.test_nlinalg.test_diag):
