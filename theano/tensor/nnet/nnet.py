@@ -752,7 +752,8 @@ def local_logsoftmax(node):
         inVars = node.inputs[0].owner.inputs[0]
         new_op = LogSoftmax()
         ret = new_op(inVars)
-        ret.tag.values_eq_approx = values_eq_approx_remove_inf
+        ret .tag.values_eq_approx = values_eq_approx_remove_inf
+        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
         return [ret]
 
 
@@ -785,9 +786,9 @@ def local_logsoftmax_grad(node):
         grads = node.inputs[0].owner.inputs[0]
         if grads.broadcastable[1] and not sm.broadcastable[1]:
             grads = tensor.alloc(grads, grads.shape[0], sm.shape[1])
-
         ret = grads - tensor.sum(grads, axis=1, keepdims=True) * sm
         ret.tag.values_eq_approx = values_eq_approx_remove_nan
+        copy_stack_trace(node.outputs[0], ret)
         return [ret]
 
 

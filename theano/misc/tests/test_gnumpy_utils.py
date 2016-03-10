@@ -3,7 +3,7 @@ import numpy
 import theano
 from theano.misc.gnumpy_utils import gnumpy_available
 
-if not gnumpy_available:
+if not gnumpy_available:  # noqa
     from nose.plugins.skip import SkipTest
     raise SkipTest("gnumpy not installed. Skip test related to it.")
 
@@ -46,7 +46,7 @@ def test2(shape=(3, 4, 5)):
     """
     gpu = theano.sandbox.cuda.basic_ops.gpu_from_host
     U = gpu(theano.tensor.ftensor3('U'))
-    ii = theano.function([U], gpu(U + 1))
+    theano.function([U], gpu(U + 1))
 
     A = numpy.random.rand(*shape).astype('float32')
     A_cnd = theano.sandbox.cuda.CudaNdarray(A)

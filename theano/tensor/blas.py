@@ -183,6 +183,24 @@ except ImportError as e:
                         str(e))
 
 
+# If check_init_y() == True we need to initialize y when beta == 0.
+def check_init_y():
+    if check_init_y._result is None:
+        if not have_fblas:
+            check_init_y._result = False
+
+        y = float('NaN') * numpy.ones((2,))
+        x = numpy.ones((2,))
+        A = numpy.ones((2, 2))
+        gemv = _blas_gemv_fns[y.dtype]
+        gemv(1.0, A.T, x, 0.0, y, overwrite_y=True, trans=True)
+        check_init_y._result = numpy.isnan(y).any()
+
+    return check_init_y._result
+
+check_init_y._result = None
+
+
 class Gemv(Op):
     """
     expression is beta * y + alpha * A x
@@ -236,6 +254,9 @@ class Gemv(Op):
                     '(beta * y + alpha * dot(A, x)). y: %s, A: %s, x: %s '
                     % (y.shape, A.shape, x.shape))
 
+            if beta == 0 and check_init_y():
+                y.fill(0)
+
             # Here I suppose that A is in c order. If we don't make it
             #  explicitly as fortran order, scipy 0.7.2 seam to create
             #  a copy in fortran order instead of just reshaping it
@@ -250,10 +271,11 @@ class Gemv(Op):
             out = numpy.dot(A, x)
             if alpha != 1:
                 out *= alpha
-            if beta != 1:
-                out += beta * y
-            else:
-                out += y
+            if beta != 0:
+                if beta != 1:
+                    out += beta * y
+                else:
+                    out += y
             out_storage[0][0] = numpy.asarray(out, dtype=y.dtype)
 
     def infer_shape(self, node, input_shapes):

@@ -1355,7 +1355,7 @@ class MaxAndArgmax(Op):
         if axes is None:
             axes = tuple(range(x.ndim))
         else:
-            axes = tuple(axes)
+            axes = tuple(int(ax) for ax in axes)
         max[0] = theano._asarray(numpy.max(x, axes),
                                  dtype=node.outputs[0].dtype)
         # Numpy does not support multiple axes for argmax
