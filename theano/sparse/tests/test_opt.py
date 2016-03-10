@@ -9,6 +9,7 @@ except ImportError:
 import theano
 from theano import sparse, config, tensor
 from theano.sparse import enable_sparse
+from theano.tests import unittest_tools as utt
 if not enable_sparse:
     raise SkipTest('Optional package sparse disabled')
 
@@ -167,5 +168,5 @@ def test_sd_csc():
     
     res = theano.sparse.opt.sd_csc(a_val, a_ind, a_ptr, nrows, b).eval()
     
-    assert (res==target).all()
+    utt.assert_allclose(res, target)
 
