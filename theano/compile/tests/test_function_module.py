@@ -269,7 +269,8 @@ class T_function(unittest.TestCase):
             ori_storages = storage_map_ori.values()
             l = [val for key, val in storage_map_cpy.items()
                  if key not in i_o_variables or isinstance(key, theano.tensor.Constant)]
-            self.assertTrue(any([val is s for val in l for s in ori_storages]))
+            for storage in l:
+                self.assertTrue(any([storage is s for s in ori_storages]))
 
             # Assert storages of SharedVariable without updates are shared
             for (input, _1, _2), here, there in zip(ori.indices,
