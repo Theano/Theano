@@ -6131,14 +6131,14 @@ def test_local_expm1():
     z = T.exp(x) - 2.
     t = T.exp(x) - x
     s = T.exp(u) - numpy.ones((4, 3)).astype(config.floatX)
-
-    f = function([x], y)
-    g = function([x], z)
-    h = function([x], t)
-    r = function([u], s)
+    MODE = theano.compile.get_default_mode().including('local_expm1')
+    f = function([x], y, mode=MODE)
+    g = function([x], z, mode=MODE)
+    h = function([x], t, mode=MODE)
+    r = function([u], s, mode=MODE)
     x_val = numpy.random.rand(4, 3).astype(config.floatX)
     f_val = f(x_val)
-    f_test = function([x], T.expm1(x), mode=theano.compile.get_default_mode().including('local_expm1'))
+    f_test = function([x], T.expm1(x), mode=MODE)
 
     assert numpy.allclose(f_val, f_test(x_val))
 
