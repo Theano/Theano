@@ -73,6 +73,10 @@ def pyconv3d(signals, filters):
                 r_i += o_i[Tf2:o_i_sh0-Tf2, Hf2:-Hf2, Wf2:-Wf2]
     return rval
 
+def check_diagonal_subtensor_view_traces(fn):
+    for apply_node in fn.maker.fgraph.apply_nodes:
+        if isinstance(apply_node.op, (DiagonalSubtensor, IncDiagonalSubtensor)):
+            assert hasattr(apply_node.outputs[0].tag, 'trace')
 
 def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
     if ndimage is None:
@@ -100,6 +104,7 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
                                 updates={s_output: out},
                                 mode=mode)
 
+    check_diagonal_subtensor_view_traces(newconv3d)
     t0 = time.time()
     newconv3d()
     print(time.time() - t0)
@@ -110,6 +115,7 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
                                           (s_signals, gsignals)],
                                  mode=mode,
                                  name='grad')
+    check_diagonal_subtensor_view_traces(gnewconv3d)
 
     t0 = time.time()
     gnewconv3d()
@@ -144,6 +150,7 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
     newconv3d = theano.function([], [],
                                 updates={s_output: out},
                                 mode=mode)
+    check_diagonal_subtensor_view_traces(newconv3d)
 
     t0 = time.time()
     newconv3d()
@@ -155,6 +162,7 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
                                           (s_signals, gsignals)],
                                  mode=mode,
                                  name='grad')
+    check_diagonal_subtensor_view_traces(gnewconv3d)
 
     t0 = time.time()
     gnewconv3d()

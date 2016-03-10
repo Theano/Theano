@@ -36,6 +36,7 @@ def local_inplace_sparse_block_gemv(node):
     """
     if isinstance(node.op, SparseBlockGemv) and not node.op.inplace:
         new_node = sparse_block_gemv_inplace(*node.inputs)
+        copy_stack_trace(node.outputs[0], new_node)
         return [new_node]
     return False
 compile.optdb.register('local_inplace_sparse_block_gemv',
@@ -52,6 +53,7 @@ def local_inplace_sparse_block_outer(node):
     """
     if isinstance(node.op, SparseBlockOuter) and not node.op.inplace:
         new_node = sparse_block_outer_inplace(*node.inputs)
+        copy_stack_trace(node.outputs[0], new_node)
         return [new_node]
     return False
 compile.optdb.register('local_inplace_sparse_block_outer',
