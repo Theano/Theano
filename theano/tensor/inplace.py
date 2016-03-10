@@ -275,7 +275,7 @@ def gammaln_inplace(a):
 
 
 @_scal_inplace
-def polygamma_inplace(a, k):
+def polygamma_inplace(k, a):
     """polygamma function"""
 
 

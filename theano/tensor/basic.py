@@ -2193,7 +2193,7 @@ def gammaln(a):
 
 
 @_scal_elemwise
-def polygamma(a):
+def polygamma(k, a):
     """polygamma function"""
 
 

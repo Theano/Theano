@@ -1484,7 +1484,7 @@ Mathematical
 
    Returns a variable representing the logarithm of the gamma function.
 
-.. function:: polygamma(a,k)
+.. function:: polygamma(k, a)
 
    Returns a variable representing the kth derivative of 
    the digamma function (derivative of the logarithm of the gamma function).

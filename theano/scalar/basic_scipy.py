@@ -276,19 +276,19 @@ class Polygamma(BinaryScalarOp):
     Polygamma function, derivative of Psi (digamma function)
     """
     @staticmethod
-    def st_impl(x, k):
+    def st_impl(k, x):
         if k < 0:
             raise ValueError('polygamma order must be non-negative', k)
         return scipy.special.polygamma(k, x)
 
-    def impl(self, x, k):
+    def impl(self, k, x):
         if imported_scipy_special:
-            return Polygamma.st_impl(x, k)
+            return Polygamma.st_impl(k, x)
         else:
-            super(Polygamma, self).impl(x, k)
+            super(Polygamma, self).impl(k, x)
 
     def grad(self, inputs, gout):
-        (x,k,) = inputs
+        (k,x,) = inputs
         (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
@@ -298,7 +298,7 @@ class Polygamma(BinaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        return gz * polygamma(x, k+1),
+        return gz * polygamma(k+1, x),
 
 polygamma = Polygamma(upgrade_to_float, name='polygamma')
 
@@ -327,7 +327,7 @@ class Psi(UnaryScalarOp):
                 return [x.zeros_like(dtype=theano.config.floatX)]
             else:
                 return [x.zeros_like()]
-        return gz * polygamma(x, 1),
+        return gz * polygamma(1, x),
 
 
     def c_support_code(self):
