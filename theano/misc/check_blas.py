@@ -272,7 +272,7 @@ if __name__ == "__main__":
         GTX 660           2.32s  2.32s
         GTX 580           2.42s         2.47s
         GTX 480           2.87s         2.88s
-        TX1                      7.6s
+        TX1                      7.6s (float32 storage and computation)
         GT 610                   33.5s
         """)
 
