@@ -736,8 +736,9 @@ class LogSoftmax(gof.Op):
 logsoftmax_op = LogSoftmax()
 
 
-@opt.register_stabilize('fast_compile')
-@opt.register_specialize('fast_compile')
+# This is not registered in stabilize, as it cause some crossentropy
+# optimization to not be inserted.
+@opt.register_specialize('stabilize', 'fast_compile')
 @gof.local_optimizer([tensor.Elemwise])
 def local_logsoftmax(node):
     """
@@ -757,8 +758,9 @@ def local_logsoftmax(node):
         return [ret]
 
 
-@opt.register_stabilize('fast_compile')
-@opt.register_specialize('fast_compile')
+# This is not registered in stabilize, as it cause some crossentropy
+# optimization to not be inserted.
+@opt.register_specialize('stabilize', 'fast_compile')
 @gof.local_optimizer([SoftmaxGrad])
 def local_logsoftmax_grad(node):
     """
