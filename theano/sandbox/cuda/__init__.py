@@ -362,9 +362,6 @@ class DnnVersion(GpuOp):
     def c_lib_dirs(self):
         return [config.dnn.library_path]
 
-    def c_compile_args(self):
-        return ['-rpath', config.dnn.library_path]
-
     def c_support_code(self):
         return """
 #if PY_MAJOR_VERSION >= 3
