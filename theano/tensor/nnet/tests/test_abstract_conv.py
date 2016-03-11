@@ -1,4 +1,5 @@
 import numpy
+import numpy as np
 import unittest
 
 from nose.plugins.skip import SkipTest
@@ -12,6 +13,9 @@ from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 from theano.tensor.nnet.abstract_conv import AbstractConv2d
 from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradInputs
 from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradWeights
+from theano.tensor.nnet.abstract_conv import bilinear_kernel_1D
+from theano.tensor.nnet.abstract_conv import bilinear_kernel_2D
+from theano.tensor.nnet.abstract_conv import bilinear_upsampling
 from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet.corr import (CorrMM, CorrMM_gradWeights,
                                      CorrMM_gradInputs)
@@ -531,3 +535,180 @@ class TestConvTypes(unittest.TestCase):
         grad_filters = theano.grad(grad_input.sum(), wrt=filters)
         assert grad_filters.type == filters.type, (
             grad_filters, grad_filters.type, filters, filters.type)
+
+
+class TestBilinearUpsampling(unittest.TestCase):
+
+    def numerical_kernel_1D(self, ratio):
+        """Gets numerical 1D kernel for bilinear upsampling"""
+        return np.array(list(range(1, ratio + 1)) +
+                        list(range(ratio - 1, 0, -1)))
+
+    def numerical_kernel_2D(self, ratio):
+        """Gets numerical 2D kernel for bilinear upsampling"""
+        return np.array([i * j for i in self.numerical_kernel_1D(ratio) for j
+                         in self.numerical_kernel_1D(ratio)]).\
+            reshape(2 * ratio - 1, 2 * ratio - 1)
+
+    def test_bilinear_kernel_2D(self):
+        """Test 2D kernels used in bilinear upsampling
+
+        This method tests the correctness of the
+        2D kernel values used in bilinear upsampling
+        for some upsampling ratios.
+
+        """
+        for ratio in [2, 3, 4, 5, 6, 7, 8, 9]:
+            # getting the un-normalized kernel
+            kernel = bilinear_kernel_2D(ratio=ratio, normalize=False)
+            f = theano.function([], kernel)
+            kernel_2D = self.numerical_kernel_2D(ratio)
+            np.testing.assert_allclose(kernel_2D, f())
+
+            # getting the normalized kernel
+            kernel = bilinear_kernel_2D(ratio=ratio, normalize=True)
+            f = theano.function([], kernel)
+            kernel_2D = kernel_2D / float(ratio**2)
+            np.testing.assert_allclose(kernel_2D, f())
+
+    def test_bilinear_kernel_1D(self):
+        """Test 1D kernels used in bilinear upsampling
+
+        This method tests the correctness of the
+        1D kernel values used in bilinear upsampling
+        for some upsampling ratios.
+
+        """
+        rat = tensor.iscalar()
+        kernel_ten = bilinear_kernel_1D(ratio=rat, normalize=False)
+        f_ten = theano.function([rat], kernel_ten)
+
+        kernel_ten_norm = bilinear_kernel_1D(ratio=rat, normalize=True)
+        f_ten_norm = theano.function([rat], kernel_ten_norm)
+
+        for ratio in [2, 3, 4, 5, 6, 7, 8, 9]:
+            # getting the un-normalized kernel
+            kernel = bilinear_kernel_1D(ratio=ratio, normalize=False)
+            f = theano.function([], kernel)
+            kernel_1D = self.numerical_kernel_1D(ratio)
+            np.testing.assert_allclose(kernel_1D, f())
+            np.testing.assert_allclose(kernel_1D, f_ten(ratio))
+
+            # getting the normalized kernel
+            kernel = bilinear_kernel_1D(ratio=ratio, normalize=True)
+            f = theano.function([], kernel)
+            kernel_1D = kernel_1D / float(ratio)
+            np.testing.assert_allclose(kernel_1D, f())
+            np.testing.assert_allclose(kernel_1D, f_ten_norm(ratio))
+
+    def numerical_upsampling_multiplier(self, ratio):
+        """Compute upsampling multiplier
+
+        This method computes the multipliers of an array
+        that will be upsampled using bilinear interpolation.
+
+        Parameters
+        ----------
+        ratio: int
+            the ratio by which the array will be upsampled.
+
+        Returns
+        -------
+        1D numpy array
+            The multiplers that can be used in bilinear interpolation
+            to upsample an array.
+
+        int
+            The size of the multipliers array
+
+        """
+        kern = np.arange(ratio + 1)
+        return kern, kern.shape[0]
+
+    def get_upsampled_twobytwo_mat(self, two_by_two, ratio):
+        """Upsample 4D array with two rows and two columns
+
+        This method gets a 4D numpy array with two rows and two columns
+        and computes its upsampled array by using bilinear interpolation
+
+        Parameters
+        ----------
+        two_by_two: numpy 4D array
+            The array that will be upsampled by bilinear interpolation.
+            Array is of shape (batch size, num channels, 2, 2)
+
+        ratio: int
+            The ratio by which two_by_two's last
+            two dimensions (row and col) will be upsampled.
+
+        Returns
+        -------
+        4D numpy array
+            The array upsampled by using bilinear interpolation. Array
+            is of shape (batch size, num channels, 2*ratio, 2*ratio).
+
+        """
+        kern, shp = self.numerical_upsampling_multiplier(ratio)
+        up_1D = two_by_two[:, :, :, :1] * kern[::-1] + \
+            two_by_two[:, :, :, 1:] * kern
+        up_2D = up_1D[:, :, :1, :] * kern[::-1][:, np.newaxis] + \
+            up_1D[:, :, 1:, :] * kern[:, np.newaxis]
+        num_concat = (ratio - 1) // 2
+        for i in range(num_concat):
+            up_2D = np.concatenate([up_2D[:, :, :1, :], up_2D], axis=2)
+            up_2D = np.concatenate([up_2D, up_2D[:, :, -1:, :]], axis=2)
+            up_2D = np.concatenate([up_2D[:, :, :, :1], up_2D], axis=3)
+            up_2D = np.concatenate([up_2D, up_2D[:, :, :, -1:]], axis=3)
+        if ratio % 2 == 0:
+            up_2D = np.concatenate([up_2D, up_2D[:, :, -1:, :]], axis=2)
+            up_2D = np.concatenate([up_2D, up_2D[:, :, :, -1:]], axis=3)
+        return up_2D / float(ratio)**2
+
+    def test_bilinear_upsampling_1D(self):
+        """Test bilinear upsampling using 1D kernels
+
+        This method tests the bilinear_upsampling method
+        when using 1D kernels for some upsampling ratios.
+
+        """
+        # upsampling for a ratio of two
+        input_x = np.array([[[[1, 2], [3, 4]]]], dtype=theano.config.floatX)
+
+        for ratio in [2, 3, 4, 5, 6, 7, 8, 9]:
+            bilin_mat = bilinear_upsampling(input=input_x, ratio=ratio,
+                                            batch_size=1, num_input_channels=1,
+                                            use_1D_kernel=True)
+            f = theano.function([], bilin_mat)
+            up_mat_2d = self.get_upsampled_twobytwo_mat(input_x, ratio)
+            np.testing.assert_allclose(f(), up_mat_2d, rtol=1e-06)
+
+    def test_compare_1D_and_2D_upsampling_values(self):
+        """Compare 1D and 2D upsampling
+
+        This method verifies the bilinear upsampling done by using
+        1D and 2D kernels will generate the same result.
+
+        """
+        # checking upsampling with ratio 5
+        input_x = np.random.rand(5, 4, 6, 7).astype(theano.config.floatX)
+        mat_1D = bilinear_upsampling(input=input_x, ratio=5,
+                                     batch_size=5, num_input_channels=4,
+                                     use_1D_kernel=True)
+        mat_2D = bilinear_upsampling(input=input_x, ratio=5,
+                                     batch_size=5, num_input_channels=4,
+                                     use_1D_kernel=False)
+        f_1D = theano.function([], mat_1D)
+        f_2D = theano.function([], mat_2D)
+        np.testing.assert_allclose(f_1D(), f_2D(), rtol=1e-06)
+
+        # checking upsampling with ratio 8
+        input_x = np.random.rand(12, 11, 10, 7).astype(theano.config.floatX)
+        mat_1D = bilinear_upsampling(input=input_x, ratio=8,
+                                     batch_size=12, num_input_channels=11,
+                                     use_1D_kernel=True)
+        mat_2D = bilinear_upsampling(input=input_x, ratio=8,
+                                     batch_size=12, num_input_channels=11,
+                                     use_1D_kernel=False)
+        f_1D = theano.function([], mat_1D)
+        f_2D = theano.function([], mat_2D)
+        np.testing.assert_allclose(f_1D(), f_2D(), rtol=1e-06)
