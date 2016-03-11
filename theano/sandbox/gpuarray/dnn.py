@@ -171,6 +171,9 @@ class DnnBase(COp):
     def c_lib_dirs(self):
         return [config.dnn.library_path]
 
+    def c_compile_args(self):
+        return ['-rpath', config.dnn.library_path]
+
     def c_code_cache_version(self):
         return (super(DnnBase, self).c_code_cache_version(), version())
 
@@ -189,6 +192,9 @@ class DnnVersion(Op):
 
     def c_lib_dirs(self):
         return [config.dnn.library_path]
+
+    def c_compile_args(self):
+        return ['-rpath', config.dnn.library_path]
 
     def c_support_code(self):
         return """
