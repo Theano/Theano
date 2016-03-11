@@ -566,6 +566,13 @@ class GpuDnnConvGradW(DnnBase):
         assert self.algo in ['none', 'deterministic', 'fft', 'small',
                              'guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']
+        if theano.config.deterministic and self.algo not in ["deterministic", "fft"]:
+            raise RuntimeError(
+                "CuDNN conv2d grad again the weights have or can have"
+                " a non-deterministic behavior with current"
+                " configuration. Use Theano flag"
+                " dnn.conv.algo_bwd_filter='deterministic' or 'fft' to"
+                " have a deterministic behavior.")
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -639,6 +646,9 @@ class GpuDnnConvGradW(DnnBase):
             raise TypeError("The number of dimensions of "
                             "img, topgrad and output must match")
 
+        if theano.config.deterministic and img.type.ndim == 5:
+            raise NotImplementedError(
+                "CuDNN do not have deterministic code for 3d convolution of grad wrt weights.")
         if (img.type.ndim == 5 and
                 self.algo in ['fft', 'deterministic', 'small']):
             raise ValueError("convolution algo %s can't be used for "
@@ -692,6 +702,13 @@ class GpuDnnConvGradI(DnnBase):
         assert self.algo in ['none', 'deterministic', 'fft', 'fft_tiling',
                              'guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']
+        if theano.config.deterministic and self.algo not in ['deterministic', 'fft', 'fft_tiling']:
+            raise RuntimeError(
+                "CuDNN conv2d grad again the weights have or can have"
+                " a non-deterministic behavior with current"
+                " configuration. Use Theano flag"
+                " dnn.conv.algo_bwd_data='deterministic' or 'fft' or 'fft_tiling' to"
+                " have a deterministic behavior.")
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -765,6 +782,9 @@ class GpuDnnConvGradI(DnnBase):
                 kern.type.ndim != output.type.ndim):
             raise TypeError("The number of dimensions of "
                             "kern, topgrad and output must match")
+        if theano.config.deterministic and kern.type.ndim == 5:
+            raise NotImplementedError(
+                "CuDNN do not have deterministic code for 3d convolution of grad wrt weights.")
 
         if (kern.type.ndim == 5 and
                 self.algo in ['fft', 'deterministic', 'fft_tiling']):
