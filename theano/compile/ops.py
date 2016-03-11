@@ -11,7 +11,7 @@ import warnings
 import theano
 from theano import gof
 from theano.compat import OrderedDict
-from six import iteritems
+from six import iteritems, integer_types
 from six.moves import xrange
 
 
@@ -647,7 +647,7 @@ class Rebroadcast(gof.Op):
         items = sorted(axis)
         self.axis = OrderedDict(items)
         for axis, broad in iteritems(self.axis):
-            if not isinstance(axis, (numpy.integer, int)):
+            if not isinstance(axis, (numpy.integer, integer_types)):
                 raise TypeError("Rebroadcast needs integer axes. "
                                 "Got {}".format(axis))
 

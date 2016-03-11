@@ -9,6 +9,7 @@ from __future__ import print_function
 import warnings
 
 import numpy
+from six import integer_types
 from six.moves import xrange
 
 from theano import Op, Apply, shared, config, Variable
@@ -1060,7 +1061,7 @@ def guess_n_streams(size, warn=False):
     # Note that this code was moved out of `MRG_RandomStreams` so that it can
     # be easily accessed from tests, where we want to disable the warning.
     if (isinstance(size, (tuple, list)) and
-            all([isinstance(i, int) for i in size])):
+            all([isinstance(i, integer_types) for i in size])):
         # We can make a guess.
         r = 1
         for s in size:
@@ -1127,7 +1128,7 @@ class MRG_RandomStreams(object):
 
     def set_rstate(self, seed):
         # TODO : need description for method, parameter
-        if isinstance(seed, int):
+        if isinstance(seed, integer_types):
             if seed == 0:
                 raise ValueError('seed should not be 0', seed)
             elif seed >= M2:
@@ -1289,9 +1290,9 @@ class MRG_RandomStreams(object):
 
         if isinstance(size, tuple):
             msg = "size must be a tuple of int or a Theano variable"
-            assert all([isinstance(i, (numpy.integer, int, Variable))
+            assert all([isinstance(i, (numpy.integer, integer_types, Variable))
                         for i in size]), msg
-            if any([isinstance(i, (numpy.integer, int)) and i <= 0
+            if any([isinstance(i, (numpy.integer, integer_types)) and i <= 0
                     for i in size]):
                 raise ValueError(
                     "The specified size contains a dimension with value <= 0",
@@ -1377,7 +1378,7 @@ class MRG_RandomStreams(object):
             raise TypeError("You have to specify pvals")
         pvals = as_tensor_variable(pvals)
         if size is not None:
-            if any([isinstance(i, int) and i <= 0 for i in size]):
+            if any([isinstance(i, integer_types) and i <= 0 for i in size]):
                 raise ValueError(
                     "The specified size contains a dimension with value <= 0",
                     size)
@@ -1483,7 +1484,7 @@ class MRG_RandomStreams(object):
         evened = False
         constant = False
         if (isinstance(size, tuple) and
-                all([isinstance(i, (numpy.integer, int)) for i in size])):
+                all([isinstance(i, (numpy.integer, integer_types)) for i in size])):
             constant = True
             # Force dtype because it defaults to float when size is empty
             n_samples = numpy.prod(size, dtype='int64')

@@ -17,6 +17,8 @@ way (as scan does) to create a shared variable of this kind.
 """
 
 import numpy
+from six import integer_types
+
 from theano.compile import SharedVariable
 from .basic import Scalar, _scalar_py_operators
 
@@ -46,7 +48,7 @@ def shared(value, name=None, strict=False, allow_downcast=None):
     We implement this using 0-d tensors for now.
 
     """
-    if not isinstance(value, (numpy.number, float, int, complex)):
+    if not isinstance(value, (numpy.number, float, integer_types, complex)):
         raise TypeError()
     try:
         dtype = value.dtype

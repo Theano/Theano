@@ -3,7 +3,7 @@ import linecache
 import sys
 
 import numpy
-from six import iteritems
+from six import iteritems, integer_types, string_types
 
 from theano import config
 from theano.compat import OrderedDict, PY3
@@ -326,7 +326,7 @@ RETRY = Keyword("RETRY", False)
 FAILURE = Keyword("FAILURE", False)
 
 
-simple_types = (int, float, str, bool, None.__class__, Keyword)
+simple_types = integer_types + string_types + (float, bool, None.__class__, Keyword)
 
 
 ANY_TYPE = Keyword("ANY_TYPE")
@@ -521,7 +521,7 @@ def hash_from_dict(d):
     first_part = [k for k, v in items]
     second_part = []
     for k, v in items:
-        assert isinstance(k, (str, int, float))
+        assert isinstance(k, (string_types, integer_types, float))
         if isinstance(v, (tuple, list)):
             second_part += [tuple(v)]
         else:

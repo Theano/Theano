@@ -372,7 +372,7 @@ def scan(fn,
     # To do that we check here to see the nature of n_steps
     n_fixed_steps = None
 
-    if isinstance(n_steps, (float, int)):
+    if isinstance(n_steps, (float, integer_types)):
         n_fixed_steps = int(n_steps)
     else:
         try:

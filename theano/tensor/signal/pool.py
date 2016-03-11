@@ -6,11 +6,12 @@ Pool, DownsampleAvg, DownsampleSoftmax.
 """
 from __future__ import print_function
 # This file should move along with conv.py
-from six.moves import xrange
-import six.moves.builtins as builtins
 import warnings
 
 import numpy
+from six import integer_types
+from six.moves import xrange
+import six.moves.builtins as builtins
 
 import theano
 from theano import gof, Op, tensor, Variable, Apply
@@ -233,7 +234,7 @@ class Pool(Op):
     def __init__(self, ds, ignore_border=False, st=None, padding=(0, 0),
                  mode='max'):
         self.ds = tuple(ds)
-        if not all([isinstance(d, int) for d in ds]):
+        if not all([isinstance(d, integer_types) for d in ds]):
             raise ValueError(
                 "Pool downsample parameters must be ints."
                 " Got %s" % str(ds))
@@ -890,7 +891,7 @@ class DownsampleFactorMaxGradGrad(Op):
 
     def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max'):
         self.ds = tuple(ds)
-        if not all([isinstance(d, int) for d in ds]):
+        if not all([isinstance(d, integer_types) for d in ds]):
             raise ValueError(
                 "Pool downsample parameters must be ints."
                 " Got %s" % str(ds))

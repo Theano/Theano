@@ -1,6 +1,7 @@
 import unittest
 
 import numpy
+from six import integer_types
 
 import theano
 from theano import tensor, function
@@ -14,7 +15,7 @@ class TestKeepDims(unittest.TestCase):
     def makeKeepDims_local(self, x, y, axis):
         if axis is None:
             newaxis = list(range(x.ndim))
-        elif isinstance(axis, int):
+        elif isinstance(axis, integer_types):
             if axis < 0:
                 newaxis = [axis + x.type.ndim]
             else:

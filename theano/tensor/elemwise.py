@@ -3,12 +3,12 @@ import sys
 from copy import copy
 
 import numpy
+from six import iteritems, integer_types
+from six.moves import xrange
 
 import theano
 from theano import gof
 from theano.compat import izip
-from six import iteritems
-from six.moves import xrange
 from theano.gof import Apply, Op, OpenMPOp
 from theano import scalar
 from theano.scalar import get_scalar_type
@@ -135,10 +135,11 @@ class DimShuffle(Op):
 
         for i, j in enumerate(new_order):
             if j != 'x':
-                # There is a bug in numpy that results in isinstance(x, int)
-                # returning False for numpy integers.
-                # See <http://projects.scipy.org/numpy/ticket/2235>.
-                if not isinstance(j, (int, numpy.integer)):
+                # There is a bug in numpy that results in
+                # isinstance(x, integer_types) returning False for
+                # numpy integers.  See
+                # <http://projects.scipy.org/numpy/ticket/2235>.
+                if not isinstance(j, (integer_types, numpy.integer)):
                     raise TypeError("DimShuffle indices must be python ints.")
                 if j >= len(input_broadcastable):
                     raise ValueError(("new_order[%d] is %d, but the input "
@@ -1325,10 +1326,10 @@ class CAReduce(Op):
 
         if axis is None:
             self.axis = axis
-        # There is a bug in numpy that results in isinstance(x, int) returning
-        # False for numpy integers.
-        # See <http://projects.scipy.org/numpy/ticket/2235>.
-        elif isinstance(axis, (int, numpy.integer)):
+        # There is a bug in numpy that results in isinstance(x,
+        # integer_types) returning False for numpy integers.  See
+        # <http://projects.scipy.org/numpy/ticket/2235>.
+        elif isinstance(axis, (integer_types, numpy.integer)):
             self.axis = (axis,)
         elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
             self.axis = (int(axis),)

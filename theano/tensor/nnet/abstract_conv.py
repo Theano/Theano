@@ -4,7 +4,7 @@ Abstract conv interface
 
 import numpy as np
 import logging
-from six import reraise
+from six import reraise, integer_types
 import sys
 
 import theano
@@ -625,7 +625,7 @@ class BaseAbstractConv2d(Op):
                  border_mode="valid", subsample=(1, 1),
                  filter_flip=True):
 
-        if isinstance(border_mode, int):
+        if isinstance(border_mode, integer_types):
             border_mode = (border_mode, border_mode)
         if isinstance(border_mode, tuple):
             pad_h, pad_w = map(int, border_mode)

@@ -1,6 +1,7 @@
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 import numpy
+from six import integer_types
 
 import theano
 import theano.tensor as T
@@ -92,7 +93,7 @@ class TestCorr2D(utt.InferShapeTester):
             padHW = numpy.floor(fil_shape2d / 2).astype('int32')
         elif isinstance(border_mode, tuple):
             padHW = numpy.array(border_mode)
-        elif isinstance(border_mode, int):
+        elif isinstance(border_mode, integer_types):
             padHW = numpy.array([border_mode, border_mode])
         else:
             raise NotImplementedError('Unsupported border_mode {}'.format(border_mode))
