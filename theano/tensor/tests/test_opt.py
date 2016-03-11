@@ -4914,7 +4914,7 @@ class test_local_useless_switch(unittest.TestCase):
                     isinstance(node.op, theano.tensor.Elemwise)]) == 0
 
 
-class test_merge_switch_same_cond(unittest.TestCase):
+class test_local_merge_switch_same_cond(unittest.TestCase):
     def test_elemwise(self):
         # float Ops
         mats = theano.tensor.matrices('cabxy')
@@ -4934,6 +4934,12 @@ class test_merge_switch_same_cond(unittest.TestCase):
         for op in (T.and_, T.or_, T.xor,
                    T.bitwise_and, T.bitwise_or, T.bitwise_xor):
             g = optimize(FunctionGraph(mats, [op(s1, s2)]))
+            assert str(g).count('Switch') == 1
+        # add/mul with more than two inputs
+        u, v = theano.tensor.matrices('uv')
+        s3 = T.switch(c, u, v)
+        for op in (T.add, T.mul):
+            g = optimize(FunctionGraph(mats + [u, v], [op(s1, s2, s3)]))
             assert str(g).count('Switch') == 1
 
 
