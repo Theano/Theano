@@ -6,11 +6,11 @@ import theano.tensor as T
 
 from theano.sandbox.cuda import cuda_available, GpuOp
 from theano.ifelse import ifelse
+from theano.misc.pycuda_init import pycuda_available
 
 if cuda_available:
     from theano.sandbox.cuda import (basic_ops, CudaNdarrayType,
                                      CudaNdarray)
-from theano.misc.pycuda_init import pycuda_available
 if pycuda_available:
     import pycuda.gpuarray
 
@@ -19,7 +19,7 @@ try:
     from scikits.cuda import fft, cublas
     scikits.cuda.misc.init()
     scikits_cuda_available = True
-except ImportError:
+except (ImportError, Exception):
     scikits_cuda_available = False
 
 
@@ -363,7 +363,7 @@ def mult_and_reduce(input_fft_v, filters_fft_v, input_shape=None,
 
     Parameters
     ----------
-    input_fft_v 
+    input_fft_v
         It's (b, ic, i0, i1//2 + 1, 2).
     filters_fft_v
         It's (oc, ic, i0, i1//2 + 1, 2).
