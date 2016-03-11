@@ -3576,10 +3576,37 @@ def local_join_make_vector(node):
         return [ret]
 
 
+#################
+# Exp stability #
+#################
+@register_stabilize
+@register_specialize
+@register_canonicalize
+@gof.local_optimizer([T.Elemwise])
+def local_expm1(node):
+    """
+    This optimization detects exp(a)-1 and converts this to expm1(a).
+    """
+    if (isinstance(node.op, T.Elemwise) and
+            isinstance(node.op.scalar_op, theano.scalar.basic.Sub)):
+        in1, in2 = node.inputs
+        out = node.outputs[0]
+
+        if (in1.owner and isinstance(in1.owner.op, T.Elemwise) and isinstance(in1.owner.op.scalar_op, theano.scalar.basic.Exp) and
+                T.extract_constant(in2, only_process_constants=False) == 1):
+            in11 = in1.owner.inputs[0]
+            new_out = T.expm1(in11)
+
+            if new_out.dtype != out.dtype:
+                new_out = T.cast(new_out, dtype=out.dtype)
+            if new_out.type != out.type:
+                return
+            return [new_out]
+
+
 ###############
 # Switch opts #
 ###############
-
 @register_canonicalize('fast_compile', 'local_remove_switch_const_cond')
 @register_specialize
 @gof.local_optimizer([T.Elemwise])

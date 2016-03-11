@@ -37,7 +37,8 @@ from theano.tensor.opt import (
         Shape_i,
         Assert,
         MakeVector,
-        make_vector
+        make_vector,
+        local_expm1
         )
 from theano import tensor
 from theano import tensor as T
@@ -6120,6 +6121,38 @@ class TestIntDivByOne(unittest.TestCase):
                 if isinstance(node.op, T.elemwise.Elemwise) and
                 isinstance(node.op.scalar_op, theano.scalar.IntDiv)]
         assert len(divs) == 0
+
+
+def test_local_expm1():
+    x = matrix('x')
+    u = T.scalar('u')
+
+    y = T.exp(x) - 1.
+    z = T.exp(x) - 2.
+    t = T.exp(x) - x
+    s = T.exp(u) - numpy.ones((4, 3)).astype(config.floatX)
+    MODE = theano.compile.get_default_mode().including('local_expm1')
+    f = function([x], y, mode=MODE)
+    g = function([x], z, mode=MODE)
+    h = function([x], t, mode=MODE)
+    r = function([u], s, mode=MODE)
+    x_val = numpy.random.rand(4, 3).astype(config.floatX)
+    f_val = f(x_val)
+    f_test = function([x], T.expm1(x), mode=MODE)
+
+    assert numpy.allclose(f_val, f_test(x_val))
+
+    assert any(isinstance(n.op, T.Elemwise) and isinstance(n.op.scalar_op, theano.scalar.basic.Expm1)
+               for n in f.maker.fgraph.toposort())
+
+    assert not any(isinstance(n.op, T.Elemwise) and isinstance(n.op.scalar_op, theano.scalar.basic.Expm1)
+                   for n in g.maker.fgraph.toposort())
+
+    assert not any(isinstance(n.op, T.Elemwise) and isinstance(n.op.scalar_op, theano.scalar.basic.Expm1)
+                   for n in h.maker.fgraph.toposort())
+
+    assert not any(isinstance(n.op, T.Elemwise) and isinstance(n.op.scalar_op, theano.scalar.basic.Expm1)
+                   for n in r.maker.fgraph.toposort())
 
 
 def test_local_merge_alloc():
