@@ -1681,6 +1681,18 @@ AddConfigVar(
         allow_override=False),
     in_c_key=False)
 
+
+# To resolve https://github.com/Theano/Theano/issues/3029.
+AddConfigVar(
+    'deterministic',
+    ("Avoids the use of the AtomicAdd operation which fails to guarantee the"
+     "deterministic properties of the addition because of the behavior of"
+     "floating-point arithmetic."
+     "This slows down execution by a large factor."),
+    BoolParam(False, allow_override=True),
+    in_c_key=False)
+
+
 # Check if there are remaining flags provided by the user through THEANO_FLAGS.
 for key in THEANO_FLAGS_DICT.keys():
     warnings.warn('Theano does not recognise this flag: {0}'.format(key))
