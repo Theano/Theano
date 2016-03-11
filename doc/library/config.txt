@@ -403,17 +403,18 @@ import theano and print the config variable, as in:
     Float value: >= 0
 
     Controls the use of `CNMeM <https://github.com/NVIDIA/cnmem>`_ (a
-    faster CUDA memory allocator). In Theano dev version until 0.7.1
+    faster CUDA memory allocator). In Theano dev version until 0.8
     is released.
 
-    The CNMeM library is included in Theano and does not need to be separately installed.
+    The CNMeM library is included in Theano and does not need to be
+    separately installed.
 
     The value represents the start size (either in MB or the fraction of total GPU
     memory) of the memory pool. If more memory is needed, Theano will
     try to obtain more, but this can cause memory fragmentation.
 
         * 0: not enabled.
-        * 0 < N <= 1: use this fraction of the total GPU memory (clipped to .985 for driver memory)
+        * 0 < N <= 1: use this fraction of the total GPU memory (clipped to .95 for driver memory).
         * > 1: use this number in megabytes (MB) of memory.
 
 
@@ -425,6 +426,13 @@ import theano and print the config variable, as in:
         memory error while using CNMeM, try to allocate more memory at
         the start or disable it. If you try this, report your result
         on :ref`theano-dev`.
+
+    .. note::
+
+        The clipping at 95% can be bypassed by specifing the exact
+        number of megabytes. If more then 95% are needed, it will try
+        automatically to get more memory. But this can cause
+        fragmentation, see note above.
 
 .. attribute:: linker
 
