@@ -1,0 +1,42 @@
+.. _install_others:
+
+
+Other Platform-specific Installations
+=====================================
+
+.. warning::
+
+    These instructions are not kept up to date.
+
+NVIDIA Jetson TX1 embedded platform
+-----------------------------------
+
+.. code-block:: bash
+
+    sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libblas-dev git
+    pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git --user  # Need Theano 0.8 or more recent
+
+Gentoo
+------
+
+Brian Vandenberg emailed `installation instructions on Gentoo
+<http://groups.google.com/d/msg/theano-dev/-8WCMn2FMR0/bJPasoZXaqoJ>`_,
+focusing on how to install the appropriate dependencies.
+
+Nicolas Pinto provides `ebuild scripts <https://github.com/npinto/sekyfsr-gentoo-overlay/tree/master/sci-libs/Theano>`_.
+
+Docker images
+-------------
+
+Builds of Theano are available as `Docker <https://www.docker.com/whatisdocker>`_ images:
+`Theano Docker (CPU) <https://hub.docker.com/r/kaixhin/theano/>`_ or `Theano Docker (CUDA) <https://hub.docker.com/r/kaixhin/cuda-theano/>`_.
+These are updated on a weekly basis with bleeding-edge builds of Theano. Examples of running bash in a Docker container
+are as follows:
+
+.. code-block:: bash
+
+    sudo docker run -it kaixhin/theano
+    sudo docker run -it --device /dev/nvidiactl --device /dev/nvidia-uvm --device /dev/nvidia0 kaixhin/cuda-theano:7.0
+
+For a guide to Docker, see the `official docs <https://docs.docker.com/userguide/>`_. For more details on how to use the
+Theano Docker images, including requirements for CUDA support, consult the `source project <https://github.com/Kaixhin/dockerfiles>`_.
