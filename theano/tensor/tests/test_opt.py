@@ -6123,6 +6123,27 @@ class TestIntDivByOne(unittest.TestCase):
         assert len(divs) == 0
 
 
+def test_local_zero_div():
+    """Tests 0/x -> 0"""
+    mode = theano.compile.mode.get_default_mode().including("local_zero_div")
+    for t in (T.scalar, T.ivector, T.ftensor4):
+        x = t('x')
+        for op in (T.int_div, T.true_div):
+            y = op(0, x)
+            g = optimize(FunctionGraph([x], [y]))
+            # the division should be gone
+            divs = [node for node in g.toposort()
+                    if isinstance(node.op, T.elemwise.Elemwise) and
+                    isinstance(node.op.scalar_op, type(op.scalar_op))]
+            assert len(divs) == 0
+            # the output type should match the unoptimized one
+            output = g.outputs[0]
+            assert output.ndim == y.ndim
+            assert output.type == y.type
+            # and the output should be zero
+            assert theano.tensor.get_scalar_constant_value(output) == 0
+
+
 def test_local_expm1():
     x = matrix('x')
     u = T.scalar('u')
