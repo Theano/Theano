@@ -1942,7 +1942,9 @@ def local_gpu_downsample_factor_max_grad_grad(node):
     if isinstance(node.op, pool.DownsampleFactorMaxGradGrad):
         assert node.op.__props__ == ('ds', 'ignore_border', 'st',
                                      'padding', 'mode')
-        if node.op.padding != (0, 0) or node.op.mode != 'max':
+        if (node.op.padding != (0, 0) or
+                node.op.mode != 'max' or
+                node.op.st != (1, 1)):
             return
         x, z, gx = node.inputs
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
