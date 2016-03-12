@@ -27,6 +27,7 @@ ignore = ('E501', 'E123', 'E133')
 whitelist_flake8 = [
     "compat/six.py",  # This is bundled code that will be deleted, don't fix it
     "__init__.py",
+    "tests/__init__.py",
     "compile/__init__.py",
     "compile/profiling.py",
     "compile/tests/test_builders.py",
