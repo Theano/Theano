@@ -21,6 +21,7 @@ from theano.sandbox.cuda import dnn_version as version
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            host_from_gpu,
                                            gpu_contiguous, HostFromGpu,
+                                           gpu_alloc, GpuAlloc,
                                            gpu_alloc_empty, GpuAllocEmpty,
                                            GpuElemwise)
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
@@ -2246,9 +2247,13 @@ if True:
         inputs = list(node.inputs)
         dest = inputs[2]
         if (dest.owner and
-                isinstance(dest.owner.op, GpuAllocEmpty) and
+                type(dest.owner.op) is GpuAllocEmpty and
                 len(dest.clients) > 1):
             inputs[2] = gpu_alloc_empty(*dest.owner.inputs)
+        elif (dest.owner and
+                type(dest.owner.op) is GpuAlloc and
+                len(dest.clients) > 1):
+            inputs[2] = gpu_alloc(*dest.owner.inputs)
         return [GpuDnnConv(algo=node.op.algo, inplace=True)(*inputs)]
 
     @local_optimizer([GpuDnnConvGradW], inplace=True)
@@ -2258,9 +2263,13 @@ if True:
         inputs = list(node.inputs)
         dest = inputs[2]
         if (dest.owner and
-                isinstance(dest.owner.op, GpuAllocEmpty) and
+                type(dest.owner.op) is GpuAllocEmpty and
                 len(dest.clients) > 1):
             inputs[2] = gpu_alloc_empty(*dest.owner.inputs)
+        elif (dest.owner and
+                type(dest.owner.op) is GpuAlloc and
+                len(dest.clients) > 1):
+            inputs[2] = gpu_alloc(*dest.owner.inputs)
         return [GpuDnnConvGradW(inplace=True)(*inputs)]
 
     @local_optimizer([GpuDnnConvGradI], inplace=True)
@@ -2270,9 +2279,13 @@ if True:
         inputs = list(node.inputs)
         dest = inputs[2]
         if (dest.owner and
-                isinstance(dest.owner.op, GpuAllocEmpty) and
+                type(dest.owner.op) is GpuAllocEmpty and
                 len(dest.clients) > 1):
             inputs[2] = gpu_alloc_empty(*dest.owner.inputs)
+        elif (dest.owner and
+                type(dest.owner.op) is GpuAlloc and
+                len(dest.clients) > 1):
+            inputs[2] = gpu_alloc(*dest.owner.inputs)
         return [GpuDnnConvGradI(inplace=True)(*inputs)]
 
     optdb.register('local_dnn_conv_inplace',
