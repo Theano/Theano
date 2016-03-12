@@ -1063,46 +1063,50 @@ second dimension
         olv_index = %(j)i;
         """ % locals()
 
-        # If the node has a non empty destroy map
-        if(len(self.inplace_pattern) > 0):
-            # Get the destroy map from params
-            alloc += """
-            int outDm[%(dml)s];
-            int inDm[%(dml)s];
-            PyObject *tmpOut, *tmpIn;
-            Py_ssize_t pos;
-            pos = 0;
-            PyObject* destroyMap;
-            destroyMap =PyObject_GetAttrString(%(p)s,"inplace_pattern");
-            if( destroyMap == NULL){
-                %(fail)s
-            }
-            """ % dict(dml=len(self.inplace_pattern),
-                       p=sub['params'], fail=sub['fail'])
-            # Iterate over the python object to fill the destroy map arrays
-            # and make the output point to the corresponding input and
-            # decrease the reference of whatever the output contained
-            # prior to this
-            for i in range(len(self.inplace_pattern.keys())):
-                alloc += """
-                PyDict_Next(destroyMap, &pos, &tmpOut, &tmpIn);
-                outDm[%(i)i] = PyInt_AsLong(tmpOut);
-                inDm[%(i)i] = PyInt_AsLong(tmpIn);
-                PyArrayObject **aliasedOutput;
-                aliasedOutput = outRef[outDm[%(i)i]];
-                if (*aliasedOutput) {
-                          Py_XDECREF(*aliasedOutput);
-                }
-                *aliasedOutput = *inRef[inDm[%(i)i]];
-                Py_XINCREF(*aliasedOutput);
-                olv_index = outDm[%(i)i];
-                """ % locals()
+        # Get the destroy map from params
+        alloc += """
+        PyObject *tmpOut, *tmpIn;
+        Py_ssize_t pos;
+        pos = 0;
+        PyObject* destroyMap;
+        destroyMap =PyObject_GetAttrString(%(p)s,"inplace_pattern");
+        if( destroyMap == NULL){
+        %(fail)s
+        }
+        """ % dict(p=sub['params'], fail=sub['fail'])
+        # Iterate over the python object to fill the destroy map arrays
+        # and make the output point to the corresponding input and
+        # decrease the reference of whatever the output contained
+        # prior to this
 
-            # We no longer need the reference to the original Python object
-            # containing the destroy map
-            alloc += """
-            Py_XDECREF(destroyMap);
-            """
+        alloc += """
+        int lenDM;
+        lenDM = PyDict_Size(destroyMap);
+        int *outDm;
+        int *inDm;
+        outDm =(int*) malloc(lenDM * sizeof(int));
+        inDm =(int*) malloc(lenDM * sizeof(int));
+        int it;
+        for(it = 0; it < lenDM; it++){
+           PyDict_Next(destroyMap, &pos, &tmpOut, &tmpIn);
+           outDm[it] = PyInt_AsLong(tmpOut);
+           inDm[it] = PyInt_AsLong(tmpIn);
+           PyArrayObject **aliasedOutput;
+           aliasedOutput = outRef[outDm[it]];
+           if (*aliasedOutput) {
+              Py_XDECREF(*aliasedOutput);
+           }
+           *aliasedOutput = *inRef[inDm[it]];
+           Py_XINCREF(*aliasedOutput);
+           olv_index = outDm[it];
+        }
+        """
+
+        # We no longer need the reference to the original Python object
+        # containing the destroy map
+        alloc += """
+        Py_XDECREF(destroyMap);
+        """
 
         # We loop over the "aliased" outputs, i.e., those that are
         # inplace (overwrite the contents of one of the inputs) and
@@ -1282,7 +1286,11 @@ second dimension
                 %(loop)s
             }
             """ % locals()
-        return decl, checks, alloc, loop
+        cleanUp = """
+            free(inDm);
+            free(outDm);
+            """
+        return decl, checks, alloc, loop, cleanUp
 
     def c_code(self, node, nodename, inames, onames, sub):
         if (any(i.dtype == 'float16' for i in node.inputs) or
