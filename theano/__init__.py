@@ -24,6 +24,16 @@ maintained at http://www.deeplearning.net/software/theano/library/
 
 __docformat__ = "restructuredtext en"
 
+# Check if theano is being imported from a child process
+# If yes, raises error, refer issue #1064
+import os
+if 'THEANO_MAX_GPU' in os.environ:
+    if os.environ['THEANO_MAX_GPU'] == '0':
+        raise ImportError("Parent process holds lock on GPU."
+                          " Need to release it first")
+else:
+    os.environ['THEANO_MAX_GPU'] = '0'
+
 # Set a default logger. It is important to do this before importing some other
 # theano code, since this code may want to log some messages.
 import logging
