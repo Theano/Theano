@@ -3,6 +3,7 @@ import traceback as tb
 import warnings
 
 import numpy
+from six import integer_types
 from six.moves import xrange
 
 import theano
@@ -319,7 +320,7 @@ class _tensor_py_operators(object):
         """
 
         if ndim is not None:
-            if not isinstance(ndim, int):
+            if not isinstance(ndim, integer_types):
                 raise ValueError("Expected ndim to be an integer, is " +
                                  str(type(ndim)))
 

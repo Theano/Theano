@@ -2,9 +2,11 @@ from __future__ import print_function
 from copy import copy, deepcopy
 from functools import wraps
 import logging
-from six.moves import StringIO
 import sys
 import unittest
+
+from six import integer_types
+from six.moves import StringIO
 
 try:
     from nose.plugins.attrib import attr
@@ -204,7 +206,7 @@ class InferShapeTester(unittest.TestCase):
             mode = mode.excluding(*excluding)
         if warn:
             for var, inp in zip(inputs, numeric_inputs):
-                if isinstance(inp, (int, float, list, tuple)):
+                if isinstance(inp, (integer_types, float, list, tuple)):
                     inp = var.type.filter(inp)
                 if not hasattr(inp, "shape"):
                     continue

@@ -19,7 +19,7 @@ import numpy
 import theano
 from theano import config
 from theano.compat import izip, OrderedDict
-from six import string_types, iteritems, itervalues
+from six import string_types, iteritems, itervalues, integer_types
 from six.moves import reduce
 from theano.gof import graph, op, utils, unify, toolbox
 from theano.gof.fg import InconsistencyError
@@ -1507,7 +1507,7 @@ class PatternSub(LocalOptimizer):
                     return retry_with_equiv()
                 else:
                     u = u.merge(expr, v)
-            elif (isinstance(pattern, (int, float)) and
+            elif (isinstance(pattern, (integer_types, float)) and
                     isinstance(expr, graph.Constant)):
                 if numpy.all(
                         theano.tensor.constant(pattern).value == expr.value):
@@ -1534,7 +1534,7 @@ class PatternSub(LocalOptimizer):
                     return pattern[0](*args)
                 elif isinstance(pattern, string_types):
                     return u[unify.Var(pattern)]
-                elif isinstance(pattern, (int, float)):
+                elif isinstance(pattern, (integer_types, float)):
                     return pattern
                 else:
                     return pattern.clone()

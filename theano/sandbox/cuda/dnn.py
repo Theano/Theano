@@ -2,6 +2,8 @@ import os
 import numpy
 import warnings
 
+from six import integer_types
+
 import theano
 from theano import Apply, tensor, config, Variable
 from theano.scalar import as_scalar, constant, Log
@@ -127,7 +129,7 @@ class GpuDnnConvDesc(GpuOp):
 
     def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv',
                  precision="float32"):
-        if isinstance(border_mode, int):
+        if isinstance(border_mode, integer_types):
             border_mode = (border_mode,) * len(subsample)
         if isinstance(border_mode, tuple):
             assert len(border_mode) == len(subsample)

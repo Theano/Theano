@@ -14,14 +14,12 @@ import traceback
 import warnings
 
 import numpy
-import numpy as N  # guys... please don't do this in the library :(
-from six.moves import xrange
+from six import integer_types, iteritems
+from six.moves import reduce, xrange
 
 import theano
 from theano import gof
 from theano.compat import izip
-from six import integer_types, iteritems
-from six.moves import reduce
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
 from theano.gof.utils import MethodNotDefined
@@ -1169,11 +1167,11 @@ class ShapeFeature(object):
                 #  - Shape_i(i)(other_r);
                 #  - Shape_i(i)(r).
                 merged_shape.append(r_shape[i])
-            elif isinstance(r_shape[i], (Constant, int)):
+            elif isinstance(r_shape[i], (Constant, integer_types)):
                 # We do this to call less often ancestors and make
                 # sure we have the simplest shape possible.
                 merged_shape.append(r_shape[i])
-            elif isinstance(other_shape[i], (Constant, int)):
+            elif isinstance(other_shape[i], (Constant, integer_types)):
                 # We do this to call less often ancestors and make
                 # sure we have the simplest shape possible.
                 merged_shape.append(other_shape[i])
@@ -1826,7 +1824,7 @@ def local_subtensor_make_vector(node):
     else:
         return
 
-    if isinstance(idx, (int, numpy.integer)):
+    if isinstance(idx, (integer_types, numpy.integer)):
         # We don't need to copy over any stack traces here
         return [x.owner.inputs[idx]]
     elif isinstance(idx, Variable):
@@ -2452,7 +2450,7 @@ def local_useless_subtensor(node):
 
             length_pos = shape_of[node.inputs[0]][pos]
 
-            if isinstance(idx.stop, (int, numpy.integer)):
+            if isinstance(idx.stop, (integer_types, numpy.integer)):
                 length_pos_data = sys.maxsize
                 try:
                     length_pos_data = get_scalar_constant_value(length_pos)
@@ -4497,7 +4495,7 @@ class Canonizer(gof.LocalOptimizer):
         num, denum = self.simplify(list(orig_num), list(orig_denum), out.type)
 
         def same(x, y):
-            return len(x) == len(y) and all(N.all(xe == ye) for xe, ye in
+            return len(x) == len(y) and all(numpy.all(xe == ye) for xe, ye in
                                             zip(x, y))
 
         if same(orig_num, num) and same(orig_denum, denum):
@@ -4538,7 +4536,7 @@ def mul_calculate(num, denum, aslist=False, out_type=None):
         if aslist:
             return []
         else:
-            return N.int8(1)
+            return numpy.int8(1)
 
     # Make sure we do not accidently upcast data types.
     if out_type is None:
@@ -4547,9 +4545,9 @@ def mul_calculate(num, denum, aslist=False, out_type=None):
         out_dtype = out_type.dtype
     one = theano._asarray(1, dtype=out_dtype)
 
-    v = reduce(N.multiply, num, one) / reduce(N.multiply, denum, one)
+    v = reduce(numpy.multiply, num, one) / reduce(numpy.multiply, denum, one)
     if aslist:
-        if N.all(v == 1):
+        if numpy.all(v == 1):
             return []
         else:
             return [v]
@@ -5205,7 +5203,7 @@ register_canonicalize(local_mul_zero)
 
 @gof.local_optimizer([T.true_div])
 def local_div_to_inv(node):
-    if node.op == T.true_div and N.all(
+    if node.op == T.true_div and numpy.all(
             local_mul_canonizer.get_constant(node.inputs[0]) == 1.0):
         out = node.outputs[0]
         new_out = T.inv(local_mul_canonizer.merge_num_denum(node.inputs[1:],
@@ -5286,19 +5284,19 @@ def local_pow_specialize(node):
                                               ysym.type.broadcastable):
             rval = None
 
-            if N.all(y == 2):
+            if numpy.all(y == 2):
                 rval = [T.sqr(xsym)]
-            if N.all(y == 1):
+            if numpy.all(y == 1):
                 rval = [xsym]
-            if N.all(y == 0):
+            if numpy.all(y == 0):
                 rval = [T.fill(xsym, numpy.asarray(1, dtype=odtype))]
-            if N.all(y == 0.5):
+            if numpy.all(y == 0.5):
                 rval = [T.sqrt(xsym)]
-            if N.all(y == -0.5):
+            if numpy.all(y == -0.5):
                 rval = [T.inv(T.sqrt(xsym))]
-            if N.all(y == -1):
+            if numpy.all(y == -1):
                 rval = [T.inv(xsym)]
-            if N.all(y == -2):
+            if numpy.all(y == -2):
                 rval = [T.inv(T.sqr(xsym))]
             if rval:
                 rval[0] = T.cast(rval[0], odtype)
@@ -5637,9 +5635,9 @@ def add_calculate(num, denum, aslist=False, out_type=None):
         zero = theano._asarray(0, dtype=out_type.dtype)
     # zero = 0.0 if out_type is None else theano._asarray(0,
     # dtype=out_type.dtype)
-    v = reduce(N.add, num, zero) - reduce(N.add, denum, zero)
+    v = reduce(numpy.add, num, zero) - reduce(numpy.add, denum, zero)
     if aslist:
-        if N.all(v == 0):
+        if numpy.all(v == 0):
             return []
         else:
             return [v]

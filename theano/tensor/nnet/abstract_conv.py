@@ -4,7 +4,7 @@ Abstract conv interface
 
 import numpy as np
 import logging
-from six import reraise
+from six import reraise, integer_types
 import sys
 
 import theano
@@ -238,17 +238,17 @@ def conv2d_grad_wrt_inputs(output_grad,
     # checking the type of input_shape
     for dim in [0, 1]:
         assert isinstance(input_shape[dim], (theano.tensor.TensorConstant,
-                                             int, type(None)))
+                                             integer_types, type(None)))
     for dim in [2, 3]:
         assert isinstance(input_shape[dim], (theano.tensor.TensorVariable,
                                              theano.tensor.TensorConstant,
-                                             int))
+                                             integer_types))
 
     # checking the type of filter_shape
     if filter_shape is not None:
         for dim in [0, 1, 2, 3]:
             assert isinstance(filter_shape[dim], (theano.tensor.TensorConstant,
-                                                  int, type(None)))
+                                                  integer_types, type(None)))
 
     # setting the last two dimensions of input_shape to None, if
     # the type of these dimensions is TensorVariable.
@@ -361,17 +361,17 @@ def conv2d_grad_wrt_weights(input,
     # checking the type of filter_shape
     for dim in [0, 1]:
         assert isinstance(filter_shape[dim], (theano.tensor.TensorConstant,
-                                              int, type(None)))
+                                              integer_types, type(None)))
     for dim in [2, 3]:
         assert isinstance(filter_shape[dim], (theano.tensor.TensorVariable,
                                               theano.tensor.TensorConstant,
-                                              int))
+                                              integer_types))
 
     # checking the type of input_shape
     if input_shape is not None:
         for dim in [0, 1, 2, 3]:
             assert isinstance(input_shape[dim], (theano.tensor.TensorConstant,
-                                                 int, type(None)))
+                                                 integer_types, type(None)))
 
     # setting the last two dimensions of filter_shape to None, if
     # the type of these dimensions is TensorVariable.
@@ -625,7 +625,7 @@ class BaseAbstractConv2d(Op):
                  border_mode="valid", subsample=(1, 1),
                  filter_flip=True):
 
-        if isinstance(border_mode, int):
+        if isinstance(border_mode, integer_types):
             border_mode = (border_mode, border_mode)
         if isinstance(border_mode, tuple):
             pad_h, pad_w = map(int, border_mode)

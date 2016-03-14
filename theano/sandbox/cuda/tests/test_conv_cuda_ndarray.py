@@ -217,19 +217,29 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
     assert [(sh == 1) is br for
             sh, br in zip(cpuval.shape[:2], op.type.broadcastable[:2])]
 
-    if (t2 is not None):
+    if (t2 is not None and verbose > 0):
         if mode == 'valid':
             approx_fp = cpuval.size * ishape[1] * kshape[2] * kshape[3] * 2
         else:
             approx_fp = (ishape[0] * kshape[0] * kshape[1] * kshape[2] *
                          kshape[3] * ishape[2] * ishape[3] * 2)
         approx_fp /= 1e6
-        cpu_mflops = approx_fp / (t1 - t0)
-        gpu_mflops = approx_fp / (t3 - t2)
-        if verbose > 0:
-            print('%15s' % str(ishape), '%15s' % str(kshape), end=' ', file=sys.stdout)
-            print('%12.5f  %7.2f %7.2f %7.1f' % (approx_fp,
-                    cpu_mflops, gpu_mflops, (t1 - t0) / (t2 - t1)), file=sys.stdout)
+        if t1 - t0 != 0:
+            cpu_mflops = approx_fp / (t1 - t0)
+        else:
+            cpu_mflops = float('inf')
+        if t3 - t2 != 0:
+            gpu_mflops = approx_fp / (t3 - t2)
+        else:
+            gpu_mflops = float('inf')
+
+        if t2 - t1 != 0:
+            div = (t1 - t0) / (t2 - t1)
+        else:
+            div = float('inf')
+        print('%15s' % str(ishape), '%15s' % str(kshape), end=' ')
+        print('%12.5f  %7.2f %7.2f %7.1f' % (
+                approx_fp, cpu_mflops, gpu_mflops, div))
 
 
 def exec_conv(version, shapes, verbose, random, mode,

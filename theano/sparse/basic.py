@@ -14,6 +14,7 @@ import sys
 
 import numpy
 from numpy.lib.stride_tricks import as_strided
+from six import integer_types
 from six.moves import xrange
 import scipy.sparse
 
@@ -1402,7 +1403,7 @@ class GetItemScalar(gof.op.Op):
                 raise Exception("GetItemScalar called with a slice as index!")
 
             # in case of indexing using int instead of theano variable
-            elif isinstance(ind, int):
+            elif isinstance(ind, integer_types):
                 ind = theano.tensor.constant(ind)
                 input_op += [ind]
 

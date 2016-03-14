@@ -4,10 +4,12 @@ import os
 import logging
 _logger = logging.getLogger(__name__)
 
+from six import integer_types
+from six.moves import StringIO, reduce
+
 import theano
 from theano import Apply
 from theano import tensor
-from six.moves import StringIO, reduce
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
@@ -874,7 +876,7 @@ class BaseGpuCorrMM(GpuOp):
             if border_mode != "valid":
                 raise ValueError("border_mode must be 'valid' if pad is given")
             border_mode = pad
-        if isinstance(border_mode, int):
+        if isinstance(border_mode, integer_types):
             border_mode = (border_mode, border_mode)
         if isinstance(border_mode, tuple):
             pad_h, pad_w = map(int, border_mode)

@@ -5,11 +5,11 @@ import warnings
 import logging
 
 import numpy
+from six import integer_types
 from six.moves import xrange
 
 import theano
 from theano.compat import izip
-from six import integer_types
 from theano.gradient import DisconnectedType
 from theano import gof
 from theano.gof import Apply, Constant, hashtype, Op, Type, MethodNotDefined
@@ -513,7 +513,7 @@ class Subtensor(Op):
                         if start is None:
                             start = 0
                         if (p.stop is None or
-                            (isinstance(p.stop, (int, numpy.integer,
+                            (isinstance(p.stop, (integer_types, numpy.integer,
                                                  numpy.ndarray)) and
                              p.stop > start)):
                             broadcastable.append(True)
@@ -680,7 +680,7 @@ class Subtensor(Op):
             return pos[1]
 
         def init_entry(entry, depth=0):
-            if isinstance(entry, (numpy.integer, int)):
+            if isinstance(entry, (numpy.integer, integer_types)):
                 init_cmds.append(
                     "subtensor_spec[%i] = %i;" % (spec_pos(),
                                                   entry))
@@ -972,7 +972,7 @@ class SubtensorPrinter:
             sidxs = []
             inbrack_pstate = pstate.clone(precedence=-1000)
             for entry in idxs:
-                if isinstance(entry, int):
+                if isinstance(entry, integer_types):
                     sidxs.append(str(entry))
                 elif isinstance(entry, scal.Scalar):
                     sidxs.append(inbrack_pstate.pprinter.process(inputs.pop()))

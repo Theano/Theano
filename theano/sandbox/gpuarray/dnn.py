@@ -1,6 +1,8 @@
 import os
-import numpy
 import warnings
+
+import numpy
+from six import integer_types
 
 import theano
 from theano import Op, Apply, tensor, config, Variable
@@ -281,7 +283,7 @@ class GpuDnnConvDesc(COp):
                  precision="float32"):
         COp.__init__(self, ["conv_desc.c"], "APPLY_SPECIFIC(conv_desc)")
 
-        if isinstance(border_mode, int):
+        if isinstance(border_mode, integer_types):
             border_mode = (border_mode,) * len(subsample)
         if isinstance(border_mode, tuple):
             assert len(border_mode) == len(subsample)
