@@ -429,3 +429,15 @@ def test_hostfromgpu_shape_i():
     assert isinstance(topo[1].op, theano.compile.Shape_i)
     assert isinstance(topo[2].op, theano.tensor.opt.MakeVector)
     assert tuple(f(cv)) == (5, 4)
+
+
+def test_gpu_lock():
+    # Ensures that if the parent process is using the GPU,
+    # the child process cannot get a lock on it.
+    os.environ['THEANO_MAX_GPU'] = 0
+    pid = os.fork()
+    if pid == 0:
+        try:
+            import theano.sandbox.gpuarray as tga
+        except Exception as e:
+            assert e.__class__.__name__ == 'ImportError'
