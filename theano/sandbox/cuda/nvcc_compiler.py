@@ -4,7 +4,6 @@ import logging
 import os
 import subprocess
 import sys
-import warnings
 
 import numpy
 
@@ -248,7 +247,8 @@ class NVCC_compiler(Compiler):
             cppfile.write(src_code)
 
         lib_filename = os.path.join(location, '%s.%s' %
-                (module_name, get_lib_extension()))
+                                    (module_name,
+                                     get_lib_extension()))
 
         _logger.debug('Generating shared lib %s', lib_filename)
         # TODO: Why do these args cause failure on gtx285 that has 1.3
@@ -264,7 +264,7 @@ class NVCC_compiler(Compiler):
                 continue
             for pattern in ['-O', '-arch=', '-ccbin=', '-G', '-g', '-I',
                             '-L', '--fmad', '--ftz', '--maxrregcount',
-                            '--prec-div', '--prec-sqrt',  '--use_fast_math',
+                            '--prec-div', '--prec-sqrt', '--use_fast_math',
                             '-fmad', '-ftz', '-maxrregcount',
                             '-prec-div', '-prec-sqrt', '-use_fast_math',
                             '--use-local-env', '--cl-version=']:
@@ -307,7 +307,7 @@ class NVCC_compiler(Compiler):
         # https://wiki.debian.org/RpathIssue for details.
 
         if (not type(config.cuda).root.is_default and
-            os.path.exists(os.path.join(config.cuda.root, 'lib'))):
+                os.path.exists(os.path.join(config.cuda.root, 'lib'))):
 
             rpaths.append(os.path.join(config.cuda.root, 'lib'))
             if sys.platform != 'darwin':
@@ -337,7 +337,7 @@ class NVCC_compiler(Compiler):
                 indexof = cmd.index('-u')
                 cmd.pop(indexof)  # Remove -u
                 cmd.pop(indexof)  # Remove argument to -u
-            except ValueError as e:
+            except ValueError:
                 done = True
 
         # CUDA Toolkit v4.1 Known Issues:
@@ -354,8 +354,7 @@ class NVCC_compiler(Compiler):
         orig_dir = os.getcwd()
         try:
             os.chdir(location)
-            p = subprocess.Popen(
-                    cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             nvcc_stdout, nvcc_stderr = decode_iter(p.communicate()[:2])
         finally:
             os.chdir(orig_dir)
