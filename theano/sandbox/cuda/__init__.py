@@ -363,7 +363,7 @@ class DnnVersion(GpuOp):
         return [config.dnn.library_path]
 
     def c_compile_args(self):
-        return ['-Wl,-rpath,'+config.dnn.library_path]
+        return ['-Wl,-rpath,' + config.dnn.library_path]
 
     def c_support_code(self):
         return """

@@ -98,7 +98,7 @@ class DnnBase(GpuOp, COp):
         return [config.dnn.library_path]
 
     def c_compile_args(self):
-        return ['-Wl,-rpath,'+config.dnn.library_path]
+        return ['-Wl,-rpath,' + config.dnn.library_path]
 
 
 class GpuDnnConvDesc(GpuOp):
