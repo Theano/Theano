@@ -10,22 +10,32 @@ import warnings
 import numpy
 from six.moves import reduce, xrange
 
+from . import dnn
 import theano
 from theano import scalar as scal
 from theano import config, tensor, gof
 import theano.ifelse
-
+import theano.tensor.signal.pool
+import theano.tensor.nnet
+import theano.tensor.nnet.neighbours
+# Convolution
+from theano.tensor.nnet import conv
+from theano.tensor.nnet.ConvGrad3D import ConvGrad3D
+from theano.tensor.nnet.ConvTransp3D import ConvTransp3D
+# Pooling
+import theano.tensor.signal.pool as pool
 from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB, ProxyDB,
                         Optimizer, TopoOptimizer, toolbox)
 from theano.gof.opt import LocalMetaOptimizer
+from theano.sandbox.cuda.basic_ops import gpu_join, GpuJoin
 from theano.sandbox.cuda import as_cuda_ndarray_variable
 from theano.sandbox.cuda.basic_ops import (
     gpu_eye, gpu_contiguous,
     gpu_from_host, host_from_gpu, GpuFromHost, HostFromGpu,
     GpuContiguous,
     GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce,
-    GpuFlatten, gpu_flatten,
+    gpu_flatten,
     GpuSubtensor, GpuAdvancedSubtensor1,
     GpuAdvancedIncSubtensor1, GpuAdvancedIncSubtensor1_dev20,
     GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape, GpuSplit, GpuAllocEmpty)
@@ -137,8 +147,6 @@ register_opt(name='local_gpu_reshape_chain')(
 # This is a partial list of CPU ops that can be in some circonstance
 # moved to the GPU. This list is used by an optimization.
 # Hopefully, we can keep this list up to date.
-import theano.tensor.signal.pool
-import theano.tensor.nnet.neighbours
 cpu_ops_moved_to_gpu = [
     tensor.blas.Dot22, tensor.blas.Dot22Scalar, tensor.blas.Gemm,
     tensor.blas.Gemv, tensor.blas.Ger, tensor.nnet.conv.ConvOp,
@@ -630,7 +638,7 @@ def local_gpu_batched_dot(node):
         if y.ndim == 2:
             y_ = y_.dimshuffle(0, 1, "x")
         z = GpuBatchedDot()(as_cuda_ndarray_variable(x_),
-                           as_cuda_ndarray_variable(y_))
+                            as_cuda_ndarray_variable(y_))
         # unpad z shape
         if x.ndim == 2:
             z = z.dimshuffle(0, *range(2, z.ndim))
@@ -850,8 +858,8 @@ def local_gpu_careduce(node):
             if x.type == node.outputs[0].type:
                 return [x]
             elif (all([c != "output" and isinstance(c.op, GpuFromHost)
-                      for c, i in node.outputs[0].clients])
-                  and x.owner and x.owner.op.__class__ in
+                      for c, i in node.outputs[0].clients]) and
+                  x.owner and x.owner.op.__class__ in
                   cpu_ops_moved_to_gpu):
                 # It is not always good to transfer the reduction to
                 # the GPU when the clients are on the GPU but not the
@@ -970,7 +978,7 @@ def local_gpu_elemwise_careduce(node):
         # automatically add more case, as some like trigonometic
         # operation with some reduction pattern will probably result
         # to slow down.
-        isinstance(node.inputs[0].owner.op.scalar_op, scal.basic.Sqr)):
+       isinstance(node.inputs[0].owner.op.scalar_op, scal.basic.Sqr)):
 
         op = node.op
         inp = node.inputs[0].owner.inputs[0]
@@ -1023,7 +1031,7 @@ def local_gpu_flatten(node):
             return [gpu_flatten(host_input.owner.inputs[0], outdim)(
                 as_cuda_ndarray_variable(host_input.owner.inputs[0]))]
     if isinstance(node.op, tensor.Flatten):
-        x, shp= node.inputs
+        x, shp = node.inputs
         outdim = node.op.outdim
         if x.owner and isinstance(x.owner.op, HostFromGpu):
             gpu_x, = x.owner.inputs
@@ -1052,13 +1060,13 @@ def local_gpu_subtensor(node):
         x = node.inputs[0]
         if (x.owner and
             isinstance(x.owner.op, HostFromGpu) and
-            x.dtype == "float32"):
+           x.dtype == "float32"):
 
             gpu_x = x.owner.inputs[0]
             if (gpu_x.owner and
                 isinstance(gpu_x.owner.op, GpuFromHost) and
                 # And it is a shared var or an input of the graph.
-                not gpu_x.owner.inputs[0].owner):
+               not gpu_x.owner.inputs[0].owner):
 
                 if len(x.clients) == 1:
                     if any([n == 'output' or isinstance(n.op, GpuOp)
@@ -1121,7 +1129,7 @@ def local_gpu_advanced_incsubtensor1(node):
             compute_capability = device_properties(active_device_no)['major']
             if (compute_capability < 2 or
                 x.ndim != 2 or
-                y.ndim != 2):
+               y.ndim != 2):
 
                 gpu_op = GpuAdvancedIncSubtensor1(
                     set_instead_of_inc=set_instead_of_inc)
@@ -1164,7 +1172,7 @@ def local_gpu_advanced_incsubtensor1(node):
             compute_capability = device_properties(active_device_no)['major']
             if (compute_capability < 2 or
                 x.ndim != 2 or
-                y.ndim != 2):
+               y.ndim != 2):
                 gpu_op = GpuAdvancedIncSubtensor1(
                     set_instead_of_inc=set_instead_of_inc)
             else:
@@ -1203,8 +1211,8 @@ def local_gpu_incsubtensor(node):
     # Incrementing a float32 x results in a float32
     # output even if y is float64, so we can downcast
     # y to put it on GPU
-    elif type(node.op) == tensor.IncSubtensor and \
-       node.inputs[0].dtype == "float32":
+    elif (type(node.op) == tensor.IncSubtensor and
+          node.inputs[0].dtype == "float32"):
         x, y = node.inputs[0:2]
         assert isinstance(x.type, tensor.TensorType)
         assert isinstance(y.type, tensor.TensorType)
@@ -1346,8 +1354,6 @@ def cast(x, dtype):
     cast_op = theano.tensor.Elemwise(scal.Identity(scal.specific_out(stype)))
     return cast_op(x)
 
-import theano.tensor.nnet
-
 
 @register_opt()
 @local_optimizer([tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias])
@@ -1419,10 +1425,6 @@ def local_gpu_softmax_with_bias(node):
     return False
 
 
-# Convolution
-from theano.tensor.nnet import conv
-
-
 def _gpu_conv_to_fftconv(node):
     # shared helper function for local_conv_fft_valid and local_conv_fft_full.
     # we import conv2d_fft locally to avoid pycuda warnings
@@ -1430,7 +1432,7 @@ def _gpu_conv_to_fftconv(node):
     kwargs = {'border_mode': node.op.border_mode}
     if (node.op.imshp is not None and
         node.op.imshp[-1] is not None and
-        node.op.imshp[-1] % 2 == 1):
+       node.op.imshp[-1] % 2 == 1):
 
         kwargs['pad_last_dim'] = True
     # If the user supplied the full nonsymbolic image_shape and
@@ -1461,7 +1463,7 @@ def local_conv_fft_valid(node):
     if isinstance(node.op, GpuConv):
         if (node.op.border_mode == 'valid' and
             node.op.subsample == (1, 1) and
-            node.op.fft_opt):
+           node.op.fft_opt):
 
             return [_gpu_conv_to_fftconv(node)]
         return False
@@ -1472,7 +1474,7 @@ def local_conv_fft_full(node):
     if isinstance(node.op, GpuConv):
         if (node.op.border_mode == 'full' and
             node.op.subsample == (1, 1) and
-            node.op.fft_opt):
+           node.op.fft_opt):
 
             return [_gpu_conv_to_fftconv(node)]
         return
@@ -1586,7 +1588,7 @@ def local_gpu_conv(node):
 @local_optimizer([GpuConv])
 def local_conv_gemm(node):
     if (isinstance(node.op, GpuConv) and
-        node.op.border_mode in ['full', 'valid']):
+       node.op.border_mode in ['full', 'valid']):
 
         img, kern = node.inputs
         border_mode = node.op.border_mode
@@ -1659,7 +1661,6 @@ conv_groupopt.register('conv_fft_full', local_conv_fft_full, 10,
                        'conv_fft')
 # cuDNN is the second, but only registered if cuDNN is available.
 # It can be disabled by excluding 'conv_dnn' or 'cudnn'.
-from . import dnn
 # We can't check at import if dnn is available, so we must always
 # register it. This do not cause problem as if it is not avail, the
 # opt will do nothing.
@@ -1710,7 +1711,7 @@ class ConvMetaOptimizer(LocalCudaMetaOptimizer):
         for (var, shape) in zip(vars, shapes):
             if ((var in inputs) and
                 (shape is not None) and
-                not any(s is None for s in shape)):
+               not any(s is None for s in shape)):
 
                 result[var] = theano.shared(
                     # TODO: Use var.type.filter when cuda_ndarray.filter
@@ -1763,8 +1764,6 @@ def local_conv3d_fft(node):
 
 gpu_optimizer.register("conv3d_fft", local_conv3d_fft)
 
-from theano.tensor.nnet.ConvGrad3D import ConvGrad3D
-
 
 @local_optimizer([ConvGrad3D])
 def local_convgrad3d_fft(node):
@@ -1775,7 +1774,7 @@ def local_convgrad3d_fft(node):
     except tensor.NotScalarConstantError:
         return False
     if (isinstance(node.op, ConvGrad3D) and
-        (stride_x, stride_y, stride_z) == (1, 1, 1)):
+       (stride_x, stride_y, stride_z) == (1, 1, 1)):
 
         # we import conv3d_fft locally to avoid pycuda warnings
         from theano.sandbox.cuda.fftconv import conv3d_fft
@@ -1794,8 +1793,6 @@ def local_convgrad3d_fft(node):
 
 gpu_optimizer.register("convgrad3d_fft", local_convgrad3d_fft)
 
-from theano.tensor.nnet.ConvTransp3D import ConvTransp3D
-
 
 @local_optimizer([ConvTransp3D])
 def local_convtransp3d_fft(node):
@@ -1806,7 +1803,7 @@ def local_convtransp3d_fft(node):
     except tensor.NotScalarConstantError:
         return False
     if (isinstance(node.op, ConvTransp3D) and
-        (stride_x, stride_y, stride_z) == (1, 1, 1)):
+       (stride_x, stride_y, stride_z) == (1, 1, 1)):
         # we import conv3d_fft locally to avoid pycuda warnings
         from theano.sandbox.cuda.fftconv import conv3d_fft
         # Shuffle filters from (oc, 0, 1, t, ic) to (ic, oc, 0, 1, t)
@@ -1894,15 +1891,11 @@ def local_convtransp3d_gemm(node):
 gpu_optimizer.register("convtransp3d_gemm", local_convtransp3d_gemm)
 
 
-# Pooling
-import theano.tensor.signal.pool as pool
-
-
 @register_opt()
 @local_optimizer([pool.Pool])
 def local_gpu_downsample_factor_max(node):
-    if (isinstance(node.op, pool.Pool)
-        and node.op.ds == node.op.st):
+    if (isinstance(node.op, pool.Pool) and
+       node.op.ds == node.op.st):
 
         assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding',
                                      'mode')
@@ -1918,13 +1911,13 @@ def local_gpu_downsample_factor_max(node):
 @local_optimizer([pool.MaxPoolGrad])
 def local_gpu_downsample_factor_max_grad(node):
     if (isinstance(node.op, pool.MaxPoolGrad) and
-        node.op.ds == node.op.st):
+       node.op.ds == node.op.st):
 
         assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding',
                                      'mode')
         if (node.op.padding != (0, 0) or
             node.op.mode != 'max' or
-            node.op.st != node.op.ds):
+           node.op.st != node.op.ds):
 
             return
         x, z, gz = node.inputs
@@ -1951,9 +1944,6 @@ def local_gpu_downsample_factor_max_grad_grad(node):
             return [host_from_gpu(op(x.owner.inputs[0],
                                      as_cuda_ndarray_variable(z),
                                      as_cuda_ndarray_variable(gx)))]
-
-
-from theano.sandbox.cuda.basic_ops import gpu_join, GpuJoin
 
 
 @register_opt()
@@ -2251,7 +2241,7 @@ def local_gpualloc_memset_0(node):
         inp = node.inputs[0]
         if (isinstance(inp, CudaNdarrayConstant) and
             inp.data.size == 1 and
-            (numpy.asarray(inp.data) == 0).all()):
+           (numpy.asarray(inp.data) == 0).all()):
 
             new_out = GpuAlloc(memset_0=True)(*node.inputs)
             old_bcast = node.outputs[0].type.broadcastable
@@ -2291,7 +2281,7 @@ def local_gpu_eye(node):
         host_input = node.inputs[0]
         if (host_input.owner and
             isinstance(host_input.owner.op, tensor.Eye) and
-            host_input.owner.op.dtype == "float32"):
+           host_input.owner.op.dtype == "float32"):
             if tensor.extract_constant(host_input.owner.inputs[2]) != 0:
                 return
             return [gpu_eye(*host_input.owner.inputs)]
@@ -2306,7 +2296,7 @@ def local_gpu_eye(node):
 
 def safe_to_gpu(x):
     if (isinstance(x.type, tensor.TensorType) and
-        x.type.dtype == 'float32'):
+       x.type.dtype == 'float32'):
 
         return as_cuda_ndarray_variable(x)
     else:
@@ -2361,7 +2351,7 @@ def gpu_reconstruct_graph(inputs, outputs, tag=None):
 
 def tensor_to_cuda(x):
     if (isinstance(x.type, tensor.TensorType) and
-        x.type.dtype == 'float32'):
+       x.type.dtype == 'float32'):
 
         y = CudaNdarrayType(broadcastable=x.type.broadcastable)()
         if x.name:
@@ -2421,7 +2411,7 @@ def gpuScanOptimization(node):
         if (host_input.owner and
             isinstance(host_input.owner.op, scan_op.Scan) and
             not host_input.owner.op.info['gpu'] and
-            len(host_input.owner.outputs) == 1):
+           len(host_input.owner.outputs) == 1):
 
             # Note that we are not doing the right thing here !!
             # This is because the local optimizer expects only one
@@ -2474,8 +2464,8 @@ def gpuScanOptimization(node):
             return _outputs
 
     # scan(host_from_gpu) -> host_from_gpu(GPUscan)
-    if (type(node.op) == scan_op.Scan
-        and not node.op.info['gpu']):
+    if (type(node.op) == scan_op.Scan and
+       not node.op.info['gpu']):
 
         if any([(i.owner and isinstance(i.owner.op, HostFromGpu))
                 for i in node.inputs]):
@@ -2773,8 +2763,8 @@ def local_abstractconv_gemm(node):
         # need to dimshuffle the kernel for full convolution
         kern = kern.dimshuffle(1, 0, 2, 3)
         # call GpuCorrMM_gradInputs
-        rval = GpuCorrMM_gradInputs('valid', subsample)(
-                gpu_contiguous(kern), gpu_contiguous(img))
+        rval = GpuCorrMM_gradInputs('valid', subsample)(gpu_contiguous(kern),
+                                                        gpu_contiguous(img))
     else:
         # need to flip the kernel if necessary
         if node.op.filter_flip:
@@ -2793,7 +2783,7 @@ def local_abstractconv_gemm(node):
             (None not in node.op.imshp[-2:]) and
             (node.op.kshp is not None) and
             (None not in node.op.kshp) and
-             border_mode != "half"):
+           border_mode != "half"):
             # we know the kernel and output size
             prod1 = node.op.kshp[0] * node.op.kshp[1]
             prod2 = ((node.op.imshp[-2] - node.op.kshp[0] + 1) *
