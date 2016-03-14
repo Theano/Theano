@@ -4,13 +4,13 @@ import numpy as np
 import theano
 import theano.tensor as T
 
+from theano.misc.pycuda_init import pycuda_available
 from theano.sandbox.cuda import cuda_available, GpuOp
 from theano.ifelse import ifelse
 
 if cuda_available:
     from theano.sandbox.cuda import (basic_ops, CudaNdarrayType,
                                      CudaNdarray)
-from theano.misc.pycuda_init import pycuda_available
 if pycuda_available:
     import pycuda.gpuarray
 
@@ -363,7 +363,7 @@ def mult_and_reduce(input_fft_v, filters_fft_v, input_shape=None,
 
     Parameters
     ----------
-    input_fft_v 
+    input_fft_v
         It's (b, ic, i0, i1//2 + 1, 2).
     filters_fft_v
         It's (oc, ic, i0, i1//2 + 1, 2).
@@ -447,7 +447,7 @@ def conv2d_fft(input, filters, image_shape=None, filter_shape=None,
             o1 = i1 + 1
             input_padded = T.zeros((b, ic, o0, o1), dtype='float32')
             input_padded = T.set_subtensor(input_padded[:, :, :i0, :i1],
-                                       input)
+                                           input)
         else:
             o1 = i1
             input_padded = input
@@ -522,9 +522,9 @@ def conv2d_fft(input, filters, image_shape=None, filter_shape=None,
     # special way because we specify explicitly here
     # how much values are expected.
     if border_mode == 'valid':
-        output = output_circ[:, :, (f0-1):(f0-1 + i0-f0+1), (f1-1):(f1-1 + i1-f1+1)]
+        output = output_circ[:, :, (f0 - 1):(f0 - 1 + i0 - f0 + 1), (f1 - 1):(f1 - 1 + i1 - f1 + 1)]
     elif border_mode == 'full':
-        output = output_circ[:, :, (f0-1):(f0-1 + i0+f0-1), (f1-1):(f1-1 + i1+f1-1)]
+        output = output_circ[:, :, (f0 - 1):(f0 - 1 + i0 + f0 - 1), (f1 - 1):(f1 - 1 + i1 + f1 - 1)]
     else:
         raise ValueError('invalid mode')
 
@@ -654,7 +654,7 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
     output_fft_s = mult_and_reduce(input_fft_v, filters_fft_v,
                                    input_shape=input_fft_v_shape,
                                    filter_shape=filters_fft_v_shape)
-    #output_fft_s = input_fft_v
+    # output_fft_s = input_fft_v
 
     # reshape for IFFT
     output_fft_flat = output_fft_s.reshape((b * oc, o0, o1, o2 // 2 + 1, 2))
@@ -672,12 +672,12 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
     # special way because we specify explicitly here
     # how much values are expected.
     if border_mode == 'valid':
-        output = output_circ[:, :, (f0-1):(f0-1 + i0-f0+1), (f1-1):(f1-1 + i1-f1+1), (f2-1):(f2-1 + i2-f2+1)]
+        output = output_circ[:, :, (f0 - 1):(f0 - 1 + i0 - f0 + 1), (f1 - 1):(f1 - 1 + i1 - f1 + 1), (f2 - 1):(f2 - 1 + i2 - f2 + 1)]
     elif border_mode == 'full':
-        output = output_circ[:, :, (f0-1):(f0-1 + i0+f0-1), (f1-1):(f1-1 + i1+f1-1), (f2-1):(f2-1 + i2+f2-1)]
+        output = output_circ[:, :, (f0 - 1):(f0 - 1 + i0 + f0 - 1), (f1 - 1):(f1 - 1 + i1 + f1 - 1), (f2 - 1):(f2 - 1 + i2 + f2 - 1)]
     else:
         raise ValueError('invalid mode')
-    #output = output_circ[:, :, :, :, :]
+    # output = output_circ[:, :, :, :, :]
 
     # Rescale manually. This is just a factor that comes in during the
     # trip through FFT and inverse FFT.
