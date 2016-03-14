@@ -10,7 +10,7 @@ except ImportError:
 from six.moves import xrange
 
 import theano
-from theano.tensor.nnet.conv3d2d import *
+from theano.tensor.nnet.conv3d2d import conv3d, get_diagonal_subtensor_view
 import theano.tests.unittest_tools as utt
 
 
@@ -56,11 +56,11 @@ def pyconv3d(signals, filters):
     Ns, Ts, C, Hs, Ws = signals.shape
     Nf, Tf, C, Hf, Wf = filters.shape
 
-    Tf2 = Tf//2
-    Hf2 = Hf//2
-    Wf2 = Wf//2
+    Tf2 = Tf // 2
+    Hf2 = Hf // 2
+    Wf2 = Wf // 2
 
-    rval = numpy.zeros((Ns, Ts-Tf+1, Nf, Hs-Hf+1, Ws-Wf+1))
+    rval = numpy.zeros((Ns, Ts - Tf + 1, Nf, Hs - Hf + 1, Ws - Wf + 1))
     for ns in xrange(Ns):
         for nf in xrange(Nf):
             for c in xrange(C):
@@ -70,7 +70,7 @@ def pyconv3d(signals, filters):
                 o_i = ndimage.convolve(s_i, f_i, mode='constant', cval=1)
                 o_i_sh0 = o_i.shape[0]
                 # print s_i.shape, f_i.shape, r_i.shape, o_i.shape
-                r_i += o_i[Tf2:o_i_sh0-Tf2, Hf2:-Hf2, Wf2:-Wf2]
+                r_i += o_i[Tf2:o_i_sh0 - Tf2, Hf2:-Hf2, Wf2:-Wf2]
     return rval
 
 def check_diagonal_subtensor_view_traces(fn):
@@ -83,10 +83,10 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
         raise SkipTest("conv3d2d tests need SciPy")
 
     Ns, Ts, C, Hs, Ws = 3, 10, 3, 32, 32
-    Nf, Tf, C, Hf, Wf = 32, 5 , 3, 5 , 5
+    Nf, Tf, C, Hf, Wf = 32, 5, 3, 5, 5
 
-    signals = numpy.arange(Ns*Ts*C*Hs*Ws).reshape(Ns, Ts, C, Hs, Ws).astype('float32')
-    filters = numpy.arange(Nf*Tf*C*Hf*Wf).reshape(Nf, Tf, C, Hf, Wf).astype('float32')
+    signals = numpy.arange(Ns * Ts * C * Hs * Ws).reshape(Ns, Ts, C, Hs, Ws).astype('float32')
+    filters = numpy.arange(Nf * Tf * C * Hf * Wf).reshape(Nf, Tf, C, Hf, Wf).astype('float32')
 
     t0 = time.time()
     pyres = pyconv3d(signals, filters)
@@ -94,7 +94,7 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
 
     s_signals = shared(signals)
     s_filters = shared(filters)
-    s_output = shared(signals*0)
+    s_output = shared(signals * 0)
 
     out = conv3d(s_signals, s_filters,
                  signals_shape=signals.shape,
@@ -128,12 +128,12 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
     filters = numpy.random.rand(Nf, Tf, C, Hf, Wf).astype('float32')
     utt.verify_grad(conv3d, [signals, filters], eps=1e-1, mode=mode)
 
-    ### Additional Test that covers the case of patched implementation for filter with Tf=1
+    # Additional Test that covers the case of patched implementation for filter with Tf=1
     Ns, Ts, C, Hs, Ws = 3, 10, 3, 32, 32
-    Nf, Tf, C, Hf, Wf = 32, 1 , 3, 5 , 5
+    Nf, Tf, C, Hf, Wf = 32, 1, 3, 5, 5
 
-    signals = numpy.arange(Ns*Ts*C*Hs*Ws).reshape(Ns, Ts, C, Hs, Ws).astype('float32')
-    filters = numpy.arange(Nf*Tf*C*Hf*Wf).reshape(Nf, Tf, C, Hf, Wf).astype('float32')
+    signals = numpy.arange(Ns * Ts * C * Hs * Ws).reshape(Ns, Ts, C, Hs, Ws).astype('float32')
+    filters = numpy.arange(Nf * Tf * C * Hf * Wf).reshape(Nf, Tf, C, Hf, Wf).astype('float32')
 
     t0 = time.time()
     pyres = pyconv3d(signals, filters)
@@ -141,7 +141,7 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
 
     s_signals = shared(signals)
     s_filters = shared(filters)
-    s_output = shared(signals*0)
+    s_output = shared(signals * 0)
 
     out = conv3d(s_signals, s_filters,
                  signals_shape=signals.shape,
