@@ -439,6 +439,9 @@ def test_gpu_lock():
     pid = os.fork()
     if pid == 0:
         try:
+<<<<<<< HEAD
             import theano.sandbox.gpuarray
+=======
+>>>>>>> Shifted GPU testing code to sandbox/cuda and sandbox/gpuarray
         except Exception as e:
             assert e.__class__.__name__ == 'ImportError'
