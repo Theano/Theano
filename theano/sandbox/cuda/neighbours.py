@@ -1,5 +1,5 @@
 # This is work in progress
-from theano import Op, Apply, tensor
+from theano import Apply, tensor
 from theano.gof import local_optimizer
 from theano.sandbox.cuda import cuda_available, GpuOp
 
