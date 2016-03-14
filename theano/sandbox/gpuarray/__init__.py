@@ -15,6 +15,16 @@ _logger = logging.getLogger(_logger_name)
 error = _logger.error
 info = _logger.info
 
+# Check if theano is being imported from a child process
+# If yes, raises error, refer issue #1064
+import os
+if 'THEANO_MAX_GPU' in os.environ:
+    if os.environ['THEANO_MAX_GPU'] == '0':
+        raise ImportError("Parent process holds lock on GPU."
+                          " Need to release it first")
+else:
+    os.environ['THEANO_MAX_GPU'] = '0'
+
 pygpu_activated = False
 try:
     import pygpu

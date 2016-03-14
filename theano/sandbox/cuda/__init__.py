@@ -19,6 +19,15 @@ from . import nvcc_compiler
 
 from theano.tensor.basic import register_transfer
 
+# Check if theano is being imported from a child process
+# If yes, raises error, refer issue #1064
+if 'THEANO_MAX_GPU' in os.environ:
+    if os.environ['THEANO_MAX_GPU'] == '0':
+        raise ImportError("Parent process holds lock on GPU."
+                          " Need to release it first")
+else:
+    os.environ['THEANO_MAX_GPU'] = '0'
+
 # ignore_newtrees is to speed the optimization as this is the pattern
 # we use for optimization. Otherwise, we can iterate 100s of time on
 # the graph and apply only a few optimizations each time.
