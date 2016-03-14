@@ -22,7 +22,7 @@ def test0():
 class BROKEN_ON_PURPOSE_Add(gof.Op):
 
     __props__ = ("py_offset",)
-    
+
     def __init__(self, py_offset):
         gof.Op.__init__(self)
         self.py_offset = py_offset
@@ -102,7 +102,7 @@ class WeirdBrokenOp(gof.Op):
     it should raise an error in DebugMode.
     """
     __props__ = ("behaviour", )
-    
+
     def __init__(self, behaviour):
         gof.Op.__init__(self)
         self.behaviour = behaviour
@@ -160,16 +160,16 @@ class WeirdBrokenOp(gof.Op):
 
         if self.behaviour == 'times2':
             behaviour = "     Dz[m * Sz] = 2 * Da[m * Sa]; "
-            #out[0] = a * 2
+            # out[0] = a * 2
         elif self.behaviour == 'times2_inplace':
-            #out[0] = a
-            #out[0] *= 2
+            # out[0] = a
+            # out[0] *= 2
             behaviour = "     Dz[m * Sz] = 2 * Da[m * Sa]; "
         elif self.behaviour == 'times1':
-            #out[0] = a * 1
+            # out[0] = a * 1
             behaviour = "     Dz[m * Sz] = Da[m * Sa]; "
         elif self.behaviour == 'times1_inplace':
-            #out[0] = a
+            # out[0] = a
             behaviour = ""
         else:
             raise ValueError(self.behaviour)
@@ -179,7 +179,7 @@ class WeirdBrokenOp(gof.Op):
         """
 
         total = ((z_code + prep_vars + behaviour + prep_vars2)
-                % dict(locals(), **sub))
+                 % dict(locals(), **sub))
         return total
 
 wb2i = WeirdBrokenOp('times2_inplace')
@@ -189,16 +189,16 @@ wb1 = WeirdBrokenOp('times1')
 
 
 def test_badthunkoutput():
-# Check if the c and python code is consistent.
+    # Check if the c and python code is consistent.
     a = theano.tensor.dvector()
     b = theano.tensor.dvector()
 
     f_good = theano.function([a, b],
-            off_by_half(a, b),
-            mode=debugmode.DebugMode(check_c_code=theano.config.cxx))
+                             off_by_half(a, b),
+                             mode=debugmode.DebugMode(check_c_code=theano.config.cxx))
     f_inconsistent = theano.function([a, b],
-            inconsistent(a, b),
-            mode=debugmode.DebugMode(check_c_code=theano.config.cxx))
+                                     inconsistent(a, b),
+                                     mode=debugmode.DebugMode(check_c_code=theano.config.cxx))
 
     # this should evaluate with no error
     f_good([1.0, 2.0, 3.0], [2, 3, 4])
@@ -229,7 +229,7 @@ def test_badoptimization():
     b = theano.tensor.dvector()
 
     f = theano.function([a, b], a + b,
-            mode=debugmode.DebugMode(optimizer=opt))
+                        mode=debugmode.DebugMode(optimizer=opt))
 
     try:
         f([1.0, 2.0, 3.0], [2, 3, 4],)
@@ -289,9 +289,9 @@ def test_stochasticoptimization():
 
     edb = gof.EquilibriumDB()
     edb.register(
-            'insert_broken_add_sometimes',
-            insert_broken_add_sometimes,
-            'all')
+        'insert_broken_add_sometimes',
+        insert_broken_add_sometimes,
+        'all')
     opt = edb.query('+all')
 
     a = theano.tensor.dvector()
@@ -299,11 +299,11 @@ def test_stochasticoptimization():
 
     try:
         theano.function([a, b],
-                theano.tensor.add(a, b),
-                mode=debugmode.DebugMode(
-                    optimizer=opt,
-                    check_c_code=True,
-                    stability_patience=max(2, config.DebugMode.patience)))
+                        theano.tensor.add(a, b),
+                        mode=debugmode.DebugMode(
+                            optimizer=opt,
+                            check_c_code=True,
+                            stability_patience=max(2, config.DebugMode.patience)))
     except debugmode.StochasticOrder:
         return  # TEST PASS
     assert False
@@ -314,7 +314,7 @@ def test_just_c_code():
         raise SkipTest("G++ not available, so we need to skip this test.")
     x = theano.tensor.dvector()
     f = theano.function([x], wb2(x),
-            mode=debugmode.DebugMode(check_py_code=False))
+                        mode=debugmode.DebugMode(check_py_code=False))
     assert numpy.all(f([1, 2]) == [2, 4])
 
 
@@ -346,7 +346,7 @@ def test_baddestroymap_c():
         raise SkipTest("G++ not available, so we need to skip this test.")
     x = theano.tensor.dvector()
     f = theano.function([x], wb2i(x),
-            mode=debugmode.DebugMode(check_py_code=False))
+                        mode=debugmode.DebugMode(check_py_code=False))
     try:
         assert numpy.all(f([1, 2]) == [2, 4])
         assert False  # failed to raise error
@@ -390,7 +390,7 @@ class Test_ViewMap(unittest.TestCase):
         x = theano.tensor.dvector()
         y = theano.tensor.dvector()
         f = theano.function([x, y], self.BadAddSlice()(x, y),
-                mode='DEBUG_MODE')
+                            mode='DEBUG_MODE')
         try:
             f([1, 2], [3, 4])
             assert False  # failed to raise error
@@ -414,7 +414,7 @@ class Test_ViewMap(unittest.TestCase):
             raise SkipTest("G++ not available, so we need to skip this test.")
         x = theano.tensor.dvector()
         f = theano.function([x], wb1i(x),
-                mode=debugmode.DebugMode(check_py_code=False))
+                            mode=debugmode.DebugMode(check_py_code=False))
         try:
             f([1, 2])
             assert False  # failed to raise error
@@ -525,7 +525,7 @@ class Test_ViewMap(unittest.TestCase):
         try:
             f([1, 2, 3, 4], [5, 6, 7, 8])
             assert False  # DebugMode should have caught the error
-        except debugmode.BadViewMap as e:
+        except debugmode.BadViewMap:
             # print e
             pass
 
@@ -533,7 +533,7 @@ class Test_ViewMap(unittest.TestCase):
         # pretending that it is aliased to both the outputs.
         # This unfairly disables any destructive operations on the
         # input, but guarantees correctness.
-        #custom_op.view_map = {0:[0], 1:[1]}
+        # custom_op.view_map = {0:[0], 1:[1]}
         # f([1,2,3,4],[5,6,7,8])
 
 
@@ -541,12 +541,12 @@ class Test_check_isfinite(unittest.TestCase):
     def setUp(self):
         self.old_ts = theano.tensor.TensorType.filter_checks_isfinite
         self.old_dm = theano.compile.mode.predefined_modes[
-                'DEBUG_MODE'].check_isfinite
+            'DEBUG_MODE'].check_isfinite
 
     def tearDown(self):
         theano.tensor.TensorType.filter_checks_isfinite = self.old_ts
         theano.compile.mode.predefined_modes[
-                'DEBUG_MODE'].check_isfinite = self.old_dm
+            'DEBUG_MODE'].check_isfinite = self.old_dm
 
     def test_check_isfinite(self):
         x = theano.tensor.vector()
@@ -561,29 +561,29 @@ class Test_check_isfinite(unittest.TestCase):
         # if not, DebugMode will check internally, and raise InvalidValueError
         # passing an invalid value as an input should trigger ValueError
         self.assertRaises(debugmode.InvalidValueError, f,
-                numpy.log([3, -4, 5]).astype(config.floatX))
+                          numpy.log([3, -4, 5]).astype(config.floatX))
         self.assertRaises(debugmode.InvalidValueError, f,
-                (numpy.asarray([0, 1.0, 0]) / 0).astype(config.floatX))
+                          (numpy.asarray([0, 1.0, 0]) / 0).astype(config.floatX))
         self.assertRaises(debugmode.InvalidValueError, f,
-                (numpy.asarray([1.0, 1.0, 1.0]) / 0).astype(config.floatX))
+                          (numpy.asarray([1.0, 1.0, 1.0]) / 0).astype(config.floatX))
 
         # generating an invalid value internally should trigger
         # InvalidValueError
         self.assertRaises(debugmode.InvalidValueError, g,
-                numpy.asarray([3, -4, 5], dtype=config.floatX))
+                          numpy.asarray([3, -4, 5], dtype=config.floatX))
 
         # this should disable the exception
         theano.tensor.TensorType.filter_checks_isfinite = False
         theano.compile.mode.predefined_modes[
-                'DEBUG_MODE'].check_isfinite = False
+            'DEBUG_MODE'].check_isfinite = False
         # insert several Inf
         f(numpy.asarray(numpy.asarray([1.0, 1.0, 1.0]) / 0,
-            dtype=config.floatX))
+                        dtype=config.floatX))
 
     def test_check_isfinite_disabled(self):
         x = theano.tensor.dvector()
         f = theano.function([x], (x + 2) * 5,
-                mode=debugmode.DebugMode(check_isfinite=False))
+                            mode=debugmode.DebugMode(check_isfinite=False))
 
         # nan should go through
         f(numpy.log([3, -4, 5]))
@@ -734,17 +734,17 @@ class Test_preallocated_output(unittest.TestCase):
 
         # Should work
         mode = debugmode.DebugMode(
-                check_preallocated_output=['c_contiguous'])
+            check_preallocated_output=['c_contiguous'])
 
         f = theano.function([a, b], out, mode=mode)
-        out_val = f(a_val, b_val)
+        f(a_val, b_val)
         # print 'out_val =', out_val
         # print out_val.strides
 
         # Should raise an Exception, since the output buffer is
         # used incorrectly.
         mode = debugmode.DebugMode(
-                check_preallocated_output=['f_contiguous'])
+            check_preallocated_output=['f_contiguous'])
 
         f = theano.function([a, b], out, mode=mode)
 
@@ -766,17 +766,17 @@ class Test_preallocated_output(unittest.TestCase):
 
         # Should work
         mode = debugmode.DebugMode(
-                check_preallocated_output=['c_contiguous'])
+            check_preallocated_output=['c_contiguous'])
 
         f = theano.function([a, b], out, mode=mode)
-        out_val = f(a_val, b_val)
+        f(a_val, b_val)
         # print 'out_val =', out_val
         # print out_val.strides
 
         # Should raise an Exception, since the output buffer is
         # used incorrectly.
         mode = debugmode.DebugMode(
-                check_preallocated_output=['f_contiguous'])
+            check_preallocated_output=['f_contiguous'])
 
         f = theano.function([a, b], out, mode=mode)
 

@@ -8,8 +8,9 @@ from theano.tensor import dmatrix, iscalar, lscalar, dmatrices
 from theano import tensor
 
 from theano.compile import In
-from theano.compile.sharedvalue import *
-from theano.compile.pfunc import *
+from theano.compile import pfunc
+from theano.compile import shared
+from theano.compile import config
 
 
 def data_of(s):
@@ -196,7 +197,7 @@ class Test_pfunc(unittest.TestCase):
         # For performance reasons, no check of the data is explicitly performed
         # (It might be OK to change this in the future.)
         self.assertRaises(TypeError, f,
-                [3], numpy.array([6], dtype='int16'), 1)
+                          [3], numpy.array([6], dtype='int16'), 1)
 
         # Value too big for a, silently ignored
         assert numpy.all(f([2 ** 20], numpy.ones(1, dtype='int8'), 1) == 2)
@@ -275,7 +276,7 @@ class Test_pfunc(unittest.TestCase):
         # For performance reasons, no check of the data is explicitly performed
         # (It might be OK to change this in the future.)
         self.assertRaises(TypeError, g,
-                [3], numpy.array([6], dtype='int16'), 0)
+                          [3], numpy.array([6], dtype='int16'), 0)
 
         # Value too big for b, raises TypeError
         self.assertRaises(TypeError, g, [3], [312], 0)
@@ -284,7 +285,7 @@ class Test_pfunc(unittest.TestCase):
         # Everything here should behave like with False
         assert numpy.all(h([3], [6], 0) == 9)
         self.assertRaises(TypeError, h,
-                [3], numpy.array([6], dtype='int16'), 0)
+                          [3], numpy.array([6], dtype='int16'), 0)
         self.assertRaises(TypeError, h, [3], [312], 0)
 
     def test_allow_downcast_floatX(self):
@@ -344,13 +345,13 @@ class Test_pfunc(unittest.TestCase):
         # the update_var has type matrix, and the update expression
         # is a broadcasted scalar, and that should be allowed.
         self.assertRaises(TypeError, theano.function, inputs=[], outputs=[],
-                updates={output_var: output_var.sum().dimshuffle('x', 'x')})
+                          updates={output_var: output_var.sum().dimshuffle('x', 'x')})
 
     def test_duplicate_updates(self):
         x, y = dmatrices('x', 'y')
         z = shared(numpy.ones((2, 3)))
         self.assertRaises(ValueError, theano.function, [x, y], [z],
-                updates=[(z, (z + x + y)), (z, (z - x))])
+                          updates=[(z, (z + x + y)), (z, (z - x))])
 
     def test_givens(self):
         x = shared(0)
@@ -366,7 +367,7 @@ class Test_pfunc(unittest.TestCase):
         z = tensor.ivector()
         c = z * y
         f = pfunc([y], (c + 7),
-                givens={z: theano._asarray([4, 4, 4], dtype='int32')})
+                  givens={z: theano._asarray([4, 4, 4], dtype='int32')})
         assert numpy.all(f([1, 1, 1]) == [11, 11, 11])
         assert x.get_value() == 0
 
@@ -433,7 +434,7 @@ class Test_pfunc(unittest.TestCase):
         self.assertRaises(TypeError, pfunc, [], [x], no_default_updates=(x))
         self.assertRaises(TypeError, pfunc, [], [x], no_default_updates=x)
         self.assertRaises(TypeError, pfunc, [], [x],
-                no_default_updates='canard')
+                          no_default_updates='canard')
 
         # Mix explicit updates and no_default_updates
         g1 = pfunc([], [x], updates=[(x, (x - 1))], no_default_updates=True)
@@ -617,7 +618,7 @@ class Test_pfunc(unittest.TestCase):
     def test_duplicate_inputs(self):
         x = theano.tensor.lscalar('x')
         self.assertRaises(theano.compile.UnusedInputError,
-                theano.function, [x, x, x], x)
+                          theano.function, [x, x, x], x)
 
     def test_update_same(self):
         # There was a bug in CVM, triggered when a shared variable
@@ -699,7 +700,7 @@ class Test_aliasing_rules(unittest.TestCase):
 
         # rule #2 reading back from theano-managed memory
         assert not numpy.may_share_memory(A.get_value(borrow=False),
-                data_of(A))
+                                          data_of(A))
 
     def test_sparse_input_aliasing_affecting_inplace_operations(self):
         ##
@@ -712,7 +713,7 @@ class Test_aliasing_rules(unittest.TestCase):
             pass
 
         from theano.sparse import enable_sparse
-        if enable_sparse == False:
+        if not enable_sparse:
             raise SkipTest('Optional package sparse disabled')
 
         from theano import sparse
@@ -761,8 +762,8 @@ class Test_aliasing_rules(unittest.TestCase):
         y = theano.tensor.dvector()
         m1 = theano.tensor.dmatrix()
         m2 = theano.tensor.dmatrix()
-        f = theano.function([theano.In(x,  mutable=True),
-                             theano.In(y,  mutable=True),
+        f = theano.function([theano.In(x, mutable=True),
+                             theano.In(y, mutable=True),
                              theano.In(m1, mutable=True),
                              theano.In(m2, mutable=True)],
                             theano.dot((x * 2), m1) + theano.dot((y * 3), m2))
@@ -810,15 +811,14 @@ class Test_aliasing_rules(unittest.TestCase):
         #   c does not share memory with a
 
         f = theano.function(
-                [theano.In(x,  mutable=True),
-                 theano.In(y,  mutable=True),
-                 theano.In(z,  mutable=True),
-                 theano.In(m1, mutable=True),
-                 theano.In(m2, mutable=True),
-                 theano.In(m3, mutable=True)],
-                (theano.dot((x * 2), m1)
-                    + theano.dot((y * 3), m2)
-                    + theano.dot((z * 4), m3)))
+            [theano.In(x, mutable=True),
+             theano.In(y, mutable=True),
+             theano.In(z, mutable=True),
+             theano.In(m1, mutable=True),
+             theano.In(m2, mutable=True),
+             theano.In(m3, mutable=True)],
+            (theano.dot((x * 2), m1) + theano.dot((y * 3), m2) +
+             theano.dot((z * 4), m3)))
 
         # Compute bogus values
         v = numpy.asarray([1, 2, 3, 4, 5], dtype='float64')
@@ -875,14 +875,14 @@ class Test_aliasing_rules(unittest.TestCase):
         assert not numpy.may_share_memory(R, data_of(A))
 
         f = pfunc([D], (DD * 4),
-                updates=[(A, (DD[:1] * 3)), (B, (DD[:1] * 2))])
+                  updates=[(A, (DD[:1] * 3)), (B, (DD[:1] * 2))])
         R = f(C)
         assert not numpy.may_share_memory(data_of(A), data_of(B))
         assert not numpy.may_share_memory(R, data_of(B))
         assert not numpy.may_share_memory(R, data_of(A))
 
         f = pfunc([D], (DD * 4),
-                updates=[(A, (DD[:1] * 3)), (B, (DD[:1] * 3))])
+                  updates=[(A, (DD[:1] * 3)), (B, (DD[:1] * 3))])
         R = f(C)
         assert not numpy.may_share_memory(data_of(A), data_of(B))
         assert not numpy.may_share_memory(R, data_of(B))

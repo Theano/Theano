@@ -3,27 +3,21 @@ import unittest
 
 import theano
 from theano.tensor import Tensor, TensorType
-from theano.compile.sharedvalue import *
+from theano.compile.sharedvalue import shared
+from theano.compile.sharedvalue import SharedVariable
+from theano.compile.sharedvalue import generic
 
 
 class Test_SharedVariable(unittest.TestCase):
 
     def test_ctors(self):
 
-        if 0:
-            # when using an implementation that handles scalars with
-            # Scalar type
-            assert shared(7).type == Scalar('int64')
-            assert shared(7.0).type == Scalar('float64')
-            assert shared(7, dtype='float64').type == Scalar('float64')
-
+        if theano.configdefaults.python_int_bitwidth() == 32:
+            assert shared(7).type == theano.tensor.iscalar, shared(7).type
         else:
-            if theano.configdefaults.python_int_bitwidth() == 32:
-                assert shared(7).type == theano.tensor.iscalar, shared(7).type
-            else:
-                assert shared(7).type == theano.tensor.lscalar, shared(7).type
-            assert shared(7.0).type == theano.tensor.dscalar
-            assert shared(numpy.float32(7)).type == theano.tensor.fscalar
+            assert shared(7).type == theano.tensor.lscalar, shared(7).type
+        assert shared(7.0).type == theano.tensor.dscalar
+        assert shared(numpy.float32(7)).type == theano.tensor.fscalar
 
         # test tensor constructor
         b = shared(numpy.zeros((5, 5), dtype='int32'))
@@ -31,8 +25,7 @@ class Test_SharedVariable(unittest.TestCase):
         b = shared(numpy.random.rand(4, 5))
         assert b.type == TensorType('float64', broadcastable=[False, False])
         b = shared(numpy.random.rand(5, 1, 2))
-        assert b.type == TensorType('float64',
-                broadcastable=[False, False, False])
+        assert b.type == TensorType('float64', broadcastable=[False, False, False])
 
         assert shared([]).type == generic
 
@@ -56,35 +49,35 @@ class Test_SharedVariable(unittest.TestCase):
         # here the value is perfect, and we're not strict about it,
         # so creation should work
         SharedVariable(
-                name='u',
-                type=Tensor(broadcastable=[False], dtype='float64'),
-                value=numpy.asarray([1., 2.]),
-                strict=False)
+            name='u',
+            type=Tensor(broadcastable=[False], dtype='float64'),
+            value=numpy.asarray([1., 2.]),
+            strict=False)
 
         # here the value is castable, and we're not strict about it,
         # so creation should work
         SharedVariable(
-                name='u',
-                type=Tensor(broadcastable=[False], dtype='float64'),
-                value=[1., 2.],
-                strict=False)
+            name='u',
+            type=Tensor(broadcastable=[False], dtype='float64'),
+            value=[1., 2.],
+            strict=False)
 
         # here the value is castable, and we're not strict about it,
         # so creation should work
         SharedVariable(
-                name='u',
-                type=Tensor(broadcastable=[False], dtype='float64'),
-                value=[1, 2],  # different dtype and not a numpy array
-                strict=False)
+            name='u',
+            type=Tensor(broadcastable=[False], dtype='float64'),
+            value=[1, 2],  # different dtype and not a numpy array
+            strict=False)
 
         # here the value is not castable, and we're not strict about it,
         # this is beyond strictness, it must fail
         try:
             SharedVariable(
-                    name='u',
-                    type=Tensor(broadcastable=[False], dtype='float64'),
-                    value=dict(),  # not an array by any stretch
-                    strict=False)
+                name='u',
+                type=Tensor(broadcastable=[False], dtype='float64'),
+                value=dict(),  # not an array by any stretch
+                strict=False)
             assert 0
         except TypeError:
             pass
@@ -94,10 +87,10 @@ class Test_SharedVariable(unittest.TestCase):
         # here the value is perfect, and we're not strict about it,
         # so creation should work
         u = SharedVariable(
-                name='u',
-                type=Tensor(broadcastable=[False], dtype='float64'),
-                value=numpy.asarray([1., 2.]),
-                strict=False)
+            name='u',
+            type=Tensor(broadcastable=[False], dtype='float64'),
+            value=numpy.asarray([1., 2.]),
+            strict=False)
 
         # check that assignments to value are cast properly
         u.set_value([3, 4])
@@ -298,7 +291,7 @@ class Test_SharedVariable(unittest.TestCase):
 #        f(b,[8])
 
         b = shared(numpy.asarray([7.234], dtype=theano.config.floatX),
-                allow_downcast=True)
+                   allow_downcast=True)
         assert b.dtype == theano.config.floatX
         f(b, [8])
         assert b.get_value() == 8

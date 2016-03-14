@@ -4,7 +4,6 @@ from theano import config, shared
 
 from theano.compile import function
 
-from theano import tensor
 from theano import tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
 
@@ -24,8 +23,8 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
 
         fn = function([x, y, z], f)
         xv = numpy.ones((2, 2), dtype=config.floatX)
-        yv = numpy.ones((2, 2), dtype=config.floatX)*3
-        zv = numpy.ones((2, 2), dtype=config.floatX)*5
+        yv = numpy.ones((2, 2), dtype=config.floatX) * 3
+        zv = numpy.ones((2, 2), dtype=config.floatX) * 5
         # print function, function.__module__
         # print fn.maker.fgraph.toposort()
         fn(xv, yv, zv)
@@ -39,8 +38,8 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         f = op(x, op(y, z))
         fn = function([x, y, z], f)
         xv = numpy.ones((2, 3), dtype=config.floatX)
-        yv = numpy.ones((3, 4), dtype=config.floatX)*3
-        zv = numpy.ones((4, 5), dtype=config.floatX)*5
+        yv = numpy.ones((3, 4), dtype=config.floatX) * 3
+        zv = numpy.ones((4, 5), dtype=config.floatX) * 5
         res = fn(xv, yv, zv)
         assert res.shape == (2, 5)
         assert numpy.all(180.0 == res)
@@ -56,8 +55,8 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         f = f - T.grad(T.sum(f), y)
         fn = function([x, y, z], f)
         xv = numpy.ones((2, 2), dtype=config.floatX)
-        yv = numpy.ones((2, 2), dtype=config.floatX)*3
-        zv = numpy.ones((2, 2), dtype=config.floatX)*5
+        yv = numpy.ones((2, 2), dtype=config.floatX) * 3
+        zv = numpy.ones((2, 2), dtype=config.floatX) * 5
         assert numpy.all(11.0 == fn(xv, yv, zv))
 
     def test_grad_grad(self):
@@ -69,8 +68,8 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         f = f - T.grad(T.sum(f), y)
         fn = function([x, y, z], f)
         xv = numpy.ones((2, 2), dtype=config.floatX)
-        yv = numpy.ones((2, 2), dtype=config.floatX)*3
-        zv = numpy.ones((2, 2), dtype=config.floatX)*5
+        yv = numpy.ones((2, 2), dtype=config.floatX) * 3
+        zv = numpy.ones((2, 2), dtype=config.floatX) * 5
         assert numpy.allclose(6.0, fn(xv, yv, zv))
 
     def test_shared(self):
@@ -83,8 +82,8 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
 
         fn = function([x, y, z], f)
         xv = numpy.ones((2, 2), dtype=config.floatX)
-        yv = numpy.ones((2, 2), dtype=config.floatX)*3
-        zv = numpy.ones((2, 2), dtype=config.floatX)*5
+        yv = numpy.ones((2, 2), dtype=config.floatX) * 3
+        zv = numpy.ones((2, 2), dtype=config.floatX) * 5
         # print function, function.__module__
         # print fn.maker.fgraph.toposort()
         assert numpy.allclose(8.0, fn(xv, yv, zv))
@@ -109,14 +108,14 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         fn = function([x, y, z], f)
         assert numpy.allclose(15.0 + s.get_value(),
                               fn(xv, yv, zv))
-    
+
     def test_connection_pattern(self):
-        # Basic case 
+        # Basic case
         x, y, z = T.matrices('xyz')
         out1 = x * y
         out2 = y * z
 
-        op1 = OpFromGraph([x ,y, z], [out1, out2])
+        op1 = OpFromGraph([x, y, z], [out1, out2])
         results = op1.connection_pattern(None)
         expect_result = [[True, False],
                          [True, True],
@@ -124,7 +123,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         assert results == expect_result
 
         # Graph with ops that don't have a 'full' connection pattern
-        # and with ops that have multiple outputs 
+        # and with ops that have multiple outputs
         m, n, p, q = T.matrices('mnpq')
         o1, o2 = op1(m, n, p)
         out1, out2 = op1(o1, q, o2)
@@ -139,7 +138,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
 
         # Inner graph where some computation doesn't rely on explicit inputs
         srng = RandomStreams(seed=234)
-        rv_u = srng.uniform((2,2))
+        rv_u = srng.uniform((2, 2))
         x, y = T.matrices('xy')
         out1 = x + rv_u
         out2 = y + 3
@@ -155,14 +154,14 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
     def test_infer_shape(self):
         x = T.matrix('x')
         y = T.matrix('y')
-        o1 = x+y
-        o2 = x*y
-        op_graph = OpFromGraph([x,y], [o1,o2])
+        o1 = x + y
+        o2 = x * y
+        op_graph = OpFromGraph([x, y], [o1, o2])
 
         q = T.matrix('q')
         p = T.matrix('p')
-        self._compile_and_check([q,p],
-                                op_graph(q,p),
-                                [numpy.ones([3,4], dtype=config.floatX),
-                                 numpy.ones([3,4], dtype=config.floatX)],
+        self._compile_and_check([q, p],
+                                op_graph(q, p),
+                                [numpy.ones([3, 4], dtype=config.floatX),
+                                 numpy.ones([3, 4], dtype=config.floatX)],
                                 OpFromGraph)

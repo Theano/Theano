@@ -1,4 +1,5 @@
-import numpy, theano, unittest
+import numpy
+import unittest
 
 from theano.compile.pfunc import pfunc
 from theano.compile.sharedvalue import shared
@@ -9,9 +10,9 @@ from theano.tensor.nnet import sigmoid
 class NNet(object):
 
     def __init__(self,
-            input=tensor.dvector('input'),
-            target=tensor.dvector('target'),
-            n_input=1, n_hidden=1, n_output=1, lr=1e-3, **kw):
+                 input=tensor.dvector('input'),
+                 target=tensor.dvector('target'),
+                 n_input=1, n_hidden=1, n_output=1, lr=1e-3, **kw):
         super(NNet, self).__init__(**kw)
 
         self.input = input
@@ -26,15 +27,15 @@ class NNet(object):
         self.cost = tensor.sum((self.output - self.target)**2)
 
         self.sgd_updates = {
-                    self.w1: self.w1 - self.lr * tensor.grad(self.cost, self.w1),
-                    self.w2: self.w2 - self.lr * tensor.grad(self.cost, self.w2)}
+            self.w1: self.w1 - self.lr * tensor.grad(self.cost, self.w1),
+            self.w2: self.w2 - self.lr * tensor.grad(self.cost, self.w2)}
 
         self.sgd_step = pfunc(
-                params=[self.input, self.target],
-                outputs=[self.output, self.cost],
-                updates=self.sgd_updates)
+            params=[self.input, self.target],
+            outputs=[self.output, self.cost],
+            updates=self.sgd_updates)
 
-        self.compute_output = pfunc([self.input],  self.output)
+        self.compute_output = pfunc([self.input], self.output)
 
         self.output_from_hidden = pfunc([self.hidden], self.output)
 
@@ -56,5 +57,5 @@ class TestNnet(unittest.TestCase):
             # print 'Mean cost at epoch %s: %s' % (epoch, mean_cost)
         self.assertTrue(abs(mean_cost - 0.20588975452) < 1e-6)
         # Just call functions to make sure they do not crash.
-        out = nnet.compute_output(input)
-        out = nnet.output_from_hidden(numpy.ones(10))
+        nnet.compute_output(input)
+        nnet.output_from_hidden(numpy.ones(10))
