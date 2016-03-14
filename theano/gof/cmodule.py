@@ -1787,6 +1787,28 @@ class Compiler(object):
                                          flags=flag_list, try_run=try_run,
                                          output=output, compiler=compiler)
 
+def try_march_flag(flags):
+    import textwrap
+    test_code = textwrap.dedent("""\
+            #include <cmath>
+            int main(int argc, char** argv)
+            {
+                float Nx = 5.0;
+                int Sx = 25.0;
+                double r = Nx + sqrt(Sx);
+                if ((r - 10.) > 1e-6 || (r - 10.) < -1e-6)
+                {
+                    return -1;
+                }
+                return 0;
+            }
+            """)
+    cflags =  flags + ['-L' + d for d in theano.gof.cmodule.std_lib_dirs()]
+    res = GCC_compiler.try_compile_tmp(
+        test_code, tmp_prefix='try_blas_',
+        flags=cflags, try_run=True)
+    return res
+
 
 class GCC_compiler(Compiler):
     # The equivalent flags of --march=native used by g++.
@@ -2003,6 +2025,21 @@ class GCC_compiler(Compiler):
         # Add the detected -march=native equivalent flags
         if GCC_compiler.march_flags:
             cxxflags.extend(GCC_compiler.march_flags)
+
+        # Find working march flag:
+        verbose = True
+        march_flags_to_try = [cxxflags[0], '-march=core2', '-march=corei7', '-march=corei7-avx']
+        for march_flag in march_flags_to_try:
+            print 'Trying march {}'.format(march_flag)
+            cxxflags_test = cxxflags[:]
+            cxxflags_test[0] = march_flag
+            result = try_march_flag(cxxflags_test)
+            if result[0] and result[1]:
+                print ' -- march {} worked'.format(march_flag)
+                cxxflags[0] = march_flag
+                break
+        if not result[0] or not result[1]:
+            sys.error('Could not find a working march')
 
         # NumPy 1.7 Deprecate the old API. I updated most of the places
         # to use the new API, but not everywhere. When finished, enable
