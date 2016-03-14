@@ -55,7 +55,7 @@ def is_nvcc_available():
             return False
 
 
-rpath_defaults = [config.dnn.library_path]
+rpath_defaults = []
 
 
 def add_standard_rpath(rpath):
