@@ -162,7 +162,6 @@ class TestConv3D(utt.InferShapeTester):
         self.reconsObj = T.sum(sqr)
         self.reconsObj.name = 'reconsObj'
         self.reconsObjFunc = function([self.RShape], self.reconsObj, mode=mode)
-
         W_grad = T.grad(self.reconsObj, self.W)
 
         self.gradientsFunc = function(
