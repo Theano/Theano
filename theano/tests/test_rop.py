@@ -13,7 +13,7 @@
 """
 
 import unittest
-from theano.tests  import unittest_tools as utt
+from theano.tests import unittest_tools as utt
 from theano import function
 import theano
 from theano import tensor
@@ -21,7 +21,6 @@ import numpy
 from theano.gof import Op, Apply
 from theano.gradient import grad_undefined
 from theano.tests.unittest_tools import SkipTest
-from theano.tensor.signal.pool import Pool
 from theano.tensor.nnet import conv, conv2d
 
 '''
@@ -75,7 +74,7 @@ class RopLop_checker(unittest.TestCase):
         test that an error is raised."""
         raised = False
         try:
-            tmp = tensor.Rop(y, self.x, self.v)
+            tensor.Rop(y, self.x, self.v)
         except ValueError:
             raised = True
         if not raised:
@@ -108,10 +107,10 @@ class RopLop_checker(unittest.TestCase):
                            theano.config.floatX)
         yv = tensor.Rop(y, self.mx, self.mv)
         rop_f = function([self.mx, self.mv], yv, on_unused_input='ignore')
-        sy, _ = theano.scan(lambda i, y, x, v: \
-                                (tensor.grad(y[i], x) * v).sum(),
-                           sequences=tensor.arange(y.shape[0]),
-                           non_sequences=[y, self.mx, self.mv])
+        sy, _ = theano.scan(lambda i, y, x, v:
+                            (tensor.grad(y[i], x) * v).sum(),
+                            sequences=tensor.arange(y.shape[0]),
+                            non_sequences=[y, self.mx, self.mv])
         scan_f = function([self.mx, self.mv], sy, on_unused_input='ignore')
 
         v1 = rop_f(vx, vv)
@@ -119,11 +118,9 @@ class RopLop_checker(unittest.TestCase):
 
         assert numpy.allclose(v1, v2), ('ROP mismatch: %s %s' % (v1, v2))
 
-        self.check_nondiff_rop(theano.clone(y,
-                                    replace={self.mx: break_op(self.mx)}))
+        self.check_nondiff_rop(theano.clone(y, replace={self.mx: break_op(self.mx)}))
 
-        vv = numpy.asarray(self.rng.uniform(size=out_shape),
-                           theano.config.floatX)
+        vv = numpy.asarray(self.rng.uniform(size=out_shape), theano.config.floatX)
         yv = tensor.Lop(y, self.mx, self.v)
         lop_f = function([self.mx, self.v], yv)
 
@@ -160,8 +157,7 @@ class RopLop_checker(unittest.TestCase):
         assert numpy.allclose(v1, v2), ('ROP mismatch: %s %s' % (v1, v2))
         known_fail = False
         try:
-            self.check_nondiff_rop(theano.clone(y,
-                                replace={self.x: break_op(self.x)}))
+            self.check_nondiff_rop(theano.clone(y, replace={self.x: break_op(self.x)}))
         except AssertionError:
             known_fail = True
 
@@ -266,13 +262,13 @@ class test_RopLop(RopLop_checker):
                 filter_shape = (2, 2, 2, 3)
                 image_dim = len(image_shape)
                 filter_dim = len(filter_shape)
-                input      = tensor.TensorType(
+                input = tensor.TensorType(
                     theano.config.floatX,
                     [False] * image_dim)(name='input')
-                filters    = tensor.TensorType(
+                filters = tensor.TensorType(
                     theano.config.floatX,
                     [False] * filter_dim)(name='filter')
-                ev_input   = tensor.TensorType(
+                ev_input = tensor.TensorType(
                     theano.config.floatX,
                     [False] * image_dim)(name='ev_input')
                 ev_filters = tensor.TensorType(
@@ -284,28 +280,23 @@ class test_RopLop(RopLop_checker):
                 output = sym_conv2d(input, filters).flatten()
                 yv = tensor.Rop(output, [input, filters], [ev_input, ev_filters])
                 rop_f = function([input, filters, ev_input, ev_filters],
-                                yv, on_unused_input='ignore')
-                sy, _ = theano.scan(
-                    lambda i, y, x1, x2, v1, v2:
-                        (tensor.grad(y[i], x1) * v1).sum() + \
-                        (tensor.grad(y[i], x2) * v2).sum(),
+                                 yv, on_unused_input='ignore')
+                sy, _ = theano.scan(lambda i, y, x1, x2, v1, v2:
+                                    (tensor.grad(y[i], x1) * v1).sum() +
+                                    (tensor.grad(y[i], x2) * v2).sum(),
                                     sequences=tensor.arange(output.shape[0]),
                                     non_sequences=[output, input, filters,
-                                                ev_input, ev_filters])
+                                                   ev_input, ev_filters])
                 scan_f = function([input, filters, ev_input, ev_filters], sy,
-                                on_unused_input='ignore')
-
+                                  on_unused_input='ignore')
                 dtype = theano.config.floatX
                 image_data = numpy.random.random(image_shape).astype(dtype)
                 filter_data = numpy.random.random(filter_shape).astype(dtype)
                 ev_image_data = numpy.random.random(image_shape).astype(dtype)
                 ev_filter_data = numpy.random.random(filter_shape).astype(dtype)
-                v1 = rop_f(image_data, filter_data, ev_image_data,
-                        ev_filter_data)
-                v2 = scan_f(image_data, filter_data, ev_image_data,
-                            ev_filter_data)
-                assert numpy.allclose(v1, v2), ("Rop mismatch: %s %s" %
-                                            (v1, v2))
+                v1 = rop_f(image_data, filter_data, ev_image_data, ev_filter_data)
+                v2 = scan_f(image_data, filter_data, ev_image_data, ev_filter_data)
+                assert numpy.allclose(v1, v2), ("Rop mismatch: %s %s" % (v1, v2))
 
     def test_join(self):
         tv = numpy.asarray(self.rng.uniform(size=(10,)),
@@ -353,10 +344,8 @@ class test_RopLop(RopLop_checker):
         self.check_rop_lop(out1d, self.in_shape[0])
 
         # Alloc of x into a 3-D tensor, flattened
-        out3d = tensor.alloc(self.x,
-                self.mat_in_shape[0], self.mat_in_shape[1], self.in_shape[0])
-        self.check_rop_lop(out3d.flatten(),
-                self.mat_in_shape[0] * self.mat_in_shape[1] * self.in_shape[0])
+        out3d = tensor.alloc(self.x, self.mat_in_shape[0], self.mat_in_shape[1], self.in_shape[0])
+        self.check_rop_lop(out3d.flatten(), self.mat_in_shape[0] * self.mat_in_shape[1] * self.in_shape[0])
 
     def test_invalid_input(self):
         success = False

@@ -37,6 +37,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         """Test that it is not ok to return None from op.grad()"""
         class retNone(gof.op.Op):
             __props__ = ()
+
             def make_node(self):
                 inputs = [theano.tensor.vector()]
                 outputs = [theano.tensor.vector()]
@@ -54,6 +55,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         """
         class retOne(gof.op.Op):
             __props__ = ()
+
             def make_node(self, *inputs):
                 outputs = [theano.tensor.vector()]
                 return gof.Apply(self, inputs, outputs)
@@ -66,8 +68,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         a1 = retOne().make_node(i)
         grad_sources_inputs([(a1.out, one)], None)
         a2 = retOne().make_node(i, j)
-        self.assertRaises(ValueError, grad_sources_inputs,
-                [(a2.out, one)], None)
+        self.assertRaises(ValueError, grad_sources_inputs, [(a2.out, one)], None)
 
     def test_1in_1out(self):
         """Test grad is called correctly for a 1-to-1 op"""
@@ -75,6 +76,7 @@ class testgrad_sources_inputs(unittest.TestCase):
 
         class O(gof.op.Op):
             __props__ = ()
+
             def make_node(self):
                 inputs = [theano.tensor.matrix()]
                 outputs = [theano.tensor.matrix()]
@@ -92,6 +94,7 @@ class testgrad_sources_inputs(unittest.TestCase):
 
         class O(gof.op.Op):
             __props__ = ()
+
             def make_node(self):
                 inputs = [theano.tensor.matrix()]
                 outputs = [theano.tensor.scalar(), theano.tensor.scalar()]
@@ -112,6 +115,7 @@ class testgrad_sources_inputs(unittest.TestCase):
 
         class O(gof.op.Op):
             __props__ = ()
+
             def make_node(self):
                 inputs = [theano.tensor.scalar(), theano.tensor.scalar()]
                 outputs = [theano.tensor.matrix()]
@@ -133,6 +137,7 @@ class testgrad_sources_inputs(unittest.TestCase):
 
         class O(gof.op.Op):
             __props__ = ()
+
             def make_node(self):
                 inputs = [theano.tensor.matrix(), theano.tensor.matrix()]
                 outputs = [theano.tensor.matrix(), theano.tensor.matrix()]
@@ -153,27 +158,25 @@ class test_grad(unittest.TestCase):
         # in the graph
         a = theano.tensor.vector()
         b = theano.gradient.grad_not_implemented(theano.tensor.add, 0, a)
-        self.assertRaises(TypeError, theano.function,
-                [a], b, on_unused_input='ignore')
+        self.assertRaises(TypeError, theano.function, [a], b, on_unused_input='ignore')
 
     def test_undefined_grad_func(self):
         # tests that function compilation catches undefined grads in the graph
         a = theano.tensor.vector()
         b = theano.gradient.grad_undefined(theano.tensor.add, 0, a)
-        self.assertRaises(TypeError, theano.function,
-                [a], b, on_unused_input='ignore')
+        self.assertRaises(TypeError, theano.function, [a], b, on_unused_input='ignore')
 
     def test_unimplemented_grad_grad(self):
         # tests that unimplemented grads are caught in the grad method
 
         class DummyOp(gof.Op):
             __props__ = ()
+
             def make_node(self, x):
                 return gof.Apply(self, [x], [x.type()])
 
             def grad(self, inputs, output_grads):
-                return [theano.gradient.grad_not_implemented(
-                            self, 0, inputs[0])]
+                return [theano.gradient.grad_not_implemented(self, 0, inputs[0])]
 
         a = theano.tensor.scalar()
         b = DummyOp()(a)
@@ -184,9 +187,9 @@ class test_grad(unittest.TestCase):
         # tests that undefined grads are caught in the grad method
 
         V = theano.tensor.TensorType(dtype=config.floatX,
-                broadcastable=(False, False, False, False, False))()
+                                     broadcastable=(False, False, False, False, False))()
         W = theano.tensor.TensorType(dtype=config.floatX,
-                broadcastable=(False, False, False, False, False))()
+                                     broadcastable=(False, False, False, False, False))()
         b = theano.tensor.vector()
         d = theano.tensor.ivector()
 
@@ -324,8 +327,7 @@ class test_grad(unittest.TestCase):
         int_result = int_func(X, W, b)
         float_result = float_func(np.cast[float_type](X), W, b)
 
-        assert np.allclose(int_result, float_result), (
-                int_result, float_result)
+        assert np.allclose(int_result, float_result), (int_result, float_result)
 
     def test_grad_disconnected(self):
 
@@ -358,9 +360,9 @@ class test_grad(unittest.TestCase):
         # x is connected to f but not to g
         class Op1(theano.gof.Op):
             __props__ = ()
+
             def make_node(self, x):
-                return theano.Apply(self, inputs=[x],
-                        outputs=[x.type(), theano.tensor.scalar()])
+                return theano.Apply(self, inputs=[x], outputs=[x.type(), theano.tensor.scalar()])
 
             def connection_pattern(self, node):
                 return [[True, False]]
@@ -372,9 +374,9 @@ class test_grad(unittest.TestCase):
         # Its gradient with respect to g is not defined
         class Op2(theano.gof.Op):
             __props__ = ()
+
             def make_node(self, f, g):
-                return theano.Apply(self, inputs=[f, g],
-                        outputs=[theano.tensor.scalar()])
+                return theano.Apply(self, inputs=[f, g], outputs=[theano.tensor.scalar()])
 
             def grad(self, inputs, output_grads):
                 return [inputs[0].zeros_like(), NullType()()]
@@ -430,9 +432,10 @@ class test_grad(unittest.TestCase):
         g_x, g_one = f(1, .5)
 
         if not np.allclose(g_x, g_one):
-            raise AssertionError("Gradient using consider constant is " + str(g_x)\
-                    + " but gradient with respect to the same Constant is " + \
-                    str(g_one))
+            raise AssertionError("Gradient using consider constant is " +
+                                 str(g_x) +
+                                 " but gradient with respect to the same Constant is " +
+                                 str(g_one))
 
 
 def test_known_grads():
@@ -456,18 +459,12 @@ def test_known_grads():
     cost = theano.tensor.sqr(y)
     cost.name = 'cost'
 
-    layers = [
-            [cost],
-            [y],
-            [ct, p],
-            [ct, x, ft],
-            [coeffs, t, full_range, x]
-            ]
+    layers = [[cost], [y], [ct, p], [ct, x, ft], [coeffs, t, full_range, x]]
 
     inputs = [coeffs, t, x]
 
     rng = np.random.RandomState([2012, 11, 15])
-    values = [rng.randn(10), rng.randint(10), rng.randn() ]
+    values = [rng.randn(10), rng.randint(10), rng.randn()]
     values = [np.cast[ipt.dtype](value) for ipt, value in zip(inputs, values)]
 
     true_grads = theano.tensor.grad(cost, inputs, disconnected_inputs='ignore')
@@ -478,8 +475,7 @@ def test_known_grads():
         print('Testing by separately computing ', layer)
         first = theano.tensor.grad(cost, layer, disconnected_inputs='ignore')
         known = dict(izip(layer, first))
-        full = theano.tensor.grad(cost=None,
-                known_grads=known, wrt=inputs, disconnected_inputs='ignore')
+        full = theano.tensor.grad(cost=None, known_grads=known, wrt=inputs, disconnected_inputs='ignore')
         full = theano.function(inputs, full)
         full = full(*values)
         assert len(true_grads) == len(full)
@@ -508,7 +504,7 @@ def test_dxdx():
     x = theano.tensor.iscalar()
     g = theano.tensor.grad(x, x)
 
-    g = g.eval({ x : 12 })
+    g = g.eval({x: 12})
 
     assert np.allclose(g, 1.)
 
@@ -520,9 +516,7 @@ def test_known_grads_integers():
     x = theano.tensor.iscalar()
     g_expected = theano.tensor.scalar()
 
-    g_grad = theano.gradient.grad(cost=None,
-            known_grads={x : g_expected},
-            wrt=x)
+    g_grad = theano.gradient.grad(cost=None, known_grads={x: g_expected}, wrt=x)
 
     f = theano.function([g_expected], g_grad)
 
@@ -547,7 +541,7 @@ def test_undefined_cost_grad():
         cost = x + y
         assert cost.dtype in theano.tensor.discrete_dtypes
         try:
-            grads = theano.tensor.grad(cost, [x, y], known_grads={cost: NullType()() })
+            theano.tensor.grad(cost, [x, y], known_grads={cost: NullType()()})
         except theano.gradient.NullTypeGradError:
             return
         raise AssertionError("An undefined gradient has been ignored.")
@@ -566,8 +560,7 @@ def test_disconnected_cost_grad():
         cost = x + y
         assert cost.dtype in theano.tensor.discrete_dtypes
         try:
-            grads = theano.tensor.grad(cost, [x, y], known_grads={cost: gradient.DisconnectedType()() },
-                    disconnected_inputs='raise')
+            theano.tensor.grad(cost, [x, y], known_grads={cost: gradient.DisconnectedType()()}, disconnected_inputs='raise')
         except theano.gradient.DisconnectedInputError:
             return
         raise AssertionError("A disconnected gradient has been ignored.")
@@ -587,11 +580,11 @@ def test_subgraph_grad():
     cost2 = theano.tensor.sqr(a2 - t).sum()
     cost2 += theano.tensor.sqr(w2.sum())
     cost1 = theano.tensor.sqr(w1.sum())
-    
+
     params = [[w2], [w1]]
     costs = [cost2, cost1]
     grad_ends = [[a1], [x]]
-    
+
     inputs = [t, x]
     rng = np.random.RandomState([2012, 11, 15])
     values = [rng.randn(2), rng.randn(3)]
@@ -611,10 +604,10 @@ def test_subgraph_grad():
         )
         next_grad = OrderedDict(izip(grad_ends[i], next_grad))
         param_grads.extend(param_grad)
-    
+
     pgrads = theano.function(inputs, param_grads)
     pgrads = pgrads(*values)
-    
+
     for true_grad, pgrad in zip(true_grads, pgrads):
         assert(np.sum(np.abs(true_grad - pgrad)) < 0.00001)
 
@@ -768,7 +761,7 @@ class TestDisconnectedGrad(unittest.TestCase):
                           gradient.grad, y.sum(), b)
 
         # This MUST NOT raise a DisconnectedInputError error.
-        z = gradient.grad(y.sum(), a)
+        gradient.grad(y.sum(), a)
 
 
 def test_grad_clip():
