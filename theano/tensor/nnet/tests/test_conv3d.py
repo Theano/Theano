@@ -1,6 +1,5 @@
 from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
-from nose.plugins.skip import SkipTest
 import theano
 import theano.tensor as T
 from theano import function, shared
