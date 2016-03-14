@@ -48,7 +48,7 @@ import numpy
 import warnings
 
 from theano.compat import ifilter, izip
-from six import iteritems
+from six import iteritems, integer_types
 from six.moves import xrange
 from theano.compile import SharedVariable, function
 from theano import compile
