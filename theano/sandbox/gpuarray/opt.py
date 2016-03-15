@@ -639,7 +639,8 @@ def local_gpua_advanced_incsubtensor(node, context_name):
 
     compute_capability = device_properties(active_device_no)['major']
 
-    if (compute_capability < 2 or x.ndim != 2 or y.ndim != 2):
+    if (compute_capability < 2 or x.ndim != 2 or y.ndim != 2 or
+            theano.config.deterministic):
         return GpuAdvancedIncSubtensor1(
             set_instead_of_inc=set_instead_of_inc)
     else:

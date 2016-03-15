@@ -1121,8 +1121,8 @@ def local_gpu_advanced_incsubtensor1(node):
             compute_capability = device_properties(active_device_no)['major']
             if (compute_capability < 2 or
                 x.ndim != 2 or
-                y.ndim != 2):
-
+                y.ndim != 2 or
+                config.deterministic):
                 gpu_op = GpuAdvancedIncSubtensor1(
                     set_instead_of_inc=set_instead_of_inc)
             else:
@@ -1164,7 +1164,8 @@ def local_gpu_advanced_incsubtensor1(node):
             compute_capability = device_properties(active_device_no)['major']
             if (compute_capability < 2 or
                 x.ndim != 2 or
-                y.ndim != 2):
+                y.ndim != 2 or
+                config.deterministic):
                 gpu_op = GpuAdvancedIncSubtensor1(
                     set_instead_of_inc=set_instead_of_inc)
             else:

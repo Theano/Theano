@@ -580,6 +580,13 @@ class GpuDnnConvGradW(DnnBase, COp):
         assert self.algo in ['none', 'deterministic', 'fft', 'small',
                              'guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']
+        if theano.config.deterministic and self.algo not in ["deterministic", "fft"]:
+            raise RuntimeError(
+                "CuDNN conv2d grad again the weights have or can have"
+                " a non-deterministic behavior with current"
+                " configuration. Use Theano flag"
+                " dnn.conv.algo_bwd_filter='deterministic' or 'fft' to"
+                " have a deterministic behavior.")
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -705,6 +712,9 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
             assert algo is None
             algo = workmem
 
+        if theano.config.deterministic:
+            raise NotImplementedError(
+                "CuDNN do not have deterministic code for 3d convolution of grad wrt weights.")
         super(GpuDnnConv3dGradW, self).__init__(inplace=inplace,
                                                 algo='none')
         assert self.algo in ['none', 'guess_once', 'guess_on_shape_change',
@@ -800,6 +810,14 @@ class GpuDnnConvGradI(DnnBase, COp):
         assert self.algo in ['none', 'deterministic', 'fft', 'fft_tiling',
                              'guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']
+
+        if theano.config.deterministic and self.algo not in ['deterministic', 'fft', 'fft_tiling']:
+            raise RuntimeError(
+                "CuDNN conv2d grad again the weights have or can have"
+                " a non-deterministic behavior with current"
+                " configuration. Use Theano flag"
+                " dnn.conv.algo_bwd_data='deterministic' or 'fft' or 'fft_tiling' to"
+                " have a deterministic behavior.")
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -928,6 +946,9 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
             assert algo is None
             algo = workmem
 
+        if theano.config.deterministic:
+            raise NotImplementedError(
+                "CuDNN do not have deterministic code for 3d convolution of grad wrt input.")
         super(GpuDnnConv3dGradI, self).__init__(inplace=inplace,
                                                 algo="none")
         assert self.algo in ['none', 'guess_once', 'guess_on_shape_change',

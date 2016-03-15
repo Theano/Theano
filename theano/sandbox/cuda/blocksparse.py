@@ -1,7 +1,7 @@
 import logging
 
 import numpy
-from theano import Apply, tensor
+from theano import Apply, config, tensor
 from theano.tensor import discrete_dtypes
 
 from theano.gradient import grad_undefined
@@ -31,6 +31,8 @@ class GpuSparseBlockGemv(GpuOp):
             self.destroy_map = {0: [0]}
 
     def make_node(self, o, W, h, inputIdx, outputIdx):
+        if config.deterministic:
+            raise RuntimeError("sparse_block_dot() on the GPU is not deterministic.")
         o = basic_ops.as_cuda_ndarray_variable(o)
         W = basic_ops.as_cuda_ndarray_variable(W)
         h = basic_ops.as_cuda_ndarray_variable(h)
@@ -357,6 +359,8 @@ class GpuSparseBlockOuter(GpuOp):
             self.destroy_map = {0: [0]}
 
     def make_node(self, o, x, y, xIdx, yIdx, alpha=None):
+        if config.deterministic:
+            raise RuntimeError("sparse_block_dot() on the GPU is not deterministic.")
         one = tensor.constant(numpy.asarray(1.0, dtype='float32'))
         o = basic_ops.as_cuda_ndarray_variable(o)
         x = basic_ops.as_cuda_ndarray_variable(x)
