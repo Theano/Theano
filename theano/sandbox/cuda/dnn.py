@@ -2186,6 +2186,460 @@ err%(name)s = cudnnSoftmaxBackward(
 #endif
         """
 
+class GpuDnnBatchNormBase(DnnBase):
+    """
+    Op for the cuDNN Batch Normalization.
+
+    Parameters
+    ----------
+    tensor_format
+        Always set this to 'bc01'.
+    mode
+        Normalization is performed per-activation for 'per-activation' (in this mode bnBias and bnScale tensor
+        dimensions are 1xCxHxW for 4d tensor) or Normalization is performed over N+spatial dimensions for 'spatial'
+        (in this mode bnBias, bnScale tensor dimensions are 1xCx1x1).
+    exp_avg_factor
+        Factor used in the moving average computation runningMean = newMean*factor + runningMean*(1-factor). It is
+        required that exponentialAverageFactor=1 is used for the very first call of a complete training cycle.
+    epsilon
+        Epsilon value used in the batch normalization formula. It is 1e-4 by default. Minimum allowed value
+        for cuDNN v.4 is 1e-5.
+
+    """
+
+    __props__ = ('tensor_format', 'mode', 'exp_avg_factor', 'epsilon')
+
+    def __init__(self, tensor_format, mode, exp_avg_factor=0.1, epsilon=1e-4):
+        if tensor_format != 'bc01':
+            raise ValueError(
+                "It was discovered that since December 2014, the "
+                "tensor_format parameter was ignored and the equivalent of "
+                "'bc01' is always used.  Since your code seems to be using "
+                "another value, this might have affected previous results "
+                "ran with this code.")
+        DnnBase.__init__(self)
+        self.tensor_format = tensor_format
+
+        if version() < (4000, 4000):
+            raise RuntimeError("CuDNN Batch Normalization requires CuDNN v4")
+
+        assert(mode in ('per-activation', 'spatial'))
+        self.mode = mode
+
+        self.exp_avg_factor = exp_avg_factor
+
+        self.epsilon = epsilon
+
+        self.tensor_4d_descs = [bn_desc
+                                for bn_desc in self.bn_descs]
+
+    def infer_shape(self, node, shape):
+        if self.direction == 'inference':
+            return [shape[0]]
+        elif self.direction == 'forward':
+            return [shape[0], shape[1], shape[2], shape[3], shape[4]]
+        else:
+            return [shape[0], shape[2], shape[2]]
+
+    def _define_tensor4d_desc(self, name, id):
+        return """
+cudnnTensorDescriptor_t %(id)s_%(name)s;
+""" % dict(name=name, id=id)
+
+    def _init_tensor4d_desc(self, name, id, fail):
+        return """
+%(id)s_%(name)s = NULL;
+if ((err%(name)s = cudnnCreateTensorDescriptor(&%(id)s_%(name)s)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor "
+               ": %%s", cudnnGetErrorString(err%(name)s));
+  %(fail)s
+}
+""" % dict(name=name, id=id, fail=fail)
+
+    def _clean_tensor4d_desc(self, name, id):
+        return """
+if(%(id)s_%(name)s!= NULL)
+  cudnnDestroyTensorDescriptor(%(id)s_%(name)s);
+""" % dict(name=name, id=id)
+
+    def c_support_code_struct(self, node, name):
+        result = ''
+        for id in self.tensor_4d_descs:
+            result += self._define_tensor4d_desc(name, id)
+        return result
+
+    def c_init_code_struct(self, node, name, sub):
+        result = """
+cudnnStatus_t err%(name)s;
+""" % dict(name=name)
+
+        for id in self.tensor_4d_descs:
+            result += self._init_tensor4d_desc(name, id, sub['fail'])
+        return result
+
+    def c_cleanup_code_struct(self, node, name):
+        result = ''
+        for id in self.tensor_4d_descs:
+            result += self._clean_tensor4d_desc(name, id)
+        return result
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        if self.tensor_format == 'b01c':
+            tensor_format = 1
+        else:
+            tensor_format = 0
+
+        if self.mode == "spatial":
+            mode = "CUDNN_BATCHNORM_SPATIAL"
+        else:
+            mode = "CUDNN_BATCHNORM_PER_ACTIVATION"
+
+        # Setup configuration variables.
+        result = """
+cudnnStatus_t err%(name)s;
+cudnnTensorFormat_t format%(name)s = CUDNN_TENSOR_NCHW;
+if (%(tensor_format)d == 1)
+  format%(name)s = CUDNN_TENSOR_NHWC;
+
+cudnnBatchNormMode_t mode%(name)s = %(mode)s;
+
+double exponentialAverageFactor%(name)s = %(exp_avg_factor)f;
+
+double epsilon%(name)s = %(epsilon)e;
+""" % dict(name=name, tensor_format=tensor_format, mode=mode, exp_avg_factor=self.exp_avg_factor,
+           epsilon=self.epsilon)
+
+        # Validate the input and build the input variables.
+        for input_idx, bn_input in enumerate(inputs):
+            if self.direction == 'backward':
+                if input_idx == 0:
+                    input_name = 'bn_input'
+                elif input_idx == 1:
+                    input_name = 'bn_gout'
+                else:
+                    input_name = 'scale_bias_mean'
+            else:
+                if input_idx == 0:
+                    input_name = 'bn_input'
+                else:
+                    input_name = 'scale_bias_mean'
+            result += c_set_tensor4d(bn_input, input_name + "_" + name,
+                                     "err" + name, sub['fail'])
+
+        subs = dict(fail=sub['fail'], name=name)
+
+        for idx, bn_input in enumerate(inputs):
+            subs['ins%d' % idx] = bn_input
+
+        # Build and prepare the output variable.
+        sub_result = ""
+        for idx, bn_output in enumerate(outputs):
+            subs['outs%d' % idx] = bn_output
+            sub_result += """
+    if (CudaNdarray_prep_output(&%(outs""" + str(idx) + """)s, 4, CudaNdarray_HOST_DIMS(%(ins""" + str(idx) + """)s)) != 0)
+    {
+      %(fail)s
+    }
+    """
+        result += sub_result % subs
+
+        for output_idx, output in enumerate(outputs):
+            if self.direction == 'backward':
+                if output_idx == 0:
+                    output_name = 'bn_ginput'
+                else:
+                    output_name = 'scale_bias_mean'
+            else:
+                if output_idx == 0:
+                    output_name = 'bn_output'
+                else:
+                    output_name = 'scale_bias_mean'
+            result += c_set_tensor4d(output,
+                                     output_name + "_" + name,
+                                     "err" + name, sub['fail'])
+
+        # Add on a call to the method that does the actual work.
+        result += self.method() % subs
+
+        return result
+
+    def c_code_cache_version(self):
+        return ()
+        #return (0, 6, version())
+
+    def method(self):
+        raise NotImplementedError('GpuDnnBatchNormBase::method')
+
+
+class GpuDnnBatchNormInference(GpuDnnBatchNormBase):
+    """
+    Op for the cuDNN BatchNormalizationForwardInference
+
+    Parameters
+    ----------
+    tensor_format
+        Always set to 'bc01'.
+    mode
+        Normalization is performed per-activation for 'per-activation' (in this mode bnBias and bnScale tensor
+        dimensions are 1xCxHxW for 4d tensor) or Normalization is performed over N+spatial dimensions for 'spatial'
+        (in this mode bnBias, bnScale tensor dimensions are 1xCx1x1).
+    exp_avg_factor
+        Factor used in the moving average computation runningMean = newMean*factor + runningMean*(1-factor). It is
+        required that exponentialAverageFactor=1 is used for the very first call of a complete training cycle.
+    epsilon
+        Epsilon value used in the batch normalization formula. It is 1e-4 by default. Minimum allowed value
+        for cuDNN v.4 is 1e-5.
+
+    """
+
+    direction = 'inference'
+    bn_descs = ['bn_input', 'bn_output', 'scale_bias_mean']
+
+    def make_node(self, x, bn_scale, bn_bias, estimated_mean, estimated_variance):
+        x = as_cuda_ndarray_variable(x)
+        bn_scale = as_cuda_ndarray_variable(bn_scale)
+        bn_bias = as_cuda_ndarray_variable(bn_bias)
+        estimated_mean = as_cuda_ndarray_variable(estimated_mean)
+        estimated_variance = as_cuda_ndarray_variable(estimated_variance)
+        assert x.ndim == 4
+        assert bn_scale.ndim == 4
+        assert bn_bias.ndim == 4
+        assert estimated_mean.ndim == 4
+        assert estimated_variance.ndim == 4
+        return Apply(self, [x, bn_scale, bn_bias, estimated_mean, estimated_variance],
+                     [x.type()])
+
+    def method(self):
+        return """
+#ifndef CUDNN_VERSION
+err%(name)s = cudnnBatchNormalizationForwardInference(
+  _handle,
+  mode%(name)s,
+  bn_input_%(name)s,
+  CudaNdarray_DEV_DATA(%(ins0)s),
+  bn_output_%(name)s,
+  CudaNdarray_DEV_DATA(%(outs0)s),
+  scale_bias_mean_%(name)s,
+  CudaNdarray_DEV_DATA(%(ins1)s),
+  CudaNdarray_DEV_DATA(%(ins2)s),
+  CudaNdarray_DEV_DATA(%(ins3)s),
+  CudaNdarray_DEV_DATA(%(ins4)s),
+  epsilon%(name)s
+);
+#else
+{
+const float alpha = 1.;
+const float beta = 0.;
+err%(name)s = cudnnBatchNormalizationForwardInference(
+  _handle,
+  mode%(name)s,
+  (void*) &alpha,
+  (void*) &beta,
+  bn_input_%(name)s,
+  CudaNdarray_DEV_DATA(%(ins0)s),
+  bn_output_%(name)s,
+  CudaNdarray_DEV_DATA(%(outs0)s),
+  scale_bias_mean_%(name)s,
+  CudaNdarray_DEV_DATA(%(ins1)s),
+  CudaNdarray_DEV_DATA(%(ins2)s),
+  CudaNdarray_DEV_DATA(%(ins3)s),
+  CudaNdarray_DEV_DATA(%(ins4)s),
+  epsilon%(name)s
+);
+}
+#endif
+"""
+
+
+class GpuDnnBatchNorm(GpuDnnBatchNormBase):
+    """
+    Op for the cuDNN BatchNormalizationForwardTraining
+
+    Parameters
+    ----------
+    tensor_format
+        Always set to 'bc01'.
+    mode
+        Normalization is performed per-activation for 'per-activation' (in this mode bnBias and bnScale tensor
+        dimensions are 1xCxHxW for 4d tensor) or Normalization is performed over N+spatial dimensions for 'spatial'
+        (in this mode bnBias, bnScale tensor dimensions are 1xCx1x1).
+    exp_avg_factor
+        Factor used in the moving average computation runningMean = newMean*factor + runningMean*(1-factor). It is
+        required that exponentialAverageFactor=1 is used for the very first call of a complete training cycle.
+    epsilon
+        Epsilon value used in the batch normalization formula. It is 1e-4 by default. Minimum allowed value
+        for cuDNN v.4 is 1e-5.
+
+    """
+
+    direction = 'forward'
+    bn_descs = ['bn_input', 'bn_output', 'scale_bias_mean']
+    view_map = {3: [3], 4: [4]}
+    #destroy_map = {3: [3], 4: [4]}
+
+    def make_node(self, x, bn_scale, bn_bias, running_mean, running_variance):
+        x = as_cuda_ndarray_variable(x)
+        bn_scale = as_cuda_ndarray_variable(bn_scale)
+        bn_bias = as_cuda_ndarray_variable(bn_bias)
+        running_mean = as_cuda_ndarray_variable(running_mean)
+        running_variance = as_cuda_ndarray_variable(running_variance)
+        assert x.ndim == 4
+        assert bn_scale.ndim == 4
+        assert bn_bias.ndim == 4
+        assert running_mean.ndim == 4
+        assert running_variance.ndim == 4
+        current_mean = running_mean.type()
+        current_variance = running_variance.type()
+        return Apply(self, [x, bn_scale, bn_bias, running_mean, running_variance],
+                     [x.type(), current_mean, current_variance, running_mean.type(), running_variance.type()])
+
+    def method(self):
+        return """
+#ifndef CUDNN_VERSION
+err%(name)s = cudnnBatchNormalizationForwardTraining(
+  _handle,
+  mode%(name)s,
+  bn_input_%(name)s,
+  CudaNdarray_DEV_DATA(%(ins0)s),
+  bn_output_%(name)s,
+  CudaNdarray_DEV_DATA(%(outs0)s),
+  scale_bias_mean_%(name)s,
+  CudaNdarray_DEV_DATA(%(ins1)s),
+  CudaNdarray_DEV_DATA(%(ins2)s),
+  exponentialAverageFactor%(name)s,
+  CudaNdarray_DEV_DATA(%(ins3)s),
+  CudaNdarray_DEV_DATA(%(ins4)s),
+  epsilon%(name)s,
+  CudaNdarray_DEV_DATA(%(outs1)s),
+  CudaNdarray_DEV_DATA(%(outs2)s)
+);
+#else
+{
+const float alpha = 1.;
+const float beta = 0.;
+err%(name)s = cudnnBatchNormalizationForwardTraining(
+  _handle,
+  mode%(name)s,
+  (void*) &alpha,
+  (void*) &beta,
+  bn_input_%(name)s,
+  CudaNdarray_DEV_DATA(%(ins0)s),
+  bn_output_%(name)s,
+  CudaNdarray_DEV_DATA(%(outs0)s),
+  scale_bias_mean_%(name)s,
+  CudaNdarray_DEV_DATA(%(ins1)s),
+  CudaNdarray_DEV_DATA(%(ins2)s),
+  exponentialAverageFactor%(name)s,
+  CudaNdarray_DEV_DATA(%(ins3)s),
+  CudaNdarray_DEV_DATA(%(ins4)s),
+  epsilon%(name)s,
+  CudaNdarray_DEV_DATA(%(outs1)s),
+  CudaNdarray_DEV_DATA(%(outs2)s)
+);
+}
+#endif
+"""
+
+    def grad(self, inputs, grads):
+        x, bn_scale, bn_bias, running_mean, running_inv_variance = inputs
+        dy, = grads
+        y, current_mean, current_inv_variance, running_mean, running_inv_variance = \
+            self.make_node(x, bn_scale, bn_bias, running_mean, running_inv_variance).outputs
+        return GpuDnnBatchNormGrad(
+            self.tensor_format,
+            self.mode,
+            self.exp_avg_factor,
+            self.epsilon
+        )(x, dy, bn_scale, current_mean, current_inv_variance)
+
+
+class GpuDnnBatchNormGrad(GpuDnnBatchNormBase):
+    """
+    Op for the cuDNN BatchNormalizationBackward.
+
+    Parameters
+    ----------
+    tensor_format
+        Always set to 'bc01'.
+    mode
+        Normalization is performed per-activation for 'per-activation' (in this mode bnBias and bnScale tensor
+        dimensions are 1xCxHxW for 4d tensor) or Normalization is performed over N+spatial dimensions for 'spatial'
+        (in this mode bnBias, bnScale tensor dimensions are 1xCx1x1).
+    exp_avg_factor
+        Factor used in the moving average computation runningMean = newMean*factor + runningMean*(1-factor). It is
+        required that exponentialAverageFactor=1 is used for the very first call of a complete training cycle.
+    epsilon
+        Epsilon value used in the batch normalization formula. It is 1e-4 by default. Minimum allowed value
+        for cuDNN v.4 is 1e-5.
+
+    """
+
+    direction = 'backward'
+    bn_descs = ['bn_input', 'bn_gout', 'bn_ginput', 'scale_bias_mean']
+
+    def make_node(self, x, dy, bn_scale, saved_mean, saved_inv_variance):
+        x = as_cuda_ndarray_variable(x)
+        dy = as_cuda_ndarray_variable(dy)
+        bn_scale = as_cuda_ndarray_variable(bn_scale)
+        saved_mean = as_cuda_ndarray_variable(saved_mean)
+        saved_inv_variance = as_cuda_ndarray_variable(saved_inv_variance)
+        assert x.ndim == 4
+        assert dy.ndim == 4
+        assert saved_mean.ndim == 4
+        assert saved_inv_variance.ndim == 4
+        return Apply(self, [x, dy, bn_scale, saved_mean, saved_inv_variance],
+                     [x.type(), bn_scale.type(), bn_scale.type()])
+
+    def method(self):
+        return """
+#ifndef CUDNN_VERSION
+err%(name)s = cudnnBatchNormalizationBackward(
+  _handle,
+  mode%(name)s,
+  bn_input_%(name)s,
+  CudaNdarray_DEV_DATA(%(ins0)s),
+  bn_gout_%(name)s,
+  CudaNdarray_DEV_DATA(%(ins1)s),
+  bn_ginput_%(name)s,
+  CudaNdarray_DEV_DATA(%(outs0)s),
+  scale_bias_mean_%(name)s,
+  CudaNdarray_DEV_DATA(%(ins2)s),
+  CudaNdarray_DEV_DATA(%(outs1)s),
+  CudaNdarray_DEV_DATA(%(outs2)s),
+  epsilon%(name)s,
+  CudaNdarray_DEV_DATA(%(ins3)s),
+  CudaNdarray_DEV_DATA(%(ins4)s)
+);
+#else
+{
+const float alpha = 1.;
+const float beta = 0.;
+const float alphaDiff = 1.;
+const float betaDiff = 0.;
+err%(name)s = cudnnBatchNormalizationBackward(
+  _handle,
+  mode%(name)s,
+  (void*) &alpha,
+  (void*) &beta,
+  (void*) &alphaDiff,
+  (void*) &betaDiff,
+  bn_input_%(name)s,
+  CudaNdarray_DEV_DATA(%(ins0)s),
+  bn_gout_%(name)s,
+  CudaNdarray_DEV_DATA(%(ins1)s),
+  bn_ginput_%(name)s,
+  CudaNdarray_DEV_DATA(%(outs0)s),
+  scale_bias_mean_%(name)s,
+  CudaNdarray_DEV_DATA(%(ins2)s),
+  CudaNdarray_DEV_DATA(%(outs1)s),
+  CudaNdarray_DEV_DATA(%(outs2)s),
+  epsilon%(name)s,
+  CudaNdarray_DEV_DATA(%(ins3)s),
+  CudaNdarray_DEV_DATA(%(ins4)s)
+);
+}
+#endif
+"""
 
 # Intentation for history
 if True:
