@@ -9,19 +9,20 @@ import numpy
 from six.moves import xrange
 import theano
 import theano.tensor as T
-
-# Skip test if cuda_ndarray is not available.
-from nose.plugins.skip import SkipTest
-from nose.tools import assert_raises
-import theano.sandbox.cuda as cuda_ndarray
-if cuda_ndarray.cuda_available == False:
-    raise SkipTest('Optional package cuda disabled')
-
 import theano.sandbox.cuda as tcn
 import theano.sandbox.cuda as cuda
 import theano.sandbox.cuda.basic_ops as B
 from theano.tensor.basic import _allclose
 from theano.tests import unittest_tools as utt
+import theano.tensor.tests.test_basic
+import theano.tensor.tests.test_subtensor
+import theano.tensor.tests.test_sharedvar
+
+# Skip test if cuda_ndarray is not available.
+from nose.plugins.skip import SkipTest
+import theano.sandbox.cuda as cuda_ndarray
+if cuda_ndarray.cuda_available is False:
+    raise SkipTest('Optional package cuda disabled')
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
@@ -75,8 +76,8 @@ def test_careduce():
             # The following 2 cases could work if the scalar_op.c_code work with float* dtype.
             # Currently we have this error:
             # error: invalid operands of types 'npy_float32' and 'npy_float32' to binary 'operator&'
-            #(theano.scalar.and_, tensor.elemwise.CAReduce),
-            #(theano.scalar.or_, tensor.elemwise.CAReduce),
+            # (theano.scalar.and_, tensor.elemwise.CAReduce),
+            # (theano.scalar.or_, tensor.elemwise.CAReduce),
     ]:
         for shape, pattern in [((1, 1), (1,)),
                                ((1, 0), (1,)),
@@ -113,7 +114,7 @@ def test_careduce():
                                ((4100, 4, 3), [2]), ((5, 4100, 3), [2]), ((5, 4, 4100), [2]),  # 001
                                ((4100, 4, 3), [0, 1]), ((5, 4100, 3), [0, 1]), ((5, 4, 4100), [0, 1]),  # 110
                                ((4100, 4, 3), [1, 2]), ((5, 4100, 3), [1, 2]), ((5, 4, 4100), [1, 2]),  # 011
-                               ((4100,4,3),[0,2]),((5,4100,3),[0,2]),((5,4,4100),[0,2]),
+                               ((4100, 4, 3), [0, 2]), ((5, 4100, 3), [0, 2]), ((5, 4, 4100), [0, 2]),
                                ((4100, 4, 3), [0, 1, 2]), ((5, 4100, 3), [0, 1, 2]), ((5, 4, 4100), [0, 1, 2]),  # 111
                                ((65, 4, 3), [0, 1, 2]), ((5, 65, 3), [0, 1, 2]), ((5, 4, 65), [0, 1, 2]),  # 111
 
@@ -127,15 +128,15 @@ def test_careduce():
                                ((4100, 4, 3, 2), [2, 3]), ((4, 4100, 3, 2), [2, 3]), ((4, 3, 4100, 2), [2, 3]), ((4, 3, 2, 4100), [2, 3]),  # 0011
                                ((4100, 4, 3, 2), [1, 3]), ((4, 4100, 3, 2), [1, 3]), ((4, 3, 4100, 2), [1, 3]), ((4, 3, 2, 4100), [1, 3]),  # 0101
                                ((4100, 4, 3, 2), [1, 2]), ((4, 4100, 3, 2), [1, 2]), ((4, 3, 4100, 2), [1, 2]), ((4, 3, 2, 4100), [1, 2]),  # 0110
-                               ((4100,4,3,2),[0,3]),((4,4100,3,2),[0,3]),((4,3,4100,2),[0,3]),((4,3,2,4100),[0,3]),#1001
-#                               ((4100,4,3,2),[0,2]),((4,4100,3,2),[0,2]),((4,3,4100,2),[0,2]),((4,3,2,4100),[0,2]),#1010 not implemented
+                               ((4100, 4, 3, 2), [0, 3]), ((4, 4100, 3, 2), [0, 3]), ((4, 3, 4100, 2), [0, 3]), ((4, 3, 2, 4100), [0, 3]),  # 1001
+                               # ((4100,4,3,2),[0,2]),((4,4100,3,2),[0,2]),((4,3,4100,2),[0,2]),((4,3,2,4100),[0,2]),#1010 not implemented
                                ((4100, 4, 3, 2), [0, 1]), ((4, 4100, 3, 2), [0, 1]), ((4, 3, 4100, 2), [0, 1]), ((4, 3, 2, 4100), [0, 1]),  # 1100
 
                                # reduce over 3d
                                # 3d not tested: 1101, 1110, 1111
-                               ((4100,4,3,2),[0,1,3]),((4,4100,3,2),[0,1,3]),((4,3,4100,2),[0,1,3]),((4,3,2,4100),[0,1,3]),#1101
+                               ((4100, 4, 3, 2), [0, 1, 3]), ((4, 4100, 3, 2), [0, 1, 3]), ((4, 3, 4100, 2), [0, 1, 3]), ((4, 3, 2, 4100), [0, 1, 3]),  # 1101
                                ((4100, 4, 3, 2), [0, 1, 2]), ((4, 4100, 3, 2), [0, 1, 2]), ((4, 3, 4100, 2), [0, 1, 2]), ((4, 3, 2, 4100), [0, 1, 2]),  # 1110
-                               ((4100, 4, 3, 2), [0, 2, 3]), ((4, 4100, 3, 2), [0, 2, 3]), ((4, 3, 4100, 2), [0, 2, 3]),  # ((4,3,2,4100),[0,2,3]),#1011
+                               ((4100, 4, 3, 2), [0, 2, 3]), ((4, 4100, 3, 2), [0, 2, 3]), ((4, 3, 4100, 2), [0, 2, 3]),  # ((4, 3, 2, 4100), [0, 2, 3]),  # 1011
                                ((4100, 4, 3, 2), [1, 2, 3]), ((4, 4100, 3, 2), [1, 2, 3]), ((4, 3, 4100, 2), [1, 2, 3]), ((4, 3, 2, 4100), [1, 2, 3]),  # 0111
                                ((65, 4, 3, 2), [1, 2, 3]), ((4, 65, 3, 2), [1, 2, 3]), ((4, 3, 65, 2), [1, 2, 3]), ((4, 3, 2, 65), [1, 2, 3]),  # 0111
 
@@ -148,26 +149,26 @@ def test_careduce():
                                ]:
 
             op = careduce_op(scalar_op, axis=pattern)
-            pat = tensor_pattern_to_gpu_pattern(shape, pattern)
+            tensor_pattern_to_gpu_pattern(shape, pattern)
 
             a = tensor.TensorType('float32', (False,) * len(shape))()
-            b = op(a*a)
+            b = op(a * a)
             val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
     #        val = numpy.ones(shape)
     #        val = numpy.arange(numpy.prod(shape)).reshape(shape)
             val = theano._asarray(val, dtype='float32')
             f = theano.function([a], b, mode=mode_with_gpu)
             f2 = theano.function([a], b, mode=mode_without_gpu)
-            assert tcn.GpuCAReduce in [x.op.__class__
-                                       for x in f.maker.fgraph.toposort()], (
-                                           scalar_op, shape, pattern)
-            if tcn.GpuElemwise in [x.op.__class__
-                                   for x in f.maker.fgraph.toposort()]:
-                assert tcn.GpuReshape in [x.op.__class__
-                                          for x in f.maker.fgraph.toposort()]
-            assert op.__class__ in [x.op.__class__
-                                    for x in f2.maker.fgraph.toposort()], (
-                                           scalar_op, shape, pattern)
+            assert tcn.GpuCAReduce in [
+                x.op.__class__ for x in f.maker.fgraph.toposort()], (
+                scalar_op, shape, pattern)
+            if(tcn.GpuElemwise in [
+                    x.op.__class__ for x in f.maker.fgraph.toposort()]):
+                assert tcn.GpuReshape in [
+                    x.op.__class__ for x in f.maker.fgraph.toposort()]
+            assert op.__class__ in [
+                x.op.__class__ for x in f2.maker.fgraph.toposort()], (
+                scalar_op, shape, pattern)
             f_caused_value_error = False
             try:
                 f_out = f(val)
@@ -176,8 +177,9 @@ def test_careduce():
                 f_caused_value_error = True
             except NotImplementedError:
                 if (numpy.prod(shape) == 0 and
-                    getattr(scalar_op, 'identity', None) != 0):
-                    continue
+                    getattr(
+                        scalar_op, 'identity', None) != 0):
+                            continue
                 raise
 
             f2_caused_value_error = False
@@ -208,45 +210,49 @@ def test_careduce():
                 # example in debug mode with unittests.rseed=9275
                 orig_rtol = theano.tensor.basic.float32_rtol
                 theano.tensor.basic.float32_rtol = 2e-5
-                assert _allclose(f_out, f2_out), ('shape', shape,
-                                                    'pattern', pattern,
-                                                    scalar_op,
-                                                    sum([shape[i] for i in pattern]),
-                                                    f2(val), f(val), val)
+                assert _allclose(f_out, f2_out), (
+                    'shape',
+                    shape,
+                    'pattern',
+                    pattern, scalar_op,
+                    sum([shape[i] for i in pattern]),
+                    f2(val), f(val), val)
             finally:
                 theano.tensor.basic.float32_rtol = orig_rtol
 
             # test with dimshuffle
             # we shuffle the 2 outer dims.
-        for shape, pattern in [  # ((5,),[0]),
-                               ((5, 4), [0, 1]), ((5, 4), [0]),
-                               ((5, 4, 3), [0]), ((5, 4, 3), [0, 1]), ((5, 4, 3), [2]), ((5, 4, 3), [0, 1, 2]),
-                               ((5, 4, 3, 2), [0, 1, 2, 3]), ((5, 4, 3, 2), [0, 2, 3]),
-                               ((128, 1, 3, 3), [0, 1, 2, 3]),
-        ]:
+        # for shape, pattern in [((5,), [0]),
+        for shape, pattern in [((5, 4), [0, 1]), ((5, 4), [0]),
+                               ((5, 4, 3), [0]), ((5, 4, 3), [0, 1]),
+                               ((5, 4, 3), [2]), ((5, 4, 3), [0, 1, 2]),
+                               ((5, 4, 3, 2), [0, 1, 2, 3]),
+                               ((5, 4, 3, 2), [0, 2, 3]),
+                               ((128, 1, 3, 3), [0, 1, 2, 3]), ]:
+
             op = careduce_op(scalar_op, axis=pattern)
-            pat = tensor_pattern_to_gpu_pattern(shape, pattern)
+            tensor_pattern_to_gpu_pattern(shape, pattern)
 
             a = tensor.TensorType('float32', (False,) * len(shape))()
             dim_pattern = list(range(len(shape)))
             dim_pattern[0] = 1
             dim_pattern[1] = 0
             a = a.dimshuffle(dim_pattern)
-            b = op(a*a)
+            b = op(a * a)
             val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
     #        val = numpy.ones(shape)
     #        val = numpy.arange(numpy.prod(shape)).reshape(shape)
             val = theano._asarray(val, dtype='float32')
             f = theano.function([a], b, mode=mode_with_gpu)
             f2 = theano.function([a], b, mode=mode_without_gpu)
-            assert tcn.GpuCAReduce in [x.op.__class__
-                                       for x in f.maker.fgraph.toposort()], (
-                                           scalar_op, shape, pattern)
-            assert tcn.GpuElemwise not in [x.op.__class__
-                                           for x in f.maker.fgraph.toposort()]
-            assert op.__class__ in [x.op.__class__
-                                    for x in f2.maker.fgraph.toposort()], (
-                                           scalar_op, shape, pattern)
+            assert tcn.GpuCAReduce in [
+                x.op.__class__ for x in f.maker.fgraph.toposort()], (
+                scalar_op, shape, pattern)
+            assert tcn.GpuElemwise not in [
+                x.op.__class__ for x in f.maker.fgraph.toposort()]
+            assert op.__class__ in [
+                x.op.__class__ for x in f2.maker.fgraph.toposort()], (
+                scalar_op, shape, pattern)
             assert _allclose(f2(val), f(val)), ('shape', shape,
                                                 'pattern', pattern,
                                                 scalar_op,
@@ -258,16 +264,15 @@ def test_careduce():
                                ((5, 4, 3), [0]), ((5, 4, 3), [0, 1]),
                                ((5, 4, 3), [2]), ((5, 4, 3), [0, 1, 2]),
                                ((5, 4, 3, 2), [0, 1, 2, 3]), ((5, 4, 3, 2), [0, 2, 3]),
-                               ((128, 1, 3, 3), [0, 1, 2, 3]),
-        ]:
+                               ((128, 1, 3, 3), [0, 1, 2, 3]), ]:
             op = careduce_op(scalar_op, axis=pattern)
-            pat = tensor_pattern_to_gpu_pattern(shape, pattern)
+            tensor_pattern_to_gpu_pattern(shape, pattern)
 
             shape = numpy.asarray(shape) * 2
             a = tensor.TensorType('float32', (False,) * len(shape))()
             a2 = tcn.CudaNdarrayType((False,) * len(shape))()
-            b = op(a*a)
-            b2 = op(a2*a2)
+            b = op(a * a)
+            b2 = op(a2 * a2)
             val = numpy.random.rand(numpy.prod(shape)).reshape(shape)
     #        val = numpy.ones(shape)
     #        val = numpy.arange(numpy.prod(shape)).reshape(shape)
@@ -287,14 +292,14 @@ def test_careduce():
                 val2 = val2[::2, ::2, ::2, ::2]
             f = theano.function([a], b, mode=mode_without_gpu)
             f2 = theano.function([a2], b2, mode=mode_with_gpu)
-            assert tcn.GpuCAReduce in [x.op.__class__
-                                       for x in f2.maker.fgraph.toposort()], (
-                                           scalar_op, shape, pattern)
+            assert tcn.GpuCAReduce in [
+                x.op.__class__ for x in f2.maker.fgraph.toposort()], (
+                scalar_op, shape, pattern)
             assert tcn.GpuElemwise not in [x.op.__class__
                                            for x in f.maker.fgraph.toposort()]
             assert op.__class__ in [x.op.__class__
                                     for x in f.maker.fgraph.toposort()], (
-                                           scalar_op, shape, pattern)
+                                        scalar_op, shape, pattern)
             assert _allclose(f2(val2), f(val)), ('shape', shape,
                                                  'pattern', pattern,
                                                  sum([shape[i] for i in pattern]))
@@ -374,8 +379,10 @@ def test_reshape():
 
     # Test zero dimensions are allowed
     x = T.vector('x')
-    f_reshp = theano.function([x], x.reshape((0,100)), mode=mode_with_gpu)
-    assert f_reshp(numpy.ndarray((0,), dtype='float32')).shape == (0,100)
+    f_reshp = theano.function(
+        [x], x.reshape((0, 100)), mode=mode_with_gpu)
+    assert f_reshp(
+        numpy.ndarray((0, ), dtype='float32')).shape == (0, 100)
 
 
 def test_alloc_empty():
@@ -406,7 +413,7 @@ def test_elemwise_empty():
     b = tensor.fmatrix()
 
     f = pfunc([b], [], updates=[(a, a + b)], mode=mode_with_gpu)
-    f2 = pfunc([b], [], updates=[(a, a + b)], mode=mode_without_gpu)
+    pfunc([b], [], updates=[(a, a + b)], mode=mode_without_gpu)
 
     a0 = a.get_value() * 1.0
     f(numpy.ones((0, 0), dtype='float32'))
@@ -424,8 +431,9 @@ def test_elemwise0():
     f = pfunc([b], [], updates=[(a, a + b)], mode=mode_with_gpu)
 
     # check that we work inplace.
-    assert (list(f.maker.fgraph.toposort()[1].op.destroy_map.items())
-            == [(0, [0])])
+    assert (list(
+        f.maker.fgraph.toposort()[1].op.destroy_map.items()) == [
+            (0, [0])])
 
     a0 = a.get_value() * 1.0
     f(numpy.ones((4, 4), dtype='float32'))
@@ -495,7 +503,8 @@ def test_elemwise2():
                                                dtype='float32'), 'a')
     b = tensor.Tensor(dtype='float32', broadcastable=[0] * len(shape))()
     f = pfunc([b], [], updates=[(a, (a + b).dimshuffle([2, 0, 3, 1]) *
-        tensor.exp(b ** a).dimshuffle([2, 0, 3, 1]))], mode=mode_with_gpu)
+              tensor.exp(b ** a).dimshuffle([2, 0, 3, 1]))],
+              mode=mode_with_gpu)
     has_elemwise = False
     for i, node in enumerate(f.maker.fgraph.toposort()):
         has_elemwise = has_elemwise or isinstance(node.op, tensor.Elemwise)
@@ -585,10 +594,11 @@ def test_elemwise_composite_float64():
         return l
     for mode in [mode_with_gpu, mode_with_gpu.excluding('gpu_after_fusion'),
                  mode_with_gpu.excluding('elemwise_fusion')]:
-        f = pfunc([a, b],
-                  tensor.cast(tensor.lt(tensor.cast(a, 'float64') ** 2,
-                                               b),
-                                     'float32'), mode=mode)
+        f = pfunc(
+            [a, b],
+            tensor.cast(
+                tensor.lt(tensor.cast(a, 'float64') ** 2, b), 'float32'),
+            mode=mode)
 
         out = f(av, bv)
         assert numpy.all(out == ((av ** 2) < bv))
@@ -648,11 +658,11 @@ def speed_elemwise_collapse():
     v = theano._asarray(numpy.random.rand(*shape), dtype='float32')
     v = v[:, ::2, :, :]
     v = cuda_ndarray.CudaNdarray(v)
-    t1 = time.time()
+    time.time()
     for i in range(100):
         # let debugmode catch errors
         f(v)
-    t2 = time.time()
+    time.time()
 
 
 def speed_elemwise_collapse2():
@@ -672,11 +682,11 @@ def speed_elemwise_collapse2():
     v = theano._asarray(numpy.random.rand(*shape), dtype='float32')
     v = v[:, :, :, ::2]
     v = cuda_ndarray.CudaNdarray(v)
-    t1 = time.time()
+    time.time()
     for i in range(100):
         # let debugmode catch errors
         f(v)
-    t2 = time.time()
+    time.time()
 
 
 def test_elemwise_collapse():
@@ -848,8 +858,8 @@ def test_hostfromgpu_shape_i():
     ca = theano.sandbox.cuda.var.CudaNdarrayType((False, False))()
 
     av = numpy.asarray(numpy.random.rand(5, 4), dtype='float32')
-    cv = cuda.CudaNdarray(numpy.asarray(numpy.random.rand(5, 4),
-                                      dtype='float32'))
+    cv = cuda.CudaNdarray(numpy.asarray(
+        numpy.random.rand(5, 4), dtype='float32'))
 
     f = theano.function([a], cuda.basic_ops.gpu_from_host(a), mode=m)
     assert cuda.basic_ops.gpu_from_host in [x.op
@@ -880,7 +890,7 @@ def test_gpujoin_assert_cndas():
     a = theano.shared(_a)
 
     try:
-        c = cuda.basic_ops.gpu_join(1, a)
+        cuda.basic_ops.gpu_join(1, a)
         # can't "assert False" here, as we want the assertion
         # error from gpu_join
     except TypeError:
@@ -921,13 +931,18 @@ def test_gpujoin_gpualloc():
     b = T.fmatrix('b')
     b_val = numpy.asarray(numpy.random.rand(3, 5), dtype='float32')
 
-    f = theano.function([a, b], T.join(0, T.zeros_like(a), T.ones_like(b)) + 4,
-                        mode=mode_without_gpu)
-    f_gpu = theano.function([a, b], T.join(0, T.zeros_like(a), T.ones_like(b)),
-                            mode=mode_with_gpu)
-    f_gpu2 = theano.function([a, b], T.join(0, T.zeros_like(a),
-                                           T.ones_like(b)) + 4,
-                             mode=mode_with_gpu)
+    f = theano.function(
+        [a, b],
+        T.join(0, T.zeros_like(a), T.ones_like(b)) + 4,
+        mode=mode_without_gpu)
+    f_gpu = theano.function(
+        [a, b],
+        T.join(0, T.zeros_like(a), T.ones_like(b)),
+        mode=mode_with_gpu)
+    f_gpu2 = theano.function(
+        [a, b],
+        T.join(0, T.zeros_like(a), T.ones_like(b)) + 4,
+        mode=mode_with_gpu)
 
     assert sum([node.op == T.alloc for node in f.maker.fgraph.toposort()]) == 2
     assert sum([node.op == T.join for node in f.maker.fgraph.toposort()]) == 1
@@ -963,9 +978,6 @@ def test_gpualloc_output_to_gpu():
     assert numpy.allclose(f(5), f_gpu(5))
 
 
-import theano.tensor.tests.test_basic
-
-
 class TestAlloc(theano.tensor.tests.test_basic.TestAlloc):
     dtype = "float32"
     mode = mode_with_gpu
@@ -987,7 +999,6 @@ class T_Join_and_Split(theano.tensor.tests.test_basic.T_Join_and_Split):
         self.shared = cuda.shared_constructor
 
 
-import theano.tensor.tests.test_subtensor
 # This is to don't duplicate test.
 
 
@@ -1026,7 +1037,7 @@ class T_subtensor(theano.tensor.tests.test_subtensor.T_subtensor):
         # version when we should. Users should not use it.
         for shape, idx, fast in [((70000,), range(70000), True),
                                  ((70000, 5), range(70000), True),
-                                 ((70000, 5),  numpy.zeros((0,), 'int64'),
+                                 ((70000, 5), numpy.zeros((0,), 'int64'),
                                   True),
                                  ((70000, 2, 3), range(70000), True),
                                  ((1025, 1025), [5, 10], True),
@@ -1035,7 +1046,7 @@ class T_subtensor(theano.tensor.tests.test_subtensor.T_subtensor):
                                  ((3, 10, 68000), [1, 2], True),
                                  ((3, 69000, 11), [1, 2], True),
                                  # much memory, will be disabled if needed
-                                 ((2*10e7,), [-1, 199999999], True),
+                                 ((2 * 10e7,), [-1, 199999999], True),
                                  ((4, 5), [2, 3], True),
                                  ((4, 2, 3), [0, 3], True),
                                  ((4, 2, 3), [3, 3, 1, 1, 2,
@@ -1047,8 +1058,7 @@ class T_subtensor(theano.tensor.tests.test_subtensor.T_subtensor):
                                  # optimized for that case.
                                  ((4, 4, 2, 3), [3, 3, 1, 1, 2, 2, 0, 0,
                                                  -1, -2, -3, -4], False),
-                                 ((1, 10), [0, 0], True),
-                             ]:
+                                 ((1, 10), [0, 0], True), ]:
             # If there is not enough memory on the GPU, skip the test
             size_needed = numpy.prod(shape) * (4 + 1)
             if isinstance(theano.compile.get_default_mode(),
@@ -1106,13 +1116,14 @@ def test_advinc_subtensor1():
         rep[[0, 2]] += yval
         utt.assert_allclose(rval, rep)
 
+
 def test_advset_subtensor1():
     """ Test GPU version of set_subtensor on vectors (uses GpuAdvancedIncSubtensor1) """
     shp = (10,)
     shared = cuda.shared_constructor
     xval = numpy.arange(shp[0], dtype='float32').reshape(shp) + 1
-    idxs = numpy.array([0,2,5,7,3], dtype='int32')
-    yval = numpy.ones(len(idxs), dtype='float32')*10
+    idxs = numpy.array([0, 2, 5, 7, 3], dtype='int32')
+    yval = numpy.ones(len(idxs), dtype='float32') * 10
     x = shared(xval, name='x')
     y = T.tensor(dtype='float32', broadcastable=(False,) * len(shp), name='y')
     expr = T.advanced_set_subtensor1(x, y, idxs)
@@ -1123,14 +1134,15 @@ def test_advset_subtensor1():
     rep = xval.copy()
     rep[idxs] = yval
     utt.assert_allclose(rval, rep)
+
 
 def test_advset_subtensor1_2d():
     """ Test GPU version of set_subtensor on matrices (uses GpuAdvancedIncSubtensor1_dev20 if compute capability >= 2.0) """
-    shp = (10,5)
+    shp = (10, 5)
     shared = cuda.shared_constructor
     xval = numpy.arange(numpy.prod(shp), dtype='float32').reshape(shp) + 1
-    idxs = numpy.array([0,2,5,7,3], dtype='int32')
-    yval = numpy.ones((len(idxs), shp[1]), dtype='float32')*10
+    idxs = numpy.array([0, 2, 5, 7, 3], dtype='int32')
+    yval = numpy.ones((len(idxs), shp[1]), dtype='float32') * 10
     x = shared(xval, name='x')
     y = T.tensor(dtype='float32', broadcastable=(False,) * len(shp), name='y')
     expr = T.advanced_set_subtensor1(x, y, idxs)
@@ -1142,37 +1154,38 @@ def test_advset_subtensor1_2d():
     rep[idxs] = yval
     utt.assert_allclose(rval, rep)
 
+
 def test_inc_subtensor():
-    shared = cuda.shared_constructor
-    #shared = tensor.shared
+    cuda.shared_constructor
+    # shared = tensor.shared
     x, y = T.fmatrices('x', 'y')
-    xval = numpy.asarray([[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-                      dtype='float32')
-    yval = numpy.asarray([[10, 10, 10], [10, 10, 10], [10, 10, 10]],
-                      dtype='float32')
+    xval = numpy.asarray(
+        [[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='float32')
+    yval = numpy.asarray(
+        [[10, 10, 10], [10, 10, 10], [10, 10, 10]], dtype='float32')
     expr = T.inc_subtensor(x[:, 1:3], y[:, 1:3])
 
     f = theano.function([x, y], expr, mode=mode_with_gpu)
 
     assert sum([isinstance(node.op, cuda.GpuIncSubtensor) and
-                node.op.set_instead_of_inc == False
+                node.op.set_instead_of_inc is False
                 for node in f.maker.fgraph.toposort()]) == 1
     utt.assert_allclose(f(xval, yval), [[1., 12., 13.],
                                         [4., 15., 16.], [7., 18., 19.]])
 
 
 def test_set_subtensor():
-    shared = cuda.shared_constructor
-    #shared = tensor.shared
+    cuda.shared_constructor
+    # shared = tensor.shared
     x, y = T.fmatrices('x', 'y')
-    xval = numpy.asarray([[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-                      dtype='float32')
-    yval = numpy.asarray([[10, 10, 10], [10, 10, 10], [10, 10, 10]],
-                      dtype='float32')
+    xval = numpy.asarray(
+        [[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='float32')
+    yval = numpy.asarray(
+        [[10, 10, 10], [10, 10, 10], [10, 10, 10]], dtype='float32')
     expr = T.set_subtensor(x[:, 1:3], y[:, 1:3])
     f = theano.function([x, y], expr, mode=mode_with_gpu)
     assert sum([isinstance(node.op, cuda.GpuIncSubtensor) and
-                node.op.set_instead_of_inc == True
+               node.op.set_instead_of_inc is True
                 for node in f.maker.fgraph.toposort()]) == 1
     f(xval, yval)
 
@@ -1191,7 +1204,7 @@ def test_many_arg_elemwise():
                         for arg in xrange(0, num_args)]
 
                 symb_args = [theano.tensor.TensorType('float32',
-                                                      (False,)*nb_dim)()
+                                                      (False,) * nb_dim)()
                              for arg in xrange(0, num_args)]
 
                 outputs = []
@@ -1313,7 +1326,6 @@ class test_size(unittest.TestCase):
         assert y.size == theano.function([], x.size)()
 
 
-import theano.tensor.tests.test_sharedvar
 # This test the case when the shared constructor view an CudaNdarray as input
 test_shared_options = theano.tensor.tests.test_sharedvar.makeSharedTester(
     shared_constructor_=tcn.shared_constructor,
@@ -1374,7 +1386,7 @@ def speed_reduce10():
 
 
 if __name__ == '__main__':
-    #test_many_arg_elemwise()
-    #test_gpujoin_assert_cndas()
+    # test_many_arg_elemwise()
+    # test_gpujoin_assert_cndas()
     test_advset_subtensor1()
     test_advset_subtensor1_2d()
