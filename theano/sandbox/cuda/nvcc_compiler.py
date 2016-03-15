@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import warnings
+from locale import getpreferredencoding
 
 import numpy
 
@@ -357,9 +358,10 @@ class NVCC_compiler(Compiler):
             os.chdir(location)
             p = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            nvcc_stdout, nvcc_stderr = p.communicate()[:2]
-            nvcc_stdout = decode_with(nvcc_stdout, p.stdout.encoding)
-            nvcc_stderr = decode_with(nvcc_stderr, p.stderr.encoding)
+            nvcc_stdout_raw, nvcc_stderr_raw = p.communicate()[:2]
+            console_encoding = getpreferredencoding()
+            nvcc_stdout = decode_with(nvcc_stdout_raw, console_encoding)
+            nvcc_stderr = decode_with(nvcc_stderr_raw, console_encoding)
         finally:
             os.chdir(orig_dir)
 
