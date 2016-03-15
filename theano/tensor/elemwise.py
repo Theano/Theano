@@ -1017,22 +1017,6 @@ second dimension
             alloc_fortran = '0'
 
         alloc = ""
-        # We loop over the "real" outputs, i.e., those that are not
-        # inplace (must be allocated) and we declare/allocate/check
-        # them
-        for output, oname, odtype in izip(
-                real_outputs, real_onames, real_odtypes):
-            i += 1  # before this loop, i = number of inputs
-            sub['lv%i' % i] = oname
-            sub['olv'] = oname
-            alloc += cgen.make_declare([list(range(nnested))], [odtype],
-                                       dict(sub, lv0=oname))
-            alloc += cgen.make_alloc(orders, odtype, sub,
-                                     fortran=alloc_fortran)
-            alloc += cgen.make_checks([list(range(nnested))], [odtype],
-                                      dict(sub, lv0=oname))
-        # index of the last output
-        olv_index = i
 
         # Array referencing all inputs
         ilength = len(_inames)
@@ -1107,6 +1091,20 @@ second dimension
         alloc += """
         Py_XDECREF(destroyMap);
         """
+        # We loop over all input, inplace ouputs won't be affected.
+        for output, oname in izip(node.outputs, onames):
+            odtype = output.type.dtype_specs()[1]
+            i += 1  # before this loop, i = number of inputs
+            sub['lv%i' % i] = oname
+            sub['olv'] = oname
+            alloc += cgen.make_declare([list(range(nnested))], [odtype],
+                                       dict(sub, lv0=oname))
+            alloc += cgen.make_alloc(orders, odtype, sub,
+                                     fortran=alloc_fortran)
+            alloc += cgen.make_checks([list(range(nnested))], [odtype],
+                                      dict(sub, lv0=oname))
+        # index of the last output
+        olv_index = i
 
         # We loop over the "aliased" outputs, i.e., those that are
         # inplace (overwrite the contents of one of the inputs) and
