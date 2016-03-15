@@ -21,6 +21,11 @@ try:
     import cuda_ndarray.cuda_ndarray as cuda
     from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
     import cuda_ndarray
+    # Python 3 does not necessarily set __file__. May need manual setting
+    try:
+        cuda_ndarray.__file__
+    except AttributeError:
+        cuda_ndarray.__file__ = os.path.join(cuda_ndarray.__path__._path[0], 'cuda_ndarray.pyd')
 except ImportError:
     # Used to know that `cuda` could not be properly imported.
     cuda = None
