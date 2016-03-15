@@ -68,7 +68,7 @@ else:
 
     def decode_with(x, encoding):
         return x
-        
+
 __all__ += ['cmp', 'operator_div', 'DictMixin', 'OrderedDict', 'decode',
             'decode_iter', 'get_unbound_function', 'imap', 'izip', 'ifilter']
 
