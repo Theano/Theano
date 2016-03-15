@@ -9,7 +9,7 @@ import warnings
 import numpy
 
 from theano import config
-from theano.compat import decode, decode_iter
+from theano.compat import decode, decode_with
 from theano.configdefaults import local_bitwidth
 from theano.gof.utils import hash_from_file
 from theano.gof.cmodule import (std_libs, std_lib_dirs,
@@ -357,7 +357,9 @@ class NVCC_compiler(Compiler):
             os.chdir(location)
             p = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            nvcc_stdout, nvcc_stderr = decode_iter(p.communicate()[:2])
+            nvcc_stdout, nvcc_stderr = p.communicate()[:2]
+            nvcc_stdout = decode_with(nvcc_stdout, p.stdout.encoding)
+            nvcc_stderr = decode_with(nvcc_stderr, p.stderr.encoding)
         finally:
             os.chdir(orig_dir)
 
