@@ -563,13 +563,13 @@ class TestBilinearUpsampling(unittest.TestCase):
             kernel = bilinear_kernel_2D(ratio=ratio, normalize=False)
             f = theano.function([], kernel)
             kernel_2D = self.numerical_kernel_2D(ratio)
-            np.testing.assert_allclose(kernel_2D, f())
+            utt.assert_allclose(kernel_2D, f())
 
             # getting the normalized kernel
             kernel = bilinear_kernel_2D(ratio=ratio, normalize=True)
             f = theano.function([], kernel)
             kernel_2D = kernel_2D / float(ratio**2)
-            np.testing.assert_allclose(kernel_2D, f())
+            utt.assert_allclose(kernel_2D, f())
 
     def test_bilinear_kernel_1D(self):
         """Test 1D kernels used in bilinear upsampling
@@ -591,15 +591,15 @@ class TestBilinearUpsampling(unittest.TestCase):
             kernel = bilinear_kernel_1D(ratio=ratio, normalize=False)
             f = theano.function([], kernel)
             kernel_1D = self.numerical_kernel_1D(ratio)
-            np.testing.assert_allclose(kernel_1D, f())
-            np.testing.assert_allclose(kernel_1D, f_ten(ratio))
+            utt.assert_allclose(kernel_1D, f())
+            utt.assert_allclose(kernel_1D, f_ten(ratio))
 
             # getting the normalized kernel
             kernel = bilinear_kernel_1D(ratio=ratio, normalize=True)
             f = theano.function([], kernel)
             kernel_1D = kernel_1D / float(ratio)
-            np.testing.assert_allclose(kernel_1D, f())
-            np.testing.assert_allclose(kernel_1D, f_ten_norm(ratio))
+            utt.assert_allclose(kernel_1D, f())
+            utt.assert_allclose(kernel_1D, f_ten_norm(ratio))
 
     def numerical_upsampling_multiplier(self, ratio):
         """Compute upsampling multiplier
@@ -680,7 +680,7 @@ class TestBilinearUpsampling(unittest.TestCase):
                                             use_1D_kernel=True)
             f = theano.function([], bilin_mat)
             up_mat_2d = self.get_upsampled_twobytwo_mat(input_x, ratio)
-            np.testing.assert_allclose(f(), up_mat_2d, rtol=1e-06)
+            utt.assert_allclose(f(), up_mat_2d, rtol=1e-06)
 
     def test_compare_1D_and_2D_upsampling_values(self):
         """Compare 1D and 2D upsampling
@@ -699,7 +699,7 @@ class TestBilinearUpsampling(unittest.TestCase):
                                      use_1D_kernel=False)
         f_1D = theano.function([], mat_1D)
         f_2D = theano.function([], mat_2D)
-        np.testing.assert_allclose(f_1D(), f_2D(), rtol=1e-06)
+        utt.assert_allclose(f_1D(), f_2D(), rtol=1e-06)
 
         # checking upsampling with ratio 8
         input_x = np.random.rand(12, 11, 10, 7).astype(theano.config.floatX)
@@ -711,4 +711,4 @@ class TestBilinearUpsampling(unittest.TestCase):
                                      use_1D_kernel=False)
         f_1D = theano.function([], mat_1D)
         f_2D = theano.function([], mat_2D)
-        np.testing.assert_allclose(f_1D(), f_2D(), rtol=1e-06)
+        utt.assert_allclose(f_1D(), f_2D(), rtol=1e-06)
