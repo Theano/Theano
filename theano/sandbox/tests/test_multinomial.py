@@ -1,5 +1,9 @@
 import copy
+import os
+import sys
+from six import reraise
 
+from nose.plugins.skip import SkipTest
 import numpy
 
 import theano
@@ -8,7 +12,6 @@ from theano.sandbox import multinomial
 from theano.compile.mode import get_default_mode, predefined_linkers
 import theano.sandbox.cuda as cuda
 import theano.tests.unittest_tools as utt
-import os
 from theano.compat import PY3
 from theano.misc.pkl_utils import CompatUnpickler
 
@@ -91,7 +94,18 @@ def test_n_samples_compatibility():
             u = CompatUnpickler(pkl_file, encoding="latin1")
         else:
             u = CompatUnpickler(pkl_file)
-        X, samples = u.load()
+        try:
+            X, samples = u.load()
+        except ImportError:
+            # Windows sometimes fail with nonsensical errors like:
+            #   ImportError: No module named type
+            #   ImportError: No module named copy_reg
+            # when "type" and "copy_reg" are builtin modules.
+            if sys.platform == 'win32':
+                exc_type, exc_value, exc_trace = sys.exc_info()
+                reraise(SkipTest, exc_value, exc_trace)
+            raise
+
         f = theano.function([X], samples)
         res = f(numpy.random.randn(20, 10))
         assert numpy.all(res.sum(axis=1) == 1)
