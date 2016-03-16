@@ -1,19 +1,18 @@
 import unittest
 import numpy
-import copy
 
 import theano
 from theano.tests import unittest_tools as utt
 
 # Skip tests if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
-import theano.sandbox.cuda as cuda_ndarray
-if not cuda_ndarray.cuda_available:
-    raise SkipTest('Optional package cuda not available')
 from theano.sandbox.cuda import float32_shared_constructor as shared
 from theano.sandbox.cuda.blas import (
     GpuCorr3dMM, GpuCorr3dMM_gradWeights, GpuCorr3dMM_gradInputs)
 from theano.sandbox.cuda.basic_ops import gpu_contiguous
+import theano.sandbox.cuda as cuda_ndarray
+if not cuda_ndarray.cuda_available:
+    raise SkipTest('Optional package cuda not available')
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
