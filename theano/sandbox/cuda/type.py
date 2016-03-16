@@ -21,6 +21,16 @@ try:
     import cuda_ndarray.cuda_ndarray as cuda
     from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
     import cuda_ndarray
+    # Python 3 does not necessarily set __file__. May need manual setting.
+    # The problem is known to occur on Windows 10 with Python 3.4 installed by Anaconda.
+    try:
+        cuda_ndarray.__file__
+    except AttributeError:
+        from theano.gof.cmodule import get_lib_extension
+        # Only works with Python 3, but it's fine, because Python 2
+        # guarantees to set __file__ when importing any module.
+        cuda_ndarray.__file__ = os.path.join(cuda_ndarray.__path__._path[0],
+                                             'cuda_ndarray.' + get_lib_extension())
 except ImportError:
     # Used to know that `cuda` could not be properly imported.
     cuda = None
