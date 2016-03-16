@@ -592,15 +592,19 @@ class _tensor_py_operators(object):
                                         dtype=dtype, keepdims=keepdims,
                                         acc_dtype=acc_dtype)
 
-    def norm(self, L, axis=None):
+    def norm(self, L, axis=None, keepdims=False):
         if L == 0:
             raise NotImplementedError()
         if numpy.isinf(L):
             raise NotImplementedError()
         # optimizations will/should catch cases like L=1, L=2
-        return theano.tensor.basic.pow(
+        y = theano.tensor.basic.pow(
             theano.tensor.basic.pow(
                 theano.tensor.basic.abs_(self), L).sum(axis=axis), 1.0 / L)
+        if keepdims:
+            return theano.tensor.basic.makeKeepDims(self, y, axis)
+        else:
+            return y
 
     def mean(self, axis=None, dtype=None, keepdims=False, acc_dtype=None):
         """See `theano.tensor.mean`."""
