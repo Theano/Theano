@@ -1,7 +1,6 @@
 from __future__ import print_function
 import operator
 import sys
-import unittest
 
 import numpy
 # Skip test if cuda_ndarray is not available.
@@ -9,28 +8,26 @@ from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
 
 import theano
+import theano.sandbox.cuda.cula as cula
+from theano.sandbox.cuda import basic_ops
+from theano.sandbox.cuda.type import CudaNdarrayType
+from theano.scalar.basic_scipy import erfinv
 from six.moves import reduce
 from theano.compile.pfunc import pfunc
 from theano import config, tensor
 import theano.tensor.tests.test_nlinalg
 import theano.tensor.tests.test_opt as test_opt
+from theano.tensor.nnet.blocksparse import sparse_block_dot
+from theano.sandbox.cuda.blocksparse import GpuSparseBlockGemv, GpuSparseBlockOuter
 
 from theano.tests.breakpoint import PdbBreakpoint
 from theano.tests import unittest_tools as utt
+import theano.tests.test_ifelse
 
 import theano.sandbox.cuda as cuda
 
 if not cuda.cuda_available:
     raise SkipTest('Optional package cuda disabled')
-
-import theano.sandbox.cuda.cula as cula
-
-from theano.sandbox.cuda import basic_ops
-from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.scalar.basic_scipy import erfinv
-
-from theano.tensor.nnet.blocksparse import sparse_block_dot
-from theano.sandbox.cuda.blocksparse import GpuSparseBlockGemv, GpuSparseBlockOuter
 
 
 if theano.config.mode == 'FAST_COMPILE':
@@ -117,7 +114,7 @@ def test_local_assert_no_cpu_op():
         config.on_opt_error = 'ignore'
 
         assert_raises(AssertionError, theano.function,
-                        [], out, mode=mode_local_assert)
+                      [], out, mode=mode_local_assert)
     finally:
         config.assert_no_cpu_op = old
         config.on_opt_error = old2
@@ -133,7 +130,7 @@ def test_local_assert_no_cpu_op():
 def test_int_pow():
     a = CudaNdarrayType([False])()
 
-    f = theano.function([a], (a*4).sum(), mode=mode_with_gpu)
+    f = theano.function([a], (a * 4).sum(), mode=mode_with_gpu)
 
     op_names = [n.op.__class__.__name__ for n in f.maker.fgraph.toposort()]
     assert op_names == ['GpuCAReduce', 'GpuElemwise', 'HostFromGpu']
@@ -159,20 +156,21 @@ def test_gpualloc():
     f = theano.function([], v + x,
                         mode=mode_with_gpu.excluding("local_elemwise_alloc"))
     l = f.maker.fgraph.toposort()
-    assert numpy.any([isinstance(x.op, cuda.GpuAlloc) for x in l])
+    assert numpy.any([isinstance(x.op, cuda.GpuAlloc) for y in l])
 
 
 def test_gpuallocempty():
 
-    f_gpu = theano.function([], tensor.AllocEmpty('float32')(2,3),
-                        mode=mode_with_gpu)
+    f_gpu = theano.function([], tensor.AllocEmpty('float32')(2, 3),
+                            mode=mode_with_gpu)
     l_gpu = f_gpu.maker.fgraph.toposort()
 
     assert numpy.any([isinstance(x.op, basic_ops.GpuAllocEmpty) for x in l_gpu])
 
-    f_cpu = theano.function([], tensor.AllocEmpty('int32')(2,3))
+    f_cpu = theano.function([], tensor.AllocEmpty('int32')(2, 3))
     l_cpu = f_cpu.maker.fgraph.toposort()
     assert not numpy.any([isinstance(x.op, basic_ops.GpuAllocEmpty) for x in l_cpu])
+
 
 class Test_local_elemwise_alloc(test_opt.Test_local_elemwise_alloc):
     dtype = 'float32'
@@ -250,7 +248,7 @@ def test_gpuspecifyshape():
     f = theano.function([], updates=[(x, m * numpy.float32(2))],
                         mode=mode_with_gpu)
     l = f.maker.fgraph.toposort()
-    assert not numpy.any([isinstance(x.op, cuda.HostFromGpu) for x in l])
+    assert not numpy.any([isinstance(x.op, cuda.HostFromGpu) for y in l])
 
 
 def test_softmax():
@@ -411,7 +409,7 @@ def test_local_gpu_subtensor():
     # Test multiple use of the input
     # We want the subtensor to be on the GPU to prevent multiple transfer.
     t = tensor.fmatrix()
-    f = theano.function([t], [t[3:4], t+1], mode=mode_with_gpu)
+    f = theano.function([t], [t[3:4], t + 1], mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert not any([type(node.op) is tensor.Subtensor for node in topo])
     assert any([isinstance(node.op, cuda.GpuSubtensor) for node in topo])
@@ -419,7 +417,7 @@ def test_local_gpu_subtensor():
     # Test multiple use of the input + input as output
     # We want the subtensor to be on the GPU to prevent multiple transfer.
     t = tensor.fmatrix()
-    f = theano.function([t], [t[3:4], t+1, t], mode=mode_with_gpu)
+    f = theano.function([t], [t[3:4], t + 1, t], mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert not any([type(node.op) is tensor.Subtensor for node in topo])
     assert any([isinstance(node.op, cuda.GpuSubtensor) for node in topo])
@@ -427,7 +425,7 @@ def test_local_gpu_subtensor():
     # Test shared forced on CPU end we do computation on the output of
     # the subtensor.
     t = tensor._shared(numpy.zeros(20, "float32"))
-    f = theano.function([], t[3:4]+1, mode=mode_with_gpu)
+    f = theano.function([], t[3:4] + 1, mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert any([type(node.op) is tensor.Subtensor for node in topo])
     assert not any([isinstance(node.op, cuda.GpuSubtensor) for node in topo])
@@ -488,10 +486,10 @@ def test_local_gpu_split():
 def test_print_op():
     """ Test that print ops don't block gpu optimization"""
     b = tensor.fmatrix()
-    f = theano.function([b], theano.printing.Print()(b)*2, mode=mode_with_gpu)
+    f = theano.function([b], theano.printing.Print()(b) * 2, mode=mode_with_gpu)
     # theano.printing.debugprint(f)
     # print f.maker.fgraph.toposort()
-#[GpuFromHost(<TensorType(float32, matrix)>), <theano.printing.Print object at 0x3581210>(GpuFromHost.0), GpuElemwise{mul}(CudaNdarray{[[ 2.]]}, <theano.printing.Print object at 0x3581210>.0), HostFromGpu(GpuElemwise{mul}.0)]
+    # [GpuFromHost(<TensorType(float32, matrix)>), <theano.printing.Print object at 0x3581210>(GpuFromHost.0), GpuElemwise{mul}(CudaNdarray{[[ 2.]]}, <theano.printing.Print object at 0x3581210>.0), HostFromGpu(GpuElemwise{mul}.0)]
     topo = f.maker.fgraph.toposort()
     assert topo[0].op == cuda.gpu_from_host
     assert isinstance(topo[1].op, theano.printing.Print)
@@ -563,7 +561,10 @@ def test_huge_elemwise_fusion():
     assert isinstance(topo[-3].op.scalar_op, theano.scalar.basic.Sub)
     assert isinstance(topo[-2].op.scalar_op, theano.scalar.basic.Composite)
     # let debugmode catch errors
-    gen = lambda: theano._asarray(numpy.random.rand(*shape), dtype='float32')
+    # gen = lambda: theano._asarray(numpy.random.rand(*shape), dtype='float32')
+
+    def gen():
+        return(theano._asarray(numpy.random.rand(*shape), dtype='float32'))
     f(*[gen() for i in range(nb_in)])
 
     # Test the case where we can't put the computation on the gpu! their is too
@@ -579,7 +580,9 @@ def test_huge_elemwise_fusion():
     assert sum([isinstance(node.op, cuda.GpuElemwise) for node in topo]) == 0
     assert sum([isinstance(node.op, tensor.Elemwise) for node in topo]) == 1
     # let debugmode catch errors
-    gen = lambda: theano._asarray(numpy.random.rand(*shape), dtype='float32')
+
+    def gen():
+        return(theano._asarray(numpy.random.rand(*shape), dtype='float32'))
     f(gen(), gen(), gen(), gen(), gen(), gen(), gen())
 
     def gen(shape):
@@ -592,9 +595,9 @@ def test_huge_elemwise_fusion():
                   (2, 2, 2, 2),
                   (2, 2, 2, 2, 2),  # 5d
                   (2, 2, 2, 2, 2, 2),
-#                  (2, 2, 2, 2, 2, 2, 2),
-#                  (2, 2, 2, 2, 2, 2, 2, 2),
-#                  (2, 2, 2, 1, 1, 1, 1, 2, 2),  # 9d
+                  # (2, 2, 2, 2, 2, 2, 2),
+                  # (2, 2, 2, 2, 2, 2, 2, 2),
+                  # (2, 2, 2, 1, 1, 1, 1, 2, 2),  # 9d
                   ]:
         vals = [cuda.shared_constructor(gen(shape)) for x in range(max_var)]
         for use_tan in [True, False]:
@@ -704,9 +707,6 @@ def test_elemwise_fusion():
     # let debugmode catch errors
     f(theano._asarray(numpy.random.rand(*shape), dtype='float32'),
       theano._asarray(numpy.random.rand(*shape), dtype='float32'))
-
-
-import theano.tests.test_ifelse
 
 
 class TestIfElse(theano.tests.test_ifelse.test_ifelse):
@@ -865,10 +865,10 @@ def test_local_abstractconv_gemm():
     image = tensor.ftensor4()
     W = tensor.ftensor4()
     conv = tensor.nnet.conv2d(image,
-                         W,
-                         input_shape=(1, 32, 32, 32),
-                         filter_shape=(32, 32, 3, 3),
-                         border_mode='half')
+                              W,
+                              input_shape=(1, 32, 32, 32),
+                              filter_shape=(32, 32, 3, 3),
+                              border_mode='half')
     f = theano.function([image, W], [conv], mode=mode_with_gpu)
     f(numpy.random.rand(1, 32, 32, 32).astype('float32'),
       numpy.random.rand(32, 32, 3, 3).astype('float32'))
