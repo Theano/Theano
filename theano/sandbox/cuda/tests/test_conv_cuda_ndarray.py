@@ -845,10 +845,15 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsample, op):
     outputs.extend([corr_op_dik, conv_op_dik,
                     corr_op_dki, conv_op_dki])
 
-    # TODO: fix when the abstractconv tests can pass debug mode.
-    mode = theano_mode
-    if theano.config.mode == 'DEBUG_MODE':
-        mode = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+    if not theano.config.blas.ldflags:
+        # Some of the operations are not transferred to the GPU,
+        # and withoug BLAS, the abstract Op will not be optimized
+        # to CorrMM either, so we have to accept the use of the
+        # slow Python convolution in that case.
+        mode = theano_mode.excluding('AbstractConvCheck')
+    else:
+        mode = theano_mode
+
     f = theano.function([i, k], outputs, mode=mode)
 
     allvals = f(npy_img, npy_kern)

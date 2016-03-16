@@ -538,6 +538,11 @@ class TestConvTypes(unittest.TestCase):
 
 
 class TestBilinearUpsampling(unittest.TestCase):
+    # If BLAS is not available on CPU, then we accept the fallback to the
+    # slow Python implementation for that test.
+    compile_mode = theano.compile.mode.get_default_mode()
+    if not theano.config.blas.ldflags:
+        compile_mode = compile_mode.excluding('AbstractConvCheck')
 
     def numerical_kernel_1D(self, ratio):
         """Gets numerical 1D kernel for bilinear upsampling"""
@@ -678,7 +683,7 @@ class TestBilinearUpsampling(unittest.TestCase):
             bilin_mat = bilinear_upsampling(input=input_x, ratio=ratio,
                                             batch_size=1, num_input_channels=1,
                                             use_1D_kernel=True)
-            f = theano.function([], bilin_mat)
+            f = theano.function([], bilin_mat, mode=self.compile_mode)
             up_mat_2d = self.get_upsampled_twobytwo_mat(input_x, ratio)
             utt.assert_allclose(f(), up_mat_2d, rtol=1e-06)
 
@@ -697,8 +702,8 @@ class TestBilinearUpsampling(unittest.TestCase):
         mat_2D = bilinear_upsampling(input=input_x, ratio=5,
                                      batch_size=5, num_input_channels=4,
                                      use_1D_kernel=False)
-        f_1D = theano.function([], mat_1D)
-        f_2D = theano.function([], mat_2D)
+        f_1D = theano.function([], mat_1D, mode=self.compile_mode)
+        f_2D = theano.function([], mat_2D, mode=self.compile_mode)
         utt.assert_allclose(f_1D(), f_2D(), rtol=1e-06)
 
         # checking upsampling with ratio 8
@@ -709,6 +714,6 @@ class TestBilinearUpsampling(unittest.TestCase):
         mat_2D = bilinear_upsampling(input=input_x, ratio=8,
                                      batch_size=12, num_input_channels=11,
                                      use_1D_kernel=False)
-        f_1D = theano.function([], mat_1D)
-        f_2D = theano.function([], mat_2D)
+        f_1D = theano.function([], mat_1D, mode=self.compile_mode)
+        f_2D = theano.function([], mat_2D, mode=self.compile_mode)
         utt.assert_allclose(f_1D(), f_2D(), rtol=1e-06)
