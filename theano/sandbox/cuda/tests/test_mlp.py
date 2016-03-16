@@ -24,7 +24,7 @@ if theano.config.mode not in ['FAST_RUN', 'Mode', 'ProfileMode']:
                    'otherwise it is too slow!')
 
 # Skip test if cuda_ndarray is not available.
-if tcn.cuda_available == False:
+if tcn.cuda_available is False:
     raise SkipTest('Optional package cuda disabled')
 
 
@@ -68,7 +68,7 @@ def print_mode(mode):
 def print_diff_mode(a, b):
     if (a is not None and
         isinstance(a, (theano.compile.ProfileMode,)) and
-        isinstance(b, (theano.compile.ProfileMode,))):
+       isinstance(b, (theano.compile.ProfileMode,))):
 
         a.print_diff_summary(b)
 
@@ -138,8 +138,8 @@ def test_run_nnet():
             # print "cpu:", rval_cpu
             # print "gpu:", rval_gpu
             abs_diff, rel_diff = \
-                    theano.gradient.numeric_grad.abs_rel_err(rval_gpu,
-                                                             rval_cpu)
+                theano.gradient.numeric_grad.abs_rel_err(rval_gpu,
+                                                         rval_cpu)
             max_abs_diff = abs_diff.max()
             # print "max abs diff=%e max rel diff=%e n_in=%d n_hid=%d" % (
             #    max_abs_diff, rel_diff.max(), n_in, n_hid)
@@ -147,19 +147,20 @@ def test_run_nnet():
             rtol = 1e-4
             if n_in * n_hid >= 2048 * 4096:
                 rtol = 7e-4
-            assert numpy.allclose(rval_cpu, rval_gpu, rtol=rtol, atol=1e-6), \
-                   ("max_abs_diff, max_rel_diff, n_in, n_hid", max_abs_diff,
-                    rel_diff.max(), n_in, n_hid)
+            assert numpy.allclose(
+                rval_cpu, rval_gpu, rtol=rtol, atol=1e-6), \
+                ("max_abs_diff, max_rel_diff, n_in, n_hid", max_abs_diff,
+                 rel_diff.max(), n_in, n_hid)
 
 
 def test_run_nnet_med():
     utt.seed_rng()
-    rval_cpu = run_nnet(False, 10, 128, 50, 4, n_train=10000)
+    run_nnet(False, 10, 128, 50, 4, n_train=10000)
 
 
 def test_run_nnet_small():
     utt.seed_rng()
-    rval_cpu = run_nnet(False, 10, 10, 4, 4, n_train=100000)
+    run_nnet(False, 10, 10, 4, 4, n_train=100000)
 
 
 def run_conv_nnet1(use_gpu):
@@ -203,8 +204,11 @@ def run_conv_nnet1(use_gpu):
     mode = get_mode(use_gpu)
 
     # print 'building pfunc ...'
-    train = pfunc([x, y, lr], [loss], mode=mode, updates=[(p, p - g) for p,
-        g in zip(params, gparams)])
+    train = pfunc(
+        [x, y, lr],
+        [loss],
+        mode=mode,
+        updates=[(p, p - g) for p, g in zip(params, gparams)])
 
 #    for i, n in enumerate(train.maker.fgraph.toposort()):
 #        print i, n
@@ -279,7 +283,9 @@ def run_conv_nnet2(use_gpu):  # pretend we are training LeNet for MNIST
 
     conv_op = conv.ConvOp(shape_img[2:], shape_kern[2:], n_kern, n_batch, 1, 1)
     conv_op1 = conv.ConvOp((n_kern, logical_hid_shape[0] // 2,
-         logical_hid_shape[1] // 2), shape_kern1[2:], n_kern1, n_batch, 1, 1)
+                            logical_hid_shape[1] // 2),
+                           shape_kern1[2:],
+                           n_kern1, n_batch, 1, 1)
 
     hid = tensor.tanh(conv_op(x, w0) + b0.dimshuffle((0, 'x', 'x')))
     hid1 = tensor.tanh(conv_op1(hid[:, :, ::2, ::2], w1) + b1.dimshuffle((
@@ -295,8 +301,11 @@ def run_conv_nnet2(use_gpu):  # pretend we are training LeNet for MNIST
     mode = get_mode(use_gpu)
 
     # print 'building pfunc ...'
-    train = pfunc([x, y, lr], [loss], mode=mode, updates=[(p, p - g) for p,
-        g in zip(params, gparams)])
+    train = pfunc(
+        [x, y, lr],
+        [loss],
+        mode=mode,
+        updates=[(p, p - g) for p, g in zip(params, gparams)])
 
 #    for i, n in enumerate(train.maker.fgraph.toposort()):
 #        print i, n
@@ -376,13 +385,14 @@ def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
     if downsample_ops:
         hid = tensor.tanh(ds_op(conv_op(x, w0) + b0.dimshuffle((0, 'x', 'x'))))
     else:
-        hid = tensor.tanh((conv_op(x, w0) + b0.dimshuffle((0, 'x', 'x')
-            ))[:, :, ::2, ::2])
+        hid = tensor.tanh(
+            (conv_op(x, w0) + b0.dimshuffle(
+                (0, 'x', 'x')))[:, :, ::2, ::2])
     hid1 = tensor.tanh(conv_op1(hid, w1) + b1.dimshuffle((0, 'x', 'x')))
     hid_flat = hid1.reshape((n_batch, n_hid))
     out = tensor.nnet.softmax(tensor.dot(hid_flat, v) + c)
-    loss = tensor.sum(tensor.nnet.crossentropy_categorical_1hot(out,
-         tensor.argmax(y, axis=1)) * lr)
+    loss = tensor.sum(tensor.nnet.crossentropy_categorical_1hot(
+        out, tensor.argmax(y, axis=1)) * lr)
     # print 'loss type', loss.type
 
     params = [w0, b0, w1, b1, v, c]
@@ -391,8 +401,11 @@ def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
     mode = get_mode(use_gpu, check_isfinite)
 
     # print 'building pfunc ...'
-    train = pfunc([x, y, lr], [loss], mode=mode, updates=[(p, p - g) for p,
-        g in zip(params, gparams)])
+    train = pfunc(
+        [x, y, lr],
+        [loss],
+        mode=mode,
+        updates=[(p, p - g) for p, g in zip(params, gparams)])
 
     if verbose:
         theano.printing.debugprint(train)
@@ -422,13 +435,13 @@ def run_conv_nnet2_classif(use_gpu, seed, isize, ksize, bsize,
 
     utt.seed_rng(seed)  # Seeds numpy.random with seed
     train, params, x_shape, y_shape, mode = build_conv_nnet2_classif(
-            use_gpu=use_gpu,
-            isize=isize,
-            ksize=ksize,
-            n_batch=bsize,
-            verbose=verbose,
-            version=version,
-            check_isfinite=check_isfinite)
+        use_gpu=use_gpu,
+        isize=isize,
+        ksize=ksize,
+        n_batch=bsize,
+        verbose=verbose,
+        version=version,
+        check_isfinite=check_isfinite)
 
     if use_gpu:
         device = 'GPU'
@@ -440,10 +453,8 @@ def run_conv_nnet2_classif(use_gpu, seed, isize, ksize, bsize,
     lr = theano._asarray(0.01, dtype='float32')
 
     rvals = my_zeros(n_train)
-    t0 = time.time()
     for i in xrange(n_train):
         rvals[i] = train(xval, yval, lr)[0]
-    t1 = time.time()
     print_mode(mode)
 
     if pickle and isinstance(mode, theano.compile.ProfileMode):
@@ -495,35 +506,36 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
             compare = True
 
         if not compare:
-            return run_conv_nnet2_classif(use_gpu=use_gpu,
-                    seed=seed, isize=isize, ksize=ksize, bsize=bsize,
-                    n_train=n_train,
-                    check_isfinite=check_isfinite,
-                    pickle=pickle,
-                    verbose=verbose,
-                    version=version)
+            return run_conv_nnet2_classif(
+                use_gpu=use_gpu,
+                seed=seed, isize=isize, ksize=ksize, bsize=bsize,
+                n_train=n_train,
+                check_isfinite=check_isfinite,
+                pickle=pickle,
+                verbose=verbose,
+                version=version)
 
         utt.seed_rng(seed)  # Seeds numpy.random with seed
         train_cpu, params_cpu, x_shape, y_shape, mode_cpu = \
-                build_conv_nnet2_classif(
-                        use_gpu=False,
-                        isize=isize,
-                        ksize=ksize,
-                        n_batch=bsize,
-                        verbose=verbose,
-                        version=version,
-                        check_isfinite=check_isfinite)
+            build_conv_nnet2_classif(
+                use_gpu=False,
+                isize=isize,
+                ksize=ksize,
+                n_batch=bsize,
+                verbose=verbose,
+                version=version,
+                check_isfinite=check_isfinite)
 
         utt.seed_rng(seed)  # Seeds numpy.random with seed
         train_gpu, params_gpu, x_shape_gpu, y_shape_gpu, mode_gpu = \
-                build_conv_nnet2_classif(
-                        use_gpu=True,
-                        isize=isize,
-                        ksize=ksize,
-                        n_batch=bsize,
-                        verbose=verbose,
-                        version=version,
-                        check_isfinite=check_isfinite)
+            build_conv_nnet2_classif(
+                use_gpu=True,
+                isize=isize,
+                ksize=ksize,
+                n_batch=bsize,
+                verbose=verbose,
+                version=version,
+                check_isfinite=check_isfinite)
 
         assert x_shape == x_shape_gpu
         assert y_shape == y_shape_gpu
@@ -569,18 +581,6 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
 
     finally:
         theano.tensor.basic.float32_atol = orig_float32_atol
-
-    if pickle:
-        if isinstance(cpu_mode, theano.compile.ProfileMode):
-            import pickle
-            print("BEGIN CPU profile mode dump")
-            print(pickle.dumps(cpu_mode))
-            print("END CPU profile mode dump")
-        if isinstance(gpu_mode, theano.compile.ProfileMode):
-            import pickle
-            print("BEGIN GPU profile mode dump")
-            print(pickle.dumps(gpu_mode))
-            print("END GPU profile mode dump")
 
     # print "CPU time: %.3f, GPU time: %.3f, speed up %f" % (
     #        (time_cpu, time_gpu, time_cpu/time_gpu))
