@@ -522,6 +522,7 @@ def bilinear_upsampling(input,
     # first and last col
     concat_mat = T.concatenate((concat_mat[:, :, :, :1], concat_mat,
                                 concat_mat[:, :, :, -1:]), axis=3)
+    concat_col = col + 2
 
     pad = 2 * ratio - (ratio - 1) // 2 - 1
 
@@ -533,7 +534,8 @@ def bilinear_upsampling(input,
                                                             np.newaxis, :,
                                                             np.newaxis],
                                                input_shape=(up_bs, 1,
-                                                            row * ratio, col),
+                                                            row * ratio,
+                                                            concat_col),
                                                filter_shape=(1, 1, None, 1),
                                                border_mode=(pad, 0),
                                                subsample=(ratio, 1),
