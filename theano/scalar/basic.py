@@ -1151,7 +1151,13 @@ class IsNan(FixedLogicalComparison):
         (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
-        return "%(z)s = isnan(%(x)s);" % locals()
+        # Windows tries to be different and sometimes return -1, but we want
+        # to be consistent with numpy (which returns True), hence the "abs".
+        return "%(z)s = abs(isnan(%(x)s));" % locals()
+
+    def c_code_cache_version(self):
+        scalarop_version = super(IsNan, self).c_code_cache_version()
+        return tuple(scalarop_version) + (2,)
 isnan = IsNan()
 
 
