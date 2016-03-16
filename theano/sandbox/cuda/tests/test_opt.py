@@ -32,6 +32,15 @@ from theano.scalar.basic_scipy import erfinv
 from theano.tensor.nnet.blocksparse import sparse_block_dot
 from theano.sandbox.cuda.blocksparse import GpuSparseBlockGemv, GpuSparseBlockOuter
 
+imported_scipy_special = False
+try:
+    import scipy.special
+    imported_scipy_special = True
+# Importing scipy.special may raise ValueError.
+# See http://projects.scipy.org/scipy/ticket/1739
+except (ImportError, ValueError):
+    pass
+
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
@@ -753,7 +762,8 @@ def test_erfinvgpu():
     assert isinstance(f.maker.fgraph.toposort()[1].op.scalar_op,
                       cuda.elemwise.ErfinvGPU)
     xv = numpy.random.rand(7, 8).astype('float32')
-    assert numpy.allclose(f(xv), f2(xv))
+    if imported_scipy_special:
+        assert numpy.allclose(f(xv), f2(xv))
 
 
 def test_local_gpu_solve():
