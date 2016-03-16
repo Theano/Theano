@@ -3800,9 +3800,11 @@ CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj)
     {
         PyErr_Format(PyExc_RuntimeError,
                      "Cuda error '%s' while copying %lli data element"
-                     " to device memory",
+                     " to device memory. str ptr=%p. dst ptr=%p",
                      cudaGetErrorString(cerr),
-                     (long long)py_src_size);
+                     (long long)py_src_size,
+                     py_src_data,
+                     self->devdata);
         Py_DECREF(py_src);
         return -1;
     }
