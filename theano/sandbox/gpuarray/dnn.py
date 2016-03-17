@@ -139,6 +139,7 @@ dnn_available.msg = None
 
 
 class DnnBase(COp):
+
     """
     Creates a handle for cudnn and pulls in the cudnn libraries and headers.
 
@@ -246,6 +247,7 @@ version.v = None
 
 
 class GpuDnnConvDesc(COp):
+
     """
     This Op builds a convolution descriptor for use in the other convolution
     operations.
@@ -372,6 +374,7 @@ def ensure_dt(val, default, name, dtype):
 
 
 class GpuDnnConv(DnnBase):
+
     """
     The forward convolution.
 
@@ -539,6 +542,7 @@ class GpuDnnConv(DnnBase):
 
 
 class GpuDnnConvGradW(DnnBase):
+
     """
     The convolution gradient with respect to the weights.
 
@@ -659,6 +663,7 @@ class GpuDnnConvGradW(DnnBase):
 
 
 class GpuDnnConvGradI(DnnBase):
+
     """
     The convolution gradient with respect to the inputs.
 
@@ -927,6 +932,7 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
 
 
 class GpuDnnPoolDesc(Op):
+
     """
     This Op builds a pooling descriptor for use in the other
     pooling operations.
@@ -1038,69 +1044,89 @@ class GpuDnnPoolDesc(Op):
 
 
 class GpuDnnPool(DnnBase):
-    """
-    Pooling.
 
+    """
     Parameters
     ----------
     img
-        The image 4d tensor.
-    desc
-        The pooling descriptor.
-
+        The image 4d or 5d tensor.
+    Parameters
+    ----------
+    ws : tensor variable
+        Window size.
+    stride : tensor variable
+        (dx, dy) or (dx, dy, dz).
+    mode : {'max', 'average_inc_pad', 'average_exc_pad'}
+        The old deprecated name 'average' corresponds to 'average_inc_pad'.
+    pad : tensor
+        (padX, padY) or (padX, padY, padZ)
     """
 
-    __props__ = ()
+    __props__ = ('mode',)
 
-    def __init__(self):
+    def __init__(self, mode='max'):
         DnnBase.__init__(self, ["dnn_pool.c"], "APPLY_SPECIFIC(dnn_pool)")
+        if mode == 'average':
+            mode = 'average_inc_pad'
+        assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
+        if version() == -1:
+            raise Exception("cudnn v1 do not support average_exc_pad")
+        self.mode = mode
 
-    def make_node(self, img, desc):
-        img = as_gpuarray_variable(img, infer_context_name(img))
+    def get_op_params(self):
+        if self.mode == 'max':
+            mode_flag = 'CUDNN_POOLING_MAX'
+        elif self.mode == "average_inc_pad":
+            mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING'
+        elif self.mode == "average_exc_pad":
+            mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING'
 
-        if desc.owner is not None:
-            e_ndim = desc.owner.op.get_ndim() + 2
+        return [('MODE_FLAG', mode_flag)]
 
-            if img.type.ndim != e_ndim:
-                raise TypeError('img must be %dD tensor' % (e_ndim,))
+    def make_node(self, img, ws, stride, pad):
+        ctx_name = infer_context_name(img, ws, stride, pad)
+        img = as_gpuarray_variable(img, ctx_name)
 
-        if (not isinstance(desc.type, CDataType) or
-                desc.type.ctype != 'cudnnPoolingDescriptor_t'):
-            raise TypeError('desc must be cudnnPoolingDescriptor_t')
+        ws = tensor.as_tensor_variable(ws)
+        stride = tensor.as_tensor_variable(stride)
+        pad = tensor.as_tensor_variable(pad)
+        assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
+        assert ws.type.ndim == 1
 
-        return Apply(self, [img, desc], [img.type()])
+        return Apply(self, [img, ws, stride, pad], [img.type()])
 
     def infer_shape(self, node, shape):
-        desc = node.inputs[1].owner.op
-        w = desc.ws
-        s = desc.stride
-        p = desc.pad
+        w = node.inputs[1]
+        s = node.inputs[2]
+        p = node.inputs[3]
+
         res = [shape[0][0], shape[0][1],
                (shape[0][2] + 2 * p[0] - w[0]) // s[0] + 1,
                (shape[0][3] + 2 * p[1] - w[1]) // s[1] + 1
                ]
-        if len(w) > 2:
+        if node.inputs[0].ndim == 5:
             res.append((shape[0][4] + 2 * p[2] - w[2]) // s[2] + 1)
         return [res]
 
     def grad(self, inp, grads):
-        img, desc = inp
+        img, ws, stride, pad = inp
         grad, = grads
 
         grad = gpu_contiguous(grad)
 
-        out = self(img, desc)
+        out = self(img, ws, stride, pad)
 
-        g_out = GpuDnnPoolGrad()(img, out, grad, desc)
+        g_out = GpuDnnPoolGrad(mode=self.mode)(img, out, grad, ws, stride, pad)
 
-        return g_out, theano.gradient.DisconnectedType()()
+        return g_out, theano.gradient.DisconnectedType()(), theano.gradient.DisconnectedType()(), theano.gradient.DisconnectedType()()
 
     def connection_pattern(self, node):
-        # not connected to desc
-        return [[1], [0]]
+        # not connected to parameters
+        return [[1], [0], [0], [0]]
 
 
 class GpuDnnPoolGrad(DnnBase):
+
     """
     The pooling gradient.
 
@@ -1112,40 +1138,56 @@ class GpuDnnPoolGrad(DnnBase):
         The output of the pooling in the forward.
     out_grad
         Same size as out, but is the corresponding gradient information.
-    desc
-        The pooling descriptor.
+    ws : tensor variable
+        Window size.
+    stride : tensor variable
+        (dx, dy) or (dx, dy, dz).
+    mode : {'max', 'average_inc_pad', 'average_exc_pad'}
+        The old deprecated name 'average' corresponds to 'average_inc_pad'.
+    pad : tensor
+        (padX, padY) or (padX, padY, padZ)
 
     """
 
-    __props__ = ()
+    __props__ = ('mode',)
 
-    def __init__(self):
+    def __init__(self, mode='max'):
         DnnBase.__init__(self, ["dnn_pool_grad.c"],
                          "APPLY_SPECIFIC(dnn_pool_grad)")
+        if mode == 'average':
+            mode = 'average_inc_pad'
+        assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
+        self.mode = mode
 
-    def make_node(self, inp, out, out_grad, desc):
+    def get_op_params(self):
+        if self.mode == 'max':
+            mode_flag = 'CUDNN_POOLING_MAX'
+        elif self.mode == "average_inc_pad":
+            mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING'
+        elif self.mode == "average_exc_pad":
+            mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING'
+
+        return [('MODE_FLAG', mode_flag)]
+
+    def make_node(self, inp, out, out_grad, ws, stride, pad):
         ctx_name = infer_context_name(inp, out, out_grad)
         inp = as_gpuarray_variable(inp, ctx_name)
+        assert (inp.ndim in [4, 5])
         out_grad = as_gpuarray_variable(out_grad, ctx_name)
+        assert (out_grad.ndim in [4, 5])
         out = as_gpuarray_variable(out, ctx_name)
+        assert(out.ndim in [4, 5])
 
-        if desc.owner is not None:
-            nd = desc.owner.op.get_ndim() + 2
+        assert (out_grad.ndim == inp.ndim)
+        assert (inp.ndim == out.ndim)
 
-            if inp.type.ndim != nd:
-                raise TypeError('inp must be %dD tensor' % (nd,))
+        ws = tensor.as_tensor_variable(ws)
+        stride = tensor.as_tensor_variable(stride)
+        pad = tensor.as_tensor_variable(pad)
+        assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
+        assert ws.type.ndim == 1
 
-            if out_grad.type.ndim != nd:
-                raise TypeError('out_grad must be %dD tensor' % (nd,))
-
-            if out.type.ndim != nd:
-                raise TypeError('out must be %dD tensor' % (nd,))
-
-        if (not isinstance(desc.type, CDataType) or
-                desc.type.ctype != 'cudnnPoolingDescriptor_t'):
-            raise TypeError('desc must be cudnnPoolingDescriptor_t')
-
-        return Apply(self, [inp, out, out_grad, desc], [inp.type()])
+        return Apply(self, [inp, out, out_grad, ws, stride, pad], [inp.type()])
 
     def infer_shape(self, node, shape):
         return [shape[0]]
@@ -1183,11 +1225,11 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
 
     """
     img = gpu_contiguous(img)
-    desc = GpuDnnPoolDesc(ws=ws, stride=stride, mode=mode, pad=pad)()
-    return GpuDnnPool()(img, desc)
+    return GpuDnnPool(mode=mode)(img, ws, stride, pad)
 
 
 class GpuDnnSoftmaxBase(DnnBase):
+
     """
     Op for the cuDNN Softmax.
 
@@ -1240,6 +1282,7 @@ class GpuDnnSoftmaxBase(DnnBase):
 
 
 class GpuDnnSoftmax(GpuDnnSoftmaxBase):
+
     """
     Op for the cuDNN Softmax.
 
@@ -1273,6 +1316,7 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
 
 
 class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
+
     """
     Op for the cuDNN SoftmaxGrad.
 
@@ -1444,11 +1488,12 @@ def local_pool_dnn_grad_stride(node, ctx_name):
     pad = node.op.padding
     mode = node.op.mode
 
-    desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
-    return GpuDnnPoolGrad()(gpu_contiguous(inp),
-                            gpu_contiguous(out),
-                            gpu_contiguous(out_grad),
-                            desc)
+    return GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
+                                     gpu_contiguous(out),
+                                     gpu_contiguous(out_grad),
+                                     ds,
+                                     st,
+                                     pad)
 
 
 @register_opt('cudnn')
@@ -1468,11 +1513,10 @@ def local_avg_pool_dnn_grad_stride(node, ctx_name):
 
     cg = gpu_contiguous(out_grad)
 
-    desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
     # We reuse cg because CuDNN does not use the value of the `out`
     # argument but still checks its shape for average pooling. This
     # has been observed in v2 and v3 as far as I know.
-    return GpuDnnPoolGrad()(gpu_contiguous(inp), cg, cg, desc)
+    return GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp), cg, cg, ds, st, pad)
 
 
 @register_opt('cudnn')
@@ -1525,6 +1569,7 @@ def local_logsoftmax_to_dnn(node, ctx_name):
 
 
 class NoCuDNNRaise(Optimizer):
+
     def apply(self, fgraph):
         """
         Raise a error if cudnn can't be used.
