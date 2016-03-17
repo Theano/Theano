@@ -345,13 +345,18 @@ class mrg_uniform(mrg_uniform_base):
         rstate, size = inp
         o_rstate, o_sample = out
         n_elements = 1
+        for s in size:
+            n_elements *= s
+        if n_elements > M1:
+            # The limit is on the C and GPU code. This perform don't
+            # have this limit.  But to have all of them behave the
+            # same (and have DebugMode don't use too much memory for
+            # some rng_mrg tests) I also add this limit here.
+            raise ValueError("rng_mrg does not support more then (2**31 -1) samples")
 
         rstate = numpy.asarray(rstate)  # bring state from GPU if necessary
         if not self.inplace:
             rstate = rstate.copy()
-
-        for s in size:
-            n_elements *= s
 
         n_streams, _ = rstate.shape
 
