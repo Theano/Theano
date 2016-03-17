@@ -1,13 +1,16 @@
 import logging
+import os
+import sys
 
 from nose.plugins.skip import SkipTest
-import numpy
 from itertools import chain, product
 import six.moves.cPickle as pickle
-import os
+from six import StringIO
+from six import reraise
+
+import numpy
 
 import theano
-from six import StringIO
 import theano.tensor as T
 import theano.tests.unittest_tools as utt
 from theano.sandbox.neighbours import images2neibs
@@ -390,7 +393,17 @@ def test_old_pool_interface():
     testfile_dir = os.path.dirname(os.path.realpath(__file__))
     fname = 'old_pool_interface.pkl'
     with open(os.path.join(testfile_dir, fname), 'rb') as fp:
-        pickle.load(fp)
+        try:
+            pickle.load(fp)
+        except ImportError:
+            # Windows sometimes fail with nonsensical errors like:
+            #   ImportError: No module named type
+            #   ImportError: No module named copy_reg
+            # when "type" and "copy_reg" are builtin modules.
+            if sys.platform == 'win32':
+                exc_type, exc_value, exc_trace = sys.exc_info()
+                reraise(SkipTest, exc_value, exc_trace)
+            raise
 
 
 def test_pooling3d():
