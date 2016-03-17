@@ -1046,51 +1046,51 @@ second dimension
         int olv_index;
         olv_index = %(j)i;
         """ % locals()
+        if 'params' in sub:
+            # Get the destroy map from params
+            alloc += """
+            PyObject *tmpOut, *tmpIn;
+            Py_ssize_t pos;
+            pos = 0;
+            PyObject* destroyMap;
+            destroyMap =PyObject_GetAttrString(%(p)s,"inplace_pattern");
+            if( destroyMap == NULL){
+                %(fail)s
+            }
+               """ % dict(p=sub['params'], fail=sub['fail'])
+            # Iterate over the python object to fill the destroy map arrays
+            # and make the output point to the corresponding input and
+            # decrease the reference of whatever the output contained
+            # prior to this
 
-        # Get the destroy map from params
-        alloc += """
-        PyObject *tmpOut, *tmpIn;
-        Py_ssize_t pos;
-        pos = 0;
-        PyObject* destroyMap;
-        destroyMap =PyObject_GetAttrString(%(p)s,"inplace_pattern");
-        if( destroyMap == NULL){
-        %(fail)s
-        }
-        """ % dict(p=sub['params'], fail=sub['fail'])
-        # Iterate over the python object to fill the destroy map arrays
-        # and make the output point to the corresponding input and
-        # decrease the reference of whatever the output contained
-        # prior to this
+            alloc += """
+               int lenDM;
+               lenDM = PyDict_Size(destroyMap);
+               int *outDm;
+               int *inDm;
+               outDm =(int*) malloc(lenDM * sizeof(int));
+               inDm =(int*) malloc(lenDM * sizeof(int));
+               int it;
+               for(it = 0; it < lenDM; it++){
+                    PyDict_Next(destroyMap, &pos, &tmpOut, &tmpIn);
+                    outDm[it] = PyInt_AsLong(tmpOut);
+                    inDm[it] = PyInt_AsLong(tmpIn);
+                    PyArrayObject **aliasedOutput;
+                    aliasedOutput = outRef[outDm[it]];
+                    if (*aliasedOutput) {
+                       Py_XDECREF(*aliasedOutput);
+                    }
+                    *aliasedOutput = *inRef[inDm[it]];
+                    Py_XINCREF(*aliasedOutput);
+                    olv_index = outDm[it];
+               }
+               """
 
-        alloc += """
-        int lenDM;
-        lenDM = PyDict_Size(destroyMap);
-        int *outDm;
-        int *inDm;
-        outDm =(int*) malloc(lenDM * sizeof(int));
-        inDm =(int*) malloc(lenDM * sizeof(int));
-        int it;
-        for(it = 0; it < lenDM; it++){
-           PyDict_Next(destroyMap, &pos, &tmpOut, &tmpIn);
-           outDm[it] = PyInt_AsLong(tmpOut);
-           inDm[it] = PyInt_AsLong(tmpIn);
-           PyArrayObject **aliasedOutput;
-           aliasedOutput = outRef[outDm[it]];
-           if (*aliasedOutput) {
-              Py_XDECREF(*aliasedOutput);
-           }
-           *aliasedOutput = *inRef[inDm[it]];
-           Py_XINCREF(*aliasedOutput);
-           olv_index = outDm[it];
-        }
-        """
-
-        # We no longer need the reference to the original Python object
-        # containing the destroy map
-        alloc += """
-        Py_XDECREF(destroyMap);
-        """
+            # We no longer need the reference to the original Python object
+            # containing the destroy map
+            alloc += """
+               Py_XDECREF(destroyMap);
+               """
         # We loop over all input, inplace ouputs won't be affected.
         for output, oname in izip(node.outputs, onames):
             odtype = output.type.dtype_specs()[1]
@@ -1106,23 +1106,23 @@ second dimension
         # index of the last output
         olv_index = i
 
-        # We loop over the "aliased" outputs, i.e., those that are
-        # inplace (overwrite the contents of one of the inputs) and
-        # make the output pointers point to their corresponding input
-        # pointers.
-        for output, oname, i in izip(aliased_outputs, aliased_onames,
-                                     range(len(aliased_outputs))):
-            olv_index = inputs.index(dmap[output][0])
-            iname = inames[olv_index]
-            idtype = output.type.dtype_specs()[1]
-            # We alias the scalar variables
-
-            defines += """
-            #define %(oname)s_i *(%(idtype)s*) (refVar[i%(oname)s])
-            int i%(oname)s;
-            i%(oname)s = inDm[%(i)i];
-            """ % locals()
-            undefs += "#undef %(oname)s_i" % locals()
+        if 'params' in sub:
+            # We loop over the "aliased" outputs, i.e., those that are
+            # inplace (overwrite the contents of one of the inputs) and
+            # make the output pointers point to their corresponding input
+            # pointers.
+            for output, oname, i in izip(aliased_outputs, aliased_onames,
+                                         range(len(aliased_outputs))):
+                olv_index = inputs.index(dmap[output][0])
+                iname = inames[olv_index]
+                idtype = output.type.dtype_specs()[1]
+                # We alias the scalar variables
+                defines += """
+                #define %(oname)s_i *(%(idtype)s*) (refVar[i%(oname)s])
+                int i%(oname)s;
+                i%(oname)s = inDm[%(i)i];
+                """ % locals()
+                undefs += "#undef %(oname)s_i" % locals()
 
         # Note: here, olv_index is either the index of the last output
         # which is allocated, OR, if there are any aliased outputs,
@@ -1284,10 +1284,12 @@ second dimension
                 %(loop)s
             }
             """ % locals()
-        cleanUp = """
-            free(inDm);
-            free(outDm);
-            """
+        cleanUp = ""
+        if 'params' in sub:
+            cleanUp += """
+                       free(inDm);
+                       free(outDm);
+                       """
         return decl, checks, alloc, loop, cleanUp
 
     def c_code(self, node, nodename, inames, onames, sub):
