@@ -26,7 +26,7 @@ start to get resonable output values.
 Other hyperparameters may also play a role. For example, are your training
 algorithms involve regularization terms? If so, are their corresponding
 penalties set reasonably? Search a wider hyperparameter space with a few (one or
-two) training eopchs each to see if the NaNs could disappear.
+two) training epochs each to see if the NaNs could disappear.
 
 Some models can be very sensitive to the initialization of weight vectors. If
 those weights are not initialized in a proper range, then it is not surprising
@@ -37,15 +37,15 @@ Run in NanGuardMode, DebugMode, or MonitorMode
 -----------------------------------------------
 
 If adjusting hyperparameters doesn't work for you, you can still get help from
-Theano's NanGuardMode. change the mode of your theano function to NanGuardMode,
+Theano's NanGuardMode. Change the mode of your theano function to NanGuardMode
 and run them again. The NanGuardMode will monitor all input/output variables in
 each node, and raises an error if NaNs are detected. For how to use the
 ``NanGuardMode``, please refer to :ref:`nanguardmode`.
 
-DebugMode can also help. Run your code in DebugMode with flag mode=DebugMode,
-DebugMode.check_py=False. This will give you clue about which op is causing this
-problem, and then you can inspect into that op in more detail. For a detailed
-of using DebugMode, please refere to :ref:`debugmode`.
+DebugMode can also help. Run your code in DebugMode with flag
+``mode=DebugMode,DebugMode.check_py=False``. This will give you clue about which
+op is causing this problem, and then you can inspect that op in more detail. For
+details of using ``DebugMode``, please refer to :ref:`debugmode`.
 
 Theano's MonitorMode provides another helping hand. It can be used to step
 through the execution of a function. You can inspect the inputs and outputs of
@@ -57,9 +57,9 @@ Numerical Stability
 -------------------
 
 After you have located the op which causes the problem, it may turn out that the
-NaNs yielded by that op are related to numerical issues. For example, :math:
-`1 / log(p(x) + 1)` may result in NaNs for those nodes who have learned to yield
-a low probability p(x) for some input x.
+NaNs yielded by that op are related to numerical issues. For example,
+:math:`1 / log(p(x) + 1)` may result in NaNs for those nodes who have learned to
+yield a low probability p(x) for some input x.
 
 
 Algorithm Related
@@ -74,5 +74,5 @@ and find out if everything is derived correctly.
 Cuda Specific Option
 --------------------
 
-The Theano flags ``nvcc.fastmath=True``, can genarate NaN. Don't set
-this flag while debugging nan.
+The Theano flag ``nvcc.fastmath=True`` can genarate NaN. Don't set
+this flag while debugging NaN.
