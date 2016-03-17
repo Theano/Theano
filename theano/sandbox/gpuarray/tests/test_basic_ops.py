@@ -1,5 +1,6 @@
 import unittest
 from theano.compat import izip
+import os
 
 from six import iteritems
 
@@ -438,6 +439,6 @@ def test_gpu_lock():
     pid = os.fork()
     if pid == 0:
         try:
-            import theano.sandbox.gpuarray as tga
+            import theano.sandbox.gpuarray
         except Exception as e:
             assert e.__class__.__name__ == 'ImportError'
