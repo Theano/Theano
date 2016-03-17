@@ -154,7 +154,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     int upscale[2];
     cudnnConvolutionMode_t mode;
     cudnnDataType_t data_type;
-    err = cudnnGetConvolutionNdDescriptor_v3(desc, 2, &nd, pad, stride,
+    err = cudnnGetConvolutionNdDescriptor(desc, 2, &nd, pad, stride,
                                              upscale, &mode, &data_type);
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError,

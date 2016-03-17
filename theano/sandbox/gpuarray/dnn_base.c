@@ -86,7 +86,12 @@ c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc) {
     dims[i] = PyGpuArray_DIM(var, i);
   }
 
-  cudnnStatus_t err = cudnnSetFilterNdDescriptor(desc, dt, nd, dims);
+#if CUDNN_VERSION > 5000
+    cudnnStatus_t err = cudnnSetFilterNdDescriptor(desc, dt, CUDNN_TENSOR_NCHW, nd, dims);
+#else
+    cudnnStatus_t err = cudnnSetFilterNdDescriptor(desc, dt, nd, dims);
+#endif
+
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,
 		 "Could not set filter descriptor: %s.",

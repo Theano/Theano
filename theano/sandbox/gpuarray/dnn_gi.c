@@ -146,7 +146,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     int upscale[2];
     cudnnConvolutionMode_t mode;
     cudnnDataType_t data_type;
-    err = cudnnGetConvolutionNdDescriptor_v3(desc, 2, &nd, pad, stride,
+    err = cudnnGetConvolutionNdDescriptor(desc, 2, &nd, pad, stride,
                                              upscale, &mode, &data_type);
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError,
@@ -203,7 +203,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
   cuda_wait(output->ga.data, GPUARRAY_CUDA_WAIT_READ);
   cuda_wait((*input)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
 
-  err = cudnnConvolutionBackwardData_v3(
+  err = cudnnConvolutionBackwardData(
     APPLY_SPECIFIC(_handle),
     alpha_p,
     APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(kerns),
