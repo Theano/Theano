@@ -144,13 +144,11 @@ class AllocDiag(Op):
 
     __props__ = ()
 
-    def __init__(self):
+    def make_node(self, _x):
         warnings.warn("DeprecationWarning: theano.tensor.nlinalg.AllocDiag"
                       "is deprecated, please use theano.tensor.Diag"
                       "instead.",
                       category=DeprecationWarning)
-
-    def make_node(self, _x):
         x = as_tensor_variable(_x)
         if x.type.ndim != 1:
             raise TypeError('AllocDiag only works on vectors', _x)
@@ -185,15 +183,15 @@ class ExtractDiag(Op):
     __props__ = ("view",)
 
     def __init__(self, view=False):
-        warnings.warn("DeprecationWarning: theano.tensor.nlinalg.ExtractDiag"
-                      "is deprecated, please use theano.tensor.Diagonal"
-                      "instead.",
-                      category=DeprecationWarning)
         self.view = view
         if self.view:
             self.view_map = {0: [0]}
 
     def make_node(self, _x):
+        warnings.warn("DeprecationWarning: theano.tensor.nlinalg.ExtractDiag"
+                      "is deprecated, please use theano.tensor.Diagonal"
+                      "instead.",
+                      category=DeprecationWarning)
         if not isinstance(_x, theano.Variable):
             x = as_tensor_variable(_x)
         else:

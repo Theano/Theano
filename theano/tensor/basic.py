@@ -5890,23 +5890,23 @@ class Diagonal(Op):
 
     Usage: Diagonal(offset, axis1, axis2)(x)
 
-    "x" has to be a tensor with 2 or more dimensions.
+    `x` has to be a tensor with 2 or more dimensions.
 
     Parameters
     ----------
-    offset
-        Indicates which diagonal to extract, "0" as main diagonal, positive as
+    offset : int
+        Indicates which diagonal to extract, `0` as main diagonal, positive as
         diagonals in the upper triangle, and vice versa.
 
-    axis1, axis2
+    axis1, axis2 : int
         Indicates on which dimensions to extract the diagonals.
 
-    x
+    x: symbolic tensor
         A tensor variable with x.ndim >= 2.
 
     Returns
     -------
-    vector
+    vector : symbolic vector
         A vector representing the diagonal elements.
 
     """
@@ -5921,7 +5921,9 @@ class Diagonal(Op):
 
     def make_node(self, x):
         x = as_tensor_variable(x)
-        assert x.ndim >= 2
+        if x.ndim < 2:
+            raise TypeError('Diagonal needs an input with 2 or more '
+                            'dimensions', x)
         return Apply(self, [x], [tensor(dtype=x.dtype,
                                         broadcastable=[False] * (x.ndim - 1))])
 
@@ -5931,9 +5933,12 @@ class Diagonal(Op):
         z[0] = x.diagonal(self.offset, self.axis1, self.axis2)
 
     def grad(self, inputs, gout):
-        (x,) = inputs
-        (gz,) = gout
-        return [grad_not_implemented(self, 0, x)]
+        """The current gradient is valid only for main diagonals."""
+        x = theano.tensor.zeros_like(inputs[0])
+        xdiag = diag(gout[0])
+        return [theano.tensor.set_subtensor(
+            x[:xdiag.shape[0], :xdiag.shape[1]],
+            xdiag)]
 
     def infer_shape(self, node, shapes):
         in_shape, = shapes
@@ -5955,56 +5960,76 @@ class Diagonal(Op):
 
 def diagonal(a, offset=0, axis1=0, axis2=1):
     """
-    A helper function for Diagonal Op.
+    A helper function for Diagonal Op. Return specified diagonals.
+
+    If `a` is a 2-D matrix, returns the diagonal of `a` with the given offset,
+    i.e., the collection of elements of the form `a[i, i+offset]`. If `a` has
+    more than two dimensions, then the axes specified by `axis1` and `axis2`
+    are used to determine the 2-D sub-array whose diagonal is returned.
 
     Parameters
     ----------
-    a
+    a : symbolic tensor
         A tensor variable with x.ndim >= 2.
 
-    offset
-        Indicates which diagonal to extract, "0" as main diagonal, positive as
+    offset : int
+        Indicates which diagonal to extract, `0` as main diagonal, positive as
         diagonals in the upper triangle, and vice versa.
 
-    axis1, axis2
+    axis1, axis2 : int
         Indicates on which dimensions to extract the diagonals.
 
     Returns
     -------
-    vector
+    vector : symbolic vector
         A vector representing the diagonal elements.
+
     """
-    if (offset, axis1, axis2) == (0, 0, 1):
-        return theano.tensor.nlinalg.extract_diag(a)
     return Diagonal(offset, axis1, axis2)(a)
 
 
 class Diag(Op):
     """
-    An op that transfers a vector into a matrix containing values in that
-    vector as its diagonal. It does the inverse of Diagonal.
+    An op that copies a vector to the diagonal of an empty matrix. It does the
+    inverse of Diagonal.
 
     Usage: T.diag()(x)
 
-    x should be a tensor vector. The parenthesis in the front should indicate
+    `x` should be a tensor vector. The parenthesis in the front should indicate
     which main diagonal the vector value goes into. By default it is set to (
-    "0", which corresponds to setting the values of x to the main diagonal in
-    the returned matrix. Currently it only accepts "0", as other diagonals
-    hasn't been implemented for now.
+    `0`, which corresponds to setting the values of x to the main diagonal in
+    the returned matrix. Currently the gradient is valid only when `offset=0`.
+
+    Parameters
+    ----------
+    offset : int
+        Indicates which diagonal to put `x` into. Defaults to `0`.
+
+    x: symbolic vector
+        A tensor vector consists of diagonal values.
+
+    Returns
+    -------
+    tensor : symbolic tenstor
+        A tensor with passed vector values at its corresponding diagonal.
 
     """
-    __props__ = ()
+    __props__ = ("offset")
+
+    def __init__(self, offset=0):
+        if numpy_diagonal_return_view:
+            self.view_map = {0: [0]}
+        self.offset = offset
 
     def make_node(self, diag):
         diag = as_tensor_variable(diag)
         if diag.type.ndim != 1:
             raise TypeError('data argument must be a vector', diag.type)
-
         return Apply(self, [diag], [matrix(dtype=diag.dtype)])
 
     def perform(self, node, inputs, outputs):
         (z,) = outputs
-        z[0] = numpy.diag(inputs[0])
+        z[0] = numpy.diag(inputs[0], self.offset)
 
     def grad(self, inputs, gout):
         (gz,) = gout
@@ -6016,18 +6041,22 @@ class Diag(Op):
 
 def diag(v, k=0):
     """
-    A helper function for two ops: Diagonal and Diag. It both accepts tensor
-    vector and tensor matrix. While the passed tensor variable v has
-    v.ndim>=2, it builds a Diagonal instance, and returns a vector with its
-    entries equal to v's main diagonal; otherwise if v.ndim is 1, it builds a
-    Diag instance, and returns a matrix with v at its k-th diaogonal.
+    A helper function for two ops: theano.tensor.Diagonal and
+    theano.tensor.Diag. It both accepts tensor vector and tensor matrix. While
+    the passed tensor variable `v` has `v.ndim>=2`, it builds a Diagonal
+    instance, and returns a vector with its entries equal to `v`'s main
+    diagonal; otherwise if `v.ndim` is `1`, it builds a Diag instance, and
+    returns a matrix with `v` at its k-th diaogonal.
 
     Parameters
     ----------
-    v
-        theano tensor variable
-    k
+    v : symbolic tensor
+    k : int
         offset
+
+    Returns
+    -------
+    tensor : symbolic tensor
 
     """
     if v.ndim == 1:
