@@ -287,7 +287,8 @@ class GpuDot22(BlasOp):
     def perform(self, node, inputs, outputs):
         x, y = inputs
 
-        out = pygpu.empty((x.shape[0], y.shape[1]), dtype=x.dtype)
+        out = pygpu.empty((x.shape[0], y.shape[1]), dtype=x.dtype,
+                          context=x.context)
         outputs[0][0] = blas.gemm(1., x, y, 0., out,
                                   overwrite_c=True)
 
