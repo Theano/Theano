@@ -36,6 +36,6 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
   }
 
   err = cudnnSetConvolutionNdDescriptor(*desc, NB_DIMS, pad, strides,
-                                           upscale, CONV_MODE, PRECISION);
+                                        upscale, CONV_MODE, PRECISION);
   return 0;
 }

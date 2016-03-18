@@ -241,7 +241,6 @@ class GpuDnnConvDesc(GpuOp):
     }
   }
 
-  // err = cudnnSetConvolutionNdDescriptor_v3(
   err = cudnnSetConvolutionNdDescriptor(
   %(desc)s,
   %(nb_dim)d,
@@ -1362,8 +1361,9 @@ class GpuDnnPoolDesc(GpuOp):
     int win[%(nd)d] = {%(win)s};
     int pad[%(nd)d] = {%(pad)s};
     int str[%(nd)d] = {%(str)s};
-    err = cudnnSetPoolingNdDescriptor_v3(
-      %(desc)s, %(mode_flag)s, %(nd)d,
+    err = cudnnSetPoolingNdDescriptor_v4(
+      %(desc)s, %(mode_flag)s,
+      CUDNN_PROPAGATE_NAN, %(nd)d,
       win, pad, str);
   }
   if (err != CUDNN_STATUS_SUCCESS) {
@@ -1544,8 +1544,9 @@ for(int i = 0; i < %(nd)d; i++) {
 for(int i = 0; i < %(nd)d; i++) {
    str[i] = *((npy_intp*)PyArray_GETPTR1(%(str)s, i));
 }
-err = cudnnSetPoolingNdDescriptor_v3(
-    pool%(name)s, %(mode_flag)s, %(nd)d,
+err = cudnnSetPoolingNdDescriptor_v4(
+    pool%(name)s, %(mode_flag)s,
+    CUDNN_PROPAGATE_NAN, %(nd)d,
     win, pad, str);
 
 if (err != CUDNN_STATUS_SUCCESS) {
@@ -1822,8 +1823,9 @@ for(int i = 0; i < %(nd)d; i++) {
 for(int i = 0; i < %(nd)d; i++) {
    str[i] = *((npy_intp*)PyArray_GETPTR1(%(str)s, i));
 }
-err%(name)s = cudnnSetPoolingNdDescriptor_v3(
-    pool%(name)s, %(mode_flag)s, %(nd)d,
+err%(name)s = cudnnSetPoolingNdDescriptor_v4(
+    pool%(name)s, %(mode_flag)s,
+    CUDNN_PROPAGATE_NAN, %(nd)d,
     win, pad, str);
 
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
