@@ -497,10 +497,7 @@ class GpuDnnConv3d(GpuDnnConv):
         good_algo = ['none', 'small', 'fft_tiling',
                      'guess_once', 'guess_on_shape_change',
                      'time_once', 'time_on_shape_change']
-        if version() < (5000, 5000):
-            # Need to confirm when small was added for conv3d.
-            algo = 'none'
-        elif algo is None and config.dnn.conv.algo_fwd not in good_algo:
+        if algo is None and config.dnn.conv.algo_fwd not in good_algo:
             algo = 'guess_once'
         elif algo is not None and algo not in good_algo:
             algo = 'guess_once'
