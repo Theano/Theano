@@ -200,7 +200,7 @@ def test_partial_function():
     x = tensor.scalar('input')
     y = x ** 2
     f = theano.function([x], [y + 7, y - 9, y / 14.], mode=Mode(optimizer=None,
-        linker=vm.VM_Linker(callback=callback)))
+        linker=vm.VM_Linker(lazy=True, use_cloop=False)))
     assert f.apply([4], [0, 2]) == [f(4)[0], f(4)[2]]
 
 def test_allow_gc_cvm():

@@ -864,7 +864,7 @@ class Function(object):
         # Do the actual work
         t0_fn = time.time()
         try:
-            outputs = self.fn(self.output_idx)
+            outputs = self.fn(output_indices=self.output_idx)
         except Exception:
             if hasattr(self.fn, 'position_of_error'):
                 # this is a new vm-provided function or c linker
