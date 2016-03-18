@@ -25,7 +25,7 @@ functions using either of the following two options:
       to :attr:`config.profile`.
     - You can also use the Theano flags :attr:`profiling.n_apply`,
       :attr:`profiling.n_ops` and :attr:`profiling.min_memory_size`
-      to modify the quantify of information printed.
+      to modify the quantity of information printed.
 
 2. Pass the argument :attr:`profile=True` to the function :func:`theano.function <function.function>`. And then call :attr:`f.profile.print_summary()` for a single function.
     - Use this option when you want to profile not all the
@@ -44,19 +44,19 @@ functions using either of the following two options:
 
 
 The profiler will output one profile per Theano function and profile
-that is the sum of the printed profile. Each profile contains 4
+that is the sum of the printed profiles. Each profile contains 4
 sections: global info, class info, Ops info and Apply node info.
 
 In the global section, the "Message" is the name of the Theano
 function. theano.function() has an optional parameter ``name`` that
 defaults to None. Change it to something else to help you profile many
-Theano functions. In that section, we also see the number of time the
+Theano functions. In that section, we also see the number of times the
 function was called (1) and the total time spent in all those
 calls. The time spent in Function.fn.__call__ and in thunks is useful
-to help understand Theano overhead.
+to understand Theano overhead.
 
 Also, we see the time spent in the two parts of the compilation
-process: optimization(modify the graph to make it more stable/faster)
+process: optimization (modify the graph to make it more stable/faster)
 and the linking (compile c code and make the Python callable returned
 by function).
 
@@ -93,8 +93,8 @@ optimizations enabled, there would be only one op left in the graph.
           memory allocated by Theano. The second is the peak  GPU memory
           that was allocated by Theano.
 
-    Do not always enable this, as this slowdown memory allocation and
-    free. As this slowdown the computation, this will affect speed
+    Do not always enable this, as this slows down memory allocation and
+    free. As this slows down the computation, this will affect speed
     profiling. So don't use both at the same time.
 
 to run the example:

@@ -19,7 +19,7 @@ in most programming languages.
 
 Theano represents symbolic mathematical computations as graphs. These
 graphs are composed of interconnected :ref:`apply`, :ref:`variable` and
-:ref:`op` nodes. *apply* node represents the application of an *op* to some
+:ref:`op` nodes. *Apply* node represents the application of an *op* to some
 *variables*. It is important to draw the difference between the
 definition of a computation represented by an *op* and its application
 to some actual data which is represented by the *apply* node.  
@@ -394,7 +394,7 @@ it is assumed that the *gradient* is not defined.
 Using the
 `chain rule <http://en.wikipedia.org/wiki/Chain_rule>`_
 these gradients can be composed in order to obtain the expression of the
-*gradient* of the graph's output with respect to the graph's inputs .
+*gradient* of the graph's output with respect to the graph's inputs.
 
 A following section of this tutorial will examine the topic of :ref:`differentiation<tutcomputinggrads>`
 in greater detail.
