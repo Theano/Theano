@@ -40,9 +40,9 @@ def raise_no_cudnn(msg="CuDNN is required for convolution and pooling"):
 
 def _dnn_check_compile():
     preambule = """
-#include <stdio.h>
-#include <cudnn.h>
-#include <cudnn_helper.h>
+# include <stdio.h>
+# include <cudnn.h>
+# include <cudnn_helper.h>
 """
 
     # No need for the context in here since we won't execute that code
@@ -201,9 +201,9 @@ class DnnVersion(Op):
 
     def c_support_code(self):
         return """
-#if PY_MAJOR_VERSION >= 3
-#define PyInt_FromLong PyLong_FromLong
-#endif
+# if PY_MAJOR_VERSION >= 3
+# define PyInt_FromLong PyLong_FromLong
+# endif
 """
 
     def make_node(self):
@@ -1077,6 +1077,11 @@ class GpuDnnPool(DnnBase):
         if mode == 'average':
             mode = 'average_inc_pad'
         assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
+<< << << < HEAD
+== == == =
+        if version() == -1:
+            raise Exception("cudnn v1 do not support average_exc_pad")
+>>>>>> > cb3fbfe94620d4938c10ac2e20d43f8a286e3856
         self.mode = mode
 
     def get_op_params(self):
