@@ -752,8 +752,31 @@ class Function(object):
         return f_cpy
 
     def __call__(self, *args, **kwargs):
+        """
+        Evaluates value of a function on given arguments.
+
+        Parameters
+        ----------
+        args : list
+            List of inputs to the function. All inputs are required, even when
+            some of them are not necessary to calculate requested subset of
+            outputs.
+
+        kwargs : dict
+            TODO: other kwargs?
+            Keyword argument `output_subset` is a list of indices of the
+            function's outputs that are requested to be calculated.
+
+        Returns
+        -------
+        List of outputs on indices `output_subset` or all of them, if
+        `outpus_subset` is not passed. If there's only one output, returns just
+        the value.
+        """
         profile = self.profile
         t0 = time.time()
+
+        output_subset = kwargs.pop('output_subset', None)
 
         # Reinitialize each container's 'provided' counter
         if self.trust_input:
@@ -856,7 +879,7 @@ class Function(object):
         # Do the actual work
         t0_fn = time.time()
         try:
-            outputs = self.fn()
+            outputs = self.fn(output_subset=output_subset)
         except Exception:
             if hasattr(self.fn, 'position_of_error'):
                 # this is a new vm-provided function or c linker
@@ -931,7 +954,8 @@ class Function(object):
 
         if self.return_none:
             return None
-        elif self.unpack_single and len(outputs) == 1:
+        elif self.unpack_single and len(outputs) == 1 and\
+                output_subset is None:
             return outputs[0]
         else:
 
@@ -941,7 +965,10 @@ class Function(object):
 
                 return dict(izip(self.output_keys, outputs))
 
-            return outputs
+            if output_subset is None:
+                return outputs
+            else:
+                return [outputs[i] for i in output_subset]
 
     value = property(
         lambda self: self._value,
