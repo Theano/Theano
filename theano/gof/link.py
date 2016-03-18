@@ -157,6 +157,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
         detailed_err_msg += ("Inputs shapes: %s" % shapes +
                              "\nInputs strides: %s" % strides +
                              "\nInputs values: %s" % scalar_values)
+        detailed_err_msg += "\nInputs variables: %s" % str(node.inputs)
         if hasattr(node.op, '__input_name__'):
             detailed_err_msg += "\nInputs name: %s\n" % str(node.op.__input_name__)
 
