@@ -194,6 +194,17 @@ def test_speed_lazy():
                                                        use_cloop=True))
 
 
+def test_partial_function():
+    x = tensor.scalar('input')
+    y = x ** 2
+    f = theano.function([x], [y + 7, y - 9, y / 14.], mode=Mode(
+        optimizer=None, linker=vm.VM_Linker(
+            lazy=True, use_cloop=False, allow_partial_eval=True)))
+
+    assert f(3, output_subset=[0, 1, 2]) == f(3)
+    assert f(4, output_subset=[0, 2]) == [f(4)[0], f(4)[2]]
+
+
 def test_allow_gc_cvm():
     mode = theano.config.mode
     if mode in ['DEBUG_MODE', 'DebugMode']:
