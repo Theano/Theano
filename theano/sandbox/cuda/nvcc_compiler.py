@@ -260,8 +260,10 @@ class NVCC_compiler(Compiler):
         preargs2 = []
         for pa in preargs:
             if pa.startswith('-Wl,'):
-                preargs1.append('-Xlinker')
-                preargs1.append(pa[4:])
+                # the -rpath option is not understood by the Microsoft linker
+                if sys.platform != 'win32':
+                    preargs1.append('-Xlinker')
+                    preargs1.append(pa[4:])
                 continue
             for pattern in ['-O', '-arch=', '-ccbin=', '-G', '-g', '-I',
                             '-L', '--fmad', '--ftz', '--maxrregcount',
