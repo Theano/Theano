@@ -1049,14 +1049,14 @@ second dimension
         if 'params' in sub:
             # Get the destroy map from params
             alloc += """
-            PyObject *tmpOut, *tmpIn;
-            Py_ssize_t pos;
-            pos = 0;
-            PyObject* destroyMap;
-            destroyMap =PyObject_GetAttrString(%(p)s,"inplace_pattern");
-            if( destroyMap == NULL){
-                %(fail)s
-            }
+               PyObject *tmpOut, *tmpIn;
+               Py_ssize_t pos;
+               pos = 0;
+               PyObject* destroyMap;
+               destroyMap =PyObject_GetAttrString(%(p)s,"inplace_pattern");
+               if( destroyMap == NULL){
+                  %(fail)s
+               }
                """ % dict(p=sub['params'], fail=sub['fail'])
             # Iterate over the python object to fill the destroy map arrays
             # and make the output point to the corresponding input and
@@ -1103,40 +1103,60 @@ second dimension
                                      fortran=alloc_fortran)
             alloc += cgen.make_checks([list(range(nnested))], [odtype],
                                       dict(sub, lv0=oname))
+
         # index of the last output
         olv_index = i
 
         if 'params' in sub:
+
+            # All variables names, inputs followed by outputs
+            vnames = _inames+_onames
+
+            # We declare another array to easily access the scalar variables
+            # from their respectives index
+            defines = """
+            void *refVar[%i];
+            """ % len(vnames)
+            for (i, name) in enumerate(vnames):
+                defines += """
+                refVar[%(i)i] = &%(name)s_i;
+                """ % locals()
+
+            defines += """
+            int outIndexes[%(olength)i];
+
+            for(int i = 0; i<%(olength)i; i++){
+                  outIndexes[i] = i + %(ilength)i;
+            }
+
+            for(int i = 0; i < lenDM; i++){
+                  outIndexes[outDm[i]] = inDm[i];
+            }
+            """ % dict(olength=len(_onames), ilength=len(_inames))
+
             # We loop over the "aliased" outputs, i.e., those that are
             # inplace (overwrite the contents of one of the inputs) and
             # make the output pointers point to their corresponding input
             # pointers.
-            for output, oname, i in izip(aliased_outputs, aliased_onames,
-                                         range(len(aliased_outputs))):
-                olv_index = inputs.index(dmap[output][0])
-                iname = inames[olv_index]
+
+            for output, oname, i in izip(node.outputs, onames,
+                                         range(len(onames))):
                 idtype = output.type.dtype_specs()[1]
                 # We alias the scalar variables
                 defines += """
                 #define %(oname)s_i *(%(idtype)s*) (refVar[i%(oname)s])
                 int i%(oname)s;
-                i%(oname)s = inDm[%(i)i];
+                i%(oname)s = outIndexes[%(i)i];
                 """ % locals()
                 undefs += "#undef %(oname)s_i" % locals()
 
-        # Note: here, olv_index is either the index of the last output
-        # which is allocated, OR, if there are any aliased outputs,
-        # the index of the last of these aliased outputs.
+            if len(aliased_outputs) > 0:
+                olv_index = inputs.index(dmap[aliased_outputs[-1]][0])
 
-        # We declare another array to easily access the scalar variables
-        # from their respectives index
-        task_code = """
-                void *refVar[%i];
-                """ % len(_inames)
-        for (i, iname) in enumerate(_inames):
-            task_code += """
-            refVar[%(i)i] = &%(iname)s_i;
-            """ % locals()
+            # Note: here, olv_index is either the index of the last output
+            # which is allocated, OR, if there are any aliased outputs,
+            # the index of the last of these aliased outputs.
+
         # We generate the C code of the inner loop using the scalar op
         if self.openmp:
             # If we are using openmp, we need to get rid of the "goto"
@@ -1145,7 +1165,7 @@ second dimension
         else:
             fail = sub['fail']
 
-        task_code += self.scalar_op.c_code(
+        task_code = self.scalar_op.c_code(
             Apply(self.scalar_op,
                   [get_scalar_type(dtype=input.type.dtype).make_variable()
                    for input in node.inputs],
