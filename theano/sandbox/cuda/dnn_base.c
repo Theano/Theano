@@ -54,7 +54,10 @@ c_set_filterNd(CudaNdarray *var, cudnnFilterDescriptor_t desc) {
     return -1;
   }
   int dim = CudaNdarray_NDIM(var);
-  cudnnStatus_t err = cudnnSetFilterNdDescriptor_v3(desc, CUDNN_DATA_FLOAT, dim,
+  cudnnStatus_t err = cudnnSetFilterNdDescriptor_v4(desc,
+                                                    CUDNN_DATA_FLOAT,
+                                                    CUDNN_TENSOR_NCHW,
+                                                    dim,
                                                     CudaNdarray_HOST_DIMS(var));
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,
