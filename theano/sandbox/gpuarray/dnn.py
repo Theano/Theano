@@ -1077,8 +1077,6 @@ class GpuDnnPool(DnnBase):
         if mode == 'average':
             mode = 'average_inc_pad'
         assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
-        if version() == -1:
-            raise Exception("cudnn v1 do not support average_exc_pad")
         self.mode = mode
 
     def get_op_params(self):
