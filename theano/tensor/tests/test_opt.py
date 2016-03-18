@@ -6173,6 +6173,24 @@ def test_local_zero_div():
             assert theano.tensor.get_scalar_constant_value(output) == 0
 
 
+def test_local_sumsqr2dot():
+    G = matrix('G')
+    W = matrix('W')
+
+    y = T.sqr( W.dimshuffle('x',0,1) * G.dimshuffle(0,'x',1) ).sum(axis=(1,2))
+
+    f = function([W, G], y)
+
+    w_val = numpy.random.rand(4, 3).astype(config.floatX)
+    g_val = numpy.random.rand(5, 3).astype(config.floatX)
+
+    f_val = f(w_val, g_val)
+    f_test = function([W,G], T.dot(T.sqr(G), T.sqr(W).sum(axis=0)))
+
+    assert numpy.allclose(f_val, f_test(w_val, g_val))
+    assert  any(isinstance(n.op, theano.tensor.basic.Dot)  for n in f.maker.fgraph.toposort())
+
+
 def test_local_expm1():
     x = matrix('x')
     u = T.scalar('u')
