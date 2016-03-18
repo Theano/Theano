@@ -710,7 +710,9 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
     :param descr: the convolution descriptor
     :param workmem:
         *deprecated*, use parameter algo instead.
-    :param algo: ['none', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change']
+    :param algo: ['none', 'small',
+                  'guess_once', 'guess_on_shape_change',
+                   'time_once', 'time_on_shape_change']
         Default is the value of :attr:`config.dnn.conv.algo_bwd_filter`.
 
     """
@@ -723,11 +725,18 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
                            "deprecated. Use 'algo' instead."), stacklevel=3)
             assert algo is None
             algo = workmem
-
+        good_algo = ['none', 'small',
+                     'guess_once', 'guess_on_shape_change',
+                     'time_once', 'time_on_shape_change']
+        if version() < (5000, 5000) and algo == 'small':
+            algo = 'guess_once'
+        elif algo is None and config.dnn.conv.algo_bwd_filter not in good_algo:
+            algo = 'guess_once'
+        elif algo is not None and algo not in good_algo:
+            algo = 'guess_once'
         super(GpuDnnConv3dGradW, self).__init__(inplace=inplace,
-                                                algo='none')
-        assert self.algo in ['none', 'guess_once', 'guess_on_shape_change',
-                             'time_once', 'time_on_shape_change']
+                                                algo=algo)
+        assert self.algo in good_algo
 
     def grad(self, inp, grads):
         img, top, output, desc, alpha, beta = inp
