@@ -1322,9 +1322,16 @@ class GpuDnnPoolDesc(GpuOp):
         if self.pad != (0, 0) and version() == -1:
             raise RuntimeError("CuDNN pooling with padding requires CuDNN v2")
 
-        return Apply(self, [],
+        node = Apply(self, [],
                      [CDataType("cudnnPoolingDescriptor_t",
                                 freefunc="cudnnDestroyPoolingDescriptor")()])
+        # DebugMode cannot compare the values of CDataType variables, so by
+        # default it returns False all the time. To prevent DebugMode from
+        # complaining because of the MergeOptimizer, we make this variable
+        # always compare to True.
+        out = node.outputs[0]
+        out.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
+        return node
 
     def c_code(self, node, name, inputs, outputs, sub):
         desc, = outputs

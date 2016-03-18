@@ -462,6 +462,10 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         } // END NESTED SCOPE
         """ % locals()
 
+    def perform(self, node, inp, out, ctx):
+        # Disable the perform method from the CPU version
+        Op.perform(self, node, inp, out, ctx)
+
 
 @op_lifter([Images2Neibs])
 def use_gpu_images2neibs(node, context_name):

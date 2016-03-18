@@ -996,6 +996,8 @@ class GpuJoin(HideC, Join):
     def perform(self, node, axis_and_tensors, out_, ctx):
         out, = out_
         axis = int(axis_and_tensors[0])
+        if axis < 0:
+            axis += axis_and_tensors[1].ndim
         tensors = axis_and_tensors[1:]
         out[0] = pygpu.concatenate(tensors, axis=axis, context=ctx).astype(
             node.outputs[0].dtype)
