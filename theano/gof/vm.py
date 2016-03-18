@@ -330,7 +330,7 @@ class Stack(VM):
 
         self.allow_gc = allow_gc
         self.message = ""
-        self.base_apply_stack = [o.owner for o in fgraph.outputs if o.owner]
+        self.base_apply_stack = [o.owner for o in fgraph.outputs if o.owner] # sygi: why it can be False?
         self.outputs = fgraph.outputs
         self.storage_map = storage_map
         self.variable_shape = {}  # Variable -> shape
@@ -394,7 +394,7 @@ class Stack(VM):
             )
         return rval, dt
 
-    def __call__(self):
+    def __call__(self, output_indices=None):
         storage_map = self.storage_map
         compute_map = self.compute_map
         thunks = self.thunks
@@ -405,8 +405,13 @@ class Stack(VM):
         for k in self.storage_map:
             compute_map[k][0] = (k.owner is None)
 
-        # apply_stack contains nodes
-        apply_stack = list(self.base_apply_stack)
+        if output_indices is not None:
+            output_subset = [self.outputs[i] for i in output_indices]
+            apply_stack = [o.owner for o in output_subset]
+        else:
+            # apply_stack contains nodes
+            apply_stack = list(self.base_apply_stack) # sygi: why list?
+
         last_apply_stack_len = -1
 
         # This record all function inputs/shared varibles and constants

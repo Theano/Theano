@@ -375,6 +375,7 @@ class Function(object):
         self.name = None
         self.nodes_with_inner_function = []
         self.output_keys = output_keys
+        self.output_idx = None
 
         # We will be popping stuff off this `containers` object.  It is a copy.
         containers = list(self.input_storage)
@@ -751,7 +752,13 @@ class Function(object):
         f_cpy.maker.fgraph.name = name
         return f_cpy
 
-    def __call__(self, *args, **kwargs):
+    def apply(self, inputs, outputs):
+        # TODO: assert that there's a list of outputs
+        self.output_idx = outputs # indirectly passing output indices
+        # assuming for now I pass all the inputs
+        return [self.__call__(*inputs)[i] for i in outputs]
+
+    def __call__(self, *args, **kwargs): # sygi: what those kwargs mean?
         profile = self.profile
         t0 = time.time()
 
@@ -856,7 +863,7 @@ class Function(object):
         # Do the actual work
         t0_fn = time.time()
         try:
-            outputs = self.fn()
+            outputs = self.fn(self.output_idx)
         except Exception:
             if hasattr(self.fn, 'position_of_error'):
                 # this is a new vm-provided function or c linker
