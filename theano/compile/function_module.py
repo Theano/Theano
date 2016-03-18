@@ -752,16 +752,41 @@ class Function(object):
         f_cpy.maker.fgraph.name = name
         return f_cpy
 
-    def apply(self, inputs, outputs):
-        # TODO: assert that there's a list of outputs
-        self.output_idx = outputs # indirectly passing output indices
-        # assuming for now I pass all the inputs
-        result = self.__call__(*inputs)
-        return [result[i] for i in outputs]
+    def execute(self, *inputs, **kwargs):
+        """
+        Wrapper for `self.__call__` allowing to calculate only a subset of
+        outputs.
 
-    def __call__(self, *args, **kwargs): # sygi: what those kwargs mean?
+        Parameters
+        ----------
+        inputs : list
+            List of inputs to the function. All inputs are required, even when
+            some of them are not necessary to calculate requested subset of
+            outputs.
+
+        kwargs : dict
+            Optional keyword argument `output_subset` is a list of indices of
+            the function's outputs that are requested to be calculated.
+
+        Returns
+        -------
+        List of outputs on indices `output_subset` or all of them, if
+        `output_subset` is not passed.
+        """
+
+        output_subset = kwargs.get('output_subset', range(len(self.outputs)))
+        # TODO: when passed an integer instead of a list, return just that one
+        # result
+
+        result = self.__call__(*inputs, output_subset=output_subset)
+        return [result[i] for i in output_subset]
+
+    def __call__(self, *args, **kwargs):
         profile = self.profile
         t0 = time.time()
+
+        output_subset = kwargs.pop('output_subset')\
+                if kwargs.has_key('output_subset') else None
 
         # Reinitialize each container's 'provided' counter
         if self.trust_input:
@@ -864,7 +889,7 @@ class Function(object):
         # Do the actual work
         t0_fn = time.time()
         try:
-            outputs = self.fn(output_indices=self.output_idx)
+            outputs = self.fn(output_subset=output_subset)
         except Exception:
             if hasattr(self.fn, 'position_of_error'):
                 # this is a new vm-provided function or c linker
