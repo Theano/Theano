@@ -756,7 +756,8 @@ class Function(object):
         # TODO: assert that there's a list of outputs
         self.output_idx = outputs # indirectly passing output indices
         # assuming for now I pass all the inputs
-        return [self.__call__(*inputs)[i] for i in outputs]
+        result = self.__call__(*inputs)
+        return [result[i] for i in outputs]
 
     def __call__(self, *args, **kwargs): # sygi: what those kwargs mean?
         profile = self.profile
