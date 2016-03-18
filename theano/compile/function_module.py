@@ -752,41 +752,33 @@ class Function(object):
         f_cpy.maker.fgraph.name = name
         return f_cpy
 
-    def execute(self, *inputs, **kwargs):
+    def __call__(self, *args, **kwargs):
         """
-        Wrapper for `self.__call__` allowing to calculate only a subset of
-        outputs.
+        Evaluates value of a function on given arguments.
 
         Parameters
         ----------
-        inputs : list
+        args : list
             List of inputs to the function. All inputs are required, even when
             some of them are not necessary to calculate requested subset of
             outputs.
 
         kwargs : dict
-            Optional keyword argument `output_subset` is a list of indices of
-            the function's outputs that are requested to be calculated.
+            TODO: other kwargs?
+            Keyword argument `output_subset` is a list of indices of the
+            function's outputs that are requested to be calculated.
 
         Returns
         -------
         List of outputs on indices `output_subset` or all of them, if
-        `output_subset` is not passed.
+        `outpus_subset` is not passed. If there's only one output, returns just
+        the value.
         """
-
-        output_subset = kwargs.get('output_subset', range(len(self.outputs)))
-        # TODO: when passed an integer instead of a list, return just that one
-        # result
-
-        result = self.__call__(*inputs, output_subset=output_subset)
-        return [result[i] for i in output_subset]
-
-    def __call__(self, *args, **kwargs):
         profile = self.profile
         t0 = time.time()
 
-        output_subset = kwargs.pop('output_subset')\
-                if kwargs.has_key('output_subset') else None
+        output_subset = kwargs.pop('output_subset') if\
+            'output_subset' in kwargs.keys() else range(len(self.outputs))
 
         # Reinitialize each container's 'provided' counter
         if self.trust_input:
@@ -964,7 +956,7 @@ class Function(object):
 
         if self.return_none:
             return None
-        elif self.unpack_single and len(outputs) == 1:
+        elif self.unpack_single and len(outputs) == 1 and output_subset == [0]:
             return outputs[0]
         else:
 
@@ -974,7 +966,7 @@ class Function(object):
 
                 return dict(izip(self.output_keys, outputs))
 
-            return outputs
+            return [outputs[i] for i in output_subset]
 
     value = property(
         lambda self: self._value,
