@@ -261,7 +261,7 @@ class NVCC_compiler(Compiler):
         for pa in preargs:
             if pa.startswith('-Wl,'):
                 # the -rpath option is not understood by the Microsoft linker
-                if sys.platform != 'win32':
+                if sys.platform != 'win32' or not pa.startswith('-Wl,-rpath'):
                     preargs1.append('-Xlinker')
                     preargs1.append(pa[4:])
                 continue
