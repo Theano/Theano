@@ -44,6 +44,9 @@ if PY3:
     def decode_iter(itr):
         for x in itr:
             yield x.decode()
+
+    def decode_with(x, encoding):
+        return x.decode(encoding)
 else:
     from six import get_unbound_function
     from operator import div as operator_div
@@ -61,6 +64,9 @@ else:
         return x
 
     def decode_iter(x):
+        return x
+
+    def decode_with(x, encoding):
         return x
 
 __all__ += ['cmp', 'operator_div', 'DictMixin', 'OrderedDict', 'decode',
