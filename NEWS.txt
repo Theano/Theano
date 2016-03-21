@@ -2,20 +2,14 @@
 Release Notes
 =============
 
-Theano 0.8 rc1 (29th of February, 2016)
-=======================================
+Theano 0.8 (21th of March, 2016)
+================================
 
 We recommend that everybody update to this version.
 
 Highlights:
 - Python 2 and 3 support with the same code base
 - Faster optimization
-- New GPU back-end:
-
-   * Float16 new back-end (need cuda 7.5)
-   * Multi dtypes
-   * Multi-GPU support in the same process
-
 - Integration of CuDNN for better GPU performance
 - Many Scan improvements (execution speed up, ...)
 - optimizer=fast_compile moves computation to the GPU.
@@ -24,13 +18,20 @@ Highlights:
 - cnmem (better memory management on GPU)
 - BreakpointOp
 - Multi-GPU for data parallism via Platoon (https://github.com/mila-udem/platoon/)
+- More pooling parameter supported
+- Bilinear interpolation of images
+- New GPU back-end:
+
+   * Float16 new back-end (need cuda 7.5)
+   * Multi dtypes
+   * Multi-GPU support in the same process
 
 
-A total of 135 people contributed to this release, see the list at the bottom.
+A total of 141 people contributed to this release, see the list at the bottom.
 
 
 Installation:
-- Better blas detection
+- Better BLAS detection
 - Fixes for more recent software and OS versions
 - Support Anaconda on Windows
 
@@ -82,6 +83,8 @@ New features
 - theano.tensor.tile update (accept symbolic reps, work on GPU)
 - scan how have a strict flag. If set to True, this make scan building faster and could make execution faster.
 - theano.tensor.signal.conv2d(2d,2d) output 2d answer
+- More convolution parameter supported
+- Bilinear interpolation of images
 
 
 Speed-ups:
@@ -123,11 +126,11 @@ Committers for this dev version only:
 - Iban Harlouchet
 - Pascal Lamblin
 - Chienli Ma
-- David Warde-Farley
-- Amjad Almahairi
 - Tim Cooijmans
-- Christof Angermueller
 - Nicolas Ballas
+- Amjad Almahairi
+- David Warde-Farley
+- Christof Angermueller
 - Ziye Fan
 - Caglar
 - Sina Honari
@@ -137,29 +140,32 @@ Committers for this dev version only:
 - Melanie Ducoffe
 - Alexandre de Brebisson
 - Harm de Vries
+- Samira Shabanian
 - Alex Lamb
 - Ramana.S
-- Saizheng Zhang
 - Francesco Visin
+- Saizheng Zhang
 - Ying Zhang
-- Bart van Merrienboer
-- Cesar Laurent
 - Jan Schlüter
 - Xavier Bouthillier
+- Bart van Merrienboer
+- Cesar Laurent
 - Iulian Vlad Serban
-- Samira Shabanian
+- Li Yao
 - Sigurd Spieckermann
 - Dmitrii Serdiuk
 - Kelvin Xu
-- Li Yao
 - Sebastien Jean
 - Thomas Mesnard
 - Seon-Wook Park
+- Vincent Michalski
 - Dustin Webb
 - Mikhail Korobov
-- orhanf
+- Orhan Firat
+- Olivier Mastropietro
 - Daniel Renshaw
 - Julien Rebetez
+- Peng Liu
 - Sean Lee
 - TimSalimans
 - Andre Holzner
@@ -170,16 +176,20 @@ Committers for this dev version only:
 - Mehdi Mirza
 - Moslem Kazemi
 - Saxenauts
-- skaae
+- Søren Kaae Sønderby
+- sentient07
 - Anatoly Belikov
 - Diogo Moitinho de Almeida
+- Jakub Sygnowski
 - Kashif Rasul
 - Laurent Dinh
 - Rémy Léone
+- Taesup (TS) Kim
 - gw0 [http://gw.tnode.com/]
 - mronian
 - vesis84
 - Benni
+- Chiheb Trabelsi
 - JesseLivezey
 - Marius Killinger
 - Matt Graham
@@ -187,7 +197,7 @@ Committers for this dev version only:
 - Piotr Frankowski
 - Stefan Krastanov
 - vdumoulin
-- Luke Metz
+- Adithya Ganesh
 - Anish Shah
 - Balázs Hidasi
 - Colin Raffel
@@ -200,12 +210,13 @@ Committers for this dev version only:
 - Kaixhin
 - Liang-Chi Hsieh
 - Lucas Beyer
+- Luke Metz
 - Marc-Alexandre Cote
 - Martin Arjovsky
 - Matthias Kümmerer
 - Sirisha Rambhatla
-- Vincent Michalski
 - briancheung
+- cai-lw
 - ivdorelian
 - jan-matthis
 - jojolalpin
@@ -226,7 +237,6 @@ Committers for this dev version only:
 - Clay McLeod
 - Dario Garcia
 - Jakob Lombacher
-- Jakub Sygnowski
 - Joao Felipe Santos
 - John Arevalo
 - Jonas Degrave
@@ -241,6 +251,7 @@ Committers for this dev version only:
 - Sergei Lebedev
 - Vik Kamath
 - Wei Ouyang
+- Wojciech Głogowski
 - Yi-Lin Juang
 - Yurii Shevchuk
 - Zach Dwiel
@@ -248,4 +259,5 @@ Committers for this dev version only:
 - eulerreich
 - jotterbach
 - rolf
+- theaverageguy
 - wuaalb
