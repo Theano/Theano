@@ -1048,9 +1048,13 @@ class GpuDnnPoolDesc(Op):
   static const int win[%(nd)d] = {%(win)s};
   static const int pad[%(nd)d] = {%(pad)s};
   static const int str[%(nd)d] = {%(str)s};
-  err = cudnnSetPoolingNdDescriptor(
-    %(desc)s, %(mode_flag)s, %(nd)d,
-    win, pad, str);
+
+#if CUDNN_VERSION >= 5000
+    err = cudnnSetPoolingNdDescriptor(%(desc)s, %(mode_flag)s, CUDNN_PROPAGATE_NAN, %(nd)d, win, pad, str);
+#else
+    err = cudnnSetPoolingNdDescriptor(%(desc)s, %(mode_flag)s, %(nd)d, win, pad, str);
+#endif
+
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
                  cudnnGetErrorString(err));
@@ -1063,7 +1067,7 @@ class GpuDnnPoolDesc(Op):
            str=', '.join(map(str, self.stride)))
 
     def c_code_cache_version(self):
-        return (3, version())
+        return (4, version())
 
 
 class GpuDnnPool(DnnBase):
