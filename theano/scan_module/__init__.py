@@ -40,5 +40,6 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 from theano.scan_module import scan_opt
 from theano.scan_module.scan import scan
+from theano.scan_module.scan_checkpoint import scan_with_checkpoints
 from theano.scan_module.scan_views import map, reduce, foldl, foldr
 from theano.scan_module.scan_utils import clone, until
