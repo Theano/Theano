@@ -388,6 +388,14 @@ import theano and print the config variable, as in:
 
     Do a debugprint of the profiled functions
 
+.. attribute:: config.profiling.ignore_first_call
+
+    Bool value: either True or False
+
+    Default False
+
+    Do we ignore the first call to a Theano function while profiling.
+
 .. attribute:: config.lib.amdlibm
 
     Bool value: either True or False

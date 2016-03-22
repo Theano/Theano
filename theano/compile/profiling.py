@@ -110,7 +110,16 @@ class ProfileStats(object):
         in this class.
 
     """
-
+    def reset(self):
+        """ Ignore previous function call"""
+        #self.compile_time = 0.
+        self.fct_call_time = 0.
+        self.fct_callcount = 0
+        self.vm_call_time = 0.
+        self.apply_time = {}
+        self.apply_callcount = {}
+        # self.apply_cimpl = None
+        #self.messge = None
     #
     # Note on implementation:
     # Class variables are used here so that each one can be
@@ -216,6 +225,7 @@ class ProfileStats(object):
             if not _atexit_registered:
                 atexit.register(_atexit_print_fn)
                 _atexit_registered = True
+        self.ignore_first_call = theano.config.profiling.ignore_first_call
 
     def class_time(self):
         """

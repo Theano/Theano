@@ -1043,6 +1043,13 @@ AddConfigVar('profiling.debugprint',
              BoolParam(False),
              in_c_key=False)
 
+AddConfigVar('profiling.ignore_first_call',
+             """
+             Do we ignore the first call of a Theano function.
+             """,
+             BoolParam(False),
+             in_c_key=False)
+
 AddConfigVar('optdb.position_cutoff',
              'Where to stop eariler during optimization. It represent the'
              ' position of the optimizer where to stop.',
