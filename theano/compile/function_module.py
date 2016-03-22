@@ -778,9 +778,6 @@ class Function(object):
 
         output_subset = kwargs.pop('output_subset', None)
         if output_subset is not None and self.output_keys is not None:
-            if not all(key in self.output_keys for key in output_subset):
-                raise KeyError('Output_subset should be a list of keys '
-                               'from output_keys')
             output_subset =\
                 [self.output_keys.index(key) for key in output_subset]
 
@@ -982,9 +979,6 @@ class Function(object):
             if output_subset is None:
                 return outputs
             else:
-                if not all(isinstance(index, int) for index in output_subset):
-                    raise TypeError('Output_subset should be '
-                                    'a list of indices of output variables')
                 return [outputs[i] for i in output_subset]
 
     value = property(
