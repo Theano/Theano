@@ -21,7 +21,11 @@ learning/machine learning <http://www.mila.umontreal.ca/Home/courses>`_ classes)
 News
 ====
 
-* We added support for :ref:`CuDNN v3 <libdoc_cuda_dnn>`.
+* Theano 0.8 was released 21th March 2016. Everybody is encouraged to update.
+
+* Multi-GPU.
+
+* We added support for :ref:`CuDNN v4 <libdoc_cuda_dnn>`.
 
 * We added support for :attr:`CNMeM <config.lib.cnmem>` to speed up
   the GPU memory allocation.
