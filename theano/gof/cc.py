@@ -551,7 +551,7 @@ class CLinker(link.Linker):
 
     def accept(self, fgraph, no_recycling=None):
         """
-        Update/tie the self with the fgraph
+        Associate linker with fgraph
 
         """
         if no_recycling is None:
@@ -1744,6 +1744,9 @@ class OpWiseCLinker(link.LocalLinker):
             self.schedule = schedule
 
     def accept(self, fgraph, no_recycling=None):
+        """
+        Associate linker with fgraph
+        """
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
