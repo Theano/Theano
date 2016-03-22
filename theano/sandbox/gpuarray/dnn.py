@@ -34,6 +34,8 @@ from .nnet import GpuSoftmax
 from .opt import gpu_seqopt, register_opt, conv_groupopt, op_lifter
 from .opt_util import alpha_merge, output_merge, inplace_allocempty
 
+from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_BWD_FILTER
+
 
 def raise_no_cudnn(msg="CuDNN is required for convolution and pooling"):
     raise RuntimeError(msg)
@@ -583,9 +585,7 @@ class GpuDnnConvGradW(DnnBase):
             algo = config.dnn.conv.algo_bwd_filter
         self.algo = algo
 
-        assert self.algo in ['none', 'deterministic', 'fft', 'small',
-                             'guess_once', 'guess_on_shape_change',
-                             'time_once', 'time_on_shape_change']
+        assert self.algo in SUPPORTED_DNN_CONV_ALGO_BWD_FILTER
 
     def __setstate__(self, d):
         self.__dict__.update(d)
