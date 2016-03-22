@@ -764,19 +764,25 @@ class Function(object):
 
         kwargs : dict
             TODO: other kwargs?
-            Keyword argument `output_subset` is a list of indices of the
-            function's outputs that are requested to be calculated.
+            Keyword argument `output_subset` is a list of either indices of the
+            function's outputs or the keys belonging to the `output_keys` dict
+            and represent outputs that are requested to be calculated.
 
         Returns
         -------
-        List of outputs on indices `output_subset` or all of them, if
-        `outpus_subset` is not passed. If there's only one output, returns just
-        the value.
+        List of outputs on indices/keys from `output_subset` or all of them, if
+        `outputs_subset` is not passed.
         """
         profile = self.profile
         t0 = time.time()
 
         output_subset = kwargs.pop('output_subset', None)
+        if output_subset is not None and self.output_keys is not None:
+            if not all(key in self.output_keys for key in output_subset):
+                raise KeyError('Output_subset should be a list of keys '
+                               'from output_keys')
+            output_subset =\
+                [self.output_keys.index(key) for key in output_subset]
 
         # Reinitialize each container's 'provided' counter
         if self.trust_input:
@@ -879,7 +885,9 @@ class Function(object):
         # Do the actual work
         t0_fn = time.time()
         try:
-            outputs = self.fn(output_subset=output_subset)
+            outputs =\
+                self.fn() if output_subset is None else\
+                self.fn(output_subset=output_subset)
         except Exception:
             if hasattr(self.fn, 'position_of_error'):
                 # this is a new vm-provided function or c linker
@@ -965,11 +973,18 @@ class Function(object):
 
                 assert len(self.output_keys) == len(outputs)
 
-                return dict(izip(self.output_keys, outputs))
+                if output_subset is None:
+                    return dict(izip(self.output_keys, outputs))
+                else:
+                    return dict((self.output_keys[index], outputs[index])
+                                for index in output_subset)
 
             if output_subset is None:
                 return outputs
             else:
+                if not all(isinstance(index, int) for index in output_subset):
+                    raise TypeError('Output_subset should be '
+                                    'a list of indices of output variables')
                 return [outputs[i] for i in output_subset]
 
     value = property(
