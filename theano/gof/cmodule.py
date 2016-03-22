@@ -1948,9 +1948,16 @@ class GCC_compiler(Compiler):
                                      if ('march' not in p and
                                          'mtune' not in p and
                                          'target-cpu' not in p)]
-                            new_flags = [p for p in part if p not in part2]
+                            if sys.platform == 'darwin':
+                                # We only use translated target-cpu on
+                                # mac since the other flags are not
+                                # supported as compiler flags for the
+                                # driver.
+                                new_flags = [p for p in part if 'target-cpu' in p]
+                            else:
+                                new_flags = [p for p in part if p not in part2]
                             # Replace '-target-cpu value', which is an option
-                            # of clang, with '-march=value', for g++
+                            # of clang, with '-march=value'.
                             for i, p in enumerate(new_flags):
                                 if 'target-cpu' in p:
                                     opt = p.split()
@@ -2008,19 +2015,19 @@ class GCC_compiler(Compiler):
         # to use the new API, but not everywhere. When finished, enable
         # the following macro to assert that we don't bring new code
         # that use the old API.
-        cxxflags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
+        cxxflags.append("-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 
         # numpy 1.7 deprecated the following macro but the new one didn't
         # existed in the past
         if bool(numpy_ver < [1, 7]):
-            cxxflags.append("-D NPY_ARRAY_ENSUREARRAY=NPY_ENSUREARRAY")
-            cxxflags.append("-D NPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
-            cxxflags.append("-D NPY_ARRAY_ALIGNED=NPY_ALIGNED")
-            cxxflags.append("-D NPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
-            cxxflags.append("-D NPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
-            cxxflags.append("-D NPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
-            cxxflags.append("-D NPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
+            cxxflags.append("-DNPY_ARRAY_ENSUREARRAY=NPY_ENSUREARRAY")
+            cxxflags.append("-DNPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
+            cxxflags.append("-DNPY_ARRAY_ALIGNED=NPY_ALIGNED")
+            cxxflags.append("-DNPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
+            cxxflags.append("-DNPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
+            cxxflags.append("-DNPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
+            cxxflags.append("-DNPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
 
         # Platform-specific flags.
         # We put them here, rather than in compile_str(), so they en up
