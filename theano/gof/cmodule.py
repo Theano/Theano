@@ -1948,9 +1948,16 @@ class GCC_compiler(Compiler):
                                      if ('march' not in p and
                                          'mtune' not in p and
                                          'target-cpu' not in p)]
-                            new_flags = [p for p in part if p not in part2]
+                            if sys.platform == 'darwin':
+                                # We only use translated target-cpu on
+                                # mac since the other flags are not
+                                # supported as compiler flags for the
+                                # driver.
+                                new_flags = [p for p in part if 'target-cpu' in p]
+                            else:
+                                new_flags = [p for p in part if p not in part2]
                             # Replace '-target-cpu value', which is an option
-                            # of clang, with '-march=value', for g++
+                            # of clang, with '-march=value'.
                             for i, p in enumerate(new_flags):
                                 if 'target-cpu' in p:
                                     opt = p.split()
