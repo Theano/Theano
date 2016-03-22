@@ -555,53 +555,62 @@ class Function(object):
         return self.copy()
 
     def copy(self, share_memory=False, swap=None, delete_updates=False,
-             name=None, profile=None):
-        """
-        Copy this function. Copied function will have separated maker and
-        fgraph with original function. User can choose whether to separate
-        storage by changing the share_memory arguments.
+             name=None, profile=None, clone_var=None, clone_apply=None):
+        """Copy this function.
+
+        The copied function will have separated maker and fgraph with
+        regards to the original function.  The optional parameters
+        allow performing some transformations on the resulting
+        function so that it will not be 100% equivalent to the old
+        one.
 
         Parameters
         ----------
         share_memory : boolean
-            When True, two function share intermediate storages(storages except input and
-            output storages). Otherwise two functions will only share partial
-            storages and same maker. If two functions share memory and
-            allow_gc=False, this will increase executing speed and save memory.
-
+            When True, the returned function shares intermediate
+            storage with this one (storage except input and output
+            storage). Otherwise the returned function will only share
+            partial storage and maker. If two functions share memory
+            and allow_gc=False, this may increase execution speed and
+            save memory.
         swap : dict
-            Dictionary that map old SharedVariables to new
-            SharedVariables. Default is None.
-            NOTE: The shared variable swap in only done in the new returned
-            function, not in the user graph.
-
+            Dictionary or function that maps old SharedVariables to
+            new ones.  The variables are only replaced in the returned
+            function.  Not compatible with `clone_var`.
         delete_updates : boolean
-            If True, Copied function will not have updates.
+            If True, the copied function will not have updates.
         name : string
-            If provided, will be the name of the new
+            If provided, it will be the name of the new
             Function. Otherwise, it will be old + " copy"
-
-        profile :
-            as theano.function profile parameter
+        profile : object
+            See the `profile` argument of :meth:`theano.function`.
+        clone_var : callable
+            Function to clone a variable.  Generally not needed.
+            If you want to swap as well, use a special case in the
+            function you pass for this.
+        clone_apply : callable
+            Function to call to clone an apply node.  Generally not
+            needed.
 
         Returns
         -------
-        Copied theano.Function
+        Function
+           The new function.
+
         """
         # helper function
         def checkSV(sv_ori, sv_rpl):
             """
-            Assert two SharedVariable follow some restirctions:
-                1. same type
-                2. same shape or dim?
+            Asserts that the replacement shared variables are of the
+            same type as those they replace.
             """
             SharedVariable = theano.tensor.sharedvar.SharedVariable
             assert isinstance(sv_ori, SharedVariable), (
                 "Key of swap should be SharedVariable, given:", sv_ori,
-                " type", type(sv_ori))
+                " of class ", type(sv_ori))
             assert isinstance(sv_rpl, SharedVariable), (
                 "Value of swap should be SharedVariable, given:", sv_rpl,
-                "type", type(sv_ori))
+                " of class ", type(sv_ori))
             assert sv_ori.type == sv_rpl.type, (
                 "Type of given SharedVariable conflicts with original one",
                 "Type of given SharedVariable:", sv_rpl.type,
@@ -623,7 +632,9 @@ class Function(object):
 
         # Init new fgraph using copied variables and get memo
         # memo: a dict that map old variables to new variables
-        memo = graph.clone_get_equiv(maker.fgraph.inputs, out_vars)
+        memo = graph.clone_get_equiv(maker.fgraph.inputs, out_vars,
+                                     clone_var=clone_var,
+                                     clone_apply=clone_apply)
         fg_cpy = gof.fg.FunctionGraph([memo[i] for i in maker.fgraph.inputs],
                                       [memo[o] for o in out_vars],
                                       clone=False)
@@ -636,6 +647,10 @@ class Function(object):
 
         # swap SharedVariable
         if swap is not None:
+            if clone_var is not None:
+                raise ValueError(
+"""Using swap and clone_var together is not supported.  If you really
+want to do both, use a special case in your clone_var function.""")
             exist_svs = [i.variable for i in maker.inputs]
 
             # Check if given ShareVariables exist

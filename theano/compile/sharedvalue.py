@@ -74,8 +74,6 @@ class SharedVariable(Variable):
                 raise TypeError('value and strict are ignored if you pass '
                                 'a container here')
         else:
-            if container is not None:
-                raise TypeError('Error to specify both value and container')
             self.container = Container(
                 self,
                 storage=[type.filter(value, strict=strict,
@@ -153,6 +151,17 @@ class SharedVariable(Variable):
             value=None,
             strict=None,
             container=self.container)
+        cp.tag = copy.copy(self.tag)
+        return cp
+
+    def clone_with_new_type(self, type):
+        # This will copy the value, unlike the regular clone above,
+        # because we change the type.
+        cp = self.__class__(
+            name=self.name,
+            type=type,
+            value=self.get_value(borrow=True, return_internal_type=True),
+            strict=False)
         cp.tag = copy.copy(self.tag)
         return cp
 

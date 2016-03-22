@@ -452,6 +452,26 @@ class Variable(Node):
         cp.tag = copy(self.tag)
         return cp
 
+    def clone_with_new_type(self, type):
+        """
+        Clone a variable with a new type.
+
+        This returns a new variable just like :meth:`clone` but with
+        the specified type instead of the one from `self`.  This does
+        not differ much from just creating a new variable for plain
+        ones, but does have more impact for Constants and
+        SharedVariables.
+
+        Parameters
+        ----------
+        type : Type
+            A theano type
+
+        """
+        cp = self.__class__(type, None, None, self.name)
+        cp.tag = copy(self.tag)
+        return cp
+
     def __lt__(self, other):
         raise NotImplementedError('Subclasses of Variable must provide __lt__',
                                   self.__class__.__name__)
@@ -578,6 +598,11 @@ class Constant(Variable):
 
         """
         cp = self.__class__(self.type, self.data, self.name)
+        cp.tag = copy(self.tag)
+        return cp
+
+    def clone_with_new_type(self, type):
+        cp = self.__class__(type, self.data, self.name)
         cp.tag = copy(self.tag)
         return cp
 
@@ -813,7 +838,8 @@ def clone(i, o, copy_inputs=True):
     return [equiv[input] for input in i], [equiv[output] for output in o]
 
 
-def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
+def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None,
+                    clone_var=None, clone_apply=None):
     """
     Return a dictionary that maps from Variable and Apply nodes in the
     original graph to a new node (a clone) in a new graph.
@@ -823,8 +849,8 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
 
     Parameters
     ----------
-    inputs : a list of Variables
-    outputs : a list of Variables
+    inputs : list of Variables
+    outputs : list of Variables
     copy_inputs_and_orphans : bool
         True means to create the cloned graph from new input and constant
         nodes (the bottom of a feed-upward graph).
@@ -834,15 +860,26 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
         Optionally start with a partly-filled dictionary for the return value.
         If a dictionary is passed, this function will work in-place on that
         dictionary and return it.
+    clone_var : callable
+        Function to use to clone variables. Usually not needed.
+    clone_apply : callable
+        Function to use to clone apply nodes. Usually not needed.
 
     """
+    if clone_var is None:
+        def clone_var(v):
+            return v.clone()
+    if clone_apply is None:
+        def clone_apply(n, inps):
+            return n.clone_with_new_inputs(inps)
+
     if memo is None:
         memo = {}
 
     # clone the inputs if necessary
     for input in inputs:
         if copy_inputs_and_orphans:
-            cpy = input.clone()
+            cpy = clone_var(input)
             cpy.owner = None
             cpy.index = None
             memo.setdefault(input, cpy)
@@ -854,12 +891,12 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
         for input in apply.inputs:
             if input not in memo:
                 if copy_inputs_and_orphans:
-                    cpy = input.clone()
+                    cpy = clone_var(input)
                     memo[input] = cpy
                 else:
                     memo[input] = input
 
-        new_apply = apply.clone_with_new_inputs([memo[i] for i in apply.inputs])
+        new_apply = clone_apply(apply, [memo[i] for i in apply.inputs])
         memo.setdefault(apply, new_apply)
         for output, new_output in zip(apply.outputs, new_apply.outputs):
             memo.setdefault(output, new_output)
@@ -867,7 +904,7 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
     # finish up by cloning any remaining outputs (it can happen)
     for output in outputs:
         if output not in memo:
-            memo[output] = output.clone()
+            memo[output] = clone_var(output)
 
     return memo
 
