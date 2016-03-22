@@ -821,14 +821,14 @@ class VM_Linker(link.LocalLinker):
 
         if (self.callback is not None or
                 (config.profile and config.profile_memory) or
-                self.allow_partial_eval):
+                getattr(self, 'allow_partial_eval', False)):
 
             if self.use_cloop and self.callback is not None:
                 logger.warn('CVM does not support callback, using Stack VM.')
             if self.use_cloop and config.profile_memory:
                 warnings.warn(
                     'CVM does not support memory profile, using Stack VM.')
-            if self.use_cloop and self.allow_partial_eval:
+            if self.use_cloop and getattr(self, 'allow_partial_eval', False):
                 warnings.warn(
                     'CVM does not support partial evaluation yet, '
                     'using Stack VM.')
