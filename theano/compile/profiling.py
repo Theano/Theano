@@ -225,7 +225,7 @@ class ProfileStats(object):
             if not _atexit_registered:
                 atexit.register(_atexit_print_fn)
                 _atexit_registered = True
-        self.ignore_first_call = theano.config.ignore_first_call
+        self.ignore_first_call = theano.config.profiling.ignore_first_call
 
     def class_time(self):
         """
