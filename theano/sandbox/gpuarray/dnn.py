@@ -40,9 +40,9 @@ def raise_no_cudnn(msg="CuDNN is required for convolution and pooling"):
 
 def _dnn_check_compile():
     preambule = """
-# include <stdio.h>
-# include <cudnn.h>
-# include <cudnn_helper.h>
+#include <stdio.h>
+#include <cudnn.h>
+#include <cudnn_helper.h>
 """
 
     # No need for the context in here since we won't execute that code
@@ -201,9 +201,9 @@ class DnnVersion(Op):
 
     def c_support_code(self):
         return """
-# if PY_MAJOR_VERSION >= 3
-# define PyInt_FromLong PyLong_FromLong
-# endif
+#if PY_MAJOR_VERSION >= 3
+#define PyInt_FromLong PyLong_FromLong
+#endif
 """
 
     def make_node(self):
@@ -1090,7 +1090,7 @@ class GpuDnnPool(DnnBase):
         return [('MODE_FLAG', mode_flag)]
 
     def make_node(self, img, ws, stride, pad):
-        ctx_name = infer_context_name(img, ws, stride, pad)
+        ctx_name = infer_context_name(img)
         img = as_gpuarray_variable(img, ctx_name)
 
         ws = tensor.as_tensor_variable(ws)
