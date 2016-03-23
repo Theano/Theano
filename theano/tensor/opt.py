@@ -620,7 +620,7 @@ def local_useless_dimshuffle_in_reshape(node):
 
 
 @register_canonicalize
-@gof.local_optimizer([T.DimShuffle])
+@gof.local_optimizer([DimShuffle])
 def local_lift_transpose_through_dot(node):
     """
     dot(x,y).T -> dot(y.T, x.T)
