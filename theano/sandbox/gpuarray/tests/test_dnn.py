@@ -19,6 +19,8 @@ from ..basic_ops import GpuAllocEmpty
 from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
 from . import test_nnet
 
+from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_FWD
+
 
 def test_dnn_conv_desc_merge():
     if not dnn.dnn_available(test_ctx_name):
@@ -424,24 +426,16 @@ class TestDnnInferShapes(utt.InferShapeTester):
             dnn.GpuDnnSoftmaxGrad
         )
 
-    def test_conv(self):
+    def _test_conv(self, img, kerns, out, img_val, kern_vals, subsample):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
-        img = T.ftensor4('img')
-        kerns = T.ftensor4('kerns')
-        out = T.ftensor4('out')
-        img_val = numpy.asarray(
-            numpy.random.rand(7, 2, 6, 4),
-            dtype='float32'
-        )
-        kern_vals = numpy.asarray(
-            numpy.random.rand(8, 2, 4, 3),
-            dtype='float32'
-        )
+
+        img_val = numpy.asarray(img_val, dtype='float32')
+        kern_vals = numpy.asarray(kern_vals, dtype='float32')
 
         for params in product(
             ['valid', 'full', 'half'],
-            [(1, 1), (2, 2)],
+            subsample,
             ['conv', 'cross']
         ):
             out_vals = numpy.zeros(
@@ -461,45 +455,23 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 [img_val, kern_vals, out_vals],
                 dnn.GpuDnnConv
             )
+
+    def test_conv(self):
+        self._test_conv(T.ftensor4('img'),
+                        T.ftensor4('kerns'),
+                        T.ftensor4('out'),
+                        numpy.random.rand(7, 2, 6, 4),
+                        numpy.random.rand(8, 2, 4, 3),
+                        [(1, 1), (2, 2)])
 
     def test_conv3d(self):
-        if not dnn.dnn_available(test_ctx_name):
-            raise SkipTest(dnn.dnn_available.msg)
         ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
-        img = ftensor5('img')
-        kerns = ftensor5('kerns')
-        out = ftensor5('out')
-        img_val = numpy.asarray(
-            numpy.random.rand(10, 2, 6, 4, 11),
-            dtype='float32'
-        )
-        kern_vals = numpy.asarray(
-            numpy.random.rand(8, 2, 4, 3, 1),
-            dtype='float32'
-        )
-
-        for params in product(
-            ['valid', 'full', 'half'],
-            [(1, 1, 1), (2, 2, 2)],
-            ['conv', 'cross']
-        ):
-            out_vals = numpy.zeros(
-                dnn.GpuDnnConv.get_out_shape(img_val.shape, kern_vals.shape,
-                                             border_mode=params[0],
-                                             subsample=params[1]),
-                dtype='float32')
-            desc = dnn.GpuDnnConvDesc(
-                border_mode=params[0],
-                subsample=params[1],
-                conv_mode=params[2]
-            )(kerns.shape)
-            conv = dnn.GpuDnnConv()(img, kerns, out, desc)
-            self._compile_and_check(
-                [img, kerns, out],
-                [conv],
-                [img_val, kern_vals, out_vals],
-                dnn.GpuDnnConv
-            )
+        self._test_conv(ftensor5('img'),
+                        ftensor5('kerns'),
+                        ftensor5('out'),
+                        numpy.random.rand(10, 2, 6, 4, 11),
+                        numpy.random.rand(8, 2, 4, 3, 1),
+                        [(1, 1, 1), (2, 2, 2)])
 
     def test_conv_gradw(self):
         if not dnn.dnn_available(test_ctx_name):
