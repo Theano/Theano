@@ -1690,10 +1690,12 @@ def test_elu():
 def test_binary_crossentropy_reshape():
     # Reported as https://github.com/Theano/Theano/issues/4086
     a = tensor.tensor4('a')
-    c = binary_crossentropy(sigmoid(a.reshape((-1, 1))), 1).sum()
-    ga = theano.grad(c, a)
-    # This only works when "specialize" options are included
-    mode = theano.compile.get_default_mode().including('fast_run')
-    fga = theano.function([a], ga, mode=mode)
-    utt.assert_allclose(fga(numpy.array([[[[30.]]]], dtype=config.floatX)),
-                        numpy.zeros((1, 1, 1, 1), dtype=config.floatX))
+    for c in (binary_crossentropy(sigmoid(a.reshape((-1, 1))), 1).sum(),
+              binary_crossentropy(sigmoid(a).reshape((-1, 1)), 1).sum()):
+
+        ga = theano.grad(c, a)
+        # This only works when "specialize" options are included
+        mode = theano.compile.get_default_mode().including('fast_run')
+        fga = theano.function([a], ga, mode=mode)
+        utt.assert_allclose(fga(numpy.array([[[[30.]]]], dtype=config.floatX)),
+                            numpy.zeros((1, 1, 1, 1), dtype=config.floatX))
