@@ -610,14 +610,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
             [(1, 1), (2, 2), (3, 3)],
             modes
         ):
-            desc = dnn.GpuDnnPoolDesc(
-                ws=params[0],
-                stride=params[1],
-                mode=params[2]
-            )()
             self._compile_and_check(
                 [img],
-                [dnn.GpuDnnPool()(img, desc)],
+                [dnn.GpuDnnPool(mode=params[2])(img, params[0], params[1], (0, 0))],
                 [img_val],
                 dnn.GpuDnnPool
             )
@@ -646,16 +641,13 @@ class TestDnnInferShapes(utt.InferShapeTester):
             [(1, 1), (2, 2), (3, 3)],
             ['max', 'average_inc_pad']
         ):
-            desc = dnn.GpuDnnPoolDesc(
-                ws=params[0],
-                stride=params[1],
-                mode=params[2]
-            )()
-            pool_grad = dnn.GpuDnnPoolGrad()(
+            pool_grad = dnn.GpuDnnPoolGrad(mode=params[2])(
                 img,
                 out,
                 img_grad,
-                desc
+                params[0],
+                params[1],
+                (0, 0)
             )
             self._compile_and_check(
                 [img, img_grad, out],

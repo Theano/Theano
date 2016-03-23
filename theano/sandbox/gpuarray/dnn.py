@@ -1124,7 +1124,7 @@ class GpuDnnPool(DnnBase):
         return [('MODE_FLAG', mode_flag)]
 
     def make_node(self, img, ws, stride, pad):
-        ctx_name = infer_context_name(img, ws, stride, pad)
+        ctx_name = infer_context_name(img)
         img = as_gpuarray_variable(img, ctx_name)
 
         ws = tensor.as_tensor_variable(ws)
