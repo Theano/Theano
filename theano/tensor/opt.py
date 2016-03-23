@@ -3542,7 +3542,7 @@ def local_join_make_vector(node):
 #################
 #  speed/memory #
 #################
-
+@register_canonicalize
 @register_specialize
 @gof.local_optimizer([T.elemwise.Sum])
 def local_sumsqr2dot(node):
