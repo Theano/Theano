@@ -2,8 +2,9 @@ from __future__ import absolute_import, print_function, division
 import logging
 
 from nose.plugins.skip import SkipTest
+from nose_parameterized import parameterized
 import numpy
-from itertools import product
+from itertools import product, chain
 
 import theano
 from six import StringIO
@@ -392,6 +393,9 @@ def test_dnn_tag():
 
 class TestDnnInferShapes(utt.InferShapeTester):
 
+    border_modes = ['valid', 'full', 'half']
+    conv_modes = ['conv', 'cross']
+
     def setUp(self):
         super(TestDnnInferShapes, self).setUp()
         self.mode = mode_with_gpu
@@ -426,27 +430,23 @@ class TestDnnInferShapes(utt.InferShapeTester):
             dnn.GpuDnnSoftmaxGrad
         )
 
-    def _test_conv(self, img, kerns, out, img_val, kern_vals, subsample):
+    def _test_conv(self, img, kerns, out, img_val, kern_vals, border_mode, conv_mode, subsamples):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
 
         img_val = numpy.asarray(img_val, dtype='float32')
         kern_vals = numpy.asarray(kern_vals, dtype='float32')
 
-        for params in product(
-            ['valid', 'full', 'half'],
-            subsample,
-            ['conv', 'cross']
-        ):
+        for subsample in subsamples:
             out_vals = numpy.zeros(
                 dnn.GpuDnnConv.get_out_shape(img_val.shape, kern_vals.shape,
-                                             border_mode=params[0],
-                                             subsample=params[1]),
+                                             border_mode=border_mode,
+                                             subsample=subsample),
                 dtype='float32')
             desc = dnn.GpuDnnConvDesc(
-                border_mode=params[0],
-                subsample=params[1],
-                conv_mode=params[2]
+                border_mode=border_mode,
+                subsample=subsample,
+                conv_mode=conv_mode
             )(kerns.shape)
             conv = dnn.GpuDnnConv()(img, kerns, out, desc)
             self._compile_and_check(
@@ -456,71 +456,99 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 dnn.GpuDnnConv
             )
 
-    def test_conv(self):
-        self._test_conv(T.ftensor4('img'),
-                        T.ftensor4('kerns'),
-                        T.ftensor4('out'),
-                        numpy.random.rand(7, 2, 6, 4),
-                        numpy.random.rand(8, 2, 4, 3),
-                        [(1, 1), (2, 2)])
+    @parameterized.expand(chain(product([SUPPORTED_DNN_CONV_ALGO_FWD[0]],
+                                        border_modes,
+                                        conv_modes),
+                                product(SUPPORTED_DNN_CONV_ALGO_FWD[1:],
+                                        [border_modes[0]],
+                                        [conv_modes[0]])),
+                          testcase_func_name=utt.custom_name_func)
+    def test_conv(self, algo, border_mode, conv_mode):
+        try:
+            default_algo = theano.config.dnn.conv.algo_fwd
+            theano.config.dnn.conv.algo_fwd = algo
 
-    def test_conv3d(self):
-        ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
-        self._test_conv(ftensor5('img'),
-                        ftensor5('kerns'),
-                        ftensor5('out'),
-                        numpy.random.rand(10, 2, 6, 4, 11),
-                        numpy.random.rand(8, 2, 4, 3, 1),
-                        [(1, 1, 1), (2, 2, 2)])
+            self._test_conv(T.ftensor4('img'),
+                            T.ftensor4('kerns'),
+                            T.ftensor4('out'),
+                            numpy.random.rand(7, 2, 8, 4),
+                            numpy.random.rand(8, 2, 4, 3),
+                            border_mode,
+                            conv_mode,
+                            [(1, 1), (2, 2)])
+        finally:
+            theano.config.dnn.conv.algo_fwd = default_algo
 
-    def test_conv_gradw(self):
+    @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
+    def test_conv3d_none(self, border_mode, conv_mode):
+        try:
+            default_algo = theano.config.dnn.conv.algo_fwd
+            theano.config.dnn.conv.algo_fwd = 'none'
+
+            ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
+            self._test_conv(ftensor5('img'),
+                            ftensor5('kerns'),
+                            ftensor5('out'),
+                            numpy.random.rand(10, 2, 6, 4, 11),
+                            numpy.random.rand(8, 2, 4, 3, 1),
+                            border_mode,
+                            conv_mode,
+                            [(1, 1, 1), (2, 2, 2)])
+        finally:
+            theano.config.dnn.conv.algo_fwd = default_algo
+
+    def _test_conv_gradw(self, img, kerns, out, img_val, kern_vals, border_mode, conv_mode, subsample):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
-        img = T.ftensor4('img')
-        kerns = T.ftensor4('kerns')
-        out = T.ftensor4('out')
+
         img_val = numpy.asarray(
-            numpy.random.rand(2, 5, 6, 8),
+            img_val,
             dtype='float32'
         )
         kern_vals = numpy.asarray(
-            numpy.random.rand(2, 1, 5, 6),
+            kern_vals,
             dtype='float32'
         )
 
-        for params in product(
-            ['valid', 'full', 'half'],
-            [(1, 1)],  # strides besides (1, 1)
-            ['conv', 'cross']
-        ):
-            temp_img = img.dimshuffle(1, 0, 2, 3)
-            temp_kerns = kerns
-            if params[2] == 'conv':
-                temp_kerns = temp_kerns[:, :, ::-1, ::-1]
-            temp_kerns = temp_kerns.dimshuffle(1, 0, 2, 3)
-            shape = (
-                kern_vals.shape[1], img_val.shape[1],
-                img_val.shape[2] - kern_vals.shape[2] + 1,
-                img_val.shape[3] - kern_vals.shape[3] + 1
-            )
-            out_vals = numpy.zeros(shape, dtype='float32')
-            desc = dnn.GpuDnnConvDesc(
-                border_mode=params[0],
-                subsample=params[1],
-                conv_mode=params[2]
-            )(out.shape)
-            conv_grad_w = dnn.GpuDnnConvGradW()(
-                temp_img,
-                temp_kerns,
-                out,
-                desc,
-            )
-            self._compile_and_check(
-                [temp_img, temp_kerns, out],
-                [conv_grad_w],
-                [img_val, kern_vals, out_vals],
-                dnn.GpuDnnConvGradW
-            )
+        temp_img = img.dimshuffle(1, 0, 2, 3)
+        temp_kerns = kerns
+        if conv_mode == 'conv':
+            temp_kerns = temp_kerns[:, :, ::-1, ::-1]
+        temp_kerns = temp_kerns.dimshuffle(1, 0, 2, 3)
+        shape = (
+            kern_vals.shape[1], img_val.shape[1],
+            img_val.shape[2] - kern_vals.shape[2] + 1,
+            img_val.shape[3] - kern_vals.shape[3] + 1
+        )
+        out_vals = numpy.zeros(shape, dtype='float32')
+        desc = dnn.GpuDnnConvDesc(
+            border_mode=border_mode,
+            subsample=subsample,
+            conv_mode=conv_mode
+        )(out.shape)
+        conv_grad_w = dnn.GpuDnnConvGradW()(
+            temp_img,
+            temp_kerns,
+            out,
+            desc,
+        )
+        self._compile_and_check(
+            [temp_img, temp_kerns, out],
+            [conv_grad_w],
+            [img_val, kern_vals, out_vals],
+            dnn.GpuDnnConvGradW
+        )
+
+    @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
+    def test_conv_gradw(self, border_mode, conv_mode):
+        self._test_conv_gradw(T.ftensor4('img'),
+                              T.ftensor4('kerns'),
+                              T.ftensor4('out'),
+                              numpy.random.rand(2, 5, 6, 8),
+                              numpy.random.rand(2, 1, 5, 6),
+                              border_mode,
+                              conv_mode,
+                              (1, 1))
 
     def test_conv_gradi(self):
         if not dnn.dnn_available(test_ctx_name):
