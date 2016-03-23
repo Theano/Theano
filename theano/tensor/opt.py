@@ -3828,6 +3828,32 @@ def local_div_switch_sink(node):
     return False
 
 
+# Merge add/sub/mul/div/minimum/maximum/... of switches sharing the same
+# condition, to enable further simplification of their branches
+# Example: switch(c, a, b) + switch(c, x, y) -> switch(c, a+x, b+y)
+@register_canonicalize
+@gof.local_optimizer([T.Elemwise])
+def local_merge_switch_same_cond(node):
+    scal = theano.scalar
+    # node must be binary elemwise or add or mul
+    if not isinstance(node.op, T.Elemwise) or not isinstance(
+            node.op.scalar_op, (scal.BinaryScalarOp, scal.Add, scal.Mul)):
+        return
+    # all inputs must be switch
+    if not all(s.owner and isinstance(s.owner.op, T.Elemwise) and
+               isinstance(s.owner.op.scalar_op, scal.Switch)
+               for s in node.inputs):
+        return
+    # all switch conditions must be the same
+    cond = node.inputs[0].owner.inputs[0]
+    if not all(s.owner.inputs[0] is cond for s in node.inputs[1:]):
+        return
+    # pull out switch
+    return [T.switch(cond,
+                     node.op(*[s.owner.inputs[1] for s in node.inputs]),
+                     node.op(*[s.owner.inputs[2] for s in node.inputs]))]
+
+
 #############
 # Tile Opts #
 #############
