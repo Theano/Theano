@@ -20,6 +20,7 @@ import theano
 from theano import gof
 from theano import scalar
 from theano.tensor import basic as tensor, subtensor, opt
+from theano.tensor import extra_ops
 from theano.tensor.type import (values_eq_approx_remove_inf,
                                 values_eq_approx_remove_nan)
 from theano.tensor.opt import copy_stack_trace
@@ -30,7 +31,6 @@ from theano.tensor.nnet.sigm import sigmoid, softplus
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
 from theano.tensor.nnet.blocksparse import sparse_block_dot
-
 
 ############
 #
@@ -2365,3 +2365,56 @@ def elu(x, alpha=1):
         Exponential Linear Units (ELUs)" <http://arxiv.org/abs/1511.07289>`.
     """
     return tensor.switch(x > 0, x, alpha * (tensor.exp(x) - 1))
+
+
+def confusion_matrix(actual, pred):
+    """
+    Computes the confusion matrix of given vectors containing
+    actual observations and predicted observations.
+
+    Parameters
+    ----------
+    actual : 1-d tensor variable
+    pred : 1-d tensor variable
+
+    Returns
+    -------
+    conf_mat : Confusion matrix of actual and predictions observations as shown below.
+
+               | Predicted
+    ___________|___________
+       Actual  |
+               |
+
+    order : 1-d array of order of entries in rows and columns
+
+    Examples
+    --------
+    >>> import theano
+    >>> from theano.tensor.nnet import confusion_matrix
+
+    >>> x = theano.tensor.vector()
+    >>> y = theano.tensor.vector()
+    >>> f = theano.function([x, y], confusion_matrix(x, y))
+    >>> a = [0, 1, 2, 1, 0]
+    >>> b = [0, 0, 2, 1, 2]
+    >>> print(f(a, b))
+    [array([[0, 0, 1],
+            [2, 1, 0],
+            [0, 0, 1]]), array([ 0.,  1.,  2.])]
+    """
+    if actual.ndim != 1:
+        raise ValueError('actual must be 1-d tensor variable')
+    if pred.ndim != 1:
+        raise ValueError('pred must be 1-d tensor variable')
+
+    order = extra_ops.Unique(False, False, False)(tensor.concatenate([actual, pred]))
+
+    colA = actual.dimshuffle(0, 'x')
+    colP = pred.dimshuffle(0, 'x')
+
+    oneHotA = tensor.eq(colA, order).astype('int64')
+    oneHotP = tensor.eq(colP, order).astype('int64')
+
+    conf_mat = tensor.dot(oneHotA.T, oneHotP)
+    return [conf_mat, order]

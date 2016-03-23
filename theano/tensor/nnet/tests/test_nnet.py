@@ -30,7 +30,8 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 Prepend_scalar_to_each_row,
                                 relu,
                                 h_softmax,
-                                elu)
+                                elu,
+                                confusion_matrix)
 from theano.tensor import matrix, vector, lvector, scalar
 
 
@@ -1684,3 +1685,30 @@ def test_elu():
     for alpha in 1.5, 2, -1, -1.5, -2:
         y = elu(x, alpha).eval({x: X})
         utt.assert_allclose(y, numpy.where(X > 0, X, alpha * (numpy.exp(X) - 1)))
+
+
+def test_confusion_matrix():
+    # Defining numpy implementation of confusion matrix
+    def numpy_conf_mat(actual, pred):
+        order = numpy.union1d(actual, pred)
+        colA = numpy.matrix(actual).T
+        colP = numpy.matrix(pred).T
+        oneHotA = colA.__eq__(order).astype('int64')
+        oneHotP = colP.__eq__(order).astype('int64')
+        conf_mat = numpy.dot(oneHotA.T, oneHotP)
+        conf_mat = numpy.asarray(conf_mat)
+        return [conf_mat, order]
+
+    x = tensor.vector()
+    y = tensor.vector()
+    f = theano.function([x, y], confusion_matrix(x, y))
+    list_inputs = [[[0, 1, 2, 1, 0], [0, 0, 2, 1, 2]], 
+                   [[2, 0, 2, 2, 0, 1], [0, 0, 2, 2, 0, 2]]]
+
+    for case in list_inputs:
+        a = numpy.asarray(case[0])
+        b = numpy.asarray(case[1])
+        out_exp = numpy_conf_mat(a, b)
+        outs = f(case[0], case[1])
+        for exp, out in zip(out_exp, outs):
+            utt.assert_allclose(exp, out)
