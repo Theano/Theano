@@ -6,6 +6,7 @@ import theano
 from theano import compile, gof
 from theano.compile import optdb
 from theano.gof import local_optimizer
+from theano.gof.opt import copy_stack_trace
 
 from theano.tensor.nnet.corr import (
     CorrMM, CorrMM_gradInputs, CorrMM_gradWeights)
@@ -18,8 +19,7 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs)
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape
-from theano.tensor.opt import (copy_stack_trace,
-                               register_specialize_device)
+from theano.tensor.opt import register_specialize_device
 from theano.tensor import TensorType
 from theano.tensor import opt
 

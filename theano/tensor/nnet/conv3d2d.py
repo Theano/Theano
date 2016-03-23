@@ -2,9 +2,9 @@ from __future__ import absolute_import, print_function, division
 import theano
 from theano.gradient import DisconnectedType
 from theano.gof import Op, Apply, TopoOptimizer
+from theano.gof.opt import copy_stack_trace
 from theano import tensor
 import theano.sandbox.cuda as cuda
-from theano.tensor.opt import copy_stack_trace
 
 
 def get_diagonal_subtensor_view(x, i0, i1):
