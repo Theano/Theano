@@ -3504,6 +3504,21 @@ class GpuJoin(tensor.Join, GpuOp):
         stop = NULL;
         """ % locals()
 
+        cdna_map = dict((cdna, i) for i, cdna in enumerate(gof.utils.uniq(inputs[1:])))
+        str += """
+        int shapes[%d][nd];
+        struct { 
+            CudaNdarray* const ptr;
+            int const shape_idx;
+        } const inputs[] = {
+        """ % len(cdna_map)
+        for i, cdna in enumerate(inputs[1:]):
+            cdna_idx = cdna_map[cdna]
+            if i > 0:
+                str += ",\n\t\t"
+            str += "{%(cdna)s, %(cdna_idx)d}" % locals()
+        str += "};"
+
         # Test negative axis
         str += """
         if( axis < -nd ){
@@ -3519,20 +3534,6 @@ class GpuJoin(tensor.Join, GpuOp):
         # getting the shapes of all the involved tensors (input[1:])
         # + check: all input tensors have same shape as final out
         # except for "axis" dimension
-        cdna_map = dict((cdna, i) for i, cdna in enumerate(gof.utils.uniq(inputs[1:])))
-        str += """
-        int shapes[%d][nd];
-        struct { 
-            CudaNdarray* const ptr;
-            int const shape_idx;
-        } const inputs[] = {
-        """ % len(cdna_map)
-        for i, cdna in enumerate(inputs[1:]):
-            cdna_idx = cdna_map[cdna]
-            if i > 0:
-                str += ",\n\t\t"
-            str += "{%(cdna)s, %(cdna_idx)d}" % locals()
-        str += "};"
 
         str += """
         if(-1 == axis && PyErr_Occurred()){
@@ -3641,6 +3642,9 @@ class GpuJoin(tensor.Join, GpuOp):
 
     def c_code_cache_version(self):
         return (7,)
+
+    def c_compile_args(self):
+        return ["-std=c++11"]
 
 gpu_join = GpuJoin()
 
