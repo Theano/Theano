@@ -18,7 +18,7 @@ from theano.printing import pprint
 from theano.tensor import basic as tensor
 from theano.tensor import elemwise, opt, NotScalarConstantError
 from theano.tensor.type import values_eq_approx_remove_inf
-from theano.tensor.opt import copy_stack_trace
+from theano.gof.opt import copy_stack_trace
 
 ############
 #
