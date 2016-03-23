@@ -596,7 +596,6 @@ def use(device,
                     cudnn_version,),
                       file=sys.stderr)
                 if warn:
-                    import warnings
                     warnings.warn(warn)
 
             if device_properties(use.device_number)['regsPerBlock'] < 16384:
