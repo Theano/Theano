@@ -5930,7 +5930,25 @@ class Diagonal(Op):
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
-        z[0] = x.diagonal(self.offset, self.axis1, self.axis2)
+        if self.offset != 0 or self.axis1 != 0 or self.axis2 !=1:
+            raise ValueError('Currently Diagonal doesn\'t support non-default'
+                             'offset and axis values.')
+
+        # zero-dimensional matrices ...
+        if x.shape[0] == 0 or x.shape[1] == 0:
+            z[0] = node.outputs[0].type.value_zeros((0,))
+            return
+
+        if x.shape[0] < x.shape[1]:
+            rval = x[:, 0]
+        else:
+            rval = x[0]
+
+        rval.strides = (x.strides[0] + x.strides[1],)
+        if self.view:
+            z[0] = rval
+        else:
+            z[0] = rval.copy()
 
     def grad(self, inputs, gout):
         """The current gradient is valid only for main diagonals."""
@@ -5970,7 +5988,7 @@ def diagonal(a, offset=0, axis1=0, axis2=1):
     Parameters
     ----------
     a : symbolic tensor
-        A tensor variable with x.ndim >= 2.
+        A tensor variable with a.ndim >= 2.
 
     offset : int
         Indicates which diagonal to extract, `0` as main diagonal, positive as
