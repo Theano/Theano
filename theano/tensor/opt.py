@@ -5269,6 +5269,17 @@ def local_intdiv_by_one(node):
             return [node.inputs[0].astype(node.outputs[0].dtype)]
 
 
+@register_canonicalize
+@gof.local_optimizer([T.int_div, T.true_div])
+def local_zero_div(node):
+    """0 / x -> 0
+    """
+    if isinstance(node.op, T.Elemwise) and isinstance(
+            node.op.scalar_op, (theano.scalar.IntDiv, theano.scalar.TrueDiv)):
+        if local_mul_canonizer.get_constant(node.inputs[0]) == 0:
+            return [broadcast_like(0, node.outputs[0], node.fgraph)]
+
+
 @gof.local_optimizer([T.pow])
 def local_pow_specialize(node):
     # here, we are past the point of canonicalization, so we don't want
