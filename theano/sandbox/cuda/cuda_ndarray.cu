@@ -4071,7 +4071,16 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
             }; break;
         default:
             {
-                assert (cudaSuccess == cudaGetLastError());
+                cudaError_t err = cudaGetLastError();
+                if(cudaSuccess != err){
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "Unexpected Cuda error: %s: %s\n",
+                                 "CudaNdarray_CopyFromCudaNdarray",
+                                 cudaGetErrorString(err));
+                    Py_XDECREF(new_other);
+                    return -1;
+                }
+
                 if (verbose)
                     fprintf(stderr,
                             "Copying with default version unbroadcast=%d\n",
@@ -4094,7 +4103,7 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
                         CudaNdarray_DEV_DATA(self),
                         (const int *)CudaNdarray_DEV_STRIDES(self));
                 CNDA_THREAD_SYNC;
-                cudaError_t err = cudaGetLastError();
+                err = cudaGetLastError();
                 if(verbose>1)
                     fprintf(stderr,
                             "INFO k_elemwise_unary_rowmaj (n_blocks=%i,"
