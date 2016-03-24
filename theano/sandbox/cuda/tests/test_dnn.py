@@ -364,28 +364,32 @@ def test_pooling_with_tensor_vars():
             cast_to_output_type=False,
             mode=mode_with_gpu)
 
-    out2 = pool_2d_i2n(x, ds=(2, 2), strides=(1, 1),
-                       pad=(0, 0),
-                       pool_function=T.max)
-
     mode_without_gpu2 = mode_without_gpu.including()
     mode_without_gpu2.check_isfinite = False
 
-    f1 = theano.function([x], fn(x), mode=mode_with_gpu)
+    f_gpu = theano.function([x], fn(x), mode=mode_with_gpu)
     assert any([isinstance(node.op, cuda.dnn.GpuDnnPool)
-                for node in f1.maker.fgraph.apply_nodes])
-    f2 = theano.function([x], out2, mode=mode_without_gpu2)
-    assert not any([isinstance(node.op, cuda.dnn.GpuDnnPool)
-                    for node in f2.maker.fgraph.apply_nodes])
+                for node in f_gpu.maker.fgraph.apply_nodes])
+
+    i = 1
     for shp in [(1, 10, 100, 100),
                 (1, 3, 99, 99),
-                (32, 1, 147, 197),
-                ]:
+                (32, 1, 147, 197)]:
         data = numpy.random.normal(0, 1, shp).astype("float32")
-        a = f1(data).__array__()
+        out = pool_2d_i2n(x, ds=(i, i), strides=(1, 1),
+                          pad=(0, 0),
+                          pool_function=T.max)
 
-        b = f2(data).__array__()
+        f_cpu = theano.function([x], out, mode=mode_without_gpu2)
+        assert not any([isinstance(node.op, cuda.dnn.GpuDnnPool)
+                        for node in f_cpu.maker.fgraph.apply_nodes])
+
+        # Change the window size dynamically for gpu op
+        ws.set_value(numpy.array([i, i]).astype('int32'))
+        a = f_gpu(data).__array__()
+        b = f_cpu(data).__array__()
         utt.assert_allclose(a, b)
+        i += 1
 
 
 def test_old_pool_interface():
@@ -745,6 +749,7 @@ def test_dnn_tag():
 
 
 class TestDnnInferShapes(utt.InferShapeTester):
+
     def setUp(self):
         super(TestDnnInferShapes, self).setUp()
         self.mode = mode_with_gpu
