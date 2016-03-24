@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import theano
 from theano import tensor
 from theano.tensor.nnet.blocksparse import sparse_block_dot

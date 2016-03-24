@@ -4,6 +4,8 @@ building class (:class:`FromFunctionOp`) and decorator (:func:`as_op`) that
 help make new Ops more rapidly.
 
 """
+from __future__ import absolute_import, print_function, division
+
 import copy
 import six.moves.cPickle as pickle
 import warnings

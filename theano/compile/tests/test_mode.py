@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import theano
 from theano.compile.mode import Mode, AddFeatureOptimizer
 from theano.gof.toolbox import NoOutputFromInplace

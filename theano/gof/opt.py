@@ -3,7 +3,7 @@ Defines the base class for optimizations as well as a certain
 amount of useful generic optimization tools.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 from collections import deque
 import copy

@@ -2,7 +2,7 @@
  Tests fof the lazy conditiona
 """
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import unittest
 import numpy
 from nose.plugins.skip import SkipTest

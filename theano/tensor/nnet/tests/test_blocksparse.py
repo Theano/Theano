@@ -1,6 +1,8 @@
 """
     Tests for block sparse dot
 """
+from __future__ import absolute_import, print_function, division
+
 import numpy
 from numpy.random import randn
 

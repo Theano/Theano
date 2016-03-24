@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import unittest
 from theano.tests import unittest_tools as utt
 

@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 from theano.tests.record import Record, MismatchError, RecordMode
 from theano import function
 from six.moves import xrange, StringIO

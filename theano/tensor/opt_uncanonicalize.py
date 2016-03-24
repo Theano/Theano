@@ -30,6 +30,8 @@ canonization of the graph in the optimizations phases where the graph is
 supposed to be canonical.
 
 """
+from __future__ import absolute_import, print_function, division
+
 # TODO: intelligent merge for mul/add
 # TODO: 0*x -> 0
 import logging

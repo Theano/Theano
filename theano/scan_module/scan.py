@@ -34,6 +34,7 @@ functions: ``scan()``, ``map()``, ``reduce()``, ``foldl()``,
 ``foldr()``.
 
 """
+from __future__ import absolute_import, print_function, division
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu "
                "Frederic Bastien "

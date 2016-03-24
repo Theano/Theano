@@ -1,6 +1,7 @@
 """
 Implementations of BLAS Ops based on scipy's BLAS bindings.
 """
+from __future__ import absolute_import, print_function, division
 import numpy
 
 from theano.tensor.blas import Ger, ger, ger_destructive, have_fblas

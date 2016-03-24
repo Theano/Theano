@@ -5,7 +5,7 @@ To read about what theano graphs are from a user perspective, have a look at
 `graph.html <../doc/graph.html>`__.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 from collections import deque
 from copy import copy

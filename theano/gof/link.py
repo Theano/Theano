@@ -2,7 +2,7 @@
 WRITEME
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 from copy import copy, deepcopy
 from sys import getsizeof
 import sys

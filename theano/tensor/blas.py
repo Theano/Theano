@@ -124,7 +124,7 @@ If arguments to GEMM are dimshuffled vectors, then we can use GEMV
 instead. This optimization is `local_gemm_to_gemv`.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import copy
 import logging
 import os

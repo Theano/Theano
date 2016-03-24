@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import itertools as it
 
 from theano.scalar.basic import Apply, ScalarOp, as_scalar, float64, float32, int64

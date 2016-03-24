@@ -6,7 +6,7 @@ The elemwise fct are also used with scalar operation! So it can happen
 that ndim is 0 as with all scalar type.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 
 import logging

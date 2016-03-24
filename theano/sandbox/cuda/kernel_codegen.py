@@ -2,6 +2,7 @@
 Helper routines for generating gpu kernels for nvcc.
 
 """
+from __future__ import absolute_import, print_function, division
 
 
 def nvcc_kernel(name, params, body):

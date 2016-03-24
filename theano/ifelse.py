@@ -10,7 +10,7 @@ which value to report. Note also that `switch` is an elemwise operation (so
 it picks each entry of a matrix according to the condition) while `ifelse`
 is a global operation with a scalar condition.
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 from copy import deepcopy
 from theano.compat import izip
 import logging

@@ -1,6 +1,7 @@
 """
 Helper function to safely convert an array to a new data type.
 """
+from __future__ import absolute_import, print_function, division
 
 import numpy
 
