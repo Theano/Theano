@@ -1,5 +1,6 @@
 # Locking mechanism to ensure no two compilations occur simultaneously
 # in the same compilation directory (which can cause crashes).
+from __future__ import absolute_import, print_function, division
 
 import atexit
 import os

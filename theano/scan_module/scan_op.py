@@ -46,7 +46,7 @@ relies on the following elements to work properly :
   needed to compute another output.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu "

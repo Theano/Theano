@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 # PENDING REWRITE OF tensor_opt.py
 
 import copy
@@ -4910,6 +4910,35 @@ class test_local_useless_switch(unittest.TestCase):
         utt.assert_allclose(f(vx, vy), numpy.where(vx, vy, vy))
         assert len([node.op for node in f.maker.fgraph.toposort() if
                     isinstance(node.op, theano.tensor.Elemwise)]) == 0
+
+
+class test_local_merge_switch_same_cond(unittest.TestCase):
+    def test_elemwise(self):
+        # float Ops
+        mats = theano.tensor.matrices('cabxy')
+        c, a, b, x, y = mats
+        s1 = T.switch(c, a, b)
+        s2 = T.switch(c, x, y)
+        for op in (T.add, T.sub, T.mul, T.true_div, T.int_div, T.floor_div,
+                   T.minimum, T.maximum, T.gt, T.lt, T.ge, T.le, T.eq, T.neq,
+                   T.pow):
+            g = optimize(FunctionGraph(mats, [op(s1, s2)]))
+            assert str(g).count('Switch') == 1
+        # integer Ops
+        mats = theano.tensor.imatrices('cabxy')
+        c, a, b, x, y = mats
+        s1 = T.switch(c, a, b)
+        s2 = T.switch(c, x, y)
+        for op in (T.and_, T.or_, T.xor,
+                   T.bitwise_and, T.bitwise_or, T.bitwise_xor):
+            g = optimize(FunctionGraph(mats, [op(s1, s2)]))
+            assert str(g).count('Switch') == 1
+        # add/mul with more than two inputs
+        u, v = theano.tensor.matrices('uv')
+        s3 = T.switch(c, u, v)
+        for op in (T.add, T.mul):
+            g = optimize(FunctionGraph(mats + [u, v], [op(s1, s2, s3)]))
+            assert str(g).count('Switch') == 1
 
 
 class T_local_sum_prod(unittest.TestCase):

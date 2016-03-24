@@ -4,7 +4,7 @@ in a CudaNdarray to be able to use it in Theano.
 
 This also serve as a test for the function: cuda_ndarray.from_gpu_pointer
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import sys
 

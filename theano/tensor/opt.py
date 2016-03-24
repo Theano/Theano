@@ -1,7 +1,7 @@
+from __future__ import absolute_import, print_function, division
 """
 Tensor optimizations addressing the ops in basic.py.
 """
-from __future__ import print_function
 # TODO: intelligent merge for mul/add
 # TODO: 0*x -> 0
 
@@ -3828,6 +3828,32 @@ def local_div_switch_sink(node):
     return False
 
 
+# Merge add/sub/mul/div/minimum/maximum/... of switches sharing the same
+# condition, to enable further simplification of their branches
+# Example: switch(c, a, b) + switch(c, x, y) -> switch(c, a+x, b+y)
+@register_canonicalize
+@gof.local_optimizer([T.Elemwise])
+def local_merge_switch_same_cond(node):
+    scal = theano.scalar
+    # node must be binary elemwise or add or mul
+    if not isinstance(node.op, T.Elemwise) or not isinstance(
+            node.op.scalar_op, (scal.BinaryScalarOp, scal.Add, scal.Mul)):
+        return
+    # all inputs must be switch
+    if not all(s.owner and isinstance(s.owner.op, T.Elemwise) and
+               isinstance(s.owner.op.scalar_op, scal.Switch)
+               for s in node.inputs):
+        return
+    # all switch conditions must be the same
+    cond = node.inputs[0].owner.inputs[0]
+    if not all(s.owner.inputs[0] is cond for s in node.inputs[1:]):
+        return
+    # pull out switch
+    return [T.switch(cond,
+                     node.op(*[s.owner.inputs[1] for s in node.inputs]),
+                     node.op(*[s.owner.inputs[2] for s in node.inputs]))]
+
+
 #############
 # Tile Opts #
 #############
@@ -5270,6 +5296,7 @@ def local_intdiv_by_one(node):
 
 
 @register_canonicalize
+@register_specialize
 @gof.local_optimizer([T.int_div, T.true_div])
 def local_zero_div(node):
     """0 / x -> 0

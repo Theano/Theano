@@ -1,5 +1,6 @@
-import numpy
+from __future__ import absolute_import, print_function, division
 
+import numpy
 import theano
 from theano.tensor.nnet.tests import test_abstract_conv
 from theano.sandbox.cuda import float32_shared_constructor as gpu_shared

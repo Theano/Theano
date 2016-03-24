@@ -5,6 +5,8 @@ The `Op` class is the base interface for all operations
 compatible with `gof`'s :doc:`graph` routines.
 
 """
+from __future__ import absolute_import, print_function, division
+
 import inspect
 import logging
 import numpy

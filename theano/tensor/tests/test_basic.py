@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import itertools
 import logging
 import operator
@@ -8104,6 +8104,15 @@ def test_symbolic_slice():
     a, b = x.shape[:2]
     output = a.eval({x: numpy.zeros((5, 4, 3, 2), dtype=theano.config.floatX)})
     assert output == numpy.array(5)
+
+
+def test_composite_neg_bool():
+    # Check that taking the negation of a Boolean intermediate value
+    # works correctly with Python code. It used to be an issue because
+    # `-numpy.bool_(True)` is False and `-numpy.bool_(False)` is True.
+    x = theano.tensor.vector()
+    f = theano.function([x], - (x > 0), mode=theano.Mode(linker='py'))
+    utt.assert_allclose(f([-1, 0, 1]), [0, 0, -1])
 
 """
 

@@ -1,8 +1,8 @@
 """
 Abstract conv interface
 """
+from __future__ import absolute_import, print_function, division
 
-import numpy as np
 import logging
 from six import reraise, integer_types
 import sys
@@ -17,6 +17,8 @@ from six.moves import xrange
 
 import warnings
 import numpy
+import numpy as np
+
 try:
     from scipy.signal.signaltools import _valfrommode, _bvalfromboundary
     from scipy.signal.sigtools import _convolve2d

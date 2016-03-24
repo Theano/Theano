@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import atexit
 import errno
 import logging
@@ -572,7 +572,7 @@ def use(device,
                     if config.lib.cnmem > 1:
                         cnmem_enabled = "enabled with initial size: %d MB" % config.lib.cnmem
                     else:
-                        cnmem = min(config.lib.cnmem, 0.98) * 100
+                        cnmem = min(config.lib.cnmem, 0.95) * 100
                         cnmem_enabled = "enabled with initial size: %.1f%% of memory" % cnmem
                 else:
                     cnmem_enabled = "disabled"
@@ -596,7 +596,6 @@ def use(device,
                     cudnn_version,),
                       file=sys.stderr)
                 if warn:
-                    import warnings
                     warnings.warn(warn)
 
             if device_properties(use.device_number)['regsPerBlock'] < 16384:

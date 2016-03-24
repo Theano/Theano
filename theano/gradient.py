@@ -1,5 +1,5 @@
 """Driver for gradient calculations."""
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import six.moves.builtins as builtins
 import logging
 import time
@@ -1980,6 +1980,9 @@ def zero_grad(x):
 class DisconnectedGrad(ViewOp):
     def grad(self, args, g_outs):
         return [disconnected_type() for g_out in g_outs]
+
+    def R_op(self, inputs, eval_points):
+        return [None]
 
     def connection_pattern(self, node):
         return [[False]]

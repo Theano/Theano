@@ -9,7 +9,7 @@ what you are doing!
 If you want to use a scalar variable in a Theano graph,
 you probably want to use theano.tensor.[c,z,f,d,b,w,i,l,]scalar!
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 from itertools import chain
 import math
@@ -2399,9 +2399,19 @@ round_half_away_from_zero = RoundHalfAwayFromZero(same_out_float_only)
 
 
 class Neg(UnaryScalarOp):
+    # We can use numpy.negative here, because even if it gives unexpected
+    # results on Boolean arrays, it will be passed other dtypes as Theano
+    # does not have a Boolean type for tensors.
     nfunc_spec = ('negative', 1, 1)
 
     def impl(self, x):
+        # We have to make sure x is not a numpy.bool_, because
+        # `-numpy.bool_(True)` is `False` (we want 0), and
+        # `-numpy.bool_(False)` is `True` (we want 1).
+        # This happens for Composite, as the intermediate results are not
+        # casted in the dtype of the intermediate variable in general.
+        if isinstance(x, numpy.bool_):
+            x = numpy.int8(x)
         return -x
 
     def grad(self, inputs, gout):

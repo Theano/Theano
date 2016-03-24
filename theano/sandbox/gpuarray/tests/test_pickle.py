@@ -5,6 +5,7 @@ This is needed as we skip all the test file when pygpu isn't there in
 regular test file.
 
 """
+from __future__ import absolute_import, print_function, division
 import os
 import sys
 from six import reraise

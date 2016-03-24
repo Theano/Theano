@@ -15,7 +15,7 @@ default when calling theano.shared(value) then users must really go out of their
 way (as scan does) to create a shared variable of this kind.
 
 """
-
+from __future__ import absolute_import, print_function, division
 import numpy
 from six import integer_types
 

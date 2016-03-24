@@ -1,7 +1,7 @@
-from __future__ import print_function
 # For flag of bool type, we consider the strings 'False', 'false' and '0'
 # as False, and the string s'True', 'true', '1' as True.
 # We also accept the bool type as its corresponding value!
+from __future__ import absolute_import, print_function, division
 
 import logging
 import os

@@ -1,7 +1,7 @@
+from __future__ import absolute_import, print_function, division
+import unittest
 import numpy
 import numpy as np
-import unittest
-
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
 

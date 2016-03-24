@@ -2,6 +2,7 @@
 Define CURAND_RandomStreams - backed by CURAND.
 
 """
+from __future__ import absolute_import, print_function, division
 
 __authors__ = "James Bergstra"
 __copyright__ = "(c) 2011, University of Montreal"

@@ -6,13 +6,13 @@ Copyright (c) 2014, The Regents of the University of California (Regents)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met: 
+modification, are permitted provided that the following conditions are met:
 
 1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer. 
+   list of conditions and the following disclaimer.
 2. Redistributions in binary form must reproduce the above copyright notice,
    this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution. 
+   and/or other materials provided with the distribution.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -158,7 +158,7 @@ void col2im(const float* data_col, const int channels,
 
 
 // Theano op code
-// Authors: Arjun Jain, Frédéric Bastien, Jan Schlüter
+// Authors: Arjun Jain, Frederic Bastien, Jan Schluter
 // Reference code: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu
 //   and https://github.com/torch/cunn/blob/master/SpatialConvolutionMM.cu
 CudaNdarray* corrMM(CudaNdarray *const bottom,
@@ -186,7 +186,7 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
                 CudaNdarray_HOST_STRIDES(bottom)[3]);
         return NULL;
     }
-    
+
     if (weight->nd != 4)
     {
         PyErr_SetString(PyExc_ValueError, "GpuCorrMM requires weight of 4D");
@@ -485,4 +485,3 @@ CudaNdarray* corrMM(CudaNdarray *const bottom,
     // in here output is just aliased to one of bottom, weights, or top.
     return output;
 }
-

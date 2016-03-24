@@ -5,6 +5,7 @@ and two GPU to measure the speedup.
 
 This should be 2x if the GPUs are equivalent.
 """
+from __future__ import absolute_import, print_function, division
 import threading
 import time
 

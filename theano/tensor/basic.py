@@ -1,4 +1,6 @@
 """A `Type` and `Op` classes to work with numpy.ndarrays symbolically."""
+from __future__ import absolute_import, print_function, division
+
 from six.moves import builtins
 import sys
 import warnings

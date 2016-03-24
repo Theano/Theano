@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 from .nnet import (
     CrossentropyCategorical1Hot, CrossentropyCategorical1HotGrad,
     CrossentropySoftmax1HotWithBiasDx, CrossentropySoftmaxArgmax1HotWithBias,

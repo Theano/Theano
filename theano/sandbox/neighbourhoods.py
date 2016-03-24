@@ -8,6 +8,7 @@ it cover more cases. But thoses cases aren't needed frequently, so you
 probably don't want to use this version, go see neighbours.py!!!!!!!
 
 """
+from __future__ import absolute_import, print_function, division
 import numpy
 from six.moves import xrange
 import six.moves.builtins as builtins

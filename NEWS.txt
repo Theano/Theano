@@ -8,19 +8,19 @@ Theano 0.8 (21th of March, 2016)
 We recommend that everybody update to this version.
 
 Highlights:
-- Python 2 and 3 support with the same code base
-- Faster optimization
-- Integration of CuDNN for better GPU performance
-- Many Scan improvements (execution speed up, ...)
-- optimizer=fast_compile moves computation to the GPU.
-- Better convolution on CPU and GPU. (CorrMM, cudnn, 3d conv, more parameter)
-- Interactive visualization of graphs with d3viz
-- cnmem (better memory management on GPU)
-- BreakpointOp
-- Multi-GPU for data parallism via Platoon (https://github.com/mila-udem/platoon/)
-- More pooling parameter supported
-- Bilinear interpolation of images
-- New GPU back-end:
+ - Python 2 and 3 support with the same code base
+ - Faster optimization
+ - Integration of CuDNN for better GPU performance
+ - Many Scan improvements (execution speed up, ...)
+ - optimizer=fast_compile moves computation to the GPU.
+ - Better convolution on CPU and GPU. (CorrMM, cudnn, 3d conv, more parameter)
+ - Interactive visualization of graphs with d3viz
+ - cnmem (better memory management on GPU)
+ - BreakpointOp
+ - Multi-GPU for data parallism via Platoon (https://github.com/mila-udem/platoon/)
+ - More pooling parameter supported
+ - Bilinear interpolation of images
+ - New GPU back-end:
 
    * Float16 new back-end (need cuda 7.5)
    * Multi dtypes
@@ -31,233 +31,233 @@ A total of 141 people contributed to this release, see the list at the bottom.
 
 
 Installation:
-- Better BLAS detection
-- Fixes for more recent software and OS versions
-- Support Anaconda on Windows
+ - Better BLAS detection
+ - Fixes for more recent software and OS versions
+ - Support Anaconda on Windows
 
 Bug fixes:
-- GpuJoin now supports negative axis
-- Fix GpuCumsum for negative axis
+ - GpuJoin now supports negative axis
+ - Fix GpuCumsum for negative axis
 
 Interface Deprecation (a warning is printed):
-- Deprecate Param class, use In instead
+ - Deprecate Param class, use In instead
 
 Interface Changes:
-- Rename DownsampleFactorMax to Pool.
-- tensor.stack now uses the same interface as numpy.stack
-- optimizer=fast_compile moves computation to the GPU
-- Raise the user stack trace more frequently.
-- Change dev version numbering to follow the PEP 440
+ - Rename DownsampleFactorMax to Pool.
+ - tensor.stack now uses the same interface as numpy.stack
+ - optimizer=fast_compile moves computation to the GPU
+ - Raise the user stack trace more frequently.
+ - Change dev version numbering to follow the PEP 440
 
 
 New Interface (reuses existing functionality):
-- theano.tensor.nnet.relu
-- theano.tensor.nnet.elu
-- BatchNormalization.
-- MaxAndArgmax support axis=None
-- Add theano.tensor.compress (equivalent of numpy.compress)
-- theano.tensor.signal.downsamples.max_pool_2d_same_size
-- COp
-- __props__
+ - theano.tensor.nnet.relu
+ - theano.tensor.nnet.elu
+ - BatchNormalization.
+ - MaxAndArgmax support axis=None
+ - Add theano.tensor.compress (equivalent of numpy.compress)
+ - theano.tensor.signal.downsamples.max_pool_2d_same_size
+ - COp
+ - __props__
 
 New features
-- tensor.unique
-- map_variables
-- erfcx
-- mgrid, ogrid
-- allclose
-- BreakpointOp
-- Make bincount work on GPU
-- SolveOp on GPU
-- Optional optimization remove_all_assert
-- AllocEmpty
-- LogSoftmax, for stability optimization when the crossentropy optimization does not apply.
-- theano.tensor.repeat works on GPU
-- BatchedDot on the GPU and faster on the CPU.
-- Faster batched_tensordot and make it work on GPU.
-- SoftmaxGrad grad
-- 3d conv via CorrMM on the GPU
-- CPU Max Pool support of padding and strides!=windows size
-- theano.function() now accepts a dict for the outputs. When doing this, the function will return a dict. Helpful to keep track of which output is what.
-- Warn for unknown or misspelled theano config variables
-- theano.tensor.tile update (accept symbolic reps, work on GPU)
-- scan how have a strict flag. If set to True, this make scan building faster and could make execution faster.
-- theano.tensor.signal.conv2d(2d,2d) output 2d answer
-- More convolution parameter supported
-- Bilinear interpolation of images
+ - tensor.unique
+ - map_variables
+ - erfcx
+ - mgrid, ogrid
+ - allclose
+ - BreakpointOp
+ - Make bincount work on GPU
+ - SolveOp on GPU
+ - Optional optimization remove_all_assert
+ - AllocEmpty
+ - LogSoftmax, for stability optimization when the crossentropy optimization does not apply.
+ - theano.tensor.repeat works on GPU
+ - BatchedDot on the GPU and faster on the CPU.
+ - Faster batched_tensordot and make it work on GPU.
+ - SoftmaxGrad grad
+ - 3d conv via CorrMM on the GPU
+ - CPU Max Pool support of padding and strides!=windows size
+ - theano.function() now accepts a dict for the outputs. When doing this, the function will return a dict. Helpful to keep track of which output is what.
+ - Warn for unknown or misspelled theano config variables
+ - theano.tensor.tile update (accept symbolic reps, work on GPU)
+ - scan how have a strict flag. If set to True, this make scan building faster and could make execution faster.
+ - theano.tensor.signal.conv2d(2d,2d) output 2d answer
+ - More convolution parameter supported
+ - Bilinear interpolation of images
 
 
 Speed-ups:
-- Faster SetSubtensor on the GPU.
-- Support more reduction pattern on the GPU.
-- More graph optimization
-- Faster graph optimization
-- GpuCrossentropySoftmaxArgmax1HotWithBias
+ - Faster SetSubtensor on the GPU.
+ - Support more reduction pattern on the GPU.
+ - More graph optimization
+ - Faster graph optimization
+ - GpuCrossentropySoftmaxArgmax1HotWithBias
 
 
 Crash/no return fixes:
-- Fix crash in the assert op grad
-- Fix curand crash on Mac
-- Multiple Fix scan crashes
-- Finish to update all Op.grad() implementation to the new interface
+ - Fix crash in the assert op grad
+ - Fix curand crash on Mac
+ - Multiple Fix scan crashes
+ - Finish to update all Op.grad() implementation to the new interface
 
 Others:
-- Support ARM processor.
-- Better tests
-- Code clean up.
-- Doc updates
-- doctest and sphinx test in travis
-- More tests tagged as slow
-- Better same_shape implementation
-- More op with c code to lower overhead
-- Custom pickler for SharedVariable theano.misc.pkl_utils.{dump,load}
-- function_dump to help us reproduce user error during compilation
-- assert_no_cpu_op
-- pep8, flake8
-- Better error messages
-- On non-default modes, reduce the number of allocation when allow_gc=False
-- Better lock
+ - Support ARM processor.
+ - Better tests
+ - Code clean up.
+ - Doc updates
+ - doctest and sphinx test in travis
+ - More tests tagged as slow
+ - Better same_shape implementation
+ - More op with c code to lower overhead
+ - Custom pickler for SharedVariable theano.misc.pkl_utils.{dump,load}
+ - function_dump to help us reproduce user error during compilation
+ - assert_no_cpu_op
+ - pep8, flake8
+ - Better error messages
+ - On non-default modes, reduce the number of allocation when allow_gc=False
+ - Better lock
 
 
 Committers for this dev version only:
-- Frederic Bastien
-- Arnaud Bergeron
-- Pierre Luc Carrier
-- Iban Harlouchet
-- Pascal Lamblin
-- Chienli Ma
-- Tim Cooijmans
-- Nicolas Ballas
-- Amjad Almahairi
-- David Warde-Farley
-- Christof Angermueller
-- Ziye Fan
-- Caglar
-- Sina Honari
-- Roy Xue
-- hantek
-- Mohammad Pezeshki
-- Melanie Ducoffe
-- Alexandre de Brebisson
-- Harm de Vries
-- Samira Shabanian
-- Alex Lamb
-- Ramana.S
-- Francesco Visin
-- Saizheng Zhang
-- Ying Zhang
-- Jan Schlüter
-- Xavier Bouthillier
-- Bart van Merrienboer
-- Cesar Laurent
-- Iulian Vlad Serban
-- Li Yao
-- Sigurd Spieckermann
-- Dmitrii Serdiuk
-- Kelvin Xu
-- Sebastien Jean
-- Thomas Mesnard
-- Seon-Wook Park
-- Vincent Michalski
-- Dustin Webb
-- Mikhail Korobov
-- Orhan Firat
-- Olivier Mastropietro
-- Daniel Renshaw
-- Julien Rebetez
-- Peng Liu
-- Sean Lee
-- TimSalimans
-- Andre Holzner
-- Gijs van Tulder
-- Guillaume Alain
-- Julien Demouth
-- Markus Beissinger
-- Mehdi Mirza
-- Moslem Kazemi
-- Saxenauts
-- Søren Kaae Sønderby
-- sentient07
-- Anatoly Belikov
-- Diogo Moitinho de Almeida
-- Jakub Sygnowski
-- Kashif Rasul
-- Laurent Dinh
-- Rémy Léone
-- Taesup (TS) Kim
-- gw0 [http://gw.tnode.com/]
-- mronian
-- vesis84
-- Benni
-- Chiheb Trabelsi
-- JesseLivezey
-- Marius Killinger
-- Matt Graham
-- Matthew Willson
-- Piotr Frankowski
-- Stefan Krastanov
-- vdumoulin
-- Adithya Ganesh
-- Anish Shah
-- Balázs Hidasi
-- Colin Raffel
-- Cory Lorenz
-- Doug
-- Jesse Livezey
-- John Salvatier
-- John Zedlewski
-- Jonathan Ho
-- Kaixhin
-- Liang-Chi Hsieh
-- Lucas Beyer
-- Luke Metz
-- Marc-Alexandre Cote
-- Martin Arjovsky
-- Matthias Kümmerer
-- Sirisha Rambhatla
-- briancheung
-- cai-lw
-- ivdorelian
-- jan-matthis
-- jojolalpin
-- joncrall
-- peterjsadowski
-- scottsievert
-- Étienne Simon
-- A. Flaxman
-- AlOa
-- Albert Zeyer
-- Andrea
-- Andy Jiang
-- Balázs
-- Ben Poole
-- Brian Cheung
-- Christophe Van Gysel
-- Claude Coulombe
-- Clay McLeod
-- Dario Garcia
-- Jakob Lombacher
-- Joao Felipe Santos
-- John Arevalo
-- Jonas Degrave
-- Martin Thoma
-- Mathieu Germain
-- Matthew Koichi Grimes
-- Michael Eickenberg
-- Michael Opitz
-- Paul Hollensen
-- Prayag Verma
-- Saatvik Shah
-- Sergei Lebedev
-- Vik Kamath
-- Wei Ouyang
-- Wojciech Głogowski
-- Yi-Lin Juang
-- Yurii Shevchuk
-- Zach Dwiel
-- dan
-- eulerreich
-- jotterbach
-- rolf
-- theaverageguy
-- wuaalb
+ - Frederic Bastien
+ - Arnaud Bergeron
+ - Pierre Luc Carrier
+ - Iban Harlouchet
+ - Pascal Lamblin
+ - Chienli Ma
+ - Tim Cooijmans
+ - Nicolas Ballas
+ - Amjad Almahairi
+ - David Warde-Farley
+ - Christof Angermueller
+ - Ziye Fan
+ - Caglar
+ - Sina Honari
+ - Roy Xue
+ - hantek
+ - Mohammad Pezeshki
+ - Melanie Ducoffe
+ - Alexandre de Brebisson
+ - Harm de Vries
+ - Samira Shabanian
+ - Alex Lamb
+ - Ramana.S
+ - Francesco Visin
+ - Saizheng Zhang
+ - Ying Zhang
+ - Jan Schlüter
+ - Xavier Bouthillier
+ - Bart van Merrienboer
+ - Cesar Laurent
+ - Iulian Vlad Serban
+ - Li Yao
+ - Sigurd Spieckermann
+ - Dmitrii Serdiuk
+ - Kelvin Xu
+ - Sebastien Jean
+ - Thomas Mesnard
+ - Seon-Wook Park
+ - Vincent Michalski
+ - Dustin Webb
+ - Mikhail Korobov
+ - Orhan Firat
+ - Olivier Mastropietro
+ - Daniel Renshaw
+ - Julien Rebetez
+ - Peng Liu
+ - Sean Lee
+ - TimSalimans
+ - Andre Holzner
+ - Gijs van Tulder
+ - Guillaume Alain
+ - Julien Demouth
+ - Markus Beissinger
+ - Mehdi Mirza
+ - Moslem Kazemi
+ - Saxenauts
+ - Søren Kaae Sønderby
+ - sentient07
+ - Anatoly Belikov
+ - Diogo Moitinho de Almeida
+ - Jakub Sygnowski
+ - Kashif Rasul
+ - Laurent Dinh
+ - Rémy Léone
+ - Taesup (TS) Kim
+ - gw0 [http://gw.tnode.com/]
+ - mronian
+ - vesis84
+ - Benni
+ - Chiheb Trabelsi
+ - JesseLivezey
+ - Marius Killinger
+ - Matt Graham
+ - Matthew Willson
+ - Piotr Frankowski
+ - Stefan Krastanov
+ - vdumoulin
+ - Adithya Ganesh
+ - Anish Shah
+ - Balázs Hidasi
+ - Colin Raffel
+ - Cory Lorenz
+ - Doug
+ - Jesse Livezey
+ - John Salvatier
+ - John Zedlewski
+ - Jonathan Ho
+ - Kaixhin
+ - Liang-Chi Hsieh
+ - Lucas Beyer
+ - Luke Metz
+ - Marc-Alexandre Cote
+ - Martin Arjovsky
+ - Matthias Kümmerer
+ - Sirisha Rambhatla
+ - briancheung
+ - cai-lw
+ - ivdorelian
+ - jan-matthis
+ - jojolalpin
+ - joncrall
+ - peterjsadowski
+ - scottsievert
+ - Étienne Simon
+ - A. Flaxman
+ - AlOa
+ - Albert Zeyer
+ - Andrea
+ - Andy Jiang
+ - Balázs
+ - Ben Poole
+ - Brian Cheung
+ - Christophe Van Gysel
+ - Claude Coulombe
+ - Clay McLeod
+ - Dario Garcia
+ - Jakob Lombacher
+ - Joao Felipe Santos
+ - John Arevalo
+ - Jonas Degrave
+ - Martin Thoma
+ - Mathieu Germain
+ - Matthew Koichi Grimes
+ - Michael Eickenberg
+ - Michael Opitz
+ - Paul Hollensen
+ - Prayag Verma
+ - Saatvik Shah
+ - Sergei Lebedev
+ - Vik Kamath
+ - Wei Ouyang
+ - Wojciech Głogowski
+ - Yi-Lin Juang
+ - Yurii Shevchuk
+ - Zach Dwiel
+ - dan
+ - eulerreich
+ - jotterbach
+ - rolf
+ - theaverageguy
+ - wuaalb

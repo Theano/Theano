@@ -1,5 +1,6 @@
 """Code supporting compatibility across versions of Python.
 """
+from __future__ import absolute_import, print_function, division
 
 # Python 3.x compatibility
 from six import PY3, b, BytesIO, next
