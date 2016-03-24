@@ -5296,6 +5296,7 @@ def local_intdiv_by_one(node):
 
 
 @register_canonicalize
+@register_specialize
 @gof.local_optimizer([T.int_div, T.true_div])
 def local_zero_div(node):
     """0 / x -> 0
