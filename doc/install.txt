@@ -4,92 +4,22 @@
 Installing Theano
 =================
 
-
-Requirements
-------------
-
-Theano is mainly develeopped on 64-bit Linux machines. For other architectures,
-please refer to :ref:`install_others`
-
-These libraries are common to all Linux installations and should be installed
-prior to using Theano.
-
-    Python_ 2 >= 2.6 or Python_ 3 >= 3.3
-
-    ``g++``, ``python-dev``
-
-    `NumPy <http://numpy.scipy.org/>`_ >= 1.7.1 < MAX_VERSION
-
-    `SciPy <http://scipy.org>`_ >= 0.11 < MAX_VERSION
-
-     `BLAS`_ installation (with Level 3 functionality)
-        Including the development headers (``-dev``, ``-devel``, depending on
-        your Linux distribution). 
-
-.. _BLAS: http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
-.. _Python: http://www.python.org/
-
-The following libraries and software are optional:
-
-    `nose <http://somethingaboutorange.com/mrl/projects/nose/>`_ >= 1.3.0
-        Recommended, to run Theano's test-suite.
-
-    `Sphinx <http://sphinx.pocoo.org/>`_ >= 0.5.1, `pygments <http://pygments.org/>`_
-        For building the documentation. LaTeX_ and dvipng_ are also necessary
-        for math to show up as images.
-
-    `pydot-ng <https://github.com/pydot/pydot-ng>`_ or `pydot <https://code.google.com/p/pydot/>`_
-        To handle large picture for gif/images.
-	pydot-ng is a pydot compatible replacement that support newer Python.
-
-    `NVIDIA CUDA drivers and SDK`_
-        Required for GPU code generation/execution on NVIDIA gpus
-
-    `libgpuarray`_
-        Required for GPU/CPU code generation on CUDA and OpenCL devices (see: :ref:`gpuarray`.)
-
-        .. note:: 
-
-            OpenCL support is still minimal for now.
-
-        .. note:: 
-        
-            libgpuarray is the new backend and is not required for the old version.
-
-.. _LaTeX: http://www.latex-project.org/
-.. _dvipng: http://savannah.nongnu.org/projects/dvipng/
-.. _NVIDIA CUDA drivers and SDK: http://developer.nvidia.com/object/gpucomputing.html
-.. _libgpuarray: http://deeplearning.net/software/libgpuarray/installation.html
+Some text.
 
 On the following pages you will find different installation instructions depending
 on your needs.
 
-- :ref:`install_basic`
-- :ref:`install_bleedingedge`
-- :ref:`install_others`
+- :ref:`install_generic`
+- :ref:`install_ubuntu`
+- :ref:`install_ubuntu`
+- :ref:`install_centos6`
+- :ref:`install_macos`
+- :ref:`install_windows`
+
+For testing, :ref:`updating`.
 
 If you want to update, head to the update page :ref:`updating`.
 
 If you encounter any trouble, head to the :ref:`troubleshooting` page.
 
 Finally, there is an additional section if you plan on :ref:`using_gpu`.
-
-
-Documentations
---------------
-
-We recommend you look at the documentation on the website, since it
-will be more current than the documentation included with the package.
-
-You can read the latest HTML documentation `here
-<http://deeplearning.net/software/theano>`__.
-You can download the latest PDF documentation `here
-<http://deeplearning.net/software/theano/theano.pdf>`__.
-
-If you really wish to build the documentation yourself, you will need
-sphinx, as described above. Issue the following command::
-
-    python ./doc/scripts/docgen.py
-
-Documentation is built into ``html/``.
-The PDF of the documentation is ``html/theano.pdf``.
