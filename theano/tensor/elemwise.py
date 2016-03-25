@@ -965,7 +965,7 @@ second dimension
 
         # dtypes of the inputs
         idtypes = [input.type.dtype_specs()[1] for input in inputs]
-
+        odtypes = [output.type.dtype_specs()[1] for output in node.outputs]
         # These are the outputs that we will need to allocate
         # (output, name, name of the c type), transposed
         real = list(zip(*[(r, s, r.type.dtype_specs()[1])
@@ -1091,6 +1091,19 @@ second dimension
             alloc += """
                Py_XDECREF(destroyMap);
                """
+
+            alloc += """
+            int outIndexes[%(olength)i];
+
+            for(int i = 0; i<%(olength)i; i++){
+                  outIndexes[i] = i + %(ilength)i;
+            }
+
+            for(int i = 0; i < lenDM; i++){
+                  outIndexes[outDm[i]] = inDm[i];
+            }
+            """ % dict(olength=len(_onames), ilength=len(_inames))
+
         # We loop over all input, inplace ouputs won't be affected.
         for output, oname in izip(node.outputs, onames):
             odtype = output.type.dtype_specs()[1]
@@ -1106,6 +1119,7 @@ second dimension
 
         # index of the last output
         olv_index = i
+        task_code = ""
 
         if 'params' in sub:
 
@@ -1122,18 +1136,6 @@ second dimension
                 refVar[%(i)i] = &%(name)s_i;
                 """ % locals()
 
-            defines += """
-            int outIndexes[%(olength)i];
-
-            for(int i = 0; i<%(olength)i; i++){
-                  outIndexes[i] = i + %(ilength)i;
-            }
-
-            for(int i = 0; i < lenDM; i++){
-                  outIndexes[outDm[i]] = inDm[i];
-            }
-            """ % dict(olength=len(_onames), ilength=len(_inames))
-
             # We loop over the "aliased" outputs, i.e., those that are
             # inplace (overwrite the contents of one of the inputs) and
             # make the output pointers point to their corresponding input
@@ -1142,12 +1144,12 @@ second dimension
             for output, oname, i in izip(node.outputs, onames,
                                          range(len(onames))):
                 idtype = output.type.dtype_specs()[1]
+
                 # We alias the scalar variables
                 defines += """
-                #define %(oname)s_i *(%(idtype)s*) (refVar[i%(oname)s])
-                int i%(oname)s;
-                i%(oname)s = outIndexes[%(i)i];
+                #define %(oname)s_i *(t%(i)i*) (refVar[outIndexes[%(i)i]])
                 """ % locals()
+
                 undefs += "#undef %(oname)s_i" % locals()
 
             if len(aliased_outputs) > 0:
@@ -1165,7 +1167,8 @@ second dimension
         else:
             fail = sub['fail']
 
-        task_code = self.scalar_op.c_code(
+       
+        task_code += self.scalar_op.c_code(
             Apply(self.scalar_op,
                   [get_scalar_type(dtype=input.type.dtype).make_variable()
                    for input in node.inputs],
@@ -1183,8 +1186,9 @@ second dimension
         }
         """ % locals()
 
-        loop_orders = orders + [list(range(nnested))] * len(real_onames)
-        dtypes = (idtypes + list(real_odtypes))
+        loop_orders = orders + [list(range(nnested))] * len(onames)
+        dtypes = (idtypes + odtypes)
+
         if all([o.ndim <= 1 for o in node.outputs] or
                # Use simpler code when output ndim == 0 or 1
                # or for broadcated scalar.
@@ -1197,8 +1201,8 @@ second dimension
                 # No loops
                 task_decl = "".join([
                     "%s& %s_i = *%s_iter;\n" % (dtype, name, name)
-                    for name, dtype in izip(inames + list(real_onames),
-                                            idtypes + list(real_odtypes))])
+                    for name, dtype in izip(inames + onames,
+                                            idtypes + odtypes)])
 
                 preloops = {}
                 for i, (loop_order, dtype) in enumerate(zip(loop_orders,
@@ -1219,9 +1223,9 @@ second dimension
                 init_array = preloops.get(0, " ")
                 loop = """
                 {
-                  %(defines)s
                   %(init_array)s
                   %(task_decl)s
+                  %(defines)s
                   %(task_code)s
                   %(undefs)s
                 }
