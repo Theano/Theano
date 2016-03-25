@@ -1,0 +1,66 @@
+.. _install_generic:
+
+.. role:: rubric
+.. role:: bluetext
+
+Generic user install instructions
+=================================
+
+Basic Installation
+------------------
+
+For a generic user installation on a Linux machine...
+
+pip
+~~~
+    
+The recommended way to obtain the latest stable version of Theano is from PyPI using
+pip_. 
+
+.. code-block:: bash
+
+    [:rubric:`sudo`] pip install Theano [--:bluetext:`user`]
+
+- Use :rubric:`sudo` for a root installation.
+- Use :bluetext:`user` for a user installation without admin rights. It will install Theano in your local site-packages.
+
+
+conda
+~~~~~
+
+say something about conda and miniconda
+
+
+Bleeding-Edge Installation
+--------------------------
+
+If you are a developer of Theano, then check out the :ref:`dev_start_guide`.
+
+The following are general instructions that will set you up with the
+bleeding-edge version of Theano.
+
+.. code-block:: bash
+
+    git clone git://github.com/Theano/Theano.git
+    pip install --user -e [cloned_folder]
+
+The advantage of doing the -e switch is that it allows pip to keep track of Theano and
+its dependancies. If you do not wish to use pip, you can simply run :
+
+.. code-block:: bash
+
+    git clone git://github.com/Theano/Theano.git
+    cd Theano
+    python setup.py develop
+
+Using ``develop`` mode is
+preferable to ``install`` as any modifications you make in the checkout
+directory (or changes you pull with Git) will be automatically reflected
+in the "installed" version without re-running ``python setup.py install``.
+
+If you do not have permission to modify your ``site-packages`` directory you
+can specify an alternative installation prefix using
+
+.. code-block:: bash
+
+    python setup.py develop --prefix=~/.local
