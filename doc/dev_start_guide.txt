@@ -41,7 +41,7 @@ To get up to speed, you'll need to
 .. _reStructuredText: http://docutils.sourceforge.net/rst.html
 .. _NumPy documentation: http://docs.scipy.org/numpy/
 .. _unittest: http://docs.python.org/library/unittest.html
-.. _nose: http://somethingaboutorange.com/mrl/projects/nose/
+.. _nose: http://nose.readthedocs.org/en/latest/
 
 
 Installation and configuration
