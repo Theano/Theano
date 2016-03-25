@@ -1,0 +1,48 @@
+.. _updating:
+
+Updating Theano
+===============
+
+Basic Installation
+~~~~~~~~~~~~~~~~~~
+
+The following command will update only Theano:
+
+.. code-block:: bash
+
+    sudo pip install --upgrade --no-deps theano
+
+The following command will update Theano and Numpy/Scipy (warning bellow):
+
+.. code-block:: bash
+
+    sudo pip install --upgrade theano
+
+
+If you installed NumPy/SciPy with yum/apt-get, updating NumPy/SciPy
+with pip/easy_install is not always a good idea. This can make Theano
+crash due to problems with BLAS (but see below). The versions of
+NumPy/SciPy in the distribution are sometimes linked against faster
+versions of BLAS. Installing NumPy/SciPy with
+yum/apt-get/pip/easy_install won't install the development package
+needed to recompile it with the fast version. This mean that if you
+don't install the development packages manually, when you recompile
+the updated NumPy/SciPy, it will compile with the slower version. This
+results in a slower Theano as well. To fix the crash, you can clear
+the Theano cache like this:
+
+.. code-block:: bash
+
+   theano-cache clear
+
+Bleeding Edge Installation
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To update your library to the latest revision, change directory (``cd``)
+to your ``Theano`` folder and execute the following command:
+
+.. code-block:: bash
+
+    git pull
+
+You should update frequently, bugs are fixed on a very regular basis.

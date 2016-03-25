@@ -1,0 +1,88 @@
+.. _install_bleedingedge: 
+
+Bleeding-Edge Installation
+==========================
+
+Additional Requirements
+-----------------------
+
+    `Git <http://git-scm.com>`_
+
+    `setuptools`_
+
+    `distribute`_
+
+.. only:: html
+
+   Master Tests Status:
+
+   .. raw:: html
+
+      <a href="http://travis-ci.org/Theano/Theano/builds"><img src="https://secure.travis-ci.org/Theano/Theano.png?branch=master" /></a>&nbsp;
+
+If you are a developer of Theano, then check out the :ref:`dev_start_guide`.
+
+The following are general instructions that will set you up with the
+bleeding-edge version of Theano.
+
+.. code-block:: bash
+
+    git clone git://github.com/Theano/Theano.git
+    cd Theano
+    python setup.py develop
+
+Using ``develop`` mode is
+preferable to ``install`` as any modifications you make in the checkout
+directory (or changes you pull with Git) will be automatically reflected
+in the "installed" version without re-running ``python setup.py install``.
+
+If you do not have permission to modify your ``site-packages`` directory you
+can specify an alternative installation prefix using
+
+.. code-block:: bash
+
+    python setup.py develop --prefix=~/.local
+
+.. _distribute: http://packages.python.org/distribute/
+.. _setuptools: http://pypi.python.org/pypi/setuptools
+
+.. _testing_installation:
+
+Testing your installation
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Once you have installed Theano, you should run the test suite. 
+
+.. code-block:: bash
+
+    theano-nose
+
+If ``theano-nose`` is not found by your shell, you will need to add
+``Theano/bin`` to your ``PATH`` environment variable.
+
+.. note::
+
+    In Theano versions <= 0.5, ``theano-nose`` was not included.  If you
+    are working with such a version, you can call ``nosetests`` instead
+    of ``theano-nose``. In that case, some tests will fail by raising
+    the KnownFailureTest Exception, and will be considered as errors,
+    but they are nothing to worry about.
+
+.. note::
+
+    The tests should be run with the configuration option :attr:`~config.device`
+    set to ``cpu`` (default). If you need to change this value,
+    you can do that by setting the :envvar:`THEANO_FLAGS` environment variable,
+    by prefixing the ``theano-nose`` command with ``THEANO_FLAGS=device=cpu``.
+    If you have a GPU, it will automatically be used to run GPU-related tests.
+
+    If you want GPU-related tests to run on a specific GPU device, and not
+    the default one, you should use :attr:`~config.init_gpu_device`.
+    For instance: ``THEANO_FLAGS=device=cpu,init_gpu_device=gpu1``.
+
+    See :ref:`libdoc_config` for more information on how to change these
+    configuration options.
+
+All tests should pass (skipped tests and known failures are normal). If
+some test fails on your machine, you are encouraged to tell us what went
+wrong on the ``theano-users@googlegroups.com`` mailing list.

@@ -1,0 +1,96 @@
+.. _install_others:
+
+Platform-specific Installations
+===============================
+
+Specific Linux
+--------------
+
+CentOS 6
+~~~~~~~~
+
+:ref:`install_centos6` provides instructions on how to install Theano on CentOS
+6, written by the Theano developers. It covers how to install Theano (for
+CPU-based computation only) with the distribution-packaged ATLAS, a free fast
+implementation of BLAS.
+
+.. Cent OS 6
+
+Ubuntu
+~~~~~~
+
+:ref:`install_ubuntu` provides instructions on how to install Theano
+on Ubuntu. It covers how to install Theano with the
+distribution-packaged OpenBlas or ATLAS. Both are free fast
+implementation of BLAS.
+
+
+Alternative installation on Gentoo
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Brian Vandenberg emailed `installation instructions on Gentoo
+<http://groups.google.com/d/msg/theano-dev/-8WCMn2FMR0/bJPasoZXaqoJ>`_,
+focusing on how to install the appropriate dependencies.
+
+Nicolas Pinto provides `ebuild scripts <https://github.com/npinto/sekyfsr-gentoo-overlay/tree/master/sci-libs/Theano>`_.
+
+Alternative installation on Mandriva 2010.2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A contributor made rpm package for Mandriva_ 2010.2 of Theano 0.3.1.
+
+.. _Mandriva: http://mib.pianetalinux.org/mib/quick/basic-rpms/mib-rpms/975-theano-031
+
+
+.. _linux_basic:
+
+Docker images
+~~~~~~~~~~~~~
+
+Builds of Theano are available as `Docker <https://www.docker.com/whatisdocker>`_ images:
+`Theano Docker (CPU) <https://hub.docker.com/r/kaixhin/theano/>`_ or `Theano Docker (CUDA) <https://hub.docker.com/r/kaixhin/cuda-theano/>`_.
+These are updated on a weekly basis with bleeding-edge builds of Theano. Examples of running bash in a Docker container
+are as follows:
+
+.. code-block:: bash
+
+    sudo docker run -it kaixhin/theano
+    sudo docker run -it --device /dev/nvidiactl --device /dev/nvidia-uvm --device /dev/nvidia0 kaixhin/cuda-theano:7.0
+
+For a guide to Docker, see the `official docs <https://docs.docker.com/userguide/>`_. For more details on how to use the
+Theano Docker images, including requirements for CUDA support, consult the `source project <https://github.com/Kaixhin/dockerfiles>`_.
+
+
+Mac OS
+------
+
+:ref:`install_macos` provides instructions on how to install Theano on Mac OS as well as requierments.
+
+
+Windows
+-------
+
+:ref:`install_windows` provides step-by-step instructions on how to install Theano on 32- or 64-bit Windows systems, using freely available
+tools and compilers.
+
+Editing code in Visual Studio
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You will find a Visual Studio solution file (``Theano.sln``) in the root of
+the Theano repository. Note that this project file may not be kept up-to-date
+and is not officially supported by the core Theano developers: it is provided
+for convenience only.
+Also, be aware that it will not make Theano use Visual Studio to compile C
+files: it is only meant to provide an easy way to edit Theano code within
+the Visual Studio editor.
+
+
+Windows Installation References
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1. http://stackoverflow.com/questions/9047072/windows-python-version-and-vc-redistributable-version
+2. http://stackoverflow.com/questions/1865069/how-to-compile-a-64-bit-application-using-visual-c-2010-express
+3. http://blog.victorjabur.com/2011/06/05/compiling-python-2-7-modules-on-windows-32-and-64-using-msvc-2008-express/
+4. http://stackoverflow.com/questions/126279/c99-stdint-h-header-and-ms-visual-studio
+5. http://stackoverflow.com/questions/11182765/how-can-i-build-my-c-extensions-with-mingw-w64-in-python
+6. https://mail.python.org/pipermail/python-announce-list/2014-September/010457.html

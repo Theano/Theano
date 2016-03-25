@@ -1,0 +1,179 @@
+.. _troubleshooting:
+
+Troubleshooting
+===============
+
+First Steps
+~~~~~~~~~~~
+
+Configuring ``PYTHONPATH``
+##########################
+
+If ``import theano`` does not work in Python, you may need modify the
+environment variable ``PYTHONPATH`` accordingly.
+In bash, you may do this:
+
+.. code-block:: bash
+
+    export PYTHONPATH=<new location to add>:$PYTHONPATH
+
+In csh:
+
+.. code-block:: csh
+
+    setenv PYTHONPATH <new location to add>:$PYTHONPATH
+
+To make this change stick you will usually need to add the above command to
+your shell's startup script, i.e. ``~/.bashrc`` or ``~/.cshrc``.
+Consult your shell's documentation for details.
+
+Various checks
+##############
+
+Easy way to check something that could be wrong is by making sure ``THEANO_FLAGS``
+have the desired values as well as the ``~/.theanorc``
+
+Also, check the following outputs :
+
+.. code-blocks:: bash
+
+    ipython
+
+.. code-blocks:: python
+
+    import theano
+    theano.__file__
+    theano.__version__
+
+
+
+Make sure you have a BLAS library
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are many ways to configure BLAS for Theano. This is done with the Theano
+flags ``blas.ldflags`` (:ref:`libdoc_config`). The default is to use the BLAS
+installation information in NumPy, accessible via
+``numpy.distutils.__config__.show()``.  You can tell theano to use a different
+version of BLAS, in case you did not compile NumPy with a fast BLAS or if NumPy
+was compiled with a static library of BLAS (the latter is not supported in
+Theano).
+
+The short way to configure the Theano flags ``blas.ldflags`` is by setting the
+environment variable :envvar:`THEANO_FLAGS` to ``blas.ldflags=XXX`` (in bash
+``export THEANO_FLAGS=blas.ldflags=XXX``)
+
+The ``${HOME}/.theanorc`` file is the simplest way to set a relatively
+permanent option like this one.  Add a ``[blas]`` section with an ``ldflags``
+entry like this:
+
+.. code-block:: cfg
+
+    # other stuff can go here
+    [blas]
+    ldflags = -lf77blas -latlas -lgfortran #put your flags here
+
+    # other stuff can go here
+
+For more information on the formatting of ``~/.theanorc`` and the
+configuration options that you can put there, see :ref:`libdoc_config`.
+
+Here are some different way to configure BLAS:
+
+0) Do nothing and use the default config, which is to link against the same
+BLAS against which NumPy was built. This does not work in the case NumPy was
+compiled with a static library (e.g. ATLAS is compiled by default only as a
+static library).
+
+1) Disable the usage of BLAS and fall back on NumPy for dot products. To do
+this, set the value of ``blas.ldflags`` as the empty string (ex: ``export
+THEANO_FLAGS=blas.ldflags=``). Depending on the kind of matrix operations your
+Theano code performs, this might slow some things down (vs. linking with BLAS
+directly).
+
+2) You can install the default (reference) version of BLAS if the NumPy version
+(against which Theano links) does not work. If you have root or sudo access in
+fedora you can do ``sudo yum install blas blas-devel``. Under Ubuntu/Debian
+``sudo apt-get install libblas-dev``. Then use the Theano flags
+``blas.ldflags=-lblas``. Note that the default version of blas is not optimized.
+Using an optimized version can give up to 10x speedups in the BLAS functions
+that we use.
+
+3) Install the ATLAS library. ATLAS is an open source optimized version of
+BLAS. You can install a precompiled version on most OSes, but if you're willing
+to invest the time, you can compile it to have a faster version (we have seen
+speed-ups of up to 3x, especially on more recent computers, against the
+precompiled one). On Fedora, ``sudo yum install atlas-devel``. Under Ubuntu,
+``sudo apt-get install libatlas-base-dev libatlas-base`` or
+``libatlas3gf-sse2`` if your CPU supports SSE2 instructions. Then set the
+Theano flags ``blas.ldflags`` to ``-lf77blas -latlas -lgfortran``. Note that
+these flags are sometimes OS-dependent.
+
+4) Use a faster version like MKL, GOTO, ... You are on your own to install it.
+See the doc of that software and set the Theano flags ``blas.ldflags``
+correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or
+``-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lguide -liomp5 -lmkl_mc
+-lpthread``).
+
+.. note::
+
+    Make sure your BLAS
+    libraries are available as dynamically-loadable libraries.
+    ATLAS is often installed only as a static library.  Theano is not able to
+    use this static library. Your ATLAS installation might need to be modified
+    to provide dynamically loadable libraries.  (On Linux this
+    typically means a library whose name ends with .so. On Windows this will be
+    a .dll, and on OS-X it might be either a .dylib or a .so.)
+
+    This might be just a problem with the way Theano passes compilation
+    arguments to g++, but the problem is not fixed yet.
+
+.. note::
+
+    If you have problems linking with MKL, `Intel Line Advisor
+    <http://software.intel.com/en-us/articles/intel-mkl-link-line-advisor>`_
+    and the `MKL User Guide
+    <http://software.intel.com/sites/products/documentation/doclib/mkl_sa/11/mkl_userguide_lnx/index.htm>`_
+    can help you find the correct flags to use.
+
+
+Mac OS
+~~~~~~
+
+Although the above steps should be enough, running Theano on a Mac may
+sometimes cause unexpected crashes, typically due to multiple versions of
+Python or other system libraries. If you encounter such problems, you may
+try the following.
+
+- You can ensure MacPorts shared libraries are given priority at run-time
+  with ``export LD_LIBRARY_PATH=/opt/local/lib:$LD_LIBRARY_PATH``. In order
+  to do the same at compile time, you can add to your ``~/.theanorc``:
+
+    .. code-block:: cfg
+
+      [gcc]
+      cxxflags = -L/opt/local/lib
+
+- An obscure ``Bus error`` can sometimes be caused when linking
+  Theano-generated object files against the ``framework`` library in Leopard.
+  For this reason, we have disabled linking with ``-framework Python``, since on
+  most configurations this solves the ``Bus error`` problem. If this default
+  configuration causes problems with your Python/Theano installation and you think
+  that linking with ``-framework Python`` might help, then either set
+  the :envvar:`THEANO_FLAGS` environment variable with
+  ``THEANO_FLAGS=cmodule.mac_framework_link`` or edit your ``~/.theanorc`` to
+  contain
+
+    .. code-block:: cfg
+
+      [cmodule]
+      mac_framework_link=True
+
+- More generally, to investigate libraries issues, you can use the ``otool -L``
+  command on ``.so`` files found under your ``~/.theano`` directory. This will
+  list shared libraries dependencies, and may help identify incompatibilities.
+
+Please inform us if you have trouble installing and running Theano on your Mac.
+We would be especially interested in dependencies that we missed listing,
+alternate installation steps, GPU instructions, as well as tests that fail on
+your platform (use the ``theano-users@googlegroups.com`` mailing list, but
+note that you must first register to it, by going to `theano-users`_).
