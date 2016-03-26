@@ -278,7 +278,7 @@ MinGW, but this has not been tested yet.
   ``C:\\Python27\\libs`` folder.
 
 - In order to run Theano's test-suite, you will need `nose
-  <http://somethingaboutorange.com/mrl/projects/nose>`__.
+  <http://nose.readthedocs.org/en/latest/>`__.
   After unpacking its source code (you may use `7-zip
   <http://www.7-zip.org/>`__), you can build and install it from within
   its code directory by running the following command (either from a Windows
