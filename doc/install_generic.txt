@@ -3,9 +3,7 @@
 Generic user install instructions
 =================================
 
-.. _include:: requirements.txt
-    :start-line:_1
-    :end-line: 55
+.. include:: requirements.txt
 
 Basic Installation
 ------------------
@@ -15,8 +13,8 @@ For a generic user installation on a Linux machine...
 pip
 ~~~
 
-.. _role:: red
-.. _role:: blue
+.. role:: red
+.. role:: blue
 
 The recommended way to obtain the latest stable version of Theano is from PyPI using
 pip_. 
