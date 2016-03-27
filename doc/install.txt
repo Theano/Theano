@@ -11,12 +11,11 @@ on your needs.
 
 - :ref:`install_generic`
 - :ref:`install_ubuntu`
-- :ref:`install_ubuntu`
 - :ref:`install_centos6`
 - :ref:`install_macos`
 - :ref:`install_windows`
 
-For testing, :ref:`updating`.
+For testing, :ref:`testing`.
 
 If you want to update, head to the update page :ref:`updating`.
 

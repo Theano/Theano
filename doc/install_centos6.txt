@@ -1,10 +1,11 @@
-:orphan:
-
 .. _install_centos6:
-
 
 Easy Installation of an optimized Theano on CentOS 6
 ====================================================
+
+.. include:: requirements.txt
+    :start-line:1
+    :end-line:55
 
 .. note::
 

@@ -1,10 +1,11 @@
-:orphan:
-
 .. _install_windows:
-
 
 Installation of Theano on Windows
 ==================================
+
+.. note::
+
+    Theano is mainly developped and tested on Linux Machines.
 
 These instructions show step-by-step how to install Theano and
 required dependencies on a 32- or 64-bit system using freely available

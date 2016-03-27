@@ -1,10 +1,11 @@
 .. _install_generic:
 
-.. role:: rubric
-.. role:: bluetext
-
 Generic user install instructions
 =================================
+
+.. _include:: requirements.txt
+    :start-line:_1
+    :end-line: 55
 
 Basic Installation
 ------------------
@@ -13,16 +14,19 @@ For a generic user installation on a Linux machine...
 
 pip
 ~~~
-    
+
+.. _role:: red
+.. _role:: blue
+
 The recommended way to obtain the latest stable version of Theano is from PyPI using
 pip_. 
 
 .. code-block:: bash
 
-    [:rubric:`sudo`] pip install Theano [--:bluetext:`user`]
+    [:red:`sudo`] pip install Theano [--:blue:`user`]
 
-- Use :rubric:`sudo` for a root installation.
-- Use :bluetext:`user` for a user installation without admin rights. It will install Theano in your local site-packages.
+- Use :red:`sudo` for a root installation.
+- Use :blue:`user` for a user installation without admin rights. It will install Theano in your local site-packages.
 
 
 conda
@@ -64,3 +68,17 @@ can specify an alternative installation prefix using
 .. code-block:: bash
 
     python setup.py develop --prefix=~/.local
+
+
+Testing your installation
+--------------------------
+
+Once you have installed Theano, you should run the test suite. 
+
+.. code-block:: bash
+
+    THEANO_FLAGS=''; python -c "import theano; theano.test()"
+
+All tests should pass (skipped tests and known failures are normal). If
+some test fails on your machine, you are encouraged to tell us what went
+wrong on the ``theano-users@googlegroups.com`` mailing list.
