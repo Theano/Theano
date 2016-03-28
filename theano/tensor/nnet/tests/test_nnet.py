@@ -10,6 +10,7 @@ from theano import config
 from theano import tensor as T
 from theano import tensor
 from theano import gof
+from theano.gof.opt import check_stack_trace
 from theano.tests import unittest_tools as utt
 from theano import printing
 from theano.tensor.nnet import (categorical_crossentropy,
@@ -150,8 +151,7 @@ class T_SoftmaxWithBias(utt.InferShapeTester):
         b = theano.shared(numpy.float32(numpy.random.randn()))
         sm = T.nnet.softmax(a + b)
         f = theano.function([], sm)
-        self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
-        print('f.maker.fgraph.outputs[0]: {0}'.format(f.maker.fgraph.outputs[0], ))
+        assert check_stack_trace(f, ops_to_check='last')
 
     def test_infer_shape(self):
         admat = matrix()
@@ -256,9 +256,10 @@ class T_LogSoftmax(utt.InferShapeTester):
         sm = tensor.nnet.softmax(x)
         logsm = tensor.log(sm)
         f = theano.function([x], logsm)
-        self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
         assert isinstance(f.maker.fgraph.outputs[0].owner.op,
                           theano.tensor.nnet.nnet.LogSoftmax)
+        assert check_stack_trace(
+            f, ops_to_check=theano.tensor.nnet.nnet.LogSoftmax)
 
     def test_local_softmax_grad_optimization_and_big_input(self):
         """Test the Logsoftmax's grad substitution.
@@ -272,7 +273,8 @@ class T_LogSoftmax(utt.InferShapeTester):
         m.check_isfinite = False
         # some inputs that are large to make the gradient explode in the non
         # optimized case
-        a = numpy.exp(10 * numpy.random.rand(5, 10).astype(theano.config.floatX))
+        a = numpy.exp(
+            10 * numpy.random.rand(5, 10).astype(theano.config.floatX))
 
         def myfunc(x):
             sm = tensor.nnet.softmax(x)
@@ -281,7 +283,7 @@ class T_LogSoftmax(utt.InferShapeTester):
         # We set step to 0.1 because for big values we need a big epsilon
         utt.verify_grad(myfunc, [a], eps=0.1, mode=m)
         f = theano.function([], myfunc(a))
-        self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
+        assert check_stack_trace(f, ops_to_check='last')
 
 
 class T_SoftmaxGrad(utt.InferShapeTester):
@@ -659,7 +661,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         fgraph = gof.FunctionGraph(
                 [x, one_of_n],
                 [g_x])
-        self.assertTrue(hasattr(fgraph.outputs[0].tag, 'trace'))
+        assert check_stack_trace(fgraph, ops_to_check='last')
 
         # print 'BEFORE'
         # for node in fgraph.toposort():
@@ -755,7 +757,8 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         for expr in expressions:
             # Verify the optimizer worked on the expressions
             f = theano.function([x, y], expr, mode=mode)
-            self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
+            assert check_stack_trace(
+                f, ops_to_check=crossentropy_softmax_argmax_1hot_with_bias)
             if verbose:
                 theano.printing.debugprint(f)
             try:
@@ -771,7 +774,9 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
             # Also verify the gradient wrt x
             g = theano.function([x, y], T.grad(expr, x), mode=mode)
-            self.assertTrue(hasattr(g.maker.fgraph.outputs[0].tag, 'trace'))
+            assert check_stack_trace(
+                g, ops_to_check=[crossentropy_softmax_1hot_with_bias_dx,
+                                 softmax_op])
             if verbose:
                 theano.printing.debugprint(g)
             try:
@@ -794,7 +799,8 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         for expr in bias_expressions:
             f = theano.function([x, b, y], expr, mode=mode)
-            self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
+            assert check_stack_trace(
+                f, ops_to_check=crossentropy_softmax_argmax_1hot_with_bias)
             if verbose:
                 theano.printing.debugprint(f)
             try:
@@ -806,7 +812,9 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 theano.printing.debugprint(f)
                 raise
             g = theano.function([x, b, y], T.grad(expr, x), mode=mode)
-            self.assertTrue(hasattr(g.maker.fgraph.outputs[0].tag, 'trace'))
+            assert check_stack_trace(
+                g, ops_to_check=[crossentropy_softmax_1hot_with_bias_dx,
+                                 softmax_with_bias])
             if verbose:
                 theano.printing.debugprint(g)
             try:
@@ -829,7 +837,8 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         for expr in mean_expressions:
             f = theano.function([x, y], expr, mode=mode)
-            self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
+            assert check_stack_trace(
+                f, ops_to_check=[crossentropy_softmax_argmax_1hot_with_bias])
             if verbose:
                 theano.printing.debugprint(f)
             try:
@@ -844,7 +853,9 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 raise
 
             g = theano.function([x, y], T.grad(expr, x), mode=mode)
-            self.assertTrue(hasattr(g.maker.fgraph.outputs[0].tag, 'trace'))
+            assert check_stack_trace(
+                g, ops_to_check=[crossentropy_softmax_1hot_with_bias_dx,
+                                 softmax_op])
             if verbose:
                 theano.printing.debugprint(g)
             try:
@@ -868,7 +879,8 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         for expr in mean_bias_expressions:
             f = theano.function([x, b, y], expr, mode=mode)
-            self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
+            assert check_stack_trace(
+                f, ops_to_check=crossentropy_softmax_argmax_1hot_with_bias)
             if verbose:
                 theano.printing.debugprint(f)
             try:
@@ -881,7 +893,9 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 theano.printing.debugprint(f)
                 raise
             g = theano.function([x, b, y], T.grad(expr, x), mode=mode)
-            self.assertTrue(hasattr(g.maker.fgraph.outputs[0].tag, 'trace'))
+            assert check_stack_trace(
+                g, ops_to_check=[crossentropy_softmax_1hot_with_bias_dx,
+                                 softmax_with_bias])
             if verbose:
                 theano.printing.debugprint(g)
             try:
@@ -1295,7 +1309,7 @@ def test_argmax_pushdown():
         fgraph = gof.FunctionGraph(
                 [x],
                 [out])
-        assert hasattr(fgraph.outputs[0].tag, 'trace')
+        assert check_stack_trace(fgraph, ops_to_check='all')
 
         backup = config.warn.argmax_pushdown_bug
         config.warn.argmax_pushdown_bug = False

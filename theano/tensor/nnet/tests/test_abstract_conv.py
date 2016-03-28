@@ -7,6 +7,7 @@ from nose.tools import assert_raises
 
 import theano
 from theano import tensor
+from theano.gof.opt import check_stack_trace
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import corr, abstract_conv as conv
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape
@@ -134,7 +135,7 @@ class BaseTestConv2d(unittest.TestCase):
             assert any([isinstance(n.op, target_op) for n
                         in f.maker.fgraph.toposort()])
 
-        self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
+        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
         utt.assert_allclose(res_ref, res)
@@ -177,7 +178,7 @@ class BaseTestConv2d(unittest.TestCase):
                     subsample=subsample,
                     conv_mode=conv_mode)
         f = theano.function([], c, mode=mode)
-        self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
+        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         f_ref = theano.function([], c_ref, mode='FAST_RUN')
 
         if target_op is not None:
@@ -227,7 +228,7 @@ class BaseTestConv2d(unittest.TestCase):
                     border_mode=border_mode, subsample=subsample,
                     conv_mode=conv_mode)
         f = theano.function([], c, mode=mode)
-        self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
+        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         f_ref = theano.function([], c_ref, mode='FAST_RUN')
 
         if target_op is not None:
