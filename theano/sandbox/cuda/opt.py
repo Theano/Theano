@@ -2381,9 +2381,12 @@ def local_gpu_extract_diagonal(node):
 
     """
     if (isinstance(node.op, nlinalg.ExtractDiag) and
-        isinstance(node.inputs[0].type,
-                   theano.tensor.TensorType)):
+        isinstance(node.inputs[0].type, theano.tensor.TensorType)):
         inp = node.inputs[0]
+        if (isinstance(node.op, theano.tensor.Diagonal) and
+            (node.op.offset, node.op.axis1, node.op.axis2) != (0, 0, 1)):
+            warnings.warn("Diagonal Op does not non-default properties.")
+            return False
         if inp.owner and isinstance(inp.owner.op, HostFromGpu):
             return [host_from_gpu(nlinalg.extract_diag(
                 as_cuda_ndarray_variable(inp)))]

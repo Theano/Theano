@@ -30,7 +30,7 @@ from theano.compile import Rebroadcast, Shape, shape
 # We use these exceptions as well.
 import theano.scalar.sharedvar
 from theano.gradient import grad_undefined
-from theano.gradient import grad_not_implemented
+# from theano.gradient import grad_not_implemented
 from theano.gradient import DisconnectedType
 
 # set up the external interface
@@ -5915,6 +5915,7 @@ class Diagonal(Op):
     def __init__(self, offset=0, axis1=0, axis2=1):
         if numpy_diagonal_return_view:
             self.view_map = {0: [0]}
+            self.view = True
         self.offset = offset
         self.axis1 = axis1
         self.axis2 = axis2
@@ -5930,7 +5931,7 @@ class Diagonal(Op):
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
-        if self.offset != 0 or self.axis1 != 0 or self.axis2 !=1:
+        if self.offset != 0 or self.axis1 != 0 or self.axis2 != 1:
             raise ValueError('Currently Diagonal doesn\'t support non-default'
                              'offset and axis values.')
 

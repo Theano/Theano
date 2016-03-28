@@ -7338,6 +7338,7 @@ class TestInferShape(utt.InferShapeTester):
         atens3 = tensor3()
         atens3_val = rand(4, 5, 3)
         atens3_diag = Diagonal()(atens3)
+
         self._compile_and_check([atens3], [atens3_diag],
                                 [atens3_val], Diagonal)
         # atens3_diag = Diagonal(1)(atens3)
