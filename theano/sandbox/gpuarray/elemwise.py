@@ -4,8 +4,7 @@ from theano.compat import izip
 import numpy
 
 import theano
-from theano import Apply, scalar, config
-from theano import scalar as scal
+from theano import Apply, scalar, config, Op
 from six.moves import StringIO, xrange
 from theano.gof.utils import MethodNotDefined
 from theano.scalar import Scalar
@@ -585,7 +584,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
 
     This op was recently upgraded from just GpuSum a general CAReduce. Not
     many code cases are supported for scalar_op being anything other than
-    scal.Add instances yet.
+    scalar.Add instances yet.
 
     Important note: if you implement new cases for this op, be sure to
     benchmark them and make sure that they actually result in a speedup.
@@ -735,7 +734,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         # It might be nice to use a property of the op class to do this,
         # but tensor.elemwise.CAReduce has this exact same check so I guess
         # this is OK to do
-        if self.scalar_op in [scal.minimum, scal.maximum]:
+        if self.scalar_op in [scalar.minimum, scalar.maximum]:
             conds = ["(PyGpuArray_DIMS(%s)[%d] == 0)" % (x, i)
                      for i in xrange(nd_in)
                      if self.reduce_mask[i]]
@@ -1060,13 +1059,13 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         if hasattr(self.scalar_op, 'identity'):
             return str(self.scalar_op.identity)
         else:
-            assert isinstance(self.scalar_op, (scal.Maximum,
-                                               scal.Minimum))
+            assert isinstance(self.scalar_op, (scalar.Maximum,
+                                               scalar.Minimum))
             if self.pre_scalar_op:  # TODO: multiple dtypes
                 # dtype = node.inputs[0].dtype
                 dtype = 'float32'
 
-                dummy_var = scal.Scalar(dtype=dtype)()
+                dummy_var = scalar.Scalar(dtype=dtype)()
 
                 dummy_node = self.pre_scalar_op.make_node(dummy_var)
 
