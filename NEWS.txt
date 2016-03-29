@@ -2,6 +2,18 @@
 Release Notes
 =============
 
+
+Theano 0.8.1 (29th of March, 2016)
+==================================
+
+This is a point release without any new features.
+If you experienced compilation issues on MacOS X with XCode 7.3, we
+encourage you to update.
+
+Highlight:
+- Fix compilation on Mac with CLT 7.3
+
+
 Theano 0.8 (21th of March, 2016)
 ================================
 
