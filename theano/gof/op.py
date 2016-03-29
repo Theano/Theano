@@ -966,7 +966,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         if new_node is not None:
             node = new_node
 
-        if self._op_use_c_code:
+        if getattr(self, '_op_use_c_code', theano.config.cxx):
             try:
                 return self.make_c_thunk(node, storage_map, compute_map,
                                          no_recycling)
