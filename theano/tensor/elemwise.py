@@ -133,7 +133,7 @@ class DimShuffle(Op):
 
     _f16_ok = True
     check_input = False
-    __props__ = ("input_broadcastable", "new_order")
+    __props__ = ("input_broadcastable", "new_order", "inplace")
 
     def __init__(self, input_broadcastable, new_order, inplace=True):
         input_broadcastable = tuple(input_broadcastable)
