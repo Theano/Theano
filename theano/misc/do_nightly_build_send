@@ -89,7 +89,7 @@ def mysend(subject, file):
             ran=False
             try: 
                 nb_ran+=int(token)
-            except Exception, e:
+            except Exception as e:
                 print(e)
                 
     start = ""
