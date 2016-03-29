@@ -1377,7 +1377,7 @@ def speed_reduce10():
 def test_gpu_lock():
     # Ensures that if the parent process is using the GPU,
     # the child process cannot get a lock on it.
-    os.environ['THEANO_MAX_GPU'] = 0
+    os.environ['THEANO_MAX_GPU'] = '0'
     pid = os.fork()
     if pid == 0:
         try:
