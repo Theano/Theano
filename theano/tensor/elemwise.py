@@ -140,7 +140,8 @@ class DimShuffle(Op):
                 # numpy integers.  See
                 # <http://projects.scipy.org/numpy/ticket/2235>.
                 if not isinstance(j, (integer_types, numpy.integer)):
-                    raise TypeError("DimShuffle indices must be python ints.")
+                    raise TypeError(
+                        "DimShuffle indices must be python ints. Got: ", j)
                 if j >= len(input_broadcastable):
                     raise ValueError(("new_order[%d] is %d, but the input "
                                       "only has %d axes.") %
