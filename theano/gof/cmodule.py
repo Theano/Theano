@@ -1825,7 +1825,8 @@ class GCC_compiler(Compiler):
                     break
 
         if ('g++' not in theano.config.cxx and
-                'clang++' not in theano.config.cxx):
+                'clang++' not in theano.config.cxx and
+                'clang-omp++' not in theano.config.cxx):
             _logger.warn(
                 "OPTIMIZATION WARNING: your Theano flag `cxx` seems not to be"
                 " the g++ compiler. So we disable the compiler optimization"
