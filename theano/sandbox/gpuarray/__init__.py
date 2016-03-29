@@ -3,6 +3,7 @@ import sys
 import logging
 import sys
 import warnings
+import os
 
 import theano
 from theano import config
@@ -41,6 +42,15 @@ register_transfer(transfer)
 
 
 def init_dev(dev, name=None):
+    # Check if theano is being imported from a child process
+    # If yes, raises error, refer issue #1064
+    if 'THEANO_MAX_GPU' in os.environ:
+        if os.environ['THEANO_MAX_GPU'] == '0':
+            raise ImportError("Parent process holds lock on GPU."
+                              " Need to release it first")
+    else:
+        os.environ['THEANO_MAX_GPU'] = '0'
+    
     v = pygpu.gpuarray.api_version()
     if v[0] != -10000:
         raise RuntimeError("Wrong major API version for gpuarray:", v[0],
