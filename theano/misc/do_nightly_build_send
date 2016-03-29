@@ -19,9 +19,9 @@ msgs=['Theano buildbot',
       'Deep Learning Tutorial buildbot',
       'Theano Python3.3.0 buildbot']
 
-print 'files', files
-print "msgs", msgs
-print "args", sys.argv
+print('files', files)
+print("msgs", msgs)
+print("args", sys.argv)
 if len(sys.argv) == 3:
     #We send just a file with a message
     files = [sys.argv[1]]
@@ -31,7 +31,7 @@ elif len(sys.argv) == 2:
     files=[os.path.join(sys.argv[1], x) for x in files]
 else:
     files=[os.path.join('/tmp', x) for x in files]
-print 'path', files
+print('path', files)
 
 # Here are the email package modules we'll need
 from email.mime.text import MIMEText
@@ -42,7 +42,7 @@ COMMASPACE = ', '
 def mysend(subject, file):
     # Create the container (outer) email message.
     if not os.path.isfile(file):
-        print "Error: no file",file
+        print("Error: no file", file)
         return
 
     msg = MIMEMultipart()
@@ -90,7 +90,7 @@ def mysend(subject, file):
             try: 
                 nb_ran+=int(token)
             except Exception, e:
-                print e
+                print(e)
                 
     start = ""
     for line in s.splitlines():
@@ -124,12 +124,12 @@ def mysend(subject, file):
     else:
         msg['Subject'] = subject+" Fail="+str(failures)+" Err="+str(errors)+" Ran="+str(nb_ran)+" Skip="+str(skip)+" KnownFail="+str(knownfail)
 
-    print msg['Subject']
+    print(msg['Subject'])
     s = smtplib.SMTP()
     s.connect()
     s.sendmail(me, family, msg.as_string())
     s.close()
-    print "Finished sending email for",subject
+    print("Finished sending email for", subject)
 
 for msg, file in zip(msgs, files):
     mysend(msg, file)
