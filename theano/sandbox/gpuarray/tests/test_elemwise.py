@@ -30,9 +30,6 @@ class test_gpu_Broadcast(test_elemwise.test_Broadcast):
 def test_elemwise_pow():
     # Test that GpuElemwise(pow) can compile with any combination of integer
     # or float input dtype.
-    if get_context(test_ctx_name).kind != 'cuda':
-        raise SkipTest("Cuda specific tests")
-
     dtypes = ["uint8", "uint16", "uint32", "uint64",
               "int8", "int16", "int32", "int64",
               "float16", "float32", "float64"]
@@ -46,10 +43,10 @@ def test_elemwise_pow():
             output = base ** exp
             f = theano.function([base, exp], output)
 
-            # Call the function to make sure the output is valid
             base_val = numpy.random.randint(0, 5, size=10).astype(dtype_base)
             exp_val = numpy.random.randint(0, 3, size=10).astype(dtype_exp)
 
+            # Call the function to make sure the output is valid
             out = f(base_val, exp_val)
             expected_out = base_val ** exp_val
             assert_allclose(out, expected_out)
