@@ -145,10 +145,9 @@ class RandomFunction(gof.Op):
                      dct['outtype'],
                      dct['inplace'],
                      dct['ndim_added']]
+            self.__dict__.update(dct)
         else:
             state = dct
-
-        self.state = state
         fn, outtype, inplace, ndim_added = state
         self.fn = fn
         if isinstance(fn, string_types):
