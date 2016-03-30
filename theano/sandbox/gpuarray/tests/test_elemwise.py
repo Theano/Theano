@@ -18,32 +18,13 @@ from pygpu import ndgpuarray as gpuarray
 
 # This is acutally a test for GpuElemwise
 class test_gpu_Broadcast(test_elemwise.test_Broadcast):
-    op = GpuElemwise
-    type = GpuArrayType
     cop = GpuElemwise
     ctype = GpuArrayType
     # The order is important
     linkers = [gof.PerformLinker, gof.CLinker]
 
-    def setUp(self):
-        if get_context(test_ctx_name).kind != 'cuda':
-            self.linkers = [gof.PerformLinker]
-
-    def rand_val(self, shp):
-        return rand_gpuarray(*shp, **dict(cls=gpuarray))
-
     def rand_cval(self, shp):
         return rand_gpuarray(*shp, **dict(cls=gpuarray))
-
-    def test_c(self):
-        if get_context(test_ctx_name).kind != 'cuda':
-            raise SkipTest("Cuda specific tests")
-        super(test_gpu_Broadcast, self).test_c()
-
-    def test_c_inplace(self):
-        if get_context(test_ctx_name).kind != 'cuda':
-            raise SkipTest("Cuda specific tests")
-        super(test_gpu_Broadcast, self).test_c_inplace()
 
 
 def test_elemwise_pow():
