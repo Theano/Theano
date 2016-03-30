@@ -965,7 +965,13 @@ class Op(utils.object2, PureOp, CLinkerOp):
                                      compute_map=compute_map)
         if new_node is not None:
             node = new_node
-
+        if not hasattr(self, '_op_use_c_code'):
+            warnings.warn(
+                "The  __getstate__ method of '%s' is not implemented correctly."
+                " It should keep the attributes added by the base class."
+                " To implement it correctly, it should keep all attributes"
+                " and only remove those it does not want." % (self),
+                stacklevel=2)
         if getattr(self, '_op_use_c_code', theano.config.cxx):
             try:
                 return self.make_c_thunk(node, storage_map, compute_map,
