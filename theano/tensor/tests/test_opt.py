@@ -6189,7 +6189,8 @@ def test_local_sumsqr2dot():
     f_test = function([W,G], T.dot(T.sqr(G), T.sqr(W).sum(axis=0)), mode=MODE)
 
     assert numpy.allclose(f_val, f_test(w_val, g_val))
-    assert  any(isinstance(n.op, (tensor.basic.Dot, tensor.blas.Gemv, tensor.blas_c.CGemv))
+    assert  any(isinstance(n.op, (tensor.basic.Dot, tensor.blas.Dot22,
+                                  tensor.blas.Gemv, tensor.blas_c.CGemv))
       for n in f.maker.fgraph.toposort())
 
 
