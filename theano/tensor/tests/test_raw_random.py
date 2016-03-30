@@ -1199,6 +1199,7 @@ class T_random_function(utt.InferShapeTester):
         post_int_r, int_sample = random_integers(rng_r, (3, 5), -1, 8)
         g = theano.function([rng_r], [post_int_r, int_sample], mode=mode)
         pkl_g = pickle.dumps(g)
+        pickle.loads(pkl_g)
 
 
 if __name__ == '__main__':
