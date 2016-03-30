@@ -1,10 +1,10 @@
+from __future__ import absolute_import, print_function, division
 from theano.tests.record import RecordMode, Record
 from theano.compat import OrderedDict
 from theano.tests import disturb_mem
 import numpy as np
 import theano
 from theano.printing import var_descriptor
-from nose.plugins.skip import SkipTest
 
 from theano import config, shared
 from six import StringIO
@@ -24,10 +24,6 @@ def test_determinism_1():
     # change.
     # This specific script is capable of catching a bug where
     # FunctionGraph.toposort was non-deterministic.
-    try:
-        import hashlib
-    except ImportError:
-        raise SkipTest('python version too old to do this test')
 
     def run(replay, log=None):
 

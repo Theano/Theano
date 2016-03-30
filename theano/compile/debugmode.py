@@ -4,7 +4,7 @@ Provides `DebugMode`, an evaluation mode for debugging theano internals.
 TODO: add support for IfElse Op, LazyLinker, PureOp, etc.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import copy
 import sys

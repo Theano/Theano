@@ -1,18 +1,18 @@
 """Define random number Type (`RandomStateType`) and Op (`RandomFunction`)."""
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import sys
 from copy import copy
 
 import numpy
+from six import string_types
+from six.moves import reduce, xrange
 
 # local imports
 import theano
-from six.moves import reduce, xrange
 from theano import tensor
 from theano.tensor import opt
 from theano import gof
-from six import string_types
 from theano.compile import optdb
 
 __docformat__ = "restructuredtext en"

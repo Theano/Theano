@@ -4,6 +4,7 @@ There is no standard name or location for this header, so we just insert it
 ourselves into the C code.
 
 """
+from __future__ import absolute_import, print_function, division
 import logging
 import textwrap
 import sys

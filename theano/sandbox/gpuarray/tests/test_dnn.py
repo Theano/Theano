@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import logging
 
 from nose.plugins.skip import SkipTest
@@ -274,6 +275,55 @@ def test_pooling():
             utt.assert_allclose(c_out, g_out)
 
 
+def test_pooling_with_tensor_vars():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    x = T.ftensor4()
+    ws = theano.shared(numpy.array([2, 2], dtype='int32'))
+    st = theano.shared(numpy.array([1, 1], dtype='int32'))
+    pad = theano.shared(numpy.array([0, 0], dtype='int32'))
+    mode = 'max'
+
+    def fn(x):
+        dnn_op = dnn.dnn_pool(x,
+                              ws=ws,
+                              stride=st,
+                              pad=pad,
+                              mode=mode)
+        return dnn_op
+
+    for shp in [(1, 1, 2, 2),
+                (1, 1, 3, 3)]:
+        data = numpy.random.normal(0, 1, shp).astype("float32") * 10
+        theano.tests.unittest_tools.verify_grad(
+            fn, [data],
+            cast_to_output_type=False,
+            mode=mode_with_gpu)
+
+    out2 = pool_2d_i2n(x, ds=(2, 2), strides=(1, 1),
+                       pad=(0, 0),
+                       pool_function=T.max)
+
+    mode_without_gpu2 = mode_without_gpu.including()
+    mode_without_gpu2.check_isfinite = False
+
+    f1 = theano.function([x], fn(x), mode=mode_with_gpu)
+    assert any([isinstance(node.op, dnn.GpuDnnPool)
+                for node in f1.maker.fgraph.apply_nodes])
+    f2 = theano.function([x], out2, mode=mode_without_gpu2)
+    assert not any([isinstance(node.op, dnn.GpuDnnPool)
+                    for node in f2.maker.fgraph.apply_nodes])
+    for shp in [(1, 10, 100, 100),
+                (1, 3, 99, 99),
+                (32, 1, 147, 197),
+                ]:
+        data = numpy.random.normal(0, 1, shp).astype("float32")
+        a = f1(data).__array__()
+
+        b = f2(data).__array__()
+        utt.assert_allclose(a, b)
+
+
 def test_pooling_opt():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
@@ -339,6 +389,7 @@ def test_dnn_tag():
 
 
 class TestDnnInferShapes(utt.InferShapeTester):
+
     def setUp(self):
         super(TestDnnInferShapes, self).setUp()
         self.mode = mode_with_gpu
@@ -524,14 +575,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
             [(1, 1), (2, 2), (3, 3)],
             modes
         ):
-            desc = dnn.GpuDnnPoolDesc(
-                ws=params[0],
-                stride=params[1],
-                mode=params[2]
-            )()
             self._compile_and_check(
                 [img],
-                [dnn.GpuDnnPool()(img, desc)],
+                [dnn.GpuDnnPool(mode=params[2])(img, params[0], params[1], (0, 0))],
                 [img_val],
                 dnn.GpuDnnPool
             )
@@ -560,16 +606,13 @@ class TestDnnInferShapes(utt.InferShapeTester):
             [(1, 1), (2, 2), (3, 3)],
             ['max', 'average_inc_pad']
         ):
-            desc = dnn.GpuDnnPoolDesc(
-                ws=params[0],
-                stride=params[1],
-                mode=params[2]
-            )()
-            pool_grad = dnn.GpuDnnPoolGrad()(
+            pool_grad = dnn.GpuDnnPoolGrad(mode=params[2])(
                 img,
                 out,
                 img_grad,
-                desc
+                params[0],
+                params[1],
+                (0, 0)
             )
             self._compile_and_check(
                 [img, img_grad, out],

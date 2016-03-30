@@ -3,6 +3,8 @@ Classes and functions for validating graphs that contain view
 and inplace operations.
 
 """
+from __future__ import absolute_import, print_function, division
+
 from collections import deque
 
 from six import iteritems

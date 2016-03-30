@@ -1,16 +1,24 @@
 """
 Abstract conv interface
 """
+from __future__ import absolute_import, print_function, division
 
 import logging
+from six import reraise, integer_types
+import sys
+
 import theano
 
 from theano.tensor import as_tensor_variable, patternbroadcast
+from theano.tensor import get_scalar_constant_value, NotScalarConstantError
 from theano.gof import Apply, Op
 
 from six.moves import xrange
 
+import warnings
 import numpy
+import numpy as np
+
 try:
     from scipy.signal.signaltools import _valfrommode, _bvalfromboundary
     from scipy.signal.sigtools import _convolve2d
@@ -120,6 +128,8 @@ def conv2d(input,
     Refer to :func:`nnet.conv2d <theano.tensor.nnet.conv2d>` for a more detailed documentation.
     """
 
+    input = as_tensor_variable(input)
+    filters = as_tensor_variable(filters)
     conv_op = AbstractConv2d(imshp=input_shape,
                              kshp=filter_shape,
                              border_mode=border_mode,
@@ -130,17 +140,18 @@ def conv2d(input,
 
 def conv2d_grad_wrt_inputs(output_grad,
                            filters,
-                           output_grad_shape=None,
-                           input_shape=None,
+                           input_shape,
                            filter_shape=None,
                            border_mode='valid',
                            subsample=(1, 1),
                            filter_flip=True):
-    """This function builds the symbolic graph for getting the
+    """Compute conv output gradient w.r.t its inputs
+
+    This function builds the symbolic graph for getting the
     gradient of the output of a convolution (namely output_grad)
     w.r.t the input of the convolution, given a set of 2D filters
     used by the convolution, such that the output_grad is upsampled
-    to the input shape.
+    to the input_shape.
 
     Parameters
     ----------
@@ -149,27 +160,24 @@ def conv2d_grad_wrt_inputs(output_grad,
         channels, input rows, input columns).  This is the tensor that
         will be upsampled or the output gradient of the convolution
         whose gradient will be taken with respect to the input of the
-        convolution.  See the optional parameter
-        ``output_grad_shape``.
+        convolution.
     filters : symbolic 4D tensor
         set of filters used in CNN layer of shape (output channels,
         input channels, filter rows, filter columns).  See the
         optional parameter ``filter_shape``.
-    output_grad_shape : list of 4 symbolic or real ints
-        The shape of the output_grad parameter.  Optional, possibly
-        used to choose an optimal implementation.  You can give
-        ``None`` for any element of the list to specify that this
-        element is not known at compile time.
-    input_shape : list of 2 symbolic or real ints
-        The shape (row and column size) of the input (upsampled)
-        parameter.  Not Optional, since given the output_grad_shape
+    input_shape : [None/int/Constant] * 2 + [Tensor/int/Constant] * 2
+        The shape of the input (upsampled) parameter.
+        A tuple/list of len 4, with the first two dimensions
+        being None or int or Constant and the last two dimensions being
+        Tensor or int or Constant.
+        Not Optional, since given the output_grad shape
         and the subsample values, multiple input_shape may be
         plausible.
-    filter_shape : list of 4 symbolic or real ints
-        The shape of the filters parameter.  Optional, possibly used
-        to choose an optimal implementation.  You can give ``None``
-        for any element of the list to specify that this element is
-        not known at compile time.
+    filter_shape : None or [None/int/Constant] * 4
+        The shape of the filters parameter. None or a tuple/list of len 4.
+        Optional, possibly used  to choose an optimal implementation.
+        You can give ``None`` for any element of the list to specify that
+        this element is not known at compile time.
     border_mode : str, int or tuple of two int
         Either of the following:
 
@@ -187,7 +195,7 @@ def conv2d_grad_wrt_inputs(output_grad,
             rows and ``filter columns // 2`` columns, then perform a
             valid convolution. For filters with an odd number of rows
             and columns, this leads to the output shape being equal to
-            the input shape.
+            the input shape. It is known as 'same' elsewhere.
 
           ``int``
             pad input with a symmetric border of zeros of the given
@@ -226,24 +234,50 @@ def conv2d_grad_wrt_inputs(output_grad,
 
     """
 
-    grad_input_op = AbstractConv2d_gradInputs(imshp=input_shape,
+    filters = as_tensor_variable(filters)
+    output_grad = as_tensor_variable(output_grad)
+
+    # checking the type of input_shape
+    for dim in [0, 1]:
+        assert isinstance(input_shape[dim], (theano.tensor.TensorConstant,
+                                             integer_types, type(None)))
+    for dim in [2, 3]:
+        assert isinstance(input_shape[dim], (theano.tensor.TensorVariable,
+                                             theano.tensor.TensorConstant,
+                                             integer_types))
+
+    # checking the type of filter_shape
+    if filter_shape is not None:
+        for dim in [0, 1, 2, 3]:
+            assert isinstance(filter_shape[dim], (theano.tensor.TensorConstant,
+                                                  integer_types, type(None)))
+
+    # setting the last two dimensions of input_shape to None, if
+    # the type of these dimensions is TensorVariable.
+    numerical_input_shape = list(input_shape)
+    for dim in [2, 3]:
+        if isinstance(input_shape[dim], theano.tensor.TensorVariable):
+            numerical_input_shape[dim] = None
+
+    grad_input_op = AbstractConv2d_gradInputs(imshp=numerical_input_shape,
                                               kshp=filter_shape,
                                               border_mode=border_mode,
                                               subsample=subsample,
                                               filter_flip=filter_flip)
 
-    return grad_input_op(filters, output_grad, input_shape)
+    return grad_input_op(filters, output_grad, input_shape[-2:])
 
 
 def conv2d_grad_wrt_weights(input,
                             output_grad,
+                            filter_shape,
                             input_shape=None,
-                            output_grad_shape=None,
-                            filter_shape=None,
                             border_mode='valid',
                             subsample=(1, 1),
                             filter_flip=True):
-    """This function will build the symbolic graph for getting the
+    """Compute conv output gradient w.r.t its weights
+
+    This function will build the symbolic graph for getting the
     gradient of the output of a convolution (output_grad) w.r.t its wights.
 
     Parameters
@@ -256,25 +290,17 @@ def conv2d_grad_wrt_weights(input,
         mini-batch of feature map stacks, of shape (batch size, input
         channels, input rows, input columns).  This is the gradient of
         the output of convolution.
-    filters : symbolic 4D tensor.
-        set of filters used in CNN layer of shape (output channels,
-        input channels, filter rows, filter columns).  See the
-        optional parameter ``filter_shape``.
-    output_grad_shape : list of 4 ints or Constant variables
-        The shape of the input parameter.  Optional, possibly used to
-        choose an optimal implementation.  You can give ``None`` for
-        any element of the list to specify that this element is not
-        known at compile time.
-    input_shape : list of 2 ints or Constant variables
-        The shape of the input parameter.  This parameter indicates
-        the row and column size of the input in the forward pass.
+    filter_shape : [None/int/Constant] * 2 + [Tensor/int/Constant] * 2
+        The shape of the filter parameter.  A tuple/list of len 4, with the
+        first two dimensions being None or int or Constant and the last two
+        dimensions being Tensor or int or Constant.
+        Not Optional, since given the output_grad shape and
+        the input_shape, multiple filter_shape may be plausible.
+    input_shape : None or [None/int/Constant] * 4
+        The shape of the input parameter. None or a tuple/list of len 4.
         Optional, possibly used to choose an optimal implementation.
         You can give ``None`` for any element of the list to specify
         that this element is not known at compile time.
-    filter_shape : list of 4 ints or Constant variables
-        The shape of the filters parameter.  Not Optional, since given
-        the output_grad_shape and the input_shape, multiple
-        filter_shape may be plausible.
     border_mode : str, int or tuple of two ints
         Either of the following:
 
@@ -292,7 +318,7 @@ def conv2d_grad_wrt_weights(input,
             rows and ``filter columns // 2`` columns, then perform a
             valid convolution. For filters with an odd number of rows
             and columns, this leads to the output shape being equal to
-            the input shape.
+            the input shape. It is known as 'same' elsewhere.
 
           ``int``
             pad input with a symmetric border of zeros of the given
@@ -330,13 +356,219 @@ def conv2d_grad_wrt_weights(input,
         version until it is released.
 
     """
+
+    input = as_tensor_variable(input)
+    output_grad = as_tensor_variable(output_grad)
+
+    # checking the type of filter_shape
+    for dim in [0, 1]:
+        assert isinstance(filter_shape[dim], (theano.tensor.TensorConstant,
+                                              integer_types, type(None)))
+    for dim in [2, 3]:
+        assert isinstance(filter_shape[dim], (theano.tensor.TensorVariable,
+                                              theano.tensor.TensorConstant,
+                                              integer_types))
+
+    # checking the type of input_shape
+    if input_shape is not None:
+        for dim in [0, 1, 2, 3]:
+            assert isinstance(input_shape[dim], (theano.tensor.TensorConstant,
+                                                 integer_types, type(None)))
+
+    # setting the last two dimensions of filter_shape to None, if
+    # the type of these dimensions is TensorVariable.
+    numerical_filter_shape = list(filter_shape)
+    for dim in [2, 3]:
+        if isinstance(filter_shape[dim], theano.tensor.TensorVariable):
+            numerical_filter_shape[dim] = None
+
     gradWeight_op = AbstractConv2d_gradWeights(imshp=input_shape,
-                                               kshp=filter_shape,
+                                               kshp=numerical_filter_shape,
                                                border_mode=border_mode,
                                                subsample=subsample,
                                                filter_flip=filter_flip)
 
-    return gradWeight_op(input, output_grad, filter_shape)
+    return gradWeight_op(input, output_grad, filter_shape[:-2])
+
+
+def bilinear_kernel_2D(ratio, normalize=True):
+    """Compute 2D kernel for bilinear upsampling
+
+    This function builds the 2D kernel that can be used to upsample
+    a tensor by the given ratio using bilinear interpolation.
+
+    Parameters
+    ----------
+    ratio: int or Constant/Scalar Theano tensor of int* dtype
+        the ratio by which an image will be upsampled by the returned filter
+        in the 2D space.
+
+    normalize: bool
+        param normalize: indicates whether to normalize the kernel or not.
+        Default is True.
+
+    Returns
+    -------
+    symbolic 2D tensor
+        the 2D kernels that can be applied to any given image to upsample it
+        by the indicated ratio using bilinear interpolation in two dimensions.
+
+    """
+
+    hkern = bilinear_kernel_1D(ratio=ratio, normalize=normalize).dimshuffle('x', 0)
+    vkern = bilinear_kernel_1D(ratio=ratio, normalize=normalize).dimshuffle(0, 'x')
+    kern = hkern * vkern
+    return kern
+
+
+def bilinear_kernel_1D(ratio, normalize=True):
+    """Compute 1D kernel for bilinear upsampling
+
+    This function builds the 1D kernel that can be used to upsample
+    a tensor by the given ratio using bilinear interpolation.
+
+    Parameters
+    ----------
+    ratio: int or Constant/Scalar Theano tensor of int* dtype
+        the ratio by which an image will be upsampled by the returned filter
+        in the 2D space.
+
+    normalize: bool
+        param normalize: indicates whether to normalize the kernel or not.
+        Default is True.
+
+    Returns
+    -------
+    symbolic 1D tensor
+        the 1D kernels that can be applied to any given image to upsample it
+        by the indicated ratio using bilinear interpolation in one dimension.
+
+    """
+
+    T = theano.tensor
+    half_kern = T.arange(1, ratio + 1, dtype=theano.config.floatX)
+    kern = T.concatenate([half_kern, half_kern[-2::-1]])
+
+    if normalize:
+        kern /= ratio
+    return kern
+
+
+def bilinear_upsampling(input,
+                        ratio,
+                        batch_size=None,
+                        num_input_channels=None,
+                        use_1D_kernel=True):
+    """Compute bilinear upsampling
+
+    This function will build the symbolic graph for upsampling
+    a tensor by the given ratio using bilinear interpolation.
+
+    Parameters
+    ----------
+    input: symbolic 4D tensor
+        mini-batch of feature map stacks, of shape (batch size,
+        input channels, input rows, input columns) that will be upsampled.
+
+    ratio: int or Constant or Scalar Tensor of int* dtype
+        the ratio by which the input is upsampled in the 2D space (row and
+        col size).
+
+    batch_size: None, int or Constant variable
+        The size of the first dimension of the input variable.
+        Optional, possibly used to choose an optimal implementation.
+        batch_size will be used only if num_input_channels is not None.
+
+    num_input_channels: None, int or Constant variable
+        The size of the second dimension of the input variable.
+        Optional, possibly used to choose an optimal implementation.
+        num_input_channels will be used only if batch_size is not None.
+
+    use_1D_kernel: bool
+        if set to true, row and column will be upsampled seperately by 1D
+        kernels, otherwise they are upsampled together using a 2D kernel. The
+        final result is the same, only the speed can differ, given factors such
+        as upsampling ratio.
+
+    Returns
+    -------
+    symbolic 4D tensor
+        set of feature maps generated by bilinear upsampling. Tensor
+        is of shape (batch size, num_input_channels, input row size * ratio,
+        input column size * ratio)
+
+    Notes
+    -----
+
+    :note: The kernel used for bilinear interpolation is fixed (not learned).
+
+    :note: When the upsampling ratio is even, the last row and column is
+        repeated one extra time compared to the first row and column which makes
+        the upsampled tensor asymmetrical on both sides. This does not happen when
+        the upsampling ratio is odd.
+
+    """
+
+    T = theano.tensor
+    try:
+        up_bs = batch_size * num_input_channels
+    except TypeError:
+        up_bs = None
+    row, col = input.shape[2:]
+    up_input = input.reshape((-1, 1, row, col))
+
+    # concatenating the first and last row and column
+    # first and last row
+    concat_mat = T.concatenate((up_input[:, :, :1, :], up_input,
+                                up_input[:, :, -1:, :]), axis=2)
+    # first and last col
+    concat_mat = T.concatenate((concat_mat[:, :, :, :1], concat_mat,
+                                concat_mat[:, :, :, -1:]), axis=3)
+    concat_col = col + 2
+
+    pad = 2 * ratio - (ratio - 1) // 2 - 1
+
+    if use_1D_kernel:
+        kern = bilinear_kernel_1D(ratio=ratio, normalize=True)
+        # upsampling rows
+        upsampled_row = conv2d_grad_wrt_inputs(output_grad=concat_mat,
+                                               filters=kern[np.newaxis,
+                                                            np.newaxis, :,
+                                                            np.newaxis],
+                                               input_shape=(up_bs, 1,
+                                                            row * ratio,
+                                                            concat_col),
+                                               filter_shape=(1, 1, None, 1),
+                                               border_mode=(pad, 0),
+                                               subsample=(ratio, 1),
+                                               filter_flip=True)
+        # upsampling cols
+        upsampled_mat = conv2d_grad_wrt_inputs(output_grad=upsampled_row,
+                                               filters=kern[np.newaxis,
+                                                            np.newaxis,
+                                                            np.newaxis, :],
+                                               input_shape=(up_bs, 1,
+                                                            row * ratio,
+                                                            col * ratio),
+                                               filter_shape=(1, 1, 1, None),
+                                               border_mode=(0, pad),
+                                               subsample=(1, ratio),
+                                               filter_flip=True)
+    else:
+        kern = bilinear_kernel_2D(ratio=ratio, normalize=True)
+        upsampled_mat = conv2d_grad_wrt_inputs(output_grad=concat_mat,
+                                               filters=kern[np.newaxis,
+                                                            np.newaxis, :, :],
+                                               input_shape=(up_bs, 1,
+                                                            row * ratio,
+                                                            col * ratio),
+                                               filter_shape=(1, 1, None, None),
+                                               border_mode=(pad, pad),
+                                               subsample=(ratio, ratio),
+                                               filter_flip=True)
+
+    return upsampled_mat.reshape((batch_size, num_input_channels,
+                                  row * ratio, col * ratio))
 
 
 class BaseAbstractConv2d(Op):
@@ -397,7 +629,7 @@ class BaseAbstractConv2d(Op):
                  border_mode="valid", subsample=(1, 1),
                  filter_flip=True):
 
-        if isinstance(border_mode, int):
+        if isinstance(border_mode, integer_types):
             border_mode = (border_mode, border_mode)
         if isinstance(border_mode, tuple):
             pad_h, pad_w = map(int, border_mode)
@@ -411,8 +643,30 @@ class BaseAbstractConv2d(Op):
                 '"valid", "full", "half", an integer or a pair of'
                 ' integers'.format(border_mode))
 
-        self.imshp = tuple(imshp) if imshp else None
-        self.kshp = tuple(kshp) if kshp else None
+        self.imshp = tuple(imshp) if imshp else (None,) * 4
+        for imshp_i in self.imshp:
+            if imshp_i is not None:
+                # Components of imshp should be constant or ints
+                try:
+                    get_scalar_constant_value(imshp_i,
+                                              only_process_constants=True)
+                except NotScalarConstantError:
+                    reraise(ValueError,
+                            ValueError("imshp should be None or a tuple of "
+                                       "constant int values"),
+                            sys.exc_info()[2])
+        self.kshp = tuple(kshp) if kshp else (None,) * 4
+        for kshp_i in self.kshp:
+            if kshp_i is not None:
+                # Components of kshp should be constant or ints
+                try:
+                    get_scalar_constant_value(kshp_i,
+                                              only_process_constants=True)
+                except NotScalarConstantError:
+                    reraise(ValueError,
+                            ValueError("kshp should be None or a tuple of "
+                                       "constant int values"),
+                            sys.exc_info()[2])
         self.border_mode = border_mode
         self.filter_flip = filter_flip
 
@@ -458,12 +712,16 @@ class BaseAbstractConv2d(Op):
         out = numpy.zeros(out_shape, dtype=img.dtype)
         val = _valfrommode(mode)
         bval = _bvalfromboundary('fill')
-        for b in xrange(img.shape[0]):
-            for n in xrange(kern.shape[0]):
-                for im0 in xrange(img.shape[1]):
-                    out[b, n, ...] += _convolve2d(img[b, im0, ...],
-                                                  kern[n, im0, ...],
-                                                  1, val, bval, 0)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            for b in xrange(img.shape[0]):
+                for n in xrange(kern.shape[0]):
+                    for im0 in xrange(img.shape[1]):
+                        # some cast generates a warning here
+                        out[b, n, ...] += _convolve2d(img[b, im0, ...],
+                                                      kern[n, im0, ...],
+                                                      1, val, bval, 0)
         return out
 
 
@@ -484,7 +742,11 @@ class AbstractConv2d(BaseAbstractConv2d):
                                              filter_flip)
 
     def make_node(self, img, kern):
-        # Make sure both inputs have the same Type
+        # Make sure both inputs are Variables with the same Type
+        if not isinstance(img, theano.Variable):
+            img = as_tensor_variable(img)
+        if not isinstance(kern, theano.Variable):
+            kern = as_tensor_variable(kern)
         ktype = img.type.clone(dtype=kern.dtype,
                                broadcastable=kern.broadcastable)
         kern = ktype.filter_variable(kern)
@@ -609,7 +871,11 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
 
     # Update shape/height_width
     def make_node(self, img, topgrad, shape):
-        # Make sure both inputs have the same Type
+        # Make sure both inputs are Variables with the same Type
+        if not isinstance(img, theano.Variable):
+            img = as_tensor_variable(img)
+        if not isinstance(topgrad, theano.Variable):
+            topgrad = as_tensor_variable(topgrad)
         gtype = img.type.clone(dtype=topgrad.dtype,
                                broadcastable=topgrad.broadcastable)
         topgrad = gtype.filter_variable(topgrad)
@@ -740,7 +1006,11 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
 
     # Update shape/height_width
     def make_node(self, kern, topgrad, shape):
-        # Make sure both inputs have the same Type
+        # Make sure both inputs are Variables with the same Type
+        if not isinstance(kern, theano.Variable):
+            kern = as_tensor_variable(kern)
+        if not isinstance(topgrad, theano.Variable):
+            topgrad = as_tensor_variable(topgrad)
         gtype = kern.type.clone(dtype=topgrad.dtype,
                                 broadcastable=topgrad.broadcastable)
         topgrad = gtype.filter_variable(topgrad)

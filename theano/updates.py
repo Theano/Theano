@@ -1,6 +1,7 @@
 """Defines Updates object for storing a (SharedVariable, new_value) mapping.
 
 """
+from __future__ import absolute_import, print_function, division
 from theano.compat import OrderedDict
 
 from six import iteritems

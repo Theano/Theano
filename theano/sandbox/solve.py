@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import unittest
 import sys
@@ -24,7 +24,8 @@ class Solve(gof.Op):
     #     sym_pos, lower, overwrite_a, overwrite_b
 
     # TODO: Add C code that calls the underlying LAPACK routines
-    #      and keeps a memory workspace from call to call as a non-default Op output
+    #      and keeps a memory workspace from call to call as a non-default Op
+    #      output
 
     def __eq__(self, other):
         return type(self) == type(other)

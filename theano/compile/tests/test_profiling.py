@@ -2,6 +2,8 @@
 Test of memory profiling
 
 """
+from __future__ import absolute_import, print_function, division
+
 import unittest
 
 import numpy
@@ -44,7 +46,7 @@ class Test_profiling(unittest.TestCase):
                                 mode=m)
 
             inp = [numpy.arange(1024, dtype='float32') + 1 for i in range(len(x))]
-            output = f(*inp)
+            f(*inp)
 
             buf = StringIO()
             f.profile.summary(buf)
@@ -71,7 +73,6 @@ class Test_profiling(unittest.TestCase):
             theano.config.profile = config1
             theano.config.profile_memory = config2
             theano.config.profiling.min_peak_memory = config3
-
 
     def test_ifelse(self):
         config1 = theano.config.profile
@@ -101,7 +102,7 @@ class Test_profiling(unittest.TestCase):
             big_mat1 = 10
             big_mat2 = 11
 
-            out = f_ifelse(val1, val2, big_mat1, big_mat2)
+            f_ifelse(val1, val2, big_mat1, big_mat2)
 
         finally:
             theano.config.profile = config1

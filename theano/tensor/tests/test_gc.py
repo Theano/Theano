@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import numpy
 import six.moves.cPickle as pickle
 from six.moves import xrange
@@ -92,7 +93,7 @@ def test_gc_never_pickles_temporaries():
         # that weren't collected shouldn't be pickled anyway
         # Allow for a couple of bytes of difference, since timing info,
         # for instance, can be represented as text of varying size.
-        assert abs(len_post_f - len_post_g) < 128, (
+        assert abs(len_post_f - len_post_g) < 256, (
             f_linker, len_post_f, len_post_g)
 
 

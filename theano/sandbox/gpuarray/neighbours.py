@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import numpy
 
 from theano import Op, Apply, config
@@ -461,6 +462,10 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
             %(sync)s
         } // END NESTED SCOPE
         """ % locals()
+
+    def perform(self, node, inp, out, ctx):
+        # Disable the perform method from the CPU version
+        Op.perform(self, node, inp, out, ctx)
 
 
 @op_lifter([Images2Neibs])

@@ -1,5 +1,5 @@
 """Functions for Github authorisation."""
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 try:
     input = raw_input

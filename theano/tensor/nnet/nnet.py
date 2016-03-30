@@ -12,6 +12,7 @@ fast_compile, we register them as needed for the GPU. This can be
 revisited later when all the intermediate part are on the GPU.
 
 """
+from __future__ import absolute_import, print_function, division
 import logging
 import numpy
 from six.moves import xrange
@@ -736,6 +737,8 @@ class LogSoftmax(gof.Op):
 logsoftmax_op = LogSoftmax()
 
 
+# This is not registered in stabilize, as it cause some crossentropy
+# optimization to not be inserted.
 @opt.register_specialize('stabilize', 'fast_compile')
 @gof.local_optimizer([tensor.Elemwise])
 def local_logsoftmax(node):
@@ -752,10 +755,13 @@ def local_logsoftmax(node):
         inVars = node.inputs[0].owner.inputs[0]
         new_op = LogSoftmax()
         ret = new_op(inVars)
-        ret.tag.values_eq_approx = values_eq_approx_remove_inf
+        ret .tag.values_eq_approx = values_eq_approx_remove_inf
+        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
         return [ret]
 
 
+# This is not registered in stabilize, as it cause some crossentropy
+# optimization to not be inserted.
 @opt.register_specialize('stabilize', 'fast_compile')
 @gof.local_optimizer([SoftmaxGrad])
 def local_logsoftmax_grad(node):
@@ -785,9 +791,9 @@ def local_logsoftmax_grad(node):
         grads = node.inputs[0].owner.inputs[0]
         if grads.broadcastable[1] and not sm.broadcastable[1]:
             grads = tensor.alloc(grads, grads.shape[0], sm.shape[1])
-
         ret = grads - tensor.sum(grads, axis=1, keepdims=True) * sm
         ret.tag.values_eq_approx = values_eq_approx_remove_nan
+        copy_stack_trace(node.outputs[0], ret)
         return [ret]
 
 

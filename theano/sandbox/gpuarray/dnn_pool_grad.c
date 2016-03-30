@@ -4,6 +4,7 @@ cudnnTensorDescriptor_t APPLY_SPECIFIC(input);
 cudnnTensorDescriptor_t APPLY_SPECIFIC(input_grad);
 cudnnTensorDescriptor_t APPLY_SPECIFIC(output);
 cudnnTensorDescriptor_t APPLY_SPECIFIC(output_grad);
+cudnnPoolingDescriptor_t APPLY_SPECIFIC(pool);
 
 #section init_code_struct
 
@@ -11,6 +12,7 @@ APPLY_SPECIFIC(input) = NULL;
 APPLY_SPECIFIC(input_grad) = NULL;
 APPLY_SPECIFIC(output) = NULL;
 APPLY_SPECIFIC(output_grad) = NULL;
+APPLY_SPECIFIC(pool) = NULL;
 
 {
   cudnnStatus_t err;
@@ -38,6 +40,11 @@ APPLY_SPECIFIC(output_grad) = NULL;
                  cudnnGetErrorString(err));
     FAIL;
   }
+  if ((err = cudnnCreatePoolingDescriptor(&APPLY_SPECIFIC(pool))) != CUDNN_STATUS_SUCCESS) {
+    PyErr_Format(PyExc_MemoryError, "could not allocate pooling descriptor"
+                "(pool): %s", cudnnGetErrorString(err));  
+    FAIL;
+  }
 }
 
 #section cleanup_code_struct
@@ -46,13 +53,16 @@ if (APPLY_SPECIFIC(input) != NULL) { cudnnDestroyTensorDescriptor(APPLY_SPECIFIC
 if (APPLY_SPECIFIC(input_grad) != NULL) { cudnnDestroyTensorDescriptor(APPLY_SPECIFIC(input_grad)); }
 if (APPLY_SPECIFIC(output) != NULL) { cudnnDestroyTensorDescriptor(APPLY_SPECIFIC(output)); }
 if (APPLY_SPECIFIC(output_grad) != NULL) { cudnnDestroyTensorDescriptor(APPLY_SPECIFIC(output_grad)); }
+if (APPLY_SPECIFIC(pool) != NULL) { cudnnDestroyPoolingDescriptor(APPLY_SPECIFIC(pool)); }
 
 #section support_code_struct
 
 int APPLY_SPECIFIC(dnn_pool_grad)(PyGpuArrayObject *inp,
                                   PyGpuArrayObject *out,
                                   PyGpuArrayObject *out_grad,
-                                  cudnnPoolingDescriptor_t desc,
+                                  PyArrayObject *ws, 
+                                  PyArrayObject *stride,
+                                  PyArrayObject *pad,
                                   PyGpuArrayObject **inp_grad,
                                   PyGpuContextObject *c) {
   cudnnStatus_t err;
@@ -83,6 +93,26 @@ int APPLY_SPECIFIC(dnn_pool_grad)(PyGpuArrayObject *inp,
                          PyGpuArray_DIMS(inp), inp->ga.typecode,
                          GA_C_ORDER, c) != 0) {
     return 1;
+  }
+
+  int w[3];
+  int p[3];
+  int s[3];
+  int ndims = PyArray_DIM(ws, 0);//PyGpuArray_NDIM(img) - 2;
+
+  for(int i = 0; i < ndims; i++) {
+     w[i] = *((npy_intp*)PyArray_GETPTR1(ws, i));
+  }
+  for(int i = 0; i < ndims; i++) {
+     p[i] = *((npy_intp*)PyArray_GETPTR1(pad, i));
+  }
+  for(int i = 0; i < ndims; i++) {
+     s[i] = *((npy_intp*)PyArray_GETPTR1(stride, i));
+  }
+  err = cudnnSetPoolingNdDescriptor(APPLY_SPECIFIC(pool), MODE_FLAG, ndims, w, p, s);
+
+  if (err != CUDNN_STATUS_SUCCESS) {
+    PyErr_Format(PyExc_RuntimeError, "could not set op descriptor %s", cudnnGetErrorString(err));
   }
 
   if (c_set_tensorNd(*inp_grad, APPLY_SPECIFIC(input_grad)) != 0)
@@ -118,7 +148,7 @@ int APPLY_SPECIFIC(dnn_pool_grad)(PyGpuArrayObject *inp,
     cuda_wait((*inp_grad)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
 
     err = cudnnPoolingBackward(
-      APPLY_SPECIFIC(_handle), desc,
+      APPLY_SPECIFIC(_handle), APPLY_SPECIFIC(pool),
       alpha,
       APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(out),
       APPLY_SPECIFIC(output_grad), PyGpuArray_DEV_DATA(out_grad),

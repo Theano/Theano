@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import errno
 import os
 import sys
@@ -338,7 +339,7 @@ AddConfigVar('dnn.include_path',
 
 AddConfigVar('dnn.library_path',
              "Location of the cudnn header (defaults to the cuda root)",
-             StrParam(default_dnn_path('lib64')))
+             StrParam(default_dnn_path('lib' if sys.platform == 'darwin' else 'lib64')))
 
 AddConfigVar('dnn.enabled',
              "'auto', use CuDNN if available, but silently fall back"
@@ -626,7 +627,8 @@ AddConfigVar('warn.ignore_bug_before',
               "bugs found after that version. "
               "Warning for specific bugs can be configured with specific "
               "[warn] flags."),
-             EnumStr('0.6', 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.7',
+             EnumStr('0.7', 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.7',
+                     '0.8',
                      allow_override=False),
              in_c_key=False)
 
@@ -1038,6 +1040,13 @@ AddConfigVar('profiling.destination',
 AddConfigVar('profiling.debugprint',
              """
              Do a debugprint of the profiled functions
+             """,
+             BoolParam(False),
+             in_c_key=False)
+
+AddConfigVar('profiling.ignore_first_call',
+             """
+             Do we ignore the first call of a Theano function.
              """,
              BoolParam(False),
              in_c_key=False)

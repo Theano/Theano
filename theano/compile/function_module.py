@@ -2,7 +2,7 @@
 Driver of graph construction, optimization, and linking.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import copy
 from six import string_types, iteritems, iterkeys
@@ -928,7 +928,9 @@ class Function(object):
             profile.fct_call_time += dt_call
             if hasattr(self.fn, 'update_profile'):
                 self.fn.update_profile(profile)
-
+            if profile.ignore_first_call:
+                profile.reset()
+                profile.ignore_first_call = False
         if self.return_none:
             return None
         elif self.unpack_single and len(outputs) == 1:

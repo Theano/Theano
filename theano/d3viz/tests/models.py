@@ -1,5 +1,7 @@
+from __future__ import absolute_import, print_function, division
 import numpy as np
 
+from six import integer_types
 import theano as th
 import theano.tensor as T
 
@@ -9,7 +11,7 @@ class Mlp(object):
     def __init__(self, nfeatures=100, noutputs=10, nhiddens=50, rng=None):
         if rng is None:
             rng = 0
-        if isinstance(rng, int):
+        if isinstance(rng, integer_types):
             rng = np.random.RandomState(rng)
         self.rng = rng
         self.nfeatures = nfeatures

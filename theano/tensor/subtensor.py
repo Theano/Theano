@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 from copy import copy
 import sys
 from textwrap import dedent
@@ -5,11 +6,11 @@ import warnings
 import logging
 
 import numpy
+from six import integer_types
 from six.moves import xrange
 
 import theano
 from theano.compat import izip
-from six import integer_types
 from theano.gradient import DisconnectedType
 from theano import gof
 from theano.gof import Apply, Constant, hashtype, Op, Type, MethodNotDefined
@@ -513,7 +514,7 @@ class Subtensor(Op):
                         if start is None:
                             start = 0
                         if (p.stop is None or
-                            (isinstance(p.stop, (int, numpy.integer,
+                            (isinstance(p.stop, (integer_types, numpy.integer,
                                                  numpy.ndarray)) and
                              p.stop > start)):
                             broadcastable.append(True)
@@ -680,7 +681,7 @@ class Subtensor(Op):
             return pos[1]
 
         def init_entry(entry, depth=0):
-            if isinstance(entry, (numpy.integer, int)):
+            if isinstance(entry, (numpy.integer, integer_types)):
                 init_cmds.append(
                     "subtensor_spec[%i] = %i;" % (spec_pos(),
                                                   entry))
@@ -972,7 +973,7 @@ class SubtensorPrinter:
             sidxs = []
             inbrack_pstate = pstate.clone(precedence=-1000)
             for entry in idxs:
-                if isinstance(entry, int):
+                if isinstance(entry, integer_types):
                     sidxs.append(str(entry))
                 elif isinstance(entry, scal.Scalar):
                     sidxs.append(inbrack_pstate.pprinter.process(inputs.pop()))
@@ -1956,6 +1957,7 @@ class AdvancedIncSubtensor1(Op):
         copy_of_x = self.copy_of_x(x)
 
         return """
+        PyObject* rval = NULL;
         if (%(inplace)s)
         {
             if (%(x)s != %(out)s)
@@ -1971,12 +1973,16 @@ class AdvancedIncSubtensor1(Op):
             %(out)s = %(copy_of_x)s;
         }
         PyObject *arglist = Py_BuildValue("OOOi",%(out)s, %(idx)s, %(y)s, %(inc_or_set)d);
-        inplace_increment(NULL, arglist);
+        rval = inplace_increment(NULL, arglist);
         Py_XDECREF(arglist);
+        if (rval == NULL) {
+            %(fail)s;
+        }
+        Py_XDECREF(rval);
         """ % locals()
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def perform(self, node, inp, out_):
         # TODO opt to make this inplace

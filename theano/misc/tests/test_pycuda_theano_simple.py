@@ -4,7 +4,7 @@ in a CudaNdarray to be able to use it in Theano.
 
 This also serve as a test for the function: cuda_ndarray.from_gpu_pointer
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import sys
 
@@ -14,12 +14,12 @@ import theano
 import theano.sandbox.cuda as cuda_ndarray
 import theano.misc.pycuda_init
 
-if not theano.misc.pycuda_init.pycuda_available:
+if not theano.misc.pycuda_init.pycuda_available:  # noqa
     from nose.plugins.skip import SkipTest
     raise SkipTest("Pycuda not installed."
                    " We skip tests of Theano Ops with pycuda code.")
 
-if cuda_ndarray.cuda_available == False:
+if cuda_ndarray.cuda_available is False:  # noqa
     from nose.plugins.skip import SkipTest
     raise SkipTest('Optional theano package cuda disabled')
 

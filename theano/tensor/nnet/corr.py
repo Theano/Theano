@@ -1,5 +1,8 @@
+from __future__ import absolute_import, print_function, division
 import os
 import logging
+
+from six import integer_types
 
 import theano
 from theano import Apply
@@ -30,7 +33,7 @@ class BaseCorrMM(gof.Op):
     __props__ = ('border_mode', 'subsample')
 
     def __init__(self, border_mode="valid", subsample=(1, 1)):
-        if isinstance(border_mode, int):
+        if isinstance(border_mode, integer_types):
             if border_mode < 0:
                 raise ValueError(
                     'invalid border_mode {}, which must be a '
@@ -149,6 +152,8 @@ class BaseCorrMM(gof.Op):
             If self.border_mode == 'half', a variable giving the width of the
             filters for direction="backprop weights".  Ignored otherwise.
         """
+        if not theano.config.blas.ldflags:
+            raise NotImplementedError("C code for CorrMM* classes need a blas library.")
         dH, dW = self.subsample
         if self.border_mode == "half":
             padH = padW = -1

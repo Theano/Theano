@@ -1,8 +1,4 @@
-from nose.plugins.skip import SkipTest
-
-from theano.d3viz.formatting import pydot_imported
-if not pydot_imported:
-    raise SkipTest('Missing requirements')
+from __future__ import absolute_import, print_function, division
 
 import numpy as np
 import unittest
@@ -10,6 +6,11 @@ import unittest
 import theano as th
 from theano.d3viz.formatting import PyDotFormatter
 from theano.d3viz.tests import models
+
+from nose.plugins.skip import SkipTest
+from theano.d3viz.formatting import pydot_imported
+if not pydot_imported:
+    raise SkipTest('Missing requirements')
 
 
 class TestPyDotFormatter(unittest.TestCase):

@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import copy
 import numpy
 import logging
@@ -546,7 +547,12 @@ def local_gpua_lazy_ifelse(node, context_name):
     if node.op.gpu:
         return
     c = node.inputs[0]
-    inps = [as_gpuarray_variable(v, context_name) for v in node.inputs[1:]]
+    inps = []
+    for v in node.inputs[1:]:
+        if isinstance(v.type, (tensor.TensorType, GpuArrayType)):
+            inps.append(as_gpuarray_variable(v, context_name))
+        else:
+            inps.append(v)
     return IfElse(node.op.n_outs, gpu=True)(c, *inps, return_list=True)
 
 

@@ -1,8 +1,9 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 from . import pool
 import warnings
 
-warnings.warn("downsample module has been moved to the pool module.")
+warnings.warn(
+    "downsample module has been moved to the theano.tensor.signal.pool module.")
 max_pool_2d_same_size = pool.max_pool_2d_same_size
 max_pool_2d = pool.pool_2d
 DownsampleFactorMax = pool.Pool

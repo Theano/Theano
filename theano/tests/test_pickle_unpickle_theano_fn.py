@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 """
 This script tests the pickle and unpickle of theano functions.
 When a compiled theano has shared vars, their values are also being pickled.
@@ -12,14 +13,14 @@ The config option is in configdefaults.py
 
 This note is written by Li Yao.
 """
-import unittest
 import numpy
 import six.moves.cPickle as pickle
-from theano.compat import DictMixin, OrderedDict
+from theano.compat import OrderedDict
 import theano
 import theano.tensor as T
 
 floatX = 'float32'
+
 
 def test_pickle_unpickle_with_reoptimization():
     mode = theano.config.mode

@@ -4,7 +4,7 @@ Contains the FunctionGraph class and exception
 types that it can raise.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import sys
 import time
 import traceback
@@ -222,10 +222,6 @@ class FunctionGraph(utils.object2):
         not associated with this FunctionGraph anymore.
 
         The FunctionGraph should not be used anymore after disown is called.
-
-        This may not clean everything this FunctionGraph's features set in the
-        nodes and variables. If there are no features, this should set
-        them back to what they were originally.
 
         """
         for f in self._features:

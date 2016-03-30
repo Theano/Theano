@@ -1,10 +1,10 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import copy
 import sys
 
 from theano.compat import DefaultOrderedDict
 from theano.misc.ordered_set import OrderedSet
-from six import StringIO
+from six import StringIO, integer_types
 from theano.gof import opt
 from theano import config
 
@@ -310,7 +310,7 @@ class SequenceDB(DB):
 
     def register(self, name, obj, position, *tags):
         super(SequenceDB, self).register(name, obj, *tags)
-        assert isinstance(position, (int, float))
+        assert isinstance(position, (integer_types, float))
         self.__position__[name] = position
 
     def query(self, *tags, **kwtags):

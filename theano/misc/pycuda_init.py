@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import os
 import warnings
 
@@ -28,7 +29,7 @@ if (not hasattr(theano.sandbox, 'cuda') or
         import pycuda
         import pycuda.autoinit
         pycuda_available = True
-    except ImportError:
+    except (ImportError, RuntimeError):
         # presumably, the user wanted to use pycuda, else they wouldn't have
         # imported this module, so issue a warning that the import failed.
         warnings.warn("PyCUDA import failed in theano.misc.pycuda_init")

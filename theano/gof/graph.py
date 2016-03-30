@@ -5,7 +5,7 @@ To read about what theano graphs are from a user perspective, have a look at
 `graph.html <../doc/graph.html>`__.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 from collections import deque
 from copy import copy
@@ -383,7 +383,7 @@ class Variable(Node):
         if owner is not None and not isinstance(owner, Apply):
             raise TypeError("owner must be an Apply instance", owner)
         self.owner = owner
-        if index is not None and not isinstance(index, int):
+        if index is not None and not isinstance(index, integer_types):
             raise TypeError("index must be an int", index)
         self.index = index
         if name is not None and not isinstance(name, string_types):

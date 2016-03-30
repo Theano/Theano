@@ -1,15 +1,16 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import distutils
 import logging
 import os
 import subprocess
 import sys
 import warnings
+from locale import getpreferredencoding
 
 import numpy
 
 from theano import config
-from theano.compat import decode, decode_iter
+from theano.compat import decode, decode_with
 from theano.configdefaults import local_bitwidth
 from theano.gof.utils import hash_from_file
 from theano.gof.cmodule import (std_libs, std_lib_dirs,
@@ -224,12 +225,13 @@ class NVCC_compiler(Compiler):
 
         lib_dirs = lib_dirs + std_lib_dirs()
 
-        # config.dnn.include_path add this by default for cudnn in the
-        # new back-end. This should not be used in this back-end. So
-        # just remove them.
-        lib_dirs = [ld for ld in lib_dirs if
-                    not(ld == os.path.join(cuda_root, 'lib') or
-                        ld == os.path.join(cuda_root, 'lib64'))]
+        if sys.platform != 'darwin':
+            # config.dnn.include_path add this by default for cudnn in the
+            # new back-end. This should not be used in this back-end. So
+            # just remove them.
+            lib_dirs = [ld for ld in lib_dirs if
+                        not(ld == os.path.join(cuda_root, 'lib') or
+                            ld == os.path.join(cuda_root, 'lib64'))]
 
         if sys.platform != 'darwin':
             # sometimes, the linker cannot find -lpython so we need to tell it
@@ -259,8 +261,10 @@ class NVCC_compiler(Compiler):
         preargs2 = []
         for pa in preargs:
             if pa.startswith('-Wl,'):
-                preargs1.append('-Xlinker')
-                preargs1.append(pa[4:])
+                # the -rpath option is not understood by the Microsoft linker
+                if sys.platform != 'win32' or not pa.startswith('-Wl,-rpath'):
+                    preargs1.append('-Xlinker')
+                    preargs1.append(pa[4:])
                 continue
             for pattern in ['-O', '-arch=', '-ccbin=', '-G', '-g', '-I',
                             '-L', '--fmad', '--ftz', '--maxrregcount',
@@ -356,7 +360,10 @@ class NVCC_compiler(Compiler):
             os.chdir(location)
             p = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            nvcc_stdout, nvcc_stderr = decode_iter(p.communicate()[:2])
+            nvcc_stdout_raw, nvcc_stderr_raw = p.communicate()[:2]
+            console_encoding = getpreferredencoding()
+            nvcc_stdout = decode_with(nvcc_stdout_raw, console_encoding)
+            nvcc_stderr = decode_with(nvcc_stderr_raw, console_encoding)
         finally:
             os.chdir(orig_dir)
 

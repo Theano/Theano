@@ -4,6 +4,7 @@
 #   * Figure out how to compile and install documentation automatically
 #   * Add download_url
 
+from __future__ import absolute_import, print_function, division
 import os
 import subprocess
 import codecs
@@ -53,7 +54,7 @@ PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
 MINOR               = 8
 MICRO               = 0
-SUFFIX              = "rc1"  # Should be blank except for rc's, betas, etc.
+SUFFIX              = ""  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
 
 VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)

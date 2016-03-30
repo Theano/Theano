@@ -46,7 +46,7 @@ relies on the following elements to work properly :
   needed to compute another output.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu "
@@ -62,7 +62,7 @@ import logging
 import time
 
 import numpy
-from six import iteritems
+from six import iteritems, integer_types
 from six.moves import xrange
 
 import theano
@@ -837,7 +837,7 @@ class Scan(PureOp):
 
         profile = None
         if (theano.config.profile or
-            (isinstance(self.profile, (string_types, bool, int))
+            (isinstance(self.profile, (string_types, bool, integer_types))
                                       and self.profile)):
             if isinstance(self.profile, string_types):
                 profile = ScanProfileStats(name=self.profile)
