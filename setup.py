@@ -165,7 +165,8 @@ def do_setup():
           # 1.7.0 give too much warning related to numpy.diagonal.
           install_requires=['numpy>=1.7.1', 'scipy>=0.11', 'six>=1.9.0'],
           extras_require={
-              'test': ['nose>=1.3.0', 'nose-parameterized>=0.5.0']
+              'test': ['nose>=1.3.0', 'nose-parameterized>=0.5.0'],
+              'doc': ['Sphinx>=0.5.1']
           },
           package_data={
               '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh', '*.pkl',

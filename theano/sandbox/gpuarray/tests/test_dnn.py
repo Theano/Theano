@@ -430,7 +430,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
             dnn.GpuDnnSoftmaxGrad
         )
 
-    def _test_conv(self, img, kerns, out, img_val, kern_vals, border_mode, conv_mode, subsamples):
+    def _test_conv(self, img, kerns, out, img_val, kern_vals, border_mode, conv_mode, subsamples, algo):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
 
@@ -448,7 +448,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 subsample=subsample,
                 conv_mode=conv_mode
             )(kerns.shape)
-            conv = dnn.GpuDnnConv()(img, kerns, out, desc)
+            conv = dnn.GpuDnnConv(algo=algo)(img, kerns, out, desc)
             self._compile_and_check(
                 [img, kerns, out],
                 [conv],
@@ -464,38 +464,28 @@ class TestDnnInferShapes(utt.InferShapeTester):
                                         [conv_modes[0]])),
                           testcase_func_name=utt.custom_name_func)
     def test_conv(self, algo, border_mode, conv_mode):
-        try:
-            default_algo = theano.config.dnn.conv.algo_fwd
-            theano.config.dnn.conv.algo_fwd = algo
-
-            self._test_conv(T.ftensor4('img'),
-                            T.ftensor4('kerns'),
-                            T.ftensor4('out'),
-                            numpy.random.rand(7, 2, 8, 4),
-                            numpy.random.rand(8, 2, 4, 3),
-                            border_mode,
-                            conv_mode,
-                            [(1, 1), (2, 2)])
-        finally:
-            theano.config.dnn.conv.algo_fwd = default_algo
+        self._test_conv(T.ftensor4('img'),
+                        T.ftensor4('kerns'),
+                        T.ftensor4('out'),
+                        numpy.random.rand(7, 2, 8, 4),
+                        numpy.random.rand(8, 2, 4, 3),
+                        border_mode,
+                        conv_mode,
+                        [(1, 1), (2, 2)],
+                        algo)
 
     @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
     def test_conv3d_none(self, border_mode, conv_mode):
-        try:
-            default_algo = theano.config.dnn.conv.algo_fwd
-            theano.config.dnn.conv.algo_fwd = 'none'
-
-            ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
-            self._test_conv(ftensor5('img'),
-                            ftensor5('kerns'),
-                            ftensor5('out'),
-                            numpy.random.rand(10, 2, 6, 4, 11),
-                            numpy.random.rand(8, 2, 4, 3, 1),
-                            border_mode,
-                            conv_mode,
-                            [(1, 1, 1), (2, 2, 2)])
-        finally:
-            theano.config.dnn.conv.algo_fwd = default_algo
+        ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
+        self._test_conv(ftensor5('img'),
+                        ftensor5('kerns'),
+                        ftensor5('out'),
+                        numpy.random.rand(10, 2, 6, 4, 11),
+                        numpy.random.rand(8, 2, 4, 3, 1),
+                        border_mode,
+                        conv_mode,
+                        [(1, 1, 1), (2, 2, 2)],
+                        'none')
 
     def _test_conv_gradw(self, img, kerns, out, img_val, kern_vals, border_mode, conv_mode, subsample):
         if not dnn.dnn_available(test_ctx_name):
