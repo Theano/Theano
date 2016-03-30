@@ -5913,6 +5913,7 @@ class Diagonal(Op):
     __props__ = ("offset", "axis1", "axis2")
 
     def __init__(self, offset=0, axis1=0, axis2=1):
+        self.view = False
         if numpy_diagonal_return_view:
             self.view_map = {0: [0]}
             self.view = True
@@ -5945,7 +5946,9 @@ class Diagonal(Op):
         else:
             rval = x[0]
 
-        rval.strides = (x.strides[0] + x.strides[1],)
+        rval.strides = [d for i, d in enumerate(x.strides)
+                        if i not in (self.axis1, self.axis2)]
+        rval.strides.append(x.strides[0] + x.strides[1])
         if self.view:
             z[0] = rval
         else:
@@ -6033,7 +6036,7 @@ class Diag(Op):
         A tensor with passed vector values at its corresponding diagonal.
 
     """
-    __props__ = ("offset")
+    __props__ = ("offset", )
 
     def __init__(self, offset=0):
         if numpy_diagonal_return_view:
