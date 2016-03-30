@@ -7272,6 +7272,34 @@ class TestSpecifyShape(unittest.TestCase):
 
 
 class TestInferShape(utt.InferShapeTester):
+    def test_Diagonal(self):
+        atens3 = tensor3()
+        atens3_val = rand(4, 5, 3)
+        atens3_diag = Diagonal()(atens3)
+
+        self._compile_and_check([atens3], [atens3_diag],
+                                [atens3_val], Diagonal)
+        # atens3_diag = Diagonal(1)(atens3)
+        # self._compile_and_check([atens3], [atens3_diag],
+        #                         [atens3_val], Diagonal)
+        # atens3_diag = Diagonal(-1)(atens3)
+        # self._compile_and_check([atens3], [atens3_diag],
+        #                         [atens3_val], Diagonal)
+        # atens3_diag = Diagonal(1, 0, 2)(atens3)
+        # self._compile_and_check([atens3], [atens3_diag],
+        #                         [atens3_val], Diagonal)
+        # atens3_diag = Diagonal(1, 1, 2)(atens3)
+        # self._compile_and_check([atens3], [atens3_diag],
+        #                         [atens3_val], Diagonal)
+        # atens3_diag = Diagonal(1, 2, 0)(atens3)
+        # self._compile_and_check([atens3], [atens3_diag],
+        #                         [atens3_val], Diagonal)
+
+    def test_Diag(self):
+        advec = dvector()
+        advec_val = rand(4)
+        self._compile_and_check([advec], [Diag()(advec)],
+                                [advec_val], Diag)
 
     def test_infer_shape(self):
 
@@ -7334,34 +7362,6 @@ class TestInferShape(utt.InferShapeTester):
                                 [Tri()(aiscal, biscal, ciscal)],
                                 [3, 5, 0], Tri)
 
-        # Diagonal
-        atens3 = tensor3()
-        atens3_val = rand(4, 5, 3)
-        atens3_diag = Diagonal()(atens3)
-
-        self._compile_and_check([atens3], [atens3_diag],
-                                [atens3_val], Diagonal)
-        # atens3_diag = Diagonal(1)(atens3)
-        # self._compile_and_check([atens3], [atens3_diag],
-        #                         [atens3_val], Diagonal)
-        # atens3_diag = Diagonal(-1)(atens3)
-        # self._compile_and_check([atens3], [atens3_diag],
-        #                         [atens3_val], Diagonal)
-        # atens3_diag = Diagonal(1, 0, 2)(atens3)
-        # self._compile_and_check([atens3], [atens3_diag],
-        #                         [atens3_val], Diagonal)
-        # atens3_diag = Diagonal(1, 1, 2)(atens3)
-        # self._compile_and_check([atens3], [atens3_diag],
-        #                         [atens3_val], Diagonal)
-        # atens3_diag = Diagonal(1, 2, 0)(atens3)
-        # self._compile_and_check([atens3], [atens3_diag],
-        #                         [atens3_val], Diagonal)
-
-        # Diag
-        advec = dvector()
-        advec_val = rand(4)
-        self._compile_and_check([advec], [Diag()(advec)],
-                                [advec_val], Diag)
 
         # Shape
         # 'opt.Makevector' precludes optimizer from disentangling

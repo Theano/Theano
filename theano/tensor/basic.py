@@ -5937,18 +5937,18 @@ class Diagonal(Op):
                              'offset and axis values.')
 
         # zero-dimensional matrices ...
-        if x.shape[0] == 0 or x.shape[1] == 0:
+        if numpy.min(x.shape) == 0:
             z[0] = node.outputs[0].type.value_zeros((0,))
             return
 
-        if x.shape[0] < x.shape[1]:
-            rval = x[:, 0]
+        if x.shape[self.axis1] < x.shape[self.axis2]:
+            rval = x[:, 0].T
         else:
-            rval = x[0]
+            rval = x[0].T
 
-        rval.strides = [d for i, d in enumerate(x.strides)
-                        if i not in (self.axis1, self.axis2)]
-        rval.strides.append(x.strides[0] + x.strides[1])
+        other_strides = tuple([d for i, d in enumerate(x.strides)
+                               if i not in (self.axis1, self.axis2)])
+        rval.strides = other_strides + (x.strides[0] + x.strides[1], )
         if self.view:
             z[0] = rval
         else:
