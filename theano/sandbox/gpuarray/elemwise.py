@@ -22,32 +22,12 @@ except ImportError:
 
 from .basic_ops import (as_gpuarray_variable, HideC, GpuKernelBase, Kernel,
                         infer_context_name)
-from .type import GpuArrayType
+from .type import GpuArrayType, gpu_context_type
 from .fp16_help import load_w, write_w
 
 
-def _is_scalar(v):
-    False
-
-
 def make_argument(v, name):
-    if _is_scalar(v):
-        return ScalarArg(numpy.dtype(v.type.dtype), name)
-    else:
-        return ArrayArg(numpy.dtype(v.type.dtype), name)
-
-
-def ensure_allocated(storage, shape, dtype, ctx):
-    odat = storage[0]
-    if odat is not None:
-        if odat.shape != shape:
-            # It is unsafe to try to resize odat,
-            # we have to allocate output storage.
-            odat = None
-    if odat is None:
-        odat = pygpu.empty(shape, dtype=dtype, context=ctx)
-    storage[0] = odat
-    return odat
+    return ArrayArg(numpy.dtype(v.type.dtype), name)
 
 
 def as_C_string_const(s):
@@ -55,11 +35,12 @@ def as_C_string_const(s):
                      for l in s.split('\n'))
 
 
-class GpuElemwise(GpuKernelBase, HideC, Elemwise):
+class GpuElemwise(HideC, Elemwise):
     """
     Elemwise on the GPU.
 
     """
+    params_type = gpu_context_type
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
     _f16_ok = True
@@ -108,20 +89,21 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
     def get_params(self, node):
         return node.inputs[0].type.context
 
-    def generate_kernel(self, node, nodename):
-        inps = [make_argument(i, 'i%d' % (n,)) for n, i in
-                enumerate(node.inputs)]
-        scal_v_ins = [scalar.get_scalar_type(i.dtype) for i in node.inputs]
+    def _get_vnames(self, node):
+        inps = ['i%d' % (n,) for n, _ in enumerate(node.inputs)]
+        outs = ['o%d' % (n,) for n, _ in enumerate(node.outputs) if n not in self.inplace_pattern]
+        return inps, outs
 
-        outs = [make_argument(o, 'o%d' % (n,)) for n, o in
-                enumerate(node.outputs) if n not in self.inplace_pattern]
+    def _generate_op_string(self, node):
+        scal_v_ins = [scalar.get_scalar_type(i.dtype) for i in node.inputs]
         scal_v_outs = [scalar.get_scalar_type(o.dtype) for o in node.outputs]
+        inps, outs = self._get_vnames(node)
 
         fake_node = Apply(self.scalar_op, [i() for i in scal_v_ins],
                           [o() for o in scal_v_outs])
 
-        scal_in = [i.name + '[i]' if i.dtype != 'float16' else
-                   '__half2float(' + i.name + '[i])' for i in inps]
+        scal_in = [i if si.dtype != 'float16' else
+                   'load_half(&' + i + ')' for i, si in zip(inps, scal_v_ins)]
 
         scal_out = []
         oi = 0
@@ -132,13 +114,13 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
             else:
                 arg = outs[oi]
                 oi += 1
-            if arg.dtype == 'float16':
+            if node.outputs[n].dtype == 'float16':
                 scal_f16.append(('tmpf16%i' % (len(scal_f16),), arg))
                 scal_out.append(scal_f16[-1][0])
             else:
-                scal_out.append(arg.name + '[i]')
+                scal_out.append(arg)
 
-        kop = self.scalar_op.c_code(fake_node, nodename + '_scalar',
+        kop = self.scalar_op.c_code(fake_node, 'elem_scalar',
                                     scal_in, scal_out,
                                     dict(fail='return;'))
 
@@ -153,7 +135,7 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
             # variables inthe middle are float32
             code.append(kop.replace('npy_float16', 'ga_float'))
             for f in scal_f16:
-                code.append('%s[i] = __float2half_rn(%s);' % (f[1].name, f[0]))
+                code.append('store_half(&%s, %s);' % (f[1], f[0]))
             code.append('}')
             kop = '\n'.join(code)
 
@@ -177,76 +159,74 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
                         ("npy_float64", "ga_double"),
                         ]:
             kop = kop.replace(npy, ga)
-        return ElemwiseKernel(self.get_params(node), inps + outs, kop,
-                              preamble=support_code)
+        return support_code, kop
 
     def c_headers(self):
-        return ['<numpy_compat.h>', '<gpuarray/types.h>']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>',
+                '<gpuarray/elemwise.h>']
 
-    def c_support_code(self):
-        return self.scalar_op.c_support_code()
+    def c_support_code_struct(self, node, name):
+        return "\nGpuElemwise *ge;\n";
 
-    def _gpu_kernel_code(self, node, nodename):
-        # This is useless by itself, but will serve an eventual c_code
-        # implementation
-        k = self.generate_kernel(node, nodename)
-        nd = node.inputs[0].type.ndim
-        res = []
-        for i in range(0, nd + 1):
-            res.append(k.render_basic(i, name="elem_" + str(i)) + ';')
-        res.append(k.contig_src + ';')
+    def c_init_code_struct(self, node, name, sub):
+        inps, outs = self._get_vnames(node)
+        nargs = len(inps) + len(outs)
+        support_code, kop = self._generate_op_string(node)
+        res = """
+        gpuelemwise_arg args[%(nargs)s] = {{0}};
+        """ % dict(nargs=nargs)
 
-        return '\n'.join(res)
+        for n, (i, name) in enumerate(zip(node.inputs, inps)):
+            res += """
+            args[%(n)s].name = %(name)s;
+            args[%(n)s].nd = %(nd)s;
+            args[%(n)s].typecode = %(typecode)s;
+            args[%(n)s].flags = GE_READ;
+            """ % dict(n=n, name='"%s"' % (name,), nd=i.ndim,
+                       typecode=i.type.typecode)
 
-    def gpu_kernels(self, node, nodename):
-        src = self._gpu_kernel_code(node, nodename)
-        nd = node.outputs[0].ndim
-        params = ['uintp']
-        params.extend('uintp' for _ in range(nd))
-        num_inputs = len(node.inputs)
-        num_outputs = len(node.outputs)
-        for n in range(num_inputs + num_outputs):
-            if (n - len(node.inputs)) in self.inplace_pattern:
-                continue
-            params.extend([gpuarray.GpuArray, 'uintp'])
-            params.extend('intp' for _ in range(nd))
-        acc_dtype = getattr(self, 'acc_dtype', None)
-        if acc_dtype is None:
-            acc_dtype = node.outputs[0].type.dtype
-        return [Kernel(code=src, name="elem_%d" % nd, params=params,
-                       flags=Kernel.get_flags(node.inputs[0].type.dtype,
-                                              acc_dtype,
-                                              node.outputs[0].type.dtype),
-                       objvar='elem_%d_%s' % (nd, nodename))]
+        p = 0
+        for n, o in enumerate(node.outputs):
+            if n in self.inplace_pattern:
+                res += "\nargs[%(n)s].flags |= GE_WRITE;\n" % dict(n=self.inplace_pattern[n])
+            else:
+                nn = len(inps) + p
+                name = outs[p]
+                p += 1
+                res += """
+                args[%(n)s].name = %(name)s;
+                args[%(n)s].nd = %(nd)s;
+                args[%(n)s].typecode = %(typecode)s;
+                args[%(n)s].flags = GE_WRITE;
+                """ % dict(n=nn, name='"%s"' % (name,), nd=o.ndim,
+                           typecode=o.type.typecode)
+
+        res += """
+        ge = GpuElemwise_new(%(ctx)s->ops, %(ctx)s->ctx, %(support)s, %(kop)s, %(nargs)s, args, 0);
+        if (ge == NULL) {
+           PyErr_SetString(PyExc_RuntimeError, "Could not initialize elemwise support");
+           %(fail)s
+        }
+        """ % dict(nargs=nargs, ctx=sub['params'], fail=sub['fail'],
+                   support=as_C_string_const(support_code),
+                   kop=as_C_string_const(kop))
+
+        return res
 
     def c_code(self, node, name, inputs, outputs, sub):
-        if node.inputs[0].type.context.kind != 'cuda':
-            raise MethodNotDefined('cuda only')
         nd = node.outputs[0].ndim
         fail = sub["fail"]
         initial_dims = ','.join('1' for i in xrange(nd))
         opname = str(self.scalar_op)
         ctx = sub['params']
+        nargs = len(node.inputs) + len(node.outputs) - len(self.inplace_pattern)
 
         # check that all inputs have valid dimensions
         emitted_inames = {}
-        num_kernel_params = 1 + nd + len(inputs + outputs) * (2 + nd)
         code = """
-        size_t n_blocks = 0;
-        size_t threads_per_block = 0;
-        size_t numEls = 0;
-        const ssize_t zero = 0;
-        void *kernel_params[%(num_kernel_params)d] = {0};
-        int err;
+        size_t dims[%(nd)s+1] = {%(initial_dims)s};
+        void *rargs[%(nargs)s] = {0};
         """ % locals()
-        if nd > 0:
-            code += """
-            size_t dims[%(nd)s] = {%(initial_dims)s};
-            """ % locals()
-        else:
-            code += """
-            size_t *dims = NULL;
-            """
         for idx, iname in enumerate(inputs):
             if iname in emitted_inames:
                 assert emitted_inames[iname] is node.inputs[idx]
@@ -255,19 +235,15 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
             broadcasts = map(int, node.inputs[idx].broadcastable)
             broadcasts = ', '.join(map(str, broadcasts))
             nd = node.inputs[idx].ndim
-            if nd > 0:
-                code += """
-                int broadcasts_%(iname)s[%(nd)s] = {%(broadcasts)s};
-                """ % locals()
-            else:
-                code += """
-                int *broadcasts_%(iname)s = NULL;
-                """ % locals()
+            code += """
+            int broadcasts_%(iname)s[%(nd)s+1] = {%(broadcasts)s};
+            """ % locals()
             emitted_inames[iname] = node.inputs[idx]
 
         # check that all inputs have valid dimensions
         emitted_inames = {}
         for idx, iname in enumerate(inputs):
+            code += "rargs[%(idx)s] = &%(iname)s->ga;\n" % dict(idx=idx, iname=iname)
             if iname in emitted_inames:
                 continue
             code += """
@@ -296,9 +272,10 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
                 %(fail)s;
             }
         }
-            """ % locals()
+        """ % locals()
             emitted_inames[iname] = True
         # check that all outputs have valid dimensions
+        p = len(node.inputs)
         for idx, oname in enumerate(outputs):
             typecode = dtype_to_typecode(node.outputs[idx].dtype)
             if idx not in self.inplace_pattern.keys():
@@ -324,7 +301,9 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
                 %(fail)s
             }
         }
+        rargs[%(p)s] = &%(oname)s->ga;
         """ % locals()
+                p += 1
             else:
                 input_idx = self.inplace_pattern[idx]
                 iname = inputs[input_idx]
@@ -350,92 +329,35 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
             }
         }
         """ % locals()
-        z = outputs[0]
-        code += """numEls = PyGpuArray_SIZE(%(z)s);
 
-        //first use at least a full warp
-        threads_per_block = std::min(numEls, (size_t)32); //WARP SIZE
-
-        //next start adding multiprocessors
-        // UP TO NUMBER OF MULTIPROCESSORS, use 30 for now.
-        n_blocks = std::min(numEls/threads_per_block +
-                               (numEls %% threads_per_block?1:0),
-                           (size_t)30);
-
-        // next start adding more warps per multiprocessor
-        if (threads_per_block * n_blocks < numEls)
-            threads_per_block = std::min(numEls/n_blocks, (size_t) 256);
-
-        """ % locals()
-
-        kname = 'elem_%d_%s' % (nd, name)
-        param = ["(void *)&numEls"]
-        for i in range(nd):
-            param.append("(void *)&%(z)s->ga.dimensions[%(i)d]" % dict(z=outputs[0],
-                                                                       i=i))
-        for n, (name, var) in enumerate(zip(inputs + outputs,
-                                            node.inputs + node.outputs)):
-            if (n - len(inputs)) in self.inplace_pattern:
-                continue
-            dtype = dtype_to_ctype(var.dtype)
-            param.append("(void *)%(name)s->ga.data" % locals())
-            param.append("(void *)&%(name)s->ga.offset" % locals())
-            for i in range(nd):
-                param.append("PyGpuArray_DIMS(%(name)s)[%(i)d] == 1 ? (void *)&zero: (void *)&PyGpuArray_STRIDES(%(name)s)[%(i)d]" % locals())
-        for n, p in enumerate(param):
-            code += "kernel_params[%(n)d] = %(p)s;\n" % locals()
         code += """
-        err = GpuKernel_call(&%(kname)s, 1, &threads_per_block, &n_blocks, 0, kernel_params);
-        if (err != GA_NO_ERROR) {
-            PyErr_Format(PyExc_RuntimeError,
-                         "gpuarray error: %(kname)s: %%s.",
-                         GpuKernel_error(&%(kname)s, err));
-            %(fail)s;
+        if (GpuElemwise_call(ge, rargs, GE_BROADCAST) != GA_NO_ERROR) {
+          PyErr_SetString(PyExc_RuntimeError, "Error in the elemwise call");
+          %(fail)s
         }
-        """ % dict(kname=kname, fail=fail)
+        """ % dict(fail=sub['fail'])
+
         if config.gpuarray.sync:
+            z = outputs[0]
             code += """
             err = GpuArray_sync(&%(z)s->ga);
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
-                             "gpuarray error: %(kname)s: %%s.",
-                             GpuKernel_error(&%(kname)s, err));
+                             "gpuarray error: %%s.",
+                             GpuArray_error(&%(z)s->ga, err));
                 %(fail)s;
             }
             """ % locals()
+
         return str(code)
 
-    def perform(self, node, inputs, output_storage, ctx):
-        # Try to reuse the kernel from a previous call to hopefully
-        # avoid recompiling
-        if not hasattr(node, '_cache_elemwise_k'):
-            node._cache_elemwise_k = self.generate_kernel(node, "kcode")
-
-        out_shape = []
-        for values in izip(*[input.shape for input in inputs]):
-            if any(v == 0 for v in values):
-                # All non-broadcasted dimensions should be zero
-                assert max(values) <= 1
-                out_shape.append(0)
-            else:
-                out_shape.append(max(values))
-        out_shape = tuple(out_shape)
-
-        args = copy.copy(inputs)
-        for n, (stor, out) in enumerate(izip(output_storage, node.outputs)):
-            if n in self.inplace_pattern:
-                stor[0] = inputs[self.inplace_pattern[n]]
-            else:
-                args.append(ensure_allocated(stor, out_shape, out.type.dtype, ctx))
-
-        node._cache_elemwise_k(*args, broadcast=True)
-        if config.gpuarray.sync:
-            output_storage[0][0].sync()
+    # To disable the superclass perform.
+    perform = Op.perform
 
     def c_code_cache_version(self):
         ver = self.scalar_op.c_code_cache_version()
         if ver:
-            return (4, ver)
+            return (5, ver)
         else:
             return ver
 
