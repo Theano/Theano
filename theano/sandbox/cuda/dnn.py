@@ -2484,8 +2484,8 @@ err%(name)s = cudnnBatchNormalizationForwardTraining(
   CudaNdarray_DEV_DATA(%(ins3)s),
   CudaNdarray_DEV_DATA(%(ins4)s),
   epsilon%(name)s,
-  CudaNdarray_DEV_DATA(%(outs1)s),
-  CudaNdarray_DEV_DATA(%(outs2)s)
+  CudaNdarray_DEV_DATA(%(outs3)s),
+  CudaNdarray_DEV_DATA(%(outs4)s)
 );
 }
 #endif
