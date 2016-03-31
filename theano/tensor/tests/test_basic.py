@@ -3884,7 +3884,7 @@ class T_Join_and_Split(unittest.TestCase):
         got = f(-2)
         assert numpy.allclose(got, want)
 
-        self.assertRaises((IndexError, OverflowError), f, -3)
+        self.assertRaises(IndexError, f, -3)
 
     def test_join_matrixC_negative_axis(self):
         """constant join negative axis"""
@@ -3916,7 +3916,7 @@ class T_Join_and_Split(unittest.TestCase):
         got = f()
         assert numpy.allclose(got, want)
 
-        self.assertRaises((IndexError, OverflowError), join, -3, a, b)
+        self.assertRaises(IndexError, join, -3, a, b)
 
         utt.verify_grad(lambda a, b: join(-1, a, b), [v, 2 * v],
                         mode=self.mode)
