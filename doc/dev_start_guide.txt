@@ -39,6 +39,7 @@ To get up to speed, you'll need to
 
 .. _Sphinx: http://sphinx.pocoo.org/
 .. _reStructuredText: http://docutils.sourceforge.net/rst.html
+.. _Docstring sections: https://sphinxcontrib-napoleon.readthedocs.org/en/latest/#docstring-sections
 .. _NumPy documentation: http://docs.scipy.org/numpy/
 .. _unittest: http://docs.python.org/library/unittest.html
 .. _nose: http://nose.readthedocs.org/en/latest/
