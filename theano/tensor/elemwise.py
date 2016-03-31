@@ -76,18 +76,22 @@ class DimShuffle(Op):
         If True, the output will be a view of the input.
         If False (default), the output will be a copy of the input.
 
-    If j = new_order[i] is an index, the output's ith dimension
+    Note
+    ----
+    If `j = new_order[i]` is an index, the output's ith dimension
     will be the input's jth dimension.
-    If new_order[i] is 'x', the output's ith dimension will
+    If `new_order[i]` is `x`, the output's ith dimension will
     be 1 and Broadcast operations will be allowed to do broadcasting
     over that dimension.
 
-    If input.broadcastable[i] == False then i must be found in new_order.
+    If `input.broadcastable[i] == False` then `i` must be found in new_order.
     Broadcastable dimensions, on the other hand, can be discarded.
 
-    Extended Summary
-    ----------------
-    DimShuffle((False, False, False), ['x', 2, 'x', 0, 1])
+    Note
+    ----
+    .. code-block:: python
+
+        DimShuffle((False, False, False), ['x', 2, 'x', 0, 1])
 
     This op will only work on 3d tensors with no broadcastable
     dimensions.  The first dimension will be broadcastable,
@@ -96,7 +100,9 @@ class DimShuffle(Op):
     shape (20, 30, 40), the resulting tensor will have dimensions
     (1, 40, 1, 20, 30). (AxBxC tensor is mapped to 1xCx1xAxB tensor)
 
-    DimShuffle((True, False), [1])
+    .. code-block:: python
+
+        DimShuffle((True, False), [1])
 
     This op will only work on 2d tensors with the first dimension
     broadcastable.
@@ -105,17 +111,20 @@ class DimShuffle(Op):
     If the tensor has shape (1, 20), the resulting tensor will have shape
     (20, ).
 
-    More examples :
-    DimShuffle((), ['x']) -> make a 0d (scalar) into a 1d vector
-    DimShuffle((False, False), [0, 1]) -> identity
-    DimShuffle((False, False), [1, 0]) -> inverts the 1st and 2nd dimensions
-    DimShuffle((False,), ['x', 0]) -> make a row out
-                                      of a 1d vector (N to 1xN)
-    DimShuffle((False,), [0, 'x']) -> make a column
-                                      out of a 1d vector (N to Nx1)
-    DimShuffle((False, False, False), [2, 0, 1]) -> AxBxC to CxAxB
-    DimShuffle((False, False), [0, 'x', 1]) -> AxB to Ax1xB
-    DimShuffle((False, False), [1, 'x', 0]) -> AxB to Bx1xA
+    Example
+    -------
+    .. code-block:: python
+
+        DimShuffle((), ['x'])  # make a 0d (scalar) into a 1d vector
+        DimShuffle((False, False), [0, 1])  # identity
+        DimShuffle((False, False), [1, 0])  # inverts the 1st and 2nd dimensions
+        DimShuffle((False,), ['x', 0])  # make a row out of a 1d vector
+                                        # (N to 1xN)
+        DimShuffle((False,), [0, 'x'])  # make a column out of a 1d vector
+                                        # (N to Nx1)
+        DimShuffle((False, False, False), [2, 0, 1])  # AxBxC to CxAxB
+        DimShuffle((False, False), [0, 'x', 1])  # AxB to Ax1xB
+        DimShuffle((False, False), [1, 'x', 0])  # AxB to Bx1xA
 
     The reordering of the dimensions can be done with the numpy.transpose
     function.
@@ -487,15 +496,15 @@ class Elemwise(OpenMPOp):
 
     Examples
     --------
-    Elemwise(add) # represents + on tensors (x + y)
-    Elemwise(add, {0 : 0}) # represents the += operation (x += y)
-    Elemwise(add, {0 : 1}) # represents += on the second argument (y += x)
-    Elemwise(mul)(rand(10, 5), rand(1, 5)) # the second input is completed
-    # along the first dimension to match the first input
-    Elemwise(true_div)(rand(10, 5), rand(10, 1)) # same but along the
-    # second dimension
-    Elemwise(int_div)(rand(1, 5), rand(10, 1)) # the output has size (10, 5)
-    Elemwise(log)(rand(3, 4, 5))
+    >>> Elemwise(add) # represents + on tensors (x + y)
+    >>> Elemwise(add, {0 : 0}) # represents the += operation (x += y)
+    >>> Elemwise(add, {0 : 1}) # represents += on the second argument (y += x)
+    >>> Elemwise(mul)(rand(10, 5), rand(1, 5)) # the second input is completed
+    >>> # along the first dimension to match the first input
+    >>> Elemwise(true_div)(rand(10, 5), rand(10, 1)) # same but along the
+    >>> # second dimension
+    >>> Elemwise(int_div)(rand(1, 5), rand(10, 1)) # the output has size (10, 5)
+    >>> Elemwise(log)(rand(3, 4, 5))
 
     """
 
@@ -1309,19 +1318,22 @@ class CAReduce(Op):
         - List of dimensions that we want to reduce
         - If None, all dimensions are reduced
 
-    Examples
-    --------
-    CAReduce(add) -> sum (ie, acts like the numpy sum operation)
-    CAReduce(mul) -> product
-    CAReduce(maximum) -> max
-    CAReduce(minimum) -> min
-    CAReduce(or) -> any # not lazy
-    CAReduce(and) -> all # not lazy
-    CAReduce(xor) -> a bit at 1 tell that there was an odd number of bit at
-    that position that where 1. 0 it was an even number ...
+    Note
+    ----
+    .. code-block:: python
+
+        CAReduce(add)      # sum (ie, acts like the numpy sum operation)
+        CAReduce(mul)      # product
+        CAReduce(maximum)  # max
+        CAReduce(minimum)  # min
+        CAReduce(or_)      # any # not lazy
+        CAReduce(and_)     # all # not lazy
+        CAReduce(xor)      # a bit at 1 tell that there was an odd number of
+                           # bit at that position that where 1. 0 it was an
+                           # even number ...
 
     In order to (eventually) optimize memory usage patterns,
-    L{CAReduce} makes zero guarantees on the order in which it
+    CAReduce makes zero guarantees on the order in which it
     iterates over the dimensions and the elements of the
     array(s). Therefore, to ensure consistent variables, the scalar
     operation represented by the reduction must be both commutative
@@ -1707,7 +1719,7 @@ class All(CAReduce):
     """ Applies `bitwise and` to all the values of a tensor along the
     specified axis(es).
 
-    Equivalent to CAReduce(scalar.and, axis=axis).
+    Equivalent to `CAReduce(scalar.and\_, axis=axis)`.
 
     """
 
@@ -1739,7 +1751,7 @@ class Any(CAReduce):
     """ Applies `bitwise or` to all the values of a tensor along the
     specified axis(es).
 
-    Equivalent to CAReduce(scalar.or, axis=axis).
+    Equivalent to `CAReduce(scalar.or\_, axis=axis)`.
 
     """
 
@@ -1790,17 +1802,19 @@ class CAReduceDtype(CAReduce):
         It must be commutative and associative.
 
     axis
-        - the dimension along which we want to reduce
-        - list of dimensions that we want to reduce
-        - if None, all dimensions are reduced
+        * the dimension along which we want to reduce
+        * list of dimensions that we want to reduce
+        * if None, all dimensions are reduced
 
     dtype
         The dtype of the returned tensor. If None, then we use the default
         dtype which is the same as the input tensor's dtype except when:
-        - the input dtype is a signed integer of precision < 64 bit, in
-        which case we use int64
-        - the input dtype is an unsigned integer of precision < 64 bit, in
-        which case we use uint64
+
+        * the input dtype is a signed integer of precision < 64 bit, in which
+          case we use int64
+        * the input dtype is an unsigned integer of precision < 64 bit, in
+          which case we use uint64
+
         This default dtype does _not_ depend on the value of "acc_dtype".
         This behavior is similar in spirit to that of numpy (except numpy
         uses the default machine integer while we always use 64 bit
@@ -1810,10 +1824,11 @@ class CAReduceDtype(CAReduce):
         The dtype of the internal accumulator.
         If None (default), we use the dtype in the list below,
         or the input dtype if its precision is higher:
-        - for int dtypes, we use at least int64;
-        - for uint dtypes, we use at least uint64;
-        - for float dtypes, we use at least float64;
-        - for complex dtypes, we use at least complex128.
+
+        * for int dtypes, we use at least int64;
+        * for uint dtypes, we use at least uint64;
+        * for float dtypes, we use at least float64;
+        * for complex dtypes, we use at least complex128.
 
     """
 
@@ -1942,7 +1957,7 @@ class Sum(CAReduceDtype):
     """
     Sums all the values of a tensor along the specified axis(es).
 
-    Equivalent to CAReduceDtype(scalar.add, axis=axis, dtype=dtype),
+    Equivalent to `CAReduceDtype(scalar.add, axis=axis, dtype=dtype)`,
     with the difference that this defines the gradient of sum wrt its
     tensor input.
 
@@ -2017,7 +2032,7 @@ class Prod(CAReduceDtype):
     """
     Multiplies all the values of a tensor along the specified axis(es).
 
-    Equivalent to CAReduce(scalar.prod, axis = axis), with the
+    Equivalent to `CAReduce(scalar.prod, axis = axis)`, with the
     difference that this defines the gradient of prod wrt its tensor
     input.
 
@@ -2066,9 +2081,10 @@ class Prod(CAReduceDtype):
 
         With zeros, things get more complicated. For a given group, we have 3
         cases:
+
         * No zeros in the group. Use previous trick.
         * If only one zero is present, then the gradient for that element is
-        non-zero, but is zero for all others.
+            non-zero, but is zero for all others.
         * If more than one zero is present, then all the derivatives are zero.
 
         For the last two cases (with 1 or more zeros), we can't use the

@@ -8,7 +8,7 @@ Contributing
 ============
 
 You want to contribute to Theano? That is great! This page explain our
-workflow and some ressource for doing so.
+workflow and some resource for doing so.
 
 Looking for an idea for a first contribution? Check `github issue
 <https://github.com/Theano/Theano/issues?q=is%3Aopen+is%3Aissue+label%3A%22Easy+fix%22>`
@@ -39,7 +39,7 @@ To get up to speed, you'll need to
 
 .. _Sphinx: http://sphinx.pocoo.org/
 .. _reStructuredText: http://docutils.sourceforge.net/rst.html
-.. _Docstring sections: https://sphinxcontrib-napoleon.readthedocs.org/en/latest/#docstring-sections
+.. _Allowed docstring sections in Napoleon: https://sphinxcontrib-napoleon.readthedocs.org/en/latest/#docstring-sections
 .. _NumPy documentation: http://docs.scipy.org/numpy/
 .. _unittest: http://docs.python.org/library/unittest.html
 .. _nose: http://nose.readthedocs.org/en/latest/
@@ -220,12 +220,57 @@ GitHub, to let them know that you have submitted a fix.
 Tips for Quality Contributions
 ==============================
 
-Coding Style
------------------------
+* All the code should be properly tested. 
 
-Please always respect the :ref:`Documentation`
-or your contribution will not be accepted
+* The code should be compatible with Python 2.6 and above, as well as Python 
+  3.3 and above (using `six` if needed).
 
+* All the code should respect the 
+  `PEP8 Code Style Guide <http://www.python.org/dev/peps/pep-0008>`_.
+
+* The docstrings of all the classes and functions should respect the
+  `PEP257 <https://www.python.org/dev/peps/pep-0257/>`_ rules and follow the 
+  `Numpy docstring standard
+  <https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt>`_.
+
+Each point will be referred to more in detail in the following.
+
+Unit tests
+----------
+
+When you submit a pull request, your changes will automatically be
+tested via Travis-CI. This will post the results of the tests with a
+little icon next to your commit. A yellow circle means the tests are
+running.  A red X means the tests failed and a green circle means the
+tests passed.
+
+Just because the tests run automatically does not mean you shouldn't
+run them yourself to make sure everything is all right.  You can run
+only the portion you are modifying to go faster and have travis to
+make sure there are no global impacts.
+
+Also, if you are changing GPU code, travis doesn't test that, because
+there are no GPUs on the test nodes.
+
+To run the test suite with the default options, you can follow the
+instructions of :ref:`testing_installation`.
+
+Each night we execute all the unit tests automatically, with several
+sets of options. The result is sent by email to the `theano-buildbot`_
+mailing list.
+
+For more detail, see :ref:`metadocumentation_nightly_build`.
+
+To run all the tests with the same configuration as the buildbot, run
+this script:
+
+.. code-block:: bash
+
+   theano/misc/do_nightly_build
+
+This script accepts arguments that it forwards to nosetests. You can
+run only some tests or enable pdb by giving the equivalent nosetests
+parameters.
 
 Setting up your Editor for PEP8
 -------------------------------
@@ -260,7 +305,7 @@ To setup VIM:
 
 #. Edit ``~/.vimrc`` and add the lines::
 
-    .. code-block:: python
+    .. code-block:: txt
 
     set nocompatible              " be iMproved, required
     filetype off                  " required
@@ -377,42 +422,70 @@ Then in your ``~/.emacs`` file, add this:
    '(flymake-errline ((((class color)) (:underline "red"))))
    '(flymake-warnline ((((class color)) (:underline "yellow")))))
 
-Unit tests
-----------
+Documentation and docstrings
+----------------------------
+* The documentation and the API documentation are generated using `Sphinx`_.
 
-When you submit a pull request, your changes will automatically be
-tested via Travis-CI. This will post the results of the tests with a
-little icon next to your commit. A yellow circle means the tests are
-running.  A red X means the tests failed and a green circle means the
-tests passed.
+* The documentation should be written in `reStructuredText`_ and the
+  docstrings of all the classes and functions should respect the
+  `PEP257 <https://www.python.org/dev/peps/pep-0257/>`_ rules and follow the 
+  `Numpy docstring standard
+  <https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt>`_.
 
-Just because the tests run automatically does not mean you shouldn't
-run them yourself to make sure everything is all right.  You can run
-only the portion you are modifying to go faster and have travis to
-make sure there are no global impacts.
+* Split the docstrings in sections, according to the `Allowed docstring
+  sections in Napoleon`_
 
-Also, if you are changing GPU code, travis doesn't test that, because
-there are no GPUs on the test nodes.
+* To cross-reference other objects (e.g. reference other classes or methods) in 
+  the docstrings, use the
+  `cross-referencing objects <http://www.sphinx-doc.org/en/stable/domains.html#cross-referencing-python-objects>`_ 
+  syntax. ``:py`` can be omitted, see e.g. this 
+  `stackoverflow answer <http://stackoverflow.com/a/7754189>`_.
 
-To run the test suite with the default options, you can follow the
-instructions of :ref:`testing_installation`.
+* See :ref:`metadocumentation`, for some information on how to generate the 
+  documentation.
 
-Each night we execute all the unit tests automatically, with several
-sets of options. The result is sent by email to the `theano-buildbot`_
-mailing list.
 
-For more detail, see :ref:`metadocumentation_nightly_build`.
+A Docstring Example
+~~~~~~~~~~~~~~~~~~~
+Here is an example on how to add a docstring to a class.
 
-To run all the tests with the same configuration as the buildbot, run
-this script:
+.. testcode:: python
 
-.. code-block:: bash
+    import theano
 
-   theano/misc/do_nightly_build
+    class DoubleOp(theano.Op):
+        """
+        Double each element of a tensor.
 
-This script accepts arguments that it forwards to nosetests. You can
-run only some tests or enable pdb by giving the equivalent nosetests
-parameters.
+        Parameters
+        ----------
+        x : tensor
+            Input tensor
+
+        Returns
+        -------
+        tensor
+            a tensor of the same shape and dtype as the input with all
+            values doubled.
+
+        Notes
+        -----
+        this is a test note
+
+        See Also
+        --------
+        :class:`~theano.tensor.elemwise.Elemwise` : You can use this to replace
+        this example.  Just execute `x * 2` with x being a Theano variable.
+
+
+        .. versionadded:: 0.6
+        """
+
+This is how it will show up for files that we auto-list in the library
+documentation:
+
+.. automodule:: theano.misc.doubleop
+    :members:
 
 
 More Advanced Git Usage
