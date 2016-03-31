@@ -568,11 +568,11 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
         x_val = numpy.random.normal(0, 1, (3, 4, 2, 5)).astype('float32')
         x_val2 = numpy.random.normal(0, 1, (3, 4, 1, 1)).astype('float32')
 
-        utt.verify_grad(softmax_op, [x_val])
+        utt.verify_grad(softmax_op, [x_val], mode=mode_with_gpu)
 
         # Gradient is broken for (n, c, 1, 1) in v3 rc1
         if cuda.dnn.version() != (3000, 3000):
-            utt.verify_grad(softmax_op, [x_val2])
+            utt.verify_grad(softmax_op, [x_val2], mode=mode_with_gpu)
 
     def test_cudnn_softmax_grad_opt(self):
         # Verify that the SoftmaxGrad -> GpuDnnSoftmaxGrad optimization is
@@ -1353,9 +1353,9 @@ def test_dnn_conv_grad():
         return dnn.GpuDnnConvGradW()(img, out, kern, desc, alpha=0.75,
                                      beta=-1.0)
 
-    utt.verify_grad(dconv, [img_val, kern_val, out_val])
-    utt.verify_grad(dconvi, [img_val, kern_val, out_val])
-    utt.verify_grad(dconvw, [img_val, kern_val, out_val])
+    utt.verify_grad(dconv, [img_val, kern_val, out_val], mode=mode_with_gpu)
+    utt.verify_grad(dconvi, [img_val, kern_val, out_val], mode=mode_with_gpu)
+    utt.verify_grad(dconvw, [img_val, kern_val, out_val], mode=mode_with_gpu)
 
 
 def get_conv3d_test_cases():
