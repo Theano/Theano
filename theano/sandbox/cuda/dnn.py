@@ -2184,7 +2184,8 @@ err%(name)s = cudnnSoftmaxBackward(
 );
 }
 #endif
-        """
+"""
+
 
 class GpuDnnBatchNormBase(DnnBase):
     """
