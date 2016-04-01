@@ -464,6 +464,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
                                         [conv_modes[0]])),
                           testcase_func_name=utt.custom_name_func)
     def test_conv(self, algo, border_mode, conv_mode):
+        if algo == 'winograd' and dnn.version() < 5000:
+            raise SkipTest(dnn.dnn_available.msg)
+
         self._test_conv(T.ftensor4('img'),
                         T.ftensor4('kerns'),
                         T.ftensor4('out'),

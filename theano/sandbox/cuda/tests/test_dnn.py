@@ -393,8 +393,9 @@ def test_pooling_with_tensor_vars():
 
 
 def test_old_pool_interface():
-    if not cuda.dnn.dnn_available():
+    if not cuda.dnn.dnn_available() or cuda.dnn.version() > (5000, 5000):
         raise SkipTest(cuda.dnn.dnn_available.msg)
+
     testfile_dir = os.path.dirname(os.path.realpath(__file__))
     fname = 'old_pool_interface.pkl'
     with open(os.path.join(testfile_dir, fname), 'rb') as fp:

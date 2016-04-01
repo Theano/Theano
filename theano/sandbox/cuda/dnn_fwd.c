@@ -224,6 +224,18 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
                                                   APPLY_SPECIFIC(output),
                                                   chosen_algo,
                                                   &worksize);
+    if (err == CUDNN_STATUS_NOT_SUPPORTED) {
+      // Fallback to none algo if not supported
+      chosen_algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+
+      err = cudnnGetConvolutionForwardWorkspaceSize(_handle,
+                                                    APPLY_SPECIFIC(input),
+                                                    APPLY_SPECIFIC(kerns),
+                                                    desc,
+                                                    APPLY_SPECIFIC(output),
+                                                    chosen_algo,
+                                                    &worksize);
+    }
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError,
                    "GpuDnnConv: error getting worksize: %s",
