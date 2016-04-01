@@ -21,3 +21,4 @@ forms of signal processing.
 
     conv
     downsample
+    pool
