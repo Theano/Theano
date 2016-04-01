@@ -1323,13 +1323,13 @@ class CAReduce(Op):
     CAReduce(mul) -> product
     CAReduce(maximum) -> max
     CAReduce(minimum) -> min
-    CAReduce(or) -> any # not lazy
-    CAReduce(and) -> all # not lazy
+    CAReduce(or_) -> any # not lazy
+    CAReduce(and_) -> all # not lazy
     CAReduce(xor) -> a bit at 1 tell that there was an odd number of bit at
     that position that where 1. 0 it was an even number ...
 
     In order to (eventually) optimize memory usage patterns,
-    L{CAReduce} makes zero guarantees on the order in which it
+    CAReduce makes zero guarantees on the order in which it
     iterates over the dimensions and the elements of the
     array(s). Therefore, to ensure consistent variables, the scalar
     operation represented by the reduction must be both commutative
@@ -1715,7 +1715,7 @@ class All(CAReduce):
     """ Applies `bitwise and` to all the values of a tensor along the
     specified axis(es).
 
-    Equivalent to CAReduce(scalar.and, axis=axis).
+    Equivalent to CAReduce(scalar.and_, axis=axis).
 
     """
 
@@ -1747,7 +1747,7 @@ class Any(CAReduce):
     """ Applies `bitwise or` to all the values of a tensor along the
     specified axis(es).
 
-    Equivalent to CAReduce(scalar.or, axis=axis).
+    Equivalent to CAReduce(scalar.or_, axis=axis).
 
     """
 
@@ -2074,9 +2074,10 @@ class Prod(CAReduceDtype):
 
         With zeros, things get more complicated. For a given group, we have 3
         cases:
+
         * No zeros in the group. Use previous trick.
         * If only one zero is present, then the gradient for that element is
-        non-zero, but is zero for all others.
+            non-zero, but is zero for all others.
         * If more than one zero is present, then all the derivatives are zero.
 
         For the last two cases (with 1 or more zeros), we can't use the
