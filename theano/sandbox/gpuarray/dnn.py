@@ -402,7 +402,7 @@ class GpuDnnConv(DnnBase):
     kernel
     descr
         The convolution descriptor.
-    algo : {'small', 'none', 'large', 'fft', 'fft_tiling', 'guess_once',
+    algo : {'small', 'none', 'large', 'fft', 'fft_tiling', 'winograd', 'guess_once',
             'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_fwd`.
 
@@ -438,8 +438,12 @@ class GpuDnnConv(DnnBase):
                 raise RuntimeError("CuDNN tiled-FFT convolution requires "
                                    "CuDNN v4 or more recent")
 
+        if version() < 5000 and self.algo == 'winograd':
+            raise RuntimeError("CuDNN winograd convolution requires "
+                               "CuDNN v5 or more recent")
+
         assert self.algo in ['none', 'small', 'large', 'fft', 'fft_tiling',
-                             'guess_once', 'guess_on_shape_change',
+                             'winograd', 'guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']
 
     def __setstate__(self, d):
