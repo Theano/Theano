@@ -76,6 +76,9 @@ class DimShuffle(Op):
         If True, the output will be a view of the input.
         If False (default), the output will be a copy of the input.
 
+    Notes
+    -----
+
     If j = new_order[i] is an index, the output's ith dimension
     will be the input's jth dimension.
     If new_order[i] is 'x', the output's ith dimension will
@@ -87,7 +90,10 @@ class DimShuffle(Op):
 
     Extended Summary
     ----------------
-    DimShuffle((False, False, False), ['x', 2, 'x', 0, 1])
+
+    .. code-block:: python
+
+        DimShuffle((False, False, False), ['x', 2, 'x', 0, 1])
 
     This op will only work on 3d tensors with no broadcastable
     dimensions.  The first dimension will be broadcastable,
@@ -96,7 +102,9 @@ class DimShuffle(Op):
     shape (20, 30, 40), the resulting tensor will have dimensions
     (1, 40, 1, 20, 30). (AxBxC tensor is mapped to 1xCx1xAxB tensor)
 
-    DimShuffle((True, False), [1])
+    .. code-block:: python
+
+        DimShuffle((True, False), [1])
 
     This op will only work on 2d tensors with the first dimension
     broadcastable.
@@ -105,17 +113,21 @@ class DimShuffle(Op):
     If the tensor has shape (1, 20), the resulting tensor will have shape
     (20, ).
 
-    More examples :
-    DimShuffle((), ['x']) -> make a 0d (scalar) into a 1d vector
-    DimShuffle((False, False), [0, 1]) -> identity
-    DimShuffle((False, False), [1, 0]) -> inverts the 1st and 2nd dimensions
-    DimShuffle((False,), ['x', 0]) -> make a row out
-                                      of a 1d vector (N to 1xN)
-    DimShuffle((False,), [0, 'x']) -> make a column
-                                      out of a 1d vector (N to Nx1)
-    DimShuffle((False, False, False), [2, 0, 1]) -> AxBxC to CxAxB
-    DimShuffle((False, False), [0, 'x', 1]) -> AxB to Ax1xB
-    DimShuffle((False, False), [1, 'x', 0]) -> AxB to Bx1xA
+    Example
+    -------
+
+    .. code-block:: python
+
+        DimShuffle((), ['x'])  # make a 0d (scalar) into a 1d vector
+        DimShuffle((False, False), [0, 1])  # identity
+        DimShuffle((False, False), [1, 0])  # inverts the 1st and 2nd dimensions
+        DimShuffle((False,), ['x', 0])  # make a row out of a 1d vector
+                                        # (N to 1xN)
+        DimShuffle((False,), [0, 'x'])  # make a column out of a 1d vector
+                                        # (N to Nx1)
+        DimShuffle((False, False, False), [2, 0, 1])  # AxBxC to CxAxB
+        DimShuffle((False, False), [0, 'x', 1])  # AxB to Ax1xB
+        DimShuffle((False, False), [1, 'x', 0])  # AxB to Bx1xA
 
     The reordering of the dimensions can be done with the numpy.transpose
     function.
