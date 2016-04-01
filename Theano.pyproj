@@ -137,6 +137,7 @@
     <Compile Include="theano\sandbox\neighbourhoods.py" />
     <Compile Include="theano\sandbox\neighbours.py" />
     <Compile Include="theano\sandbox\rng_mrg.py" />
+    <Compile Include="theano\sandbox\softsign.py" />
     <Compile Include="theano\sandbox\solve.py" />
     <Compile Include="theano\sandbox\symbolic_module.py" />
     <Compile Include="theano\sandbox\test_multinomial.py" />

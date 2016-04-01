@@ -35,7 +35,9 @@ from theano.tensor.nnet import (categorical_crossentropy,
 from theano.tensor import matrix, vector, lvector, scalar
 from theano.tensor.nnet.nnet import softsign
 from theano.tensor.tests.test_basic import (makeBroadcastTester, check_floatX,
+                                            _good_broadcast_unary_normal_float_no_complex,
                                             upcast_int8_nfunc)
+
 
 class T_sigmoid(unittest.TestCase):
 
@@ -1706,5 +1708,6 @@ SoftsignTester = makeBroadcastTester(
     op=softsign,
     expected=upcast_int8_nfunc(lambda inputs: check_floatX(
         inputs, inputs/(1.0+numpy.fabs(inputs)))),
+    good=_good_broadcast_unary_normal_float_no_complex,
     name='SoftsignTester',
 )
