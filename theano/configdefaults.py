@@ -294,7 +294,7 @@ SUPPORTED_DNN_CONV_ALGO_FWD = ('small', 'none', 'large', 'fft', 'fft_tiling',
                                'time_once', 'time_on_shape_change')
 
 SUPPORTED_DNN_CONV_ALGO_BWD_DATA = ('none', 'deterministic', 'fft', 'fft_tiling',
-                                    'guess_once', 'guess_on_shape_change',
+                                    'winograd', 'guess_once', 'guess_on_shape_change',
                                     'time_once', 'time_on_shape_change')
 
 SUPPORTED_DNN_CONV_ALGO_BWD_FILTER = ('none', 'deterministic', 'fft', 'small',
