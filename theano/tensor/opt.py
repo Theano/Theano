@@ -1640,6 +1640,8 @@ def local_fill_sink(node):
             if not r:
                 continue
             replacements.update(r)
+    for v in replacements.values():
+        v.tag.values_eq_approx = values_eq_approx_remove_nan
     return replacements
 
 register_canonicalize(local_fill_sink)
@@ -3849,9 +3851,11 @@ def local_merge_switch_same_cond(node):
     if not all(s.owner.inputs[0] is cond for s in node.inputs[1:]):
         return
     # pull out switch
-    return [T.switch(cond,
-                     node.op(*[s.owner.inputs[1] for s in node.inputs]),
-                     node.op(*[s.owner.inputs[2] for s in node.inputs]))]
+    ret = T.switch(cond,
+                   node.op(*[s.owner.inputs[1] for s in node.inputs]),
+                   node.op(*[s.owner.inputs[2] for s in node.inputs]))
+    ret.tag.values_eq_approx = values_eq_approx_remove_nan
+    return [ret]
 
 
 #############
@@ -5304,7 +5308,9 @@ def local_zero_div(node):
     if isinstance(node.op, T.Elemwise) and isinstance(
             node.op.scalar_op, (theano.scalar.IntDiv, theano.scalar.TrueDiv)):
         if local_mul_canonizer.get_constant(node.inputs[0]) == 0:
-            return [broadcast_like(0, node.outputs[0], node.fgraph)]
+            ret = broadcast_like(0, node.outputs[0], node.fgraph)
+            ret.tag.values_eq_approx = values_eq_approx_remove_nan
+            return [ret]
 
 
 @gof.local_optimizer([T.pow])
