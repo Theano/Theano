@@ -49,7 +49,7 @@ instructions below for detailed installation steps):
 
 The following libraries and software are optional:
 
-    `nose <http://somethingaboutorange.com/mrl/projects/nose/>`_ >= 1.3.0
+    `nose <http://nose.readthedocs.org/en/latest/>`_ >= 1.3.0
         Recommended, to run Theano's test-suite.
 
     `Sphinx <http://sphinx.pocoo.org/>`_ >= 0.5.1, `pygments <http://pygments.org/>`_

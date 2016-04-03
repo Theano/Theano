@@ -77,7 +77,7 @@ find & execute tests case in test*.py files whose method name starts
 with 'test'.
 
 ``theano-nose`` is a wrapper around `nosetests
-<http://somethingaboutorange.com/mrl/projects/nose/>`_. You should be
+<http://nose.readthedocs.org/en/latest/>`_. You should be
 able to execute it if you installed Theano using pip, or if you ran
 "python setup.py develop" after the installation. If ``theano-nose`` is
 not found by your shell, you will need to add ``Theano/bin`` to your
