@@ -575,7 +575,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
     if prefix_child is None:
         prefix_child = prefix
 
-    def get_id_str(obj):
+    def get_id_str(obj, get_printed=True):
         if obj in done:
             id_str = done[obj]
         elif ids == "id":
@@ -586,7 +586,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
             id_str = "[id %s]" % char_from_number(len(done))
         elif ids == "":
             id_str = ""
-        done[obj] = id_str
+        if get_printed:
+            done[obj] = id_str
 
         return id_str
 
@@ -629,14 +630,26 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         data = ""
         if smap:
             data = " " + str(smap.get(a.outputs[0], ''))
+        clients = ''
+        if len(getattr(r, 'clients', [])) > 1:
+            def get_index(c):
+                try:
+                    return order.index(c)
+                except ValueError:
+                    return -1
+            clients = " clients:" + str([(get_id_str(c, False), get_index(c))
+                                         for c,i in r.clients
+                                         if c != 'output'])
         if profile is None or a not in profile.apply_time:
-            print('%s%s%s %s%s \'%s\' %s %s %s%s' % (prefix, a.op,
+            print('%s%s%s %s%s \'%s\' %s %s %s%s%s' % (prefix, a.op,
                                                      idx,
                                                      id_str, type_str,
                                                      r_name,
                                                      destroy_map_str,
                                                      view_map_str,
-                                                     o, data), file=file)
+                                                       o, data, clients), file=file)
+#            if len(r.clients) > 1:
+#                import pdb;pdb.set_trace()
         else:
             op_time = profile.apply_time[a]
             op_time_percent = (op_time / profile.fct_call_time) * 100
