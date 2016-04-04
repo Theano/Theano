@@ -1791,12 +1791,13 @@ def try_march_flag(flags):
     import textwrap
     test_code = textwrap.dedent("""\
             #include <cmath>
+            using namespace std;
             int main(int argc, char** argv)
             {
-                float Nx = 5.0;
-                int Sx = 25.0;
+                float Nx = -1.3787706641;
+                float Sx = 25.0;
                 double r = Nx + sqrt(Sx);
-                if ((r - 10.) > 1e-6 || (r - 10.) < -1e-6)
+                if (abs(r - 3.621229) > 0.01)
                 {
                     return -1;
                 }
@@ -1805,7 +1806,7 @@ def try_march_flag(flags):
             """)
     cflags =  flags + ['-L' + d for d in theano.gof.cmodule.std_lib_dirs()]
     res = GCC_compiler.try_compile_tmp(
-        test_code, tmp_prefix='try_blas_',
+        test_code, tmp_prefix='try_march_',
         flags=cflags, try_run=True)
     return res
 
@@ -2022,24 +2023,25 @@ class GCC_compiler(Compiler):
                     _logger.info("g++ -march=native equivalent flags: %s",
                                  GCC_compiler.march_flags)
 
+            # Find working march flag:
+            default_detected_flag = GCC_compiler.march_flags[0][7:]
+            march_flags_to_try = [default_detected_flag, 'corei7-avx', 'corei7', 'core2']
+            for march_flag in march_flags_to_try:
+                test_flags = GCC_compiler.march_flags[:]
+                test_flags[0] = '-march=' + march_flag
+                result = try_march_flag(test_flags)
+                if result[0] and result[1]:
+                    GCC_compiler.march_flags[0] = march_flag
+                    GCC_compiler.march_flags[-1] = '-mtune=' + march_flag
+                    break
+            if not result[0] or not result[1]:
+                sys.exit('Could not find a working march')
+
+
         # Add the detected -march=native equivalent flags
         if GCC_compiler.march_flags:
             cxxflags.extend(GCC_compiler.march_flags)
 
-        # Find working march flag:
-        verbose = True
-        march_flags_to_try = [cxxflags[0], '-march=core2', '-march=corei7', '-march=corei7-avx']
-        for march_flag in march_flags_to_try:
-            print 'Trying march {}'.format(march_flag)
-            cxxflags_test = cxxflags[:]
-            cxxflags_test[0] = march_flag
-            result = try_march_flag(cxxflags_test)
-            if result[0] and result[1]:
-                print ' -- march {} worked'.format(march_flag)
-                cxxflags[0] = march_flag
-                break
-        if not result[0] or not result[1]:
-            sys.error('Could not find a working march')
 
         # NumPy 1.7 Deprecate the old API. I updated most of the places
         # to use the new API, but not everywhere. When finished, enable
