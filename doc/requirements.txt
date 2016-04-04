@@ -56,6 +56,18 @@ The following libraries and software are optional:
 .. _libgpuarray: http://deeplearning.net/software/libgpuarray/installation.html
 
 
+
+Anaconda
+~~~~~~~~
+
+If you don't want to bother with anything, Theano can be acquired through
+Anaconda_.
+
+
+.. _pip: http://pypi.python.org/pypi/pip
+.. _anaconda: https://docs.continuum.io/
+
+
 Documentations
 --------------
 
@@ -75,18 +87,6 @@ sphinx, as described above. Issue the following command::
 Documentation is built into ``html/``.
 The PDF of the documentation is ``html/theano.pdf``.
 
-
-Anaconda
-~~~~~~~~
-
-If you don't want to bother with anything, Theano can be acquired through
-Anaconda_.
-
-
-.. _pip: http://pypi.python.org/pypi/pip
-.. _anaconda: https://docs.continuum.io/
-
-.. _testing_installation:
 
 Testing your installation
 ~~~~~~~~~~~~~~~~~~~~~~~~~

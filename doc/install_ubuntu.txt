@@ -1,13 +1,12 @@
-:orphan:
-
 .. _install_ubuntu:
+
 
 Easy Installation of an Optimized Theano on Current Ubuntu
 ==========================================================
 
 .. include:: requirements.txt
-    :start-line:1
-    :end-line:55
+    :start-line: 1
+    :end-line: 55
 
 For NVIDIA Jetson TX1 embedded platform:
 

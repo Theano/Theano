@@ -1,9 +1,17 @@
+.. raw:: html
+
+    <style> .blue {color:blue} </style>
+    <style> .red {color:red} </style>
+
 .. _install_generic:
+
 
 Generic user install instructions
 =================================
 
 .. include:: requirements.txt
+    :start-line: 1
+    :end-line: 68
 
 Basic Installation
 ------------------
@@ -13,17 +21,21 @@ For a generic user installation on a Linux machine...
 pip
 ~~~
 
-.. role:: red
-.. role:: blue
-
 The recommended way to obtain the latest stable version of Theano is from PyPI using
 pip_. 
 
+.. role:: blue
+
 .. code-block:: bash
 
-    [:red:`sudo`] pip install Theano [--:blue:`user`]
+    .. role:: red
+
+    <:red:`sudo`> pip install Theano<[test]> <--:blue:`user`>
+
+.. role:: red
 
 - Use :red:`sudo` for a root installation.
+
 - Use :blue:`user` for a user installation without admin rights. It will install Theano in your local site-packages.
 
 

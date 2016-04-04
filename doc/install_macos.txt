@@ -1,11 +1,12 @@
 .. _install_macos:
 
+
 Mac OS
 ======
 
 .. include:: requirements.txt
-    :start-line:1
-    :end-line:55
+    :start-line: 1
+    :end-line: 55
 
 There are various ways to install Theano dependencies on a Mac. Here
 we describe the process in detail with Canopy, Anaconda, Homebrew or
