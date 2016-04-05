@@ -386,6 +386,9 @@ class GpuDnnConv(DnnBase, COp):
             elif self.algo == 'fft_tiling':
                 # need v4 for conv2d, need v5 for conv3d
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING'
+            elif self.algo == 'winograd':
+                # need v4 for conv2d, need v5 for conv3d
+                alg = 'CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD'
             elif self.algo in ['guess_once', 'guess_on_shape_change']:
                 # The convolution implementation should be choosen according
                 # to a heuristic
@@ -882,6 +885,9 @@ class GpuDnnConvGradI(DnnBase, COp):
                 # need v4, big workspace, but less then fft
                 # need v5, for conv3d.
                 alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING'
+            elif self.algo == 'winograd':
+                # need v5
+                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD'
             elif self.algo in ['guess_once', 'guess_on_shape_change']:
                 # The convolution implementation should be chosen according
                 # to a heuristic

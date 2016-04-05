@@ -475,6 +475,9 @@ class GpuDnnConv(DnnBase):
         elif self.algo == 'fft_tiling':
             # need v4
             alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING'
+        elif self.algo == 'winograd':
+            # need v5
+            alg = 'CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD'
         defs.append(('CONV_ALGO', alg))
 
         if self.algo in ['guess_once', 'guess_on_shape_change',
@@ -754,13 +757,16 @@ class GpuDnnConvGradI(DnnBase):
             alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0'
             if self.algo == 'none':
                 alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0'
-            if self.algo == 'deterministic':
+            elif self.algo == 'deterministic':
                 alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_1'
-            if self.algo == 'fft':
+            elif self.algo == 'fft':
                 alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT'
-            if self.algo == 'fft_tiling':
+            elif self.algo == 'fft_tiling':
                 # big workspace but less than fft
                 alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING'
+            elif self.algo == 'winograd':
+                # need v5
+                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD'
 
             if self.algo in ['guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']:
