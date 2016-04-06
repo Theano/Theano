@@ -306,6 +306,12 @@ class Polygamma(BinaryScalarOp):
 #ifndef _POLYGAMMAFUNCDEFINED
 #define _POLYGAMMAFUNCDEFINED
 
+#include "nmath.h"
+#ifdef MATHLIB_STANDALONE
+#include <errno.h>
+#endif
+#define n_max (100)
+
 void dpsifn(double x, int n, int kode, int m, double *ans, int *nz, int *ierr)
 {
     const static double bvalues[] = {/* Bernoulli Numbers */
