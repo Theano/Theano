@@ -402,10 +402,10 @@ class GpuDnnConv(DnnBase):
     kernel
     descr
         The convolution descriptor.
-    algo : {'small', 'none', 'large', 'fft', 'fft_tiling', 'winograd', 'guess_once',
-            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
+    algo
+        {'small', 'none', 'large', 'fft', 'fft_tiling', 'winograd', 'guess_once',
+         'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_fwd`.
-
     """
 
     __props__ = ('algo', 'inplace')
@@ -577,7 +577,10 @@ class GpuDnnConvGradW(DnnBase):
     kernel
     descr
         The convolution descriptor.
-
+    algo
+        {'none', 'deterministic', 'fft', 'small', 'guess_once',
+         'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
+        Default is the value of :attr:`config.dnn.conv.algo_bwd_filter`.
     """
 
     __props__ = ('algo', 'inplace')
@@ -696,7 +699,10 @@ class GpuDnnConvGradI(DnnBase):
     kernel
     descr
         The convolution descriptor.
-
+    algo
+        {'none', 'deterministic', 'fft', 'fft_tiling', 'winograd', 'guess_once',
+         'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
+        Default is the value of :attr:`config.dnn.conv.algo_bwd_data`.
     """
 
     __props__ = ('algo', 'inplace',)
@@ -716,9 +722,12 @@ class GpuDnnConvGradI(DnnBase):
         if version() < 4000 and self.algo == 'fft_tiling':
             raise RuntimeError("CuDNN's tiled-FFT convolution requires CuDNN "
                                "v4 or more recent")
+        if version() < 5000 and self.algo == 'winograd':
+            raise RuntimeError("CuDNN's winograd convolution requires CuDNN "
+                               "v5 or more recent")
 
         assert self.algo in ['none', 'deterministic', 'fft', 'fft_tiling',
-                             'guess_once', 'guess_on_shape_change',
+                             'winograd', 'guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']
 
     def __setstate__(self, d):
