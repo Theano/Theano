@@ -476,10 +476,8 @@ Here is an example showing how to use ``verify_grad`` on an Op instance:
 .. testcode::
 
     def test_flatten_outdimNone():
-        """
-        Testing gradient w.r.t. all inputs of an op (in this example the op
-        being used is Flatten(), which takes a single input).
-        """
+        # Testing gradient w.r.t. all inputs of an op (in this example the op
+        # being used is Flatten(), which takes a single input).
         a_val = numpy.asarray([[0,1,2],[3,4,5]], dtype='float64')
         rng = numpy.random.RandomState(42)
         tensor.verify_grad(tensor.Flatten(), [a_val], rng=rng)

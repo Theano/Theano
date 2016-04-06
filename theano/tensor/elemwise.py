@@ -356,11 +356,6 @@ class DimShuffle(Op):
                 "if (strides[%(i)s] == 0) strides[%(i)s] = strides[%(i)s+1] * "
                 "dimensions[%(i)s+1]" % dict(i=str(i)))
 
-        #
-        # PyObject* PyArray_New(PyTypeObject* subtype, int nd, npy_intp* dims,
-        #                       int type_num, npy_intp* strides, void* data,
-        #                       int itemsize, int flags, PyObject* obj)
-        #
         close_bracket = [
             # create a new array,
             ('%(res)s = (PyArrayObject*)PyArray_New(&PyArray_Type, '
@@ -494,17 +489,17 @@ class Elemwise(OpenMPOp):
         variable number of inputs), whereas the numpy function may
         not have varargs.
 
-    Examples
-    --------
-    >>> Elemwise(add) # represents + on tensors (x + y)
-    >>> Elemwise(add, {0 : 0}) # represents the += operation (x += y)
-    >>> Elemwise(add, {0 : 1}) # represents += on the second argument (y += x)
-    >>> Elemwise(mul)(rand(10, 5), rand(1, 5)) # the second input is completed
-    >>> # along the first dimension to match the first input
-    >>> Elemwise(true_div)(rand(10, 5), rand(10, 1)) # same but along the
-    >>> # second dimension
-    >>> Elemwise(int_div)(rand(1, 5), rand(10, 1)) # the output has size (10, 5)
-    >>> Elemwise(log)(rand(3, 4, 5))
+    Note
+    ----
+    | Elemwise(add) represents + on tensors (x + y)
+    | Elemwise(add, {0 : 0}) represents the += operation (x += y)
+    | Elemwise(add, {0 : 1}) represents += on the second argument (y += x)
+    | Elemwise(mul)(rand(10, 5), rand(1, 5)) the second input is completed \
+along the first dimension to match the first input
+    | Elemwise(true_div)(rand(10, 5), rand(10, 1)) same but along the \
+second dimension
+    | Elemwise(int_div)(rand(1, 5), rand(10, 1)) the output has size (10, 5)
+    | Elemwise(log)(rand(3, 4, 5))
 
     """
 
