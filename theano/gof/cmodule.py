@@ -2031,7 +2031,7 @@ class GCC_compiler(Compiler):
                 test_flags[0] = '-march=' + march_flag
                 result = try_march_flag(test_flags)
                 if result[0] and result[1]:
-                    GCC_compiler.march_flags[0] = march_flag
+                    GCC_compiler.march_flags[0]  = '-march=' + march_flag
                     GCC_compiler.march_flags[-1] = '-mtune=' + march_flag
                     break
             if not result[0] or not result[1]:
