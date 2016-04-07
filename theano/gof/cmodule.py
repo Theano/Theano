@@ -1787,6 +1787,7 @@ class Compiler(object):
                                          flags=flag_list, try_run=try_run,
                                          output=output, compiler=compiler)
 
+
 def try_march_flag(flags):
     import textwrap
     test_code = textwrap.dedent("""\
@@ -1804,7 +1805,8 @@ def try_march_flag(flags):
                 return 0;
             }
             """)
-    cflags =  flags + ['-L' + d for d in theano.gof.cmodule.std_lib_dirs()]
+
+    cflags = flags + ['-L' + d for d in theano.gof.cmodule.std_lib_dirs()]
     res = GCC_compiler.try_compile_tmp(
         test_code, tmp_prefix='try_march_',
         flags=cflags, try_run=True)
@@ -2031,17 +2033,15 @@ class GCC_compiler(Compiler):
                 test_flags[0] = '-march=' + march_flag
                 result = try_march_flag(test_flags)
                 if result[0] and result[1]:
-                    GCC_compiler.march_flags[0]  = '-march=' + march_flag
+                    GCC_compiler.march_flags[0] = '-march=' + march_flag
                     GCC_compiler.march_flags[-1] = '-mtune=' + march_flag
                     break
             if not result[0] or not result[1]:
                 sys.exit('Could not find a working march')
 
-
         # Add the detected -march=native equivalent flags
         if GCC_compiler.march_flags:
             cxxflags.extend(GCC_compiler.march_flags)
-
 
         # NumPy 1.7 Deprecate the old API. I updated most of the places
         # to use the new API, but not everywhere. When finished, enable
