@@ -92,12 +92,12 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     }
     algo = choice.algo;
 #else
-    size_t free = 0, total = 0;
-    cudaError_t err2 = cudaMemGetInfo(&free, &total);
-    if (err2 != cudaSuccess) {
+    size_t free;
+    int err2 = c->ops->property(c->ctx, NULL, NULL, GA_CTX_PROP_FREE_GMEM, &free);
+
+    if (err2 != GA_NO_ERROR) {
       PyErr_Format(PyExc_RuntimeError, "Error when trying to find the "
-                   "memory information on the GPU: %s\n",
-                   cudaGetErrorString(err2));
+                   "memory information on the GPU");
       cuda_exit(c->ctx);
       return 1;
     }
