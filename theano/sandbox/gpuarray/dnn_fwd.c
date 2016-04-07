@@ -193,6 +193,21 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
                                                   APPLY_SPECIFIC(output),
                                                   algo,
                                                   &worksize);
+
+    if (err == CUDNN_STATUS_NOT_SUPPORTED) {
+      // Fallback to none algo if not supported
+      // TODO: Print a warning
+      algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+
+      err = cudnnGetConvolutionForwardWorkspaceSize(APPLY_SPECIFIC(_handle),
+                                                    APPLY_SPECIFIC(input),
+                                                    APPLY_SPECIFIC(kerns),
+                                                    desc,
+                                                    APPLY_SPECIFIC(output),
+                                                    algo,
+                                                    &worksize);
+    }
+
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError,
                    "error getting worksize: %s",

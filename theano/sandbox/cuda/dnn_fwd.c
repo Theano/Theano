@@ -226,6 +226,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
                                                   &worksize);
     if (err == CUDNN_STATUS_NOT_SUPPORTED) {
       // Fallback to none algo if not supported
+      // TODO: Print a warning
       chosen_algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
 
       err = cudnnGetConvolutionForwardWorkspaceSize(_handle,
