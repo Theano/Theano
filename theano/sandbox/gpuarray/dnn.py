@@ -235,6 +235,7 @@ def version(raises=True):
 
     :raises: If True, raise an exception if CuDNN is not present or badly installed.
         Otherwise, return -1.
+
     """
     if not dnn_present():
         if raises:
@@ -400,12 +401,12 @@ class GpuDnnConv(DnnBase):
     ----------
     image
     kernel
-    descr
+    descr :
         The convolution descriptor.
-    algo
-        {'small', 'none', 'large', 'fft', 'fft_tiling', 'winograd', 'guess_once',
-         'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
+    algo : {'small', 'none', 'large', 'fft', 'fft_tiling', 'winograd', 'guess_once',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_fwd`.
+
     """
 
     __props__ = ('algo', 'inplace')
@@ -575,12 +576,12 @@ class GpuDnnConvGradW(DnnBase):
     ----------
     image
     kernel
-    descr
+    descr :
         The convolution descriptor.
-    algo
-        {'none', 'deterministic', 'fft', 'small', 'guess_once',
-         'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
+    algo : {'none', 'deterministic', 'fft', 'small', 'guess_once',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_bwd_filter`.
+
     """
 
     __props__ = ('algo', 'inplace')
@@ -699,10 +700,10 @@ class GpuDnnConvGradI(DnnBase):
     kernel
     descr
         The convolution descriptor.
-    algo
-        {'none', 'deterministic', 'fft', 'fft_tiling', 'winograd', 'guess_once',
-         'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
+    algo : {'none', 'deterministic', 'fft', 'fft_tiling', 'winograd', 'guess_once',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_bwd_data`.
+
     """
 
     __props__ = ('algo', 'inplace',)
@@ -1094,18 +1095,17 @@ class GpuDnnPool(DnnBase):
     """
     Parameters
     ----------
-    img
+    img : tensor
         The image 4d or 5d tensor.
-    Parameters
-    ----------
-    ws : tensor variable
+    ws : tensor
         Window size.
-    stride : tensor variable
+    stride : tensor
         (dx, dy) or (dx, dy, dz).
     mode : {'max', 'average_inc_pad', 'average_exc_pad'}
         The old deprecated name 'average' corresponds to 'average_inc_pad'.
     pad : tensor
         (padX, padY) or (padX, padY, padZ)
+
     """
 
     __props__ = ('mode',)
@@ -1279,14 +1279,12 @@ class GpuDnnSoftmaxBase(DnnBase):
 
     Parameters
     ----------
-    algo
-        'fast', 'accurate' or 'log' indicating whether, respectively,
-        computations should be optimized for speed, for accuracy, or if CuDNN
-        should rather compute the log-softmax instead.
-    mode
-        'instance' or 'channel' indicating whether the softmax should be
-        computed per image across 'c01' or per spatial location '01' per
-        image across 'c'.
+    algo : {'fast', 'accurate', 'log'}
+        Indicating whether, respectively, computations should be optimized for
+        speed, for accuracy, or if CuDNN should rather compute the log-softmax instead.
+    mode : {'instance', 'channel'}
+        Indicating whether the softmax should be computed per image across 'c01'
+        or per spatial location '01' per image across 'c'.
 
     """
 
@@ -1330,14 +1328,12 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
     """
     Op for the cuDNN Softmax.
 
-    algo
-        'fast', 'accurate' or 'log' indicating whether, respectively,
-        computations should be optimized for speed, for accuracy, or if CuDNN
-        should rather compute the log-softmax instead.
-    mode
-        'instance' or 'channel' indicating whether the softmax should be
-        computed per image across 'c01' or per spatial location '01' per
-        image across 'c'.
+    algo : {'fast', 'accurate', 'log'}
+        Indicating whether, respectively, computations should be optimized for
+        speed, for accuracy, or if CuDNN should rather compute the log-softmax instead.
+    mode : {'instance', 'channel'}
+        Indicating whether the softmax should be computed per image across 'c01'
+        or per spatial location '01' per image across 'c'.
 
     """
     direction = "forward"
