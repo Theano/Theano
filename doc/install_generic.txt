@@ -1,22 +1,26 @@
 .. raw:: html
 
+    <style> .code {background-color:#F8F8F8; font-family: "Consolas","Deja Vu Sans Mono","Bitstream Vera Sans Mono",monospace;} </style>
+    <style> .bcode {color:blue; background-color:#F8F8F8; font-family: "Consolas","Deja Vu Sans Mono","Bitstream Vera Sans Mono",monospace;} </style>
+    <style> .rcode {color:#F00; background-color:#F8F8F8; font-family: "Consolas","Deja Vu Sans Mono","Bitstream Vera Sans Mono",monospace;} </style>
     <style> .blue {color:blue} </style>
     <style> .red {color:red} </style>
 
 .. _install_generic:
 
 
-Generic user install instructions
-=================================
+Generic Install Instructions
+============================
 
-.. include:: requirements.txt
-    :start-line: 1
-    :end-line: 68
+If you want the latest on the edge installation of Theano, you want `bleeding_edge`_.
+Otherwise go for the `stable`_.
 
-Basic Installation
+.. _stable:
+
+Stable Installation
 ------------------
 
-For a generic user installation on a Linux machine...
+These are general instructions that will install the latest stable version of Theano.
 
 pip
 ~~~
@@ -24,13 +28,19 @@ pip
 The recommended way to obtain the latest stable version of Theano is from PyPI using
 pip_. 
 
-.. role:: blue
-
 .. code-block:: bash
 
-    .. role:: red
+    <sudo> pip install <--user> Theano[test] 
 
-    <:red:`sudo`> pip install Theano<[test]> <--:blue:`user`>
+.. role:: code
+
+.. role:: bcode
+
+.. role:: rcode
+
+:rcode:`sudo` :code:`pip install` :bcode:`--user` :code:`Theano[test]`
+
+.. role:: blue
 
 .. role:: red
 
@@ -39,16 +49,20 @@ pip_.
 - Use :blue:`user` for a user installation without admin rights. It will install Theano in your local site-packages.
 
 
-conda
-~~~~~
+Anaconda
+~~~~~~~~
 
-say something about conda and miniconda
+If you don't want to bother yourself with anything, you can install Theano under the Anaconda environment.
 
+- Install Anaconda
+
+- :code:`pip install Theano[test]`
+
+
+.. _bleeding_edge:
 
 Bleeding-Edge Installation
 --------------------------
-
-If you are a developer of Theano, then check out the :ref:`dev_start_guide`.
 
 The following are general instructions that will set you up with the
 bleeding-edge version of Theano.
@@ -56,10 +70,12 @@ bleeding-edge version of Theano.
 .. code-block:: bash
 
     git clone git://github.com/Theano/Theano.git
-    pip install --user -e [cloned_folder]
+    pip install [--user] -e git+git:github.com:Theano/Theano.git [--src cloned_folder]
 
 The advantage of doing the -e switch is that it allows pip to keep track of Theano and
-its dependancies. If you do not wish to use pip, you can simply run :
+its dependancies. 
+
+If you do not wish to use pip, you can simply run :
 
 .. code-block:: bash
 
