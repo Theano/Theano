@@ -1,20 +1,25 @@
+.. _requirements:
+
 
 Requirements
-------------
+============
 
-Theano is mainly develeopped on 64-bit Linux machines. For other architectures,
-please refer to :ref:`install_others`
+Theano is mainly develeopped on 64-bit Linux machines. 
 
 These libraries are common to all Linux installations and should be installed
 prior to using Theano.
 
     Python_ 2 >= 2.6 or Python_ 3 >= 3.3
+        The development package (python-dev or python-devel on most Linux distributions) is recommended (see just below). Python 2.4 was supported up to and including the release 0.6. Python 3 is supported past the 3.3 release.
 
     ``g++``, ``python-dev``
+        Not technically required but highly recommended, in order to compile generated C code. Theano can fall back on a NumPy-based Python execution model, but a C compiler allows for vastly faster execution. g++ >= 4.2 (for openmp that is currently always used) more recent version recommended!
 
     `NumPy <http://numpy.scipy.org/>`_ >= 1.7.1 < MAX_VERSION
+        Earlier versions could work, but we don’t test it.
 
     `SciPy <http://scipy.org>`_ >= 0.11 < MAX_VERSION
+        Only currently required for sparse matrix and special functions support, but highly recommended. SciPy >=0.8 could work, but earlier versions have known bugs with sparse matrices.
 
      `BLAS`_ installation (with Level 3 functionality)
         Including the development headers (``-dev``, ``-devel``, depending on
@@ -54,49 +59,3 @@ The following libraries and software are optional:
 .. _dvipng: http://savannah.nongnu.org/projects/dvipng/
 .. _NVIDIA CUDA drivers and SDK: http://developer.nvidia.com/object/gpucomputing.html
 .. _libgpuarray: http://deeplearning.net/software/libgpuarray/installation.html
-
-
-
-Anaconda
-~~~~~~~~
-
-If you don't want to bother with anything, Theano can be acquired through
-Anaconda_.
-
-
-.. _pip: http://pypi.python.org/pypi/pip
-.. _anaconda: https://docs.continuum.io/
-
-
-Documentations
---------------
-
-We recommend you look at the documentation on the website, since it
-will be more current than the documentation included with the package.
-
-You can read the latest HTML documentation `here
-<http://deeplearning.net/software/theano>`__.
-You can download the latest PDF documentation `here
-<http://deeplearning.net/software/theano/theano.pdf>`__.
-
-If you really wish to build the documentation yourself, you will need
-sphinx, as described above. Issue the following command::
-
-    python ./doc/scripts/docgen.py
-
-Documentation is built into ``html/``.
-The PDF of the documentation is ``html/theano.pdf``.
-
-
-Testing your installation
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Once you have installed Theano, you should run the test suite. 
-
-.. code-block:: bash
-
-    THEANO_FLAGS=''; python -c "import theano; theano.test()"
-
-All tests should pass (skipped tests and known failures are normal). If
-some test fails on your machine, you are encouraged to tell us what went
-wrong on the ``theano-users@googlegroups.com`` mailing list.

@@ -4,10 +4,6 @@
 Easy Installation of an optimized Theano on CentOS 6
 ====================================================
 
-.. include:: requirements.txt
-    :start-line: 1
-    :end-line: 55
-
 .. note::
 
     It is possible to have a faster installation of Theano than the one these
