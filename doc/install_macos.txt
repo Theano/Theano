@@ -1,12 +1,8 @@
 .. _install_macos:
 
 
-Mac OS
-======
-
-.. include:: requirements.txt
-    :start-line: 1
-    :end-line: 55
+Mac OS Install Instructions
+===========================
 
 There are various ways to install Theano dependencies on a Mac. Here
 we describe the process in detail with Canopy, Anaconda, Homebrew or
@@ -30,22 +26,6 @@ development headers), NumPy, SciPy, nose, sphinx, pip, pydot
 (but *not* `Graphviz`_, which is necessary for it to work) and the MKL
 implementation of blas.
 
-To install the latest Theano release execute this in a terminal:
-
-.. code-block:: bash
-
-    $ pip install Theano
-
-If you want the bleeding edge version execute this command instead:
-
-.. code-block:: bash
-
-    $ pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
-
-See the section `install_bleeding_edge`_ for more
-information on the bleeding edge version.
-
-Then you must install the compiler. See :ref:`compiler_osx` below.
 
 .. note::
 
@@ -55,56 +35,11 @@ Then you must install the compiler. See :ref:`compiler_osx` below.
    done or not and give an error message explaining what to do in case
    it hasn't been done.
 
-
-Anaconda
-~~~~~~~~
-
-An easy way to install most of the dependencies is to install
-`Anaconda <http://continuum.io/downloads.html>`_. There is a free
-version available to everybody. If you install their ``MKL
-Optimizations`` product (free for academic, ~30$ otherwise) Theano
-will also be optimized as we will reuse the faster BLAS version
-automatically.
-
-The Anaconda installation includes in particular Python (and the
-development headers), NumPy, SciPy, nose, sphinx, pip, and a
-acceptable BLAS version.
-
-After installing Anaconda, in a terminal execute this command to
-install the latest Theano release:
-
-.. code-block:: bash
-
-    $ pip install Theano
-
-To install the missing Theano optional dependency (pydot):
-
-.. code-block:: bash
-
-    $ conda install pydot
-
-If you want the bleeding edge version instead execute this command:
-
-.. code-block:: bash
-
-    $ pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
-
-See the section `install_bleeding_edge`_ for more
-information on the bleeding edge version.
-
-Then you must install the compiler. See :ref:`compiler_osx` below.
-
-.. note::
-
-   If you use version 0.6 or later of Theano, we try to automatically
-   link with the python library.  Due to Mac OS peculiarities, this
-   requires user intervention.  We detect if the user did the
-   modification and if not, we tell him how to do it.
-
-.. _compiler_osx:
+.. include:: install_generic.txt
+    :start-line: 19
 
 Installing the compiler
-~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------
 
 Theano officially supports only clang on OS X.  This can be installed
 by getting XCode from the App Store and running it once to install the
@@ -116,7 +51,7 @@ g++ will be ignored unless it can be reproduced with clang.
 
 
 Homebrew
-~~~~~~~~
+--------
 
 Install python with homebrew:
 
@@ -154,7 +89,7 @@ Or for the bleeding-edge version:
 
 
 MacPorts
-~~~~~~~~
+--------
 
 Using `MacPorts <http://www.macports.org/>`__ to install all required
 Theano dependencies is easy, but be aware that it will take a long time
