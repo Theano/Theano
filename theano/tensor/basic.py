@@ -30,7 +30,7 @@ from theano.compile import Rebroadcast, Shape, shape
 # We use these exceptions as well.
 import theano.scalar.sharedvar
 from theano.gradient import grad_undefined
-# from theano.gradient import grad_not_implemented
+from theano.gradient import grad_not_implemented
 from theano.gradient import DisconnectedType
 
 # set up the external interface
@@ -5911,6 +5911,9 @@ class Diagonal(Op):
 
     """
     __props__ = ("offset", "axis1", "axis2")
+    default_offset = 0
+    default_axis1 = 0
+    default_axis2 = 1
 
     def __init__(self, offset=0, axis1=0, axis2=1):
         self.view = False
@@ -5932,7 +5935,7 @@ class Diagonal(Op):
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
-        if self.offset != 0 or self.axis1 != 0 or self.axis2 != 1:
+        if not self.has_default_props():
             raise ValueError('Currently Diagonal doesn\'t support non-default'
                              'offset and axis values.')
 
@@ -5956,11 +5959,15 @@ class Diagonal(Op):
 
     def grad(self, inputs, gout):
         """The current gradient is valid only for main diagonals."""
-        x = theano.tensor.zeros_like(inputs[0])
-        xdiag = diag(gout[0])
-        return [theano.tensor.set_subtensor(
-            x[:xdiag.shape[0], :xdiag.shape[1]],
-            xdiag)]
+        (input_x,) = inputs
+        if self.has_default_props():
+            x = theano.tensor.zeros_like(input_x)
+            xdiag = diag(gout[0])
+            return [theano.tensor.set_subtensor(
+                x[:xdiag.shape[0], :xdiag.shape[1]],
+                xdiag)]
+        else:
+            return [grad_not_implemented(self, 0, input_x)]
 
     def infer_shape(self, node, shapes):
         in_shape, = shapes
@@ -5979,15 +5986,26 @@ class Diagonal(Op):
         out_shape.append(diag_size)
         return [tuple(out_shape)]
 
+    def has_default_props(self):
+        if (self.offset == self.default_offset and
+           self.axis1 == self.default_axis1 and
+           self.axis2 == self.default_axis2):
+            return True
+        else:
+            return False
 
-def diagonal(a, offset=0, axis1=0, axis2=1):
+
+def diagonal(a, offset=Diagonal.default_offset,
+             axis1=Diagonal.default_axis1,
+             axis2=Diagonal.default_axis2):
     """
     A helper function for Diagonal Op. Return specified diagonals.
 
     If `a` is a 2-D matrix, returns the diagonal of `a` with the given offset,
     i.e., the collection of elements of the form `a[i, i+offset]`. If `a` has
     more than two dimensions, then the axes specified by `axis1` and `axis2`
-    are used to determine the 2-D sub-array whose diagonal is returned.
+    are used to determine the 2-D sub-arrays whose diagonals are to be
+    returned.
 
     Parameters
     ----------
@@ -6037,6 +6055,7 @@ class Diag(Op):
 
     """
     __props__ = ("offset", )
+    default_offset = 0
 
     def __init__(self, offset=0):
         if numpy_diagonal_return_view:
@@ -6055,10 +6074,19 @@ class Diag(Op):
 
     def grad(self, inputs, gout):
         (gz,) = gout
-        return [diagonal(gz)]
+        if self.has_default_props():
+            return [diagonal(gz)]
+        else:
+            return [grad_not_implemented(self, 0, inputs[0])]
 
     def infer_shape(self, nodes, shapes):
         return [(shapes[0][0],) * 2]
+
+    def has_default_props(self):
+        if self.offset == self.default_offset:
+            return True
+        else:
+            return False
 
 
 def diag(v, k=0):
@@ -6084,10 +6112,10 @@ def diag(v, k=0):
     if v.ndim == 1:
         assert k == 0, "diagonals other than main are not implemented"
         return Diag()(v)
-    elif v.ndim == 2:
+    elif v.ndim >= 2:
         return diagonal(v, k)
     else:
-        raise ValueError("Input must be 1- or 2-d.")
+        raise TypeError("Input must has v.ndim >=1.")
 
 
 def stacklists(arg):
