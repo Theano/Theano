@@ -157,7 +157,6 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
         detailed_err_msg += ("Inputs shapes: %s" % shapes +
                              "\nInputs strides: %s" % strides +
                              "\nInputs values: %s" % scalar_values)
-        detailed_err_msg += "\nInputs variables: %s" % str(node.inputs)
         if theano.config.exception_verbosity == 'high':
             detailed_err_msg += "\nInputs type_num: %s" % str(
                 [getattr(getattr(i[0], 'dtype', ''), 'num', '') for i in thunk.inputs])
