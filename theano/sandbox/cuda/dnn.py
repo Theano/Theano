@@ -295,10 +295,8 @@ class GpuDnnConv(DnnBase, COp):
         The convolution descriptor.
     workmem
         *deprecated*, use parameter algo instead.
-    algo
-        ['none', 'small', 'large', 'fft', 'fft_tiling', 'guess_once', 'winograd',
-         'guess_on_shape_change', 'time_once', 'time_on_shape_change']
-
+    algo : {'none', 'small', 'large', 'fft', 'fft_tiling', 'guess_once', 'winograd',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_fwd`.
 
     """
@@ -481,17 +479,20 @@ class GpuDnnConv3d(GpuDnnConv):
     """
     The forward convolution.
 
-    :param image:
-    :param kernel:
-    :param descr: the convolution descriptor
-    :param workmem:
+    Parameters
+    ----------
+    image
+    kernel
+    descr
+        The convolution descriptor
+    workmem
         *deprecated*, use parameter algo instead.
-    :param algo: ['none',  'small', 'fft_tiling', 'winograd',
-                  'guess_once', 'guess_on_shape_change',
-                  'time_once', 'time_on_shape_change']
+    algo : {'none',  'small', 'fft_tiling', 'winograd', 'guess_once',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_fwd`.
 
     """
+
     __props__ = ('algo', 'inplace')
     __input_name__ = ('image', 'kernel', 'output',
                       'descriptor', 'alpha', 'beta')
@@ -584,7 +585,8 @@ class GpuDnnConvGradW(DnnBase, COp):
         The convolution descriptor.
     workmem
         *deprecated*, use parameter algo instead.
-    algo : {'none', 'deterministic', 'fft', 'small', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
+    algo : {'none', 'deterministic', 'fft', 'small', 'guess_once',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_bwd_filter`.
 
     """
@@ -719,17 +721,20 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
     """
     The convolution gradient with respect to the weights.
 
-    :param image:
-    :param kernel:
-    :param descr: the convolution descriptor
-    :param workmem:
+    Parameters
+    ----------
+    image
+    kernel
+    descr
+        The convolution descriptor
+    workmem
         *deprecated*, use parameter algo instead.
-    :param algo: ['none', 'small',
-                  'guess_once', 'guess_on_shape_change',
-                   'time_once', 'time_on_shape_change']
+    algo : {'none', 'small', 'guess_once', 'guess_on_shape_change',
+            'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_bwd_filter`.
 
     """
+
     __props__ = ('algo', 'inplace',)
     __input_name__ = ('image', 'grad', 'output', 'descriptor', 'alpha', 'beta')
 
@@ -801,10 +806,8 @@ class GpuDnnConvGradI(DnnBase, COp):
         The convolution descriptor.
     workmem
         *deprecated*, use parameter algo instead.
-    algo
-        ['none', 'deterministic', 'fft', 'fft_tiling', 'winograd', 'guess_once',
-         'guess_on_shape_change', 'time_once', 'time_on_shape_change']
-
+    algo : {'none', 'deterministic', 'fft', 'fft_tiling', 'winograd', 'guess_once',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_bwd_data`.
 
     """
@@ -956,17 +959,20 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
     """
     The convolution gradient with respect to the inputs.
 
-    :param image:
-    :param kernel:
-    :param descr: the convolution descriptor
-    :param workmem:
+    Parameters
+    ----------
+    image
+    kernel
+    descr
+        The convolution descriptor
+    workmem
         *deprecated*, use parameter algo instead.
-    :param algo: ['none', 'deterministic, 'fft_tiling', 'winograd', 'guess_once',
-                  'guess_on_shape_change', 'time_once', 'time_on_shape_change']
-
+    algo : {'none', 'deterministic, 'fft_tiling', 'winograd', 'guess_once',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_bwd_data`.
 
     """
+
     __props__ = ('algo', 'inplace',)
     __input_name__ = ('kernel', 'grad', 'output', 'descriptor', 'alpha',
                       'beta')
@@ -1455,6 +1461,7 @@ class GpuDnnPool(DnnBase):
         (padX, padY) padding information.
         padX is the size of the left and right borders,
         padY is the size of the top and bottom borders.
+
     """
 
     __props__ = ("mode",)
@@ -1974,14 +1981,12 @@ class GpuDnnSoftmaxBase(DnnBase):
     ----------
     tensor_format
         Always set this to 'bc01'.
-    algo
-        'fast', 'accurate' or 'log' indicating whether, respectively, computations
-        should be optimized for speed, for accuracy, or if CuDNN should rather
-        compute the log-softmax instead.
-    mode
-        'instance' or 'channel' indicating whether the softmax should
-        be computed per image across 'c01' or per spatial location '01' per
-        image across 'c'.
+    algo : {'fast', 'accurate', 'log'}
+        Indicating whether, respectively, computations should be optimized for
+        speed, for accuracy, or if CuDNN should rather compute the log-softmax instead.
+    mode : {'instance', 'channel'}
+        Indicating whether the softmax should be computed per image across 'c01'
+        or per spatial location '01' per image across 'c'.
 
     """
 
@@ -2137,13 +2142,12 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
     ----------
     tensor_format
         Always set to 'bc01'.
-    algo
-        'fast' or 'accurate' indicating whether computations should be
+    algo : {'fast', 'accurate'}
+        Indicating whether computations should be
         optimized for speed or accuracy respectively.
-    mode
-        'instance' or 'channel' indicating whether the softmax should
-        be computed per image across 'c01' or per spatial location '01' per
-        image across 'c'.
+    mode : {'instance', 'channel'}
+        Indicating whether the softmax should be computed per image across 'c01'
+        or per spatial location '01' per image across 'c'.
 
     """
 
@@ -2205,13 +2209,12 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
     ----------
     tensor_format
         Always set to 'bc01'.
-    algo
-        'fast' or 'accurate' indicating whether computations should be
+    algo : {'fast', 'accurate'}
+        Indicating whether computations should be
         optimized for speed or accuracy respectively.
-    mode
-        'instance' or 'channel' indicating whether the softmax should
-        be computed per image across 'c01' or per spatial location '01' per
-        image across 'c'.
+    mode : {'instance', 'channel'}
+        Indicating whether the softmax should be computed per image across 'c01'
+        or per spatial location '01' per image across 'c'.
 
     """
 
