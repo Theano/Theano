@@ -2037,7 +2037,7 @@ class GCC_compiler(Compiler):
                     GCC_compiler.march_flags[-1] = '-mtune=' + march_flag
                     break
             if not result[0] or not result[1]:
-                sys.exit('Could not find a working march')
+                raise ValueError('Could not find a working march')
 
         # Add the detected -march=native equivalent flags
         if GCC_compiler.march_flags:
