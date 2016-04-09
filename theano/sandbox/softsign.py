@@ -1,4 +1,8 @@
 from __future__ import absolute_import, print_function, division
-from theano.tensor.nnet.nnet import softsign
+from theano.tensor.nnet.nnet import softsign  # noqa
+import sys
 
-softsign = softsign  # otherwise build fails due to unused import
+print(
+    "DEPRECATION WARNING: softsign was moved from theano.sandbox.softsign to "
+    "theano.tensor.nnet.nnet ", file=sys.stderr
+    )
