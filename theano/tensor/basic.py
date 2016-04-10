@@ -5939,9 +5939,14 @@ class Diagonal(Op):
             raise ValueError('Currently Diagonal doesn\'t support non-default'
                              'offset and axis values.')
 
+
         # zero-dimensional matrices ...
         if numpy.min(x.shape) == 0:
-            z[0] = node.outputs[0].type.value_zeros((0,))
+            out_shape = [d for i, d in enumerate(x.shape)
+                         if i not in (self.axis1, self.axis2)]
+            diag_size = numpy.min((x.shape[self.axis1], x.shape[self.axis2]))
+            out_shape.append(diag_size)
+            z[0] = node.outputs[0].type.value_zeros(tuple(out_shape))
             return
 
         if x.shape[self.axis1] < x.shape[self.axis2]:
@@ -5987,12 +5992,9 @@ class Diagonal(Op):
         return [tuple(out_shape)]
 
     def has_default_props(self):
-        if (self.offset == self.default_offset and
-           self.axis1 == self.default_axis1 and
-           self.axis2 == self.default_axis2):
-            return True
-        else:
-            return False
+        return  (self.offset == self.default_offset and
+                 self.axis1 == self.default_axis1 and
+                 self.axis2 == self.default_axis2)
 
 
 def diagonal(a, offset=Diagonal.default_offset,
@@ -6083,10 +6085,7 @@ class Diag(Op):
         return [(shapes[0][0],) * 2]
 
     def has_default_props(self):
-        if self.offset == self.default_offset:
-            return True
-        else:
-            return False
+        return  self.offset == self.default_offset
 
 
 def diag(v, k=0):

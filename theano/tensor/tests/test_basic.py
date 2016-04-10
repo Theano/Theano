@@ -29,7 +29,7 @@ from theano.compile.mode import get_default_mode
 from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         argmin, max_and_argmax, cscalar, ctensor3, join,
         horizontal_stack, vertical_stack, argmax, get_vector_length,
-        fscalar, zeros_like, sum, tensor3, vector, add, addbroadcast,
+        fscalar, zeros_like, tensor3, vector, add, addbroadcast,
         alloc, as_tensor_variable, tensor_from_scalar, ARange, autocast_float,
         clip, constant, default, diag, diagonal, dot, batched_dot,
         dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
@@ -2311,7 +2311,7 @@ class TestAlloc(unittest.TestCase):
                 # AdvancedIncSubtensor
                 (some_matrix[idx, idx], 1)
         ]):
-            derp = sum(dot(subtensor, variables))
+            derp = theano.tensor.sum(dot(subtensor, variables))
 
             fobj = theano.function([some_vector], derp, mode=self.mode)
             grad_derp = theano.grad(derp, some_vector)
@@ -4610,7 +4610,7 @@ class test_matinv(unittest.TestCase):
         diff = ab - as_tensor_variable(numpy.ones((dim, dim),
              dtype=config.floatX))
         # Sum of squared errors
-        ssdiff = sum((diff ** 2.0))
+        ssdiff = theano.tensor.sum((diff ** 2.0))
 
         g_b = grad(ssdiff, b)
 
@@ -6345,7 +6345,7 @@ class T_sum(unittest.TestCase):
     def test_sum_overflow(self):
         """Ensure that overflow errors are a little bit harder to get"""
         a = Tensor(dtype='int8', broadcastable=[False])()
-        f = function([a], sum(a))
+        f = function([a], theano.tensor.sum(a))
         assert f([1] * 300) == 300
 
     def test_list(self):
@@ -7271,7 +7271,7 @@ class TestSpecifyShape(unittest.TestCase):
             self.assertRaises(AssertionError, f, xval, shape)
 
 
-class test_diagonal():
+class test_diagonal(unittest.TestCase):
     """
     Test that tensor.diagonal has the same behavior as and numpy.diagonal.
 
@@ -7293,7 +7293,7 @@ class test_diagonal():
             floatX = config.floatX
         self.floatX = floatX
         self.type = type
-        super(test_diag, self).__init__(name)
+        super(test_diagonal, self).__init__(name)
 
     def test_diagonal_input(self):
         # test that it accepts the right form of input
@@ -7325,8 +7325,20 @@ class test_diagonal():
                 for node in f.maker.fgraph.toposort()
                 if isinstance(node.op, Diagonal)] == [True]
 
-        for shp in [(2, 3), (3, 2), (3, 3), (1, 1), (0, 0), (1, 0),
-                    (1, 2, 3), (2, 3, 5), (2, 1, 3), (2, 0, 3),
+        for shp in [(2, 3), (3, 2), (3, 3), (1, 1), (0, 0), (1, 0)]:
+            m = rng.rand(*shp).astype(self.floatX)
+            x.set_value(m)
+            v = numpy.diagonal(m)
+            r = f()
+            # The right diagonal is extracted
+            assert (r == v).all(), ("wrong diagonal extracted. shp = " + \
+                                    str(shp) + "r = " + str(r) + "v = " + \
+                                    str(v))
+
+        x = self.shared(rng.rand(2, 3, 4).astype(self.floatX))
+        g = diagonal(x)
+        f = theano.function([], g)
+        for shp in [(1, 2, 3), (2, 3, 5), (2, 1, 3), (2, 0, 3),
                     (1, 1, 1), (2, 3, 1)]:
             m = rng.rand(*shp).astype(self.floatX)
             x.set_value(m)
@@ -7347,8 +7359,20 @@ class test_diagonal():
         if config.mode != 'FAST_COMPILE':
             assert sum([node.op.__class__ == Diagonal
                         for node in topo]) == 0
-        for shp in [(2, 3), (3, 2), (3, 3), (1, 1), (0, 0), (1, 0),
-                    (1, 2, 3), (2, 3, 5), (2, 1, 3), (2, 0, 3),
+        for shp in [(2, 3), (3, 2), (3, 3), (1, 1), (0, 0), (1, 0)]:
+            m = rng.rand(*shp).astype(self.floatX)
+            x.set_value(m)
+            v = numpy.diagonal(m).shape
+            r = f()
+            # The right diagonal is extracted
+            assert (r == v).all(), ("wrong infer_shape returned. shp = " + \
+                                    str(shp) + "r_shape = " + str(r) + \
+                                    "v_shape = " + str(v))
+
+        x = self.shared(rng.rand(2, 3, 4).astype(self.floatX))
+        g = diagonal(x)
+        f = theano.function([], g.shape)
+        for shp in [(1, 2, 3), (2, 3, 5), (2, 1, 3), (2, 0, 3),
                     (1, 1, 1), (2, 3, 1)]:
             m = rng.rand(*shp).astype(self.floatX)
             x.set_value(m)
@@ -7440,6 +7464,8 @@ class test_diag(unittest.TestCase):
         assert ok
 
     def test_infer_shape(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
         x = theano.tensor.vector()
         g = diag(x)
         f = theano.function([x], g.shape)
@@ -7451,6 +7477,7 @@ class test_diag(unittest.TestCase):
             assert (f(m) == numpy.diag(m).shape).all()
 
         x = theano.tensor.matrix()
+        g = diag(x)
         f = theano.function([x], g.shape)
         topo = f.maker.fgraph.toposort()
         if config.mode != 'FAST_COMPILE':
