@@ -33,6 +33,10 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 elu,
                                 binary_crossentropy)
 from theano.tensor import matrix, vector, lvector, scalar
+from theano.tensor.nnet.nnet import softsign
+from theano.tensor.tests.test_basic import (makeBroadcastTester, check_floatX,
+                                            _good_broadcast_unary_normal_float_no_complex,
+                                            upcast_int8_nfunc)
 
 
 class T_sigmoid(unittest.TestCase):
@@ -1699,3 +1703,11 @@ def test_binary_crossentropy_reshape():
         fga = theano.function([a], ga, mode=mode)
         utt.assert_allclose(fga(numpy.array([[[[30.]]]], dtype=config.floatX)),
                             numpy.zeros((1, 1, 1, 1), dtype=config.floatX))
+
+SoftsignTester = makeBroadcastTester(
+    op=softsign,
+    expected=upcast_int8_nfunc(lambda inputs: check_floatX(
+        inputs, inputs/(1.0+numpy.fabs(inputs)))),
+    good=_good_broadcast_unary_normal_float_no_complex,
+    name='SoftsignTester',
+)
