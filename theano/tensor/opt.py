@@ -1640,8 +1640,6 @@ def local_fill_sink(node):
             if not r:
                 continue
             replacements.update(r)
-    for v in replacements.values():
-        v.tag.values_eq_approx = values_eq_approx_remove_nan
     return replacements
 
 register_canonicalize(local_fill_sink)
@@ -3851,11 +3849,9 @@ def local_merge_switch_same_cond(node):
     if not all(s.owner.inputs[0] is cond for s in node.inputs[1:]):
         return
     # pull out switch
-    ret = T.switch(cond,
-                   node.op(*[s.owner.inputs[1] for s in node.inputs]),
-                   node.op(*[s.owner.inputs[2] for s in node.inputs]))
-    ret.tag.values_eq_approx = values_eq_approx_remove_nan
-    return [ret]
+    return [T.switch(cond,
+                     node.op(*[s.owner.inputs[1] for s in node.inputs]),
+                     node.op(*[s.owner.inputs[2] for s in node.inputs]))]
 
 
 #############
