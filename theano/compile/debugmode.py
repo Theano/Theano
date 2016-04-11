@@ -25,7 +25,7 @@ from theano.gof import (graph, utils, link, ops_with_inner_function)
 from theano.gof.link import raise_with_op
 from theano.compile.function_module import (
     FunctionMaker, Function, infer_reuse_pattern,
-    SymbolicInputKit, SymbolicOutput, Supervisor, std_fgraph)
+    SymbolicInput, SymbolicOutput, Supervisor, std_fgraph)
 from theano.compile.mode import Mode, register_mode
 from theano.compile.ops import OutputGuard
 
@@ -2367,8 +2367,8 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         # Check if some input variables are unused
         self._check_unused_inputs(inputs, outputs, on_unused_input)
 
-        # Make a list of (SymbolicInput|SymblicInputKits, indices,
-        # [SymbolicInput,...]), one tuple for each input. (See
+        # Make a list of (SymbolicInput, indices,
+        SymbolicInput,...]), one tuple for each input. (See
         # Function.indices for more details)
         indices = [[input] + self.expand_in(input, _inputs)
                    for input in inputs]
@@ -2491,27 +2491,9 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                 # default.storage to input_storage.
                 if indices is not None:
                     raise TypeError("Cannot take a Container instance as "
-                                    "default for a SymbolicInputKit.")
+                                    "default for a SymbolicInput.")
                 input_storage.append(default.storage)
                 default = None
-            elif isinstance(input, SymbolicInputKit):
-                # If the input is a SymbolicInputKit, it represents more than
-                # one storage unit. The indices and subinputs lists represent
-                # which of the kit's inputs are active in this graph, so we
-                # make as many storage units as needed
-                if isinstance(default, (list, tuple)) \
-                        and all(isinstance(x, gof.Container) for x in default):
-                    if len(default) == len(indices):
-                        input_storage += [x.storage for x in default]
-                    elif len(default) > len(indices):
-                        input_storage += [default[i].storage for i in indices]
-                    else:
-                        raise ValueError(
-                            'Not enough storage for SymbolicInputKit',
-                            input, indices, default)
-                    default = _NODEFAULT
-                else:
-                    input_storage += [[None] for i in indices]
             else:
                 # Normal case: one new, independent storage unit
                 input_storage.append([None])
@@ -2524,9 +2506,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
             #   storage after each function call
             # - value is the value that will be put in the storage initially
 
-            # Even though a SymbolicInputKit represents more than one input,
-            # we still only have one entry for the defaults list.
-            if isinstance(input, SymbolicInputKit):
+            if isinstance(input, SymbolicInput):
                 if default is _NODEFAULT:
                     _defaults.append((False, False, None))
                 elif default is None:
