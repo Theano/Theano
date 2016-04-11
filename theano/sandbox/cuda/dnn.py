@@ -390,7 +390,7 @@ class GpuDnnConv(DnnBase, COp):
                 # need v4 for conv2d, need v5 for conv3d
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING'
             elif self.algo == 'winograd':
-                # need v4 for conv2d, need v5 for conv3d
+                # need v5
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD'
             elif self.algo in ['guess_once', 'guess_on_shape_change']:
                 # The convolution implementation should be choosen according
