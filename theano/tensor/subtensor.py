@@ -1935,7 +1935,7 @@ class AdvancedIncSubtensor1(Op):
         # max_depth: we pass 0 to have this parameter ignored
         # requirements: here we pass NPY_ARRAY_ENSURECOPY to force a copy
         # context: this is almost always NULL, I'm not sure what it's used for
-        return """(PyArrayObject*)PyArray_FromAny(py_%(x)s, NULL, 0, 0,
+        return """(PyArrayObject*)PyArray_FromAny(py_%(x)s, PyArray_DTYPE(%(x)s), 0, 0,
                 NPY_ARRAY_ENSURECOPY, NULL)""" % locals()
 
     def c_support_code(self):
