@@ -1138,7 +1138,7 @@ class FunctionMaker(object):
         # For SymbolicInput, this returns None
         # as the list of indices and a list with just the
         # SymbolicInput.
-        elif isinstance(sinput, SymbolicInput):
+        if isinstance(sinput, SymbolicInput):
             return [None, [sinput]]
 
     @staticmethod
