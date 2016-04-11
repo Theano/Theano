@@ -2219,7 +2219,7 @@ static PyNumberMethods CudaNdarrayNumberMethods =
     0,  //binaryfunc nb_floor_divide;          __floordiv__
     0,  //binaryfunc nb_true_divide;           __truediv__
     0,  //binaryfunc nb_inplace_floor_divide;  __ifloordiv__
-    0,  //binaryfunc nb_inplace_true_divide;   __itruediv__
+    (binaryfunc)CudaNdarray_inplace_div,  //binaryfunc nb_inplace_true_divide;   __itruediv__
 
 #if PY_MINOR_VERSION > 4
     /* Added in release 2.5 */

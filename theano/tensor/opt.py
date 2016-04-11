@@ -5313,7 +5313,9 @@ def local_zero_div(node):
     if isinstance(node.op, T.Elemwise) and isinstance(
             node.op.scalar_op, (theano.scalar.IntDiv, theano.scalar.TrueDiv)):
         if local_mul_canonizer.get_constant(node.inputs[0]) == 0:
-            return [broadcast_like(0, node.outputs[0], node.fgraph)]
+            ret = broadcast_like(0, node.outputs[0], node.fgraph)
+            ret.tag.values_eq_approx = values_eq_approx_remove_nan
+            return [ret]
 
 
 @gof.local_optimizer([T.pow])
