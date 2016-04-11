@@ -7,33 +7,49 @@
 # #
 # # This file is up-to-date if the command git log --format="%aN <%aE>" | sort -u
 # # gives no duplicates.
-Jörg Bornschein <jb@capsec.org> Joerg Bornschein <bornschein@fias.uni-frankfurt.de>
-Eric Hunsberger <hunse@ctn> hunse <hunse@ctn>
-Jan Schlüter <github@jan-schlueter.de> f0k <github@jan-schlueter.de>
-Rami Al-Rfou' <rmyeid@gmail.com> Rami Al-Rfou <rmyeid@gmail.com>
+#     5	Firstname Lastname <firstname.lastname@example.net>
+#     4	Laboratoire d'Informatique des Systemes Adaptatifs <lisa@iro.umontreal.ca>
+#    25	projects@lgcm <projects@lgcm>
+
+abalkin <abalkin@enlnt.com> abalkin <abalkin>
+abalkin <abalkin@enlnt.com> abalkin <serpent.speak@gmail.com>
+abalkin <abalkin@enlnt.com> Alexander Belopolsky <abalkin@enlnt.com>
+abalkin <abalkin@enlnt.com> Alexander Belopolsky <a@enlnt.com>
+Alex Lamb <alex6200@gmail.com> AlexLamb <alex6200@gmail.com>
+Alex Lamb <alex6200@gmail.com> DeathMonster666 <alex6200@gmail.com>
+Alexandre de Brebisson <adbrebs@gmail.com> AdeB <adbrebs@gmail.com>
+Anatoly Belikov <awbelikov@gmail.com> Anatoly Belikov <wormblood@gmail.com>
+Andre Holzner <Andre.Georg.Holzner@cern.ch> Andre Holzner <holzner@pb-d-128-141-148-222.cern.ch>
+Andre Holzner <Andre.Georg.Holzner@cern.ch> andreh <andreh@localhost>
+Andre Holzner <Andre.Georg.Holzner@cern.ch> Andre Holzner <holzner@andres-mbp-2.fritz.box>
+Arjun Jain <arjunjain@gmail.com> Arjun Jain <stencilman@users.noreply.github.com>
 Arnaud Bergeron <abergeron@gmail.com> <abergeron@gmail.com>
 <abergeron@gmail.com> <anakha@kami.(none)>
+Balázs Hidasi <hidasi.balazs@gravityrd.com> Balázs <hidasib@gmail.com>
+Bart van Merrienboer <bart.vanmerrienboer@gmail.com> Bart van Merriënboer <bart.vanmerrienboer@gmail.com>
+Bart van Merrienboer <bart.vanmerrienboer@gmail.com> Bart <bart.vanmerrienboer@gmail.com>
+Bogdan Budescu <bbudescu@gmail.com> bbudescu <bbudescu@gmail.com>
+Brian Cheung <briancheung@users.noreply.github.com> briancheung <bcheung5@gmail.com>
+Caglar <ca9lar@gmail.com> Caglar <caglar@users.noreply.github.com>
+Chienli Ma <maqianlie@gmail.com> Chienli Ma(马千里) <maqianlie@gmail.com>
+Chienli Ma <maqianlie@gmail.com> ChienliMa <maqianlie@gmail.com>
+Chiheb Trabelsi <chiheb.tr@gmail.com> Chiheb Trabelsi <trabelsc@bart5>
 David Warde-Farley <wardefar@iro.umontreal.ca> David Warde-Farley <dwf@cs.toronto.edu>
 David Warde-Farley <wardefar@iro.umontreal.ca> David Warde Farley <dwf@cs.toronto.edu>
 David Warde-Farley <wardefar@iro.umontreal.ca> David Warde-Farley <d.warde.farley@gmail.com>
 Douglas Eck <douglas.eck@gmail.com> eckdoug@localhost <eckdoug@localhost>
 Douglas Eck <douglas.eck@gmail.com> eckdoug@waits.local <eckdoug@waits.local>
+Dmitrii Serdiuk <serdyuk.dmitriy@gmail.com> dima <serdyuk.dmitriy@gmail.com>
+Dmitrii Serdiuk <serdyuk.dmitriy@gmail.com> dmitriy-serdyuk <serdyuk.dmitriy@gmail.com>
+Dmitrii Serdiuk <serdyuk.dmitriy@gmail.com> serdyuk <serdyuk.dmitriy@gmail.com>
 Dumitru Erhan <dumitru.erhan@gmail.com> dumitru@deepnets.mtv.corp.google.com <dumitru@deepnets.mtv.corp.google.com>
 Dumitru Erhan <dumitru.erhan@gmail.com> erhandum@bikat.iro.umontreal.ca <erhandum@bikat.iro.umontreal.ca>
-Francois Savard <devnull@localhost> fsavard <devnull@localhost>
-Steven Pigeon <pigeon@iro.umontreal.ca> steven-pigeon <pigeon@iro.umontreal.ca>
-#     5	Firstname Lastname <firstname.lastname@example.net>
-#     4	Laboratoire d'Informatique des Systemes Adaptatifs <lisa@iro.umontreal.ca>
-#     6	Li Yao <yaoli@iro>
-#     1	olivier@ordinateur-de-olivier.local <olivier@ordinateur-de-olivier.local>
-#     2	onze <onzeonline@gmail.com>
-#    25	projects@lgcm <projects@lgcm>
-#     1	tutorial/debug_faq.txt <devnull@localhost>
-Bogdan Budescu <bbudescu@gmail.com> bbudescu <bbudescu@gmail.com>
-Sebastian Berg <sebastian@sipsolutions.net> seberg <sebastian@sipsolutions.net>
-Huy Nguyen <huy@huyng.com> huyng <huy@huyng.com>
-Wei Li <kuantkid@gmail.com> kuantkid <kuantkid@gmail.com>
+Dzmitry Bahdanau <dimabgv@gmail.com> rizar <dimabv@tut.by>
+Eric Hunsberger <hunse@ctn> hunse <hunse@ctn>
 Ethan Buchman <ebuchman@uoguelph.ca> ebuchman <ebuchman@uoguelph.ca>
+Francesco Visin <fvisin@gmail.com> Francesco <fvisin@users.noreply.github.com>
+Francesco Visin <fvisin@gmail.com> fvisin <fvisin@gmail.com>
+Francois Savard <devnull@localhost> fsavard <devnull@localhost>
 Frederic Bastien <nouiz@nouiz.org> Frederic Bastien <bastienf@briaree1.rqchp.qc.ca>
 Frederic Bastien <nouiz@nouiz.org> Frederic Bastien <bastienf@iro.umontreal.ca>
 Frederic Bastien <nouiz@nouiz.org> Frédéric Bastien <nouiz@nouiz.org>
@@ -44,17 +60,23 @@ Frederic Bastien <nouiz@nouiz.org> bastienf@ldapk3.scinet.utoronto.ca <bastienf@
 Frederic Bastien <nouiz@nouiz.org> nouiz <nouiz@nouiz.org>
 Frederic Bastien <nouiz@nouiz.org> Frederic <nouiz@nouiz.org>
 Frederic Bastien <nouiz@nouiz.org> Frédéric Bastien <frederic.bastien@gmail.com>
-Grégoire <gregoire.mesnil@gmail.com> Grégoire <gregoire.mesnil@laposte.net>
+Grégoire Mesnil <gregoire.mesnil@gmail.com> Grégoire <gregoire.mesnil@laposte.net>
+Guillaume Alain <guillaume.alain.umontreal@gmail.com> Guillaume Alain <gyomalin@gmail.com>
 Guillaume Desjardins <guillaume.desjardins@gmail.com> desjagui <devnull@localhost>
 Guillaume Desjardins <guillaume.desjardins@gmail.com> desjagui@atchoum.iro.umontreal.ca <desjagui@atchoum.iro.umontreal.ca>
 Guillaume Desjardins <guillaume.desjardins@gmail.com> desjagui@opale.iro.umontreal.ca <desjagui@opale.iro.umontreal.ca>
 Guillaume Desjardins <guillaume.desjardins@gmail.com> gdesjardins <devnull@localhost>
+Guillaume Desjardins <guillaume.desjardins@gmail.com> tutorial/debug_faq.txt <devnull@localhost>
 Hani Almousli <hani.mousli@gmail.com> Hani <hani.mousli@gmail.com>
 Hani Almousli <hani.mousli@gmail.com> HaniAlmousli <hani.mousli@gmail.com>
+Huy Nguyen <huy@huyng.com> huyng <huy@huyng.com>
 Ian Goodfellow <goodfellow.ian@gmail.com> Ian Goodfellow <devnull@localhost>
 Ian Goodfellow <goodfellow.ian@gmail.com> goodfeli <goodfellow.ian@gmail.com>
 Ian Goodfellow <goodfellow.ian@gmail.com> Ian Goodfellow <goodfellow@google.com>
 Ian Goodfellow <goodfellow.ian@gmail.com> Ian Goodfellow <ia3n@gryphon0.(none)>
+Iban Harlouchet <iban.harlouchet@gmail.com> Iban Harlouchet <harlouci@eos3.iro.umontreal.ca>
+Iulian Vlad Serban <julianserban@gmail.com> Iulian Vlad Serban <serbaniv@eos2.iro.umontreal.ca>
+Iulian Vlad Serban <julianserban@gmail.com> Iulian Vlad Serban <serbaniv@bart7.iro.umontreal.ca>
 James Bergstra <james.bergstra@gmail.com> James Bergstra <bergstrj@iro.umontreal.ca>
 James Bergstra <james.bergstra@gmail.com> bergstra@ip05.m <bergstra@ip05.m>
 James Bergstra <james.bergstra@gmail.com> bergstra@mlp4.ais.sandbox <bergstra@mlp4.ais.sandbox>
@@ -66,8 +88,16 @@ James Bergstra <james.bergstra@gmail.com> james@crane <james@crane>
 James Bergstra <james.bergstra@gmail.com> james@mackie <james@mackie>
 James Bergstra <james.bergstra@gmail.com> james@x40.unstable <james@x40.unstable>
 James Bergstra <james.bergstra@gmail.com> test_rng_mrg.py <devnull@localhost>
+Jan Schlüter <github@jan-schlueter.de> f0k <github@jan-schlueter.de>
+Jeremiah Lowin <jlowin@lowindata.com> Jeremiah Lowin <jlowin@gmail.com>
+Jeremiah Lowin <jlowin@lowindata.com> Jeremiah Lowin <jlowin@iHal.local>
+Jeremie Tanguay <tanguaj@iro.umontreal.ca> Tanjay94 <you@yourdomain.example.com>
+Jeremie Tanguay <tanguaj@iro.umontreal.ca> Jeremie Tanguay <tanguaj@bart4.iro.umontreal.ca>
+Jesse Livezey <jesse.livezey@berkeley.edu> JesseLivezey <jesse.livezey@gmail.com>
 John Salvatier <jsalvatier@gmail.com> jsalvatier <jsalvatier@gmail.com>
 John Salvatier <jsalvatier@gmail.com> john salvatier <jsalvatier@gmail.com>
+John Schulman <john.d.schulman@gmail.com> joschu <john.d.schulman@gmail.com>
+jojolalpin <jojolalpin@gmail.com> jojolalpin <jojolalpin gmail>
 Joseph Turian <turian@iro.umontreal.ca> Joseph Turian <turian@gmail.com>
 Joseph Turian <turian@iro.umontreal.ca> turian@grenat.iro.umontreal.ca <turian@grenat.iro.umontreal.ca>
 Joseph Turian <turian@iro.umontreal.ca> turian@lgcm <turian@lgcm>
@@ -75,29 +105,47 @@ Joseph Turian <turian@iro.umontreal.ca> turian@lsvm.iro.umontreal.ca <turian@lsv
 Joseph Turian <turian@iro.umontreal.ca> turian@rubis.iro.umontreal.ca <turian@rubis.iro.umontreal.ca>
 Joseph Turian <turian@iro.umontreal.ca> turianjo@is23.m <turianjo@is23.m>
 Josh Bleecher Snyder <josharian@gmail.com> Josh Bleecher Snyder <josharian+github@gmail.com>
+Jörg Bornschein <jb@capsec.org> Joerg Bornschein <bornschein@fias.uni-frankfurt.de>
+Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <iamkelvinxu@gmail.com>
+Kelvin Xu <kelvin.xu@umontreal.ca> kelvinxu <iamkelvinxu@gmail.com>
+Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <xukelvin@leto01.iro.umontreal.ca>
+Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <xukelvin@eos1.iro.umontreal.ca>
+Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <xukelvin@eos16.iro.umontreal.ca>
+Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <xukelvin@bart5.iro.umontreal.ca>
+Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <xukelvin@eos13.iro.umontreal.ca>
+Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <xukelvin@eos7.iro.umontreal.ca>
+Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <xukelvin@eos18.iro.umontreal.ca>
+Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <xukelvin@eos20.iro.umontreal.ca>
+Kyung Hyun Cho <cho.k.hyun@gmail.com> Kyunghyun Cho <kyunghyuncho@Kyunghyuns-MacBook-Pro.local>
+Kyung Hyun Cho <cho.k.hyun@gmail.com> Kyunghyun Cho <kyunghyuncho@kyunghyuns-mbp.sf.umontreal.ca>
+Li Yao <yaoli.email@gmail.com> Li Yao <li.yao@umontreal.ca>
+Li Yao <yaoli.email@gmail.com> Li Yao <yaoli@iro>
+Li Yao <yaoli.email@gmail.com> yaoli <yaoli.email@gmail.com>
+Li Yao <yaoli.email@gmail.com> Li <you@yourdomain.example.com>
+Lucas Beyer <lucasb.eyer.be@gmail.com> lucasb-eyer <lucasb.eyer.be@gmail.com>
+Ludwig Schmidt-Hackenberg <ludwig@iupr.com> Ludwig Schmidt-Hackenberg <ludwig@schmidt-hackenberg.net>
+Luke Metz <luke.metz@students.olin.edu> = <luke.metz@students.olin.edu>
+Markus Roth <markus.roth@herr-biber.de> Markus Roth <mail@rothmark.us>
+Mathieu Germain <mathieu.germain@gmail.com> Mathieu Germain <mathieu.germain2@usherbrooke.ca>
+Mehdi Mirza <memirzamo@gmail.com> Mehdi Mirza <memimo@users.noreply.github.com>
+Mehdi Mirza <memirzamo@gmail.com> memimo <memirzamo@gmail.com>
+Moslem Kazemi <moslemk@gmail.com> Moslem Kazemi <moslemk@users.noreply.github.com>
+Moslem Kazemi <moslemk@gmail.com> Mo <moslemk@gmail.com>
+Nicolas Ballas <ballas.n@gmail.com> Kcub <ballas@lrde.epita.fr>
+Nicolas Boulanger-Lewandowski <nicolas_boulanger@hotmail.com> boulanni <nicolas_boulanger@hotmail.com>
+Nicolas Pinto <pinto@alum.mit.edu> Nicolas Pinto <nicolas.pinto@gmail.com>
 Olivier Breuleux <breuleux@gmail.com> Olivier Breuleux <breuleuo@iro.umontreal.ca>
 Olivier Breuleux <breuleux@gmail.com> olivier@olivier-desktop <olivier@olivier-desktop>
+Olivier Breuleux <breuleux@gmail.com> olivier@ordinateur-de-olivier.local <olivier@ordinateur-de-olivier.local>
 Olivier Delalleau <delallea@iro> Olivier Delalleau <delallea@iro.umontreal.ca>
 Olivier Delalleau <delallea@iro> delallea <delallea@iro.umontreal.ca>
 Olivier Delalleau <delallea@iro> delallea@valhalla.apstat.com <delallea@valhalla.apstat.com>
-Nicolas Boulanger-Lewandowski <nicolas_boulanger@hotmail.com> boulanni <nicolas_boulanger@hotmail.com>
+Orhan Firat <orhan.firat@ceng.metu.edu.tr> orhanf <orhan.firat@ceng.metu.edu.tr>
 Pascal Lamblin <lamblinp@iro.umontreal.ca> lamblin <lamblinp@iro.umontreal.ca>
 Pascal Lamblin <lamblinp@iro.umontreal.ca> lamblinp@lgcm <lamblinp@lgcm>
 Philippe Hamel <hamel.phil@gmail.com> Philippe  Hamel <hamel.phil@gmail.com>
 Philippe Hamel <hamel.phil@gmail.com> Philippe Hamel <higgsbosonh@hotmail.com>
 Pierre-Antoine Manzagol <pierre.antoine.manzagol@gmail.com> Pierre-Antoine Manzagol <manzagop@iro>
-Raul Chandias Ferrari <devnull@localhost> chandiar <devnull@localhost>
-Razvan Pascanu <r.pascanu@gmail.com> Razvan Pascanu <pascanur@iro>
-Razvan Pascanu <r.pascanu@gmail.com> Razvan Pascanu <rman@rman-Dell-System-XPS-L502X.(none)>
-Razvan Pascanu <r.pascanu@gmail.com> Razvan Pascanu <rman@rman-pad.(none)>
-Razvan Pascanu <r.pascanu@gmail.com> pascanur@simplet.iro.umontreal.ca <pascanur@simplet.iro.umontreal.ca>
-Razvan Pascanu <r.pascanu@gmail.com> rman@rpad <rman@rpad>
-Sander Dieleman <sanderdieleman@gmail.com> benanne <sanderdieleman@gmail.com>
-Xavier Glorot <glorotxa@iro.umontreal.ca> glorotxa <glorotxa@iro.umontreal.ca>
-Xavier Glorot <glorotxa@iro.umontreal.ca> glorotxa@timide.iro.umontreal.ca <glorotxa@timide.iro.umontreal.ca>
-Yoshua Bengio <bengioy@iro.umontreal.ca> bengioy@bengio-mac.local <bengioy@bengio-mac.local>
-Sina Honari <honaris@iro.umontreal.ca> SinaHonari <sina2222@gmail.com>
-Sina Honari <honaris@iro.umontreal.ca> Sina Honari <honaris@eos21.iro.umontreal.ca>
 Pierre Luc Carrier <carrier.pierreluc@gmail.com> --global <carrier.pierreluc@gmail.com>
 Pierre Luc Carrier <carrier.pierreluc@gmail.com> Pierre Luc Carrier <carriepl@bart2.iro.umontreal.ca>
 Pierre Luc Carrier <carrier.pierreluc@gmail.com> carriepl <carriepl@users.noreply.github.com>
@@ -109,74 +157,31 @@ Pierre Luc Carrier <carrier.pierreluc@gmail.com> Pierre Luc Carrier <carriepl@ba
 Pierre Luc Carrier <carrier.pierreluc@gmail.com> Pierre Luc Carrier <carriepl@bart3.iro.umontreal.ca>
 Pierre Luc Carrier <carrier.pierreluc@gmail.com> pl <carrier.pierreluc@gmail.com>
 Pierre Luc Carrier <carrier.pierreluc@gmail.com> carriepl <carrier.pierreluc@gmail.com>
-Kyung Hyun Cho <cho.k.hyun@gmail.com> Kyunghyun Cho <kyunghyuncho@Kyunghyuns-MacBook-Pro.local>
-Kyung Hyun Cho <cho.k.hyun@gmail.com> Kyunghyun Cho <kyunghyuncho@kyunghyuns-mbp.sf.umontreal.ca>
-Li Yao <yaoli.email@gmail.com> Li Yao <li.yao@umontreal.ca>
-Li Yao <yaoli.email@gmail.com> Li Yao <yaoli@iro>
-Li Yao <yaoli.email@gmail.com> yaoli <yaoli.email@gmail.com>
-Li Yao <yaoli.email@gmail.com> Li <you@yourdomain.example.com>
-Dmitrii Serdiuk <serdyuk.dmitriy@gmail.com> dima <serdyuk.dmitriy@gmail.com>
-Dmitrii Serdiuk <serdyuk.dmitriy@gmail.com> dmitriy-serdyuk <serdyuk.dmitriy@gmail.com>
-Dmitrii Serdiuk <serdyuk.dmitriy@gmail.com> serdyuk <serdyuk.dmitriy@gmail.com>
-Francesco Visin <fvisin@gmail.com> Francesco <fvisin@users.noreply.github.com>
-Francesco Visin <fvisin@gmail.com> fvisin <fvisin@gmail.com>
+Ramana.S <vxrram95@gmail.com> sentient07 <vxrram95@gmail.com>
+Rami Al-Rfou' <rmyeid@gmail.com> Rami Al-Rfou <rmyeid@gmail.com>
+Raul Chandias Ferrari <devnull@localhost> chandiar <devnull@localhost>
+Razvan Pascanu <r.pascanu@gmail.com> Razvan Pascanu <pascanur@iro>
+Razvan Pascanu <r.pascanu@gmail.com> Razvan Pascanu <rman@rman-Dell-System-XPS-L502X.(none)>
+Razvan Pascanu <r.pascanu@gmail.com> Razvan Pascanu <rman@rman-pad.(none)>
+Razvan Pascanu <r.pascanu@gmail.com> pascanur@simplet.iro.umontreal.ca <pascanur@simplet.iro.umontreal.ca>
+Razvan Pascanu <r.pascanu@gmail.com> rman@rpad <rman@rpad>
+Roy Xue <xljroy@gmail.com> Lijun Xue <xljroy@gmail.com>
+Sander Dieleman <sanderdieleman@gmail.com> benanne <sanderdieleman@gmail.com>
+Sebastian Berg <sebastian@sipsolutions.net> seberg <sebastian@sipsolutions.net>
 Sebastien Jean <jeasebas@iro.umontreal.ca> sebastien <jeasebas@iro.umontreal.ca>
 Sebastien Jean <jeasebas@iro.umontreal.ca> sebastien-j <jeasebas@iro.umontreal.ca>
 Sebastien Jean <jeasebas@iro.umontreal.ca> sebastien-j <sebastien.jean@mail.mcgill.ca>
-Chienli Ma <maqianlie@gmail.com> Chienli Ma(马千里) <maqianlie@gmail.com>
-Chienli Ma <maqianlie@gmail.com> ChienliMa <maqianlie@gmail.com>
-Ziye Fan <fanziye.cis@gmail.com> FanZiye(t13m) <fanziye.cis@gmail.com>
-Iban Harlouchet <iban.harlouchet@gmail.com> Iban Harlouchet <harlouci@eos3.iro.umontreal.ca>
-Caglar <ca9lar@gmail.com> Caglar <caglar@users.noreply.github.com>
-Alexandre de Brebisson <adbrebs@gmail.com> AdeB <adbrebs@gmail.com>
-Roy Xue <xljroy@gmail.com> Lijun Xue <xljroy@gmail.com>
-Bart van Merrienboer <bart.vanmerrienboer@gmail.com> Bart van Merriënboer <bart.vanmerrienboer@gmail.com>
-Bart van Merrienboer <bart.vanmerrienboer@gmail.com> Bart <bart.vanmerrienboer@gmail.com>
-Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <iamkelvinxu@gmail.com>
-Kelvin Xu <kelvin.xu@umontreal.ca> kelvinxu <iamkelvinxu@gmail.com>
-Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <xukelvin@leto01.iro.umontreal.ca>
-Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <xukelvin@eos1.iro.umontreal.ca>
-Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <xukelvin@eos16.iro.umontreal.ca>
-Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <xukelvin@bart5.iro.umontreal.ca>
-Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <xukelvin@eos13.iro.umontreal.ca>
-Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <xukelvin@eos7.iro.umontreal.ca>
-Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <xukelvin@eos18.iro.umontreal.ca>
-Kelvin Xu <kelvin.xu@umontreal.ca> Kelvin Xu <xukelvin@eos20.iro.umontreal.ca>
-jojolalpin <jojolalpin@gmail.com> jojolalpin <jojolalpin gmail>
-Mehdi Mirza <memirzamo@gmail.com> Mehdi Mirza <memimo@users.noreply.github.com>
-Mehdi Mirza <memirzamo@gmail.com> memimo <memirzamo@gmail.com>
-Andre Holzner <Andre.Georg.Holzner@cern.ch> Andre Holzner <holzner@pb-d-128-141-148-222.cern.ch>
-Andre Holzner <Andre.Georg.Holzner@cern.ch> andreh <andreh@localhost>
-Andre Holzner <Andre.Georg.Holzner@cern.ch> Andre Holzner <holzner@andres-mbp-2.fritz.box>
-Moslem Kazemi <moslemk@gmail.com> Moslem Kazemi <moslemk@users.noreply.github.com>
-Moslem Kazemi <moslemk@gmail.com> Mo <moslemk@gmail.com>
-Alex Lamb <alex6200@gmail.com> AlexLamb <alex6200@gmail.com>
-Alex Lamb <alex6200@gmail.com> DeathMonster666 <alex6200@gmail.com>
-Lucas Beyer <lucasb.eyer.be@gmail.com> lucasb-eyer <lucasb.eyer.be@gmail.com>
-Iulian Vlad Serban <julianserban@gmail.com> Iulian Vlad Serban <serbaniv@eos2.iro.umontreal.ca>
-Iulian Vlad Serban <julianserban@gmail.com> Iulian Vlad Serban <serbaniv@bart7.iro.umontreal.ca>
-Mathieu Germain <mathieu.germain@gmail.com> Mathieu Germain <mathieu.germain2@usherbrooke.ca>
-abalkin <abalkin@enlnt.com> abalkin <abalkin>
-abalkin <abalkin@enlnt.com> abalkin <serpent.speak@gmail.com>
-abalkin <abalkin@enlnt.com> Alexander Belopolsky <abalkin@enlnt.com>
-John Schulman <john.d.schulman@gmail.com> joschu <john.d.schulman@gmail.com>
+Sina Honari <honaris@iro.umontreal.ca> SinaHonari <sina2222@gmail.com>
+Sina Honari <honaris@iro.umontreal.ca> Sina Honari <honaris@eos21.iro.umontreal.ca>
+Søren Kaae Sønderby <skaaesonderby@gmail.com> skaae <skaaesonderby@gmail.com>
+Steven Pigeon <pigeon@iro.umontreal.ca> steven-pigeon <pigeon@iro.umontreal.ca>
+Valentin Bisson <valentin.bisson@umontreal.ca> onze <onzeonline@gmail.com>
 Xavier Bouthillier <xavier.bouthillier@gmail.com> Xavier Bouthillier <xavier.bouthillier@umontreal.ca>
 Xavier Bouthillier <xavier.bouthillier@gmail.com> Xavier Bouthillier/ <xavier.bouthillier@gmail.com>
-Orhan Firat <orhan.firat@ceng.metu.edu.tr> orhanf <orhan.firat@ceng.metu.edu.tr>
-Søren Kaae Sønderby <skaaesonderby@gmail.com> skaae <skaaesonderby@gmail.com>
-Luke Metz <luke.metz@students.olin.edu> = <luke.metz@students.olin.edu>
-Guillaume Alain <guillaume.alain.umontreal@gmail.com> Guillaume Alain <gyomalin@gmail.com>
-Jeremiah Lowin <jlowin@lowindata.com> Jeremiah Lowin <jlowin@gmail.com>
-Jeremiah Lowin <jlowin@lowindata.com> Jeremiah Lowin <jlowin@iHal.local>
-Jesse Livezey <jesse.livezey@berkeley.edu> JesseLivezey <jesse.livezey@gmail.com>
-Ludwig Schmidt-Hackenberg <ludwig@iupr.com> Ludwig Schmidt-Hackenberg <ludwig@schmidt-hackenberg.net>
-Markus Roth <markus.roth@herr-biber.de> Markus Roth <mail@rothmark.us>
-Nicolas Pinto <pinto@alum.mit.edu> Nicolas Pinto <nicolas.pinto@gmail.com>
-Vivek Kulkarni <viveksck@gmail.com> Vivek Kulkarni <vvkulkarni@cs.stonybrook.edu>
+Xavier Glorot <glorotxa@iro.umontreal.ca> glorotxa <glorotxa@iro.umontreal.ca>
+Xavier Glorot <glorotxa@iro.umontreal.ca> glorotxa@timide.iro.umontreal.ca <glorotxa@timide.iro.umontreal.ca>
 Vincent Dumoulin <vi.dumoulin@gmail.com> vdumoulin <vi.dumoulin@gmail.com>
-Brian Cheung <briancheung@users.noreply.github.com> briancheung <bcheung5@gmail.com>
-Nicolas Ballas <ballas.n@gmail.com> Kcub <ballas@lrde.epita.fr>
-Ramana.S <vxrram95@gmail.com> sentient07 <vxrram95@gmail.com>
-Anatoly Belikov <awbelikov@gmail.com> Anatoly Belikov <wormblood@gmail.com>
-Arjun Jain <arjunjain@gmail.com> Arjun Jain <stencilman@users.noreply.github.com>
-Balázs Hidasi <hidasi.balazs@gravityrd.com> Balázs <hidasib@gmail.com>
+Vivek Kulkarni <viveksck@gmail.com> Vivek Kulkarni <vvkulkarni@cs.stonybrook.edu>
+Wei Li <kuantkid@gmail.com> kuantkid <kuantkid@gmail.com>
+Yoshua Bengio <bengioy@iro.umontreal.ca> bengioy@bengio-mac.local <bengioy@bengio-mac.local>
+Ziye Fan <fanziye.cis@gmail.com> FanZiye(t13m) <fanziye.cis@gmail.com>
