@@ -329,12 +329,14 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
                 if v == -1 or v[0] < 4007:
                     # 4007 is the final release of cudnn v4
                     dnn_available.avail = False
-                    dnn_available.msg = "Version too old. Update to v5, was %d" % v[0]
+                    dnn_available.msg = "Version too old. Update to v5, was %d." % v[0]
                     raise RuntimeError(dnn_available.msg)
+                else:
+                    dnn_available.avail = comp
     if config.dnn.enabled == "True":
         if not dnn_available.avail:
             raise RuntimeError(
-                "You enabled CuDNN, but we aren't able to use it: %s" %
+                "You enabled cuDNN, but we aren't able to use it: %s" %
                 dnn_available.msg)
     return dnn_available.avail
 
@@ -587,7 +589,7 @@ def use(device,
                                     " downgrading cuDNN to version 5.")
                 except Exception:
                     cudnn_version = dnn_available.msg
-                print("Using gpu device %d: %s (CNMeM is %s, CuDNN %s)" % (
+                print("Using gpu device %d: %s (CNMeM is %s, cuDNN %s)" % (
                     active_device_number(),
                     active_device_name(),
                     cnmem_enabled,
