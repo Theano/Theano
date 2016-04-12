@@ -270,14 +270,14 @@ from theano.sandbox.cuda.type import CudaNdarrayType
 def dnn_available():
     if config.dnn.enabled == "False":
         dnn_available.avail = False
-        dnn_available.msg = "disabled by dnn.enabled flag"
+        dnn_available.msg = "Disabled by dnn.enabled flag"
     if dnn_available.avail is None and not cuda_available:
         dnn_available.msg = "CUDA not available"
         dnn_available.avail = False
     elif dnn_available.avail is None:
         dev = active_device_number()
         if device_properties(dev)['major'] < 3:
-            dnn_available.msg = "Device not supported by cuDNN"
+            dnn_available.msg = "Device not supported"
             dnn_available.avail = False
         else:
             preambule = """
@@ -315,7 +315,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
             dnn_available.avail = comp
             if not dnn_available.avail:
                 dnn_available.msg = (
-                    "Theano can not compile with cuDNN. We got this error:\n" +
+                    "Can not compile with cuDNN. We got this error:\n" +
                     str(err))
             else:
                 # If we can compile, check that we can import and run.
@@ -326,13 +326,10 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
                                          " from one version, but we link with"
                                          " a different version %s" % str(v))
                     raise RuntimeError(dnn_available.msg)
-                if v == -1 or v[0] < 3007:
-                    # 3007 is the final release of cudnn v3
+                if v == -1 or v[0] < 4007:
+                    # 4007 is the final release of cudnn v4
                     dnn_available.avail = False
-                    dnn_available.msg = (
-                        "You have an old release of CuDNN (or a release "
-                        "candidate) that isn't supported.  Please update to "
-                        "at least v3 final version.")
+                    dnn_available.msg = "Version too old. Update to v5."
                     raise RuntimeError(dnn_available.msg)
     if config.dnn.enabled == "True":
         if not dnn_available.avail:
@@ -582,13 +579,13 @@ def use(device,
                     if dnn_available():
                         (hdr_v, runtime_v) = dnn_version()
                         cudnn_version = runtime_v
-                        # 4100 should not print warning with cudnn 4 final.
-                        if cudnn_version > 4100:
+                        # 5100 should not print warning with cudnn 5 final.
+                        if cudnn_version > 5100:
                             warn = ("Your CuDNN version is more recent then Theano."
                                     " If you see problems, try updating Theano or"
-                                    " downgrading CuDNN to version 4.")
+                                    " downgrading CuDNN to version 5.")
                 except Exception:
-                    pass
+                    cudnn_version = dnn_available.msg
                 print("Using gpu device %d: %s (CNMeM is %s, CuDNN %s)" % (
                     active_device_number(),
                     active_device_name(),
