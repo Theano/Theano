@@ -3593,7 +3593,7 @@ def local_sumsqr2dot(node):
         if (in1.owner and isinstance(in1.owner.op, T.Elemwise) and isinstance(in1.owner.op.scalar_op, theano.scalar.basic.Sqr)):
             in_sqr = in1.owner.inputs[0]
             if (in_sqr.owner and isinstance(in_sqr.owner.op, T.Elemwise) and
-                    isinstance(in_sqr.owner.op.scalar_op, theano.scalar.basic.Mul)):
+                    isinstance(in_sqr.owner.op.scalar_op, theano.scalar.basic.Mul) and len(in_sqr.owner.inputs) == 2):
                 in_mul1, in_mul2 = in_sqr.owner.inputs
 
                 if (isinstance(in_mul1.owner.op, T.elemwise.DimShuffle) and in_mul1.owner.op.new_order == ('x', 0, 1) and

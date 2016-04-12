@@ -6177,7 +6177,7 @@ def test_local_sumsqr2dot():
     G = matrix('G')
     W = matrix('W')
 
-    y = T.sqr( W.dimshuffle('x',0,1) * G.dimshuffle(0,'x',1) ).sum(axis=(1,2))
+    y = T.sqr(W.dimshuffle('x', 0, 1) * G.dimshuffle(0, 'x', 1)).sum(axis=(1, 2))
     MODE = theano.compile.get_default_mode().including('local_sumsqr2dot')
 
     f = function([W, G], y, mode=MODE)
@@ -6186,12 +6186,12 @@ def test_local_sumsqr2dot():
     g_val = numpy.random.rand(5, 3).astype(config.floatX)
 
     f_val = f(w_val, g_val)
-    f_test = function([W,G], T.dot(T.sqr(G), T.sqr(W).sum(axis=0)), mode=MODE)
+    f_test = numpy.dot(numpy.square(g_val), numpy.square(w_val).sum(axis=0))
 
-    assert numpy.allclose(f_val, f_test(w_val, g_val))
-    assert  any(isinstance(n.op, (tensor.basic.Dot, tensor.blas.Dot22,
-                                  tensor.blas.Gemv, tensor.blas_c.CGemv))
-      for n in f.maker.fgraph.toposort())
+    assert numpy.allclose(f_val, f_test)
+    assert any(isinstance(n.op, (tensor.basic.Dot, tensor.blas.Dot22,
+                                 tensor.blas.Gemv, tensor.blas_c.CGemv))
+               for n in f.maker.fgraph.toposort())
 
 
 def test_local_expm1():
