@@ -82,7 +82,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
 def _dnn_check_version():
     v = version()
     if v < 4007:
-        return False, "Version too old. Update to v5."
+        return False, "Version too old. Update to v5, was %d." % v
 
     return True, None
 
