@@ -74,7 +74,7 @@ class SharedVariable(Variable):
                 raise TypeError('value and strict are ignored if you pass '
                                 'a container here')
         else:
-            if value is not None:
+            if container is not None:
                 raise TypeError('Error to specify both value and container')
             self.container = Container(
                 self,
