@@ -216,9 +216,7 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
         utt.verify_grad(op, [b_val, h_val, W_val], mode=self.mode, eps=eps)
 
     def test_sparseblockgemv_grad_1(self):
-        """
-            Test that we correctly handle cases where dimensions are 1.
-        """
+        # Test that we correctly handle cases where dimensions are 1.
         h_val = randn(1, 1, 1).astype('float32')
         iIdx_val = numpy.random.permutation(1)[:1][None, :]
         oIdx_val = numpy.random.permutation(1)[:1][None, :]

@@ -8,7 +8,7 @@ import theano
 from theano import tensor, scalar, gof
 from theano.compile import optdb
 from theano.compile.ops import shape_i
-from theano.gof import (local_optimizer, EquilibriumDB,
+from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         SequenceDB, Optimizer, toolbox)
 from theano.gof.optdb import LocalGroupDB
 from theano.ifelse import IfElse
@@ -17,6 +17,7 @@ from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
 from theano.tensor.nnet.conv import ConvOp
+from theano.tensor.nnet.blocksparse import SparseBlockGemv, SparseBlockOuter
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs)
@@ -33,6 +34,7 @@ from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         GpuEye, gpu_join, GpuJoin)
 from .blas import (gpu_dot22, GpuGemv, GpuGemm, GpuGer, GpuGemmBatch,
                    gpugemm_no_inplace, gpugemmbatch_no_inplace)
+from .blocksparse import GpuSparseBlockGemv, GpuSparseBlockOuter
 from .nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
                    GpuCrossentropySoftmax1HotWithBiasDx,
                    GpuSoftmaxWithBias, GpuSoftmax)
@@ -70,6 +72,17 @@ def register_opt(*tags, **kwargs):
     def f(local_opt):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
         gpu_optimizer.register(name, local_opt, 'fast_run', 'gpuarray', *tags)
+        return local_opt
+    return f
+
+
+def register_inplace(*tags, **kwargs):
+    def f(local_opt):
+        name = (kwargs and kwargs.pop('name')) or local_opt.__name__
+        optdb.register(
+            name, TopoOptimizer(
+                local_opt, failure_callback=TopoOptimizer.warn_inplace),
+            60, 'fast_run', 'inplace', 'gpuarray', *tags)
         return local_opt
     return f
 
@@ -619,9 +632,9 @@ def local_gpua_advanced_subtensor(node, context_name):
 @register_opt('fast_compile')
 @op_lifter([tensor.AdvancedIncSubtensor1])
 def local_gpua_advanced_incsubtensor(node, context_name):
-
+    context = get_context(context_name)
     # This is disabled on non-cuda contexts
-    if get_context(context_name).kind != 'cuda':
+    if context.kind != 'cuda':
         return None
 
     x, y, ilist = node.inputs
@@ -635,10 +648,8 @@ def local_gpua_advanced_incsubtensor(node, context_name):
             y = tensor.cast(y, dtype)
 
     set_instead_of_inc = node.op.set_instead_of_inc
-    active_device_no = theano.sandbox.cuda.active_device_number()
-    device_properties = theano.sandbox.cuda.device_properties
 
-    compute_capability = device_properties(active_device_no)['major']
+    compute_capability = int(context.bin_id[-2])
 
     if (compute_capability < 2 or x.ndim != 2 or y.ndim != 2):
         return GpuAdvancedIncSubtensor1(
@@ -863,6 +874,32 @@ ConvOp does not work with the gpuarray backend.
 Use the new convolution interface to have GPU convolution working:
 theano.tensor.nnet.conv2d()
 """
+
+
+@register_opt('fast_compile')
+@op_lifter([SparseBlockGemv])
+def local_lift_sparseblockgemv(node, context_name):
+    return GpuSparseBlockGemv(node.op.inplace)
+
+
+@register_opt('fast_compile')
+@op_lifter([SparseBlockOuter])
+def local_lift_sparseblockouter(node, context_name):
+    return GpuSparseBlockOuter(node.op.inplace)
+
+
+@register_inplace()
+@local_optimizer([GpuSparseBlockGemv], inplace=True)
+def local_inplace_sparseblockgemv(node):
+    if isinstance(node.op, GpuSparseBlockGemv) and not node.op.inplace:
+        return [GpuSparseBlockGemv(inplace=True)(*node.inputs)]
+
+
+@register_inplace()
+@local_optimizer([GpuSparseBlockOuter], inplace=True)
+def local_inplace_sparseblockouter(node):
+    if isinstance(node.op, GpuSparseBlockOuter) and not node.op.inplace:
+        return [GpuSparseBlockOuter(inplace=True)(*node.inputs)]
 
 
 # This deals with any abstract convs that have a transfer somewhere
