@@ -74,18 +74,15 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
         try_run=False, output=True)
 
     if not avail:
-        return False, ("Theano cannot compile with cuDNN. "
+        return False, ("cannot compile with CuDNN. "
                        "We got this error:\n" + str(err))
     return True, None
 
 
 def _dnn_check_version():
     v = version()
-    if v < 3007:
-        return False, (
-            "You have an old release of CuDNN (or a release candidate) "
-            "that isn't supported.  Please update to at least v3 final "
-            "version.")
+    if v < 4007:
+        return False, "Version too old. Update to v5."
 
     return True, None
 
@@ -94,7 +91,7 @@ def dnn_present():
     if dnn_present.avail is not None:
         return dnn_present.avail
     if config.dnn.enabled == "False":
-        dnn_present.msg = "disabled by dnn.enabled flag"
+        dnn_present.msg = "Disabled by dnn.enabled flag"
         dnn_present.avail = False
 
     if pygpu is None:
@@ -134,7 +131,7 @@ def dnn_available(context_name):
     # This is a hack because bin_id is in the from of
     # "<something>_<major><minor>" for cuda devices.
     if ctx.bin_id[-2:] < b'30':
-        dnn_available.msg = "Device not supported by cuDNN"
+        dnn_available.msg = "Device not supported"
         return False
 
     return True
@@ -1620,7 +1617,7 @@ class NoCuDNNRaise(Optimizer):
                 # just skip this optimization.
                 raise AssertionError(
                     "cuDNN optimization was enabled, but Theano was not able "
-                    "to use it for context " + c + ". We got this error: \n" +
+                    "to use it for context " + str(c) + ". We got this error: \n" +
                     dnn_available.msg)
 
 gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
