@@ -18,7 +18,7 @@ class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
     def setUp(self):
         super(TestDnnConv2d, self).setUp()
         self.shared = gpuarray_shared_constructor
-        # provide_shape is not used by the CuDNN impementation
+        # provide_shape is not used by the cuDNN impementation
         self.provide_shape = [False]
 
     def tcase(self, i, f, s, b, flip, provide_shape):

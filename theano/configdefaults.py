@@ -309,25 +309,25 @@ AddConfigVar('dnn.conv.algo_bwd',
              in_c_key=False)
 
 AddConfigVar('dnn.conv.algo_fwd',
-             "Default implementation to use for CuDNN forward convolution.",
+             "Default implementation to use for cuDNN forward convolution.",
              EnumStr(*SUPPORTED_DNN_CONV_ALGO_FWD),
              in_c_key=False)
 
 AddConfigVar('dnn.conv.algo_bwd_data',
-             "Default implementation to use for CuDNN backward convolution to "
+             "Default implementation to use for cuDNN backward convolution to "
              "get the gradients of the convolution with regard to the inputs.",
              EnumStr(*SUPPORTED_DNN_CONV_ALGO_BWD_DATA),
              in_c_key=False)
 
 AddConfigVar('dnn.conv.algo_bwd_filter',
-             "Default implementation to use for CuDNN backward convolution to "
+             "Default implementation to use for cuDNN backward convolution to "
              "get the gradients of the convolution with regard to the "
              "filters.",
              EnumStr(*SUPPORTED_DNN_CONV_ALGO_BWD_FILTER),
              in_c_key=False)
 
 AddConfigVar('dnn.conv.precision',
-             "Default data precision to use for the computation in CuDNN "
+             "Default data precision to use for the computation in cuDNN "
              "convolutions (defaults to the same dtype as the inputs of the "
              "convolutions).",
              EnumStr('as_input', 'float16', 'float32', 'float64'),
@@ -350,9 +350,9 @@ AddConfigVar('dnn.library_path',
              StrParam(default_dnn_path('lib' if sys.platform == 'darwin' else 'lib64')))
 
 AddConfigVar('dnn.enabled',
-             "'auto', use CuDNN if available, but silently fall back"
+             "'auto', use cuDNN if available, but silently fall back"
              " to not using it if not present."
-             " If True and CuDNN can not be used, raise an error."
+             " If True and cuDNN can not be used, raise an error."
              " If False, disable cudnn",
              StrParam("auto", "True", "False"),
              in_c_key=False)
