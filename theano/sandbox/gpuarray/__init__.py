@@ -68,15 +68,15 @@ def init_dev(dev, name=None):
         warn = None
         cudnn_version = ""
         if dev.startswith('cuda'):
-            cudnn_version = " (CuDNN not available)"
+            cudnn_version = " (cuDNN not available)"
             try:
                 cudnn_version = dnn.version()
                 # 5100 should not print warning with cudnn 5 final.
                 if cudnn_version > 5100:
-                    warn = ("Your CuDNN version is more recent than Theano."
+                    warn = ("Your cuDNN version is more recent than Theano."
                             " If you see problems, try updating Theano or"
-                            " downgrading CuDNN to version 5.")
-                cudnn_version = " (CuDNN version %s)" % cudnn_version
+                            " downgrading cuDNN to version 5.")
+                cudnn_version = " (cuDNN version %s)" % cudnn_version
             except Exception:
                 cudnn_version = dnn.dnn_present.msg
         print("Mapped name %s to device %s: %s%s" % (
