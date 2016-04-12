@@ -21,6 +21,7 @@ if theano.config.mode == 'FAST_COMPILE':
 else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
     mode_without_gpu = theano.compile.mode.get_default_mode()
+    mode_without_gpu = mode_without_gpu.excluding('gpu')
 
 
 def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
