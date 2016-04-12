@@ -223,7 +223,7 @@ def conv2d_grad_wrt_inputs(output_grad,
     Notes
     -----
 
-    :note: If CuDNN is available, it will be used on the
+    :note: If cuDNN is available, it will be used on the
         GPU. Otherwise, it is the *CorrMM* convolution that will be used
         "caffe style convolution".
 
@@ -346,7 +346,7 @@ def conv2d_grad_wrt_weights(input,
     Notes
     -----
 
-    :note: If CuDNN is available, it will be used on the
+    :note: If cuDNN is available, it will be used on the
         GPU. Otherwise, it is the *CorrMM* convolution that will be used
         "caffe style convolution".
 

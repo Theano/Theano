@@ -904,8 +904,8 @@ class test_SoftMax(test_nnet.test_SoftMax):
                     ]) == 0)
 
     def test_log_softmax(self):
-        # This is a test for an optimization that depends on CuDNN v3 or
-        # more recent. Don't test if the CuDNN version is too old.
+        # This is a test for an optimization that depends on cuDNN v3 or
+        # more recent. Don't test if the cuDNN version is too old.
         if dnn.version(False) < 3000:
             raise SkipTest("Log-softmax is only in cudnn v3+")
 
@@ -945,8 +945,8 @@ class test_SoftMax(test_nnet.test_SoftMax):
         # Test that the op LogSoftmax is correctly replaced by the op
         # DnnSoftmax with the 'log' mode.
 
-        # This is a test for an optimization that depends on CuDNN v3 or
-        # more recent. Don't test if the CuDNN version is too old.
+        # This is a test for an optimization that depends on cuDNN v3 or
+        # more recent. Don't test if the cuDNN version is too old.
         if dnn.version(False) < 3000:
             raise SkipTest("Log-softmax is only in cudnn v3+")
 

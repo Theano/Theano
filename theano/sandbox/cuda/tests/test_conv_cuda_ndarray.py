@@ -520,7 +520,7 @@ def _test_full(cls, mode=None, version=[-1], extra_shapes=[],
 
 def test_full():
 
-    # If using CuDNN version before v3, only run the tests where the
+    # If using cuDNN version before v3, only run the tests where the
     # kernels are not larger than the input in any spatial dimension.
     if cuda.dnn.dnn_available() and cuda.dnn.version() < (3000, 3000):
         test_bigger_kernels = False
@@ -542,7 +542,7 @@ def test_dnn_full():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
 
-    # If using CuDNN version before v3, only run the tests where the
+    # If using cuDNN version before v3, only run the tests where the
     # kernels are not larger than the input in any spatial dimension.
     if cuda.dnn.version() < (3000, 3000):
         test_bigger_kernels = False
