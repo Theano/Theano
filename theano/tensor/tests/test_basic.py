@@ -16,7 +16,8 @@ from six.moves.builtins import min as builtin_min
 from nose.tools import assert_raises
 from nose.plugins.skip import SkipTest
 import numpy
-from numpy.testing import dec, assert_array_equal, assert_allclose
+from numpy.testing import (dec, assert_array_equal,
+                           assert_allclose, assert_raises)
 from distutils.version import LooseVersion
 from functools import partial
 
@@ -7299,20 +7300,15 @@ class test_diagonal(unittest.TestCase):
         # test that it accepts the right form of input
         x = theano.tensor.matrix()
         y = diagonal(x)
-        assert y.owner.op.__class__ == Diagonal
+        assert isinstance(y.owner.op, Diagonal)
 
         x = theano.tensor.tensor3()
         y = diagonal(x)
-        assert y.owner.op.__class__ == Diagonal
+        assert isinstance(y.owner.op, Diagonal)
 
         # other types should raise error
         x = theano.tensor.vector()
-        ok = False
-        try:
-            y = diagonal(x)
-        except TypeError:
-            ok = True
-        assert ok
+        numpy.testing.assert_raises(TypeError, diagonal, x)
 
     # not testing the view=True case since it is not used anywhere.
     def test_diagonal(self):
@@ -7357,8 +7353,7 @@ class test_diagonal(unittest.TestCase):
         f = theano.function([], g.shape)
         topo = f.maker.fgraph.toposort()
         if config.mode != 'FAST_COMPILE':
-            assert sum([node.op.__class__ == Diagonal
-                        for node in topo]) == 0
+            assert sum([isinstance(node.op, Diagonal) for node in topo]) == 0
         for shp in [(2, 3), (3, 2), (3, 3), (1, 1), (0, 0), (1, 0)]:
             m = rng.rand(*shp).astype(self.floatX)
             x.set_value(m)
@@ -7431,7 +7426,7 @@ class test_diag(unittest.TestCase):
         # test vector input
         x = theano.tensor.vector()
         g = diag(x)
-        assert g.owner.op.__class__ == Diag
+        assert isinstance(g.owner.op, Diag)
         f = theano.function([x], g)
         for shp in [5, 0, 1]:
             m = rng.rand(shp).astype(self.floatX)
@@ -7443,7 +7438,7 @@ class test_diag(unittest.TestCase):
         # Test matrix input
         xx = self.shared(rng.rand(3, 5))
         g = diag(xx)
-        assert g.owner.op.__class__ == Diagonal
+        assert isinstance(g.owner.op, Diagonal)
         f = theano.function([], g)
         for shp in [(5, 3), (3, 5), (5, 1), (1, 5), (5, 0), (0, 5),
                     (1, 0), (0, 1)]:
@@ -7456,12 +7451,7 @@ class test_diag(unittest.TestCase):
         
         # Test scalar input
         xx = theano.tensor.scalar()
-        ok = False
-        try:
-            diag(xx)
-        except TypeError:
-            ok = True
-        assert ok
+        numpy.testing.assert_raises(TypeError, diag, xx)
 
     def test_infer_shape(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -7471,7 +7461,7 @@ class test_diag(unittest.TestCase):
         f = theano.function([x], g.shape)
         topo = f.maker.fgraph.toposort()
         if config.mode != 'FAST_COMPILE':
-            assert sum([node.op.__class__ == Diag for node in topo]) == 0
+            assert sum([isinstance(node.op, Diag) for node in topo]) == 0
         for shp in [5, 0, 1]:
             m = rng.rand(shp).astype(self.floatX)
             assert (f(m) == numpy.diag(m).shape).all()
@@ -7481,7 +7471,7 @@ class test_diag(unittest.TestCase):
         f = theano.function([x], g.shape)
         topo = f.maker.fgraph.toposort()
         if config.mode != 'FAST_COMPILE':
-            assert sum([node.op.__class__ == Diagonal for node in topo]) == 0
+            assert sum([isinstance(node.op, Diagonal) for node in topo]) == 0
         for shp in [(5, 3), (3, 5), (5, 1), (1, 5), (5, 0), (0, 5),
                     (1, 0), (0, 1)]:
             m = rng.rand(*shp).astype(self.floatX)
@@ -7500,49 +7490,33 @@ class TestInferShape(utt.InferShapeTester):
         atens3 = tensor3()
         atens3_val = rand(4, 5, 3)
         atens3_diag = Diagonal()(atens3)
-
         self._compile_and_check([atens3], [atens3_diag],
                                 [atens3_val], Diagonal)
-        ok = False
-        try:
-            atens3_diag = Diagonal(1)(atens3)
-            self._compile_and_check([atens3], [atens3_diag],
-                                    [atens3_val], Diagonal)
-        except ValueError:
-            ok = True
-        assert ok
-        ok = False
-        try:
-            atens3_diag = Diagonal(-1)(atens3)
-            self._compile_and_check([atens3], [atens3_diag],
-                                    [atens3_val], Diagonal)
-        except ValueError:
-            ok = True
-        assert ok
-        ok = False
-        try:
-            atens3_diag = Diagonal(1, 0, 2)(atens3)
-            self._compile_and_check([atens3], [atens3_diag],
-                                    [atens3_val], Diagonal)
-        except ValueError:
-            ok = True
-        assert ok
-        ok = False
-        try:
-            atens3_diag = Diagonal(1, 1, 2)(atens3)
-            self._compile_and_check([atens3], [atens3_diag],
-                                    [atens3_val], Diagonal)
-        except ValueError:
-            ok = True
-        assert ok
-        ok = False
-        try:
-            atens3_diag = Diagonal(1, 2, 0)(atens3)
-            self._compile_and_check([atens3], [atens3_diag],
-                                    [atens3_val], Diagonal)
-        except ValueError:
-            ok = True
-        assert ok
+
+        atens3_diag = Diagonal(1)(atens3)
+        args_check = [[atens3], [atens3_diag], [atens3_val], Diagonal]
+        numpy.testing.assert_raises(ValueError, self._compile_and_check,
+                                    *args_check)
+
+        atens3_diag = Diagonal(-1)(atens3)
+        args_check = [[atens3], [atens3_diag], [atens3_val], Diagonal]
+        numpy.testing.assert_raises(ValueError, self._compile_and_check,
+                                    *args_check)
+
+        atens3_diag = Diagonal(1, 0, 2)(atens3)
+        args_check = [[atens3], [atens3_diag], [atens3_val], Diagonal]
+        numpy.testing.assert_raises(ValueError, self._compile_and_check,
+                                    *args_check)
+
+        atens3_diag = Diagonal(1, 1, 2)(atens3)
+        args_check = [[atens3], [atens3_diag], [atens3_val], Diagonal]
+        numpy.testing.assert_raises(ValueError, self._compile_and_check,
+                                    *args_check)
+
+        atens3_diag = Diagonal(1, 2, 0)(atens3)
+        args_check = [[atens3], [atens3_diag], [atens3_val], Diagonal]
+        numpy.testing.assert_raises(ValueError, self._compile_and_check,
+                                    *args_check)
 
     def test_Diag(self):
         advec = dvector()

@@ -6067,7 +6067,7 @@ class Diag(Op):
     def make_node(self, diag):
         diag = as_tensor_variable(diag)
         if diag.type.ndim != 1:
-            raise TypeError('data argument must be a vector', diag.type)
+            raise ValueError('data argument must be a vector', diag.type)
         return Apply(self, [diag], [matrix(dtype=diag.dtype)])
 
     def perform(self, node, inputs, outputs):
