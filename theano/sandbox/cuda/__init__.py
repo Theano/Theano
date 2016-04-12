@@ -329,7 +329,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
                 if v == -1 or v[0] < 4007:
                     # 4007 is the final release of cudnn v4
                     dnn_available.avail = False
-                    dnn_available.msg = "Version too old. Update to v5, was %d." % v[0]
+                    dnn_available.msg = "Version is too old. Update to v5, was %d." % v[0]
                     raise RuntimeError(dnn_available.msg)
                 else:
                     dnn_available.avail = comp
