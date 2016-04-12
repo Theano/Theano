@@ -732,6 +732,8 @@ def test_dnn_conv_alpha_output_merge():
 
 
 def test_dnn_conv_grad():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
     b = 1
     c = 4
     f = 3
@@ -776,6 +778,10 @@ class test_SoftMax(test_nnet.test_SoftMax):
     gpu_op = dnn.GpuDnnSoftmax
     gpu_grad_op = dnn.GpuDnnSoftmaxGrad
     mode = mode_with_gpu
+
+    def setUp(self):
+        if not dnn.dnn_available(test_ctx_name):
+            raise SkipTest(dnn.dnn_available.msg)
 
     def test_softmax_shape_0(self):
         raise SkipTest("Cudnn doesn't support 0 shapes")
