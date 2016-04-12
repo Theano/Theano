@@ -170,7 +170,7 @@ def test_pooling():
         raise SkipTest(dnn.dnn_available.msg)
 
     # 'average_exc_pad' is disabled for versions < 4004
-    if dnn.version(False) < 4004:
+    if dnn.version(raises=False) < 4004:
         modes = ('max', 'average_inc_pad')
     else:
         modes = ('max', 'average_inc_pad', 'average_exc_pad')
@@ -467,7 +467,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                                         [conv_modes[0]])),
                           testcase_func_name=utt.custom_name_func)
     def test_conv(self, algo, border_mode, conv_mode):
-        if algo == 'winograd' and dnn.version(False) < 5000:
+        if algo == 'winograd' and dnn.version(raises=False) < 5000:
             raise SkipTest(dnn.dnn_available.msg)
 
         self._test_conv(T.ftensor4('img'),
@@ -600,7 +600,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         # 'average_exc_pad' is disabled for versions < 4004
-        if dnn.version(False) < 4004:
+        if dnn.version(raises=False) < 4004:
             modes = ['max', 'average_inc_pad']
         else:
             modes = ['max', 'average_inc_pad', 'average_exc_pad']
@@ -906,7 +906,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
     def test_log_softmax(self):
         # This is a test for an optimization that depends on cuDNN v3 or
         # more recent. Don't test if the cuDNN version is too old.
-        if dnn.version(False) < 3000:
+        if dnn.version(raises=False) < 3000:
             raise SkipTest("Log-softmax is only in cudnn v3+")
 
         x = T.ftensor4()
@@ -947,7 +947,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
 
         # This is a test for an optimization that depends on cuDNN v3 or
         # more recent. Don't test if the cuDNN version is too old.
-        if dnn.version(False) < 3000:
+        if dnn.version(raises=False) < 3000:
             raise SkipTest("Log-softmax is only in cudnn v3+")
 
         # Compile a reference function, on the CPU, to be used to validate the
