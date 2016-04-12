@@ -5910,16 +5910,15 @@ class Diagonal(Op):
         A vector representing the diagonal elements.
 
     """
-    __props__ = ("offset", "axis1", "axis2")
+    __props__ = ("offset", "axis1", "axis2", "view")
     default_offset = 0
     default_axis1 = 0
     default_axis2 = 1
 
-    def __init__(self, offset=0, axis1=0, axis2=1):
-        self.view = False
-        if numpy_diagonal_return_view:
+    def __init__(self, offset=0, axis1=0, axis2=1, view=False):
+        self.view = view
+        if self.view and numpy_diagonal_return_view:
             self.view_map = {0: [0]}
-            self.view = True
         self.offset = offset
         self.axis1 = axis1
         self.axis2 = axis2
@@ -5938,7 +5937,6 @@ class Diagonal(Op):
         if not self.has_default_props():
             raise ValueError('Currently Diagonal doesn\'t support non-default'
                              'offset and axis values.')
-
 
         # zero-dimensional matrices ...
         if numpy.min(x.shape) == 0:
@@ -5992,9 +5990,9 @@ class Diagonal(Op):
         return [tuple(out_shape)]
 
     def has_default_props(self):
-        return  (self.offset == self.default_offset and
-                 self.axis1 == self.default_axis1 and
-                 self.axis2 == self.default_axis2)
+        return (self.offset == self.default_offset and
+                self.axis1 == self.default_axis1 and
+                self.axis2 == self.default_axis2)
 
 
 def diagonal(a, offset=Diagonal.default_offset,
@@ -6085,7 +6083,7 @@ class Diag(Op):
         return [(shapes[0][0],) * 2]
 
     def has_default_props(self):
-        return  self.offset == self.default_offset
+        return self.offset == self.default_offset
 
 
 def diag(v, k=0):
