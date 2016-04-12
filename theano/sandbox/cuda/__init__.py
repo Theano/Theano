@@ -329,7 +329,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
                 if v == -1 or v[0] < 4007:
                     # 4007 is the final release of cudnn v4
                     dnn_available.avail = False
-                    dnn_available.msg = "Version too old. Update to v5."
+                    dnn_available.msg = "Version too old. Update to v5, was %d" % v[0]
                     raise RuntimeError(dnn_available.msg)
     if config.dnn.enabled == "True":
         if not dnn_available.avail:
@@ -581,9 +581,10 @@ def use(device,
                         cudnn_version = runtime_v
                         # 5100 should not print warning with cudnn 5 final.
                         if cudnn_version > 5100:
-                            warn = ("Your CuDNN version is more recent then Theano."
-                                    " If you see problems, try updating Theano or"
-                                    " downgrading CuDNN to version 5.")
+                            warn = ("Your cuDNN version is more recent than the one"
+                                    " Theano officially supports."
+                                    " If you see any problems, try updating Theano or"
+                                    " downgrading cuDNN to version 5.")
                 except Exception:
                     cudnn_version = dnn_available.msg
                 print("Using gpu device %d: %s (CNMeM is %s, CuDNN %s)" % (
