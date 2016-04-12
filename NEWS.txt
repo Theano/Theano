@@ -10,7 +10,7 @@ We recommend that everybody update to this version.
 Highlights:
  - Python 2 and 3 support with the same code base
  - Faster optimization
- - Integration of CuDNN for better GPU performance
+ - Integration of cuDNN for better GPU performance
  - Many Scan improvements (execution speed up, ...)
  - optimizer=fast_compile moves computation to the GPU.
  - Better convolution on CPU and GPU. (CorrMM, cudnn, 3d conv, more parameter)

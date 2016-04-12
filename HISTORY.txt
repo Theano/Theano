@@ -10,7 +10,7 @@ Theano 0.7 (26th of March, 2015)
 We recommand to everyone to upgrade to this version.
 
 Highlights:
- * Integration of CuDNN for 2D convolutions and pooling on supported GPUs
+ * Integration of cuDNN for 2D convolutions and pooling on supported GPUs
  * Too many optimizations and new features to count
  * Various fixes and improvements to scan
  * Better support for GPU on Windows

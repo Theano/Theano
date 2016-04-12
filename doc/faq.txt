@@ -235,7 +235,7 @@ CPU and GPU memory usage.
 
 Could speed up and lower memory usage:
 
-- :ref:`CuDNN <libdoc_cuda_dnn>` default CuDNN convolution use less
+- :ref:`cuDNN <libdoc_cuda_dnn>` default cuDNN convolution use less
    memory then Theano version. But some flags allow it to use more
    memory. GPU only.
 - Shortly avail, multi-GPU.
