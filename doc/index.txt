@@ -25,7 +25,7 @@ News
 
 * Multi-GPU.
 
-* We added support for :ref:`CuDNN v4 <libdoc_cuda_dnn>`.
+* We added support for :ref:`CuDNN v5 <libdoc_cuda_dnn>`.
 
 * We added support for :attr:`CNMeM <config.lib.cnmem>` to speed up
   the GPU memory allocation.
