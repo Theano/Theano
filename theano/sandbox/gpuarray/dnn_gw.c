@@ -92,12 +92,12 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
 
     algo = choice.algo;
 #else
-    size_t free = 0, total = 0;
-    cudaError_t err2 = cudaMemGetInfo(&free, &total);
-    if (err2 != cudaSuccess){
-      cudaGetLastError();
-      PyErr_Format(PyExc_RuntimeError, "Error when trying to find the memory "
-                   "information on the GPU: %s\n", cudaGetErrorString(err2));
+    size_t free;
+    int err2 = c->ops->property(c->ctx, NULL, NULL, GA_CTX_PROP_FREE_GMEM, &free);
+
+    if (err2 != GA_NO_ERROR) {
+      PyErr_Format(PyExc_RuntimeError, "Error when trying to find the "
+                   "memory information on the GPU");
       cuda_exit(c->ctx);
       return 1;
     }
@@ -146,7 +146,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
     int upscale[2];
     cudnnConvolutionMode_t mode;
     cudnnDataType_t data_type;
-    err = cudnnGetConvolutionNdDescriptor_v3(desc, 2, &nd, pad, stride,
+    err = cudnnGetConvolutionNdDescriptor(desc, 2, &nd, pad, stride,
                                              upscale, &mode, &data_type);
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError,
@@ -190,7 +190,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
   cuda_wait(output->ga.data, GPUARRAY_CUDA_WAIT_READ);
   cuda_wait((*kerns)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
 
-  err = cudnnConvolutionBackwardFilter_v3(
+  err = cudnnConvolutionBackwardFilter(
     APPLY_SPECIFIC(_handle),
     alpha_p,
     APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(input),

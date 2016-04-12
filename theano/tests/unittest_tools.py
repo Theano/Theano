@@ -4,6 +4,7 @@ from functools import wraps
 import logging
 import sys
 import unittest
+from nose_parameterized import parameterized
 
 from six import integer_types
 from six.moves import StringIO
@@ -29,6 +30,13 @@ except ImportError:
         Skip this test
         """
 _logger = logging.getLogger("theano.tests.unittest_tools")
+
+
+def custom_name_func(testcase_func, param_num, param):
+    return "%s_%s" % (
+        testcase_func.__name__,
+        parameterized.to_safe_name("_".join(str(x) for x in param.args)),
+    )
 
 
 def fetch_seed(pseed=None):
@@ -96,6 +104,7 @@ verify_grad.E_grad = T.verify_grad.E_grad
 
 
 class TestOptimizationMixin(object):
+
     def assertFunctionContains(self, f, op, min=1, max=sys.maxsize):
         toposort = f.maker.fgraph.toposort()
         matches = [node for node in toposort if node.op == op]
@@ -172,6 +181,7 @@ class T_OpContractMixin(object):
 
 
 class InferShapeTester(unittest.TestCase):
+
     def setUp(self):
         seed_rng()
         # Take into account any mode that may be defined in a child class
@@ -311,6 +321,7 @@ def str_diagnostic(expected, value, rtol, atol):
 
 
 class WrongValue(Exception):
+
     def __init__(self, expected_val, val, rtol, atol):
         Exception.__init__(self)  # to be compatible with python2.4
         self.val1 = expected_val

@@ -240,7 +240,7 @@ class GpuDnnConvDesc(GpuOp):
     }
   }
 
-  err = cudnnSetConvolutionNdDescriptor_v3(
+  err = cudnnSetConvolutionNdDescriptor(
   %(desc)s,
   %(nb_dim)d,
   pad, subsample, upscale,
@@ -294,10 +294,8 @@ class GpuDnnConv(DnnBase, COp):
         The convolution descriptor.
     workmem
         *deprecated*, use parameter algo instead.
-    algo
-        ['none', 'small', 'large', 'fft', 'fft_tiling', 'guess_once',
-         'guess_on_shape_change', 'time_once', 'time_on_shape_change']
-
+    algo : {'none', 'small', 'large', 'fft', 'fft_tiling', 'guess_once', 'winograd',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_fwd`.
 
     """
@@ -344,8 +342,13 @@ class GpuDnnConv(DnnBase, COp):
                 raise RuntimeError("CuDNN tiled-FFT convolution requires "
                                    "CuDNN v4 or more recent")
 
+        if version() < (5000, 5000):
+            if self.algo == 'winograd':
+                raise RuntimeError("CuDNN winograd convolution requires "
+                                   "CuDNN v5 or more recent")
+
         assert self.algo in ['none', 'small', 'large', 'fft', 'fft_tiling',
-                             'guess_once', 'guess_on_shape_change',
+                             'winograd', 'guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']
 
     def __setstate__(self, d):
@@ -383,8 +386,11 @@ class GpuDnnConv(DnnBase, COp):
                 # need v3
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT'
             elif self.algo == 'fft_tiling':
-                # need v4
+                # need v4 for conv2d, need v5 for conv3d
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING'
+            elif self.algo == 'winograd':
+                # need v5
+                alg = 'CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD'
             elif self.algo in ['guess_once', 'guess_on_shape_change']:
                 # The convolution implementation should be choosen according
                 # to a heuristic
@@ -472,15 +478,20 @@ class GpuDnnConv3d(GpuDnnConv):
     """
     The forward convolution.
 
-    :param image:
-    :param kernel:
-    :param descr: the convolution descriptor
-    :param workmem:
+    Parameters
+    ----------
+    image
+    kernel
+    descr
+        The convolution descriptor
+    workmem
         *deprecated*, use parameter algo instead.
-    :param algo: ['none', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change']
+    algo : {'none',  'small', 'fft_tiling', 'winograd', 'guess_once',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_fwd`.
 
     """
+
     __props__ = ('algo', 'inplace')
     __input_name__ = ('image', 'kernel', 'output',
                       'descriptor', 'alpha', 'beta')
@@ -492,9 +503,24 @@ class GpuDnnConv3d(GpuDnnConv):
             assert algo is None
             algo = workmem
 
-        super(GpuDnnConv3d, self).__init__(inplace=inplace, algo='none')
-        assert self.algo in ['none', 'guess_once', 'guess_on_shape_change',
-                             'time_once', 'time_on_shape_change']
+        good_algo = ['none', 'small', 'fft_tiling', 'winograd',
+                     'guess_once', 'guess_on_shape_change',
+                     'time_once', 'time_on_shape_change']
+        if algo is None and config.dnn.conv.algo_fwd not in good_algo:
+            algo = 'guess_once'
+        elif algo is not None and algo not in good_algo:
+            algo = 'guess_once'
+        super(GpuDnnConv3d, self).__init__(inplace=inplace, algo=algo)
+
+        assert self.algo in good_algo
+
+        if version() < (5000, 5000):
+            if self.algo == 'fft_tiling':
+                raise RuntimeError("CuDNN 3d tiled-FFT convolution requires "
+                                   "CuDNN v5 or more recent")
+            elif self.algo == 'winograd':
+                raise RuntimeError("CuDNN 3d winograd convolution requires "
+                                   "CuDNN v5 or more recent")
 
     def make_node(self, img, kern, output, desc, alpha=None, beta=None):
 
@@ -558,7 +584,8 @@ class GpuDnnConvGradW(DnnBase, COp):
         The convolution descriptor.
     workmem
         *deprecated*, use parameter algo instead.
-    algo : {'none', 'deterministic', 'fft', 'small', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
+    algo : {'none', 'deterministic', 'fft', 'small', 'guess_once',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_bwd_filter`.
 
     """
@@ -693,15 +720,20 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
     """
     The convolution gradient with respect to the weights.
 
-    :param image:
-    :param kernel:
-    :param descr: the convolution descriptor
-    :param workmem:
+    Parameters
+    ----------
+    image
+    kernel
+    descr
+        The convolution descriptor
+    workmem
         *deprecated*, use parameter algo instead.
-    :param algo: ['none', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change']
+    algo : {'none', 'small', 'guess_once', 'guess_on_shape_change',
+            'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_bwd_filter`.
 
     """
+
     __props__ = ('algo', 'inplace',)
     __input_name__ = ('image', 'grad', 'output', 'descriptor', 'alpha', 'beta')
 
@@ -711,11 +743,18 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
                            "deprecated. Use 'algo' instead."), stacklevel=3)
             assert algo is None
             algo = workmem
-
+        good_algo = ['none', 'small',
+                     'guess_once', 'guess_on_shape_change',
+                     'time_once', 'time_on_shape_change']
+        if version() < (5000, 5000) and algo == 'small':
+            algo = 'guess_once'
+        elif algo is None and config.dnn.conv.algo_bwd_filter not in good_algo:
+            algo = 'guess_once'
+        elif algo is not None and algo not in good_algo:
+            algo = 'guess_once'
         super(GpuDnnConv3dGradW, self).__init__(inplace=inplace,
-                                                algo='none')
-        assert self.algo in ['none', 'guess_once', 'guess_on_shape_change',
-                             'time_once', 'time_on_shape_change']
+                                                algo=algo)
+        assert self.algo in good_algo
 
     def grad(self, inp, grads):
         img, top, output, desc, alpha, beta = inp
@@ -766,11 +805,8 @@ class GpuDnnConvGradI(DnnBase, COp):
         The convolution descriptor.
     workmem
         *deprecated*, use parameter algo instead.
-    algo
-        ['none', 'deterministic', 'fft', 'fft_tiling', 'guess_once',
-         'guess_on_shape_change', 'time_once',
-         'time_on_shape_change']
-
+    algo : {'none', 'deterministic', 'fft', 'fft_tiling', 'winograd', 'guess_once',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_bwd_data`.
 
     """
@@ -804,8 +840,13 @@ class GpuDnnConvGradI(DnnBase, COp):
                 raise RuntimeError("CuDNN's tiled-FFT convolution requires "
                                    "CuDNN v4 or more recent")
 
+        if version() < (5000, 5000):
+            if self.algo == 'winograd':
+                raise RuntimeError("CuDNN's winograd convolution requires "
+                                   "CuDNN v5 or more recent")
+
         assert self.algo in ['none', 'deterministic', 'fft', 'fft_tiling',
-                             'guess_once', 'guess_on_shape_change',
+                             'winograd', 'guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']
 
     def __setstate__(self, d):
@@ -859,7 +900,11 @@ class GpuDnnConvGradI(DnnBase, COp):
                 alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT'
             elif self.algo == 'fft_tiling':
                 # need v4, big workspace, but less then fft
+                # need v5, for conv3d.
                 alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING'
+            elif self.algo == 'winograd':
+                # need v5
+                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD'
             elif self.algo in ['guess_once', 'guess_on_shape_change']:
                 # The convolution implementation should be chosen according
                 # to a heuristic
@@ -913,17 +958,20 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
     """
     The convolution gradient with respect to the inputs.
 
-    :param image:
-    :param kernel:
-    :param descr: the convolution descriptor
-    :param workmem:
+    Parameters
+    ----------
+    image
+    kernel
+    descr
+        The convolution descriptor
+    workmem
         *deprecated*, use parameter algo instead.
-    :param algo: ['none', 'guess_once', 'guess_on_shape_change',
-                  'time_once', 'time_on_shape_change']
-
+    algo : {'none', 'deterministic, 'fft_tiling', 'winograd', 'guess_once',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_bwd_data`.
 
     """
+
     __props__ = ('algo', 'inplace',)
     __input_name__ = ('kernel', 'grad', 'output', 'descriptor', 'alpha',
                       'beta')
@@ -935,10 +983,24 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
             assert algo is None
             algo = workmem
 
+        good_algo = ['none', 'deterministic', 'fft_tiling', 'winograd',
+                     'guess_once', 'guess_on_shape_change', 'time_once',
+                     'time_on_shape_change']
+
+        if algo is None and config.dnn.conv.algo_bwd_data not in good_algo:
+            algo = 'guess_once'
+        elif algo is not None and algo not in good_algo:
+            algo = 'guess_once'
         super(GpuDnnConv3dGradI, self).__init__(inplace=inplace,
-                                                algo="none")
-        assert self.algo in ['none', 'guess_once', 'guess_on_shape_change',
-                             'time_once', 'time_on_shape_change']
+                                                algo=algo)
+        assert self.algo in good_algo
+        if version() < (5000, 5000):
+            if self.algo == 'fft_tiling':
+                raise RuntimeError("CuDNN 3d tiled-FFT convolution requires "
+                                   "CuDNN v5 or more recent")
+            elif self.algo == 'winograd':
+                raise RuntimeError("CuDNN 3d winograd convolution requires "
+                                   "CuDNN v5 or more recent")
 
     def grad(self, inp, grads):
         kerns, top, output, desc, alpha, beta = inp
@@ -1100,7 +1162,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
 
 def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
                conv_mode='conv', direction_hint=None, workmem=None,
-               algo='none', precision=None):
+               algo=None, precision=None):
     """
     GPU convolution using cuDNN from NVIDIA.
 
@@ -1360,8 +1422,9 @@ class GpuDnnPoolDesc(GpuOp):
     int win[%(nd)d] = {%(win)s};
     int pad[%(nd)d] = {%(pad)s};
     int str[%(nd)d] = {%(str)s};
-    err = cudnnSetPoolingNdDescriptor(
-      %(desc)s, %(mode_flag)s, %(nd)d,
+    err = cudnnSetPoolingNdDescriptor_v4(
+      %(desc)s, %(mode_flag)s,
+      CUDNN_PROPAGATE_NAN, %(nd)d,
       win, pad, str);
   }
   if (err != CUDNN_STATUS_SUCCESS) {
@@ -1397,6 +1460,7 @@ class GpuDnnPool(DnnBase):
         (padX, padY) padding information.
         padX is the size of the left and right borders,
         padY is the size of the top and bottom borders.
+
     """
 
     __props__ = ("mode",)
@@ -1542,8 +1606,9 @@ for(int i = 0; i < %(nd)d; i++) {
 for(int i = 0; i < %(nd)d; i++) {
    str[i] = *((npy_intp*)PyArray_GETPTR1(%(str)s, i));
 }
-err = cudnnSetPoolingNdDescriptor(
-    pool%(name)s, %(mode_flag)s, %(nd)d,
+err = cudnnSetPoolingNdDescriptor_v4(
+    pool%(name)s, %(mode_flag)s,
+    CUDNN_PROPAGATE_NAN, %(nd)d,
     win, pad, str);
 
 if (err != CUDNN_STATUS_SUCCESS) {
@@ -1820,8 +1885,9 @@ for(int i = 0; i < %(nd)d; i++) {
 for(int i = 0; i < %(nd)d; i++) {
    str[i] = *((npy_intp*)PyArray_GETPTR1(%(str)s, i));
 }
-err%(name)s = cudnnSetPoolingNdDescriptor(
-    pool%(name)s, %(mode_flag)s, %(nd)d,
+err%(name)s = cudnnSetPoolingNdDescriptor_v4(
+    pool%(name)s, %(mode_flag)s,
+    CUDNN_PROPAGATE_NAN, %(nd)d,
     win, pad, str);
 
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
@@ -1914,14 +1980,12 @@ class GpuDnnSoftmaxBase(DnnBase):
     ----------
     tensor_format
         Always set this to 'bc01'.
-    algo
-        'fast', 'accurate' or 'log' indicating whether, respectively, computations
-        should be optimized for speed, for accuracy, or if CuDNN should rather
-        compute the log-softmax instead.
-    mode
-        'instance' or 'channel' indicating whether the softmax should
-        be computed per image across 'c01' or per spatial location '01' per
-        image across 'c'.
+    algo : {'fast', 'accurate', 'log'}
+        Indicating whether, respectively, computations should be optimized for
+        speed, for accuracy, or if CuDNN should rather compute the log-softmax instead.
+    mode : {'instance', 'channel'}
+        Indicating whether the softmax should be computed per image across 'c01'
+        or per spatial location '01' per image across 'c'.
 
     """
 
@@ -2077,13 +2141,12 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
     ----------
     tensor_format
         Always set to 'bc01'.
-    algo
-        'fast' or 'accurate' indicating whether computations should be
+    algo : {'fast', 'accurate'}
+        Indicating whether computations should be
         optimized for speed or accuracy respectively.
-    mode
-        'instance' or 'channel' indicating whether the softmax should
-        be computed per image across 'c01' or per spatial location '01' per
-        image across 'c'.
+    mode : {'instance', 'channel'}
+        Indicating whether the softmax should be computed per image across 'c01'
+        or per spatial location '01' per image across 'c'.
 
     """
 
@@ -2145,13 +2208,12 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
     ----------
     tensor_format
         Always set to 'bc01'.
-    algo
-        'fast' or 'accurate' indicating whether computations should be
+    algo : {'fast', 'accurate'}
+        Indicating whether computations should be
         optimized for speed or accuracy respectively.
-    mode
-        'instance' or 'channel' indicating whether the softmax should
-        be computed per image across 'c01' or per spatial location '01' per
-        image across 'c'.
+    mode : {'instance', 'channel'}
+        Indicating whether the softmax should be computed per image across 'c01'
+        or per spatial location '01' per image across 'c'.
 
     """
 

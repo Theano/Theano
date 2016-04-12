@@ -24,7 +24,7 @@ if ((APPLY_SPECIFIC(err) = cudnnCreateTensorDescriptor(&APPLY_SPECIFIC(output)))
 }
 if ((APPLY_SPECIFIC(err) = cudnnCreatePoolingDescriptor(&APPLY_SPECIFIC(pool))) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_MemoryError, "could not allocate pooling descriptor"
-                "(pool): %s", cudnnGetErrorString(APPLY_SPECIFIC(err)));  
+                "(pool): %s", cudnnGetErrorString(APPLY_SPECIFIC(err)));
   FAIL;
 }
 
@@ -38,7 +38,7 @@ if (APPLY_SPECIFIC(pool) != NULL) { cudnnDestroyPoolingDescriptor(APPLY_SPECIFIC
 #section support_code_struct
 
 int APPLY_SPECIFIC(dnn_pool)(PyGpuArrayObject *img,
-                             PyArrayObject *ws, 
+                             PyArrayObject *ws,
                              PyArrayObject *stride,
                              PyArrayObject *pad,
                              PyGpuArrayObject **out,
@@ -69,7 +69,12 @@ int APPLY_SPECIFIC(dnn_pool)(PyGpuArrayObject *img,
   for(int i = 0; i < ndims; i++) {
      s[i] = *((npy_intp*)PyArray_GETPTR1(stride, i));
   }
+
+#if CUDNN_VERSION >= 5000
+  err = cudnnSetPoolingNdDescriptor(APPLY_SPECIFIC(pool), MODE_FLAG, CUDNN_PROPAGATE_NAN, ndims, w, p, s);
+#else
   err = cudnnSetPoolingNdDescriptor(APPLY_SPECIFIC(pool), MODE_FLAG, ndims, w, p, s);
+#endif
 
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "could not set op descriptor %s", cudnnGetErrorString(err));
