@@ -179,10 +179,9 @@ class GpuElemwise(HideC, Elemwise):
         for n, (i, name) in enumerate(zip(node.inputs, inps)):
             res += """
             args[%(n)s].name = %(name)s;
-            args[%(n)s].nd = %(nd)s;
             args[%(n)s].typecode = %(typecode)s;
             args[%(n)s].flags = GE_READ;
-            """ % dict(n=n, name='"%s"' % (name,), nd=i.ndim,
+            """ % dict(n=n, name='"%s"' % (name,),
                        typecode=i.type.typecode)
 
         p = 0
@@ -195,21 +194,20 @@ class GpuElemwise(HideC, Elemwise):
                 p += 1
                 res += """
                 args[%(n)s].name = %(name)s;
-                args[%(n)s].nd = %(nd)s;
                 args[%(n)s].typecode = %(typecode)s;
                 args[%(n)s].flags = GE_WRITE;
-                """ % dict(n=nn, name='"%s"' % (name,), nd=o.ndim,
+                """ % dict(n=nn, name='"%s"' % (name,),
                            typecode=o.type.typecode)
 
         res += """
-        ge = GpuElemwise_new(%(ctx)s->ops, %(ctx)s->ctx, %(support)s, %(kop)s, %(nargs)s, args, 0);
+        ge = GpuElemwise_new(%(ctx)s->ops, %(ctx)s->ctx, %(support)s, %(kop)s, %(nargs)s, args, %(nd)s, 0);
         if (ge == NULL) {
            PyErr_SetString(PyExc_RuntimeError, "Could not initialize elemwise support");
            %(fail)s
         }
         """ % dict(nargs=nargs, ctx=sub['params'], fail=sub['fail'],
                    support=as_C_string_const(support_code),
-                   kop=as_C_string_const(kop))
+                   kop=as_C_string_const(kop), nd=node.inputs[0].ndim)
 
         return res
 
@@ -357,7 +355,7 @@ class GpuElemwise(HideC, Elemwise):
     def c_code_cache_version(self):
         ver = self.scalar_op.c_code_cache_version()
         if ver:
-            return (5, ver)
+            return (6, ver)
         else:
             return ver
 
