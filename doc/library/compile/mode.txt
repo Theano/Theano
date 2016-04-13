@@ -22,6 +22,7 @@ Theano defines the following modes by name:
 - ``'FAST_RUN'``: Apply all optimizations, and use C implementations where possible.
 - ``'DebugMode'``: A mode for debugging. See :ref:`DebugMode <debugmode>` for details.
 - ``'ProfileMode'``: Deprecated, use the Theano flag :attr:`config.profile`.
+- ``'NanGuardMode``: :ref:`Nan detector <nanguardmode>`
 - ``'DEBUG_MODE'``: Deprecated. Use the string DebugMode.
 - ``'PROFILE_MODE'``: Deprecated, use the Theano flag :attr:`config.profile`.
 
