@@ -586,7 +586,8 @@ class Function(object):
 
         Returns
         -------
-        Copied theano.Function
+        theano.Function
+            Copied theano.Function
         """
         # helper function
         def checkSV(sv_ori, sv_rpl):
@@ -763,15 +764,17 @@ class Function(object):
             outputs.
 
         kwargs : dict
-            TODO: other kwargs?
-            Keyword argument `output_subset` is a list of either indices of the
+            The function inputs can be passed as keyword argument. For this, use
+            the name of the input or the input instance as the key.
+            Keyword argument ``output_subset`` is a list of either indices of the
             function's outputs or the keys belonging to the `output_keys` dict
             and represent outputs that are requested to be calculated.
 
         Returns
         -------
-        List of outputs on indices/keys from `output_subset` or all of them, if
-        `outputs_subset` is not passed.
+        list
+            List of outputs on indices/keys from ``output_subset`` or all of them,
+            if ``output_subset`` is not passed.
         """
         profile = self.profile
         t0 = time.time()

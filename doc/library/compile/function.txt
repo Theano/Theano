@@ -214,4 +214,4 @@ Reference
 .. autofunction:: theano.compile.function.function_dump
 
 .. autoclass:: theano.compile.function_module.Function
-   :members: free, copy
+   :members: free, copy, __call__
