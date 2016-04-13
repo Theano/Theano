@@ -78,8 +78,8 @@ def pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
             " default value changed to True (currently"
             " False). To have consistent behavior with all Theano"
             " version, explicitly add the parameter ignore_border=True."
-            " On the GPU, using ignore_border=True is needed to use CuDNN."
-            " When using ignore_border=False and not using CuDNN, the only"
+            " On the GPU, using ignore_border=True is needed to use cuDNN."
+            " When using ignore_border=False and not using cuDNN, the only"
             " GPU combination supported is when"
             " `ds == st and padding == (0, 0) and mode == 'max'`."
             " Otherwise, the convolution will be executed on CPU.",

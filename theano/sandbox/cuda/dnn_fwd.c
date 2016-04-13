@@ -78,7 +78,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
 
         // Obtain a convolution algorithm appropriate for the input and kernel
         // shapes. Either by choosing one according to heuristics or by making
-        // CuDNN time every implementation and choose the best one.
+        // cuDNN time every implementation and choose the best one.
         if (CHOOSE_ALGO_TIME)
         {
           // Time the different implementations to choose the best one
