@@ -2434,6 +2434,7 @@ class BatchedDot(Op):
         xshp, yshp = shapes
         return [xshp[:-1] + yshp[2:]]
 
+batched_dot = BatchedDot()
 
 # from opt import register_specialize, register_canonicalize
 # @register_specialize

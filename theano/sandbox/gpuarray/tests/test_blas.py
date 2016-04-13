@@ -1,13 +1,14 @@
 from __future__ import absolute_import, print_function, division
 from unittest import TestCase
 from nose.plugins.skip import SkipTest
+import itertools
 
 import numpy
 
 import theano
 from theano import tensor
 from theano.tests import unittest_tools as utt
-from theano.tensor.blas import gemv_inplace, gemm_inplace, _dot22
+from theano.tensor.blas import gemv_inplace, gemm_inplace, _dot22, batched_dot
 from theano.tensor.tests.test_blas import TestGer, BaseGemv
 
 from .. import gpuarray_shared_constructor
@@ -15,7 +16,7 @@ from .config import mode_with_gpu
 from .test_basic_ops import makeTester, rand
 
 from ..blas import (gpugemv_inplace, gpugemv_no_inplace,
-                    gpugemm_inplace,
+                    gpugemm_inplace, gpugemmbatch_no_inplace,
                     gpuger_inplace, gpuger_no_inplace,
                     GpuGer, gpu_dot22, GpuGemm)
 
@@ -66,6 +67,16 @@ GpuGemmTester = makeTester(
                # test13=[rand(0, 0), -1.0, rand(0, 0), rand(0, 0), -1.1],
                )
     )
+
+
+GpuGemmBatchTester = makeTester(
+    'GpuGemmBatchTester',
+    op=lambda z, alpha, x, y, beta: alpha * batched_dot(x, y) + beta * z,
+    gpu_op=gpugemmbatch_no_inplace,
+    cases=dict(
+        ("test_b%im%ik%in%i" % (b, m, k, n),
+         [rand(b, m, n), rand(), rand(b, m, k), rand(b, k, n), rand()])
+        for b, m, k, n in itertools.combinations([2, 3, 5, 7, 11, 13], 4)))
 
 
 class TestGpuSger(TestGer):
