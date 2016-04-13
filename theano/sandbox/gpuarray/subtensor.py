@@ -340,13 +340,11 @@ class GpuIncSubtensor(IncSubtensor):
         args[0].name = "a";
         args[0].typecode = %(type1)s;
         args[0].flags = GE_READ|GE_WRITE;
-        args[0].nd = %(nd)s;
         args[1].name = "b";
         args[1].typecode = %(type2)s;
         args[1].flags = GE_READ;
-        args[1].nd = %(nd)s;
         iadd = GpuElemwise_new(%(ctx)s->ops, %(ctx)s->ctx, "", "a += b",
-                               2, args, 0);
+                               2, args, %(nd)s, 0);
         if (iadd == NULL) {
           PyErr_SetString(PyExc_RuntimeError, "Could not intialize inplace add support");
           %(fail)s
@@ -374,7 +372,7 @@ class GpuIncSubtensor(IncSubtensor):
         parent_version = super(GpuIncSubtensor, self).c_code_cache_version()
         if not parent_version:
             return
-        return parent_version + (4,)
+        return parent_version + (5,)
 
 
 class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
