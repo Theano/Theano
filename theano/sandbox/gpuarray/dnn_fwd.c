@@ -92,12 +92,12 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     }
     algo = choice.algo;
 #else
-    size_t free = 0, total = 0;
-    cudaError_t err2 = cudaMemGetInfo(&free, &total);
-    if (err2 != cudaSuccess) {
+    size_t free;
+    int err2 = c->ops->property(c->ctx, NULL, NULL, GA_CTX_PROP_FREE_GMEM, &free);
+
+    if (err2 != GA_NO_ERROR) {
       PyErr_Format(PyExc_RuntimeError, "Error when trying to find the "
-                   "memory information on the GPU: %s\n",
-                   cudaGetErrorString(err2));
+                   "memory information on the GPU");
       cuda_exit(c->ctx);
       return 1;
     }
@@ -154,7 +154,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     int upscale[2];
     cudnnConvolutionMode_t mode;
     cudnnDataType_t data_type;
-    err = cudnnGetConvolutionNdDescriptor_v3(desc, 2, &nd, pad, stride,
+    err = cudnnGetConvolutionNdDescriptor(desc, 2, &nd, pad, stride,
                                              upscale, &mode, &data_type);
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError,
@@ -193,6 +193,21 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
                                                   APPLY_SPECIFIC(output),
                                                   algo,
                                                   &worksize);
+
+    if (err == CUDNN_STATUS_NOT_SUPPORTED) {
+      // Fallback to none algo if not supported
+      // TODO: Print a warning
+      algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+
+      err = cudnnGetConvolutionForwardWorkspaceSize(APPLY_SPECIFIC(_handle),
+                                                    APPLY_SPECIFIC(input),
+                                                    APPLY_SPECIFIC(kerns),
+                                                    desc,
+                                                    APPLY_SPECIFIC(output),
+                                                    algo,
+                                                    &worksize);
+    }
+
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError,
                    "error getting worksize: %s",

@@ -2835,7 +2835,16 @@ def local_subtensor_merge(node):
             # and stacktrace from previous slicing operation.
             # Why? Because, the merged slicing operation could have failed
             # because of either of the two original slicing operations
-            copy_stack_trace([node.outputs[0], node.inputs[0]], out)
+            orig_out = node.outputs[0]
+            copy_stack_trace([orig_out, node.inputs[0]], out)
+
+            # Restore original broadcastable dimensions that `subtens()` may
+            # have been unable to infer again
+            if out.type != orig_out.type:
+                assert out.dtype == orig_out.dtype
+                assert out.ndim == orig_out.ndim
+                out = T.patternbroadcast(out, orig_out.broadcastable)
+                copy_stack_trace([orig_out, node.inputs[0]], out)
             return [out]
 
 
@@ -5304,7 +5313,9 @@ def local_zero_div(node):
     if isinstance(node.op, T.Elemwise) and isinstance(
             node.op.scalar_op, (theano.scalar.IntDiv, theano.scalar.TrueDiv)):
         if local_mul_canonizer.get_constant(node.inputs[0]) == 0:
-            return [broadcast_like(0, node.outputs[0], node.fgraph)]
+            ret = broadcast_like(0, node.outputs[0], node.fgraph)
+            ret.tag.values_eq_approx = values_eq_approx_remove_nan
+            return [ret]
 
 
 @gof.local_optimizer([T.pow])

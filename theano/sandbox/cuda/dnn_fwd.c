@@ -179,8 +179,8 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
       int upscale[2];
       cudnnConvolutionMode_t mode;
       cudnnDataType_t data_type;
-      err = cudnnGetConvolutionNdDescriptor_v3(desc, 2, &nd, pad, stride,
-                                               upscale, &mode, &data_type);
+      err = cudnnGetConvolutionNdDescriptor(desc, 2, &nd, pad, stride,
+                                            upscale, &mode, &data_type);
 
       if (err != CUDNN_STATUS_SUCCESS) {
         PyErr_Format(PyExc_RuntimeError,
@@ -224,6 +224,19 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
                                                   APPLY_SPECIFIC(output),
                                                   chosen_algo,
                                                   &worksize);
+    if (err == CUDNN_STATUS_NOT_SUPPORTED) {
+      // Fallback to none algo if not supported
+      // TODO: Print a warning
+      chosen_algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+
+      err = cudnnGetConvolutionForwardWorkspaceSize(_handle,
+                                                    APPLY_SPECIFIC(input),
+                                                    APPLY_SPECIFIC(kerns),
+                                                    desc,
+                                                    APPLY_SPECIFIC(output),
+                                                    chosen_algo,
+                                                    &worksize);
+    }
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError,
                    "GpuDnnConv: error getting worksize: %s",
