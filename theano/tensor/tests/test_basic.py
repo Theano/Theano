@@ -7308,7 +7308,7 @@ class test_diagonal(unittest.TestCase):
 
         # other types should raise error
         x = theano.tensor.vector()
-        numpy.testing.assert_raises(TypeError, diagonal, x)
+        numpy.testing.assert_raises(ValueError, diagonal, x)
 
     # not testing the view=True case since it is not used anywhere.
     def test_diagonal(self):
@@ -7316,6 +7316,8 @@ class test_diagonal(unittest.TestCase):
         m = rng.rand(2, 3).astype(self.floatX)
         x = self.shared(m)
         g = diagonal(x)
+        # import pdb
+        # pdb.set_trace()
         f = theano.function([], g)
         assert [isinstance(node.inputs[0].type, self.type)
                 for node in f.maker.fgraph.toposort()
@@ -7451,7 +7453,7 @@ class test_diag(unittest.TestCase):
         
         # Test scalar input
         xx = theano.tensor.scalar()
-        numpy.testing.assert_raises(TypeError, diag, xx)
+        numpy.testing.assert_raises(ValueError, diag, xx)
 
     def test_infer_shape(self):
         rng = numpy.random.RandomState(utt.fetch_seed())

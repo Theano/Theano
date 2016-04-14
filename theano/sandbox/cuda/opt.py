@@ -2385,11 +2385,13 @@ def local_gpu_extract_diagonal(node):
         isinstance(node.inputs[0].type, theano.tensor.TensorType)):
         inp = node.inputs[0]
         if (isinstance(node.op, theano.tensor.Diagonal) and
-           node.op.has_default_props()):
+           not node.op.has_default_props()):
             warnings.warn("Diagonal Op has no GPU implementation for"
                           "non-default properties. It will run on CPU.")
             return False
         if inp.owner and isinstance(inp.owner.op, HostFromGpu):
+            import pdb
+            pdb.set_trace()
             return [host_from_gpu(theano.tensor.diagonal(
                 as_cuda_ndarray_variable(inp)))]
     if isinstance(node.op, GpuFromHost):

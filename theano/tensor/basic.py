@@ -5917,26 +5917,42 @@ class Diagonal(Op):
 
     def __init__(self, offset=0, axis1=0, axis2=1, view=False):
         self.view = view
-        if self.view and numpy_diagonal_return_view:
+        if self.view and not numpy_diagonal_return_view:
+            warnings.warn("View will forced to False. Diagonal property view is "
+                          "set to True but numpy version %s and prior versions of "
+                          "numpy.diagonal() do not return a view. Update "
+                          "numpy to use Diagonal(view=True)" % 
+                          numpy.version.version)
+            self.view = False
+        if self.view:
             self.view_map = {0: [0]}
         self.offset = offset
         self.axis1 = axis1
         self.axis2 = axis2
 
-    def make_node(self, x):
-        x = as_tensor_variable(x)
+    def make_node(self, _x):
+        if not isinstance(_x, theano.Variable):
+            x = as_tensor_variable(_x)
+        else:
+            x = _x
+        
         if x.ndim < 2:
-            raise TypeError('Diagonal needs an input with 2 or more '
-                            'dimensions', x)
-        return Apply(self, [x], [tensor(dtype=x.dtype,
-                                        broadcastable=[False] * (x.ndim - 1))])
+            raise ValueError('Diagonal needs an input with 2 or more '
+                             'dimensions', x)
+        return Apply(self, [x], [x.type.__class__(
+            dtype=x.dtype,
+            broadcastable=[False] * (x.ndim - 1))()])
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
-        if not self.has_default_props():
+        if (not self.has_default_props() and 
+            isinstance(x, theano.sandbox.cuda.CudaNdarray)):
             raise ValueError('Currently Diagonal doesn\'t support non-default'
-                             'offset and axis values.')
+                             'offset and axis values on GPU.')
+
+        import pdb
+        bd.set_trace()
 
         # zero-dimensional matrices ...
         if numpy.min(x.shape) == 0:
@@ -6112,7 +6128,7 @@ def diag(v, k=0):
     elif v.ndim >= 2:
         return diagonal(v, k)
     else:
-        raise TypeError("Input must has v.ndim >=1.")
+        raise ValueError("Input must has v.ndim >=1.")
 
 
 def stacklists(arg):
