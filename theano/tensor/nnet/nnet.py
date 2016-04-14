@@ -20,10 +20,10 @@ from six.moves import xrange
 import theano
 from theano import gof
 from theano import scalar
+from theano.gof.opt import copy_stack_trace
 from theano.tensor import basic as tensor, subtensor, opt, elemwise
 from theano.tensor.type import (values_eq_approx_remove_inf,
                                 values_eq_approx_remove_nan)
-from theano.tensor.opt import copy_stack_trace
 from theano.compile import optdb
 from theano.gof import Apply
 
