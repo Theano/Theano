@@ -139,7 +139,7 @@ Theano defines the following modes by name:
 
 - ``'FAST_COMPILE'``: Apply just a few graph optimizations and only use Python implementations. So GPU is disabled.
 - ``'FAST_RUN'``: Apply all optimizations and use C implementations where possible.
-- ``'DebugMode``: Verify the correctness of all optimizations, and compare C and Python
+- ``'DebugMode'``: Verify the correctness of all optimizations, and compare C and Python
     implementations. This mode can take much longer than the other modes, but can identify
     several kinds of problems.
 - ``'ProfileMode'`` (deprecated): Same optimization as FAST_RUN, but print some profiling information.
