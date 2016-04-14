@@ -354,15 +354,6 @@ class GpuGemmBatch(BlasOp):
         assert A.dtype == B.dtype == C.dtype
         return Apply(self, [C, alpha, A, B, beta], [C.type()])
 
-    def perform(self, node, inputs, outputs):
-        C, alpha, A, B, beta = inputs
-        if self.inplace and C.flags.forc:
-            C *= beta
-            C += alpha * blas.batched_dot(A, B)
-            outputs[0][0] = C
-        else:
-            outputs[0][0] = alpha * blas.batched_dot(A, B) + beta * C
-
     def c_headers(self):
         return super(GpuGemmBatch, self).c_headers() + ['<gpuarray/blas.h>']
 
