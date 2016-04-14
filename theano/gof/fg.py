@@ -51,12 +51,13 @@ class MissingInputError(Exception):
     """
     def __init__(self, *args, **kwargs):
         if kwargs:
-            assert kwargs.keys() == ["variable"]
-            tr = getattr(kwargs.values()[0].tag, 'trace', [])
+            # The call to list is needed for Python 3
+            assert list(kwargs.keys()) == ["variable"]
+            tr = getattr(list(kwargs.values())[0].tag, 'trace', [])
             if type(tr) is list and len(tr) > 0:
                 sio = StringIO()
                 print("\nBacktrace when the variable is created:", file=sio)
-                for subtr in kwargs.values()[0].tag.trace:
+                for subtr in list(kwargs.values())[0].tag.trace:
                     traceback.print_list(subtr, sio)
                 args = args + (str(sio.getvalue()),)
         s = '\n'.join(args)  # Needed to have the new line print correctly
