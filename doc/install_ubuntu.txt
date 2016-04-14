@@ -1,16 +1,29 @@
+.. include:: css.txt
+
 .. _install_ubuntu:
 
 
 Ubuntu Installation Instructions
-================================
+################################
 
 There are two ways of getting the dependencies for Theano. You can either grab them
-as system packages or let pip do everything for you. 
+as system packages or let pip do everything for you. In the end, Theano will be installed 
+through pip.
 
-There are also two installation modes, the stable version and the bleeding-edge most recent version.
+- Through `apt_get`_ (system packages) :
 
-Requirements through System Packages
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  - `bleeding_edge`_ (recommended)
+  - `stable`_
+
+- Through `pip`_
+
+  - `pip_bleeding_edge`_
+  - `pip_stable`_
+
+.. _apt_get:
+
+Apt-get Install
+===============
 
 If you want to acquire the requirements through your system packages follow these instructions:
 
@@ -26,8 +39,23 @@ For Ubuntu 11.04:
 
     sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ git libatlas3gf-base libatlas-dev
 
+.. _stable:
+
+Stable Installation
+-------------------
+
 .. include:: install_generic.txt
-    :start-line: 19
+    :start-line: 17
+    :end-line: 43
+
+.. _bleeding_edge:
+
+Bleeding-Edge Installation
+--------------------------
+
+.. include:: install_generic.txt
+    :start-line: 48
+    :end-line: 80
 
 .. note::
 
@@ -91,11 +119,6 @@ variable "OMP_NUM_THREADS=N" to specify to use N threads.
     investing money (i.e. buying a license to a proprietary BLAS
     implementation), it is possible to gain further performance.
 
-Updating Theano
-~~~~~~~~~~~~~~~
-
-Go to update link page?
-
 Manual Openblas instruction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -119,11 +142,25 @@ some code that will help you.
     echo -e "\n[blas]\nldflags = -lopenblas\n" >> ~/.theanorc
 
 
-This is problematic, it is specific requirements AND install...
+.. _pip:
 
-For NVIDIA Jetson TX1 embedded platform:
+pip Install
+===========
 
-.. code-block:: bash
+.. _pip_stable:
 
-    sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libblas-dev git
-    pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git --user  # Need Theano 0.8(not yet released) or more recent
+Stable Installation
+-------------------
+
+.. include:: install_generic.txt
+    :start-line: 17
+    :end-line: 43
+
+.. _pip_bleeding_edge:
+
+Bleeding-Edge Installation
+--------------------------
+
+.. include:: install_generic.txt
+    :start-line: 48
+    :end-line: 80

@@ -1,7 +1,7 @@
 .. _install_windows:
 
-Installation of Theano on Windows
-==================================
+Windows Installation Instructions
+=================================
 
 .. note::
 

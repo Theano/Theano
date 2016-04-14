@@ -1,16 +1,10 @@
-.. raw:: html
-
-    <style> .code {background-color:#F8F8F8; font-family: "Consolas","Deja Vu Sans Mono","Bitstream Vera Sans Mono",monospace;} </style>
-    <style> .bcode {color:blue; background-color:#F8F8F8; font-family: "Consolas","Deja Vu Sans Mono","Bitstream Vera Sans Mono",monospace;} </style>
-    <style> .rcode {color:#F00; background-color:#F8F8F8; font-family: "Consolas","Deja Vu Sans Mono","Bitstream Vera Sans Mono",monospace;} </style>
-    <style> .blue {color:blue} </style>
-    <style> .red {color:red} </style>
+.. include:: css.txt
 
 .. _install_generic:
 
 
-Generic Install Instructions
-============================
+Generic Installation Instructions
+#################################
 
 If you want the latest on the edge installation of Theano, you want `bleeding_edge`_.
 Otherwise go for the `stable`_.
@@ -18,31 +12,19 @@ Otherwise go for the `stable`_.
 .. _stable:
 
 Stable Installation
-------------------
+-------------------
 
 These are general instructions that will install the latest stable version of Theano.
 
 pip
-~~~
+^^^
 
 The recommended way to obtain the latest stable version of Theano is from PyPI using
 pip_. 
 
-.. code-block:: bash
+.. raw:: html
 
-    <sudo> pip install <--user> Theano[test] 
-
-.. role:: code
-
-.. role:: bcode
-
-.. role:: rcode
-
-:rcode:`sudo` :code:`pip install` :bcode:`--user` :code:`Theano[test]`
-
-.. role:: blue
-
-.. role:: red
+    <pre><span class="red">&#60;sudo&#62;</span> pip install <span class="blue">&#60;--user&#62;</span> Theano[test]</pre>
 
 - Use :red:`sudo` for a root installation.
 
@@ -50,7 +32,7 @@ pip_.
 
 
 Anaconda
-~~~~~~~~
+^^^^^^^^
 
 If you don't want to bother yourself with anything, you can install Theano under the Anaconda environment.
 

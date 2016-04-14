@@ -1,8 +1,10 @@
+.. include::css.txt
+
 .. _install_macos:
 
 
-Mac OS Install Instructions
-===========================
+Mac OS Installation Instructions
+################################
 
 There are various ways to install Theano dependencies on a Mac. Here
 we describe the process in detail with Canopy, Anaconda, Homebrew or
@@ -36,7 +38,7 @@ implementation of blas.
    it hasn't been done.
 
 .. include:: install_generic.txt
-    :start-line: 19
+    :start-line: 11
 
 Installing the compiler
 -----------------------

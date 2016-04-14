@@ -5,14 +5,18 @@ Installing Theano
 =================
 
 On the following pages you will find different installation instructions depending
-on your needs. Each instruction will take care of the :ref:`requirements`.
+on your needs. 
 
 - :ref:`install_ubuntu`
 - :ref:`install_centos6`
 - :ref:`install_macos`
 - :ref:`install_windows`
 - :ref:`install_generic`
+- :ref:`install_others`
 
 If you want to update, head to the update page :ref:`updating`.
 
 If you encounter any trouble, head to the :ref:`troubleshooting` page.
+
+If you are curious about what Theano requires, you can head up
+to its :ref:`requirements` page.

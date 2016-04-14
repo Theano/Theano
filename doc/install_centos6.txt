@@ -1,8 +1,10 @@
+.. include:: css.txt
+
 .. _install_centos6:
  
 
-Easy Installation of an optimized Theano on CentOS 6
-====================================================
+CentOS 6 Installation Instructions
+==================================
 
 .. note::
 
@@ -41,10 +43,9 @@ Installation steps
  1) ``sudo yum install python-devel python-nose python-setuptools gcc
     gcc-gfortran gcc-c++ blas-devel lapack-devel atlas-devel``
  2) ``sudo easy_install pip``
- 3) ``sudo pip install numpy==1.6.1``
- 4) ``sudo pip install scipy==0.10.1``
- 5) ``sudo pip install Theano``
 
+.. include:: install_generic.txt
+    :start-line: 11
 
 Test the newly installed packages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -74,27 +75,3 @@ threads on multiple CPUs and GPUs. It will also print some Theano/NumPy
 configuration information. Then, it will print the running time of the same
 benchmarks for your installation. Try to find a CPU similar to yours in
 the table, and check that the single-threaded timings are roughly the same.
-
-
-Updating Theano
-~~~~~~~~~~~~~~~
-
-If you followed these installation instructions, you can execute this command
-to update only Theano:
-
-.. code-block:: bash
-
-    sudo pip install --upgrade --no-deps theano
-
-
-If you want to also update NumPy/SciPy, you can run this:
-
-.. code-block:: bash
-
-    sudo pip install --upgrade theano
-
-Bleeding edge
-~~~~~~~~~~~~~
-
-Do like in the section "Updating Theano", but use
-``git+git://github.com/Theano/Theano.git`` instead of ``theano``.
