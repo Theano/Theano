@@ -1,16 +1,13 @@
 from __future__ import absolute_import, print_function, division
 
 import os
-import copy
 
 import numpy
 from six import integer_types
 from six.moves import StringIO
 
-import theano
 from theano import tensor, gof
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
-import theano.tensor.inplace
 
 try:
     import pygpu
