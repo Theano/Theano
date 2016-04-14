@@ -404,7 +404,7 @@ class GpuGemmBatch(BlasOp):
         return code
 
     def c_code_cache_version(self):
-        return None
+        return (1,)
 
 gpugemmbatch_no_inplace = GpuGemmBatch(inplace=False)
 gpugemmbatch_inplace = GpuGemmBatch(inplace=True)
