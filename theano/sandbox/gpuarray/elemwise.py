@@ -1,6 +1,5 @@
 from __future__ import absolute_import, print_function, division
 import copy
-from theano.compat import izip
 import numpy
 
 import theano
@@ -13,10 +12,9 @@ from theano.tensor.elemwise import (Elemwise, DimShuffle, CAReduceDtype)
 try:
     import pygpu
     from pygpu import gpuarray
-    from pygpu.tools import ScalarArg, ArrayArg
-    from pygpu.elemwise import ElemwiseKernel
+    from pygpu.tools import ArrayArg
     from pygpu.reduction import ReductionKernel
-    from pygpu.gpuarray import dtype_to_typecode, dtype_to_ctype
+    from pygpu.gpuarray import dtype_to_typecode
 except ImportError:
     pass
 
@@ -166,7 +164,7 @@ class GpuElemwise(HideC, Elemwise):
                 '<gpuarray/elemwise.h>']
 
     def c_support_code_struct(self, node, name):
-        return "\nGpuElemwise *ge;\n";
+        return "\nGpuElemwise *ge;\n"
 
     def c_init_code_struct(self, node, name, sub):
         inps, outs = self._get_vnames(node)
