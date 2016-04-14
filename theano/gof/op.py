@@ -576,7 +576,11 @@ class PureOp(object):
                 raise
             return ret
 
-        raise AttributeError('%s has no test value' % v)
+        sio = StringIO()
+        for subtr in getattr(v.tag, "trace", []):
+            traceback.print_list(subtr, sio)
+        detailed_err_msg = sio.getvalue()
+        raise AttributeError('%s has no test value %s' % (v, detailed_err_msg))
 
     def __call__(self, *inputs, **kwargs):
         """
@@ -630,9 +634,14 @@ class PureOp(object):
                             (i, ins, node), stacklevel=2)
                         run_perform = False
                     elif config.compute_test_value == 'raise':
+                        sio = StringIO()
+                        for subtr in getattr(ins.tag, "trace", []):
+                            traceback.print_list(subtr, sio)
+                        detailed_err_msg = sio.getvalue()
+
                         raise ValueError(
-                            'Cannot compute test value: input %i (%s) of Op %s missing default value' %
-                            (i, ins, node))
+                            'Cannot compute test value: input %i (%s) of Op %s missing default value. %s' %
+                            (i, ins, node, detailed_err_msg))
                     elif config.compute_test_value == 'ignore':
                         # silently skip test
                         run_perform = False
