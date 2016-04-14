@@ -2436,6 +2436,7 @@ class BatchedDot(Op):
 
 batched_dot = BatchedDot()
 
+
 # from opt import register_specialize, register_canonicalize
 # @register_specialize
 @local_optimizer([T.sub, T.add])

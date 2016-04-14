@@ -331,6 +331,7 @@ class GpuDot22(BlasOp):
 
 gpu_dot22 = GpuDot22()
 
+
 class GpuGemmBatch(BlasOp):
     __props__ = ('inplace',)
 
