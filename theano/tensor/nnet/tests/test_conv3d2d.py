@@ -76,7 +76,10 @@ def pyconv3d(signals, filters):
 
 
 def check_diagonal_subtensor_view_traces(fn):
-    assert check_stack_trace(fn, [DiagonalSubtensor, IncDiagonalSubtensor])
+    def check_node_type(node):
+        return isinstance(node.op, (DiagonalSubtensor, IncDiagonalSubtensor))
+    assert check_stack_trace(fn, ops_to_check=check_node_type,
+                             bug_print='ignore')
 
 
 def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):

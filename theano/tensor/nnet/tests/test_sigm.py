@@ -306,7 +306,6 @@ class T_sigmoid_opts(unittest.TestCase):
         mode = self.get_mode()
         if not isinstance(mode, theano.compile.DebugMode):
             f = theano.function([x, lr], ux, mode=mode)
-            assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
             ux_v = f([[50]], 0.1)
             assert not numpy.isnan(ux_v)
 
@@ -365,13 +364,16 @@ class T_softplus_opts(unittest.TestCase):
 
         out = T.log(sigmoid(x))
         f = theano.function([x], out, mode=self.m)
-        ops_to_check = [theano.scalar.Neg,
-                        theano.tensor.nnet.sigm.ScalarSoftplus,
-                        theano.scalar.Neg]
-        assert check_stack_trace(f, ops_to_check=ops_to_check)
+        types_to_check = (theano.scalar.Neg,
+                          theano.tensor.nnet.sigm.ScalarSoftplus,
+                          theano.scalar.Neg)
+
+        assert check_stack_trace(
+            f, ops_to_check=
+            lambda x: isinstance(x.op.scalar_op, types_to_check))
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 3
-        for i, op in enumerate(ops_to_check):
+        for i, op in enumerate(types_to_check):
             assert isinstance(topo[i].op.scalar_op, op)
         f(numpy.random.rand(54).astype(config.floatX))
 
@@ -390,9 +392,8 @@ class T_softplus_opts(unittest.TestCase):
         # Same test with a flatten
         out = T.log(1 - T.flatten(sigmoid(x)))
         f = theano.function([x], out, mode=self.m)
-        assert check_stack_trace(
-            f, ops_to_check=[theano.tensor.nnet.sigm.ScalarSoftplus,
-                             theano.scalar.Neg])
+
+        assert check_stack_trace(f, ops_to_check='all')
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 3
         assert tensor.is_flat(topo[0].outputs[0])
@@ -421,8 +422,8 @@ class T_softplus_opts(unittest.TestCase):
 
         out = T.log(1 + T.exp(x))
         f = theano.function([x], out, mode=self.m)
-        assert check_stack_trace(
-            f, ops_to_check=theano.tensor.nnet.sigm.ScalarSoftplus)
+
+        assert check_stack_trace(f, ops_to_check='all')
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op.scalar_op,
