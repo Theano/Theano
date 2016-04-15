@@ -14,6 +14,8 @@ on your needs.
 - :ref:`install_generic`
 - :ref:`install_others`
 
+To set you up with the GPU tool, you need to follow additionnal :ref:`instructions <install_gpu>`.
+
 If you want to update, head to the update page :ref:`updating`.
 
 If you encounter any trouble, head to the :ref:`troubleshooting` page.

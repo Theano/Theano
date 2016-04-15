@@ -10,20 +10,22 @@ There are two ways of getting the dependencies for Theano. You can either grab t
 as system packages or let pip do everything for you. In the end, Theano will be installed 
 through pip.
 
-- Through `apt_get`_ (system packages) :
+- Through System Packages :
 
   - `bleeding_edge`_ (recommended)
   - `stable`_
 
-- Through `pip`_
+- Through PyPI :
 
   - `pip_bleeding_edge`_
   - `pip_stable`_
 
 .. _apt_get:
 
-Apt-get Install
-===============
+.. _stable:
+
+Stable Installation
+===================
 
 If you want to acquire the requirements through your system packages follow these instructions:
 
@@ -39,11 +41,6 @@ For Ubuntu 11.04:
 
     sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ git libatlas3gf-base libatlas-dev
 
-.. _stable:
-
-Stable Installation
--------------------
-
 .. include:: install_generic.txt
     :start-line: 17
     :end-line: 43
@@ -51,7 +48,21 @@ Stable Installation
 .. _bleeding_edge:
 
 Bleeding-Edge Installation
---------------------------
+=========================
+
+If you want to acquire the requirements through your system packages follow these instructions:
+
+For Ubuntu 11.10 through 14.04:
+
+.. code-block:: bash
+
+    sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git
+
+For Ubuntu 11.04:
+
+.. code-block:: bash
+
+    sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ git libatlas3gf-base libatlas-dev
 
 .. include:: install_generic.txt
     :start-line: 48
