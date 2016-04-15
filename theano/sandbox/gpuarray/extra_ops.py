@@ -292,3 +292,72 @@ class GpuCumsum(CumsumOp, Op):
         return kernels
 
 
+    def c_code(self, node, name, inp, out, sub):
+        if node.inputs[0].type.context.kind != 'cuda':
+            raise NotImplementedError("cuda only")
+        x, = inp
+        z, = out
+        axis = self.axis if self.axis is not None else 0
+        fail = sub['fail']
+
+        max_threads_dim0 = self.max_threads_dim0
+        max_grid_size1 = self.max_grid_size1
+        max_grid_size2 = self.max_grid_size2
+        if max_threads_dim0 is None or max_grid_size1 is None or max_grid_size2 is None:
+            raise NotImplementedError("GpuCumsum.c_code should not be called "
+                                      "directly. It should be called by "
+                                      "make_thunk() that add some information "
+                                      "related to the selected GPU.")
+
+        code = """
+            const int* shape = PyGpuArray_DIMS(%(x)s);
+            bool needAllocation = !%(z)s || PyGpuArray_NDIM(%(x)s) != PyGpuArray_NDIM(%(z)s);
+
+            int axis = %(axis)s;
+            if (axis < 0) {
+                // Convert negative axis to positive axis.
+                axis += PyGpuArray_NDIM(%(x)s);
+            }
+
+            // If output is already allocated, check if its shape matches the input's one.
+            if (!needAllocation) {
+                for (int i= 0; i < PyGpuArray_NDIM(%(x)s); ++i) {
+                    if (PyGpuArray_DIMS(%(x)s)[i] != PyGpuArray_DIMS(%(z)s)[i]) {
+                        needAllocation = true;
+                    }
+                }
+            }
+
+            if (needAllocation){
+                Py_XDECREF(%(z)s);
+                %(z)s = (CudaNdarray*) CudaNdarray_NewDims(PyGpuArray_NDIM(%(x)s), shape);
+            }
+
+            if (!%(z)s) {
+                %(fail)s;
+            }
+
+            { // Namespace for kernel calls //
+                if (cumSum_%(nodename)s(%(x)s, %(z)s, axis, %(max_threads_dim0)s, %(max_grid_size1)s, %(max_grid_size2)s) == -1){
+                    %(fail)s;
+                }
+
+                cudaError_t sts = cudaGetLastError();
+                if (cudaSuccess != sts)
+                {
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "Cuda error: %%s: %%s.\\n",
+                        "cumSum_%(nodename)s",
+                        cudaGetErrorString(sts));
+                    %(fail)s;
+                }
+            }
+        """ % locals()
+
+        return code
+
+@op_lifter([CumsumOp])
+def use_gpu_cumsumop(node, axis):
+    return GpuCumsum(axis)
+
+register_gpu_opt()(use_gpu_cumsumop)
