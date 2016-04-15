@@ -2888,7 +2888,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         out[0] = x
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         if (node.inputs[0].ndim != node.inputs[1].ndim):
@@ -2961,7 +2961,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
                   %(fail)s;
              }
              if (%(set_instead_of_inc)s) {
-                 ret = CudaNdarray_CopyFromCudaNdarray((CudaNdarray *) row_x, (CudaNdarray *) row_y);
+                 ret = CudaNdarray_CopyFromCudaNdarray((CudaNdarray *) row_x, (CudaNdarray *) row_y, 1);
              } else {
                  ret = CudaNdarray_inplace_elemwise(row_x, row_y, IADD);
              }
