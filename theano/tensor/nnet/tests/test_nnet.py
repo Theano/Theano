@@ -661,7 +661,9 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         fgraph = gof.FunctionGraph(
                 [x, one_of_n],
                 [g_x])
-        assert check_stack_trace(fgraph, ops_to_check='last')
+        assert check_stack_trace(
+            fgraph, ops_to_check=[crossentropy_softmax_1hot_with_bias_dx,
+                                  softmax_op])
 
         # print 'BEFORE'
         # for node in fgraph.toposort():
@@ -1301,6 +1303,8 @@ def test_argmax_pushdown():
         assert len(fgraph.toposort()) == 2  # an output_guard is second
         assert fgraph.toposort()[0].op == tensor.basic._max_and_argmax
         assert str(fgraph.toposort()[1].op) == 'OutputGuard'
+        assert check_stack_trace(
+            fgraph, ops_to_check=tensor.basic._max_and_argmax)
         x = tensor.matrix()
         # test that the max_and_argmax is not pushed down if the max is used
         out = tensor.max_and_argmax(
