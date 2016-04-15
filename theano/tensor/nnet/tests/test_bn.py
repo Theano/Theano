@@ -66,12 +66,6 @@ def test_bn():
     m = theano.tensor.vector('m')
     v = theano.tensor.vector('v')
 
-    x.tag.test_value = numpy.random.rand(2, 2)
-    b.tag.test_value = numpy.random.rand(2)
-    g.tag.test_value = numpy.random.rand(2)
-    m.tag.test_value = numpy.random.rand(2)
-    v.tag.test_value = numpy.random.rand(2)
-
     bn_ref_op = bn_ref(x, g, b, m, v)
     f_ref = theano.function([x, b, g, m, v], [bn_ref_op])
     res_ref = f_ref(X, G, B, M, V)
