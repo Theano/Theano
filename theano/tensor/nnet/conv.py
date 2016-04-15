@@ -129,7 +129,8 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
 
     if image_shape and filter_shape:
         try:
-            assert image_shape[1] == filter_shape[1]
+            if image_shape[1] is not None and filter_shape[1] is not None:
+                assert image_shape[1] == filter_shape[1]
         except Exception:
             print('image ', image_shape, ' filters ', filter_shape)
             raise
