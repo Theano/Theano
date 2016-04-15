@@ -55,29 +55,6 @@ def _contains_cycle(fgraph, orderings):
         True if the graph contains a cycle, False otherwise.
 
     """
-    if False:
-        import pdb;pdb.set_trace()
-        for n in fgraph.apply_nodes:
-            dm = getattr(n.op, 'destroy_map', None)
-            if not dm:
-                continue
-            inputs = sum(dm.values())
-            for inp_idx in inputs:
-                inp = n.inputs[inp_idx]
-                while inp.owner:
-                    if len(inp.clients() > 1):
-                        return True
-                    n2 = inp.owner
-                    inp_idx2 = n2.outputs.index(inp)
-                    d = getattr(n2, 'destroy_map', {}).get(inp_idx2, [])
-                    d += getattr(n2, 'view_map', {}).get(inp_idx2, [])
-                    assert len(d) <= 1
-                    if len(d) == 0:
-                        continue
-                    inp_idx3 = d[0]
-                    inp = n2.inputs[above]
-
-        return False
     # These are lists of Variable instances
     outputs = fgraph.outputs
 
@@ -137,11 +114,71 @@ def _contains_cycle(fgraph, orderings):
 
     # Pass through all the nodes to build visitable, parent_count, and
     # node_to_children
-    try:
-        graph.io_toposort(list(fgraph.variables), list(fgraph.apply_nodes))
-    except ValueError as ve:
-        if "cycles" in ve.args[0]:
-            return True
+    for var in fgraph.variables:
+
+        # this is faster than calling get_parents
+        owner = var.owner
+        # variables don't appear in orderings, so we don't need to worry
+        # about that here
+        if owner:
+            # insert node in node_to_children[r]
+            # (if r is not already in node_to_children,
+            # intialize it to [])
+            node_to_children.setdefault(owner, []).append(var)
+            parent_counts[var] = 1
+        else:
+            visitable.append(var)
+            parent_counts[var] = 0
+
+    for a_n in fgraph.apply_nodes:
+        parents = list(a_n.inputs)
+        # This is faster than conditionally extending
+        # IG: I tried using a shared empty_list = [] constructed
+        # outside of the for loop to avoid constructing multiple
+        # lists, but this was not any faster.
+        parents.extend(orderings.get(a_n, []))
+
+        if parents:
+            for parent in parents:
+                # insert node in node_to_children[r]
+                # (if r is not already in node_to_children,
+                # intialize it to [])
+                node_to_children.setdefault(parent, []).append(a_n)
+            parent_counts[a_n] = len(parents)
+        else:
+            # an Apply with no inputs would be a weird case, but I'm
+            # not sure we forbid it
+            visitable.append(a_n)
+            parent_counts[a_n] = 0
+
+    # at this point,
+    # parent_counts.keys() == fgraph.apply_nodes + fgraph.variables
+
+    # Now we actually check for cycles
+    # As long as there are nodes that can be visited while respecting
+    # the topology, we keep visiting nodes
+    # If we run out of visitable nodes and we haven't visited all nodes,
+    # then there was a cycle. It blocked the traversal because some
+    # node couldn't be visited until one of its descendants had been
+    # visited too.
+    # This is a standard cycle detection algorithm.
+
+    visited = 0
+    while visitable:
+        # Since each node is inserted into the visitable queue exactly
+        # once, it comes out of the queue exactly once
+        # That means we can decrement its children's unvisited parent count
+        # and increment the visited node count without double-counting
+        node = visitable.popleft()
+        visited += 1
+        for client in node_to_children.get(node, []):
+            parent_counts[client] -= 1
+            # If all of a node's parents have been visited,
+            # it may now be visited too
+            if not parent_counts[client]:
+                visitable.append(client)
+
+    return visited != len(parent_counts)
 
 
 def _build_droot_impact(destroy_handler):
@@ -758,14 +795,14 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         inputs = sum(dm.values())  # list of app's destroyed inputs
         for inp_idx in inputs:
             inp = app.inputs[inp_idx]
-            if inp.owner:
-                if len(inp.clients() > 1):
+            if len(inp.clients() > 1):
+                if inp.owner:
                     raise InconsistencyError()
                 app2 = inp.owner
                 inp_idx2 = app2.outputs.index(inp)
-                d = getattr(app2, 'destroy_map', {}).get(inp_idx2, [])
-                v = getattr(app2, 'view_map', {}).get(inp_idx2, [])
-                dv = d+v
+                d = getattr(app2.op, 'destroy_map', {}).get(inp_idx2, [])
+                v = getattr(app2.op, 'view_map', {}).get(inp_idx2, [])
+                dv = d + v
                 assert len(dv) <= 1
                 if len(v) > 0:
                     raise InconsistencyError()
