@@ -155,8 +155,11 @@ some code that will help you.
 
 .. _pip:
 
-pip Install
-===========
+PyPI Install
+============
+
+By following these instructions you allow pip to take care of all the requirements
+and dependencies related to Theano.
 
 .. _pip_stable:
 
