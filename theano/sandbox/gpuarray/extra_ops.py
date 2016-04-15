@@ -95,9 +95,9 @@ class GpuCumsum(CumsumOp, Op):
         # finalCumSum
         k_name = "k_finalCumSum" 
         k_var = "k_finalCumSum_" + nodename
-        params = 
+        # params = 
         code = """
-        void k_blockCumSum_%(nodename)s(float* input, float* output, int nbElementsPerCumsum, dim3 inputStrides, dim3 outputStrides, int offsetY, int offsetZ, float* blockSum) {
+        void k_blockCumSum_%(nodename)s(float* input, float* output, int nbElementsPerCumsum, size_t inputStrides[3], size_t outputStrides[3], int offsetY, int offsetZ, float* blockSum) {
             // Regarding blockIdx and threadIdx, 'Cumsum' is always performed along the X axis.
             // The Y and Z axis of the grid will contain all independent cumsums of the 2D/3D case.
 
@@ -131,34 +131,34 @@ class GpuCumsum(CumsumOp, Op):
 
         int cumSum_%(nodename)s(CudaNdarray* input, CudaNdarray* output, int axis, int maxThreads, int maxGridY, int maxGridZ) {
             int shape[3] = { 1, 1, 1 };
-            dim3 inputStrides(0, 0, 0);
-            dim3 outputStrides(0, 0, 0);
+            size_t inputStrides[3] = {0, 0, 0};
+            size_t outputStrides[3] = {0, 0, 0};
 
-            switch (CudaNdarray_NDIM(input))
+            switch (PyGpuArray_NDIM(input))
             {
             case 1:
-                shape[0] = CudaNdarray_HOST_DIMS(input)[0];
-                inputStrides.x = CudaNdarray_HOST_STRIDES(input)[0];
-                outputStrides.x = CudaNdarray_HOST_STRIDES(output)[0];
+                shape[0] = PyGpuArray_DIMS(input)[0];
+                inputStrides[0] = PyGpuArray_STRIDES(input)[0];
+                outputStrides[0] = PyGpuArray_STRIDES(output)[0];
                 break;
             case 2:
-                shape[0] = CudaNdarray_HOST_DIMS(input)[0];
-                shape[1] = CudaNdarray_HOST_DIMS(input)[1];
-                inputStrides.x = CudaNdarray_HOST_STRIDES(input)[0];
-                inputStrides.y = CudaNdarray_HOST_STRIDES(input)[1];
-                outputStrides.x = CudaNdarray_HOST_STRIDES(output)[0];
-                outputStrides.y = CudaNdarray_HOST_STRIDES(output)[1];
+                shape[0] = PyGpuArray_DIMS(input)[0];
+                shape[1] = PyGpuArray_DIMS(input)[1];
+                inputStrides[0] = PyGpuArray_STRIDES(input)[0];
+                inputStrides[1] = PyGpuArray_STRIDES(input)[1];
+                outputStrides[0] = PyGpuArray_STRIDES(output)[0];
+                outputStrides[1] = PyGpuArray_STRIDES(output)[1];
                 break;
             case 3:
-                shape[0] = CudaNdarray_HOST_DIMS(input)[0];
-                shape[1] = CudaNdarray_HOST_DIMS(input)[1];
-                shape[2] = CudaNdarray_HOST_DIMS(input)[2];
-                inputStrides.x = CudaNdarray_HOST_STRIDES(input)[0];
-                inputStrides.y = CudaNdarray_HOST_STRIDES(input)[1];
-                inputStrides.z = CudaNdarray_HOST_STRIDES(input)[2];
-                outputStrides.x = CudaNdarray_HOST_STRIDES(output)[0];
-                outputStrides.y = CudaNdarray_HOST_STRIDES(output)[1];
-                outputStrides.z = CudaNdarray_HOST_STRIDES(output)[2];
+                shape[0] = PyGpuArray_DIMS(input)[0];
+                shape[1] = PyGpuArray_DIMS(input)[1];
+                shape[2] = PyGpuArray_DIMS(input)[2];
+                inputStrides[0] = PyGpuArray_STRIDES(input)[0];
+                inputStrides[1] = PyGpuArray_STRIDES(input)[1];
+                inputStrides[2] = PyGpuArray_STRIDES(input)[2];
+                outputStrides[0] = PyGpuArray_STRIDES(output)[0];
+                outputStrides[1] = PyGpuArray_STRIDES(output)[1];
+                outputStrides[2] = PyGpuArray_STRIDES(output)[2];
                 break;
             default:
                 return -1;
@@ -191,25 +191,25 @@ class GpuCumsum(CumsumOp, Op):
                 dimGridY = shape[0];
                 dimGridZ = shape[2];
 
-                tmp = inputStrides.x;
-                inputStrides.x = inputStrides.y;
-                inputStrides.y = tmp;
+                tmp = inputStrides[0];
+                inputStrides[0] = inputStrides[1];
+                inputStrides[1] = tmp;
 
-                tmp = outputStrides.x;
-                outputStrides.x = outputStrides.y;
-                outputStrides.y = tmp;
+                tmp = outputStrides[0];
+                outputStrides[0] = outputStrides[1];
+                outputStrides[1] = tmp;
                 break;
             case 2:
                 dimGridY = shape[1];
                 dimGridZ = shape[0];
 
-                tmp = inputStrides.x;
-                inputStrides.x = inputStrides.z;
-                inputStrides.z = tmp;
+                tmp = inputStrides[0];
+                inputStrides[0] = inputStrides[2];
+                inputStrides[2] = tmp;
 
-                tmp = outputStrides.x;
-                outputStrides.x = outputStrides.z;
-                outputStrides.z = tmp;
+                tmp = outputStrides[0];
+                outputStrides[0] = outputStrides[2];
+                outputStrides[2] = tmp;
                 break;
             default:
                 return -1;
@@ -225,8 +225,8 @@ class GpuCumsum(CumsumOp, Op):
                 for (int offsetZ = 0; offsetZ < dimGridZ; offsetZ += maxGridZ){
                     int localDimGridZ = min(dimGridZ - offsetZ, maxGridZ);
 
-                    dim3 dimGrid(dimGridX, localDimGridY, localDimGridZ);
-                    dim3 dimBlock(dimBlockX, 1, 1);  // One cumsum per block.
+                    size_t dimGrid[3] = {dimGridX, localDimGridY, localDimGridZ};
+                    size_t dimBlock[3] = {dimBlockX, 1, 1};  // One cumsum per block.
                     int sharedBytes = (2*dimBlockX) * sizeof(float);
 
                     k_blockCumSum_%(nodename)s<<<dimGrid, dimBlock, sharedBytes>>>
@@ -250,8 +250,8 @@ class GpuCumsum(CumsumOp, Op):
 
                         // Since there are more than one block (i.e. `dimGridX > 1`)
                         //  report partial cumsums of previous blocks to subsequents ones.
-                        dim3 dimGrid(dimGridX, localDimGridY, localDimGridZ);
-                        dim3 dimBlock(dimBlockX, 1, 1);
+                        size_t dimGrid[3] = {dimGridX, localDimGridY, localDimGridZ};
+                        size_t dimBlock[3] = {dimBlockX, 1, 1};
                         k_finalCumSum_%(nodename)s<<<dimGrid, dimBlock>>>
                         (
                             CudaNdarray_DEV_DATA(output),
@@ -265,8 +265,8 @@ class GpuCumsum(CumsumOp, Op):
 
                     // If shape[axis] is odd, the last element is compute manually
                     if (shape[axis] != nbElementsPerCumsum){
-                        dim3 dimGrid(1, localDimGridY, localDimGridZ);
-                        dim3 dimBlock(1, 1, 1);
+                        size_t dimGrid[3] = {1, localDimGridY, localDimGridZ};
+                        size_t dimBlock[3] = {1, 1, 1};
                         k_cumadd_%(nodename)s<<<dimGrid, dimBlock>>>
                         (
                             CudaNdarray_DEV_DATA(input),
@@ -291,6 +291,4 @@ class GpuCumsum(CumsumOp, Op):
                               flags=flags, objvar=k_var))
         return kernels
 
-    def c_code(self, node, name, inp, out, sub):
-        if node.inputs[0].type.context.kind != 'cuda':
-            raise NotImplementedError("cuda only")
+
