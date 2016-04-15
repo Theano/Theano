@@ -1,13 +1,15 @@
 .. _troubleshooting:
 
 Troubleshooting
-===============
+###############
+
+Here are Linux troubleshooting instructions. There is a specific `MacOS`_ section.
 
 First Steps
-~~~~~~~~~~~
+===========
 
 Configuring ``PYTHONPATH``
-##########################
+--------------------------
 
 If ``import theano`` does not work in Python, you may need modify the
 environment variable ``PYTHONPATH`` accordingly.
@@ -28,27 +30,25 @@ your shell's startup script, i.e. ``~/.bashrc`` or ``~/.cshrc``.
 Consult your shell's documentation for details.
 
 Various checks
-##############
+--------------
 
 Easy way to check something that could be wrong is by making sure ``THEANO_FLAGS``
 have the desired values as well as the ``~/.theanorc``
 
 Also, check the following outputs :
 
-.. code-blocks:: bash
+.. code-block:: bash
 
     ipython
 
-.. code-blocks:: python
+.. code-block:: python
 
     import theano
     theano.__file__
     theano.__version__
 
-
-
 Make sure you have a BLAS library
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+=================================
 
 There are many ways to configure BLAS for Theano. This is done with the Theano
 flags ``blas.ldflags`` (:ref:`libdoc_config`). The default is to use the BLAS
@@ -135,9 +135,10 @@ correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or
     <http://software.intel.com/sites/products/documentation/doclib/mkl_sa/11/mkl_userguide_lnx/index.htm>`_
     can help you find the correct flags to use.
 
+.. _MacOS:
 
 Mac OS
-~~~~~~
+======
 
 Although the above steps should be enough, running Theano on a Mac may
 sometimes cause unexpected crashes, typically due to multiple versions of
