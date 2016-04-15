@@ -3,17 +3,15 @@ from __future__ import absolute_import, print_function, division
 import six.moves.builtins as builtins
 import logging
 import time
-import traceback
 import warnings
 
 import numpy  # for numeric_grad
 from six import itervalues
-from six.moves import StringIO
 
 import theano
 
 from theano import gof
-from theano.gof import Variable
+from theano.gof import utils, Variable
 from theano.compat import OrderedDict, izip
 from six.moves import xrange, reduce
 from theano.gof.null_type import NullType, null_type
@@ -518,17 +516,7 @@ def grad(cost, wrt, consider_constant=None,
             elif disconnected_inputs == 'warn':
                 warnings.warn(message, stacklevel=2)
             elif disconnected_inputs == 'raise':
-                # Add the var trace
-                tr = getattr(var.tag, 'trace', [])
-                if len(tr) > 0:
-                    message += "\nBacktrace when the node is created:\n"
-
-                    # Print separate message for each element in the list of batcktraces
-                    sio = StringIO()
-                    for subtr in tr:
-                        traceback.print_list(subtr, sio)
-                    message += str(sio.getvalue())
-
+                message = utils.get_variable_trace_string(var)
                 raise DisconnectedInputError(message)
             else:
                 raise ValueError("Invalid value for keyword "
