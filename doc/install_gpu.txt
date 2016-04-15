@@ -1,10 +1,7 @@
 .. _install_gpu:
 
-Using the GPU
-#############
-
-Linux
-~~~~~
+GPU Installation Instructions
+#############################
 
 The first thing you'll need for Theano to use your GPU is Nvidia's
 GPU-programming toolchain. You should install at least the CUDA driver and the CUDA Toolkit, as
@@ -34,7 +31,7 @@ Any one of them is enough.
     automatically. You can try the ``sudo apt-get install
     nvidia-cuda-toolkit`` command to install it.
 
-    `Ubuntu instructions <debian>`_.
+    `debian`_
 
 Once that is done, the only thing left is to change the ``device`` option to name the GPU device in your
 computer, and set the default floating point computations to float32.
@@ -77,8 +74,9 @@ everything is working properly.
 
 .. _debian:
 
-Debian-variant
-~~~~~~~~~~~~~~
+Debian-variant with software package manager
+--------------------------------------------
+
 Ubuntu 11.10/12.04 (probably work on 11.04 too):
 
 .. code-block:: bash
