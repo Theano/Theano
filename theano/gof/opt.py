@@ -2667,7 +2667,7 @@ def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
     # if ops_to_check is a string
     if isinstance(ops_to_check, string_types):
         if ops_to_check == 'last':
-            apply_nodes_to_check = [fgraph.outputs[0].owner]
+            apply_nodes_to_check = [fgraph.outputs[i].owner for i in range(len(fgraph.outputs))]
         elif ops_to_check == 'all':
             apply_nodes_to_check = fgraph.apply_nodes
         else:
