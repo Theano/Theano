@@ -4,6 +4,7 @@ This module provides utility functions for the Scan Op.
 See scan.py for details on scan.
 
 """
+from __future__ import absolute_import, print_function, division
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu "
                "Frederic Bastien "
@@ -620,7 +621,9 @@ def expand_empty(tensor_var, size):
     new_shape = [size + shapes[0]] + shapes[1:]
     empty = tensor.AllocEmpty(tensor_var.dtype)(*new_shape)
 
-    return tensor.set_subtensor(empty[:shapes[0]], tensor_var)
+    ret = tensor.set_subtensor(empty[:shapes[0]], tensor_var)
+    ret.tag.nan_guard_mode_check = False
+    return ret
 
 
 def equal_computations(xs, ys, in_xs=None, in_ys=None):

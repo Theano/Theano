@@ -1,6 +1,11 @@
+from __future__ import absolute_import, print_function, division
 import numpy
+import six.moves.copyreg as copyreg
+from six import iteritems
+import warnings
 
 import theano
+from theano.tensor.type import TensorType
 from theano.tensor.var import _tensor_py_operators
 from theano import Type, Variable, Constant, tensor, config, scalar
 from theano.compile import SharedVariable
@@ -12,7 +17,7 @@ try:
     from pygpu import gpuarray
     from pygpu.elemwise import compare, elemwise2
 except ImportError:
-    pass
+    pygpu = None
 
 _context_reg = {}
 
@@ -74,7 +79,7 @@ def list_contexts():
 
 # Private method
 def _name_for_ctx(ctx):
-    for k, v in _context_reg:
+    for k, v in iteritems(_context_reg):
         if v == ctx:
             return k
         raise ContextNotDefined('context is not registered')
@@ -198,11 +203,14 @@ class GpuArrayType(Type):
                                   context=self.context)
         else:
             if not hasattr(data, 'dtype'):
-                # This is to convert objects that don't have a dtype
-                # (like lists).  We anticipate that the type below
-                # will match and we pass copy=False so it won't make a
-                # second object on the GPU.
-                data = gpuarray.array(data, copy=False, context=self.context)
+                converted_data = theano._asarray(data, self.dtype)
+                # We use the `values_eq` static function from TensorType
+                # to handle NaN values.
+                if TensorType.values_eq(numpy.asarray(data),
+                                        converted_data,
+                                        force_same_dtype=False):
+                    data = converted_data
+                    data = gpuarray.array(data, context=self.context)
 
             up_dtype = scalar.upcast(self.dtype, data.dtype)
             if up_dtype == self.dtype:
@@ -260,10 +268,10 @@ class GpuArrayType(Type):
         return GpuFromHost(self.context_name)(other)
 
     @staticmethod
-    def values_eq(a, b):
+    def values_eq(a, b, force_same_dtype=True):
         if a.shape != b.shape:
             return False
-        if a.typecode != b.typecode:
+        if force_same_dtype and a.typecode != b.typecode:
             return False
         a_eq_b = numpy.asarray(compare(a, '==', b))
         if a_eq_b.all():
@@ -751,3 +759,35 @@ Instance of :class:`GpuContextType` to use for the context_type
 declaration of an operation.
 """
 gpu_context_type = GpuContextType()
+
+
+# THIS WORKS But GpuArray instances don't compare equal to one
+# another, and what about __hash__ ?  So the unpickled version doesn't
+# equal the pickled version, and the cmodule cache is not happy with
+# the situation. The old back-end have this same comment and use the
+# same mechanism.
+def GpuArray_unpickler(npa, ctx_name):
+    if config.experimental.unpickle_gpu_on_cpu:
+        # directly return numpy array
+        warnings.warn(
+            "config.experimental.unpickle_gpu_on_cpu is set to True. "
+            "Unpickling GpuArray as numpy.ndarray")
+        return npa
+    elif pygpu:
+        ctx = get_context(ctx_name)
+        return pygpu.gpuarray.array(npa, copy=True, context=ctx)
+    else:
+        raise ImportError("pygpu not found. Cannot unpickle GpuArray")
+
+copyreg.constructor(GpuArray_unpickler)
+
+
+def GpuArray_pickler(cnda):
+    ctx_name = _name_for_ctx(cnda.context)
+    return (GpuArray_unpickler, (numpy.asarray(cnda), ctx_name))
+
+# In case pygpu is not imported.
+if pygpu is not None:
+    copyreg.pickle(pygpu.gpuarray.GpuArray,
+                   GpuArray_pickler,
+                   GpuArray_unpickler)

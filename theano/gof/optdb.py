@@ -1,25 +1,12 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import copy
 import sys
 
-import numpy
-
 from theano.compat import DefaultOrderedDict
 from theano.misc.ordered_set import OrderedSet
-from six import StringIO
+from six import StringIO, integer_types
 from theano.gof import opt
-from theano.configparser import AddConfigVar, FloatParam
 from theano import config
-
-AddConfigVar('optdb.position_cutoff',
-             'Where to stop eariler during optimization. It represent the'
-             ' position of the optimizer where to stop.',
-             FloatParam(numpy.inf),
-             in_c_key=False)
-AddConfigVar('optdb.max_use_ratio',
-             'A ratio that prevent infinite loop in EquilibriumOptimizer.',
-             FloatParam(5),
-             in_c_key=False)
 
 
 class DB(object):
@@ -323,7 +310,7 @@ class SequenceDB(DB):
 
     def register(self, name, obj, position, *tags):
         super(SequenceDB, self).register(name, obj, *tags)
-        assert isinstance(position, (int, float))
+        assert isinstance(position, (integer_types, float))
         self.__position__[name] = position
 
     def query(self, *tags, **kwtags):

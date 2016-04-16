@@ -1,7 +1,7 @@
 """
 Tests for GPU convolution
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import sys
 import time
 import unittest
@@ -217,19 +217,29 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
     assert [(sh == 1) is br for
             sh, br in zip(cpuval.shape[:2], op.type.broadcastable[:2])]
 
-    if (t2 is not None):
+    if (t2 is not None and verbose > 0):
         if mode == 'valid':
             approx_fp = cpuval.size * ishape[1] * kshape[2] * kshape[3] * 2
         else:
             approx_fp = (ishape[0] * kshape[0] * kshape[1] * kshape[2] *
                          kshape[3] * ishape[2] * ishape[3] * 2)
         approx_fp /= 1e6
-        cpu_mflops = approx_fp / (t1 - t0)
-        gpu_mflops = approx_fp / (t3 - t2)
-        if verbose > 0:
-            print('%15s' % str(ishape), '%15s' % str(kshape), end=' ', file=sys.stdout)
-            print('%12.5f  %7.2f %7.2f %7.1f' % (approx_fp,
-                    cpu_mflops, gpu_mflops, (t1 - t0) / (t2 - t1)), file=sys.stdout)
+        if t1 - t0 != 0:
+            cpu_mflops = approx_fp / (t1 - t0)
+        else:
+            cpu_mflops = float('inf')
+        if t3 - t2 != 0:
+            gpu_mflops = approx_fp / (t3 - t2)
+        else:
+            gpu_mflops = float('inf')
+
+        if t2 - t1 != 0:
+            div = (t1 - t0) / (t2 - t1)
+        else:
+            div = float('inf')
+        print('%15s' % str(ishape), '%15s' % str(kshape), end=' ')
+        print('%12.5f  %7.2f %7.2f %7.1f' % (
+                approx_fp, cpu_mflops, gpu_mflops, div))
 
 
 def exec_conv(version, shapes, verbose, random, mode,
@@ -510,7 +520,7 @@ def _test_full(cls, mode=None, version=[-1], extra_shapes=[],
 
 def test_full():
 
-    # If using CuDNN version before v3, only run the tests where the
+    # If using cuDNN version before v3, only run the tests where the
     # kernels are not larger than the input in any spatial dimension.
     if cuda.dnn.dnn_available() and cuda.dnn.version() < (3000, 3000):
         test_bigger_kernels = False
@@ -532,7 +542,7 @@ def test_dnn_full():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
 
-    # If using CuDNN version before v3, only run the tests where the
+    # If using cuDNN version before v3, only run the tests where the
     # kernels are not larger than the input in any spatial dimension.
     if cuda.dnn.version() < (3000, 3000):
         test_bigger_kernels = False
@@ -835,7 +845,16 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsample, op):
     outputs.extend([corr_op_dik, conv_op_dik,
                     corr_op_dki, conv_op_dki])
 
-    f = theano.function([i, k], outputs, mode=theano_mode)
+    if not theano.config.blas.ldflags:
+        # Some of the operations are not transferred to the GPU,
+        # and withoug BLAS, the abstract Op will not be optimized
+        # to CorrMM either, so we have to accept the use of the
+        # slow Python convolution in that case.
+        mode = theano_mode.excluding('AbstractConvCheck')
+    else:
+        mode = theano_mode
+
+    f = theano.function([i, k], outputs, mode=mode)
 
     allvals = f(npy_img, npy_kern)
 

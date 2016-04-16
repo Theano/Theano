@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 from .nnet import (
     CrossentropyCategorical1Hot, CrossentropyCategorical1HotGrad,
     CrossentropySoftmax1HotWithBiasDx, CrossentropySoftmaxArgmax1HotWithBias,
@@ -16,7 +17,7 @@ from .nnet import (
     graph_merge_softmax_with_crossentropy_softmax, h_softmax,
     logsoftmax, logsoftmax_op, prepend_0_to_each_row, prepend_1_to_each_row,
     prepend_scalar_to_each_row, relu, softmax, softmax_grad, softmax_graph,
-    softmax_op, softmax_simplifier, softmax_with_bias)
+    softmax_op, softmax_simplifier, softmax_with_bias, elu)
 from . import opt
 from .conv import ConvOp
 from .Conv3D import *
@@ -30,6 +31,7 @@ from .bn import batch_normalization
 
 import warnings
 from .abstract_conv import conv2d as abstract_conv2d
+
 
 def conv2d(input, filters, input_shape=None, filter_shape=None,
            border_mode='valid', subsample=(1, 1), filter_flip=True,
@@ -104,7 +106,7 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
 
     Notes
     -----
-        If CuDNN is available, it will be used on the
+        If cuDNN is available, it will be used on the
         GPU. Otherwise, it is the *CorrMM* convolution that will be used
         "caffe style convolution".
 
@@ -139,5 +141,3 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
 
     return abstract_conv2d(input, filters, input_shape, filter_shape,
                            border_mode, subsample, filter_flip)
-
-

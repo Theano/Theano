@@ -4,24 +4,17 @@ Ops for downsampling images.
 Planned:
 Pool, DownsampleAvg, DownsampleSoftmax.
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 # This file should move along with conv.py
-from six.moves import xrange
-import six.moves.builtins as builtins
 import warnings
 
 import numpy
+from six import integer_types
+from six.moves import xrange
+import six.moves.builtins as builtins
 
 import theano
 from theano import gof, Op, tensor, Variable, Apply
-
-from theano.tensor.opt import register_canonicalize
-
-
-def max_pool2D(*args, **kwargs):
-    import sys
-    print("DEPRECATION: max_pool2D renamed to pool_2d", file=sys.stderr)
-    return pool_2d(*args, **kwargs)
 
 
 def max_pool_2d_same_size(input, patch_size):
@@ -30,6 +23,7 @@ def max_pool_2d_same_size(input, patch_size):
     of non-overlapping patches of size (patch_size[0],patch_size[1]) to zero,
     keeping only the maximum values. The output has the same dimensions as
     the input.
+
     Parameters
     ----------
     input : 4-D theano tensor of input images
@@ -37,6 +31,7 @@ def max_pool_2d_same_size(input, patch_size):
     patch_size : tuple of length 2
         Size of the patch (patch height, patch width).
         (2,2) will retain only one non-zero value per patch of 4 values.
+
     """
     output = Pool(patch_size, True)(input)
     outs = MaxPoolGrad(patch_size, True)(input, output, output)
@@ -44,11 +39,13 @@ def max_pool_2d_same_size(input, patch_size):
 
 
 def pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
-                mode='max'):
-    """
+            mode='max'):
+    """Downscale the input by a specified factor
+
     Takes as input a N-D tensor, where N >= 2. It downscales the input image by
     the specified factor, by keeping only the maximum value of non-overlapping
     patches of size (ds[0],ds[1])
+
     Parameters
     ----------
     input : N-D theano tensor of input images
@@ -64,13 +61,14 @@ def pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
         next pool region. If st is None, it is considered equal to ds
         (no overlap on pooling regions).
     padding : tuple of two ints
-        (pad_h, pad_w), pad zeros to extend beyond four borders
-            of the images, pad_h is the size of the top and bottom margins,
-            and pad_w is the size of the left and right margins.
+        (pad_h, pad_w), pad zeros to extend beyond four borders of the
+        images, pad_h is the size of the top and bottom margins, and
+        pad_w is the size of the left and right margins.
     mode : {'max', 'sum', 'average_inc_pad', 'average_exc_pad'}
         Operation executed on each window. `max` and `sum` always exclude
         the padding in the computation. `average` gives you the choice to
         include or exclude it.
+
     """
     if input.ndim < 2:
         raise NotImplementedError('pool_2d requires a dimension >= 2')
@@ -80,8 +78,8 @@ def pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
             " default value changed to True (currently"
             " False). To have consistent behavior with all Theano"
             " version, explicitly add the parameter ignore_border=True."
-            " On the GPU, using ignore_border=False is needed to use CuDNN."
-            " When using ignore_border=False and not using CuDNN, the only"
+            " On the GPU, using ignore_border=True is needed to use cuDNN."
+            " When using ignore_border=False and not using cuDNN, the only"
             " GPU combination supported is when"
             " `ds == st and padding == (0, 0) and mode == 'max'`."
             " Otherwise, the convolution will be executed on CPU.",
@@ -121,15 +119,17 @@ class Pool(Op):
     For N-dimensional tensors, consider that the last two dimensions span
     images. This Op downsamples these images by taking the max, sum or average
     over different patch.
+
     The constructor takes the max, sum or average or different input patches.
+
     Parameters
     ----------
     ds : list or tuple of two ints
         Downsample factor over rows and column.
         ds indicates the pool region size.
     ignore_border : bool
-        If ds doesn't divide imgshape, do we include an extra row/col of partial
-        downsampling (False) or ignore it (True).
+        If ds doesn't divide imgshape, do we include an extra row/col
+        of partial downsampling (False) or ignore it (True).
     st : list or tuple of two ints or None
         Stride size, which is the number of shifts over rows/cols to get the
         next pool region. If st is None, it is considered equal to ds
@@ -141,6 +141,7 @@ class Pool(Op):
     mode : {'max', 'sum', 'average_inc_pad', 'average_exc_pad'}
         ('average_inc_pad' excludes the padding from the count,
         'average_exc_pad' include it)
+
     """
 
     __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')
@@ -150,6 +151,7 @@ class Pool(Op):
         """
         Return the shape of the output from this op, for input of given
         shape and flags.
+
         Parameters
         ----------
         imgshape : tuple, list, or similar of integer or scalar Theano variable
@@ -168,12 +170,14 @@ class Pool(Op):
             (pad_h, pad_w), pad zeros to extend beyond four borders
             of the images, pad_h is the size of the top and bottom margins,
             and pad_w is the size of the left and right margins.
+
         Returns
         -------
         list
             The shape of the output from this op, for input of given shape.
             This will have the same length as imgshape, but with last two
             elements reduced as per the downsampling & ignore_border flags.
+
         """
         if len(imgshape) < 2:
             raise TypeError('imgshape must have at least two elements '
@@ -230,7 +234,7 @@ class Pool(Op):
     def __init__(self, ds, ignore_border=False, st=None, padding=(0, 0),
                  mode='max'):
         self.ds = tuple(ds)
-        if not all([isinstance(d, int) for d in ds]):
+        if not all([isinstance(d, integer_types) for d in ds]):
             raise ValueError(
                 "Pool downsample parameters must be ints."
                 " Got %s" % str(ds))
@@ -528,27 +532,36 @@ class PoolGrad(Op):
     def out_shape(imgshape, ds, ignore_border=False, st=None, padding=(0, 0)):
         """Return the shape of the output from this op, for input of given
         shape and flags.
-        :param imgshape: the shape of a tensor of images. The last two elements
-            are interpreted as the number of rows, and the number of cols.
-        :type imgshape: tuple, list, or similar of integer or
-            scalar Theano variable.
-        :param ds: downsample factor over rows and columns
-                   this parameter indicates the size of the pooling region
-        :type ds: list or tuple of two ints
-        :param st: the stride size. This is the distance between the pooling
-                   regions. If it's set to None, in which case it equlas ds.
-        :type st: list or tuple of two ints
-        :param ignore_border: if ds doesn't divide imgshape, do we include an
-            extra row/col of partial downsampling (False) or ignore it (True).
-        :type ignore_border: bool
-        :param padding: (pad_h, pad_w), pad zeros to extend beyond four borders
-            of the images, pad_h is the size of the top and bottom margins,
-            and pad_w is the size of the left and right margins.
-        :type padding: tuple of two ints
-        :rtype: list
-        :returns: the shape of the output from this op, for input of given
-            shape.  This will have the same length as imgshape, but with last
-            two elements reduced as per the downsampling & ignore_border flags.
+
+        Parameters
+        ----------
+        imgshape : tuple of integers or scalar Theano variables
+            the shape of a tensor of images. The last two elements are
+            interpreted as the number of rows, and the number of cols.
+        ds : tuple of two ints
+            downsample factor over rows and columns this parameter
+            indicates the size of the pooling region
+        st : tuple of two ints
+            the stride size. This is the distance between the pooling
+            regions. If it's set to None, in which case it equlas ds.
+        ignore_border : bool
+            if ds doesn't divide imgshape, do we include an extra
+            row/col of partial downsampling (False) or ignore it
+            (True).
+        padding : tuple of two ints
+            (pad_h, pad_w), pad zeros to extend beyond four borders of
+            the images, pad_h is the size of the top and bottom
+            margins, and pad_w is the size of the left and right
+            margins.
+
+        Returns
+        -------
+        list :
+            the shape of the output from this op, for input of given
+            shape.  This will have the same length as imgshape, but
+            with last two elements reduced as per the downsampling &
+            ignore_border flags.
+
         """
         if len(imgshape) < 2:
             raise TypeError('imgshape must have at least two elements '
@@ -613,9 +626,8 @@ class PoolGrad(Op):
 
 
 class MaxPoolGrad(PoolGrad):
-
-    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max'):
-        PoolGrad.__init__(self, ds, ignore_border, st, padding, mode)
+    def __init__(self, ds, ignore_border, st=None, padding=(0, 0)):
+        PoolGrad.__init__(self, ds, ignore_border, st, padding, mode='max')
 
     def make_node(self, x, maxout, gz):
         # make_node should only be called by the grad function of
@@ -788,16 +800,18 @@ class MaxPoolGrad(PoolGrad):
     def c_code_cache_version(self):
         return (0, 7)
 
-DownsampleFactorMaxGrad = MaxPoolGrad
-
 
 class AveragePoolGrad(PoolGrad):
-
-    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='average_inc_pad'):
+    def __init__(self, ds, ignore_border, st=None, padding=(0, 0),
+                 mode='average_inc_pad'):
         assert mode in ['sum', 'average_inc_pad', 'average_exc_pad']
         PoolGrad.__init__(self, ds, ignore_border, st, padding, mode)
 
-    def make_node(self, x, gz):
+    # There is an extra dummy parameter to match the parameter count
+    # of MaxPoolGrad.  They have to keep the same interface because of
+    # the DownsampleFactorMaxGrad trick to keep old scripts working
+    # (see downsample.py for details on this).
+    def make_node(self, x, gz, dummy=None):
         # make_node should only be called by the grad function of
         # Pool, so these asserts should not fail.
         assert isinstance(x, Variable) and x.ndim == 4
@@ -869,7 +883,7 @@ class AveragePoolGrad(PoolGrad):
         ggx, = grads
         return [theano.tensor.zeros_like(x),
                 Pool(self.ds, ignore_border=self.ignore_border,
-                      st=self.st, padding=self.padding, mode=self.mode)(ggx)]
+                     st=self.st, padding=self.padding, mode=self.mode)(ggx)]
 
 
 class DownsampleFactorMaxGradGrad(Op):
@@ -877,7 +891,7 @@ class DownsampleFactorMaxGradGrad(Op):
 
     def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max'):
         self.ds = tuple(ds)
-        if not all([isinstance(d, int) for d in ds]):
+        if not all([isinstance(d, integer_types) for d in ds]):
             raise ValueError(
                 "Pool downsample parameters must be ints."
                 " Got %s" % str(ds))
@@ -914,8 +928,8 @@ class DownsampleFactorMaxGradGrad(Op):
         if len(x.shape) != 4:
             raise NotImplementedError(
                 'DownsampleFactorMaxGradGrad requires 4D input for now')
-        if (z[0] is None) or (z[0].shape != x.shape):
-            z[0] = numpy.zeros(x.shape, dtype=x.dtype)
+        if (z[0] is None) or (z[0].shape != maxout.shape):
+            z[0] = numpy.zeros(maxout.shape, dtype=x.dtype)
         ggz = z[0]  # grad wrt maxout_grad has the same shape as maxout
         # number of pooling output rows
         pr = ggz.shape[-2]
@@ -1040,19 +1054,3 @@ class DownsampleFactorMaxGradGrad(Op):
 
     def c_code_cache_version(self):
         return (0, 1)
-
-
-@register_canonicalize('fast_compile')
-@gof.local_optimizer([MaxPoolGrad])
-def local_average_pool_grad(node):
-    # To assure backward compatibility with
-    # DownsampleFactorMaxGrad
-    if (not isinstance(node.op, MaxPoolGrad) or node.op.mode not in
-            ['sum', 'average_exc_pad', 'average_inc_pad']):
-        return False
-    return [AveragePoolGrad(ds=node.op.ds,
-                            ignore_border=node.op.ignore_border,
-                            st=node.op.st,
-                            padding=node.op.padding,
-                            mode=node.op.mode)(node.inputs[0],
-                                               node.inputs[2])]

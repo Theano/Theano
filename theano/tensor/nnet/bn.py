@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import theano
 from theano.scalar import Composite
 from theano.scalar import add, sub, true_div, mul

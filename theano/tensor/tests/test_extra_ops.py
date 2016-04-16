@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import unittest
 
 import numpy as np
@@ -175,7 +176,7 @@ class TestBinCountOp(utt.InferShapeTester):
                       'uint8', 'uint16', 'uint32', 'uint64'):
             # uint64 always fails
             # int64 and uint32 also fail if python int are 32-bit
-            int_bitwidth = theano.gof.python_int_bitwidth()
+            int_bitwidth = theano.configdefaults.python_int_bitwidth()
             if int_bitwidth == 64:
                 numpy_unsupported_dtypes = ('uint64',)
             if int_bitwidth == 32:
@@ -208,7 +209,7 @@ class TestBinCountOp(utt.InferShapeTester):
         for dtype in tensor.discrete_dtypes:
             # uint64 always fails
             # int64 and uint32 also fail if python int are 32-bit
-            int_bitwidth = theano.gof.python_int_bitwidth()
+            int_bitwidth = theano.configdefaults.python_int_bitwidth()
             if int_bitwidth == 64:
                 numpy_unsupported_dtypes = ('uint64',)
             if int_bitwidth == 32:
@@ -408,7 +409,7 @@ class TestRepeatOp(utt.InferShapeTester):
         self.op = RepeatOp()
         # uint64 always fails
         # int64 and uint32 also fail if python int are 32-bit
-        ptr_bitwidth = theano.gof.local_bitwidth()
+        ptr_bitwidth = theano.configdefaults.local_bitwidth()
         if ptr_bitwidth == 64:
             self.numpy_unsupported_dtypes = ('uint64',)
         if ptr_bitwidth == 32:

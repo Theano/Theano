@@ -38,7 +38,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   b_sym = T.vector("b_sym")
 
   results, updates = theano.scan(lambda v: T.tanh(T.dot(v, W) + b_sym), sequences=X)
-  compute_elementwise = theano.function(inputs=[X, W, b_sym], outputs=[results])
+  compute_elementwise = theano.function(inputs=[X, W, b_sym], outputs=results)
 
   # test values
   x = np.eye(2, dtype=theano.config.floatX)
@@ -46,7 +46,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   b = np.ones((2), dtype=theano.config.floatX)
   b[1] = 2
 
-  print(compute_elementwise(x, w, b)[0])
+  print(compute_elementwise(x, w, b))
 
   # comparison with numpy
   print(np.tanh(x.dot(w) + b))
@@ -77,7 +77,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 
   results, updates = theano.scan(lambda y, p, x_tm1: T.tanh(T.dot(x_tm1, W) + T.dot(y, U) + T.dot(p, V)),
             sequences=[Y, P[::-1]], outputs_info=[X])
-  compute_seq = theano.function(inputs=[X, W, Y, U, P, V], outputs=[results])
+  compute_seq = theano.function(inputs=[X, W, Y, U, P, V], outputs=results)
 
   # test values
   x = np.zeros((2), dtype=theano.config.floatX)
@@ -90,7 +90,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   p[0, :] = 3
   v = np.ones((2, 2), dtype=theano.config.floatX)
 
-  print(compute_seq(x, w, y, u, p, v)[0])
+  print(compute_seq(x, w, y, u, p, v))
 
   # comparison with numpy
   x_res = np.zeros((5, 2), dtype=theano.config.floatX)
@@ -123,11 +123,11 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   # define tensor variable
   X = T.matrix("X")
   results, updates = theano.scan(lambda x_i: T.sqrt((x_i ** 2).sum()), sequences=[X])
-  compute_norm_lines = theano.function(inputs=[X], outputs=[results])
+  compute_norm_lines = theano.function(inputs=[X], outputs=results)
 
   # test value
   x = np.diag(np.arange(1, 6, dtype=theano.config.floatX), 1)
-  print(compute_norm_lines(x)[0])
+  print(compute_norm_lines(x))
 
   # comparison with numpy
   print(np.sqrt((x ** 2).sum(1)))
@@ -148,11 +148,11 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   # define tensor variable
   X = T.matrix("X")
   results, updates = theano.scan(lambda x_i: T.sqrt((x_i ** 2).sum()), sequences=[X.T])
-  compute_norm_cols = theano.function(inputs=[X], outputs=[results])
+  compute_norm_cols = theano.function(inputs=[X], outputs=results)
 
   # test value
   x = np.diag(np.arange(1, 6, dtype=theano.config.floatX), 1)
-  print(compute_norm_cols(x)[0])
+  print(compute_norm_cols(x))
 
   # comparison with numpy
   print(np.sqrt((x ** 2).sum(0)))
@@ -177,12 +177,12 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
                     sequences=[T.arange(X.shape[0]), T.arange(X.shape[1])],
                     outputs_info=np.asarray(0., dtype=floatX))
   result = results[-1]
-  compute_trace = theano.function(inputs=[X], outputs=[result])
+  compute_trace = theano.function(inputs=[X], outputs=result)
 
   # test value
   x = np.eye(5, dtype=theano.config.floatX)
   x[0] = np.arange(5, dtype=theano.config.floatX)
-  print(compute_trace(x)[0])
+  print(compute_trace(x))
 
   # comparison with numpy
   print(np.diagonal(x).sum())
@@ -211,7 +211,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 
   results, updates = theano.scan(lambda x_tm2, x_tm1: T.dot(x_tm2, U) + T.dot(x_tm1, V) + T.tanh(T.dot(x_tm1, W) + b_sym),
                       n_steps=n_sym, outputs_info=[dict(initial=X, taps=[-2, -1])])
-  compute_seq2 = theano.function(inputs=[X, U, V, W, b_sym, n_sym], outputs=[results])
+  compute_seq2 = theano.function(inputs=[X, U, V, W, b_sym, n_sym], outputs=results)
 
   # test values
   x = np.zeros((2, 2), dtype=theano.config.floatX) # the initial value must be able to return x[-2]
@@ -236,16 +236,16 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 
 .. testoutput::
 
-    [array([[  1.40514825,   1.40514825],
-           [  2.88898899,   2.38898899],
-           [  4.34018291,   4.34018291],
-           [  6.53463142,   6.78463142],
-           [  9.82972243,   9.82972243],
-           [ 14.22203814,  14.09703814],
-           [ 20.07439936,  20.07439936],
-           [ 28.12291843,  28.18541843],
-           [ 39.1913681 ,  39.1913681 ],
-           [ 54.28407732,  54.25282732]])]
+    [[  1.40514825   1.40514825]
+     [  2.88898899   2.38898899]
+     [  4.34018291   4.34018291]
+     [  6.53463142   6.78463142]
+     [  9.82972243   9.82972243]
+     [ 14.22203814  14.09703814]
+     [ 20.07439936  20.07439936]
+     [ 28.12291843  28.18541843]
+     [ 39.1913681   39.1913681 ]
+     [ 54.28407732  54.25282732]]
     [[  1.40514825   1.40514825]
      [  2.88898899   2.38898899]
      [  4.34018291   4.34018291]
@@ -271,13 +271,13 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
   A = T.matrix()
   y = T.tanh(T.dot(v, A))
   results, updates = theano.scan(lambda i: T.grad(y[i], v), sequences=[T.arange(y.shape[0])])
-  compute_jac_t = theano.function([A, v], [results], allow_input_downcast=True) # shape (d_out, d_in)
+  compute_jac_t = theano.function([A, v], results, allow_input_downcast=True) # shape (d_out, d_in)
 
   # test values
   x = np.eye(5, dtype=theano.config.floatX)[0]
   w = np.eye(5, 3, dtype=theano.config.floatX)
   w[2] = np.ones((3), dtype=theano.config.floatX)
-  print(compute_jac_t(w, x)[0])
+  print(compute_jac_t(w, x))
 
   # compare with numpy
   print(((1 - np.tanh(x.dot(w)) ** 2) * w).T)
@@ -330,7 +330,7 @@ Note that we need to iterate over the indices of ``y`` and not over the elements
   d=trng.binomial(size=W[1].shape)
 
   results, updates = theano.scan(lambda v: T.tanh(T.dot(v, W) + b_sym) * d, sequences=X)
-  compute_with_bnoise = theano.function(inputs=[X, W, b_sym], outputs=[results],
+  compute_with_bnoise = theano.function(inputs=[X, W, b_sym], outputs=results,
                             updates=updates, allow_input_downcast=True)
   x = np.eye(10, 2, dtype=theano.config.floatX)
   w = np.ones((2, 2), dtype=theano.config.floatX)
@@ -340,16 +340,16 @@ Note that we need to iterate over the indices of ``y`` and not over the elements
 
 .. testoutput::
 
-    [array([[ 0.96402758,  0.        ],
-           [ 0.        ,  0.96402758],
-           [ 0.        ,  0.        ],
-           [ 0.76159416,  0.76159416],
-           [ 0.76159416,  0.        ],
-           [ 0.        ,  0.76159416],
-           [ 0.        ,  0.76159416],
-           [ 0.        ,  0.76159416],
-           [ 0.        ,  0.        ],
-           [ 0.76159416,  0.76159416]])]
+    [[ 0.96402758  0.        ]
+     [ 0.          0.96402758]
+     [ 0.          0.        ]
+     [ 0.76159416  0.76159416]
+     [ 0.76159416  0.        ]
+     [ 0.          0.76159416]
+     [ 0.          0.76159416]
+     [ 0.          0.76159416]
+     [ 0.          0.        ]
+     [ 0.76159416  0.76159416]]
 
 Note that if you want to use a random variable ``d`` that will not be updated through scan loops, you should pass this variable as a ``non_sequences`` arguments.
 

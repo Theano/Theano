@@ -1,6 +1,8 @@
+from __future__ import absolute_import, print_function, division
 import traceback
 
 import numpy
+from six import integer_types
 
 import theano.tensor.basic
 from theano.tensor.basic import TensorType, _tensor_py_operators
@@ -84,7 +86,7 @@ def scalar_constructor(value, name=None, strict=False, allow_downcast=None,
     if target != 'cpu':
         raise TypeError('not for cpu')
 
-    if not isinstance(value, (numpy.number, float, int, complex)):
+    if not isinstance(value, (numpy.number, float, integer_types, complex)):
         raise TypeError()
     try:
         dtype = value.dtype

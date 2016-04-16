@@ -1,9 +1,11 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import sys
 import logging
+import sys
+import warnings
 
 import theano
-from theano.configparser import config, AddConfigVar, BoolParam
+from theano import config
 from theano.compile import optdb
 
 from theano.tensor.basic import register_transfer
@@ -64,8 +66,25 @@ def init_dev(dev, name=None):
     reg_context(name, context)
     pygpu_activated = True
     if config.print_active_device:
-        print("Mapped name %s to device %s: %s" % (name, dev, context.devname),
+        warn = None
+        cudnn_version = ""
+        if dev.startswith('cuda'):
+            cudnn_version = " (cuDNN not available)"
+            try:
+                cudnn_version = dnn.version()
+                # 5100 should not print warning with cudnn 5 final.
+                if cudnn_version > 5100:
+                    warn = ("Your cuDNN version is more recent than Theano."
+                            " If you see problems, try updating Theano or"
+                            " downgrading cuDNN to version 5.")
+                cudnn_version = " (cuDNN version %s)" % cudnn_version
+            except Exception:
+                cudnn_version = dnn.dnn_present.msg
+        print("Mapped name %s to device %s: %s%s" % (
+            name, dev, context.devname, cudnn_version),
               file=sys.stderr)
+        if warn:
+            warnings.warn(warn)
 
 # This maps things like 'cuda0' to the context object on that device.
 init_dev.devmap = {}
@@ -78,6 +97,7 @@ if pygpu:
             import theano.compile
             theano.compile.shared_constructor(gpuarray_shared_constructor)
             optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
+            optdb.add_tags('gpua_scanOp_make_inplace', 'fast_run')
         elif (config.init_gpu_device.startswith('cuda') or
               config.init_gpu_device.startswith('opencl')):
             if config.device != 'cpu':
@@ -91,6 +111,7 @@ if pygpu:
             import theano.compile
             theano.compile.shared_constructor(gpuarray_shared_constructor)
             optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
+            optdb.add_tags('gpua_scanOp_make_inplace', 'fast_run')
 
         from .basic_ops import (GpuAlloc, GpuAllocEmpty, GpuContiguous, GpuEye,
                                 GpuFromHost, GpuJoin, GpuReshape, GpuSplit,

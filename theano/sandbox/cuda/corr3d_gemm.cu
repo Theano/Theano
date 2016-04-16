@@ -199,7 +199,7 @@ void col2im3d(const float* data_col, const int channels,
 
 
 // Theano op code
-// Authors: Arjun Jain, Frédéric Bastien, Jan Schlüter, Nicolas Ballas
+// Authors: Arjun Jain, Frederic Bastien, Jan Schluter, Nicolas Ballas
 // Reference code: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu
 //   and https://github.com/torch/cunn/blob/master/SpatialConvolutionMM.cu
 // Adaptation for 3d

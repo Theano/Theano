@@ -46,10 +46,10 @@ void im2col(const %(float_type)s* data_im, const int channels,
         int h_pad = h * stride_h - pad_h + h_offset;
         int w_pad = w * stride_w - pad_w + w_offset;
         if (h_pad >= 0 && h_pad < height && w_pad >= 0 && w_pad < width)
-          data_col[(c * height_col + h) * width_col + w] =
-            data_im[(c_im * height + h_pad) * width + w_pad];
+          data_col[(npy_intp)(c * height_col + h) * width_col + w] =
+            data_im[(npy_intp)(c_im * height + h_pad) * width + w_pad];
         else
-          data_col[(c * height_col + h) * width_col + w] = 0.;
+          data_col[(npy_intp)(c * height_col + h) * width_col + w] = 0.;
       }
     }
   }
@@ -75,8 +75,8 @@ void col2im(const %(float_type)s* data_col, const int channels,
         int h_pad = h * stride_h - pad_h + h_offset;
         int w_pad = w * stride_w - pad_w + w_offset;
         if (h_pad >= 0 && h_pad < height && w_pad >= 0 && w_pad < width)
-          data_im[(c_im * height + h_pad) * width + w_pad] +=
-            data_col[(c * height_col + h) * width_col + w];
+          data_im[(npy_intp)(c_im * height + h_pad) * width + w_pad] +=
+            data_col[(npy_intp)(c * height_col + h) * width_col + w];
 
       }
     }
@@ -162,7 +162,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                 "CorrMM shape inconsistency:\n"
                 "  bottom shape: %%d %%d %%d %%d\n"
                 "  weight shape: %%d %%d %%d %%d\n"
-                "  top shape: %%d %%d %%d %%d (expected %%d %%d %%d %%d)\n",
+                "  top shape: %%ld %%ld %%ld %%ld (expected %%d %%d %%d %%d)\n",
                 batchSize, nChannels, bottomHeight, bottomWidth,
                 nFilters, nChannels, kH, kW,
                 PyArray_DIMS(top)[0], PyArray_DIMS(top)[1],
@@ -182,7 +182,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     if (NULL == col)
     {
         PyErr_Format(PyExc_RuntimeError,
-                "CorrMM failed to allocate working memory of %%d x %%d\n",
+                "CorrMM failed to allocate working memory of %%ld x %%ld\n",
                 col_dim[0], col_dim[1]);
         return NULL;
     }

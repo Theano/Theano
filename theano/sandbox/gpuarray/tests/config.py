@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
 
 import theano.sandbox.gpuarray
@@ -5,13 +6,9 @@ import theano.sandbox.gpuarray
 if theano.sandbox.gpuarray.pygpu is None:
     raise SkipTest("pygpu not installed")
 
-if not theano.sandbox.gpuarray.pygpu_activated:
-    import theano.sandbox.cuda as cuda_ndarray
-    if cuda_ndarray.cuda_available:
-        cuda_ndarray.use('gpu', default_to_move_computation_to_gpu=False,
-                         move_shared_float32_to_gpu=False,
-                         enable_cuda=False)
-        theano.sandbox.gpuarray.init_dev('cuda')
+if (not theano.sandbox.gpuarray.pygpu_activated and
+        not theano.config.init_gpu_device.startswith('gpu')):
+    theano.sandbox.gpuarray.init_dev('cuda')
 
 if not theano.sandbox.gpuarray.pygpu_activated:
     raise SkipTest("pygpu disabled")

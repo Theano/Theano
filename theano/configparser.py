@@ -1,7 +1,7 @@
-from __future__ import print_function
 # For flag of bool type, we consider the strings 'False', 'false' and '0'
 # as False, and the string s'True', 'true', '1' as True.
 # We also accept the bool type as its corresponding value!
+from __future__ import absolute_import, print_function, division
 
 import logging
 import os
@@ -124,7 +124,7 @@ def change_flags(**kwargs):
     return change_flags_exec
 
 
-def fetch_val_for_key(key):
+def fetch_val_for_key(key, delete_key=False):
     """Return the overriding config value for a key.
     A successful search returns a string value.
     An unsuccessful search raises a KeyError
@@ -137,6 +137,8 @@ def fetch_val_for_key(key):
 
     # first try to find it in the FLAGS
     try:
+        if delete_key:
+            return THEANO_FLAGS_DICT.pop(key)
         return THEANO_FLAGS_DICT[key]
     except KeyError:
         pass
@@ -163,10 +165,11 @@ def fetch_val_for_key(key):
 _config_var_list = []
 
 
-def _config_print(thing, buf):
+def _config_print(thing, buf, print_doc=True):
     for cv in _config_var_list:
         print(cv, file=buf)
-        print("    Doc: ", cv.doc, file=buf)
+        if print_doc:
+            print("    Doc: ", cv.doc, file=buf)
         print("    Value: ", cv.__get__(True, None), file=buf)
         print("", file=buf)
 
@@ -189,9 +192,9 @@ class TheanoConfigParser(object):
     # properties are installed by AddConfigVar
     _i_am_a_config_class = True
 
-    def __str__(self):
+    def __str__(self, print_doc=True):
         sio = StringIO()
-        _config_print(self.__class__, sio)
+        _config_print(self.__class__, sio, print_doc=print_doc)
         return sio.getvalue()
 
 # N.B. all instances of TheanoConfigParser give access to the same properties.
@@ -270,14 +273,14 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
         # Trigger a read of the value from config files and env vars
         # This allow to filter wrong value from the user.
         if not callable(configparam.default):
-            configparam.__get__(root, type(root))
+            configparam.__get__(root, type(root), delete_key=True)
         else:
             # We do not want to evaluate now the default value
             # when it is a callable.
             try:
                 fetch_val_for_key(configparam.fullname)
                 # The user provided a value, filter it now.
-                configparam.__get__(root, type(root))
+                configparam.__get__(root, type(root), delete_key=True)
             except KeyError:
                 pass
         setattr(root.__class__, sections[0], configparam)
@@ -305,12 +308,13 @@ class ConfigParam(object):
         # Calling `filter` here may actually be harmful if the default value is
         # invalid and causes a crash or has unwanted side effects.
 
-    def __get__(self, cls, type_):
+    def __get__(self, cls, type_, delete_key=False):
         if cls is None:
             return self
         if not hasattr(self, 'val'):
             try:
-                val_str = fetch_val_for_key(self.fullname)
+                val_str = fetch_val_for_key(self.fullname,
+                                            delete_key=delete_key)
                 self.is_default = False
             except KeyError:
                 if callable(self.default):

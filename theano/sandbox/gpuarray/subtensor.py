@@ -1,13 +1,14 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import os
 import copy
 
 import numpy
+from six import integer_types
+from six.moves import StringIO
 
 import theano
 from theano import tensor, gof
-from six.moves import StringIO
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
 import theano.tensor.inplace
 
@@ -116,7 +117,7 @@ class GpuSubtensor(HideC, Subtensor):
         def fix_idx(idx):
             if idx is None:
                 return "0", 1
-            elif isinstance(idx, (numpy.integer, int)):
+            elif isinstance(idx, (numpy.integer, integer_types)):
                 return str(idx), 0
             elif isinstance(idx, gof.Type):
                 return indices.pop(0), 0
@@ -143,7 +144,7 @@ class GpuSubtensor(HideC, Subtensor):
             else:
                 if isinstance(idx, gof.Type):
                     start = indices.pop(0)
-                elif isinstance(idx, (numpy.integer, int)):
+                elif isinstance(idx, (numpy.integer, integer_types)):
                     start = idx
                 else:
                     assert 0, idx

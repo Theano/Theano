@@ -4,6 +4,7 @@
 #   * Figure out how to compile and install documentation automatically
 #   * Add download_url
 
+from __future__ import absolute_import, print_function, division
 import os
 import subprocess
 import codecs
@@ -53,7 +54,7 @@ PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
 MINOR               = 8
 MICRO               = 0
-SUFFIX              = ".dev0"  # Should be blank except for rc's, betas, etc.
+SUFFIX              = ""  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
 
 VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
@@ -163,6 +164,11 @@ def do_setup():
           packages=find_packages(),
           # 1.7.0 give too much warning related to numpy.diagonal.
           install_requires=['numpy>=1.7.1', 'scipy>=0.11', 'six>=1.9.0'],
+          # pygments is a dependency for Sphinx code highlight
+          extras_require={
+              'test': ['nose>=1.3.0', 'nose-parameterized>=0.5.0'],
+              'doc': ['Sphinx>=0.5.1', 'pygments']
+          },
           package_data={
               '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh', '*.pkl',
                    '*.h', '*.cpp', 'ChangeLog'],

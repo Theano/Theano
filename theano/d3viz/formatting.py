@@ -2,6 +2,7 @@
 
 Author: Christof Angermueller <cangermueller@gmail.com>
 """
+from __future__ import absolute_import, print_function, division
 
 import numpy as np
 import os
@@ -51,7 +52,8 @@ class PyDotFormatter(object):
     def __init__(self, compact=True):
         """Construct PyDotFormatter object."""
         if not pydot_imported:
-            raise ImportError('Failed to import pydot. Please install pydot!')
+            raise ImportError('Failed to import pydot. You must install pydot'
+                              ' and graphviz for `PyDotFormatter` to work.')
 
         self.compact = compact
         self.node_colors = {'input': 'limegreen',

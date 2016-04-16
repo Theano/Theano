@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 from theano.compile.ops import (
         DeepCopyOp, deep_copy_op, register_deep_copy_op_c_code,
         Shape, shape, register_shape_c_code,
@@ -22,7 +23,7 @@ from theano.compile.profilemode import ProfileMode
 
 from theano.compile.sharedvalue import (shared, shared_constructor,
                                         SharedVariable)
-from theano.compile.pfunc import pfunc, rebuild_collect_shared
+from theano.compile.pfunc import pfunc, Param, rebuild_collect_shared
 
 from theano.compile.builders import *
 

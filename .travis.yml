@@ -22,30 +22,36 @@ before_install:
   - cd ..
   - export PATH=/home/travis/miniconda2/bin:$PATH
   - conda update --yes conda
+  - conda install --yes conda=3.19
+
+addons:
+  apt_packages:
+   - texlive-latex-recommended
+   - texlive-latex-extra
+   - texlive-fonts-recommended
+   - dvipng
 
 install:
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda create --yes -q -n pyenv mkl python=2.6 numpy=1.7.1 scipy=0.11 nose=1.3.0 pyparsing=1.5 pip flake8=2.3 six=1.9.0 pep8=1.6.2 pyflakes=0.8.1; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == '3.3' ]]; then conda create --yes -q -n pyenv mkl python=3.3 numpy=1.9.1 scipy=0.14.0 nose=1.3.4 pyparsing=1.5 pip flake8=2.3 six=1.9.0 pep8=1.6.2 pyflakes=0.8.1; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda create --yes -q -n pyenv mkl python=2.6 numpy=1.7.1 scipy=0.11 nose=1.3.0 pyparsing=1.5 pip flake8=2.3 six=1.9.0 pep8=1.6.2 pyflakes=0.8.1 sphinx; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.3' ]]; then conda create --yes -q -n pyenv mkl python=3.3 numpy=1.9.1 scipy=0.14.0 nose=1.3.4 pyparsing=1.5 pip flake8=2.3 six=1.9.0 pep8=1.6.2 pyflakes=0.8.1 sphinx; fi
   - source activate pyenv
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then pip install pydot; fi
   - pip install . --no-deps
-  - pip install -U Sphinx
+  - pip install flake8-future-import nose-parameterized==0.5.0
 
 # command to run tests
 env:
-  - PART="theano/sandbox theano/sparse theano/scalar theano/tensor/nnet theano/scan_module"
-  - PART="theano/tensor/tests/test_basic.py theano/tensor/signal theano/compile theano/gof theano/misc theano/tests theano/compat"
-  - PART="-e test_basic.py theano/tensor/tests theano/d3viz"
+  - PART="theano/tests/test_flake8.py" DOC=1
+  - PART="-e test_flake8.py theano/compat theano/compile theano/d3viz theano/gof theano/misc theano/sandbox theano/scalar theano/scan_module theano/sparse theano/tests theano/typed_list"
+  - PART="theano/tensor"
 
 matrix:
   fast_finish: true
   include:
     - python: "3.3"
-      env: PART="." THEANO_FLAGS="mode=FAST_COMPILE"
+      env: PART="-e test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE"
     - python: "2.6"
-      env: PART="." THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
-    - python: 2.6
-      env: PART="." DOC=1
+      env: PART="-e test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
 
 script:
   - export THEANO_FLAGS=$THEANO_FLAGS,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,gcc.cxxflags=-pipe
@@ -60,13 +66,11 @@ script:
   - cd $(python -c 'import theano; import os; print(os.path.split(theano.__file__)[0])')
   - echo "$PART"
   - cd -; cd Theano
-  - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --nopdf; else theano-nose -v $PART; fi
-  - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --test; fi
-#  - theano-cache list
+  - python -c 'import theano; print(theano.config.__str__(print_doc=False))'
+  - python -c 'import theano; assert(theano.config.blas.ldflags != "")'
+  - theano-nose -v $PART
+  - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --nopdf --check; fi
+  - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --test --check; fi
 
-#after_script:
 after_failure:
   - cat /home/travis/.pip/pip.log
-#after_success:
-
-cache: apt

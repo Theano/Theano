@@ -2,7 +2,7 @@
 Generate and compile C modules for Python.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import atexit
 import six.moves.cPickle as pickle
@@ -32,45 +32,13 @@ from theano.misc.windows import (subprocess_Popen,
 
 # we will abuse the lockfile mechanism when reading and writing the registry
 from theano.gof import compilelock
-from theano.gof.compiledir import gcc_version_str, local_bitwidth
-
-from theano.configparser import AddConfigVar, BoolParam
+from theano.configdefaults import gcc_version_str, local_bitwidth
 
 importlib = None
 try:
     import importlib
 except ImportError:
     pass
-
-AddConfigVar(
-    'cmodule.mac_framework_link',
-    "If set to True, breaks certain MacOS installations with the infamous "
-    "Bus Error",
-    BoolParam(False))
-
-AddConfigVar('cmodule.warn_no_version',
-             "If True, will print a warning when compiling one or more Op "
-             "with C code that can't be cached because there is no "
-             "c_code_cache_version() function associated to at least one of "
-             "those Ops.",
-             BoolParam(False),
-             in_c_key=False)
-
-AddConfigVar('cmodule.remove_gxx_opt',
-             "If True, will remove the -O* parameter passed to g++."
-             "This is useful to debug in gdb modules compiled by Theano."
-             "The parameter -g is passed by default to g++",
-             BoolParam(False))
-
-AddConfigVar('cmodule.compilation_warning',
-             "If True, will print compilation warnings.",
-             BoolParam(False))
-
-
-AddConfigVar('cmodule.preload_cache',
-             "If set to True, will preload the C module cache at import time",
-             BoolParam(False, allow_override=False),
-             in_c_key=False)
 
 _logger = logging.getLogger("theano.gof.cmodule")
 
@@ -1686,6 +1654,8 @@ def std_lib_dirs_and_libs():
         # remove extension if present
         if libname.endswith(".so"):
             libname = libname[:-3]
+        elif libname.endswith(".a"):
+            libname = libname[:-2]
 
         libdir = distutils.sysconfig.get_config_var("LIBDIR")
 
@@ -1880,7 +1850,8 @@ class GCC_compiler(Compiler):
                     break
 
         if ('g++' not in theano.config.cxx and
-                'clang++' not in theano.config.cxx):
+                'clang++' not in theano.config.cxx and
+                'clang-omp++' not in theano.config.cxx):
             _logger.warn(
                 "OPTIMIZATION WARNING: your Theano flag `cxx` seems not to be"
                 " the g++ compiler. So we disable the compiler optimization"
@@ -2003,9 +1974,16 @@ class GCC_compiler(Compiler):
                                      if ('march' not in p and
                                          'mtune' not in p and
                                          'target-cpu' not in p)]
-                            new_flags = [p for p in part if p not in part2]
+                            if sys.platform == 'darwin':
+                                # We only use translated target-cpu on
+                                # mac since the other flags are not
+                                # supported as compiler flags for the
+                                # driver.
+                                new_flags = [p for p in part if 'target-cpu' in p]
+                            else:
+                                new_flags = [p for p in part if p not in part2]
                             # Replace '-target-cpu value', which is an option
-                            # of clang, with '-march=value', for g++
+                            # of clang, with '-march=value'.
                             for i, p in enumerate(new_flags):
                                 if 'target-cpu' in p:
                                     opt = p.split()
@@ -2063,19 +2041,19 @@ class GCC_compiler(Compiler):
         # to use the new API, but not everywhere. When finished, enable
         # the following macro to assert that we don't bring new code
         # that use the old API.
-        cxxflags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
+        cxxflags.append("-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 
         # numpy 1.7 deprecated the following macro but the new one didn't
         # existed in the past
         if bool(numpy_ver < [1, 7]):
-            cxxflags.append("-D NPY_ARRAY_ENSUREARRAY=NPY_ENSUREARRAY")
-            cxxflags.append("-D NPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
-            cxxflags.append("-D NPY_ARRAY_ALIGNED=NPY_ALIGNED")
-            cxxflags.append("-D NPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
-            cxxflags.append("-D NPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
-            cxxflags.append("-D NPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
-            cxxflags.append("-D NPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
+            cxxflags.append("-DNPY_ARRAY_ENSUREARRAY=NPY_ENSUREARRAY")
+            cxxflags.append("-DNPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
+            cxxflags.append("-DNPY_ARRAY_ALIGNED=NPY_ALIGNED")
+            cxxflags.append("-DNPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
+            cxxflags.append("-DNPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
+            cxxflags.append("-DNPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
+            cxxflags.append("-DNPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
 
         # Platform-specific flags.
         # We put them here, rather than in compile_str(), so they en up
@@ -2297,8 +2275,10 @@ class GCC_compiler(Compiler):
             libs = []
         if preargs is None:
             preargs = []
-        else:
-            preargs = list(preargs)
+
+        # Remove empty string directory
+        include_dirs = [d for d in include_dirs if d]
+        lib_dirs = [d for d in lib_dirs if d]
 
         if shared:
             hide_symbols = False

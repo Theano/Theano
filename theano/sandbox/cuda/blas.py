@@ -1,13 +1,15 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import copy
 import os
 import logging
 _logger = logging.getLogger(__name__)
 
+from six import integer_types
+from six.moves import StringIO, reduce
+
 import theano
 from theano import Apply
 from theano import tensor
-from six.moves import StringIO, reduce
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
@@ -16,7 +18,10 @@ from theano.tensor import as_tensor_variable
 
 
 class GpuBatchedDot(GpuOp):
-    __props__ = ()
+    __props__ = ("stream_threshold",)
+
+    def __init__(self, stream_threshold=650):
+        self.stream_threshold = stream_threshold
 
     def make_node(self, inp1, inp2):
         inp1 = gpu_contiguous(as_cuda_ndarray_variable(inp1))
@@ -39,79 +44,83 @@ class GpuBatchedDot(GpuOp):
         bx, by = input_names
         bz, = output_names
         fail = sub['fail']
-        return """
-        float alpha = 1.0;
-        float beta = 0.0;
+        threshold = self.stream_threshold
+        return ("""
+        float alpha = 1.0, beta = 0.0;
 
-        int i, x_dim0, x_dim1, x_dim2, y_dim0, y_dim1, y_dim2;
-        int x_stride, y_stride, z_stride, total_size;
-        int ptr_array_size = 3 * CudaNdarray_HOST_DIMS(%(bx)s)[0] * sizeof(float *);
-        int out_dim[3];
+        const int* Nx = CudaNdarray_HOST_DIMS(%(bx)s);
+        const int* Ny = CudaNdarray_HOST_DIMS(%(by)s);
+        int Nz[3] = {0};
 
-        cublasStatus_t err;
-        cudaError_t err1;
+        // use parallel cublasSgemm calls rather than cublasSgemmBatched for large products
+        // (compute products in double because they can be large and we don't need to be exact)
+        bool use_cublas_sgemm_batched = (
+            double(Nx[1]) * double(Nx[2]) * double(Ny[2]) <
+            double(%(threshold)s) * double(%(threshold)s) * double(%(threshold)s));
 
-        float **host_x = NULL;
-        float **host_z = NULL;
-        float **host_y = NULL;
-
-        float **gpu_x = NULL;
-        float **gpu_y = NULL;
-        float **gpu_z = NULL;
-
-        x_dim0 = CudaNdarray_HOST_DIMS(%(bx)s)[0];
-        x_dim1 = CudaNdarray_HOST_DIMS(%(bx)s)[1];
-        x_dim2 = CudaNdarray_HOST_DIMS(%(bx)s)[2];
-
-        y_dim0 = CudaNdarray_HOST_DIMS(%(by)s)[0];
-        y_dim1 = CudaNdarray_HOST_DIMS(%(by)s)[1];
-        y_dim2 = CudaNdarray_HOST_DIMS(%(by)s)[2];
-
-        if (x_dim0 != y_dim0)
-        {
+        if (Nx[0] != Ny[0]) {
             PyErr_Format(PyExc_RuntimeError,
                     "The batchsizes (%%d, %%d) don't match.\\n",
-                    x_dim0, x_dim1);
+                    Nx[0], Ny[0]);
             %(fail)s;
         }
 
-        if (x_dim2 != y_dim1)
-        {
+        if (Nx[2] != Ny[1]) {
             PyErr_Format(PyExc_RuntimeError,
                     "Shape mismatch. (%%d, %%d, %%d) (%%d, %%d, %%d)\\n",
-                    x_dim0, x_dim1, x_dim2, y_dim0, y_dim1, y_dim2);
+                    Nx[0], Nx[1], Nx[2], Ny[0], Ny[1], Ny[2]);
             %(fail)s;
         }
 
-        out_dim[0] = x_dim0;
-        out_dim[1] = x_dim1;
-        out_dim[2] = y_dim2;
+        Nz[0] = Nx[0];
+        Nz[1] = Nx[1];
+        Nz[2] = Ny[2];
 
         if ( !(%(bz)s
                && %(bz)s->nd==3
                && CudaNdarray_is_c_contiguous(%(bz)s)
-               && CudaNdarray_HOST_DIMS(%(bz)s)[0]==out_dim[0]
-               && CudaNdarray_HOST_DIMS(%(bz)s)[1]==out_dim[1]
-               && CudaNdarray_HOST_DIMS(%(bz)s)[2]==out_dim[2]))
+               && CudaNdarray_HOST_DIMS(%(bz)s)[0] == Nz[0]
+               && CudaNdarray_HOST_DIMS(%(bz)s)[1] == Nz[1]
+               && CudaNdarray_HOST_DIMS(%(bz)s)[2] == Nz[2]))
         {
             Py_XDECREF(%(bz)s);
-            %(bz)s = (CudaNdarray*)CudaNdarray_NewDims(3,out_dim);
-            if (NULL == %(bz)s)
-            {
+            %(bz)s = (CudaNdarray*)CudaNdarray_NewDims(3, Nz);
+            if (NULL == %(bz)s) {
                 PyErr_Format(PyExc_RuntimeError,
                         "Failed to allocate output of %%d x %%d x %%d",
-                        out_dim[0], out_dim[1], out_dim[2]);
+                        Nz[0], Nz[1], Nz[2]);
                 %(fail)s;
             }
         }
 
-        if (x_dim0 != 0 && y_dim0 != 0 &&
-            x_dim1 != 0 && y_dim1 != 0 &&
-            x_dim2 != 0 && y_dim2 != 0)
+        if (Nx[0] == 0 || Nx[1] == 0 || Nx[2] == 0 ||
+            Ny[0] == 0 || Ny[1] == 0 || Ny[2] == 0)
         {
-            x_stride = CudaNdarray_HOST_STRIDES(%(bx)s)[0];
-            y_stride = CudaNdarray_HOST_STRIDES(%(by)s)[0];
-            z_stride = CudaNdarray_HOST_STRIDES(%(bz)s)[0];
+            const int total_size = Nz[0] * Nz[1] * Nz[2] * sizeof(float);
+            if (cudaSuccess != cudaMemset(CudaNdarray_DEV_DATA(%(bz)s), 0, total_size))
+            {
+                PyErr_Format(PyExc_RuntimeError,
+                        "Failed to fill output with zeros");
+                %(fail)s;
+            }
+        }
+        else if (use_cublas_sgemm_batched)
+        {
+            cublasStatus_t err;
+            cudaError_t err1;
+
+            float **host_x = NULL;
+            float **host_z = NULL;
+            float **host_y = NULL;
+
+            float **gpu_x = NULL;
+            float **gpu_y = NULL;
+            float **gpu_z = NULL;
+
+            const int ptr_array_size = 3 * Nx[0] * sizeof(float *);
+            const int x_stride = CudaNdarray_HOST_STRIDES(%(bx)s)[0];
+            const int y_stride = CudaNdarray_HOST_STRIDES(%(by)s)[0];
+            const int z_stride = CudaNdarray_HOST_STRIDES(%(bz)s)[0];
 
             host_x = (float **) malloc (ptr_array_size);
 
@@ -123,14 +132,14 @@ class GpuBatchedDot(GpuOp):
                 %(fail)s;
             }
 
-            host_y = &host_x[x_dim0];
-            host_z = &host_y[x_dim0];
+            host_y = &host_x[Nx[0]];
+            host_z = &host_y[Nx[0]];
 
             host_x[0] = CudaNdarray_DEV_DATA(%(bx)s);
             host_y[0] = CudaNdarray_DEV_DATA(%(by)s);
             host_z[0] = CudaNdarray_DEV_DATA(%(bz)s);
 
-            for (i = 1; i < out_dim[0]; i++)
+            for (int i = 1; i < Nz[0]; i++)
             {
                 host_x[i] = host_x[i - 1] + x_stride;
                 host_y[i] = host_y[i - 1] + y_stride;
@@ -143,8 +152,8 @@ class GpuBatchedDot(GpuOp):
                 %(fail)s;
             }
 
-            gpu_y = &gpu_x[x_dim0];
-            gpu_z = &gpu_y[x_dim0];
+            gpu_y = &gpu_x[Nx[0]];
+            gpu_z = &gpu_y[Nx[0]];
 
             err1 = cudaMemcpy(gpu_x, host_x, ptr_array_size, cudaMemcpyHostToDevice);
 
@@ -157,13 +166,14 @@ class GpuBatchedDot(GpuOp):
             }
 
             err = cublasSgemmBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
-                               y_dim2, x_dim1, x_dim2, &alpha,
-                               (const float **) gpu_y, y_dim2,
-                               (const float **) gpu_x, x_dim2, &beta,
-                               gpu_z, y_dim2, x_dim0);
+                                     Ny[2], Nx[1], Nx[2], &alpha,
+                                     (const float **) gpu_y, Ny[2],
+                                     (const float **) gpu_x, Nx[2],
+                                     &beta, gpu_z, Ny[2], Nx[0]);
+
+            CNDA_THREAD_SYNC;
 
             CLEANUP();
-
             if (CUBLAS_STATUS_SUCCESS != err)
             {
                 PyErr_Format(PyExc_RuntimeError,
@@ -171,19 +181,129 @@ class GpuBatchedDot(GpuOp):
                              err,  cublasGetErrorString(err));
                 %(fail)s;
             }
-        }
-        else
-        {
-            total_size = x_dim0 * x_dim1 * y_dim2 * sizeof(float);
-            if (cudaSuccess != cudaMemset(CudaNdarray_DEV_DATA(%(bz)s), 0, total_size))
+        } else {
+            // copy inputs if not contiguous
+            """ +
+            ("\n".join("""
+             if ((   CudaNdarray_HOST_DIMS(%(var)s)[0] > 1 && CudaNdarray_HOST_STRIDES(%(var)s)[0] != 1
+                  && CudaNdarray_HOST_DIMS(%(var)s)[1] > 1 && CudaNdarray_HOST_STRIDES(%(var)s)[1] != 1
+                  && CudaNdarray_HOST_DIMS(%(var)s)[2] > 1 && CudaNdarray_HOST_STRIDES(%(var)s)[2] != 1)
+                 || CudaNdarray_HOST_STRIDES(%(var)s)[0] < 0
+                 || CudaNdarray_HOST_STRIDES(%(var)s)[1] < 0
+                 || CudaNdarray_HOST_STRIDES(%(var)s)[2] < 0)
+             {
+                 CudaNdarray *_copy = (CudaNdarray*) CudaNdarray_Copy(%(var)s);
+                 if (!_copy)
+                     %(fail)s;
+                 Py_XDECREF(%(var)s);
+                 %(var)s = _copy;
+             }
+             """ % dict(var=var, fail=fail) for var in (bx, by)))
+            + """
+
+            // fail if the output is not contiguous; we can't copy it because we
+            // need to write to the original memory
+            if ((   CudaNdarray_HOST_DIMS(%(bz)s)[0] > 1 && CudaNdarray_HOST_STRIDES(%(bz)s)[0] != 1
+                 && CudaNdarray_HOST_DIMS(%(bz)s)[1] > 1 && CudaNdarray_HOST_STRIDES(%(bz)s)[1] != 1
+                 && CudaNdarray_HOST_DIMS(%(bz)s)[2] > 1 && CudaNdarray_HOST_STRIDES(%(bz)s)[2] != 1)
+                || CudaNdarray_HOST_STRIDES(%(bz)s)[0] < 0
+                || CudaNdarray_HOST_STRIDES(%(bz)s)[1] < 0
+                || CudaNdarray_HOST_STRIDES(%(bz)s)[2] < 0)
             {
-                PyErr_Format(PyExc_RuntimeError,
-                        "Failed to fill output with zeros");
+                PyErr_Format(PyExc_AssertionError,
+                             "non-unit or negative stride in output arg %(bz)s (%%i, %%i, %%i) of shape (%%i, %%i, %%i)",
+                             CudaNdarray_HOST_STRIDES(%(bz)s)[0],
+                             CudaNdarray_HOST_STRIDES(%(bz)s)[1],
+                             CudaNdarray_HOST_STRIDES(%(bz)s)[2],
+                             CudaNdarray_HOST_DIMS(%(bz)s)[0],
+                             CudaNdarray_HOST_DIMS(%(bz)s)[1],
+                             CudaNdarray_HOST_DIMS(%(bz)s)[2]);
                 %(fail)s;
             }
-        }
 
-        """ % locals()
+            const int* Sx = CudaNdarray_HOST_STRIDES(%(bx)s);
+            const int* Sy = CudaNdarray_HOST_STRIDES(%(by)s);
+            const int* Sz = CudaNdarray_HOST_STRIDES(%(bz)s);
+
+            /* encode the stride structure of _x,_y,_z into a single integer. */
+            int unit = 0;
+            unit |= ((Sx[2] == 1 || Nx[2] == 1) ? 0x0 : (Sx[1] == 1 || Nx[1] == 1) ? 0x1 : 0x2) << 8;
+            unit |= ((Sy[2] == 1 || Ny[2] == 1) ? 0x0 : (Sy[1] == 1 || Ny[1] == 1) ? 0x1 : 0x2) << 4;
+            unit |= ((Sz[2] == 1 || Nz[2] == 1) ? 0x0 : (Sz[1] == 1 || Nz[1] == 1) ? 0x1 : 0x2) << 0;
+
+            /* create appropriate strides for malformed matrices that are row or column
+             * vectors, or empty matrices.
+             * In that case, the value of the stride does not really matter, but
+             * some versions of BLAS insist that:
+             *  - they are not smaller than the number of elements in the array,
+             *  - they are not 0.
+             */
+            int sx_1 = (Nx[1] > 1) ? Sx[1] : (Nx[2] + 1);
+            int sx_2 = (Nx[2] > 1) ? Sx[2] : (Nx[1] + 1);
+            int sy_1 = (Ny[1] > 1) ? Sy[1] : (Ny[2] + 1);
+            int sy_2 = (Ny[2] > 1) ? Sy[2] : (Ny[1] + 1);
+            int sz_1 = (Nz[1] > 1) ? Sz[1] : (Nz[2] + 1);
+            int sz_2 = (Nz[2] > 1) ? Sz[2] : (Nz[1] + 1);
+
+            cublasOperation_t N = CUBLAS_OP_N, T = CUBLAS_OP_T;
+            float* x = CudaNdarray_DEV_DATA(%(bx)s);
+            float* y = CudaNdarray_DEV_DATA(%(by)s);
+            float* z = CudaNdarray_DEV_DATA(%(bz)s);
+            float* xend = x + CudaNdarray_SIZE(%(bx)s);
+            float* yend = y + CudaNdarray_SIZE(%(by)s);
+            float* zend = z + CudaNdarray_SIZE(%(bz)s);
+
+            #define N_STREAMS 32
+            cudaStream_t streams[N_STREAMS];
+            for (int i = 0; i < N_STREAMS; i++) {
+                cudaStreamCreate(&streams[i]);
+            }
+
+            cudaStreamSynchronize(0);
+            for (int i = 0; i < Nx[0]; i++)
+            {
+                assert(CudaNdarray_DEV_DATA(%(bx)s) <= x); assert(x < CudaNdarray_DEV_DATA(%(bx)s) + CudaNdarray_SIZE(%(bx)s));
+                assert(CudaNdarray_DEV_DATA(%(by)s) <= y); assert(y < CudaNdarray_DEV_DATA(%(by)s) + CudaNdarray_SIZE(%(by)s));
+                assert(CudaNdarray_DEV_DATA(%(bz)s) <= z); assert(z < CudaNdarray_DEV_DATA(%(bz)s) + CudaNdarray_SIZE(%(bz)s));
+
+                cublasSetStream(handle, streams[i %% N_STREAMS]);
+                cublasStatus_t status;
+                switch(unit)
+                {
+                case 0x000: status = cublasSgemm(handle, N, N, Nz[2], Nz[1], Nx[2], &alpha, y, sy_1, x, sx_1, &beta, z, sz_1); break;
+                case 0x100: status = cublasSgemm(handle, N, T, Nz[2], Nz[1], Nx[2], &alpha, y, sy_1, x, sx_2, &beta, z, sz_1); break;
+                case 0x010: status = cublasSgemm(handle, T, N, Nz[2], Nz[1], Nx[2], &alpha, y, sy_2, x, sx_1, &beta, z, sz_1); break;
+                case 0x110: status = cublasSgemm(handle, T, T, Nz[2], Nz[1], Nx[2], &alpha, y, sy_2, x, sx_2, &beta, z, sz_1); break;
+                case 0x001: status = cublasSgemm(handle, T, T, Nz[1], Nz[2], Nx[2], &alpha, x, sx_1, y, sy_1, &beta, z, sz_2); break;
+                case 0x101: status = cublasSgemm(handle, N, T, Nz[1], Nz[2], Nx[2], &alpha, x, sx_2, y, sy_1, &beta, z, sz_2); break;
+                case 0x011: status = cublasSgemm(handle, T, N, Nz[1], Nz[2], Nx[2], &alpha, x, sx_1, y, sy_2, &beta, z, sz_2); break;
+                case 0x111: status = cublasSgemm(handle, N, N, Nz[1], Nz[2], Nx[2], &alpha, x, sx_2, y, sy_2, &beta, z, sz_2); break;
+                default: PyErr_Format(PyExc_ValueError, "some matrix has no unit stride (unit=%%x)", unit); %(fail)s;
+                }
+
+                if (status != CUBLAS_STATUS_SUCCESS) {
+                    PyErr_Format(PyExc_RuntimeError,
+                                 "cublasSgemm failed (%%i) %%s\\n"
+                                 " unit=%%x N=%%d,"
+                                 " x shape=[%%d %%d %%d], y shape=[%%d %%d %%d], z shape=[%%d %%d %%d]"
+                                 " x strides=[%%d %%d %%d], y strides=[%%d %%d %%d], z strides=[%%d %%d %%d]",
+                                 status,  cublasGetErrorString(status), unit, N,
+                                 Nx[0], Nx[1], Nx[2], Sx[0], Sx[1], Sx[2],
+                                 Ny[0], Ny[1], Ny[2], Sy[0], Sy[1], Sy[2],
+                                 Nz[0], Nz[1], Nz[2], Sz[0], Sz[1], Sz[2]);
+                    %(fail)s;
+                }
+
+                x += Sx[0]; y += Sy[0]; z += Sz[0];
+            };
+
+            cublasSetStream(handle, NULL);
+            for (int i = 0; i < N_STREAMS; i++) {
+                cudaStreamSynchronize(streams[i]);
+                cudaStreamDestroy(streams[i]);
+            }
+        }
+        """) % locals()
 
     def c_support_code(self):
         return """
@@ -199,8 +319,8 @@ class GpuBatchedDot(GpuOp):
         x, y = inp
         gz, = grads
 
-        xgrad = batched_dot(gz, y.dimshuffle(0, 2, 1))
-        ygrad = batched_dot(x.dimshuffle(0, 2, 1), gz)
+        xgrad = GpuBatchedDot(stream_threshold=self.stream_threshold)(gz, y.dimshuffle(0, 2, 1))
+        ygrad = GpuBatchedDot(stream_threshold=self.stream_threshold)(x.dimshuffle(0, 2, 1), gz)
 
         rval = xgrad, ygrad
 
@@ -210,17 +330,17 @@ class GpuBatchedDot(GpuOp):
         return rval
 
     def c_code_cache_version(self):
-        return (1,)
+        return (3,)
 
     def infer_shape(self, node, shapes):
         xshp, yshp = shapes
         return [xshp[:-1] + yshp[2:]]
 
 batched_dot = GpuBatchedDot()
-BatchedDotOp = GpuBatchedDot()
 """
 Call cublasSgemmBatched. Take 2 3d tensor as input.
 """
+BatchedDotOp = batched_dot
 
 
 class GpuDot22(GpuOp):
@@ -756,7 +876,7 @@ class BaseGpuCorrMM(GpuOp):
             if border_mode != "valid":
                 raise ValueError("border_mode must be 'valid' if pad is given")
             border_mode = pad
-        if isinstance(border_mode, int):
+        if isinstance(border_mode, integer_types):
             border_mode = (border_mode, border_mode)
         if isinstance(border_mode, tuple):
             pad_h, pad_w = map(int, border_mode)
@@ -1143,6 +1263,8 @@ class GpuCorrMM_gradWeights(BaseGpuCorrMM):
                 raise ValueError('shape must be given if subsample != (1, 1)'
                                  ' or border_mode == "half"')
             height_width = [shape[0], shape[1]]
+            assert shape[0].ndim == 0
+            assert shape[1].ndim == 0
         else:
             height_width = []
 
@@ -1201,6 +1323,9 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
         if self.subsample != (1, 1) and shape is None:
             raise ValueError('shape must be given if subsample != (1, 1)')
         height_width = [shape[0], shape[1]] if self.subsample != (1, 1) else []
+        if height_width:
+            assert shape[0].ndim == 0
+            assert shape[1].ndim == 0
 
         broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
                          False, False]
@@ -1948,10 +2073,8 @@ class GpuConv(GpuOp):
                      images[2] * images[3] * 2)
         return flops
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        node_ = copy.copy(node)
-        assert node.op is node_.op
-        if node_.op.max_threads_dim0 is None:
+    def prepare_node(self, node, storage_map, compute_map):
+        if node.op.max_threads_dim0 is None:
             cuda = theano.sandbox.cuda
             device_id = cuda.use.device_number
             if device_id is None:
@@ -1964,9 +2087,7 @@ class GpuConv(GpuOp):
                 device_id = cuda.use.device_number
             cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
             prop = cuda_ndarray.device_properties(device_id)
-            node_.op.max_threads_dim0 = prop['maxThreadsDim0']
-        return super(GpuConv, node_.op).make_thunk(node_, storage_map,
-                                                   compute_map, no_recycling)
+            node.op.max_threads_dim0 = prop['maxThreadsDim0']
 
     def c_compile_args(self):
         nb = 0

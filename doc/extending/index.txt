@@ -5,24 +5,35 @@
 Extending Theano
 ================
 
+This advanced tutorial is for users who want to extend Theano with new Types, 
+new Operations (Ops), and new graph optimizations. This first page of the 
+tutorial mainly focuses on the Python implementation of an Op and then 
+proposes an overview of the most important methods that define an op. 
+The second page of the tutorial (:ref:`extending_theano_c`) provides then 
+information on the C implementation of an Op. The rest of the tutorial 
+goes more in depth on advanced topics related to Ops, such as how to write 
+efficient code for an Op and how to write an optimization to speed up the 
+execution of an Op.
 
-This advanced tutorial is for users who want to extend Theano with new Types, new
-Operations (Ops), and new graph optimizations.
+Along the way, this tutorial also introduces many aspects of how Theano works, 
+so it is also good for you if you are interested in getting more under the hood 
+with Theano itself.
 
-Along the way, it also introduces many aspects of how Theano works, so it is
-also good for you if you are interested in getting more under the hood with
-Theano itself.
+.. note::
 
-Before tackling this more advanced presentation, it is highly recommended to read the
-introductory :ref:`Tutorial<tutorial>`.
+    Before tackling this more advanced presentation, it is highly recommended 
+    to read the introductory :ref:`Tutorial<tutorial>`, especially the sections 
+    that introduce the Theano Graphs, as providing a novel Theano op requires a 
+    basic understanting of the Theano Graphs.
 
-The first few pages will walk you through the definition of a new :ref:`type`,
-``double``, and a basic arithmetic :ref:`operations <op>` on that Type. We
-will start by defining them using a Python implementation and then we will add
-a C implementation.
+    See also the :ref:`dev_start_guide` for information regarding the 
+    versioning framework, namely about *git* and *GitHub*, regarding the 
+    development workflow and how to make a quality contribution.
 
 .. toctree::
 
+    extending_theano
+    extending_theano_c
     fibby
     pipeline
     theano_vs_c

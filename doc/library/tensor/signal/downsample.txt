@@ -11,9 +11,6 @@
 
 .. seealso:: :func:`theano.tensor.nnet.neighbours.images2neibs`
 
-.. autofunction:: theano.tensor.signal.downsample.max_pool_2d
-.. autofunction:: theano.tensor.signal.downsample.max_pool_2d_same_size
-
 .. function:: fft(*todo)
 
     [James has some code for this, but hasn't gotten it into the source tree yet.]

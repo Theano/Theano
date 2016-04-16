@@ -51,7 +51,7 @@ Environment Variables
 
     .. code-block:: bash
 
-        THEANO_FLAGS='floatX=float32,device=gpu0,nvcc.fastmath=True'  python <myscript>.py
+        THEANO_FLAGS='floatX=float32,device=gpu0,lib.cnmem=1'  python <myscript>.py
 
     If a value is defined several times in ``THEANO_FLAGS``,
     the right-most definition is used. So, for instance, if
@@ -72,15 +72,15 @@ Environment Variables
         floatX = float32
         device = gpu0
 
-        [nvcc]
-        fastmath = True
+        [lib]
+        cnmem = 1
 
     Configuration attributes that are available directly in ``config``
     (e.g. ``config.device``, ``config.mode``) should be defined in the
     ``[global]`` section.
-    Attributes from a subsection of ``config`` (e.g. ``config.nvcc.fastmath``,
-    ``config.blas.ldflags``) should be defined in their corresponding section
-    (e.g. ``[nvcc]``, ``[blas]``).
+    Attributes from a subsection of ``config`` (e.g. ``config.lib.cnmem``,
+    ``config.dnn.conv.algo_fwd``) should be defined in their corresponding
+    section (e.g. ``[nvcc]``, ``[dnn.conv]``).
 
     Multiple configuration files can be specified by separating them with ':'
     characters (as in $PATH).  Multiple configuration files will be merged,
@@ -388,6 +388,14 @@ import theano and print the config variable, as in:
 
     Do a debugprint of the profiled functions
 
+.. attribute:: config.profiling.ignore_first_call
+
+    Bool value: either True or False
+
+    Default False
+
+    Do we ignore the first call to a Theano function while profiling.
+
 .. attribute:: config.lib.amdlibm
 
     Bool value: either True or False
@@ -402,29 +410,37 @@ import theano and print the config variable, as in:
 
     Float value: >= 0
 
-    Do we enable `CNMeM <https://github.com/NVIDIA/cnmem>`_ or not (a
-    faster CUDA memory allocator). In Theano dev version until 0.7.1
+    Controls the use of `CNMeM <https://github.com/NVIDIA/cnmem>`_ (a
+    faster CUDA memory allocator). In Theano dev version until 0.8
     is released.
 
-    That library is included in Theano, you do not need to install it.
+    The CNMeM library is included in Theano and does not need to be
+    separately installed.
 
-    The value represents the start size (in MB or % of total GPU
-    memory) of the memory pool. If more memory are needed, it will
-    try to get more, but this can cause more memory fragmentation:
+    The value represents the start size (either in MB or the fraction of total GPU
+    memory) of the memory pool. If more memory is needed, Theano will
+    try to obtain more, but this can cause memory fragmentation.
 
         * 0: not enabled.
-        * 0 < N <= 1: % of the total GPU memory (clipped to .985 for driver memory)
-        * > 0: use that number of MB of memory.
+        * 0 < N <= 1: use this fraction of the total GPU memory (clipped to .95 for driver memory).
+        * > 1: use this number in megabytes (MB) of memory.
 
 
-    Default 0 (but should change later)
+    Default: 0 (but should change later)
 
     .. note::
 
         This could cause memory fragmentation. So if you have a
-        memory error while using cnmem, try to allocate more memory at
+        memory error while using CNMeM, try to allocate more memory at
         the start or disable it. If you try this, report your result
         on :ref`theano-dev`.
+
+    .. note::
+
+        The clipping at 95% can be bypassed by specifing the exact
+        number of megabytes. If more then 95% are needed, it will try
+        automatically to get more memory. But this can cause
+        fragmentation, see note above.
 
 .. attribute:: linker
 
@@ -483,7 +499,7 @@ import theano and print the config variable, as in:
 
     String value: 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.6', '0.7'
 
-    Default: '0.6'
+    Default: '0.7'
 
     When we fix a Theano bug that generated bad results under some
     circumstances, we also make Theano raise a warning when it encounters
@@ -567,6 +583,18 @@ import theano and print the config variable, as in:
 
     A directory with bin/, lib/, include/ folders containing cuda utilities.
 
+.. attribute:: config.dnn.enabled
+
+  String value: ``auto``, ``True``, ``False``
+
+  Default: ``auto``
+
+  If ``auto``, automatically detect and use [cuDNN](https://developer.nvidia.com/cudnn) if it is available.  If cuDNN is unavailable, raise no error.
+
+  If ``True``, require the use of cuDNN.  If cuDNN is unavailable, raise an error.
+
+  If ``False``, do not use cuDNN or check if it is available.
+
 .. attribute:: config.dnn.conv.workmem
 
    Deprecated, use dnn.conv.algo_fwd.
@@ -630,7 +658,8 @@ import theano and print the config variable, as in:
     <http://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/#options-for-steering-cuda-compilation>`_)
     mode for compiled cuda code which makes div and sqrt faster at the
     cost of precision.  This also disables support for denormal
-    numbers.
+    numbers. This can cause NaN. So if you have NaN and use this flag,
+    try to disable it.
 
 .. attribute:: config.optimizer_excluding
 

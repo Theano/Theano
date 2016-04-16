@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 from itertools import product
 import time
 import unittest
@@ -65,6 +66,15 @@ def as_sparse_format(data, format):
 
 def eval_outputs(outputs):
     return compile.function([], outputs)()[0]
+
+
+# scipy 0.17 will return sparse values in all cases while previous
+# version sometimes wouldn't.  This will make everything dense so that
+# we can use assert_allclose.
+def as_ndarray(val):
+    if hasattr(val, 'toarray'):
+        return val.toarray()
+    return val
 
 
 def random_lil(shape, dtype, nnz):
@@ -2956,7 +2966,7 @@ class StructuredAddSVTester(unittest.TestCase):
 
                 out = f(spmat, mat)
 
-                utt.assert_allclose(spones.multiply(spmat + mat),
+                utt.assert_allclose(as_ndarray(spones.multiply(spmat + mat)),
                                     out.toarray())
 
 
@@ -3072,7 +3082,7 @@ class SamplingDotTester(utt.InferShapeTester):
         x, y, p = self.a
         expected = p.multiply(numpy.dot(x, y.T))
 
-        utt.assert_allclose(expected, tested.toarray())
+        utt.assert_allclose(as_ndarray(expected), tested.toarray())
         assert tested.format == 'csr'
         assert tested.dtype == expected.dtype
 

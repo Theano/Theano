@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
 import numpy
 import unittest
@@ -20,7 +20,7 @@ if theano.config.mode == 'FAST_COMPILE':
     mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN')
 else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
-    mode_without_gpu = theano.compile.mode.get_default_mode()
+    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
 
 def test_GpuCrossentropySoftmaxArgmax1HotWithBias():

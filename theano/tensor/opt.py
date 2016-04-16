@@ -1,7 +1,7 @@
+from __future__ import absolute_import, print_function, division
 """
 Tensor optimizations addressing the ops in basic.py.
 """
-from __future__ import print_function
 # TODO: intelligent merge for mul/add
 # TODO: 0*x -> 0
 
@@ -14,16 +14,15 @@ import traceback
 import warnings
 
 import numpy
-import numpy as N  # guys... please don't do this in the library :(
-from six.moves import xrange
+from six import integer_types, iteritems
+from six.moves import reduce, xrange
 
 import theano
 from theano import gof
 from theano.compat import izip
-from six import integer_types, iteritems
-from six.moves import reduce
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
+from theano.gof.opt import copy_stack_trace
 from theano.gof.utils import MethodNotDefined
 from theano.gradient import DisconnectedType
 from theano.configparser import config
@@ -53,58 +52,7 @@ from six import StringIO
 
 _logger = logging.getLogger('theano.tensor.opt')
 
-theano.configparser.AddConfigVar('on_shape_error',
-                                 "warn: print a warning and use the default"
-                                 " value. raise: raise an error",
-                                 theano.configparser.EnumStr("warn", "raise"),
-                                 in_c_key=False)
-
 # Utilities
-
-
-def copy_stack_trace(from_var, to_var):
-    """
-    Copies the stack trace from one or more tensor variables to
-    one or more tensor variables.
-
-    Parameters
-    ----------
-    from_var
-        Tensor variable or list of tensor variables to copy stack traces from.
-    to_var
-        Tensor variable or list of tensor variables to copy stack traces to.
-
-    Notes
-    -----
-    The stacktrace is assumed to be of the form of a list of lists
-    of tuples. Each tuple contains the filename, line number, function name
-    and so on. Each list of tuples contains the truples belonging to a
-    particular variable.
-
-    """
-
-    # Store stack traces from from_var
-    tr = []
-    if type(from_var) is list:
-        # If from_var is a list, store concatenated stack traces
-        for v in from_var:
-            tr += getattr(v.tag, 'trace', [])
-
-    else:
-        # If from_var is not a list, it must be a single tensor variable,
-        # so just store that particular stack trace
-        tr = getattr(from_var.tag, 'trace', [])
-
-    # Copy over stack traces to to_var
-    if type(to_var) is list:
-        # Copy over stack traces from from_var to each variable in
-        # to_var, including the stack_trace of the to_var before
-        for v in to_var:
-            v.tag.trace = getattr(v.tag, 'trace', []) + tr
-    else:
-        # Copy over stack traces from from_var to each variable to
-        # to_var, including the stack_trace of the to_var before
-        to_var.tag.trace = getattr(to_var.tag, 'trace', []) + tr
 
 
 def out2in(*local_opts, **kwargs):
@@ -228,13 +176,6 @@ def broadcast_like(value, template, fgraph, dtype=None):
                              str(template.broadcastable))
 
     return rval
-
-
-theano.configparser.AddConfigVar(
-    'tensor.insert_inplace_optimizer_validate_nb',
-    "-1: auto, if graph have less then 500 nodes 1, else 10",
-    theano.configparser.IntParam(-1),
-    in_c_key=False)
 
 
 def inplace_elemwise_optimizer_op(OP):
@@ -841,9 +782,12 @@ class ShapeFeature(object):
     Shape_i and MakeVector Ops.
 
     This optimizer has several goals:
+
     1. to 'lift' Shapes to as close to the inputs as possible.
+
     2. to infer the shape of every node in the graph in terms of the
        input shapes.
+
     3. remove all fills (T.second, T.fill) from the graph
 
     Lifting shapes as close to the inputs as possible is important for
@@ -893,8 +837,7 @@ class ShapeFeature(object):
     execution by default.  (NOT IMPLEMENTED YET, BUT IS IN TRAC)
 
 
-    Using Shape information in Optimizations
-    ========================================
+    **Using Shape information in Optimizations**
 
     To use this shape information in OPTIMIZATIONS, use the
     ``shape_of`` dictionary.
@@ -911,7 +854,7 @@ class ShapeFeature(object):
 
         shape_of_output_zero = shape_of[node.output[0]]
 
-    The ``shape_of_output_zero'' symbol will contain a tuple, whose
+    The ``shape_of_output_zero`` symbol will contain a tuple, whose
     elements are either integers or symbolic integers.
 
     TODO: check to see if the symbols are necessarily
@@ -1180,11 +1123,11 @@ class ShapeFeature(object):
                 #  - Shape_i(i)(other_r);
                 #  - Shape_i(i)(r).
                 merged_shape.append(r_shape[i])
-            elif isinstance(r_shape[i], (Constant, int)):
+            elif isinstance(r_shape[i], (Constant, integer_types)):
                 # We do this to call less often ancestors and make
                 # sure we have the simplest shape possible.
                 merged_shape.append(r_shape[i])
-            elif isinstance(other_shape[i], (Constant, int)):
+            elif isinstance(other_shape[i], (Constant, integer_types)):
                 # We do this to call less often ancestors and make
                 # sure we have the simplest shape possible.
                 merged_shape.append(other_shape[i])
@@ -1609,26 +1552,6 @@ local_elemwise_alloc = register_specialize(
         local_elemwise_alloc_op(T.Elemwise, T.Alloc, T.DimShuffle)),
     'local_alloc_elemwise')
 
-theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',
-                                 "DEPRECATED: If True, enable the experimental"
-                                 " optimization local_alloc_elemwise."
-                                 " Generates error if not True. Use"
-                                 " optimizer_excluding=local_alloc_elemwise"
-                                 " to dsiable.",
-                                 theano.configparser.BoolParam(
-                                     True,
-                                     is_valid=lambda x: x
-                                 ),
-                                 in_c_key=False)
-
-# False could make the graph faster but not as safe.
-theano.configparser.AddConfigVar(
-    'experimental.local_alloc_elemwise_assert',
-    "When the local_alloc_elemwise is applied, add"
-    " an assert to highlight shape errors.",
-    theano.configparser.BoolParam(True),
-    in_c_key=False)
-
 
 @gof.local_optimizer([T.Elemwise])
 def local_fill_sink(node):
@@ -1766,6 +1689,26 @@ def local_useless_alloc(node):
             return [node.inputs[0]]
 
 
+# Don't register by default.
+@gof.local_optimizer([T.AllocEmpty])
+def local_alloc_empty_to_zeros(node):
+    """This convert AllocEmpty to Alloc of 0.
+
+    This help investigate NaN with NanGuardMode.  Not registered by
+    default. To activate it, use the Theano flag
+    optimizer_including=alloc_empty_to_zeros. This also enable
+    the GPU version of this optimizations.
+
+    """
+    if isinstance(node.op, T.AllocEmpty):
+        return [T.zeros(node.inputs, dtype=node.outputs[0].dtype)]
+compile.optdb.register('local_alloc_empty_to_zeros',
+                       in2out(local_alloc_empty_to_zeros),
+                       # After move to gpu and merge2, before inplace.
+                       49.3,
+                       'alloc_empty_to_zeros',)
+
+
 @register_specialize
 @register_canonicalize
 @gof.local_optimizer([T.shape])
@@ -1837,7 +1780,7 @@ def local_subtensor_make_vector(node):
     else:
         return
 
-    if isinstance(idx, (int, numpy.integer)):
+    if isinstance(idx, (integer_types, numpy.integer)):
         # We don't need to copy over any stack traces here
         return [x.owner.inputs[idx]]
     elif isinstance(idx, Variable):
@@ -2104,10 +2047,11 @@ class Assert(T.Op):
 
     Examples
     --------
-    T = theano.tensor
-    x = T.vector('x')
-    assert_op = T.opt.Assert()
-    func = theano.function([x], assert_op(x, x.size<2))
+    >>> import theano
+    >>> T = theano.tensor
+    >>> x = T.vector('x')
+    >>> assert_op = T.opt.Assert()
+    >>> func = theano.function([x], assert_op(x, x.size<2))
 
     """
 
@@ -2462,7 +2406,7 @@ def local_useless_subtensor(node):
 
             length_pos = shape_of[node.inputs[0]][pos]
 
-            if isinstance(idx.stop, (int, numpy.integer)):
+            if isinstance(idx.stop, (integer_types, numpy.integer)):
                 length_pos_data = sys.maxsize
                 try:
                     length_pos_data = get_scalar_constant_value(length_pos)
@@ -2651,10 +2595,12 @@ def merge_two_slices(slice1, len1, slice2, len2):
     """
      This function merges two slices into a single slice. The code works on
      the assumption that:
-          a) slice1 is actually a slice and not an index, while slice2
-          can be just an index.
-          b) the two slices **have been applied consecutively** on the same
-          tensor
+
+     a) slice1 is actually a slice and not an index, while slice2
+        can be just an index.
+
+     b) the two slices **have been applied consecutively** on the same
+        tensor
 
     The output slice is **not** in canonical form, but actually just a slice
     that can be applied to a tensor to produce the same output as applying
@@ -2845,7 +2791,16 @@ def local_subtensor_merge(node):
             # and stacktrace from previous slicing operation.
             # Why? Because, the merged slicing operation could have failed
             # because of either of the two original slicing operations
-            copy_stack_trace([node.outputs[0], node.inputs[0]], out)
+            orig_out = node.outputs[0]
+            copy_stack_trace([orig_out, node.inputs[0]], out)
+
+            # Restore original broadcastable dimensions that `subtens()` may
+            # have been unable to infer again
+            if out.type != orig_out.type:
+                assert out.dtype == orig_out.dtype
+                assert out.ndim == orig_out.ndim
+                out = T.patternbroadcast(out, orig_out.broadcastable)
+                copy_stack_trace([orig_out, node.inputs[0]], out)
             return [out]
 
 
@@ -3076,6 +3031,9 @@ def local_inplace_setsubtensor(node):
             set_instead_of_inc=node.op.set_instead_of_inc,
             destroyhandler_tolerate_aliased=dta)
         new_node = new_op(*node.inputs)
+        val = getattr(node.outputs[0].tag, 'nan_guard_mode_check', True)
+        new_node.tag.nan_guard_mode_check = val
+
         # Copy stacktrace from original outputs to new outputs.
         # This is sensible, because the new operation is the
         # same as the old one, but now with different attributes.
@@ -3581,10 +3539,70 @@ def local_join_make_vector(node):
         return [ret]
 
 
+#################
+#  speed/memory #
+#################
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([T.elemwise.Sum])
+def local_sumsqr2dot(node):
+    """
+    This optimization detects T.sqr( W.dimshuffle('x',0,1) * G.dimshuffle(0,'x',1) ).sum(axis=(1,2))
+     and converts this to T.dot(T.sqr(G), T.sqr(W).sum(axis=0)).
+    """
+    if (isinstance(node.op, T.elemwise.Sum) and
+            isinstance(node.op.scalar_op, theano.scalar.basic.Add) and node.op.axis == (1, 2)):
+        in1 = node.inputs[0]
+        out = node.outputs[0]
+
+        if (in1.owner and isinstance(in1.owner.op, T.Elemwise) and isinstance(in1.owner.op.scalar_op, theano.scalar.basic.Sqr)):
+            in_sqr = in1.owner.inputs[0]
+            if (in_sqr.owner and isinstance(in_sqr.owner.op, T.Elemwise) and
+                    isinstance(in_sqr.owner.op.scalar_op, theano.scalar.basic.Mul) and len(in_sqr.owner.inputs) == 2):
+                in_mul1, in_mul2 = in_sqr.owner.inputs
+
+                if (isinstance(in_mul1.owner.op, T.elemwise.DimShuffle) and in_mul1.owner.op.new_order == ('x', 0, 1) and
+                        isinstance(in_mul2.owner.op, T.elemwise.DimShuffle) and in_mul2.owner.op.new_order == (0, 'x', 1)):
+                    W = in_mul1.owner.inputs[0]
+                    G = in_mul2.owner.inputs[0]
+
+                    new_out = T.dot(T.sqr(G), T.sqr(W).sum(axis=0))
+                    if new_out.dtype != out.dtype:
+                        new_out = T.cast(new_out, dtype=out.dtype)
+                    return [new_out]
+
+
+#################
+# Exp stability #
+#################
+@register_stabilize
+@register_specialize
+@register_canonicalize
+@gof.local_optimizer([T.Elemwise])
+def local_expm1(node):
+    """
+    This optimization detects exp(a)-1 and converts this to expm1(a).
+    """
+    if (isinstance(node.op, T.Elemwise) and
+            isinstance(node.op.scalar_op, theano.scalar.basic.Sub)):
+        in1, in2 = node.inputs
+        out = node.outputs[0]
+
+        if (in1.owner and isinstance(in1.owner.op, T.Elemwise) and isinstance(in1.owner.op.scalar_op, theano.scalar.basic.Exp) and
+                T.extract_constant(in2, only_process_constants=False) == 1):
+            in11 = in1.owner.inputs[0]
+            new_out = T.expm1(in11)
+
+            if new_out.dtype != out.dtype:
+                new_out = T.cast(new_out, dtype=out.dtype)
+            if new_out.type != out.type:
+                return
+            return [new_out]
+
+
 ###############
 # Switch opts #
 ###############
-
 @register_canonicalize('fast_compile', 'local_remove_switch_const_cond')
 @register_specialize
 @gof.local_optimizer([T.Elemwise])
@@ -3705,7 +3723,7 @@ def local_mul_switch_sink(node):
 
                     fct = [T.switch(switch.inputs[0], 0,
                                     fmul)]
-                    fct[0].values_eq_approx = values_eq_approx_remove_nan
+                    fct[0].tag.values_eq_approx = values_eq_approx_remove_nan
 
                     # Copy over stacktrace for switch op from both previous
                     #  elementwise multiplication op and previous switch op,
@@ -3729,7 +3747,7 @@ def local_mul_switch_sink(node):
 
                     fct = [T.switch(switch.inputs[0],
                                     fmul, 0)]
-                    fct[0].values_eq_approx = values_eq_approx_remove_nan
+                    fct[0].tag.values_eq_approx = values_eq_approx_remove_nan
 
                     # Copy over stacktrace for switch op from both previous
                     # elementwise multiplication op and previous switch op,
@@ -3773,7 +3791,7 @@ def local_div_switch_sink(node):
 
                 fct = [T.switch(switch.inputs[0], 0,
                                 fdiv)]
-                fct[0].values_eq_approx = values_eq_approx_remove_nan
+                fct[0].tag.values_eq_approx = values_eq_approx_remove_nan
 
                 # Copy over stacktrace for switch op from both previous
                 # elementwise division op and previous switch op,
@@ -3795,7 +3813,7 @@ def local_div_switch_sink(node):
 
                 fct = [T.switch(switch.inputs[0],
                                 fdiv, 0)]
-                fct[0].values_eq_approx = values_eq_approx_remove_nan
+                fct[0].tag.values_eq_approx = values_eq_approx_remove_nan
 
                 # Copy over stacktrace for switch op from both previous
                 # elementwise division op and previous switch op,
@@ -3806,6 +3824,32 @@ def local_div_switch_sink(node):
         except NotScalarConstantError:
             pass
     return False
+
+
+# Merge add/sub/mul/div/minimum/maximum/... of switches sharing the same
+# condition, to enable further simplification of their branches
+# Example: switch(c, a, b) + switch(c, x, y) -> switch(c, a+x, b+y)
+@register_canonicalize
+@gof.local_optimizer([T.Elemwise])
+def local_merge_switch_same_cond(node):
+    scal = theano.scalar
+    # node must be binary elemwise or add or mul
+    if not isinstance(node.op, T.Elemwise) or not isinstance(
+            node.op.scalar_op, (scal.BinaryScalarOp, scal.Add, scal.Mul)):
+        return
+    # all inputs must be switch
+    if not all(s.owner and isinstance(s.owner.op, T.Elemwise) and
+               isinstance(s.owner.op.scalar_op, scal.Switch)
+               for s in node.inputs):
+        return
+    # all switch conditions must be the same
+    cond = node.inputs[0].owner.inputs[0]
+    if not all(s.owner.inputs[0] is cond for s in node.inputs[1:]):
+        return
+    # pull out switch
+    return [T.switch(cond,
+                     node.op(*[s.owner.inputs[1] for s in node.inputs]),
+                     node.op(*[s.owner.inputs[2] for s in node.inputs]))]
 
 
 #############
@@ -4077,7 +4121,8 @@ register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy')
 
 class Canonizer(gof.LocalOptimizer):
     """
-    Simplification tool.
+    Simplification tool. The variable is a local_optimizer. It is best used
+    with a TopoOptimizer in in_to_out order.
 
     Usage: Canonizer(main, inverse, reciprocal, calculate)
 
@@ -4096,34 +4141,33 @@ class Canonizer(gof.LocalOptimizer):
     calculate
         Function that takes a list of numpy.ndarray instances
         for the numerator, another list for the denumerator,
-        and calculates inverse(main(*num), main(*denum)). It
+        and calculates inverse(main(\*num), main(\*denum)). It
         takes a keyword argument, aslist. If True, the value
         should be returned as a list of one element, unless
         the value is such that value = main(). In that case,
         the return value should be an empty list.
 
-    The variable is a local_optimizer. It is best used with a TopoOptimizer in
-    in_to_out order.
-
     Examples
     --------
-      T = theano.tensor
-      add_canonizer = Canonizer(T.add, T.sub, T.neg,
-                                lambda n, d: sum(n) - sum(d))
-      mul_canonizer = Canonizer(T.mul, T.true_div, T.inv,
-                                lambda n, d: prod(n) / prod(d))
+    >>> import theano.tensor as T
+    >>> from theano.tensor.opt import Canonizer
+    >>> add_canonizer = Canonizer(T.add, T.sub, T.neg, \\
+    ...                           lambda n, d: sum(n) - sum(d))
+    >>> mul_canonizer = Canonizer(T.mul, T.true_div, T.inv, \\
+    ...                           lambda n, d: prod(n) / prod(d))
 
     Examples of optimizations mul_canonizer can perform:
-      x / x -> 1
-      (x * y) / x -> y
-      x / y / x -> 1 / y
-      x / y / z -> x / (y * z)
-      x / (y / z) -> (x * z) / y
-      (a / b) * (b / c) * (c / d) -> a / d
-      (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
-      2 * x / 2 -> x
-      x * y * z -> Elemwise(T.mul){x,y,z} #only one pass over the memory.
-                !-> Elemwise(T.mul){x,Elemwise(T.mul){y,z}}
+
+    | x / x -> 1
+    | (x * y) / x -> y
+    | x / y / x -> 1 / y
+    | x / y / z -> x / (y * z)
+    | x / (y / z) -> (x * z) / y
+    | (a / b) * (b / c) * (c / d) -> a / d
+    | (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
+    | 2 * x / 2 -> x
+    | x * y * z -> Elemwise(T.mul){x,y,z} #only one pass over the memory.
+    |           !-> Elemwise(T.mul){x,Elemwise(T.mul){y,z}}
 
     """
 
@@ -4146,23 +4190,23 @@ class Canonizer(gof.LocalOptimizer):
     def get_num_denum(self, input):
         """
         This extract two lists, num and denum, such that the input is:
-        self.inverse(self.main(*num), self.main(*denum)). It returns
+        self.inverse(self.main(\*num), self.main(\*denum)). It returns
         the two lists in a (num, denum) pair.
 
-        For example, for main, inverse and reciprocal = *, / and inv(),
+        For example, for main, inverse and reciprocal = \*, / and inv(),
 
-        input -> returned value (num, denum)
+        | input -> returned value (num, denum)
 
-        x*y -> ([x, y], [])
-        inv(x) -> ([], [x])
-        inv(x) * inv(y) -> ([], [x, y])
-        x*y/z -> ([x, y], [z])
-        log(x) / y * (z + x) / y -> ([log(x), z + x], [y, y])
-        (((a / b) * c) / d) -> ([a, c], [b, d])
-        a / (b / c) -> ([a, c], [b])
-        log(x) -> ([log(x)], [])
-        x**y -> ([x**y], [])
-        x * y * z -> ([x, y, z], [])
+        | x*y -> ([x, y], [])
+        | inv(x) -> ([], [x])
+        | inv(x) * inv(y) -> ([], [x, y])
+        | x*y/z -> ([x, y], [z])
+        | log(x) / y * (z + x) / y -> ([log(x), z + x], [y, y])
+        | (((a / b) * c) / d) -> ([a, c], [b, d])
+        | a / (b / c) -> ([a, c], [b])
+        | log(x) -> ([log(x)], [])
+        | x**y -> ([x**y], [])
+        | x * y * z -> ([x, y, z], [])
 
         """
 
@@ -4265,27 +4309,28 @@ class Canonizer(gof.LocalOptimizer):
     def merge_num_denum(self, num, denum):
         """
         Utility function which takes two lists, num and denum, and
-        returns something which is equivalent to inverse(main(*num),
-        main(*denum)), but depends on the length of num and the length
+        returns something which is equivalent to inverse(main(\*num),
+        main(\*denum)), but depends on the length of num and the length
         of denum (in order to minimize the number of operations).
 
         Let n = len(num) and d = len(denum):
 
-        n=0, d=0: neutral element (given by self.calculate([], []))
-                  (for example, this would be 0 if main is addition
-                  and 1 if main is multiplication)
-        n=1, d=0: num[0]
-        n=0, d=1: reciprocal(denum[0])
-        n=1, d=1: inverse(num[0], denum[0])
-        n=0, d>1: reciprocal(main(*denum))
-        n>1, d=0: main(*num)
-        n=1, d>1: inverse(num[0], main(*denum))
-        n>1, d=1: inverse(main(*num), denum[0])
-        n>1, d>1: inverse(main(*num), main(*denum))
+        | n=0, d=0: neutral element (given by self.calculate([], []))
+        |           (for example, this would be 0 if main is addition
+        |           and 1 if main is multiplication)
+        | n=1, d=0: num[0]
+        | n=0, d=1: reciprocal(denum[0])
+        | n=1, d=1: inverse(num[0], denum[0])
+        | n=0, d>1: reciprocal(main(\*denum))
+        | n>1, d=0: main(\*num)
+        | n=1, d>1: inverse(num[0], main(\*denum))
+        | n>1, d=1: inverse(main(\*num), denum[0])
+        | n>1, d>1: inverse(main(\*num), main(\*denum))
 
         Given the values of n and d to which they are associated, all
         of the above are equivalent to:
-        inverse(main(*num), main(*denum))
+        inverse(main(\*num), main(\*denum))
+
         """
 
         ln, ld = len(num), len(denum)
@@ -4330,7 +4375,10 @@ class Canonizer(gof.LocalOptimizer):
     def simplify(self, num, denum, out_type):
         """
         Shorthand for:
-        self.simplify_constants(*self.simplify_factors(num, denum))
+
+        .. code-block:: python
+
+            self.simplify_constants(*self.simplify_factors(num, denum))
 
         """
         rval = self.simplify_constants(*self.simplify_factors(num, denum),
@@ -4348,9 +4396,9 @@ class Canonizer(gof.LocalOptimizer):
         from both lists. Modifies the lists inplace. Returns the
         modified lists. For example:
 
-        [x], [x] -> [], []
-        [x, y], [x] -> [y], []
-        [a, b], [c, d] -> [a, b], [c, d]
+        | [x], [x] -> [], []
+        | [x, y], [x] -> [y], []
+        | [a, b], [c, d] -> [a, b], [c, d]
 
         """
         for v in list(num):
@@ -4373,9 +4421,9 @@ class Canonizer(gof.LocalOptimizer):
         --------
         Let main be multiplication:
 
-        [2, 3, x], [] -> [6, x], []
-        [x, y, 2], [4, z] -> [0.5, x, y], [z]
-        [x, 2, y], [z, 2] -> [x, y], [z]
+        | [2, 3, x], [] -> [6, x], []
+        | [x, y, 2], [4, z] -> [0.5, x, y], [z]
+        | [x, 2, y], [z, 2] -> [x, y], [z]
 
         """
 
@@ -4471,7 +4519,7 @@ class Canonizer(gof.LocalOptimizer):
         num, denum = self.simplify(list(orig_num), list(orig_denum), out.type)
 
         def same(x, y):
-            return len(x) == len(y) and all(N.all(xe == ye) for xe, ye in
+            return len(x) == len(y) and all(numpy.all(xe == ye) for xe, ye in
                                             zip(x, y))
 
         if same(orig_num, num) and same(orig_denum, denum):
@@ -4512,7 +4560,7 @@ def mul_calculate(num, denum, aslist=False, out_type=None):
         if aslist:
             return []
         else:
-            return N.int8(1)
+            return numpy.int8(1)
 
     # Make sure we do not accidently upcast data types.
     if out_type is None:
@@ -4521,9 +4569,9 @@ def mul_calculate(num, denum, aslist=False, out_type=None):
         out_dtype = out_type.dtype
     one = theano._asarray(1, dtype=out_dtype)
 
-    v = reduce(N.multiply, num, one) / reduce(N.multiply, denum, one)
+    v = reduce(numpy.multiply, num, one) / reduce(numpy.multiply, denum, one)
     if aslist:
-        if N.all(v == 1):
+        if numpy.all(v == 1):
             return []
         else:
             return [v]
@@ -5179,7 +5227,7 @@ register_canonicalize(local_mul_zero)
 
 @gof.local_optimizer([T.true_div])
 def local_div_to_inv(node):
-    if node.op == T.true_div and N.all(
+    if node.op == T.true_div and numpy.all(
             local_mul_canonizer.get_constant(node.inputs[0]) == 1.0):
         out = node.outputs[0]
         new_out = T.inv(local_mul_canonizer.merge_num_denum(node.inputs[1:],
@@ -5245,6 +5293,20 @@ def local_intdiv_by_one(node):
             return [node.inputs[0].astype(node.outputs[0].dtype)]
 
 
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([T.int_div, T.true_div])
+def local_zero_div(node):
+    """0 / x -> 0
+    """
+    if isinstance(node.op, T.Elemwise) and isinstance(
+            node.op.scalar_op, (theano.scalar.IntDiv, theano.scalar.TrueDiv)):
+        if local_mul_canonizer.get_constant(node.inputs[0]) == 0:
+            ret = broadcast_like(0, node.outputs[0], node.fgraph)
+            ret.tag.values_eq_approx = values_eq_approx_remove_nan
+            return [ret]
+
+
 @gof.local_optimizer([T.pow])
 def local_pow_specialize(node):
     # here, we are past the point of canonicalization, so we don't want
@@ -5260,19 +5322,19 @@ def local_pow_specialize(node):
                                               ysym.type.broadcastable):
             rval = None
 
-            if N.all(y == 2):
+            if numpy.all(y == 2):
                 rval = [T.sqr(xsym)]
-            if N.all(y == 1):
+            if numpy.all(y == 1):
                 rval = [xsym]
-            if N.all(y == 0):
+            if numpy.all(y == 0):
                 rval = [T.fill(xsym, numpy.asarray(1, dtype=odtype))]
-            if N.all(y == 0.5):
+            if numpy.all(y == 0.5):
                 rval = [T.sqrt(xsym)]
-            if N.all(y == -0.5):
+            if numpy.all(y == -0.5):
                 rval = [T.inv(T.sqrt(xsym))]
-            if N.all(y == -1):
+            if numpy.all(y == -1):
                 rval = [T.inv(xsym)]
-            if N.all(y == -2):
+            if numpy.all(y == -2):
                 rval = [T.inv(T.sqr(xsym))]
             if rval:
                 rval[0] = T.cast(rval[0], odtype)
@@ -5599,7 +5661,7 @@ def local_log_add(node):
 
                 ret = max_pre + T.log1p(T.exp(T.add(*[p - max_pre
                                                       for p in pre_exp])))
-                ret.values_eq_approx = values_eq_approx_remove_inf
+                ret.tag.values_eq_approx = values_eq_approx_remove_inf
                 return [ret]
 
 
@@ -5611,9 +5673,9 @@ def add_calculate(num, denum, aslist=False, out_type=None):
         zero = theano._asarray(0, dtype=out_type.dtype)
     # zero = 0.0 if out_type is None else theano._asarray(0,
     # dtype=out_type.dtype)
-    v = reduce(N.add, num, zero) - reduce(N.add, denum, zero)
+    v = reduce(numpy.add, num, zero) - reduce(numpy.add, denum, zero)
     if aslist:
-        if N.all(v == 0):
+        if numpy.all(v == 0):
             return []
         else:
             return [v]
@@ -6023,7 +6085,7 @@ def local_log_erfc(node):
         threshold = 26.641747557
 
     ret = T.switch(x < threshold, node.outputs[0], stab_value)
-    ret.values_eq_approx = values_eq_approx_remove_inf
+    ret.tag.values_eq_approx = values_eq_approx_remove_inf
     return [ret]
 
 
@@ -6175,7 +6237,7 @@ def local_grad_log_erfc_neg(node):
     ret = T.switch(x < threshold, true_div_no_mul, stab_value)
     if y:
         ret = T.mul(ret, *y)
-    ret.values_eq_approx = values_eq_approx_remove_inf_nan
+    ret.tag.values_eq_approx = values_eq_approx_remove_inf_nan
     return [ret]
     """
 The libm used for the test is amdlibm

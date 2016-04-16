@@ -1,9 +1,10 @@
+from __future__ import absolute_import, print_function, division
 import logging
 
 logger = logging.getLogger(__name__)
 import numpy
 
-from six import iteritems
+from six import iteritems, integer_types
 from six.moves import xrange
 
 from theano.gof import Op, Apply
@@ -412,7 +413,7 @@ def spectral_radius_bound(X, log2_exponent):
     """
     if X.type.ndim != 2:
         raise TypeError('spectral_radius_bound requires a matrix argument', X)
-    if not isinstance(log2_exponent, int):
+    if not isinstance(log2_exponent, integer_types):
         raise TypeError('spectral_radius_bound requires an integer exponent',
                         log2_exponent)
     if log2_exponent <= 0:

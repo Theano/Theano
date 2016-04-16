@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import numpy as np
 import numpy
 import warnings
@@ -416,12 +417,12 @@ class BinCountOp(theano.Op):
         # Some dtypes are not supported by numpy's implementation of bincount.
         # Until another one is available, we should fail at graph construction
         # time, not wait for execution.
-        int_bitwidth = theano.gof.python_int_bitwidth()
+        int_bitwidth = theano.configdefaults.python_int_bitwidth()
         if int_bitwidth == 64:
             numpy_unsupported_dtypes = ('uint64',)
         if int_bitwidth == 32:
             numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
-        intp_bitwidth = theano.gof.local_bitwidth()
+        intp_bitwidth = theano.configdefaults.local_bitwidth()
         if intp_bitwidth == 32:
             out_type = basic.ivector()
         elif intp_bitwidth == 64:
@@ -598,7 +599,7 @@ class RepeatOp(theano.Op):
         # Some dtypes are not supported by numpy's implementation of repeat.
         # Until another one is available, we should fail at graph construction
         # time, not wait for execution.
-        ptr_bitwidth = theano.gof.local_bitwidth()
+        ptr_bitwidth = theano.configdefaults.local_bitwidth()
         if ptr_bitwidth == 64:
             numpy_unsupported_dtypes = ('uint64',)
         if ptr_bitwidth == 32:

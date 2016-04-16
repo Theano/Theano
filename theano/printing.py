@@ -3,7 +3,7 @@
 They all allow different way to print a graph or the result of an Op
 in a graph(Print Op)
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 from copy import copy
 import logging
 import os
@@ -13,11 +13,11 @@ import hashlib
 
 import numpy as np
 from six import string_types, integer_types, iteritems
+from six.moves import StringIO, reduce
 
 import theano
 from theano import gof
 from theano import config
-from six.moves import StringIO, reduce
 from theano.gof import Op, Apply
 from theano.compile import Function, debugmode, SharedVariable
 from theano.compile.profilemode import ProfileMode
@@ -88,7 +88,7 @@ def debugprint(obj, depth=-1, print_type=False,
     to the Apply's identifier, to indicate which output a line corresponds to.
 
     """
-    if not isinstance(depth, int):
+    if not isinstance(depth, integer_types):
         raise Exception("depth parameter must be an int")
     if file == 'str':
         _file = StringIO()

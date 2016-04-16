@@ -1,4 +1,5 @@
-from theano.gof.compiledir import short_platform
+from __future__ import absolute_import, print_function, division
+from theano.configdefaults import short_platform
 
 
 def test_short_platform():

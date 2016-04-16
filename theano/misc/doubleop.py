@@ -1,22 +1,33 @@
 # This is the example in the Theano/doc/tutorial/extending_theano.txt
+from __future__ import absolute_import, print_function, division
 
 import theano
 
 
 class DoubleOp(theano.Op):
-    """ Double each element of a tensor.
+    """
+    Double each element of a tensor.
 
-    :param x: input tensor.
+    Parameters
+    ----------
+    x : tensor
+        Input tensor
 
-    :return: a tensor of the same shape and dtype as the input with all
+    Returns
+    -------
+    tensor
+        a tensor of the same shape and dtype as the input with all
         values doubled.
 
-    :note:
-        this is a test note
+    Notes
+    -----
+    this is a test note
 
-    :seealso:
-        You can use the elemwise op to replace this example.
-        Just execute `x * 2` with x being a Theano variable.
+    See Also
+    --------
+    :class:`~theano.tensor.elemwise.Elemwise` : You can use this to replace
+    this example.  Just execute `x * 2` with x being a Theano variable.
+
 
     .. versionadded:: 0.6
     """

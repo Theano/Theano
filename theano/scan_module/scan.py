@@ -34,6 +34,7 @@ functions: ``scan()``, ``map()``, ``reduce()``, ``foldl()``,
 ``foldr()``.
 
 """
+from __future__ import absolute_import, print_function, division
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu "
                "Frederic Bastien "
@@ -48,7 +49,7 @@ import numpy
 import warnings
 
 from theano.compat import ifilter, izip
-from six import iteritems
+from six import iteritems, integer_types
 from six.moves import xrange
 from theano.compile import SharedVariable, function
 from theano import compile
@@ -372,7 +373,7 @@ def scan(fn,
     # To do that we check here to see the nature of n_steps
     n_fixed_steps = None
 
-    if isinstance(n_steps, (float, int)):
+    if isinstance(n_steps, (float, integer_types)):
         n_fixed_steps = int(n_steps)
     else:
         try:

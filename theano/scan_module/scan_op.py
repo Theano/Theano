@@ -46,7 +46,7 @@ relies on the following elements to work properly :
   needed to compute another output.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu "
@@ -62,7 +62,7 @@ import logging
 import time
 
 import numpy
-from six import iteritems
+from six import iteritems, integer_types
 from six.moves import xrange
 
 import theano
@@ -85,18 +85,6 @@ from theano.scan_module.scan_utils import safe_new, forced_replace
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan_op')
-
-
-from theano.configparser import AddConfigVar, BoolParam
-
-AddConfigVar('scan.allow_gc',
-             "Allow/disallow gc inside of Scan (default: False)",
-             BoolParam(False))
-
-AddConfigVar('scan.allow_output_prealloc',
-             "Allow/disallow memory preallocation for outputs inside of scan "
-             "(default: True)",
-             BoolParam(True))
 
 
 class Scan(PureOp):
@@ -849,7 +837,7 @@ class Scan(PureOp):
 
         profile = None
         if (theano.config.profile or
-            (isinstance(self.profile, (string_types, bool, int))
+            (isinstance(self.profile, (string_types, bool, integer_types))
                                       and self.profile)):
             if isinstance(self.profile, string_types):
                 profile = ScanProfileStats(name=self.profile)
@@ -1615,24 +1603,31 @@ class Scan(PureOp):
         # of iterations.
         # sequences
         seqs_shape = [x[1:] for x in input_shapes[1:1 + self.n_seqs]]
-        # inner_seqs = self.inputs[:self.n_seqs]
-        # outer_seqs = node.inputs[1:1 + self.n_seqs]
-        # for in_s, out_s in izip(inner_seqs, outer_seqs):
-        #     out_equivalent[in_s] = out_s[0]
+        # We disable extra infer_shape for now. See gh-3765.
+        extra_infer_shape = False
 
-        # mit_mot, mit_sot, sit_sot
-        # outer_inp_idx = 1 + self.n_seqs
-        # inner_inp_idx = self.n_seqs
+        if extra_infer_shape:
+            inner_seqs = self.inputs[:self.n_seqs]
+            outer_seqs = node.inputs[1:1 + self.n_seqs]
+            for in_s, out_s in izip(inner_seqs, outer_seqs):
+                out_equivalent[in_s] = out_s[0]
+
+            # mit_mot, mit_sot, sit_sot
+            outer_inp_idx = 1 + self.n_seqs
+            inner_inp_idx = self.n_seqs
+        else:
+            outer_inp_idx = 0
         n_outs = self.n_mit_mot + self.n_mit_sot + self.n_sit_sot
         outs_shape = []
         for idx in xrange(n_outs):
-            # mintap = abs(min(self.tap_array[idx]))
+            mintap = abs(min(self.tap_array[idx]))
             for k in self.tap_array[idx]:
                 outs_shape += [input_shapes[idx + self.n_seqs + 1][1:]]
-                # corresponding_tap = node.inputs[outer_inp_idx][mintap + k]
-                # out_equivalent[self.inputs[inner_inp_idx]] = corresponding_tap
-                # inner_inp_idx += 1
-            # outer_inp_idx += 1
+                if extra_infer_shape:
+                    corresponding_tap = node.inputs[outer_inp_idx][mintap + k]
+                    out_equivalent[self.inputs[inner_inp_idx]] = corresponding_tap
+                    inner_inp_idx += 1
+            outer_inp_idx += 1
 
         # shared_outs
         offset = 1 + self.n_seqs + n_outs

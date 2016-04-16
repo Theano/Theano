@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import copy
 import numpy
 import logging
@@ -10,14 +11,13 @@ from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB,
                         SequenceDB, Optimizer, toolbox)
 from theano.gof.optdb import LocalGroupDB
+from theano.ifelse import IfElse
 
 from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
-from theano.tensor import as_tensor_variable
 from theano.tensor.nnet.conv import ConvOp
-from theano.tensor.nnet.abstract_conv import (BaseAbstractConv2d,
-                                              AbstractConv2d,
+from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs)
 
@@ -74,7 +74,8 @@ def register_opt(*tags, **kwargs):
     return f
 
 register_opt('fast_compile')(theano.tensor.opt.local_track_shape_i)
-
+register_opt(final_opt=True, name='gpua_constant_folding')(
+    tensor.opt.constant_folding)
 gpu_optimizer.register('local_remove_all_assert',
                        theano.tensor.opt.local_remove_all_assert,
                        'unsafe')
@@ -301,6 +302,21 @@ def local_gpualloc_memset_0(node):
             return [new_op(*node.inputs)]
 
 
+# Don't register by default.
+@gof.local_optimizer([GpuAllocEmpty])
+def local_gpua_alloc_empty_to_zeros(node):
+    if isinstance(node.op, GpuAllocEmpty):
+        context_name = infer_context_name(*node.inputs)
+        z = numpy.asarray(0, dtype=node.outputs[0].dtype)
+        return [GpuAlloc()(as_gpuarray_variable(z, context_name),
+                           *node.inputs)]
+optdb.register('local_gpua_alloc_empty_to_zeros',
+               theano.tensor.opt.in2out(local_gpua_alloc_empty_to_zeros),
+               # After move to gpu and merge2, before inplace.
+               49.3,
+               'alloc_empty_to_zeros',)
+
+
 @register_opt()
 @local_optimizer([GpuContiguous])
 def local_gpu_contiguous_gpu_contiguous(node):
@@ -328,8 +344,7 @@ def local_gpureshape(node, context_name):
 @register_opt('fast_compile')
 @op_lifter([tensor.Rebroadcast])
 def local_gpu_rebroadcast(node, context_name):
-    if isinstance(node.inputs[0].owner.op, HostFromGpu):
-        return node.op(node.inputs[0].owner.inputs[0])
+    return node.op(as_gpuarray_variable(node.inputs[0], context_name))
 
 
 @register_opt('fast_compile')
@@ -452,7 +467,7 @@ def gpu_print_wrapper(op, cnda):
 @op_lifter([tensor.printing.Print])
 def local_gpu_print_op(node, context_name):
     x, = node.inputs
-    gpu_x, = x.owner.inputs
+    gpu_x = as_gpuarray_variable(x, context_name=context_name)
     new_op = node.op.__class__(global_fn=gpu_print_wrapper)
     new_op.old_op = node.op
     return new_op(gpu_x)
@@ -527,6 +542,21 @@ def local_gpu_pdbbreakpoint_op(node):
 
 
 @register_opt('fast_compile')
+@op_lifter([IfElse])
+def local_gpua_lazy_ifelse(node, context_name):
+    if node.op.gpu:
+        return
+    c = node.inputs[0]
+    inps = []
+    for v in node.inputs[1:]:
+        if isinstance(v.type, (tensor.TensorType, GpuArrayType)):
+            inps.append(as_gpuarray_variable(v, context_name))
+        else:
+            inps.append(v)
+    return IfElse(node.op.n_outs, gpu=True)(c, *inps, return_list=True)
+
+
+@register_opt('fast_compile')
 @op_lifter([tensor.Join])
 def local_gpua_join(node, context_name):
     return gpu_join
@@ -571,9 +601,13 @@ def local_gpua_subtensor(node, context_name):
 @register_opt('fast_compile')
 @op_lifter([tensor.IncSubtensor])
 def local_gpua_incsubtensor(node, context_name):
-    return GpuIncSubtensor(node.op.idx_list, node.op.inplace,
-                           node.op.set_instead_of_inc,
-                           node.op.destroyhandler_tolerate_aliased)
+    op = GpuIncSubtensor(node.op.idx_list, node.op.inplace,
+                         node.op.set_instead_of_inc,
+                         node.op.destroyhandler_tolerate_aliased)
+    ret = op(*node.inputs)
+    val = getattr(node.outputs[0].tag, 'nan_guard_mode_check', True)
+    ret.tag.nan_guard_mode_check = val
+    return ret
 
 
 @register_opt('fast_compile')
@@ -753,6 +787,16 @@ def local_gpua_dot22(node, context_name):
 
 
 @register_opt('fast_compile')
+@op_lifter([tensor.blas.Dot22Scalar])
+def local_gpua_dot22scalar(node, context_name):
+    x, y, a = node.inputs
+    x = as_gpuarray_variable(x, context_name)
+    y = as_gpuarray_variable(y, context_name)
+    z = GpuAllocEmpty(x.dtype, context_name)(x.shape[0], y.shape[1])
+    return [GpuGemm(inplace=False)(z, a, x, y, 0)]
+
+
+@register_opt('fast_compile')
 @op_lifter([tensor.basic.Eye])
 def local_gpua_eye(node, context_name):
     return GpuEye(dtype=node.op.dtype, context_name=context_name)
@@ -785,10 +829,9 @@ def local_gpua_softmaxwithbias(node, context_name):
 @register_opt('fast_compile')
 @op_lifter([theano.tensor.opt.Assert])
 def local_assert(node, context_name):
-    if (node.inputs[0].owner and
-            isinstance(node.inputs[0].owner.op, HostFromGpu)):
-        return [host_from_gpu(node.op(node.inputs[0].owner.inputs[0],
-                                      *node.inputs[1:]))]
+    return [host_from_gpu(node.op(as_gpuarray_variable(node.inputs[0],
+                                                       context_name),
+                                  *node.inputs[1:]))]
 
 
 @register_opt('fast_compile')
@@ -817,26 +860,6 @@ def local_lift_abstractconv2d(node, context_name):
     inps[1] = as_gpuarray_variable(node.inputs[1],
                                    context_name=context_name)
     return [node.op(*inps)]
-
-
-# This will deal with ops that don't have an explicit transfer but
-# have one of their inputs on the GPU already and the other not on the
-# GPU (to avoid endlessly replacing things).
-@register_opt('fast_compile')
-@local_optimizer([AbstractConv2d,
-                  AbstractConv2d_gradWeights,
-                  AbstractConv2d_gradInputs])
-def local_gpu_abstractconv2d(node):
-    if isinstance(node.op, BaseAbstractConv2d):
-        if ((isinstance(node.inputs[0].type, GpuArrayType) or
-             isinstance(node.inputs[1].type, GpuArrayType)) and
-            not (isinstance(node.inputs[0].type, GpuArrayType) or
-                 isinstance(node.inputs[1].type, GpuArrayType))):
-            inps = list(node.inputs)
-            ctx_name = infer_context_name(inps[0], inps[1])
-            inps[0] = as_gpuarray_variable(inps[0], context_name=ctx_name)
-            inps[1] = as_gpuarray_variable(inps[1], context_name=ctx_name)
-            return as_tensor_variable(node.op(*inps))
 
 # Register this here so that it goes after the abstract lifting
 register_opt()(conv_groupopt)
@@ -976,11 +999,12 @@ def _scan_type_infer(node):
                             context_name=context_name)
     return typebuild
 
+# Do not register in fast_run or fast_compile.
+# It will be added to fast_run if the GPU is enabled.
 optdb.register('gpua_scanOp_make_inplace',
                scan_opt.ScanInplaceOptimizer(typeInfer=_scan_type_infer,
                                              gpua_flag=True),
                75,
                'gpuarray',
-               'fast_run',
                'inplace',
                'scan')

@@ -15,7 +15,7 @@ as *dense* matrices.
 
 Theano's sparse package provides efficient algorithms, but its use is not recommended
 in all cases or for all matrices. As an obvious example, consider the case where
-the *sparsity proportion* if very low. The *sparsity proportion* refers to the
+the *sparsity proportion* is very low. The *sparsity proportion* refers to the
 ratio of the number of zero elements to the number of all elements in a matrix.
 A low sparsity proportion may result in the use of more space in memory
 since not only the actual data is stored, but also the position of nearly every
@@ -56,10 +56,10 @@ Compressed Sparse Format
 
 .. Changes to this section should also result in changes to library/sparse/index.txt.
 
-Theano supports two *compressed sparse formats*  ``csc`` and ``csr``, respectively based on columns
+Theano supports two *compressed sparse formats*: ``csc`` and ``csr``, respectively based on columns
 and rows. They have both the same attributes: ``data``, ``indices``, ``indptr`` and ``shape``.
 
-  * The ``data`` attribute is a one-dimentionnal ``ndarray`` which contains all the non-zero
+  * The ``data`` attribute is a one-dimensional ``ndarray`` which contains all the non-zero
     elements of the sparse matrix.
 
   * The ``indices`` and ``indptr`` attributes are used to store the position of the data in the

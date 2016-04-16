@@ -116,7 +116,7 @@ one. You can do it like this:
 >>> from theano import function
 >>> x, y = T.dscalars('x', 'y')
 >>> z = x + y
->>> f = function([x, In(y, default=1)], z)
+>>> f = function([x, In(y, value=1)], z)
 >>> f(33)
 array(34.0)
 >>> f(33, 2)
@@ -125,7 +125,7 @@ array(35.0)
 This makes use of the :ref:`In <function_inputs>` class which allows
 you to specify properties of your function's parameters with greater detail. Here we
 give a default value of 1 for *y* by creating a ``In`` instance with
-its ``default`` field set to 1.
+its ``value`` field set to 1.
 
 Inputs with default values must follow inputs without default
 values (like Python's functions).  There can be multiple inputs with default values. These parameters can
@@ -137,7 +137,7 @@ be set positionally or by name, as in standard Python:
 
 >>> x, y, w = T.dscalars('x', 'y', 'w')
 >>> z = (x + y) * w
->>> f = function([x, In(y, default=1), In(w, default=2, name='w_by_name')], z)
+>>> f = function([x, In(y, value=1), In(w, value=2, name='w_by_name')], z)
 >>> f(33)
 array(68.0)
 >>> f(33, 2)
@@ -154,8 +154,8 @@ array(33.0)
    that are passed as arguments.  The symbolic variable objects have name
    attributes (set by ``dscalars`` in the example above) and *these* are the
    names of the keyword parameters in the functions that we build.  This is
-   the mechanism at work in ``In(y, default=1)``.  In the case of ``In(w,
-   default=2, name='w_by_name')``. We override the symbolic variable's name
+   the mechanism at work in ``In(y, value=1)``.  In the case of ``In(w,
+   value=2, name='w_by_name')``. We override the symbolic variable's name
    attribute with a name to be used for this function.
 
 
@@ -206,15 +206,15 @@ Let's try it out!
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_examples.test_examples_8
 
->>> state.get_value()
+>>> print(state.get_value())
 0
 >>> accumulator(1)
 array(0)
->>> state.get_value()
+>>> print(state.get_value())
 1
 >>> accumulator(300)
 array(1)
->>> state.get_value()
+>>> print(state.get_value())
 301
 
 It is possible to reset the state. Just use the ``.set_value()`` method:
@@ -222,7 +222,7 @@ It is possible to reset the state. Just use the ``.set_value()`` method:
 >>> state.set_value(-1)
 >>> accumulator(3)
 array(-1)
->>> state.get_value()
+>>> print(state.get_value())
 2
 
 As we mentioned above, you can define more than one function to use the same
@@ -234,7 +234,7 @@ shared variable.  These functions can all update the value.
 >>> decrementor = function([inc], state, updates=[(state, state-inc)])
 >>> decrementor(2)
 array(2)
->>> state.get_value()
+>>> print(state.get_value())
 0
 
 You might be wondering why the updates mechanism exists.  You can always
@@ -261,7 +261,7 @@ for the purpose of one particular function.
 >>> skip_shared = function([inc, foo], fn_of_state, givens=[(state, foo)])
 >>> skip_shared(1, 3)  # we're using 3 for the state, not state.value
 array(7)
->>> state.get_value()  # old state still there, but we didn't use it
+>>> print(state.get_value())  # old state still there, but we didn't use it
 0
 
 The ``givens`` parameter can be used to replace any symbolic variable, not just a

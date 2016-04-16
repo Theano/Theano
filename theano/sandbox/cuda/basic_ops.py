@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import copy
 import logging
 import sys
@@ -1831,7 +1831,7 @@ class GpuCAReduce(GpuOp):
         """ % locals(), file=sio)
 
     def c_code_cache_version_apply(self, node):
-        version = [14]  # the version corresponding to the c code in this Op
+        version = [15]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
@@ -2163,7 +2163,7 @@ class GpuCAReduce(GpuOp):
             #      memory (a segment of a column).
             reducebuf = self._k_reduce_buf('Z[blockIdx.x * sZ0]', node, nodename, sub={})
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
-                                             "A[i0 * sA0 + i1 * sA1 + blockIdx.x * sA2]",
+                                             "A[i0 * sA0 + i1 * sA1 + ((int)blockIdx.x) * sA2]",
                                              {}, True)
             reduce_init = self._assign_init("A[blockIdx.x * sA2]")
             print("""
@@ -2436,7 +2436,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
 
     """
 
-    # __hash__, __eq__, __str__ come from tensor.Subtensor
+    # __hash__, __eq__, __str__ come from tensor.Reshape
     def make_node(self, x, shp):
         x = as_cuda_ndarray_variable(x)
         shp = tensor.as_tensor_variable(shp)
@@ -2888,7 +2888,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         out[0] = x
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         if (node.inputs[0].ndim != node.inputs[1].ndim):
@@ -2961,7 +2961,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
                   %(fail)s;
              }
              if (%(set_instead_of_inc)s) {
-                 ret = CudaNdarray_CopyFromCudaNdarray((CudaNdarray *) row_x, (CudaNdarray *) row_y);
+                 ret = CudaNdarray_CopyFromCudaNdarray((CudaNdarray *) row_x, (CudaNdarray *) row_y, 1);
              } else {
                  ret = CudaNdarray_inplace_elemwise(row_x, row_y, IADD);
              }
@@ -3008,7 +3008,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                        32: tensor.basic._convert_to_int32,
                        64: tensor.basic._convert_to_int64
         }
-        intwidth = theano.gof.compiledir.python_int_bitwidth()
+        intwidth = theano.configdefaults.python_int_bitwidth()
         ilist_ = convert_map[intwidth](ilist_)
 
         assert x_.type.dtype == y_.type.dtype
@@ -3680,7 +3680,15 @@ class GpuAllocEmpty(GpuOp):
         # The outut can contain nan/inf.  output.type is a new
         # instance, so we can do this only for that variable.
         output.type.filter_checks_isfinite = False
+        output.tag.nan_guard_mode_check = False
         return Apply(self, shape, [output])
+
+    def debug_perform(self, node, inputs, out_):
+        self.perform(node, inputs, out_)
+        # __setitem__ is limited on CudaNdarray
+        tmp = numpy.empty(out_[0][0].shape, dtype='float32')
+        tmp.fill(-123456789)
+        out_[0][0][:] = tmp
 
     def perform(self, node, inputs, out_):
         out, = out_
@@ -3760,6 +3768,10 @@ class GpuAlloc(GpuAllocEmpty):
         v = as_cuda_ndarray_variable(value)
         shape, output = self.validate_shape(shape)
         return Apply(self, [v] + shape, [output])
+
+    # This is required because the superclass (GpuAllocEmpty) also has it.
+    def debug_perform(self, node, inputs, out_):
+        self.perform(node, inputs, out_)
 
     def perform(self, node, inputs, out_):
         # the super class (GpuAllocEmpty) allocates memory, we fill it

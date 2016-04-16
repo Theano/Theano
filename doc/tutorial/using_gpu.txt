@@ -213,8 +213,8 @@ Tips for Improving Performance on GPU
   frequently-accessed data (see :func:`shared()<shared.shared>`).  When using
   the GPU, *float32* tensor ``shared`` variables are stored on the GPU by default to
   eliminate transfer time for GPU ops using those variables.
-* If you aren't happy with the performance you see, try building your functions with
-  ``mode='ProfileMode'``. This should print some timing information at program
+* If you aren't happy with the performance you see, try running your script with
+  ``profile=True`` flag. This should print some timing information at program
   termination. Is time being used sensibly?   If an op or Apply is
   taking more time than its share, then if you know something about GPU
   programming, have a look at how it's implemented in theano.sandbox.cuda.
@@ -339,7 +339,7 @@ to the exercise in section :ref:`Configuration Settings and Compiling Mode<using
 
 Is there an increase in speed from CPU to GPU?
 
-Where does it come from? (Use ``ProfileMode``)
+Where does it come from? (Use ``profile=True`` flag.)
 
 What can be done to further increase the speed of the GPU version? Put your ideas to test.
 

@@ -2,7 +2,7 @@
 Driver of graph construction, optimization, and linking.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import copy
 from six import string_types, iteritems, iterkeys
@@ -199,7 +199,7 @@ def std_fgraph(input_specs, output_specs, accept_inplace=False):
     return fgraph, list(map(SymbolicOutput, updates))
 
 
-std_fgraph.features = [gof.toolbox.PreserveNames]
+std_fgraph.features = [gof.toolbox.PreserveVariableAttributes]
 
 
 class AliasedMemoryError(Exception):
@@ -928,7 +928,9 @@ class Function(object):
             profile.fct_call_time += dt_call
             if hasattr(self.fn, 'update_profile'):
                 self.fn.update_profile(profile)
-
+            if profile.ignore_first_call:
+                profile.reset()
+                profile.ignore_first_call = False
         if self.return_none:
             return None
         elif self.unpack_single and len(outputs) == 1:
@@ -967,9 +969,14 @@ class Function(object):
             for node in self.nodes_with_inner_function:
                 ops_with_inner_function[node.op].free()
 
+    def get_shared(self):
+        """
+        Return the shared variable read or updated by by this function.
+        """
+        return [i.variable for i in self.maker.inputs if i.implicit]
+
 
 # pickling/deepcopy support for Function
-
 def _pickle_Function(f):
     # copy of the input storage list
     ins = list(f.input_storage)

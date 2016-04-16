@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import logging
 
 import numpy
@@ -23,20 +24,12 @@ class GpuSparseBlockGemv(GpuOp):
     to change without notice.  Use the sandbox.blocksparse.sparse_block_dot()
     function for a stable interface.
     """
+    __props__ = ('inplace',)
 
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
-
-    def __str__(self):
-        return "GpuSparseBlockGemv%s" % ("{inplace}" if self.inplace else "")
 
     def make_node(self, o, W, h, inputIdx, outputIdx):
         o = basic_ops.as_cuda_ndarray_variable(o)
@@ -350,27 +343,19 @@ gpu_sparse_block_gemv_inplace = GpuSparseBlockGemv(True)
 
 class GpuSparseBlockOuter(GpuOp):
     """
-    CPU version of SparseBlockOuter. See SparseBlockOuter's docstring for more
+    GPU version of SparseBlockOuter. See SparseBlockOuter's docstring for more
     information.
 
     This op should not be called directly since its interface is
     subject to change without notice.  It is involved in the gradient
     of GpuSparseBlockGemv. The gradient is not implemented.
     """
+    __props__ = ('inplace',)
 
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
-
-    def __str__(self):
-        return "GpuSparseBlockOuter%s" % ("{inplace}" if self.inplace else "")
 
     def make_node(self, o, x, y, xIdx, yIdx, alpha=None):
         one = tensor.constant(numpy.asarray(1.0, dtype='float32'))

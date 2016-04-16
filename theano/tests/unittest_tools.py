@@ -1,10 +1,13 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 from copy import copy, deepcopy
 from functools import wraps
 import logging
-from six.moves import StringIO
 import sys
 import unittest
+from nose_parameterized import parameterized
+
+from six import integer_types
+from six.moves import StringIO
 
 try:
     from nose.plugins.attrib import attr
@@ -29,6 +32,13 @@ except ImportError:
 _logger = logging.getLogger("theano.tests.unittest_tools")
 
 
+def custom_name_func(testcase_func, param_num, param):
+    return "%s_%s" % (
+        testcase_func.__name__,
+        parameterized.to_safe_name("_".join(str(x) for x in param.args)),
+    )
+
+
 def fetch_seed(pseed=None):
     """
     Returns the seed to use for running the unit tests.
@@ -51,8 +61,7 @@ def fetch_seed(pseed=None):
         else:
             seed = None
     except ValueError:
-        print(('Error: config.unittests.rseed contains '
-                              'invalid seed, using None instead'), file=sys.stderr)
+        print(('Error: config.unittests.rseed contains ' 'invalid seed, using None instead'), file=sys.stderr)
         seed = None
 
     return seed
@@ -66,8 +75,7 @@ def seed_rng(pseed=None):
 
     seed = fetch_seed(pseed)
     if pseed and pseed != seed:
-        print('Warning: using seed given by config.unittests.rseed=%i'\
-                'instead of seed %i given as parameter' % (seed, pseed), file=sys.stderr)
+        print('Warning: using seed given by config.unittests.rseed=%i' 'instead of seed %i given as parameter' % (seed, pseed), file=sys.stderr)
     numpy.random.seed(seed)
     return seed
 
@@ -96,6 +104,7 @@ verify_grad.E_grad = T.verify_grad.E_grad
 
 
 class TestOptimizationMixin(object):
+
     def assertFunctionContains(self, f, op, min=1, max=sys.maxsize):
         toposort = f.maker.fgraph.toposort()
         matches = [node for node in toposort if node.op == op]
@@ -172,6 +181,7 @@ class T_OpContractMixin(object):
 
 
 class InferShapeTester(unittest.TestCase):
+
     def setUp(self):
         seed_rng()
         # Take into account any mode that may be defined in a child class
@@ -206,7 +216,7 @@ class InferShapeTester(unittest.TestCase):
             mode = mode.excluding(*excluding)
         if warn:
             for var, inp in zip(inputs, numeric_inputs):
-                if isinstance(inp, (int, float, list, tuple)):
+                if isinstance(inp, (integer_types, float, list, tuple)):
                     inp = var.type.filter(inp)
                 if not hasattr(inp, "shape"):
                     continue
@@ -311,6 +321,7 @@ def str_diagnostic(expected, value, rtol, atol):
 
 
 class WrongValue(Exception):
+
     def __init__(self, expected_val, val, rtol, atol):
         Exception.__init__(self)  # to be compatible with python2.4
         self.val1 = expected_val

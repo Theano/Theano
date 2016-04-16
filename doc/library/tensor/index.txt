@@ -23,7 +23,9 @@ They are grouped into the following sections:
     shared_randomstreams
     signal/index
     utils
+    elemwise
     extra_ops
     io
+    opt
     slinalg
     nlinalg

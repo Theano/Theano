@@ -21,13 +21,13 @@ Description
 * Mathematical symbolic expression compiler
 * Dynamic C/CUDA code generation
 * Efficient symbolic differentiation
- 
+
   * Theano computes derivatives of functions with one or many inputs.
 
 * Speed and stability optimizations
 
   * Gives the right answer for ``log(1+x)`` even if x is really tiny.
-  
+
 * Works on Linux, Mac and Windows
 * Transparent use of a GPU
 
@@ -38,7 +38,7 @@ Description
 * Extensive unit-testing and self-verification
 
   * Detects and diagnoses many types of errors
-  
+
 * On CPU, common machine learning algorithms are 1.6x to 7.5x faster than competitive alternatives
 
   * including specialized implementations in C/C++, NumPy, SciPy, and Matlab
@@ -76,7 +76,7 @@ Exercise 1
   f = theano.function([a], out)   # compile function
   print f([0, 1, 2])
   # prints `array([0, 2, 1026])`
-  
+
   theano.printing.pydotprint_variables(b, outfile="f_unoptimized.png", var_with_name_simple=True)
   theano.printing.pydotprint(f, outfile="f_optimized.png", var_with_name_simple=True)
 
@@ -133,7 +133,7 @@ Theano flags
 
 Theano can be configured with flags. They can be defined in two ways
 
-* With an environment variable: ``THEANO_FLAGS="mode=ProfileMode,ProfileMode.profile_memory=True"``
+* With an environment variable: ``THEANO_FLAGS="profile=True,profile_memory=True"``
 
 * With a configuration file that defaults to ``~/.theanorc``
 
@@ -142,7 +142,7 @@ Exercise 2
 -----------
 
 .. code-block:: python
-    
+
     import numpy
     import theano
     import theano.tensor as tt
@@ -225,7 +225,7 @@ GPU
 * Only 32 bit floats are supported (being worked on)
 * Only 1 GPU per process. Wiki page on using multiple process for multiple GPU
 * Use the Theano flag ``device=gpu`` to tell to use the GPU device
-  
+
  * Use ``device=gpu{0, 1, ...}`` to specify which GPU if you have more than one
  * Shared variables with float32 dtype are by default moved to the GPU memory space
 
@@ -234,7 +234,7 @@ GPU
  * Be sure to use ``floatX`` (``theano.config.floatX``) in your code
  * Cast inputs before putting them into a shared variable
  * Cast "problem": int32 with float32 to float64
-    
+
   * Insert manual cast in your code or use [u]int{8,16}
   * The mean operator is worked on to make the output stay in float32.
 
@@ -256,7 +256,7 @@ Symbolic variables
 ------------------
 
 * # Dimensions
-    
+
  * tt.scalar, tt.vector, tt.matrix, tt.tensor3, tt.tensor4
 
 * Dtype
@@ -283,7 +283,7 @@ Creating symbolic variables: Broadcastability
 
 
 Details regarding symbolic broadcasting...
-  
+
 * Broadcastability must be specified when creating the variable
 
 * The only shorcut with broadcastable dimensions are: **tt.row** and **tt.col**

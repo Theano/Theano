@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 from six.moves import reduce
 from six import string_types

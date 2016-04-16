@@ -4,7 +4,7 @@ This file is based on hpu.nns.driver_kouh of Oct 22 2009.
 It is meant to be used to benchmark loop fusion optimizations.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 # this experiments are designed to use file-based configuration
 # rather than db-based configuration.
 # so state is ignored
@@ -19,7 +19,7 @@ import theano
 from theano.compile import shared, pfunc
 from theano import tensor
 from theano.tensor.nnet import softplus
-from theano.sandbox.softsign import softsign
+from theano.tensor.nnet.nnet import softsign
 
 _logger = logging.getLogger('theano.sandbox.cuda.tests.test_bench_loopfusion')
 

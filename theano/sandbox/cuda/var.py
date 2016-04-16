@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import copy
 
 import numpy
@@ -44,9 +44,6 @@ class _operators(tensor.basic._tensor_py_operators):
 class CudaNdarrayVariable(_operators, Variable):
     pass
 
-    # override default
-    def __repr_test_value__(self):
-        return repr(numpy.array(theano.gof.op.get_test_value(self)))
 CudaNdarrayType.Variable = CudaNdarrayVariable
 
 

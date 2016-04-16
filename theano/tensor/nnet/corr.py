@@ -1,5 +1,8 @@
+from __future__ import absolute_import, print_function, division
 import os
 import logging
+
+from six import integer_types
 
 import theano
 from theano import Apply
@@ -30,7 +33,7 @@ class BaseCorrMM(gof.Op):
     __props__ = ('border_mode', 'subsample')
 
     def __init__(self, border_mode="valid", subsample=(1, 1)):
-        if isinstance(border_mode, int):
+        if isinstance(border_mode, integer_types):
             if border_mode < 0:
                 raise ValueError(
                     'invalid border_mode {}, which must be a '
@@ -52,7 +55,7 @@ class BaseCorrMM(gof.Op):
         self.border_mode = border_mode
         if len(subsample) != 2:
             raise ValueError("subsample must have two elements")
-        self.subsample = subsample
+        self.subsample = tuple(subsample)
 
     @property
     def pad(self):
@@ -86,7 +89,7 @@ class BaseCorrMM(gof.Op):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (1, 0)
+        return (1, 1)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -149,6 +152,8 @@ class BaseCorrMM(gof.Op):
             If self.border_mode == 'half', a variable giving the width of the
             filters for direction="backprop weights".  Ignored otherwise.
         """
+        if not theano.config.blas.ldflags:
+            raise NotImplementedError("C code for CorrMM* classes need a blas library.")
         dH, dW = self.subsample
         if self.border_mode == "half":
             padH = padW = -1
@@ -177,13 +182,13 @@ class BaseCorrMM(gof.Op):
         if ((direction != 0) and (dH != 1)) or ((direction == 1) and (padH == -1)):
             if not height:
                 raise ValueError("height must be given for backprop with vertical sampling or border_mode='half'")
-            height = '(*(npy_int*)(PyArray_DATA(%s)))' % height
+            height = '(*(npy_int64 *)(PyArray_DATA(%s)))' % height
         else:
             height = '-1'
         if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW == -1)):
             if not width:
                 raise ValueError("width must be given for backprop with horizontal sampling or border_mode='half'")
-            width = '(*(npy_int*)(PyArray_DATA(%s)))' % width
+            width = '(*(npy_int64 *)(PyArray_DATA(%s)))' % width
         else:
             width = '-1'
         sub = sub.copy()
@@ -314,8 +319,8 @@ class BaseCorrMM(gof.Op):
         if (NULL == %(out)s)
         {
             PyErr_Format(PyExc_RuntimeError,
-                    "BaseCorrMM: Failed to allocate output of %%d x %%d x %%d x %%d",
-                    out_dim[0], out_dim[1], out_dim[2], out_dim[3]);
+                    "BaseCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld",
+                    (long long)out_dim[0], (long long)out_dim[1], (long long)out_dim[2], (long long)out_dim[3]);
             %(fail)s
         }
     }
@@ -424,7 +429,7 @@ class CorrMM_gradWeights(BaseCorrMM):
             if shape is None:
                 raise ValueError('shape must be given if subsample != (1, 1)'
                                  ' or border_mode == "half"')
-            height_width = [shape[0], shape[1]]
+            height_width = [as_tensor_variable(shape[0]).astype('int64'), as_tensor_variable(shape[1]).astype('int64')]
         else:
             height_width = []
 
@@ -519,7 +524,7 @@ class CorrMM_gradInputs(BaseCorrMM):
             raise TypeError('topgrad must be 4D tensor')
         if self.subsample != (1, 1) and shape is None:
             raise ValueError('shape must be given if subsample != (1, 1)')
-        height_width = [shape[0], shape[1]] if self.subsample != (1, 1) else []
+        height_width = [as_tensor_variable(shape[0]).astype('int64'), as_tensor_variable(shape[1]).astype('int64')] if self.subsample != (1, 1) else []
 
         broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
                          False, False]

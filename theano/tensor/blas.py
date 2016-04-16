@@ -124,14 +124,11 @@ If arguments to GEMM are dimshuffled vectors, then we can use GEMV
 instead. This optimization is `local_gemm_to_gemv`.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import copy
 import logging
 import os
-import sys
-import textwrap
 import time
-import warnings
 
 import numpy
 import numpy.distutils
@@ -140,15 +137,14 @@ try:
 except ImportError:
     pass
 
-from theano.configparser import config, AddConfigVar, StrParam
 from six import iteritems
 from six.moves import reduce, xrange
+from theano import config
 from theano.gof import (utils, Op, view_roots,
                         local_optimizer, Optimizer,
                         InconsistencyError, toolbox, SequenceDB,
                         EquilibriumOptimizer, Apply,
                         ReplacementDidntRemovedError)
-from theano.gof.cmodule import GCC_compiler
 from theano.printing import pprint, FunctionPrinter, debugprint
 from theano.compile.mode import optdb
 import theano.scalar
@@ -158,211 +154,6 @@ from theano.tensor.blas_headers import blas_header_version
 from theano.tensor.opt import in2out, local_dimshuffle_lift
 
 _logger = logging.getLogger('theano.tensor.blas')
-
-
-# We need to define blas.ldflag before we try to import scipy.
-# Otherwise, we give an optimization warning for no reason in some cases.
-def default_blas_ldflags():
-    global numpy
-    try:
-        if (hasattr(numpy.distutils, '__config__') and
-                numpy.distutils.__config__):
-            # If the old private interface is available use it as it
-            # don't print information to the user.
-            blas_info = numpy.distutils.__config__.blas_opt_info
-        else:
-            # We do this import only here, as in some setup, if we
-            # just import theano and exit, with the import at global
-            # scope, we get this error at exit: "Exception TypeError:
-            # "'NoneType' object is not callable" in <bound method
-            # Popen.__del__ of <subprocess.Popen object at 0x21359d0>>
-            # ignored"
-
-            # This happen with Python 2.7.3 |EPD 7.3-1 and numpy 1.8.1
-            import numpy.distutils.system_info  # noqa
-
-            # We need to catch warnings as in some cases NumPy print
-            # stuff that we don't want the user to see like this:
-            """
-SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_info.py:564: UserWarning: Specified path /home/vagrant/src/master-env/lib is invalid.
-  warnings.warn('Specified path %s is invalid.' % d)
-"""
-            # I'm not able to remove all printed stuff
-            with warnings.catch_warnings(record=True):
-                numpy.distutils.system_info.system_info.verbosity = 0
-                blas_info = numpy.distutils.system_info.get_info("blas_opt")
-
-        # If we are in a EPD installation, mkl is available
-        if "EPD" in sys.version:
-            use_unix_epd = True
-            if sys.platform == 'win32':
-                return ' '.join(
-                    ['-L%s' % os.path.join(sys.prefix, "Scripts")] +
-                    # Why on Windows, the library used are not the
-                    # same as what is in
-                    # blas_info['libraries']?
-                    ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
-                                          "mk2_rt"]])
-            elif sys.platform == 'darwin':
-                # The env variable is needed to link with mkl
-                new_path = os.path.join(sys.prefix, "lib")
-                v = os.getenv("DYLD_FALLBACK_LIBRARY_PATH", None)
-                if v is not None:
-                    # Explicit version could be replaced by a symbolic
-                    # link called 'Current' created by EPD installer
-                    # This will resolve symbolic links
-                    v = os.path.realpath(v)
-
-                # The python __import__ don't seam to take into account
-                # the new env variable "DYLD_FALLBACK_LIBRARY_PATH"
-                # when we set with os.environ['...'] = X or os.putenv()
-                # So we warn the user and tell him what todo.
-                if v is None or new_path not in v.split(":"):
-                    _logger.warning(
-                        "The environment variable "
-                        "'DYLD_FALLBACK_LIBRARY_PATH' does not contain "
-                        "the '%s' path in its value. This will make "
-                        "Theano use a slow version of BLAS. Update "
-                        "'DYLD_FALLBACK_LIBRARY_PATH' to contain the "
-                        "said value, this will disable this warning."
-                        % new_path)
-
-                    use_unix_epd = False
-            if use_unix_epd:
-                return ' '.join(
-                    ['-L%s' % os.path.join(sys.prefix, "lib")] +
-                    ['-l%s' % l for l in blas_info['libraries']])
-        # Canopy
-        if "Canopy" in sys.prefix:
-            subsub = 'lib'
-            if sys.platform == 'win32':
-                subsub = 'Scripts'
-            lib_path = os.path.join(sys.base_prefix, subsub)
-            if not os.path.exists(lib_path):
-                # Old logic to find the path. I don't think we still
-                # need it, but I don't have the time to test all
-                # installation configuration. So I keep this as a fall
-                # back in case the current expectation don't work.
-
-                # This old logic don't work when multiple version of
-                # Canopy is installed.
-                p = os.path.join(sys.base_prefix, "..", "..", "appdata")
-                assert os.path.exists(p), "Canopy changed the location of MKL"
-                lib_paths = os.listdir(p)
-                # Try to remove subdir that can't contain MKL
-                for sub in lib_paths:
-                    if not os.path.exists(os.path.join(p, sub, subsub)):
-                        lib_paths.remove(sub)
-                assert len(lib_paths) == 1, (
-                    "Unexpected case when looking for Canopy MKL libraries",
-                    p, lib_paths, [os.listdir(os.path.join(p, sub))
-                                   for sub in lib_paths])
-                lib_path = os.path.join(p, lib_paths[0], subsub)
-                assert os.path.exists(lib_path), "Canopy changed the location of MKL"
-            if sys.platform == "linux2" or sys.platform == "darwin":
-                return ' '.join(
-                    ['-L%s' % lib_path] +
-                    ['-l%s' % l for l in blas_info['libraries']])
-            elif sys.platform == 'win32':
-                return ' '.join(
-                    ['-L%s' % lib_path] +
-                    # Why on Windows, the library used are not the
-                    # same as what is in blas_info['libraries']?
-                    ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
-                                          "mk2_rt"]])
-        # Anaconda
-        if "Anaconda" in sys.version and sys.platform == "win32":
-            # If the "mkl-service" conda package (available
-            # through Python package "mkl") is installed and
-            # importable, then the libraries (installed by conda
-            # package "mkl-rt") are actually available.  Using
-            # "conda install mkl" will install both, as well as
-            # optimized versions of numpy and scipy.
-            try:
-                import mkl  # noqa
-            except ImportError as e:
-                _logger.info('Conda mkl is not available: %s', e)
-            else:
-                # This branch is executed if no exception was raised
-                lib_path = os.path.join(sys.prefix, 'DLLs')
-                flags = ['-L%s' % lib_path]
-                flags += ['-l%s' % l for l in ["mkl_core",
-                                               "mkl_intel_thread",
-                                               "mkl_rt"]]
-                res = try_blas_flag(flags)
-                if res:
-                    return res
-
-        ret = (
-            # TODO: the Gemm op below should separate the
-            # -L and -l arguments into the two callbacks
-            # that CLinker uses for that stuff.  for now,
-            # we just pass the whole ldflags as the -l
-            # options part.
-            ['-L%s' % l for l in blas_info.get('library_dirs', [])] +
-            ['-l%s' % l for l in blas_info.get('libraries', [])] +
-            blas_info.get('extra_link_args', []))
-        res = try_blas_flag(ret)
-        if res:
-            return res
-
-        # Try to add the anaconda lib directory to runtime loading of lib.
-        # This fix some case with Anaconda 2.3 on Linux.
-        # Newer Anaconda still have this problem but only have
-        # Continuum in sys.version.
-        if (("Anaconda" in sys.version or
-             "Continuum" in sys.version) and
-                "linux" in sys.platform):
-            lib_path = os.path.join(sys.prefix, 'lib')
-            ret.append('-Wl,-rpath,' + lib_path)
-            res = try_blas_flag(ret)
-            if res:
-                return res
-
-    except KeyError:
-        pass
-
-    # Even if we could not detect what was used for numpy, or if these
-    # libraries are not found, most Linux systems have a libblas.so
-    # readily available. We try to see if that's the case, rather
-    # than disable blas. To test it correctly, we must load a program.
-    # Otherwise, there could be problem in the LD_LIBRARY_PATH.
-    return try_blas_flag(['-lblas'])
-
-
-def try_blas_flag(flags):
-    test_code = textwrap.dedent("""\
-        extern "C" double ddot_(int*, double*, int*, double*, int*);
-        int main(int argc, char** argv)
-        {
-            int Nx = 5;
-            int Sx = 1;
-            double x[5] = {0, 1, 2, 3, 4};
-            double r = ddot_(&Nx, x, &Sx, x, &Sx);
-
-            if ((r - 30.) > 1e-6 || (r - 30.) < -1e-6)
-            {
-                return -1;
-            }
-            return 0;
-        }
-        """)
-    cflags = flags + ['-L' + d for d in theano.gof.cmodule.std_lib_dirs()]
-    res = GCC_compiler.try_compile_tmp(
-        test_code, tmp_prefix='try_blas_',
-        flags=cflags, try_run=True)
-    # res[0]: shows successful compilation
-    # res[1]: shows successful execution
-    if res and res[0] and res[1]:
-        return ' '.join(flags)
-    else:
-        return ""
-
-
-AddConfigVar('blas.ldflags',
-             "lib[s] to include for [Fortran] level-3 blas implementation",
-             StrParam(default_blas_ldflags))
-
 
 try:
     import scipy.linalg.blas
@@ -390,6 +181,24 @@ except ImportError as e:
                         'dot(matrix, vector), dot(vector, matrix) and '
                         'dot(vector, vector) (%s)',
                         str(e))
+
+
+# If check_init_y() == True we need to initialize y when beta == 0.
+def check_init_y():
+    if check_init_y._result is None:
+        if not have_fblas:
+            check_init_y._result = False
+
+        y = float('NaN') * numpy.ones((2,))
+        x = numpy.ones((2,))
+        A = numpy.ones((2, 2))
+        gemv = _blas_gemv_fns[y.dtype]
+        gemv(1.0, A.T, x, 0.0, y, overwrite_y=True, trans=True)
+        check_init_y._result = numpy.isnan(y).any()
+
+    return check_init_y._result
+
+check_init_y._result = None
 
 
 class Gemv(Op):
@@ -431,14 +240,6 @@ class Gemv(Op):
             raise TypeError('gemv requires vector for x', x.type)
         if y.ndim != 1:
             raise TypeError('gemv requires vector for y', y.type)
-        if y.broadcastable[0] != A.broadcastable[0]:
-            raise TypeError('broadcastable mismatch between y and A',
-                            (y.type, A.type))
-        # The following is not grounds for error because as long as
-        # sizes are 1 at time of perform() there is no problem
-        # if x.broadcastable[0] != A.broadcastable[1]:
-        # raise TypeError('broadcastable mismatch between x and A',
-        # (x.type, A.type))
         return Apply(self, [y, alpha, A, x, beta], [y.type()])
 
     def perform(self, node, inputs, out_storage):
@@ -452,6 +253,9 @@ class Gemv(Op):
                     'Incompatible shapes for gemv '
                     '(beta * y + alpha * dot(A, x)). y: %s, A: %s, x: %s '
                     % (y.shape, A.shape, x.shape))
+
+            if beta == 0 and check_init_y():
+                y.fill(0)
 
             # Here I suppose that A is in c order. If we don't make it
             #  explicitly as fortran order, scipy 0.7.2 seam to create
@@ -467,11 +271,15 @@ class Gemv(Op):
             out = numpy.dot(A, x)
             if alpha != 1:
                 out *= alpha
-            if beta != 1:
-                out += beta * y
-            else:
-                out += y
+            if beta != 0:
+                if beta != 1:
+                    out += beta * y
+                else:
+                    out += y
             out_storage[0][0] = numpy.asarray(out, dtype=y.dtype)
+
+    def infer_shape(self, node, input_shapes):
+        return [input_shapes[0]]
 
 gemv_no_inplace = Gemv(inplace=False)
 gemv_inplace = Gemv(inplace=True)
@@ -539,6 +347,9 @@ class Ger(Op):
         else:
             A += numpy.outer(cx, cy)
         cZ[0] = A
+
+    def infer_shape(self, node, input_shapes):
+        return [input_shapes[0]]
 
 
 ger = Ger(destructive=False)
@@ -1001,6 +812,8 @@ class Gemm(GemmRelated):
     E_mixed = 'gemm requires matching dtypes'
     E_float = 'gemm requires floating-point dtypes'
 
+    __props__ = ('inplace',)
+
     def __init__(self, inplace):
         self.inplace = inplace
         if self.inplace:
@@ -1008,13 +821,6 @@ class Gemm(GemmRelated):
             self.setup_z_Nz_Sz = self.setup_z_Nz_Sz_inplace
         else:
             self.setup_z_Nz_Sz = self.setup_z_Nz_Sz_outplace
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.inplace == other.inplace)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
 
     def __str__(self):
         if self.inplace:
@@ -1123,6 +929,9 @@ class Gemm(GemmRelated):
                 z *= b
                 z += a * numpy.dot(x, y)
             zout[0] = z
+
+    def infer_shape(self, node, input_shapes):
+        return [input_shapes[0]]
 
     setup_z_Nz_Sz_inplace = """
         if (%(_zout)s != %(_z)s)
@@ -1294,14 +1103,14 @@ def _as_scalar(res, dtype=None):
 def _is_real_matrix(res):
     return (res.type.dtype in ('float32', 'float64') and
             res.type.ndim == 2 and
-            res.type.broadcastable[0] == False and
-            res.type.broadcastable[1] == False)  # cope with tuple vs. list
+            res.type.broadcastable[0] is False and
+            res.type.broadcastable[1] is False)  # cope with tuple vs. list
 
 
 def _is_real_vector(res):
     return (res.type.dtype in ('float32', 'float64') and
             res.type.ndim == 1 and
-            res.type.broadcastable[0] == False)
+            res.type.broadcastable[0] is False)
 
 
 def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip=True):
@@ -1747,8 +1556,8 @@ class Dot22(GemmRelated):
             e.args = e.args + (x.shape, y.shape)
             raise
 
-    def __str__(self):
-        return self.__class__.__name__
+    def infer_shape(self, node, input_shapes):
+        return [[input_shapes[0][0], input_shapes[1][1]]]
 
     setup_z_Nz_Sz = """
         if ((NULL == %(_zout)s)
@@ -2018,8 +1827,8 @@ class Dot22Scalar(GemmRelated):
             e.args = e.args + (x.shape, y.shape)
             raise
 
-    def __str__(self):
-        return self.__class__.__name__
+    def infer_shape(self, node, input_shapes):
+        return [[input_shapes[0][0], input_shapes[1][1]]]
 
     setup_z_Nz_Sz = Dot22.setup_z_Nz_Sz
 
@@ -2346,6 +2155,10 @@ class BatchedDot(Op):
         _x, _y = inp
         _z, = out
         fail = sub["fail"]
+
+        if not config.blas.ldflags:
+            return super(BatchedDot, self).c_code(node, name,
+                                                  inp, out, sub)
 
         # generate contiguity condition
         def contiguous(var, ndim):

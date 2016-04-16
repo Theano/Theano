@@ -64,7 +64,7 @@ Defining the theano function
 
 .. code-block:: python
 
-   f = theano.function(..., updates=updates)
+   f = theano.function(..., updates=[(lookup_table, updates)])
 
 Note that you can compute the gradient of the cost function w.r.t.
 the entire lookup_table, and the gradient will have nonzero rows only

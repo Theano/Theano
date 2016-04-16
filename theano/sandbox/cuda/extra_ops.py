@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import theano
 import copy
 from theano import Op
@@ -460,5 +461,5 @@ def use_gpu_cumsum(node):
             axis = 0
 
         ret = host_from_gpu(GpuCumsum(axis)(x))
-        ret.values_eq_approx = values_eq_approx_high_tol
+        ret.tag.values_eq_approx = values_eq_approx_high_tol
         return [ret]

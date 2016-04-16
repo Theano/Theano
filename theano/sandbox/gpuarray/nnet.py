@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import numpy
 
 from theano import Op, Apply, config
@@ -108,7 +108,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
 
             for (int j = threadIdx.x; j < N; j += blockDim.x)
             {
-              float row_ij = %(load_x)s(x[j * xs1]) + %(load_b)s(b[j * bs0]);
+              %(work_x)s row_ij = %(load_x)s(x[j * xs1]) + %(load_b)s(b[j * bs0]);
               per_thread_row_max_j = (row_ij > per_thread_row_max) ? j : per_thread_row_max_j;
               per_thread_row_max = fmax%(f)s(row_ij, per_thread_row_max);
             }
@@ -121,7 +121,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
               row_max_threadIdx = 0;
               for (int j = 0; j < blockDim.x; j++)
               {
-                float per_thread_max = per_thread_values[j];
+                %(work_x)s per_thread_max = per_thread_values[j];
                 row_max_threadIdx = (per_thread_max > row_max) ? j : row_max_threadIdx;
                 row_max = fmax%(f)s(per_thread_max, row_max);
               }
@@ -340,7 +340,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return (9,)
+        return (10,)
 
 
 gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1HotWithBias()

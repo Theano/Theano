@@ -1,0 +1,15 @@
+.. _libdoc_tensor_signal_pool:
+
+======================================================
+:mod:`pool` -- Down-Sampling
+======================================================
+
+.. module:: pool
+   :platform: Unix, Windows
+   :synopsis: ops for performing various forms of downsampling
+.. moduleauthor:: LISA
+
+.. seealso:: :func:`theano.tensor.nnet.neighbours.images2neibs`
+
+.. autofunction:: theano.tensor.signal.pool.pool_2d
+.. autofunction:: theano.tensor.signal.pool.max_pool_2d_same_size

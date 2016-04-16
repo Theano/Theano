@@ -4,7 +4,7 @@ Contains the FunctionGraph class and exception
 types that it can raise.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import sys
 import time
 import traceback
@@ -172,8 +172,6 @@ class FunctionGraph(utils.object2):
         for i, output in enumerate(outputs):
             output.clients.append(('output', i))
 
-        self.node_locks = {}
-        self.variable_locks = {}
         self.profile = None
         self.update_mapping = update_mapping
 
@@ -221,17 +219,14 @@ class FunctionGraph(utils.object2):
 
     def disown(self):
         """
-        WRITEME
         Cleans up all of this FunctionGraph's nodes and variables so they are
         not associated with this FunctionGraph anymore.
 
         The FunctionGraph should not be used anymore after disown is called.
 
-        This may not clean everything this FunctionGraph's features set in the
-        nodes and variables. If there are no features, this should set
-        them back to what they were originally.
-
         """
+        for f in self._features:
+            self.remove_feature(f)
         for apply_node in self.apply_nodes:
             del apply_node.fgraph
             del apply_node.deps
@@ -242,6 +237,8 @@ class FunctionGraph(utils.object2):
         self.variables = set()
         self.inputs = None
         self.outputs = None
+        self.profile = None
+        self.update_mapping = None
 
     # clients #
     def clients(self, r):

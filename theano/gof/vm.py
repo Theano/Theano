@@ -5,6 +5,8 @@ A VM is not actually different from a Linker, we just decided
 VM was a better name at some point.
 
 """
+from __future__ import absolute_import, print_function, division
+
 from . import link
 from collections import defaultdict
 import logging
@@ -13,8 +15,7 @@ import sys
 import time
 import warnings
 
-from theano.configparser import (config, AddConfigVar,
-                                 BoolParam, ConfigParam, _config_var_list)
+from theano.configparser import (config, _config_var_list)
 
 import theano.gof.cmodule
 
@@ -22,39 +23,6 @@ from six import iteritems, itervalues
 from six.moves import xrange
 
 logger = logging.getLogger(__name__)
-
-AddConfigVar('profile',
-             "If VM should collect profile information",
-             BoolParam(False),
-             in_c_key=False)
-AddConfigVar('profile_optimizer',
-             "If VM should collect optimizer profile information",
-             BoolParam(False),
-             in_c_key=False)
-AddConfigVar('profile_memory',
-             "If VM should collect memory profile information and print it",
-             BoolParam(False),
-             in_c_key=False)
-
-
-def filter_vm_lazy(val):
-    if val == 'False' or val is False:
-        return False
-    elif val == 'True' or val is True:
-        return True
-    elif val == 'None' or val is None:
-        return None
-    else:
-        raise ValueError('Valid values for an vm.lazy parameter '
-                         'should be None, False or True, not `%s`.' % val)
-
-AddConfigVar('vm.lazy',
-             "Useful only for the vm linkers. When lazy is None,"
-             " auto detect if lazy evaluation is needed and use the apropriate"
-             " version. If lazy is True/False, force the version used between"
-             " Loop/LoopGC and Stack.",
-             ConfigParam('None', filter_vm_lazy),
-             in_c_key=False)
 
 
 def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,

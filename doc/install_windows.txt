@@ -278,7 +278,7 @@ MinGW, but this has not been tested yet.
   ``C:\\Python27\\libs`` folder.
 
 - In order to run Theano's test-suite, you will need `nose
-  <http://somethingaboutorange.com/mrl/projects/nose>`__.
+  <http://nose.readthedocs.org/en/latest/>`__.
   After unpacking its source code (you may use `7-zip
   <http://www.7-zip.org/>`__), you can build and install it from within
   its code directory by running the following command (either from a Windows
@@ -420,9 +420,9 @@ Create a test file containing:
    t_start = time.time()
    tAB = mf(A,B)
    t_end = time.time()
-   print "NP time: %f[s], theano time: %f[s] (times should be close when run on CPU!)" %(
-                                              np_end-np_start, t_end-t_start)
-   print "Result difference: %f" % (np.abs(AB-tAB).max(), )
+   print("NP time: %f[s], theano time: %f[s] (times should be close when run on CPU!)" %(
+                                              np_end-np_start, t_end-t_start))
+   print("Result difference: %f" % (np.abs(AB-tAB).max(), ))
    
 .. testoutput::
    :hide:

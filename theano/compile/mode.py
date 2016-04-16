@@ -2,7 +2,7 @@
 WRITEME
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import logging
 
 import numpy
@@ -10,28 +10,12 @@ import numpy
 import theano
 from theano import gof
 import theano.gof.vm
-from theano.configparser import config, AddConfigVar, StrParam
+from theano.configparser import config
 from theano.compile.ops import _output_guard
 from six import string_types
 
 
 _logger = logging.getLogger('theano.compile.mode')
-
-AddConfigVar('optimizer_excluding',
-             ("When using the default mode, we will remove optimizer with "
-              "these tags. Separate tags with ':'."),
-             StrParam("", allow_override=False),
-             in_c_key=False)
-AddConfigVar('optimizer_including',
-             ("When using the default mode, we will add optimizer with "
-              "these tags. Separate tags with ':'."),
-             StrParam("", allow_override=False),
-             in_c_key=False)
-AddConfigVar('optimizer_requiring',
-             ("When using the default mode, we will require optimizer with "
-              "these tags. Separate tags with ':'."),
-             StrParam("", allow_override=False),
-             in_c_key=False)
 
 
 def check_equal(x, y):
@@ -432,7 +416,7 @@ def get_mode(orig_string):
         elif string == 'NanGuardMode':
             # need to import later to break circular dependency.
             from .nanguardmode import NanGuardMode
-            # DebugMode use its own linker.
+            # NanGuardMode use its own linker.
             ret = NanGuardMode(True, True, True, optimizer=config.optimizer)
         else:
             # This might be required if the string is 'ProfileMode'

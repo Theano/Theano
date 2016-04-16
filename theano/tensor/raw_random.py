@@ -1,18 +1,18 @@
 """Define random number Type (`RandomStateType`) and Op (`RandomFunction`)."""
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import sys
 from copy import copy
 
 import numpy
+from six import string_types
+from six.moves import reduce, xrange
 
 # local imports
 import theano
-from six.moves import reduce, xrange
 from theano import tensor
 from theano.tensor import opt
 from theano import gof
-from six import string_types
 from theano.compile import optdb
 
 __docformat__ = "restructuredtext en"
@@ -133,15 +133,27 @@ class RandomFunction(gof.Op):
         self.__setstate__([fn, outtype, inplace, ndim_added])
 
     def __getstate__(self):
-        return self.state
+        d = dict(self.__dict__)
+        del d['exec_fn']
+        if 'destroy_map' in d:
+            del d['destroy_map']
+        return d
 
-    def __setstate__(self, state):
-        self.state = state
-        fn, outtype, inplace, ndim_added = state
-        if isinstance(fn, string_types):
-            self.fn = getattr(numpy.random.RandomState, fn)
+    def __setstate__(self, dct):
+        if isinstance(dct, dict):
+            state = [dct['fn'],
+                     dct['outtype'],
+                     dct['inplace'],
+                     dct['ndim_added']]
+            self.__dict__.update(dct)
         else:
-            self.fn = fn
+            state = dct
+        fn, outtype, inplace, ndim_added = state
+        self.fn = fn
+        if isinstance(fn, string_types):
+            self.exec_fn = getattr(numpy.random.RandomState, fn)
+        else:
+            self.exec_fn = fn
         self.outtype = outtype
         self.inplace = inplace
         if self.inplace:
@@ -149,7 +161,7 @@ class RandomFunction(gof.Op):
         self.ndim_added = ndim_added
 
     def __str__(self):
-        return 'RandomFunction{%s}' % self.fn.__name__
+        return 'RandomFunction{%s}' % self.exec_fn.__name__
 
     def make_node(self, r, shape, *args):
         """
@@ -184,7 +196,7 @@ class RandomFunction(gof.Op):
         """
         shape_ = tensor.as_tensor_variable(shape, ndim=1)
         if shape == ():
-            shape = shape_.astype('int32')
+            shape = shape_.astype('int64')
         else:
             shape = shape_
         assert shape.type.ndim == 1
@@ -247,7 +259,7 @@ class RandomFunction(gof.Op):
         if not self.inplace:
             r = copy(r)
         rout[0] = r
-        rval = self.fn(r, *(args + [shape]))
+        rval = self.exec_fn(r, *(args + [shape]))
         if (not isinstance(rval, numpy.ndarray) or
                 str(rval.dtype) != node.outputs[1].type.dtype):
             rval = theano._asarray(rval, dtype=node.outputs[1].type.dtype)
@@ -363,7 +375,7 @@ def _infer_ndim_bcast(ndim, shape, *args):
         # post-condition: shape may still contain both symbolic and
         # non-symbolic things
         if len(pre_v_shape) == 0:
-            v_shape = tensor.constant([], dtype='int32')
+            v_shape = tensor.constant([], dtype='int64')
         else:
             v_shape = tensor.stack(pre_v_shape)
 
@@ -402,7 +414,7 @@ def _infer_ndim_bcast(ndim, shape, *args):
             (ndim, args_ndim), args)
 
     assert ndim == len(bcast)
-    return ndim, tensor.cast(v_shape, 'int32'), tuple(bcast)
+    return ndim, tensor.cast(v_shape, 'int64'), tuple(bcast)
 
 
 def _generate_broadcasting_indices(out_shape, *shapes):
@@ -521,12 +533,11 @@ def binomial(random_state, size=None, n=1, p=0.5, ndim=None,
     p = tensor.as_tensor_variable(p)
     ndim, size, bcast = _infer_ndim_bcast(ndim, size, n, p)
     if n.dtype == 'int64':
-        # THIS WORKS AROUND A NUMPY BUG on 32bit machine
-        # Erase when the following works on a 32bit machine:
-        # numpy.random.binomial(
-        #          n=numpy.asarray([2,3,4], dtype='int64'),
-        #          p=numpy.asarray([.1, .2, .3], dtype='float64'))
-        n = tensor.cast(n, 'int32')
+        try:
+            numpy.random.binomial(n=numpy.asarray([2, 3, 4], dtype='int64'), p=numpy.asarray([.1, .2, .3], dtype='float64'))
+        except TypeError:
+            # THIS WORKS AROUND A NUMPY BUG on 32bit machine
+            n = tensor.cast(n, 'int32')
     op = RandomFunction('binomial',
                         tensor.TensorType(dtype=dtype,
                                           broadcastable=(False,) * ndim))
@@ -905,7 +916,7 @@ def random_make_inplace(node):
     if isinstance(op, RandomFunction) and not op.inplace:
         # Read op_fn from op.state, not from op.fn, since op.fn
         # may not be picklable.
-        op_fn, op_outtype, op_inplace, op_ndim_added = op.__getstate__()
+        op_fn, op_outtype, op_inplace, op_ndim_added = op._props()
         new_op = RandomFunction(op_fn, op_outtype, inplace=True,
                                 ndim_added=op_ndim_added)
         return new_op.make_node(*node.inputs).outputs

@@ -31,11 +31,11 @@ found `here
 
 .. Changes to this section should also result in changes to tutorial/sparse.txt.
 
-Theano supports two *compressed sparse formats* ``csc`` and ``csr``,
+Theano supports two *compressed sparse formats*: ``csc`` and ``csr``,
 respectively based on columns and rows. They have both the same
 attributes: ``data``, ``indices``, ``indptr`` and ``shape``.
 
-  * The ``data`` attribute is a one-dimentionnal ``ndarray`` which
+  * The ``data`` attribute is a one-dimensional ``ndarray`` which
     contains all the non-zero elements of the sparse matrix.
 
   * The ``indices`` and ``indptr`` attributes are used to store the

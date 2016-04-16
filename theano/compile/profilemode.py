@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import atexit
 import copy
 import os
@@ -11,35 +11,13 @@ from six import string_types, iteritems, itervalues
 from theano.compile.mode import (Mode, register_mode,
                                  predefined_modes, predefined_linkers,
                                  predefined_optimizers)
-from theano.configparser import config, AddConfigVar, IntParam, BoolParam
+from theano.configparser import config
 from theano.compile.function_module import FunctionMaker
 
 from .profiling import ProfileStats
 
 run_cthunk = None  # Will be imported only when needed.
 import_time = time.time()
-
-
-AddConfigVar('ProfileMode.n_apply_to_print',
-             "Number of apply instances to print by default",
-             IntParam(15, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('ProfileMode.n_ops_to_print',
-             "Number of ops to print by default",
-             IntParam(20, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('ProfileMode.min_memory_size',
-             "For the memory profile, do not print apply nodes if the size "
-             "of their outputs (in bytes) is lower then this threshold",
-             IntParam(1024, lambda i: i >= 0),
-             in_c_key=False)
-
-AddConfigVar('ProfileMode.profile_memory',
-             """Enable profiling of memory used by Theano functions""",
-             BoolParam(False),
-             in_c_key=False)
 
 
 class Profile_Maker(FunctionMaker):

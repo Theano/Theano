@@ -4,7 +4,7 @@ Provides `DebugMode`, an evaluation mode for debugging theano internals.
 TODO: add support for IfElse Op, LazyLinker, PureOp, etc.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import copy
 import sys
@@ -17,14 +17,12 @@ from theano.compat import izip
 import numpy
 
 import theano
-from theano import gof
+from theano import gof, config
 from theano.compat import get_unbound_function
-from six import string_types, iteritems, itervalues
+from six import iteritems, itervalues
 from six.moves import StringIO, xrange
 from theano.gof import (graph, utils, link, ops_with_inner_function)
 from theano.gof.link import raise_with_op
-from theano.configparser import (config, AddConfigVar, BoolParam, IntParam,
-                                 StrParam)
 from theano.compile.function_module import (
     FunctionMaker, Function, infer_reuse_pattern,
     SymbolicInputKit, SymbolicOutput, Supervisor, std_fgraph)
@@ -32,72 +30,6 @@ from theano.compile.mode import Mode, register_mode
 from theano.compile.ops import OutputGuard
 
 __docformat__ = "restructuredtext en"
-
-AddConfigVar('DebugMode.patience',
-             "Optimize graph this many times to detect inconsistency",
-             IntParam(10, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.check_c',
-             "Run C implementations where possible",
-             BoolParam(bool(theano.config.cxx)),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.check_py',
-             "Run Python implementations where possible",
-             BoolParam(True),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.check_finite',
-             "True -> complain about NaN/Inf results",
-             BoolParam(True),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.check_strides',
-             ("Check that Python- and C-produced ndarrays have same strides. "
-              "On difference: (0) - ignore, (1) warn, or (2) raise error"),
-             IntParam(0, lambda i: i in (0, 1, 2)),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.warn_input_not_reused',
-             ("Generate a warning when destroy_map or view_map says that an "
-              "op works inplace, but the op did not reuse the input for its "
-              "output."),
-             BoolParam(True),
-             in_c_key=False)
-
-
-def is_valid_check_preallocated_output_param(param):
-    if not isinstance(param, string_types):
-        return False
-    valid = ["initial", "previous", "c_contiguous", "f_contiguous",
-             "strided", "wrong_size", "ALL", ""]
-    for p in param.split(":"):
-        if p not in valid:
-            return False
-    return True
-
-AddConfigVar('DebugMode.check_preallocated_output',
-             ('Test thunks with pre-allocated memory as output storage. '
-              'This is a list of strings separated by ":". Valid values are: '
-              '"initial" (initial storage in storage map, happens with Scan),'
-              '"previous" (previously-returned memory), '
-              '"c_contiguous", "f_contiguous", '
-              '"strided" (positive and negative strides), '
-              '"wrong_size" (larger and smaller dimensions), and '
-              '"ALL" (all of the above).'),
-             StrParam('', is_valid=is_valid_check_preallocated_output_param),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.check_preallocated_output_ndim',
-             ('When testing with "strided" preallocated output memory, '
-              'test all combinations of strides over that number of '
-              '(inner-most) dimensions. You may want to reduce that number '
-              'to reduce memory or time usage, but it is advised to keep a '
-              'minimum of 2.'),
-             IntParam(4, lambda i: i > 0),
-             in_c_key=False)
-
 _logger = logging.getLogger("theano.compile.debugmode")
 
 
@@ -1879,12 +1811,14 @@ class _Linker(gof.link.LocalLinker):
                 thunk.outputs = [storage_map[v] for v in node.outputs]
                 thunk_other = thunk
             else:
-                new_node = node.op.prepare_node(node)
+                new_node = node.op.prepare_node(node, storage_map, compute_map)
                 if new_node is not None:
                     node = new_node
 
+            debug = hasattr(node.op, 'debug_perform')
+
             try:
-                if not self.maker.mode.check_c_code:
+                if not self.maker.mode.check_c_code or debug:
                     raise utils.MethodNotDefined()
                 # Ops that do not inherit from gof.op.Op don't have certain
                 # methods defined that the CLinker expects (Scan is an
@@ -1902,18 +1836,18 @@ class _Linker(gof.link.LocalLinker):
             # Pure ops don't really have a perform ( or their perform just
             # raises an not implemented exception), so in those cases we
             # consider that we don't have a python implementation
-            if (self.maker.mode.check_py_code or thunks_c[-1] is None) and \
-               node.op.perform.__code__ != gof.op.PureOp.perform.__code__:
+            if (((self.maker.mode.check_py_code or thunks_c[-1] is None) and
+                 node.op.perform.__code__ != gof.op.PureOp.perform.__code__) or
+                    debug):
                 thunk = node.op.make_py_thunk(node, storage_map, compute_map,
-                                              no_recycling)
+                                              no_recycling, debug=debug)
                 thunks_py.append(thunk)
             else:
                 thunks_py.append(None)
 
             if not self.maker.mode.check_c_code and thunks_py[-1] is None:
-                _logger.warn(
-                    "Op %s don't have a perform, forcing check of the c code" %
-                    node.op)
+                _logger.warn("Op %s doesn't have a perform, "
+                             "forcing check of the C code" % node.op)
                 thunk = node.op.make_c_thunk(node, storage_map, compute_map,
                                              no_recycling)
                 thunks_c[-1] = thunk
@@ -2050,6 +1984,7 @@ class _Linker(gof.link.LocalLinker):
                             # shouldn't have put it into the list in
                             # the first place
                             thunk_py = None
+                            thunks_py[i] = None
                         except Exception as e:
                             # I think that only 1 optimization can
                             # insert a given apply node. If that is not True,
@@ -2255,8 +2190,8 @@ class _Linker(gof.link.LocalLinker):
                     for r in node.outputs:
                         if r not in r_vals:
                             idx = order.index(node)
-                            assert thunks_py[idx] is None
-                            assert thunks_c[idx] is None
+                            assert thunks_py[idx] is None, node
+                            assert thunks_c[idx] is None, node
                             raise Exception("No code run for %s" % node)
 
                 if False:

@@ -4,6 +4,19 @@
 Developer Start Guide
 =====================
 
+Contributing
+============
+
+You want to contribute to Theano? That is great! This page explain our
+workflow and some resource for doing so.
+
+Looking for an idea for a first contribution? Check `github issue
+<https://github.com/Theano/Theano/issues?q=is%3Aopen+is%3Aissue+label%3A%22Easy+fix%22>`
+with a label ``easy fix``. They are good starter. It is recommanded
+that you write on the issue you want to work on it. This help make
+sure it is up to date and see if nobody else is working on it. Also,
+we can sometimes provides more information about it.
+
 Resources
 =========
 
@@ -26,10 +39,286 @@ To get up to speed, you'll need to
 
 .. _Sphinx: http://sphinx.pocoo.org/
 .. _reStructuredText: http://docutils.sourceforge.net/rst.html
+.. _Allowed docstring sections in Napoleon: https://sphinxcontrib-napoleon.readthedocs.org/en/latest/#docstring-sections
 .. _NumPy documentation: http://docs.scipy.org/numpy/
 .. _unittest: http://docs.python.org/library/unittest.html
-.. _nose: http://somethingaboutorange.com/mrl/projects/nose/
+.. _nose: http://nose.readthedocs.org/en/latest/
 
+
+.. _quality_contributions:
+
+Requirements for Quality Contributions
+======================================
+
+* All the code should be properly tested. 
+
+* The code should be compatible with Python 2.6 and above, as well as Python 
+  3.3 and above (using `six` if needed).
+
+* All the code should respect the 
+  `PEP8 Code Style Guide <http://www.python.org/dev/peps/pep-0008>`_.
+
+* The docstrings of all the classes and functions should respect the
+  `PEP257 <https://www.python.org/dev/peps/pep-0257/>`_ rules and follow the 
+  `Numpy docstring standard
+  <https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt>`_.
+
+Each point will be referred to more in detail in the following.
+
+Unit tests
+----------
+
+When you submit a pull request, your changes will automatically be
+tested via Travis-CI. This will post the results of the tests with a
+little icon next to your commit. A yellow circle means the tests are
+running.  A red X means the tests failed and a green circle means the
+tests passed.
+
+Just because the tests run automatically does not mean you shouldn't
+run them yourself to make sure everything is all right.  You can run
+only the portion you are modifying to go faster and have travis to
+make sure there are no global impacts.
+
+Also, if you are changing GPU code, travis doesn't test that, because
+there are no GPUs on the test nodes.
+
+To run the test suite with the default options, you can follow the
+instructions of :ref:`testing_installation`.
+
+Each night we execute all the unit tests automatically, with several
+sets of options. The result is sent by email to the `theano-buildbot`_
+mailing list.
+
+For more detail, see :ref:`metadocumentation_nightly_build`.
+
+To run all the tests with the same configuration as the buildbot, run
+this script:
+
+.. code-block:: bash
+
+   theano/misc/do_nightly_build
+
+This script accepts arguments that it forwards to nosetests. You can
+run only some tests or enable pdb by giving the equivalent nosetests
+parameters.
+
+Setting up your Editor for PEP8
+-------------------------------
+
+Here are instructions for :ref:`Vim <vim_pep8>` and :ref:`Emacs
+<emacs_pep8>`. If you have similar instructions for other text editors
+or IDE, please let us know and we will update this documentation.
+
+.. _vim_pep8:
+
+Vim
+~~~
+
+Detection of warnings and errors is done by the `pep8`_ script
+(or `flake8`_, that also checks for other things, like syntax
+errors). Syntax highlighting and general integration into Vim is done by
+the `Syntastic`_ plugin for Vim.
+
+To setup VIM:
+
+#. Install flake8 (if not already installed) with::
+
+    pip install flake8
+
+   .. note:: You can use ``easy_install`` instead of ``pip``, and ``pep8``
+      instead of ``flake8`` if you prefer. The important thing is that the
+      ``flake8`` or ``pep8`` executable ends up in your ``$PATH``.
+
+#. Install vundle with::
+
+    git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim
+
+#. Edit ``~/.vimrc`` and add the lines:
+
+    .. code-block:: python
+
+        set nocompatible              " be iMproved, required
+        filetype off                  " required
+        " set the runtime path to include Vundle and initialize
+        set rtp+=~/.vim/bundle/Vundle.vim
+        call vundle#begin()
+
+        Plugin 'gmarik/Vundle.vim' " let Vundle manage Vundle (required!)
+        Plugin 'scrooloose/syntastic'
+        Plugin 'jimf/vim-pep8-text-width'
+
+        " Syntastic settings
+        " You can run checkers explicitly by calling :SyntasticCheck <checker
+        let g:syntastic_python_checkers = ['flake8'] "use one of the following checkers:
+                                                     " flake8, pyflakes, pylint, python (native checker)
+        let g:syntastic_enable_highlighting = 1  "highlight errors and warnings
+        let g:syntastic_style_error_symbol = ">>" "error symbol
+        let g:syntastic_warning_symbol = ">>" "warning symbol
+        let g:syntastic_check_on_open = 1
+        let g:syntastic_auto_jump = 0  "do not jump to errors when detected
+
+#. Open a new vim and run ``:PluginInstall`` to automatically install the
+   plugins. When the installation is done, close the installation "window" 
+   with ``:q``. 
+   From now on Vim will check for PEP8 errors and highlight them whenever a 
+   file is saved.
+
+A few useful commands
+"""""""""""""""""""""
+
+* Open the list of errors: ``:lopen``, that can be abbreviated in ``:lop``
+  (denoted ``:lop[en]``).
+* Close that list: ``:lcl[ose]``.
+* Next error: ``:lne[xt]``.
+* Previous error: ``:lp[revious]``.
+
+Once you fix errors, messages and highlighting will still appear in the
+fixed file until you save it again.
+
+We can also configure the ``~/.vimrc`` to make it easier to work with Syntastic.
+For instance, to add a summary in the status bar, you can add::
+
+    set statusline+=%{SyntasticStatuslineFlag()}
+
+To bind F2 and F3 to navigate to previous and next error, you can add::
+
+    map <F2> :lprevious<CR>
+    map <F3> :lnext<CR>
+
+You can prefix those by ``autocmd FileType python`` if you want these
+bindings to work only on Python files.
+
+.. _pep8: http://pypi.python.org/pypi/pep8
+.. _flake8: http://pypi.python.org/pypi/flake8
+.. _Syntastic: https://github.com/scrooloose/syntastic/
+.. _pathogen.vim: https://github.com/tpope/vim-pathogen
+.. _quickfix: http://vimdoc.sourceforge.net/htmldoc/quickfix.html#quickfix
+
+.. _emacs_pep8:
+
+Emacs
+~~~~~
+
+There is an **excellent** system to configure emacs for Python:
+`emacs-for-python
+<https://github.com/gabrielelanaro/emacs-for-python>`_. It gathers many
+emacs config into one, and modifies them to behave together nicely. You
+can use it to check for pep8 compliance and for Python syntax errors.
+
+To install it on Linux, you can do like this:
+
+.. code-block:: bash
+
+   cd
+   git clone https://github.com/gabrielelanaro/emacs-for-python.git ~/.emacs.d/emacs-for-python
+
+
+Then in your ``~/.emacs`` file, add this:
+
+.. code-block:: common-lisp
+
+   ;; Mandatory
+   (load-file "~/.emacs.d/emacs-for-python/epy-init.el")
+   (add-to-list 'load-path "~/.emacs.d/emacs-for-python/") ;; tell where to load the various files
+
+   ;; Each of them enables different parts of the system.
+   ;; Only the first two are needed for pep8, syntax check.
+   (require 'epy-setup) ;; It will setup other loads, it is required!
+   (require 'epy-python) ;; If you want the python facilities [optional]
+   (require 'epy-completion) ;; If you want the autocompletion settings [optional]
+   (require 'epy-editing) ;; For configurations related to editing [optional]
+   ;; [newer version of emacs-for-python]
+   (require 'epy-nose) ;; For shortcut to call nosetests [optional]
+
+   ;; Define f10 to previous error
+   ;; Define f11 to next error
+   (require 'epy-bindings) ;; For my suggested keybindings [optional]
+
+   ;; Some shortcut that do not collide with gnome-terminal,
+   ;; otherwise, "epy-bindings" define f10 and f11 for them.
+   (global-set-key [f2] 'flymake-goto-prev-error)
+   (global-set-key [f3] 'flymake-goto-next-error)
+
+   ;; Next two lines are the checks to do. You can add more if you wish.
+   (epy-setup-checker "pyflakes %f") ;; For python syntax check
+   (epy-setup-checker "pep8 -r %f") ;; For pep8 check
+
+.. note::
+
+   The script highlights problematic lines. This can make part of the
+   line not readable depending on the background. To replace the line
+   highlight by an underline, add this to your emacs configuration
+   file:
+
+   ;; Make lines readable when there is an warning [optional]
+   (custom-set-faces
+   '(flymake-errline ((((class color)) (:underline "red"))))
+   '(flymake-warnline ((((class color)) (:underline "yellow")))))
+
+Documentation and docstrings
+----------------------------
+* The documentation and the API documentation are generated using `Sphinx`_.
+
+* The documentation should be written in `reStructuredText`_ and the
+  docstrings of all the classes and functions should respect the
+  `PEP257 <https://www.python.org/dev/peps/pep-0257/>`_ rules and follow the 
+  `Numpy docstring standard
+  <https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt>`_.
+
+* Split the docstrings in sections, according to the `Allowed docstring
+  sections in Napoleon`_
+
+* To cross-reference other objects (e.g. reference other classes or methods) in 
+  the docstrings, use the
+  `cross-referencing objects <http://www.sphinx-doc.org/en/stable/domains.html#cross-referencing-python-objects>`_ 
+  syntax. ``:py`` can be omitted, see e.g. this 
+  `stackoverflow answer <http://stackoverflow.com/a/7754189>`_.
+
+* See :ref:`metadocumentation`, for some information on how to generate the 
+  documentation.
+
+
+A Docstring Example
+~~~~~~~~~~~~~~~~~~~
+Here is an example on how to add a docstring to a class.
+
+.. testcode:: python
+
+    import theano
+
+    class DoubleOp(theano.Op):
+        """
+        Double each element of a tensor.
+
+        Parameters
+        ----------
+        x : tensor
+            Input tensor
+
+        Returns
+        -------
+        tensor
+            a tensor of the same shape and dtype as the input with all
+            values doubled.
+
+        Notes
+        -----
+        this is a test note
+
+        See Also
+        --------
+        :class:`~theano.tensor.elemwise.Elemwise` : You can use this to replace
+        this example.  Just execute `x * 2` with x being a Theano variable.
+
+
+        .. versionadded:: 0.6
+        """
+
+This is how it will show up for files that we auto-list in the library
+documentation:
+
+.. automodule:: theano.misc.doubleop
+    :members:
 
 Installation and configuration
 ==============================
@@ -147,8 +436,12 @@ of the `master` branch (the principal one) of the central repository
 Submit your changes to the central repository
 ---------------------------------------------
 
-Once your code is ready for others to review, you need to push your
+Once your code is ready for others to review, you need to commit all the changes and then push your
 branch to your github fork first:
+
+.. code-block:: bash
+    
+    git commit -a -m "your message here"
 
 .. code-block:: bash
 
@@ -195,222 +488,6 @@ The pull request to the central repository will then be automatically
 updated by GitHub. However, the reviewers will not be automatically
 notified of your revision, so it is advised to reply to the comments on
 GitHub, to let them know that you have submitted a fix.
-
-
-.. _quality_contributions:
-
-Tips for Quality Contributions
-==============================
-
-Coding Style Auto Check
------------------------
-
-In Theano, we use the same coding style as the `Pylearn
-<http://deeplearning.net/software/pylearn/v2_planning/API_coding_style.html>`_
-project, except that we don't use the numpy docstring standard.
-The principal thing to know is that we follow the
-`PEP 8 <http://www.python.org/dev/peps/pep-0008/>`_ coding style.
-
-We use git hooks provided in the project `pygithooks
-<https://github.com/lumberlabs/pygithooks>`_ to validate that commits
-respect pep8. This happens when each user commits, not when we
-push/merge to the Theano repository. Github doesn't allow us to have
-code executed when we push to the repository. So we ask all
-contributors to use those hooks.
-
-For historic reason, we currently don't have all files respecting pep8.
-We decided to fix everything incrementally. So not all files respect it
-now. So we strongly suggest that you use the "increment" pygithooks
-config option to have a good workflow. See the pygithooks main page
-for how to set it up for Theano and how to enable this option.
-
-
-Setting up your Editor for PEP8
--------------------------------
-
-Here are instructions for :ref:`Vim <vim_pep8>` and :ref:`Emacs
-<emacs_pep8>`. If you have similar instructions for other text editors
-or IDE, please let us know and we will update this documentation.
-
-.. _vim_pep8:
-
-Vim
-~~~
-
-Detection of warnings and errors is done by the `pep8`_ script
-(or `flake8`_, that also checks for other things, like syntax
-errors). Syntax highlighting and general integration into Vim is done by
-the `Syntastic`_ plugin for Vim.
-
-To install flake8, simply run::
-
-    pip install flake8
-
-You can use ``easy_install`` instead of ``pip``, and ``pep8`` instead of
-``flake8`` if you prefer. The important thing is that the ``flake8`` or
-``pep8`` executable ends up in your ``$PATH``.
-
-To install Syntastic, according to its documentation, the easiest way is
-to install `pathogen.vim`_ first.
-
-Here's a relevant extract of pathogen.vim's installation instructions:
-
-    Install to ``~/.vim/autoload/pathogen.vim``. Or copy and paste::
-
-        mkdir -p ~/.vim/autoload ~/.vim/bundle; \
-        curl -so ~/.vim/autoload/pathogen.vim \
-            https://raw.github.com/tpope/vim-pathogen/HEAD/autoload/pathogen.vim
-
-    If you don't have ``curl``, use ``wget -O`` instead.
-
-    By the way, if you're using Windows, change all occurrences of ``~/.vim``
-    to ``~\vimfiles``.
-
-    Add this to your vimrc::
-
-        call pathogen#infect()
-
-    Now any plugins you wish to install can be extracted to a subdirectory
-    under ``~/.vim/bundle``, and they will be added to the ``'runtimepath'``.
-
-Now, we can install Syntastic. From the installation instructions:
-
-    .. code-block:: bash
-
-        cd ~/.vim/bundle
-        git clone https://github.com/scrooloose/syntastic.git
-
-    Then reload vim, run ``:Helptags``, and check out ``:help syntastic.txt``.
-
-From now on, when you save into a Python file, a syntax check will be
-run, and results will be displayed using Vim's `quickfix`_ mechanism
-(more precisely, a location-list). A few useful commands are:
-
-* Open the list of errors: ``:lopen``, that can be abbreviated in ``:lop``
-  (denoted ``:lop[en]``).
-* Close that list: ``:lcl[ose]``.
-* Next error: ``:lne[xt]``.
-* Previous error: ``:lp[revious]``.
-
-Once you fix errors, messages and highlighting will still appear in the
-fixed file until you save it again.
-
-We can also configure the ``~/.vimrc`` to make it easier to work with Syntastic.
-For instance, to add a summary in the status bar, you can add::
-
-    set statusline+=%{SyntasticStatuslineFlag()}
-
-To bind F2 and F3 to navigate to previous and next error, you can add::
-
-    map <F2> :lprevious<CR>
-    map <F3> :lnext<CR>
-
-You can prefix those by ``autocmd FileType python`` if you want these
-bindings to work only on Python files.
-
-.. _pep8: http://pypi.python.org/pypi/pep8
-.. _flake8: http://pypi.python.org/pypi/flake8
-.. _Syntastic: https://github.com/scrooloose/syntastic/
-.. _pathogen.vim: https://github.com/tpope/vim-pathogen
-.. _quickfix: http://vimdoc.sourceforge.net/htmldoc/quickfix.html#quickfix
-
-.. _emacs_pep8:
-
-Emacs
-~~~~~
-
-There is an **excellent** system to configure emacs for Python:
-`emacs-for-python
-<https://github.com/gabrielelanaro/emacs-for-python>`_. It gathers many
-emacs config into one, and modifies them to behave together nicely. You
-can use it to check for pep8 compliance and for Python syntax errors.
-
-To install it on Linux, you can do like this:
-
-.. code-block:: bash
-
-   cd
-   git clone https://github.com/gabrielelanaro/emacs-for-python.git ~/.emacs.d/emacs-for-python
-
-
-Then in your ``~/.emacs`` file, add this:
-
-.. code-block:: common-lisp
-
-   ;; Mandatory
-   (load-file "~/.emacs.d/emacs-for-python/epy-init.el")
-   (add-to-list 'load-path "~/.emacs.d/emacs-for-python/") ;; tell where to load the various files
-
-   ;; Each of them enables different parts of the system.
-   ;; Only the first two are needed for pep8, syntax check.
-   (require 'epy-setup) ;; It will setup other loads, it is required!
-   (require 'epy-python) ;; If you want the python facilities [optional]
-   (require 'epy-completion) ;; If you want the autocompletion settings [optional]
-   (require 'epy-editing) ;; For configurations related to editing [optional]
-   ;; [newer version of emacs-for-python]
-   (require 'epy-nose) ;; For shortcut to call nosetests [optional]
-
-   ;; Define f10 to previous error
-   ;; Define f11 to next error
-   (require 'epy-bindings) ;; For my suggested keybindings [optional]
-
-   ;; Some shortcut that do not collide with gnome-terminal,
-   ;; otherwise, "epy-bindings" define f10 and f11 for them.
-   (global-set-key [f2] 'flymake-goto-prev-error)
-   (global-set-key [f3] 'flymake-goto-next-error)
-
-   ;; Next two lines are the checks to do. You can add more if you wish.
-   (epy-setup-checker "pyflakes %f") ;; For python syntax check
-   (epy-setup-checker "pep8 -r %f") ;; For pep8 check
-
-.. note::
-
-   The script highlights problematic lines. This can make part of the
-   line not readable depending on the background. To replace the line
-   highlight by an underline, add this to your emacs configuration
-   file:
-
-   ;; Make lines readable when there is an warning [optional]
-   (custom-set-faces
-   '(flymake-errline ((((class color)) (:underline "red"))))
-   '(flymake-warnline ((((class color)) (:underline "yellow")))))
-
-Unit tests
-----------
-
-When you submit a pull request, your changes will automatically be
-tested via Travis-CI. This will post the results of the tests with a
-little icon next to your commit. A yellow circle means the tests are
-running.  A red X means the tests failed and a green circle means the
-tests passed.
-
-Just because the tests run automatically does not mean you shouldn't
-run them yourself to make sure everything is all right.  You can run
-only the portion you are modifying to go faster and have travis to
-make sure there are no global impacts.
-
-Also, if you are changing GPU code, travis doesn't test that, because
-there are no GPUs on the test nodes.
-
-To run the test suite with the default options, you can follow the
-instructions of :ref:`testing_installation`.
-
-Each night we execute all the unit tests automatically, with several
-sets of options. The result is sent by email to the `theano-buildbot`_
-mailing list.
-
-For more detail, see :ref:`metadocumentation_nightly_build`.
-
-To run all the tests with the same configuration as the buildbot, run
-this script:
-
-.. code-block:: bash
-
-   theano/misc/do_nightly_build
-
-This script accepts arguments that it forwards to nosetests. You can
-run only some tests or enable pdb by giving the equivalent nosetests
-parameters.
 
 
 More Advanced Git Usage

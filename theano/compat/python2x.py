@@ -1,6 +1,8 @@
 """
 Helper functions to make theano backwards compatible with python 2.6 - 2.7
 """
+from __future__ import absolute_import, print_function, division
+
 import sys
 
 if sys.version_info[:2] < (2, 7):

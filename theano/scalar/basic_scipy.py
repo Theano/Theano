@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 # definition theano.scalar op that have their python implementation taked from scipy
 # as scipy is not always available, we treat them separatly
 import numpy

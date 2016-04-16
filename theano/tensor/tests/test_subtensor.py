@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import logging
 import sys
 import unittest
@@ -558,6 +559,25 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             return advanced_set_subtensor1(x, y, [1, 3])
         utt.verify_grad(fun, [numpy.random.rand(5, 5).astype(self.dtype),
                               numpy.random.rand(2, 5).astype(self.dtype)])
+
+        # test set_subtensor broadcast
+        self.dtype = 'float32'
+        from theano.sandbox.cuda.dnn import dnn_conv
+
+        x = tensor.tensor4('x', dtype=self.dtype)
+        indexes = theano.shared(numpy.int32([1, 2, 3, 4]))
+        W = self.shared(numpy.random.random(
+            (10, 10, 3, 3)).astype(self.dtype))
+
+        h = x + W
+        h = tensor.set_subtensor(h[indexes], h[indexes])
+        g = tensor.grad(h.sum(), W)
+        N = 2
+        if theano.config.mode == "FAST_COMPILE" and self.adv_incsub1 is tensor.AdvancedIncSubtensor1:
+            N = 3
+        f = self.function([x], g, op=self.adv_incsub1, N=N)
+
+        f(numpy.random.random((10, 10, 3, 3)).astype(self.dtype))
 
     def test_adv_sub1_idx_broadcast(self):
         # The idx can be a broadcastable vector.

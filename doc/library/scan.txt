@@ -187,7 +187,7 @@ downcast** of the latter.
     # test
     some_num = 15
     print(triangular_sequence(some_num))
-    print([n * (n + 1) // 2 for n in xrange(some_num)])
+    print([n * (n + 1) // 2 for n in range(some_num)])
 
 .. testoutput::
 

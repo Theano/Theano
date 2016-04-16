@@ -2,6 +2,7 @@
 Function to detect memory sharing for ndarray AND sparse type AND CudaNdarray.
 numpy version support only ndarray.
 """
+from __future__ import absolute_import, print_function, division
 
 import numpy
 from theano.tensor.basic import TensorType

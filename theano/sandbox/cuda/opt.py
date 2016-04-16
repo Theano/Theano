@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import copy
 import logging
@@ -548,7 +548,7 @@ def local_gpu_lazy_ifelse(node):
 
             for i in range(len(outs)):
                 if (not isinstance(outs[i].type, CudaNdarrayType) and
-                        outs[i].dtype == 'float32'):
+                        getattr(outs[i], 'dtype', None) == 'float32'):
                     outs[i] = as_cuda_ndarray_variable(outs[i])
             outs = gpu_ifelse(c, *outs, return_list=True)
             for i in range(len(outs)):
@@ -1023,11 +1023,11 @@ def local_gpu_flatten(node):
             return [gpu_flatten(host_input.owner.inputs[0], outdim)(
                 as_cuda_ndarray_variable(host_input.owner.inputs[0]))]
     if isinstance(node.op, tensor.Flatten):
-        x, shp= node.inputs
-        outdim = node.op.outdim
+        x, = node.inputs
         if x.owner and isinstance(x.owner.op, HostFromGpu):
+            outdim = node.op.outdim
             gpu_x, = x.owner.inputs
-            return [host_from_gpu(gpu_flatten(host_input.owner.inputs[0], outdim)(gpu_x))]
+            return [host_from_gpu(gpu_flatten(gpu_x, outdim))]
     return False
 
 
@@ -1190,14 +1190,16 @@ def local_gpu_incsubtensor(node):
                 # The IncSubtensor upcast to float32 y, so we do it
                 # explicitly to move it to the GPU.
                 y = y.astype('float32')
-
-            return [GpuIncSubtensor(
+            ret = GpuIncSubtensor(
                 incsubt.idx_list,
                 inplace=incsubt.inplace,
                 set_instead_of_inc=incsubt.set_instead_of_inc)(
                     as_cuda_ndarray_variable(x),
                     as_cuda_ndarray_variable(y),
-                    *coords)]
+                    *coords)
+            ret.tag.nan_guard_mode_check = getattr(
+                host_output.tag, 'nan_guard_mode_check', True)
+            return [ret]
     # Incrementing a float32 x results in a float32
     # output even if y is float64, so we can downcast
     # y to put it on GPU
@@ -1221,10 +1223,16 @@ def local_gpu_incsubtensor(node):
                 y = tensor.cast(y, 'float32')
             gpu_y = as_cuda_ndarray_variable(y)
         if go_gpu:
-            return [host_from_gpu(GpuIncSubtensor(
+            ret = GpuIncSubtensor(
                 node.op.idx_list, inplace=node.op.inplace,
                 set_instead_of_inc=node.op.set_instead_of_inc)(
-                    gpu_x, gpu_y, *coords))]
+                    gpu_x, gpu_y, *coords)
+
+            val = getattr(node.outputs[0].tag, 'nan_guard_mode_check', True)
+            ret.tag.nan_guard_mode_check = val
+            ret = host_from_gpu(ret)
+            ret.tag.nan_guard_mode_check = val
+            return [ret]
     return False
 
 
@@ -1550,7 +1558,7 @@ def local_gpu_conv(node):
                            gpu_from_host(kern))
             out = tensor.patternbroadcast(out,
                                           node.outputs[0].broadcastable)
-            out.values_eq_approx = values_eq_approx_high_tol
+            out.tag.values_eq_approx = values_eq_approx_high_tol
             # in some case the ConvOp broadcast the last 2 dimensions
             # differently then the gpu ConvOp
             return [out]
@@ -1569,7 +1577,7 @@ def local_gpu_conv(node):
             out = tensor.patternbroadcast(
                 host_from_gpu(out),
                 node.outputs[0].broadcastable)
-            out.values_eq_approx = values_eq_approx_high_tol
+            out.tag.values_eq_approx = values_eq_approx_high_tol
             # in some case the ConvOp broadcast the last 2 dimensions
             # differently then the gpu ConvOp
             return [out]
@@ -1934,7 +1942,9 @@ def local_gpu_downsample_factor_max_grad_grad(node):
     if isinstance(node.op, pool.DownsampleFactorMaxGradGrad):
         assert node.op.__props__ == ('ds', 'ignore_border', 'st',
                                      'padding', 'mode')
-        if node.op.padding != (0, 0) or node.op.mode != 'max':
+        if (node.op.padding != (0, 0) or
+                node.op.mode != 'max' or
+                node.op.st != node.op.ds):
             return
         x, z, gx = node.inputs
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
@@ -2532,15 +2542,30 @@ def local_gpu_allocempty(node):
     return False
 
 
+# Don't register by default.
+@gof.local_optimizer([GpuAllocEmpty])
+def local_gpu_alloc_empty_to_zeros(node):
+    # We need the exact match as GpuAlloc inherit from GpuAllocEmpty.
+    if type(node.op) is GpuAllocEmpty:
+        return [gpu_alloc(theano.tensor.constant(0, dtype='float32'),
+                          *node.inputs)]
+optdb.register('local_gpu_alloc_empty_to_zeros',
+               theano.tensor.opt.in2out(local_gpu_alloc_empty_to_zeros),
+               # After move to gpu and merge2, before inplace.
+               49.3,
+               'alloc_empty_to_zeros',)
+
+
 def typeInfer(node):
     return typeConstructor
 
+# Do not register in fast_run or fast_compile.
+# It will be added to fast_run if the GPU is enabled.
 optdb.register('gpu_scanOp_make_inplace',
                scan_opt.ScanInplaceOptimizer(typeInfer=typeInfer,
                                              gpu_flag=True),
                75,
                'gpu',
-               'fast_run',
                'inplace',
                'scan')
 
@@ -2696,7 +2721,7 @@ def local_conv2d_gpu_conv(node):
             # out is on the GPU because both inputs are.
             out = theano.tensor.patternbroadcast(out,
                                                  node.outputs[0].broadcastable)
-            out.values_eq_approx = values_eq_approx_high_tol
+            out.tag.values_eq_approx = values_eq_approx_high_tol
             return [out]
 
     if isinstance(node.op, BaseAbstractConv2d):
@@ -2723,7 +2748,7 @@ def local_conv2d_gpu_conv(node):
             out = theano.tensor.patternbroadcast(
                 out,
                 node.outputs[0].broadcastable)
-            out.values_eq_approx = values_eq_approx_high_tol
+            out.tag.values_eq_approx = values_eq_approx_high_tol
             # If the original output was on CPU, we have to transfer it
             if isinstance(node.outputs[0].type, tensor.TensorType):
                 return [tensor.as_tensor_variable(out)]
@@ -2766,10 +2791,11 @@ def local_abstractconv_gemm(node):
         # GpuConv does not always store information on the batchsize and
         # channels, though, so we only use what information we have.)
         if ((subsample == (1, 1)) and
-                (node.op.imshp is not None) and
-                (None not in node.op.imshp[-2:]) and
-                (node.op.kshp is not None) and
-                (None not in node.op.kshp)):
+            (node.op.imshp is not None) and
+            (None not in node.op.imshp[-2:]) and
+            (node.op.kshp is not None) and
+            (None not in node.op.kshp) and
+             border_mode != "half"):
             # we know the kernel and output size
             prod1 = node.op.kshp[0] * node.op.kshp[1]
             prod2 = ((node.op.imshp[-2] - node.op.kshp[0] + 1) *

@@ -5,6 +5,8 @@ The `Op` class is the base interface for all operations
 compatible with `gof`'s :doc:`graph` routines.
 
 """
+from __future__ import absolute_import, print_function, division
+
 import inspect
 import logging
 import numpy
@@ -836,7 +838,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         else:
             return NotImplemented
 
-    def prepare_node(self, node):
+    def prepare_node(self, node, storage_map, compute_map):
         """
         Make any special modifications that the Op needs before doing
         make_thunk().
@@ -890,7 +892,8 @@ class Op(utils.object2, PureOp, CLinkerOp):
         rval.lazy = False
         return rval
 
-    def make_py_thunk(self, node, storage_map, compute_map, no_recycling):
+    def make_py_thunk(self, node, storage_map, compute_map, no_recycling,
+                      debug=False):
         """
         Like make_thunk() but only makes python thunks.
 
@@ -898,7 +901,10 @@ class Op(utils.object2, PureOp, CLinkerOp):
         node_input_storage = [storage_map[r] for r in node.inputs]
         node_output_storage = [storage_map[r] for r in node.outputs]
 
-        p = node.op.perform
+        if debug:
+            p = node.op.debug_perform
+        else:
+            p = node.op.perform
 
         params = node.run_params()
 
@@ -955,11 +961,18 @@ class Op(utils.object2, PureOp, CLinkerOp):
         """
         logger = logging.getLogger('theano.gof.op.Op')
 
-        new_node = self.prepare_node(node)
+        new_node = self.prepare_node(node, storage_map=storage_map,
+                                     compute_map=compute_map)
         if new_node is not None:
             node = new_node
-
-        if self._op_use_c_code:
+        if not hasattr(self, '_op_use_c_code'):
+            warnings.warn(
+                "The  __getstate__ method of '%s' is not implemented correctly."
+                " It should keep the attributes added by the base class."
+                " To implement it correctly, it should keep all attributes"
+                " and only remove those it does not want." % (self),
+                stacklevel=2)
+        if getattr(self, '_op_use_c_code', theano.config.cxx):
             try:
                 return self.make_c_thunk(node, storage_map, compute_map,
                                          no_recycling)
@@ -1214,7 +1227,8 @@ int main( int argc, const char* argv[] )
                 self.openmp = False
                 theano.config.openmp = False
 
-    def prepare_node(self, node):
+    def prepare_node(self, node, storage_map,
+                     compute_map):
         self.update_self_openmp()
 
 
@@ -1417,7 +1431,7 @@ class COp(Op):
             # Extract the various properties of the input and output variables
             variables = node.inputs + node.outputs
             variable_names = (["INPUT_%i" % i for i in range(len(node.inputs))] +
-                              ["OUTPUT_%i" % i for i in range(len(node.inputs))])
+                              ["OUTPUT_%i" % i for i in range(len(node.outputs))])
 
             # Generate dtype macros
             for i, v in enumerate(variables):

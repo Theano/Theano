@@ -2,8 +2,12 @@
 Provide a simple user friendly API.
 
 """
+from __future__ import absolute_import, print_function, division
+import warnings
+
 from theano import config
 from six import iteritems
+
 from theano.compile import orig_function, In, Out
 from theano.compile import UnusedInputError
 from theano.compile.sharedvalue import SharedVariable, shared
@@ -259,6 +263,21 @@ def rebuild_collect_shared(outputs,
 
     return (input_variables, cloned_outputs,
             [clone_d, update_d, update_expr, shared_inputs])
+
+
+class Param(In):
+    """Deprecated. Use In instead."""
+    def __init__(self, variable, default=None, name=None, mutable=False,
+                 strict=False, allow_downcast=None, implicit=None,
+                 borrow=None):
+        warnings.warn(
+            "The Param class is deprecated. Replace Param(default=N)"
+            " by theano.In(value=N)",
+            stacklevel=2)
+        super(Param, self).__init__(
+            variable, name=name, value=default, mutable=mutable,
+            strict=strict, allow_downcast=allow_downcast,
+            implicit=implicit, borrow=borrow)
 
 
 def pfunc(params, outputs=None, mode=None, updates=None, givens=None,

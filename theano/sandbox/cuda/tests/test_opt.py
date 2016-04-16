@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import operator
 import sys
 import unittest
@@ -31,6 +31,15 @@ from theano.scalar.basic_scipy import erfinv
 
 from theano.tensor.nnet.blocksparse import sparse_block_dot
 from theano.sandbox.cuda.blocksparse import GpuSparseBlockGemv, GpuSparseBlockOuter
+
+imported_scipy_special = False
+try:
+    import scipy.special
+    imported_scipy_special = True
+# Importing scipy.special may raise ValueError.
+# See http://projects.scipy.org/scipy/ticket/1739
+except (ImportError, ValueError):
+    pass
 
 
 if theano.config.mode == 'FAST_COMPILE':
@@ -753,7 +762,8 @@ def test_erfinvgpu():
     assert isinstance(f.maker.fgraph.toposort()[1].op.scalar_op,
                       cuda.elemwise.ErfinvGPU)
     xv = numpy.random.rand(7, 8).astype('float32')
-    assert numpy.allclose(f(xv), f2(xv))
+    if imported_scipy_special:
+        assert numpy.allclose(f(xv), f2(xv))
 
 
 def test_local_gpu_solve():
@@ -823,7 +833,8 @@ def test_blocksparse_gpu_gemv_opt():
 
     f = theano.function([W, h, iIdx, b, oIdx], o, mode=mode_with_gpu)
 
-    assert isinstance(f.maker.fgraph.toposort()[-2].op, GpuSparseBlockGemv)
+    assert sum(1 for n in f.maker.fgraph.apply_nodes
+               if isinstance(n.op, GpuSparseBlockGemv)) == 1
 
 
 def test_blocksparse_gpu_outer_opt():
@@ -839,7 +850,8 @@ def test_blocksparse_gpu_outer_opt():
                                                                wrt=W)],
                         mode=mode_with_gpu)
 
-    assert isinstance(f.maker.fgraph.toposort()[-2].op, GpuSparseBlockOuter)
+    assert sum(1 for n in f.maker.fgraph.apply_nodes
+               if isinstance(n.op, GpuSparseBlockOuter)) == 1
 
 
 class test_diag(theano.tensor.tests.test_nlinalg.test_diag):
@@ -858,6 +870,20 @@ class Test_GpuReshape(test_opt.Test_Reshape):
         self.mode = mode_with_gpu
         self.op = basic_ops.GpuReshape
 
+
+def test_local_abstractconv_gemm():
+    """ We test it here as this is the optimization only that we test.
+    This test gh-4036"""
+    image = tensor.ftensor4()
+    W = tensor.ftensor4()
+    conv = tensor.nnet.conv2d(image,
+                         W,
+                         input_shape=(1, 32, 32, 32),
+                         filter_shape=(32, 32, 3, 3),
+                         border_mode='half')
+    f = theano.function([image, W], [conv], mode=mode_with_gpu)
+    f(numpy.random.rand(1, 32, 32, 32).astype('float32'),
+      numpy.random.rand(32, 32, 3, 3).astype('float32'))
 
 if __name__ == '__main__':
     test_gpualloc()

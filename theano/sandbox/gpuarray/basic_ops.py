@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import os
 
 import numpy
@@ -721,7 +722,12 @@ class GpuAllocEmpty(HideC, Alloc):
         output.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
         # The outut can contain nan/inf.
         output.type.filter_checks_isfinite = False
+        output.tag.nan_guard_mode_check = False
         return Apply(self, sh, [output])
+
+    def debug_perform(self, node, inputs, out_, ctx):
+        self.perform(node, inputs, out_, ctx)
+        out_[0][0][:] = -123456789
 
     def perform(self, node, inputs, out_, ctx):
         out = out_[0]
@@ -991,6 +997,10 @@ class GpuJoin(HideC, Join):
     def perform(self, node, axis_and_tensors, out_, ctx):
         out, = out_
         axis = int(axis_and_tensors[0])
+        if axis < -axis_and_tensors[1].ndim:
+            raise IndexError
+        if axis < 0:
+            axis += axis_and_tensors[1].ndim
         tensors = axis_and_tensors[1:]
         out[0] = pygpu.concatenate(tensors, axis=axis, context=ctx).astype(
             node.outputs[0].dtype)
