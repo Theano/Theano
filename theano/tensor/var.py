@@ -525,7 +525,7 @@ class _tensor_py_operators(object):
                         new_args.append(arg)
                 view = self.dimshuffle(pattern)
                 rval = view.__getitem__(tuple(new_args))
-                check_rval = [arg==slice(None, None, None) for arg in new_args]
+                check_rval = [arg == slice(None, None, None) for arg in new_args]
                 if numpy.all(check_rval) == True:
                     rval = view
                 return rval

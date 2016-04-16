@@ -1787,6 +1787,9 @@ def local_track_shape_i(node):
         return [shape_feature.shape_of[replacement][node.op.i]]
 
 
+@register_specialize
+@register_canonicalize
+@gof.local_optimizer([Subtensor])
 def local_subtensor_remove_broadcastable_index(node):
     """
     Remove broadcastable dimension with index 0 or -1
@@ -1798,34 +1801,34 @@ def local_subtensor_remove_broadcastable_index(node):
     """
     if isinstance(node.op, Subtensor):
         idx = node.op.idx_list
-    elif isinstance(node.op, AdvancedSubtensor1):
-        idx = node.inputs[1]
     else:
         return
 
     remove_dim = []
     node_inputs_idx = 1
-    for elem, dim in enumerate(idx):
-        if isinstance(elem, (scalar.Scalar, T.TensorType)):
+    for dim, elem in enumerate(idx):
+        if isinstance(elem, (scalar.Scalar)):
             # The idx is a Scalar, ie a Type. This means the actual index
             # is contained in node.inputs[1]
             dim_index = node.inputs[node_inputs_idx]
-            node_inputs_idx += 1
-            if dim_index in [0, -1] and node.op.owner.inputs[0].broadcastable[dim] == True:
+            if dim_index.value in [0, -1] and node.inputs[0].broadcastable[dim] == True:
                 remove_dim.append(dim)
+                node_inputs_idx += 1
+            else:
+                return
         elif isinstance(elem, slice):
-            for slice_part in [ww.start, ww.stop, ww.step]:
-                if slice_part != None:
-                    node_inputs_idx += 1
+            if elem != slice(None):
+                return
         else:
             raise TypeError('case not expected')
 
     if len(remove_dim) == 0:
         return
     else:
-        all_dim = np.arange(len(idx))
+        all_dim = range(len(idx))
         remain_dim = [x for x in all_dim if x not in remove_dim]
-        return node.op.owner.inputs[0].dimshuffle(tuple(remain_dim))
+        return [node.inputs[0].dimshuffle(tuple(remain_dim))]
+
 
 @register_specialize
 @register_canonicalize('fast_compile_gpu')

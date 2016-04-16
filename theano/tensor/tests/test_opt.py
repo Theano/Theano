@@ -47,8 +47,12 @@ from theano.tensor import vector, ivector, lvector, fvector, dvector
 from theano.tensor import matrix, imatrix, lmatrix, fmatrix, dmatrix
 from theano.tensor import scalars, vectors, matrices, fmatrices, dmatrices
 from theano.tensor import (
+        AdvancedSubtensor,
         AdvancedSubtensor1,
         as_tensor_variable,
+        IncSubtensor,
+        AdvancedIncSubtensor,
+        AdvancedIncSubtensor1,
         inplace,
         Join,
         join,
@@ -1809,6 +1813,51 @@ def test_local_useless_subtensor():
             assert any([isinstance(node.op, AdvancedSubtensor1)
                         for node in prog])
         f([[0, 1, 2], [3, 4, 5]])  # let debugmode test something
+
+
+def test_local_subtensor_remove_broadcastable_index():
+    x = T.dmatrix('x')
+    y1 = x.dimshuffle(0, 'x', 1)
+    y2 = x.dimshuffle('x', 1, 0, 'x')
+    y3 = x.dimshuffle('x', 1, 'x', 0, 'x')
+    z1 = y1[:, 0, :]
+    z2 = y1[:, -1, :]
+    z3 = y2[0, :, :, -1]
+    z4 = y2[0, :, :, 0]
+    z5 = y2[-1, :, :, -1]
+    z6 = y3[-1, :, 0, :, -1]
+    z7 = y3[-1, :, -1, :, -1]
+    z8 = y3[0, :, 0, :, 0]
+    f = theano.function([x], [z1, z2, z3, z4, z5, z6, z7, z8])
+    for elem in f.maker.fgraph.toposort():
+        assert type(elem.op) not in [Subtensor, AdvancedSubtensor,
+                                     AdvancedSubtensor1, IncSubtensor,
+                                     AdvancedIncSubtensor,
+                                     AdvancedIncSubtensor1]
+
+    rng = numpy.random.RandomState(seed=utt.fetch_seed())
+    xn = rng.rand(5, 5)
+    f(xn)
+
+    w1 = y1[3, 0, :]
+    w2 = y1[2:4, -1, :]
+    w3 = y2[0, :, 4:, -1]
+    w4 = y2[:, :, 0, -1]
+    w5 = y2[0, 2:4, :, 0]
+    w6 = y2[0, -1, :, -1]
+    w7 = y2[-1, 4:, :, -1]
+    w8 = y2[-1, :, :3, -1]
+    w9 = y2[-1, :, -1, -1]
+    w10 = y3[-1, 2, 0, :, -1]
+    w11 = y3[-1, 0, -1, :, -1]
+    w12 = y3[-1, :, -1, -1, -1]
+    w13 = y3[0, 0, 0, :, 0]
+    w14 = y3[-1, 2:4, 0, 1:5, -1]
+    w15 = y3[-1, 0, -1, 0, -1]
+    w16 = y3[0, 2, 0, 4, 0]
+    f2 = theano.function([x], [w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11,
+                               w12, w13, w14, w15, w16])
+    f2(xn)
 
 
 class test_local_subtensor_make_vector(unittest.TestCase):
