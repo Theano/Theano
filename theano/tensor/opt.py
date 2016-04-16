@@ -1811,7 +1811,9 @@ def local_subtensor_remove_broadcastable_index(node):
             # The idx is a Scalar, ie a Type. This means the actual index
             # is contained in node.inputs[1]
             dim_index = node.inputs[node_inputs_idx]
-            if dim_index.value in [0, -1] and node.inputs[0].broadcastable[dim] == True:
+            if type(dim_index) == theano.scalar.basic.ScalarConstant:
+                dim_index = dim_index.value
+            if dim_index in [0, -1] and node.inputs[0].broadcastable[dim] == True:
                 remove_dim.append(dim)
                 node_inputs_idx += 1
             else:
