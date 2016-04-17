@@ -90,3 +90,11 @@ Once you have installed Theano, you should run the test suite.
 All tests should pass (skipped tests and known failures are normal). If
 some test fails on your machine, you are encouraged to tell us what went
 wrong on the ``theano-users@googlegroups.com`` mailing list.
+
+
+Setting up the GPU
+------------------
+
+.. include:: install_gpu.txt
+    :start-line: 6
+    :end-line: 62
