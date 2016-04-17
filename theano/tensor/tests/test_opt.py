@@ -63,6 +63,7 @@ from theano.tensor import (
         Tile,
         tile
         )
+from theano.tensor.subtensor import advanced_inc_subtensor1
 from theano.tensor.elemwise import DimShuffle
 from theano.tests import unittest_tools as utt
 from theano.compile.mode import optdb
@@ -3361,12 +3362,23 @@ def test_local_subtensor_of_alloc():
             for slices in slicess:
                 z = yx.__getitem__(slices)
                 f = theano.function([x], z)
+                assert check_stack_trace(f, ops_to_check='all')
                 if theano.config.mode != 'FAST_COMPILE':
                     # Subtensor can be in the input of Alloc
                     assert not isinstance(f.maker.fgraph.toposort()[-1].op,
                                           Subtensor)
                 val = f(xval)
                 assert xval.__getitem__(slices).shape == val.shape
+
+
+def test_local_inplace_incsubtensor1():
+    # Test local_inplace_incsubtensor1 for stack trace
+    x = fmatrix()
+    y = x**2
+    a = lmatrix()
+    z = advanced_inc_subtensor1(y, a, [1,3])
+    f = theano.function([x, a], z)
+    assert check_stack_trace(f, ops_to_check='all')
 
 
 def test_local_fill_useless():
@@ -3538,12 +3550,15 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
                                                            'local_track_shape_i',
                                                            'local_subtensor_make_vector')
         f = theano.function([x], T.lt(x.shape[0], 0), mode=mode)
+        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         self.assert_eqs_const(f, 0)
 
         f = theano.function([x], T.ge(x.shape[0], 0), mode=mode)
+        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         self.assert_eqs_const(f, 1)
 
         f = theano.function([x], T.maximum(x.shape[0], 0), mode=mode)
+        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op, Shape_i), topo[0].op
@@ -3551,6 +3566,7 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
         assert f(x_val) == x_val.shape[0]
 
         f = theano.function([x], T.maximum(0, x.shape[0]), mode=mode)
+        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op, Shape_i), topo[0].op
@@ -3558,9 +3574,11 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
         assert f(x_val) == x_val.shape[0]
 
         f = theano.function([x], T.minimum(x.shape[0], 0), mode=mode)
+        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         self.assert_eqs_const(f, 0)
 
         f = theano.function([x], T.minimum(0, x.shape[0]), mode=mode)
+        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         self.assert_eqs_const(f, 0)
 
     def test_shape_add_inequality(self):
@@ -3573,9 +3591,11 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
         y = T.vector('y', dtype=config.floatX)
 
         f = theano.function([x, y], T.lt(x.shape[0]+y.shape[0], 0), mode=mode)
+        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         self.assert_eqs_const(f, 0)
 
         f = theano.function([x, y], T.ge(x.shape[0]+y.shape[0], 0), mode=mode)
+        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         self.assert_eqs_const(f, 1)
 
     def test_equality_shapes(self):
@@ -4002,6 +4022,7 @@ class test_shapeoptimizer(unittest.TestCase):
 
         # Without the optimization
         f = theano.function([x], ins_x.shape, mode=mode)
+        assert check_stack_trace(f, ops_to_check='all')
         xval = rng.randn(3, 4, 7).astype(config.floatX)
         assert numpy.all(f(xval) == [3, 4, 7])
         f_ops = [node.op for node in f.maker.fgraph.toposort()]
@@ -4018,6 +4039,7 @@ class test_shapeoptimizer(unittest.TestCase):
         # The identity_shape op should not be needed anymore to compute
         # the shape
         g = theano.function([x], ins_x.shape, mode=mode)
+        assert check_stack_trace(g, ops_to_check='all')
         xval = rng.randn(6, 1, 2).astype(config.floatX)
         assert numpy.all(g(xval) == [6, 1, 2])
         g_ops = [node.op for node in g.maker.fgraph.toposort()]
@@ -4028,6 +4050,7 @@ class test_shapeoptimizer(unittest.TestCase):
         # test multiple level of op without infer_shape
         ins_x3 = identity_noshape(identity_noshape(identity_noshape(x)))
         h = theano.function([x], ins_x3.shape, mode=mode)
+        assert check_stack_trace(h, ops_to_check='all')
         xval = rng.randn(6, 1, 2).astype(config.floatX)
         assert numpy.all(h(xval) == [6, 1, 2])
         h_ops = [node.op for node in h.maker.fgraph.toposort()]
