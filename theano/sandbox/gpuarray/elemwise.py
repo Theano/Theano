@@ -221,6 +221,7 @@ class GpuElemwise(HideC, Elemwise):
         # check that all inputs have valid dimensions
         emitted_inames = {}
         code = """
+        // +1 is so that MSVC is happy when nd == 0
         size_t dims[%(nd)s+1] = {%(initial_dims)s};
         void *rargs[%(nargs)s] = {0};
         """ % locals()
@@ -269,7 +270,7 @@ class GpuElemwise(HideC, Elemwise):
                 %(fail)s;
             }
         }
-        """ % locals()
+            """ % locals()
             emitted_inames[iname] = True
         # check that all outputs have valid dimensions
         p = len(node.inputs)
@@ -299,7 +300,7 @@ class GpuElemwise(HideC, Elemwise):
             }
         }
         rargs[%(p)s] = &%(oname)s->ga;
-        """ % locals()
+                """ % locals()
                 p += 1
             else:
                 input_idx = self.inplace_pattern[idx]
