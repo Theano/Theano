@@ -29,19 +29,19 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
 
     Parameters
     ----------
-    input : dmatrix of dtensor3
-        Symbolic variable for images to be filtered.
-    filters : dmatrix of dtensor3
-        Symbolic variable containing filter values.
+    input : Symbolic theano tensor for images to be filtered.
+            Dimensions: ([num_images], image_height, image_width)
+    filters : Symbolic theano tensor for convolution filter(s).
+              Dimensions: ([num_filters], filter_height, filter_width)
     border_mode: {'valid', 'full'}
         See scipy.signal.convolve2d.
-    subsample
+    subsample :
         Factor by which to subsample output.
     image_shape : tuple of length 2 or 3
-        ([number images,] image height, image width).
+        ([num_images,] image height, image width).
     filter_shape : tuple of length 2 or 3
-        ([number filters,] filter height, filter width).
-    kwargs
+        ([num_filters,] filter height, filter width).
+    kwargs :
         See theano.tensor.nnet.conv.conv2d.
 
     Returns
