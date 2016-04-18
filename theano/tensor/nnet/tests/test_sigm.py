@@ -368,9 +368,7 @@ class T_softplus_opts(unittest.TestCase):
                           theano.tensor.nnet.sigm.ScalarSoftplus,
                           theano.scalar.Neg)
 
-        assert check_stack_trace(
-            f, ops_to_check=
-            lambda x: isinstance(x.op.scalar_op, types_to_check))
+        assert check_stack_trace(f, ops_to_check=types_to_check)
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 3
         for i, op in enumerate(types_to_check):

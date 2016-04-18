@@ -1354,8 +1354,7 @@ def test_argmax_pushdown_bias():
     for i, type in enumerate(types_to_check):
         assert isinstance(fgraph.toposort()[i].op, type)
     assert str(fgraph.toposort()[3].op) == 'OutputGuard'
-    assert check_stack_trace(
-        fgraph, ops_to_check=lambda node: isinstance(node.op, types_to_check))
+    assert check_stack_trace(fgraph, ops_to_check=types_to_check)
 
     x = tensor.matrix()
     b = tensor.vector()
@@ -1381,9 +1380,8 @@ def test_argmax_pushdown_bias():
     assert isinstance(fgraph.toposort()[1].op.scalar_op, theano.scalar.Maximum)
     assert str(fgraph.toposort()[2].op) == 'OutputGuard'
     assert check_stack_trace(
-        fgraph, ops_to_check=lambda node: (
-            isinstance(node, (SoftmaxWithBias, tensor.CAReduce)) or
-            isinstance(node.op.scalar_op, theano.scalar.Maximum)))
+        fgraph, ops_to_check=(SoftmaxWithBias, tensor.CAReduce))
+
 
 def test_asymptotic_32():
     """
