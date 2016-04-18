@@ -185,7 +185,7 @@ class GpuElemwise(HideC, Elemwise):
         p = 0
         for n, o in enumerate(node.outputs):
             if n in self.inplace_pattern:
-                assert(len(node.outputs) == 1);
+                assert(len(node.outputs) == 1)
                 res += "\nargs[%(n)s].flags |= GE_WRITE;\n" % dict(n=self.inplace_pattern[n])
             else:
                 nn = len(inps) + p
