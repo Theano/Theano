@@ -2717,5 +2717,8 @@ def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
             if (not hasattr(output.tag, 'trace') or
                     not output.tag.trace):
                 return False
+            # check if trace is not empty
+            if not len(output.tag.trace) > 0:
+                return False
 
     return True
