@@ -579,7 +579,6 @@ def local_dimshuffle_lift(node):
         return [ret]
 
 
-
 @register_canonicalize
 @gof.local_optimizer([DimShuffle])
 def local_lift_transpose_through_dot(node):
