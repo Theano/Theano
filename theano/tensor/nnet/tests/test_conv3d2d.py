@@ -77,8 +77,7 @@ def pyconv3d(signals, filters):
 
 def check_diagonal_subtensor_view_traces(fn):
     assert check_stack_trace(
-        fn, ops_to_check=(DiagonalSubtensor, IncDiagonalSubtensor),
-        bug_print='ignore')
+        fn, ops_to_check=(DiagonalSubtensor, IncDiagonalSubtensor))
 
 
 def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
@@ -153,7 +152,6 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
     newconv3d = theano.function([], [],
                                 updates={s_output: out},
                                 mode=mode)
-    check_diagonal_subtensor_view_traces(newconv3d)
 
     t0 = time.time()
     newconv3d()
@@ -165,7 +163,6 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
                                           (s_signals, gsignals)],
                                  mode=mode,
                                  name='grad')
-    check_diagonal_subtensor_view_traces(gnewconv3d)
 
     t0 = time.time()
     gnewconv3d()
