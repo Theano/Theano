@@ -4059,11 +4059,13 @@ def local_useless_tile(node):
                         # The Op don't support that case, so we can't
                         # implement the opt and test it.
                         return
+                        # TODO remove this part?
                         return [node.inputs[0]]
                     else:
                         # The Op don't support that case, so we can't
                         # implement the opt and test it.
                         return
+                        # TODO remove this part?
                         x_nd = node.inputs[0].ndim
                         broad = ['x'] * (l - x_nd) + xrange(x_nd)
                         ret = node.inputs[0].dimshuffle(broad)

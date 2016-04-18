@@ -6161,6 +6161,7 @@ def test_local_flatten_lift():
         mode = compile.mode.get_default_mode()
         mode = mode.including('local_reshape_lift')
         f = theano.function([x], out, mode=mode)
+        assert check_stack_trace(f, ops_to_check='all')
         x_np = numpy.random.rand(5, 4, 3, 2).astype(config.floatX)
         out_np = f(x_np)
         topo = f.maker.fgraph.toposort()
