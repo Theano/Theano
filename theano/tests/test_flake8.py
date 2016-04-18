@@ -89,7 +89,6 @@ whitelist_flake8 = [
     "sandbox/__init__.py",
     "sandbox/tests/test_theano_object.py",
     "sandbox/tests/test_scan.py",
-    "sandbox/tests/test_neighbourhoods.py",
     "sandbox/tests/__init__.py",
     "sandbox/cuda/var.py",
     "sandbox/cuda/GpuConvGrad3D.py",
