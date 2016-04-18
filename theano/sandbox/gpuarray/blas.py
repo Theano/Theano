@@ -332,6 +332,84 @@ class GpuDot22(BlasOp):
 gpu_dot22 = GpuDot22()
 
 
+class GpuGemmBatch(BlasOp):
+    __props__ = ('inplace',)
+
+    def __init__(self, inplace=False):
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
+    def make_node(self, C, alpha, A, B, beta):
+        ctx_name = infer_context_name(C, A, B)
+        A = as_gpuarray_variable(A, ctx_name)
+        B = as_gpuarray_variable(B, ctx_name)
+        C = as_gpuarray_variable(C, ctx_name)
+        alpha = as_tensor_variable(alpha)
+        beta = as_tensor_variable(beta)
+        assert alpha.ndim == 0
+        assert beta.ndim == 0
+        assert A.ndim == 3
+        assert B.ndim == 3
+        assert C.ndim == 3
+        assert A.dtype == B.dtype == C.dtype
+        return Apply(self, [C, alpha, A, B, beta], [C.type()])
+
+    def c_headers(self):
+        return super(GpuGemmBatch, self).c_headers() + ['<gpuarray/blas.h>']
+
+    def c_code(self, node, name, inp, out, sub):
+        vars = dict(out=out[0], C=inp[0], alpha=inp[1], A=inp[2], B=inp[3],
+                    beta=inp[4], fail=sub['fail'], name=name)
+        code = """
+        int err;
+        """
+        if self.inplace:
+            code += """
+                   if (!GpuArray_ISONESEGMENT(&%(C)s->ga)) {
+                     %(out)s = theano_try_copy(%(out)s, %(C)s);
+                     if (%(out)s == NULL) {
+                       %(fail)s
+                     }
+                   } else {
+                     Py_XDECREF(%(out)s);
+                     %(out)s = %(C)s;
+                     Py_INCREF(%(out)s);
+                   }
+                   """ % vars
+        else:
+            code += """
+                   %(out)s = theano_try_copy(%(out)s, %(C)s);
+                   if (%(out)s == NULL) {
+                       %(fail)s
+                   }
+                   """ % vars
+        code += """
+        err = GpuArray_rgemmBatch_3d(
+            cb_no_trans, cb_no_trans,
+            ((dtype_%(alpha)s *)PyArray_DATA(%(alpha)s))[0],
+            &%(A)s->ga, &%(B)s->ga,
+            ((dtype_%(beta)s *)PyArray_DATA(%(beta)s))[0],
+            &%(out)s->ga, 0);
+        if (err != GA_NO_ERROR) {
+            PyErr_Format(PyExc_RuntimeError,
+                         "%%s", GpuArray_error(&%(A)s->ga, err));
+            %(fail)s;
+        }
+        """ % vars
+        if config.gpuarray.sync:
+            code += """
+            GpuArray_sync(&%(out)s->ga);
+            """ % vars
+        return code
+
+    def c_code_cache_version(self):
+        return (1,)
+
+gpugemmbatch_no_inplace = GpuGemmBatch(inplace=False)
+gpugemmbatch_inplace = GpuGemmBatch(inplace=True)
+
+
 @inplace_allocempty(GpuGemv, 0)
 def local_inplace_gpuagemv(node, inputs):
     return [gpugemv_inplace(*inputs)]
