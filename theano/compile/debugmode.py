@@ -2368,7 +2368,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         self._check_unused_inputs(inputs, outputs, on_unused_input)
 
         # Make a list of (SymbolicInput, indices,
-        SymbolicInput,...]), one tuple for each input. (See
+        # SymbolicInput,...]), one tuple for each input. (See
         # Function.indices for more details)
         indices = [[input] + self.expand_in(input, _inputs)
                    for input in inputs]
