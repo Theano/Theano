@@ -46,6 +46,7 @@ from .nnet import (gpu_crossentropy_softmax_1hot_with_bias_dx,
 from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
                        GpuCAReduceCPY)
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
+                        GpuAdvancedSubtensor,
                         GpuAdvancedSubtensor1,
                         GpuAdvancedIncSubtensor1,
                         GpuAdvancedIncSubtensor1_dev20)
@@ -641,6 +642,12 @@ def local_gpua_incsubtensor(node, context_name):
 @op_lifter([tensor.AdvancedSubtensor1])
 def local_gpua_advanced_subtensor(node, context_name):
     return GpuAdvancedSubtensor1()
+
+
+@register_opt('fast_compile')
+@op_lifter([tensor.AdvancedSubtensor])
+def local_gpua_advanced_subtensor_(node, context_name):
+    return GpuAdvancedSubtensor()
 
 
 @register_opt('fast_compile')
