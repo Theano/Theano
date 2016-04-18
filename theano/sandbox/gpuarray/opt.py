@@ -39,6 +39,7 @@ from .nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
 from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
                        GpuCAReduceCPY)
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
+                        GpuAdvancedSubtensor,
                         GpuAdvancedSubtensor1,
                         GpuAdvancedIncSubtensor1,
                         GpuAdvancedIncSubtensor1_dev20)
@@ -608,6 +609,12 @@ def local_gpua_incsubtensor(node, context_name):
     val = getattr(node.outputs[0].tag, 'nan_guard_mode_check', True)
     ret.tag.nan_guard_mode_check = val
     return ret
+
+
+@register_opt('fast_compile')
+@op_lifter([tensor.AdvancedSubtensor])
+def local_gpua_advanced_subtensor_(node, context_name):
+    return GpuAdvancedSubtensor()
 
 
 @register_opt('fast_compile')

@@ -10,6 +10,7 @@ from six.moves import StringIO
 import theano
 from theano import tensor, gof
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
+from theano.tensor.type_other import SliceType, NoneTypeT
 import theano.tensor.inplace
 
 try:
@@ -482,6 +483,125 @@ if (err != GA_NO_ERROR) {
 
     def c_code_cache_version(self):
         return (0,)
+
+
+class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
+    """
+    AdvancedSubtensor On the GPU.
+
+    """
+    def make_node(self, x, *inputs):
+        ctx_name = infer_context_name(x)
+        x = as_gpuarray_variable(x, ctx_name)
+        rval = tensor.AdvancedSubtensor.make_node(self, x, *inputs)
+        otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
+                             broadcastable=rval.outputs[0].type.broadcastable,
+                             context_name=ctx_name)
+
+        return gof.Apply(self, [x] + rval.inputs[1:], [otype()])
+
+    def perform(self, node, inputs, out_):
+        out, = out_
+        x = node.inputs[0]
+        idx = node.inputs[1:]
+
+        assert len(idx) >= x.ndim
+        dims = len(idx)
+        #step 1: find smallest index
+        for k, i in enumerate(idx):
+            if isinstance(i.type, tensor.TensorType):
+                start = k
+                break
+        for k, i in enumerate(idx[::-1]):
+            if isinstance(i.type, tensor.TensorType):
+                end = len(idx) - k
+                break
+        #step 2: transpose
+        def get_indices(a, b, ind):
+            """
+            Get real indices for a list of indices excluding `None`.
+
+            """
+            dimshuffle_info = []
+            new_ind = []
+            k = 0
+
+            for i in range(0, a):
+                if isinstance(ind[i].type, SliceType):
+                    dimshuffle_info.append(k)
+                    new_ind.append(ind[i])
+                    k += 1
+            a_ = k
+            left_none = a - k
+            dimshuffle_info.append(k)
+            new_ind.append(ind[a])
+            k += 1
+
+            idx_1 = []
+            idx_2 = []
+            idx_3 = []
+            for i in range(a+1, b):
+                if isinstance(ind[i].type, SliceType):
+                    idx_1.append(k)
+                    idx_2.append(ind[i])
+                    k += 1
+                elif isinstance(ind[i].type, NoneTypeT):
+                    idx_1.append('x')
+                    idx_2.append(slice(None))
+                else:
+                    idx_3.append(k)
+                    new_ind.append(ind[i])
+                    k += 1
+            b_ = a_ + len(idx_3) + 1
+
+            dimshuffle_info.extend(idx_3)
+            if left_none == a and len(idx_1) == 0:
+                dimshuff_info = ['x'] * left_none + dimshuffle_info
+                new_ind = [slice(None)] * left_none + new_ind
+                a_ = left_none
+                b_ += left_none
+            else:
+                dimshuffle_info.extend(['x'] * left_none)
+                new_ind.extend([slice(None)] * left_none)
+            new_ind += idx_2
+            dimshuffle_info.extend(idx_1)
+
+            for i in range(b, len(ind)):
+                if isinstance(ind[i].type, SliceType):
+                    dimshuffle_info.append(k)
+                    new_ind.append(ind[i])
+                    k += 1
+                if isinstance(ind[i].type, NoneTypeT):
+                    dimshuffle_info.append('x')
+                    new_ind.append(slice(None))
+
+            return dimshuffle_info, new_ind, a_, b_
+        (dimshuffle_idx, new_ind,
+                start_, end_) = get_indices(start, end, idx)
+        x = x.dimshuffle(*dimshuffle_idx)
+        #step 3: partial flattening
+        shape = (x.shape[: start_] +
+                 (tensor.prod(x.shape[start_: end_]),) +
+                 x.shape[end_:])
+        input_flat = x.reshape(shape, ndim=dims - start_ + end_ + 1)
+        #step 4: build the strides
+        strides = [1]
+        for i in range(start_, end_-1)[::-1]:
+            stride = x.shape[i] * strides[-1]
+            strides.append(stride)
+        #step 5: build the indices into x_flat
+        items = [new_ind[i] for i in range(start_, end_)]
+        new_idx = tensor.sum([i * j for i,j in zip(items, strides)],
+                        axis=0)
+        #step 6: advanced slicing
+        out_flat = input_flat.take(new_idx.flatten())
+        #step 7: reshape into right shape
+        o = out_flat.reshape(x.shape[:start_] +
+                new_idx.shape + x.shape[end_:],
+                ndim=dims+new_idx.ndim-2)
+        idx_ = (new_ind[:start_] + [slice(None)] *
+                (new_idx.ndim - 2 + end_ - start_) + new_ind[end_:])
+        out[0] = o.__getitem__(idx_)
 
 
 class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
