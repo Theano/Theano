@@ -472,7 +472,122 @@ if (err != GA_NO_ERROR) {
         return (0,)
 
 
-class GpuAdvancedIncSubtensor1(Op):
+class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
+    """
+    AdvancedSubtensor On the GPU.
+    """
+    def make_node(self, x, *inputs):
+        ctx_name = infer_context_name(x)
+        rval = tensor.AdvancedSubtensor.make_node(self, x, *inputs)
+        otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
+                             broadcastable=rval.outputs[0].type.broadcastable,
+                             context_name=ctx_name)
+        x = as_gpuarray_variable(x, ctx_name)
+        return gof.Apply(self, [x] + rval.inputs[1:], [otype()])
+
+    def perform(self, node, inputs, out_):
+        out, = out_
+        x = inputs[0]
+        idx = inputs[1:]
+
+        assert len(idx) >= x.ndim
+        dims = len(idx)
+        # step 1: find smallest index
+        for k, i in enumerate(idx):
+            if isinstance(i, numpy.ndarray):
+                start = k
+                break
+        for k, i in enumerate(idx[::-1]):
+            if isinstance(i, numpy.ndarray):
+                end = len(idx) - k
+                break
+        # step 2: transpose
+        def get_indices(a, b, ind):
+            """
+            Get real indices for a list of indices.
+            """
+            dimshuffle_info = []
+            new_ind = []
+            k = 0
+
+            for i in range(0, a):
+                if isinstance(ind[i], slice):
+                    dimshuffle_info.append(k)
+                    new_ind.append(ind[i])
+                    k += 1
+                elif ind[i] is None:
+                    dimshuffle_info.append('x')
+                    new_ind.append(slice(None))
+
+            dimshuffle_info.append(k)
+            new_ind.append(ind[a])
+            k += 1
+
+            idx_1 = []
+            idx_2 = []
+            idx_3 = []
+            for i in range(a+1, b):
+                if isinstance(ind[i], slice):
+                    idx_1.append(k)
+                    idx_2.append(ind[i])
+                    k += 1
+                elif ind[i] is None:
+                    idx_3.append('x')
+                    new_ind.append(slice(None))
+                else:
+                    idx_3.append(k)
+                    new_ind.append(ind[i])
+                    k += 1
+            valid_end = a + len(idx_3) + 1
+
+            dimshuffle_info.extend(idx_3)
+            new_ind += idx_2
+            dimshuffle_info.extend(idx_1)
+
+            for i in range(b, len(ind)):
+                if isinstance(ind[i], slice):
+                    dimshuffle_info.append(k)
+                    new_ind.append(ind[i])
+                    k += 1
+                elif ind[i] is None:
+                    dimshuffle_info.append('x')
+                    new_ind.append(slice(None))
+
+            return dimshuffle_info, new_ind, valid_end
+
+        (dimshuffle_idx, new_ind,
+                end_) = get_indices(start, end, idx)
+        x = x.transpose(*dimshuffle_idx)
+        # step 3: partial flattening
+        start_ = start
+        shape = (x.shape[: start_] +
+                 (tensor.prod(x.shape[start: end_]),) +
+                 x.shape[end_:])
+        input_flat = tensor.reshape(x, shape)
+        # step 4: build the strides
+        strides = [1]
+        for i in range(start_, end_-1)[::-1]:
+            stride = x.shape[i+1] * strides[-1]
+            strides.append(stride)
+        # step 5: build the indices into x_flat
+        items = [new_ind[i] if isinstance(new_ind[i], numpy.ndarray)
+                 else 0 for i in range(start_, end_)]
+        new_idx = tensor.sum([i * j for i,j
+                             in zip(items, strides[::-1])],
+                             axis=0)
+        # step 6: advanced slicing
+        out_flat = input_flat.take(new_idx.flatten())
+        # step 7: reshape into right shape
+        out_flat_shp = (x.shape[:start_] +
+                        new_idx.shape + x.shape[end_:]).astype('int32')
+        o = out_flat.reshape(out_flat_shp,
+                ndim=dims+new_idx.ndim-2)
+        idx_ = (new_ind[:start_] + [slice(None)] *
+                (new_idx.ndim - 2 + end_ - start_) + new_ind[end_:])
+        out[0] = o.__getitem__(idx_)
+
+
+class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
     """
     Implement AdvancedIncSubtensor1 on the gpu.
 
