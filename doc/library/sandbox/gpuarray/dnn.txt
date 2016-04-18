@@ -43,9 +43,9 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
 
 .. note::
 
-   cuDNN v3 has now been released. cuDNN v2 remains supported but cuDNN v3 is
-   faster and offers many more options. We recommend that everybody update to
-   v3.
+   cuDNN v5rc is supported in Theano master version. So it dropped cuDNN v3 support.
+   Theano 0.8.0 and 0.8.1 support only cuDNN v3 and v4.
+   Theano 0.8.2 will support only v4 and v5.
 
 .. note::
 
