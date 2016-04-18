@@ -1699,7 +1699,7 @@ def local_useless_alloc(node):
     output_shape = node.inputs[1:]
     num_dims_with_size_1_added_to_left = 0
     for i in range(len(output_shape)):
-        if output_shape[i].value == 1:
+        if output_shape[i].get_scalar_constant_value() == 1:
             num_dims_with_size_1_added_to_left += 1
         else:
             break
