@@ -1,6 +1,6 @@
 #section support_code_apply
 
-static __global__ void k_multi_warp_APPLYSPECIFIC(multinomial)(
+static __global__ void k_multi_warp_multinomial(
     const int nb_multi,
     const int nb_outcomes,
     float * global_pvals,
@@ -66,6 +66,7 @@ int APPLY_SPECIFIC(multinomial)(PyGpuArrayObject *pvals,
     if (theano_prep_output(out, 2, dims, unis->ga.typecode,
                            GA_C_ORDER, c) != 0)
       return 1;
+    GpuArray_memset(&((*out)->ga), 0);
 
     { // NESTED SCOPE
         int nb_multi = PyGpuArray_DIMS(pvals)[0];
@@ -97,19 +98,23 @@ int APPLY_SPECIFIC(multinomial)(PyGpuArrayObject *pvals,
 
         assert(nb_blocks*nb_threads >= nb_multi);
 
-        k_multi_warp_APPLYSPECIFIC(multinomial)<<<n_blocks, n_threads, n_shared>>>(
+        k_multi_warp_multinomial<<<n_blocks, n_threads, n_shared>>>(
             PyGpuArray_DIMS(*out)[1],
             PyGpuArray_DIMS(*out)[0],
-            PyGpuArray_DEV_DATA(%(pvals)s),
-            PyGpuArray_STRIDES(%(pvals)s)[0],
-            PyGpuArray_STRIDES(%(pvals)s)[1],
-            PyGpuArray_DEV_DATA(%(unis)s),
-            PyGpuArray_STRIDES(%(unis)s)[0],
-            PyGpuArray_DEV_DATA(*out),
+            (float*)PyGpuArray_DEV_DATA(pvals),
+            PyGpuArray_STRIDES(pvals)[0],
+            PyGpuArray_STRIDES(pvals)[1],
+            (float*)PyGpuArray_DEV_DATA(unis),
+            PyGpuArray_STRIDES(unis)[0],
+            (float*)PyGpuArray_DEV_DATA(*out),
             PyGpuArray_STRIDES(*out)[0],
             PyGpuArray_STRIDES(*out)[1]
         );
-        CNDA_THREAD_SYNC;
+
+	//TODO
+	//if(false)//SYNC)
+	  //	  GpuArray_sync((*out)->ga);
+ 	//        SYNC;
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess != sts)
         {
