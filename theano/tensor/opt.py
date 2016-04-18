@@ -4185,7 +4185,7 @@ def local_useless_reshape(node):
     dimshuffle_new_order = []
     new_output_shape = []
     i = 0  # index over the output of the new reshape
-    for dim in output_shape.value:
+    for dim in output_shape.get_scalar_constant_value():
         if dim == 1:
             dimshuffle_new_order.append('x')
         else:
