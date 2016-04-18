@@ -44,42 +44,32 @@ int APPLY_SPECIFIC(multinomial)(PyGpuArrayObject *pvals,
                                 PyGpuArrayObject *unis,
                                 PyGpuArrayObject **out,
                                 PyGpuContextObject *c) {
+    size_t dims[2];
     if (PyGpuArray_NDIM(pvals) != 2)
     {
         PyErr_Format(PyExc_TypeError, "pvals wrong rank");
-        FAIL;
+        return 1;
     }
     if (PyGpuArray_NDIM(unis) != 1)
     {
         PyErr_Format(PyExc_TypeError, "unis wrong rank");
-        FAIL;
+        return 1;
     }
-    if (PyGpuArray_HOST_DIMS(unis)[0] != PyGpuArray_HOST_DIMS(pvals)[0])
+    if (PyGpuArray_DIMS(unis)[0] != PyGpuArray_DIMS(pvals)[0])
     {
         PyErr_Format(PyExc_ValueError, "unis.shape[0] != pvals.shape[0]");
-        FAIL;
+        return 1;
     }
 
-    //N.B. that the output is TRANSPOSED compared with pvals
-    if ((NULL == *out)
-        || (PyGpuArray_HOST_DIMS(*out[0] != PyGpuArray_HOST_DIMS(pvals)[1]
-        || (PyGpuAarray_HOST_DIMS(*out[1] != PyGpuArray_HOST_DIMS(pvals)[0])
-    {
-        Py_XDECREF(*out);
-        npy_intp dims[2];
-        dims[0] = (PyGpuArray_HOST_DIMS(pvals)[1];
-        dims[1] = (PyGpuArray_HOST_DIMS(pvals)[0]);
-        *out = (PyGpuarray*)PyGpuArray_NewDims(2, dims);
-        if (!*out)
-        {
-            PyErr_SetString(PyExc_MemoryError, "failed to alloc z output");
-            FAIL;
-        }
-    }
+    dims[0] = PyGpuArray_DIMS(pvals)[1];
+    dims[1] = PyGpuArray_DIMS(pvals)[0];
+    if (theano_prep_output(out, 2, dims, unis->ga.typecode,
+                           GA_C_ORDER, c) != 0)
+      return 1;
 
     { // NESTED SCOPE
-        int nb_multi = PyGpuArray_HOST_DIMS(pvals)[0];
-        int nb_outcomes = PyGpuArray_HOST_DIMS(pvals)[1];
+        int nb_multi = PyGpuArray_DIMS(pvals)[0];
+        int nb_outcomes = PyGpuArray_DIMS(pvals)[1];
         //TODO : change this for a beautiful constant
         int max_nb_blocks = 2<<15 - 1;
         int nb_blocks = max_nb_blocks + 1;
@@ -87,19 +77,19 @@ int APPLY_SPECIFIC(multinomial)(PyGpuArrayObject *pvals,
         do
         {
             nb_threads*=2;
-            if (nb_multi %% nb_threads == 0)
+            if (nb_multi % nb_threads == 0)
                 nb_blocks = nb_multi/nb_threads;
             else
                 nb_blocks = (int)((float)nb_multi/(float)nb_threads + 1.);
         } while (nb_blocks > max_nb_blocks);
 
-        //printf("\\nN=%%i b=%%i t=%%i t*b=%%i", nb_multi, nb_blocks, nb_threads, nb_blocks*nb_threads);
+        //printf("\\nN=%i b=%i t=%i t*b=%i", nb_multi, nb_blocks, nb_threads, nb_blocks*nb_threads);
 
         // TODO : next line is a bit hardcoded...
         if (nb_threads > 512)
         {
-            PyErr_Format(PyExc_ValueError, "Mutinomial is not implemented for so many rows in the matrix (%%i)", nb_multi);
-            FAIL;
+            PyErr_Format(PyExc_ValueError, "Mutinomial is not implemented for so many rows in the matrix (%i)", nb_multi);
+            return 1;
         }
         dim3 n_blocks(nb_blocks,1,1);
         dim3 n_threads(nb_threads,1,1);
@@ -108,22 +98,22 @@ int APPLY_SPECIFIC(multinomial)(PyGpuArrayObject *pvals,
         assert(nb_blocks*nb_threads >= nb_multi);
 
         k_multi_warp_APPLYSPECIFIC(multinomial)<<<n_blocks, n_threads, n_shared>>>(
-            CudaNdarray_HOST_DIMS(%(z)s)[1],
-            CudaNdarray_HOST_DIMS(%(z)s)[0],
-            CudaNdarray_DEV_DATA(%(pvals)s),
-            CudaNdarray_HOST_STRIDES(%(pvals)s)[0],
-            CudaNdarray_HOST_STRIDES(%(pvals)s)[1],
-            CudaNdarray_DEV_DATA(%(unis)s),
-            CudaNdarray_HOST_STRIDES(%(unis)s)[0],
-            CudaNdarray_DEV_DATA(%(z)s),
-            CudaNdarray_HOST_STRIDES(%(z)s)[0],
-            CudaNdarray_HOST_STRIDES(%(z)s)[1]
+            PyGpuArray_DIMS(*out)[1],
+            PyGpuArray_DIMS(*out)[0],
+            PyGpuArray_DEV_DATA(%(pvals)s),
+            PyGpuArray_STRIDES(%(pvals)s)[0],
+            PyGpuArray_STRIDES(%(pvals)s)[1],
+            PyGpuArray_DEV_DATA(%(unis)s),
+            PyGpuArray_STRIDES(%(unis)s)[0],
+            PyGpuArray_DEV_DATA(*out),
+            PyGpuArray_STRIDES(*out)[0],
+            PyGpuArray_STRIDES(*out)[1]
         );
         CNDA_THREAD_SYNC;
         cudaError_t sts = cudaGetLastError();
         if (cudaSuccess != sts)
         {
-            PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i; shared: %%i)\\n",
+            PyErr_Format(PyExc_RuntimeError, "Cuda error: %s: %s. (grid: %i x %i; block: %i x %i x %i; shared: %i)\\n",
                 "k_multi_warp_%(name)s",
                 cudaGetErrorString(sts),
                 n_blocks.x,
@@ -132,8 +122,9 @@ int APPLY_SPECIFIC(multinomial)(PyGpuArrayObject *pvals,
                 n_threads.y,
                 n_threads.z,
                 n_shared);
-            FAIL;
+            return 1;
         }
 
     } // END NESTED SCOPE
+	return 0;
 }
