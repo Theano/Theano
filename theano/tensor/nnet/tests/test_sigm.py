@@ -364,15 +364,16 @@ class T_softplus_opts(unittest.TestCase):
 
         out = T.log(sigmoid(x))
         f = theano.function([x], out, mode=self.m)
-        types_to_check = (theano.scalar.Neg,
-                          theano.tensor.nnet.sigm.ScalarSoftplus,
-                          theano.scalar.Neg)
 
-        assert check_stack_trace(f, ops_to_check=types_to_check)
+        assert check_stack_trace(
+            f, ops_to_check=(theano.scalar.Neg,
+                             theano.tensor.nnet.sigm.ScalarSoftplus))
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 3
-        for i, op in enumerate(types_to_check):
-            assert isinstance(topo[i].op.scalar_op, op)
+        assert isinstance(topo[0].op.scalar_op, theano.scalar.Neg)
+        assert isinstance(topo[1].op.scalar_op,
+                          theano.tensor.nnet.sigm.ScalarSoftplus)
+        assert isinstance(topo[2].op.scalar_op, theano.scalar.Neg)
         f(numpy.random.rand(54).astype(config.floatX))
 
     def test_log1msigm_to_softplus(self):
