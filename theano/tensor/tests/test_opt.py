@@ -31,6 +31,7 @@ import theano.tensor.opt as opt
 from theano.tensor.opt import (
         local_add_specialize,
         local_dimshuffle_lift,
+        local_useless_alloc,
         local_greedy_distributor,
         mul_canonizer,
         out2in,
@@ -3546,6 +3547,34 @@ class Test_local_useless_alloc(unittest.TestCase):
         assert tensor.Alloc in op_classes
 
         self._verify_stack_trace(f)
+
+    def test_useless_alloc_1_on_broadcastable(self):
+        alloc_lift = out2in(local_useless_alloc)
+        x = shared(self.rng.randn(2,))
+        y = shared(self.rng.randn())
+        alloc_x = tensor.alloc(x, 1, 3, 2)
+        alloc_y = tensor.alloc(y, 1, 1)
+
+        g = FunctionGraph([x, y], [alloc_x, alloc_y])
+        self.assertTrue(str(g) == ("[Alloc(<TensorType(float64, vector)>, "
+                                   "TensorConstant{1}, "
+                                   "TensorConstant{3}, "
+                                   "TensorConstant{2}), "
+                                   "Alloc(<TensorType(float64, scalar)>, "
+                                   "TensorConstant{1}, "
+                                   "TensorConstant{1})]"))
+
+        alloc_lift.optimize(g)
+        self.assertTrue(str(g) == "[DimShuffle{x,0,1}"
+                                  "(Alloc(<TensorType(float64, vector)>, "
+                                  "TensorConstant{3}, "
+                                  "TensorConstant{2})), "
+                                  "DimShuffle{x,x}"
+                                  "(<TensorType(float64, scalar)>)]")
+
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
+
 
 
 class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
