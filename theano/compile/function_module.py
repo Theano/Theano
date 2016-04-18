@@ -586,7 +586,8 @@ class Function(object):
 
         Returns
         -------
-        Copied theano.Function
+        theano.Function
+            Copied theano.Function
         """
         # helper function
         def checkSV(sv_ori, sv_rpl):
@@ -752,8 +753,36 @@ class Function(object):
         return f_cpy
 
     def __call__(self, *args, **kwargs):
+        """
+        Evaluates value of a function on given arguments.
+
+        Parameters
+        ----------
+        args : list
+            List of inputs to the function. All inputs are required, even when
+            some of them are not necessary to calculate requested subset of
+            outputs.
+
+        kwargs : dict
+            The function inputs can be passed as keyword argument. For this, use
+            the name of the input or the input instance as the key.
+            Keyword argument ``output_subset`` is a list of either indices of the
+            function's outputs or the keys belonging to the `output_keys` dict
+            and represent outputs that are requested to be calculated.
+
+        Returns
+        -------
+        list
+            List of outputs on indices/keys from ``output_subset`` or all of them,
+            if ``output_subset`` is not passed.
+        """
         profile = self.profile
         t0 = time.time()
+
+        output_subset = kwargs.pop('output_subset', None)
+        if output_subset is not None and self.output_keys is not None:
+            output_subset =\
+                [self.output_keys.index(key) for key in output_subset]
 
         # Reinitialize each container's 'provided' counter
         if self.trust_input:
@@ -856,7 +885,9 @@ class Function(object):
         # Do the actual work
         t0_fn = time.time()
         try:
-            outputs = self.fn()
+            outputs =\
+                self.fn() if output_subset is None else\
+                self.fn(output_subset=output_subset)
         except Exception:
             if hasattr(self.fn, 'position_of_error'):
                 # this is a new vm-provided function or c linker
@@ -933,7 +964,8 @@ class Function(object):
                 profile.ignore_first_call = False
         if self.return_none:
             return None
-        elif self.unpack_single and len(outputs) == 1:
+        elif self.unpack_single and len(outputs) == 1 and\
+                output_subset is None:
             return outputs[0]
         else:
 
@@ -941,9 +973,16 @@ class Function(object):
 
                 assert len(self.output_keys) == len(outputs)
 
-                return dict(izip(self.output_keys, outputs))
+                if output_subset is None:
+                    return dict(izip(self.output_keys, outputs))
+                else:
+                    return dict((self.output_keys[index], outputs[index])
+                                for index in output_subset)
 
-            return outputs
+            if output_subset is None:
+                return outputs
+            else:
+                return [outputs[i] for i in output_subset]
 
     value = property(
         lambda self: self._value,
