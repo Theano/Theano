@@ -1,12 +1,26 @@
+import os
+
+import pygpu
+
 from theano import Apply
 from theano.gof import COp
 from .basic_ops import as_gpuarray_variable, infer_context_name
-from .type import GpuArrayType
+from .type import gpu_context_type, GpuArrayType
 
 class GPUAMultinomialFromUniform(COp):
+    params_type = gpu_context_type
+
+    def get_params(self, node):
+        return node.outputs[0].type.context
 
     def __init__(self):
         COp.__init__(self, ['multinomial.c'], 'APPLY_SPECIFIC(multinomial)')
+
+    def c_headers(self):
+        return ['<numpy_compat.h>', 'gpuarray_helper.h']
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__), pygpu.get_include()]
 
     def make_node(self, pvals, unis):
         assert pvals.dtype == 'float32'
