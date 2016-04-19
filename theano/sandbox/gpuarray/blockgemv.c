@@ -108,8 +108,16 @@ int APPLY_SPECIFIC(blockgemv)(PyGpuArrayObject *o, PyGpuArrayObject *W,
                                inp_list, offInp, PyGpuArray_STRIDES(h)[2] / gpuarray_get_elsize(h->ga.typecode),
                                1, out_list, offOut, PyGpuArray_STRIDES(out)[2] / gpuarray_get_elsize(out->ga.typecode),
                                PyGpuArray_DIMS(out)[1] * PyGpuArray_DIMS(h)[1] * PyGpuArray_DIMS(out)[0], 0);
+  } else if (out->ga.typecode == GA_HALF) {
+    err = blas_ops->sgemvBatch(cb_fortran, transA,
+                               PyGpuArray_DIMS(out)[2],
+                               PyGpuArray_DIMS(h)[2], 1,
+                               W_list, offW, lda,
+                               inp_list, offInp, PyGpuArray_STRIDES(h)[2] / gpuarray_get_elsize(h->ga.typecode),
+                               1, out_list, offOut, PyGpuArray_STRIDES(out)[2] / gpuarray_get_elsize(out->ga.typecode),
+                               PyGpuArray_DIMS(out)[1] * PyGpuArray_DIMS(h)[1] * PyGpuArray_DIMS(out)[0], 0);
   } else {
-    err = GA_DEVSUP_ERROR;
+    err = GA_INVALID_ERROR;
   }
   
   free(W_list);
