@@ -70,8 +70,6 @@ int APPLY_SPECIFIC(multinomial)(PyGpuArrayObject *pvals,
 
     { // NESTED SCOPE
         int nb_multi = PyGpuArray_DIMS(pvals)[0];
-        printf("multinomail_test\n");
-        printf("%d\n",nb_multi); 
         int nb_outcomes = PyGpuArray_DIMS(pvals)[1];
         //TODO : change this for a beautiful constant
         int max_nb_blocks = 2<<15 - 1;
@@ -91,7 +89,7 @@ int APPLY_SPECIFIC(multinomial)(PyGpuArrayObject *pvals,
         // TODO : next line is a bit hardcoded...
         if (nb_threads > 512)
         {
-            PyErr_Format(PyExc_ValueError, "Mutinomial is not implemented for so many rows in the matrix (%i)", nb_multi);
+            PyErr_Format(PyExc_ValueError, "Multinomial is not implemented for so many rows in the matrix (%i)", nb_multi);
             return 1;
         }
         dim3 n_blocks(nb_blocks,1,1);

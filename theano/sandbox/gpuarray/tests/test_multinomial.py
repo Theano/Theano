@@ -7,7 +7,6 @@ import numpy
 import theano
 from theano import config, function, tensor
 from ..multinomial import GPUAMultinomialFromUniform
-from .config import mode_with_gpu
 from theano.compile.mode import get_default_mode, predefined_linkers
 import theano.tests.unittest_tools as utt
 from .. import pygpu_activated
@@ -31,24 +30,6 @@ def run_with_c(f, gpu=False):
     f(mode, gpu)
 
 
-def test_multinomial0():
-    # This tests the MultinomialFromUniform Op directly, not going through the
-    # multinomial() call in GPU random generation.
-
-    p = tensor.fmatrix()
-    u = tensor.fvector()
-
-    m = GPUAMultinomialFromUniform('auto')(p, u)
-
-    f = theano.function([p, u], m, mode=mode_with_gpu)
-    theano.printing.debugprint(f)
-    ret = f(numpy.array([[0.1, 0.2, 0.3, 0.4],
-                         [0.1, 0.2, 0.3, 0.4],
-                         [0.1, 0.2, 0.3, 0.4]], dtype='float32'),
-            numpy.array([0.05, 0.05, 0.05], dtype='float32'))
-    print(numpy.asarray(ret))
-
-
 def test_multinomial_0():
     # This tests the MultinomialFromUniform Op directly, not going through the
     # multinomial() call in GPU random generation.
@@ -67,7 +48,6 @@ def test_multinomial_0():
                         for node in f.maker.fgraph.toposort()])
 
         # test that both first and second samples can be drawn
-        print(f([[1, 0], [0, 1]], [.1, .1]))
         utt.assert_allclose(f([[1, 0], [0, 1]], [.1, .1]),
                             [[2, 0], [0, 2]])
 
@@ -88,3 +68,71 @@ def test_multinomial_0():
     run_with_c(body)
     if pygpu_activated:
         run_with_c(body, True)
+
+# TODO: check a bigger example (make sure blocking on GPU is handled correctly)
+def test_multinomial_large():
+    # DEBUG_MODE will test this on GPU
+    def body(mode, gpu):
+        p = tensor.fmatrix()
+        u = tensor.fvector()
+        m = theano.sandbox.multinomial.MultinomialFromUniform('auto')(p, u)
+        f = function([p, u], m * 2, allow_input_downcast=True, mode=mode)
+        if gpu:
+            assert any([type(node.op) is GPUAMultinomialFromUniform
+                        for node in f.maker.fgraph.toposort()])
+
+        pval = numpy.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
+        pval = pval / pval.sum(axis=1)[:, None]
+        uval = numpy.ones_like(pval[:, 0]) * 0.5
+        mval = f(pval, uval)
+
+        assert mval.shape == pval.shape
+        if config.cast_policy == 'custom':
+            assert mval.dtype == pval.dtype
+        elif config.cast_policy == 'numpy+floatX':
+            assert mval.dtype == config.floatX
+        elif config.cast_policy == 'numpy':
+            assert mval.dtype == 'float64'
+        else:
+            raise NotImplementedError(config.cast_policy)
+        utt.assert_allclose(mval.sum(axis=1), 2)
+        asdf = numpy.asarray([0, 0, 2, 0]) + 0 * pval
+        utt.assert_allclose(mval, asdf)  # broadcast over all rows
+    run_with_c(body)
+    if pygpu_activated:
+        run_with_c(body, True)
+
+def test_gpu_opt():
+    # Does have some overlap with test_multinomial_0
+    if not pygpu_activated:
+        # Skip test if cuda_ndarray is not available.
+        from nose.plugins.skip import SkipTest
+        raise SkipTest('Optional package gpu array not activated')
+
+    # We test the case where we put the op on the gpu when the output
+    # is moved to the gpu.
+    p = tensor.fmatrix()
+    u = tensor.fvector()
+    m = theano.sandbox.multinomial.MultinomialFromUniform('auto')(p, u)
+    assert m.dtype == 'float32', m.dtype
+
+    f = function([p, u], m, allow_input_downcast=True, mode=get_mode(True))
+    assert any([type(node.op) is GPUAMultinomialFromUniform
+                for node in f.maker.fgraph.toposort()])
+    pval = numpy.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
+    pval = pval / pval.sum(axis=1)[:, None]
+    uval = numpy.ones_like(pval[:, 0]) * 0.5
+    f(pval, uval)
+
+    # Test with a row, it was failing in the past.
+    r = tensor.frow()
+    m = theano.sandbox.multinomial.MultinomialFromUniform('auto')(r, u)
+    assert m.dtype == 'float32', m.dtype
+
+    f = function([r, u], m, allow_input_downcast=True, mode=get_mode(True))
+    assert any([type(node.op) is GPUAMultinomialFromUniform
+                for node in f.maker.fgraph.toposort()])
+    pval = numpy.arange(1 * 4, dtype='float32').reshape((1, 4)) + 0.1
+    pval = pval / pval.sum(axis=1)[:, None]
+    uval = numpy.ones_like(pval[:, 0]) * 0.5
+    f(pval, uval)
