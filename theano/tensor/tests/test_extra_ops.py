@@ -25,12 +25,16 @@ def test_cpu_contiguous():
     a = T.fmatrix('a')
     i = T.iscalar('i')
     a_val = numpy.asarray(numpy.random.rand(4, 5), dtype='float32')
-    f = theano.function([a, i], cpu_contiguous(a.reshape((5,4))[::i]))
+    f = theano.function([a, i], cpu_contiguous(a.reshape((5, 4))[::i]))
     topo = f.maker.fgraph.toposort()
     assert any([isinstance(node.op, CpuContiguous) for node in topo])
     assert f(a_val, 1).flags['C_CONTIGUOUS']
     assert f(a_val, 2).flags['C_CONTIGUOUS']
     assert f(a_val, 3).flags['C_CONTIGUOUS']
+    # Test the grad:
+
+    theano.tests.unittest_tools.verify_grad(cpu_contiguous,
+                                            [numpy.random.rand(5, 7, 2)])
 
 
 class TestCumsumOp(utt.InferShapeTester):
