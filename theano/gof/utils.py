@@ -101,7 +101,7 @@ def add_tag_trace(thing, user_line=None):
              "theano/scan_module/", "theano\\scan_module\\",
              "theano/sparse/", "theano\\sparse\\",
              "theano/typed_list/", "theano\\typed_list\\"]
-    
+
     tr = simple_extract_stack(limit=user_line, skips=skips)
     # Different python version use different sementic for
     # limit. python 2.7 include the call to extrack_stack. The -1 get

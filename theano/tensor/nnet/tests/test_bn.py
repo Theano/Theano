@@ -29,11 +29,11 @@ def test_BNComposite():
         m = theano.tensor.vector('m')
         v = theano.tensor.vector('v')
 
-        x.tag.test_value = numpy.random.rand(2, 2)
-        b.tag.test_value = numpy.random.rand(2)
-        g.tag.test_value = numpy.random.rand(2)
-        m.tag.test_value = numpy.random.rand(2)
-        v.tag.test_value = numpy.random.rand(2)
+        x.tag.test_value = numpy.random.rand(2, 2).astype(theano.config.floatX)
+        b.tag.test_value = numpy.random.rand(2).astype(theano.config.floatX)
+        g.tag.test_value = numpy.random.rand(2).astype(theano.config.floatX)
+        m.tag.test_value = numpy.random.rand(2).astype(theano.config.floatX)
+        v.tag.test_value = numpy.random.rand(2).astype(theano.config.floatX)
 
         bn_ref_op = bn_ref(x, g, b, m, v)
         f_ref = theano.function([x, b, g, m, v], [bn_ref_op])
