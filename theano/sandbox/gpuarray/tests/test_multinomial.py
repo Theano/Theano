@@ -43,8 +43,9 @@ def test_multinomial0():
     f = theano.function([p, u], m, mode=mode_with_gpu)
     theano.printing.debugprint(f)
     ret = f(numpy.array([[0.1, 0.2, 0.3, 0.4],
+                         [0.1, 0.2, 0.3, 0.4],
                          [0.1, 0.2, 0.3, 0.4]], dtype='float32'),
-            numpy.array([0.05, 0.05], dtype='float32'))
+            numpy.array([0.05, 0.05, 0.05], dtype='float32'))
     print(numpy.asarray(ret))
 
 
@@ -66,6 +67,7 @@ def test_multinomial_0():
                         for node in f.maker.fgraph.toposort()])
 
         # test that both first and second samples can be drawn
+        print(f([[1, 0], [0, 1]], [.1, .1]))
         utt.assert_allclose(f([[1, 0], [0, 1]], [.1, .1]),
                             [[2, 0], [0, 2]])
 
