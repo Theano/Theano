@@ -12,7 +12,7 @@ import theano.tensor.tests.test_extra_ops
 from theano.tensor.extra_ops import cumsum, CumsumOp
 from theano.tests import unittest_tools as utt
 
-from .config import mode_with_gpu, test_ctx_name, test_ctx
+from .config import mode_with_gpu, test_ctx_name
 from ..extra_ops import GpuCumsum
 from ..type import get_context
 
@@ -22,10 +22,11 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
 
     def setUp(self):
         super(TestGpuCumsum, self).setUp()
-        if get_context(test_ctx_name).kind != 'cuda':
+        test_ctx = get_context(test_ctx_name)
+        if test_ctx.kind != 'cuda':
             raise SkipTest("Cuda specific tests")
         self.max_threads_dim0 = test_ctx.maxlsize0
-        self.max_grid_size1 = test_ctx.maxgsize1
+        self.max_grid_size1 = test_ctx.maxgsize2
 
 
 
