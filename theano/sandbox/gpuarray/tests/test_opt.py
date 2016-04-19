@@ -64,6 +64,15 @@ def test_local_gpu_contiguous_gpu_contiguous():
                      if isinstance(node.op, basic_ops.GpuContiguous)])
 
 
+def test_local_gpu_contiguous():
+    a = tensor.fmatrix()
+    o = tensor.extra_ops.cpu_contiguous(a)
+    f = theano.function([a], o, mode=mode_with_gpu)
+    assert 1 == len([node for node in f.maker.fgraph.toposort()
+                     if isinstance(node.op, basic_ops.GpuContiguous)])
+    f([[2.]])
+
+
 def test_flatten():
     m = theano.tensor.fmatrix()
     f = theano.function([m], m.flatten(), mode=mode_with_gpu)

@@ -108,6 +108,15 @@ def test_local_gpu_contiguous_gpu_contiguous():
                      if isinstance(node.op, basic_ops.GpuContiguous)])
 
 
+def test_local_gpu_contiguous():
+    a = tensor.fmatrix()
+    o = tensor.extra_ops.cpu_contiguous(a)
+    f = theano.function([a], o, mode=mode_with_gpu)
+    assert 1 == len([node for node in f.maker.fgraph.toposort()
+                     if isinstance(node.op, basic_ops.GpuContiguous)])
+    f([[2.]])
+
+
 def test_local_assert_no_cpu_op():
     numpy.random.seed(1)
     m = numpy.random.uniform(-1, 1, (10, 10)).astype("float32")

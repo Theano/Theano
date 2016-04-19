@@ -29,7 +29,7 @@ from .type import (GpuArrayType, GpuArrayConstant, get_context,
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         host_from_gpu, GpuToGpu,
                         HostFromGpu, GpuFromHost,
-                        GpuSplit, GpuContiguous,
+                        GpuSplit, GpuContiguous, gpu_contiguous,
                         GpuAlloc, GpuAllocEmpty, GpuReshape,
                         GpuEye, gpu_join, GpuJoin)
 from .blas import (gpu_dot22, GpuGemv, GpuGemm, GpuGer, GpuGemmBatch,
@@ -341,6 +341,12 @@ def local_gpu_contiguous_gpu_contiguous(node):
         inp = node.inputs[0]
         if inp.owner and isinstance(inp.owner.op, GpuContiguous):
             return [inp]
+
+
+@register_opt('fast_compile')
+@op_lifter([tensor.extra_ops.CpuContiguous])
+def local_gpu_contiguous(node, context_name):
+    return gpu_contiguous
 
 
 @register_opt('fast_compile')
