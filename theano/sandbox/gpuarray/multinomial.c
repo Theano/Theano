@@ -70,6 +70,8 @@ int APPLY_SPECIFIC(multinomial)(PyGpuArrayObject *pvals,
 
     { // NESTED SCOPE
         int nb_multi = PyGpuArray_DIMS(pvals)[0];
+        printf("multinomail_test\n");
+        printf("%d\n",nb_multi); 
         int nb_outcomes = PyGpuArray_DIMS(pvals)[1];
         //TODO : change this for a beautiful constant
         int max_nb_blocks = 2<<15 - 1;
@@ -102,13 +104,13 @@ int APPLY_SPECIFIC(multinomial)(PyGpuArrayObject *pvals,
             PyGpuArray_DIMS(*out)[1],
             PyGpuArray_DIMS(*out)[0],
             (float*)PyGpuArray_DEV_DATA(pvals),
-            PyGpuArray_STRIDES(pvals)[0],
-            PyGpuArray_STRIDES(pvals)[1],
+            PyGpuArray_STRIDES(pvals)[0]/sizeof(float),
+            PyGpuArray_STRIDES(pvals)[1]/sizeof(float),
             (float*)PyGpuArray_DEV_DATA(unis),
-            PyGpuArray_STRIDES(unis)[0],
+            PyGpuArray_STRIDES(unis)[0]/sizeof(float),
             (float*)PyGpuArray_DEV_DATA(*out),
-            PyGpuArray_STRIDES(*out)[0],
-            PyGpuArray_STRIDES(*out)[1]
+            PyGpuArray_STRIDES(*out)[0]/sizeof(float),
+            PyGpuArray_STRIDES(*out)[1]/sizeof(float)
         );
 
 	//TODO

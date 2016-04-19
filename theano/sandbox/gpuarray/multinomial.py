@@ -60,8 +60,9 @@ class GPUAMultinomialFromUniform(COp):
 
         return Apply(self, [pvals, unis], [out])
 
-    def c_code_cache_version(self):
-        return (8,)
+ #   def c_code_cache_version(self):
+ #       return
+ #       return (8,)
 
 
 @register_opt()
