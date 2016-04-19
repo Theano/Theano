@@ -17,6 +17,7 @@ from theano.misc.ordered_set import OrderedSet
 
 from .fg import InconsistencyError
 from six.moves.queue import Queue
+import logging
 
 
 class ProtocolError(Exception):
@@ -55,6 +56,7 @@ def _contains_cycle(fgraph, orderings):
         True if the graph contains a cycle, False otherwise.
 
     """
+
     # These are lists of Variable instances
     outputs = fgraph.outputs
 
@@ -788,23 +790,29 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         - Allow sequence of view.
         - But don't allow to destroy view
         """
-        return
+        
         dm = getattr(app.op, 'destroy_map', None)
         if not dm:
             return
-        inputs = sum(dm.values())  # list of app's destroyed inputs
+
+        logging.basicConfig()
+        log = logging.getLogger("LOG")
+        inputs = []  # list of app's destroyed inputs
+        for i in dm.values():
+            inputs += i
         for inp_idx in inputs:
             inp = app.inputs[inp_idx]
-            if len(inp.clients() > 1):
+            if len(inp.clients) > 1:
                 if inp.owner:
-                    raise InconsistencyError()
-                app2 = inp.owner
-                inp_idx2 = app2.outputs.index(inp)
-                d = getattr(app2.op, 'destroy_map', {}).get(inp_idx2, [])
-                v = getattr(app2.op, 'view_map', {}).get(inp_idx2, [])
-                dv = d + v
-                assert len(dv) <= 1
-                if len(v) > 0:
+                    app2 = inp.owner
+                    inp_idx2 = app2.outputs.index(inp)
+                    d = getattr(app2.op, 'destroy_map', {}).get(inp_idx2, [])
+                    v = getattr(app2.op, 'view_map', {}).get(inp_idx2, [])
+                    dv = d + v
+                    assert len(dv) <= 1
+                    if len(v) > 0:
+                        raise InconsistencyError()
+                else:
                     raise InconsistencyError()
 
     def on_import(self, fgraph, app, reason):
