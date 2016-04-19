@@ -47,7 +47,8 @@ from theano.tensor.type import (values_eq_approx_remove_inf,
 from theano.gof.opt import (Optimizer, pre_constant_merge,
                             pre_greedy_local_optimizer)
 from theano.gof import toolbox
-from theano.tensor.basic import Alloc, get_scalar_constant_value, ShapeError, NotScalarConstantError
+from theano.tensor.basic import (Alloc, get_scalar_constant_value, ShapeError,
+                                 extract_constant, NotScalarConstantError)
 from six import StringIO
 
 _logger = logging.getLogger('theano.tensor.opt')
@@ -1699,7 +1700,7 @@ def local_useless_alloc(node):
     output_shape = node.inputs[1:]
     num_dims_with_size_1_added_to_left = 0
     for i in range(len(output_shape)):
-        if output_shape[i].get_scalar_constant_value() == 1:
+        if extract_constant(output_shape[i], only_process_constants=True) == 1:
             num_dims_with_size_1_added_to_left += 1
         else:
             break

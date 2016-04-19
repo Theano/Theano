@@ -3548,7 +3548,7 @@ class Test_local_useless_alloc(unittest.TestCase):
 
         self._verify_stack_trace(f)
 
-    def test_useless_alloc_1_on_broadcastable(self):
+    def test_useless_alloc_with_shape_one(self):
         alloc_lift = out2in(local_useless_alloc)
         x = shared(self.rng.randn(2,))
         y = shared(self.rng.randn())
