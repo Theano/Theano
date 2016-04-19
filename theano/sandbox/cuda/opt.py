@@ -2390,8 +2390,8 @@ def local_gpu_extract_diagonal(node):
                           "non-default properties. It will run on CPU.")
             return False
         if inp.owner and isinstance(inp.owner.op, HostFromGpu):
-            import pdb
-            pdb.set_trace()
+            #import pdb
+            # pdb.set_trace()
             return [host_from_gpu(theano.tensor.diagonal(
                 as_cuda_ndarray_variable(inp)))]
     if isinstance(node.op, GpuFromHost):

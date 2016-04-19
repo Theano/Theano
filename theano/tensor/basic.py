@@ -5946,13 +5946,10 @@ class Diagonal(Op):
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
-        if (not self.has_default_props() and 
-            isinstance(x, theano.sandbox.cuda.CudaNdarray)):
-            raise ValueError('Currently Diagonal doesn\'t support non-default'
-                             'offset and axis values on GPU.')
-
-        import pdb
-        bd.set_trace()
+        # using_cudandarray = isinstance(x, theano.sandbox.cuda.CudaNdarray)
+        # if (not self.has_default_props() and using_cudandarray):
+        #     raise ValueError('Currently Diagonal doesn\'t support non-default'
+        #                      'offset and axis values on GPU.')
 
         # zero-dimensional matrices ...
         if numpy.min(x.shape) == 0:
@@ -5963,14 +5960,28 @@ class Diagonal(Op):
             z[0] = node.outputs[0].type.value_zeros(tuple(out_shape))
             return
 
+        # from theano.sandbox.cuda import dimshuffle as cuda_dimshuffle
+
         if x.shape[self.axis1] < x.shape[self.axis2]:
-            rval = x[:, 0].T
+            axis_with_bigger_shape = self.axis2
+            axis_with_smaller_shape = self.axis1
         else:
-            rval = x[0].T
+            axis_with_bigger_shape = self.axis1
+            axis_with_smaller_shape = self.axis2
+
+        slice_tuple = [numpy.s_[:], ] * x.ndim
+        slice_tuple[axis_with_bigger_shape] = 0  # self.offset
+        slice_tuple = tuple(slice_tuple)
+        if axis_with_smaller_shape > axis_with_bigger_shape:
+            axis_with_smaller_shape -= 1
+
+        rval = x[slice_tuple].swapaxes(axis_with_smaller_shape, -1)
 
         other_strides = tuple([d for i, d in enumerate(x.strides)
                                if i not in (self.axis1, self.axis2)])
-        rval.strides = other_strides + (x.strides[0] + x.strides[1], )
+        rval.strides = other_strides + \
+                       (x.strides[self.axis1] + x.strides[self.axis2], )
+
         if self.view:
             z[0] = rval
         else:
