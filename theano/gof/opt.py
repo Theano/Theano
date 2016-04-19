@@ -2675,12 +2675,22 @@ def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
 
     # if ops_to_check is a list/tuple of ops
     elif isinstance(ops_to_check, (tuple, list)):
-        ops_to_check = tuple(ops_to_check)
-        apply_nodes_to_check = [node for node in fgraph.apply_nodes
-                                if node.op in ops_to_check or
-                                isinstance(node.op, ops_to_check) or
-                                (hasattr(node.op, 'scalar_op') and
-                                 isinstance(node.op.scalar_op, ops_to_check))]
+        # Separate classes from instances in ops_to_check
+        op_instances = []
+        op_classes = []
+        for obj in ops_to_check:
+            if isinstance(obj, theano.gof.Op):
+                op_instances.append(obj)
+            else:
+                op_classes.append(obj)
+        op_classes = tuple(op_classes)
+
+        apply_nodes_to_check = (
+            [node for node in fgraph.apply_nodes if node.op in ops_to_check] +
+            [node for node in fgraph.apply_nodes
+             if isinstance(node.op, op_classes) or
+             (hasattr(node.op, 'scalar_op') and
+              isinstance(node.op.scalar_op, op_classes))])
 
     # if ops_to_check is a function
     elif hasattr(ops_to_check, '__call__'):
