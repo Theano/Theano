@@ -47,7 +47,8 @@ from theano.tensor.type import (values_eq_approx_remove_inf,
 from theano.gof.opt import (Optimizer, pre_constant_merge,
                             pre_greedy_local_optimizer)
 from theano.gof import toolbox
-from theano.tensor.basic import Reshape, get_scalar_constant_value, ShapeError, NotScalarConstantError
+from theano.tensor.basic import (Reshape, get_scalar_constant_value, ShapeError,
+                                 extract_constant, NotScalarConstantError)
 from six import StringIO
 
 _logger = logging.getLogger('theano.tensor.opt')
@@ -4002,14 +4003,15 @@ def local_useless_reshape(node):
     dimshuffle_new_order = []
     new_output_shape = []
     i = 0  # index over the output of the new reshape
-    for dim in output_shape.get_scalar_constant_value():
+    import ipdb; ipdb.set_trace()
+    for dim in extract_constant(output_shape, only_process_constants=True):
         if dim == 1:
             dimshuffle_new_order.append('x')
         else:
             dimshuffle_new_order.append(i)
             new_output_shape.append(dim)
             i = i + 1
-    if len(dimshuffle_new_order) > 0:
+    if i != output.ndim:
         inner = op.__class__(len(new_output_shape))(input, new_output_shape)
         return [DimShuffle(inner.type.broadcastable, dimshuffle_new_order)(inner)]
 
