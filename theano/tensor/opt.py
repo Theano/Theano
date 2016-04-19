@@ -560,7 +560,7 @@ def apply_local_dimshuffle_lift(var):
 #   1 - dimshuffle all dimensions in order.
 #   2 - dimshuffle a broadcastable dimension.
 def is_dimshuffle_useless(new_order, input):
-    is_useless = False
+    is_useless = True
     if len(new_order) == input.type.ndim:
         all_broadcastable_dims = [i for (i, is_broadcastable)
                                   in enumerate(input.type.broadcastable)
@@ -573,6 +573,8 @@ def is_dimshuffle_useless(new_order, input):
             else:
                 is_useless = False
                 break
+    else:
+        is_useless = False
     return is_useless
 
 
