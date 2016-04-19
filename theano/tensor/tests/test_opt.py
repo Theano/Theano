@@ -2125,7 +2125,7 @@ class test_local_subtensor_merge(unittest.TestCase):
                 'local_subtensor_merge'))
 
             # Check stacktrace was copied over correctly after opt was applied
-            self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+            self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
 
             topo = f.maker.fgraph.toposort()
             assert len([t for t in topo
@@ -5929,9 +5929,7 @@ def test_local_useless_split():
 
     # Check that stacktraces have been copied over properly
     assert check_stack_trace(f_opt, ops_to_check='all')
-    assert len(f_opt.outputs[0].variable.tag.trace) > 0
     assert check_stack_trace(f_nonopt, ops_to_check='all')
-    assert len(f_nonopt.outputs[0].variable.tag.trace) > 0
 
 
 def test_local_flatten_lift():

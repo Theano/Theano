@@ -2667,7 +2667,8 @@ def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
     # if ops_to_check is a string
     if isinstance(ops_to_check, string_types):
         if ops_to_check == 'last':
-            apply_nodes_to_check = [fgraph.outputs[i].owner for i in range(len(fgraph.outputs))]
+            apply_nodes_to_check = [fgraph.outputs[i].owner for i in range(
+                len(fgraph.outputs))]
         elif ops_to_check == 'all':
             apply_nodes_to_check = fgraph.apply_nodes
         else:
@@ -2711,6 +2712,13 @@ def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
             pass
         else:
             raise ValueError('The string bug_print is not recognised')
+
+    elif hasattr(ops_to_check, '__call__'):  # if ops_to_check is a function
+        apply_nodes_to_check = [node for node in fgraph.apply_nodes
+                                if ops_to_check(node)]
+
+    else:  # if ops_to_check is an op or a list of ops
+        raise ValueError('The value of ops_to_check is not supported')
 
     for node in apply_nodes_to_check:
         for output in node.outputs:
