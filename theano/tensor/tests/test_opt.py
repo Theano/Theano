@@ -2154,7 +2154,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         #theano.printing.debugprint(f, print_type=True)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+        self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
 
         topo = f.maker.fgraph.toposort()
         # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
@@ -2184,7 +2184,7 @@ class test_local_subtensor_merge(unittest.TestCase):
                          mode=mode_opt.excluding('local_subtensor_merge'))
 
             # Check stacktrace was copied over correctly after opt was applied
-            self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+            self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
 
             #theano.printing.debugprint(f, print_type=True)
             topo = f.maker.fgraph.toposort()
@@ -2215,7 +2215,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         #theano.printing.debugprint(f, print_type=True)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+        self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
 
         topo = f.maker.fgraph.toposort()
         # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
@@ -2240,7 +2240,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             f = function([x], x[::-1][:idx], mode=mode_opt)
 
             # Check stacktrace was copied over correctly after opt was applied
-            self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+            self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
 
             #theano.printing.debugprint(f, print_type=True)
             topo = f.maker.fgraph.toposort()
@@ -2261,7 +2261,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         f = function([x, y], x[::-1][:y], mode=mode_opt)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+        self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
 
         #theano.printing.debugprint(f, print_type=True)
 
@@ -2307,7 +2307,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         f = function([x, y, z], x[y:][:z], mode=mode_opt)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+        self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
 
         #theano.printing.debugprint(f, print_type=True)
 
@@ -2339,7 +2339,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             f = function([x], z, mode=mode_opt)
 
             # Check stacktrace was copied over correctly after opt was applied
-            self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+            self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
 
 
             x_val = self.rng.uniform(size=shape).astype(config.floatX)
@@ -2359,7 +2359,7 @@ class test_local_subtensor_merge(unittest.TestCase):
                      mode=mode_opt)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+        self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
 
         #theano.printing.debugprint(f, print_type=True)
 
@@ -2447,7 +2447,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         f = function([x, b, e, s, i], x[b:e:s][i], mode=mode_opt)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+        self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
 
         #theano.printing.debugprint(f, print_type=True)
 
@@ -2538,10 +2538,11 @@ class test_local_subtensor_merge(unittest.TestCase):
             slice1 = slice(*slice_inputs[:3])
             slice2 = slice(*slice_inputs[3:])
             sub_x = x[slice1][slice2]
-            f = theano.function([x] + input_vars, sub_x, mode=mode_opt)
+            f = theano.function([x] + input_vars, sub_x,
+                mode=mode_opt.excluding('local_useless_subtensor'))
 
             # Check stacktrace was copied over correctly after opt was applied
-            self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+            self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
 
             topo = f.maker.fgraph.toposort()
             # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
@@ -2601,7 +2602,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             f = theano.function([x] + input_vars, sub_x, mode=mode_opt)
 
             # Check stacktrace was copied over correctly after opt was applied
-            self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+            self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
 
             topo = f.maker.fgraph.toposort()
             # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
