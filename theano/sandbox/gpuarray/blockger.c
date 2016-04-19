@@ -97,8 +97,15 @@ int APPLY_SPECIFIC(blockger)(PyGpuArrayObject *o, PyGpuArrayObject *x,
                               y_list, offY, str_y, x_list, offX, str_x,
                               o_list, offOut, str_out,
                               PyGpuArray_DIMS(x)[0] * PyGpuArray_DIMS(x)[1] * PyGpuArray_DIMS(y)[1], 0);
+  } else if (out->ga.typecode == GA_HALF) {
+    err = blas_ops->hgerBatch(cb_fortran,
+                              PyGpuArray_DIMS(y)[2], PyGpuArray_DIMS(x)[2],
+                              *(float *)PyArray_GETPTR1(alpha, 0),
+                              y_list, offY, str_y, x_list, offX, str_x,
+                              o_list, offOut, str_out,
+                              PyGpuArray_DIMS(x)[0] * PyGpuArray_DIMS(x)[1] * PyGpuArray_DIMS(y)[1], 0);
   } else {
-    err = GA_DEVSUP_ERROR;
+    err = GA_INVALID_ERROR;
   }
   free(o_list);
   free(offOut);
@@ -107,7 +114,7 @@ int APPLY_SPECIFIC(blockger)(PyGpuArrayObject *o, PyGpuArrayObject *x,
   free(y_list);
   free(offY);
   if (err != GA_NO_ERROR) {
-    PyErr_SetString(PyExc_RuntimeError, "sgerBatch failed");
+    PyErr_SetString(PyExc_RuntimeError, "gerBatch failed");
     return -1;
   }
   *_out = out;

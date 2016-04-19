@@ -5,7 +5,7 @@ import os
 import numpy
 from theano import Apply, tensor
 from theano.gof import COp
-from theano.tensor import discrete_dtypes
+from theano.tensor import discrete_dtypes, as_tensor_variable
 
 from theano.gradient import grad_undefined
 
@@ -54,6 +54,8 @@ class GpuSparseBlockGemv(COp):
         o = as_gpuarray_variable(o, ctx)
         W = as_gpuarray_variable(W, ctx)
         h = as_gpuarray_variable(h, ctx)
+        inputIdx = as_tensor_variable(inputIdx)
+        outputIdx = as_tensor_variable(outputIdx)
         assert o.ndim == 3
         assert W.ndim == 4
         assert h.ndim == 3
@@ -123,6 +125,8 @@ class GpuSparseBlockOuter(COp):
         o = as_gpuarray_variable(o, ctx)
         x = as_gpuarray_variable(x, ctx)
         y = as_gpuarray_variable(y, ctx)
+        xIdx = as_tensor_variable(xIdx)
+        yIdx = as_tensor_variable(yIdx)
         if alpha is None:
             alpha = one
         return Apply(self, [o, x, y, xIdx, yIdx, alpha],
