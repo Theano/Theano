@@ -1,16 +1,13 @@
 from __future__ import absolute_import, print_function, division
 
 import os
-import copy
 
 import numpy
 from six import integer_types
 from six.moves import StringIO
 
-import theano
 from theano import tensor, gof
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
-import theano.tensor.inplace
 
 try:
     import pygpu
@@ -18,10 +15,9 @@ try:
 except ImportError:
     pass
 
-from .type import GpuArrayType
+from .type import GpuArrayType, gpu_context_type
 from .basic_ops import (as_gpuarray_variable, HideC, GpuKernelBase, Kernel,
                         infer_context_name)
-from .elemwise import GpuElemwise
 
 
 class GpuSubtensor(HideC, Subtensor):
@@ -168,7 +164,7 @@ class GpuSubtensor(HideC, Subtensor):
         return (6,)
 
 
-class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
+class GpuIncSubtensor(IncSubtensor):
     """
     Implement IncSubtensor on the gpu.
 
@@ -181,44 +177,19 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
     :meth:`copy_of_x`, etc. specialize the c_code for this Op.
 
     """
-
-    @property
-    def _f16_ok(self):
-        return self.iadd_node.op._f16_ok
-
-    def c_headers(self):
-        return self.iadd_node.op.c_headers()
-
-    def c_init_code(self):
-        return self.iadd_node.op.c_init_code()
-
-    def gpu_kernels(self, node, nodename):
-        subname = nodename + "_add_to_zview"
-        return self.iadd_node.op.gpu_kernels(self.iadd_node, subname)
+    _f16_ok = True
+    params_type = gpu_context_type
 
     def make_node(self, x, y, *inputs):
         ctx_name = infer_context_name(x, y)
         x = as_gpuarray_variable(x, ctx_name)
         y = as_gpuarray_variable(y, ctx_name)
         rval = tensor.IncSubtensor.make_node(self, x, y, *inputs)
-        op = copy.copy(self)
-        ret = gof.Apply(op, [x, y] + rval.inputs[2:], [x.type()])
-        op.create_iadd_node(ret)
+        ret = gof.Apply(self, [x, y] + rval.inputs[2:], [x.type()])
         return ret
 
     def get_params(self, node):
         return node.outputs[0].type.context
-
-    def create_iadd_node(self, node):
-        # We store a iadd_node in the op that contain the info needed
-        # for the inplace add.
-        cop = theano.tensor.inplace.add_inplace
-        gop = GpuElemwise(cop.scalar_op, copy.copy(cop.inplace_pattern),
-                          "Gpu" + cop.name, cop.nfunc_spec)
-        y = node.inputs[1]
-        xview = y.type()
-        iadd_node = gop(xview, y).owner
-        self.iadd_node = iadd_node
 
     def perform(self, node, inputs, out_, ctx):
         out, = out_
@@ -260,18 +231,6 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
             else:
                 x.__setitem__(cdata, y)
         out[0] = x
-
-    def __setstate__(self, d):
-        self.__dict__.update(d)
-        owner = getattr(self, "owner", None)
-        if owner:
-            self.create_iadd_node(owner)
-
-    def __getstate__(self):
-        d = copy.copy(self.__dict__)
-        if "iadd_node" in d:
-            d.pop('iadd_node')
-        return d
 
     def do_type_checking(self, node):
         """
@@ -365,47 +324,52 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
         """
         return """GpuArray_setarray(&%(view)s->ga, &%(source)s->ga)""" % locals()
 
-    def c_support_code_struct(self, node, nodename):
-        gop = self.iadd_node.op
-        sub_name = nodename + "_add_to_zview"
-        ret = gop.c_support_code_struct(self.iadd_node, sub_name)
-        ret += """
-        PyGpuArrayObject* inc_sub_iadd_%(nodename)s(PyGpuArrayObject* dst,
-                                                    PyGpuArrayObject* src){
-           PyGpuArrayObject* ret = NULL;
-        """ % locals()
-        inputs = ["dst", "src"]
-        outputs = ["ret"]
-        sub = {"fail": "return NULL;", "params": "dst->context"}
-        ret += gop.c_code(self.iadd_node, sub_name, inputs, outputs, sub)
-        ret += """
-            return ret;
+    def c_headers(self):
+        return ['<numpy_compat.h>', '<gpuarray/error.h>', '<gpuarray/array.h>',
+                '<gpuarray/elemwise.h>']
 
+    def c_support_code_struct(self, node, nodename):
+        return "\nGpuElemwise *iadd;\n"
+
+    def c_init_code_struct(self, node, name, sub):
+        return """
+        gpuelemwise_arg args[2] = {{0}};
+        args[0].name = "a";
+        args[0].typecode = %(type1)s;
+        args[0].flags = GE_READ|GE_WRITE;
+        args[1].name = "b";
+        args[1].typecode = %(type2)s;
+        args[1].flags = GE_READ;
+        iadd = GpuElemwise_new(%(ctx)s->ops, %(ctx)s->ctx, "", "a += b",
+                               2, args, %(nd)s, 0);
+        if (iadd == NULL) {
+          PyErr_SetString(PyExc_RuntimeError, "Could not intialize inplace add support");
+          %(fail)s
         }
-        """
-        return ret
+        """ % dict(ctx=sub['params'], fail=sub['fail'],
+                   type1=node.inputs[0].type.typecode,
+                   type2=node.inputs[1].type.typecode,
+                   nd=node.inputs[1].ndim)
 
     def add_to_zview(self, nodename, x, fail):
         return """
-        PyGpuArrayObject * add_result = inc_sub_iadd_%(nodename)s(zview, %(x)s);
-
-        if (! add_result )
         {
+          void *args[2];
+          args[0] = &zview->ga;
+          args[1] = &%(x)s->ga;
+          if (GpuElemwise_call(iadd, args, GE_BROADCAST) != GA_NO_ERROR) {
+            PyErr_SetString(PyExc_RuntimeError, "Error doing inplace add");
             Py_DECREF(zview);
-            %(fail)s;
-        }
-        else
-        {
-            Py_DECREF(add_result);
+            %(fail)s
+          }
         }
         """ % locals()
 
     def c_code_cache_version(self):
         parent_version = super(GpuIncSubtensor, self).c_code_cache_version()
-        elemwise_version = self.iadd_node.c_code_cache_version()
-        if not parent_version or not elemwise_version:
+        if not parent_version:
             return
-        return parent_version + elemwise_version + (3,)
+        return parent_version + (5,)
 
 
 class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):

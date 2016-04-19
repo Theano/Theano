@@ -166,10 +166,12 @@ class test_Broadcast(unittest.TestCase):
     linkers = [gof.PerformLinker, gof.CLinker]
 
     def rand_val(self, shp):
-        return numpy.asarray(numpy.random.rand(*shp))
+        return numpy.asarray(numpy.random.rand(*shp),
+                             dtype=theano.config.floatX)
 
     def rand_cval(self, shp):
-        return numpy.asarray(numpy.random.rand(*shp))
+        return numpy.asarray(numpy.random.rand(*shp),
+                             dtype=theano.config.floatX)
 
     def setUp(self):
         unittest_tools.seed_rng()
@@ -189,8 +191,10 @@ class test_Broadcast(unittest.TestCase):
                          ((2, 3, 4, 5), (1, 3, 1, 5)),
                          ((2, 3, 4, 5), (1, 1, 1, 1)),
                          ((), ())]:
-            x = type('float64', [(entry == 1) for entry in xsh])('x')
-            y = type('float64', [(entry == 1) for entry in ysh])('y')
+            x = type(theano.config.floatX,
+                     [(entry == 1) for entry in xsh])('x')
+            y = type(theano.config.floatX,
+                     [(entry == 1) for entry in ysh])('y')
             e = op(scalar.add)(x, y)
             f = copy(linker).accept(FunctionGraph([x, y], [e])).make_function()
             xv = rand_val(xsh)
@@ -202,8 +206,10 @@ class test_Broadcast(unittest.TestCase):
             # test Elemwise.infer_shape
             # the Shape op don't implement c_code!
             if isinstance(linker, gof.PerformLinker):
-                x = type('float64', [(entry == 1) for entry in xsh])('x')
-                y = type('float64', [(entry == 1) for entry in ysh])('y')
+                x = type(theano.config.floatX,
+                         [(entry == 1) for entry in xsh])('x')
+                y = type(theano.config.floatX,
+                         [(entry == 1) for entry in ysh])('y')
                 e = op(scalar.add)(x, y)
                 f = copy(linker).accept(FunctionGraph(
                     [x, y], [e.shape])).make_function()
@@ -218,8 +224,10 @@ class test_Broadcast(unittest.TestCase):
                          ((2, 3, 4, 5), (1, 3, 1, 5)),
                          ((2, 3, 4, 5), (1, 1, 1, 1)),
                          ((), ())]:
-            x = type('float64', [(entry == 1) for entry in xsh])('x')
-            y = type('float64', [(entry == 1) for entry in ysh])('y')
+            x = type(theano.config.floatX,
+                     [(entry == 1) for entry in xsh])('x')
+            y = type(theano.config.floatX,
+                     [(entry == 1) for entry in ysh])('y')
             e = op(scalar.Add(scalar.transfer_type(0)), {0: 0})(x, y)
             f = copy(linker).accept(FunctionGraph([x, y], [e])).make_function()
             xv = rand_val(xsh)
@@ -232,8 +240,10 @@ class test_Broadcast(unittest.TestCase):
             # test Elemwise.infer_shape
             # the Shape op don't implement c_code!
             if isinstance(linker, gof.PerformLinker):
-                x = type('float64', [(entry == 1) for entry in xsh])('x')
-                y = type('float64', [(entry == 1) for entry in ysh])('y')
+                x = type(theano.config.floatX,
+                         [(entry == 1) for entry in xsh])('x')
+                y = type(theano.config.floatX,
+                         [(entry == 1) for entry in ysh])('y')
                 e = op(scalar.Add(scalar.transfer_type(0)), {0: 0})(x, y)
                 f = copy(linker).accept(FunctionGraph(
                     [x, y], [e.shape])).make_function()
@@ -267,13 +277,15 @@ class test_Broadcast(unittest.TestCase):
     def test_fill(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
-        x = self.ctype('float64', [0, 0])('x')
-        y = self.ctype('float64', [1, 1])('y')
-        for linker, op in zip(self.linkers, [self.op, self.cop]):
+        for linker, op, t, rval in zip(self.linkers, [self.op, self.cop],
+                                       [self.type, self.ctype],
+                                       [self.rand_val, self.rand_cval]):
+            x = t(theano.config.floatX, [0, 0])('x')
+            y = t(theano.config.floatX, [1, 1])('y')
             e = op(scalar.Second(scalar.transfer_type(0)), {0: 0})(x, y)
             f = linker().accept(FunctionGraph([x, y], [e])).make_function()
-            xv = self.rand_cval((5, 5))
-            yv = self.rand_cval((1, 1))
+            xv = rval((5, 5))
+            yv = rval((1, 1))
             f(xv, yv)
             assert (xv == yv).all()
 
@@ -292,24 +304,28 @@ class test_Broadcast(unittest.TestCase):
     def test_weird_strides(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
-        x = self.ctype('float64', [0, 0, 0, 0, 0])('x')
-        y = self.ctype('float64', [0, 0, 0, 0, 0])('y')
-        for linker, op in zip(self.linkers, [self.op, self.cop]):
+        for linker, op, t, rval in zip(self.linkers, [self.op, self.cop],
+                                       [self.type, self.ctype],
+                                       [self.rand_val, self.rand_cval]):
+            x = t(theano.config.floatX, [0, 0, 0, 0, 0])('x')
+            y = t(theano.config.floatX, [0, 0, 0, 0, 0])('y')
             e = op(scalar.add)(x, y)
             f = linker().accept(FunctionGraph([x, y], [e])).make_function()
-            xv = self.rand_cval((2, 2, 2, 2, 2))
-            yv = self.rand_cval((2, 2, 2, 2, 2)).transpose(4, 0, 3, 1, 2)
+            xv = rval((2, 2, 2, 2, 2))
+            yv = rval((2, 2, 2, 2, 2)).transpose(4, 0, 3, 1, 2)
             zv = xv + yv
             assert (f(xv, yv) == zv).all()
 
     def test_same_inputs(self):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
-        x = self.ctype('float64', [0, 0])('x')
-        for linker, op in zip(self.linkers, [self.op, self.cop]):
+        for linker, op, t, rval in zip(self.linkers, [self.op, self.cop],
+                                       [self.type, self.ctype],
+                                       [self.rand_val, self.rand_cval]):
+            x = t(theano.config.floatX, [0, 0])('x')
             e = op(scalar.add)(x, x)
             f = linker().accept(FunctionGraph([x], [e])).make_function()
-            xv = self.rand_cval((2, 2))
+            xv = rval((2, 2))
             zv = xv + xv
             assert (f(xv) == zv).all()
 

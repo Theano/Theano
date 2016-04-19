@@ -31,8 +31,8 @@ from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         GpuSplit, GpuContiguous,
                         GpuAlloc, GpuAllocEmpty, GpuReshape,
                         GpuEye, gpu_join, GpuJoin)
-from .blas import (gpu_dot22, GpuGemv, GpuGemm, GpuGer,
-                   gpugemm_no_inplace)
+from .blas import (gpu_dot22, GpuGemv, GpuGemm, GpuGer, GpuGemmBatch,
+                   gpugemm_no_inplace, gpugemmbatch_no_inplace)
 from .nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
                    GpuCrossentropySoftmax1HotWithBiasDx,
                    GpuSoftmaxWithBias, GpuSoftmax)
@@ -743,6 +743,14 @@ def local_gpua_gemm(node, context_name):
 
 
 @register_opt('fast_compile')
+@op_lifter([tensor.blas.BatchedDot])
+def local_gpua_gemmbatch(node, context_name):
+    a, b = node.inputs
+    c = tensor.AllocEmpty((a.shape[0], a.shape[1], b.shape[2]))
+    return gpugemmbatch_no_inplace(c, 1.0, a, b, 0.0)
+
+
+@register_opt('fast_compile')
 @op_lifter([tensor.basic.Dot])
 def local_gpua_hgemm(node, context_name):
     from theano.sandbox.cuda import nvcc_compiler
@@ -772,6 +780,18 @@ def local_gpuagemm_alpha_merge(node, *inputs):
 @output_merge(GpuGemm, alpha_in=1, beta_in=4, out_in=0)
 def local_gpuagemm_output_merge(node, *inputs):
     return [gpugemm_no_inplace(*inputs)]
+
+
+@register_opt()
+@alpha_merge(GpuGemmBatch, alpha_in=1, beta_in=4)
+def local_gpuagemmbatch_alpha_merge(node, *inputs):
+    return [gpugemmbatch_no_inplace(*inputs)]
+
+
+@register_opt()
+@output_merge(GpuGemmBatch, alpha_in=1, beta_in=4, out_in=0)
+def local_gpuagemmbatch_output_merge(node, *inputs):
+    return [gpugemmbatch_no_inplace(*inputs)]
 
 
 @register_opt('fast_compile')
