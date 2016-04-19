@@ -9,7 +9,7 @@ from theano import config, function, tensor
 from ..multinomial import GPUAMultinomialFromUniform
 from theano.compile.mode import get_default_mode, predefined_linkers
 import theano.tests.unittest_tools as utt
-from .. import pygpu_activated
+from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
 
 
 def get_mode(gpu):
@@ -66,8 +66,8 @@ def test_multinomial_0():
         utt.assert_allclose(r, [[0, 2]])
 
     run_with_c(body)
-    if pygpu_activated:
-        run_with_c(body, True)
+    run_with_c(body, True)
+
 
 # TODO: check a bigger example (make sure blocking on GPU is handled correctly)
 def test_multinomial_large():
@@ -81,7 +81,8 @@ def test_multinomial_large():
             assert any([type(node.op) is GPUAMultinomialFromUniform
                         for node in f.maker.fgraph.toposort()])
 
-        pval = numpy.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
+        pval = numpy.arange(10000 * 4,
+                            dtype='float32').reshape((10000, 4)) + 0.1
         pval = pval / pval.sum(axis=1)[:, None]
         uval = numpy.ones_like(pval[:, 0]) * 0.5
         mval = f(pval, uval)
@@ -99,15 +100,11 @@ def test_multinomial_large():
         asdf = numpy.asarray([0, 0, 2, 0]) + 0 * pval
         utt.assert_allclose(mval, asdf)  # broadcast over all rows
     run_with_c(body)
-    if pygpu_activated:
-        run_with_c(body, True)
+    run_with_c(body, True)
+
 
 def test_gpu_opt():
     # Does have some overlap with test_multinomial_0
-    if not pygpu_activated:
-        # Skip test if cuda_ndarray is not available.
-        from nose.plugins.skip import SkipTest
-        raise SkipTest('Optional package gpu array not activated')
 
     # We test the case where we put the op on the gpu when the output
     # is moved to the gpu.
