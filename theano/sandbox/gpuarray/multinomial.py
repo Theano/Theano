@@ -53,7 +53,9 @@ class GPUAMultinomialFromUniform(gpuarray.basic_ops.GpuKernelBase, Op):
                 'GpuMultinomialFromUniform works only if '
                 'self.odtype == pvals.dtype', odtype, pvals.dtype)
         br = (pvals.broadcastable[1], pvals.broadcastable[0])
-        out = GpuArrayType(broadcastable=br, dtype=odtype)()
+        out = GpuArrayType(broadcastable=br,
+                           dtype=odtype,
+                           context_name=ctx_name)()
 
         return Apply(self, [pvals, unis], [out])
 
