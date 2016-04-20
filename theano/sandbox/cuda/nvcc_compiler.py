@@ -404,7 +404,8 @@ class NVCC_compiler(Compiler):
         elif config.cmodule.compilation_warning and nvcc_stdout:
             print(nvcc_stdout)
 
-        if nvcc_stdout:
+        # On Windows, nvcc print useless stuff by default
+        if sys.platform != 'win32' and nvcc_stdout:
             # this doesn't happen to my knowledge
             print("DEBUG: nvcc STDOUT", nvcc_stdout, file=sys.stderr)
 
