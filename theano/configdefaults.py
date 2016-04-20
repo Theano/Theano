@@ -287,6 +287,20 @@ def safe_no_dnn_algo_bwd(algo):
             '`dnn.conv.algo_bwd_filter` and `dnn.conv.algo_bwd_data` instead.')
     return True
 
+# Those are the supported algorithm by Theano,
+# The tests will reference those lists.
+SUPPORTED_DNN_CONV_ALGO_FWD = ('small', 'none', 'large', 'fft', 'fft_tiling',
+                               'winograd', 'guess_once', 'guess_on_shape_change',
+                               'time_once', 'time_on_shape_change')
+
+SUPPORTED_DNN_CONV_ALGO_BWD_DATA = ('none', 'deterministic', 'fft', 'fft_tiling',
+                                    'winograd', 'guess_once', 'guess_on_shape_change',
+                                    'time_once', 'time_on_shape_change')
+
+SUPPORTED_DNN_CONV_ALGO_BWD_FILTER = ('none', 'deterministic', 'fft', 'small',
+                                      'guess_once', 'guess_on_shape_change',
+                                      'time_once', 'time_on_shape_change')
+
 AddConfigVar('dnn.conv.algo_bwd',
              "This flag is deprecated; use dnn.conv.algo_bwd_data and "
              "dnn.conv.algo_bwd_filter.",
@@ -295,31 +309,25 @@ AddConfigVar('dnn.conv.algo_bwd',
              in_c_key=False)
 
 AddConfigVar('dnn.conv.algo_fwd',
-             "Default implementation to use for CuDNN forward convolution.",
-             EnumStr('small', 'none', 'large', 'fft', 'fft_tiling',
-                     'guess_once', 'guess_on_shape_change',
-                     'time_once', 'time_on_shape_change'),
+             "Default implementation to use for cuDNN forward convolution.",
+             EnumStr(*SUPPORTED_DNN_CONV_ALGO_FWD),
              in_c_key=False)
 
 AddConfigVar('dnn.conv.algo_bwd_data',
-             "Default implementation to use for CuDNN backward convolution to "
+             "Default implementation to use for cuDNN backward convolution to "
              "get the gradients of the convolution with regard to the inputs.",
-             EnumStr('none', 'deterministic', 'fft', 'fft_tiling',
-                     'guess_once', 'guess_on_shape_change', 'time_once',
-                     'time_on_shape_change'),
+             EnumStr(*SUPPORTED_DNN_CONV_ALGO_BWD_DATA),
              in_c_key=False)
 
 AddConfigVar('dnn.conv.algo_bwd_filter',
-             "Default implementation to use for CuDNN backward convolution to "
+             "Default implementation to use for cuDNN backward convolution to "
              "get the gradients of the convolution with regard to the "
              "filters.",
-             EnumStr('none', 'deterministic', 'fft', 'small', 'guess_once',
-                     'guess_on_shape_change', 'time_once',
-                     'time_on_shape_change'),
+             EnumStr(*SUPPORTED_DNN_CONV_ALGO_BWD_FILTER),
              in_c_key=False)
 
 AddConfigVar('dnn.conv.precision',
-             "Default data precision to use for the computation in CuDNN "
+             "Default data precision to use for the computation in cuDNN "
              "convolutions (defaults to the same dtype as the inputs of the "
              "convolutions).",
              EnumStr('as_input', 'float16', 'float32', 'float64'),
@@ -342,9 +350,9 @@ AddConfigVar('dnn.library_path',
              StrParam(default_dnn_path('lib' if sys.platform == 'darwin' else 'lib64')))
 
 AddConfigVar('dnn.enabled',
-             "'auto', use CuDNN if available, but silently fall back"
+             "'auto', use cuDNN if available, but silently fall back"
              " to not using it if not present."
-             " If True and CuDNN can not be used, raise an error."
+             " If True and cuDNN can not be used, raise an error."
              " If False, disable cudnn",
              StrParam("auto", "True", "False"),
              in_c_key=False)

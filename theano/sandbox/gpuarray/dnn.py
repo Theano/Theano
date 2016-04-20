@@ -34,8 +34,10 @@ from .nnet import GpuSoftmax
 from .opt import gpu_seqopt, register_opt, conv_groupopt, op_lifter
 from .opt_util import alpha_merge, output_merge, inplace_allocempty
 
+from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_BWD_FILTER
 
-def raise_no_cudnn(msg="CuDNN is required for convolution and pooling"):
+
+def raise_no_cudnn(msg="cuDNN is required for convolution and pooling"):
     raise RuntimeError(msg)
 
 
@@ -73,18 +75,15 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
         try_run=False, output=True)
 
     if not avail:
-        return False, ("Theano cannot compile with cuDNN. "
+        return False, ("cannot compile with cuDNN. "
                        "We got this error:\n" + str(err))
     return True, None
 
 
 def _dnn_check_version():
     v = version()
-    if v < 3007:
-        return False, (
-            "You have an old release of CuDNN (or a release candidate) "
-            "that isn't supported.  Please update to at least v3 final "
-            "version.")
+    if v < 4007:
+        return False, "cuDNN version is too old. Update to v5, was %d." % v
 
     return True, None
 
@@ -93,7 +92,7 @@ def dnn_present():
     if dnn_present.avail is not None:
         return dnn_present.avail
     if config.dnn.enabled == "False":
-        dnn_present.msg = "disabled by dnn.enabled flag"
+        dnn_present.msg = "Disabled by dnn.enabled flag"
         dnn_present.avail = False
 
     if pygpu is None:
@@ -110,7 +109,7 @@ def dnn_present():
     if config.dnn.enabled == "True":
         if not dnn_present.avail:
             raise RuntimeError(
-                "You enabled CuDNN, but we aren't able to use it: %s" %
+                "You enabled cuDNN, but we aren't able to use it: %s" %
                 dnn_present.msg)
 
     return dnn_present.avail
@@ -133,7 +132,7 @@ def dnn_available(context_name):
     # This is a hack because bin_id is in the from of
     # "<something>_<major><minor>" for cuda devices.
     if ctx.bin_id[-2:] < b'30':
-        dnn_available.msg = "Device not supported by cuDNN"
+        dnn_available.msg = "Device not supported"
         return False
 
     return True
@@ -231,8 +230,9 @@ def version(raises=True):
 
     This also does a check that the header version matches the runtime version.
 
-    :raises: If True, raise an exception if CuDNN is not present or badly installed.
+    :raises: If True, raise an exception if cuDNN is not present or badly installed.
         Otherwise, return -1.
+
     """
     if not dnn_present():
         if raises:
@@ -398,9 +398,9 @@ class GpuDnnConv(DnnBase):
     ----------
     image
     kernel
-    descr
+    descr :
         The convolution descriptor.
-    algo : {'small', 'none', 'large', 'fft', 'fft_tiling', 'guess_once',
+    algo : {'small', 'none', 'large', 'fft', 'fft_tiling', 'winograd', 'guess_once',
             'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_fwd`.
 
@@ -422,22 +422,26 @@ class GpuDnnConv(DnnBase):
 
         if version() < 3000:
             if self.algo == 'fft':
-                raise RuntimeError("CuDNN FFT convolution requires CuDNN v3")
+                raise RuntimeError("cuDNN FFT convolution requires cuDNN v3")
             elif self.algo in ['guess_once', 'guess_on_shape_change']:
-                raise RuntimeError("CuDNN selection of convolution "
+                raise RuntimeError("cuDNN selection of convolution "
                                    "implementation based on heuristics "
-                                   "requires CuDNN v3")
+                                   "requires cuDNN v3")
             elif self.algo in ['time_once', 'time_on_shape_change']:
-                raise RuntimeError("CuDNN convolution timing requires CuDNN v3")
+                raise RuntimeError("cuDNN convolution timing requires cuDNN v3")
 
-        # The fft_tiling implementation is only available from CuDNN V4 onward
+        # The fft_tiling implementation is only available from cuDNN V4 onward
         if version() < 4000:
             if self.algo == 'fft_tiling':
-                raise RuntimeError("CuDNN tiled-FFT convolution requires "
-                                   "CuDNN v4 or more recent")
+                raise RuntimeError("cuDNN tiled-FFT convolution requires "
+                                   "cuDNN v4 or more recent")
+
+        if version() < 5000 and self.algo == 'winograd':
+            raise RuntimeError("cuDNN winograd convolution requires "
+                               "cuDNN v5 or more recent")
 
         assert self.algo in ['none', 'small', 'large', 'fft', 'fft_tiling',
-                             'guess_once', 'guess_on_shape_change',
+                             'winograd', 'guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']
 
     def __setstate__(self, d):
@@ -469,6 +473,9 @@ class GpuDnnConv(DnnBase):
         elif self.algo == 'fft_tiling':
             # need v4
             alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING'
+        elif self.algo == 'winograd':
+            # need v5
+            alg = 'CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD'
         defs.append(('CONV_ALGO', alg))
 
         if self.algo in ['guess_once', 'guess_on_shape_change',
@@ -566,8 +573,11 @@ class GpuDnnConvGradW(DnnBase):
     ----------
     image
     kernel
-    descr
+    descr :
         The convolution descriptor.
+    algo : {'none', 'deterministic', 'fft', 'small', 'guess_once',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
+        Default is the value of :attr:`config.dnn.conv.algo_bwd_filter`.
 
     """
 
@@ -583,9 +593,7 @@ class GpuDnnConvGradW(DnnBase):
             algo = config.dnn.conv.algo_bwd_filter
         self.algo = algo
 
-        assert self.algo in ['none', 'deterministic', 'fft', 'small',
-                             'guess_once', 'guess_on_shape_change',
-                             'time_once', 'time_on_shape_change']
+        assert self.algo in SUPPORTED_DNN_CONV_ALGO_BWD_FILTER
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -689,6 +697,9 @@ class GpuDnnConvGradI(DnnBase):
     kernel
     descr
         The convolution descriptor.
+    algo : {'none', 'deterministic', 'fft', 'fft_tiling', 'winograd', 'guess_once',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
+        Default is the value of :attr:`config.dnn.conv.algo_bwd_data`.
 
     """
 
@@ -704,14 +715,17 @@ class GpuDnnConvGradI(DnnBase):
             algo = config.dnn.conv.algo_bwd_data
         self.algo = algo
 
-        # The small-workspace implementation is only available from CuDNN V4
+        # The small-workspace implementation is only available from cuDNN V4
         # onward.
         if version() < 4000 and self.algo == 'fft_tiling':
-            raise RuntimeError("CuDNN's tiled-FFT convolution requires CuDNN "
+            raise RuntimeError("cuDNN's tiled-FFT convolution requires cuDNN "
                                "v4 or more recent")
+        if version() < 5000 and self.algo == 'winograd':
+            raise RuntimeError("cuDNN's winograd convolution requires cuDNN "
+                               "v5 or more recent")
 
         assert self.algo in ['none', 'deterministic', 'fft', 'fft_tiling',
-                             'guess_once', 'guess_on_shape_change',
+                             'winograd', 'guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']
 
     def __setstate__(self, d):
@@ -750,13 +764,16 @@ class GpuDnnConvGradI(DnnBase):
             alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0'
             if self.algo == 'none':
                 alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0'
-            if self.algo == 'deterministic':
+            elif self.algo == 'deterministic':
                 alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_1'
-            if self.algo == 'fft':
+            elif self.algo == 'fft':
                 alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT'
-            if self.algo == 'fft_tiling':
+            elif self.algo == 'fft_tiling':
                 # big workspace but less than fft
                 alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING'
+            elif self.algo == 'winograd':
+                # need v5
+                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD'
 
             if self.algo in ['guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']:
@@ -840,7 +857,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         removed at any time without a deprecation period. You have been warned.
     algo : {'none', 'small', 'large', 'fft', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Convolution implementation to use. Some of its values may
-        require certain versions of CuDNN to be installed. Default is
+        require certain versions of cuDNN to be installed. Default is
         the value of :attr:`config.dnn.conv.algo_fwd`.
     precision : {'as_input', 'float16', 'float32', 'float64'}
         Description of the dtype in which the computation of the convolution
@@ -998,10 +1015,10 @@ class GpuDnnPoolDesc(Op):
         self.pad = pad
 
         if self.get_ndim() == 3 and version() < 3000:
-            raise RuntimeError("CuDNN 3d pooling requires v3")
+            raise RuntimeError("cuDNN 3d pooling requires v3")
         if mode == 'average_exc_pad' and max(pad) > 0 and version() < 4004:
             raise RuntimeError(
-                "CuDNN pooling mode 'average_exc_pad' requires at least v4")
+                "cuDNN pooling mode 'average_exc_pad' requires at least v4")
 
     def get_ndim(self):
         return len(self.ws)
@@ -1048,9 +1065,13 @@ class GpuDnnPoolDesc(Op):
   static const int win[%(nd)d] = {%(win)s};
   static const int pad[%(nd)d] = {%(pad)s};
   static const int str[%(nd)d] = {%(str)s};
-  err = cudnnSetPoolingNdDescriptor(
-    %(desc)s, %(mode_flag)s, %(nd)d,
-    win, pad, str);
+
+#if CUDNN_VERSION >= 5000
+    err = cudnnSetPoolingNdDescriptor(%(desc)s, %(mode_flag)s, CUDNN_PROPAGATE_NAN, %(nd)d, win, pad, str);
+#else
+    err = cudnnSetPoolingNdDescriptor(%(desc)s, %(mode_flag)s, %(nd)d, win, pad, str);
+#endif
+
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
                  cudnnGetErrorString(err));
@@ -1063,7 +1084,7 @@ class GpuDnnPoolDesc(Op):
            str=', '.join(map(str, self.stride)))
 
     def c_code_cache_version(self):
-        return (3, version())
+        return (4, version())
 
 
 class GpuDnnPool(DnnBase):
@@ -1071,18 +1092,17 @@ class GpuDnnPool(DnnBase):
     """
     Parameters
     ----------
-    img
+    img : tensor
         The image 4d or 5d tensor.
-    Parameters
-    ----------
-    ws : tensor variable
+    ws : tensor
         Window size.
-    stride : tensor variable
+    stride : tensor
         (dx, dy) or (dx, dy, dz).
     mode : {'max', 'average_inc_pad', 'average_exc_pad'}
         The old deprecated name 'average' corresponds to 'average_inc_pad'.
     pad : tensor
         (padX, padY) or (padX, padY, padZ)
+
     """
 
     __props__ = ('mode',)
@@ -1256,14 +1276,12 @@ class GpuDnnSoftmaxBase(DnnBase):
 
     Parameters
     ----------
-    algo
-        'fast', 'accurate' or 'log' indicating whether, respectively,
-        computations should be optimized for speed, for accuracy, or if CuDNN
-        should rather compute the log-softmax instead.
-    mode
-        'instance' or 'channel' indicating whether the softmax should be
-        computed per image across 'c01' or per spatial location '01' per
-        image across 'c'.
+    algo : {'fast', 'accurate', 'log'}
+        Indicating whether, respectively, computations should be optimized for
+        speed, for accuracy, or if cuDNN should rather compute the log-softmax instead.
+    mode : {'instance', 'channel'}
+        Indicating whether the softmax should be computed per image across 'c01'
+        or per spatial location '01' per image across 'c'.
 
     """
 
@@ -1274,7 +1292,7 @@ class GpuDnnSoftmaxBase(DnnBase):
 
         assert(algo in ('fast', 'accurate', 'log'))
         if algo == 'log' and version(raises=False) < 3000:
-            raise RuntimeError("Need CuDNN v3 for log-softmax")
+            raise RuntimeError("Need cuDNN v3 for log-softmax")
         self.algo = algo
 
         assert(mode in ('instance', 'channel'))
@@ -1307,14 +1325,12 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
     """
     Op for the cuDNN Softmax.
 
-    algo
-        'fast', 'accurate' or 'log' indicating whether, respectively,
-        computations should be optimized for speed, for accuracy, or if CuDNN
-        should rather compute the log-softmax instead.
-    mode
-        'instance' or 'channel' indicating whether the softmax should be
-        computed per image across 'c01' or per spatial location '01' per
-        image across 'c'.
+    algo : {'fast', 'accurate', 'log'}
+        Indicating whether, respectively, computations should be optimized for
+        speed, for accuracy, or if cuDNN should rather compute the log-softmax instead.
+    mode : {'instance', 'channel'}
+        Indicating whether the softmax should be computed per image across 'c01'
+        or per spatial location '01' per image across 'c'.
 
     """
     direction = "forward"
@@ -1345,7 +1361,7 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
     ----------
     algo
         'fast', 'accurate' or 'log' indicating whether, respectively,
-        computations should be optimized for speed, for accuracy, or if CuDNN
+        computations should be optimized for speed, for accuracy, or if cuDNN
         should rather compute the gradient of the log-softmax instead.
     mode
         'instance' or 'channel' indicating whether the softmax should
@@ -1534,7 +1550,7 @@ def local_avg_pool_dnn_grad_stride(node, ctx_name):
 
     cg = gpu_contiguous(out_grad)
 
-    # We reuse cg because CuDNN does not use the value of the `out`
+    # We reuse cg because cuDNN does not use the value of the `out`
     # argument but still checks its shape for average pooling. This
     # has been observed in v2 and v3 as far as I know.
     return GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp), cg, cg, ds, st, pad)
@@ -1564,7 +1580,7 @@ def local_log_softmax_dnn(node):
             len(node.inputs[0].clients) == 1):
         if version(raises=False) < 3000:
             # No log-softmax before cudnn v3
-            raise_no_cudnn("Need CuDNN v3 for LogSoftmax")
+            raise_no_cudnn("Need cuDNN v3 for LogSoftmax")
         softmax_node = node.inputs[0].owner
         new_softmax = GpuDnnSoftmax('log', softmax_node.op.mode)
         return [new_softmax(softmax_node.inputs[0])]
@@ -1579,7 +1595,7 @@ def local_logsoftmax_to_dnn(node, ctx_name):
         return
     if not dnn_available(ctx_name) or version(raises=False) < 3000:
         # No log-softmax before cudnn v3
-        raise_no_cudnn("Need CuDNN v3 for LogSoftmax")
+        raise_no_cudnn("Need cuDNN v3 for LogSoftmax")
 
     inp = inp.dimshuffle(0, 1, 'x', 'x')
     inp.tag.context_name = ctx_name
@@ -1602,7 +1618,7 @@ class NoCuDNNRaise(Optimizer):
                 # just skip this optimization.
                 raise AssertionError(
                     "cuDNN optimization was enabled, but Theano was not able "
-                    "to use it for context " + c + ". We got this error: \n" +
+                    "to use it for context " + str(c) + ". We got this error: \n" +
                     dnn_available.msg)
 
 gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
@@ -1612,7 +1628,7 @@ gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
 @op_lifter([SoftmaxGrad])
 def local_softmax_dnn_grad(node, ctx_name):
     if not dnn_available(ctx_name):
-        raise_no_cudnn("CuDNN needed for SoftmaxGrad")
+        raise_no_cudnn("cuDNN needed for SoftmaxGrad")
     ins = []
     for n in node.inputs:
         n = as_gpuarray_variable(n, ctx_name)

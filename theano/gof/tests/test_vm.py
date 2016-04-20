@@ -194,6 +194,28 @@ def test_speed_lazy():
                                                        use_cloop=True))
 
 
+def test_partial_function():
+    import numpy as np
+    from theano.tests import unittest_tools as utt
+    x = tensor.scalar('input')
+    y = x ** 2
+    f = theano.function([x], [y + 7, y - 9, y / 14.], mode=Mode(
+        optimizer=None, linker=vm.VM_Linker(allow_partial_eval=True)))
+
+    assert f(3, output_subset=[0, 1, 2]) == f(3)
+    assert f(4, output_subset=[0, 2]) == [f(4)[0], f(4)[2]]
+    utt.assert_allclose(f(5), np.array([32., 16., 1.7857142857142858]))
+
+
+def test_partial_function_output_keys():
+    x = tensor.scalar('input')
+    y = 3 * x
+    f = theano.function([x], {'a': y * 5, 'b': y - 7}, mode=Mode(
+        optimizer=None, linker=vm.VM_Linker(allow_partial_eval=True)))
+
+    assert f(5, output_subset=['a'])['a'] == f(5)['a']
+
+
 def test_allow_gc_cvm():
     mode = theano.config.mode
     if mode in ['DEBUG_MODE', 'DebugMode']:

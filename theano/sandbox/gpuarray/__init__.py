@@ -42,7 +42,7 @@ register_transfer(transfer)
 
 def init_dev(dev, name=None):
     v = pygpu.gpuarray.api_version()
-    if v[0] != -10000:
+    if v[0] != -9998:
         raise RuntimeError("Wrong major API version for gpuarray:", v[0],
                            "Make sure Theano and libgpuarray/pygpu "
                            "are in sync.")
@@ -69,17 +69,17 @@ def init_dev(dev, name=None):
         warn = None
         cudnn_version = ""
         if dev.startswith('cuda'):
-            cudnn_version = " (CuDNN not available)"
+            cudnn_version = " (cuDNN not available)"
             try:
                 cudnn_version = dnn.version()
-                # 4100 should not print warning with cudnn 4 final.
-                if cudnn_version > 4100:
-                    warn = ("Your CuDNN version is more recent than Theano."
+                # 5100 should not print warning with cudnn 5 final.
+                if cudnn_version > 5100:
+                    warn = ("Your cuDNN version is more recent than Theano."
                             " If you see problems, try updating Theano or"
-                            " downgrading CuDNN to version 4.")
-                cudnn_version = " (CuDNN version %s)" % cudnn_version
+                            " downgrading cuDNN to version 5.")
+                cudnn_version = " (cuDNN version %s)" % cudnn_version
             except Exception:
-                pass
+                cudnn_version = dnn.dnn_present.msg
         print("Mapped name %s to device %s: %s%s" % (
             name, dev, context.devname, cudnn_version),
               file=sys.stderr)

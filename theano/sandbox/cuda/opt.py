@@ -2280,6 +2280,22 @@ def local_gpu_contiguous_gpu_contiguous(node):
             return [inp]
 
 
+@register_opt('fast_compile')
+@local_optimizer([GpuFromHost, tensor.extra_ops.CpuContiguous])
+def local_gpu_contiguous(node):
+    if isinstance(node.op, tensor.extra_ops.CpuContiguous):
+        x, = node.inputs
+        if x.owner and isinstance(x.owner.op, HostFromGpu):
+            gpu_x, = x.owner.inputs
+            return [tensor.as_tensor_variable(gpu_contiguous(gpu_x))]
+    if isinstance(node.op, GpuFromHost):
+        x, = node.inputs
+        if x.owner and isinstance(x.owner.op, tensor.extra_ops.CpuContiguous):
+            gpu_x, = x.owner.inputs
+            return [gpu_contiguous(gpu_x)]
+    return False
+
+
 @register_opt()
 @local_optimizer([gpu_from_host, tensor.Eye])
 def local_gpu_eye(node):

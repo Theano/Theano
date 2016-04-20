@@ -43,17 +43,17 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
 
 .. note::
 
-   CuDNN v3 has now been released. CuDNN v2 remains supported but CuDNN v3 is
-   faster and offers many more options. We recommend that everybody update to
-   v3.
+   cuDNN v5rc is supported in Theano master version. So it dropped cuDNN v3 support.
+   Theano 0.8.0 and 0.8.1 support only cuDNN v3 and v4.
+   Theano 0.8.2 will support only v4 and v5.
 
 .. note::
 
-   Starting in CuDNN v3, multiple convolution implementations are offered and
+   Starting in cuDNN v3, multiple convolution implementations are offered and
    it is possible to use heuristics to automatically choose a convolution
    implementation well suited to the parameters of the convolution.
 
-   The Theano flag ``dnn.conv.algo_fwd`` allows to specify the CuDNN
+   The Theano flag ``dnn.conv.algo_fwd`` allows to specify the cuDNN
    convolution implementation that Theano should use for forward convolutions.
    Possible values include :
 
@@ -64,19 +64,19 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
    * ``fft`` : use the Fast Fourrier Transform implementation of convolution
      (very high memory usage)
    * ``guess_once`` : the first time a convolution is executed, the
-     implementation to use is chosen according to CuDNN's heuristics and reused
+     implementation to use is chosen according to cuDNN's heuristics and reused
      for every subsequent execution of the convolution.
    * ``guess_on_shape_change`` : like ``guess_once`` but a new convolution
      implementation selected every time the shapes of the inputs and kernels
      don't match the shapes from the last execution.
    * ``time_once`` : the first time a convolution is executed, every convolution
-     implementation offered by CuDNN is executed and timed. The fastest is
+     implementation offered by cuDNN is executed and timed. The fastest is
      reused for every subsequent execution of the convolution.
    * ``time_on_shape_change`` : like ``time_once`` but a new convolution
      implementation selected every time the shapes of the inputs and kernels
      don't match the shapes from the last execution.
 
-   The Theano flag ``dnn.conv.algo_bwd`` allows to specify the CuDNN
+   The Theano flag ``dnn.conv.algo_bwd`` allows to specify the cuDNN
    convolution implementation that Theano should use for gradient convolutions.
    Possible values include :
 
@@ -86,13 +86,13 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
    * ``fft`` : use the Fast Fourrier Transform implementation of convolution
      (very high memory usage)
    * ``guess_once`` : the first time a convolution is executed, the
-     implementation to use is chosen according to CuDNN's heuristics and reused
+     implementation to use is chosen according to cuDNN's heuristics and reused
      for every subsequent execution of the convolution.
    * ``guess_on_shape_change`` : like ``guess_once`` but a new convolution
      implementation selected every time the shapes of the inputs and kernels
      don't match the shapes from the last execution.
    * ``time_once`` : the first time a convolution is executed, every convolution
-     implementation offered by CuDNN is executed and timed. The fastest is
+     implementation offered by cuDNN is executed and timed. The fastest is
      reused for every subsequent execution of the convolution.
    * ``time_on_shape_change`` : like ``time_once`` but a new convolution
      implementation selected every time the shapes of the inputs and kernels

@@ -2,8 +2,9 @@ from __future__ import absolute_import, print_function, division
 import logging
 
 from nose.plugins.skip import SkipTest
+from nose_parameterized import parameterized
 import numpy
-from itertools import product
+from itertools import product, chain
 
 import theano
 from six import StringIO
@@ -18,6 +19,8 @@ from ..basic_ops import GpuAllocEmpty
 
 from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
 from . import test_nnet
+
+from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_FWD
 
 
 def test_dnn_conv_desc_merge():
@@ -168,7 +171,7 @@ def test_pooling():
         raise SkipTest(dnn.dnn_available.msg)
 
     # 'average_exc_pad' is disabled for versions < 4004
-    if dnn.version() < 4004:
+    if dnn.version(raises=False) < 4004:
         modes = ('max', 'average_inc_pad')
     else:
         modes = ('max', 'average_inc_pad', 'average_exc_pad')
@@ -390,6 +393,9 @@ def test_dnn_tag():
 
 class TestDnnInferShapes(utt.InferShapeTester):
 
+    border_modes = ['valid', 'full', 'half']
+    conv_modes = ['conv', 'cross']
+
     def setUp(self):
         super(TestDnnInferShapes, self).setUp()
         self.mode = mode_with_gpu
@@ -424,37 +430,25 @@ class TestDnnInferShapes(utt.InferShapeTester):
             dnn.GpuDnnSoftmaxGrad
         )
 
-    def test_conv(self):
+    def _test_conv(self, img, kerns, out, img_val, kern_vals, border_mode, conv_mode, subsamples, algo):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
-        img = T.ftensor4('img')
-        kerns = T.ftensor4('kerns')
-        out = T.ftensor4('out')
-        img_val = numpy.asarray(
-            numpy.random.rand(7, 2, 6, 4),
-            dtype='float32'
-        )
-        kern_vals = numpy.asarray(
-            numpy.random.rand(8, 2, 4, 3),
-            dtype='float32'
-        )
 
-        for params in product(
-            ['valid', 'full', 'half'],
-            [(1, 1), (2, 2)],
-            ['conv', 'cross']
-        ):
+        img_val = numpy.asarray(img_val, dtype='float32')
+        kern_vals = numpy.asarray(kern_vals, dtype='float32')
+
+        for subsample in subsamples:
             out_vals = numpy.zeros(
                 dnn.GpuDnnConv.get_out_shape(img_val.shape, kern_vals.shape,
-                                             border_mode=params[0],
-                                             subsample=params[1]),
+                                             border_mode=border_mode,
+                                             subsample=subsample),
                 dtype='float32')
             desc = dnn.GpuDnnConvDesc(
-                border_mode=params[0],
-                subsample=params[1],
-                conv_mode=params[2]
+                border_mode=border_mode,
+                subsample=subsample,
+                conv_mode=conv_mode
             )(kerns.shape)
-            conv = dnn.GpuDnnConv()(img, kerns, out, desc)
+            conv = dnn.GpuDnnConv(algo=algo)(img, kerns, out, desc)
             self._compile_and_check(
                 [img, kerns, out],
                 [conv],
@@ -462,54 +456,92 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 dnn.GpuDnnConv
             )
 
-    def test_conv_gradw(self):
+    @parameterized.expand(chain(product([SUPPORTED_DNN_CONV_ALGO_FWD[0]],
+                                        border_modes,
+                                        conv_modes),
+                                product(SUPPORTED_DNN_CONV_ALGO_FWD[1:],
+                                        [border_modes[0]],
+                                        [conv_modes[0]])),
+                          testcase_func_name=utt.custom_name_func)
+    def test_conv(self, algo, border_mode, conv_mode):
+        if algo == 'winograd' and dnn.version(raises=False) < 5000:
+            raise SkipTest(dnn.dnn_available.msg)
+
+        self._test_conv(T.ftensor4('img'),
+                        T.ftensor4('kerns'),
+                        T.ftensor4('out'),
+                        numpy.random.rand(7, 2, 8, 4),
+                        numpy.random.rand(8, 2, 4, 3),
+                        border_mode,
+                        conv_mode,
+                        [(1, 1), (2, 2)],
+                        algo)
+
+    @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
+    def test_conv3d_none(self, border_mode, conv_mode):
+        ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
+        self._test_conv(ftensor5('img'),
+                        ftensor5('kerns'),
+                        ftensor5('out'),
+                        numpy.random.rand(10, 2, 6, 4, 11),
+                        numpy.random.rand(8, 2, 4, 3, 1),
+                        border_mode,
+                        conv_mode,
+                        [(1, 1, 1), (2, 2, 2)],
+                        'none')
+
+    def _test_conv_gradw(self, img, kerns, out, img_val, kern_vals, border_mode, conv_mode, subsample):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
-        img = T.ftensor4('img')
-        kerns = T.ftensor4('kerns')
-        out = T.ftensor4('out')
+
         img_val = numpy.asarray(
-            numpy.random.rand(2, 5, 6, 8),
+            img_val,
             dtype='float32'
         )
         kern_vals = numpy.asarray(
-            numpy.random.rand(2, 1, 5, 6),
+            kern_vals,
             dtype='float32'
         )
 
-        for params in product(
-            ['valid', 'full', 'half'],
-            [(1, 1)],  # strides besides (1, 1)
-            ['conv', 'cross']
-        ):
-            temp_img = img.dimshuffle(1, 0, 2, 3)
-            temp_kerns = kerns
-            if params[2] == 'conv':
-                temp_kerns = temp_kerns[:, :, ::-1, ::-1]
-            temp_kerns = temp_kerns.dimshuffle(1, 0, 2, 3)
-            shape = (
-                kern_vals.shape[1], img_val.shape[1],
-                img_val.shape[2] - kern_vals.shape[2] + 1,
-                img_val.shape[3] - kern_vals.shape[3] + 1
-            )
-            out_vals = numpy.zeros(shape, dtype='float32')
-            desc = dnn.GpuDnnConvDesc(
-                border_mode=params[0],
-                subsample=params[1],
-                conv_mode=params[2]
-            )(out.shape)
-            conv_grad_w = dnn.GpuDnnConvGradW()(
-                temp_img,
-                temp_kerns,
-                out,
-                desc,
-            )
-            self._compile_and_check(
-                [temp_img, temp_kerns, out],
-                [conv_grad_w],
-                [img_val, kern_vals, out_vals],
-                dnn.GpuDnnConvGradW
-            )
+        temp_img = img.dimshuffle(1, 0, 2, 3)
+        temp_kerns = kerns
+        if conv_mode == 'conv':
+            temp_kerns = temp_kerns[:, :, ::-1, ::-1]
+        temp_kerns = temp_kerns.dimshuffle(1, 0, 2, 3)
+        shape = (
+            kern_vals.shape[1], img_val.shape[1],
+            img_val.shape[2] - kern_vals.shape[2] + 1,
+            img_val.shape[3] - kern_vals.shape[3] + 1
+        )
+        out_vals = numpy.zeros(shape, dtype='float32')
+        desc = dnn.GpuDnnConvDesc(
+            border_mode=border_mode,
+            subsample=subsample,
+            conv_mode=conv_mode
+        )(out.shape)
+        conv_grad_w = dnn.GpuDnnConvGradW()(
+            temp_img,
+            temp_kerns,
+            out,
+            desc,
+        )
+        self._compile_and_check(
+            [temp_img, temp_kerns, out],
+            [conv_grad_w],
+            [img_val, kern_vals, out_vals],
+            dnn.GpuDnnConvGradW
+        )
+
+    @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
+    def test_conv_gradw(self, border_mode, conv_mode):
+        self._test_conv_gradw(T.ftensor4('img'),
+                              T.ftensor4('kerns'),
+                              T.ftensor4('out'),
+                              numpy.random.rand(2, 5, 6, 8),
+                              numpy.random.rand(2, 1, 5, 6),
+                              border_mode,
+                              conv_mode,
+                              (1, 1))
 
     def test_conv_gradi(self):
         if not dnn.dnn_available(test_ctx_name):
@@ -565,7 +597,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         # 'average_exc_pad' is disabled for versions < 4004
-        if dnn.version() < 4004:
+        if dnn.version(raises=False) < 4004:
             modes = ['max', 'average_inc_pad']
         else:
             modes = ['max', 'average_inc_pad', 'average_exc_pad']
@@ -700,6 +732,8 @@ def test_dnn_conv_alpha_output_merge():
 
 
 def test_dnn_conv_grad():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
     b = 1
     c = 4
     f = 3
@@ -744,6 +778,10 @@ class test_SoftMax(test_nnet.test_SoftMax):
     gpu_op = dnn.GpuDnnSoftmax
     gpu_grad_op = dnn.GpuDnnSoftmaxGrad
     mode = mode_with_gpu
+
+    def setUp(self):
+        if not dnn.dnn_available(test_ctx_name):
+            raise SkipTest(dnn.dnn_available.msg)
 
     def test_softmax_shape_0(self):
         raise SkipTest("Cudnn doesn't support 0 shapes")
@@ -855,9 +893,9 @@ class test_SoftMax(test_nnet.test_SoftMax):
                     ]) == 0)
 
     def test_log_softmax(self):
-        # This is a test for an optimization that depends on CuDNN v3 or
-        # more recent. Don't test if the CuDNN version is too old.
-        if dnn.version() < 3000:
+        # This is a test for an optimization that depends on cuDNN v3 or
+        # more recent. Don't test if the cuDNN version is too old.
+        if dnn.version(raises=False) < 3000:
             raise SkipTest("Log-softmax is only in cudnn v3+")
 
         x = T.ftensor4()
@@ -896,9 +934,9 @@ class test_SoftMax(test_nnet.test_SoftMax):
         # Test that the op LogSoftmax is correctly replaced by the op
         # DnnSoftmax with the 'log' mode.
 
-        # This is a test for an optimization that depends on CuDNN v3 or
-        # more recent. Don't test if the CuDNN version is too old.
-        if dnn.version() < 3000:
+        # This is a test for an optimization that depends on cuDNN v3 or
+        # more recent. Don't test if the cuDNN version is too old.
+        if dnn.version(raises=False) < 3000:
             raise SkipTest("Log-softmax is only in cudnn v3+")
 
         # Compile a reference function, on the CPU, to be used to validate the

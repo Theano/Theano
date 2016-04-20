@@ -19,7 +19,7 @@ import theano
 from theano.compile import shared, pfunc
 from theano import tensor
 from theano.tensor.nnet import softplus
-from theano.sandbox.softsign import softsign
+from theano.tensor.nnet.nnet import softsign
 
 _logger = logging.getLogger('theano.sandbox.cuda.tests.test_bench_loopfusion')
 

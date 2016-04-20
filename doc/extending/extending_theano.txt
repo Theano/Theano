@@ -875,43 +875,12 @@ Modify and execute to compute: numpy.add and numpy.subtract.
 Modify and execute the example to return two outputs: x + y
     and x - y.
 
+.. _Documentation:
 
-Documentation
--------------
-
-See :ref:`metadocumentation`, for some information on how to generate
-the documentation.
-
-Here is an example how to add docstring to a class.
-
-.. testcode:: python
-
-    import theano
-
-    class DoubleOp(theano.Op):
-        """ Double each element of a tensor.
-
-        :param x: input tensor.
-
-        :return: a tensor of the same shape and dtype as the input with all
-        values doubled.
-
-        :note:
-            this is a test note
-
-        :seealso:
-            You can use the elemwise op to replace this example.
-            Just execute `x * 2` with x being a Theano variable.
-
-        .. versionadded:: 0.6
-        """
-
-This is how it will show up for files that we auto-list in the library
-documentation:
-
-
-.. automodule:: theano.misc.doubleop
-    :members:
+Documentation and Coding Style
+------------------------------
+Please always respect the :ref:`quality_contributions` or your contribution 
+will not be accepted.
 
 NanGuardMode and AllocEmpty
 ---------------------------

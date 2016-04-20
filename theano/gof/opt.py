@@ -7,6 +7,7 @@ from __future__ import absolute_import, print_function, division
 
 from collections import deque
 import copy
+import inspect
 import logging
 import pdb
 import sys
@@ -2568,3 +2569,153 @@ def pre_greedy_local_optimizer(list_optimizations, out):
     final_outs, optimized_nodes = local_recursive_function(
         list_optimizations, out, {}, 0)
     return final_outs[out_index]
+
+
+def copy_stack_trace(from_var, to_var):
+    """
+    Copies the stack trace from one or more tensor variables to
+    one or more tensor variables.
+
+    Parameters
+    ----------
+    from_var
+        Tensor variable or list of tensor variables to copy stack traces from.
+    to_var
+        Tensor variable or list of tensor variables to copy stack traces to.
+
+    Notes
+    -----
+    The stacktrace is assumed to be of the form of a list of lists
+    of tuples. Each tuple contains the filename, line number, function name
+    and so on. Each list of tuples contains the truples belonging to a
+    particular variable.
+
+    """
+
+    # Store stack traces from from_var
+    tr = []
+    if type(from_var) is list:
+        # If from_var is a list, store concatenated stack traces
+        for v in from_var:
+            tr += getattr(v.tag, 'trace', [])
+
+    else:
+        # If from_var is not a list, it must be a single tensor variable,
+        # so just store that particular stack trace
+        tr = getattr(from_var.tag, 'trace', [])
+
+    # Copy over stack traces to to_var
+    if type(to_var) is list:
+        # Copy over stack traces from from_var to each variable in
+        # to_var, including the stack_trace of the to_var before
+        for v in to_var:
+            v.tag.trace = getattr(v.tag, 'trace', []) + tr
+    else:
+        # Copy over stack traces from from_var to each variable to
+        # to_var, including the stack_trace of the to_var before
+        to_var.tag.trace = getattr(to_var.tag, 'trace', []) + tr
+
+
+def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
+    """
+    This function checks if the outputs of specific ops of a compiled graph
+    have a stack.
+
+    Parameters
+    ----------
+    f_or_fgraph: theano.compile.function_module.Function or
+          theano.gof.fg.FunctionGraph
+        The compiled function or the function graph to be analysed.
+    ops_to_check: it can be of four different types:
+          - classes or instances inheriting from theano.gof.Op
+          - tuple/list of classes or instances inheriting from theano.gof.Op
+          - string
+          - function returning a boolean and taking as input an instance of
+            theano.gof.Op.
+        - if ops_to_check is a string, it should be either 'last' or 'all'.
+          'last' will check only the last op of the graph while 'all' will
+          check all the ops of the graph.
+        - if ops_to_check is an op or a tuple/list of ops, the function will
+          check that all the outputs of their occurrences in the graph have a
+          stack trace.
+        - if ops_to_check is a function, it should take as input a
+          theano.gof.Op and return a boolean indicating if the input op should
+          be checked or not.
+    bug_print: string belonging to {'raise', 'warn', 'ignore'}
+        You can specify the behaviour of the function when the specified
+        ops_to_check are not in the graph of f_or_fgraph: it can either raise
+        an exception, write a warning or simply ignore it.
+
+    Returns
+    -------
+    boolean
+        True if the outputs of the specified ops have a stack, False otherwise.
+
+    """
+    if isinstance(f_or_fgraph, theano.compile.function_module.Function):
+        fgraph = f_or_fgraph.maker.fgraph
+    elif isinstance(f_or_fgraph, theano.gof.fg.FunctionGraph):
+        fgraph = f_or_fgraph
+    else:
+        raise ValueError('The type of f_or_fgraph is not supported')
+
+    if (isinstance(ops_to_check, theano.gof.Op) or
+            (inspect.isclass(ops_to_check) and
+                issubclass(ops_to_check, theano.gof.Op))):
+        ops_to_check = (ops_to_check,)
+
+    # if ops_to_check is a string
+    if isinstance(ops_to_check, string_types):
+        if ops_to_check == 'last':
+            apply_nodes_to_check = [fgraph.outputs[0].owner]
+        elif ops_to_check == 'all':
+            apply_nodes_to_check = fgraph.apply_nodes
+        else:
+            raise ValueError('The string ops_to_check is not recognised')
+
+    # if ops_to_check is a list/tuple of ops
+    elif isinstance(ops_to_check, (tuple, list)):
+        # Separate classes from instances in ops_to_check
+        op_instances = []
+        op_classes = []
+        for obj in ops_to_check:
+            if isinstance(obj, theano.gof.Op):
+                op_instances.append(obj)
+            else:
+                op_classes.append(obj)
+        op_classes = tuple(op_classes)
+
+        apply_nodes_to_check = (
+            [node for node in fgraph.apply_nodes if node.op in ops_to_check] +
+            [node for node in fgraph.apply_nodes
+             if isinstance(node.op, op_classes) or
+             (hasattr(node.op, 'scalar_op') and
+              isinstance(node.op.scalar_op, op_classes))])
+
+    # if ops_to_check is a function
+    elif hasattr(ops_to_check, '__call__'):
+        apply_nodes_to_check = [node for node in fgraph.apply_nodes
+                                if ops_to_check(node)]
+
+    else:
+        raise ValueError('ops_to_check does not have the right type')
+
+    if not apply_nodes_to_check:
+        msg = 'Provided op instances/classes are not in the graph or the ' \
+              'graph is empty'
+        if bug_print == 'warn':
+            warnings.warn(msg)
+        elif bug_print == 'raise':
+            raise Exception(msg)
+        elif bug_print == 'ignore':
+            pass
+        else:
+            raise ValueError('The string bug_print is not recognised')
+
+    for node in apply_nodes_to_check:
+        for output in node.outputs:
+            if (not hasattr(output.tag, 'trace') or
+                    not output.tag.trace):
+                return False
+
+    return True

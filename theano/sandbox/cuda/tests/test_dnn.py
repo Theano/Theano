@@ -393,8 +393,9 @@ def test_pooling_with_tensor_vars():
 
 
 def test_old_pool_interface():
-    if not cuda.dnn.dnn_available():
+    if not cuda.dnn.dnn_available() or cuda.dnn.version() > (5000, 5000):
         raise SkipTest(cuda.dnn.dnn_available.msg)
+
     testfile_dir = os.path.dirname(os.path.realpath(__file__))
     fname = 'old_pool_interface.pkl'
     with open(os.path.join(testfile_dir, fname), 'rb') as fp:
@@ -412,7 +413,7 @@ def test_old_pool_interface():
 
 
 def test_pooling3d():
-    # CuDNN 3d pooling requires CuDNN v3. Don't test if the CuDNN version is
+    # cuDNN 3d pooling requires cuDNN v3. Don't test if the cuDNN version is
     # too old.
     if not cuda.dnn.dnn_available() or cuda.dnn.version() < (3000, 3000):
         raise SkipTest(cuda.dnn.dnn_available.msg)
@@ -568,11 +569,11 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
         x_val = numpy.random.normal(0, 1, (3, 4, 2, 5)).astype('float32')
         x_val2 = numpy.random.normal(0, 1, (3, 4, 1, 1)).astype('float32')
 
-        utt.verify_grad(softmax_op, [x_val])
+        utt.verify_grad(softmax_op, [x_val], mode=mode_with_gpu)
 
         # Gradient is broken for (n, c, 1, 1) in v3 rc1
         if cuda.dnn.version() != (3000, 3000):
-            utt.verify_grad(softmax_op, [x_val2])
+            utt.verify_grad(softmax_op, [x_val2], mode=mode_with_gpu)
 
     def test_cudnn_softmax_grad_opt(self):
         # Verify that the SoftmaxGrad -> GpuDnnSoftmaxGrad optimization is
@@ -640,8 +641,8 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
                     )]) == 0)
 
     def test_log_softmax(self):
-        # This is a test for an optimization that depends on CuDNN v3 or
-        # more recent. Don't test if the CuDNN version is too old.
+        # This is a test for an optimization that depends on cuDNN v3 or
+        # more recent. Don't test if the cuDNN version is too old.
         if cuda.dnn.version() < (3000, 3000):
             raise SkipTest("Log-softmax is only in cudnn v3+")
 
@@ -825,7 +826,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
     def test_conv3d(self):
         if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
-            raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
+            raise SkipTest('"cuDNN 3D convolution requires cuDNN v2')
         ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
         img = ftensor5('img')
         kerns = ftensor5('kerns')
@@ -913,7 +914,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
     def test_conv3d_gradw(self):
         if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
-            raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
+            raise SkipTest('"cuDNN 3D convolution requires cuDNN v2')
         ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
         img = ftensor5('img')
         kerns = ftensor5('kerns')
@@ -1003,7 +1004,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
     def test_conv3d_gradi(self):
         if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
-            raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
+            raise SkipTest('"cuDNN 3D convolution requires cuDNN v2')
         ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
         img = ftensor5('img')
         kerns = ftensor5('kerns')
@@ -1353,9 +1354,9 @@ def test_dnn_conv_grad():
         return dnn.GpuDnnConvGradW()(img, out, kern, desc, alpha=0.75,
                                      beta=-1.0)
 
-    utt.verify_grad(dconv, [img_val, kern_val, out_val])
-    utt.verify_grad(dconvi, [img_val, kern_val, out_val])
-    utt.verify_grad(dconvw, [img_val, kern_val, out_val])
+    utt.verify_grad(dconv, [img_val, kern_val, out_val], mode=mode_with_gpu)
+    utt.verify_grad(dconvi, [img_val, kern_val, out_val], mode=mode_with_gpu)
+    utt.verify_grad(dconvw, [img_val, kern_val, out_val], mode=mode_with_gpu)
 
 
 def get_conv3d_test_cases():
@@ -1391,7 +1392,7 @@ def get_conv3d_test_cases():
         itt = chain(product(test_shapes, border_modes, conv_modes),
                     product(test_shapes_full, ['full'], conv_modes))
     else:
-        # CuDNN, before V3, did not support kernels larger than the inputs,
+        # cuDNN, before V3, did not support kernels larger than the inputs,
         # even if the original inputs were padded so they would be larger than
         # the kernels. If using a version older than V3 don't run the tests
         # with kernels larger than the unpadded inputs.
@@ -1403,7 +1404,7 @@ def get_conv3d_test_cases():
 def test_conv3d_fwd():
 
     if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
-        raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
+        raise SkipTest('"cuDNN 3D convolution requires cuDNN v2')
 
     def run_conv3d_fwd(inputs_shape, filters_shape, subsample,
                        border_mode, conv_mode):
@@ -1420,7 +1421,7 @@ def test_conv3d_fwd():
         filters = shared(filters_val)
         bias = shared(numpy.zeros(filters_shape[0]).astype('float32'))
 
-        # Compile a theano function for the CuDNN implementation
+        # Compile a theano function for the cuDNN implementation
         conv = dnn.dnn_conv3d(img=inputs, kerns=filters,
                               border_mode=border_mode, subsample=subsample,
                               conv_mode=conv_mode)
@@ -1475,7 +1476,7 @@ def test_conv3d_fwd():
 def test_conv3d_bwd():
 
     if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
-        raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
+        raise SkipTest('"cuDNN 3D convolution requires cuDNN v2')
 
     def run_conv3d_bwd(inputs_shape, filters_shape, subsample,
                        border_mode, conv_mode):
@@ -1487,7 +1488,7 @@ def test_conv3d_bwd():
         filters = shared(filters_val)
         bias = shared(numpy.zeros(filters_shape[0]).astype('float32'))
 
-        # Compile a theano function for the CuDNN implementation
+        # Compile a theano function for the cuDNN implementation
         conv = dnn.dnn_conv3d(img=inputs, kerns=filters,
                               border_mode=border_mode, subsample=subsample,
                               conv_mode=conv_mode)

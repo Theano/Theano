@@ -22,6 +22,7 @@ from theano import gof
 from theano.compat import izip
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
+from theano.gof.opt import copy_stack_trace
 from theano.gof.utils import MethodNotDefined
 from theano.gradient import DisconnectedType
 from theano.configparser import config
@@ -52,51 +53,6 @@ from six import StringIO
 _logger = logging.getLogger('theano.tensor.opt')
 
 # Utilities
-
-
-def copy_stack_trace(from_var, to_var):
-    """
-    Copies the stack trace from one or more tensor variables to
-    one or more tensor variables.
-
-    Parameters
-    ----------
-    from_var
-        Tensor variable or list of tensor variables to copy stack traces from.
-    to_var
-        Tensor variable or list of tensor variables to copy stack traces to.
-
-    Notes
-    -----
-    The stacktrace is assumed to be of the form of a list of lists
-    of tuples. Each tuple contains the filename, line number, function name
-    and so on. Each list of tuples contains the truples belonging to a
-    particular variable.
-
-    """
-
-    # Store stack traces from from_var
-    tr = []
-    if type(from_var) is list:
-        # If from_var is a list, store concatenated stack traces
-        for v in from_var:
-            tr += getattr(v.tag, 'trace', [])
-
-    else:
-        # If from_var is not a list, it must be a single tensor variable,
-        # so just store that particular stack trace
-        tr = getattr(from_var.tag, 'trace', [])
-
-    # Copy over stack traces to to_var
-    if type(to_var) is list:
-        # Copy over stack traces from from_var to each variable in
-        # to_var, including the stack_trace of the to_var before
-        for v in to_var:
-            v.tag.trace = getattr(v.tag, 'trace', []) + tr
-    else:
-        # Copy over stack traces from from_var to each variable to
-        # to_var, including the stack_trace of the to_var before
-        to_var.tag.trace = getattr(to_var.tag, 'trace', []) + tr
 
 
 def out2in(*local_opts, **kwargs):
@@ -2835,7 +2791,16 @@ def local_subtensor_merge(node):
             # and stacktrace from previous slicing operation.
             # Why? Because, the merged slicing operation could have failed
             # because of either of the two original slicing operations
-            copy_stack_trace([node.outputs[0], node.inputs[0]], out)
+            orig_out = node.outputs[0]
+            copy_stack_trace([orig_out, node.inputs[0]], out)
+
+            # Restore original broadcastable dimensions that `subtens()` may
+            # have been unable to infer again
+            if out.type != orig_out.type:
+                assert out.dtype == orig_out.dtype
+                assert out.ndim == orig_out.ndim
+                out = T.patternbroadcast(out, orig_out.broadcastable)
+                copy_stack_trace([orig_out, node.inputs[0]], out)
             return [out]
 
 
@@ -3572,6 +3537,39 @@ def local_join_make_vector(node):
         # by an error in the old join op.
         copy_stack_trace(node.outputs, ret)
         return [ret]
+
+
+#################
+#  speed/memory #
+#################
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([T.elemwise.Sum])
+def local_sumsqr2dot(node):
+    """
+    This optimization detects T.sqr( W.dimshuffle('x',0,1) * G.dimshuffle(0,'x',1) ).sum(axis=(1,2))
+     and converts this to T.dot(T.sqr(G), T.sqr(W).sum(axis=0)).
+    """
+    if (isinstance(node.op, T.elemwise.Sum) and
+            isinstance(node.op.scalar_op, theano.scalar.basic.Add) and node.op.axis == (1, 2)):
+        in1 = node.inputs[0]
+        out = node.outputs[0]
+
+        if (in1.owner and isinstance(in1.owner.op, T.Elemwise) and isinstance(in1.owner.op.scalar_op, theano.scalar.basic.Sqr)):
+            in_sqr = in1.owner.inputs[0]
+            if (in_sqr.owner and isinstance(in_sqr.owner.op, T.Elemwise) and
+                    isinstance(in_sqr.owner.op.scalar_op, theano.scalar.basic.Mul) and len(in_sqr.owner.inputs) == 2):
+                in_mul1, in_mul2 = in_sqr.owner.inputs
+
+                if (isinstance(in_mul1.owner.op, T.elemwise.DimShuffle) and in_mul1.owner.op.new_order == ('x', 0, 1) and
+                        isinstance(in_mul2.owner.op, T.elemwise.DimShuffle) and in_mul2.owner.op.new_order == (0, 'x', 1)):
+                    W = in_mul1.owner.inputs[0]
+                    G = in_mul2.owner.inputs[0]
+
+                    new_out = T.dot(T.sqr(G), T.sqr(W).sum(axis=0))
+                    if new_out.dtype != out.dtype:
+                        new_out = T.cast(new_out, dtype=out.dtype)
+                    return [new_out]
 
 
 #################
@@ -5304,7 +5302,9 @@ def local_zero_div(node):
     if isinstance(node.op, T.Elemwise) and isinstance(
             node.op.scalar_op, (theano.scalar.IntDiv, theano.scalar.TrueDiv)):
         if local_mul_canonizer.get_constant(node.inputs[0]) == 0:
-            return [broadcast_like(0, node.outputs[0], node.fgraph)]
+            ret = broadcast_like(0, node.outputs[0], node.fgraph)
+            ret.tag.values_eq_approx = values_eq_approx_remove_nan
+            return [ret]
 
 
 @gof.local_optimizer([T.pow])
