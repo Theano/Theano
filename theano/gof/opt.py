@@ -2713,20 +2713,10 @@ def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
         else:
             raise ValueError('The string bug_print is not recognised')
 
-    elif hasattr(ops_to_check, '__call__'):  # if ops_to_check is a function
-        apply_nodes_to_check = [node for node in fgraph.apply_nodes
-                                if ops_to_check(node)]
-
-    else:  # if ops_to_check is an op or a list of ops
-        raise ValueError('The value of ops_to_check is not supported')
-
     for node in apply_nodes_to_check:
         for output in node.outputs:
             if (not hasattr(output.tag, 'trace') or
                     not output.tag.trace):
-                return False
-            # check if trace is not empty
-            if not len(output.tag.trace) > 0:
                 return False
 
     return True
