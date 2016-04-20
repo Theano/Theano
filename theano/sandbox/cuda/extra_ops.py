@@ -43,7 +43,7 @@ class GpuCumsum(CumsumOp, GpuOp):
 
         if x.ndim > GpuCumsum.SUPPORTED_NDIMS:
             raise NotImplementedError('Only cumsum on 1D, 2D and 3D array are supported right now!')
-        print(self.axis)
+
         if self.axis >= x.ndim or self.axis < -x.ndim:
             raise ValueError('axis(={1}) out of bounds'.format(self.axis))
 
