@@ -35,6 +35,9 @@ class CpuContiguous(theano.Op):
         assert x.flags['C_CONTIGUOUS']
         y[0] = x
 
+    def grad(self, inputs, dout):
+        return [theano.tensor.as_tensor_variable(dout[0])]
+
     def c_code(self, node, name, inames, onames, sub):
         x, = inames
         y, = onames
