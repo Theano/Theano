@@ -48,6 +48,7 @@ class GPUAMultinomialFromUniform(gpuarray.basic_ops.GpuKernelBase, Op):
             odtype = pvals.dtype
         else:
             odtype = self.odtype
+        assert odtype == 'float32', odtype
         if odtype != pvals.dtype:
             raise NotImplementedError(
                 'GpuMultinomialFromUniform works only if '
