@@ -1,7 +1,5 @@
 from __future__ import absolute_import, print_function, division
 
-import copy
-
 import numpy
 
 import theano
@@ -14,14 +12,12 @@ from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
 
 def get_mode(gpu):
     mode = get_default_mode()
-    mode = copy.copy(mode)
+    if theano.config.mode == 'FAST_COMPILE':
+        mode = theano.compile.get_mode('FAST_RUN')
     if gpu:
         mode = mode.including('gpuarray', 'gpu_local_optimizations',
-                              'local_cut_gpu_host_gpu')
-    if isinstance(mode.linker, theano.gof.PerformLinker):
-        mode.linker = predefined_linkers['c|py']
-    if hasattr(mode.linker, 'c_thunks'):
-        mode.linker.c_thunks = True
+                              'local_cut_gpu_host_gpu',
+                              'local_gpu_multinomial')
     return mode
 
 
