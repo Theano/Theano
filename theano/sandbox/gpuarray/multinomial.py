@@ -17,7 +17,6 @@ from .type import gpu_context_type, GpuArrayType
 
 class GPUAMultinomialFromUniform(gpuarray.basic_ops.GpuKernelBase, Op):
     __props__ = ("odtype",)
-    params_type = gpu_context_type
 
     def __init__(self, odtype):
         Op.__init__(self)
@@ -30,7 +29,7 @@ class GPUAMultinomialFromUniform(gpuarray.basic_ops.GpuKernelBase, Op):
         return ['<numpy_compat.h>', 'gpuarray_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), pygpu.get_include()]
+        return [os.path.dirname(__file__)]
 
     def make_node(self, pvals, unis):
         assert pvals.dtype == 'float32'
@@ -100,15 +99,7 @@ KERNEL void k_multi_warp_multinomial(
         }
     }
 }
-
-
-//KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
-//    ga_size nb = n < m ? n : m;
-//    for (ga_size i = LID_0; i < nb; i += LDIM_0) {
-//        a[i*m + i] = %(write_a)s(1);
-//    }
-//}""" % dict(ctype=pygpu.gpuarray.dtype_to_ctype(dtype),
-              name=name, write_a=write_w(dtype))
+"""
         return [gpuarray.basic_ops.Kernel(
             code=code, name="k_multi_warp_multinomial",
             params=[pygpu.gpuarray.SIZE,
