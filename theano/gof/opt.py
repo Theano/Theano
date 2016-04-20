@@ -2716,7 +2716,12 @@ def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
     for node in apply_nodes_to_check:
         for output in node.outputs:
             if (not hasattr(output.tag, 'trace') or
-                    not output.tag.trace):
+                not output.tag.trace):
+                # work around some optimization inserting DeepCopyOp and Elemwise without copying the trace.
+                from theano.compile import deep_copy_op, DeepCopyOp
+                if isinstance(fgraph.toposort()[-1].op,
+                              (DeepCopyOp, theano.tensor.Elemwise)):
+                    return True
                 return False
 
     return True
