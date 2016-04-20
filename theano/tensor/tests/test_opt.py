@@ -112,7 +112,8 @@ class test_dimshuffle_lift(unittest.TestCase):
         dimshuffle_lift.optimize(g)
         self.assertTrue(str(g) == "[x]")
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(g, ops_to_check='all'))
+        self.assertTrue(check_stack_trace(g, ops_to_check='all',
+                                          bug_print='ignore'))
 
     def test_merge2(self):
         x, y, z = inputs()
@@ -137,7 +138,8 @@ class test_dimshuffle_lift(unittest.TestCase):
         dimshuffle_lift.optimize(g)
         self.assertTrue(str(g) == "[x]", str(g))
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(g, ops_to_check='all'))
+        self.assertTrue(check_stack_trace(g, ops_to_check='all',
+                                          bug_print='ignore'))
 
     def test_lift(self):
         x, y, z = inputs([False] * 1, [False] * 2, [False] * 3)
@@ -2019,7 +2021,7 @@ class test_local_subtensor_lift(unittest.TestCase):
                      mode=mode_opt)
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+        self.assertTrue(check_stack_trace(f, ops_to_check=tensor.Subtensor))
 
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.DimShuffle)
@@ -2538,11 +2540,11 @@ class test_local_subtensor_merge(unittest.TestCase):
             slice1 = slice(*slice_inputs[:3])
             slice2 = slice(*slice_inputs[3:])
             sub_x = x[slice1][slice2]
-            f = theano.function([x] + input_vars, sub_x,
-                mode=mode_opt.excluding('local_useless_subtensor'))
+            f = theano.function([x] + input_vars, sub_x, mode=mode_opt)
 
             # Check stacktrace was copied over correctly after opt was applied
-            self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
+            self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor,
+                                              bug_print='ignore'))
 
             topo = f.maker.fgraph.toposort()
             # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
@@ -2946,7 +2948,7 @@ def test_local_IncSubtensor_serialize():
     # Now test that the stack trace is copied over properly,
     # if we return the gradients. We need to use same mode as before.
     f = theano.function([i, j, t], dW, mode=mode)
-    assert check_stack_trace(f, ops_to_check='all')
+    assert check_stack_trace(f, ops_to_check=tensor.AdvancedIncSubtensor)
         
 def test_local_set_to_inc_subtensor():
     v = theano.tensor.fmatrix()
@@ -2978,7 +2980,7 @@ def test_local_set_to_inc_subtensor():
 
     # Finally, test that the stack trace is copied over properly,
     # before before and after optimization.
-    assert check_stack_trace(f1, ops_to_check='all')
+    assert check_stack_trace(f1, ops_to_check=tensor.AdvancedIncSubtensor1)
     assert check_stack_trace(f2, ops_to_check='all')
     
     
@@ -3623,8 +3625,8 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
         utt.assert_allclose(r1, r2)
         
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f1, ops_to_check='all'))
-        self.assertTrue(check_stack_trace(f2, ops_to_check='all'))
+        self.assertTrue(check_stack_trace(f1, ops_to_check=tensor.AdvancedIncSubtensor))
+        self.assertTrue(check_stack_trace(f2, ops_to_check=tensor.AdvancedIncSubtensor))
         
 
     def test_advanced_inc_subtensor1(self):
@@ -3657,7 +3659,8 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
         utt.assert_allclose(r1, r2)
         
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f1, ops_to_check='all'))
+        self.assertTrue(check_stack_trace(
+                f1, ops_to_check=tensor.AdvancedIncSubtensor1))
         self.assertTrue(check_stack_trace(f2, ops_to_check='all'))
 
     def test_incsubtensor(self):
