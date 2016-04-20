@@ -42,7 +42,7 @@ register_transfer(transfer)
 
 def init_dev(dev, name=None):
     v = pygpu.gpuarray.api_version()
-    if v[0] != -9999:
+    if v[0] != -9998:
         raise RuntimeError("Wrong major API version for gpuarray:", v[0],
                            "Make sure Theano and libgpuarray/pygpu "
                            "are in sync.")
