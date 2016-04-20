@@ -1827,7 +1827,7 @@ def local_subtensor_remove_broadcastable_index(node):
     if len(remove_dim) == 0:
         return
     else:
-        all_dim = range(len(idx))
+        all_dim = range(node.inputs[0].ndim)
         remain_dim = [x for x in all_dim if x not in remove_dim]
         return [node.inputs[0].dimshuffle(tuple(remain_dim))]
 

@@ -36,6 +36,14 @@ def test_copy():
 
 
 def test_None_dimShuffle_replace():
+    """ tests replacing None usage in subtensor with dimshuffle
+
+    tests whenever None is used in subtensor to reshape a variable, it is
+    replaced by dimshuffle. If the replacement is done properly, Subtensor op
+    (or any of its variants) should not be used anymore.
+
+    """
+
     x = tt.dmatrix('x')
     y = x[:, None, :]
     f = theano.function([x], y)
