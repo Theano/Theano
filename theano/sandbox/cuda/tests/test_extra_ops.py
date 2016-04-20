@@ -53,7 +53,6 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
             a = np.random.random((42,)).astype("float32")
             cumsum_function = theano.function([x], cumsum(x, axis=axis),
                                               mode=self.mode)
-            theano.printing.debugprint(cumsum_function)
 
             slicings = [slice(None, None, None),    # Normal strides
                         slice(None, None, 2),       # Stepped strides
