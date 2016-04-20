@@ -75,7 +75,7 @@ KERNEL void k_multi_warp_multinomial(
 )
 {
     // each thread takes care of one multinomial draw
-    int n = blockDim.x*blockIdx.x + threadIdx.x;
+    int n = LDIM_0*GID_0 + LID_0;
     if (n < nb_multi)
     {
         float cummul = 0.;
