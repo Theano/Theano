@@ -1,23 +1,19 @@
 from __future__ import absolute_import, print_function, division
-import theano
-import numpy
 import os
-from theano import Op, Apply, config
+from theano import Apply
 from theano.tensor.extra_ops import CumsumOp
 
 try:
-    import pygpu
     from pygpu import gpuarray
 except ImportError:
     pass
 
 from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel,
-                        infer_context_name, GpuFromHost, HideC)
+                        infer_context_name, GpuFromHost)
 from .opt import register_opt as register_gpu_opt, op_lifter
-from .type import GpuArrayType
 
 
-class GpuCumsum(GpuKernelBase, HideC, CumsumOp):
+class GpuCumsum(GpuKernelBase):
     """
     Parameters
     ----------
@@ -34,7 +30,7 @@ class GpuCumsum(GpuKernelBase, HideC, CumsumOp):
         return "%s{%s}" % (self.__class__.__name__, self.axis)
 
     def c_code_cache_version_apply(self, node):
-        return None
+        return (1,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>', '<gpuarray_helper.h>']
@@ -43,9 +39,9 @@ class GpuCumsum(GpuKernelBase, HideC, CumsumOp):
         return [os.path.dirname(__file__)]
 
     def get_params(self, node):
-        return node.inputs[0].type.context 
+        return node.inputs[0].type.context
 
-    def make_node(self, x): 
+    def make_node(self, x):
         assert x.type.dtype == 'float32', "Only float32 supported for GpuCumSum"
         x = as_gpuarray_variable(x, infer_context_name(x))
 
@@ -57,17 +53,10 @@ class GpuCumsum(GpuKernelBase, HideC, CumsumOp):
             raise ValueError('axis(={0}) out of bounds'.format(self.axis))
         return Apply(self, [x], [x.type()])
 
-
-    # copied from neighbour.py
-    def perform(self, node, inp, out, ctx):
-        # Disable the perform method from the CPU version
-        Op.perform(self, node, inp, out, ctx)
-
-
     def gpu_kernels(self, node, nodename):
         kernels = []
         # cumadd
-        kname = "k_cumadd"   
+        kname = "k_cumadd"
         k_var = "k_cumadd_" + nodename
         dtype_x = node.inputs[0].dtype
         flags = Kernel.get_flags(dtype_x)
@@ -77,7 +66,7 @@ class GpuCumsum(GpuKernelBase, HideC, CumsumOp):
                               ga_ssize inputStrides_y,
                               ga_ssize inputStrides_z,
                               ga_ssize outputStrides_x, ga_ssize outputStrides_y,
-                              ga_ssize outputStrides_z, const int offsetY, const int offsetZ, 
+                              ga_ssize outputStrides_z, const int offsetY, const int offsetZ,
                               const int beforeLastElementIdx, const int lastElementIdx){
             int idY = blockIdx.y + offsetY;
             int idZ = blockIdx.z + offsetZ;
@@ -90,22 +79,22 @@ class GpuCumsum(GpuKernelBase, HideC, CumsumOp):
             output[idx_last_output] = input[idx_last_input] + output[idx_beforelast];
             }
         """ % locals()
-        params = [gpuarray.GpuArray, gpuarray.GpuArray, gpuarray.SSIZE, 
-                  gpuarray.SSIZE, gpuarray.SSIZE, gpuarray.SSIZE, 
-                  gpuarray.SSIZE, gpuarray.SSIZE, 
+        params = [gpuarray.GpuArray, gpuarray.GpuArray, gpuarray.SSIZE,
+                  gpuarray.SSIZE, gpuarray.SSIZE, gpuarray.SSIZE,
+                  gpuarray.SSIZE, gpuarray.SSIZE,
                   'intc', 'intc',
                   'intc', 'intc',
                   ]
         kernels.append(Kernel(code=code, name=kname, params=params,
                               flags=flags, objvar=k_var))
         # blockCumSum
-        kname = "k_blockCumSum" 
+        kname = "k_blockCumSum"
         k_var = "k_blockCumSum_" + nodename
         params = [gpuarray.GpuArray, gpuarray.GpuArray, gpuarray.SIZE,
                   gpuarray.SSIZE, gpuarray.SSIZE, gpuarray.SSIZE,
                   gpuarray.SSIZE, gpuarray.SSIZE, gpuarray.SSIZE,
-                  'int32', 'int32', gpuarray.GpuArray,]
-        code="""
+                  'int32', 'int32', gpuarray.GpuArray, ]
+        code = """
         // helper functions
         WITHIN_KERNEL
         void k_reductionPhase(float* partialCumSum) {
@@ -199,10 +188,10 @@ class GpuCumsum(GpuKernelBase, HideC, CumsumOp):
         kernels.append(Kernel(code=code, name=kname, params=params,
                               flags=flags, objvar=k_var))
         # k_finalCumSum
-        kname = "k_finalCumSum" 
+        kname = "k_finalCumSum"
         k_var = "k_finalCumSum_" + nodename
         code = """
-        KERNEL void k_finalCumSum(float* output, float* blockSum, size_t nbElementsPerCumsum, 
+        KERNEL void k_finalCumSum(float* output, float* blockSum, size_t nbElementsPerCumsum,
                                                ga_ssize dataStrides_x,  ga_ssize dataStrides_y,  ga_ssize dataStrides_z,
                                                int offsetY, int offsetZ) {
             int globalThreadID = (blockIdx.x + 1) * blockDim.x + threadIdx.x;
@@ -226,11 +215,10 @@ class GpuCumsum(GpuKernelBase, HideC, CumsumOp):
         """
         params = [gpuarray.GpuArray, gpuarray.GpuArray, gpuarray.SIZE,
                   gpuarray.SSIZE, gpuarray.SSIZE, gpuarray.SSIZE,
-                  'int32', 'int32',]
+                  'int32', 'int32', ]
         kernels.append(Kernel(code=code, name=kname, params=params,
                               flags=flags, objvar=k_var))
         return kernels
-
 
     def c_code(self, node, nodename, inp, out, sub):
         if node.inputs[0].type.context.kind != 'cuda':
@@ -257,9 +245,9 @@ class GpuCumsum(GpuKernelBase, HideC, CumsumOp):
             }
 
             { // Namespace for kernel calls //
-                size_t max_threads_dim0; 
-                size_t max_grid_size1; 
-                size_t max_grid_size2; 
+                size_t max_threads_dim0;
+                size_t max_grid_size1;
+                size_t max_grid_size2;
                 int err;
                 err = %(ctx)s->ops->property(%(ctx)s->ctx, NULL, NULL, GA_CTX_PROP_MAXLSIZE0, &max_threads_dim0);
                 if (err != GA_NO_ERROR){
@@ -331,7 +319,7 @@ class GpuCumsum(GpuKernelBase, HideC, CumsumOp):
             }
             // Perform cumsum on array of even size.
             size_t nbElementsPerCumsum = shape[axis] - (shape[axis] %% 2);
-            // Determine how many elements can be processed in one block. 
+            // Determine how many elements can be processed in one block.
             size_t dimBlockX = ceil((nbElementsPerCumsum > 2*maxThreads ? 2*maxThreads : nbElementsPerCumsum) / 2.0);
             // Determine how many blocks are needed in total.
             size_t dimGridX = ceil(nbElementsPerCumsum / (2.0*dimBlockX));  // Nb. of blocks needed per cumsum.
@@ -389,7 +377,7 @@ class GpuCumsum(GpuKernelBase, HideC, CumsumOp):
                     size_t sharedBytes = (2*dimBlockX) * sizeof(float);
                     void* kernel_params[] = {(void*) input->ga.data,
                                              (void*) output->ga.data,
-                                             (void*) &nbElementsPerCumsum, 
+                                             (void*) &nbElementsPerCumsum,
                                              (void*) &inputStrides_x,
                                              (void*) &inputStrides_y,
                                              (void*) &inputStrides_z,
@@ -417,7 +405,7 @@ class GpuCumsum(GpuKernelBase, HideC, CumsumOp):
                         size_t dimGrid[3] = {dimGridX, localDimGridY, localDimGridZ};
                         size_t dimBlock[3] = {dimBlockX, 1, 1};
                         void* kernel_params[] = {(void*) output->ga.data,
-                                                 (void*) deviceBlockSum->ga.data, 
+                                                 (void*) deviceBlockSum->ga.data,
                                                  (void*) &nbElementsPerCumsum,
                                                  (void*) &outputStrides_x,
                                                  (void*) &outputStrides_y,

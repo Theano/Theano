@@ -10,6 +10,7 @@ import theano
 import theano.tensor.tests.test_extra_ops
 
 from theano.tensor.extra_ops import cumsum, CumsumOp
+from theano.tests.unittest_tools import SkipTest
 from theano.tests import unittest_tools as utt
 
 from .config import mode_with_gpu, test_ctx_name
@@ -27,8 +28,6 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
             raise SkipTest("Cuda specific tests")
         self.max_threads_dim0 = test_ctx.maxlsize0
         self.max_grid_size1 = test_ctx.maxgsize2
-
-
 
     def test_Strides1D(self):
         x = T.fvector('x')
@@ -113,16 +112,16 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
             utt.assert_allclose(np.cumsum(a[:i]), f(a[:i]))
 
         # Use multiple GPU threadblocks
-        a = np.random.random((block_max_size+2,)).astype("float32")
+        a = np.random.random((block_max_size + 2, )).astype("float32")
         utt.assert_allclose(np.cumsum(a), f(a))
 
         # Use recursive cumsum
-        a = np.ones((block_max_size*(block_max_size+1)+2,),
+        a = np.ones((block_max_size * (block_max_size + 1) + 2,),
                     dtype="float32")
         utt.assert_allclose(np.cumsum(a), f(a))
 
     def test_GpuCumsum2D(self):
-        block_max_size = self.max_threads_dim0 * 2 
+        block_max_size = self.max_threads_dim0 * 2
 
         x = T.fmatrix('x')
         for shape_axis, axis in zip([0, 1, 0, 1, 0], [0, 1, None, -1, -2]):
@@ -143,21 +142,21 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
 
             # Use multiple GPU threadblocks
             a_shape = [5, 5]
-            a_shape[shape_axis] = block_max_size+2
+            a_shape[shape_axis] = block_max_size + 2
             a = np.random.random(a_shape).astype("float32")
             utt.assert_allclose(np.cumsum(a, axis=axis), f(a))
 
             # Use multiple GPU gridblocks
             a_shape = [4, 4]
-            a_shape[1-shape_axis] = self.max_grid_size1+1
+            a_shape[1 - shape_axis] = self.max_grid_size1 + 1
             a = np.random.random(a_shape).astype("float32")
             utt.assert_allclose(np.cumsum(a, axis=axis), f(a), rtol=5e-5)
 
             # Use recursive cumsum
             a_shape = [3, 3]
-            a_shape[shape_axis] = block_max_size*(block_max_size+1)+2
+            a_shape[shape_axis] = block_max_size * (block_max_size + 1) + 2
             a = np.random.random(a_shape).astype("float32")
-            a = np.sign(a-0.5).astype("float32")  # Avoid floating point error
+            a = np.sign(a - 0.5).astype("float32")  # Avoid floating point error
             utt.assert_allclose(np.cumsum(a, axis=axis), f(a))
 
     def test_GpuCumsum3D(self):
@@ -182,32 +181,32 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
 
             # Use multiple GPU threadblocks (along accumulation axis)
             a_shape = [2, 2, 2]
-            a_shape[shape_axis] = block_max_size+2
+            a_shape[shape_axis] = block_max_size + 2
             a = np.random.random(a_shape).astype("float32")
             utt.assert_allclose(np.cumsum(a, axis=axis), f(a))
 
             # Use multiple GPU gridblocks (not along accumulation axis)
             a_shape = [5, 5, 5]
-            a_shape[(shape_axis+1) % 3] = self.max_grid_size1+1
+            a_shape[(shape_axis + 1) % 3] = self.max_grid_size1 + 1
             a = np.random.random(a_shape).astype("float32")
             if axis is None:
                 # Avoid floating point error
-                a = np.sign(a-0.5).astype("float32")
+                a = np.sign(a - 0.5).astype("float32")
             utt.assert_allclose(np.cumsum(a, axis=axis), f(a))
 
             a_shape = [5, 5, 5]
-            a_shape[(shape_axis+2) % 3] = self.max_grid_size1+1
+            a_shape[(shape_axis + 2) % 3] = self.max_grid_size1 + 1
             a = np.random.random(a_shape).astype("float32")
             if axis is None:
                 # Avoid floating point error
-                a = np.sign(a-0.5).astype("float32")
+                a = np.sign(a - 0.5).astype("float32")
             utt.assert_allclose(np.cumsum(a, axis=axis), f(a))
 
             # Use recursive cumsum (along accumulation axis)
             a_shape = [3, 3, 3]
-            a_shape[shape_axis] = block_max_size*(block_max_size+1)+2
+            a_shape[shape_axis] = block_max_size * (block_max_size + 1) + 2
             a = np.random.random(a_shape).astype("float32")
-            a = np.sign(a-0.5).astype("float32")  # Avoid floating point error
+            a = np.sign(a - 0.5).astype("float32")  # Avoid floating point error
             utt.assert_allclose(np.cumsum(a, axis=axis), f(a))
 
     def test_GpuCumsum4D(self):
