@@ -5,6 +5,9 @@ ARGS="$@"
 PROFILING=""
 RELEASE=""
 
+echo "Hostname:"
+hostname
+
 if [ "$1" == "--release" ]; then
     RELEASE="True"
     shift
