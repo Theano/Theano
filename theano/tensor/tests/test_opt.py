@@ -3579,9 +3579,9 @@ class Test_local_useless_alloc(unittest.TestCase):
         # we have to change the following we should not see tensor.Alloc
         # in op_classes and we have to change the assert.
         assert tensor.Alloc in op_classes
+        # self.assertTrue(check_stack_trace(f, ops_to_check=[tensor.Alloc]))
 
         # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
 
 
 class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
