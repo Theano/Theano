@@ -16,7 +16,7 @@ The Theano release plan is detailed below. Comments and/or suggestions are
 welcome on the mailing list.
 
 1) We aim to update Theano several times a year. These releases will be made
-    as new features are implemented.     
+   as new features are implemented.     
 
 2) Urgent releases will only be made when a bug generating incorrect
    output is discovered and fixed.
