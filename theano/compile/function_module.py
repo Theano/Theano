@@ -713,7 +713,13 @@ class Function(object):
 
         f_cpy = maker.__class__(inputs=ins, outputs=outs, fgraph=fg_cpy,
                                 mode=maker.mode, profile=profile,
-                                on_unused_input=maker.on_unused_input,
+                                # When removing updates containing variables
+                                # not used in the output function, copy
+                                # generates an unused implicit input.
+                                # We ignore the resulting errors,
+                                # but could change it to 'warn' if this might
+                                # cause problems.
+                                on_unused_input='ignore',
                                 function_builder=maker.function_builder,
                                 # As this is an optimized graph, it
                                 # can contain inplace. DebugMode check
