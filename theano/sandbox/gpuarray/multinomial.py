@@ -2,7 +2,10 @@
 from __future__ import absolute_import, print_function, division
 import os
 
-import pygpu
+try:
+    import pygpu
+except ImportError:
+    pass
 
 import theano
 import theano.sandbox.multinomial
