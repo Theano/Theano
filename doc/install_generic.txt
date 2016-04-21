@@ -52,13 +52,22 @@ bleeding-edge version of Theano.
 
 .. raw:: html
 
-    <pre><span class="red">&#60;sudo&#62;</span> pip install <span class="blue">&#60;--user&#62;</span> <span class="green">&#60;-e&#62;</span> git+https://github.com/Theano/Theano.git#egg=Theano <span class="green">&#60;--src clonedfolder&#62;</span></pre>
+    <pre><span class="red">&#60;sudo&#62;</span> pip install <span class="blue">&#60;--user&#62;</span> <span class="green">&#60;-e&#62;</span> git+https://github.com/Theano/Theano.git#egg=Theano <span class="green">&#60;--src sourcefolder&#62;</span></pre>
 
 - Use :red:`sudo` for a root installation.
 
 - Use :blue:`user` for a user installation without admin rights. It will install Theano in your local site-packages.
 
-- Use :green:`e` to make your installation file editable and :green:`src` to link it to :green:`clonedfolder`.
+- Use :green:`e` to make your installation file editable and :green:`src` to link it to your new :green:`sourcefolder`.
+
+If you do not wish to use pip, you can simply run :
+
+.. code-block:: bash
+
+    git clone git://github.com/Theano/Theano.git
+    cd Theano
+    python setup.py develop
+
 
 Testing your installation
 --------------------------

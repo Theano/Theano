@@ -41,7 +41,7 @@ implementation of blas.
     :start-line: 11
 
 .. include:: install_gpu.txt
-    :start-line: 47
+    :start-line: 46
     :end-line: 62
 
 Installing the compiler

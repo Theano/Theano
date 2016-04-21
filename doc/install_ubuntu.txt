@@ -30,7 +30,7 @@ For Ubuntu 11.04:
 
 .. include:: install_generic.txt
     :start-line: 11
-    :end-line: 77
+    :end-before: Setting up the GPU
 
 .. note::
 
