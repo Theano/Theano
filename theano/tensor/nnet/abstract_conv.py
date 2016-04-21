@@ -567,7 +567,7 @@ def bilinear_upsampling(input,
                                                subsample=(ratio, ratio),
                                                filter_flip=True)
 
-    return upsampled_mat.reshape((batch_size, num_input_channels,
+    return upsampled_mat.reshape((input.shape[0], input.shape[1],
                                   row * ratio, col * ratio))
 
 
