@@ -5,19 +5,14 @@ import numpy
 import theano
 from theano import config, function, tensor
 from ..multinomial import GPUAMultinomialFromUniform
-from theano.compile.mode import get_default_mode, predefined_linkers
 import theano.tests.unittest_tools as utt
-from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
+from .config import mode_with_gpu, mode_without_gpu
 
 
 def get_mode(gpu):
-    mode = get_default_mode()
-    if theano.config.mode == 'FAST_COMPILE':
-        mode = theano.compile.get_mode('FAST_RUN')
+    mode = mode_without_gpu
     if gpu:
-        mode = mode.including('gpuarray', 'gpu_local_optimizations',
-                              'local_cut_gpu_host_gpu',
-                              'local_gpu_multinomial')
+        mode = mode_with_gpu
     return mode
 
 

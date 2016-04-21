@@ -9,7 +9,7 @@ import numpy
 import theano
 from theano import config, function, tensor
 from theano.sandbox import multinomial
-from theano.compile.mode import get_default_mode, predefined_linkers
+from theano.compile.mode import get_default_mode
 import theano.sandbox.cuda as cuda
 import theano.tests.unittest_tools as utt
 from theano.compat import PY3
