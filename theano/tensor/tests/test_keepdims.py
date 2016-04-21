@@ -109,7 +109,7 @@ class TestKeepDims(unittest.TestCase):
     def test_norm(self):
 
         x = tensor.dtensor3()
-        a = numpy.random.rand(3, 2, 4)
+        a = numpy.random.rand(3, 2, 4).astype(theano.config.floatX)
         mode = theano.compile.Mode(optimizer="fast_compile", linker="py")
 
         for axis in [0, 1, 2, [0], [1], [2], None,
