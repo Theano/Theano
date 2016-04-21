@@ -52,7 +52,7 @@ AUTHOR_EMAIL        = "theano-dev@googlegroups.com"
 PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
 MINOR               = 8
-MICRO               = 1
+MICRO               = 2
 SUFFIX              = ""  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
 
