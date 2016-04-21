@@ -5968,16 +5968,15 @@ class Test_local_useless_reshape(unittest.TestCase):
                                    "TensorConstant{[1 5 1 6 1 1]})]"))
 
         reshape_lift.optimize(g)
-        import ipdb; ipdb.set_trace()
         self.assertTrue(str(g) == "[DimShuffle{x,0}"
-                                  "(Reshape{2}(<TensorType(float64, vector)>, "
-                                  "TensorConstant{4})), "
+                                  "(<TensorType(float64, vector)>), "
                                   "DimShuffle{x,0,x,1,x,x}"
-                                  "Reshape{6}(<TensorType(float64, matrix)>, "
-                                  "TensorConstant{[5 6]})]")
+                                  "(Reshape{2}(<TensorType(float64, matrix)>, "
+                                  "TensorConstant{[5 6]}))]")
 
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
+
 
 def test_local_reshape_lift():
     x = tensor.tensor4()
