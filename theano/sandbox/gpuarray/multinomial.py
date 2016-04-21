@@ -1,4 +1,5 @@
 # TODO test dtype != float32
+from __future__ import absolute_import, print_function, division
 import os
 
 import pygpu
@@ -6,13 +7,12 @@ import pygpu
 import theano
 import theano.sandbox.multinomial
 from theano import Apply, config
-from theano.gof import Op, local_optimizer
+from theano.gof import Op
 from theano.tensor import NotScalarConstantError, get_scalar_constant_value
 from theano.sandbox import gpuarray
 from .basic_ops import as_gpuarray_variable, infer_context_name
-from .fp16_help import write_w
 from .opt import register_opt, op_lifter
-from .type import gpu_context_type, GpuArrayType
+from .type import GpuArrayType
 
 
 class GPUAMultinomialFromUniform(gpuarray.basic_ops.GpuKernelBase, Op):
@@ -60,7 +60,6 @@ class GPUAMultinomialFromUniform(gpuarray.basic_ops.GpuKernelBase, Op):
         return Apply(self, [pvals, unis], [out])
 
     def gpu_kernels(self, node, name):
-        dtype = node.outputs[0].dtype
         code = """
 KERNEL void k_multi_warp_multinomial(
     const ga_size nb_multi,
@@ -113,8 +112,7 @@ KERNEL void k_multi_warp_multinomial(
                     pygpu.gpuarray.SSIZE,
                     pygpu.gpuarray.GpuArray,
                     pygpu.gpuarray.SSIZE,
-                    pygpu.gpuarray.SSIZE
-                ],
+                    pygpu.gpuarray.SSIZE],
             flags=gpuarray.basic_ops.Kernel.get_flags(node.outputs[0].dtype),
             objvar='k_multi_warp_multinomial_' + name)]
 
@@ -123,7 +121,6 @@ KERNEL void k_multi_warp_multinomial(
         out, = outputs
         fail = sub['fail']
         ctx = sub['params']
-        #typecode = pygpu.gpuarray.dtype_to_typecode(self.dtype)
         sync = bool(config.gpuarray.sync)
         kname = self.gpu_kernels(node, name)[0].objvar
         s = """
