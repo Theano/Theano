@@ -88,10 +88,10 @@ def test_incsub_f16():
 
 
 class G_advancedsubtensor(test_subtensor.TestAdvancedSubtensor):
-     def shortDescription(self):
+    def shortDescription(self):
         return None
-     def __init__(self, name):
-         test_subtensor.TestAdvancedSubtensor.__init__(
+    def __init__(self, name):
+        test_subtensor.TestAdvancedSubtensor.__init__(
             self, name,
             shared=gpuarray_shared_constructor,
             sub=GpuAdvancedSubtensor,
@@ -104,8 +104,8 @@ class G_advancedsubtensor(test_subtensor.TestAdvancedSubtensor):
             ignore_topo=(HostFromGpu, GpuFromHost,
                          DeepCopyOp))
         # GPU opt can't run in fast_compile only.
-         self.fast_compile = False
-         assert self.sub == GpuAdvancedSubtensor
+        self.fast_compile = False
+        assert self.sub == GpuAdvancedSubtensor
 
 
 def test_adv_subtensor():
