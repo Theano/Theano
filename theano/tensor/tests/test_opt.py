@@ -112,6 +112,7 @@ class test_dimshuffle_lift(unittest.TestCase):
         dimshuffle_lift.optimize(g)
         self.assertTrue(str(g) == "[x]")
         # Check stacktrace was copied over correctly after opt was applied
+        # Optimization may remove all apply_nodes, so we ignore these cases
         self.assertTrue(check_stack_trace(g, ops_to_check='all',
                                           bug_print='ignore'))
 
@@ -138,6 +139,7 @@ class test_dimshuffle_lift(unittest.TestCase):
         dimshuffle_lift.optimize(g)
         self.assertTrue(str(g) == "[x]", str(g))
         # Check stacktrace was copied over correctly after opt was applied
+        # Optimization may remove all apply_nodes, so we ignore these cases
         self.assertTrue(check_stack_trace(g, ops_to_check='all',
                                           bug_print='ignore'))
 
@@ -2551,6 +2553,7 @@ class test_local_subtensor_merge(unittest.TestCase):
             f = theano.function([x] + input_vars, sub_x, mode=mode_opt)
 
             # Check stacktrace was copied over correctly after opt was applied
+            # Optimization may remove all Subtensors, so we ignore these cases
             self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor,
                                               bug_print='ignore'))
 
@@ -5946,8 +5949,7 @@ def test_local_useless_split():
     # | |x [id D]
     # ...
 
-    #assert check_stack_trace(f_opt, ops_to_check=[
-    #    Assert], bug_print='ignore')
+    #assert check_stack_trace(f_opt, ops_to_check=[Assert])
     assert check_stack_trace(f_nonopt, ops_to_check='all')
 
 
