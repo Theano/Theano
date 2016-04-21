@@ -481,7 +481,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
 
         assert len(idx) >= x.ndim
         dims = len(idx)
-        #step 1: find smallest index
+        # step 1: find smallest index
         for k, i in enumerate(idx):
             if isinstance(i, numpy.ndarray):
                 start = k
@@ -490,7 +490,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
             if isinstance(i, numpy.ndarray):
                 end = len(idx) - k
                 break
-        #step 2: transpose
+        # step 2: transpose
         def get_indices(a, b, ind):
             """
             Get real indices for a list of indices.
@@ -504,7 +504,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
                     dimshuffle_info.append(k)
                     new_ind.append(ind[i])
                     k += 1
-                elif ind[i] == None:
+                elif ind[i] is None:
                     dimshuffle_info.append('x')
                     new_ind.append(slice(None))
 
@@ -520,7 +520,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
                     idx_1.append(k)
                     idx_2.append(ind[i])
                     k += 1
-                elif ind[i] == None:
+                elif ind[i] is None:
                     idx_3.append('x')
                     new_ind.append(slice(None))
                 else:
@@ -538,7 +538,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
                     dimshuffle_info.append(k)
                     new_ind.append(ind[i])
                     k += 1
-                elif ind[i] == None:
+                elif ind[i] is None:
                     dimshuffle_info.append('x')
                     new_ind.append(slice(None))
 
@@ -547,27 +547,26 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         (dimshuffle_idx, new_ind,
                 end_) = get_indices(start, end, idx)
         x = x.transpose(*dimshuffle_idx)
-        #step 3: partial flattening
+        # step 3: partial flattening
         start_ = start
-        import pdb; pdb.set_trace()
         shape = (x.shape[: start_] +
                  (tensor.prod(x.shape[start: end_]),) +
                  x.shape[end_:])
         input_flat = tensor.reshape(x, shape)
-        #step 4: build the strides
+        # step 4: build the strides
         strides = [1]
         for i in range(start_, end_-1)[::-1]:
             stride = x.shape[i+1] * strides[-1]
             strides.append(stride)
-        #step 5: build the indices into x_flat
+        # step 5: build the indices into x_flat
         items = [new_ind[i] if isinstance(new_ind[i], numpy.ndarray)
                  else 0 for i in range(start_, end_)]
         new_idx = tensor.sum([i * j for i,j
                              in zip(items, strides[::-1])],
                              axis=0)
-        #step 6: advanced slicing
+        # step 6: advanced slicing
         out_flat = input_flat.take(new_idx.flatten())
-        #step 7: reshape into right shape
+        # step 7: reshape into right shape
         out_flat_shp = (x.shape[:start_] +
                         new_idx.shape + x.shape[end_:]).astype('int32')
         o = out_flat.reshape(out_flat_shp,

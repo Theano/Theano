@@ -86,23 +86,25 @@ def test_incsub_f16():
     rep[1:] += yval
     assert numpy.allclose(rval, rep)
 
-class G_subtensor(test_subtensor.TestAdvancedSubtensor):
+
+class G_advancedsubtensor(test_subtensor.TestAdvancedSubtensor):
      def shortDescription(self):
         return None
      def __init__(self, name):
-         test_subtensor.T_subtensor.__init__(
+         test_subtensor.TestAdvancedSubtensor.__init__(
             self, name,
             shared=gpuarray_shared_constructor,
             sub=GpuAdvancedSubtensor,
             inc_sub=GpuIncSubtensor,
             adv_sub1=GpuAdvancedSubtensor1,
-            adv_incsub1=tensor.AdvancedIncSubtensor,
+            adv_incsub1=GpuAdvancedIncSubtensor1,
             mode=mode_with_gpu,
             # avoid errors with limited devices
             dtype='float32',
             ignore_topo=(HostFromGpu, GpuFromHost,
                          DeepCopyOp))
         # GPU opt can't run in fast_compile only.
+         self.fast_compile = False
          assert self.sub == GpuAdvancedSubtensor
 
 
