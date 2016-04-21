@@ -1,3 +1,5 @@
+.. include:: css.txt
+
 .. _updating:
 
 Updating Theano

@@ -1,4 +1,4 @@
-.. include::css.txt
+.. include:: css.txt
 
 .. _install_macos:
 
@@ -39,6 +39,10 @@ implementation of blas.
 
 .. include:: install_generic.txt
     :start-line: 11
+
+.. include:: install_gpu.txt
+    :start-line: 47
+    :end-line: 62
 
 Installing the compiler
 -----------------------

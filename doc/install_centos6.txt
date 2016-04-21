@@ -16,26 +16,6 @@ CentOS 6 Installation Instructions
     investing money (i.e. buying a license to a proprietary BLAS
     implementation), it is possible to gain further performance.
 
-.. note::
-
-   If you are behind a proxy, you must do some extra configuration steps
-   before starting the installation. You must set the environment
-   variable ``http_proxy`` to the proxy address. Using bash this is
-   accomplished with the command
-   ``export http_proxy="http://user:pass@my.site:port/"``
-   You can also provide the ``--proxy=[user:pass@]url:port`` parameter
-   to pip. The ``[user:pass@]`` portion is optional.
-
-.. note::
-
-   We use ``pip`` for 2 reasons. First, it allows "``import module;
-   module.test()``" to work correctly. Second, the installation of NumPy
-   1.6 or 1.6.1 with ``easy_install`` raises an ImportError at the end of
-   the installation. To my knowledge we can ignore this error, but
-   this is not completely safe. ``easy_install`` with NumPy 1.5.1 does not
-   raise this error.
-
-
 
 Installation steps
 ~~~~~~~~~~~~~~~~~~
@@ -46,13 +26,6 @@ Installation steps
 
 .. include:: install_generic.txt
     :start-line: 11
-
-Test the newly installed packages
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
- 1) NumPy (~30s): ``python -c "import numpy; numpy.test()"``
- 2) SciPy (~1m): ``python -c "import scipy; scipy.test()"``
- 3) Theano (~30m): ``python -c "import theano; theano.test()"``
 
 
 Speed test Theano/BLAS

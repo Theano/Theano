@@ -65,43 +65,8 @@ everything is working properly.
 Debian-variant with software package manager
 --------------------------------------------
 
-Ubuntu 11.10/12.04 (probably work on 11.04 too):
-
-.. code-block:: bash
-
-   sudo apt-add-repository ppa:ubuntu-x-swat/x-updates
-   sudo apt-get update
-   sudo apt-get install nvidia-current
-
-Then you need to fetch latest CUDA tool kit (download ubuntu 11.04 32/64bit package)
-from `here <http://developer.nvidia.com/cuda-downloads>`_.
-
-Ubuntu 14.04:
-
-.. code-block:: bash
-
-   sudo apt-get install nvidia-current
-   sudo apt-get install nvidia-cuda-toolkit # As of October 31th, 2014, provide cuda 5.5, not the latest cuda 6.5
-
-If you want cuda 6.5, you can download packages from `nvidia
-<http://developer.nvidia.com/cuda-downloads>`_ for Ubuntu 14.04.
-
-If you downloaded the `run` package (the only one available for CUDA 5.0 and older), you install it like this:
-
-.. code-block:: bash
-
-   chmod a+x XXX.sh
-   sudo ./XXX.sh
-
-Since CUDA 5.5, Nvidia provide a DEB package. If you don't know how to
-intall it, just double click on it from the graphical interface. It
-should ask if you want to install it. On Ubuntu 14.04, you need to run
-this in your terminal:
-
-.. code-block:: bash
-
-    sudo apt-get update
-    sudo apt-get install cuda
+You need to first download packages from `nvidia
+<http://developer.nvidia.com/cuda-downloads>`_
 
 You must reboot the computer after the driver installation. To test
 that it was loaded correctly after the reboot, run the command
@@ -109,11 +74,3 @@ that it was loaded correctly after the reboot, run the command
 
 You probably need to change the default version of gcc as
 `explained by Benjamin J. McCann <http://www.benmccann.com/blog/installing-cuda-and-theano/>`_ if the package you downloaded is for another Ubuntu version:
-
-.. code-block:: bash
-
-    sudo apt-get install nvidia-cuda-toolkit g++-4.4 gcc-4.4
-    # On Ubuntu 11.10 and 12.04, you probably need to change gcc-4.5 to gcc-4.6 on the next line.
-    sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.5 40 --slave /usr/bin/g++ g++ /usr/bin/g++-4.5
-    sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.4 60 --slave /usr/bin/g++ g++ /usr/bin/g++-4.4
-    sudo update-alternatives --config gcc

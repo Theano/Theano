@@ -29,8 +29,8 @@ For Ubuntu 11.04:
     sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ git libatlas3gf-base libatlas-dev
 
 .. include:: install_generic.txt
-    :start-line: 9
-    :end-line: 94
+    :start-line: 11
+    :end-line: 77
 
 .. note::
 
@@ -120,4 +120,4 @@ Setting up the GPU
 ------------------
 
 .. include:: install_gpu.txt
-    :start-line: 65
+    :start-line: 6
