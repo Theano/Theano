@@ -1823,6 +1823,8 @@ def test_local_subtensor_remove_broadcastable_index():
 
     """
 
+    mode = theano.compile.mode.get_default_mode()
+    mode = mode.including("local_subtensor_remove_broadcastable_index")
     x = T.dmatrix('x')
     y1 = x.dimshuffle(0, 'x', 1)
     y2 = x.dimshuffle('x', 1, 0, 'x')
@@ -1837,7 +1839,7 @@ def test_local_subtensor_remove_broadcastable_index():
     z6 = y3[-1, :, 0, :, -1]
     z7 = y3[-1, :, -1, :, -1]
     z8 = y3[0, :, 0, :, 0]
-    f = theano.function([x], [z1, z2, z3, z4, z5, z6, z7, z8])
+    f = theano.function([x], [z1, z2, z3, z4, z5, z6, z7, z8], mode=mode)
     for elem in f.maker.fgraph.toposort():
         assert type(elem.op) not in [Subtensor, AdvancedSubtensor,
                                      AdvancedSubtensor1, IncSubtensor,
@@ -1871,7 +1873,8 @@ def test_local_subtensor_remove_broadcastable_index():
     w19 = y3[:, 2, 0]
     w20 = y3[:, 3]
     f2 = theano.function([x], [w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11,
-                               w12, w13, w14, w15, w16, w17, w18, w19, w20])
+                               w12, w13, w14, w15, w16, w17, w18, w19, w20],
+                         mode=mode)
     f2(xn)
 
 

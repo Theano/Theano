@@ -1821,6 +1821,9 @@ def local_subtensor_remove_broadcastable_index(node):
         elif isinstance(elem, slice):
             if elem != slice(None):
                 return
+        elif isinstance(elem, (integer_types, numpy.integer)):
+            if elem in [0, -1] and node.inputs[0].broadcastable[dim] == True:
+                remove_dim.append(dim)
         else:
             raise TypeError('case not expected')
 
