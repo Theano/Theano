@@ -2715,8 +2715,7 @@ def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
 
     for node in apply_nodes_to_check:
         for output in node.outputs:
-            if (not hasattr(output.tag, 'trace') or
-                not output.tag.trace):
+            if (not hasattr(output.tag, 'trace') or not output.tag.trace):
                 return False
 
     return True

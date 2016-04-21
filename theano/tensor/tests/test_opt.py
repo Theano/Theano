@@ -2960,8 +2960,10 @@ def test_local_IncSubtensor_serialize():
 
     # Now test that the stack trace is copied over properly,
     # if we return the gradients. We need to use same mode as before.
+    # the optimizer may delete all instances of AdvancedIncSubtensor
     f = theano.function([i, j, t], dW, mode=mode)
-    assert check_stack_trace(f, ops_to_check=tensor.AdvancedIncSubtensor)
+    assert check_stack_trace(f, ops_to_check=tensor.AdvancedIncSubtensor,
+                             bug_print='ignore')
         
 def test_local_set_to_inc_subtensor():
     v = theano.tensor.fmatrix()
