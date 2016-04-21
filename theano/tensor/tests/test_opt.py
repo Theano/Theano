@@ -55,6 +55,7 @@ from theano.tensor import (
         Subtensor,
         TensorType,
         Tile,
+        tile
         )
 from theano.tensor.elemwise import DimShuffle
 from theano.tests import unittest_tools as utt
@@ -112,14 +113,13 @@ class test_dimshuffle_lift(unittest.TestCase):
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
 
-
     def test_merge2(self):
         x, y, z = inputs()
         e = ds(ds(x, (1, 'x', 0)), (2, 0, 'x', 1))
         g = FunctionGraph([x], [e])
         self.assertTrue(
-                str(g) == "[DimShuffle{2,0,x,1}(DimShuffle{1,x,0}(x))]",
-                str(g))
+            str(g) == "[DimShuffle{2,0,x,1}(DimShuffle{1,x,0}(x))]",
+            str(g))
         dimshuffle_lift.optimize(g)
         self.assertTrue(str(g) == "[DimShuffle{0,1,x,x}(x)]", str(g))
         # Check stacktrace was copied over correctly after opt was applied
@@ -130,9 +130,9 @@ class test_dimshuffle_lift(unittest.TestCase):
         e = ds(ds(ds(x, (0, 'x', 1)), (2, 0, 'x', 1)), (1, 0))
         g = FunctionGraph([x], [e])
         self.assertTrue(
-                str(g) == "[DimShuffle{1,0}(DimShuffle{2,0,x,1}"
-                          "(DimShuffle{0,x,1}(x)))]",
-                str(g))
+            str(g) == "[DimShuffle{1,0}(DimShuffle{2,0,x,1}"
+                      "(DimShuffle{0,x,1}(x)))]",
+            str(g))
         dimshuffle_lift.optimize(g)
         self.assertTrue(str(g) == "[x]", str(g))
         # Check stacktrace was copied over correctly after opt was applied
@@ -166,7 +166,6 @@ class test_dimshuffle_lift(unittest.TestCase):
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
 
-
     def test_recursive_lift(self):
         v = T.vector(dtype="float64")
         m = T.matrix(dtype="float64")
@@ -179,8 +178,8 @@ class test_dimshuffle_lift(unittest.TestCase):
                       "Elemwise{add,no_inplace}"
                       "(<TensorType(float64, matrix)>, "
                       "DimShuffle{x,x}(TensorConstant{84}))))]")
+
         self.assertTrue(str(g) == init_str_g)
-        
         new_out = local_dimshuffle_lift.transform(g.outputs[0].owner)[0]
         new_g = FunctionGraph(g.inputs, [new_out])
         opt_str_g = ("[Elemwise{mul,no_inplace}(Elemwise{add,no_inplace}"
@@ -189,9 +188,34 @@ class test_dimshuffle_lift(unittest.TestCase):
                      "Elemwise{add,no_inplace}(DimShuffle{1,0}"
                      "(<TensorType(float64, matrix)>), "
                      "DimShuffle{x,x}(TensorConstant{84})))]")
+
         self.assertTrue(str(new_g) == opt_str_g)
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(hasattr(new_g.outputs[0].tag, 'trace'))
+
+    def test_useless_dimshuffle(self):
+        x, _, _ = inputs()
+        e = ds(x, (0, 1))
+        g = FunctionGraph([x], [e])
+        self.assertTrue(str(g) == "[DimShuffle{0,1}(x)]")
+        dimshuffle_lift.optimize(g)
+        self.assertTrue(str(g) == "[x]")
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
+
+    def test_dimshuffle_on_broadcastable(self):
+        x, y, z = inputs([False, True], [True, False, True], [False, False, True])
+        u = tensor.constant(1)
+        ds_x = ds(x, (0, 'x'))   # useless
+        ds_y = ds(y, (2, 1, 0))  # useless
+        ds_z = ds(z, (2, 1, 0))  # usefull
+        ds_u = ds(u, ('x'))  # usefull
+        g = FunctionGraph([x, y, z, u], [ds_x, ds_y, ds_z, ds_u])
+        self.assertTrue(str(g) == "[DimShuffle{0,x}(x), DimShuffle{2,1,0}(y), DimShuffle{2,1,0}(z), DimShuffle{x}(TensorConstant{1})]")
+        dimshuffle_lift.optimize(g)
+        self.assertTrue(str(g) == "[x, y, DimShuffle{2,1,0}(z), DimShuffle{x}(TensorConstant{1})]")
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
 
 
 def test_add_canonizer_problem0():
