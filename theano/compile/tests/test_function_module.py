@@ -383,6 +383,13 @@ class T_function(unittest.TestCase):
             assert cpy(1)[0] == 4
             assert cpy(1)[0] == 4
 
+        # Test if unused implicit inputs from delete_updates are ignored
+        # as intended.
+        for mode in ["FAST_RUN", "FAST_COMPILE"]:
+            ori = theano.function([x], x, mode=mode, updates={z: z * 2})
+            cpy = ori.copy(delete_updates=True)
+
+
     def test_shared_state0(self):
         a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
