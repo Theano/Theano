@@ -4184,16 +4184,16 @@ def local_useless_reshape(node):
 
     dimshuffle_new_order = []
     new_output_shape = []
-    i = 0  # index over the output of the new reshape
-    import ipdb; ipdb.set_trace()
-    for dim in extract_constant(output_shape, only_process_constants=True):
+    index = 0  # index over the output of the new reshape
+    for i in xrange(output.ndim):
+        dim = extract_constant(output_shape[i], only_process_constants=False)
         if dim == 1:
             dimshuffle_new_order.append('x')
         else:
-            dimshuffle_new_order.append(i)
+            dimshuffle_new_order.append(index)
             new_output_shape.append(dim)
-            i = i + 1
-    if i != output.ndim:
+            index = index + 1
+    if index != output.ndim:
         inner = op.__class__(len(new_output_shape))(input, new_output_shape)
         return [DimShuffle(inner.type.broadcastable, dimshuffle_new_order)(inner)]
 
