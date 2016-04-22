@@ -60,11 +60,11 @@ def test_bn_feature_maps():
         return n * G + B
 
     numpy.random.seed(1234)
-    X = 1 + numpy.random.random([10, 20, 4, 4]).astype('float32')
-    B = 1 + numpy.random.random([20]).astype('float32')
-    G = 1 + numpy.random.random([20]).astype('float32')
-    M = 1 + numpy.random.random([20]).astype('float32')
-    V = 1 + numpy.random.random([20]).astype('float32')
+    X = 1 + numpy.random.random([2, 3, 4, 4]).astype('float32')
+    B = 1 + numpy.random.random([3]).astype('float32')
+    G = 1 + numpy.random.random([3]).astype('float32')
+    M = 1 + numpy.random.random([3]).astype('float32')
+    V = 1 + numpy.random.random([3]).astype('float32')
 
     x = theano.tensor.tensor4('x')
     b = theano.tensor.vector('b')
