@@ -111,10 +111,7 @@ class test_dimshuffle_lift(unittest.TestCase):
         self.assertTrue(str(g) == "[DimShuffle{1,0}(DimShuffle{1,0}(x))]")
         dimshuffle_lift.optimize(g)
         self.assertTrue(str(g) == "[x]")
-        # Check stacktrace was copied over correctly after opt was applied
-        # Optimization may remove all apply_nodes, so we ignore these cases
-        self.assertTrue(check_stack_trace(g, ops_to_check='all',
-                                          bug_print='ignore'))
+        # no need to check_stack_trace as graph is supposed to be empty
 
     def test_merge2(self):
         x, y, z = inputs()
@@ -138,10 +135,7 @@ class test_dimshuffle_lift(unittest.TestCase):
             str(g))
         dimshuffle_lift.optimize(g)
         self.assertTrue(str(g) == "[x]", str(g))
-        # Check stacktrace was copied over correctly after opt was applied
-        # Optimization may remove all apply_nodes, so we ignore these cases
-        self.assertTrue(check_stack_trace(g, ops_to_check='all',
-                                          bug_print='ignore'))
+        # no need to check_stack_trace as graph is supposed to be empty
 
     def test_lift(self):
         x, y, z = inputs([False] * 1, [False] * 2, [False] * 3)
@@ -1895,18 +1889,17 @@ class test_local_subtensor_make_vector(unittest.TestCase):
         # which requires us to add the 'canonicalize' phase.
         mode = theano.compile.mode.Mode(optimizer=None).including('canonicalize_db').including("local_subtensor_make_vector")
         f = function([x, y, z], v[0], mode=mode)
-        # Check stacktrace was copied over correctly after opt was applied
-        # FIXME: DeepCopyOp does not have a trace
-        #self.assertTrue(check_stack_trace(f, ops_to_check='all'))
-        
+        # The resulting graph only has a DeepCopyOp, for which the
+        # copy_stack_trace is not called. (See issue #4421)
+        # self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         
         # Compile function using all optimizations in fast_compile mode, 
         # including the 'local_subtensor_make_vector' optimization
         mode = theano.compile.mode.get_mode('FAST_COMPILE').including("local_subtensor_make_vector")
         f = function([x, y, z], v[0], mode=mode)
-        # Check stacktrace was copied over correctly after opt was applied
-        # FIXME: DeepCopyOp does not have a trace
-        #self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+        # The resulting graph only has a DeepCopyOp, for which the
+        # copy_stack_trace is not called. (See issue #4421)
+        # self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         
 
 class test_local_subtensor_lift(unittest.TestCase):
@@ -2007,8 +2000,8 @@ class test_local_subtensor_lift(unittest.TestCase):
         y = tensor.vector('y')
         f = function([x, y], tensor.exp(x + y)[0], mode=mode_opt)
 
-        # opt doesn't apply, so no need for check_stack_trace
-        #self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+        # Opt doesn't apply, so no need for check_stack_trace
+        # self.assertTrue(check_stack_trace(f, ops_to_check='all'))
 
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.DimShuffle)
@@ -2026,8 +2019,8 @@ class test_local_subtensor_lift(unittest.TestCase):
         f = function([x, y], [tensor.exp(x + y)[0], tensor.exp(x + y) + x],
                      mode=mode_opt)
 
-        # opt doesn't apply, so no need for check_stack_trace
-        #self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
+        # Opt doesn't apply, so no need for check_stack_trace
+        # self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
 
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.DimShuffle)
@@ -2058,7 +2051,7 @@ class test_local_subtensor_lift(unittest.TestCase):
         f([1, 2, 3], 4)  # let debugmode test something
 
     def test7(self):
-        # test that Subtensor(Rebroadcast(x)) gets optimized into
+        # Test that Subtensor(Rebroadcast(x)) gets optimized into
         # Rebroadcast(Subtensor(x)).
 
         # test basic case
@@ -2553,7 +2546,8 @@ class test_local_subtensor_merge(unittest.TestCase):
             f = theano.function([x] + input_vars, sub_x, mode=mode_opt)
 
             # Check stacktrace was copied over correctly after opt was applied
-            # Optimization may remove all Subtensors, so we ignore these cases
+            # for some cases, the optimization may remove all Subtensors,
+            # which is why we pass "bug_print='ignore'".
             self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor,
                                               bug_print='ignore'))
 
@@ -2746,17 +2740,16 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
         # which requires us to add the 'canonicalize' phase.
         mode = theano.compile.mode.Mode(optimizer=None).including('canonicalize').including("local_adv_sub1_adv_inc_sub1")
         f = theano.function([x, y, idx], o, self.mode)
-        # Check stacktrace was copied over correctly after opt was applied
-        # FIXME: all traces are empty
-        #self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+        # The opt only removes nodes in this case, no check_stack_trace needed
 
         # Compile function using all optimizations in fast_compile mode, 
         # including the 'local_subtensor_make_vector' optimization
         mode = theano.compile.mode.get_mode('FAST_COMPILE').including("local_adv_sub1_adv_inc_sub1")
         f = theano.function([x, y, idx], o, self.mode)
-        # Check stacktrace was copied over correctly after opt was applied
-        # FIXME: all traces are empty
-        #self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+        # The opt only removes nodes in this case, no check_stack_trace needed
+
+        # See if there are use cases which add nodes and need check_stack_trace
+        # See issue #4421
 
 
 class Test_alloc_zero(unittest.TestCase):
@@ -2960,10 +2953,10 @@ def test_local_IncSubtensor_serialize():
 
     # Now test that the stack trace is copied over properly,
     # if we return the gradients. We need to use same mode as before.
-    # the optimizer may delete all instances of AdvancedIncSubtensor
     f = theano.function([i, j, t], dW, mode=mode)
-    assert check_stack_trace(f, ops_to_check=tensor.AdvancedIncSubtensor,
-                             bug_print='ignore')
+    assert check_stack_trace(f, ops_to_check=[
+        tensor.IncSubtensor, tensor.AdvancedIncSubtensor,
+        tensor.AdvancedIncSubtensor1])
         
 def test_local_set_to_inc_subtensor():
     v = theano.tensor.fmatrix()
@@ -2994,7 +2987,7 @@ def test_local_set_to_inc_subtensor():
     utt.assert_allclose(r1, r2)
 
     # Finally, test that the stack trace is copied over properly,
-    # before before and after optimization.
+    # before and after optimization.
     assert check_stack_trace(f1, ops_to_check=tensor.AdvancedIncSubtensor1)
     assert check_stack_trace(f2, ops_to_check='all')
     
@@ -3558,8 +3551,8 @@ class Test_local_useless_alloc(unittest.TestCase):
         if isinstance(mode_opt, compile.DebugMode):
             self.assertRaises(ValueError, f)
 
-        # No need to check_stack_trace
-        #self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+        # No need to check_stack_trace as the graph only contains
+        # DeepCopyOp which has empty trace
 
     def test1(self):
         # Test that alloc never gets instantiated during optimization
@@ -3574,8 +3567,8 @@ class Test_local_useless_alloc(unittest.TestCase):
         op_classes = [node.op.__class__ for node in f.maker.fgraph.toposort()]
         assert tensor.Alloc not in op_classes
 
-        # No need to check_stack_trace
-        #self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+        # No need to check_stack_trace as the graph only contains
+        # DeepCopyOp which has empty trace
 
     def test2(self):
         # Test that alloc never gets instantiated during optimization
@@ -3594,7 +3587,7 @@ class Test_local_useless_alloc(unittest.TestCase):
         # we have to change the following we should not see tensor.Alloc
         # in op_classes and we have to change the assert.
         assert tensor.Alloc in op_classes
-        # self.assertTrue(check_stack_trace(f, ops_to_check=[tensor.Alloc]))
+        # The correct opt removes nodes, no need for check_stack_trace
 
 
 class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
@@ -4072,10 +4065,9 @@ class T_Tile(unittest.TestCase):
                 assert len(topo) == 1
                 assert isinstance(topo[0].op, compile.DeepCopyOp)
                 f(data)
-                
-                # Check that stacktrace is copied over
-                # FIXME: DeepCopyOp has empty trace
-                #self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+                # In this case the opt only removes nodes,
+                # no need to check_stack_trace
+                # See issue #4421
 
 
 def speed_local_pow_specialize_range():
@@ -5944,14 +5936,9 @@ def test_local_useless_split():
     assert len(graph_nonopt)==1
     assert isinstance(graph_nonopt[0].op, tensor.Split)
 
-    # FIXME: DeepCopyOp and second Assert [id C] don't have a trace
-    # DeepCopyOp [id A] ''   7
-    # |Assert{msg='Theano Assert failed!'} [id B] ''   6
-    # |Assert{msg='Theano Assert failed!'} [id C] ''   5
-    # | |x [id D]
-    # ...
-
-    #assert check_stack_trace(f_opt, ops_to_check=[Assert])
+    # Check if there are use cases that are not covered here
+    # and if the line below is necessary and correct (See issue #4421)
+    # assert check_stack_trace(f_opt, ops_to_check=[Assert])
     assert check_stack_trace(f_nonopt, ops_to_check='all')
 
 
