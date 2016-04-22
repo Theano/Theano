@@ -1,91 +1,115 @@
 .. _conv_arithmetic:
 
+.. note::
+
+    This tutorial is adapted from an existing `convolution arithmetic guide
+    <https://arxiv.org/abs/1603.07285>`_ [#]_, with an added emphasis on
+    Theano's interface.
+
+===============
+Quick reference
+===============
+
+.. admonition:: Convolution relationship
+
+    A convolution specified by
+
+    * input size :math:`i`,
+    * kernel size :math:`k`,
+    * stride :math:`s`,
+    * padding size :math:`p`,
+
+    has an output size given by
+
+    .. math::
+
+        o = \left\lfloor \frac{i + 2p - k}{s} \right\rfloor + 1.
+
+.. admonition:: Transposed convolution relationship
+
+    A transposed convolution specified by
+
+    * input size :math:`i`,
+    * kernel size :math:`k`,
+    * stride :math:`s`,
+    * padding size :math:`p`,
+
+    has an output size given by
+
+    .. math::
+
+        o = s (i - 1) + a + k - 2p, \quad a \in \{0, \ldots, s - 1\}
+
+    where :math:`a` is a user-specified quantity used to distinguish between the
+    :math:`s` different possible output sizes.
+
 ======================
 Convolution arithmetic
 ======================
 
+Learning to use convolutional neural networks (CNNs) for the first time is
+generally an intimidating experience. A convolutional layer's output shape is
+affected by the shape of its input as well as the choice of kernel shape, zero
+padding and strides, and the relationship between these properties is not
+trivial to infer. This contrasts with fully-connected layers, whose output size
+is independent of the input size.  Additionally, so-called transposed
+convolutional layers (also known as fractionally strided convolutional layers)
+have been employed in more and more work as of late, and their relationship with
+convolutional layers has been explained with various degrees of clarity.
+
 The relationship between a convolution operation's input shape, kernel size,
 stride, padding and its output shape can be confusing at times.
 
-This tutorial aims at providing an intuitive understanding of how the different
-convolution parameters influence the shape of the output it produces.
+The tutorial's objective is twofold:
 
-Quick reference
-===============
-
-Convolution
------------
-
-If a convolution is specified by
-
-* input size :math:`i`,
-* kernel size :math:`k`,
-* stride :math:`s`,
-* padding size :math:`p`,
-
-then the output size is given by
-
-.. math::
-
-    o = \left\lfloor \frac{i + 2p - k}{s} \right\rfloor + 1.
-
-Transposed convolution
-----------------------
-
-If a transposed convolution is specified by
-
-* input size :math:`i`,
-* kernel size :math:`k`,
-* stride :math:`s`,
-* padding size :math:`p`,
-
-then the output size is given by
-
-.. math::
-
-    o = s (i - 1) + a + k - 2p, \quad a \in \{0, \ldots, s - 1\}
-
-where :math:`a` is a user-specified quantity used to distinguish between the
-:math:`s` different possible output sizes.
+* Explain the relationship between convolutional layers and transposed
+  convolutional layers.
+* Provide an intuitive understanding of the relationship between input shape,
+  kernel shape, zero padding, strides and output shape in convolutional and
+  transposed convolutional layers.
 
 Refresher: discrete convolution
 ===============================
 
-The bread and butter of neural networks is affine transformations: a vector is
-received as input and is multiplied with a matrix to produce an output (to which
-a bias vector is usually added before passing the result through a
-nonlinearity). This is applicable to any type of input, be it an image, a sound
-clip or an unordered collection of features: their representation can always be
-flattened into a vector before the transformation.
+The bread and butter of neural networks is *affine transformations*: a
+vector is received as input and is multiplied with a matrix to produce an
+output (to which a bias vector is usually added before passing the result
+through a nonlinearity). This is applicable to any type of input, be it an
+image, a sound clip or an unordered collection of features: whatever their
+dimensionality, their representation can always be flattened into a vector
+before the transformation.
 
-In the case of images and sound clips, there is some ordering (spatial or
-temporal) that is thrown away when they are flattened. This information may
-prove very handy in solving some tasks, like computer vision and speech
-recognition.
+Images, sound clips and many other similar kinds of data have an intrinsic
+structure. More formally, they share these important properties:
 
-These sorts of inputs share important properties:
-
-* They are stored as N-dimensional arrays (called *tensors* in Theano
-  terminology).
-* They feature one or more axes for which ordering matters (e.g. width and
+* They are stored as multi-dimensional arrays.
+* They feature one or more axes for which ordering matters (e.g., width and
   height axes for an image, time axis for a sound clip).
-* One axis, the channel axis, is used to access different views of the data
-  (e.g. the red, green and blue channels of a color image, or the left and
-  right channels of a stereo audio track).
+* One axis, called the channel axis, is used to access different views of the
+  data (e.g., the red, green and blue channels of a color image, or the left
+  and right channels of a stereo audio track).
 
-A discrete convolution is a linear transformation that has the following
-properties:
+These properties are not exploited when an affine transformation is applied; in
+fact, all the axes are treated in the same way and the topological information
+is not taken into account. Still, taking advantage of the implicit structure of
+the data may prove very handy in solving some tasks, like computer vision and
+speech recognition, and in these cases it would be best to preserve it. This is
+where discrete convolutions come into play.
 
-* It is sparse, i.e. only a few input units contribute to a given output unit.
-* Parameters are shared, i.e. the same transformation is applied to multiple
-  locations in the input.
+A discrete convolution is a linear transformation that preserves this notion of
+ordering. It is sparse (only a few input units contribute to a given output
+unit) and reuses parameters (the same weights are applied to multiple locations
+in the input).
 
 Here is an example of a discrete convolution:
 
 .. figure:: conv_arithmetic_figures/numerical_no_padding_no_strides.gif
 
-The blue grid is called the input *feature map*. We slide a *kernel* (dark blue)
-with value
+The light blue grid is called the *input feature map*. To keep the drawing
+simple, a single input feature map is represented, but it is not uncommon to
+have multiple feature maps stacked one onto another. (An example of this is
+what was referred to earlier as *channels* for images and sound clips.)
+A *kernel* (shaded area) of value
 
 .. math::
 
@@ -95,112 +119,115 @@ with value
     0 & 1 & 2
     \end{pmatrix}
 
-across the input feature map. At each location, we compute the product between
-the kernel elements and the input elements they overlap and sum the results up
-to obtain the corresponding output *feature map* value.
-
-.. note::
-
-    What we referred to earlier as *channels* is a name for the *feature maps*
-    of observed data.
-
-If there are multiple input feature maps, each input feature map is convolved
-with a distinct kernel, and the resulting feature maps are summed up elementwise
-to produce the output feature map. The procedure can be repeated using different
-kernels to form as many output feature maps as desired.
-
-The collection of kernels defining a discrete convolution has a shape
-corresponding to some permutation of ``(num_output_feature_maps,
-num_input_feature_maps, kernel_height, kernel_width)``.
+slides across the input feature map. At each location, the product between each
+element of the kernel and the input element it overlaps is computed and the
+results are summed up to obtain the output in the current location. The
+procedure can be repeated using different kernels to form as many output feature
+maps as desired. The final outputs of this procedure are called *output feature
+maps*.
 
 .. note::
 
     While there is a distinction between convolution and cross-correlation from
     a signal processing perspective, the two become interchangeable when the
-    kernel is learned. For the sake of simplicity and consistency, we will refer
-    to this operation as a *convolution* and ignore the implementation details.
+    kernel is learned. For the sake of simplicity and to stay consistent with
+    most of the machine learning literature, the term *convolution* will be
+    used in this tutorial.
 
-The convolution above is an instance of a 2-D convolution, but it can be
-generalized to N-D convolutions. For instance, in a 3-D convolution, the kernel
-would be a *cuboid* and would slide across the height, width and depth of the
-input feature map.
+If there are multiple input feature maps, the kernel will have to be
+3-dimensional -- or, equivalently each one of the feature maps will be
+convolved with a distinct kernel -- and the resulting feature maps will
+be summed up elementwise to produce the output feature map.
 
-Convolutions have many properties which can be adjusted on a per-axis basis:
+The convolution depicted above is an instance of a 2-D convolution, but it can
+be generalized to N-D convolutions. For instance, in a 3-D convolution, the
+kernel would be a *cuboid* and would slide across the height, width and depth
+of the input feature map.
 
-* **Kernel size**: length of the kernel along the given axis.
-* **Stride**: distance between two consecutive positions of the kernel along
-  the given axis.
-* **(Zero-) padding size**: number of zero values concatenated at the beginning
-  and at the end of the axis.
+The collection of kernels defining a discrete convolution has a shape
+corresponding to some permutation of :math:`(n, m, k_1, \ldots, k_N)`, where
 
-For instance, here's what a :math:`3 \times 3` kernel applied to a :math:`5
-\times 5` input padded with a :math:`1 \times 1` border of zeros using :math:`2
-\times 2` strides looks like:
+.. math::
+
+    \begin{split}
+        n &\equiv \text{number of output feature maps},\\
+        m &\equiv \text{number of input feature maps},\\
+        k_j &\equiv \text{kernel size along axis $j$}.
+    \end{split}
+
+The following properties affect the output size :math:`o_j` of a convolutional
+layer along axis :math:`j`:
+
+* :math:`i_j`: input size along axis :math:`j`,
+* :math:`k_j`: kernel size along axis :math:`j`,
+* :math:`s_j`: stride (distance between two consecutive positions of the
+  kernel) along axis :math:`j`,
+* :math:`p_j`: zero padding (number of zeros concatenated at the beginning and
+  at the end of an axis) along axis `j`.
+
+For instance, here is a :math:`3 \times 3` kernel applied to a
+:math:`5 \times 5` input padded with a :math:`1 \times 1` border of zeros using
+:math:`2 \times 2` strides:
 
 .. figure:: conv_arithmetic_figures/numerical_padding_strides.gif
 
-In this tutorial, we are interested in understanding how these parameters,
-combined with the input shape, affect the output shape. Lukily for us, choices
-of kernel size, stride and zero padding along a given axis only affect the
-output size of that axis, which means we can treat axes separately in computing
-the output shape.
+The analysis of the relationship between convolutional layer properties is eased
+by the fact that they don't interact across axes, i.e., the choice of kernel
+size, stride and zero padding along axis :math:`j` only affects the output size
+of axis :math:`j`. Because of that, this section will focus on the following
+simplified setting:
 
-.. note::
+* 2-D discrete convolutions (:math:`N = 2`),
+* square inputs (:math:`i_1 = i_2 = i`),
+* square kernel size (:math:`k_1 = k_2 = k`),
+* same strides along both axes (:math:`s_1 = s_2 = s`),
+* same zero padding along both axes (:math:`p_1 = p_2 = p`).
 
-    For the remainder of this tutorial, we will concentrate on 2D convolutions
-    mapping one input feature map to one output feature map. The relationships
-    presented here also hold in the general case, i.e. an N-dimensional
-    convolution with arbitrary input feature maps, input shape, kernel shape,
-    output feature maps, zero padding and strides.
+This facilitates the analysis and the visualization, but keep in mind that the
+results outlined here also generalize to the N-D and non-square cases.
 
-    Since height and width are treated intependently in computing a
-    convolution's output shape, we will also restrict ourselves to square input,
-    kernel, stride and padding shapes.
+No zero padding, unit strides
+=============================
 
-Simplest case
-=============
-
-Let's start with the simplest case, where a kernel just slides across the input:
-
-* input size :math:`i`,
-* kernel size :math:`k`,
-* stride :math:`s = 1`,
-* padding size :math:`p = 0` (``border_mode='valid'`` in Theano).
-
-Here is what the convolution looks like for :math:`i = 4` and :math:`k = 3`:
+The simplest case to analyze is when the kernel just slides across every
+position of the input (i.e., :math:`s = 1` and :math:`p = 0`).
+Here is an example for :math:`i = 4` and :math:`k = 3`:
 
 .. figure:: conv_arithmetic_figures/no_padding_no_strides.gif
 
-One way of defining the output size is by the number of possible placements of
-the kernel on the input. Let's consider the x-axis: the left side of the kernel
-starts at the left side of the input, and we slide the kernel until its right
-side touches the right side of the input. The size of the output will be equal
-to the number of steps we need to make, plus one, because we need to account for
-the initial position of the kernel. The same applies for the y-axis.
+One way of defining the output size in this case is by the number of possible
+placements of the kernel on the input. Let's consider the width axis: the kernel
+starts on the leftmost part of the input feature map and slides by steps of one
+until it touches the right side of the input. The size of the output will be
+equal to the number of steps made, plus one, accounting for the initial position
+of the kernel. The same logic applies for the height axis.
 
-From this, we conclude that the output size :math:`o` of the convolution is
+More formally, the following relationship can be inferred:
 
-.. math::
+.. admonition:: Relationship 1
 
-    o = (i - k) + 1.
+    For any :math:`i` and :math:`k`, and for :math:`s = 1` and :math:`p = 0`,
 
-Zero padding
-============
+    .. math::
 
-If we factor in zero padding, i.e.
+        o = (i - k) + 1.
 
-* input size :math:`i`,
-* kernel size :math:`k`,
-* stride :math:`s = 1`,
-* padding size :math:`p`,
+Zero padding, unit strides
+==========================
 
-all we need to do is to apply the previous rule on the augmented input. Since
-padding with :math:`p` zeros adds :math:`2p` to the input size (:math:`p` on
-each side), the output size :math:`o` of the convolution becomes
+To factor in zero padding (i.e., only restricting to :math:`s = 1`), let's
+consider its effect on the effective input size: padding with :math:`p` zeros
+changes the effective input size from :math:`i` to :math:`i + 2p`. In the
+general case, Relationship 1 can then be used to infer the following
+relationship:
 
-.. math::
+.. admonition:: Relationship 2
 
-    o = (i - k) + 2p + 1.
+    For any :math:`i`, :math:`k` and :math:`p`, and for :math:`s = 1`,
+
+    .. math::
+
+        o = (i - k) + 2p + 1.
 
 Here is an example for :math:`i = 5`, :math:`k = 4` and :math:`p = 2`:
 
@@ -209,26 +236,30 @@ Here is an example for :math:`i = 5`, :math:`k = 4` and :math:`p = 2`:
 Special cases
 -------------
 
-There are two special cases of zero padding to take note of, because they're
-quite useful in practice.
+In practice, two specific instances of zero padding are used quite extensively
+because of their respective properties. Let's discuss them in more detail.
 
-Half
-^^^^
+Half (same) padding
+^^^^^^^^^^^^^^^^^^^
 
-If :math:`k` is odd (:math:`k = 2n + 1`) and
-:math:`p = \lfloor k / 2 \rfloor = n`, we have that
+Having the output size be the same as the input size (i.e., :math:`o = i`) can
+be a desirable property:
 
-.. math::
+.. admonition:: Relationship 3
 
-    \begin{split}
-    o &= i + 2 \lfloor k / 2 \rfloor - (k - 1) \\
-      &= i + 2n - 2n \\
-      &= i.
-    \end{split}
+    For any :math:`i` and for :math:`k` odd (:math:`k = 2n + 1, \quad n \in
+    \mathbb{N}`), :math:`s = 1` and :math:`p = \lfloor k / 2 \rfloor = n`,
 
-In other words, **the output size is equal to the input size**. This is
-sometimes referred to as ``half`` (or ``same``) padding. Here is an example for
-:math:`i = 5`, :math:`k = 3` and (therefore) :math:`p = 1`:
+    .. math::
+
+        \begin{split}
+            o &= i + 2 \lfloor k / 2 \rfloor - (k - 1) \\
+              &= i + 2n - 2n \\
+              &= i.
+        \end{split}
+
+This is sometimes referred to as *half* (or *same*) padding. Here is an example
+for :math:`i = 5`, :math:`k = 3` and (therefore) :math:`p = 1`:
 
 .. figure:: conv_arithmetic_figures/same_padding_no_strides.gif
 
@@ -237,108 +268,145 @@ sometimes referred to as ``half`` (or ``same``) padding. Here is an example for
     * Tie this to Theano's and Theano-dependent packages' terminology.
     * What happens if kernel size is even?
 
-Full
-^^^^
+Full padding
+^^^^^^^^^^^^
 
-If :math:`p = k - 1`, we have that
+While convolving a kernel generally *decreases* the output size with respect to
+the input size, sometimes the opposite is required. This can be achieved with
+proper zero padding:
 
-.. math::
+.. admonition:: Relationship 4
 
-    \begin{split}
-    o &= i + 2(k - 1) - (k - 1) \\
-      &= i + (k - 1).
-    \end{split}
+    For any :math:`i` and :math:`k`, and for :math:`p = k - 1` and
+    :math:`s = 1`,
 
-The input size is *increased* by :math:`k - 1` rather than decreased by
-:math:`k - 1`, as was the case for the non-padded convolution. This is
-sometimes referred to as ``full`` padding, because every element of the
-kernel is superimposed on every element of the input feature map. Here is an
-example for :math:`i = 5`, :math:`k = 3` and (therefore) :math:`p = 2`:
+    .. math::
+
+        \begin{split}
+            o &= i + 2(k - 1) - (k - 1) \\
+              &= i + (k - 1).
+        \end{split}
+
+This is sometimes referred to as *full* padding, because in this setting every
+possible partial or complete superimposition of the kernel on the input feature
+map is taken into account. Here is an example for :math:`i = 5`, :math:`k = 3`
+and (therefore) :math:`p = 2`:
 
 .. figure:: conv_arithmetic_figures/full_padding_no_strides.gif
 
-Strides
-=======
+No zero padding, non-unit strides
+=================================
 
-Up until now, we only considered convolutions where the kernel was translated by
-increments of :math:`s = 1`. Let's now examine what happens when :math:`s > 1`.
-To keep things simple, let's ignore padding for the moment, i.e.
-
-* input size :math:`i`,
-* kernel size :math:`k`,
-* stride :math:`s`,
-* padding size :math:`p = 0`.
-
-Here is what the strided convolution looks like for :math:`i = 5`, :math:`k = 3`
-and :math:`s = 2`:
+All relationships derived so far only apply for unit-strided convolutions.
+Incorporating non unitary strides requires another inference leap. To facilitate
+the analysis, let's momentarily ignore zero padding (i.e., :math:`s > 1` and
+:math:`p = 0`). Here is an example for :math:`i = 5`, :math:`k = 3` and :math:`s
+= 2`:
 
 .. figure:: conv_arithmetic_figures/no_padding_strides.gif
 
-Once again, we are counting the number of positions where the kernel can be
-placed.  Let's consider the x-axis: the left side of the kernel starts at the
-left side of the input, but this time we slide the kernel **by hops of**
-:math:`s` until its right side touches the right side of the input. The size of
-the output will be equal to the number of steps we need to make, plus one,
-because we need to account for the initial position of the kernel. The same
-applies for the y-axis.
+Once again, the output size can be defined in terms of the number of possible
+placements of the kernel on the input. Let's consider the width axis: the kernel
+starts as usual on the leftmost part of the input, but this time it slides by
+steps of size :math:`s` until it touches the right side of the input. The size
+of the output is again equal to the number of steps made, plus one, accounting
+for the initial position of the kernel (**todo: add figure**). The same logic
+applies for the height axis.
 
-From this, we conclude that the output size :math:`o` of the strided convolution
-is
+From this, the following relationship can be inferred:
 
-.. math::
+.. admonition:: Relationship 5
 
-    o = \left\lfloor \frac{i - k}{s} \right\rfloor + 1.
+    For any :math:`i`, :math:`k` and :math:`s`, and for :math:`p = 0`,
 
-Combining padding and strides
------------------------------
+    .. math::
 
-The most general case, i.e.
+        o = \left\lfloor \frac{i - k}{s} \right\rfloor + 1.
 
-* input size :math:`i`,
-* kernel size :math:`k`,
-* stride :math:`s`,
-* padding size :math:`p`,
+The floor function accounts for the fact that sometimes the last
+possible step does *not* coincide with the kernel reaching the end of the
+input, i.e., some input units are left out.
 
-is obtained by applying both the rule we derived for strides and the one we
-derived for the padding. In other words,
+Zero padding, non-unit strides
+==============================
 
-.. math::
+The most general case (convolving over a zero padded input using non-unit
+strides) can be derived by applying Relationship 5 on an effective input of size
+:math:`i + 2p`, in analogy to what was done for Relationship 2:
 
-    o = \left\lfloor \frac{i + 2p - k}{s} \right\rfloor + 1.
+.. admonition:: Relationship 6
 
-Here is what it looks like for :math:`i = 5`, :math:`k = 3`, :math:`s = 2` and
-:math:`p = 1`:
+    For any :math:`i`, :math:`k`, :math:`p` and :math:`s`,
+
+    .. math::
+
+        o = \left\lfloor \frac{i + 2p - k}{s} \right\rfloor + 1.
+
+As before, the floor function means that in some cases a convolution will
+produce the same output size for multiple input sizes. More specifically, if
+:math:`i + 2p - k` is a multiple of :math:`s`, then any input size :math:`j = i
++ a, \quad a \in \{0,\ldots,s - 1\}` will produce the same output size. Note
+that this ambiguity applies only for :math:`s > 1`.
+
+Here is an example for :math:`i = 5`, :math:`k = 3`, :math:`s = 2` and :math:`p
+= 1`:
 
 .. figure:: conv_arithmetic_figures/padding_strides.gif
 
-Sometimes numbers are mean
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-You may have noticed that the floor function in the general case formula will
-produce the same output shape for multiple input shapes. More specifically, if
-:math:`i + 2p - k` is a multiple of :math:`s`, then any input size
-:math:`j = i + a, \quad a \in \{0,\ldots,s - 1\}` will produce the same output
-size. Note that this ambiguity applies only for :math:`s > 1`.
-
-As an example, here is what a convolution looks like for :math:`i = 6`,
-:math:`k = 3`, :math:`s = 2` and :math:`p = 1`:
+Here is an example for :math:`i = 6`, :math:`k = 3`, :math:`s = 2` and :math:`p
+= 1`:
 
 .. figure:: conv_arithmetic_figures/padding_strides_odd.gif
 
-Despite having different input sizes, this convolution and the previous
-convolution share the same output size.
+Interestingly, despite having different input sizes these convolutions share the
+same output size. While this doesn't affect the analysis for *convolutions*,
+this will complicate the analysis in the case of *transposed convolutions*.
 
-This may seem like a curiosity, but keep that in mind, as it will become
-important when we examine *transposed convolutions*.
+=================================
+Transposed convolution arithmetic
+=================================
 
-Transposed convolution: convolution turned on its head
-======================================================
+The need for transposed convolutions generally arises from the desire to use a
+transformation going in the opposite direction of a normal convolution, i.e.,
+from something that has the shape of the output of some convolution to
+something that has the shape of its input while maintaining a connectivity
+pattern that is compatible with said convolution. For instance, one might use
+such a transformation as the decoding layer of a convolutional autoencoder or to
+project feature maps to a higher-dimensional space.
 
-Every convolution boils down to an efficient implementation of a matrix
-operation. Take for instance the very first convolution presented in this
-tutorial. If the input and output were to be unrolled into vectors from left to
-right, top to bottom, the matrix representation of the convolution would look
-like
+Once again, the convolutional case is considerably more complex than the
+fully-connected case, which only requires to use a weight matrix whose shape
+has been transposed. However, since every convolution boils down to an
+efficient implementation of a matrix operation, the insights gained from the
+fully-connected case are useful in solving the convolutional case.
+
+Like for convolution arithmetic, the dissertation about transposed convolution
+arithmetic is simplified by the fact that transposed convolution properties
+don't interact across axes.
+
+This section will focus on the following setting:
+
+* 2-D transposed convolutions (:math:`N = 2`),
+* square inputs (:math:`i_1 = i_2 = i`),
+* square kernel size (:math:`k_1 = k_2 = k`),
+* same strides along both axes (:math:`s_1 = s_2 = s`),
+* same zero padding along both axes (:math:`p_1 = p_2 = p`).
+
+Once again, the results outlined generalize to the N-D and non-square cases.
+
+Convolution as a matrix operation
+=================================
+
+Take for example the convolution presented in the *No zero padding, unit
+strides* subsection:
+
+.. figure:: conv_arithmetic_figures/no_padding_no_strides.gif
+
+If the input and output were to be unrolled into vectors from left to right, top
+to bottom, the convolution could be represented as a sparse matrix
+:math:`\mathbf{C}` where the non-zero elements are the elements :math:`w_{i,j}`
+of the kernel (with :math:`i` and :math:`j` being the row and column of the
+kernel respectively):
 
 .. math::
 
@@ -361,237 +429,287 @@ like
     0       & 0       & 0       & w_{2,2} \\
     \end{pmatrix}^T
 
-where :math:`w_{i,j}` is the element of the kernel located at row :math:`i` and
-column :math:`j`. (*Note: the matrix has been transposed for formatting
-purposes.*) This linear operation takes a 16-dimensional vector as input and
-produces a 4-dimensional vector as output.
+(*Note: the matrix has been transposed for formatting purposes.*) This linear
+operation takes the input matrix flattened as a 16-dimensional vector and
+produces a 4-dimensional vector that is later reshaped as the :math:`2 \times 2`
+output matrix.
 
-What would happen if we were to transpose this matrix and feed the corresponding
-linear operation a 4-dimensional vector as input? We would get a 16-dimensional
-vector as output. This is what we call a **transposed convolution**.
+Using this representation, the backward pass is easily obtained by transposing
+:math:`\mathbf{C}`; in other words, the error is backpropagated by multiplying
+the loss with :math:`\mathbf{C}^T`. This operation takes a 4-dimensional vector
+as input and produces a 16-dimensional vector as output, and its connectivity
+pattern is compatible with :math:`\mathbf{C}` by construction.
 
-Transposed convolutions share the same connectivity pattern as their converse
-convolution, which makes them suitable for decoders in a convolutional
-autoencoder, for instance.
+Notably, the kernel :math:`\mathbf{w}` defines both the matrices
+:math:`\mathbf{C}` and :math:`\mathbf{C}^T` used for the forward and backward
+passes.
 
-Simplest case, transposed
-=========================
+Transposed convolution
+======================
 
-If we visualize the effect of applying the transposed matrix above on a
-:math:`4 \times 4` input, this is what we get:
+Let's now consider what would be required to go the other way around, i.e., map
+from a 4-dimensional space to a 16-dimensional space, while keeping the
+connectivity pattern of the convolution depicted above. This operation is known
+as a *transposed convolution*.
+
+Transposed convolutions -- also called *fractionally strided convolutions* --
+work by swapping the forward and backward passes of a convolution. One way to
+put it is to note that the kernel defines a convolution, but whether it's a
+direct convolution or a transposed convolution is determined by how the forward
+and backward passes are computed.
+
+For instance, although the kernel :math:`\mathbf{w}` defines a convolution whose
+forward and backward passes are computed by multiplying with :math:`\mathbf{C}` and
+:math:`\mathbf{C}^T` respectively, it *also* defines a transposed convolution
+whose forward and backward passes are computed by multiplying with
+:math:`\mathbf{C}^T` and :math:`(\mathbf{C}^T)^T = \mathbf{C}` respectively.
+
+.. note::
+
+    The transposed convolution operation can be thought of as the gradient of
+    *some* convolution with respect to its input, which is usually how
+    transposed convolutions are implemented in practice.
+
+Finally note that it is always possible to emulate a transposed convolution with
+a direct convolution. The disadvantage is that it usually involves adding many
+columns and rows of zeros to the input, resulting in a much less efficient
+implementation.
+
+Building on what has been introduced so far, this section will proceed somewhat
+backwards with respect to the convolution arithmetic section, deriving the
+properties of each transposed convolution by referring to the direct
+convolution with which it shares the kernel, and defining the equivalent direct
+convolution.
+
+No zero padding, unit strides, transposed
+=========================================
+
+The simplest way to think about a transposed convolution is by computing the
+output shape of the direct convolution for a given input shape first, and then
+inverting the input and output shapes for the transposed convolution.
+
+Let's consider the convolution of a :math:`3 \times 3` kernel on a :math:`4
+\times 4` input with unitary stride and no padding (i.e., :math:`i = 4`,
+:math:`k = 3`, :math:`s = 1` and :math:`p = 0`). As depicted in the convolution
+above, this produces a :math:`2 \times 2` output.  The transpose of this
+convolution will then have an output of shape :math:`4 \times 4` when applied on
+a :math:`2 \times 2` input.
+
+Another way to obtain the result of a transposed convolution is to apply an
+equivalent -- but much less efficient -- direct convolution. The example
+described so far could be tackled by convolving a :math:`3 \times 3` kernel over
+a :math:`2 \times 2` input padded with a :math:`2 \times 2` border of zeros
+using unit strides (i.e., :math:`i' = 2`, :math:`k' = k`, :math:`s' = 1` and
+:math:`p' = 2`), as shown here:
 
 .. figure:: conv_arithmetic_figures/no_padding_no_strides_transposed.gif
 
-Note that although equivalent to the transposed matrix, this visualization adds
-a lot of zero multiplications in the form of zero padding. This is done for
-illustration purposes, but it is inefficient, and software implementations will
-normally not perform the useless zero multiplications.
+Notably, the kernel's and stride's sizes remain the same, but the input of the
+transposed convolution is now zero padded.
 
-One way to understand the logic behind zero padding is to consider what would
-be necessary to produce a transposed convolution with the same connectivity
-pattern as its converse convolution.
+.. note::
 
-In particular, the corner pixels of the input only contribute to the corner
-pixels of the output: the top left input pixel is only connected to the top left
-output pixel, the top right pixel is only connected to the top right output
-pixel, and so on. This is achieved by zero padding the input such that the
-kernel only touches a corner pixel when it is in the associated corner position.
+    Although equivalent to applying the transposed matrix, this visualization
+    adds a lot of zero multiplications in the form of zero padding. This is done
+    here for illustration purposes, but it is inefficient, and software
+    implementations will normally not perform the useless zero multiplications.
 
-You can also verify that the connectivity pattern is respected everywhere else
-in the input. For instance, when the kernel has been translated by one row and
-one column, it covers the whole input. This means that in the converse
-convolution, the input pixel located at the first row and first column
-contributes to all output pixels.
+One way to understand the logic behind zero padding is to consider the
+connectivity pattern of the transposed convolution and use it to guide the
+design of the equivalent convolution. For example, the top left pixel of the
+input of the direct convolution only contribute to the top left pixel of the
+output, the top right pixel is only connected to the top right output pixel,
+and so on.
 
-In general, a convolution described by
+To maintain the same connectivity pattern in the equivalent convolution it is
+necessary to zero pad the input in such a way that the first (top-left)
+application of the kernel only touches the top-left pixel, i.e., the padding
+has to be equal to the size of the kernel minus one.
 
-* input size :math:`i`,
-* kernel size :math:`k`,
-* stride :math:`s = 1`,
-* padding size :math:`p = 0`
+Proceeding in the same fashion it is possible to determine similar observations
+for the other elements of the image, giving rise to the following relationship:
 
-has a transpose described by
+.. admonition:: Relationship 7
 
-* input size :math:`i' = i - (k - 1)`,
-* kernel size :math:`k' = k`,
-* stride :math:`s' = 1`,
-* padding size :math:`p' = k - 1`.
+    A convolution described by :math:`s = 1`, :math:`p = 0` and :math:`k` has an
+    associated transposed convolution described by :math:`k' = k`, :math:`s' =
+    s` and :math:`p' = k - 1` and its output size is
 
-Note that this corresponds to a "fully padded" convolution:
+    .. math::
 
-.. math::
+        o' = i' + (k - 1).
 
-    \begin{split}
-    o &= i' + 2(k - 1) - (k - 1) \\
-      &= i - (k - 1) + (k - 1) \\
-      &= i.
-    \end{split}
+Interestingly, this corresponds to a fully padded convolution with unit strides.
 
-Zero padding, transposed
-========================
+Zero padding, unit strides, transposed
+======================================
 
-If the transpose of a non-padded convolution involves adding zero-padding, what
-does the transpose of a zero-padded convolution look like? It turns out that it
-involves *removing* some padding, i.e. a convolution described by
+Knowing that the transpose of a non-padded convolution is equivalent to
+convolving a zero padded input, it would be reasonable to suppose that the
+transpose of a zero padded convolution is equivalent to convolving an input
+padded with *less* zeros.
 
-* input size :math:`i`,
-* kernel size :math:`k`,
-* stride :math:`s = 1`,
-* padding size :math:`p`
-
-has a transpose described by
-
-* input size :math:`i' = i + 2p - (k - 1)`,
-* kernel size :math:`k' = k`,
-* stride :math:`s' = 1`,
-* padding size :math:`p' = k - p - 1`.
-
-The output size is
-
-.. math::
-
-    \begin{split}
-    o &= i' + 2(k - p - 1) - (k - 1) \\
-      &= i + 2p - (k - 1) - 2p + 2(k - 1) - (k - 1) \\
-      &= i.
-    \end{split}
-
-Here is what the transpose of a convolution looks like for :math:`i = 5`,
-:math:`k = 4` and :math:`p = 2`:
+It is indeed the case, as shown in here for :math:`i = 5`, :math:`k = 4` and
+:math:`p = 2`:
 
 .. figure:: conv_arithmetic_figures/arbitrary_padding_no_strides_transposed.gif
+
+Formally, the following relationship applies for zero padded convolutions:
+
+.. admonition:: Relationship 8
+
+    A convolution described by :math:`s = 1`, :math:`k` and :math:`p` has an
+    associated transposed convolution described by :math:`k' = k`, :math:`s' =
+    s` and :math:`p' = k - p - 1` and its output size is
+
+    .. math::
+
+        o' = i' + (k - 1) - 2p.
 
 Special cases
 -------------
 
-Half
-^^^^
+Half (same) padding, transposed
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Unsurprisingly, the transpose of a "half padded" convolution is itself a "half
-padded" convolution, i.e. a convolution described by
+By applying the same inductive reasoning as before, it is reasonable to expect
+that the equivalent convolution of the transpose of a half padded convolution
+is itself a half padded convolution, given that the output size of a half
+padded convolution is the same as its input size. Thus the following relation
+applies:
 
-* input size :math:`i`,
-* kernel size :math:`k = 2n + 1`,
-* stride :math:`s = 1`,
-* padding size :math:`p = \lfloor k / 2 \rfloor = n`
+.. admonition:: Relationship 9
 
-has a transpose described by
+    A convolution described by :math:`k = 2n + 1, \quad n \in \mathbb{N}`,
+    :math:`s = 1` and :math:`p = \lfloor k / 2 \rfloor = n` has an associated
+    transposed convolution described by :math:`k' = k`, :math:`s' = s` and
+    :math:`p' = p` and its output size is
 
-* input size :math:`i' = i`,
-* kernel size :math:`k' = k`,
-* stride :math:`s' = 1`,
-* padding size :math:`p' = p`.
+    .. math::
 
-Here is what the transpose of a convolution looks like for :math:`i = 5`,
-:math:`k = 3` and :math:`p = 1`:
+        \begin{split}
+            o' &= i' + (k - 1) - 2p \\
+               &= i' + 2n - 2n \\
+               &= i'.
+        \end{split}
+
+Here is an example for :math:`i = 5`, :math:`k = 3` and (therefore) :math:`p =
+1`:
 
 .. figure:: conv_arithmetic_figures/same_padding_no_strides_transposed.gif
 
-Full
-^^^^
+Full padding, transposed
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-If the transpose of a convolution with no padding is a "fully padded"
-convolution, then the transpose of a "fully padded" convolution is... a
-convolution with no padding. A convolution described by
+Knowing that the equivalent convolution of the transpose of a non-padded
+convolution involves full padding, it is unsurprising that the equivalent of
+the transpose of a fully padded convolution is a non-padded convolution:
 
-* input size :math:`i`,
-* kernel size :math:`k`,
-* stride :math:`s = 1`,
-* padding size :math:`p = k - 1`
+.. admonition:: Relationship 10
 
-has a transpose described by
+    A convolution described by :math:`s = 1`, :math:`k` and :math:`p = k - 1`
+    has an associated transposed convolution described by :math:`k' = k`,
+    :math:`s' = s` and :math:`p' = 0` and its output size is
 
-* input size :math:`i' = i + (k - 1)`,
-* kernel size :math:`k' = k`,
-* stride :math:`s' = 1`,
-* padding size :math:`p' = 0`.
+    .. math::
 
-Here is what the transpose of a convolution looks like for :math:`i = 5`,
-:math:`k = 3` and :math:`p = 2`:
+        \begin{split}
+            o' &= i' + (k - 1) - 2p \\
+               &= i' - (k - 1)
+        \end{split}
+
+Here is an example for :math:`i = 5`, :math:`k = 3` and (therefore) :math:`p =
+2`:
 
 .. figure:: conv_arithmetic_figures/full_padding_no_strides_transposed.gif
 
-Strides, transposed
-===================
+No zero padding, non-unit strides, transposed
+=============================================
 
-If a zero-padded convolution has a transpose with padding removed, then a
-convolution with strides greater than 1 has a transpose with strides... smaller
-than 1? In some sense, yes: in order to translate the kernel fractionally, we
-insert zeros between input pixels.
+Using the same kind of inductive logic as for zero padded convolutions, one
+might expect that the transpose of a convolution with :math:`s > 1` involves an
+equivalent convolution with :math:`s < 1`. As will be explained, this is a valid
+intuition, which is why transposed convolutions are sometimes called
+*fractionally strided convolutions*.
 
-Once again, doing so is inefficient and real-world implementations avoid useless
-multiplications by zero, but conceptually it's how the transpose of a strided
-convolution can be thought of. A convolution described by
-
-* input size :math:`i`,
-* kernel size :math:`k`,
-* stride :math:`s`,
-* padding size :math:`p = 0`
-
-has a transpose described by
-
-* input size :math:`i' = \left\lfloor \frac{i - k}{s} \right\rfloor + 1`,
-* stretched input size :math:`\tilde{i}' = i' + s (i' - 1)`,
-* kernel size :math:`k' = k`,
-* stride :math:`s' = 1`,
-* padding size :math:`p' = k - 1`
-
-where the input is stretched to size :math:`\tilde{i}'` by adding :math:`s - 1`
-zeros between each pixel.
-
-Here is what the transpose of a convolution looks like for :math:`i = 5`,
-:math:`k = 3` and :math:`s = 2`:
+Here is an example for :math:`i = 5`, :math:`k = 3` and :math:`s = 2`:
 
 .. figure:: conv_arithmetic_figures/no_padding_strides_transposed.gif
 
-Combining padding and strides, transposed
------------------------------------------
+This should help understand what fractional strides involve: zeros
+are inserted *between* input units, which makes the kernel move around at
+a slower pace than with unit strides.
 
-Zero-padding and non-unit strides are treated independently to transpose a
-convolution. This means that in the most general case a convolution described by
+.. note::
 
-* input size :math:`i`,
-* kernel size :math:`k`,
-* stride :math:`s`,
-* padding size :math:`p`
+    Doing so is inefficient and real-world implementations avoid useless
+    multiplications by zero, but conceptually it is how the transpose of a
+    strided convolution can be thought of.
 
-has a transpose described by
+For the moment, it will be assumed that the convolution is non-padded (:math:`p
+= 0`) and that its input size :math:`i` is such that :math:`i - k` is a multiple
+of :math:`s`. In that case, the following relationship holds:
 
-* input size :math:`i' = \left\lfloor \frac{i + 2p - k}{s} \right\rfloor + 1`,
-* stretched input size :math:`\tilde{i}' = i' + s (i' - 1)`,
-* kernel size :math:`k' = k`,
-* stride :math:`s' = 1`,
-* padding size :math:`p' = k - p - 1`
+.. admonition:: Relationship 11
 
-where the input is stretched to size :math:`\tilde{i}'` by adding :math:`s - 1`
-zeros between each pixel.
+    A convolution described by :math:`p = 0`, :math:`k` and :math:`s` and whose
+    input size is such that :math:`i - k` is a multiple of :math:`s`, has an
+    associated transposed convolution described by :math:`\tilde{i}'`, :math:`k'
+    = k`, :math:`s' = 1` and :math:`p' = k - 1`, where :math:`\tilde{i}'` is the
+    size of the stretched input obtained by adding :math:`s - 1` zeros between
+    each input unit, and its output size is
 
-Here is what the transpose of a convolution looks like for :math:`i = 5`,
-:math:`k = 3`, :math:`s = 2` and :math:`p = 1`:
+    .. math::
+
+        o' = s (i' - 1) + k.
+
+Zero padding, non-unit strides, transposed
+==========================================
+
+When the convolution's input size :math:`i` is such that :math:`i + 2p - k` is a
+multiple of :math:`s`, the analysis can extended to the zero padded case by
+combining Relationship 8 and Relationship 11:
+
+.. admonition:: Relationship 12
+
+    A convolution described by :math:`k`, :math:`s` and :math:`p` and whose
+    input size :math:`i` is such that :math:`i + 2p - k` is a multiple of
+    :math:`s` has an associated transposed convolution described by
+    :math:`\tilde{i}'`, :math:`k' = k`, :math:`s' = 1` and :math:`p' = k - p -
+    1`, where :math:`\tilde{i}'` is the size of the stretched input obtained by
+    adding :math:`s - 1` zeros between each input unit, and its output size is
+
+    .. math::
+
+        o' = s (i' - 1) + k - 2p.
+
+Here is an example for :math:`i = 5`, :math:`k = 3`, :math:`s = 2` and :math:`p
+= 1`:
 
 .. figure:: conv_arithmetic_figures/padding_strides_transposed.gif
 
-Sometimes numbers are mean
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+The constraint on the size of the input :math:`i` can be relaxed by introducing
+another parameter :math:`a \in \{0, \ldots, s - 1\}` that allows to distinguish
+between the :math:`s` different cases that all lead to the same :math:`i'`:
 
-If you recall, it was pointed out earlier that for :math:`s > 1` and given
-:math:`p` and :math:`k` there were multiple input sizes that lead to the same
-output size. Now is the time where we need to take it into account.
+.. admonition:: Relationship 13
 
-Knowing the values for :math:`i'`, :math:`s`, :math:`k` and :math:`p` is not
-sufficient to define a transposed convolution (unless :math:`s = 1`), as the
-converse convolution over feature maps of sizes
+    A convolution described by :math:`k`, :math:`s` and :math:`p` has an
+    associated transposed convolution described by :math:`a`,
+    :math:`\tilde{i}'`, :math:`k' = k`, :math:`s' = 1` and :math:`p' = k - p -
+    1`, where :math:`\tilde{i}'` is the size of the stretched input obtained by
+    adding :math:`s - 1` zeros between each input unit, and :math:`a = (i + 2p -
+    k) \mod s` represents the number of zeros added to the top and right edges
+    of the input, and its output size is
 
-.. math::
+    .. math::
 
-    i = s (i - 1) + a + k - 2p, \quad a \in \{0, \ldots, s - 1\}
+        o' = s (i' - 1) + a + k - 2p.
 
-could have all produced a feature map of size :math:`i'`. This is why in
-addition to :math:`i'` we also have to specify the value of :math:`i`. If
-:math:`a > 0` in the formula above, then an additional border of :math:`a`
-zeros is added to the top and right sides of the input.
-
-Here is what the transpose of a convolution looks like for :math:`i = 6`,
-:math:`k = 3`, :math:`s = 2` and :math:`p = 1`:
+Here is an example for :math:`i = 6`, :math:`k = 3`, :math:`s = 2` and :math:`p
+= 1`:
 
 .. figure:: conv_arithmetic_figures/padding_strides_odd_transposed.gif
+
+.. [#] Dumoulin, Vincent, and Visin, Francesco. "A guide to convolution
+       arithmetic for deep learning." arXiv preprint arXiv:1603.07285 (2016)
