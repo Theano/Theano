@@ -1813,7 +1813,7 @@ def local_subtensor_remove_broadcastable_index(node):
             dim_index = node.inputs[node_inputs_idx]
             if type(dim_index) == theano.scalar.basic.ScalarConstant:
                 dim_index = dim_index.value
-            if dim_index in [0, -1] and node.inputs[0].broadcastable[dim] == True:
+            if dim_index in [0, -1] and node.inputs[0].broadcastable[dim]:
                 remove_dim.append(dim)
                 node_inputs_idx += 1
             else:
@@ -1822,7 +1822,7 @@ def local_subtensor_remove_broadcastable_index(node):
             if elem != slice(None):
                 return
         elif isinstance(elem, (integer_types, numpy.integer)):
-            if elem in [0, -1] and node.inputs[0].broadcastable[dim] == True:
+            if elem in [0, -1] and node.inputs[0].broadcastable[dim]:
                 remove_dim.append(dim)
         else:
             raise TypeError('case not expected')
