@@ -472,7 +472,7 @@ class FunctionGraph(utils.object2):
         self.execute_callbacks('on_change_input', node, i,
                                r, new_r, reason=reason)
         if prune:
-            self.__remove_clients__(r, [], True)
+            self.__remove_clients__(r, [], True, reason=reason)
 
     # replace #
     def replace(self, r, new_r, reason=None, verbose=None):
