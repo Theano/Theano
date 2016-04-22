@@ -1816,12 +1816,10 @@ def test_local_useless_subtensor():
 
 
 def test_local_subtensor_remove_broadcastable_index():
-    """ testing local_subtensor_remove_broadcastable_index optimization
-
-    tests removing broadcastable dimensions with index 0 or -1,
-    otherwise the optimzation should not be applied
-
-    """
+    # testing local_subtensor_remove_broadcastable_index optimization
+    #
+    # tests removing broadcastable dimensions with index 0 or -1,
+    # otherwise the optimzation should not be applied
 
     mode = theano.compile.mode.get_default_mode()
     mode = mode.including("local_subtensor_remove_broadcastable_index")
