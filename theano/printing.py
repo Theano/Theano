@@ -98,6 +98,7 @@ def debugprint(obj, depth=-1, print_type=False,
         _file = file
     if done is None:
         done = dict()
+    used_ids = dict()
     results_to_print = []
     profile_list = []
     order = []  # Toposort
@@ -178,7 +179,7 @@ N.B.:
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=o, ids=ids,
                              scan_ops=scan_ops, stop_on_name=stop_on_name,
-                             profile=p, smap=s)
+                             profile=p, smap=s, used_ids=used_ids)
 
     if len(scan_ops) > 0:
         print("", file=_file)
