@@ -1066,6 +1066,7 @@ class VM_Linker(link.LocalLinker):
                           )
 
         vm.storage_map = storage_map
+        vm.compute_map = compute_map
 
         return (vm,
                 [link.Container(input, storage)
