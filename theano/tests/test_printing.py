@@ -169,7 +169,8 @@ def test_debugprint():
     g = theano.function([A, B, D, E], G, mode=mode)
 
     # just test that it work
-    debugprint(G)
+    s = StringIO()
+    debugprint(G, file=s)
 
     # test ids=int
     s = StringIO()
