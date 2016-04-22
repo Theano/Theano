@@ -1782,7 +1782,10 @@ class NavigatorOptimizer(Optimizer):
         if replacements is False or replacements is None:
             return False
         old_vars = node.outputs
+        remove = []
         if isinstance(replacements, dict):
+            if "remove" in replacements:
+                remove = replacements.pop("remove")
             old_vars = list(replacements.keys())
             replacements = list(replacements.values())
         elif not isinstance(replacements, (tuple, list)):
@@ -1805,7 +1808,9 @@ class NavigatorOptimizer(Optimizer):
         if len(repl_pairs) == 0:
             return False
         try:
-            fgraph.replace_all_validate(repl_pairs, reason=lopt)
+            fgraph.replace_all_validate_remove(repl_pairs,
+                                               reason=lopt,
+                                               remove=remove)
             return True
         except Exception as e:
             # This means the replacements were rejected by the fgraph.
