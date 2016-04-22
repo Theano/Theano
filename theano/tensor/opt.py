@@ -1578,7 +1578,7 @@ local_elemwise_alloc = register_specialize(
 def local_fill_sink(node):
     """
     f(fill(a, b), fill(c, d), e) -> fill(a, fill(c, f(b, d, e)))
-
+    f(fill(a, b), fill(c, d), e) -> fill(c, fill(a, f(b, d, e)))
     f need to be an elemwise
     """
     if (not hasattr(node, 'op') or
