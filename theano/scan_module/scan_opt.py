@@ -202,7 +202,7 @@ def remove_constants_and_unused_inputs_scan(node):
         # DEBUG CHECK
         nwScan = scan_op.Scan(nw_inner, op_outs, nw_info)
         nw_outs = nwScan(*nw_outer, **dict(return_list=True))
-        return nw_outs
+        return dict([("remove", [node])] + zip(node.outputs, nw_outs))
     else:
         return False
 
@@ -1964,8 +1964,10 @@ def scan_merge_inouts(node):
             outputs = [outputs]
 
         na = scan_args(outer_inputs, outputs, op.inputs, op.outputs, op.info)
+        remove = [node]
     else:
         na = a
+        remove = []
 
     # Now that the identical external inputs have been merged, we do a new
     # loop in order to merge external outputs that compute the same things
@@ -2070,6 +2072,7 @@ def scan_merge_inouts(node):
             new_outer_out_mit_mot.append(outer_omm)
     na.outer_out_mit_mot = new_outer_out_mit_mot
 
+    return dict([("remove", remove)] + zip(node.outputs, na.outer_outputs))
     return na.outer_outputs
 
 
