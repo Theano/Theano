@@ -61,23 +61,10 @@ class TestSearchsortedOp(utt.InferShapeTester):
         self.idx_sorted = None
 
     def test_searchsortedOp_on_sorted_input(self):
-        f = theano.function([self.x, self.v], searchsorted(self.x, self.v),
-                            mode="DebugMode")
+        f = theano.function([self.x, self.v], searchsorted(self.x, self.v))
         assert np.allclose(
                 np.searchsorted(self.a[self.idx_sorted], self.b),
                 f(self.a[self.idx_sorted], self.b))
-
-    def test_searchsortedOp_on_none_sorter(self):
-        # Current implementation of numpy.searchsorted
-        # does not raise an error if `x` is not sorted and sorter is None.
-        sorter = T.vector('sorter', dtype="int64")
-        f = theano.function([self.x, self.v, sorter],
-                            searchsorted(self.x, self.v, sorter=sorter))
-        #  assert np.allclose(
-        #          np.searchsorted(self.a, self.b, sorter=None),
-        #          f(self.a, self.b, sorter=None))
-        self.assertRaises(ValueError, f,
-                          self.a[self.idx_sorted], self.b, None)
 
     def test_searchsortedOp_on_float_sorter(self):
         sorter = T.vector('sorter', dtype="float32")
@@ -91,32 +78,17 @@ class TestSearchsortedOp(utt.InferShapeTester):
             sorter = T.vector('sorter', dtype=dtype)
             f = theano.function([self.x, self.v, sorter],
                                 searchsorted(self.x, self.v, sorter=sorter),
-                                mode="DebugMode", allow_input_downcast=True)
+                                allow_input_downcast=True)
             assert np.allclose(
                     np.searchsorted(self.a, self.b, sorter=self.idx_sorted),
                     f(self.a, self.b, self.idx_sorted))
 
     def test_searchsortedOp_on_right_side(self):
         f = theano.function([self.x, self.v],
-                            searchsorted(self.x, self.v, side='right'),
-                            mode="DebugMode")
+                            searchsorted(self.x, self.v, side='right'))
         assert np.allclose(
                 np.searchsorted(self.a, self.b, side='right'),
                 f(self.a, self.b))
-
-    def test_use_c_code(self):
-        f = theano.function([self.x, self.v], searchsorted(self.x, self.v),
-                            mode="FAST_RUN")
-        assert np.allclose(
-                np.searchsorted(self.a[self.idx_sorted], self.b),
-                f(self.a[self.idx_sorted], self.b))
-
-        f = theano.function([self.x, self.v], searchsorted(self.x, self.v),
-                            mode=theano.compile.Mode(linker="c",
-                            optimizer='fast_run'))
-        assert np.allclose(
-                np.searchsorted(self.a[self.idx_sorted], self.b),
-                f(self.a[self.idx_sorted], self.b))
 
     def test_infer_shape(self):
         # Test using default parameters' value
@@ -133,26 +105,14 @@ class TestSearchsortedOp(utt.InferShapeTester):
                                 self.op_class)
 
         # Test parameter ``side``
-        self.a = np.ones(10).astype(config.floatX)
-        self.b = np.ones(shape=(1, 2, 3)).astype(config.floatX)
+        la = np.ones(10).astype(config.floatX)
+        lb = np.ones(shape=(1, 2, 3)).astype(config.floatX)
         self._compile_and_check([self.x, self.v],
                                 [searchsorted(self.x, self.v, side='right')],
-                                [self.a, self.b],
+                                [la, lb],
                                 self.op_class)
 
     def test_grad(self):
-        self.a = np.random.random(100).astype(config.floatX)
-        self.b = np.random.random((1, 2, 5)).astype(config.floatX)
-        self.idx_sorted = np.argsort(self.a)
-
-        self.assertRaises(theano.gradient.NullTypeGradError,
-                          utt.verify_grad, self.op,
-                          [self.a[self.idx_sorted], self.b])
-
-        self.a = np.random.random(100).astype(config.floatX)
-        self.b = np.random.random(10).astype(config.floatX)
-        self.idx_sorted = np.argsort(self.a)
-
         utt.verify_grad(self.op, [self.a[self.idx_sorted], self.b])
 
 

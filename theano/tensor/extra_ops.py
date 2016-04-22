@@ -8,7 +8,9 @@ import theano
 from theano.tensor import basic
 from theano.tensor import nlinalg  # noqa
 from theano import gof, scalar
-from theano.gradient import DisconnectedType
+from theano.gof import Generic
+from theano import gradient
+from theano.gradient import DisconnectedType, disconnected_type
 tensor = basic
 
 
@@ -79,10 +81,14 @@ class SearchsortedOp(theano.Op):
 
     """
 
+    params_type = Generic()
     __props__ = ("side", )
 
     def __init__(self, side='left'):
         self.side = side
+
+    def get_params(self, node):
+        return self.side
 
     def make_node(self, x, v, sorter=None):
         x = basic.as_tensor(x, ndim=1)
@@ -100,7 +106,7 @@ class SearchsortedOp(theano.Op):
     def infer_shape(self, node, shapes):
         return [shapes[1]]
 
-    def perform(self, node, inputs, output_storage):
+    def perform(self, node, inputs, output_storage, params):
         x = inputs[0]
         v = inputs[1]
         if len(node.inputs) == 3:
@@ -109,7 +115,23 @@ class SearchsortedOp(theano.Op):
             sorter = None
         z = output_storage[0]
 
-        z[0] = np.searchsorted(x, v, side=self.side, sorter=sorter)
+        z[0] = np.searchsorted(x, v, side=params, sorter=sorter)
+
+    def c_support_code_struct(self, node, name):
+        return """
+            int right_%(name)s;
+        """ % locals()
+
+    def c_init_code_struct(self, node, name, sub):
+        side = sub['params']
+        fail = sub['fail']
+        return """
+            PyObject* tmp_%(name)s = PyUnicode_FromString("right");
+            if (tmp_%(name)s == NULL)
+                %(fail)s;
+            right_%(name)s = PyUnicode_Compare(%(side)s, tmp_%(name)s);
+            Py_DECREF(tmp_%(name)s);
+        """ % locals()
 
     def c_code(self, node, name, inames, onames, sub):
         sorter = None
@@ -120,19 +142,18 @@ class SearchsortedOp(theano.Op):
         if not sorter:
             sorter = "NULL"
         z, = onames
-        side = "NPY_SEARCHRIGHT" if self.side == 'right' else "NPY_SEARCHLEFT"
         fail = sub['fail']
 
         return """
             Py_XDECREF(%(z)s);
             %(z)s = (PyArrayObject*) PyArray_SearchSorted(%(x)s, (PyObject*) %(v)s,
-                                                          %(side)s, (PyObject*) %(sorter)s);
+                                                          right_%(name)s ? NPY_SEARCHLEFT : NPY_SEARCHRIGHT, (PyObject*) %(sorter)s);
             if (!%(z)s)
                 %(fail)s;
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 1, 2)
+        return (1,)
 
     def grad(self, inputs, output_gradients):
         num_ins = len(inputs)
@@ -141,20 +162,10 @@ class SearchsortedOp(theano.Op):
         else:
             x, v = inputs
 
-        x_grad = x.zeros_like()
-        if v.ndim == 1:
-            v_grad = v.zeros_like()
-        else:
-            v_grad = theano.gradient.grad_not_implemented(
-                    self, 1, v, "Grad is not implemented for inputs with "
-                                "number of dimension other than 1.")
+        x_grad = gradient._float_zeros_like(x)
+        v_grad = gradient._float_zeros_like(v)
         if num_ins == 3:
-            sorter_grad = theano.gradient.grad_undefined(
-                    self, 2, sorter,
-                    "searchsorted is not defined for non-integer sorter so "
-                    "searchsorted(x, nb, sorter+eps), for eps > 0, "
-                    "is undefined")
-            return [x_grad, v_grad, sorter_grad]
+            return [x_grad, v_grad, disconnected_type()]
         else:
             return [x_grad, v_grad]
 
@@ -162,7 +173,7 @@ class SearchsortedOp(theano.Op):
 def searchsorted(x, v, side='left', sorter=None):
     """Find indices where elements should be inserted to maintain order.
 
-    Wraping of numpy.searchsorted. Find the indices into a sorted array
+    Wrapping of numpy.searchsorted. Find the indices into a sorted array
     `x` such that, if the corresponding elements in `v` were inserted
     before the indices, the order of `x` would be preserved.
 
@@ -171,7 +182,7 @@ def searchsorted(x, v, side='left', sorter=None):
     x: 1-D tensor (array-like)
         Input array. If `sorter` is None, then it must be sorted in
         ascending order, otherwise `sorter` must be an array of indices
-        that sort it.
+        which sorts it.
     v: tensor (array-like)
         Contains the values to be inserted into `x`.
     side: {'left', 'right'}, optional.
@@ -183,12 +194,35 @@ def searchsorted(x, v, side='left', sorter=None):
         Contains indices that sort array `x` into ascending order.
         They are typically the result of argsort.
 
-    .. versionadded:: 0.8.2
-
     Returns
     -------
     indices : tensor of integers (int64)
         Array of insertion points with the same shape as `v`.
+
+    See Also
+    --------
+    `numpy.searchsorted <https://docs.scipy.org/doc/numpy-1.10.0/reference/generated/numpy.searchsorted.html>`_
+
+    Notes
+    -----
+    * Binary search is used to find the required insertion points.
+    * This Op is working **only on CPU** currently.
+
+    Examples
+    --------
+    >>> from theano import tensor
+    >>> x = tensor.dvector()
+    >>> idx = x.searchsorted(3)
+    >>> idx.eval({x: [1,2,3,4,5]})
+    array(2)
+    >>> tensor.extra_ops.searchsorted([1,2,3,4,5], 3).eval()
+    array(2)
+    >>> tensor.extra_ops.searchsorted([1,2,3,4,5], 3, side='right').eval()
+    array(3)
+    >>> tensor.extra_ops.searchsorted([1,2,3,4,5], [-10, 10, 2, 3]).eval()
+    array([0, 5, 1, 2])
+
+    .. versionadded:: 0.9
 
     """
     return SearchsortedOp(side=side)(x, v, sorter)
