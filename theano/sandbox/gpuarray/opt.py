@@ -209,7 +209,7 @@ gpu_seqopt.register('InputToGpuArrayOptimizer', InputToGpuOptimizer(),
                     0, 'fast_run', 'fast_compile', 'merge')
 
 
-@local_optimizer([GpuFromHost, GpuToGpu, host_from_gpu])
+@local_optimizer([GpuFromHost, GpuToGpu, HostFromGpu])
 def local_cut_gpu_transfers(node):
     # gpu[ab] -> host -> gpub
     if (isinstance(node.op, GpuFromHost) and
