@@ -366,6 +366,7 @@ class T_function(unittest.TestCase):
             assert in1.value is in2.value
 
     def test_copy_delete_updates(self):
+        w = T.iscalar('w')
         x = T.fscalar('x')
         # SharedVariable for tests, one of them has update
         y = theano.shared(value=1, name='y')
@@ -389,7 +390,7 @@ class T_function(unittest.TestCase):
             ori = theano.function([x], x, mode=mode, updates={z: z * 2})
             cpy = ori.copy(delete_updates=True)
 
-            ori = theano.function([x, y], x, mode=mode, updates={z: z + y})
+            ori = theano.function([x, w], x, mode=mode, updates={z: z + w})
             cpy = ori.copy(delete_updates=True)
 
     def test_shared_state0(self):
