@@ -12,6 +12,7 @@ from theano import gof, Type, Apply
 from theano import tensor, scalar, config
 from theano.gradient import grad_undefined
 from theano.scalar import Scalar
+from theano.sandbox.cuda import dimshuffle as cuda_dimshuffle
 
 scal = scalar  # somewhere scalar gets reassigned to be a function
 
@@ -4288,3 +4289,100 @@ __global__ void kEye(float* a, int n, int m) {
     def c_code_cache_version(self):
         return (3,)
 gpu_eye = GpuEye(dtype='float32')
+
+
+class GpuDiagonal(GpuOp):
+    __props__ = ("offset", "axis1", "axis2")
+    default_offset = 0
+    default_axis1 = 0
+    default_axis2 = 1
+
+    def __init__(self, offset=0, axis1=0, axis2=1):
+        self.view = view
+        if self.view and not numpy_diagonal_return_view:
+            warnings.warn("View will forced to False. Diagonal property view is "
+                          "set to True but numpy version %s and prior versions of "
+                          "numpy.diagonal() do not return a view. Update "
+                          "numpy to use Diagonal(view=True)" % 
+                          numpy.version.version)
+            self.view = False
+        if self.view:
+            self.view_map = {0: [0]}
+        self.offset = offset
+        self.axis1 = axis1
+        self.axis2 = axis2
+
+    def make_node(self, _x):
+        if not isinstance(_x, theano.Variable):
+            x = as_cuda_ndarray_variable(_x)
+        else:
+            x = _x
+
+        if x.ndim < 2:
+            raise ValueError('Diagonal needs an input with 2 or more '
+                             'dimensions', x)
+        return Apply(self, [x], [x.type.__class__(
+            dtype=x.dtype,
+            broadcastable=[False] * (x.ndim - 1))()])
+
+    def perform(self, node, inputs, outputs):
+        (x,) = inputs
+        (z,) = outputs
+        # zero-dimensional matrices ...
+        if numpy.min(x.shape) == 0:
+            out_shape = [d for i, d in enumerate(x.shape)
+                         if i not in (self.axis1, self.axis2)]
+            diag_size = numpy.min((x.shape[self.axis1], x.shape[self.axis2]))
+            out_shape.append(diag_size)
+            z[0] = node.outputs[0].type.value_zeros(tuple(out_shape))
+            return
+        
+        if x.shape[self.axis1] < x.shape[self.axis2]:
+            axis_with_bigger_shape = self.axis2
+            axis_with_smaller_shape = self.axis1
+        else:
+            axis_with_bigger_shape = self.axis1
+            axis_with_smaller_shape = self.axis2
+
+        slicer = [numpy.s_[:], ] * x.ndim
+        slicer[axis_with_bigger_shape] = 0  # self.offset
+        slicer = tuple(slicer)
+        if axis_with_smaller_shape > axis_with_bigger_shape:
+            axis_with_smaller_shape -= 1
+
+        new_dim_order = range(x[slicer].ndim)
+        new_dim_order[axis_with_smaller_shape], new_dim_order[-1] = \
+            new_dim_order[-1], new_dim_order[axis_with_smaller_shape]
+        rval = cuda_dimshuffle(x[slicer], new_dim_order)
+        
+        other_strides = tuple([d for i, d in enumerate(x.strides)
+                               if i not in (self.axis1, self.axis2)])
+        rval.strides = other_strides + \
+                       (x.strides[self.axis1] + x.strides[self.axis2], )
+
+        if self.view:
+            z[0] = rval
+        else:
+            z[0] = rval.copy()
+
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
+        return [grad_not_implemented(self, 0, x)]
+
+    def infer_shape(self, node, shapes):
+        in_shape, = shapes
+        dim1 = in_shape[self.axis1]
+        dim2 = in_shape[self.axis2]
+        out_shape = [d for i, d in enumerate(in_shape)
+                     if i not in (self.axis1, self.axis2)]
+        # The following logic is inspired by C code of PyArray_Diagonal().
+        offset = self.offset
+        if offset > 0:
+            diag_size = clip(dim2 - offset, 0, dim1)
+        elif offset < 0:
+            diag_size = clip(dim1 + offset, 0, dim2)
+        else:
+            diag_size = minimum(dim1, dim2)
+        out_shape.append(diag_size)
+        return [tuple(out_shape)]

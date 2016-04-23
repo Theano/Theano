@@ -5902,24 +5902,74 @@ class Diagonal(Op):
 
     """
     __props__ = ("offset", "axis1", "axis2")
+    default_offset = 0
+    default_axis1 = 0
+    default_axis2 = 1
 
     def __init__(self, offset=0, axis1=0, axis2=1):
-        if numpy_diagonal_return_view:
+        self.view = view
+        if self.view and not numpy_diagonal_return_view:
+            warnings.warn("View will forced to False. Diagonal property view is "
+                          "set to True but numpy version %s and prior versions of "
+                          "numpy.diagonal() do not return a view. Update "
+                          "numpy to use Diagonal(view=True)" % 
+                          numpy.version.version)
+            self.view = False
+        if self.view:
             self.view_map = {0: [0]}
         self.offset = offset
         self.axis1 = axis1
         self.axis2 = axis2
 
-    def make_node(self, x):
-        x = as_tensor_variable(x)
-        assert x.ndim >= 2
-        return Apply(self, [x], [tensor(dtype=x.dtype,
-                                        broadcastable=[False] * (x.ndim - 1))])
+    def make_node(self, _x):
+        if not isinstance(_x, theano.Variable):
+            x = as_tensor_variable(_x)
+        else:
+            x = _x
+
+        if x.ndim < 2:
+            raise ValueError('Diagonal needs an input with 2 or more '
+                             'dimensions', x)
+        return Apply(self, [x], [x.type.__class__(
+            dtype=x.dtype,
+            broadcastable=[False] * (x.ndim - 1))()])
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
-        z[0] = x.diagonal(self.offset, self.axis1, self.axis2)
+        # zero-dimensional matrices ...
+        if numpy.min(x.shape) == 0:
+            out_shape = [d for i, d in enumerate(x.shape)
+                         if i not in (self.axis1, self.axis2)]
+            diag_size = numpy.min((x.shape[self.axis1], x.shape[self.axis2]))
+            out_shape.append(diag_size)
+            z[0] = node.outputs[0].type.value_zeros(tuple(out_shape))
+            return
+        
+        if x.shape[self.axis1] < x.shape[self.axis2]:
+            axis_with_bigger_shape = self.axis2
+            axis_with_smaller_shape = self.axis1
+        else:
+            axis_with_bigger_shape = self.axis1
+            axis_with_smaller_shape = self.axis2
+
+        slicer = [numpy.s_[:], ] * x.ndim
+        slicer[axis_with_bigger_shape] = 0  # self.offset
+        slicer = tuple(slicer)
+        if axis_with_smaller_shape > axis_with_bigger_shape:
+            axis_with_smaller_shape -= 1
+
+        rval = x[slicer].swapaxes(axis_with_smaller_shape, -1)
+
+        other_strides = tuple([d for i, d in enumerate(x.strides)
+                               if i not in (self.axis1, self.axis2)])
+        rval.strides = other_strides + \
+                       (x.strides[self.axis1] + x.strides[self.axis2], )
+
+        if self.view:
+            z[0] = rval
+        else:
+            z[0] = rval.copy()
 
     def grad(self, inputs, gout):
         (x,) = inputs
