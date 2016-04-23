@@ -1889,16 +1889,14 @@ class test_local_subtensor_make_vector(unittest.TestCase):
         # which requires us to add the 'canonicalize' phase.
         mode = theano.compile.mode.Mode(optimizer=None).including('canonicalize_db').including("local_subtensor_make_vector")
         f = function([x, y, z], v[0], mode=mode)
-        # The resulting graph only has a DeepCopyOp, for which the
-        # copy_stack_trace is not called. (See issue #4421)
-        # self.assertTrue(check_stack_trace(f, ops_to_check='all'))
-        
+
         # Compile function using all optimizations in fast_compile mode, 
         # including the 'local_subtensor_make_vector' optimization
         mode = theano.compile.mode.get_mode('FAST_COMPILE').including("local_subtensor_make_vector")
         f = function([x, y, z], v[0], mode=mode)
-        # The resulting graph only has a DeepCopyOp, for which the
-        # copy_stack_trace is not called. (See issue #4421)
+
+        # The two cases in this test do not check the case where
+        # local_subtensor_make_vector inserts a Subtensor node (See issue #4421)
         # self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         
 
@@ -3551,8 +3549,8 @@ class Test_local_useless_alloc(unittest.TestCase):
         if isinstance(mode_opt, compile.DebugMode):
             self.assertRaises(ValueError, f)
 
-        # No need to check_stack_trace as the graph only contains
-        # DeepCopyOp which has empty trace
+        # No need to check_stack_trace as the optimization
+        # local_useless_alloc only removes nodes.
 
     def test1(self):
         # Test that alloc never gets instantiated during optimization
@@ -3567,8 +3565,8 @@ class Test_local_useless_alloc(unittest.TestCase):
         op_classes = [node.op.__class__ for node in f.maker.fgraph.toposort()]
         assert tensor.Alloc not in op_classes
 
-        # No need to check_stack_trace as the graph only contains
-        # DeepCopyOp which has empty trace
+        # No need to check_stack_trace as the optimization
+        # local_useless_alloc only removes nodes.
 
     def test2(self):
         # Test that alloc never gets instantiated during optimization
