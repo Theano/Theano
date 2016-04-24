@@ -115,19 +115,19 @@ class Bookkeeper(Feature):
 
     def on_attach(self, fgraph):
 	"""
-	Called by FunctionGraph.attach_feature, the method that attaches
+        Called by FunctionGraph.attach_feature, the method that attaches
         the feature to the FunctionGraph. Since this is called after the
         FunctionGraph is initially populated, this is where you should
         run checks on the initial contents of the FunctionGraph.
-	"""
+        """
         for node in graph.io_toposort(fgraph.inputs, fgraph.outputs):
             self.on_import(fgraph, node, "on_attach")
 
     def on_detach(self, fgraph):
 	"""
-	Should remove any dynamically added functionality 
+        Should remove any dynamically added functionality
         that it installed into the function_graph
-	"""
+        """
         for node in graph.io_toposort(fgraph.inputs, fgraph.outputs):
             self.on_prune(fgraph, node, 'Bookkeeper.detach')
 
@@ -189,9 +189,9 @@ class History(Feature):
 
     def on_detach(self, fgraph):
 	"""
-        Should remove any dynamically added functionality 
+        Should remove any dynamically added functionality
         that it installed into the function_graph
-	"""
+        """
         del fgraph.checkpoint
         del fgraph.revert
         del self.history[fgraph]
@@ -238,18 +238,18 @@ class Validator(Feature):
 
     def on_detach(self, fgraph):
         """
-	Should remove any dynamically added functionality 
+        Should remove any dynamically added functionality
         that it installed into the function_graph
-	"""
-	del fgraph.validate
+        """
+        del fgraph.validate
         del fgraph.consistent
 
     def validate_(self, fgraph):
 	"""
-	If the caller is replace_all_validate, just raise the
+        If the caller is replace_all_validate, just raise the
         exception. replace_all_validate will print out the
         verbose output. Or it has to be done here before raise.
-	"""
+        """
         t0 = time.time()
         try:
             ret = fgraph.execute_callbacks('validate')
@@ -313,9 +313,9 @@ class ReplaceValidate(History, Validator):
 
     def on_detach(self, fgraph):
 	"""
-	Should remove any dynamically added functionality 
+        Should remove any dynamically added functionality
         that it installed into the function_graph
-	"""
+        """
         History.on_detach(self, fgraph)
         Validator.on_detach(self, fgraph)
         del self._nodes_removed
@@ -429,9 +429,9 @@ class NodeFinder(Bookkeeper):
 
     def on_detach(self, fgraph):
 	"""
-	Should remove any dynamically added functionality 
+        Should remove any dynamically added functionality
         that it installed into the function_graph
-	"""
+        """
         if self.fgraph is not fgraph:
             raise Exception("This NodeFinder instance was not attached to the"
                             " provided fgraph.")
@@ -482,9 +482,9 @@ class PrintListener(Feature):
 
     def on_detach(self, fgraph):
 	"""
-	Should remove any dynamically added functionality 
-	that it installed into the function_graph
-	"""
+        Should remove any dynamically added functionality
+        that it installed into the function_graph
+        """
         if self.active:
             print("-- detaching from: ", fgraph)
 

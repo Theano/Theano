@@ -54,8 +54,7 @@ def thunk_hook(type, value, trace):
     """
     This function is meant to replace excepthook and do some
     special work if the exception value has a __thunk_trace__
-    field. 
-    
+    field.
     In that case, it retrieves the field, which should
     contain a trace as returned by L{traceback.extract_stack},
     and prints it out on L{stderr}.
@@ -64,7 +63,7 @@ def thunk_hook(type, value, trace):
     Parameters
     ------------
     type
-      Exception class  
+      Exception class
     value
       Exception instance
     trace
@@ -614,7 +613,7 @@ def map_storage(fgraph, order, input_storage, output_storage, storage_map=None):
 def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
                no_recycling=None, nice_errors=True):
     """
-    WRITEME  
+    WRITEME
 
     Parameters
     ----------
@@ -711,7 +710,6 @@ class LocalLinker(Linker):
 def gc_helper(node_list):
     """
     Return the set of Variable instances which are computed by node_list.
-      
     Parameters
     ----------
     node_list
@@ -787,7 +785,7 @@ class PerformLinker(LocalLinker):
 
     def make_all(self, input_storage=None, output_storage=None, storage_map=None):
         """
-	Returns Function to run all nodes, list of input containers, list of outputs
+        Returns Function to run all nodes, list of input containers, list of outputs
 
         Parameters
         ----------

@@ -719,8 +719,8 @@ class VM_Linker(link.LocalLinker):
 
     def accept(self, fgraph, no_recycling=None):
         """
-        Check if fgraph is the first FunctionGraph that has ever been 
-        associated to self, else, create a new VM_Linker 
+        Check if fgraph is the first FunctionGraph that has ever been
+        associated to self, else, create a new VM_Linker
         associated to fgraph
 
         Parameters

@@ -115,14 +115,12 @@ def failure_code(sub):
 def failure_code_init(sub):
     """
     Code for failure in the struct init.
-    
     Parameters:
     --------------
     sub
       Dictionary used to template the struct.
       * failure_var -> must contain a variable name to use for
       the failure code.
-    
     """
     return '''{
         if (!PyErr_Occurred()) {
@@ -137,8 +135,8 @@ def failure_code_init(sub):
 def code_gen(blocks):
     """
     From a list of L{CodeBlock} instances, returns a string
-    that executes them all in sequence. 
-    
+    that executes them all in sequence.
+
     Eg for C{(decl1, task1,
     cleanup1)} and C{(decl2, task2, cleanup2)} the returned string
     will be of the form:
@@ -156,7 +154,7 @@ def code_gen(blocks):
 
     Parameters:
     ----------------
-    blocks 
+    blocks
          List of CodeBlock instances such that
          * declarations, behavior and cleanup are in the run()
          method of the struct
@@ -895,7 +893,6 @@ class CLinker(link.Linker):
         """
         Returns a list of support code strings that are needed by
         one or more Variables or Ops.
-       
         The support code from Variables is added before the support code from Ops.This might contain duplicates.
         """
         ret = []
@@ -1172,10 +1169,8 @@ class CLinker(link.Linker):
             be allocated.
         storage_map: dict that map variables to storages.
             This is used when you need to customize the storage of
-            this thunk.
-	keep_lock
-            WRITEME
-        
+            this thunk.keep_lock
+        WRITEME
         Returns: thunk, input_storage, output_storage
 
         The return values can be used as follows:
@@ -1849,11 +1844,10 @@ def _default_checker(x, y):
     """
     Default checker for DualLinker. This checks that the
     variables contain the same data using ==.
-    
     Parameters
     -------------
-    x,y 
-	the variables to compare data
+    x,y
+    the variables to compare data
     """
     if x[0] != y[0]:
         raise Exception("Output mismatch.",

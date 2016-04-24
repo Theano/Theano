@@ -801,8 +801,8 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
     def _props(self):
 	"""
-	Tuple of properties of all attributes
-	"""
+        Tuple of properties of all attributes
+        """
         return tuple(getattr(self, a) for a in self.__props__)
 
     def _props_dict(self):
@@ -936,7 +936,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         """
-        This function must return a thunk, that is a zero-arguments 
+        This function must return a thunk, that is a zero-arguments
         function that encapsulates the computation to be performed
         by this op on the arguments of the node.
 
@@ -990,9 +990,8 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
     def make_node(self, *inputs):
 	"""
-	Create a "apply" nodes for the inputs in that order.
-
-	"""
+        Create a "apply" nodes for the inputs in that order.
+        """
         if not hasattr(self, 'itypes'):
             raise NotImplementedError("You can either define itypes and otypes,\
              or implement make_node")
@@ -1077,7 +1076,7 @@ def debug_error_message(msg):
 
 def debug_assert(condition, msg=None):
     """
-    Customized assert with options to ignore the assert 
+    Customized assert with options to ignore the assert
     with just a warning
     """
     if msg is None:
@@ -1188,8 +1187,8 @@ class OpenMPOp(Op):
 
     def c_compile_args(self):
 	"""
-	Return the compilation arg "fopenmp" if openMP is supported
-	"""
+        Return the compilation arg "fopenmp" if openMP is supported
+        """
         self.update_self_openmp()
         if self.openmp:
             return ['-fopenmp']
@@ -1197,9 +1196,8 @@ class OpenMPOp(Op):
 
     def c_headers(self):
 	"""
-	Return the header file name "omp.h" if openMP is supported
-
-	"""
+        Return the header file name "omp.h" if openMP is supported
+        """
         self.update_self_openmp()
         if self.openmp:
             return ["omp.h"]
@@ -1208,8 +1206,8 @@ class OpenMPOp(Op):
     @staticmethod
     def test_gxx_support():
 	"""
-	Check if openMP is supported
-	"""
+        Check if openMP is supported
+        """
         code = """
         #include <omp.h>
 int main( int argc, const char* argv[] )
@@ -1427,7 +1425,7 @@ class COp(Op):
 
     def c_init_code(self):
 	"""
-	Get the code section for init_code
+        Get the code section for init_code
         """
         if 'init_code' in self.code_sections:
             return [self.code_sections['init_code']]
@@ -1597,8 +1595,8 @@ class COp(Op):
 
     def c_code_cleanup(self, node, name, inputs, outputs, sub):
 	"""
-	Stitches all the macros and "code_cleanup" together
- 	"""
+        Stitches all the macros and "code_cleanup" together
+        """
         if 'code_cleanup' in self.code_sections:
             op_code = self.code_sections['code_cleanup']
 
