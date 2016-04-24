@@ -18,8 +18,8 @@ class CallCache(object):
 
     def persist(self, filename=None):
 	"""
-	Cache "filename" as a pickle file   
-	"""
+        Cache "filename" as a pickle file
+        """
         if filename is None:
             filename = self.filename
         with open(filename, 'w') as f:
@@ -27,16 +27,16 @@ class CallCache(object):
 
     def call(self, fn, args=(), key=None):
 	"""
-	Retrieve item from the cache(if available) 
-	based on a key
-	
-	Parameters
-	------------
-	key
-	    parameter to retrieve cache item
-	fn,args
-	    key to retrieve if "key" is None
-	"""
+        Retrieve item from the cache(if available)
+        based on a key
+
+        Parameters
+        ------------
+        key
+          parameter to retrieve cache item
+        fn,args
+          key to retrieve if "key" is None
+        """
         if key is None:
             key = (fn, tuple(args))
         if key not in self.cache:

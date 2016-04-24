@@ -708,7 +708,7 @@ def variables_and_orphans(i, o):
     i : list
          Input L{Variable}s.
     o : list
-         Output L{Variable}s. 
+         Output L{Variable}s.
 
     """
     def expand(r):
@@ -775,7 +775,7 @@ def variables(i, o):
 def orphans(i, o):
     """
     Extracts list of variables within input and output nodes ( via dfs t     ravesal) and returns the "orphans" among them
-    
+
     Parameters
     ----------
     i : list
@@ -1225,7 +1225,7 @@ def op_as_string(i, op,
                  leaf_formatter=default_leaf_formatter,
                  node_formatter=default_node_formatter):
     """
-    Op to return a string representation of the subgraph 
+    Op to return a string representation of the subgraph
     between i and o
     """
     strs = as_string(i, op.inputs, leaf_formatter, node_formatter)

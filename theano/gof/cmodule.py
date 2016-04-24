@@ -1474,10 +1474,9 @@ class ModuleCache(object):
 
 def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
             ignore_if_missing=False):
-    
     """
     On NFS filesystems, it is impossible to delete a directory with open
-    files in it.  
+    files in it.
 
     So instead, some commands in this file will respond to a
     failed rmtree() by touching a 'delete.me' file.  This file is a message
@@ -1485,13 +1484,13 @@ def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
     Paramters
     ----------
     parent
-	Root node to start deleting from
+    Root node to start deleting from
     ignore_nocleanup
-	Delete the tree if flag is TRUE
+    Delete the tree if flag is TRUE
     level
-	Python Logging level. Set to "DEBUG" by default
+    Python Logging level. Set to "DEBUG" by default
     ignore_if_missing
-	If set to True, just return without any issue if parent is NULL 
+    If set to True, just return without any issue if parent is NULL
     """
     if ignore_if_missing and not os.path.exists(parent):
         return
