@@ -15,20 +15,34 @@ about how to carry out those computations.  One of the ways we take
 advantage of this flexibility is in carrying out calculations on a
 graphics card.
 
-There are two ways currently to use a gpu, one of which only supports NVIDIA cards (:ref:`cuda`) and the other, in development, that should support any OpenCL device as well as NVIDIA cards (:ref:`gpuarray`).
-
-.. _cuda:
-
-CUDA backend
-------------
-
-If you have not done so already, you will need to install Nvidia's
-GPU-programming toolchain (CUDA) and configure Theano to use it.
-We provide installation instructions for :ref:`Linux <gpu_linux>`,
-:ref:`MacOS <gpu_macos>` and :ref:`Windows <gpu_windows>`.
-
 Testing Theano with GPU
 ~~~~~~~~~~~~~~~~~~~~~~~
+
+Once that is done, the only thing left is to change the ``device`` option to name the GPU device in your
+computer, and set the default floating point computations to float32.
+For example: ``THEANO_FLAGS='cuda.root=/path/to/cuda/root,device=gpu,floatX=float32'``.
+You can also set these options in the .theanorc file's ``[global]`` section:
+
+     .. code-block:: cfg
+
+        [global]
+        device = gpu
+        floatX = float32
+
+.. note::
+
+    * If your computer has multiple GPUs and you use 'device=gpu', the driver
+      selects the one to use (usually gpu0).
+    * You can use the program nvida-smi to change this policy.
+    * You can choose one specific GPU by specifying 'device=gpuX', with X the
+      the corresponding GPU index (0, 1, 2, ...)
+    * By default, when ``device`` indicates preference for GPU computations,
+      Theano will fall back to the CPU if there is a problem with the GPU.
+      You can use the flag 'force_device=True' to instead raise an error when
+      Theano cannot use the GPU.
+
+You probably need to change the default version of gcc as
+`explained by Benjamin J. McCann <http://www.benmccann.com/blog/installing-cuda-and-theano/>`_ if the package you downloaded is for another Ubuntu version.
 
 To see if your GPU is being used, cut and paste the following program into a
 file and run it.

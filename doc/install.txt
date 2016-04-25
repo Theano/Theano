@@ -16,7 +16,5 @@ on your needs.
 
 If you want to update, head to the update page :ref:`updating`.
 
-If you encounter any trouble, head to the :ref:`troubleshooting` page.
-
 If you are curious about what Theano requires, you can head up
 to its :ref:`requirements` page.

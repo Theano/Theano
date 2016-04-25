@@ -25,52 +25,70 @@ Otherwise go for the `stable`_.
 Stable Installation
 -------------------
 
-These are general instructions that will install the latest stable version of Theano.
-
-pip
-^^^
-
 The recommended way to obtain the latest stable version of Theano is from PyPI using
-pip_. 
+pip_. Any argument between <...> means it is optional. 
 
 .. raw:: html
 
-    <pre><span class="red">&#60;sudo&#62;</span> pip install <span class="blue">&#60;--user&#62;</span> Theano[test]</pre>
+    <pre><span class="red">&#60;sudo&#62;</span> pip install <span class="blue">&#60;--user&#62;</span> Theano[test, doc]</pre>
 
 - Use :red:`sudo` for a root installation.
 
 - Use :blue:`user` for a user installation without admin rights. It will install Theano in your local site-packages.
 
+- [test] will add to the install the required packages for testing.
+
+- [doc] will add to the install the required packages for the documentation.
 
 .. _bleeding_edge:
 
-Bleeding-Edge Installation
---------------------------
+Bleeding-Edge Installation (recommended)
+----------------------------------------
 
 The following are general instructions that will set you up with the
-bleeding-edge version of Theano.
+bleeding-edge version of Theano. Any argument between <...> means it is optional.
 
 .. raw:: html
 
-    <pre><span class="red">&#60;sudo&#62;</span> pip install <span class="blue">&#60;--user&#62;</span> <span class="green">&#60;-e&#62;</span> git+https://github.com/Theano/Theano.git#egg=Theano <span class="green">&#60;--src sourcefolder&#62;</span></pre>
+    <pre><span class="red">&#60;sudo&#62;</span> pip install <span class="blue">&#60;--user&#62;</span> <span class="pink">&#60;--no-deps&#62;</span> git+https://github.com/Theano/Theano.git#egg=Theano</pre>
 
 - Use :red:`sudo` for a root installation.
 
 - Use :blue:`user` for a user installation without admin rights. It will install Theano in your local site-packages.
 
-- Use :green:`e` to make your installation file editable and :green:`src` to link it to your new :green:`sourcefolder`.
+- Use :pink:`no-deps` when you don't want the dependencies of Theano to not be installed through pip. This is important when they have already been installed as system packages. 
 
-If you do not wish to use pip, you can simply run :
+Developper Installation
+-----------------------
 
-.. code-block:: bash
+Follow these instructions if you want to setup your Theano to the developper version.
+Any argument between <...> means it is optional.
 
-    git clone git://github.com/Theano/Theano.git
+.. raw:: html
+
+    <pre>git clone git://github.com/Theano/Theano.git
     cd Theano
-    python setup.py develop
+    <span class="red">&#60;sudo&#62;</span> pip install <span class="blue">&#60;--user&#62;</span> <span class="pink">&#60;--no-deps&#62;</span> <span class="green">&#60;-e sourcefolder&#62;</span></pre>
 
+- Use :red:`sudo` for a root installation.
+
+- Use :blue:`user` for a user installation without admin rights. It will install Theano in your local site-packages.
+
+- Use :pink:`no-deps` when you don't want the dependencies of Theano to not be installed through pip. This is important when they have already been installed as system packages. 
+
+- Use :green:`e` to make your installation file :green:`sourcefolder` editable.
+
+Setting up the GPU (optional)
+----------------------------
+
+.. include:: install_gpu.txt
+    :start-line: 6
 
 Testing your installation
 --------------------------
+
+Testing packages
+^^^^^^^^^^^^^^^^
 
 Once you have installed Theano, you should run the test suite. 
 
@@ -84,10 +102,29 @@ All Theano tests should pass (skipped tests and known failures are normal). If
 some test fails on your machine, you are encouraged to tell us what went
 wrong on the ``theano-users@googlegroups.com`` mailing list.
 
+Testing BLAS
+^^^^^^^^^^^^
 
-Setting up the GPU
-------------------
+It is recommended to test your Theano/BLAS integration. There are many versions
+of BLAS that exist and there can be up to 10x speed difference between them.
+Also, having Theano link directly against BLAS instead of using NumPy/SciPy as
+an intermediate layer reduces the computational overhead. This is
+important for BLAS calls to ``ger``, ``gemv`` and small ``gemm`` operations
+(automatically called when needed when you use ``dot()``). To run the
+Theano/BLAS speed test:
 
-.. include:: install_gpu.txt
-    :start-line: 6
-    :end-line: 47
+.. code-block:: bash
+
+    python `python -c "import os, theano; print os.path.dirname(theano.__file__)"`/misc/check_blas.py
+
+This will print a table with different versions of BLAS/numbers of
+threads on multiple CPUs and GPUs. It will also print some Theano/NumPy
+configuration information. Then, it will print the running time of the same
+benchmarks for your installation. Try to find a CPU similar to yours in
+the table, and check that the single-threaded timings are roughly the same.
+
+Theano should link to a parallel version of Blas and use all cores
+when possible. By default it should use all cores. Set the environment
+variable "OMP_NUM_THREADS=N" to specify to use N threads.
+
+If you encountered any trouble, head to the :ref:`troubleshooting` page.

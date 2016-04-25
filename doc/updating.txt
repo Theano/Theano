@@ -55,4 +55,5 @@ to your ``Theano`` folder and execute the following command:
 
     git pull
 
-You should update frequently, bugs are fixed on a very regular basis.
+You should update frequently, bugs are fixed on a very regular basis, and features are
+added even more frequently!
