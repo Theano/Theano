@@ -1765,6 +1765,54 @@ def local_track_shape_i(node):
 
 
 @register_specialize
+@register_canonicalize
+@gof.local_optimizer([Subtensor])
+def local_subtensor_remove_broadcastable_index(node):
+    """
+    Remove broadcastable dimension with index 0 or -1
+    a[:,:,:,0] -> a.dimshuffle(0,1,2), when
+        a.broadcastable = (False, False, False, True)
+    a[0,:,-1,:] -> a.dimshuffle(1,3), when
+        a.broadcastable = (True, False, True, False)
+
+    """
+    if isinstance(node.op, Subtensor):
+        idx = node.op.idx_list
+    else:
+        return
+
+    remove_dim = []
+    node_inputs_idx = 1
+    for dim, elem in enumerate(idx):
+        if isinstance(elem, (scalar.Scalar)):
+            # The idx is a Scalar, ie a Type. This means the actual index
+            # is contained in node.inputs[1]
+            dim_index = node.inputs[node_inputs_idx]
+            if type(dim_index) == theano.scalar.basic.ScalarConstant:
+                dim_index = dim_index.value
+            if dim_index in [0, -1] and node.inputs[0].broadcastable[dim]:
+                remove_dim.append(dim)
+                node_inputs_idx += 1
+            else:
+                return
+        elif isinstance(elem, slice):
+            if elem != slice(None):
+                return
+        elif isinstance(elem, (integer_types, numpy.integer)):
+            if elem in [0, -1] and node.inputs[0].broadcastable[dim]:
+                remove_dim.append(dim)
+        else:
+            raise TypeError('case not expected')
+
+    if len(remove_dim) == 0:
+        return
+    else:
+        all_dim = range(node.inputs[0].ndim)
+        remain_dim = [x for x in all_dim if x not in remove_dim]
+        return [node.inputs[0].dimshuffle(tuple(remain_dim))]
+
+
+@register_specialize
 @register_canonicalize('fast_compile_gpu')
 @gof.local_optimizer([Subtensor, AdvancedSubtensor1])
 def local_subtensor_make_vector(node):
