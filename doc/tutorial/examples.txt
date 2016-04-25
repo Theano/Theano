@@ -300,6 +300,7 @@ Let's start from the accumulator defined above:
 We can use it to increment the state as usual:
 
 >>> accumulator(10)
+array(0)
 >>> print(state.get_value())
 10
 
@@ -309,6 +310,7 @@ using the ``swap`` parameter, which is a dictionary of shared variables to excha
 >>> new_state = theano.shared(0)
 >>> new_accumulator = accumulator.copy(swap={state:new_state})
 >>> new_accumulator(100)
+[array(0)]
 >>> print(new_state.get_value())
 100
 
@@ -325,6 +327,7 @@ parameter, which is set to ``False`` by default:
 As expected, the shared state is no longer updated:
 
 >>> null_accumulator(9000)
+[array(10)]
 >>> print(state.get_value())
 10
 
