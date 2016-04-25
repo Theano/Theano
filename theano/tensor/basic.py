@@ -5901,12 +5901,9 @@ class Diagonal(Op):
         A vector representing the diagonal elements.
 
     """
-    __props__ = ("offset", "axis1", "axis2")
-    default_offset = 0
-    default_axis1 = 0
-    default_axis2 = 1
+    __props__ = ("offset", "axis1", "axis2", "view")
 
-    def __init__(self, offset=0, axis1=0, axis2=1):
+    def __init__(self, offset=0, axis1=0, axis2=1, view=False):
         self.view = view
         if self.view and not numpy_diagonal_return_view:
             warnings.warn("View will forced to False. Diagonal property view is "
@@ -5922,10 +5919,7 @@ class Diagonal(Op):
         self.axis2 = axis2
 
     def make_node(self, _x):
-        if not isinstance(_x, theano.Variable):
-            x = as_tensor_variable(_x)
-        else:
-            x = _x
+        x = as_tensor_variable(_x)
 
         if x.ndim < 2:
             raise ValueError('Diagonal needs an input with 2 or more '
@@ -5937,39 +5931,7 @@ class Diagonal(Op):
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
-        # zero-dimensional matrices ...
-        if numpy.min(x.shape) == 0:
-            out_shape = [d for i, d in enumerate(x.shape)
-                         if i not in (self.axis1, self.axis2)]
-            diag_size = numpy.min((x.shape[self.axis1], x.shape[self.axis2]))
-            out_shape.append(diag_size)
-            z[0] = node.outputs[0].type.value_zeros(tuple(out_shape))
-            return
-        
-        if x.shape[self.axis1] < x.shape[self.axis2]:
-            axis_with_bigger_shape = self.axis2
-            axis_with_smaller_shape = self.axis1
-        else:
-            axis_with_bigger_shape = self.axis1
-            axis_with_smaller_shape = self.axis2
-
-        slicer = [numpy.s_[:], ] * x.ndim
-        slicer[axis_with_bigger_shape] = 0  # self.offset
-        slicer = tuple(slicer)
-        if axis_with_smaller_shape > axis_with_bigger_shape:
-            axis_with_smaller_shape -= 1
-
-        rval = x[slicer].swapaxes(axis_with_smaller_shape, -1)
-
-        other_strides = tuple([d for i, d in enumerate(x.strides)
-                               if i not in (self.axis1, self.axis2)])
-        rval.strides = other_strides + \
-                       (x.strides[self.axis1] + x.strides[self.axis2], )
-
-        if self.view:
-            z[0] = rval
-        else:
-            z[0] = rval.copy()
+        z[0] = x.diagonal(self.offset, self.axis1, self.axis2)
 
     def grad(self, inputs, gout):
         (x,) = inputs

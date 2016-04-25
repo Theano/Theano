@@ -4292,20 +4292,10 @@ gpu_eye = GpuEye(dtype='float32')
 
 
 class GpuDiagonal(GpuOp):
-    __props__ = ("offset", "axis1", "axis2")
-    default_offset = 0
-    default_axis1 = 0
-    default_axis2 = 1
+    __props__ = ("offset", "axis1", "axis2", "view")
 
-    def __init__(self, offset=0, axis1=0, axis2=1):
+    def __init__(self, offset=0, axis1=0, axis2=1, view=False):
         self.view = view
-        if self.view and not numpy_diagonal_return_view:
-            warnings.warn("View will forced to False. Diagonal property view is "
-                          "set to True but numpy version %s and prior versions of "
-                          "numpy.diagonal() do not return a view. Update "
-                          "numpy to use Diagonal(view=True)" % 
-                          numpy.version.version)
-            self.view = False
         if self.view:
             self.view_map = {0: [0]}
         self.offset = offset
@@ -4313,10 +4303,7 @@ class GpuDiagonal(GpuOp):
         self.axis2 = axis2
 
     def make_node(self, _x):
-        if not isinstance(_x, theano.Variable):
-            x = as_cuda_ndarray_variable(_x)
-        else:
-            x = _x
+        x = as_cuda_ndarray_variable(_x)
 
         if x.ndim < 2:
             raise ValueError('Diagonal needs an input with 2 or more '
@@ -4350,11 +4337,15 @@ class GpuDiagonal(GpuOp):
         if axis_with_smaller_shape > axis_with_bigger_shape:
             axis_with_smaller_shape -= 1
 
+        # We swap axis1 to the last dim because we want the dim on which the
+        # disg s extracted be listed as the last dim of the tensor. This is
+        # also in consistence with the interface of numpy.diagonal.
         new_dim_order = range(x[slicer].ndim)
         new_dim_order[axis_with_smaller_shape], new_dim_order[-1] = \
             new_dim_order[-1], new_dim_order[axis_with_smaller_shape]
         rval = cuda_dimshuffle(x[slicer], new_dim_order)
         
+        # We change the stride such that rval becomes a view of the diagonal.
         other_strides = tuple([d for i, d in enumerate(x.strides)
                                if i not in (self.axis1, self.axis2)])
         rval.strides = other_strides + \
