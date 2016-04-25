@@ -16,7 +16,6 @@ import numpy
 
 import theano
 from theano import config, gof
-from functools import partial
 from theano.compat import izip
 from theano.gof import graph
 import theano.compile.mode
