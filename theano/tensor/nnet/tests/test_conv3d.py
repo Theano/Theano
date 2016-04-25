@@ -1,4 +1,4 @@
-from __future__ import absolute_import, print_function, division
+from __future__ import print_function
 from nose.plugins.skip import SkipTest
 import theano
 import theano.tensor as T
@@ -301,10 +301,10 @@ class TestConv3D(utt.InferShapeTester):
             print(H_mat)
             print(Hv_mat)
             print('max error: ' + str(N.abs(H_mat - Hv_mat).max()))
-            W.get_value(borrow=True)[W.get_value(borrow=True) != 0] += 1.0
+            self.W.get_value(borrow=True)[self.W.get_value(borrow=True) != 0] += 1.0
             print(
                 'min non-zero kernel mag: ' +
-                str(N.abs(W.get_value(borrow=True)).min()))
+                str(N.abs(self.W.get_value(borrow=True)).min()))
             assert False
 
     def test_c_against_mat_transp_mul(self):
