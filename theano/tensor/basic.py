@@ -6218,7 +6218,7 @@ class AllocEmpty(gof.Op):
 
     # specify the type of the data
     def __init__(self, dtype):
-        assert isinstance(dtype, str)
+        assert isinstance(dtype, str), dtype
         self.dtype = dtype.lower()
 
     def validate_shape(self, shape):
