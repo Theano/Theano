@@ -1,7 +1,7 @@
 .. _libdoc_gpuarray_type:
 
 ===================================================
-:mod:`theano.sandbox.gpuarray.type` -- Type classes
+:mod:`gpuarray.type` -- Type classes
 ===================================================
 
 .. automodule:: theano.sandbox.gpuarray.type
