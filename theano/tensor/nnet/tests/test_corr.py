@@ -130,7 +130,8 @@ class TestCorr2D(utt.InferShapeTester):
 
         # TEST GRADIENT
         if verify_grad:
-            utt.verify_grad(sym_CorrMM, [orig_image_data, filter_data])
+            utt.verify_grad(sym_CorrMM, [orig_image_data, filter_data],
+                            mode=self.mode)
 
     @attr('slow')
     def test_basic(self):
