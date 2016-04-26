@@ -48,8 +48,8 @@ class TestSearchsortedOp(utt.InferShapeTester):
         self.x = T.vector('x')
         self.v = T.tensor3('v')
 
-        self.a = np.random.random(100).astype(config.floatX)
-        self.b = np.random.random((10, 20, 5)).astype(config.floatX)
+        self.a = 30 * np.random.random(50).astype(config.floatX)
+        self.b = 30 * np.random.random((8, 10, 5)).astype(config.floatX)
         self.idx_sorted = np.argsort(self.a)
 
     def tearDown(self):
