@@ -550,9 +550,9 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         # step 3: partial flattening
         start_ = start
         shape = (x.shape[: start_] +
-                 (tensor.prod(x.shape[start: end_]),) +
+                 (numpy.prod(x.shape[start: end_]),) +
                  x.shape[end_:])
-        input_flat = tensor.reshape(x, shape)
+        input_flat = numpy.reshape(x, shape)
         # step 4: build the strides
         strides = [1]
         for i in range(start_, end_-1)[::-1]:
@@ -561,7 +561,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         # step 5: build the indices into x_flat
         items = [new_ind[i] if isinstance(new_ind[i], numpy.ndarray)
                  else 0 for i in range(start_, end_)]
-        new_idx = tensor.sum([i * j for i,j
+        new_idx = numpy.sum([i * j for i,j
                              in zip(items, strides[::-1])],
                              axis=0)
         # step 6: advanced slicing
