@@ -92,14 +92,13 @@ def test_incsub_f16():
 class G_advancedsubtensor(test_subtensor.TestAdvancedSubtensor):
     def shortDescription(self):
         return None
+
     def __init__(self, name):
         test_subtensor.TestAdvancedSubtensor.__init__(
             self, name,
             shared=gpuarray_shared_constructor,
             sub=GpuAdvancedSubtensor,
             inc_sub=GpuIncSubtensor,
-            adv_sub1=GpuAdvancedSubtensor1,
-            adv_incsub1=GpuAdvancedIncSubtensor1,
             mode=mode_with_gpu,
             # avoid errors with limited devices
             dtype='float32',
@@ -121,7 +120,7 @@ def test_adv_subtensor():
     expr = x[idxs]
     f = theano.function([idx1, idx2], expr, mode=mode_with_gpu)
     assert sum([isinstance(node.op, GpuAdvancedSubtensor)
-                    for node in f.maker.fgraph.toposort()]) == 1
+               for node in f.maker.fgraph.toposort()]) == 1
     idx1_val = [0, 1]
     idx2_val = [0, 1]
     rval = f(idx1_val, idx2_val)
