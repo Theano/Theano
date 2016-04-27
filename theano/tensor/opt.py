@@ -5227,7 +5227,7 @@ def local_opt_alloc(node):
                                if i in node.op.axis]
                     if to_prod:
                         if isinstance(node.op, T.Sum):
-                            val *= T.mul(*to_prod)
+                            val *= T.mul(*to_prod).astype(str(val.dtype))
                         else:
                             val = val ** T.mul(*to_prod)
                     return [T.alloc(T.cast(val, dtype=node.outputs[0].dtype),
