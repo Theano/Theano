@@ -279,16 +279,20 @@ class test_RopLop(RopLop_checker):
                     return conv_op(input, filters, border_mode=border_mode)
                 output = sym_conv2d(input, filters).flatten()
                 yv = tensor.Rop(output, [input, filters], [ev_input, ev_filters])
+                mode = None
+                if theano.config.mode == "FAST_COMPILE":
+                    mode = "FAST_RUN"
                 rop_f = function([input, filters, ev_input, ev_filters],
-                                 yv, on_unused_input='ignore')
+                                 yv, on_unused_input='ignore', mode=mode)
                 sy, _ = theano.scan(lambda i, y, x1, x2, v1, v2:
                                     (tensor.grad(y[i], x1) * v1).sum() +
                                     (tensor.grad(y[i], x2) * v2).sum(),
                                     sequences=tensor.arange(output.shape[0]),
                                     non_sequences=[output, input, filters,
-                                                   ev_input, ev_filters])
+                                                   ev_input, ev_filters],
+                                    mode=mode)
                 scan_f = function([input, filters, ev_input, ev_filters], sy,
-                                  on_unused_input='ignore')
+                                  on_unused_input='ignore', mode=mode)
                 dtype = theano.config.floatX
                 image_data = numpy.random.random(image_shape).astype(dtype)
                 filter_data = numpy.random.random(filter_shape).astype(dtype)

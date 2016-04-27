@@ -285,7 +285,9 @@ class TestCorrConv2d(BaseTestConv2d):
 
     def tcase(self, i, f, s, b, flip, provide_shape):
         o = self.get_output_shape(i, f, s, b)
-        if not theano.config.blas.ldflags:
+        if (not theano.config.blas.ldflags or
+                not theano.config.cxx or
+                theano.config.mode == "FAST_COMPILE"):
             raise SkipTest("Need blas to test conv2d")
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                      verify_grad=True, provide_shape=provide_shape,
@@ -541,7 +543,10 @@ class TestBilinearUpsampling(unittest.TestCase):
     # If BLAS is not available on CPU, then we accept the fallback to the
     # slow Python implementation for that test.
     compile_mode = theano.compile.mode.get_default_mode()
-    if not theano.config.blas.ldflags:
+    if theano.config.mode == "FAST_COMPILE":
+        compile_mode = compile_mode.excluding("conv_gemm")
+        compile_mode = compile_mode.excluding('AbstractConvCheck')
+    elif not theano.config.blas.ldflags or not theano.config.cxx:
         compile_mode = compile_mode.excluding('AbstractConvCheck')
 
     def numerical_kernel_1D(self, ratio):

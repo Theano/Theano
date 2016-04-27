@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import os
-from theano import Apply
+from theano import Apply, Op
 from theano.tensor.extra_ops import CumsumOp
 
 try:
@@ -13,7 +13,7 @@ from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel,
 from .opt import register_opt as register_gpu_opt, op_lifter
 
 
-class GpuCumsum(GpuKernelBase):
+class GpuCumsum(GpuKernelBase, Op):
     """
     Parameters
     ----------

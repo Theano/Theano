@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import copy
 import os
 import sys
 from six import reraise
@@ -10,7 +9,7 @@ import numpy
 import theano
 from theano import config, function, tensor
 from theano.sandbox import multinomial
-from theano.compile.mode import get_default_mode, predefined_linkers
+from theano.compile.mode import get_default_mode
 import theano.sandbox.cuda as cuda
 import theano.tests.unittest_tools as utt
 from theano.compat import PY3
@@ -19,15 +18,12 @@ from theano.misc.pkl_utils import CompatUnpickler
 
 def get_mode(gpu):
     mode = get_default_mode()
-    mode = copy.copy(mode)
+    if theano.config.mode == 'FAST_COMPILE':
+        mode = theano.compile.get_mode('FAST_RUN')
     if gpu:
         mode = mode.including('gpu', 'gpu_local_optimizations',
                               'local_cut_gpu_host_gpu',
                               'local_gpu_multinomial')
-    if isinstance(mode.linker, theano.gof.PerformLinker):
-        mode.linker = predefined_linkers['c|py']
-    if hasattr(mode.linker, 'c_thunks'):
-        mode.linker.c_thunks = True
     return mode
 
 

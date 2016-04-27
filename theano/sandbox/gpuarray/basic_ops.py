@@ -293,6 +293,9 @@ class GpuKernelBase(object):
     # This is a shorthand for if your op only has a fixed version
     # You can reimplement it, but make sure to call kernel_version()
     def c_code_cache_version_apply(self, node):
+        v = self.c_code_cache_version()
+        if not v:
+            return ()
         return (self.c_code_cache_version(), self.kernel_version(node))
 
     def kernel_version(self, node):
