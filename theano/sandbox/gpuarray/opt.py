@@ -255,7 +255,7 @@ def local_cut_gpu_transfers(node):
                     return [node.op(n2.inputs[0])]
 
 gpu_cut_copies.register('cut_gpua_host_transfers', local_cut_gpu_transfers,
-                        'fast_compile', 'fast_run', 'inplace', 'gpuarray')
+                        'fast_compile', 'fast_run', 'gpuarray')
 gpu_cut_copies.register('cut_gpua_constant_transfers',
                         tensor.opt.constant_folding,
                         'fast_compile', 'fast_run', 'gpuarray')
