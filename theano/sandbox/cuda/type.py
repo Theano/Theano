@@ -42,6 +42,8 @@ class CudaNdarrayType(Type):
 
     dtype = 'float32'
 
+    context_name = 'gpu'  # For similar interface with the new back-end.
+
     Variable = None
     """
     This will be set to the Variable type corresponding to this class.
