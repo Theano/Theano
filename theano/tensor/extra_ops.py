@@ -85,7 +85,11 @@ class SearchsortedOp(theano.Op):
     __props__ = ("side", )
 
     def __init__(self, side='left'):
-        self.side = side
+        if side == 'left' or side == 'right':
+            self.side = side
+        else:
+            raise ValueError('\'%(side)s\' is an invalid value for keyword \'side\''
+                             % locals())
 
     def get_params(self, node):
         return self.side
