@@ -13,7 +13,6 @@ import numpy
 import os
 import re
 import sys
-import traceback
 import warnings
 
 import theano
@@ -21,7 +20,6 @@ from theano import config
 
 import theano.gof.cc
 from six import itervalues
-from six.moves import StringIO
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof.cmodule import GCC_compiler
@@ -554,16 +552,7 @@ class PureOp(object):
                 detailed_err_msg = (
                     "For compute_test_value, one input test value does not"
                     " have the requested type.\n")
-                tr = getattr(v.tag, 'trace', [])
-                if isinstance(tr, list) and len(tr) > 0:
-                    detailed_err_msg += (
-                        " \nBacktrace when that variable is created:\n")
-                    # Print separate message for each element in the list
-                    # of batcktraces
-                    sio = StringIO()
-                    for subtr in tr:
-                        traceback.print_list(subtr, sio)
-                    detailed_err_msg += str(sio.getvalue())
+                detailed_err_msg += utils.get_variable_trace_string(v)
 
                 detailed_err_msg += (
                     "\nThe error when converting the test value to that"
@@ -575,8 +564,8 @@ class PureOp(object):
                 e.args = ("\n".join(args),)
                 raise
             return ret
-
-        raise AttributeError('%s has no test value' % v)
+        detailed_err_msg = utils.get_variable_trace_string(v)
+        raise AttributeError('%s has no test value %s' % (v, detailed_err_msg))
 
     def __call__(self, *inputs, **kwargs):
         """
@@ -630,9 +619,11 @@ class PureOp(object):
                             (i, ins, node), stacklevel=2)
                         run_perform = False
                     elif config.compute_test_value == 'raise':
+                        detailed_err_msg = utils.get_variable_trace_string(ins)
+
                         raise ValueError(
-                            'Cannot compute test value: input %i (%s) of Op %s missing default value' %
-                            (i, ins, node))
+                            'Cannot compute test value: input %i (%s) of Op %s missing default value. %s' %
+                            (i, ins, node, detailed_err_msg))
                     elif config.compute_test_value == 'ignore':
                         # silently skip test
                         run_perform = False

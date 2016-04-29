@@ -6,6 +6,47 @@ import numpy
 from theano.tensor.nnet.bn import batch_normalization
 
 
+def test_BNComposite():
+    try:
+        orig = theano.config.compute_test_value
+
+        theano.config.compute_test_value = 'raise'
+
+        def bn_ref(x, G, B, M, V):
+            n = (x - M) / V
+            return n * G + B
+
+        numpy.random.seed(1234)
+        X = 1 + numpy.random.random([10, 20]).astype('float32')
+        B = 1 + numpy.random.random([20]).astype('float32')
+        G = 1 + numpy.random.random([20]).astype('float32')
+        M = 1 + numpy.random.random([20]).astype('float32')
+        V = 1 + numpy.random.random([20]).astype('float32')
+
+        x = theano.tensor.matrix('x')
+        b = theano.tensor.vector('b')
+        g = theano.tensor.vector('g')
+        m = theano.tensor.vector('m')
+        v = theano.tensor.vector('v')
+
+        x.tag.test_value = numpy.random.rand(2, 2).astype(theano.config.floatX)
+        b.tag.test_value = numpy.random.rand(2).astype(theano.config.floatX)
+        g.tag.test_value = numpy.random.rand(2).astype(theano.config.floatX)
+        m.tag.test_value = numpy.random.rand(2).astype(theano.config.floatX)
+        v.tag.test_value = numpy.random.rand(2).astype(theano.config.floatX)
+
+        bn_ref_op = bn_ref(x, g, b, m, v)
+        f_ref = theano.function([x, b, g, m, v], [bn_ref_op])
+        res_ref = f_ref(X, G, B, M, V)
+        for mode in ['low_mem', 'high_mem']:
+            bn_op = batch_normalization(x, g, b, m, v, mode=mode)
+            f = theano.function([x, b, g, m, v], [bn_op])
+            res = f(X, G, B, M, V)
+            utt.assert_allclose(res_ref, res)
+    finally:
+        theano.config.compute_test_value = orig
+
+
 def test_bn():
 
     def bn_ref(x, G, B, M, V):
