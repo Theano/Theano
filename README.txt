@@ -40,3 +40,5 @@ Theano (current directory) is the distribution directory.
       the appropriate submodules
     * Theano/doc contains files and scripts used to generate the documentation
     * Theano/html is the place where the documentation will be generated
+
+Join the chat at https://gitter.im/Theano/Theano
