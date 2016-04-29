@@ -513,7 +513,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                stop_on_name=False, prefix_child=None,
                scan_ops=None, profile=None,
                scan_inner_to_outer_inputs=None, smap=None,
-               used_ids=None):
+               used_ids=None, print_clients=False):
     """
     Print the graph leading to `r` to given depth.
 
@@ -526,7 +526,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
     depth
         Maximum recursion depth (Default -1 for unlimited).
     done
-        dict of Apply instances that have already been printed and their
+        Internal. Used to pass information when recursing.
+        Dict of Apply instances that have already been printed and their
         associated printed ids.
     print_type
         Whether to print the Variable type after the other infos.
@@ -555,6 +556,12 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         inputs (outer inputs) for printing purposes.
     smap
         None or the storage_map when printing an Theano function.
+    used_ids
+        Internal. Used to pass information when recursing.
+        It is a dict from obj to the id used for it.
+        It wasn't always printed, but at least a reference to it was printed.
+    print_clients
+        If True, we will print the clients of nodes when they have more then one clients.
     """
     if depth == 0:
         return
@@ -637,7 +644,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         if smap:
             data = " " + str(smap.get(a.outputs[0], ''))
         clients = ''
-        if len(getattr(r, 'clients', [])) > 1:
+        if print_clients and len(getattr(r, 'clients', [])) > 1:
             def get_index(c):
                 try:
                     return order.index(c)
@@ -700,7 +707,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                         prefix_child=new_prefix_child, scan_ops=scan_ops,
                         profile=profile,
                         scan_inner_to_outer_inputs=scan_inner_to_outer_inputs,
-                        smap=smap, used_ids=used_ids)
+                        smap=smap, used_ids=used_ids, print_clients=print_clients)
     else:
         if scan_inner_to_outer_inputs is not None and\
            r in scan_inner_to_outer_inputs:
@@ -1688,13 +1695,16 @@ class _VariableEquivalenceTracker(object):
             # N.B. compute the debugprint now, because future
             # optimizations will change the graph
             done = dict()
+            used_ids = dict()
             self.reasons[new_r].append(
                 (reason,
                  r,
                  debugprint(r, prefix='  ', depth=6,
-                            file=StringIO(), done=done).getvalue(),
+                            file=StringIO(), done=done,
+                            used_ids=used_ids).getvalue(),
                  debugprint(new_r, prefix='  ', depth=6,
-                            file=StringIO(), done=done).getvalue()))
+                            file=StringIO(), done=done,
+                            used_ids=used_ids).getvalue()))
             self.replaced_by[r].append((reason, new_r))
 
         if r in self.equiv:
