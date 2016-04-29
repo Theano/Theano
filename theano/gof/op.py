@@ -622,7 +622,7 @@ class PureOp(object):
                         detailed_err_msg = utils.get_variable_trace_string(ins)
 
                         raise ValueError(
-                            'Cannot compute test value: input %i (%s) of Op %s missing default value. \nStacktrace when the variable was created: %s' %
+                            'Cannot compute test value: input %i (%s) of Op %s missing default value. %s' %
                             (i, ins, node, detailed_err_msg))
                     elif config.compute_test_value == 'ignore':
                         # silently skip test
