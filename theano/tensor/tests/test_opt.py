@@ -1946,40 +1946,37 @@ class test_local_subtensor_make_vector(unittest.TestCase):
         r = f(0, 1, 2)
         assert r[0] == 0 and r[1] == 2
 
-    def test_stacktrace(self):
+    def test_stack_trace(self):
         x, y, z = tensor.lscalars('xyz')
         v = make_vector(x, y, z)
 
-        # FIXME: remove the two test cases with v[0]? they are creating graphs
-        #        without apply nodes, which don't require check_stack_trace.
+        # Compile functions in two modes:
+        # - only with 'local_subtensor_make_vector' (requires adding
+        #   the 'canonicalize' phase)
+        # - all optimizations in fast_compile including the
+        #   'local_subtensor_make_vector' optimization
+        modes = [
+            theano.compile.mode.Mode(optimizer=None).including(
+                'canonicalize_db').including("local_subtensor_make_vector"),
+            theano.compile.mode.get_mode('FAST_COMPILE').including(
+                "local_subtensor_make_vector")
+        ]
 
-        # Compile function using only the 'local_subtensor_make_vector' optimization,
-        # which requires us to add the 'canonicalize' phase.
-        mode = theano.compile.mode.Mode(optimizer=None).including('canonicalize_db').including("local_subtensor_make_vector")
-        f = function([x, y, z], v[0], mode=mode)
+        # list of subtensor cases, where local_subtensor_make_vector
+        # inserts a new MakeVector node
+        v_subtensors = [v[:2], v[::2], v[[0, 2]]]
 
-        # Compile function using all optimizations in fast_compile mode,
-        # including the 'local_subtensor_make_vector' optimization
-        mode = theano.compile.mode.get_mode('FAST_COMPILE').including("local_subtensor_make_vector")
-        f = function([x, y, z], v[0], mode=mode)
+        for mode in modes:
+            # case, where local_subtensor_make_vector only removes nodes
+            # FIXME: remove this useless case, where the graph only contains a
+            # DeepCopyOp? Or is there a meaningful test case for constant
+            # scalar index subtensor?
+            f = function([x, y, z], v[0], mode=mode)
 
-        # The two cases in this test do not check the case where
-        # local_subtensor_make_vector inserts a Subtensor node (See issue #4421)
-        # self.assertTrue(check_stack_trace(f, ops_to_check='all'))
-
-        # Cases, in which local_subtensor_make_vector adds a new MakeVector
-        # node
-        # Compile function using only the 'local_subtensor_make_vector' optimization,
-        # which requires us to add the 'canonicalize' phase.
-        mode = theano.compile.mode.Mode(optimizer=None).including('canonicalize_db').including("local_subtensor_make_vector")
-        f = function([x, y, z], v[::2], mode=mode)
-        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
-
-        # Compile function using all optimizations in fast_compile mode,
-        # including the 'local_subtensor_make_vector' optimization
-        mode = theano.compile.mode.get_mode('FAST_COMPILE').including("local_subtensor_make_vector")
-        f = function([x, y, z], v[::2], mode=mode)
-        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+            # cases, where local_subtensor_make_vector inserts nodes
+            for v_subtensor in v_subtensors:
+                f = function([x, y, z], v_subtensor, mode=mode)
+                self.assertTrue(check_stack_trace(f, ops_to_check='all'))
 
 
 class test_local_subtensor_lift(unittest.TestCase):
