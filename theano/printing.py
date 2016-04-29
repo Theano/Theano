@@ -50,7 +50,8 @@ VALID_ASSOC = set(['left', 'right', 'either'])
 
 def debugprint(obj, depth=-1, print_type=False,
                file=None, ids='CHAR', stop_on_name=False,
-               done=None, print_storage=False):
+               done=None, print_storage=False, print_clients=False,
+               used_ids=None):
     """Print a computation graph as text to stdout or a file.
 
     :type obj: Variable, Apply, or Function instance
@@ -76,6 +77,13 @@ def debugprint(obj, depth=-1, print_type=False,
     :param print_storage: If True, this will print the storage map
         for Theano functions. Combined with allow_gc=False, after the
         execution of a Theano function, we see the intermediate result.
+    :type print_clients: bool
+    :param print_clients: If True, this will print for Apply node that
+         have more then 1 clients its clients. This help find who use
+         an Apply node.
+    :type used_ids: dict or None
+    :param used_ids: the id to use for some object, but maybe we only
+         refered to it yet.
 
     :returns: string if `file` == 'str', else file arg
 
@@ -105,6 +113,8 @@ def debugprint(obj, depth=-1, print_type=False,
         _file = file
     if done is None:
         done = dict()
+    if used_ids is None:
+        used_ids = dict()
     used_ids = dict()
     results_to_print = []
     profile_list = []
@@ -186,7 +196,8 @@ N.B.:
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=o, ids=ids,
                              scan_ops=scan_ops, stop_on_name=stop_on_name,
-                             profile=p, smap=s, used_ids=used_ids)
+                             profile=p, smap=s, used_ids=used_ids,
+                             print_clients=print_clients)
 
     if len(scan_ops) > 0:
         print("", file=_file)
@@ -216,7 +227,8 @@ N.B.:
                 file=_file, ids=ids,
                 scan_ops=scan_ops,
                 stop_on_name=stop_on_name,
-                scan_inner_to_outer_inputs=inner_to_outer_inputs)
+                scan_inner_to_outer_inputs=inner_to_outer_inputs,
+                print_clients=print_clients, used_ids=used_ids)
             if hasattr(s.owner.op, 'fn'):
                 # If the op was compiled, print the optimized version.
                 outputs = s.owner.op.fn.maker.fgraph.outputs
@@ -235,7 +247,8 @@ N.B.:
                     ids=ids, stop_on_name=stop_on_name,
                     prefix_child=new_prefix_child,
                     scan_ops=scan_ops,
-                    scan_inner_to_outer_inputs=inner_to_outer_inputs)
+                    scan_inner_to_outer_inputs=inner_to_outer_inputs,
+                    print_clients=print_clients, used_ids=used_ids)
 
     if file is _file:
         return file

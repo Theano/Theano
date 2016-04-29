@@ -274,7 +274,7 @@ def test_debugprint():
     # test clients
     s = StringIO()
     f = theano.function([A, B, D], [A + B, A + B - D])
-    debugprint(f, file=s)
+    debugprint(f, file=s, print_clients=True)
     s = s.getvalue()
     # The additional white space are needed!
     reference = '\n'.join([
