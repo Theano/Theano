@@ -1577,9 +1577,8 @@ local_elemwise_alloc = register_specialize(
 @gof.local_optimizer([T.Elemwise])
 def local_fill_sink(node):
     """
-    f(fill(a, b), fill(c, d), e) -> fill(a, fill(c, f(b, d, e)))
     f(fill(a, b), fill(c, d), e) -> fill(c, fill(a, f(b, d, e)))
-    f need to be an elemwise
+    f need to be an elemwise that isn't a fill.
     """
     if (not hasattr(node, 'op') or
             not isinstance(node.op, T.Elemwise) or
