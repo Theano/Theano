@@ -24,6 +24,7 @@ if not cuda.cuda_available:
     raise SkipTest('Optional package cuda disabled')
 
 import theano.sandbox.cuda.cula as cula
+from theano.misc.pycuda_init import pycuda_available
 
 from theano.sandbox.cuda import basic_ops
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -804,6 +805,70 @@ def test_local_gpu_solve():
 
     cmp((6, 6), (6, 1))
     cmp((5, 5), (5, 1))
+
+
+def test_local_gpu_cholesky():
+
+    if not cula.cula_available:
+        raise SkipTest('Optional dependency CULA not available')
+    if not pycuda_available:
+        raise SkipTest('Optional dependency pycuda not available')
+
+    numpy.random.seed(1)
+
+    def cmp(A_dim, lower):
+        M = numpy.random.normal(size=(A_dim, A_dim)).astype('float32')
+        # A = M.dot(M) will be positive definite for all non-singular M
+        A_val = M.dot(M.T)
+        A = cuda.shared_constructor(A_val, 'A')
+
+        cholesky_op = tensor.slinalg.Cholesky(lower=lower)
+        f = pfunc([], cholesky_op(A), mode=mode_with_gpu)
+
+        assert isinstance(f.maker.fgraph.toposort()[1].inputs[0].owner.op,
+                          cuda.cula.GpuCholesky)
+
+        assert f.maker.fgraph.toposort()[1].inputs[0].owner.op.lower == lower
+
+        assert cuda.opt.local_gpu_cholesky.transform(
+            tensor.slinalg.cholesky(A).owner)
+
+        chol_A_res = f()
+        # numpy cholesky always returns lower-triangular matrix
+        chol_A_val = numpy.linalg.cholesky(A_val)
+        chol_A_val = chol_A_val if lower else chol_A_val.T
+
+        utt.assert_allclose(chol_A_res, chol_A_val)
+
+    cmp(3, True)
+    cmp(6, False)
+
+
+def test_local_inplace_gpu_cholesky():
+
+    if not cula.cula_available:
+        raise SkipTest('Optional dependency CULA not available')
+    if not pycuda_available:
+        raise SkipTest('Optional dependency pycuda not available')
+
+    def check_inplace_opt(lower):
+        # construct small graph in which Cholesky op should be optimized to
+        # be inplace GPU op
+        M = tensor.matrix('M', dtype='float32')
+        cholesky_op = tensor.slinalg.Cholesky(lower=lower)
+        f = theano.function([M], cholesky_op(M.dot(M.T)), mode=mode_with_gpu)
+        # GpuCholesky op should be owner of input to last entry in topo sorted
+        # graph (which should be HostGromGpu)
+        op_candidate = f.maker.fgraph.toposort()[-1].inputs[0].owner.op
+        assert isinstance(op_candidate, cuda.cula.GpuCholesky), (
+            'GpuCholesky op not in expected place in graph.')
+        assert op_candidate.inplace, (
+            'Inplace optimization not applied when it should have been.')
+        assert op_candidate.lower == lower, (
+            'Inplace otimized op did not correctly carry over lower property.')
+
+    check_inplace_opt(True)
+    check_inplace_opt(False)
 
 
 def test_local_gpu_dot_to_dot22dot():

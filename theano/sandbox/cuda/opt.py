@@ -37,7 +37,8 @@ from theano.sandbox.cuda.blas import (
     GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
 
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
-from theano.sandbox.cuda.cula import gpu_solve
+from theano.sandbox.cuda.cula import (
+    gpu_solve, GpuCholesky)
 
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -706,6 +707,35 @@ def local_gpu_solve(node):
             return [host_from_gpu(
                     gpu_solve(as_cuda_ndarray_variable(x),
                               as_cuda_ndarray_variable(y)))]
+    return False
+
+
+@register_opt()
+@local_optimizer([gpu_from_host, slinalg.Cholesky])
+def local_gpu_cholesky(node):
+    """
+    gpu_from_host(CpuCholesky) -> GpuCholesky{no_inplace}(gpu_from_host)
+
+    CpuCholesky(host_from_gpu) -> host_from_gpu(GpuCholesky{no_inplace})
+
+    """
+    if isinstance(node.op, GpuFromHost):
+        host_input = node.inputs[0]
+        if (host_input.owner and
+            isinstance(host_input.owner.op,
+                       slinalg.Cholesky)):
+            A = host_input.owner.inputs[0]
+            A_gpu = as_cuda_ndarray_variable(A)
+            gpu_op = GpuCholesky(lower=host_input.owner.op.lower,
+                                 inplace=False)
+            return [gpu_op(A_gpu)]
+    if isinstance(node.op, slinalg.Cholesky):
+        node_inp = node.inputs[0]
+        if node_inp.owner and isinstance(node_inp.owner.op, HostFromGpu):
+            A = node_inp
+            A_gpu = as_cuda_ndarray_variable(A)
+            gpu_op = GpuCholesky(lower=node.op.lower, inplace=False)
+            return [host_from_gpu(gpu_op(A_gpu))]
     return False
 
 
@@ -2042,6 +2072,13 @@ def local_inplace_ger(node):
     if node.op == gpu_ger_no_inplace:
         return [gpu_ger_inplace(*node.inputs)]
 
+
+@local_optimizer([GpuCholesky], inplace=True)
+def local_inplace_gpu_cholesky(node):
+    if isinstance(node.op, GpuCholesky) and not node.op.inplace:
+        return [GpuCholesky(lower=node.op.lower, inplace=True)(node.inputs[0])]
+
+
 # After destroyhandler is in but before we try to make elemwise things inplace
 # Try to make gpu gemm inplace
 # Also, need to make the gemm optimisation(step 70) happen before the fusion of
@@ -2051,6 +2088,12 @@ optdb.register('InplaceGpuBlasOpt',
                                  local_inplace_gemv,
                                  local_inplace_ger,
                                  name="InplaceGpuBlasOpt"),
+               70.0, 'fast_run', 'inplace', 'gpu')
+
+# Register CULA inplace optimizations here as well
+optdb.register('InplaceGpuCulaOpt',
+               tensor.opt.in2out(local_inplace_gpu_cholesky,
+                                 name='InplaceGpuCulaOpt'),
                70.0, 'fast_run', 'inplace', 'gpu')
 
 
