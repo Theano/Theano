@@ -3281,20 +3281,21 @@ def local_adv_sub1_adv_inc_sub1(node):
     cond = [T.all(T.and_(T.lt(idx, x.shape[0]), T.ge(idx, -x.shape[0])))]
     if not node.fgraph.shape_feature.same_shape(idx, y, 0, 0):
         cond.append(T.eq(idx.shape[0], y.shape[0]))
-    y = Assert("Bad indexing or shapes in a AdvancedIncSubtensor1 "
+    r = Assert("Bad indexing or shapes in a AdvancedIncSubtensor1 "
                "that was optimized away")(y, *cond)
+    copy_stack_trace(y, r)
 
-    if y.dtype == node.outputs[0].dtype:
-        return [y]
+    if r.dtype == node.outputs[0].dtype:
+        return [r]
     # It is possible that y is upcast or downcast to x.dtype.
     # In all case, as we set or add with 0, we can just cast y.
-    r = T.cast(y, node.outputs[0].dtype)
+    r2 = T.cast(r, node.outputs[0].dtype)
 
     # Copy over stacktrace from before casting, since
     # we don't expect problems in the casting operation,
     # and any problems in the indexing would have been spotted above.
-    copy_stack_trace(y, r)
-    return [r]
+    copy_stack_trace(r, r2)
+    return [r2]
 
 
 @register_specialize

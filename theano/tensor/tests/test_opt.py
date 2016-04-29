@@ -2801,32 +2801,23 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             self.assertRaises((AssertionError, ValueError),
                               f, dx, dy, [1])
 
-    def test_stacktrace(self):
+    def test_stack_trace(self):
         x = tensor.matrix("x")
-        y = tensor.matrix("y")
+        # test cases with y.dtype
+        # - equal to x.dtype
+        # - different from x.dtype (to trigger the cast in
+        #   local_adv_sub1_adv_inc_sub1)
+        ys = [tensor.matrix("y"), tensor.dmatrix("y")]
         idx = tensor.ivector()
 
-        dx = numpy.random.rand(4, 5).astype(config.floatX)
-        dy = numpy.random.rand(2, 5).astype(config.floatX)
-        didx = numpy.asarray([1, 3], "int32")
+        # set_subtensor and then subtensor with both ys
+        incs = [tensor.set_subtensor(x[idx], y) for y in ys]
+        outs = [inc[idx] for inc in incs]
 
-        # set_subtensor
-        inc = tensor.set_subtensor(x[idx], y)
-        o = inc[idx]
-        # Compile function using only the 'local_subtensor_make_vector' optimization,
-        # which requires us to add the 'canonicalize' phase.
-        mode = theano.compile.mode.Mode(optimizer=None).including('canonicalize').including("local_adv_sub1_adv_inc_sub1")
-        f = theano.function([x, y, idx], o, self.mode)
-        # The opt only removes nodes in this case, no check_stack_trace needed
-
-        # Compile function using all optimizations in fast_compile mode,
-        # including the 'local_subtensor_make_vector' optimization
-        mode = theano.compile.mode.get_mode('FAST_COMPILE').including("local_adv_sub1_adv_inc_sub1")
-        f = theano.function([x, y, idx], o, self.mode)
-        # The opt only removes nodes in this case, no check_stack_trace needed
-
-        # See if there are use cases which add nodes and need check_stack_trace
-        # See issue #4421
+        for y, out in zip(ys, outs):
+            f = theano.function([x, y, idx], out, self.mode)
+            self.assertTrue(check_stack_trace(
+                f, ops_to_check=(Assert, scal.Cast)))
 
 
 class Test_alloc_zero(unittest.TestCase):
