@@ -28,13 +28,13 @@ internals cannot be modified.
 Output slight numerical difference
 ----------------------------------
 
-Sometimes when you compare the output of Theano between different
-Theano flags, Theano version, CPU and GPU or with other software like
-NumPy, you will see small numerical difference.
+Sometimes when you compare the output of Theano using different
+Theano flags, Theano versions, CPU and GPU or with other software like
+NumPy, you will see small numerical differences.
 
-This is normal. Float number are approximation or real numbers. This
-cause that many small change like doing a+(b+c) vs (a+b)+c can give
-small difference of value. This is normal. For more detail, see: `What
+This is normal. Floating point numbers are approximations of real
+numbers. This is why doing a+(b+c) vs (a+b)+c can give small
+differences of value.  This is normal. For more details, see: `What
 Every Computer Scientist Should Know About Floating-Point Arithmetic
 <https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html>`_.
 
