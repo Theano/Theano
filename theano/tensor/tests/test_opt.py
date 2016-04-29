@@ -1950,12 +1950,15 @@ class test_local_subtensor_make_vector(unittest.TestCase):
         x, y, z = tensor.lscalars('xyz')
         v = make_vector(x, y, z)
 
+        # FIXME: remove the two test cases with v[0]? they are creating graphs
+        #        without apply nodes, which don't require check_stack_trace.
+
         # Compile function using only the 'local_subtensor_make_vector' optimization,
         # which requires us to add the 'canonicalize' phase.
         mode = theano.compile.mode.Mode(optimizer=None).including('canonicalize_db').including("local_subtensor_make_vector")
         f = function([x, y, z], v[0], mode=mode)
 
-        # Compile function using all optimizations in fast_compile mode, 
+        # Compile function using all optimizations in fast_compile mode,
         # including the 'local_subtensor_make_vector' optimization
         mode = theano.compile.mode.get_mode('FAST_COMPILE').including("local_subtensor_make_vector")
         f = function([x, y, z], v[0], mode=mode)
@@ -1963,7 +1966,21 @@ class test_local_subtensor_make_vector(unittest.TestCase):
         # The two cases in this test do not check the case where
         # local_subtensor_make_vector inserts a Subtensor node (See issue #4421)
         # self.assertTrue(check_stack_trace(f, ops_to_check='all'))
-        
+
+        # Cases, in which local_subtensor_make_vector adds a new MakeVector
+        # node
+        # Compile function using only the 'local_subtensor_make_vector' optimization,
+        # which requires us to add the 'canonicalize' phase.
+        mode = theano.compile.mode.Mode(optimizer=None).including('canonicalize_db').including("local_subtensor_make_vector")
+        f = function([x, y, z], v[::2], mode=mode)
+        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+
+        # Compile function using all optimizations in fast_compile mode,
+        # including the 'local_subtensor_make_vector' optimization
+        mode = theano.compile.mode.get_mode('FAST_COMPILE').including("local_subtensor_make_vector")
+        f = function([x, y, z], v[::2], mode=mode)
+        self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+
 
 class test_local_subtensor_lift(unittest.TestCase):
     def test0(self):
@@ -2805,7 +2822,7 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
         f = theano.function([x, y, idx], o, self.mode)
         # The opt only removes nodes in this case, no check_stack_trace needed
 
-        # Compile function using all optimizations in fast_compile mode, 
+        # Compile function using all optimizations in fast_compile mode,
         # including the 'local_subtensor_make_vector' optimization
         mode = theano.compile.mode.get_mode('FAST_COMPILE').including("local_adv_sub1_adv_inc_sub1")
         f = theano.function([x, y, idx], o, self.mode)
@@ -3020,7 +3037,7 @@ def test_local_IncSubtensor_serialize():
     assert check_stack_trace(f, ops_to_check=[
         tensor.IncSubtensor, tensor.AdvancedIncSubtensor,
         tensor.AdvancedIncSubtensor1])
-        
+
 def test_local_set_to_inc_subtensor():
     v = theano.tensor.fmatrix()
     s = v[[2, 1]]
@@ -3053,8 +3070,8 @@ def test_local_set_to_inc_subtensor():
     # before and after optimization.
     assert check_stack_trace(f1, ops_to_check=tensor.AdvancedIncSubtensor1)
     assert check_stack_trace(f2, ops_to_check='all')
-    
-    
+
+
 def test_local_subtensor_of_dot():
     m1 = theano.tensor.matrix()
     m2 = theano.tensor.matrix()
@@ -3724,11 +3741,11 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
         r2 = f2(x_value, i_value, y_value)
 
         utt.assert_allclose(r1, r2)
-        
+
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(check_stack_trace(f1, ops_to_check=tensor.AdvancedIncSubtensor))
         self.assertTrue(check_stack_trace(f2, ops_to_check=tensor.AdvancedIncSubtensor))
-        
+
 
     def test_advanced_inc_subtensor1(self):
         if tensor.inplace_increment is None:
@@ -3758,7 +3775,7 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
         r2 = f2(x_value, i_value, y_value)
 
         utt.assert_allclose(r1, r2)
-        
+
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(check_stack_trace(
                 f1, ops_to_check=tensor.AdvancedIncSubtensor1))
@@ -3789,7 +3806,7 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
         r2 = f2(x_value, i_value, y_value)
 
         utt.assert_allclose(r1, r2)
-        
+
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(check_stack_trace(f1, ops_to_check='last'))
         self.assertTrue(check_stack_trace(f2, ops_to_check='last'))
