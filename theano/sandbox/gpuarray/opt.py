@@ -763,7 +763,7 @@ def local_gpua_gemm(node, context_name):
 @op_lifter([tensor.blas.BatchedDot])
 def local_gpua_gemmbatch(node, context_name):
     a, b = node.inputs
-    c = tensor.AllocEmpty((a.shape[0], a.shape[1], b.shape[2]))
+    c = tensor.AllocEmpty(a.dtype)(a.shape[0], a.shape[1], b.shape[2])
     return gpugemmbatch_no_inplace(c, 1.0, a, b, 0.0)
 
 

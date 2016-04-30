@@ -285,7 +285,9 @@ class TestCorrConv2d(BaseTestConv2d):
 
     def tcase(self, i, f, s, b, flip, provide_shape):
         o = self.get_output_shape(i, f, s, b)
-        if not theano.config.blas.ldflags:
+        if (not theano.config.blas.ldflags or
+                not theano.config.cxx or
+                theano.config.mode == "FAST_COMPILE"):
             raise SkipTest("Need blas to test conv2d")
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                      verify_grad=True, provide_shape=provide_shape,
@@ -541,7 +543,10 @@ class TestBilinearUpsampling(unittest.TestCase):
     # If BLAS is not available on CPU, then we accept the fallback to the
     # slow Python implementation for that test.
     compile_mode = theano.compile.mode.get_default_mode()
-    if not theano.config.blas.ldflags:
+    if theano.config.mode == "FAST_COMPILE":
+        compile_mode = compile_mode.excluding("conv_gemm")
+        compile_mode = compile_mode.excluding('AbstractConvCheck')
+    elif not theano.config.blas.ldflags or not theano.config.cxx:
         compile_mode = compile_mode.excluding('AbstractConvCheck')
 
     def numerical_kernel_1D(self, ratio):
@@ -686,6 +691,23 @@ class TestBilinearUpsampling(unittest.TestCase):
             f = theano.function([], bilin_mat, mode=self.compile_mode)
             up_mat_2d = self.get_upsampled_twobytwo_mat(input_x, ratio)
             utt.assert_allclose(f(), up_mat_2d, rtol=1e-06)
+
+    def test_bilinear_upsampling_reshaping(self):
+        # Test bilinear upsampling without giving shape information
+        # This method tests the bilinear_upsampling method
+        # without giving batch_size and num_input_channels
+        # upsampling for a ratio of two
+        input_x = np.array([[[[1, 2], [3, 4]]]], dtype=theano.config.floatX)
+
+        for ratio in [2, 3]:
+            for use_1D_kernel in [True, False]:
+                bilin_mat = bilinear_upsampling(input=input_x, ratio=ratio,
+                                                batch_size=None,
+                                                num_input_channels=None,
+                                                use_1D_kernel=use_1D_kernel)
+                f = theano.function([], bilin_mat, mode=self.compile_mode)
+                up_mat_2d = self.get_upsampled_twobytwo_mat(input_x, ratio)
+                utt.assert_allclose(f(), up_mat_2d, rtol=1e-06)
 
     def test_compare_1D_and_2D_upsampling_values(self):
         """Compare 1D and 2D upsampling

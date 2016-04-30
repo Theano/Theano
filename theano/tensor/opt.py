@@ -510,6 +510,28 @@ def apply_local_dimshuffle_lift(var):
     return var
 
 
+# Checks for two types of useless dimshuffles:
+#   1 - dimshuffle all dimensions in order.
+#   2 - dimshuffle a broadcastable dimension.
+def is_dimshuffle_useless(new_order, input):
+    is_useless = True
+    if len(new_order) == input.type.ndim:
+        all_broadcastable_dims = [i for (i, is_broadcastable)
+                                  in enumerate(input.type.broadcastable)
+                                  if is_broadcastable] + ['x']
+        for i in range(input.type.ndim):
+            if (new_order[i] == i or
+                    (i in all_broadcastable_dims and
+                     new_order[i] in all_broadcastable_dims)):
+                is_useless = True
+            else:
+                is_useless = False
+                break
+    else:
+        is_useless = False
+    return is_useless
+
+
 @gof.local_optimizer([DimShuffle])
 def local_dimshuffle_lift(node):
     """
@@ -531,6 +553,7 @@ def local_dimshuffle_lift(node):
 
     input = node.inputs[0]
     inode = input.owner
+    new_order = op.new_order
     if inode and isinstance(inode.op, Elemwise) and (len(input.clients) == 1):
         # Don't use make_node to have tag.test_value set.
         new_inputs = []
@@ -544,20 +567,18 @@ def local_dimshuffle_lift(node):
         return ret
     if inode and isinstance(inode.op, DimShuffle):
         new_order = [x == 'x' and 'x' or inode.op.new_order[x] for x in
-                     op.new_order]
+                     new_order]
         inplace = op.inplace and inode.op.inplace
-        iinput = inode.inputs[0]
+        input = inode.inputs[0]
 
-        # remove useless dimshuffle
-        if (new_order == list(range(len(new_order))) and
-                len(new_order) == iinput.type.ndim):
-            return [iinput]
-        else:
-            ret = op.__class__(iinput.type.broadcastable, new_order,
-                               inplace)(iinput)
-            ret = apply_local_dimshuffle_lift(ret)
-            copy_stack_trace(node.outputs[0], ret)
-            return [ret]
+    if is_dimshuffle_useless(new_order, input):
+        return [input]
+    elif inode and isinstance(inode.op, DimShuffle):
+        ret = op.__class__(input.type.broadcastable, new_order,
+                           inplace)(input)
+        ret = apply_local_dimshuffle_lift(ret)
+        copy_stack_trace(node.outputs[0], ret)
+        return [ret]
 
 
 @register_canonicalize
@@ -1741,6 +1762,54 @@ def local_track_shape_i(node):
         assert isinstance(node.op, Shape_i)
         replacement = shape_feature.scheduled[node]
         return [shape_feature.shape_of[replacement][node.op.i]]
+
+
+@register_specialize
+@register_canonicalize
+@gof.local_optimizer([Subtensor])
+def local_subtensor_remove_broadcastable_index(node):
+    """
+    Remove broadcastable dimension with index 0 or -1
+    a[:,:,:,0] -> a.dimshuffle(0,1,2), when
+        a.broadcastable = (False, False, False, True)
+    a[0,:,-1,:] -> a.dimshuffle(1,3), when
+        a.broadcastable = (True, False, True, False)
+
+    """
+    if isinstance(node.op, Subtensor):
+        idx = node.op.idx_list
+    else:
+        return
+
+    remove_dim = []
+    node_inputs_idx = 1
+    for dim, elem in enumerate(idx):
+        if isinstance(elem, (scalar.Scalar)):
+            # The idx is a Scalar, ie a Type. This means the actual index
+            # is contained in node.inputs[1]
+            dim_index = node.inputs[node_inputs_idx]
+            if type(dim_index) == theano.scalar.basic.ScalarConstant:
+                dim_index = dim_index.value
+            if dim_index in [0, -1] and node.inputs[0].broadcastable[dim]:
+                remove_dim.append(dim)
+                node_inputs_idx += 1
+            else:
+                return
+        elif isinstance(elem, slice):
+            if elem != slice(None):
+                return
+        elif isinstance(elem, (integer_types, numpy.integer)):
+            if elem in [0, -1] and node.inputs[0].broadcastable[dim]:
+                remove_dim.append(dim)
+        else:
+            raise TypeError('case not expected')
+
+    if len(remove_dim) == 0:
+        return
+    else:
+        all_dim = range(node.inputs[0].ndim)
+        remain_dim = [x for x in all_dim if x not in remove_dim]
+        return [node.inputs[0].dimshuffle(tuple(remain_dim))]
 
 
 @register_specialize

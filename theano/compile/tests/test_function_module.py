@@ -366,6 +366,7 @@ class T_function(unittest.TestCase):
             assert in1.value is in2.value
 
     def test_copy_delete_updates(self):
+        w = T.iscalar('w')
         x = T.fscalar('x')
         # SharedVariable for tests, one of them has update
         y = theano.shared(value=1, name='y')
@@ -382,6 +383,15 @@ class T_function(unittest.TestCase):
             assert cpy(1)[0] == 4
             assert cpy(1)[0] == 4
             assert cpy(1)[0] == 4
+
+        # Test if unused implicit and explicit inputs from delete_updates
+        # are ignored as intended.
+        for mode in ["FAST_RUN", "FAST_COMPILE"]:
+            ori = theano.function([x], x, mode=mode, updates={z: z * 2})
+            cpy = ori.copy(delete_updates=True)
+
+            ori = theano.function([x, w], x, mode=mode, updates={z: z + w})
+            cpy = ori.copy(delete_updates=True)
 
     def test_shared_state0(self):
         a = T.scalar()  # the a is for 'anonymous' (un-named).

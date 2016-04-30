@@ -132,7 +132,8 @@ class TestCorr2D(utt.InferShapeTester):
 
         # TEST GRADIENT
         if verify_grad:
-            utt.verify_grad(sym_CorrMM, [orig_image_data, filter_data])
+            utt.verify_grad(sym_CorrMM, [orig_image_data, filter_data],
+                            mode=self.mode)
 
     @attr('slow')
     def test_basic(self):
@@ -235,6 +236,8 @@ class TestCorr2D(utt.InferShapeTester):
 
     @attr('slow')
     def test_infer_shape_forward(self):
+        if theano.config.mode == "FAST_COMPILE":
+            raise SkipTest("CorrMM don't work in FAST_COMPILE")
 
         def rand(*shape):
             r = numpy.asarray(numpy.random.rand(*shape), dtype='float64')
@@ -264,6 +267,8 @@ class TestCorr2D(utt.InferShapeTester):
 
     @attr('slow')
     def test_infer_shape_gradW(self):
+        if theano.config.mode == "FAST_COMPILE":
+            raise SkipTest("CorrMM don't work in FAST_COMPILE")
 
         def rand(*shape):
             r = numpy.asarray(numpy.random.rand(*shape), dtype='float64')
@@ -300,6 +305,8 @@ class TestCorr2D(utt.InferShapeTester):
 
     @attr('slow')
     def test_infer_shape_gradI(self):
+        if theano.config.mode == "FAST_COMPILE":
+            raise SkipTest("CorrMM don't work in FAST_COMPILE")
 
         def rand(*shape):
             r = numpy.asarray(numpy.random.rand(*shape), dtype='float64')

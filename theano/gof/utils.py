@@ -1,9 +1,11 @@
 from __future__ import absolute_import, print_function, division
 import linecache
 import sys
+import traceback
 
 import numpy
 from six import iteritems, integer_types, string_types
+from six.moves import StringIO
 
 from theano import config
 from theano.compat import OrderedDict, PY3
@@ -99,6 +101,7 @@ def add_tag_trace(thing, user_line=None):
              "theano/scan_module/", "theano\\scan_module\\",
              "theano/sparse/", "theano\\sparse\\",
              "theano/typed_list/", "theano\\typed_list\\"]
+
     tr = simple_extract_stack(limit=user_line, skips=skips)
     # Different python version use different sementic for
     # limit. python 2.7 include the call to extrack_stack. The -1 get
@@ -109,6 +112,23 @@ def add_tag_trace(thing, user_line=None):
     else:
         thing.tag.trace = tr
     return thing
+
+
+def get_variable_trace_string(v):
+    sio = StringIO()
+    # For backward compatibility with old trace
+    tr = getattr(v.tag, 'trace', [])
+    if isinstance(tr, list) and len(tr) > 0:
+        print(" \nBacktrace when that variable is created:\n", file=sio)
+        # The isinstance is needed to handle old pickled trace
+        if isinstance(tr[0], tuple):
+            traceback.print_list(v.tag.trace, sio)
+        else:
+            # Print separate message for each element in the list of
+            # batcktraces
+            for subtr in tr:
+                traceback.print_list(subtr, sio)
+    return sio.getvalue()
 
 
 def hashtype(self):

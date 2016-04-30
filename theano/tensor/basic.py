@@ -138,13 +138,13 @@ def as_tensor_variable(x, name=None, ndim=None):
         If a new `Variable` instance is created, it will be named with this
         string.
     ndim : None or integer
-        Return a Variable with this many dimensions. Raise TypeError if it's
-        not possible.
+        Return a Variable with this many dimensions.
 
     Raises
     ------
     ValueError
-        If an `Apply` with more than one output is fetched.
+        If an `Apply` with more than one output is fetched or
+        if `x` cannot be made into a Variable with `ndim` dimensions.
     AsTensorError
         If `x` cannot be converted to a TensorType Variable.
 
@@ -6218,7 +6218,7 @@ class AllocEmpty(gof.Op):
 
     # specify the type of the data
     def __init__(self, dtype):
-        assert isinstance(dtype, str)
+        assert isinstance(dtype, str), dtype
         self.dtype = dtype.lower()
 
     def validate_shape(self, shape):

@@ -5,6 +5,9 @@ from numpy.testing import assert_equal, assert_string_equal
 import theano
 import theano.tensor as tt
 import theano.tests.unittest_tools as utt
+from theano.tensor import (Subtensor, AdvancedSubtensor, AdvancedSubtensor1,
+                           IncSubtensor, AdvancedIncSubtensor,
+                           AdvancedIncSubtensor1)
 
 
 def test_numpy_method():
@@ -30,3 +33,31 @@ def test_copy():
     f = theano.function([x], y)
     assert_equal(f(data), data)
     assert_string_equal(y.name, 'y')
+
+
+def test_None_dimShuffle_replace():
+    # tests replacing None usage in subtensor with dimshuffle
+    #
+    # tests whenever None is used in subtensor to reshape a variable, it is
+    # replaced by dimshuffle. If the replacement is done properly, Subtensor op
+    # (or any of its variants) should not be used anymore.
+
+    x = tt.dmatrix('x')
+    y = x[:, None, :]
+    f = theano.function([x], y)
+    for elem in f.maker.fgraph.toposort():
+        assert type(elem.op) not in [Subtensor, AdvancedSubtensor,
+                                     AdvancedSubtensor1, IncSubtensor,
+                                     AdvancedIncSubtensor,
+                                     AdvancedIncSubtensor1]
+
+    x = tt.tensor3('x')
+    y1 = x[:, :, None, :]
+    y2 = x[None, :, :, None, :]
+    y3 = x[:, :, None, :, None, None]
+    f = theano.function([x], [y1, y2, y3])
+    for elem in f.maker.fgraph.toposort():
+        assert type(elem.op) not in [Subtensor, AdvancedSubtensor,
+                                     AdvancedSubtensor1, IncSubtensor,
+                                     AdvancedIncSubtensor,
+                                     AdvancedIncSubtensor1]

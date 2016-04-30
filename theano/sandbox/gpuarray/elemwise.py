@@ -352,6 +352,10 @@ class GpuElemwise(HideC, Elemwise):
     # To disable the superclass perform.
     perform = Op.perform
 
+    # Since we don't have a perform ...
+    def python_constant_folding(self, node):
+        return False
+
     def c_code_cache_version(self):
         ver = self.scalar_op.c_code_cache_version()
         if ver:
