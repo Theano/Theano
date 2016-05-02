@@ -5210,7 +5210,7 @@ def local_opt_alloc(node):
                     val = get_scalar_constant_value(input)
                     assert val.size == 1
                     # check which type of op
-                    casted = T.mul(*shapes).astype(str(val.dtype))
+                    casted = T.mul(*shapes).astype(str(input.dtype))
                     if isinstance(node.op, T.Sum):
                         val = val.reshape(1)[0] * casted
                     else:
@@ -5227,7 +5227,7 @@ def local_opt_alloc(node):
                     to_prod = [shapes[i] for i in xrange(len(shapes))
                                if i in node.op.axis]
                     if to_prod:
-                        casted = T.mul(*to_prod).astype(str(val.dtype))
+                        casted = T.mul(*to_prod).astype(str(input.dtype))
                         if isinstance(node.op, T.Sum):
                             val *= casted
                         else:
