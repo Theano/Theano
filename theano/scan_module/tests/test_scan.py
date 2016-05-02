@@ -4939,7 +4939,7 @@ class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
     """
 
     def __init__(self, *args, **kwargs):
-        from theano.sandbox import gpuarray
+        from theano import gpuarray
         self.gpu_backend = gpuarray
 
         # This is unfortunate, but required

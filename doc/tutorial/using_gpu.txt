@@ -470,7 +470,7 @@ the GPU object directly.  The following code is modifed to do just that.
 
   rng = numpy.random.RandomState(22)
   x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
-  f = function([], sandbox.gpuarray.basic_ops.GpuFromHost(None)(tensor.exp(x)))
+  f = function([], gpuarray.basic_ops.GpuFromHost(None)(tensor.exp(x)))
   print(f.maker.fgraph.toposort())
   t0 = time.time()
   for i in range(iters):
@@ -485,7 +485,7 @@ the GPU object directly.  The following code is modifed to do just that.
   else:
       print('Used the gpu')
 
-Here the :func:`theano.sandbox.gpuarray.basic_ops.GpuFromHost(None)` call
+Here the :func:`theano.gpuarray.basic_ops.GpuFromHost(None)` call
 means "copy input to the GPU", with ``None`` the default GPU context when not
 explicitly given. However during the optimization phase,
 since the result will already be on the gpu, it will be removed.  It is

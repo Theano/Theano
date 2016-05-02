@@ -1,4 +1,4 @@
-ctheano.sandbox.gpuarray.type
+ctheano.gpuarray.type
 GpuArray_unpickler
 p0
 (cnumpy.core.multiarray

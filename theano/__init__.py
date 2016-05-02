@@ -116,7 +116,7 @@ if (config.device.startswith('cuda') or
         config.init_gpu_device.startswith('cuda') or
         config.init_gpu_device.startswith('opencl') or
         config.contexts != ''):
-    import theano.sandbox.gpuarray
+    import theano.gpuarray
 
 # Use config.numpy to call numpy.seterr
 import numpy

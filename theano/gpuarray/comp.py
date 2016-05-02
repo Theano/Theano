@@ -40,7 +40,7 @@ class NVCC_compiler(NVCC_base):
 
         # If the user didn't specify architecture flags add them
         if not any(['-arch=sm_' in f for f in flags]):
-            dev = theano.sandbox.gpuarray.init_dev.device
+            dev = theano.gpuarray.init_dev.device
             if dev is None:
                 raise Exception("Trying to compile GPU code without a context")
             if dev.startswith("opencl"):

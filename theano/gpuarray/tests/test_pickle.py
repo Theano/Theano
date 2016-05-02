@@ -14,12 +14,12 @@ from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
 import numpy
 
-import theano.sandbox.gpuarray
+import theano.gpuarray
 from theano.compat import PY3
 from theano import config
 from theano.misc.pkl_utils import CompatUnpickler
 
-if not theano.sandbox.gpuarray.pygpu_activated:
+if not theano.gpuarray.pygpu_activated:
     try:
         import pygpu
     except ImportError:
@@ -29,7 +29,7 @@ if not theano.sandbox.gpuarray.pygpu_activated:
         cuda_ndarray.use('gpu', default_to_move_computation_to_gpu=False,
                          move_shared_float32_to_gpu=False,
                          enable_cuda=False)
-        theano.sandbox.gpuarray.init_dev('cuda')
+        theano.gpuarray.init_dev('cuda')
 
 from .. import pygpu_activated  # noqa
 

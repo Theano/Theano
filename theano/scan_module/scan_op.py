@@ -272,7 +272,7 @@ class Scan(PureOp):
         # If scan has the flag 'gpua' set to false (meaning that is shouldn't
         # use the gpuarray gpu backend ), ensure that is has no input and no
         # output with type GpuArrayType
-        from theano.sandbox.gpuarray import GpuArrayType
+        from theano.gpuarray import GpuArrayType
         if not self.info.get("gpua", False):
             for inp in self.inputs:
                 if isinstance(inp.type, GpuArrayType):

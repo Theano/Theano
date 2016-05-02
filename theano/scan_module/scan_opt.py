@@ -1008,8 +1008,8 @@ class ScanInplaceOptimizer(Optimizer):
             # gpuarray might be imported but not its GpuAlloc and
             # GpuAllopEmpty ops.
             try:
-                alloc_ops += (theano.sandbox.gpuarray.GpuAlloc,
-                              theano.sandbox.gpuarray.GpuAllocEmpty)
+                alloc_ops += (theano.gpuarray.GpuAlloc,
+                              theano.gpuarray.GpuAllocEmpty)
             except:
                 pass
 
