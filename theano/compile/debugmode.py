@@ -651,14 +651,14 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                 except ValueError:
                     return ""
             clients = " clients:" + str([(get_id_str(c, False), get_index(c))
-                                         for c,i in r.clients])
+                                         for c, i in r.clients])
         if profile is None or a not in profile.apply_time:
             print('%s%s%s %s%s \'%s\' %s %s %s%s%s' % (prefix, a.op,
-                                                     idx,
-                                                     id_str, type_str,
-                                                     r_name,
-                                                     destroy_map_str,
-                                                     view_map_str,
+                                                       idx,
+                                                       id_str, type_str,
+                                                       r_name,
+                                                       destroy_map_str,
+                                                       view_map_str,
                                                        o, data, clients), file=file)
         else:
             op_time = profile.apply_time[a]

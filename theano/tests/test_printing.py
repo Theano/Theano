@@ -278,12 +278,12 @@ def test_debugprint():
     s = s.getvalue()
     # The additional white space are needed!
     reference = '\n'.join([
-"Elemwise{add,no_inplace} [id A] ''   0 clients:[('output', ''), ('[id C]', 1)]",
-" |A [id D]",
-" |B [id E]",
-"Elemwise{sub,no_inplace} [id C] ''   1",
-" |Elemwise{add,no_inplace} [id A] ''   0 clients:[('output', ''), ('[id C]', 1)]",
-" |D [id F]",
+        "Elemwise{add,no_inplace} [id A] ''   0 clients:[('output', ''), ('[id C]', 1)]",
+        " |A [id D]",
+        " |B [id E]",
+        "Elemwise{sub,no_inplace} [id C] ''   1",
+        " |Elemwise{add,no_inplace} [id A] ''   0 clients:[('output', ''), ('[id C]', 1)]",
+        " |D [id F]",
     ]) + '\n'
     if s != reference:
         print('--' + s + '--')
