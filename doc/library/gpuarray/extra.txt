@@ -7,11 +7,11 @@ Utility functions
 Optimisation
 ------------
 
-.. automodule:: theano.sandbox.gpuarray.opt_util
+.. automodule:: theano.gpuarray.opt_util
    :members:
 
 Kernel generation
 -----------------
 
-.. automodule:: theano.sandbox.gpuarray.kernel_codegen
+.. automodule:: theano.gpuarray.kernel_codegen
    :members:

@@ -151,7 +151,8 @@ def traverse(out, x, x_copy, d, visited=None):
     if out in visited:
         return d
     visited.add(out)
-    from theano.sandbox import cuda, gpuarray
+    from theano.sandbox import cuda
+    from theano import gpuarray
     if out == x:
         if isinstance(x.type, cuda.CudaNdarrayType):
             d[out] = cuda.gpu_from_host(x_copy)

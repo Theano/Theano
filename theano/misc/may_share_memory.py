@@ -19,7 +19,7 @@ except ImportError:
         return False
 
 from theano.sandbox import cuda
-from theano.sandbox import gpuarray
+from theano import gpuarray
 
 if cuda.cuda_available:
     from theano.sandbox.cuda.type import CudaNdarrayType

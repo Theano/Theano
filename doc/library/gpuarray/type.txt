@@ -4,5 +4,5 @@
 :mod:`gpuarray.type` -- Type classes
 ===================================================
 
-.. automodule:: theano.sandbox.gpuarray.type
+.. automodule:: theano.gpuarray.type
    :members:

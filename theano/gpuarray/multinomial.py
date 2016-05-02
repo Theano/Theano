@@ -12,7 +12,7 @@ import theano.sandbox.multinomial
 from theano import Apply, config
 from theano.gof import Op
 from theano.tensor import NotScalarConstantError, get_scalar_constant_value
-from theano.sandbox import gpuarray
+from theano import gpuarray
 from .basic_ops import as_gpuarray_variable, infer_context_name
 from .opt import register_opt, op_lifter
 from .type import GpuArrayType

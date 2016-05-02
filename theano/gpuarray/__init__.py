@@ -10,7 +10,7 @@ from theano.compile import optdb
 
 from theano.tensor.basic import register_transfer
 
-_logger_name = 'theano.sandbox.gpuarray'
+_logger_name = 'theano.gpuarray'
 _logger = logging.getLogger(_logger_name)
 
 error = _logger.error
