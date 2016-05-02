@@ -101,6 +101,9 @@ class DnnBase(GpuOp, COp):
     def c_compile_args(self):
         return ['-Wl,-rpath,' + config.dnn.library_path]
 
+    def c_code_cache_version(self):
+        return (super(DnnBase, self).c_code_cache_version(), version())
+
 
 class GpuDnnConvDesc(GpuOp):
     """
