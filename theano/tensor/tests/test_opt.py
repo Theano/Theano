@@ -1623,7 +1623,7 @@ def test_log_add():
     try:
         f([10000], [10000])  # causes overflow if handled incorrectly
         utt.assert_allclose(f([10000], [10000]), 20000)
-    except AssertionError:
+    except utt.WrongValue:
         raise SkipTest("log(add(exp)) is not stabilized when adding "
                        "more than 2 elements, see #623")
 
@@ -5268,7 +5268,7 @@ class T_local_sum_prod(unittest.TestCase):
             utt.assert_allclose(f(input), input.sum(d).prod())
             assert len(f.maker.fgraph.apply_nodes) == 2
         f = theano.function([a], a.sum(None).prod(), mode=self.mode)
-        utt.assert_allclosey(f(input), input.sum())
+        utt.assert_allclose(f(input), input.sum())
         assert len(f.maker.fgraph.apply_nodes) == 1
 
     def test_local_sum_prod_alloc(self):
