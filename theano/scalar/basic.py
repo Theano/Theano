@@ -2150,7 +2150,7 @@ class Abs(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        if x.dtype.startswith('float'):
+        if x.type in float_types:
             return gz * sgn(x),
         return gz * x / abs(x),  # formula works for complex and real
 
