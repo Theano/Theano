@@ -28,7 +28,7 @@ from theano.gpuarray.basic_ops import GpuKernelBase, Kernel
 from theano.gpuarray.type import GpuArrayType
 from theano.gpuarray.fp16_help import write_w
 from theano.gpuarray.opt import (register_opt as register_gpua,
-                                         host_from_gpu as host_from_gpua)
+                                 host_from_gpu as host_from_gpua)
 if theano.sandbox.cuda.cuda_available:
     from theano.sandbox.cuda import (CudaNdarrayType,
                                      float32_shared_constructor)
