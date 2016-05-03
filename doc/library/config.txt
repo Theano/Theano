@@ -239,6 +239,14 @@ import theano and print the config variable, as in:
     ``False``, then we will gc the inner of scan after all
     iterations. This is the default.
 
+.. attribute:: config.scan.debug
+
+    Bool value, either ``True`` or ``False``
+
+    Default: ``False``
+
+    If True, we will print extra scan debug information.
+
 .. attribute:: openmp
 
     Bool value: either True or False
