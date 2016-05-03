@@ -995,3 +995,16 @@ import theano and print the config variable, as in:
     Bool value, default: False
 
     If set to True, will preload the C module cache at import time
+
+.. attribute:: config.traceback.limit
+
+    Int value, default: 8
+
+    The number of user stack level to keep for variables.
+
+.. attribute:: config.traceback.compile_limit
+
+    Bool value, default: 0
+
+    The number of user stack level to keep for variables during Theano
+    compilation.
