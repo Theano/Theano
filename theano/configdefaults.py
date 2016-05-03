@@ -572,6 +572,16 @@ AddConfigVar(
     IntParam(8),
     in_c_key=False)
 
+AddConfigVar(
+    'traceback.compile_limit',
+    "The number of stack to trace to keep during compilation. -1 mean all.",
+    IntParam(0),
+    in_c_key=False)
+
+AddConfigVar('experimental.mrg',
+             "Another random number generator that work on the gpu",
+             BoolParam(False))
+
 AddConfigVar('experimental.unpickle_gpu_on_cpu',
              "Allow unpickling of pickled CudaNdarrays as numpy.ndarrays."
              "This is useful, if you want to open a CudaNdarray without "
