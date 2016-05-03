@@ -2553,7 +2553,7 @@ def pre_greedy_local_optimizer(list_optimizations, out):
         for opt in list_opt:
             ret = opt.transform(node)
             if ret is not False and ret is not None:
-                assert len(ret) == len(node.outputs)
+                assert len(ret) == len(node.outputs), opt
                 for k, v in zip(node.outputs, ret):
                     optimized_vars[k] = v
                 results = ret
