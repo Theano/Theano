@@ -971,4 +971,5 @@ import theano and print the config variable, as in:
     Bool value, default: 0
 
     The number of user stack level to keep for variables during Theano
-    compilation.
+    compilation. If higher then 0, will make us keep Theano internal
+    stack trace.
