@@ -3552,6 +3552,19 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
         f = theano.function([x, y], T.ge(x.shape[0]+y.shape[0], 0), mode=mode)
         self.assert_eqs_const(f, 1)
 
+    def test_subtensor_shape_equality(self):
+        x = T.vector('x', dtype=config.floatX)
+        mode = theano.compile.get_default_mode().including('local_useless_elemwise_comparison',
+                                                           'local_shape_to_shape_i',
+                                                           'local_track_shape_i',
+                                                           'local_subtensor_make_vector')
+
+        f = theano.function([x], T.eq(x.shape[0], 0), mode=mode)
+        assert len(f.maker.fgraph.toposort()) == 2
+
+        f = theano.function([x], T.eq(x.shape[0], -1), mode=mode)
+        self.assert_eqs_const(f, 0)
+
     def test_and(self):
         mode = theano.compile.get_default_mode().including('canonicalize')
 
