@@ -1731,7 +1731,7 @@ compile.optdb.register('local_alloc_empty_to_zeros',
 
 @register_specialize
 @register_canonicalize
-@gof.local_optimizer([T.shape])
+@gof.local_optimizer([T.Shape])
 def local_shape_to_shape_i(node):
     if node.op == T.shape:
         # This optimization needs ShapeOpt and fgraph.shape_feature
