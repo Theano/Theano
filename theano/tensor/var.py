@@ -908,8 +908,9 @@ class TensorConstant(_tensor_py_operators, Constant):
         return TensorConstantSignature((self.type, self.data))
 
     def equals(self, other):
-        # Override Contant.equals to allow to compare with numpy.ndarray
-        if isinstance(other, numpy.ndarray):
+        # Override Contant.equals to allow to compare with
+        # numpy.ndarray, and python type.
+        if isinstance(other, (numpy.ndarray, int, float)):
             # Make a TensorConstant to be able to compare
             other = theano.tensor.basic.constant(other)
         return (isinstance(other, TensorConstant) and
