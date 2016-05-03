@@ -2150,6 +2150,8 @@ class Abs(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
+        if x.type in float_types:
+            return gz * sgn(x),
         return gz * x / abs(x),  # formula works for complex and real
 
     def c_code(self, node, name, inputs, outputs, sub):

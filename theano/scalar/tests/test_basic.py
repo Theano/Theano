@@ -453,6 +453,16 @@ def test_grad_inrange():
         utt.assert_allclose(f(7, 1, 5), [0, 0, 0])
 
 
+def test_grad_abs():
+    a = theano.tensor.fscalar("a")
+    b = theano.tensor.nnet.relu(a)
+    c = theano.grad(b, a)
+    f = theano.function([a], c, mode=theano.Mode(optimizer=None))
+    # Currently Theano return 0.5, but it isn't sure it won't change
+    # in the futur.
+    ret = f(0.)
+    assert ret == 0.5, ret
+
 # Testing of Composite is done in tensor/tests/test_opt.py
 # in test_fusion, TestCompositeCodegen
 
