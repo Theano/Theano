@@ -1427,6 +1427,11 @@ AddConfigVar('scan.allow_output_prealloc',
              BoolParam(True),
              in_c_key=False)
 
+AddConfigVar('scan.debug',
+             "If True, enable extra verbose output related to scan",
+             BoolParam(False),
+             in_c_key=False)
+
 AddConfigVar('pycuda.init',
              """If True, always initialize PyCUDA when Theano want to
                 initilize the GPU.  Currently, we must always initialize
