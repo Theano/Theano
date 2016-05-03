@@ -4759,6 +4759,10 @@ def local_useless_elemwise_comparison(node):
     Elemwise[LT](add([anything that is shapes]), 0) -> Elemwise[zeros](X)
     Elemwise[GE](add([anything that is shapes]), 0) -> Elemwise[ones](X)
 
+    # Shapes are never negativ
+    # Needed by Reshape.infer_shape
+    Elemwise[EQ](Subtensor(Shape(x)), -N) -> Elemwise[zeros](X)
+
     """
     if not isinstance(node.op, T.Elemwise):
         return
@@ -4834,6 +4838,20 @@ def local_useless_elemwise_comparison(node):
        T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
         return [T.ones_like(node.inputs[0], dtype=node.outputs[0].dtype)]
 
+    # Elemwise[EQ](Subtensor(Shape(x)), -N)
+    if (isinstance(node.op.scalar_op, scalar.EQ) and
+            node.inputs[0].owner and
+            isinstance(node.inputs[0].owner.op, Subtensor) and
+            node.inputs[0].owner.inputs[0].owner and
+            isinstance(node.inputs[0].owner.inputs[0].owner.op, T.Shape)):
+        try:
+            cst = get_scalar_constant_value(node.inputs[1],
+                                            only_process_constants=True)
+            if cst < 0:
+                return [T.zeros_like(node.inputs[0],
+                                     dtype=node.outputs[0].dtype)]
+        except NotScalarConstantError:
+            pass
     return
 
 
