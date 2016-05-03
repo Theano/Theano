@@ -5210,11 +5210,12 @@ def local_opt_alloc(node):
                     val = get_scalar_constant_value(input)
                     assert val.size == 1
                     # check which type of op
+                    casted = T.mul(*shapes).astype(str(input.dtype))
                     if isinstance(node.op, T.Sum):
-                        val = val.reshape(1)[0] * T.mul(*shapes)
+                        val = val.reshape(1)[0] * casted
                     else:
-                        val = val.reshape(1)[0] ** T.mul(*shapes)
-                    return [T.cast(val, dtype=node.outputs[0].dtype)]
+                        val = val.reshape(1)[0] ** casted
+                    return [val]
 
                 except NotScalarConstantError:
                     pass
@@ -5226,11 +5227,12 @@ def local_opt_alloc(node):
                     to_prod = [shapes[i] for i in xrange(len(shapes))
                                if i in node.op.axis]
                     if to_prod:
+                        casted = T.mul(*to_prod).astype(str(input.dtype))
                         if isinstance(node.op, T.Sum):
-                            val *= T.mul(*to_prod)
+                            val *= casted
                         else:
-                            val = val ** T.mul(*to_prod)
-                    return [T.alloc(T.cast(val, dtype=node.outputs[0].dtype),
+                            val = val ** casted
+                    return [T.alloc(val,
                                     *[shapes[i] for i in xrange(len(shapes))
                                       if i not in node.op.axis])]
                 except NotScalarConstantError:

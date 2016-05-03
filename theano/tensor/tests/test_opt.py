@@ -5271,8 +5271,8 @@ class T_local_sum_prod(unittest.TestCase):
         assert numpy.allclose(f(input), input.sum())
         assert len(f.maker.fgraph.apply_nodes) == 1
 
-
     def test_local_sum_prod_alloc(self):
+        # test local_opt_alloc
         a = T.dtensor3()
         input = numpy.asarray(numpy.arange(2 * 3 * 4).reshape(2, 3, 4),
                               dtype='float64')
@@ -5374,6 +5374,30 @@ class T_local_sum_prod(unittest.TestCase):
             f = theano.function([x], y)
         finally:
             config.on_opt_error = backup
+
+
+class T_local_opt_alloc(unittest.TestCase):
+    def test_sum_upcast(self):
+        s = theano.tensor.lscalar()
+        a = theano.tensor.alloc(numpy.asarray(5, dtype='float32'), s, s)
+        orig = theano.config.warn_float64
+        theano.config.warn_float64 = "raise"
+        try:
+            f = theano.function([s], a.sum())
+            f(5)
+        finally:
+            theano.config.warn_float64 = orig
+
+    def test_prod_upcast(self):
+        s = theano.tensor.lscalar()
+        a = theano.tensor.alloc(numpy.asarray(5, dtype='float32'), s, s)
+        orig = theano.config.warn_float64
+        theano.config.warn_float64 = "raise"
+        try:
+            f = theano.function([s], a.prod())
+            f(5)
+        finally:
+            theano.config.warn_float64 = orig
 
 
 class T_local_reduce(unittest.TestCase):
