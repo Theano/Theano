@@ -575,7 +575,8 @@ AddConfigVar(
 
 AddConfigVar(
     'traceback.compile_limit',
-    "The number of stack to trace to keep during compilation. -1 mean all.",
+    "The number of stack to trace to keep during compilation. -1 mean all."
+    " If greater then 0, will also make us save Theano internal stack trace.",
     IntParam(0),
     in_c_key=False)
 
