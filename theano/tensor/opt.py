@@ -1512,8 +1512,8 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
                 # when i.owner.inputs[0].type == i.owner.outputs[0].type we
                 # will remove that alloc later
                 assert i.type.ndim == cmp_op.ndim
-                get_shape = node.fgraph.shape_feature.get_shape
                 if theano.config.experimental.local_alloc_elemwise_assert:
+                    get_shape = node.fgraph.shape_feature.get_shape
                     cond = []
                     for idx in xrange(i.type.ndim):
                         if (not i.type.broadcastable[idx] and
