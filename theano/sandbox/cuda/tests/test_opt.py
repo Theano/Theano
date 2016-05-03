@@ -24,6 +24,7 @@ if not cuda.cuda_available:
     raise SkipTest('Optional package cuda disabled')
 
 import theano.sandbox.cuda.cula as cula
+import theano.sandbox.cuda.cublas as cublas
 
 from theano.sandbox.cuda import basic_ops
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -804,6 +805,40 @@ def test_local_gpu_solve():
 
     cmp((6, 6), (6, 1))
     cmp((5, 5), (5, 1))
+
+
+def test_local_gpu_triangular_solve():
+
+    if not cublas.cublas_available:
+        raise SkipTest('Optional dependency CUBLAS not available')
+
+    numpy.random.seed(1)
+
+    def cmp(A_shp, b_shp, lower):
+        A_val = numpy.random.uniform(-0.4, 0.4, A_shp).astype('float32')
+        A_val = numpy.tril(A_val) if lower else numpy.triu(A_val)
+
+        A = cuda.shared_constructor(A_val, 'A')
+
+        b_val = numpy.random.uniform(-0.4, 0.4, b_shp).astype('float32')
+        b = cuda.shared_constructor(b_val, 'b')
+
+        A_structure = 'lower_triangular' if lower else 'upper_triangular'
+        solve_op = tensor.slinalg.Solve(A_structure=A_structure, lower=lower)
+        f = pfunc([], solve_op(A, b), mode=mode_with_gpu)
+
+        assert isinstance(f.maker.fgraph.toposort()[1].inputs[0].owner.op,
+                          cuda.cublas.GpuTriangularSolve)
+
+        assert f.maker.fgraph.toposort()[1].inputs[0].owner.op.lower == lower
+
+        x = f()
+        utt.assert_allclose(numpy.dot(A_val, x), b_val)
+
+    cmp((6, 6), (6, 1), True)
+    cmp((5, 5), (5, 2), True)
+    cmp((6, 6), (6, 1), False)
+    cmp((5, 5), (5, 2), False)
 
 
 def test_local_gpu_dot_to_dot22dot():

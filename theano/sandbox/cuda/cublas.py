@@ -1,8 +1,7 @@
-from __future__ import absolute_import, print_function, division
 import pkg_resources
+import atexit
 
 import theano
-from theano.tensor.slinalg import MATRIX_STRUCTURES
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
@@ -13,38 +12,51 @@ try:
 except ImportError:
     pass
 
-cula_available = False
+cublas_available = False
+cublas_initialized = False
+cublas_handle = None
 
 try:
-    from scikits.cuda import cula
-    cula_available = True
-except (ImportError, OSError, RuntimeError, pkg_resources.DistributionNotFound):
+    from skcuda import cublas
+    cublas_available = True
+except (ImportError, OSError, RuntimeError,
+        pkg_resources.DistributionNotFound):
     pass
 
-cula_initialized = False
+
+def initialize_cublas():
+    """ Initializes CUBLAS handle and ensures resource release on exit. """
+    global cublas_initialized
+    global cublas_handle
+    cublas_handle = cublas.cublasCreate()
+    cublas_initialized = True
+    atexit.register(release_cublas_resources)
 
 
-class GpuSolve(GpuOp):
+def release_cublas_resources():
+    global cublas_initialized
+    if cublas_initialized:
+        cublas.cublasDestroy(cublas_handle)
+        cublas_initialized = False
+
+
+class GpuTriangularSolve(GpuOp):
     """
-    CULA GPU solver OP.
-
+    CUBLAS GPU triangular linear system solver OP.
     Parameters
     ----------
     trans
         Whether to take the transpose of the input matrix or not.
-    A_structure
-        Any special structure to matrix system being solved
-
+    lower
+        Whether system is lower-triangular (True) or upper-triangular (False).
     """
 
-    __props__ = ('trans', 'A_structure')
+    __props__ = ('trans', 'lower',)
 
-    def __init__(self, trans='N', A_structure='general'):
-        if A_structure not in MATRIX_STRUCTURES:
-            raise ValueError('Invalid matrix structure argument', A_structure)
+    def __init__(self, trans='N', lower=True):
         self.trans = trans
-        self.A_structure = A_structure
-        super(GpuSolve, self).__init__()
+        self.lower = lower
+        super(GpuTriangularSolve, self).__init__()
 
     def output_type(self, inp):
         return CudaNdarrayType(broadcastable=[False] * inp.type.ndim)
@@ -63,35 +75,37 @@ class GpuSolve(GpuOp):
                    no_recycling=[]):
 
         # Initialize CULA the first time it is needed
-        global cula_initialized
 
-        if not cula_available:
-            raise RuntimeError('Cula is not available and '
-                               'GpuSolve Op can not be constructed.')
+        if not cublas_available:
+            raise RuntimeError('Cublas is not available and '
+                               'GpuTriangularSolve Op can not be constructed.')
 
-        if not cula_initialized:
-            cula.culaInitialize()
-            cula_initialized = True
+        global cublas_initialized
+
+        if not cublas_initialized:
+            initialize_cublas()
 
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]
 
         def thunk():
-            # size of the matrices to invert
-            z = outputs[0]
+
+            # Solution vector(s) of system to return as output.
+            x = outputs[0]
 
             # Matrix
             A = inputs[0][0]
 
-            # Solution vectors
+            # Vector(s) to solve system for.
             b = inputs[1][0]
 
             # A is not explicitly converted between C and F order, instead we
-            # switch the "transpose" flag
+            # switch the "transpose" and "lower" flags
             if self.trans in ('T', 'C'):
                 trans = 'N'
             else:
                 trans = 'T'
+            lower = not self.lower
 
             # If b is one-dimensional reshape to two-dimensional array with
             # singleton second dimension
@@ -109,7 +123,7 @@ class GpuSolve(GpuOp):
             A_cpy = A.copy()
             b_cpy = b_cpy.copy()
 
-            def cula_gpu_solve(A_, b_, trans='T'):
+            def cublas_gpu_triangular_solve(A_, b_, trans='T', lower=False):
 
                 A_shape = A_.shape
                 b_shape = b_.shape
@@ -130,18 +144,33 @@ class GpuSolve(GpuOp):
                 else:
                     raise ValueError('Invalid value for trans')
 
+                if l != n:
+                    raise ValueError('A must be square.')
+
                 lda = max(1, n)
-                ldb = max(1, n, l)
+                ldb = max(1, n)
 
                 # construct pointer arrays needed for culaDeviceSgels
                 # Cula requires you to pass a pointer for A and b.
                 A_ptr = A_.gpudata
                 b_ptr = b_.gpudata
 
-                cula.culaDeviceSgels(trans, n, l, m, A_ptr, lda, b_ptr, ldb)
+                # unit scalar used for multiplication
+                alpha = 1.0
+                # indicates matrix A is on left of B
+                side = 'l'
+                # set whether upper or lower part of matrix A stored
+                uplo = 'l' if lower else 'u'
+                # indicates elements on diagonal of matrix A may not be unity
+                diag = 'n'
+
+                cublas.cublasStrsm(cublas_handle, side, uplo, trans, diag,
+                                   n, m, alpha, A_ptr, lda, b_ptr, ldb)
+
                 return A_, b_
 
-            A_pycuda, b_pycuda = cula_gpu_solve(A_cpy, b_cpy, trans)
+            A_pycuda, b_pycuda = cublas_gpu_triangular_solve(
+                A_cpy, b_cpy, trans, lower)
 
             # Convert b to F-order from c-order:
             b_cpy = b_cpy.reshape(b_2d.shape[::-1])
@@ -152,7 +181,7 @@ class GpuSolve(GpuOp):
                 b_cpy = b_cpy.reshape(b.shape[0])
 
             # Assign result to output
-            z[0] = b_cpy
+            x[0] = b_cpy
 
         thunk.inputs = inputs
         thunk.outputs = outputs
@@ -160,4 +189,5 @@ class GpuSolve(GpuOp):
 
         return thunk
 
-gpu_solve = GpuSolve()
+gpu_lower_triangular_solve = GpuTriangularSolve(trans='N', lower=True)
+gpu_upper_triangular_solve = GpuTriangularSolve(trans='N', lower=False)
