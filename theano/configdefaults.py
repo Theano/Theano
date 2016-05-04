@@ -857,7 +857,8 @@ AddConfigVar(
     "It can be used to speed up compilation, reduce overhead "
     "(particularly for scalars) and reduce the number of generated C "
     "files.",
-    BoolParam(True))
+    BoolParam(True),
+    in_c_key=True)
 
 AddConfigVar(
     'cache_optimizations',
@@ -1092,7 +1093,10 @@ AddConfigVar('cmodule.remove_gxx_opt',
              "If True, will remove the -O* parameter passed to g++."
              "This is useful to debug in gdb modules compiled by Theano."
              "The parameter -g is passed by default to g++",
-             BoolParam(False))
+             BoolParam(False),
+             # TODO: change so that this isn't needed.
+             # This can be done by handing this in compile_args()
+             in_c_key=True)
 
 AddConfigVar('cmodule.compilation_warning',
              "If True, will print compilation warnings.",
