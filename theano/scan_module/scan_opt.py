@@ -2256,11 +2256,14 @@ class PushOutDot1(gof.Optimizer):
 # general I do not expect the sequence to run more then once
 scan_eqopt1 = theano.gof.EquilibriumDB()
 scan_seqopt1 = theano.gof.SequenceDB()
-
 scan_eqopt2 = theano.gof.EquilibriumDB()
+
+# scan_eqopt1 before ShapeOpt at 0.1
+# This is needed to don't have ShapeFeature trac old Scan that we
+# don't want to reintroduce.
+optdb.register('scan_eqopt1', scan_eqopt1, .05, 'fast_run', 'scan')
 # We run before blas opt at 1.7 and specialize 2.0
 # but after stabilize at 1.5. Should we put it before stabilize?
-optdb.register('scan_eqopt1', scan_eqopt1, .1, 'fast_run', 'scan')
 optdb.register('scan_eqopt2', scan_eqopt2, 1.6, 'fast_run', 'scan')
 optdb.register('scanOp_make_inplace',
                ScanInplaceOptimizer(typeInfer=None,
