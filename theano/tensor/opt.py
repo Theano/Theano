@@ -1408,9 +1408,6 @@ class ShapeFeature(object):
 
 class ShapeOptimizer(Optimizer):
     """Optimizer that serves to add ShapeFeature as an fgraph feature."""
-    def __init__(self):
-        Optimizer.__init__(self)
-
     def add_requirements(self, fgraph):
         fgraph.attach_feature(ShapeFeature())
 
