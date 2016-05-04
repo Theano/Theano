@@ -158,6 +158,25 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
         chosen_algo = CONV_ALGO;
     }
 
+    if (0){
+      char * a;
+      switch(chosen_algo){
+      case CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0:
+	a = "algo 0 (0)";
+	break;
+      case CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1:
+	a = "algo 1 (1)";
+	break;
+      case CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT:
+	a = "fft (2)";
+	break;
+      case CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3:
+	a = "algo 3 (3)";
+	break;
+      }
+      printf("GpuDNNConvGW: algo %s\n", a);
+    }
+
     // The FFT implementation (only in v3 and onward) does not support strides,
     // 1x1 filters or inputs with a spatial dimension larger than 1024.
     // If the chosen implementation is FFT, validate that it can be used
