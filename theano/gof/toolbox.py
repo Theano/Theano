@@ -305,7 +305,7 @@ class ReplaceValidate(History, Validator):
         if verbose is None:
             verbose = config.optimizer_verbose
         if config.scan.debug:
-            nb = len([n for n in fgraph.apply_nodes if isinstance(n.op, theano.scan_module.scan_op.Scan)])
+            scans = [n for n in fgraph.apply_nodes if isinstance(n.op, theano.scan_module.scan_op.Scan)]
 
         for r, new_r in replacements:
             try:
@@ -341,7 +341,9 @@ class ReplaceValidate(History, Validator):
                 print("validate failed on node %s.\n Reason: %s, %s" % (r, reason, e))
             raise
         if config.scan.debug:
-            nb2 = len([n for n in fgraph.apply_nodes if isinstance(n.op, theano.scan_module.scan_op.Scan)])
+            scans2 = [n for n in fgraph.apply_nodes if isinstance(n.op, theano.scan_module.scan_op.Scan)]
+            nb = len(scans)
+            nb2 = len(scans2)
             if nb2 > nb:
                 print("Extra scan introduced", nb, nb2, getattr(reason, 'name', reason), r, new_r)
             elif nb2 < nb:
