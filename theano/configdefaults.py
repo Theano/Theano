@@ -571,10 +571,6 @@ AddConfigVar(
     IntParam(8),
     in_c_key=False)
 
-AddConfigVar('experimental.mrg',
-             "Another random number generator that work on the gpu",
-             BoolParam(False))
-
 AddConfigVar('experimental.unpickle_gpu_on_cpu',
              "Allow unpickling of pickled CudaNdarrays as numpy.ndarrays."
              "This is useful, if you want to open a CudaNdarray without "
@@ -1083,12 +1079,6 @@ AddConfigVar('gcc.cxxflags',
              StrParam(""),
              # Added elsewhere in the c key only when needed.
              in_c_key=False)
-
-AddConfigVar(
-    'cmodule.mac_framework_link',
-    "If set to True, breaks certain MacOS installations with the infamous "
-    "Bus Error",
-    BoolParam(False))
 
 AddConfigVar('cmodule.warn_no_version',
              "If True, will print a warning when compiling one or more Op "
