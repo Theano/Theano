@@ -42,7 +42,8 @@ AddConfigVar('floatX',
              "Note: float16 support is experimental, use at your own risk.",
              EnumStr('float64', 'float32', 'float16',
                      convert=floatX_convert,),
-             in_c_key=False
+             # TODO: see gh-4466 for how to remove it.
+             in_c_key=True
              )
 
 AddConfigVar('warn_float64',

@@ -1229,10 +1229,6 @@ class CLinker(link.Linker):
         It is followed by elements for every node in the topological ordering
         of `self.fgraph`.
 
-        If the Op of any Apply in the FunctionGraph does not have
-        c_code_cache_ok()==True, then this function raises a KeyError
-        exception.
-
         Input Signature
         ---------------
 
