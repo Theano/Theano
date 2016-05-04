@@ -4469,7 +4469,8 @@ class Reshape(Op):
             # to give a positive value.
             # To avoid optimization complexity, we avoid checking
             # for the case when there are two or more '-1' values.
-            rest_size = (mul(*ishapes[0]) // -mul(*new_dims))
+            if self.ndim:
+                rest_size = (mul(*ishapes[0]) // -mul(*new_dims))
             return [tuple([switch(eq(new_dims[i], -1),
                                   rest_size,
                                   new_dims[i])
