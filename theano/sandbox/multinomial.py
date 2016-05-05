@@ -176,10 +176,10 @@ class MultinomialFromUniform(Op):
             z[0].fill(0)
 
         nb_multi = pvals.shape[0]
-        nb_outcomes = pvals.shape[1]
         # Original version that is not vectorized. I keep it here as
         # it is more readable.
         # For each multinomial, loop over each possible outcome
+        # nb_outcomes = pvals.shape[1]
         # for c in range(n_samples):
         #    for n in range(nb_multi):
         #        waiting = True
