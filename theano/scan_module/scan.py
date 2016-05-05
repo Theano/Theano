@@ -316,6 +316,21 @@ def scan(fn,
         Set the value of allow gc for the internal graph of scan.  If
         set to None, this will use the value of config.scan.allow_gc.
 
+        The full scan behavior related to allocation is determined by
+        this value and the Theano flag allow_gc. If the flag allow_gc
+        is True (default) and this scan parameter allow_gc is False
+        (default), then we let scan allocate all intermediate memory
+        on the first iteration, those are not garbage collected them
+        during that first iteration (this is determined by the scan
+        allow_gc). This speed up allocation of the following
+        iteration. But we free all those temp allocation at the end of
+        all iterations (this is what the Theano flag allow_gc mean).
+
+        If you use cnmem and this scan is on GPU, the speed up from
+        the scan allow_gc is small. If you are missing memory, disable
+        the scan allow_gc could help you run graph that request much
+        memory.
+
     strict
         If true, all the shared variables used in ``fn`` must be provided as a
         part of ``non_sequences`` or ``sequences``.
