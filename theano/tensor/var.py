@@ -524,8 +524,17 @@ class _tensor_py_operators(object):
                         counter += 1
                         new_args.append(arg)
                 view = self.dimshuffle(pattern)
-                check_rval = [arg == slice(None, None, None) for arg in new_args]
-                if all(check_rval) == True:
+                full_slices = True
+                for arg in new_args:
+                    # We can't do arg == slice(None, None, None) as in
+                    # Python 2.7, this call __lt__ if we have a slice
+                    # with some symbolic variable.
+                    if not (isinstance(arg, slice) and
+                            arg.start is None and
+                            arg.stop is None and
+                            arg.step is None):
+                        full_slices = False
+                if full_slices:
                     return view
                 else:
                     return view.__getitem__(tuple(new_args))
