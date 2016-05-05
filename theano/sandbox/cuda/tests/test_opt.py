@@ -168,7 +168,7 @@ def test_gpualloc():
                         mode=mode_with_gpu.excluding(
                             "local_elemwise_alloc"))
     l = f.maker.fgraph.toposort()
-    assert numpy.any([isinstance(x.op, cuda.GpuAlloc) for y in l])
+    assert numpy.any([isinstance(y.op, cuda.GpuAlloc) for y in l])
 
 
 def test_gpuallocempty():
@@ -180,7 +180,7 @@ def test_gpuallocempty():
     l_gpu = f_gpu.maker.fgraph.toposort()
 
     assert numpy.any(
-        [isinstance(x.op, basic_ops.GpuAllocEmpty) for x in l_gpu])
+        [isinstance(y.op, basic_ops.GpuAllocEmpty) for y in l_gpu])
 
     f_cpu = theano.function([], tensor.AllocEmpty('int32')(2, 3))
     l_cpu = f_cpu.maker.fgraph.toposort()
@@ -265,7 +265,7 @@ def test_gpuspecifyshape():
                         mode=mode_with_gpu)
     l = f.maker.fgraph.toposort()
     assert not numpy.any(
-        [isinstance(x.op, cuda.HostFromGpu) for y in l])
+        [isinstance(y.op, cuda.HostFromGpu) for y in l])
 
 
 def test_softmax():
@@ -883,6 +883,7 @@ class test_diag(theano.tensor.tests.test_nlinalg.test_diag):
 
 
 class Test_GpuReshape(test_opt.Test_Reshape):
+
     def setUp(self):
         self.mode = mode_with_gpu
         self.op = basic_ops.GpuReshape
