@@ -4839,11 +4839,29 @@ def local_useless_elemwise_comparison(node):
         return [T.ones_like(node.inputs[0], dtype=node.outputs[0].dtype)]
 
     # Elemwise[EQ](Subtensor(Shape(x)), -N)
+    # Elemwise[EQ](somegraph that only depend of shape, -N)
+    # TODO: handle the case where the -N is on either side
+        """
+ |Elemwise{eq,no_inplace} [id B] ''
+ | |Subtensor{int64} [id C] ''
+ | | |Join [id D] ''
+ | | | |TensorConstant{0} [id E]
+ | | | |Subtensor{int64:int64:} [id F] ''
+ | | | | |Shape [id G] ''
+        """
+    def investigate(node):
+        " Return True if values will be shapes, so >= 0"
+        if isinstance(node.op, (T.Shape, Shape_i)):
+            return True
+        elif isinstance(node.op, Subtensor) and node.inputs[0].owner:
+            return investigate(node.inputs[0].owner)
+        elif isinstance(node.op, T.Join):
+            return all(v.owner and
+                       investigate(v.owner) for v in node.inputs[1:])
+
     if (isinstance(node.op.scalar_op, scalar.EQ) and
             node.inputs[0].owner and
-            isinstance(node.inputs[0].owner.op, Subtensor) and
-            node.inputs[0].owner.inputs[0].owner and
-            isinstance(node.inputs[0].owner.inputs[0].owner.op, T.Shape)):
+            investigate(node.inputs[0].owner)):
         try:
             cst = get_scalar_constant_value(node.inputs[1],
                                             only_process_constants=True)

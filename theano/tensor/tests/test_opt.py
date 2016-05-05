@@ -3552,18 +3552,27 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
         f = theano.function([x, y], T.ge(x.shape[0]+y.shape[0], 0), mode=mode)
         self.assert_eqs_const(f, 1)
 
-    def test_subtensor_shape_equality(self):
+    def test_equality_shapes(self):
+        # Test equality where one sides contain only shapes related
+        # stuff.
         x = T.vector('x', dtype=config.floatX)
         mode = theano.compile.get_default_mode().including('local_useless_elemwise_comparison',
                                                            'local_shape_to_shape_i',
                                                            'local_track_shape_i',
                                                            'local_subtensor_make_vector')
+        for g in [x.shape[0],
+                  Shape_i(0)(x),
+                  join(0,
+                       x.shape[0:], # todo test reshape, dimshuffle
+                       x.shape[0:1])]:
+            f = theano.function([x], T.eq(g, 0), mode=mode)
+#            assert len(f.maker.fgraph.toposort()) == 2, g
+            assert f([3, 3]) == 0
+            assert f([]) == 1
 
-        f = theano.function([x], T.eq(x.shape[0], 0), mode=mode)
-        assert len(f.maker.fgraph.toposort()) == 2
-
-        f = theano.function([x], T.eq(x.shape[0], -1), mode=mode)
-        self.assert_eqs_const(f, 0)
+            f = theano.function([x], T.eq(g, -1), mode=mode)
+            self.assert_eqs_const(f, 0)
+            assert f([3, 3]) == 0
 
     def test_and(self):
         mode = theano.compile.get_default_mode().including('canonicalize')
