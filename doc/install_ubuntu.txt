@@ -136,7 +136,7 @@ Theano/BLAS speed test:
 
 .. code-block:: bash
 
-    python `python -c "import os, theano; print os.path.dirname(theano.__file__)"`/misc/check_blas.py
+    python `python -c "import os, theano; print(os.path.dirname(theano.__file__))"`/misc/check_blas.py
 
 This will print a table with different versions of BLAS/numbers of
 threads on multiple CPUs and GPUs. It will also print some Theano/NumPy
