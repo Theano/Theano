@@ -213,8 +213,12 @@ class IfElse(PureOp):
                              gpu=self.gpu,
                              name=nw_name_f)
 
-        # The grads can have a different type then the inputs.
-        # As all condition must have the same dtype, we must
+        # The grads can have a different dtype then the inputs.
+        # As all inputs except the condition must have the same dtype,
+        # we must cast the zeros to the grad dtype and not the input dtype.
+        # We hope that each grads have the same dtype and none had its
+        # dtype changed differently then the others. This could happen
+        # in theory.
         dtype = grads[0].dtype
         if_true = ([ins[0]] +
                    grads +
