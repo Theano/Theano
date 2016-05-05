@@ -208,7 +208,7 @@ class MultinomialFromUniform(Op):
                 # have the same answer as the c code as in the c code
                 # the cumul is in double precission.
                 cumsum = pvals[n].cumsum(dtype='float64')
-                z[0][n, (cumsum > unis_n).nonzero()[0][0]] += 1
+                z[0][n, numpy.searchsorted(cumsum, unis_n)] += 1
 
 
 class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
