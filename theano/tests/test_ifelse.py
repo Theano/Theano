@@ -494,8 +494,8 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         correct = (score * y > 0)
 
         loss = ifelse(correct, 0, 1)
-        updates = [(param, param - 0.5 * tensor.grad(cost=loss, wrt=param))
-                   for param in params]
+        [(param, param - 0.5 * tensor.grad(cost=loss, wrt=param))
+         for param in params]
 
 
 if __name__ == '__main__':
