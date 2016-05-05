@@ -214,17 +214,16 @@ class IfElse(PureOp):
                              name=nw_name_f)
 
         # The grads can have a different dtype then the inputs.
-        # As all inputs except the condition must have the same dtype,
-        # we must cast the zeros to the grad dtype and not the input dtype.
-        # We hope that each grads have the same dtype and none had its
-        # dtype changed differently then the others. This could happen
-        # in theory.
-        dtype = grads[0].dtype
+        # As inputs true/false pair must have the same dtype,
+        # we must cast the zeros to the corresponding grad dtype
+        # and not the input dtype.
         if_true = ([ins[0]] +
                    grads +
-                   [theano.tensor.zeros_like(t, dtype=dtype) for t in ts])
+                   [theano.tensor.zeros_like(t, dtype=grads[i].dtype)
+                    for i, t in enumerate(ts)])
         if_false = ([ins[0]] +
-                    [theano.tensor.zeros_like(f, dtype=dtype) for f in fs] +
+                    [theano.tensor.zeros_like(f, dtype=grads[i].dtype)
+                     for i, f in enumerate(fs)] +
                     grads)
 
         condition = ins[0]
