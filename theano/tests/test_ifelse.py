@@ -482,6 +482,21 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         finally:
             theano.config.compute_test_value = backup
 
+    def test_grad_int_value(self):
+        w = theano.shared(numpy.random.rand(10))
+        b = theano.shared(numpy.random.rand())
+        params = [w, b]
+
+        x = tensor.vector()
+        y = tensor.scalar()
+
+        score = w.dot(x) + b
+        correct = (score * y > 0)
+
+        loss = ifelse(correct, 0, 1)
+        [(param, param - 0.5 * tensor.grad(cost=loss, wrt=param))
+         for param in params]
+
 
 if __name__ == '__main__':
     print(' Use nosetests to run these tests ')
