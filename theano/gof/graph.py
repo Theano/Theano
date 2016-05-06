@@ -819,7 +819,7 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
     original graph to a new node (a clone) in a new graph.
 
     This function works by recursively cloning inputs... rebuilding a directed
-    graph from the bottom (inputs) up to eventually building new outputs.
+    graph from the inputs up to eventually building new outputs.
 
     Parameters
     ----------

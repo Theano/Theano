@@ -23,19 +23,26 @@ from theano.compile import Function, debugmode, SharedVariable
 from theano.compile.profilemode import ProfileMode
 
 pydot_imported = False
+pydot_imported_msg = ""
 try:
     # pydot-ng is a fork of pydot that is better maintained
     import pydot_ng as pd
     if pd.find_graphviz():
         pydot_imported = True
+    else:
+        pydot_imported_msg = "pydot-ng can't find graphviz"
 except ImportError:
     try:
         # fall back on pydot if necessary
         import pydot as pd
         if pd.find_graphviz():
             pydot_imported = True
+        else:
+            pydot_imported_msg = "pydot can't find graphviz"
     except ImportError:
-        pass  # tests should not fail on optional dependency
+        # tests should not fail on optional dependency
+        pydot_imported_msg = "Install the python package pydot or pydot-ng."
+
 
 _logger = logging.getLogger("theano.printing")
 VALID_ASSOC = set(['left', 'right', 'either'])
@@ -43,7 +50,8 @@ VALID_ASSOC = set(['left', 'right', 'either'])
 
 def debugprint(obj, depth=-1, print_type=False,
                file=None, ids='CHAR', stop_on_name=False,
-               done=None, print_storage=False):
+               done=None, print_storage=False, print_clients=False,
+               used_ids=None):
     """Print a computation graph as text to stdout or a file.
 
     :type obj: Variable, Apply, or Function instance
@@ -69,6 +77,13 @@ def debugprint(obj, depth=-1, print_type=False,
     :param print_storage: If True, this will print the storage map
         for Theano functions. Combined with allow_gc=False, after the
         execution of a Theano function, we see the intermediate result.
+    :type print_clients: bool
+    :param print_clients: If True, this will print for Apply node that
+         have more then 1 clients its clients. This help find who use
+         an Apply node.
+    :type used_ids: dict or None
+    :param used_ids: the id to use for some object, but maybe we only
+         refered to it yet.
 
     :returns: string if `file` == 'str', else file arg
 
@@ -98,6 +113,9 @@ def debugprint(obj, depth=-1, print_type=False,
         _file = file
     if done is None:
         done = dict()
+    if used_ids is None:
+        used_ids = dict()
+    used_ids = dict()
     results_to_print = []
     profile_list = []
     order = []  # Toposort
@@ -178,7 +196,8 @@ N.B.:
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=o, ids=ids,
                              scan_ops=scan_ops, stop_on_name=stop_on_name,
-                             profile=p, smap=s)
+                             profile=p, smap=s, used_ids=used_ids,
+                             print_clients=print_clients)
 
     if len(scan_ops) > 0:
         print("", file=_file)
@@ -208,7 +227,8 @@ N.B.:
                 file=_file, ids=ids,
                 scan_ops=scan_ops,
                 stop_on_name=stop_on_name,
-                scan_inner_to_outer_inputs=inner_to_outer_inputs)
+                scan_inner_to_outer_inputs=inner_to_outer_inputs,
+                print_clients=print_clients, used_ids=used_ids)
             if hasattr(s.owner.op, 'fn'):
                 # If the op was compiled, print the optimized version.
                 outputs = s.owner.op.fn.maker.fgraph.outputs
@@ -227,7 +247,8 @@ N.B.:
                     ids=ids, stop_on_name=stop_on_name,
                     prefix_child=new_prefix_child,
                     scan_ops=scan_ops,
-                    scan_inner_to_outer_inputs=inner_to_outer_inputs)
+                    scan_inner_to_outer_inputs=inner_to_outer_inputs,
+                    print_clients=print_clients, used_ids=used_ids)
 
     if file is _file:
         return file
@@ -727,7 +748,8 @@ def pydotprint(fct, outfile=None,
         topo = fct.toposort()
     if not pydot_imported:
         raise RuntimeError("Failed to import pydot. You must install pydot"
-                           " and graphviz for `pydotprint` to work.")
+                           " and graphviz for `pydotprint` to work.",
+                           pydot_imported_msg)
 
     g = pd.Dot()
 
@@ -1062,7 +1084,8 @@ def pydotprint_variables(vars,
                                config.device + '.' + format)
     if not pydot_imported:
         raise RuntimeError("Failed to import pydot. You must install pydot"
-                           " and graphviz for `pydotprint_variables` to work.")
+                           " and graphviz for `pydotprint_variables` to work.",
+                           pydot_imported_msg)
     if pd.__name__ == "pydot_ng":
         raise RuntimeError("pydotprint_variables do not support pydot_ng."
                            "pydotprint_variables is also deprecated, "
