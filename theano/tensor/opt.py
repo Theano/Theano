@@ -4759,7 +4759,7 @@ def local_useless_elemwise_comparison(node):
     Elemwise[LT](add([anything that is shapes]), 0) -> Elemwise[zeros](X)
     Elemwise[GE](add([anything that is shapes]), 0) -> Elemwise[ones](X)
 
-    # Shapes are never negativ
+    # Shapes are never negative
     # Needed by Reshape.infer_shape
     Elemwise[EQ](Subtensor(Shape(x)), -N) -> Elemwise[zeros](X)
 
