@@ -84,6 +84,8 @@ We can here see that the error can be traced back to the line ``z = z + y``.
 For this example, using ``optimizer=fast_compile`` worked. If it did not,
 you could set ``optimizer=None`` or use test values.
 
+.. _test_values:
+
 Using Test Values
 -----------------
 
