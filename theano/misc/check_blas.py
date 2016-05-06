@@ -264,7 +264,7 @@ if __name__ == "__main__":
         GTX 780
         GTX 980 Ti        0.41s
         GTX 980
-        GTX 970
+        GTX 970           0.66s
         GTX 680                  1.57s
         GRID K520
         GTX 750 Ti        2.01s  2.01s
