@@ -53,6 +53,7 @@ FLAGS=${FLAGS},device=cpu,floatX=float64
 
 if [ "$RELEASE" ]; then
     echo "Executing tests with default mode and compute_test_value"
+    date
     THEANO_FLAGS=${FLAGS},compute_test_value=ignore ${NOSETESTS} ${ARGS}
     echo "Number of elements in the compiledir:"
     ls ${COMPILEDIR}|wc -l
@@ -60,6 +61,7 @@ if [ "$RELEASE" ]; then
 
     echo "Executing tests with linker=vm,floatX=float32"
     echo "THEANO_FLAGS=${FLAGS},linker=vm,floatX=float32 ${NOSETESTS} ${ARGS}"
+    date
     THEANO_FLAGS=${FLAGS},linker=vm,floatX=float32 ${NOSETESTS} ${ARGS}
     echo "Number of elements in the compiledir:"
     ls ${COMPILEDIR}|wc -l
@@ -67,6 +69,7 @@ if [ "$RELEASE" ]; then
 
     echo "Executing tests with cxx="
     echo "THEANO_FLAGS=${FLAGS},cxx= ${NOSETESTS} ${ARGS}"
+    date
     THEANO_FLAGS=${FLAGS},cxx= ${NOSETESTS} ${ARGS}
     echo "Number of elements in the compiledir:"
     ls ${COMPILEDIR}|wc -l
@@ -76,6 +79,7 @@ fi
 
 echo "Executing tests with mode=FAST_RUN"
 echo "THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${ARGS}"
+date
 THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
@@ -83,6 +87,7 @@ echo
 
 echo "Executing tests with mode=FAST_RUN,floatX=float32"
 echo "THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} ${ARGS}"
+date
 THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
@@ -90,6 +95,7 @@ echo
 
 echo "Executing tests with linker=vm,vm.lazy=True,floatX=float32"
 echo "THEANO_FLAGS=${FLAGS},linker=vm,vm.lazy=True,floatX=float32 ${NOSETESTS} ${ARGS}"
+date
 THEANO_FLAGS=${FLAGS},linker=vm,vm.lazy=True,floatX=float32 ${NOSETESTS} ${ARGS}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
@@ -99,6 +105,7 @@ echo
 seed=$RANDOM
 echo "Executing tests with mode=DEBUG_MODE with seed of the day $seed"
 echo "THEANO_FLAGS=${FLAGS},unittests.rseed=$seed,mode=DEBUG_MODE,DebugMode.check_strides=0,DebugMode.patience=3,DebugMode.check_preallocated_output= ${NOSETESTS} ${ARGS}"
+date
 THEANO_FLAGS=${FLAGS},unittests.rseed=$seed,mode=DEBUG_MODE,DebugMode.check_strides=0,DebugMode.patience=3,DebugMode.check_preallocated_output= ${NOSETESTS} ${ARGS}
 
 echo "Number of elements in the compiledir:"
@@ -110,6 +117,7 @@ echo
 # with --batch=1000" # The buildbot freeze sometimes when collecting the tests to run
 echo "Executing tests with mode=FAST_COMPILE"
 echo "THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${ARGS}"
+date
 THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${ARGS}
 
 echo "Number of elements in the compiledir:"

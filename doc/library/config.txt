@@ -940,13 +940,6 @@ import theano and print the config variable, as in:
     code that can't be cached because there is no c_code_cache_version()
     function associated to at least one of those Ops.
 
-.. attribute:: config.cmodule.mac_framework_link
-
-    Bool value, default: False
-
-    If set to True, breaks certain MacOS installations with the infamous
-    Bus Error.
-
 .. attribute:: config.cmodule.remove_gxx_opt
 
     Bool value, default: False
