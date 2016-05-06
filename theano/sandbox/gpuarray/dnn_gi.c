@@ -79,8 +79,8 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     cudnnConvolutionBwdDataAlgoPerf_t choice;
 
     err = cudnnFindConvolutionBackwardDataAlgorithm(
-      APPLY_SPECIFIC(_handle), APPLY_SPECIFIC(input), APPLY_SPECIFIC(output), desc,
-      APPLY_SPECIFIC(kerns), 1, &count, &choice);
+      APPLY_SPECIFIC(_handle), APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output), desc,
+      APPLY_SPECIFIC(input), 1, &count, &choice);
 
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError, "error selecting convolution algo: %s",
@@ -102,8 +102,8 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     }
 
     err = cudnnGetConvolutionBackwardDataAlgorithm(
-      APPLY_SPECIFIC(_handle), APPLY_SPECIFIC(input), APPLY_SPECIFIC(output),
-      desc, APPLY_SPECIFIC(kerns),
+      APPLY_SPECIFIC(_handle), APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output),
+      desc, APPLY_SPECIFIC(input),
       CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT, free, &algo);
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError, "error selecting convolution algo: %s",
