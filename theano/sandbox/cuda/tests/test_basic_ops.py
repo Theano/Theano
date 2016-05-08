@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import time
 import unittest
+import os
 
 from theano.compile.pfunc import pfunc
 from theano import tensor
@@ -1384,6 +1385,17 @@ def speed_reduce10():
                         mode=mode_with_gpu)
     f(data)
 
+
+def test_gpu_lock():
+    # Ensures that if the parent process is using the GPU,
+    # the child process cannot get a lock on it.
+    os.environ['THEANO_MAX_GPU'] = '0'
+    pid = os.fork()
+    if pid == 0:
+        try:
+            import theano.sandbox.cuda as tcn
+        except Exception as e:
+            assert e.__class__.__name__ == 'ImportError'
 
 if __name__ == '__main__':
     # test_many_arg_elemwise()
