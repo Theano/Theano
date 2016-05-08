@@ -6062,7 +6062,7 @@ def test_local_useless_split():
 
     # Check if there are use cases that are not covered here
     # and if the line below is necessary and correct (See issue #4421)
-    # assert check_stack_trace(f_opt, ops_to_check=[Assert])
+    assert check_stack_trace(f_opt, ops_to_check=[Assert])
     assert check_stack_trace(f_nonopt, ops_to_check='all')
 
 

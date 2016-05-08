@@ -4022,11 +4022,13 @@ def local_useless_split(node):
         if node.op.len_splits == 1:
             x, axis, splits = node.inputs
             out = assert_op(x, T.eq(splits.shape[0], 1))
-            out = assert_op(out, T.eq(x.shape[axis], splits[0]))
-
             # Copy over stacktrace from previous output node.
             copy_stack_trace(node.outputs, out)
-            return [out]
+            out2 = assert_op(out, T.eq(x.shape[axis], splits[0]))
+            # Copy over stacktrace from previous output node.
+            copy_stack_trace(out, out2)
+
+            return [out2]
 
 
 ################
