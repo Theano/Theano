@@ -224,6 +224,7 @@ class GpuElemwise(HideC, Elemwise):
         // +1 is so that MSVC is happy when nd == 0
         size_t dims[%(nd)s+1] = {%(initial_dims)s};
         void *rargs[%(nargs)s] = {0};
+        int err;
         """ % locals()
         for idx, iname in enumerate(inputs):
             if iname in emitted_inames:
