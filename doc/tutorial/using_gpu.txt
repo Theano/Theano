@@ -15,11 +15,10 @@ about how to carry out those computations.  One of the ways we take
 advantage of this flexibility is in carrying out calculations on a
 graphics card.
 
-Testing Theano with GPU
-~~~~~~~~~~~~~~~~~~~~~~~
-
-Once that is done, the only thing left is to change the ``device`` option to name the GPU device in your
-computer, and set the default floating point computations to float32.
+Using the GPU in Theano is as simple as setting the ``device`` configuration
+flag to `device=gpu`. You can optionally target a specific gpu by specifying
+the number of the gpu as in e.g. `device=gpu2`. You also need to set the
+default floating point precision.
 For example: ``THEANO_FLAGS='cuda.root=/path/to/cuda/root,device=gpu,floatX=float32'``.
 You can also set these options in the .theanorc file's ``[global]`` section:
 
@@ -43,6 +42,9 @@ You can also set these options in the .theanorc file's ``[global]`` section:
 
 You probably need to change the default version of gcc as
 `explained by Benjamin J. McCann <http://www.benmccann.com/blog/installing-cuda-and-theano/>`_ if the package you downloaded is for another Ubuntu version.
+
+Testing Theano with GPU
+~~~~~~~~~~~~~~~~~~~~~~~
 
 To see if your GPU is being used, cut and paste the following program into a
 file and run it.

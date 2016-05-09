@@ -32,8 +32,8 @@ For Ubuntu 11.04:
     :start-line: 11
 
 
-Manual Openblas instruction
----------------------------
+Manual Openblas installation (deprecated)
+-----------------------------------------
 
 The openblas included in some older Ubuntu version is limited to 2
 threads. Ubuntu 14.04 do not have this limit. If you want to use more
