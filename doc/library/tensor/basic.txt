@@ -676,6 +676,20 @@ Creating Tensor
 
     Returns a tensor filled with 1s that has same shape as `x`.
 
+.. function:: zeros(shape, dtype=None)
+
+    :param shape: a tuple/list of scalar with the shape information.
+    :param dtype: the dtype of the new tensor. If None, will use floatX.
+
+    Returns a tensor filled with 0s of the provided shape.
+
+.. function:: ones(shape, dtype=None)
+
+    :param shape: a tuple/list of scalar with the shape information.
+    :param dtype: the dtype of the new tensor. If None, will use floatX.
+
+    Returns a tensor filled with 1s of the provided shape.
+
 .. function:: fill(a,b)
 
     :param a: tensor that has same shape as output
