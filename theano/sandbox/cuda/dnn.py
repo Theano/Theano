@@ -2590,7 +2590,7 @@ if True:
                     n = n.owner.inputs[0]
                 if n.ndim != 2:
                     return
-                ins.append(n.dimshuffle(0, 1, 'x', 'x'))
+                ins.append(n.dimshuffle(0, 'x', 1, 'x'))
 
             out = GpuDnnSoftmaxGrad(
                 'bc01',
@@ -2600,7 +2600,8 @@ if True:
                 gpu_contiguous(ins[0]),
                 gpu_contiguous(ins[1])
             )
-            return [out.dimshuffle(0, 1)]
+            return [out.dimshuffle(0, 2)]
+            
 
 
 # AbstractConv Optimizations

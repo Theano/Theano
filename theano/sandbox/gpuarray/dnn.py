@@ -1634,8 +1634,8 @@ def local_softmax_dnn_grad(node, ctx_name):
         n = as_gpuarray_variable(n, ctx_name)
         if n.ndim != 2:
             return
-        ins.append(n.dimshuffle(0, 1, 'x', 'x'))
+        ins.append(n.dimshuffle(0, 'x', 1, 'x'))
 
     out = GpuDnnSoftmaxGrad('accurate', 'channel')(
         gpu_contiguous(ins[0]), gpu_contiguous(ins[1]))
-    return [out.dimshuffle(0, 1)]
+    return [out.dimshuffle(0, 2)]
