@@ -51,13 +51,14 @@ def init_dev(dev, name=None):
                            "Please update libgpuarray/pygpu.")
     global pygpu_activated
     if dev not in init_dev.devmap:
-        ctx = pygpu.init(dev)
+        ctx = pygpu.init(dev,
+                         disable_alloc_cache=config.gpuarray.preallocate < 0)
         init_dev.devmap[dev] = ctx
-        if config.gpuarray.preallocate != 0:
+        if config.gpuarray.preallocate > 0:
             if config.gpuarray.preallocate < 1:
-                gmem = min(config.gpuarray.preallocate, 0.98) * ctx.total_gmem
+                gmem = min(config.gpuarray.preallocate, 0.95) * ctx.total_gmem
             else:
-                gmem = config.gpuarray.preallocate * (1024*1024)
+                gmem = config.gpuarray.preallocate * (1024 * 1024)
             # This will allocate and immediatly free an object of size gmem
             # which will reserve that amount of memory on the GPU.
             pygpu.empty((gmem,), dtype='int8', context=ctx)
