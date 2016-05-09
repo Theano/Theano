@@ -3568,7 +3568,7 @@ def local_join_empty(node):
 
 
 @register_specialize
-@register_canonicalize
+@register_canonicalize('fast_compile')
 @gof.local_optimizer([T.Join])
 def local_join_make_vector(node):
     """Join(0, make_vector1, make_vector2, ...) => Join(0, make_vector12, ...)
@@ -4858,6 +4858,9 @@ def local_useless_elemwise_comparison(node):
         elif isinstance(node.op, T.Join):
             return all(v.owner and
                        investigate(v.owner) for v in node.inputs[1:])
+        elif isinstance(node.op, MakeVector):
+            return all(v.owner and
+                       investigate(v.owner) for v in node.inputs)
 
     if (isinstance(node.op.scalar_op, scalar.EQ) and
             node.inputs[0].owner and
