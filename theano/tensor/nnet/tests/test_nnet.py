@@ -1598,6 +1598,15 @@ def test_relu():
         y = relu(x, alpha).eval({x: X, alpha: A})
         assert numpy.allclose(y, numpy.where(X > 0, X, A * X), rtol=3e-5)
 
+    # test that for alpha of ndarray don't cause upcast.
+    x = matrix('x', dtype='float32')
+    rng = numpy.random.RandomState(seed)
+    X = rng.randn(20, 30).astype('float32')
+    alpha = numpy.asarray(.123, dtype='float32')
+    y = relu(x, alpha).eval({x: X})
+    assert numpy.allclose(y, numpy.where(X > 0, X, alpha * X))
+    assert y.dtype == 'float32'
+
 
 def test_h_softmax():
     """

@@ -2220,6 +2220,10 @@ def relu(x, alpha=0):
     if alpha == 0:
         return 0.5 * (x + abs(x))
     else:
+        # We can't use 0.5 and 1 for one and half.  as if alpha is a
+        # numpy dtype, they will be considered as float64, so would
+        # cause upcast to float64.
+        alpha = tensor.as_tensor_variable(alpha)
         f1 = 0.5 * (1 + alpha)
         f2 = 0.5 * (1 - alpha)
         return f1 * x + f2 * abs(x)
