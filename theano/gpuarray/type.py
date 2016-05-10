@@ -463,7 +463,7 @@ class GpuArrayType(Type):
         ver = pygpu.gpuarray.api_version()
         # we only use the major version since the minor revision are
         # API-compatible.
-        return (1, ver[0])
+        return (2, ver[0])
 
 
 class _operators(_tensor_py_operators):
