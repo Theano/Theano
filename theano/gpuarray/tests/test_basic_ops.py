@@ -302,7 +302,7 @@ class G_reshape(test_basic.T_reshape):
             mode=mode_with_gpu,
             ignore_topo=(HostFromGpu, GpuFromHost,
                          theano.compile.DeepCopyOp,
-                         theano.sandbox.gpuarray.elemwise.GpuElemwise,
+                         theano.gpuarray.elemwise.GpuElemwise,
                          theano.tensor.opt.Shape_i,
                          theano.tensor.opt.MakeVector))
         assert self.op == GpuReshape
@@ -405,7 +405,7 @@ def test_hostfromgpu_shape_i():
                                 'local_dot22_to_dot22scalar',
                                 'specialize')
     a = T.fmatrix('a')
-    ca = theano.sandbox.gpuarray.type.GpuArrayType('float32', (False, False))()
+    ca = theano.gpuarray.type.GpuArrayType('float32', (False, False))()
     av = numpy.asarray(numpy.random.rand(5, 4), dtype='float32')
     cv = gpuarray.asarray(numpy.random.rand(5, 4),
                           dtype='float32',

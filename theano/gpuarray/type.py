@@ -233,7 +233,7 @@ class GpuArrayType(Type):
         return data
 
     def filter_variable(self, other, allow_convert=True):
-        from theano.sandbox.gpuarray import GpuFromHost
+        from theano.gpuarray import GpuFromHost
 
         if hasattr(other, '_as_GpuArrayVariable'):
             other = other._as_GpuArrayVariable(self.context_name)

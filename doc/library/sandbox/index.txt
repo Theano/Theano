@@ -14,7 +14,6 @@
     :maxdepth: 1
 
     cuda/index
-    gpuarray/index
     linalg
     neighbours
     rng_mrg

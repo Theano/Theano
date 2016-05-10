@@ -1,7 +1,7 @@
 .. _libdoc_gpuarray_dnn:
 
 ===========================================
-:mod:`theano.sandbox.gpuarray.dnn` -- cuDNN
+:mod:`gpuarray.dnn` -- cuDNN
 ===========================================
 
 .. moduleauthor:: LISA
@@ -135,27 +135,27 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
 Functions
 =========
 
-.. automodule:: theano.sandbox.gpuarray.dnn
+.. automodule:: theano.gpuarray.dnn
    :noindex:
    :members: dnn_conv, dnn_pool
 
 Convolution Ops
 ===============
 
-.. automodule:: theano.sandbox.gpuarray.dnn
+.. automodule:: theano.gpuarray.dnn
    :noindex:
    :members: GpuDnnConvDesc, GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI
 
 Pooling Ops
 ===========
 
-.. automodule:: theano.sandbox.gpuarray.dnn
+.. automodule:: theano.gpuarray.dnn
    :noindex:
    :members: GpuDnnPoolDesc, GpuDnnPool, GpuDnnPoolGrad
 
 Softmax Ops
 ===========
 
-.. automodule:: theano.sandbox.gpuarray.dnn
+.. automodule:: theano.gpuarray.dnn
    :noindex:
    :members: GpuDnnSoftmax, GpuDnnSoftmaxGrad

@@ -46,7 +46,7 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedIncSubtensor1_dev20)
 from .opt_util import alpha_merge, output_merge
 
-_logger = logging.getLogger("theano.sandbox.gpuarray.opt")
+_logger = logging.getLogger("theano.gpuarray.opt")
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()

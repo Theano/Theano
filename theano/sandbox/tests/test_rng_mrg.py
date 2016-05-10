@@ -366,9 +366,9 @@ def test_consistency_GPUA_serial():
     are the same as the reference (Java) implementation by L'Ecuyer et al.
 
     """
-    from theano.sandbox.gpuarray.tests.test_basic_ops import \
+    from theano.gpuarray.tests.test_basic_ops import \
         mode_with_gpu as mode
-    from theano.sandbox.gpuarray.type import gpuarray_shared_constructor
+    from theano.gpuarray.type import gpuarray_shared_constructor
 
     seed = 12345
     n_samples = 5
@@ -421,9 +421,9 @@ def test_consistency_GPUA_parallel():
     L'Ecuyer et al.
 
     """
-    from theano.sandbox.gpuarray.tests.test_basic_ops import \
+    from theano.gpuarray.tests.test_basic_ops import \
         mode_with_gpu as mode
-    from theano.sandbox.gpuarray.type import gpuarray_shared_constructor
+    from theano.gpuarray.type import gpuarray_shared_constructor
 
     seed = 12345
     n_samples = 5
@@ -1107,9 +1107,9 @@ def test_overflow_gpu_old_backend():
 
 def test_overflow_gpu_new_backend():
     # run with THEANO_FLAGS=mode=FAST_RUN,init_gpu_device=cuda1,device=cpu
-    from theano.sandbox.gpuarray.tests.test_basic_ops import \
+    from theano.gpuarray.tests.test_basic_ops import \
         mode_with_gpu as mode
-    from theano.sandbox.gpuarray.type import gpuarray_shared_constructor
+    from theano.gpuarray.type import gpuarray_shared_constructor
     seed = 12345
     n_substreams = 7
     curr_rstate = numpy.array([seed] * 6, dtype='int32')

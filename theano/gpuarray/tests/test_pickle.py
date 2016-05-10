@@ -14,24 +14,15 @@ from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
 import numpy
 
-import theano.sandbox.gpuarray
 from theano.compat import PY3
 from theano import config
 from theano.misc.pkl_utils import CompatUnpickler
 
-if not theano.sandbox.gpuarray.pygpu_activated:
-    try:
-        import pygpu
-    except ImportError:
-        pygpu = None
-    import theano.sandbox.cuda as cuda_ndarray
-    if pygpu and cuda_ndarray.cuda_available:
-        cuda_ndarray.use('gpu', default_to_move_computation_to_gpu=False,
-                         move_shared_float32_to_gpu=False,
-                         enable_cuda=False)
-        theano.sandbox.gpuarray.init_dev('cuda')
-
-from .. import pygpu_activated  # noqa
+try:
+    from . import config  # noqa
+    have_pygpu = True
+except SkipTest:
+    have_pygpu = False
 
 
 def test_unpickle_gpuarray_as_numpy_ndarray_flag1():
@@ -40,8 +31,8 @@ def test_unpickle_gpuarray_as_numpy_ndarray_flag1():
     test_type.py test it when pygpu is there.
 
     """
-    if pygpu_activated:
-        raise SkipTest("pygpu disabled")
+    if have_pygpu:
+        raise SkipTest("pygpu active")
     oldflag = config.experimental.unpickle_gpu_on_cpu
     config.experimental.unpickle_gpu_on_cpu = False
 

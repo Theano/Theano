@@ -982,7 +982,8 @@ def scan(fn,
     # the file because that would force on the user some dependencies that we
     # might do not want to. Currently we are working on removing the
     # dependencies on sandbox code completeley.
-    from theano.sandbox import cuda, gpuarray
+    from theano.sandbox import cuda
+    from theano import gpuarray
     if cuda.cuda_available or gpuarray.pygpu_activated:
         # very often we end up in this situation when we want to
         # replace w with w_copy, where w is a GPU variable

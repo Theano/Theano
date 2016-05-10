@@ -12,8 +12,8 @@ import time
 import numpy
 
 import theano
-from theano.sandbox.gpuarray import init_dev
-from theano.sandbox.gpuarray.blas import gpu_dot22
+from theano.gpuarray import init_dev
+from theano.gpuarray.blas import gpu_dot22
 
 
 def main(dev1, dev2):

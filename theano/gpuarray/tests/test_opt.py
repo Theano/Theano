@@ -7,7 +7,7 @@ from theano.tests.breakpoint import PdbBreakpoint
 from theano.tests import unittest_tools as utt, test_ifelse
 from theano.tensor.tests import test_basic
 
-import theano.sandbox.gpuarray
+import theano.gpuarray
 from .. import basic_ops
 from ..type import GpuArrayType, gpuarray_shared_constructor, get_context
 from ..basic_ops import (
