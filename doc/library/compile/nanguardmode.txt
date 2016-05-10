@@ -65,9 +65,8 @@ set to be ``True`` by default.
 
 .. note::
 
-        NanGuardMode will slow down your computations. We have done
-        our best to limit the slowdown, but it is still
-        significant. Therefore, do not always enable it unless needed.
+        NanGuardMode significantly slows down computations; only
+        enable as needed.
 
 Reference
 =========
