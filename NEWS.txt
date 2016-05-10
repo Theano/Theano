@@ -2,6 +2,27 @@
 Release Notes
 =============
 
+
+Theano 0.8.2 (21th of April, 2016)
+==================================
+
+This is a point release with only the support for cudnn v5 convolution
+and minor fixes.
+
+Highlights:
+- cuDNN v5 convolution support (cuDNN v3 isn't supported anymore)
+- A few crash fixes
+
+
+Theano 0.8.1 (29th of March, 2016)
+==================================
+
+This is a point release without any new feature.
+
+It fixes compilation issues on MacOS X with the command line tools for
+XCode 7.3, which was released shortly after Theano 0.8.0.
+
+
 Theano 0.8 (21th of March, 2016)
 ================================
 
