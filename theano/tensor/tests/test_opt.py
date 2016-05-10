@@ -3409,7 +3409,7 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
                                      sequences=[X],
                                      non_sequences=None)
         Z = X_sum + Y
-        #theano.printing.debugprint(Z)
+        # theano.printing.debugprint(Z)
         # here is the output for the debug print:
         """
         Elemwise{add,no_inplace} [id A] ''
@@ -3436,7 +3436,7 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
         mode = theano.compile.get_default_mode().excluding('fusion')
         f = theano.function([X, Y], Z, mode=mode)
-        #theano.printing.debugprint(f, print_type=True)
+        # theano.printing.debugprint(f, print_type=True)
         # here is the output for the debug print:
         """
         Elemwise{Add}[(0, 0)] [id A] <TensorType(float64, vector)> ''   7

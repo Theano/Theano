@@ -3568,7 +3568,7 @@ def local_join_empty(node):
 
 
 @register_specialize
-@register_canonicalize('fast_compile')
+@register_canonicalize
 @gof.local_optimizer([T.Join])
 def local_join_make_vector(node):
     """Join(0, make_vector1, make_vector2, ...) => Join(0, make_vector12, ...)
