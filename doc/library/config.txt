@@ -442,7 +442,7 @@ import theano and print the config variable, as in:
         automatically to get more memory. But this can cause
         fragmentation, see note above.
 
-.. atribute:: config.gpuarray.preallocate
+.. attribute:: config.gpuarray.preallocate
 
     Float value
 
