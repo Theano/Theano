@@ -21,7 +21,17 @@ learning/machine learning <http://www.mila.umontreal.ca/Home/courses>`_ classes)
 News
 ====
 
-* We added support for :ref:`CuDNN v3 <libdoc_cuda_dnn>`.
+* 2016/05/09: New technical report on Theano:
+  `Theano: A Python framework for fast computation of mathematical expressions <http://arxiv.org/abs/1605.02688>`_.
+  This is the new preferred reference.
+
+* 2016/04/21: Release of Theano 0.8.2, adding support for :ref:`CuDNN v5 <libdoc_cuda_dnn>`.
+
+* 2016/03/29: Release of Theano 0.8.1, fixing a compilation issue on MacOS X with XCode 7.3.
+
+* 2016/03/21: Release of Theano 0.8. Everybody is encouraged to update.
+
+* Multi-GPU.
 
 * We added support for :attr:`CNMeM <config.lib.cnmem>` to speed up
   the GPU memory allocation.
@@ -94,22 +104,11 @@ Citing Theano
 ==============
 
 If you use Theano for academic research, you are highly encouraged (though not
-required) to cite the following two papers:
+required) to cite the following, most recent paper:
 
-* F. Bastien, P. Lamblin, R. Pascanu, J. Bergstra, I. Goodfellow,
-  A. Bergeron, N. Bouchard, D. Warde-Farley and Y. Bengio.
-  `"Theano: new features and speed improvements"
-  <http://arxiv.org/pdf/1211.5590.pdf>`_.
-  NIPS 2012 deep learning workshop. (`BibTex
-  <http://www.iro.umontreal.ca/~lisa/publications2/index.php/export/publication/551/bibtex>`__)
-
-* J. Bergstra, O. Breuleux, F. Bastien, P. Lamblin, R.
-  Pascanu, G. Desjardins, J. Turian, D. Warde-Farley and Y.
-  Bengio. `"Theano: A CPU and GPU Math Expression Compiler"
-  <http://www.iro.umontreal.ca/~lisa/pointeurs/theano_scipy2010.pdf>`_.
-  *Proceedings of the Python for Scientific Computing Conference (SciPy)
-  2010. June 30 - July 3, Austin, TX* (`BibTeX
-  <http://www.iro.umontreal.ca/~lisa/publications2/index.php/export/publication/461/bibtex>`__)
+* Theano Development Team. `"Theano: A Python framework for fast computation of mathematical expressions"
+  <http://arxiv.org/pdf/1605.02688.pdf>`_.
+  (:download:`short BibTeX <theano-short.bib>`, :download:`full BibTeX <theano-full.bib>`)
 
 Theano is primarily developed by academics, and so citations matter a lot to
 us. As an added benefit, you increase Theano's exposure and potential user
