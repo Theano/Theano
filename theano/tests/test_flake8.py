@@ -90,6 +90,7 @@ whitelist_flake8 = [
     "sandbox/tests/test_scan.py",
     "sandbox/tests/__init__.py",
     "sandbox/cuda/__init__.py",
+    "sandbox/cuda/tests/__init__.py",
     "sandbox/gpuarray/__init__.py",
     "sandbox/scan_module/scan_utils.py",
     "sandbox/scan_module/scan.py",
