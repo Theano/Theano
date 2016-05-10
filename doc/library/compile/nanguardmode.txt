@@ -63,6 +63,11 @@ kind of abnormal values to monitor. ``nan_is_error`` and ``inf_is_error`` has
 no default values, so they need to be set explicitly, but ``big_is_error`` is
 set to be ``True`` by default.
 
+.. note::
+
+        NanGuardMode significantly slows down computations; only
+        enable as needed.
+
 Reference
 =========
 

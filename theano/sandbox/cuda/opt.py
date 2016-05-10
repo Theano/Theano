@@ -1425,8 +1425,9 @@ def _gpu_conv_to_fftconv(node):
     # we import conv2d_fft locally to avoid pycuda warnings
     from theano.sandbox.cuda.fftconv import conv2d_fft
     kwargs = {'border_mode': node.op.border_mode}
-    if (node.op.imshp is not None and node.op.imshp[-1] % 2 == 1 and
-            node.op.imshp[-1] is not None):
+    if (node.op.imshp is not None and
+            node.op.imshp[-1] is not None and
+            node.op.imshp[-1] % 2 == 1):
 
         kwargs['pad_last_dim'] = True
     # If the user supplied the full nonsymbolic image_shape and
@@ -1455,8 +1456,9 @@ def _gpu_conv_to_fftconv(node):
 @local_optimizer([GpuConv])
 def local_conv_fft_valid(node):
     if isinstance(node.op, GpuConv):
-        if (node.op.border_mode == 'valid' and node.op.fft_opt and
-                node.op.subsample == (1, 1)):
+        if (node.op.border_mode == 'valid' and
+                node.op.subsample == (1, 1) and
+                node.op.fft_opt):
 
             return [_gpu_conv_to_fftconv(node)]
         return False
@@ -1465,8 +1467,9 @@ def local_conv_fft_valid(node):
 @local_optimizer([GpuConv])
 def local_conv_fft_full(node):
     if isinstance(node.op, GpuConv):
-        if (node.op.border_mode == 'full' and node.op.fft_opt and
-                node.op.subsample == (1, 1)):
+        if (node.op.border_mode == 'full' and
+                node.op.subsample == (1, 1) and
+                node.op.fft_opt):
 
             return [_gpu_conv_to_fftconv(node)]
         return
