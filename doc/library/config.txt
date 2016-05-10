@@ -442,6 +442,42 @@ import theano and print the config variable, as in:
         automatically to get more memory. But this can cause
         fragmentation, see note above.
 
+.. atribute:: config.gpuarray.preallocate
+
+    Float value
+
+    Default: 0
+
+    Controls the preallocation of memory with the gpuarray backend.
+
+    The value represents the start size (either in MB or the fraction
+    of total GPU memory) of the memory pool. If more memory is needed,
+    Theano will try to obtain more, but this can cause memory
+    fragmentation.
+
+    A negative value will completely disable the allocation cache.
+    This can have a severe impact on performance and so should not be
+    done outside of debugging.
+
+        * < 0: disabled
+        * 0 <= N <= 1: use this fraction of the total GPU memory (clipped to .95 for driver memory).
+        * > 1: use this number in megabytes (MB) of memory.
+
+    .. note::
+
+        This could cause memory fragmentation. So if you have a
+        memory error while using CNMeM, try to allocate more memory at
+        the start or disable it. If you try this, report your result
+        on :ref`theano-dev`.
+
+    .. note::
+
+        The clipping at 95% can be bypassed by specifing the exact
+        number of megabytes. If more then 95% are needed, it will try
+        automatically to get more memory. But this can cause
+        fragmentation, see note above.
+
+
 .. attribute:: linker
 
     String value: 'c|py', 'py', 'c', 'c|py_nogc'
