@@ -545,8 +545,8 @@ It will be used repeatedly.
     training_steps = 10000
 
     # Declare Theano symbolic variables
-    x = T.matrix("x")
-    y = T.vector("y")
+    x = T.dmatrix("x")
+    y = T.dvector("y")
 
     # initialize the weight vector w randomly
     #
