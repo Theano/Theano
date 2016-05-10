@@ -255,10 +255,10 @@ class NanGuardMode(Mode):
                     print("NanGuardMode found an error in the "
                           "output of a node in this variable:", file=sio)
                     print(theano.printing.debugprint(nd, file='str'), file=sio)
-                    msg = sio.getvalue()
                 else:
                     print("NanGuardMode found an error in an input of the "
                           "graph.", file=sio)
+                msg = sio.getvalue()
                 if config.NanGuardMode.action == 'raise':
                     raise AssertionError(msg)
                 elif config.NanGuardMode.action == 'pdb':
