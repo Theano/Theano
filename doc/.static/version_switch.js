@@ -1,0 +1,78 @@
+// Create version selector for documentation top bar.
+
+(function() {
+
+    var url = window.location.href;
+    var theano_dir = 'theano'; // directory containing theano doc
+    // Default theano version: release and development.
+    var versions_dir = {"release": "theano", "dev":"theano-dev"};
+    // When doc is run from server
+    if (url.startsWith('http')) {
+        var root_url = url.substring(0, url.search('/' + theano_dir)) + '/';
+        // Get theano versions from dynamically generated version file on server.
+        $.getJSON(root_url + 'theano/versions.json', function(data){
+            $.each(data, function(version, dir) {
+                    versions_dir[version] = dir
+            });
+        });
+    }
+    // When doc is run localy
+    else if (url.startsWith('file')) {
+        theano_dir = 'html';
+        var root_url = url.substring(0, url.search('/' + theano_dir)) + '/';
+        versions_dir = {"local":"html"};
+    }
+
+    // Regular expression to find theano version directory in URL.
+    var version_regex = new RegExp("\\/" + theano_dir + "([-a-zA-Z.0-9]*)\\/");
+
+    function build_select(current_version) {
+    // Build HTML string for version selector combo box and
+    // select current version by iterating versions_dir.
+
+        var select = ['<select>'];
+        $.each(versions_dir, function(version, dir){
+            select.push('<option value="' + version + '"');
+            if (dir == current_version)
+                select.push(' selected="selected">' + version + '</option>');
+            else
+                select.push('>' + version + '</option>');
+        });
+
+        return select.join('');
+    }
+
+    function on_switch() {
+    // Method triggered when an option is selected in combo box.
+        var selected = $(this).children('option:selected').attr('value');
+
+        // Insert selected version in URL.
+        var new_url = url.replace(url.match(version_regex)[0],
+                                        '/' + versions_dir[selected] + '/');
+        if (url != new_url) {
+            $.ajax({
+                success: function() {
+                    window.location.href = new_url;
+                },
+                // If page not in version, go to root of documentation.
+                error: function() {
+                    window.location.href = root_url + versions_dir[selected] + '/';
+                }
+            });
+        }
+    }
+
+// Create combobox HTML, assign to placeholder in layout.html and
+// bind selection method.
+    $(document).ready(function() {
+        // Get theano version.
+        // var current_version = DOCUMENTATION_OPTIONS.VERSION;
+
+        var current_version = url.match(version_regex)[0]
+        current_version = current_version.substring(1, current_version.length - 1)
+
+        var select = build_select(current_version);
+        $('.version_switcher_placeholder').html(select);
+        $('.version_switcher_placeholder select').bind('change', on_switch)
+    });
+})();
