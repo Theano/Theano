@@ -3560,31 +3560,29 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
     def test_equality_shapes(self):
         # Test equality where one sides contain only shapes related
         # stuff.
+        if theano.config.mode == "FAST_COMPILE":
+            raise SkipTest("Skip opt test as the opt is disabled")
         x = T.vector('x', dtype=config.floatX)
-        mode = theano.compile.get_default_mode().including('local_useless_elemwise_comparison',
-                                                           'local_shape_to_shape_i',
-                                                           'local_track_shape_i',
-                                                           'local_subtensor_make_vector')
         for g in [x.shape[0],
                   Shape_i(0)(x)]:
-            f = theano.function([x], T.eq(g, 0), mode=mode)
+            f = theano.function([x], T.eq(g, 0))
             assert f([3, 3]) == 0
             assert f([]) == 1
 
-            f = theano.function([x], T.eq(g, -1), mode=mode)
+            f = theano.function([x], T.eq(g, -1))
             self.assert_eqs_const(f, 0)
             assert f([3, 3]) == 0
 
-            g = join(0,
-                     x.shape[0:], # todo test reshape, dimshuffle
-                     x.shape[0:1])
-            f = theano.function([x], T.eq(g, 0), mode=mode)
-            assert (f([3, 3]) == 0).all()
-            assert (f([]) == 1).all()
+        g = join(0,
+                 x.shape[0:],  # todo test reshape, dimshuffle
+                 x.shape[0:1])
+        f = theano.function([x], T.eq(g, 0))
+        assert (f([3, 3]) == 0).all()
+        assert (f([]) == 1).all()
 
-            f = theano.function([x], T.eq(g, -1), mode=mode)
-            self.assert_eqs_const(f, 0, op=T.alloc)
-            assert (f([3, 3]) == 0).all()
+        f = theano.function([x], T.eq(g, -1))
+        self.assert_eqs_const(f, 0, op=T.alloc)
+        assert (f([3, 3]) == 0).all()
 
     def test_and(self):
         mode = theano.compile.get_default_mode().including('canonicalize')
