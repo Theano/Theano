@@ -788,32 +788,50 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         - Allow sequence of destroy variables.
         - Allow view to have multiple clients.
         - Allow sequence of view.
-        - But don't allow to destroy view
+        - But destroyed inputs should have only 1 clients
         """
-        
+
         dm = getattr(app.op, 'destroy_map', None)
         if not dm:
             return
 
         logging.basicConfig()
         log = logging.getLogger("LOG")
-        inputs = []  # list of app's destroyed inputs
+        destroyed_inputs_idx = []  # list of app's destroyed inputs
         for i in dm.values():
-            inputs += i
-        for inp_idx in inputs:
-            inp = app.inputs[inp_idx]
-            if len(inp.clients) > 1:
-                if inp.owner:
-                    app2 = inp.owner
-                    inp_idx2 = app2.outputs.index(inp)
-                    d = getattr(app2.op, 'destroy_map', {}).get(inp_idx2, [])
-                    v = getattr(app2.op, 'view_map', {}).get(inp_idx2, [])
-                    dv = d + v
-                    assert len(dv) <= 1
-                    if len(v) > 0:
-                        raise InconsistencyError()
-                else:
-                    raise InconsistencyError()
+            destroyed_inputs_idx += i
+        for d_inp_idx in destroyed_inputs_idx:
+            d_inp = app.inputs[d_inp_idx]  # The destroyed input variable
+            if len(d_inp.clients) == 1:
+                # We are fine, the algo tell we shouldn't generate cycle
+                continue
+            # Current simplest version don't allow destroyed inputs to
+            # have more then 1 client.
+            raise InconsistencyError()
+            # Temp code to try to allow inplace on inputs with more
+            # then 1 clients, but not on view. To explore only after
+            # the first version completly work and is merged and there
+            # is time.
+
+            # if d_inp.owner:
+            #     d_inp_apply = d_inp.owner
+
+            #     # The output index of the node that created d_inp
+            #     out_idx = d_inp_apply.outputs.index(d_inp)
+
+            #     # d = the inputs d_inp destroy
+            #     d = getattr(d_inp_apply.op, 'destroy_map', {}).get(out_idx, [])
+            #     # v = the inputs d_inp view
+            #     v = getattr(d_inp_apply.op, 'view_map', {}).get(out_idx, [])
+            #     dv = d + v
+            #     assert len(dv) <= 1  # A current Theano limit as many places.
+            #     if len(v) > 0:
+            #         # If we destroy something that have more then 1
+            #         # clients, then there can't be any view of it
+            #         # except the destroyed one.
+            #         raise InconsistencyError()
+            # else:
+            #     raise InconsistencyError()
 
     def on_import(self, fgraph, app, reason):
         """
