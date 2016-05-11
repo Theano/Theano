@@ -304,6 +304,9 @@ class ReplaceValidate(History, Validator):
         chk = fgraph.checkpoint()
         if verbose is None:
             verbose = config.optimizer_verbose
+        if config.scan.debug:
+            scans = [n for n in fgraph.apply_nodes if isinstance(n.op, theano.scan_module.scan_op.Scan)]
+
         for r, new_r in replacements:
             try:
                 fgraph.replace(r, new_r, reason=reason, verbose=False)
@@ -337,6 +340,14 @@ class ReplaceValidate(History, Validator):
             if verbose:
                 print("validate failed on node %s.\n Reason: %s, %s" % (r, reason, e))
             raise
+        if config.scan.debug:
+            scans2 = [n for n in fgraph.apply_nodes if isinstance(n.op, theano.scan_module.scan_op.Scan)]
+            nb = len(scans)
+            nb2 = len(scans2)
+            if nb2 > nb:
+                print("Extra scan introduced", nb, nb2, getattr(reason, 'name', reason), r, new_r)
+            elif nb2 < nb:
+                print("Scan removed", nb, nb2, getattr(reason, 'name', reason), r, new_r)
         if verbose:
             print(reason, r, new_r)
         # The return is needed by replace_all_validate_remove

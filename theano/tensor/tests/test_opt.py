@@ -3409,7 +3409,7 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
                                      sequences=[X],
                                      non_sequences=None)
         Z = X_sum + Y
-        theano.printing.debugprint(Z)
+        # theano.printing.debugprint(Z)
         # here is the output for the debug print:
         """
         Elemwise{add,no_inplace} [id A] ''
@@ -3436,7 +3436,7 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
         mode = theano.compile.get_default_mode().excluding('fusion')
         f = theano.function([X, Y], Z, mode=mode)
-        theano.printing.debugprint(f, print_type=True)
+        # theano.printing.debugprint(f, print_type=True)
         # here is the output for the debug print:
         """
         Elemwise{Add}[(0, 0)] [id A] <TensorType(float64, vector)> ''   7
@@ -3465,14 +3465,19 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
          > |X[t] [id O] <TensorType(float64, vector)> -> [id E]
         """
 
-    def assert_eqs_const(self, f, val):
+    def assert_eqs_const(self, f, val, op=deep_copy_op):
         topo = f.maker.fgraph.toposort()
         elem = topo[0]
         assert len(topo) == 1, topo
-        assert elem.op == deep_copy_op, elem.op
-        assert len(elem.inputs) == 1, elem.inputs
-        assert isinstance(elem.inputs[0], T.TensorConstant), elem
-        assert T.extract_constant(elem.inputs[0]) == val, val
+        assert elem.op == op, elem.op
+        if op == deep_copy_op:
+            assert len(elem.inputs) == 1, elem.inputs
+            assert isinstance(elem.inputs[0], T.TensorConstant), elem
+            assert T.extract_constant(elem.inputs[0]) == val, val
+        else:
+            assert len(elem.inputs) == 2, elem.inputs
+            assert isinstance(elem.inputs[0], T.TensorConstant), elem
+            assert T.extract_constant(elem.inputs[0]) == val, val
 
     def assert_identity(self, f):
         topo = f.maker.fgraph.toposort()
@@ -3551,6 +3556,33 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
         f = theano.function([x, y], T.ge(x.shape[0]+y.shape[0], 0), mode=mode)
         self.assert_eqs_const(f, 1)
+
+    def test_equality_shapes(self):
+        # Test equality where one sides contain only shapes related
+        # stuff.
+        if theano.config.mode == "FAST_COMPILE":
+            raise SkipTest("Skip opt test as the opt is disabled")
+        x = T.vector('x', dtype=config.floatX)
+        for g in [x.shape[0],
+                  Shape_i(0)(x)]:
+            f = theano.function([x], T.eq(g, 0))
+            assert f([3, 3]) == 0
+            assert f([]) == 1
+
+            f = theano.function([x], T.eq(g, -1))
+            self.assert_eqs_const(f, 0)
+            assert f([3, 3]) == 0
+
+        g = join(0,
+                 x.shape[0:],  # todo test reshape, dimshuffle
+                 x.shape[0:1])
+        f = theano.function([x], T.eq(g, 0))
+        assert (f([3, 3]) == 0).all()
+        assert (f([]) == 1).all()
+
+        f = theano.function([x], T.eq(g, -1))
+        self.assert_eqs_const(f, 0, op=T.alloc)
+        assert (f([3, 3]) == 0).all()
 
     def test_and(self):
         mode = theano.compile.get_default_mode().including('canonicalize')

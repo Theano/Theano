@@ -573,6 +573,17 @@ AddConfigVar(
     IntParam(8),
     in_c_key=False)
 
+AddConfigVar(
+    'traceback.compile_limit',
+    "The number of stack to trace to keep during compilation. -1 mean all."
+    " If greater then 0, will also make us save Theano internal stack trace.",
+    IntParam(0),
+    in_c_key=False)
+
+AddConfigVar('experimental.mrg',
+             "Another random number generator that work on the gpu",
+             BoolParam(False))
+
 AddConfigVar('experimental.unpickle_gpu_on_cpu',
              "Allow unpickling of pickled CudaNdarrays as numpy.ndarrays."
              "This is useful, if you want to open a CudaNdarray without "
@@ -1415,6 +1426,11 @@ AddConfigVar('scan.allow_output_prealloc',
              "Allow/disallow memory preallocation for outputs inside of scan "
              "(default: True)",
              BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('scan.debug',
+             "If True, enable extra verbose output related to scan",
+             BoolParam(False),
              in_c_key=False)
 
 AddConfigVar('pycuda.init',
