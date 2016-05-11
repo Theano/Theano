@@ -155,13 +155,16 @@ def broadcast_like(value, template, fgraph, dtype=None):
     if template not in fgraph.variables:
         raise NotImplementedError('broadcast_like currently requires the '
                                   'template Variable to be in the fgraph already')
+    if dtype is None:
+        dtype = template.dtype
+    value = T.cast(value, dtype)
+    if value.type == template.type:
+        return value
     if hasattr(fgraph, 'shape_feature'):
         new_shape = fgraph.shape_feature.shape_of[template]
     else:
         new_shape = template.shape
-    if dtype is None:
-        dtype = template.dtype
-    rval = T.alloc(T.cast(value, dtype), *new_shape)
+    rval = T.alloc(value, *new_shape)
     # the template may have 1s in its shape without being broadcastable
     if rval.broadcastable != template.broadcastable:
         rval = T.unbroadcast(rval, *[i for i in xrange(rval.ndim)
