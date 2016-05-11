@@ -2724,6 +2724,7 @@ def merge_two_slices(slice1, len1, slice2, len2):
             val = T.switch(T.lt(sl2, 0), - len1 - 1, val)
             if sl1.step:
                 val = T.switch(T.eq(sl1.step, 0), len1 + 1, val)
+            val = pre_greedy_local_optimizer(list_opt, val)
             return val
         else:
             # We are in the more complex case when we do not actually know
@@ -2748,6 +2749,7 @@ def merge_two_slices(slice1, len1, slice2, len2):
             val = T.switch(T.lt(sl2, 0), - len1 - 1, val)
             if sl1.step:
                 val = T.switch(T.eq(sl1.step, 0), len1 + 1, val)
+            val = pre_greedy_local_optimizer(list_opt, val)
             return val
     else:
         # We are deleaing with two slices that need to be put together
