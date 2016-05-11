@@ -252,7 +252,7 @@ def inplace_elemwise_optimizer_op(OP):
             if (check_each_change != 1 and
                 # If multiple outputs, they must all have the same size,
                 # so only check the first.
-                getattr(node.outputs[0].type, 'ndim', -1) == 0):
+                    getattr(node.outputs[0].type, 'ndim', -1) == 0):
                 continue
 
             if op.inplace_pattern:
@@ -280,7 +280,6 @@ def inplace_elemwise_optimizer_op(OP):
                                     if not isinstance(node.inputs[i], Constant) and
                                     not fgraph.destroyers(node.inputs[i]) and
                                     node.inputs[i] not in protected_inputs]
-
 
             verbose = False
 
