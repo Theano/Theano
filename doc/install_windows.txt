@@ -423,16 +423,16 @@ Create a test file containing:
    print("NP time: %f[s], theano time: %f[s] (times should be close when run on CPU!)" %(
                                               np_end-np_start, t_end-t_start))
    print("Result difference: %f" % (np.abs(AB-tAB).max(), ))
-   
+
 .. testoutput::
    :hide:
    :options: +ELLIPSIS
-   
+
    NP time: ...[s], theano time: ...[s] (times should be close when run on CPU!)
    Result difference: ...
 
 .. code-block:: none
-   
+
    NP time: 1.480863[s], theano time: 1.475381[s] (times should be close when run on CPU!)
    Result difference: 0.000000
 
@@ -444,6 +444,8 @@ routine for matrix multiplication)
 
 Configure Theano for GPU use
 ############################
+
+Install `libgpuarray <http://deeplearning.net/software/libgpuarray/installation.html>`_ if you have not already done so.
 
 Theano can be configured with a ``.theanorc`` text file (or
 ``.theanorc.txt``, whichever is easier for you to create under
@@ -457,7 +459,7 @@ To use the GPU please write the following configuration file:
 .. code-block:: cfg
 
    [global]
-   device = gpu
+   device = cuda
    floatX = float32
 
    [nvcc]
@@ -498,7 +500,7 @@ within an MSYS shell if you installed Nose manually as described above.
 Compiling a faster BLAS
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-If you installed Python through WinPython or EPD, Theano will automatically 
+If you installed Python through WinPython or EPD, Theano will automatically
 link with the MKL library, so you should not need to compile your own BLAS.
 
 .. note::

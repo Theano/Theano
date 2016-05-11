@@ -43,7 +43,7 @@ For Ubuntu 11.10 through 14.04:
 
     sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git
     sudo pip install Theano
-    
+
 On 14.04, this will install Python 2 by default. If you want to use Python 3:
 
 .. code-block:: bash
@@ -104,30 +104,30 @@ For Ubuntu 11.04:
    The development version of Theano supports Python 3.3 and
    probably supports Python 3.2, but we do not test on it.
 
-    
+
 Bleeding Edge Installs
 ----------------------
 
-If you would like, instead, to install the bleeding edge Theano (from github) 
-such that you can edit and contribute to Theano, replace the `pip install Theano` 
+If you would like, instead, to install the bleeding edge Theano (from github)
+such that you can edit and contribute to Theano, replace the `pip install Theano`
 command with:
 
 .. code-block:: bash
 
     git clone git://github.com/Theano/Theano.git
-    cd Theano 
+    cd Theano
     python setup.py develop --user
     cd ..
 
 VirtualEnv
 ----------
-    
-If you would like to install Theano in a VirtualEnv, you will want to pass the 
-`--system-site-packages` flag when creating the VirtualEnv so that it will pick up 
+
+If you would like to install Theano in a VirtualEnv, you will want to pass the
+`--system-site-packages` flag when creating the VirtualEnv so that it will pick up
 the system-provided `Numpy` and `SciPy`.
 
 .. code-block:: bash
-    
+
     virtualenv --system-site-packages -p python2.7 theano-env
     source theano-env/bin/activate
     pip install Theano
@@ -208,7 +208,7 @@ Updating Bleeding Edge Installs
 Change to the Theano directory and run:
 
 .. code-block:: bash
-    
+
     git pull
 
 
@@ -303,7 +303,7 @@ Test GPU configuration
 
 .. code-block:: bash
 
-    THEANO_FLAGS=floatX=float32,device=gpu python /usr/lib/python2.*/site-packages/theano/misc/check_blas.py
+    THEANO_FLAGS=floatX=float32,device=cuda python /usr/lib/python2.*/site-packages/theano/misc/check_blas.py
 
 .. note::
 
