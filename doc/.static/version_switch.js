@@ -5,7 +5,7 @@
     var url = window.location.href;
     var theano_dir = 'theano'; // directory containing theano doc
     // Default theano version: release and development.
-    var versions_dir = {"release": "theano"};
+    var versions_dir = {"release": "theano", "dev": "theano_versions/dev"};
     // When doc is run from server
     if (url.startsWith('http')) {
         var root_url = url.substring(0, url.search('/' + theano_dir)) + '/';
@@ -26,7 +26,17 @@
     // Regular expression to find theano version directory in URL.
     var version_regex = new RegExp("\\/" + theano_dir + "(_versions\/)*([_a-zA-Z.0-9]*)\\/");
 
-    function build_select(current_version) {
+    // Get current version
+    var current_version = url.match(version_regex)[0]
+    current_version = current_version.substring(1, current_version.length - 1)
+    
+    // Add current version in case versions.json is unavailable
+    if (current_version != "theano" && current_version != "html") {
+        ver = current_version.replace("theano_versions/", "")
+        versions_dir[ver] = current_version
+    }
+    
+    function build_select() {
     // Build HTML string for version selector combo box and
     // select current version by iterating versions_dir.
 
@@ -68,10 +78,7 @@
         // Get theano version.
         // var current_version = DOCUMENTATION_OPTIONS.VERSION;
 
-        var current_version = url.match(version_regex)[0]
-        current_version = current_version.substring(1, current_version.length - 1)
-
-        var select = build_select(current_version);
+        var select = build_select();
         $('.version_switcher_placeholder').html(select);
         $('.version_switcher_placeholder select').bind('change', on_switch)
     });
