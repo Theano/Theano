@@ -245,7 +245,8 @@ def local_cut_gpu_transfers(node):
 
             # host ->
             if isinstance(n2.op, GpuFromHost):
-                return [GpuFromHost(node.op.context_name)(n2.inputs[0])]
+                return [as_gpuarray_variable(n2.inputs[0],
+                                             node.op.context_name)]
 
             # gpuc ->
             if isinstance(n2.op, GpuToGpu):
@@ -464,7 +465,8 @@ def local_gpua_dimshuffle(node, context_name):
 def local_gpua_specifyShape(node, context_name):
     if isinstance(node.inputs[0].type, GpuArrayType):
         return
-    inp = [GpuFromHost(context_name)(node.inputs[0])] + node.inputs[1:]
+    inp = [as_gpuarray_variable(node.inputs[0], context_name)]
+    inp += node.inputs[1:]
     return tensor.specify_shape(*inp)
 
 
@@ -475,7 +477,7 @@ def local_gpua_shape(node, context_name):
     # always on the CPU.
     if isinstance(node.inputs[0].type, GpuArrayType):
         return
-    return [GpuFromHost(context_name)(node.inputs[0]).shape]
+    return [as_gpuarray_variable(node.inputs[0], context_name).shape]
 
 
 def gpu_print_wrapper(op, cnda):
@@ -530,7 +532,7 @@ def local_gpu_pdbbreakpoint_op(node):
 
             elif output_goes_to_gpu:
                 # The input should be transfered to the gpu
-                new_inputs.append(GpuFromHost(context_name)(inp))
+                new_inputs.append(as_gpuarray_variable(inp, context_name))
                 input_transfered.append(True)
 
             else:
@@ -690,7 +692,8 @@ def local_gpua_careduce(node, context_name):
         # We need to have the make node called, otherwise the mask can
         # be None
         if (op is GpuCAReduceCPY or
-                gvar.owner.op.supports_c_code([GpuFromHost(context_name)(x)])):
+                gvar.owner.op.supports_c_code([
+                    as_gpuarray_variable(x, context_name)])):
             return greduce
         else:
             # Try to make a simpler pattern based on reshaping
@@ -730,7 +733,7 @@ def local_gpua_careduce(node, context_name):
                 acc_dtype=getattr(node.op, 'acc_dtype', None))
 
             reshaped_x = x.reshape(tensor.stack(new_in_shp))
-            gpu_reshaped_x = GpuFromHost(context_name)(reshaped_x)
+            gpu_reshaped_x = as_gpuarray_variable(reshaped_x, context_name)
             gvar = greduce(gpu_reshaped_x)
             # We need to have the make node called, otherwise the mask can
             # be None
