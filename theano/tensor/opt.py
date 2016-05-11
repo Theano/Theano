@@ -256,6 +256,11 @@ def inplace_elemwise_optimizer_op(OP):
                 continue
 
             if op.inplace_pattern:
+                # Maybe this isn't needed anymore, but I don't want to
+                # rish regression now. This case only happen if the
+                # original node add already some inplace patter and we
+                # still try to add more pattern.
+
                 baseline = op.inplace_pattern
                 candidate_outputs = [i for i in xrange(len(node.outputs))
                                      if i not in baseline]
