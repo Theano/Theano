@@ -235,11 +235,12 @@ AddConfigVar('gpuarray.sync',
              in_c_key=True)
 
 AddConfigVar('gpuarray.preallocate',
-             """If 0 it doesn't do anything.  If between 0 and 1 it
-             will preallocate that fraction of the total GPU memory.
-             If 1 or greater it will preallocate that amount of memory
-             (in megabytes).""",
-             FloatParam(0, lambda i: i >= 0),
+             """If negative it disables the allocation cache. If
+             between 0 and 1 it enables the allocation cache and
+             preallocates that fraction of the total GPU memory.  If 1
+             or greater it will preallocate that amount of memory (in
+             megabytes).""",
+             FloatParam(0),
              in_c_key=False)
 
 
