@@ -52,8 +52,9 @@ class PyDotFormatter(object):
     def __init__(self, compact=True):
         """Construct PyDotFormatter object."""
         if not pydot_imported:
-            raise ImportError('Failed to import pydot. You must install pydot'
-                              ' and graphviz for `PyDotFormatter` to work.')
+            raise ImportError('Failed to import pydot. You must install '
+                              'graphviz and either pydot or pydot-ng for '
+                              '`PyDotFormatter` to work.')
 
         self.compact = compact
         self.node_colors = {'input': 'limegreen',
