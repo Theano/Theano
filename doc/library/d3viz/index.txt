@@ -17,11 +17,14 @@ Requirements
 ------------
 
 ``d3viz`` requires the `pydot <https://pypi.python.org/pypi/pydot>`__
-package, which can be installed with ``pip``:
+package. `pydot-ng <https://github.com/pydot/pydot-ng>`__ fork is better
+maintained, and it works both in Python 2.x and 3.x. Install it with pip::
 
-::
+    pip install pydot-ng
 
-    pip install pydot
+Like Theano’s `printing module
+<http://deeplearning.net/software/theano/library/printing.html>`__, ``d3viz``
+requires `graphviz <http://www.graphviz.org/>`__ binary to be available.
 
 Overview
 --------
@@ -122,6 +125,19 @@ dealing with a complex graph with many nodes, the default node layout
 may not be perfect. In this case, you can press the ``Release node``
 button in the top-left corner to automatically arrange nodes. To reset
 nodes to their default position, press the ``Reset nodes`` button.
+
+You can also display the interactive graph inline in
+IPython using ``IPython.display.IFrame``:
+
+.. code:: python
+
+    from IPython.display import IFrame
+    d3v.d3viz(predict, 'examples/mlp.html')
+    IFrame('examples/mlp.html', width=700, height=500)
+
+Currently if you use display.IFrame you still have to create a file,
+and this file can't be outside notebooks root (e.g. usually it can't be
+in /tmp/).
 
 Profiling
 ---------

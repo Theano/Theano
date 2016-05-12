@@ -59,7 +59,7 @@ The following libraries and software are optional:
     `Git <http://git-scm.com>`_
         To download bleeding-edge versions of Theano.
 
-    `pydot-ng <https://github.com/pydot/pydot-ng>`_ or `pydot <https://code.google.com/p/pydot/>`_
+    `graphiz <http://www.graphviz.org/>`__ and either `pydot-ng <https://github.com/pydot/pydot-ng>`__ or `pydot <https://code.google.com/p/pydot/>`__
         To be able to make picture of Theano computation graph.
 	pydot-ng is a pydot compatible replacement that support newer Python.
 
@@ -613,7 +613,7 @@ To install the missing Theano optional dependency (pydot):
 
 .. code-block:: bash
 
-    $ conda install pydot
+    $ conda install pydot-ng
 
 If you want the bleeding edge version instead execute this command:
 
