@@ -130,6 +130,19 @@ may not be perfect. In this case, you can press the ``Release node``
 button in the top-left corner to automatically arrange nodes. To reset
 nodes to their default position, press the ``Reset nodes`` button.
 
+You can also display the interactive graph inline in
+IPython using ``IPython.display.IFrame``:
+
+.. code:: python
+
+    from IPython.display import IFrame
+    d3v.d3viz(predict, 'examples/mlp.html')
+    Iframe('examples/mlp.html', width=700, height=500)
+
+Currently if you use display.IFrame you still have to create a file,
+and this file can't be outside notebooks root (e.g. usually it can't be
+in /tmp/).
+
 Profiling
 ---------
 
