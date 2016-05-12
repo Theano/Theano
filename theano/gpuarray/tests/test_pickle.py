@@ -19,7 +19,7 @@ from theano import config
 from theano.misc.pkl_utils import CompatUnpickler
 
 try:
-    from . import config  # noqa
+    from . import config as _  # noqa
     have_pygpu = True
 except SkipTest:
     have_pygpu = False
