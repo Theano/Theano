@@ -133,7 +133,7 @@ IPython using ``IPython.display.IFrame``:
 
     from IPython.display import IFrame
     d3v.d3viz(predict, 'examples/mlp.html')
-    Iframe('examples/mlp.html', width=700, height=500)
+    IFrame('examples/mlp.html', width=700, height=500)
 
 Currently if you use display.IFrame you still have to create a file,
 and this file can't be outside notebooks root (e.g. usually it can't be
