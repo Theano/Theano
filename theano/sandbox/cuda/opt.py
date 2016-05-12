@@ -299,7 +299,7 @@ def local_gpu_elemwise_0(node):
                 if all([i.type.dtype == 'float32' for i in node.inputs]):
                     # TODO: change this when fusion makes Elemwise with
                     # multiple outputs
-                    gpu_elemwise = new_op(*(gpu_from_host(i)
+                    gpu_elemwise = new_op(*(as_cuda_ndarray_variable(i)
                                             for i in node.inputs),
                                           return_list=True)
                 # case 2 - it is still ok if some inputs were upcast to float32
@@ -312,7 +312,7 @@ def local_gpu_elemwise_0(node):
                     if [o.type for o in upcasted.outputs] ==\
                        [o.type for o in node.outputs]:
 
-                        new_inputs = [gpu_from_host(tensor.cast(i, 'float32'))
+                        new_inputs = [as_cuda_ndarray_variable(tensor.cast(i, 'float32'))
                                       for i in node.inputs]
                         gpu_elemwise = new_op(*new_inputs, return_list=True)
                     else:
@@ -1314,7 +1314,7 @@ def local_gpu_pdbbreakpoint_op(node):
 
             elif output_goes_to_gpu:
                 # The input should be transfered to the gpu
-                new_inputs.append(gpu_from_host(inp))
+                new_inputs.append(as_cuda_ndarray_variable(inp))
                 input_transfered.append(True)
 
             else:
@@ -1537,7 +1537,7 @@ def local_gpu_conv(node):
                                        img.shape[0], *op.imshp_logical)
                     img = tensor.set_subtensor(buf[:, :, ::rstride, ::cstride],
                                                img)
-                    img = gpu_from_host(img)
+                    img = as_cuda_ndarray_variable(img)
                     return ret(img, kern)
 
                 return make_graph
@@ -1551,8 +1551,8 @@ def local_gpu_conv(node):
             if gpu_conv is None:
                 return
             img, kern = host_input.owner.inputs
-            out = gpu_conv(gpu_from_host(img),
-                           gpu_from_host(kern))
+            out = gpu_conv(as_cuda_ndarray_variable(img),
+                           as_cuda_ndarray_variable(kern))
             out = tensor.patternbroadcast(out,
                                           node.outputs[0].broadcastable)
             out.tag.values_eq_approx = values_eq_approx_high_tol
@@ -1569,8 +1569,8 @@ def local_gpu_conv(node):
             gpu_conv = GpuConvOp_from_ConvOp(node.op)
             if gpu_conv is None:
                 return
-            out = gpu_conv(gpu_from_host(img),
-                           gpu_from_host(kern))
+            out = gpu_conv(as_cuda_ndarray_variable(img),
+                           as_cuda_ndarray_variable(kern))
             out = tensor.patternbroadcast(
                 host_from_gpu(out),
                 node.outputs[0].broadcastable)
