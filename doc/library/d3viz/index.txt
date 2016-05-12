@@ -17,11 +17,18 @@ Requirements
 ------------
 
 ``d3viz`` requires the `pydot <https://pypi.python.org/pypi/pydot>`__
-package, which can be installed with ``pip``:
-
-::
+package. If you're using Python 2.x install pydot with pip::
 
     pip install pydot
+
+In Python 3.x install `pydot-ng <https://pypi.python.org/pypi/pydot-ng>`__
+fork instead::
+
+    pip install pydot-ng
+
+Like Theano’s `printing module
+<http://deeplearning.net/software/theano/library/printing.html>`__, ``d3viz``
+requires `graphviz <http://www.graphviz.org/>`__ binary to be available.
 
 Overview
 --------
