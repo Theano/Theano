@@ -614,7 +614,7 @@ To install the missing Theano optional dependency (pydot):
 
 .. code-block:: bash
 
-    $ conda install pydot
+    $ conda install pydot-ng
 
 If you want the bleeding edge version instead execute this command:
 
