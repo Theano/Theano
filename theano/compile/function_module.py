@@ -827,8 +827,8 @@ class Function(object):
                             function_name += ' with name "' + self.name + '"'
                         if arg.name:
                             argument_name += ' with name "' + arg.name + '"'
-                        e.args = ("Bad input " + argument_name + " to "
-                                  + function_name + " at index %d (0-based)"
+                        e.args = ("Bad input " + argument_name + " to " +
+                                  function_name + " at index %d (0-based)"
                                   % i,) + e.args
                         raise
                 s.provided += 1
