@@ -86,13 +86,13 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
     t0 = 0
     t1 = -1
 
-    f() # Ignore first function call to get representative time.
+    f()  # Ignore first function call to get representative time.
     if execute:
         sync = (hasattr(theano, "sandbox") and
                 hasattr(theano.sandbox, "cuda") and
                 theano.sandbox.cuda.cuda_available)
         sync2 = (hasattr(theano, "gpuarray") and
-                theano.gpuarray.pygpu_activated)
+                 theano.gpuarray.pygpu_activated)
         t0 = time.time()
         for i in range(iters):
             f()
