@@ -17,12 +17,8 @@ Requirements
 ------------
 
 ``d3viz`` requires the `pydot <https://pypi.python.org/pypi/pydot>`__
-package. If you're using Python 2.x install pydot with pip::
-
-    pip install pydot
-
-In Python 3.x install `pydot-ng <https://pypi.python.org/pypi/pydot-ng>`__
-fork instead::
+package. `pydot-ng <https://github.com/pydot/pydot-ng>`__ fork is better
+maintained, and it works both in Python 2.x and 3.x. Install it with pip::
 
     pip install pydot-ng
 
