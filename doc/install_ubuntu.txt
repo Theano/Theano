@@ -10,6 +10,10 @@ There are two ways of getting the dependencies for Theano. You can either grab t
 as system packages or let pip do everything for you. In the end, Theano will be installed 
 through pip.
 
+.. include:: install_generic.txt
+    :start-line: 11
+
+
 Prerequisites through System Packages (optional)
 ================================================
 
@@ -27,10 +31,6 @@ For Ubuntu 11.04:
 .. code-block:: bash
 
     sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ git libatlas3gf-base libatlas-dev
-
-.. include:: install_generic.txt
-    :start-line: 11
-
 
 Manual Openblas installation (deprecated)
 -----------------------------------------

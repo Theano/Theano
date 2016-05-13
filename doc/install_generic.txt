@@ -87,53 +87,10 @@ to this location and will stop working otherwise.
 - :green:`-e` makes your installation *editable*, i.e., it links it to your
   source directory.
 
+If you encountered any trouble, head to the :ref:`troubleshooting` page.
+
 Setting up the GPU (optional)
 ----------------------------
 
 .. include:: install_gpu.txt
     :start-line: 6
-
-Testing your installation
---------------------------
-
-Testing packages
-^^^^^^^^^^^^^^^^
-
-Once you have installed Theano, you should run the test suite. 
-
-.. code-block:: bash
-
-    python -c "import numpy; numpy.test()"
-    python -c "import scipy; scipy.test()"
-    THEANO_FLAGS=''; python -c "import theano; theano.test()"
-
-All Theano tests should pass (skipped tests and known failures are normal). If
-some test fails on your machine, you are encouraged to tell us what went
-wrong on the ``theano-users@googlegroups.com`` mailing list.
-
-Testing BLAS
-^^^^^^^^^^^^
-
-It is recommended to test your Theano/BLAS integration. There are many versions
-of BLAS that exist and there can be up to 10x speed difference between them.
-Also, having Theano link directly against BLAS instead of using NumPy/SciPy as
-an intermediate layer reduces the computational overhead. This is
-important for BLAS calls to ``ger``, ``gemv`` and small ``gemm`` operations
-(automatically called when needed when you use ``dot()``). To run the
-Theano/BLAS speed test:
-
-.. code-block:: bash
-
-    python `python -c "import os, theano; print os.path.dirname(theano.__file__)"`/misc/check_blas.py
-
-This will print a table with different versions of BLAS/numbers of
-threads on multiple CPUs and GPUs. It will also print some Theano/NumPy
-configuration information. Then, it will print the running time of the same
-benchmarks for your installation. Try to find a CPU similar to yours in
-the table, and check that the single-threaded timings are roughly the same.
-
-Theano should link to a parallel version of Blas and use all cores
-when possible. By default it should use all cores. Set the environment
-variable "OMP_NUM_THREADS=N" to specify to use N threads.
-
-If you encountered any trouble, head to the :ref:`troubleshooting` page.
