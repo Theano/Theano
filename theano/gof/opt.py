@@ -298,7 +298,7 @@ class SeqOptimizer(Optimizer, list):
                 name = opt.name
             idx = opts.index(opt)
             ll.append((name, opt.__class__.__name__,
-                       idx) + nb_nodes[idx])
+                       idx))
         lll = sorted(zip(prof, ll, nb_nodes), key=lambda a: a[0])
 
         for (t, opt, nb_n) in lll[::-1]:
