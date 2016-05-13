@@ -1238,6 +1238,12 @@ class ShapeFeature(object):
         for node in fgraph.toposort():
             self.on_import(fgraph, node, reason='on_attach')
 
+    def on_detach(self, fgraph):
+        self.shape_of = {}
+        self.scheduled = {}
+        self.shape_of_reverse_index = {}
+        del fgraph.shape_feature
+
     def on_import(self, fgraph, node, reason):
         if node.outputs[0] in self.shape_of:
             # this is a revert, not really an import
