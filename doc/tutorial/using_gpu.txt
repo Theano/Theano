@@ -15,8 +15,8 @@ about how to carry out those computations.  One of the ways we take
 advantage of this flexibility is in carrying out calculations on a
 graphics card.
 
-There are two ways currently to use a gpu, on that should support any OpenCL
-device as well as NVIDIA cards (:ref:`gpuarray`), and the old backend which
+There are two ways currently to use a gpu, one that should support any OpenCL
+device as well as NVIDIA cards (:ref:`gpuarray`), and the old backend that
 only supports NVIDIA cards (:ref:`cuda`).
 
 .. _gpuarray:
@@ -117,7 +117,7 @@ the GPU object directly.  The following code is modified to do just that.
 
 .. testcode::
 
-  from theano import function, config, shared, tensor, gpuarray
+  from theano import function, config, shared, tensor
   import numpy
   import time
 
@@ -126,7 +126,8 @@ the GPU object directly.  The following code is modified to do just that.
 
   rng = numpy.random.RandomState(22)
   x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
-  f = function([], gpuarray.basic_ops.GpuFromHost(None)(tensor.exp(x)))
+  gx = x.transfer(None)  # Transfer variable to GPU
+  f = function([], tensor.exp(gx))
   print(f.maker.fgraph.toposort())
   t0 = time.time()
   for i in range(iters):
@@ -141,11 +142,9 @@ the GPU object directly.  The following code is modified to do just that.
   else:
       print('Used the gpu')
 
-Here the :func:`theano.gpuarray.basic_ops.GpuFromHost(None)` call
-means "copy input to the GPU", with ``None`` the default GPU context when not
-explicitly given. However during the optimization phase,
-since the result will already be on the gpu, it will be removed.  It is
-used here to tell theano that we want the result on the GPU.
+Here ``gx = x.transfer(None)`` means "copy variable x to the GPU", with
+``None`` the default GPU context when not explicitly given. For information
+on how to set GPU contexts, see :ref:`tut_using_multi_gpu`. 
 
 The output is
 
@@ -250,6 +249,8 @@ Tips for Improving Performance on GPU
   a value to `assert_no_cpu_op` flag, i.e. `warn`, for warning, `raise` for
   raising an error or `pdb` for putting a breakpoint in the computational
   graph if there is a CPU Op.
+
+  .. _gpu_async:
 
 GPU Async Capabilities
 ~~~~~~~~~~~~~~~~~~~~~~
