@@ -2065,6 +2065,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                  optimizers,
                  failure_callback=None,
                  ignore_newtrees=True,
+                 tracks_on_change_inputs=False,
                  max_use_ratio=None,
                  final_optimizers=None,
                  cleanup_optimizers=None):
@@ -2077,6 +2078,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         self.global_optimizers = []
         self.final_optimizers = []
         self.cleanup_optimizers = []
+        self.tracks_on_change_inputs = tracks_on_change_inputs
 
         for opt in optimizers:
             if isinstance(opt, LocalOptimizer):
@@ -2223,8 +2225,14 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         q.remove(node)
                     except ValueError:
                         pass
-
-            u = self.attach_updater(fgraph, importer, pruner, name=self.name)
+            chin = None
+            if self.tracks_on_change_inputs:
+                def chin(node, i, r, new_r, reason):
+                    if node is not current_node and not isinstance(node, str):
+                        q.append(node)
+            u = self.attach_updater(fgraph, importer, pruner,
+                                    chin=chin,
+                                    name=self.name)
             try:
                 while q:
                     node = q.pop()
