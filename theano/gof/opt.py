@@ -1623,10 +1623,14 @@ class PatternSub(LocalOptimizer):
 # Use the following classes to apply LocalOptimizers
 
 class Updater:
-    def __init__(self, importer, pruner, chin):
+    def __init__(self, importer, pruner, chin, name=None):
         self.importer = importer
         self.pruner = pruner
         self.chin = chin
+        self.name = name
+
+    def __str__(self):
+        return "Updater{%s}" % str(self.name)
 
     def on_import(self, fgraph, node, reason):
         if self.importer:
@@ -1726,7 +1730,7 @@ class NavigatorOptimizer(Optimizer):
             self.ignore_newtrees = ignore_newtrees
         self.failure_callback = failure_callback
 
-    def attach_updater(self, fgraph, importer, pruner, chin=None):
+    def attach_updater(self, fgraph, importer, pruner, chin=None, name=None):
         """
         Install some FunctionGraph listeners to help the navigator deal with
         the ignore_trees-related functionality.
@@ -1741,6 +1745,8 @@ class NavigatorOptimizer(Optimizer):
             from the graph.
         chin
             "on change input" called whenever a node's inputs change.
+        name
+            name of the Updater to attach.
 
         Returns
         -------
@@ -1755,7 +1761,7 @@ class NavigatorOptimizer(Optimizer):
         if importer is None and pruner is None:
             return None
 
-        u = Updater(importer, pruner, chin)
+        u = Updater(importer, pruner, chin, name=name)
         fgraph.attach_feature(u)
         return u
 
@@ -1903,7 +1909,7 @@ class TopoOptimizer(NavigatorOptimizer):
                 except ValueError:
                     pass
 
-        u = self.attach_updater(fgraph, importer, pruner)
+        u = self.attach_updater(fgraph, importer, pruner, name=self.name)
         nb = 0
         try:
             t0 = time.time()
@@ -2218,7 +2224,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     except ValueError:
                         pass
 
-            u = self.attach_updater(fgraph, importer, pruner)
+            u = self.attach_updater(fgraph, importer, pruner, name=self.name)
             try:
                 while q:
                     node = q.pop()
