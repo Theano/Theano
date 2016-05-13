@@ -84,10 +84,15 @@ def _atexit_print_fn():
                     cum_attr[key] = val
 
             if cum.optimizer_profile and ps.optimizer_profile:
-                merge = cum.optimizer_profile[0].merge_profile(
-                    cum.optimizer_profile[1],
-                    ps.optimizer_profile[1])
-                cum.optimizer_profile = (cum.optimizer_profile[0], merge)
+                try:
+                    merge = cum.optimizer_profile[0].merge_profile(
+                        cum.optimizer_profile[1],
+                        ps.optimizer_profile[1])
+                    cum.optimizer_profile = (cum.optimizer_profile[0], merge)
+                except Exception, e:
+                    print("Got an exception while merging profile")
+                    print(e)
+                    cum.optimizer_profile = None
             else:
                 cum.optimizer_profile = None
 
