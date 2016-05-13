@@ -790,29 +790,23 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         - Allow sequence of view.
         - But don't allow to destroy view
         """
-        
+
         dm = getattr(app.op, 'destroy_map', None)
         if not dm:
             return
-
-        logging.basicConfig()
-        log = logging.getLogger("LOG")
-        inputs = []  # list of app's destroyed inputs
-        for i in dm.values():
-            inputs += i
+        inputs = sum(dm.values())  # list of app's destroyed inputs
         for inp_idx in inputs:
             inp = app.inputs[inp_idx]
-            if len(inp.clients) > 1:
-                if inp.owner:
-                    app2 = inp.owner
-                    inp_idx2 = app2.outputs.index(inp)
-                    d = getattr(app2.op, 'destroy_map', {}).get(inp_idx2, [])
-                    v = getattr(app2.op, 'view_map', {}).get(inp_idx2, [])
-                    dv = d + v
-                    assert len(dv) <= 1
-                    if len(v) > 0:
-                        raise InconsistencyError()
-                else:
+            if inp.owner:
+                if len(inp.clients() > 1):
+                    raise InconsistencyError()
+                app2 = inp.owner
+                inp_idx2 = app2.outputs.index(inp)
+                d = getattr(app2, 'destroy_map', {}).get(inp_idx2, [])
+                v = getattr(app2, 'view_map', {}).get(inp_idx2, [])
+                dv = d+v
+                assert len(dv) <= 1
+                if len(v) > 0:
                     raise InconsistencyError()
 
     def on_import(self, fgraph, app, reason):
