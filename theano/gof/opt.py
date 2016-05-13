@@ -1885,10 +1885,8 @@ class TopoOptimizer(NavigatorOptimizer):
                 current_node = node
                 nb += self.process_node(fgraph, node)
             loop_t = time.time() - t0
-        except Exception:
+        finally:
             self.detach_updater(fgraph, u)
-            raise
-        self.detach_updater(fgraph, u)
 
         callback_time = fgraph.execute_callbacks_time - callback_before
         nb_nodes_end = len(fgraph.apply_nodes)
@@ -1947,16 +1945,14 @@ class OpKeyOptimizer(NavigatorOptimizer):
                     q.remove(node)
                 except ValueError:
                     pass
-        u = self.attach_updater(fgraph, importer, pruner)
+        u = self.attach_updater(fgraph, importer, pruner, name=self.name)
         try:
             while q:
                 node = q.pop()
                 current_node = node
                 self.process_node(fgraph, node)
-        except Exception:
+        finally:
             self.detach_updater(fgraph, u)
-            raise
-        self.detach_updater(fgraph, u)
 
     def add_requirements(self, fgraph):
         """
@@ -1986,6 +1982,9 @@ class ChangeTracker:
 
     def on_attach(self, fgraph):
         fgraph.change_tracker = self
+
+    def on_detach(self, fgraph):
+        del fgraph.change_tracker
 
 
 def merge_dict(d1, d2):
