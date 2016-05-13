@@ -311,7 +311,9 @@ class SeqOptimizer(Optimizer, list):
                     print(blanc, "      ", i[0], ',', i[1], file=stream)
 
         if level == 0:
-            print(blanc, "  time      - (name, class, index, nodes before, nodes after) - validate time", file=stream)
+            print(blanc,
+                  "  time      - (name, class, index, nodes before, nodes after) - validate time",
+                  file=stream)
         ll = []
         for opt in opts:
             if hasattr(opt, "__name__"):
@@ -864,7 +866,9 @@ class MergeOptimizer(Optimizer):
             callbacks_time = {}
             for k, v in iteritems(fgraph.execute_callbacks_times):
                 if k in callbacks_before:
-                    callbacks_time[k] = v - callbacks_before[k]
+                    t = v - callbacks_before[k]
+                    if t > 0:
+                        callbacks_time[k] = t
                 else:
                     callbacks_time[k] = v
         else:
@@ -894,7 +898,9 @@ class MergeOptimizer(Optimizer):
             print(blanc, "  callbacks_time", file=stream)
             for i in sorted(iteritems(callbacks_time), key=lambda a: a[1]):
                 if i[1] > 0:
-                    print(i)
+                    # We want to have the __str__ called, so we can't
+                    # just print i.
+                    print(blanc, "      ", i[0], ',', i[1], file=stream)
 
     @staticmethod
     def merge_profile(prof1, prof2):
