@@ -220,8 +220,10 @@ class SeqOptimizer(Optimizer, list):
         if fgraph.profile:
             validate_before = fgraph.profile.validate_time
             sub_validate_time = [validate_before]
+            callbacks_before = fgraph.execute_callbacks_times.copy()
         else:
             sub_validate_time = []
+            callbacks_before = []
         callback_before = fgraph.execute_callbacks_time
         nb_node_before = len(fgraph.apply_nodes)
         sub_profs = []
@@ -249,12 +251,22 @@ class SeqOptimizer(Optimizer, list):
 
         if fgraph.profile:
             validate_time = fgraph.profile.validate_time - validate_before
+            callbacks_time = {}
+            for k, v in iteritems(fgraph.execute_callbacks_times):
+                if k in callbacks_before:
+                    t = v - callbacks_before[k]
+                    if t > 0:
+                        callbacks_time[k] = t
+                else:
+                    callbacks_time[k] = v
         else:
             validate_time = None
+            callbacks_time = {}
+
         callback_time = fgraph.execute_callbacks_time - callback_before
         return (self, l, validate_time, callback_time, nb_node_before,
                 len(fgraph.apply_nodes), sub_profs, sub_validate_time,
-                nb_nodes)
+                nb_nodes, callbacks_time)
 
     def __str__(self):
         return "SeqOpt(%s)" % list.__str__(self)
@@ -274,8 +286,9 @@ class SeqOptimizer(Optimizer, list):
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        (opts, prof, validate_time, callback_time, nb_node_before,
-         nb_node_after, sub_profs, sub_validate_time, nb_nodes) = prof
+        (opts, prof, validate_time, callback_time,
+         nb_node_before, nb_node_after, sub_profs, sub_validate_time,
+         nb_nodes, callbacks_time) = prof
         blanc = ('    ' * level)
 
         print(blanc, "SeqOptimizer", end=' ', file=stream)
@@ -287,7 +300,16 @@ class SeqOptimizer(Optimizer, list):
                " before/after optimization" % (
                    sum(prof), nb_node_before, nb_node_after)), file=stream)
         print(blanc, "  %.3fs for callback" % (callback_time), file=stream)
-        print(blanc, "      %.3fs for fgraph.validate()" % (validate_time), file=stream)
+        print(blanc, "      %.3fs for fgraph.validate()" % (validate_time),
+              file=stream)
+        if callback_time > 1:
+            print(blanc, "  callbacks_time", file=stream)
+            for i in sorted(iteritems(callbacks_time), key=lambda a: -a[1]):
+                if i[1] > 0:
+                    # We want to have the __str__ called, so we can't
+                    # just print i.
+                    print(blanc, "      ", i[0], ',', i[1], file=stream)
+
         if level == 0:
             print(blanc, "  time      - (name, class, index, nodes before, nodes after) - validate time", file=stream)
         ll = []
@@ -377,6 +399,7 @@ class SeqOptimizer(Optimizer, list):
             new_sub_profile.append(p[6][idx])
 
         new_opt = SeqOptimizer(*new_l)
+        new_callbacks_times = merge_dict(prof1[9], prof2[9])
         # We need to assert based on the name as we merge also based on
         # the name.
         assert set([l.name for l in prof1[0]]).issubset(
@@ -386,7 +409,8 @@ class SeqOptimizer(Optimizer, list):
         assert len(new_t) == len(new_opt) == len(new_sub_profile)
         return (new_opt, new_t, prof1[2] + prof2[2],
                 prof1[3] + prof2[3],
-                -1, -1, new_sub_profile, [])
+                -1, -1, new_sub_profile, [],
+                new_callbacks_times)
 
 
 class _metadict:
