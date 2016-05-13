@@ -1799,7 +1799,7 @@ class GCC_compiler(Compiler):
         return theano.config.cxx + " " + gcc_version_str
 
     @staticmethod
-    def compile_args():
+    def compile_args(march_flags=True):
         cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
 
         # Add the equivalent of -march=native flag.  We can't use
@@ -1810,7 +1810,7 @@ class GCC_compiler(Compiler):
         # Those URL discuss how to find witch flags are used by -march=native.
         # http://en.gentoo-wiki.com/wiki/Safe_Cflags#-march.3Dnative
         # http://en.gentoo-wiki.com/wiki/Hardware_CFLAGS
-        detect_march = GCC_compiler.march_flags is None
+        detect_march = GCC_compiler.march_flags is None and march_flags
         if detect_march:
             for f in cxxflags:
                 # If the user give an -march=X parameter, don't add one ourself
@@ -2009,7 +2009,7 @@ class GCC_compiler(Compiler):
                                  GCC_compiler.march_flags)
 
         # Add the detected -march=native equivalent flags
-        if GCC_compiler.march_flags:
+        if march_flags and GCC_compiler.march_flags:
             cxxflags.extend(GCC_compiler.march_flags)
 
         # NumPy 1.7 Deprecate the old API. I updated most of the places
