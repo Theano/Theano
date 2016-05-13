@@ -18,6 +18,8 @@ from theano.misc.ordered_set import OrderedSet
 from .fg import InconsistencyError
 from six.moves.queue import Queue
 import logging
+from theano import config
+
 
 
 class ProtocolError(Exception):
@@ -693,6 +695,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
         """
         self.root_destroyer = OrderedDict()
+        self.fail_validate = False
 
     def on_attach(self, fgraph):
         """
@@ -791,6 +794,9 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         - But destroyed inputs should have only 1 clients
         """
 
+        if not config.faster_cycle:
+            return True
+
         dm = getattr(app.op, 'destroy_map', None)
         if not dm:
             return
@@ -807,7 +813,8 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
                 continue
             # Current simplest version don't allow destroyed inputs to
             # have more then 1 client.
-            raise InconsistencyError()
+                self.fail_validate = True
+                
             # Temp code to try to allow inplace on inputs with more
             # then 1 clients, but not on view. To explore only after
             # the first version completly work and is merged and there
@@ -962,6 +969,12 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         b) orderings cannot be topologically sorted.
 
         """
+        if config.faster_cycle and self.fail_validate: 
+            self.fail_validate = False
+            raise InconsistencyError("fast_cycle doesn't accept this graph.")
+        elif config.faster_cycle:
+            return True
+
         if self.destroyers:
             ords = self.orderings(fgraph)
 
