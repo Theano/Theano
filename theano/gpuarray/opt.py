@@ -710,18 +710,14 @@ def local_gpua_careduce(node, context_name):
                     assert reduce_mask[a] == 0
                     reduce_mask[a] = 1
 
-            shape_of = node.fgraph.shape_feature.shape_of
-
-            x_shape = shape_of[x]
-
-            new_in_shp = [x_shape[0]]
+            new_in_shp = [shape_i(x, 0)]
             new_mask = [reduce_mask[0]]
             for i in xrange(1, x.type.ndim):
                 if reduce_mask[i] == reduce_mask[i - 1]:
-                    new_in_shp[-1] *= x_shape[i]
+                    new_in_shp[-1] *= shape_i(x, i)
                 else:
                     new_mask.append(reduce_mask[i])
-                    new_in_shp.append(x_shape[i])
+                    new_in_shp.append(shape_i(x, i))
             new_axis = []
             for idx, m in enumerate(new_mask):
                 if m == 1:
@@ -743,8 +739,12 @@ def local_gpua_careduce(node, context_name):
                     greduce(gpu_reshaped_x))
 
                 if reduce_reshaped_x.ndim != node.outputs[0].ndim:
+                    out_shp = []
+                    for i in range(x.ndim):
+                        if i not in node.op.axis:
+                            out_shp.append(shape_i(x, i))
                     unreshaped_reduce = reduce_reshaped_x.reshape(
-                        tensor.stack(shape_of[node.outputs[0]]))
+                        tensor.stack(out_shp))
                 else:
                     unreshaped_reduce = reduce_reshaped_x
                 return [unreshaped_reduce]
