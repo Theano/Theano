@@ -2071,9 +2071,10 @@ def scan_merge_inouts(node):
             seen.append((outer_imm, inner_omm, outer_omm, osl))
             new_outer_out_mit_mot.append(outer_omm)
     na.outer_out_mit_mot = new_outer_out_mit_mot
-
-    return dict([("remove", remove)] +
-                list(zip(node.outputs, na.outer_outputs)))
+    if remove:
+        return dict([("remove", remove)] +
+                    list(zip(node.outputs, na.outer_outputs)))
+    return na.outer_outputs
 
 
 class PushOutDot1(gof.Optimizer):
