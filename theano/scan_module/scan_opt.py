@@ -202,7 +202,7 @@ def remove_constants_and_unused_inputs_scan(node):
         # DEBUG CHECK
         nwScan = scan_op.Scan(nw_inner, op_outs, nw_info)
         nw_outs = nwScan(*nw_outer, **dict(return_list=True))
-        return nw_outs
+        return dict([("remove", [node])] + list(zip(node.outputs, nw_outs)))
     else:
         return False
 
@@ -1964,8 +1964,10 @@ def scan_merge_inouts(node):
             outputs = [outputs]
 
         na = scan_args(outer_inputs, outputs, op.inputs, op.outputs, op.info)
+        remove = [node]
     else:
         na = a
+        remove = []
 
     # Now that the identical external inputs have been merged, we do a new
     # loop in order to merge external outputs that compute the same things
@@ -2069,7 +2071,9 @@ def scan_merge_inouts(node):
             seen.append((outer_imm, inner_omm, outer_omm, osl))
             new_outer_out_mit_mot.append(outer_omm)
     na.outer_out_mit_mot = new_outer_out_mit_mot
-
+    if remove:
+        return dict([("remove", remove)] +
+                    list(zip(node.outputs, na.outer_outputs)))
     return na.outer_outputs
 
 
@@ -2253,11 +2257,14 @@ class PushOutDot1(gof.Optimizer):
 # general I do not expect the sequence to run more then once
 scan_eqopt1 = theano.gof.EquilibriumDB()
 scan_seqopt1 = theano.gof.SequenceDB()
-
 scan_eqopt2 = theano.gof.EquilibriumDB()
+
+# scan_eqopt1 before ShapeOpt at 0.1
+# This is needed to don't have ShapeFeature trac old Scan that we
+# don't want to reintroduce.
+optdb.register('scan_eqopt1', scan_eqopt1, .05, 'fast_run', 'scan')
 # We run before blas opt at 1.7 and specialize 2.0
 # but after stabilize at 1.5. Should we put it before stabilize?
-optdb.register('scan_eqopt1', scan_eqopt1, .1, 'fast_run', 'scan')
 optdb.register('scan_eqopt2', scan_eqopt2, 1.6, 'fast_run', 'scan')
 optdb.register('scanOp_make_inplace',
                ScanInplaceOptimizer(typeInfer=None,

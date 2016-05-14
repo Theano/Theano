@@ -328,6 +328,9 @@ class FunctionGraph(utils.object2):
                               if output.clients or output in self.outputs]
             # If the apply node is not used and is not an output
             if not used_or_output:
+                if not hasattr(apply_node.tag, 'removed_by'):
+                    apply_node.tag.removed_by = []
+                apply_node.tag.removed_by.append(str(reason))
                 self.apply_nodes.remove(apply_node)
                 self.variables.difference_update(apply_node.outputs)
                 self.execute_callbacks('on_prune', apply_node, reason)
@@ -416,6 +419,9 @@ class FunctionGraph(utils.object2):
             assert node not in self.apply_nodes
             self.__setup_node__(node)
             self.apply_nodes.add(node)
+            if not hasattr(node.tag, 'imported_by'):
+                node.tag.imported_by = []
+            node.tag.imported_by.append(str(reason))
             for output in node.outputs:
                 self.__setup_r__(output)
                 self.variables.add(output)
