@@ -271,7 +271,7 @@ class NVCC_compiler(Compiler):
                             '--prec-div', '--prec-sqrt', '--use_fast_math',
                             '-fmad', '-ftz', '-maxrregcount',
                             '-prec-div', '-prec-sqrt', '-use_fast_math',
-                            '--use-local-env', '--cl-version=']:
+                            '--use-local-env', '--cl-version=', '-std=']:
 
                 if pa.startswith(pattern):
                     preargs1.append(pa)
