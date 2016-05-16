@@ -113,6 +113,27 @@ Finally
 
 Change ``ISRELEASED`` back to ``False``.
 
+Update documentation server scripts
+===================================
+
+The documentation server runs the auto-generation script regularly. It
+compiles the latest development version and puts it in 
+``$webroot/theano_versions/dev/``. It then checks if the release branch
+has been updated and if it has, the release documentation is updated and 
+put into ``$webroot/theano/``. Finally, it checks for archived versions in
+``$webroot/theano_versions/`` and generates a ``versions.json`` file
+on the server that is used to populate the version switcher.
+
+If the release branch has changed, you must update the web server script.
+Login to the ``deeplearning.net`` server as the user in charge of 
+document generation. In the shell script ``~/bin/updatedocs``, update the
+variable ``release`` to the branch name for the current release.
+
+You can also add previous releases to the versions documentation archive.
+In the script ``~/bin/updatedocs_versions``, change the variable
+``Versions`` to the git tag of the documentation version to generate,
+then run the script.
+
 
 Announce the release
 ====================
