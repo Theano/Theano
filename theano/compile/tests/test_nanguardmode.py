@@ -46,3 +46,28 @@ def test_NanGuardMode():
         assert_raises(AssertionError, fun, biga)  # big values
     finally:
         _logger.propagate = True
+
+    # slices
+    a = numpy.random.randn(3, 4, 5).astype(theano.config.floatX)
+    infa = numpy.tile(
+        (numpy.asarray(100.) ** 1000000).astype(theano.config.floatX),
+        (3, 4, 5))
+    nana = numpy.tile(
+        numpy.asarray(numpy.nan).astype(theano.config.floatX), (3, 4, 5))
+    biga = numpy.tile(
+        numpy.asarray(1e20).astype(theano.config.floatX), (3, 4, 5))
+
+    x = T.tensor3()
+    y = x[:, T.arange(2), T.arange(2)]
+    fun = theano.function(
+        [x], y,
+        mode=NanGuardMode(nan_is_error=True, inf_is_error=True)
+    )
+    fun(a)  # normal values
+    try:
+        _logger.propagate = False
+        assert_raises(AssertionError, fun, infa)  # INFs
+        assert_raises(AssertionError, fun, nana)  # NANs
+        assert_raises(AssertionError, fun, biga)  # big values
+    finally:
+        _logger.propagate = True
