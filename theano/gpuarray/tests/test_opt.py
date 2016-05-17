@@ -1,5 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import numpy
+from nose.tools import assert_raises
 
 import theano
 from theano import tensor
@@ -417,3 +418,33 @@ def test_local_lift_abstractconv_gpu_shape():
         theano.function([s, a, b], c, mode=mode_with_gpu)
     finally:
         theano.config.on_opt_error = prev
+
+
+def test_local_assert_no_cpu_op():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    m = rng.uniform(-1, 1, (10, 10)).astype("float32")
+    ms = gpuarray_shared_constructor(m, name="m_shared")
+    out = theano.tensor.tanh(ms).dot(ms.T)
+
+    mode_local_assert = mode_with_gpu.including("assert_no_cpu_op")
+    mode_local_assert = mode_local_assert.excluding("local_gpu_elemwise")
+
+    old = theano.config.assert_no_cpu_op
+    old2 = theano.config.on_opt_error
+    # If the flag is raise
+    try:
+        theano.config.assert_no_cpu_op = 'raise'
+        theano.config.on_opt_error = 'ignore'
+
+        assert_raises(AssertionError, theano.function,
+                      [], out, mode=mode_local_assert)
+    finally:
+        theano.config.assert_no_cpu_op = old
+        theano.config.on_opt_error = old2
+
+    # If the flag is ignore
+    try:
+        theano.config.assert_no_cpu_op = 'ignore'
+        theano.function([], out, mode=mode_local_assert)
+    finally:
+        theano.config.assert_no_cpu_op = old
