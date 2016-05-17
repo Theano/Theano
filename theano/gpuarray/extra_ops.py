@@ -26,11 +26,8 @@ class GpuCumsum(GpuKernelBase, Op):
     def __init__(self, axis):
         self.axis = axis
 
-    def __str__(self):
-        return "%s{%s}" % (self.__class__.__name__, self.axis)
-
-    def c_code_cache_version_apply(self, node):
-        return (1,)
+    def c_code_cache_version(self):
+        return (2,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>', '<gpuarray_helper.h>']

@@ -199,7 +199,7 @@ class GpuElemwise(HideC, Elemwise):
                            typecode=o.type.typecode)
 
         res += """
-        ge = GpuElemwise_new(%(ctx)s->ops, %(ctx)s->ctx, %(support)s, %(kop)s, %(nargs)s, args, %(nd)s, 0);
+        ge = GpuElemwise_new(%(ctx)s->ctx, %(support)s, %(kop)s, %(nargs)s, args, %(nd)s, 0);
         if (ge == NULL) {
            PyErr_SetString(PyExc_RuntimeError, "Could not initialize elemwise support");
            %(fail)s
@@ -360,7 +360,7 @@ class GpuElemwise(HideC, Elemwise):
     def c_code_cache_version(self):
         ver = self.scalar_op.c_code_cache_version()
         if ver:
-            return (6, ver)
+            return (7, ver)
         else:
             return ver
 

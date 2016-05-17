@@ -259,14 +259,14 @@ class GpuKernelBase(object):
   int types[%(numargs)u] = {%(types)s};
   const char *bcode = %(bvar)s;
   size_t sz = sizeof(%(bvar)s);
-  if (GpuKernel_init(&%(ovar)s, %(ctx)s->ops, %(ctx)s->ctx, 1, &bcode, &sz,
+  if (GpuKernel_init(&%(ovar)s, %(ctx)s->ctx, 1, &bcode, &sz,
                      "%(kname)s", %(numargs)u, types, GA_USE_BINARY, NULL)
       != GA_NO_ERROR) {
-    if ((err = GpuKernel_init(&%(ovar)s, %(ctx)s->ops, %(ctx)s->ctx, 1,
+    if ((err = GpuKernel_init(&%(ovar)s, %(ctx)s->ctx, 1,
                               &%(cname)s, NULL, "%(kname)s", %(numargs)u,
                               types, %(flags)s, NULL)) != GA_NO_ERROR) {
       PyErr_Format(PyExc_RuntimeError, "GpuKernel_init error %%d: %%s",
-                   err, Gpu_error(%(ctx)s->ops, %(ctx)s->ctx, err));
+                   err, gpucontext_error(%(ctx)s->ctx, err));
       %(fail)s
     }
   }
@@ -310,7 +310,7 @@ class GpuKernelBase(object):
             The node that we need the cache version for.
 
         """
-        return (3, self.get_params(node).bin_id)
+        return (4, self.get_params(node).bin_id)
 
 
 class HostFromGpu(Op):
