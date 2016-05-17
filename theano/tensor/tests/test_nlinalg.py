@@ -40,6 +40,7 @@ from theano.tensor.nlinalg import ( MatrixInverse,
                                     svd,
                                     TensorInv,
                                     tensorinv
+                                    tensorsolve
                                     )
 from nose.plugins.attrib import attr
 
@@ -160,6 +161,23 @@ def test_svd():
     assert _allclose(n_u, t_u)
     assert _allclose(n_v, t_v)
     assert _allclose(n_t, t_t)
+
+
+def test_tensorsolve():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    A = tensor.tensor4("A", dtype=theano.config.floatX)
+    B = tensor.matrix("B", dtype=theano.config.floatX)
+    X = tensorsolve(A, B)
+    fn = function([A, B], [X])
+
+    # slightly modified example from numpy.linalg.tensorsolve docstring
+    a = numpy.eye(2*3*4).astype(theano.config.floatX)
+    a.shape = (2*3, 4, 2, 3*4)
+    b = rng.rand(2*3, 4).astype(theano.config.floatX)
+
+    n_x = numpy.linalg.tensorsolve(a, b)
+    t_x = fn(a, b)
+    assert _allclose(n_x, t_x)
 
 
 def test_inverse_singular():
