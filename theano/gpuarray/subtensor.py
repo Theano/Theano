@@ -757,8 +757,8 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
             int err, kerr = 0;
 
             if (threads_per_block[0] > 0 && n_blocks[0] > 0) {
-              err = py_self->ga.ops->property(NULL, py_self->ga.data, NULL,
-                                              GA_CTX_PROP_ERRBUF, &errbuf);
+              err = gpudata_property(py_self->ga.data,
+                                     GA_CTX_PROP_ERRBUF, &errbuf);
               if (err != GA_NO_ERROR) {
                 PyErr_SetString(PyExc_RuntimeError, "Can't fetch error buffer");
                 return 1;
@@ -793,7 +793,7 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
                              GpuKernel_error(&%(k_var)s, err));
                 return 1;
               }
-              err = py_self->ga.ops->buffer_read(&kerr, errbuf, 0, sizeof(int));
+              err = gpudata_read(&kerr, errbuf, 0, sizeof(int));
               if (err != GA_NO_ERROR) {
                 PyErr_SetString(PyExc_RuntimeError, "Can't read error buffer");
                 return 1;
@@ -801,7 +801,7 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
               if (kerr != 0) {
                 PyErr_SetString(PyExc_IndexError, "Index out of bounds");
                 kerr = 0;
-                py_self->ga.ops->buffer_write(errbuf, 0, &kerr, sizeof(int));
+                gpudata_write(errbuf, 0, &kerr, sizeof(int));
                 return 1;
               }
             }

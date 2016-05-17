@@ -15,8 +15,7 @@ int APPLY_SPECIFIC(blockger)(PyGpuArrayObject *o, PyGpuArrayObject *x,
   gpuarray_blas_ops *blas_ops;
   int err;
 
-  err = ctx->ops->property(ctx->ctx, NULL, NULL,
-                           GA_CTX_PROP_BLAS_OPS, &blas_ops);
+  err = gpucontext_property(ctx->ctx, GA_CTX_PROP_BLAS_OPS, &blas_ops);
   if (err != GA_NO_ERROR) {
     PyErr_SetString(PyExc_RuntimeError, "Can't get blas ops");
     return -1;
