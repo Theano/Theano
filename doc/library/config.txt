@@ -103,7 +103,7 @@ import theano and print the config variable, as in:
 .. attribute:: device
 
     String value: either ``'cpu'``, ``'cuda'``, ``'cuda0'``, ``'cuda1'``,
-    ``'opencl0'``, or ``'opencl1'`` ...
+    ``'opencl0:0'``, or ``'opencl0:1'`` ...
 
     Default device for computations. If ``'cuda*``, change the default to try
     to move computation to the GPU using CUDA libraries. If ``'opencl*'``,
@@ -135,7 +135,7 @@ import theano and print the config variable, as in:
 .. attribute:: init_gpu_device
 
     String value: either ``''``, ``'cuda'``, ``'cuda0'``, ``'cuda1'``,
-    ``'opencl0'``, or ``'opencl1'`` ...
+    ``'opencl0:0'``, or ``'opencl0:1'`` ...
     
     Initialize the gpu device to use.
     When its value is cuda* or opencl*, the theano flag :attr:`device` must
