@@ -1442,6 +1442,7 @@ class ShapeOptimizer(Optimizer):
     def apply(self, fgraph):
         pass
 
+
 class UnShapeOptimizer(Optimizer):
     """Optimizer remove ShapeFeature as an fgraph feature."""
     def apply(self, fgraph):
