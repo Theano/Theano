@@ -2526,7 +2526,8 @@ if True:
             out = as_cuda_ndarray_variable(out.dimshuffle(0, 1))
             return [out]
 
-    @register_opt('cudnn')
+    @register_opt('cudnn', 'stabilize', 'fast_compile')
+    # We put fast_compile as otherwise it won't be on the GPU.
     @local_optimizer([GpuElemwise, LogSoftmax])
     def local_log_softmax_dnn(node):
         # The log-softmax implementation is only available starting at cuDNN V3
