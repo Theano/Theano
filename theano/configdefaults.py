@@ -104,7 +104,7 @@ class DeviceParam(ConfigParam):
 
 AddConfigVar(
     'device',
-    ("Default device for computations. If cuda* or opencl*, change the
+    ("Default device for computations. If cuda* or opencl*, change the"
      "default to try to move computation to the GPU. Do not use upper case"
      "letters, only lower case even if NVIDIA uses capital letters."),
     DeviceParam('cpu', allow_override=False),
