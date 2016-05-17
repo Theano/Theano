@@ -358,10 +358,10 @@ def test_same_aliased_inputs_ignored():
         except InconsistencyError:
             return
         else:
-            inconsistent(g)
+            consistent(g)
     else:
         g = Env([x], [e], False)
-        inconsistent(g)
+        consistent(g)
 
 
 def test_different_aliased_inputs_ignored():
@@ -373,10 +373,10 @@ def test_different_aliased_inputs_ignored():
         except InconsistencyError:
             return
         else:
-            inconsistent(g)
+            consistent(g)
     else:
         g = Env([x], [e], False)
-        inconsistent(g)
+        consistent(g)
     # warning - don't run this because it would produce the wrong answer
     # add_in_place_3 is actually not correct when aliasing of inputs
     # is ignored.
