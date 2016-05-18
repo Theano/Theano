@@ -153,13 +153,7 @@ def test_misc():
     new_e = add(x, y)
     g.replace_validate(x, new_e)
     assert str(g) == "[Add(x, y)]"
-    if config.faster_cycle:
-        try:
-            g.replace(new_e, dot(add_in_place(x, y), transpose_view(x)))
-        except InconsistencyError:
-            return
-    else:
-        g.replace(new_e, dot(add_in_place(x, y), transpose_view(x)))
+    g.replace(new_e, dot(add_in_place(x, y), transpose_view(x)))
     assert str(g) == "[Dot(AddInPlace(x, y), TransposeView(x))]"
     inconsistent(g)
 
@@ -175,32 +169,17 @@ def test_aliased_inputs_replacement():
     tvv = transpose_view(tv)
     sx = sigmoid(x)
     e = add_in_place(x, tv)
-    if config.faster_cycle:
-        try:
-            g = Env([x, y], [e], False)
-        except InconsistencyError:
-            pass
-        else:
-            inconsistent(g)
-            g.replace(tv, sx)
-            consistent(g)
-            g.replace(sx, tv)
-            inconsistent(g)
-            g.replace(tv, tvv)
-            inconsistent(g)
-            g.replace(tv, sx)
-            consistent(g)
-    else:
-        g = Env([x, y], [e], False)
-        inconsistent(g)
-        g.replace(tv, sx)
+    g = Env([x, y], [e], False)
+    inconsistent(g)
+    g.replace(tv, sx)
+    if not config.faster_cycle:
         consistent(g)
-        g.replace(sx, tv)
-        inconsistent(g)
-        g.replace(tv, tvv)
-        inconsistent(g)
-        g.replace(tv, sx)
-        consistent(g)
+    g.replace(sx, tv)
+    inconsistent(g)
+    g.replace(tv, tvv)
+    inconsistent(g)
+    g.replace(tv, sx)
+    consistent(g)
 
 
 def test_indestructible():
@@ -211,7 +190,8 @@ def test_indestructible():
     assert x.tag.indestructible
     e = add_in_place(x, y)
     g = Env([x, y, z], [e], False)
-    inconsistent(g)
+    if not config.faster_cycle:
+        inconsistent(g)
     g.replace_validate(e, add(x, y))
     consistent(g)
 
@@ -223,6 +203,7 @@ def test_usage_loop_through_views_2():
     if config.faster_cycle:
         try:
             g = Env([x, y, z], [e])
+            assert False
         except InconsistencyError:
             return
         else:
@@ -246,6 +227,7 @@ def test_destroyers_loop():
     if config.faster_cycle:
         try:
             g.replace_validate(e1, add_in_place(x, y))
+            assert False
         except InconsistencyError:
             return
         else:
@@ -269,9 +251,10 @@ def test_destroyers_loop():
     if config.faster_cycle:
         try:
             g.replace_validate(e2, add_in_place(y, x))
+            assert False
         except InconsistencyError:
             return
-        else:        
+        else:
             consistent(g)
     else:
         g.replace_validate(e2, add_in_place(y, x))
@@ -292,90 +275,45 @@ def test_destroyers_loop():
 def test_aliased_inputs():
     x, y, z = inputs()
     e = add_in_place(x, x)
-    if config.faster_cycle:
-        try:
-            g = Env([x], [e], False)
-        except InconsistencyError:
-            return
-        else:
-            inconsistent(g)
-    else:
-        g = Env([x], [e], False)
-        inconsistent(g)
+    g = Env([x], [e], False)
+    inconsistent(g)
 
 
 def test_aliased_inputs2():
     x, y, z = inputs()
     e = add_in_place(x, transpose_view(x))
-    if config.faster_cycle:
-        try:
-            g = Env([x], [e], False)
-        except InconsistencyError:
-            return
-        else:
-            inconsistent(g)
-    else:
-        g = Env([x], [e], False)
-        inconsistent(g)
+    g = Env([x], [e], False)
+    inconsistent(g)
 
 
 def test_aliased_inputs_tolerate():
     x, y, z = inputs()
     e = add_in_place_2(x, x)
-    if config.faster_cycle:
-        try:
-            g = Env([x], [e], False)
-        except InconsistencyError:
-            return
-        else:
-            consistent(g)
-    else:
-        g = Env([x], [e], False)
+    g = Env([x], [e], False)
+    if not config.faster_cycle:
         consistent(g)
 
 
 def test_aliased_inputs_tolerate2():
     x, y, z = inputs()
     e = add_in_place_2(x, transpose_view(x))
-    if config.faster_cycle:
-        try:
-            g = Env([x], [e], False)
-        except InconsistencyError:
-            return
-        else:
-            inconsistent(g)
-    else:
-        g = Env([x], [e], False)
-        inconsistent(g)
+    g = Env([x], [e], False)
+    inconsistent(g)
 
 
 def test_same_aliased_inputs_ignored():
     x, y, z = inputs()
     e = add_in_place_3(x, x)
-    if config.faster_cycle:
-        try:
-            g = Env([x], [e], False)
-        except InconsistencyError:
-            return
-        else:
-            consistent(g)
-    else:
-        g = Env([x], [e], False)
+    g = Env([x], [e], False)
+    if not config.faster_cycle:
         consistent(g)
 
 
 def test_different_aliased_inputs_ignored():
     x, y, z = inputs()
     e = add_in_place_3(x, transpose_view(x))
-    if config.faster_cycle:
-        try:
-            g = Env([x], [e], False)
-        except InconsistencyError:
-            return
-        else:
-            consistent(g)
-    else:
-        g = Env([x], [e], False)
+    g = Env([x], [e], False)
+    if not config.faster_cycle:
         consistent(g)
     # warning - don't run this because it would produce the wrong answer
     # add_in_place_3 is actually not correct when aliasing of inputs
@@ -397,48 +335,24 @@ def test_indirect():
     x, y, z = inputs()
     e0 = add_in_place(x, y)
     e = dot(sigmoid(e0), transpose_view(x))
-    if config.faster_cycle:
-        try:
-            g = Env([x, y, z], [e], False)
-        except InconsistencyError:
-            return
-        else:
-            inconsistent(g)
-            new_e0 = add(x, y)
-            g.replace(e0, new_e0)
-            consistent(g)
-            g.replace(new_e0, add_in_place(x, y))
-            inconsistent(g)
-    else:
-        g = Env([x, y, z], [e], False)
-        inconsistent(g)
-        new_e0 = add(x, y)
-        g.replace(e0, new_e0)
-        consistent(g)
-        g.replace(new_e0, add_in_place(x, y))
-        inconsistent(g)
+    g = Env([x, y, z], [e], False)
+    inconsistent(g)
+    new_e0 = add(x, y)
+    g.replace(e0, new_e0)
+    consistent(g)
+    g.replace(new_e0, add_in_place(x, y))
+    inconsistent(g)
 
 
 def test_indirect_2():
     x, y, z = inputs()
     e0 = transpose_view(x)
     e = dot(sigmoid(add_in_place(x, y)), e0)
-    if config.faster_cycle:
-        try:
-            g = Env([x, y, z], [e], False)
-        except InconsistencyError:
-            return
-        else:
-            inconsistent(g)
-            new_e0 = add(e0, y)
-            g.replace(e0, new_e0)
-            consistent(g)
-    else:
-        g = Env([x, y, z], [e], False)
-        inconsistent(g)
-        new_e0 = add(e0, y)
-        g.replace(e0, new_e0)
-        consistent(g)
+    g = Env([x, y, z], [e], False)
+    inconsistent(g)
+    new_e0 = add(e0, y)
+    g.replace(e0, new_e0)
+    consistent(g)
 
 
 def test_long_destroyers_loop():
@@ -450,6 +364,7 @@ def test_long_destroyers_loop():
     if config.faster_cycle:
         try:
             g = Env([x, y, z], [e])
+            assert False
         except InconsistencyError:
             return
         else:
@@ -480,20 +395,10 @@ def test_misc_2():
     x, y, z = inputs()
     tv = transpose_view(x)
     e = add_in_place(x, tv)
-    if config.faster_cycle:
-        try:
-            g = Env([x, y], [e], False)
-        except InconsistencyError:
-            return
-        else:
-            inconsistent(g)
-            g.replace(tv, x)
-            inconsistent(g)
-    else:
-        g = Env([x, y], [e], False)
-        inconsistent(g)
-        g.replace(tv, x)
-        inconsistent(g)
+    g = Env([x, y], [e], False)
+    inconsistent(g)
+    g.replace(tv, x)
+    inconsistent(g)
 
 
 def test_multi_destroyers():
@@ -514,7 +419,7 @@ def test_multi_destroyers_through_views():
     fail = FailureWatch()
     OpSubOptimizer(add, add_in_place, fail).optimize(g)
     consistent(g)
-    #assert fail.failures == 1  # should have succeeded once and failed once
+    # assert fail.failures == 1  # should have succeeded once and failed once
 
 
 def test_repair_destroy_path():
@@ -523,60 +428,29 @@ def test_repair_destroy_path():
     e2 = transpose_view(transpose_view(e1))
     e3 = add_in_place(e2, y)
     e4 = add_in_place(e1, z)
-    if config.faster_cycle:
-        try:
-            g = Env([x, y, z], [e3, e4], False)
-        except InconsistencyError:
-            pass
-        else:
-            inconsistent(g)
-            g.replace(e2, transpose_view(x))
-            inconsistent(g)
-    else:
-        g = Env([x, y, z], [e3, e4], False)
-        inconsistent(g)
-        g.replace(e2, transpose_view(x))
-        inconsistent(g)
+    g = Env([x, y, z], [e3, e4], False)
+    inconsistent(g)
+    g.replace(e2, transpose_view(x))
+    inconsistent(g)
 
 
 def test_usage_loop():
     x, y, z = inputs()
-    if config.faster_cycle:
-        try:
-            g = Env([x, y, z], [dot(add_in_place(x, z), x)], False)
-        except InconsistencyError:
-            pass
-        else:
-            inconsistent(g)
-            # replace add_in_place with add
-            OpSubOptimizer(add_in_place, add).optimize(g)
-            consistent(g)
-    else:
-        g = Env([x, y, z], [dot(add_in_place(x, z), x)], False)
-        inconsistent(g)
-        # replace add_in_place with add
-        OpSubOptimizer(add_in_place, add).optimize(g)
-        consistent(g)
+    g = Env([x, y, z], [dot(add_in_place(x, z), x)], False)
+    inconsistent(g)
+    # replace add_in_place with add
+    OpSubOptimizer(add_in_place, add).optimize(g)
+    consistent(g)
 
 
 def test_usage_loop_through_views():
     x, y, z = inputs()
     aip = add_in_place(x, y)
     e = dot(aip, transpose_view(x))
-    if config.faster_cycle:
-        try:
-            g = Env([x, y, z], [e], False)
-        except InconsistencyError:
-            return
-        else:
-            inconsistent(g)
-            g.replace_validate(aip, add(x, z))
-            consistent(g)
-    else:
-        g = Env([x, y, z], [e], False)
-        inconsistent(g)
-        g.replace_validate(aip, add(x, z))
-        consistent(g)
+    g = Env([x, y, z], [e], False)
+    inconsistent(g)
+    g.replace_validate(aip, add(x, z))
+    consistent(g)
 
 
 def test_usage_loop_insert_views():
@@ -587,6 +461,7 @@ def test_usage_loop_insert_views():
     if config.faster_cycle:
         try:
             g = Env([x, y, z], [e])
+            assert False
         except InconsistencyError:
             return
         else:

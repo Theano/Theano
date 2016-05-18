@@ -20,7 +20,6 @@ from six.moves.queue import Queue
 from theano import config
 
 
-
 class ProtocolError(Exception):
     """
     Raised when FunctionGraph calls DestroyHandler callbacks in
@@ -972,7 +971,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         b) orderings cannot be topologically sorted.
 
         """
-        if config.faster_cycle and self.fail_validate: 
+        if config.faster_cycle and self.fail_validate:
             self.fail_validate = False
             raise InconsistencyError("fast_cycle doesn't accept this graph.")
         elif config.faster_cycle:

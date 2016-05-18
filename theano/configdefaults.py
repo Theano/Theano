@@ -1104,9 +1104,10 @@ AddConfigVar('cmodule.preload_cache',
              BoolParam(False, allow_override=False),
              in_c_key=False)
 
-AddConfigVar('fast_inplace',
+AddConfigVar('faster_cycle',
              "If set to true, this will enable the fast_destroy.",
              BoolParam(False, allow_override=True))
+
 
 def default_blas_ldflags():
     global numpy
@@ -1701,9 +1702,6 @@ AddConfigVar(
         allow_override=False),
     in_c_key=False)
 
-AddConfigVar('faster_cycle',
-            'Use the newer algorithm for cycle detection in graphs',
-             BoolParam(False, allow_override=True))
 
 # Check if there are remaining flags provided by the user through THEANO_FLAGS.
 for key in THEANO_FLAGS_DICT.keys():
