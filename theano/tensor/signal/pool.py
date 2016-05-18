@@ -278,6 +278,9 @@ class Pool(Op):
                 'Pool requires 4D input for now')
         z_shape = self.out_shape(x.shape, self.ds, self.ignore_border, self.st,
                                  self.padding)
+        if not self.ignore_border:
+            assert z_shape[2] > 0
+            assert z_shape[3] > 0
         if (z[0] is None) or (z[0].shape != z_shape):
             z[0] = numpy.empty(z_shape, dtype=x.dtype)
         zz = z[0]
@@ -407,7 +410,7 @@ class Pool(Op):
             }
             else
             {
-                z_r = std::max(0, (r - 1 - %(ds0)s) / %(st0)s + 1) + 1;
+                z_r = std::max(0, (r - 1 - %(ds0)s + %(st0)s) / %(st0)s) + 1;
             }
             // decide how many columns the output has
             if (%(st1)s >= %(ds1)s)
@@ -416,8 +419,10 @@ class Pool(Op):
             }
             else
             {
-                z_c = std::max(0, (c - 1 - %(ds1)s) / %(st1)s + 1) + 1;
+                z_c = std::max(0, (c - 1 - %(ds1)s + %(st0)s) / %(st1)s) + 1;
             }
+            assert(z_r > 0);
+            assert(z_c > 0);
         }
         // memory allocation of z if necessary
         if ((!%(z)s)
@@ -526,7 +531,7 @@ class Pool(Op):
         return ccode % locals()
 
     def c_code_cache_version(self):
-        return (0, 6, 8, 3)
+        return (0, 6, 8, 4)
 
 
 class PoolGrad(Op):
