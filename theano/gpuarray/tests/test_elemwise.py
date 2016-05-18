@@ -197,7 +197,7 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
 
     def setUp(self):
         super(test_GpuCAReduceCuda, self).setUp()
-        if get_context(test_ctx_name).kind != 'cuda':
+        if get_context(test_ctx_name).kind != b'cuda':
             raise SkipTest("Cuda specific tests")
 
 
@@ -212,7 +212,7 @@ class T_gpureduce_dtype(test_elemwise.T_reduce_dtype):
               'float32', 'float64']
 
     def setUp(self):
-        if get_context(test_ctx_name).kind != 'cuda':
+        if get_context(test_ctx_name).kind != b'cuda':
             raise SkipTest("Cuda specific tests")
 
 

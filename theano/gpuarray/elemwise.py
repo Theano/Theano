@@ -554,7 +554,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
 
     def make_node(self, x):
         x = as_gpuarray_variable(x, infer_context_name(x))
-        if x.type.context.kind != 'cuda':
+        if x.type.context.kind != b'cuda':
             raise TypeError("GpuCAReduceCuda doesn't work for non-cuda devices")
         ret = super(GpuCAReduceCuda, self).make_node(x)
         self = copy.copy(self)

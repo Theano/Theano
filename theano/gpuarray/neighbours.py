@@ -243,7 +243,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         return kernels
 
     def c_code(self, node, name, inp, out, sub):
-        if node.inputs[0].type.context.kind != 'cuda':
+        if node.inputs[0].type.context.kind != b'cuda':
             raise NotImplementedError("cuda only")
         dtype_ten4 = node.inputs[0].dtype
         dtype_neib_shape = node.inputs[1].dtype

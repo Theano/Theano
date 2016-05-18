@@ -145,7 +145,7 @@ def op_lifter(OP, cuda_only=False):
                 # Check if we should replace
                 if (not replace or
                     (cuda_only and
-                     get_context(context_name).kind != 'cuda')):
+                     get_context(context_name).kind != b'cuda')):
                     return False
 
                 # tag the inputs with the context in case
@@ -642,7 +642,7 @@ def local_gpua_advanced_subtensor(node, context_name):
 def local_gpua_advanced_incsubtensor(node, context_name):
     context = get_context(context_name)
     # This is disabled on non-cuda contexts
-    if context.kind != 'cuda':
+    if context.kind != b'cuda':
         return None
 
     x, y, ilist = node.inputs
@@ -673,12 +673,12 @@ def local_gpua_careduce(node, context_name):
     if isinstance(node.op.scalar_op, (scalar.Add, scalar.Mul,
                                       scalar.Maximum, scalar.Minimum)):
         ctx = get_context(context_name)
-        if ctx.kind == 'opencl':
+        if ctx.kind == b'opencl':
             op = GpuCAReduceCPY
             if node.op.scalar_op not in [scalar.add, scalar.mul]:
                 # We don't support yet all reduction with cpy code.
                 return
-        elif ctx.kind == 'cuda':
+        elif ctx.kind == b'cuda':
             op = GpuCAReduceCuda
         else:
             return False

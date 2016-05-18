@@ -218,7 +218,7 @@ class GpuCumsum(GpuKernelBase, Op):
         return kernels
 
     def c_code(self, node, nodename, inp, out, sub):
-        if node.inputs[0].type.context.kind != 'cuda':
+        if node.inputs[0].type.context.kind != b'cuda':
             raise NotImplementedError("cuda only")
         x, = inp
         z, = out

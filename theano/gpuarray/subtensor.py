@@ -599,7 +599,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
 
     def c_code(self, node, name, inputs, outputs, sub):
         ctx = self.get_params(node)
-        if ctx.kind != 'cuda':
+        if ctx.kind != b'cuda':
             raise NotImplementedError("cuda only")
         if (self.set_instead_of_inc or
                 node.inputs[0].ndim != node.inputs[1].ndim or
