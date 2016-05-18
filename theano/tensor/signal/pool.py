@@ -186,8 +186,12 @@ class Pool(Op):
         if st is None:
             st = ds
         r, c = imgshape[-2:]
-        r += padding[0] * 2
-        c += padding[1] * 2
+        r = tensor.extract_constant(r)
+        c = tensor.extract_constant(c)
+        if padding[0]:
+            r += padding[0] * 2
+        if padding[1]:
+            c += padding[1] * 2
 
         if ignore_border:
             if ds[0] == st[0]:
