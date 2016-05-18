@@ -2,10 +2,11 @@ from __future__ import absolute_import, print_function, division
 import copy
 import numpy
 import logging
+import pdb
 from six.moves import xrange
 
 import theano
-from theano import tensor, scalar, gof
+from theano import tensor, scalar, gof, config
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
@@ -953,6 +954,28 @@ def local_gpu_elemwise_careduce(node):
                                 axis=op.axis,
                                 reduce_mask=op.reduce_mask,
                                 pre_scalar_op=scalar.basic.sqr)(inp)]
+
+
+@local_optimizer(None)
+def local_assert_no_cpu_op(node):
+    if (all([var.owner and isinstance(var.owner.op, HostFromGpu)
+             for var in node.inputs]) and
+        any([[c for c in var.clients if isinstance(c[0].op, GpuFromHost)]
+             for var in node.outputs])):
+
+            if config.assert_no_cpu_op == "warn":
+                _logger.warning(("CPU Op %s is detected in the computation "
+                                 "graph") % node)
+            elif config.assert_no_cpu_op == "raise":
+                raise AssertionError("The Op %s is on CPU." % node)
+            elif config.assert_no_cpu_op == "pdb":
+                pdb.set_trace()
+
+# Register the local_assert_no_cpu_op:
+assert_no_cpu_op = theano.tensor.opt.in2out(local_assert_no_cpu_op,
+                                            name='assert_no_cpu_op')
+# 49.2 is after device specialization & fusion optimizations for last transfers
+optdb.register('assert_no_cpu_op', assert_no_cpu_op, 49.2)
 
 
 def tensor_to_gpu(x, context_name):
