@@ -103,13 +103,16 @@ import theano and print the config variable, as in:
 .. attribute:: device
 
     String value: either ``'cpu'``, ``'cuda'``, ``'cuda0'``, ``'cuda1'``,
-    ``'opencl0:0'``, or ``'opencl0:1'`` ...
+    ``'opencl0:0'``, ``'opencl0:1'``, ``'gpu'``, ``'gpu0'`` ...
 
     Default device for computations. If ``'cuda*``, change the default to try
     to move computation to the GPU using CUDA libraries. If ``'opencl*'``,
     the openCL libraries will be used. To let the driver select the device,
-    use ``'cuda'`` or ``'opencl'``. If we are not able to use the GPU,
-    either we fall back on the CPU, or an error is raised, depending on the :attr:`force_device` flag.
+    use ``'cuda'`` or ``'opencl'``. If ``'gpu*'``, the old gpu backend will
+    be used, although users are encouraged to migrate to the new GpuArray 
+    backend. If we are not able to use the GPU,
+    either we fall back on the CPU, or an error is raised, depending
+    on the :attr:`force_device` flag.
 
     This flag's value cannot be modified during the program execution.
 
@@ -135,11 +138,11 @@ import theano and print the config variable, as in:
 .. attribute:: init_gpu_device
 
     String value: either ``''``, ``'cuda'``, ``'cuda0'``, ``'cuda1'``,
-    ``'opencl0:0'``, or ``'opencl0:1'`` ...
+    ``'opencl0:0'``, ``'opencl0:1'``, ``'gpu'``, ``'gpu0'`` ...
     
     Initialize the gpu device to use.
-    When its value is cuda* or opencl*, the theano flag :attr:`device` must
-    be ``"cpu"``.
+    When its value is ``'cuda*'``, ``'opencl*'`` or ``'gpu*'``, the theano
+    flag :attr:`device` must be ``'cpu'``.
     Unlike :attr:`device`, setting this flag to a specific GPU will not
     try to use this device by default, in particular it will **not** move
     computations, nor shared variables, to the specified GPU.

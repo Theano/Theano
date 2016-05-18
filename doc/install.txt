@@ -524,8 +524,8 @@ You can also set these options in the .theanorc file's ``[global]`` section:
 Note that:
 
     * If your computer has multiple GPUs and you use 'device=cuda', the driver
-      selects the one to use (usually gpu0).
-    * You can use the program nvida-smi to change this policy.
+      selects the one to use (usually cuda0).
+    * You can use the program ``nvidia-smi`` to change this policy.
     * You can choose one specific GPU by specifying 'device=cudaX', with X the
       the corresponding GPU index (0, 1, 2, ...)
     * By default, when ``device`` indicates preference for GPU computations,

@@ -133,7 +133,7 @@ the GPU object directly.  The following code is modified to do just that.
 
   rng = numpy.random.RandomState(22)
   x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
-  f = function([], tensor.exp(x).transfer('dev0'))
+  f = function([], tensor.exp(x).transfer(None))
   print(f.maker.fgraph.toposort())
   t0 = time.time()
   for i in range(iters):
@@ -148,7 +148,7 @@ the GPU object directly.  The following code is modified to do just that.
   else:
       print('Used the gpu')
 
-Here ``tensor.exp(x).transfer('None')`` means "copy ``exp(x)`` to the GPU",
+Here ``tensor.exp(x).transfer(None)`` means "copy ``exp(x)`` to the GPU",
 with ``None`` the default GPU context when not explicitly given.
 For information on how to set GPU contexts, see :ref:`tut_using_multi_gpu`. 
 
@@ -158,11 +158,14 @@ The output is
    :hide:
    :options: +ELLIPSIS, +SKIP
 
-   Using device cuda0: ...
-   [GpuElemwise{exp,no_inplace}(<GpuArray<float64>>)]
-   Looping 1000 times took ... seconds
-   Result is ...
+   $ THEANO_FLAGS=device=cuda0 python gpu_tutorial2.py
+   Mapped name None to device cuda0: GeForce GTX 680 (cuDNN version 5004)
+   [GpuElemwise{exp,no_inplace}(<GpuArrayType<None>(float64, (False,))>)]
+   Looping 1000 times took 0.088381 seconds
+   Result is [ 1.23178032  1.61879341  1.52278065 ...,  2.20771815  2.29967753
+     1.62323285]
    Used the gpu
+
 
 .. code-block:: none
 
@@ -212,7 +215,7 @@ double (float64) or small (less than 32 bits like int16) data types.
 You will get an error at compile time or runtime if this is the case.
 
 By default all inputs will get transferred to GPU. You can prevent an
-input from getting transferred by setting its tag.target attribute to
+input from getting transferred by setting its ``tag.target`` attribute to
 'cpu'.
 
 Complex support is untested and most likely completely broken.
@@ -225,9 +228,10 @@ Tips for Improving Performance on GPU
 * The GPU backend supports *float64* variables, but they are still slower
   to compute than *float32*. The more *float32*, the better GPU performance
   you will get. 
-* Prefer constructors like ``matrix``, ``vector`` and ``scalar`` to
-  ``dmatrix``, ``dvector`` and ``dscalar`` because the former will give
-  you *float32* variables and ignore the type given to ``floatX``.
+* Prefer constructors like ``matrix``, ``vector`` and ``scalar`` (which 
+  follow the type set in ``floatX``) to ``dmatrix``, ``dvector`` and
+  ``dscalar``. The latter enforce double precision (*float64* on most 
+  machines), which slows down GPU computations on current hardware.
 * Minimize transfers to the GPU device by using ``shared`` variables
   to store frequently-accessed data (see :func:`shared()<shared.shared>`).
   When using the GPU, tensor ``shared`` variables are stored on
