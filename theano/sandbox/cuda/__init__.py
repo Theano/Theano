@@ -23,6 +23,8 @@ from theano.tensor.basic import register_transfer
 # we use for optimization. Otherwise, we can iterate 100s of time on
 # the graph and apply only a few optimizations each time.
 gpu_optimizer = EquilibriumDB(ignore_newtrees=False)
+#gpu_optimizer = EquilibriumDB(ignore_newtrees=True,#False,
+#                              tracks_on_change_inputs=True)#True)
 gpu_seqopt = SequenceDB()
 
 
