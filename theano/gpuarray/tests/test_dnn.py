@@ -836,6 +836,8 @@ class test_SoftMax(test_nnet.test_SoftMax):
             mode=mode_with_gpu
         )
         sorted_f = f.maker.fgraph.toposort()
+        val = numpy.random.rand(5).astype('float32')
+        out_dnn = f(val)
         assert(len([i
                     for i in sorted_f
                     if isinstance(
@@ -860,6 +862,8 @@ class test_SoftMax(test_nnet.test_SoftMax):
             mode=mode_wo_cudnn
         )
         sorted_f = f.maker.fgraph.toposort()
+        out_cpu = f(val)
+        utt.assert_allclose(out_dnn, out_cpu)
         assert(len([i
                     for i in sorted_f
                     if isinstance(
