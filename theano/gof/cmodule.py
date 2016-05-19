@@ -178,6 +178,7 @@ static struct PyModuleDef moduledef = {{
         print("}", file=stream)
 
     def add_include(self, str):
+        _logger.debug("add_include "+str)
         # assert not self.finalized
         self.includes.append(str)
 
@@ -204,11 +205,14 @@ static struct PyModuleDef moduledef = {{
         self.functions.append(fn)
 
     def gen_header(self, filename):
+        _logger.debug("gen_header "+filename)
         # We need a finalized module to have self.code_hash
         assert self.finalized
         f = open(filename, 'w')
         print("#include <Python.h>", file=f)
+        _logger.debug("gen_header code")
         for code in self.header_code:
+            _logger.debug(code)
             code = re.sub(self.hash_placeholder, self.code_hash, code)
             print(code, file=f)
         f.close()
@@ -250,7 +254,9 @@ static struct PyModuleDef moduledef = {{
         if not c_callable:
             assert self.code_hash is None or self.code_hash == h
         self.code_hash = h
+        _logger.debug("code hash "+h)
         rval = re.sub(self.hash_placeholder, self.code_hash, rval)
+        # _logger.debug(rval)
         # Finalize the Module, so no support code or function
         # can be added
         self.finalized = True
