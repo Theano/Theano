@@ -1908,8 +1908,8 @@ class TopoOptimizer(NavigatorOptimizer):
                     q.remove(node)
                 except ValueError:
                     pass
-
-        u = self.attach_updater(fgraph, importer, pruner, name=self.name)
+        u = self.attach_updater(fgraph, importer, pruner,
+                                name=getattr(self, 'name', None))
         nb = 0
         try:
             t0 = time.time()
@@ -1981,7 +1981,8 @@ class OpKeyOptimizer(NavigatorOptimizer):
                     q.remove(node)
                 except ValueError:
                     pass
-        u = self.attach_updater(fgraph, importer, pruner, name=self.name)
+        u = self.attach_updater(fgraph, importer, pruner,
+                                name=getattr(self, 'name', None))
         try:
             while q:
                 node = q.pop()
@@ -2232,7 +2233,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         q.append(node)
             u = self.attach_updater(fgraph, importer, pruner,
                                     chin=chin,
-                                    name=self.name)
+                                    name=getattr(self, 'name', None))
             try:
                 while q:
                     node = q.pop()
