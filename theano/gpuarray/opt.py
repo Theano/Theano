@@ -975,7 +975,8 @@ def local_assert_no_cpu_op(node):
 assert_no_cpu_op = theano.tensor.opt.in2out(local_assert_no_cpu_op,
                                             name='assert_no_cpu_op')
 # 49.2 is after device specialization & fusion optimizations for last transfers
-optdb.register('gpua_assert_no_cpu_op', assert_no_cpu_op, 49.2)
+optdb.register('gpua_assert_no_cpu_op', assert_no_cpu_op, 49.2,
+               'assert_no_cpu_op')
 
 
 def tensor_to_gpu(x, context_name):
