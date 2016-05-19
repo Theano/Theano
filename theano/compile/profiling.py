@@ -89,7 +89,7 @@ def _atexit_print_fn():
                         cum.optimizer_profile[1],
                         ps.optimizer_profile[1])
                     cum.optimizer_profile = (cum.optimizer_profile[0], merge)
-                except Exception, e:
+                except Exception as e:
                     print("Got an exception while merging profile")
                     print(e)
                     cum.optimizer_profile = None
