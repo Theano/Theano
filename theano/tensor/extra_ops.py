@@ -102,6 +102,11 @@ class SearchsortedOp(theano.Op):
             return theano.Apply(self, [x, v], [out_type()])
         else:
             sorter = basic.as_tensor(sorter, ndim=1)
+            if (theano.configdefaults.python_int_bitwidth() == 32 and
+                    sorter.dtype == 'int64'):
+                raise TypeError(
+                    "numpy.searchsorted with Python 32bit do not support a"
+                    " sorter of int64.")
             if sorter.type not in basic.int_vector_types:
                 raise TypeError('sorter must be an integer vector',
                                 sorter.type)
@@ -119,7 +124,8 @@ class SearchsortedOp(theano.Op):
             sorter = None
         z = output_storage[0]
 
-        z[0] = np.searchsorted(x, v, side=params, sorter=sorter)
+        z[0] = np.searchsorted(x, v, side=params, sorter=sorter).astype(
+            node.outputs[0].dtype)
 
     def c_support_code_struct(self, node, name):
         return """
@@ -154,10 +160,15 @@ class SearchsortedOp(theano.Op):
                                                           right_%(name)s ? NPY_SEARCHLEFT : NPY_SEARCHRIGHT, (PyObject*) %(sorter)s);
             if (!%(z)s)
                 %(fail)s;
+            if (PyArray_TYPE(%(z)s) != NPY_INT64){
+                PyObject * tmp = PyArray_Cast(%(z)s, NPY_INT64);
+                Py_XDECREF(%(z)s);
+                %(z)s = (PyArrayObject*) tmp;
+            }
         """ % locals()
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def grad(self, inputs, output_gradients):
         num_ins = len(inputs)
