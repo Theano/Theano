@@ -7008,9 +7008,6 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 32,
         if type(node.op) is not OP:
             return False
 
-        if len(node.outputs) > 1:
-            # We don't support the fusion for node with multiple outputs.
-            return
         inputs = []  # inputs of the new Elemwise op.
         s_inputs = []  # inputs of the new scalar op used by the Composite.
         # Inputs of the new scalar op that represents the current node.
@@ -7164,9 +7161,9 @@ your code will run correctly, but may be slower.""")
 
         # create the new node.
         # Do not call make_node to have test_value
-        n = maker(node, C)(*inputs).owner
-        assert len(n.outputs) == 1
-        assert node.outputs[0].dtype == n.outputs[0].dtype
+        n = maker(node, C)(*inputs, return_list=True)[0].owner
+        assert all([o1.dtype == o2.dtype for o1, o2 in zip(node.outputs,
+                                                           n.outputs)])
 
         if len(n.inputs) > max_nb_input:
             _logger.info('loop fusion failed because Op would exceed'
