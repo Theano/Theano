@@ -3629,6 +3629,16 @@ class Composite(ScalarOp):
             for o_idx, o in enumerate(outputs):
                 if o.owner in node_done:
                     out = node_done[o.owner]
+                elif not isinstance(o.owner.op, Composite):
+                    repl = {}  # replacement
+                    for i in o.owner.inputs:
+                        repl[i] = res[1][out1.index(i)]
+                    res2 = theano.compile.rebuild_collect_shared(
+                        inputs=o.owner.inputs,
+                        outputs=o.owner.outputs,
+                        replace=repl)
+                    out = res2[1]
+                    node_done[o.owner] = out
                 else:
                     repl = {}  # replacement
                     for i_extern, i_intern in zip(o.owner.inputs,

@@ -94,6 +94,14 @@ class test_composite(unittest.TestCase):
         f = theano.function([x, y, z], CC(x, y, z))
         assert f(1, 2, 3) == [4, 5]
 
+        # Test with multiple outputs on the 2nd Composite and not all
+        # composite
+        CC = Composite([x, y, z], [C(x * y, y),x * z])
+        # We don't flatten that case.
+        assert not isinstance(CC.outputs[0].owner.op, Composite)
+        f = theano.function([x, y, z], CC(x, y, z))
+        assert f(1, 2, 3) == [4, 3]
+
         # Test with multiple outputs on the 1st Composite
         C = Composite([x, y, z], [x + y, x - z])
         CC = Composite([x, y, z], C(x * y, y, z))
