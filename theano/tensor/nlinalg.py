@@ -821,7 +821,7 @@ class TensorSolve(Op):
 
 def tensorsolve(a, b, axes=None):
     """
-    Theano utilization of numpy.linalg.tensorsolve
+    Theano utilization of numpy.linalg.tensorsolve. Does not run on GPU!
 
     Solve the tensor equation ``a x = b`` for x.
     It is assumed that all indices of `x` are summed over in the product,
