@@ -15,7 +15,9 @@ class BNComposite(Composite):
         std = theano.scalar.Scalar(dtype=dtype).make_variable()
         gamma = theano.scalar.Scalar(dtype=dtype).make_variable()
         beta = theano.scalar.Scalar(dtype=dtype).make_variable()
+
         o = add(mul(true_div(sub(x, mean), std), gamma), beta)
+
         inputs = [x, mean, std, gamma, beta]
         outputs = [o]
         super(BNComposite, self).__init__(inputs, outputs)
@@ -41,10 +43,12 @@ class BNCompositeGrad(Composite):
         # beta = theano.scalar.Scalar(dtype=dtype).make_variable()
         top = theano.scalar.Scalar(dtype=dtype).make_variable()
 
-        dx = (top * gamma) / std
-        dmean = -(top * gamma) / std
-        dstd = -(top * gamma * (x - mean)) / (std * std)
-        dgamma = top * (x - mean) / std
+        top_gamma = top * gamma
+        x_mean = x - mean
+        dx = top_gamma / std
+        dmean = -dx
+        dstd = -(top_gamma * x_mean) / (std * std)
+        dgamma = top * x_mean / std
         dbeta = theano.scalar.identity(top)
 
         inputs = [x, mean, std, gamma, top]
