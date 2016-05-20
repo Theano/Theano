@@ -128,6 +128,7 @@ class CuRFFTOp(Op):
         thunk.lazy = False
 
         return thunk
+curfft_op = CuRFFTOp()
 
 
 class CuIRFFTOp(Op):
@@ -234,27 +235,40 @@ class CuIRFFTOp(Op):
         thunk.lazy = False
 
         return thunk
+cuirfft_op = CuIRFFTOp()
 
 
-def curfft(inputs):
+def curfft(inputs, norm=None):
     """
-    Performs the real unitary fast Fourier Transform normalized
-    by :math:`\sqrt n`.
+    Performs the real-valued input fast Fourier Transform using the
+    gpuarray backend.
 
     Parameters
     ----------
     inputs
         Array of real-valued float32 of size (m, n), containing m inputs of
         length n.
+    norm : {None, 'ortho', 'no_norm'}
+        Normalization of transform. Following numpy, default *None* normalizes
+        only the inverse transform by n, 'ortho' yields the unitary transform
+        (:math:`1/\sqrt n` forward and back). In addition, 'no_norm' leaves
+        the transform unnormalized.
     """
-    fft_op = CuRFFTOp()
-    return fft_op(inputs) / T.sqrt(((inputs.shape[1:]).prod()).astype('float32'))
+
+    cond_norm = _unitary(norm)
+    if cond_norm is None:
+        return curfft_op(inputs)
+    elif cond_norm == "ortho":
+        return curfft_op(inputs) / T.sqrt(((inputs.shape[1:]).prod())
+                                          .astype('float32'))
+    elif cond_norm == "no_norm":
+        return curfft_op(inputs)
 
 
-def cuirfft(inputs):
+def cuirfft(inputs, norm=None):
     """
-    Performs the real unitary fast inverse Fourier Transform normalized
-    by :math:`\sqrt n`.
+    Performs the real-valued output inverse Fourier Transform using the
+    gpuarray backend.
 
     Parameters
     ----------
@@ -262,7 +276,26 @@ def cuirfft(inputs):
         Array of float32 of size (m, n/2+1, 2), containing m inputs with n/2+1
         non-trivial elements and real and imaginary parts stored as separate
         arrays.
+    norm : {None, 'ortho', 'no_norm'}
+        Normalization of transform. Following numpy, default *None* normalizes
+        only the inverse transform by n, 'ortho' yields the unitary transform
+        (:math:`1/\sqrt n` forward and back). In addition, 'no_norm' leaves
+        the transform unnormalized.
     """
-    ifft_op = CuIRFFTOp()
-    return ifft_op(inputs) / T.sqrt((((inputs.shape[1:-1] - 1) * 2).prod())
-                                    .astype('float32'))
+
+    cond_norm = _unitary(norm)
+    if cond_norm is None:
+        return cuirfft_op(inputs) / (((inputs.shape[1:-1] - 1) * 2).prod()
+                                     .astype('float32'))
+    if cond_norm == "ortho":
+        return cuirfft_op(inputs) / T.sqrt((((inputs.shape[1:-1] - 1) * 2).prod())
+                                           .astype('float32'))
+    if cond_norm == "no_norm":
+        return cuirfft_op(inputs)
+
+
+def _unitary(norm):
+    if norm not in (None, "ortho", "no_norm"):
+        raise ValueError("Invalid value %s for norm, must be None, 'ortho' or "
+                         "'no norm'" % norm)
+    return norm
