@@ -641,35 +641,54 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.dnn.conv.workmem
 
-   Deprecated, use dnn.conv.algo_fwd.
+    Deprecated, use :attr:`config.dnn.conv.algo_fwd`.
 
 
 .. attribute:: config.dnn.conv.workmem_bwd
 
-   Deprecated, use dnn.conv.algo_bwd.
+    Deprecated, use :attr:`config.dnn.conv.algo_bwd_filter` and
+    :attr:`config.dnn.conv.algo_bwd_data` instead.
 
 .. attribute:: config.dnn.conv.algo_fwd
 
-  String value: ``small``, ``none``, ``large``, ``fft``, ``guess_once``,
-                ``guess_on_shape_change``, ``time_once``,
-                ``time_on_shape_change``.
+    String value:
+    ``small``, ``none``, ``large``, ``fft``, ``fft_tiling``,
+    ``winograd``, ``guess_once``, ``guess_on_shape_change``,
+    ``time_once``, ``time_on_shape_change``.
 
-   Default: ``small``
+    Default: ``small``
 
-   3d convolution only support ``none``, ``guess_once``,
-   ``guess_on_shape_change``, ``time_once``, ``time_on_shape_change``.
+    3d convolution only support ``none``, ``guess_once``,
+    ``guess_on_shape_change``, ``time_once``, ``time_on_shape_change``.
 
 
 .. attribute:: config.dnn.conv.algo_bwd
 
-   String value: ``none``, ``deterministic``, ``fft``, ``guess_once``,
-                 ``guess_on_shape_change``, ``time_once``,
-                 ``time_on_shape_change``.
+    Deprecated, use :attr:`config.dnn.conv.algo_bwd_filter` and
+    :attr:`config.dnn.conv.algo_bwd_data` instead.
 
-   Default: ``none``
+.. attribute:: config.dnn.conv.algo_bwd_filter
 
-   3d convolution only support ``none``, ``guess_once``,
-   ``guess_on_shape_change``, ``time_once``, ``time_on_shape_change``.
+    String value:
+    ``none``, ``deterministic``, ``fft``, ``small``, ``guess_once``,
+    ``guess_on_shape_change``, ``time_once``, ``time_on_shape_change``.
+
+    Default: ``none``
+
+    3d convolution only support ``none``, ``guess_once``,
+    ``guess_on_shape_change``, ``time_once``, ``time_on_shape_change``.
+
+.. attribute:: config.dnn.conv.algo_bwd_data
+
+    String value:
+    ``none``, ``deterministic``, ``fft``, ``fft_tiling``, ``winograd``,
+    ``guess_once``, ``guess_on_shape_change``, ``time_once``,
+    ``time_on_shape_change``.
+
+    Default: ``none``
+
+    3d convolution only support ``none``, ``guess_once``,
+    ``guess_on_shape_change``, ``time_once``, ``time_on_shape_change``.
 
 .. attribute:: config.gcc.cxxflags
 
