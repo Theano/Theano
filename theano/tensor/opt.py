@@ -7001,6 +7001,10 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 32,
 
         if type(node.op) is not OP:
             return False
+
+        if len(node.outputs) > 1:
+            # We don't support the fusion for node with multiple outputs.
+            return
         inputs = []  # inputs of the new Elemwise op.
         s_inputs = []  # inputs of the new scalar op used by the Composite.
         # Inputs of the new scalar op that represents the current node.
