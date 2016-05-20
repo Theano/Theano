@@ -21,13 +21,35 @@ class BNComposite(Composite):
         super(BNComposite, self).__init__(inputs, outputs)
 
     def grad(self, inps, grads):
-        x, mean, std, gamma, beta = inps
+        x, mean, std, gamma, _ = inps
         top, = grads
+        assert top.dtype == x.dtype
+        return BNCompositeGrad(top.dtype)(x, mean, std, gamma, top)
+
+
+class BNCompositeGrad(Composite):
+    init_param = ('dtype',)
+
+    @theano.configparser.change_flags(compute_test_value='off')
+    def __init__(self, dtype):
+        self.dtype = dtype
+        x = theano.scalar.Scalar(dtype=dtype).make_variable()
+        mean = theano.scalar.Scalar(dtype=dtype).make_variable()
+        std = theano.scalar.Scalar(dtype=dtype).make_variable()
+        gamma = theano.scalar.Scalar(dtype=dtype).make_variable()
+        # beta isn't needed for the output
+        # beta = theano.scalar.Scalar(dtype=dtype).make_variable()
+        top = theano.scalar.Scalar(dtype=dtype).make_variable()
+
         dx = (top * gamma) / std
         dmean = -(top * gamma) / std
         dstd = -(top * gamma * (x - mean)) / (std * std)
         dgamma = top * (x - mean) / std
-        return [dx, dmean, dstd, dgamma, top]
+        dbeta = theano.scalar.identity(top)
+
+        inputs = [x, mean, std, gamma, top]
+        outputs = [dx, dmean, dstd, dgamma, dbeta]
+        super(BNCompositeGrad, self).__init__(inputs, outputs)
 
 
 def batch_normalization(inputs, gamma, beta, mean, std,
