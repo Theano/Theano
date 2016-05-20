@@ -1609,7 +1609,8 @@ class CLinker(link.Linker):
                         shared=False, py_module=False,
                         hide_symbols=False,
                         code_filename='exec.cpp',
-                        out_filename='exec')
+                        out_filename='exec',
+                        compile=False)
                     mod_exec.gen_header(os.path.join(location, 'exec.h'))
                     # TODO: make c_callable work also for
                     # differnt types of windows OS

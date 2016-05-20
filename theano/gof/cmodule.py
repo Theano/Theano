@@ -2224,7 +2224,7 @@ class GCC_compiler(Compiler):
                     include_dirs=None, lib_dirs=None, libs=None,
                     preargs=None, py_module=True, hide_symbols=True,
                     shared=True, code_filename='mod.cpp',
-                    out_filename=None):
+                    out_filename=None, compile=True):
         """
         Parameters
         ----------
@@ -2309,6 +2309,9 @@ class GCC_compiler(Compiler):
         if not src_code.endswith('\n'):
             cppfile.write('\n')
         cppfile.close()
+
+        if not compile:
+            return
 
         _logger.debug('Running cmd: %s', ' '.join(cmd))
 
