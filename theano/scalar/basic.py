@@ -3665,12 +3665,17 @@ complex_from_polar = ComplexFromPolar(name='complex_from_polar')
 
 
 class Composite(ScalarOp):
-    """
-    Composite is an Op that takes a graph of scalar operations and
+    """Composite is an Op that takes a graph of scalar operations and
     produces c code for the whole graph. Its purpose is to implement loop
     fusion.
 
     Composite depends on all the Ops in its graph having C code.
+
+    :note: It do not apply any optimizer to the inner graph, including
+        the merge optimizer.
+
+    :note: If the output nodes are Composite, they will be
+        flattened. This help work around Python recursion limit.
 
     """
     init_param = ('inputs', 'outputs')
