@@ -84,11 +84,23 @@ class test_composite(unittest.TestCase):
         C = Composite([x, y], [x + y])
         CC = Composite([x, y], [C(x * y, y)])
         assert not isinstance(CC.outputs[0].owner.op, Composite)
+        f = theano.function([x, y], CC(x, y))
+        assert f(1, 2) == 4
 
-        # Test with multiple outputs
+        # Test with multiple outputs on the 2nd Composite
         CC = Composite([x, y, z], [C(x * y, y), C(x * z, y)])
         # We don't flatten that case.
         assert isinstance(CC.outputs[0].owner.op, Composite)
+        f = theano.function([x, y, z], CC(x, y, z))
+        assert f(1, 2, 3) == [4, 5]
+
+        # Test with multiple outputs on the 1st Composite
+        C = Composite([x, y, z], [x + y, x - z])
+        CC = Composite([x, y, z], C(x * y, y, z))
+        # We don't flatten that case.
+        assert not isinstance(CC.outputs[0].owner.op, Composite)
+        f = theano.function([x, y, z], CC(x, y, z))
+        assert f(1, 2, 3) == [4, -1]
 
     def test_with_constants(self):
         x, y, z = inputs()

@@ -3605,13 +3605,14 @@ class Composite(ScalarOp):
         # only 1 new Composite each time at the output.
         for i in inputs:
             assert i not in outputs  # This isn't supported, use identity
-        if len(outputs) > 1 or not any([isinstance(var.owner.op, Composite)
-                                        for var in outputs]):
+        if (len(set([v.owner for v in outputs])) > 1 or
+                not any([isinstance(var.owner.op, Composite)
+                         for var in outputs])):
             # No inner Composite
             inputs, outputs = gof.graph.clone(inputs, outputs)
         else:
             # Inner Composite that we need to flatten
-            assert len(outputs) == 1
+            assert len(set([v.owner for v in outputs])) == 1
             # 1. Create a new graph from inputs up to the
             # Composite
             res = theano.compile.rebuild_collect_shared(
