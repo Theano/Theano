@@ -37,7 +37,9 @@ from theano.tensor.nlinalg import ( MatrixInverse,
                                     qr,
                                     matrix_power,
                                     norm,
-                                    svd
+                                    svd,
+                                    LogAbsDet,
+                                    logabsdet
                                     )
 from nose.plugins.attrib import attr
 
@@ -517,3 +519,31 @@ class T_NormTests(unittest.TestCase):
             t_n = f(A[2][i])
             n_n = numpy.linalg.norm(A[2][i], A[3][i])
             assert _allclose(n_n, t_n)
+
+
+class TestLogAbsDet(unittest.TestCase):
+
+    def setUp(self):
+        utt.seed_rng()
+        self.op_class = LogAbsDet
+        self.op = logabsdet
+
+    def validate(self, input_mat):
+        x = theano.tensor.matrix()
+        f = theano.function([x], self.op(x))
+        out = f(input_mat)
+        svd_diag = numpy.linalg.svd(input_mat, compute_uv=False)
+        numpy_out = numpy.sum(numpy.log(numpy.abs(svd_diag)))
+
+        # Compare the result computed to the expected value.
+        utt.assert_allclose(numpy_out, out)
+
+        # Test gradient:
+        utt.verify_grad(self.op, [input_mat])
+
+    def test_basic(self):
+        # Calls validate with different params
+        test_case_1 = numpy.random.randn(3, 3) / numpy.sqrt(3)
+        test_case_2 = numpy.random.randn(10, 10) / numpy.sqrt(10)
+        self.validate(test_case_1.astype(theano.config.floatX))
+        self.validate(test_case_2.astype(theano.config.floatX))
