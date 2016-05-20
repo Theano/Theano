@@ -3605,31 +3605,46 @@ class Composite(ScalarOp):
         # only 1 new Composite each time at the output.
         for i in inputs:
             assert i not in outputs  # This isn't supported, use identity
-        if (len(set([v.owner for v in outputs])) > 1 or
-                not any([isinstance(var.owner.op, Composite)
-                         for var in outputs])):
+        if not any([isinstance(var.owner.op, Composite) for var in outputs]):
             # No inner Composite
             inputs, outputs = gof.graph.clone(inputs, outputs)
         else:
             # Inner Composite that we need to flatten
-            assert len(set([v.owner for v in outputs])) == 1
             # 1. Create a new graph from inputs up to the
             # Composite
+            out1 = []
+            for o in outputs:
+                for i in o.owner.inputs:
+                        out1.append(i)
             res = theano.compile.rebuild_collect_shared(
                 inputs=inputs,
-                outputs=outputs[0].owner.inputs,
+                outputs=out1,
                 copy_inputs_over=False)  # Clone also the inputs
-            # 2. We continue this partial clone with the graph in
-            # the inner Composite
-            res2 = theano.compile.rebuild_collect_shared(
-                inputs=outputs[0].owner.op.inputs,
-                outputs=outputs[0].owner.op.outputs,
-                replace=dict(izip(outputs[0].owner.op.inputs, res[1]))
-            )
-            assert len(res2[1]) == len(outputs)
+
+            # 2. We continue this partial clone with the graph in the
+            # inner Composite. If there is multiple outputs, o can be
+            # something else then a composite.
+            new_outputs = []
+            node_done = {}
+            for o_idx, o in enumerate(outputs):
+                if o.owner in node_done:
+                    out = node_done[o.owner]
+                else:
+                    repl = {}  # replacement
+                    for i_extern, i_intern in zip(o.owner.inputs,
+                                                  o.owner.op.inputs):
+                        repl[i_intern] = res[1][out1.index(i_extern)]
+                    res2 = theano.compile.rebuild_collect_shared(
+                        inputs=o.owner.op.inputs,
+                        outputs=o.owner.op.outputs,
+                        replace=repl)
+                    out = res2[1]
+                    node_done[o.owner] = out
+                new_outputs.append(out[o.owner.outputs.index(o)])
+            assert len(new_outputs) == len(outputs)
             assert len(res[0]) == len(inputs)
             assert res[0] != inputs
-            inputs, outputs = res[0], res2[1]
+            inputs, outputs = res[0], new_outputs
             # Next assert comment just for speed
             # assert not any([isinstance(node.op, Composite) for node in
             #                theano.gof.graph.ops(inputs, outputs)])
