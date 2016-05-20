@@ -102,6 +102,7 @@ class SearchsortedOp(theano.Op):
             return theano.Apply(self, [x, v], [out_type()])
         else:
             sorter = basic.as_tensor(sorter, ndim=1)
+
             if sorter.type not in basic.int_vector_types:
                 raise TypeError('sorter must be an integer vector',
                                 sorter.type)
@@ -120,6 +121,7 @@ class SearchsortedOp(theano.Op):
         z = output_storage[0]
 
         z[0] = np.searchsorted(x, v, side=params, sorter=sorter)
+
 
     def c_support_code_struct(self, node, name):
         return """
@@ -158,6 +160,7 @@ class SearchsortedOp(theano.Op):
 
     def c_code_cache_version(self):
         return (1,)
+
 
     def grad(self, inputs, output_gradients):
         num_ins = len(inputs)
