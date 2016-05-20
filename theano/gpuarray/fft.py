@@ -3,6 +3,7 @@ from __future__ import absolute_import, print_function, division
 import numpy as np
 import theano
 from theano import Op
+import theano.tensor as T
 
 from theano.gpuarray import (basic_ops, GpuArrayType)
 
@@ -12,7 +13,11 @@ try:
 except ImportError:
     pygpu_available = False
 
-import pycuda.driver
+try:
+    import pycuda.driver
+    pycuda_available = True
+except ImportError:
+    pycuda_available = False
 
 try:
     import scikits.cuda
@@ -22,21 +27,21 @@ except (ImportError, Exception):
     scikits_cuda_available = False
 
 
-class CuFFTOp(Op):
+class CuRFFTOp(Op):
     """
-    Performs a fast Fourier transform on the GPU using the scikits CUDA FFT
-    through the gpuarray backend.
+    Operator for the fast Fourier transform of a real-valued output on the GPU
+    using the scikits CUDA FFT through the gpuarray backend.
 
-    The input must be a float32 variable of dimensions (m, n). It
+    The input must be a real-valued float32 variable of dimensions (m, n). It
     performs m 1-D FFTs of size n each.
 
     The output is a GpuArray of dimensions (m, n/2+1, 2). The output contains
-    the n/2+1 non-trivial elements of the m real-valued FFTs. The real
-    and imaginary parts stored as two float32 arrays, emulating complex64.
+    the n//2+1 non-trivial elements of the m real-valued FFTs. The real
+    and imaginary parts are stored as two float32 arrays, emulating complex64.
     Since theano does not support complex number operations, care must be
     taken to manually implement operators such as multiplication.
 
-    The module provides the convenience function cufft(input).
+    The module provides the convenience function curfft(input).
     """
 
     __props__ = ()
@@ -53,6 +58,9 @@ class CuFFTOp(Op):
 
         if not pygpu_available:
             raise RuntimeError("pygpu is needed for CuFFTOp")
+
+        if not pycuda_available:
+            raise RuntimeError("pycuda is needed for CuFFTOp")
 
         inp = basic_ops.gpu_contiguous(
             basic_ops.as_gpuarray_variable(inp,
@@ -121,21 +129,11 @@ class CuFFTOp(Op):
 
         return thunk
 
-cufft = CuFFTOp()
-"""
-Convenience function for CuFFTOp.
 
-Parameters
-----------
-input
-    Array of float32 of size (m, n), containing m inputs of length n.
-"""
-
-
-class CuIFFTOp(Op):
+class CuIRFFTOp(Op):
     """
-    Performs an inverse fast Fourier transform on the GPU using the
-    scikits CUDA FFT through the gpuarray backend.
+    Operator for the inverse fast Fourier transform with real-valued output
+    on the GPU using the scikits CUDA FFT through the gpuarray backend.
 
     The input is a variable of dimensions (m, n/2+1, 2) with
     type float32 representing the n/2+1 non-trivial elements of m
@@ -143,11 +141,11 @@ class CuIFFTOp(Op):
     parts are stored as two float32 arrays, emulating complex64 given that
     Theano does not support complex numbers.
 
-    The output is a float32 variable of dimensions (m, n) giving the m
-    inverse FFTs. *The output is NOT normalized*. You can manualy divide
-    by the size of the output array to normalize.
+    The output is a real-valued float32 variable of dimensions (m, n)
+    giving the m inverse FFTs. *The output is NOT normalized*. You can
+    manualy divide by the size of the output array to normalize.
 
-    The module provides the convenience function cuifft(input).
+    The module provides the convenience function cuirfft(input).
     """
 
     __props__ = ()
@@ -160,11 +158,14 @@ class CuIFFTOp(Op):
 
     def make_node(self, inp):
         if not scikits_cuda_available:
-            raise RuntimeError("scikits.cuda is needed for CuFFTOp")
+            raise RuntimeError("scikits.cuda is needed for CuIFFTOp")
 
         if not pygpu_available:
-            raise RuntimeError("pygpu is needed for CuFFTOp")
-        # inp = as_gpuarray_variable(inp)
+            raise RuntimeError("pygpu is needed for CuIFFTOp")
+
+        if not pycuda_available:
+            raise RuntimeError("pycuda is needed for CuIFFTOp")
+
         inp = basic_ops.gpu_contiguous(
             basic_ops.as_gpuarray_variable(inp,
                                            basic_ops.infer_context_name(inp)))
@@ -221,6 +222,10 @@ class CuIFFTOp(Op):
                 output_pycuda.sync()
 
                 fft.ifft(input_pycuda, output_pycuda, plan[0])
+                # strangely enough, enabling rescaling here makes it run
+                # very, very slowly.  so do this rescaling manually
+                # afterwards!
+
                 # Sync results to ensure output contains completed computation
                 pycuda.driver.Context.synchronize()
 
@@ -230,13 +235,34 @@ class CuIFFTOp(Op):
 
         return thunk
 
-cuifft = CuIFFTOp()
-"""
-Convenience function for CuIFFTOp.
 
-Parameters
-----------
-input
-    Array of float32 of size (m, n/2+1, 2), containing m inputs with n/2+1
-    non-trivial elements and real and imaginary parts stored as separate arrays.
-"""
+def curfft(inputs):
+    """
+    Performs the real unitary fast Fourier Transform normalized
+    by :math:`\sqrt n`.
+
+    Parameters
+    ----------
+    inputs
+        Array of real-valued float32 of size (m, n), containing m inputs of
+        length n.
+    """
+    fft_op = CuRFFTOp()
+    return fft_op(inputs) / T.sqrt(((inputs.shape[1:]).prod()).astype('float32'))
+
+
+def cuirfft(inputs):
+    """
+    Performs the real unitary fast inverse Fourier Transform normalized
+    by :math:`\sqrt n`.
+
+    Parameters
+    ----------
+    inputs
+        Array of float32 of size (m, n/2+1, 2), containing m inputs with n/2+1
+        non-trivial elements and real and imaginary parts stored as separate
+        arrays.
+    """
+    ifft_op = CuIRFFTOp()
+    return ifft_op(inputs) / T.sqrt((((inputs.shape[1:-1] - 1) * 2).prod())
+                                    .astype('float32'))
