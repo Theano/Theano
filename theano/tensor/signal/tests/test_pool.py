@@ -56,6 +56,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
     @staticmethod
     def numpy_max_pool_2d_stride_padding(
             x, ds, ignore_border=True, st=None, padding=(0, 0), mode='max'):
+        assert ignore_border
         pad_h = padding[0]
         pad_w = padding[1]
         h = x.shape[-2]
