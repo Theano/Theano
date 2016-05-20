@@ -1,4 +1,4 @@
-.. _libdoc_gpuarray_type:
+.. _libdoc_gpuarray_fft:
 
 ===================================================
 :mod:`gpuarray.fft` -- Type classes
