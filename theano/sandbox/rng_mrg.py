@@ -24,11 +24,11 @@ from . import multinomial
 
 import theano.sandbox.cuda
 from theano.sandbox.cuda import GpuOp
-from theano.sandbox.gpuarray.basic_ops import GpuKernelBase, Kernel
-from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.fp16_help import write_w
-from theano.sandbox.gpuarray.opt import (register_opt as register_gpua,
-                                         host_from_gpu as host_from_gpua)
+from theano.gpuarray.basic_ops import GpuKernelBase, Kernel
+from theano.gpuarray.type import GpuArrayType
+from theano.gpuarray.fp16_help import write_w
+from theano.gpuarray.opt import (register_opt as register_gpua,
+                                 host_from_gpu as host_from_gpua)
 if theano.sandbox.cuda.cuda_available:
     from theano.sandbox.cuda import (CudaNdarrayType,
                                      float32_shared_constructor)

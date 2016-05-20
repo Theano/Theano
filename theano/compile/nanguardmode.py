@@ -68,6 +68,8 @@ def contains_nan(arr, node=None):
         return False
     elif isinstance(arr, np.random.mtrand.RandomState):
         return False
+    elif isinstance(arr, slice):
+        return False
     elif arr.size == 0:
         return False
     elif cuda.cuda_available and isinstance(arr, cuda.CudaNdarray):
@@ -111,6 +113,8 @@ def contains_inf(arr, node=None):
     if isinstance(arr, theano.gof.type.CDataType._cdata_type):
         return False
     elif isinstance(arr, np.random.mtrand.RandomState):
+        return False
+    elif isinstance(arr, slice):
         return False
     elif arr.size == 0:
         return False
@@ -245,6 +249,8 @@ class NanGuardMode(Mode):
                 if isinstance(var, theano.gof.type.CDataType._cdata_type):
                     err = False
                 elif isinstance(var, np.random.mtrand.RandomState):
+                    err = False
+                elif isinstance(var, slice):
                     err = False
                 elif var.size == 0:
                     err = False

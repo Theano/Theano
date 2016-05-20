@@ -239,6 +239,14 @@ import theano and print the config variable, as in:
     ``False``, then we will gc the inner of scan after all
     iterations. This is the default.
 
+.. attribute:: config.scan.debug
+
+    Bool value, either ``True`` or ``False``
+
+    Default: ``False``
+
+    If True, we will print extra scan debug information.
+
 .. attribute:: openmp
 
     Bool value: either True or False
@@ -441,6 +449,42 @@ import theano and print the config variable, as in:
         number of megabytes. If more then 95% are needed, it will try
         automatically to get more memory. But this can cause
         fragmentation, see note above.
+
+.. attribute:: config.gpuarray.preallocate
+
+    Float value
+
+    Default: 0
+
+    Controls the preallocation of memory with the gpuarray backend.
+
+    The value represents the start size (either in MB or the fraction
+    of total GPU memory) of the memory pool. If more memory is needed,
+    Theano will try to obtain more, but this can cause memory
+    fragmentation.
+
+    A negative value will completely disable the allocation cache.
+    This can have a severe impact on performance and so should not be
+    done outside of debugging.
+
+        * < 0: disabled
+        * 0 <= N <= 1: use this fraction of the total GPU memory (clipped to .95 for driver memory).
+        * > 1: use this number in megabytes (MB) of memory.
+
+    .. note::
+
+        This could cause memory fragmentation. So if you have a memory
+        error while using the cache, try to allocate more memory at
+        the start or disable it. If you try this, report your result
+        on :ref`theano-dev`.
+
+    .. note::
+
+        The clipping at 95% can be bypassed by specifing the exact
+        number of megabytes. If more then 95% are needed, it will try
+        automatically to get more memory. But this can cause
+        fragmentation, see note above.
+
 
 .. attribute:: linker
 
@@ -940,13 +984,6 @@ import theano and print the config variable, as in:
     code that can't be cached because there is no c_code_cache_version()
     function associated to at least one of those Ops.
 
-.. attribute:: config.cmodule.mac_framework_link
-
-    Bool value, default: False
-
-    If set to True, breaks certain MacOS installations with the infamous
-    Bus Error.
-
 .. attribute:: config.cmodule.remove_gxx_opt
 
     Bool value, default: False
@@ -966,3 +1003,17 @@ import theano and print the config variable, as in:
     Bool value, default: False
 
     If set to True, will preload the C module cache at import time
+
+.. attribute:: config.traceback.limit
+
+    Int value, default: 8
+
+    The number of user stack level to keep for variables.
+
+.. attribute:: config.traceback.compile_limit
+
+    Bool value, default: 0
+
+    The number of user stack level to keep for variables during Theano
+    compilation. If higher then 0, will make us keep Theano internal
+    stack trace.

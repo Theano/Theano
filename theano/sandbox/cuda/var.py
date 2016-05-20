@@ -13,7 +13,7 @@ try:
     # We must do those import to be able to create the full doc when nvcc
     # is not available
     from theano.sandbox.cuda import filter as type_support_filter
-    from theano.sandbox.cuda.basic_ops import HostFromGpu, GpuFromHost
+    from theano.sandbox.cuda.basic_ops import HostFromGpu
 except ImportError:
     pass
 
@@ -33,6 +33,7 @@ class _operators(tensor.basic._tensor_py_operators):
 
     def _as_TensorVariable(self):
         return HostFromGpu()(self)
+
     def _as_CudaNdarrayVariable(self):
         return self
 
@@ -54,6 +55,7 @@ class CudaNdarrayConstantSignature(tensor.TensorConstantSignature):
 class CudaNdarrayConstant(_operators, Constant):
     def signature(self):
         return CudaNdarrayConstantSignature((self.type, numpy.asarray(self.data)))
+
     def __str__(self):
         if self.name is not None:
             return self.name
@@ -61,7 +63,7 @@ class CudaNdarrayConstant(_operators, Constant):
             data = str(numpy.asarray(self.data))
         except Exception as e:
             data = "error while transferring the value: " + str(e)
-        return "CudaNdarrayConstant{"+data+"}"
+        return "CudaNdarrayConstant{" + data + "}"
 CudaNdarrayType.Constant = CudaNdarrayConstant
 
 

@@ -172,28 +172,43 @@ class MultinomialFromUniform(Op):
                              unis.shape[0], pvals.shape[0], n_samples)
         if z[0] is None or z[0].shape != pvals.shape:
             z[0] = numpy.zeros(pvals.shape, dtype=node.outputs[0].dtype)
+        else:
+            z[0].fill(0)
 
         nb_multi = pvals.shape[0]
-        nb_outcomes = pvals.shape[1]
+        # Original version that is not vectorized. I keep it here as
+        # it is more readable.
         # For each multinomial, loop over each possible outcome
+        # nb_outcomes = pvals.shape[1]
+        # for c in range(n_samples):
+        #    for n in range(nb_multi):
+        #        waiting = True
+        #        cummul = 0
+        #        unis_n = unis[c * nb_multi + n]
+        #        for m in range(nb_outcomes):
+        #            cummul += pvals[n, m]
+        #            if c == 0:
+        #                if (waiting and (cummul > unis_n)):
+        #                    z[0][n, m] = 1
+        #                    waiting = False
+        #                else:
+        #                    # Only needed if we don't init the output to 0
+        #                    z[0][n, m] = 0
+        #            else:
+        #                if (cummul > unis_n):
+        #                    z[0][n, m] += 1
+        #                    break
+
+        # Vectorized version that is much faster as all the looping is
+        # done in C even if this make extra work.
         for c in range(n_samples):
             for n in range(nb_multi):
-                waiting = True
-                cummul = 0
                 unis_n = unis[c * nb_multi + n]
-
-                for m in range(nb_outcomes):
-                    cummul += pvals[n, m]
-                    if c == 0:
-                        if (waiting and (cummul > unis_n)):
-                            z[0][n, m] = 1
-                            waiting = False
-                        else:
-                            z[0][n, m] = 0
-                    else:
-                        if (cummul > unis_n):
-                            z[0][n, m] += 1
-                            break
+                # The dtype='float64' is important. Otherwise we don't
+                # have the same answer as the c code as in the c code
+                # the cumul is in double precission.
+                cumsum = pvals[n].cumsum(dtype='float64')
+                z[0][n, numpy.searchsorted(cumsum, unis_n)] += 1
 
 
 class MultinomialWOReplacementFromUniform(MultinomialFromUniform):

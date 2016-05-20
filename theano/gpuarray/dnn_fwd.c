@@ -1,4 +1,24 @@
+#section init_code_struct
+
+#ifdef CHOOSE_ALGO
+reuse_algo = 0;
+prev_algo = CONV_ALGO;
+#ifndef CHOOSE_ONCE
+memset(prev_img_dims, 0, sizeof(prev_img_dims));
+memset(prev_kern_dims, 0, sizeof(prev_kern_dims));
+#endif
+#endif
+
 #section support_code_struct
+
+#ifdef CHOOSE_ALGO
+int reuse_algo;
+cudnnConvolutionFwdAlgo_t prev_algo;
+#ifndef CHOOSE_ONCE
+size_t prev_img_dims[5];
+size_t prev_kern_dims[5];
+#endif
+#endif
 
 int
 APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
@@ -57,15 +77,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
 
   cuda_enter(c->ctx);
 #ifdef CHOOSE_ALGO
-  /* Static variables are only initialized once so this will not
-   * reset the previous algo every time */
-  static int reuse_algo = 0;
-  static cudnnConvolutionFwdAlgo_t prev_algo = CONV_ALGO;
-
 #ifndef CHOOSE_ONCE
-  static size_t prev_img_dims[5] = {0};
-  static size_t prev_kern_dims[5] = {0};
-
   reuse_algo = 1;
   for (unsigned int i = 0; i < PyGpuArray_NDIM(input); i++) {
     reuse_algo = (reuse_algo &&

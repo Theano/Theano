@@ -19,9 +19,9 @@ Note that you want SciPy >= 0.7.2
 
 We describe the details of the compressed sparse matrix types.
     ``scipy.sparse.csc_matrix``
-        should be used if the columns are sparse.
+        should be used if there are more rows than column (shape[0] > shape[1]).
     ``scipy.sparse.csr_matrix``
-        should be used if the rows are sparse.
+        should be used if there are more columns than rows (shape[0] < shape[1]).
     ``scipy.sparse.lil_matrix``
         is faster if we are modifying the array. After initial inserts,
         we can then convert to the appropriate sparse matrix format.

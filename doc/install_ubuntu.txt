@@ -12,6 +12,31 @@ For NVIDIA Jetson TX1 embedded platform:
     sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libblas-dev git
     pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git --user  # Need Theano 0.8(not yet released) or more recent
 
+For Ubuntu 16.04 with cuda 7.5
+
+.. code-block:: bash
+
+    sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git
+    sudo pip install Theano
+
+    # cuda 7.5 don't support the default g++ version. Install an supported version and make it the default.
+    sudo apt-get install g++-4.9
+
+    sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 20
+    sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 10
+
+    sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 20
+    sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 10
+
+    sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc 30
+    sudo update-alternatives --set cc /usr/bin/gcc
+
+    sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++ 30
+    sudo update-alternatives --set c++ /usr/bin/g++
+
+    # Work around a glibc bug
+    echo -e "\n[nvcc]\nflags=-D_FORCE_INLINES\n" >> ~/.theanorc
+
 For Ubuntu 11.10 through 14.04:
 
 .. code-block:: bash
@@ -136,7 +161,7 @@ Theano/BLAS speed test:
 
 .. code-block:: bash
 
-    python `python -c "import os, theano; print os.path.dirname(theano.__file__)"`/misc/check_blas.py
+    python `python -c "import os, theano; print(os.path.dirname(theano.__file__))"`/misc/check_blas.py
 
 This will print a table with different versions of BLAS/numbers of
 threads on multiple CPUs and GPUs. It will also print some Theano/NumPy

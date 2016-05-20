@@ -25,6 +25,20 @@ Python requires that *__len__* returns an integer, yet it cannot be done as Thea
 This error message cannot be made more explicit because the relevant aspects of Python's
 internals cannot be modified.
 
+Output slight numerical difference
+----------------------------------
+
+Sometimes when you compare the output of Theano using different
+Theano flags, Theano versions, CPU and GPU or with other software like
+NumPy, you will see small numerical differences.
+
+This is normal. Floating point numbers are approximations of real
+numbers. This is why doing a+(b+c) vs (a+b)+c can give small
+differences of value.  This is normal. For more details, see: `What
+Every Computer Scientist Should Know About Floating-Point Arithmetic
+<https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html>`_.
+
+
 
 Faster gcc optimization
 -----------------------

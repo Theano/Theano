@@ -4464,14 +4464,15 @@ class Reshape(Op):
             return [requ]
         else:
             new_dims = [node.inputs[1][i] for i in xrange(self.ndim)]
-            # since new_dims has one negative value (-1), the
+            # since new_dims can have negative value (-1), the
             # multiplication of all values should be negated
             # to give a positive value.
             # To avoid optimization complexity, we avoid checking
             # for the case when there are two or more '-1' values.
+            if self.ndim:
+                rest_size = (mul(*ishapes[0]) // -mul(*new_dims))
             return [tuple([switch(eq(new_dims[i], -1),
-                                  theano.tensor.mul(*ishapes[0]) //
-                                  (-theano.tensor.mul(*new_dims)),
+                                  rest_size,
                                   new_dims[i])
                            for i in xrange(self.ndim)])]
 

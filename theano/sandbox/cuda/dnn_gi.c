@@ -158,6 +158,30 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
         chosen_algo = CONV_ALGO;
     }
 
+    if (0){
+      char * a;
+      switch(chosen_algo){
+      case CUDNN_CONVOLUTION_BWD_DATA_ALGO_0:
+	a = "implicit gemm (0)";
+	break;
+      case CUDNN_CONVOLUTION_BWD_DATA_ALGO_1:
+	a = "precomp gemm (1)";
+	break;
+      case CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT:
+	a = "fft (2)";
+	break;
+      case CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING:
+	a = "fft tiling (3)";
+	break;
+#if CUDNN_VERSION > 5000
+      case CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD:
+	a = "winograd (4)";
+	break;
+#endif
+      }
+      printf("GpuDNNConvGI: algo %s\n", a);
+    }
+
     // The FFT implementation (only in V3 and onward) does not support strides,
     // 1x1 filters or inputs with a spatial dimension larger than 1024.
     // The tiled-FFT implementation (only in V4 onward) does not support

@@ -155,13 +155,16 @@ def broadcast_like(value, template, fgraph, dtype=None):
     if template not in fgraph.variables:
         raise NotImplementedError('broadcast_like currently requires the '
                                   'template Variable to be in the fgraph already')
+    if dtype is None:
+        dtype = template.dtype
+    value = T.cast(value, dtype)
+    if value.type == template.type:
+        return value
     if hasattr(fgraph, 'shape_feature'):
         new_shape = fgraph.shape_feature.shape_of[template]
     else:
         new_shape = template.shape
-    if dtype is None:
-        dtype = template.dtype
-    rval = T.alloc(T.cast(value, dtype), *new_shape)
+    rval = T.alloc(value, *new_shape)
     # the template may have 1s in its shape without being broadcastable
     if rval.broadcastable != template.broadcastable:
         rval = T.unbroadcast(rval, *[i for i in xrange(rval.ndim)
@@ -234,6 +237,11 @@ def inplace_elemwise_optimizer_op(OP):
         else:
             update_outs = []
 
+        protected_inputs = [
+            f.protected for f in fgraph._features if
+            isinstance(f, theano.compile.function_module.Supervisor)]
+        protected_inputs = sum(protected_inputs, [])  # flatten the list
+        protected_inputs.extend(fgraph.outputs)
         for node in list(graph.io_toposort(fgraph.inputs, fgraph.outputs)):
             op = node.op
             # gpuarray GpuElemwise inherit from Elemwise
@@ -242,27 +250,41 @@ def inplace_elemwise_optimizer_op(OP):
             # If big graph and the outputs are scalar, do not make it
             # inplace.
             if (check_each_change != 1 and
-                all([getattr(o.type, 'ndim', -1) == 0
-                     for o in node.outputs])):
+                # If multiple outputs, they must all have the same size,
+                # so only check the first.
+                    getattr(node.outputs[0].type, 'ndim', -1) == 0):
                 continue
 
-            baseline = op.inplace_pattern
-            protected_inputs = [
-                f.protected for f in node.fgraph._features if
-                isinstance(f, theano.compile.function_module.Supervisor)]
-            protected_inputs = sum(protected_inputs, [])  # flatten the list
-            protected_inputs.extend(fgraph.outputs)
-            candidate_outputs = [i for i in xrange(len(node.outputs))
-                                 if i not in baseline]
-            # node inputs that are Constant, already destroyed,
-            # fgraph protected inputs and fgraph outputs can't be used as inplace
-            # target.
-            # Remove here as faster.
-            candidate_inputs = [i for i in xrange(len(node.inputs))
-                                if i not in baseline.values() and
-                                not isinstance(node.inputs[i], Constant) and
-                                not fgraph.destroyers(node.inputs[i]) and
-                                node.inputs[i] not in protected_inputs]
+            if op.inplace_pattern:
+                # Maybe this isn't needed anymore, but I don't want to
+                # rish regression now. This case only happen if the
+                # original node add already some inplace patter and we
+                # still try to add more pattern.
+
+                baseline = op.inplace_pattern
+                candidate_outputs = [i for i in xrange(len(node.outputs))
+                                     if i not in baseline]
+                # node inputs that are Constant, already destroyed,
+                # or fgraph protected inputs and fgraph outputs can't be used as
+                # inplace target.
+                # Remove here as faster.
+                candidate_inputs = [i for i in xrange(len(node.inputs))
+                                    if i not in baseline.values() and
+                                    not isinstance(node.inputs[i], Constant) and
+                                    # Is next line costly?
+                                    not fgraph.destroyers(node.inputs[i]) and
+                                    node.inputs[i] not in protected_inputs]
+            else:
+                baseline = []
+                candidate_outputs = list(range(len(node.outputs)))
+                # node inputs that are Constant, already destroyed,
+                # fgraph protected inputs and fgraph outputs can't be used as inplace
+                # target.
+                # Remove here as faster.
+                candidate_inputs = [i for i in xrange(len(node.inputs))
+                                    if not isinstance(node.inputs[i], Constant) and
+                                    not fgraph.destroyers(node.inputs[i]) and
+                                    node.inputs[i] not in protected_inputs]
 
             verbose = False
 
@@ -1408,9 +1430,6 @@ class ShapeFeature(object):
 
 class ShapeOptimizer(Optimizer):
     """Optimizer that serves to add ShapeFeature as an fgraph feature."""
-    def __init__(self):
-        Optimizer.__init__(self)
-
     def add_requirements(self, fgraph):
         fgraph.attach_feature(ShapeFeature())
 
@@ -1512,8 +1531,8 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
                 # when i.owner.inputs[0].type == i.owner.outputs[0].type we
                 # will remove that alloc later
                 assert i.type.ndim == cmp_op.ndim
-                get_shape = node.fgraph.shape_feature.get_shape
                 if theano.config.experimental.local_alloc_elemwise_assert:
+                    get_shape = node.fgraph.shape_feature.get_shape
                     cond = []
                     for idx in xrange(i.type.ndim):
                         if (not i.type.broadcastable[idx] and
@@ -1577,9 +1596,8 @@ local_elemwise_alloc = register_specialize(
 @gof.local_optimizer([T.Elemwise])
 def local_fill_sink(node):
     """
-    f(fill(a, b), fill(c, d), e) -> fill(a, fill(c, f(b, d, e)))
-
-    f need to be an elemwise
+    f(fill(a, b), fill(c, d), e) -> fill(c, fill(a, f(b, d, e)))
+    f need to be an elemwise that isn't a fill.
     """
     if (not hasattr(node, 'op') or
             not isinstance(node.op, T.Elemwise) or
@@ -1732,7 +1750,7 @@ compile.optdb.register('local_alloc_empty_to_zeros',
 
 @register_specialize
 @register_canonicalize
-@gof.local_optimizer([T.shape])
+@gof.local_optimizer([T.Shape])
 def local_shape_to_shape_i(node):
     if node.op == T.shape:
         # This optimization needs ShapeOpt and fgraph.shape_feature
@@ -2707,6 +2725,7 @@ def merge_two_slices(slice1, len1, slice2, len2):
             val = T.switch(T.lt(sl2, 0), - len1 - 1, val)
             if sl1.step:
                 val = T.switch(T.eq(sl1.step, 0), len1 + 1, val)
+            val = pre_greedy_local_optimizer(list_opt, val)
             return val
         else:
             # We are in the more complex case when we do not actually know
@@ -2731,6 +2750,7 @@ def merge_two_slices(slice1, len1, slice2, len2):
             val = T.switch(T.lt(sl2, 0), - len1 - 1, val)
             if sl1.step:
                 val = T.switch(T.eq(sl1.step, 0), len1 + 1, val)
+            val = pre_greedy_local_optimizer(list_opt, val)
             return val
     else:
         # We are deleaing with two slices that need to be put together
@@ -4760,6 +4780,10 @@ def local_useless_elemwise_comparison(node):
     Elemwise[LT](add([anything that is shapes]), 0) -> Elemwise[zeros](X)
     Elemwise[GE](add([anything that is shapes]), 0) -> Elemwise[ones](X)
 
+    # Shapes are never negative
+    # Needed by Reshape.infer_shape
+    Elemwise[EQ](Subtensor(Shape(x)), -N) -> Elemwise[zeros](X)
+
     """
     if not isinstance(node.op, T.Elemwise):
         return
@@ -4835,6 +4859,41 @@ def local_useless_elemwise_comparison(node):
        T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
         return [T.ones_like(node.inputs[0], dtype=node.outputs[0].dtype)]
 
+    # Elemwise[EQ](Subtensor(Shape(x)), -N)
+    # Elemwise[EQ](somegraph that only depend of shape, -N)
+    # TODO: handle the case where the -N is on either side
+        """
+ |Elemwise{eq,no_inplace} [id B] ''
+ | |Subtensor{int64} [id C] ''
+ | | |Join [id D] ''
+ | | | |TensorConstant{0} [id E]
+ | | | |Subtensor{int64:int64:} [id F] ''
+ | | | | |Shape [id G] ''
+        """
+    def investigate(node):
+        " Return True if values will be shapes, so >= 0"
+        if isinstance(node.op, (T.Shape, Shape_i)):
+            return True
+        elif isinstance(node.op, Subtensor) and node.inputs[0].owner:
+            return investigate(node.inputs[0].owner)
+        elif isinstance(node.op, T.Join):
+            return all(v.owner and
+                       investigate(v.owner) for v in node.inputs[1:])
+        elif isinstance(node.op, MakeVector):
+            return all(v.owner and
+                       investigate(v.owner) for v in node.inputs)
+
+    if (isinstance(node.op.scalar_op, scalar.EQ) and
+            node.inputs[0].owner and
+            investigate(node.inputs[0].owner)):
+        try:
+            cst = get_scalar_constant_value(node.inputs[1],
+                                            only_process_constants=True)
+            if cst < 0:
+                return [T.zeros_like(node.inputs[0],
+                                     dtype=node.outputs[0].dtype)]
+        except NotScalarConstantError:
+            pass
     return
 
 
@@ -5210,11 +5269,12 @@ def local_opt_alloc(node):
                     val = get_scalar_constant_value(input)
                     assert val.size == 1
                     # check which type of op
+                    casted = T.mul(*shapes).astype(str(input.dtype))
                     if isinstance(node.op, T.Sum):
-                        val = val.reshape(1)[0] * T.mul(*shapes)
+                        val = val.reshape(1)[0] * casted
                     else:
-                        val = val.reshape(1)[0] ** T.mul(*shapes)
-                    return [T.cast(val, dtype=node.outputs[0].dtype)]
+                        val = val.reshape(1)[0] ** casted
+                    return [val]
 
                 except NotScalarConstantError:
                     pass
@@ -5226,11 +5286,12 @@ def local_opt_alloc(node):
                     to_prod = [shapes[i] for i in xrange(len(shapes))
                                if i in node.op.axis]
                     if to_prod:
+                        casted = T.mul(*to_prod).astype(str(input.dtype))
                         if isinstance(node.op, T.Sum):
-                            val *= T.mul(*to_prod)
+                            val *= casted
                         else:
-                            val = val ** T.mul(*to_prod)
-                    return [T.alloc(T.cast(val, dtype=node.outputs[0].dtype),
+                            val = val ** casted
+                    return [T.alloc(val,
                                     *[shapes[i] for i in xrange(len(shapes))
                                       if i not in node.op.axis])]
                 except NotScalarConstantError:

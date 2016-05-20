@@ -564,7 +564,7 @@ class test_canonize(unittest.TestCase):
                                  mode=mode)
             out = f(*val_inputs)
             assert(out_dtype == out.dtype)
-            assert numpy.allclose(out, val_inputs[1])
+            utt.assert_allclose(out, val_inputs[1])
             topo = f.maker.fgraph.toposort()
             if topo and not(len(topo) == 1 and topo[0].op == deep_copy_op):
                 for node in topo[:-1]:
@@ -587,7 +587,7 @@ class test_canonize(unittest.TestCase):
             f = compile.function(list(sym_inputs), g,
                                  mode=mode)
             out = f(*val_inputs)
-            assert numpy.allclose(out, (1 / val_inputs[1]))
+            utt.assert_allclose(out, (1 / val_inputs[1]))
             topo = f.maker.fgraph.toposort()
             elem = [t for t in topo if isinstance(t.op, T.Elemwise)]
             assert len(elem) == nb_elemwise
@@ -612,7 +612,7 @@ class test_canonize(unittest.TestCase):
             f = compile.function(list(sym_inputs), g,
                                  mode=mode)
             out = f(*val_inputs)
-            assert numpy.allclose(out, (val_inputs[0] / val_inputs[3]))
+            utt.assert_allclose(out, (val_inputs[0] / val_inputs[3]))
             topo = f.maker.fgraph.toposort()
             assert len(topo) == 1
             assert isinstance(topo[0].op, (T.Elemwise, ))
@@ -636,7 +636,7 @@ class test_canonize(unittest.TestCase):
             f = compile.function(list(sym_inputs), g,
                                  mode=mode)
             out = f(*val_inputs)
-            assert numpy.allclose(out, (0.5 *
+            utt.assert_allclose(out, (0.5 *
                  val_inputs[0] / val_inputs[1]))
             topo = f.maker.fgraph.toposort()
             assert len(topo) == 2
@@ -662,7 +662,7 @@ class test_canonize(unittest.TestCase):
             f = compile.function(list(sym_inputs), g,
                                  mode=mode)
             out = f(*val_inputs)
-            assert numpy.allclose(out, val_inputs[0])
+            utt.assert_allclose(out, val_inputs[0])
             topo = f.maker.fgraph.toposort()
             assert len(topo) == 1
             topo[0].op == deep_copy_op
@@ -681,7 +681,7 @@ class test_canonize(unittest.TestCase):
                                  mode=mode)
             out = f(*val_inputs)
             assert numpy.all(numpy.isfinite(out))
-            assert numpy.allclose(out, numpy.sign(val_inputs[0]))
+            utt.assert_allclose(out, numpy.sign(val_inputs[0]))
             assert(out_dtype == out.dtype)
             assert len(f.maker.fgraph.toposort()) == 1
 
@@ -705,7 +705,7 @@ class test_canonize(unittest.TestCase):
             topo = f.maker.fgraph.toposort()
             out = f(*val_inputs)
             assert numpy.all(numpy.isfinite(out))
-            assert numpy.allclose(out, numpy.sign(val_inputs[0]) * 2 / 3)
+            utt.assert_allclose(out, numpy.sign(val_inputs[0]) * 2 / 3)
             assert(out_dtype == out.dtype)
 
     def test_abs_mul_div(self):
@@ -781,7 +781,7 @@ class test_canonize(unittest.TestCase):
             f = compile.function(list(sym_inputs), g,
                                  mode=mode)
             out = f(*val_inputs)
-            assert numpy.allclose(out, val_inputs[0] /
+            utt.assert_allclose(out, val_inputs[0] /
                 val_inputs[1] / val_inputs[2])
             topo = f.maker.fgraph.toposort()
             assert len(topo) == 2
@@ -799,7 +799,7 @@ class test_canonize(unittest.TestCase):
             f = compile.function(list(sym_inputs), g,
                                  mode=mode)
             out = f(*val_inputs)
-            assert numpy.allclose(out, val_inputs[0] / (
+            utt.assert_allclose(out, val_inputs[0] / (
                 val_inputs[1] / val_inputs[2]))
             topo = f.maker.fgraph.toposort()
             assert len(topo) == 2
@@ -905,7 +905,7 @@ def test_const_type_in_mul_canonizer():
     betaval = numpy.random.rand(5)
     aval = numpy.random.rand(5)
 
-    assert numpy.allclose(
+    utt.assert_allclose(
         f2(ival, wval, visbval, hidbval, betaval, aval),
         f1(ival, wval, visbval, hidbval, betaval, aval))
 
@@ -1608,11 +1608,11 @@ def test_log_add():
 
     f([10000], [10000])  # causes overflow if handled incorrectly
     assert numpy.isfinite(f([10000], [10000]))
-    assert numpy.allclose(f([10000], [10000]), 10000 + numpy.log1p(1))
+    utt.assert_allclose(f([10000], [10000]), 10000 + numpy.log1p(1))
 
     # test that it give the same result when it don't overflow
     f([10], [10])  # don't causes overflow
-    assert numpy.allclose(f([10], [10]), 10 + numpy.log1p(1))
+    utt.assert_allclose(f([10], [10]), 10 + numpy.log1p(1))
 
     # test that it also works with more than two args, (this currently fails)
     x = dvector()
@@ -1622,8 +1622,8 @@ def test_log_add():
 
     try:
         f([10000], [10000])  # causes overflow if handled incorrectly
-        assert numpy.allclose(f([10000], [10000]), 20000)
-    except AssertionError:
+        utt.assert_allclose(f([10000], [10000]), 20000)
+    except utt.WrongValue:
         raise SkipTest("log(add(exp)) is not stabilized when adding "
                        "more than 2 elements, see #623")
 
@@ -2734,7 +2734,7 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             f = theano.function([x, y, idx], o, self.mode_no_assert)
 
             res = f(dx, dy, didx)
-            assert numpy.allclose(dy, res)
+            utt.assert_allclose(dy, res)
             topo = f.maker.fgraph.toposort()
             if opt:
                 assert len(topo) == 1
@@ -2748,7 +2748,7 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             f = theano.function([x, y, idx], o, self.mode_no_assert)
 
             res = f(dx, dy, didx)
-            assert numpy.allclose((dx[didx] + dy), res)
+            utt.assert_allclose((dx[didx] + dy), res)
             topo = f.maker.fgraph.toposort()
             len(topo) == 2
 
@@ -2758,7 +2758,7 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             f = theano.function([x, y, idx], o, self.mode_no_assert)
 
             res = f(dx, dy, didx)
-            assert numpy.allclose(dy, res)
+            utt.assert_allclose(dy, res)
             topo = f.maker.fgraph.toposort()
             if opt:
                 assert len(topo) == 1
@@ -3409,7 +3409,7 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
                                      sequences=[X],
                                      non_sequences=None)
         Z = X_sum + Y
-        theano.printing.debugprint(Z)
+        # theano.printing.debugprint(Z)
         # here is the output for the debug print:
         """
         Elemwise{add,no_inplace} [id A] ''
@@ -3436,7 +3436,7 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
         mode = theano.compile.get_default_mode().excluding('fusion')
         f = theano.function([X, Y], Z, mode=mode)
-        theano.printing.debugprint(f, print_type=True)
+        # theano.printing.debugprint(f, print_type=True)
         # here is the output for the debug print:
         """
         Elemwise{Add}[(0, 0)] [id A] <TensorType(float64, vector)> ''   7
@@ -3465,14 +3465,19 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
          > |X[t] [id O] <TensorType(float64, vector)> -> [id E]
         """
 
-    def assert_eqs_const(self, f, val):
+    def assert_eqs_const(self, f, val, op=deep_copy_op):
         topo = f.maker.fgraph.toposort()
         elem = topo[0]
         assert len(topo) == 1, topo
-        assert elem.op == deep_copy_op, elem.op
-        assert len(elem.inputs) == 1, elem.inputs
-        assert isinstance(elem.inputs[0], T.TensorConstant), elem
-        assert T.extract_constant(elem.inputs[0]) == val, val
+        assert elem.op == op, elem.op
+        if op == deep_copy_op:
+            assert len(elem.inputs) == 1, elem.inputs
+            assert isinstance(elem.inputs[0], T.TensorConstant), elem
+            assert T.extract_constant(elem.inputs[0]) == val, val
+        else:
+            assert len(elem.inputs) == 2, elem.inputs
+            assert isinstance(elem.inputs[0], T.TensorConstant), elem
+            assert T.extract_constant(elem.inputs[0]) == val, val
 
     def assert_identity(self, f):
         topo = f.maker.fgraph.toposort()
@@ -3551,6 +3556,33 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
         f = theano.function([x, y], T.ge(x.shape[0]+y.shape[0], 0), mode=mode)
         self.assert_eqs_const(f, 1)
+
+    def test_equality_shapes(self):
+        # Test equality where one sides contain only shapes related
+        # stuff.
+        if theano.config.mode == "FAST_COMPILE":
+            raise SkipTest("Skip opt test as the opt is disabled")
+        x = T.vector('x', dtype=config.floatX)
+        for g in [x.shape[0],
+                  Shape_i(0)(x)]:
+            f = theano.function([x], T.eq(g, 0))
+            assert f([3, 3]) == 0
+            assert f([]) == 1
+
+            f = theano.function([x], T.eq(g, -1))
+            self.assert_eqs_const(f, 0)
+            assert f([3, 3]) == 0
+
+        g = join(0,
+                 x.shape[0:],  # todo test reshape, dimshuffle
+                 x.shape[0:1])
+        f = theano.function([x], T.eq(g, 0))
+        assert (f([3, 3]) == 0).all()
+        assert (f([]) == 1).all()
+
+        f = theano.function([x], T.eq(g, -1))
+        self.assert_eqs_const(f, 0, op=T.alloc)
+        assert (f([3, 3]) == 0).all()
 
     def test_and(self):
         mode = theano.compile.get_default_mode().including('canonicalize')
@@ -4178,22 +4210,22 @@ def test_local_pow_specialize():
     f = function([v], v ** 0, mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
     assert nodes == [Shape_i(0), T.alloc]
-    assert numpy.allclose(f(val), val ** 0)
+    utt.assert_allclose(f(val), val ** 0)
 
     f = function([v], v ** 1, mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
     nodes == [deep_copy_op]
-    assert numpy.allclose(f(val), val ** 1)
+    utt.assert_allclose(f(val), val ** 1)
 
     f = function([v], v ** (-1), mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
     assert nodes == [T.inv]
-    assert numpy.allclose(f(val_no0), val_no0 ** (-1))
+    utt.assert_allclose(f(val_no0), val_no0 ** (-1))
 
     f = function([v], v ** 2, mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
     assert nodes == [T.sqr]
-    assert numpy.allclose(f(val), val ** 2)
+    utt.assert_allclose(f(val), val ** 2)
 
     f = function([v], v ** (-2), mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
@@ -4201,12 +4233,12 @@ def test_local_pow_specialize():
     assert nodes[0] == T.sqr
     assert isinstance(nodes[1].scalar_op, theano.scalar.basic.Inv)
 #    assert nodes == [T.sqr,T.inv]#Why this don't work?
-    assert numpy.allclose(f(val_no0), val_no0 ** (-2))
+    utt.assert_allclose(f(val_no0), val_no0 ** (-2))
 
     f = function([v], v ** (.5), mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
     assert nodes == [T.sqrt]
-    assert numpy.allclose(f(val), val ** (.5))
+    utt.assert_allclose(f(val), val ** (.5))
 
     f = function([v], v ** (-.5), mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
@@ -4214,7 +4246,7 @@ def test_local_pow_specialize():
     assert nodes[0] == T.sqrt
     assert isinstance(nodes[1].scalar_op, theano.scalar.basic.Inv)
 #    assert nodes == [T.sqrt,T.inv]#Why this don't work?
-    assert numpy.allclose(f(val_no0), val_no0 ** (-.5))
+    utt.assert_allclose(f(val_no0), val_no0 ** (-.5))
 
 
 def test_local_pow_specialize_device_more_aggressive_on_cpu():
@@ -4232,7 +4264,7 @@ def test_local_pow_specialize_device_more_aggressive_on_cpu():
     assert len(nodes) == 1
     assert len(f.maker.fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes) == 6
     assert isinstance(nodes[0].scalar_op, theano.scalar.Composite)
-    assert numpy.allclose(f(val), val ** 15)
+    utt.assert_allclose(f(val), val ** 15)
 
     f = function([v], v ** (-15), mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
@@ -4240,14 +4272,14 @@ def test_local_pow_specialize_device_more_aggressive_on_cpu():
     assert len(f.maker.fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes) == 6
     assert isinstance(nodes[0].scalar_op, theano.scalar.Composite)
     assert isinstance(nodes[-1].scalar_op, theano.scalar.basic.Inv)
-    assert numpy.allclose(f(val_no0), val_no0 ** (-15))
+    utt.assert_allclose(f(val_no0), val_no0 ** (-15))
 
     f = function([v], v ** (16), mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
     assert len(nodes) == 1
     assert len(f.maker.fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes) == 4
     assert isinstance(nodes[0].scalar_op, theano.scalar.Composite)
-    assert numpy.allclose(f(val), val ** 16)
+    utt.assert_allclose(f(val), val ** 16)
 
     f = function([v], v ** (-16), mode=mode)
     nodes = [node.op for node in f.maker.fgraph.toposort()]
@@ -4255,7 +4287,7 @@ def test_local_pow_specialize_device_more_aggressive_on_cpu():
     assert len(f.maker.fgraph.toposort()[0].op.scalar_op.fgraph.apply_nodes) == 4
     assert isinstance(nodes[0].scalar_op, theano.scalar.Composite)
     assert isinstance(nodes[-1].scalar_op, theano.scalar.basic.Inv)
-    assert numpy.allclose(f(val_no0), val_no0 ** (-16))
+    utt.assert_allclose(f(val_no0), val_no0 ** (-16))
 
 
 class T_Rebroadcast(unittest.TestCase):
@@ -5146,26 +5178,26 @@ class T_local_sum_prod(unittest.TestCase):
         # test sum
         f = theano.function([a], a.sum(), mode=self.mode)
         assert len(f.maker.fgraph.apply_nodes) == 1
-        assert numpy.allclose(f(input), input.sum())
+        utt.assert_allclose(f(input), input.sum())
         # test prod
         f = theano.function([a], a.prod(), mode=self.mode)
         assert len(f.maker.fgraph.apply_nodes) == 1
-        assert numpy.allclose(f(input), input.prod())
+        utt.assert_allclose(f(input), input.prod())
         # test sum
         f = theano.function([a], a.sum([0, 1, 2]), mode=self.mode)
         assert len(f.maker.fgraph.apply_nodes) == 1
-        assert numpy.allclose(f(input), input.sum())
+        utt.assert_allclose(f(input), input.sum())
         # test prod
         f = theano.function([a], a.prod([0, 1, 2]), mode=self.mode)
         assert len(f.maker.fgraph.apply_nodes) == 1
-        assert numpy.allclose(f(input), input.prod())
+        utt.assert_allclose(f(input), input.prod())
 
         backup = config.warn.sum_sum_bug
         config.warn.sum_sum_bug = False
         try:
             f = theano.function([a], a.sum(0).sum(0).sum(0), mode=self.mode)
             assert len(f.maker.fgraph.apply_nodes) == 1
-            assert numpy.allclose(f(input), input.sum())
+            utt.assert_allclose(f(input), input.sum())
         finally:
             config.warn.sum_sum_bug = backup
 
@@ -5216,19 +5248,19 @@ class T_local_sum_prod(unittest.TestCase):
             for d, dd in dims:
                 expected = my_sum(input, d, dd)
                 f = theano.function([a], a.sum(d).sum(dd), mode=self.mode)
-                assert numpy.allclose(f(input), expected)
+                utt.assert_allclose(f(input), expected)
                 assert len(f.maker.fgraph.apply_nodes) == 1
             for d, dd in dims[:6]:
                 f = theano.function([a], a.sum(d).sum(dd).
                                     sum(0), mode=self.mode)
-                assert numpy.allclose(f(input), input.sum(d).sum(dd).sum(0))
+                utt.assert_allclose(f(input), input.sum(d).sum(dd).sum(0))
                 assert len(f.maker.fgraph.apply_nodes) == 1
             for d in [0, 1, 2]:
                 f = theano.function([a], a.sum(d).sum(None), mode=self.mode)
-                assert numpy.allclose(f(input), input.sum(d).sum())
+                utt.assert_allclose(f(input), input.sum(d).sum())
                 assert len(f.maker.fgraph.apply_nodes) == 1
             f = theano.function([a], a.sum(None).sum(), mode=self.mode)
-            assert numpy.allclose(f(input), input.sum())
+            utt.assert_allclose(f(input), input.sum())
             assert len(f.maker.fgraph.apply_nodes) == 1
         finally:
             config.warn.sum_sum_bug = backup
@@ -5237,42 +5269,42 @@ class T_local_sum_prod(unittest.TestCase):
         for d, dd in dims:
             expected = my_prod(input, d, dd)
             f = theano.function([a], a.prod(d).prod(dd), mode=self.mode)
-            assert numpy.allclose(f(input), expected)
+            utt.assert_allclose(f(input), expected)
             assert len(f.maker.fgraph.apply_nodes) == 1
         for d, dd in dims[:6]:
             f = theano.function([a], a.prod(d).prod(dd).
                                 prod(0), mode=self.mode)
-            assert numpy.allclose(f(input), input.prod(d).prod(dd).prod(0))
+            utt.assert_allclose(f(input), input.prod(d).prod(dd).prod(0))
             assert len(f.maker.fgraph.apply_nodes) == 1
         for d in [0, 1, 2]:
             f = theano.function([a], a.prod(d).prod(None), mode=self.mode)
-            assert numpy.allclose(f(input), input.prod(d).prod())
+            utt.assert_allclose(f(input), input.prod(d).prod())
             assert len(f.maker.fgraph.apply_nodes) == 1
         f = theano.function([a], a.prod(None).prod(), mode=self.mode)
-        assert numpy.allclose(f(input), input.prod())
+        utt.assert_allclose(f(input), input.prod())
         assert len(f.maker.fgraph.apply_nodes) == 1
 
         # test sum prod don't get opt.
         for d, dd in dims:
             expected = my_sum_prod(input, d, dd)
             f = theano.function([a], a.sum(d).prod(dd), mode=self.mode)
-            assert numpy.allclose(f(input), expected)
+            utt.assert_allclose(f(input), expected)
             assert len(f.maker.fgraph.apply_nodes) == 2
         for d, dd in dims[:6]:
             f = theano.function([a], a.sum(d).prod(dd).
                                 prod(0), mode=self.mode)
-            assert numpy.allclose(f(input), input.sum(d).prod(dd).prod(0))
+            utt.assert_allclose(f(input), input.sum(d).prod(dd).prod(0))
             assert len(f.maker.fgraph.apply_nodes) == 2
         for d in [0, 1, 2]:
             f = theano.function([a], a.sum(d).prod(None), mode=self.mode)
-            assert numpy.allclose(f(input), input.sum(d).prod())
+            utt.assert_allclose(f(input), input.sum(d).prod())
             assert len(f.maker.fgraph.apply_nodes) == 2
         f = theano.function([a], a.sum(None).prod(), mode=self.mode)
-        assert numpy.allclose(f(input), input.sum())
+        utt.assert_allclose(f(input), input.sum())
         assert len(f.maker.fgraph.apply_nodes) == 1
 
-
     def test_local_sum_prod_alloc(self):
+        # test local_opt_alloc
         a = T.dtensor3()
         input = numpy.asarray(numpy.arange(2 * 3 * 4).reshape(2, 3, 4),
                               dtype='float64')
@@ -5283,23 +5315,23 @@ class T_local_sum_prod(unittest.TestCase):
 
             # test sum
             f = theano.function([a], t_like(a).sum(None), mode=mode)
-            assert numpy.allclose(f(input), n_like(input).sum())
+            utt.assert_allclose(f(input), n_like(input).sum())
             assert len(f.maker.fgraph.apply_nodes) == nb_nodes[0]
 
             f = theano.function([a], t_like(a).sum([0, 1, 2]), mode=mode)
-            assert numpy.allclose(f(input), n_like(input).sum())
+            utt.assert_allclose(f(input), n_like(input).sum())
             assert len(f.maker.fgraph.apply_nodes) == nb_nodes[0]
 
             for d in xrange(3):
                 f = theano.function([a], t_like(a).sum(d), mode=mode)
-                assert numpy.allclose(f(input), n_like(input).sum(d))
+                utt.assert_allclose(f(input), n_like(input).sum(d))
                 assert len(f.maker.fgraph.apply_nodes) == nb_nodes[1]
                 topo = f.maker.fgraph.toposort()
                 assert topo[-1].op == T.alloc
                 assert not any([isinstance(node.op, T.Sum) for node in topo])
             for i in xrange(3):
                 f = theano.function([a], t_like(a).sum(i), mode=mode)
-                assert numpy.allclose(f(input), n_like(input).sum(i))
+                utt.assert_allclose(f(input), n_like(input).sum(i))
                 assert len(f.maker.fgraph.apply_nodes) == nb_nodes[2]
                 topo = f.maker.fgraph.toposort()
                 assert topo[-1].op == T.alloc
@@ -5307,23 +5339,23 @@ class T_local_sum_prod(unittest.TestCase):
 
             # test prod
             f = theano.function([a], t_like(a).prod(None), mode=mode)
-            assert numpy.allclose(f(input), n_like(input).prod())
+            utt.assert_allclose(f(input), n_like(input).prod())
             #assert len(f.maker.fgraph.apply_nodes) == nb_nodes[0]
 
             f = theano.function([a], t_like(a).prod([0, 1, 2]), mode=mode)
-            assert numpy.allclose(f(input), n_like(input).prod())
+            utt.assert_allclose(f(input), n_like(input).prod())
             #assert len(f.maker.fgraph.apply_nodes) == nb_nodes[0]
 
             for d in range(3):
                 f = theano.function([a], t_like(a).prod(d), mode=mode)
-                assert numpy.allclose(f(input), n_like(input).prod(d))
+                utt.assert_allclose(f(input), n_like(input).prod(d))
                 #assert len(f.maker.fgraph.apply_nodes) == nb_nodes[1]
                 topo = f.maker.fgraph.toposort()
                 assert topo[-1].op == T.alloc
                 assert not any([isinstance(node.op, T.elemwise.Prod) for node in topo])
             for i in range(3):
                 f = theano.function([a], t_like(a).prod(i), mode=mode)
-                assert numpy.allclose(f(input), n_like(input).prod(i))
+                utt.assert_allclose(f(input), n_like(input).prod(i))
                 #assert len(f.maker.fgraph.apply_nodes) == nb_nodes[2]
                 topo = f.maker.fgraph.toposort()
                 assert topo[-1].op == T.alloc
@@ -5335,7 +5367,7 @@ class T_local_sum_prod(unittest.TestCase):
                 for d, dd in [(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1)]:
                     f = theano.function([a], t_like(a).
                                         sum(d).sum(dd), mode=mode)
-                    assert numpy.allclose(f(input),
+                    utt.assert_allclose(f(input),
                                           n_like(input).sum(d).sum(dd))
                     assert len(f.maker.fgraph.apply_nodes) == nb_nodes[3]
                     topo = f.maker.fgraph.toposort()
@@ -5374,6 +5406,30 @@ class T_local_sum_prod(unittest.TestCase):
             f = theano.function([x], y)
         finally:
             config.on_opt_error = backup
+
+
+class T_local_opt_alloc(unittest.TestCase):
+    def test_sum_upcast(self):
+        s = theano.tensor.lscalar()
+        a = theano.tensor.alloc(numpy.asarray(5, dtype='float32'), s, s)
+        orig = theano.config.warn_float64
+        theano.config.warn_float64 = "raise"
+        try:
+            f = theano.function([s], a.sum())
+            f(5)
+        finally:
+            theano.config.warn_float64 = orig
+
+    def test_prod_upcast(self):
+        s = theano.tensor.lscalar()
+        a = theano.tensor.alloc(numpy.asarray(5, dtype='float32'), s, s)
+        orig = theano.config.warn_float64
+        theano.config.warn_float64 = "raise"
+        try:
+            f = theano.function([s], a.prod())
+            f(5)
+        finally:
+            theano.config.warn_float64 = orig
 
 
 class T_local_reduce(unittest.TestCase):
@@ -5459,7 +5515,7 @@ class T_local_reduce(unittest.TestCase):
         A = theano.shared(numpy.array([1, 2, 3, 4, 5], dtype='int64'))
 
         f = theano.function([], T.sum(T.stack([A, A]), axis=0), mode=self.mode)
-        assert numpy.allclose(f(), [2, 4, 6, 8, 10])
+        utt.assert_allclose(f(), [2, 4, 6, 8, 10])
         topo = f.maker.fgraph.toposort()
         assert isinstance(topo[-1].op, T.Elemwise)
 
@@ -5471,7 +5527,7 @@ class T_local_reduce(unittest.TestCase):
                                 mode=self.mode)
         finally:
             theano.config.warn.reduce_join = old
-        assert numpy.allclose(f(), [15, 15])
+        utt.assert_allclose(f(), [15, 15])
         topo = f.maker.fgraph.toposort()
         assert not isinstance(topo[-1].op, T.Elemwise)
 
@@ -5479,14 +5535,14 @@ class T_local_reduce(unittest.TestCase):
         A = theano.shared(numpy.array([1, 2, 3, 4, 5]).reshape(5, 1))
         f = theano.function([], T.sum(T.concatenate((A, A), axis=1), axis=1),
                             mode=self.mode)
-        assert numpy.allclose(f(), [2, 4, 6, 8, 10])
+        utt.assert_allclose(f(), [2, 4, 6, 8, 10])
         topo = f.maker.fgraph.toposort()
         assert not isinstance(topo[-1].op, T.Elemwise)
 
         A = theano.shared(numpy.array([1, 2, 3, 4, 5]).reshape(5, 1))
         f = theano.function([], T.sum(T.concatenate((A, A), axis=1), axis=0),
                             mode=self.mode)
-        assert numpy.allclose(f(), [15, 15])
+        utt.assert_allclose(f(), [15, 15])
         topo = f.maker.fgraph.toposort()
         assert not isinstance(topo[-1].op, T.Elemwise)
 
@@ -5718,7 +5774,7 @@ class TestMakeVector(utt.InferShapeTester):
 
             if dtype.startswith('int'):
                 # The gradient should be 0
-                assert numpy.allclose(g_val, 0)
+                utt.assert_allclose(g_val, 0)
             else:
                 for var, grval in zip((b, i, d), g_val):
                     float_inputs = []
@@ -5977,7 +6033,7 @@ def test_local_div_to_inv():
     f = theano.function([num_len_s, denom_s], out)
     out_val = f(3, 2.)
     assert out_val.shape == (1, 3)
-    assert numpy.allclose(out_val, 0.5)
+    utt.assert_allclose(out_val, 0.5)
 
 
 def test_local_useless_split():
@@ -6129,14 +6185,14 @@ class TestShape_i(utt.InferShapeTester):
         advec_val = numpy.random.rand(3).astype(config.floatX)
         f = function([advec], Shape_i(0)(advec))
         out = f(advec_val)
-        assert numpy.allclose(out, advec_val.shape[0])
+        utt.assert_allclose(out, advec_val.shape[0])
 
         admat = matrix()
         admat_val = numpy.random.rand(4, 3).astype(config.floatX)
         for i in xrange(2):
             f = function([admat], Shape_i(i)(admat))
             out = f(admat_val)
-            assert numpy.allclose(out, admat_val.shape[i])
+            utt.assert_allclose(out, admat_val.shape[i])
 
     def test_infer_shape(self):
         admat = matrix()
@@ -6289,7 +6345,7 @@ def test_local_sumsqr2dot():
     f_val = f(w_val, g_val)
     f_test = numpy.dot(numpy.square(g_val), numpy.square(w_val).sum(axis=0))
 
-    assert numpy.allclose(f_val, f_test)
+    utt.assert_allclose(f_val, f_test)
     assert any(isinstance(n.op, (tensor.basic.Dot, tensor.blas.Dot22,
                                  tensor.blas.Gemv, tensor.blas_c.CGemv))
                for n in f.maker.fgraph.toposort())
@@ -6312,7 +6368,7 @@ def test_local_expm1():
     f_val = f(x_val)
     f_test = function([x], T.expm1(x), mode=MODE)
 
-    assert numpy.allclose(f_val, f_test(x_val))
+    utt.assert_allclose(f_val, f_test(x_val))
 
     assert any(isinstance(n.op, T.Elemwise) and isinstance(n.op.scalar_op, theano.scalar.basic.Expm1)
                for n in f.maker.fgraph.toposort())

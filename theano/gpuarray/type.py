@@ -233,7 +233,7 @@ class GpuArrayType(Type):
         return data
 
     def filter_variable(self, other, allow_convert=True):
-        from theano.sandbox.gpuarray import GpuFromHost
+        from theano.gpuarray import GpuFromHost
 
         if hasattr(other, '_as_GpuArrayVariable'):
             other = other._as_GpuArrayVariable(self.context_name)
@@ -450,8 +450,9 @@ class GpuArrayType(Type):
         # We need arrayobject for the PyArrayDescr struct def
         # (even if we just use a pointer to it in a function def)
         return ['<gpuarray/array.h>', '<gpuarray/kernel.h>',
-                '<gpuarray/error.h>', '<gpuarray/buffer_blas.h>',
-                '<numpy/arrayobject.h>', '<gpuarray_api.h>']
+                '<gpuarray/error.h>', '<gpuarray/buffer.h>',
+                '<gpuarray/buffer_blas.h>', '<numpy/arrayobject.h>',
+                '<gpuarray_api.h>']
 
     def c_header_dirs(self):
         return [pygpu.get_include(), numpy.get_include()]
@@ -463,7 +464,7 @@ class GpuArrayType(Type):
         ver = pygpu.gpuarray.api_version()
         # we only use the major version since the minor revision are
         # API-compatible.
-        return (1, ver[0])
+        return (2, ver[0])
 
 
 class _operators(_tensor_py_operators):

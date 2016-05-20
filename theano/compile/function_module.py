@@ -822,10 +822,14 @@ class Function(object):
 
                     except Exception as e:
                         function_name = "theano function"
+                        argument_name = "argument"
                         if self.name:
-                            function_name += ' with name "' + self.name + '" '
-                        e.args = ("Bad input argument to " + function_name +
-                                  " at index %d(0-based)" % i,) + e.args
+                            function_name += ' with name "' + self.name + '"'
+                        if hasattr(arg, 'name') and arg.name:
+                            argument_name += ' with name "' + arg.name + '"'
+                        e.args = ("Bad input " + argument_name + " to " +
+                                  function_name + " at index %d (0-based)"
+                                  % i,) + e.args
                         raise
                 s.provided += 1
                 i += 1
@@ -1492,7 +1496,7 @@ class FunctionMaker(object):
                 # optimize the fgraph
                 theano.config.compute_test_value = \
                     theano.config.compute_test_value_opt
-                theano.config.traceback.limit = 0
+                theano.config.traceback.limit = theano.config.traceback.compile_limit
                 start_optimizer = time.time()
 
                 # now optimize the graph
@@ -1683,7 +1687,7 @@ class FunctionMaker(object):
         start_import_time = theano.gof.cmodule.import_time
         limit_orig = theano.config.traceback.limit
         try:
-            theano.config.traceback.limit = 0
+            theano.config.traceback.limit = theano.config.traceback.compile_limit
             _fn, _i, _o = self.linker.make_thunk(
                 input_storage=input_storage_lists, storage_map=storage_map)
         finally:

@@ -13,35 +13,35 @@ is just useful to let people know what is implemented on the gpu.
 Basic Op
 ========
 
-.. automodule:: theano.sandbox.gpuarray.basic_ops
+.. automodule:: theano.gpuarray.basic_ops
     :members:
 
 Blas Op
 =======
 
-.. automodule:: theano.sandbox.gpuarray.blas
+.. automodule:: theano.gpuarray.blas
     :members:
 
-.. automodule:: theano.sandbox.gpuarray.nerv
+.. automodule:: theano.gpuarray.nerv
     :members:
 
 Elemwise Op
 ===========
 
-.. automodule:: theano.sandbox.gpuarray.elemwise
+.. automodule:: theano.gpuarray.elemwise
     :members:
 
 Subtensor Op
 ============
 
-.. automodule:: theano.sandbox.gpuarray.subtensor
+.. automodule:: theano.gpuarray.subtensor
     :members:
 
 Nnet Op
 =======
 
-.. automodule:: theano.sandbox.gpuarray.nnet
+.. automodule:: theano.gpuarray.nnet
     :members:
 
-.. automodule:: theano.sandbox.gpuarray.neighbours
+.. automodule:: theano.gpuarray.neighbours
     :members:

@@ -464,7 +464,7 @@ The graph after optimization:
 
 Picture Printing of Graphs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-``pydotprint`` requires graphviz and pydot.
+``pydotprint`` requires graphviz and either pydot or pydot-ng.
 
 The graph before optimization:
 

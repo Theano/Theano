@@ -512,7 +512,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                print_view_map=False, order=None, ids='CHAR',
                stop_on_name=False, prefix_child=None,
                scan_ops=None, profile=None,
-               scan_inner_to_outer_inputs=None, smap=None):
+               scan_inner_to_outer_inputs=None, smap=None,
+               used_ids=None, print_clients=False):
     """
     Print the graph leading to `r` to given depth.
 
@@ -525,7 +526,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
     depth
         Maximum recursion depth (Default -1 for unlimited).
     done
-        dict of Apply instances that have already been printed and their
+        Internal. Used to pass information when recursing.
+        Dict of Apply instances that have already been printed and their
         associated printed ids.
     print_type
         Whether to print the Variable type after the other infos.
@@ -554,6 +556,12 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         inputs (outer inputs) for printing purposes.
     smap
         None or the storage_map when printing an Theano function.
+    used_ids
+        Internal. Used to pass information when recursing.
+        It is a dict from obj to the id used for it.
+        It wasn't always printed, but at least a reference to it was printed.
+    print_clients
+        If True, we will print the clients of nodes when they have more then one clients.
     """
     if depth == 0:
         return
@@ -575,19 +583,25 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
     if prefix_child is None:
         prefix_child = prefix
 
-    def get_id_str(obj):
-        if obj in done:
-            id_str = done[obj]
+    if used_ids is None:
+        used_ids = dict()
+
+    def get_id_str(obj, get_printed=True):
+        if obj in used_ids:
+            id_str = used_ids[obj]
+        elif obj == 'output':
+            id_str = 'output'
         elif ids == "id":
             id_str = "[id %s]" % str(id(r))
         elif ids == "int":
-            id_str = "[id %s]" % str(len(done))
+            id_str = "[id %s]" % str(len(used_ids))
         elif ids == "CHAR":
-            id_str = "[id %s]" % char_from_number(len(done))
+            id_str = "[id %s]" % char_from_number(len(used_ids))
         elif ids == "":
             id_str = ""
-        done[obj] = id_str
-
+        if get_printed:
+            done[obj] = id_str
+        used_ids[obj] = id_str
         return id_str
 
     if hasattr(r.owner, 'op'):
@@ -629,14 +643,23 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         data = ""
         if smap:
             data = " " + str(smap.get(a.outputs[0], ''))
+        clients = ''
+        if print_clients and len(getattr(r, 'clients', [])) > 1:
+            def get_index(c):
+                try:
+                    return order.index(c)
+                except ValueError:
+                    return ""
+            clients = " clients:" + str([(get_id_str(c, False), get_index(c))
+                                         for c, i in r.clients])
         if profile is None or a not in profile.apply_time:
-            print('%s%s%s %s%s \'%s\' %s %s %s%s' % (prefix, a.op,
-                                                     idx,
-                                                     id_str, type_str,
-                                                     r_name,
-                                                     destroy_map_str,
-                                                     view_map_str,
-                                                     o, data), file=file)
+            print('%s%s%s %s%s \'%s\' %s %s %s%s%s' % (prefix, a.op,
+                                                       idx,
+                                                       id_str, type_str,
+                                                       r_name,
+                                                       destroy_map_str,
+                                                       view_map_str,
+                                                       o, data, clients), file=file)
         else:
             op_time = profile.apply_time[a]
             op_time_percent = (op_time / profile.fct_call_time) * 100
@@ -648,7 +671,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                 idx = ""
             else:
                 idx = ".%i" % a.outputs.index(r)
-            print("%s%s%s %s%s '%s' %s %s %s%s --> "
+            print("%s%s%s %s%s '%s' %s %s %s%s%s --> "
                   "%8.2es %4.1f%% %8.2es %4.1f%%"
                   % (prefix, a.op,
                      idx,
@@ -656,7 +679,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                      r_name,
                      destroy_map_str,
                      view_map_str,
-                     o, data,
+                     o, data, clients,
                      op_time,
                      op_time_percent,
                      tot_time,
@@ -684,7 +707,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                         prefix_child=new_prefix_child, scan_ops=scan_ops,
                         profile=profile,
                         scan_inner_to_outer_inputs=scan_inner_to_outer_inputs,
-                        smap=smap)
+                        smap=smap, used_ids=used_ids, print_clients=print_clients)
     else:
         if scan_inner_to_outer_inputs is not None and\
            r in scan_inner_to_outer_inputs:
@@ -1672,13 +1695,16 @@ class _VariableEquivalenceTracker(object):
             # N.B. compute the debugprint now, because future
             # optimizations will change the graph
             done = dict()
+            used_ids = dict()
             self.reasons[new_r].append(
                 (reason,
                  r,
                  debugprint(r, prefix='  ', depth=6,
-                            file=StringIO(), done=done).getvalue(),
+                            file=StringIO(), done=done,
+                            used_ids=used_ids).getvalue(),
                  debugprint(new_r, prefix='  ', depth=6,
-                            file=StringIO(), done=done).getvalue()))
+                            file=StringIO(), done=done,
+                            used_ids=used_ids).getvalue()))
             self.replaced_by[r].append((reason, new_r))
 
         if r in self.equiv:

@@ -1,11 +1,22 @@
 {% extends "!layout.html" %}
 
+{%- block rootrellink %}
+<li>
+    <span class="version_switcher_placeholder"></span>
+</li>
+{{ super() }}
+{% endblock %}
+
 {%- block extrahead %}
 {{ super() }}
 <script type="text/javascript">
   var _gaq = _gaq || [];
   _gaq.push(['_setAccount', 'UA-168290-9']);
   _gaq.push(['_trackPageview']);
+</script>
+
+<script type="text/javascript"
+    src="{{ pathto('_static/version_switch.js', 1) }}">
 </script>
 {% endblock %}
 
@@ -21,4 +32,3 @@
   })();
 </script>
 {% endblock %}
-

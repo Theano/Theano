@@ -5,8 +5,9 @@ Author: Christof Angermueller <cangermueller@gmail.com>
 from __future__ import absolute_import, print_function, division
 
 import os
+import json
 import shutil
-import re
+import six
 from six import iteritems
 
 from theano.d3viz.formatting import PyDotFormatter
@@ -30,16 +31,15 @@ def replace_patterns(x, replace):
     return x
 
 
-def escape_quotes(s):
-    """Escape quotes in string.
+def safe_json(obj):
+    """Encode `obj` to JSON so that it can be embedded safely inside HTML.
 
     Parameters
     ----------
-    s : str
-        String on which function is applied
+    obj : object
+        object to serialize
     """
-    s = re.sub(r'''(['"])''', r'\\\1', s)
-    return s
+    return json.dumps(obj).replace('<', '\\u003c')
 
 
 def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
@@ -78,7 +78,9 @@ def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
     # Create DOT graph
     formatter = PyDotFormatter(*args, **kwargs)
     graph = formatter(fct)
-    dot_graph = escape_quotes(str(graph.create_dot())).replace('\n', '').replace('\r', '')
+    dot_graph = graph.create_dot()
+    if not six.PY2:
+        dot_graph = dot_graph.decode('utf8')
 
     # Create output directory if not existing
     outdir = os.path.dirname(outfile)
@@ -105,7 +107,7 @@ def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
     replace = {
         '%% JS_DIR %%': os.path.join(dst_deps, 'js'),
         '%% CSS_DIR %%': os.path.join(dst_deps, 'css'),
-        '%% DOT_GRAPH %%': dot_graph,
+        '%% DOT_GRAPH %%': safe_json(dot_graph),
     }
     html = replace_patterns(template, replace)
 

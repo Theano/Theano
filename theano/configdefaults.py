@@ -42,6 +42,8 @@ AddConfigVar('floatX',
              "Note: float16 support is experimental, use at your own risk.",
              EnumStr('float64', 'float32', 'float16',
                      convert=floatX_convert,),
+             # TODO: see gh-4466 for how to remove it.
+             in_c_key=True
              )
 
 AddConfigVar('warn_float64',
@@ -233,11 +235,12 @@ AddConfigVar('gpuarray.sync',
              in_c_key=True)
 
 AddConfigVar('gpuarray.preallocate',
-             """If 0 it doesn't do anything.  If between 0 and 1 it
-             will preallocate that fraction of the total GPU memory.
-             If 1 or greater it will preallocate that amount of memory
-             (in megabytes).""",
-             FloatParam(0, lambda i: i >= 0),
+             """If negative it disables the allocation cache. If
+             between 0 and 1 it enables the allocation cache and
+             preallocates that fraction of the total GPU memory.  If 1
+             or greater it will preallocate that amount of memory (in
+             megabytes).""",
+             FloatParam(0),
              in_c_key=False)
 
 
@@ -343,11 +346,15 @@ def default_dnn_path(suffix):
 
 AddConfigVar('dnn.include_path',
              "Location of the cudnn header (defaults to the cuda root)",
-             StrParam(default_dnn_path('include')))
+             StrParam(default_dnn_path('include')),
+             # Added elsewhere in the c key only when needed.
+             in_c_key=False)
 
 AddConfigVar('dnn.library_path',
              "Location of the cudnn header (defaults to the cuda root)",
-             StrParam(default_dnn_path('lib' if sys.platform == 'darwin' else 'lib64')))
+             StrParam(default_dnn_path('lib' if sys.platform == 'darwin' else 'lib64')),
+             # Added elsewhere in the c key only when needed.
+             in_c_key=False)
 
 AddConfigVar('dnn.enabled',
              "'auto', use cuDNN if available, but silently fall back"
@@ -543,7 +550,9 @@ AddConfigVar(
 AddConfigVar(
     'lib.amdlibm',
     "Use amd's amdlibm numerical library",
-    BoolParam(False))
+    BoolParam(False),
+    # Added elsewhere in the c key only when needed.
+    in_c_key=False)
 
 AddConfigVar(
     'gpuelemwise.sync',
@@ -562,6 +571,13 @@ AddConfigVar(
     # y = X.reshape((5,3,1))
     # assert y.tag.trace
     IntParam(8),
+    in_c_key=False)
+
+AddConfigVar(
+    'traceback.compile_limit',
+    "The number of stack to trace to keep during compilation. -1 mean all."
+    " If greater then 0, will also make us save Theano internal stack trace.",
+    IntParam(0),
     in_c_key=False)
 
 AddConfigVar('experimental.mrg',
@@ -854,7 +870,8 @@ AddConfigVar(
     "It can be used to speed up compilation, reduce overhead "
     "(particularly for scalars) and reduce the number of generated C "
     "files.",
-    BoolParam(True))
+    BoolParam(True),
+    in_c_key=True)
 
 AddConfigVar(
     'cache_optimizations',
@@ -863,7 +880,8 @@ AddConfigVar(
     "any optimized graph and its optimization. Actually slow downs a lot "
     "the first optimization, and could possibly still contains some bugs. "
     "Use at your own risks.",
-    BoolParam(False))
+    BoolParam(False),
+    in_c_key=False)
 
 
 def good_seed_param(seed):
@@ -1072,13 +1090,9 @@ AddConfigVar('optdb.max_use_ratio',
 
 AddConfigVar('gcc.cxxflags',
              "Extra compiler flags for gcc",
-             StrParam(""))
-
-AddConfigVar(
-    'cmodule.mac_framework_link',
-    "If set to True, breaks certain MacOS installations with the infamous "
-    "Bus Error",
-    BoolParam(False))
+             StrParam(""),
+             # Added elsewhere in the c key only when needed.
+             in_c_key=False)
 
 AddConfigVar('cmodule.warn_no_version',
              "If True, will print a warning when compiling one or more Op "
@@ -1092,11 +1106,15 @@ AddConfigVar('cmodule.remove_gxx_opt',
              "If True, will remove the -O* parameter passed to g++."
              "This is useful to debug in gdb modules compiled by Theano."
              "The parameter -g is passed by default to g++",
-             BoolParam(False))
+             BoolParam(False),
+             # TODO: change so that this isn't needed.
+             # This can be done by handing this in compile_args()
+             in_c_key=True)
 
 AddConfigVar('cmodule.compilation_warning',
              "If True, will print compilation warnings.",
-             BoolParam(False))
+             BoolParam(False),
+             in_c_key=False)
 
 
 AddConfigVar('cmodule.preload_cache',
@@ -1315,7 +1333,9 @@ def try_blas_flag(flags):
 
 AddConfigVar('blas.ldflags',
              "lib[s] to include for [Fortran] level-3 blas implementation",
-             StrParam(default_blas_ldflags))
+             StrParam(default_blas_ldflags),
+             # Added elsewhere in the c key only when needed.
+             in_c_key=False)
 
 AddConfigVar(
     'metaopt.verbose',
@@ -1399,12 +1419,19 @@ AddConfigVar(
 
 AddConfigVar('scan.allow_gc',
              "Allow/disallow gc inside of Scan (default: False)",
-             BoolParam(False))
+             BoolParam(False),
+             in_c_key=False)
 
 AddConfigVar('scan.allow_output_prealloc',
              "Allow/disallow memory preallocation for outputs inside of scan "
              "(default: True)",
-             BoolParam(True))
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('scan.debug',
+             "If True, enable extra verbose output related to scan",
+             BoolParam(False),
+             in_c_key=False)
 
 AddConfigVar('pycuda.init',
              """If True, always initialize PyCUDA when Theano want to
@@ -1419,7 +1446,9 @@ AddConfigVar('pycuda.init',
 
 AddConfigVar('cublas.lib',
              """Name of the cuda blas library for the linker.""",
-             StrParam('cublas'))
+             StrParam('cublas'),
+             # Added elsewhere in the c key only when needed.
+             in_c_key=False)
 
 AddConfigVar('lib.cnmem',
              """Do we enable CNMeM or not (a faster CUDA memory allocator).

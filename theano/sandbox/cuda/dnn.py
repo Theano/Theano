@@ -101,6 +101,9 @@ class DnnBase(GpuOp, COp):
     def c_compile_args(self):
         return ['-Wl,-rpath,' + config.dnn.library_path]
 
+    def c_code_cache_version(self):
+        return (super(DnnBase, self).c_code_cache_version(), version())
+
 
 class GpuDnnConvDesc(GpuOp):
     """
@@ -2587,17 +2590,17 @@ if True:
                     n = n.owner.inputs[0]
                 if n.ndim != 2:
                     return
-                ins.append(n.dimshuffle(0, 1, 'x', 'x'))
+                ins.append(n.dimshuffle(0, 'x', 1, 'x'))
 
             out = GpuDnnSoftmaxGrad(
                 'bc01',
                 'accurate',
-                'channel'
+                'instance',
             )(
                 gpu_contiguous(ins[0]),
                 gpu_contiguous(ins[1])
             )
-            return [out.dimshuffle(0, 1)]
+            return [out.dimshuffle(0, 2)]
 
 
 # AbstractConv Optimizations

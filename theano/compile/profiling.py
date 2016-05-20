@@ -822,7 +822,7 @@ class ProfileStats(object):
                                                  running_memory_size[1])
 
                 # Mimic the combination of Theano and Python gc
-                for ins in node.inputs:
+                for ins in set(node.inputs):
                     assert not (ins in view_of and viewed_by[ins])
                     # we trac the original var, so this shouldn't happen
                     if isinstance(ins.type, CudaNdarrayType):

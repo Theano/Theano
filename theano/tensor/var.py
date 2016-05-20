@@ -524,8 +524,17 @@ class _tensor_py_operators(object):
                         counter += 1
                         new_args.append(arg)
                 view = self.dimshuffle(pattern)
-                check_rval = [arg == slice(None, None, None) for arg in new_args]
-                if all(check_rval) == True:
+                full_slices = True
+                for arg in new_args:
+                    # We can't do arg == slice(None, None, None) as in
+                    # Python 2.7, this call __lt__ if we have a slice
+                    # with some symbolic variable.
+                    if not (isinstance(arg, slice) and
+                            arg.start is None and
+                            arg.stop is None and
+                            arg.step is None):
+                        full_slices = False
+                if full_slices:
                     return view
                 else:
                     return view.__getitem__(tuple(new_args))
@@ -899,8 +908,9 @@ class TensorConstant(_tensor_py_operators, Constant):
         return TensorConstantSignature((self.type, self.data))
 
     def equals(self, other):
-        # Override Contant.equals to allow to compare with numpy.ndarray
-        if isinstance(other, numpy.ndarray):
+        # Override Contant.equals to allow to compare with
+        # numpy.ndarray, and python type.
+        if isinstance(other, (numpy.ndarray, int, float)):
             # Make a TensorConstant to be able to compare
             other = theano.tensor.basic.constant(other)
         return (isinstance(other, TensorConstant) and

@@ -12,7 +12,7 @@ from theano.gradient import grad_undefined
 from .type import gpu_context_type
 from .basic_ops import as_gpuarray_variable, infer_context_name
 
-_logger = logging.getLogger('theano.sandbox.gpuarray.blocksparse')
+_logger = logging.getLogger('theano.gpuarray.blocksparse')
 
 
 class GpuSparseBlockGemv(COp):
