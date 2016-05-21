@@ -37,7 +37,8 @@ from theano.tensor.nlinalg import ( MatrixInverse,
                                     qr,
                                     matrix_power,
                                     norm,
-                                    svd
+                                    svd,
+                                    tensorinv
                                     )
 from nose.plugins.attrib import attr
 
@@ -517,3 +518,17 @@ class T_NormTests(unittest.TestCase):
             t_n = f(A[2][i])
             n_n = numpy.linalg.norm(A[2][i], A[3][i])
             assert _allclose(n_n, t_n)
+
+
+def test_tensorinv():
+    A = tensor.tensor4("A", dtype=theano.config.floatX)
+    X = tensorinv(A)
+    tf = function([A], [X])
+
+    a = numpy.eye(4 * 6)
+    a.shape = (4, 6, 8, 3)
+
+    n_ainv = numpy.linalg.tensorinv(a)
+    t_ainv = tf(a)
+
+    assert _allclose(n_ainv, t_ainv)
