@@ -525,7 +525,7 @@ def test_tensorinv():
     X = tensorinv(A)
     tf = function([A], [X])
 
-    a = numpy.eye(4 * 6)
+    a = numpy.eye(4 * 6).astype(theano.config.floatX)
     a.shape = (4, 6, 8, 3)
 
     n_ainv = numpy.linalg.tensorinv(a)
