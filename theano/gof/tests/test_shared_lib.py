@@ -1,5 +1,6 @@
 import os
 import theano
+import subprocess
 
 
 def test_basic():
@@ -15,8 +16,11 @@ def test_basic():
                             on_unused_input='ignore')
         theano.printing.debugprint(f, print_type=True)
         filename = f.fn.filename  # with linker=c
-        print(filename)
-        x = os.system(os.path.join(os.path.split(filename)[0], 'exec'))
+
+        dir = os.path.split(filename)[0]
+        p = subprocess.Popen(["make", "exec"], cwd=dir)
+        p.wait()
+        x = os.system(os.path.join(dir, 'exec'))
         assert x == 0, "The executable crashed!"
 
         # Test raise error if no c code
@@ -27,6 +31,3 @@ def test_basic():
             assert False, "Expected an error"
         except NotImplementedError:
             pass
-
-if __name__ == '__main__':
-    test_basic()
