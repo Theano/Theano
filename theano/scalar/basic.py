@@ -3620,7 +3620,7 @@ class Composite(ScalarOp):
             out1 = []
             for o in outputs:
                 for i in o.owner.inputs:
-                        out1.append(i)
+                    out1.append(i)
             res = theano.compile.rebuild_collect_shared(
                 inputs=inputs,
                 outputs=out1,
