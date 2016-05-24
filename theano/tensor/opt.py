@@ -7342,13 +7342,16 @@ else:
 @gof.local_optimizer([Elemwise])
 def local_useless_composite(node):
     """For elemwise Composite that have multiple outputs, remove the
-    outputs that are not used.
+    outputs that are not used and if there is only 1 node in the
+    Composite, remove it in some cases.
 
     """
     if (not isinstance(node.op, Elemwise) or
             not isinstance(node.op.scalar_op, scalar.Composite)):
         return
     comp = node.op.scalar_op
+
+    # Remove outputs not used.
     idx = [i for i, o_extern in enumerate(node.outputs)
            if o_extern.clients]
     if len(idx) < len(node.outputs):
@@ -7356,6 +7359,20 @@ def local_useless_composite(node):
         c = scalar.Composite(inputs=comp.inputs,
                              outputs=new_outputs)
         e = Elemwise(scalar_op=c)(*node.inputs, return_list=True)
+        comp = e[0].owner.op.scalar_op
+
+    # If there is only 1 node in the inner graph, remove it.
+    ops = theano.gof.graph.ops(comp.inputs, comp.outputs)
+    if len(ops) == 1:
+        inode = ops.pop()
+        # There can be constant in the inner graph.
+        # For now, we don't push them out.
+        if len(inode.inputs) == len(node.inputs):
+            e = Elemwise(scalar_op=inode.op)(*node.inputs,
+                                             return_list=True)
+            return dict(zip([node.outputs[i] for i in idx], e))
+
+    if len(idx) < len(node.outputs):
         return dict(zip([node.outputs[i] for i in idx], e))
 
 # ############################
