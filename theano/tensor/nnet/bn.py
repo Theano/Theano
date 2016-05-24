@@ -8,8 +8,9 @@ class BNComposite(Composite):
     init_param = ('dtype',)
 
     @theano.configparser.change_flags(compute_test_value='off')
-    def __init__(self, dtype):
+    def __init__(self, dtype, fused_grad=False):
         self.dtype = dtype
+        self.fused_grad = fused_grad
         x = theano.scalar.Scalar(dtype=dtype).make_variable()
         mean = theano.scalar.Scalar(dtype=dtype).make_variable()
         std = theano.scalar.Scalar(dtype=dtype).make_variable()
@@ -23,10 +24,17 @@ class BNComposite(Composite):
         super(BNComposite, self).__init__(inputs, outputs)
 
     def grad(self, inps, grads):
-        x, mean, std, gamma, _ = inps
+        x, mean, std, gamma, beta = inps
         top, = grads
-        assert top.dtype == x.dtype
-        return BNCompositeGrad(top.dtype)(x, mean, std, gamma, top)
+        if self.fused_grad:
+            assert top.dtype == x.dtype
+            return BNCompositeGrad(top.dtype)(x, mean, std, gamma, top)
+
+        dx = (top * gamma) / std
+        dmean = -(top * gamma) / std
+        dstd = -(top * gamma * (x - mean)) / (std * std)
+        dgamma = top * (x - mean) / std
+        return [dx, dmean, dstd, dgamma, top]
 
 
 class BNCompositeGrad(Composite):
@@ -59,8 +67,9 @@ class BNCompositeGrad(Composite):
 def batch_normalization(inputs, gamma, beta, mean, std,
                         mode='low_mem'):
     """
-    This function will build the symbolic graph for applying batch normalization
-    to a set of activations.
+    This function will build the symbolic graph for applying batch
+    normalization to a set of activations.
+
     Also works on GPUs
 
     .. versionadded:: 0.7.1
@@ -81,7 +90,7 @@ def batch_normalization(inputs, gamma, beta, mean, std,
     std: symbolic tensor
         inputs standard deviation, must be of same dimensionality as
         inputs and broadcastable against it
-    mode: 'low_mem' or 'high_mem'
+    mode: 'low_mem', 'high_mem' or 'low_mem_fast_opt'
         Specify which batch_normalization implementation that will be
         used.
         As no intermediate representations are stored for the back-propagation,
@@ -89,9 +98,17 @@ def batch_normalization(inputs, gamma, beta, mean, std,
         it is 5-10% slower than 'high_mem' implementation. Note that 5-10% computation
         time difference compare the batch_normalization operation only, time difference
         between implementation is likely to be less important on the full model fprop/bprop.
+        low_mem_fast_opt is like low mem, but it build a pre fused gradient. So compilation
+        should be faster.
+
     """
     if mode == 'low_mem':
-        elm_bn = theano.tensor.elemwise.Elemwise(scalar_op=BNComposite(dtype=inputs.dtype))
+        elm_bn = theano.tensor.elemwise.Elemwise(
+            scalar_op=BNComposite(dtype=inputs.dtype))
+        rval = elm_bn(inputs, mean, std, gamma, beta)
+    elif mode == 'low_mem_fast_opt':
+        elm_bn = theano.tensor.elemwise.Elemwise(
+            scalar_op=BNComposite(dtype=inputs.dtype, fused_grad=True))
         rval = elm_bn(inputs, mean, std, gamma, beta)
     elif mode == 'high_mem':
         rval = (inputs - mean) * (gamma / std) + beta
