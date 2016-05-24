@@ -7335,6 +7335,26 @@ else:
                            'FusionOptimizer')
 
 
+@register_canonicalize
+@gof.local_optimizer([Elemwise])
+def local_useless_composite(node):
+    """For elemwise Composite that have multiple outputs, remove the
+    outputs that are not used.
+
+    """
+    if (not isinstance(node.op, Elemwise) or
+            not isinstance(node.op.scalar_op, scalar.Composite)):
+        return
+    comp = node.op.scalar_op
+    idx = [i for i, o_extern in enumerate(node.outputs)
+           if o_extern.clients]
+    if len(idx) < len(node.outputs):
+        new_outputs = [comp.outputs[i] for i in idx]
+        c = scalar.Composite(inputs=comp.inputs,
+                             outputs=new_outputs)
+        e = Elemwise(scalar_op=c)(*node.inputs, return_list=True)
+        return dict(zip([node.outputs[i] for i in idx], e))
+
 # ############################
 # # Remove consider_constant #
 # ############################

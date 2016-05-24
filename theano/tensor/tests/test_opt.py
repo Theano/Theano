@@ -1526,6 +1526,26 @@ class TestCompositeCodegen(unittest.TestCase):
         fval = numpy.asarray(f([1, 2, 3]))
         assert numpy.all(fval == [6, 12, 18]), fval
 
+    def test_local_useless_composite(self):
+        x = theano.scalar.float32()
+        c = theano.scalar.Composite([x], [x+1, x-1])
+        X = theano.tensor.matrix()
+        o = theano.tensor.Elemwise(scalar_op=c)(X)
+        mode = theano.compile.mode.get_default_mode().including(
+            'local_useless_composite')
+
+        f = theano.function([X], o[0], mode=mode)
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert len(topo[0].outputs) == 1
+        utt.assert_allclose(f([[1.]]), [[2.]])
+
+        f = theano.function([X], o[1], mode=mode)
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert len(topo[0].outputs) == 1
+        utt.assert_allclose(f([[1.]]), [[0.]])
+
 
 def test_log1p():
     m = theano.config.mode
