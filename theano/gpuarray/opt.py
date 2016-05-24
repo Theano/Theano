@@ -210,6 +210,52 @@ gpu_seqopt.register('InputToGpuArrayOptimizer', InputToGpuOptimizer(),
                     0, 'fast_run', 'fast_compile', 'merge')
 
 
+class GraphToGPU(Optimizer):
+    """
+    Transfer the graph as a whole to GPU instead of replacing nodes
+    """
+    def add_requirements(self, fgraph):
+        fgraph.attach_feature(toolbox.ReplaceValidate())
+
+    def apply(self, fgraph):
+        mapping = {}
+        move_to_GPU = True
+
+        # Building a new graph
+        for i in fgraph.inputs:
+            mapping[i] = GpuFromHost(None)(i)
+
+        for node in fgraph.toposort():
+
+            # The Extra condition
+            if node.inputs is node.outputs:
+                move_to_GPU = False
+
+            # Oplifter's condition
+            # Will return a list of OP
+            # If None, means can't be moved.
+
+            new_ops = local_gpuaalloc(node, None)
+
+            if new_ops is None:
+                move_to_GPU = False
+
+            if not isinstance(new_ops[0], node.op):
+                move_to_GPU = False
+                continue
+
+            if move_to_GPU:
+                for old_o, new_o in zip(node.outputs, new_ops):
+                    mapping[old_o] = new_o
+            else:
+                for o in node.outputs:
+                    mapping[o] = o
+
+
+gpu_seqopt.register('GraphToGPU', GraphToGPU(),
+                    0.5, 'fast_run', 'fast_compile', 'merge')
+
+
 @local_optimizer([GpuFromHost, GpuToGpu, HostFromGpu])
 def local_cut_gpu_transfers(node):
     # gpu[ab] -> host -> gpub
