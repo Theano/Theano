@@ -220,7 +220,7 @@ class Pool(Op):
             elif st[0] >= ds[0]:
                 nr = (r - 1) // st[0] + 1
             else:
-                nr = max(0, (r - 1 - ds[0]) // st[0] + 1) + 1
+                nr = max(0, (r - 1 - ds[0] + st[0]) // st[0]) + 1
 
             if isinstance(c, theano.Variable):
                 nc = tensor.switch(tensor.ge(st[1], ds[1]),
@@ -230,7 +230,7 @@ class Pool(Op):
             elif st[1] >= ds[1]:
                 nc = (c - 1) // st[1] + 1
             else:
-                nc = max(0, (c - 1 - ds[1]) // st[1] + 1) + 1
+                nc = max(0, (c - 1 - ds[1] + st[1]) // st[1]) + 1
 
         rval = list(imgshape[:-2]) + [nr, nc]
         return rval
