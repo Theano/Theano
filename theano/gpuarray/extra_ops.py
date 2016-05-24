@@ -27,7 +27,7 @@ class GpuCumsum(GpuKernelBase, Op):
         self.axis = axis
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>', '<gpuarray_helper.h>']
