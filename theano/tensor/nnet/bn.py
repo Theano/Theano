@@ -30,10 +30,12 @@ class BNComposite(Composite):
             assert top.dtype == x.dtype
             return BNCompositeGrad(top.dtype)(x, mean, std, gamma, top)
 
-        dx = (top * gamma) / std
-        dmean = -(top * gamma) / std
-        dstd = -(top * gamma * (x - mean)) / (std * std)
-        dgamma = top * (x - mean) / std
+        top_gamma = top * gamma
+        x_mean = x - mean
+        dx = top_gamma / std
+        dmean = -dx
+        dstd = -(top_gamma * x_mean) / (std * std)
+        dgamma = top * x_mean / std
         return [dx, dmean, dstd, dgamma, top]
 
 
