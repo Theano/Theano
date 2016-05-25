@@ -12,6 +12,7 @@ from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         SequenceDB, Optimizer, toolbox)
 from theano.gof.optdb import LocalGroupDB
+from theano.gof.op import Op
 from theano.ifelse import IfElse
 
 from theano.scalar.basic import Scalar, Pow, Cast
@@ -26,7 +27,7 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
 from theano.tests.breakpoint import PdbBreakpoint
 
 from .type import (GpuArrayType, GpuArrayConstant, get_context,
-                   ContextNotDefined)
+                   ContextNotDefined, GpuArrayVariable, GpuArraySharedVariable)
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         host_from_gpu, GpuToGpu,
                         HostFromGpu, GpuFromHost,
@@ -228,37 +229,62 @@ class GraphToGPU(Optimizer):
 
         # Building a new graph
         for i in fgraph.inputs:
+            if type(i) is not theano.tensor.TensorVariable:
+                continue
             mapping[i] = GpuFromHost(None)(i)
+
+        for n in fgraph.toposort():
+            for o in n.outputs:
+                if type(o) is not theano.tensor.TensorVariable:
+                    continue
+                mapping[o] = GpuFromHost(None)(o)
 
         for node in fgraph.toposort():
 
             # The Extra condition
-            if node.inputs is node.outputs:
+            if any([isinstance(i, GpuArrayVariable) or
+               isinstance(i, GpuArraySharedVariable)
+               for i in node.inputs + node.outputs]):
+
                 move_to_GPU = False
 
             # Oplifter's condition
             # Will return a list of OP
             # If None, means can't be moved.
 
-            new_ops = local_gpuaalloc(node, None)
+            new_ops = []
+            for lopt in (gpu_optimizer.query().local_optimizers_all +
+                         gpu_optimizer.query().local_optimizers_map.get(type(node.op), []) +
+                         gpu_optimizer.query().local_optimizers_map.get(node.op, [])):
 
-            if new_ops is None:
+                new_ops.append(lopt.transform(node) or lopt(node))
+
+            if all(isinstance(x, Op) for x in new_ops):
                 move_to_GPU = False
 
-            if not isinstance(new_ops[0], node.op):
+            if not new_ops:
                 move_to_GPU = False
-                continue
+
+            for i in node.inputs:
+                if type(i) is not theano.tensor.TensorVariable:
+                    continue
+                newnode = node.clone_with_new_inputs([mapping.get(i) for i in node.inputs])
 
             if move_to_GPU:
-                for old_o, new_o in zip(node.outputs, new_ops):
+                for new_o, old_o in zip(newnode.outputs, node.outputs):
                     mapping[old_o] = new_o
             else:
                 for o in node.outputs:
                     mapping[o] = o
 
+            for o in fgraph.outputs:
+                if type(i) is not theano.tensor.TensorVariable:
+                    continue
+                fgraph.replace_validate(o, mapping[o])
+
 
 gpu_seqopt.register('GraphToGPU', GraphToGPU(),
-                    0.5, 'fast_run', 'fast_compile', 'merge')
+                    -0.5, 'fast_run', 'fast_compile', 'merge')
 
 
 @local_optimizer([GpuFromHost, GpuToGpu, HostFromGpu])
