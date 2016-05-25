@@ -1566,6 +1566,26 @@ class TestCompositeCodegen(unittest.TestCase):
         assert not isinstance(topo[0].op.scalar_op, theano.scalar.Composite)
         utt.assert_allclose(f([[1.]], [[3.]]), [[4.]])
 
+        # Test that we remove useless inputs
+        c = theano.scalar.Composite([x, y], [scal.tanh(x+1), scal.tanh(y)-1])
+        o = tensor.Elemwise(scalar_op=c)(X, Y)
+        f = theano.function([X, Y], o[0], mode=mode)
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert len(topo[0].outputs) == 1
+        assert isinstance(topo[0].op, tensor.Elemwise)
+        assert isinstance(topo[0].op.scalar_op, theano.scalar.Composite)
+        assert len(topo[0].inputs) == 1
+        utt.assert_allclose(f([[1.]], [[3.]]), numpy.tanh(2.))
+        f = theano.function([X, Y], o[1], mode=mode)
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert len(topo[0].outputs) == 1
+        assert isinstance(topo[0].op, tensor.Elemwise)
+        assert isinstance(topo[0].op.scalar_op, theano.scalar.Composite)
+        assert len(topo[0].inputs) == 1
+        utt.assert_allclose(f([[1.]], [[2.]]), numpy.tanh(2)-1)
+
 
 def test_log1p():
     m = theano.config.mode

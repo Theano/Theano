@@ -7356,9 +7356,19 @@ def local_useless_composite(node):
            if o_extern.clients]
     if len(idx) < len(node.outputs):
         new_outputs = [comp.outputs[i] for i in idx]
-        c = scalar.Composite(inputs=comp.inputs,
+        new_inner_inputs = theano.gof.graph.inputs(new_outputs, comp.inputs)
+        new_inner_inputs = [i for i in new_inner_inputs
+                            if not isinstance(i, theano.Constant)]
+        new_out_inputs = []
+        for out_i, inner_i in zip(node.inputs, comp.inputs):
+            if inner_i in new_inner_inputs:
+                new_out_inputs.append(out_i)
+        assert len(new_inner_inputs) == len(new_out_inputs)
+        c = scalar.Composite(inputs=new_inner_inputs,
                              outputs=new_outputs)
-        e = Elemwise(scalar_op=c)(*node.inputs, return_list=True)
+        e = Elemwise(scalar_op=c)(*[i for i in node.inputs
+                                    if i in new_out_inputs],
+                                  return_list=True)
         comp = e[0].owner.op.scalar_op
 
     # If there is only 1 node in the inner graph, remove it.
