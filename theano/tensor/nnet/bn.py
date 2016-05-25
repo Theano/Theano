@@ -28,7 +28,7 @@ class BNComposite(Composite):
         top, = grads
         if self.fused_grad:
             assert top.dtype == x.dtype
-            return BNCompositeGrad(top.dtype)(x, mean, std, gamma, top)
+            return BNCompositeGrad(top.dtype)(x, mean, std, gamma, top) + [top]
 
         top_gamma = top * gamma
         x_mean = x - mean
@@ -59,10 +59,9 @@ class BNCompositeGrad(Composite):
         dmean = -dx
         dstd = -(top_gamma * x_mean) / (std * std)
         dgamma = top * x_mean / std
-        dbeta = theano.scalar.identity(top)
 
         inputs = [x, mean, std, gamma, top]
-        outputs = [dx, dmean, dstd, dgamma, dbeta]
+        outputs = [dx, dmean, dstd, dgamma]
         super(BNCompositeGrad, self).__init__(inputs, outputs)
 
 
