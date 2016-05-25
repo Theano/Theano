@@ -742,13 +742,17 @@ class TensorInv(Op):
     def make_node(self, a):
         a = as_tensor_variable(a)
         out_dtype = a.dtype
-        out = theano.tensor.matrix(dtype=out_dtype)
+        out = theano.tensor.tensor4(dtype=out_dtype)
         return Apply(self, [a], [out])
 
     def perform(self, node, inputs, outputs):
         (a,) = inputs
         (x,) = outputs
         x[0] = self._numop(a, self.ind)
+
+    def infer_shape(self, node, shapes):
+        sp = shapes[0][self.ind:] + shapes[0][:self.ind]
+        return [sp]
 
 
 def tensorinv(a, ind=2):

@@ -38,6 +38,7 @@ from theano.tensor.nlinalg import ( MatrixInverse,
                                     matrix_power,
                                     norm,
                                     svd,
+                                    TensorInv,
                                     tensorinv
                                     )
 from nose.plugins.attrib import attr
@@ -520,15 +521,24 @@ class T_NormTests(unittest.TestCase):
             assert _allclose(n_n, t_n)
 
 
-def test_tensorinv():
-    A = tensor.tensor4("A", dtype=theano.config.floatX)
-    X = tensorinv(A)
-    tf = function([A], [X])
+class test_TensorInv(utt.InferShapeTester):
+    def setUp(self):
+        super(test_TensorInv, self).setUp()
+        self.A = tensor.tensor4("A", dtype=theano.config.floatX)
+        self.a = numpy.random.rand(4, 6, 8, 3).astype(theano.config.floatX)
 
-    a = numpy.eye(4 * 6).astype(theano.config.floatX)
-    a.shape = (4, 6, 8, 3)
+    def test_infer_shape(self):
+        A = self.A
+        Ai = tensorinv(A)
+        self._compile_and_check([A],  # theano.function inputs
+                                [Ai],  # theano.function outputs
+                                [self.a],  # value to substitute
+                                TensorInv)
 
-    n_ainv = numpy.linalg.tensorinv(a)
-    t_ainv = tf(a)
-
-    assert _allclose(n_ainv, t_ainv)
+    def test_eval(self):
+        A = self.A
+        Ai = tensorinv(A)
+        n_ainv = numpy.linalg.tensorinv(self.a)
+        tf = function([A], [Ai])
+        t_ainv = tf(self.a)
+        assert _allclose(n_ainv, t_ainv)
