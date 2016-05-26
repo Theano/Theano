@@ -741,8 +741,7 @@ class TensorInv(Op):
 
     def make_node(self, a):
         a = as_tensor_variable(a)
-        out_dtype = a.dtype
-        out = theano.tensor.tensor4(dtype=out_dtype)
+        out = a.type()
         return Apply(self, [a], [out])
 
     def perform(self, node, inputs, outputs):
