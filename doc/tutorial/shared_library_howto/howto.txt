@@ -7,6 +7,9 @@ Compiling and Using Theano Functions as Shared Libraries
   This functionality is experimental. Not every feature works and 
   some may break in unexpected ways or behave differently.
 
+..note:
+  
+  Scan does not work with this functionality
 
 This functionality was only tested on CPU code on a Linux machine.
 
@@ -51,7 +54,12 @@ Build the shared library for the function in function.py:
  python function.py
 
 The outputs show you where Theano puts the library. To see if everything
-works correctly go in that directory and launch the exec executable. 
+works correctly go in that directory and use make file 
+to build the executable
+
+make exec
+
+and then launch it. 
 You should get
 
  After import numpy (hexvalue)
@@ -67,7 +75,7 @@ You should get
 ..note:
 
   In general case, the program can give some errors for generic
-  functions because itmakes some assumptions on the data the can be wrong. 
+  functions because it makes some assumptions on the data the can be wrong. 
   Take it as a simple template. 
 
 In the exec.cpp file you will find after the includes a comment with the
