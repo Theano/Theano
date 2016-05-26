@@ -202,7 +202,7 @@ def remove_constants_and_unused_inputs_scan(node):
         # DEBUG CHECK
         nwScan = scan_op.Scan(nw_inner, op_outs, nw_info)
         nw_outs = nwScan(*nw_outer, **dict(return_list=True))
-        return dict([("remove", [node])] + list(zip(node.outputs, nw_outs)))
+        return OrderedDict([("remove", [node])] + list(zip(node.outputs, nw_outs)))
     else:
         return False
 
@@ -2072,8 +2072,8 @@ def scan_merge_inouts(node):
             new_outer_out_mit_mot.append(outer_omm)
     na.outer_out_mit_mot = new_outer_out_mit_mot
     if remove:
-        return dict([("remove", remove)] +
-                    list(zip(node.outputs, na.outer_outputs)))
+        return OrderedDict([("remove", remove)] +
+                           list(zip(node.outputs, na.outer_outputs)))
     return na.outer_outputs
 
 
