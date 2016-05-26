@@ -186,8 +186,12 @@ class Pool(Op):
         if st is None:
             st = ds
         r, c = imgshape[-2:]
-        r += padding[0] * 2
-        c += padding[1] * 2
+        r = tensor.extract_constant(r)
+        c = tensor.extract_constant(c)
+        if padding[0]:
+            r += padding[0] * 2
+        if padding[1]:
+            c += padding[1] * 2
 
         if ignore_border:
             if ds[0] == st[0]:
@@ -216,7 +220,7 @@ class Pool(Op):
             elif st[0] >= ds[0]:
                 nr = (r - 1) // st[0] + 1
             else:
-                nr = max(0, (r - 1 - ds[0]) // st[0] + 1) + 1
+                nr = max(0, (r - 1 - ds[0] + st[0]) // st[0]) + 1
 
             if isinstance(c, theano.Variable):
                 nc = tensor.switch(tensor.ge(st[1], ds[1]),
@@ -226,7 +230,7 @@ class Pool(Op):
             elif st[1] >= ds[1]:
                 nc = (c - 1) // st[1] + 1
             else:
-                nc = max(0, (c - 1 - ds[1]) // st[1] + 1) + 1
+                nc = max(0, (c - 1 - ds[1] + st[1]) // st[1]) + 1
 
         rval = list(imgshape[:-2]) + [nr, nc]
         return rval
@@ -257,10 +261,10 @@ class Pool(Op):
         self.mode = mode
 
     def make_node(self, x):
-        if x.type.ndim != 4:
-            raise TypeError()
         # TODO: consider restricting the dtype?
         x = tensor.as_tensor_variable(x)
+        if x.type.ndim != 4:
+            raise TypeError()
         # If the input shape are broadcastable we can have 0 in the output shape
         broad = x.broadcastable[:2] + (False, False)
         out = tensor.TensorType(x.dtype, broad)
@@ -274,6 +278,9 @@ class Pool(Op):
                 'Pool requires 4D input for now')
         z_shape = self.out_shape(x.shape, self.ds, self.ignore_border, self.st,
                                  self.padding)
+        if not self.ignore_border:
+            assert z_shape[2] > 0
+            assert z_shape[3] > 0
         if (z[0] is None) or (z[0].shape != z_shape):
             z[0] = numpy.empty(z_shape, dtype=x.dtype)
         zz = z[0]
@@ -403,7 +410,7 @@ class Pool(Op):
             }
             else
             {
-                z_r = std::max(0, (r - 1 - %(ds0)s) / %(st0)s + 1) + 1;
+                z_r = std::max(0, (r - 1 - %(ds0)s + %(st0)s) / %(st0)s) + 1;
             }
             // decide how many columns the output has
             if (%(st1)s >= %(ds1)s)
@@ -412,8 +419,10 @@ class Pool(Op):
             }
             else
             {
-                z_c = std::max(0, (c - 1 - %(ds1)s) / %(st1)s + 1) + 1;
+                z_c = std::max(0, (c - 1 - %(ds1)s + %(st0)s) / %(st1)s) + 1;
             }
+            assert(z_r > 0);
+            assert(z_c > 0);
         }
         // memory allocation of z if necessary
         if ((!%(z)s)
@@ -522,7 +531,7 @@ class Pool(Op):
         return ccode % locals()
 
     def c_code_cache_version(self):
-        return (0, 6, 8, 3)
+        return (0, 6, 8, 4)
 
 
 class PoolGrad(Op):
@@ -632,12 +641,12 @@ class MaxPoolGrad(PoolGrad):
     def make_node(self, x, maxout, gz):
         # make_node should only be called by the grad function of
         # Pool, so these asserts should not fail.
-        assert isinstance(x, Variable) and x.ndim == 4
-        assert isinstance(maxout, Variable) and maxout.ndim == 4
-        assert isinstance(gz, Variable) and gz.ndim == 4
         x = tensor.as_tensor_variable(x)
         maxout = tensor.as_tensor_variable(maxout)
         gz = tensor.as_tensor_variable(gz)
+        assert isinstance(x, Variable) and x.ndim == 4
+        assert isinstance(maxout, Variable) and maxout.ndim == 4
+        assert isinstance(gz, Variable) and gz.ndim == 4
 
         return Apply(self, [x, maxout, gz], [x.type()])
 
@@ -814,10 +823,10 @@ class AveragePoolGrad(PoolGrad):
     def make_node(self, x, gz, dummy=None):
         # make_node should only be called by the grad function of
         # Pool, so these asserts should not fail.
-        assert isinstance(x, Variable) and x.ndim == 4
-        assert isinstance(gz, Variable) and gz.ndim == 4
         x = tensor.as_tensor_variable(x)
         gz = tensor.as_tensor_variable(gz)
+        assert isinstance(x, Variable) and x.ndim == 4
+        assert isinstance(gz, Variable) and gz.ndim == 4
 
         return Apply(self, [x, gz], [x.type()])
 
