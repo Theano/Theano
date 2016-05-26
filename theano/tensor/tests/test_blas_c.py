@@ -132,9 +132,11 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         self.a = tensor.tensor(dtype=dtype, broadcastable=())
 
     def test_nan_beta_0(self):
+        mode = self.mode.including()
+        mode.check_isfinite = False
         f = theano.function([self.A, self.x, self.y, self.a],
                             self.a*self.y + theano.dot(self.A, self.x),
-                            mode=self.mode)
+                            mode=mode)
         Aval = numpy.ones((3, 1), dtype=self.dtype)
         xval = numpy.ones((1,), dtype=self.dtype)
         yval = float('NaN') * numpy.ones((3,), dtype=self.dtype)
