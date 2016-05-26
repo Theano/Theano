@@ -125,7 +125,7 @@ def dnn_available(context_name):
 
     ctx = get_context(context_name)
 
-    if not ctx.kind == 'cuda':
+    if not ctx.kind == b'cuda':
         dnn_available.msg = "Not on a CUDA device."
         return False
 

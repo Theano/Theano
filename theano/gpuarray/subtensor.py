@@ -340,7 +340,7 @@ class GpuIncSubtensor(IncSubtensor):
         args[1].name = "b";
         args[1].typecode = %(type2)s;
         args[1].flags = GE_READ;
-        iadd = GpuElemwise_new(%(ctx)s->ops, %(ctx)s->ctx, "", "a += b",
+        iadd = GpuElemwise_new(%(ctx)s->ctx, "", "a += b",
                                2, args, %(nd)s, 0);
         if (iadd == NULL) {
           PyErr_SetString(PyExc_RuntimeError, "Could not intialize inplace add support");
@@ -369,7 +369,7 @@ class GpuIncSubtensor(IncSubtensor):
         parent_version = super(GpuIncSubtensor, self).c_code_cache_version()
         if not parent_version:
             return
-        return parent_version + (5,)
+        return parent_version + (6,)
 
 
 class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
@@ -437,8 +437,7 @@ if (err != GA_NO_ERROR) {
   if (err == GA_VALUE_ERROR) {
     PyErr_SetString(PyExc_IndexError, "Index out of bounds.");
   } else {
-    PyErr_SetString(PyExc_RuntimeError, Gpu_error(%(v)s->context->ops,
-                                                  %(v)s->context->ctx, err));
+    PyErr_SetString(PyExc_RuntimeError, GpuArray_error(&%(v)s->ga, err));
   }
   %(fail)s
 }
@@ -589,7 +588,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
         return super(GpuAdvancedIncSubtensor1_dev20, self).perform(node, inp, out)
 
     def c_code_cache_version(self):
-        return (6,)
+        return (8,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray_helper.h>',
@@ -600,7 +599,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
 
     def c_code(self, node, name, inputs, outputs, sub):
         ctx = self.get_params(node)
-        if ctx.kind != 'cuda':
+        if ctx.kind != b'cuda':
             raise NotImplementedError("cuda only")
         if (self.set_instead_of_inc or
                 node.inputs[0].ndim != node.inputs[1].ndim or
@@ -757,8 +756,8 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
             int err, kerr = 0;
 
             if (threads_per_block[0] > 0 && n_blocks[0] > 0) {
-              err = py_self->ga.ops->property(NULL, py_self->ga.data, NULL,
-                                              GA_CTX_PROP_ERRBUF, &errbuf);
+              err = gpudata_property(py_self->ga.data,
+                                     GA_CTX_PROP_ERRBUF, &errbuf);
               if (err != GA_NO_ERROR) {
                 PyErr_SetString(PyExc_RuntimeError, "Can't fetch error buffer");
                 return 1;
@@ -793,7 +792,7 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
                              GpuKernel_error(&%(k_var)s, err));
                 return 1;
               }
-              err = py_self->ga.ops->buffer_read(&kerr, errbuf, 0, sizeof(int));
+              err = gpudata_read(&kerr, errbuf, 0, sizeof(int));
               if (err != GA_NO_ERROR) {
                 PyErr_SetString(PyExc_RuntimeError, "Can't read error buffer");
                 return 1;
@@ -801,7 +800,7 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
               if (kerr != 0) {
                 PyErr_SetString(PyExc_IndexError, "Index out of bounds");
                 kerr = 0;
-                py_self->ga.ops->buffer_write(errbuf, 0, &kerr, sizeof(int));
+                gpudata_write(errbuf, 0, &kerr, sizeof(int));
                 return 1;
               }
             }

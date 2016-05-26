@@ -105,7 +105,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     algo = choice.algo;
 #else
     size_t free;
-    int err2 = c->ops->property(c->ctx, NULL, NULL, GA_CTX_PROP_FREE_GMEM, &free);
+    int err2 = gpucontext_property(c->ctx, GA_CTX_PROP_FREE_GMEM, &free);
 
     if (err2 != GA_NO_ERROR) {
       PyErr_Format(PyExc_RuntimeError, "Error when trying to find the "
@@ -234,7 +234,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
      * to place a nice get_work_mem() function in.
      */
     if (worksize != 0) {
-      workspace = c->ops->buffer_alloc(c->ctx, worksize, NULL, 0, NULL);
+      workspace = gpudata_alloc(c->ctx, worksize, NULL, 0, NULL);
       if (workspace == NULL) {
         PyErr_SetString(PyExc_RuntimeError,
                         "Could not allocate working memory");
@@ -258,7 +258,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(*output));
 
     if (worksize != 0)
-      c->ops->buffer_release(workspace);
+      gpudata_release(workspace);
 
     cuda_record(input->ga.data, GPUARRAY_CUDA_WAIT_READ);
     cuda_record(kerns->ga.data, GPUARRAY_CUDA_WAIT_READ);

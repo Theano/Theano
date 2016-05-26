@@ -107,7 +107,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
     algo = choice.algo;
 #else
     size_t free;
-    int err2 = c->ops->property(c->ctx, NULL, NULL, GA_CTX_PROP_FREE_GMEM, &free);
+    int err2 = gpucontext_property(c->ctx, GA_CTX_PROP_FREE_GMEM, &free);
 
     if (err2 != GA_NO_ERROR) {
       PyErr_Format(PyExc_RuntimeError, "Error when trying to find the "
@@ -192,7 +192,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
   }
 
   if (worksize != 0) {
-    workspace = c->ops->buffer_alloc(c->ctx, worksize, NULL, 0, NULL);
+    workspace = gpudata_alloc(c->ctx, worksize, NULL, 0, NULL);
     if (workspace == NULL) {
       PyErr_SetString(PyExc_RuntimeError, "Could not allocate working memory");
       cuda_exit(c->ctx);
@@ -214,7 +214,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
     APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(*kerns));
 
   if (worksize != 0)
-    c->ops->buffer_release(workspace);
+    gpudata_release(workspace);
 
   cuda_record(input->ga.data, GPUARRAY_CUDA_WAIT_READ);
   cuda_record(output->ga.data, GPUARRAY_CUDA_WAIT_READ);

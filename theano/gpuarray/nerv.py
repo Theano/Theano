@@ -105,7 +105,7 @@ class Gemm16(COp):
         return """
 bcode = bin_%(name)s;
 sz = sizeof(bin_%(name)s);
-if (GpuKernel_init(&k_%(name)s, c->ops, c->ctx, 1, &bcode, &sz,
+if (GpuKernel_init(&k_%(name)s, c->ctx, 1, &bcode, &sz,
                    "hgemm_%(name)s", 13, types, GA_USE_BINARY, NULL)
     != GA_NO_ERROR) {
   PyErr_SetString(PyExc_RuntimeError, "Could not initialize kernel %(name)s");
