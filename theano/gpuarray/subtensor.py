@@ -20,6 +20,22 @@ from .basic_ops import (as_gpuarray_variable, HideC, GpuKernelBase, Kernel,
                         infer_context_name)
 
 
+iadd_reg = {}
+
+
+def get_iadd(a, b):
+    key = (a.type.dtype, b.type.dtype, a.type.context)
+    if key not in iadd_reg:
+        if a.dtype == 'float16' or b.dtype == 'float16':
+            raise NotImplementedError('float16 is not supported by pygpu '
+                                      'elemwise')
+        a_arg = pygpu.elemwise.arg('a', a.type.dtype, read=True, write=True)
+        b_arg = pygpu.elemwise.arg('b', b.type.dtype, read=True)
+        res = pygpu.elemwise.GpuElemwise(a.type.context, "a = a + b", [a_arg, b_arg])
+        iadd_reg[key] = res
+    return iadd_reg[key]
+
+
 class GpuSubtensor(HideC, Subtensor):
     """
     Subtensor on the GPU.
@@ -217,9 +233,10 @@ class GpuIncSubtensor(IncSubtensor):
             # we've sliced out an N-D tensor with N > 0
             if not self.set_instead_of_inc:
                 # sub_x += y
-                pygpu.elemwise.ielemwise2(sub_x, '+', y, broadcast=False)
+                iadd = get_iadd(node.inputs[0], node.inputs[1])
+                iadd(sub_x, y, broadcast=False)
             else:
-                # sub_x += -sub_x + y
+                # sub_x[...] = y
                 x.__setitem__(cdata, y)
         else:
             # scalar case
@@ -452,7 +469,6 @@ class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
     Implement AdvancedIncSubtensor1 on the gpu.
 
     """
-
     def make_node(self, x, y, ilist):
         ctx_name = infer_context_name(x, y)
         x_ = as_gpuarray_variable(x, ctx_name)
@@ -479,17 +495,6 @@ class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
                     opname, x_.type.ndim, y_.type.ndim))
 
         return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
-
-    def getInplElemwiseAdditionKernel(self, a, b):
-        if a.dtype == 'float16' or b.dtype == 'float16':
-            raise NotImplementedError('float16 is not supported by pygpu '
-                                      'elemwise')
-        a_arg = pygpu.tools.as_argument(a, 'a')
-        b_arg = pygpu.tools.as_argument(b, 'b')
-        args = [a_arg, b_arg]
-        oper = "a[i] = a[i] + %(b)s" % {'b': b_arg.expr()}
-        k = pygpu.elemwise.ElemwiseKernel(a.context, args, oper)
-        return k
 
     # We can't use the parent version that loops on each index
     # as we also need to loop when set_instead_of_inc is True and the
@@ -521,7 +526,7 @@ class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
                 for (j, i) in enumerate(idx):
                     x[i] = y[j]
             else:
-                k = self.getInplElemwiseAdditionKernel(x[0], y[0])
+                k = get_iadd(node.inputs[0], node.inputs[1])
                 for (j, i) in enumerate(idx):
                     k(x[i], y[j], broadcast=True)
         else:
@@ -536,7 +541,7 @@ class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
                 for i in idx:
                     x[i] = reshaped_y
             else:
-                k = self.getInplElemwiseAdditionKernel(x[0], reshaped_y)
+                k = get_iadd(node.inputs[0], node.inputs[1])
                 for i in idx:
                     k(x[i], reshaped_y, broadcast=True)
 
