@@ -2142,6 +2142,7 @@ class GCC_compiler(Compiler):
         cxx = theano.config.cxx
         cxx_falgs = ['-I%s' % idir for idir in include_dirs]
         ld_flags = ['-L%s' % ldir for ldir in lib_dirs]
+        ld_flags = ld_flags + ['-Wl,-rpath,%s' % ldir for ldir in lib_dirs]
         lib_flags = ['-l%s' % l for l in libs]
         makefile = "CXX=%s\n" % (cxx)
         makefile = "CXXFLAGS= "

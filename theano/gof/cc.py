@@ -19,6 +19,7 @@ from theano.compat import PY3
 from theano.compat import izip
 from six import string_types, reraise
 from six.moves import StringIO, xrange
+import distutils.sysconfig
 
 # gof imports
 from theano.gof import graph
@@ -1799,6 +1800,7 @@ class CLinker(link.Linker):
         """
         in_init = ""
         out_print = ""
+        python_prefix = distutils.sysconfig.EXEC_PREFIX
         args = ["storage_%s" % self.r2symbol[variable] for variable
                 in utils.uniq(self.inputs)]
         shared_variables = []
@@ -1886,7 +1888,7 @@ class CLinker(link.Linker):
         main = """
 %(mapping_str)s
  int main(int argc, char *argv[]) {
-
+ setenv("PYTHONHOME","%(python_prefix)s",1);
  %(set_program_name)s
  Py_Initialize();
 
