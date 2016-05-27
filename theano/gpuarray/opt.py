@@ -11,7 +11,7 @@ from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         SequenceDB, Optimizer, toolbox)
-from theano.gof.optdb import LocalGroupDB
+from theano.gof.optdb import LocalGroupDB, Query
 from theano.gof.op import Op
 from theano.ifelse import IfElse
 
@@ -228,16 +228,20 @@ class GraphToGPU(Optimizer):
         move_to_GPU = True
 
         # Building a new graph
+        # Iterating through inputs of graph
         for i in fgraph.inputs:
-            if type(i) is not theano.tensor.TensorVariable:
-                continue
-            mapping[i] = GpuFromHost(None)(i)
+            if isinstance(i.type, tensor.TensorType):
+                mapping[i] = GpuFromHost(None)(i)
+            else:
+                mapping[i] = i
 
+        # Iterating through output of all the nodes
         for n in fgraph.toposort():
             for o in n.outputs:
-                if type(o) is not theano.tensor.TensorVariable:
-                    continue
-                mapping[o] = GpuFromHost(None)(o)
+                if isinstance(i.type, tensor.TensorType):
+                    mapping[o] = GpuFromHost(None)(o)
+                else:
+                    mapping[o] = o
 
         for node in fgraph.toposort():
 
@@ -252,25 +256,23 @@ class GraphToGPU(Optimizer):
             # Will return a list of OP
             # If None, means can't be moved.
 
-            new_ops = []
-            for lopt in (gpu_optimizer.query().local_optimizers_all +
-                         gpu_optimizer.query().local_optimizers_map.get(type(node.op), []) +
-                         gpu_optimizer.query().local_optimizers_map.get(node.op, [])):
+            new_ops = None
 
-                new_ops.append(lopt.transform(node) or lopt(node))
+            # Selecting the best optimizer
+            # TODO : the tag should be updated to the one user provides
+            # currently using fast_run and fast_compile tag
+            for lopt in (gpu_optimizer.query(include=['fast_run', 'fast_compile']).local_optimizers_all +
+                         gpu_optimizer.query(include=['fast_run', 'fast_compile']).local_optimizers_map.get(type(node.op), []) +
+                         gpu_optimizer.query(include=['fast_run', 'fast_compile']).local_optimizers_map.get(node.op, [])):
 
-            if all(isinstance(x, Op) for x in new_ops):
-                move_to_GPU = False
+                new_ops = lopt.transform(node) or lopt(node)
+                break
 
             if not new_ops:
                 move_to_GPU = False
 
-            for i in node.inputs:
-                if type(i) is not theano.tensor.TensorVariable:
-                    continue
-                newnode = node.clone_with_new_inputs([mapping.get(i) for i in node.inputs])
-
             if move_to_GPU:
+                newnode = new_ops(*[mapping.get(i) for i in node.inputs])
                 for new_o, old_o in zip(newnode.outputs, node.outputs):
                     mapping[old_o] = new_o
             else:
@@ -278,9 +280,15 @@ class GraphToGPU(Optimizer):
                     mapping[o] = o
 
             for o in fgraph.outputs:
-                if type(i) is not theano.tensor.TensorVariable:
-                    continue
-                fgraph.replace_validate(o, mapping[o])
+                try:
+                    new_o = mapping[o]
+                except KeyError as k:
+                    pass
+                if new_o.type != o.type:
+                    assert isinstance(o.type, tensor.TensorType)
+                    assert isinstance(new_o.type, GpuArrayType)
+                    new_o = host_from_gpu(new_o)
+                fgraph.replace_validate(o, new_o)
 
 
 gpu_seqopt.register('GraphToGPU', GraphToGPU(),
