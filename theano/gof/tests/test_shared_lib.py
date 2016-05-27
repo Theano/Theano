@@ -23,11 +23,11 @@ def test_basic():
         x = os.system(os.path.join(dir, 'exec'))
         assert x == 0, "The executable crashed!"
 
-        # Test raise error if no c code
-        try:
-            theano.function((a,), [theano.tensor.argmax(a)],
-                            theano.Mode(linker='c'),
-                            on_unused_input='ignore')
-            assert False, "Expected an error"
-        except NotImplementedError:
-            pass
+        # # Test raise error if no c code
+        # try:
+        #     theano.function((a,), [theano.tensor.argmax(a)],
+        #                     theano.Mode(linker='c'),
+        #                     on_unused_input='ignore')
+        #     assert False, "Expected an error"
+        # except NotImplementedError:
+        #     pass
