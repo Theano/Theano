@@ -726,3 +726,62 @@ def norm(x, ord):
             raise ValueError(0)
     elif ndim > 2:
         raise NotImplementedError("We don't support norm witn ndim > 2")
+
+
+class TensorInv(Op):
+    """
+    Class wrapper for tensorinv() function;
+    Theano utilization of numpy.linalg.tensorinv;
+    """
+    _numop = staticmethod(numpy.linalg.tensorinv)
+    __props__ = ('ind',)
+
+    def __init__(self, ind=2):
+        self.ind = ind
+
+    def make_node(self, a):
+        a = as_tensor_variable(a)
+        out = a.type()
+        return Apply(self, [a], [out])
+
+    def perform(self, node, inputs, outputs):
+        (a,) = inputs
+        (x,) = outputs
+        x[0] = self._numop(a, self.ind)
+
+    def infer_shape(self, node, shapes):
+        sp = shapes[0][self.ind:] + shapes[0][:self.ind]
+        return [sp]
+
+
+def tensorinv(a, ind=2):
+    """
+    Does not run on GPU;
+    Theano utilization of numpy.linalg.tensorinv;
+
+    Compute the 'inverse' of an N-dimensional array.
+    The result is an inverse for `a` relative to the tensordot operation
+    ``tensordot(a, b, ind)``, i. e., up to floating-point accuracy,
+    ``tensordot(tensorinv(a), a, ind)`` is the "identity" tensor for the
+    tensordot operation.
+
+    Parameters
+    ----------
+    a : array_like
+        Tensor to 'invert'. Its shape must be 'square', i. e.,
+        ``prod(a.shape[:ind]) == prod(a.shape[ind:])``.
+    ind : int, optional
+        Number of first indices that are involved in the inverse sum.
+        Must be a positive integer, default is 2.
+
+    Returns
+    -------
+    b : ndarray
+        `a`'s tensordot inverse, shape ``a.shape[ind:] + a.shape[:ind]``.
+
+    Raises
+    ------
+    LinAlgError
+        If `a` is singular or not 'square' (in the above sense).
+    """
+    return TensorInv(ind)(a)

@@ -273,7 +273,8 @@ def safe_no_dnn_workmem_bwd(workmem):
     return True
 
 AddConfigVar('dnn.conv.workmem_bwd',
-             "This flag is deprecated; use dnn.conv.algo_bwd.",
+             "This flag is deprecated; use `dnn.conv.algo_bwd_filter` "
+             "and `dnn.conv.algo_bwd_data` instead.",
              ConfigParam('', allow_override=False,
                          filter=safe_no_dnn_workmem_bwd),
              in_c_key=False)

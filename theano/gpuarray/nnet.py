@@ -189,7 +189,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
                        flags=flags, objvar=k_var)]
 
     def c_code(self, node, nodename, inp, out, sub):
-        if node.inputs[0].type.context.kind != 'cuda':
+        if node.inputs[0].type.context.kind != b'cuda':
             raise NotImplementedError('cuda only')
         typecode_x = pygpu.gpuarray.dtype_to_typecode(node.inputs[0].dtype)
         typecode_b = pygpu.gpuarray.dtype_to_typecode(node.inputs[1].dtype)
@@ -375,7 +375,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code(self, node, nodename, inp, out, sub):
-        if node.inputs[0].type.context.kind != 'cuda':
+        if node.inputs[0].type.context.kind != b'cuda':
             raise NotImplementedError("cuda only")
         typecode_dx = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
         itemsize_dnll = numpy.dtype(node.inputs[0].dtype).itemsize
@@ -584,7 +584,7 @@ class GpuSoftmax(GpuKernelBase, Op):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code(self, node, nodename, inp, out, sub):
-        if node.inputs[0].type.context.kind != 'cuda':
+        if node.inputs[0].type.context.kind != b'cuda':
             raise NotImplementedError("cuda only")
         dtype_x = node.inputs[0].dtype
         work_x = work_dtype(dtype_x)
@@ -783,7 +783,7 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code(self, node, nodename, inp, out, sub):
-        if node.inputs[0].type.context.kind != 'cuda':
+        if node.inputs[0].type.context.kind != b'cuda':
             raise NotImplementedError('cuda only')
         dtype_x = node.inputs[0].dtype
         dtype_b = node.inputs[1].dtype
