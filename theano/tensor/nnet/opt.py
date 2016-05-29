@@ -79,7 +79,8 @@ def local_abstractconv_gemm(node):
     if node.op.filter_flip:
         kern = kern[:, :, ::-1, ::-1]
     rval = CorrMM(border_mode=node.op.border_mode,
-                  subsample=node.op.subsample)(img, kern)
+                  subsample=node.op.subsample,
+                  filter_dilation=node.op.filter_dilation)(img, kern)
     copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
@@ -97,7 +98,8 @@ def local_abstractconv_gradweight_gemm(node):
         return None
 
     rval = CorrMM_gradWeights(border_mode=node.op.border_mode,
-                              subsample=node.op.subsample)(img, topgrad, shape)
+                              subsample=node.op.subsample,
+                              filter_dilation=node.op.filter_dilation)(img, topgrad, shape)
     copy_stack_trace(node.outputs[0], rval)
 
     # need to flip the kernel if necessary
@@ -124,8 +126,9 @@ def local_abstractconv_gradinputs_gemm(node):
     if node.op.filter_flip:
         kern = kern[:, :, ::-1, ::-1]
     rval = CorrMM_gradInputs(border_mode=node.op.border_mode,
-                             subsample=node.op.subsample)(kern, topgrad,
-                                                          shape)
+                             subsample=node.op.subsample,
+                             filter_dilation=node.op.filter_dilation)(kern, topgrad,
+                                                                      shape)
     copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
@@ -221,7 +224,9 @@ def local_conv2d_gradweight_cpu(node):
     assert len(op_imshp) == 4 and len(op_kshp) == 4
 
     outshp = get_conv_output_shape(op_imshp, op_kshp,
-                                   node.op.border_mode, node.op.subsample)[2:]
+                                   node.op.border_mode,
+                                   node.op.subsample,
+                                   node.op.filter_dilation)[2:]
     fulloutshp = get_conv_output_shape(op_imshp, op_kshp,
                                        node.op.border_mode, (1, 1))[2:]
 
@@ -334,7 +339,9 @@ def local_conv2d_gradinputs_cpu(node):
     filters = filters[:, :, ::-1, ::-1]
 
     outshp = get_conv_output_shape(op_imshp, op_kshp,
-                                   node.op.border_mode, node.op.subsample)[2:]
+                                   node.op.border_mode,
+                                   node.op.subsample,
+                                   node.op.filter_dilation)[2:]
     fulloutshp = get_conv_output_shape(op_imshp, op_kshp,
                                        node.op.border_mode, (1, 1))[2:]
 

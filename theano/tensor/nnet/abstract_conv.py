@@ -32,7 +32,8 @@ _logger = logging.getLogger("theano.tensor.nnet.abstract_conv")
 
 
 def get_conv_output_shape(image_shape, kernel_shape,
-                          border_mode, subsample):
+                          border_mode, subsample,
+                          filter_dilation=(1, 1)):
     """
     This function compute the output shape of convolution operation.
 
@@ -53,6 +54,8 @@ def get_conv_output_shape(image_shape, kernel_shape,
     subsample: tuple of int (symbolic or numeric). Its or three elements
         espectively correspond to the subsampling on height and width (and
         possibly depth) axis.
+    filter_dilation: tuple of int (symbolic or numeric). Its two elements
+        correspond respectively to the dilation on height and width axis.
 
     Returns
     -------
@@ -65,17 +68,19 @@ def get_conv_output_shape(image_shape, kernel_shape,
     nkern, kshp = kernel_shape[0], kernel_shape[2:]
     if isinstance(border_mode, tuple):
         out_shp = tuple(get_conv_shape_1axis(
-            imshp[i], kshp[i], border_mode[i], subsample[i])
-            for i in range(len(subsample)))
+            imshp[i], kshp[i], border_mode[i],
+            subsample[i], filter_dilation[i]) for i in range(len(subsample)))
     else:
         out_shp = tuple(get_conv_shape_1axis(
-            imshp[i], kshp[i], border_mode, subsample[i])
-            for i in range(len(subsample)))
+            imshp[i], kshp[i], border_mode,
+            subsample[i], filter_dilation[i]) for i in range(len(subsample)))
     return (bsize, nkern) + out_shp
 
 
-def get_conv_shape_1axis(image_shape, kernel_shape,
-                         border_mode, subsample):
+# filter dilation set by default to 1
+# for compatibility with other tests.
+def get_conv_shape_1axis(image_shape, kernel_shape, border_mode,
+                         subsample, dilation=1):
     """
     This function compute the output shape of convolution operation.
 
@@ -90,6 +95,8 @@ def get_conv_shape_1axis(image_shape, kernel_shape,
         the padding on the considered axis.
     subsample: int. It must correspond to the subsampling on the
         considered axis.
+    dilation: int. It must correspond to the dilation on the
+        considered axis.
 
     Returns
     -------
@@ -97,19 +104,22 @@ def get_conv_shape_1axis(image_shape, kernel_shape,
         considered axis. None if undefined.
 
     """
-    if None in [image_shape, kernel_shape, border_mode, subsample]:
+    if None in [image_shape, kernel_shape, border_mode,
+                subsample, dilation]:
         return None
+    # Implicit dilated kernel shape
+    dil_kernel_shape = (kernel_shape - 1) * dilation + 1
     if border_mode == "half":
-        pad = kernel_shape // 2
+        pad = dil_kernel_shape // 2
     elif border_mode == "full":
-        pad = kernel_shape - 1
+        pad = dil_kernel_shape - 1
     elif border_mode == "valid":
         pad = 0
     else:
         pad = border_mode
         if pad < 0:
             raise ValueError("border_mode must be >= 0")
-    out_shp = (image_shape + 2 * pad - kernel_shape) // subsample + 1
+    out_shp = (image_shape + 2 * pad - dil_kernel_shape) // subsample + 1
 
     return out_shp
 
@@ -120,7 +130,8 @@ def conv2d(input,
            filter_shape=None,
            border_mode='valid',
            subsample=(1, 1),
-           filter_flip=True):
+           filter_flip=True,
+           filter_dilation=(1, 1)):
     """This function will build the symbolic graph for convolving a mini-batch of a
     stack of 2D inputs with a set of 2D filters. The implementation is modelled
     after Convolutional Neural Networks (CNN).
@@ -134,7 +145,8 @@ def conv2d(input,
                              kshp=filter_shape,
                              border_mode=border_mode,
                              subsample=subsample,
-                             filter_flip=filter_flip)
+                             filter_flip=filter_flip,
+                             filter_dilation=filter_dilation)
     return conv_op(input, filters)
 
 
@@ -144,7 +156,8 @@ def conv2d_grad_wrt_inputs(output_grad,
                            filter_shape=None,
                            border_mode='valid',
                            subsample=(1, 1),
-                           filter_flip=True):
+                           filter_flip=True,
+                           filter_dilation=(1, 1)):
     """Compute conv output gradient w.r.t its inputs
 
     This function builds the symbolic graph for getting the
@@ -214,6 +227,9 @@ def conv2d_grad_wrt_inputs(output_grad,
         referred to as a convolution, and this is the default. If
         ``False``, the filters are not flipped and the operation is
         referred to as a cross-correlation.
+    filter_dilation : tuple of len 2
+        The filter dilation used in the forward pass.
+        Also known as input striding.
 
     Returns
     -------
@@ -263,7 +279,8 @@ def conv2d_grad_wrt_inputs(output_grad,
                                               kshp=filter_shape,
                                               border_mode=border_mode,
                                               subsample=subsample,
-                                              filter_flip=filter_flip)
+                                              filter_flip=filter_flip,
+                                              filter_dilation=filter_dilation)
 
     return grad_input_op(filters, output_grad, input_shape[-2:])
 
@@ -274,7 +291,8 @@ def conv2d_grad_wrt_weights(input,
                             input_shape=None,
                             border_mode='valid',
                             subsample=(1, 1),
-                            filter_flip=True):
+                            filter_flip=True,
+                            filter_dilation=(1, 1)):
     """Compute conv output gradient w.r.t its weights
 
     This function will build the symbolic graph for getting the
@@ -327,7 +345,6 @@ def conv2d_grad_wrt_weights(input,
           ``(int1, int2)``
             pad input with a symmetric border of ``int1`` rows and
             ``int2`` columns, then perform a valid convolution.
-
     subsample : tuple of len 2
         The subsampling used in the forward pass of the convolutional
         operation.  Also called strides elsewhere.
@@ -337,6 +354,9 @@ def conv2d_grad_wrt_weights(input,
         referred to as a convolution, and this is the default. If
         ``False``, the filters are not flipped and the operation is
         referred to as a cross-correlation.
+    filter_dilation : tuple of len 2
+        The filter dilation used in the forward pass.
+        Also known as input striding.
 
     Returns
     -------
@@ -386,7 +406,8 @@ def conv2d_grad_wrt_weights(input,
                                                kshp=numerical_filter_shape,
                                                border_mode=border_mode,
                                                subsample=subsample,
-                                               filter_flip=filter_flip)
+                                               filter_flip=filter_flip,
+                                               filter_dilation=filter_dilation)
 
     return gradWeight_op(input, output_grad, filter_shape[:-2])
 
@@ -541,7 +562,8 @@ def bilinear_upsampling(input,
                                                filter_shape=(1, 1, None, 1),
                                                border_mode=(pad, 0),
                                                subsample=(ratio, 1),
-                                               filter_flip=True)
+                                               filter_flip=True,
+                                               filter_dilation=(1, 1))
         # upsampling cols
         upsampled_mat = conv2d_grad_wrt_inputs(output_grad=upsampled_row,
                                                filters=kern[np.newaxis,
@@ -553,7 +575,8 @@ def bilinear_upsampling(input,
                                                filter_shape=(1, 1, 1, None),
                                                border_mode=(0, pad),
                                                subsample=(1, ratio),
-                                               filter_flip=True)
+                                               filter_flip=True,
+                                               filter_dilation=(1, 1))
     else:
         kern = bilinear_kernel_2D(ratio=ratio, normalize=True)
         upsampled_mat = conv2d_grad_wrt_inputs(output_grad=concat_mat,
@@ -565,7 +588,8 @@ def bilinear_upsampling(input,
                                                filter_shape=(1, 1, None, None),
                                                border_mode=(pad, pad),
                                                subsample=(ratio, ratio),
-                                               filter_flip=True)
+                                               filter_flip=True,
+                                               filter_dilation=(1, 1))
 
     return upsampled_mat.reshape((input.shape[0], input.shape[1],
                                   row * ratio, col * ratio))
@@ -620,14 +644,18 @@ class BaseAbstractConv2d(Op):
         are not flipped and the operation is referred to as a
         cross-correlation.
 
+    filter_dilation: tuple of len 2
+        Factor by which to subsample (stride) the input.
+        Also called dilation factor.
     """
     check_broadcast = False
-    __props__ = ('border_mode', 'subsample', 'filter_flip', 'imshp', 'kshp')
+    __props__ = ('border_mode', 'subsample', 'filter_flip',
+                 'imshp', 'kshp', 'filter_dilation')
 
     def __init__(self,
-                 imshp=None, kshp=None,
-                 border_mode="valid", subsample=(1, 1),
-                 filter_flip=True):
+                 imshp=None, kshp=None, border_mode="valid",
+                 subsample=(1, 1), filter_flip=True,
+                 filter_dilation=(1, 1)):
 
         if isinstance(border_mode, integer_types):
             border_mode = (border_mode, border_mode)
@@ -673,6 +701,9 @@ class BaseAbstractConv2d(Op):
         if len(subsample) != 2:
             raise ValueError("subsample must have two elements")
         self.subsample = tuple(subsample)
+        if len(filter_dilation) != 2:
+            raise ValueError("filter_dilation must have two elements")
+        self.filter_dilation = tuple(filter_dilation)
 
     def flops(self, inp, outp):
         """ Useful with the hack in profilemode to print the MFlops"""
@@ -694,7 +725,7 @@ class BaseAbstractConv2d(Op):
         # This may change in the future.
         return False
 
-    def conv2d(self, img, kern, mode="valid"):
+    def conv2d(self, img, kern, mode="valid", dilation=(1, 1)):
         """
         Basic slow python implementatation for DebugMode
         """
@@ -708,8 +739,16 @@ class BaseAbstractConv2d(Op):
                 'invalid mode {}, which must be either '
                 '"valid" or "full"'.format(mode))
 
-        out_shape = get_conv_output_shape(img.shape, kern.shape, mode, [1, 1])
+        out_shape = get_conv_output_shape(img.shape, kern.shape,
+                                          mode, [1, 1], dilation)
+
         out = numpy.zeros(out_shape, dtype=img.dtype)
+        dil_kern_shp = kern.shape[:-2] + ((kern.shape[-2] - 1) * dilation[0] + 1,
+                                          (kern.shape[-1] - 1) * dilation[1] + 1)
+        dilated_kern = numpy.zeros(dil_kern_shp, dtype=kern.dtype)
+        dilated_kern[:, :,
+                     ::dilation[0],
+                     ::dilation[1]] = kern
         val = _valfrommode(mode)
         bval = _bvalfromboundary('fill')
 
@@ -720,7 +759,7 @@ class BaseAbstractConv2d(Op):
                     for im0 in xrange(img.shape[1]):
                         # some cast generates a warning here
                         out[b, n, ...] += _convolve2d(img[b, im0, ...],
-                                                      kern[n, im0, ...],
+                                                      dilated_kern[n, im0, ...],
                                                       1, val, bval, 0)
         return out
 
@@ -736,10 +775,11 @@ class AbstractConv2d(BaseAbstractConv2d):
                  kshp=None,
                  border_mode="valid",
                  subsample=(1, 1),
-                 filter_flip=True):
-        super(AbstractConv2d, self).__init__(imshp, kshp,
-                                             border_mode, subsample,
-                                             filter_flip)
+                 filter_flip=True,
+                 filter_dilation=(1, 1)):
+        super(AbstractConv2d, self).__init__(imshp, kshp, border_mode,
+                                             subsample, filter_flip,
+                                             filter_dilation)
 
     def make_node(self, img, kern):
         # Make sure both inputs are Variables with the same Type
@@ -766,6 +806,8 @@ class AbstractConv2d(BaseAbstractConv2d):
         img, kern = inp
         img = numpy.asarray(img)
         kern = numpy.asarray(kern)
+        dil_kernshp = ((kern.shape[2] - 1) * self.filter_dilation[0] + 1,
+                       (kern.shape[3] - 1) * self.filter_dilation[1] + 1)
         o, = out_
         mode = self.border_mode
 
@@ -777,9 +819,9 @@ class AbstractConv2d(BaseAbstractConv2d):
                 ' integers'.format(mode))
 
         if mode == "full":
-            mode = (kern.shape[2] - 1, kern.shape[3] - 1)
+            mode = (dil_kernshp[0] - 1, dil_kernshp[1] - 1)
         elif mode == "half":
-            mode = (kern.shape[2] // 2, kern.shape[3] // 2)
+            mode = (dil_kernshp[0] // 2, dil_kernshp[1] // 2)
         if isinstance(mode, tuple):
             pad_h, pad_w = map(int, mode)
             mode = "valid"
@@ -790,7 +832,7 @@ class AbstractConv2d(BaseAbstractConv2d):
             img = new_img
         if not self.filter_flip:
             kern = kern[:, :, ::-1, ::-1]
-        conv_out = self.conv2d(img, kern, mode="valid")
+        conv_out = self.conv2d(img, kern, mode="valid", dilation=self.filter_dilation)
         conv_out = conv_out[:, :, ::self.subsample[0], ::self.subsample[1]]
 
         o[0] = node.outputs[0].type.filter(conv_out)
@@ -812,12 +854,14 @@ class AbstractConv2d(BaseAbstractConv2d):
         d_bottom = AbstractConv2d_gradInputs(self.imshp, self.kshp,
                                              self.border_mode,
                                              self.subsample,
-                                             self.filter_flip)(
+                                             self.filter_flip,
+                                             self.filter_dilation)(
             weights, top, bottom.shape[-2:])
         d_weights = AbstractConv2d_gradWeights(self.imshp, self.kshp,
                                                self.border_mode,
                                                self.subsample,
-                                               self.filter_flip)(
+                                               self.filter_flip,
+                                               self.filter_dilation)(
 
             bottom, top, weights.shape[-2:])
 
@@ -844,7 +888,7 @@ class AbstractConv2d(BaseAbstractConv2d):
             kshp = [kshp[i] if self.kshp[i] is None else self.kshp[i]
                     for i in range(4)]
         res = get_conv_output_shape(imshp, kshp, self.border_mode,
-                                    self.subsample)
+                                    self.subsample, self.filter_dilation)
         return [res]
 
 
@@ -863,11 +907,13 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
                  kshp=None,
                  border_mode="valid",
                  subsample=(1, 1),
-                 filter_flip=True):
+                 filter_flip=True,
+                 filter_dilation=(1, 1)):
         super(AbstractConv2d_gradWeights, self).__init__(imshp, kshp,
                                                          border_mode,
                                                          subsample,
-                                                         filter_flip)
+                                                         filter_flip,
+                                                         filter_dilation)
 
     # Update shape/height_width
     def make_node(self, img, topgrad, shape):
@@ -943,15 +989,16 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
         d_bottom = AbstractConv2d_gradInputs(self.imshp, self.kshp,
                                              self.border_mode,
                                              self.subsample,
-                                             self.filter_flip)(
-                                                 weights,
-                                                 top,
-                                                 bottom.shape[-2:])
+                                             self.filter_flip,
+                                             self.filter_dilation)(weights,
+                                                                   top,
+                                                                   bottom.shape[-2:])
         d_top = AbstractConv2d(self.imshp,
                                self.kshp,
                                self.border_mode,
                                self.subsample,
-                               self.filter_flip)(bottom, weights)
+                               self.filter_flip,
+                               self.filter_dilation)(bottom, weights)
         # Make sure that the broadcastable pattern of the inputs is used
         # for the gradients, even if the grad opts are not able to infer
         # that the dimensions are broadcastable.
@@ -998,11 +1045,13 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
                  kshp=None,
                  border_mode="valid",
                  subsample=(1, 1),
-                 filter_flip=True):
+                 filter_flip=True,
+                 filter_dilation=(1, 1)):
         super(AbstractConv2d_gradInputs, self).__init__(imshp, kshp,
                                                         border_mode,
                                                         subsample,
-                                                        filter_flip)
+                                                        filter_flip,
+                                                        filter_dilation)
 
     # Update shape/height_width
     def make_node(self, kern, topgrad, shape):
@@ -1070,12 +1119,15 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
         bottom, = grads
         d_weights = AbstractConv2d_gradWeights(self.imshp, self.kshp,
                                                self.border_mode,
-                                               self.subsample)(
-                                                   bottom, top,
-                                                   weights.shape[-2:])
+                                               self.subsample,
+                                               self.filter_flip,
+                                               self.filter_dilation)(bottom, top,
+                                                                     weights.shape[-2:])
         d_top = AbstractConv2d(self.imshp, self.kshp,
-                               self.border_mode, self.subsample)(
-                                   bottom, weights)
+                               self.border_mode,
+                               self.subsample,
+                               self.filter_flip,
+                               self.filter_dilation)(bottom, weights)
         # Make sure that the broadcastable pattern of the inputs is used
         # for the gradients, even if the grad opts are not able to infer
         # that the dimensions are broadcastable.

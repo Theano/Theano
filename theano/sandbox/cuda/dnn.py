@@ -2612,6 +2612,8 @@ def local_abstractconv_cudnn(node):
                                  AbstractConv2d_gradWeights,
                                  AbstractConv2d_gradInputs))):
         return None
+    if (node.op.filter_dilation != (1, 1)):
+        return None
 
     inp1 = node.inputs[0]
     inp2 = node.inputs[1]
@@ -2619,6 +2621,7 @@ def local_abstractconv_cudnn(node):
     if (not isinstance(inp1.type, CudaNdarrayType) or
             not isinstance(inp2.type, CudaNdarrayType)):
         return None
+
     if not dnn_available():
         return None
 

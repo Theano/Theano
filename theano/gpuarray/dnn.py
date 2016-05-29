@@ -1393,6 +1393,9 @@ def local_abstractconv_cudnn(node):
     inp1 = node.inputs[0]
     inp2 = node.inputs[1]
 
+    if (node.op.filter_dilation != (1, 1)):
+        return None
+
     if not isinstance(inp1.type, GpuArrayType):
         return None
 

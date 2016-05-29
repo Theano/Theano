@@ -27,12 +27,14 @@ class BaseCorrMM(gof.Op):
         or a pair of integers
     subsample
         Perform subsampling of the output (default: (1, 1)).
-
+    filter_dilation
+        Perform dilated correlation (default: (1,1))
     """
     check_broadcast = False
-    __props__ = ('border_mode', 'subsample')
+    __props__ = ('border_mode', 'subsample', 'filter_dilation')
 
-    def __init__(self, border_mode="valid", subsample=(1, 1)):
+    def __init__(self, border_mode="valid", subsample=(1, 1),
+                 filter_dilation=(1, 1)):
         if isinstance(border_mode, integer_types):
             if border_mode < 0:
                 raise ValueError(
@@ -55,7 +57,10 @@ class BaseCorrMM(gof.Op):
         self.border_mode = border_mode
         if len(subsample) != 2:
             raise ValueError("subsample must have two elements")
+        if len(filter_dilation) != 2:
+            raise ValueError("filter_dilation must have two elements")
         self.subsample = tuple(subsample)
+        self.filter_dilation = tuple(filter_dilation)
 
     @property
     def pad(self):
@@ -64,10 +69,11 @@ class BaseCorrMM(gof.Op):
         return (0, 0)
 
     def __str__(self):
-        return '%s{%s, %s}' % (
+        return '%s{%s, %s, %s}' % (
             self.__class__.__name__,
             self.border_mode,
-            str(self.subsample))
+            str(self.subsample),
+            str(self.filter_dilation))
 
     def c_support_code(self):
         return blas_header_text()
@@ -89,7 +95,7 @@ class BaseCorrMM(gof.Op):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (1, 1)
+        return (1, 2)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -155,6 +161,7 @@ class BaseCorrMM(gof.Op):
         if not theano.config.blas.ldflags:
             raise NotImplementedError("C code for CorrMM* classes need a blas library.")
         dH, dW = self.subsample
+        dilH, dilW = self.filter_dilation
         if self.border_mode == "half":
             padH = padW = -1
         elif self.border_mode == "full":
@@ -201,6 +208,8 @@ class BaseCorrMM(gof.Op):
     // Optional args
     int dH = %(dH)s;
     int dW = %(dW)s;
+    int dilH = %(dilH)s;
+    int dilW = %(dilW)s;
     int padH = %(padH)s;
     int padW = %(padW)s;
 
@@ -224,39 +233,43 @@ class BaseCorrMM(gof.Op):
         }
         else if (padH == -2) {
             // vertical full padding, we can infer the kernel height
-            kH = 2 - PyArray_DIMS(bottom)[2] + (PyArray_DIMS(top)[2] - 1) * dH;
+            kH = (2 - PyArray_DIMS(bottom)[2] + (PyArray_DIMS(top)[2] - 1) * dH - 1)/ dilH + 1;
         }
         else {
             // explicit padding, we can infer the kernel height
-            kH = PyArray_DIMS(bottom)[2] + 2*padH - (PyArray_DIMS(top)[2] - 1) * dH;
+            kH = (PyArray_DIMS(bottom)[2] + 2*padH - (PyArray_DIMS(top)[2] - 1) * dH - 1) / dilH +1;
         }
         if ((dW != 1) || (padW == -1)) {
             kW = %(width)s;
         }
         else if (padW == -2) {
-            kW = 2 - PyArray_DIMS(bottom)[3] + (PyArray_DIMS(top)[3] - 1) * dW;
+            kW = (2 - PyArray_DIMS(bottom)[3] + (PyArray_DIMS(top)[3] - 1) * dW - 1) / dilW + 1;
         }
         else {
-            kW = PyArray_DIMS(bottom)[3] + 2*padW - (PyArray_DIMS(top)[3] - 1) * dW;
+            kW = (PyArray_DIMS(bottom)[3] + 2*padW - (PyArray_DIMS(top)[3] - 1) * dW - 1) / dilW + 1;
         }
     }
 
+    // Implicit dilated kernel size
+    int dil_kH = (kH - 1) * dilH + 1;
+    int dil_kW = (kW - 1) * dilW + 1;
+
     // Auto-padding if requested
     if (padH == -1) {  // vertical half padding
-        padH = kH / 2;
+        padH = dil_kH / 2;
     }
     else if (padH == -2) {  // vertical full padding
-        padH = kH - 1;
+        padH = dil_kH - 1;
     }
     else if (padH < 0) {
         PyErr_SetString(PyExc_ValueError, "BaseCorrMM: padH must be >= -2");
         %(fail)s
     }
     if (padW == -1) {  // horizontal half padding
-        padW = kW / 2;
+        padW = dil_kW / 2;
     }
     else if (padW == -2) {  // horizontal full padding
-        padW = kW - 1;
+        padW = dil_kW - 1;
     }
     else if (padW < 0) {
         PyErr_SetString(PyExc_ValueError, "BaseCorrMM: padW must be >= -2");
@@ -268,15 +281,15 @@ class BaseCorrMM(gof.Op):
     switch(direction) {
     case 0:  // forward pass
         // output is top: (batchsize, num_filters, height, width)
-        // height and width: top = (bottom + 2*pad - weight) / sample + 1
+        // height and width: top = (bottom + 2*pad - ((weight-1)*dil + 1)) / sample + 1
         out_dim[0] = (npy_intp)PyArray_DIMS(bottom)[0];
         out_dim[1] = (npy_intp)PyArray_DIMS(weights)[0];
-        out_dim[2] = (npy_intp)((PyArray_DIMS(bottom)[2] + 2*padH - PyArray_DIMS(weights)[2]) / dH + 1);
-        out_dim[3] = (npy_intp)((PyArray_DIMS(bottom)[3] + 2*padW - PyArray_DIMS(weights)[3]) / dW + 1);
+        out_dim[2] = (npy_intp)((PyArray_DIMS(bottom)[2] + 2*padH - ((PyArray_DIMS(weights)[2]-1)*dilH + 1)) / dH + 1);
+        out_dim[3] = (npy_intp)((PyArray_DIMS(bottom)[3] + 2*padW - ((PyArray_DIMS(weights)[3]-1)*dilW + 1)) / dW + 1);
         break;
     case 1:  // backprop wrt. weights
         // output is weights: (num_filters, num_channels, height, width)
-        // height and width: weights = bottom + 2*pad - (top - 1) * sample
+        // height and width: weights = (bottom + 2*pad - (top - 1) * sample - 1) / dil + 1
         out_dim[0] = (npy_intp)PyArray_DIMS(top)[1];
         out_dim[1] = (npy_intp)PyArray_DIMS(bottom)[1];
         out_dim[2] = (npy_intp)kH;  // already inferred further above
@@ -284,11 +297,11 @@ class BaseCorrMM(gof.Op):
         break;
     case 2:  // backprop wrt. inputs
         // output is bottom: (batchsize, num_channels, height, width)
-        // height and width: bottom = (top - 1) * sample + weights - 2*pad
+        // height and width: bottom = (top - 1) * sample + (weights-1)*dil + 1 - 2*pad
         out_dim[0] = (npy_intp)PyArray_DIMS(top)[0];
         out_dim[1] = (npy_intp)PyArray_DIMS(weights)[1];
-        out_dim[2] = (npy_intp)((dH != 1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + PyArray_DIMS(weights)[2] - 2*padH);
-        out_dim[3] = (npy_intp)((dW != 1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + PyArray_DIMS(weights)[3] - 2*padW);
+        out_dim[2] = (npy_intp)((dH != 1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + (PyArray_DIMS(weights)[2]-1)*dilH + 1 - 2*padH);
+        out_dim[3] = (npy_intp)((dW != 1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + (PyArray_DIMS(weights)[3]-1)*dilW + 1 - 2*padW);
         break;
     default:
         PyErr_SetString(PyExc_ValueError, "BaseCorrMM: direction must be 0, 1, or 2\\n");
@@ -326,7 +339,7 @@ class BaseCorrMM(gof.Op):
     }
 
     // Call corrMM code
-    out2 = corrMM(%(bottom)s, %(weights)s, %(top)s, direction, dH, dW, padH, padW);
+    out2 = corrMM(%(bottom)s, %(weights)s, %(top)s, direction, dH, dW, dilH, dilW, padH, padW);
     if (out2==NULL){
        %(fail)s
     }
@@ -357,10 +370,15 @@ class CorrMM(BaseCorrMM):
         `(sv, sh)` is equivalent to `CorrMM(...)(...)[:,:,::sv, ::sh]`,
         but faster.
         Set to `(1, 1)` to disable subsampling.
+    filter_dilation
+        The filter dilation operation applied to each input image.
+        Should be a tuple with 2 elements.
+        Set to `(1, 1)` to disable filter dilation.
 
     """
-    def __init__(self, border_mode="valid", subsample=(1, 1)):
-        super(CorrMM, self).__init__(border_mode, subsample)
+    def __init__(self, border_mode="valid", subsample=(1, 1),
+                 filter_dilation=(1, 1)):
+        super(CorrMM, self).__init__(border_mode, subsample, filter_dilation)
 
     def make_node(self, img, kern):
         img = as_tensor_variable(img)
@@ -382,7 +400,8 @@ class CorrMM(BaseCorrMM):
             imshp,
             kshp,
             self.border_mode,
-            self.subsample)
+            self.subsample,
+            self.filter_dilation)
         return [res]
 
     def c_code(self, node, nodename, inp, out_, sub):
@@ -395,11 +414,13 @@ class CorrMM(BaseCorrMM):
         bottom, weights = inp
         top, = grads
         d_bottom = CorrMM_gradInputs(self.border_mode,
-                                     self.subsample)(weights, top,
-                                                     bottom.shape[-2:])
+                                     self.subsample,
+                                     self.filter_dilation)(weights, top,
+                                                           bottom.shape[-2:])
         d_weights = CorrMM_gradWeights(self.border_mode,
-                                       self.subsample)(bottom, top,
-                                                       weights.shape[-2:])
+                                       self.subsample,
+                                       self.filter_dilation)(bottom, top,
+                                                             weights.shape[-2:])
         return d_bottom, d_weights
 
 
@@ -415,8 +436,11 @@ class CorrMM_gradWeights(BaseCorrMM):
 
     """
 
-    def __init__(self, border_mode="valid", subsample=(1, 1)):
-        super(CorrMM_gradWeights, self).__init__(border_mode, subsample)
+    def __init__(self, border_mode="valid", subsample=(1, 1),
+                 filter_dilation=(1, 1)):
+        super(CorrMM_gradWeights, self).__init__(border_mode,
+                                                 subsample,
+                                                 filter_dilation)
 
     def make_node(self, img, topgrad, shape=None):
         img = as_tensor_variable(img)
@@ -485,10 +509,12 @@ class CorrMM_gradWeights(BaseCorrMM):
         bottom, top = inp[:2]
         weights, = grads
         d_bottom = CorrMM_gradInputs(self.border_mode,
-                                     self.subsample)(weights, top,
-                                                     bottom.shape[-2:])
+                                     self.subsample,
+                                     self.filter_dilation)(weights, top,
+                                                           bottom.shape[-2:])
         d_top = CorrMM(self.border_mode,
-                       self.subsample)(bottom, weights)
+                       self.subsample,
+                       self.filter_dilation)(bottom, weights)
         d_height_width = ((theano.gradient.DisconnectedType()(),) * 2
                           if len(inp) == 4 else ())
         return (d_bottom, d_top) + d_height_width
@@ -512,8 +538,10 @@ class CorrMM_gradInputs(BaseCorrMM):
 
     """
 
-    def __init__(self, border_mode="valid", subsample=(1, 1)):
-        super(CorrMM_gradInputs, self).__init__(border_mode, subsample)
+    def __init__(self, border_mode="valid", subsample=(1, 1), filter_dilation=(1, 1)):
+        super(CorrMM_gradInputs, self).__init__(border_mode,
+                                                subsample,
+                                                filter_dilation)
 
     def make_node(self, kern, topgrad, shape=None):
         kern = as_tensor_variable(kern)
@@ -586,11 +614,13 @@ class CorrMM_gradInputs(BaseCorrMM):
         weights, top = inp[:2]
         bottom, = grads
         d_weights = CorrMM_gradWeights(self.border_mode,
-                                       self.subsample)(bottom,
-                                                       top,
-                                                       weights.shape[-2:])
+                                       self.subsample,
+                                       self.filter_dilation)(bottom,
+                                                             top,
+                                                             weights.shape[-2:])
         d_top = CorrMM(self.border_mode,
-                       self.subsample)(bottom, weights)
+                       self.subsample,
+                       self.filter_dilation)(bottom, weights)
         d_height_width = ((theano.gradient.DisconnectedType()(),) *
                           2 if len(inp) == 4 else ())
         return (d_weights, d_top) + d_height_width
