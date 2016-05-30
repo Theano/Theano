@@ -10,7 +10,7 @@ except ImportError:
 from six.moves import xrange
 
 import theano
-from theano.tensor.nnet.conv3d2d import conv3d, get_diagonal_subtensor_view, DiagonalSubtensor
+from theano.tensor.nnet.conv3d2d import conv3d, get_diagonal_subtensor_view, DiagonalSubtensor, IncDiagonalSubtensor
 import theano.tests.unittest_tools as utt
 
 
@@ -73,10 +73,12 @@ def pyconv3d(signals, filters):
                 r_i += o_i[Tf2:o_i_sh0 - Tf2, Hf2:-Hf2, Wf2:-Wf2]
     return rval
 
+
 def check_diagonal_subtensor_view_traces(fn):
     for apply_node in fn.maker.fgraph.apply_nodes:
         if isinstance(apply_node.op, (DiagonalSubtensor, IncDiagonalSubtensor)):
             assert hasattr(apply_node.outputs[0].tag, 'trace')
+
 
 def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
     if ndimage is None:
