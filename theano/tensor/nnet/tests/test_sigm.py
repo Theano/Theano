@@ -145,23 +145,23 @@ class T_sigmoid_opts(unittest.TestCase):
             # tests inv_1_plus_exp with neg
             f = theano.function([x], T.fill(x, -1.0) / (1 + T.exp(-x)), mode=m)
             assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
-            assert [node.op for node in f.maker.fgraph.toposort()] == [sigmoid,
-                    theano.tensor.inplace.neg_inplace]
+            assert ([node.op for node in f.maker.fgraph.toposort()] ==
+                    [sigmoid, theano.tensor.inplace.neg_inplace])
             f(data)
             f = theano.function([x], T.fill(x, -1.0) / (1 - T.exp(-x)), mode=m)
             assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
-            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
-                    theano.tensor.inplace.neg_inplace]
+            assert ([node.op for node in f.maker.fgraph.toposort()] !=
+                    [sigmoid, theano.tensor.inplace.neg_inplace])
             f(data)
             f = theano.function([x], T.fill(x, -1.0) / (2 + T.exp(-x)), mode=m)
             assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
-            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
-                    theano.tensor.inplace.neg_inplace]
+            assert ([node.op for node in f.maker.fgraph.toposort()] !=
+                    [sigmoid, theano.tensor.inplace.neg_inplace])
             f(data)
             f = theano.function([x], T.fill(x, -1.1) / (1 + T.exp(-x)), mode=m)
             assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
-            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
-                    theano.tensor.inplace.neg_inplace]
+            assert ([node.op for node in f.maker.fgraph.toposort()] !=
+                    [sigmoid, theano.tensor.inplace.neg_inplace])
             f(data)
 
             # tests double inv_1_plus_exp with neg
@@ -171,38 +171,38 @@ class T_sigmoid_opts(unittest.TestCase):
             f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
             assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
-            assert [node.op for node in f.maker.fgraph.toposort()] == [sigmoid,
-                    T.mul]
+            assert ([node.op for node in f.maker.fgraph.toposort()] ==
+                    [sigmoid, T.mul])
             f(data)
             f = theano.function([x], (T.fill(x, -1.1) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
             assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
-            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
-                    T.mul, theano.tensor.inplace.neg_inplace]
+            assert ([node.op for node in f.maker.fgraph.toposort()] !=
+                    [sigmoid, T.mul, theano.tensor.inplace.neg_inplace])
             f(data)
             f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
                                 ((2 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
             assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
-            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
-                    T.mul, theano.tensor.inplace.neg_inplace]
+            assert ([node.op for node in f.maker.fgraph.toposort()] !=
+                    [sigmoid, T.mul, theano.tensor.inplace.neg_inplace])
             f(data)
             f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (2 + T.exp(-x))), mode=m)
             assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
-            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
-                    T.mul, theano.tensor.inplace.neg_inplace]
+            assert ([node.op for node in f.maker.fgraph.toposort()] !=
+                    [sigmoid, T.mul, theano.tensor.inplace.neg_inplace])
             f(data)
             f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (1 + T.exp(x))), mode=m)
             assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
-            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
-                    T.mul, theano.tensor.inplace.neg_inplace]
+            assert ([node.op for node in f.maker.fgraph.toposort()] !=
+                    [sigmoid, T.mul, theano.tensor.inplace.neg_inplace])
             f(data)
             f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (2 + T.exp(-x))), mode=m)
             assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
-            assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
-                    T.mul, theano.tensor.inplace.neg_inplace]
+            assert ([node.op for node in f.maker.fgraph.toposort()] !=
+                    [sigmoid, T.mul, theano.tensor.inplace.neg_inplace])
             f(data)
 
         finally:
@@ -225,8 +225,8 @@ class T_sigmoid_opts(unittest.TestCase):
         # tests inv_1_plus_exp
         f = theano.function([x], 1 - T.fill(x, 1.0) / (1 + T.exp(-x)), mode=m)
         assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
-        assert [node.op for node in f.maker.fgraph.toposort()] == [tensor.neg,
-                sigmoid_inplace]
+        assert ([node.op for node in f.maker.fgraph.toposort()] ==
+                [tensor.neg, sigmoid_inplace])
 
     def test_local_sigm_times_exp(self):
         """
@@ -253,10 +253,9 @@ class T_sigmoid_opts(unittest.TestCase):
         match(f, [tensor.neg, sigmoid, tensor.neg])
 
         f = theano.function(
-                [x, y],
-                (sigmoid(x) * sigmoid(-y) * -tensor.exp(-x) *
-                 tensor.exp(x * y) * tensor.exp(y)),
-                mode=m)
+            [x, y],
+            (sigmoid(x) * sigmoid(-y) * -tensor.exp(-x) *
+                tensor.exp(x * y) * tensor.exp(y)), mode=m)
         assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
         match(f, [sigmoid, tensor.mul, tensor.neg, tensor.exp, sigmoid,
                   tensor.mul])

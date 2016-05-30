@@ -240,7 +240,7 @@ class T_LogSoftmax(utt.InferShapeTester):
         # while in the log-softmax case they don't
         f3 = theano.function([x, y], [grad])
         grad_ = f3(a, b)
-        assert numpy.all(numpy.isnan(grad_) == False)
+        assert numpy.all(numpy.isnan(grad_) is False)
 
     def test_isclose(self):
         def f(a):
@@ -665,8 +665,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         sum_xe = tensor.sum(xe)
         g_x = tensor.grad(sum_xe, x)
         fgraph = gof.FunctionGraph(
-                [x, one_of_n],
-                [g_x])
+            [x, one_of_n], [g_x])
         self.assertTrue(hasattr(fgraph.outputs[0].tag, 'trace'))
 
         # print 'BEFORE'
@@ -1300,8 +1299,7 @@ def test_argmax_pushdown():
             sm(tensor.exp(tensor.tanh(sigmoid(x)))),
             axis=-1)[0]
         fgraph = gof.FunctionGraph(
-                [x],
-                [out])
+            [x], [out])
         assert hasattr(fgraph.outputs[0].tag, 'trace')
         backup = config.warn.argmax_pushdown_bug
         config.warn.argmax_pushdown_bug = False
@@ -1327,9 +1325,7 @@ def test_argmax_pushdown_bias():
     b = tensor.vector()
 
     out = tensor.argmax(softmax_with_bias(x, b), axis=-1)
-    fgraph = gof.FunctionGraph(
-            [x, b],
-            [out])
+    fgraph = gof.FunctionGraph([x, b], [out])
     f = theano.function([x, b], out)
     assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
 
@@ -1348,9 +1344,7 @@ def test_argmax_pushdown_bias():
     x = tensor.matrix()
     b = tensor.vector()
     out = tensor.max_and_argmax(softmax_with_bias(x, b), axis=-1)[0]
-    fgraph = gof.FunctionGraph(
-            [x, b],
-            [out])
+    fgraph = gof.FunctionGraph([x, b], [out])
     f = theano.function([x, b], out)
     assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
 
@@ -1500,7 +1494,7 @@ class Test_softmax_opt:
         p_y = T.exp(c) / T.exp(c).sum(axis=0)
 
         # test that function contains softmax and no div.
-        f = theano.function([c], p_y)
+        theano.function([c], p_y)
         # printing.debugprint(f)
 
         # test that function contains softmax and no div.
@@ -1722,7 +1716,7 @@ def test_binary_crossentropy_reshape():
 SoftsignTester = makeBroadcastTester(
     op=softsign,
     expected=upcast_int8_nfunc(lambda inputs: check_floatX(
-        inputs, inputs/(1.0+numpy.fabs(inputs)))),
+        inputs, inputs / (1.0 + numpy.fabs(inputs)))),
     good=_good_broadcast_unary_normal_float_no_complex,
     name='SoftsignTester',
 )
