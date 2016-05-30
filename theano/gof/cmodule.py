@@ -1807,10 +1807,10 @@ def try_march_flag(flags):
             """)
 
     cflags = flags + ['-L' + d for d in theano.gof.cmodule.std_lib_dirs()]
-    res = GCC_compiler.try_compile_tmp(
-        test_code, tmp_prefix='try_march_',
-        flags=cflags, try_run=True)
-    return res
+    compilation_result, execution_result = GCC_compiler.try_compile_tmp(
+                                               test_code, tmp_prefix='try_march_',
+                                               flags=cflags, try_run=True)
+    return compilation_result, execution_result
 
 
 class GCC_compiler(Compiler):
@@ -2026,18 +2026,30 @@ class GCC_compiler(Compiler):
                                  GCC_compiler.march_flags)
 
             # Find working march flag:
-            default_detected_flag = GCC_compiler.march_flags[0][7:]
+            default_detected_flag = None
+            march_ind = None
+            mtune_ind = None
+            working_flag = False
+
+            for m_ in xrange(len(GCC_compiler.march_flags)):
+                march_flag = GCC_compiler.march_flags[m_]
+                if 'march' in march_flag:
+                    march_ind = m_
+                    default_detected_flag = march_flag[march_flag.index('=')+1:]
+                if 'mtune' in GCC_compiler.march_flags[m_]: 
+                    mtune_ind = m_
+            
             march_flags_to_try = [default_detected_flag, 'corei7-avx', 'corei7', 'core2']
             for march_flag in march_flags_to_try:
-                test_flags = GCC_compiler.march_flags[:]
-                test_flags[0] = '-march=' + march_flag
-                result = try_march_flag(test_flags)
-                if result[0] and result[1]:
-                    GCC_compiler.march_flags[0] = '-march=' + march_flag
-                    GCC_compiler.march_flags[-1] = '-mtune=' + march_flag
+                GCC_compiler.march_flags[march_ind] = '-march=' + march_flag
+                GCC_compiler.march_flags[mtune_ind] = '-mtune=' + march_flag
+                compilation_result, execution_result = try_march_flag(GCC_compiler.march_flags)
+                if compilation_result and execution_result: 
+                    working_flag = True
                     break
-            if not result[0] or not result[1]:
-                raise ValueError('Could not find a working march')
+
+            if not working_flag: GCC_compiler.march_flags = []
+
 
         # Add the detected -march=native equivalent flags
         if GCC_compiler.march_flags:
