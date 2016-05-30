@@ -24,7 +24,8 @@ import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
 from theano.compat import PY3, decode, decode_iter
-from six import b, BytesIO, StringIO, string_types, iteritems, xrange
+from six import b, BytesIO, StringIO, string_types, iteritems
+from six.moves import xrange
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.utils import hash_from_code
