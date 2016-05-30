@@ -681,8 +681,8 @@ For instance, to verify the Rop method of the DoubleOp, you can use this:
 Testing GPU Ops
 ^^^^^^^^^^^^^^^
 
-Ops to be executed on the GPU should inherit from the
-``theano.sandbox.cuda.GpuOp`` and not ``theano.Op``. This allows
+When using the old GPU backend, Ops to be executed on the GPU should inherit
+from ``theano.sandbox.cuda.GpuOp`` and not ``theano.Op``. This allows
 Theano to distinguish them. Currently, we use this to test if the
 NVIDIA driver works correctly with our sum reduction code on the GPU.
 

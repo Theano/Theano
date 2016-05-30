@@ -104,10 +104,9 @@ class DeviceParam(ConfigParam):
 
 AddConfigVar(
     'device',
-    ("Default device for computations. If gpu*, change the default to try "
-     "to move computation to it and to put shared variable of float32 "
-     "on it. Do not use upper case letters, only lower case even if "
-     "NVIDIA use capital letters."),
+    ("Default device for computations. If cuda* or opencl*, change the"
+     "default to try to move computation to the GPU. Do not use upper case"
+     "letters, only lower case even if NVIDIA uses capital letters."),
     DeviceParam('cpu', allow_override=False),
     in_c_key=False)
 
