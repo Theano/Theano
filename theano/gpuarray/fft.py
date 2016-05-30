@@ -128,6 +128,14 @@ class CuRFFTOp(Op):
         thunk.lazy = False
 
         return thunk
+
+    def grad(self, inputs, output_grads):
+        gout, = output_grads
+        # gout = theano.printing.Print('aVANT')(gout)
+        gout = T.set_subtensor(gout[:,1:-1,:], gout[:,1:-1,:]*0.5) 
+        # gout = theano.printing.Print('apres')(gout)
+        return [cuirfft_op(gout)]
+
 curfft_op = CuRFFTOp()
 
 
@@ -195,6 +203,8 @@ class CuIRFFTOp(Op):
             output_shape = list(input_shape[:-1])
             # restore full signal length
             output_shape[-1] = (output_shape[-1] - 1) * 2
+            # if inputs[0][0][0,-1,1] != 0:
+            #     output_shape[-1] += 1
             output_shape = tuple(output_shape)
 
             z = outputs[0]
@@ -235,8 +245,234 @@ class CuIRFFTOp(Op):
         thunk.lazy = False
 
         return thunk
+        
+    def grad(self, inputs, output_grads):
+        gout, = output_grads
+        gf = curfft_op(gout)
+        gf = T.set_subtensor(gf[:,1:-1,:], gf[:,1:-1,:]*2)
+        return [gf]
+
 cuirfft_op = CuIRFFTOp()
 
+class CuFFTOp(Op):
+    """
+    Operator for the fast Fourier transform of a real-valued output on the GPU
+    using the scikits CUDA FFT through the gpuarray backend.
+
+    The input must be a real-valued float32 variable of dimensions (m, n). It
+    performs m 1-D FFTs of size n each.
+
+    The output is a GpuArray of dimensions (m, n/2+1, 2). The output contains
+    the n//2+1 non-trivial elements of the m real-valued FFTs. The real
+    and imaginary parts are stored as two float32 arrays, emulating complex64.
+    Since theano does not support complex number operations, care must be
+    taken to manually implement operators such as multiplication.
+
+    The module provides the convenience function curfft(input).
+    """
+
+    __props__ = ()
+
+    def output_type(self, inp):
+        # add one extra dim for real/imag
+        return GpuArrayType(inp.dtype,
+                            broadcastable=[False] * (inp.type.ndim+1),
+                            context_name=inp.type.context_name)
+
+    def make_node(self, inp):
+        if not scikits_cuda_available:
+            raise RuntimeError("scikits.cuda is needed for CuFFTOp")
+
+        if not pygpu_available:
+            raise RuntimeError("pygpu is needed for CuFFTOp")
+
+        if not pycuda_available:
+            raise RuntimeError("pycuda is needed for CuFFTOp")
+        print(inp)
+
+        inp = basic_ops.gpu_contiguous(
+            basic_ops.as_gpuarray_variable(inp,
+                                           basic_ops.infer_context_name(inp)))
+        assert inp.dtype == "float32"
+
+        return theano.Apply(self, [inp], [self.output_type(inp)()])
+
+    def make_thunk(self, node, storage_map, _, _2):
+
+        inputs = [storage_map[v] for v in node.inputs]
+        outputs = [storage_map[v] for v in node.outputs]
+
+        # Initiliaze cuda context to the input's.
+        with node.inputs[0].type.context:
+            scikits.cuda.misc.init()
+
+        plan_input_shape = [None]
+        plan = [None]
+
+        def thunk():
+            input_shape = inputs[0][0].shape
+
+            # construct output shape
+            output_shape = list(input_shape)
+            # DFT of real input is symmetric, no need to store
+            # redundant coefficients
+            # output_shape[-1] = output_shape[-1] // 2 + 1
+            # extra dimension with length 2 for real/imag
+            output_shape += [2]
+            output_shape = tuple(output_shape)
+
+            z = outputs[0]
+
+            # only allocate if there is no previous allocation of the
+            # right size.
+            if z[0] is None or z[0].shape != output_shape:
+                z[0] = pygpu.zeros(output_shape, context=inputs[0][0].context,
+                                   dtype='float32')
+
+            input_pycuda = T.stack(inputs[0][0],T.zeros_like(inputs[0][0]))
+            # I thought we'd need to change the type on output_pycuda
+            # so it is complex64, but as it turns out scikits.cuda.fft
+            # doesn't really care either way and treats the array as
+            # if it is complex64 anyway.
+            output_pycuda = z[0]
+
+            with input_pycuda.context:
+                # only initialise plan if necessary
+                if plan[0] is None or plan_input_shape[0] != input_shape:
+                    plan_input_shape[0] = input_shape
+                    plan[0] = fft.Plan(input_shape[1:-1], np.complex64, np.complex64,
+                                       batch=input_shape[0])
+                # Sync GPU variables before computation
+                input_pycuda.sync()
+                output_pycuda.sync()
+
+                fft.fft(input_pycuda, output_pycuda, plan[0])
+                # Sync results to ensure output contains completed computation
+                pycuda.driver.Context.synchronize()
+
+        thunk.inputs = inputs
+        thunk.outputs = outputs
+        thunk.lazy = False
+
+        return thunk
+
+    def grad(self, inputs, output_grads):
+        gout, = output_grads
+        return [cuifft_op(gout)]
+
+cufft_op = CuFFTOp()
+
+
+class CuIFFTOp(Op):
+    """
+    Operator for the inverse fast Fourier transform with real-valued output
+    on the GPU using the scikits CUDA FFT through the gpuarray backend.
+
+    The input is a variable of dimensions (m, n/2+1, 2) with
+    type float32 representing the n/2+1 non-trivial elements of m
+    real-valued Fourier transforms of initial size n. The real and imaginary
+    parts are stored as two float32 arrays, emulating complex64 given that
+    Theano does not support complex numbers.
+
+    The output is a real-valued float32 variable of dimensions (m, n)
+    giving the m inverse FFTs. *The output is NOT normalized*. You can
+    manualy divide by the size of the output array to normalize.
+
+    The module provides the convenience function cuirfft(input).
+    """
+
+    __props__ = ()
+
+    def output_type(self, inp):
+        # add one extra dim for real/imag
+        return GpuArrayType(inp.dtype,
+                            broadcastable=[False] * (inp.type.ndim),
+                            context_name=inp.type.context_name)
+
+    def make_node(self, inp):
+        if not scikits_cuda_available:
+            raise RuntimeError("scikits.cuda is needed for CuIFFTOp")
+
+        if not pygpu_available:
+            raise RuntimeError("pygpu is needed for CuIFFTOp")
+
+        if not pycuda_available:
+            raise RuntimeError("pycuda is needed for CuIFFTOp")
+
+        inp = basic_ops.gpu_contiguous(
+            basic_ops.as_gpuarray_variable(inp,
+                                           basic_ops.infer_context_name(inp)))
+
+        assert inp.dtype == "float32"
+
+        return theano.Apply(self, [inp], [self.output_type(inp)()])
+
+    def make_thunk(self, node, storage_map, _, _2):
+
+        inputs = [storage_map[v] for v in node.inputs]
+        outputs = [storage_map[v] for v in node.outputs]
+
+        # Initiliaze cuda context to the input's.
+        with node.inputs[0].type.context:
+            scikits.cuda.misc.init()
+
+        plan_input_shape = [None]
+        plan = [None]
+
+        def thunk():
+            input_shape = inputs[0][0].shape
+
+            # construct output shape
+            # chop off the extra length-2 dimension for real/imag
+            output_shape = list(input_shape)
+            # restore full signal length
+            # output_shape[-1] = (output_shape[-1] - 1) * 2
+            output_shape = tuple(output_shape)
+
+            z = outputs[0]
+
+            # only allocate if there is no previous allocation of the
+            # right size.
+            if z[0] is None or z[0].shape != output_shape:
+                z[0] = pygpu.zeros(output_shape, context=inputs[0][0].context,
+                                   dtype='float32')
+
+            input_pycuda = inputs[0][0]
+            # input_pycuda is a float32 array with an extra dimension,
+            # but will be interpreted by scikits.cuda as a complex64
+            # array instead.
+            output_pycuda = z[0]
+
+            with input_pycuda.context:
+                # only initialise plan if necessary
+                if plan[0] is None or plan_input_shape[0] != input_shape:
+                    plan_input_shape[0] = input_shape
+                    plan[0] = fft.Plan(input_shape[1:-1],
+                                       np.complex64, np.complex64,
+                                       batch=output_shape[0])
+                # Sync GPU variables before computation
+                input_pycuda.sync()
+                output_pycuda.sync()
+
+                fft.ifft(input_pycuda, output_pycuda, plan[0])
+                # strangely enough, enabling rescaling here makes it run
+                # very, very slowly.  so do this rescaling manually
+                # afterwards!
+
+                # Sync results to ensure output contains completed computation
+                pycuda.driver.Context.synchronize()
+
+        thunk.inputs = inputs
+        thunk.outputs = outputs
+        thunk.lazy = False
+
+        return thunk
+        
+    def grad(self, inputs, output_grads):
+        gout, = output_grads
+        return [cufft_op(gout)]
+
+cuifft_op = CuIFFTOp()
 
 def curfft(inputs, norm=None):
     """
@@ -292,7 +528,6 @@ def cuirfft(inputs, norm=None):
                                            .astype('float32'))
     if cond_norm == "no_norm":
         return cuirfft_op(inputs)
-
 
 def _unitary(norm):
     if norm not in (None, "ortho", "no_norm"):
