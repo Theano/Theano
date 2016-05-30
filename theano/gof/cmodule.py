@@ -5,6 +5,7 @@ Generate and compile C modules for Python.
 from __future__ import print_function
 
 import atexit
+import textwrap
 import six.moves.cPickle as pickle
 import logging
 import os
@@ -23,7 +24,7 @@ import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
 from theano.compat import PY3, decode, decode_iter
-from six import b, BytesIO, StringIO, string_types, iteritems
+from six import b, BytesIO, StringIO, string_types, iteritems, xrange
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.utils import hash_from_code
@@ -1789,7 +1790,10 @@ class Compiler(object):
 
 
 def try_march_flag(flags):
-    import textwrap
+    """ 
+        Try to compile and run a simple C snippet using current flags.
+        Return: compilation success (True/False), execution success (True/False)
+    """
     test_code = textwrap.dedent("""\
             #include <cmath>
             using namespace std;
@@ -2025,7 +2029,7 @@ class GCC_compiler(Compiler):
                     _logger.info("g++ -march=native equivalent flags: %s",
                                  GCC_compiler.march_flags)
 
-            # Find working march flag:
+            # Find working march flag. If all fail, set march_flags to [] (for x86 archs).
             default_detected_flag = None
             march_ind = None
             mtune_ind = None
