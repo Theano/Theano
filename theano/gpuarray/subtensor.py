@@ -6,7 +6,7 @@ import numpy
 from six import integer_types
 from six.moves import StringIO
 
-from theano import tensor, gof
+from theano import tensor, gof, Op
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
 
 try:
@@ -464,11 +464,25 @@ if (err != GA_NO_ERROR) {
         return (0,)
 
 
-class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
+class GpuAdvancedIncSubtensor1(Op):
     """
     Implement AdvancedIncSubtensor1 on the gpu.
 
     """
+    __props__ = ('inplace', 'set_instead_of_inc')
+    params_type = gpu_context_type
+
+    def __init__(self, inplace=False, set_instead_of_inc=False):
+        self.inplace = inplace
+        self.set_instead_of_inc = set_instead_of_inc
+        if inplace:
+            self.destroy_map = {0: [0]}
+
+    def clone_inplace(self):
+        return self.__class__(
+            inplace=True,
+            set_instead_of_inc=self.set_instead_of_inc)
+
     def make_node(self, x, y, ilist):
         ctx_name = infer_context_name(x, y)
         x_ = as_gpuarray_variable(x, ctx_name)
@@ -496,10 +510,13 @@ class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
 
         return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
 
+    def get_params(self, node):
+        return node.outputs[0].type.context
+
     # We can't use the parent version that loops on each index
     # as we also need to loop when set_instead_of_inc is True and the
     # parent doesn't loop in that case.
-    def perform(self, node, inp, out_):
+    def perform(self, node, inp, out_, ctx=None):
         # TODO opt to make this inplace
         x, y, idx = inp
         out, = out_
@@ -512,8 +529,9 @@ class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
         if len(idx) == 0:
             return
 
-        # Make sure idx is not a GpuArray otherwise we cannot use its content
-        # to index x and y
+        # Make sure idx is not a GpuArray otherwise we cannot use its
+        # content to index x and y (This is because we serve as
+        # fallback for _dev20).
         if isinstance(idx, gpuarray.GpuArray):
             idx = numpy.asarray(idx)
 
@@ -545,8 +563,115 @@ class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
                 for i in idx:
                     k(x[i], reshaped_y, broadcast=True)
 
+    def c_headers(self):
+        return ['<numpy_compat.h>', '<gpuarray/error.h>', '<gpuarray/array.h>',
+                '<gpuarray/elemwise.h>', 'gpuarray_helper.h']
 
-class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__)]
+
+    def c_support_code_struct(self, node, nodename):
+        return "\nGpuElemwise *iadd;\n"
+
+    def c_init_code_struct(self, node, name, sub):
+        return """
+        gpuelemwise_arg args[2] = {{0}};
+        args[0].name = "a";
+        args[0].typecode = %(type1)s;
+        args[0].flags = GE_READ|GE_WRITE;
+        args[1].name = "b";
+        args[1].typecode = %(type2)s;
+        args[1].flags = GE_READ;
+        iadd = GpuElemwise_new(%(ctx)s->ctx, "", "a += b",
+                               2, args, %(nd)s, 0);
+        if (iadd == NULL) {
+          PyErr_SetString(PyExc_RuntimeError, "Could not intialize inplace add support");
+          %(fail)s
+        }
+        """ % dict(ctx=sub['params'], fail=sub['fail'],
+                   type1=node.inputs[0].type.typecode,
+                   type2=node.inputs[1].type.typecode,
+                   nd=node.inputs[1].ndim)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        if (node.inputs[0].ndim != node.inputs[1].ndim):
+            raise NotImplementedError("This case does not have C code yet.")
+
+        return """
+        PyGpuArrayObject *row_x, *row_y;
+        ssize_t start[%(nd)s], step[%(nd)s];
+        size_t num_indices, j;
+        int ret;
+        int broadcast_y;
+
+        for (j = 0; j < %(nd)s; j++) {
+          start[j] = 0;
+          step[j] = 1;
+        }
+        step[0] = 0;
+        num_indices = PyArray_SIZE(%(ind)s);
+        if ((num_indices - 1) > LONG_MAX) {
+          PyErr_Format(PyExc_AssertionError,
+                       "num_indices %%lld exceeds LONG_MAX + 1", (long long)num_indices);
+          %(fail)s
+        }
+        if (!%(inplace)s) {
+          %(out)s = theano_try_copy(%(out)s, %(x)s);
+          if (%(out)s == NULL)
+            %(fail)s
+        } else {
+          Py_XDECREF(%(out)s);
+          %(out)s = %(x)s;
+          Py_INCREF(%(out)s);
+        }
+        broadcast_y = PyGpuArray_DIM(%(y)s, 0) == 1;
+        for (j = 0; j < num_indices; j++) {
+          start[0] = *(dtype_%(ind)s *)PyArray_GETPTR1(%(ind)s, j);
+          if (start[0] < 0)
+            start[0] += PyGpuArray_DIM(%(out)s, 0);
+          if (start[0] < 0 || start[0] >= PyGpuArray_DIM(%(out)s, 0)) {
+             PyErr_SetString(PyExc_IndexError, "index out of bounds");
+             %(fail)s;
+          }
+          row_x = pygpu_index(%(out)s, start, (ssize_t *)PyGpuArray_DIMS(%(out)s), step);
+          if (row_x == NULL)
+            %(fail)s;
+
+          if (broadcast_y)
+            start[0] = 0;
+          else
+            start[0] = j;
+
+          row_y = pygpu_index(%(y)s, start, (ssize_t *)PyGpuArray_DIMS(%(y)s), step);
+          if (row_y == NULL) {
+            Py_DECREF(row_x);
+            %(fail)s;
+          }
+
+          if (%(set_instead_of_inc)s) {
+            ret = GpuArray_setarray(&row_x->ga, &row_y->ga);
+          } else {
+            void *args[2];
+            args[0] = (void *)&row_x->ga;
+            args[1] = (void *)&row_y->ga;
+            ret = GpuElemwise_call(iadd, args, GE_BROADCAST);
+          }
+          Py_DECREF(row_x);
+          Py_DECREF(row_y);
+          if (ret != GA_NO_ERROR)
+            PyErr_SetString(PyExc_RuntimeError, "Failed to set/inc elements");
+        }
+        """ % dict(x=inputs[0], y=inputs[1], ind=inputs[2], out=outputs[0],
+                   fail=sub['fail'], inplace=int(self.inplace),
+                   nd=node.inputs[0].ndim,
+                   set_instead_of_inc=int(self.set_instead_of_inc))
+
+    def c_code_cache_version(self):
+        return ()
+
+
+class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
+                                     GpuAdvancedIncSubtensor1):
     """
     Implement AdvancedIncSubtensor1 on the gpu, but use function
     only avail on compute capability 2.0 and more recent.
@@ -608,7 +733,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
             raise NotImplementedError("cuda only")
         if (node.inputs[0].ndim != node.inputs[1].ndim or
                 node.inputs[0].ndim != 2 or
-                ctx.bin_id[-2] < b'2'):
+                int(ctx.bin_id[-2]) < 2):
             raise NotImplementedError("This case does not have C code yet.")
 
         x = inputs[0]
