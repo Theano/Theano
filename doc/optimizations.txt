@@ -32,6 +32,7 @@ Optimization                                              FAST_RUN  FAST_COMPILE
 ========================================================= ========= ============ =============
 :term:`merge`                                             x         x
 :term:`constant folding<constant folding>`                x         x
+:term:`GPU transfer`                                      x         x
 :term:`shape promotion<shape promotion>`                  x
 :term:`fill cut<fill cut>`                                x
 :term:`inc_subtensor srlz.<inc_subtensor serialization>`  x
@@ -52,7 +53,6 @@ Optimization                                              FAST_RUN  FAST_COMPILE
 :term:`inplace_elemwise`                                  x
 :term:`inplace_random`                                    x
 :term:`elemwise fusion`                                   x
-:term:`GPU transfer`                                      x
 :term:`local_log_softmax`                                 x                      x
 :term:`local_remove_all_assert`                                                   
 ========================================================= ========= ============ =============
