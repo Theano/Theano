@@ -684,8 +684,9 @@ class VM_Linker(link.LocalLinker):
         'node', 'thunk', 'storage_map', and 'compute_map'.
     callback_input
         A callable object to call on each input to the graph
-        (variables with no owner).  It will be called with two
-        arguments: 'var', 'value'.
+        (variables with no owner).  This includes constants and shared
+        variables values.  It will be called with two arguments:
+        'var', 'value'.
     lazy
         Useful only when use_cloop is False. When lazy is None, use the
         theano flag vm.lazy value. Then if we have a None (default) we auto
