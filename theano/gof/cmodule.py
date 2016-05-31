@@ -127,6 +127,7 @@ class ExtFunction(object):
 
 
 class DynamicModule(object):
+
     def __init__(self, name=None):
         assert name is None, (
             "The 'name' parameter of DynamicModule"
@@ -2128,7 +2129,6 @@ class GCC_compiler(Compiler):
                     include_dirs=None, lib_dirs=None, libs=None,
                     preargs=None, py_module=True, hide_symbols=True):
         """
-
         Parameters
         ----------
         module_name : str
