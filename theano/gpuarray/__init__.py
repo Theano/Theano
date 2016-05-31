@@ -50,6 +50,10 @@ def init_dev(dev, name=None):
     if v[1] < 0:
         raise RuntimeError("Wrong minor API version for gpuarray:", v[1],
                            "Please update libgpuarray/pygpu.")
+    if len(v) < 3 or v[2] < 0:
+        print("Wrong python API version for gpuarray:", v[2],
+              "Some python ops may not work correctly and/or crash. "
+              "Consider updating pygpu.", file=sys.stderr)
     global pygpu_activated
     if dev not in init_dev.devmap:
         ctx = pygpu.init(dev,
