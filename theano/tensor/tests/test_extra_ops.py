@@ -50,14 +50,15 @@ class TestSearchsortedOp(utt.InferShapeTester):
 
         self.a = 30 * np.random.random(50).astype(config.floatX)
         self.b = 30 * np.random.random((8, 10, 5)).astype(config.floatX)
-        self.idx_sorted = np.argsort(self.a).astype('int32')
+        self.idx_sorted = np.argsort(self.a)
 
     def test_searchsortedOp_on_sorted_input(self):
         f = theano.function([self.x, self.v], searchsorted(self.x, self.v))
         assert np.allclose(np.searchsorted(self.a[self.idx_sorted], self.b),
                            f(self.a[self.idx_sorted], self.b))
 
-        sorter = T.vector('sorter', dtype='int32')
+        sorter = T.vector('sorter', dtype='int64')
+
         f = theano.function([self.x, self.v, sorter], self.x.searchsorted(self.v, sorter=sorter, side='right'))
         assert np.allclose(self.a.searchsorted(self.b, sorter=self.idx_sorted, side='right'),
                            f(self.a, self.b, self.idx_sorted))
@@ -80,9 +81,8 @@ class TestSearchsortedOp(utt.InferShapeTester):
                           self.x, self.v, sorter=sorter)
 
     def test_searchsortedOp_on_int_sorter(self):
-        compatible_types = ('int8', 'int16', 'int32')
-        if theano.configdefaults.python_int_bitwidth() == 64:
-            compatible_types += ('int64',)
+        compatible_types = ('int8', 'int16', 'int32', 'int64',)
+
         # 'uint8', 'uint16', 'uint32', 'uint64')
         for dtype in compatible_types:
             sorter = T.vector('sorter', dtype=dtype)
@@ -106,7 +106,8 @@ class TestSearchsortedOp(utt.InferShapeTester):
                                 self.op_class)
 
         # Test parameter ``sorter``
-        sorter = T.vector('sorter', dtype="int32")
+        sorter = T.vector('sorter', dtype="int64")
+
         self._compile_and_check([self.x, self.v, sorter],
                                 [searchsorted(self.x, self.v, sorter=sorter)],
                                 [self.a, self.b, self.idx_sorted],

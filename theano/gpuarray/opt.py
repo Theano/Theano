@@ -10,7 +10,7 @@ from theano import tensor, scalar, gof, config
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
-                        SequenceDB, Optimizer, toolbox)
+                        SequenceDB, Optimizer, DB, toolbox)
 from theano.gof.optdb import LocalGroupDB
 from theano.ifelse import IfElse
 
@@ -26,7 +26,7 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
 from theano.tests.breakpoint import PdbBreakpoint
 
 from .type import (GpuArrayType, GpuArrayConstant, get_context,
-                   ContextNotDefined)
+                   ContextNotDefined, GpuArrayVariable, GpuArraySharedVariable)
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         host_from_gpu, GpuToGpu,
                         HostFromGpu, GpuFromHost,
@@ -49,14 +49,34 @@ from .opt_util import alpha_merge, output_merge
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
+
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
+
+
+class GraphToGPUDB(DB):
+    """
+    Retrieves the list local optimizers based on the optimizer flag's value
+    from EquilibriumOptimizer by calling the method query.
+
+    """
+
+    def query(self, *tags, **kwtags):
+        include = [o for o in config.optimizer.split(',')]
+        opt = gpu_optimizer.query(include=include)
+        return GraphToGPU(opt.local_optimizers_all, opt.local_optimizers_map)
+
+
+graph_optimizer = GraphToGPUDB()
 
 gpu_seqopt = SequenceDB()
 
 # Don't register this right now
 conv_groupopt = LocalGroupDB()
 conv_groupopt.__name__ = "gpua_conv_opts"
+
+gpu_seqopt.register('gpu_graph_optimization', graph_optimizer, -0.5,
+                    'fast_compile', 'fast_run', 'gpuarray')
 
 gpu_seqopt.register('gpuarray_local_optimiziations', gpu_optimizer, 1,
                     'fast_compile', 'fast_run', 'gpuarray')
@@ -208,6 +228,85 @@ class InputToGpuOptimizer(Optimizer):
 
 gpu_seqopt.register('InputToGpuArrayOptimizer', InputToGpuOptimizer(),
                     0, 'fast_run', 'fast_compile', 'merge')
+
+
+class GraphToGPU(Optimizer):
+    """
+    Transfer the graph as a whole to GPU instead of transfering node by node.
+    """
+
+    def __init__(self, local_optimizers_all, local_optimizers_map):
+        self.local_optimizers_all = local_optimizers_all
+        self.local_optimizers_map = local_optimizers_map
+
+    def add_requirements(self, fgraph):
+        fgraph.attach_feature(toolbox.ReplaceValidate())
+
+    def apply(self, fgraph):
+        mapping = {}
+        move_to_GPU = True
+
+        # Building a new graph
+        # Iterating through inputs of graph
+        for i in fgraph.inputs:
+            if isinstance(i.type, tensor.TensorType):
+                mapping[i] = GpuFromHost(None)(i)
+            else:
+                mapping[i] = i
+
+        # Iterating through output of all the nodes
+        for n in fgraph.toposort():
+            for o in n.outputs:
+                if isinstance(o.type, tensor.TensorType):
+                    mapping[o] = GpuFromHost(None)(o)
+                else:
+                    mapping[o] = o
+
+        for node in fgraph.toposort():
+
+            # The Extra condition
+            if any([isinstance(i, GpuArrayVariable) or
+               isinstance(i, GpuArraySharedVariable)
+               for i in node.inputs + node.outputs]):
+
+                move_to_GPU = False
+
+            # Oplifter's condition
+            # Will return a list of OP
+            # If None, means can't be moved.
+
+            new_ops = None
+
+            # Selecting the best optimizer
+            # TODO : the tag should be updated to the one user provides
+            # currently using fast_run and fast_compile tag
+            for lopt in (self.local_optimizers_all +
+                         self.local_optimizers_map.get(type(node.op), []) +
+                         self.local_optimizers_map.get(node.op, [])):
+
+                new_ops = lopt.transform(node) or lopt(node)
+                break
+
+            if not new_ops or not isinstance(new_ops, theano.Op):
+                move_to_GPU = False
+
+            if move_to_GPU:
+                newnode = new_ops(*[mapping.get(i) for i in node.inputs])
+                for new_o, old_o in zip(newnode.outputs, node.outputs):
+                    mapping[old_o] = new_o
+            else:
+                for o in node.outputs:
+                    mapping[o] = o
+
+        new_nodes = []
+        for o in fgraph.outputs:
+            new_o = mapping[o]
+            if new_o.type != o.type:
+                assert isinstance(o.type, tensor.TensorType)
+                assert isinstance(new_o.type, GpuArrayType)
+                new_o = host_from_gpu(new_o)
+            new_nodes.append(new_o)
+        fgraph.replace_all_validate(zip(fgraph.outputs, new_nodes))
 
 
 @local_optimizer([GpuFromHost, GpuToGpu, HostFromGpu])
@@ -975,8 +1074,7 @@ def local_assert_no_cpu_op(node):
 assert_no_cpu_op = theano.tensor.opt.in2out(local_assert_no_cpu_op,
                                             name='assert_no_cpu_op')
 # 49.2 is after device specialization & fusion optimizations for last transfers
-optdb.register('gpua_assert_no_cpu_op', assert_no_cpu_op, 49.2,
-               'assert_no_cpu_op')
+optdb.register('assert_no_cpu_op', assert_no_cpu_op, 49.2)
 
 
 def tensor_to_gpu(x, context_name):
