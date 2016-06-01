@@ -302,19 +302,17 @@ class SeqOptimizer(Optimizer, list):
         lll = sorted(zip(prof, ll, nb_nodes), key=lambda a: a[0])
 
         for (t, opt, nb_n) in lll[::-1]:
-            # if t < 1:
-            #    continue
+            i = opt[2]
             if sub_validate_time:
-                i = opt[-1]
                 val_time = sub_validate_time[i + 1] - sub_validate_time[i]
                 print(blanc, '  %.6fs - %s - %.3fs' % (
                     t, opt, val_time), file=stream)
             else:
                 print(blanc, '  %.6fs - %s' % (t, opt), file=stream)
 
-            if sub_profs[opt[-1]]:
-                opts[opt[-1]].print_profile(stream, sub_profs[opt[-1]],
-                                            level=level + 1)
+            if sub_profs[i]:
+                opts[i].print_profile(stream, sub_profs[i],
+                                      level=level + 1)
         print(file=stream)
 
     @staticmethod
