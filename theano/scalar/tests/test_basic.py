@@ -24,7 +24,8 @@ from theano.scalar.basic import (floats, float32, float64,
                                  ints, int8, int32, complex64,
                                  ComplexError, IntDiv, TrueDiv,
                                  Composite, add, div_proxy,
-                                 and_, eq, neq, invert, mul, Scalar, InRange)
+                                 and_, eq, neq, invert, mul, Scalar, InRange,
+                                 constant)
 from theano.scalar.basic import (
     true_div, inv, log, log2, log10, log1p, exp, exp2, expm1, sqrt, deg2rad,
     rad2deg, cos, arccos, sin, arcsin, tan, arctan, arctan2, cosh, arccosh,
@@ -485,6 +486,15 @@ def test_grad_abs():
 
 # Testing of Composite is done in tensor/tests/test_opt.py
 # in test_fusion, TestCompositeCodegen
+
+
+def test_constant():
+    c = constant(2, name='a')
+    assert c.name == 'a'
+    assert c.dtype == 'int8'
+    c = constant(2, dtype='float32')
+    assert c.name is None
+    assert c.dtype == 'float32'
 
 
 if __name__ == '__main__':

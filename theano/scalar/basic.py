@@ -120,12 +120,14 @@ def as_scalar(x, name=None):
         raise TypeError("Cannot convert %s to Scalar" % x, type(x))
 
 
-def constant(x):
+def constant(x, name=None, dtype=None):
     # pass through numpy scalars, since they are already typed on
     # purpose typically.
+    if dtype is not None:
+        x = theano._asarray(x, dtype=dtype)
     if hasattr(x, 'dtype'):
         assert x.ndim == 0
-        return ScalarConstant(get_scalar_type(str(x.dtype)), x)
+        return ScalarConstant(get_scalar_type(str(x.dtype)), x, name=name)
     if isinstance(x, builtin_float):
         for dtype in ['float32', 'float64']:
             x_ = theano._asarray(x, dtype=dtype)
@@ -133,7 +135,7 @@ def constant(x):
                 break
             x_ = None
         assert x_ is not None
-        return ScalarConstant(get_scalar_type(str(x_.dtype)), x)
+        return ScalarConstant(get_scalar_type(str(x_.dtype)), x, name=name)
     if isinstance(x, builtin_int):
         for dtype in ['int8', 'int16', 'int32', 'int64']:
             x_ = theano._asarray(x, dtype=dtype)
@@ -141,7 +143,7 @@ def constant(x):
                 break
             x_ = None
         assert x_ is not None
-        return ScalarConstant(get_scalar_type(str(x_.dtype)), x)
+        return ScalarConstant(get_scalar_type(str(x_.dtype)), x, name=name)
     if isinstance(x, builtin_complex):
         # TODO: We have added the complex type, so this should be tested
         raise NotImplementedError()
