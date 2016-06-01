@@ -150,6 +150,8 @@ def constant(x, name=None, dtype=None):
         raise NotImplementedError()
     if ret is None:
         raise TypeError(x)
+    if not theano.constant_cache_enable:
+        return ret
     sig = ret.signature()
     if (theano.constant_cache_enable and
             sig not in constant_cache and
@@ -665,7 +667,15 @@ class ScalarVariable(_scalar_py_operators, Variable):
 
 
 class ScalarConstant(_scalar_py_operators, Constant):
-    pass
+    def __copy__(self):
+        # We need to do this to remove the cached attribute
+        return type(self)(self.type, self.data, self.name)
+
+    def __deepcopy__(self, memo):
+        # We need to do this to remove the cached attribute
+        return type(self)(copy.deepcopy(self.type, memo),
+                          copy.deepcopy(self.data, memo),
+                          copy.deepcopy(self.name, memo))
 
 # Register ScalarConstant as the type of Constant corresponding to Scalar
 Scalar.Constant = ScalarConstant
