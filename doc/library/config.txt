@@ -323,9 +323,9 @@ import theano and print the config variable, as in:
 
 .. attribute:: profile
 
-    Bool value: either True or False
+    Bool value: either ``True`` or ``False``
 
-    Default: False
+    Default: ``False``
 
     Do the vm/cvm linkers profile the execution time of Theano functions?
 
@@ -333,18 +333,18 @@ import theano and print the config variable, as in:
 
 .. attribute:: profile_memory
 
-    Bool value: either True or False
+    Bool value: either ``True`` or ``False``
 
-    Default: False
+    Default: ``False``
 
     Do the vm/cvm linkers profile the memory usage of Theano functions?
     It only works when profile=True.
 
 .. attribute:: profile_optimizer
 
-    Bool value: either True or False
+    Bool value: either ``True`` or ``False``
 
-    Default: False
+    Default: ``False``
 
     Do the vm/cvm linkers profile the optimization phase when compiling a Theano function?
     It only works when profile=True.
@@ -370,9 +370,9 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.profiling.min_peak_memory
 
-    Bool value: either True or False
+    Bool value: either ``True`` or ``False``
 
-    Default: False
+    Default: ``False``
 
     Does the memory profile print the min peak memory usage?
     It only works when profile=True, profile_memory=True
@@ -390,25 +390,25 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.profiling.debugprint
 
-    Bool value: either True or False
+    Bool value: either ``True`` or ``False``
 
-    Default: False
+    Default: ``False``
 
     Do a debugprint of the profiled functions
 
 .. attribute:: config.profiling.ignore_first_call
 
-    Bool value: either True or False
+    Bool value: either ``True`` or ``False``
 
-    Default: False
+    Default: ``False``
 
     Do we ignore the first call to a Theano function while profiling.
 
 .. attribute:: config.lib.amdlibm
 
-    Bool value: either True or False
+    Bool value: either ``True`` or ``False``
 
-    Default: False
+    Default: ``False``
 
     This makes the compilation use the
     `amdlibm <http://developer.amd.com/cpu/libraries/libm/>`__
@@ -695,7 +695,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.gcc.cxxflags
 
-    Default: ""
+    Default: ``""``
 
     Extra parameters to pass to gcc when compiling.  Extra include paths,
     library paths, configuration options, etc.
@@ -718,7 +718,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.nvcc.fastmath
 
-    Default: False
+    Bool value, default: ``False``
 
     If true, this will enable fastmath (|use_fast_math|_)
     mode for compiled cuda code which makes div and sqrt faster at the
@@ -736,7 +736,7 @@ import theano and print the config variable, as in:
     A list of optimizer tags that we don't want included in the default Mode.
     If multiple tags, separate them by ':'.
     Ex: to remove the elemwise inplace optimizer(slow for big graph),
-    use the flags: optimizer_excluding:inplace_opt, where
+    use the flags: ``optimizer_excluding:inplace_opt``, where
     inplace_opt is the name of that optimization.
 
     This flag's value cannot be modified during the program execution.
@@ -838,26 +838,26 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.DebugMode.warn_input_not_reused
 
-    Bool value, default: True
+    Bool value, default: ``True``
 
     Generate a warning when the destroy_map or view_map tell that an op work
     inplace, but the op did not reuse the input for its output.
 
 .. attribute:: config.NanGuardMode.nan_is_error
 
-    Bool value, default: True
+    Bool value, default: ``True``
 
     Controls whether NanGuardMode generates an error when it sees a nan.
 
 .. attribute:: config.NanGuardMode.inf_is_error
 
-    Bool value, default: True
+    Bool value, default: ``True``
 
     Controls whether NanGuardMode generates an error when it sees an inf.
 
 .. attribute:: config.NanGuardMode.nan_is_error
 
-    Bool value, default: True
+    Bool value, default: ``True``
 
     Controls whether NanGuardMode generates an error when it sees a
     big value (>1e10).
@@ -968,7 +968,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: print_test_value
 
-    Bool value, default: False
+    Bool value, default: ``False``
 
     If ``'True'``, Theano will override the ``__str__`` method of its variables
     to also print the tag.test_value when this is available.
@@ -1002,7 +1002,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.cmodule.warn_no_version
 
-    Bool value, default: False
+    Bool value, default: ``False``
 
     If True, will print a warning when compiling one or more Op with C
     code that can't be cached because there is no ``c_code_cache_version()``
