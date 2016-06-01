@@ -430,7 +430,7 @@ def constant(x, name=None, ndim=None, dtype=None):
     # So we cache integer with dtype [u]int and float where the value is
     # between -10 and 10
     # We want to cache all broadcast pattern for scalar.
-    if not constant.enable:
+    if not theano.constant_cache_enable:
         return ret
     sig = ret.signature()
     if (sig not in constant_cache and ret.data.size == 1 and
@@ -444,7 +444,6 @@ def constant(x, name=None, ndim=None, dtype=None):
         ret.cached = True
 
     return constant_cache.get(sig, ret)
-constant.enable = True
 constant_cache = {}
 
 

@@ -125,30 +125,40 @@ def constant(x, name=None, dtype=None):
     # purpose typically.
     if dtype is not None:
         x = theano._asarray(x, dtype=dtype)
+    ret = None
     if hasattr(x, 'dtype'):
         assert x.ndim == 0
-        return ScalarConstant(get_scalar_type(str(x.dtype)), x, name=name)
-    if isinstance(x, builtin_float):
+        ret = ScalarConstant(get_scalar_type(str(x.dtype)), x, name=name)
+    elif isinstance(x, builtin_float):
         for dtype in ['float32', 'float64']:
             x_ = theano._asarray(x, dtype=dtype)
             if numpy.all(x == x_):
                 break
             x_ = None
         assert x_ is not None
-        return ScalarConstant(get_scalar_type(str(x_.dtype)), x, name=name)
-    if isinstance(x, builtin_int):
+        ret = ScalarConstant(get_scalar_type(str(x_.dtype)), x, name=name)
+    elif isinstance(x, builtin_int):
         for dtype in ['int8', 'int16', 'int32', 'int64']:
             x_ = theano._asarray(x, dtype=dtype)
             if numpy.all(x == x_):
                 break
             x_ = None
         assert x_ is not None
-        return ScalarConstant(get_scalar_type(str(x_.dtype)), x, name=name)
-    if isinstance(x, builtin_complex):
+        ret = ScalarConstant(get_scalar_type(str(x_.dtype)), x, name=name)
+    elif isinstance(x, builtin_complex):
         # TODO: We have added the complex type, so this should be tested
         raise NotImplementedError()
-    raise TypeError(x)
-    # return ScalarConstant(float64, float(x))
+    if ret is None:
+        raise TypeError(x)
+    sig = ret.signature()
+    if (theano.constant_cache_enable and
+            sig not in constant_cache and
+            (-10) <= ret.data <= 10 and
+            # Limit the size of the cache.
+            len(constant_cache) < 10000):
+        constant_cache[sig] = ret
+    return constant_cache.get(sig, ret)
+constant_cache = {}
 
 
 class Scalar(Type):
@@ -644,7 +654,7 @@ class _scalar_py_operators:
         # The second is needed for Elemwise ops to work right
         if dtype is None:
             dtype = str(self.type.dtype)
-        return second(self, ScalarConstant(get_scalar_type(dtype), 0))
+        return second(self, constant(0, dtype=get_scalar_type(dtype)))
 
     def astype(self, dtype):
         return cast(self, dtype)
