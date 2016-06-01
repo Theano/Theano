@@ -346,6 +346,7 @@ def local_gpu_elemwise_1(node):
         host_i, = node.inputs
         if (host_i.owner and
                 isinstance(host_i.owner.op, tensor.Elemwise) and
+                len(host_i.owner.outputs) == 1 and
                 len(host_i.clients) == 1 and
                 dtype_in_elemwise_supported(node.op)):
 
