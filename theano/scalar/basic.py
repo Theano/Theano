@@ -277,10 +277,10 @@ def convert(x, dtype=None):
     return x_
 
 
-def constant(x):
-    x = convert(x)
+def constant(x, name=None, dtype=None):
+    x = convert(x, dtype=dtype)
     assert x.ndim == 0
-    return ScalarConstant(get_scalar_type(str(x.dtype)), x)
+    return ScalarConstant(get_scalar_type(str(x.dtype)), x, name=name)
 
 
 class Scalar(Type):
