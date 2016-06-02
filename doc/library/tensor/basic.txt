@@ -1414,7 +1414,7 @@ Mathematical
 
 .. function:: abs_(a)
 
-    Returns a variable representingthe absolute of a, ie ``|a|``.
+    Returns a variable representing the absolute of a, ie ``|a|``.
 
     .. note:: Can also be accessed with ``abs(a)``.
 
