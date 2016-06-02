@@ -257,14 +257,9 @@ class GraphToGPU(Optimizer):
                 mapping[i] = GpuFromHost(None)(i)
             else:
                 mapping[i] = i
-
-        # Iterating through output of all the nodes
-        for n in fgraph.toposort():
-            for o in n.outputs:
-                if isinstance(o.type, tensor.TensorType):
-                    mapping[o] = GpuFromHost(None)(o)
-                else:
-                    mapping[o] = o
+        for i in fgraph.variables:
+            if isinstance(i, theano.Constant):
+                mapping[i] = i
 
         for node in fgraph.toposort():
 
