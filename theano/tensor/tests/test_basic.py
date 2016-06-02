@@ -5195,10 +5195,9 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
         # test broadcast flag for constant value of 1
         c = reshape(b, (b.shape[0], b.shape[1], 1))
         f = self.function([b], c)
-        g = theano.gof.FunctionGraph([b], [c])
         assert numpy.all(f(numpy.asarray([[0, 1, 2], [3, 4, 5]])) ==
                          numpy.asarray([[[0], [1], [2]], [[3], [4], [5]]]))
-        assert (g.toposort()[-1].outputs[0].type.broadcastable ==
+        assert (f.maker.fgraph.toposort()[-1].outputs[0].type.broadcastable ==
                 (False, False, True))
 
     def test_m1(self):
