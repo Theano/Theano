@@ -78,3 +78,57 @@ If you don't have any input variables on the GPU you can follow the
 the example of :class:`theano.gpuarray.basic_ops.GpuFromHost` or
 :class:`theano.gpuarray.basic_ops.GpuEye`.  This is not a case that
 you should encounter often, so it will not be covered further.
+
+Defining new kernels
+====================
+
+If your op needs to do some transformation on the data, chances are
+that you will need to write a new kernel.  The best way to do this is
+to leverage GpuKernelBase (or CGpuKernelBase if you want to use the
+COp functionality).
+
+For plain GpuKernelBase, you have to define a method called
+gpu_kernels which returns a list of :class:`Kernel
+<theano.gpuarray.basic_ops.Kernel>` objects.  You can define as many
+kernels as you want for a single op.  An example would look like this:
+
+    def gpu_kernels(self, node, name):
+        code = """
+KERNEL void k(GLOBAL_MEM ga_float *a, ga_size n, ga_size m) {
+    ga_size nb = n < m ? n : m;
+    for (ga_size i = LID_0; i < nb; i += LDIM_0) {
+        a[i*m + i] = 1;
+    }
+}"""
+        return [Kernel(
+                code=code, name="k",
+                params=[gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE],
+                flags=Kernel.get_flags(self.dtype))]
+
+If you want to use COp, then you should use `CGpuKernelBase` instead.
+It add a new section to the parsed files whose tag is `kernels`.
+Inside that section you can define some kernels with `#kernel
+name:params:flags`.
+
+Here `name` is the name of the kernel function in the following code,
+`params` is a comma-separeted list of C typecode names and `flags` is
+a `|`-separeted list of C kernel flag values (can be empty).  The same kernel definition as above would look like this with `CGpuKernelBase`:
+
+    #section kernels
+
+    #kernel k : GA_BUFFER, GA_SIZE, GA_SIZE : GA_USE_CLUDA
+
+    KERNEL void k(GLOBAL_MEM ga_float *a, ga_size n, ga_size m) {
+        ga_size nb = n < m ? n : m;
+        for (ga_size i = LID_0; i < nb; i += LDIM_0) {
+        a[i*m + i] = 1;
+        }
+    }
+
+The second method is to handle the kernel compilation and cache on
+your own.  This is not recommended because there are lots of details
+to pay attention to that can cripple your performance if not done
+right, which GpuKernelBase handles for you.
+
+In any case you will need to call your compiled kernel with some data.
+This is done using the `GpuKernel_call()` method in your C code.
