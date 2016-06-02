@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import os
-
+import copy
+import re
 import numpy
 
 from theano import Op, Apply, Type, Variable
@@ -8,7 +9,7 @@ from theano import tensor, config
 from theano.gradient import grad_undefined
 from theano.tensor.basic import Alloc, Join, Split
 
-from theano.gof import HideC
+from theano.gof import HideC, COp
 from theano.gof.utils import MethodNotDefined
 
 from collections import deque
@@ -167,6 +168,8 @@ class Kernel(object):
 
     def _get_c_flags(self):
         res = []
+        if self.flags.get('cflags', '') != '':
+            res.append(self.flags['cflags'])
         if self.flags.get('cluda', False):
             res.append('GA_USE_CLUDA')
         if self.flags.get('have_double', False):
@@ -180,11 +183,15 @@ class Kernel(object):
         return '|'.join(res)
 
     def _get_c_types(self):
-        def m(t):
-            if t == gpuarray.GpuArray:
-                return "GA_BUFFER"
-            else:
-                return str(gpuarray.dtype_to_typecode(t))
+        if not self.flags.get('ctypes', False):
+            def m(t):
+                if t == gpuarray.GpuArray:
+                    return "GA_BUFFER"
+                else:
+                    return str(gpuarray.dtype_to_typecode(t))
+        else:
+            def m(t):
+                return t
         return ', '.join(m(t) for t in self.params)
 
 
@@ -311,6 +318,90 @@ class GpuKernelBase(object):
 
         """
         return (4, self.get_params(node).bin_id)
+
+
+def fwds(name):
+    def f(*args):
+        res = getattr(GpuKernelBase, name)(*args)
+        try:
+            res = res + '\n' + getattr(COp, name)(*args)
+        except MethodNotDefined:
+            pass
+        return res
+    f.__name__ = name
+    return f
+
+
+class CGpuKernelBase(COp, GpuKernelBase):
+    """
+    Class to combine GpuKernelBase and COp.
+
+    It adds a new section type 'kernels' where you can define kernels
+    with the '#kernel' tag
+    """
+    SECTIONS = copy.copy(COp.SECTIONS)
+    SECTIONS.add('kernels')
+
+    kernel_re = re.compile(r'^#kernel ([a-zA-Z_].*?)$', re.MULTILINE)
+
+    c_support_code = fwds('c_support_code')
+    c_support_code_apply = fwds('c_support_code_apply')
+    c_support_code_struct = fwds('c_support_code_struct')
+    c_init_code_struct = fwds('c_init_code_struct')
+    c_cleanup_code_struct = fwds('c_cleanup_code_struct')
+
+    def _type_macros(self, node):
+        define_template = "#define %s %s"
+        undef_template = "#undef %s"
+        define_macros = []
+        undef_macros = []
+        for i, v in enumerate(node.inputs):
+            macro_name = "DTYPE_i%d" % (i,)
+            macro_value = pygpu.gpuarray.dtype_to_ctype(v.dtype)
+            define_macros.append(
+                define_template %
+                (macro_name, macro_value))
+            undef_macros.append(undef_template % macro_name)
+        for i, v in enumerate(node.outputs):
+            macro_name = "DTYPE_o%d" % (i,)
+            macro_value = pygpu.gpuarray.dtype_to_ctype(v.dtype)
+            define_macros.append(
+                define_template %
+                (macro_name, macro_value))
+            undef_macros.append(undef_template % macro_name)
+
+        return '\n'.join(define_macros), '\n'.join(undef_macros)
+
+    def gpu_kernels(self, node, name):
+        if hasattr(self, '_cached_kernels'):
+            return self._cached_kernels
+        if 'kernels' in self.code_sections:
+            code = self.code_sections['kernels']
+            split = self.kernel_re.split(code)
+            if split[0].strip() != '':
+                raise ValueError("Stray code in kernels section before the "
+                                 "first #kernel statement.")
+            def_macros, undef_macros = self._type_macros(node)
+            n = 1
+            res = []
+            while n < len(split):
+                kspec = split[n]
+                kcode = split[n+1]
+                splt2 = kspec.split(':')
+                if len(splt2) != 3:
+                    raise ValueError("Bad kernel spec: %s" % (kspec,))
+                kname = splt2[0].strip()
+                ktypes = [s.strip() for s in splt2[1].split(',')]
+                kflags = splt2[2].strip()
+                kcode = def_macros + '\n' + kcode + '\n' + undef_macros
+                res.append(Kernel(kcode, ktypes, kname,
+                                  flags=dict(ctypes=True, cluda=True,
+                                             cflags=kflags)))
+                n += 2
+            self._cached_kernels = res
+            return res
+        else:
+            return GpuKernelBase.gpu_kernels(self, node, name)
 
 
 class HostFromGpu(Op):
