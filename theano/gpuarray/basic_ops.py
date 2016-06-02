@@ -125,6 +125,48 @@ class Kernel(object):
     """
     This class groups together all the attributes of a gpu kernel.
 
+    `params` should contain the data type for each argument.  Buffer
+    arguments should use the GpuArray class as the data type and
+    scalar should use their equivalent numpy dtype.  For ga_size and
+    ga_ssize, use gpuarray.SIZE and gpuarray.SSIZE.
+
+    If the `ctypes` flags is set to `True` then it should be a C
+    string which represent the typecode to use.
+
+    `flags` can contain the following keys whose values are booleans:
+
+        have_double
+            the kernel uses double-typed variables somewhere
+        have_small
+            the kernel uses variables whose type takes less than 4
+            bytes somewhere
+        have_complex
+            the kernel uses complex values somewhere
+        have_half
+            the kernel uses half-floats somewhere
+        ctypes
+            the `params` list consists of C typecodes
+
+    It can also have the key `cflags` which is a string of C flag
+    values like this `"GA_USE_DOUBLE|GA_USE_CLUDA"`.
+
+    Parameters
+    ----------
+    code: str
+        The source code of the kernel.
+    params: list
+        list of parameter types.
+    name: str
+        the name of the kernel function in the source.
+    flags: dict
+        dictionary of flags
+    codevar: str
+        the name of the variable for the code object.
+    binvar: str
+        the name of the variable for the binary object.
+    objvar: str
+        the name of the variable for the kernel object.
+
     """
 
     def __init__(self, code, params, name, flags,
