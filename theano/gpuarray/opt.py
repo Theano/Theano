@@ -66,8 +66,7 @@ class GraphToGPUDB(DB):
     """
 
     def query(self, *tags, **kwtags):
-        include = [o for o in config.optimizer.split(',')]
-        opt = gpu_optimizer.query(include=include)
+        opt = gpu_optimizer.query(*tags, **kwtags)
         return GraphToGPU(opt.local_optimizers_all, opt.local_optimizers_map)
 
 
