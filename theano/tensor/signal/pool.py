@@ -14,6 +14,7 @@ from six.moves import xrange
 import six.moves.builtins as builtins
 import theano
 from theano import gof, OpenMPOp, tensor, Variable, Apply
+from theano.gradient import DisconnectedType
 
 
 def max_pool_2d_same_size(input, patch_size):
@@ -32,8 +33,8 @@ def max_pool_2d_same_size(input, patch_size):
         (2,2) will retain only one non-zero value per patch of 4 values.
 
     """
-    output = Pool(patch_size, True)(input)
-    outs = MaxPoolGrad(patch_size, True)(input, output, output)
+    output = Pool(True)(input, patch_size)
+    outs = MaxPoolGrad(True)(input, output, output, patch_size)
     return outs
 
 
@@ -85,9 +86,8 @@ def pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
             stacklevel=2)
         ignore_border = False
     if input.ndim == 4:
-        op = Pool(ds, ignore_border, st=st, padding=padding,
-                  mode=mode)
-        output = op(input)
+        op = Pool(ignore_border, mode=mode)
+        output = op(input, ds, st, padding)
         return output
 
     # extract image dimensions
@@ -104,9 +104,8 @@ def pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
     input_4D = tensor.reshape(input, new_shape, ndim=4)
 
     # downsample mini-batch of images
-    op = Pool(ds, ignore_border, st=st, padding=padding,
-              mode=mode)
-    output = op(input_4D)
+    op = Pool(ignore_border, mode=mode)
+    output = op(input_4D, ds, st, padding)
 
     # restore to original shape
     outshp = tensor.join(0, input.shape[:-2], output.shape[-2:])
@@ -143,7 +142,7 @@ class Pool(OpenMPOp):
 
     """
 
-    __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')
+    __props__ = ('ignore_border', 'mode')
 
     @staticmethod
     def out_shape(imgshape, ds, ignore_border=False, st=None, padding=(0, 0)):
@@ -234,50 +233,55 @@ class Pool(OpenMPOp):
         rval = list(imgshape[:-2]) + [nr, nc]
         return rval
 
-    def __init__(self, ds, ignore_border=False, st=None, padding=(0, 0),
-                 mode='max', openmp=None):
+    def __init__(self, ignore_border=False, mode='max', openmp=None):
         super(Pool, self).__init__(openmp=openmp)
-        self.ds = tuple(ds)
-        if not all([isinstance(d, integer_types) for d in ds]):
-            raise ValueError(
-                "Pool downsample parameters must be ints."
-                " Got %s" % str(ds))
-        if st is None:
-            st = ds
-        assert isinstance(st, (tuple, list))
-        self.st = tuple(st)
         self.ignore_border = ignore_border
-        self.padding = tuple(padding)
-        if self.padding != (0, 0) and not ignore_border:
-            raise NotImplementedError(
-                'padding works only with ignore_border=True')
-        if self.padding[0] >= self.ds[0] or self.padding[1] >= self.ds[1]:
-            raise NotImplementedError(
-                'padding_h and padding_w must be smaller than strides')
         if mode not in ['max', 'average_inc_pad', 'average_exc_pad', 'sum']:
             raise ValueError(
                 "Pool mode parameter only support 'max', 'sum',"
                 " 'average_inc_pad' and 'average_exc_pad'. Got %s" % mode)
         self.mode = mode
 
-    def make_node(self, x):
+    def make_node(self, x, ws, stride=None, pad=(0, 0)):
         # TODO: consider restricting the dtype?
         x = tensor.as_tensor_variable(x)
+        # TODO CESAR: How can we check the theano variables?
+        if isinstance(ws, (tuple, list)):
+            if not all([isinstance(w, integer_types) for w in ws]):
+                raise ValueError(
+                    "Pool downsample parameters must be ints."
+                    " Got %s" % str(ws))
+        if stride is None:
+            stride = ws
+        if isinstance(pad, (tuple, list)):
+            pad = tuple(pad)
+            if pad != (0, 0) and not self.ignore_border:
+                raise NotImplementedError(
+                    'padding works only with ignore_border=True')
+            # TODO CESAR: Again, how can we check against theano variables?
+            if pad[0] >= ws[0] or pad[1] >= ws[1]: #TODO CESAR this is wrong if ws is a theano variable
+                raise NotImplementedError(
+                    'padding_h and padding_w must be smaller than strides')
+        ws = tensor.as_tensor_variable(ws)
+        stride = tensor.as_tensor_variable(stride)
+        pad = tensor.as_tensor_variable(pad)
+        assert ws.ndim == 1
+        assert stride.ndim == 1
+        assert pad.ndim == 1
         if x.type.ndim != 4:
             raise TypeError()
         # If the input shape are broadcastable we can have 0 in the output shape
         broad = x.broadcastable[:2] + (False, False)
         out = tensor.TensorType(x.dtype, broad)
-        return gof.Apply(self, [x], [out()])
+        return gof.Apply(self, [x, ws, stride, pad], [out()])
 
     def perform(self, node, inp, out):
-        x, = inp
+        x, ws, stride, pad = inp
         z, = out
         if len(x.shape) != 4:
             raise NotImplementedError(
                 'Pool requires 4D input for now')
-        z_shape = self.out_shape(x.shape, self.ds, self.ignore_border, self.st,
-                                 self.padding)
+        z_shape = self.out_shape(x.shape, ws, self.ignore_border, stride, pad)
         if not self.ignore_border:
             assert z_shape[2] > 0
             assert z_shape[3] > 0
@@ -288,16 +292,16 @@ class Pool(OpenMPOp):
         pr = zz.shape[-2]
         # number of pooling output cols
         pc = zz.shape[-1]
-        ds0, ds1 = self.ds
-        st0, st1 = self.st
-        pad_h = self.padding[0]
-        pad_w = self.padding[1]
+        ws0, ws1 = ws
+        st0, st1 = stride
+        pad_h = pad[0]
+        pad_w = pad[1]
         img_rows = x.shape[-2] + 2 * pad_h
         img_cols = x.shape[-1] + 2 * pad_w
         inc_pad = self.mode == 'average_inc_pad'
 
         # pad the image
-        if self.padding != (0, 0):
+        if pad_h != 0 and pad_w != 0:
             y = numpy.zeros(
                 (x.shape[0], x.shape[1], img_rows, img_cols),
                 dtype=x.dtype)
@@ -314,47 +318,48 @@ class Pool(OpenMPOp):
             for k in xrange(x.shape[1]):
                 for r in xrange(pr):
                     row_st = r * st0
-                    row_end = builtins.min(row_st + ds0, img_rows)
+                    row_end = builtins.min(row_st + ws0, img_rows)
                     if not inc_pad:
-                        row_st = builtins.max(row_st, self.padding[0])
+                        row_st = builtins.max(row_st, pad_h)
                         row_end = builtins.min(row_end, x.shape[-2] + pad_h)
                     for c in xrange(pc):
                         col_st = c * st1
-                        col_end = builtins.min(col_st + ds1, img_cols)
+                        col_end = builtins.min(col_st + ws1, img_cols)
                         if not inc_pad:
-                            col_st = builtins.max(col_st, self.padding[1])
+                            col_st = builtins.max(col_st, pad_w)
                             col_end = builtins.min(col_end,
                                                    x.shape[-1] + pad_w)
                         zz[n, k, r, c] = func(y[
                             n, k, row_st:row_end, col_st:col_end])
 
     def infer_shape(self, node, in_shapes):
-        shp = self.out_shape(in_shapes[0], self.ds,
-                             self.ignore_border, self.st, self.padding)
+        ws, stride, pad = [node.inputs[1], node.inputs[2], node.inputs[3]]
+        shp = self.out_shape(in_shapes[0], ws, self.ignore_border, stride,
+                             pad)
         return [shp]
 
     def grad(self, inp, grads):
-        x, = inp
+        x, ws, stride, pad = inp
         gz, = grads
+        disc = [DisconnectedType()() for i in inp[1:]]
         if self.mode == 'max':
-            maxout = self(x)
-            return [MaxPoolGrad(self.ds,
-                                ignore_border=self.ignore_border,
-                                st=self.st, padding=self.padding)(
-                                    x, maxout, gz)]
+            maxout = self(x, ws, stride, pad)
+            return [MaxPoolGrad(ignore_border=self.ignore_border)(x, maxout,
+                                    gz, ws=ws, stride=stride, pad=pad)] + disc
         else:
-            return [AveragePoolGrad(self.ds,
-                                    ignore_border=self.ignore_border,
-                                    st=self.st, padding=self.padding,
-                                    mode=self.mode)(
-                                        x, gz)]
+            return [AveragePoolGrad(ignore_border=self.ignore_border,
+                                    mode=self.mode)(x, gz, ws=ws,
+                                        stride=stride, pad=pad)] + disc
+
+    def connection_pattern(self, node):
+        return [[1], [0], [0], [0]]
 
     def c_headers(self):
         headers = ['<algorithm>']
         headers += super(Pool, self).c_headers()
         return headers
 
-    def c_code(self, node, name, inp, out, sub):
+    def c_code_(self, node, name, inp, out, sub):
         if self.mode not in ('max', 'sum', 'average_exc_pad', 'average_inc_pad'):
             raise theano.gof.utils.MethodNotDefined()
         x, = inp
@@ -542,7 +547,7 @@ class Pool(OpenMPOp):
 
 
 class PoolGrad(OpenMPOp):
-    __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')
+    __props__ = ('ignore_border', 'mode')
 
     @staticmethod
     def out_shape(imgshape, ds, ignore_border=False, st=None, padding=(0, 0)):
@@ -624,13 +629,8 @@ class PoolGrad(OpenMPOp):
         rval = list(imgshape[:-2]) + [nr, nc]
         return rval
 
-    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max', openmp=None):
-        self.ds = tuple(ds)
+    def __init__(self, ignore_border, mode='max', openmp=None):
         self.ignore_border = ignore_border
-        if st is None:
-            st = ds
-        self.st = tuple(st)
-        self.padding = tuple(padding)
         if mode not in ['max', 'sum', 'average_inc_pad', 'average_exc_pad']:
             raise ValueError(
                 "Pool mode parameter only support 'max', 'sum',"
@@ -643,38 +643,43 @@ class PoolGrad(OpenMPOp):
 
 
 class MaxPoolGrad(PoolGrad):
-    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), openmp=None):
-        PoolGrad.__init__(self, ds, ignore_border, st, padding, 'max', openmp)
+    def __init__(self, ignore_border, openmp=None):
+        PoolGrad.__init__(self, ignore_border, mode='max', openmp=openmp)
 
-    def make_node(self, x, maxout, gz):
+    def make_node(self, x, maxout, gz, ws, stride=None, pad=(0, 0)):
         # make_node should only be called by the grad function of
         # Pool, so these asserts should not fail.
         x = tensor.as_tensor_variable(x)
         maxout = tensor.as_tensor_variable(maxout)
         gz = tensor.as_tensor_variable(gz)
+        if stride is None:
+            stride = ws
+        ws = tensor.as_tensor_variable(ws)
+        stride = tensor.as_tensor_variable(stride)
+        pad = tensor.as_tensor_variable(pad)
         assert isinstance(x, Variable) and x.ndim == 4
         assert isinstance(maxout, Variable) and maxout.ndim == 4
         assert isinstance(gz, Variable) and gz.ndim == 4
-
-        return Apply(self, [x, maxout, gz], [x.type()])
+        #TODO CESAR: ASSERT
+        return Apply(self, [x, maxout, gz, ws, stride, pad], [x.type()])
 
     def perform(self, node, inp, out):
         assert self.mode == 'max'
-        x, maxout, gz = inp
+        x, maxout, gz, ws, stride, pad = inp
         gx_stg, = out
         # number of pooling output rows
         pr = maxout.shape[-2]
         # number of pooling output cols
         pc = maxout.shape[-1]
-        ds0, ds1 = self.ds
-        st0, st1 = self.st
-        pad_h = self.padding[0]
-        pad_w = self.padding[1]
+        ws0, ws1 = ws
+        st0, st1 = stride
+        pad_h = pad[0]
+        pad_w = pad[1]
         img_rows = x.shape[-2] + 2 * pad_h
         img_cols = x.shape[-1] + 2 * pad_w
 
         # pad the image
-        if self.padding != (0, 0):
+        if pad_h != 0 and pad_w != 0:
             y = numpy.zeros(
                 (x.shape[0], x.shape[1], img_rows, img_cols),
                 dtype=x.dtype)
@@ -685,11 +690,11 @@ class MaxPoolGrad(PoolGrad):
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
                 for r in xrange(pr):
-                    row_st = builtins.max(r * st0, self.padding[0])
-                    row_end = builtins.min(row_st + ds0, img_rows)
+                    row_st = builtins.max(r * st0, pad_h)
+                    row_end = builtins.min(row_st + ws0, img_rows)
                     for c in xrange(pc):
-                        col_st = builtins.max(c * st1, self.padding[1])
-                        col_end = builtins.min(col_st + ds1, img_cols)
+                        col_st = builtins.max(c * st1, pad_w)
+                        col_end = builtins.min(col_st + ws1, img_cols)
                         for row_ind in xrange(row_st, row_end):
                             for col_ind in xrange(col_st, col_end):
                                 if (maxout[n, k, r, c] == y[n, k, row_ind, col_ind]):
@@ -699,15 +704,18 @@ class MaxPoolGrad(PoolGrad):
         gx_stg[0] = gx
 
     def grad(self, inp, grads):
-        x, maxout, gz = inp
+        x, maxout, gz, ws, stride, pad = inp
         ggx, = grads
-        return [theano.tensor.zeros_like(x),
-                theano.tensor.zeros_like(maxout),
-                DownsampleFactorMaxGradGrad(
-                    self.ds, ignore_border=self.ignore_border,
-                    st=self.st, padding=self.padding)(x, maxout, ggx)]
+        return ([theano.tensor.zeros_like(x),
+                 theano.tensor.zeros_like(maxout),
+                 DownsampleFactorMaxGradGrad(ignore_border=self.ignore_border)(
+                            x, maxout, ggx, ws, stride, pad)] +
+                [DisconnectedType()() for i in inp[3:]])
 
-    def c_code(self, node, name, inp, out, sub):
+    def connection_pattern(self, node):
+        return [[1], [1], [1], [0], [0], [0]]
+
+    def c_code_(self, node, name, inp, out, sub):
         assert self.mode == 'max'
         x, z, gz = inp
         gx, = out
@@ -824,32 +832,35 @@ class MaxPoolGrad(PoolGrad):
 
 
 class AveragePoolGrad(PoolGrad):
-    def __init__(self, ds, ignore_border, st=None, padding=(0, 0),
-                 mode='average_inc_pad'):
+    def __init__(self, ignore_border, mode='average_inc_pad'):
         assert mode in ['sum', 'average_inc_pad', 'average_exc_pad']
-        PoolGrad.__init__(self, ds, ignore_border, st, padding, mode)
+        PoolGrad.__init__(self, ignore_border, mode)
 
     # There is an extra dummy parameter to match the parameter count
     # of MaxPoolGrad.  They have to keep the same interface because of
     # the DownsampleFactorMaxGrad trick to keep old scripts working
     # (see downsample.py for details on this).
-    def make_node(self, x, gz, dummy=None):
+    def make_node(self, x, gz, ws, stride=None, pad=(0, 0), dummy=None): # TODO CESAR check if it works!
         # make_node should only be called by the grad function of
         # Pool, so these asserts should not fail.
         x = tensor.as_tensor_variable(x)
         gz = tensor.as_tensor_variable(gz)
+        if stride is None:
+            stride = ws
+        ws = tensor.as_tensor_variable(ws)
+        stride = tensor.as_tensor_variable(stride)
+        pad = tensor.as_tensor_variable(pad)
         assert isinstance(x, Variable) and x.ndim == 4
         assert isinstance(gz, Variable) and gz.ndim == 4
-
-        return Apply(self, [x, gz], [x.type()])
+        # TODO CESAR assert
+        return Apply(self, [x, gz, ws, stride, pad], [x.type()])
 
     def perform(self, node, inp, out):
-        if self.mode == 'average_exc_pad' and self.padding != (0, 0):
-            raise NotImplementedError()
-        x, gz = inp
+        x, gz, ws, stride, pad = inp
         gx_stg, = out
-        z_shape = self.out_shape(x.shape, self.ds, self.ignore_border, self.st,
-                                 self.padding)
+        if self.mode == 'average_exc_pad' and pad[0] != 0 and pad[1] != 0:
+            raise NotImplementedError()
+        z_shape = self.out_shape(x.shape, ws, self.ignore_border, stride, pad)
         if (gx_stg[0] is None) or (gx_stg[0].shape != z_shape):
             gx_stg[0] = numpy.empty(z_shape, dtype=x.dtype)
         zz = gx_stg[0]
@@ -857,17 +868,17 @@ class AveragePoolGrad(PoolGrad):
         pr = zz.shape[-2]
         # number of pooling output cols
         pc = zz.shape[-1]
-        ds0, ds1 = self.ds
-        st0, st1 = self.st
-        pad_h = self.padding[0]
-        pad_w = self.padding[1]
+        ws0, ws1 = ws
+        st0, st1 = stride
+        pad_h = pad[0]
+        pad_w = pad[1]
         img_rows = x.shape[-2] + 2 * pad_h
         img_cols = x.shape[-1] + 2 * pad_w
         inc_pad = self.mode == 'average_inc_pad'
         sum_mode = self.mode == 'sum'
 
         # pad the image
-        if self.padding != (0, 0):
+        if pad_h != 0 and pad_w != 0:
             y = numpy.zeros(
                 (x.shape[0], x.shape[1], img_rows, img_cols),
                 dtype=x.dtype)
@@ -881,15 +892,14 @@ class AveragePoolGrad(PoolGrad):
                     if sum_mode or inc_pad:
                         row_st = r * st0
                     else:
-                        row_st = builtins.max(r * st0, self.padding[0])
-                    row_end = builtins.min(row_st + ds0, img_rows)
+                        row_st = builtins.max(r * st0, pad_h)
+                    row_end = builtins.min(row_st + ws0, img_rows)
                     for c in xrange(pc):
                         if sum_mode or inc_pad:
                             col_st = c * st1
                         else:
-                            col_st = builtins.max(c * st1,
-                                                  self.padding[1])
-                        col_end = builtins.min(col_st + ds1, img_cols)
+                            col_st = builtins.max(c * st1, pad_w)
+                        col_end = builtins.min(col_st + ws1, img_cols)
                         if sum_mode:
                             val = gz[n, k, r, c]
                         else:
@@ -901,39 +911,27 @@ class AveragePoolGrad(PoolGrad):
         gx_stg[0] = gx
 
     def grad(self, inp, grads):
-        x, gz = inp
+        x, gz, ws, stride, pad = inp
         ggx, = grads
-        return [theano.tensor.zeros_like(x),
-                Pool(self.ds, ignore_border=self.ignore_border,
-                     st=self.st, padding=self.padding, mode=self.mode)(ggx)]
+        return ([theano.tensor.zeros_like(x),
+                 Pool(ignore_border=self.ignore_border, mode=self.mode)(ggx,
+                            ws, stride, pad)] +
+                [DisconnectedType()() for i in inp[2:]])
+
+    def connection_pattern(self, node):
+        return [[1], [1], [0], [0], [0]]
 
 
 class DownsampleFactorMaxGradGrad(OpenMPOp):
-    __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')
+    __props__ = ('ignore_border', 'mode')
 
-    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max', openmp=None):
-        self.ds = tuple(ds)
-        if not all([isinstance(d, integer_types) for d in ds]):
-            raise ValueError(
-                "Pool downsample parameters must be ints."
-                " Got %s" % str(ds))
-        if st is None:
-            st = ds
-        assert isinstance(st, (tuple, list))
-        self.st = tuple(st)
+    def __init__(self, ignore_border, mode='max', openmp=None):
         self.ignore_border = ignore_border
-        self.padding = tuple(padding)
-        if self.padding != (0, 0) and not ignore_border:
-            raise NotImplementedError(
-                'padding works only with ignore_border=True')
-        if self.padding[0] >= self.ds[0] or self.padding[1] >= self.ds[1]:
-            raise NotImplementedError(
-                'padding_h and padding_w must be smaller than strides')
         self.mode = mode
         super(DownsampleFactorMaxGradGrad, self).__init__(openmp=openmp)
         assert self.mode == 'max'
 
-    def make_node(self, x, maxout, gz):
+    def make_node(self, x, maxout, gz, ws, stride=None, pad=(0, 0)):
         # make_node should only be called by the grad function of
         # MaxPoolGrad, so these asserts should not fail.
         x = tensor.as_tensor_variable(x)
@@ -943,10 +941,34 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         assert maxout.ndim == 4
         assert gz.ndim == 4
 
-        return Apply(self, [x, maxout, gz], [x.type()])
+        # TODO CESAR: How can we check the theano variables?
+        if isinstance(ws, (tuple, list)):
+            if not all([isinstance(w, integer_types) for w in ws]):
+                raise ValueError(
+                    "Pool downsample parameters must be ints."
+                    " Got %s" % str(ws))
+        if stride is None:
+            stride = ws
+        if isinstance(pad, (tuple, list)):
+            pad = tuple(pad)
+            if pad != (0, 0) and not self.ignore_border:
+                raise NotImplementedError(
+                    'padding works only with ignore_border=True')
+            # TODO CESAR: Again, how can we check against theano variables?
+            if pad[0] >= ws[0] or pad[1] >= ws[1]: #TODO CESAR this is wrong if ws is a theano variable
+                raise NotImplementedError(
+                    'padding_h and padding_w must be smaller than strides')
+        ws = tensor.as_tensor_variable(ws)
+        stride = tensor.as_tensor_variable(stride)
+        pad = tensor.as_tensor_variable(pad)
+        assert ws.ndim == 1
+        assert stride.ndim == 1
+        assert pad.ndim == 1
+
+        return Apply(self, [x, maxout, gz, ws, stride, pad], [x.type()])
 
     def perform(self, node, inp, out):
-        x, maxout, ggx = inp
+        x, maxout, ggx, ws, stride, pad = inp
         z, = out
         if len(x.shape) != 4:
             raise NotImplementedError(
@@ -958,14 +980,14 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         pr = ggz.shape[-2]
         # number of pooling output cols
         pc = ggz.shape[-1]
-        ds0, ds1 = self.ds
-        st0, st1 = self.st
-        pd0, pd1 = self.padding
+        ws0, ws1 = ws
+        st0, st1 = stride
+        pd0, pd1 = pad
         img_rows = x.shape[-2] + 2 * pd0
         img_cols = x.shape[-1] + 2 * pd1
 
         # pad the image and its gradients
-        if self.padding != (0, 0):
+        if pd0 == 0 and pd1 == 0:
             y_padded = numpy.zeros(
                 (x.shape[0], x.shape[1], img_rows, img_cols),
                 dtype=x.dtype) + x.min() - 1
@@ -982,10 +1004,10 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
             for k in xrange(x.shape[1]):
                 for r in xrange(pr):
                     row_st = r * st0
-                    row_end = builtins.min(row_st + ds0, img_rows)
+                    row_end = builtins.min(row_st + ws0, img_rows)
                     for c in xrange(pc):
                         col_st = c * st1
-                        col_end = builtins.min(col_st + ds1, img_cols)
+                        col_end = builtins.min(col_st + ws1, img_cols)
                         for row_ind in xrange(row_st, row_end):
                             for col_ind in xrange(col_st, col_end):
                                 if (maxout[n, k, r, c] == y_padded[n, k, row_ind, col_ind]):
@@ -1003,7 +1025,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
                     self.ds, ignore_border=self.ignore_border,
                     st=self.st, padding=self.padding)(x, maxout, gz)]
 
-    def c_code(self, node, name, inp, out, sub):
+    def c_code_(self, node, name, inp, out, sub):
         if self.mode != 'max':
             raise theano.gof.utils.MethodNotDefined()
         x, maxout, ggx = inp
