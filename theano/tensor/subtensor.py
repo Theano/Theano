@@ -1929,8 +1929,8 @@ class AdvancedIncSubtensor1(Op):
         """
         # Parameters of PyArrary_FromAny are:
         # array
-        # dtype: we pass NULL to say any dtype is acceptable, so the existing
-        #        dtype will be copied
+        # dtype: NULL mean any dtype is acceptable.
+        #        We force the dtype to try to fix a Windows problem.
         # min_depth: we pass 0 to have this parameter ignored
         # max_depth: we pass 0 to have this parameter ignored
         # requirements: here we pass NPY_ARRAY_ENSURECOPY to force a copy
