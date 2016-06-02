@@ -1260,6 +1260,12 @@ class ShapeFeature(object):
         for node in fgraph.toposort():
             self.on_import(fgraph, node, reason='on_attach')
 
+    def on_detach(self, fgraph):
+        self.shape_of = {}
+        self.scheduled = {}
+        self.shape_of_reverse_index = {}
+        del fgraph.shape_feature
+
     def on_import(self, fgraph, node, reason):
         if node.outputs[0] in self.shape_of:
             # this is a revert, not really an import
@@ -1436,10 +1442,23 @@ class ShapeOptimizer(Optimizer):
     def apply(self, fgraph):
         pass
 
+
+class UnShapeOptimizer(Optimizer):
+    """Optimizer remove ShapeFeature as an fgraph feature."""
+    def apply(self, fgraph):
+        for feature in fgraph._features:
+            if isinstance(feature, ShapeFeature):
+                fgraph.remove_feature(feature)
+
 # Register it after merge1 optimization at 0. We don't want to track
 # the shape of merged node.
 theano.compile.mode.optdb.register('ShapeOpt', ShapeOptimizer(),
                                    0.1, 'fast_run', 'fast_compile')
+# Not enabled by default for now. Some crossentropy opt use the
+# shape_feature.  They are at step 2.01. uncanonicalize is at step
+# 3. After it goes to 48.5 that move to the gpu. So 10 seem resonable.
+theano.compile.mode.optdb.register('UnShapeOpt', UnShapeOptimizer(),
+                                   10)
 
 
 def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):

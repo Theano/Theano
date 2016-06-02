@@ -249,6 +249,7 @@ if __name__ == "__main__":
 
         cuda version      7.5    7.0    6.5
         gpu
+        M40               0.47s
         k80               0.96s
         K6000/NOECC              0.69s
         K40                             0.88s

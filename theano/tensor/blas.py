@@ -1436,7 +1436,8 @@ class GemmOptimizer(Optimizer):
             if new_node is not node:
                 nodelist.append(new_node)
 
-        u = theano.gof.opt.Updater(on_import, None, None)
+        u = theano.gof.opt.Updater(on_import, None, None,
+                                   name="GemmOptimizer")
         fgraph.attach_feature(u)
         while did_something:
             nb_iter += 1
