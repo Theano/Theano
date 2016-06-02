@@ -33,12 +33,16 @@ from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         GpuSplit, GpuContiguous, gpu_contiguous,
                         GpuAlloc, GpuAllocEmpty, GpuReshape,
                         GpuEye, gpu_join, GpuJoin)
-from .blas import (gpu_dot22, GpuGemv, GpuGemm, GpuGer, GpuGemmBatch,
-                   gpugemm_no_inplace, gpugemmbatch_no_inplace)
-from .blocksparse import GpuSparseBlockGemv, GpuSparseBlockOuter
-from .nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
-                   GpuCrossentropySoftmax1HotWithBiasDx,
-                   GpuSoftmaxWithBias, GpuSoftmax)
+from .blas import (gpu_dot22, GpuGemm, GpuGer, GpuGemmBatch,
+                   gpugemm_no_inplace, gpugemm_inplace, gpugemmbatch_no_inplace,
+                   gpugemv_no_inplace, gpugemv_inplace)
+from .blocksparse import (GpuSparseBlockGemv, GpuSparseBlockOuter,
+                          gpu_sparse_block_outer, gpu_sparse_block_outer_inplace,
+                          gpu_sparse_block_gemv, gpu_sparse_block_gemv_inplace)
+from .nnet import (gpu_crossentropy_softmax_1hot_with_bias_dx,
+                   gpu_crossentropy_softmax_argmax_1hot_with_bias,
+                   gpu_softmax_with_bias, gpu_softmax)
+
 from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
                        GpuCAReduceCPY)
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
@@ -48,6 +52,7 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
 from .opt_util import alpha_merge, output_merge
 
 _logger = logging.getLogger("theano.gpuarray.opt")
+
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
@@ -754,13 +759,19 @@ def local_gpua_careduce(node, context_name):
 @register_opt('fast_compile')
 @op_lifter([tensor.blas.Gemv, tensor.blas_c.CGemv])
 def local_gpua_gemv(node, context_name):
-    return GpuGemv(inplace=node.op.inplace)
+    if node.op.inplace:
+        return gpugemv_inplace
+    else:
+        return gpugemv_no_inplace
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.blas.Gemm])
 def local_gpua_gemm(node, context_name):
-    return GpuGemm(inplace=node.op.inplace)
+    if node.op.inplace:
+        return gpugemm_inplace
+    else:
+        return gpugemm_no_inplace
 
 
 @register_opt('fast_compile')
@@ -834,7 +845,7 @@ def local_gpua_dot22scalar(node, context_name):
     x = as_gpuarray_variable(x, context_name)
     y = as_gpuarray_variable(y, context_name)
     z = GpuAllocEmpty(x.dtype, context_name)(x.shape[0], y.shape[1])
-    return [GpuGemm(inplace=False)(z, a, x, y, 0)]
+    return [gpugemm_no_inplace(z, a, x, y, 0)]
 
 
 @register_opt('fast_compile')
@@ -846,25 +857,25 @@ def local_gpua_eye(node, context_name):
 @register_opt('fast_compile')
 @op_lifter([tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias], cuda_only=True)
 def local_gpua_crossentropysoftmaxargmax1hotwithbias(node, context_name):
-    return GpuCrossentropySoftmaxArgmax1HotWithBias()
+    return gpu_crossentropy_softmax_argmax_1hot_with_bias
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.nnet.CrossentropySoftmax1HotWithBiasDx], cuda_only=True)
 def local_gpua_crossentropysoftmax1hotwithbiasdx(node, context_name):
-    return GpuCrossentropySoftmax1HotWithBiasDx()
+    return gpu_crossentropy_softmax_1hot_with_bias_dx
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.nnet.Softmax], cuda_only=True)
 def local_gpua_softmax(node, context_name):
-    return GpuSoftmax()
+    return gpu_softmax
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.nnet.SoftmaxWithBias], cuda_only=True)
 def local_gpua_softmaxwithbias(node, context_name):
-    return GpuSoftmaxWithBias()
+    return gpu_softmax_with_bias
 
 
 @register_opt('fast_compile')
@@ -889,20 +900,26 @@ theano.tensor.nnet.conv2d()
 @register_opt('fast_compile')
 @op_lifter([SparseBlockGemv])
 def local_lift_sparseblockgemv(node, context_name):
-    return GpuSparseBlockGemv(node.op.inplace)
+    if node.op.inplace:
+        return gpu_sparse_block_gemv_inplace
+    else:
+        return gpu_sparse_block_gemv
 
 
 @register_opt('fast_compile')
 @op_lifter([SparseBlockOuter])
 def local_lift_sparseblockouter(node, context_name):
-    return GpuSparseBlockOuter(node.op.inplace)
+    if node.op.inplace:
+        return gpu_sparse_block_outer_inplace
+    else:
+        return gpu_sparse_block_outer
 
 
 @register_inplace()
 @local_optimizer([GpuSparseBlockGemv], inplace=True)
 def local_inplace_sparseblockgemv(node):
     if isinstance(node.op, GpuSparseBlockGemv) and not node.op.inplace:
-        return [GpuSparseBlockGemv(inplace=True)(*node.inputs)]
+        return [gpu_sparse_block_gemv_inplace(*node.inputs)]
 
 
 @register_inplace()
