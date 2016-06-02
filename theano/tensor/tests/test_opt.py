@@ -21,6 +21,7 @@ import theano.scalar as scal
 from six import PY3, StringIO
 from theano import compile
 from theano.compile import deep_copy_op, DeepCopyOp
+from theano.compile import get_mode
 from theano import config
 from theano import function
 from theano import gof
@@ -2989,8 +2990,8 @@ class Test_local_elemwise_alloc(unittest.TestCase):
     dtype = config.floatX
 
     def setUp(self):
-        self.fast_compile_mode = 'FAST_COMPILE'
-        self.fast_run_mode = 'FAST_RUN'
+        self.fast_compile_mode = get_mode('FAST_COMPILE')
+        self.fast_run_mode = get_mode('FAST_RUN')
 
         self.vec = T.vector('vec', dtype=self.dtype)
         self.mat = T.matrix('mat', dtype=self.dtype)
@@ -3035,6 +3036,10 @@ class Test_local_elemwise_alloc(unittest.TestCase):
             self.assertTrue(hasattr(output.variable.tag, 'trace'))
 
     def test_remove_alloc_wo_dimshuffle(self):
+        # Exclude local_useless_alloc, since it does not introduce
+        # assert in all the same cases.
+        self.fast_run_mode = self.fast_run_mode.excluding(
+            'local_useless_alloc')
         # No optimization on alloc
         func = function(
             [self.vec, self.mat],
