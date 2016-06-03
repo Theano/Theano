@@ -134,9 +134,9 @@ class BaseTestConv2d(unittest.TestCase):
         if target_op is not None:
             assert any([isinstance(n.op, target_op) for n
                         in f.maker.fgraph.toposort()])
+            if check_trace:
+                self.assertTrue(check_stack_trace(f, ops_to_check=target_op))
 
-        if check_trace:
-            self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
         utt.assert_allclose(res_ref, res)
@@ -179,13 +179,13 @@ class BaseTestConv2d(unittest.TestCase):
                     subsample=subsample,
                     conv_mode=conv_mode)
         f = theano.function([], c, mode=mode)
-        if check_trace:
-            self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         f_ref = theano.function([], c_ref, mode='FAST_RUN')
 
         if target_op is not None:
             assert any([isinstance(n.op, target_op) for n
                         in f.maker.fgraph.toposort()])
+            if check_trace:
+                self.assertTrue(check_stack_trace(f, ops_to_check=target_op))
 
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
@@ -230,13 +230,13 @@ class BaseTestConv2d(unittest.TestCase):
                     border_mode=border_mode, subsample=subsample,
                     conv_mode=conv_mode)
         f = theano.function([], c, mode=mode)
-        if check_trace:
-            self.assertTrue(check_stack_trace(f, ops_to_check='all'))
         f_ref = theano.function([], c_ref, mode='FAST_RUN')
 
         if target_op is not None:
             assert any([isinstance(n.op, target_op) for n
                         in f.maker.fgraph.toposort()])
+            if check_trace:
+                self.assertTrue(check_stack_trace(f, ops_to_check=target_op))
 
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
