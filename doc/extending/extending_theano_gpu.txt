@@ -38,13 +38,13 @@ written.  An example usage is below::
 
 In this example the Op takes three inputs, all on the GPU.  In case
 one or more of your inputs is not supposed to be on the GPU, you
-should not pass it to `infer_context_name`.
+should not pass it to :func:`infer_context_name`.
 
 Also note that :func:`theano.gpuarray.basic_ops.as_gpuarray_variable`
-takes `context_name` as a mandatory parameter.  This is because it's
+takes ``context_name`` as a mandatory parameter.  This is because it's
 not enough to know you want the value to be on the GPU, you also want
 to know which GPU to put it on.  In almost all cases, you can pass in
-the return value of `infer_context_name` there.
+the return value of :func:`infer_context_name` there.
 
 If you also need the context during runtime (for example to allocate
 the output).  You can use the context of one of your inputs to know
@@ -90,35 +90,36 @@ COp functionality).
 For plain GpuKernelBase, you have to define a method called
 gpu_kernels which returns a list of :class:`Kernel
 <theano.gpuarray.basic_ops.Kernel>` objects.  You can define as many
-kernels as you want for a single op.  An example would look like this:
+kernels as you want for a single op.  An example would look like this::
 
     def gpu_kernels(self, node, name):
         code = """
-KERNEL void k(GLOBAL_MEM ga_float *a, ga_size n, ga_size m) {
-    ga_size nb = n < m ? n : m;
-    for (ga_size i = LID_0; i < nb; i += LDIM_0) {
-        a[i*m + i] = 1;
-    }
-}"""
+    KERNEL void k(GLOBAL_MEM ga_double *a, ga_size n, ga_size m) {
+        ga_size nb = n < m ? n : m;
+        for (ga_size i = LID_0; i < nb; i += LDIM_0) {
+            a[i*m + i] = 1;
+        }
+    }"""
         return [Kernel(
                 code=code, name="k",
                 params=[gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE],
-                flags=Kernel.get_flags(self.dtype))]
+                flags=Kernel.get_flags('float64'))]
 
-If you want to use COp, then you should use `CGpuKernelBase` instead.
-It add a new section to the parsed files whose tag is `kernels`.
-Inside that section you can define some kernels with `#kernel
-name:params:flags`.
+If you want to use COp, then you should use ``CGpuKernelBase``
+instead.  It adds a new section to the parsed files whose tag is
+``kernels``.  Inside that section you can define some kernels with
+``#kernel name:params:flags``.
 
-Here `name` is the name of the kernel function in the following code,
-`params` is a comma-separeted list of C typecode names and `flags` is
-a `|`-separeted list of C kernel flag values (can be empty).  The same kernel definition as above would look like this with `CGpuKernelBase`:
+Here ``name`` is the name of the kernel function in the following code,
+``params`` is a comma-separeted list of C typecode names and ``flags`` is
+a ``|``-separeted list of C kernel flag values (can be empty).  The same
+kernel definition as above would look like this with ``CGpuKernelBase``::
 
     #section kernels
 
-    #kernel k : GA_BUFFER, GA_SIZE, GA_SIZE : GA_USE_CLUDA
+    #kernel k : GA_BUFFER, GA_SIZE, GA_SIZE : GA_USE_CLUDA|GA_USE_DOUBLE
 
-    KERNEL void k(GLOBAL_MEM ga_float *a, ga_size n, ga_size m) {
+    KERNEL void k(GLOBAL_MEM ga_double *a, ga_size n, ga_size m) {
         ga_size nb = n < m ? n : m;
         for (ga_size i = LID_0; i < nb; i += LDIM_0) {
         a[i*m + i] = 1;
@@ -128,7 +129,25 @@ a `|`-separeted list of C kernel flag values (can be empty).  The same kernel de
 The second method is to handle the kernel compilation and cache on
 your own.  This is not recommended because there are lots of details
 to pay attention to that can cripple your performance if not done
-right, which GpuKernelBase handles for you.
+right, which GpuKernelBase handles for you.  But if you really want to
+go this way, then you can look up the C API for kernels in
+libgpuarray.
 
 In any case you will need to call your compiled kernel with some data.
-This is done using the `GpuKernel_call()` method in your C code.
+This is done using the ``GpuKernel_call()`` method in your C code.
+An example calling the above kernel would be::
+
+    size_t ls, gs;
+    size_t dims[2];
+    void *args[3];
+
+    // ...
+
+    args[0] = input->ga.data;
+    args[1] = &dims[0];
+    args[2] = &dims[1];
+    ls = 1;
+    gs = 256;
+    err = GpuKernel_call(&%(kname)s, 1, &ls, &gs, 0, args);
+
+    // ...
