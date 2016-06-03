@@ -2270,6 +2270,375 @@ err%(name)s = cudnnSoftmaxBackward(
         """
 
 
+class GpuDnnBatchNormBase(DnnBase):
+    """
+    Base Op for cuDNN Batch Normalization.
+
+    Parameters
+    ----------
+    mode : {'per-activation', 'spatial'}
+        Whether to normalize per activation (in this mode, bias and scale
+        tensor dimensions are 1xCxHxW) or share normalization factors across
+        spatial dimensions (in this mode, bias and scale tensor dimensions
+        are 1xCx1x1).
+    epsilon
+        Epsilon value used in the batch normalization formula. Minimum allowed
+        value is 1e-5 (imposed by cuDNN).
+    """
+
+    __props__ = ('mode', 'epsilon')
+    tensor_4d_descs = []
+
+    def __init__(self, mode='per-activation', epsilon=1e-4):
+        DnnBase.__init__(self)
+
+        if version() < (5000, 5000):
+            raise RuntimeError("cuDNN Batch Normalization requires cuDNN v5")
+
+        assert (mode in ('per-activation', 'spatial'))
+        self.mode = mode
+
+        assert (epsilon >= 1e-5)
+        self.epsilon = epsilon
+
+    def c_support_code_struct(self, node, name):
+        result = ''
+        for id in self.tensor_4d_descs:
+            result += c_define_tensor_desc('%s_%s' % (id, name))
+        return result
+
+    def c_init_code_struct(self, node, name, sub):
+        result = """
+cudnnStatus_t err%(name)s;
+""" % dict(name=name)
+
+        for id in self.tensor_4d_descs:
+            result += c_init_tensor_desc('%s_%s' % (id, name), 'err' + name, sub['fail'])
+        return result
+
+    def c_cleanup_code_struct(self, node, name):
+        result = ''
+        for id in self.tensor_4d_descs:
+            result += c_clean_tensor_desc('%s_%s' % (id, name))
+        return result
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        if self.mode == "spatial":
+            mode = "CUDNN_BATCHNORM_SPATIAL"
+        else:
+            mode = "CUDNN_BATCHNORM_PER_ACTIVATION"
+
+        # Setup configuration variables.
+        result = """
+cudnnStatus_t err%(name)s;
+cudnnBatchNormMode_t mode%(name)s = %(mode)s;
+double exponentialAverageFactor%(name)s = %(exp_avg_factor)f;
+double epsilon%(name)s = %(epsilon)e;
+""" % dict(name=name,
+           mode=mode,
+           exp_avg_factor=0,  # deliberately unused
+           epsilon=self.epsilon)
+
+        return result
+
+    def c_code_cache_version(self):
+        return (2, version())
+
+
+class GpuDnnBatchNormInference(GpuDnnBatchNormBase):
+    """
+    Op for the cuDNN BatchNormalizationForwardInference function.
+    See GpuDnnBatchNormBase for parameters.
+
+    On application, takes input, scale, bias, mean and variance and produces:
+    output = (input - mean) / sqrt(variance + epsilon) * scale + bias
+
+    where mean and variance are usually some running averages over multiple
+    batches computed during training.
+
+    Note: scale, bias, mean and variance must follow the same tensor layout!
+    """
+
+    tensor_4d_descs = ['bn_input', 'bn_output', 'bn_params']
+
+    def infer_shape(self, node, shape):
+        # output shape equals shape of x
+        return [shape[0]]
+
+    def make_node(self, x, scale, bias, estimated_mean, estimated_variance):
+        x = as_cuda_ndarray_variable(x)
+        scale = as_cuda_ndarray_variable(scale)
+        bias = as_cuda_ndarray_variable(bias)
+        estimated_mean = as_cuda_ndarray_variable(estimated_mean)
+        estimated_variance = as_cuda_ndarray_variable(estimated_variance)
+        assert x.ndim == 4
+        assert scale.ndim == 4
+        assert bias.ndim == 4
+        assert estimated_mean.ndim == 4
+        assert estimated_variance.ndim == 4
+        return Apply(self, [x, scale, bias, estimated_mean, estimated_variance],
+                     [x.type()])
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        # super call to prepare common configuration
+        result = super(GpuDnnBatchNormInference, self).c_code(node, name, inputs, outputs, sub)
+
+        # give sensible names to inputs and outputs
+        inp, scale, bias, est_mean, est_var = inputs
+        outp, = outputs
+
+        # set input tensor descriptors from input tensors
+        result += c_set_tensor4d(inp, 'bn_input_' + name, 'err' + name, sub['fail'])
+        result += c_set_tensor4d(scale, 'bn_params_' + name, 'err' + name, sub['fail'])
+
+        # build and prepare the output variable
+        result += """
+if (CudaNdarray_prep_output(&%(outp)s, 4, CudaNdarray_HOST_DIMS(%(inp)s)) != 0)
+{
+    %(fail)s
+}
+""" % dict(outp=outp, inp=inp, fail=sub['fail'])
+
+        # set output tensor descriptor from output tensor
+        result += c_set_tensor4d(outp, 'bn_output_' + name, 'err' + name, sub['fail'])
+
+        # call cuDNN function
+        result += """
+{
+const float alpha = 1.;
+const float beta = 0.;
+err%(name)s = cudnnBatchNormalizationForwardInference(
+  _handle,
+  mode%(name)s,
+  (void*) &alpha,
+  (void*) &beta,
+  bn_input_%(name)s,
+  CudaNdarray_DEV_DATA(%(inp)s),
+  bn_output_%(name)s,
+  CudaNdarray_DEV_DATA(%(outp)s),
+  bn_params_%(name)s,
+  CudaNdarray_DEV_DATA(%(scale)s),
+  CudaNdarray_DEV_DATA(%(bias)s),
+  CudaNdarray_DEV_DATA(%(est_mean)s),
+  CudaNdarray_DEV_DATA(%(est_var)s),
+  epsilon%(name)s
+);
+}
+""" % dict(name=name, inp=inp, scale=scale, bias=bias, est_mean=est_mean,
+           est_var=est_var, outp=outp)
+
+        return result
+
+    def grad(self, inputs, grads):
+        x, scale, bias, est_mean, est_var = inputs
+        dy = grads[0]
+
+        # add necessary broadcasts
+        if self.mode == 'per-activation':
+            axes = (0,)
+        elif self.mode == 'spatial':
+            axes = (0, 2, 3)
+        scale, bias, est_mean, est_var = (theano.tensor.addbroadcast(t, *axes)
+                                          for t in (scale, bias, est_mean, est_var))
+
+        # define helper expressions
+        est_var_eps = est_var + self.epsilon
+        est_std = theano.tensor.sqrt(est_var_eps)
+        two = theano.tensor.constant(2.)
+
+        # define and return gradients
+        dx = dy * (scale / est_std)
+        dscale = (dy * (x - est_mean)).sum(axes, keepdims=True) / est_std
+        dbias = dy.sum(axes, keepdims=True)
+        dmean = -dy.sum(axes, keepdims=True) * (scale / est_std)
+        dvar = -(dy * (x - est_mean)).sum(axes, keepdims=True) * (scale / (two * est_var_eps * est_std))
+        return [dx, dscale, dbias, dmean, dvar]
+
+
+class GpuDnnBatchNorm(GpuDnnBatchNormBase):
+    """
+    Op for the cuDNN BatchNormalizationForwardTraining function.
+    See GpuDnnBatchNormBase for parameters.
+
+    On application, takes input, scale, bias and produces:
+    output = (input - mean) / sqrt(variance + epsilon) * scale + bias
+    mean = input.mean(axis=axes, keepdims=True),
+    invstd = 1. / sqrt(input.var(axis=axes, keepdims=True) + epsilon)
+
+    where axes=0 if mode='per-activation', and axes=(0,2,3) if mode='spatial'
+
+    Note: scale and bias must follow the same tensor layout!
+    """
+
+    tensor_4d_descs = ['bn_input', 'bn_output', 'bn_params']
+
+    def infer_shape(self, node, shape):
+        # first output equals shape of x
+        # second and third output equal shape of scale
+        return [shape[0], shape[1], shape[1]]
+
+    def make_node(self, x, scale, bias):
+        x = as_cuda_ndarray_variable(x)
+        scale = as_cuda_ndarray_variable(scale)
+        bias = as_cuda_ndarray_variable(bias)
+        assert x.ndim == 4
+        assert scale.ndim == 4
+        assert bias.ndim == 4
+        return Apply(self, [x, scale, bias], [x.type(), scale.type(), scale.type()])
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        # super call to prepare common configuration
+        result = super(GpuDnnBatchNorm, self).c_code(node, name, inputs, outputs, sub)
+
+        # give sensible names to inputs and outputs
+        inp, scale, bias = inputs
+        outp, x_mean, x_invstd = outputs
+
+        # set input tensor descriptors from input tensors
+        result += c_set_tensor4d(inp, 'bn_input_' + name, 'err' + name, sub['fail'])
+        result += c_set_tensor4d(scale, 'bn_params_' + name, 'err' + name, sub['fail'])
+
+        # build and prepare the output variables
+        result += """
+if ((CudaNdarray_prep_output(&%(outp)s, 4, CudaNdarray_HOST_DIMS(%(inp)s)) != 0) ||
+    (CudaNdarray_prep_output(&%(x_mean)s, 4, CudaNdarray_HOST_DIMS(%(scale)s)) != 0) ||
+    (CudaNdarray_prep_output(&%(x_invstd)s, 4, CudaNdarray_HOST_DIMS(%(scale)s)) != 0))
+{
+    %(fail)s
+}
+""" % dict(outp=outp, inp=inp, x_mean=x_mean, x_invstd=x_invstd, scale=scale,
+           fail=sub['fail'])
+
+        # set output tensor descriptor from output tensor
+        result += c_set_tensor4d(outp, 'bn_output_' + name, 'err' + name, sub['fail'])
+
+        # call cuDNN function
+        result += """
+{
+const float alpha = 1.;
+const float beta = 0.;
+err%(name)s = cudnnBatchNormalizationForwardTraining(
+  _handle,
+  mode%(name)s,
+  (void*) &alpha,
+  (void*) &beta,
+  bn_input_%(name)s,
+  CudaNdarray_DEV_DATA(%(inp)s),
+  bn_output_%(name)s,
+  CudaNdarray_DEV_DATA(%(outp)s),
+  bn_params_%(name)s,
+  CudaNdarray_DEV_DATA(%(scale)s),
+  CudaNdarray_DEV_DATA(%(bias)s),
+  exponentialAverageFactor%(name)s,
+  NULL,  // running mean, deliberately unused
+  NULL,  // running var, deliberately unused
+  epsilon%(name)s,
+  CudaNdarray_DEV_DATA(%(x_mean)s),
+  CudaNdarray_DEV_DATA(%(x_invstd)s)
+);
+}
+""" % dict(name=name, inp=inp, scale=scale, bias=bias, outp=outp,
+           x_mean=x_mean, x_invstd=x_invstd)
+
+        return result
+
+    def grad(self, inputs, grads):
+        x, scale, bias = inputs
+        dy = grads[0]
+        _, x_mean, x_invstd = self.make_node(x, scale, bias).outputs
+        return GpuDnnBatchNormGrad(self.mode, self.epsilon)(x, dy, scale,
+                                                            x_mean, x_invstd)
+
+
+class GpuDnnBatchNormGrad(GpuDnnBatchNormBase):
+    """
+    Op for the cuDNN BatchNormalizationBackward function.
+    See GpuDnnBatchNormBase for parameters.
+
+    On application, takes input, dy, scale, mean, invstd and produces
+    dinput, dscale and dbias. Note that it does not need the bias.
+
+    Note: scale, mean and invstd must follow the same tensor layout!
+    """
+
+    tensor_4d_descs = ['bn_input', 'bn_doutput', 'bn_dinput', 'bn_params']
+
+    def infer_shape(self, node, shape):
+        # first output equals shape of x
+        # second and third output equal shape of scale
+        return [shape[0], shape[2], shape[2]]
+
+    def make_node(self, x, dy, scale, x_mean, x_invstd):
+        x = as_cuda_ndarray_variable(x)
+        dy = as_cuda_ndarray_variable(dy)
+        scale = as_cuda_ndarray_variable(scale)
+        x_mean = as_cuda_ndarray_variable(x_mean)
+        x_invstd = as_cuda_ndarray_variable(x_invstd)
+        assert x.ndim == 4 and dy.ndim == 4 and scale.ndim == 4 and x_mean.ndim == 4 and x_invstd.ndim == 4
+        return Apply(self, [x, dy, scale, x_mean, x_invstd], [x.type(), scale.type(), scale.type()])
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        # super call to prepare common configuration
+        result = super(GpuDnnBatchNormGrad, self).c_code(node, name, inputs, outputs, sub)
+
+        # give sensible names to inputs and outputs
+        inp, doutp, scale, x_mean, x_invstd = inputs
+        dinp, dscale, dbias = outputs
+
+        # set input tensor descriptors from input tensors
+        result += c_set_tensor4d(inp, 'bn_input_' + name, 'err' + name, sub['fail'])
+        result += c_set_tensor4d(doutp, 'bn_doutput_' + name, 'err' + name, sub['fail'])
+        result += c_set_tensor4d(scale, 'bn_params_' + name, 'err' + name, sub['fail'])
+
+        # build and prepare the output variables
+        result += """
+if ((CudaNdarray_prep_output(&%(dinp)s, 4, CudaNdarray_HOST_DIMS(%(inp)s)) != 0) ||
+    (CudaNdarray_prep_output(&%(dscale)s, 4, CudaNdarray_HOST_DIMS(%(scale)s)) != 0) ||
+    (CudaNdarray_prep_output(&%(dbias)s, 4, CudaNdarray_HOST_DIMS(%(scale)s)) != 0))
+{
+    %(fail)s
+}
+""" % dict(dinp=dinp, inp=inp, dscale=dscale, scale=scale, dbias=dbias,
+           fail=sub['fail'])
+
+        # set output tensor descriptor from output tensor
+        result += c_set_tensor4d(dinp, 'bn_dinput_' + name, 'err' + name, sub['fail'])
+
+        # call cuDNN function
+        result += """
+{
+const float alphaData = 1.;
+const float betaData = 0.;
+const float alphaParam = 1.;
+const float betaParam = 0.;
+err%(name)s = cudnnBatchNormalizationBackward(
+  _handle,
+  mode%(name)s,
+  (void*) &alphaData,
+  (void*) &betaData,
+  (void*) &alphaParam,
+  (void*) &betaParam,
+  bn_input_%(name)s,
+  CudaNdarray_DEV_DATA(%(inp)s),
+  bn_doutput_%(name)s,
+  CudaNdarray_DEV_DATA(%(doutp)s),
+  bn_dinput_%(name)s,
+  CudaNdarray_DEV_DATA(%(dinp)s),
+  bn_params_%(name)s,
+  CudaNdarray_DEV_DATA(%(scale)s),
+  CudaNdarray_DEV_DATA(%(dscale)s),
+  CudaNdarray_DEV_DATA(%(dbias)s),
+  epsilon%(name)s,
+  CudaNdarray_DEV_DATA(%(x_mean)s),
+  CudaNdarray_DEV_DATA(%(x_invstd)s)
+);
+}
+""" % dict(name=name, inp=inp, doutp=doutp, scale=scale, x_mean=x_mean,
+           x_invstd=x_invstd, dinp=dinp, dscale=dscale, dbias=dbias)
+
+        return result
+
+
 # Intentation for history
 if True:
     # @register_opt('cudnn')  # this optimizer is registered in opt.py instead.
