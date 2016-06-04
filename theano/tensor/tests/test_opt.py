@@ -1950,33 +1950,16 @@ class test_local_subtensor_make_vector(unittest.TestCase):
         x, y, z = tensor.lscalars('xyz')
         v = make_vector(x, y, z)
 
-        # Compile functions in two modes:
-        # - only with 'local_subtensor_make_vector' (requires adding
-        #   the 'canonicalize' phase)
-        # - all optimizations in fast_compile including the
-        #   'local_subtensor_make_vector' optimization
-        modes = [
-            theano.compile.mode.Mode(optimizer=None).including(
-                'canonicalize_db').including("local_subtensor_make_vector"),
-            theano.compile.mode.get_mode('FAST_COMPILE').including(
+        mode = theano.compile.mode.get_default_mode().including(
                 "local_subtensor_make_vector")
-        ]
 
         # list of subtensor cases, where local_subtensor_make_vector
         # inserts a new MakeVector node
         v_subtensors = [v[:2], v[::2], v[[0, 2]]]
 
-        for mode in modes:
-            # case, where local_subtensor_make_vector only removes nodes
-            # FIXME: remove this useless case, where the graph only contains a
-            # DeepCopyOp? Or is there a meaningful test case for constant
-            # scalar index subtensor?
-            f = function([x, y, z], v[0], mode=mode)
-
-            # cases, where local_subtensor_make_vector inserts nodes
-            for v_subtensor in v_subtensors:
-                f = function([x, y, z], v_subtensor, mode=mode)
-                self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+        for v_subtensor in v_subtensors:
+            f = function([x, y, z], v_subtensor, mode=mode)
+            self.assertTrue(check_stack_trace(f, ops_to_check='all'))
 
 
 class test_local_subtensor_lift(unittest.TestCase):
@@ -4167,7 +4150,6 @@ class T_Tile(unittest.TestCase):
                 f(data)
                 # In this case the opt only removes nodes,
                 # no need to check_stack_trace
-                # See issue #4421
 
 
 def speed_local_pow_specialize_range():
