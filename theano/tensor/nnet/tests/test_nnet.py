@@ -668,8 +668,8 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         sum_xe = tensor.sum(xe)
         g_x = tensor.grad(sum_xe, x)
         fgraph = gof.FunctionGraph(
-                [x, one_of_n],
-                [g_x])
+            [x, one_of_n],
+            [g_x])
         assert check_stack_trace(
             fgraph, ops_to_check=[crossentropy_softmax_1hot_with_bias_dx,
                                   softmax_op])
@@ -1323,8 +1323,10 @@ def test_argmax_pushdown():
             sm(tensor.exp(tensor.tanh(sigmoid(x)))),
             axis=-1)[0]
         fgraph = gof.FunctionGraph(
-                [x],
-                [out])
+            [x],
+            [out])
+
+        assert hasattr(fgraph.outputs[0].tag, 'trace')
         backup = config.warn.argmax_pushdown_bug
         config.warn.argmax_pushdown_bug = False
         try:
@@ -1520,14 +1522,14 @@ class Test_softmax_opt:
         p_y = T.exp(c) / T.exp(c).sum(axis=0)
 
         # test that function contains softmax and no div.
-        f = theano.function([c], p_y)
+        theano.function([c], p_y)
         # printing.debugprint(f)
 
         # test that function contains softmax and no div.
         backup = config.warn.sum_div_dimshuffle_bug
         config.warn.sum_div_dimshuffle_bug = False
         try:
-            g = theano.function([c], T.grad(p_y.sum(), c))
+            theano.function([c], T.grad(p_y.sum(), c))
         finally:
             config.warn.sum_div_dimshuffle_bug = backup
         # printing.debugprint(g)
@@ -1539,14 +1541,14 @@ class Test_softmax_opt:
         p_y = T.exp(c) / T.exp(c).sum()
 
         # test that function contains softmax and no div.
-        f = theano.function([c], p_y)
+        theano.function([c], p_y)
         # printing.debugprint(f)
 
         # test that function contains softmax and no div.
         backup = config.warn.sum_div_dimshuffle_bug
         config.warn.sum_div_dimshuffle_bug = False
         try:
-            g = theano.function([c], T.grad(p_y.sum(), c))
+            theano.function([c], T.grad(p_y.sum(), c))
         finally:
             config.warn.sum_div_dimshuffle_bug = backup
         # printing.debugprint(g)
@@ -1738,7 +1740,7 @@ def test_binary_crossentropy_reshape():
 SoftsignTester = makeBroadcastTester(
     op=softsign,
     expected=upcast_int8_nfunc(lambda inputs: check_floatX(
-        inputs, inputs/(1.0+numpy.fabs(inputs)))),
+        inputs, inputs / (1.0 + numpy.fabs(inputs)))),
     good=_good_broadcast_unary_normal_float_no_complex,
     name='SoftsignTester',
 )
