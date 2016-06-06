@@ -2032,7 +2032,6 @@ class GCC_compiler(Compiler):
                                  GCC_compiler.march_flags)
 
             # Find working march flag. If all fail, set march_flags to [] (for x86 archs).
-            default_detected_flag = None
             march_ind = None
             mtune_ind = None
             working_flag = False
@@ -2041,18 +2040,23 @@ class GCC_compiler(Compiler):
                 march_flag = GCC_compiler.march_flags[m_]
                 if 'march' in march_flag:
                     march_ind = m_
-                    default_detected_flag = march_flag[march_flag.index('=') + 1:]
                 if 'mtune' in GCC_compiler.march_flags[m_]:
                     mtune_ind = m_
 
-            march_flags_to_try = [default_detected_flag, 'corei7-avx', 'corei7', 'core2']
-            for march_flag in march_flags_to_try:
-                GCC_compiler.march_flags[march_ind] = '-march=' + march_flag
-                GCC_compiler.march_flags[mtune_ind] = '-mtune=' + march_flag
-                compilation_result, execution_result = try_march_flag(GCC_compiler.march_flags)
-                if compilation_result and execution_result:
-                    working_flag = True
-                    break
+            default_compilation_result, default_execution_result = \
+                try_march_flag(GCC_compiler.march_flags)
+
+            if not default_compilation_result or not default_execution_result:
+                march_flags_to_try = ['corei7-avx', 'corei7', 'core2']
+                for march_flag in march_flags_to_try:
+                    compilation_result, execution_result = try_march_flag(['-march=' + march_flag])
+                    if compilation_result and execution_result:
+                        working_flag = True
+                        if march_ind is not None:
+                            GCC_compiler.march_flags[march_ind] = '-march=' + march_flag
+                        if mtune_ind is not None:
+                            GCC_compiler.march_flags[mtune_ind] = '-mtune=' + march_flag
+                        break
 
             if not working_flag:
                 GCC_compiler.march_flags = []
