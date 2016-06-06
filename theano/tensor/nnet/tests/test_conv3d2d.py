@@ -11,7 +11,7 @@ from six.moves import xrange
 
 import theano
 from theano.gof.opt import check_stack_trace
-from theano.tensor.nnet.conv3d2d import conv3d, get_diagonal_subtensor_view
+from theano.tensor.nnet.conv3d2d import conv3d, get_diagonal_subtensor_view, DiagonalSubtensor, IncDiagonalSubtensor
 import theano.tests.unittest_tools as utt
 
 
