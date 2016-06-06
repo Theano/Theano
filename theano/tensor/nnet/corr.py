@@ -87,7 +87,6 @@ class BaseCorrMM(gof.OpenMPOp):
         compile_args = ldflags(libs=False, flags=True)
         compile_args += super(BaseCorrMM, self).c_compile_args()
         return compile_args
-            
 
     def c_lib_dirs(self):
         return ldflags(libs=False, libs_dir=True)
