@@ -452,10 +452,10 @@ class GpuCumsum(GpuKernelBase, Op):
 
 
 @op_lifter([CumsumOp])
-def use_gpu_cumsumop(node, ctx_name):
-    if node.inputs[0].dtype == 'float32':
-        axis = node.op.axis
-        x = node.inputs[0]
+def use_gpu_cumsumop(op, ctx_name, inputs):
+    if inputs[0].dtype == 'float32':
+        axis = op.axis
+        x = inputs[0]
 
         if axis is not None and x.ndim > GpuCumsum.SUPPORTED_NDIMS:
             return None

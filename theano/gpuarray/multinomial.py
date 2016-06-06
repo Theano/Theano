@@ -229,21 +229,21 @@ KERNEL void k_multi_warp_multinomial(
 
 @register_opt()
 @op_lifter([theano.sandbox.multinomial.MultinomialFromUniform])
-def local_gpua_multinomial(node, context_name):
+def local_gpua_multinomial(op, context_name, inputs):
     # TODO : need description for function
 
-    if len(node.inputs) == 2:
-        p, u = node.inputs
+    if len(inputs) == 2:
+        p, u = inputs
         n_samples = 1
     else:
-        p, u, n_samples = node.inputs
+        p, u, n_samples = inputs
     try:
         if get_scalar_constant_value(n_samples) != 1:
             return None
     except NotScalarConstantError:
         return None
-    m, = node.outputs
+    m, = outputs
     if (p.dtype == u.dtype == m.dtype == 'float32'):
-        gpu_op = GPUAMultinomialFromUniform(node.op.odtype)
+        gpu_op = GPUAMultinomialFromUniform(op.odtype)
         return gpuarray.elemwise.GpuDimShuffle([False, False], [1, 0])(
             gpu_op(p, u))

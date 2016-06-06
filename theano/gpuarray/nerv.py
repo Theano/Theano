@@ -149,14 +149,14 @@ if (GpuKernel_init(&k_%(name)s, c->ctx, 1, &bcode, &sz,
 
 @opt.register_opt()
 @opt.op_lifter([tensor.Dot])
-def local_dot_to_gemm16(node, ctx_name):
+def local_dot_to_gemm16(op, ctx_name, inputs):
     if nerv is None:
         return
-    A = node.inputs[0]
-    B = node.inputs[1]
+    A = inputs[0]
+    B = inputs[1]
     if (A.ndim == 2 and B.ndim == 2 and
             A.dtype == 'float16' and B.dtype == 'float16'):
-        fgraph = node.inputs[0].fgraph
+        fgraph = inputs[0].fgraph
         C = GpuAllocEmpty(dtype='float16', context_name=ctx_name)(
             shape_i(A, 0, fgraph), shape_i(B, 1, fgraph))
         return Gemm16()(C, 1.0, A, B, 0.0)

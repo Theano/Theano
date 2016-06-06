@@ -1498,35 +1498,35 @@ def local_dnn_convi_output_merge(node, *inputs):
 
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([Pool])
-def local_pool_dnn_alternative(node, ctx_name):
+def local_pool_dnn_alternative(op, ctx_name, inputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn()
-    if not node.op.ignore_border:
+    if not op.ignore_border:
         return
-    img, = node.inputs
+    img, = inputs
     img = as_gpuarray_variable(img, ctx_name)
-    ds = node.op.ds
-    stride = node.op.st
-    pad = node.op.padding
-    mode = node.op.mode
+    ds = op.ds
+    stride = op.st
+    pad = op.padding
+    mode = op.mode
     return dnn_pool(gpu_contiguous(img), ds, stride=stride, pad=pad, mode=mode)
 
 
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([MaxPoolGrad])
-def local_pool_dnn_grad_stride(node, ctx_name):
+def local_pool_dnn_grad_stride(op, ctx_name, inputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn()
     if not node.op.ignore_border:
         return
-    inp, out, out_grad = node.inputs
+    inp, out, out_grad = inputs
     inp = as_gpuarray_variable(inp, ctx_name)
     out = as_gpuarray_variable(out, ctx_name)
     out_grad = as_gpuarray_variable(out_grad, ctx_name)
-    ds = node.op.ds
-    st = node.op.st
-    pad = node.op.padding
-    mode = node.op.mode
+    ds = op.ds
+    st = op.st
+    pad = op.padding
+    mode = op.mode
 
     return GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
                                      gpu_contiguous(out),
@@ -1538,18 +1538,18 @@ def local_pool_dnn_grad_stride(node, ctx_name):
 
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([AveragePoolGrad])
-def local_avg_pool_dnn_grad_stride(node, ctx_name):
+def local_avg_pool_dnn_grad_stride(op, ctx_name, inputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn()
-    if not node.op.ignore_border:
+    if not op.ignore_border:
         return
-    inp, out_grad = node.inputs
+    inp, out_grad = inputs
     inp = as_gpuarray_variable(inp, ctx_name)
     out_grad = as_gpuarray_variable(out_grad, ctx_name)
-    ds = node.op.ds
-    st = node.op.st
-    pad = node.op.padding
-    mode = node.op.mode
+    ds = op.ds
+    st = op.st
+    pad = op.padding
+    mode = op.mode
 
     cg = gpu_contiguous(out_grad)
 
@@ -1591,9 +1591,9 @@ def local_log_softmax_dnn(node):
 
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([LogSoftmax])
-def local_logsoftmax_to_dnn(node, ctx_name):
+def local_logsoftmax_to_dnn(op, ctx_name, inputs):
     # Transform the input in the format expected by GpuDnnSoftmax
-    inp = node.inputs[0]
+    inp = inputs[0]
     if inp.ndim != 2:
         return
     if not dnn_available(ctx_name) or version(raises=False) < 3000:
@@ -1629,11 +1629,11 @@ gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
 
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([SoftmaxGrad])
-def local_softmax_dnn_grad(node, ctx_name):
+def local_softmax_dnn_grad(op, ctx_name, inputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn("cuDNN needed for SoftmaxGrad")
     ins = []
-    for n in node.inputs:
+    for n in inputs:
         n = as_gpuarray_variable(n, ctx_name)
         if n.ndim != 2:
             return

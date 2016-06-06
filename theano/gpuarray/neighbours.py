@@ -469,8 +469,8 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
 
 
 @op_lifter([Images2Neibs])
-def use_gpu_images2neibs(node, context_name):
-    if node.op.mode in ['valid', 'ignore_borders', 'wrap_centered']:
-        return GpuImages2Neibs(node.op.mode)
+def use_gpu_images2neibs(op, context_name, inputs):
+    if op.mode in ['valid', 'ignore_borders', 'wrap_centered']:
+        return GpuImages2Neibs(op.mode)
 
 register_gpu_opt()(use_gpu_images2neibs)
