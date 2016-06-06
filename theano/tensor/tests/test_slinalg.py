@@ -257,6 +257,9 @@ class test_Solve(utt.InferShapeTester):
             self.verify_solve_grad(5, None, A_structure, lower, rng)
             self.verify_solve_grad(6, 1, A_structure, lower, rng)
             self.verify_solve_grad(4, 3, A_structure, lower, rng)
+        # lower should have no effect for A_structure == 'general' so also
+        # check lower=True case
+        self.verify_solve_grad(4, 3, 'general', lower=True, rng=rng)
 
 
 def test_expm():
