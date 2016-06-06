@@ -12,7 +12,6 @@ from theano import gof, Type, Apply
 from theano import tensor, scalar, config
 from theano.gradient import grad_undefined
 from theano.scalar import Scalar
-from theano.sandbox.cuda import dimshuffle as cuda_dimshuffle
 
 scal = scalar  # somewhere scalar gets reassigned to be a function
 
@@ -4343,7 +4342,7 @@ class GpuDiagonal(GpuOp):
         new_dim_order = range(x[slicer].ndim)
         new_dim_order[axis_with_smaller_shape], new_dim_order[-1] = \
             new_dim_order[-1], new_dim_order[axis_with_smaller_shape]
-        rval = cuda_dimshuffle(x[slicer], new_dim_order)
+        rval = cuda_ndarray.cuda_ndarray.dimshuffle(x[slicer], new_dim_order)
         
         # We change the stride such that rval becomes a view of the diagonal.
         other_strides = tuple([d for i, d in enumerate(x.strides)

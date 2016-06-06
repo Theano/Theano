@@ -5909,7 +5909,7 @@ class Diagonal(Op):
             warnings.warn("View will forced to False. Diagonal property view is "
                           "set to True but numpy version %s and prior versions of "
                           "numpy.diagonal() do not return a view. Update "
-                          "numpy to use Diagonal(view=True)" % 
+                          "numpy to use Diagonal(view=True)" %
                           numpy.version.version)
             self.view = False
         if self.view:
