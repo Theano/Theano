@@ -490,6 +490,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
             if isinstance(i, numpy.ndarray):
                 end = len(idx) - k
                 break
+
         # step 2: transpose
         def get_indices(a, b, ind):
             """
