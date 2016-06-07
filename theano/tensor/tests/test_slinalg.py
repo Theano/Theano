@@ -165,7 +165,7 @@ class test_Solve(utt.InferShapeTester):
 
     def test_infer_shape(self):
         if not imported_scipy:
-            raise SkipTest("Scipy needed for the Cholesky op.")
+            raise SkipTest("Scipy needed for the Solve op.")
         rng = numpy.random.RandomState(utt.fetch_seed())
         A = theano.tensor.matrix()
         b = theano.tensor.matrix()
@@ -193,7 +193,7 @@ class test_Solve(utt.InferShapeTester):
 
     def test_solve_correctness(self):
         if not imported_scipy:
-            raise SkipTest("Scipy needed for the Cholesky op.")
+            raise SkipTest("Scipy needed for the Cholesky and Solve ops.")
         rng = numpy.random.RandomState(utt.fetch_seed())
         A = theano.tensor.matrix()
         b = theano.tensor.matrix()
@@ -211,7 +211,7 @@ class test_Solve(utt.InferShapeTester):
         upper_solve_func = theano.function([U, b], y_upper)
 
         b_val = numpy.asarray(rng.rand(5, 1), dtype=config.floatX)
-        
+
         # 1-test general case
         A_val = numpy.asarray(rng.rand(5, 5), dtype=config.floatX)
         # positive definite matrix:
@@ -228,6 +228,39 @@ class test_Solve(utt.InferShapeTester):
         U_val = scipy.linalg.cholesky(A_val, lower=False)
         assert numpy.allclose(scipy.linalg.solve_triangular(U_val, b_val, lower=False),
                               upper_solve_func(U_val, b_val))
+
+    def verify_solve_grad(self, m, n, A_structure, lower, rng):
+        # ensure diagonal elements of A relatively large to avoid numerical
+        # precision issues
+        A_val = (rng.normal(size=(m, m)) * 0.5 +
+                 numpy.eye(m)).astype(config.floatX)
+        if A_structure == 'lower_triangular':
+            A_val = numpy.tril(A_val)
+        elif A_structure == 'upper_triangular':
+            A_val = numpy.triu(A_val)
+        if n is None:
+            b_val = rng.normal(size=m).astype(config.floatX)
+        else:
+            b_val = rng.normal(size=(m, n)).astype(config.floatX)
+        eps = None
+        if config.floatX == "float64":
+            eps = 2e-8
+        solve_op = Solve(A_structure=A_structure, lower=lower)
+        utt.verify_grad(solve_op, [A_val, b_val], 3, rng, eps=eps)
+
+    def test_solve_grad(self):
+        if not imported_scipy:
+            raise SkipTest("Scipy needed for the Solve op.")
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        structures = ['general', 'lower_triangular', 'upper_triangular']
+        for A_structure in structures:
+            lower = (A_structure == 'lower_triangular')
+            self.verify_solve_grad(5, None, A_structure, lower, rng)
+            self.verify_solve_grad(6, 1, A_structure, lower, rng)
+            self.verify_solve_grad(4, 3, A_structure, lower, rng)
+        # lower should have no effect for A_structure == 'general' so also
+        # check lower=True case
+        self.verify_solve_grad(4, 3, 'general', lower=True, rng=rng)
 
 
 def test_expm():
