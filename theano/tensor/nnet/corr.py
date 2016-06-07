@@ -12,8 +12,6 @@ from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 from theano.tensor.blas_headers import blas_header_text
 from theano.tensor.blas import ldflags, blas_header_version
 
-from multiprocessing import cpu_count
-
 _logger = logging.getLogger(__name__)
 
 
@@ -122,13 +120,13 @@ class BaseCorrMM(gof.OpenMPOp):
             sub['n_bytes'] = 8
             sub['c_float_type'] = 'double'
         if self.openmp:
-            sub['cores'] = self.cores
-            sub['omp_flags'] = '#pragma omp parallel for'
+            sub['omp_flags'] = '#pragma omp parallel for schedule(static)'
+            sub['omp_max_threads'] = 'omp_get_max_threads()'
             sub['omp_set_threads'] = 'omp_set_num_threads'
             sub['omp_get_threads'] = 'omp_get_thread_num()'
         else:
-            sub['cores'] = 1
             sub['omp_flags'] = ''
+            sub['omp_max_threads'] = 1
             sub['omp_set_threads'] = ''
             sub['omp_get_threads'] = 0
 
@@ -342,7 +340,7 @@ class BaseCorrMM(gof.OpenMPOp):
         else {
           typenum = PyArray_TYPE(bottom);
         }
-        %(out)s = (PyArrayObject*)PyArray_ZEROS(4,
+        %(out)s = (PyArrayObject*)PyArray_EMPTY(4,
                                           out_dim,
                                           typenum,
                                           0);

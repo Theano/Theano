@@ -184,10 +184,8 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     }
 
     // Create temporary columns
-    int max_threads = %(omp_get_max_threads)s;
-    if (batchSize < max_threads) {
-        max_threads = batchSize;
-    }           
+    const int max_threads = %(omp_max_threads)s < batchSize ? %(omp_max_threads)s : batchSize;
+
     npy_intp col_dim[3];
     col_dim[0] = (npy_intp)max_threads;
     col_dim[1] = (npy_intp)(nChannels * kW * kH);
@@ -289,7 +287,6 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                     weight_dim[0], weight_dim[1]);
             return NULL;
         }
-        local_weight = PyArray_GETCONTIGUOUS(local_weight);
         
         // valid convolution: im2col, then gemm
         // Iterate over batch
@@ -328,6 +325,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                     i * weight_dim[1] + j);
             }
         }
+        Py_DECREF(local_weight);
         /*
         // Original caffe code for comparison
         // Note that this code was translated from the Theano GPU code,
