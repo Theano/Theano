@@ -2639,6 +2639,138 @@ err%(name)s = cudnnBatchNormalizationBackward(
         return result
 
 
+def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
+                                  epsilon=1e-4):
+    """
+    Performs batch normalization of the given inputs, using the mean and
+    variance of the inputs.
+
+    Parameters
+    ----------
+    mode : {'per-activation', 'spatial'}
+        Whether to normalize per activation or share normalization factors
+        across spatial dimensions (i.e., all dimensions past the second).
+    gamma : tensor
+        Learnable scale factors. Must match the dimensionality of `inputs`,
+        but have sizes of `1` for all axes normalized over (i.e., in the first
+        dimension for ``mode='per-activation'`, and additionally in all
+        dimensions past the second for ``mode='spatial'``).
+    beta : tensor
+        Learnable biases. Must match the tensor layout of `gamma`.
+    epsilon : float
+        Epsilon value used in the batch normalization formula. Minimum allowed
+        value is 1e-5 (imposed by cuDNN).
+
+    Returns
+    -------
+    out : tensor
+        Batch-normalized inputs.
+    mean : tensor
+        Means of `inputs` across the normalization axes.
+    stdinv : tensor
+        Inverse standard deviations of `inputs` across the normalization axes.
+
+    Notes
+    -----
+    For 4d tensors, returned values are equivalent to:
+
+    >>> axes = 0 if mode == 'per-activation' else (0, 2, 3)
+    >>> mean = inputs.mean(axes, keepdims=True)
+    >>> stdinv = T.inv(T.sqrt(inputs.var(axes, keepdims=True) + epsilon))
+    >>> out = (inputs - mean) * gamma * stdinv + beta
+    """
+    ndim = inputs.ndim
+    if ndim > 4:
+        raise ValueError("dnn_batch_normalization_train currently supports "
+                         "up to 4-dimensional tensors only, got %d" % ndim)
+    if gamma.ndim != ndim or beta.ndim != ndim:
+        raise ValueError("gamma and beta must be of the same dimensionality "
+                         "as inputs; got %d and %d instead of %d" %
+                         (gamma.ndim, beta.ndim, ndim))
+    if epsilon < 1e-5:
+        raise ValueError("epsilon must be at least 1e-5, got %f" % epsilon)
+
+    if ndim < 4:
+        inputs = theano.tensor.shape_padright(inputs, 4 - ndim)
+        gamma = theano.tensor.shape_padright(gamma, 4 - ndim)
+        beta = theano.tensor.shape_padright(beta, 4 - ndim)
+    batchnorm_op = GpuDnnBatchNorm(mode=mode, epsilon=epsilon)
+    result = tuple(batchnorm_op(inputs, gamma, beta))
+    if ndim < 4:
+        result = tuple(theano.tensor.flatten(r, ndim) for r in result)
+    return result
+
+
+def dnn_batch_normalization_test(inputs, gamma, beta, mean, var,
+                                 mode='per-activation', epsilon=1e-4):
+    """
+    Performs batch normalization of the given inputs, using the given mean and
+    variance.
+
+    Parameters
+    ----------
+    mode : {'per-activation', 'spatial'}
+        Whether to normalize per activation or share normalization factors
+        across spatial dimensions (i.e., all dimensions past the second).
+    gamma : tensor
+        Scale factors. Must match the dimensionality of `inputs`, but have
+        sizes of `1` for all axes normalized over (i.e., in the first dimension
+        for ``mode='per-activation'`, and additionally in all dimensions past
+        the second for ``mode='spatial'``).
+    beta : tensor
+        Biases. Must match the tensor layout of `gamma`.
+    mean : tensor
+        Means. Usually these are running averages computed during training.
+        Must match the tensor layout of `gamma`.
+    var : tensor
+        Variances. Usually these are running averages computed during training.
+        Must match the tensor layout of `gamma`.
+    epsilon : float
+        Epsilon value used in the batch normalization formula. Minimum allowed
+        value is 1e-5 (imposed by cuDNN).
+
+    Returns
+    -------
+    out : tensor
+        Batch-normalized inputs.
+
+    Notes
+    -----
+    For 4d tensors, the returned value is equivalent to:
+
+    >>> axes = (0,) if mode == 'per-activation' else (0, 2, 3)
+    >>> gamma, beta, mean, var = (T.addbroadcast(t, *axes)
+    ...                           for t in (gamma, beta, mean, var))
+    >>> out = (inputs - mean) * gamma / T.sqrt(var + epsilon) + beta
+    """
+    ndim = inputs.ndim
+    if ndim > 4:
+        raise ValueError("dnn_batch_normalization_test currently supports "
+                         "up to 4-dimensional tensors only, got %d" % ndim)
+    if gamma.ndim != ndim or beta.ndim != ndim:
+        raise ValueError("gamma and beta must be of the same dimensionality "
+                         "as inputs; got %d and %d instead of %d" %
+                         (gamma.ndim, beta.ndim, ndim))
+    if mean.ndim != ndim or var.ndim != ndim:
+        raise ValueError("mean and var must be of the same dimensionality "
+                         "as inputs; got %d and %d instead of %d" %
+                         (mean.ndim, var.ndim, ndim))
+    if epsilon < 1e-5:
+        raise ValueError("epsilon must be at least 1e-5, got %f" % epsilon)
+
+    if ndim < 4:
+        inputs = theano.tensor.shape_padright(inputs, 4 - ndim)
+        gamma = theano.tensor.shape_padright(gamma, 4 - ndim)
+        beta = theano.tensor.shape_padright(beta, 4 - ndim)
+        mean = theano.tensor.shape_padright(mean, 4 - ndim)
+        var = theano.tensor.shape_padright(var, 4 - ndim)
+    batchnorm_op = GpuDnnBatchNormInference(mode=mode, epsilon=epsilon)
+    result = batchnorm_op(inputs, gamma, beta, mean, var)
+    if ndim < 4:
+        result = theano.tensor.flatten(result, ndim)
+    return result
+
+
 # Intentation for history
 if True:
     # @register_opt('cudnn')  # this optimizer is registered in opt.py instead.
