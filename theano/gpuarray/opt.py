@@ -164,12 +164,7 @@ def op_lifter(OP, cuda_only=False):
                 clients = [c for o in node.outputs for c in o.clients]
                 # list of list containing clients
                 # it is clients per node basis
-                out_clients = []
-                for o in node.outputs:
-                    if o.clients:
-                        out_clients.append(o.clients)
-                    else:
-                        out_clients.append([])
+                out_clients = [o.clients for o in node.outputs]
 
                 if not replace:
                     # We replace if *all* clients are on the GPU
@@ -268,7 +263,6 @@ class GraphToGPU(Optimizer):
 
     def apply(self, fgraph):
         mapping = {}
-        move_to_GPU = True
 
         # Building a new graph
         # Iterating through inputs of graph
@@ -288,27 +282,22 @@ class GraphToGPU(Optimizer):
                 continue
 
             # Move only if any of the inputs are on the GPU.
-            move_to_GPU = True
-            '''
+            move_to_GPU = False
+
             if any([isinstance(i, GpuArrayVariable) or
                     isinstance(i, GpuArraySharedVariable)
                     for i in [mapping[v] for v in node.inputs] +
                               node.outputs]):
 
                 move_to_GPU = True
-            '''
 
-            out_clients = []
-            for o in node.outputs:
-                if o.clients:
-                    out_clients.append(o.clients)
-                else:
-                    out_clients.append([])
+            out_clients = [o.clients for o in node.outputs]
 
             context_name = None
             for i in [mapping[i] for i in node.inputs]:
                 if isinstance(i.type, GpuArrayType):
                     context_name = i.type.context_name
+                    move_to_GPU = True
                     break
 
             new_ops = None
@@ -769,7 +758,6 @@ def local_gpua_split(op, context_name, inputs):
 @register_opt2([tensor.Subtensor], 'fast_compile')
 def local_gpua_subtensor(op, context_name, inputs, clients):
     x = inputs[0]
-    node = op.make_node(*inputs)
     if (x.owner and isinstance(x.owner.op, HostFromGpu)):
         gpu_x = x.owner.inputs[0]
         if (gpu_x.owner and
@@ -781,8 +769,6 @@ def local_gpua_subtensor(op, context_name, inputs, clients):
                                               for v in n.inputs + n.outputs])
                         for n, _ in clients[0]]):
                     return
-                else:
-                    return [host_from_gpu(gpu_x.owner.op(node.outputs[0]))]
 
     return GpuSubtensor(op.idx_list)
 
