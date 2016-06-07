@@ -15,7 +15,7 @@ from theano.tensor.tests import test_basic
 from theano.tensor.tests.test_basic import rand, safe_make_node
 from theano.tests import unittest_tools as utt
 
-from ..type import (GpuArrayType, get_context, list_contexts,
+from ..type import (GpuArrayType, get_context,
                     gpuarray_shared_constructor)
 from ..basic_ops import (
     host_from_gpu, HostFromGpu, GpuFromHost, GpuReshape, GpuToGpu,
@@ -183,21 +183,16 @@ def test_transfer_cpu_gpu():
 
 
 def test_transfer_gpu_gpu():
-    ctxs = list_contexts()
-    if len(ctxs) <= 1:
-        raise SkipError("Need more then 1 context to test multi-gpu transfer")
-
     g = GpuArrayType(dtype='float32', broadcastable=(False, False),
-                          context_name=ctxs[0])()
+                     context_name=test_ctx_name)()
 
     av = numpy.asarray(rng.rand(5, 4), dtype='float32')
-    gv = gpuarray.array(av, context=get_context(ctxs[0]))
-    gv2 = gpuarray.array(av, context=get_context(ctxs[1]))
+    gv = gpuarray.array(av, context=get_context(test_ctx_name))
 
-    f = theano.function([g], GpuToGpu(ctxs[1])(g))
+    f = theano.function([g], GpuToGpu(test_ctx_name)(g))
     theano.printing.debugprint(f)
     fv = f(gv)
-    assert GpuArrayType.values_eq(fv, gv2)
+    assert GpuArrayType.values_eq(fv, gv)
 
 
 def test_transfer_strided():
