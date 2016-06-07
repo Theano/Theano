@@ -6202,6 +6202,7 @@ class Test_local_useless_reshape(unittest.TestCase):
 
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
+        check_stack_trace(g, ops_to_check=(T.DimShuffle, T.Reshape))
 
 
 def test_local_reshape_lift():
