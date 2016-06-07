@@ -529,15 +529,22 @@ class GpuToGpu(Op):
     def c_code(self, node, name, inputs, outputs, sub):
         return """
         Py_XDECREF(%(out)s);
-        %(out)s = pygpu_transfer(%(inp)s, %(ctx)s, 0);
+        %(out)s = pygpu_empty(%(inp)s->ga.nd,
+                              %(inp)s->ga.dimensions,
+                              %(inp)s->ga.typecode,
+                              GpuArray_IS_C_CONTIGUOUS(&(%(inp)s->ga)) ? GA_C_ORDER:GA_F_ORDER,
+                              %(ctx)s, Py_None);
         if (%(out)s == NULL) {
+            %(fail)s
+        }
+        if (pygpu_transfer(%(out)s, %(inp)s)) {
             %(fail)s
         }
         """ % {'inp': inputs[0], 'ctx': sub['params'],
                'out': outputs[0], 'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
 
 class GpuAlloc(HideC, Alloc):
