@@ -11,6 +11,7 @@ import os
 import re
 import sys
 import logging
+import subprocess
 
 import numpy
 import theano
@@ -1629,11 +1630,12 @@ class CLinker(link.Linker):
                         py_dll = os.path.join(pp[-1], "python27.dll")
                         manifest = os.path.join(location, "py_dll.manifest")
                         exec_f = os.path.join(location, "exec.exe")
-                        call_subprocess_Popen('"' + mt + '"' +
-                                              " -inputresource:" + py_dll + ";#2 -out:" + manifest)
-                        call_subprocess_Popen('"' + mt + '"' +
-                                              " -manifest " + manifest +
-                                              " -outputresource:" + exec_f)
+                        subprocess.Popen(["mt",
+                                         " -inputresource:",
+                                          py_dll, ";#2 -out:", manifest])
+
+                        subprocess.Popen(["mt", " -manifest ", manifest,
+                                         " -outputresource:", exec_f])
 
             except Exception as e:
                 e.args += (str(self.fgraph),)

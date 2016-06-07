@@ -2146,7 +2146,7 @@ class GCC_compiler(Compiler):
         lib_flags = ['-l%s' % l for l in libs]
         makefile = "CXX=%s\n" % (cxx)
         makefile = "CXXFLAGS= "
-        for arg in preargs:
+        for arg in cxx_args:
             makefile += "%s " % (arg)
         makefile += "\n"
         for flags in cxx_falgs:
