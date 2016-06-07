@@ -4013,7 +4013,10 @@ def local_useless_reshape(node):
             index = index + 1
     if index != output.ndim:
         inner = op.__class__(len(new_output_shape))(input, new_output_shape)
-        return [DimShuffle(inner.type.broadcastable, dimshuffle_new_order)(inner)]
+        copy_stack_trace(output, inner)
+        new_node = [DimShuffle(inner.type.broadcastable, dimshuffle_new_order)(inner)]
+        copy_stack_trace(output, new_node)
+        return new_node
 
 
 @register_canonicalize

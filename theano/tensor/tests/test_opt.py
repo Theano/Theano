@@ -61,6 +61,7 @@ from theano.tensor.elemwise import DimShuffle
 from theano.tests import unittest_tools as utt
 from theano.compile.mode import optdb
 from theano.compile import Mode
+from theano.gof.opt import check_stack_trace
 from nose.plugins.attrib import attr
 
 mode_opt = theano.config.mode
@@ -5976,6 +5977,7 @@ class Test_local_useless_reshape(unittest.TestCase):
 
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
+        check_stack_trace(g, ops_to_check=(T.DimShuffle, T.Reshape))
 
 
 def test_local_reshape_lift():
