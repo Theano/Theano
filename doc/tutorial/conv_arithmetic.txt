@@ -1,12 +1,15 @@
 .. _conv_arithmetic:
 
+===============================
+Convolution arithmetic tutorial
+===============================
+
 .. note::
 
     This tutorial is adapted from an existing `convolution arithmetic guide
     <https://arxiv.org/abs/1603.07285>`_ [#]_, with an added emphasis on
     Theano's interface.
 
-===============
 Quick reference
 ===============
 
@@ -64,7 +67,6 @@ Quick reference
             output, filters, input_shape=(9, 9), filter_shape=(c1, c2, 4, 4),
             border_mode='valid', subsample=(2, 2))
 
-===================
 About this tutorial
 ===================
 
@@ -89,7 +91,6 @@ The tutorial's objective is twofold:
   kernel shape, zero padding, strides and output shape in convolutional and
   transposed convolutional layers.
 
-================================
 Refresher: discrete convolutions
 ================================
 
@@ -208,7 +209,6 @@ simplified setting:
 This facilitates the analysis and the visualization, but keep in mind that the
 results outlined here also generalize to the N-D and non-square cases.
 
-==================
 Theano terminology
 ==================
 
@@ -238,12 +238,11 @@ Theano call:
         input, filters, input_shape=(5, 5), filter_shape=(1, 1, 3, 3),
         border_mode=(1, 1), subsample=(2, 2))
 
-======================
 Convolution arithmetic
 ======================
 
 No zero padding, unit strides
-=============================
+-----------------------------
 
 The simplest case to analyze is when the kernel just slides across every
 position of the input (i.e., :math:`s = 1` and :math:`p = 0`).
@@ -270,7 +269,7 @@ More formally, the following relationship can be inferred:
         # output.shape[2] == output.shape[3] == (i - k) + 1
 
 Zero padding, unit strides
-==========================
+--------------------------
 
 To factor in zero padding (i.e., only restricting to :math:`s = 1`), let's
 consider its effect on the effective input size: padding with :math:`p` zeros
@@ -349,7 +348,7 @@ and (therefore) :math:`p = 2`:
 .. figure:: conv_arithmetic_figures/full_padding_no_strides.gif
 
 No zero padding, non-unit strides
-=================================
+---------------------------------
 
 All relationships derived so far only apply for unit-strided convolutions.
 Incorporating non unitary strides requires another inference leap. To facilitate
@@ -383,7 +382,7 @@ possible step does *not* coincide with the kernel reaching the end of the
 input, i.e., some input units are left out.
 
 Zero padding, non-unit strides
-==============================
+------------------------------
 
 The most general case (convolving over a zero padded input using non-unit
 strides) can be derived by applying Relationship 5 on an effective input of size
@@ -418,7 +417,6 @@ Interestingly, despite having different input sizes these convolutions share the
 same output size. While this doesn't affect the analysis for *convolutions*,
 this will complicate the analysis in the case of *transposed convolutions*.
 
-=================================
 Transposed convolution arithmetic
 =================================
 
@@ -451,7 +449,7 @@ This section will focus on the following setting:
 Once again, the results outlined generalize to the N-D and non-square cases.
 
 Convolution as a matrix operation
-=================================
+---------------------------------
 
 Take for example the convolution presented in the *No zero padding, unit
 strides* subsection:
@@ -501,7 +499,7 @@ Notably, the kernel :math:`\mathbf{w}` defines both the matrices
 passes.
 
 Transposed convolution
-======================
+----------------------
 
 Let's now consider what would be required to go the other way around, i.e., map
 from a 4-dimensional space to a 16-dimensional space, while keeping the
@@ -538,7 +536,7 @@ convolution with which it shares the kernel, and defining the equivalent direct
 convolution.
 
 No zero padding, unit strides, transposed
-=========================================
+-----------------------------------------
 
 The simplest way to think about a transposed convolution is by computing the
 output shape of the direct convolution for a given input shape first, and then
@@ -607,7 +605,7 @@ for the other elements of the image, giving rise to the following relationship:
 Interestingly, this corresponds to a fully padded convolution with unit strides.
 
 Zero padding, unit strides, transposed
-======================================
+--------------------------------------
 
 Knowing that the transpose of a non-padded convolution is equivalent to
 convolving a zero padded input, it would be reasonable to suppose that the
@@ -716,7 +714,7 @@ Here is an example for :math:`i = 5`, :math:`k = 3` and (therefore) :math:`p =
 .. figure:: conv_arithmetic_figures/full_padding_no_strides_transposed.gif
 
 No zero padding, non-unit strides, transposed
-=============================================
+---------------------------------------------
 
 Using the same kind of inductive logic as for zero padded convolutions, one
 might expect that the transpose of a convolution with :math:`s > 1` involves an
@@ -765,7 +763,7 @@ of :math:`s`. In that case, the following relationship holds:
         # input.shape[2] == input.shape[3] == s * (output.shape[2] - 1) + k
 
 Zero padding, non-unit strides, transposed
-==========================================
+------------------------------------------
 
 When the convolution's input size :math:`i` is such that :math:`i + 2p - k` is a
 multiple of :math:`s`, the analysis can extended to the zero padded case by
