@@ -188,9 +188,11 @@ def test_transfer_gpu_gpu():
 
     av = numpy.asarray(rng.rand(5, 4), dtype='float32')
     gv = gpuarray.array(av, context=get_context(test_ctx_name))
-
-    f = theano.function([g], GpuToGpu(test_ctx_name)(g))
-    theano.printing.debugprint(f)
+    mode = mode_with_gpu.excluding('cut_gpua_host_transfers', 'local_cut_gpua_host_gpua')
+    f = theano.function([g], GpuToGpu(test_ctx_name)(g), mode=mode)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 1
+    assert isinstance(topo[0].op, GpuToGpu)
     fv = f(gv)
     assert GpuArrayType.values_eq(fv, gv)
 
