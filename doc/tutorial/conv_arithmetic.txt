@@ -25,6 +25,16 @@ Quick reference
 
         o = \left\lfloor \frac{i + 2p - k}{s} \right\rfloor + 1.
 
+    In Theano, this translates to
+
+    .. code-block:: python
+
+        output = theano.tensor.nnet.conv2d(
+            input, filters, input_shape=(i1, i2), filter_shape=(c1, c2, k1, k2),
+            border_mode=(p1, p2), subsample=(s1, s2))
+        # output.shape[2] == (i1 + 2 * p1 - k1) // s1 + 1
+        # output.shape[3] == (i1 + 2 * p1 - k1) // s1 + 1
+
 .. admonition:: Transposed convolution relationship
 
     A transposed convolution specified by
@@ -43,9 +53,20 @@ Quick reference
     where :math:`a` is a user-specified quantity used to distinguish between the
     :math:`s` different possible output sizes.
 
-======================
-Convolution arithmetic
-======================
+    Unless :math:`s = 1`, Theano requires that :math:`a` is implicitly passed
+    via an ``input_shape`` argument. For instance, if :math:`i = 3`,
+    :math:`k = 4`, :math:`s = 2`, :math:`p = 0` and :math:`a = 1`, then
+    :math:`o = 2 (3 - 1) + 1 + 4 = 9` and the Theano code would look like
+
+    .. code-block:: python
+
+        input = theano.tensor.nnet.conv2d_grad_wrt_inputs(
+            output, filters, input_shape=(9, 9), filter_shape=(c1, c2, 4, 4),
+            border_mode='valid', subsample=(2, 2))
+
+===================
+About this tutorial
+===================
 
 Learning to use convolutional neural networks (CNNs) for the first time is
 generally an intimidating experience. A convolutional layer's output shape is
@@ -68,8 +89,9 @@ The tutorial's objective is twofold:
   kernel shape, zero padding, strides and output shape in convolutional and
   transposed convolutional layers.
 
-Refresher: discrete convolution
-===============================
+================================
+Refresher: discrete convolutions
+================================
 
 The bread and butter of neural networks is *affine transformations*: a
 vector is received as input and is multiplied with a matrix to produce an
@@ -186,6 +208,40 @@ simplified setting:
 This facilitates the analysis and the visualization, but keep in mind that the
 results outlined here also generalize to the N-D and non-square cases.
 
+==================
+Theano terminology
+==================
+
+Theano has its own terminology, which differs slightly from the convolution
+arithmetic guide's. Here's a simple conversion table for the two:
+
++------------------+-------------------------------------------------------------------+
+| Theano           | Convolution arithmetic                                            |
++==================+===================================================================+
+| ``filters``      | 4D collection of kernels                                          |
++------------------+-------------------------------------------------------------------+
+| ``input_shape``  | (batch size, input channels, :math:`i_1`, :math:`i_2`)            |
++------------------+-------------------------------------------------------------------+
+| ``filter_shape`` | (output channels, input channels, :math:`k_1`, :math:`k_2`)       |
++------------------+-------------------------------------------------------------------+
+| ``border_mode``  | ``'valid'``, ``'half'``, ``'full'`` or (:math:`p_1`, :math:`p_2`) |
++------------------+-------------------------------------------------------------------+
+| ``subsample``    | (:math:`s_1`, :math:`s_2`)                                        |
++------------------+-------------------------------------------------------------------+
+
+For instance, the convolution shown above would correspond to the following
+Theano call:
+
+.. code-block:: python
+
+    output = theano.tensor.nnet.conv2d(
+        input, filters, input_shape=(5, 5), filter_shape=(1, 1, 3, 3),
+        border_mode=(1, 1), subsample=(2, 2))
+
+======================
+Convolution arithmetic
+======================
+
 No zero padding, unit strides
 =============================
 
@@ -206,11 +262,12 @@ More formally, the following relationship can be inferred:
 
 .. admonition:: Relationship 1
 
-    For any :math:`i` and :math:`k`, and for :math:`s = 1` and :math:`p = 0`,
+    .. code-block:: python
 
-    .. math::
-
-        o = (i - k) + 1.
+        output = theano.tensor.nnet.conv2d(
+            input, filters, input_shape=(i, i), filter_shape=(c1, c2, k, k),
+            border_mode=(0, 0), subsample=(1, 1))
+        # output.shape[2] == output.shape[3] == (i - k) + 1
 
 Zero padding, unit strides
 ==========================
@@ -225,9 +282,12 @@ relationship:
 
     For any :math:`i`, :math:`k` and :math:`p`, and for :math:`s = 1`,
 
-    .. math::
+    .. code-block:: python
 
-        o = (i - k) + 2p + 1.
+        output = theano.tensor.nnet.conv2d(
+            input, filters, input_shape=(i, i), filter_shape=(c1, c2, k, k),
+            border_mode=(p, p), subsample=(1, 1))
+        # output.shape[2] == output.shape[3] == (i - k) + 2 * p + 1
 
 Here is an example for :math:`i = 5`, :math:`k = 4` and :math:`p = 2`:
 
@@ -250,23 +310,17 @@ be a desirable property:
     For any :math:`i` and for :math:`k` odd (:math:`k = 2n + 1, \quad n \in
     \mathbb{N}`), :math:`s = 1` and :math:`p = \lfloor k / 2 \rfloor = n`,
 
-    .. math::
+    .. code-block:: python
 
-        \begin{split}
-            o &= i + 2 \lfloor k / 2 \rfloor - (k - 1) \\
-              &= i + 2n - 2n \\
-              &= i.
-        \end{split}
+        output = theano.tensor.nnet.conv2d(
+            input, filters, input_shape=(i, i), filter_shape=(c1, c2, k, k),
+            border_mode='half', subsample=(1, 1))
+        # output.shape[2] == output.shape[3] == i
 
 This is sometimes referred to as *half* (or *same*) padding. Here is an example
 for :math:`i = 5`, :math:`k = 3` and (therefore) :math:`p = 1`:
 
 .. figure:: conv_arithmetic_figures/same_padding_no_strides.gif
-
-.. todo::
-
-    * Tie this to Theano's and Theano-dependent packages' terminology.
-    * What happens if kernel size is even?
 
 Full padding
 ^^^^^^^^^^^^
@@ -280,12 +334,12 @@ proper zero padding:
     For any :math:`i` and :math:`k`, and for :math:`p = k - 1` and
     :math:`s = 1`,
 
-    .. math::
+    .. code-block:: python
 
-        \begin{split}
-            o &= i + 2(k - 1) - (k - 1) \\
-              &= i + (k - 1).
-        \end{split}
+        output = theano.tensor.nnet.conv2d(
+            input, filters, input_shape=(i, i), filter_shape=(c1, c2, k, k),
+            border_mode='full', subsample=(1, 1))
+        # output.shape[2] == output.shape[3] == i + (k - 1)
 
 This is sometimes referred to as *full* padding, because in this setting every
 possible partial or complete superimposition of the kernel on the input feature
@@ -310,18 +364,19 @@ placements of the kernel on the input. Let's consider the width axis: the kernel
 starts as usual on the leftmost part of the input, but this time it slides by
 steps of size :math:`s` until it touches the right side of the input. The size
 of the output is again equal to the number of steps made, plus one, accounting
-for the initial position of the kernel (**todo: add figure**). The same logic
-applies for the height axis.
+for the initial position of the kernel. The same logic applies for the height
+axis.
 
 From this, the following relationship can be inferred:
 
 .. admonition:: Relationship 5
 
-    For any :math:`i`, :math:`k` and :math:`s`, and for :math:`p = 0`,
+    .. code-block:: python
 
-    .. math::
-
-        o = \left\lfloor \frac{i - k}{s} \right\rfloor + 1.
+        output = theano.tensor.nnet.conv2d(
+            input, filters, input_shape=(i, i), filter_shape=(c1, c2, k, k),
+            border_mode=(0, 0), subsample=(s, s))
+        # output.shape[2] == output.shape[3] == (i - k) // s + 1
 
 The floor function accounts for the fact that sometimes the last
 possible step does *not* coincide with the kernel reaching the end of the
@@ -336,11 +391,12 @@ strides) can be derived by applying Relationship 5 on an effective input of size
 
 .. admonition:: Relationship 6
 
-    For any :math:`i`, :math:`k`, :math:`p` and :math:`s`,
+    .. code-block:: python
 
-    .. math::
-
-        o = \left\lfloor \frac{i + 2p - k}{s} \right\rfloor + 1.
+        output = theano.tensor.nnet.conv2d(
+            input, filters, input_shape=(i, i), filter_shape=(c1, c2, k, k),
+            border_mode=(p, p), subsample=(s, s))
+        # output.shape[2] == output.shape[3] == (i - k + 2 * p) // s + 1
 
 As before, the floor function means that in some cases a convolution will
 produce the same output size for multiple input sizes. More specifically, if
@@ -539,6 +595,15 @@ for the other elements of the image, giving rise to the following relationship:
 
         o' = i' + (k - 1).
 
+    In other words,
+
+    .. code-block:: python
+
+        input = theano.tensor.nnet.conv2d_grad_wrt_inputs(
+            output, filters, filter_shape=(c1, c2, k, k), border_mode=(0, 0),
+            subsample=(1, 1))
+        # input.shape[2] == input.shape[3] == output.shape[2] + (k - 1)
+
 Interestingly, this corresponds to a fully padded convolution with unit strides.
 
 Zero padding, unit strides, transposed
@@ -565,6 +630,15 @@ Formally, the following relationship applies for zero padded convolutions:
     .. math::
 
         o' = i' + (k - 1) - 2p.
+
+    In other words,
+
+    .. code-block:: python
+
+        input = theano.tensor.nnet.conv2d_grad_wrt_inputs(
+            output, filters, filter_shape=(c1, c2, k, k), border_mode=(p, p),
+            subsample=(1, 1))
+        # input.shape[2] == input.shape[3] == output.shape[2] + (k - 1) - 2 * p
 
 Special cases
 -------------
@@ -593,6 +667,15 @@ applies:
                &= i'.
         \end{split}
 
+    In other words,
+
+    .. code-block:: python
+
+        input = theano.tensor.nnet.conv2d_grad_wrt_inputs(
+            output, filters, filter_shape=(c1, c2, k, k), border_mode='half',
+            subsample=(1, 1))
+        # input.shape[2] == input.shape[3] == output.shape[2]
+
 Here is an example for :math:`i = 5`, :math:`k = 3` and (therefore) :math:`p =
 1`:
 
@@ -617,6 +700,15 @@ the transpose of a fully padded convolution is a non-padded convolution:
             o' &= i' + (k - 1) - 2p \\
                &= i' - (k - 1)
         \end{split}
+
+    In other words,
+
+    .. code-block:: python
+
+        input = theano.tensor.nnet.conv2d_grad_wrt_inputs(
+            output, filters, filter_shape=(c1, c2, k, k), border_mode='full',
+            subsample=(1, 1))
+        # input.shape[2] == input.shape[3] == output.shape[2] - (k - 1)
 
 Here is an example for :math:`i = 5`, :math:`k = 3` and (therefore) :math:`p =
 2`:
@@ -663,6 +755,15 @@ of :math:`s`. In that case, the following relationship holds:
 
         o' = s (i' - 1) + k.
 
+    In other words,
+
+    .. code-block:: python
+
+        input = theano.tensor.nnet.conv2d_grad_wrt_inputs(
+            output, filters, filter_shape=(c1, c2, k, k), border_mode=(0, 0),
+            subsample=(s, s))
+        # input.shape[2] == input.shape[3] == s * (output.shape[2] - 1) + k
+
 Zero padding, non-unit strides, transposed
 ==========================================
 
@@ -682,6 +783,16 @@ combining Relationship 8 and Relationship 11:
     .. math::
 
         o' = s (i' - 1) + k - 2p.
+
+    In other words,
+
+    .. code-block:: python
+
+        o_prime = s * (output.shape[2] - 1) + k - 2 * p
+        input = theano.tensor.nnet.conv2d_grad_wrt_inputs(
+            output, filters, input_shape=(o_prime, o_prime),
+            filter_shape=(c1, c2, k, k), border_mode=(p, p),
+            subsample=(s, s))
 
 Here is an example for :math:`i = 5`, :math:`k = 3`, :math:`s = 2` and :math:`p
 = 1`:
@@ -705,6 +816,16 @@ between the :math:`s` different cases that all lead to the same :math:`i'`:
     .. math::
 
         o' = s (i' - 1) + a + k - 2p.
+
+    In other words,
+
+    .. code-block:: python
+
+        o_prime = s * (output.shape[2] - 1) + a + k - 2 * p
+        input = theano.tensor.nnet.conv2d_grad_wrt_inputs(
+            output, filters, input_shape=(o_prime, o_prime),
+            filter_shape=(c1, c2, k, k), border_mode=(p, p),
+            subsample=(s, s))
 
 Here is an example for :math:`i = 6`, :math:`k = 3`, :math:`s = 2` and :math:`p
 = 1`:
