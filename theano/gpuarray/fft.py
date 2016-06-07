@@ -281,18 +281,15 @@ cuirfft_op = CuIRFFTOp()
 
 def curfft(inp, norm=None):
     """
-    Performs the fast Fourier transform of a real-valued output on the GPU
-    through the gpuarray backend.
+    Performs the fast Fourier transform of a real-valued input on the GPU.
 
     The input must be a real-valued float32 variable of dimensions (m, ..., n).
     It performs FFTs of size (..., n) on m batches.
 
     The output is a GpuArray of dimensions (m, ..., n//2+1, 2). The second to
     last dimension of the output contains the n//2+1 non-trivial elements of
-    the real-valued FFTs. The real and imaginary parts are stored as two
-    float32 arrays, emulating complex64. Since theano does not support complex
-    number operations, care must be taken to manually implement operators such
-    as multiplication.
+    the real-valued FFTs. The real and imaginary parts are stored as a pair of
+    float32 arrays.
 
     Parameters
     ----------
@@ -318,14 +315,12 @@ def curfft(inp, norm=None):
 
 def cuirfft(inp, norm=None, is_odd=False):
     """
-    Performs the real-valued output inverse Fourier Transform using the
-    gpuarray backend.
+    Performs the inverse fast Fourier Transform with real-valued output on the GPU.
 
     The input is a variable of dimensions (m, ..., n//2+1, 2) with
     type float32 representing the non-trivial elements of m
     real-valued Fourier transforms of initial size (..., n). The real and
-    imaginary parts are stored as two float32 arrays, emulating complex64
-    given that Theano does not support complex numbers.
+    imaginary parts are stored as a pair of float32 arrays.
 
     The output is a real-valued float32 variable of dimensions (m, ..., n)
     giving the m inverse FFTs.
@@ -344,6 +339,7 @@ def cuirfft(inp, norm=None, is_odd=False):
     is_odd : {True, False}
         Set to True to get a real inverse transform output with an odd last dimension
         of length (N-1)*2 + 1 for an input last dimension of length N.
+
     """
 
     if is_odd not in (True, False):

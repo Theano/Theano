@@ -9,20 +9,15 @@ from theano.tests import unittest_tools as utt
 import theano.gpuarray.fft
 import numpy.fft
 
-from .config import mode_with_gpu
-
 # Skip tests if pygpu is not available.
 from nose.plugins.skip import SkipTest
-from theano.gpuarray.fft import pygpu_available, scikits_cuda_available
-from theano.gpuarray.fft import pycuda_available
+from theano.gpuarray.fft import pygpu_available, scikits_cuda_available, pycuda_available
 if not pygpu_available:  # noqa
     raise SkipTest('Optional package pygpu not available')
 if not scikits_cuda_available:  # noqa
     raise SkipTest('Optional package scikits.cuda not available')
 if not pycuda_available:  # noqa
     raise SkipTest('Optional package pycuda not available')
-
-import theano.gpuarray.cuda_fft
 
 # Transform sizes
 N = 64
@@ -35,7 +30,7 @@ class TestFFT(unittest.TestCase):
 
         x = T.matrix('x', dtype='float32')
         rfft = theano.gpuarray.fft.curfft(x)
-        f_rfft = theano.function([x], rfft, mode=mode_with_gpu)
+        f_rfft = theano.function([x], rfft)
         res_rfft = f_rfft(inputs_val)
         res_rfft_comp = (np.asarray(res_rfft[:, :, 0]) +
                          1j * np.asarray(res_rfft[:, :, 1]))
@@ -46,7 +41,7 @@ class TestFFT(unittest.TestCase):
 
         m = rfft.type()
         irfft = theano.gpuarray.fft.cuirfft(m)
-        f_irfft = theano.function([m], irfft, mode=mode_with_gpu)
+        f_irfft = theano.function([m], irfft)
         res_irfft = f_irfft(res_rfft)
 
         utt.assert_allclose(inputs_val, np.asarray(res_irfft))
@@ -70,7 +65,7 @@ class TestFFT(unittest.TestCase):
         inputs = theano.shared(inputs_val)
 
         rfft = theano.gpuarray.fft.curfft(inputs)
-        f_rfft = theano.function([], rfft, mode=mode_with_gpu)
+        f_rfft = theano.function([], rfft)
         res_rfft = f_rfft()
         res_rfft_comp = (np.asarray(res_rfft[:, :, :, 0]) +
                          1j * np.asarray(res_rfft[:, :, :, 1]))
@@ -84,12 +79,12 @@ class TestFFT(unittest.TestCase):
         inputs = theano.shared(inputs_val)
 
         fft = theano.gpuarray.fft.curfft(inputs)
-        f_fft = theano.function([], fft, mode=mode_with_gpu)
+        f_fft = theano.function([], fft)
         res_fft = f_fft()
 
         m = fft.type()
         ifft = theano.gpuarray.fft.cuirfft(m)
-        f_ifft = theano.function([m], ifft, mode=mode_with_gpu)
+        f_ifft = theano.function([m], ifft)
         res_ifft = f_ifft(res_fft)
 
         utt.assert_allclose(inputs_val, np.asarray(res_ifft))
@@ -109,7 +104,7 @@ class TestFFT(unittest.TestCase):
 
         # Unitary normalization
         rfft = theano.gpuarray.fft.curfft(inputs, norm='ortho')
-        f_rfft = theano.function([], rfft, mode=mode_with_gpu)
+        f_rfft = theano.function([], rfft)
         res_rfft = f_rfft()
         res_rfft_comp = (np.asarray(res_rfft[:, :, :, 0]) +
                          1j * np.asarray(res_rfft[:, :, :, 1]))
@@ -121,7 +116,7 @@ class TestFFT(unittest.TestCase):
 
         # No normalization
         rfft = theano.gpuarray.fft.curfft(inputs, norm='no_norm')
-        f_rfft = theano.function([], rfft, mode=mode_with_gpu)
+        f_rfft = theano.function([], rfft)
         res_rfft = f_rfft()
         res_rfft_comp = (np.asarray(res_rfft[:, :, :, 0]) +
                          1j * np.asarray(res_rfft[:, :, :, 1]))
@@ -136,7 +131,7 @@ class TestFFT(unittest.TestCase):
 
         # Unitary normalization inverse FFT
         irfft = theano.gpuarray.fft.cuirfft(inputs, norm='ortho')
-        f_irfft = theano.function([], irfft, mode=mode_with_gpu)
+        f_irfft = theano.function([], irfft)
         res_irfft = f_irfft()
 
         irfft_ref_ortho = numpy.fft.irfftn(
@@ -147,7 +142,7 @@ class TestFFT(unittest.TestCase):
 
         # No normalization inverse FFT
         irfft = theano.gpuarray.fft.cuirfft(inputs, norm='no_norm')
-        f_irfft = theano.function([], irfft, mode=mode_with_gpu)
+        f_irfft = theano.function([], irfft)
         res_irfft = f_irfft()
 
         utt.assert_allclose(irfft_ref_ortho * np.sqrt(N * N),
@@ -185,7 +180,7 @@ class TestFFT(unittest.TestCase):
         inputs = theano.shared(inputs_val)
 
         rfft = theano.gpuarray.fft.curfft(inputs)
-        f_rfft = theano.function([], rfft, mode=mode_with_gpu)
+        f_rfft = theano.function([], rfft)
         res_rfft = f_rfft()
 
         res_rfft_comp = (np.asarray(res_rfft[:, :, :, 0]) +
@@ -197,7 +192,7 @@ class TestFFT(unittest.TestCase):
 
         m = rfft.type()
         ifft = theano.gpuarray.fft.cuirfft(m, is_odd=True)
-        f_ifft = theano.function([m], ifft, mode=mode_with_gpu)
+        f_ifft = theano.function([m], ifft)
         res_ifft = f_ifft(res_rfft)
 
         utt.assert_allclose(inputs_val, np.asarray(res_ifft))
@@ -206,7 +201,7 @@ class TestFFT(unittest.TestCase):
         inputs = theano.shared(inputs_val)
 
         irfft = theano.gpuarray.fft.cuirfft(inputs, norm='ortho', is_odd=True)
-        f_irfft = theano.function([], irfft, mode=mode_with_gpu)
+        f_irfft = theano.function([], irfft)
         res_irfft = f_irfft()
 
         inputs_ref = inputs_val[:, :, :, 0] + 1j * inputs_val[:, :, :, 1]
