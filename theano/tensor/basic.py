@@ -1399,8 +1399,6 @@ class MaxAndArgmax(Op):
         %(axis_code)s
         %(max)s = (PyArrayObject*)PyArray_Max(%(x)s, axis, NULL);
         if(%(max)s == NULL){
-            PyErr_SetString(PyExc_ValueError,
-                         "MaxAndArgmax, max failed");
             %(fail)s;
         }
         if(!PyArray_CheckExact(%(max)s)){
@@ -1412,7 +1410,6 @@ class MaxAndArgmax(Op):
 
         %(argmax)s = (PyArrayObject*)PyArray_ArgMax(%(x)s, axis, NULL);
         if(%(argmax)s == NULL){
-            PyErr_SetString(PyExc_ValueError, "MaxAndArgmax, argmax failed");
             Py_CLEAR(%(max)s);
             %(fail)s;
         }
@@ -1434,7 +1431,7 @@ class MaxAndArgmax(Op):
         return ret % locals()
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def infer_shape(self, node, shapes):
         ishape, axis_shape = shapes
