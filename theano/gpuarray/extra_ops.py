@@ -10,7 +10,7 @@ except ImportError:
 
 from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel,
                         infer_context_name, GpuFromHost)
-from .opt import register_opt as register_gpu_opt, op_lifter
+from .opt import register_opt, op_lifter, register_opt2
 
 
 class GpuCumsum(GpuKernelBase, Op):
@@ -450,8 +450,9 @@ class GpuCumsum(GpuKernelBase, Op):
         """ % locals()
         return super(GpuCumsum, self).c_support_code_struct(node, nodename) + code
 
-
+@register_opt('fast_compile')
 @op_lifter([CumsumOp])
+@register_opt2([CumsumOp], 'fast_compile')
 def use_gpu_cumsumop(op, ctx_name, inputs):
     if inputs[0].dtype == 'float32':
         axis = op.axis
@@ -471,4 +472,5 @@ def use_gpu_cumsumop(op, ctx_name, inputs):
 
         return GpuCumsum(axis)(x)
 
-register_gpu_opt()(use_gpu_cumsumop)
+#register_opt('fast_compile')(use_gpu_cumsumop)
+#register_opt2([CumsumOp], 'fast_compile')(use_gpu_cumsumop)

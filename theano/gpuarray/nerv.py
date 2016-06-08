@@ -147,8 +147,9 @@ if (GpuKernel_init(&k_%(name)s, c->ctx, 1, &bcode, &sz,
         return '\n'.join(codel)
 
 
-@opt.register_opt()
+@opt.register_opt('fast_compile')
 @opt.op_lifter([tensor.Dot])
+@opt.register_opt2([tensor.Dot], 'fast_compile')
 def local_dot_to_gemm16(op, ctx_name, inputs):
     if nerv is None:
         return

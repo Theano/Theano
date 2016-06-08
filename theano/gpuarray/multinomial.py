@@ -14,7 +14,7 @@ from theano.gof import Op
 from theano.tensor import NotScalarConstantError, get_scalar_constant_value
 from theano import gpuarray
 from .basic_ops import as_gpuarray_variable, infer_context_name
-from .opt import register_opt, op_lifter
+from .opt import register_opt, op_lifter, register_opt2
 from .type import GpuArrayType
 
 
@@ -227,8 +227,9 @@ KERNEL void k_multi_warp_multinomial(
         return (1,)
 
 
-@register_opt()
+@register_opt('fast_compile')
 @op_lifter([theano.sandbox.multinomial.MultinomialFromUniform])
+@register_opt2([theano.sandbox.multinomial.MultinomialFromUniform], 'fast_compile')
 def local_gpua_multinomial(op, context_name, inputs):
     # TODO : need description for function
 
@@ -242,6 +243,9 @@ def local_gpua_multinomial(op, context_name, inputs):
             return None
     except NotScalarConstantError:
         return None
+
+    node = op.make_node(*inputs)
+    outputs = node.outputs
     m, = outputs
     if (p.dtype == u.dtype == m.dtype == 'float32'):
         gpu_op = GPUAMultinomialFromUniform(op.odtype)

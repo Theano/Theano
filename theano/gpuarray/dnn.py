@@ -31,7 +31,7 @@ from .elemwise import GpuElemwise
 # These don't exist in gpuarray
 # GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
 from .nnet import GpuSoftmax
-from .opt import gpu_seqopt, register_opt, conv_groupopt, op_lifter
+from .opt import gpu_seqopt, register_opt, conv_groupopt, op_lifter, register_opt2
 from .opt_util import alpha_merge, output_merge, inplace_allocempty
 
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_BWD_FILTER
@@ -1498,6 +1498,7 @@ def local_dnn_convi_output_merge(node, *inputs):
 
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([Pool])
+@register_opt2([Pool], 'fast_compile')
 def local_pool_dnn_alternative(op, ctx_name, inputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn()
@@ -1514,10 +1515,11 @@ def local_pool_dnn_alternative(op, ctx_name, inputs):
 
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([MaxPoolGrad])
+@register_opt2([MaxPoolGrad], 'fast_compile')
 def local_pool_dnn_grad_stride(op, ctx_name, inputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn()
-    if not node.op.ignore_border:
+    if not op.ignore_border:
         return
     inp, out, out_grad = inputs
     inp = as_gpuarray_variable(inp, ctx_name)
@@ -1538,6 +1540,7 @@ def local_pool_dnn_grad_stride(op, ctx_name, inputs):
 
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([AveragePoolGrad])
+@register_opt2([AveragePoolGrad], 'fast_compile')
 def local_avg_pool_dnn_grad_stride(op, ctx_name, inputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn()
@@ -1591,6 +1594,7 @@ def local_log_softmax_dnn(node):
 
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([LogSoftmax])
+@register_opt2([LogSoftmax], 'fast_compile')
 def local_logsoftmax_to_dnn(op, ctx_name, inputs):
     # Transform the input in the format expected by GpuDnnSoftmax
     inp = inputs[0]
@@ -1629,6 +1633,7 @@ gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
 
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([SoftmaxGrad])
+#@register_opt2([SoftmaxGrad], 'fast_compile')
 def local_softmax_dnn_grad(op, ctx_name, inputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn("cuDNN needed for SoftmaxGrad")
