@@ -522,7 +522,7 @@ def is_mul(var):
         return None
 
 
-def partition_num_or_denom(r, f, **kwargs):
+def partition_num_or_denom(r, f):
     if r.owner and r.owner.op == tensor.mul:
         a = r.owner.inputs
     else:
