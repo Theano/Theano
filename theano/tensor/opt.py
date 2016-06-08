@@ -1699,7 +1699,7 @@ def local_useless_alloc(node):
     # Check if alloc adds a broadcastable dimension with shape 1.
     output_shape = node.inputs[1:]
     num_dims_with_size_1_added_to_left = 0
-    for i in range(len(output_shape)):
+    for i in range(len(output_shape) - input.ndim):
         if extract_constant(output_shape[i], only_process_constants=True) == 1:
             num_dims_with_size_1_added_to_left += 1
         else:
@@ -1708,7 +1708,7 @@ def local_useless_alloc(node):
     if num_dims_with_size_1_added_to_left > 0 and len(new_output_shape) >= input.ndim:
         inner = op(*([input] + new_output_shape))
         dimshuffle_new_order = (['x'] * num_dims_with_size_1_added_to_left +
-                                range(len(new_output_shape)))
+                                list(xrange(len(new_output_shape))))
         return [DimShuffle(inner.type.broadcastable, dimshuffle_new_order)(inner)]
 
 

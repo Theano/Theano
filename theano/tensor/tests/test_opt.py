@@ -3552,29 +3552,53 @@ class Test_local_useless_alloc(unittest.TestCase):
         alloc_lift = out2in(local_useless_alloc)
         x = shared(self.rng.randn(2,))
         y = shared(self.rng.randn())
+        z = shared(self.rng.randn(1, 1))
+        w = shared(self.rng.randn(1, 1))
         alloc_x = tensor.alloc(x, 1, 3, 2)
         alloc_y = tensor.alloc(y, 1, 1)
+        alloc_z = tensor.alloc(z, 1, 1, 2)
+        alloc_w = tensor.alloc(w, 1, 2)
 
-        g = FunctionGraph([x, y], [alloc_x, alloc_y])
+        g = FunctionGraph([x, y, z, w], [alloc_x, alloc_y, alloc_z, alloc_w])
         self.assertTrue(str(g) == ("[Alloc(<TensorType(float64, vector)>, "
                                    "TensorConstant{1}, "
                                    "TensorConstant{3}, "
                                    "TensorConstant{2}), "
+
                                    "Alloc(<TensorType(float64, scalar)>, "
                                    "TensorConstant{1}, "
-                                   "TensorConstant{1})]"))
+                                   "TensorConstant{1}), "
+
+                                   "Alloc(<TensorType(float64, matrix)>, "
+                                   "TensorConstant{1}, "
+                                   "TensorConstant{1}, "
+                                   "TensorConstant{2}), "
+
+                                   "Alloc(<TensorType(float64, matrix)>, "
+                                   "TensorConstant{1}, "
+                                   "TensorConstant{2})]"))
 
         alloc_lift.optimize(g)
         self.assertTrue(str(g) == "[DimShuffle{x,0,1}"
                                   "(Alloc(<TensorType(float64, vector)>, "
                                   "TensorConstant{3}, "
                                   "TensorConstant{2})), "
+
                                   "DimShuffle{x,x}"
-                                  "(<TensorType(float64, scalar)>)]")
+                                  "(<TensorType(float64, scalar)>), "
+
+                                  "DimShuffle{x,0,1}"
+                                  "(Alloc(<TensorType(float64, matrix)>, "
+                                  "TensorConstant{1}, "
+                                  "TensorConstant{2})), "
+
+                                  "Alloc(<TensorType(float64, matrix)>, "
+                                  "TensorConstant{1}, "
+                                  "TensorConstant{2})]")
 
         # Check stacktrace was copied over correctly after opt was applied
+        # self._verify_stack_trace(g)
         self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
-
 
 
 class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
