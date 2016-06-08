@@ -26,12 +26,9 @@ iadd_reg = {}
 def get_iadd(a, b):
     key = (a.type.dtype, b.type.dtype, a.type.context)
     if key not in iadd_reg:
-        if a.dtype == 'float16' or b.dtype == 'float16':
-            raise NotImplementedError('float16 is not supported by pygpu '
-                                      'elemwise')
         a_arg = pygpu.elemwise.arg('a', a.type.dtype, read=True, write=True)
         b_arg = pygpu.elemwise.arg('b', b.type.dtype, read=True)
-        res = pygpu.elemwise.GpuElemwise(a.type.context, "a = a + b", [a_arg, b_arg])
+        res = pygpu.elemwise.GpuElemwise(a.type.context, "a = a + b", [a_arg, b_arg], convert_f16=True)
         iadd_reg[key] = res
     return iadd_reg[key]
 
@@ -469,6 +466,7 @@ class GpuAdvancedIncSubtensor1(Op):
     Implement AdvancedIncSubtensor1 on the gpu.
 
     """
+    _f16_ok = True
     __props__ = ('inplace', 'set_instead_of_inc')
     params_type = gpu_context_type
 
