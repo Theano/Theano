@@ -356,7 +356,6 @@ class T_sigmoid_opts(unittest.TestCase):
         f = theano.function([x], s, mode=mode)
         assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
         topo = f.maker.fgraph.toposort()
-        assert len(topo) > 1
         assert not any([n.op == sigmoid for n in topo])
         ux_v = f([[-50, -10, -4, -1, 0, 1, 4, 10, 50]])
 
@@ -467,15 +466,17 @@ class T_sigmoid_utils(unittest.TestCase):
         try:
             x = tensor.vector('x')
             exp = tensor.exp
-            assert is_1pexp(1 + exp(x)) == (False, x)
-            assert is_1pexp(exp(x) + 1) == (False, x)
-            for neg, exp_arg in imap(is_1pexp, [(1 + exp(-x)), (exp(-x) + 1)]):
+            assert is_1pexp(1 + exp(x), False) == (False, x)
+            assert is_1pexp(exp(x) + 1, False) == (False, x)
+            for neg, exp_arg in imap(lambda x:
+                                     is_1pexp(x, only_process_constants=False),
+                                     [(1 + exp(-x)), (exp(-x) + 1)]):
                 assert not neg and theano.gof.graph.is_same_graph(exp_arg, -x)
-            assert is_1pexp(1 - exp(x)) is None
-            assert is_1pexp(2 + exp(x)) is None
-            assert is_1pexp(exp(x) + 2) is None
-            assert is_1pexp(exp(x) - 1) is None
-            assert is_1pexp(-1 + exp(x)) is None
-            assert is_1pexp(1 + 2 * exp(x)) is None
+            assert is_1pexp(1 - exp(x), False) is None
+            assert is_1pexp(2 + exp(x), False) is None
+            assert is_1pexp(exp(x) + 2, False) is None
+            assert is_1pexp(exp(x) - 1, False) is None
+            assert is_1pexp(-1 + exp(x), False) is None
+            assert is_1pexp(1 + 2 * exp(x), False) is None
         finally:
             config.warn.identify_1pexp_bug = backup
