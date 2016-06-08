@@ -413,6 +413,7 @@ log1msigm_to_softplus = gof.PatternSub(
     values_eq_approx=values_eq_approx_remove_inf,
     skip_identities_fn=_skip_mul_1)
 
+
 log1pexp_to_softplus = gof.PatternSub(
     (tensor.log1p,
      (tensor.exp, 'x')),
@@ -420,9 +421,17 @@ log1pexp_to_softplus = gof.PatternSub(
     values_eq_approx=values_eq_approx_remove_inf,
     allow_multiple_clients=True)
 
+log1p_neg_sigmoid = gof.PatternSub(
+    (tensor.log1p,
+     (tensor.neg, (sigmoid, 'x'))),
+    (tensor.neg, (softplus, 'x')),
+    values_eq_approx=values_eq_approx_remove_inf,
+    allow_multiple_clients=True)
+
 opt.register_stabilize(logsigm_to_softplus, name='logsigm_to_softplus')
 opt.register_stabilize(log1msigm_to_softplus, name='log1msigm_to_softplus')
 opt.register_stabilize(log1pexp_to_softplus, name='log1pexp_to_softplus')
+opt.register_stabilize(log1p_neg_sigmoid, name='log1p_neg_sigmoid,')
 
 
 def is_1pexp(t):
