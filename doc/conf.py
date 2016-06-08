@@ -19,6 +19,8 @@
 #sys.path.append(os.path.abspath('some/directory'))
 import os
 import sys
+import theano
+
 theano_path = os.path.join(os.path.dirname(__file__), os.pardir)
 sys.path.append(os.path.abspath(theano_path))
 
@@ -27,7 +29,11 @@ sys.path.append(os.path.abspath(theano_path))
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo', 'sphinx.ext.doctest', 'sphinx.ext.napoleon']
+extensions = ['sphinx.ext.autodoc',
+              'sphinx.ext.todo',
+              'sphinx.ext.doctest',
+              'sphinx.ext.napoleon',
+              'sphinx.ext.linkcode']
 
 todo_include_todos = True
 napoleon_google_docstring = False
@@ -100,7 +106,20 @@ pygments_style = 'sphinx'
 # must exist either in Sphinx' static/ path, or in one of the custom paths
 # given in html_static_path.
 #html_style = 'default.css'
-html_theme = 'sphinxdoc'
+# html_theme = 'sphinxdoc'
+
+# Read the docs style:
+if os.environ.get('READTHEDOCS') != 'True':
+    try:
+        import sphinx_rtd_theme
+    except ImportError:
+        pass  # assume we have sphinx >= 1.3
+    else:
+        html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+    html_theme = 'sphinx_rtd_theme'
+
+def setup(app):
+    app.add_stylesheet("fix_rtd.css")
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -162,6 +181,31 @@ html_use_smartypants = True
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'theanodoc'
 
+# Options for the linkcode extension
+# ----------------------------------
+# Resolve function
+def linkcode_resolve(domain, info):
+    def find_source():
+        # try to find the file and line number, based on code from numpy:
+        # https://github.com/numpy/numpy/blob/master/doc/source/conf.py#L286
+        obj = sys.modules[info['module']]
+        for part in info['fullname'].split('.'):
+            obj = getattr(obj, part)
+        import inspect
+        import os
+        fn = inspect.getsourcefile(obj)
+        fn = os.path.relpath(fn, start=os.path.dirname(theano.__file__))
+        source, lineno = inspect.getsourcelines(obj)
+        return fn, lineno, lineno + len(source) - 1
+
+    if domain != 'py' or not info['module']:
+        return None
+    try:
+        filename = 'theano/%s#L%d-L%d' % find_source()
+    except Exception:
+        filename = info['module'].replace('.', '/') + '.py'
+    tag = 'master' if 'dev' in release else ('v' + release)
+    return "https://github.com/Theano/theano/blob/%s/%s" % (tag, filename)
 
 # Options for LaTeX output
 # ------------------------
