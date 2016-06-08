@@ -122,8 +122,6 @@ An op has to implement some methods defined in the the interface of
 the method :func:`make_node` or :attr:`itypes`, :attr:`otypes` and one of the 
 implementation methods, either :func:`perform`, :meth:`Op.c_code` 
 or :func:`make_thunk`.
-method :func:`make_node` and one of the implementation methods, either 
-:func:`perform`, :meth:`Op.c_code` or :func:`make_thunk`.
 
   :func:`make_node` method creates an Apply node representing the application
   of the op on the inputs provided. This method is reponsible for three things:
