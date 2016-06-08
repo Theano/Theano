@@ -17,9 +17,9 @@ Every node of a function that you want to use as a shared library must
 have a C implementation.
  
 To compile a function as shared library, you must use CLinker with the
-parameter c_callable=True:
+parameter c_callable=True::
 
- linker = theano.gof.CLinker(c_callable=True)
+ linker = theano.gof.CLinker(c_callable=True)	
  mode = theano.Mode(linker=linker)
  f = theano.function(inputs, outputs , mode=mode)
 
@@ -30,37 +30,37 @@ run method. If there are no errors you can get the outputs values from the
 C++ class members.
 The C++ class members must be set and get using the PyList_SetItem and
 PyList_GET_ITEM respectively.
-Then this C++ class is compiled as shared library
+Then this C++ class is compiled as shared library.
 
 The shared library is built in a  specific temporary directory, in the Theano 
 cache directory. The name of the directory is stored in the filename 
-property of the function. 
+property of the function::
 
  f.fn.filename
 
-In this directory you will find the .so library, the header file, 
-a makefile and an exe.cpp which can be used as template 
+In this directory you will find the .so library, the header file,
+a makefile and an exe.cpp which can be used as template
 to build your application. There is also
 a exec.h in which you find the command used to build the library.
-If the function uses shared variables you also find,in this directory, 
-files with shared variables values in numpy file format (*.npy). 
+If the function uses shared variables you also find, in this directory,
+files with shared variables values in numpy file format (\*.npy).
 The names of these files are the names of C++ class internal variables
 corresponding to the shared variables.
 
 Let's walk through an example to see how to use the shared library.
 
-Build the shared library for the function in function.py:
+Build the shared library for the function in function.py::
 
  python function.py
 
 The outputs show you where Theano puts the library. To see if everything
 works correctly go in that directory and use make file 
-to build the executable
+to build the executable::
 
-make exec
+ make exec
 
 and then launch it. 
-You should get
+You should get::
 
  After import numpy (hexvalue)
  after import_array1()
@@ -90,7 +90,7 @@ if there are no errors.
 
 One thing you can do to better understand how the code work is to change the
 input and shared variable values. As an example you 
-can delete from line 49 to 57 and substitute them with:
+can delete from line 49 to 57 and substitute them with::
 
  npy_intp dims[2]={2,5};
  PyObject* V7=PyArray_SimpleNew(2,dims,NPY_FLOAT64);
@@ -100,12 +100,12 @@ can delete from line 49 to 57 and substitute them with:
  
 Now x is a 2x5 matrix with all entries equal to one.
 To change the values of the shared variable, lauch a python shell and execute
-the following code
+the following code::
 
  import numpy as np
  np.save('storage_V13.npy',np.array([1,2],dtype='float64'))
 
-Now you can recompile exec with 
+Now you can recompile exec with::
 
  make exec
 
