@@ -533,7 +533,7 @@ def partition_num_or_denom(r, f):
     neg = False
     rest = []
     for t in a:
-        f_t = f(t, **kwargs)
+        f_t = f(t)
         if f_t is None:
             rest.append(t)
         else:
