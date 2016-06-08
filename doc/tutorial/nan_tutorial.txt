@@ -40,7 +40,9 @@ If adjusting hyperparameters doesn't work for you, you can still get help from
 Theano's NanGuardMode. Change the mode of your theano function to NanGuardMode
 and run them again. The NanGuardMode will monitor all input/output variables in
 each node, and raises an error if NaNs are detected. For how to use the
-``NanGuardMode``, please refer to :ref:`nanguardmode`.
+``NanGuardMode``, please refer to :ref:`nanguardmode`. Using ``optimizer_including=alloc_empty_to_zeros`` 
+with ``NanGuardMode`` could be helpful to detect NaN, for more information please refer 
+to :ref:`AllocEmpty`. 
 
 DebugMode can also help. Run your code in DebugMode with flag
 ``mode=DebugMode,DebugMode.check_py=False``. This will give you clue about which
@@ -77,6 +79,8 @@ Cuda Specific Option
 The Theano flag ``nvcc.fastmath=True`` can genarate NaN. Don't set
 this flag while debugging NaN.
 
+
+.. _AllocEmpty:
 
 NaN Introduced by AllocEmpty
 -----------------------------------------------
