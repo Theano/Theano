@@ -1929,13 +1929,13 @@ class AdvancedIncSubtensor1(Op):
         """
         # Parameters of PyArrary_FromAny are:
         # array
-        # dtype: NULL mean any dtype is acceptable.
-        #        We force the dtype to try to fix a Windows problem.
+        # dtype: we pass NULL to say any dtype is acceptable, so the existing
+        #        dtype will be copied
         # min_depth: we pass 0 to have this parameter ignored
         # max_depth: we pass 0 to have this parameter ignored
         # requirements: here we pass NPY_ARRAY_ENSURECOPY to force a copy
         # context: this is almost always NULL, I'm not sure what it's used for
-        return """(PyArrayObject*)PyArray_FromAny(py_%(x)s, PyArray_DTYPE(%(x)s), 0, 0,
+        return """(PyArrayObject*)PyArray_FromAny(py_%(x)s, NULL, 0, 0,
                 NPY_ARRAY_ENSURECOPY, NULL)""" % locals()
 
     def c_support_code(self):
@@ -1982,7 +1982,7 @@ class AdvancedIncSubtensor1(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def perform(self, node, inp, out_):
         # TODO opt to make this inplace
