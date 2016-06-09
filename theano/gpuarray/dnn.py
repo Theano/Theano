@@ -1384,14 +1384,16 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
 
 @local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights,
                   AbstractConv2d_gradInputs])
-def local_abstractconv_cudnn(node):
-    if (not isinstance(node.op, (AbstractConv2d,
+@register_opt2([AbstractConv2d, AbstractConv2d_gradWeights,
+                  AbstractConv2d_gradInputs], 'fast_compile')
+def local_abstractconv_cudnn(op, context_name, inputs):
+    if (not isinstance(op, (AbstractConv2d,
                                  AbstractConv2d_gradWeights,
                                  AbstractConv2d_gradInputs))):
         return None
 
-    inp1 = node.inputs[0]
-    inp2 = node.inputs[1]
+    inp1 = inputs[0]
+    inp2 = inputs[1]
 
     if (node.op.filter_dilation != (1, 1)):
         return None
@@ -1402,30 +1404,30 @@ def local_abstractconv_cudnn(node):
     if not dnn_available(inp1.type.context_name):
         raise_no_cudnn()
 
-    if node.op.filter_flip:
+    if op.filter_flip:
         conv_mode = 'conv'
     else:
         conv_mode = 'cross'
 
-    if isinstance(node.op, AbstractConv2d):
+    if isinstance(op, AbstractConv2d):
         rval = dnn_conv(inp1, inp2,
-                        border_mode=node.op.border_mode,
-                        subsample=node.op.subsample,
+                        border_mode=op.border_mode,
+                        subsample=op.subsample,
                         direction_hint='forward!',
                         conv_mode=conv_mode)
-    if isinstance(node.op, AbstractConv2d_gradWeights):
+    if isinstance(op, AbstractConv2d_gradWeights):
         shape = (inp2.shape[1], inp1.shape[1],
-                 node.inputs[2][0], node.inputs[2][1])
+                 inputs[2][0], inputs[2][1])
         rval = dnn_gradweight(inp1, inp2, shape,
-                              border_mode=node.op.border_mode,
-                              subsample=node.op.subsample,
+                              border_mode=op.border_mode,
+                              subsample=op.subsample,
                               conv_mode=conv_mode)
-    if isinstance(node.op, AbstractConv2d_gradInputs):
+    if isinstance(op, AbstractConv2d_gradInputs):
         shape = (inp2.shape[0], inp1.shape[1],
-                 node.inputs[2][0], node.inputs[2][1])
+                 inputs[2][0], inputs[2][1])
         rval = dnn_gradinput(inp1, inp2, shape,
-                             border_mode=node.op.border_mode,
-                             subsample=node.op.subsample,
+                             border_mode=op.border_mode,
+                             subsample=op.subsample,
                              conv_mode=conv_mode)
     return [rval]
 
@@ -1633,7 +1635,7 @@ gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
 
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([SoftmaxGrad])
-#@register_opt2([SoftmaxGrad], 'fast_compile')
+@register_opt2([SoftmaxGrad], 'cudnn', 'fast_compile')
 def local_softmax_dnn_grad(op, ctx_name, inputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn("cuDNN needed for SoftmaxGrad")

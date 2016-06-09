@@ -282,15 +282,17 @@ class GraphToGPU(Optimizer):
                 continue
 
             # Move only if any of the inputs are on the GPU.
-            move_to_GPU = False
+            move_to_GPU = True
 
+            '''
             if any([isinstance(i, GpuArrayVariable) or
                     isinstance(i, GpuArraySharedVariable)
                     for i in [mapping[v] for v in node.inputs] +
                               node.outputs]):
 
                 move_to_GPU = True
-
+            '''
+            
             out_clients = [o.clients for o in node.outputs]
 
             context_name = None

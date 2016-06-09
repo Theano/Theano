@@ -452,8 +452,8 @@ class GpuCumsum(GpuKernelBase, Op):
 
 @register_opt('fast_compile')
 @op_lifter([CumsumOp])
-@register_opt2([CumsumOp], 'fast_compile')
-def use_gpu_cumsumop(op, ctx_name, inputs):
+#@register_opt2([CumsumOp], 'fast_compile')
+def use_gpu_cumsumop(op, ctx_name, inputs,  ):
     if inputs[0].dtype == 'float32':
         axis = op.axis
         x = inputs[0]
@@ -464,7 +464,7 @@ def use_gpu_cumsumop(op, ctx_name, inputs):
         if axis is None and x.ndim > 1:
             x = x.flatten()
 
-        x = GpuFromHost(ctx_name)(x)
+        x = as_gpuarray_variable(x, ctx_name)
 
         # ``gpu_cumsum`` assume array has been flattened if needed.
         if axis is None:
@@ -473,4 +473,4 @@ def use_gpu_cumsumop(op, ctx_name, inputs):
         return GpuCumsum(axis)(x)
 
 #register_opt('fast_compile')(use_gpu_cumsumop)
-#register_opt2([CumsumOp], 'fast_compile')(use_gpu_cumsumop)
+#
