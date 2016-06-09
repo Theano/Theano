@@ -32,7 +32,7 @@ from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         HostFromGpu, GpuFromHost,
                         GpuSplit, GpuContiguous, gpu_contiguous,
                         GpuAlloc, GpuAllocEmpty, GpuReshape,
-                        GpuEye, gpu_join, GpuJoin)
+                        GpuEye, gpu_join, GpuJoin, gpu_alloc_empty)
 from .blas import (gpu_dot22, GpuGemm, GpuGer, GpuGemmBatch,
                    gpugemm_no_inplace, gpugemm_inplace, gpugemmbatch_no_inplace,
                    gpugemv_no_inplace, gpugemv_inplace)
@@ -59,14 +59,6 @@ _logger = logging.getLogger("theano.gpuarray.opt")
 gpu_optimizer = EquilibriumDB()
 gpu_optimizer2 = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
-
-
-def gpu_alloc_empty(dtype, ctx):
-    key = (dtype, ctx)
-    if key not in gpu_alloc_empty.cache:
-        gpu_alloc_empty.cache[key] = GpuAllocEmpty(dtype, ctx)
-    return gpu_alloc_empty.cache[key]
-gpu_alloc_empty.cache = {}
 
 
 class GraphToGPUDB(DB):
@@ -456,7 +448,7 @@ def local_gpuaalloc(op, context_name, inputs):
 def local_gpuaallocempty(op, context_name, inputs):
     # We use _props_dict() to make sure that the GPU op know all the
     # CPU op props.
-    return GpuAllocEmpty(context_name=context_name,
+    return gpu_alloc_empty(context_name=context_name,
                          **op._props_dict())(*inputs)
 
 
@@ -975,7 +967,7 @@ def local_gpua_hgemm(op, context_name, inputs):
     if (A.ndim == 2 and B.ndim == 2 and
             A.dtype == 'float16' and B.dtype == 'float16'):
         fgraph = inputs[0].fgraph
-        C = GpuAllocEmpty(dtype='float16', context_name=context_name)(
+        C = gpu_alloc_empty(dtype='float16', context_name=context_name)(
             shape_i(A, 0, fgraph),
             shape_i(B, 1, fgraph))
         return gpugemm_no_inplace(C, 1.0, A, B, 0.0)
@@ -1024,7 +1016,7 @@ def local_gpua_dot22scalar(op, context_name, inputs):
     x, y, a = inputs
     x = as_gpuarray_variable(x, context_name)
     y = as_gpuarray_variable(y, context_name)
-    z = GpuAllocEmpty(x.dtype, context_name)(x.shape[0], y.shape[1])
+    z = gpu_alloc_empty(x.dtype, context_name)(x.shape[0], y.shape[1])
     return [gpugemm_no_inplace(z, a, x, y, 0)]
 
 

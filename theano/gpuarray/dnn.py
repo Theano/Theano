@@ -25,14 +25,15 @@ from theano.tensor.signal.pool import (
 from . import pygpu
 from .type import get_context, gpu_context_type, list_contexts, GpuArrayType
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
-                        gpu_contiguous, GpuAllocEmpty, empty_like)
+                        gpu_contiguous, GpuAllocEmpty, gpu_alloc_empty, 
+                        empty_like)
 from .elemwise import GpuElemwise
 
 # These don't exist in gpuarray
 # GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
 from .nnet import GpuSoftmax
 from .opt import (gpu_seqopt, register_opt, conv_groupopt,
-                  op_lifter, register_opt2, gpu_alloc_empty)
+                  op_lifter, register_opt2)
 
 from .opt_util import alpha_merge, output_merge, inplace_allocempty
 

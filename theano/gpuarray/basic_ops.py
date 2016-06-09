@@ -956,6 +956,14 @@ def empty_like(var):
     return GpuAllocEmpty(var.type.dtype, var.type.context_name)(*var.shape)
 
 
+def gpu_alloc_empty(dtype, ctx):
+    key = (dtype, ctx)
+    if key not in gpu_alloc_empty.cache:
+        gpu_alloc_empty.cache[key] = GpuAllocEmpty(dtype, ctx)
+    return gpu_alloc_empty.cache[key]
+gpu_alloc_empty.cache = {}
+
+
 class GpuContiguous(Op):
     """
     Return a C contiguous version of the input.
@@ -1031,6 +1039,7 @@ class GpuReshape(HideC, tensor.Reshape):
     def make_node(self, x, shp):
         ctx_name = infer_context_name(x)
         x = as_gpuarray_variable(x, context_name=ctx_name)
+        shp = tensor.as_tensor_variable(shp)
         res = host_from_gpu(x).reshape(shp, ndim=self.ndim)
         otype = GpuArrayType(dtype=res.dtype,
                              broadcastable=res.broadcastable,
