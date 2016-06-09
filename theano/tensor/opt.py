@@ -1028,6 +1028,8 @@ class ShapeFeature(object):
             # don't make the optimizer merge a zillion ones together
             # by always returning the same object to represent 1
             return self.lscalar_one
+        if type(s_i) is float and int(s_i) == s_i:
+            s_i = int(s_i)
         if (type(s_i) in integer_types or
                 isinstance(s_i, numpy.integer) or
                 (isinstance(s_i, numpy.ndarray) and s_i.ndim == 0)):
