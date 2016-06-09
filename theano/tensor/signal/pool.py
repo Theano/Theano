@@ -456,8 +456,8 @@ class Pool(OpenMPOp):
             int r_st, r_end, c_st, c_end;
             %(omp_parallel)s
             for(int t = 0; t < PyArray_DIMS(%(x)s)[0] * PyArray_DIMS(%(x)s)[1]; t++){
-                int b = t / PyArray_DIMS(%(x)s)[1];
-                int k = t %% PyArray_DIMS(%(x)s)[1];
+                int b = t %% PyArray_DIMS(%(x)s)[0];
+                int k = t / PyArray_DIMS(%(x)s)[0];
                 for(int i=0; i < z_r; i++){
                   r_st = i * %(st0)s;
                   r_end = r_st + %(ds0)s;
@@ -645,7 +645,7 @@ class PoolGrad(OpenMPOp):
 
 class MaxPoolGrad(PoolGrad):
     def __init__(self, ds, ignore_border, st=None, padding=(0, 0)):
-        PoolGrad.__init__(self, ds, ignore_border, st, padding, mode='max')
+        PoolGrad.__init__(self, ds, ignore_border, st, padding, mode='max', openmp=None)
 
     def make_node(self, x, maxout, gz):
         # make_node should only be called by the grad function of
@@ -776,8 +776,8 @@ class MaxPoolGrad(PoolGrad):
             int r_st, r_end, c_st, c_end;
             %(omp_parallel)s
             for(int t = 0; t < PyArray_DIMS(%(x)s)[0] * PyArray_DIMS(%(x)s)[1]; t++){
-                int b = t / PyArray_DIMS(%(x)s)[1];
-                int k = t %% PyArray_DIMS(%(x)s)[1];
+                int b = t %% PyArray_DIMS(%(x)s)[0];
+                int k = t / PyArray_DIMS(%(x)s)[0];
                 for(int i=0; i < z_r; i++){
                   r_st = i * %(st0)s;
                   r_end = r_st + %(ds0)s;
@@ -1039,8 +1039,8 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         int r_st, r_end, c_st, c_end;
         %(omp_parallel)s
         for(int t = 0; t < PyArray_DIMS(%(x)s)[0] * PyArray_DIMS(%(x)s)[1]; t++){
-            int b = t / PyArray_DIMS(%(x)s)[1];
-            int k = t %% PyArray_DIMS(%(x)s)[1];
+            int b = t %% PyArray_DIMS(%(x)s)[0];
+            int k = t / PyArray_DIMS(%(x)s)[0];
                 for(int i=0; i < z_r; i++){
                   r_st = i * %(st0)s;
                   r_end = r_st + %(ds0)s;
