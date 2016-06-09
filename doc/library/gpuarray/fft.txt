@@ -10,9 +10,8 @@ FFT gradients are implemented as the opposite Fourier transform of the output gr
 
 .. warning ::
     The real and imaginary parts of the Fourier domain arrays are stored as a pair of float32
-    array, emulating complex64. Since theano does not support complex
-    number operations, care must be taken to manually implement operators such as complex
-    multiplication.
+    array, emulating complex64. Since theano has limited support for complex
+    number operations, care must be taken to manually implement operations such as gradients.
 
 .. automodule:: theano.gpuarray.fft
    :members: curfft, cuirfft
@@ -40,5 +39,11 @@ shifted to the middle of the array. The Theano flag ``device=cuda{0,1...}`` must
     out = f_rfft(box)
     c_out = np.asarray(out[0, :, 0] + 1j*out[0, :, 1])
     abs_out = abs(c_out)
+
+.. testoutput::
+   :hide:
+   :options: +SKIP
+
+   ...
 
 .. image:: plot_fft.png
