@@ -10,11 +10,8 @@ Related Projects:
 
    https://github.com/Theano/Theano/wiki/Related-projects
 
-It is recommended that you look at the documentation on the website, as 
-it will be more current than the documentation included with the package.
-In order to build the documentation yourself, you will need sphinx. Issue 
-the following command:
-
+It is recommended that you look at the documentation on the website, as it will be more current than the documentation included with the package.
+In order to build the documentation yourself, you will need sphinx. Issue the following command:
     python ./doc/scripts/docgen.py
 
 Documentation is built into html/
