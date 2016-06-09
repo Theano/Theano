@@ -16,6 +16,7 @@ In order to build the documentation yourself, you will need sphinx. Issue the fo
     python ./doc/scripts/docgen.py
 
 Documentation is built into html/
+
 The PDF of the documentation can be found at html/theano.pdf
 
 
