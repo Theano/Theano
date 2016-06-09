@@ -51,12 +51,22 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedIncSubtensor1_dev20)
 from .opt_util import alpha_merge, output_merge
 
+
+
 _logger = logging.getLogger("theano.gpuarray.opt")
 
 
 gpu_optimizer = EquilibriumDB()
 gpu_optimizer2 = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
+
+
+def gpu_alloc_empty(dtype, ctx):
+    key = (dtype, ctx)
+    if key not in gpu_alloc_empty.cache:
+        gpu_alloc_empty.cache[key] = GpuAllocEmpty(dtype, ctx)
+    return gpu_alloc_empty.cache[key]
+gpu_alloc_empty.cache = {}
 
 
 class GraphToGPUDB(DB):
@@ -292,7 +302,7 @@ class GraphToGPU(Optimizer):
 
                 move_to_GPU = True
             '''
-            
+
             out_clients = [o.clients for o in node.outputs]
 
             context_name = None

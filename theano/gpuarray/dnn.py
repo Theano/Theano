@@ -31,7 +31,9 @@ from .elemwise import GpuElemwise
 # These don't exist in gpuarray
 # GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
 from .nnet import GpuSoftmax
-from .opt import gpu_seqopt, register_opt, conv_groupopt, op_lifter, register_opt2
+from .opt import (gpu_seqopt, register_opt, conv_groupopt,
+                  op_lifter, register_opt2, gpu_alloc_empty)
+
 from .opt_util import alpha_merge, output_merge, inplace_allocempty
 
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_BWD_FILTER
@@ -896,7 +898,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
         shape2 = shape_i(img, 2, fgraph) - shape_i(kerns, 2, fgraph) + 1
         shape3 = shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1
-        out = GpuAllocEmpty(img.dtype, ctx_name)(
+        out = gpu_alloc_empty(img.dtype, ctx_name)(
             shape_i(kerns, 1, fgraph),
             shape_i(img, 1, fgraph), shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
@@ -914,7 +916,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
         shape2 = shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1
         shape3 = shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1
-        out = GpuAllocEmpty(img.dtype, ctx_name)(shape_i(img, 0, fgraph),
+        out = gpu_alloc_empty(img.dtype, ctx_name)(shape_i(img, 0, fgraph),
                                                  shape_i(kerns, 1, fgraph),
                                                  shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
@@ -932,7 +934,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     out_shp = GpuDnnConv.get_out_shape(img.shape, kerns.shape,
                                        desc_op.border_mode,
                                        desc_op.subsample)
-    out = GpuAllocEmpty(img.dtype, ctx_name)(*out_shp)
+    out = gpu_alloc_empty(img.dtype, ctx_name)(*out_shp)
     return GpuDnnConv(algo=algo)(img, kerns, out, desc)
 
 
@@ -946,7 +948,7 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
     kerns_shp = as_tensor_variable(kerns_shp)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(kerns_shp)
-    out = GpuAllocEmpty(img.dtype, ctx_name)(*kerns_shp)
+    out = gpu_alloc_empty(img.dtype, ctx_name)(*kerns_shp)
     return GpuDnnConvGradW()(img, topgrad, out, desc)
 
 
@@ -960,7 +962,7 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
     img_shp = as_tensor_variable(img_shp)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(kerns.shape)
-    out = GpuAllocEmpty(kerns.dtype, ctx_name)(*img_shp)
+    out = gpu_alloc_empty(kerns.dtype, ctx_name)(*img_shp)
     return GpuDnnConvGradI()(kerns, topgrad, out, desc)
 
 
