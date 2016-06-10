@@ -2320,10 +2320,18 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                           "%f with the theano flag 'optdb.max_use_ratio'." %
                           config.optdb.max_use_ratio)
         fgraph.remove_feature(change_tracker)
+        assert len(loop_process_count) == len(loop_timing)
+        assert len(loop_process_count) == len(global_opt_timing)
+        assert len(loop_process_count) == len(nb_nodes)
+        assert len(loop_process_count) == len(io_toposort_timing)
+        assert len(loop_process_count) == len(global_sub_profs)
+        assert len(loop_process_count) == len(final_sub_profs)
+        assert len(loop_process_count) == len(cleanup_sub_profs)
         return (self, loop_timing, loop_process_count,
                 (start_nb_nodes, end_nb_nodes, max_nb_nodes),
                 global_opt_timing, nb_nodes, time_opts, io_toposort_timing,
-                node_created, global_sub_profs, final_sub_profs, cleanup_sub_profs)
+                node_created, global_sub_profs, final_sub_profs,
+                cleanup_sub_profs)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
