@@ -10,7 +10,7 @@
   // If doc is run localy
   if (url.startsWith('file')) {
     theano_dir = 'html';
-    versions_dir = {"local":"html"};
+    versions_dir = {"local":"html", "test":"test"};
   }
   
   var root_url = url.substring(0, url.search('/' + theano_dir)) + '/';
@@ -32,9 +32,11 @@
   // Build HTML string for version selector combo box and
   // select current version by iterating versions_dir.
 
-    var select = ['<select>'];
+    var style = '"padding:0px 4px 0px 0px; background-color:transparent; '
+    style = style + 'box-shadow:none; border:none; color:#27AA5E"';
+    var select = ['<select style=' + style + '>'];
     $.each(versions_dir, function(version, dir){
-      select.push('<option value="' + version + '"');
+      select.push('<option style="padding:2px" value="' + version + '"');
       if (dir == current_version)
         select.push(' selected="selected">' + version + '</option>');
       else
