@@ -946,7 +946,7 @@ def local_lift_abstractconv2d(node, context_name):
     return [node.op(*inps)]
 
 # Register this here so that it goes after the abstract lifting
-register_opt()(conv_groupopt)
+register_opt('fast_compile')(conv_groupopt)
 
 
 @register_opt("low_memory")
