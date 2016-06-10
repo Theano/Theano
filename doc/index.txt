@@ -239,10 +239,10 @@ StackOverflow, follow their guidance for `answering questions <http://stackoverf
    introduction
    install
    tutorial/index
-   library/index
-   optimizations
    extending/index
    dev_start_guide
+   optimizations
+   library/index
    glossary
    links
    internal/index

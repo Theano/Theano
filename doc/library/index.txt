@@ -1,9 +1,10 @@
 
 .. _libdoc:
+.. _Library documentation:
 
-=====================
-Library Documentation
-=====================
+=================
+API Documentation
+=================
 
 This documentation covers Theano module-wise.  This is suited to finding the
 Types and Ops that you can use to build and compile expression graphs.
@@ -11,20 +12,20 @@ Types and Ops that you can use to build and compile expression graphs.
 .. toctree::
    :maxdepth: 1
 
-   tensor/index
-   gradient
-   config
-   printing
-   d3viz/index
    compile/index
+   config
+   d3viz/index
+   gof/index
    gpuarray/index
+   gradient
+   misc/pkl_utils
+   printing
+   sandbox/index
+   scalar/index
+   scan
    sparse/index
    sparse/sandbox
-   scalar/index
-   gof/index
-   misc/pkl_utils
-   scan
-   sandbox/index
+   tensor/index
    typed_list
 
 There are also some top-level imports that you might find more convenient:
