@@ -57,6 +57,7 @@ def test_advinc_subtensor1():
         rep[[0, 2]] += yval
         assert numpy.allclose(rval, rep)
 
+
 def test_incsub_f16():
     shp = (3, 3)
     shared = gpuarray_shared_constructor
