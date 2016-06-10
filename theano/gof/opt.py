@@ -315,17 +315,17 @@ class SeqOptimizer(Optimizer, list):
                   "  time      - (name, class, index, nodes before, nodes after) - validate time",
                   file=stream)
         ll = []
-        for opt in opts:
+        for (opt, nb_n) in zip(opts, nb_nodes):
             if hasattr(opt, "__name__"):
                 name = opt.__name__
             else:
                 name = opt.name
             idx = opts.index(opt)
             ll.append((name, opt.__class__.__name__,
-                       idx))
-        lll = sorted(zip(prof, ll, nb_nodes), key=lambda a: a[0])
+                       idx) + nb_n)
+        lll = sorted(zip(prof, ll), key=lambda a: a[0])
 
-        for (t, opt, nb_n) in lll[::-1]:
+        for (t, opt) in lll[::-1]:
             i = opt[2]
             if sub_validate_time:
                 val_time = sub_validate_time[i + 1] - sub_validate_time[i]
