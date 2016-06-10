@@ -644,7 +644,7 @@ class PoolGrad(OpenMPOp):
 
 
 class MaxPoolGrad(PoolGrad):
-    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max', openmp=None):
+    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max', openmp=True):
         PoolGrad.__init__(self, ds, ignore_border, st, padding, mode, openmp)
 
     def make_node(self, x, maxout, gz):
