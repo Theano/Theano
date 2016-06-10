@@ -345,8 +345,8 @@ class SeqOptimizer(Optimizer, list):
         Merge 2 profiles returned by this cass apply() fct.
 
         """
-        new_t = []
-        new_l = []
+        new_t = []  # the time for the optimization
+        new_l = []  # the optimization
         new_sub_profile = []
         # merge common(same object) opt
         for l in set(prof1[0]).intersection(set(prof2[0])):
@@ -399,6 +399,12 @@ class SeqOptimizer(Optimizer, list):
             new_sub_profile.append(p[6][idx])
 
         new_opt = SeqOptimizer(*new_l)
+        new_nb_nodes = []
+        for p1, p2 in zip(prof1[8], prof2[8]):
+            new_nb_nodes.append((p1[0] + p2[0], p1[1] + p2[1]))
+        new_nb_nodes.extend(prof1[8][len(new_nb_nodes):])
+        new_nb_nodes.extend(prof2[8][len(new_nb_nodes):])
+
         new_callbacks_times = merge_dict(prof1[9], prof2[9])
         # We need to assert based on the name as we merge also based on
         # the name.
@@ -410,6 +416,7 @@ class SeqOptimizer(Optimizer, list):
         return (new_opt, new_t, prof1[2] + prof2[2],
                 prof1[3] + prof2[3],
                 -1, -1, new_sub_profile, [],
+                new_nb_nodes,
                 new_callbacks_times)
 
 
