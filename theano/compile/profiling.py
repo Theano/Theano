@@ -88,6 +88,7 @@ def _atexit_print_fn():
                     merge = cum.optimizer_profile[0].merge_profile(
                         cum.optimizer_profile[1],
                         ps.optimizer_profile[1])
+                    assert len(merge) == len(cum.optimizer_profile[1])
                     cum.optimizer_profile = (cum.optimizer_profile[0], merge)
                 except Exception as e:
                     print("Got an exception while merging profile")
