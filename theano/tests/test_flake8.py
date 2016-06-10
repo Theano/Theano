@@ -125,12 +125,11 @@ whitelist_flake8 = [
     "sparse/sandbox/test_sp.py",
     "sparse/sandbox/sp2.py",
     "sparse/sandbox/truedot.py",
-    "sparse/sandbox/sp.py",    
-    "gof/__init__.py",    
+    "sparse/sandbox/sp.py",
+    "gof/__init__.py",
     "d3viz/__init__.py",
     "d3viz/tests/__init__.py",
     "gof/tests/__init__.py",
-
 ]
 
 
