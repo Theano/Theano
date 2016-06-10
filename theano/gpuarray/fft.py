@@ -8,6 +8,9 @@ from theano.gradient import DisconnectedType
 
 from theano.gpuarray import (basic_ops, GpuArrayType)
 
+import theano.tensor.fft
+from .opt import register_opt, op_lifter
+
 try:
     import pygpu
     pygpu_available = True
@@ -21,8 +24,8 @@ except ImportError:
     pycuda_available = False
 
 try:
-    import scikits.cuda
-    from scikits.cuda import fft
+    import skcuda
+    from skcuda import fft
     scikits_cuda_available = True
 except (ImportError, Exception):
     scikits_cuda_available = False
@@ -47,7 +50,7 @@ class CuRFFTOp(Op):
         # The effect of padding on gradients has yet to be investigated.
 
         if not scikits_cuda_available:
-            raise RuntimeError("scikits.cuda is needed for CuFFTOp")
+            raise RuntimeError("skcuda is needed for CuFFTOp")
 
         if not pygpu_available:
             raise RuntimeError("pygpu is needed for CuFFTOp")
@@ -77,7 +80,7 @@ class CuRFFTOp(Op):
 
         # Initiliaze cuda context to the input's.
         with node.inputs[0].type.context:
-            scikits.cuda.misc.init()
+            skcuda.misc.init()
 
         plan_input_shape = [None]
         plan = [None]
@@ -108,7 +111,7 @@ class CuRFFTOp(Op):
 
             input_pycuda = inputs[0][0]
             # I thought we'd need to change the type on output_pycuda
-            # so it is complex64, but as it turns out scikits.cuda.fft
+            # so it is complex64, but as it turns out skcuda.fft
             # doesn't really care either way and treats the array as
             # if it is complex64 anyway.
             output_pycuda = z[0]
@@ -172,7 +175,7 @@ class CuIRFFTOp(Op):
         # The effect of padding on gradients has yet to be investigated.
 
         if not scikits_cuda_available:
-            raise RuntimeError("scikits.cuda is needed for CuIFFTOp")
+            raise RuntimeError("skcuda is needed for CuIFFTOp")
 
         if not pygpu_available:
             raise RuntimeError("pygpu is needed for CuIFFTOp")
@@ -202,7 +205,7 @@ class CuIRFFTOp(Op):
 
         # Initiliaze cuda context to the input's.
         with node.inputs[0].type.context:
-            scikits.cuda.misc.init()
+            skcuda.misc.init()
 
         plan_input_shape = [None]
         plan = [None]
@@ -231,7 +234,7 @@ class CuIRFFTOp(Op):
 
             input_pycuda = inputs[0][0]
             # input_pycuda is a float32 array with an extra dimension,
-            # but will be interpreted by scikits.cuda as a complex64
+            # but will be interpreted by skcuda as a complex64
             # array instead.
             output_pycuda = z[0]
 
@@ -366,3 +369,15 @@ def _unitary(norm):
         raise ValueError("Invalid value %s for norm, must be None, 'ortho' or "
                          "'no norm'" % norm)
     return norm
+
+if scikits_cuda_available:
+    @register_opt('fast_compile')
+    @op_lifter([theano.tensor.fft.RFFTOp])
+    def local_curfft_op(node, context_name):
+        return curfft_op
+
+    @register_opt('fast_compile')
+    @op_lifter([theano.tensor.fft.IRFFTOp])
+    def local_cuirfft_op(node, context_name):
+        return cuirfft_op
+
