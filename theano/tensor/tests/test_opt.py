@@ -1635,8 +1635,8 @@ def test_log_add():
 def test_local_useless_slice():
     # test a simple matrix
     x = tensor.matrix('x')
-    mode_unopt = compile.get_default_mode().excluding("local_useless_slice")
-    mode_opt = compile.get_default_mode().including("local_useless_slice")
+    mode_unopt = compile.get_default_mode().excluding("local_useless_slice", "local_mul_canonizer")
+    mode_opt = compile.get_default_mode().including("local_useless_slice").excluding("local_mul_canonizer")
 
     # test with and without the useless slice
     o = 2 * x[0, :]
@@ -2124,7 +2124,7 @@ class test_local_subtensor_lift(unittest.TestCase):
         f1 = function([x], newx[:2, :5], mode=mode_opt)
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(check_stack_trace(f1, ops_to_check=[
-                Subtensor, tensor.Rebroadcast]))
+                        Subtensor, tensor.Rebroadcast]))
         prog = f1.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.Subtensor)
         assert isinstance(prog[1].op, tensor.Rebroadcast)
@@ -2140,7 +2140,7 @@ class test_local_subtensor_lift(unittest.TestCase):
         f2 = function([y], newy[:, 3, 0, :], mode=mode_opt)
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(check_stack_trace(f2, ops_to_check=[
-                Subtensor, tensor.Rebroadcast]))
+                        Subtensor, tensor.Rebroadcast]))
         prog = f2.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.Subtensor)
         assert isinstance(prog[1].op, tensor.Rebroadcast)
