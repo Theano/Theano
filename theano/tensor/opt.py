@@ -570,6 +570,25 @@ def local_dimshuffle_lift(node):
 
     """
     op = node.op
+    if (isinstance(op, T.Reshape) and
+            node.inputs[0].owner is not None and
+            isinstance(node.inputs[0].owner.op, DimShuffle)):
+        new_order = node.inputs[0].owner.op.new_order
+        new_order = [i for i in new_order if i != 'x']
+        input = node.inputs[0].owner.inputs[0]
+        broadcastables = input.broadcastable
+        new_order_of_nonbroadcastables = []
+        for i, bd in zip(new_order, broadcastables):
+            if not bd:
+                new_order_of_nonbroadcastables.append(i)
+        no_change_in_order = all(
+            new_order_of_nonbroadcastables[i] <= new_order_of_nonbroadcastables[i + 1]
+            for i in xrange(len(new_order_of_nonbroadcastables) - 1))
+        if no_change_in_order:
+            shape = node.inputs[1]
+            ret = op.__class__(node.outputs[0].ndim)(input, shape)
+            copy_stack_trace(node.outputs[0], ret)
+            return [ret]
     if not isinstance(op, DimShuffle):
         return False
 
