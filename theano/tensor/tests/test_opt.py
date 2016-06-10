@@ -1839,7 +1839,7 @@ def test_local_useless_subtensor():
 
 
 def check_function_fgraph(x, output, mode, fgraph):
-    f = theano.function([x], output, mode)
+    f = theano.function([x], output, mode=mode)
     assert str(f.maker.fgraph) == fgraph
 
 

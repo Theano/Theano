@@ -1819,7 +1819,7 @@ def local_subtensor_remove_broadcastable_index(node):
         elif isinstance(elem, slice):
             kept_indices.append(elem)
             for slice_part in [elem.start, elem.stop, elem.step]:
-                if slice_part != None:
+                if slice_part is not None:
                     value = node.inputs[node_inputs_idx]
                     node_inputs_idx += 1
                     kept_indices_values.append(value)
@@ -1838,7 +1838,7 @@ def local_subtensor_remove_broadcastable_index(node):
         all_dim = range(node.inputs[0].ndim)
         remain_dim = [x for x in all_dim if x not in remove_dim]
         reduced_var = node.inputs[0].dimshuffle(tuple(remain_dim))
-        if all(elem==slice(None, None, None) for elem in kept_indices):
+        if all(elem == slice(None, None, None) for elem in kept_indices):
             return [reduced_var]
         else:
             subtens = Subtensor(kept_indices)
