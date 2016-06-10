@@ -701,7 +701,14 @@ def inputs(variable_list, blockers=None):
 
 def variables_and_orphans(i, o):
     """
-    WRITEME
+    Extracts list of variables within input and output nodes ( via dfs travesal) and chooses the "orphans" among them
+
+    Parameters
+    -----------
+    i : list
+         Input L{Variable}s.
+    o : list
+         Output L{Variable}s.
 
     """
     def expand(r):
@@ -745,7 +752,7 @@ def ops(i, o):
 
 def variables(i, o):
     """
-    WRITEME
+    Extracts list of variables within input and output nodes ( via dfs t     ravesal)
 
     Parameters
     ----------
@@ -767,7 +774,7 @@ def variables(i, o):
 
 def orphans(i, o):
     """
-    WRITEME
+    Extracts list of variables within input and output nodes ( via dfs t     ravesal) and returns the "orphans" among them
 
     Parameters
     ----------
@@ -959,7 +966,7 @@ def general_toposort(r_out, deps, debug_print=False,
 
 def io_toposort(inputs, outputs, orderings=None, clients=None):
     """
-    WRITEME
+    Perform topological sort from input and output nodes
 
     Parameters
     ----------
@@ -1218,8 +1225,8 @@ def op_as_string(i, op,
                  leaf_formatter=default_leaf_formatter,
                  node_formatter=default_node_formatter):
     """
-    WRITEME
-
+    Op to return a string representation of the subgraph
+    between i and o
     """
     strs = as_string(i, op.inputs, leaf_formatter, node_formatter)
     return node_formatter(op, strs)
@@ -1229,7 +1236,7 @@ def as_string(i, o,
               leaf_formatter=default_leaf_formatter,
               node_formatter=default_node_formatter):
     """
-    WRITEME
+    Returns a string representation of the subgraph between i and o
 
     Parameters
     ----------

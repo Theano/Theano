@@ -94,6 +94,9 @@ def cleanup():
 
 
 def print_compiledir_content():
+    """
+    print list of %d compiled individual ops in the "theano.config.compiledir"
+    """
     max_key_file_size = 1 * 1024 * 1024  # 1M
 
     compiledir = theano.config.compiledir
@@ -178,6 +181,9 @@ def compiledir_purge():
 
 
 def basecompiledir_ls():
+    """
+    Print list of files in the "theano.config.base_compiledir"
+    """
     subdirs = []
     others = []
     for f in os.listdir(config.base_compiledir):

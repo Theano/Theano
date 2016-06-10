@@ -4,7 +4,7 @@ can be "unified" if there exists an assignment to all unification variables
 such that the two expressions are equal.
 
 For instance, [5, A, B] and [A, C, 9] can be unified if A=C=5 and B=9,
-yielding [5, 5, 9]. 
+yielding [5, 5, 9].
 [5, [A, B]] and [A, [1, 2]] cannot be unified because there is no value for A
 that satisfies the constraints. That's useful for pattern matching.
 
@@ -135,8 +135,6 @@ class Unification:
     """
     This class represents a possible unification of a group of variables
     with each other or with tangible values.
-
-    
     Parameters
     ----------
     inplace : bool
