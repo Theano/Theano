@@ -56,3 +56,32 @@ def test_advinc_subtensor1():
         rep = xval.copy()
         rep[[0, 2]] += yval
         assert numpy.allclose(rval, rep)
+
+
+def test_incsub_f16():
+    shp = (3, 3)
+    shared = gpuarray_shared_constructor
+    xval = numpy.arange(numpy.prod(shp), dtype='float16').reshape(shp) + 1
+    yval = numpy.empty((2,) + shp[1:], dtype='float16')
+    yval[:] = 2
+    x = shared(xval, name='x')
+    y = tensor.tensor(dtype='float16',
+                      broadcastable=(False,) * len(shp),
+                      name='y')
+    expr = tensor.advanced_inc_subtensor1(x, y, [0, 2])
+    f = theano.function([y], expr, mode=mode_with_gpu)
+    assert sum([isinstance(node.op, GpuAdvancedIncSubtensor1)
+                for node in f.maker.fgraph.toposort()]) == 1
+    rval = f(yval)
+    rep = xval.copy()
+    rep[[0, 2]] += yval
+    assert numpy.allclose(rval, rep)
+
+    expr = tensor.inc_subtensor(x[1:], y)
+    f = theano.function([y], expr, mode=mode_with_gpu)
+    assert sum([isinstance(node.op, GpuIncSubtensor)
+                for node in f.maker.fgraph.toposort()]) == 1
+    rval = f(yval)
+    rep = xval.copy()
+    rep[1:] += yval
+    assert numpy.allclose(rval, rep)
