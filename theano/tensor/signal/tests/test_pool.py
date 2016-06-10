@@ -56,6 +56,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
     @staticmethod
     def numpy_max_pool_2d_stride_padding(
             x, ds, ignore_border=True, st=None, padding=(0, 0), mode='max'):
+        assert ignore_border
         pad_h = padding[0]
         pad_w = padding[1]
         h = x.shape[-2]
@@ -208,17 +209,21 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
     def test_DownsampleFactorMaxStride(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
-        maxpoolshps = ((1, 1), (3, 3), (5, 3))
-        stridesizes = ((1, 1), (3, 3), (5, 7))
+        maxpoolshps = ((1, 1), (3, 3), (5, 3), (16, 16))
+        stridesizes = ((1, 1), (3, 3), (5, 7),)
         # generate random images
         imval = rng.rand(4, 10, 16, 16)
         # The same for each mode
-        outputshps = ((4, 10, 16, 16), (4, 10, 6, 6), (4, 10, 4, 3),
-                      (4, 10, 16, 16), (4, 10, 6, 6), (4, 10, 4, 3),
-                      (4, 10, 14, 14), (4, 10, 5, 5), (4, 10, 3, 2),
-                      (4, 10, 14, 14), (4, 10, 6, 6), (4, 10, 4, 3),
-                      (4, 10, 12, 14), (4, 10, 4, 5), (4, 10, 3, 2),
-                      (4, 10, 12, 14), (4, 10, 5, 6), (4, 10, 4, 3))
+        outputshps = (
+            (4, 10, 16, 16), (4, 10, 6, 6), (4, 10, 4, 3),
+            (4, 10, 16, 16), (4, 10, 6, 6), (4, 10, 4, 3),
+            (4, 10, 14, 14), (4, 10, 5, 5), (4, 10, 3, 2),
+            (4, 10, 14, 14), (4, 10, 6, 6), (4, 10, 4, 3),
+            (4, 10, 12, 14), (4, 10, 4, 5), (4, 10, 3, 2),
+            (4, 10, 12, 14), (4, 10, 5, 6), (4, 10, 4, 3),
+            (4, 10, 1, 1), (4, 10, 1, 1), (4, 10, 1, 1),
+            (4, 10, 1, 1), (4, 10, 1, 1), (4, 10, 1, 1),)
+
         images = tensor.dtensor4()
         indx = 0
         for mode, maxpoolshp, ignore_border in product(['max',

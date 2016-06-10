@@ -117,7 +117,7 @@ int gemm16(PyGpuArrayObject *C, float alpha,
         if (48 < n128 && n128 <= 64) {
           n64 = n / 64;
           if (nprocs == 0)
-            if (A->ga.ops->property(A->context->ctx, NULL, NULL,
+            if (gpucontext_property(A->context->ctx,
                                     GA_CTX_PROP_NUMPROCS, &nprocs)) {
               nprocs = 0;
               res = 1;

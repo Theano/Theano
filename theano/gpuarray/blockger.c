@@ -12,16 +12,9 @@ int APPLY_SPECIFIC(blockger)(PyGpuArrayObject *o, PyGpuArrayObject *x,
   size_t *offOut = NULL;
   size_t *offX = NULL;
   size_t *offY = NULL;
-  gpuarray_blas_ops *blas_ops;
   int err;
 
-  err = ctx->ops->property(ctx->ctx, NULL, NULL,
-                           GA_CTX_PROP_BLAS_OPS, &blas_ops);
-  if (err != GA_NO_ERROR) {
-    PyErr_SetString(PyExc_RuntimeError, "Can't get blas ops");
-    return -1;
-  }
-  err = blas_ops->setup(ctx->ctx);
+  err = gpublas_setup(ctx->ctx);
   if (err != GA_NO_ERROR) {
     PyErr_SetString(PyExc_RuntimeError, "Can't setup blas");
     return -1;
@@ -84,26 +77,26 @@ int APPLY_SPECIFIC(blockger)(PyGpuArrayObject *o, PyGpuArrayObject *x,
   ssize_t str_out = PyGpuArray_STRIDES(out)[2] / gpuarray_get_elsize(out->ga.typecode);
 
   if (out->ga.typecode == GA_FLOAT) {
-    err = blas_ops->sgerBatch(cb_fortran,
-                              PyGpuArray_DIMS(y)[2], PyGpuArray_DIMS(x)[2],
-                              *(float *)PyArray_GETPTR1(alpha, 0),
-                              y_list, offY, str_y, x_list, offX, str_x,
-                              o_list, offOut, str_out,
-                              PyGpuArray_DIMS(x)[0] * PyGpuArray_DIMS(x)[1] * PyGpuArray_DIMS(y)[1], 0);
+    err = gpublas_sgerBatch(cb_fortran,
+                            PyGpuArray_DIMS(y)[2], PyGpuArray_DIMS(x)[2],
+                            *(float *)PyArray_GETPTR1(alpha, 0),
+                            y_list, offY, str_y, x_list, offX, str_x,
+                            o_list, offOut, str_out,
+                            PyGpuArray_DIMS(x)[0] * PyGpuArray_DIMS(x)[1] * PyGpuArray_DIMS(y)[1], 0);
   } else if (out->ga.typecode == GA_DOUBLE) {
-    err = blas_ops->dgerBatch(cb_fortran,
-                              PyGpuArray_DIMS(y)[2], PyGpuArray_DIMS(x)[2],
-                              *(double *)PyArray_GETPTR1(alpha, 0),
-                              y_list, offY, str_y, x_list, offX, str_x,
-                              o_list, offOut, str_out,
-                              PyGpuArray_DIMS(x)[0] * PyGpuArray_DIMS(x)[1] * PyGpuArray_DIMS(y)[1], 0);
+    err = gpublas_dgerBatch(cb_fortran,
+                            PyGpuArray_DIMS(y)[2], PyGpuArray_DIMS(x)[2],
+                            *(double *)PyArray_GETPTR1(alpha, 0),
+                            y_list, offY, str_y, x_list, offX, str_x,
+                            o_list, offOut, str_out,
+                            PyGpuArray_DIMS(x)[0] * PyGpuArray_DIMS(x)[1] * PyGpuArray_DIMS(y)[1], 0);
   } else if (out->ga.typecode == GA_HALF) {
-    err = blas_ops->hgerBatch(cb_fortran,
-                              PyGpuArray_DIMS(y)[2], PyGpuArray_DIMS(x)[2],
-                              *(float *)PyArray_GETPTR1(alpha, 0),
-                              y_list, offY, str_y, x_list, offX, str_x,
-                              o_list, offOut, str_out,
-                              PyGpuArray_DIMS(x)[0] * PyGpuArray_DIMS(x)[1] * PyGpuArray_DIMS(y)[1], 0);
+    err = gpublas_hgerBatch(cb_fortran,
+                            PyGpuArray_DIMS(y)[2], PyGpuArray_DIMS(x)[2],
+                            *(float *)PyArray_GETPTR1(alpha, 0),
+                            y_list, offY, str_y, x_list, offX, str_x,
+                            o_list, offOut, str_out,
+                            PyGpuArray_DIMS(x)[0] * PyGpuArray_DIMS(x)[1] * PyGpuArray_DIMS(y)[1], 0);
   } else {
     err = GA_INVALID_ERROR;
   }

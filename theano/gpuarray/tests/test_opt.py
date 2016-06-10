@@ -125,7 +125,7 @@ def test_reduce():
         topo = f.maker.fgraph.toposort()
         ops = [type(node.op) for node in topo]
 
-        if kind == 'opencl' and method in ["max", "min"]:
+        if kind == b'opencl' and method in ["max", "min"]:
             assert not(GpuCAReduceCuda in ops or GpuCAReduceCPY in ops)
         else:
             assert GpuCAReduceCuda in ops or GpuCAReduceCPY in ops

@@ -220,8 +220,10 @@ class SeqOptimizer(Optimizer, list):
         if fgraph.profile:
             validate_before = fgraph.profile.validate_time
             sub_validate_time = [validate_before]
+            callbacks_before = fgraph.execute_callbacks_times.copy()
         else:
             sub_validate_time = []
+            callbacks_before = []
         callback_before = fgraph.execute_callbacks_time
         nb_node_before = len(fgraph.apply_nodes)
         sub_profs = []
@@ -249,12 +251,22 @@ class SeqOptimizer(Optimizer, list):
 
         if fgraph.profile:
             validate_time = fgraph.profile.validate_time - validate_before
+            callbacks_time = {}
+            for k, v in iteritems(fgraph.execute_callbacks_times):
+                if k in callbacks_before:
+                    t = v - callbacks_before[k]
+                    if t > 0:
+                        callbacks_time[k] = t
+                else:
+                    callbacks_time[k] = v
         else:
             validate_time = None
+            callbacks_time = {}
+
         callback_time = fgraph.execute_callbacks_time - callback_before
         return (self, l, validate_time, callback_time, nb_node_before,
                 len(fgraph.apply_nodes), sub_profs, sub_validate_time,
-                nb_nodes)
+                nb_nodes, callbacks_time)
 
     def __str__(self):
         return "SeqOpt(%s)" % list.__str__(self)
@@ -274,8 +286,9 @@ class SeqOptimizer(Optimizer, list):
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        (opts, prof, validate_time, callback_time, nb_node_before,
-         nb_node_after, sub_profs, sub_validate_time, nb_nodes) = prof
+        (opts, prof, validate_time, callback_time,
+         nb_node_before, nb_node_after, sub_profs, sub_validate_time,
+         nb_nodes, callbacks_time) = prof
         blanc = ('    ' * level)
 
         print(blanc, "SeqOptimizer", end=' ', file=stream)
@@ -287,9 +300,20 @@ class SeqOptimizer(Optimizer, list):
                " before/after optimization" % (
                    sum(prof), nb_node_before, nb_node_after)), file=stream)
         print(blanc, "  %.3fs for callback" % (callback_time), file=stream)
-        print(blanc, "      %.3fs for fgraph.validate()" % (validate_time), file=stream)
+        print(blanc, "      %.3fs for fgraph.validate()" % (validate_time),
+              file=stream)
+        if callback_time > 1:
+            print(blanc, "  callbacks_time", file=stream)
+            for i in sorted(iteritems(callbacks_time), key=lambda a: -a[1]):
+                if i[1] > 0:
+                    # We want to have the __str__ called, so we can't
+                    # just print i.
+                    print(blanc, "      ", i[0], ',', i[1], file=stream)
+
         if level == 0:
-            print(blanc, "  time      - (name, class, index, nodes before, nodes after) - validate time", file=stream)
+            print(blanc,
+                  "  time      - (name, class, index, nodes before, nodes after) - validate time",
+                  file=stream)
         ll = []
         for opt in opts:
             if hasattr(opt, "__name__"):
@@ -298,23 +322,21 @@ class SeqOptimizer(Optimizer, list):
                 name = opt.name
             idx = opts.index(opt)
             ll.append((name, opt.__class__.__name__,
-                       idx) + nb_nodes[idx])
+                       idx))
         lll = sorted(zip(prof, ll, nb_nodes), key=lambda a: a[0])
 
         for (t, opt, nb_n) in lll[::-1]:
-            # if t < 1:
-            #    continue
+            i = opt[2]
             if sub_validate_time:
-                i = opt[-1]
                 val_time = sub_validate_time[i + 1] - sub_validate_time[i]
                 print(blanc, '  %.6fs - %s - %.3fs' % (
                     t, opt, val_time), file=stream)
             else:
                 print(blanc, '  %.6fs - %s' % (t, opt), file=stream)
 
-            if sub_profs[opt[-1]]:
-                opts[opt[-1]].print_profile(stream, sub_profs[opt[-1]],
-                                            level=level + 1)
+            if sub_profs[i]:
+                opts[i].print_profile(stream, sub_profs[i],
+                                      level=level + 1)
         print(file=stream)
 
     @staticmethod
@@ -377,6 +399,7 @@ class SeqOptimizer(Optimizer, list):
             new_sub_profile.append(p[6][idx])
 
         new_opt = SeqOptimizer(*new_l)
+        new_callbacks_times = merge_dict(prof1[9], prof2[9])
         # We need to assert based on the name as we merge also based on
         # the name.
         assert set([l.name for l in prof1[0]]).issubset(
@@ -386,7 +409,8 @@ class SeqOptimizer(Optimizer, list):
         assert len(new_t) == len(new_opt) == len(new_sub_profile)
         return (new_opt, new_t, prof1[2] + prof2[2],
                 prof1[3] + prof2[3],
-                -1, -1, new_sub_profile, [])
+                -1, -1, new_sub_profile, [],
+                new_callbacks_times)
 
 
 class _metadict:
@@ -840,7 +864,9 @@ class MergeOptimizer(Optimizer):
             callbacks_time = {}
             for k, v in iteritems(fgraph.execute_callbacks_times):
                 if k in callbacks_before:
-                    callbacks_time[k] = v - callbacks_before[k]
+                    t = v - callbacks_before[k]
+                    if t > 0:
+                        callbacks_time[k] = t
                 else:
                     callbacks_time[k] = v
         else:
@@ -870,7 +896,9 @@ class MergeOptimizer(Optimizer):
             print(blanc, "  callbacks_time", file=stream)
             for i in sorted(iteritems(callbacks_time), key=lambda a: a[1]):
                 if i[1] > 0:
-                    print(i)
+                    # We want to have the __str__ called, so we can't
+                    # just print i.
+                    print(blanc, "      ", i[0], ',', i[1], file=stream)
 
     @staticmethod
     def merge_profile(prof1, prof2):
@@ -1593,10 +1621,14 @@ class PatternSub(LocalOptimizer):
 # Use the following classes to apply LocalOptimizers
 
 class Updater:
-    def __init__(self, importer, pruner, chin):
+    def __init__(self, importer, pruner, chin, name=None):
         self.importer = importer
         self.pruner = pruner
         self.chin = chin
+        self.name = name
+
+    def __str__(self):
+        return "Updater{%s}" % str(self.name)
 
     def on_import(self, fgraph, node, reason):
         if self.importer:
@@ -1696,7 +1728,7 @@ class NavigatorOptimizer(Optimizer):
             self.ignore_newtrees = ignore_newtrees
         self.failure_callback = failure_callback
 
-    def attach_updater(self, fgraph, importer, pruner, chin=None):
+    def attach_updater(self, fgraph, importer, pruner, chin=None, name=None):
         """
         Install some FunctionGraph listeners to help the navigator deal with
         the ignore_trees-related functionality.
@@ -1711,6 +1743,8 @@ class NavigatorOptimizer(Optimizer):
             from the graph.
         chin
             "on change input" called whenever a node's inputs change.
+        name
+            name of the Updater to attach.
 
         Returns
         -------
@@ -1725,7 +1759,7 @@ class NavigatorOptimizer(Optimizer):
         if importer is None and pruner is None:
             return None
 
-        u = Updater(importer, pruner, chin)
+        u = Updater(importer, pruner, chin, name=name)
         fgraph.attach_feature(u)
         return u
 
@@ -1877,8 +1911,8 @@ class TopoOptimizer(NavigatorOptimizer):
                     q.remove(node)
                 except ValueError:
                     pass
-
-        u = self.attach_updater(fgraph, importer, pruner)
+        u = self.attach_updater(fgraph, importer, pruner,
+                                name=getattr(self, 'name', None))
         nb = 0
         try:
             t0 = time.time()
@@ -1890,10 +1924,8 @@ class TopoOptimizer(NavigatorOptimizer):
                 current_node = node
                 nb += self.process_node(fgraph, node)
             loop_t = time.time() - t0
-        except Exception:
+        finally:
             self.detach_updater(fgraph, u)
-            raise
-        self.detach_updater(fgraph, u)
 
         callback_time = fgraph.execute_callbacks_time - callback_before
         nb_nodes_end = len(fgraph.apply_nodes)
@@ -1952,16 +1984,15 @@ class OpKeyOptimizer(NavigatorOptimizer):
                     q.remove(node)
                 except ValueError:
                     pass
-        u = self.attach_updater(fgraph, importer, pruner)
+        u = self.attach_updater(fgraph, importer, pruner,
+                                name=getattr(self, 'name', None))
         try:
             while q:
                 node = q.pop()
                 current_node = node
                 self.process_node(fgraph, node)
-        except Exception:
+        finally:
             self.detach_updater(fgraph, u)
-            raise
-        self.detach_updater(fgraph, u)
 
     def add_requirements(self, fgraph):
         """
@@ -1991,6 +2022,9 @@ class ChangeTracker:
 
     def on_attach(self, fgraph):
         fgraph.change_tracker = self
+
+    def on_detach(self, fgraph):
+        del fgraph.change_tracker
 
 
 def merge_dict(d1, d2):
@@ -2035,6 +2069,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                  optimizers,
                  failure_callback=None,
                  ignore_newtrees=True,
+                 tracks_on_change_inputs=False,
                  max_use_ratio=None,
                  final_optimizers=None,
                  cleanup_optimizers=None):
@@ -2047,6 +2082,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         self.global_optimizers = []
         self.final_optimizers = []
         self.cleanup_optimizers = []
+        self.tracks_on_change_inputs = tracks_on_change_inputs
 
         for opt in optimizers:
             if isinstance(opt, LocalOptimizer):
@@ -2193,8 +2229,14 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         q.remove(node)
                     except ValueError:
                         pass
-
-            u = self.attach_updater(fgraph, importer, pruner)
+            chin = None
+            if self.tracks_on_change_inputs:
+                def chin(node, i, r, new_r, reason):
+                    if node is not current_node and not isinstance(node, str):
+                        q.append(node)
+            u = self.attach_updater(fgraph, importer, pruner,
+                                    chin=chin,
+                                    name=getattr(self, 'name', None))
             try:
                 while q:
                     node = q.pop()

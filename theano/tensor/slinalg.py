@@ -63,8 +63,43 @@ class Cholesky(Op):
         z[0] = scipy.linalg.cholesky(x, lower=self.lower).astype(x.dtype)
 
     def grad(self, inputs, gradients):
-        return [CholeskyGrad(self.lower)(inputs[0], self(inputs[0]),
-                                         gradients[0])]
+        """
+        Cholesky decomposition reverse-mode gradient update.
+
+        Symbolic expression for reverse-mode Cholesky gradient taken from [0]_
+
+        References
+        ----------
+        .. [0] I. Murray, "Differentiation of the Cholesky decomposition",
+           http://arxiv.org/abs/1602.07527
+
+        """
+
+        x = inputs[0]
+        dz = gradients[0]
+        chol_x = self(x)
+
+        # deal with upper triangular by converting to lower triangular
+        if not self.lower:
+            chol_x = chol_x.T
+            dz = dz.T
+
+        def tril_and_halve_diagonal(mtx):
+            """Extracts lower triangle of square matrix and halves diagonal."""
+            return tensor.tril(mtx) - tensor.diag(tensor.diagonal(mtx) / 2.)
+
+        def conjugate_solve_triangular(outer, inner):
+            """Computes L^{-T} P L^{-1} for lower-triangular L."""
+            return solve_upper_triangular(
+                outer.T, solve_upper_triangular(outer.T, inner.T).T)
+
+        s = conjugate_solve_triangular(
+            chol_x, tril_and_halve_diagonal(chol_x.T.dot(dz)))
+
+        if self.lower:
+            return [tensor.tril(s + s.T) - tensor.diag(tensor.diagonal(s))]
+        else:
+            return [tensor.triu(s + s.T) - tensor.diag(tensor.diagonal(s))]
 
 cholesky = Cholesky()
 
@@ -194,9 +229,44 @@ class Solve(Op):
             cols = Bshape[1]  # b is a Matrix
             return [(rows, cols)]
 
-solve = Solve()  # general solve
+    def grad(self, inputs, output_gradients):
+        """
+        Reverse-mode gradient updates for matrix solve operation c = A \ b.
 
-# TODO : SolveTriangular
+        Symbolic expression for updates taken from [1]_.
+
+        References
+        ----------
+        ..[1] M. B. Giles, "An extended collection of matrix derivative results
+          for forward and reverse mode automatic differentiation",
+          http://eprints.maths.ox.ac.uk/1079/
+
+        """
+        A, b = inputs
+        c = self(A, b)
+        c_bar = output_gradients[0]
+        trans_map = {
+            'lower_triangular': 'upper_triangular',
+            'upper_triangular': 'lower_triangular'
+        }
+        trans_solve_op = Solve(
+            # update A_structure and lower to account for a transpose operation
+            A_structure=trans_map.get(self.A_structure, self.A_structure),
+            lower=not self.lower
+        )
+        b_bar = trans_solve_op(A.T, c_bar)
+        # force outer product if vector second input
+        A_bar = -tensor.outer(b_bar, c) if c.ndim == 1 else -b_bar.dot(c.T)
+        if self.A_structure == 'lower_triangular':
+            A_bar = tensor.tril(A_bar)
+        elif self.A_structure == 'upper_triangular':
+            A_bar = tensor.triu(A_bar)
+        return [A_bar, b_bar]
+
+solve = Solve()  # general solve
+# lower and upper triangular solves
+solve_lower_triangular = Solve(A_structure='lower_triangular', lower=True)
+solve_upper_triangular = Solve(A_structure='upper_triangular', lower=False)
 
 # TODO: Optimizations to replace multiplication by matrix inverse
 #      with solve() Op (still unwritten)

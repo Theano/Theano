@@ -2543,7 +2543,7 @@ class Log2(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        return gz / (x * math.log(2.0)),
+        return gz / (x * numpy.asarray(math.log(2.0)).astype(x.dtype)),
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs

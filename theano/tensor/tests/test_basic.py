@@ -48,7 +48,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         nonzero, flatnonzero, nonzero_values,
         stacklists, DimShuffle, hessian, ptp, power,
         swapaxes, choose, Choose, NoneConst, AllocEmpty,
-        isclose, allclose, mgrid, ogrid,
+        isclose, allclose, mgrid, ogrid, extract_constant,
         )
 
 from theano.tests import unittest_tools as utt
@@ -7026,12 +7026,21 @@ class T_get_scalar_constant_value(unittest.TestCase):
         s = theano.tensor.second(shp, c)
         assert get_scalar_constant_value(s) == c.data
 
+    def test_copy(self):
+        # Make sure we do not return the internal storage of a constant,
+        # so we cannot change the value of a constant by mistake.
+        c = theano.tensor.constant(3)
+        d = extract_constant(c)
+        d += 1
+        e = extract_constant(c)
+        self.assertTrue(e == 3, (c, d, e))
+
 
 class T_as_tensor_variable(unittest.TestCase):
     """
     We test that ticket #649 stay fixed.
     We should not allow as_tensor_variable to accept True or False
-    But it should upcast an ndrarray of bool to uint8
+    But it should upcast an ndarray of bool to uint8
     """
 
     def test_bool(self):

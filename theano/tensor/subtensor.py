@@ -1982,7 +1982,7 @@ class AdvancedIncSubtensor1(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def perform(self, node, inp, out_):
         # TODO opt to make this inplace

@@ -18,7 +18,7 @@ from theano.tests import unittest_tools as utt
 from ..type import (GpuArrayType, get_context,
                     gpuarray_shared_constructor)
 from ..basic_ops import (
-    host_from_gpu, HostFromGpu, GpuFromHost, GpuReshape,
+    host_from_gpu, HostFromGpu, GpuFromHost, GpuReshape, GpuToGpu,
     GpuAlloc, GpuAllocEmpty, GpuContiguous,
     gpu_join, GpuJoin, GpuSplit, GpuEye, gpu_contiguous)
 from ..subtensor import GpuSubtensor
@@ -180,6 +180,21 @@ def test_transfer_cpu_gpu():
     f = theano.function([g], host_from_gpu(g))
     fv = f(gv)
     assert numpy.all(fv == av)
+
+
+def test_transfer_gpu_gpu():
+    g = GpuArrayType(dtype='float32', broadcastable=(False, False),
+                     context_name=test_ctx_name)()
+
+    av = numpy.asarray(rng.rand(5, 4), dtype='float32')
+    gv = gpuarray.array(av, context=get_context(test_ctx_name))
+    mode = mode_with_gpu.excluding('cut_gpua_host_transfers', 'local_cut_gpua_host_gpua')
+    f = theano.function([g], GpuToGpu(test_ctx_name)(g), mode=mode)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 1
+    assert isinstance(topo[0].op, GpuToGpu)
+    fv = f(gv)
+    assert GpuArrayType.values_eq(fv, gv)
 
 
 def test_transfer_strided():

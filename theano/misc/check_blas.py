@@ -86,15 +86,20 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
     t0 = 0
     t1 = -1
 
+    f()  # Ignore first function call to get representative time.
     if execute:
         sync = (hasattr(theano, "sandbox") and
                 hasattr(theano.sandbox, "cuda") and
                 theano.sandbox.cuda.cuda_available)
+        sync2 = (hasattr(theano, "gpuarray") and
+                 theano.gpuarray.pygpu_activated)
         t0 = time.time()
         for i in range(iters):
             f()
         if sync:
             theano.sandbox.cuda.synchronize()
+        if sync2:
+            c.get_value(borrow=True, return_internal_type=True).sync()
         t1 = time.time()
     return t1 - t0, impl
 
@@ -244,6 +249,7 @@ if __name__ == "__main__":
 
         cuda version      7.5    7.0    6.5
         gpu
+        M40               0.47s
         k80               0.96s
         K6000/NOECC              0.69s
         K40                             0.88s

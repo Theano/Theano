@@ -125,7 +125,7 @@ def dnn_available(context_name):
 
     ctx = get_context(context_name)
 
-    if not ctx.kind == 'cuda':
+    if not ctx.kind == b'cuda':
         dnn_available.msg = "Not on a CUDA device."
         return False
 
@@ -1493,7 +1493,7 @@ def local_dnn_convi_output_merge(node, *inputs):
     return [GpuDnnConvGradI(algo=node.op.algo)(*inputs)]
 
 
-@register_opt('cudnn')
+@register_opt('cudnn', 'fast_compile')
 @op_lifter([Pool])
 def local_pool_dnn_alternative(node, ctx_name):
     if not dnn_available(ctx_name):
@@ -1509,7 +1509,7 @@ def local_pool_dnn_alternative(node, ctx_name):
     return dnn_pool(gpu_contiguous(img), ds, stride=stride, pad=pad, mode=mode)
 
 
-@register_opt('cudnn')
+@register_opt('cudnn', 'fast_compile')
 @op_lifter([MaxPoolGrad])
 def local_pool_dnn_grad_stride(node, ctx_name):
     if not dnn_available(ctx_name):
@@ -1533,7 +1533,7 @@ def local_pool_dnn_grad_stride(node, ctx_name):
                                      pad)
 
 
-@register_opt('cudnn')
+@register_opt('cudnn', 'fast_compile')
 @op_lifter([AveragePoolGrad])
 def local_avg_pool_dnn_grad_stride(node, ctx_name):
     if not dnn_available(ctx_name):
@@ -1556,7 +1556,7 @@ def local_avg_pool_dnn_grad_stride(node, ctx_name):
     return GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp), cg, cg, ds, st, pad)
 
 
-@register_opt('cudnn')
+@register_opt('cudnn', 'fast_compile')
 @local_optimizer([GpuSoftmax])
 def local_softmax_dnn(node):
     if isinstance(node.op, GpuSoftmax):
@@ -1569,7 +1569,7 @@ def local_softmax_dnn(node):
         return [out]
 
 
-@register_opt('cudnn')
+@register_opt('cudnn', 'stabilize')
 @local_optimizer([GpuElemwise])
 def local_log_softmax_dnn(node):
     # This looks for GpuDnnSoftmax so we know that we have cudnn.
@@ -1586,7 +1586,7 @@ def local_log_softmax_dnn(node):
         return [new_softmax(softmax_node.inputs[0])]
 
 
-@register_opt('cudnn')
+@register_opt('cudnn', 'fast_compile')
 @op_lifter([LogSoftmax])
 def local_logsoftmax_to_dnn(node, ctx_name):
     # Transform the input in the format expected by GpuDnnSoftmax
@@ -1624,7 +1624,7 @@ class NoCuDNNRaise(Optimizer):
 gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
 
 
-@register_opt('cudnn')
+@register_opt('cudnn', 'fast_compile')
 @op_lifter([SoftmaxGrad])
 def local_softmax_dnn_grad(node, ctx_name):
     if not dnn_available(ctx_name):

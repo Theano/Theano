@@ -168,8 +168,8 @@ Linkers
 =======
 
 A mode is composed of 2 things: an optimizer and a linker. Some modes,
-like ``NanGuardMode`` and ``DebugMode``, add logic around the optimizer and
-linker. ``NanGuardMode`` and ``DebugMode`` use their own linker.
+like ``NanGuardMode`` and ``DebugMode``, add logic around the
+optimizer and linker. ``DebugMode`` uses its own linker.
 
 You can select which linker to use with the Theano flag :attr:`config.linker`.
 Here is a table to compare the different linkers.
@@ -183,7 +183,7 @@ c|py [#cpy1]_  yes        yes                "+++"      Try C code. If none exis
 c|py_nogc      no         yes                "++"       As c|py, but without gc
 c              no         yes                "+"        Use only C code (if none available for an op, raise an error)
 py             yes        yes                "+++"      Use only Python code
-NanGuardMode    no         no                 "++++"    Check if nodes generate NaN
+NanGuardMode   yes        yes                "++++"     Check if nodes generate NaN
 DebugMode      no         yes                VERY HIGH  Make many checks on what Theano computes
 =============  =========  =================  =========  ===
 

@@ -81,7 +81,7 @@ single name and a single device.
    It is often the case that multi-gpu operation requires or assumes
    that all the GPUs involved are equivalent.  This is not the case
    for this implementation.  Since the user has the task of
-   distrubuting the jobs across the different device a model can be
+   distributing the jobs across the different device a model can be
    built on the assumption that one of the GPU is slower or has
    smaller memory.
 
@@ -140,5 +140,5 @@ is a example.
    cv = gv.transfer('cpu')
 
 Of course you can mix transfers and operations in any order you
-choose.  However you should try to minimize transfer operations
-because they will introduce overhead any may reduce performance.
+choose. However you should try to minimize transfer operations
+because they will introduce overhead that may reduce performance.

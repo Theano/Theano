@@ -14,6 +14,7 @@ from . import dnn
 import theano
 from theano import scalar as scal
 from theano import config, tensor, gof
+from theano.compile.ops import shape_i
 import theano.ifelse
 import theano.tensor.signal.pool
 import theano.tensor.nnet
@@ -900,18 +901,14 @@ def local_gpu_careduce(node):
                     # to make them a single dimension, do the reduction, and
                     # then reshape to get them back.
 
-                    shape_of = node.fgraph.shape_feature.shape_of
-
-                    x_shape = shape_of[x]
-
-                    new_in_shp = [x_shape[0]]
+                    new_in_shp = [shape_i(x, 0)]
                     new_mask = [reduce_mask[0]]
                     for i in xrange(1, x.type.ndim):
                         if reduce_mask[i] == reduce_mask[i - 1]:
-                            new_in_shp[-1] *= x_shape[i]
+                            new_in_shp[-1] *= shape_i(x, i)
                         else:
                             new_mask.append(reduce_mask[i])
-                            new_in_shp.append(x_shape[i])
+                            new_in_shp.append(shape_i(x, i))
 
                     new_greduce = GpuCAReduce(new_mask, scalar_op)
                     new_x = x.reshape(tensor.stack(new_in_shp))
@@ -936,8 +933,11 @@ def local_gpu_careduce(node):
 
                     # Restore the expected shape of the output
                     if rval.ndim != out.ndim:
-                        rval = rval.reshape(
-                            tensor.stack(shape_of[out]))
+                        out_shp = []
+                        for i in range(x.ndim):
+                            if i not in node.op.axis:
+                                out_shp.append(shape_i(x, i))
+                        rval = rval.reshape(tensor.stack(out_shp))
 
                 if rval.type == out.type:
                     return [rval]

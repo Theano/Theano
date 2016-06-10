@@ -612,14 +612,14 @@ def get_scalar_constant_value(orig_v, elemwise=True,
             return numpy.asarray(v)
 
         if isinstance(v, numpy.ndarray):
-            return numpy_scalar(v)
+            return numpy_scalar(v).copy()
 
         if isinstance(v, Constant):
             if getattr(v.tag, 'unique_value', None) is not None:
                 data = v.tag.unique_value
             else:
                 data = v.data
-            return numpy_scalar(data)
+            return numpy_scalar(data).copy()
 
         if not only_process_constants and getattr(v, 'owner', None):
             if isinstance(v.owner.op, (Alloc, DimShuffle, Rebroadcast,
@@ -649,7 +649,7 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                              for i in v.owner.inputs]
                     ret = [[None]]
                     v.owner.op.perform(v.owner, const, ret)
-                    return ret[0][0]
+                    return ret[0][0].copy()
             elif elemwise and isinstance(v.owner.op, Elemwise):
                 if isinstance(v.owner.op.scalar_op, scal.Second):
                     # We don't need both input to be constant for second
@@ -662,13 +662,13 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                              for i in v.owner.inputs]
                     ret = [[None]]
                     v.owner.op.perform(v.owner, const, ret)
-                    return ret[0][0]
+                    return ret[0][0].copy()
             elif (isinstance(v.owner.op, theano.tensor.subtensor.Subtensor) and
                   v.ndim == 0):
                 if isinstance(v.owner.inputs[0], TensorConstant):
                     cdata = tuple(v.owner.op.get_constant_idx(v.owner.inputs))
                     try:
-                        return v.owner.inputs[0].data.__getitem__(cdata)
+                        return v.owner.inputs[0].data.__getitem__(cdata).copy()
                     except IndexError:
                         raise IndexError(
                             str(tuple(v.owner.op.idx_list)) +
@@ -1399,8 +1399,6 @@ class MaxAndArgmax(Op):
         %(axis_code)s
         %(max)s = (PyArrayObject*)PyArray_Max(%(x)s, axis, NULL);
         if(%(max)s == NULL){
-            PyErr_SetString(PyExc_ValueError,
-                         "MaxAndArgmax, max failed");
             %(fail)s;
         }
         if(!PyArray_CheckExact(%(max)s)){
@@ -1412,7 +1410,6 @@ class MaxAndArgmax(Op):
 
         %(argmax)s = (PyArrayObject*)PyArray_ArgMax(%(x)s, axis, NULL);
         if(%(argmax)s == NULL){
-            PyErr_SetString(PyExc_ValueError, "MaxAndArgmax, argmax failed");
             Py_CLEAR(%(max)s);
             %(fail)s;
         }
@@ -1434,7 +1431,7 @@ class MaxAndArgmax(Op):
         return ret % locals()
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def infer_shape(self, node, shapes):
         ishape, axis_shape = shapes

@@ -26,11 +26,8 @@ class GpuCumsum(GpuKernelBase, Op):
     def __init__(self, axis):
         self.axis = axis
 
-    def __str__(self):
-        return "%s{%s}" % (self.__class__.__name__, self.axis)
-
-    def c_code_cache_version_apply(self, node):
-        return (1,)
+    def c_code_cache_version(self):
+        return (3,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>', '<gpuarray_helper.h>']
@@ -221,7 +218,7 @@ class GpuCumsum(GpuKernelBase, Op):
         return kernels
 
     def c_code(self, node, nodename, inp, out, sub):
-        if node.inputs[0].type.context.kind != 'cuda':
+        if node.inputs[0].type.context.kind != b'cuda':
             raise NotImplementedError("cuda only")
         x, = inp
         z, = out
@@ -249,17 +246,17 @@ class GpuCumsum(GpuKernelBase, Op):
                 size_t max_grid_size1;
                 size_t max_grid_size2;
                 int err;
-                err = %(ctx)s->ops->property(%(ctx)s->ctx, NULL, NULL, GA_CTX_PROP_MAXLSIZE0, &max_threads_dim0);
+                err = gpucontext_property(%(ctx)s->ctx, GA_CTX_PROP_MAXLSIZE0, &max_threads_dim0);
                 if (err != GA_NO_ERROR){
                     PyErr_SetString(PyExc_RuntimeError, "Could not fetch max_threads_dims0");
                     %(fail)s;
                 }
-                err = %(ctx)s->ops->property(%(ctx)s->ctx, NULL, NULL, GA_CTX_PROP_MAXGSIZE1, &max_grid_size1);
+                err = gpucontext_property(%(ctx)s->ctx, GA_CTX_PROP_MAXGSIZE1, &max_grid_size1);
                 if (err != GA_NO_ERROR){
                     PyErr_SetString(PyExc_RuntimeError, "Could not fetch max_grid_size1");
                     %(fail)s;
                 }
-                err = %(ctx)s->ops->property(%(ctx)s->ctx, NULL, NULL, GA_CTX_PROP_MAXGSIZE2, &max_grid_size2);
+                err = gpucontext_property(%(ctx)s->ctx, GA_CTX_PROP_MAXGSIZE2, &max_grid_size2);
                 if (err != GA_NO_ERROR){
                     PyErr_SetString(PyExc_RuntimeError, "Could not fetch max_grid_size2");
                     %(fail)s;
