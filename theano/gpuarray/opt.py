@@ -5,6 +5,7 @@ import logging
 import pdb
 import time
 from six.moves import xrange
+from collections import deque
 
 import theano
 from theano.compat import OrderedDict
@@ -13,7 +14,7 @@ from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         SequenceDB, Optimizer, DB, toolbox, graph)
-from gof.opt import ChangeTracker
+from theano.gof.opt import ChangeTracker, NavigatorOptimizer
 from theano.gof.optdb import LocalGroupDB
 from theano.ifelse import IfElse
 
@@ -254,7 +255,7 @@ gpu_seqopt.register('InputToGpuArrayOptimizer', InputToGpuOptimizer(),
                     0, 'fast_run', 'fast_compile', 'merge')
 
 
-class GraphToGPU(Optimizer, NavigatorOptimizer):
+class GraphToGPU(NavigatorOptimizer):
     """
     Transfer the graph as a whole to GPU instead of transfering node by node.
     """
@@ -262,6 +263,7 @@ class GraphToGPU(Optimizer, NavigatorOptimizer):
     def __init__(self, local_optimizers_all, local_optimizers_map):
         self.local_optimizers_all = local_optimizers_all
         self.local_optimizers_map = local_optimizers_map
+        self.failure_callback = None
 
     def add_requirements(self, fgraph):
         fgraph.attach_feature(toolbox.ReplaceValidate())
@@ -277,6 +279,7 @@ class GraphToGPU(Optimizer, NavigatorOptimizer):
         local_opt_timing = []
         io_toposort_timing = []
         nb_nodes = []
+        time_opts = {}
         node_created = {}
         process_count = {}
         # Building a new graph
@@ -289,17 +292,17 @@ class GraphToGPU(Optimizer, NavigatorOptimizer):
         for i in fgraph.variables:
             if isinstance(i, theano.Constant):
                 mapping[i] = i
-
-        for lopt in (self.local_optimizers_all +
-                     self.local_optimizers_map.get(type(node.op), []) +
-                     self.local_optimizers_map.get(node.op, [])):
-                process_count.setdefault(copt, 0)
-                global_process_count.setdefault(opt, 0)
-                time_opts.setdefault(opt, 0)
-                node_created.setdefault(opt, 0)
+        for node in fgraph.toposort():
+            for lopt in (self.local_optimizers_all + 
+                         self.local_optimizers_map.get(type(node.op), []) +
+                         self.local_optimizers_map.get(node.op, [])):
+                    process_count.setdefault(lopt, 0)
+                    global_process_count.setdefault(lopt, 0)
+                    time_opts.setdefault(lopt, 0)
+                    node_created.setdefault(lopt, 0)
 
         topo_t0 = time.time()
-        q = deque(graph.io_toposort(fgraph.inputs, start_from))
+        q = deque(graph.io_toposort(fgraph.inputs, fgraph.outputs))
         io_toposort_timing.append(time.time() - topo_t0)
         nb_nodes.append(len(q))
         max_nb_nodes = max(max_nb_nodes, len(q))
@@ -342,9 +345,6 @@ class GraphToGPU(Optimizer, NavigatorOptimizer):
                 nb = change_tracker.nb_imported
                 process_count[lopt] += 1
                 global_process_count[lopt] += 1
-                t_opt = time.time()
-                lopt_change = self.process_node(fgraph, node, lopt)
-                time_opts[lopt] += time.time() - t_opt
                 node_created[lopt] += change_tracker.nb_imported - nb
                 if move_to_GPU:
                     try:
@@ -435,7 +435,7 @@ class GraphToGPU(Optimizer, NavigatorOptimizer):
         process_count = {}
         for o in (opt.local_optimizers_all +
                   list(opt.local_optimizers_map.get(type(node.op), [])) +
-                  list(opt.local_optimizers_map.get(node.op, [])) +):
+                  list(opt.local_optimizers_map.get(node.op, []))):
             process_count.setdefault(o, 0)
         for count in loop_process_count:
             for o, v in iteritems(count):
