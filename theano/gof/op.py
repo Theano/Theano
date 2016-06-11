@@ -980,7 +980,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         return self.make_py_thunk(node, storage_map, compute_map, no_recycling)
 
     def make_node(self, *inputs):
-	"""
+        """
         Create a "apply" nodes for the inputs in that order.
         """
         if not hasattr(self, 'itypes'):
