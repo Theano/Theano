@@ -315,17 +315,17 @@ class SeqOptimizer(Optimizer, list):
                   "  time      - (name, class, index, nodes before, nodes after) - validate time",
                   file=stream)
         ll = []
-        for opt in opts:
+        for (opt, nb_n) in zip(opts, nb_nodes):
             if hasattr(opt, "__name__"):
                 name = opt.__name__
             else:
                 name = opt.name
             idx = opts.index(opt)
             ll.append((name, opt.__class__.__name__,
-                       idx))
-        lll = sorted(zip(prof, ll, nb_nodes), key=lambda a: a[0])
+                       idx) + nb_n)
+        lll = sorted(zip(prof, ll), key=lambda a: a[0])
 
-        for (t, opt, nb_n) in lll[::-1]:
+        for (t, opt) in lll[::-1]:
             i = opt[2]
             if sub_validate_time:
                 val_time = sub_validate_time[i + 1] - sub_validate_time[i]
@@ -345,8 +345,8 @@ class SeqOptimizer(Optimizer, list):
         Merge 2 profiles returned by this cass apply() fct.
 
         """
-        new_t = []
-        new_l = []
+        new_t = []  # the time for the optimization
+        new_l = []  # the optimization
         new_sub_profile = []
         # merge common(same object) opt
         for l in set(prof1[0]).intersection(set(prof2[0])):
@@ -399,6 +399,12 @@ class SeqOptimizer(Optimizer, list):
             new_sub_profile.append(p[6][idx])
 
         new_opt = SeqOptimizer(*new_l)
+        new_nb_nodes = []
+        for p1, p2 in zip(prof1[8], prof2[8]):
+            new_nb_nodes.append((p1[0] + p2[0], p1[1] + p2[1]))
+        new_nb_nodes.extend(prof1[8][len(new_nb_nodes):])
+        new_nb_nodes.extend(prof2[8][len(new_nb_nodes):])
+
         new_callbacks_times = merge_dict(prof1[9], prof2[9])
         # We need to assert based on the name as we merge also based on
         # the name.
@@ -410,6 +416,7 @@ class SeqOptimizer(Optimizer, list):
         return (new_opt, new_t, prof1[2] + prof2[2],
                 prof1[3] + prof2[3],
                 -1, -1, new_sub_profile, [],
+                new_nb_nodes,
                 new_callbacks_times)
 
 
@@ -2313,10 +2320,18 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                           "%f with the theano flag 'optdb.max_use_ratio'." %
                           config.optdb.max_use_ratio)
         fgraph.remove_feature(change_tracker)
+        assert len(loop_process_count) == len(loop_timing)
+        assert len(loop_process_count) == len(global_opt_timing)
+        assert len(loop_process_count) == len(nb_nodes)
+        assert len(loop_process_count) == len(io_toposort_timing)
+        assert len(loop_process_count) == len(global_sub_profs)
+        assert len(loop_process_count) == len(final_sub_profs)
+        assert len(loop_process_count) == len(cleanup_sub_profs)
         return (self, loop_timing, loop_process_count,
                 (start_nb_nodes, end_nb_nodes, max_nb_nodes),
                 global_opt_timing, nb_nodes, time_opts, io_toposort_timing,
-                node_created, global_sub_profs, final_sub_profs, cleanup_sub_profs)
+                node_created, global_sub_profs, final_sub_profs,
+                cleanup_sub_profs)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
