@@ -791,7 +791,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         self._op_use_c_code = use_c_code
 
     def _props(self):
-	"""
+        """
         Tuple of properties of all attributes
         """
         return tuple(getattr(self, a) for a in self.__props__)
