@@ -1415,7 +1415,7 @@ class COp(Op):
         return hash(tuple(self.func_codes))
 
     def c_init_code(self):
-	"""
+        """
         Get the code section for init_code
         """
         if 'init_code' in self.code_sections:
