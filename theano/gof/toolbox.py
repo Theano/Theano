@@ -124,7 +124,7 @@ class Bookkeeper(Feature):
             self.on_import(fgraph, node, "on_attach")
 
     def on_detach(self, fgraph):
-	"""
+        """
         Should remove any dynamically added functionality
         that it installed into the function_graph
         """
@@ -188,7 +188,7 @@ class History(Feature):
         fgraph.revert = partial(self.revert, fgraph)
 
     def on_detach(self, fgraph):
-	"""
+        """
         Should remove any dynamically added functionality
         that it installed into the function_graph
         """
@@ -245,7 +245,7 @@ class Validator(Feature):
         del fgraph.consistent
 
     def validate_(self, fgraph):
-	"""
+        """
         If the caller is replace_all_validate, just raise the
         exception. replace_all_validate will print out the
         verbose output. Or it has to be done here before raise.
@@ -312,7 +312,7 @@ class ReplaceValidate(History, Validator):
             self.replace_all_validate_remove, fgraph)
 
     def on_detach(self, fgraph):
-	"""
+        """
         Should remove any dynamically added functionality
         that it installed into the function_graph
         """
@@ -439,7 +439,7 @@ class NodeFinder(Bookkeeper):
         Bookkeeper.on_attach(self, fgraph)
 
     def on_detach(self, fgraph):
-	"""
+        """
         Should remove any dynamically added functionality
         that it installed into the function_graph
         """
@@ -492,7 +492,7 @@ class PrintListener(Feature):
             print("-- attaching to: ", fgraph)
 
     def on_detach(self, fgraph):
-	"""
+        """
         Should remove any dynamically added functionality
         that it installed into the function_graph
         """
