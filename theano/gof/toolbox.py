@@ -114,7 +114,7 @@ class Feature(object):
 class Bookkeeper(Feature):
 
     def on_attach(self, fgraph):
-	"""
+        """
         Called by FunctionGraph.attach_feature, the method that attaches
         the feature to the FunctionGraph. Since this is called after the
         FunctionGraph is initially populated, this is where you should
