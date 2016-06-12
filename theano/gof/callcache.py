@@ -17,7 +17,7 @@ class CallCache(object):
             self.cache = {}
 
     def persist(self, filename=None):
-	"""
+        """
         Cache "filename" as a pickle file
         """
         if filename is None:
@@ -26,7 +26,7 @@ class CallCache(object):
             pickle.dump(self.cache, f)
 
     def call(self, fn, args=(), key=None):
-	"""
+        """
         Retrieve item from the cache(if available)
         based on a key
 
