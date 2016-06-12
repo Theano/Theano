@@ -1177,7 +1177,7 @@ class OpenMPOp(Op):
             self.openmp = False
 
     def c_compile_args(self):
-	"""
+        """
         Return the compilation arg "fopenmp" if openMP is supported
         """
         self.update_self_openmp()
@@ -1186,7 +1186,7 @@ class OpenMPOp(Op):
         return []
 
     def c_headers(self):
-	"""
+        """
         Return the header file name "omp.h" if openMP is supported
         """
         self.update_self_openmp()
@@ -1196,7 +1196,7 @@ class OpenMPOp(Op):
 
     @staticmethod
     def test_gxx_support():
-	"""
+        """
         Check if openMP is supported
         """
         code = """
@@ -1585,7 +1585,7 @@ class COp(Op):
                     'c_code', type(self), type(self).__name__)
 
     def c_code_cleanup(self, node, name, inputs, outputs, sub):
-	"""
+        """
         Stitches all the macros and "code_cleanup" together
         """
         if 'code_cleanup' in self.code_sections:
