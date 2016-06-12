@@ -3767,7 +3767,6 @@ def local_useless_switch(node):
                     else:
                         shps.append(node.inputs[2].shape[idx])
                 out = T.alloc(out, *shps)
-                return False
             else:
                 out = out
 
