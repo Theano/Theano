@@ -347,7 +347,6 @@ class GraphToGPU(NavigatorOptimizer):
                 
                 process_count[lopt] += 1
                 if move_to_GPU:
-                    node_created[lopt] += len(theano.gof.graph.ops([mapping[i] for i in node.inputs], node.outputs))
                     t_opt = time.time()
                     try:
                         new_ops = lopt.transform(
@@ -358,9 +357,10 @@ class GraphToGPU(NavigatorOptimizer):
                             [mapping[i] for i in node.inputs],
                             node.outputs)
                     finally:
-                        time_opts[lopt] += time.time() - t_opt
-                        self.new_opts.append(lopt)
+                        t_opt2 = time.time()
                     if new_ops:
+                        self.new_opts.append(lopt)
+                        time_opts[lopt] = max(time_opts[lopt], (t_opt2 - t_opt))
                         break
             if not new_ops:
                 newnode = node.clone_with_new_inputs([mapping.get(i)
@@ -381,6 +381,10 @@ class GraphToGPU(NavigatorOptimizer):
             else:
                 outputs = new_ops(*[mapping[i] for i in node.inputs],
                                   return_list=True)
+
+            if new_ops:
+                node_created[lopt] += len(theano.gof.graph.ops([mapping[i] for i in node.inputs], outputs))
+
             for new_o, old_o in zip(outputs, node.outputs):
                 mapping[old_o] = new_o
 
@@ -434,6 +438,7 @@ class GraphToGPU(NavigatorOptimizer):
         process_count = {}
         for o in (opt.new_opts):
             process_count.setdefault(o, 0)
+            process_count[o] + 1
 
         for o, count in iteritems(process_count):
             if count > 0:
