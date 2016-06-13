@@ -145,4 +145,3 @@ class Fourier(gof.Op):
 
 
 fft = Fourier()
-

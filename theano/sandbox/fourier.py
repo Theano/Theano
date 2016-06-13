@@ -20,6 +20,7 @@ message = ("The module theano.sandbox.fourier will soon be deprecated."
            "automatic optimization transfers to the GPU ops.")
 warnings.warn(message)
 
+
 class GradTodo(Op):
     # TODO : need description for class
     __props__ = ()

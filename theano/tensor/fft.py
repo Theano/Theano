@@ -206,4 +206,3 @@ def _unitary(norm):
         raise ValueError("Invalid value %s for norm, must be None, 'ortho' or "
                          "'no norm'" % norm)
     return norm
-

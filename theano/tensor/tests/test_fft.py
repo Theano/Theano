@@ -189,4 +189,3 @@ class TestFFT(unittest.TestCase):
             return fft.irfft(inp, norm='no_norm')
         inputs_val = numpy.random.random((1, N, N // 2 + 1, 2)).astype('float32')
         utt.verify_grad(f_irfft, [inputs_val], eps=eps)
-

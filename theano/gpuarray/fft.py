@@ -380,4 +380,3 @@ if scikits_cuda_available:
     @op_lifter([theano.tensor.fft.IRFFTOp])
     def local_cuirfft_op(node, context_name):
         return cuirfft_op
-

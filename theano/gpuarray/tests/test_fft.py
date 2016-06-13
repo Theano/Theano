@@ -260,4 +260,3 @@ class TestFFT(unittest.TestCase):
             theano.gpuarray.fft.cuirfft(inputs, norm=123)
         with self.assertRaises(ValueError):
             theano.gpuarray.fft.cuirfft(inputs, is_odd=123)
-
