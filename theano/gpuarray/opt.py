@@ -340,6 +340,7 @@ class GraphToGPU(NavigatorOptimizer):
 
             new_ops = None
             outputs = []
+            ex_opt_time = None
             # Apply the lifter
             for lopt in (self.local_optimizers_all +
                          self.local_optimizers_map.get(type(node.op), []) +
@@ -353,14 +354,15 @@ class GraphToGPU(NavigatorOptimizer):
                             node.op, context_name,
                             [mapping[i] for i in node.inputs])
                     except TypeError:
+                        # Updating again because else we'd be counting 
+                        # time for two except clauses
+                        t_opt = time.time()
                         new_ops = lopt.transform(node.op, context_name, 
                             [mapping[i] for i in node.inputs],
                             node.outputs)
                     finally:
                         t_opt2 = time.time()
                     if new_ops:
-                        self.new_opts.append(lopt)
-                        time_opts[lopt] = max(time_opts[lopt], (t_opt2 - t_opt))
                         break
             if not new_ops:
                 newnode = node.clone_with_new_inputs([mapping.get(i)
@@ -384,6 +386,8 @@ class GraphToGPU(NavigatorOptimizer):
 
             if new_ops:
                 node_created[lopt] += len(theano.gof.graph.ops([mapping[i] for i in node.inputs], outputs))
+                self.new_opts.append(lopt)
+                time_opts[lopt] = t_opt2 - t_opt
 
             for new_o, old_o in zip(outputs, node.outputs):
                 mapping[old_o] = new_o
