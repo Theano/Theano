@@ -661,8 +661,9 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                     shp, val = v.owner.inputs
                     v = val
                     continue
-                elif elemwise and isinstance(v.owner.op.scalar_op,
-                                get_scalar_constant_value_elemwises):
+                elif elemwise and isinstance(
+                        v.owner.op.scalar_op,
+                        get_scalar_constant_value_elemwises):
                     const = [get_scalar_constant_value(i)
                              for i in v.owner.inputs]
                     ret = [[None]]
