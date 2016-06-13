@@ -529,8 +529,8 @@ class GpuDnnConv(DnnBase):
 
         top = gpu_contiguous(top)
 
-        d_img = GpuDnnConvGradI()(kerns, top, empty_like(img), desc)
-        d_kerns = GpuDnnConvGradW()(img, top, empty_like(kerns), desc)
+        d_img = gpu_dnn_conv_gradI()(kerns, top, empty_like(img), desc)
+        d_kerns = gpu_dnn_conv_gradW()(img, top, empty_like(kerns), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
 
@@ -565,6 +565,14 @@ class GpuDnnConv(DnnBase):
 
     def infer_shape(self, node, shape):
         return [shape[2]]
+
+
+def gpu_dnn_conv(algo=None, inplace=False):
+    key = (algo, inplace)
+    if key not in gpu_dnn_conv.cache:
+        gpu_dnn_conv.cache[key] = GpuDnnConv(algo, inplace)
+    return gpu_dnn_conv.cache[key]
+gpu_dnn_conv.cache = {}
 
 
 class GpuDnnConvGradW(DnnBase):
@@ -611,8 +619,8 @@ class GpuDnnConvGradW(DnnBase):
 
         kerns = gpu_contiguous(kerns)
 
-        d_img = GpuDnnConvGradI()(kerns, top, empty_like(img), desc)
-        d_top = GpuDnnConv()(img, kerns, empty_like(top), desc)
+        d_img = gpu_dnn_conv_gradI()(kerns, top, empty_like(img), desc)
+        d_top = gpu_dnn_conv()(img, kerns, empty_like(top), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
 
@@ -689,6 +697,14 @@ class GpuDnnConvGradW(DnnBase):
         return [shape[2]]
 
 
+def gpu_dnn_conv_gradW(algo=None, inplace=False):
+    key = (algo, inplace)
+    if key not in gpu_dnn_conv_gradW.cache:
+        gpu_dnn_conv_gradW.cache[key] = GpuDnnConvGradW(inplace, algo)
+    return gpu_dnn_conv_gradW.cache[key]
+gpu_dnn_conv_gradW.cache = {}
+
+
 class GpuDnnConvGradI(DnnBase):
 
     """
@@ -744,8 +760,8 @@ class GpuDnnConvGradI(DnnBase):
 
         img = gpu_contiguous(img)
 
-        d_kerns = GpuDnnConvGradW()(img, top, empty_like(kerns), desc)
-        d_top = GpuDnnConv()(img, kerns, empty_like(top), desc)
+        d_kerns = gpu_dnn_conv_gradW()(img, top, empty_like(kerns), desc)
+        d_top = gpu_dnn_conv()(img, kerns, empty_like(top), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
 
@@ -826,6 +842,14 @@ class GpuDnnConvGradI(DnnBase):
         return [shape[2]]
 
 
+def gpu_dnn_conv_gradI(algo=None, inplace=False):
+    key = (algo, inplace)
+    if key not in gpu_dnn_conv_gradI.cache:
+        gpu_dnn_conv_gradI.cache[key] = GpuDnnConvGradI(inplace, algo)
+    return gpu_dnn_conv_gradI.cache[key]
+gpu_dnn_conv_gradI.cache = {}
+
+
 def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
              conv_mode='conv', direction_hint=None, workmem=None,
              algo=None, precision=None):
@@ -904,7 +928,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
             shape_i(img, 1, fgraph), shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode='cross', precision=precision)(out.shape)
-        conv = GpuDnnConvGradW()(img, kerns, out, desc)
+        conv = gpu_dnn_conv_gradW()(img, kerns, out, desc)
         return as_gpuarray_variable(conv.dimshuffle(1, 0, 2, 3), ctx_name)
 
     elif (border_mode == 'full' and subsample == (1, 1) and
@@ -922,7 +946,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
                                                  shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode=conv_mode, precision=precision)(kerns.shape)
-        return GpuDnnConvGradI()(kerns, img, out, desc)
+        return gpu_dnn_conv_gradI()(kerns, img, out, desc)
 
     # Standard case: We use GpuDnnConv with suitable padding.
     # contig_version will return a gpu_contiguous copy
@@ -936,7 +960,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
                                        desc_op.border_mode,
                                        desc_op.subsample)
     out = gpu_alloc_empty(img.dtype, ctx_name)(*out_shp)
-    return GpuDnnConv(algo=algo)(img, kerns, out, desc)
+    return gpu_dnn_conv(algo=algo)(img, kerns, out, desc)
 
 
 def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
@@ -950,7 +974,7 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(kerns_shp)
     out = gpu_alloc_empty(img.dtype, ctx_name)(*kerns_shp)
-    return GpuDnnConvGradW()(img, topgrad, out, desc)
+    return gpu_dnn_conv_gradW()(img, topgrad, out, desc)
 
 
 def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
@@ -964,7 +988,7 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(kerns.shape)
     out = gpu_alloc_empty(kerns.dtype, ctx_name)(*img_shp)
-    return GpuDnnConvGradI()(kerns, topgrad, out, desc)
+    return gpu_dnn_conv_gradI()(kerns, topgrad, out, desc)
 
 
 class GpuDnnPoolDesc(Op):
@@ -1449,17 +1473,17 @@ conv_groupopt.register('local_abstractconv_cudnn_graph',
 
 @inplace_allocempty(GpuDnnConv, 2)
 def local_dnn_conv_inplace(node, inputs):
-    return [GpuDnnConv(algo=node.op.algo, inplace=True)(*inputs)]
+    return [gpu_dnn_conv(algo=node.op.algo, inplace=True)(*inputs)]
 
 
 @inplace_allocempty(GpuDnnConvGradW, 2)
 def local_dnn_convgw_inplace(node, inputs):
-    return [GpuDnnConvGradW(algo=node.op.algo, inplace=True)(*inputs)]
+    return [gpu_dnn_conv_gradW(algo=node.op.algo, inplace=True)(*inputs)]
 
 
 @inplace_allocempty(GpuDnnConvGradI, 2)
 def local_dnn_convgi_inplace(node, inputs):
-    return [GpuDnnConvGradI(algo=node.op.algo, inplace=True)(*inputs)]
+    return [gpu_dnn_conv_gradI(algo=node.op.algo, inplace=True)(*inputs)]
 
 optdb.register('local_dnna_conv_inplace',
                tensor.opt.in2out(local_dnn_conv_inplace,
@@ -1472,40 +1496,40 @@ optdb.register('local_dnna_conv_inplace',
 @register_opt('cudnn')
 @alpha_merge(GpuDnnConv, alpha_in=4, beta_in=5)
 def local_dnn_conv_alpha_merge(node, *inputs):
-    return [GpuDnnConv(algo=node.op.algo)(*inputs)]
+    return [gpu_dnn_conv(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
 @alpha_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5)
 def local_dnn_convw_alpha_merge(node, *inputs):
-    return [GpuDnnConvGradW(algo=node.op.algo)(*inputs)]
+    return [gpu_dnn_conv_gradW(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
 @alpha_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5)
 def local_dnn_convi_alpha_merge(node, *inputs):
-    return [GpuDnnConvGradI(algo=node.op.algo)(*inputs)]
+    return [gpu_dnn_conv_gradI(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
 @output_merge(GpuDnnConv, alpha_in=4, beta_in=5, out_in=2)
 def local_dnn_conv_output_merge(node, *inputs):
     inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-    return [GpuDnnConv(algo=node.op.algo)(*inputs)]
+    return [gpu_dnn_conv(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
 @output_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, out_in=2)
 def local_dnn_convw_output_merge(node, *inputs):
     inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-    return [GpuDnnConvGradW(algo=node.op.algo)(*inputs)]
+    return [gpu_dnn_conv_gradW(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
 @output_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, out_in=2)
 def local_dnn_convi_output_merge(node, *inputs):
     inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-    return [GpuDnnConvGradI(algo=node.op.algo)(*inputs)]
+    return [gpu_dnn_conv_gradI(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn', 'fast_compile')
