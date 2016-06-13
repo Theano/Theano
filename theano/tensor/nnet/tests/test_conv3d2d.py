@@ -10,6 +10,7 @@ except ImportError:
 from six.moves import xrange
 
 import theano
+from theano.gof.opt import check_stack_trace
 from theano.tensor.nnet.conv3d2d import *
 import theano.tests.unittest_tools as utt
 
@@ -73,10 +74,11 @@ def pyconv3d(signals, filters):
                 r_i += o_i[Tf2:o_i_sh0-Tf2, Hf2:-Hf2, Wf2:-Wf2]
     return rval
 
+
 def check_diagonal_subtensor_view_traces(fn):
-    for apply_node in fn.maker.fgraph.apply_nodes:
-        if isinstance(apply_node.op, (DiagonalSubtensor, IncDiagonalSubtensor)):
-            assert hasattr(apply_node.outputs[0].tag, 'trace')
+    assert check_stack_trace(
+        fn, ops_to_check=(DiagonalSubtensor, IncDiagonalSubtensor))
+
 
 def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
     if ndimage is None:
@@ -150,7 +152,6 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
     newconv3d = theano.function([], [],
                                 updates={s_output: out},
                                 mode=mode)
-    check_diagonal_subtensor_view_traces(newconv3d)
 
     t0 = time.time()
     newconv3d()
@@ -162,7 +163,6 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
                                           (s_signals, gsignals)],
                                  mode=mode,
                                  name='grad')
-    check_diagonal_subtensor_view_traces(gnewconv3d)
 
     t0 = time.time()
     gnewconv3d()

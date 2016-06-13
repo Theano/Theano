@@ -905,9 +905,11 @@ def softmax_simplifier(numerators, denominators):
                                 matching_denom = denominator
                                 break
         if matching_denom:
+            softmax = softmax_op(x)
+            copy_stack_trace(numerator, softmax)
             numerators.remove(numerator)
             denominators.remove(matching_denom)
-            numerators.append(softmax_op(x))
+            numerators.append(softmax)
 
     return numerators, denominators
 opt.local_mul_canonizer.add_simplifier(softmax_simplifier, 'softmax_simplifier')
