@@ -430,41 +430,6 @@ class Function(object):
                     named_inputs.append(input.name)
                 inv_finder[c] = input
                 containers[:1] = []
-            # else:
-            #    # TODO The following code may need to do something to handle
-            #    # implicit inputs.
-
-            #    # The input is a SymbolicInputKit, so we take as many
-            #    # containers as the Kit provides inputs
-            #    cs = containers[:len(indices)]
-            #    # distribute does the initialization of the containers
-            #    input.distribute(value, indices, cs)
-            #    f = partial(distribute, indices, cs)
-            #    # Like before, we set a finder entry for the kit. Note that
-            #    # we are not mapping to a container but to a function which
-            #    # can reinitialize all the containers
-            #    finder[i] = f
-            #    finder[input] = f
-            #    if input.name not in finder:
-            #        finder[input.name] = f
-            #    else:
-            #        finder[input.name] = DUPLICATE
-            #    # For each input in the kit and its corresponding
-            #    # container, we put an entry in finder.  This allows
-            #    # the user to micro-manage elements of the kit if need
-            #    # be.  All containers inherit the required field and
-            #    # have their own "provided" counter
-            #    for c, sin in zip(cs, sinputs):
-            #        finder[sin.variable] = c
-            #        finder[sin.name] = c
-            #        if sin.name not in finder:
-            #            finder[sin.name] = c
-            #        else:
-            #            finder[sin.name] = DUPLICATE
-            #        inv_finder[c] = input
-            #        c.required = required
-            #        c.provided = 0
-            #    containers[:len(indices)] = []
 
         self.finder = finder
         self.inv_finder = inv_finder
@@ -1031,14 +996,6 @@ def _pickle_Function(f):
 
     for (input, indices, inputs), (required, refeed, default) in \
             zip(f.indices, f.defaults):
-        # if isinstance(input, SymbolicInputKit):
-        #    li = len(indices)
-        #    if not default:
-        #        input_storage.append(ins[:li])
-        #    else:
-        #        input_storage.append(default)
-        #    ins[:li] = []
-        # else:
         input_storage.append(ins[0])
         del ins[0]
 
@@ -1857,7 +1814,7 @@ def convert_function_input(input):
       `In`(r, name=name, value=val, update=up, autoname=True)
 
     """
-    if isinstance(input, (SymbolicInput)):
+    if isinstance(input, SymbolicInput):
         return input
     elif isinstance(input, gof.Constant):
         raise TypeError('A Constant instance is not a legal function input',
@@ -1886,7 +1843,7 @@ def convert_function_input(input):
             else:
                 raise TypeError("Invalid input syntax: %s (check "
                                 "documentation or use an In instance)" % orig)
-        elif isinstance(input[0], (SymbolicInput)):
+        elif isinstance(input[0], SymbolicInput):
             if len(input) == 1:
                 return input[0]
             elif len(input) == 2:
