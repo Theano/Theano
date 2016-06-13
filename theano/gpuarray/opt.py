@@ -168,9 +168,6 @@ def op_lifter(OP, cuda_only=False):
                         replace = True
                         break
                 clients = [c for o in node.outputs for c in o.clients]
-                # list of list containing clients
-                # it is clients per node basis
-                out_clients = [o.clients for o in node.outputs]
 
                 if not replace:
                     # We replace if *all* clients are on the GPU
@@ -198,7 +195,9 @@ def op_lifter(OP, cuda_only=False):
                 try:
                     new_op = maker(node.op, context_name, node.inputs)
                 except TypeError:
-                    new_op = maker(node.op, context_name, node.inputs, out_clients)
+                    # Pass the outputs so that the Local Optimizers don't need to 
+                    # build the nodes again.
+                    new_op = maker(node.op, context_name, node.inputs, node.outputs)
                 # This is needed as sometimes new_op inherits from OP.
                 if new_op and new_op != node.op:
                     if isinstance(new_op, theano.Op):
@@ -357,7 +356,7 @@ class GraphToGPU(NavigatorOptimizer):
                     except TypeError:
                         new_ops = lopt.transform(node.op, context_name, 
                             [mapping[i] for i in node.inputs],
-                            out_clients)
+                            node.outputs)
                     finally:
                         time_opts[lopt] += time.time() - t_opt
                         self.new_opts.append(lopt)
@@ -416,6 +415,10 @@ class GraphToGPU(NavigatorOptimizer):
         s = sum([time_opts[o] for o in opt.new_opts])
         
         print(blanc, "  time in local optimizers %.3fs" % s, file=stream)
+
+        # print time per each optimizer
+        for o in opt.new_opts:
+            print(blanc, "Local Optimizer :" + str(o) + " takes time : %.3f" %time_opts[o], file=stream)
 
         count_opt = []
         not_used = []
@@ -678,13 +681,12 @@ def local_gpuflatten(op, context_name, inputs):
 @register_opt('fast_compile')
 @op_lifter([tensor.Elemwise])
 @register_opt2([tensor.Elemwise], 'fast_compile')
-def local_gpu_elemwise(op, context_name, inputs):
+def local_gpu_elemwise(op, context_name, inputs, outputs):
     scal_op = op.scalar_op
     name = op.name
-    node = op.make_node(*inputs)
     if name:
         name = 'Gpu' + name
-    if len(node.outputs) > 1:
+    if len(outputs) > 1:
         return
     res = GpuElemwise(scal_op, name=name,
                       inplace_pattern=copy.copy(op.inplace_pattern),
@@ -697,7 +699,7 @@ def local_gpu_elemwise(op, context_name, inputs):
 
         # Only transfer the computation on the gpu if the output dtype is
         # floating point. Else, give up on the transfer to the gpu.
-        out_dtype = node.outputs[0].dtype
+        out_dtype = outputs[0].dtype
         if out_dtype not in ['float16', 'float32', 'float64']:
             return
 
@@ -905,8 +907,11 @@ def local_gpua_split(op, context_name, inputs):
 @register_opt('fast_compile')
 @op_lifter([tensor.Subtensor])
 @register_opt2([tensor.Subtensor], 'fast_compile')
-def local_gpua_subtensor(op, context_name, inputs, clients):
+def local_gpua_subtensor(op, context_name, inputs, outputs):
     x = inputs[0]
+    # list of list containing clients
+    # it is clients per node basis
+    clients = [o.clients for o in outputs]
     if (x.owner and isinstance(x.owner.op, HostFromGpu)):
         gpu_x = x.owner.inputs[0]
         if (gpu_x.owner and
@@ -985,11 +990,10 @@ def local_advincsub1_gpua_inplace(node):
 @register_opt('fast_compile')
 @op_lifter([tensor.CAReduce, tensor.Sum, tensor.elemwise.Prod])
 @register_opt2([tensor.CAReduce, tensor.Sum, tensor.elemwise.Prod], 'fast_compile')
-def local_gpua_careduce(op, context_name, inputs):
+def local_gpua_careduce(op, context_name, inputs, outputs):
     if isinstance(op.scalar_op, (scalar.Add, scalar.Mul,
                                       scalar.Maximum, scalar.Minimum)):
 
-        node = op.make_node(*inputs)
         ctx = get_context(context_name)
         if ctx.kind == b'opencl':
             op2 = GpuCAReduceCPY
@@ -1056,10 +1060,10 @@ def local_gpua_careduce(op, context_name, inputs):
                 reduce_reshaped_x = host_from_gpu(
                     greduce(gpu_reshaped_x))
 
-                if reduce_reshaped_x.ndim != node.outputs[0].ndim:
+                if reduce_reshaped_x.ndim != outputs[0].ndim:
                     out_shp = []
                     for i in range(x.ndim):
-                        if i not in node.op.axis:
+                        if i not in op.axis:
                             out_shp.append(shape_i(x, i))
                     unreshaped_reduce = reduce_reshaped_x.reshape(
                         tensor.stack(out_shp))

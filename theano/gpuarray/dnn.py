@@ -1389,7 +1389,7 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
                   AbstractConv2d_gradInputs])
 @register_opt2([AbstractConv2d, AbstractConv2d_gradWeights,
                   AbstractConv2d_gradInputs], 'fast_compile')
-def local_abstractconv_cudnn(op, context_name, inputs):
+def local_abstractconv_cudnn_graph(op, context_name, inputs):
     if (not isinstance(op, (AbstractConv2d,
                                  AbstractConv2d_gradWeights,
                                  AbstractConv2d_gradInputs))):
@@ -1434,8 +1434,15 @@ def local_abstractconv_cudnn(op, context_name, inputs):
                              conv_mode=conv_mode)
     return [rval]
 
-conv_groupopt.register('local_abstractconv_cudnn',
-                       local_abstractconv_cudnn, 20,
+
+@local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights,
+                  AbstractConv2d_gradInputs])
+def local_abstractconv_cudnn(node):
+    ctx = infer_context(*node.inputs)
+    return local_abstractconv_dnn_graph(node.op, ctx, node.inputs)
+
+conv_groupopt.register('local_abstractconv_cudnn_graph',
+                       local_abstractconv_cudnn_graph, 20,
                        'fast_compile', 'fast_run',
                        'gpuarray', 'conv_dnn', 'cudnn')
 
