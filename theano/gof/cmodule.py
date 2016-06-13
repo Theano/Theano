@@ -2030,35 +2030,54 @@ class GCC_compiler(Compiler):
                             break
                     _logger.info("g++ -march=native equivalent flags: %s",
                                  GCC_compiler.march_flags)
+            
+            # Find working march flag:
+            #   -- if current GCC_compiler.march_flags works, we're done.
+            #   -- else replace -march and -mtune with ['core-i7-avx', 'core-i7', 'core2']
+            #      and retry with all other flags and arguments intact.
+            #   -- else remove all other flags and only try with -march = default + flags_to_try.
+            #   -- if none of that worked, set GCC_compiler.march_flags = [] (for x86).
 
-            # Find working march flag. If all fail, set march_flags to [] (for x86 archs).
-            march_ind = None
-            mtune_ind = None
-            working_flag = False
-
-            for m_ in xrange(len(GCC_compiler.march_flags)):
-                march_flag = GCC_compiler.march_flags[m_]
-                if 'march' in march_flag:
-                    march_ind = m_
-                if 'mtune' in GCC_compiler.march_flags[m_]:
-                    mtune_ind = m_
-
-            default_compilation_result, default_execution_result = \
-                try_march_flag(GCC_compiler.march_flags)
-
+            march_success = True
+            default_compilation_result, default_execution_result = try_march_flag(GCC_compiler.march_flags)
             if not default_compilation_result or not default_execution_result:
+                march_success = False
+                march_ind = None
+                mtune_ind = None
+                default_detected_flag = []
                 march_flags_to_try = ['corei7-avx', 'corei7', 'core2']
+
+                for m_ in xrange(len(GCC_compiler.march_flags)):
+                    march_flag = GCC_compiler.march_flags[m_]
+                    if 'march' in march_flag:
+                        march_ind = m_
+                        default_detected_flag = [march_flag]
+                    elif 'mtune' in GCC_compiler.march_flags[m_]:
+                        mtune_ind = m_
+
                 for march_flag in march_flags_to_try:
-                    compilation_result, execution_result = try_march_flag(['-march=' + march_flag])
+                    if march_ind is not None:
+                        GCC_compiler.march_flags[march_ind] = '-march=' + march_flag
+                    if mtune_ind is not None:
+                        GCC_compiler.march_flags[mtune_ind] = '-mtune=' + march_flag
+                
+                    compilation_result, execution_result = try_march_flag(GCC_compiler.march_flags)
+
                     if compilation_result and execution_result:
-                        working_flag = True
-                        if march_ind is not None:
-                            GCC_compiler.march_flags[march_ind] = '-march=' + march_flag
-                        if mtune_ind is not None:
-                            GCC_compiler.march_flags[mtune_ind] = '-mtune=' + march_flag
+                        march_success = True
                         break
 
-            if not working_flag:
+                if not march_success:
+                    # perhaps one of the other flags was problematic; try default flag in isolation again:
+                    march_flags_to_try = default_detected_flag + march_flags_to_try
+                    for march_flag in march_flags_to_try:
+                        compilation_result, execution_result = try_march_flag(['-march=' + march_flag])
+                        if compilation_result and execution_result:
+                            march_success = True
+                            GCC_compiler.march_flags = ['-march=' + march_flag]
+                            break
+
+            if not march_success:
                 GCC_compiler.march_flags = []
 
         # Add the detected -march=native equivalent flags
