@@ -123,10 +123,9 @@ class TestFFT(unittest.TestCase):
         res_rfft_comp = (np.asarray(res_rfft[:, :, :, 0]) +
                          1j * np.asarray(res_rfft[:, :, :, 1]))
 
-        rfft_ref_ortho = numpy.fft.rfftn(inputs_val, axes=(1, 2), norm='ortho')
+        rfft_ref = numpy.fft.rfftn(inputs_val, axes=(1, 2))
 
-        utt.assert_allclose(rfft_ref_ortho, res_rfft_comp,
-                            atol=1e-4, rtol=1e-4)
+        utt.assert_allclose(rfft_ref / N, res_rfft_comp, atol=1e-4, rtol=1e-4)
 
         # No normalization
         rfft = theano.gpuarray.fft.curfft(inputs, norm='no_norm')
@@ -135,8 +134,7 @@ class TestFFT(unittest.TestCase):
         res_rfft_comp = (np.asarray(res_rfft[:, :, :, 0]) +
                          1j * np.asarray(res_rfft[:, :, :, 1]))
 
-        utt.assert_allclose(rfft_ref_ortho * np.sqrt(N * N),
-                            res_rfft_comp, atol=1e-4, rtol=1e-4)
+        utt.assert_allclose(rfft_ref, res_rfft_comp, atol=1e-4, rtol=1e-4)
 
         # Inverse FFT inputs
         inputs_val = np.random.random((1, N, N // 2 + 1, 2)).astype('float32')
@@ -148,19 +146,16 @@ class TestFFT(unittest.TestCase):
         f_irfft = theano.function([], irfft, mode=mode_with_gpu)
         res_irfft = f_irfft()
 
-        irfft_ref_ortho = numpy.fft.irfftn(
-            inputs_ref, axes=(1, 2), norm='ortho')
+        irfft_ref = numpy.fft.irfftn(inputs_ref, axes=(1, 2))
 
-        utt.assert_allclose(irfft_ref_ortho,
-                            res_irfft, atol=1e-4, rtol=1e-4)
+        utt.assert_allclose(irfft_ref * N, res_irfft, atol=1e-4, rtol=1e-4)
 
         # No normalization inverse FFT
         irfft = theano.gpuarray.fft.cuirfft(inputs, norm='no_norm')
         f_irfft = theano.function([], irfft, mode=mode_with_gpu)
         res_irfft = f_irfft()
 
-        utt.assert_allclose(irfft_ref_ortho * np.sqrt(N * N),
-                            res_irfft, atol=1e-4, rtol=1e-4)
+        utt.assert_allclose(irfft_ref * N**2, res_irfft, atol=1e-4, rtol=1e-4)
 
     def test_grad(self):
         # The numerical gradient of the FFT is sensitive, must set large

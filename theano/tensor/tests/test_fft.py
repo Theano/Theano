@@ -114,10 +114,9 @@ class TestFFT(unittest.TestCase):
         res_rfft_comp = (numpy.asarray(res_rfft[:, :, :, 0]) +
                          1j * numpy.asarray(res_rfft[:, :, :, 1]))
 
-        rfft_ref_ortho = numpy.fft.rfftn(inputs_val, axes=(1, 2), norm='ortho')
+        rfft_ref = numpy.fft.rfftn(inputs_val, axes=(1, 2))
 
-        utt.assert_allclose(rfft_ref_ortho, res_rfft_comp,
-                            atol=1e-4, rtol=1e-4)
+        utt.assert_allclose(rfft_ref / N, res_rfft_comp, atol=1e-4, rtol=1e-4)
 
         # No normalization
         rfft = fft.rfft(inputs, norm='no_norm')
@@ -126,8 +125,7 @@ class TestFFT(unittest.TestCase):
         res_rfft_comp = (numpy.asarray(res_rfft[:, :, :, 0]) +
                          1j * numpy.asarray(res_rfft[:, :, :, 1]))
 
-        utt.assert_allclose(rfft_ref_ortho * numpy.sqrt(N * N),
-                            res_rfft_comp, atol=1e-4, rtol=1e-4)
+        utt.assert_allclose(rfft_ref, res_rfft_comp, atol=1e-4, rtol=1e-4)
 
         # Inverse FFT inputs
         inputs_val = numpy.random.random((1, N, N // 2 + 1, 2))
@@ -139,18 +137,16 @@ class TestFFT(unittest.TestCase):
         f_irfft = theano.function([], irfft)
         res_irfft = f_irfft()
 
-        irfft_ref_ortho = numpy.fft.irfftn(inputs_ref, axes=(1, 2), norm='ortho')
+        irfft_ref = numpy.fft.irfftn(inputs_ref, axes=(1, 2))
 
-        utt.assert_allclose(irfft_ref_ortho,
-                            res_irfft, atol=1e-4, rtol=1e-4)
+        utt.assert_allclose(irfft_ref * N, res_irfft, atol=1e-4, rtol=1e-4)
 
         # No normalization inverse FFT
         irfft = fft.irfft(inputs, norm='no_norm')
         f_irfft = theano.function([], irfft)
         res_irfft = f_irfft()
 
-        utt.assert_allclose(irfft_ref_ortho * numpy.sqrt(N * N),
-                            res_irfft, atol=1e-4, rtol=1e-4)
+        utt.assert_allclose(irfft_ref * N**2, res_irfft, atol=1e-4, rtol=1e-4)
 
     def test_params(self):
         inputs_val = numpy.random.random((1, N))

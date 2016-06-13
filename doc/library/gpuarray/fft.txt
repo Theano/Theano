@@ -8,6 +8,11 @@ Performs Fast Fourier Transforms (FFT) on the GPU.
 
 FFT gradients are implemented as the opposite Fourier transform of the output gradients.
 
+.. note ::
+    You must install `scikit-cuda <http://scikit-cuda.readthedocs.io/en/latest>`_
+    to compute Fourier transforms on the GPU.
+
+
 .. warning ::
     The real and imaginary parts of the Fourier domain arrays are stored as a pair of float32
     arrays, emulating complex64. Since theano has limited support for complex
