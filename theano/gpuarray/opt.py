@@ -416,9 +416,17 @@ class GraphToGPU(NavigatorOptimizer):
         
         print(blanc, "  time in local optimizers %.3fs" % s, file=stream)
 
-        # print time per each optimizer
+        # Build a dictionary of opt and time taken
+        opt_time_dict = dict()
         for o in opt.new_opts:
-            print(blanc, "Local Optimizer :" + str(o) + " takes time : %.3f" %time_opts[o], file=stream)
+            if o not in opt_time_dict:
+                opt_time_dict[o] = time_opts[o]
+            else:
+                opt_time_dict[o] += time_opts[o]
+
+        # print time per each optimizer
+        for k,v in opt_time_dict.iteritems():
+            print(blanc, "Local Optimizer :" + str(k) + " takes time : %.3f" %v, file=stream)
 
         count_opt = []
         not_used = []
