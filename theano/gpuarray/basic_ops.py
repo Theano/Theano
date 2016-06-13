@@ -224,19 +224,32 @@ class Kernel(object):
         if self.flags.get('have_complex', False):
             res.append('GA_USE_COMPLEX')
         if self.flags.get('have_half', False):
-            res.append('GA_USE_SMALL')
+            res.append('GA_USE_HALF')
         return '|'.join(res)
 
+    def _get_py_flags(self):
+        res = dict(self.flags)
+        cflags = res.pop('cflags', '')
+        for fl in cflags.split('|'):
+            fl = fl.strip()
+            if fl == 'GA_USE_CLUDA':
+                res['cluda'] = True
+            if fl == 'GA_USE_DOUBLE':
+                res['have_double'] = True
+            if fl == 'GA_USE_SMALL':
+                res['have_small'] = True
+            if fl == 'GA_USE_COMPLEX':
+                res['have_complex'] = True
+            if fl == 'GA_USE_HALF':
+                res['have_half'] = True
+        return res
+
     def _get_c_types(self):
-        if not self.flags.get('ctypes', False):
-            def m(t):
-                if t == gpuarray.GpuArray:
-                    return "GA_BUFFER"
-                else:
-                    return str(gpuarray.dtype_to_typecode(t))
-        else:
-            def m(t):
-                return t
+        def m(t):
+            if t == gpuarray.GpuArray:
+                return "GA_BUFFER"
+            else:
+                return str(gpuarray.dtype_to_typecode(t))
         return ', '.join(m(t) for t in self.params)
 
 
@@ -267,7 +280,7 @@ class GpuKernelBase(object):
 
     def _generate_kernel_bin(self, k, ctx):
         gk = gpuarray.GpuKernel(k.code, k.name, k.params, context=ctx,
-                                **k.flags)
+                                **k._get_py_flags())
         bin = gk._binary
         bcode = ','.join(hex(c) for c in iterbytes(bin))
         return ("""static const char %(bname)s[] = { %(bcode)s };""" %
@@ -377,6 +390,17 @@ def forward_string_meth(name):
     return f
 
 
+def get_dtype(s):
+    if s == '*':
+        return gpuarray.GpuArray
+    if s == 'size':
+        return gpuarray.SIZE
+    if s == 'ssize':
+        return gpuarray.SSIZE
+    else:
+        return numpy.dtype(s)
+
+
 class CGpuKernelBase(COp, GpuKernelBase):
     """
     Class to combine GpuKernelBase and COp.
@@ -396,26 +420,28 @@ class CGpuKernelBase(COp, GpuKernelBase):
     c_cleanup_code_struct = forward_string_meth('c_cleanup_code_struct')
 
     def _type_macros(self, node):
-        define_template = "#define %s %s"
-        undef_template = "#undef %s"
+        define_template = "#define %s %s\n"
+        undef_template = "#undef %s\n"
         define_macros = []
         undef_macros = []
         for i, v in enumerate(node.inputs):
-            macro_name = "DTYPE_i%d" % (i,)
-            macro_value = pygpu.gpuarray.dtype_to_ctype(v.dtype)
-            define_macros.append(
-                define_template %
-                (macro_name, macro_value))
-            undef_macros.append(undef_template % macro_name)
+            if isinstance(v.type, GpuArrayType):
+                macro_name = "DTYPE_i%d" % (i,)
+                macro_value = pygpu.gpuarray.dtype_to_ctype(v.dtype)
+                define_macros.append(
+                    define_template %
+                    (macro_name, macro_value))
+                undef_macros.append(undef_template % macro_name)
         for i, v in enumerate(node.outputs):
-            macro_name = "DTYPE_o%d" % (i,)
-            macro_value = pygpu.gpuarray.dtype_to_ctype(v.dtype)
-            define_macros.append(
-                define_template %
-                (macro_name, macro_value))
-            undef_macros.append(undef_template % macro_name)
+            if isinstance(v.type, GpuArrayType):
+                macro_name = "DTYPE_o%d" % (i,)
+                macro_value = pygpu.gpuarray.dtype_to_ctype(v.dtype)
+                define_macros.append(
+                    define_template %
+                    (macro_name, macro_value))
+                undef_macros.append(undef_template % macro_name)
 
-        return '\n'.join(define_macros), '\n'.join(undef_macros)
+        return ''.join(define_macros), ''.join(undef_macros)
 
     def gpu_kernels(self, node, name):
         if hasattr(self, '_cached_kernels'):
@@ -436,12 +462,11 @@ class CGpuKernelBase(COp, GpuKernelBase):
                 if len(splt2) != 3:
                     raise ValueError("Bad kernel spec: %s" % (kspec,))
                 kname = splt2[0].strip()
-                ktypes = [s.strip() for s in splt2[1].split(',')]
+                ktypes = [get_dtype(s.strip()) for s in splt2[1].split(',')]
                 kflags = splt2[2].strip()
                 kcode = def_macros + '\n' + kcode + '\n' + undef_macros
                 res.append(Kernel(kcode, ktypes, kname,
-                                  flags=dict(ctypes=True, cluda=True,
-                                             cflags=kflags)))
+                                  flags=dict(cluda=True, cflags=kflags)))
                 n += 2
             self._cached_kernels = res
             return res
