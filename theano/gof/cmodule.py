@@ -2038,7 +2038,6 @@ class GCC_compiler(Compiler):
             #   -- else remove all other flags and only try with -march = default + flags_to_try.
             #   -- if none of that worked, set GCC_compiler.march_flags = [] (for x86).
 
-            march_success = True
             default_compilation_result, default_execution_result = try_march_flag(GCC_compiler.march_flags)
             if not default_compilation_result or not default_execution_result:
                 march_success = False
@@ -2052,7 +2051,7 @@ class GCC_compiler(Compiler):
                     if 'march' in march_flag:
                         march_ind = m_
                         default_detected_flag = [march_flag]
-                    elif 'mtune' in GCC_compiler.march_flags[m_]:
+                    elif 'mtune' in march_flag:
                         mtune_ind = m_
 
                 for march_flag in march_flags_to_try:
@@ -2077,8 +2076,8 @@ class GCC_compiler(Compiler):
                             GCC_compiler.march_flags = ['-march=' + march_flag]
                             break
 
-            if not march_success:
-                GCC_compiler.march_flags = []
+                if not march_success:
+                    GCC_compiler.march_flags = []
 
         # Add the detected -march=native equivalent flags
         if GCC_compiler.march_flags:
