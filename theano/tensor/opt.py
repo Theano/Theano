@@ -3753,8 +3753,20 @@ def local_useless_switch(node):
 
             if out.type.broadcastable != node.outputs[0].type.broadcastable:
                 # We need to copy data to the new dimensions during execution
-                out = T.alloc(out, *[node.outputs[0].shape[i] for i
-                                     in xrange(out.ndim)])
+
+                # We should not depend on node.outputs as this would
+                # make the new node depend on the old one that will
+                # get optimized again. So this create a cycle.
+                shps = []
+                for idx, (b1, b2), in enumerate(zip(out.type.broadcastable,
+                                                    node.outputs[0].type.broadcastable)):
+                    if b1 == b2:
+                        shps.append(out.shape[idx])
+                    elif not node.inputs[1].type.broadcastable[idx]:
+                        shps.append(node.inputs[1].shape[idx])
+                    else:
+                        shps.append(node.inputs[2].shape[idx])
+                out = T.alloc(out, *shps)
             else:
                 out = out
 
