@@ -72,7 +72,10 @@ The last place where you might need the context is in the C
 initialization code.  For that you will have to use the :ref:`params
 <extending_op_params>`.  The params type should be
 :class:`theano.gpuarray.type.gpu_context_type` and the params object
-should be a context object from one of your input variables.
+should be a context object from one of your input variables::
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
 
 If you don't have any input variables on the GPU you can follow the
 the example of :class:`theano.gpuarray.basic_ops.GpuFromHost` or
