@@ -113,14 +113,19 @@ instead.  It adds a new section to the parsed files whose tag is
 ``kernels``.  Inside that section you can define some kernels with
 ``#kernel name:params:flags``.
 
-Here ``name`` is the name of the kernel function in the following code,
-``params`` is a comma-separeted list of C typecode names and ``flags`` is
-a ``|``-separeted list of C kernel flag values (can be empty).  The same
-kernel definition as above would look like this with ``CGpuKernelBase``::
+Here ``name`` is the name of the kernel function in the following
+code, ``params`` is a comma-separeted list of numpy typecode names.
+There are three exceptions for ``size_t`` which should be noted as
+``size``, ``ssize_t`` which should be noted as ``ssize`` and a pointer
+which should be noted as ``*``.
+
+``flags`` is a ``|``-separeted list of C kernel flag values (can be
+empty).  The same kernel definition as above would look like this with
+``CGpuKernelBase``::
 
     #section kernels
 
-    #kernel k : GA_BUFFER, GA_SIZE, GA_SIZE : GA_USE_CLUDA|GA_USE_DOUBLE
+    #kernel k : *, size, size : GA_USE_DOUBLE
 
     KERNEL void k(GLOBAL_MEM ga_double *a, ga_size n, ga_size m) {
         ga_size nb = n < m ? n : m;
