@@ -154,3 +154,42 @@ An example calling the above kernel would be::
     err = GpuKernel_call(&%(kname)s, 1, &ls, &gs, 0, args);
 
     // ...
+
+
+Wrapping exisiting libraries
+============================
+
+PyCUDA
+------
+
+For things in PyCUDA (or things wrapped with PyCUDA), we usually need
+to create a PyCUDA context.  This can be done with the following
+code::
+
+    with gpuarray_cuda_context:
+        pycuda_context = pycuda.driver.Context.attach()
+
+If you don't need to create a context, because the library doesn't
+require it, you can also just use the pygpu context and a `with`
+statement like above for all your code which will make the context the
+current context on the cuda stack.
+
+GpuArray objects are compatible with PyCUDA and will expose the
+necessary interface so that they can be used in most things.  One
+notable exception is PyCUDA kernels which require native objects.  If
+you need to convert a pygpu GpuArray to a PyCUDA GPUArray, this code
+should do the trick::
+
+    assert pygpu_array.flags['IS_C_CONTIGUOUS']
+    pycuda_array = pycuda.gpuarray.GPUArray(pygpu_array.shape,
+                                            pygpu_array.dtype,
+                                            base=pygpu_array,
+                                            gpudata=(pygpu_array.gpudata +
+                                                     pygpu_array.offset))
+
+As long as the computations happen on the NULL stream there are no
+special considerations to watch for with regards to synchronization.
+Otherwise, you will have to make sure that you synchronize the pygpu
+objects by calling the `.sync()` method before scheduling any work and
+synchronize with the work that happends in the library after all the
+work is scheduled.
