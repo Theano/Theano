@@ -10,7 +10,7 @@ from theano.scalar import as_scalar, constant
 
 from . import opt
 from .basic_ops import (as_gpuarray_variable, GpuAllocEmpty,
-                        infer_context_name)
+                        infer_context_name, gpu_alloc_empty)
 from .type import gpu_context_type
 from .opt_util import alpha_merge, output_merge
 

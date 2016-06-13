@@ -8,15 +8,15 @@ from six import itervalues, iteritems
 from six.moves import xrange
 
 import theano
-from theano.compat import OrderedDict
 from theano import tensor, scalar, gof, config
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         SequenceDB, Optimizer, DB, toolbox, graph)
-from theano.gof.opt import ChangeTracker, NavigatorOptimizer
+from theano.gof.opt import NavigatorOptimizer
 from theano.gof.optdb import LocalGroupDB
 from theano.ifelse import IfElse
+from theano.misc.ordered_set import OrderedSet
 
 from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scan_module import scan_utils, scan_op, scan_opt
@@ -30,7 +30,7 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
 from theano.tests.breakpoint import PdbBreakpoint
 
 from .type import (GpuArrayType, GpuArrayConstant, get_context,
-                   ContextNotDefined, GpuArrayVariable, GpuArraySharedVariable)
+                   ContextNotDefined, GpuArraySharedVariable, GpuArrayVariable)
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         host_from_gpu, GpuToGpu,
                         HostFromGpu, GpuFromHost,
@@ -54,8 +54,6 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedIncSubtensor1,
                         GpuAdvancedIncSubtensor1_dev20)
 from .opt_util import alpha_merge, output_merge
-
-
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -195,7 +193,7 @@ def op_lifter(OP, cuda_only=False):
                 try:
                     new_op = maker(node.op, context_name, node.inputs)
                 except TypeError:
-                    # Pass the outputs so that the Local Optimizers don't need to 
+                    # Pass the outputs so that the Local Optimizers don't need to
                     # build the nodes again.
                     new_op = maker(node.op, context_name, node.inputs, node.outputs)
                 # This is needed as sometimes new_op inherits from OP.
@@ -263,7 +261,6 @@ class GraphToGPU(NavigatorOptimizer):
         self.local_optimizers_all = local_optimizers_all
         self.local_optimizers_map = local_optimizers_map
         self.failure_callback = None
-        self.new_opts = []
 
     def add_requirements(self, fgraph):
         fgraph.attach_feature(toolbox.ReplaceValidate())
@@ -281,13 +278,10 @@ class GraphToGPU(NavigatorOptimizer):
 
     def apply(self, fgraph):
         mapping = {}
-        start_nb_nodes = len(fgraph.apply_nodes)
-        max_nb_nodes = len(fgraph.apply_nodes)
-        io_toposort_timing = []
-        nb_nodes = []
         time_opts = {}
         node_created = {}
         process_count = {}
+        io_toposort_timing = []
         # Building a new graph
         # Iterating through inputs of graph
         for i in fgraph.inputs:
@@ -299,7 +293,7 @@ class GraphToGPU(NavigatorOptimizer):
             if isinstance(i, theano.Constant):
                 mapping[i] = i
         for node in fgraph.toposort():
-            for lopt in (self.local_optimizers_all + 
+            for lopt in (self.local_optimizers_all +
                          self.local_optimizers_map.get(type(node.op), []) +
                          self.local_optimizers_map.get(node.op, [])):
                     process_count.setdefault(lopt, 0)
@@ -307,29 +301,25 @@ class GraphToGPU(NavigatorOptimizer):
                     node_created.setdefault(lopt, 0)
 
         t_topo = time.time()
-        topo = fgraph.toposort()
+        fgraph.toposort()
         time_topo = time.time() - t_topo
+        io_toposort_timing.append(time_topo - t_topo)
 
         for node in fgraph.toposort():
 
-            t0 = time.time()
             if isinstance(node.op, HostFromGpu):
                 mapping[node.outputs[0]] = node.inputs[0]
                 continue
 
             # Move only if any of the inputs are on the GPU.
-            move_to_GPU = True
+            move_to_GPU = False
 
-            '''
             if any([isinstance(i, GpuArrayVariable) or
-                    isinstance(i, GpuArraySharedVariable)
-                    for i in [mapping[v] for v in node.inputs] +
-                              node.outputs]):
+                   isinstance(i, GpuArraySharedVariable)
+                   for i in [mapping[v] for v in node.inputs] +
+                   node.outputs]):
 
                 move_to_GPU = True
-            '''
-
-            out_clients = [o.clients for o in node.outputs]
 
             context_name = None
             for i in [mapping[i] for i in node.inputs]:
@@ -340,29 +330,28 @@ class GraphToGPU(NavigatorOptimizer):
 
             new_ops = None
             outputs = []
-            ex_opt_time = None
             # Apply the lifter
             for lopt in (self.local_optimizers_all +
                          self.local_optimizers_map.get(type(node.op), []) +
                          self.local_optimizers_map.get(node.op, [])):
-                
-                process_count[lopt] += 1
+
                 if move_to_GPU:
                     t_opt = time.time()
                     try:
-                        new_ops = lopt.transform(
-                            node.op, context_name,
-                            [mapping[i] for i in node.inputs])
+                        new_ops = lopt.transform(node.op, context_name,
+                                                 [mapping[i] for i in node.inputs])
                     except TypeError:
-                        # Updating again because else we'd be counting 
+                        # Updating again because else we'd be counting
                         # time for two except clauses
                         t_opt = time.time()
-                        new_ops = lopt.transform(node.op, context_name, 
-                            [mapping[i] for i in node.inputs],
-                            node.outputs)
+                        new_ops = lopt.transform(node.op, context_name,
+                                                 [mapping[i] for i in node.inputs],
+                                                 node.outputs)
                     finally:
                         t_opt2 = time.time()
+                        time_opts[lopt] += t_opt2 - t_opt
                     if new_ops:
+                        process_count[lopt] += 1
                         break
             if not new_ops:
                 newnode = node.clone_with_new_inputs([mapping.get(i)
@@ -385,9 +374,7 @@ class GraphToGPU(NavigatorOptimizer):
                                   return_list=True)
 
             if new_ops:
-                node_created[lopt] += len(theano.gof.graph.ops([mapping[i] for i in node.inputs], outputs))
-                self.new_opts.append(lopt)
-                time_opts[lopt] = t_opt2 - t_opt
+                node_created[lopt] += len(graph.ops([mapping[i] for i in node.inputs], outputs))
 
             for new_o, old_o in zip(outputs, node.outputs):
                 mapping[old_o] = new_o
@@ -402,47 +389,26 @@ class GraphToGPU(NavigatorOptimizer):
             new_nodes.append(new_o)
         fgraph.replace_all_validate(zip(fgraph.outputs, new_nodes))
 
-        end_nb_nodes = len(fgraph.apply_nodes)
-
-        return (self, start_nb_nodes, end_nb_nodes, max_nb_nodes, io_toposort_timing,
-                nb_nodes, time_opts, node_created)
+        return (self, io_toposort_timing, time_opts, node_created, process_count)
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        (opt, start_nb_nodes, end_nb_nodes, max_nb_nodes, io_toposort_timing,
-         nb_nodes, time_opts, node_created) = prof
+        (opt, io_toposort_timing, time_opts, node_created, process_count) = prof
         blanc = ('    ' * level)
         print(blanc, "GraphToGPUOptimizer", end=' ', file=stream)
+
         print(blanc, getattr(opt, "name",
                              getattr(opt, "__name__", "")), file=stream)
-        print(blanc, "  nb nodes (start, end,  max) %d %d %d" % (
-            start_nb_nodes, end_nb_nodes, max_nb_nodes), file=stream)
+
         print(blanc, "  time io_toposort %.3fs" % sum(
             io_toposort_timing), file=stream)
 
-        s = sum([time_opts[o] for o in opt.new_opts])
-        
-        print(blanc, "  time in local optimizers %.3fs" % s, file=stream)
-
-        # Build a dictionary of opt and time taken
-        opt_time_dict = dict()
-        for o in opt.new_opts:
-            if o not in opt_time_dict:
-                opt_time_dict[o] = time_opts[o]
-            else:
-                opt_time_dict[o] += time_opts[o]
-
-        # print time per each optimizer
-        for k,v in opt_time_dict.iteritems():
-            print(blanc, "Local Optimizer :" + str(k) + " takes time : %.3f" %v, file=stream)
+        s = sum([v for k, v in time_opts.iteritems()])
+        print(blanc, "Total time taken by local optimizers %.3fs " % s, file=stream)
 
         count_opt = []
         not_used = []
         not_used_time = 0
-        process_count = {}
-        for o in (opt.new_opts):
-            process_count.setdefault(o, 0)
-            process_count[o] + 1
 
         for o, count in iteritems(process_count):
             if count > 0:
@@ -454,13 +420,13 @@ class GraphToGPU(NavigatorOptimizer):
 
         if count_opt:
             print(blanc,
-                  '  times - times applied - nb node created - name:',
+                  '  times - times applied - Node created - name:',
                   file=stream)
             count_opt.sort()
             for (t, count, n_created, o) in count_opt[::-1]:
                 print(blanc, '  %.3fs - %d - %d - %s' % (
                     t, count, n_created, o), file=stream)
-            print(blanc, '  %.3fs - in %d optimization that where not used (display only those with a runtime > 0)' % (
+            print(blanc, '  %.3fs - in %d optimization that were not used (display only those with a runtime > 0)' % (
                 not_used_time, len(not_used)), file=stream)
             not_used.sort(key=lambda nu: (nu[0], str(nu[1])))
             for (t, o) in not_used[::-1]:
@@ -468,7 +434,6 @@ class GraphToGPU(NavigatorOptimizer):
                     # Skip opt that have 0 times, they probably wasn't even tried.
                     print(blanc + "  ", '  %.3fs - %s' % (t, o), file=stream)
             print(file=stream)
-
 
     @staticmethod
     def merge_profile(prof1, prof2):
@@ -491,8 +456,7 @@ class GraphToGPU(NavigatorOptimizer):
 
         local_optimizers_map = merge_dict(prof1[0].local_optimizers_map,
                                           prof2[0].local_optimizers_map)
-
-        new_opt = GraphToGPU(local_optimizers,local_optimizers_map)
+        new_opt = GraphToGPU(local_optimizers, local_optimizers_map)
 
         def merge_list(l1, l2):
             l = copy.copy(l1)
@@ -501,23 +465,17 @@ class GraphToGPU(NavigatorOptimizer):
                     l[idx] += nb
                 else:
                     l.append(nb)
-            return l     
+            return l
 
-        max_nb_nodes = max(prof1[3], prof2[3])
-
-        io_toposort_timing = merge_list(prof1[4], prof2[4])
-
-        nb_nodes = merge_list(prof1[5], prof2[5])
-
-        time_opts = merge_dict(prof1[6], prof2[6])
-
-        node_created = merge_dict(prof1[7], prof2[7])
+        io_toposort_timing = merge_list(prof1[1], prof2[1])
+        time_opts = merge_dict(prof1[2], prof2[2])
+        node_created = merge_dict(prof1[3], prof2[3])
+        process_count = merge_dict(prof1[4], prof2[4])
         return (new_opt,
-                max_nb_nodes,
-                io_toposort_timing, 
-                nb_nodes,
-                time_opts,  
-                node_created)
+                io_toposort_timing,
+                time_opts,
+                node_created,
+                process_count)
 
 
 @local_optimizer([GpuFromHost, GpuToGpu, HostFromGpu])
@@ -917,7 +875,7 @@ def local_gpuajoin_1(node):
 @op_lifter([tensor.Split])
 @register_opt2([tensor.Split], 'fast_compile')
 def local_gpua_split(op, context_name, inputs):
-#TODO use props
+    # TODO use props
     return GpuSplit(op.len_splits)
 
 
@@ -1009,7 +967,7 @@ def local_advincsub1_gpua_inplace(node):
 @register_opt2([tensor.CAReduce, tensor.Sum, tensor.elemwise.Prod], 'fast_compile')
 def local_gpua_careduce(op, context_name, inputs, outputs):
     if isinstance(op.scalar_op, (scalar.Add, scalar.Mul,
-                                      scalar.Maximum, scalar.Minimum)):
+                                 scalar.Maximum, scalar.Minimum)):
 
         ctx = get_context(context_name)
         if ctx.kind == b'opencl':
@@ -1231,7 +1189,6 @@ def local_assert(op, context_name, inputs):
     return [host_from_gpu(op(as_gpuarray_variable(inputs[0],
                                                   context_name),
                              *inputs[1:]))]
-
 
 
 @register_opt('fast_compile')

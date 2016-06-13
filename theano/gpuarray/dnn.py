@@ -25,7 +25,7 @@ from theano.tensor.signal.pool import (
 from . import pygpu
 from .type import get_context, gpu_context_type, list_contexts, GpuArrayType
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
-                        gpu_contiguous, GpuAllocEmpty, gpu_alloc_empty, 
+                        gpu_contiguous, gpu_alloc_empty,
                         empty_like)
 from .elemwise import GpuElemwise
 
@@ -942,8 +942,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         shape2 = shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1
         shape3 = shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1
         out = gpu_alloc_empty(img.dtype, ctx_name)(shape_i(img, 0, fgraph),
-                                                 shape_i(kerns, 1, fgraph),
-                                                 shape2, shape3)
+                                                   shape_i(kerns, 1, fgraph),
+                                                   shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode=conv_mode, precision=precision)(kerns.shape)
         return gpu_dnn_conv_gradI()(kerns, img, out, desc)
@@ -1412,11 +1412,11 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
 @local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights,
                   AbstractConv2d_gradInputs])
 @register_opt2([AbstractConv2d, AbstractConv2d_gradWeights,
-                  AbstractConv2d_gradInputs], 'fast_compile')
+                AbstractConv2d_gradInputs], 'fast_compile')
 def local_abstractconv_cudnn_graph(op, context_name, inputs):
     if (not isinstance(op, (AbstractConv2d,
-                                 AbstractConv2d_gradWeights,
-                                 AbstractConv2d_gradInputs))):
+                            AbstractConv2d_gradWeights,
+                            AbstractConv2d_gradInputs))):
         return None
 
     inp1 = inputs[0]
@@ -1462,8 +1462,8 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs):
 @local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights,
                   AbstractConv2d_gradInputs])
 def local_abstractconv_cudnn(node):
-    ctx = infer_context(*node.inputs)
-    return local_abstractconv_dnn_graph(node.op, ctx, node.inputs)
+    ctx = infer_context_name(*node.inputs)
+    return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs)
 
 conv_groupopt.register('local_abstractconv_cudnn_graph',
                        local_abstractconv_cudnn_graph, 20,
