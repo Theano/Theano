@@ -151,15 +151,14 @@ class TestFFT(unittest.TestCase):
     def test_params(self):
         inputs_val = numpy.random.random((1, N))
         inputs = theano.shared(inputs_val)
-        with self.assertRaises(ValueError):
-            fft.rfft(inputs, norm=123)
+
+        self.assertRaises(ValueError, fft.rfft, inputs, norm=123)
 
         inputs_val = numpy.random.random((1, N // 2 + 1, 2))
         inputs = theano.shared(inputs_val)
-        with self.assertRaises(ValueError):
-            fft.irfft(inputs, norm=123)
-        with self.assertRaises(ValueError):
-            fft.irfft(inputs, is_odd=123)
+
+        self.assertRaises(ValueError, fft.irfft, inputs, norm=123)
+        self.assertRaises(ValueError, fft.irfft, inputs, is_odd=123)
 
     def test_grad_rfft(self):
         # The numerical gradient of the FFT is sensitive, must set large

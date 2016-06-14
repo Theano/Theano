@@ -22,7 +22,7 @@ if not pycuda_available:  # noqa
     raise SkipTest('Optional package pycuda not available')
 
 # Transform sizes
-N = 64
+N = 32
 
 
 class TestFFT(unittest.TestCase):
@@ -244,14 +244,13 @@ class TestFFT(unittest.TestCase):
         utt.verify_grad(f_irfft, [inputs_val], eps=eps)
 
     def test_params(self):
-        inputs_val = np.random.random((1, N)).astype('float32')
+        inputs_val = numpy.random.random((1, N)).astype('float32')
         inputs = theano.shared(inputs_val)
-        with self.assertRaises(ValueError):
-            theano.gpuarray.fft.curfft(inputs, norm=123)
 
-        inputs_val = np.random.random((1, N // 2 + 1, 2)).astype('float32')
+        self.assertRaises(ValueError, theano.gpuarray.fft.curfft, inputs, norm=123)
+
+        inputs_val = numpy.random.random((1, N // 2 + 1, 2)).astype('float32')
         inputs = theano.shared(inputs_val)
-        with self.assertRaises(ValueError):
-            theano.gpuarray.fft.cuirfft(inputs, norm=123)
-        with self.assertRaises(ValueError):
-            theano.gpuarray.fft.cuirfft(inputs, is_odd=123)
+
+        self.assertRaises(ValueError, theano.gpuarray.fft.cuirfft, inputs, norm=123)
+        self.assertRaises(ValueError, theano.gpuarray.fft.cuirfft, inputs, is_odd=123)
