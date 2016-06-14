@@ -185,7 +185,6 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
 
     // Create temporary columns
     const int max_threads = %(omp_max_threads)s < batchSize ? %(omp_max_threads)s : batchSize;
-
     npy_intp col_dim[3];
     col_dim[0] = (npy_intp)max_threads;
     col_dim[1] = (npy_intp)(nChannels * kW * kH);
