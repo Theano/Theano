@@ -673,6 +673,15 @@ def local_gpua_advanced_incsubtensor(node, context_name):
             set_instead_of_inc=set_instead_of_inc)
 
 
+@register_inplace()
+@local_optimizer([GpuAdvancedIncSubtensor1, GpuAdvancedIncSubtensor1_dev20])
+def local_advincsub1_gpua_inplace(node):
+    if isinstance(node.op, (GpuAdvancedIncSubtensor1,
+                            GpuAdvancedIncSubtensor1_dev20)):
+        if not node.op.inplace:
+            return [node.op.clone_inplace()(*node.inputs)]
+
+
 @register_opt('fast_compile')
 @op_lifter([tensor.CAReduce, tensor.Sum, tensor.elemwise.Prod])
 def local_gpua_careduce(node, context_name):

@@ -608,11 +608,6 @@ class GpuAdvancedIncSubtensor1(Op):
         }
         step[0] = 0;
         num_indices = PyArray_SIZE(%(ind)s);
-        if ((num_indices - 1) > LONG_MAX) {
-          PyErr_Format(PyExc_AssertionError,
-                       "num_indices %%lld exceeds LONG_MAX + 1", (long long)num_indices);
-          %(fail)s
-        }
         if (!%(inplace)s) {
           %(out)s = theano_try_copy(%(out)s, %(x)s);
           if (%(out)s == NULL)
@@ -622,42 +617,49 @@ class GpuAdvancedIncSubtensor1(Op):
           %(out)s = %(x)s;
           Py_INCREF(%(out)s);
         }
-        broadcast_y = PyGpuArray_DIM(%(y)s, 0) == 1;
-        for (j = 0; j < num_indices; j++) {
-          start[0] = *(dtype_%(ind)s *)PyArray_GETPTR1(%(ind)s, j);
-          if (start[0] < 0)
-            start[0] += PyGpuArray_DIM(%(out)s, 0);
-          if (start[0] < 0 || start[0] >= PyGpuArray_DIM(%(out)s, 0)) {
-             PyErr_SetString(PyExc_IndexError, "index out of bounds");
-             %(fail)s;
+        if (num_indices != 0) {
+          if ((num_indices - 1) > LONG_MAX) {
+            PyErr_Format(PyExc_AssertionError,
+                         "num_indices %%lld exceeds LONG_MAX + 1", (long long)num_indices);
+            %(fail)s
           }
-          row_x = pygpu_index(%(out)s, start, (ssize_t *)PyGpuArray_DIMS(%(out)s), step);
-          if (row_x == NULL)
-            %(fail)s;
+          broadcast_y = PyGpuArray_DIM(%(y)s, 0) == 1;
+          for (j = 0; j < num_indices; j++) {
+            start[0] = *(dtype_%(ind)s *)PyArray_GETPTR1(%(ind)s, j);
+            if (start[0] < 0)
+              start[0] += PyGpuArray_DIM(%(out)s, 0);
+            if (start[0] < 0 || start[0] >= PyGpuArray_DIM(%(out)s, 0)) {
+               PyErr_SetString(PyExc_IndexError, "index out of bounds");
+               %(fail)s;
+            }
+            row_x = pygpu_index(%(out)s, start, (ssize_t *)PyGpuArray_DIMS(%(out)s), step);
+            if (row_x == NULL)
+              %(fail)s;
 
-          if (broadcast_y)
-            start[0] = 0;
-          else
-            start[0] = j;
+            if (broadcast_y)
+              start[0] = 0;
+            else
+              start[0] = j;
 
-          row_y = pygpu_index(%(y)s, start, (ssize_t *)PyGpuArray_DIMS(%(y)s), step);
-          if (row_y == NULL) {
+            row_y = pygpu_index(%(y)s, start, (ssize_t *)PyGpuArray_DIMS(%(y)s), step);
+            if (row_y == NULL) {
+              Py_DECREF(row_x);
+              %(fail)s;
+            }
+
+            if (%(set_instead_of_inc)s) {
+              ret = GpuArray_setarray(&row_x->ga, &row_y->ga);
+            } else {
+              void *args[2];
+              args[0] = (void *)&row_x->ga;
+              args[1] = (void *)&row_y->ga;
+              ret = GpuElemwise_call(iadd, args, GE_BROADCAST);
+            }
             Py_DECREF(row_x);
-            %(fail)s;
+            Py_DECREF(row_y);
+            if (ret != GA_NO_ERROR)
+              PyErr_SetString(PyExc_RuntimeError, "Failed to set/inc elements");
           }
-
-          if (%(set_instead_of_inc)s) {
-            ret = GpuArray_setarray(&row_x->ga, &row_y->ga);
-          } else {
-            void *args[2];
-            args[0] = (void *)&row_x->ga;
-            args[1] = (void *)&row_y->ga;
-            ret = GpuElemwise_call(iadd, args, GE_BROADCAST);
-          }
-          Py_DECREF(row_x);
-          Py_DECREF(row_y);
-          if (ret != GA_NO_ERROR)
-            PyErr_SetString(PyExc_RuntimeError, "Failed to set/inc elements");
         }
         """ % dict(x=inputs[0], y=inputs[1], ind=inputs[2], out=outputs[0],
                    fail=sub['fail'], inplace=int(self.inplace),
@@ -665,7 +667,7 @@ class GpuAdvancedIncSubtensor1(Op):
                    set_instead_of_inc=int(self.set_instead_of_inc))
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
 
 class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
