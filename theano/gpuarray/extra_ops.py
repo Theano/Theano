@@ -454,7 +454,7 @@ class GpuCumsum(GpuKernelBase, Op):
 @register_opt('fast_compile')
 @op_lifter([CumsumOp])
 @register_opt2([CumsumOp], 'fast_compile')
-def use_gpu_cumsumop(op, ctx_name, inputs):
+def use_gpu_cumsumop(op, ctx_name, inputs, outputs):
     if inputs[0].dtype == 'float32':
         axis = op.axis
         x = inputs[0]

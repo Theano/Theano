@@ -230,7 +230,7 @@ KERNEL void k_multi_warp_multinomial(
 @register_opt('fast_compile')
 @op_lifter([theano.sandbox.multinomial.MultinomialFromUniform])
 @register_opt2([theano.sandbox.multinomial.MultinomialFromUniform], 'fast_compile')
-def local_gpua_multinomial(op, context_name, inputs):
+def local_gpua_multinomial(op, context_name, inputs, outputs):
     # TODO : need description for function
 
     if len(inputs) == 2:
