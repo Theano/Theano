@@ -242,6 +242,14 @@ AddConfigVar('gpuarray.preallocate',
              FloatParam(0),
              in_c_key=False)
 
+AddConfigVar('gpuarray.single_stream',
+             """Switch between single stream mode or multi-stream
+             mode.  If your computation can't benefit from multiple
+             streams, single-stream is usually faster (by about 10%)
+             """,
+             BoolParam(True),
+             in_c_key=False)
+
 
 def safe_no_dnn_workmem(workmem):
     """
