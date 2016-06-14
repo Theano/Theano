@@ -30,7 +30,7 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
 from theano.tests.breakpoint import PdbBreakpoint
 
 from .type import (GpuArrayType, GpuArrayConstant, get_context,
-                   ContextNotDefined, GpuArraySharedVariable, GpuArrayVariable)
+                   ContextNotDefined)
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         host_from_gpu, GpuToGpu,
                         HostFromGpu, GpuFromHost,
@@ -312,14 +312,17 @@ class GraphToGPU(NavigatorOptimizer):
                 continue
 
             # Move only if any of the inputs are on the GPU.
-            move_to_GPU = False
+            move_to_GPU = True
 
+            '''
+            import GpuArrayVariable and GpuArraySharedVariable when you uncomment
             if any([isinstance(i, GpuArrayVariable) or
                    isinstance(i, GpuArraySharedVariable)
                    for i in [mapping[v] for v in node.inputs] +
                    node.outputs]):
 
                 move_to_GPU = True
+            '''
 
             context_name = None
             for i in [mapping[i] for i in node.inputs]:
@@ -845,10 +848,14 @@ def local_gpu_pdbbreakpoint_op(node):
 def local_gpua_lazy_ifelse(op, context_name, inputs):
     if op.gpu:
         return
+    if isinstance(inputs[0].type, GpuArrayType):
+        return
     c = inputs[0]
     inps = []
     for v in inputs[1:]:
-        if isinstance(v.type, (tensor.TensorType, GpuArrayType)):
+        if isinstance(v.type, GpuArrayType):
+            return
+        elif isinstance(v.type, tensor.TensorType):
             inps.append(as_gpuarray_variable(v, context_name))
         else:
             inps.append(v)
@@ -883,6 +890,8 @@ def local_gpua_split(op, context_name, inputs):
 @op_lifter([tensor.Subtensor])
 @register_opt2([tensor.Subtensor], 'fast_compile')
 def local_gpua_subtensor(op, context_name, inputs, outputs):
+    if isinstance(inputs[0].type, GpuArrayType):
+        return
     x = inputs[0]
     # list of list containing clients
     # it is clients per node basis
