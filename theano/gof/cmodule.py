@@ -2030,7 +2030,7 @@ class GCC_compiler(Compiler):
                             break
                     _logger.info("g++ -march=native equivalent flags: %s",
                                  GCC_compiler.march_flags)
-            
+
             # Find working march flag:
             #   -- if current GCC_compiler.march_flags works, we're done.
             #   -- else replace -march and -mtune with ['core-i7-avx', 'core-i7', 'core2']
@@ -2059,7 +2059,7 @@ class GCC_compiler(Compiler):
                         GCC_compiler.march_flags[march_ind] = '-march=' + march_flag
                     if mtune_ind is not None:
                         GCC_compiler.march_flags[mtune_ind] = '-mtune=' + march_flag
-                
+
                     compilation_result, execution_result = try_march_flag(GCC_compiler.march_flags)
 
                     if compilation_result and execution_result:
