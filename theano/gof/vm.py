@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 
 def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                               dependencies):
+    """
+    WRITEME : explain the parameters
+    """
     reallocated_info = {}
     viewed_by = {}
     for var in fgraph.variables:
@@ -189,7 +192,9 @@ class VM(object):
         raise NotImplementedError('override me')
 
     def update_profile(self, profile):
-        # accumulate into the profile object
+        """
+        Accumulate into the profile object
+        """
         for node, thunk, t, c in zip(self.nodes, self.thunks,
                                      self.call_times, self.call_counts):
             profile.apply_time.setdefault(node, 0.0)
@@ -723,6 +728,9 @@ class VM_Linker(link.LocalLinker):
 
     def accept(self, fgraph, no_recycling=None):
         """
+        Check if fgraph is the first FunctionGraph that has ever been
+        associated to self, else, create a new VM_Linker
+        associated to fgraph
 
         Parameters
         ----------
