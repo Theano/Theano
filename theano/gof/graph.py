@@ -758,9 +758,9 @@ def variables(i, o):
     Parameters
     ----------
     i : list
-        Input L{Variable}s.
+        Input variables.
     o : list
-        Output L{Variable}s.
+        Output variables.
 
     Returns
     -------
@@ -781,9 +781,9 @@ def orphans(i, o):
     Parameters
     ----------
     i : list
-        Input L{Variable}s.
+        Input Variables.
     o : list
-        Output L{Variable}s.
+        Output Variables.
 
     Returns
     -------
@@ -806,9 +806,9 @@ def clone(i, o, copy_inputs=True):
     Parameters
     ----------
     i : list
-        Input L{Variable}s.
+        Input Variables.
     o : list
-        Output L{Variable}s.
+        Output Variables.
     copy_inputs : bool
         If True, the inputs will be copied (defaults to True).
 
