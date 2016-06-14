@@ -162,13 +162,13 @@ class Kernel(object):
         dictionary of flags
     codevar: str
         the name of the variable for the code object.
-        (defaults to 'kcode_' + name)
+        (defaults to `kcode_` + name)
     binvar: str
         the name of the variable for the binary object.
-        (defaults to 'kbin_' + name)
+        (defaults to `kbin_` + name)
     objvar: str
         the name of the variable for the kernel object.
-        (defaults to 'k_' + name)
+        (defaults to `k_` + name)
 
     """
 
