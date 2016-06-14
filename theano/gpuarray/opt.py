@@ -4,7 +4,7 @@ import numpy
 import logging
 import pdb
 import time
-from six import itervalues, iteritems
+from six import iteritems
 from six.moves import xrange
 
 import theano
@@ -265,23 +265,11 @@ class GraphToGPU(NavigatorOptimizer):
     def add_requirements(self, fgraph):
         fgraph.attach_feature(toolbox.ReplaceValidate())
 
-    def get_local_optimizers(self):
-        for opt in self.local_optimizers_all:
-            yield opt
-        # if repeat is not a problem we can drop the set
-        s = set()
-        for lopt in itervalues(self.local_optimizers_map):
-            for opt in lopt:
-                if opt not in s:
-                    yield opt
-                    s.add(opt)
-
     def apply(self, fgraph):
         mapping = {}
         time_opts = {}
         node_created = {}
         process_count = {}
-        io_toposort_timing = []
         # Building a new graph
         # Iterating through inputs of graph
         for i in fgraph.inputs:
@@ -293,19 +281,19 @@ class GraphToGPU(NavigatorOptimizer):
             if isinstance(i, theano.Constant):
                 mapping[i] = i
         for node in fgraph.toposort():
-            for lopt in (self.local_optimizers_all +
+            for lopt in (self.local_optimizers_map.get(node.op, []) +
                          self.local_optimizers_map.get(type(node.op), []) +
-                         self.local_optimizers_map.get(node.op, [])):
+                         self.local_optimizers_all):
                     process_count.setdefault(lopt, 0)
                     time_opts.setdefault(lopt, 0)
                     node_created.setdefault(lopt, 0)
 
         t_topo = time.time()
-        fgraph.toposort()
+        topo = fgraph.toposort()
         time_topo = time.time() - t_topo
-        io_toposort_timing.append(time_topo - t_topo)
+        toposort_timing = time_topo - t_topo
 
-        for node in fgraph.toposort():
+        for node in topo:
 
             if isinstance(node.op, HostFromGpu):
                 mapping[node.outputs[0]] = node.inputs[0]
@@ -334,9 +322,9 @@ class GraphToGPU(NavigatorOptimizer):
             new_ops = None
             outputs = []
             # Apply the lifter
-            for lopt in (self.local_optimizers_all +
+            for lopt in (self.local_optimizers_map.get(node.op, []) +
                          self.local_optimizers_map.get(type(node.op), []) +
-                         self.local_optimizers_map.get(node.op, [])):
+                         self.local_optimizers_all):
 
                 if move_to_GPU:
                     t_opt = time.time()
@@ -392,11 +380,11 @@ class GraphToGPU(NavigatorOptimizer):
             new_nodes.append(new_o)
         fgraph.replace_all_validate(zip(fgraph.outputs, new_nodes))
 
-        return (self, io_toposort_timing, time_opts, node_created, process_count)
+        return (self, toposort_timing, time_opts, node_created, process_count)
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        (opt, io_toposort_timing, time_opts, node_created, process_count) = prof
+        (opt, toposort_timing, time_opts, node_created, process_count) = prof
         blanc = ('    ' * level)
         print(blanc, "GraphToGPUOptimizer", end=' ', file=stream)
 
@@ -404,7 +392,7 @@ class GraphToGPU(NavigatorOptimizer):
                              getattr(opt, "__name__", "")), file=stream)
 
         print(blanc, "  time io_toposort %.3fs" % sum(
-            io_toposort_timing), file=stream)
+            toposort_timing), file=stream)
 
         s = sum([v for k, v in time_opts.iteritems()])
         print(blanc, "Total time taken by local optimizers %.3fs " % s, file=stream)
@@ -440,8 +428,7 @@ class GraphToGPU(NavigatorOptimizer):
 
     @staticmethod
     def merge_profile(prof1, prof2):
-        # (opt, loop_timing, loop_process_count, max_nb_nodes,
-        # global_opt_timing, nb_nodes, time_opts, io_toposort_timing) = prof1
+        # (opt, toposort_timing, time_opts, node_created, process_count) = prof1
         local_optimizers = OrderedSet(prof1[0].local_optimizers_all).union(
             prof2[0].local_optimizers_all)
 
@@ -470,12 +457,12 @@ class GraphToGPU(NavigatorOptimizer):
                     l.append(nb)
             return l
 
-        io_toposort_timing = merge_list(prof1[1], prof2[1])
+        toposort_timing = prof1[1] + prof2[1]
         time_opts = merge_dict(prof1[2], prof2[2])
         node_created = merge_dict(prof1[3], prof2[3])
         process_count = merge_dict(prof1[4], prof2[4])
         return (new_opt,
-                io_toposort_timing,
+                toposort_timing,
                 time_opts,
                 node_created,
                 process_count)
@@ -848,6 +835,7 @@ def local_gpu_pdbbreakpoint_op(node):
 def local_gpua_lazy_ifelse(op, context_name, inputs):
     if op.gpu:
         return
+    # this node is already on GPU, so don't change the graph
     if isinstance(inputs[0].type, GpuArrayType):
         return
     c = inputs[0]
@@ -1193,11 +1181,10 @@ def local_gpua_softmaxwithbias(node, context_name):
 @register_opt2([theano.tensor.opt.Assert], 'fast_compile')
 def local_assert(op, context_name, inputs):
     # Check if input nodes are already on the GPU
-    if isinstance(node.inputs[0].type, GpuArrayType):
+    if isinstance(inputs[0].type, GpuArrayType):
         return
-    return [host_from_gpu(op(as_gpuarray_variable(inputs[0],
-                                                  context_name),
-                             *inputs[1:]))]
+    return [op(as_gpuarray_variable(inputs[0], context_name),
+               *inputs[1:])]
 
 
 @register_opt('fast_compile')
