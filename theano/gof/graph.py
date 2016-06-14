@@ -701,8 +701,8 @@ def inputs(variable_list, blockers=None):
 
 def variables_and_orphans(i, o):
     """
-    Extracts list of variables within input and
-    output nodes via dfs travesal and chooses the orphans among them
+    Extract list of variables between i and o nodes via
+    dfs traversal and chooses the orphans among them
 
     Parameters
     -----------
