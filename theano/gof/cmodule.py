@@ -1484,13 +1484,13 @@ def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
     Paramters
     ----------
     parent
-    Root node to start deleting from
+        Root node to start deleting from
     ignore_nocleanup
-    Delete the tree if flag is TRUE
+        Delete the tree if flag is TRUE
     level
-    Python Logging level. Set to "DEBUG" by default
+        Python Logging level. Set to "DEBUG" by default
     ignore_if_missing
-    If set to True, just return without any issue if parent is NULL
+        If set to True, just return without any issue if parent is NULL
     """
     if ignore_if_missing and not os.path.exists(parent):
         return
