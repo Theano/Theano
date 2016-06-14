@@ -5,6 +5,7 @@ Generate and compile C modules for Python.
 from __future__ import absolute_import, print_function, division
 
 import atexit
+import textwrap
 import six.moves.cPickle as pickle
 import logging
 import os
@@ -24,6 +25,7 @@ import numpy.distutils  # TODO: TensorType should handle this
 import theano
 from theano.compat import PY3, decode, decode_iter
 from six import b, BytesIO, StringIO, string_types, iteritems
+from six.moves import xrange
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.utils import hash_from_code
@@ -125,6 +127,7 @@ class ExtFunction(object):
 
 
 class DynamicModule(object):
+
     def __init__(self, name=None):
         assert name is None, (
             "The 'name' parameter of DynamicModule"
@@ -1788,6 +1791,34 @@ class Compiler(object):
                                          output=output, compiler=compiler)
 
 
+def try_march_flag(flags):
+    """
+        Try to compile and run a simple C snippet using current flags.
+        Return: compilation success (True/False), execution success (True/False)
+    """
+    test_code = textwrap.dedent("""\
+            #include <cmath>
+            using namespace std;
+            int main(int argc, char** argv)
+            {
+                float Nx = -1.3787706641;
+                float Sx = 25.0;
+                double r = Nx + sqrt(Sx);
+                if (abs(r - 3.621229) > 0.01)
+                {
+                    return -1;
+                }
+                return 0;
+            }
+            """)
+
+    cflags = flags + ['-L' + d for d in theano.gof.cmodule.std_lib_dirs()]
+    compilation_result, execution_result = GCC_compiler.try_compile_tmp(
+        test_code, tmp_prefix='try_march_',
+        flags=cflags, try_run=True)
+    return compilation_result, execution_result
+
+
 class GCC_compiler(Compiler):
     # The equivalent flags of --march=native used by g++.
     march_flags = None
@@ -2008,6 +2039,54 @@ class GCC_compiler(Compiler):
                     _logger.info("g++ -march=native equivalent flags: %s",
                                  GCC_compiler.march_flags)
 
+            # Find working march flag:
+            #   -- if current GCC_compiler.march_flags works, we're done.
+            #   -- else replace -march and -mtune with ['core-i7-avx', 'core-i7', 'core2']
+            #      and retry with all other flags and arguments intact.
+            #   -- else remove all other flags and only try with -march = default + flags_to_try.
+            #   -- if none of that worked, set GCC_compiler.march_flags = [] (for x86).
+
+            default_compilation_result, default_execution_result = try_march_flag(GCC_compiler.march_flags)
+            if not default_compilation_result or not default_execution_result:
+                march_success = False
+                march_ind = None
+                mtune_ind = None
+                default_detected_flag = []
+                march_flags_to_try = ['corei7-avx', 'corei7', 'core2']
+
+                for m_ in xrange(len(GCC_compiler.march_flags)):
+                    march_flag = GCC_compiler.march_flags[m_]
+                    if 'march' in march_flag:
+                        march_ind = m_
+                        default_detected_flag = [march_flag]
+                    elif 'mtune' in march_flag:
+                        mtune_ind = m_
+
+                for march_flag in march_flags_to_try:
+                    if march_ind is not None:
+                        GCC_compiler.march_flags[march_ind] = '-march=' + march_flag
+                    if mtune_ind is not None:
+                        GCC_compiler.march_flags[mtune_ind] = '-mtune=' + march_flag
+
+                    compilation_result, execution_result = try_march_flag(GCC_compiler.march_flags)
+
+                    if compilation_result and execution_result:
+                        march_success = True
+                        break
+
+                if not march_success:
+                    # perhaps one of the other flags was problematic; try default flag in isolation again:
+                    march_flags_to_try = default_detected_flag + march_flags_to_try
+                    for march_flag in march_flags_to_try:
+                        compilation_result, execution_result = try_march_flag(['-march=' + march_flag])
+                        if compilation_result and execution_result:
+                            march_success = True
+                            GCC_compiler.march_flags = ['-march=' + march_flag]
+                            break
+
+                if not march_success:
+                    GCC_compiler.march_flags = []
+
         # Add the detected -march=native equivalent flags
         if march_flags and GCC_compiler.march_flags:
             cxxflags.extend(GCC_compiler.march_flags)
@@ -2080,7 +2159,6 @@ class GCC_compiler(Compiler):
                     include_dirs=None, lib_dirs=None, libs=None,
                     preargs=None, py_module=True, hide_symbols=True):
         """
-
         Parameters
         ----------
         module_name : str
