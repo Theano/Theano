@@ -8,6 +8,7 @@ import theano.tensor.inplace
 from theano.tensor import basic as tensor
 from theano import tensor as T
 from theano import config
+from theano.gof.opt import check_stack_trace
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import (sigmoid, sigmoid_inplace,
                                 softplus, ultra_fast_sigmoid, hard_sigmoid)
@@ -126,40 +127,37 @@ class T_sigmoid_opts(unittest.TestCase):
 
             # tests inv_1_plus_exp
             f = theano.function([x], T.fill(x, 1.0) / (1 + T.exp(-x)), mode=m)
-            assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
+            # todo: solve issue #4589 first
+            # assert check_stack_trace(f, ops_to_check=sigmoid)
             assert [node.op for node in f.maker.fgraph.toposort()] == [sigmoid]
             f(data)
             f = theano.function([x], T.fill(x, 1.0) / (2 + T.exp(-x)), mode=m)
-            assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
             assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid]
             f(data)
             f = theano.function([x], T.fill(x, 1.0) / (1 - T.exp(-x)), mode=m)
-            assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
             assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid]
             f(data)
             f = theano.function([x], T.fill(x, 1.1) / (1 + T.exp(-x)), mode=m)
-            assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
             assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid]
             f(data)
 
             # tests inv_1_plus_exp with neg
             f = theano.function([x], T.fill(x, -1.0) / (1 + T.exp(-x)), mode=m)
-            assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
+            # todo: solve issue #4589 first
+            # assert check_stack_trace(
+            #     f, ops_to_check=[sigmoid, theano.tensor.inplace.neg_inplace])
             assert [node.op for node in f.maker.fgraph.toposort()] == [sigmoid,
                     theano.tensor.inplace.neg_inplace]
             f(data)
             f = theano.function([x], T.fill(x, -1.0) / (1 - T.exp(-x)), mode=m)
-            assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
             assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
                     theano.tensor.inplace.neg_inplace]
             f(data)
             f = theano.function([x], T.fill(x, -1.0) / (2 + T.exp(-x)), mode=m)
-            assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
             assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
                     theano.tensor.inplace.neg_inplace]
             f(data)
             f = theano.function([x], T.fill(x, -1.1) / (1 + T.exp(-x)), mode=m)
-            assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
             assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
                     theano.tensor.inplace.neg_inplace]
             f(data)
@@ -170,37 +168,33 @@ class T_sigmoid_opts(unittest.TestCase):
             # = - (sigm(x) * sigm(x))
             f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
-            assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
+            # todo: solve issue #4589 first
+            # assert check_stack_trace(f, ops_to_check=[sigmoid, T.mul])
             assert [node.op for node in f.maker.fgraph.toposort()] == [sigmoid,
                     T.mul]
             f(data)
             f = theano.function([x], (T.fill(x, -1.1) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
-            assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
             assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
                     T.mul, theano.tensor.inplace.neg_inplace]
             f(data)
             f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
                                 ((2 + T.exp(x)) * (1 + T.exp(-x))), mode=m)
-            assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
             assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
                     T.mul, theano.tensor.inplace.neg_inplace]
             f(data)
             f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (2 + T.exp(-x))), mode=m)
-            assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
             assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
                     T.mul, theano.tensor.inplace.neg_inplace]
             f(data)
             f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (1 + T.exp(x))), mode=m)
-            assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
             assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
                     T.mul, theano.tensor.inplace.neg_inplace]
             f(data)
             f = theano.function([x], (T.fill(x, -1.0) * T.exp(x)) /
                                 ((1 + T.exp(x)) * (2 + T.exp(-x))), mode=m)
-            assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
             assert [node.op for node in f.maker.fgraph.toposort()] != [sigmoid,
                     T.mul, theano.tensor.inplace.neg_inplace]
             f(data)
@@ -218,13 +212,13 @@ class T_sigmoid_opts(unittest.TestCase):
 
         # tests exp_over_1_plus_exp
         f = theano.function([x], 1 - T.exp(x) / (1 + T.exp(x)), mode=m)
-        assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
+        assert check_stack_trace(f, ops_to_check=[tensor.neg, sigmoid_inplace])
         assert [node.op for node in f.maker.fgraph.toposort()] == [
             tensor.neg, sigmoid_inplace]
 
         # tests inv_1_plus_exp
         f = theano.function([x], 1 - T.fill(x, 1.0) / (1 + T.exp(-x)), mode=m)
-        assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
+        assert check_stack_trace(f, ops_to_check=[tensor.neg, sigmoid_inplace])
         assert [node.op for node in f.maker.fgraph.toposort()] == [tensor.neg,
                 sigmoid_inplace]
 
@@ -241,25 +235,26 @@ class T_sigmoid_opts(unittest.TestCase):
         x, y = tensor.vectors('x', 'y')
 
         f = theano.function([x], sigmoid(-x) * tensor.exp(x), mode=m)
-        assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
         match(f, [sigmoid])
+        assert check_stack_trace(f, ops_to_check=sigmoid)
 
         f = theano.function([x], sigmoid(x) * tensor.exp(-x), mode=m)
-        assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
         match(f, [tensor.neg, sigmoid])
+        assert check_stack_trace(f, ops_to_check=sigmoid)
 
         f = theano.function([x], -(-(-(sigmoid(x)))) * tensor.exp(-x), mode=m)
-        assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
         match(f, [tensor.neg, sigmoid, tensor.neg])
+        # assert check_stack_trace(f, ops_to_check=sigmoid)
 
         f = theano.function(
                 [x, y],
                 (sigmoid(x) * sigmoid(-y) * -tensor.exp(-x) *
                  tensor.exp(x * y) * tensor.exp(y)),
                 mode=m)
-        assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
         match(f, [sigmoid, tensor.mul, tensor.neg, tensor.exp, sigmoid,
                   tensor.mul])
+        # assert check_stack_trace(f, ops_to_check=[sigmoid, tensor.mul,
+        #                                           tensor.exp])
 
     def test_perform_sigm_times_exp(self):
         """
@@ -318,7 +313,6 @@ class T_sigmoid_opts(unittest.TestCase):
         mode = self.get_mode()
         if not isinstance(mode, theano.compile.DebugMode):
             f = theano.function([x, lr], ux, mode=mode)
-            assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
             ux_v = f([[50]], 0.1)
             assert not numpy.isnan(ux_v)
 
@@ -328,14 +322,14 @@ class T_sigmoid_opts(unittest.TestCase):
 
         mode = self.get_mode('local_ultra_fast_sigmoid')
         f = theano.function([x], s, mode=mode)
-        assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
+        assert check_stack_trace(f, ops_to_check=sigmoid)
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         assert topo[0].op == sigmoid
 
         mode = self.get_mode().including('local_ultra_fast_sigmoid')
         f = theano.function([x], s, mode=mode)
-        assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
+        assert check_stack_trace(f, ops_to_check=ultra_fast_sigmoid)
         topo = f.maker.fgraph.toposort()
         assert topo[0].op == ultra_fast_sigmoid
         assert len(topo) == 1
@@ -347,17 +341,20 @@ class T_sigmoid_opts(unittest.TestCase):
 
         mode = self.get_mode('local_hard_sigmoid')
         f = theano.function([x], s, mode=mode)
-        assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
+        assert check_stack_trace(f, ops_to_check=sigmoid)
         topo = f.maker.fgraph.toposort()
         assert topo[0].op == sigmoid
         assert len(topo) == 1
 
         mode = self.get_mode().including('local_hard_sigmoid')
         f = theano.function([x], s, mode=mode)
-        assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
         topo = f.maker.fgraph.toposort()
         assert not any([n.op == sigmoid for n in topo])
         ux_v = f([[-50, -10, -4, -1, 0, 1, 4, 10, 50]])
+
+        mode2 = mode.excluding('fusion').excluding('inplace')
+        f2 = theano.function([x], s, mode=mode2)
+        self.assertTrue(check_stack_trace(f2, ops_to_check=theano.tensor.clip))
 
 
 class T_softplus_opts(unittest.TestCase):
@@ -376,7 +373,11 @@ class T_softplus_opts(unittest.TestCase):
 
         out = T.log(sigmoid(x))
         f = theano.function([x], out, mode=self.m)
-        assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
+
+        # Fix ticket #4581 first
+        # assert check_stack_trace(
+        #     f, ops_to_check=(theano.scalar.Neg,
+        #                      theano.tensor.nnet.sigm.ScalarSoftplus))
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 3
         assert isinstance(topo[0].op.scalar_op, theano.scalar.Neg)
@@ -395,12 +396,14 @@ class T_softplus_opts(unittest.TestCase):
         assert isinstance(topo[0].op.scalar_op,
                           theano.tensor.nnet.sigm.ScalarSoftplus)
         assert isinstance(topo[1].op.scalar_op, theano.scalar.Neg)
+        # assert check_stack_trace(f, ops_to_check='all')
         f(numpy.random.rand(54, 11).astype(config.floatX))
 
         # Same test with a flatten
         out = T.log(1 - T.flatten(sigmoid(x)))
         f = theano.function([x], out, mode=self.m)
-        assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
+
+        # assert check_stack_trace(f, ops_to_check='all')
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 3
         assert tensor.is_flat(topo[0].outputs[0])
@@ -429,7 +432,9 @@ class T_softplus_opts(unittest.TestCase):
 
         out = T.log(1 + T.exp(x))
         f = theano.function([x], out, mode=self.m)
-        assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
+
+        # Fix ticket #4581 first
+        # assert check_stack_trace(f, ops_to_check='all')
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op.scalar_op,

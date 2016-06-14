@@ -40,7 +40,9 @@ If adjusting hyperparameters doesn't work for you, you can still get help from
 Theano's NanGuardMode. Change the mode of your theano function to NanGuardMode
 and run them again. The NanGuardMode will monitor all input/output variables in
 each node, and raises an error if NaNs are detected. For how to use the
-``NanGuardMode``, please refer to :ref:`nanguardmode`.
+``NanGuardMode``, please refer to :ref:`nanguardmode`. Using ``optimizer_including=alloc_empty_to_zeros`` 
+with ``NanGuardMode`` could be helpful to detect NaN, for more information please refer 
+to :ref:`AllocEmpty`. 
 
 DebugMode can also help. Run your code in DebugMode with flag
 ``mode=DebugMode,DebugMode.check_py=False``. This will give you clue about which
@@ -76,3 +78,13 @@ Cuda Specific Option
 
 The Theano flag ``nvcc.fastmath=True`` can genarate NaN. Don't set
 this flag while debugging NaN.
+
+
+.. _AllocEmpty:
+
+NaN Introduced by AllocEmpty
+-----------------------------------------------
+
+AllocEmpty is used by many operation such as scan to allocate some memory without properly clearing it. The reason for that is that the allocated memory will subsequently be overwritten. However, this can sometimes introduce NaN depending on the operation and what was previously stored in the memory it is working on. For instance, trying to zero out memory  using a multipication before applying an operation could cause NaN if NaN is already present in the memory, since `0 * NaN => NaN`.
+
+Using ``optimizer_including=alloc_empty_to_zeros`` replaces `AllocEmpty` by `Alloc{0}`, which is helpful to diagnose where NaNs come from. Please note that when running in `NanGuardMode`, this optimizer is not included by default. Therefore, it might be helpful to use them both together. 

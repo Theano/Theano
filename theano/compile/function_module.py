@@ -16,12 +16,11 @@ import numpy
 
 import theano
 from theano import config, gof
-from functools import partial
 from theano.compat import izip
 from theano.gof import graph
 import theano.compile.mode
 from theano.compile.io import (
-    In, SymbolicInput, SymbolicInputKit, SymbolicOutput)
+    In, SymbolicInput, SymbolicOutput)
 from theano.compile.ops import deep_copy_op, view_op
 from theano.gof.graph import is_same_graph
 from theano.gof.op import ops_with_inner_function
@@ -286,7 +285,7 @@ class Function(object):
 
     indices = None
     """
-    List of (SymbolicInput|SymbolicInputKit, indices, [SymbolicInput,...]),
+    List of (SymbolicInput, indices, [SymbolicInput,...]),
     one tuple for each input.
 
     The first tuple element is the SymbolicInput object for the corresponding
@@ -396,7 +395,6 @@ class Function(object):
         # self.input_storage inplace.
         for i, ((input, indices, sinputs), (required, refeed, value)) in \
                 enumerate(zip(self.indices, defaults)):
-            # this is true iff input is not a SymbolicInputKit
             if indices is None:
                 # containers is being used as a stack. Here we pop off
                 # the next one.
@@ -432,41 +430,6 @@ class Function(object):
                     named_inputs.append(input.name)
                 inv_finder[c] = input
                 containers[:1] = []
-            else:
-                # TODO The following code may need to do something to handle
-                # implicit inputs.
-
-                # The input is a SymbolicInputKit, so we take as many
-                # containers as the Kit provides inputs
-                cs = containers[:len(indices)]
-                # distribute does the initialization of the containers
-                input.distribute(value, indices, cs)
-                f = partial(distribute, indices, cs)
-                # Like before, we set a finder entry for the kit. Note that
-                # we are not mapping to a container but to a function which
-                # can reinitialize all the containers
-                finder[i] = f
-                finder[input] = f
-                if input.name not in finder:
-                    finder[input.name] = f
-                else:
-                    finder[input.name] = DUPLICATE
-                # For each input in the kit and its corresponding
-                # container, we put an entry in finder.  This allows
-                # the user to micro-manage elements of the kit if need
-                # be.  All containers inherit the required field and
-                # have their own "provided" counter
-                for c, sin in zip(cs, sinputs):
-                    finder[sin.variable] = c
-                    finder[sin.name] = c
-                    if sin.name not in finder:
-                        finder[sin.name] = c
-                    else:
-                        finder[sin.name] = DUPLICATE
-                    inv_finder[c] = input
-                    c.required = required
-                    c.provided = 0
-                containers[:len(indices)] = []
 
         self.finder = finder
         self.inv_finder = inv_finder
@@ -1033,16 +996,8 @@ def _pickle_Function(f):
 
     for (input, indices, inputs), (required, refeed, default) in \
             zip(f.indices, f.defaults):
-        if isinstance(input, SymbolicInputKit):
-            li = len(indices)
-            if not default:
-                input_storage.append(ins[:li])
-            else:
-                input_storage.append(default)
-            ins[:li] = []
-        else:
-            input_storage.append(ins[0])
-            del ins[0]
+        input_storage.append(ins[0])
+        del ins[0]
 
     inputs_data = [x.data for x in f.input_storage]
 
@@ -1210,7 +1165,7 @@ class FunctionMaker(object):
 
     @staticmethod
     def wrap_in(input):
-        if isinstance(input, (SymbolicInput, SymbolicInputKit)):
+        if isinstance(input, (SymbolicInput)):
             return input
         elif isinstance(input, gof.Variable):
             # r -> SymbolicInput(variable=r)
@@ -1234,9 +1189,10 @@ class FunctionMaker(object):
         # instances in inputs.  For SymbolicInput, this returns None
         # as the list of indices and a list with just the
         # SymbolicInput.
-        if isinstance(sinput, SymbolicInputKit):
-            return sinput.complete(rinputs)
-        elif isinstance(sinput, SymbolicInput):
+        # if isinstance(sinput, SymbolicInputKit):
+        #    return sinput.complete(rinputs)
+        # elif isinstance(sinput, SymbolicInput):
+        if isinstance(sinput, SymbolicInput):
             return [None, [sinput]]
 
     @staticmethod
@@ -1858,7 +1814,7 @@ def convert_function_input(input):
       `In`(r, name=name, value=val, update=up, autoname=True)
 
     """
-    if isinstance(input, (SymbolicInput, SymbolicInputKit)):
+    if isinstance(input, SymbolicInput):
         return input
     elif isinstance(input, gof.Constant):
         raise TypeError('A Constant instance is not a legal function input',
@@ -1887,7 +1843,7 @@ def convert_function_input(input):
             else:
                 raise TypeError("Invalid input syntax: %s (check "
                                 "documentation or use an In instance)" % orig)
-        elif isinstance(input[0], (SymbolicInput, SymbolicInputKit)):
+        elif isinstance(input[0], SymbolicInput):
             if len(input) == 1:
                 return input[0]
             elif len(input) == 2:

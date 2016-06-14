@@ -612,6 +612,7 @@ def local_exp_over_1_plus_exp(node):
             else:
                 # case: 1/(1+exp(x))
                 sigmoids.append(sigmoid(-t))
+            copy_stack_trace(node.outputs[0], sigmoids[-1])
 
         if not sigmoids:  # we didn't find any.  abort
             return
@@ -625,12 +626,17 @@ def local_exp_over_1_plus_exp(node):
         if num_neg ^ denom_neg:
             new_num = -new_num
 
+        copy_stack_trace(num, new_num)
+
         if len(denom_rest) == 0:
             return [new_num]
         elif len(denom_rest) == 1:
-            return [new_num / denom_rest[0]]
+            out = new_num / denom_rest[0]
         else:
-            return [new_num / tensor.mul(*denom_rest)]
+            out = new_num / tensor.mul(*denom_rest)
+
+        copy_stack_trace(node.outputs[0], out)
+        return [out]
 
 
 def parse_mul_tree(root):
@@ -923,6 +929,7 @@ def local_sigm_times_exp(node):
     exp(x) * sigm(-x) -> sigm(x)
     exp(-x) * sigm(x) -> sigm(-x)
 
+    todo: add stack traces to the intermediate variables
     """
     # Bail early if it is not a multiplication.
     if node.op != tensor.mul:

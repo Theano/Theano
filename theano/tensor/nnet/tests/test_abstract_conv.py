@@ -7,6 +7,7 @@ from nose.tools import assert_raises
 
 import theano
 from theano import tensor
+from theano.gof.opt import check_stack_trace
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import corr, abstract_conv as conv
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape
@@ -98,7 +99,7 @@ class BaseTestConv2d(unittest.TestCase):
     def run_fwd(self, inputs_shape, filters_shape, ref=conv_corr,
                 subsample=(1, 1), verify_grad=True, mode=None,
                 border_mode='valid', filter_flip=True, provide_shape=False,
-                target_op=None):
+                target_op=None, check_trace=False):
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
 
@@ -133,8 +134,9 @@ class BaseTestConv2d(unittest.TestCase):
         if target_op is not None:
             assert any([isinstance(n.op, target_op) for n
                         in f.maker.fgraph.toposort()])
+            if check_trace:
+                self.assertTrue(check_stack_trace(f, ops_to_check=target_op))
 
-        self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
         utt.assert_allclose(res_ref, res)
@@ -148,7 +150,7 @@ class BaseTestConv2d(unittest.TestCase):
     def run_gradweight(self, inputs_shape, filters_shape, output_shape,
                        ref=conv_corr_gw, subsample=(1, 1), filter_flip=True,
                        verify_grad=True, mode=None, border_mode='valid',
-                       provide_shape=False, target_op=None):
+                       provide_shape=False, target_op=None, check_trace=False):
 
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         output_val = numpy.random.random(output_shape).astype('float32')
@@ -177,12 +179,13 @@ class BaseTestConv2d(unittest.TestCase):
                     subsample=subsample,
                     conv_mode=conv_mode)
         f = theano.function([], c, mode=mode)
-        self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
         f_ref = theano.function([], c_ref, mode='FAST_RUN')
 
         if target_op is not None:
             assert any([isinstance(n.op, target_op) for n
                         in f.maker.fgraph.toposort()])
+            if check_trace:
+                self.assertTrue(check_stack_trace(f, ops_to_check=target_op))
 
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
@@ -201,7 +204,7 @@ class BaseTestConv2d(unittest.TestCase):
     def run_gradinput(self, inputs_shape, filters_shape, output_shape,
                       ref=conv_corr_gi, subsample=(1, 1), filter_flip=True,
                       verify_grad=True, mode=None, border_mode='valid',
-                      provide_shape=False, target_op=None):
+                      provide_shape=False, target_op=None, check_trace=False):
 
         output_val = numpy.random.random(output_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
@@ -227,12 +230,13 @@ class BaseTestConv2d(unittest.TestCase):
                     border_mode=border_mode, subsample=subsample,
                     conv_mode=conv_mode)
         f = theano.function([], c, mode=mode)
-        self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
         f_ref = theano.function([], c_ref, mode='FAST_RUN')
 
         if target_op is not None:
             assert any([isinstance(n.op, target_op) for n
                         in f.maker.fgraph.toposort()])
+            if check_trace:
+                self.assertTrue(check_stack_trace(f, ops_to_check=target_op))
 
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
@@ -291,15 +295,18 @@ class TestCorrConv2d(BaseTestConv2d):
             raise SkipTest("Need blas to test conv2d")
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                      verify_grad=True, provide_shape=provide_shape,
-                     border_mode=b, filter_flip=flip, target_op=CorrMM)
+                     border_mode=b, filter_flip=flip, target_op=CorrMM,
+                     check_trace=True)
         self.run_gradweight(inputs_shape=i, filters_shape=f,
                             output_shape=o, subsample=s, verify_grad=True,
                             provide_shape=provide_shape, border_mode=b,
-                            filter_flip=flip, target_op=CorrMM_gradWeights)
+                            filter_flip=flip, target_op=CorrMM_gradWeights,
+                            check_trace=True)
         self.run_gradinput(inputs_shape=i, filters_shape=f,
                            output_shape=o, subsample=s, verify_grad=True,
                            provide_shape=provide_shape, border_mode=b,
-                           filter_flip=flip, target_op=CorrMM_gradInputs)
+                           filter_flip=flip, target_op=CorrMM_gradInputs,
+                           check_trace=True)
 
 
 class TestCpuConv2d(BaseTestConv2d):
@@ -343,7 +350,8 @@ class TestCpuConv2d(BaseTestConv2d):
             self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                          verify_grad=(gradweight_OK and gradinput_OK),
                          mode=mode, provide_shape=provide_shape,
-                         border_mode=b, filter_flip=flip, target_op=ConvOp)
+                         border_mode=b, filter_flip=flip, target_op=ConvOp,
+                         check_trace=True)
         else:
             self.assertRaises(AssertionError,
                               self.run_fwd,
@@ -354,7 +362,8 @@ class TestCpuConv2d(BaseTestConv2d):
                               mode=mode,
                               provide_shape=provide_shape,
                               border_mode=b,
-                              filter_flip=flip)
+                              filter_flip=flip,
+                              check_trace=True)
 
         if gradweight_OK:
             if not theano.config.blas.ldflags:
@@ -364,7 +373,8 @@ class TestCpuConv2d(BaseTestConv2d):
                                 verify_grad=False, mode=mode,
                                 provide_shape=provide_shape, border_mode=b,
                                 filter_flip=flip,
-                                target_op=(ConvOp, ConvGrad3D))
+                                target_op=(ConvOp, ConvGrad3D),
+                                check_trace=True)
         else:
             self.assertRaises(AssertionError,
                               self.run_gradweight,
@@ -376,7 +386,8 @@ class TestCpuConv2d(BaseTestConv2d):
                               mode=mode,
                               provide_shape=provide_shape,
                               border_mode=b,
-                              filter_flip=flip)
+                              filter_flip=flip,
+                              check_trace=True)
 
         if gradinput_OK:
             if not theano.config.blas.ldflags:
@@ -386,7 +397,8 @@ class TestCpuConv2d(BaseTestConv2d):
                                verify_grad=False, mode=mode,
                                provide_shape=provide_shape, border_mode=b,
                                filter_flip=flip,
-                               target_op=(ConvOp, ConvTransp3D))
+                               target_op=(ConvOp, ConvTransp3D),
+                               check_trace=True)
         else:
             self.assertRaises(AssertionError,
                               self.run_gradinput,
@@ -398,7 +410,8 @@ class TestCpuConv2d(BaseTestConv2d):
                               mode=mode,
                               provide_shape=provide_shape,
                               border_mode=b,
-                              filter_flip=flip)
+                              filter_flip=flip,
+                              check_trace=True)
 
 
 def test_constant_shapes():
