@@ -881,6 +881,10 @@ def local_gpua_softmaxwithbias(node, context_name):
 @register_opt('fast_compile')
 @op_lifter([theano.tensor.opt.Assert])
 def local_assert(node, context_name):
+
+    # Check if input nodes are already on the GPU
+    if isinstance(node.inputs[0].type, GpuArrayType):
+        return
     return [host_from_gpu(node.op(as_gpuarray_variable(node.inputs[0],
                                                        context_name),
                                   *node.inputs[1:]))]
@@ -946,7 +950,7 @@ def local_lift_abstractconv2d(node, context_name):
     return [node.op(*inps)]
 
 # Register this here so that it goes after the abstract lifting
-register_opt()(conv_groupopt)
+register_opt('fast_compile')(conv_groupopt)
 
 
 @register_opt("low_memory")
