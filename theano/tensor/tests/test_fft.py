@@ -18,16 +18,16 @@ class TestFFT(unittest.TestCase):
 
         def f_rfft(inp):
             return fft.rfft(inp)
-        inputs_val = numpy.random.random((1, N)).astype('float32')
+        inputs_val = numpy.random.random((1, N)).astype(theano.config.floatX)
         utt.verify_grad(f_rfft, [inputs_val], eps=eps)
 
         def f_irfft(inp):
             return fft.irfft(inp)
-        inputs_val = numpy.random.random((1, N // 2 + 1, 2)).astype('float32')
+        inputs_val = numpy.random.random((1, N // 2 + 1, 2)).astype(theano.config.floatX)
         utt.verify_grad(f_irfft, [inputs_val], eps=eps)
 
     def test_1Drfft(self):
-        inputs_val = numpy.random.random((1, N))
+        inputs_val = numpy.random.random((1, N)).astype(theano.config.floatX)
 
         x = T.matrix('x')
         rfft = fft.rfft(x)
@@ -54,16 +54,16 @@ class TestFFT(unittest.TestCase):
 
         def f_rfft(inp):
             return fft.rfft(inp)
-        inputs_val = numpy.random.random((1, N))
+        inputs_val = numpy.random.random((1, N)).astype(theano.config.floatX)
         utt.verify_grad(f_rfft, [inputs_val], eps=eps)
 
         def f_irfft(inp):
             return fft.irfft(inp)
-        inputs_val = numpy.random.random((1, N // 2 + 1, 2))
+        inputs_val = numpy.random.random((1, N // 2 + 1, 2)).astype(theano.config.floatX)
         utt.verify_grad(f_irfft, [inputs_val], eps=eps)
 
     def test_rfft(self):
-        inputs_val = numpy.random.random((1, N, N))
+        inputs_val = numpy.random.random((1, N, N)).astype(theano.config.floatX)
         inputs = theano.shared(inputs_val)
 
         rfft = fft.rfft(inputs)
@@ -77,7 +77,7 @@ class TestFFT(unittest.TestCase):
         utt.assert_allclose(rfft_ref, res_rfft_comp, atol=1e-4, rtol=1e-4)
 
     def test_irfft(self):
-        inputs_val = numpy.random.random((1, N, N))
+        inputs_val = numpy.random.random((1, N, N)).astype(theano.config.floatX)
         inputs = theano.shared(inputs_val)
 
         rfft = fft.rfft(inputs)
@@ -91,7 +91,7 @@ class TestFFT(unittest.TestCase):
 
         utt.assert_allclose(inputs_val, numpy.asarray(res_irfft))
 
-        inputs_val = numpy.random.random((1, N, N, 2))
+        inputs_val = numpy.random.random((1, N, N, 2)).astype(theano.config.floatX)
         inputs = theano.shared(inputs_val)
 
         irfft = fft.irfft(inputs)
@@ -104,7 +104,7 @@ class TestFFT(unittest.TestCase):
         utt.assert_allclose(irfft_ref, res_irfft, atol=1e-4, rtol=1e-4)
 
     def test_norm_rfft(self):
-        inputs_val = numpy.random.random((1, N, N))
+        inputs_val = numpy.random.random((1, N, N)).astype(theano.config.floatX)
         inputs = theano.shared(inputs_val)
 
         # Unitary normalization
@@ -128,7 +128,7 @@ class TestFFT(unittest.TestCase):
         utt.assert_allclose(rfft_ref, res_rfft_comp, atol=1e-4, rtol=1e-4)
 
         # Inverse FFT inputs
-        inputs_val = numpy.random.random((1, N, N // 2 + 1, 2))
+        inputs_val = numpy.random.random((1, N, N // 2 + 1, 2)).astype(theano.config.floatX)
         inputs = theano.shared(inputs_val)
         inputs_ref = inputs_val[..., 0] + 1j * inputs_val[..., 1]
 
@@ -149,12 +149,12 @@ class TestFFT(unittest.TestCase):
         utt.assert_allclose(irfft_ref * N**2, res_irfft, atol=1e-4, rtol=1e-4)
 
     def test_params(self):
-        inputs_val = numpy.random.random((1, N))
+        inputs_val = numpy.random.random((1, N)).astype(theano.config.floatX)
         inputs = theano.shared(inputs_val)
 
         self.assertRaises(ValueError, fft.rfft, inputs, norm=123)
 
-        inputs_val = numpy.random.random((1, N // 2 + 1, 2))
+        inputs_val = numpy.random.random((1, N // 2 + 1, 2)).astype(theano.config.floatX)
         inputs = theano.shared(inputs_val)
 
         self.assertRaises(ValueError, fft.irfft, inputs, norm=123)
@@ -167,20 +167,20 @@ class TestFFT(unittest.TestCase):
 
         def f_rfft(inp):
             return fft.rfft(inp)
-        inputs_val = numpy.random.random((1, N, N)).astype('float32')
+        inputs_val = numpy.random.random((1, N, N)).astype(theano.config.floatX)
         utt.verify_grad(f_rfft, [inputs_val], eps=eps)
 
         def f_irfft(inp):
             return fft.irfft(inp)
-        inputs_val = numpy.random.random((1, N, N // 2 + 1, 2)).astype('float32')
+        inputs_val = numpy.random.random((1, N, N // 2 + 1, 2)).astype(theano.config.floatX)
         utt.verify_grad(f_irfft, [inputs_val], eps=eps)
 
         def f_rfft(inp):
             return fft.rfft(inp, norm='ortho')
-        inputs_val = numpy.random.random((1, N, N)).astype('float32')
+        inputs_val = numpy.random.random((1, N, N)).astype(theano.config.floatX)
         utt.verify_grad(f_rfft, [inputs_val], eps=eps)
 
         def f_irfft(inp):
             return fft.irfft(inp, norm='no_norm')
-        inputs_val = numpy.random.random((1, N, N // 2 + 1, 2)).astype('float32')
+        inputs_val = numpy.random.random((1, N, N // 2 + 1, 2)).astype(theano.config.floatX)
         utt.verify_grad(f_irfft, [inputs_val], eps=eps)
