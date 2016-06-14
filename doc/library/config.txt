@@ -87,7 +87,9 @@ Environment Variables
     with later (right-most) files taking priority over earlier files in the
     case that multiple files specify values for a common configuration option.
     For example, to override system-wide settings with personal ones,
-    set ``THEANORC=/etc/theanorc:~/.theanorc``.
+    set ``THEANORC=/etc/theanorc:~/.theanorc``. To load configuration files in
+    the current working directory, append ``.theanorc`` to the list of configuration
+    files, e.g. ``THEANORC=~/.theanorc:.theanorc``.
 
 Config Attributes
 =====================
