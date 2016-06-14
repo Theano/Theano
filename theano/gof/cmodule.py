@@ -127,7 +127,7 @@ class ExtFunction(object):
 
 
 class DynamicModule(object):
-    
+
     def __init__(self, name=None):
         assert name is None, (
             "The 'name' parameter of DynamicModule"
