@@ -587,7 +587,7 @@ def random_integers_helper(random_state, low, high, size):
                                                    high.shape)
     # Iterate over these indices, drawing one sample at a time from numpy
     for oi, li, hi in zip(*broadcast_ind):
-        out[oi] = random_state.random_integers(low=low[li], high=high[hi])
+        out[oi] = random_state.randint(low=low[li], high=high[hi])
 
     return out
 

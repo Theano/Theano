@@ -585,7 +585,7 @@ def rand_ranged(min, max, shape):
 
 
 def randint_ranged(min, max, shape):
-    return numpy.random.random_integers(min, max, shape)
+    return numpy.random.randint(min, max, shape)
 
 
 def randc128_ranged(min, max, shape):
@@ -7514,7 +7514,7 @@ class TestInferShape(utt.InferShapeTester):
                                 [adtens4_bro_val], Rebroadcast)
 
         # Alloc
-        randint = numpy.random.random_integers
+        randint = numpy.random.randint
         adscal = dscalar()
         aiscal = lscalar()
         biscal = lscalar()
@@ -7979,7 +7979,7 @@ class T_Choose(utt.InferShapeTester):
         a = tensor.vector(dtype='int32')
         b = tensor.matrix(dtype='float32')
 
-        A = numpy.asarray(numpy.random.random_integers(0, 3, 4),
+        A = numpy.asarray(numpy.random.randint(0, 3, 4),
                           dtype='int32')
         B = numpy.asarray(numpy.random.rand(4, 4), dtype='float32')
 
@@ -8027,7 +8027,7 @@ class T_Choose(utt.InferShapeTester):
         b = tensor.tensor3(dtype='float32')
         c = tensor.tensor3(dtype='float32')
 
-        A = numpy.asarray(numpy.random.random_integers(0, 1, (2, 1, 1)),
+        A = numpy.asarray(numpy.random.randint(0, 1, (2, 1, 1)),
                           dtype='int32')
         B = numpy.asarray(numpy.random.rand(1, 6, 1), dtype='float32')
         C = numpy.asarray(numpy.random.rand(1, 1, 5), dtype='float32')
