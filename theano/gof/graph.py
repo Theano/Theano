@@ -702,14 +702,14 @@ def inputs(variable_list, blockers=None):
 def variables_and_orphans(i, o):
     """
     Extracts list of variables within input and
-    output nodes ( via dfs travesal) and chooses the orphans among them
+    output nodes via dfs travesal and chooses the orphans among them
 
     Parameters
     -----------
     i : list
-         Input L{Variable}s.
+         Input variables.
     o : list
-         Output L{Variable}s.
+         Output variables.
 
     """
     def expand(r):
@@ -724,21 +724,21 @@ def variables_and_orphans(i, o):
 
 def ops(i, o):
     """
-    WRITEME
+    Set of Ops contained within the subgraph between i and o
 
     Parameters
     ----------
     i : list
-        Input L{Variable}s.
+        Input variables.
     o : list
-        Output L{Variable}s.
+        Output variables.
 
     Returns
     -------
     object
         The set of ops that are contained within the subgraph that lies
-        between i and o, including the owners of the L{Variable}s in o and
-        intermediary ops between i and o, but not the owners of the L{Variable}s
+        between i and o, including the owners of the variables in o and
+        intermediary ops between i and o, but not the owners of the variables
         in i.
 
     """
@@ -753,7 +753,7 @@ def ops(i, o):
 
 def variables(i, o):
     """
-    Extracts list of variables within input and output nodes ( via dfs t     ravesal)
+    Extracts list of variables within input and output nodes via dfs travesal
 
     Parameters
     ----------
@@ -775,7 +775,8 @@ def variables(i, o):
 
 def orphans(i, o):
     """
-    Extracts list of variables within input and output nodes ( via dfs t     ravesal) and returns the "orphans" among them
+    Extracts list of variables within input and output nodes
+    via dfs travesal and returns the orphans among them
 
     Parameters
     ----------
