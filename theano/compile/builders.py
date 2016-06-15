@@ -101,19 +101,20 @@ class OpFromGraph(gof.Op):
 
         self.new_inputs = new_inputs
         self.new_outputs = new_outputs
+        self.nin = len(new_inputs)
+        self.nout = len(new_outputs)
         self.inputs = inputs
         self.outputs = outputs
         self.kwargs = kwargs
         self.input_types = [input.type for input in inputs]
         self.output_types = [output.type for output in outputs]
 
-    def __eq__(self, other):
-        # TODO: recognize a copy
-        return self is other
+        # construct fn in order to get optimized fgrap earlier
+        self.fn = orig_function(self.new_inputs,
+                                self.new_outputs,
+                                **self.kwargs)
 
-    def __hash__(self):
-        # TODO: use internal variables in hash
-        return hash(type(self))
+    __pros__ = ('nin', 'nout', '_c_code')
 
     def make_node(self, *inputs):
         for input, type in zip(inputs, self.input_types):
@@ -125,13 +126,45 @@ class OpFromGraph(gof.Op):
                          [type() for type in self.output_types])
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        ret = super(OpFromGraph, self).make_thunk(node, storage_map,
-                                                  compute_map, no_recycling)
         if not hasattr(self, "fn"):
             self.fn = orig_function(self.new_inputs,
                                     self.new_outputs,
                                     **self.kwargs)
-        return ret
+
+        # Try to return a cthunk. Make pythunk if fail.
+        try:
+            # Use optimized inner fgraph.
+            fg = self.fn.maker.fgraph
+            fgraph = gof.FunctionGraph(fg.inputs, fg.outputs)
+
+            linker = gof.CLinker()
+            linker.accept(fgraph, no_recycling=no_recycling)
+
+            in_storage = [storage_map[var] for var in node.inputs]
+            out_storage = [storage_map[var] for var in node.outputs]
+            fill_storage, i_storage, o_storage = linker.make_thunk(in_storage,
+                                                                   out_storage)
+
+            # use _c_code as key of identification of different OpFromGraph
+            self._c_code = linker.code_gen()
+
+            def rval():
+                fill_storage()
+                for o in node.outputs:
+                    compute_map[o][0] = True
+
+            rval.cthunk = fill_storage.cthunk
+            rval.inputs = i_storage
+            rval.outputs = o_storage
+            rval.lazy = False
+
+            return rval
+        except NotImplementedError:
+            ret = super(OpFromGraph, self).make_thunk(node,
+                                                      storage_map,
+                                                      compute_map,
+                                                      no_recycling)
+            return ret
 
     def perform(self, node, inputs, outputs):
         variables = self.fn(*inputs)

@@ -764,26 +764,12 @@ class FunctionGraph(utils.object2):
         return self.__str__()
 
     # clone #
-    def clone(self, check_integrity=True):
-        """
-        WRITEME
+    def clone(self, check_integrity=True, attach_feature=False):
+        """WRITEME"""
+        return self.clone_get_equiv(check_integrity, attach_feature)[0]
 
-        """
-        return self.clone_get_equiv(check_integrity)[0]
-
-    def clone_get_equiv(self, check_integrity=True, attach_feature=True):
-        """Clone the graph and get a memo( a dict )that map old node to new node
-        ----------------------------
-        Parameters:
-            check_integrity - { bool } Whether to check integrity.
-                                Default is True.
-            attach_feature - { bool } Whether to attach feature of origin graph to
-                                cloned graph. Default is True.
-        ----------------------------
-        Returns:
-            e - { FunctionGraph } Cloned fgraph. Every node in cloned graph is cloned.
-            equiv - { dict } A dict that map old node to new node.
-        """
+    def clone_get_equiv(self, check_integrity=True, attach_feature=False):
+        """WRITEME"""
         equiv = graph.clone_get_equiv(self.inputs, self.outputs)
 
         if check_integrity:

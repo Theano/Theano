@@ -11,7 +11,7 @@ from theano.tensor.shared_randomstreams import RandomStreams
 from theano.compile.builders import OpFromGraph
 
 from theano.tests import unittest_tools
-
+import unittest
 
 class T_OpFromGraph(unittest_tools.InferShapeTester):
 
@@ -166,3 +166,6 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
                                 [numpy.ones([3, 4], dtype=config.floatX),
                                  numpy.ones([3, 4], dtype=config.floatX)],
                                 OpFromGraph)
+
+if __name__ =='__main__':
+    unittest.main()
