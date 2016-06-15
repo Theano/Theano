@@ -1477,8 +1477,10 @@ class UnShapeOptimizer(Optimizer):
 
 # Register it after merge1 optimization at 0. We don't want to track
 # the shape of merged node.
+# As local_shape_to_shape_i is not in fast_compile,
+# dont register this opt in fast_compile.
 theano.compile.mode.optdb.register('ShapeOpt', ShapeOptimizer(),
-                                   0.1, 'fast_run', 'fast_compile')
+                                   0.1, 'fast_run')
 # Not enabled by default for now. Some crossentropy opt use the
 # shape_feature.  They are at step 2.01. uncanonicalize is at step
 # 3. After it goes to 48.5 that move to the gpu. So 10 seem resonable.
