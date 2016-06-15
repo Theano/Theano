@@ -664,17 +664,22 @@ Creating Tensor
 ===============
 
 
-.. function:: zeros_like(x)
+.. function:: zeros_like(x, dtype=None)
 
-    :param x: tensor that has same shape as output
+    :param x: tensor that has the same shape as output
+    :param dtype: data-type, optional
 
-    Returns a tensor filled with 0s that has same shape as `x`.
+    Returns a tensor the shape of x filled with zeros of the type of dtype.
+    
 
 .. function:: ones_like(x)
 
-    :param x: tensor that has same shape as output
-
-    Returns a tensor filled with 1s that has same shape as `x`.
+  
+    :param x: tensor that has the same shape as output
+    :param dtype: data-type, optional
+  
+    Returns a tensor the shape of x filled with ones of the type of dtype.
+      
 
 .. function:: fill(a,b)
 
