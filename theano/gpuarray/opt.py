@@ -265,6 +265,11 @@ class GraphToGPU(NavigatorOptimizer):
         time_opts = {}
         node_created = {}
         process_count = {}
+        t_topo = time.time()
+        topo = fgraph.toposort()
+        time_topo = time.time()
+        toposort_timing = time_topo - t_topo
+
         # Building a new graph
         # Iterating through inputs of graph
         for i in fgraph.inputs:
@@ -275,18 +280,13 @@ class GraphToGPU(NavigatorOptimizer):
         for i in fgraph.variables:
             if isinstance(i, theano.Constant):
                 mapping[i] = i
-        for node in fgraph.toposort():
+        for node in topo:
             for lopt in (self.local_optimizers_map.get(node.op, []) +
                          self.local_optimizers_map.get(type(node.op), []) +
                          self.local_optimizers_all):
                     process_count.setdefault(lopt, 0)
                     time_opts.setdefault(lopt, 0)
                     node_created.setdefault(lopt, 0)
-
-        t_topo = time.time()
-        topo = fgraph.toposort()
-        time_topo = time.time() - t_topo
-        toposort_timing = time_topo - t_topo
 
         for node in topo:
 
