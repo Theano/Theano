@@ -121,7 +121,16 @@ def get_conv_shape_1axis(image_shape, kernel_shape, border_mode,
         pad = border_mode
         if pad < 0:
             raise ValueError("border_mode must be >= 0")
-    out_shp = (image_shape + 2 * pad - dil_kernel_shape) // subsample + 1
+
+    # In case of symbolic shape, we want to build the smallest graph
+    # (image_shape + 2 * pad - dil_kernel_shape) // subsample + 1
+    if pad == 0:
+        out_shp = (image_shape - dil_kernel_shape)
+    else:
+        out_shp = (image_shape + 2 * pad - dil_kernel_shape)
+    if subsample != 1:
+        out_shp = out_shp // subsample
+    out_shp = out_shp + 1
 
     return out_shp
 
