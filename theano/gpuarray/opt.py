@@ -227,6 +227,10 @@ class InputToGpuOptimizer(Optimizer):
             target = getattr(input.tag, 'target', None)
             if target == 'cpu':
                 continue
+            # Do not move *int* scalar to the GPU.
+            if (isinstance(input.type, tensor.TensorType) and
+                    input.ndim == 0 and 'int' in input.dtype):
+                continue
 
             try:
                 new_input = host_from_gpu(GpuFromHost(target)(input))
@@ -273,8 +277,12 @@ class GraphToGPU(NavigatorOptimizer):
         # Building a new graph
         # Iterating through inputs of graph
         for i in fgraph.inputs:
-            if isinstance(i.type, tensor.TensorType):
-                mapping[i] = as_gpuarray_variable(i, None)  # TODO context
+            # Do not move *int* scalar to the GPU.
+            target = getattr(i.tag, 'target', None)
+            if (target != 'cpu' and
+                    isinstance(i.type, tensor.TensorType) and
+                    (i.ndim > 0 or 'int' not in i.dtype)):
+                mapping[i] = as_gpuarray_variable(i, target)
             else:
                 mapping[i] = i
         for i in fgraph.variables:
