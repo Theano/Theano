@@ -705,7 +705,7 @@ def variables_and_orphans(i, o):
     dfs traversal and chooses the orphans among them
 
     Parameters
-    -----------
+    ----------
     i : list
          Input variables.
     o : list
