@@ -952,8 +952,6 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     # Standard case: We use GpuDnnConv with suitable padding.
     # contig_version will return a gpu_contiguous copy
     # if the img contains negative strides
-    img = gpu_contiguous(img)
-    kerns = gpu_contiguous(kerns)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode, precision=precision)(kerns.shape)
     desc_op = desc.owner.op
@@ -961,6 +959,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
                                        desc_op.border_mode,
                                        desc_op.subsample)
     out = gpu_alloc_empty(img.dtype, ctx_name)(*out_shp)
+    img = gpu_contiguous(img)
+    kerns = gpu_contiguous(kerns)
     return gpu_dnn_conv(algo=algo)(img, kerns, out, desc)
 
 
