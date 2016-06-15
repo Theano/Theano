@@ -14,7 +14,7 @@ from theano.gof import Optimizer, local_optimizer, COp
 from theano.gof.cmodule import GCC_compiler
 from theano.gof.type import CDataType, Generic
 from theano.compile import optdb
-from theano.compile.ops import shape_i
+from theano.compile.ops import shape_i, shape_i_op
 from theano.tensor.nnet import LogSoftmax, SoftmaxGrad
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
@@ -952,15 +952,19 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     # Standard case: We use GpuDnnConv with suitable padding.
     # contig_version will return a gpu_contiguous copy
     # if the img contains negative strides
+    img = gpu_contiguous(img)
+    kerns = gpu_contiguous(kerns)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode, precision=precision)(kerns.shape)
     desc_op = desc.owner.op
-    out_shp = GpuDnnConv.get_out_shape(img.shape, kerns.shape,
-                                       desc_op.border_mode,
-                                       desc_op.subsample)
+    # We can use Shape_i and bypass the infer_shape here as this is on
+    # the input of node and it will always be present.
+    ishape = [shape_i_op(i)(img) for i in range(img.ndim)]
+    kshape = [shape_i_op(i)(kerns) for i in range(kerns.ndim)]
+    out_shp = get_conv_output_shape(ishape, kshape,
+                                    desc_op.border_mode,
+                                    desc_op.subsample)
     out = gpu_alloc_empty(img.dtype, ctx_name)(*out_shp)
-    img = gpu_contiguous(img)
-    kerns = gpu_contiguous(kerns)
     return gpu_dnn_conv(algo=algo)(img, kerns, out, desc)
 
 
