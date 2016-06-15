@@ -1443,14 +1443,14 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
                         subsample=op.subsample,
                         direction_hint='forward!',
                         conv_mode=conv_mode)
-    if isinstance(op, AbstractConv2d_gradWeights):
+    elif isinstance(op, AbstractConv2d_gradWeights):
         shape = (inp2.shape[1], inp1.shape[1],
                  inputs[2][0], inputs[2][1])
         rval = dnn_gradweight(inp1, inp2, shape,
                               border_mode=op.border_mode,
                               subsample=op.subsample,
                               conv_mode=conv_mode)
-    if isinstance(op, AbstractConv2d_gradInputs):
+    elif isinstance(op, AbstractConv2d_gradInputs):
         shape = (inp2.shape[0], inp1.shape[1],
                  inputs[2][0], inputs[2][1])
         rval = dnn_gradinput(inp1, inp2, shape,
