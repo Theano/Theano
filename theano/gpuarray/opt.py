@@ -308,17 +308,14 @@ class GraphToGPU(NavigatorOptimizer):
                 continue
 
             # Move only if any of the inputs are on the GPU.
-            move_to_GPU = True
-
-            '''
-            import GpuArrayVariable and GpuArraySharedVariable when you uncomment
+            move_to_GPU = False
+            from .type import GpuArrayVariable, GpuArraySharedVariable #when you uncomment
             if any([isinstance(i, GpuArrayVariable) or
                    isinstance(i, GpuArraySharedVariable)
                    for i in [mapping[v] for v in node.inputs] +
                    node.outputs]):
 
                 move_to_GPU = True
-            '''
 
             context_name = None
             for i in [mapping[i] for i in node.inputs]:
