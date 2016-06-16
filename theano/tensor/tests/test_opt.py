@@ -21,6 +21,7 @@ import theano.scalar as scal
 from six import PY3, StringIO
 from theano import compile
 from theano.compile import deep_copy_op, DeepCopyOp
+from theano.compile import get_mode
 from theano import config
 from theano import function
 from theano import gof
@@ -31,6 +32,7 @@ import theano.tensor.opt as opt
 from theano.tensor.opt import (
         local_add_specialize,
         local_dimshuffle_lift,
+        local_useless_alloc,
         local_greedy_distributor,
         mul_canonizer,
         out2in,
@@ -3089,8 +3091,8 @@ class Test_local_elemwise_alloc(unittest.TestCase):
     dtype = config.floatX
 
     def setUp(self):
-        self.fast_compile_mode = 'FAST_COMPILE'
-        self.fast_run_mode = 'FAST_RUN'
+        self.fast_compile_mode = get_mode('FAST_COMPILE')
+        self.fast_run_mode = get_mode('FAST_RUN')
 
         self.vec = T.vector('vec', dtype=self.dtype)
         self.mat = T.matrix('mat', dtype=self.dtype)
@@ -3130,6 +3132,10 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         )
 
     def test_remove_alloc_wo_dimshuffle(self):
+        # Exclude local_useless_alloc, since it does not introduce
+        # assert in all the same cases.
+        self.fast_run_mode = self.fast_run_mode.excluding(
+            'local_useless_alloc')
         # No optimization on alloc
         func = function(
             [self.vec, self.mat],
@@ -3671,6 +3677,57 @@ class Test_local_useless_alloc(unittest.TestCase):
         # in op_classes and we have to change the assert.
         assert tensor.Alloc in op_classes
         # The correct opt removes nodes, no need for check_stack_trace
+
+    def test_useless_alloc_with_shape_one(self):
+        alloc_lift = out2in(local_useless_alloc)
+        x = shared(self.rng.randn(2,))
+        y = shared(self.rng.randn())
+        z = shared(self.rng.randn(1, 1))
+        w = shared(self.rng.randn(1, 1))
+        alloc_x = tensor.alloc(x, 1, 3, 2)
+        alloc_y = tensor.alloc(y, 1, 1)
+        alloc_z = tensor.alloc(z, 1, 1, 2)
+        alloc_w = tensor.alloc(w, 1, 2)
+
+        g = FunctionGraph([x, y, z, w], [alloc_x, alloc_y, alloc_z, alloc_w])
+        self.assertTrue(str(g) == ("[Alloc(<TensorType(float64, vector)>, "
+                                   "TensorConstant{1}, "
+                                   "TensorConstant{3}, "
+                                   "TensorConstant{2}), "
+
+                                   "Alloc(<TensorType(float64, scalar)>, "
+                                   "TensorConstant{1}, "
+                                   "TensorConstant{1}), "
+
+                                   "Alloc(<TensorType(float64, matrix)>, "
+                                   "TensorConstant{1}, "
+                                   "TensorConstant{1}, "
+                                   "TensorConstant{2}), "
+
+                                   "Alloc(<TensorType(float64, matrix)>, "
+                                   "TensorConstant{1}, "
+                                   "TensorConstant{2})]"))
+
+        alloc_lift.optimize(g)
+        self.assertTrue(str(g) == "[DimShuffle{x,0,1}"
+                                  "(Alloc(<TensorType(float64, vector)>, "
+                                  "TensorConstant{3}, "
+                                  "TensorConstant{2})), "
+
+                                  "DimShuffle{x,x}"
+                                  "(<TensorType(float64, scalar)>), "
+
+                                  "DimShuffle{x,0,1}"
+                                  "(Alloc(<TensorType(float64, matrix)>, "
+                                  "TensorConstant{1}, "
+                                  "TensorConstant{2})), "
+
+                                  "Alloc(<TensorType(float64, matrix)>, "
+                                  "TensorConstant{1}, "
+                                  "TensorConstant{2})]")
+
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(check_stack_trace(g, ops_to_check='all'))
 
 
 class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
