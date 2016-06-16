@@ -402,6 +402,14 @@ class Shape_i(gof.Op):
     def infer_shape(self, node, input_shapes):
         return [()]
 
+    def connection_pattern(self, node):
+        # the grad returns the gradient with respect to the
+        # elements of a tensor variable
+        # the elements of the tensor variable do not participate
+        # in the computation of the shape, so they are not really
+        # part of the graph
+        return [[False]]
+
     def grad(self, inp, grads):
         return [theano.gradient.grad_not_implemented(
                 op=self, x_pos=0, x=inp[0],
