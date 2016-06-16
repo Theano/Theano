@@ -668,6 +668,7 @@ Creating Tensor
 
     :param x: tensor that has the same shape as output
     :param dtype: data-type, optional
+                  By default, it will be x.dtype.
 
     Returns a tensor the shape of x filled with zeros of the type of dtype.
     
@@ -677,7 +678,8 @@ Creating Tensor
   
     :param x: tensor that has the same shape as output
     :param dtype: data-type, optional
-  
+                  By default, it will be x.dtype.
+
     Returns a tensor the shape of x filled with ones of the type of dtype.
       
 
