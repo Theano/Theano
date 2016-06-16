@@ -757,7 +757,7 @@ def local_gpua_specifyShape(op, context_name, inputs, outputs):
 @register_opt('fast_compile')
 @op_lifter([theano.compile.ops.Shape])
 @register_opt2([tensor.compile.ops.Shape], 'fast_compile')
-def local_gpua_shape(node, context_name, inputs, outputs):
+def local_gpua_shape(op, context_name, inputs, outputs):
     # op_lifter will call this opt too frequently as the output is
     # always on the CPU.
     if isinstance(inputs[0].type, GpuArrayType):
@@ -1215,7 +1215,7 @@ def local_gpua_softmax(op, context_name, inputs, outputs):
 @register_opt('fast_compile')
 @op_lifter([tensor.nnet.SoftmaxWithBias], cuda_only=True)
 @register_opt2([tensor.nnet.SoftmaxWithBias], 'fast_compile')
-def local_gpua_softmaxwithbias(node, context_name, inputs, outputs):
+def local_gpua_softmaxwithbias(op, context_name, inputs, outputs):
     return gpu_softmax_with_bias
 
 
