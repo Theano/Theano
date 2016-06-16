@@ -4287,6 +4287,7 @@ __global__ void kEye(float* a, int n, int m) {
 
     def c_code_cache_version(self):
         return (3,)
+
 gpu_eye = GpuEye(dtype='float32')
 
 
@@ -4307,44 +4308,61 @@ class GpuDiagonal(GpuOp):
         if x.ndim < 2:
             raise ValueError('Diagonal needs an input with 2 or more '
                              'dimensions', x)
+        axis_small, axis_large = sorted((self.axis1, self.axis2))
+        broadcastable = x.broadcastable[:axis_small] + \
+                        x.broadcastable[axis_small + 1 : axis_large] + \
+                        x.broadcastable[axis_large + 1 : ] + (False,)
         return Apply(self, [x], [x.type.__class__(
             dtype=x.dtype,
-            broadcastable=[False] * (x.ndim - 1))()])
+            broadcastable=broadcastable)()])
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
         # zero-dimensional matrices ...
-        if numpy.min(x.shape) == 0:
+        if x.size == 0:
             out_shape = [d for i, d in enumerate(x.shape)
                          if i not in (self.axis1, self.axis2)]
             diag_size = numpy.min((x.shape[self.axis1], x.shape[self.axis2]))
             out_shape.append(diag_size)
             z[0] = node.outputs[0].type.value_zeros(tuple(out_shape))
             return
-        
-        if x.shape[self.axis1] < x.shape[self.axis2]:
-            axis_with_bigger_shape = self.axis2
-            axis_with_smaller_shape = self.axis1
+
+        # step 1) slicing on axis1 and axis2.
+        if self.offset >= 0:
+            stride_axis, slice_axis = self.axis1, self.axis2
         else:
-            axis_with_bigger_shape = self.axis1
-            axis_with_smaller_shape = self.axis2
+            slice_axis, stride_axis = self.axis1, self.axis2
+
+        small_axis, large_axis = sorted((x.shape[self.axis1],
+                                         x.shape[self.axis2]))
+
+        if x.shape[stride_axis] < x.shape[slice_axis]:
+            # in the bigger triangle
+            numstride = small_axis - numpy.max((
+                0, small_axis + numpy.abs(self.offset) - large_axis))
+        else:
+            # in the smaller triangle
+            numstride = small_axis - numpy.abs(self.offset)
 
         slicer = [numpy.s_[:], ] * x.ndim
-        slicer[axis_with_bigger_shape] = 0  # self.offset
+        slicer[stride_axis] = numpy.s_[:numstride]
+        slicer[slice_axis] = numpy.abs(self.offset)
         slicer = tuple(slicer)
-        if axis_with_smaller_shape > axis_with_bigger_shape:
-            axis_with_smaller_shape -= 1
 
-        # We swap axis1 to the last dim because we want the dim on which the
-        # disg s extracted be listed as the last dim of the tensor. This is
-        # also in consistence with the interface of numpy.diagonal.
+        # step 2) Swap stride_axis to the last dim because we want the dim on
+        # which the diags extracted be listed as the last dim of the tensor.
+        # This is also in consistence with the interface of numpy.diagonal.
+        if slice_axis < stride_axis:
+            stride_axis -= 1
         new_dim_order = range(x[slicer].ndim)
-        new_dim_order[axis_with_smaller_shape], new_dim_order[-1] = \
-            new_dim_order[-1], new_dim_order[axis_with_smaller_shape]
+        new_dim_order = tuple(new_dim_order[:stride_axis] + \
+                              new_dim_order[stride_axis+1:] + \
+                              [stride_axis, ])
         rval = cuda_ndarray.cuda_ndarray.dimshuffle(x[slicer], new_dim_order)
-        
-        # We change the stride such that rval becomes a view of the diagonal.
+
+        # step 3) modify the strides in the last axis, such that rval becomes
+        # a view on the diagonal.
         other_strides = tuple([d for i, d in enumerate(x.strides)
                                if i not in (self.axis1, self.axis2)])
         rval.strides = other_strides + \
@@ -4356,9 +4374,8 @@ class GpuDiagonal(GpuOp):
             z[0] = rval.copy()
 
     def grad(self, inputs, gout):
-        (x,) = inputs
-        (gz,) = gout
-        return [grad_not_implemented(self, 0, x)]
+        (input_x,) = inputs
+        return [grad_not_implemented(self, 0, input_x)]
 
     def infer_shape(self, node, shapes):
         in_shape, = shapes
@@ -4369,10 +4386,10 @@ class GpuDiagonal(GpuOp):
         # The following logic is inspired by C code of PyArray_Diagonal().
         offset = self.offset
         if offset > 0:
-            diag_size = clip(dim2 - offset, 0, dim1)
+            diag_size = theano.tensor.clip(dim2 - offset, 0, dim1)
         elif offset < 0:
-            diag_size = clip(dim1 + offset, 0, dim2)
+            diag_size = theano.tensor.clip(dim1 + offset, 0, dim2)
         else:
-            diag_size = minimum(dim1, dim2)
+            diag_size = theano.tensor.minimum(dim1, dim2)
         out_shape.append(diag_size)
         return [tuple(out_shape)]
