@@ -894,9 +894,6 @@ def local_gpua_split(op, context_name, inputs, outputs):
 @op_lifter([tensor.Subtensor])
 def local_gpua_subtensor(op, context_name, inputs, outputs):
     x = inputs[0]
-    # list of list containing clients
-    # it is clients per node basis
-    clients = [o.clients for o in outputs]
     if (x.owner and isinstance(x.owner.op, HostFromGpu)):
         gpu_x = x.owner.inputs[0]
         if (gpu_x.owner and
@@ -906,7 +903,7 @@ def local_gpua_subtensor(op, context_name, inputs, outputs):
             if len(x.clients) == 1:
                 if any([n == 'output' or any([isinstance(v.type, GpuArrayType)
                                               for v in n.inputs + n.outputs])
-                        for n, _ in clients[0]]):
+                        for n, _ in outputs[0].clients]):
                     return
     # Here is the condition for the GraphToGPU opt. inputs is the
     # inputs we want to use for the new node
