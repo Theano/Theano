@@ -9,17 +9,6 @@ Generic Installation Instructions
 If you want the latest on the edge installation of Theano, you want `bleeding_edge`_.
 Otherwise go for the `stable`_.
 
-.. note::
-
-   If you are behind a proxy, you must do some extra configuration steps
-   before starting the installation. You must set the environment
-   variable ``http_proxy`` to the proxy address. Using bash this is
-   accomplished with the command
-   ``export http_proxy="http://user:pass@my.site:port/"``
-   You can also provide the ``--proxy=[user:pass@]url:port`` parameter
-   to pip. The ``[user:pass@]`` portion is optional.
-
-
 .. _stable:
 
 Stable Installation
@@ -36,9 +25,9 @@ pip_. Any argument between <...> means it is optional.
 
 - Use :blue:`user` for a user installation without admin rights. It will install Theano in your local site-packages.
 
-- [test] will add to the install the required packages for testing.
+- [test] will install the requirements for testing.
 
-- [doc] will add to the install the required packages for the documentation.
+- [doc] will install the requirements in order to generate the documentation.
 
 .. _bleeding_edge:
 

@@ -60,10 +60,6 @@ Theano officially supports only clang on OS X.  This can be installed
 by getting XCode from the App Store and running it once to install the
 command-line tools.
 
-If you still want to use g++ you can do so by setting its full path in
-the theano config flag `gxx`.  Note that any bug reports on Mac using
-g++ will be ignored unless it can be reproduced with clang.
-
 
 Homebrew
 --------

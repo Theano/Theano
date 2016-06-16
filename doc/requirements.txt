@@ -4,7 +4,7 @@
 Requirements
 ============
 
-Theano is mainly develeopped on 64-bit Linux machines. 
+Theano is mainly developped on 64-bit Linux machines. 
 
 These libraries are common to all Linux installations and should be installed
 prior to using Theano.

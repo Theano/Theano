@@ -6,17 +6,6 @@
 CentOS 6 Installation Instructions
 ==================================
 
-.. note::
-
-    It is possible to have a faster installation of Theano than the one these
-    instructions will provide, but this will make the installation more
-    complicated and/or may require that you buy software. This is a simple set
-    of installation instructions that will leave you with a relatively
-    well-optimized version that uses only free software. With more work or by
-    investing money (i.e. buying a license to a proprietary BLAS
-    implementation), it is possible to gain further performance.
-
-
 Installation steps
 ~~~~~~~~~~~~~~~~~~
 
@@ -26,25 +15,3 @@ Installation steps
 
 .. include:: install_generic.txt
     :start-line: 11
-
-
-Speed test Theano/BLAS
-~~~~~~~~~~~~~~~~~~~~~~
-
-It is recommended to test your Theano/BLAS integration. There are many versions
-of BLAS that exist and there can be up to 10x speed difference between them.
-Also, having Theano link directly against BLAS instead of using NumPy/SciPy as
-an intermediate layer reduces the computational overhead. This is
-important for BLAS calls to ``ger``, ``gemv`` and small ``gemm`` operations
-(automatically called when needed when you use ``dot()``). To run the
-Theano/BLAS speed test:
-
-.. code-block:: bash
-
-    python /usr/lib/python2.*/site-packages/theano/misc/check_blas.py
-
-This will print a table with different versions of BLAS/numbers of
-threads on multiple CPUs and GPUs. It will also print some Theano/NumPy
-configuration information. Then, it will print the running time of the same
-benchmarks for your installation. Try to find a CPU similar to yours in
-the table, and check that the single-threaded timings are roughly the same.

@@ -5,6 +5,7 @@ Troubleshooting
 
 Here are Linux troubleshooting instructions. There is a specific `MacOS`_ section.
 
+- Why do I get a `network`_ error when I install Theano?
 - How do I configure `PYTHONPATH`_?
 - How do I `test`_ if everything works properly?
 - How to change the memory/speed `tradeoff`_?
@@ -12,6 +13,16 @@ Here are Linux troubleshooting instructions. There is a specific `MacOS`_ sectio
 - Out of `memory`_ Error
 - `float32`_ / int{32, 64} gives float64
 - How do I configure/test my `BLAS`_ library?
+
+.. _network:
+
+If you are behind a proxy, you must do some extra configuration steps
+before starting the installation. You must set the environment
+variable ``http_proxy`` to the proxy address. Using bash this is
+accomplished with the command
+``export http_proxy="http://user:pass@my.site:port/"``
+You can also provide the ``--proxy=[user:pass@]url:port`` parameter
+to pip. The ``[user:pass@]`` portion is optional.
 
 .. _PYTHONPATH:
 
@@ -41,7 +52,7 @@ Consult your shell's documentation for details.
 Testing your installation
 --------------------------
 
-Easy way to check something that could be wrong is by making sure ``THEANO_FLAGS``
+An easy way to check something that could be wrong is by making sure ``THEANO_FLAGS``
 have the desired values as well as the ``~/.theanorc``
 
 Also, check the following outputs :

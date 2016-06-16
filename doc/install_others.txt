@@ -14,7 +14,7 @@ NVIDIA Jetson TX1 embedded platform:
 .. code-block:: bash
 
     sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libblas-dev git
-    pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git --user  # Need Theano 0.8(not yet released) or more recent
+    pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git --user  # Need Theano 0.8 or more recent
 
 Gentoo
 ~~~~~~
@@ -24,13 +24,6 @@ Brian Vandenberg emailed `installation instructions on Gentoo
 focusing on how to install the appropriate dependencies.
 
 Nicolas Pinto provides `ebuild scripts <https://github.com/npinto/sekyfsr-gentoo-overlay/tree/master/sci-libs/Theano>`_.
-
-Mandriva 2010.2
-~~~~~~~~~~~~~~~
-
-A contributor made rpm package for Mandriva_ 2010.2 of Theano 0.3.1.
-
-.. _Mandriva: http://mib.pianetalinux.org/mib/quick/basic-rpms/mib-rpms/975-theano-031
 
 Docker images
 ~~~~~~~~~~~~~
