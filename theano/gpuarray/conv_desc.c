@@ -4,8 +4,12 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject *subsample,
                               cudnnConvolutionDescriptor_t *desc) {
   cudnnStatus_t err;
   int pad[3] = {PAD_0, PAD_1, PAD_2};
-  int strides[3] = {SUB_0, SUB_1, SUB_2};
+  int strides[3] = {0,0,0};
   int upscale[3] = {1, 1, 1};
+
+strides[0] = *(npy_int64 *)PyArray_DATA(subsample);
+strides[1] = *(npy_int64 *)(PyArray_DATA(subsample) + 1);
+strides[2] = *(npy_int64 *)(PyArray_DATA(subsample) + 2);
 
 #if BORDER_MODE == 0
   pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) - 1;
