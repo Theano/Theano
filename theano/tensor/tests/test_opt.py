@@ -32,6 +32,7 @@ from theano.tensor.opt import (
         local_add_specialize,
         local_dimshuffle_lift,
         local_greedy_distributor,
+        local_useless_reshape,
         mul_canonizer,
         out2in,
         Shape_i,
@@ -6080,14 +6081,44 @@ class Test_Reshape(unittest.TestCase):
         assert sum(isinstance(node.op, self.op) for node in topo) == 1
 
 
-def test_local_useless_reshape():
-    mode = theano.compile.get_default_mode().including(
+class Test_local_useless_reshape(unittest.TestCase):
+    def setUp(self):
+        self.rng = numpy.random.RandomState(utt.fetch_seed())
+
+    def test_0(self):
+        mode = theano.compile.get_default_mode().including(
             'local_useless_reshape')
-    i = T.iscalar('i')
-    m = theano.tensor.mgrid[0:i,]
-    f = theano.function([i], m, mode=mode)
-    topo = f.maker.fgraph.toposort()
-    assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+        i = T.iscalar('i')
+        m = theano.tensor.mgrid[0:i,]
+        f = theano.function([i], m, mode=mode)
+        topo = f.maker.fgraph.toposort()
+        assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+
+    def test_1(self):
+        reshape_lift = out2in(local_useless_reshape)
+        x = shared(self.rng.randn(4,))
+        y = shared(self.rng.randn(5, 6))
+        reshape_x = tensor.reshape(x, (1, 4))
+        reshape_y = tensor.reshape(y, (1, 5, 1, 6, 1, 1))
+
+        g = FunctionGraph([x, y], [reshape_x, reshape_y])
+        self.assertTrue(str(g) == ("[Reshape{2}"
+                                   "(<TensorType(float64, vector)>, "
+                                   "TensorConstant{[1 4]}), "
+                                   "Reshape{6}"
+                                   "(<TensorType(float64, matrix)>, "
+                                   "TensorConstant{[1 5 1 6 1 1]})]"))
+
+        reshape_lift.optimize(g)
+        self.assertTrue(str(g) == "[DimShuffle{x,0}"
+                                  "(<TensorType(float64, vector)>), "
+                                  "DimShuffle{x,0,x,1,x,x}"
+                                  "(Reshape{2}(<TensorType(float64, matrix)>, "
+                                  "TensorConstant{[5 6]}))]")
+
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
+        check_stack_trace(g, ops_to_check=(T.DimShuffle, T.Reshape))
 
 
 def test_local_reshape_lift():

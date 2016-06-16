@@ -5197,7 +5197,7 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
         f = self.function([b], c)
         assert numpy.all(f(numpy.asarray([[0, 1, 2], [3, 4, 5]])) ==
                          numpy.asarray([[[0], [1], [2]], [[3], [4], [5]]]))
-        assert (f.maker.fgraph.toposort()[-2].outputs[0].type.broadcastable ==
+        assert (f.maker.fgraph.toposort()[-1].outputs[0].type.broadcastable ==
                 (False, False, True))
 
     def test_m1(self):

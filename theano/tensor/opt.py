@@ -47,7 +47,8 @@ from theano.tensor.type import (values_eq_approx_remove_inf,
 from theano.gof.opt import (Optimizer, pre_constant_merge,
                             pre_greedy_local_optimizer)
 from theano.gof import toolbox
-from theano.tensor.basic import get_scalar_constant_value, ShapeError, NotScalarConstantError
+from theano.tensor.basic import (Reshape, get_scalar_constant_value, ShapeError,
+                                 extract_constant, NotScalarConstantError)
 from six import StringIO
 
 _logger = logging.getLogger('theano.tensor.opt')
@@ -4124,11 +4125,35 @@ def local_useless_reshape(node):
     single dimension.
 
     """
-    if isinstance(node.op, T.Reshape):
-        if (node.inputs[0].ndim == 1 and node.outputs[0].ndim == 1 and
-                node.inputs[0].broadcastable ==
-                node.outputs[0].broadcastable):
-            return [node.inputs[0]]
+    op = node.op
+    if not isinstance(op, Reshape):
+        return False
+
+    input = node.inputs[0]
+    output = node.outputs[0]
+    output_shape = node.inputs[1]
+
+    if (input.ndim == 1 and output.ndim == 1 and
+            input.broadcastable == output.broadcastable):
+        return [input]
+
+    dimshuffle_new_order = []
+    new_output_shape = []
+    index = 0  # index over the output of the new reshape
+    for i in xrange(output.ndim):
+        dim = extract_constant(output_shape[i], only_process_constants=False)
+        if dim == 1:
+            dimshuffle_new_order.append('x')
+        else:
+            dimshuffle_new_order.append(index)
+            new_output_shape.append(dim)
+            index = index + 1
+    if index != output.ndim:
+        inner = op.__class__(len(new_output_shape))(input, new_output_shape)
+        copy_stack_trace(output, inner)
+        new_node = [DimShuffle(inner.type.broadcastable, dimshuffle_new_order)(inner)]
+        copy_stack_trace(output, new_node)
+        return new_node
 
 
 @register_canonicalize
