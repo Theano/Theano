@@ -323,7 +323,20 @@ class GraphToGPU(NavigatorOptimizer):
                     context_name = i.type.context_name
                     move_to_GPU = True
                     break
+            if (not move_to_GPU and
+                    isinstance(node.op, (theano.tensor.Alloc,
+                                         theano.tensor.AllocEmpty))):
+                # If the Alloc[Empty] have a client that will be moved
+                # to the GPU, we should move the Alloc* on the GPU.
 
+                # We approximate this by supposing that if we have an
+                # optimization for one of the clients op, then we will
+                # move the client to the GPU.
+                for c, _ in node.outputs[0].clients:
+                    if (c != 'output' and
+                        (self.local_optimizers_map.get(c.op, []) +
+                         self.local_optimizers_map.get(type(c.op)))):
+                        move_to_GPU = True
             new_ops = None
             outputs = []
             # Apply the lifter

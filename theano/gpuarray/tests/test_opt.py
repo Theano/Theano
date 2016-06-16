@@ -138,11 +138,21 @@ def test_local_gpualloc_memset_0():
     ones = numpy.ones((2,), dtype='float32')
 
     # Test with 0 from CPU op.
+    # Should not be transfered as the only client is the output
     a = tensor.alloc(z, i)
     f = theano.function([i], a, mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
-    assert len(topo) == 2
-    assert isinstance(topo[0].op, GpuAlloc) and topo[0].op.memset_0
+    assert len(topo) == 1
+    assert isinstance(topo[0].op, theano.tensor.Alloc)
+    assert (numpy.asarray(f(6)) == 0).all()
+
+    # Test with 0 from CPU op.
+    # Should be transfered as it is used by another op.
+    a = tensor.alloc(z, i)
+    f = theano.function([i], a.cumsum(), mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 3
+    assert isinstance(topo[0].op, GpuAlloc)
     assert (numpy.asarray(f(6)) == 0).all()
 
     # Test with 0
@@ -177,19 +187,30 @@ def test_local_gpualloc_empty():
     ii = theano.tensor.iscalar()
 
     # Test with vector
+    # Should not be moved as the only client is the uutput
     a = tensor.AllocEmpty('float32')(i)
     f = theano.function([i], a, mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
-    assert len(topo) == 2
+    assert len(topo) == 1
+    assert isinstance(topo[0].op, theano.tensor.AllocEmpty)
+    # This return not initilized data, so we can only check the shape
+    assert f(3).shape == (3,)
+
+    # Test with vector
+    # Should be moved
+    a = tensor.AllocEmpty('float32')(i)
+    f = theano.function([i], a.cumsum(), mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 3
     assert isinstance(topo[0].op, GpuAllocEmpty)
     # This return not initilized data, so we can only check the shape
     assert f(3).shape == (3,)
 
     # Test with matrix
     a = tensor.AllocEmpty('float32')(i, ii)
-    f = theano.function([i, ii], a, mode=mode_with_gpu)
+    f = theano.function([i, ii], a.cumsum(axis=0), mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
-    assert len(topo) == 2
+    assert len(topo) == 3
     assert isinstance(topo[0].op, GpuAllocEmpty)
     # This return not initilized data, so we can only check the shape
     assert f(3, 4).shape == (3, 4)
