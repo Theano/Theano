@@ -10,7 +10,7 @@ from six.moves import StringIO, xrange
 import theano
 from theano import gof, Type, Apply
 from theano import tensor, scalar, config
-from theano.gradient import grad_undefined
+from theano.gradient import grad_undefined, grad_not_implemented
 from theano.scalar import Scalar
 
 scal = scalar  # somewhere scalar gets reassigned to be a function
@@ -4310,8 +4310,8 @@ class GpuDiagonal(GpuOp):
                              'dimensions', x)
         axis_small, axis_large = sorted((self.axis1, self.axis2))
         broadcastable = x.broadcastable[:axis_small] + \
-                        x.broadcastable[axis_small + 1 : axis_large] + \
-                        x.broadcastable[axis_large + 1 : ] + (False,)
+            x.broadcastable[axis_small + 1:axis_large] + \
+            x.broadcastable[axis_large + 1:] + (False,)
         return Apply(self, [x], [x.type.__class__(
             dtype=x.dtype,
             broadcastable=broadcastable)()])
@@ -4356,8 +4356,8 @@ class GpuDiagonal(GpuOp):
         if slice_axis < stride_axis:
             stride_axis -= 1
         new_dim_order = range(x[slicer].ndim)
-        new_dim_order = tuple(new_dim_order[:stride_axis] + \
-                              new_dim_order[stride_axis+1:] + \
+        new_dim_order = tuple(new_dim_order[:stride_axis] +
+                              new_dim_order[stride_axis + 1:] +
                               [stride_axis, ])
         rval = cuda_ndarray.cuda_ndarray.dimshuffle(x[slicer], new_dim_order)
 
@@ -4366,7 +4366,7 @@ class GpuDiagonal(GpuOp):
         other_strides = tuple([d for i, d in enumerate(x.strides)
                                if i not in (self.axis1, self.axis2)])
         rval.strides = other_strides + \
-                       (x.strides[self.axis1] + x.strides[self.axis2], )
+            (x.strides[self.axis1] + x.strides[self.axis2], )
 
         if self.view:
             z[0] = rval
