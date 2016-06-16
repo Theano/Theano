@@ -292,7 +292,7 @@ class GpuDnnConvDesc(COp):
         assert precision in ['float16', 'float32', 'float64']
         self.precision = precision
 
-    def make_node(self, kern_shape, subsample=(1, 1)):
+    def make_node(self, kern_shape, subsample=(1, 1,0)):
         if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
             raise TypeError('kern must be 1D shape tensor')
         if isinstance(border_mode, integer_types):
@@ -309,7 +309,8 @@ class GpuDnnConvDesc(COp):
         self.border_mode = border_mode
         assert len(subsample) in (2, 3)
         self.subsample = subsample
-
+        if len(subsample) == 2:
+            subsample += (0,)
         node = Apply(self, [kern_shape, subsample],
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
@@ -321,6 +322,7 @@ class GpuDnnConvDesc(COp):
         out.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
         return node
 
+    #TODO: Need to document this, not in Extending using COp
     def get_op_params(self):
         pad0 = '0'
         pad1 = '0'
@@ -345,13 +347,6 @@ class GpuDnnConvDesc(COp):
         else:
             conv_flag = 'CUDNN_CROSS_CORRELATION'
 
-        sub0 = str(self.subsample[0])
-        sub1 = str(self.subsample[1])
-        if len(self.subsample) > 2:
-            sub2 = str(self.subsample[2])
-        else:
-            sub2 = '0'
-
         if self.precision == 'float16':
             precision = 'CUDNN_DATA_HALF'
         elif self.precision == 'float32':
@@ -364,7 +359,6 @@ class GpuDnnConvDesc(COp):
                 ('BORDER_MODE', bmode),
                 ('PAD_0', pad0), ('PAD_1', pad1), ('PAD_2', pad2),
                 ('CONV_MODE', conv_flag),
-                ('SUB_0', sub0), ('SUB_1', sub1), ('SUB_2', sub2),
                 ('PRECISION', precision)]
 
     def c_code_cache_version(self):
