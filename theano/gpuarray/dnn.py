@@ -282,10 +282,19 @@ class GpuDnnConvDesc(COp):
     def do_constant_folding(self, node):
         return False
 
-    def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv',
+    def __init__(self, border_mode, conv_mode='conv',
                  precision="float32"):
         COp.__init__(self, ["conv_desc.c"], "APPLY_SPECIFIC(conv_desc)")
 
+        assert conv_mode in ('conv', 'cross')
+        self.conv_mode = conv_mode
+
+        assert precision in ['float16', 'float32', 'float64']
+        self.precision = precision
+
+    def make_node(self, kern_shape, subsample=(1, 1)):
+        if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
+            raise TypeError('kern must be 1D shape tensor')
         if isinstance(border_mode, integer_types):
             border_mode = (border_mode,) * len(subsample)
         if isinstance(border_mode, tuple):
@@ -300,17 +309,8 @@ class GpuDnnConvDesc(COp):
         self.border_mode = border_mode
         assert len(subsample) in (2, 3)
         self.subsample = subsample
-        assert conv_mode in ('conv', 'cross')
-        self.conv_mode = conv_mode
 
-        assert precision in ['float16', 'float32', 'float64']
-        self.precision = precision
-
-    def make_node(self, kern_shape):
-        if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
-            raise TypeError('kern must be 1D shape tensor')
-
-        node = Apply(self, [kern_shape],
+        node = Apply(self, [kern_shape, subsample],
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
         # DebugMode cannot compare the values of CDataType variables, so by
