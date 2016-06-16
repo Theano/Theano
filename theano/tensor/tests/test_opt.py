@@ -62,6 +62,7 @@ from theano.tensor.elemwise import DimShuffle
 from theano.tests import unittest_tools as utt
 from theano.compile.mode import optdb
 from theano.compile import Mode
+from theano.gof.opt import check_stack_trace
 from nose.plugins.attrib import attr
 
 mode_opt = theano.config.mode
@@ -3602,8 +3603,7 @@ class Test_local_useless_alloc(unittest.TestCase):
                                   "TensorConstant{2})]")
 
         # Check stacktrace was copied over correctly after opt was applied
-        # self._verify_stack_trace(g)
-        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
+        self.assertTrue(check_stack_trace(g, ops_to_check='all'))
 
 
 class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
