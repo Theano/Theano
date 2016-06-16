@@ -4,6 +4,8 @@
 Installing Theano
 =================
 
+First, have a look at the :ref:`requirements` page before installing.
+
 Supported platforms:
 
 - :ref:`install_ubuntu`
@@ -12,7 +14,7 @@ Supported platforms:
 - :ref:`install_windows`
 - :ref:`install_others`
 
-To update your current installation see :ref:`updating`.
+Once your setup is complete and if you installed the GPU libraries, head to :ref:`using_gpu` to find how to verify
+everything is working properly.
 
-If you are curious about what Theano requires, you can head up
-to its :ref:`requirements` page.
+To update your current installation see :ref:`updating`.
