@@ -913,11 +913,8 @@ def local_gpua_subtensor(op, context_name, inputs, outputs):
                 isinstance(gpu_x.owner.op, GpuFromHost) and
                 # And it is a shared var or an input of the graph.
                 not gpu_x.owner.inputs[0].owner):
-            if len(x.clients) == 1:
-                if any([n == 'output' or any([isinstance(v.type, GpuArrayType)
-                                              for v in n.inputs + n.outputs])
-                        for n, _ in outputs[0].clients]):
-                    return
+            if len(x.clients) == 1 and len(outputs[0].clients) == 1:
+                return
     # Here is the condition for the GraphToGPU opt. inputs is the
     # inputs we want to use for the new node
     if (x.owner and isinstance(x.owner.op, GpuFromHost)):
@@ -945,7 +942,12 @@ def local_gpua_subtensor_graph(op, context_name, inputs, outputs):
         # and is used by only 1 node.
         # x is in the new graph, so we can't tests its number of clients.
         if not cpu_x.owner and len(cpu_x.clients) == 1:
-            return
+            c = outputs[0].clients
+            # If the subtensor have only 1 client, do it on the CPU.
+            # We let the other optimization to take care to move the
+            # next node or not.
+            if len(c) == 1:
+                return
     return GpuSubtensor(op.idx_list)
 
 

@@ -355,7 +355,10 @@ def test_local_gpu_subtensor():
     topo = f.maker.fgraph.toposort()
     assert any([type(node.op) is tensor.Subtensor for node in topo])
     assert not any([isinstance(node.op, GpuSubtensor) for node in topo])
-    assert any([isinstance(node.op, GpuElemwise) for node in topo])
+    # Our optimizer isn't smart enough to move to the GPU Elemwise.
+    # If it where just a little bit smarter, it could wrongly move it to the GPU.
+    # If it where super smart, it would know it should not move it to the GPU.
+    assert any([isinstance(node.op, tensor.Elemwise) for node in topo])
 
 
 def test_local_gpu_elemwise():
