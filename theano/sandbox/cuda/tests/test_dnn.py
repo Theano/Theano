@@ -418,13 +418,6 @@ def test_pooling3d():
     if not cuda.dnn.dnn_available() or cuda.dnn.version() < (3000, 3000):
         raise SkipTest(cuda.dnn.dnn_available.msg)
 
-    # For max pooling pool3d2d explicitly pads the input with
-    # -inf. Because of this, the compilation mode for the function
-    # that uses pool3d2d should not check for infinite values or
-    # it will falsely believe there is a error in the graph.
-    mode_without_gpu2 = mode_without_gpu.including()
-    mode_without_gpu2.check_isfinite = False
-
     mode_without_gpu_ref = theano.compile.mode.get_mode(
         'FAST_RUN').excluding('gpu')
 
