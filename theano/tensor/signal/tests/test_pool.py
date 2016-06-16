@@ -818,7 +818,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             f = theano.function([im, maxout, grad],
                                 DownsampleFactorMaxGrad(ignore_border=False,
                                                         mode=mode)(im, maxout,
-                                                                   grad, ds),
+                                                                   grad,
+                                                                   (3, 3)),
                                 on_unused_input='ignore')
 
             if mode == 'max':
