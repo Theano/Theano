@@ -418,12 +418,8 @@ def test_pooling3d():
     if not cuda.dnn.dnn_available() or cuda.dnn.version() < (3000, 3000):
         raise SkipTest(cuda.dnn.dnn_available.msg)
 
-    # For max pooling pool3d2d explicitly pads the input with
-    # -inf. Because of this, the compilation mode for the function
-    # that uses pool3d2d should not check for infinite values or
-    # it will falsely believe there is a error in the graph.
-    mode_without_gpu2 = mode_without_gpu.including()
-    mode_without_gpu2.check_isfinite = False
+    mode_without_gpu_ref = theano.compile.mode.get_mode(
+        'FAST_RUN').excluding('gpu')
 
     # 'average_exc_pad' is disabled for versions < 4004
     if cuda.dnn.version() < (4004, 4004):
@@ -463,7 +459,7 @@ def test_pooling3d():
                 f1 = theano.function([x], out1, mode=mode_with_gpu)
                 assert any([isinstance(node.op, cuda.dnn.GpuDnnPool)
                             for node in f1.maker.fgraph.apply_nodes])
-                f2 = theano.function([x], out2, mode=mode_without_gpu2)
+                f2 = theano.function([x], out2, mode=mode_without_gpu_ref)
                 assert not any([isinstance(node.op, cuda.dnn.GpuDnnPool)
                                 for node in f2.maker.fgraph.apply_nodes])
                 for shp in [(1, 10, 100, 100, 100),
@@ -518,7 +514,7 @@ def test_pooling3d():
                            strides=(stride, stride, stride),
                            pad=pad, pool_func=func)
             fc = theano.function([x], theano.grad(out.sum(), x),
-                                 mode=mode_without_gpu2)
+                                 mode=mode_without_gpu_ref)
             c_out = fc(data)
             utt.assert_allclose(c_out, g_out)
 
@@ -1464,7 +1460,7 @@ def test_conv3d_fwd():
             V=padded_inputs.dimshuffle(0, 2, 3, 4, 1),
             W=flipped_filters.dimshuffle(0, 2, 3, 4, 1),
             b=bias, d=subsample)
-        f_ref = theano.function([], conv_ref.dimshuffle(0, 4, 1, 2, 3))
+        f_ref = theano.function([], conv_ref.dimshuffle(0, 4, 1, 2, 3), mode="FAST_RUN")
 
         # Compare the results of the two implementations
         res_ref = f_ref()
@@ -1549,7 +1545,7 @@ def test_conv3d_bwd():
                 pad_per_dim[1]:shp[3] - pad_per_dim[1],
                 pad_per_dim[2]:shp[4] - pad_per_dim[2]]
 
-        f_ref = theano.function([], [grad_i_ref, grad_w_ref])
+        f_ref = theano.function([], [grad_i_ref, grad_w_ref], mode="FAST_RUN")
 
         # Compare the results of the two implementations
         res_ref = f_ref()
