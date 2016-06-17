@@ -1676,8 +1676,9 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
     cost = theano.tensor.sum(t_r * o_output)
 
     if no_debug_ref:
+        mode_for_cost=mode_not_debug(mode)
         cost_fn = function(tensor_pt, cost, name='gradient.py cost',
-                           mode=mode_not_debug(mode))
+                           mode=mode_for_cost)
     else:
         cost_fn = function(tensor_pt, cost, name='gradient.py cost')
 
