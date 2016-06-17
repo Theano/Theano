@@ -36,7 +36,7 @@ from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         HostFromGpu, GpuFromHost,
                         GpuSplit, GpuContiguous, gpu_contiguous,
                         GpuAlloc, GpuAllocEmpty, GpuReshape,
-                        GpuEye, gpu_join, GpuJoin, gpu_alloc_empty)
+                        GpuEye, gpu_join, GpuJoin, gpu_alloc_empty, gpu_alloc)
 from .blas import (gpu_dot22, GpuGemm, GpuGer, GpuGemmBatch,
                    gpugemm_no_inplace, gpugemm_inplace, gpugemmbatch_no_inplace,
                    gpugemv_no_inplace, gpugemv_inplace)
@@ -281,12 +281,13 @@ class GraphToGPU(NavigatorOptimizer):
 
         # Building a new graph
         # Iterating through inputs of graph
+        target = infer_context_name(*fgraph.inputs)
         for i in fgraph.inputs:
             # Do not move *int* scalar to the GPU.
             target = getattr(i.tag, 'target', None)
-            if (target != 'cpu' and
-                    isinstance(i.type, tensor.TensorType) and
-                    (i.ndim > 0 or 'int' not in i.dtype)):
+            if (target != 'cpu' and 
+                isinstance(i.type, tensor.TensorType) and
+                (i.ndim > 0 or 'int' not in i.dtype)):
                 mapping[i] = as_gpuarray_variable(i, target)
             else:
                 mapping[i] = i
@@ -574,14 +575,14 @@ def local_gpuaalloc2(node):
                 i.owner.op in [host_from_gpu, tensor.alloc]
                 for i in c.inputs[1:])
             for c, idx in node.outputs[0].clients)):
-        return [host_from_gpu(GpuAlloc(None)(*node.inputs))]
+        return [host_from_gpu(gpu_alloc(None)(*node.inputs))]
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.Alloc])
 @register_opt2([tensor.Alloc], 'fast_compile')
 def local_gpuaalloc(op, context_name, inputs, outputs):
-    return GpuAlloc(context_name)(*inputs)
+    return gpu_alloc(context_name)(*inputs)
 
 
 @register_opt('fast_compile')
@@ -590,8 +591,8 @@ def local_gpuaalloc(op, context_name, inputs, outputs):
 def local_gpuaallocempty(op, context_name, inputs, outputs):
     # We use _props_dict() to make sure that the GPU op know all the
     # CPU op props.
-    return GpuAllocEmpty(context_name=context_name,
-                         **op._props_dict())(*inputs)
+    dtype = op._props_dict().get('dtype')
+    return gpu_alloc_empty(dtype,context_name)(*inputs)
 
 
 @register_opt()
@@ -602,7 +603,7 @@ def local_gpualloc_memset_0(node):
         if (isinstance(inp, GpuArrayConstant) and
                 inp.data.size == 1 and
                 (numpy.asarray(inp.data) == 0).all()):
-            new_op = GpuAlloc(node.op.context_name, memset_0=True)
+            new_op = gpu_alloc(node.op.context_name, memset_0=True)
             return [new_op(*node.inputs)]
 
 
@@ -612,7 +613,7 @@ def local_gpua_alloc_empty_to_zeros(node):
     if isinstance(node.op, GpuAllocEmpty):
         context_name = infer_context_name(*node.inputs)
         z = numpy.asarray(0, dtype=node.outputs[0].dtype)
-        return [GpuAlloc()(as_gpuarray_variable(z, context_name),
+        return [gpu_alloc(None)(as_gpuarray_variable(z, context_name),
                            *node.inputs)]
 optdb.register('local_gpua_alloc_empty_to_zeros',
                theano.tensor.opt.in2out(local_gpua_alloc_empty_to_zeros),
@@ -1140,7 +1141,7 @@ def local_gpua_hgemm(op, context_name, inputs, outputs):
     if (A.ndim == 2 and B.ndim == 2 and
             A.dtype == 'float16' and B.dtype == 'float16'):
         fgraph = inputs[0].fgraph
-        C = gpu_alloc_empty(dtype='float16', context_name=context_name)(
+        C = gpu_alloc_empty('float16', context_name)(
             shape_i(A, 0, fgraph),
             shape_i(B, 1, fgraph))
         return gpugemm_no_inplace(C, 1.0, A, B, 0.0)
