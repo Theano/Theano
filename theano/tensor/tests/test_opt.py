@@ -1934,6 +1934,44 @@ def test_local_subtensor_remove_broadcastable_index():
     f2(xn)
 
 
+def test_subtensor_inc_subtensor():
+    # basic test
+    x = tensor.matrix('x')
+    i = tensor.iscalar('i')
+    v = tensor.vector('v')
+    y = tensor.set_subtensor(x[i], v)
+    z = y[i]
+    mode = theano.compile.mode.get_default_mode().including('local_subtensor_inc_subtensor')
+    f = theano.function([x, i, v], z, mode=mode)
+    prog = f.maker.fgraph.toposort()
+    assert len(prog) == 1
+    assert isinstance(prog[0].op, DeepCopyOp)
+
+    # complicated test
+    x = tensor.tensor4('x')
+    i1 = tensor.iscalar('i1')
+    i2 = tensor.iscalar('i2')
+    i3 = tensor.iscalar('i3')
+    i4 = tensor.iscalar('i4')
+    v = tensor.tensor3('v')
+    y = tensor.set_subtensor(x[i1, :i2, i3:, ::i4], v)
+    z = y[i1, :i2, i3:, ::i4]
+    mode = theano.compile.mode.get_mode('FAST_COMPILE').including('local_subtensor_inc_subtensor')
+    f = theano.function([x, i1, i2, i3, i4, v], z, mode=mode)
+    prog = f.maker.fgraph.toposort()
+    assert len(prog) == 1
+    assert isinstance(prog[0].op, DeepCopyOp)
+
+    # case not use this optimization
+    z = y[i1, :i3, i2:, ::i4]
+    mode = theano.compile.mode.get_mode('FAST_COMPILE').including('local_subtensor_inc_subtensor')
+    f = theano.function([x, i1, i2, i3, i4, v], z, mode=mode)
+    prog = f.maker.fgraph.toposort()
+    assert len(prog) != 1
+    assert any(isinstance(x.op, tensor.IncSubtensor) for x in prog)
+    assert any(isinstance(x.op, tensor.Subtensor) for x in prog)
+
+
 class test_local_subtensor_make_vector(unittest.TestCase):
     def test_scalar_idx(self):
         x, y, z = tensor.lscalars('xyz')

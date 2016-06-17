@@ -1894,6 +1894,21 @@ def local_track_shape_i(node):
         replacement = shape_feature.scheduled[node]
         return [shape_feature.shape_of[replacement][node.op.i]]
 
+#TH-2801 opt: subtensor(incsubtensor)
+@register_specialize
+@register_canonicalize
+@gof.local_optimizer([Subtensor])
+def local_subtensor_inc_subtensor(node):
+    if isinstance(node.op, Subtensor):
+        x = node.inputs[0]
+        if not x.owner or not isinstance(x.owner.op, IncSubtensor):
+            return
+        if not x.owner.op.set_instead_of_inc:
+            return
+        if x.owner.inputs[2] == node.inputs[1] and tuple(x.owner.op.idx_list) == tuple(node.op.idx_list):
+            return [x.owner.inputs[1]]
+        else:
+            return
 
 @register_specialize
 @register_canonicalize
