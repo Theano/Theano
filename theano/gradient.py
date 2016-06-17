@@ -1544,7 +1544,7 @@ class numeric_grad(object):
 
 def mode_not_debug(mode):
     if isinstance(mode, DebugMode):
-        link, opt = mode.get_linker_optimizer()
+        opt = mode.optimizer
         return FAST_RUN.clone(optimizer=opt)
     else:
         return mode
