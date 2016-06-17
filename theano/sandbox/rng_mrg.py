@@ -1553,7 +1553,7 @@ class MRG_RandomStreams(object):
 
 
 @register_opt2([mrg_uniform], 'fast_compile')
-def local_gpua_mrg(op, context_name, inputs, outputs):
+def local_gpua_mrg1(op, context_name, inputs, outputs):
     if (type(op) == mrg_uniform and
             isinstance(inputs[0].type, GpuArrayType)):
         outs = GPUA_mrg_uniform.new(inputs[0],

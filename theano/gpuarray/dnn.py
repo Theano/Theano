@@ -968,7 +968,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     img = gpu_contiguous(img)
     kerns = gpu_contiguous(kerns)
     desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
-                          conv_mode=conv_mode, precision=precision)(kerns.shape)
+                             conv_mode=conv_mode, precision=precision)(kerns.shape)
     desc_op = desc.owner.op
     # We can use Shape_i and bypass the infer_shape here as this is on
     # the input of node and it will always be present.
@@ -990,7 +990,7 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
     topgrad = gpu_contiguous(topgrad)
     kerns_shp = as_tensor_variable(kerns_shp)
     desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
-                          conv_mode=conv_mode)(kerns_shp)
+                             conv_mode=conv_mode)(kerns_shp)
     out = gpu_alloc_empty(img.dtype, ctx_name)(*kerns_shp)
     return gpu_dnn_conv_gradW()(img, topgrad, out, desc)
 
@@ -1004,7 +1004,7 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
     topgrad = gpu_contiguous(topgrad)
     img_shp = as_tensor_variable(img_shp)
     desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
-                          conv_mode=conv_mode)(kerns.shape)
+                             conv_mode=conv_mode)(kerns.shape)
     out = gpu_alloc_empty(kerns.dtype, ctx_name)(*img_shp)
     return gpu_dnn_conv_gradI()(kerns, topgrad, out, desc)
 
@@ -1427,10 +1427,10 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
         return Apply(self, [dy, sm], [sm.type()])
 
 
-@local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights,
-                  AbstractConv2d_gradInputs])
+@op_lifter([AbstractConv2d, AbstractConv2d_gradWeights,
+            AbstractConv2d_gradInputs])
 @register_opt2([AbstractConv2d, AbstractConv2d_gradWeights,
-                AbstractConv2d_gradInputs], 'fast_compile')
+                AbstractConv2d_gradInputs], 'conv_dnn', 'cudnn', 'gpuarray', 'fast_compile')
 def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
     if (not isinstance(op, (AbstractConv2d,
                             AbstractConv2d_gradWeights,

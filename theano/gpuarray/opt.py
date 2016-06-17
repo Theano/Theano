@@ -285,9 +285,9 @@ class GraphToGPU(NavigatorOptimizer):
         for i in fgraph.inputs:
             # Do not move *int* scalar to the GPU.
             target = getattr(i.tag, 'target', None)
-            if (target != 'cpu' and 
-                isinstance(i.type, tensor.TensorType) and
-                (i.ndim > 0 or 'int' not in i.dtype)):
+            if (target != 'cpu' and
+               isinstance(i.type, tensor.TensorType) and
+               (i.ndim > 0 or 'int' not in i.dtype)):
                 mapping[i] = as_gpuarray_variable(i, target)
             else:
                 mapping[i] = i
@@ -305,12 +305,12 @@ class GraphToGPU(NavigatorOptimizer):
         for node in topo:
 
             if isinstance(node.op, HostFromGpu):
-                mapping[node.outputs[0]] = node.inputs[0]
+                mapping[node.outputs[0]] = mapping[node.inputs[0]]
                 continue
 
             # Move only if any of the inputs are on the GPU.
             move_to_GPU = False
-            from .type import GpuArrayVariable, GpuArraySharedVariable #when you uncomment
+            from .type import GpuArrayVariable, GpuArraySharedVariable
             if any([isinstance(i, GpuArrayVariable) or
                    isinstance(i, GpuArraySharedVariable)
                    for i in [mapping[v] for v in node.inputs] +
@@ -364,15 +364,9 @@ class GraphToGPU(NavigatorOptimizer):
             elif isinstance(new_ops, (tuple, list)):
                 outputs = []
                 for o in new_ops:
-                    if o.owner and isinstance(o.owner.op, HostFromGpu):
-                        outputs.append(o.owner.inputs[0])
-                    else:
-                        outputs.append(o)
+                    outputs.append(o)
             elif isinstance(new_ops, theano.Variable):
-                if new_ops.owner and isinstance(new_ops.owner.op, HostFromGpu):
-                    outputs = new_ops.owner.inputs
-                else:
-                    outputs = [new_ops]
+                outputs = [new_ops]
             else:
                 outputs = new_ops(*[mapping[i] for i in node.inputs],
                                   return_list=True)
@@ -427,9 +421,9 @@ class GraphToGPU(NavigatorOptimizer):
         for s in list(set(old_not_transferred)):
             print(blanc, 'Nodes not transferred by old opt : ' + str(s), file=stream)
         for n in list(set(new_not_transferred)):
-            print(blanc, 'Nodes not transferred by new optimizer : ' +str(n), file=stream)
+            print(blanc, 'Nodes not transferred by new optimizer : ' + str(n), file=stream)
         for d in list(set(set(new_not_transferred) - set(old_not_transferred))):
-            print(blanc, 'Not transferred difference : ' , str(d), file=stream)
+            print(blanc, 'Not transferred difference : ', str(d), file=stream)
 
         for o, count in iteritems(process_count):
             if count > 0:
@@ -592,7 +586,7 @@ def local_gpuaallocempty(op, context_name, inputs, outputs):
     # We use _props_dict() to make sure that the GPU op know all the
     # CPU op props.
     dtype = op._props_dict().get('dtype')
-    return gpu_alloc_empty(dtype,context_name)(*inputs)
+    return gpu_alloc_empty(dtype, context_name)(*inputs)
 
 
 @register_opt()
@@ -614,7 +608,7 @@ def local_gpua_alloc_empty_to_zeros(node):
         context_name = infer_context_name(*node.inputs)
         z = numpy.asarray(0, dtype=node.outputs[0].dtype)
         return [gpu_alloc(None)(as_gpuarray_variable(z, context_name),
-                           *node.inputs)]
+                                *node.inputs)]
 optdb.register('local_gpua_alloc_empty_to_zeros',
                theano.tensor.opt.in2out(local_gpua_alloc_empty_to_zeros),
                # After move to gpu and merge2, before inplace.
@@ -889,11 +883,12 @@ def local_gpua_join(op, context_name, inputs, outputs):
 
 @register_opt('fast_compile')
 @local_optimizer([GpuJoin])
-def local_gpuajoin_1(node):
+@register_opt2([GpuJoin], 'fast_compile')
+def local_gpuajoin_1(op, context_name, inputs, outputs):
     # join of a single element
-    if (isinstance(node.op, GpuJoin) and
-            len(node.inputs) == 2):
-        return [node.inputs[1]]
+    if (isinstance(op, GpuJoin) and
+            len(inputs) == 2):
+        return [inputs[1]]
 
 
 @register_opt('fast_compile')
@@ -1311,7 +1306,7 @@ def local_lift_abstractconv2d(op, context_name, inputs, outputs):
 register_opt('fast_compile')(conv_groupopt)
 
 
-@register_opt("low_memory")
+@register_opt("low_memory", 'fast_compile')
 @local_optimizer([GpuCAReduceCuda])
 def local_gpu_elemwise_careduce(node):
     """

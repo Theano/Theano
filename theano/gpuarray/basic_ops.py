@@ -870,7 +870,7 @@ class GpuAlloc(HideC, Alloc):
         return True
 
 
-#Caching GPUAlloc 
+# Caching GPUAlloc
 def gpu_alloc(ctx, memset_0=False):
     key = (ctx, memset_0)
     if key not in gpu_alloc.cache:

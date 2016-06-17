@@ -474,4 +474,3 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
 def use_gpu_images2neibs(op, context_name, inputs):
     if op.mode in ['valid', 'ignore_borders', 'wrap_centered']:
         return GpuImages2Neibs(op.mode)
-
