@@ -2265,7 +2265,17 @@ pprint.assign(fill, printing.FunctionPrinter('fill'))
 
 @constructor
 def ones_like(model, dtype=None):
-    """equivalent of numpy.ones_like"""
+    """equivalent of numpy.ones_like
+    Parameters
+    ----------
+    model : tensor
+    dtype : data-type, optional
+
+    Returns
+    -------
+    tensor
+        tensor the shape of model containing ones of the type of dtype.
+    """
     if dtype is None:
         dtype = model.type.dtype
     ret = fill(model, constant(1.0, dtype=dtype))
@@ -2274,7 +2284,18 @@ def ones_like(model, dtype=None):
 
 @constructor
 def zeros_like(model, dtype=None):
-    """equivalent of numpy.zeros_like"""
+    """equivalent of numpy.zeros_like
+    Parameters
+    ----------
+    model : tensor
+    dtype : data-type, optional
+
+    Returns
+    -------
+    tensor
+        tensor the shape of model containing zeros of the type of dtype.
+    """
+
     if dtype is None:
         dtype = model.type.dtype
     return fill(model, constant(0.0, dtype=dtype))
