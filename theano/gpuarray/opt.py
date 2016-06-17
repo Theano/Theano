@@ -30,7 +30,7 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
 from theano.tests.breakpoint import PdbBreakpoint
 
 from .type import (GpuArrayType, GpuArrayConstant, get_context,
-                   ContextNotDefined)
+                   ContextNotDefined, GpuArrayVariable, GpuArraySharedVariable)
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         host_from_gpu, GpuToGpu,
                         HostFromGpu, GpuFromHost,
@@ -48,7 +48,7 @@ from .nnet import (gpu_crossentropy_softmax_1hot_with_bias_dx,
                    gpu_softmax_with_bias, gpu_softmax)
 
 from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
-                       GpuCAReduceCPY)
+                       GpuCAReduceCPY, gpu_ca_reduce_cuda)
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedSubtensor1,
                         GpuAdvancedIncSubtensor1,
@@ -310,7 +310,6 @@ class GraphToGPU(NavigatorOptimizer):
 
             # Move only if any of the inputs are on the GPU.
             move_to_GPU = False
-            from .type import GpuArrayVariable, GpuArraySharedVariable
             if any([isinstance(i, GpuArrayVariable) or
                    isinstance(i, GpuArraySharedVariable)
                    for i in [mapping[v] for v in node.inputs] +
@@ -883,12 +882,11 @@ def local_gpua_join(op, context_name, inputs, outputs):
 
 @register_opt('fast_compile')
 @local_optimizer([GpuJoin])
-@register_opt2([GpuJoin], 'fast_compile')
-def local_gpuajoin_1(op, context_name, inputs, outputs):
+def local_gpuajoin_1(node):
     # join of a single element
-    if (isinstance(op, GpuJoin) and
-            len(inputs) == 2):
-        return [inputs[1]]
+    if (isinstance(node.op, GpuJoin) and
+            len(node.inputs) == 2):
+        return [node.inputs[1]]
 
 
 @register_opt('fast_compile')
@@ -1306,7 +1304,7 @@ def local_lift_abstractconv2d(op, context_name, inputs, outputs):
 register_opt('fast_compile')(conv_groupopt)
 
 
-@register_opt("low_memory", 'fast_compile')
+@register_opt("low_memory")
 @local_optimizer([GpuCAReduceCuda])
 def local_gpu_elemwise_careduce(node):
     """
@@ -1324,10 +1322,10 @@ def local_gpu_elemwise_careduce(node):
             isinstance(node.inputs[0].owner.op.scalar_op, scalar.basic.Sqr)):
         op = node.op
         inp = node.inputs[0].owner.inputs[0]
-        return [GpuCAReduceCuda(scalar_op=op.scalar_op,
-                                axis=op.axis,
-                                reduce_mask=op.reduce_mask,
-                                pre_scalar_op=scalar.basic.sqr)(inp)]
+        return [gpu_ca_reduce_cuda(scalar_op=op.scalar_op,
+                                   axis=op.axis,
+                                   reduce_mask=op.reduce_mask,
+                                   pre_scalar_op=scalar.basic.sqr)(inp)]
 
 
 @local_optimizer(None)
