@@ -6768,7 +6768,6 @@ if __name__ == '__main__':
     t.setUp()
     # t.test_perform()
     t.test_infer_shape()
-
     """
 #    unittest.main()
     test_fusion().tes_memory_leak()
