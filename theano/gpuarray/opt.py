@@ -1173,12 +1173,14 @@ def local_gpuagemmbatch_output_merge(node, *inputs):
 
 @register_opt('fast_compile')
 @op_lifter([tensor.blas.Ger, tensor.blas_c.CGer, tensor.blas_scipy.ScipyGer])
+@register_opt2([tensor.blas.Ger, tensor.blas_c.CGer, tensor.blas_scipy.ScipyGer], 'fast_compile')
 def local_gpua_ger(op, context_name, inputs, outputs):
     return GpuGer(inplace=op.destructive)
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.blas.Dot22])
+@register_opt2([tensor.blas.Dot22], 'fast_compile')
 def local_gpua_dot22(op, context_name, inputs, outputs):
     return gpu_dot22
 
@@ -1242,6 +1244,7 @@ def local_assert(op, context_name, inputs, outputs):
 
 @register_opt('fast_compile')
 @op_lifter([ConvOp])
+@register_opt2([ConvOp], 'fast_compile')
 def local_error_convop(op, context_name, inputs, outputs):
     assert False, """
 ConvOp does not work with the gpuarray backend.
