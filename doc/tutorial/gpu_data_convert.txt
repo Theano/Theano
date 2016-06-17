@@ -4,19 +4,25 @@
 PyCUDA/CUDAMat/Gnumpy compatibility
 ===================================
 
+.. note::
+
+    The following applies to the old GPU backend in ``theano.sandbox.cuda``.
+    The new backend in ``theano.gpuarray`` directly uses the GPUArray
+    types in PyCUDA.
+
 PyCUDA
 ======
 
-Currently, PyCUDA and Theano have different objects to store GPU
-data. The two implementations do not support the same set of features.
-Theano's implementation is called *CudaNdarray* and supports
-*strides*. It also only supports the *float32* dtype. PyCUDA's implementation
-is called *GPUArray* and doesn't support *strides*. However, it can deal with
-all NumPy and CUDA dtypes.
+Theano's new GPU backend (:ref:`theano.gpuarray<libdoc_gpuarray>`) is based on 
+PyCUDA's GPUArray objects. However, if you are still using the old backend,
+here is some information on how to use both objects in the same script.
 
-We are currently working on having the same base object for both that will
-also mimic Numpy. Until this is ready, here is some information on how to
-use both objects in the same script.
+PyCUDA and Theano's old GPU backend (:ref:`theano.sandbox.cuda<libdoc_sandbox_cuda>`)
+have different objects to store GPU data. The two implementations do not support
+the same set of features. The implementation in ``theano.sandbox.cuda`` is called
+*CudaNdarray* and supports *strides*. It also only supports the *float32* dtype.
+PyCUDA's implementation is called *GPUArray* and doesn't support *strides*.
+However, it can deal with all NumPy and CUDA dtypes.
 
 Transfer
 --------
