@@ -62,6 +62,16 @@ class BaseCorrMM(gof.OpenMPOp):
         self.subsample = tuple(subsample)
         self.filter_dilation = tuple(filter_dilation)
 
+        if not theano.config.blas.ldflags:
+            raise NotImplementedError("C code for corrMM* classes need a blas library.")
+        else:
+            if 'openblas' in theano.config.blas.ldflags:
+                self.blas_type = 'openblas'
+            elif 'mkl' in theano.config.blas.ldflags:
+                self.blas_type = 'mkl'
+            else:
+                self.blas_type = ''
+
     @property
     def pad(self):
         if self.border_mode != 'valid':
@@ -95,6 +105,10 @@ class BaseCorrMM(gof.OpenMPOp):
     def c_headers(self):
         headers = ['<stdio.h>']
         headers += super(BaseCorrMM, self).c_headers()
+        if self.blas_type == 'openblas':
+            headers += ['cblas.h']
+        if self.blas_type == 'mkl':
+            headers += ['mkl.h']
         return headers
 
     def c_code_cache_version(self):
@@ -119,6 +133,7 @@ class BaseCorrMM(gof.OpenMPOp):
             sub['float_typenum'] = 'NPY_DOUBLE'
             sub['n_bytes'] = 8
             sub['c_float_type'] = 'double'
+
         if self.openmp:
             sub['omp_flags'] = '#pragma omp parallel for schedule(static)'
             sub['omp_max_threads'] = 'omp_get_max_threads()'
@@ -129,6 +144,13 @@ class BaseCorrMM(gof.OpenMPOp):
             sub['omp_max_threads'] = 1
             sub['omp_set_threads'] = ''
             sub['omp_get_threads'] = 0
+
+        if self.blas_type == 'openblas':
+            sub['blas_flags'] = 'openblas_set_num_threads(1)'
+        elif self.blas_type == 'mkl':
+            sub['blas_flags'] = 'mkl_set_num_threads(1)'
+        else:
+            sub['blas_flags'] = ''
 
         files = ['corr_gemm.c']
         codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
@@ -173,8 +195,6 @@ class BaseCorrMM(gof.OpenMPOp):
             If self.border_mode == 'half', a variable giving the width of the
             filters for direction="backprop weights".  Ignored otherwise.
         """
-        if not theano.config.blas.ldflags:
-            raise NotImplementedError("C code for CorrMM* classes need a blas library.")
         dH, dW = self.subsample
         dilH, dilW = self.filter_dilation
         if self.border_mode == "half":
@@ -340,7 +360,8 @@ class BaseCorrMM(gof.OpenMPOp):
         else {
           typenum = PyArray_TYPE(bottom);
         }
-        %(out)s = (PyArrayObject*)PyArray_EMPTY(4,
+        //Change to PyArray_ZEROS which is faster than PyArray_EMPTY.
+        %(out)s = (PyArrayObject*)PyArray_ZEROS(4,
                                           out_dim,
                                           typenum,
                                           0);

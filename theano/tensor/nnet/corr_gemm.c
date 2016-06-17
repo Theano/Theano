@@ -189,7 +189,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     col_dim[0] = (npy_intp)max_threads;
     col_dim[1] = (npy_intp)(nChannels * kW * kH);
     col_dim[2] = (npy_intp)(topHeight * topWidth);
-             
+
     //Change to PyArray_ZEROS which is faster than PyArray_EMPTY.
     PyArrayObject* col = (PyArrayObject*)PyArray_ZEROS(3,
             col_dim,
@@ -230,6 +230,8 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                    bottomWidth, kH, kW, dilH, dilW, padH, padW, dH, dW,
                    (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride);
             // Second, gemm
+            // Always forcing gemm to one thread here for best and stable performance.
+            %(blas_flags)s;
             %(gemm)s(&NTrans, &NTrans,
                    &N_, &M_, &K_,
                    &one,
@@ -301,6 +303,8 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
             // Note that we accumulate into weight. We do so by setting beta = 0
             // for the first iteration and beta = 1 for subsequent ones. (This
             // is faster than setting weight to all zeros before the loop.)
+            // Always forcing gemm to one thread here for best and stable performance.
+            %(blas_flags)s;
             %(gemm)s(&Trans, &NTrans,
                    &K_, &M_, &N_,
                    &one,
@@ -365,6 +369,8 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         for (int n = 0; n < batchSize; ++n) {
             // gemm into columns
         	int tid = %(omp_get_threads)s;
+            // Always forcing gemm to one thread here for best and stable performance.
+            %(blas_flags)s;
             %(gemm)s(&NTrans, &Trans,
                    &N_, &K_, &M_,
                    &one,
