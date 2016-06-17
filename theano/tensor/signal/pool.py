@@ -245,12 +245,6 @@ class Pool(OpenMPOp):
     def make_node(self, x, ws, stride=None, pad=(0, 0)):
         # TODO: consider restricting the dtype?
         x = tensor.as_tensor_variable(x)
-        # TODO CESAR: How can we check the theano variables?
-        if isinstance(ws, (tuple, list)):
-            if not all([isinstance(w, integer_types) for w in ws]):
-                raise ValueError(
-                    "Pool downsample parameters must be ints."
-                    " Got %s" % str(ws))
         if stride is None:
             stride = ws
         if isinstance(pad, (tuple, list)):
@@ -258,10 +252,11 @@ class Pool(OpenMPOp):
             if pad != (0, 0) and not self.ignore_border:
                 raise NotImplementedError(
                     'padding works only with ignore_border=True')
-            # TODO CESAR: Again, how can we check against theano variables?
-            if pad[0] >= ws[0] or pad[1] >= ws[1]: #TODO CESAR this is wrong if ws is a theano variable
-                raise NotImplementedError(
-                    'padding_h and padding_w must be smaller than strides')
+            if isinstance(ws, (tuple, list)):
+                ws = tuple(ws)
+                if pad[0] >= ws[0] or pad[1] >= ws[1]:
+                    raise NotImplementedError(
+                        'padding_h and padding_w must be smaller than strides')
         ws = tensor.as_tensor_variable(ws)
         stride = tensor.as_tensor_variable(stride)
         pad = tensor.as_tensor_variable(pad)
@@ -270,6 +265,12 @@ class Pool(OpenMPOp):
         assert pad.ndim == 1
         if x.type.ndim != 4:
             raise TypeError()
+        if not ws.dtype.startswith('int'):
+            raise TypeError('Pool downsample parameters must be ints.')
+        if not stride.dtype.startswith('int'):
+            raise TypeError('Stride parameters must be ints.')
+        if not pad.dtype.startswith('int'):
+            raise TypeError('Padding parameters must be ints.')
         # If the input shape are broadcastable we can have 0 in the output shape
         broad = x.broadcastable[:2] + (False, False)
         out = tensor.TensorType(x.dtype, broad)
@@ -660,7 +661,9 @@ class MaxPoolGrad(PoolGrad):
         assert isinstance(x, Variable) and x.ndim == 4
         assert isinstance(maxout, Variable) and maxout.ndim == 4
         assert isinstance(gz, Variable) and gz.ndim == 4
-        #TODO CESAR: ASSERT
+        assert isinstance(ws, Variable) and ws.ndim == 1
+        assert isinstance(stride, Variable) and stride.ndim == 1
+        assert isinstance(pad, Variable) and pad.ndim == 1
         return Apply(self, [x, maxout, gz, ws, stride, pad], [x.type()])
 
     def perform(self, node, inp, out):
@@ -840,7 +843,7 @@ class AveragePoolGrad(PoolGrad):
     # of MaxPoolGrad.  They have to keep the same interface because of
     # the DownsampleFactorMaxGrad trick to keep old scripts working
     # (see downsample.py for details on this).
-    def make_node(self, x, gz, ws, stride=None, pad=(0, 0), dummy=None): # TODO CESAR check if it works!
+    def make_node(self, x, gz, ws, stride=None, pad=(0, 0), dummy=None):
         # make_node should only be called by the grad function of
         # Pool, so these asserts should not fail.
         x = tensor.as_tensor_variable(x)
@@ -852,7 +855,9 @@ class AveragePoolGrad(PoolGrad):
         pad = tensor.as_tensor_variable(pad)
         assert isinstance(x, Variable) and x.ndim == 4
         assert isinstance(gz, Variable) and gz.ndim == 4
-        # TODO CESAR assert
+        assert isinstance(ws, Variable) and ws.ndim == 1
+        assert isinstance(stride, Variable) and stride.ndim == 1
+        assert isinstance(pad, Variable) and pad.ndim == 1
         return Apply(self, [x, gz, ws, stride, pad], [x.type()])
 
     def perform(self, node, inp, out):
@@ -940,13 +945,6 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         assert x.ndim == 4
         assert maxout.ndim == 4
         assert gz.ndim == 4
-
-        # TODO CESAR: How can we check the theano variables?
-        if isinstance(ws, (tuple, list)):
-            if not all([isinstance(w, integer_types) for w in ws]):
-                raise ValueError(
-                    "Pool downsample parameters must be ints."
-                    " Got %s" % str(ws))
         if stride is None:
             stride = ws
         if isinstance(pad, (tuple, list)):
@@ -954,17 +952,23 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
             if pad != (0, 0) and not self.ignore_border:
                 raise NotImplementedError(
                     'padding works only with ignore_border=True')
-            # TODO CESAR: Again, how can we check against theano variables?
-            if pad[0] >= ws[0] or pad[1] >= ws[1]: #TODO CESAR this is wrong if ws is a theano variable
-                raise NotImplementedError(
-                    'padding_h and padding_w must be smaller than strides')
+            if isinstance(ws, (tuple, list)):
+                ws = tuple(ws)
+                if pad[0] >= ws[0] or pad[1] >= ws[1]:
+                    raise NotImplementedError(
+                        'padding_h and padding_w must be smaller than strides')
         ws = tensor.as_tensor_variable(ws)
         stride = tensor.as_tensor_variable(stride)
         pad = tensor.as_tensor_variable(pad)
         assert ws.ndim == 1
         assert stride.ndim == 1
         assert pad.ndim == 1
-
+        if not ws.dtype.startswith('int'):
+            raise TypeError('Pool downsample parameters must be ints.')
+        if not stride.dtype.startswith('int'):
+            raise TypeError('Stride parameters must be ints.')
+        if not pad.dtype.startswith('int'):
+            raise TypeError('Padding parameters must be ints.')
         return Apply(self, [x, maxout, gz, ws, stride, pad], [x.type()])
 
     def perform(self, node, inp, out):
