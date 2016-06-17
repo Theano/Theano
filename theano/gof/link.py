@@ -60,14 +60,15 @@ def thunk_hook(type, value, trace):
     and prints it out on L{stderr}.
 
     The normal excepthook is then called.
-    Parameters
-    ------------
+
+    Parameters:
+    ----------
     type
-      Exception class
+        Exception class
     value
-      Exception instance
+        Exception instance
     trace
-      Traceback object
+        Traceback object
 
     Notes
     -----

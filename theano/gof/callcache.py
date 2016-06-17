@@ -30,12 +30,12 @@ class CallCache(object):
         Retrieve item from the cache(if available)
         based on a key
 
-        Parameters
-        ------------
+        Parameters:
+        ----------
         key
-          parameter to retrieve cache item
+            parameter to retrieve cache item
         fn,args
-          key to retrieve if "key" is None
+            key to retrieve if "key" is None
         """
         if key is None:
             key = (fn, tuple(args))

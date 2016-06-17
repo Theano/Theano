@@ -1481,7 +1481,8 @@ def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
     So instead, some commands in this file will respond to a
     failed rmtree() by touching a 'delete.me' file.  This file is a message
     for a future process to try deleting the directory.
-    Paramters
+
+    Parameters:
     ----------
     parent
         Root node to start deleting from

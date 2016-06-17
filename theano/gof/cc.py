@@ -154,7 +154,7 @@ def code_gen(blocks):
         }
 
     Parameters:
-    ----------------
+    ----------
     blocks
          List of CodeBlock instances such that
          * declarations, behavior and cleanup are in the run()
@@ -1170,7 +1170,10 @@ class CLinker(link.Linker):
             be allocated.
         storage_map: dict that map variables to storages.
             This is used when you need to customize the storage of
-            this thunk.keep_lock
+            this thunk
+        keep_lock:
+            If True, we won't release the lock on the compiledir
+            at the end of this function call.
         Returns: thunk, input_storage, output_storage
 
         The return values can be used as follows:
@@ -1559,7 +1562,7 @@ class CLinker(link.Linker):
         can carry on the computation of this linker's fgraph
 
         Parameters:
-        ---------------
+        ----------
         error_storage -> list of length 3
         in_storage -> list of lists of length 1, one per input
         out_storage -> list of lists of length 1, one per output
@@ -1840,10 +1843,12 @@ def _default_checker(x, y):
     """
     Default checker for DualLinker. This checks that the
     variables contain the same data using ==.
-    Parameters
-    -------------
+
+
+    Parameters:
+    ----------
     x,y
-    the variables to compare data
+        the variables to compare data
     """
     if x[0] != y[0]:
         raise Exception("Output mismatch.",
