@@ -335,7 +335,7 @@ class GraphToGPU(NavigatorOptimizer):
                 for c, _ in node.outputs[0].clients:
                     if (c != 'output' and
                         (self.local_optimizers_map.get(c.op, []) +
-                         self.local_optimizers_map.get(type(c.op)))):
+                         self.local_optimizers_map.get(type(c.op), []))):
                         move_to_GPU = True
             new_ops = None
             outputs = []
