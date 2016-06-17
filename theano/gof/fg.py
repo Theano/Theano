@@ -362,7 +362,11 @@ class FunctionGraph(utils.object2):
         """
         Import variables to this FunctionGraph and also their apply_node,
         if those nodes are not in this graph.
-        TO DO : explain the parameter "reason"
+
+        Parameters:
+        ----------
+        reason
+            reason is the name of the optimization or operation in progress.
         """
         global NullType
         if NullType is None:

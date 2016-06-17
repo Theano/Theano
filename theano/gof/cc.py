@@ -115,8 +115,9 @@ def failure_code(sub):
 def failure_code_init(sub):
     """
     Code for failure in the struct init.
+
     Parameters:
-    --------------
+    ----------
     sub
       Dictionary used to template the struct.
       * failure_var -> must contain a variable name to use for
@@ -1170,7 +1171,6 @@ class CLinker(link.Linker):
         storage_map: dict that map variables to storages.
             This is used when you need to customize the storage of
             this thunk.keep_lock
-        WRITEME
         Returns: thunk, input_storage, output_storage
 
         The return values can be used as follows:
