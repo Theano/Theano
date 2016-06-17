@@ -292,7 +292,7 @@ class GpuDnnConvDesc(COp):
         assert precision in ['float16', 'float32', 'float64']
         self.precision = precision
 
-    def make_node(self, kern_shape, subsample=(1, 1,0)):
+    def make_node(self, kern_shape, subsample=(1, 1, 0)):
         if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
             raise TypeError('kern must be 1D shape tensor')
         if isinstance(border_mode, integer_types):
@@ -322,7 +322,7 @@ class GpuDnnConvDesc(COp):
         out.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
         return node
 
-    #TODO: Need to document this, not in Extending using COp
+    # TODO: Need to document this, not in Extending using COp
     def get_op_params(self):
         pad0 = '0'
         pad1 = '0'
