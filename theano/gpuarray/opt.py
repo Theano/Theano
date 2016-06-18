@@ -703,8 +703,7 @@ def local_gpu_elemwise(op, context_name, inputs, outputs):
         # Perform the exponent on the gpu and transfer the output back to the
         # cpu.
         gpu_output = res(*new_inputs)
-        cpu_output = host_from_gpu(gpu_output)
-        return [cpu_output]
+        return [gpu_output]
     else:
         return res
 
@@ -1075,15 +1074,14 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
             # be None
             reshaped_gpu_inputs = [gpu_reshaped_x]
             if greduce.supports_c_code(reshaped_gpu_inputs):
-                reduce_reshaped_x = host_from_gpu(
-                    greduce(gpu_reshaped_x))
+                reduce_reshaped_x = greduce(gpu_reshaped_x)
 
                 if reduce_reshaped_x.ndim != outputs[0].ndim:
                     out_shp = []
                     for i in range(x.ndim):
                         if i not in op.axis:
                             out_shp.append(shape_i(x, i))
-                    unreshaped_reduce = reduce_reshaped_x.reshape(
+                    unreshaped_reduce = GpuReshape(len(out_shp))(
                         tensor.stack(out_shp))
                 else:
                     unreshaped_reduce = reduce_reshaped_x
