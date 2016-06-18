@@ -2690,15 +2690,18 @@ class Alloc(gof.Op):
         sh = [as_tensor_variable(s) for s in shape]
         bcast = []
         for i, s in enumerate(sh):
-            if config.exception_verbosity == 'high':
-                s_as_str = '\n' + min_informative_str(s)
-            else:
-                s_as_str = str(s)
+            def err_str():
+                if config.exception_verbosity == 'high':
+                    return '\n' + min_informative_str(s)
+                else:
+                    return str(s)
             if s.type.dtype[:3] not in ('int', 'uin'):
+                s_as_str = err_str()
                 raise TypeError('Shape arguments to Alloc must be integers, '
                                 'but argument %s is not for apply node: %s' %
                                 (i, s_as_str))
             if s.ndim != 0:
+                s_as_str = err_str()
                 raise TypeError(
                     "Each shape dimension to Alloc must be a scalar, ",
                     'but dimension %s have %d dimensions for apply node: %s' %
