@@ -195,7 +195,8 @@ def test_clinker_literal_inlining():
     lnk = CLinker().accept(Env([x, y], [e]))
     fn = lnk.make_function()
     assert abs(fn(2.0, 2.0) + 0.12345678) < 1e-9
-    code = lnk.code_gen()
+    lnk.code_gen()
+    code = lnk.run_code
     # print "=== Code generated ==="
     # print code
     assert "4.12345678" in code  # we expect the number to be inlined

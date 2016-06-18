@@ -8,17 +8,19 @@ from __future__ import absolute_import, print_function, division
 # Python imports
 from copy import copy
 import os
+import re
 import sys
 import logging
+import subprocess
 
 import numpy
-
 import theano
 from theano import config
 from theano.compat import PY3
 from theano.compat import izip
 from six import string_types, reraise
 from six.moves import StringIO, xrange
+import distutils.sysconfig
 
 # gof imports
 from theano.gof import graph
@@ -160,7 +162,7 @@ def code_gen(blocks):
     return decl + head + tail
 
 
-def struct_gen(args, struct_builders, blocks, sub):
+def struct_gen(args, struct_builders, blocks, sub, is_c_callable=False):
     """
     WRITEME
 
@@ -184,6 +186,8 @@ def struct_gen(args, struct_builders, blocks, sub):
         Dictionary used to template the struct.
         * failure_var -> must contain a variable name to use for
         the failure code.
+    is_c_callable
+         True if the code generate should be used ad share library
 
     Returns
     -------
@@ -260,7 +264,7 @@ def struct_gen(args, struct_builders, blocks, sub):
     # 1-element lists and __ERROR is a 3-elements list.
 
     struct_code = """
-    namespace {
+
     struct %(name)s {
         PyObject* __ERROR;
 
@@ -289,21 +293,32 @@ def struct_gen(args, struct_builders, blocks, sub):
             %(struct_init_head)s
             this->__ERROR = __ERROR;
             return 0;
-        }
+        }// end init()
         void cleanup(void) {
             %(struct_cleanup)s
             %(storage_decref)s
-        }
-        int run(void) {
-            int %(failure_var)s = 0;
-            %(behavior)s
-            %(do_return)s
-        }
+        } // end cleanup()
+        int run(void);
     };
-    }
     """ % sub
+    if is_c_callable:
+        run_code = """
+            DllExport int %(name)s::run(void) {
+                      int %(failure_var)s = 0;
+                      %(behavior)s
+                      %(do_return)s
+                      }
+        """ % sub
+    else:
+        run_code = """
+            int %(name)s::run(void) {
+                int %(failure_var)s = 0;
+                %(behavior)s
+                %(do_return)s
+         }
+     """ % sub
 
-    return struct_code
+    return struct_code, run_code
 
 
 # The get_<x> functions complete the return value of r.get_<x>()
@@ -320,7 +335,6 @@ def get_nothing(r, name, sub):
 def get_c_declare(r, name, sub):
     """
     Wrapper around c_declare that declares py_name.
-
     """
     # The declaration will be used by the Apply node that
     # is computing it (`r.owner`), and by each of the clients.
@@ -537,10 +551,11 @@ class CLinker(link.Linker):
 
     """
 
-    def __init__(self, schedule=None):
+    def __init__(self, schedule=None, c_callable=False):
         self.fgraph = None
         if schedule:
             self.schedule = schedule
+        self.c_callable = c_callable
 
     def accept(self, fgraph, no_recycling=None):
         """
@@ -620,7 +635,7 @@ class CLinker(link.Linker):
         WRITEME
 
         Generates code for a struct that does the computation of the fgraph and
-        stores it in the struct_code field of the instance.
+        stores it in the struct_code and run_code field of the instance.
 
         If reuse_storage is True, outputs and temporaries will be stored in
         the struct so they can be reused each time a function returned by
@@ -631,9 +646,8 @@ class CLinker(link.Linker):
         This method caches its computations.
 
         """
-
         if getattr(self, 'struct_code', False):
-            return self.struct_code
+            return self.struct_code, self.run_code
 
         no_recycling = self.no_recycling
 
@@ -654,10 +668,8 @@ class CLinker(link.Linker):
 
         failure_var = "__failure"
         id = 1
-
         for variable in self.variables:
             sub = dict(failure_var=failure_var)
-
             # it might be possible to inline constant variables as C literals
             # policy = [[what to declare in the struct,
             #            what to do at construction,
@@ -852,18 +864,19 @@ class CLinker(link.Linker):
         # are mapped to the same name.  Duplicates are defined by (a
         # is b), rather than (a==b) since Constant instances can
         # compare equal to equivalent Constant instances.
-        args = []
-        args += ["storage_%s" % symbol[variable] for variable
-                 in utils.uniq(self.inputs + self.outputs + self.orphans)]
+        args = ["storage_%s" % symbol[variable] for variable
+                in utils.uniq(self.inputs + self.outputs + self.orphans)]
 
         # <<<<HASH_PLACEHOLDER>>>> will be replaced by a hash of the whole
         # code in the file, including support code, in DynamicModule.code.
         struct_name = '__struct_compiled_op_%s' % '<<<<HASH_PLACEHOLDER>>>>'
-        struct_code = struct_gen(args, init_blocks, blocks,
-                                 dict(failure_var=failure_var,
-                                      name=struct_name))
+        struct_code, run_code = struct_gen(args, init_blocks, blocks,
+                                           dict(failure_var=failure_var,
+                                                name=struct_name),
+                                           self.c_callable)
 
         self.struct_code = struct_code
+        self.run_code = run_code
         self.struct_name = struct_name
         self.args = args
         self.r2symbol = symbol
@@ -1100,7 +1113,8 @@ class CLinker(link.Linker):
         return utils.uniq(ret)
 
     def __compile__(self, input_storage=None, output_storage=None,
-                    storage_map=None, keep_lock=False):
+                    storage_map=None, keep_lock=False,
+                    c_callable=False):
         """WRITEME
         Compiles this linker's fgraph.
 
@@ -1136,17 +1150,18 @@ class CLinker(link.Linker):
                 output_storage.append(map[variable])
         input_storage = tuple(input_storage)
         output_storage = tuple(output_storage)
-        thunk = self.cthunk_factory(error_storage,
-                                    input_storage,
-                                    output_storage,
-                                    storage_map,
-                                    keep_lock=keep_lock)
+        thunk, filename = self.cthunk_factory(error_storage,
+                                              input_storage,
+                                              output_storage,
+                                              storage_map,
+                                              keep_lock=keep_lock)
         return (thunk,
                 [link.Container(input, storage) for input, storage in
                  izip(self.fgraph.inputs, input_storage)],
                 [link.Container(output, storage, True) for output, storage in
                  izip(self.fgraph.outputs, output_storage)],
-                error_storage)
+                error_storage,
+                filename)
 
     def get_init_tasks(self):
         init_tasks = []
@@ -1195,11 +1210,11 @@ class CLinker(link.Linker):
           first_output = ostor[0].data
         """
         init_tasks, tasks = self.get_init_tasks()
-        cthunk, in_storage, out_storage, error_storage = self.__compile__(
+        cthunk, in_storage, out_storage, error_storage, filename = self.__compile__(
             input_storage, output_storage, storage_map,
             keep_lock=keep_lock)
 
-        res = _CThunk(cthunk, init_tasks, tasks, error_storage)
+        res = _CThunk(cthunk, init_tasks, tasks, error_storage, filename)
         res.nodes = self.node_order
         return res, in_storage, out_storage
 
@@ -1215,6 +1230,7 @@ class CLinker(link.Linker):
         {{{
             'CLinker.cmodule_key', compilation args, libraries,
             header_dirs, numpy ABI version, config md5,
+            [c_callable,]
             (op0, input_signature0, output_signature0),
             (op1, input_signature1, output_signature1),
             ...
@@ -1226,8 +1242,10 @@ class CLinker(link.Linker):
         The outer tuple has a brief header, containing the compilation options
         passed to the compiler, the libraries to link against, an md5 hash
         of theano.config (for all config options where "in_c_key" is True).
-        It is followed by elements for every node in the topological ordering
-        of `self.fgraph`.
+
+        If CLinker.c_callable is True, it is added to the signature.
+        It is followed by elements for every node in the
+        topological ordering of `self.fgraph`.
 
         Input Signature
         ---------------
@@ -1279,7 +1297,7 @@ class CLinker(link.Linker):
                                  libraries=self.libraries(),
                                  header_dirs=self.header_dirs(),
                                  c_compiler=self.c_compiler(),
-                                 )
+                                 c_callable=self.c_callable)
 
     def cmodule_key_variables(self, inputs, outputs, no_recycling,
                               compile_args=None, libraries=None,
@@ -1311,7 +1329,7 @@ class CLinker(link.Linker):
 
     def cmodule_key_(self, fgraph, no_recycling, compile_args=None,
                      libraries=None, header_dirs=None, insert_config_md5=True,
-                     c_compiler=None):
+                     c_compiler=None, c_callable=None):
         """
         Do the actual computation of cmodule_key in a static method
         to allow it to be reused in scalar.Composite.__eq__.
@@ -1369,6 +1387,17 @@ class CLinker(link.Linker):
             sig.append('md5:' + theano.configparser.get_config_md5())
         else:
             sig.append('md5: <omitted>')
+
+        # We append it only if we are c_callable to don't trash the
+        # old compiled dir.
+        if c_callable:
+            sig.append('c_callable: ' + str(self.c_callable))
+            constants_vals = ""
+            for var in self.orphans:
+                if isinstance(var, graph.Constant):
+                    constants_vals += str(var.data.flatten())
+            if constants_vals != '':
+                sig.append('constants: ' + constants_vals)
 
         error_on_play = [False]
 
@@ -1473,7 +1502,7 @@ class CLinker(link.Linker):
 
     def get_src_code(self):
         mod = self.get_dynamic_module()
-        return mod.code()
+        return mod.code(c_callable=self.c_callable)
 
     def compile_cmodule(self, location=None):
         """
@@ -1481,28 +1510,132 @@ class CLinker(link.Linker):
         loaded module.
 
         """
+
         if location is None:
             location = cmodule.dlimport_workdir(config.compiledir)
         mod = self.get_dynamic_module()
         c_compiler = self.c_compiler()
         libs = self.libraries()
         preargs = self.compile_args()
-        # We want to compute the code without the lock
-        src_code = mod.code()
+
+        if self.c_callable:
+            # Add the include filename with the placeholder, as the hash is not
+            # yet computed, but we need to add the include to compute the hash.
+            filename_h = os.path.join(location, mod.hash_placeholder + '.h')
+            mod.add_include(filename_h)
+
+        src_code = mod.code(c_callable=self.c_callable)
+        if self.c_callable:
+            filename_h = os.path.join(location, '%s.h' % mod.code_hash)
+            mod.gen_header(filename_h)
         get_lock()
         try:
             _logger.debug("LOCATION %s", str(location))
-            module = c_compiler.compile_str(
-                module_name=mod.code_hash,
-                src_code=src_code,
-                location=location,
-                include_dirs=self.header_dirs(),
-                lib_dirs=self.lib_dirs(),
-                libs=libs,
-                preargs=preargs)
-        except Exception as e:
-            e.args += (str(self.fgraph),)
-            raise
+            try:
+                module = c_compiler.compile_str(
+                    module_name=mod.code_hash,
+                    src_code=mod.code(c_callable=self.c_callable),
+                    location=location,
+                    include_dirs=self.header_dirs(),
+                    lib_dirs=self.lib_dirs(),
+                    libs=libs,
+                    preargs=preargs)
+
+                if self.c_callable:
+                    # The main of the executable need the hash of the
+                    # shared lib.
+                    main = re.sub(mod.hash_placeholder, mod.code_hash,
+                                  self.c_main(location))
+
+                    mod_exec = cmodule.DynamicModule()
+                    for header in self.headers():
+                        mod_exec.add_include(header)
+                    mod_exec.add_include(filename_h)
+                    mod_exec.add_support_code(main)
+                    makefile = c_compiler.make_makefile(
+                        module_name=mod.code_hash,
+                        location=location,
+                        include_dirs=self.header_dirs(),
+                        lib_dirs=self.lib_dirs(),
+                        libs=libs,
+                        preargs=preargs)
+                    f = open(os.path.join(location, 'makefile'), 'w')
+                    print(makefile, file=f)
+                    f.close()
+                    # Put the command line in the header code so that
+                    # other people know how to recompile the shared lib
+                    mod_exec.add_header_code(
+                        "//command line used to compile the shared lib: \n" +
+                        "//" + ' '.join(
+                            c_compiler.compile_command(
+                                module_name=mod.code_hash,
+                                location=location,
+                                include_dirs=self.header_dirs(),
+                                lib_dirs=self.lib_dirs(),
+                                libs=libs,
+                                preargs=preargs)[2]))
+
+                    # Make the executable link to the shared lib.
+                    preargs.append(os.path.join(location, mod.code_hash + "." +
+                                                cmodule.get_lib_extension()))
+                    # Make the executable
+                    mod_exec.add_header_code(
+                        "//command line used to compile the executable: \n" +
+                        "//" + ' '.join(
+                            c_compiler.compile_command(
+                                module_name=mod_exec.code_hash,
+                                location=location,
+                                include_dirs=self.header_dirs(),
+                                lib_dirs=self.lib_dirs(),
+                                libs=libs,
+                                preargs=preargs,
+                                shared=False, py_module=False,
+                                code_filename='exec.cpp',
+                                out_filename='exec')[2]))
+
+                    # compile the dynamic python module.
+                    src_code = mod_exec.code(executable=True,
+                                             c_callable=self.c_callable)
+                    c_compiler.compile_str(
+                        module_name=mod_exec.code_hash,
+                        src_code=src_code,
+                        location=location,
+                        include_dirs=self.header_dirs(),
+                        lib_dirs=self.lib_dirs(),
+                        libs=libs,
+                        preargs=preargs,
+                        shared=False, py_module=False,
+                        hide_symbols=False,
+                        code_filename='exec.cpp',
+                        out_filename='exec',
+                        compile=False)
+                    mod_exec.gen_header(os.path.join(location, 'exec.h'))
+                    # TODO: make c_callable work also for
+                    # differnt types of windows OS
+                    if sys.platform == "win32" and False:
+                        # I don't know why it work now, but
+                        # this was needed in the past.
+                        # As this is complicated to find how to do
+                        # it, I keep it here
+                        # just in case.
+                        mt = r"C:\Program Files (x86)\Microsoft SDKs\Windows\v7.0A\Bin\mt.exe"
+                        pp = [p for p in sys.path
+                              if os.path.exists(os.path.join(p, 'python27.dll'))]
+                        # Try the first path found. Currently there is 2 of
+                        # them that have the same file size.
+                        py_dll = os.path.join(pp[-1], "python27.dll")
+                        manifest = os.path.join(location, "py_dll.manifest")
+                        exec_f = os.path.join(location, "exec.exe")
+                        subprocess.Popen([mt,
+                                         " -inputresource:",
+                                          py_dll, ";#2 -out:", manifest])
+
+                        subprocess.Popen([mt, " -manifest ", manifest,
+                                         " -outputresource:", exec_f])
+
+            except Exception as e:
+                e.args += (str(self.fgraph),)
+                raise
         finally:
             release_lock()
         return module
@@ -1525,9 +1658,6 @@ class CLinker(link.Linker):
             code = self.instantiate_code(1 + len(self.args))
             instantiate = cmodule.ExtFunction('instantiate', code,
                                               method=cmodule.METH_VARARGS)
-            # ['error_storage'] + argnames,
-            # local_dict = d,
-            # global_dict = {})
 
             # Static methods that can run and destroy the struct built by
             # instantiate.
@@ -1556,12 +1686,35 @@ class CLinker(link.Linker):
         # We add all the support code, compile args, headers and libs we need.
             for support_code in self.support_code() + self.c_support_code_apply:
                 mod.add_support_code(support_code)
-            mod.add_support_code(self.struct_code)
+            if not self.c_callable:
+                mod.add_support_code("""
+                                     #ifdef _WIN32
+                                     #define DllExport __declspec(dllexport)
+                                     #else
+                                     #define DllExport
+                                     #endif
+                                     """)
+                mod.add_support_code(self.struct_code)
+            else:
+                mod.add_header_code("""
+                                    #ifdef _WIN32
+                                    #define DllExport __declspec(dllexport)
+                                    #else
+                                    #define DllExport
+                                    #endif
+                                    """)
+                mod.add_header_code(self.struct_code)
+            mod.add_support_code(self.run_code)
             mod.add_support_code(static)
             mod.add_function(instantiate)
             for header in self.headers():
                 mod.add_include(header)
             for init_code_block in self.init_code() + self.c_init_code_apply:
+                if self.c_callable:
+                    mod.add_support_code(self.cinit_code())
+                    mod.add_header_code("""
+                                        DllExport %(struct_name)s* cinit();
+                                        """ % dict(struct_name=self.struct_name))
                 mod.add_init_code(init_code_block)
             self._mod = mod
         return self._mod
@@ -1583,7 +1736,8 @@ class CLinker(link.Linker):
             key = self.cmodule_key()
         except KeyError:
             key = None
-        if key is None:
+
+        if key is None:  # or self.c_callable is True:
             # If we can't get a key, then forget the cache mechanism.
             module = self.compile_cmodule()
         else:
@@ -1607,7 +1761,7 @@ class CLinker(link.Linker):
         ret = module.instantiate(error_storage,
                                  *(in_storage + out_storage + orphd))
 
-        return ret
+        return ret, module.__file__
 
     def instantiate_code(self, n_args):
         code = StringIO()
@@ -1637,6 +1791,213 @@ class CLinker(link.Linker):
         print("  return thunk; }", file=code)
         return code.getvalue()
 
+    def c_main(self, location):
+        """This function create an example main function that call the
+        shared lib of this thunk/function.
+
+        """
+        in_init = ""
+        out_print = ""
+        python_prefix = distutils.sysconfig.EXEC_PREFIX
+        args = ["storage_%s" % self.r2symbol[variable] for variable
+                in utils.uniq(self.inputs)]
+        shared_variables = []
+        mapping_str = "// Mapping: variable name -> struct internal stogare\n"
+        for var, name in zip(utils.uniq(self.inputs), args):
+            if isinstance(var, theano.tensor.sharedvar.TensorSharedVariable):
+                mapping_str += "// Shared variable %(var)s->%(name)s\n" \
+                               % locals()
+                # Saving shared variable value
+                numpy.save(os.path.join(location, name), var.get_value())
+                shared_variables.append(name)
+            else:
+                mapping_str += "// Input %(var)s->%(name)s\n" % locals()
+                dtype = var.type.dtype_specs()[2]
+                ndim = var.ndim
+                shp = range(3, 3 + ndim)
+                for idx in range(var.ndim):
+                    if var.type.broadcastable[idx]:
+                        shp[idx] = 1
+                tot = numpy.prod(shp)
+                shp_str = ",".join([str(s) for s in shp])
+                in_init += """
+   PyObject* %(name)s_data = PyArray_Arange(0., %(tot)s, 1.,%(dtype)s);
+   npy_intp %(name)s_dims[%(ndim)s] = {%(shp_str)s};
+   PyArray_Dims %(name)s_newshape;
+   %(name)s_newshape.ptr = %(name)s_dims;
+   %(name)s_newshape.len = %(ndim)s;
+   PyObject* %(name)s_value = PyArray_Newshape(
+   (PyArrayObject*) %(name)s_data,&%(name)s_newshape,NPY_CORDER);
+   PyList_SetItem(struct_ptr->%(name)s, 0, %(name)s_value);
+   %(name)s_value = NULL;
+                """ % locals()
+        shared_load = ""
+        if len(shared_variables) > 0:
+            shared_load += """
+   PyObject *load = PyObject_GetAttrString(numpy, "load");
+            """
+        for name in shared_variables:
+            file_name = name + ".npy"
+            shared_load += """
+   PyObject * %(name)s_value=PyObject_CallFunction(load, "s", "%(file_name)s");
+   if(!%(name)s_value)
+    {
+      PyErr_Print();
+      return 2;
+    }
+   PyList_SetItem(struct_ptr->%(name)s, 0, %(name)s_value);
+            """ % locals()
+        if len(shared_variables) > 0:
+            shared_load += """
+   Py_XDECREF(load);
+            """
+        args = ["storage_%s" % self.r2symbol[variable] for variable
+                in utils.uniq(self.outputs)]
+        for var, name in zip(utils.uniq(self.outputs), args):
+            mapping_str += "// Output %(var)s->%(name)s\n" % locals()
+        if sys.platform != "win32":
+            for name in args:
+                out_print += """
+                //PyList_GET_ITEM return a borrowed reference
+                PyObject *tmp_%(name)s=PyList_GET_ITEM(struct_ptr->%(name)s, 0);
+                PyObject_Print(tmp_%(name)s, stdout, Py_PRINT_RAW);
+                printf("\\n");
+                """ % locals()
+        else:
+            # On Windows, when the python is compiled with a different run time
+            # (Visual Studio version?), then the executable, the stdout and
+            # stderr shouldn't not be shared between the 2 run time, so we
+            # can't call PyObject_Print(). Otherwise, it segfault.
+            for out, name in zip(self.outputs, args):
+                out_print += """
+   //PyList_GET_ITEM return a borrowed reference
+   PyObject *tmp_%(name)s=PyList_GET_ITEM(struct_ptr->%(name)s, 0);
+   PyObject *str_%(name)s = PyObject_Str(tmp_%(name)s);
+   //PyString_AsString return a ptr to the internal representation.
+   printf("%%s\\n", PyString_AsString(str_%(name)s));
+   Py_CLEAR(str_%(name)s);
+                """ % locals()
+        if PY3:
+            set_program_name = """wchar_t progname[FILENAME_MAX + 1];
+  mbstowcs(progname, argv[0], strlen(argv[0]) + 1);
+  Py_SetProgramName(progname); """
+        else:
+            set_program_name = """Py_SetProgramName(argv[0]);"""
+        main = """
+%(mapping_str)s
+ int main(int argc, char *argv[]) {
+ setenv("PYTHONHOME","%(python_prefix)s",1);
+ %(set_program_name)s
+ Py_Initialize();
+
+ // Those print are there to help debug import of python module
+ PyObject * numpy = PyImport_ImportModule("numpy");
+ printf("After import numpy %%p\\n", numpy);
+ PyErr_Print();
+ //import_array{,1,2} can be called many times without problems.
+ import_array1(1);
+ printf("after import_array1()\\n");
+
+ %(struct_name)s *struct_ptr = cinit();
+ int run_ret = 0;
+ if(struct_ptr){
+   %(shared_load)s
+   %(in_init)s
+   printf("after cinit()\\n");
+   //Function execution
+   run_ret = struct_ptr->run();
+   printf("run() from the shared library returned=%%d\\n", run_ret);
+
+   if(run_ret==0){
+   %(out_print)s
+   }else if(run_ret != 0){
+     // See out_print to know why we can't call PyObject_Print on win32
+     PyObject *str_err = PyObject_Str(struct_ptr->__ERROR);
+     //PyUnicode_AsUnicode return a ptr to the internal representation.
+     printf("Error: %%s\\n",PyUnicode_AsUnicode(str_err));
+     Py_CLEAR(str_err);
+   }
+ }else{
+   printf("cinit() failed!\\n");
+   return 1;
+ }
+ delete struct_ptr;
+
+ printf("main end, before Py_Finalize\\n");
+ Py_Finalize();
+ return run_ret;
+}
+        """ % dict(struct_name=self.struct_name,
+                   **locals())
+        # TODO, should struct_ptr.cleanup() cleanup the __ERROR structure
+        return main
+
+    def cinit_code(self):
+        code = StringIO()
+        n_args = len(self.args)
+        struct_name = self.struct_name
+        param = ','.join('PyObject * arg_%i' % n for n in range(n_args)), ');'
+        symbol2r = dict([(v, k) for (k, v) in self.r2symbol.items()])
+        in_out_list = ""
+        in_out_param = ["io%d_list" % idx for idx in range(n_args)]
+        for idx, arg in enumerate(self.args):
+            var = in_out_param[idx]
+            argType = symbol2r[arg.replace("storage_", "")]
+            if isinstance(argType, graph.Constant):
+                c_constant_type = argType.type.dtype_specs()[1]
+                numpy_constant_type = argType.type.dtype_specs()[2]
+                ndim = argType.type.ndim
+                vals = argType.data.flatten()
+                shp = argType.data.shape
+                nelements = vals.shape[0]
+                shp_str = ",".join([str(s) for s in shp])
+                for_str = ""
+                for i, el in enumerate(vals):
+                    for_str += "ptr_%(var)s[%(i)s]=%(el)s;\n" % locals()
+
+                in_out_list += """
+                PyObject* %(var)s = PyList_New(1);
+                npy_intp %(var)s_dims[%(ndim)s]={%(shp_str)s};
+                PyObject* const_%(var)s = PyArray_ZEROS(%(ndim)s,%(var)s_dims,%(numpy_constant_type)s,0);
+                %(c_constant_type)s *ptr_%(var)s =(%(c_constant_type)s *)PyArray_DATA((PyArrayObject*)const_%(var)s);
+                %(for_str)s
+                Py_XINCREF(const_%(var)s);
+                PyList_SetItem(%(var)s, 0,const_%(var)s);
+                """ % locals()
+            else:
+                in_out_list += """
+                PyObject* %(var)s = PyList_New(1);
+                Py_INCREF(Py_None);
+                PyList_SetItem(%(var)s, 0, Py_None);
+                """ % locals()
+        in_out_param = ', '.join(in_out_param)
+        print("""
+%(struct_name)s* cinit() {
+
+    import_array1(NULL);
+
+    // Define the list for error information.
+    PyObject* err_list = PyList_New(3);
+    PyList_SetItem(err_list, 0, Py_None);
+    PyList_SetItem(err_list, 1, Py_None);
+    PyList_SetItem(err_list, 2, Py_None);
+    Py_INCREF(Py_None);
+    Py_INCREF(Py_None);
+    Py_INCREF(Py_None);
+
+    %(in_out_list)s
+
+    //TODO error handling
+    %(struct_name)s* struct_ptr = new %(struct_name)s();
+
+    //TODO error handling
+    struct_ptr->init(err_list, %(in_out_param)s);
+    return struct_ptr;
+}
+        """ % locals(), file=code)
+
+        return code.getvalue()
+
 
 class _CThunk(object):
     """
@@ -1655,7 +2016,18 @@ class _CThunk(object):
 
     """
 
-    def __init__(self, cthunk, init_tasks, tasks, error_storage):
+    def __init__(self, cthunk, init_tasks, tasks, error_storage, filename):
+        """
+        Parameters
+        ----------
+        cthunk: the CObject pointer used by run_cthunk
+        init_tasks: WRITEME
+        tasks: WRITEME
+        error_storage: WRITEME
+        filename: str
+                  the name of the dynamic lib
+                  where this thunk is compiled.
+        """
         global run_cthunk
         if run_cthunk is None:
             # Lazy import to avoid compilation when importing theano.
@@ -1664,6 +2036,7 @@ class _CThunk(object):
         self.init_tasks = init_tasks
         self.tasks = tasks
         self.error_storage = error_storage
+        self.filename = filename
 
     def find_task(self, failure_code):
         """

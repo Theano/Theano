@@ -142,6 +142,7 @@ class DynamicModule(object):
         self.hash_placeholder = '<<<<HASH_PLACEHOLDER>>>>'
 
         self.support_code = []
+        self.header_code = []
         self.functions = []
         self.includes = ["<Python.h>", "<iostream>", '"theano_mod_helper.h"']
         self.init_blocks = []
@@ -180,7 +181,8 @@ static struct PyModuleDef moduledef = {{
         print("}", file=stream)
 
     def add_include(self, str):
-        assert not self.finalized
+        _logger.debug("add_include " + str)
+        # assert not self.finalized
         self.includes.append(str)
 
     def add_init_code(self, code):
@@ -192,11 +194,33 @@ static struct PyModuleDef moduledef = {{
         if code not in self.support_code:  # TODO: KLUDGE
             self.support_code.append(code)
 
+    def add_header_code(self, code):
+        """
+        This add code that will be inserted in the header file
+        generated when self.gen_header() is called.
+        """
+        assert not self.finalized
+        if code not in self.header_code:  # TODO: KLUDGE
+            self.header_code.append(code)
+
     def add_function(self, fn):
         assert not self.finalized
         self.functions.append(fn)
 
-    def code(self):
+    def gen_header(self, filename):
+        _logger.debug("gen_header " + filename)
+        # We need a finalized module to have self.code_hash
+        assert self.finalized
+        f = open(filename, 'w')
+        print("#include <Python.h>", file=f)
+        _logger.debug("gen_header code")
+        for code in self.header_code:
+            _logger.debug(code)
+            code = re.sub(self.hash_placeholder, self.code_hash, code)
+            print(code, file=f)
+        f.close()
+
+    def code(self, executable=False, c_callable=False):
         sio = StringIO()
         for inc in self.includes:
             if not inc:
@@ -211,25 +235,31 @@ static struct PyModuleDef moduledef = {{
         print("//////////////////////", file=sio)
         for sc in self.support_code:
             print(sc, file=sio)
+        if not executable:
+            print("//////////////////////", file=sio)
+            print("////  Functions", file=sio)
+            print("//////////////////////", file=sio)
+            for f in self.functions:
+                print(f.code_block, file=sio)
 
-        print("//////////////////////", file=sio)
-        print("////  Functions", file=sio)
-        print("//////////////////////", file=sio)
-        for f in self.functions:
-            print(f.code_block, file=sio)
-
-        print("//////////////////////", file=sio)
-        print("////  Module init", file=sio)
-        print("//////////////////////", file=sio)
-        self.print_methoddef(sio)
-        self.print_init(sio)
+            print("//////////////////////", file=sio)
+            print("////  Module init", file=sio)
+            print("//////////////////////", file=sio)
+            self.print_methoddef(sio)
+            self.print_init(sio)
 
         rval = sio.getvalue()
         # Make sure the hash of the code hasn't changed
         h = hash_from_code(rval)
-        assert self.code_hash is None or self.code_hash == h
+
+        # Do not test hash code for c_callable funcion
+        # It change during compilation
+        if not c_callable:
+            assert self.code_hash is None or self.code_hash == h
         self.code_hash = h
+        _logger.debug("code hash " + h)
         rval = re.sub(self.hash_placeholder, self.code_hash, rval)
+        # _logger.debug(rval)
         # Finalize the Module, so no support code or function
         # can be added
         self.finalized = True
@@ -1199,6 +1229,7 @@ class ModuleCache(object):
                     with compilelock.lock_ctx():
                         with open(key_pkl, 'rb') as f:
                             key_data = pickle.load(f)
+
                 time.sleep(2)
 
         found = sum(key == other_key for other_key in key_data.keys)
@@ -2155,9 +2186,125 @@ class GCC_compiler(Compiler):
                                    theano.config.cxx)
 
     @staticmethod
+    def make_makefile(module_name, location=None,
+                      include_dirs=None, lib_dirs=None, libs=None,
+                      preargs=None):
+        if include_dirs is None:
+            include_dirs = []
+        if lib_dirs is None:
+            lib_dirs = []
+        if libs is None:
+            libs = []
+        if preargs is None:
+            preargs = []
+        else:
+            preargs = list(preargs)
+
+        if '-g' not in preargs:
+            preargs.append('-g')
+
+        include_dirs = std_include_dirs() + include_dirs
+        libs = std_libs() + libs
+        lib_dirs = std_lib_dirs() + lib_dirs
+        library_name = os.path.join(location, '%s.%s' %
+                                    (module_name, get_lib_extension()))
+        include_dirs.append(location)
+        # sometimes, the linker cannot find -lpython so we need to tell it
+        # explicitly where it is located
+        # this returns somepath/lib/python2.x
+        python_lib = distutils.sysconfig.get_python_lib(plat_specific=1,
+                                                        standard_lib=1)
+        python_lib = os.path.dirname(python_lib)
+        if python_lib not in lib_dirs:
+            lib_dirs.append(python_lib)
+        cxx_args = preargs
+        cxx = theano.config.cxx
+        cxx_falgs = ['-I%s' % idir for idir in include_dirs]
+        ld_flags = ['-L%s' % ldir for ldir in lib_dirs]
+        ld_flags = ld_flags + ['-Wl,-rpath,%s' % ldir for ldir in lib_dirs]
+        lib_flags = ['-l%s' % l for l in libs]
+        makefile = "CXX=%s\n" % (cxx)
+        makefile = "CXXFLAGS= "
+        for arg in cxx_args:
+            makefile += "%s " % (arg)
+        makefile += "\n"
+        for flags in cxx_falgs:
+            makefile += "CPPFLAGS+=%s\n" % (flags)
+        for flags in ld_flags:
+            makefile += "LDFLAGS+=%s\n" % (flags)
+        for flags in lib_flags:
+            makefile += "LDLIBS+=%s\n" % (flags)
+        makefile += "LDLIBS+=%s\n" % (library_name)
+        return makefile
+
+    @staticmethod
+    def compile_command(module_name, location=None,
+                        include_dirs=None, lib_dirs=None, libs=None,
+                        preargs=None, py_module=True, hide_symbols=False,
+                        shared=True, code_filename='mod.cpp',
+                        out_filename=None):
+        """
+        The parameters are the same as compile_str
+
+        :return: a tuple(cpp_filename, out_filename, command line)
+        """
+        if include_dirs is None:
+            include_dirs = []
+        if lib_dirs is None:
+            lib_dirs = []
+        if libs is None:
+            libs = []
+        if preargs is None:
+            preargs = []
+        else:
+            preargs = list(preargs)
+
+        include_dirs = std_include_dirs() + include_dirs
+        libs = std_libs() + libs
+        lib_dirs = std_lib_dirs() + lib_dirs
+        include_dirs.append(location)
+        cpp_filename = os.path.join(location, code_filename)
+
+        if shared:
+            assert out_filename is None
+            out_filename = os.path.join(location, '%s.%s' %
+                                        (module_name, get_lib_extension()))
+
+            cmd = [theano.config.cxx, get_gcc_shared_library_arg(), '-g']
+        else:
+            assert not py_module
+            if out_filename is None:
+                out_filename = os.path.join(location, module_name)
+            else:
+                out_filename = os.path.join(location, out_filename)
+
+            cmd = [theano.config.cxx, '-g']
+
+        if config.cmodule.remove_gxx_opt:
+            cmd.extend(p for p in preargs if not p.startswith('-O'))
+        else:
+            cmd.extend(preargs)
+        if hide_symbols and sys.platform != 'win32':
+            # This has been available since gcc 4.0 so we suppose it
+            # is always available. We pass it here since it
+            # significantly reduces the size of the symbol table for
+            # the objects we want to share. This in turns leads to
+            # improved loading times on most platforms (win32 is
+            # different, as usual).
+            cmd.append('-fvisibility=hidden')
+        cmd.extend('-I%s' % idir for idir in include_dirs)
+        cmd.extend(['-o', out_filename])
+        cmd.append(cpp_filename)
+        cmd.extend(['-L%s' % ldir for ldir in lib_dirs])
+        cmd.extend(['-l%s' % l for l in libs])
+        return cpp_filename, out_filename, cmd
+
+    @staticmethod
     def compile_str(module_name, src_code, location=None,
                     include_dirs=None, lib_dirs=None, libs=None,
-                    preargs=None, py_module=True, hide_symbols=True):
+                    preargs=None, py_module=True, hide_symbols=True,
+                    shared=True, code_filename='mod.cpp',
+                    out_filename=None, compile=True):
         """
         Parameters
         ----------
@@ -2190,6 +2337,16 @@ class GCC_compiler(Compiler):
             Dynamically-imported python module of the compiled code (unless
             py_module is False, in that case returns None).
 
+        :param shared: bool, if True, generate a shared library,
+            otherwise, generate an executable.
+            You also need to set py_module=False.
+
+        :param code_filename: The filename to store src_code for the
+            compilation
+
+        :param out_filename: The filename of the output of g++ when not doing
+            a shared module
+
         """
         # TODO: Do not do the dlimport in this function
 
@@ -2209,45 +2366,33 @@ class GCC_compiler(Compiler):
         include_dirs = [d for d in include_dirs if d]
         lib_dirs = [d for d in lib_dirs if d]
 
-        include_dirs = include_dirs + std_include_dirs()
-        libs = libs + std_libs()
-        lib_dirs = lib_dirs + std_lib_dirs()
+        if shared:
+            hide_symbols = False
 
-        cppfilename = os.path.join(location, 'mod.cpp')
-        with open(cppfilename, 'w') as cppfile:
-
-            _logger.debug('Writing module C++ code to %s', cppfilename)
-
-            cppfile.write(src_code)
-            # Avoid gcc warning "no newline at end of file".
-            if not src_code.endswith('\n'):
-                cppfile.write('\n')
-
-        lib_filename = os.path.join(
+        cpp_filename, out_filename, cmd = GCC_compiler.compile_command(
+            module_name,
             location,
-            '%s.%s' % (module_name, get_lib_extension()))
+            include_dirs,
+            lib_dirs, libs,
+            preargs, py_module,
+            hide_symbols,
+            shared,
+            code_filename,
+            out_filename)
 
-        _logger.debug('Generating shared lib %s', lib_filename)
-        cmd = [theano.config.cxx, get_gcc_shared_library_arg(), '-g']
+        cppfile = open(cpp_filename, 'w')
 
-        if config.cmodule.remove_gxx_opt:
-            cmd.extend(p for p in preargs if not p.startswith('-O'))
-        else:
-            cmd.extend(preargs)
-        cmd.extend('-I%s' % idir for idir in include_dirs)
-        if hide_symbols and sys.platform != 'win32':
-            # This has been available since gcc 4.0 so we suppose it
-            # is always available. We pass it here since it
-            # significantly reduces the size of the symbol table for
-            # the objects we want to share. This in turns leads to
-            # improved loading times on most platforms (win32 is
-            # different, as usual).
-            cmd.append('-fvisibility=hidden')
-        cmd.extend(['-o', lib_filename])
-        cmd.append(cppfilename)
-        cmd.extend(['-L%s' % ldir for ldir in lib_dirs])
-        cmd.extend(['-l%s' % l for l in libs])
-        # print >> sys.stderr, 'COMPILING W CMD', cmd
+        _logger.debug('Writing module C++ code to %s', cpp_filename)
+
+        cppfile.write(src_code)
+        # Avoid gcc warning "no newline at end of file".
+        if not src_code.endswith('\n'):
+            cppfile.write('\n')
+        cppfile.close()
+
+        if not compile:
+            return
+
         _logger.debug('Running cmd: %s', ' '.join(cmd))
 
         def print_command_line_error():
@@ -2287,8 +2432,8 @@ class GCC_compiler(Compiler):
         if py_module:
             # touch the __init__ file
             open(os.path.join(location, "__init__.py"), 'w').close()
-            assert os.path.isfile(lib_filename)
-            return dlimport(lib_filename)
+            assert os.path.isfile(out_filename)
+            return dlimport(out_filename)
 
 
 def icc_module_compile_str(*args):
