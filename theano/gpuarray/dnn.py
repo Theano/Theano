@@ -292,6 +292,9 @@ class GpuDnnConvDesc(COp):
         assert precision in ['float16', 'float32', 'float64']
         self.precision = precision
 
+        # Checking is done in make_node
+        self.border_mode = border_mode 
+
     def make_node(self, kern_shape, subsample=(1, 1, 0)):
         if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
             raise TypeError('kern must be 1D shape tensor')
