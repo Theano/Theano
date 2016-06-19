@@ -9,7 +9,7 @@ from theano import Apply
 from theano import gof
 from theano.tensor import as_tensor_variable, TensorType
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape
-from theano.tensor.blas_headers import blas_header_text
+from theano.tensor import blas_headers
 from theano.tensor.blas import ldflags, blas_header_version
 
 _logger = logging.getLogger(__name__)
@@ -86,7 +86,12 @@ class BaseCorrMM(gof.OpenMPOp):
             str(self.filter_dilation))
 
     def c_support_code(self):
-        return blas_header_text()
+        ccodes = blas_headers.blas_header_text()
+        if self.blas_type == 'openblas':
+            ccodes += blas_headers.openblas_threads_text()
+        elif self.blas_type == 'mkl':
+            ccodes += blas_headers.mkl_threads_text()
+        return ccodes
 
     def c_libraries(self):
         return ldflags()
@@ -105,10 +110,6 @@ class BaseCorrMM(gof.OpenMPOp):
     def c_headers(self):
         headers = ['<stdio.h>']
         headers += super(BaseCorrMM, self).c_headers()
-        if self.blas_type == 'openblas':
-            headers += ['cblas.h']
-        if self.blas_type == 'mkl':
-            headers += ['mkl.h']
         return headers
 
     def c_code_cache_version(self):
@@ -137,20 +138,22 @@ class BaseCorrMM(gof.OpenMPOp):
         if self.openmp:
             sub['omp_flags'] = '#pragma omp parallel for schedule(static)'
             sub['omp_max_threads'] = 'omp_get_max_threads()'
-            sub['omp_set_threads'] = 'omp_set_num_threads'
-            sub['omp_get_threads'] = 'omp_get_thread_num()'
+            sub['set_omp_threads'] = 'omp_set_num_threads'
+            sub['get_omp_threads'] = 'omp_get_thread_num()'
+
+            if self.blas_type == 'openblas':
+                sub['set_blas_threads'] = 'openblas_set_num_threads'
+                sub['get_blas_threads'] = 'openblas_get_num_threads()'
+            elif self.blas_type == 'mkl':
+                sub['set_blas_threads'] = 'mkl_set_num_threads'
+                sub['get_blas_threads'] = 'mkl_get_max_threads()'
         else:
             sub['omp_flags'] = ''
-            sub['omp_max_threads'] = 1
-            sub['omp_set_threads'] = ''
-            sub['omp_get_threads'] = 0
-
-        if self.blas_type == 'openblas':
-            sub['blas_flags'] = 'openblas_set_num_threads(1)'
-        elif self.blas_type == 'mkl':
-            sub['blas_flags'] = 'mkl_set_num_threads(1)'
-        else:
-            sub['blas_flags'] = ''
+            sub['omp_max_threads'] = '1'
+            sub['set_omp_threads'] = ''
+            sub['get_omp_threads'] = '0'
+            sub['set_blas_threads'] = ''
+            sub['get_blas_threads'] = '0'
 
         files = ['corr_gemm.c']
         codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
