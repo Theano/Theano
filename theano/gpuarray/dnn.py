@@ -298,18 +298,18 @@ class GpuDnnConvDesc(COp):
     def make_node(self, kern_shape, subsample=(1, 1, 0)):
         if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
             raise TypeError('kern must be 1D shape tensor')
-        if isinstance(border_mode, integer_types):
-            border_mode = (border_mode,) * len(subsample)
-        if isinstance(border_mode, tuple):
-            assert len(border_mode) == len(subsample)
-            border_mode = tuple(map(int, border_mode))
-        if not ((isinstance(border_mode, tuple) and min(border_mode) >= 0) or
-                border_mode in ('valid', 'full', 'half')):
+        if isinstance(self.border_mode, integer_types):
+            self.border_mode = (self.border_mode,) * len(subsample)
+        if isinstance(self.border_mode, tuple):
+            assert len(self.border_mode) == len(subsample)
+            self.border_mode = tuple(map(int, self.border_mode))
+        if not ((isinstance(self.border_mode, tuple) and min(self.border_mode) >= 0) or
+                self.border_mode in ('valid', 'full', 'half')):
             raise ValueError(
                 'invalid border_mode {}, which must be either '
                 '"valid", "full", "half", an integer or a pair of'
-                ' integers'.format(border_mode))
-        self.border_mode = border_mode
+                ' integers'.format(self.border_mode))
+        # self.border_mode = border_modeS
         assert len(subsample) in (2, 3)
         self.subsample = subsample
         if len(subsample) == 2:
