@@ -293,7 +293,7 @@ class GpuDnnConvDesc(COp):
         self.precision = precision
 
         # Checking is done in make_node
-        self.border_mode = border_mode 
+        self.border_mode = border_mode
 
     def make_node(self, kern_shape, subsample=(1, 1, 0)):
         if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
