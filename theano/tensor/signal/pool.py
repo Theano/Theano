@@ -187,9 +187,9 @@ class Pool(OpenMPOp):
         r = tensor.extract_constant(r)
         c = tensor.extract_constant(c)
         if padding[0]:
-            r += padding[0] * 2
+            r = r + padding[0] * 2
         if padding[1]:
-            c += padding[1] * 2
+            c = c + padding[1] * 2
 
         if ignore_border:
             if ds[0] == st[0]:
