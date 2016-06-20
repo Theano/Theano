@@ -242,6 +242,36 @@ class Pool(OpenMPOp):
                 " 'average_inc_pad' and 'average_exc_pad'. Got %s" % mode)
         self.mode = mode
 
+    def prepare_node(self, node, storage_map, compute_map):
+        if len(node.inputs) == 2:
+            warnings.warn("Theano Pool internal changed.", stacklevel=3)
+            # Old interface
+            self.mode = node.inputs[1].owner.op.mode
+            ws = theano.tensor.constant(node.inputs[1].owner.op.ws)
+            st = theano.tensor.constant(node.inputs[1].owner.op.stride)
+            pad = theano.tensor.constant(node.inputs[1].owner.op.pad)
+            node.inputs[1] = ws
+            node.inputs.append(st)
+            node.inputs.append(pad)
+            if isinstance(ws, theano.Constant):
+                storage_map[ws] = [ws.data]
+                compute_map[ws] = [True]
+            else:
+                storage_map[ws] = [None]
+                compute_map[ws] = [False]
+            if isinstance(st, theano.Constant):
+                storage_map[st] = [st.data]
+                compute_map[st] = [True]
+            else:
+                storage_map[st] = [None]
+                compute_map[st] = [False]
+            if isinstance(pad, theano.Constant):
+                storage_map[pad] = [pad.data]
+                compute_map[pad] = [True]
+            else:
+                storage_map[pad] = [None]
+                compute_map[pad] = [False]
+
     def make_node(self, x, ws, stride=None, pad=(0, 0)):
         # TODO: consider restricting the dtype?
         x = tensor.as_tensor_variable(x)
@@ -638,6 +668,36 @@ class PoolGrad(OpenMPOp):
                 " 'average_inc_pad' and 'average_exc_pad'. Got %s" % mode)
         self.mode = mode
         super(PoolGrad, self).__init__(openmp=openmp)
+
+    def prepare_node(self, node, storage_map, compute_map):
+        if len(node.inputs) == 4:
+            warnings.warn("Theano PoolGrad internal changed.", stacklevel=3)
+            # Old interface
+            self.mode = node.inputs[3].owner.op.mode
+            ws = theano.tensor.constant(node.inputs[3].owner.op.ws)
+            st = theano.tensor.constant(node.inputs[3].owner.op.stride)
+            pad = theano.tensor.constant(node.inputs[3].owner.op.pad)
+            node.inputs[3] = ws
+            node.inputs.append(st)
+            node.inputs.append(pad)
+            if isinstance(ws, theano.Constant):
+                storage_map[ws] = [ws.data]
+                compute_map[ws] = [True]
+            else:
+                storage_map[ws] = [None]
+                compute_map[ws] = [False]
+            if isinstance(st, theano.Constant):
+                storage_map[st] = [st.data]
+                compute_map[st] = [True]
+            else:
+                storage_map[st] = [None]
+                compute_map[st] = [False]
+            if isinstance(pad, theano.Constant):
+                storage_map[pad] = [pad.data]
+                compute_map[pad] = [True]
+            else:
+                storage_map[pad] = [None]
+                compute_map[pad] = [False]
 
     def infer_shape(self, node, in_shapes):
         return [in_shapes[0]]
