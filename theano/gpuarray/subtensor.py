@@ -566,7 +566,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
                              in zip(items, strides[::-1])],
                             axis=0)
         # step 6: advanced slicing
-        out_flat = input_flat.take(new_idx.flatten())
+        out_flat = input_flat.take1(new_idx.flatten())
         # step 7: reshape into right shape
         out_flat_shp = (x.shape[:start_] +
                         new_idx.shape + x.shape[end_:]).astype('int32')
