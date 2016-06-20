@@ -286,8 +286,8 @@ class T_sigmoid_opts(unittest.TestCase):
            -x * sigmoid(-x) * (y * (-1 * z)))
         ok(-sigmoid(-x) *
            (exp(y) * (-exp(-z) * 3 * -exp(x)) *
-            (y * 2 * (-sigmoid(-y) * (z + t) * exp(z)) * sigmoid(z))) *
-           (-sigmoid(x)),
+            (y * 2 * (-sigmoid(-y) * (z + t) * exp(z)) * sigmoid(z))) * -
+           sigmoid(x),
            sigmoid(x) *
            (-sigmoid(y) * (-sigmoid(-z) * 3) * (y * 2 * ((z + t) * exp(z)))) *
            (-sigmoid(x)))
@@ -333,7 +333,7 @@ class T_sigmoid_opts(unittest.TestCase):
         topo = f.maker.fgraph.toposort()
         assert topo[0].op == ultra_fast_sigmoid
         assert len(topo) == 1
-        # ux_v = f([[-50, -10, -4, -1, 0, 1, 4, 10, 50]])
+        f([[-50, -10, -4, -1, 0, 1, 4, 10, 50]])
 
     def test_local_hard_sigmoid(self):
         x = tensor.matrix('x')
@@ -350,7 +350,7 @@ class T_sigmoid_opts(unittest.TestCase):
         f = theano.function([x], s, mode=mode)
         topo = f.maker.fgraph.toposort()
         assert not any([n.op == sigmoid for n in topo])
-        # ux_v = f([[-50, -10, -4, -1, 0, 1, 4, 10, 50]])
+        f([[-50, -10, -4, -1, 0, 1, 4, 10, 50]])
 
         mode2 = mode.excluding('fusion').excluding('inplace')
         f2 = theano.function([x], s, mode=mode2)
