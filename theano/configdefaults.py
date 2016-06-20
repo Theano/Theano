@@ -243,9 +243,14 @@ AddConfigVar('gpuarray.preallocate',
              in_c_key=False)
 
 AddConfigVar('gpuarray.single_stream',
-             """Switch between single stream mode or multi-stream
-             mode.  If your computation can't benefit from multiple
-             streams, single-stream is usually faster (by about 10%)
+             """
+             If your computations are mostly lots of small elements,
+             using single-stream will avoid the synchronization
+             overhead and usually be faster.  For larger elements it
+             does not make a difference yet.  In the future when true
+             multi-stream is enabled in libgpuarray, this may change.
+             If you want to make sure to have optimal performance,
+             check both options.
              """,
              BoolParam(True),
              in_c_key=False)
