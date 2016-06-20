@@ -390,16 +390,16 @@ class Pool(OpenMPOp):
         headers += super(Pool, self).c_headers()
         return headers
 
-    def c_code_(self, node, name, inp, out, sub):
+    def c_code(self, node, name, inp, out, sub):
         if self.mode not in ('max', 'sum', 'average_exc_pad', 'average_inc_pad'):
             raise theano.gof.utils.MethodNotDefined()
-        x, = inp
+        x, ws, stride, pad = inp
         z, = out
         fail = sub['fail']
         ignore_border = int(self.ignore_border)
-        ds0, ds1 = self.ds
-        st0, st1 = self.st
-        pd0, pd1 = self.padding
+        ws0, ws1 = ws
+        st0, st1 = stride
+        pd0, pd1 = pad
         if self.openmp:
             omp_parallel = '#pragma omp parallel for private(r_st, r_end, c_st, c_end, collector) schedule(static)'
         else:
@@ -426,42 +426,42 @@ class Pool(OpenMPOp):
         if (%(ignore_border)s)
         {
             // '/' in C is different from '/' in python
-            if (r - %(ds0)s < 0)
+            if (r - %(ws0)s < 0)
             {
               z_r = 0;
             }
             else
             {
-              z_r = (r - %(ds0)s) / %(st0)s + 1;
+              z_r = (r - %(ws0)s) / %(st0)s + 1;
             }
-            if (c - %(ds1)s < 0)
+            if (c - %(ws1)s < 0)
             {
               z_c = 0;
             }
             else
             {
-              z_c = (c - %(ds1)s) / %(st1)s + 1;
+              z_c = (c - %(ws1)s) / %(st1)s + 1;
             }
         }
         else
         {
             // decide how many rows the output has
-            if (%(st0)s >= %(ds0)s)
+            if (%(st0)s >= %(ws0)s)
             {
                 z_r = (r - 1) / %(st0)s + 1;
             }
             else
             {
-                z_r = std::max(0, (r - 1 - %(ds0)s + %(st0)s) / %(st0)s) + 1;
+                z_r = std::max(0, (r - 1 - %(ws0)s + %(st0)s) / %(st0)s) + 1;
             }
             // decide how many columns the output has
-            if (%(st1)s >= %(ds1)s)
+            if (%(st1)s >= %(ws1)s)
             {
                 z_c = (c - 1) / %(st1)s + 1;
             }
             else
             {
-                z_c = std::max(0, (c - 1 - %(ds1)s + %(st0)s) / %(st1)s) + 1;
+                z_c = std::max(0, (c - 1 - %(ws1)s + %(st0)s) / %(st1)s) + 1;
             }
             assert(z_r > 0);
             assert(z_c > 0);
@@ -495,7 +495,7 @@ class Pool(OpenMPOp):
                 int k = t / PyArray_DIMS(%(x)s)[0];
                 for(int i=0; i < z_r; i++){
                   r_st = i * %(st0)s;
-                  r_end = r_st + %(ds0)s;
+                  r_end = r_st + %(ws0)s;
                   // skip the padding
                   r_st = r_st < %(pd0)s ? %(pd0)s : r_st;
                   r_end = r_end > (r - %(pd0)s) ? r - %(pd0)s : r_end;
@@ -509,7 +509,7 @@ class Pool(OpenMPOp):
                   }
                   for(int j=0; j<z_c; j++){
                     c_st = j * %(st1)s;
-                    c_end = c_st + %(ds1)s;
+                    c_end = c_st + %(ws1)s;
                     // skip the padding
                     c_st = c_st < %(pd1)s ? %(pd1)s : c_st;
                     c_end = c_end > (c - %(pd1)s) ? c - %(pd1)s : c_end;
@@ -559,7 +559,7 @@ class Pool(OpenMPOp):
                 """
             elif self.mode == 'average_inc_pad' and self.ignore_border:
                 ccode += """
-                    z[0] = collector / (%(ds0)s * %(ds1)s);
+                    z[0] = collector / (%(ws0)s * %(ws1)s);
                 """
             else:
                 ccode += """
@@ -778,15 +778,15 @@ class MaxPoolGrad(PoolGrad):
     def connection_pattern(self, node):
         return [[1], [1], [1], [0], [0], [0]]
 
-    def c_code_(self, node, name, inp, out, sub):
+    def c_code(self, node, name, inp, out, sub):
         assert self.mode == 'max'
-        x, z, gz = inp
+        x, z, gz, ws, stride, pad = inp
         gx, = out
         fail = sub['fail']
         ignore_border = int(self.ignore_border)
-        ds0, ds1 = self.ds
-        st0, st1 = self.st
-        pd0, pd1 = self.padding
+        ws0, ws1 = ws
+        st0, st1 = stride
+        pd0, pd1 = pad
         if self.openmp:
             omp_parallel = '#pragma omp parallel for private(r_st, r_end, c_st, c_end, maximum) schedule(static)'
         else:
@@ -850,7 +850,7 @@ class MaxPoolGrad(PoolGrad):
                 int k = t / PyArray_DIMS(%(x)s)[0];
                 for(int i=0; i < z_r; i++){
                   r_st = i * %(st0)s;
-                  r_end = r_st + %(ds0)s;
+                  r_end = r_st + %(ws0)s;
                   // skip the padding
                   r_st = r_st < %(pd0)s ? %(pd0)s : r_st;
                   r_end = r_end > (r - %(pd0)s) ? r - %(pd0)s : r_end;
@@ -859,7 +859,7 @@ class MaxPoolGrad(PoolGrad):
                   r_end -= %(pd0)s;
                   for(int j=0; j<z_c; j++){
                     c_st = j * %(st1)s;
-                    c_end = c_st + %(ds1)s;
+                    c_end = c_st + %(ws1)s;
                     // skip the padding
                     c_st = c_st < %(pd1)s ? %(pd1)s : c_st;
                     c_end = c_end > (c - %(pd1)s) ? c - %(pd1)s : c_end;
@@ -1089,16 +1089,16 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
                     self.ds, ignore_border=self.ignore_border,
                     st=self.st, padding=self.padding)(x, maxout, gz)]
 
-    def c_code_(self, node, name, inp, out, sub):
+    def c_code(self, node, name, inp, out, sub):
         if self.mode != 'max':
             raise theano.gof.utils.MethodNotDefined()
-        x, maxout, ggx = inp
+        x, maxout, ggx, ws, stride, pad = inp
         z, = out  # the grad of grad
         fail = sub['fail']
         ignore_border = int(self.ignore_border)
-        ds0, ds1 = self.ds
-        st0, st1 = self.st
-        pd0, pd1 = self.padding
+        ws0, ws1 = ws
+        st0, st1 = stride
+        pd0, pd1 = pad
         if self.openmp:
             omp_parallel = '#pragma omp parallel for private(r_st, r_end, c_st, c_end, maximum) schedule(static)'
         else:
@@ -1137,7 +1137,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
             int k = t / PyArray_DIMS(%(x)s)[0];
                 for(int i=0; i < z_r; i++){
                   r_st = i * %(st0)s;
-                  r_end = r_st + %(ds0)s;
+                  r_end = r_st + %(ws0)s;
                   // skip the padding
                   r_st = r_st < %(pd0)s ? %(pd0)s : r_st;
                   r_end = r_end > (r - %(pd0)s) ? r - %(pd0)s : r_end;
@@ -1146,7 +1146,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
                   r_end -= %(pd0)s;
                   for(int j=0; j<z_c; j++){
                     c_st = j * %(st1)s;
-                    c_end = c_st + %(ds1)s;
+                    c_end = c_st + %(ws1)s;
                     // skip the padding
                     c_st = c_st < %(pd1)s ? %(pd1)s : c_st;
                     c_end = c_end > (c - %(pd1)s) ? c - %(pd1)s : c_end;
