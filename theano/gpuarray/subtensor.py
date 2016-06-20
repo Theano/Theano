@@ -577,7 +577,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         out[0] = o.__getitem__(idx_)
 
 
-class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
+class GpuAdvancedIncSubtensor1(Op):
     """
     Implement AdvancedIncSubtensor1 on the gpu.
 
