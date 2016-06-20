@@ -292,10 +292,9 @@ class GraphToGPU(NavigatorOptimizer):
         for i in fgraph.inputs:
             # Do not move *int* scalar to the GPU.
             target = getattr(i.tag, 'target', None)
-            if (target != 'cpu' and
-               isinstance(i.type, tensor.TensorType) and
+            if (isinstance(i.type, tensor.TensorType) and
                (i.ndim > 0 or 'int' not in i.dtype)):
-                mapping[i] = as_gpuarray_variable(i, target)
+                mapping[i] = i.transfer(target)
             else:
                 mapping[i] = i
         for i in fgraph.variables:
