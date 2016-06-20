@@ -791,6 +791,9 @@ class Op(utils.object2, PureOp, CLinkerOp):
         self._op_use_c_code = use_c_code
 
     def _props(self):
+        """
+        Tuple of properties of all attributes
+        """
         return tuple(getattr(self, a) for a in self.__props__)
 
     def _props_dict(self):
@@ -924,6 +927,9 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         """
+        This function must return a thunk, that is a zero-arguments
+        function that encapsulates the computation to be performed
+        by this op on the arguments of the node.
 
         Parameters
         ----------
@@ -974,7 +980,9 @@ class Op(utils.object2, PureOp, CLinkerOp):
         return self.make_py_thunk(node, storage_map, compute_map, no_recycling)
 
     def make_node(self, *inputs):
-
+        """
+        Create a "apply" nodes for the inputs in that order.
+        """
         if not hasattr(self, 'itypes'):
             raise NotImplementedError("You can either define itypes and otypes,\
              or implement make_node")
@@ -1058,6 +1066,10 @@ def debug_error_message(msg):
 
 
 def debug_assert(condition, msg=None):
+    """
+    Customized assert with options to ignore the assert
+    with just a warning
+    """
     if msg is None:
         msg = 'debug_assert failed'
     if not condition:
@@ -1165,12 +1177,18 @@ class OpenMPOp(Op):
             self.openmp = False
 
     def c_compile_args(self):
+        """
+        Return the compilation arg "fopenmp" if openMP is supported
+        """
         self.update_self_openmp()
         if self.openmp:
             return ['-fopenmp']
         return []
 
     def c_headers(self):
+        """
+        Return the header file name "omp.h" if openMP is supported
+        """
         self.update_self_openmp()
         if self.openmp:
             return ["omp.h"]
@@ -1178,6 +1196,9 @@ class OpenMPOp(Op):
 
     @staticmethod
     def test_gxx_support():
+        """
+        Check if openMP is supported
+        """
         code = """
         #include <omp.h>
 int main( int argc, const char* argv[] )
@@ -1313,6 +1334,9 @@ class COp(Op):
                                  'and specify the func_name')
 
     def load_c_code(self):
+        """
+        Loads the c code to perform the Op
+        """
         self.func_codes = []
         for func_file in self.func_files:
             with open(func_file, 'r') as f:
@@ -1391,6 +1415,9 @@ class COp(Op):
         return hash(tuple(self.func_codes))
 
     def c_init_code(self):
+        """
+        Get the code section for init_code
+        """
         if 'init_code' in self.code_sections:
             return [self.code_sections['init_code']]
         else:
@@ -1500,6 +1527,10 @@ class COp(Op):
             undef_macros.append("#undef OUTPUT_%d", (i,))
 
     def c_init_code_struct(self, node, name, sub):
+        """
+        Stitches all the macros and "init_code" together
+
+        """
         if 'init_code_struct' in self.code_sections:
             op_code = self.code_sections['init_code_struct']
 
@@ -1554,6 +1585,9 @@ class COp(Op):
                     'c_code', type(self), type(self).__name__)
 
     def c_code_cleanup(self, node, name, inputs, outputs, sub):
+        """
+        Stitches all the macros and "code_cleanup" together
+        """
         if 'code_cleanup' in self.code_sections:
             op_code = self.code_sections['code_cleanup']
 

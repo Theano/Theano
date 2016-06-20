@@ -701,7 +701,15 @@ def inputs(variable_list, blockers=None):
 
 def variables_and_orphans(i, o):
     """
-    WRITEME
+    Extract list of variables between i and o nodes via
+    dfs traversal and chooses the orphans among them
+
+    Parameters
+    ----------
+    i : list
+         Input variables.
+    o : list
+         Output variables.
 
     """
     def expand(r):
@@ -716,21 +724,21 @@ def variables_and_orphans(i, o):
 
 def ops(i, o):
     """
-    WRITEME
+    Set of Ops contained within the subgraph between i and o
 
     Parameters
     ----------
     i : list
-        Input L{Variable}s.
+        Input variables.
     o : list
-        Output L{Variable}s.
+        Output variables.
 
     Returns
     -------
     object
         The set of ops that are contained within the subgraph that lies
-        between i and o, including the owners of the L{Variable}s in o and
-        intermediary ops between i and o, but not the owners of the L{Variable}s
+        between i and o, including the owners of the variables in o and
+        intermediary ops between i and o, but not the owners of the variables
         in i.
 
     """
@@ -745,14 +753,14 @@ def ops(i, o):
 
 def variables(i, o):
     """
-    WRITEME
+    Extracts list of variables within input and output nodes via dfs travesal
 
     Parameters
     ----------
     i : list
-        Input L{Variable}s.
+        Input variables.
     o : list
-        Output L{Variable}s.
+        Output variables.
 
     Returns
     -------
@@ -767,14 +775,15 @@ def variables(i, o):
 
 def orphans(i, o):
     """
-    WRITEME
+    Extracts list of variables within input and output nodes
+    via dfs travesal and returns the orphans among them
 
     Parameters
     ----------
     i : list
-        Input L{Variable}s.
+        Input Variables.
     o : list
-        Output L{Variable}s.
+        Output Variables.
 
     Returns
     -------
@@ -797,9 +806,9 @@ def clone(i, o, copy_inputs=True):
     Parameters
     ----------
     i : list
-        Input L{Variable}s.
+        Input Variables.
     o : list
-        Output L{Variable}s.
+        Output Variables.
     copy_inputs : bool
         If True, the inputs will be copied (defaults to True).
 
@@ -959,7 +968,7 @@ def general_toposort(r_out, deps, debug_print=False,
 
 def io_toposort(inputs, outputs, orderings=None, clients=None):
     """
-    WRITEME
+    Perform topological sort from input and output nodes
 
     Parameters
     ----------
@@ -1218,8 +1227,8 @@ def op_as_string(i, op,
                  leaf_formatter=default_leaf_formatter,
                  node_formatter=default_node_formatter):
     """
-    WRITEME
-
+    Op to return a string representation of the subgraph
+    between i and o
     """
     strs = as_string(i, op.inputs, leaf_formatter, node_formatter)
     return node_formatter(op, strs)
@@ -1229,7 +1238,7 @@ def as_string(i, o,
               leaf_formatter=default_leaf_formatter,
               node_formatter=default_node_formatter):
     """
-    WRITEME
+    Returns a string representation of the subgraph between i and o
 
     Parameters
     ----------

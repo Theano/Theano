@@ -32,6 +32,7 @@ class ProtocolError(Exception):
 
 def _contains_cycle(fgraph, orderings):
     """
+    Function to check if the given graph contains a cycle
 
     Parameters
     ----------

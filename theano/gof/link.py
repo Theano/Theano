@@ -52,15 +52,23 @@ def log_thunk_trace(value, f=sys.stderr):
 
 def thunk_hook(type, value, trace):
     """
-    WRITEME
-
     This function is meant to replace excepthook and do some
     special work if the exception value has a __thunk_trace__
-    field. In that case, it retrieves the field, which should
+    field.
+    In that case, it retrieves the field, which should
     contain a trace as returned by L{traceback.extract_stack},
     and prints it out on L{stderr}.
 
     The normal excepthook is then called.
+
+    Parameters:
+    ----------
+    type
+        Exception class
+    value
+        Exception instance
+    trace
+        Traceback object
 
     Notes
     -----
@@ -680,8 +688,6 @@ def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
 
 class LocalLinker(Linker):
     """
-    WRITEME
-
     Useful base class for L{Linker}s which keep all nodes in the graph, and run
     a thunk associated with each node.
 
@@ -707,7 +713,7 @@ class LocalLinker(Linker):
 
 def gc_helper(node_list):
     """
-
+    Return the set of Variable instances which are computed by node_list.
     Parameters
     ----------
     node_list
@@ -743,8 +749,6 @@ def gc_helper(node_list):
 
 class PerformLinker(LocalLinker):
     """
-    WRITEME
-
     Basic L{Linker} subclass that calls the perform method on each L{Op} in
     the L{FunctionGraph} in the order given by L{Linker.schedule}.
 
@@ -764,8 +768,7 @@ class PerformLinker(LocalLinker):
         Parameters
         ----------
         fgraph
-            A PerformLinker can have accepted one FunctionGraph instance at a
-            time.
+            A PerformLinker can have accepted one FunctionGraph instance at a time.
         no_recycling
             WRITEME
 
@@ -786,13 +789,14 @@ class PerformLinker(LocalLinker):
 
     def make_all(self, input_storage=None, output_storage=None, storage_map=None):
         """
+        Returns Function to run all nodes, list of input containers, list of outputs
 
         Parameters
         ----------
         input_storage
-            WRITEME
+            list of storages corresponding to fgraph.inputs
         output_storage
-            WRITEME
+            list of storages corresponding to fgraph.outputs
 
         Returns
         -------
@@ -879,8 +883,6 @@ def add_clear_storage(f, computed, storage_map):
 
 class WrapLinker(Linker):
     """
-    WRITEME
-
     This class makes it easier to run several L{LocalLinker}s in parallel, and
     offers some control over how each thunk is run.
 
