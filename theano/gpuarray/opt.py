@@ -326,8 +326,7 @@ class GraphToGPU(NavigatorOptimizer):
 
             context_name = None
             for i in [mapping[i] for i in node.inputs]:
-                target = getattr(i.tag, 'target', None)
-                if (isinstance(i.type, GpuArrayType) and target != 'cpu'):
+                if isinstance(i.type, GpuArrayType):
                     context_name = i.type.context_name
                     move_to_GPU = True
                     break
