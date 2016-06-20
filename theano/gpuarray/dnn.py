@@ -292,7 +292,6 @@ class GpuDnnConvDesc(COp):
         assert precision in ['float16', 'float32', 'float64']
         self.precision = precision
 
-
     def make_node(self, border_mode, kern_shape, subsample=(1, 1, 0)):
         if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
             raise TypeError('kern must be 1D shape tensor')
@@ -306,8 +305,8 @@ class GpuDnnConvDesc(COp):
             raise ValueError(
                 'invalid border_mode {}, which must be either '
                 '"valid", "full", "half", an integer or a pair of'
-                ' integers'.format(self.border_mode))
-        # self.border_mode = border_modeS
+                ' integers'.format(border_mode))
+        self.border_mode = border_modeS
         assert len(subsample) in (2, 3)
         self.subsample = subsample
         if len(subsample) == 2:
