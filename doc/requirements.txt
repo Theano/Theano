@@ -4,8 +4,6 @@
 Requirements
 ============
 
-These are the requirements to run Theano. See below for installation instructions.
-
     Python_ 2 >= 2.6 or Python_ 3 >= 3.3
         The development package (python-dev or python-devel on most Linux distributions) is recommended (see just below). Python 2.4 was supported up to and including the release 0.6. Python 3 is supported past the 3.3 release.
 
@@ -21,9 +19,11 @@ These are the requirements to run Theano. See below for installation instruction
 .. _BLAS: http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
 .. _Python: http://www.python.org/
 
-(Optional)
+**(Optional)**
+
 
     ``g++`` >= 4.2
+
     ``python-dev``
         **Highly recommended.** Theano can fall back on a NumPy-based Python execution model, but a C compiler allows for vastly faster execution.
 
@@ -33,11 +33,11 @@ These are the requirements to run Theano. See below for installation instruction
     `Sphinx <http://sphinx.pocoo.org/>`_ >= 0.5.1, `pygments <http://pygments.org/>`_
         For building the documentation. LaTeX_ and dvipng_ are also necessary for math to show up as images.
 
-    `pydot-ng <https://github.com/pydot/pydot-ng>`
+    `pydot-ng <https://github.com/pydot/pydot-ng>`_
         To handle large picture for gif/images.
 
     `NVIDIA CUDA drivers and SDK`_
-        Required for GPU code generation/execution on NVIDIA gpus. See instruction below.
+        **Highly recommended** Required for GPU code generation/execution on NVIDIA gpus. See instruction below.
 
     `libgpuarray`_
         Required for GPU/CPU code generation on CUDA and OpenCL devices (see: :ref:`gpuarray`.)
@@ -45,25 +45,25 @@ These are the requirements to run Theano. See below for installation instruction
 Conda
 -----
 
-You can install most of these packages with your system package manager or compiling them manually, 
-but we ONLY support the installation of the requirements through conda. 
+We only support the installation of the requirements through conda. 
 
 1. If you want fast compiled code (recommended), make sure you have g++ (Windows/Linux) or Clang (OS X) installed.
 
 2. Install Miniconda_.
 
 3. Install mandatory requirements: 
-.. code::
 
-    conda install numpy, scipy, mkl
+    .. code-block:: bash
+
+        conda install numpy scipy mkl
 
 4. Install the optional requirements available through Conda:
 
-.. code::
+    .. code-block:: bash
 
-    conda install nose, Sphinx, pydot-ng
+        conda install nose sphinx pydot-ng
 
-Go to the next section to install the GPU backends.
+Follow the next section to install the GPU backends.
 
 
 .. _GPU:
@@ -79,14 +79,11 @@ GPU
 
     `libgpuarray`_
         Required for GPU/CPU code generation on CUDA and OpenCL devices (see: :ref:`gpuarray`.)
+        The new backend (optional, by default Theano will use the old backend), which allows to generate GPU/CPU code for CUDA and OpenCL devices.
 
         .. note:: 
 
             OpenCL support is still minimal for now.
-
-        .. note:: 
-        
-            libgpuarray is the new backend and is not required for the old version.
 
 The first thing you'll need for Theano to use your GPU is Nvidia's
 GPU-programming toolchain. You should install at least the CUDA driver and the CUDA Toolkit, as

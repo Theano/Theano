@@ -14,20 +14,7 @@ add alternate instructions here.
 
 .. _theano-users: http://groups.google.com/group/theano-users?pli=1
 
-In academia: Enthought Canopy
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-If you are working in academia, the easiest way to install most of the
-dependencies is to install
-`Canopy <http://enthought.com/products/canopy/>`_.
-If you are affiliated with a university (as student or employee), you
-can download the installer for free.
-
-The Canopy installation includes in particular Python (and the
-development headers), NumPy, SciPy, nose, sphinx, pip, pydot
-(but *not* `Graphviz`_, which is necessary for it to work) and the MKL
-implementation of blas.
-
+.. include:: requirements.txt
 
 .. note::
 
@@ -36,9 +23,6 @@ implementation of blas.
    this requires user intervention.  We detect if the manipulation was
    done or not and give an error message explaining what to do in case
    it hasn't been done.
-
-.. include:: install_generic.txt
-    :start-line: 11
 
 .. attention::
 
@@ -98,6 +82,8 @@ Or for the bleeding-edge version:
 
     $ pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
 
+.. include:: install_generic.txt
+    :start-line: 11
 
 MacPorts
 --------

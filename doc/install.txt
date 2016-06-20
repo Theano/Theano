@@ -4,8 +4,6 @@
 Installing Theano
 =================
 
-First, have a look at the :ref:`requirements` page before installing.
-
 Supported platforms:
 
 - :ref:`install_ubuntu`

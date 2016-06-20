@@ -352,6 +352,8 @@ try the following.
   command on ``.so`` files found under your ``~/.theano`` directory. This will
   list shared libraries dependencies, and may help identify incompatibilities.
 
+.. _theano-users: http://groups.google.com/group/theano-users?pli=1
+
 Please inform us if you have trouble installing and running Theano on your Mac.
 We would be especially interested in dependencies that we missed listing,
 alternate installation steps, GPU instructions, as well as tests that fail on
