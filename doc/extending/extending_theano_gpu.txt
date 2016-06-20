@@ -5,6 +5,10 @@
 Extending Theano with a GPU Op
 ==============================
 
+.. note::
+
+    This covers the :ref:`gpuarray <gpuarray>` back-end for the GPU.
+
 This tutorial covers how to extend Theano with an op that offers a GPU
 implementation.  It assumes you are familiar with how to write new
 Theano ops.  If that is not the case you should probably follow the
@@ -15,7 +19,7 @@ Writing a new GPU op can be done in python for some simple tasks, but
 will usually done in C to access the complete API and avoid paying the
 overhead of a python function call.
 
-Dealing with the context
+Dealing With the Context
 ========================
 
 One of the major differences with GPU ops is that they require a
@@ -82,7 +86,7 @@ the example of :class:`theano.gpuarray.basic_ops.GpuFromHost` or
 :class:`theano.gpuarray.basic_ops.GpuEye`.  This is not a case that
 you should encounter often, so it will not be covered further.
 
-Defining new kernels
+Defining New Kernels
 ====================
 
 If your op needs to do some transformation on the data, chances are
@@ -161,7 +165,39 @@ An example calling the above kernel would be::
     // ...
 
 
-Wrapping exisiting libraries
+A Complete Example
+==================
+
+This is a complete example using both approches for a implementation
+of the Eye operation.
+
+GpuKernelBase
+-------------
+
+Python File
+~~~~~~~~~~~
+
+.. literalinclude:: ../../theano/gpuarray/basic_ops.py
+    :language: python
+    :pyobject: GpuEye
+
+CGpuKernelBase
+--------------
+
+Python File
+~~~~~~~~~~~
+
+.. literalinclude:: ../../theano/gpuarray/tests/test_cgpukernelbase.py
+    :language: python
+    :pyobject: GpuEye
+
+``tstgpueye.c``
+~~~~~~~~~~~~~~~
+
+.. literalinclude:: ../../theano/gpuarray/tests/tstgpueye.c
+    :language: C
+
+Wrapping Exisiting Libraries
 ============================
 
 PyCUDA

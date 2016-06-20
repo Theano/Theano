@@ -3,7 +3,7 @@ import numpy
 from six.moves import xrange
 
 import theano
-from theano import tensor, config, Apply
+from theano import tensor, config, Apply, Op
 from theano.gradient import grad_undefined
 
 from .config import mode_with_gpu, test_ctx_name
@@ -15,7 +15,7 @@ from ..type import GpuArrayType, get_context
 from pygpu.gpuarray import dtype_to_typecode
 
 
-class TSTGpuEye(CGpuKernelBase):
+class GpuEye(CGpuKernelBase, Op):
     """
     Eye for GPU.
 
@@ -61,7 +61,7 @@ class TSTGpuEye(CGpuKernelBase):
 
 
 def test_cgpukernelbase():
-    op = TSTGpuEye(dtype='int32', context_name=test_ctx_name)
+    op = GpuEye(dtype='int32', context_name=test_ctx_name)
 
     f = theano.function([], op(4, 5), mode=mode_with_gpu)
 
