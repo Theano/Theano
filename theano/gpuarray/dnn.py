@@ -282,7 +282,7 @@ class GpuDnnConvDesc(COp):
     def do_constant_folding(self, node):
         return False
 
-    def __init__(self, border_mode, conv_mode='conv',
+    def __init__(self, conv_mode='conv',
                  precision="float32"):
         COp.__init__(self, ["conv_desc.c"], "APPLY_SPECIFIC(conv_desc)")
 
@@ -292,19 +292,17 @@ class GpuDnnConvDesc(COp):
         assert precision in ['float16', 'float32', 'float64']
         self.precision = precision
 
-        # Checking is done in make_node
-        self.border_mode = border_mode
 
-    def make_node(self, kern_shape, subsample=(1, 1, 0)):
+    def make_node(self, border_mode, kern_shape, subsample=(1, 1, 0)):
         if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
             raise TypeError('kern must be 1D shape tensor')
-        if isinstance(self.border_mode, integer_types):
-            self.border_mode = (self.border_mode,) * len(subsample)
-        if isinstance(self.border_mode, tuple):
-            assert len(self.border_mode) == len(subsample)
-            self.border_mode = tuple(map(int, self.border_mode))
-        if not ((isinstance(self.border_mode, tuple) and min(self.border_mode) >= 0) or
-                self.border_mode in ('valid', 'full', 'half')):
+        if isinstance(border_mode, integer_types):
+            border_mode = (border_mode,) * len(subsample)
+        if isinstance(border_mode, tuple):
+            assert len(border_mode) == len(subsample)
+            border_mode = tuple(map(int, border_mode))
+        if not ((isinstance(border_mode, tuple) and min(border_mode) >= 0) or
+                border_mode in ('valid', 'full', 'half')):
             raise ValueError(
                 'invalid border_mode {}, which must be either '
                 '"valid", "full", "half", an integer or a pair of'
