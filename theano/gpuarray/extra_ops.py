@@ -2,14 +2,13 @@ from __future__ import absolute_import, print_function, division
 import os
 from theano import Apply, Op
 from theano.tensor.extra_ops import CumsumOp
-
+from .type import GpuArrayType
 try:
     from pygpu import gpuarray
 except ImportError:
     pass
 
-from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel,
-                        infer_context_name)
+from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel)
 from .opt import register_opt, op_lifter, register_opt2
 
 
@@ -40,7 +39,6 @@ class GpuCumsum(GpuKernelBase, Op):
 
     def make_node(self, x):
         assert x.type.dtype == 'float32', "Only float32 supported for GpuCumSum"
-        x = as_gpuarray_variable(x, infer_context_name(x))
 
         if x.ndim > GpuCumsum.SUPPORTED_NDIMS:
             raise NotImplementedError('Only cumsum on 1D, 2D and\
@@ -456,6 +454,8 @@ class GpuCumsum(GpuKernelBase, Op):
 @register_opt2([CumsumOp], 'fast_compile')
 def use_gpu_cumsumop(op, ctx_name, inputs, outputs):
     if inputs[0].dtype == 'float32':
+        if isinstance(inputs[0].type, GpuArrayType):
+            return
         axis = op.axis
         x = inputs[0]
 

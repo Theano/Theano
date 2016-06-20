@@ -259,12 +259,19 @@ gpu_seqopt.register('InputToGpuArrayOptimizer', InputToGpuOptimizer(),
 class GraphToGPU(NavigatorOptimizer):
     """
     Transfer the graph as a whole to GPU instead of transfering node by node.
+
+    Parameters
+    ----------
+    local_optimizers_all : List or Set
+        The local optimizations to apply to a node.
+    local_optimizers_map : Dict
+        Dictionary object containing the mapping of Op to list of
+        LocalOptimizers.
     """
 
     def __init__(self, local_optimizers_all, local_optimizers_map):
         self.local_optimizers_all = local_optimizers_all
         self.local_optimizers_map = local_optimizers_map
-        self.failure_callback = None
 
     def add_requirements(self, fgraph):
         fgraph.attach_feature(toolbox.ReplaceValidate())
@@ -1082,8 +1089,8 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
                     for i in range(x.ndim):
                         if i not in op.axis:
                             out_shp.append(shape_i(x, i))
-                    unreshaped_reduce = GpuReshape(len(out_shp))(
-                        tensor.stack(out_shp))
+                    unreshaped_reduce = GpuReshape(len(out_shp))(reduce_reshaped_x,
+                                                                 tensor.stack(out_shp))
                 else:
                     unreshaped_reduce = reduce_reshaped_x
                 return [unreshaped_reduce]
