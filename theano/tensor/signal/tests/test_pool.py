@@ -809,6 +809,38 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             [Pool(ignore_border=True)(image, (2, 2), pad=(0, 0))],
             [image_val], Pool)
 
+    def test_pooling_with_tensor_vars(self):
+        x = tensor.ftensor4()
+        window_size = tensor.ivector()
+        stride = tensor.ivector()
+        padding = tensor.ivector()
+        data = numpy.random.normal(0, 1, (1, 1, 5, 5)).astype('float32')
+
+        # checking variable params vs fixed params
+        for ignore_border in [True, False]:
+            for mode in ['max', 'sum', 'average_inc_pad', 'average_exc_pad']:
+                y = pool_2d(x, window_size, ignore_border, stride, padding,
+                            mode)
+                dy = theano.gradient.grad(y.sum(), x)
+                var_fct = theano.function([x, window_size, stride, padding],
+                                          [y, dy])
+                for ws in (4, 2, 5):
+                    for st in (2, 3):
+                        for pad in (0, 1):
+                            if (pad > st or st > ws or
+                                (pad != 0 and not ignore_border) or
+                                (mode == 'average_exc_pad' and pad !=0)):
+                                continue
+                            y = pool_2d(x, (ws, ws), ignore_border, (st, st),
+                                        (pad, pad), mode)
+                            dy = theano.gradient.grad(y.sum(), x)
+                            fix_fct = theano.function([x], [y, dy])
+                            var_y, var_dy = var_fct(data, (ws, ws), (st, st),
+                                                    (pad, pad))
+                            fix_y, fix_dy = fix_fct(data)
+                            utt.assert_allclose(var_y, fix_y)
+                            utt.assert_allclose(var_dy, fix_dy)
+
     def test_DownsampleFactorMaxGrad(self):
         im = theano.tensor.tensor4()
         maxout = theano.tensor.tensor4()
