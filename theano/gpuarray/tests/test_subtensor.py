@@ -12,6 +12,7 @@ from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuAdvancedSubtensor,
                          GpuAdvancedIncSubtensor1)
 from ..type import gpuarray_shared_constructor
+
 from .config import mode_with_gpu
 
 

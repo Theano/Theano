@@ -502,6 +502,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
             new_axis= x.ndim
             dimshuffle_info_append = []
             new_ind_append = []
+
             for i in range(0, a):
                 if isinstance(ind[i], slice):
                     dimshuffle_info_append.append(k)
@@ -540,6 +541,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
 
             new_ind += idx_2
             dimshuffle_info.extend(idx_1)
+
             for i in range(b, len(ind)):
                 if isinstance(ind[i], slice):
                     dimshuffle_info.append(k)
@@ -551,6 +553,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
                     new_ind.append(slice(None))
 
             return dimshuffle_info, new_ind, valid_end
+
         (dimshuffle_idx, new_ind,
          end_) = get_indices(start, end, idx)
         shape = x.shape + (1, ) * (len(dimshuffle_idx) - x.ndim)
