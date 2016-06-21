@@ -491,7 +491,6 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         idx = inputs[1:]
 
         assert len(idx) >= x.ndim
-        dims = len(idx)
         # step 1: find smallest index
         for k, i in enumerate(idx):
             if isinstance(i, numpy.ndarray):
@@ -510,15 +509,19 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
             dimshuffle_info = []
             new_ind = []
             k = 0
+            new_axis = x.ndim
+            dimshuffle_info_append = []
+            new_ind_append = []
 
             for i in range(0, a):
                 if isinstance(ind[i], slice):
-                    dimshuffle_info.append(k)
-                    new_ind.append(ind[i])
+                    dimshuffle_info_append.append(k)
+                    new_ind_append.append(ind[i])
                     k += 1
                 elif ind[i] is None:
-                    dimshuffle_info.append('x')
-                    new_ind.append(slice(None))
+                    dimshuffle_info_append.append(new_axis)
+                    new_axis += 1
+                    new_ind_append.append(slice(None))
 
             dimshuffle_info.append(k)
             new_ind.append(ind[a])
@@ -533,15 +536,19 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
                     idx_2.append(ind[i])
                     k += 1
                 elif ind[i] is None:
-                    idx_3.append('x')
-                    new_ind.append(slice(None))
+                    idx_1.append(new_axis)
+                    new_axis += 1
+                    idx_2.append(slice(None))
                 else:
                     idx_3.append(k)
                     new_ind.append(ind[i])
                     k += 1
-            valid_end = a + len(idx_3) + 1
+            valid_end = len(new_ind)
 
             dimshuffle_info.extend(idx_3)
+            dimshuffle_info.extend(dimshuffle_info_append)
+            new_ind.extend(new_ind_append)
+
             new_ind += idx_2
             dimshuffle_info.extend(idx_1)
 
@@ -551,40 +558,41 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
                     new_ind.append(ind[i])
                     k += 1
                 elif ind[i] is None:
-                    dimshuffle_info.append('x')
+                    dimshuffle_info.append(new_axis)
+                    new_axis += 1
                     new_ind.append(slice(None))
 
             return dimshuffle_info, new_ind, valid_end
 
         (dimshuffle_idx, new_ind,
          end_) = get_indices(start, end, idx)
+        shape = x.shape + (1, ) * (len(dimshuffle_idx) - x.ndim)
+        x = x.reshape(shape)
         x = x.transpose(*dimshuffle_idx)
         # step 3: partial flattening
-        start_ = start
-        shape = (x.shape[: start_] +
-                 (numpy.prod(x.shape[start: end_]),) +
+        shape = (x.shape[: 0] +
+                 (numpy.prod(x.shape[0: end_]),) +
                  x.shape[end_:])
-        input_flat = numpy.reshape(x, shape)
+        input_flat = x.reshape(shape)
         # step 4: build the strides
         strides = [1]
-        for i in range(start_, end_ - 1)[::-1]:
+        for i in range(0, end_ - 1)[::-1]:
             stride = x.shape[i + 1] * strides[-1]
             strides.append(stride)
         # step 5: build the indices into x_flat
         items = [new_ind[i] if isinstance(new_ind[i], numpy.ndarray)
-                 else 0 for i in range(start_, end_)]
+                 else 0 for i in range(0, end_)]
         new_idx = numpy.sum([i * j for i, j
                              in zip(items, strides[::-1])],
                             axis=0)
         # step 6: advanced slicing
-        out_flat = input_flat.take1(new_idx.flatten())
+        out_flat = input_flat.take1(pygpu.asarray(new_idx.flatten(),
+                                                  context=input_flat.context))
         # step 7: reshape into right shape
-        out_flat_shp = (x.shape[:start_] +
-                        new_idx.shape + x.shape[end_:]).astype('int32')
-        o = out_flat.reshape(out_flat_shp,
-                             ndim=dims + new_idx.ndim - 2)
-        idx_ = (new_ind[:start_] + [slice(None)] *
-                (new_idx.ndim - 2 + end_ - start_) + new_ind[end_:])
+        out_flat_shp = new_idx.shape + x.shape[end_:]
+        o = out_flat.reshape(out_flat_shp)
+        idx_ = ([slice(None)] * (new_idx.ndim - 2 + end_) +
+                new_ind[end_:])
         out[0] = o.__getitem__(idx_)
 
 

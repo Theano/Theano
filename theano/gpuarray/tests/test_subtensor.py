@@ -13,6 +13,7 @@ from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuAdvancedSubtensor,
                          GpuAdvancedIncSubtensor1)
 from ..type import gpuarray_shared_constructor
+
 from .config import mode_with_gpu
 
 
@@ -115,7 +116,7 @@ def test_adv_subtensor():
     shared = gpuarray_shared_constructor
     xval = numpy.arange(numpy.prod(shp), dtype=theano.config.floatX).reshape(shp)
     idx1, idx2 = tensor.ivectors('idx1', 'idx2')
-    idxs = [idx1, slice(0, 2, 1), idx2]
+    idxs = [idx1, None, slice(0, 2, 1), idx2, None]
     x = shared(xval, name='x')
     expr = x[idxs]
     f = theano.function([idx1, idx2], expr, mode=mode_with_gpu)
@@ -124,5 +125,5 @@ def test_adv_subtensor():
     idx1_val = [0, 1]
     idx2_val = [0, 1]
     rval = f(idx1_val, idx2_val)
-    rep = xval[idx1_val, slice(0, 2, 1), idx2_val]
+    rep = xval[idx1_val, None, slice(0, 2, 1), idx2_val, None]
     assert numpy.allclose(rval, rep)

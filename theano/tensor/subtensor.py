@@ -20,7 +20,7 @@ from theano.tensor.basic import alloc
 from theano.tensor.basic import (addbroadcast, clip, get_scalar_constant_value,
                                  ARange, TensorType, NotScalarConstantError)
 from theano.tensor.elemwise import DimShuffle
-from theano.tensor.type_other import NoneConst, SliceType, make_slice
+from theano.tensor.type_other import NoneConst, SliceType, NoneTypeT, make_slice
 from theano import config
 
 inplace_increment = None
@@ -2076,6 +2076,8 @@ def as_index_variable(idx):
     if isinstance(idx, slice):
         return make_slice(idx)
     if isinstance(idx, gof.Variable) and isinstance(idx.type, SliceType):
+        return idx
+    if isinstance(idx, gof.Variable) and isinstance(idx.type, NoneTypeT):
         return idx
     idx = theano.tensor.as_tensor_variable(idx)
     if idx.type.dtype[:3] not in ('int', 'uin'):
