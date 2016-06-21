@@ -612,8 +612,8 @@ def local_gpua_alloc_empty_to_zeros(node):
     if isinstance(node.op, GpuAllocEmpty):
         context_name = infer_context_name(*node.inputs)
         z = numpy.asarray(0, dtype=node.outputs[0].dtype)
-        return [gpu_alloc(None)(as_gpuarray_variable(z, context_name),
-                                *node.inputs)]
+        return [gpu_alloc(context_name)(as_gpuarray_variable(z, context_name),
+                                        *node.inputs)]
 optdb.register('local_gpua_alloc_empty_to_zeros',
                theano.tensor.opt.in2out(local_gpua_alloc_empty_to_zeros),
                # After move to gpu and merge2, before inplace.
