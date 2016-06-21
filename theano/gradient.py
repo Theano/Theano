@@ -1677,10 +1677,11 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
 
     if no_debug_ref:
         mode_for_cost = mode_not_debug(mode)
-        cost_fn = function(tensor_pt, cost, name='gradient.py cost',
-                           mode=mode_for_cost)
     else:
-        cost_fn = function(tensor_pt, cost, name='gradient.py cost')
+        mode_for_cost = mode
+
+    cost_fn = function(tensor_pt, cost, name='gradient.py cost',
+                       mode=mode_for_cost)
 
     symbolic_grad = grad(cost, tensor_pt,
                          disconnected_inputs='ignore')
