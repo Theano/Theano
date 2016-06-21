@@ -18,9 +18,9 @@ class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
     @classmethod
     def setup_class(cls):
         test_abstract_conv.BaseTestConv2d.setup_class()
-        self.shared = staticmethod(gpuarray_shared_constructor)
+        cls.shared = staticmethod(gpuarray_shared_constructor)
         # provide_shape is not used by the cuDNN impementation
-        self.provide_shape = [False]
+        cls.provide_shape = [False]
 
     def tcase(self, i, f, s, b, flip, provide_shape):
         if not dnn_available(test_ctx_name):
