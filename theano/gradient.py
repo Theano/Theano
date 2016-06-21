@@ -16,7 +16,7 @@ from theano.compat import OrderedDict, izip
 from six.moves import xrange, reduce
 from theano.gof.null_type import NullType, null_type
 from theano.gof.op import get_debug_values
-from theano.compile import ViewOp
+from theano.compile import ViewOp, FAST_RUN, DebugMode
 
 np = numpy
 __authors__ = "James Bergstra, Razvan Pascanu, Arnaud Bergeron, Ian Goodfellow"
@@ -1542,9 +1542,18 @@ class numeric_grad(object):
         return (max_arg, max_pos, abs_errs[max_arg], rel_errs[max_arg])
 
 
+def mode_not_debug(mode):
+    if isinstance(mode, DebugMode):
+        opt = mode.optimizer
+        return FAST_RUN.clone(optimizer=opt)
+    else:
+        return mode
+
+
 def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
                 out_type=None, abs_tol=None,
-                rel_tol=None, mode=None, cast_to_output_type=False):
+                rel_tol=None, mode=None, cast_to_output_type=False,
+                no_debug_ref=True):
     """Test a gradient by Finite Difference Method. Raise error on failure.
 
     Example:
@@ -1581,11 +1590,8 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
     :param cast_to_output_type: if the output is float32 and
         cast_to_output_type is True, cast the random projection to
         float32. Otherwise it is float64.
-
-    :note: WARNING to unit-test writers: if `op` is a function that builds
-        a graph, try to make it a SMALL graph.  Often verify grad is run
-        in debug mode, which can be very slow if it has to verify a lot of
-        intermediate computations.
+    :param no_debug_ref: Don't use DebugMode for the numerical
+        gradient function.
 
     :note: This function does not support multiple outputs. In
         tests/test_scan.py there is an experimental verify_grad that
@@ -1623,7 +1629,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
 
     # We allow input downcast in function, because numeric_grad works in the
     # most precise dtype used among the inputs, so we may need to cast some.
-    def function(inputs, output, name):
+    def function(inputs, output, name, mode=mode):
         f = compile.function(inputs, output, accept_inplace=True,
                              allow_input_downcast=True, mode=mode,
                              on_unused_input='ignore', name=name)
@@ -1669,7 +1675,13 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
     # This sum() is defined above, it's not the builtin sum.
     cost = theano.tensor.sum(t_r * o_output)
 
-    cost_fn = function(tensor_pt, cost, name='gradient.py cost')
+    if no_debug_ref:
+        mode_for_cost = mode_not_debug(mode)
+    else:
+        mode_for_cost = mode
+
+    cost_fn = function(tensor_pt, cost, name='gradient.py cost',
+                       mode=mode_for_cost)
 
     symbolic_grad = grad(cost, tensor_pt,
                          disconnected_inputs='ignore')
