@@ -946,7 +946,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
         # Compile a reference function, on the CPU, to be used to validate the
         # results of the other function.
         x = T.fmatrix()
-        f_ref = theano.function([x], T.nnet.LogSoftmax()(x))
+        f_ref = theano.function([x], T.nnet.LogSoftmax()(x), mode='FAST_RUN')
 
         # Build the first graph and ensure that the optimization is applied
         log_softmax_out = T.nnet.LogSoftmax()(x)

@@ -15,11 +15,12 @@ gpu_ftensor4 = GpuArrayType(dtype='float32', broadcastable=(False,) * 4)
 
 
 class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
-    def setUp(self):
-        super(TestDnnConv2d, self).setUp()
-        self.shared = gpuarray_shared_constructor
+    @classmethod
+    def setup_class(cls):
+        test_abstract_conv.BaseTestConv2d.setup_class()
+        cls.shared = staticmethod(gpuarray_shared_constructor)
         # provide_shape is not used by the cuDNN impementation
-        self.provide_shape = [False]
+        cls.provide_shape = [False]
 
     def tcase(self, i, f, s, b, flip, provide_shape):
         if not dnn_available(test_ctx_name):
