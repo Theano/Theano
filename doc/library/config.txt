@@ -487,6 +487,21 @@ import theano and print the config variable, as in:
         automatically to get more memory. But this can cause
         fragmentation, see note above.
 
+.. attribute:: config.gpuarray.single_stream
+
+    Boolean value
+
+    Default: ``True``
+
+    Control the stream mode of contexts.
+
+    If your computations are mostly lots of small elements, using
+    single-stream will avoid the synchronization overhead and usually
+    be faster.  For larger elements it does not make a difference yet.
+    In the future when true multi-stream is enabled in libgpuarray,
+    this may change.  If you want to make sure to have optimal
+    performance, check both options.
+
 
 .. attribute:: linker
 

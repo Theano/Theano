@@ -11,7 +11,7 @@ from theano.tensor import (DimShuffle, get_scalar_constant_value,
 from .basic_ops import GpuFromHost, HostFromGpu, GpuAllocEmpty
 from .elemwise import GpuDimShuffle, GpuElemwise
 
-_one = scal.constant(numpy.asarray(1.0, dtype='float64'))
+_one = scal.constant(numpy.asarray(1.0, dtype='float32'))
 
 
 def grab_cpu_scalar(v, nd):

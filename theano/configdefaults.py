@@ -242,6 +242,19 @@ AddConfigVar('gpuarray.preallocate',
              FloatParam(0),
              in_c_key=False)
 
+AddConfigVar('gpuarray.single_stream',
+             """
+             If your computations are mostly lots of small elements,
+             using single-stream will avoid the synchronization
+             overhead and usually be faster.  For larger elements it
+             does not make a difference yet.  In the future when true
+             multi-stream is enabled in libgpuarray, this may change.
+             If you want to make sure to have optimal performance,
+             check both options.
+             """,
+             BoolParam(True),
+             in_c_key=False)
+
 
 def safe_no_dnn_workmem(workmem):
     """
