@@ -137,23 +137,24 @@ class BaseCorrMM(gof.OpenMPOp):
 
         if self.openmp:
             sub['omp_flags'] = '#pragma omp parallel for schedule(static)'
-            sub['omp_max_threads'] = 'omp_get_max_threads()'
-            sub['set_omp_threads'] = 'omp_set_num_threads'
-            sub['get_omp_threads'] = 'omp_get_thread_num()'
+            sub['omp_get_max_threads'] = 'omp_get_max_threads()'
+            sub['omp_get_thread_num'] = 'omp_get_thread_num()'
 
             if self.blas_type == 'openblas':
-                sub['set_blas_threads'] = 'openblas_set_num_threads'
-                sub['get_blas_threads'] = 'openblas_get_num_threads()'
+                sub['blas_set_num_threads'] = 'openblas_set_num_threads'
+                sub['blas_get_num_threads'] = 'openblas_get_num_threads()'
             elif self.blas_type == 'mkl':
-                sub['set_blas_threads'] = 'mkl_set_num_threads'
-                sub['get_blas_threads'] = 'mkl_get_max_threads()'
+                sub['blas_set_num_threads'] = 'mkl_set_num_threads'
+                sub['blas_get_num_threads'] = 'mkl_get_max_threads()'
+            else:
+                sub['blas_set_num_threads'] = ''
+                sub['blas_get_num_threads'] = '0'
         else:
             sub['omp_flags'] = ''
-            sub['omp_max_threads'] = '1'
-            sub['set_omp_threads'] = ''
-            sub['get_omp_threads'] = '0'
-            sub['set_blas_threads'] = ''
-            sub['get_blas_threads'] = '0'
+            sub['omp_get_max_threads'] = '1'
+            sub['omp_get_thread_num'] = '0'
+            sub['blas_set_num_threads'] = ''
+            sub['blas_get_num_threads'] = '0'
 
         files = ['corr_gemm.c']
         codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
