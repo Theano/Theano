@@ -6,6 +6,10 @@ from theano import gof, tensor
 
 class Fourier(gof.Op):
     """
+    WARNING: for officially supported FFTs, use theano.tensor.fft, which
+    provides real-input FFTs. Gradients are supported, as well as optimization
+    transfers to GPU ops.
+
     An instance of this class returns a finite fourier transform calcutated
     along one dimension of an input array.
 
