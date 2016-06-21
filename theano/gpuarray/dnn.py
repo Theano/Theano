@@ -306,7 +306,7 @@ class GpuDnnConvDesc(COp):
                 'invalid border_mode {}, which must be either '
                 '"valid", "full", "half", an integer or a pair of'
                 ' integers'.format(border_mode))
-        self.border_mode = border_modeS
+        self.border_mode = border_mode
         assert len(subsample) in (2, 3)
         self.subsample = subsample
         if len(subsample) == 2:
