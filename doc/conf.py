@@ -183,6 +183,7 @@ htmlhelp_basename = 'theanodoc'
 # Options for the linkcode extension
 # ----------------------------------
 # Resolve function
+# This function is used to populate the (source) links in the API
 def linkcode_resolve(domain, info):
     def find_source():
         # try to find the file and line number, based on code from numpy:
@@ -203,7 +204,8 @@ def linkcode_resolve(domain, info):
         filename = 'theano/%s#L%d-L%d' % find_source()
     except Exception:
         filename = info['module'].replace('.', '/') + '.py'
-    tag = 'master' if 'dev' in release else ('v' + release)
+    from subprocess import check_output
+    tag = check_output('git rev-parse HEAD', shell=True)[:-1]
     return "https://github.com/Theano/theano/blob/%s/%s" % (tag, filename)
 
 # Options for LaTeX output
