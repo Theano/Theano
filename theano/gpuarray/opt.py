@@ -30,7 +30,7 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
 from theano.tests.breakpoint import PdbBreakpoint
 
 from .type import (GpuArrayType, GpuArrayConstant, get_context,
-                   ContextNotDefined)
+                   ContextNotDefined, GpuArraySharedVariable, GpuArrayVariable)
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         host_from_gpu, GpuToGpu,
                         HostFromGpu, GpuFromHost,
@@ -107,6 +107,19 @@ def register_opt(*tags, **kwargs):
 
 
 def register_opt2(tracks, *tags, **kwargs):
+    '''
+    Decorator for the new GraphToGPU optimizer.
+    Takes an extra parameter(Op) compared to register_opt decorator.
+
+    Parameters
+    ----------
+    tracks : Op
+        The Node's Op to which optimization is being applied.
+
+    tags : String
+        The tag optimization mode to which the optimizer will be registered.
+
+    '''
     def f(local_opt):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
         opt = theano.gof.local_optimizer(tracks)(local_opt)
@@ -315,7 +328,12 @@ class GraphToGPU(NavigatorOptimizer):
 
             # Move only if any of the inputs are on the GPU.
             move_to_GPU = False
+            if any([isinstance(i, GpuArrayVariable) or
+                   isinstance(i, GpuArraySharedVariable)
+                   for i in [mapping[v] for v in node.inputs] +
+                   node.outputs]):
 
+                move_to_GPU = True
             context_name = None
             for i in [mapping[i] for i in node.inputs]:
                 if isinstance(i.type, GpuArrayType):
@@ -415,13 +433,6 @@ class GraphToGPU(NavigatorOptimizer):
         count_opt = []
         not_used = []
         not_used_time = 0
-
-        for s in list(set(old_not_transferred)):
-            print(blanc, 'Nodes not transferred by old opt : ' + str(s), file=stream)
-        for n in list(set(new_not_transferred)):
-            print(blanc, 'Nodes not transferred by new optimizer : ' + str(n), file=stream)
-        for d in list(set(set(new_not_transferred) - set(old_not_transferred))):
-            print(blanc, 'Not transferred difference : ', str(d), file=stream)
 
         for o, count in iteritems(process_count):
             if count > 0:

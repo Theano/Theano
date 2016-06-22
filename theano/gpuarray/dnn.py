@@ -26,7 +26,7 @@ from . import pygpu
 from .type import get_context, gpu_context_type, list_contexts
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         gpu_contiguous, gpu_alloc_empty,
-                        empty_like)
+                        empty_like, GpuArrayType)
 from .elemwise import GpuElemwise
 
 # These don't exist in gpuarray
@@ -1438,8 +1438,8 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
     if (op.filter_dilation != (1, 1)):
         return None
 
-    inp1 = as_gpuarray_variable(inputs[0], context_name)
-    inp2 = as_gpuarray_variable(inputs[1], context_name)
+    inp1 = inputs[0]
+    inp2 = inputs[1]
 
     if not dnn_available(inp1.type.context_name):
         raise_no_cudnn()
@@ -1476,6 +1476,8 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
                   AbstractConv2d_gradInputs])
 def local_abstractconv_cudnn(node):
     ctx = infer_context_name(*node.inputs)
+    if not isinstance(node.inputs[0].type, GpuArrayType):
+        return
     return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 conv_groupopt.register('local_abstractconv_cudnn_graph',
