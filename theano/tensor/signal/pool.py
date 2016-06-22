@@ -28,7 +28,7 @@ def max_pool_2d_same_size(input, patch_size):
     ----------
     input : 4-D theano tensor of input images
         Input images. Max pooling will be done over the 2 last dimensions.
-    patch_size : tuple of length 2
+    patch_size : tuple of length 2 or theano vector of ints of size 2.
         Size of the patch (patch height, patch width).
         (2,2) will retain only one non-zero value per patch of 4 values.
 
@@ -50,17 +50,17 @@ def pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
     ----------
     input : N-D theano tensor of input images
         Input images. Max pooling will be done over the 2 last dimensions.
-    ds : tuple of length 2
+    ds : tuple of length 2 or theano vector of ints of size 2.
         Factor by which to downscale (vertical ds, horizontal ds).
         (2,2) will halve the image in each dimension.
     ignore_border : bool (default None, will print a warning and set to False)
         When True, (5,5) input with ds=(2,2) will generate a (2,2) output.
         (3,3) otherwise.
-    st : tuple of two ints
+    st : tuple of two ints or theano vector of ints of size 2.
         Stride size, which is the number of shifts over rows/cols to get the
         next pool region. If st is None, it is considered equal to ds
         (no overlap on pooling regions).
-    padding : tuple of two ints
+    padding : tuple of two ints or theano vector of ints of size 2.
         (pad_h, pad_w), pad zeros to extend beyond four borders of the
         images, pad_h is the size of the top and bottom margins, and
         pad_w is the size of the left and right margins.
