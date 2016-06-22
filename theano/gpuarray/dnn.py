@@ -23,7 +23,7 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
 from theano.tensor.signal.pool import (
     Pool, MaxPoolGrad, AveragePoolGrad)
 from . import pygpu
-from .type import get_context, gpu_context_type, list_contexts, GpuArrayType
+from .type import get_context, gpu_context_type, list_contexts
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         gpu_contiguous, gpu_alloc_empty,
                         empty_like)
@@ -1428,21 +1428,18 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
 
 
 @register_opt2([AbstractConv2d, AbstractConv2d_gradWeights,
-                AbstractConv2d_gradInputs], 'conv_dnn', 'cudnn', 'gpuarray', 'fast_compile')
+                AbstractConv2d_gradInputs], 'fast_compile')
 def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
     if (not isinstance(op, (AbstractConv2d,
                             AbstractConv2d_gradWeights,
                             AbstractConv2d_gradInputs))):
+        return
+
+    if (op.filter_dilation != (1, 1)):
         return None
 
-    inp1 = inputs[0]
-    inp2 = inputs[1]
-
-    if (node.op.filter_dilation != (1, 1)):
-        return None
-
-    if not isinstance(inp1.type, GpuArrayType):
-        return None
+    inp1 = as_gpuarray_variable(inputs[0], context_name)
+    inp2 = as_gpuarray_variable(inputs[1], context_name)
 
     if not dnn_available(inp1.type.context_name):
         raise_no_cudnn()

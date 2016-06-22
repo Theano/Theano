@@ -30,7 +30,7 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
 from theano.tests.breakpoint import PdbBreakpoint
 
 from .type import (GpuArrayType, GpuArrayConstant, get_context,
-                   ContextNotDefined, GpuArrayVariable, GpuArraySharedVariable)
+                   ContextNotDefined)
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         host_from_gpu, GpuToGpu,
                         HostFromGpu, GpuFromHost,
@@ -291,10 +291,9 @@ class GraphToGPU(NavigatorOptimizer):
         target = infer_context_name(*fgraph.inputs)
         for i in fgraph.inputs:
             # Do not move *int* scalar to the GPU.
-            target = getattr(i.tag, 'target', None)
             if (isinstance(i.type, tensor.TensorType) and
                (i.ndim > 0 or 'int' not in i.dtype)):
-                mapping[i] = i.transfer(target)
+                mapping[i] = as_gpuarray_variable(i, target)
             else:
                 mapping[i] = i
         for i in fgraph.variables:
@@ -316,12 +315,6 @@ class GraphToGPU(NavigatorOptimizer):
 
             # Move only if any of the inputs are on the GPU.
             move_to_GPU = False
-            if any([isinstance(i, GpuArrayVariable) or
-                   isinstance(i, GpuArraySharedVariable)
-                   for i in [mapping[v] for v in node.inputs] +
-                   node.outputs]):
-
-                move_to_GPU = True
 
             context_name = None
             for i in [mapping[i] for i in node.inputs]:
@@ -346,20 +339,20 @@ class GraphToGPU(NavigatorOptimizer):
             new_ops = None
             outputs = []
             # Apply the lifter
-            for lopt in (self.local_optimizers_map.get(node.op, []) +
-                         self.local_optimizers_map.get(type(node.op), []) +
-                         self.local_optimizers_all):
-                if move_to_GPU:
-                    t_opt = time.time()
-                    new_ops = lopt.transform(node.op, context_name,
-                                             [mapping[i] for i in node.inputs],
-                                             node.outputs)
-                    t_opt2 = time.time()
-                    time_opts[lopt] += t_opt2 - t_opt
+            if move_to_GPU:
+                for lopt in (self.local_optimizers_map.get(node.op, []) +
+                             self.local_optimizers_map.get(type(node.op), []) +
+                             self.local_optimizers_all):
+                        t_opt = time.time()
+                        new_ops = lopt.transform(node.op, context_name,
+                                                 [mapping[i] for i in node.inputs],
+                                                 node.outputs)
+                        t_opt2 = time.time()
+                        time_opts[lopt] += t_opt2 - t_opt
 
-                    if new_ops:
-                        process_count[lopt] += 1
-                        break
+                        if new_ops:
+                            process_count[lopt] += 1
+                            break
             if not new_ops:
                 newnode = node.clone_with_new_inputs([mapping.get(i)
                                                       for i in node.inputs])
@@ -754,7 +747,7 @@ def local_gpua_dimshuffle(op, context_name, inputs, outputs):
 
 @register_opt('fast_compile')
 @op_lifter([tensor.SpecifyShape])
-@register_opt2([tensor.SpecifyShape], 'fast_compile')
+# @register_opt2([tensor.SpecifyShape], 'fast_compile')
 def local_gpua_specifyShape(op, context_name, inputs, outputs):
     if isinstance(inputs[0].type, GpuArrayType):
         return
@@ -763,14 +756,27 @@ def local_gpua_specifyShape(op, context_name, inputs, outputs):
     return tensor.specify_shape(*inp)
 
 
+@register_opt2([tensor.SpecifyShape], 'fast_compile')
+def local_gpua_specifyShape_graph(op, context_name, inputs, outputs):
+    inp = [as_gpuarray_variable(inputs[0], context_name)]
+    inp += inputs[1:]
+    return tensor.specify_shape(*inp)
+
+
 @register_opt('fast_compile')
 @op_lifter([theano.compile.ops.Shape])
-@register_opt2([tensor.compile.ops.Shape], 'fast_compile')
 def local_gpua_shape(op, context_name, inputs, outputs):
     # op_lifter will call this opt too frequently as the output is
     # always on the CPU.
     if isinstance(inputs[0].type, GpuArrayType):
         return
+    return [as_gpuarray_variable(inputs[0], context_name).shape]
+
+
+@register_opt2([tensor.compile.ops.Shape], 'fast_compile')
+def local_gpua_shape_graph(op, context_name, inputs, outputs):
+    # op_lifter will call this opt too frequently as the output is
+    # always on the CPU.
     return [as_gpuarray_variable(inputs[0], context_name).shape]
 
 
@@ -863,15 +869,10 @@ def local_gpu_pdbbreakpoint_op(node):
 def local_gpua_lazy_ifelse(op, context_name, inputs, outputs):
     if op.gpu:
         return
-    # this node is already on GPU, so don't change the graph
-    if isinstance(inputs[0].type, GpuArrayType):
-        return
     c = inputs[0]
     inps = []
     for v in inputs[1:]:
-        if isinstance(v.type, GpuArrayType):
-            return
-        elif isinstance(v.type, tensor.TensorType):
+        if isinstance(v.type, tensor.TensorType):
             inps.append(as_gpuarray_variable(v, context_name))
         else:
             inps.append(v)
@@ -1230,11 +1231,15 @@ def local_gpua_softmaxwithbias(op, context_name, inputs, outputs):
 
 @register_opt('fast_compile')
 @op_lifter([theano.tensor.opt.Assert])
-@register_opt2([theano.tensor.opt.Assert], 'fast_compile')
 def local_assert(op, context_name, inputs, outputs):
-    # Check if input nodes are already on the GPU
     if isinstance(inputs[0].type, GpuArrayType):
         return
+    return [op(as_gpuarray_variable(inputs[0], context_name),
+               *inputs[1:])]
+
+
+@register_opt2([theano.tensor.opt.Assert], 'fast_compile')
+def local_assert_graph(op, context_name, inputs, outputs):
     return [op(as_gpuarray_variable(inputs[0], context_name),
                *inputs[1:])]
 
@@ -1286,17 +1291,26 @@ def local_inplace_sparseblockouter(node):
 
 
 # This deals with any abstract convs that have a transfer somewhere
-@register_opt('fast_compile')
+@register_opt('fast_compile', 'conv_dnn')
 @op_lifter([AbstractConv2d,
             AbstractConv2d_gradWeights,
             AbstractConv2d_gradInputs])
+def local_lift_abstractconv2d(op, context_name, inputs, outputs):
+    if isinstance(outputs[0].type, GpuArrayType):
+        # Don't handle this node here, it's already on the GPU.
+        return
+    inps = list(inputs)
+    inps[0] = as_gpuarray_variable(inputs[0],
+                                   context_name=context_name)
+    inps[1] = as_gpuarray_variable(inputs[1],
+                                   context_name=context_name)
+    return [op(*inps)]
+
+
 @register_opt2([AbstractConv2d,
                 AbstractConv2d_gradWeights,
                 AbstractConv2d_gradInputs], 'fast_compile')
-def local_lift_abstractconv2d(op, context_name, inputs, outputs):
-    if isinstance(inputs[0].type, GpuArrayType):
-        # Don't handle this node here, it's already on the GPU.
-        return
+def local_lift_abstractconv2d_graph(op, context_name, inputs, outputs):
     inps = list(inputs)
     inps[0] = as_gpuarray_variable(inputs[0],
                                    context_name=context_name)
