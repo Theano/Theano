@@ -585,7 +585,7 @@ def rand_ranged(min, max, shape):
 
 
 def randint_ranged(min, max, shape):
-    return numpy.random.randint(min, max, shape)
+    return numpy.random.randint(low=min, high=max, size=shape)
 
 
 def randc128_ranged(min, max, shape):
@@ -1650,7 +1650,7 @@ TanhInplaceTester = makeBroadcastTester(
 _eps = 1e-10
 _good_broadcast_unary_arctanh = dict(
     normal=(rand_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
-    integers=(randint_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
+    integers=(randint_ranged(-1, 1, (2, 3)),),
     int8=[numpy.arange(0, 1, dtype='int8')],
     complex=(randc128_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
     empty=(numpy.asarray([], dtype=config.floatX),),)
@@ -7521,10 +7521,10 @@ class TestInferShape(utt.InferShapeTester):
         ciscal = lscalar()
         discal = lscalar()
         adscal_val = rand()
-        aiscal_val = randint(3, 5, size=())
-        biscal_val = randint(3, 5, size=())
-        ciscal_val = randint(3, 5, size=())
-        discal_val = randint(3, 5, size=())
+        aiscal_val = randint(low=3, high=5, size=())
+        biscal_val = randint(low=3, high=5, size=())
+        ciscal_val = randint(low=3, high=5, size=())
+        discal_val = randint(low=3, high=5, size=())
         self._compile_and_check([adscal, aiscal, biscal, ciscal, discal],
                 [Alloc()(adscal, aiscal, biscal, ciscal, discal)],
                 [adscal_val, aiscal_val, biscal_val,
@@ -7979,7 +7979,7 @@ class T_Choose(utt.InferShapeTester):
         a = tensor.vector(dtype='int32')
         b = tensor.matrix(dtype='float32')
 
-        A = numpy.asarray(numpy.random.randint(0, 3, 4),
+        A = numpy.asarray(numpy.random.randint(low=0, high=3, size=4),
                           dtype='int32')
         B = numpy.asarray(numpy.random.rand(4, 4), dtype='float32')
 
@@ -8027,7 +8027,7 @@ class T_Choose(utt.InferShapeTester):
         b = tensor.tensor3(dtype='float32')
         c = tensor.tensor3(dtype='float32')
 
-        A = numpy.asarray(numpy.random.randint(0, 1, (2, 1, 1)),
+        A = numpy.asarray(numpy.random.randint(low=0, high=1, size=(2, 1, 1)),
                           dtype='int32')
         B = numpy.asarray(numpy.random.rand(1, 6, 1), dtype='float32')
         C = numpy.asarray(numpy.random.rand(1, 1, 5), dtype='float32')
