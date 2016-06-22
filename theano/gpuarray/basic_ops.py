@@ -70,7 +70,7 @@ def as_gpuarray_variable(x, context_name):
 
         # If we couldn't deal with transfers, then maybe it's a tensor
         if isinstance(x.type, tensor.TensorType):
-            return GpuFromHost(context_name)(x)
+            return gpu_from_host(context_name)(x)
 
     # Try _as_GpuArrayVariable if possible
     if hasattr(x, '_as_GpuArrayVariable'):
@@ -544,7 +544,7 @@ class HostFromGpu(Op):
 
     def grad(self, inputs, grads):
         gz, = grads
-        return [GpuFromHost(inputs[0].type.context_name)(gz)]
+        return [gpu_from_host(inputs[0].type.context_name)(gz)]
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
@@ -645,6 +645,14 @@ class GpuFromHost(Op):
 
     def c_code_cache_version(self):
         return (9,)
+
+
+# Caching GPUAlloc
+def gpu_from_host(ctx):
+    if ctx not in gpu_alloc.cache:
+        gpu_from_host.cache[ctx] = GpuFromHost(ctx)
+    return gpu_from_host.cache[ctx]
+gpu_from_host.cache = {}
 
 
 class GpuToGpu(Op):

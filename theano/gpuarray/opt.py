@@ -36,7 +36,7 @@ from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         HostFromGpu, GpuFromHost,
                         GpuSplit, GpuContiguous, gpu_contiguous,
                         GpuAlloc, GpuAllocEmpty, GpuReshape,
-                        GpuEye, gpu_join, GpuJoin, gpu_alloc_empty, gpu_alloc)
+                        GpuEye, gpu_join, GpuJoin, gpu_alloc_empty, gpu_alloc, gpu_from_host)
 from .blas import (gpu_dot22, GpuGemm, GpuGer, GpuGemmBatch,
                    gpugemm_no_inplace, gpugemm_inplace, gpugemmbatch_no_inplace,
                    gpugemv_no_inplace, gpugemv_inplace)
@@ -148,7 +148,7 @@ gpu_optimizer.register('local_remove_all_assert',
 
 def safe_to_gpu(x, ctx_name):
     if isinstance(x.type, tensor.TensorType):
-        return GpuFromHost(ctx_name)(x)
+        return gpu_from_host(ctx_name)(x)
     else:
         return x
 
@@ -251,7 +251,7 @@ class InputToGpuOptimizer(Optimizer):
                 continue
 
             try:
-                new_input = host_from_gpu(GpuFromHost(target)(input))
+                new_input = host_from_gpu(gpu_from_host(target)(input))
                 fgraph.replace_validate(input, new_input,
                                         "InputToGpuOptimizer")
             except TypeError:
