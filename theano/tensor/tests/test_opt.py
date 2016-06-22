@@ -32,6 +32,7 @@ import theano.tensor.opt as opt
 from theano.tensor.opt import (
         local_add_specialize,
         local_dimshuffle_lift,
+        local_reshape_lift,
         local_useless_alloc,
         local_greedy_distributor,
         mul_canonizer,
@@ -64,6 +65,7 @@ from theano.tensor import (
         tile
         )
 from theano.tensor.elemwise import DimShuffle
+from theano.tensor.basic import Reshape
 from theano.tests import unittest_tools as utt
 from theano.compile.mode import optdb
 from theano.compile import Mode
@@ -77,6 +79,9 @@ mode_opt = theano.compile.mode.get_mode(mode_opt)
 
 ds = lambda x, y: DimShuffle(x.type.broadcastable, y)(x)
 dimshuffle_lift = out2in(local_dimshuffle_lift)
+
+rs = lambda x, y: Reshape(x.ndim)(x, y)
+reshape_lift = out2in(local_reshape_lift)
 
 _optimizer_stabilize = gof.Query(include=['fast_run'])
 _optimizer_stabilize.position_cutoff = 1.51
@@ -107,6 +112,10 @@ def inputs(xbc=(0, 0), ybc=(0, 0), zbc=(0, 0)):
     y = TensorType(broadcastable=ybc, dtype='float64')('y')
     z = TensorType(broadcastable=zbc, dtype='float64')('z')
     return x, y, z
+
+
+class test_reshape_lift(unittest.TestCase):
+    def test_
 
 
 class test_dimshuffle_lift(unittest.TestCase):
