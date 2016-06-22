@@ -480,7 +480,6 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         idx = inputs[1:]
 
         assert len(idx) >= x.ndim
-        dims = len(idx)
         # step 1: find smallest index
         for k, i in enumerate(idx):
             if isinstance(i, numpy.ndarray):
@@ -499,7 +498,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
             dimshuffle_info = []
             new_ind = []
             k = 0
-            new_axis= x.ndim
+            new_axis = x.ndim
             dimshuffle_info_append = []
             new_ind_append = []
 
@@ -560,7 +559,6 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         x = x.reshape(shape)
         x = x.transpose(*dimshuffle_idx)
         # step 3: partial flattening
-        start_ = start
         shape = (x.shape[: 0] +
                  (numpy.prod(x.shape[0: end_]),) +
                  x.shape[end_:])
