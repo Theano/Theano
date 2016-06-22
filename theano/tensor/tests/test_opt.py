@@ -3566,6 +3566,7 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
             assert isinstance(elem.inputs[0], T.TensorConstant), elem
             assert T.extract_constant(elem.inputs[0]) == val, val
 
+
     def assert_identity(self, f):
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
@@ -3661,6 +3662,7 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
             f = theano.function([x], T.eq(g, 0))
             assert f([3, 3]) == 0
             assert f([]) == 1
+            self.assertTrue(check_stack_trace(f, ops_to_check='last'))
 
             f = theano.function([x], T.eq(g, -1))
             self.assert_eqs_const(f, 0)
@@ -3672,6 +3674,7 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
         f = theano.function([x], T.eq(g, 0))
         assert (f([3, 3]) == 0).all()
         assert (f([]) == 1).all()
+        self.assertTrue(check_stack_trace(f, ops_to_check='last'))
 
         f = theano.function([x], T.eq(g, -1))
         self.assert_eqs_const(f, 0, op=T.alloc)
@@ -6291,10 +6294,16 @@ class Test_local_useless_reshape(unittest.TestCase):
         topo = f1.maker.fgraph.toposort()
         assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
 
+        # Check stacktrace was copied over correctly after opt was applied
+        assert check_stack_trace(f1, ops_to_check='all')
+
         m2 = m1.excluding('ShapeOpt')
         f2 = theano.function([x], r, mode=m2)
         topo = f2.maker.fgraph.toposort()
         assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+
+        # Check stacktrace was copied over correctly after opt was applied
+        assert check_stack_trace(f2, ops_to_check='all')
 
     def test_2(self):
         x = theano.tensor.matrix('x')
@@ -6306,10 +6315,16 @@ class Test_local_useless_reshape(unittest.TestCase):
         topo = f1.maker.fgraph.toposort()
         assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
 
+        # Check stacktrace was copied over correctly after opt was applied
+        assert check_stack_trace(f1, ops_to_check='all')
+
         m2 = m1.excluding('ShapeOpt')
         f2 = theano.function([x], r, mode=m2)
         topo = f2.maker.fgraph.toposort()
         assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+
+        # Check stacktrace was copied over correctly after opt was applied
+        assert check_stack_trace(f2, ops_to_check='all')
 
 
 class Test_local_reshape_to_dimshuffle(unittest.TestCase):
@@ -6341,7 +6356,7 @@ class Test_local_reshape_to_dimshuffle(unittest.TestCase):
                                   "TensorConstant{[5 6]}))]")
 
         # Check stacktrace was copied over correctly after opt was applied
-        check_stack_trace(g, ops_to_check=(T.DimShuffle, T.Reshape))
+        assert check_stack_trace(g, ops_to_check=(T.DimShuffle, T.Reshape))
 
 
 def test_local_reshape_lift():
@@ -6355,7 +6370,8 @@ def test_local_reshape_lift():
     topo = f.maker.fgraph.toposort()
     assert isinstance(topo[-2].op, tensor.Reshape)
     assert isinstance(topo[-1].op, tensor.Elemwise)
-
+    # Check stacktrace was copied over correctly after opt was applied
+    assert check_stack_trace(f, ops_to_check='last')
 
 class Test_lift_transpose_through_dot(unittest.TestCase):
     def simple_optimize(self, g):
