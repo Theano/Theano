@@ -6880,6 +6880,8 @@ class FusionOptimizer(Optimizer):
                                 list(zip(node.outputs, new_outputs)),
                                 reason=self.__class__.__name__)
                             did_something = True
+                            for out, nout in zip(node.outputs, new_outputs):
+                                copy_stack_trace(out, nout)
                             nb_replacement += 1
                         except InconsistencyError:
                             nb_inconsistency_replace += 1
