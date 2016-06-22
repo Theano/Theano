@@ -1,5 +1,4 @@
 // Create version selector for documentation top bar.
-
 (function() {
 
   var url = window.location.href;
@@ -12,7 +11,7 @@
     theano_dir = 'html';
     versions_dir = {"local":"html", "test":"test"};
   }
-  
+
   var root_url = url.substring(0, url.search('/' + theano_dir)) + '/';
 
   // Regular expression to find theano version directory in URL.
@@ -28,53 +27,49 @@
     versions_dir[ver] = current_version
   }
   
-  function build_select() {
-  // Build HTML string for version selector combo box and
-  // select current version by iterating versions_dir.
+  function build_vswitch() {
+  // Build HTML string for version selector, based on ReadTheDocs theme's versions.html
 
-    var style = '"padding:0px 4px 0px 0px; background-color:transparent; '
-    style = style + 'box-shadow:none; border:none; color:#27AA5E"';
-    var select = ['<select style=' + style + '>'];
+    var vswitch = ['<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions" align=left>'];
+    vswitch.push('<span class="rst-current-version" data-toggle="rst-current-version">');
+    vswitch.push('<span class="fa fa-book"></span>');
+    vswitch.push('v:' + current_version);
+    vswitch.push('<span class="fa fa-caret-down"></span>');   
+    vswitch.push('</span>');
+    
+    vswitch.push('<div class="rst-other-versions">');   
+
+    vswitch.push('<dl>');   
+    vswitch.push('<dt>Versions</dt>');
     $.each(versions_dir, function(version, dir){
-      select.push('<option style="padding:2px" value="' + version + '"');
-      if (dir == current_version)
-        select.push(' selected="selected">' + version + '</option>');
-      else
-        select.push('>' + version + '</option>');
+      var new_url = url.replace(url.match(version_regex)[0],
+                      '/' + versions_dir[version] + '/');
+      vswitch.push('<dd><a href=' + new_url + '>' + version + '</a></dd>');
     });
+    vswitch.push('</dl>');
 
-    return select.join('');
+    vswitch.push('<dl>');   
+    vswitch.push('<dt>Downloads</dt>');
+    var pdf_url = "http://deeplearning.net/software/theano/theano.pdf"
+    vswitch.push('<dd><a href=' + pdf_url + '>' + 'PDF' + '</a></dd>');
+    vswitch.push('</dl>');  
+    
+    vswitch.push('<dl>');   
+    vswitch.push('<dt>On GitHub</dt>');
+    var git_master = "https://github.com/Theano/Theano"
+    vswitch.push('<dd><a href=' + git_master + '>' + 'Fork me' + '</a></dd>');
+    vswitch.push('</dl>');  
+
+    vswitch.push('</div>');  
+    vswitch.push('</div>');  
+
+    return vswitch.join('');
   }
 
-  function on_switch() {
-  // Method triggered when an option is selected in combo box.
-    var selected = $(this).children('option:selected').attr('value');
-
-    // Insert selected version in URL.
-    var new_url = url.replace(url.match(version_regex)[0],
-                    '/' + versions_dir[selected] + '/');
-    if (url != new_url) {
-      $.ajax({
-        success: function() {
-          window.location.href = new_url;
-        },
-        // If page not in version, go to root of documentation.
-        error: function() {
-          window.location.href = root_url + versions_dir[selected] + '/';
-        }
-      });
-    }
-  }
-
-// Create combobox HTML, assign to placeholder in layout.html and
-// bind selection method.
+// Create HTML for version switcher and assign to placeholder in layout.html.
   $(document).ready(function() {
-    // Get theano version.
-    // var current_version = DOCUMENTATION_OPTIONS.VERSION;
-
     // Build default switcher
-    $('.version_switcher_placeholder').html(build_select());
-    $('.version_switcher_placeholder select').bind('change', on_switch)
+    $('.version_switcher_placeholder').html(build_vswitch());
 
     // Check server for other doc versions and update switcher.
     if (url.startsWith('http')) {
@@ -82,9 +77,7 @@
         $.each(data, function(version, dir) {
             versions_dir[version] = dir;
         });
-
-        $('.version_switcher_placeholder').html(build_select()); 
-        $('.version_switcher_placeholder select').bind('change', on_switch)
+        $('.version_switcher_placeholder').html(build_vswitch()); 
       });
     }    
   });
