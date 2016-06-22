@@ -76,16 +76,17 @@ theano operations and variables.
 The last place where you might need the context is in the C
 initialization code.  For that you will have to use the :ref:`params
 <extending_op_params>`.  The params type should be
-:class:`theano.gpuarray.type.gpu_context_type` and the params object
+:data:`theano.gpuarray.type.gpu_context_type` and the params object
 should be a context object from one of your input variables::
 
     def get_params(self, node):
         return node.inputs[0].type.context
 
 If you don't have any input variables on the GPU you can follow the
-the example of :class:`theano.gpuarray.basic_ops.GpuFromHost` or
-:class:`theano.gpuarray.basic_ops.GpuEye`.  This is not a case that
-you should encounter often, so it will not be covered further.
+the example of :class:`GpuFromHost
+<theano.gpuarray.basic_ops.GpuFromHost>` or :class:`GpuEye
+<theano.gpuarray.basic_ops.GpuEye>`.  This is not a case that you
+should encounter often, so it will not be covered further.
 
 Defining New Kernels
 ====================
@@ -117,7 +118,7 @@ this::
                 params=[gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE],
                 flags=Kernel.get_flags('float64'))]
 
-If you want to use COp, then you should use ``CGpuKernelBase``
+If you want to use ``COp``, then you should use ``CGpuKernelBase``
 instead.  It adds a new section to the parsed files whose tag is
 ``kernels``.  Inside that section you can define some kernels with
 ``#kernel name:params:flags``.
@@ -150,10 +151,12 @@ right, which GpuKernelBase handles for you.  But if you really want to
 go this way, then you can look up the C API for kernels in
 libgpuarray.
 
-        In any case you will need to call your compiled kernel with some data,
+In any case you will need to call your compiled kernel with some data,
 in most cases in your :meth:`c_code` method.  This is done using the
-``GpuKernel_call()`` function in your C code.  An example calling the
-above kernel would be::
+`GpuKernel_call()
+<http://deeplearning.net/software/libgpuarray/c_api.html#GpuKernel_call>`_
+function in your C code.  An example calling the above kernel would
+be::
 
     size_t ls, gs;
     size_t dims[2];
@@ -170,6 +173,10 @@ above kernel would be::
 
     // ...
 
+
+For other operations in the C code you should refer to the
+`libgpuarray documentation
+<http://deeplearning.net/software/libgpuarray/>`_.
 
 A Complete Example
 ==================
