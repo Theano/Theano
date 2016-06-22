@@ -12,12 +12,12 @@ Extending Theano with a GPU Op
 This tutorial covers how to extend Theano with an op that offers a GPU
 implementation.  It assumes you are familiar with how to write new
 Theano ops.  If that is not the case you should probably follow the
-:ref:`extending_theano` and :ref:`extending_theano_c` section before
+:ref:`extending_theano` and :ref:`extending_theano_c` sections before
 continuing on.
 
-Writing a new GPU op can be done in python for some simple tasks, but
+Writing a new GPU op can be done in Python for some simple tasks, but
 will usually done in C to access the complete API and avoid paying the
-overhead of a python function call.
+overhead of a Python function call.
 
 Dealing With the Context
 ========================
@@ -25,7 +25,7 @@ Dealing With the Context
 One of the major differences with GPU ops is that they require a
 context (a.k.a. device) to execute.  Most of the time you can infer
 the context to run on from your inputs.  There is a way for the user
-to transfer things between contexts and to tag certain varaibles for
+to transfer things between contexts and to tag certain variables for
 transfer.  It might also be the case that your inputs are not all from
 the same context and you would have to choose which one to run on.
 
@@ -42,7 +42,8 @@ written.  An example usage is below::
 
 In this example the Op takes three inputs, all on the GPU.  In case
 one or more of your inputs is not supposed to be on the GPU, you
-should not pass it to :func:`infer_context_name`.
+should not pass it to :func:`infer_context_name` or call
+:func:`as_gpuarray_variable` on it.
 
 Also note that :func:`theano.gpuarray.basic_ops.as_gpuarray_variable`
 takes ``context_name`` as a mandatory parameter.  This is because it's
@@ -51,7 +52,7 @@ to know which GPU to put it on.  In almost all cases, you can pass in
 the return value of :func:`infer_context_name` there.
 
 If you also need the context during runtime (for example to allocate
-the output).  You can use the context of one of your inputs to know
+the output), you can use the context of one of your inputs to know
 which one to use.  Here is another example::
 
     def perform(self, node, inputs, output_storage):
@@ -62,15 +63,15 @@ which one to use.  Here is another example::
 
 Finally if you require the context before perform, such as during
 make_thunk() to initialize kernels and such, you can access the
-context of your inputs through the type if the variables::
+context of your inputs through the type of the variables::
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         ctx = node.inputs[0].type.context
 
-Note that GpuArrayType objects also have a `context_name` attribute
-which is the symbolic equivalent of `context`.  It can't be used for
-calls to pygpu or libgpuarray, but it should be used for theano
-operations and variables.
+Note that ``GpuArrayType`` objects also have a ``context_name``
+attribute which is the symbolic equivalent of ``context``.  It can't
+be used for calls to pygpu or libgpuarray, but it should be used for
+theano operations and variables.
 
 The last place where you might need the context is in the C
 initialization code.  For that you will have to use the :ref:`params
@@ -91,13 +92,17 @@ Defining New Kernels
 
 If your op needs to do some transformation on the data, chances are
 that you will need to write a new kernel.  The best way to do this is
-to leverage GpuKernelBase (or CGpuKernelBase if you want to use the
-COp functionality).
+to leverage :class:`GpuKernelBase
+<theano.gpuarray.basic_ops.GpuKernelBase>` (or :class:`CGpuKernelBase
+<theano.gpuarray.basic_ops.CGpuKernelBase>` if you want to use the
+:class:`COp <theano.gof.op.COp>` functionality).
 
-For plain GpuKernelBase, you have to define a method called
-gpu_kernels which returns a list of :class:`Kernel
+For plain :class:`GpuKernelBase
+<theano.gpuarray.basic_ops.GpuKernelBase>`, you have to define a
+method called ``gpu_kernels`` which returns a list of :class:`Kernel
 <theano.gpuarray.basic_ops.Kernel>` objects.  You can define as many
-kernels as you want for a single op.  An example would look like this::
+kernels as you want for a single op.  An example would look like
+this::
 
     def gpu_kernels(self, node, name):
         code = """
@@ -123,7 +128,7 @@ There are three exceptions for ``size_t`` which should be noted as
 ``size``, ``ssize_t`` which should be noted as ``ssize`` and a pointer
 which should be noted as ``*``.
 
-``flags`` is a ``|``-separeted list of C kernel flag values (can be
+``flags`` is a ``|``-separated list of C kernel flag values (can be
 empty).  The same kernel definition as above would look like this with
 ``CGpuKernelBase``::
 
@@ -145,9 +150,10 @@ right, which GpuKernelBase handles for you.  But if you really want to
 go this way, then you can look up the C API for kernels in
 libgpuarray.
 
-In any case you will need to call your compiled kernel with some data.
-This is done using the ``GpuKernel_call()`` method in your C code.
-An example calling the above kernel would be::
+        In any case you will need to call your compiled kernel with some data,
+in most cases in your :meth:`c_code` method.  This is done using the
+``GpuKernel_call()`` function in your C code.  An example calling the
+above kernel would be::
 
     size_t ls, gs;
     size_t dims[2];
@@ -160,7 +166,7 @@ An example calling the above kernel would be::
     args[2] = &dims[1];
     ls = 1;
     gs = 256;
-    err = GpuKernel_call(&%(kname)s, 1, &ls, &gs, 0, args);
+    err = GpuKernel_call(&k_obj, 1, &ls, &gs, 0, args);
 
     // ...
 

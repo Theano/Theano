@@ -15,6 +15,8 @@ from ..type import GpuArrayType, get_context
 from pygpu.gpuarray import dtype_to_typecode
 
 
+# This is an implementation to test that CGpuKernelBase works and also
+# to use as an example in the docs.  It is not used for user graphs.
 class GpuEye(CGpuKernelBase, Op):
     """
     Eye for GPU.
