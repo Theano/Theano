@@ -1,34 +1,45 @@
 {% extends "!layout.html" %}
 
-{%- block rootrellink %}
-<li>
-    <span class="version_switcher_placeholder"></span>
-</li>
-{{ super() }}
-{% endblock %}
-
-{%- block extrahead %}
+{% block footer %}
 {{ super() }}
 <script type="text/javascript">
   var _gaq = _gaq || [];
   _gaq.push(['_setAccount', 'UA-168290-9']);
   _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+</script>
+
+<!--Insert version switcher at bottom of sidebar-->
+<script type="text/javascript">
+  var span = document.createElement("SPAN")
+  var span_class = document.createAttribute("class");
+  span_class.value = "version_switcher_placeholder";
+  span.setAttributeNode(span_class);
+    
+  var div = document.createElement("DIV");
+  var text = document.createTextNode("v:");
+  var div_class = document.createAttribute("class");
+  div_class.value = "version-switcher";
+  div.setAttributeNode(div_class);
+  var style = document.createAttribute("style");
+  style.value = "color:#27AA5E; padding-right:5px;";
+  div.setAttributeNode(style);
+  var align = document.createAttribute("align");
+  align.value = "right";
+  div.setAttributeNode(align);
+  div.appendChild(text);
+  div.appendChild(span);
+  
+  var nav_div = document.getElementsByClassName("wy-nav-side")[0];
+  nav_div.appendChild(div);
 </script>
 
 <script type="text/javascript"
     src="{{ pathto('_static/version_switch.js', 1) }}">
-</script>
-{% endblock %}
-
-{% block footer %}
-{{ super() }}
-<script type="text/javascript">
-  (function() {
-    var ga = document.createElement('script');
-    ga.src = ('https:' == document.location.protocol ?
-              'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    ga.setAttribute('async', 'true');
-    document.documentElement.firstChild.appendChild(ga);
-  })();
 </script>
 {% endblock %}
