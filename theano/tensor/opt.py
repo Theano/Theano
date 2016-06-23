@@ -4166,8 +4166,10 @@ register_canonicalize(local_reshape_chain(T.Reshape),
 @gof.local_optimizer([T.Reshape])
 def local_useless_reshape(node):
     """
-    Remove Reshape when both the input and the output have a
-    single dimension.
+    Broadcastable dimensions in reshpae are replaced with dimshuffle.
+    For example:
+        - reshape(x, (1, n)) --> dimshuffle{x,0}(reshape(x, (n,))
+        - reshape(x, (1, m, 1, n, 1, 1)) --> dimshuffle{x,0,x,1,x,x}(reshape(x, (m, n)))
 
     """
     op = node.op
