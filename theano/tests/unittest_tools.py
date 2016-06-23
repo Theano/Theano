@@ -301,8 +301,7 @@ def str_diagnostic(expected, value, rtol, atol):
         print("  Mean Abs Diff: ", numpy.mean(absdiff), file=ssio)
         print("  Median Abs Diff: ", numpy.median(absdiff), file=ssio)
         print("  Std Abs Diff: ", numpy.std(absdiff), file=ssio)
-        reldiff = numpy.absolute(nv - ov) / (numpy.absolute(nv) +
-                                             numpy.absolute(ov))
+        reldiff = numpy.absolute(nv - ov) / numpy.absolute(ov)
         print("  Max Rel Diff: ", numpy.max(reldiff), file=ssio)
         print("  Mean Rel Diff: ", numpy.mean(reldiff), file=ssio)
         print("  Median Rel Diff: ", numpy.median(reldiff), file=ssio)

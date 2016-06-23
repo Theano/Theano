@@ -715,6 +715,119 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
         utt.assert_allclose(f(inp), f_ref(inp))
 
 
+def test_batchnorm_train():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    if cuda.dnn.version() < (5000, 5000):
+        raise SkipTest("batch normalization requires cudnn v5+")
+    utt.seed_rng()
+
+    for mode in ('per-activation', 'spatial'):
+        for vartype in (T.tensor4, T.tensor3, T.matrix, T.vector):
+            x, scale, bias = (vartype(n) for n in ('x', 'scale', 'bias'))
+            ndim = x.ndim
+            eps = 5e-3  # some non-standard value to test if it's used
+
+            # forward pass
+            out, x_mean, x_invstd = cuda.dnn.dnn_batch_normalization_train(
+                x, scale, bias, mode, eps)
+            # reference forward pass
+            if mode == 'per-activation':
+                axes = (0,)
+            elif mode == 'spatial':
+                axes = (0,) + tuple(range(2, ndim))
+            x_mean2 = x.mean(axis=axes, keepdims=True)
+            x_invstd2 = T.inv(T.sqrt(x.var(axis=axes, keepdims=True) + eps))
+            scale2 = T.addbroadcast(scale, *axes)
+            bias2 = T.addbroadcast(bias, *axes)
+            out2 = (x - x_mean2) * (scale2 * x_invstd2) + bias2
+            # backward pass
+            dy = vartype('dy')
+            grads = T.grad(None, wrt=[x, scale, bias], known_grads={out: dy})
+            # reference backward pass
+            grads2 = T.grad(None, wrt=[x, scale, bias], known_grads={out2: dy})
+            # compile
+            f = theano.function([x, scale, bias, dy],
+                                [out, x_mean, x_invstd, out2, x_mean2, x_invstd2] +
+                                grads + grads2, mode=mode_with_gpu)
+            # run
+            floatX = theano.config.floatX
+            for data_shape in ((10, 20, 30, 40), (4, 3, 1, 1), (1, 1, 5, 5)):
+                data_shape = data_shape[:ndim]
+                param_shape = tuple(1 if d in axes else s
+                                    for d, s in enumerate(data_shape))
+                X = 4 + 3 * numpy.random.randn(*data_shape).astype(floatX)
+                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(floatX)
+                Scale = numpy.random.randn(*param_shape).astype(floatX)
+                Bias = numpy.random.randn(*param_shape).astype(floatX)
+                outputs = f(X, Scale, Bias, Dy)
+                # compare outputs
+                utt.assert_allclose(outputs[0], outputs[0 + 3])  # out
+                utt.assert_allclose(outputs[1], outputs[1 + 3])  # mean
+                utt.assert_allclose(outputs[2], outputs[2 + 3])  # invstd
+                # compare gradients
+                utt.assert_allclose(outputs[6], outputs[6 + 3])  # dx
+                utt.assert_allclose(outputs[7], outputs[7 + 3], rtol=3e-3)  # dscale
+                utt.assert_allclose(outputs[8], outputs[8 + 3])  # dbias
+
+
+def test_batchnorm_inference():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    if cuda.dnn.version() < (5000, 5000):
+        raise SkipTest("batch normalization requires cudnn v5+")
+    utt.seed_rng()
+
+    for mode in ('per-activation', 'spatial'):
+        for vartype in (T.tensor4, T.tensor3, T.matrix, T.vector):
+            x, scale, bias, mean, var = (vartype(n) for n in ('x', 'scale',
+                                                              'bias', 'mean',
+                                                              'var'))
+            ndim = x.ndim
+            eps = 5e-3  # some non-standard value to test if it's used
+
+            # forward pass
+            out = cuda.dnn.dnn_batch_normalization_test(x, scale, bias, mean,
+                                                        var, mode, eps)
+            # reference forward pass
+            if mode == 'per-activation':
+                axes = (0,)
+            elif mode == 'spatial':
+                axes = (0,) + tuple(range(2, ndim))
+            scale2, bias2, mean2, var2 = (T.addbroadcast(t, *axes)
+                                          for t in (scale, bias, mean, var))
+            out2 = (x - mean2) * (scale2 / T.sqrt(var2 + eps)) + bias2
+            # backward pass
+            dy = vartype('dy')
+            grads = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out: dy})
+            # reference backward pass
+            grads2 = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out2: dy})
+            # compile
+            f = theano.function([x, scale, bias, mean, var, dy],
+                                [out, out2] + grads + grads2, mode=mode_with_gpu)
+            # run
+            floatX = theano.config.floatX
+            for data_shape in ((10, 20, 30, 40), (4, 3, 1, 1), (1, 1, 5, 5)):
+                data_shape = data_shape[:ndim]
+                param_shape = tuple(1 if d in axes else s
+                                    for d, s in enumerate(data_shape))
+                X = 4 + 3 * numpy.random.randn(*data_shape).astype(floatX)
+                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(floatX)
+                Scale = numpy.random.randn(*param_shape).astype(floatX)
+                Bias = numpy.random.randn(*param_shape).astype(floatX)
+                Mean = numpy.random.randn(*param_shape).astype(floatX)
+                Var = numpy.random.rand(*param_shape).astype(floatX)
+                outputs = f(X, Scale, Bias, Mean, Var, Dy)
+                # compare outputs
+                utt.assert_allclose(outputs[0], outputs[1])  # out
+                # compare gradients
+                utt.assert_allclose(outputs[2], outputs[2 + 5])  # dx
+                utt.assert_allclose(outputs[3], outputs[3 + 5])  # dscale
+                utt.assert_allclose(outputs[4], outputs[4 + 5])  # dbias
+                utt.assert_allclose(outputs[5], outputs[5 + 5])  # dmean
+                utt.assert_allclose(outputs[6], outputs[6 + 5])  # dvar
+
+
 def test_dnn_tag():
     """
     Test that if cudnn isn't avail we crash and that if it is avail, we use it.
