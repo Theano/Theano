@@ -1769,7 +1769,10 @@ def local_useless_alloc(node):
             break
     new_output_shape = output_shape[num_dims_with_size_1_added_to_left:]
     if num_dims_with_size_1_added_to_left > 0 and len(new_output_shape) >= input.ndim:
-        inner = op(*([input] + new_output_shape))
+        if output.broadcastable[num_dims_with_size_1_added_to_left:] == input.broadcastable:
+            inner = input
+        else:
+            inner = op(*([input] + new_output_shape))
         dimshuffle_new_order = (['x'] * num_dims_with_size_1_added_to_left +
                                 list(xrange(len(new_output_shape))))
         return [DimShuffle(inner.type.broadcastable, dimshuffle_new_order)(inner)]
