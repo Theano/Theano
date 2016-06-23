@@ -1046,7 +1046,7 @@ class DownsampleFactorMaxGradGrad(Op):
         img_cols = x.shape[-1] + 2 * pd1
 
         # pad the image and its gradients
-        if pd0 == 0 and pd1 == 0:
+        if pd0 != 0 and pd1 != 0:
             y_padded = numpy.zeros(
                 (x.shape[0], x.shape[1], img_rows, img_cols),
                 dtype=x.dtype) + x.min() - 1

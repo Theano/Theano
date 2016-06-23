@@ -854,5 +854,6 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 assert any(isinstance(n.op, AveragePoolGrad)
                            for n in f.maker.fgraph.toposort())
 
+
 if __name__ == '__main__':
     unittest.main()
