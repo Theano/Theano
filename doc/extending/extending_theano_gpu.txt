@@ -169,10 +169,13 @@ be::
     args[2] = &dims[1];
     ls = 1;
     gs = 256;
-    err = GpuKernel_call(&k_obj, 1, &ls, &gs, 0, args);
+    err = GpuKernel_call(&k_k, 1, &ls, &gs, 0, args);
 
     // ...
 
+The name of the kernel object depends on the name you passed to
+Kernel() when you declared it (or the name in you `#kernel`
+statement).  It defaults to `'k_' + name`.
 
 For other operations in the C code you should refer to the
 `libgpuarray documentation
