@@ -242,14 +242,14 @@ class Pool(OpenMPOp):
         self.mode = mode
 
     def prepare_node(self, node, storage_map, compute_map):
-        if len(node.inputs) == 2:
+        if len(node.inputs) == 1:
             warnings.warn("Theano Pool internal changed.", stacklevel=3)
             # Old interface
-            self.mode = node.inputs[1].owner.op.mode
-            ws = theano.tensor.constant(node.inputs[1].owner.op.ws)
-            st = theano.tensor.constant(node.inputs[1].owner.op.stride)
-            pad = theano.tensor.constant(node.inputs[1].owner.op.pad)
-            node.inputs[1] = ws
+            self.mode = node.op.mode
+            ws = theano.tensor.constant(node.op.ds)
+            st = theano.tensor.constant(node.op.st)
+            pad = theano.tensor.constant(node.op.padding)
+            node.inputs.append(ws)
             node.inputs.append(st)
             node.inputs.append(pad)
             if isinstance(ws, theano.Constant):
@@ -578,7 +578,7 @@ class Pool(OpenMPOp):
         return ccode % locals()
 
     def c_code_cache_version(self):
-        return (0, 6, 8, 4, self.openmp)
+        return (0, 6, 8, 5, self.openmp)
 
 
 class PoolGrad(OpenMPOp):
@@ -674,14 +674,14 @@ class PoolGrad(OpenMPOp):
         super(PoolGrad, self).__init__(openmp=openmp)
 
     def prepare_node(self, node, storage_map, compute_map):
-        if len(node.inputs) == 4:
+        if len(node.inputs) < 5:  # 5 for AveragePoolGrad, 6 for MaxPoolGrad
             warnings.warn("Theano PoolGrad internal changed.", stacklevel=3)
             # Old interface
-            self.mode = node.inputs[3].owner.op.mode
-            ws = theano.tensor.constant(node.inputs[3].owner.op.ws)
-            st = theano.tensor.constant(node.inputs[3].owner.op.stride)
-            pad = theano.tensor.constant(node.inputs[3].owner.op.pad)
-            node.inputs[3] = ws
+            self.mode = node.op.mode
+            ws = theano.tensor.constant(node.op.ds)
+            st = theano.tensor.constant(node.op.st)
+            pad = theano.tensor.constant(node.op.padding)
+            node.inputs.append(ws)
             node.inputs.append(st)
             node.inputs.append(pad)
             if isinstance(ws, theano.Constant):
@@ -900,7 +900,7 @@ class MaxPoolGrad(PoolGrad):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 7, self.openmp)
+        return (0, 8, self.openmp)
 
 
 class AveragePoolGrad(PoolGrad):
@@ -1152,7 +1152,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
                 for(int i=0; i < z_r; i++){
                   r_st = i * st0;
                   r_end = r_st + ws0;
-                  // skip the paddin_g
+                  // skip the padding
                   r_st = r_st < pd0 ? pd0 : r_st;
                   r_end = r_end > (r - pd0) ? r - pd0 : r_end;
                   // from padded_img space to img space
@@ -1190,4 +1190,4 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 1, self.openmp)
+        return (0, 2, self.openmp)

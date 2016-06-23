@@ -845,11 +845,12 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                             utt.assert_allclose(var_dx, fix_dx)
 
     def test_old_pool_interface(self):
+        # 1. Load the old version
         testfile_dir = os.path.dirname(os.path.realpath(__file__))
         fname = 'old_pool_interface.pkl'
         with open(os.path.join(testfile_dir, fname), 'rb') as fp:
             try:
-                cPickle.load(fp)
+                old_fct = cPickle.load(fp)
             except ImportError:
                 # Windows sometimes fail with nonsensical errors like:
                 #   ImportError: No module named type
@@ -859,6 +860,22 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                     exc_type, exc_value, exc_trace = sys.exc_info()
                     reraise(SkipTest, exc_value, exc_trace)
                 raise
+        # 2. Create the new version
+        x = theano.tensor.ftensor4()
+        y = pool_2d(x, (2, 2), mode='max', ignore_border=True)
+        z = pool_2d(x, (2, 2), mode='average_exc_pad', ignore_border=True)
+        dy_dx = theano.gradient.grad(y.sum(), x)
+        dz_dx = theano.gradient.grad(z.sum(), x)
+        new_fct = theano.function([x], [y, z, dy_dx, dz_dx])
+        # 3. Assert that the answer is the same
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        image_val = rng.rand(4, 6, 7, 9).astype(numpy.float32)
+        old_out = old_fct(image_val)
+        new_out = new_fct(image_val)
+        for o, n in zip(old_out, new_out):
+            utt.assert_allclose(o, n)
+
+
 
     def test_DownsampleFactorMaxGrad(self):
         im = theano.tensor.tensor4()
