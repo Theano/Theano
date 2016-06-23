@@ -331,7 +331,7 @@ class Pool(OpenMPOp):
         inc_pad = self.mode == 'average_inc_pad'
 
         # pad the image
-        if pad_h != 0 and pad_w != 0:
+        if (pad_h, pad_w) != (0, 0):
             y = numpy.zeros(
                 (x.shape[0], x.shape[1], img_rows, img_cols),
                 dtype=x.dtype)
@@ -746,7 +746,7 @@ class MaxPoolGrad(PoolGrad):
         img_cols = x.shape[-1] + 2 * pad_w
 
         # pad the image
-        if pad_h != 0 and pad_w != 0:
+        if (pad_h, pad_w) != (0, 0):
             y = numpy.zeros(
                 (x.shape[0], x.shape[1], img_rows, img_cols),
                 dtype=x.dtype)
@@ -952,7 +952,7 @@ class AveragePoolGrad(PoolGrad):
         sum_mode = self.mode == 'sum'
 
         # pad the image
-        if pad_h != 0 and pad_w != 0:
+        if (pad_h, pad_w) != (0, 0):
             y = numpy.zeros(
                 (x.shape[0], x.shape[1], img_rows, img_cols),
                 dtype=x.dtype)
