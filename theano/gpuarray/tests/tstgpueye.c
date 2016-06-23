@@ -1,6 +1,11 @@
 #section kernels
 
 #kernel eye : *, size, size :
+/* The eye name will be used to generate supporting objects.  The only
+   you probably need to care about is the kernel object which will be
+   named 'k_' + <the name above> (k_eye in this case).  This name also
+   has to match the kernel function name below.
+ */
 
 KERNEL void eye(GLOBAL_MEM DTYPE_o0 *a, ga_size n, ga_size m) {
   ga_size nb = n < m ? n : m;
@@ -34,6 +39,7 @@ int APPLY_SPECIFIC(tstgpueye)(PyArrayObject *n, PyArrayObject *m,
   args[2] = &dims[1];
   ls = 1;
   gs = 256;
+  /* The k_eye name comes from the kernel declaration above. */
   err = GpuKernel_call(&k_eye, 1, &ls, &gs, 0, args);
   if (err != GA_NO_ERROR) {
     PyErr_Format(PyExc_RuntimeError,
