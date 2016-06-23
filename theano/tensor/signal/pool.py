@@ -9,7 +9,6 @@ from __future__ import absolute_import, print_function, division
 import warnings
 
 import numpy
-from six import integer_types
 from six.moves import xrange
 import six.moves.builtins as builtins
 
@@ -395,10 +394,15 @@ class Pool(Op):
         z, = out
         fail = sub['fail']
         ignore_border = int(self.ignore_border)
-        ws0, ws1 = ws
-        st0, st1 = stride
-        pd0, pd1 = pad
         ccode = """
+        // Getting ws, stride and pad
+        int ws0, ws1, st0, st1, pd0, pd1;
+        ws0 = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 0));
+        ws1 = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 1));
+        st0 = *((npy_intp*)PyArray_GETPTR1(%(stride)s, 0));
+        st1 = *((npy_intp*)PyArray_GETPTR1(%(stride)s, 1));
+        pd0 = *((npy_intp*)PyArray_GETPTR1(%(pad)s, 0));
+        pd1 = *((npy_intp*)PyArray_GETPTR1(%(pad)s, 1));
         int typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
         int z_r, z_c; // shape of the output
         int r, c; // shape of the padded_input
@@ -409,9 +413,9 @@ class Pool(Op):
         }
         r = PyArray_DIMS(%(x)s)[2];
         c = PyArray_DIMS(%(x)s)[3];
-        r += %(pd0)s * 2;
-        c += %(pd1)s * 2;
-        if (%(pd0)s != 0 && %(pd1)s != 0 && !%(ignore_border)s)
+        r += pd0 * 2;
+        c += pd1 * 2;
+        if (pd0 != 0 && pd1 != 0 && !%(ignore_border)s)
             {
               PyErr_SetString(PyExc_ValueError,
                 "padding must be (0,0) when ignore border is False");
@@ -420,42 +424,42 @@ class Pool(Op):
         if (%(ignore_border)s)
         {
             // '/' in C is different from '/' in python
-            if (r - %(ws0)s < 0)
+            if (r - ws0 < 0)
             {
               z_r = 0;
             }
             else
             {
-              z_r = (r - %(ws0)s) / %(st0)s + 1;
+              z_r = (r - ws0) / st0 + 1;
             }
-            if (c - %(ws1)s < 0)
+            if (c - ws1 < 0)
             {
               z_c = 0;
             }
             else
             {
-              z_c = (c - %(ws1)s) / %(st1)s + 1;
+              z_c = (c - ws1) / st1 + 1;
             }
         }
         else
         {
             // decide how many rows the output has
-            if (%(st0)s >= %(ws0)s)
+            if (st0 >= ws0)
             {
-                z_r = (r - 1) / %(st0)s + 1;
+                z_r = (r - 1) / st0 + 1;
             }
             else
             {
-                z_r = std::max(0, (r - 1 - %(ws0)s + %(st0)s) / %(st0)s) + 1;
+                z_r = std::max(0, (r - 1 - ws0 + st0) / st0) + 1;
             }
             // decide how many columns the output has
-            if (%(st1)s >= %(ws1)s)
+            if (st1 >= ws1)
             {
-                z_c = (c - 1) / %(st1)s + 1;
+                z_c = (c - 1) / st1 + 1;
             }
             else
             {
-                z_c = std::max(0, (c - 1 - %(ws1)s + %(st0)s) / %(st1)s) + 1;
+                z_c = std::max(0, (c - 1 - ws1 + st0) / st1) + 1;
             }
             assert(z_r > 0);
             assert(z_c > 0);
@@ -486,30 +490,30 @@ class Pool(Op):
             for(int b=0; b<PyArray_DIMS(%(x)s)[0]; b++){
               for(int k=0; k<PyArray_DIMS(%(x)s)[1]; k++){
                 for(int i=0; i< z_r; i++){
-                  r_st = i * %(st0)s;
-                  r_end = r_st + %(ws0)s;
+                  r_st = i * st0;
+                  r_end = r_st + ws0;
                   // skip the padding
-                  r_st = r_st < %(pd0)s ? %(pd0)s : r_st;
-                  r_end = r_end > (r - %(pd0)s) ? r - %(pd0)s : r_end;
+                  r_st = r_st < pd0 ? pd0 : r_st;
+                  r_end = r_end > (r - pd0) ? r - pd0 : r_end;
                   // from padded_img space to img space
-                  r_st -= %(pd0)s;
-                  r_end -= %(pd0)s;
+                  r_st -= pd0;
+                  r_end -= pd0;
                   // handle the case where no padding, ignore border is True
                   if (%(ignore_border)s)
                   {
                     r_end = r_end > r ? r : r_end;
                   }
                   for(int j=0; j<z_c; j++){
-                    c_st = j * %(st1)s;
-                    c_end = c_st + %(ws1)s;
+                    c_st = j * st1;
+                    c_end = c_st + ws1;
                     // skip the padding
-                    c_st = c_st < %(pd1)s ? %(pd1)s : c_st;
-                    c_end = c_end > (c - %(pd1)s) ? c - %(pd1)s : c_end;
+                    c_st = c_st < pd1 ? pd1 : c_st;
+                    c_end = c_end > (c - pd1) ? c - pd1 : c_end;
                     dtype_%(z)s * z = (
                           (dtype_%(z)s*)(PyArray_GETPTR4(%(z)s, b, k, i, j)));
                     // change coordinates from padding_img space into img space
-                    c_st -= %(pd1)s;
-                    c_end -= %(pd1)s;
+                    c_st -= pd1;
+                    c_end -= pd1;
                     // handle the case where no padding, ignore border is True
                     if (%(ignore_border)s)
                     {
@@ -551,7 +555,7 @@ class Pool(Op):
                 """
             elif self.mode == 'average_inc_pad' and self.ignore_border:
                 ccode += """
-                    z[0] = collector / (%(ws0)s * %(ws1)s);
+                    z[0] = collector / (ws0 * ws1);
                 """
             else:
                 ccode += """
@@ -567,8 +571,8 @@ class Pool(Op):
         return ccode % locals()
 
     def c_code_cache_version(self):
-        return (0, 6, 8, 4)
-
+        #return (0, 6, 8, 4)
+        return (0, 6, 8, 6)
 
 class PoolGrad(Op):
     __props__ = ('ignore_border', 'mode')
@@ -776,9 +780,6 @@ class MaxPoolGrad(PoolGrad):
         gx, = out
         fail = sub['fail']
         ignore_border = int(self.ignore_border)
-        ws0, ws1 = ws
-        st0, st1 = stride
-        pd0, pd1 = pad
         return """
         // sanity checks
         int x_typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
@@ -804,14 +805,22 @@ class MaxPoolGrad(PoolGrad):
             PyErr_SetString(PyExc_ValueError, "gz must be a 4d ndarray");
             %(fail)s;
         }
+        // Getting ws, stride and pad
+        int ws0, ws1, st0, st1, pd0, pd1;
+        ws0 = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 0));
+        ws1 = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 1));
+        st0 = *((npy_intp*)PyArray_GETPTR1(%(stride)s, 0));
+        st1 = *((npy_intp*)PyArray_GETPTR1(%(stride)s, 1));
+        pd0 = *((npy_intp*)PyArray_GETPTR1(%(pad)s, 0));
+        pd1 = *((npy_intp*)PyArray_GETPTR1(%(pad)s, 1));
         int z_r, z_c;
         z_r = PyArray_DIMS(%(z)s)[2];
         z_c = PyArray_DIMS(%(z)s)[3];
         int r, c; // shape of the padded_input
         r = PyArray_DIMS(%(x)s)[2];
         c = PyArray_DIMS(%(x)s)[3];
-        r += %(pd0)s * 2;
-        c += %(pd1)s * 2;
+        r += pd0 * 2;
+        c += pd1 * 2;
         // allocating memory for gx
         if ((!%(gx)s)
           || !PyArray_ISCONTIGUOUS(%(gx)s)
@@ -835,23 +844,23 @@ class MaxPoolGrad(PoolGrad):
             for(int b=0; b<PyArray_DIMS(%(x)s)[0]; b++){
               for(int k=0; k<PyArray_DIMS(%(x)s)[1]; k++){
                 for(int i=0; i< z_r; i++){
-                  r_st = i * %(st0)s;
-                  r_end = r_st + %(ws0)s;
+                  r_st = i * st0;
+                  r_end = r_st + ws0;
                   // skip the padding
-                  r_st = r_st < %(pd0)s ? %(pd0)s : r_st;
-                  r_end = r_end > (r - %(pd0)s) ? r - %(pd0)s : r_end;
+                  r_st = r_st < pd0 ? pd0 : r_st;
+                  r_end = r_end > (r - pd0) ? r - pd0 : r_end;
                   // from padded_img space to img space
-                  r_st -= %(pd0)s;
-                  r_end -= %(pd0)s;
+                  r_st -= pd0;
+                  r_end -= pd0;
                   for(int j=0; j<z_c; j++){
-                    c_st = j * %(st1)s;
-                    c_end = c_st + %(ws1)s;
+                    c_st = j * st1;
+                    c_end = c_st + ws1;
                     // skip the padding
-                    c_st = c_st < %(pd1)s ? %(pd1)s : c_st;
-                    c_end = c_end > (c - %(pd1)s) ? c - %(pd1)s : c_end;
+                    c_st = c_st < pd1 ? pd1 : c_st;
+                    c_end = c_end > (c - pd1) ? c - pd1 : c_end;
                     // change coordinates from padding_img space into img space
-                    c_st -= %(pd1)s;
-                    c_end -= %(pd1)s;
+                    c_st -= pd1;
+                    c_end -= pd1;
                     // the maximum value
                     maximum = ((dtype_%(z)s*)(PyArray_GETPTR4(%(z)s,b,k,i,j)))[0];
                     // the gradient corresponding to this maximum value in z
@@ -878,8 +887,8 @@ class MaxPoolGrad(PoolGrad):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 7)
-
+        #return (0, 7)
+        return (0, 9)
 
 class AveragePoolGrad(PoolGrad):
     def __init__(self, ignore_border, mode='average_inc_pad'):
@@ -1073,10 +1082,15 @@ class DownsampleFactorMaxGradGrad(Op):
         z, = out  # the grad of grad
         fail = sub['fail']
         ignore_border = int(self.ignore_border)
-        ws0, ws1 = ws
-        st0, st1 = stride
-        pd0, pd1 = pad
         return """
+        // Getting ws, stride and pad
+        int ws0, ws1, st0, st1, pd0, pd1;
+        ws0 = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 0));
+        ws1 = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 1));
+        st0 = *((npy_intp*)PyArray_GETPTR1(%(stride)s, 0));
+        st1 = *((npy_intp*)PyArray_GETPTR1(%(stride)s, 1));
+        pd0 = *((npy_intp*)PyArray_GETPTR1(%(pad)s, 0));
+        pd1 = *((npy_intp*)PyArray_GETPTR1(%(pad)s, 1));
         int z_typenum = PyArray_ObjectType((PyObject*)%(maxout)s, 0);
         int z_r, z_c;
         z_r = PyArray_DIMS(%(maxout)s)[2];
@@ -1084,8 +1098,8 @@ class DownsampleFactorMaxGradGrad(Op):
         int r, c; // shape of the padded_input
         r = PyArray_DIMS(%(x)s)[2];
         c = PyArray_DIMS(%(x)s)[3];
-        r += %(pd0)s * 2;
-        c += %(pd1)s * 2;
+        r += pd0 * 2;
+        c += pd1 * 2;
         // allocating memory for output
         if ((!%(z)s)
           || !PyArray_ISCONTIGUOUS(%(z)s)
@@ -1107,23 +1121,23 @@ class DownsampleFactorMaxGradGrad(Op):
         for(int b=0; b<PyArray_DIMS(%(x)s)[0]; b++){
               for(int k=0; k<PyArray_DIMS(%(x)s)[1]; k++){
                 for(int i=0; i< z_r; i++){
-                  r_st = i * %(st0)s;
-                  r_end = r_st + %(ws0)s;
-                  // skip the padding
-                  r_st = r_st < %(pd0)s ? %(pd0)s : r_st;
-                  r_end = r_end > (r - %(pd0)s) ? r - %(pd0)s : r_end;
+                  r_st = i * st0;
+                  r_end = r_st + ws0;
+                  // skip the paddin_g
+                  r_st = r_st < pd0 ? pd0 : r_st;
+                  r_end = r_end > (r - pd0) ? r - pd0 : r_end;
                   // from padded_img space to img space
-                  r_st -= %(pd0)s;
-                  r_end -= %(pd0)s;
+                  r_st -= pd0;
+                  r_end -= pd0;
                   for(int j=0; j<z_c; j++){
-                    c_st = j * %(st1)s;
-                    c_end = c_st + %(ws1)s;
+                    c_st = j * st1;
+                    c_end = c_st + ws1;
                     // skip the padding
-                    c_st = c_st < %(pd1)s ? %(pd1)s : c_st;
-                    c_end = c_end > (c - %(pd1)s) ? c - %(pd1)s : c_end;
+                    c_st = c_st < pd1 ? pd1 : c_st;
+                    c_end = c_end > (c - pd1) ? c - pd1 : c_end;
                     // from padding_img space into img space
-                    c_st -= %(pd1)s;
-                    c_end -= %(pd1)s;
+                    c_st -= pd1;
+                    c_end -= pd1;
                     // the maximum value
                     maximum = ((dtype_%(maxout)s*)(PyArray_GETPTR4(%(maxout)s,b,k,i,j)))[0];
                     // z at this position
@@ -1148,4 +1162,5 @@ class DownsampleFactorMaxGradGrad(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 1)
+        #return (0, 1)
+        return (0, 3)
