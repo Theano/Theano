@@ -27,7 +27,7 @@ else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 
-class TestCula(unittest.TestCase):
+class TestCusolver(unittest.TestCase):
     def run_gpu_solve(self, A_val, x_val):
         b_val = numpy.dot(A_val, x_val)
         A = theano.tensor.matrix("A", dtype="float32")
