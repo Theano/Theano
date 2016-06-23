@@ -174,7 +174,7 @@ be::
     // ...
 
 The name of the kernel object depends on the name you passed to
-Kernel() when you declared it (or the name in you `#kernel`
+``Kernel()`` when you declared it (or the name in your `#kernel`
 statement).  It defaults to `'k_' + name`.
 
 For other operations in the C code you should refer to the
