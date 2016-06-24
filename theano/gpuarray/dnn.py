@@ -349,10 +349,6 @@ class GpuDnnConvDesc(COp):
         out.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
         return node
 
-    # TODO: Need to document this, not in Extending using COp
-    def get_op_params(self):
-        return []
-
     def c_code_cache_version(self):
         return (super(GpuDnnConvDesc, self).c_code_cache_version(), version())
 
