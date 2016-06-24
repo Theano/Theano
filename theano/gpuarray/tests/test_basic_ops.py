@@ -396,7 +396,7 @@ def test_gpueye():
         k_symb = numpy.asarray(0)
         out = T.eye(N_symb, M_symb, k_symb, dtype=dtype)
         f = theano.function([N_symb, M_symb],
-                            out,
+                            T.stack(out),
                             mode=mode_with_gpu)
         result = numpy.asarray(f(N, M))
         assert numpy.allclose(result, numpy.eye(N, M_, dtype=dtype))

@@ -342,7 +342,8 @@ class GraphToGPU(NavigatorOptimizer):
                     break
             if (not move_to_GPU and
                     isinstance(node.op, (theano.tensor.Alloc,
-                                         theano.tensor.AllocEmpty))):
+                                         theano.tensor.AllocEmpty,
+                                         theano.tensor.basic.Eye))):
                 # If the Alloc[Empty] have a client that will be moved
                 # to the GPU, we should move the Alloc* on the GPU.
 
@@ -762,9 +763,7 @@ def local_gpua_dimshuffle(op, context_name, inputs, outputs):
 def local_gpua_specifyShape(op, context_name, inputs, outputs):
     if isinstance(inputs[0].type, GpuArrayType):
         return
-    inp = [as_gpuarray_variable(inputs[0], context_name)]
-    inp += inputs[1:]
-    return tensor.specify_shape(*inp)
+    return local_gpua_specifyShape_graph(op, context_name, inputs, outputs)
 
 
 @register_opt2([tensor.SpecifyShape], 'fast_compile')
@@ -781,13 +780,11 @@ def local_gpua_shape(op, context_name, inputs, outputs):
     # always on the CPU.
     if isinstance(inputs[0].type, GpuArrayType):
         return
-    return [as_gpuarray_variable(inputs[0], context_name).shape]
+    return local_gpua_shape_graph(op, context_name, inputs, outputs)
 
 
 @register_opt2([tensor.compile.ops.Shape], 'fast_compile')
 def local_gpua_shape_graph(op, context_name, inputs, outputs):
-    # op_lifter will call this opt too frequently as the output is
-    # always on the CPU.
     return [as_gpuarray_variable(inputs[0], context_name).shape]
 
 
@@ -1209,7 +1206,7 @@ def local_gpua_dot22scalar(op, context_name, inputs, outputs):
 @op_lifter([tensor.basic.Eye])
 @register_opt2([tensor.basic.Eye], 'fast_compile')
 def local_gpua_eye(op, context_name, inputs, outputs):
-    return GpuEye(dtype=op.dtype, context_name=context_name)
+    return [GpuEye(dtype=op.dtype, context_name=context_name)(*inputs)]
 
 
 @register_opt('fast_compile')
@@ -1245,8 +1242,7 @@ def local_gpua_softmaxwithbias(op, context_name, inputs, outputs):
 def local_assert(op, context_name, inputs, outputs):
     if isinstance(inputs[0].type, GpuArrayType):
         return
-    return [op(as_gpuarray_variable(inputs[0], context_name),
-               *inputs[1:])]
+    return local_assert_graph(op, context_name, inputs, outputs)
 
 
 @register_opt2([theano.tensor.opt.Assert], 'fast_compile')
@@ -1310,12 +1306,7 @@ def local_lift_abstractconv2d(op, context_name, inputs, outputs):
     if isinstance(outputs[0].type, GpuArrayType):
         # Don't handle this node here, it's already on the GPU.
         return
-    inps = list(inputs)
-    inps[0] = as_gpuarray_variable(inputs[0],
-                                   context_name=context_name)
-    inps[1] = as_gpuarray_variable(inputs[1],
-                                   context_name=context_name)
-    return [op(*inps)]
+    local_lift_abstractconv2d_graph(op, context_name, inputs, outputs)
 
 
 @register_opt2([AbstractConv2d,
