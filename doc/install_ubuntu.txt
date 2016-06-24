@@ -8,6 +8,9 @@ Ubuntu Installation Instructions
 
 .. include:: requirements.txt 
 
+.. include:: install_generic.txt
+    :start-line: 11
+
 Prerequisites through System Packages (not recommended)
 ------------------------------------------------------
 
@@ -25,9 +28,6 @@ For Ubuntu 11.04:
 .. code-block:: bash
 
     sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ git libatlas3gf-base libatlas-dev
-
-.. include:: install_generic.txt
-    :start-line: 11
 
 Manual Openblas installation (deprecated)
 -----------------------------------------

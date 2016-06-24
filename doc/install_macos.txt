@@ -10,7 +10,7 @@ There are various ways to install Theano dependencies on a Mac. Here
 we describe the process in detail with Canopy, Anaconda, Homebrew or
 MacPorts but if you did it differently and it worked, please let us
 know the details on the `theano-users`_ mailing-list, so that we can
-add alternate instructions here.
+add alternative instructions here.
 
 .. _theano-users: http://groups.google.com/group/theano-users?pli=1
 
@@ -37,16 +37,17 @@ add alternate instructions here.
          toggle your GPU on, which can be done with
          `gfxCardStatus <http://codykrieger.com/gfxCardStatus>`__.
 
-Installing the compiler
------------------------
+.. attention::
 
-Theano officially supports only clang on OS X.  This can be installed
-by getting XCode from the App Store and running it once to install the
-command-line tools.
+    Theano officially supports only clang on OS X.  This can be installed
+    by getting XCode from the App Store and running it once to install the
+    command-line tools.
 
+.. include:: install_generic.txt
+    :start-line: 11
 
-Homebrew
---------
+Requirements through Homebrew (not recommended)
+-----------------------------------------------
 
 Install python with homebrew:
 
@@ -82,11 +83,9 @@ Or for the bleeding-edge version:
 
     $ pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
 
-.. include:: install_generic.txt
-    :start-line: 11
 
-MacPorts
---------
+Requirements through MacPorts (not recommended)
+----------------------------------------------
 
 Using `MacPorts <http://www.macports.org/>`__ to install all required
 Theano dependencies is easy, but be aware that it will take a long time

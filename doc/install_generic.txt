@@ -17,12 +17,13 @@ Installation
 Stable Installation
 -------------------
 
-The recommended way to obtain the latest stable version of Theano is from PyPI using
-pip. Any argument between <...> means it is optional. 
+Install the latest stable version of Theano with:
 
 .. raw:: html
 
     <pre><span class="red">&#60;sudo&#62;</span> pip install <span class="blue">&#60;--user&#62;</span> Theano[test, doc]</pre>
+
+- Any argument between <...> is optional.
 
 - Use :red:`sudo` for a root installation.
 
@@ -32,35 +33,33 @@ pip. Any argument between <...> means it is optional.
 
 - [doc] will install the requirements in order to generate the documentation.
 
+If you encountered any trouble, head to the :ref:`troubleshooting` page.
+
 .. _bleeding_edge:
 
 Bleeding-Edge Installation (recommended)
 ----------------------------------------
 
-The following are general instructions that will set you up with the
-bleeding-edge version of Theano. Any argument between <...> means it is optional.
+Install the bleeding-edge version of Theano with:
 
 .. raw:: html
 
     <pre><span class="red">&#60;sudo&#62;</span> pip install <span class="blue">&#60;--user&#62;</span> <span class="pink">&#60;--no-deps&#62;</span> git+https://github.com/Theano/Theano.git#egg=Theano</pre>
 
+- Any argument between <...> is optional.
+
 - Use :red:`sudo` for a root installation.
 
 - Use :blue:`user` for a user installation without admin rights. It will install Theano in your local site-packages.
 
-- Use :pink:`no-deps` when you don't want the dependencies of Theano to not be installed through pip. This is important when they have already been installed as system packages. 
+- Use :pink:`no-deps` when you don't want the dependencies of Theano to be installed through pip. This is important when they have already been installed as system packages. 
+
+If you encountered any trouble, head to the :ref:`troubleshooting` page.
 
 Developer Installation
 -----------------------
 
-The following are instructions that will guide you to setup Theano in
-*editable* mode. This will allow you to download the latest source code and
-link the Theano installation to it, so that your modifications of the source
-code will take effect without requiring a reinstall of Theano.  
-
-Run these instructions in the directory you want to download the source code
-into. Make sure not to move it, as the Theano installation will be *linked*
-to this location and will stop working otherwise.
+Install the developer version of Theano with:
 
 .. raw:: html
 
@@ -74,7 +73,7 @@ to this location and will stop working otherwise.
 
 - Use :blue:`user` for a user installation without admin rights. It will install Theano in your local site-packages.
 
-- Use :pink:`no-deps` when you don't want the dependencies of Theano to not be installed through pip. This is important when they have already been installed as system packages. 
+- Use :pink:`no-deps` when you don't want the dependencies of Theano to be installed through pip. This is important when they have already been installed as system packages. 
 
 - :green:`-e` makes your installation *editable*, i.e., it links it to your
   source directory.

@@ -7,41 +7,34 @@ Updating Theano
 
 Follow one of these three sections depending on how you installed Theano.
 
-Basic Installation
-~~~~~~~~~~~~~~~~~~
+You should update frequently, bugs are fixed on a very regular basis, and features are
+added even more frequently!
+
+Stable Installation
+-------------------
 
 The following command will update only Theano:
 
 .. raw:: html
 
-    <pre><span class="red">&#60;sudo&#62;</span> pip install <span class="blue">&#60;--user&#62;</span> --upgrade --no-deps theano</pre>
+    <pre><span class="red">&#60;sudo&#62;</span> pip install <span class="blue">&#60;--user&#62;</span> <span class="pink">&#60;--no-deps&#62;</span> theano</pre>
 
 - Use :red:`sudo` for a root installation.
 
 - Use :blue:`user` for a user installation without admin rights. It will install Theano in your local site-packages.
 
-The following command will update Theano and Numpy/Scipy (warning bellow):
+- Use :pink:`no-deps` when you don't want the dependencies of Theano to not be installed through pip. This is important when they have already been installed as system packages. 
 
-.. raw:: html
-
-    <pre><span class="red">&#60;sudo&#62;</span> pip install <span class="blue">&#60;--user&#62;</span> --upgrade theano</pre>
-
-- Use :red:`sudo` for a root installation.
-
-- Use :blue:`user` for a user installation without admin rights. It will install Theano in your local site-packages.
-
-.. note::
+.. warning::
 
     If you installed NumPy/SciPy with yum/apt-get, updating NumPy/SciPy
     with pip/easy_install is not always a good idea. This can make Theano
-    crash due to problems with BLAS (but see below). The versions of
+    crash due to problems with BLAS. The versions of
     NumPy/SciPy in the distribution are sometimes linked against faster
     versions of BLAS. Installing NumPy/SciPy with
     yum/apt-get/pip/easy_install won't install the development package
-    needed to recompile it with the fast version. This mean that if you
-    don't install the development packages manually, when you recompile
-    the updated NumPy/SciPy, it will compile with the slower version. This
-    results in a slower Theano as well. To fix the crash, you can clear
+    needed to recompile it with the fast version.
+    To fix a possible crash, you can clear
     the Theano cache like this:
 
     .. code-block:: bash
@@ -63,8 +56,24 @@ The following command will update your bleeding-edge version of Theano
 
 - Use :pink:`no-deps` when you don't want the dependencies of Theano to not be installed through pip. This is important when they have already been installed as system packages. 
 
-Developper Installation
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. warning::
+
+    If you installed NumPy/SciPy with yum/apt-get, updating NumPy/SciPy
+    with pip/easy_install is not always a good idea. This can make Theano
+    crash due to problems with BLAS. The versions of
+    NumPy/SciPy in the distribution are sometimes linked against faster
+    versions of BLAS. Installing NumPy/SciPy with
+    yum/apt-get/pip/easy_install won't install the development package
+    needed to recompile it with the fast version.
+    To fix a possible crash, you can clear
+    the Theano cache like this:
+
+    .. code-block:: bash
+
+       theano-cache clear
+
+Developer Installation
+----------------------
 
 To update your library to the latest revision, change directory (``cd``)
 to your ``Theano`` folder and execute the following command:
@@ -77,5 +86,3 @@ to your ``Theano`` folder and execute the following command:
 
     git pull --rebase
 
-You should update frequently, bugs are fixed on a very regular basis, and features are
-added even more frequently!
