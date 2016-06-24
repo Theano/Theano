@@ -22,8 +22,9 @@ class GpuCumsum(GpuKernelBase, Op):
     SUPPORTED_NDIMS = 3
     __props__ = ('axis',)
 
-    def __init__(self, axis):
+    def __init__(self, axis, context_name):
         self.axis = axis
+        self.context_name = context_name
 
     def c_code_cache_version(self):
         return (3,)
@@ -41,7 +42,6 @@ class GpuCumsum(GpuKernelBase, Op):
         assert x.type.dtype == 'float32', "Only float32 supported for GpuCumSum"
 
         context_name = infer_context_name(x)
-
         x = as_gpuarray_variable(x, context_name)
 
         if x.ndim > GpuCumsum.SUPPORTED_NDIMS:
@@ -471,5 +471,4 @@ def local_gpua_cumsumop(op, ctx_name, inputs, outputs):
         # ``gpu_cumsum`` assume array has been flattened if needed.
         if axis is None:
             axis = 0
-
         return GpuCumsum(axis)(x)
