@@ -282,17 +282,15 @@ class GpuDnnConvDesc(COp):
     def do_constant_folding(self, node):
         return False
 
-    def __init__(self, conv_mode='conv',
+    def __init__(self,
                  precision="float32"):
         COp.__init__(self, ["conv_desc.c"], "APPLY_SPECIFIC(conv_desc)")
 
-        assert conv_mode in ('conv', 'cross')
-        self.conv_mode = conv_mode
 
         assert precision in ['float16', 'float32', 'float64']
         self.precision = precision
 
-    def make_node(self, border_mode, kern_shape, subsample=(1, 1, 0)):
+    def make_node(self, border_mode, kern_shape, subsample=(1, 1, 0), conv_mode='conv'):
         if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
             raise TypeError('kern must be 1D shape tensor')
         if isinstance(border_mode, integer_types):
@@ -327,8 +325,13 @@ class GpuDnnConvDesc(COp):
             bmode = 0
         else:
             raise ValueError("Invalid value for border_mode")
-
-        node = Apply(self, [kern_shape, subsample, padding, bmode],
+        assert conv_mode in ('conv', 'cross')
+        self.conv_mode = conv_mode
+        if self.conv_mode == 'conv':
+            conv_flag = 1 #'CUDNN_CONVOLUTION'
+        else:
+            conv_flag = 2 #'CUDNN_CROSS_CORRELATION'
+        node = Apply(self, [kern_shape, subsample, padding, bmode, conv_flag],
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
         # DebugMode cannot compare the values of CDataType variables, so by
@@ -342,10 +345,7 @@ class GpuDnnConvDesc(COp):
     # TODO: Need to document this, not in Extending using COp
     def get_op_params(self):
 
-        if self.conv_mode == 'conv':
-            conv_flag = 'CUDNN_CONVOLUTION'
-        else:
-            conv_flag = 'CUDNN_CROSS_CORRELATION'
+
 
         if self.precision == 'float16':
             precision = 'CUDNN_DATA_HALF'
@@ -361,7 +361,6 @@ class GpuDnnConvDesc(COp):
 
     def c_code_cache_version(self):
         return (super(GpuDnnConvDesc, self).c_code_cache_version(), version())
-
 
 # scalar constants
 _zero = constant(numpy.asarray(0.0, dtype='float64'))
