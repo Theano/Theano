@@ -356,7 +356,7 @@ class GpuDnnConvDesc(COp):
             precision = 'CUDNN_DATA_DOUBLE'
 
         return [
-                ('CONV_MODE', conv_flag),
+                
                 ('PRECISION', precision)]
 
     def c_code_cache_version(self):
