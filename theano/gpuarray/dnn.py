@@ -355,8 +355,7 @@ class GpuDnnConvDesc(COp):
             assert self.precision == 'float64'
             precision = 'CUDNN_DATA_DOUBLE'
 
-        return [('NB_DIMS', str(len(self.subsample))),
-                ('BORDER_MODE', bmode),
+        return [('BORDER_MODE', bmode),
                 ('PAD_0', pad0), ('PAD_1', pad1), ('PAD_2', pad2),
                 ('CONV_MODE', conv_flag),
                 ('PRECISION', precision)]

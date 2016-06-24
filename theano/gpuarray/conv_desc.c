@@ -14,20 +14,18 @@ strides[2] = *(npy_int64 *)PyArray_GETPTR1(subsample, 2);
 #if BORDER_MODE == 0
   pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) - 1;
   pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) - 1;
-#if NB_DIMS > 2
   pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) - 1;
 #endif
 #elif BORDER_MODE == 2
   pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) / 2;
   pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) / 2;
-#if NB_DIMS > 2
   pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) / 2;
 #endif
 #endif
 
-  if (PyArray_DIM(filt_shp, 0) - 2 != NB_DIMS) {
+  if (PyArray_DIM(filt_shp, 0) - 2 != 3) {
     PyErr_Format(PyExc_ValueError, "Filter shape has too many dimensions: "
-                 "expected %d, got %lld.", NB_DIMS,
+                 "expected 3, got %lld.", 
                  (long long)PyArray_DIM(filt_shp, 0));
     return -1;
   }
@@ -39,7 +37,7 @@ strides[2] = *(npy_int64 *)PyArray_GETPTR1(subsample, 2);
     return -1;
   }
 
-  err = cudnnSetConvolutionNdDescriptor(*desc, NB_DIMS, pad, strides,
+  err = cudnnSetConvolutionNdDescriptor(*desc, 3, pad, strides,
                                         upscale, CONV_MODE, PRECISION);
   return 0;
 }
