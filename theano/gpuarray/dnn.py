@@ -286,9 +286,6 @@ class GpuDnnConvDesc(COp):
                  precision="float32"):
         COp.__init__(self, ["conv_desc.c"], "APPLY_SPECIFIC(conv_desc)")
 
-        assert precision in ['float16', 'float32', 'float64']
-        self.precision = precision
-
     def make_node(self, border_mode, kern_shape, subsample=(1, 1, 0), conv_mode='conv'):
         if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
             raise TypeError('kern must be 1D shape tensor')
@@ -330,7 +327,18 @@ class GpuDnnConvDesc(COp):
             conv_flag = 1  # 'CUDNN_CONVOLUTION'
         elif self.conv_mode == 'cross':
             conv_flag = 2  # 'CUDNN_CROSS_CORRELATION'
-        node = Apply(self, [kern_shape, subsample, padding, bmode, conv_flag],
+        assert precision in ['float16', 'float32', 'float64']
+        self.precision = precision
+        precision_flag = 0
+        if self.precision == 'float16':
+            precision_flag = 1  # 'CUDNN_DATA_HALF'
+        elif self.precision == 'float32':
+            precision_flag = 2  # 'CUDNN_DATA_FLOAT'
+        else:
+            assert self.precision == 'float64'
+            precision_flag = 3  # 'CUDNN_DATA_DOUBLE'
+
+        node = Apply(self, [kern_shape, subsample, padding, bmode, conv_flag, precision_flag],
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
         # DebugMode cannot compare the values of CDataType variables, so by
@@ -343,15 +351,7 @@ class GpuDnnConvDesc(COp):
 
     # TODO: Need to document this, not in Extending using COp
     def get_op_params(self):
-        if self.precision == 'float16':
-            precision = 'CUDNN_DATA_HALF'
-        elif self.precision == 'float32':
-            precision = 'CUDNN_DATA_FLOAT'
-        else:
-            assert self.precision == 'float64'
-            precision = 'CUDNN_DATA_DOUBLE'
-
-        return [('PRECISION', precision)]
+        return []
 
     def c_code_cache_version(self):
         return (super(GpuDnnConvDesc, self).c_code_cache_version(), version())
