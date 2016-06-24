@@ -286,7 +286,6 @@ class GpuDnnConvDesc(COp):
                  precision="float32"):
         COp.__init__(self, ["conv_desc.c"], "APPLY_SPECIFIC(conv_desc)")
 
-
         assert precision in ['float16', 'float32', 'float64']
         self.precision = precision
 
@@ -328,9 +327,9 @@ class GpuDnnConvDesc(COp):
         assert conv_mode in ('conv', 'cross')
         self.conv_mode = conv_mode
         if self.conv_mode == 'conv':
-            conv_flag = 1 #'CUDNN_CONVOLUTION'
-        else:
-            conv_flag = 2 #'CUDNN_CROSS_CORRELATION'
+            conv_flag = 1  # 'CUDNN_CONVOLUTION'
+        elif self.conv_mode == 'cross':
+            conv_flag = 2  # 'CUDNN_CROSS_CORRELATION'
         node = Apply(self, [kern_shape, subsample, padding, bmode, conv_flag],
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
@@ -344,9 +343,6 @@ class GpuDnnConvDesc(COp):
 
     # TODO: Need to document this, not in Extending using COp
     def get_op_params(self):
-
-
-
         if self.precision == 'float16':
             precision = 'CUDNN_DATA_HALF'
         elif self.precision == 'float32':
@@ -355,9 +351,7 @@ class GpuDnnConvDesc(COp):
             assert self.precision == 'float64'
             precision = 'CUDNN_DATA_DOUBLE'
 
-        return [
-                
-                ('PRECISION', precision)]
+        return [('PRECISION', precision)]
 
     def c_code_cache_version(self):
         return (super(GpuDnnConvDesc, self).c_code_cache_version(), version())
