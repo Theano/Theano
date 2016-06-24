@@ -222,6 +222,33 @@ class test_dimshuffle_lift(unittest.TestCase):
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
 
+    def test_useless_dimshuffle_in_presence_of_reshape(self):
+        vector = TensorType(broadcastable=(False,), dtype='float64')('vector')
+        mat = TensorType(broadcastable=(False, False), dtype='float64')('mat')
+        row = TensorType(broadcastable=(True, False), dtype='float64')('row')
+        col = TensorType(broadcastable=(False, True), dtype='float64')('col')
+
+        reshape_dimshuffle_vector = tensor.reshape(vector.dimshuffle('x', 0), vector.shape)
+        reshape_dimshuffle_mat = tensor.reshape(mat.dimshuffle('x', 0, 'x', 1), mat.shape)
+        reshape_dimshuffle_row = tensor.reshape(row.dimshuffle(1, 'x'), row.shape)
+        reshape_dimshuffle_col = tensor.reshape(col.dimshuffle(0), col.shape)
+
+        g = FunctionGraph([vector, mat, row, col],
+                          [reshape_dimshuffle_vector, reshape_dimshuffle_mat,
+                           reshape_dimshuffle_row, reshape_dimshuffle_col])
+
+        self.assertTrue(str(g) == "[Reshape{1}(DimShuffle{x,0}(vector), Shape(vector)), "
+                                  "Reshape{2}(DimShuffle{x,0,x,1}(mat), Shape(mat)), "
+                                  "Reshape{2}(DimShuffle{1,x}(row), Shape(row)), "
+                                  "Reshape{2}(DimShuffle{0}(col), Shape(col))]")
+        dimshuffle_lift.optimize(g)
+        self.assertTrue(str(g) == "[Reshape{1}(vector, Shape(vector)), "
+                                  "Reshape{2}(mat, Shape(mat)), "
+                                  "Reshape{2}(row, Shape(row)), "
+                                  "Reshape{2}(col, Shape(col))]")
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
+
 
 def test_add_canonizer_problem0():
     n_segments = 10
