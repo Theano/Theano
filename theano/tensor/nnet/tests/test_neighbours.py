@@ -404,10 +404,6 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
             [x], [images2neibs(
                 x, neib_shape=(3, 3), mode='wrap_centered')],
             [images], Images2Neibs)
-<<<<<<< HEAD
-=======
-
->>>>>>> code cleanup
 
 if __name__ == '__main__':
     unittest.main()
