@@ -282,11 +282,10 @@ class GpuDnnConvDesc(COp):
     def do_constant_folding(self, node):
         return False
 
-    def __init__(self,
-                 precision="float32"):
+    def __init__(self):
         COp.__init__(self, ["conv_desc.c"], "APPLY_SPECIFIC(conv_desc)")
 
-    def make_node(self, border_mode, kern_shape, subsample=(1, 1, 0), conv_mode='conv'):
+    def make_node(self, border_mode, kern_shape, precision="float32", subsample=(1, 1, 0), conv_mode='conv'):
         if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
             raise TypeError('kern must be 1D shape tensor')
         if isinstance(border_mode, integer_types):
