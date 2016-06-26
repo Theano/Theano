@@ -4,10 +4,10 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject *subsample,
                               PyObject *bmode, PyObject *conv_flag, PyObject *precision_flag,
                               cudnnConvolutionDescriptor_t *desc) {
   cudnnStatus_t err;
-  int pad[3] = {PAD_0, PAD_1, PAD_2};
+  int pad[3] = {0,0,0};
   int strides[3] = {0,0,0};
   int upscale[3] = {1, 1, 1};
-  char *precision_flag
+  char *precision_flag;
   char *conv_mode;
 
 strides[0] = *(npy_int64 *)PyArray_GETPTR1(subsample, 0);
