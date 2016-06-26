@@ -57,7 +57,7 @@ Install the bleeding-edge version of Theano with:
 If you encountered any trouble, head to the :ref:`troubleshooting` page.
 
 Developer Installation
------------------------
+----------------------
 
 Install the developer version of Theano with:
 
@@ -79,3 +79,22 @@ Install the developer version of Theano with:
   source directory.
 
 If you encountered any trouble, head to the :ref:`troubleshooting` page.
+
+libgpuarray
+===========
+
+Stable Installation
+-------------------
+
+A specific version of libgpuarray has to be installed for the stable version (tag v-9998)
+
+Bleeindg-Edge Installation
+--------------------------
+
+The dev version has to be used.
+
+Developer Installation
+----------------------
+
+The dev version has to be used.
+

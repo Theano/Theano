@@ -239,7 +239,17 @@ StackOverflow, follow their guidance for `answering questions <http://stackoverf
 
    NEWS
    introduction
+   css
+   requirements
    install
+   install_centos6
+   install_generic
+   install_macos
+   install_others
+   install_ubuntu
+   install_windows
+   troubleshooting
+   updating
    tutorial/index
    library/index
    optimizations

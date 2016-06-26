@@ -8,8 +8,8 @@ Other Platform-specific Installations
 
     These instructions are not kept up to date.
 
-NVIDIA Jetson TX1 embedded platform:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+NVIDIA Jetson TX1 embedded platform
+-----------------------------------
 
 .. code-block:: bash
 
@@ -17,7 +17,7 @@ NVIDIA Jetson TX1 embedded platform:
     pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git --user  # Need Theano 0.8 or more recent
 
 Gentoo
-~~~~~~
+------
 
 Brian Vandenberg emailed `installation instructions on Gentoo
 <http://groups.google.com/d/msg/theano-dev/-8WCMn2FMR0/bJPasoZXaqoJ>`_,
@@ -26,7 +26,7 @@ focusing on how to install the appropriate dependencies.
 Nicolas Pinto provides `ebuild scripts <https://github.com/npinto/sekyfsr-gentoo-overlay/tree/master/sci-libs/Theano>`_.
 
 Docker images
-~~~~~~~~~~~~~
+-------------
 
 Builds of Theano are available as `Docker <https://www.docker.com/whatisdocker>`_ images:
 `Theano Docker (CPU) <https://hub.docker.com/r/kaixhin/theano/>`_ or `Theano Docker (CUDA) <https://hub.docker.com/r/kaixhin/cuda-theano/>`_.

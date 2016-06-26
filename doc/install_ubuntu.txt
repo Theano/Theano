@@ -12,7 +12,7 @@ Ubuntu Installation Instructions
     :start-line: 11
 
 Prerequisites through System Packages (not recommended)
-------------------------------------------------------
+-------------------------------------------------------
 
 If you want to acquire the requirements through your system packages and install
 them system wide follow these instructions:

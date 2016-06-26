@@ -4,14 +4,17 @@
  
 
 CentOS 6 Installation Instructions
-==================================
+##################################
 
-Requirements
-------------
-
- 1) ``sudo yum install python-devel python-nose python-setuptools gcc
-    gcc-gfortran gcc-c++ blas-devel lapack-devel atlas-devel``
- 2) ``sudo easy_install pip``
+.. include:: requirements.txt
 
 .. include:: install_generic.txt
     :start-line: 11
+
+Requirements through System Packages (not recommended)
+------------------------------------------------------
+
+.. code-block:: bash
+
+    sudo yum install python-devel python-nose python-setuptools gcc gcc-gfortran gcc-c++ blas-devel lapack-devel atlas-devel
+    sudo easy_install pip

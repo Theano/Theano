@@ -85,7 +85,7 @@ Or for the bleeding-edge version:
 
 
 Requirements through MacPorts (not recommended)
-----------------------------------------------
+-----------------------------------------------
 
 Using `MacPorts <http://www.macports.org/>`__ to install all required
 Theano dependencies is easy, but be aware that it will take a long time

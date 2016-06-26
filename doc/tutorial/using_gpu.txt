@@ -43,6 +43,8 @@ You can also set these options in the .theanorc file's ``[global]`` section:
 You probably need to change the default version of gcc as
 `explained by Benjamin J. McCann <http://www.benmccann.com/blog/installing-cuda-and-theano/>`_ if the package you downloaded is for another Ubuntu version.
 
+.. _testing_the_gpu
+
 Testing Theano with GPU
 ~~~~~~~~~~~~~~~~~~~~~~~
 
