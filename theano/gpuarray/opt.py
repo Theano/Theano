@@ -21,6 +21,7 @@ from theano.misc.ordered_set import OrderedSet
 from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
+from theano.tensor.opt import out2in
 from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet.blocksparse import SparseBlockGemv, SparseBlockOuter
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
@@ -218,7 +219,7 @@ def op_lifter(OP, cuda_only=False):
                         return [new_op.transfer('cpu')]
             return False
         local_opt.__name__ = maker.__name__
-        return local_optimizer(OP)(local_opt)
+        return out2in(local_optimizer(OP)(local_opt))
     return f
 
 

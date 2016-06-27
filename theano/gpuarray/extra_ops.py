@@ -8,7 +8,7 @@ try:
 except ImportError:
     pass
 
-from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel, GpuReshape)
+from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel, GpuReshape, infer_context_name)
 from .opt import register_opt, op_lifter, register_opt2
 
 
@@ -22,9 +22,8 @@ class GpuCumsum(GpuKernelBase, Op):
     SUPPORTED_NDIMS = 3
     __props__ = ('axis',)
 
-    def __init__(self, axis, context_name):
+    def __init__(self, axis):
         self.axis = axis
-        self.context_name = context_name
 
     def c_code_cache_version(self):
         return (3,)
@@ -471,4 +470,5 @@ def local_gpua_cumsumop(op, ctx_name, inputs, outputs):
         # ``gpu_cumsum`` assume array has been flattened if needed.
         if axis is None:
             axis = 0
+
         return GpuCumsum(axis)(x)
