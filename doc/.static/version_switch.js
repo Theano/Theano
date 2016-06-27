@@ -45,10 +45,6 @@
       var new_url = url.replace(url.match(version_regex)[0], '/' + versions_dir[version] + '/');
       vswitch.push('<dd><a href=\"', new_url, '\">', version, '</a></dd>');  
     }
-//    $.each(versions_dir, function(version, dir){
-//      var new_url = url.replace(url.match(version_regex)[0], '/' + dir + '/');
-//      vswitch.push('<dd><a href=', new_url, '>', version, '</a></dd>');
-//    });
     vswitch.push('</dl>');
 
     vswitch.push('<dl>');   
@@ -65,7 +61,6 @@
 
     vswitch.push('</div>');  
     vswitch.push('</div>');  
-      console.log(vswitch.join(''))    
     return vswitch.join('');
   }
 
