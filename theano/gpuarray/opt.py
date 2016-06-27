@@ -172,7 +172,7 @@ def safe_to_gpu(x, ctx_name):
 
 def safe_to_cpu(x):
     if isinstance(x.type, GpuArrayType):
-        return host_from_gpu(x)
+        return x.transfer('cpu')
     else:
         return x
 
@@ -236,7 +236,7 @@ def op_lifter(OP, cuda_only=False):
                     elif isinstance(new_op, (tuple, list)):
                         return [safe_to_cpu(o) for o in new_op]
                     else:  # suppose it is a variable on the GPU
-                        return [host_from_gpu(new_op)]
+                        return [new_op.transfer('cpu')]
             return False
         local_opt.__name__ = maker.__name__
         return local_optimizer(OP)(local_opt)
@@ -269,7 +269,7 @@ class InputToGpuOptimizer(Optimizer):
                 continue
 
             try:
-                new_input = host_from_gpu(gpu_from_host(target)(input))
+                new_input = gpu_from_host(target)(input).transfer('cpu')
                 fgraph.replace_validate(input, new_input,
                                         "InputToGpuOptimizer")
             except TypeError:
@@ -430,7 +430,7 @@ class GraphToGPU(Optimizer):
                         new_o.owner.inputs[0].type == o.type):
                     new_o = new_o.owner.inputs[0]
                 else:
-                    new_o = safe_to_cpu(new_o)
+                    new_o = new_o.transfer('cpu')
             new_nodes.append(new_o)
         fgraph.replace_all_validate(zip(fgraph.outputs, new_nodes),
                                     reason=self.__class__.__name__)
@@ -546,7 +546,7 @@ def local_cut_gpu_transfers(node):
 
         # gpub ->
         if isinstance(n2.op, GpuToGpu):
-            return [host_from_gpu(n2.inputs[0])]
+            return [n2.inputs[0].transfer('cpu')]
 
     # ? -> gpua -> gpub
     elif isinstance(node.op, GpuToGpu):
@@ -600,7 +600,7 @@ def local_gpua_alloc2(node):
                 i.owner.op in [host_from_gpu, tensor.alloc]
                 for i in c.inputs[1:])
             for c, idx in node.outputs[0].clients)):
-        return [host_from_gpu(gpu_alloc(None)(*node.inputs))]
+        return [gpu_alloc(None)(*node.inputs).transfer('cpu')]
 
 
 @register_opt('fast_compile')
@@ -918,7 +918,7 @@ def local_gpu_pdbbreakpoint_op(node):
         new_outputs = []
         for i in range(len(new_op_outputs)):
             if input_transfered[i]:
-                new_outputs.append(host_from_gpu(new_op_outputs[i]))
+                new_outputs.append(new_op_outputs[i].transfer('cpu'))
             else:
                 new_outputs.append(new_op_outputs[i])
 

@@ -29,8 +29,7 @@ from theano.gpuarray.basic_ops import GpuKernelBase, Kernel, infer_context_name,
 from theano.gpuarray.type import GpuArrayType
 from theano.gpuarray.fp16_help import write_w
 from theano.gpuarray.opt import (register_opt as register_gpua,
-                                 register_opt2,
-                                 host_from_gpu as host_from_gpua)
+                                 register_opt2)
 if theano.sandbox.cuda.cuda_available:
     from theano.sandbox.cuda import (CudaNdarrayType,
                                      float32_shared_constructor)
@@ -1621,7 +1620,7 @@ def local_gpua_mrg_graph(op, context_name, inputs, outputs):
                                     op.output_type.ndim,
                                     op.output_type.dtype,
                                     inputs[1])
-        return [outs[0], host_from_gpua(outs[1])]
+        return [outs[0], outs[1].transfer('cpu')]
 
 
 @register_gpua('fast_compile')
