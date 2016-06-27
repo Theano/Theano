@@ -1895,7 +1895,7 @@ def local_track_shape_i(node):
         return [shape_feature.shape_of[replacement][node.op.i]]
 
 
-# Subtensor(SetSubtensor(x, y, idx), idx) -> y 
+# Subtensor(SetSubtensor(x, y, idx), idx) -> y
 @register_specialize
 @register_canonicalize
 @gof.local_optimizer([Subtensor])
