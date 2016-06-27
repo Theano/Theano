@@ -20,21 +20,8 @@
   var span_class = document.createAttribute("class");
   span_class.value = "version_switcher_placeholder";
   span.setAttributeNode(span_class);
-    
   var div = document.createElement("DIV");
-  var text = document.createTextNode("v:");
-  var div_class = document.createAttribute("class");
-  div_class.value = "version-switcher";
-  div.setAttributeNode(div_class);
-  var style = document.createAttribute("style");
-  style.value = "color:#27AA5E; padding-right:5px;";
-  div.setAttributeNode(style);
-  var align = document.createAttribute("align");
-  align.value = "right";
-  div.setAttributeNode(align);
-  div.appendChild(text);
   div.appendChild(span);
-  
   var nav_div = document.getElementsByClassName("wy-nav-side")[0];
   nav_div.appendChild(div);
 </script>

@@ -33,7 +33,7 @@
     var vswitch = ['<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions" align=left>'];
     vswitch.push('<span class="rst-current-version" data-toggle="rst-current-version">');
     vswitch.push('<span class="fa fa-book"></span>');
-    vswitch.push('v:' + current_version);
+    vswitch.push('v: ', current_version.replace("theano_versions/", ""), ' ');
     vswitch.push('<span class="fa fa-caret-down"></span>');   
     vswitch.push('</span>');
     
@@ -41,28 +41,26 @@
 
     vswitch.push('<dl>');   
     vswitch.push('<dt>Versions</dt>');
-    $.each(versions_dir, function(version, dir){
-      var new_url = url.replace(url.match(version_regex)[0],
-                      '/' + versions_dir[version] + '/');
-      vswitch.push('<dd><a href=' + new_url + '>' + version + '</a></dd>');
-    });
+    for (var version in versions_dir) {
+      var new_url = url.replace(url.match(version_regex)[0], '/' + versions_dir[version] + '/');
+      vswitch.push('<dd><a href=\"', new_url, '\">', version, '</a></dd>');  
+    }
     vswitch.push('</dl>');
 
     vswitch.push('<dl>');   
     vswitch.push('<dt>Downloads</dt>');
-    var pdf_url = "http://deeplearning.net/software/theano/theano.pdf"
-    vswitch.push('<dd><a href=' + pdf_url + '>' + 'PDF' + '</a></dd>');
+    var pdf_url = root_url + current_version + "/theano.pdf"
+    vswitch.push('<dd><a href=\"', pdf_url, '\">', 'PDF', '</a></dd>');
     vswitch.push('</dl>');  
     
     vswitch.push('<dl>');   
     vswitch.push('<dt>On GitHub</dt>');
     var git_master = "https://github.com/Theano/Theano"
-    vswitch.push('<dd><a href=' + git_master + '>' + 'Fork me' + '</a></dd>');
+    vswitch.push('<dd><a href=\"', git_master + '\">', 'Fork me', '</a></dd>');
     vswitch.push('</dl>');  
 
     vswitch.push('</div>');  
     vswitch.push('</div>');  
-
     return vswitch.join('');
   }
 
