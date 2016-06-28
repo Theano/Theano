@@ -630,9 +630,14 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                 v = v.owner.inputs[0]
                 continue
             elif isinstance(v.owner.op, theano.compile.ops.Shape_i):
-                if isinstance(v.owner.inputs[0], Constant):
-                    return numpy.asarray(
-                        v.owner.inputs[0].data.shape[v.owner.op.i])
+                i = v.owner.op.i
+                inp = v.owner.inputs[0]
+                if isinstance(inp, Constant):
+                    return numpy.asarray(inp.data.shape[i])
+                # The shape of a broadcastable dimension is 1
+                if inp.type.broadcastable[i]:
+                    return numpy.asarray(1)
+
             # Don't act as the constant_folding optimization here as this
             # fct is used too early in the optimization phase.  This would
             # mess with the stabilization optimization and be too slow.
