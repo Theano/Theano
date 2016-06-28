@@ -21,7 +21,7 @@ from theano.misc.ordered_set import OrderedSet
 from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
-from theano.tensor.opt import out2in
+# from theano.tensor.opt import out2in
 from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet.blocksparse import SparseBlockGemv, SparseBlockOuter
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
@@ -61,6 +61,7 @@ _logger = logging.getLogger("theano.gpuarray.opt")
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
+gpu_topo = LocalGroupDB()
 
 # Not used for an EquilibriumOptimizer. It has the "tracks" that we need for GraphToGPUDB.
 gpu_optimizer2 = EquilibriumDB()
@@ -160,6 +161,16 @@ def safe_to_cpu(x):
         return x
 
 
+def register_topo(*tags, **kwargs):
+    def f(local_opt):
+        name = (kwargs and kwargs.pop('name')) or local_opt.__name__
+        name = name + "_graph"
+        gpu_topo.register(name, local_opt,
+                          10, 'fast_run', 'gpuarray', *tags)
+        return local_opt
+    return f
+
+
 def op_lifter(OP, cuda_only=False):
     """
     OP(..., host_from_gpu(), ...) -> host_from_gpu(GpuOP(...))
@@ -167,7 +178,10 @@ def op_lifter(OP, cuda_only=False):
     gpu_from_host(OP(inp0, ...)) -> GpuOP(inp0, ...)
 
     """
+
     def f(maker):
+        @register_topo('fast_compile')
+        @local_optimizer(OP)
         def local_opt(node):
             if type(node.op) in OP:
                 # Either one of our inputs is on the gpu or
@@ -219,7 +233,7 @@ def op_lifter(OP, cuda_only=False):
                         return [new_op.transfer('cpu')]
             return False
         local_opt.__name__ = maker.__name__
-        return out2in(local_optimizer(OP)(local_opt))
+        return local_opt
     return f
 
 
