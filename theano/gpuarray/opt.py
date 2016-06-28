@@ -983,7 +983,7 @@ def local_gpua_subtensor(op, context_name, inputs, outputs):
                         for n, _ in outputs[0].clients]):
                     return
                 else:
-                    return [host_from_gpu(gpu_x.owner.op(outputs[0]))]
+                    return [gpu_x.owner.op(outputs[0]).transfer('cpu')]
 
     return GpuSubtensor(op.idx_list)
 
