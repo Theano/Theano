@@ -14,7 +14,7 @@ from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         SequenceDB, Optimizer, DB, toolbox, graph)
 from theano.gof.opt import NavigatorOptimizer
-from theano.gof.optdb import LocalGroupDB, TopoOptDB
+from theano.gof.optdb import LocalGroupDB
 from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
@@ -62,8 +62,6 @@ _logger = logging.getLogger("theano.gpuarray.opt")
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
 gpu_topo = LocalGroupDB()
-topo_db = TopoOptDB()
-all_local_opt = gpu_topo.query('+fast_compile')
 
 # Not used for an EquilibriumOptimizer. It has the "tracks" that we need for GraphToGPUDB.
 gpu_optimizer2 = EquilibriumDB()
@@ -94,7 +92,9 @@ gpu_seqopt.register('gpuarray_local_optimiziations', gpu_optimizer, 1,
                     'fast_compile', 'fast_run', 'gpuarray')
 gpu_seqopt.register('gpuarray_cut_transfers', gpu_cut_copies, 2,
                     'fast_compile', 'fast_run', 'gpuarray')
-# gpu_seqopt.register('topo_optimization', topo_db, -0.4, 'fast_compile', 'fast_run', 'gpuarray')
+
+gpu_seqopt.register('op_lifter_topo', TopoOptimizer(gpu_topo.query('+fast_compile'), order='out_to_in'),
+                    10, 'fast_run', 'gpuarray', 'fast_compile')
 
 # do not add 'fast_run' to these two as this would always enable gpuarray mode
 optdb.register('gpuarray_opt', gpu_seqopt,
@@ -172,8 +172,6 @@ def register_topo(*tags, **kwargs):
                           10, 'fast_run', 'gpuarray', *tags)
         return local_opt
     return f
-
-topo_db.register('op_lifter_topo', all_local_opt, 10, 'fast_run', 'gpuarray', 'fast_compile')
 
 
 def op_lifter(OP, cuda_only=False):

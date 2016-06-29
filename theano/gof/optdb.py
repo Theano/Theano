@@ -406,19 +406,6 @@ class LocalGroupDB(SequenceDB):
         self.failure_callback = None
 
 
-class TopoOptDB(SequenceDB):
-    """
-    Generate Sequence of potential Topo Optimization
-
-    """
-
-    seq_opt = opt.TopoOptimizer
-
-    def __init__(self, failure_callback=opt.TopoOptimizer.warn):
-        super(TopoOptDB, self).__init__()
-        self.failure_callback = None
-
-
 class ProxyDB(DB):
     """
     Wrap an existing proxy.
