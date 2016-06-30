@@ -228,6 +228,7 @@ KERNEL void k_multi_warp_multinomial(
     def c_code_cache_version(self):
         return (1,)
 
+
 class GPUAMultinomialWOReplacementFromUniform(gpuarray.basic_ops.GpuKernelBase, Op):
     """
     The output is transposed compared to MultinomialWOReplacementFromUniform.
@@ -259,7 +260,7 @@ class GPUAMultinomialWOReplacementFromUniform(gpuarray.basic_ops.GpuKernelBase, 
 
         pvals = as_gpuarray_variable(pvals, ctx_name)
         unis = as_gpuarray_variable(unis, ctx_name)
-        
+
         if pvals.ndim != 2:
             raise NotImplementedError('pvals ndim should be 2', pvals.ndim)
         if unis.ndim != 1:
@@ -294,7 +295,7 @@ KERNEL void k_multi_warp_multinomial_wor(
 {
     // each thread takes care of one multinomial-wor n_samples-draw
     int n = LDIM_0*GID_0 + LID_0;
-    
+
     if (n < nb_multi)
     {
         for (int c = 0; c < n_samples; ++c)
@@ -312,7 +313,7 @@ KERNEL void k_multi_warp_multinomial_wor(
                     //write out transposed for speed.
                     global_outs[n * outs_col_stride +
                                 c * outs_row_stride] = m;
-                    
+
                     global_pvals_copy[m * pvals_col_stride + n * pvals_row_stride] = 0.0;
                     cummul -= pvals_nm;
                     done = true;
@@ -358,7 +359,7 @@ KERNEL void k_multi_warp_multinomial_wor(
     PyGpuArrayObject * out = %(out)s;
     // create a copy of pvals matrix
     PyGpuArrayObject * pvals_copy = NULL;
-    
+
     size_t dims[2];
     if (PyGpuArray_NDIM(pvals) != 2)
     {
@@ -390,9 +391,9 @@ KERNEL void k_multi_warp_multinomial_wor(
                            GA_C_ORDER, %(ctx)s) != 0){
       %(fail)s
     }
-    
+
     %(out)s = out;
-    
+
     { // NESTED SCOPE
         int nb_multi = PyGpuArray_DIMS(pvals)[0];
         int nb_outcomes = PyGpuArray_DIMS(pvals)[1];
@@ -441,7 +442,7 @@ KERNEL void k_multi_warp_multinomial_wor(
         args[8] = out->ga.data; //PyGpuArray_DEV_DATA(out);
         args[9] = (void*)&strides[3];
         args[10] = (void*)&strides[4];
-        
+
         err = GpuKernel_call(&%(kname)s, 1, &nb_threads, &nb_blocks, 0, args);
         if (err != GA_NO_ERROR) {
            PyErr_Format(

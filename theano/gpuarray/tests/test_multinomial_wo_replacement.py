@@ -157,6 +157,7 @@ class test_function(unittest.TestCase):
         avg_diff = numpy.mean(abs(avg_pvals - pvals))
         assert avg_diff < mean_rtol
 
+
 def test_gpu_opt():
 
     # We test the case where we put the op on the gpu when the output
@@ -175,7 +176,7 @@ def test_gpu_opt():
     pval = pval / pval.sum(axis=1)[:, None]
     uval = numpy.ones(pval.shape[0]*n_samples) * 0.5
     f(pval, uval, n_samples)
-    
+
     # Test with a row, it was failing in the past.
     r = tensor.frow()
     m = multinomial.MultinomialWOReplacementFromUniform('auto')(r, u, n)
