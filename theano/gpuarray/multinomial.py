@@ -282,9 +282,7 @@ KERNEL void k_multi_warp_multinomial_wor(
     const ga_size nb_multi,
     const ga_size nb_outcomes,
     const ga_size n_samples,
-    // GLOBAL_MEM int * ga_n_samples,
     GLOBAL_MEM float * global_pvals_copy,
-    // GLOBAL_MEM float * global_pvals,
     const ga_ssize pvals_row_stride,
     const ga_ssize pvals_col_stride,
     GLOBAL_MEM float * global_unis,
@@ -394,8 +392,7 @@ KERNEL void k_multi_warp_multinomial_wor(
     }
     
     %(out)s = out;
-        
-    GpuArray_memset(&(out->ga), -1);
+    
     { // NESTED SCOPE
         int nb_multi = PyGpuArray_DIMS(pvals)[0];
         int nb_outcomes = PyGpuArray_DIMS(pvals)[1];
@@ -406,14 +403,11 @@ KERNEL void k_multi_warp_multinomial_wor(
         do
         {
             nb_threads*=2;
-            if (nb_multi % %nb_threads == 0)
+            if (nb_multi %% nb_threads == 0)
                 nb_blocks = nb_multi/nb_threads;
             else
                 nb_blocks = (int)((float)nb_multi/(float)nb_threads + 1.);
         } while (nb_blocks > max_nb_blocks);
-
-        //printf("\\nN=%%i b=%%i t=%%i t*b=%%i",
-        //         nb_multi, nb_blocks, nb_threads, nb_blocks*nb_threads);
 
         // TODO : next line is a bit hardcoded...
         if (nb_threads > 512)
@@ -464,7 +458,7 @@ KERNEL void k_multi_warp_multinomial_wor(
         return s
 
     def c_code_cache_version(self):
-        return None
+        return (1,)
 
 
 @register_opt()

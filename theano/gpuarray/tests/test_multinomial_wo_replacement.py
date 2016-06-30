@@ -4,14 +4,8 @@ from theano import config, function, tensor
 from theano.sandbox import multinomial
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 import unittest
-from .config import mode_with_gpu, mode_without_gpu
+from .config import mode_with_gpu
 from ..multinomial import GPUAMultinomialWOReplacementFromUniform
-
-def get_mode(gpu):
-    mode = mode_without_gpu
-    if gpu:
-        mode = mode_with_gpu
-    return mode
 
 
 class test_OP(unittest.TestCase):
@@ -173,7 +167,7 @@ def test_gpu_opt():
     m = multinomial.MultinomialWOReplacementFromUniform('auto')(p, u, n)
     assert m.dtype == 'int64', m.dtype
 
-    f = function([p, u, n], m, allow_input_downcast=True, mode=get_mode(True))
+    f = function([p, u, n], m, allow_input_downcast=True, mode=mode_with_gpu)
     assert any([type(node.op) is GPUAMultinomialWOReplacementFromUniform
                 for node in f.maker.fgraph.toposort()])
     n_samples = 3
@@ -187,7 +181,7 @@ def test_gpu_opt():
     m = multinomial.MultinomialWOReplacementFromUniform('auto')(r, u, n)
     assert m.dtype == 'int64', m.dtype
 
-    f = function([r, u, n], m, allow_input_downcast=True, mode=get_mode(True))
+    f = function([r, u, n], m, allow_input_downcast=True, mode=mode_with_gpu)
     assert any([type(node.op) is GPUAMultinomialWOReplacementFromUniform
                 for node in f.maker.fgraph.toposort()])
     pval = numpy.arange(1 * 4, dtype='float32').reshape((1, 4)) + 0.1
