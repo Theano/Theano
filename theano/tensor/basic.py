@@ -635,7 +635,8 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                 if isinstance(inp, Constant):
                     return numpy.asarray(inp.data.shape[i])
                 # The shape of a broadcastable dimension is 1
-                if inp.type.broadcastable[i]:
+                if (hasattr(inp.type, 'broadcastable') and
+                        inp.type.broadcastable[i]):
                     return numpy.asarray(1)
 
             # Don't act as the constant_folding optimization here as this
