@@ -997,7 +997,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         if not all(inp.type == it for inp, it in zip(inputs, self.itypes)):
             raise TypeError(
                 "We expected inputs of types '%s' but got types '%s' " %
-                (str([inp.type for inp in inputs]), str(self.itypes)))
+                (str(self.itypes), str([inp.type for inp in inputs])))
         return theano.Apply(self, inputs, [o() for o in self.otypes])
 
 
