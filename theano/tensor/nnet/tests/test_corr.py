@@ -32,8 +32,8 @@ class TestCorr2D(utt.InferShapeTester):
 
     def validate(self, image_shape, filter_shape,
                  border_mode='valid', subsample=(1, 1),
-                 input=None, filters=None,
-                 verify_grad=True, non_contiguous=False):
+                 input=None, filters=None, verify_grad=True,
+                 non_contiguous=False, filter_dilation=(1, 1)):
         """
         :param image_shape: The constant shape info passed to corrMM.
         :param filter_shape: The constant shape info passed to corrMM.
@@ -55,7 +55,8 @@ class TestCorr2D(utt.InferShapeTester):
             # define theano graph and function
             input.name = 'input'
             filters.name = 'filters'
-            rval = corr.CorrMM(border_mode, subsample)(input, filters)
+            rval = corr.CorrMM(border_mode, subsample,
+                               filter_dilation)(input, filters)
             rval.name = 'corr_output'
             return rval
 
@@ -86,20 +87,22 @@ class TestCorr2D(utt.InferShapeTester):
         orig_image_data = image_data
         img_shape2d = numpy.array(N_image_shape[-2:])
         fil_shape2d = numpy.array(N_filter_shape[-2:])
+        dil_shape2d = numpy.array(filter_dilation)
+        dil_fil_shape2d = (fil_shape2d - 1) * dil_shape2d + 1
         subsample2d = numpy.array(subsample)
         if border_mode == 'full':
-            padHW = (fil_shape2d - 1)
+            padHW = (dil_fil_shape2d - 1)
         elif border_mode == 'valid':
             padHW = numpy.array([0, 0])
         elif border_mode == 'half':
-            padHW = numpy.floor(fil_shape2d / 2).astype('int32')
+            padHW = numpy.floor(dil_fil_shape2d / 2).astype('int32')
         elif isinstance(border_mode, tuple):
             padHW = numpy.array(border_mode)
         elif isinstance(border_mode, integer_types):
             padHW = numpy.array([border_mode, border_mode])
         else:
             raise NotImplementedError('Unsupported border_mode {}'.format(border_mode))
-        out_shape2d = numpy.floor((img_shape2d + 2 * (padHW) - fil_shape2d) / subsample2d) + 1
+        out_shape2d = numpy.floor((img_shape2d + 2 * (padHW) - dil_fil_shape2d) / subsample2d) + 1
         # avoid numpy deprecation
         out_shape2d = out_shape2d.astype('int32')
         out_shape = (N_image_shape[0], N_filter_shape[0]) + tuple(out_shape2d)
@@ -124,8 +127,8 @@ class TestCorr2D(utt.InferShapeTester):
                         for col in range(ref_output.shape[3]):
                             icol = col * subsample[1]  # image col
                             ref_output[bb, nn, row, col] += (image2d[
-                                irow:irow + N_filter_shape[2],
-                                icol:icol + N_filter_shape[3]] * filter2d[::-1, ::-1]
+                                irow:irow + dil_fil_shape2d[0]:filter_dilation[0],
+                                icol:icol + dil_fil_shape2d[1]:filter_dilation[1]] * filter2d[::-1, ::-1]
                             ).sum()
 
         self.assertTrue(_allclose(theano_output, ref_output))
@@ -185,6 +188,28 @@ class TestCorr2D(utt.InferShapeTester):
         self.validate((1, 1, 6, 6), (1, 1, 3, 3), (1, 2), subsample=(3, 3))
 
         self.validate((1, 1, 6, 6), (1, 1, 3, 3), 1, subsample=(3, 3))
+
+    def test_filter_dilation(self):
+        """
+        Tests correlation where filter dilation != (1,1)
+        """
+        self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid', filter_dilation=(2, 2))
+        self.validate((3, 2, 14, 10), (5, 2, 2, 3), 'valid', filter_dilation=(3, 1))
+        self.validate((1, 1, 14, 14), (1, 1, 3, 3), 'valid', filter_dilation=(2, 3))
+
+        self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'full', filter_dilation=(2, 2))
+        self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'full', filter_dilation=(3, 1))
+        self.validate((1, 1, 6, 6), (1, 1, 3, 3), 'full', filter_dilation=(2, 3))
+
+        self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'half', filter_dilation=(2, 2))
+        self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'half', filter_dilation=(3, 1))
+        self.validate((1, 1, 6, 6), (1, 1, 3, 3), 'half', filter_dilation=(2, 3))
+
+        self.validate((3, 2, 7, 5), (5, 2, 2, 3), (1, 1), filter_dilation=(2, 2))
+        self.validate((3, 2, 7, 5), (5, 2, 2, 3), (2, 1), filter_dilation=(2, 1))
+        self.validate((1, 1, 6, 6), (1, 1, 3, 3), (1, 2), filter_dilation=(1, 2))
+
+        self.validate((1, 1, 6, 6), (1, 1, 3, 3), 1, subsample=(3, 3), filter_dilation=(2, 2))
 
     @attr('slow')
     def test_shape_Constant_tensor(self):

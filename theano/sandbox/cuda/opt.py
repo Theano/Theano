@@ -1622,7 +1622,8 @@ def local_conv_gemm(node):
                     # because we are not allowed to replace a CudaNdarray with
                     # a DimShuffle instance in a graph optimization)
                     rval = theano.sandbox.cuda.as_cuda_ndarray_variable(
-                        GpuCorrMM_gradWeights(border_mode, subsample)(
+                        GpuCorrMM_gradWeights(border_mode,
+                                              subsample)(
                             gpu_contiguous(img.dimshuffle(1, 0, 2, 3)),
                             gpu_contiguous(kern.dimshuffle(1, 0, 2, 3))
                         ).dimshuffle(1, 0, 2, 3))
@@ -2769,28 +2770,33 @@ def local_abstractconv_gemm(node):
 
     border_mode = node.op.border_mode
     subsample = node.op.subsample
-    if (border_mode == 'full') and (subsample == (1, 1)):
+    filter_dilation = node.op.filter_dilation
+    if ((border_mode == 'full') and (subsample == (1, 1))):
         if not node.op.filter_flip:
             kern = kern[:, :, ::-1, ::-1]
         # need to dimshuffle the kernel for full convolution
         kern = kern.dimshuffle(1, 0, 2, 3)
         # call GpuCorrMM_gradInputs
-        rval = GpuCorrMM_gradInputs('valid', subsample)(
+        rval = GpuCorrMM_gradInputs('valid',
+                                    subsample,
+                                    filter_dilation)(
             gpu_contiguous(kern), gpu_contiguous(img))
     else:
         # need to flip the kernel if necessary
         if node.op.filter_flip:
             kern = kern[:, :, ::-1, ::-1]
         # By default use GpuCorrMM
-        rval = GpuCorrMM(border_mode, subsample)(gpu_contiguous(img),
-                                                 gpu_contiguous(kern))
+        rval = GpuCorrMM(border_mode,
+                         subsample,
+                         filter_dilation)(gpu_contiguous(img),
+                                          gpu_contiguous(kern))
 
         # call GpuCorrMM_gradWeights if good
         # (the latter is faster if batchsize * kernelHeight * kernelWidth
         # is larger than inputChannels * outputHeight * outputWidth.
         # GpuConv does not always store information on the batchsize and
         # channels, though, so we only use what information we have.)
-        if ((subsample == (1, 1)) and
+        if ((subsample == (1, 1)) and (filter_dilation == (1, 1)) and
                 (node.op.imshp is not None) and
                 (None not in node.op.imshp[-2:]) and
                 (node.op.kshp is not None) and
@@ -2810,7 +2816,9 @@ def local_abstractconv_gemm(node):
                 # because we are not allowed to replace a CudaNdarray with
                 # a DimShuffle instance in a graph optimization)
                 rval = theano.sandbox.cuda.as_cuda_ndarray_variable(
-                    GpuCorrMM_gradWeights(border_mode, subsample)(
+                    GpuCorrMM_gradWeights(border_mode,
+                                          subsample,
+                                          filter_dilation)(
                         gpu_contiguous(img.dimshuffle(1, 0, 2, 3)),
                         gpu_contiguous(kern.dimshuffle(1, 0, 2, 3))
                     ).dimshuffle(1, 0, 2, 3))
@@ -2827,7 +2835,8 @@ def local_abstractconv_gradweight_gemm(node):
         return None
 
     rval = GpuCorrMM_gradWeights(border_mode=node.op.border_mode,
-                                 subsample=node.op.subsample)(
+                                 subsample=node.op.subsample,
+                                 filter_dilation=node.op.filter_dilation)(
         gpu_contiguous(img), gpu_contiguous(topgrad), shape)
     if node.op.filter_flip:
         rval = rval[:, :, ::-1, ::-1]
@@ -2849,7 +2858,8 @@ def local_abstractconv_gradinputs_gemm(node):
         kern = kern[:, :, ::-1, ::-1]
 
     rval = GpuCorrMM_gradInputs(border_mode=node.op.border_mode,
-                                subsample=node.op.subsample)(
+                                subsample=node.op.subsample,
+                                filter_dilation=node.op.filter_dilation)(
         gpu_contiguous(kern), gpu_contiguous(topgrad), shape)
     return [rval]
 
@@ -2870,10 +2880,12 @@ conv_groupopt.register('local_abstractconv_dnn',
 conv_groupopt.register('local_abstractconv_gemm', local_abstractconv_gemm, 30,
                        'conv_gemm',
                        'gpu', 'fast_compile', 'fast_run')
+
 conv_groupopt.register('local_abstractconv_gradweight_gemm',
                        local_abstractconv_gradweight_gemm, 30,
                        'conv_gemm',
                        'gpu', 'fast_compile', 'fast_run')
+
 conv_groupopt.register('local_abstractconv_gradinputs_gemm',
                        local_abstractconv_gradinputs_gemm, 30,
                        'conv_gemm',
