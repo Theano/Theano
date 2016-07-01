@@ -1170,7 +1170,7 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
             # This if is needed to prevent some useless warning about
             # old code bug.
             expanded_y = alloc(y, *[x.shape[i] for i in xrange(x.ndim)])
-            flattened_y = expanded_y.flatten(inner_x.ndim)
+            flattened_y = expanded_y.reshape(inner_x.shape)
         else:
             flattened_y = y
 
