@@ -3362,23 +3362,17 @@ def test_local_subtensor_of_alloc():
             for slices in slicess:
                 z = yx.__getitem__(slices)
                 f = theano.function([x], z)
-                assert check_stack_trace(f, ops_to_check='all')
                 if theano.config.mode != 'FAST_COMPILE':
                     # Subtensor can be in the input of Alloc
                     assert not isinstance(f.maker.fgraph.toposort()[-1].op,
                                           Subtensor)
+                    if not (isinstance(f.maker.fgraph.toposort()[-1].op,
+                                       DeepCopyOp) and len(f.maker.fgraph.toposort())==1):
+                        assert check_stack_trace(
+                                f, ops_to_check=[tensor.Alloc, Subtensor, tensor.Rebroadcast],
+                                bug_print='ignore')
                 val = f(xval)
                 assert xval.__getitem__(slices).shape == val.shape
-
-
-def test_local_inplace_incsubtensor1():
-    # Test local_inplace_incsubtensor1 for stack trace
-    x = fmatrix()
-    y = x**2
-    a = lmatrix()
-    z = advanced_inc_subtensor1(y, a, [1,3])
-    f = theano.function([x, a], z)
-    assert check_stack_trace(f, ops_to_check='all')
 
 
 def test_local_fill_useless():
