@@ -3370,9 +3370,8 @@ def local_adv_sub1_adv_inc_sub1(node):
             T.extract_constant(x, elemwise=False) != 0):
         return
     cond = [T.all(T.and_(T.lt(idx, x.shape[0]), T.ge(idx, -x.shape[0])))]
-    if (not hasattr(node.fgraph, 'shape_feature') or
-        not node.fgraph.shape_feature.same_shape(idx, y, 0, 0)):
-         cond.append(T.eq(idx.shape[0], y.shape[0]))
+    if (not hasattr(node.fgraph, 'shape_feature')):
+        cond.append(T.eq(idx.shape[0], y.shape[0]))
     r = Assert("Bad indexing or shapes in a AdvancedIncSubtensor1 "
                "that was optimized away")(y, *cond)
     copy_stack_trace(y, r)

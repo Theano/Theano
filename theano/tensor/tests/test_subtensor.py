@@ -1558,6 +1558,8 @@ class TestInferShape(utt.InferShapeTester):
     @attr('slow')
     def test_infer_shape(self):
         # IncSubtensor
+        if config.mode == "FAST_COMPILE":
+            raise SkipTest("This is not FAST_COMPILE")
         admat = dmatrix()
         bdmat = dmatrix()
         advec = dvector()
@@ -1720,6 +1722,8 @@ class TestInferShape(utt.InferShapeTester):
                     [admat_val, advec_val], AdvancedIncSubtensor)
 
     def test_adv_sub(self):
+        if config.mode == "FAST_COMPILE":
+            raise SkipTest("This is not FAST_COMPILE")
         admat = dmatrix()
         aivec = lvector()
         bivec = lvector()

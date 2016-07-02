@@ -983,6 +983,8 @@ class T_random_function(utt.InferShapeTester):
         super(T_random_function, self).setUp()
 
     def test_infer_shape(self):
+        if theano.config.mode == "FAST_COMPILE":
+            raise utt.SkipTest("This is not FAST_COMPILE")
         rng_R = random_state_type()
         rng_R_val = numpy.random.RandomState(utt.fetch_seed())
 

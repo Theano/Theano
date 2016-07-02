@@ -557,6 +557,8 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                              test_nan=True)
 
     def test_infer_shape(self, dtype=None, pre_scalar_op=None):
+        if theano.config.mode == "FAST_COMPILE":
+            raise utt.SkipTest("not a FAST_COMPILE")
         if dtype is None:
             dtype = theano.config.floatX
         for xsh, tosum in self.cases:
@@ -1159,6 +1161,8 @@ class TestBitOpReduceGrad(unittest.TestCase):
 class TestElemwise(unittest_tools.InferShapeTester):
 
     def test_infer_shape(self):
+        if theano.config.mode == "FAST_COMPILE":
+            raise utt.SkipTest("not a FAST_COMPILE")
 
         for s_left, s_right in [((5, 6), (5, 6)),
                            ((5, 6), (5, 1)),

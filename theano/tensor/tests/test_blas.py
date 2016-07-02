@@ -2,6 +2,8 @@ from __future__ import absolute_import, print_function, division
 from copy import copy
 from itertools import product as itertools_product
 from unittest import TestCase
+from nose.plugins.skip import SkipTest
+
 
 import numpy
 from numpy import (arange, array, common_type, complex64, complex128, float32,
@@ -2162,6 +2164,11 @@ class TestBlasStrides(TestCase):
 
 
 class test_infer_shape(unittest_tools.InferShapeTester):
+
+    def setUp(self):
+        if config.mode == "FAST_COMPILE":
+            raise SkipTest("not FAST_COMPILE")
+
     def test_dot22(self):
         x, y = T.matrices('xy')
         self._compile_and_check(

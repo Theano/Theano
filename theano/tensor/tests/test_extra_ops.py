@@ -100,6 +100,8 @@ class TestSearchsortedOp(utt.InferShapeTester):
 
     def test_infer_shape(self):
         # Test using default parameters' value
+        if theano.config.mode == "FAST_COMPILE":
+            raise utt.SkipTest("not a FAST_COMPILE")
         self._compile_and_check([self.x, self.v],
                                 [searchsorted(self.x, self.v)],
                                 [self.a[self.idx_sorted], self.b],
@@ -147,6 +149,8 @@ class TestCumsumOp(utt.InferShapeTester):
             assert np.allclose(np.cumsum(a, axis=axis), f(a))
 
     def test_infer_shape(self):
+        if theano.config.mode == "FAST_COMPILE":
+            raise utt.SkipTest("not a FAST_COMPILE")
         x = T.tensor3('x')
         a = np.random.random((3, 5, 2)).astype(config.floatX)
 
@@ -194,6 +198,8 @@ class TestCumprodOp(utt.InferShapeTester):
             assert np.allclose(np.cumprod(a, axis=axis), f(a))
 
     def test_infer_shape(self):
+        if theano.config.mode == "FAST_COMPILE":
+            raise utt.SkipTest("not a FAST_COMPILE")
         x = T.tensor3('x')
         a = np.random.random((3, 5, 2)).astype(config.floatX)
 
@@ -299,6 +305,8 @@ class TestBinCountOp(utt.InferShapeTester):
 
     @attr('slow')
     def test_infer_shape(self):
+        if theano.config.mode == "FAST_COMPILE":
+            raise utt.SkipTest("not a FAST_COMPILE")
         for dtype in tensor.discrete_dtypes:
             # uint64 always fails
             # int64 and uint32 also fail if python int are 32-bit
@@ -363,6 +371,8 @@ class TestDiffOp(utt.InferShapeTester):
                 assert np.allclose(np.diff(a, n=k, axis=axis), g(a))
 
     def test_infer_shape(self):
+        if theano.config.mode == "FAST_COMPILE":
+            raise utt.SkipTest("not a FAST_COMPILE")
         x = T.matrix('x')
         a = np.random.random((30, 50)).astype(config.floatX)
 
@@ -416,6 +426,8 @@ class SqueezeTester(utt.InferShapeTester):
             assert numpy.allclose(tested, expected)
 
     def test_infer_shape(self):
+        if theano.config.mode == "FAST_COMPILE":
+            raise utt.SkipTest("not a FAST_COMPILE")
         for shape, broadcast in zip(self.shape_list, self.broadcast_list):
             data = numpy.random.random(size=shape).astype(theano.config.floatX)
             variable = tensor.TensorType(theano.config.floatX, broadcast)()
@@ -563,6 +575,8 @@ class TestRepeatOp(utt.InferShapeTester):
 
     @attr('slow')
     def test_infer_shape(self):
+        if theano.config.mode == "FAST_COMPILE":
+            raise utt.SkipTest("not a FAST_COMPILE")
         for ndim in range(4):
             x = T.TensorType(config.floatX, [False] * ndim)()
             shp = (numpy.arange(ndim) + 1) * 5
@@ -633,6 +647,8 @@ class TestBartlett(utt.InferShapeTester):
         assert numpy.allclose(f(b[0]), numpy.bartlett(b[0]))
 
     def test_infer_shape(self):
+        if theano.config.mode == "FAST_COMPILE":
+            raise utt.SkipTest("not a FAST_COMPILE")
         x = tensor.lscalar()
         self._compile_and_check([x], [self.op(x)],
                                 [numpy.random.randint(3, 51, size=())],
@@ -685,6 +701,8 @@ class TestFillDiagonal(utt.InferShapeTester):
                         n_tests=1, rng=TestFillDiagonal.rng)
 
     def test_infer_shape(self):
+        if theano.config.mode == "FAST_COMPILE":
+            raise utt.SkipTest("not a FAST_COMPILE")
         z = tensor.dtensor3()
         x = tensor.dmatrix()
         y = tensor.dscalar()
@@ -746,6 +764,8 @@ class TestFillDiagonalOffset(utt.InferShapeTester):
                             n_tests=1, rng=TestFillDiagonalOffset.rng)
 
     def test_infer_shape(self):
+        if theano.config.mode == "FAST_COMPILE":
+            raise utt.SkipTest("not a FAST_COMPILE")
         x = tensor.dmatrix()
         y = tensor.dscalar()
         z = tensor.iscalar()
@@ -857,6 +877,8 @@ class test_Unique(utt.InferShapeTester):
         """
         Testing the infer_shape with a vector.
         """
+        if theano.config.mode == "FAST_COMPILE":
+            raise utt.SkipTest("not a FAST_COMPILE")
         x = theano.tensor.vector()
 
         for op in self.ops:
@@ -876,6 +898,8 @@ class test_Unique(utt.InferShapeTester):
         """
         Testing the infer_shape with a matrix.
         """
+        if theano.config.mode == "FAST_COMPILE":
+            raise utt.SkipTest("not a FAST_COMPILE")
         x = theano.tensor.matrix()
 
         for op in self.ops:
