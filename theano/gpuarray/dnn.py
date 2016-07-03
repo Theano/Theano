@@ -354,8 +354,7 @@ class GpuDnnConvDesc(COp):
     def do_constant_folding(self, node):
         return False
 
-    def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv',
-                 precision="float32"):
+    def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv'):
         COp.__init__(self, ["conv_desc.c"], "APPLY_SPECIFIC(conv_desc)")
 
         if isinstance(border_mode, integer_types):
@@ -375,14 +374,15 @@ class GpuDnnConvDesc(COp):
         assert conv_mode in ('conv', 'cross')
         self.conv_mode = conv_mode
 
-        assert precision in ['float16', 'float32', 'float64']
-        self.precision = precision
-
-    def make_node(self, kern_shape):
+    def make_node(self, kern_shape,precision="float32"):
         if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
             raise TypeError('kern must be 1D shape tensor')
 
-        node = Apply(self, [kern_shape],
+        if precision not in ['float16', 'float32', 'float64']:
+        	raise TypeError('precision must be one of float16, float32, float64')
+        else:
+        	precision = int(precision[5:]) # float32 is now 32
+        node = Apply(self, [kern_shape, precision],
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
         # DebugMode cannot compare the values of CDataType variables, so by
@@ -424,20 +424,11 @@ class GpuDnnConvDesc(COp):
         else:
             sub2 = '0'
 
-        if self.precision == 'float16':
-            precision = 'CUDNN_DATA_HALF'
-        elif self.precision == 'float32':
-            precision = 'CUDNN_DATA_FLOAT'
-        else:
-            assert self.precision == 'float64'
-            precision = 'CUDNN_DATA_DOUBLE'
-
         return [('NB_DIMS', str(len(self.subsample))),
                 ('BORDER_MODE', bmode),
                 ('PAD_0', pad0), ('PAD_1', pad1), ('PAD_2', pad2),
                 ('CONV_MODE', conv_flag),
-                ('SUB_0', sub0), ('SUB_1', sub1), ('SUB_2', sub2),
-                ('PRECISION', precision)]
+                ('SUB_0', sub0), ('SUB_1', sub1), ('SUB_2', sub2)]
 
     def c_code_cache_version(self):
         return (super(GpuDnnConvDesc, self).c_code_cache_version(), version())
