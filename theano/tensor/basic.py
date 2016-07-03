@@ -3172,7 +3172,7 @@ def var(input, axis=None, keepdims=False, corrected=False):
     v = mean((centered_input ** 2), axis, keepdims=keepdims)
 
     # use 'corrected_two_pass' algorithm
-    if corrected :
+    if corrected:
         error = mean(centered_input, axis, keepdims=keepdims)**2
         v = v - error
 
