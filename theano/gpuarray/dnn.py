@@ -937,7 +937,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
         shape2 = shape_i(img, 2, fgraph) - shape_i(kerns, 2, fgraph) + 1
         shape3 = shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1
-        out = gpu_alloc_empty(img.dtype, ctx_name)(
+        out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(
             shape_i(kerns, 1, fgraph),
             shape_i(img, 1, fgraph), shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
@@ -955,7 +955,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
         shape2 = shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1
         shape3 = shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1
-        out = gpu_alloc_empty(img.dtype, ctx_name)(shape_i(img, 0, fgraph),
+        out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(shape_i(img, 0, fgraph),
                                                    shape_i(kerns, 1, fgraph),
                                                    shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
@@ -977,7 +977,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     out_shp = get_conv_output_shape(ishape, kshape,
                                     desc_op.border_mode,
                                     desc_op.subsample)
-    out = gpu_alloc_empty(img.dtype, ctx_name)(*out_shp)
+    out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(*out_shp)
     return gpu_dnn_conv(algo=algo)(img, kerns, out, desc)
 
 
@@ -991,7 +991,7 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
     kerns_shp = as_tensor_variable(kerns_shp)
     desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
                              conv_mode=conv_mode)(kerns_shp)
-    out = gpu_alloc_empty(img.dtype, ctx_name)(*kerns_shp)
+    out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(*kerns_shp)
     return gpu_dnn_conv_gradW()(img, topgrad, out, desc)
 
 
@@ -1005,7 +1005,7 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
     img_shp = as_tensor_variable(img_shp)
     desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
                              conv_mode=conv_mode)(kerns.shape)
-    out = gpu_alloc_empty(kerns.dtype, ctx_name)(*img_shp)
+    out = gpu_alloc_empty(ctx_name, kerns.dtype)(*img_shp)
     return gpu_dnn_conv_gradI()(kerns, topgrad, out, desc)
 
 
@@ -1480,7 +1480,7 @@ def local_abstractconv_cudnn(node):
         return
     return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
-conv_groupopt.register('local_abstractconv_cudnn_graph',
+conv_groupopt.register('local_abstractconv_cudnn',
                        local_abstractconv_cudnn, 20,
                        'fast_compile', 'fast_run',
                        'gpuarray', 'conv_dnn', 'cudnn')
@@ -1549,7 +1549,7 @@ def local_dnn_convi_output_merge(node, *inputs):
 
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([Pool])
-@register_opt2([Pool], 'fast_compile')
+@register_opt2([Pool], 'fast_compile', 'cudnn')
 def local_pool_dnn_alternative(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn()
@@ -1566,7 +1566,7 @@ def local_pool_dnn_alternative(op, ctx_name, inputs, outputs):
 
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([MaxPoolGrad])
-@register_opt2([MaxPoolGrad], 'fast_compile')
+@register_opt2([MaxPoolGrad], 'fast_compile', 'cudnn')
 def local_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn()
@@ -1591,7 +1591,7 @@ def local_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
 
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([AveragePoolGrad])
-@register_opt2([AveragePoolGrad], 'fast_compile')
+@register_opt2([AveragePoolGrad], 'fast_compile', 'cudnn')
 def local_avg_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn()
@@ -1645,7 +1645,7 @@ def local_log_softmax_dnn(node):
 
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([LogSoftmax])
-@register_opt2([LogSoftmax], 'fast_compile')
+@register_opt2([LogSoftmax], 'fast_compile', 'cudnn')
 def local_logsoftmax_to_dnn(op, ctx_name, inputs, outputs):
     # Transform the input in the format expected by GpuDnnSoftmax
     inp = inputs[0]

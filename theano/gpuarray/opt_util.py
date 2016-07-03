@@ -324,8 +324,7 @@ def inplace_allocempty(op, idx):
             if (alloc.owner and
                     isinstance(alloc.owner.op, GpuAllocEmpty) and
                     len(alloc.clients) > 1):
-                alloc_op = gpu_alloc_empty(alloc.owner.op.dtype,
-                                           alloc.owner.op.context_name)
+                alloc_op = gpu_alloc_empty(alloc.owner.op.context_name, dtype=alloc.owner.op.dtype)
                 inputs[idx] = alloc_op(*alloc.owner.inputs)
             return maker(node, inputs)
         return opt

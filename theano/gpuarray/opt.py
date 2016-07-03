@@ -59,11 +59,10 @@ _logger = logging.getLogger("theano.gpuarray.opt")
 
 
 gpu_optimizer = EquilibriumDB()
-gpu_optimizer2 = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
 
-old_not_transferred = []
-new_not_transferred = []
+# Not used for an EquilibriumOptimizer. It has the "tracks" that we need for GraphToGPUDB.
+gpu_optimizer2 = EquilibriumDB()
 
 
 class GraphToGPUDB(DB):
@@ -207,8 +206,7 @@ def op_lifter(OP, cuda_only=False):
                     i.tag.context_name = context_name
 
                 new_op = maker(node.op, context_name, node.inputs, node.outputs)
-                if not new_op:
-                    old_not_transferred.append(node)
+
                 # This is needed as sometimes new_op inherits from OP.
                 if new_op and new_op != node.op:
                     if isinstance(new_op, theano.Op):
@@ -375,8 +373,6 @@ class GraphToGPU(NavigatorOptimizer):
             if not new_ops:
                 newnode = node.clone_with_new_inputs([mapping.get(i)
                                                       for i in node.inputs])
-                new_not_transferred.append(newnode)
-
                 outputs = newnode.outputs
             elif isinstance(new_ops, (tuple, list)):
                 outputs = []
@@ -596,7 +592,7 @@ def local_gpuaallocempty(op, context_name, inputs, outputs):
     # We use _props_dict() to make sure that the GPU op know all the
     # CPU op props.
     dtype = op._props_dict().get('dtype')
-    return gpu_alloc_empty(dtype, context_name)(*inputs)
+    return gpu_alloc_empty(context_name, dtype=dtype)(*inputs)
 
 
 @register_opt()
@@ -921,17 +917,14 @@ def local_gpua_subtensor(op, context_name, inputs, outputs):
                 isinstance(gpu_x.owner.op, GpuFromHost) and
                 # And it is a shared var or an input of the graph.
                 not gpu_x.owner.inputs[0].owner):
-            if len(x.clients) == 1 and len(outputs[0].clients) == 1:
-                return
-    # Here is the condition for the GraphToGPU opt. inputs is the
-    # inputs we want to use for the new node
-    if (x.owner and isinstance(x.owner.op, GpuFromHost)):
-        cpu_x = x.owner.inputs[0]
-        # And it is a shared var or an input of the graph.
-        # and is used by only 1 node.
-        # x is in the new graph, so we can't tests its number of clients.
-        if not cpu_x.owner and len(cpu_x.clients) == 1:
-            return
+            if len(x.clients) == 1:
+                if any([n == 'output' or any([isinstance(v.type, GpuArrayType)
+                                              for v in n.inputs + n.outputs])
+                        for n, _ in outputs[0].clients]):
+                    return
+                else:
+                    return [host_from_gpu(gpu_x.owner.op(outputs[0]))]
+
     return GpuSubtensor(op.idx_list)
 
 
@@ -1146,8 +1139,8 @@ def local_gpua_hgemm(op, context_name, inputs, outputs):
     B = inputs[1]
     if (A.ndim == 2 and B.ndim == 2 and
             A.dtype == 'float16' and B.dtype == 'float16'):
-        fgraph = inputs[0].fgraph
-        C = gpu_alloc_empty('float16', context_name)(
+        fgraph = outputs[0].fgraph
+        C = gpu_alloc_empty(context_name, dtype='float16')(
             shape_i(A, 0, fgraph),
             shape_i(B, 1, fgraph))
         return gpugemm_no_inplace(C, 1.0, A, B, 0.0)
@@ -1198,7 +1191,7 @@ def local_gpua_dot22scalar(op, context_name, inputs, outputs):
     x, y, a = inputs
     x = as_gpuarray_variable(x, context_name)
     y = as_gpuarray_variable(y, context_name)
-    z = gpu_alloc_empty(x.dtype, context_name)(x.shape[0], y.shape[1])
+    z = gpu_alloc_empty(context_name, dtype=x.dtype)(x.shape[0], y.shape[1])
     return [gpugemm_no_inplace(z, a, x, y, 0)]
 
 
@@ -1298,7 +1291,7 @@ def local_inplace_sparseblockouter(node):
 
 
 # This deals with any abstract convs that have a transfer somewhere
-@register_opt('fast_compile', 'conv_dnn')
+@register_opt('fast_compile')
 @op_lifter([AbstractConv2d,
             AbstractConv2d_gradWeights,
             AbstractConv2d_gradInputs])

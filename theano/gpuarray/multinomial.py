@@ -243,9 +243,6 @@ def local_gpua_multinomial(op, context_name, inputs, outputs):
             return None
     except NotScalarConstantError:
         return None
-
-    node = op.make_node(*inputs)
-    outputs = node.outputs
     m, = outputs
     if (p.dtype == u.dtype == m.dtype == 'float32'):
         gpu_op = GPUAMultinomialFromUniform(op.odtype)
