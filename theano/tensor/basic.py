@@ -3126,7 +3126,7 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
 
 
 @constructor
-def var(input, axis=None, keepdims=False):
+def var(input, axis=None, keepdims=False, corrected=False):
     """
     Computes the variance along the given axis(es) of a tensor `input`.
 
@@ -3139,6 +3139,9 @@ def var(input, axis=None, keepdims=False):
         If this is set to True, the axes which are reduced are
         left in the result as dimensions with size one. With this option,
         the result will broadcast correctly against the original tensor.
+    corrected : bool
+        If this is set to True, the 'corrected_two_pass' algorithm is
+        used to compute the variance.
 
     Notes
     -----
@@ -3167,6 +3170,12 @@ def var(input, axis=None, keepdims=False):
 
     # return the mean sqr
     v = mean((centered_input ** 2), axis, keepdims=keepdims)
+
+    # use 'corrected_two_pass' algorithm
+    if corrected :
+        error = mean(centered_input, axis, keepdims=keepdims)**2
+        v = v - error
+
     v.name = 'var'
     return v
 

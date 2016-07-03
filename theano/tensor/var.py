@@ -625,9 +625,10 @@ class _tensor_py_operators(object):
                                         dtype=dtype, keepdims=keepdims,
                                         acc_dtype=acc_dtype)
 
-    def var(self, axis=None, keepdims=False):
+    def var(self, axis=None, keepdims=False, corrected=False):
         """See `theano.tensor.var`."""
-        return theano.tensor.basic.var(self, axis, keepdims=keepdims)
+        return theano.tensor.basic.var(self, axis, keepdims=keepdims, 
+                                       corrected=corrected)
 
     def std(self, axis=None, keepdims=False):
         """See `theano.tensor.std`."""

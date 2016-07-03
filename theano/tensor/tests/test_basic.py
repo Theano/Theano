@@ -6332,6 +6332,8 @@ def test_var():
     f = function([a], var(a, axis=2))
     assert numpy.allclose(numpy.var(a_val, axis=2), f(a_val))
 
+    f = function([a], var(a, corrected=True))
+    assert numpy.allclose(numpy.var(a_val), f(a_val))
 
 class T_sum(unittest.TestCase):
     def test_sum_overflow(self):
