@@ -595,6 +595,7 @@ def local_gpua_alloc(op, context_name, inputs, outputs):
 def local_gpua_alloc_empty(op, context_name, inputs, outputs):
     # We use _props_dict() to make sure that the GPU op know all the
     # CPU op props.
+
     return gpu_alloc_empty(context_name, **op._props_dict())
 
 
