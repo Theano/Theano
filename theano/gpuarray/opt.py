@@ -591,8 +591,7 @@ def local_gpuaalloc(op, context_name, inputs, outputs):
 def local_gpuaallocempty(op, context_name, inputs, outputs):
     # We use _props_dict() to make sure that the GPU op know all the
     # CPU op props.
-    dtype = op._props_dict().get('dtype')
-    return gpu_alloc_empty(context_name, dtype=dtype)(*inputs)
+    return gpu_alloc_empty(context_name, **op._props_dict())(*inputs)
 
 
 @register_opt()
@@ -960,7 +959,7 @@ def local_gpua_incsubtensor(op, context_name, inputs, outputs):
                          op.set_instead_of_inc,
                          op.destroyhandler_tolerate_aliased)
     ret = op(*inputs)
-    val = getattr(op.make_node(*inputs).outputs[0].tag, 'nan_guard_mode_check', True)
+    val = getattr(outputs[0].tag, 'nan_guard_mode_check', True)
     ret.tag.nan_guard_mode_check = val
     return ret
 

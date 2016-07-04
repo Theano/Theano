@@ -973,22 +973,7 @@ def empty_like(var):
     return GpuAllocEmpty(var.type.dtype, var.type.context_name)(*var.shape)
 
 
-def gpu_alloc_empty(ctx, **kwargs):
-    '''
-    This is the cache method of GpuAllocEmpty class.
-    This takes the parameters of context name and props_dict
-    and retrieves the dtype key from the dictionary
-
-    Parameters
-    ----------
-    ctx : String
-        The context name.
-
-    kwargs : Dict
-        The props_dict of the Op
-
-    '''
-    dtype = kwargs.get('dtype')
+def gpu_alloc_empty(ctx, dtype):
     key = (dtype, ctx)
     if key not in gpu_alloc_empty.cache:
         gpu_alloc_empty.cache[key] = GpuAllocEmpty(dtype, ctx)

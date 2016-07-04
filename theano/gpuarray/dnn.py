@@ -956,8 +956,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         shape2 = shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1
         shape3 = shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1
         out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(shape_i(img, 0, fgraph),
-                                                   shape_i(kerns, 1, fgraph),
-                                                   shape2, shape3)
+                                                         shape_i(kerns, 1, fgraph),
+                                                         shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode=conv_mode, precision=precision)(kerns.shape)
         return gpu_dnn_conv_gradI()(kerns, img, out, desc)

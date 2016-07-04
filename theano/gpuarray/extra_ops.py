@@ -2,7 +2,6 @@ from __future__ import absolute_import, print_function, division
 import os
 from theano import Apply, Op
 from theano.tensor.extra_ops import CumsumOp
-from .type import GpuArrayType
 from .basic_ops import infer_context_name
 try:
     from pygpu import gpuarray
@@ -42,6 +41,7 @@ class GpuCumsum(GpuKernelBase, Op):
         assert x.type.dtype == 'float32', "Only float32 supported for GpuCumSum"
 
         context_name = infer_context_name(x)
+
         x = as_gpuarray_variable(x, context_name)
 
         if x.ndim > GpuCumsum.SUPPORTED_NDIMS:
