@@ -80,9 +80,8 @@ Here is an example of a discrete convolution:
 .. figure:: conv_arithmetic_figures/numerical_no_padding_no_strides.gif
     :figclass: align-center
 
-The light blue grid is called the *input feature map*. (An example of this is
-what was referred to earlier as *channels* for images and sound clips.) A
-*kernel* (shaded area) of value
+The light blue grid is called the *input feature map*. A *kernel* (shaded area)
+of value
 
 .. math::
 
@@ -94,11 +93,14 @@ what was referred to earlier as *channels* for images and sound clips.) A
 
 slides across the input feature map. At each location, the product between each
 element of the kernel and the input element it overlaps is computed and the
-results are summed up to obtain the output in the current location. The
-procedure can be repeated using different kernels to form as many output feature
-maps as desired. The final outputs of this procedure are called *output feature
-maps*. To keep the drawing simple, a single input feature map is represented,
-but it is not uncommon to have multiple feature maps stacked one onto another.
+results are summed up to obtain the output in the current location. The final 
+output of this procedure is a matrix called *output feature map* (in green). 
+
+This procedure can be repeated using different kernels to form as many output
+feature maps (a.k.a. *output channels*) as desired. Note also that to keep the
+drawing simple a single input feature map is being represented, but it is not
+uncommon to have multiple feature maps stacked one onto another (an example of
+this is what was referred to earlier as *channels* for images and sound clips).
 
 .. note::
 
@@ -109,15 +111,18 @@ but it is not uncommon to have multiple feature maps stacked one onto another.
     used in this tutorial.
 
 If there are multiple input and output feature maps, the collection of kernels
-form a 4D array (``num_kernels, num_input_channels, filter_rows,
+form a 4D array (``output_channels, input_channels, filter_rows,
 filter_columns``). For each output channel, each input channel is convolved with
-a distinct kernel and the resulting set of feature maps is summed elementwise
-to produce the corresponding output feature map.
+a distinct part of the kernel and the resulting set of feature maps is summed
+elementwise to produce the corresponding output feature map. The result of this 
+procedure is a set of output feature maps, one for each output channel, that is
+the output of the convolution.
 
-The convolution depicted above is an instance of a 2-D convolution, but it can
-be generalized to N-D convolutions. For instance, in a 3-D convolution, the
-kernel would be a *cuboid* and would slide across the height, width and depth
-of the input feature map.
+
+The convolution depicted above is an instance of a 2-D convolution, but can be
+generalized to N-D convolutions. For instance, in a 3-D convolution, the kernel
+would be a *cuboid* and would slide across the height, width and depth of the
+input feature map.
 
 The collection of kernels defining a discrete convolution has a shape
 corresponding to some permutation of :math:`(n, m, k_1, \ldots, k_N)`, where
@@ -256,7 +261,7 @@ relationship:
             input, filters, input_shape=(b, c2, i1, i2), filter_shape=(c1, c2, k1, k2),
             border_mode=(p1, p2), subsample=(1, 1))
         # output.shape[2] == (i1 - k1) + 2 * p1 + 1
-        # output.shape[3] == (i2 - k2) + 2 * p1 + 1
+        # output.shape[3] == (i2 - k2) + 2 * p2 + 1
 
 Here is an example for :math:`i = 5`, :math:`k = 4` and :math:`p = 2`:
 
@@ -646,6 +651,8 @@ It is indeed the case, as shown in here for :math:`i = 5`, :math:`k = 4` and
 
 Formally, the following relationship applies for zero padded convolutions:
 
+.. _Relationship8:
+
 .. admonition:: Relationship 8
 
     A convolution described by :math:`s = 1`, :math:`k` and :math:`p` has an
@@ -773,6 +780,8 @@ For the moment, it will be assumed that the convolution is non-padded (:math:`p
 = 0`) and that its input size :math:`i` is such that :math:`i - k` is a multiple
 of :math:`s`. In that case, the following relationship holds:
 
+.. _Relationship11:
+
 .. admonition:: Relationship 11
 
     A convolution described by :math:`p = 0`, :math:`k` and :math:`s` and whose
@@ -801,7 +810,8 @@ Zero padding, non-unit strides, transposed
 
 When the convolution's input size :math:`i` is such that :math:`i + 2p - k` is a
 multiple of :math:`s`, the analysis can extended to the zero padded case by
-combining Relationship 8 and Relationship 11:
+combining :ref:`Relationship 8 <Relationship8>` and
+:ref:`Relationship 11 <Relationship11>`:
 
 .. admonition:: Relationship 12
 
@@ -859,7 +869,7 @@ between the :math:`s` different cases that all lead to the same :math:`i'`:
         o_prime2 = s2 * (output.shape[3] - 1) + a2 + k2 - 2 * p2
         input = theano.tensor.nnet.conv2d_grad_wrt_inputs(
             output, filters, input_shape=(b, c1, o_prime1, o_prime2),
-            filter_shape=(c1, c2, k, k), border_mode=(p1, p2),
+            filter_shape=(c1, c2, k1, k2), border_mode=(p1, p2),
             subsample=(s1, s2))
 
 Here is an example for :math:`i = 6`, :math:`k = 3`, :math:`s = 2` and :math:`p
