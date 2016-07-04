@@ -29,6 +29,7 @@ class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
 
         if fd != (1, 1):
             raise SkipTest("Doesn't have CUDNN implementation")
+
         o = self.get_output_shape(i, f, s, b, fd)
 
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
