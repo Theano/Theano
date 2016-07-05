@@ -4,7 +4,7 @@
 :mod:`shared_randomstreams` -- Friendly random numbers
 ======================================================
 
-.. module:: shared_randomstreams
+.. module:: theano.tensor.shared_randomstreams
    :platform: Unix, Windows
    :synopsis: symbolic random variables
 .. moduleauthor:: LISA

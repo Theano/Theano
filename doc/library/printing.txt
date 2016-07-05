@@ -4,7 +4,7 @@
 :mod:`printing` -- Graph Printing and Symbolic Print Statement
 ===============================================================
 
-.. module:: printing
+.. module:: theano.printing
    :platform: Unix, Windows
    :synopsis: Provides the Print Op and graph-printing routines.
 .. moduleauthor:: LISA
