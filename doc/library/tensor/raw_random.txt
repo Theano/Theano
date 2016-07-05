@@ -5,7 +5,7 @@
 :mod:`raw_random` -- Low-level random numbers
 =============================================
 
-.. module:: raw_random
+.. module:: theano.tensor.raw_random
    :synopsis: symbolic random variables
 .. moduleauthor:: LISA
 

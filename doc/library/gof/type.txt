@@ -4,14 +4,12 @@
 :mod:`type` -- Interface for types of variables
 ================================================
 
-.. module:: type
-   :platform: Unix, Windows
-   :synopsis: Interface for types of symbolic variables
-.. moduleauthor:: LISA
-
 ---------
 Reference
 ---------
 
 .. automodule:: theano.gof.type
-    :members:
+   :platform: Unix, Windows
+   :synopsis: Interface for types of symbolic variables
+   :members:
+.. moduleauthor:: LISA

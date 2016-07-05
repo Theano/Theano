@@ -4,7 +4,7 @@
 :mod:`nnet`  -- Ops related to neural networks
 ==================================================
 
-.. module:: nnet
+.. module:: theano.tensor.nnet
    :platform: Unix, Windows
    :synopsis: various ops relating to neural networks
 .. moduleauthor:: LISA
