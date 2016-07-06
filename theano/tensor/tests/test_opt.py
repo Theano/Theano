@@ -1722,7 +1722,7 @@ def test_local_useless_slice():
 def test_local_useless_inc_subtensor():
     is_fast_compile = config.mode == "FAST_COMPILE"
     if is_fast_compile:
-        raise SkipTest("ShapeOpt isn't supported anymore")
+        raise SkipTest("FAST_COMPILE does not do shape optimization")
     x = tensor.matrix('x')
     y = tensor.matrix('y')
     mode = compile.get_default_mode().including("local_useless_inc_subtensor")
@@ -3557,7 +3557,7 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
     def test_shape_inequality_with_self(self):
         if self.is_fast_compile:
-            raise SkipTest("No ShapeOptimizer in fast_compile")
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         x = T.vector('x', dtype=config.floatX)
         mode = theano.compile.get_default_mode().including('local_useless_elemwise_comparison',
                                                            'local_shape_to_shape_i',
@@ -3597,7 +3597,7 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
     def test_shape_add_inequality(self):
         if self.is_fast_compile:
-            raise SkipTest("No ShapeOptimizer in fast_compile")
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         x = T.vector('x', dtype=config.floatX)
         mode = theano.compile.get_default_mode().including('local_useless_elemwise_comparison',
                                                            'local_shape_to_shape_i',
@@ -3913,12 +3913,12 @@ class test_shapeoptimizer(unittest.TestCase):
         utt.seed_rng()
         self.is_fast_compile = config.mode == 'FAST_COMPILE'
         if self.is_fast_compile:
-            raise SkipTest("This is not in FAST_COMPILE")
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
 
     def test0(self):
         mode = theano.config.mode
         if self.is_fast_compile:
-            raise SkipTest("Not a fast compile")
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         if mode == 'FAST_COMPILE':
             mode = 'FAST_RUN'
         v = T.vector()
@@ -3929,10 +3929,7 @@ class test_shapeoptimizer(unittest.TestCase):
 
     def test_constant(self):
         mode = theano.config.mode
-        if self.is_fast_compile:
-            raise SkipTest("Not a fast compile")
         if mode == 'FAST_COMPILE':
-            raise SkipTest("Not a fast compile")
             mode = 'FAST_RUN'
 
         v = T.vector()
@@ -4212,7 +4209,7 @@ class test_assert(utt.InferShapeTester):
 
     def test_infer_shape(self):
         if self.is_fast_compile:
-            raise SkipTest("Not a fast_compile")
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         adscal = dscalar()
         bdscal = dscalar()
         adscal_val = numpy.random.rand()
@@ -4457,7 +4454,7 @@ class T_useless_elemwise(unittest.TestCase):
     def test_eq(self):
         # Since Shape optimizer isn't a part of fast_compile, this test isn't needed
         if self.is_fast_compile:
-            raise SkipTest("This isn't a part of fast_compile")
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         x = T.dmatrix()
         y = T.dmatrix()
         f = theano.function([x, y], T.eq(x, y), mode=self.mode)
@@ -4479,7 +4476,7 @@ class T_useless_elemwise(unittest.TestCase):
     def test_neq(self):
         # Since Shape optimizer isn't a part of fast_compile, this test isn't needed
         if self.is_fast_compile:
-            raise SkipTest("This isn't a part of fast_compile")
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         x = T.dmatrix()
         y = T.dmatrix()
         f = theano.function([x, y], T.neq(x, y), mode=self.mode)
@@ -5967,7 +5964,7 @@ class TestMakeVector(utt.InferShapeTester):
 
         # Since this tests for replacement with MakeVector Op
         if self.is_fast_compile:
-            raise SkipTest("This is not fast_compile")
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         adscal = dscalar()
         bdscal = dscalar()
         aiscal = iscalar()
@@ -6393,8 +6390,6 @@ class TestShape_i(utt.InferShapeTester):
     def setUp(self):
         super(TestShape_i, self).setUp()
         self.is_fast_compile = config.mode == 'FAST_COMPILE'
-        # if self.is_fast_compile:
-        #    SkipTest("Not a fast compile")
 
     def test_perform(self):
 
@@ -6413,7 +6408,7 @@ class TestShape_i(utt.InferShapeTester):
 
     def test_infer_shape(self):
         if self.is_fast_compile:
-            raise SkipTest("this is not fast_compile")
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         admat = matrix()
         admat_val = numpy.random.rand(3, 4).astype(config.floatX)
         self._compile_and_check([admat], [Shape_i(0)(admat)],

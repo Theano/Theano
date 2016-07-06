@@ -138,7 +138,7 @@ class test_sort(unittest.TestCase):
 class TensorInferShapeTester(utt.InferShapeTester):
     def test_sort(self):
         if theano.config.mode == "FAST_COMPILE":
-            raise SkipTest("This is not FAST_COMPILE")
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         x = tensor.matrix()
         self._compile_and_check(
                 [x],

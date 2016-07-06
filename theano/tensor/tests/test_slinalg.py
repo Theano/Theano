@@ -167,7 +167,7 @@ class test_Solve(utt.InferShapeTester):
         if not imported_scipy:
             raise SkipTest("Scipy needed for the Solve op.")
         if config.mode == "FAST_COMPILE":
-            raise SkipTest("This is not FAST_COMPILE")
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         rng = numpy.random.RandomState(utt.fetch_seed())
         A = theano.tensor.matrix()
         b = theano.tensor.matrix()

@@ -2167,7 +2167,7 @@ class test_infer_shape(unittest_tools.InferShapeTester):
 
     def setUp(self):
         if config.mode == "FAST_COMPILE":
-            raise SkipTest("not FAST_COMPILE")
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
 
     def test_dot22(self):
         x, y = T.matrices('xy')

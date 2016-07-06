@@ -558,7 +558,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
 
     def test_infer_shape(self, dtype=None, pre_scalar_op=None):
         if theano.config.mode == "FAST_COMPILE":
-            raise utt.SkipTest("not a FAST_COMPILE")
+            raise utt.SkipTest("FAST_COMPILE does not do shape optimization")
         if dtype is None:
             dtype = theano.config.floatX
         for xsh, tosum in self.cases:
@@ -1162,7 +1162,7 @@ class TestElemwise(unittest_tools.InferShapeTester):
 
     def test_infer_shape(self):
         if theano.config.mode == "FAST_COMPILE":
-            raise utt.SkipTest("not a FAST_COMPILE")
+            raise utt.SkipTest("FAST_COMPILE does not do shape optimization")
 
         for s_left, s_right in [((5, 6), (5, 6)),
                            ((5, 6), (5, 1)),

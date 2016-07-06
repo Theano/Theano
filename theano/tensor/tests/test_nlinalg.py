@@ -92,7 +92,7 @@ class test_MatrixInverse(utt.InferShapeTester):
 
     def test_infer_shape(self):
         if theano.config.mode == "FAST_COMPILE":
-            raise SkipTest("This is not FAST_COMPILE")
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         r = self.rng.randn(4, 4).astype(theano.config.floatX)
 
         x = tensor.matrix()
@@ -431,7 +431,7 @@ class test_Eig(utt.InferShapeTester):
 
     def test_infer_shape(self):
         if theano.config.mode == "FAST_COMPILE":
-            raise SkipTest("This is not FAST_COMPILE")
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         A = self.A
         S = self.S
         self._compile_and_check([A],  # theano.function inputs
@@ -582,7 +582,7 @@ class test_TensorInv(utt.InferShapeTester):
 
     def test_infer_shape(self):
         if theano.config.mode == "FAST_COMPILE":
-            raise SkipTest("This is not FAST_COMPILE")
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         A = self.A
         Ai = tensorinv(A)
         self._compile_and_check([A],  # theano.function inputs

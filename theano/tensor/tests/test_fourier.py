@@ -25,7 +25,7 @@ class TestFourier(utt.InferShapeTester):
 
     def test_infer_shape(self):
         if theano.config.mode == "FAST_COMPILE":
-            raise utt.SkipTest("not a FAST_COMPILE")
+            raise utt.SkipTest("FAST_COMPILE does not do shape optimization")
         a = tensor.dvector()
         self._compile_and_check([a], [self.op(a, 16, 0)],
                                 [numpy.random.rand(12)],
