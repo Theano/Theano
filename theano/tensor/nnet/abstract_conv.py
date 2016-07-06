@@ -33,7 +33,7 @@ _logger = logging.getLogger("theano.tensor.nnet.abstract_conv")
 
 def get_conv_output_shape(image_shape, kernel_shape,
                           border_mode, subsample,
-                          filter_dilation=(1, 1)):
+                          filter_dilation=None):
     """
     This function compute the output shape of convolution operation.
 
@@ -66,6 +66,8 @@ def get_conv_output_shape(image_shape, kernel_shape,
     """
     bsize, imshp = image_shape[0], image_shape[2:]
     nkern, kshp = kernel_shape[0], kernel_shape[2:]
+    if not filter_dilation:
+        filter_dilation = numpy.ones(numpy.asarray(subsample).shape, dtype='int')
     if isinstance(border_mode, tuple):
         out_shp = tuple(get_conv_shape_1axis(
             imshp[i], kshp[i], border_mode[i],

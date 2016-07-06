@@ -296,7 +296,7 @@ class BaseTestConv2d(unittest.TestCase):
                     for b in self.border_modes:
                         try:
                             self.tcase(i, f, s, db, dflip,
-                                       dprovide_shape, fd)
+                                       dprovide_shape)
                         except SkipTest as e:
                             skipped = e
             for flip in self.filter_flip:
