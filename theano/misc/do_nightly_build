@@ -5,6 +5,7 @@ ARGS="$@"
 PROFILING=""
 RELEASE=""
 
+echo "Go Jenkins!"
 echo "Hostname:"
 hostname
 
