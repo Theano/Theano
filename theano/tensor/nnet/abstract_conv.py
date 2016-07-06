@@ -67,7 +67,7 @@ def get_conv_output_shape(image_shape, kernel_shape,
     bsize, imshp = image_shape[0], image_shape[2:]
     nkern, kshp = kernel_shape[0], kernel_shape[2:]
     if not filter_dilation:
-        filter_dilation = numpy.ones(numpy.asarray(subsample).shape, dtype='int')
+        filter_dilation = numpy.ones(len(subsample), dtype='int')
     if isinstance(border_mode, tuple):
         out_shp = tuple(get_conv_shape_1axis(
             imshp[i], kshp[i], border_mode[i],

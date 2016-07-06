@@ -26,7 +26,7 @@ class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
             raise SkipTest(dnn_available.msg)
         mode = mode_with_gpu
 
-        o = self.get_output_shape(i, f, s, b, (1,1))
+        o = self.get_output_shape(i, f, s, b, (1, 1))
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                      verify_grad=True, mode=mode,
                      provide_shape=provide_shape, border_mode=b,
