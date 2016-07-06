@@ -93,8 +93,10 @@ gpu_seqopt.register('gpuarray_local_optimiziations', gpu_optimizer, 1,
 gpu_seqopt.register('gpuarray_cut_transfers', gpu_cut_copies, 2,
                     'fast_compile', 'fast_run', 'gpuarray')
 
-gpu_seqopt.register('op_lifter_topo', TopoOptimizer(gpu_topo.query('+fast_compile'), order='out_to_in'),
-                    10, 'fast_run', 'gpuarray', 'fast_compile')
+gpu_seqopt.register('op_lifter_topo', TopoOptimizer(gpu_topo.query('+fast_compile', '+fast_run', '+cudnn',
+                                                                   '+cudnn', '+conv_dnn', '+gpuarray'),
+                                                    order='out_to_in'),
+                    0.5, 'fast_run', 'gpuarray', 'fast_compile')
 
 # do not add 'fast_run' to these two as this would always enable gpuarray mode
 optdb.register('gpuarray_opt', gpu_seqopt,
