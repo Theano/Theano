@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 import os
 from theano import Apply, Op
 from theano.tensor.extra_ops import CumsumOp
-from .basic_ops import infer_context_name
+
 try:
     from pygpu import gpuarray
 except ImportError:
