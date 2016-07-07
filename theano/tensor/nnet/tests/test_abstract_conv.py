@@ -336,8 +336,9 @@ class TestCpuConv2d(BaseTestConv2d):
         cls.opt_err = theano.config.on_opt_error
         theano.config.on_opt_error = 'ignore'
 
-    def tearDown(self):
-        theano.config.on_opt_error = self.opt_err
+    @classmethod
+    def tearDown(cls):
+        theano.config.on_opt_error = cls.opt_err
 
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1)):
         if fd != (1, 1):
