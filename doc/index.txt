@@ -1,4 +1,4 @@
-.. Jenkins whitelist admins!!!!
+.. Jenkins whitelist org!!!!
 Welcome
 =======
 
