@@ -283,7 +283,7 @@ class TestCorr2D(utt.InferShapeTester):
                     b_tens_val = rand(b_shape, dtype=b_dtype)
 
                     c_tens = op()(a_tens, b_tens)
-                    f = theano.function([a_tens, b_tens], c_tens)
+                    f = theano.function([a_tens, b_tens], c_tens, mode=self.mode)
                     assert_equals(f(a_tens_val, b_tens_val).dtype, c_dtype)
 
     @attr('slow')
