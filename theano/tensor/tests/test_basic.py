@@ -7003,6 +7003,9 @@ class T_get_scalar_constant_value(unittest.TestCase):
         assert get_scalar_constant_value(s) == 3
         s = opt.Shape_i(1)(c)
         assert get_scalar_constant_value(s) == 4
+        d = theano.tensor.constant(numpy.random.rand(1, 1))
+        f = theano.tensor.basic.ScalarFromTensor()(opt.Shape_i(0)(d))
+        assert get_scalar_constant_value(f) == 1
 
     def test_elemwise(self):
         # We test only for a few elemwise, the list of all supported
