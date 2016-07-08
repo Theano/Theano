@@ -471,6 +471,6 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
 @register_opt('fast_compile')
 @op_lifter([Images2Neibs])
 @register_opt2([Images2Neibs], 'fast_compile')
-def use_gpu_images2neibs(op, context_name, inputs):
+def local_gpua_images2neibs(op, context_name, inputs):
     if op.mode in ['valid', 'ignore_borders', 'wrap_centered']:
         return GpuImages2Neibs(op.mode)

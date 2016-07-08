@@ -1550,7 +1550,7 @@ def local_dnn_convi_output_merge(node, *inputs):
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([Pool])
 @register_opt2([Pool], 'fast_compile', 'cudnn')
-def local_pool_dnn_alternative(op, ctx_name, inputs, outputs):
+def local_gpua_pool_dnn_alternative(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn()
     if not op.ignore_border:
@@ -1567,7 +1567,7 @@ def local_pool_dnn_alternative(op, ctx_name, inputs, outputs):
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([MaxPoolGrad])
 @register_opt2([MaxPoolGrad], 'fast_compile', 'cudnn')
-def local_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
+def local_gpua_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn()
     if not op.ignore_border:
@@ -1592,7 +1592,7 @@ def local_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([AveragePoolGrad])
 @register_opt2([AveragePoolGrad], 'fast_compile', 'cudnn')
-def local_avg_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
+def local_gpua_avg_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn()
     if not op.ignore_border:
@@ -1646,7 +1646,7 @@ def local_log_softmax_dnn(node):
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([LogSoftmax])
 @register_opt2([LogSoftmax], 'fast_compile', 'cudnn')
-def local_logsoftmax_to_dnn(op, ctx_name, inputs, outputs):
+def local_gpua_logsoftmax_to_dnn(op, ctx_name, inputs, outputs):
     # Transform the input in the format expected by GpuDnnSoftmax
     inp = inputs[0]
     if inp.ndim != 2:
@@ -1685,7 +1685,7 @@ gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
 @register_opt('cudnn', 'fast_compile')
 @op_lifter([SoftmaxGrad])
 @register_opt2([SoftmaxGrad], 'cudnn', 'fast_compile')
-def local_softmax_dnn_grad(op, ctx_name, inputs, outputs):
+def local_gpua_softmax_dnn_grad(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn("cuDNN needed for SoftmaxGrad")
     ins = []
