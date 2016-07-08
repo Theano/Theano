@@ -187,7 +187,7 @@ def test_local_gpualloc_empty():
     ii = theano.tensor.iscalar()
 
     # Test with vector
-    # Should not be moved as the only client is the uutput
+    # Should not be moved as the only client is the output
     a = tensor.AllocEmpty('float32')(i)
     f = theano.function([i], a, mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()

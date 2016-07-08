@@ -1553,7 +1553,7 @@ class MRG_RandomStreams(object):
 
 
 @register_opt2([mrg_uniform], 'fast_compile')
-def local_gpua_mrg1(op, context_name, inputs, outputs):
+def local_gpua_mrg_graph(op, context_name, inputs, outputs):
     if (type(op) == mrg_uniform and
             isinstance(inputs[0].type, GpuArrayType)):
         outs = GPUA_mrg_uniform.new(inputs[0],
@@ -1566,9 +1566,8 @@ def local_gpua_mrg1(op, context_name, inputs, outputs):
 @register_gpua('fast_compile')
 @local_optimizer([mrg_uniform])
 def local_gpua_mrg(node):
-    # TODO : need description for function
     context_name = infer_context_name(*node.inputs)
-    return local_gpua_mrg1(node.op, context_name, node.inputs, node.outputs)
+    return local_gpua_mrg_graph(node.op, context_name, node.inputs, node.outputs)
 
 
 MRG_RNGs = (mrg_uniform, GPU_mrg_uniform, GPUA_mrg_uniform)

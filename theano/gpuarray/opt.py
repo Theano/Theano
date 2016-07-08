@@ -112,11 +112,11 @@ def register_opt2(tracks, *tags, **kwargs):
 
     Parameters
     ----------
-    tracks : Op
+    tracks : List of Op class Or Op instance or None
         The Node's Op to which optimization is being applied.
 
     tags : String
-        The tag optimization mode to which the optimizer will be registered.
+        The optimization tag to which the optimizer will be registered.
 
     '''
     def f(local_opt):
@@ -180,10 +180,10 @@ def op_lifter(OP, cuda_only=False):
                         context_name = i.owner.inputs[0].type.context_name
                         replace = True
                         break
-                clients = [c for o in node.outputs for c in o.clients]
 
                 if not replace:
                     # We replace if *all* clients are on the GPU
+                    clients = [c for o in node.outputs for c in o.clients]
                     replace = len(clients) != 0
                     for c, idx in clients:
                         if (c == 'output' or
@@ -273,7 +273,7 @@ class GraphToGPU(NavigatorOptimizer):
 
     Parameters
     ----------
-    local_optimizers_all : List or Set
+    local_optimizers_all : List or SortedSet
         The local optimizations to apply to a node.
     local_optimizers_map : Dict
         Dictionary object containing the mapping of Op to list of
@@ -349,7 +349,6 @@ class GraphToGPU(NavigatorOptimizer):
                          self.local_optimizers_map.get(type(c.op), []))):
                         move_to_GPU = True
             new_ops = None
-            outputs = []
             # Apply the lifter
             if move_to_GPU:
                 for lopt in (self.local_optimizers_map.get(node.op, []) +
@@ -365,24 +364,23 @@ class GraphToGPU(NavigatorOptimizer):
                         if new_ops:
                             process_count[lopt] += 1
                             break
-            if not new_ops:
-                newnode = node.clone_with_new_inputs([mapping.get(i)
-                                                      for i in node.inputs])
+            outputs = []
+
+            if isinstance(new_ops, theano.Op):
+                outputs = new_ops(*[mapping[i] for i in node.inputs], return_list=True)
+            elif not new_ops:
+                newnode = node.clone_with_new_inputs([mapping.get(i) for i in node.inputs])
                 outputs = newnode.outputs
             elif isinstance(new_ops, (tuple, list)):
-                outputs = []
-                for o in new_ops:
-                    outputs.append(o)
+                outputs = new_ops
             elif isinstance(new_ops, theano.Variable):
                 outputs = [new_ops]
-            else:
-                outputs = new_ops(*[mapping[i] for i in node.inputs],
-                                  return_list=True)
 
             if new_ops:
                 node_created[lopt] += len(graph.ops([mapping[i] for i in node.inputs], outputs))
 
             for new_o, old_o in zip(outputs, node.outputs):
+                assert len(outputs) == len(node.outputs)
                 mapping[old_o] = new_o
 
         new_nodes = []
@@ -472,15 +470,6 @@ class GraphToGPU(NavigatorOptimizer):
         local_optimizers_map = merge_dict(prof1[0].local_optimizers_map,
                                           prof2[0].local_optimizers_map)
         new_opt = GraphToGPU(local_optimizers, local_optimizers_map)
-
-        def merge_list(l1, l2):
-            l = copy.copy(l1)
-            for idx, nb in enumerate(l2):
-                if idx < len(l):
-                    l[idx] += nb
-                else:
-                    l.append(nb)
-            return l
 
         toposort_timing = prof1[1] + prof2[1]
         time_opts = merge_dict(prof1[2], prof2[2])
@@ -583,7 +572,7 @@ def local_gpua_alloc(op, context_name, inputs, outputs):
 @register_opt('fast_compile')
 @op_lifter([tensor.AllocEmpty])
 @register_opt2([tensor.AllocEmpty], 'fast_compile')
-def local_gpua_allocempty(op, context_name, inputs, outputs):
+def local_gpua_alloc_empty(op, context_name, inputs, outputs):
     # We use _props_dict() to make sure that the GPU op know all the
     # CPU op props.
     return gpu_alloc_empty(context_name, **op._props_dict())
@@ -949,7 +938,7 @@ def local_gpua_subtensor_graph(op, context_name, inputs, outputs):
 @register_opt('fast_compile')
 @op_lifter([tensor.IncSubtensor])
 @register_opt2([tensor.IncSubtensor], 'fast_compile')
-def local_gpua_incsubtensor(op, context_name, inputs, outputs):
+def local_gpua_inc_subtensor(op, context_name, inputs, outputs):
     op = GpuIncSubtensor(op.idx_list, op.inplace,
                          op.set_instead_of_inc,
                          op.destroyhandler_tolerate_aliased)
@@ -1229,11 +1218,11 @@ def local_gpua_softmaxwithbias(op, context_name, inputs, outputs):
 def local_gpua_assert(op, context_name, inputs, outputs):
     if isinstance(inputs[0].type, GpuArrayType):
         return
-    return local_assert_graph(op, context_name, inputs, outputs)
+    return local_gpua_assert_graph(op, context_name, inputs, outputs)
 
 
 @register_opt2([theano.tensor.opt.Assert], 'fast_compile')
-def local_assert_graph(op, context_name, inputs, outputs):
+def local_gpua_assert_graph(op, context_name, inputs, outputs):
     return [op(as_gpuarray_variable(inputs[0], context_name),
                *inputs[1:])]
 
@@ -1253,7 +1242,7 @@ theano.tensor.nnet.conv2d()
 @register_opt('fast_compile')
 @op_lifter([SparseBlockGemv])
 @register_opt2([SparseBlockGemv], 'fast_compile')
-def local_gpua_lift_sparseblockgemv(op, context_name, inputs, outputs):
+def local_gpua_sparseblockgemv(op, context_name, inputs, outputs):
     if op.inplace:
         return gpu_sparse_block_gemv_inplace
     else:
@@ -1263,7 +1252,7 @@ def local_gpua_lift_sparseblockgemv(op, context_name, inputs, outputs):
 @register_opt('fast_compile')
 @op_lifter([SparseBlockOuter])
 @register_opt2([SparseBlockOuter], 'fast_compile')
-def local_gpua_lift_sparseblockouter(op, context_name, inputs, outputs):
+def local_gpua_sparseblockouter(op, context_name, inputs, outputs):
     if op.inplace:
         return gpu_sparse_block_outer_inplace
     else:
@@ -1289,7 +1278,7 @@ def local_inplace_sparseblockouter(node):
 @op_lifter([AbstractConv2d,
             AbstractConv2d_gradWeights,
             AbstractConv2d_gradInputs])
-def local_gpua_lift_abstractconv2d(op, context_name, inputs, outputs):
+def local_gpua_abstractconv2d(op, context_name, inputs, outputs):
     if isinstance(outputs[0].type, GpuArrayType):
         # Don't handle this node here, it's already on the GPU.
         return
