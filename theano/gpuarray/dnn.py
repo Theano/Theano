@@ -1428,7 +1428,7 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
 
 
 @register_opt2([AbstractConv2d, AbstractConv2d_gradWeights,
-                AbstractConv2d_gradInputs], 'fast_compile')
+                AbstractConv2d_gradInputs], 'fast_compile', 'conv_dnn', 'cudnn')
 def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
     if (not isinstance(op, (AbstractConv2d,
                             AbstractConv2d_gradWeights,

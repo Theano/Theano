@@ -299,12 +299,12 @@ class GraphToGPU(NavigatorOptimizer):
 
         # Building a new graph
         # Iterating through inputs of graph
-        target = infer_context_name(*fgraph.inputs)
+        target = str(infer_context_name(*fgraph.inputs))
         for i in fgraph.inputs:
             # Do not move *int* scalar to the GPU.
             if (isinstance(i.type, tensor.TensorType) and
                (i.ndim > 0 or 'int' not in i.dtype)):
-                mapping[i] = as_gpuarray_variable(i, target)
+                mapping[i] = i.transfer(getattr(i.tag, target, None))
             else:
                 mapping[i] = i
         for i in fgraph.variables:
@@ -670,7 +670,7 @@ def local_gpuflatten(op, context_name, inputs, outputs):
 @register_opt('fast_compile')
 @op_lifter([tensor.Elemwise])
 @register_opt2([tensor.Elemwise], 'fast_compile')
-def local_gpu_elemwise(op, context_name, inputs, outputs):
+def local_gpua_elemwise(op, context_name, inputs, outputs):
     scal_op = op.scalar_op
     name = op.name
     if name:
@@ -1285,7 +1285,7 @@ def local_inplace_sparseblockouter(node):
 
 
 # This deals with any abstract convs that have a transfer somewhere
-@register_opt('fast_compile')
+@register_opt('fast_compile', 'conv_dnn', 'cudnn')
 @op_lifter([AbstractConv2d,
             AbstractConv2d_gradWeights,
             AbstractConv2d_gradInputs])
@@ -1298,7 +1298,7 @@ def local_lift_abstractconv2d(op, context_name, inputs, outputs):
 
 @register_opt2([AbstractConv2d,
                 AbstractConv2d_gradWeights,
-                AbstractConv2d_gradInputs], 'fast_compile')
+                AbstractConv2d_gradInputs], 'fast_compile', 'conv_dnn', 'cudnn')
 def local_lift_abstractconv2d_graph(op, context_name, inputs, outputs):
     inps = list(inputs)
     inps[0] = as_gpuarray_variable(inputs[0],
