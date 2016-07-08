@@ -10,7 +10,7 @@
 :mod:`io` - defines theano.function [TODO]
 ===========================================
 
-.. module:: io
+.. module:: theano.compile.io
    :platform: Unix, Windows
    :synopsis: defines In and Out
 .. moduleauthor:: LISA

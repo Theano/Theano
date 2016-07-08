@@ -5,7 +5,7 @@
 :mod:`nanguardmode`
 ===================
 
-.. module:: nanguardmode
+.. module:: theano.compile.nanguardmode
    :platform: Unix, Windows
    :synopsis: defines NanGuardMode
 .. moduleauthor:: LISA

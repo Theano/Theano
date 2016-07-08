@@ -8,7 +8,6 @@ Advanced Topics (under construction)
 .. toctree::
     :maxdepth: 2
 
-    fg
     compilation
     ccodegen
     function
