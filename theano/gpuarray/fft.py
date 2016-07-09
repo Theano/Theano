@@ -374,11 +374,11 @@ if scikits_cuda_available:
     @register_opt('fast_compile')
     @op_lifter([theano.tensor.fft.RFFTOp])
     @register_opt2([theano.tensor.fft.RFFTOp], 'fast_compile')
-    def local_gpua_curfft_op(node, context_name):
+    def local_gpua_curfft_op(op, ctx_name, inputs, outputs):
         return curfft_op
 
     @register_opt('fast_compile')
     @op_lifter([theano.tensor.fft.IRFFTOp])
     @register_opt2([theano.tensor.fft.IRFFTOp], 'fast_compile')
-    def local_gpua_cuirfft_op(node, context_name):
+    def local_gpua_cuirfft_op(op, ctx_name, inputs, outputs):
         return cuirfft_op

@@ -451,7 +451,7 @@ def test_local_assert_no_cpu_op():
     out = theano.tensor.tanh(ms).dot(ms.T)
 
     mode_local_assert = mode_with_gpu.including("assert_no_cpu_op")
-    mode_local_assert = mode_local_assert.excluding("local_gpu_elemwise")
+    mode_local_assert = mode_local_assert.excluding("local_gpua_elemwise")
 
     old = theano.config.assert_no_cpu_op
     old2 = theano.config.on_opt_error
