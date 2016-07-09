@@ -23,7 +23,7 @@ def runScript(N):
     if err:
         print(err)
         sys.exit()
-    return list(map(float, out.split(" ")))
+    return list(map(float, out.decode().split(" ")))
 
 if __name__ == '__main__':
     options, arguments = parser.parse_args(sys.argv)
