@@ -3142,11 +3142,13 @@ def var(input, axis=None, keepdims=False, corrected=False):
     corrected : bool
         If this is set to True, the 'corrected_two_pass' algorithm is
         used to compute the variance.
+        Refer : http://www.cs.yale.edu/publications/techreports/tr222.pdf
 
     Notes
     -----
-    It uses the two-pass algorithm for more stable results.
+    By default, uses the two-pass algorithm for more stable results.
     https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Two-pass_algorithm
+    Also supports 'corrected_two_pass' algorithm, as mentioned above.
     There exist other implementations that are even more stable, but probably
     slower.
 
