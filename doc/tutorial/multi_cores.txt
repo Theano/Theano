@@ -4,6 +4,13 @@
 Multi cores support in Theano
 =============================
 
+Convolution and Pooling
+=======================
+
+Since Theano 0.9dev2, the convolution and pooling are parallelized on
+CPU.
+
+
 BLAS operation
 ==============
 

@@ -2672,12 +2672,16 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
 
     Notes
     -----
+    Request cuDNN 5 and Theano 0.9dev2 or more recent.
+
     For 4d tensors, returned values are equivalent to:
 
-    >>> axes = 0 if mode == 'per-activation' else (0, 2, 3)
-    >>> mean = inputs.mean(axes, keepdims=True)
-    >>> stdinv = T.inv(T.sqrt(inputs.var(axes, keepdims=True) + epsilon))
-    >>> out = (inputs - mean) * gamma * stdinv + beta
+    .. code-block:: python
+
+        axes = 0 if mode == 'per-activation' else (0, 2, 3)
+        mean = inputs.mean(axes, keepdims=True)
+        stdinv = T.inv(T.sqrt(inputs.var(axes, keepdims=True) + epsilon))
+        out = (inputs - mean) * gamma * stdinv + beta
     """
     ndim = inputs.ndim
     if ndim > 4:
@@ -2736,12 +2740,16 @@ def dnn_batch_normalization_test(inputs, gamma, beta, mean, var,
 
     Notes
     -----
+    Request cuDNN 5 and Theano 0.9dev2 or more recent.
+
     For 4d tensors, the returned value is equivalent to:
 
-    >>> axes = (0,) if mode == 'per-activation' else (0, 2, 3)
-    >>> gamma, beta, mean, var = (T.addbroadcast(t, *axes)
-    ...                           for t in (gamma, beta, mean, var))
-    >>> out = (inputs - mean) * gamma / T.sqrt(var + epsilon) + beta
+    .. code-block:: python
+
+        axes = (0,) if mode == 'per-activation' else (0, 2, 3)
+        gamma, beta, mean, var = (T.addbroadcast(t, *axes)
+                                  for t in (gamma, beta, mean, var))
+        out = (inputs - mean) * gamma / T.sqrt(var + epsilon) + beta
     """
     ndim = inputs.ndim
     if ndim > 4:
