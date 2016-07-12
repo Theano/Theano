@@ -2587,6 +2587,18 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         return kernels
 
 
+# Caching GpuCAReduceCuda
+def gpu_ca_reduce_cuda(scalar_op, axis=None, reduce_mask=None, dtype=None, acc_dtype=None,
+                       pre_scalar_op=None):
+    key = (scalar_op, axis, reduce_mask, dtype, acc_dtype,
+           pre_scalar_op)
+    if key not in gpu_ca_reduce_cuda.cache:
+        gpu_ca_reduce_cuda.cache[key] = GpuCAReduceCuda(scalar_op, axis, reduce_mask, dtype,
+                                                        acc_dtype, pre_scalar_op)
+    return gpu_ca_reduce_cuda.cache[key]
+gpu_ca_reduce_cuda.cache = {}
+
+
 class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
     """
     CAReduce that reuse the python code from gpuarray.

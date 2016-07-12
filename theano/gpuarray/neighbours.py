@@ -13,7 +13,7 @@ except ImportError:
 
 from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel,
                         infer_context_name)
-from .opt import register_opt as register_gpu_opt, op_lifter
+from .opt import register_opt2, op_lifter, register_opt
 from .type import GpuArrayType
 
 
@@ -468,9 +468,9 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         Op.perform(self, node, inp, out, ctx)
 
 
+@register_opt('fast_compile')
 @op_lifter([Images2Neibs])
-def use_gpu_images2neibs(node, context_name):
-    if node.op.mode in ['valid', 'ignore_borders', 'wrap_centered']:
-        return GpuImages2Neibs(node.op.mode)
-
-register_gpu_opt()(use_gpu_images2neibs)
+@register_opt2([Images2Neibs], 'fast_compile')
+def local_gpua_images2neibs(op, context_name, inputs, outputs):
+    if op.mode in ['valid', 'ignore_borders', 'wrap_centered']:
+        return GpuImages2Neibs(op.mode)

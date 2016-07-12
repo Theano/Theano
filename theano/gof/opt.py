@@ -2413,7 +2413,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             for (t, count, n_created, o) in count_opt[::-1]:
                 print(blanc, '  %.3fs - %d - %d - %s' % (
                     t, count, n_created, o), file=stream)
-            print(blanc, '  %.3fs - in %d optimization that where not used (display only those with a runtime > 0)' % (
+            print(blanc, '  %.3fs - in %d optimization that were not used (display only those with a runtime > 0)' % (
                 not_used_time, len(not_used)), file=stream)
             not_used.sort(key=lambda nu: (nu[0], str(nu[1])))
             for (t, o) in not_used[::-1]:

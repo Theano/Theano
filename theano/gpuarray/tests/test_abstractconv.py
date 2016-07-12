@@ -26,9 +26,11 @@ class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
         if not dnn_available(test_ctx_name):
             raise SkipTest(dnn_available.msg)
         mode = mode_with_gpu
+
         if fd != (1, 1):
             raise SkipTest("Doesn't have CUDNN implementation")
         o = self.get_output_shape(i, f, s, b, fd)
+
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                      verify_grad=True, mode=mode,
                      provide_shape=provide_shape, border_mode=b,

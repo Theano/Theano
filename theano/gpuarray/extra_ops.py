@@ -2,15 +2,14 @@ from __future__ import absolute_import, print_function, division
 import os
 from theano import Apply, Op
 from theano.tensor.extra_ops import CumsumOp
-
+from .basic_ops import infer_context_name
 try:
     from pygpu import gpuarray
 except ImportError:
     pass
 
-from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel,
-                        infer_context_name, GpuFromHost)
-from .opt import register_opt as register_gpu_opt, op_lifter
+from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel, GpuReshape)
+from .opt import register_opt, op_lifter, register_opt2
 
 
 class GpuCumsum(GpuKernelBase, Op):
@@ -40,7 +39,10 @@ class GpuCumsum(GpuKernelBase, Op):
 
     def make_node(self, x):
         assert x.type.dtype == 'float32', "Only float32 supported for GpuCumSum"
-        x = as_gpuarray_variable(x, infer_context_name(x))
+
+        context_name = infer_context_name(x)
+
+        x = as_gpuarray_variable(x, context_name)
 
         if x.ndim > GpuCumsum.SUPPORTED_NDIMS:
             raise NotImplementedError('Only cumsum on 1D, 2D and\
@@ -451,24 +453,23 @@ class GpuCumsum(GpuKernelBase, Op):
         return super(GpuCumsum, self).c_support_code_struct(node, nodename) + code
 
 
+@register_opt('fast_compile')
 @op_lifter([CumsumOp])
-def use_gpu_cumsumop(node, ctx_name):
-    if node.inputs[0].dtype == 'float32':
-        axis = node.op.axis
-        x = node.inputs[0]
-
+@register_opt2([CumsumOp], 'fast_compile')
+def local_gpua_cumsumop(op, ctx_name, inputs, outputs):
+    if inputs[0].dtype == 'float32':
+        axis = op.axis
+        x = inputs[0]
         if axis is not None and x.ndim > GpuCumsum.SUPPORTED_NDIMS:
             return None
 
-        if axis is None and x.ndim > 1:
-            x = x.flatten()
+        x = as_gpuarray_variable(x, ctx_name)
 
-        x = GpuFromHost(ctx_name)(x)
+        if axis is None and x.ndim > 1:
+            x = GpuReshape(1)(x, (-1,))
 
         # ``gpu_cumsum`` assume array has been flattened if needed.
         if axis is None:
             axis = 0
 
         return GpuCumsum(axis)(x)
-
-register_gpu_opt()(use_gpu_cumsumop)

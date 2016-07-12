@@ -70,7 +70,7 @@ def as_gpuarray_variable(x, context_name):
 
         # If we couldn't deal with transfers, then maybe it's a tensor
         if isinstance(x.type, tensor.TensorType):
-            return GpuFromHost(context_name)(x)
+            return gpu_from_host(context_name)(x)
 
     # Try _as_GpuArrayVariable if possible
     if hasattr(x, '_as_GpuArrayVariable'):
@@ -544,7 +544,7 @@ class HostFromGpu(Op):
 
     def grad(self, inputs, grads):
         gz, = grads
-        return [GpuFromHost(inputs[0].type.context_name)(gz)]
+        return [gpu_from_host(inputs[0].type.context_name)(gz)]
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
@@ -645,6 +645,14 @@ class GpuFromHost(Op):
 
     def c_code_cache_version(self):
         return (9,)
+
+
+# Caching GPUAlloc
+def gpu_from_host(ctx):
+    if ctx not in gpu_alloc.cache:
+        gpu_from_host.cache[ctx] = GpuFromHost(ctx)
+    return gpu_from_host.cache[ctx]
+gpu_from_host.cache = {}
 
 
 class GpuToGpu(Op):
@@ -870,6 +878,15 @@ class GpuAlloc(HideC, Alloc):
         return True
 
 
+# Caching GPUAlloc
+def gpu_alloc(ctx, memset_0=False):
+    key = (ctx, memset_0)
+    if key not in gpu_alloc.cache:
+        gpu_alloc.cache[key] = GpuAlloc(ctx, memset_0)
+    return gpu_alloc.cache[key]
+gpu_alloc.cache = {}
+
+
 class GpuAllocEmpty(HideC, Alloc):
     """
     Allocate uninitialized memory on the GPU.
@@ -956,6 +973,14 @@ def empty_like(var):
     return GpuAllocEmpty(var.type.dtype, var.type.context_name)(*var.shape)
 
 
+def gpu_alloc_empty(ctx, dtype):
+    key = (dtype, ctx)
+    if key not in gpu_alloc_empty.cache:
+        gpu_alloc_empty.cache[key] = GpuAllocEmpty(dtype, ctx)
+    return gpu_alloc_empty.cache[key]
+gpu_alloc_empty.cache = {}
+
+
 class GpuContiguous(Op):
     """
     Return a C contiguous version of the input.
@@ -1031,6 +1056,7 @@ class GpuReshape(HideC, tensor.Reshape):
     def make_node(self, x, shp):
         ctx_name = infer_context_name(x)
         x = as_gpuarray_variable(x, context_name=ctx_name)
+        shp = tensor.as_tensor_variable(shp)
         res = host_from_gpu(x).reshape(shp, ndim=self.ndim)
         otype = GpuArrayType(dtype=res.dtype,
                              broadcastable=res.broadcastable,

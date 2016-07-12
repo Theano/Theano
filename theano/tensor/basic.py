@@ -630,9 +630,15 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                 v = v.owner.inputs[0]
                 continue
             elif isinstance(v.owner.op, theano.compile.ops.Shape_i):
-                if isinstance(v.owner.inputs[0], Constant):
-                    return numpy.asarray(
-                        v.owner.inputs[0].data.shape[v.owner.op.i])
+                i = v.owner.op.i
+                inp = v.owner.inputs[0]
+                if isinstance(inp, Constant):
+                    return numpy.asarray(inp.data.shape[i])
+                # The shape of a broadcastable dimension is 1
+                if (hasattr(inp.type, 'broadcastable') and
+                        inp.type.broadcastable[i]):
+                    return numpy.asarray(1)
+
             # Don't act as the constant_folding optimization here as this
             # fct is used too early in the optimization phase.  This would
             # mess with the stabilization optimization and be too slow.
@@ -2690,15 +2696,18 @@ class Alloc(gof.Op):
         sh = [as_tensor_variable(s) for s in shape]
         bcast = []
         for i, s in enumerate(sh):
-            if config.exception_verbosity == 'high':
-                s_as_str = '\n' + min_informative_str(s)
-            else:
-                s_as_str = str(s)
+            def err_str():
+                if config.exception_verbosity == 'high':
+                    return '\n' + min_informative_str(s)
+                else:
+                    return str(s)
             if s.type.dtype[:3] not in ('int', 'uin'):
+                s_as_str = err_str()
                 raise TypeError('Shape arguments to Alloc must be integers, '
                                 'but argument %s is not for apply node: %s' %
                                 (i, s_as_str))
             if s.ndim != 0:
+                s_as_str = err_str()
                 raise TypeError(
                     "Each shape dimension to Alloc must be a scalar, ",
                     'but dimension %s have %d dimensions for apply node: %s' %

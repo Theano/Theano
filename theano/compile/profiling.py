@@ -54,7 +54,7 @@ def _atexit_print_fn():
         destination_file = open(config.profiling.destination, 'w')
 
     for ps in _atexit_print_list:
-        if ps.fct_callcount or ps.compile_time > 0:
+        if ps.fct_callcount >= 1 or ps.compile_time > 1:
             ps.summary(file=destination_file,
                        n_ops_to_print=config.profiling.n_ops,
                        n_apply_to_print=config.profiling.n_apply)

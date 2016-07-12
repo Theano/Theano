@@ -66,8 +66,10 @@ def get_conv_output_shape(image_shape, kernel_shape,
     """
     bsize, imshp = image_shape[0], image_shape[2:]
     nkern, kshp = kernel_shape[0], kernel_shape[2:]
+
     if filter_dilation is None:
         filter_dilation = numpy.ones(len(subsample), dtype='int')
+
     if isinstance(border_mode, tuple):
         out_shp = tuple(get_conv_shape_1axis(
             imshp[i], kshp[i], border_mode[i],
@@ -121,7 +123,16 @@ def get_conv_shape_1axis(image_shape, kernel_shape, border_mode,
         pad = border_mode
         if pad < 0:
             raise ValueError("border_mode must be >= 0")
-    out_shp = (image_shape + 2 * pad - dil_kernel_shape) // subsample + 1
+
+    # In case of symbolic shape, we want to build the smallest graph
+    # (image_shape + 2 * pad - dil_kernel_shape) // subsample + 1
+    if pad == 0:
+        out_shp = (image_shape - dil_kernel_shape)
+    else:
+        out_shp = (image_shape + 2 * pad - dil_kernel_shape)
+    if subsample != 1:
+        out_shp = out_shp // subsample
+    out_shp = out_shp + 1
 
     return out_shp
 
