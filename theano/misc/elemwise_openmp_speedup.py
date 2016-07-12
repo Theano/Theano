@@ -3,8 +3,12 @@ import os
 import subprocess
 import sys
 from optparse import OptionParser
+from locale import getpreferredencoding
 
 import theano
+from theano.compat import decode_with
+
+console_encoding = getpreferredencoding()
 
 parser = OptionParser(usage='%prog <options>\n Compute time for'
                       ' fast and slow elemwise operations')
@@ -15,15 +19,15 @@ parser.add_option('-N', '--N', action='store', dest='N',
 
 def runScript(N):
     script = 'elemwise_time_test.py'
-    dir = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.dirname(os.path.abspath(__file__))
     proc = subprocess.Popen(['python', script, '--script', '-N', str(N)],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            cwd=dir)
+                            cwd=path)
     (out, err) = proc.communicate()
     if err:
         print(err)
         sys.exit()
-    return list(map(float, out.split(" ")))
+    return list(map(float, decode_with(out, console_encoding).split(" ")))
 
 if __name__ == '__main__':
     options, arguments = parser.parse_args(sys.argv)
