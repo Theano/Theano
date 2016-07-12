@@ -8,7 +8,7 @@ try:
 except ImportError:
     pass
 
-from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel, GpuReshape)
+from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel, GpuReshape, infer_context_name)
 from .opt import register_opt, op_lifter, register_opt2
 
 

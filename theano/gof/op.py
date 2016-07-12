@@ -789,12 +789,15 @@ class Op(utils.object2, PureOp, CLinkerOp):
         if args:
             [key.append(i) for i in args]
         if kwargs:
-            [key.append(v) for k,v in kwargs.iteritems()]
+            [key.append(v) for k, v in kwargs.iteritems()]
 
         # not the best solution, a hack for now
         for k in key:
-            if isinstance(k, collections.Hashable):
-               key.remove(k) 
+            if not isinstance(k, collections.Hashable):
+                new_obj = object.__new__(cls)
+                print ("We Require the keys of" + cls.__name__ +
+                       "to be of Hashable type")
+                return new_obj
 
         # Since list is not hashable
         key = tuple(key)
@@ -804,8 +807,8 @@ class Op(utils.object2, PureOp, CLinkerOp):
                 for a in args:
                     Op.instances[key].a = a
             if kwargs:
-                for k,v in kwargs.iteritems():
-                    Op.instances[key].v = v
+                for k, v in kwargs.iteritems():
+                    Op.instances[key].k = v
         obj = Op.instances[key]
         if not hasattr(obj, '_op_use_c_code'):
             obj._op_use_c_code = theano.config.cxx
