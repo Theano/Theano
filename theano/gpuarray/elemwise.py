@@ -621,7 +621,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
 
         try:
             self.c_code(node, name, inp, out, sub)
-            self.c_support_code_apply(node, name)
+            if not self.gpu_kernels(node, name):
+                return False
         except NotImplementedError:
             return False
         return True
