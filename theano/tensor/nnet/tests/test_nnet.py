@@ -1352,8 +1352,8 @@ def test_argmax_pushdown_bias():
 
     out = tensor.argmax(softmax_with_bias(x, b), axis=-1)
     fgraph = gof.FunctionGraph(
-            [x, b],
-            [out])
+        [x, b],
+        [out])
 
     theano.compile.mode.optdb.query(
         theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
@@ -1372,8 +1372,8 @@ def test_argmax_pushdown_bias():
     b = tensor.vector()
     out = tensor.max_and_argmax(softmax_with_bias(x, b), axis=-1)[0]
     fgraph = gof.FunctionGraph(
-            [x, b],
-            [out])
+        [x, b],
+        [out])
 
     backup = config.warn.argmax_pushdown_bug
     config.warn.argmax_pushdown_bug = False

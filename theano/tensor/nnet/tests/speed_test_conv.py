@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import sys, time, unittest
+import time
 
 import numpy as N
 from six.moves import xrange
@@ -186,8 +186,7 @@ def exec_multilayer_conv_nnet(
 
             time1 = time.time()
             for i in xrange(repeat):
-                hidval2_ = propup2(imgval, w_flip)
-            hidval2 = hidval2_  # [:,:,0::ss[0],0::ss[1]]
+                propup2(imgval, w_flip)
             tctot += time.time() - time1
 
             imshp = tuple(outshp)
