@@ -240,7 +240,7 @@ class T_LogSoftmax(utt.InferShapeTester):
         # while in the log-softmax case they don't
         f3 = theano.function([x, y], [grad])
         grad_ = f3(a, b)
-        assert numpy.all(numpy.isnan(grad_) == False)
+        assert not numpy.any(numpy.isnan(grad_))
 
     def test_isclose(self):
         def f(a):
