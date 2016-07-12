@@ -14,6 +14,7 @@ import os
 import re
 import sys
 import warnings
+import collections
 
 import theano
 from theano import config
@@ -779,10 +780,33 @@ class Op(utils.object2, PureOp, CLinkerOp):
     Convenience class to bundle `PureOp` and `CLinkerOp`.
 
     """
+    instances = {}
+
     def __new__(cls, *args, **kwargs):
         # this function exists to silently and transparently ensure that all
         # existing Ops get a _op_use_c_code attribute
-        obj = object.__new__(cls)
+        key = list()
+        if args:
+            [key.append(i) for i in args]
+        if kwargs:
+            [key.append(v) for k,v in kwargs.iteritems()]
+
+        # not the best solution, a hack for now
+        for k in key:
+            if isinstance(k, collections.Hashable):
+               key.remove(k) 
+
+        # Since list is not hashable
+        key = tuple(key)
+        if key not in Op.instances:
+            Op.instances[key] = object.__new__(cls)
+            if args:
+                for a in args:
+                    Op.instances[key].a = a
+            if kwargs:
+                for k,v in kwargs.iteritems():
+                    Op.instances[key].v = v
+        obj = Op.instances[key]
         if not hasattr(obj, '_op_use_c_code'):
             obj._op_use_c_code = theano.config.cxx
         return obj
