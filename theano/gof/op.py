@@ -786,10 +786,8 @@ class Op(utils.object2, PureOp, CLinkerOp):
         # this function exists to silently and transparently ensure that all
         # existing Ops get a _op_use_c_code attribute
         key = list()
-        if args:
-            [key.append(i) for i in args]
-        if kwargs:
-            [key.append(v) for k, v in kwargs.iteritems()]
+
+        [key.append(v) for k, v in cls._props_dict(cls).iteritems()]
 
         # not the best solution, a hack for now
         for k in key:
