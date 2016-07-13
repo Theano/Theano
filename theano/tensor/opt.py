@@ -4226,7 +4226,7 @@ def local_flatten_lift(node):
         # Copy over stacktrace from previous output node and from unary
         # elementwise output node since if there was an error, it would
         # probably have come from that operation.
-        copy_stack_trace(node.outputs + node.inputs[0], e)
+        copy_stack_trace(node.outputs + node.inputs, e)
 
         return [e]
 
@@ -5186,7 +5186,7 @@ def local_sum_prod_mul_by_scalar(node):
                 ret = T.mul(*mul_inputs)
                 # Copy over stacktrace from previous output to new mul op,
                 # for same reason as above.
-                copy_stack_trace(node.outputs, ret+mul_inputs)
+                copy_stack_trace(node.outputs, [ret]+mul_inputs)
 
                 return [ret]
 
@@ -5196,7 +5196,7 @@ def local_sum_prod_mul_by_scalar(node):
             # There are never errors in the negative op, thus
             # we need only to copy over stacktrace from previous output node to
             # the two new ops.
-            copy_stack_trace(node.outputs, s+ret)
+            copy_stack_trace(node.outputs, [s, ret])
 
             return [ret]
 
@@ -5212,8 +5212,8 @@ def local_elemwise_sub_zeros(node):
             node.op.scalar_op == scalar.sub and
             node.inputs[0] == node.inputs[1]):
         res = T.zeros_like(node.inputs[0])
+
         # Copy over stacktrace from previous output.
-        # Julian: Pascal, is this really necessary? Is there anyway zeros_like can ever fail?
         copy_stack_trace(node.outputs, res)
         return [res]
 

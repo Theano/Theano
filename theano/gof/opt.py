@@ -3010,9 +3010,17 @@ def check_stack_trace(f_or_fgraph, ops_to_check='last', bug_print='raise'):
         else:
             raise ValueError('The string bug_print is not recognised')
 
+    print("apply_nodes_to_check")
+    print(apply_nodes_to_check)
     for node in apply_nodes_to_check:
         for output in node.outputs:
+            print('Checking node')
+            print (node)            
             if (not hasattr(output.tag, 'trace') or not output.tag.trace):
+                print ('Failed on node')
+                print (node)
+                #print(node.outputs[0].tag.trace)
+                #print(node.tag.trace)
                 return False
 
     return True
