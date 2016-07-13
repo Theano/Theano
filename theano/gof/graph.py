@@ -1242,7 +1242,7 @@ def as_string(i, o,
         Input `Variable` s.
     o : list
         Output `Variable` s.
-    leaf_formatter : theano.function
+    leaf_formatter : callable
         Takes a `Variable`  and returns a string to describe it.
     node_formatter : callable
         Takes an `Op`  and the list of strings corresponding to its arguments
