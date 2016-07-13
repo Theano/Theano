@@ -555,7 +555,7 @@ def numpy_scalar(data):
     # handle case where data is numpy.array([])
     if (data.ndim > 0 and
         (len(data.shape) == 0 or
-         __builtins__['max'](data.shape) == 0)):
+         builtins.max(data.shape) == 0)):
         assert numpy.all(numpy.array([]) == data)
         raise EmptyConstantError()
     try:
