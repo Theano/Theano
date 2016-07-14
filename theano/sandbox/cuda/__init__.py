@@ -304,7 +304,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
             if config.nvcc.compiler_bindir:
                 params.extend(['--compiler-bindir',
                                config.nvcc.compiler_bindir])
-            [params.append(flag) for flag in config.nvcc.flags.split(' ') if flag] 
+            params.extend([flag for flag in config.nvcc.flags.split(' ') if flag]) 
             
             # Do not run here the test program. It would run on the
             # default gpu, not the one selected by the user. If mixed
