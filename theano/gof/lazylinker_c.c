@@ -801,24 +801,35 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
                                     &output_subset_ptr))
     return NULL;
 
+  int err = 0;
   // parse an output_subset list
   // it is stored as a bool list of length n_output_vars: calculate a var or not
   char *output_subset = NULL;
   int output_subset_size = -1;
   if (output_subset_ptr != NULL)
     {
-      assert (PyList_Check(output_subset_ptr));
-      output_subset_size = PyList_Size(output_subset_ptr);
-      output_subset = (char*)calloc(self->n_output_vars, sizeof(char));
-      for (int it = 0; it < output_subset_size; ++it)
+      if (! PyList_Check(output_subset_ptr))
         {
-          PyObject *elem = PyList_GetItem(output_subset_ptr, it);
-          assert (PyInt_Check(elem));
-          output_subset[PyInt_AsLong(elem)] = 1;
+          err = 1;
+          PyErr_SetString(PyExc_RuntimeError, "Output_subset is not a list");
+        }
+      else
+        {
+          output_subset_size = PyList_Size(output_subset_ptr);
+          output_subset = (char*)calloc(self->n_output_vars, sizeof(char));
+          for (int it = 0; it < output_subset_size; ++it)
+            {
+              PyObject *elem = PyList_GetItem(output_subset_ptr, it);
+              if (! PyInt_Check(elem))
+                {
+                  err = 1;
+                  PyErr_SetString(PyExc_RuntimeError, "Some elements of output_subset list are not int");
+                }
+              output_subset[PyInt_AsLong(elem)] = 1;
+            }
         }
     }
 
-  int err = 0;
   self->position_of_error = -1;
   // create constants used to fill the var_compute_cells
   PyObject * one = PyInt_FromLong(1);

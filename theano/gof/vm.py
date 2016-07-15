@@ -842,7 +842,7 @@ class VM_Linker(link.LocalLinker):
 
         if (self.callback is not None or self.callback_input is not None or
                 (config.profile and config.profile_memory) or
-                self.allow_partial_eval):
+                (self.allow_partial_eval and not self.use_cloop)):
 
             if self.use_cloop and (self.callback is not None or
                                    self.callback_input is not None):
@@ -850,9 +850,9 @@ class VM_Linker(link.LocalLinker):
             if self.use_cloop and config.profile_memory:
                 warnings.warn(
                     'CVM does not support memory profile, using Stack VM.')
-            if self.use_cloop and self.allow_partial_eval:
+            if not self.use_cloop and self.allow_partial_eval:
                 warnings.warn(
-                    'CVM does not support partial evaluation yet, '
+                    'LoopGCdoes not support partial evaluation, '
                     'using Stack VM.')
             # Needed for allow_gc=True, profiling and storage_map reuse
             deps = self.compute_gc_dependencies(storage_map)
