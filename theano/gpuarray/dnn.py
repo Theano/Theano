@@ -1472,7 +1472,7 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
     return [rval]
 
 
-@register_opt('fast_compile',  'conv_dnn', 'cudnn')
+@register_opt('fast_compile', 'conv_dnn', 'cudnn')
 @local_optimizer([AbstractConv2d])
 def local_abstractconv_cudnn(node):
     ctx = infer_context_name(*node.inputs)
@@ -1481,7 +1481,7 @@ def local_abstractconv_cudnn(node):
     return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
-@register_opt('fast_compile',  'conv_dnn', 'cudnn')
+@register_opt('fast_compile', 'conv_dnn', 'cudnn')
 @local_optimizer([AbstractConv2d_gradWeights])
 def local_abstractconv_gw_cudnn(node):
     ctx = infer_context_name(*node.inputs)
@@ -1490,7 +1490,7 @@ def local_abstractconv_gw_cudnn(node):
     return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
-@register_opt('fast_compile',  'conv_dnn', 'cudnn')
+@register_opt('fast_compile', 'conv_dnn', 'cudnn')
 @local_optimizer([AbstractConv2d_gradInputs])
 def local_abstractconv_gi_cudnn(node):
     ctx = infer_context_name(*node.inputs)

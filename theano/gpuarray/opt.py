@@ -14,7 +14,6 @@ from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         SequenceDB, Optimizer, DB, toolbox, graph)
 from theano.gof.opt import NavigatorOptimizer
-from theano.gof.optdb import LocalGroupDB
 from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
