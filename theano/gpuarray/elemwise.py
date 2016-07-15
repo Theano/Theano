@@ -51,13 +51,15 @@ class GpuElemwise(HideC, Elemwise):
 
     def make_node(self, *inputs):
         ctx_name = infer_context_name(*inputs)
-        res = Elemwise.make_node(self, *inputs)
-        outputs = [GpuArrayType(broadcastable=o.type.broadcastable,
+        inputs = [as_gpuarray_variable(i, ctx_name) for i in inputs]
+        out_info = Elemwise.get_output_info(self, GpuDimShuffle, *inputs)
+        inputs = out_info[2]
+        outputs = [GpuArrayType(broadcastable=br,
                                 context_name=ctx_name,
-                                dtype=o.type.dtype)() for o in res.outputs]
+                                dtype=dtype)() for dtype, br in
+                   zip(out_info[0], out_info[1])]
         if len(outputs) > 1:
             raise NotImplementedError()
-        inputs = [as_gpuarray_variable(i, ctx_name) for i in inputs]
         node = Apply(self, inputs, outputs)
 
         # Try to generate the kernel to catch SupportCodeErrors

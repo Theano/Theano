@@ -544,13 +544,11 @@ second dimension
                                           self.scalar_op.nout)
         self._rehash()
 
-    def make_node(self, *inputs):
+    def get_output_info(self, dim_shuffle, *inputs):
+        """Return the outputs dtype and broadcastable pattern and the
+        dimshuffled niputs.
+
         """
-        If the inputs have different number of dimensions, their shape
-        is left-completed to the greatest number of dimensions with 1s
-        using DimShuffle.
-        """
-        inputs = list(map(as_tensor_variable, inputs))
         shadow = self.scalar_op.make_node(
             *[get_scalar_type(dtype=i.type.dtype).make_variable()
               for i in inputs])
@@ -565,7 +563,7 @@ second dimension
                 args.append(input)
             else:
                 # TODO: use LComplete instead
-                args.append(DimShuffle(
+                args.append(dim_shuffle(
                     input.type.broadcastable,
                     ['x'] * difference + list(range(length)),
                     inplace=False)(input))
@@ -601,7 +599,18 @@ second dimension
             raise TypeError((
                 "Cannot do an inplace operation on incompatible data types.",
                 ([i.type.dtype for i in inputs], out_dtypes, inplace_pattern)))
+        assert len(out_dtypes) == len(out_broadcastables)
+        return out_dtypes, out_broadcastables, inputs
 
+    def make_node(self, *inputs):
+        """
+        If the inputs have different number of dimensions, their shape
+        is left-completed to the greatest number of dimensions with 1s
+        using DimShuffle.
+        """
+        inputs = list(map(as_tensor_variable, inputs))
+        out_dtypes, out_broadcastables, inputs = self.get_output_info(
+            DimShuffle, *inputs)
         outputs = [TensorType(dtype=dtype, broadcastable=broadcastable)()
                    for dtype, broadcastable in izip(out_dtypes,
                                                     out_broadcastables)]
