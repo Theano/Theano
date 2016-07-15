@@ -12,7 +12,7 @@ from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel, GpuReshape)
 from .opt import register_opt, op_lifter, register_opt2
 
 
-class GpuCumsum(GpuKernelBase, Op):
+class GpuCumsum(GpuKernelBase, CumsumOp):
     """
     Parameters
     ----------
