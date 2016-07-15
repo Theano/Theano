@@ -15,7 +15,10 @@ Looking for an idea for a first contribution? Check `github issue
 with a label ``easy fix``. They are good starter. It is recommanded
 that you write on the issue you want to work on it. This help make
 sure it is up to date and see if nobody else is working on it. Also,
-we can sometimes provides more information about it.
+we can sometimes provides more information about it.  There is also
+the label `NeedSomeoneToFinish
+<https://github.com/Theano/Theano/labels/NeedSomeoneToFinish>` that is
+interresting to check. The difficulty level is variable.
 
 Resources
 =========
