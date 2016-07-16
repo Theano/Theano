@@ -853,6 +853,8 @@ class ScalarOp(Op):
     nin = -1
     nout = 1
 
+    __props__ = ("output_types_preference", "name")
+
     def __init__(self, output_types_preference=None, name=None):
         self.name = name
         if output_types_preference is not None:

@@ -476,6 +476,7 @@ second dimension
     | Elemwise(log)(rand(3, 4, 5))
 
     """
+    __props__ = ("scalar_op", "inplace_pattern", "name", "nfunc_spec", "openmp")
 
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
                  nfunc_spec=None, openmp=None):
@@ -1334,6 +1335,8 @@ class CAReduce(Op):
 
     """
 
+    __props__ = ("scalar_op", "axis")
+
     def __init__(self, scalar_op, axis=None):
         if scalar_op.nin not in [-1, 2] or scalar_op.nout != 1:
             raise NotImplementedError((
@@ -1714,6 +1717,7 @@ class All(CAReduce):
     Equivalent to `CAReduce(scalar.and\_, axis=axis)`.
 
     """
+    __props__ = ("axis")
 
     def __init__(self, axis=None):
         CAReduce.__init__(self, scalar.and_, axis)
@@ -1746,6 +1750,7 @@ class Any(CAReduce):
     Equivalent to `CAReduce(scalar.or\_, axis=axis)`.
 
     """
+    __props__ = ("axis")
 
     def __init__(self, axis=None):
         CAReduce.__init__(self, scalar.or_, axis)
@@ -1823,6 +1828,7 @@ class CAReduceDtype(CAReduce):
         * for complex dtypes, we use at least complex128.
 
     """
+    __props__ = ("scalar_op", "axis", "dtype", "acc_dtype")
 
     def __init__(self, scalar_op, axis=None, dtype=None, acc_dtype=None):
         CAReduce.__init__(self, scalar_op, axis=axis)
@@ -1981,6 +1987,8 @@ class Sum(CAReduceDtype):
 
     """
 
+    __props__ = ("axis", "dtype", "acc_dtype")
+
     def __init__(self, axis=None, dtype=None, acc_dtype=None):
         CAReduceDtype.__init__(self, scalar.add, axis=axis,
                                dtype=dtype, acc_dtype=acc_dtype)
@@ -2029,6 +2037,7 @@ class Prod(CAReduceDtype):
     input.
 
     """
+    __props__ = ("axis", "dtype", "acc_dtype")
 
     def __init__(self, axis=None, dtype=None, acc_dtype=None,
                  no_zeros_in_input=False):
@@ -2211,6 +2220,9 @@ mul_without_zeros = MulWithoutZeros(scalar.upcast_out,
 
 
 class ProdWithoutZeros(CAReduceDtype):
+
+    __props__ = ("axis", "dtype", "acc_dtype")
+
     def __init__(self, axis=None, dtype=None, acc_dtype=None):
         CAReduceDtype.__init__(self, mul_without_zeros, axis=axis,
                                dtype=dtype, acc_dtype=acc_dtype)
