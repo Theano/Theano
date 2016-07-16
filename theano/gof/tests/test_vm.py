@@ -212,6 +212,7 @@ def test_partial_function():
     check_partial_function('cvm')
 
 
+# TODO: implement output_keys with CVM
 def test_partial_function_output_keys():
     x = tensor.scalar('input')
     y = 3 * x
@@ -219,6 +220,25 @@ def test_partial_function_output_keys():
         optimizer=None, linker=vm.VM_Linker(allow_partial_eval=True)))
 
     assert f(5, output_subset=['a'])['a'] == f(5)['a']
+
+
+def test_partial_function_with_updates():
+
+    def check_updates(linker_name):
+        x = tensor.lscalar('input')
+        y = theano.shared(1, name='global')
+        f = theano.function([x], [x, x + 34], updates=[(y, x + 1)], mode=Mode(
+            optimizer=None, linker=linker_name))
+        g = theano.function([x], [x - 6], updates=[(y, y + 3)], mode=Mode(
+            optimizer=None, linker=linker_name))
+        f(3, output_subset=[])
+        assert(y.get_value() == 4)
+        assert(g(30, output_subset=[0]) == [24])
+        g(40, output_subset=[])
+        assert(y.get_value() == 10)
+
+    check_updates(vm.VM_Linker(allow_partial_eval=True))
+    check_updates('cvm')
 
 
 def test_allow_gc_cvm():

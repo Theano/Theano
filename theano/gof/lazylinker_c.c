@@ -865,19 +865,19 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
             }
         }
 
-        for (int i = 0; i < self->n_output_vars && (!err); ++i)
-          {
-            if (output_subset == NULL || output_subset[i] == 1)
-              {
-                err = lazy_rec_eval(self, self->output_vars[i], one, zero);
-              }
-          }
+      int first_updated = self->n_output_vars - self->n_updates;
+      for (int i = 0; i < self->n_output_vars && (!err); ++i)
+        {
+          if (i >= first_updated || output_subset == NULL || output_subset[i] == 1)
+            {
+              err = lazy_rec_eval(self, self->output_vars[i], one, zero);
+            }
+        }
 
       if (!err)
         {
           // save references to outputs prior to updating storage containers
           assert (self->n_output_vars >= self->n_updates);
-          assert (output_subset_size < 0 || output_subset_size >= self->n_updates);
           Py_DECREF(rval);
           rval = PyList_New(self->n_output_vars);
           for (int i = 0; i < (self->n_output_vars); ++i)
