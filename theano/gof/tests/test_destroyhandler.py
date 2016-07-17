@@ -48,6 +48,10 @@ def MyConstant(data):
 
 class MyOp(Op):
 
+    __props__ = ("nin", "name", "vmap", "dmap", "nout",
+                 "destroyhandler_tolerate_same",
+                 "destroyhandler_tolerate_aliased")
+
     def __init__(self, nin, name, vmap=None, dmap=None, nout=1,
                  destroyhandler_tolerate_same=None,
                  destroyhandler_tolerate_aliased=None):

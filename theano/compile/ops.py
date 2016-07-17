@@ -518,6 +518,8 @@ class FromFunctionOp(gof.Op):
 
     """
 
+    __props__ = ("fn", "itypes", "otypes", "infer_shape")
+
     def __init__(self, fn, itypes, otypes, infer_shape):
         self.__fn = fn
         self.itypes = itypes

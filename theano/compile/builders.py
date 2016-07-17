@@ -72,6 +72,8 @@ class OpFromGraph(gof.Op):
 
     """
 
+    __props__ = ("inputs", "outputs")
+
     def __init__(self, inputs, outputs, **kwargs):
         if not isinstance(outputs, list):
             raise TypeError('outputs must be list', outputs)
