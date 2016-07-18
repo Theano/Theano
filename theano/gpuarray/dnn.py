@@ -382,7 +382,11 @@ class GpuDnnConvDesc(COp):
         else:
         	precision = int(precision[5:]) # float32 is now 32
         assert conv_mode in ('conv', 'cross')
-        self.conv_mode = conv_mode
+        if conv_mode == 'conv':
+            conv_mode = 0
+        else:
+            conv_mode = 1
+
         node = Apply(self, [kern_shape, precision, conv_mode],
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
@@ -413,11 +417,6 @@ class GpuDnnConvDesc(COp):
         else:
             raise ValueError("Invalid value for border_mode")
 
-        if self.conv_mode == 'conv':
-            conv_flag = 'CUDNN_CONVOLUTION'
-        else:
-            conv_flag = 'CUDNN_CROSS_CORRELATION'
-
         sub0 = str(self.subsample[0])
         sub1 = str(self.subsample[1])
         if len(self.subsample) > 2:
@@ -428,10 +427,9 @@ class GpuDnnConvDesc(COp):
         return [('NB_DIMS', str(len(self.subsample))),
                 ('BORDER_MODE', bmode),
                 ('PAD_0', pad0), ('PAD_1', pad1), ('PAD_2', pad2),
-                ('CONV_MODE', conv_flag),
                 ('SUB_0', sub0), ('SUB_1', sub1), ('SUB_2', sub2)]
 
-    def c_code_cache_version(self):
+    def c_code_cache_version(self): #TODO: need to update at the end
         return (super(GpuDnnConvDesc, self).c_code_cache_version(), version())
 
 
