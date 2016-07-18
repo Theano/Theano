@@ -17,8 +17,6 @@ from theano.tensor.signal.pool import (Pool, pool_2d,
                                        max_pool_2d_same_size,
                                        DownsampleFactorMaxGradGrad)
 
-from theano.tensor.signal.downsample import DownsampleFactorMaxGrad
-
 from theano import function
 
 
@@ -874,32 +872,6 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         new_out = new_fct(image_val)
         for o, n in zip(old_out, new_out):
             utt.assert_allclose(o, n)
-
-
-
-    def test_DownsampleFactorMaxGrad(self):
-        im = theano.tensor.tensor4()
-        maxout = theano.tensor.tensor4()
-        grad = theano.tensor.tensor4()
-
-        for mode in ['max', 'sum', 'average_inc_pad', 'average_exc_pad']:
-            f = theano.function([im, maxout, grad],
-                                DownsampleFactorMaxGrad(ignore_border=False,
-                                                        mode=mode)(im, maxout,
-                                                                   grad,
-                                                                   (3, 3)),
-                                on_unused_input='ignore')
-
-            if mode == 'max':
-                assert any(isinstance(n.op, MaxPoolGrad)
-                           for n in f.maker.fgraph.toposort())
-                assert not any(isinstance(n.op, AveragePoolGrad)
-                               for n in f.maker.fgraph.toposort())
-            else:
-                assert not any(isinstance(n.op, MaxPoolGrad)
-                               for n in f.maker.fgraph.toposort())
-                assert any(isinstance(n.op, AveragePoolGrad)
-                           for n in f.maker.fgraph.toposort())
 
 
 if __name__ == '__main__':

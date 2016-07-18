@@ -187,7 +187,7 @@
     <Compile Include="theano\tensor\sharedvar.py" />
     <Compile Include="theano\tensor\shared_randomstreams.py" />
     <Compile Include="theano\tensor\signal\conv.py" />
-    <Compile Include="theano\tensor\signal\downsample.py" />
+    <Compile Include="theano\tensor\signal\pool.py" />
     <Compile Include="theano\tensor\signal\__init__.py" />
     <Compile Include="theano\tensor\tensor_grad.py" />
     <Compile Include="theano\tensor\xlogx.py" />
