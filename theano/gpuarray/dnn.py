@@ -390,6 +390,10 @@ class GpuDnnConvDesc(COp):
             elif precision == 'float64':
                 precision = 64
 
+        border_mode = as_tensor_variable(border_mode)
+        subsample = as_tensor_variable(subsample)
+        conv_mode = as_tensor_variable(conv_mode)
+        precision = as_tensor_variable(precision)
         node = Apply(self, [kern_shape, border_mode, subsample, conv_mode, precision],
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
