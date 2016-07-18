@@ -353,8 +353,8 @@ class Ger(Op):
         return [input_shapes[0]]
 
 
-ger = Ger(destructive=False)
-ger_destructive = Ger(destructive=True)
+ger = Ger(False)
+ger_destructive = Ger(True)
 
 
 def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):

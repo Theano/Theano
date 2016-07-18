@@ -476,6 +476,36 @@ class CLinkerOp(CLinkerObject):
                                      self.__class__.__name__)
 
 
+class SingletonOp(type):
+
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        key = []
+        # This will be fully revamped with _props_dict
+        if args:
+            for a in args:
+                key.append(a)
+        if kwargs:
+            for k, v in kwargs.iteritems():
+                key.append(v)
+
+        for k in key:
+            if not isinstance(k, collections.Hashable):
+                return object.__new__(cls).__init__(*args, **kwargs)
+
+        key = tuple(key)
+
+        if key not in cls._instances:
+            cls._instances[key] = object.__new__(cls)
+
+        cls._instances[key].__init__(*args, **kwargs)
+
+        if not hasattr(cls._instances[key], '_op_use_c_code'):
+            cls._instances[key]._op_use_c_code = theano.config.cxx
+        return cls._instances[key]
+
+
 class PureOp(object):
     """
     An :term:`Op` is a type of operation.
@@ -512,6 +542,7 @@ class PureOp(object):
     variable or an instance variable.
 
     """
+
 
     #############
     # make_node #
@@ -780,37 +811,8 @@ class Op(utils.object2, PureOp, CLinkerOp):
     Convenience class to bundle `PureOp` and `CLinkerOp`.
 
     """
-    instances = {}
 
-    def __new__(cls, *args, **kwargs):
-        # this function exists to silently and transparently ensure that all
-        # existing Ops get a _op_use_c_code attribute
-        key = list()
-
-        [key.append(v) for k, v in cls._props_dict(cls).iteritems()]
-
-        # not the best solution, a hack for now
-        for k in key:
-            if not isinstance(k, collections.Hashable):
-                new_obj = object.__new__(cls)
-                print ("We Require the keys of" + cls.__name__ +
-                       "to be of Hashable type")
-                return new_obj
-
-        # Since list is not hashable
-        key = tuple(key)
-        if key not in Op.instances:
-            Op.instances[key] = object.__new__(cls)
-            if args:
-                for a in args:
-                    Op.instances[key].a = a
-            if kwargs:
-                for k, v in kwargs.iteritems():
-                    Op.instances[key].k = v
-        obj = Op.instances[key]
-        if not hasattr(obj, '_op_use_c_code'):
-            obj._op_use_c_code = theano.config.cxx
-        return obj
+    __metaclass__ = SingletonOp
 
     def __init__(self, use_c_code=theano.config.cxx):
         self._op_use_c_code = use_c_code
