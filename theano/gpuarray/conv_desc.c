@@ -6,6 +6,20 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyObject *precision,
   int pad[3] = {PAD_0, PAD_1, PAD_2};
   int strides[3] = {SUB_0, SUB_1, SUB_2};
   int upscale[3] = {1, 1, 1};
+  long precision_code = PyInt_asLong(precision);
+  char* PRECISION = NULL;
+if (precision_code == 16L)
+{
+  PRECISION = "CUDNN_DATA_HALF" ;
+}
+else if (precision_code == 32L)
+{
+  PRECISION = "CUDNN_DATA_FLOAT";
+}
+else if (precision_code == 64L)
+{
+  PRECISION = "CUDNN_DATA_DOUBLE";
+}
 
 #if BORDER_MODE == 0
   pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) - 1;
