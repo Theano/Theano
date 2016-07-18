@@ -357,7 +357,10 @@ class GpuDnnConvDesc(COp):
     def __init__(self):
         COp.__init__(self, ["conv_desc.c"], "APPLY_SPECIFIC(conv_desc)")
 
-    def make_node(self, border_mode, subsample=(1, 1), kern_shape,precision="float32",conv_mode='conv'):
+    def make_node(self, kern_shape, border_mode, subsample=(1, 1), conv_mode='conv', precision="float32"):
+        if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
+            raise TypeError('kern must be 1D shape tensor')
+
         if isinstance(border_mode, integer_types):
             border_mode = (border_mode,) * len(subsample)
         if isinstance(border_mode, tuple):
@@ -370,22 +373,19 @@ class GpuDnnConvDesc(COp):
                 '"valid", "full", "half", an integer or a pair of'
                 ' integers'.format(border_mode))
         assert len(subsample) in (2, 3)
-        
-        if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
-            raise TypeError('kern must be 1D shape tensor')
-
-        if precision not in ['float16', 'float32', 'float64']:
-        	raise TypeError('precision must be one of float16, float32, float64')
-        else:
-        	precision = int(precision[5:]) # float32 is now 32
 
         assert conv_mode in ('conv', 'cross')
         if conv_mode == 'conv':
             conv_mode = 0 # CUDNN_CONVOLUTION
         else:
             conv_mode = 1 # CUDNN_CROSS_CORRELATION
+        
+        if precision not in ['float16', 'float32', 'float64']:
+        	raise TypeError('precision must be one of float16, float32, float64')
+        else:
+        	precision = int(precision[5:]) # float32 is now 32
 
-        node = Apply(self, [kern_shape, precision, conv_mode, border_mode, subsample],
+        node = Apply(self, [kern_shape, border_mode, subsample, conv_mode, precision],
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
         # DebugMode cannot compare the values of CDataType variables, so by
