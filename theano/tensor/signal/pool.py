@@ -374,12 +374,12 @@ class Pool(OpenMPOp):
         disc = [DisconnectedType()() for i in inp[1:]]
         if self.mode == 'max':
             maxout = self(x, ws, stride, pad)
-            return [MaxPoolGrad(ignore_border=self.ignore_border)(x, maxout,
-                                    gz, ws=ws, stride=stride, pad=pad)] + disc
+            return [MaxPoolGrad(ignore_border=self.ignore_border)(
+                x, maxout, gz, ws=ws, stride=stride, pad=pad)] + disc
         else:
             return [AveragePoolGrad(ignore_border=self.ignore_border,
-                                    mode=self.mode)(x, gz, ws=ws,
-                                        stride=stride, pad=pad)] + disc
+                                    mode=self.mode)(
+                x, gz, ws=ws, stride=stride, pad=pad)] + disc
 
     def connection_pattern(self, node):
         return [[1], [0], [0], [0]]
@@ -776,7 +776,7 @@ class MaxPoolGrad(PoolGrad):
         return ([theano.tensor.zeros_like(x),
                  theano.tensor.zeros_like(maxout),
                  DownsampleFactorMaxGradGrad(ignore_border=self.ignore_border)(
-                            x, maxout, ggx, ws, stride, pad)] +
+                x, maxout, ggx, ws, stride, pad)] +
                 [DisconnectedType()() for i in inp[3:]])
 
     def connection_pattern(self, node):
@@ -989,8 +989,7 @@ class AveragePoolGrad(PoolGrad):
         ggx, = grads
         return ([theano.tensor.zeros_like(x),
                  Pool(ignore_border=self.ignore_border, mode=self.mode)(ggx,
-                            ws, stride, pad)] +
-                [DisconnectedType()() for i in inp[2:]])
+                ws, stride, pad)] + [DisconnectedType()() for i in inp[2:]])
 
     def connection_pattern(self, node):
         return [[1], [1], [0], [0], [0]]
