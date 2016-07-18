@@ -383,9 +383,9 @@ class GpuDnnConvDesc(COp):
         	precision = int(precision[5:]) # float32 is now 32
         assert conv_mode in ('conv', 'cross')
         if conv_mode == 'conv':
-            conv_mode = 0
+            conv_mode = 0 # CUDNN_CONVOLUTION
         else:
-            conv_mode = 1
+            conv_mode = 1 # CUDNN_CROSS_CORRELATION
 
         node = Apply(self, [kern_shape, precision, conv_mode],
                      [CDataType("cudnnConvolutionDescriptor_t",
