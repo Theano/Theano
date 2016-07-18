@@ -14,7 +14,7 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyObject *precision,
 
 if (precision_code == 16L)
 {
-  PRECISION = "CUDNN_DATA_HALF" ;
+  PRECISION = "CUDNN_DATA_HALF";
 }
 else if (precision_code == 32L)
 {
