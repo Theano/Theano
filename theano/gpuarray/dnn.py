@@ -383,7 +383,12 @@ class GpuDnnConvDesc(COp):
         if precision not in ['float16', 'float32', 'float64']:
         	raise TypeError('precision must be one of float16, float32, float64')
         else:
-        	precision = int(precision[5:]) # float32 is now 32
+            if precision == 'float16':
+                precision = 16
+            elif precision == 'float32':
+                precision = 32
+            elif precision == 'float64':
+                precision = 64
 
         node = Apply(self, [kern_shape, border_mode, subsample, conv_mode, precision],
                      [CDataType("cudnnConvolutionDescriptor_t",
