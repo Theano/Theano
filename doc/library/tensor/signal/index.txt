@@ -20,5 +20,4 @@ forms of signal processing.
     :maxdepth: 1
 
     conv
-    downsample
     pool
