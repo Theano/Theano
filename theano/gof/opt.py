@@ -1237,7 +1237,7 @@ class LocalOptGroup(LocalOptimizer):
 
     """
 
-    def __init__(self, *optimizers):
+    def __init__(self, apply_all_opts=False, *optimizers):
         if len(optimizers) == 1 and isinstance(optimizers[0], list):
             # This happen when created by LocalGroupDB.
             optimizers = tuple(optimizers[0])
@@ -1246,6 +1246,7 @@ class LocalOptGroup(LocalOptimizer):
                              for opt in optimizers)
         self.retains_inputs = all(getattr(opt, 'retains_inputs', False)
                                   for opt in optimizers)
+        self.apply_all_opts = apply_all_opts
 
     def __str__(self):
         return getattr(self, '__name__',
@@ -1261,10 +1262,16 @@ class LocalOptGroup(LocalOptimizer):
         return t
 
     def transform(self, node):
+        repl = None
         for opt in self.opts:
             repl = opt.transform(node)
             if repl:
+                if self.apply_all_opts is True:
+                    node.outputs = repl
+                    continue
                 return repl
+
+        return repl
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print("%s%s id=%i" % (
