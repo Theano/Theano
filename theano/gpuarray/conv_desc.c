@@ -1,11 +1,13 @@
 #section support_code_apply
 
-int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject* border_mode,
+int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject* padding,
                               PyArrayObject* subsample, PyObject *conv_mode, PyObject *precision,
                               PyObject* bmode,
                               cudnnConvolutionDescriptor_t *desc) {
   cudnnStatus_t err;
-  int pad[3] = {PAD_0, PAD_1, PAD_2};
+  int pad[3] = {*(npy_int64 *)PyArray_GETPTR1(padding, 0),
+                *(npy_int64 *)PyArray_GETPTR1(padding, 1),
+                *(npy_int64 *)PyArray_GETPTR1(padding, 2)};
   int strides[3] = {SUB_0, SUB_1, SUB_2};
   int upscale[3] = {1, 1, 1};
   long precision_code = PyInt_asLong(precision);

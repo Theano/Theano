@@ -395,12 +395,20 @@ class GpuDnnConvDesc(COp):
             bmode = 2
         else:
             bmode = 0
-        border_mode = as_tensor_variable(border_mode)
+        padding = [0,0,0]
+        if isinstance(border_mode, tuple):
+            padding[0] = border_mode[0]
+            padding[1] = border_mode[1]
+            if len(border_mode) > 2:
+            padding[2] = border_mode[2]
+        else:
+            padding = [0,0,0]
+        padding = as_tensor_variable(padding)
         subsample = as_tensor_variable(subsample)
         conv_mode = as_tensor_variable(conv_mode)
         precision = as_tensor_variable(precision)
         bmode = as_tensor_variable(bmode)
-        node = Apply(self, [kern_shape, border_mode, subsample, conv_mode, precision, bmode],
+        node = Apply(self, [kern_shape, padding, subsample, conv_mode, precision, bmode],
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
         # DebugMode cannot compare the values of CDataType variables, so by
@@ -412,24 +420,6 @@ class GpuDnnConvDesc(COp):
         return node
 
     def get_op_params(self):
-        pad0 = '0'
-        pad1 = '0'
-        pad2 = '0'
-        if isinstance(self.border_mode, tuple):
-            pad0 = str(self.border_mode[0])
-            pad1 = str(self.border_mode[1])
-            if len(self.border_mode) > 2:
-                pad2 = str(self.border_mode[2])
-            bmode = '1'
-        elif self.border_mode == "valid":
-            bmode = '1'
-        elif self.border_mode == "half":
-            bmode = '2'
-        elif self.border_mode == "full":
-            bmode = '0'
-        else:
-            raise ValueError("Invalid value for border_mode")
-
         sub0 = str(self.subsample[0])
         sub1 = str(self.subsample[1])
         if len(self.subsample) > 2:
@@ -438,7 +428,6 @@ class GpuDnnConvDesc(COp):
             sub2 = '0'
 
         return [('NB_DIMS', str(len(self.subsample))),
-                ('PAD_0', pad0), ('PAD_1', pad1), ('PAD_2', pad2),
                 ('SUB_0', sub0), ('SUB_1', sub1), ('SUB_2', sub2)]
 
     def c_code_cache_version(self): #TODO: need to update at the end
