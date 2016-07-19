@@ -485,7 +485,7 @@ def local_gpua_multinomial(op, context_name, inputs, outputs):
             gpu_op(p, u))
 
 
-@register_opt()
+@register_opt('fast_compile')
 @op_lifter([theano.sandbox.multinomial.MultinomialWOReplacementFromUniform])
 @register_opt2([theano.sandbox.multinomial.MultinomialWOReplacementFromUniform], 'fast_compile')
 def local_gpua_multinomial_wor(op, context_name, inputs, outputs):
