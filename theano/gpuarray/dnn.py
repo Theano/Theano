@@ -425,19 +425,6 @@ class GpuDnnConvDesc(COp):
     def c_code_cache_version(self):  # TODO: need to update at the end
         return (super(GpuDnnConvDesc, self).c_code_cache_version(), version())
 
-
-def gpu_dnn_conv_desc(border_mode, subsample=(1, 1), conv_mode='conv',
-                      precision="float32"):
-    key = (border_mode, subsample, conv_mode, precision)
-    if key not in gpu_dnn_conv_desc.cache:
-        gpu_dnn_conv_desc.cache[key] = GpuDnnConvDesc()(border_mode,
-                                                      subsample,
-                                                      conv_mode,
-                                                      precision)
-    return gpu_dnn_conv_desc.cache[key]
-gpu_dnn_conv_desc.cache = {}
-
-
 # scalar constants
 _zero = constant(numpy.asarray(0.0, dtype='float64'))
 _one = constant(numpy.asarray(1.0, dtype='float64'))
@@ -986,8 +973,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     # if the img contains negative strides
     img = gpu_contiguous(img)
     kerns = gpu_contiguous(kerns)
-    desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
-                             conv_mode=conv_mode, precision=precision)(kerns.shape)
+    desc = GpuDnnConvDesc()(kerns.shape, border_mode=border_mode, subsample=subsample,
+                             conv_mode=conv_mode, precision=precision)
     desc_op = desc.owner.op
     # We can use Shape_i and bypass the infer_shape here as this is on
     # the input of node and it will always be present.
@@ -1132,8 +1119,7 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
     img = gpu_contiguous(img)
     topgrad = gpu_contiguous(topgrad)
     kerns_shp = as_tensor_variable(kerns_shp)
-    desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
-                             conv_mode=conv_mode)(kerns_shp)
+    desc = GpuDnnConvDesc()(kerns_shp, border_mode=border_mode, subsample=subsample, conv_mode=conv_mode)
     out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(*kerns_shp)
     return gpu_dnn_conv_gradW()(img, topgrad, out, desc)
 
@@ -1166,8 +1152,8 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
     kerns = gpu_contiguous(kerns)
     topgrad = gpu_contiguous(topgrad)
     img_shp = as_tensor_variable(img_shp)
-    desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
-                             conv_mode=conv_mode)(kerns.shape)
+    desc = GpuDnnConvDesc()(kerns.shape, border_mode=border_mode, subsample=subsample,
+                             conv_mode=conv_mode)
     out = gpu_alloc_empty(ctx_name, kerns.dtype)(*img_shp)
     return gpu_dnn_conv_gradI()(kerns, topgrad, out, desc)
 
