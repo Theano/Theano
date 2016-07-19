@@ -14,7 +14,6 @@ from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         SequenceDB, Optimizer, DB, toolbox, graph)
 from theano.gof.opt import NavigatorOptimizer
-from theano.gof.optdb import LocalGroupDB
 from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
@@ -78,10 +77,6 @@ class GraphToGPUDB(DB):
 
 
 gpu_seqopt = SequenceDB()
-
-# Don't register this right now
-conv_groupopt = LocalGroupDB()
-conv_groupopt.__name__ = "gpua_conv_opts"
 
 gpu_seqopt.register('gpuarray_graph_optimization', GraphToGPUDB(), -0.5,
                     'fast_compile', 'fast_run', 'gpuarray')
@@ -1296,9 +1291,6 @@ def local_gpua_lift_abstractconv2d_graph(op, context_name, inputs, outputs):
     inps[1] = as_gpuarray_variable(inputs[1],
                                    context_name=context_name)
     return [op(*inps)]
-
-# Register this here so that it goes after the abstract lifting
-register_opt('fast_compile')(conv_groupopt)
 
 
 @register_opt("low_memory")

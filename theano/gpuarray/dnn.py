@@ -32,7 +32,7 @@ from .elemwise import GpuElemwise
 # These don't exist in gpuarray
 # GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
 from .nnet import GpuSoftmax
-from .opt import (gpu_seqopt, register_opt, conv_groupopt,
+from .opt import (gpu_seqopt, register_opt,
                   op_lifter, register_opt2)
 
 from .opt_util import alpha_merge, output_merge, inplace_allocempty
@@ -1472,18 +1472,31 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
     return [rval]
 
 
-@local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights,
-                  AbstractConv2d_gradInputs])
+@register_opt('fast_compile', 'conv_dnn', 'cudnn')
+@local_optimizer([AbstractConv2d])
 def local_abstractconv_cudnn(node):
     ctx = infer_context_name(*node.inputs)
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
     return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
-conv_groupopt.register('local_abstractconv_cudnn',
-                       local_abstractconv_cudnn, 20,
-                       'fast_compile', 'fast_run',
-                       'gpuarray', 'conv_dnn', 'cudnn')
+
+@register_opt('fast_compile', 'conv_dnn', 'cudnn')
+@local_optimizer([AbstractConv2d_gradWeights])
+def local_abstractconv_gw_cudnn(node):
+    ctx = infer_context_name(*node.inputs)
+    if not isinstance(node.inputs[0].type, GpuArrayType):
+        return
+    return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+
+
+@register_opt('fast_compile', 'conv_dnn', 'cudnn')
+@local_optimizer([AbstractConv2d_gradInputs])
+def local_abstractconv_gi_cudnn(node):
+    ctx = infer_context_name(*node.inputs)
+    if not isinstance(node.inputs[0].type, GpuArrayType):
+        return
+    return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
 @inplace_allocempty(GpuDnnConv, 2)
