@@ -400,9 +400,11 @@ class GpuDnnConvDesc(COp):
             padding[0] = border_mode[0]
             padding[1] = border_mode[1]
             if len(border_mode) > 2:
-            padding[2] = border_mode[2]
+                padding[2] = border_mode[2]
         else:
             padding = [0,0,0]
+        if len(subsample) == 2:
+            subsample.append(0)
         padding = as_tensor_variable(padding)
         subsample = as_tensor_variable(subsample)
         conv_mode = as_tensor_variable(conv_mode)
@@ -419,16 +421,6 @@ class GpuDnnConvDesc(COp):
         out = node.outputs[0]
         out.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
         return node
-
-    def get_op_params(self):
-        sub0 = str(self.subsample[0])
-        sub1 = str(self.subsample[1])
-        if len(self.subsample) > 2:
-            sub2 = str(self.subsample[2])
-        else:
-            sub2 = '0'
-
-        return [('SUB_0', sub0), ('SUB_1', sub1), ('SUB_2', sub2)]
 
     def c_code_cache_version(self): #TODO: need to update at the end
         return (super(GpuDnnConvDesc, self).c_code_cache_version(), version())

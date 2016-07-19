@@ -8,7 +8,9 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject* padding,
   int pad[3] = {*(npy_int64 *)PyArray_GETPTR1(padding, 0),
                 *(npy_int64 *)PyArray_GETPTR1(padding, 1),
                 *(npy_int64 *)PyArray_GETPTR1(padding, 2)};
-  int strides[3] = {SUB_0, SUB_1, SUB_2};
+  int strides[3] = {*(npy_int64 *)PyArray_GETPTR1(subsample, 0),
+                    *(npy_int64 *)PyArray_GETPTR1(subsample, 1),
+                    *(npy_int64 *)PyArray_GETPTR1(subsample, 2)};
   int upscale[3] = {1, 1, 1};
   long precision_code = PyInt_asLong(precision);
   char* PRECISION = NULL;
