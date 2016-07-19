@@ -1427,6 +1427,183 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
         return Apply(self, [dy, sm], [sm.type()])
 
 
+class GpuDnnBatchNorm(DnnBase):
+    """
+    Base Op for cuDNN Batch Normalization.
+
+    Parameters
+    ----------
+    mode : {'per-activation', 'spatial'}
+        Whether to normalize per activation (in this mode, bias and scale
+        tensor dimensions are 1xCxHxW) or share normalization factors across
+        spatial dimensions (in this mode, bias and scale tensor dimensions
+        are 1xCx1x1).
+    epsilon
+        Epsilon value used in the batch normalization formula. Minimum allowed
+        value is 1e-5 (imposed by cuDNN).
+    """
+
+    __props__ = ('mode', 'epsilon')
+
+    def __init__(self, mode='per-activation', epsilon=1e-4):
+        DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm.c'],
+                         'dnn_batchnorm_op')
+
+        if version() < 5000:
+            raise RuntimeError("cuDNN Batch Normalization requires cuDNN v5 or later")
+        assert (mode in ('per-activation', 'spatial'))
+        self.mode = mode
+
+        assert (epsilon >= 1e-5)
+        self.epsilon = epsilon
+
+    def get_op_params(self):
+        params = []
+        params.append(('MODE', ("CUDNN_BATCHNORM_SPATIAL"
+                                if self.mode == "spatial"
+                                else "CUDNN_BATCHNORM_PER_ACTIVATION")))
+        params.append(('EPSILON', str(self.epsilon)))
+        return params
+
+    def infer_shape(self, node, shape):
+        return [shape[0], shape[1], shape[1]]
+
+    def make_node(self, x, scale, bias):
+        ctx_name = infer_context_name(x, scale, bias)
+        x = as_gpuarray_variable(x, ctx_name)
+        scale = as_gpuarray_variable(scale, ctx_name)
+        bias = as_gpuarray_variable(bias, ctx_name)
+        assert x.ndim == 4
+        assert scale.ndim == 4
+        assert bias.ndim == 4
+        return Apply(self, [x, scale, bias], [x.type(), scale.type(), scale.type()])
+
+    def grad(self, inputs, grads):
+        x, scale, bias = inputs
+        dy = grads[0]
+        _, x_mean, x_invstd = self.make_node(x, scale, bias).outputs
+        return GpuDnnBatchNormGrad(self.mode, self.epsilon)(x, dy, scale,
+                                                            x_mean, x_invstd)
+
+
+class GpuDnnBatchNormInference(DnnBase):
+    """
+    Base Op for cuDNN Batch Normalization.
+
+    Parameters
+    ----------
+    mode : {'per-activation', 'spatial'}
+        Whether to normalize per activation (in this mode, bias and scale
+        tensor dimensions are 1xCxHxW) or share normalization factors across
+        spatial dimensions (in this mode, bias and scale tensor dimensions
+        are 1xCx1x1).
+    epsilon
+        Epsilon value used in the batch normalization formula. Minimum allowed
+        value is 1e-5 (imposed by cuDNN).
+    """
+
+    __props__ = ('mode', 'epsilon')
+
+    def __init__(self, mode='per-activation', epsilon=1e-4):
+        DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm_inf.c'],
+                         'dnn_batchnorm_op')
+
+        if version() < 5000:
+            raise RuntimeError("cuDNN Batch Normalization requires cuDNN v5 or later")
+        assert (mode in ('per-activation', 'spatial'))
+        self.mode = mode
+
+        assert (epsilon >= 1e-5)
+        self.epsilon = epsilon
+
+    def get_op_params(self):
+        params = []
+        params.append(('MODE', ("CUDNN_BATCHNORM_SPATIAL"
+                                if self.mode == "spatial"
+                                else "CUDNN_BATCHNORM_PER_ACTIVATION")))
+        params.append(('EPSILON', str(self.epsilon)))
+        return params
+
+    def infer_shape(self, node, shape):
+        return [shape[0]]
+
+    def make_node(self, x, scale, bias, estimated_mean, estimated_variance):
+        ctx_name = infer_context_name(x, scale, bias, estimated_mean,
+                                      estimated_variance)
+        x = as_gpuarray_variable(x, ctx_name)
+        scale = as_gpuarray_variable(scale, ctx_name)
+        bias = as_gpuarray_variable(bias, ctx_name)
+        estimated_mean = as_gpuarray_variable(estimated_mean, ctx_name)
+        estimated_variance = as_gpuarray_variable(estimated_variance, ctx_name)
+        assert x.ndim == 4
+        assert scale.ndim == 4
+        assert bias.ndim == 4
+        assert estimated_mean.ndim == 4
+        assert estimated_variance.ndim == 4
+        return Apply(self, [x, scale, bias, estimated_mean, estimated_variance], [x.type()])
+
+    def grad(self, inputs, grads):
+        x, scale, bias, est_mean, est_var = inputs
+        dy = grads[0]
+
+        if self.mode == "per-activation":
+            axes = (0,)
+        elif self.mode == "spatial":
+            axes = (0, 2, 3)
+        scale, bias, est_mean, est_var = (theano.tensor.addbroadcast(t, *axes)
+                                          for t in (scale, bias, est_mean, est_var))
+
+        # define helper expressions
+        est_var_eps = est_var + self.epsilon
+        est_std = theano.tensor.sqrt(est_var_eps)
+        two = theano.tensor.constant(2.)
+
+        # define and return gradients
+        dx = dy * (scale / est_std)
+        dscale = (dy * (x - est_mean)).sum(axes, keepdims=True) / est_std
+        dbias = dy.sum(axes, keepdims=True)
+        dmean = -dy.sum(axes, keepdims=True) * (scale / est_std)
+        dvar = -(dy * (x - est_mean)).sum(axes, keepdims=True) * (scale / (two * est_var_eps * est_std))
+        return [dx, dscale, dbias, dmean, dvar]
+
+
+class GpuDnnBatchNormGrad(DnnBase):
+    __props__ = ('mode', 'epsilon')
+
+    def __init__(self, mode='per-activation', epsilon=1e-4):
+        DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm_grad.c'],
+                         'dnn_batchnorm_grad')
+
+        if version() < 5000:
+            raise RuntimeError("cuDNN Batch Normalization requires cuDNN v5 or later")
+        assert (mode in ('per-activation', 'spatial'))
+        self.mode = mode
+
+        assert (epsilon >= 1e-5)
+        self.epsilon = epsilon
+
+    def get_op_params(self):
+        params = []
+        params.append(('MODE', ("CUDNN_BATCHNORM_SPATIAL"
+                                if self.mode == "spatial"
+                                else "CUDNN_BATCHNORM_PER_ACTIVATION")))
+        params.append(('EPSILON', str(self.epsilon)))
+        return params
+
+    def make_node(self, x, dy, scale, x_mean, x_invstd):
+        ctx_name = infer_context_name(x, dy, scale, x_mean, x_invstd)
+        x = as_gpuarray_variable(x, ctx_name)
+        dy = as_gpuarray_variable(dy, ctx_name)
+        scale = as_gpuarray_variable(scale, ctx_name)
+        x_mean = as_gpuarray_variable(x_mean, ctx_name)
+        x_invstd = as_gpuarray_variable(x_invstd, ctx_name)
+        assert x.ndim == 4 and dy.ndim == 4 and scale.ndim == 4 and x_mean.ndim == 4 and x_invstd.ndim == 4
+        return Apply(self, [x, dy, scale, x_mean, x_invstd], [x.type(), scale.type(), scale.type()])
+
+    def infer_shape(self, node, shape):
+        return [shape[0], shape[2], shape[2]]
+
+
 @register_opt2([AbstractConv2d, AbstractConv2d_gradWeights,
                 AbstractConv2d_gradInputs], 'fast_compile', 'conv_dnn', 'cudnn')
 def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
