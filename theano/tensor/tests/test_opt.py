@@ -114,31 +114,43 @@ def inputs(xbc=(0, 0), ybc=(0, 0), zbc=(0, 0)):
 
 
 class test_reshape_lift(unittest.TestCase):
-    def test_local_reshape_lift(self):
-        x = tensor.tensor4()
-        out = T.exp(x).reshape([x.size])
-        assert out.ndim == 1
-        mode = compile.mode.get_default_mode()
-        mode = mode.including('local_reshape_lift')
-        f = theano.function([x], out, mode=mode)
-        f(numpy.random.rand(5, 4, 3, 2).astype(config.floatX))
-        topo = f.maker.fgraph.toposort()
-        assert isinstance(topo[-2].op, tensor.Reshape)
-        assert isinstance(topo[-1].op, tensor.Elemwise)
-
     def test_unary(self):
         x, y, z = inputs()
         e = T.exp(x).reshape([x.size])
         g = FunctionGraph([x], [e])
+
+        e_opt = T.exp(x.reshape([x.size]))
+        g_opt = FunctionGraph([x], [e_opt])
+
+        self.assertFalse(str(g) == str(g_opt))
+        print()
         print(str(g))
-        self.assertTrue(str(g) == "[Reshape{1}(Elemwise{exp,no_inplace}(x), " +
-                                  "MakeVector{dtype='int64'}" +
-                                  "(Prod{acc_dtype=int64}(Shape(x))))]")
         reshape_lift.optimize(g)
         print(str(g))
-        self.assertTrue(str(g) == "[Elemwise{exp,no_inplace}(Reshape{1}(x, " +
-                                  "MakeVector{dtype='int64'}" +
-                                  "(Prod{acc_dtype=int64}(Shape(x)))))]")
+        self.assertTrue(str(g) == str(g_opt))
+
+    def test_sigmoid_crossentropy(self):
+        x, y, z = inputs()
+
+        probs = T.nnet.sigmoid(x)
+        probs_r = probs.reshape([x.size])
+        probs2 = T.nnet.sigmoid(probs_r)
+        probs_r2 = probs2.reshape([x.size])
+        g = FunctionGraph([x, y], [probs_r2])
+
+        xp = x.reshape([x.size])
+        probs = T.nnet.sigmoid(xp)
+        g_opt = FunctionGraph([x, y], [probs])
+
+        self.assertFalse(str(g) == str(g_opt))
+        print()
+        print(str(g))
+        reshape_lift.optimize(g)
+        print(str(g))
+        reshape_lift.optimize(g)
+        print(str(g))
+        print(str(g_opt))
+        self.assertTrue(str(g) == str(g_opt))
 
 
 class test_dimshuffle_lift(unittest.TestCase):
