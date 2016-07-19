@@ -2,7 +2,7 @@
 
 int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject* padding,
                               PyArrayObject* subsample, PyObject *conv_mode, PyObject *precision,
-                              PyObject* bmode,
+                              PyObject* bmode, PyObject* nb_dims,
                               cudnnConvolutionDescriptor_t *desc) {
   cudnnStatus_t err;
   int pad[3] = {*(npy_int64 *)PyArray_GETPTR1(padding, 0),
@@ -15,6 +15,7 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject* padding,
   long conv_mode_code = PyInt_asLong(conv_mode);
   char* CONV_MODE = NULL;
   long BORDER_MODE = PyInt_asLong(bmode);
+  long NB_DIMS = PyInt_asLong(nb_dims);
 
 if (precision_code == 16L)
 {
@@ -42,17 +43,15 @@ if (BORDER_MODE == 0L)
 {
   pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) - 1;
   pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) - 1;
-#if NB_DIMS > 2
+if (NB_DIMS > 2)
   pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) - 1;
-#endif
 }
 else if (BORDER_MODE == 2L)
 {
   pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) / 2;
   pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) / 2;
-#if NB_DIMS > 2
+if (NB_DIMS > 2)
   pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) / 2;
-#endif
 }
 
 

@@ -408,7 +408,8 @@ class GpuDnnConvDesc(COp):
         conv_mode = as_tensor_variable(conv_mode)
         precision = as_tensor_variable(precision)
         bmode = as_tensor_variable(bmode)
-        node = Apply(self, [kern_shape, padding, subsample, conv_mode, precision, bmode],
+        nb_dims = as_tensor_variable(len(subsample))
+        node = Apply(self, [kern_shape, padding, subsample, conv_mode, precision, bmode, nb_dims],
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
         # DebugMode cannot compare the values of CDataType variables, so by
@@ -427,8 +428,7 @@ class GpuDnnConvDesc(COp):
         else:
             sub2 = '0'
 
-        return [('NB_DIMS', str(len(self.subsample))),
-                ('SUB_0', sub0), ('SUB_1', sub1), ('SUB_2', sub2)]
+        return [('SUB_0', sub0), ('SUB_1', sub1), ('SUB_2', sub2)]
 
     def c_code_cache_version(self): #TODO: need to update at the end
         return (super(GpuDnnConvDesc, self).c_code_cache_version(), version())
