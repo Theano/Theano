@@ -80,7 +80,6 @@ mode_opt = theano.compile.mode.get_mode(mode_opt)
 ds = lambda x, y: DimShuffle(x.type.broadcastable, y)(x)
 dimshuffle_lift = out2in(local_dimshuffle_lift)
 
-rs = lambda x, y: Reshape(x.ndim)(x, y)
 reshape_lift = out2in(local_reshape_lift)
 
 _optimizer_stabilize = gof.Query(include=['fast_run'])
@@ -115,7 +114,31 @@ def inputs(xbc=(0, 0), ybc=(0, 0), zbc=(0, 0)):
 
 
 class test_reshape_lift(unittest.TestCase):
-    def test_
+    def test_local_reshape_lift(self):
+        x = tensor.tensor4()
+        out = T.exp(x).reshape([x.size])
+        assert out.ndim == 1
+        mode = compile.mode.get_default_mode()
+        mode = mode.including('local_reshape_lift')
+        f = theano.function([x], out, mode=mode)
+        f(numpy.random.rand(5, 4, 3, 2).astype(config.floatX))
+        topo = f.maker.fgraph.toposort()
+        assert isinstance(topo[-2].op, tensor.Reshape)
+        assert isinstance(topo[-1].op, tensor.Elemwise)
+
+    def test_unary(self):
+        x, y, z = inputs()
+        e = T.exp(x).reshape([x.size])
+        g = FunctionGraph([x], [e])
+        print(str(g))
+        self.assertTrue(str(g) == "[Reshape{1}(Elemwise{exp,no_inplace}(x), " +
+                                  "MakeVector{dtype='int64'}" +
+                                  "(Prod{acc_dtype=int64}(Shape(x))))]")
+        reshape_lift.optimize(g)
+        print(str(g))
+        self.assertTrue(str(g) == "[Elemwise{exp,no_inplace}(Reshape{1}(x, " +
+                                  "MakeVector{dtype='int64'}" +
+                                  "(Prod{acc_dtype=int64}(Shape(x)))))]")
 
 
 class test_dimshuffle_lift(unittest.TestCase):
@@ -6181,19 +6204,6 @@ def test_local_useless_reshape():
     f = theano.function([i], m, mode=mode)
     topo = f.maker.fgraph.toposort()
     assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
-
-
-def test_local_reshape_lift():
-    x = tensor.tensor4()
-    out = T.exp(x).reshape([x.size])
-    assert out.ndim == 1
-    mode = compile.mode.get_default_mode()
-    mode = mode.including('local_reshape_lift')
-    f = theano.function([x], out, mode=mode)
-    f(numpy.random.rand(5, 4, 3, 2).astype(config.floatX))
-    topo = f.maker.fgraph.toposort()
-    assert isinstance(topo[-2].op, tensor.Reshape)
-    assert isinstance(topo[-1].op, tensor.Elemwise)
 
 
 class Test_lift_transpose_through_dot(unittest.TestCase):
