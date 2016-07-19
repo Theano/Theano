@@ -1,7 +1,7 @@
 #section support_code_apply
 
-int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyObject *conv_mode,
-                              PyObject *precision,
+int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject* border_mode,
+                              PyArrayObject* subsample, PyObject *conv_mode, PyObject *precision,
                               cudnnConvolutionDescriptor_t *desc) {
   cudnnStatus_t err;
   int pad[3] = {PAD_0, PAD_1, PAD_2};
