@@ -1,7 +1,7 @@
 #section support_code_apply
 
 int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject* padding,
-                              PyArrayObject* subsample, PyObject *conv_mode, PyObject *precision,
+                              PyArrayObject* subsample, PyObject* conv_mode, PyObject* precision,
                               PyObject* bmode, PyObject* nb_dims,
                               cudnnConvolutionDescriptor_t *desc) {
   cudnnStatus_t err;
@@ -12,12 +12,12 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject* padding,
                     *(npy_int64 *)PyArray_GETPTR1(subsample, 1),
                     *(npy_int64 *)PyArray_GETPTR1(subsample, 2)};
   int upscale[3] = {1, 1, 1};
-  long precision_code = PyInt_asLong(precision);
+  long precision_code = PyInt_AsLong(precision);
   char* PRECISION = NULL;
-  long conv_mode_code = PyInt_asLong(conv_mode);
+  long conv_mode_code = PyInt_AsLong(conv_mode);
   char* CONV_MODE = NULL;
-  long BORDER_MODE = PyInt_asLong(bmode);
-  long NB_DIMS = (int)PyInt_asLong(nb_dims);
+  long BORDER_MODE = PyInt_AsLong(bmode);
+  long NB_DIMS = (int)PyInt_AsLong(nb_dims);
 
 if (precision_code == 16L)
 {
