@@ -13,7 +13,7 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject* padding,
                     *(npy_int64 *)PyArray_GETPTR1(subsample, 2)};
   int upscale[3] = {1, 1, 1};
   long precision_code = PyInt_AsLong(precision);
-  char* PRECISION = NULL;
+  cudnnDataType_t PRECISION;
   long conv_mode_code = PyInt_AsLong(conv_mode);
   cudnnConvolutionMode_t CONV_MODE;
   long BORDER_MODE = PyInt_AsLong(bmode);
@@ -21,15 +21,15 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject* padding,
 
 if (precision_code == 16L)
 {
-  PRECISION = "CUDNN_DATA_HALF";
+  PRECISION = CUDNN_DATA_HALF;
 }
 else if (precision_code == 32L)
 {
-  PRECISION = "CUDNN_DATA_FLOAT";
+  PRECISION = CUDNN_DATA_FLOAT;
 }
 else if (precision_code == 64L)
 {
-  PRECISION = "CUDNN_DATA_DOUBLE";
+  PRECISION = CUDNN_DATA_DOUBLE;
 }
 
 if (conv_mode_code == 0L)
