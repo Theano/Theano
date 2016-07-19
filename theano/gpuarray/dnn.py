@@ -430,7 +430,7 @@ def gpu_dnn_conv_desc(border_mode, subsample=(1, 1), conv_mode='conv',
                       precision="float32"):
     key = (border_mode, subsample, conv_mode, precision)
     if key not in gpu_dnn_conv_desc.cache:
-        gpu_dnn_conv_desc.cache[key] = GpuDnnConvDesc(border_mode,
+        gpu_dnn_conv_desc.cache[key] = GpuDnnConvDesc()(border_mode,
                                                       subsample,
                                                       conv_mode,
                                                       precision)
@@ -958,8 +958,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
                    shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1)
         out_shp = assert_conv_shape(out_shp)
         out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(*out_shp)
-        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                              conv_mode='cross', precision=precision)(out.shape)
+        desc = GpuDnnConvDesc()(out.shape, border_mode='valid', subsample=(1, 1),
+                              conv_mode='cross', precision=precision)
         conv = gpu_dnn_conv_gradW()(img, kerns, out, desc)
         return as_gpuarray_variable(conv.dimshuffle(1, 0, 2, 3), ctx_name)
 
@@ -977,8 +977,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
                    shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1)
         out_shp = assert_conv_shape(out_shp)
         out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(*out_shp)
-        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                              conv_mode=conv_mode, precision=precision)(kerns.shape)
+        desc = GpuDnnConvDesc()(kerns.shape, border_mode='valid', subsample=(1, 1),
+                              conv_mode=conv_mode, precision=precision)
         return gpu_dnn_conv_gradI()(kerns, img, out, desc)
 
     # Standard case: We use GpuDnnConv with suitable padding.
