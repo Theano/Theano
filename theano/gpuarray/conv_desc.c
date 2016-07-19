@@ -17,7 +17,7 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject* padding,
   long conv_mode_code = PyInt_asLong(conv_mode);
   char* CONV_MODE = NULL;
   long BORDER_MODE = PyInt_asLong(bmode);
-  long NB_DIMS = PyInt_asLong(nb_dims);
+  long NB_DIMS = (int)PyInt_asLong(nb_dims);
 
 if (precision_code == 16L)
 {
