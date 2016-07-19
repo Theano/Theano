@@ -850,7 +850,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         fname = 'old_pool_interface.pkl'
         with open(os.path.join(testfile_dir, fname), 'rb') as fp:
             try:
-                old_fct = cPickle.load(fp)
+                old_fct = cPickle.load(fp, encoding='latin1')
             except ImportError:
                 # Windows sometimes fail with nonsensical errors like:
                 #   ImportError: No module named type
