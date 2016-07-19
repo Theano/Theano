@@ -15,7 +15,7 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject* padding,
   long precision_code = PyInt_AsLong(precision);
   char* PRECISION = NULL;
   long conv_mode_code = PyInt_AsLong(conv_mode);
-  char* CONV_MODE = NULL;
+  cudnnConvolutionMode_t CONV_MODE;
   long BORDER_MODE = PyInt_AsLong(bmode);
   int NB_DIMS = (int)PyInt_AsLong(nb_dims);
 
@@ -34,11 +34,11 @@ else if (precision_code == 64L)
 
 if (conv_mode_code == 0L)
 {
-  CONV_MODE = "CUDNN_CONVOLUTION";
+  CONV_MODE = CUDNN_CONVOLUTION;
 }
 else if (conv_mode_code == 1L)
 {
-  CONV_MODE = "CUDNN_CROSS_CORRELATION";
+  CONV_MODE = CUDNN_CROSS_CORRELATION;
 }
 
 if (BORDER_MODE == 0L)
