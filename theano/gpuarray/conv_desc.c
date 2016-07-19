@@ -2,6 +2,7 @@
 
 int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject* border_mode,
                               PyArrayObject* subsample, PyObject *conv_mode, PyObject *precision,
+                              PyObject* bmode,
                               cudnnConvolutionDescriptor_t *desc) {
   cudnnStatus_t err;
   int pad[3] = {PAD_0, PAD_1, PAD_2};
@@ -11,6 +12,7 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject* border_mod
   char* PRECISION = NULL;
   long conv_mode_code = PyInt_asLong(conv_mode);
   char* CONV_MODE = NULL;
+  long BORDER_MODE = PyInt_asLong(bmode);
 
 if (precision_code == 16L)
 {
@@ -34,19 +36,23 @@ else if (conv_mode_code == 1L)
   CONV_MODE = "CUDNN_CROSS_CORRELATION";
 }
 
-#if BORDER_MODE == 0
+if (BORDER_MODE == 0L)
+{
   pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) - 1;
   pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) - 1;
 #if NB_DIMS > 2
   pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) - 1;
 #endif
-#elif BORDER_MODE == 2
+}
+else if (BORDER_MODE == 2L)
+{
   pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) / 2;
   pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) / 2;
 #if NB_DIMS > 2
   pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) / 2;
 #endif
-#endif
+}
+
 
   if (PyArray_DIM(filt_shp, 0) - 2 != NB_DIMS) {
     PyErr_Format(PyExc_ValueError, "Filter shape has too many dimensions: "

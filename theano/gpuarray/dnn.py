@@ -389,12 +389,18 @@ class GpuDnnConvDesc(COp):
                 precision = 32
             elif precision == 'float64':
                 precision = 64
-
+        if isinstance(border_mode,tuple) or border_mode == 'valid':
+            bmode = 1
+        elif border_mode == 'half':
+            bmode = 2
+        else:
+            bmode = 0
         border_mode = as_tensor_variable(border_mode)
         subsample = as_tensor_variable(subsample)
         conv_mode = as_tensor_variable(conv_mode)
         precision = as_tensor_variable(precision)
-        node = Apply(self, [kern_shape, border_mode, subsample, conv_mode, precision],
+        bmode = as_tensor_variable(bmode)
+        node = Apply(self, [kern_shape, border_mode, subsample, conv_mode, precision, bmode],
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
         # DebugMode cannot compare the values of CDataType variables, so by
@@ -432,7 +438,6 @@ class GpuDnnConvDesc(COp):
             sub2 = '0'
 
         return [('NB_DIMS', str(len(self.subsample))),
-                ('BORDER_MODE', bmode),
                 ('PAD_0', pad0), ('PAD_1', pad1), ('PAD_2', pad2),
                 ('SUB_0', sub0), ('SUB_1', sub1), ('SUB_2', sub2)]
 
