@@ -393,6 +393,8 @@ _one = constant(numpy.asarray(1.0, dtype='float64'))
 
 
 def ensure_dt(val, default, name, dtype):
+    if dtype == 'float16':
+        dtype = 'float32'
     if val is None:
         val = default.clone()
     if not isinstance(val, Variable):
@@ -422,7 +424,7 @@ class GpuDnnConv(DnnBase):
         Default is the value of :attr:`config.dnn.conv.algo_fwd`.
 
     """
-
+    _f16_ok = True
     __props__ = ('algo', 'inplace')
 
     def __init__(self, algo=None, inplace=False):
@@ -605,7 +607,7 @@ class GpuDnnConvGradW(DnnBase):
         Default is the value of :attr:`config.dnn.conv.algo_bwd_filter`.
 
     """
-
+    _f16_ok = True
     __props__ = ('algo', 'inplace')
 
     def __init__(self, inplace=False, algo=None):
@@ -720,7 +722,6 @@ gpu_dnn_conv_gradW.cache = {}
 
 
 class GpuDnnConvGradI(DnnBase):
-
     """
     The convolution gradient with respect to the inputs.
 
@@ -735,7 +736,7 @@ class GpuDnnConvGradI(DnnBase):
         Default is the value of :attr:`config.dnn.conv.algo_bwd_data`.
 
     """
-
+    _f16_ok = True
     __props__ = ('algo', 'inplace',)
 
     def __init__(self, inplace=False, algo=None):
@@ -1149,7 +1150,7 @@ class GpuDnnPool(DnnBase):
         (padX, padY) or (padX, padY, padZ)
 
     """
-
+    _f16_ok = True
     __props__ = ('mode',)
 
     def __init__(self, mode='max'):
@@ -1234,7 +1235,7 @@ class GpuDnnPoolGrad(DnnBase):
         (padX, padY) or (padX, padY, padZ)
 
     """
-
+    _f16_ok = True
     __props__ = ('mode',)
 
     def __init__(self, mode='max'):
