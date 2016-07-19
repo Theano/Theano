@@ -337,7 +337,7 @@ class GpuDnnConvDesc(COp):
 
     """
 
-    __props__ = ('border_mode', 'subsample', 'conv_mode', 'precision')
+    __props__ = ()
 
     def c_headers(self):
         return ['cudnn.h', 'cudnn_helper.h']
