@@ -376,12 +376,12 @@ class GpuDnnConvDesc(COp):
 
         assert conv_mode in ('conv', 'cross')
         if conv_mode == 'conv':
-            conv_mode = 0 # CUDNN_CONVOLUTION
+            conv_mode = 0  # CUDNN_CONVOLUTION
         else:
-            conv_mode = 1 # CUDNN_CROSS_CORRELATION
-        
+            conv_mode = 1  # CUDNN_CROSS_CORRELATION
+
         if precision not in ['float16', 'float32', 'float64']:
-        	raise TypeError('precision must be one of float16, float32, float64')
+            raise TypeError('precision must be one of float16, float32, float64')
         else:
             if precision == 'float16':
                 precision = 16
@@ -389,20 +389,20 @@ class GpuDnnConvDesc(COp):
                 precision = 32
             elif precision == 'float64':
                 precision = 64
-        if isinstance(border_mode,tuple) or border_mode == 'valid':
+        if isinstance(border_mode, tuple) or border_mode == 'valid':
             bmode = 1
         elif border_mode == 'half':
             bmode = 2
         else:
             bmode = 0
-        padding = [0,0,0]
+        padding = [0, 0, 0]
         if isinstance(border_mode, tuple):
             padding[0] = border_mode[0]
             padding[1] = border_mode[1]
             if len(border_mode) > 2:
                 padding[2] = border_mode[2]
         else:
-            padding = [0,0,0]
+            padding = [0, 0, 0]
         if len(subsample) == 2:
             subsample.append(0)
         padding = as_tensor_variable(padding)
@@ -422,7 +422,7 @@ class GpuDnnConvDesc(COp):
         out.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
         return node
 
-    def c_code_cache_version(self): #TODO: need to update at the end
+    def c_code_cache_version(self):  # TODO: need to update at the end
         return (super(GpuDnnConvDesc, self).c_code_cache_version(), version())
 
 
