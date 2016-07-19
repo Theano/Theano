@@ -490,110 +490,51 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         x = inputs[0]
         idx = inputs[1:]
 
-        assert len(idx) >= x.ndim
-        # step 1: find smallest index
+        # detect and transpose array indices
+        transp = list(range(x.ndim))
+        p = 0
+        pp = 0
+        nidx = []
+        nshp = list(x.shape)
         for k, i in enumerate(idx):
-            if isinstance(i, numpy.ndarray):
-                start = k
-                break
-        for k, i in enumerate(idx[::-1]):
-            if isinstance(i, numpy.ndarray):
-                end = len(idx) - k
-                break
-
-        # step 2: transpose
-        def get_indices(a, b, ind):
-            """
-            Get real indices for a list of indices.
-            """
-            dimshuffle_info = []
-            new_ind = []
-            k = 0
-            new_axis = x.ndim
-            dimshuffle_info_append = []
-            new_ind_append = []
-
-            for i in range(0, a):
-                if isinstance(ind[i], slice):
-                    dimshuffle_info_append.append(k)
-                    new_ind_append.append(ind[i])
-                    k += 1
-                elif ind[i] is None:
-                    dimshuffle_info_append.append(new_axis)
-                    new_axis += 1
-                    new_ind_append.append(slice(None))
-
-            dimshuffle_info.append(k)
-            new_ind.append(ind[a])
-            k += 1
-
-            idx_1 = []
-            idx_2 = []
-            idx_3 = []
-            for i in range(a + 1, b):
-                if isinstance(ind[i], slice):
-                    idx_1.append(k)
-                    idx_2.append(ind[i])
-                    k += 1
-                elif ind[i] is None:
-                    idx_1.append(new_axis)
-                    new_axis += 1
-                    idx_2.append(slice(None))
+            if (isinstance(i, numpy.ndarray) and
+                    i.ndim != 0):
+                transp.remove(k)
+                transp.insert(p, k)
+                nidx.insert(p, i)
+                p += 1
+            else:
+                if i is None:
+                    nidx.append(slice(None))
+                    nshp.insert(pp, 1)
                 else:
-                    idx_3.append(k)
-                    new_ind.append(ind[i])
-                    k += 1
-            valid_end = len(new_ind)
+                    nidx.append(i)
+            pp += 1
+        x = x.reshape(nshp)
+        x = x.transpose(*transp)
 
-            dimshuffle_info.extend(idx_3)
-            dimshuffle_info.extend(dimshuffle_info_append)
-            new_ind.extend(new_ind_append)
+        idx_ = ([slice(None)] * p + nidx[p:])
+        x = x.__getitem__(idx_)
 
-            new_ind += idx_2
-            dimshuffle_info.extend(idx_1)
-
-            for i in range(b, len(ind)):
-                if isinstance(ind[i], slice):
-                    dimshuffle_info.append(k)
-                    new_ind.append(ind[i])
-                    k += 1
-                elif ind[i] is None:
-                    dimshuffle_info.append(new_axis)
-                    new_axis += 1
-                    new_ind.append(slice(None))
-
-            return dimshuffle_info, new_ind, valid_end
-
-        (dimshuffle_idx, new_ind,
-         end_) = get_indices(start, end, idx)
-        shape = x.shape + (1, ) * (len(dimshuffle_idx) - x.ndim)
-        x = x.reshape(shape)
-        x = x.transpose(*dimshuffle_idx)
-        # step 3: partial flattening
-        shape = (x.shape[: 0] +
-                 (numpy.prod(x.shape[0: end_]),) +
-                 x.shape[end_:])
+        # flatten the array-indexed dimensions
+        shape = ((numpy.prod(x.shape[0: p]),) +
+                 x.shape[p:])
         input_flat = x.reshape(shape)
-        # step 4: build the strides
+
+        # build the strides
         strides = [1]
-        for i in range(0, end_ - 1)[::-1]:
-            stride = x.shape[i + 1] * strides[-1]
-            strides.append(stride)
-        # step 5: build the indices into x_flat
-        items = [new_ind[i] if isinstance(new_ind[i], numpy.ndarray)
-                 else 0 for i in range(0, end_)]
-        new_idx = numpy.sum([i * j for i, j
-                             in zip(items, strides[::-1])],
-                            axis=0)
-        # step 6: advanced slicing
-        out_flat = input_flat.take1(pygpu.asarray(new_idx.flatten(),
-                                                  context=input_flat.context))
-        # step 7: reshape into right shape
-        out_flat_shp = new_idx.shape + x.shape[end_:]
-        o = out_flat.reshape(out_flat_shp)
-        idx_ = ([slice(None)] * (new_idx.ndim - 2 + end_) +
-                new_ind[end_:])
-        out[0] = o.__getitem__(idx_)
+        for i in range(p - 1, 0, -1):
+            stride = x.shape[i] * strides[-1]
+            strides.insert(0, stride)
+
+        # build the indices and use it
+        take_idx = sum((i * s for i, s in zip(nidx, strides)))
+        out_flat = input_flat.take1(pygpu.asarray(take_idx.flatten(),
+                                                  context=x.context))
+
+        # finish up
+        out_flat_shp = take_idx.shape + x.shape[p:]
+        out[0] = out_flat.reshape(out_flat_shp)
 
 
 class GpuAdvancedIncSubtensor1(Op):
