@@ -404,7 +404,7 @@ class GpuDnnConvDesc(COp):
         else:
             padding = [0, 0, 0]
         if len(subsample) == 2:
-            subsample.append(0)
+            subsample += (0,)
         nb_dims = as_tensor_variable(len(subsample))
         padding = as_tensor_variable(padding)
         subsample = as_tensor_variable(subsample)
