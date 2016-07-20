@@ -2699,7 +2699,8 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
         gamma = theano.tensor.shape_padright(gamma, 4 - ndim)
         beta = theano.tensor.shape_padright(beta, 4 - ndim)
     batchnorm_op = GpuDnnBatchNorm(mode=mode, epsilon=epsilon)
-    result = tuple(batchnorm_op(inputs, gamma, beta))
+    result = tuple(batchnorm_op(gpu_contiguous(inputs), gpu_contiguous(gamma),
+                                gpu_contiguous(beta)))
     if ndim < 4:
         result = tuple(theano.tensor.flatten(r, ndim) for r in result)
     return result
@@ -2773,7 +2774,9 @@ def dnn_batch_normalization_test(inputs, gamma, beta, mean, var,
         mean = theano.tensor.shape_padright(mean, 4 - ndim)
         var = theano.tensor.shape_padright(var, 4 - ndim)
     batchnorm_op = GpuDnnBatchNormInference(mode=mode, epsilon=epsilon)
-    result = batchnorm_op(inputs, gamma, beta, mean, var)
+    result = batchnorm_op(gpu_contiguous(inputs), gpu_contiguous(gamma),
+                          gpu_contiguous(beta), gpu_contugous(mean),
+                          gpu_contiguous(var))
     if ndim < 4:
         result = theano.tensor.flatten(result, ndim)
     return result
