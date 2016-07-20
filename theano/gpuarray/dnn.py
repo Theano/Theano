@@ -393,6 +393,8 @@ _one = constant(numpy.asarray(1.0, dtype='float64'))
 
 
 def ensure_dt(val, default, name, dtype):
+    if dtype == 'float16':
+        dtype = 'float32'
     if val is None:
         val = default.clone()
     if not isinstance(val, Variable):
@@ -422,7 +424,7 @@ class GpuDnnConv(DnnBase):
         Default is the value of :attr:`config.dnn.conv.algo_fwd`.
 
     """
-
+    _f16_ok = True
     __props__ = ('algo', 'inplace')
 
     def __init__(self, algo=None, inplace=False):
@@ -436,22 +438,6 @@ class GpuDnnConv(DnnBase):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [2]}
-
-        if version() < 3000:
-            if self.algo == 'fft':
-                raise RuntimeError("cuDNN FFT convolution requires cuDNN v3")
-            elif self.algo in ['guess_once', 'guess_on_shape_change']:
-                raise RuntimeError("cuDNN selection of convolution "
-                                   "implementation based on heuristics "
-                                   "requires cuDNN v3")
-            elif self.algo in ['time_once', 'time_on_shape_change']:
-                raise RuntimeError("cuDNN convolution timing requires cuDNN v3")
-
-        # The fft_tiling implementation is only available from cuDNN V4 onward
-        if version() < 4000:
-            if self.algo == 'fft_tiling':
-                raise RuntimeError("cuDNN tiled-FFT convolution requires "
-                                   "cuDNN v4 or more recent")
 
         if version() < 5000 and self.algo == 'winograd':
             raise RuntimeError("cuDNN winograd convolution requires "
@@ -488,7 +474,6 @@ class GpuDnnConv(DnnBase):
         elif self.algo == 'fft':
             alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT'
         elif self.algo == 'fft_tiling':
-            # need v4
             alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING'
         elif self.algo == 'winograd':
             # need v5
@@ -605,7 +590,7 @@ class GpuDnnConvGradW(DnnBase):
         Default is the value of :attr:`config.dnn.conv.algo_bwd_filter`.
 
     """
-
+    _f16_ok = True
     __props__ = ('algo', 'inplace')
 
     def __init__(self, inplace=False, algo=None):
@@ -650,26 +635,23 @@ class GpuDnnConvGradW(DnnBase):
         if self.inplace:
             defs.append(('CONV_INPLACE', '1'))
 
-        if version() < 3000:
-            alg = '0'
-        else:
+        alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0'
+        if self.algo == 'none':
             alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0'
-            if self.algo == 'none':
-                alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0'
-            if self.algo == 'deterministic':
-                alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1'
-            if self.algo == 'fft':
-                alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT'
-            if self.algo == 'small':
-                # non-deterministic, small workspace
-                alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3'
-            if self.algo in ['guess_once', 'guess_on_shape_change',
-                             'time_once', 'time_on_shape_change']:
-                defs.append(('CHOOSE_ALGO', ''))
-            if self.algo in ['guess_once', 'time_once']:
-                defs.append(('CHOOSE_ONCE', ''))
-            if self.algo in ['time_once', 'time_on_shape_change']:
-                defs.append(('CHOOSE_TIME', ''))
+        if self.algo == 'deterministic':
+            alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1'
+        if self.algo == 'fft':
+            alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT'
+        if self.algo == 'small':
+            # non-deterministic, small workspace
+            alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3'
+        if self.algo in ['guess_once', 'guess_on_shape_change',
+                         'time_once', 'time_on_shape_change']:
+            defs.append(('CHOOSE_ALGO', ''))
+        if self.algo in ['guess_once', 'time_once']:
+            defs.append(('CHOOSE_ONCE', ''))
+        if self.algo in ['time_once', 'time_on_shape_change']:
+            defs.append(('CHOOSE_TIME', ''))
 
         defs.append(('CONV_ALGO', alg))
 
@@ -720,7 +702,6 @@ gpu_dnn_conv_gradW.cache = {}
 
 
 class GpuDnnConvGradI(DnnBase):
-
     """
     The convolution gradient with respect to the inputs.
 
@@ -735,7 +716,7 @@ class GpuDnnConvGradI(DnnBase):
         Default is the value of :attr:`config.dnn.conv.algo_bwd_data`.
 
     """
-
+    _f16_ok = True
     __props__ = ('algo', 'inplace',)
 
     def __init__(self, inplace=False, algo=None):
@@ -748,11 +729,6 @@ class GpuDnnConvGradI(DnnBase):
             algo = config.dnn.conv.algo_bwd_data
         self.algo = algo
 
-        # The small-workspace implementation is only available from cuDNN V4
-        # onward.
-        if version() < 4000 and self.algo == 'fft_tiling':
-            raise RuntimeError("cuDNN's tiled-FFT convolution requires cuDNN "
-                               "v4 or more recent")
         if version() < 5000 and self.algo == 'winograd':
             raise RuntimeError("cuDNN's winograd convolution requires cuDNN "
                                "v5 or more recent")
@@ -791,30 +767,27 @@ class GpuDnnConvGradI(DnnBase):
         if self.inplace:
             defs.append(('CONV_INPLACE', '1'))
 
-        if version() < 3000:
-            alg = '0'
-        else:
+        alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0'
+        if self.algo == 'none':
             alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0'
-            if self.algo == 'none':
-                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0'
-            elif self.algo == 'deterministic':
-                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_1'
-            elif self.algo == 'fft':
-                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT'
-            elif self.algo == 'fft_tiling':
-                # big workspace but less than fft
-                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING'
-            elif self.algo == 'winograd':
-                # need v5
-                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD'
+        elif self.algo == 'deterministic':
+            alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_1'
+        elif self.algo == 'fft':
+            alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT'
+        elif self.algo == 'fft_tiling':
+            # big workspace but less than fft
+            alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING'
+        elif self.algo == 'winograd':
+            # need v5
+            alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD'
 
-            if self.algo in ['guess_once', 'guess_on_shape_change',
-                             'time_once', 'time_on_shape_change']:
-                defs.append(('CHOOSE_ALGO', ''))
-            if self.algo in ['guess_once', 'time_once']:
-                defs.append(('CHOOSE_ONCE', ''))
-            if self.algo in ['time_once', 'time_on_shape_change']:
-                defs.append(('CHOOSE_TIME', ''))
+        if self.algo in ['guess_once', 'guess_on_shape_change',
+                         'time_once', 'time_on_shape_change']:
+            defs.append(('CHOOSE_ALGO', ''))
+        if self.algo in ['guess_once', 'time_once']:
+            defs.append(('CHOOSE_ONCE', ''))
+        if self.algo in ['time_once', 'time_on_shape_change']:
+            defs.append(('CHOOSE_TIME', ''))
 
         defs.append(('CONV_ALGO', alg))
 
@@ -915,8 +888,12 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     # Establish dtype in which to perform the computation of the convolution
     if precision is None:
         precision = theano.config.dnn.conv.precision
-    if precision == 'as_input':
-        precision = theano.scalar.upcast(img.dtype, kerns.dtype)
+    if precision == 'as_input' or precision == 'as_input_f32':
+        nprec = theano.scalar.upcast(img.dtype, kerns.dtype)
+        if nprec == 'float16' and precision == 'as_input_f32':
+            precision = 'float32'
+        else:
+            precision = nprec
 
     if workmem is not None:
         if algo is not None:
@@ -1059,12 +1036,6 @@ class GpuDnnPoolDesc(Op):
         self.stride = stride
         self.pad = pad
 
-        if self.get_ndim() == 3 and version() < 3000:
-            raise RuntimeError("cuDNN 3d pooling requires v3")
-        if mode == 'average_exc_pad' and max(pad) > 0 and version() < 4004:
-            raise RuntimeError(
-                "cuDNN pooling mode 'average_exc_pad' requires at least v4")
-
     def get_ndim(self):
         return len(self.ws)
 
@@ -1149,7 +1120,7 @@ class GpuDnnPool(DnnBase):
         (padX, padY) or (padX, padY, padZ)
 
     """
-
+    _f16_ok = True
     __props__ = ('mode',)
 
     def __init__(self, mode='max'):
@@ -1234,7 +1205,7 @@ class GpuDnnPoolGrad(DnnBase):
         (padX, padY) or (padX, padY, padZ)
 
     """
-
+    _f16_ok = True
     __props__ = ('mode',)
 
     def __init__(self, mode='max'):

@@ -345,8 +345,9 @@ AddConfigVar('dnn.conv.algo_bwd_filter',
 AddConfigVar('dnn.conv.precision',
              "Default data precision to use for the computation in cuDNN "
              "convolutions (defaults to the same dtype as the inputs of the "
-             "convolutions).",
-             EnumStr('as_input', 'float16', 'float32', 'float64'),
+             "convolutions, or float32 if inputs are float16).",
+             EnumStr('as_input_f32', 'as_input', 'float16', 'float32',
+                     'float64'),
              in_c_key=False)
 
 
