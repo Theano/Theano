@@ -381,7 +381,6 @@ def register_useless(lopt, *tags, **kwargs):
         name = kwargs.pop('name', None) or lopt.__name__
         compile.mode.local_useless.register(name, lopt, 'last', 'fast_run',
                                             *tags, **kwargs)
-
         return lopt
 compile.optdb.register('useless', TopoOptimizer(local_useless, order="in_to_out"), 0.6, 'fast_run', 'fast_compile')
 
