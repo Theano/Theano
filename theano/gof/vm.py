@@ -332,8 +332,8 @@ class Stack(VM):
 
     def __init__(self, nodes, thunks, pre_call_clear,
                  storage_map, compute_map, fgraph, allow_gc,
-                 dependencies=None, callback=None, callback_input=None,
-                 n_updates=0):
+                 n_updates, dependencies=None, callback=None,
+                 callback_input=None):
         super(Stack, self).__init__(nodes, thunks, pre_call_clear)
 
         self.allow_gc = allow_gc
@@ -420,8 +420,8 @@ class Stack(VM):
         # apply_stack contains nodes
         if output_subset is not None:
             first_updated = len(self.outputs) - self.n_updates
-            output_subset = output_subset + range(first_updated,
-                                                  len(self.outputs))
+            output_subset = output_subset + list(range(first_updated,
+                                                       len(self.outputs)))
             apply_stack =\
                 [self.outputs[i].owner for i in output_subset
                     if self.outputs[i].owner]
@@ -865,10 +865,10 @@ class VM_Linker(link.LocalLinker):
                 nodes, thunks, pre_call_clear,
                 storage_map, compute_map,
                 self.fgraph, self.allow_gc,
+                len(updated_vars),
                 dependencies=deps,
                 callback=self.callback,
-                callback_input=self.callback_input,
-                n_updates=len(updated_vars))
+                callback_input=self.callback_input)
         elif self.use_cloop:
             # create a map from nodes to ints and vars to ints
             nodes_idx = {}
@@ -1006,8 +1006,8 @@ class VM_Linker(link.LocalLinker):
                     nodes, thunks, pre_call_clear,
                     storage_map, compute_map,
                     self.fgraph, self.allow_gc,
+                    len(updated_vars),
                     dependencies=deps,
-                    n_updates=len(updated_vars)
                 )
         return vm
 

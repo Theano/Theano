@@ -231,11 +231,12 @@ def test_partial_function_with_updates():
             optimizer=None, linker=linker_name))
         g = theano.function([x], [x - 6], updates=[(y, y + 3)], mode=Mode(
             optimizer=None, linker=linker_name))
-        f(3, output_subset=[])
-        assert(y.get_value() == 4)
-        assert(g(30, output_subset=[0]) == [24])
-        g(40, output_subset=[])
-        assert(y.get_value() == 10)
+
+        assert f(3, output_subset=[]) == []
+        assert y.get_value() == 4
+        assert g(30, output_subset=[0]) == [24]
+        assert g(40, output_subset=[]) == []
+        assert y.get_value() == 10
 
     check_updates(vm.VM_Linker(allow_partial_eval=True))
     check_updates('cvm')
