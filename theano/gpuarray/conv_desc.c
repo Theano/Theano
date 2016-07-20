@@ -1,8 +1,12 @@
 #section support_code_apply
 
-int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject* padding,
-                              PyArrayObject* subsample, PyObject* conv_mode, PyObject* precision,
-                              PyObject* bmode, PyObject* nb_dims,
+int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, 
+                              PyArrayObject* padding,
+                              PyArrayObject* subsample, 
+                              PyObject* conv_mode, 
+                              PyObject* precision,
+                              PyObject* bmode, 
+                              PyObject* nb_dims,
                               cudnnConvolutionDescriptor_t *desc) {
   cudnnStatus_t err;
   int pad[3] = {*(npy_int64 *)PyArray_GETPTR1(padding, 0),
@@ -17,7 +21,7 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject* padding,
   long conv_mode_code = PyInt_AsLong(conv_mode);
   cudnnConvolutionMode_t CONV_MODE;
   long BORDER_MODE = PyInt_AsLong(bmode);
-  int NB_DIMS = (int)PyInt_AsLong(nb_dims);
+  long NB_DIMS = PyInt_AsLong(nb_dims);
 
 if (precision_code == 16L)
 {
@@ -45,21 +49,21 @@ if (BORDER_MODE == 0L)
 {
   pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) - 1;
   pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) - 1;
-if (NB_DIMS > 2)
+if (NB_DIMS > 2L)
   pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) - 1;
 }
 else if (BORDER_MODE == 2L)
 {
   pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) / 2;
   pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) / 2;
-if (NB_DIMS > 2)
+if (NB_DIMS > 2L)
   pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) / 2;
 }
 
 
   if (PyArray_DIM(filt_shp, 0) - 2 != NB_DIMS) {
     PyErr_Format(PyExc_ValueError, "Filter shape has too many dimensions: "
-                 "expected %d, got %lld.", NB_DIMS,
+                 "expected %ld, got %lld.", NB_DIMS,
                  (long long)PyArray_DIM(filt_shp, 0));
     return -1;
   }
