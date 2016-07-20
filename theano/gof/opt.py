@@ -1964,6 +1964,44 @@ class TopoOptimizer(NavigatorOptimizer):
                        '<TopoOptimizer instance>')
 
 
+def out2in(*local_opts, **kwargs):
+    """WRITEME """
+    name = (kwargs and kwargs.pop('name', None))
+    if len(local_opts) > 1:
+        # Don't wrap it uselessly if their is only 1 optimization.
+        local_opts = LocalOptGroup(*local_opts)
+    else:
+        local_opts, = local_opts
+        if not name:
+            name = local_opts.__name__
+    ret = TopoOptimizer(local_opts,
+                        order='out_to_in',
+                        failure_callback=TopoOptimizer.warn_inplace,
+                        **kwargs)
+    if name:
+        ret.__name__ = name
+    return ret
+
+
+def in2out(*local_opts, **kwargs):
+    """WRITEME """
+    name = (kwargs and kwargs.pop('name', None))
+    if len(local_opts) > 1:
+        # Don't wrap it uselessly if their is only 1 optimization.
+        local_opts = LocalOptGroup(*local_opts)
+    else:
+        local_opts, = local_opts
+        if not name:
+            name = local_opts.__name__
+    ret = TopoOptimizer(local_opts,
+                        order='in_to_out',
+                        failure_callback=TopoOptimizer.warn_inplace,
+                        **kwargs)
+    if name:
+        ret.__name__ = name
+    return ret
+
+
 class OpKeyOptimizer(NavigatorOptimizer):
     """
     WRITEME
