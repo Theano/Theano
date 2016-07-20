@@ -2130,6 +2130,7 @@ class AdvancedSubtensor(Op):
 
     def make_node(self, x, *index):
         x = theano.tensor.as_tensor_variable(x)
+        
         index = tuple(map(as_index_variable, index))
         bcast = adv_index_broadcastable_pattern(x, index)
         return gof.Apply(self,
