@@ -150,13 +150,15 @@ optdb = gof.SequenceDB()
 optdb.register('merge1', gof.MergeOptimizer(),
                0, 'fast_run', 'fast_compile', 'merge')
 
+local_useless = gof.optdb.LocalGroupDB()
+optdb.register('useless', gof.optdb.TopoDB(local_useless),
+               0.6, 'fast_run', 'fast_compile')
+
 # After scan1 opt at 0.5 and before ShapeOpt at 1
 # This should only remove nodes.
 # The opt should not do anything that need shape inference.
 # New nodes that don't have infer_shape need that the original node
 # also don't have infer_shape
-optdb.register('useless', gof.EquilibriumDB(ignore_newtrees=False),
-               0.6, 'fast_run', 'fast_compile')
 optdb.register('merge1.1', gof.MergeOptimizer(),
                0.65, 'fast_run', 'fast_compile', 'merge')
 

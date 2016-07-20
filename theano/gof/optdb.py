@@ -406,6 +406,32 @@ class LocalGroupDB(SequenceDB):
         self.failure_callback = None
 
 
+class TopoDB(DB):
+    """
+    Generate a local optimizer of type LocalOptGroup instead
+    of a global optimizer.
+
+    It supports the tracks, to only get applied to some Op.
+
+    """
+
+    seq_opt = opt.TopoOptimizer
+
+    def __init__(self, db, order='in_to_out', ignore_newtrees=False,
+                 failure_callback=None):
+        super(TopoDB, self).__init__()
+        self.db = db
+        self.order = order
+        self.ignore_newtrees = ignore_newtrees
+        self.failure_callback = failure_callback
+
+    def query(self, *tags, **kwtags):
+        return opt.TopoOptimizer(self.db.query(*tags, **kwtags),
+                                 self.order,
+                                 self.ignore_newtrees,
+                                 self.failure_callback)
+
+
 class ProxyDB(DB):
     """
     Wrap an existing proxy.

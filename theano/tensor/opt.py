@@ -377,8 +377,8 @@ def register_useless(lopt, *tags, **kwargs):
         return register
     else:
         name = kwargs.pop('name', None) or lopt.__name__
-        compile.optdb['useless'].register(name, lopt, 'fast_run',
-                                          *tags, **kwargs)
+        compile.mode.local_useless.register(name, lopt, 'last', 'fast_run',
+                                            *tags, **kwargs)
         return lopt
 
 
