@@ -2130,20 +2130,6 @@ class AdvancedSubtensor(Op):
 
     def make_node(self, x, *index):
         x = theano.tensor.as_tensor_variable(x)
-
-        ellipses = [i
-                    for i, this_index in enumerate(index)
-                    if this_index == Ellipsis]
-        if len(ellipses) > 1:
-            raise IndexError(
-                "an index can only have a single Ellipsis (`...`)")
-
-        if len(ellipses) == 1:
-            ellipsis_at = ellipses[0]
-            index = list(index)
-            index[ellipsis_at: ellipsis_at + 1] = ([numpy.newaxis] 
-                                                   * (x.ndim - len(index) + 1))
-
         index = tuple(map(as_index_variable, index))
         bcast = adv_index_broadcastable_pattern(x, index)
         return gof.Apply(self,

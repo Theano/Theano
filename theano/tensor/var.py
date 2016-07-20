@@ -471,6 +471,22 @@ class _tensor_py_operators(object):
             pass
         elif not isinstance(args, tuple):
             args = args,
+
+        # Convert an Ellipsis if provided into an appropriate number of
+        # slice(None).
+        ellipses = [i
+                    for i, index in enumerate(args)
+                    if index == Ellipsis]
+        if len(ellipses) > 1:
+            raise IndexError(
+                "an index can only have a single Ellipsis (`...`)")
+
+        if len(ellipses) == 1:
+            ellipsis_at = ellipses[0]
+            args = list(args)
+            args[ellipsis_at: ellipsis_at + 1] = (
+                [slice(None)] * (self.ndim - len(args) + 1))
+        
         # Convert python literals to theano constants
         args = theano.tensor.subtensor.make_constant(args)
         # Determine if advanced indexing is needed or not
