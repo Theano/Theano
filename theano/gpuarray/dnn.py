@@ -407,7 +407,7 @@ class GpuDnnConvDesc(COp):
             subsample += (0,)
         nb_dims = as_tensor_variable(len(subsample))
         padding = as_tensor_variable(padding)
-        subsample = as_tensor_variable(subsample)
+        subsample = as_tensor_variable(list(subsample))
         conv_mode = as_tensor_variable(conv_mode)
         precision = as_tensor_variable(precision)
         bmode = as_tensor_variable(bmode)
