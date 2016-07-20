@@ -481,11 +481,15 @@ class _tensor_py_operators(object):
             raise IndexError(
                 "an index can only have a single Ellipsis (`...`)")
 
+        new_axes = sum(1
+                       for index in args
+                       if index == numpy.newaxis)
+
         if len(ellipses) == 1:
             ellipsis_at = ellipses[0]
             args = list(args)
             args[ellipsis_at: ellipsis_at + 1] = (
-                [slice(None)] * (self.ndim - len(args) + 1))
+                [slice(None)] * (self.ndim - (len(args) - 1 - new_axes)))
         
         # Convert python literals to theano constants
         args = theano.tensor.subtensor.make_constant(args)
