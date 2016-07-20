@@ -2139,9 +2139,10 @@ class AdvancedSubtensor(Op):
                 "an index can only have a single Ellipsis (`...`)")
 
         if len(ellipses) == 1:
+            ellipsis_at = ellipses[0]
             index = list(index)
-            index[ellipses, ellipses + 1] = ([numpy.newaxis] 
-                                             * (x.ndim - len(index) + 1))
+            index[ellipsis_at: ellipsis_at + 1] = ([numpy.newaxis] 
+                                                   * (x.ndim - len(index) + 1))
 
         index = tuple(map(as_index_variable, index))
         bcast = adv_index_broadcastable_pattern(x, index)
