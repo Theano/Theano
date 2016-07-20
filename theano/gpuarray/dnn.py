@@ -946,7 +946,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         out_shp = assert_conv_shape(out_shp)
         out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(*out_shp)
         desc = GpuDnnConvDesc()(out.shape, border_mode='valid', subsample=(1, 1),
-                              conv_mode='cross', precision=precision)
+                                conv_mode='cross', precision=precision)
         conv = gpu_dnn_conv_gradW()(img, kerns, out, desc)
         return as_gpuarray_variable(conv.dimshuffle(1, 0, 2, 3), ctx_name)
 
@@ -965,7 +965,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         out_shp = assert_conv_shape(out_shp)
         out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(*out_shp)
         desc = GpuDnnConvDesc()(kerns.shape, border_mode='valid', subsample=(1, 1),
-                              conv_mode=conv_mode, precision=precision)
+                                conv_mode=conv_mode, precision=precision)
         return gpu_dnn_conv_gradI()(kerns, img, out, desc)
 
     # Standard case: We use GpuDnnConv with suitable padding.
@@ -974,7 +974,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     img = gpu_contiguous(img)
     kerns = gpu_contiguous(kerns)
     desc = GpuDnnConvDesc()(kerns.shape, border_mode=border_mode, subsample=subsample,
-                             conv_mode=conv_mode, precision=precision)
+                            conv_mode=conv_mode, precision=precision)
     desc_op = desc.owner.op
     # We can use Shape_i and bypass the infer_shape here as this is on
     # the input of node and it will always be present.
@@ -1153,7 +1153,7 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
     topgrad = gpu_contiguous(topgrad)
     img_shp = as_tensor_variable(img_shp)
     desc = GpuDnnConvDesc()(kerns.shape, border_mode=border_mode, subsample=subsample,
-                             conv_mode=conv_mode)
+                            conv_mode=conv_mode)
     out = gpu_alloc_empty(ctx_name, kerns.dtype)(*img_shp)
     return gpu_dnn_conv_gradI()(kerns, topgrad, out, desc)
 
