@@ -1729,7 +1729,7 @@ compile.optdb.register('local_elemwise_alloc',
 
 
 @register_canonicalize("fast_compile")
-@register_useless("fast_compile")
+@register_useless
 @gof.local_optimizer([T.fill])
 def local_useless_fill(node):
     """fill(s,v) -> v
@@ -1985,7 +1985,7 @@ def local_subtensor_make_vector(node):
 
 # TODO: the other optimization for and, or, xor, le and ge see ticket #496.
 
-@register_useless('fast_compile')
+@register_useless
 @register_canonicalize('fast_compile')
 @register_specialize
 @gof.local_optimizer([T.Elemwise])
@@ -3770,7 +3770,7 @@ def local_expm1(node):
 ###############
 # Switch opts #
 ###############
-@register_useless('fast_compile')
+@register_useless('local_remove_switch_const_cond')
 @register_canonicalize('fast_compile', 'local_remove_switch_const_cond')
 @register_specialize
 @gof.local_optimizer([T.Elemwise])
@@ -5426,7 +5426,7 @@ def local_reduce_join(node):
 
 
 @register_canonicalize('fast_compile', 'local_cut_useless_reduce')
-@register_useless
+@register_useless('local_cut_useless_reduce')
 @gof.local_optimizer(ALL_REDUCE)
 def local_useless_reduce(node):
     """Sum(a, axis=[]) -> a  """
