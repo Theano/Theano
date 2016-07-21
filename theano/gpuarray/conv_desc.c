@@ -6,7 +6,7 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
                               PyObject* conv_mode, 
                               PyObject* precision,
                               PyArrayObject* bmode,
-                              PyObject* nb_dims,
+                              PyArrayObject* nb_dims,
                               cudnnConvolutionDescriptor_t *desc) {
   cudnnStatus_t err;
   int pad[3] = {*(npy_int64 *)PyArray_GETPTR1(padding, 0),
@@ -21,7 +21,7 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
   long conv_mode_code = PyInt_AsLong(conv_mode);
   cudnnConvolutionMode_t CONV_MODE;
   long BORDER_MODE = *(npy_int64 *)PyArray_GETPTR1(bmode, 0);
-  long NB_DIMS = PyInt_AsLong(nb_dims);
+  long NB_DIMS = *(npy_int64 *)PyArray_GETPTR1(nb_dims, 0);
 
 if (precision_code == 16L)
 {
