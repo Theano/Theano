@@ -476,14 +476,14 @@ class _tensor_py_operators(object):
         # slice(None).
         ellipses = [i
                     for i, index in enumerate(args)
-                    if index == Ellipsis]
+                    if index is Ellipsis]
         if len(ellipses) > 1:
             raise IndexError(
                 "an index can only have a single Ellipsis (`...`)")
         if len(ellipses) == 1:
             new_axes = sum(1
                            for index in args
-                           if index == numpy.newaxis)
+                           if index is numpy.newaxis)  # numpy.newaxis is None
             ellipsis_at = ellipses[0]
             args = list(args)
             args[ellipsis_at: ellipsis_at + 1] = (
