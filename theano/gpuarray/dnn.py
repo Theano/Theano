@@ -373,8 +373,10 @@ class GpuDnnConvDesc(COp):
                 '"valid", "full", "half", an integer or a pair of'
                 ' integers'.format(border_mode))
         assert len(subsample) in (2, 3)
-
+        self.border_mode = border_mode
+        self.subsample = subsample
         assert conv_mode in ('conv', 'cross')
+        self.conv_mode = conv_mode
         if conv_mode == 'conv':
             conv_mode = 0  # CUDNN_CONVOLUTION
         else:
@@ -383,6 +385,7 @@ class GpuDnnConvDesc(COp):
         if precision not in ['float16', 'float32', 'float64']:
             raise TypeError('precision must be one of float16, float32, float64')
         else:
+            self.precision = precision
             if precision == 'float16':
                 precision = 16
             elif precision == 'float32':
