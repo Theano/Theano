@@ -823,7 +823,7 @@ def test_batchnorm_inference():
                 utt.assert_allclose(outputs[3], outputs[3 + 5])  # dscale
                 utt.assert_allclose(outputs[4], outputs[4 + 5])  # dbias
                 utt.assert_allclose(outputs[5], outputs[5 + 5])  # dmean
-                utt.assert_allclose(outputs[6], outputs[6 + 5])  # dvar
+                utt.assert_allclose(outputs[6], outputs[6 + 5], rtol=2e-3, atol=5e-5)  # dvar
 
 
 def test_dnn_tag():
