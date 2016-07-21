@@ -22,7 +22,7 @@ from theano import gof
 from theano.compat import izip
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
-from theano.gof.opt import copy_stack_trace, in2out, out2in
+from theano.gof.opt import copy_stack_trace, in2out, out2in, LocalOptGroup
 from theano.gof.utils import MethodNotDefined
 from theano.gradient import DisconnectedType
 from theano.configparser import config
@@ -377,6 +377,7 @@ def register_useless(lopt, *tags, **kwargs):
         return register
     else:
         name = kwargs.pop('name', None) or lopt.__name__
+
         compile.mode.local_useless.register(name, lopt, 'last', 'fast_run',
                                             *tags, **kwargs)
         return lopt
