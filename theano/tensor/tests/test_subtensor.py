@@ -337,6 +337,23 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         ret = f()
         assert ret.shape == (1, 1, 4)
 
+    def test_ellipsis(self):
+        numpy_n = numpy.arange(24, dtype=self.dtype).reshape((2, 3, 4))
+        n = self.shared(numpy_n)
+        for slice_ in [numpy.index_exp[...],
+                       numpy.index_exp[..., 1],
+                       numpy.index_exp[1, ...],
+                       numpy.index_exp[..., 1, 2, 3],
+                       numpy.index_exp[1, ..., 2, 3],
+                       numpy.index_exp[1, 2, 3, ...],
+                       ]:
+            numpy_tval = numpy_n[slice_]
+            t = n[slice_]
+            self.assertTrue(isinstance(t.owner.op, Subtensor))
+            tval = self.eval_output_and_check(t)
+            self.assertTrue(tval.shape == numpy_tval.shape)
+            self.assertTrue(numpy.all(tval == numpy_tval))
+
     def test_newaxis(self):
         """
         newaxis support comes from logic in the __getitem__ of TensorType
