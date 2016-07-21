@@ -1,12 +1,12 @@
 #section support_code_apply
 
 int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, 
-                              PyArrayObject* padding,
-                              PyArrayObject* subsample, 
-                              PyObject* conv_mode, 
-                              PyObject* precision,
-                              PyArrayObject* bmode,
-                              PyArrayObject* nb_dims,
+                              PyArrayObject *padding,
+                              PyArrayObject *subsample,
+                              PyArrayObject *conv_mode,
+                              PyArrayObject *precision,
+                              PyArrayObject *bmode,
+                              PyArrayObject *nb_dims,
                               cudnnConvolutionDescriptor_t *desc) {
   cudnnStatus_t err;
   int pad[3] = {*(npy_int64 *)PyArray_GETPTR1(padding, 0),
@@ -16,9 +16,9 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
                     *(npy_int64 *)PyArray_GETPTR1(subsample, 1),
                     *(npy_int64 *)PyArray_GETPTR1(subsample, 2)};
   int upscale[3] = {1, 1, 1};
-  long precision_code = PyInt_AsLong(precision);
+  long precision_code = *(npy_int64 *)PyArray_GETPTR1(precision, 0);
   cudnnDataType_t PRECISION;
-  long conv_mode_code = PyInt_AsLong(conv_mode);
+  long conv_mode_code = *(npy_int64 *)PyArray_GETPTR1(conv_mode, 0);
   cudnnConvolutionMode_t CONV_MODE;
   long BORDER_MODE = *(npy_int64 *)PyArray_GETPTR1(bmode, 0);
   long NB_DIMS = *(npy_int64 *)PyArray_GETPTR1(nb_dims, 0);
