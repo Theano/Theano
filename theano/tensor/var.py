@@ -488,7 +488,7 @@ class _tensor_py_operators(object):
             args = list(args)
             args[ellipsis_at: ellipsis_at + 1] = (
                 [slice(None)] * (self.ndim - (len(args) - 1 - new_axes)))
-        
+
         # Convert python literals to theano constants
         args = theano.tensor.subtensor.make_constant(args)
         # Determine if advanced indexing is needed or not
