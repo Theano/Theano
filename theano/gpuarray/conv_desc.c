@@ -5,7 +5,7 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
                               PyArrayObject* subsample, 
                               PyObject* conv_mode, 
                               PyObject* precision,
-                              PyObject* bmode, 
+                              PyArrayObject* bmode,
                               PyObject* nb_dims,
                               cudnnConvolutionDescriptor_t *desc) {
   cudnnStatus_t err;
@@ -20,7 +20,7 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
   cudnnDataType_t PRECISION;
   long conv_mode_code = PyInt_AsLong(conv_mode);
   cudnnConvolutionMode_t CONV_MODE;
-  long BORDER_MODE = PyInt_AsLong(bmode);
+  long BORDER_MODE = *(npy_int64 *)PyArray_GETPTR1(bmode, 0);
   long NB_DIMS = PyInt_AsLong(nb_dims);
 
 if (precision_code == 16L)
