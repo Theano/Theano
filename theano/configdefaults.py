@@ -375,7 +375,7 @@ AddConfigVar('dnn.enabled',
              " to not using it if not present."
              " If True and cuDNN can not be used, raise an error."
              " If False, disable cudnn",
-             StrParam("auto", "True", "False"),
+             EnumStr("auto", "True", "False"),
              in_c_key=False)
 
 # This flag determines whether or not to raise error/warning message if
