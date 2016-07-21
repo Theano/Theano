@@ -873,7 +873,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         Convolution implementation to use. Some of its values may
         require certain versions of cuDNN to be installed. Default is
         the value of :attr:`config.dnn.conv.algo_fwd`.
-    precision : {'as_input', 'float16', 'float32', 'float64'}
+    precision : {'as_input_f32', 'as_input', 'float16', 'float32', 'float64'}
         Description of the dtype in which the computation of the convolution
         should be done. Possible values are 'as_input', 'float16', 'float32'
         and 'float64'. Default is the value of
