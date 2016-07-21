@@ -296,11 +296,12 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
   return 1;
 }
 """
-            params = ["-l", "cudnn", "-I" + os.path.dirname(__file__)]
+            params = ["-l", "cudnn"]
+            params.extend(['-I"%s"' % os.path.dirname(__file__)])
             if config.dnn.include_path:
-                params.append("-I" + config.dnn.include_path)
+                params.extend(['-I"%s"' % config.dnn.include_path]) 
             if config.dnn.library_path:
-                params.append("-L" + config.dnn.library_path)
+                params.extend(['-L"%s"' % config.dnn.library_path])
             if config.nvcc.compiler_bindir:
                 params.extend(['--compiler-bindir',
                                config.nvcc.compiler_bindir])

@@ -435,7 +435,7 @@ AddConfigVar('cxx',
              " supported, but supporting additional compilers should not be "
              "too difficult. "
              "If it is empty, no C++ code is compiled.",
-             StrParam(param),
+             StrParam('"%s"' % param),
              in_c_key=False)
 del param
 
@@ -1168,7 +1168,7 @@ def default_blas_ldflags():
             use_unix_epd = True
             if sys.platform == 'win32':
                 return ' '.join(
-                    ['-L%s' % os.path.join(sys.prefix, "Scripts")] +
+                    ['-L"%s"' % os.path.join(sys.prefix, "Scripts")] +
                     # Why on Windows, the library used are not the
                     # same as what is in
                     # blas_info['libraries']?
@@ -1201,7 +1201,7 @@ def default_blas_ldflags():
                     use_unix_epd = False
             if use_unix_epd:
                 return ' '.join(
-                    ['-L%s' % os.path.join(sys.prefix, "lib")] +
+                    ['-L"%s"' % os.path.join(sys.prefix, "lib")] +
                     ['-l%s' % l for l in blas_info['libraries']])
 
                 # Canopy
@@ -1234,11 +1234,11 @@ def default_blas_ldflags():
 
             if sys.platform == "linux2" or sys.platform == "darwin":
                 return ' '.join(
-                    ['-L%s' % lib_path] +
+                    ['-L"%s"' % lib_path] +
                     ['-l%s' % l for l in blas_info['libraries']])
             elif sys.platform == 'win32':
                 return ' '.join(
-                    ['-L%s' % lib_path] +
+                    ['-L"%s"' % lib_path] +
                     # Why on Windows, the library used are not the
                     # same as what is in blas_info['libraries']?
                     ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
@@ -1259,7 +1259,7 @@ def default_blas_ldflags():
             else:
                 # This branch is executed if no exception was raised
                 lib_path = os.path.join(sys.prefix, 'DLLs')
-                flags = ['-L%s' % lib_path]
+                flags = ['-L"%s"' % lib_path]
                 flags += ['-l%s' % l for l in ["mkl_core",
                                                "mkl_intel_thread",
                                                "mkl_rt"]]
@@ -1334,7 +1334,9 @@ def try_blas_flag(flags):
             return 0;
         }
         """)
-    cflags = flags + ['-L' + d for d in theano.gof.cmodule.std_lib_dirs()]
+    cflags = flags 
+    cflags.extend(['-L"%s"' % d for d in theano.gof.cmodule.std_lib_dirs()])
+
     res = GCC_compiler.try_compile_tmp(
         test_code, tmp_prefix='try_blas_',
         flags=cflags, try_run=True)

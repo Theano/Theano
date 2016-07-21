@@ -2251,7 +2251,7 @@ class GCC_compiler(Compiler):
             cmd.extend(p for p in preargs if not p.startswith('-O'))
         else:
             cmd.extend(preargs)
-        cmd.extend('-I%s' % idir for idir in include_dirs)
+        cmd.extend('-I"%s"' % idir for idir in include_dirs)
         if hide_symbols and sys.platform != 'win32':
             # This has been available since gcc 4.0 so we suppose it
             # is always available. We pass it here since it
@@ -2262,7 +2262,7 @@ class GCC_compiler(Compiler):
             cmd.append('-fvisibility=hidden')
         cmd.extend(['-o', lib_filename])
         cmd.append(cppfilename)
-        cmd.extend(['-L%s' % ldir for ldir in lib_dirs])
+        cmd.extend(['-L"%s"' % ldir for ldir in lib_dirs])
         cmd.extend(['-l%s' % l for l in libs])
         # print >> sys.stderr, 'COMPILING W CMD', cmd
         _logger.debug('Running cmd: %s', ' '.join(cmd))
