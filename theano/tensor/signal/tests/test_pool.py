@@ -845,6 +845,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                             utt.assert_allclose(var_dx, fix_dx)
 
     def test_old_pool_interface(self):
+        if sys.version_info[0] != 3:
+            raise SkipTest('Skip old pool interface with python 2.x')
         # 1. Load the old version
         testfile_dir = os.path.dirname(os.path.realpath(__file__))
         fname = 'old_pool_interface.pkl'
