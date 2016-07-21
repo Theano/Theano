@@ -1267,7 +1267,8 @@ class LocalOptGroup(LocalOptimizer):
             repl = opt.transform(node)
             if repl:
                 if self.apply_all_opts is True:
-                    node.outputs = repl
+                    assert len(repl) == 1
+                    node = repl.owner
                     continue
                 return repl
 

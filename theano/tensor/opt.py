@@ -370,8 +370,6 @@ compile.optdb.register('inplace_elemwise_opt', inplace_elemwise_optimizer, 75,
                        'fast_run', 'inplace')
 
 
-local_useless = LocalGroupDB()
-
 def register_useless(lopt, *tags, **kwargs):
     if type(lopt) == str:
         def register(inner_lopt):
@@ -382,7 +380,7 @@ def register_useless(lopt, *tags, **kwargs):
         compile.mode.local_useless.register(name, lopt, 'last', 'fast_run',
                                             *tags, **kwargs)
         return lopt
-compile.optdb.register('useless', TopoOptimizer(local_useless, order="in_to_out"), 0.6, 'fast_run', 'fast_compile')
+
 
 def register_canonicalize(lopt, *tags, **kwargs):
     if type(lopt) == str:
