@@ -321,8 +321,11 @@ class SequenceDB(DB):
 
     def register(self, name, obj, position, *tags):
         super(SequenceDB, self).register(name, obj, *tags)
-        assert isinstance(position, (integer_types, float))
-        self.__position__[name] = position
+        if position == 'last':
+            self.__position__[name] = len(self.__position__)
+        else:
+            assert isinstance(position, (integer_types, float))
+            self.__position__[name] = position
 
     def query(self, *tags, **kwtags):
         """
