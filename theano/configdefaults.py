@@ -430,12 +430,15 @@ if param != "":
     del newp
     del distutils
 
+# to support path that includes spaces, we need to wrap it with double quotes on Windows
+if param and os.name == 'nt':
+    param = '"%s"' % param
 AddConfigVar('cxx',
              "The C++ compiler to use. Currently only g++ is"
              " supported, but supporting additional compilers should not be "
              "too difficult. "
              "If it is empty, no C++ code is compiled.",
-             StrParam('"%s"' % param),
+             StrParam(param),
              in_c_key=False)
 del param
 
@@ -1201,7 +1204,7 @@ def default_blas_ldflags():
                     use_unix_epd = False
             if use_unix_epd:
                 return ' '.join(
-                    ['-L"%s"' % os.path.join(sys.prefix, "lib")] +
+                    ['-L%s' % os.path.join(sys.prefix, "lib")] +   
                     ['-l%s' % l for l in blas_info['libraries']])
 
                 # Canopy
@@ -1234,7 +1237,7 @@ def default_blas_ldflags():
 
             if sys.platform == "linux2" or sys.platform == "darwin":
                 return ' '.join(
-                    ['-L"%s"' % lib_path] +
+                    ['-L%s' % lib_path] +
                     ['-l%s' % l for l in blas_info['libraries']])
             elif sys.platform == 'win32':
                 return ' '.join(
@@ -1267,13 +1270,15 @@ def default_blas_ldflags():
                 if res:
                     return res
 
+        # to support path that includes spaces, we need to wrap it with double quotes on Windows
+        path_wrapper = "\"" if os.name =='nt' else ""
         ret = (
             # TODO: the Gemm op below should separate the
             # -L and -l arguments into the two callbacks
             # that CLinker uses for that stuff.  for now,
             # we just pass the whole ldflags as the -l
             # options part.
-            ['-L%s' % l for l in blas_info.get('library_dirs', [])] +
+            ['-L%s%s%s' % (path_wrapper,l,path_wrapper) for l in blas_info.get('library_dirs', [])] +
             ['-l%s' % l for l in blas_info.get('libraries', [])] +
             blas_info.get('extra_link_args', []))
         # For some very strange reason, we need to specify -lm twice
@@ -1335,7 +1340,9 @@ def try_blas_flag(flags):
         }
         """)
     cflags = flags 
-    cflags.extend(['-L"%s"' % d for d in theano.gof.cmodule.std_lib_dirs()])
+    # to support path that includes spaces, we need to wrap it with double quotes on Windows
+    path_wrapper = "\"" if os.name =='nt' else ""    
+    cflags.extend(['-L%s%s%s' % (path_wrapper,d,path_wrapper) for d in theano.gof.cmodule.std_lib_dirs()])
 
     res = GCC_compiler.try_compile_tmp(
         test_code, tmp_prefix='try_blas_',

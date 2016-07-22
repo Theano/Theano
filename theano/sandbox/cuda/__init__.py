@@ -296,12 +296,14 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
   return 1;
 }
 """
+            # to support path that includes spaces, we need to wrap it with double quotes on Windows
+            path_wrapper = "\"" if os.name =='nt' else ""
             params = ["-l", "cudnn"]
-            params.extend(['-I"%s"' % os.path.dirname(__file__)])
+            params.extend(['-I%s%s%s' % (path_wrapper,os.path.dirname(__file__),path_wrapper)])
             if config.dnn.include_path:
-                params.extend(['-I"%s"' % config.dnn.include_path]) 
+                params.extend(['-I%s%s%s' % (path_wrapper, config.dnn.include_path, path_wrapper)]) 
             if config.dnn.library_path:
-                params.extend(['-L"%s"' % config.dnn.library_path])
+                params.extend(['-L%s%s%s' % (path_wrapper, config.dnn.library_path, path_wrapper)])
             if config.nvcc.compiler_bindir:
                 params.extend(['--compiler-bindir',
                                config.nvcc.compiler_bindir])
