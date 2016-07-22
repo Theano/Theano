@@ -1267,18 +1267,27 @@ class LocalOptGroup(LocalOptimizer):
     def transform(self, node):
         repl = False
         counter = 0
-        for opt in self.opts:
-            repl = opt.transform(node)
-            if repl:
-                counter += 1
-                if self.apply_all_opts:
-                    assert len(repl) == 1
-                    node = repl[0].owner
+        def apply_mult_opts(opt_list, node, single_opts=True):
+            repl = False
+            assert isinstance(opt_list, tuple)
+            if len(opt_list) == 0:
+                return
+            for opt in opt_list:
+                repl = opt.transform(node)
+                if not repl:
                     continue
-                return repl
-        if counter >=2:
-            print("No of times the node is optimized : " + str(counter))
-        return repl
+                else:
+                    if single_opts or not repl[0].owner:
+                        return repl
+                    assert len(repl) == 1
+                    # Ensuring not the input of graph
+                    assert repl[0].owner
+                    new_node = repl[0].owner
+                    apply_mult_opts(opt_list, repl[0].owner, False)
+
+            return repl
+
+        return apply_mult_opts(self.opts, node, self.apply_all_opts)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print("%s%s id=%i" % (
