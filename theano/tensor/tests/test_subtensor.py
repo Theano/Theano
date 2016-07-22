@@ -9,7 +9,8 @@ import theano
 import theano.scalar as scal
 import theano.tensor as tensor
 from nose.plugins.skip import SkipTest
-from nose.tools import assert_equal
+from nose.tools import assert_equal, assert_is_instance
+from numpy.testing import assert_array_equal
 from six import StringIO
 from theano import config, gof
 from theano.compat import PY3, exc_message, izip
@@ -353,12 +354,12 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                  numpy.index_exp[..., numpy.newaxis, [1, 2]])]:
             numpy_tval = numpy_n[slice_]
             t = n[slice_]
-            self.assertTrue(isinstance(t.owner.op, owner))
+            assert_is_instance(t.owner.op, owner)
             tval = self.eval_output_and_check(t,
                                               op_type=op_type,
                                               length=length)
-            self.assertTrue(tval.shape == numpy_tval.shape)
-            self.assertTrue(numpy.all(tval == numpy_tval))
+            assert_equal(tval.shape, numpy_tval.shape)
+            assert_array_equal(tval, numpy_tval)
 
     def test_newaxis(self):
         """
