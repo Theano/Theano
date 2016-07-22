@@ -4,7 +4,7 @@ import numpy
 import numpy as np
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises, assert_true
-
+from theano.gof.opt import check_stack_trace
 import theano
 from theano import tensor
 import theano.tensor as T
