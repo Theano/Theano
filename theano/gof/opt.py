@@ -1242,14 +1242,15 @@ class LocalOptGroup(LocalOptimizer):
             # This happen when created by LocalGroupDB.
             optimizers = tuple(optimizers[0])
         self.opts = optimizers
+        assert isinstance(self.opts, tuple)
+
         self.reentrant = any(getattr(opt, 'reentrant', True)
                              for opt in optimizers)
         self.retains_inputs = all(getattr(opt, 'retains_inputs', False)
                                   for opt in optimizers)
-        try:
-            self.apply_all_opts = kwargs['apply_all_opts']
-        except KeyError:
-            self.apply_all_opts = False
+
+        self.apply_all_opts = kwargs.get('apply_all_opts', False)
+
 
     def __str__(self):
         return getattr(self, '__name__',
@@ -1265,13 +1266,10 @@ class LocalOptGroup(LocalOptimizer):
         return t
 
     def transform(self, node):
-        repl = False
-        counter = 0
+        if len(self.opts) == 0:
+            return
         def apply_mult_opts(opt_list, node, single_opts=True):
             repl = False
-            assert isinstance(opt_list, tuple)
-            if len(opt_list) == 0:
-                return
             for opt in opt_list:
                 repl = opt.transform(node)
                 if not repl:
@@ -1283,8 +1281,9 @@ class LocalOptGroup(LocalOptimizer):
                     # Ensuring not the input of graph
                     assert repl[0].owner
                     new_node = repl[0].owner
-                    apply_mult_opts(opt_list, repl[0].owner, False)
-
+                    if not getattr(new_node, 'fgraph', None):
+                        continue
+                    apply_mult_opts(opt_list, new_node, False)
             return repl
 
         return apply_mult_opts(self.opts, node, self.apply_all_opts)
