@@ -1,40 +1,40 @@
-from __future__ import absolute_import, print_function, division
+from __future__ import absolute_import, division, print_function
+
 import logging
 import sys
 import unittest
 
-from nose.plugins.skip import SkipTest
 import numpy
-from six import StringIO
-from six.moves import xrange
-
 import theano
-from theano.compat import exc_message, izip, PY3
-from theano.compile import DeepCopyOp
-from theano import config
-from theano import gof
 import theano.scalar as scal
 import theano.tensor as tensor
-from theano.tests import unittest_tools as utt
-from theano.tensor.subtensor import (inc_subtensor, set_subtensor,
+from nose.plugins.skip import SkipTest
+from nose.tools import assert_equal
+from six import StringIO
+from theano import config, gof
+from theano.compat import PY3, exc_message, izip
+from theano.compile import DeepCopyOp
+from theano.tensor import (MakeSlice, NotScalarConstantError, _shared,
+                           as_tensor_variable, cscalar, ctensor3, dmatrix,
+                           dscalar, dtensor4, dvector, fmatrix, fscalar,
+                           fvector, iscalar, lmatrix, lrow, lvector, matrix,
+                           vector)
+from theano.tensor.basic import DimShuffle
+from theano.tensor.subtensor import (AdvancedIncSubtensor,
+                                     AdvancedIncSubtensor1, AdvancedSubtensor,
+                                     AdvancedSubtensor1, IncSubtensor,
+                                     Subtensor, advanced_inc_subtensor,
                                      advanced_inc_subtensor1,
-                                     advanced_set_subtensor1,
-                                     advanced_inc_subtensor,
                                      advanced_set_subtensor,
-                                     Subtensor, IncSubtensor,
-                                     AdvancedSubtensor1, AdvancedSubtensor,
-                                     advanced_subtensor1, inplace_increment,
-                                     AdvancedIncSubtensor1,
-                                     AdvancedIncSubtensor,
-                                     get_canonical_form_slice)
-from theano.tensor import (as_tensor_variable, _shared,
-                           NotScalarConstantError,
-                           fscalar, iscalar, dscalar, cscalar,
-                           vector, dvector, fvector, lvector, lrow,
-                           fmatrix, dmatrix, lmatrix, matrix,
-                           ctensor3, dtensor4)
-from theano.tensor.tests.test_basic import rand, randint_ranged, inplace_func
+                                     advanced_set_subtensor1,
+                                     advanced_subtensor1,
+                                     get_canonical_form_slice, inc_subtensor,
+                                     inplace_increment, set_subtensor)
+from theano.tensor.tests.test_basic import inplace_func, rand, randint_ranged
+from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import attr
+
+from six.moves import xrange
 
 if PY3:
     def L(i):
@@ -97,18 +97,17 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         Subtensor.debug = False
         utt.seed_rng()
 
-    def eval_output_and_check(self, t, list=False, mode=None):
+    def eval_output_and_check(self, t, op_type=None, mode=None, length=1):
+        if op_type is None:
+            op_type = self.sub
         if mode is None:
             mode = self.mode
         f = inplace_func([], t, mode=mode)
         topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op,
                                                          self.ignore_topo)]
-        assert len(topo_) == 1
-        if not list:
-            assert isinstance(topo_[0].op, self.sub)
-        else:
-            assert isinstance(topo_[0].op, self.adv_sub1)
+        assert_equal(len(topo_), length)
+        assert isinstance(topo_[0].op, op_type)
         tval = f()
         return tval
 
@@ -340,17 +339,24 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
     def test_ellipsis(self):
         numpy_n = numpy.arange(24, dtype=self.dtype).reshape((2, 3, 4))
         n = self.shared(numpy_n)
-        for slice_ in [numpy.index_exp[...],
-                       numpy.index_exp[..., 1],
-                       numpy.index_exp[1, ...],
-                       numpy.index_exp[..., 1, 2, 3],
-                       numpy.index_exp[1, ..., 2, 3],
-                       numpy.index_exp[1, 2, 3, ...],
-                       ]:
+        for length, owner, op_type, slice_ in [
+                (1, Subtensor, Subtensor, numpy.index_exp[...]),
+                (1, Subtensor, Subtensor, numpy.index_exp[..., 1]),
+                (1, Subtensor, Subtensor, numpy.index_exp[1, ...]),
+                (1, Subtensor, Subtensor, numpy.index_exp[..., 1, 2, 3]),
+                (1, Subtensor, Subtensor, numpy.index_exp[1, ..., 2, 3]),
+                (1, Subtensor, Subtensor, numpy.index_exp[1, 2, 3, ...]),
+                (3, DimShuffle, DimShuffle, numpy.index_exp[..., [0, 2, 3]]),
+                (1, DimShuffle, DimShuffle,
+                 numpy.index_exp[numpy.newaxis, ...]),
+                (3, AdvancedSubtensor, MakeSlice,
+                 numpy.index_exp[..., numpy.newaxis, [1, 2]])]:
             numpy_tval = numpy_n[slice_]
             t = n[slice_]
-            self.assertTrue(isinstance(t.owner.op, Subtensor))
-            tval = self.eval_output_and_check(t)
+            self.assertTrue(isinstance(t.owner.op, owner))
+            tval = self.eval_output_and_check(t,
+                                              op_type=op_type,
+                                              length=length)
             self.assertTrue(tval.shape == numpy_tval.shape)
             self.assertTrue(numpy.all(tval == numpy_tval))
 
@@ -450,7 +456,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         topo_ = [node for node in topo if not isinstance(node.op,
              self.ignore_topo)]
         if not self.fast_compile:
-            assert len(topo_) == 6
+            assert_equal(len(topo_), 6)
         assert numpy.sum([isinstance(node.op, self.inc_sub)
              for node in topo_]) == 1
         assert numpy.sum([isinstance(node.op, self.sub)
@@ -484,7 +490,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             # We test again AdvancedSubtensor1 as we transfer data to the cpu.
             self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
 
-            val = self.eval_output_and_check(t, list=True)
+            val = self.eval_output_and_check(t, op_type=self.adv_sub1)
             if isinstance(idx, list):
                 good = data[idx]
             else:

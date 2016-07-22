@@ -480,7 +480,7 @@ class _tensor_py_operators(object):
         if len(ellipses) > 1:
             raise IndexError(
                 "an index can only have a single Ellipsis (`...`)")
-        if len(ellipses) == 1:
+        elif len(ellipses) == 1:
             new_axes = sum(1
                            for index in args
                            if index is numpy.newaxis)  # numpy.newaxis is None
