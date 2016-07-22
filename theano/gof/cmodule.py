@@ -2252,9 +2252,9 @@ class GCC_compiler(Compiler):
         else:
             cmd.extend(preargs)
         # to support path that includes spaces, we need to wrap it with double quotes on Windows
-        path_wrapper = "\"" if os.name =='nt' else ""
-        cmd.extend(['-I%s%s%s' % (path_wrapper,idir,path_wrapper) for idir in include_dirs])
-        cmd.extend(['-L%s%s%s' % (path_wrapper,ldir,path_wrapper) for ldir in lib_dirs])  		
+        path_wrapper = "\"" if os.name == 'nt' else ""
+        cmd.extend(['-I%s%s%s' % (path_wrapper, idir, path_wrapper) for idir in include_dirs])
+        cmd.extend(['-L%s%s%s' % (path_wrapper, ldir, path_wrapper) for ldir in lib_dirs])
         if hide_symbols and sys.platform != 'win32':
             # This has been available since gcc 4.0 so we suppose it
             # is always available. We pass it here since it

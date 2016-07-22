@@ -31,7 +31,6 @@ def subprocess_Popen(command, **params):
         if isinstance(command, list):
             command = ' '.join(command)
 
-
     # Using the dummy file descriptors below is a workaround for a
     # crash experienced in an unusual Python 2.4.4 Windows environment
     # with the default None values.

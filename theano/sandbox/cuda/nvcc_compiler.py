@@ -322,9 +322,9 @@ class NVCC_compiler(Compiler):
             for rpath in rpaths:
                 cmd.extend(['-Xlinker', ','.join(['-rpath', rpath])])
         # to support path that includes spaces, we need to wrap it with double quotes on Windows
-        path_wrapper = "\"" if os.name =='nt' else ""
-        cmd.extend(['-I%s%s%s' % (path_wrapper,idir,path_wrapper) for idir in include_dirs])
-        cmd.extend(['-L%s%s%s' % (path_wrapper,ldir,path_wrapper) for ldir in lib_dirs])        
+        path_wrapper = "\"" if os.name == 'nt' else ""
+        cmd.extend(['-I%s%s%s' % (path_wrapper, idir, path_wrapper) for idir in include_dirs])
+        cmd.extend(['-L%s%s%s' % (path_wrapper, ldir, path_wrapper) for ldir in lib_dirs])
         cmd.extend(['-o', lib_filename])
         cmd.append(os.path.split(cppfilename)[-1])
         cmd.extend(['-l%s' % l for l in libs])
