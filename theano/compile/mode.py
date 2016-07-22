@@ -150,7 +150,7 @@ optdb = gof.SequenceDB()
 optdb.register('merge1', gof.MergeOptimizer(),
                0, 'fast_run', 'fast_compile', 'merge')
 
-local_useless = gof.optdb.LocalGroupDB()
+local_useless = gof.optdb.LocalGroupDB(apply_all_opts=True)
 optdb.register('useless', gof.optdb.TopoDB(local_useless),
                0.6, 'fast_run', 'fast_compile')
 

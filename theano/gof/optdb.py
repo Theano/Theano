@@ -402,12 +402,16 @@ class LocalGroupDB(SequenceDB):
 
     """
 
-    seq_opt = opt.LocalOptGroup
-
-    def __init__(self, failure_callback=opt.SeqOptimizer.warn):
+    def __init__(self, apply_all_opts=False):
         super(LocalGroupDB, self).__init__()
         self.failure_callback = None
+        self.apply_all_opts = apply_all_opts
 
+    def query(self, *tags, **kwtags):
+        # For the new `useless` optimizer
+        opts = super(LocalGroupDB, self).query(*tags, **kwtags)
+        ret = opt.LocalOptGroup(opts, apply_all_opts=self.apply_all_opts)
+        return ret
 
 class TopoDB(DB):
     """
