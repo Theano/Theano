@@ -324,8 +324,8 @@ class NVCC_compiler(Compiler):
         cmd.extend('-I%s' % idir for idir in include_dirs)
         cmd.extend(['-o', lib_filename])
         cmd.append(os.path.split(cppfilename)[-1])
-        cmd.extend(['-L%s' % ldir for ldir in lib_dirs])
-        cmd.extend(['-l%s' % l for l in libs])
+        cmd.extend(['-L"%s"' % ldir for ldir in lib_dirs])
+        cmd.extend(['-l"%s"' % l for l in libs])
         if sys.platform == 'darwin':
             # This tells the compiler to use the already-loaded python
             # symbols (which should always be the right ones).
