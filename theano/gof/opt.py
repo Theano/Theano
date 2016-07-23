@@ -1281,8 +1281,6 @@ class LocalOptGroup(LocalOptimizer):
                     # Ensuring not the input of graph
                     assert repl[0].owner
                     new_node = repl[0].owner
-                    if not getattr(new_node, 'fgraph', None):
-                        continue
                     apply_mult_opts(opt_list, new_node, False)
             return repl
 

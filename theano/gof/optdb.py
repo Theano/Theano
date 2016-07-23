@@ -393,7 +393,7 @@ class SequenceDB(DB):
         return sio.getvalue()
 
 
-class LocalGroupDB(SequenceDB):
+class LocalGroupDB(DB):
     """
     Generate a local optimizer of type LocalOptGroup instead
     of a global optimizer.
@@ -410,7 +410,7 @@ class LocalGroupDB(SequenceDB):
     def query(self, *tags, **kwtags):
         # For the new `useless` optimizer
         opts = super(LocalGroupDB, self).query(*tags, **kwtags)
-        ret = opt.LocalOptGroup(opts, apply_all_opts=self.apply_all_opts)
+        ret = opt.LocalOptGroup(*opts, apply_all_opts=self.apply_all_opts)
         return ret
 
 class TopoDB(DB):
@@ -421,8 +421,6 @@ class TopoDB(DB):
     It supports the tracks, to only get applied to some Op.
 
     """
-
-    seq_opt = opt.TopoOptimizer
 
     def __init__(self, db, order='in_to_out', ignore_newtrees=False,
                  failure_callback=None):
