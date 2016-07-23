@@ -45,8 +45,8 @@ add alternative instructions here.
     by getting XCode from the App Store and running it once to install the
     command-line tools.
 
-.. include:: install_generic.txt
-    :start-line: 11
+.. include:: install_generic.inc
+    :start-line: 5
 
 Requirements through Homebrew (not recommended)
 -----------------------------------------------

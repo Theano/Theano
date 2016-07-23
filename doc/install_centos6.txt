@@ -8,8 +8,8 @@ CentOS 6 Installation Instructions
 
 .. include:: requirements.txt
 
-.. include:: install_generic.txt
-    :start-line: 11
+.. include:: install_generic.inc
+    :start-line: 5
 
 Requirements through System Packages (not recommended)
 ------------------------------------------------------

@@ -1,6 +1,3 @@
-.. _requirements:
-
-
 Requirements
 ============
 
@@ -51,7 +48,7 @@ We only support the installation of the requirements through conda.
 Install Anaconda
 ^^^^^^^^^^^^^^^^
 
-Follow this `link <http://conda.pydata.org/miniconda.html>`_ to install Miniconda.
+Follow this `link <http://conda.pydata.org/miniconda.html>`__ to install Miniconda.
 
 Install mandatory requirements
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -70,8 +67,6 @@ Install optional requirements
 Follow the next section to install the GPU backends.
 
 
-.. _GPU:
-
 GPU (recommended)
 -----------------
 
@@ -88,7 +83,7 @@ GPU (recommended)
 
 Install CUDA drivers
 ^^^^^^^^^^^^^^^^^^^^
-Follow this `link <https://developer.nvidia.com/cuda-downloads>`_ to install the CUDA driver and the CUDA Toolkit.
+Follow this `link <https://developer.nvidia.com/cuda-downloads>`__ to install the CUDA driver and the CUDA Toolkit.
 
 .. note::
 

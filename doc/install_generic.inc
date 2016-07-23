@@ -3,16 +3,8 @@
 .. _install_generic:
 
 
-Generic Installation Instructions
-#################################
-
-If you want the latest on the edge installation of Theano, you want `bleeding_edge`_.
-Otherwise go for the `stable`_.
-
 Installation
 ============
-
-.. _stable:
 
 Stable Installation
 -------------------
@@ -34,8 +26,6 @@ Install the latest stable version of Theano with:
 - [doc] will install the requirements in order to generate the documentation.
 
 If you encountered any trouble, head to the :ref:`troubleshooting` page.
-
-.. _bleeding_edge:
 
 Bleeding-Edge Installation (recommended)
 ----------------------------------------
