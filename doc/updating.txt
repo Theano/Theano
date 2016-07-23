@@ -1,4 +1,4 @@
-.. include:: css.txt
+.. include:: css.inc
 
 .. _updating:
 
