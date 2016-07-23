@@ -46,9 +46,6 @@ You can also set these options in the .theanorc file's ``[global]`` section:
       You can use the flag ``force_device=True`` to instead raise an error when
       Theano cannot use the GPU.
 
-You probably need to change the default version of gcc as
-`explained by Benjamin J. McCann <http://www.benmccann.com/blog/installing-cuda-and-theano/>`_ if the package you downloaded is for another Ubuntu version.
-
 .. _gpuarray:
 
 GpuArray Backend
