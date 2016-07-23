@@ -1,16 +1,18 @@
 .. _install:
 
-
-Installing Theano
+Installing Theano 
 =================
 
 Supported platforms:
 
-- :ref:`install_ubuntu`
-- :ref:`install_centos6`
-- :ref:`install_macos`
-- :ref:`install_windows`
-- :ref:`install_others`
+.. toctree::
+  :maxdepth: 1
+
+  install_ubuntu
+  install_macos
+  install_windows
+  install_centos6
+  install_others
 
 Once your setup is complete and if you installed the GPU libraries, head to :ref:`testing_the_gpu` to find how to verify
 everything is working properly.
