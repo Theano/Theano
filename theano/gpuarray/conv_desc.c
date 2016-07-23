@@ -16,47 +16,47 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
                     *(npy_int64 *)PyArray_GETPTR1(subsample, 1),
                     *(npy_int64 *)PyArray_GETPTR1(subsample, 2)};
   int upscale[3] = {1, 1, 1};
-  long precision_code = *(npy_int64 *)PyArray_GETPTR1(precision, 0);
+  int precision_code = *(npy_int64 *)PyArray_GETPTR1(precision, 0);
   cudnnDataType_t PRECISION;
-  long conv_mode_code = *(npy_int64 *)PyArray_GETPTR1(conv_mode, 0);
+  int conv_mode_code = *(npy_int64 *)PyArray_GETPTR1(conv_mode, 0);
   cudnnConvolutionMode_t CONV_MODE;
-  long BORDER_MODE = *(npy_int64 *)PyArray_GETPTR1(bmode, 0);
-  long NB_DIMS = *(npy_int64 *)PyArray_GETPTR1(nb_dims, 0);
+  int BORDER_MODE = *(npy_int64 *)PyArray_GETPTR1(bmode, 0);
+  int NB_DIMS = *(npy_int64 *)PyArray_GETPTR1(nb_dims, 0);
 
-if (precision_code == 16L)
+if (precision_code == 16)
 {
   PRECISION = CUDNN_DATA_HALF;
 }
-else if (precision_code == 32L)
+else if (precision_code == 32)
 {
   PRECISION = CUDNN_DATA_FLOAT;
 }
-else if (precision_code == 64L)
+else if (precision_code == 64)
 {
   PRECISION = CUDNN_DATA_DOUBLE;
 }
 
-if (conv_mode_code == 0L)
+if (conv_mode_code == 0)
 {
   CONV_MODE = CUDNN_CONVOLUTION;
 }
-else if (conv_mode_code == 1L)
+else if (conv_mode_code == 1)
 {
   CONV_MODE = CUDNN_CROSS_CORRELATION;
 }
 
-if (BORDER_MODE == 0L)
+if (BORDER_MODE == 0)
 {
   pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) - 1;
   pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) - 1;
-if (NB_DIMS > 2L)
+if (NB_DIMS > 2)
   pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) - 1;
 }
-else if (BORDER_MODE == 2L)
+else if (BORDER_MODE == 2)
 {
   pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) / 2;
   pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) / 2;
-if (NB_DIMS > 2L)
+if (NB_DIMS > 2)
   pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) / 2;
 }
 
