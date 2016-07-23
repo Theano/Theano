@@ -2,11 +2,6 @@
 
 .. raw:: html
 
-    <style> .code {background-color:#F8F8F8; letter-spacing: 0.015em;
-        font-size: 0.95em; line-height: 120%; padding: 0.5em; border: 1px solid
-        #ccc; font-family: monospace; unicode-bidi: embed;
-        overflow: auto; overflow-y: hidden; display: block; white-space: pre; margin: 1em 0px 1em;}
-    </style>
     <style> .black {color:black} </style>
     <style> .blue {color:blue} </style>
     <style> .red {color:red} </style>

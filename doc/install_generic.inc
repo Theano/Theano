@@ -13,7 +13,7 @@ Install the latest stable version of Theano with:
 
 .. raw:: html
 
-    <pre><span class="red">&#60;sudo&#62;</span> pip install <span class="blue">&#60;--user&#62;</span> Theano[test, doc]</pre>
+    <div class="highlight"><pre><span class="red">&lt;sudo&gt;</span> pip install <span class="blue">&lt;--user&gt;</span> Theano[test, doc]</pre></div>
 
 - Any argument between <...> is optional.
 
@@ -34,7 +34,7 @@ Install the bleeding-edge version of Theano with:
 
 .. raw:: html
 
-    <pre><span class="red">&#60;sudo&#62;</span> pip install <span class="blue">&#60;--user&#62;</span> <span class="pink">&#60;--no-deps&#62;</span> git+https://github.com/Theano/Theano.git#egg=Theano</pre>
+    <div class='highlight'><pre><span class="red">&lt;sudo&gt;</span> pip install <span class="blue">&lt;--user&gt;</span> <span class="pink">&lt;--no-deps&gt;</span> git+https://github.com/Theano/Theano.git#egg=Theano</pre></div>
 
 - Any argument between <...> is optional.
 
@@ -53,9 +53,9 @@ Install the developer version of Theano with:
 
 .. raw:: html
 
-    <pre>git clone git://github.com/Theano/Theano.git
+    <div class="highlight"><pre>git clone git://github.com/Theano/Theano.git
     cd Theano
-    <span class="red">&#60;sudo&#62;</span> pip install <span class="blue">&#60;--user&#62;</span> <span class="pink">&#60;--no-deps&#62;</span> <span class="green">-e .</span></pre>
+    <span class="red">&lt;sudo&gt;</span> pip install <span class="blue">&lt;--user&gt;</span> <span class="pink">&lt;--no-deps&gt;</span> <span class="green">-e .</span></pre></div>
 
 - Any argument between <...> is optional.
 
