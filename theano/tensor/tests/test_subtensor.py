@@ -354,7 +354,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                  numpy.index_exp[..., numpy.newaxis, [1, 2]])]:
             numpy_tval = numpy_n[slice_]
             t = n[slice_]
-            self.assertIsInstance(t.owner.op, owner)
+            self.assertTrue(isinstance(t.owner.op, owner))
             tval = self.eval_output_and_check(t,
                                               op_type=op_type,
                                               length=length)
