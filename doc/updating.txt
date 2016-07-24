@@ -78,9 +78,9 @@ Developer Installation
 To update your library to the latest revision, change directory (``cd``)
 to your ``Theano`` folder and execute the following command:
 
-.. note::
+.. warning::
 
-    This assumes you already have knowledge of git and know what is happening.
+    The following assumes you have knowledge of git and know how to do a rebase.
 
 .. code-block:: bash
 

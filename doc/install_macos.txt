@@ -73,19 +73,6 @@ numpy and scipy with hombrew:
     $ brew install scipy --with-openblas
 
 
-Then install theano as usual:
-
-.. code-block:: bash
-
-    $ pip install Theano --user
-
-Or for the bleeding-edge version:
-
-.. code-block:: bash
-
-    $ pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
-
-
 Requirements through MacPorts (not recommended)
 -----------------------------------------------
 
@@ -166,15 +153,3 @@ Theano dependencies is easy, but be aware that it will take a long time
 
         $ sudo ln -s /opt/local/bin/nosetests-2.7 /opt/local/bin/nosetests
         $ sudo ln -s /opt/local/bin/pip-2.7 /opt/local/bin/pip
-
-- At this point you are ready to install Theano with
-
-    .. code-block:: bash
-
-        $ sudo pip install Theano
-
-  And if you are in no hurry, you can run its test-suite with
-
-    .. code-block:: bash
-
-        $ python -c "import theano; theano.test()"

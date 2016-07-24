@@ -27,10 +27,28 @@ Install the latest stable version of Theano with:
 
 If you encountered any trouble, head to the :ref:`troubleshooting` page.
 
+libgpuarray
+^^^^^^^^^^^
+
+For the stable version of Theano you need a specific version of libgpuarray, 
+that has been tagged ``v-9998``.
+Download it with:
+
+.. raw:: html
+
+    <div class='highlight'><pre>
+    git clone https://github.com/Theano/libgpuarray.git --tags
+    git checkout origin/v-9998
+    cd libgpuarray
+    </pre></div>
+
+and then follow the `Step-by-step instructions <http://deeplearning.net/software/libgpuarray/installation.html#step-by-step-install>`__.
+
+
 Bleeding-Edge Installation (recommended)
 ----------------------------------------
 
-Install the bleeding-edge version of Theano with:
+Install the latest, bleeding-edge, development version of Theano with:
 
 .. raw:: html
 
@@ -45,6 +63,13 @@ Install the bleeding-edge version of Theano with:
 - Use :pink:`no-deps` when you don't want the dependencies of Theano to be installed through pip. This is important when they have already been installed as system packages.
 
 If you encountered any trouble, head to the :ref:`troubleshooting` page.
+
+libgpuarray
+^^^^^^^^^^^
+
+Install the latest, development version of libgpuarray following the
+`Step-by-step instructions <http://deeplearning.net/software/libgpuarray/installation.html#step-by-step-install>`__.
+
 
 Developer Installation
 ----------------------
@@ -71,19 +96,7 @@ Install the developer version of Theano with:
 If you encountered any trouble, head to the :ref:`troubleshooting` page.
 
 libgpuarray
-===========
+^^^^^^^^^^^
 
-Stable Installation
--------------------
-
-A specific version of libgpuarray has to be installed for the stable version (tag v-9998)
-
-Bleeding-Edge Installation
---------------------------
-
-The dev version has to be used.
-
-Developer Installation
-----------------------
-
-The dev version has to be used.
+Install the latest, development version of libgpuarray following the
+`Step-by-step instructions <http://deeplearning.net/software/libgpuarray/installation.html#step-by-step-install>`__.
