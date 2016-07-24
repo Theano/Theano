@@ -5,16 +5,19 @@ Troubleshooting
 
 Here are Linux troubleshooting instructions. There is a specific `MacOS`_ section.
 
-- Why do I get a `network`_ error when I install Theano?
-- How do I configure `PYTHONPATH`_?
-- How do I `test`_ if everything works properly?
-- How to change the memory/speed `tradeoff`_?
-- `TypeError`_ : object of type 'TensorVariable has no len()
-- Out of `memory`_ Error
-- `float32`_ / int{32, 64} gives float64
-- How do I configure/test my `BLAS`_ library?
+- :ref:`network_error_proxy`
+- :ref:`PYTHONPATH`
+- :ref:`slow_or_memory`
+- :ref:`TensorVariable_TypeError`
+- :ref:`out_of_memory`
+- :ref:`float64_output`
+- :ref:`test_theano`
+- :ref:`test_BLAS`
 
-.. _network:
+.. _network_error_proxy:
+
+Why do I get a network error when I install Theano
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you are behind a proxy, you must do some extra configuration steps
 before starting the installation. You must set the environment
@@ -26,8 +29,8 @@ to pip. The ``[user:pass@]`` portion is optional.
 
 .. _PYTHONPATH:
 
-Configuring ``PYTHONPATH``
---------------------------
+How to configure the PYTHONPATH
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If ``import theano`` does not work in Python, you may need modify the
 environment variable ``PYTHONPATH`` accordingly.
@@ -47,10 +50,70 @@ To make this change stick you will usually need to add the above command to
 your shell's startup script, i.e. ``~/.bashrc`` or ``~/.cshrc``.
 Consult your shell's documentation for details.
 
-.. _test:
+.. _TensorVariable_TypeError:
+ 
+How to solve TypeError: object of type 'TensorVariable' has no len()
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Testing your installation
---------------------------
+If you receive the following error, it is because the Python function *__len__* cannot
+be implemented on Theano variables:
+
+.. code-block:: python
+
+   TypeError: object of type 'TensorVariable' has no len()
+
+Python requires that *__len__* returns an integer, yet it cannot be done as Theano's variables are symbolic. However, `var.shape[0]` can be used as a workaround.
+
+This error message cannot be made more explicit because the relevant aspects of Python's
+internals cannot be modified.
+
+.. _out_of_memory:
+
+How to solve Out of memory Error
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Occasionally Theano may fail to allocate memory when there appears to be more
+than enough reporting:
+
+    Error allocating X bytes of device memory (out of memory). Driver report Y
+    bytes free and Z total.
+
+where X is far less than Y and Z (i.e. X << Y < Z).
+
+This scenario arises when an operation requires allocation of a large contiguous
+block of memory but no blocks of sufficient size are available.
+
+GPUs do not have virtual memory and as such all allocations must be assigned to
+a continuous memory region. CPUs do not have this limitation because or their
+support for virtual memory. Multiple allocations on a GPU can result in memory
+fragmentation which can makes it more difficult to find contiguous regions
+of memory of sufficient size during subsequent memory allocations.
+
+A known example is related to writing data to shared variables. When updating a
+shared variable Theano will allocate new space if the size of the data does not
+match the size of the space already assigned to the variable. This can lead to
+memory fragmentation which means that a continugous block of memory of
+sufficient capacity may not be available even if the free memory overall is
+large enough.
+
+.. _float64_output:
+
+theano.function returns a float64 when the inputs are float32 and int{32, 64}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It should be noted that using float32 and int{32, 64} together
+inside a function would provide float64 as output.
+
+Since the GPU can't compute this kind of output, it would be
+preferable not to use those dtypes together.
+
+To help you find where float64 are created, see the
+:attr:`warn_float64` Theano flag.
+
+.. _test_theano:
+
+How to test that Theano works properly
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 An easy way to check something that could be wrong is by making sure ``THEANO_FLAGS``
 have the desired values as well as the ``~/.theanorc``
@@ -79,11 +142,15 @@ Once you have installed Theano, you should run the test suite.
 All Theano tests should pass (skipped tests and known failures are normal). If
 some test fails on your machine, you are encouraged to tell us what went
 wrong on the ``theano-users@googlegroups.com`` mailing list.
- 
-.. _tradeoff:
 
-Theano memory/speed trade-off
------------------------------
+.. warning::
+    Theano's test should **NOT** be run with `device=gpu` or they will fail.
+    The tests automatically use the gpu, if any, when needed.
+ 
+.. _slow_or_memory:
+
+Why is my code so slow/uses so much memory
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 There is a few things you can easily do to change the trade-off
 between speed and memory usage. It nothing is said, this affect the
@@ -121,70 +188,10 @@ If you want to analyze the memory usage during computation, the
 simplest is to let the memory error happen during Theano execution and
 use the Theano flags :attr:`exception_verbosity=high`.
 
-.. _TypeError:
- 
-TypeError: object of type 'TensorVariable' has no len()
--------------------------------------------------------
+.. _test_BLAS:
 
-If you receive the following error, it is because the Python function *__len__* cannot
-be implemented on Theano variables:
-
-.. code-block:: python
-
-   TypeError: object of type 'TensorVariable' has no len()
-
-Python requires that *__len__* returns an integer, yet it cannot be done as Theano's variables are symbolic. However, `var.shape[0]` can be used as a workaround.
-
-This error message cannot be made more explicit because the relevant aspects of Python's
-internals cannot be modified.
-
-.. _memory:
-
-Out of memory Error
--------------------
-
-Occasionally Theano may fail to allocate memory when there appears to be more
-than enough reporting:
-
-    Error allocating X bytes of device memory (out of memory). Driver report Y
-    bytes free and Z total.
-
-where X is far less than Y and Z (i.e. X << Y < Z).
-
-This scenario arises when an operation requires allocation of a large contiguous
-block of memory but no blocks of sufficient size are available.
-
-GPUs do not have virtual memory and as such all allocations must be assigned to
-a continuous memory region. CPUs do not have this limitation because or their
-support for virtual memory. Multiple allocations on a GPU can result in memory
-fragmentation which can makes it more difficult to find contiguous regions
-of memory of sufficient size during subsequent memory allocations.
-
-A known example is related to writing data to shared variables. When updating a
-shared variable Theano will allocate new space if the size of the data does not
-match the size of the space already assigned to the variable. This can lead to
-memory fragmentation which means that a continugous block of memory of
-sufficient capacity may not be available even if the free memory overall is
-large enough.
-
-.. _float32:
-
-"float32 / int{32, 64} gives float64"
--------------------------------------
-
-It should be noted that using float32 and int{32, 64} together
-inside a function would provide float64 as output.
-
-Since the GPU can't compute this kind of output, it would be
-preferable not to use those dtypes together.
-
-To help you find where float64 are created, see the
-:attr:`warn_float64` Theano flag.
-
-.. _BLAS:
-
-Make sure you have a BLAS library
-=================================
+How do I configure/test my BLAS library
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 There are many ways to configure BLAS for Theano. This is done with the Theano
 flags ``blas.ldflags`` (:ref:`libdoc_config`). The default is to use the BLAS

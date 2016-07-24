@@ -85,8 +85,8 @@ make sure there are no global impacts.
 Also, if you are changing GPU code, travis doesn't test that, because
 there are no GPUs on the test nodes.
 
-To run the test suite with the default options, you can follow the
-instructions of :ref:`testing_installation`.
+To run the test suite with the default options, see 
+:ref:`test_theano`.
 
 Each night we execute all the unit tests automatically, with several
 sets of options. The result is sent by email to the `theano-buildbot`_
@@ -364,7 +364,7 @@ You can choose another name than "central" to reference Theano/Theano
 to "central."
 
 You can then test your installation of Theano by following the steps of
-:ref:`testing_installation`.
+:ref:`test_theano`.
 
 
 Using your local copy
