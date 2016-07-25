@@ -23,6 +23,36 @@ except ImportError:
 logger = logging.getLogger("theano.compile.nanguardmode")
 
 
+def _non_numeric_value(var):
+    """
+    Checks a variable against non-numeric types such as types, slices,
+    empty arrays, and None, that need not be checked for NaN and Inf values.
+
+    Parameters
+    ----------
+    var : output of any Theano op.
+
+    Returns
+    -------
+    is_non_numeric : bool
+        `True` the value is non-numeric.
+
+    """
+    if isinstance(var, theano.gof.type.CDataType._cdata_type):
+        return True
+    elif isinstance(var, np.random.mtrand.RandomState):
+        return True
+    elif var and getattr(var.tag, 'is_rng', False):
+        return False
+    elif isinstance(var, slice):
+        return True
+    elif var is None:
+        return True
+    elif var.size == 0:
+        return True
+    return False
+
+
 def flatten(l):
     """
     Turns a nested graph of lists/tuples/other objects into a list of objects.
@@ -74,16 +104,7 @@ def contains_nan(arr, node=None, var=None):
     construction of a boolean array with the same shape as the input array.
 
     """
-    # This should be a whitelist instead of a blacklist
-    if isinstance(arr, theano.gof.type._cdata_type):
-        return False
-    elif isinstance(arr, np.random.mtrand.RandomState):
-        return False
-    elif var and getattr(var.tag, 'is_rng', False):
-        return False
-    elif isinstance(arr, slice):
-        return False
-    elif arr.size == 0:
+    if _non_numeric_value(arr):
         return False
     elif cuda.cuda_available and isinstance(arr, cuda.CudaNdarray):
         if (node and hasattr(theano.sandbox, 'rng_mrg') and
@@ -126,15 +147,7 @@ def contains_inf(arr, node=None, var=None):
     boolean array with the same shape as the input array.
 
     """
-    if isinstance(arr, theano.gof.type._cdata_type):
-        return False
-    elif isinstance(arr, np.random.mtrand.RandomState):
-        return False
-    elif var and getattr(var.tag, 'is_rng', False):
-        return False
-    elif isinstance(arr, slice):
-        return False
-    elif arr.size == 0:
+    if _non_numeric_value(arr):
         return False
     elif cuda.cuda_available and isinstance(arr, cuda.CudaNdarray):
         if (node and hasattr(theano.sandbox, 'rng_mrg') and
@@ -288,13 +301,7 @@ class NanGuardMode(Mode):
                     error = True
             if big_is_error:
                 err = False
-                if isinstance(value, theano.gof.type._cdata_type):
-                    err = False
-                elif isinstance(value, np.random.mtrand.RandomState):
-                    err = False
-                elif isinstance(value, slice):
-                    err = False
-                elif value.size == 0:
+                if _non_numeric_value(var):
                     err = False
                 elif cuda.cuda_available and isinstance(value, cuda.CudaNdarray):
                     compile_gpu_func(False, False, True)
