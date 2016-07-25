@@ -16,7 +16,7 @@ from theano import Op, Apply, shared, config, Variable
 from theano import gradient, function
 from theano import tensor
 from theano.tensor import (TensorType, as_tensor_variable, get_vector_length,
-                           cast, opt, scal, pattternbroadcast)
+                           cast, opt, scal, patternbroadcast)
 from theano.tensor import sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
 from theano.gof import local_optimizer
@@ -1364,7 +1364,7 @@ class MRG_RandomStreams(object):
                 raise ValueError("The length of the broadcastable tuple should"
                                  " match the number of dimensions of the"
                                  " output tensor.")
-            return pattternbroadcast(r, broadcastable)
+            return patternbroadcast(r, broadcastable)
         return r
 
     def binomial(self, size=None, n=1, p=0.5, ndim=None, dtype='int64',
@@ -1384,7 +1384,7 @@ class MRG_RandomStreams(object):
                         raise ValueError("The length of the broadcastable tuple "
                                          "should match the number of "
                                          "dimensions of the output tensor.")
-                    return pattternbroadcast(x_cast, broadcastable)
+                    return patternbroadcast(x_cast, broadcastable)
             return x_cast
         else:
             raise NotImplementedError("MRG_RandomStreams.binomial with n > 1")
@@ -1445,7 +1445,7 @@ class MRG_RandomStreams(object):
                     raise ValueError("The length of the broadcastable tuple should"
                                      " match the number of dimensions of the"
                                      " output tensor.")
-                return pattternbroadcast(node, broadcastable)
+                return patternbroadcast(node, broadcastable)
             return node
         else:
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"
@@ -1506,7 +1506,7 @@ class MRG_RandomStreams(object):
                     raise ValueError("The length of the broadcastable tuple should"
                                      " match the number of dimensions of the"
                                      " output tensor.")
-                return pattternbroadcast(node, broadcastable)
+                return patternbroadcast(node, broadcastable)
             return node
         else:
             raise NotImplementedError(
@@ -1606,7 +1606,7 @@ class MRG_RandomStreams(object):
                 raise ValueError("The length of the broadcastable tuple should"
                                  " match the number of dimensions of the"
                                  " output tensor.")
-            return pattternbroadcast(final_samples, broadcastable)
+            return patternbroadcast(final_samples, broadcastable)
         return final_samples
 
 
