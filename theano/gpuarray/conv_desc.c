@@ -63,7 +63,7 @@ if (NB_DIMS > 2)
 
   if (PyArray_DIM(filt_shp, 0) - 2 != NB_DIMS) {
     PyErr_Format(PyExc_ValueError, "Filter shape has too many dimensions: "
-                 "expected %ld, got %lld.", NB_DIMS,
+                 "expected %d, got %lld.", NB_DIMS,
                  (long long)PyArray_DIM(filt_shp, 0));
     return -1;
   }
