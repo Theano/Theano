@@ -1268,20 +1268,20 @@ class LocalOptGroup(LocalOptimizer):
     def transform(self, node):
         if len(self.opts) == 0:
             return
-        def apply_mult_opts(opt_list, node, single_opts=True):
+        def apply_mult_opts(opt_list, node, multiple_opts=False):
             repl = False
             for opt in opt_list:
                 repl = opt.transform(node)
                 if not repl:
                     continue
                 else:
-                    if single_opts or not repl[0].owner:
+                    if not multiple_opts or not repl[0].owner:
                         return repl
                     assert len(repl) == 1
                     # Ensuring not the input of graph
                     assert repl[0].owner
                     new_node = repl[0].owner
-                    apply_mult_opts(opt_list, new_node, False)
+                    apply_mult_opts(opt_list, new_node, True)
             return repl
 
         return apply_mult_opts(self.opts, node, self.apply_all_opts)

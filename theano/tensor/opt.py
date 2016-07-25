@@ -2539,6 +2539,11 @@ def local_useless_subtensor(node):
     list/vector or the ARange op.
 
     """
+
+    # If the optimization is tried over a node that is not a part of graph before
+    if not hasattr(node, 'fgraph'):
+        return
+
     # This optimization needs ShapeOpt and fgraph.shape_feature
     if not hasattr(node.fgraph, 'shape_feature'):
         return
@@ -4811,6 +4816,10 @@ class Canonizer(gof.LocalOptimizer):
 
         assert len(node.outputs) == 1
         out = node.outputs[0]
+
+        # Condition for replacement variable not being a part of the graph
+        if not hasattr(out, 'clients'):
+            return False
 
         # check if any of the clients of this node would be part of
         # this canonized graph...  if so, we do nothing and wait for
