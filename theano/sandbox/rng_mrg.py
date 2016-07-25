@@ -16,7 +16,7 @@ from theano import Op, Apply, shared, config, Variable
 from theano import gradient, function
 from theano import tensor
 from theano.tensor import (TensorType, as_tensor_variable, get_vector_length,
-                           cast, opt, scal)
+                           cast, opt, scal, pattternbroadcast)
 from theano.tensor import sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
 from theano.gof import local_optimizer
@@ -1266,7 +1266,7 @@ class MRG_RandomStreams(object):
         return sample
 
     def uniform(self, size, low=0.0, high=1.0, ndim=None, dtype=None,
-                nstreams=None):
+                nstreams=None, broadcastable=None):
         # TODO : need description for parameter 'size', 'ndim', 'nstreams'
         """
         Sample a tensor of given size whose element from a uniform
@@ -1292,8 +1292,16 @@ class MRG_RandomStreams(object):
             The output data type. If dtype is not specified, it will be
             inferred from the dtype of low and high, but will be at
             least as precise as floatX.
-
+        nstreams:
+            ? TODO
+        broadcastable:
+            A tuple of booleans defining the broadcastable pattern of
+            output tensor.
         """
+        if not (isinstance(broadcastable, tuple) and broadcastable is not None):
+            raise ValueError("broadcastable argument to the multinomial function"
+                             " should be tuple.")
+
         low = as_tensor_variable(low)
         high = as_tensor_variable(high)
         if dtype is None:
@@ -1351,22 +1359,38 @@ class MRG_RandomStreams(object):
                 '`low` and `high` arguments')
 
         assert r.dtype == dtype
+        if broadcastable:
+            if r.ndim != len(broadcastable):
+                raise ValueError("The length of the broadcastable tuple should"
+                                 " match the number of dimensions of the"
+                                 " output tensor.")
+            return pattternbroadcast(r, broadcastable)
         return r
 
     def binomial(self, size=None, n=1, p=0.5, ndim=None, dtype='int64',
-                 nstreams=None):
+                 nstreams=None, broadcastable=None):
+        if not (isinstance(broadcastable, tuple) and broadcastable is not None):
+            raise ValueError("broadcastable argument to the binomial function"
+                             " should be tuple.")
         # TODO : need description for method, parameter and return
         if n == 1:
             if dtype == 'float32' and self.use_cuda:
                 x = self.uniform(size=size, dtype=dtype, nstreams=nstreams)
             else:
                 x = self.uniform(size=size, nstreams=nstreams)
-            return cast(x < p, dtype)
+                x_cast = cast(x < p, dtype)
+                if broadcastable:
+                    if x_cast.ndim != len(broadcastable):
+                        raise ValueError("The length of the broadcastable tuple "
+                                         "should match the number of "
+                                         "dimensions of the output tensor.")
+                    return pattternbroadcast(x_cast, broadcastable)
+            return x_cast
         else:
             raise NotImplementedError("MRG_RandomStreams.binomial with n > 1")
 
     def multinomial(self, size=None, n=1, pvals=None, ndim=None, dtype='int64',
-                    nstreams=None):
+                    nstreams=None, broadcastable=None):
         # TODO : need description for parameter and return
         """
         Sample `n` (`n` needs to be >= 1, default 1) times from a multinomial
@@ -1390,6 +1414,11 @@ class MRG_RandomStreams(object):
         """
         if pvals is None:
             raise TypeError("You have to specify pvals")
+
+        if not (isinstance(broadcastable, tuple) and broadcastable is not None):
+            raise ValueError("broadcastable argument to the multinomial function"
+                             " should be tuple.")
+
         pvals = as_tensor_variable(pvals)
         if size is not None:
             if any([isinstance(i, integer_types) and i <= 0 for i in size]):
@@ -1410,13 +1439,21 @@ class MRG_RandomStreams(object):
             unis = self.uniform(size=size, ndim=1, nstreams=nstreams)
             op = multinomial.MultinomialFromUniform(dtype)
             n_samples = as_tensor_variable(n)
-            return op(pvals, unis, n_samples)
+            node = op(pvals, unis, n_samples)
+            if broadcastable:
+                if node.ndim != len(broadcastable):
+                    raise ValueError("The length of the broadcastable tuple should"
+                                     " match the number of dimensions of the"
+                                     " output tensor.")
+                return pattternbroadcast(node, broadcastable)
+            return node
         else:
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"
                                        " implemented for pvals.ndim = 2"))
 
     def multinomial_wo_replacement(self, size=None, n=1, pvals=None,
-                                   ndim=None, dtype='int64', nstreams=None):
+                                   ndim=None, dtype='int64', nstreams=None,
+                                   broadcastable=None):
         # TODO : need description for parameter
         """
         Sample `n` times *WITHOUT replacement* from a multinomial distribution
@@ -1445,6 +1482,10 @@ class MRG_RandomStreams(object):
             raise TypeError("You have to specify pvals")
         pvals = as_tensor_variable(pvals)
 
+        if not (isinstance(broadcastable, tuple) and broadcastable is not None):
+            raise ValueError("broadcastable argument to the multinomial function"
+                             " should be tuple.")
+
         if size is not None:
             raise ValueError("Provided a size argument to "
                              "MRG_RandomStreams.multinomial_wo_replacement, "
@@ -1459,14 +1500,21 @@ class MRG_RandomStreams(object):
             unis = self.uniform(size=size, ndim=1, nstreams=nstreams)
             op = multinomial.MultinomialWOReplacementFromUniform(dtype)
             n_samples = as_tensor_variable(n)
-            return op(pvals, unis, n_samples)
+            node = op(pvals, unis, n_samples)
+            if broadcastable:
+                if node.ndim != len(broadcastable):
+                    raise ValueError("The length of the broadcastable tuple should"
+                                     " match the number of dimensions of the"
+                                     " output tensor.")
+                return pattternbroadcast(node, broadcastable)
+            return node
         else:
             raise NotImplementedError(
                 "MRG_RandomStreams.multinomial_wo_replacement only implemented"
                 " for pvals.ndim = 2")
 
     def normal(self, size, avg=0.0, std=1.0, ndim=None,
-               dtype=None, nstreams=None):
+               dtype=None, nstreams=None, broadcastable=None):
         # TODO : need description for method
         """
         Parameters
@@ -1488,6 +1536,10 @@ class MRG_RandomStreams(object):
         # http://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform
         avg = as_tensor_variable(avg)
         std = as_tensor_variable(std)
+
+        if not (isinstance(broadcastable, tuple) and broadcastable is not None):
+            raise ValueError("broadcastable argument to the normal function"
+                             " should be tuple.")
 
         if dtype is None:
             dtype = scal.upcast(config.floatX, avg.dtype, std.dtype)
@@ -1549,6 +1601,12 @@ class MRG_RandomStreams(object):
         final_samples = avg + std * final_samples
 
         assert final_samples.dtype == dtype
+        if broadcastable:
+            if final_samples.ndim != len(broadcastable):
+                raise ValueError("The length of the broadcastable tuple should"
+                                 " match the number of dimensions of the"
+                                 " output tensor.")
+            return pattternbroadcast(final_samples, broadcastable)
         return final_samples
 
 
