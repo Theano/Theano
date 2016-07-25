@@ -1298,8 +1298,8 @@ class MRG_RandomStreams(object):
             A tuple of booleans defining the broadcastable pattern of
             output tensor.
         """
-        if not (isinstance(broadcastable, tuple) and broadcastable is not None):
-            raise ValueError("broadcastable argument to the multinomial function"
+        if not (isinstance(broadcastable, tuple) or broadcastable is None):
+            raise ValueError("broadcastable argument to the uniform function"
                              " should be tuple.")
 
         low = as_tensor_variable(low)
@@ -1369,7 +1369,7 @@ class MRG_RandomStreams(object):
 
     def binomial(self, size=None, n=1, p=0.5, ndim=None, dtype='int64',
                  nstreams=None, broadcastable=None):
-        if not (isinstance(broadcastable, tuple) and broadcastable is not None):
+        if not (isinstance(broadcastable, tuple) or broadcastable is None):
             raise ValueError("broadcastable argument to the binomial function"
                              " should be tuple.")
         # TODO : need description for method, parameter and return
@@ -1378,14 +1378,14 @@ class MRG_RandomStreams(object):
                 x = self.uniform(size=size, dtype=dtype, nstreams=nstreams)
             else:
                 x = self.uniform(size=size, nstreams=nstreams)
-                x_cast = cast(x < p, dtype)
+                x = cast(x < p, dtype)
                 if broadcastable:
-                    if x_cast.ndim != len(broadcastable):
+                    if x.ndim != len(broadcastable):
                         raise ValueError("The length of the broadcastable tuple "
                                          "should match the number of "
                                          "dimensions of the output tensor.")
-                    return patternbroadcast(x_cast, broadcastable)
-            return x_cast
+                    return patternbroadcast(x, broadcastable)
+            return x
         else:
             raise NotImplementedError("MRG_RandomStreams.binomial with n > 1")
 
@@ -1415,9 +1415,9 @@ class MRG_RandomStreams(object):
         if pvals is None:
             raise TypeError("You have to specify pvals")
 
-        if not (isinstance(broadcastable, tuple) and broadcastable is not None):
+        if not (isinstance(broadcastable, tuple) or broadcastable is None):
             raise ValueError("broadcastable argument to the multinomial function"
-                             " should be tuple.")
+                             " should be a tuple.")
 
         pvals = as_tensor_variable(pvals)
         if size is not None:
@@ -1482,8 +1482,9 @@ class MRG_RandomStreams(object):
             raise TypeError("You have to specify pvals")
         pvals = as_tensor_variable(pvals)
 
-        if not (isinstance(broadcastable, tuple) and broadcastable is not None):
-            raise ValueError("broadcastable argument to the multinomial function"
+        if not (isinstance(broadcastable, tuple) or broadcastable is None):
+            raise ValueError("broadcastable argument to the"
+                             " multinomial_wo_replacement function"
                              " should be tuple.")
 
         if size is not None:
@@ -1537,9 +1538,9 @@ class MRG_RandomStreams(object):
         avg = as_tensor_variable(avg)
         std = as_tensor_variable(std)
 
-        if not (isinstance(broadcastable, tuple) and broadcastable is not None):
+        if not (isinstance(broadcastable, tuple) or broadcastable is None):
             raise ValueError("broadcastable argument to the normal function"
-                             " should be tuple.")
+                             " should be a tuple.")
 
         if dtype is None:
             dtype = scal.upcast(config.floatX, avg.dtype, std.dtype)
