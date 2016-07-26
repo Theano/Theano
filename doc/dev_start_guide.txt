@@ -126,7 +126,11 @@ To setup VIM:
 
 #. Install flake8 (if not already installed) with::
 
-    pip install flake8
+    pip install "flake8<3"
+
+   .. warning:: Starting version 3.0.0, flake8 changed its dependancies and 
+      moved its Python API to a legacy module, breaking Theano's flake8 tests.
+      We recommend using a version prior to 3.  
 
    .. note:: You can use ``easy_install`` instead of ``pip``, and ``pep8``
       instead of ``flake8`` if you prefer. The important thing is that the
