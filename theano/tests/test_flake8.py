@@ -7,7 +7,6 @@ import os
 from fnmatch import fnmatch
 import theano
 try:
-    import flake8.engine
     import flake8.main
     flake8_available = True
 except ImportError:
