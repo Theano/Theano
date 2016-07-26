@@ -408,9 +408,9 @@ class GpuDnnConvDesc(COp):
                 padding[2] = border_mode[2]
         else:
             padding = [0, 0, 0]
+        nb_dims = as_tensor_variable(len(subsample))
         if len(subsample) == 2:
             subsample += (0,)
-        nb_dims = as_tensor_variable(len(subsample))
         padding = as_tensor_variable(padding)
         subsample = as_tensor_variable(list(subsample))
         conv_mode = as_tensor_variable(conv_mode)
