@@ -372,8 +372,8 @@ class GpuDnnConvDesc(COp):
                 'invalid border_mode {}, which must be either '
                 '"valid", "full", "half", an integer or a pair of'
                 ' integers'.format(border_mode))
-        assert len(subsample) in (2, 3)
         self.border_mode = border_mode
+        assert len(subsample) in (2, 3)
         self.subsample = subsample
         assert conv_mode in ('conv', 'cross')
         self.conv_mode = conv_mode
@@ -396,8 +396,10 @@ class GpuDnnConvDesc(COp):
             bmode = 1
         elif border_mode == 'half':
             bmode = 2
-        else:
+        elif border_mode == 'full':
             bmode = 0
+        else:
+            raise ValueError("Invalid value for border_mode")
         padding = [0, 0, 0]
         if isinstance(border_mode, tuple):
             padding[0] = border_mode[0]
