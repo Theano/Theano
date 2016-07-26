@@ -1,4 +1,4 @@
-"""Driver for gradient calculations."""
+"""Driver for gradient calculations. JENKINS!!!"""
 from __future__ import absolute_import, print_function, division
 import six.moves.builtins as builtins
 import logging
@@ -41,7 +41,7 @@ _msg_retType = 'op.grad(...) returned a non-list'
 grad_time = 0
 
 
-def format_as(use_list, use_tuple, outputs):
+def format_as(use_list,use_tuple, outputs):
     """
     Formats the outputs according to the flags `use_list` and `use_tuple`.
     If `use_list` is True, `outputs` is returned as a list (if `outputs`
