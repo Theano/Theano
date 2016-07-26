@@ -1379,12 +1379,13 @@ class MRG_RandomStreams(object):
             else:
                 x = self.uniform(size=size, nstreams=nstreams)
                 x = cast(x < p, dtype)
-                if broadcastable:
-                    if x.ndim != len(broadcastable):
-                        raise ValueError("The length of the broadcastable tuple "
-                                         "should match the number of "
-                                         "dimensions of the output tensor.")
-                    return patternbroadcast(x, broadcastable)
+
+            if broadcastable:
+                if x.ndim != len(broadcastable):
+                    raise ValueError("The length of the broadcastable tuple "
+                                     "should match the number of "
+                                     "dimensions of the output tensor.")
+                x = patternbroadcast(x, broadcastable)
             return x
         else:
             raise NotImplementedError("MRG_RandomStreams.binomial with n > 1")
