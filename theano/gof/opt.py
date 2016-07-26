@@ -1250,6 +1250,11 @@ class LocalOptGroup(LocalOptimizer):
                                   for opt in optimizers)
 
         self.apply_all_opts = kwargs.get('apply_all_opts', False)
+        self.track_map = OrderedDict()
+
+        for o in self.opts:
+            for c in o.tracks():
+                self.track_map.setdefault(c, []).append(o)        
 
 
     def __str__(self):
@@ -1283,8 +1288,8 @@ class LocalOptGroup(LocalOptimizer):
                     new_node = repl[0].owner
                     apply_mult_opts(opt_list, new_node, True)
             return repl
-
-        return apply_mult_opts(self.opts, node, self.apply_all_opts)
+        opts = self.track_map.get(type(node.op), [])
+        return apply_mult_opts(opts, node, self.apply_all_opts)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print("%s%s id=%i" % (
