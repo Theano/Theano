@@ -3,9 +3,11 @@ from __future__ import absolute_import, print_function, division
 from theano.gof.type import Type
 from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.op import Op
-from theano.gof.opt import *  # noqa
+from theano.gof.opt import (OpKeyOptimizer, PatternSub, TopoOptimizer, OpSub,
+                            MergeOptimizer, config, theano,
+                            EquilibriumOptimizer, logging, pre_constant_merge,
+                            pre_greedy_local_optimizer)
 from theano.gof.fg import FunctionGraph
-from theano.gof.toolbox import *  # noqa
 
 from theano import tensor as T
 
