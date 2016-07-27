@@ -741,7 +741,7 @@ class Function(object):
             and represent outputs that are requested to be calculated. Regardless
             of the presence of ``output_subset``, the updates are always calculated
             and processed. To disable the updates, you should use the ``copy``
-            method with ``delete_updates=False``.
+            method with ``delete_updates=True``.
 
         Returns
         -------

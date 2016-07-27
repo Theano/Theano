@@ -208,7 +208,7 @@ def test_partial_function():
         assert f(4, output_subset=[0, 2]) == [f(4)[0], f(4)[2]]
         utt.assert_allclose(f(5), np.array([32., 16., 1.7857142857142858]))
 
-    check_partial_function(vm.VM_Linker(allow_partial_eval=True))
+    check_partial_function(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
     check_partial_function('cvm')
 
 
@@ -222,7 +222,7 @@ def test_partial_function_with_output_keys():
 
         assert f(5, output_subset=['a'])['a'] == f(5)['a']
 
-    check_partial_function_output_keys(vm.VM_Linker(allow_partial_eval=True))
+    check_partial_function_output_keys(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
     check_partial_function_output_keys('cvm')
 
 
@@ -242,7 +242,7 @@ def test_partial_function_with_updates():
         assert g(40, output_subset=[]) == []
         assert y.get_value() == 10
 
-    check_updates(vm.VM_Linker(allow_partial_eval=True))
+    check_updates(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
     check_updates('cvm')
 
 
