@@ -14,6 +14,33 @@ from theano.compile import Mode
 logger = logging.getLogger("theano.compile.nanguardmode")
 
 
+def _non_numeric_value(var):
+    """
+    Checks a variable against non-numeric types such as types, slices,
+    empty arrays, and None, that need not be checked for NaN and Inf values.
+
+    Parameters
+    ----------
+    var : output of any Theano op.
+
+    Returns
+    -------
+    is_non_numeric : bool
+        `True` the value is non-numeric.
+
+    """
+    if isinstance(var, theano.gof.type.CDataType._cdata_type):
+        return True
+    elif isinstance(var, np.random.mtrand.RandomState):
+        return True
+    elif isinstance(var, slice):
+        return True
+    elif var is None:
+        return True
+    elif var.size == 0:
+        return True
+    return False
+
 def flatten(l):
     """
     Turns a nested graph of lists/tuples/other objects into a list of objects.
@@ -64,13 +91,7 @@ def contains_nan(arr, node=None):
     construction of a boolean array with the same shape as the input array.
 
     """
-    if isinstance(arr, theano.gof.type.CDataType._cdata_type):
-        return False
-    elif isinstance(arr, np.random.mtrand.RandomState):
-        return False
-    elif isinstance(arr, slice):
-        return False
-    elif arr.size == 0:
+    if _non_numeric_value(arr):
         return False
     elif cuda.cuda_available and isinstance(arr, cuda.CudaNdarray):
         if (node and hasattr(theano.sandbox, 'rng_mrg') and
@@ -110,13 +131,7 @@ def contains_inf(arr, node=None):
     boolean array with the same shape as the input array.
 
     """
-    if isinstance(arr, theano.gof.type.CDataType._cdata_type):
-        return False
-    elif isinstance(arr, np.random.mtrand.RandomState):
-        return False
-    elif isinstance(arr, slice):
-        return False
-    elif arr.size == 0:
+    if _non_numeric_value(arr):
         return False
     elif cuda.cuda_available and isinstance(arr, cuda.CudaNdarray):
         if (node and hasattr(theano.sandbox, 'rng_mrg') and
@@ -241,13 +256,7 @@ class NanGuardMode(Mode):
                     error = True
             if big_is_error:
                 err = False
-                if isinstance(var, theano.gof.type.CDataType._cdata_type):
-                    err = False
-                elif isinstance(var, np.random.mtrand.RandomState):
-                    err = False
-                elif isinstance(var, slice):
-                    err = False
-                elif var.size == 0:
+                if _non_numeric_value(var):
                     err = False
                 elif cuda.cuda_available and isinstance(var, cuda.CudaNdarray):
                     err = (f_gpuabsmax(var.reshape(var.size)) > 1e10)

@@ -58,7 +58,7 @@ def test_NanGuardMode():
         numpy.asarray(1e20).astype(theano.config.floatX), (3, 4, 5))
 
     x = T.tensor3()
-    y = x[:, T.arange(2), T.arange(2)]
+    y = x[:, T.arange(2), T.arange(2), None]
     fun = theano.function(
         [x], y,
         mode=NanGuardMode(nan_is_error=True, inf_is_error=True)
