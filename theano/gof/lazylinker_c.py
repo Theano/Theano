@@ -15,7 +15,7 @@ from theano.gof import cmodule
 _logger = logging.getLogger('theano.gof.lazylinker_c')
 
 force_compile = False
-version = 0.21  # must match constant returned in function get_version()
+version = 0.211  # must match constant returned in function get_version()
 lazylinker_ext = None
 
 

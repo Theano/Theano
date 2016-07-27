@@ -735,9 +735,13 @@ class Function(object):
         kwargs : dict
             The function inputs can be passed as keyword argument. For this, use
             the name of the input or the input instance as the key.
+
             Keyword argument ``output_subset`` is a list of either indices of the
             function's outputs or the keys belonging to the `output_keys` dict
-            and represent outputs that are requested to be calculated.
+            and represent outputs that are requested to be calculated. Regardless
+            of the presence of ``output_subset``, the updates are always calculated
+            and processed. To disable the updates, you should use the ``copy``
+            method with ``delete_updates=True``.
 
         Returns
         -------
