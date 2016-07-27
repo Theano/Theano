@@ -1289,6 +1289,8 @@ class LocalOptGroup(LocalOptimizer):
                     apply_mult_opts(opt_list, new_node, True)
             return repl
         opts = self.track_map.get(type(node.op), [])
+        opts += self.track_map.get(node.op, [])
+        opts += self.track_map.get(None, [])
         return apply_mult_opts(opts, node, self.apply_all_opts)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
