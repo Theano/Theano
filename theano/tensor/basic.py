@@ -4047,6 +4047,11 @@ def roll(x, shift, axis=None):
         else:
             axis = 0
 
+    # Shift may be larger than the size of the axis. If so, since the
+    # roll operation is cyclic, we can take the shift modulo the size
+    # of the axis
+    shift = shift % x.shape[axis]
+
     # A slice of all elements in a dimension ':'
     allslice = slice(None)
     # List of slices describing the front half [:, :, shift:, :]
