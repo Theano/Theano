@@ -22,7 +22,7 @@ from theano import gof
 from theano.compat import izip
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
-from theano.gof.opt import copy_stack_trace, in2out, out2in, LocalOptGroup
+from theano.gof.opt import copy_stack_trace, in2out
 from theano.gof.utils import MethodNotDefined
 from theano.gradient import DisconnectedType
 from theano.configparser import config
@@ -55,6 +55,7 @@ from six import StringIO
 _logger = logging.getLogger('theano.tensor.opt')
 
 # Utilities
+
 
 def _fill_chain(new_out, orig_inputs):
     for i in orig_inputs:
@@ -1901,7 +1902,7 @@ def local_subtensor_remove_broadcastable_index(node):
 
 @register_specialize
 @register_canonicalize('fast_compile_gpu')
-#@register_useless
+# @register_useless
 @gof.local_optimizer([Subtensor, AdvancedSubtensor1])
 def local_subtensor_make_vector(node):
     """
@@ -2035,7 +2036,7 @@ def local_useless_elemwise(node):
             return [node.inputs[0]]
         elif (node.op.scalar_op == theano.scalar.identity and
               len(node.inputs) == 1):
-            return [node.inputs[0]]
+            return
 
         elif (isinstance(node.op.scalar_op, scalar.AND) and
               len(node.inputs) == 2):

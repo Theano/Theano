@@ -1254,8 +1254,7 @@ class LocalOptGroup(LocalOptimizer):
 
         for o in self.opts:
             for c in o.tracks():
-                self.track_map.setdefault(c, []).append(o)        
-
+                self.track_map.setdefault(c, []).append(o)
 
     def __str__(self):
         return getattr(self, '__name__',
@@ -1273,6 +1272,7 @@ class LocalOptGroup(LocalOptimizer):
     def transform(self, node):
         if len(self.opts) == 0:
             return
+
         def apply_mult_opts(opt_list, node, multiple_opts=False):
             repl = False
             for opt in opt_list:

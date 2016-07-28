@@ -413,8 +413,10 @@ class LocalGroupDB(DB):
         ret = opt.LocalOptGroup(*opts, apply_all_opts=self.apply_all_opts)
         return ret
 
+
 class TopoDB(DB):
     """
+
     Generate a local optimizer of type LocalOptGroup instead
     of a global optimizer.
 
