@@ -539,6 +539,8 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                     assert None not in in_grad_vars
 
     Checker.__name__ = name
+    if hasattr(Checker, '__qualname__'):
+        Checker.__qualname__ = name
     return Checker
 
 

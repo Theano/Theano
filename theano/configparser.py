@@ -8,6 +8,7 @@ import os
 import shlex
 import sys
 import warnings
+from functools import wraps
 
 from six import StringIO
 
@@ -96,6 +97,7 @@ def change_flags(**kwargs):
     Useful during tests.
     """
     def change_flags_exec(f):
+        @wraps(f)
         def inner(*args, **kwargs_):
             old_val = {}
             for k in kwargs:
@@ -116,9 +118,6 @@ def change_flags(**kwargs):
                          if v.fullname == k]
                     assert len(l) == 1
                     l[0].__set__(None, old_val[k])
-
-        # Make sure that the name of the decorated function remains the same.
-        inner.__name__ = f.__name__
 
         return inner
     return change_flags_exec

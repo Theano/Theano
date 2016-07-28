@@ -167,6 +167,8 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
                                inputs, variables))
 
     Checker.__name__ = name
+    if hasattr(Checker, '__qualname__'):
+        Checker.__qualname__ = name
     return Checker
 
 
@@ -227,6 +229,7 @@ def gpu_alloc_expected(x, *shp):
     g = gpuarray.empty(shp, dtype=x.dtype, context=get_context(test_ctx_name))
     g[:] = x
     return g
+
 
 GpuAllocTester = makeTester(
     name="GpuAllocTester",
