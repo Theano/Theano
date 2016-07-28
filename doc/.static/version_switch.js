@@ -30,10 +30,14 @@
   function build_vswitch() {
   // Build HTML string for version selector, based on ReadTheDocs theme's versions.html
 
+    var vlabel = current_version.replace("theano_versions/", "");
+    if (vlabel == 'theano') {
+      vlabel = 'release';
+    }
     var vswitch = ['<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions" align=left>'];
     vswitch.push('<span class="rst-current-version" data-toggle="rst-current-version">');
     vswitch.push('<span class="fa fa-book"></span>');
-    vswitch.push('v: ', current_version.replace("theano_versions/", ""), ' ');
+    vswitch.push('v: ', vlabel, ' ');
     vswitch.push('<span class="fa fa-caret-down"></span>');   
     vswitch.push('</span>');
     
