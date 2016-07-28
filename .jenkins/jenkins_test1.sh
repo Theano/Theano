@@ -1,22 +1,16 @@
 #!/bin/bash
 
-# Script for Jenkins continuous integration testing from Github pull requests
+# Script for Jenkins continuous integration testing of gpuarray backend
 
 # Get environment from worker, necessary for CUDA
 source ~/.bashrc
 
-# Test theano CPU and old GPU backend sandbox.cuda
-THEANO_PARAM="theano --with-timer --timer-top-n 10"
-FLAGS="mode=FAST_RUN,init_gpu_device=gpu"
-THEANO_FLAGS=${FLAGS} bin/theano-nose ${THEANO_PARAM}
-
-# Build libgpuarray and test gpuarray backend
 GPUARRAY=none
 GPUARRAY_CONFIG="Release"
 DEVICE=cuda0
 LIBDIR=~/tmp/local
 
-# Make fresh clones (with no history since we don't need it)
+# Make fresh clones of libgpuarray (with no history since we don't need it)
 rm -rf libgpuarray
 git clone --depth 1 "https://github.com/Theano/libgpuarray.git"
 
@@ -24,7 +18,7 @@ git clone --depth 1 "https://github.com/Theano/libgpuarray.git"
 rm -rf $LIBDIR
 mkdir $LIBDIR
 
-# Build libgpuarray and run C tests
+# Build libgpuarray
 mkdir libgpuarray/build
 (cd libgpuarray/build && cmake .. -DCMAKE_BUILD_TYPE=${GPUARRAY_CONFIG} -DCMAKE_INSTALL_PREFIX=$LIBDIR && make)
 
