@@ -145,4 +145,4 @@ except ImportError:
         release_lock()
 
 from lazylinker_ext.lazylinker_ext import *  # noqa
-assert force_compile or (version == get_version())
+assert force_compile or (version == get_version())  # noqa
