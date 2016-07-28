@@ -5,7 +5,6 @@
 # Get environment from worker, necessary for CUDA
 source ~/.bashrc
 
-GPUARRAY=none
 GPUARRAY_CONFIG="Release"
 DEVICE=cuda0
 LIBDIR=~/tmp/local
