@@ -2439,12 +2439,12 @@ def confusion_matrix(actual, pred):
     >>> x = theano.tensor.vector()
     >>> y = theano.tensor.vector()
     >>> f = theano.function([x, y], confusion_matrix(x, y))
-    >>> a = [0, 1, 2, 1, 0]
-    >>> b = [0, 0, 2, 1, 2]
-    >>> print(f(a, b))
-    [array([[0, 0, 1],
-            [2, 1, 0],
-            [0, 0, 1]]), array([ 0.,  1.,  2.])]
+    >>> y_true = [2, 0, 2, 2, 0, 1]
+    >>> y_pred = [0, 0, 2, 2, 0, 2]
+    >>> print(f(y_true, y_pred))
+    [array([[2, 0, 0],
+       [0, 0, 1],
+       [1, 0, 2]]), array([ 0.,  1.,  2.])]
     """
     if actual.ndim != 1:
         raise ValueError('actual must be 1-d tensor variable')
