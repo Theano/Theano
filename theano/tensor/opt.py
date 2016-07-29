@@ -6974,9 +6974,9 @@ class FusionOptimizer(Optimizer):
         print(blanc, " callback_time", prof[5], file=stream)
         if prof[5] > 1:
             print(blanc, " callbacks_time", file=stream)
-            for i in sorted(iteritems(prof[6]), key=lambda a: a[1]):
+            for i in sorted(iteritems(prof[6]), key=lambda a: a[1])[::-1]:
                 if i[1] > 0:
-                    print(i)
+                    print(blanc, "     ", i)
         print(blanc, " time_toposort", prof[7], file=stream)
 
 
