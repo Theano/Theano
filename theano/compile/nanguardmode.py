@@ -264,6 +264,9 @@ class NanGuardMode(Mode):
                 else:
                     print("NanGuardMode found an error in an input of the "
                           "graph.", file=sio)
+                # Add the stack trace
+                print(theano.gof.utils.get_variable_trace_string(
+                    nd.outputs[0]), file=sio)
                 msg = sio.getvalue()
                 if config.NanGuardMode.action == 'raise':
                     raise AssertionError(msg)
