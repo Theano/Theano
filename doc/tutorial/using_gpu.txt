@@ -32,9 +32,9 @@ You can also set these options in the .theanorc file's ``[global]`` section:
         floatX = float32
 
 .. warning::
-  If you want to use the new GpuArray backend, make sure to have the
-  development version of Theano installed. The 0.8.X releases have not
-  been optimized to work correctly with the new backend.
+
+  The old CUDA backend will be deprecated soon, in favor of the new libgpuarray
+  backend.
 
 .. note::
 
@@ -52,8 +52,9 @@ GpuArray Backend
 ----------------
 
 If you have not done so already, you will need to install libgpuarray
-as well as at least one computing toolkit (CUDA or OpenCL).  Instructions for doing so
-are provided at `libgpuarray <http://deeplearning.net/software/libgpuarray/installation.html>`_.
+as well as at least one computing toolkit (CUDA or OpenCL). Detailed
+instructions to accomplish that are provided at 
+`libgpuarray <http://deeplearning.net/software/libgpuarray/installation.html>`_.
 
 To install Nvidia's GPU-programming toolchain (CUDA) and configure
 Theano to use it, see the installation instructions for
@@ -62,6 +63,12 @@ Theano to use it, see the installation instructions for
 While all types of devices are supported if using OpenCL, for the
 remainder of this section, whatever compute device you are using will
 be referred to as GPU.
+
+.. warning::
+
+  If you want to use the new GpuArray backend, make sure to have the
+  development version of Theano installed. The 0.8.X releases have not
+  been optimized to work correctly with the new backend.
 
 .. warning::
 
