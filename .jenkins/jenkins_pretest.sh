@@ -5,9 +5,11 @@
 source ~/.bashrc
 
 # Test flake8
-echo "===== Testing flake8"
-bin/theano-nose theano/tests/test_flake8.py
+echo "\n===== Testing flake8"
+bin/theano-nose theano/tests/test_flake8.py || exit 1
+
 # Test documentation
-echo "===== Testing documentation"
-python doc/scripts/docgen.py --nopdf --check
-python doc/scripts/docgen.py --test --check
+echo "\n===== Testing documentation build"
+python doc/scripts/docgen.py --nopdf --check || exit 1
+echo "\n===== Testing documentation code snippets"
+python doc/scripts/docgen.py --test --check || exit 1

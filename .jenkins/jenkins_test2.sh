@@ -41,10 +41,6 @@ export PYTHONPATH=${PYTHONPATH}:$LIBDIR/lib/python
 # Then install                                                                  
 (cd libgpuarray && python setup.py install --home=$LIBDIR)
 
-# Test libgpuarray and pygpu
-#(cd libgpuarray/build && DEVICE=$DEVICE make test)
-#DEVICE=$DEVICE python -c "import pygpu;pygpu.test()"
-
 # Testing theano (the gpuarray parts)                                           
 THEANO_GPUARRAY_TESTS="theano/gpuarray/tests theano/sandbox/tests/test_rng_mrg.py:test_consistency_GPUA_serial theano/sandbox/tests/test_rng_mrg.py:test_consistency_GPUA_parallel theano/scan_module/tests/test_scan.py:T_Scan_Gpuarray"
 FLAGS="init_gpu_device=$DEVICE,gpuarray.preallocate=1000,mode=FAST_RUN"
