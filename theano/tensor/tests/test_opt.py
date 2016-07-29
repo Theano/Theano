@@ -1770,20 +1770,19 @@ def test_local_useless_subtensor():
     x_c = tensor.specify_shape(x, (2, 3))
     # Test constant
     for dims, res in [((slice(0, 2), ), True),
-                 ((slice(0, 2), slice(0, None)), True),
-                 ((slice(0, 2), slice(0, 3)), True),
-                 ((slice(0, None), slice(0, 3)), True),
-                 ((slice(0, 3), slice(0, 13)), True),
-                 ((slice(0, 3), slice(0, 2)), False),
-                 ((slice(0, 1), slice(0, None)), False),
-                 ((slice(0, 1), 1), False),
-                 ]:
+                      ((slice(0, 2), slice(0, None)), True),
+                      ((slice(0, 2), slice(0, 3)), True),
+                      ((slice(0, None), slice(0, 3)), True),
+                      ((slice(0, 3), slice(0, 13)), True),
+                      ((slice(0, 3), slice(0, 2)), False),
+                      ((slice(0, 1), slice(0, None)), False),
+                      ((slice(0, 1), 1), False)]:
         f = function([x], tensor.exp(x_c).__getitem__(dims), mode=mode_opt)
         # theano.printing.debugprint(f)
         prog = f.maker.fgraph.toposort()
         if res:
             assert isinstance(prog[0].op, theano.tensor.SpecifyShape), dims
-            assert prog[1].op == tensor.exp, dims
+            assert prog[1].op == tensor.exp, (dims, prog)
             assert len(prog) == 2, dims
         else:
             assert any([isinstance(node.op, Subtensor) for node in prog])
