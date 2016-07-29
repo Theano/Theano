@@ -230,7 +230,7 @@ def test_partial_function_with_updates():
 
     def check_updates(linker_name):
         x = tensor.lscalar('input')
-        y = theano.shared(1, name='global')
+        y = theano.shared(numpy.asarray(1, 'int64'), name='global')
         f = theano.function([x], [x, x + 34], updates=[(y, x + 1)], mode=Mode(
             optimizer=None, linker=linker_name))
         g = theano.function([x], [x - 6], updates=[(y, y + 3)], mode=Mode(
