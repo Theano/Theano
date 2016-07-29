@@ -39,7 +39,6 @@ from theano.tensor.opt import (
         local_useless_reshape,
         local_reshape_to_dimshuffle,
         mul_canonizer,
-        out2in,
         Shape_i,
         Assert,
         MakeVector,
@@ -70,7 +69,7 @@ from theano.tensor.elemwise import DimShuffle
 from theano.tests import unittest_tools as utt
 from theano.compile.mode import optdb
 from theano.compile import Mode
-from theano.gof.opt import check_stack_trace
+from theano.gof.opt import check_stack_trace, out2in
 from nose.plugins.attrib import attr
 
 mode_opt = theano.config.mode

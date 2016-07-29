@@ -2036,7 +2036,7 @@ def local_useless_elemwise(node):
             return [node.inputs[0]]
         elif (node.op.scalar_op == theano.scalar.identity and
               len(node.inputs) == 1):
-            return
+            return [node.inputs[0]]
 
         elif (isinstance(node.op.scalar_op, scalar.AND) and
               len(node.inputs) == 2):
