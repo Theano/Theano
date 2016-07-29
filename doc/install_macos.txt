@@ -7,22 +7,14 @@ Mac OS Installation Instructions
 ################################
 
 There are various ways to install Theano dependencies on a Mac. Here
-we describe the process in detail with Canopy, Anaconda, Homebrew or
-MacPorts but if you did it differently and it worked, please let us
-know the details on the `theano-users`_ mailing-list, so that we can
-add alternative instructions here.
+we describe the process in detail with Anaconda, Homebrew or MacPorts 
+but if you did it differently and it worked, please let us know the 
+details on the `theano-users`_ mailing-list, so that we can add 
+alternative instructions here.
 
 .. _theano-users: http://groups.google.com/group/theano-users?pli=1
 
 .. include:: requirements.txt
-
-.. note::
-
-   If you use version 0.6 or later of Theano, we try to automatically
-   link with the Canopy blas version.  Due to Mac OS peculiarities,
-   this requires user intervention.  We detect if the manipulation was
-   done or not and give an error message explaining what to do in case
-   it hasn't been done.
 
 .. _gpu_macos:
 
