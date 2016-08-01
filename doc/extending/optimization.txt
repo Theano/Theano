@@ -872,9 +872,9 @@ To understand this profile here is some explanation of how optimizations work:
            0.131s for callback
            time      - (name, class, index) - validate time
 
-      Then it will print, with some additional indentation, each sub-optimizer's profile
-      information. These sub-profiles are ordered by the time they took to execute,
-      not by their execution order.
+  Then it will print, with some additional indentation, each sub-optimizer's profile
+  information. These sub-profiles are ordered by the time they took to execute,
+  not by their execution order.
 
   * ``OPT_FAST_RUN`` is the name of the optimizer
   * 1.152s is the total time spent in that optimizer
