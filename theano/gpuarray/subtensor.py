@@ -336,11 +336,22 @@ class GpuIncSubtensor(IncSubtensor):
             C code expression to copy source into view, and 0 on success.
 
         """
-        return """GpuArray_setarray(&%(view)s->ga, &%(source)s->ga)""" % locals()
+        return """sub_setarray(&%(view)s->ga, &%(source)s->ga)""" % locals()
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/error.h>', '<gpuarray/array.h>',
                 '<gpuarray/elemwise.h>']
+
+    def c_support_code(self):
+        return """
+int sub_setarray(GpuArray *dst, GpuArray *src) {
+  int err;
+  err = GpuArray_setarray(dst, src);
+  if (err != GA_NO_ERROR)
+    PyErr_SetString(PyExc_RuntimeError, "setarray failed");
+  return err;
+}
+"""
 
     def c_support_code_struct(self, node, nodename):
         return "\nGpuElemwise *iadd;\n"
@@ -383,7 +394,7 @@ class GpuIncSubtensor(IncSubtensor):
         parent_version = super(GpuIncSubtensor, self).c_code_cache_version()
         if not parent_version:
             return
-        return parent_version + (7,)
+        return parent_version + (8,)
 
 
 class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
