@@ -66,6 +66,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.adv_incsub1 = adv_incsub1
         if mode is None:
             mode = theano.compile.mode.get_default_mode()
+            mode = mode.including("local_useless_subtensor")
         self.mode = mode
         self.dtype = dtype
         self.type = type
@@ -108,7 +109,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         topo_ = [node for node in topo if not isinstance(node.op,
                                                          self.ignore_topo)]
         assert_equal(len(topo_), length)
-        assert isinstance(topo_[0].op, op_type)
+        if length == 1:
+            assert isinstance(topo_[0].op, op_type)
         tval = f()
         return tval
 
@@ -340,21 +342,21 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
     def test_ellipsis(self):
         numpy_n = numpy.arange(24, dtype=self.dtype).reshape((2, 3, 4))
         n = self.shared(numpy_n)
-        for length, owner, op_type, slice_ in [
-                (1, Subtensor, Subtensor, numpy.index_exp[...]),
-                (1, Subtensor, Subtensor, numpy.index_exp[..., 1]),
-                (1, Subtensor, Subtensor, numpy.index_exp[1, ...]),
-                (1, Subtensor, Subtensor, numpy.index_exp[..., 1, 2, 3]),
-                (1, Subtensor, Subtensor, numpy.index_exp[1, ..., 2, 3]),
-                (1, Subtensor, Subtensor, numpy.index_exp[1, 2, 3, ...]),
-                (3, DimShuffle, DimShuffle, numpy.index_exp[..., [0, 2, 3]]),
-                (1, DimShuffle, DimShuffle,
+        for length, op_type, slice_ in [
+                (1, self.sub, numpy.index_exp[...]),
+                (1, self.sub, numpy.index_exp[..., 1]),
+                (1, self.sub, numpy.index_exp[1, ...]),
+                (1, self.sub, numpy.index_exp[..., 1, 2, 3]),
+                (1, self.sub, numpy.index_exp[1, ..., 2, 3]),
+                (1, self.sub, numpy.index_exp[1, 2, 3, ...]),
+                (3, DimShuffle, numpy.index_exp[..., [0, 2, 3]]),
+                (1, DimShuffle,
                  numpy.index_exp[numpy.newaxis, ...]),
-                (3, AdvancedSubtensor, MakeSlice,
+                (3, AdvancedSubtensor,
                  numpy.index_exp[..., numpy.newaxis, [1, 2]])]:
             numpy_tval = numpy_n[slice_]
             t = n[slice_]
-            self.assertTrue(isinstance(t.owner.op, owner))
+            self.assertTrue(isinstance(t.owner.op, op_type))
             tval = self.eval_output_and_check(t,
                                               op_type=op_type,
                                               length=length)
