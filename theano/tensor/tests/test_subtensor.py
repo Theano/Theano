@@ -343,7 +343,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         numpy_n = numpy.arange(24, dtype=self.dtype).reshape((2, 3, 4))
         n = self.shared(numpy_n)
         for length, op_type, slice_ in [
-                (1, self.sub, numpy.index_exp[...]),
+                (0, self.sub, numpy.index_exp[...]),
                 (1, self.sub, numpy.index_exp[..., 1]),
                 (1, self.sub, numpy.index_exp[1, ...]),
                 (1, self.sub, numpy.index_exp[..., 1, 2, 3]),
@@ -352,7 +352,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                 (3, DimShuffle, numpy.index_exp[..., [0, 2, 3]]),
                 (1, DimShuffle,
                  numpy.index_exp[numpy.newaxis, ...]),
-                (3, AdvancedSubtensor,
+                (1, AdvancedSubtensor,
                  numpy.index_exp[..., numpy.newaxis, [1, 2]])]:
             numpy_tval = numpy_n[slice_]
             t = n[slice_]
