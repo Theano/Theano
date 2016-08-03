@@ -5,13 +5,15 @@ import sys
 import unittest
 
 import numpy
-import theano
-import theano.scalar as scal
-import theano.tensor as tensor
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_equal
 from numpy.testing import assert_array_equal
 from six import StringIO
+from six.moves import xrange
+
+import theano
+import theano.scalar as scal
+import theano.tensor as tensor
 from theano import config, gof
 from theano.compat import PY3, exc_message, izip
 from theano.compile import DeepCopyOp
@@ -34,8 +36,6 @@ from theano.tensor.subtensor import (AdvancedIncSubtensor,
 from theano.tensor.tests.test_basic import inplace_func, rand, randint_ranged
 from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import attr
-
-from six.moves import xrange
 
 if PY3:
     def L(i):
