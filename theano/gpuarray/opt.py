@@ -1017,10 +1017,9 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
         else:
             return False
         x, = inputs
-
         greduce = op2(
             op.scalar_op, axis=op.axis,
-            dtype=getattr(op, 'dtype', None),
+            dtype=getattr(op, 'dtype', outputs[0].dtype),
             acc_dtype=getattr(op, 'acc_dtype', None))
         gvar = greduce(x)
         # We need to have the make node called, otherwise the mask can
@@ -1059,7 +1058,7 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
             greduce = op2(
                 op.scalar_op,
                 axis=new_axis, reduce_mask=new_mask,
-                dtype=getattr(op, 'dtype', None),
+                dtype=getattr(op, 'dtype', outputs[0].dtype),
                 acc_dtype=getattr(op, 'acc_dtype', None))
 
             reshaped_x = x.reshape(tensor.stack(new_in_shp))
