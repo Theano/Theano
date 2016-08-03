@@ -63,7 +63,8 @@ def init_dev(dev, name=None):
     if dev not in init_dev.devmap:
         ctx = pygpu.init(dev,
                          disable_alloc_cache=config.gpuarray.preallocate < 0,
-                         single_stream=config.gpuarray.single_stream)
+                         single_stream=config.gpuarray.single_stream,
+                         sched=config.gpuarray.sched)
         init_dev.devmap[dev] = ctx
         if config.gpuarray.preallocate > 0:
             MB = (1024 * 1024)

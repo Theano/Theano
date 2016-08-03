@@ -242,6 +242,16 @@ AddConfigVar('gpuarray.preallocate',
              FloatParam(0),
              in_c_key=False)
 
+AddConfigVar('gpuarray.sched',
+             """The sched parameter passed for context creation to pygpu.
+                With CUDA, using "multi" mean using the parameter
+                cudaDeviceScheduleYield. This is useful to lower the
+                CPU overhead when waiting for GPU. One user found that it
+                speed up its other process that was doing data augmentation.
+             """,
+             EnumStr("default", "multi", "single"),
+             in_c_key=True)
+
 AddConfigVar('gpuarray.single_stream',
              """
              If your computations are mostly lots of small elements,
