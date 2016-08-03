@@ -1,27 +1,27 @@
-from __future__ import absolute_import, division, print_function
-
-import logging
-import sys
-import warnings
+from __future__ import absolute_import, print_function, division
 from copy import copy
+import sys
 from textwrap import dedent
+import warnings
+import logging
 
 import numpy
 from six import integer_types
 from six.moves import xrange
 
 import theano
-from theano import scalar as scal
-from theano import config, gof
 from theano.compat import izip
-from theano.gof import Apply, Constant, MethodNotDefined, Op, Type, hashtype
 from theano.gradient import DisconnectedType
+from theano import gof
+from theano.gof import Apply, Constant, hashtype, Op, Type, MethodNotDefined
 from theano.printing import pprint
-from theano.tensor.basic import (ARange, NotScalarConstantError, TensorType,
-                                 addbroadcast, alloc, clip,
-                                 get_scalar_constant_value)
+from theano import scalar as scal
+from theano.tensor.basic import alloc
+from theano.tensor.basic import (addbroadcast, clip, get_scalar_constant_value,
+                                 ARange, TensorType, NotScalarConstantError)
 from theano.tensor.elemwise import DimShuffle
 from theano.tensor.type_other import NoneConst, SliceType, make_slice
+from theano import config
 
 inplace_increment = None
 if config.cxx:
