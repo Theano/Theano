@@ -1749,12 +1749,33 @@ def local_useless_fill(node):
             return [v]
 
 
-@register_specialize
-@register_stabilize
-@register_canonicalize
 @register_useless
 @gof.local_optimizer([T.alloc])
 def local_useless_alloc(node):
+    """
+    If the input type is the same as the output type (dtype and broadcast)
+    there is no change in the shape of the input. So this is just a simple copy
+    of the input. This is not needed.
+
+    """
+    op = node.op
+    if not isinstance(op, Alloc):
+        return False
+
+    input = node.inputs[0]
+    output = node.outputs[0]
+
+    # Check if dtype and broadcast remain the same.
+    if input.type == output.type:
+        # We don't need to copy over any stack traces here
+        return [input]
+
+
+@register_specialize
+@register_stabilize
+@register_canonicalize
+@gof.local_optimizer([T.alloc])
+def local_canonicalize_alloc(node):
     """
     If the input type is the same as the output type (dtype and broadcast)
     there is no change in the shape of the input. So this is just a simple copy
@@ -1778,8 +1799,8 @@ def local_useless_alloc(node):
     for client, i in clients:
         if client != "output" and isinstance(client.op, Alloc):
             return
-
     # Check if alloc adds a broadcastable dimension with shape 1.
+
     output_shape = node.inputs[1:]
     num_dims_with_size_1_added_to_left = 0
     for i in range(len(output_shape) - input.ndim):
