@@ -7,7 +7,7 @@ source ~/.bashrc
 echo "===== Testing old theano.sandbox.cuda backend"
 
 PARTS="theano/sandbox/cuda"
-THEANO_PARAM="theano --with-timer --timer-top-n 10"
+THEANO_PARAM="${PARTS} --with-timer --timer-top-n 10"
 FLAGS="mode=FAST_RUN,init_gpu_device=gpu,floatX=float32"
 THEANO_FLAGS=${FLAGS} bin/theano-nose ${THEANO_PARAM}
 
