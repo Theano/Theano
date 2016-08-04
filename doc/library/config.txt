@@ -487,6 +487,21 @@ import theano and print the config variable, as in:
         automatically to get more memory. But this can cause
         fragmentation, see note above.
 
+.. attribute:: config.gpuarray.sched
+
+    String value: ``'default'``, ``'multi'``, ``'single'``
+
+    Default: ``'default'``
+
+    Control the stream mode of contexts.
+
+    The sched parameter passed for context creation to pygpu.  With
+    CUDA, using "multi" mean using the parameter
+    cudaDeviceScheduleYield. This is useful to lower the CPU overhead
+    when waiting for GPU. One user found that it speeds up his other
+    processes that was doing data augmentation.
+
+
 .. attribute:: config.gpuarray.single_stream
 
     Boolean value
