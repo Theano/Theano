@@ -1,6 +1,13 @@
 #!/bin/bash
 
-# Script for Jenkins continuous integration testing of gpuarray backend
+# Script for Jenkins continuous integration testing of gpu backends
+
+echo "===== Testing old theano.sandbox.cuda backend"
+
+PARTS="theano/sandbox/cuda"
+THEANO_PARAM="theano --with-timer --timer-top-n 10"
+FLAGS="mode=FAST_RUN,init_gpu_device=gpu,floatX=float32"
+THEANO_FLAGS=${FLAGS} bin/theano-nose ${THEANO_PARAM}
 
 echo "===== Testing gpuarray backend"
 
@@ -43,5 +50,5 @@ export PYTHONPATH=${PYTHONPATH}:$LIBDIR/lib/python
 
 # Testing theano (the gpuarray parts)                                           
 THEANO_GPUARRAY_TESTS="theano/gpuarray/tests theano/sandbox/tests/test_rng_mrg.py:test_consistency_GPUA_serial theano/sandbox/tests/test_rng_mrg.py:test_consistency_GPUA_parallel theano/scan_module/tests/test_scan.py:T_Scan_Gpuarray"
-FLAGS="init_gpu_device=$DEVICE,gpuarray.preallocate=1000,mode=FAST_RUN"
+FLAGS="init_gpu_device=$DEVICE,gpuarray.preallocate=1000,mode=FAST_RUN,floatX=float32"
 THEANO_FLAGS=${FLAGS} time nosetests -v ${THEANO_GPUARRAY_TESTS}
