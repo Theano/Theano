@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # Script for Jenkins continuous integration testing of gpu backends
+# Get environment from worker, necessary for CUDA
+source ~/.bashrc
 
 echo "===== Testing old theano.sandbox.cuda backend"
 
@@ -10,9 +12,6 @@ FLAGS="mode=FAST_RUN,init_gpu_device=gpu,floatX=float32"
 THEANO_FLAGS=${FLAGS} bin/theano-nose ${THEANO_PARAM}
 
 echo "===== Testing gpuarray backend"
-
-# Get environment from worker, necessary for CUDA
-source ~/.bashrc
 
 GPUARRAY_CONFIG="Release"
 DEVICE=cuda0
