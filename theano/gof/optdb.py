@@ -417,10 +417,7 @@ class LocalGroupDB(DB):
 class TopoDB(DB):
     """
 
-    Generate a local optimizer of type LocalOptGroup instead
-    of a global optimizer.
-
-    It supports the tracks, to only get applied to some Op.
+    Generate a local optimizer of type TopoOptimizer.
 
     """
 

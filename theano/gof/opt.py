@@ -1249,8 +1249,9 @@ class LocalOptGroup(LocalOptimizer):
         self.retains_inputs = all(getattr(opt, 'retains_inputs', False)
                                   for opt in optimizers)
 
-        self.apply_all_opts = kwargs.get('apply_all_opts', False)
+        self.apply_all_opts = kwargs.pop('apply_all_opts', False)
         self.track_map = OrderedDict()
+        assert len(kwargs) == 0
 
         for o in self.opts:
             for c in o.tracks():
@@ -1273,6 +1274,12 @@ class LocalOptGroup(LocalOptimizer):
         if len(self.opts) == 0:
             return
 
+        def compute_opts(node):
+            opts = self.track_map.get(type(node.op), [])
+            opts += self.track_map.get(node.op, [])
+            opts += self.track_map.get(None, [])
+            return opts
+
         def apply_mult_opts(opt_list, node, multiple_opts=False):
             repl = False
             for opt in opt_list:
@@ -1286,12 +1293,11 @@ class LocalOptGroup(LocalOptimizer):
                     # Ensuring not the input of graph
                     assert repl[0].owner
                     new_node = repl[0].owner
-                    apply_mult_opts(opt_list, new_node, True)
+                    new_opts = compute_opts(new_node)
+                    apply_mult_opts(new_opts, new_node, True)
             return repl
-        opts = self.track_map.get(type(node.op), [])
-        opts += self.track_map.get(node.op, [])
-        opts += self.track_map.get(None, [])
-        return apply_mult_opts(opts, node, self.apply_all_opts)
+
+        return apply_mult_opts(compute_opts(node), node, self.apply_all_opts)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print("%s%s id=%i" % (

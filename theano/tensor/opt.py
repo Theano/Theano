@@ -1749,6 +1749,9 @@ def local_useless_fill(node):
             return [v]
 
 
+@register_specialize
+@register_stabilize
+@register_canonicalize
 @register_useless
 @gof.local_optimizer([T.alloc])
 def local_useless_alloc(node):
@@ -1929,7 +1932,7 @@ def local_subtensor_remove_broadcastable_index(node):
 
 @register_specialize
 @register_canonicalize('fast_compile_gpu')
-# @register_useless
+@register_useless
 @gof.local_optimizer([Subtensor, AdvancedSubtensor1])
 def local_subtensor_make_vector(node):
     """
@@ -4846,10 +4849,6 @@ class Canonizer(gof.LocalOptimizer):
 
         assert len(node.outputs) == 1
         out = node.outputs[0]
-
-        # Condition for replacement variable not being a part of the graph
-        if not hasattr(out, 'clients'):
-            return False
 
         # check if any of the clients of this node would be part of
         # this canonized graph...  if so, we do nothing and wait for
