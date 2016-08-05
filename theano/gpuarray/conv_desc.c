@@ -9,12 +9,12 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
                               PyArrayObject *nb_dims,
                               cudnnConvolutionDescriptor_t *desc) {
   cudnnStatus_t err;
-  int pad[3] = {*(npy_int8 *)PyArray_GETPTR1(padding, 0),
-                *(npy_int8 *)PyArray_GETPTR1(padding, 1),
-                *(npy_int8 *)PyArray_GETPTR1(padding, 2)};
-  int strides[3] = {*(npy_int8 *)PyArray_GETPTR1(subsample, 0),
-                    *(npy_int8 *)PyArray_GETPTR1(subsample, 1),
-                    *(npy_int8 *)PyArray_GETPTR1(subsample, 2)};
+  int pad[3] = {*(npy_int64 *)PyArray_GETPTR1(padding, 0),
+                *(npy_int64 *)PyArray_GETPTR1(padding, 1),
+                *(npy_int64 *)PyArray_GETPTR1(padding, 2)};
+  int strides[3] = {*(npy_int64 *)PyArray_GETPTR1(subsample, 0),
+                    *(npy_int64 *)PyArray_GETPTR1(subsample, 1),
+                    *(npy_int64 *)PyArray_GETPTR1(subsample, 2)};
   int upscale[3] = {1, 1, 1};
   int precision_code = *(npy_int8 *)PyArray_GETPTR1(precision, 0);
   cudnnDataType_t PRECISION;
