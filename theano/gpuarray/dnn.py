@@ -427,7 +427,7 @@ class GpuDnnConvDesc(COp):
         out.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
         return node
 
-    def c_code_cache_version(self):  # TODO: need to update at the end
+    def c_code_cache_version(self):
         return (super(GpuDnnConvDesc, self).c_code_cache_version(), version())
 
 # scalar constants
