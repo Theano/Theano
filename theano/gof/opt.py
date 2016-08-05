@@ -201,7 +201,12 @@ class SeqOptimizer(Optimizer, list):
 
     def __init__(self, *opts, **kw):
         """
-        WRITEME
+        Parameters
+        ----------
+        opts : List
+        The List of optimizers to be applied to a node
+        kw : Dict
+        Dictonary containing failure call back message
 
         """
         if len(opts) == 1 and isinstance(opts[0], (list, tuple)):
@@ -1233,8 +1238,16 @@ def local_optimizer(tracks, inplace=False, requirements=()):
 
 class LocalOptGroup(LocalOptimizer):
     """
-    WRITEME
+    Takes a list of LocalOptimizer and applies them to the nodes.
+    When apply_all_opts is set to True, it tries multiple optimization to a node.
+    A node is first optimized and the list of optimizers for the optimized node is applied
 
+    Parameters
+    ----------
+    optimizers : List
+    List of optimizers to be applied to a node
+    kwargs : Dict
+    Dictionary containing apply_all_opts parameter. When True, multiple optimizers are applied.
     """
 
     def __init__(self, *optimizers, **kwargs):
@@ -1920,7 +1933,8 @@ class NavigatorOptimizer(Optimizer):
 
 class TopoOptimizer(NavigatorOptimizer):
     """
-    WRITEME
+    TopoOptimizer has one local optimizer. It tries to apply to each node, in topological order (or reverse).
+    Each time the local optimizer applies, the node gets replaced, and the topooptimizer moves on to the next one.
 
     """
 
@@ -1998,7 +2012,9 @@ class TopoOptimizer(NavigatorOptimizer):
 
 
 def out2in(*local_opts, **kwargs):
-    """WRITEME """
+    """ 
+    Uses the TopoOptimizer from the output nodes to input nodes of the graph.
+    """
     name = (kwargs and kwargs.pop('name', None))
     if len(local_opts) > 1:
         # Don't wrap it uselessly if their is only 1 optimization.
@@ -2017,7 +2033,9 @@ def out2in(*local_opts, **kwargs):
 
 
 def in2out(*local_opts, **kwargs):
-    """WRITEME """
+    """
+    Uses the TopoOptimizer from the input nodes to output nodes of the graph.
+    """
     name = (kwargs and kwargs.pop('name', None))
     if len(local_opts) > 1:
         # Don't wrap it uselessly if their is only 1 optimization.
