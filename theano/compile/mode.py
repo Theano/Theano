@@ -156,8 +156,11 @@ optdb.register('merge1', gof.MergeOptimizer(),
 # New nodes that don't have infer_shape need that the original node
 # also don't have infer_shape
 local_useless = gof.optdb.LocalGroupDB(apply_all_opts=True)
-optdb.register('useless', gof.optdb.TopoDB(local_useless),
-               0.6, 'fast_run', 'fast_compile')
+optdb.register(
+    'useless',
+    gof.optdb.TopoDB(local_useless,
+                     failure_callback=gof.opt.NavigatorOptimizer.warn_inplace),
+    0.6, 'fast_run', 'fast_compile')
 
 optdb.register('merge1.1', gof.MergeOptimizer(),
                0.65, 'fast_run', 'fast_compile', 'merge')
