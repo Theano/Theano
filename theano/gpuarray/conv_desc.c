@@ -47,17 +47,17 @@ else if (conv_mode_code == 1)
 
 if (BORDER_MODE == 0)
 {
-  pad[0] = *(npy_int8 *)PyArray_GETPTR1(filt_shp, 2) - 1;
-  pad[1] = *(npy_int8 *)PyArray_GETPTR1(filt_shp, 3) - 1;
+  pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) - 1;
+  pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) - 1;
 if (NB_DIMS > 2)
-  pad[2] = *(npy_int8 *)PyArray_GETPTR1(filt_shp, 4) - 1;
+  pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) - 1;
 }
 else if (BORDER_MODE == 2)
 {
-  pad[0] = *(npy_int8 *)PyArray_GETPTR1(filt_shp, 2) / 2;
-  pad[1] = *(npy_int8 *)PyArray_GETPTR1(filt_shp, 3) / 2;
+  pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) / 2;
+  pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) / 2;
 if (NB_DIMS > 2)
-  pad[2] = *(npy_int8 *)PyArray_GETPTR1(filt_shp, 4) / 2;
+  pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) / 2;
 }
 
 
