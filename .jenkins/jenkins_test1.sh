@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script for Jenkins continuous integration testing of theano base and old backend
+# Script for Jenkins continuous integration testing of theano base
 
 echo "===== Testing theano core"
 
