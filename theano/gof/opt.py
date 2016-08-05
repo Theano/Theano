@@ -1265,6 +1265,10 @@ class LocalOptGroup(LocalOptimizer):
         self.apply_all_opts = kwargs.pop('apply_all_opts', False)
         self.track_map = OrderedDict()
         assert len(kwargs) == 0
+        self.time_opts = {}
+        self.time_nodes = {}
+        self.node_created = {}
+        self.process_count = {}
 
         for o in self.opts:
             for c in o.tracks():
@@ -1296,10 +1300,19 @@ class LocalOptGroup(LocalOptimizer):
         def apply_mult_opts(opt_list, node, multiple_opts=False):
             repl = False
             for opt in opt_list:
+                opt_start = time.time()
                 repl = opt.transform(node)
+                opt_finish = time.time()
                 if not repl:
                     continue
                 else:
+                    self.time_opts[opt] = opt_start - opt_finish
+                    try:
+                        self.node_created[opt] += len(graph.ops(node.inputs, node.outputs))
+                        self.process_count[opt] += 1
+                    except KeyError:
+                        self.node_created.setdefault(opt, 0)
+
                     if not multiple_opts or not repl[0].owner:
                         return repl
                     assert len(repl) == 1
@@ -1309,16 +1322,47 @@ class LocalOptGroup(LocalOptimizer):
                     new_opts = compute_opts(new_node)
                     apply_mult_opts(new_opts, new_node, True)
             return repl
-
-        return apply_mult_opts(compute_opts(node), node, self.apply_all_opts)
+        node_start = time.time()
+        new_var = apply_mult_opts(compute_opts(node), node, self.apply_all_opts)
+        node_finish = time.time()
+        self.time_nodes[node] = node_finish - node_start
+        return new_var
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
+        blanc = ('    ' * level)
         print("%s%s id=%i" % (
             (' ' * level), self.__class__.__name__, id(self)), file=stream)
         if depth != 0:
             depth -= 1
             for lopt in self.opts:
                 lopt.print_summary(stream, level=(level + 2), depth=depth)
+
+
+        count_opt = []
+        not_used = []
+        for o, count in iteritems(self.process_count):
+            if count > 0:
+                count_opt.append((self.time_opts[o], count,
+                                  self.node_created[o], o))
+            else:
+                not_used.append((self.time_opts[o], o))
+                not_used_time += self.time_opts[o]
+        if count_opt:
+            print(blanc,
+                  '  times - times applied - Node created - name:',
+                  file=stream)
+            count_opt.sort()
+            for (t, count, n_created, o) in count_opt[::-1]:
+                print(blanc, '  %.3fs - %d - %d - %s' % (
+                    t, count, n_created, o), file=stream)
+            print(blanc, '  %.3fs - in %d optimization that were not used (display those with runtime greater than 0)' % (
+                not_used_time, len(not_used)), file=stream)
+            not_used.sort(key=lambda nu: (nu[0], str(nu[1])))
+            for (t, o) in not_used[::-1]:
+                if t > 0:
+                    # Skip opt that have 0 times, they probably wasn't even tried.
+                    print(blanc + "  ", '  %.3fs - %s' % (t, o), file=stream)
+            print(file=stream)
 
     def add_requirements(self, fgraph):
         for opt in self.opts:
