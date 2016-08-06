@@ -548,7 +548,7 @@ class CLinker(link.Linker):
         if schedule:
             self.schedule = schedule
 
-    def accept(self, fgraph, no_recycling=None):
+    def accept(self, fgraph, no_recycling=None, profile=None):
         """
         Associate linker with fgraph
 
@@ -557,7 +557,8 @@ class CLinker(link.Linker):
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
             # A linker can be tied to only one FunctionGraph.
-            return type(self)(self.schedule).accept(fgraph, no_recycling)
+            return type(self)(self.schedule).accept(
+                fgraph, no_recycling, profile)
         self.fgraph = fgraph
         self.fetch_variables()
         self.no_recycling = no_recycling
@@ -1737,7 +1738,7 @@ class OpWiseCLinker(link.LocalLinker):
         if schedule:
             self.schedule = schedule
 
-    def accept(self, fgraph, no_recycling=None):
+    def accept(self, fgraph, no_recycling=None, profile=None):
         """
         Associate linker with fgraph
         """
@@ -1750,7 +1751,7 @@ class OpWiseCLinker(link.LocalLinker):
                 allow_gc=self.allow_gc,
                 nice_errors=self.nice_errors,
                 schedule=self.schedule,
-            ).accept(fgraph, no_recycling)
+            ).accept(fgraph, no_recycling, profile)
         self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self
@@ -1897,7 +1898,7 @@ class DualLinker(link.Linker):
         if schedule:
             self.schedule = schedule
 
-    def accept(self, fgraph, no_recycling=None):
+    def accept(self, fgraph, no_recycling=None, profile=None):
         """
         Update/tie self with fgraph
         """
@@ -1905,7 +1906,7 @@ class DualLinker(link.Linker):
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
             return type(self)(self.checker, self.schedule).accept(
-                fgraph, no_recycling)
+                fgraph, no_recycling, profile)
         self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self

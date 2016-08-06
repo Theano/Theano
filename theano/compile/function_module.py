@@ -1500,9 +1500,10 @@ class FunctionMaker(object):
                      if not spec.borrow]
         if no_borrow:
             self.linker = linker.accept(
-                fgraph, no_recycling=infer_reuse_pattern(fgraph, no_borrow))
+                fgraph, no_recycling=infer_reuse_pattern(fgraph, no_borrow),
+                profile=profile)
         else:
-            self.linker = linker.accept(fgraph)
+            self.linker = linker.accept(fgraph, profile=profile)
 
         if hasattr(linker, 'accept_var_updates'):
             # hacky thing so VMLinker knows about updates

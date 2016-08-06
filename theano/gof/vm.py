@@ -731,7 +731,7 @@ class VM_Linker(link.LocalLinker):
         if schedule:
             self.schedule = schedule
 
-    def accept(self, fgraph, no_recycling=None):
+    def accept(self, fgraph, no_recycling=None, profile=None):
         """
         Check if fgraph is the first FunctionGraph that has ever been
         associated to self, else, create a new VM_Linker
@@ -779,9 +779,11 @@ class VM_Linker(link.LocalLinker):
                 schedule=self.schedule,
                 c_thunks=self.c_thunks,
                 allow_partial_eval=self.allow_partial_eval
-            ).accept(fgraph, no_recycling)
+            ).accept(fgraph, no_recycling, profile)
         self.fgraph = fgraph
         self.no_recycling = no_recycling
+        self.profile = profile
+
         return self
 
     def accept_var_updates(self, updated_vars):
@@ -1038,7 +1040,7 @@ class VM_Linker(link.LocalLinker):
 
         reallocated_info = calculate_reallocate_info(
             order, fgraph, storage_map, compute_map_re, dependencies)
-
+        t0 = time.time()
         for node in order:
             try:
                 if self.c_thunks is False:
@@ -1056,6 +1058,11 @@ class VM_Linker(link.LocalLinker):
                 e.args = ("The following error happened while"
                           " compiling the node", node, "\n") + e.args
                 raise
+        t1 = time.time()
+
+        if self.profile:
+            self.profile.linker_node_make_thunks += t1 - t0
+
         for node, thunk in zip(order, thunks):
             thunk.inputs = [storage_map[v] for v in node.inputs]
             thunk.outputs = [storage_map[v] for v in node.outputs]
