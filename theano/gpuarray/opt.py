@@ -6,6 +6,7 @@ import pdb
 import time
 from six import iteritems
 from six.moves import xrange
+import sys
 
 import theano
 from theano import tensor, scalar, gof, config
@@ -484,6 +485,15 @@ class GraphToGPU(NavigatorOptimizer):
                 time_opts,
                 node_created,
                 process_count)
+
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
+        print("%s%s (%i)" % (
+            (' ' * level), self.__class__.__name__, id(self)), file=stream)
+        if depth != 0:
+            for opt in (self.local_optimizers_all +
+                        reduce(list.__add__,
+                               self.local_optimizers_map.values())):
+                opt.print_summary(stream, level=(level + 2), depth=(depth - 1))
 
 
 @local_optimizer([GpuFromHost, GpuToGpu, HostFromGpu])
