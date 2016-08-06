@@ -3736,6 +3736,22 @@ class T_Join_and_Split(unittest.TestCase):
 
             assert (out == want).all()
 
+            # Test rolling on axis 0 with a positive shift that is
+            # larger than axis size
+            want = numpy.roll(a.get_value(borrow=True), 4, 0)
+            b = roll(a, get_shift(4), 0)
+            out = theano.function([], b)()
+
+            assert (out == want).all()
+
+            # Test rolling on axis 0 with a negative shift that is
+            # larger than axis size
+            want = numpy.roll(a.get_value(borrow=True), -4, 0)
+            b = roll(a, get_shift(-4), 0)
+            out = theano.function([], b)()
+
+            assert (out == want).all()
+
     def test_stack_vector(self):
         a = self.shared(numpy.array([1, 2, 3], dtype=self.floatX))
         b = as_tensor_variable(numpy.array([7, 8, 9], dtype=self.floatX))
