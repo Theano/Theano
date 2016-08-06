@@ -1271,6 +1271,9 @@ class LocalOptGroup(LocalOptimizer):
         self.process_count = {}
 
         for o in self.opts:
+            self.process_count.setdefault(o, 0)
+            self.node_created.setdefault(o, 0)
+            self.time_opts.setdefault(o, 0)
             for c in o.tracks():
                 self.track_map.setdefault(c, []).append(o)
 
@@ -1299,6 +1302,7 @@ class LocalOptGroup(LocalOptimizer):
 
         def apply_mult_opts(opt_list, node, multiple_opts=False):
             repl = False
+
             for opt in opt_list:
                 opt_start = time.time()
                 repl = opt.transform(node)
@@ -1307,12 +1311,8 @@ class LocalOptGroup(LocalOptimizer):
                     continue
                 else:
                     self.time_opts[opt] = opt_start - opt_finish
-                    try:
-                        self.node_created[opt] += len(graph.ops(node.inputs, node.outputs))
-                        self.process_count[opt] += 1
-                    except KeyError:
-                        self.node_created.setdefault(opt, 0)
-
+                    self.node_created[opt] += len(graph.ops(node.inputs, node.outputs))
+                    self.process_count[opt] += 1
                     if not multiple_opts or not repl[0].owner:
                         return repl
                     assert len(repl) == 1
@@ -1340,6 +1340,7 @@ class LocalOptGroup(LocalOptimizer):
 
         count_opt = []
         not_used = []
+        not_used_time = 0
         for o, count in iteritems(self.process_count):
             if count > 0:
                 count_opt.append((self.time_opts[o], count,
