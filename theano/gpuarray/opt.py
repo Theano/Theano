@@ -14,7 +14,6 @@ from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         SequenceDB, Optimizer, DB, toolbox, graph)
-from theano.gof.opt import NavigatorOptimizer
 from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
@@ -263,7 +262,7 @@ gpu_seqopt.register('InputToGpuArrayOptimizer', InputToGpuOptimizer(),
                     0, 'fast_run', 'fast_compile', 'merge')
 
 
-class GraphToGPU(NavigatorOptimizer):
+class GraphToGPU(Optimizer):
     """
     Transfer the graph as a whole to GPU instead of transfering node by node.
 
