@@ -8,7 +8,7 @@ echo "===== Testing theano core"
 source ~/.bashrc
 
 # Test theano core
-PARTS="theano/compat theano/compile theano/d3viz theano/gof theano/misc theano/sandbox/linalg theano/sandbox/tests theano/scalar theano/scan_module theano/sparse theano/tensor theano/tests theano/typed_list"
+PARTS="theano -e cuda -e gpuarray"
 THEANO_PARAM="${PARTS} --with-timer --timer-top-n 10"
 FLAGS="mode=FAST_RUN,init_gpu_device=gpu,floatX=float32"
 THEANO_FLAGS=${FLAGS} bin/theano-nose ${THEANO_PARAM}
