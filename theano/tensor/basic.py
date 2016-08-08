@@ -463,8 +463,8 @@ if int(config.tensor.cmp_sloppy) > 1:
     # When config.tensor.cmp_sloppy>1 we are even more sloppy. This is
     # useful to test the GPU as they don't use extended precision and
     # this cause some difference bigger then the normal sloppy.
-    float16_atol = 5e-3
-    float16_rtol = 1e-2
+    float16_atol = 1e-2
+    float16_rtol = 5e-2
 
     float32_atol = 5e-4
     float32_rtol = 1e-3
@@ -472,8 +472,8 @@ if int(config.tensor.cmp_sloppy) > 1:
     float64_rtol = 1e-4
     float64_atol = 1e-3
 elif int(config.tensor.cmp_sloppy):
-    float16_atol = 1e-3
-    float16_rtol = 5e-3
+    float16_atol = 5e-3
+    float16_rtol = 1e-2
 
     float32_atol = 1e-4
     float32_rtol = 1e-3
@@ -483,8 +483,8 @@ elif int(config.tensor.cmp_sloppy):
 else:
     # If you change those value in test don't forget to put them back
     # when the test end.  Don't forget the case when the test fail.
-    float16_atol = 5e-4
-    float16_rtol = 5e-4
+    float16_atol = 1e-3
+    float16_rtol = 1e-3
 
     float32_atol = 1e-5
     float32_rtol = 1e-5
