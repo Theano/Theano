@@ -1294,6 +1294,14 @@ class LocalOptGroup(LocalOptimizer):
         if len(self.opts) == 0:
             return
 
+    # This method is just kept for the `print_profile` method to know the variables that
+    # needs to be printed
+    def apply(self):
+        return (self.time_opts,
+        self.time_nodes,
+        self.node_created,
+        self.process_count)
+
         def compute_opts(node):
             opts = self.track_map.get(type(node.op), [])
             opts += self.track_map.get(node.op, [])
@@ -1328,27 +1336,27 @@ class LocalOptGroup(LocalOptimizer):
         self.time_nodes[node] = node_finish - node_start
         return new_var
 
-    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
-        blanc = ('    ' * level)
-        print("%s%s id=%i" % (
-            (' ' * level), self.__class__.__name__, id(self)), file=stream)
-        if depth != 0:
-            depth -= 1
-            for lopt in self.opts:
-                lopt.print_summary(stream, level=(level + 2), depth=depth)
-
-
+    @staticmethod
+    def print_profile(stream, prof, level=0):
+        (time_opts, time_nodes, node_created, process_count) = prof
+        import pdb
+        pdb.set_trace()
+        blanc = ('    ' * int(level))
+        print(blanc, "LocalOptGroup", file=stream)
         count_opt = []
         not_used = []
         not_used_time = 0
-        for o, count in iteritems(self.process_count):
+        for o, count in iteritems(process_count):
             if count > 0:
-                count_opt.append((self.time_opts[o], count,
-                                  self.node_created[o], o))
+                count_opt.append((time_opts[o], count,
+                                  node_created[o], o))
             else:
-                not_used.append((self.time_opts[o], o))
-                not_used_time += self.time_opts[o]
+                not_used.append((time_opts[o], o))
+                not_used_time += time_opts[o]
         if count_opt:
+            for i in count_opt:
+                if not "useless" in count_opt[-1].__name__:
+                    continue
             print(blanc,
                   '  times - times applied - Node created - name:',
                   file=stream)
@@ -1364,6 +1372,15 @@ class LocalOptGroup(LocalOptimizer):
                     # Skip opt that have 0 times, they probably wasn't even tried.
                     print(blanc + "  ", '  %.3fs - %s' % (t, o), file=stream)
             print(file=stream)
+
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
+        blanc = ('    ' * level)
+        print("%s%s id=%i" % (
+            (' ' * level), self.__class__.__name__, id(self)), file=stream)
+        if depth != 0:
+            depth -= 1
+            for lopt in self.opts:
+                lopt.print_summary(stream, level=(level + 2), depth=depth)
 
     def add_requirements(self, fgraph):
         for opt in self.opts:
