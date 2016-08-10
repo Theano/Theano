@@ -1997,6 +1997,7 @@ class TopoOptimizer(NavigatorOptimizer):
         if order not in ['out_to_in', 'in_to_out']:
             raise ValueError("order must be 'out_to_in' or 'in_to_out'")
         self.order = order
+        self.lopt = local_opt
         NavigatorOptimizer.__init__(self, local_opt, ignore_newtrees,
                                     failure_callback)
 
@@ -2038,7 +2039,7 @@ class TopoOptimizer(NavigatorOptimizer):
         callback_time = fgraph.execute_callbacks_time - callback_before
         nb_nodes_end = len(fgraph.apply_nodes)
         return (self, nb, nb_nodes_start, nb_nodes_end,
-                io_t, loop_t, callback_time)
+                io_t, loop_t, callback_time, self.lopt)
 
     @staticmethod
     def print_profile(stream, prof, level=0):
@@ -2049,10 +2050,13 @@ class TopoOptimizer(NavigatorOptimizer):
             return
 
         (opt, nb, nb_nodes_start, nb_nodes_end,
-         io_t, loop_t, callback_time) = prof
+         io_t, loop_t, callback_time, lopt) = prof
 
         print(blanc, "TopoOptimizer ",
               getattr(opt, "name", getattr(opt, "__name__", "")), file=stream)
+        if getattr(opt, "name", getattr(opt, "__name__", "")) == 'useless':
+            import pdb
+            pdb.set_trace()
 
         print(blanc, "  nb_node (start, end, changed)", (
             nb_nodes_start, nb_nodes_end, nb), file=stream)
