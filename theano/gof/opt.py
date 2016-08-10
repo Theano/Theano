@@ -38,7 +38,6 @@ def _list_of_nodes(fgraph):
 
 class Optimizer(object):
     """
-    WRITEME
 
     An L{Optimizer} can be applied to an L{FunctionGraph} to transform it.
     It can represent an optimization or in general any kind
@@ -64,7 +63,6 @@ class Optimizer(object):
 
     def apply(self, fgraph):
         """
-        WRITEME
 
         Applies the optimization to the provided L{FunctionGraph}. It may
         use all the methods defined by the L{FunctionGraph}. If the
@@ -76,7 +74,6 @@ class Optimizer(object):
 
     def optimize(self, fgraph, *args, **kwargs):
         """
-        WRITEME
 
         This is meant as a shortcut to:
           opt.add_requirements(fgraph)
@@ -94,7 +91,6 @@ class Optimizer(object):
 
     def __call__(self, fgraph):
         """
-        WRITEME
 
         Same as self.optimize(fgraph).
 
@@ -103,7 +99,6 @@ class Optimizer(object):
 
     def add_requirements(self, fgraph):
         """
-        WRITEME
 
         Add features to the fgraph that are required to apply the optimization.
         For example:
@@ -179,7 +174,6 @@ def inplace_optimizer(f):
 class SeqOptimizer(Optimizer, list):
     # inherit from Optimizer first to get Optimizer.__hash__
     """
-    WRITEME
 
     Takes a list of L{Optimizer} instances and applies them
     sequentially.
@@ -216,7 +210,6 @@ class SeqOptimizer(Optimizer, list):
 
     def apply(self, fgraph):
         """
-        WRITEME
 
         Applies each L{Optimizer} in self in turn.
 
@@ -1297,6 +1290,8 @@ class LocalOptGroup(LocalOptimizer):
     # This method is just kept for the `print_profile` method to know the variables that
     # needs to be printed
     def apply(self):
+        import pdb
+        pdb.set_trace()
         return (self.time_opts,
         self.time_nodes,
         self.node_created,
@@ -1389,7 +1384,6 @@ class LocalOptGroup(LocalOptimizer):
 
 class OpSub(LocalOptimizer):
     """
-    WRITEME
 
     Replaces the application of a certain op by the application of
     another op that takes the same inputs as what they are replacing.
@@ -1439,7 +1433,6 @@ class OpSub(LocalOptimizer):
 
 class OpRemove(LocalOptimizer):
     """
-    WRITEME
 
     Removes all applications of an op by transferring each of its
     outputs to the corresponding input.
@@ -1475,7 +1468,6 @@ class OpRemove(LocalOptimizer):
 
 class PatternSub(LocalOptimizer):
     """
-    WRITEME
 
     @todo update
 
