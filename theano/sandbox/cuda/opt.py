@@ -1891,37 +1891,61 @@ def local_convtransp3d_gemm(node):
 gpu_optimizer.register("convtransp3d_gemm", local_convtransp3d_gemm)
 
 
+def _check_constant_args_pool(ws, stride, pad, node):
+    """Check if the args of pool are constants. Warns if not."""
+    try:
+        ws_w = tensor.get_scalar_constant_value(ws[0])
+        ws_h = tensor.get_scalar_constant_value(ws[1])
+        stride_w = tensor.get_scalar_constant_value(stride[0])
+        stride_h = tensor.get_scalar_constant_value(stride[1])
+        pad_w = tensor.get_scalar_constant_value(pad[0])
+        pad_h = tensor.get_scalar_constant_value(pad[1])
+    except tensor.NotScalarConstantError:
+        msg = ("Pool with tensor variable for the window size, stride or "
+               "padding is only supported in the new GPU backend, so this op "
+               "will run on CPU. (op %s)" % node)
+        if config.assert_no_cpu_op == "warn":
+            _logger.warning(msg)
+        elif config.assert_no_cpu_op == "raise":
+            raise AssertionError(msg)
+        return None
+    ws = (ws_w, ws_h)
+    stride = (stride_w, stride_h)
+    pad = (pad_w, pad_h)
+    return ws, stride, pad
+
+
 @register_opt()
 @local_optimizer([pool.Pool])
 def local_gpu_downsample_factor_max(node):
-    if (isinstance(node.op, pool.Pool) and
-            node.op.ds == node.op.st):
-
-        assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding',
-                                     'mode')
-        if node.op.padding != (0, 0) or node.op.mode != 'max':
+    if isinstance(node.op, pool.Pool):
+        assert node.op.__props__ == ('ignore_border', 'mode')
+        x, ws, stride, pad = node.inputs
+        ret = _check_constant_args_pool(ws, stride, pad, node)
+        if ret is None:
             return
-        x, = node.inputs
+        ws, stride, pad = ret
+        if (pad) != (0, 0) or node.op.mode != 'max' or stride != ws:
+            return
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            gpu_ds = GpuDownsampleFactorMax(node.op.ds, node.op.ignore_border)
+            gpu_ds = GpuDownsampleFactorMax(ws, node.op.ignore_border)
             return [host_from_gpu(gpu_ds(x.owner.inputs[0]))]
 
 
 @register_opt()
 @local_optimizer([pool.MaxPoolGrad])
 def local_gpu_downsample_factor_max_grad(node):
-    if (isinstance(node.op, pool.MaxPoolGrad) and node.op.ds == node.op.st):
-        assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding',
-                                     'mode')
-        if (node.op.padding != (0, 0) or
-                node.op.mode != 'max' or
-                node.op.st != node.op.ds):
-
+    if isinstance(node.op, pool.MaxPoolGrad):
+        assert node.op.__props__ == ('ignore_border', 'mode')
+        x, z, gz, ws, stride, pad = node.inputs
+        ret = _check_constant_args_pool(ws, stride, pad, node)
+        if ret is None:
             return
-        x, z, gz = node.inputs
+        ws, stride, pad = ret
+        if pad != (0, 0) or node.op.mode != 'max' or stride != ws:
+            return
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            gpu_ds_grad = GpuDownsampleFactorMaxGrad(node.op.ds,
-                                                     node.op.ignore_border)
+            gpu_ds_grad = GpuDownsampleFactorMaxGrad(ws, node.op.ignore_border)
             return [host_from_gpu(gpu_ds_grad(x.owner.inputs[0],
                                               as_cuda_ndarray_variable(z),
                                               as_cuda_ndarray_variable(gz)))]
@@ -1931,16 +1955,16 @@ def local_gpu_downsample_factor_max_grad(node):
 @local_optimizer([pool.DownsampleFactorMaxGradGrad])
 def local_gpu_downsample_factor_max_grad_grad(node):
     if isinstance(node.op, pool.DownsampleFactorMaxGradGrad):
-        assert node.op.__props__ == ('ds', 'ignore_border', 'st',
-                                     'padding', 'mode')
-        if (node.op.padding != (0, 0) or
-                node.op.mode != 'max' or
-                node.op.st != node.op.ds):
+        assert node.op.__props__ == ('ignore_border', 'mode')
+        x, z, gx, ws, stride, pad = node.inputs
+        ret = _check_constant_args_pool(ws, stride, pad, node)
+        if ret is None:
             return
-        x, z, gx = node.inputs
+        ws, stride, pad = ret
+        if pad != (0, 0) or node.op.mode != 'max' or stride != ws:
+            return
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            op = GpuDownsampleFactorMaxGradGrad(node.op.ds,
-                                                node.op.ignore_border)
+            op = GpuDownsampleFactorMaxGradGrad(ws, node.op.ignore_border)
             return [host_from_gpu(op(x.owner.inputs[0],
                                      as_cuda_ndarray_variable(z),
                                      as_cuda_ndarray_variable(gx)))]

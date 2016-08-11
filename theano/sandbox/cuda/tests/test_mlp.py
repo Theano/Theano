@@ -381,9 +381,10 @@ def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
         (n_kern, logical_hid_shape[0] // 2, logical_hid_shape[1] // 2),
         shape_kern1[2:], n_kern1, n_batch, 1, 1, verbose=verbose, version=version)
 
-    ds_op = pool.Pool((2, 2), ignore_border=False)
+    ds_op = pool.Pool(ignore_border=False)
     if downsample_ops:
-        hid = tensor.tanh(ds_op(conv_op(x, w0) + b0.dimshuffle((0, 'x', 'x'))))
+        hid = tensor.tanh(ds_op(conv_op(x, w0) + b0.dimshuffle((0, 'x', 'x')),
+                                (2, 2)))
     else:
         hid = tensor.tanh(
             (conv_op(x, w0) + b0.dimshuffle(
