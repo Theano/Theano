@@ -4,6 +4,9 @@
 # Get environment from worker, necessary for CUDA
 source ~/.bashrc
 
+echo $PATH
+which python
+
 echo "===== Testing old theano.sandbox.cuda backend"
 
 PARTS="theano/sandbox/cuda"
