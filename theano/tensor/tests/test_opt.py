@@ -35,6 +35,7 @@ from theano.tensor.opt import (
         local_useless_alloc,
         local_greedy_distributor,
         local_useless_reshape,
+        local_reshape_to_dimshuffle,
         mul_canonizer,
         out2in,
         Shape_i,
@@ -6179,7 +6180,28 @@ class Test_local_useless_reshape(unittest.TestCase):
         assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
 
     def test_1(self):
-        reshape_lift = out2in(local_useless_reshape)
+        x = theano.tensor.matrix('x')
+        r = x.reshape(x.shape)
+
+        m0 = theano.compile.get_default_mode()
+        m1 = m0.including('local_useless_reshape')
+        f1 = theano.function([x], r, mode=m1)
+        topo = f1.maker.fgraph.toposort()
+        assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+
+        m2 = m1.excluding('ShapeOpt')
+        f2 = theano.function([x], r, mode=m2)
+        topo = f2.maker.fgraph.toposort()
+        assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+
+
+class Test_local_reshape_to_dimshuffle(unittest.TestCase):
+    def setUp(self):
+        self.rng = numpy.random.RandomState(utt.fetch_seed())
+
+    def test_1(self):
+        reshape_lift = out2in(local_reshape_to_dimshuffle)
+        useless_reshape = out2in(local_useless_reshape)
         x = shared(self.rng.randn(4,))
         y = shared(self.rng.randn(5, 6))
         reshape_x = tensor.reshape(x, (1, 4))
@@ -6194,6 +6216,7 @@ class Test_local_useless_reshape(unittest.TestCase):
                                    "TensorConstant{[1 5 1 6 1 1]})]"))
 
         reshape_lift.optimize(g)
+        useless_reshape.optimize(g)
         self.assertTrue(str(g) == "[DimShuffle{x,0}"
                                   "(<TensorType(float64, vector)>), "
                                   "DimShuffle{x,0,x,1,x,x}"

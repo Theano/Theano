@@ -39,7 +39,7 @@ from theano import scalar
 from theano.scalar import basic
 from theano.tensor import basic as T
 from theano import compile  # to register the optimizer built by this file
-from theano.compile.ops import Shape_i
+from theano.compile.ops import Shape, Shape_i
 from theano.tensor.type import (values_eq_approx_remove_inf,
                                 values_eq_approx_remove_nan,
                                 values_eq_approx_remove_inf_nan)
@@ -4176,7 +4176,96 @@ def local_useless_reshape(node):
     Remove two kinds of useless reshape.
 
     Remove Reshape when both the input and output have a single dimension.
+    Remove Reshape when reshaping to the shape of the input.
+
+    """
+    op = node.op
+    if not isinstance(op, Reshape):
+        return False
+
+    input = node.inputs[0]
+    output = node.outputs[0]
+    output_shape = node.inputs[1]
+
+    if input.ndim != output.ndim:
+        return False
+
+    # Simple case: both input and output have a single dimension
+    if (input.ndim == 1 and output.ndim == 1 and
+            input.broadcastable == output.broadcastable):
+        return [input]
+
+    # Second case: all the shapes match the input shape
+    # Match Reshape(x, x.shape)
+    if output_shape.owner and isinstance(output_shape.owner.op, Shape):
+        shape_input = output_shape.owner.inputs[0]
+        if shape_input == input:
+            return [input]
+
+    # Match Reshape(x, [x.shape[0], ..., x.shape[-1]]), accounting for
+    # broadcastable and constant dimensions
+    if output_shape.owner and isinstance(output_shape.owner.op, MakeVector):
+        output_shape_is = output_shape.owner.inputs
+
+        if not hasattr(node, 'fgraph'):
+            shape_feature = None
+        else:
+            shape_feature = getattr(node.fgraph, 'shape_feature', None)
+
+        shape_match = [False] * input.ndim
+        for dim in xrange(input.ndim):
+            outshp_i = output_shape_is[dim]
+            # Match Shape_i{dim}(input)
+            if (outshp_i.owner and isinstance(outshp_i.owner.op, Shape_i) and
+                    outshp_i.owner.op.i == dim and
+                    outshp_i.owner.inputs[0] == input):
+                shape_match[dim] = True
+                continue
+
+            # Match Shape(input)[dim]
+            if (outshp_i.owner and isinstance(outshp_i.owner.op, Subtensor) and
+                    len(outshp_i.owner.inputs) == 2 and
+                    extract_constant(outshp_i.owner.inputs[1]) == dim):
+                subtensor_inp = outshp_i.owner.inputs[0]
+                if (subtensor_inp.owner and
+                        isinstance(subtensor_inp.owner.op, Shape)):
+                    shape_input_i = subtensor_inp.owner.inputs[0]
+                    if shape_input_i == input:
+                        shape_match[dim] = True
+                        continue
+
+            # Match 1 if input.broadcastable[dim] is True
+            if (input.broadcastable[dim] and
+                    extract_constant(outshp_i, only_process_constants=1) == 1):
+                shape_match[dim] = True
+                continue
+
+            # Match shape_of[input][dim] or its constant equivalent
+            if shape_feature:
+                inpshp_i = shape_feature.get_shape(input, dim)
+                if (inpshp_i == outshp_i or
+                    (extract_constant(inpshp_i, only_process_constants=1) ==
+                     extract_constant(outshp_i, only_process_constants=1))):
+                    shape_match[dim] = True
+                    continue
+
+        if all(shape_match):
+            return [input]
+
+        # TODO later: if all the shapes except one match, we may want to
+        # consider it useless as well, like we do in the 1-dim case.
+
+
+@register_canonicalize
+@gof.local_optimizer([T.Reshape])
+def local_reshape_to_dimshuffle(node):
+    """
     Broadcastable dimensions in Reshape are replaced with dimshuffle.
+
+    The goal is to avoid using reshape to add or remove broadcastable
+    dimensions, but use dimshuffle instead, so dimshuffles can cancel out
+    or be removed later on.
+
     For example:
         - reshape(v, (m,)) --> v  # if v.ndim == 1
         - reshape(x, (1, n)) --> dimshuffle{x,0}(reshape(x, (n,))
@@ -4191,10 +4280,6 @@ def local_useless_reshape(node):
     input = node.inputs[0]
     output = node.outputs[0]
     output_shape = node.inputs[1]
-
-    if (input.ndim == 1 and output.ndim == 1 and
-            input.broadcastable == output.broadcastable):
-        return [input]
 
     dimshuffle_new_order = []
     new_output_shape = []
