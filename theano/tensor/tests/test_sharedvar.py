@@ -598,6 +598,8 @@ def makeSharedTester(shared_constructor_,
 
     assert name is not None
     SharedTester.__name__ = name
+    if hasattr(SharedTester, '__qualname__'):
+        SharedTester.__qualname__ = name
 
     return SharedTester
 
