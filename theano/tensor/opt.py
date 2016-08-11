@@ -586,9 +586,8 @@ def local_dimshuffle_lift(node):
             node.inputs[0].owner is not None and
             isinstance(node.inputs[0].owner.op, DimShuffle)):
         new_order = node.inputs[0].owner.op.new_order
-        new_order = [i for i in new_order if i != 'x']
         input = node.inputs[0].owner.inputs[0]
-        broadcastables = input.broadcastable
+        broadcastables = node.inputs[0].broadcastable
         new_order_of_nonbroadcastables = []
         for i, bd in zip(new_order, broadcastables):
             if not bd:
