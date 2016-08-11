@@ -12,7 +12,7 @@ import unittest
 import numpy
 from six.moves import xrange
 from nose.plugins.skip import SkipTest
-from nose.tools import assert_raises
+from nose.tools import assert_raises, assert_true
 from numpy.testing import dec
 from numpy.testing.noseclasses import KnownFailureTest
 
@@ -32,6 +32,7 @@ import theano.tensor.opt as opt
 from theano.tensor.opt import (
         local_add_specialize,
         local_dimshuffle_lift,
+        local_useless_dimshuffle_in_reshape,
         local_useless_alloc,
         local_greedy_distributor,
         local_useless_reshape,
@@ -223,32 +224,34 @@ class test_dimshuffle_lift(unittest.TestCase):
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
 
-    def test_useless_dimshuffle_in_presence_of_reshape(self):
-        vector = TensorType(broadcastable=(False,), dtype='float64')('vector')
-        mat = TensorType(broadcastable=(False, False), dtype='float64')('mat')
-        row = TensorType(broadcastable=(True, False), dtype='float64')('row')
-        col = TensorType(broadcastable=(False, True), dtype='float64')('col')
 
-        reshape_dimshuffle_vector = tensor.reshape(vector.dimshuffle('x', 0), vector.shape)
-        reshape_dimshuffle_mat = tensor.reshape(mat.dimshuffle('x', 0, 'x', 1), mat.shape)
-        reshape_dimshuffle_row = tensor.reshape(row.dimshuffle(1, 'x'), row.shape)
-        reshape_dimshuffle_col = tensor.reshape(col.dimshuffle(0), col.shape)
+def test_useless_dimshuffle_in_reshape():
+    vector = TensorType(broadcastable=(False,), dtype='float64')('vector')
+    mat = TensorType(broadcastable=(False, False), dtype='float64')('mat')
+    row = TensorType(broadcastable=(True, False), dtype='float64')('row')
+    col = TensorType(broadcastable=(False, True), dtype='float64')('col')
 
-        g = FunctionGraph([vector, mat, row, col],
-                          [reshape_dimshuffle_vector, reshape_dimshuffle_mat,
-                           reshape_dimshuffle_row, reshape_dimshuffle_col])
+    reshape_dimshuffle_vector = tensor.reshape(vector.dimshuffle('x', 0), vector.shape)
+    reshape_dimshuffle_mat = tensor.reshape(mat.dimshuffle('x', 0, 'x', 1), mat.shape)
+    reshape_dimshuffle_row = tensor.reshape(row.dimshuffle(1, 'x'), row.shape)
+    reshape_dimshuffle_col = tensor.reshape(col.dimshuffle(0), col.shape)
 
-        self.assertTrue(str(g) == "[Reshape{1}(DimShuffle{x,0}(vector), Shape(vector)), "
-                                  "Reshape{2}(DimShuffle{x,0,x,1}(mat), Shape(mat)), "
-                                  "Reshape{2}(DimShuffle{1,x}(row), Shape(row)), "
-                                  "Reshape{2}(DimShuffle{0}(col), Shape(col))]")
-        dimshuffle_lift.optimize(g)
-        self.assertTrue(str(g) == "[Reshape{1}(vector, Shape(vector)), "
-                                  "Reshape{2}(mat, Shape(mat)), "
-                                  "Reshape{2}(row, Shape(row)), "
-                                  "Reshape{2}(col, Shape(col))]")
-        # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
+    g = FunctionGraph([vector, mat, row, col],
+                      [reshape_dimshuffle_vector, reshape_dimshuffle_mat,
+                       reshape_dimshuffle_row, reshape_dimshuffle_col])
+
+    assert_true(str(g) == "[Reshape{1}(DimShuffle{x,0}(vector), Shape(vector)), "
+                          "Reshape{2}(DimShuffle{x,0,x,1}(mat), Shape(mat)), "
+                          "Reshape{2}(DimShuffle{1,x}(row), Shape(row)), "
+                          "Reshape{2}(DimShuffle{0}(col), Shape(col))]")
+    useless_dimshuffle_in_reshape = out2in(local_useless_dimshuffle_in_reshape)
+    useless_dimshuffle_in_reshape.optimize(g)
+    assert_true(str(g) == "[Reshape{1}(vector, Shape(vector)), "
+                          "Reshape{2}(mat, Shape(mat)), "
+                          "Reshape{2}(row, Shape(row)), "
+                          "Reshape{2}(col, Shape(col))]")
+    # Check stacktrace was copied over correctly after opt was applied
+    assert_true(hasattr(g.outputs[0].tag, 'trace'))
 
 
 def test_add_canonizer_problem0():

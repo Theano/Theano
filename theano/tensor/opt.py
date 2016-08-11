@@ -559,7 +559,7 @@ def is_dimshuffle_useless(new_order, input):
     return is_useless
 
 
-@gof.local_optimizer([DimShuffle, Reshape])
+@gof.local_optimizer([DimShuffle])
 def local_dimshuffle_lift(node):
     """
     "Lifts" DimShuffle through Elemwise operations and merges
@@ -573,33 +573,8 @@ def local_dimshuffle_lift(node):
     After this transform, clusters of Elemwise operations are
     void of DimShuffle operations.
 
-    Also removes useless DimShuffle operation inside Reshape:
-
-      reshape(vector.dimshuffle('x', 0), shp) => reshape(vector, shp)
-      reshape(matrix.dimshuffle('x', 0, 'x', 1), shp) => reshape(matrix, shp)
-      reshape(row.dimshuffle(1, 'x'), shp) => reshape(row, shp)
-      reshape(col.dimshuffle(0), shp) => reshape(col, shp)
-
     """
     op = node.op
-    if (isinstance(op, Reshape) and
-            node.inputs[0].owner is not None and
-            isinstance(node.inputs[0].owner.op, DimShuffle)):
-        new_order = node.inputs[0].owner.op.new_order
-        input = node.inputs[0].owner.inputs[0]
-        broadcastables = node.inputs[0].broadcastable
-        new_order_of_nonbroadcastables = []
-        for i, bd in zip(new_order, broadcastables):
-            if not bd:
-                new_order_of_nonbroadcastables.append(i)
-        no_change_in_order = all(
-            new_order_of_nonbroadcastables[i] <= new_order_of_nonbroadcastables[i + 1]
-            for i in xrange(len(new_order_of_nonbroadcastables) - 1))
-        if no_change_in_order:
-            shape = node.inputs[1]
-            ret = op.__class__(node.outputs[0].ndim)(input, shape)
-            copy_stack_trace(node.outputs[0], ret)
-            return [ret]
     if not isinstance(op, DimShuffle):
         return False
 
@@ -629,6 +604,42 @@ def local_dimshuffle_lift(node):
         ret = op.__class__(input.type.broadcastable, new_order,
                            inplace)(input)
         ret = apply_local_dimshuffle_lift(ret)
+        copy_stack_trace(node.outputs[0], ret)
+        return [ret]
+
+
+@register_canonicalize
+@gof.local_optimizer([Reshape])
+def local_useless_dimshuffle_in_reshape(node):
+    """
+    Removes useless DimShuffle operation inside Reshape:
+
+      reshape(vector.dimshuffle('x', 0), shp) => reshape(vector, shp)
+      reshape(matrix.dimshuffle('x', 0, 'x', 1), shp) => reshape(matrix, shp)
+      reshape(row.dimshuffle(1, 'x'), shp) => reshape(row, shp)
+      reshape(col.dimshuffle(0), shp) => reshape(col, shp)
+
+    """
+    op = node.op
+    if not isinstance(op, Reshape):
+        return False
+    if not (node.inputs[0].owner is not None and
+            isinstance(node.inputs[0].owner.op, DimShuffle)):
+        return False
+
+    new_order = node.inputs[0].owner.op.new_order
+    input = node.inputs[0].owner.inputs[0]
+    broadcastables = node.inputs[0].broadcastable
+    new_order_of_nonbroadcast = []
+    for i, bd in zip(new_order, broadcastables):
+        if not bd:
+            new_order_of_nonbroadcast.append(i)
+    no_change_in_order = all(
+        new_order_of_nonbroadcast[i] <= new_order_of_nonbroadcast[i + 1]
+        for i in xrange(len(new_order_of_nonbroadcast) - 1))
+    if no_change_in_order:
+        shape = node.inputs[1]
+        ret = op.__class__(node.outputs[0].ndim)(input, shape)
         copy_stack_trace(node.outputs[0], ret)
         return [ret]
 
