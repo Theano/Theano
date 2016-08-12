@@ -3099,7 +3099,7 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
 
 
 @constructor
-def var(input, axis=None, keepdims=False):
+def var(input, axis=None, ddof=0, keepdims=False):
     """
     Computes the variance along the given axis(es) of a tensor `input`.
 
@@ -3108,6 +3108,8 @@ def var(input, axis=None, keepdims=False):
     axis: None or int or (list of int) (see `Sum`)
         Compute the variance along this axis of the tensor.
         None means all axes (like numpy).
+    ddof: Degrees of freedom; 0 would compute the ML estimate, 1 would compute
+        the unbiased estimate.
     keepdims : bool
         If this is set to True, the axes which are reduced are
         left in the result as dimensions with size one. With this option,
@@ -3121,6 +3123,9 @@ def var(input, axis=None, keepdims=False):
     slower.
 
     """
+
+    if isinstance(ddof, (bool)):
+        raise ValueError('Parameter keepdims is now at index 3: (input, axis=None, ddof=0, keepdims=False)')
 
     input_ndim = input.type.ndim
     if axis is None:
@@ -3139,13 +3144,19 @@ def var(input, axis=None, keepdims=False):
     centered_input = input - mean_input
 
     # return the mean sqr
-    v = mean((centered_input ** 2), axis, keepdims=keepdims)
+    if ddof == 0:
+        v = mean((centered_input ** 2), axis, keepdims=keepdims)
+    else:
+        shp = shape(input) - ddof
+        v = sum((centered_input ** 2), axis=axis, keepdims=keepdims)
+        for i in axis:
+            v = true_div(v, shp[i])
     v.name = 'var'
     return v
 
 
 @constructor
-def std(input, axis=None, keepdims=False):
+def std(input, axis=None, ddof=0, keepdims=False):
     """
     Computes the standard deviation along the given axis(es) of a tensor `input`.
 
@@ -3169,7 +3180,10 @@ def std(input, axis=None, keepdims=False):
 
     """
 
-    ret = sqrt(var(input=input, axis=axis, keepdims=keepdims))
+    if isinstance(ddof, (bool)):
+        raise ValueError('Parameter keepdims is now at index 3: (input, axis=None, ddof=0, keepdims=False)')
+
+    ret = sqrt(var(input=input, axis=axis, ddof=ddof, keepdims=keepdims))
     ret.name = 'std'
     return ret
 
