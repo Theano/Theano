@@ -342,18 +342,24 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
     def test_ellipsis(self):
         numpy_n = numpy.arange(24, dtype=self.dtype).reshape((2, 3, 4))
         n = self.shared(numpy_n)
-        for length, op_type, slice_ in [
-                (0, self.sub, numpy.index_exp[...]),
-                (1, self.sub, numpy.index_exp[..., 1]),
-                (1, self.sub, numpy.index_exp[1, ...]),
-                (1, self.sub, numpy.index_exp[..., 1, 2, 3]),
-                (1, self.sub, numpy.index_exp[1, ..., 2, 3]),
-                (1, self.sub, numpy.index_exp[1, 2, 3, ...]),
-                (3, DimShuffle, numpy.index_exp[..., [0, 2, 3]]),
-                (1, DimShuffle,
-                 numpy.index_exp[numpy.newaxis, ...]),
+        test_cases = [
+            (0, self.sub, numpy.index_exp[...]),
+            (1, self.sub, numpy.index_exp[..., 1]),
+            (1, self.sub, numpy.index_exp[1, ...]),
+            (1, self.sub, numpy.index_exp[..., 1, 2, 3]),
+            (1, self.sub, numpy.index_exp[1, ..., 2, 3]),
+            (1, self.sub, numpy.index_exp[1, 2, 3, ...]),
+            (3, DimShuffle, numpy.index_exp[..., [0, 2, 3]]),
+            (1, DimShuffle,
+             numpy.index_exp[numpy.newaxis, ...])]
+        # The following test case is not supported by numpy before 1.9
+        numpy_version = [int(v) for v in numpy.version.version.split('.')[0:2]]
+        if numpy_version >= [1, 9]:
+            test_cases.append(
                 (1, AdvancedSubtensor,
-                 numpy.index_exp[..., numpy.newaxis, [1, 2]])]:
+                 numpy.index_exp[..., numpy.newaxis, [1, 2]]))
+
+        for length, op_type, slice_ in test_cases:
             numpy_tval = numpy_n[slice_]
             t = n[slice_]
             self.assertTrue(isinstance(t.owner.op, op_type))
