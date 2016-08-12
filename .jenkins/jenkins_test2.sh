@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script for Jenkins continuous integration testing of gpu backends
+# Script for Jenkins continuous integration testing of gpu backends!!
 # Get environment from worker, necessary for CUDA
 source ~/.bashrc
 
