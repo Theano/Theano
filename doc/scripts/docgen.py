@@ -55,7 +55,7 @@ if __name__ == '__main__':
     sys.path[0:0] = [throot]  # We must not use os.environ.
 
     # Make sure we don't use gpu to compile documentation
-    env_th_flags = os.environ.get('THEANO_FLAGS')
+    env_th_flags = os.environ.get('THEANO_FLAGS', '')
     os.environ['THEANO_FLAGS'] = 'device=cpu,force_device=True'
 
     def call_sphinx(builder, workdir):
