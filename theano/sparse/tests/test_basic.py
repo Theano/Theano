@@ -484,7 +484,7 @@ class TestConstructSparseFromList(unittest.TestCase):
 
         # Test the sparse grad
         valm = numpy.random.rand(5, 4).astype(config.floatX)
-        valv = numpy.random.random_integers(0, 4, 10)
+        valv = numpy.random.randint(0, 5, 10)
         m = theano.tensor.matrix()
         shared_v = theano.shared(valv)
 
@@ -2492,7 +2492,7 @@ class AddSSDataTester(utt.InferShapeTester):
             variable = getattr(theano.sparse, format + '_matrix')
 
             rand = numpy.array(
-                numpy.random.random_integers(3, size=(3, 4)) - 1,
+                numpy.random.randint(low=0, high=3, size=(3, 4)) - 1,
                 dtype=theano.config.floatX)
             constant = as_sparse_format(rand, format)
 
