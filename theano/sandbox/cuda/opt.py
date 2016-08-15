@@ -87,7 +87,7 @@ from theano.tensor import slinalg
 from theano.tensor.nnet.Conv3D import Conv3D
 from theano.tests.breakpoint import PdbBreakpoint
 
-from theano.tensor.nnet.abstract_conv import (BaseAbstractConv2d,
+from theano.tensor.nnet.abstract_conv import (BaseAbstractConv,
                                               AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs)
@@ -2736,7 +2736,7 @@ def local_conv2d_gpu_conv(node):
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op,
-                                           BaseAbstractConv2d):
+                                           BaseAbstractConv):
 
             conv = host_input.owner.op
             inps = list(host_input.owner.inputs)
@@ -2749,7 +2749,7 @@ def local_conv2d_gpu_conv(node):
             out.tag.values_eq_approx = values_eq_approx_high_tol
             return [out]
 
-    if isinstance(node.op, BaseAbstractConv2d):
+    if isinstance(node.op, BaseAbstractConv):
         # conv(host_from_gpu) -> host_from_gpu(gpu_conv)
         inp1 = node.inputs[0]
         inp2 = node.inputs[1]
