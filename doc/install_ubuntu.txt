@@ -6,6 +6,11 @@
 Ubuntu Installation Instructions
 ################################
 
+.. warning::
+    If you want to install the bleeding-edge or development version of theano
+    from github, please make sure you are reading [the latest version of this
+    page](http://deeplearning.net/software/theano_versions/dev/install_ubuntu.html)"
+
 .. _gpu_linux:
 
 .. include:: requirements.txt

@@ -6,6 +6,11 @@
 Mac OS Installation Instructions
 ################################
 
+.. warning::
+    If you want to install the bleeding-edge or development version of theano
+    from github, please make sure you are reading [the latest version of this
+    page](http://deeplearning.net/software/theano_versions/dev/install_macos.html)"
+
 There are various ways to install Theano dependencies on a Mac. Here
 we describe the process in detail with Anaconda, Homebrew or MacPorts 
 but if you did it differently and it worked, please let us know the 
