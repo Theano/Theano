@@ -335,6 +335,12 @@ class SeqOptimizer(Optimizer, list):
             if sub_profs[i]:
                 opts[i].print_profile(stream, sub_profs[i],
                                       level=level + 1)
+                if isinstance(opts[i], TopoOptimizer):
+                    if isinstance(opts[i].local_opt, LocalOptGroup):
+                        lo_g = opts[i].local_opt
+                        opts[i].local_opt.print_profile(stream, (lo_g.time_opts,
+                                                                 lo_g.time_nodes,
+                                                                 lo_g.process_count))
         print(file=stream)
 
     @staticmethod
@@ -1260,12 +1266,10 @@ class LocalOptGroup(LocalOptimizer):
         assert len(kwargs) == 0
         self.time_opts = {}
         self.time_nodes = {}
-        self.node_created = {}
         self.process_count = {}
 
         for o in self.opts:
             self.process_count.setdefault(o, 0)
-            self.node_created.setdefault(o, 0)
             self.time_opts.setdefault(o, 0)
             for c in o.tracks():
                 self.track_map.setdefault(c, []).append(o)
@@ -1287,16 +1291,6 @@ class LocalOptGroup(LocalOptimizer):
         if len(self.opts) == 0:
             return
 
-    # This method is just kept for the `print_profile` method to know the variables that
-    # needs to be printed
-    def apply(self):
-        import pdb
-        pdb.set_trace()
-        return (self.time_opts,
-        self.time_nodes,
-        self.node_created,
-        self.process_count)
-
         def compute_opts(node):
             opts = self.track_map.get(type(node.op), [])
             opts += self.track_map.get(node.op, [])
@@ -1314,7 +1308,6 @@ class LocalOptGroup(LocalOptimizer):
                     continue
                 else:
                     self.time_opts[opt] = opt_start - opt_finish
-                    self.node_created[opt] += len(graph.ops(node.inputs, node.outputs))
                     self.process_count[opt] += 1
                     if not multiple_opts or not repl[0].owner:
                         return repl
@@ -1333,9 +1326,7 @@ class LocalOptGroup(LocalOptimizer):
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        (time_opts, time_nodes, node_created, process_count) = prof
-        import pdb
-        pdb.set_trace()
+        (time_opts, time_nodes, process_count) = prof
         blanc = ('    ' * int(level))
         print(blanc, "LocalOptGroup", file=stream)
         count_opt = []
@@ -1343,22 +1334,18 @@ class LocalOptGroup(LocalOptimizer):
         not_used_time = 0
         for o, count in iteritems(process_count):
             if count > 0:
-                count_opt.append((time_opts[o], count,
-                                  node_created[o], o))
+                count_opt.append((time_opts[o], count, o))
             else:
                 not_used.append((time_opts[o], o))
                 not_used_time += time_opts[o]
         if count_opt:
-            for i in count_opt:
-                if not "useless" in count_opt[-1].__name__:
-                    continue
             print(blanc,
-                  '  times - times applied - Node created - name:',
+                  '  times - times applied - name:',
                   file=stream)
             count_opt.sort()
-            for (t, count, n_created, o) in count_opt[::-1]:
+            for (t, count, o) in count_opt[::-1]:
                 print(blanc, '  %.3fs - %d - %d - %s' % (
-                    t, count, n_created, o), file=stream)
+                    t, count, o), file=stream)
             print(blanc, '  %.3fs - in %d optimization that were not used (display those with runtime greater than 0)' % (
                 not_used_time, len(not_used)), file=stream)
             not_used.sort(key=lambda nu: (nu[0], str(nu[1])))
@@ -1887,6 +1874,12 @@ class NavigatorOptimizer(Optimizer):
         if u is not None:
             fgraph.remove_feature(u)
 
+    @staticmethod
+    def print_profile(stream, prof, level=0):
+        import pdb
+        pdb.set_trace()
+
+
     def process_node(self, fgraph, node, lopt=None):
         """
         This function will use `lopt` to `transform` the `node`. The
@@ -1997,7 +1990,6 @@ class TopoOptimizer(NavigatorOptimizer):
         if order not in ['out_to_in', 'in_to_out']:
             raise ValueError("order must be 'out_to_in' or 'in_to_out'")
         self.order = order
-        self.lopt = local_opt
         NavigatorOptimizer.__init__(self, local_opt, ignore_newtrees,
                                     failure_callback)
 
@@ -2039,7 +2031,7 @@ class TopoOptimizer(NavigatorOptimizer):
         callback_time = fgraph.execute_callbacks_time - callback_before
         nb_nodes_end = len(fgraph.apply_nodes)
         return (self, nb, nb_nodes_start, nb_nodes_end,
-                io_t, loop_t, callback_time, self.lopt)
+                io_t, loop_t, callback_time, self.local_opt)
 
     @staticmethod
     def print_profile(stream, prof, level=0):
@@ -2054,9 +2046,6 @@ class TopoOptimizer(NavigatorOptimizer):
 
         print(blanc, "TopoOptimizer ",
               getattr(opt, "name", getattr(opt, "__name__", "")), file=stream)
-        if getattr(opt, "name", getattr(opt, "__name__", "")) == 'useless':
-            import pdb
-            pdb.set_trace()
 
         print(blanc, "  nb_node (start, end, changed)", (
             nb_nodes_start, nb_nodes_end, nb), file=stream)
