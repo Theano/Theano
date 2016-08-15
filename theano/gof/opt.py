@@ -1293,14 +1293,13 @@ class LocalOptGroup(LocalOptimizer):
 
         def apply_mult_opts(node, multiple_opts=False):
             repl = False
-            opts = []
-            opts.append(self.track_map.get(type(node.op), []) + self.track_map.get(node.op, []) + self.track_map.get(None, []))
+            opts =  self.track_map.get(type(node.op), []) + self.track_map.get(node.op, []) + self.track_map.get(None, [])
 
             for opt in opts:
                 opt_start = time.time()
                 repl = opt.transform(node)
                 opt_finish = time.time()
-                self.time_opts[opt] = opt_start - opt_finish
+                self.time_opts[opt] += opt_start - opt_finish
                 self.process_count[opt] += 1
                 if not repl:
                     continue
