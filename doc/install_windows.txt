@@ -4,9 +4,9 @@ Windows Installation Instructions
 =================================
 
 .. warning::
-    If you want to install the bleeding-edge or development version of theano
-    from github, please make sure you are reading [the latest version of this
-    page](http://deeplearning.net/software/theano_versions/dev/install_windows.html)"
+    If you want to install the bleeding-edge or development version of Theano
+    from GitHub, please make sure you are reading `the latest version of this
+    page <http://deeplearning.net/software/theano_versions/dev/install_windows.html>`_.
 
 .. warning::
 
