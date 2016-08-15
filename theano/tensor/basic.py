@@ -1030,6 +1030,34 @@ def tensor4(name=None, dtype=None):
 tensor4s, ftensor4s, dtensor4s, itensor4s, ltensor4s = _multi(
     tensor4, ftensor4, dtensor4, itensor4, ltensor4)
 
+ctensor5 = TensorType('complex64', ((False,) * 5))
+ztensor5 = TensorType('complex128', ((False,) * 5))
+ftensor5 = TensorType('float32', ((False,) * 5))
+dtensor5 = TensorType('float64', ((False,) * 5))
+btensor5 = TensorType('int8', ((False,) * 5))
+wtensor5 = TensorType('int16', ((False,) * 5))
+itensor5 = TensorType('int32', ((False,) * 5))
+ltensor5 = TensorType('int64', ((False,) * 5))
+
+
+def tensor5(name=None, dtype=None):
+    """Return a symbolic 5-D variable.
+
+    Parameters
+    ----------
+    dtype: numeric type
+        None means to use theano.config.floatX.
+    name
+        A name to attach to this variable.
+
+    """
+    if dtype is None:
+        dtype = config.floatX
+    type = TensorType(dtype, (False, False, False, False, False))
+    return type(name)
+tensor5s, ftensor5s, dtensor5s, itensor5s, ltensor5s = _multi(
+    tensor5, ftensor5, dtensor5, itensor5, ltensor5)
+
 
 Tensor = TensorType
 
