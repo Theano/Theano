@@ -2,6 +2,9 @@
 
 # Script for Jenkins continuous integration testing of theano base
 
+# Anaconda python
+export PATH=~/miniconda2/bin:$PATH
+
 echo "===== Testing theano core"
 
 # Test theano core
