@@ -81,7 +81,7 @@ gpu_seqopt = SequenceDB()
 gpu_seqopt.register('gpuarray_graph_optimization', GraphToGPUDB(), -0.5,
                     'fast_compile', 'fast_run', 'gpuarray')
 
-gpu_seqopt.register('gpuarray_local_optimiziations', gpu_optimizer, 1,
+gpu_seqopt.register('gpuarray_local_optimizations', gpu_optimizer, 1,
                     'fast_compile', 'fast_run', 'gpuarray')
 gpu_seqopt.register('gpuarray_cut_transfers', gpu_cut_copies, 2,
                     'fast_compile', 'fast_run', 'gpuarray')
