@@ -340,7 +340,8 @@ class SeqOptimizer(Optimizer, list):
                         lo_g = opts[i].local_opt
                         opts[i].local_opt.print_profile(stream, (lo_g.time_opts,
                                                                  lo_g.time_nodes,
-                                                                 lo_g.process_count))
+                                                                 lo_g.process_count,
+                                                                 lo_g.applied_true))
         print(file=stream)
 
     @staticmethod
@@ -1267,10 +1268,14 @@ class LocalOptGroup(LocalOptimizer):
         self.time_opts = {}
         self.time_nodes = {}
         self.process_count = {}
+        self.applied_true = {}
 
         for o in self.opts:
             self.process_count.setdefault(o, 0)
             self.time_opts.setdefault(o, 0)
+            self.time_nodes.setdefault(o, 0)
+            self.process_count.setdefault(o, 0)
+            self.applied_true.setdefault(o, 0)
             for c in o.tracks():
                 self.track_map.setdefault(c, []).append(o)
 
@@ -1293,7 +1298,7 @@ class LocalOptGroup(LocalOptimizer):
 
         def apply_mult_opts(node, multiple_opts=False):
             repl = False
-            opts =  self.track_map.get(type(node.op), []) + self.track_map.get(node.op, []) + self.track_map.get(None, [])
+            opts = self.track_map.get(type(node.op), []) + self.track_map.get(node.op, []) + self.track_map.get(None, [])
 
             for opt in opts:
                 opt_start = time.time()
@@ -1304,6 +1309,7 @@ class LocalOptGroup(LocalOptimizer):
                 if not repl:
                     continue
                 else:
+                    self.applied_true[opt] += 1
                     if not multiple_opts or not repl[0].owner:
                         return repl
                     assert len(repl) == 1
@@ -1320,26 +1326,27 @@ class LocalOptGroup(LocalOptimizer):
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        (time_opts, time_nodes, process_count) = prof
+        (time_opts, time_nodes, process_count, applied_true) = prof
         blanc = ('    ' * int(level))
         print(blanc, "LocalOptGroup", file=stream)
+        print(blanc, "---------------------", file=stream)
         count_opt = []
         not_used = []
         not_used_time = 0
         for o, count in iteritems(process_count):
             if count > 0:
-                count_opt.append((time_opts[o], count, o))
+                count_opt.append((time_opts[o], applied_true[o], count, o))
             else:
                 not_used.append((time_opts[o], o))
                 not_used_time += time_opts[o]
         if count_opt:
             print(blanc,
-                  '  times - times applied - name:',
+                  '  time taken - times applied - times tried - name:',
                   file=stream)
             count_opt.sort()
-            for (t, count, o) in count_opt[::-1]:
-                print(blanc, '  %.3fs - %d - %s' % (
-                    t, count, o), file=stream)
+            for (t, a_t, count, o) in count_opt[::-1]:
+                print(blanc, '  %.3fs - %d - %d -%s' % (
+                      t, a_t, count, o), file=stream)
             print(blanc, '  %.3fs - in %d optimization that were not used (display those with runtime greater than 0)' % (
                 not_used_time, len(not_used)), file=stream)
             not_used.sort(key=lambda nu: (nu[0], str(nu[1])))
@@ -1348,6 +1355,8 @@ class LocalOptGroup(LocalOptimizer):
                     # Skip opt that have 0 times, they probably wasn't even tried.
                     print(blanc + "  ", '  %.3fs - %s' % (t, o), file=stream)
             print(file=stream)
+        else:
+            print("--- The Optimizer wasn't successful ---")
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print("%s%s id=%i" % (
