@@ -4,7 +4,7 @@
 
 # Anaconda python
 export PATH=~/miniconda2/bin:$PATH
-which python
+
 # CUDA                                                                          
 export PATH=/usr/local/cuda/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
