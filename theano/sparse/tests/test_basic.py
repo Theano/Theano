@@ -82,7 +82,7 @@ def random_lil(shape, dtype, nnz):
     huge = 2 ** 30
     for k in range(nnz):
         # set non-zeros in random locations (row x, col y)
-        idx = numpy.random.random_integers(huge, size=2) % shape
+        idx = numpy.random.randint(1, huge+1, size=2) % shape
         value = numpy.random.rand()
         # if dtype *int*, value will always be zeros!
         if "int" in dtype:
@@ -484,7 +484,7 @@ class TestConstructSparseFromList(unittest.TestCase):
 
         # Test the sparse grad
         valm = numpy.random.rand(5, 4).astype(config.floatX)
-        valv = numpy.random.random_integers(0, 4, 10)
+        valv = numpy.random.randint(0, 5, 10)
         m = theano.tensor.matrix()
         shared_v = theano.shared(valv)
 
@@ -2492,7 +2492,7 @@ class AddSSDataTester(utt.InferShapeTester):
             variable = getattr(theano.sparse, format + '_matrix')
 
             rand = numpy.array(
-                numpy.random.random_integers(3, size=(3, 4)) - 1,
+                numpy.random.randint(1, 4, size=(3, 4)) - 1,
                 dtype=theano.config.floatX)
             constant = as_sparse_format(rand, format)
 
@@ -3064,11 +3064,11 @@ class SamplingDotTester(utt.InferShapeTester):
     x = [tensor.matrix() for t in range(2)]
     x.append(sparse.csr_matrix())
     # unsquare shape
-    a = [numpy.array(numpy.random.random_integers(5, size=(4, 3)) - 1,
+    a = [numpy.array(numpy.random.randint(1, 6, size=(4, 3)) - 1,
                      dtype=theano.config.floatX),
-         numpy.array(numpy.random.random_integers(5, size=(5, 3)) - 1,
+         numpy.array(numpy.random.randint(1, 6, size=(5, 3)) - 1,
                      dtype=theano.config.floatX),
-         numpy.array(numpy.random.random_integers(2, size=(4, 5)) - 1,
+         numpy.array(numpy.random.randint(1, 3, size=(4, 5)) - 1,
                      dtype=theano.config.floatX)
          ]
     a[2] = sp.csr_matrix(a[2])

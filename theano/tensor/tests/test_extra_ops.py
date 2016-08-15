@@ -245,7 +245,7 @@ class TestBinCountOp(utt.InferShapeTester):
                       'uint8', 'uint16', 'uint32', 'uint64'):
             x = T.vector('x', dtype=dtype)
 
-            a = np.random.random_integers(50, size=(25)).astype(dtype)
+            a = np.random.randint(1, 51, size=(25)).astype(dtype)
             weights = np.random.random((25,)).astype(config.floatX)
 
             f1 = theano.function([x], bincount(x))
@@ -281,7 +281,7 @@ class TestBinCountOp(utt.InferShapeTester):
                 self.assertRaises(TypeError, BinCountOp(), x)
 
             else:
-                a = np.random.random_integers(50, size=(25)).astype(dtype)
+                a = np.random.randint(1, 51, size=(25)).astype(dtype)
                 weights = np.random.random((25,)).astype(config.floatX)
 
                 f1 = theano.function([x], BinCountOp()(x, weights=None))
@@ -316,29 +316,29 @@ class TestBinCountOp(utt.InferShapeTester):
             else:
                 self._compile_and_check([x],
                                         [BinCountOp()(x, None)],
-                                        [np.random.random_integers(
-                                            50, size=(25,)).astype(dtype)],
+                                        [np.random.randint(
+                                             1, 51, size=(25,)).astype(dtype)],
                                         self.op_class)
 
                 weights = np.random.random((25,)).astype(config.floatX)
                 self._compile_and_check([x],
                                         [BinCountOp()(x, weights=weights)],
-                                        [np.random.random_integers(
-                                            50, size=(25,)).astype(dtype)],
+                                        [np.random.randint(
+                                            1, 51, size=(25,)).astype(dtype)],
                                         self.op_class)
 
                 if not numpy_16:
                     continue
                 self._compile_and_check([x],
                                         [BinCountOp(minlength=60)(x, weights=weights)],
-                                        [np.random.random_integers(
-                                            50, size=(25,)).astype(dtype)],
+                                        [np.random.randint(
+                                            1, 51, size=(25,)).astype(dtype)],
                                         self.op_class)
 
                 self._compile_and_check([x],
                                         [BinCountOp(minlength=5)(x, weights=weights)],
-                                        [np.random.random_integers(
-                                            50, size=(25,)).astype(dtype)],
+                                        [np.random.randint(
+                                            1, 51, size=(25,)).astype(dtype)],
                                         self.op_class)
 
 
@@ -525,11 +525,11 @@ class TestRepeatOp(utt.InferShapeTester):
 
                         r_var = T.vector(dtype=dtype)
                         if axis is None:
-                            r = np.random.random_integers(
-                                5, size=a.size).astype(dtype)
+                            r = np.random.randint(
+                                1, 6, size=a.size).astype(dtype)
                         else:
-                            r = np.random.random_integers(
-                                5, size=(10,)).astype(dtype)
+                            r = np.random.randint(
+                                1, 6, size=(10,)).astype(dtype)
 
                         if dtype in self.numpy_unsupported_dtypes and r_var.ndim == 1:
                             self.assertRaises(TypeError,
@@ -541,8 +541,8 @@ class TestRepeatOp(utt.InferShapeTester):
                                                f(a, r))
 
                         # check when r is a list of single integer, e.g. [3].
-                        r = np.random.random_integers(
-                            10, size=()).astype(dtype) + 2
+                        r = np.random.randint(
+                            1, 11, size=()).astype(dtype) + 2
                         f = theano.function([x],
                                             repeat(x, [r], axis=axis))
                         assert np.allclose(np.repeat(a, r, axis=axis),
@@ -553,7 +553,7 @@ class TestRepeatOp(utt.InferShapeTester):
                         # check when r is  theano tensortype that broadcastable is (True,)
                         r_var = theano.tensor.TensorType(broadcastable=(True,),
                                                          dtype=dtype)()
-                        r = np.random.random_integers(5, size=(1,)).astype(dtype)
+                        r = np.random.randint(1, 6, size=(1,)).astype(dtype)
                         f = theano.function([x, r_var],
                                             repeat(x, r_var, axis=axis))
                         assert np.allclose(np.repeat(a, r[0], axis=axis),
@@ -583,14 +583,14 @@ class TestRepeatOp(utt.InferShapeTester):
 
                         r_var = T.vector(dtype=dtype)
                         if axis is None:
-                            r = np.random.random_integers(
-                                5, size=a.size).astype(dtype)
+                            r = np.random.randint(
+                                1, 6, size=a.size).astype(dtype)
                         elif a.size > 0:
-                            r = np.random.random_integers(
-                                5, size=a.shape[axis]).astype(dtype)
+                            r = np.random.randint(
+                                1, 6, size=a.shape[axis]).astype(dtype)
                         else:
-                            r = np.random.random_integers(
-                                5, size=(10,)).astype(dtype)
+                            r = np.random.randint(
+                                1, 6, size=(10,)).astype(dtype)
 
                         self._compile_and_check(
                             [x, r_var],
@@ -625,7 +625,7 @@ class TestBartlett(utt.InferShapeTester):
     def test_perform(self):
         x = tensor.lscalar()
         f = function([x], self.op(x))
-        M = numpy.random.random_integers(3, 50, size=())
+        M = numpy.random.randint(3, 51, size=())
         assert numpy.allclose(f(M), numpy.bartlett(M))
         assert numpy.allclose(f(0), numpy.bartlett(0))
         assert numpy.allclose(f(-1), numpy.bartlett(-1))
@@ -635,7 +635,7 @@ class TestBartlett(utt.InferShapeTester):
     def test_infer_shape(self):
         x = tensor.lscalar()
         self._compile_and_check([x], [self.op(x)],
-                                [numpy.random.random_integers(3, 50, size=())],
+                                [numpy.random.randint(3, 51, size=())],
                                 self.op_class)
         self._compile_and_check([x], [self.op(x)], [0], self.op_class)
         self._compile_and_check([x], [self.op(x)], [1], self.op_class)

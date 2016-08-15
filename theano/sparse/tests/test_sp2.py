@@ -30,7 +30,7 @@ class PoissonTester(utt.InferShapeTester):
     for format in sparse.sparse_formats:
         variable = getattr(theano.sparse, format + '_matrix')
 
-        rand = numpy.array(numpy.random.random_integers(3, size=(3, 4)) - 1,
+        rand = numpy.array(numpy.random.randint(1, 4, size=(3, 4)) - 1,
                            dtype=theano.config.floatX)
 
         x[format] = variable()
