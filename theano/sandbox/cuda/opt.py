@@ -1353,7 +1353,7 @@ def cast(x, dtype):
 
 @register_opt()
 @local_optimizer([tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias])
-def local_gpu_crossentorpy_softmax_argmax_1hot_with_bias(node):
+def local_gpu_crossentropy_softmax_argmax_1hot_with_bias(node):
     if isinstance(node.op, tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias):
         x, b, y = node.inputs
         if x.owner and isinstance(x.owner.op, HostFromGpu):
@@ -1382,7 +1382,7 @@ def local_gpu_crossentorpy_softmax_argmax_1hot_with_bias(node):
 
 @register_opt()
 @local_optimizer([tensor.nnet.CrossentropySoftmax1HotWithBiasDx])
-def local_gpu_crossentorpy_softmax_1hot_with_bias_dx(node):
+def local_gpu_crossentropy_softmax_1hot_with_bias_dx(node):
     if isinstance(node.op, tensor.nnet.CrossentropySoftmax1HotWithBiasDx):
         dnll, sm, yidx = node.inputs
         if sm.owner and isinstance(sm.owner.op, HostFromGpu):
