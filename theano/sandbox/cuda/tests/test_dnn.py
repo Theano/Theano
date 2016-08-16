@@ -938,10 +938,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
     def test_conv3d(self):
         if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
             raise SkipTest('"cuDNN 3D convolution requires cuDNN v2')
-        ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
-        img = ftensor5('img')
-        kerns = ftensor5('kerns')
-        out = ftensor5('out')
+        img = T.ftensor5('img')
+        kerns = T.ftensor5('kerns')
+        out = T.ftensor5('out')
         img_val = numpy.asarray(
             numpy.random.rand(10, 2, 6, 4, 11),
             dtype='float32'
@@ -1026,10 +1025,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
     def test_conv3d_gradw(self):
         if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
             raise SkipTest('"cuDNN 3D convolution requires cuDNN v2')
-        ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
-        img = ftensor5('img')
-        kerns = ftensor5('kerns')
-        out = ftensor5('out')
+        img = T.ftensor5('img')
+        kerns = T.ftensor5('kerns')
+        out = T.ftensor5('out')
         img_val = numpy.asarray(
             numpy.random.rand(9, 2, 4, 8, 13),
             dtype='float32'
@@ -1116,10 +1114,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
     def test_conv3d_gradi(self):
         if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
             raise SkipTest('"cuDNN 3D convolution requires cuDNN v2')
-        ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
-        img = ftensor5('img')
-        kerns = ftensor5('kerns')
-        out = ftensor5('out')
+        img = T.ftensor5('img')
+        kerns = T.ftensor5('kerns')
+        out = T.ftensor5('out')
         img_val = numpy.asarray(
             numpy.random.rand(8, 4, 6, 7, 11),
             dtype='float32'

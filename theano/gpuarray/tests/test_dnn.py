@@ -479,10 +479,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
     @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
     def test_conv3d_none(self, border_mode, conv_mode):
-        ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
-        self._test_conv(ftensor5('img'),
-                        ftensor5('kerns'),
-                        ftensor5('out'),
+        self._test_conv(T.ftensor5('img'),
+                        T.ftensor5('kerns'),
+                        T.ftensor5('out'),
                         numpy.random.rand(10, 2, 6, 4, 11),
                         numpy.random.rand(8, 2, 4, 3, 1),
                         border_mode,
