@@ -3,12 +3,14 @@ This file test tensor op that should also operate on CudaNdaray.
 """
 from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
+from nose_parameterized import parameterized
 
 import numpy
 
 import theano
 from theano import tensor
 import theano.tensor as T
+import theano.tests.unittest_tools as utt
 
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda
@@ -139,6 +141,8 @@ def test_get_diagonal_subtensor_view():
     test_conv3d2d.test_get_diagonal_subtensor_view(wrap=cuda.CudaNdarray)
 
 
-def test_conv3d():
-    test_conv3d2d.test_conv3d(mode=mode_with_gpu,
-                              shared=cuda.shared_constructor)
+@parameterized.expand(('valid', 'full'), utt.custom_name_func)
+def test_conv3d(border_mode):
+    test_conv3d2d.check_conv3d(border_mode=border_mode,
+                               mode=mode_with_gpu,
+                               shared=cuda.shared_constructor)
