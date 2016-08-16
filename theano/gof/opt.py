@@ -341,7 +341,8 @@ class SeqOptimizer(Optimizer, list):
                         opts[i].local_opt.print_profile(stream, (lo_g.time_opts,
                                                                  lo_g.time_nodes,
                                                                  lo_g.process_count,
-                                                                 lo_g.applied_true))
+                                                                 lo_g.applied_true,
+                                                                 lo_g.node_created))
         print(file=stream)
 
     @staticmethod
@@ -1269,6 +1270,7 @@ class LocalOptGroup(LocalOptimizer):
         self.time_nodes = {}
         self.process_count = {}
         self.applied_true = {}
+        self.node_created = {}
 
         for o in self.opts:
             self.process_count.setdefault(o, 0)
@@ -1276,6 +1278,8 @@ class LocalOptGroup(LocalOptimizer):
             self.time_nodes.setdefault(o, 0)
             self.process_count.setdefault(o, 0)
             self.applied_true.setdefault(o, 0)
+            self.node_created.setdefault(o, 0)
+
             for c in o.tracks():
                 self.track_map.setdefault(c, []).append(o)
 
@@ -1296,7 +1300,7 @@ class LocalOptGroup(LocalOptimizer):
         if len(self.opts) == 0:
             return
 
-        def apply_mult_opts(node, multiple_opts=False):
+        def apply_mult_opts(node, fgraph=False, multiple_opts=False):
             repl = False
             opts = self.track_map.get(type(node.op), []) + self.track_map.get(node.op, []) + self.track_map.get(None, [])
 
@@ -1309,6 +1313,7 @@ class LocalOptGroup(LocalOptimizer):
                 if not repl:
                     continue
                 else:
+                    self.node_created[opt] += len(graph.ops(fgraph.variables, node.outputs))
                     self.applied_true[opt] += 1
                     if not multiple_opts or not repl[0].owner:
                         return repl
@@ -1316,17 +1321,19 @@ class LocalOptGroup(LocalOptimizer):
                     # Ensuring not the input of graph
                     assert repl[0].owner
                     new_node = repl[0].owner
-                    apply_mult_opts(new_node, True)
+                    if hasattr(new_node, 'fgraph'):
+                        apply_mult_opts(new_node, new_node.fgraph, True)
+                    apply_mult_opts(new_node, False, True)
             return repl
         node_start = time.time()
-        new_var = apply_mult_opts(node, self.apply_all_opts)
+        new_var = apply_mult_opts(node, node.fgraph, self.apply_all_opts)
         node_finish = time.time()
         self.time_nodes[node] = node_finish - node_start
         return new_var
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        (time_opts, time_nodes, process_count, applied_true) = prof
+        (time_opts, time_nodes, process_count, applied_true, node_created) = prof
         blanc = ('    ' * int(level))
         print(blanc, "LocalOptGroup", file=stream)
         print(blanc, "---------------------", file=stream)
@@ -1335,18 +1342,18 @@ class LocalOptGroup(LocalOptimizer):
         not_used_time = 0
         for o, count in iteritems(process_count):
             if count > 0:
-                count_opt.append((time_opts[o], applied_true[o], count, o))
+                count_opt.append((time_opts[o], applied_true[o], count, o, node_created[o]))
             else:
                 not_used.append((time_opts[o], o))
                 not_used_time += time_opts[o]
         if count_opt:
             print(blanc,
-                  '  time taken - times applied - times tried - name:',
+                  '  time taken - times applied - times tried - name - node_created:',
                   file=stream)
             count_opt.sort()
-            for (t, a_t, count, o) in count_opt[::-1]:
-                print(blanc, '  %.3fs - %d - %d -%s' % (
-                      t, a_t, count, o), file=stream)
+            for (t, a_t, count, o, n_c) in count_opt[::-1]:
+                print(blanc, '  %.3fs - %d - %d - %s - %d' % (
+                      t, a_t, count, o, n_c), file=stream)
             print(blanc, '  %.3fs - in %d optimization that were not used (display those with runtime greater than 0)' % (
                 not_used_time, len(not_used)), file=stream)
             not_used.sort(key=lambda nu: (nu[0], str(nu[1])))
