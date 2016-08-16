@@ -1,4 +1,3 @@
-
 .. _using_gpu:
 
 =============
@@ -19,11 +18,33 @@ There are two ways currently to use a gpu, one that should support any OpenCL
 device as well as NVIDIA cards (:ref:`gpuarray`), and the old backend that
 only supports NVIDIA cards (:ref:`cuda`).
 
+Using the GPU in Theano is as simple as setting the ``device`` configuration
+flag to ``device=cuda`` (or ``device=gpu`` for the old backend). You can optionally target a specific gpu by specifying
+the number of the gpu as in e.g. ``device=cuda2``. You also need to set the
+default floating point precision.
+For example: ``THEANO_FLAGS='cuda.root=/path/to/cuda/root,device=cuda,floatX=float32'``.
+You can also set these options in the .theanorc file's ``[global]`` section:
+
+     .. code-block:: cfg
+
+        [global]
+        device = cuda
+        floatX = float32
+
 .. warning::
 
-  If you want to use the new GpuArray backend, make sure to have the 
-  development version of Theano installed. The 0.8.X releases have not
-  been optimized to work correctly with the new backend.
+  The old CUDA backend will be deprecated soon, in favor of the new libgpuarray
+  backend.
+
+.. note::
+
+    * If your computer has multiple GPUs and you use ``device=cuda``, the driver
+      selects the one to use (usually gpu0).
+    * You can use the program ``nvidia-smi`` to change this policy.
+    * By default, when ``device`` indicates preference for GPU computations,
+      Theano will fall back to the CPU if there is a problem with the GPU.
+      You can use the flag ``force_device=True`` to instead raise an error when
+      Theano cannot use the GPU.
 
 .. _gpuarray:
 
@@ -31,8 +52,13 @@ GpuArray Backend
 ----------------
 
 If you have not done so already, you will need to install libgpuarray
-as well as at least one computing toolkit.  Instructions for doing so
-are provided at `libgpuarray <http://deeplearning.net/software/libgpuarray/installation.html>`_.
+as well as at least one computing toolkit (CUDA or OpenCL). Detailed
+instructions to accomplish that are provided at 
+`libgpuarray <http://deeplearning.net/software/libgpuarray/installation.html>`_.
+
+To install Nvidia's GPU-programming toolchain (CUDA) and configure
+Theano to use it, see the installation instructions for
+:ref:`Linux <gpu_linux>`, :ref:`MacOS <gpu_macos>` and :ref:`Windows <gpu_windows>`.
 
 While all types of devices are supported if using OpenCL, for the
 remainder of this section, whatever compute device you are using will
@@ -40,9 +66,17 @@ be referred to as GPU.
 
 .. warning::
 
+  If you want to use the new GpuArray backend, make sure to have the
+  development version of Theano installed. The 0.8.X releases have not
+  been optimized to work correctly with the new backend.
+
+.. warning::
+
   The backend was designed to support OpenCL, however current support is
   incomplete. A lot of very useful ops still do not support it because they
   were ported from the old backend with minimal change.
+
+  .. _testing_the_gpu:
 
 Testing Theano with GPU
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -150,7 +184,7 @@ the GPU object directly.  The following code is modified to do just that.
 
 Here ``tensor.exp(x).transfer(None)`` means "copy ``exp(x)`` to the GPU",
 with ``None`` the default GPU context when not explicitly given.
-For information on how to set GPU contexts, see :ref:`tut_using_multi_gpu`. 
+For information on how to set GPU contexts, see :ref:`tut_using_multi_gpu`.
 
 The output is
 
@@ -227,10 +261,10 @@ Tips for Improving Performance on GPU
   ``.theanorc`` file if you plan to do a lot of GPU work.
 * The GPU backend supports *float64* variables, but they are still slower
   to compute than *float32*. The more *float32*, the better GPU performance
-  you will get. 
-* Prefer constructors like ``matrix``, ``vector`` and ``scalar`` (which 
+  you will get.
+* Prefer constructors like ``matrix``, ``vector`` and ``scalar`` (which
   follow the type set in ``floatX``) to ``dmatrix``, ``dvector`` and
-  ``dscalar``. The latter enforce double precision (*float64* on most 
+  ``dscalar``. The latter enforce double precision (*float64* on most
   machines), which slows down GPU computations on current hardware.
 * Minimize transfers to the GPU device by using ``shared`` variables
   to store frequently-accessed data (see :func:`shared()<shared.shared>`).

@@ -10,21 +10,6 @@ Does Theano support Python 3?
 ------------------------------
 We support both Python 2 >= 2.6 and Python 3 >= 3.3.
 
-TypeError: object of type 'TensorVariable' has no len()
--------------------------------------------------------
-
-If you receive the following error, it is because the Python function *__len__* cannot
-be implemented on Theano variables:
-
-.. code-block:: python
-
-   TypeError: object of type 'TensorVariable' has no len()
-
-Python requires that *__len__* returns an integer, yet it cannot be done as Theano's variables are symbolic. However, `var.shape[0]` can be used as a workaround.
-
-This error message cannot be made more explicit because the relevant aspects of Python's
-internals cannot be modified.
-
 Output slight numerical difference
 ----------------------------------
 
@@ -37,7 +22,6 @@ numbers. This is why doing a+(b+c) vs (a+b)+c can give small
 differences of value.  This is normal. For more details, see: `What
 Every Computer Scientist Should Know About Floating-Point Arithmetic
 <https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html>`_.
-
 
 
 Faster gcc optimization
@@ -179,33 +163,6 @@ but requires that all nodes in the graph have a C implementation:
     f(10.)
 
 
-Out of memory... but not really
--------------------------------
-
-Occasionally Theano may fail to allocate memory when there appears to be more
-than enough reporting:
-
-    Error allocating X bytes of device memory (out of memory). Driver report Y
-    bytes free and Z total.
-
-where X is far less than Y and Z (i.e. X << Y < Z).
-
-This scenario arises when an operation requires allocation of a large contiguous
-block of memory but no blocks of sufficient size are available.
-
-GPUs do not have virtual memory and as such all allocations must be assigned to
-a continuous memory region. CPUs do not have this limitation because or their
-support for virtual memory. Multiple allocations on a GPU can result in memory
-fragmentation which can makes it more difficult to find contiguous regions
-of memory of sufficient size during subsequent memory allocations.
-
-A known example is related to writing data to shared variables. When updating a
-shared variable Theano will allocate new space if the size of the data does not
-match the size of the space already assigned to the variable. This can lead to
-memory fragmentation which means that a continugous block of memory of
-sufficient capacity may not be available even if the free memory overall is
-large enough.
-
 Related Projects
 ----------------
 
@@ -226,55 +183,3 @@ Here is a list of some of the known limitations:
   interact with the rest of the graph).
 
 - Neither *goto* nor *recursion* is supported or planned within expression graphs.
-
-
-"float32 / int{32, 64} gives float64"
--------------------------------------
-
-It should be noted that using float32 and int{32, 64} together
-inside a function would provide float64 as output.
-
-Since the GPU can't compute this kind of output, it would be
-preferable not to use those dtypes together.
-
-To help you find where float64 are created, see the
-:attr:`warn_float64` Theano flag.
-
-Theano memory/speed trade-off
------------------------------
-
-There is a few things you can easily do to change the trade-off
-between speed and memory usage. It nothing is said, this affect the
-CPU and GPU memory usage.
-
-Could speed up and lower memory usage:
-
-- :ref:`cuDNN <libdoc_cuda_dnn>` default cuDNN convolution use less
-   memory then Theano version. But some flags allow it to use more
-   memory. GPU only.
-- Shortly avail, multi-GPU.
-
-Could raise memory usage but speed up computation:
-
-- :attr:`config.lib.cnmem` =1  # Do not raise much memory usage, but if you are at the limit of GPU memory available. GPU only.
-- :attr:`config.allow_gc` =False
-- :attr:`config.optimizer_excluding` =low_memory , GPU only for now.
-
-Could lower the memory usage, but raise computation time:
-
-- :attr:`config.scan.allow_gc` =True # Probably not significant slowdown if config.lib.cnmem is used.
-- :attr:`config.scan.allow_output_prealloc` =False
-- Use :func:`batch_normalization()
-  <theano.tensor.nnet.bn.batch_normalization>`. It use less memory
-  then building a corresponding Theano graph.
-- Disable one or scan more optimizations:
-    - ``optimizer_excluding=scanOp_pushout_seqs_ops``
-    - ``optimizer_excluding=scan_pushout_dot1``
-    - ``optimizer_excluding=scanOp_pushout_output``
-- Disable all optimization tagged as raising memory usage:
-  ``optimizer_excluding=more_mem`` (currently only the 3 scan optimizations above)
-- `float16 <https://github.com/Theano/Theano/issues/2908>`_.
-
-If you want to analyze the memory usage during computation, the
-simplest is to let the memory error happen during Theano execution and
-use the Theano flags :attr:`exception_verbosity=high`.
