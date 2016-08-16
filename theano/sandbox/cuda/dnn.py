@@ -1319,6 +1319,32 @@ def dnn_gradweight(img, topgrad,
     return GpuDnnConvGradW()(img, topgrad, out, desc)
 
 
+def dnn_gradweight3d(img, topgrad,
+                     kerns_shp,
+                     border_mode='valid', subsample=(1, 1, 1),
+                     conv_mode='conv'):
+    """
+    GPU convolution gradient with respect to weight using cuDNN from NVIDIA.
+
+    The memory layout to use is 'bct01', that is 'batch', 'channel',
+    'first dim', 'second dim' in that order.
+
+    FIXME parameters doc
+
+    :warning: The cuDNN library only works with GPU that have a compute
+      capability of 3.0 or higer.  This means that older GPU will not
+      work with this Op.
+    """
+
+    img = gpu_contiguous(img)
+    topgrad = gpu_contiguous(topgrad)
+    kerns_shp = theano.tensor.as_tensor_variable(kerns_shp)
+    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
+                          conv_mode=conv_mode)(img.shape, kerns_shp)
+    out = gpu_alloc_empty(*kerns_shp)
+    return GpuDnnConv3dGradW()(img, topgrad, out, desc)
+
+
 def dnn_gradinput(kerns, topgrad,
                   img_shp,
                   border_mode='valid', subsample=(1, 1),
@@ -1344,6 +1370,33 @@ def dnn_gradinput(kerns, topgrad,
 
     out = gpu_alloc_empty(*img_shp)
     return GpuDnnConvGradI()(kerns, topgrad, out, desc)
+
+
+def dnn_gradinput3d(kerns, topgrad,
+                    img_shp,
+                    border_mode='valid', subsample=(1, 1),
+                    conv_mode='conv'):
+    """
+    GPU convolution gradient with respect to input using cuDNN from NVIDIA.
+
+    The memory layout to use is 'bct01', that is 'batch', 'channel',
+    'first dim', 'second dim' in that order.
+
+    FIXME parameters doc
+
+    :warning: The cuDNN library only works with GPU that have a compute
+      capability of 3.0 or higer.  This means that older GPU will not
+      work with this Op.
+    """
+
+    kerns = gpu_contiguous(kerns)
+    topgrad = gpu_contiguous(topgrad)
+    img_shp = theano.tensor.as_tensor_variable(img_shp)
+    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
+                          conv_mode=conv_mode)(img_shp, kerns.shape)
+
+    out = gpu_alloc_empty(*img_shp)
+    return GpuDnnConv3dGradI()(kerns, topgrad, out, desc)
 
 
 class GpuDnnPoolDesc(GpuOp):
