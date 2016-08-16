@@ -3,7 +3,7 @@
 # Script for Jenkins continuous integration testing of gpu backends
 
 # Anaconda python
-export PATH=~/miniconda2/bin:$PATH
+export PATH=/usr/local/miniconda2/bin:$PATH
 
 # CUDA                                                                          
 export PATH=/usr/local/cuda/bin:$PATH
