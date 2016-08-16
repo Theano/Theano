@@ -1,13 +1,33 @@
 #!/bin/bash
 
 # Script for Jenkins continuous integration testing of gpu backends
-# Get environment from worker, necessary for CUDA
-source ~/.bashrc
+
+# Anaconda python
+export PATH=/usr/local/miniconda2/bin:$PATH
+
+# CUDA                                                                          
+export PATH=/usr/local/cuda/bin:$PATH
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+export LIBRARY_PATH=/usr/local/cuda/lib64:$LIBRARY_PATH
 
 echo "===== Testing old theano.sandbox.cuda backend"
 
-PARTS="theano/sandbox/cuda"
-THEANO_PARAM="${PARTS} --with-timer --timer-top-n 10"
+THEANO_CUDA_TESTS="theano/sandbox/cuda/tests \
+            theano/misc/tests/test_pycuda_example.py \
+            theano/misc/tests/test_pycuda_theano_simple.py \
+            theano/misc/tests/test_pycuda_utils.py \
+            theano/tensor/tests/test_opt.py:TestCompositeCodegen \
+            theano/tensor/tests/test_opt.py:test_shapeoptimizer \
+            theano/tensor/tests/test_opt.py:test_fusion \
+            theano/compile/tests/test_debugmode.py:Test_preallocated_output \
+            theano/sparse/tests/test_basic.py:DotTests \
+            theano/sandbox/tests/test_multinomial.py:test_gpu_opt \
+            theano/sandbox/tests/test_rng_mrg.py:test_consistency_GPU_serial \
+            theano/sandbox/tests/test_rng_mrg.py:test_consistency_GPU_parallel \
+            theano/sandbox/tests/test_rng_mrg.py:test_GPU_nstreams_limit \
+            theano/sandbox/tests/test_rng_mrg.py:test_overflow_gpu_old_backend \
+            theano/scan_module/tests/test_scan.py:T_Scan_Cuda"
+THEANO_PARAM="${THEANO_CUDA_TESTS} --with-timer --timer-top-n 10"
 FLAGS="mode=FAST_RUN,init_gpu_device=gpu,floatX=float32"
 THEANO_FLAGS=${FLAGS} bin/theano-nose ${THEANO_PARAM}
 
@@ -48,6 +68,9 @@ export PYTHONPATH=${PYTHONPATH}:$LIBDIR/lib/python
 (cd libgpuarray && python setup.py install --home=$LIBDIR)
 
 # Testing theano (the gpuarray parts)                                           
-THEANO_GPUARRAY_TESTS="theano/gpuarray/tests theano/sandbox/tests/test_rng_mrg.py:test_consistency_GPUA_serial theano/sandbox/tests/test_rng_mrg.py:test_consistency_GPUA_parallel theano/scan_module/tests/test_scan.py:T_Scan_Gpuarray"
+THEANO_GPUARRAY_TESTS="theano/gpuarray/tests \
+                       theano/sandbox/tests/test_rng_mrg.py:test_consistency_GPUA_serial \
+                       theano/sandbox/tests/test_rng_mrg.py:test_consistency_GPUA_parallel \
+                       theano/scan_module/tests/test_scan.py:T_Scan_Gpuarray"
 FLAGS="init_gpu_device=$DEVICE,gpuarray.preallocate=1000,mode=FAST_RUN"
 THEANO_FLAGS=${FLAGS} time nosetests -v ${THEANO_GPUARRAY_TESTS}
