@@ -2,7 +2,8 @@
 
 # Script for Jenkins continuous integration pre-testing
 
-source ~/.bashrc
+# Anaconda python
+export PATH=/usr/local/miniconda2/bin:$PATH
 
 # Test flake8
 echo "===== Testing flake8"
