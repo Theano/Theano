@@ -3136,7 +3136,7 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
 
 
 @constructor
-def var(input, axis=None, keepdims=False):
+def var(input, axis=None, ddof=0, keepdims=False):
     """
     Computes the variance along the given axis(es) of a tensor `input`.
 
@@ -3145,6 +3145,8 @@ def var(input, axis=None, keepdims=False):
     axis: None or int or (list of int) (see `Sum`)
         Compute the variance along this axis of the tensor.
         None means all axes (like numpy).
+    ddof: Degrees of freedom; 0 would compute the ML estimate, 1 would compute
+        the unbiased estimate.
     keepdims : bool
         If this is set to True, the axes which are reduced are
         left in the result as dimensions with size one. With this option,
@@ -3176,7 +3178,9 @@ def var(input, axis=None, keepdims=False):
     centered_input = input - mean_input
 
     # return the mean sqr
-    v = mean((centered_input ** 2), axis, keepdims=keepdims)
+    #divisor = theano.tensor.cast(prod(input.shape[axis]) - ddof, theano.config.floatX)
+    divisor = prod(input.shape[axis]) - ddof
+    v = true_div(sum((centered_input ** 2), axis, keepdims=keepdims), divisor)
     v.name = 'var'
     return v
 
