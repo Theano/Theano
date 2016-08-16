@@ -90,7 +90,10 @@ from theano.tests.breakpoint import PdbBreakpoint
 from theano.tensor.nnet.abstract_conv import (BaseAbstractConv,
                                               AbstractConv2d,
                                               AbstractConv2d_gradWeights,
-                                              AbstractConv2d_gradInputs)
+                                              AbstractConv2d_gradInputs,
+                                              AbstractConv3d,
+                                              AbstractConv3d_gradWeights,
+                                              AbstractConv3d_gradInputs)
 from theano.tensor.opt import register_specialize_device
 
 
@@ -2726,7 +2729,10 @@ optdb.register('local_inplace_gpu_sparse_block_outer',
 @local_optimizer([gpu_from_host,
                   AbstractConv2d,
                   AbstractConv2d_gradWeights,
-                  AbstractConv2d_gradInputs])
+                  AbstractConv2d_gradInputs,
+                  AbstractConv3d,
+                  AbstractConv3d_gradWeights,
+                  AbstractConv3d_gradInputs])
 def local_conv2d_gpu_conv(node):
     """
     gpu_from_host(AbstractConv) -> AbstractConv(gpu_from_host)
@@ -2897,6 +2903,10 @@ register_specialize_device(abstractconv_groupopt, 'gpu', 'fast_compile')
 # cuDNN is first, but only registered if cuDNN is available.
 conv_groupopt.register('local_abstractconv_dnn',
                        dnn.local_abstractconv_cudnn, 20,
+                       'conv_dnn',
+                       'gpu', 'fast_compile', 'fast_run', 'cudnn')
+conv_groupopt.register('local_abstractconv3d_dnn',
+                       dnn.local_abstractconv3d_cudnn, 20,
                        'conv_dnn',
                        'gpu', 'fast_compile', 'fast_run', 'cudnn')
 # The GEMM-based convolution comes last to catch all remaining cases.
