@@ -489,9 +489,10 @@ class GraphToGPU(Optimizer):
         print("%s%s (%i)" % (
             (' ' * level), self.__class__.__name__, id(self)), file=stream)
         if depth != 0:
-            for opt in (self.local_optimizers_all +
-                        reduce(list.__add__,
-                               self.local_optimizers_map.values())):
+            map_values = []
+            for opts in self.local_optimizers_map.values():
+                map_values += opts
+            for opt in self.local_optimizers_all + map_values:
                 opt.print_summary(stream, level=(level + 2), depth=(depth - 1))
 
 
