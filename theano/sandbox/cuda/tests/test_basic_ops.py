@@ -1014,6 +1014,7 @@ class T_subtensor(theano.tensor.tests.test_subtensor.T_subtensor):
     inc_sub = cuda.GpuIncSubtensor
     adv_sub1 = cuda.GpuAdvancedSubtensor1
     adv_incsub1 = cuda.GpuAdvancedIncSubtensor1
+    dimshuffle = cuda.GpuDimShuffle
     mode = mode_with_gpu
     dtype = 'float32'
     type = tcn.CudaNdarrayType
