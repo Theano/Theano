@@ -2006,14 +2006,14 @@ def local_useless_elemwise(node):
             # it is the same var in the graph. That will always be true
             ret = T.fill(node.inputs[in_idx],
                          T.constant(0.0, dtype=node.outputs[0].type.dtype))
-            ret = pre_greedy_local_optimizer(local_useless_fill, ret)
+            ret = pre_greedy_local_optimizer([local_useless_fill], ret)
             return [ret]
 
         def ones_like(node, in_idx):
             # it is the same var in the graph. That will always be true
             ret = T.fill(node.inputs[in_idx],
                          T.constant(1.0, dtype=node.outputs[0].type.dtype))
-            ret = pre_greedy_local_optimizer(local_useless_fill, ret)
+            ret = pre_greedy_local_optimizer([local_useless_fill], ret)
             return [ret]
 
         if node.op.scalar_op == theano.scalar.eq and len(node.inputs) == 2:
@@ -4883,14 +4883,25 @@ def local_useless_elemwise_comparison(node):
         return
     if node.op.scalar_op.nin != 2:
         return
+
+    def zeros_like(model, dtype):
+        ret = T.zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)
+        ret = pre_greedy_local_optimizer([local_useless_fill], ret)
+        return ret
+
+    def ones_like(model, dtype):
+        ret = T.ones_like(node.inputs[0], dtype=node.outputs[0].dtype)
+        ret = pre_greedy_local_optimizer([local_useless_fill], ret)
+        return ret
+
     # Elemwise[{LT,GT}](X, X) -> Elemwise[zeros](X)
     if isinstance(node.op.scalar_op, (scalar.LT, scalar.GT)) and \
        node.inputs[0] is node.inputs[1]:
-        return [T.zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)]
+        return [zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)]
     # Elemwise[{LE,GE}](X, X) -> Elemwise[ones](X)
     if isinstance(node.op.scalar_op, (scalar.LE, scalar.GE)) and \
        node.inputs[0] is node.inputs[1]:
-        return [T.ones_like(node.inputs[0], dtype=node.outputs[0].dtype)]
+        return [ones_like(node.inputs[0], dtype=node.outputs[0].dtype)]
     # Elemwise[{minimum,maximum}](X, X) -> X
     if isinstance(node.op.scalar_op, (scalar.Minimum, scalar.Maximum)) and \
        node.inputs[0] is node.inputs[1]:
@@ -4901,13 +4912,13 @@ def local_useless_elemwise_comparison(node):
        node.inputs[0].owner and \
        isinstance(node.inputs[0].owner.op, Shape_i) and \
        T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
-        return [T.zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)]
+        return [zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)]
     # Elemwise[GE](X.shape[i], 0) -> Elemwise[ones](X)
     if isinstance(node.op.scalar_op, scalar.GE) and \
        node.inputs[0].owner and \
        isinstance(node.inputs[0].owner.op, Shape_i) and \
        T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
-        return [T.ones_like(node.inputs[0], dtype=node.outputs[0].dtype)]
+        return [ones_like(node.inputs[0], dtype=node.outputs[0].dtype)]
     # Elemwise[maximum](X.shape[i], 0) -> X.shape[i]
     if isinstance(node.op.scalar_op, scalar.Maximum) and \
        node.inputs[0].owner and \
@@ -4925,13 +4936,13 @@ def local_useless_elemwise_comparison(node):
        node.inputs[0].owner and \
        isinstance(node.inputs[0].owner.op, Shape_i) and \
        T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
-        return [T.zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)]
+        return [zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)]
     # Elemwise[minimum](0, X.shape[i]) -> 0
     if isinstance(node.op.scalar_op, scalar.Minimum) and \
        T.extract_constant(node.inputs[0], only_process_constants=True) == 0 and \
        node.inputs[1].owner and \
        isinstance(node.inputs[1].owner.op, Shape_i):
-        return [T.zeros_like(node.inputs[1], dtype=node.outputs[0].dtype)]
+        return [zeros_like(node.inputs[1], dtype=node.outputs[0].dtype)]
 
     # Elemwise[LT](add([anything that is shapes]), 0) -> Elemwise[zeros](X)
     if isinstance(node.op.scalar_op, scalar.LT) and \
@@ -4942,7 +4953,7 @@ def local_useless_elemwise_comparison(node):
             for var in node.inputs[0].owner.inputs]) and \
        T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
 
-        return [T.zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)]
+        return [zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)]
     # Elemwise[GE](add([anything that is shapes]), 0) -> Elemwise[ones](X)
     if isinstance(node.op.scalar_op, scalar.GE) and \
        node.inputs[0].owner and \
@@ -4951,7 +4962,7 @@ def local_useless_elemwise_comparison(node):
        all([isinstance(var.owner and var.owner.op, Shape_i)
             for var in node.inputs[0].owner.inputs]) and \
        T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
-        return [T.ones_like(node.inputs[0], dtype=node.outputs[0].dtype)]
+        return [ones_like(node.inputs[0], dtype=node.outputs[0].dtype)]
 
     # Elemwise[EQ](Subtensor(Shape(x)), -N)
     # Elemwise[EQ](somegraph that only depend of shape, -N)
@@ -4984,8 +4995,8 @@ def local_useless_elemwise_comparison(node):
             cst = get_scalar_constant_value(node.inputs[1],
                                             only_process_constants=True)
             if cst < 0:
-                return [T.zeros_like(node.inputs[0],
-                                     dtype=node.outputs[0].dtype)]
+                return [zeros_like(node.inputs[0],
+                                   dtype=node.outputs[0].dtype)]
         except NotScalarConstantError:
             pass
     return
