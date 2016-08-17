@@ -32,6 +32,7 @@ import theano.tensor.opt as opt
 from theano.tensor.opt import (
         local_add_specialize,
         local_dimshuffle_lift,
+        local_reshape_lift,
         local_useless_alloc,
         local_greedy_distributor,
         mul_canonizer,
@@ -64,6 +65,7 @@ from theano.tensor import (
         tile
         )
 from theano.tensor.elemwise import DimShuffle
+from theano.tensor.basic import Reshape
 from theano.tests import unittest_tools as utt
 from theano.compile.mode import optdb
 from theano.compile import Mode
@@ -77,6 +79,8 @@ mode_opt = theano.compile.mode.get_mode(mode_opt)
 
 ds = lambda x, y: DimShuffle(x.type.broadcastable, y)(x)
 dimshuffle_lift = out2in(local_dimshuffle_lift)
+
+reshape_lift = out2in(local_reshape_lift)
 
 _optimizer_stabilize = gof.Query(include=['fast_run'])
 _optimizer_stabilize.position_cutoff = 1.51
@@ -107,6 +111,46 @@ def inputs(xbc=(0, 0), ybc=(0, 0), zbc=(0, 0)):
     y = TensorType(broadcastable=ybc, dtype='float64')('y')
     z = TensorType(broadcastable=zbc, dtype='float64')('z')
     return x, y, z
+
+
+class test_reshape_lift(unittest.TestCase):
+    def test_unary(self):
+        x, y, z = inputs()
+        e = T.exp(x).reshape([x.size])
+        g = FunctionGraph([x], [e])
+
+        e_opt = T.exp(x.reshape([x.size]))
+        g_opt = FunctionGraph([x], [e_opt])
+
+        self.assertFalse(str(g) == str(g_opt))
+        print()
+        print(str(g))
+        reshape_lift.optimize(g)
+        print(str(g))
+        self.assertTrue(str(g) == str(g_opt))
+
+    def test_sigmoid_crossentropy(self):
+        x, y, z = inputs()
+
+        probs = T.nnet.sigmoid(x)
+        probs_r = probs.reshape([x.size])
+        probs2 = T.nnet.sigmoid(probs_r)
+        probs_r2 = probs2.reshape([x.size])
+        g = FunctionGraph([x, y], [probs_r2])
+
+        xp = x.reshape([x.size])
+        probs = T.nnet.sigmoid(xp)
+        g_opt = FunctionGraph([x, y], [probs])
+
+        self.assertFalse(str(g) == str(g_opt))
+        print()
+        print(str(g))
+        reshape_lift.optimize(g)
+        print(str(g))
+        reshape_lift.optimize(g)
+        print(str(g))
+        print(str(g_opt))
+        self.assertTrue(str(g) == str(g_opt))
 
 
 class test_dimshuffle_lift(unittest.TestCase):
@@ -6171,19 +6215,6 @@ def test_local_useless_reshape():
     f = theano.function([i], m, mode=mode)
     topo = f.maker.fgraph.toposort()
     assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
-
-
-def test_local_reshape_lift():
-    x = tensor.tensor4()
-    out = T.exp(x).reshape([x.size])
-    assert out.ndim == 1
-    mode = compile.mode.get_default_mode()
-    mode = mode.including('local_reshape_lift')
-    f = theano.function([x], out, mode=mode)
-    f(numpy.random.rand(5, 4, 3, 2).astype(config.floatX))
-    topo = f.maker.fgraph.toposort()
-    assert isinstance(topo[-2].op, tensor.Reshape)
-    assert isinstance(topo[-1].op, tensor.Elemwise)
 
 
 class Test_lift_transpose_through_dot(unittest.TestCase):

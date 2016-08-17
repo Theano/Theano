@@ -4189,8 +4189,7 @@ def local_reshape_lift(node):
     """
     if (isinstance(node.op, T.Reshape) and
             node.inputs[0].owner and
-            isinstance(node.inputs[0].owner.op, T.Elemwise) and
-            len(node.inputs[0].owner.inputs) == 1):
+            isinstance(node.inputs[0].owner.op, T.Elemwise)):
         r = node.op(node.inputs[0].owner.inputs[0], node.inputs[1])
         e = node.inputs[0].owner.op(r)
         # In rare case the original broadcast was (False, True), but
