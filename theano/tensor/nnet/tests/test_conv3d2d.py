@@ -92,7 +92,15 @@ def check_diagonal_subtensor_view_traces(fn):
 
 
 @parameterized.expand(('valid', 'full'), utt.custom_name_func)
-def test_conv3d(border_mode, mode=mode_without_gpu, shared=theano.tensor._shared):
+def test_conv3d(border_mode):
+    check_conv3d(border_mode=border_mode,
+                 mode=mode_without_gpu,
+                 shared=theano.tensor._shared)
+
+
+# This function will also be used in theano/sandbox/cuda/tests/test_tensor_op.py,
+# which is not possible if it is decorated by @parameterized.expand
+def check_conv3d(border_mode, mode=mode_without_gpu, shared=theano.tensor._shared):
     if ndimage is None:
         raise SkipTest("conv3d2d tests need SciPy")
 

@@ -58,12 +58,14 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                  mode=None,
                  dtype=theano.config.floatX,
                  type=tensor.TensorType,
-                 ignore_topo=DeepCopyOp):
+                 ignore_topo=DeepCopyOp,
+                 dimshuffle=DimShuffle):
         self.shared = shared
         self.sub = sub
         self.inc_sub = inc_sub
         self.adv_sub1 = adv_sub1
         self.adv_incsub1 = adv_incsub1
+        self.dimshuffle = dimshuffle
         if mode is None:
             mode = theano.compile.mode.get_default_mode()
             mode = mode.including("local_useless_subtensor")
@@ -343,28 +345,29 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         numpy_n = numpy.arange(24, dtype=self.dtype).reshape((2, 3, 4))
         n = self.shared(numpy_n)
         test_cases = [
-            (0, self.sub, numpy.index_exp[...]),
-            (1, self.sub, numpy.index_exp[..., 1]),
-            (1, self.sub, numpy.index_exp[1, ...]),
-            (1, self.sub, numpy.index_exp[..., 1, 2, 3]),
-            (1, self.sub, numpy.index_exp[1, ..., 2, 3]),
-            (1, self.sub, numpy.index_exp[1, 2, 3, ...]),
-            (3, DimShuffle, numpy.index_exp[..., [0, 2, 3]]),
-            (1, DimShuffle,
+            (0, Subtensor, self.sub, numpy.index_exp[...]),
+            (1, Subtensor, self.sub, numpy.index_exp[..., 1]),
+            (1, Subtensor, self.sub, numpy.index_exp[1, ...]),
+            (1, Subtensor, self.sub, numpy.index_exp[..., 1, 2, 3]),
+            (1, Subtensor, self.sub, numpy.index_exp[1, ..., 2, 3]),
+            (1, Subtensor, self.sub, numpy.index_exp[1, 2, 3, ...]),
+            (3, DimShuffle, self.dimshuffle,
+             numpy.index_exp[..., [0, 2, 3]]),
+            (1, DimShuffle, self.dimshuffle,
              numpy.index_exp[numpy.newaxis, ...])]
         # The following test case is not supported by numpy before 1.9
         numpy_version = [int(v) for v in numpy.version.version.split('.')[0:2]]
         if numpy_version >= [1, 9]:
             test_cases.append(
-                (1, AdvancedSubtensor,
+                (1, AdvancedSubtensor, AdvancedSubtensor,
                  numpy.index_exp[..., numpy.newaxis, [1, 2]]))
 
-        for length, op_type, slice_ in test_cases:
+        for length, op_type, op_type_opt, slice_ in test_cases:
             numpy_tval = numpy_n[slice_]
             t = n[slice_]
             self.assertTrue(isinstance(t.owner.op, op_type))
             tval = self.eval_output_and_check(t,
-                                              op_type=op_type,
+                                              op_type=op_type_opt,
                                               length=length)
             assert_equal(tval.shape, numpy_tval.shape)
             assert_array_equal(tval, numpy_tval)

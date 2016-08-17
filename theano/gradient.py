@@ -1369,8 +1369,10 @@ class numeric_grad(object):
     # perfectly accurate.
     type_eps = {'float64': 1e-7,
                 'float32': 3e-4,
+                'float16': 1e-3,
                 numpy.dtype('float64'): 1e-7,
-                numpy.dtype('float32'): 3e-4}
+                numpy.dtype('float32'): 3e-4,
+                numpy.dtype('float16'): 1e-3}
 
     def __init__(self, f, pt, eps=None, out_type=None):
         """Return the gradient of f at pt.
@@ -1606,12 +1608,13 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
     pt = [numpy.array(p) for p in pt]
 
     for i, p in enumerate(pt):
-        if p.dtype not in ('float32', 'float64'):
+        if p.dtype not in ('float16', 'float32', 'float64'):
             raise TypeError(
                 ('verify_grad can work only with floating point '
                  'inputs, but input %i has dtype "%s".') % (i, p.dtype))
 
     _type_tol = dict(  # relative error tolerances for different types
+        float16=5e-2,
         float32=1e-2,
         float64=1e-4)
 
