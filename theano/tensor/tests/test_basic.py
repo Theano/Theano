@@ -1649,7 +1649,7 @@ TanhInplaceTester = makeBroadcastTester(
     grad=_grad_broadcast_unary_normal,
     inplace=True)
 
-_eps = 1e-10
+_eps = 1e-2
 _good_broadcast_unary_arctanh = dict(
     normal=(rand_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
     integers=(randint_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
