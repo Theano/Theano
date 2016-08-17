@@ -4200,7 +4200,8 @@ def local_useless_reshape(node):
     if input.ndim != output.ndim:
         return False
 
-    # Simple case: both input and output have a single dimension
+    # Simple case: both input and output have a single dimension.
+    # This could hide errors if the user provides inconsistent shapes.
     if (input.ndim == 1 and output.ndim == 1 and
             input.broadcastable == output.broadcastable):
         return [input]
@@ -4277,7 +4278,6 @@ def local_reshape_to_dimshuffle(node):
     or be removed later on.
 
     For example:
-        - reshape(v, (m,)) --> v  # if v.ndim == 1
         - reshape(x, (1, n)) --> dimshuffle{x,0}(reshape(x, (n,))
         - reshape(x, (1, m, 1, n, 1, 1))
           --> dimshuffle{x,0,x,1,x,x}(reshape(x, (m, n)))
@@ -4295,7 +4295,11 @@ def local_reshape_to_dimshuffle(node):
     new_output_shape = []
     index = 0  # index over the output of the new reshape
     for i in xrange(output.ndim):
-        dim = extract_constant(output_shape[i], only_process_constants=False)
+        # Since output_shape is a symbolic vector, we trust extract_constant
+        # to go through however it is formed to see if its i-th element is 1.
+        # We need only_process_constants=False for that.
+        dim = extract_constant(output_shape[i], only_process_constants=False,
+                               elemwise=False)
         if dim == 1:
             dimshuffle_new_order.append('x')
         else:

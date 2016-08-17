@@ -225,7 +225,7 @@ class test_dimshuffle_lift(unittest.TestCase):
         self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
 
 
-def test_useless_dimshuffle_in_reshape():
+def test_local_useless_dimshuffle_in_reshape():
     vector = TensorType(broadcastable=(False,), dtype='float64')('vector')
     mat = TensorType(broadcastable=(False, False), dtype='float64')('mat')
     row = TensorType(broadcastable=(True, False), dtype='float64')('row')
@@ -250,8 +250,17 @@ def test_useless_dimshuffle_in_reshape():
                           "Reshape{2}(mat, Shape(mat)), "
                           "Reshape{2}(row, Shape(row)), "
                           "Reshape{2}(col, Shape(col))]")
+
     # Check stacktrace was copied over correctly after opt was applied
-    assert_true(hasattr(g.outputs[0].tag, 'trace'))
+    assert_true(check_stack_trace(g, ops_to_check='all'))
+
+    # Check that the optimization does not get applied when the order
+    # of dimensions has changed.
+    reshape_dimshuffle_mat2 = tensor.reshape(mat.dimshuffle('x', 1, 'x', 0), mat.shape)
+    h = FunctionGraph([mat], [reshape_dimshuffle_mat2])
+    str_h = str(h)
+    useless_dimshuffle_in_reshape.optimize(h)
+    assert_true(str(h) == str(h))
 
 
 def test_add_canonizer_problem0():
@@ -6192,6 +6201,21 @@ class Test_local_useless_reshape(unittest.TestCase):
     def test_1(self):
         x = theano.tensor.matrix('x')
         r = x.reshape(x.shape)
+
+        m0 = theano.compile.get_default_mode()
+        m1 = m0.including('local_useless_reshape')
+        f1 = theano.function([x], r, mode=m1)
+        topo = f1.maker.fgraph.toposort()
+        assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+
+        m2 = m1.excluding('ShapeOpt')
+        f2 = theano.function([x], r, mode=m2)
+        topo = f2.maker.fgraph.toposort()
+        assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+
+    def test_2(self):
+        x = theano.tensor.matrix('x')
+        r = x.reshape([Shape_i(i)(x) for i in xrange(x.ndim)])
 
         m0 = theano.compile.get_default_mode()
         m1 = m0.including('local_useless_reshape')

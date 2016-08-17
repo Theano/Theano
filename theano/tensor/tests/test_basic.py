@@ -5124,6 +5124,7 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
                 assert len(topo_) <= 1, topo_
             else:
                 assert len(topo_) == 1, topo_
+            if len(topo_) > 0:
                 assert type(topo_[0].op) is self.op
         return f
 
