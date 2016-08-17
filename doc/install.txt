@@ -4,6 +4,10 @@
 Installing Theano
 =================
 
+.. warning::
+    If you want to install the bleeding-edge or development version of Theano
+    from GitHub, please make sure you are reading `the latest version of this
+    page <http://deeplearning.net/software/theano_versions/dev/install.html>`_.
 
 Requirements
 ------------
@@ -61,7 +65,7 @@ The following libraries and software are optional:
 
     `graphiz <http://www.graphviz.org/>`__ and either `pydot-ng <https://github.com/pydot/pydot-ng>`__ or `pydot <https://code.google.com/p/pydot/>`__
         To be able to make picture of Theano computation graph.
-	pydot-ng is a pydot compatible replacement that support newer Python.
+        pydot-ng is a pydot compatible replacement that support newer Python.
 
     `NVIDIA CUDA drivers and SDK`_
         Required for GPU code generation/execution on NVIDIA gpus

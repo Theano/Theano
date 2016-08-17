@@ -5,6 +5,11 @@
 Easy Installation of an Optimized Theano on Current Ubuntu
 ==========================================================
 
+.. warning::
+    If you want to install the bleeding-edge or development version of Theano
+    from GitHub, please make sure you are reading `the latest version of this
+    page <http://deeplearning.net/software/theano_versions/dev/install_ubuntu.html>`_.
+
 For NVIDIA Jetson TX1 embedded platform:
 
 .. code-block:: bash
@@ -43,7 +48,7 @@ For Ubuntu 11.10 through 14.04:
 
     sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git
     sudo pip install Theano
-    
+
 On 14.04, this will install Python 2 by default. If you want to use Python 3:
 
 .. code-block:: bash
@@ -121,13 +126,13 @@ command with:
 
 VirtualEnv
 ----------
-    
+
 If you would like to install Theano in a VirtualEnv, you will want to pass the 
 `--system-site-packages` flag when creating the VirtualEnv so that it will pick up 
 the system-provided `Numpy` and `SciPy`.
 
 .. code-block:: bash
-    
+
     virtualenv --system-site-packages -p python2.7 theano-env
     source theano-env/bin/activate
     pip install Theano
@@ -208,7 +213,7 @@ Updating Bleeding Edge Installs
 Change to the Theano directory and run:
 
 .. code-block:: bash
-    
+
     git pull
 
 
