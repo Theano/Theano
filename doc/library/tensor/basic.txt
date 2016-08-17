@@ -1107,13 +1107,11 @@ Indexing
 
 Like NumPy, Theano distinguishes between *basic* and *advanced* indexing.
 Theano fully supports basic indexing
-(see `NumPy's indexing  <http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_).
-
-`Integer advanced indexing
-<http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html#integer>`_
-will be supported in 0.6rc4 (or the development version). We do not
-support boolean masks, as Theano does not have a boolean type (we use
-int8 for the output of logic operators).
+(see `NumPy's indexing  <http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_) 
+and `integer advanced indexing
+<http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html#integer>`_. We do not
+support boolean masks, as Theano does not have a boolean type (we use int8 for the output of 
+logic operators).
 
 .. testsetup:: indexing
 
