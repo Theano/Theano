@@ -1304,7 +1304,7 @@ class LocalOptGroup(LocalOptimizer):
                 if not repl:
                     continue
                 else:
-                    self.node_created[opt] += len(graph.ops(node.inputs, repl))
+                    self.node_created[opt] += len(graph.ops(fgraph.variables, repl))
                     self.applied_true[opt] += 1
                     if not multiple_opts or not repl[0].owner:
                         return repl
@@ -1312,8 +1312,6 @@ class LocalOptGroup(LocalOptimizer):
                     # Ensuring not the input of graph
                     assert repl[0].owner
                     new_node = repl[0].owner
-                    if hasattr(new_node, 'fgraph'):
-                        apply_mult_opts(new_node, new_node.fgraph, True)
                     apply_mult_opts(new_node, fgraph, True)
             return repl
         node_start = time.time()
