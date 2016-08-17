@@ -966,14 +966,15 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
                 '"valid", "full", "half", an integer or a pair of'
                 ' integers'.format(mode))
 
+        dil_shape = ((shape[0] - 1) * self.filter_dilation[0] + 1,
+                     (shape[1] - 1) * self.filter_dilation[1] + 1)
+
         if mode == "full":
-            mode = (shape[0] - 1, shape[1] - 1)
+            mode = (dil_shape[0] - 1, dil_shape[1] - 1)
         elif mode == "half":
-            mode = (shape[0] // 2, shape[1] // 2)
+            mode = (dil_shape[0] // 2, dil_shape[1] // 2)
         if isinstance(mode, tuple):
             pad_h, pad_w = map(int, mode)
-            pad_h = (pad_h - 1) * self.filter_dilation[0] + 1
-            pad_w = (pad_w - 1) * self.filter_dilation[1] + 1
 
             mode = "valid"
             new_img = numpy.zeros((img.shape[0], img.shape[1],
@@ -983,8 +984,6 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
             img = new_img
 
         if self.subsample[0] > 1 or self.subsample[1] > 1:
-            dil_shape = ((shape[0] - 1) * self.filter_dilation[0] + 1,
-                         (shape[1] - 1) * self.filter_dilation[1] + 1)
             new_shape = (topgrad.shape[0], topgrad.shape[1],
                          img.shape[2] - dil_shape[0] + 1,
                          img.shape[3] - dil_shape[1] + 1)
@@ -1114,9 +1113,9 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
                        (kern.shape[3] - 1) * self.filter_dilation[1] + 1)
         pad_h, pad_w = 0, 0
         if mode == "full":
-            pad_h, pad_w = (dil_kernshp[0] - 1, dil_kernshp[0] - 1)
+            pad_h, pad_w = (dil_kernshp[0] - 1, dil_kernshp[1] - 1)
         elif mode == "half":
-            pad_h, pad_w = (dil_kernshp[1] // 2, dil_kernshp[1] // 2)
+            pad_h, pad_w = (dil_kernshp[0] // 2, dil_kernshp[1] // 2)
         elif isinstance(mode, tuple):
             pad_h, pad_w = map(int, self.border_mode)
         if self.subsample[0] > 1 or self.subsample[1] > 1:
