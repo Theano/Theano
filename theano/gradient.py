@@ -1572,7 +1572,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
         and returns a Theano variable. For instance, an Op instance with
         a single output.
     :param pt: the list of numpy.ndarrays to use as input values.
-        These arrays must be either float32 or float64 arrays.
+        These arrays must be either float16, float32, or float64 arrays.
     :param n_tests: number of times to run the test
     :param rng: random number generator used to sample u, we test gradient
         of sum(u * fun) at pt
@@ -1591,7 +1591,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
         comparison
     :param cast_to_output_type: if the output is float32 and
         cast_to_output_type is True, cast the random projection to
-        float32. Otherwise it is float64.
+        float32. Otherwise it is float64. float16 is not handled here.
     :param no_debug_ref: Don't use DebugMode for the numerical
         gradient function.
 
