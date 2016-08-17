@@ -464,7 +464,7 @@ def grad(cost, wrt, consider_constant=None,
         known_grads = OrderedDict()
     else:
         m = "known_grads must be an OrderedDict. "
-        assert isinstance(known_grads, OrderedDict) or len(known_grads) <=1, m
+        assert isinstance(known_grads, OrderedDict) or len(known_grads) <= 1, m
 
     # The gradient of the cost is 1 unless specified otherwise by known_grads.
     if cost is not None:

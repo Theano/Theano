@@ -472,7 +472,6 @@ def test_known_grads():
     true_grads = true_grads(*values)
 
     for layer in layers:
-        print('Testing by separately computing ', layer)
         first = theano.tensor.grad(cost, layer, disconnected_inputs='ignore')
         known = OrderedDict(izip(layer, first))
         full = theano.tensor.grad(cost=None, known_grads=known, wrt=inputs, disconnected_inputs='ignore')
