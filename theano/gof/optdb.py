@@ -322,7 +322,7 @@ class SequenceDB(DB):
     def register(self, name, obj, position, *tags):
         super(SequenceDB, self).register(name, obj, *tags)
         if position == 'last':
-            self.position[name] = max(self.position.values())
+            self.__position__[name] = max(self.__position__.values())
         else:
             assert isinstance(position, (integer_types, float))
             self.__position__[name] = position
