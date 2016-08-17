@@ -2,6 +2,9 @@
 
 # Script for Jenkins continuous integration testing of gpu backends
 
+# Print commands as they are executed
+set -x
+
 # Anaconda python
 export PATH=/usr/local/miniconda2/bin:$PATH
 
