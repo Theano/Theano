@@ -1630,6 +1630,8 @@ def short_platform(r=None, p=None):
 
     return p
 compiledir_format_dict['short_platform'] = short_platform()
+# Allow to have easily one compiledir per device.
+compiledir_format_dict['device'] = config.device
 compiledir_format_keys = ", ".join(sorted(compiledir_format_dict.keys()))
 default_compiledir_format = ("compiledir_%(short_platform)s-%(processor)s-"
                              "%(python_version)s-%(python_bitwidth)s")

@@ -6,6 +6,7 @@ import pdb
 import time
 from six import iteritems
 from six.moves import xrange
+import sys
 
 import theano
 from theano import tensor, scalar, gof, config
@@ -13,7 +14,6 @@ from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         SequenceDB, Optimizer, DB, toolbox, graph)
-from theano.gof.opt import NavigatorOptimizer
 from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
@@ -262,7 +262,7 @@ gpu_seqopt.register('InputToGpuArrayOptimizer', InputToGpuOptimizer(),
                     0, 'fast_run', 'fast_compile', 'merge')
 
 
-class GraphToGPU(NavigatorOptimizer):
+class GraphToGPU(Optimizer):
     """
     Transfer the graph as a whole to GPU instead of transfering node by node.
 
@@ -484,6 +484,16 @@ class GraphToGPU(NavigatorOptimizer):
                 time_opts,
                 node_created,
                 process_count)
+
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
+        print("%s%s (%i)" % (
+            (' ' * level), self.__class__.__name__, id(self)), file=stream)
+        if depth != 0:
+            map_values = []
+            for opts in self.local_optimizers_map.values():
+                map_values += opts
+            for opt in self.local_optimizers_all + map_values:
+                opt.print_summary(stream, level=(level + 2), depth=(depth - 1))
 
 
 @local_optimizer([GpuFromHost, GpuToGpu, HostFromGpu])

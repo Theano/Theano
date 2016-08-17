@@ -1769,12 +1769,13 @@ class _Linker(gof.link.LocalLinker):
         if schedule:
             self.schedule = schedule
 
-    def accept(self, fgraph, no_recycling=None):
+    def accept(self, fgraph, no_recycling=None, profile=None):
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
             assert type(self) is _Linker
-            return type(self)(maker=self.maker).accept(fgraph, no_recycling)
+            return type(self)(maker=self.maker).accept(
+                fgraph, no_recycling, profile)
         self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self
