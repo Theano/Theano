@@ -5132,14 +5132,18 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
         self.ignore_topo = ignore_topo
         super(T_reshape, self).__init__(name)
 
-    def function(self, inputs, outputs):
+    def function(self, inputs, outputs, ignore_empty=False):
         f = function(inputs, outputs, mode=self.mode)
         if self.mode is not None or theano.config.mode != "FAST_COMPILE":
             topo = f.maker.fgraph.toposort()
             topo_ = [node for node in topo if not isinstance(node.op,
                                                              self.ignore_topo)]
-            assert len(topo_) == 1, topo_
-            assert type(topo_[0].op) is self.op
+            if ignore_empty:
+                assert len(topo_) <= 1, topo_
+            else:
+                assert len(topo_) == 1, topo_
+            if len(topo_) > 0:
+                assert type(topo_[0].op) is self.op
         return f
 
     def test_reshape(self):
@@ -5212,10 +5216,21 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
 
         # test broadcast flag for constant value of 1
         c = reshape(b, (b.shape[0], b.shape[1], 1))
-        f = self.function([b], c)
+        # That reshape may get replaced with a dimshuffle, with is ignored,
+        # so we pass "ignore_empty=True"
+        f = self.function([b], c, ignore_empty=True)
         assert numpy.all(f(numpy.asarray([[0, 1, 2], [3, 4, 5]])) ==
                          numpy.asarray([[[0], [1], [2]], [[3], [4], [5]]]))
-        assert (f.maker.fgraph.toposort()[-2].outputs[0].type.broadcastable ==
+        assert (f.maker.fgraph.toposort()[-1].outputs[0].type.broadcastable ==
+                (False, False, True))
+
+        # test broadcast flag for constant value of 1 if it cannot be
+        # replaced with dimshuffle
+        c = reshape(b, (b.shape[1], b.shape[0], 1))
+        f = self.function([b], c, ignore_empty=True)
+        assert numpy.all(f(numpy.asarray([[0, 1, 2], [3, 4, 5]])) ==
+                         numpy.asarray([[[0], [1]], [[2], [3]], [[4], [5]]]))
+        assert (f.maker.fgraph.toposort()[-1].outputs[0].type.broadcastable ==
                 (False, False, True))
 
     def test_m1(self):
