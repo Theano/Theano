@@ -335,14 +335,6 @@ class SeqOptimizer(Optimizer, list):
             if sub_profs[i]:
                 opts[i].print_profile(stream, sub_profs[i],
                                       level=level + 1)
-                if isinstance(opts[i], TopoOptimizer):
-                    if isinstance(opts[i].local_opt, LocalOptGroup):
-                        lo_g = opts[i].local_opt
-                        opts[i].local_opt.print_profile(stream, (lo_g.time_opts,
-                                                                 lo_g.time_nodes,
-                                                                 lo_g.process_count,
-                                                                 lo_g.applied_true,
-                                                                 lo_g.node_created))
         print(file=stream)
 
     @staticmethod
@@ -1303,7 +1295,6 @@ class LocalOptGroup(LocalOptimizer):
         def apply_mult_opts(node, fgraph, multiple_opts=False):
             repl = False
             opts = self.track_map[type(node.op)] + self.track_map[node.op] + self.track_map[None]
-
             for opt in opts:
                 opt_start = time.time()
                 repl = opt.transform(node)
@@ -1313,7 +1304,7 @@ class LocalOptGroup(LocalOptimizer):
                 if not repl:
                     continue
                 else:
-                    self.node_created[opt] += len(graph.ops(fgraph.variables, node.outputs))
+                    self.node_created[opt] += len(graph.ops(node.inputs, repl))
                     self.applied_true[opt] += 1
                     if not multiple_opts or not repl[0].owner:
                         return repl
@@ -1361,9 +1352,10 @@ class LocalOptGroup(LocalOptimizer):
                 if t > 0:
                     # Skip opt that have 0 times, they probably wasn't even tried.
                     print(blanc + "  ", '  %.3fs - %s' % (t, o), file=stream)
-            print(file=stream)
         else:
-            print("--- The Optimizer wasn't successful ---")
+            print(blanc, "--- The Optimizer wasn't successful ---", file=stream)
+
+        print(file=stream)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print("%s%s id=%i" % (
@@ -2055,6 +2047,12 @@ class TopoOptimizer(NavigatorOptimizer):
         print(blanc, "  init io_toposort", io_t, file=stream)
         print(blanc, "  loop time", loop_t, file=stream)
         print(blanc, "  callback_time", callback_time, file=stream)
+        if isinstance(lopt, LocalOptGroup):
+            lopt.print_profile(stream, (lopt.time_opts,
+                                            lopt.time_nodes,
+                                            lopt.process_count,
+                                            lopt.applied_true,
+                                            lopt.node_created))
 
     def __str__(self):
         return getattr(self, '__name__',
