@@ -31,6 +31,12 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
         self.op_class = GpuCumsum
 
     def test_infer_shape(self):
+        # GpuCumSum is only defined for float32 for now, so we skip it
+        # in the unsupported cases
+        gpucumsum_supported_dtypes = ('float32',)
+        if theano.config.floatX not in gpucumsum_supported_dtypes:
+            raise SkipTest('GpuCumSum not implemented for dtype %s'
+                           % theano.config.floatX)
         x = T.tensor3('x')
         a = np.random.random((3, 5, 2)).astype(theano.config.floatX)
 
