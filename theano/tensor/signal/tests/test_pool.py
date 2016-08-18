@@ -644,16 +644,12 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             paddingsize = paddingsizes[i]
 
             def mp(input1, input2):
-                pooled_out = Pool(
-                    maxpoolsize, ignore_border=True,
-                    st=stridesize,
-                    padding=paddingsize,
-                    )(input1)
-                out = DownsampleFactorMaxGradGrad(
-                    ds=maxpoolsize,
-                    ignore_border=True,
-                    st=stridesize,
-                    padding=paddingsize)(input1, pooled_out, input2)
+                op1 = Pool(ignore_border=True)
+                pooled_out = op1(input1, maxpoolsize, stride=stridesize,
+                                 pad=paddingsize)
+                op2 = DownsampleFactorMaxGradGrad(ignore_border=True)
+                out = op2(input1, pooled_out, input2, ws=maxpoolsize,
+                          stride=stridesize, pad=paddingsize)
                 return out
             utt.verify_grad(mp, [imval1, imval2], rng=rng)
 

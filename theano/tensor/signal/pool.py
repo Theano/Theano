@@ -1089,13 +1089,18 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         return [in_shapes[1]]
 
     def grad(self, inp, grads):
-        x, maxout, ggx = inp
+        x, maxout, ggx, ws, stride, pad = inp
         gz, = grads
         return [theano.tensor.zeros_like(x),
                 theano.tensor.zeros_like(maxout),
-                MaxPoolGrad(
-                    self.ds, ignore_border=self.ignore_border,
-                    st=self.st, padding=self.padding)(x, maxout, gz)]
+                MaxPoolGrad(ignore_border=self.ignore_border)(x, maxout, gz,
+                                                              ws, stride, pad),
+                DisconnectedType()(),
+                DisconnectedType()(),
+                DisconnectedType()()]
+
+    def connection_pattern(self, node):
+        return [[1], [1], [1], [0], [0], [0]]
 
     def c_code(self, node, name, inp, out, sub):
         if self.mode != 'max':
