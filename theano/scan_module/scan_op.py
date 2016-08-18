@@ -2024,7 +2024,7 @@ class Scan(PureOp):
             # it will be the sum of the external gradient signal and the
             # gradient obtained by propagating Y's external gradient signal
             # to X.
-            known_grads = dict([(k.copy(), v) for (k, v) in known_grads.items()])
+            known_grads = OrderedDict([(k.copy(), v) for (k, v) in known_grads.items()])
 
             grads = gradient.grad(
                         cost=None,
@@ -2094,7 +2094,7 @@ class Scan(PureOp):
             dC_dXts.append(dC_dXt)
 
 
-        known_grads = {}
+        known_grads = OrderedDict()
         dc_dxts_idx = 0
         for i in range(len(diff_outputs)):
             if i < idx_nitsot_start or i >= idx_nitsot_end:
