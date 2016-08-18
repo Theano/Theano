@@ -10,7 +10,8 @@ from theano.sandbox.cuda.dnn import (
     GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI,
     GpuDnnConv3d, GpuDnnConv3dGradW, GpuDnnConv3dGradI)
 from theano.sandbox.cuda.blas import (
-    GpuCorrMM, GpuCorrMM_gradWeights, GpuCorrMM_gradInputs)
+    GpuCorrMM, GpuCorrMM_gradWeights, GpuCorrMM_gradInputs,
+    GpuCorr3dMM, GpuCorr3dMM_gradWeights, GpuCorr3dMM_gradInputs)
 from nose.plugins.skip import SkipTest
 
 import theano.sandbox.cuda as cuda
@@ -121,6 +122,43 @@ class TestCorrMMConv2d(test_abstract_conv.BaseTestConv2d):
                            provide_shape=provide_shape, border_mode=b,
                            filter_flip=flip,
                            target_op=GpuCorrMM_gradInputs,
+                           filter_dilation=fd)
+
+
+class TestCorrMMConv3d(test_abstract_conv.BaseTestConv3d):
+    @classmethod
+    def setup_class(cls):
+        test_abstract_conv.BaseTestConv3d.setup_class()
+        cls.shared = staticmethod(gpu_shared)
+        cls.mode = mode_with_gpu.excluding('cudnn')
+
+    def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1, 1)):
+        if fd != (1, 1, 1):
+            # TODO
+            raise SkipTest("Dilation not supprted by the Conv3D reference implementation.")
+
+        mode = self.mode
+        o = self.get_output_shape(i, f, s, b, fd)
+        self.run_fwd(inputs_shape=i, filters_shape=f,
+                     subsample=s, verify_grad=True, mode=mode,
+                     provide_shape=provide_shape, border_mode=b,
+                     filter_flip=flip, target_op=(GpuCorr3dMM,
+                                                  GpuCorr3dMM_gradWeights,
+                                                  GpuCorr3dMM_gradInputs),
+                     filter_dilation=fd)
+        self.run_gradweight(inputs_shape=i, filters_shape=f,
+                            output_shape=o, subsample=s,
+                            verify_grad=True, mode=mode,
+                            provide_shape=provide_shape, border_mode=b,
+                            filter_flip=flip,
+                            target_op=GpuCorr3dMM_gradWeights,
+                            filter_dilation=fd)
+        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                           output_shape=o, subsample=s,
+                           verify_grad=True, mode=mode,
+                           provide_shape=provide_shape, border_mode=b,
+                           filter_flip=flip,
+                           target_op=GpuCorr3dMM_gradInputs,
                            filter_dilation=fd)
 
 
