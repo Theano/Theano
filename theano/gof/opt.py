@@ -1292,9 +1292,9 @@ class LocalOptGroup(LocalOptimizer):
         if len(self.opts) == 0:
             return
 
-        def apply_mult_opts(node, fgraph, multiple_opts=False):
-            repl = False
+        def apply_mult_opts(node, fgraph, multiple_opts=False, prev_repl=None):
             opts = self.track_map[type(node.op)] + self.track_map[node.op] + self.track_map[None]
+            repl = prev_repl
             for opt in opts:
                 opt_start = time.time()
                 repl = opt.transform(node)
@@ -1312,8 +1312,9 @@ class LocalOptGroup(LocalOptimizer):
                     # Ensuring not the input of graph
                     assert repl[0].owner
                     new_node = repl[0].owner
-                    apply_mult_opts(new_node, fgraph, True)
+                    apply_mult_opts(new_node, fgraph, True, repl)
             return repl
+
         node_start = time.time()
         new_var = apply_mult_opts(node, node.fgraph, self.apply_all_opts)
         node_finish = time.time()
