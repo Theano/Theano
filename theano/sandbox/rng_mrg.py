@@ -1293,9 +1293,10 @@ class MRG_RandomStreams(object):
             inferred from the dtype of low and high, but will be at
             least as precise as floatX.
         nstreams:
-            ? TODO
+            The number of streams to use for sampling the random numbers
+            in parallel.
         broadcastable:
-            A tuple of booleans defining the broadcastable pattern of
+            A tuple of booleans defining the broadcastable pattern of the
             output tensor.
         """
         if not (isinstance(broadcastable, tuple) or broadcastable is None):
@@ -1421,18 +1422,13 @@ class MRG_RandomStreams(object):
                              " should be a tuple.")
 
         pvals = as_tensor_variable(pvals)
-        if size is not None:
-            if any([isinstance(i, integer_types) and i <= 0 for i in size]):
-                raise ValueError(
-                    "The specified size contains a dimension with value <= 0",
-                    size)
 
         if size is not None:
-            raise ValueError(
+            raise NotImplementedError(
                 "Provided a size argument to MRG_RandomStreams.multinomial, "
                 "which does not use the size argument.")
         if ndim is not None:
-            raise ValueError(
+            raise NotImplementedError(
                 "Provided an ndim argument to MRG_RandomStreams.multinomial, "
                 "which does not use the ndim argument.")
         if pvals.ndim == 2:
