@@ -920,6 +920,47 @@ class T_MRG(unittest.TestCase):
             self.assertRaises(ValueError, R.normal, size)
 
 
+class T_MRG_BC(unittest.TestCase):
+
+    def test_multinomial_broadcastable(self):
+        bflags = (False, True)
+        shp = (100, 100)
+
+        R = MRG_RandomStreams(234, use_cuda=False)
+        m = theano.tensor.ones(shp)
+        rndv = R.multinomial(pvals=m,
+                             broadcastable=bflags)
+        self.assertEquals(bflags, rndv.broadcastable)
+
+    def test_uniform_broadcastable(self):
+        bflags = (False, True)
+        shp = (100, 100)
+
+        R = MRG_RandomStreams(234, use_cuda=False)
+        rndv = R.uniform(size=shp,
+                         broadcastable=bflags)
+        self.assertEquals(bflags, rndv.broadcastable)
+
+    def test_normal_broadcastable(self):
+        bflags = (False, True)
+        shp = (100, 100)
+
+        R = MRG_RandomStreams(234, use_cuda=False)
+        rndv = R.normal(size=shp,
+                         broadcastable=bflags)
+        self.assertEquals(bflags, rndv.broadcastable)
+
+    def test_binomial_broadcastable(self):
+        bflags = (False, True)
+        shp = (100, 100)
+
+        R = MRG_RandomStreams(234, use_cuda=False)
+        rndv = R.normal(size=shp,
+                        broadcastable=bflags)
+        self.assertEquals(bflags, rndv.broadcastable)
+
+
+
 def test_multiple_rng_aliasing():
     """
     Test that when we have multiple random number generators, we do not alias
