@@ -947,7 +947,7 @@ class T_MRG_BC(unittest.TestCase):
 
         R = MRG_RandomStreams(234, use_cuda=False)
         rndv = R.normal(size=shp,
-                         broadcastable=bflags)
+                        broadcastable=bflags)
         self.assertEquals(bflags, rndv.broadcastable)
 
     def test_binomial_broadcastable(self):
@@ -958,7 +958,6 @@ class T_MRG_BC(unittest.TestCase):
         rndv = R.normal(size=shp,
                         broadcastable=bflags)
         self.assertEquals(bflags, rndv.broadcastable)
-
 
 
 def test_multiple_rng_aliasing():
