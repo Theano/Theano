@@ -1295,6 +1295,7 @@ class LocalOptGroup(LocalOptimizer):
         def apply_mult_opts(node, fgraph, multiple_opts=False, prev_repl=None):
             opts = self.track_map[type(node.op)] + self.track_map[node.op] + self.track_map[None]
             repl = prev_repl
+            new_repl = None
             for opt in opts:
                 opt_start = time.time()
                 repl = opt.transform(node)
@@ -1312,7 +1313,9 @@ class LocalOptGroup(LocalOptimizer):
                     # Ensuring not the input of graph
                     assert repl[0].owner
                     new_node = repl[0].owner
-                    repl = apply_mult_opts(new_node, fgraph, True, repl)
+                    new_repl = apply_mult_opts(new_node, fgraph, True, repl)
+            if new_repl:
+                repl = new_repl
             return repl
 
         node_start = time.time()
@@ -1355,6 +1358,9 @@ class LocalOptGroup(LocalOptimizer):
             print(blanc, "--- The Optimizer wasn't successful ---", file=stream)
 
         print(file=stream)
+
+    def merge_profile(prof1, prof2):
+        raise NotImplementedError
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print("%s%s id=%i" % (

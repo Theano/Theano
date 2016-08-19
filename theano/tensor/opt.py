@@ -1677,6 +1677,7 @@ def local_fill_sink(node):
 register_canonicalize(local_fill_sink)
 
 
+@register_canonicalize("fast_compile")
 @register_specialize
 @register_stabilize
 # @register_canonicalize  # We make full pass after the canonizer phase.
