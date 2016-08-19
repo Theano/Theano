@@ -333,6 +333,10 @@ class SeqOptimizer(Optimizer, list):
                 print(blanc, '  %.6fs - %s' % (t, opt), file=stream)
 
             if sub_profs[i]:
+                if isinstance(opts[i], MergeOptimizer):
+                    if len(sub_profs[i]) == 8:
+                        sub_profs[i] = sub_profs[i][:-1]
+                    assert len(sub_profs[i]) == 7
                 opts[i].print_profile(stream, sub_profs[i],
                                       level=level + 1)
         print(file=stream)
@@ -888,6 +892,7 @@ class MergeOptimizer(Optimizer):
 
     @staticmethod
     def print_profile(stream, prof, level=0):
+
         (nb_fail, replace_time, validate_time,
          callback_time, callbacks_time, nb_merged, nb_constant) = prof
 
@@ -1355,7 +1360,7 @@ class LocalOptGroup(LocalOptimizer):
                     # Skip opt that have 0 times, they probably wasn't even tried.
                     print(blanc + "  ", '  %.3fs - %s' % (t, o), file=stream)
         else:
-            print(blanc, "--- The Optimizer wasn't successful ---", file=stream)
+            print(blanc, " The Optimizer wasn't successful ", file=stream)
 
         print(file=stream)
 
@@ -2057,7 +2062,8 @@ class TopoOptimizer(NavigatorOptimizer):
                                         lopt.time_nodes,
                                         lopt.process_count,
                                         lopt.applied_true,
-                                        lopt.node_created))
+                                        lopt.node_created),
+                               level=level + 1)
 
     def __str__(self):
         return getattr(self, '__name__',
@@ -2590,6 +2596,10 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     print(blanc, "merge not implemented for ", o)
             for o, prof in zip(opt.cleanup_optimizers, cleanup_sub_profs[i]):
                 try:
+                    if isinstance(o, MergeOptimizer):
+                        if len(prof) == 8:
+                            prof = prof[:-1]
+                            assert len(prof) == 7
                     o.print_profile(stream, prof, level + 2)
                 except NotImplementedError:
                     print(blanc, "merge not implemented for ", o)
