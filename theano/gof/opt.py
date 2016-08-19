@@ -1312,7 +1312,7 @@ class LocalOptGroup(LocalOptimizer):
                     # Ensuring not the input of graph
                     assert repl[0].owner
                     new_node = repl[0].owner
-                    apply_mult_opts(new_node, fgraph, True, repl)
+                    repl = apply_mult_opts(new_node, fgraph, True, repl)
             return repl
 
         node_start = time.time()
@@ -2048,10 +2048,10 @@ class TopoOptimizer(NavigatorOptimizer):
         print(blanc, "  callback_time", callback_time, file=stream)
         if isinstance(lopt, LocalOptGroup):
             lopt.print_profile(stream, (lopt.time_opts,
-                                            lopt.time_nodes,
-                                            lopt.process_count,
-                                            lopt.applied_true,
-                                            lopt.node_created))
+                                        lopt.time_nodes,
+                                        lopt.process_count,
+                                        lopt.applied_true,
+                                        lopt.node_created))
 
     def __str__(self):
         return getattr(self, '__name__',

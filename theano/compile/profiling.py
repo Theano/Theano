@@ -52,6 +52,7 @@ def _atexit_print_fn():
         destination_file = sys.stdout
     else:
         destination_file = open(config.profiling.destination, 'w')
+
     # Reverse sort in the order of compile+exec time
     for ps in sorted(_atexit_print_list,
                      key=lambda a:a.compile_time + a.fct_call_time)[::-1]:
