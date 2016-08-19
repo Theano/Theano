@@ -41,7 +41,7 @@ def flatten(l):
     return rval
 
 
-def contains_nan(arr, node=None):
+def contains_nan(arr, node=None, var=None):
     """
     Test whether a numpy.ndarray contains any `np.nan` values.
 
@@ -50,6 +50,7 @@ def contains_nan(arr, node=None):
     arr : np.ndarray or output of any Theano op
     node : None or an Apply instance.
         If arr is the output of a Theano op, the node associated to it.
+    var : The Theano symbolic variable.
 
     Returns
     -------
@@ -67,6 +68,8 @@ def contains_nan(arr, node=None):
     if isinstance(arr, theano.gof.type.CDataType._cdata_type):
         return False
     elif isinstance(arr, np.random.mtrand.RandomState):
+        return False
+    elif var and getattr(var.tag, 'is_rng', False):
         return False
     elif isinstance(arr, slice):
         return False
@@ -86,7 +89,7 @@ def contains_nan(arr, node=None):
     return np.isnan(np.min(arr))
 
 
-def contains_inf(arr, node=None):
+def contains_inf(arr, node=None, var=None):
     """
     Test whether a numpy.ndarray contains any `np.inf` values.
 
@@ -95,6 +98,7 @@ def contains_inf(arr, node=None):
     arr : np.ndarray or output of any Theano op
     node : None or an Apply instance.
         If the output of a Theano op, the node associated to it.
+    var : The Theano symbolic variable.
 
     Returns
     -------
@@ -113,6 +117,8 @@ def contains_inf(arr, node=None):
     if isinstance(arr, theano.gof.type.CDataType._cdata_type):
         return False
     elif isinstance(arr, np.random.mtrand.RandomState):
+        return False
+    elif var and getattr(var.tag, 'is_rng', False):
         return False
     elif isinstance(arr, slice):
         return False
@@ -235,11 +241,11 @@ class NanGuardMode(Mode):
             error = False
             sio = StringIO()
             if nan_is_error:
-                if contains_nan(value, nd):
+                if contains_nan(value, nd, var):
                     print('NaN detected', file=sio)
                     error = True
             if inf_is_error:
-                if contains_inf(value, nd):
+                if contains_inf(value, nd, var):
                     print('Inf detected', file=sio)
                     error = True
             if big_is_error:
