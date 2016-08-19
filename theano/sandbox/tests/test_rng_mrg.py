@@ -916,7 +916,7 @@ class T_MRG(unittest.TestCase):
 
             self.assertRaises(ValueError, R.uniform, size)
             self.assertRaises(ValueError, R.binomial, size)
-            self.assertRaises(ValueError, R.multinomial, size, 1, [])
+            self.assertRaises(NotImplementedError, R.multinomial, size, 1, [])
             self.assertRaises(ValueError, R.normal, size)
 
 
