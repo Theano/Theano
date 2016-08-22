@@ -1,3 +1,4 @@
+
 from __future__ import absolute_import, print_function, division
 import unittest
 import numpy
@@ -329,6 +330,46 @@ class TestCorrConv2d(BaseTestConv2d):
                            provide_shape=provide_shape, border_mode=b,
                            filter_flip=flip, target_op=CorrMM_gradInputs,
                            check_trace=True, filter_dilation=fd)
+
+class TestAbstractConvNoOptim(BaseTestConv2d):
+    @classmethod
+    def setup_class(cls):
+        if theano.config.blas.ldflags == "":
+            raise SkipTest()
+        BaseTestConv2d.setup_class()
+        cls.inputs_shapes = [(8, 1, 6, 6)]
+        cls.filters_shapes = [(5, 1, 2, 2)]
+        cls.subsamples = [(1, 1), (2, 2)]
+        cls.filters_dilations = [(1, 1), (1, 2), (2, 1)]
+        cls.border_modes = ["valid", "full"]
+        cls.filter_flip = [True]
+        cls.provide_shape = [False]
+
+    def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1)):
+        o = self.get_output_shape(i, f, s, b, fd)
+        if (not theano.config.blas.ldflags or
+                not theano.config.cxx or
+                theano.config.mode == "FAST_COMPILE"):
+            raise SkipTest("Need blas to test conv2d")
+
+        mode = theano.Mode(optimizer=None)
+        self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
+                     verify_grad=True, provide_shape=provide_shape,
+                     border_mode=b, filter_flip=flip,
+                     target_op=None, check_trace=True,
+                     filter_dilation=fd, mode=mode)
+        self.run_gradweight(inputs_shape=i, filters_shape=f,
+                            output_shape=o, subsample=s, verify_grad=True,
+                            provide_shape=provide_shape, border_mode=b,
+                            filter_flip=flip, target_op=None,
+                            check_trace=True, filter_dilation=fd,
+                            mode=mode)
+        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                           output_shape=o, subsample=s, verify_grad=True,
+                           provide_shape=provide_shape, border_mode=b,
+                           filter_flip=flip, target_op=None,
+                           check_trace=True, filter_dilation=fd,
+                           mode=mode)
 
 
 class TestCpuConv2d(BaseTestConv2d):
