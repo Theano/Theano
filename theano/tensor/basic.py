@@ -4591,7 +4591,7 @@ class Reshape(Op):
             return Op.c_code(self, node, name, inputs, outputs, sub)
 
 
-def reshape(x, newshape, ndim=None, name=None):
+def reshape(x, newshape, ndim=None):
     if ndim is None:
         newshape = as_tensor_variable(newshape)
         if newshape.ndim != 1:
@@ -4607,7 +4607,7 @@ def reshape(x, newshape, ndim=None, name=None):
                 "to know what the number of dimensions of the reshaped "
                 "variable will be. You can provide the 'ndim' keyword "
                 "argument to 'reshape' to avoid this problem." % newshape)
-    op = Reshape(ndim, name)
+    op = Reshape(ndim)
     rval = op(x, newshape)
     return rval
 
