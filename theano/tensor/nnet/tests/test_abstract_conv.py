@@ -331,6 +331,7 @@ class TestCorrConv2d(BaseTestConv2d):
                            filter_flip=flip, target_op=CorrMM_gradInputs,
                            check_trace=True, filter_dilation=fd)
 
+
 class TestAbstractConvNoOptim(BaseTestConv2d):
     @classmethod
     def setup_class(cls):
