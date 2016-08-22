@@ -643,7 +643,7 @@ def local_gpua_contiguous(op, context_name, inputs, outputs):
 @op_lifter([tensor.Reshape])
 @register_opt2([tensor.Reshape], 'fast_compile')
 def local_gpua_reshape(op, context_name, inputs, outputs):
-    res = GpuReshape(op.ndim, None)
+    res = GpuReshape(op.ndim)
     return res
 
 
@@ -662,7 +662,7 @@ def local_gpua_flatten(op, context_name, inputs, outputs):
     if op.outdim != 1:
         shp = [inputs[0].shape[i] for i in range(op.outdim - 1)]
     shp += [-1]
-    res = GpuReshape(op.outdim, None)
+    res = GpuReshape(op.outdim)
     o = res(inputs[0], theano.tensor.as_tensor_variable(shp))
     return o
 
