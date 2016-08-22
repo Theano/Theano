@@ -89,7 +89,7 @@ class BaseTestConv2d:
                               (1, 1, 2, 3), (4, 1, 1, 3), (4, 5, 3, 2)]
         cls.subsamples = [(1, 1), (2, 2), (2, 4)]
         cls.filters_dilations = [(1, 1), (1, 2), (2, 1)]
-        cls.border_modes = ["valid", "full", (0, 0), (1, 1), (5, 5), (5, 2)]
+        cls.border_modes = ["valid", "half", "full", (0, 0), (1, 1), (5, 5), (5, 2)]
         cls.filter_flip = [True, False]
         cls.provide_shape = [True, False]
         cls.shared = staticmethod(theano.compile.shared)
@@ -100,6 +100,9 @@ class BaseTestConv2d:
                        (filters_shape[3] - 1) * filter_dilation[1] + 1)
         if border_mode == "valid":
             border_mode = (0, 0)
+        if border_mode == "half":
+            border_mode = (dil_filters[0] // 2,
+                           dil_filters[1] // 2)
         if border_mode == "full":
             border_mode = (dil_filters[0] - 1,
                            dil_filters[1] - 1)
@@ -292,7 +295,7 @@ class BaseTestConv2d:
             for fd in self.filters_dilations:
                 for s in self.subsamples:
                     for b in self.border_modes:
-                        yield (self.tcase, i, f, s, db, dflip,
+                        yield (self.tcase, i, f, s, b, dflip,
                                dprovide_shape, fd)
             for flip in self.filter_flip:
                 yield (self.tcase, i, f, ds, db, flip, dprovide_shape)
