@@ -201,7 +201,7 @@ class test_dimshuffle_lift(unittest.TestCase):
         x, _, _ = inputs()
         e = ds(x, (0, 1))
         g = FunctionGraph([x], [e])
-        self.assertTrue(str(g) == "[DimShuffle{0,1}(x)]")
+        self.assertTrue(str(g) == "[InplaceDimShuffle{0,1}(x)]")
         dimshuffle_lift.optimize(g)
         self.assertTrue(str(g) == "[x]")
         # Check stacktrace was copied over correctly after opt was applied
@@ -215,9 +215,9 @@ class test_dimshuffle_lift(unittest.TestCase):
         ds_z = ds(z, (2, 1, 0))  # usefull
         ds_u = ds(u, ('x'))  # usefull
         g = FunctionGraph([x, y, z, u], [ds_x, ds_y, ds_z, ds_u])
-        self.assertTrue(str(g) == "[DimShuffle{0,x}(x), DimShuffle{2,1,0}(y), DimShuffle{2,1,0}(z), DimShuffle{x}(TensorConstant{1})]")
+        self.assertTrue(str(g) == "[InplaceDimShuffle{0,x}(x), InplaceDimShuffle{2,1,0}(y), InplaceDimShuffle{2,1,0}(z), InplaceDimShuffle{x}(TensorConstant{1})]")
         dimshuffle_lift.optimize(g)
-        self.assertTrue(str(g) == "[x, y, DimShuffle{2,1,0}(z), DimShuffle{x}(TensorConstant{1})]")
+        self.assertTrue(str(g) == "[x, y, InplaceDimShuffle{2,1,0}(z), InplaceDimShuffle{x}(TensorConstant{1})]")
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
 
@@ -237,10 +237,11 @@ def test_local_useless_dimshuffle_in_reshape():
                       [reshape_dimshuffle_vector, reshape_dimshuffle_mat,
                        reshape_dimshuffle_row, reshape_dimshuffle_col])
 
-    assert_true(str(g) == "[Reshape{1}(DimShuffle{x,0}(vector), Shape(vector)), "
-                          "Reshape{2}(DimShuffle{x,0,x,1}(mat), Shape(mat)), "
-                          "Reshape{2}(DimShuffle{1,x}(row), Shape(row)), "
-                          "Reshape{2}(DimShuffle{0}(col), Shape(col))]")
+    print(str(g))
+    assert_true(str(g) == "[Reshape{1}(InplaceDimShuffle{x,0}(vector), Shape(vector)), "
+                          "Reshape{2}(InplaceDimShuffle{x,0,x,1}(mat), Shape(mat)), "
+                          "Reshape{2}(InplaceDimShuffle{1,x}(row), Shape(row)), "
+                          "Reshape{2}(InplaceDimShuffle{0}(col), Shape(col))]")
     useless_dimshuffle_in_reshape = out2in(local_useless_dimshuffle_in_reshape)
     useless_dimshuffle_in_reshape.optimize(g)
     assert_true(str(g) == "[Reshape{1}(vector, Shape(vector)), "
@@ -3762,15 +3763,15 @@ class Test_local_canonicalize_alloc(unittest.TestCase):
                                    "TensorConstant{2})]"))
 
         alloc_lift.optimize(g)
-        self.assertTrue(str(g) == "[DimShuffle{x,0,1}"
+        self.assertTrue(str(g) == "[InplaceDimShuffle{x,0,1}"
                                   "(Alloc(<TensorType(float64, vector)>, "
                                   "TensorConstant{3}, "
                                   "TensorConstant{2})), "
 
-                                  "DimShuffle{x,x}"
+                                  "InplaceDimShuffle{x,x}"
                                   "(<TensorType(float64, scalar)>), "
 
-                                  "DimShuffle{x,0,1}"
+                                  "InplaceDimShuffle{x,0,1}"
                                   "(Alloc(<TensorType(float64, matrix)>, "
                                   "TensorConstant{1}, "
                                   "TensorConstant{2})), "
@@ -6264,9 +6265,9 @@ class Test_local_reshape_to_dimshuffle(unittest.TestCase):
 
         reshape_lift.optimize(g)
         useless_reshape.optimize(g)
-        self.assertTrue(str(g) == "[DimShuffle{x,0}"
+        self.assertTrue(str(g) == "[InplaceDimShuffle{x,0}"
                                   "(<TensorType(float64, vector)>), "
-                                  "DimShuffle{x,0,x,1,x,x}"
+                                  "InplaceDimShuffle{x,0,x,1,x,x}"
                                   "(Reshape{2}(<TensorType(float64, matrix)>, "
                                   "TensorConstant{[5 6]}))]")
 

@@ -398,6 +398,9 @@ def local_gpu_dimshuffle_0(node):
         input, = node.inputs
         if input.owner and isinstance(input.owner.op, HostFromGpu):
             # move the add to a GpuAdd
+            if 'inplace' in node.op._props_dict():
+                import pdb
+                pdb.set_trace()
             new_op = GpuDimShuffle(**node.op._props_dict())
             return [host_from_gpu(new_op(as_cuda_ndarray_variable(input)))]
     if isinstance(node.op, GpuFromHost):
@@ -994,8 +997,7 @@ def local_gpu_reshape(node):
         if host_input.owner and \
            isinstance(host_input.owner.op, tensor.Reshape):
             x, shp = host_input.owner.inputs
-            gpu_reshape = GpuReshape(**host_input.owner.op._props_dict())(as_cuda_ndarray_variable(x),
-                                                shp)
+            gpu_reshape = GpuReshape(**host_input.owner.op._props_dict())(as_cuda_ndarray_variable(x), shp)
             if gpu_reshape.broadcastable != node.outputs[0].broadcastable:
                 # this can happen as we always return False for all broadcast
                 # dim in GpuReshape but not for Reshape
@@ -1130,7 +1132,7 @@ def local_gpu_advanced_incsubtensor1(node):
 
                 gpu_op = tensor.AdvancedIncSubtensor1(**node.op._props_dict())
             else:
-                gpu_op = GPUAdvancedIncSubtensor1_dev20(**node.op._props_dict())
+                gpu_op = theano.sandbox.cuda.basic_ops.GPUAdvancedIncSubtensor1_dev20(**node.op._props_dict())
             return [gpu_op(as_cuda_ndarray_variable(x),
                            as_cuda_ndarray_variable(y), *coords)]
 
@@ -1180,7 +1182,6 @@ def local_gpu_incsubtensor(node):
         host_output = node.inputs[0]
         if host_output.owner and \
            type(host_output.owner.op) == tensor.IncSubtensor:
-            incsubt = host_output.owner.op
             x, y = host_output.owner.inputs[0:2]
             coords = host_output.owner.inputs[2:]
             if x.dtype != "float32":
@@ -1189,10 +1190,9 @@ def local_gpu_incsubtensor(node):
                 # The IncSubtensor upcast to float32 y, so we do it
                 # explicitly to move it to the GPU.
                 y = y.astype('float32')
-            ret = GpuIncSubtensor(**node.op._props_dict())(
-                    as_cuda_ndarray_variable(x),
-                    as_cuda_ndarray_variable(y),
-                    *coords)
+            ret = GpuIncSubtensor(**node.op._props_dict())(as_cuda_ndarray_variable(x),
+                                                           as_cuda_ndarray_variable(y),
+                                                           *coords)
             ret.tag.nan_guard_mode_check = getattr(
                 host_output.tag, 'nan_guard_mode_check', True)
             return [ret]
@@ -1219,8 +1219,7 @@ def local_gpu_incsubtensor(node):
                 y = tensor.cast(y, 'float32')
             gpu_y = as_cuda_ndarray_variable(y)
         if go_gpu:
-            ret = GpuIncSubtensor(**node.op._props_dict())(
-                    gpu_x, gpu_y, *coords)
+            ret = GpuIncSubtensor(**node.op._props_dict())(gpu_x, gpu_y, *coords)
 
             val = getattr(node.outputs[0].tag, 'nan_guard_mode_check', True)
             ret.tag.nan_guard_mode_check = val

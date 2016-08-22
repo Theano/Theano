@@ -309,10 +309,13 @@ class GpuDimShuffle(GpuOp):
 
     check_broadcast = False
 
-    def __init__(self, input_broadcastable, new_order):
+    __props__ = ("input_broadcastable", "inplace", "new_order")
+
+    def __init__(self, input_broadcastable, inplace, new_order):
         input_broadcastable = tuple(input_broadcastable)
         self.input_broadcastable = input_broadcastable
         self.new_order = tuple(new_order)
+        self.inplace = int(inplace)
 
         for i, b in enumerate(input_broadcastable):
             if i not in new_order:
