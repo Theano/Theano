@@ -643,10 +643,7 @@ def local_gpua_contiguous(op, context_name, inputs, outputs):
 @op_lifter([tensor.Reshape])
 @register_opt2([tensor.Reshape], 'fast_compile')
 def local_gpua_reshape(op, context_name, inputs, outputs):
-    name = op.name
-    if name:
-        name = 'Gpu' + name
-    res = GpuReshape(op.ndim, op.name)
+    res = GpuReshape(op.ndim)
     return res
 
 
