@@ -2207,6 +2207,9 @@ class GpuDownsampleFactorMax(GpuOp):
     Implement downsample with max on the gpu.
 
     """
+
+    __props__ = ('ds', 'ignore_border')
+
     def __init__(self, ds, ignore_border=False):
         self.ds = tuple(ds)
         self.ignore_border = ignore_border

@@ -121,7 +121,6 @@ class GpuFromHost(GpuOp):
 
     check_input = False
 
-    __props__ = ()
 
     def make_node(self, x):
         if not isinstance(x.type, tensor.TensorType):
@@ -178,8 +177,6 @@ class GpuElemwise(GpuOp):
 
     """
 
-    __props__ = ("scalar_op", "inplace_pattern", "sync", )
-
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
@@ -230,6 +227,12 @@ class GpuElemwise(GpuOp):
         # don't change a code that has already been  computed for this object
         assert h == getattr(self, '_hashval', h)
         self._hashval = h
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.scalar_op == other.scalar_op and
+                self.inplace_pattern == other.inplace_pattern and
+                self.sync == other.sync)
 
     def __hash__(self):
         return self._hashval
@@ -309,9 +312,9 @@ class GpuDimShuffle(GpuOp):
 
     check_broadcast = False
 
-    __props__ = ("input_broadcastable", "inplace", "new_order")
+    __props__ = ("input_broadcastable", "new_order")
 
-    def __init__(self, input_broadcastable, inplace, new_order):
+    def __init__(self, input_broadcastable, new_order):
         input_broadcastable = tuple(input_broadcastable)
         self.input_broadcastable = input_broadcastable
         self.new_order = tuple(new_order)

@@ -140,7 +140,11 @@ class DimShuffle(Op):
         self.input_broadcastable = input_broadcastable
         new_order = tuple(new_order)
         self.new_order = new_order
-        self.inplace = inplace
+        if inplace is True:
+            self.inplace = inplace
+            self._props_dict().pop('inplace')
+        else:
+            raise ValueError("DimShuffle is inplace by default and hence the inplace for DimShuffle must be true")
 
         for i, j in enumerate(new_order):
             if j != 'x':
@@ -503,8 +507,6 @@ second dimension
 
     """
 
-    __props__ = ("scalar_op", "inplace_pattern")
-
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
                  nfunc_spec=None, openmp=None):
         if inplace_pattern is None:
@@ -800,7 +802,7 @@ second dimension
                 # dimensions
                 res = theano.tensor.constant(numpy.asarray(r.data),
                                              dtype=r.type.dtype)
-                return DimShuffle((), ['x'] * nd, inplace=False)(res)
+                return DimShuffle((), ['x'] * nd)(res)
 
             new_r = Elemwise(node.op, {})(
                 *[transform(ipt) for ipt in node.inputs])

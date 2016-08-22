@@ -561,8 +561,7 @@ def local_dimshuffle_lift(node):
         new_inputs = []
         for inp in inode.inputs:
             new_inp = op.__class__(inp.type.broadcastable,
-                                   op.new_order,
-                                   op.inplace)(inp)
+                                   op.new_order)(inp)
             new_inputs.append(apply_local_dimshuffle_lift(new_inp))
         copy_stack_trace(node.outputs[0], new_inputs)
         ret = inode.op(*new_inputs, **dict(return_list=True))
@@ -570,14 +569,12 @@ def local_dimshuffle_lift(node):
     if inode and isinstance(inode.op, DimShuffle):
         new_order = [x == 'x' and 'x' or inode.op.new_order[x] for x in
                      new_order]
-        inplace = op.inplace and inode.op.inplace
         input = inode.inputs[0]
 
     if is_dimshuffle_useless(new_order, input):
         return [input]
     elif inode and isinstance(inode.op, DimShuffle):
-        ret = op.__class__(input.type.broadcastable, new_order,
-                           inplace)(input)
+        ret = op.__class__(input.type.broadcastable, new_order)(input)
         ret = apply_local_dimshuffle_lift(ret)
         copy_stack_trace(node.outputs[0], ret)
         return [ret]

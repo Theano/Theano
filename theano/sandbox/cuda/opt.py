@@ -288,7 +288,7 @@ def local_gpu_elemwise_0(node):
                     new_op = GpuElemwise(erfcx_gpu)
                 else:
                     try:
-                        new_op = GpuElemwise(**node.op._props_dict())
+                        new_op = GpuElemwise(node.op.scalar_op)
                     except SupportCodeError:
                         # This happens when scalar_op requires support code
                         return False
@@ -398,9 +398,6 @@ def local_gpu_dimshuffle_0(node):
         input, = node.inputs
         if input.owner and isinstance(input.owner.op, HostFromGpu):
             # move the add to a GpuAdd
-            if 'inplace' in node.op._props_dict():
-                import pdb
-                pdb.set_trace()
             new_op = GpuDimShuffle(**node.op._props_dict())
             return [host_from_gpu(new_op(as_cuda_ndarray_variable(input)))]
     if isinstance(node.op, GpuFromHost):
@@ -1130,7 +1127,7 @@ def local_gpu_advanced_incsubtensor1(node):
             compute_capability = device_properties(active_device_no)['major']
             if (compute_capability < 2 or y.ndim != 2 or x.ndim != 2):
 
-                gpu_op = tensor.AdvancedIncSubtensor1(**node.op._props_dict())
+                gpu_op = GpuAdvancedIncSubtensor1(set_instead_of_inc=set_instead_of_inc)
             else:
                 gpu_op = theano.sandbox.cuda.basic_ops.GPUAdvancedIncSubtensor1_dev20(**node.op._props_dict())
             return [gpu_op(as_cuda_ndarray_variable(x),
@@ -1915,7 +1912,7 @@ def local_gpu_downsample_factor_max(node):
         if (pad) != (0, 0) or node.op.mode != 'max' or stride != ws:
             return
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            gpu_ds = GpuDownsampleFactorMax(node.op.ds, node.op.ignore_border)
+            gpu_ds = GpuDownsampleFactorMax(**node.op._props_dict())
             return [host_from_gpu(gpu_ds(x.owner.inputs[0]))]
 
 
