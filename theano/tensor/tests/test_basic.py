@@ -6365,6 +6365,15 @@ def test_var():
     f = function([a], var(a, axis=2))
     assert numpy.allclose(numpy.var(a_val, axis=2), f(a_val))
 
+    f = function([a], var(a, axis=0, ddof=0))
+    assert numpy.allclose(numpy.var(a_val, axis=0, ddof=0), f(a_val))
+
+    f = function([a], var(a, axis=1,ddof=1))
+    assert numpy.allclose(numpy.var(a_val, axis=1,ddof=1), f(a_val))
+
+    f = function([a], var(a, axis=2, ddof=1))
+    assert numpy.allclose(numpy.var(a_val, axis=2, ddof=1), f(a_val))
+
 
 class T_sum(unittest.TestCase):
     def test_sum_overflow(self):
