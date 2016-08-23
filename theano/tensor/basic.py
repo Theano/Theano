@@ -2298,12 +2298,15 @@ pprint.assign(fill, printing.FunctionPrinter('fill'))
 
 
 @constructor
-def ones_like(model, dtype=None):
+def ones_like(model, dtype=None, opt=False):
     """equivalent of numpy.ones_like
     Parameters
     ----------
     model : tensor
     dtype : data-type, optional
+    opt : If True, we will return a constant instead of a graph when possible.
+          Useful for Theano optimization, not for user building a graph as this
+          have the consequence that model isn't always in the graph.
 
     Returns
     -------
@@ -2312,17 +2315,22 @@ def ones_like(model, dtype=None):
     """
     if dtype is None:
         dtype = model.type.dtype
-    ret = fill(model, constant(1.0, dtype=dtype))
-    return ret
+    ret = constant(1.0, dtype=dtype)
+    if opt and ret.type == model.type:
+        return ret
+    return fill(model, ret)
 
 
 @constructor
-def zeros_like(model, dtype=None):
+def zeros_like(model, dtype=None, opt=False):
     """equivalent of numpy.zeros_like
     Parameters
     ----------
     model : tensor
     dtype : data-type, optional
+    opt : If True, we will return a constant instead of a graph when possible.
+          Useful for Theano optimization, not for user building a graph as this
+          have the consequence that model isn't always in the graph.
 
     Returns
     -------
@@ -2332,7 +2340,10 @@ def zeros_like(model, dtype=None):
 
     if dtype is None:
         dtype = model.type.dtype
-    return fill(model, constant(0.0, dtype=dtype))
+    ret = constant(0.0, dtype=dtype)
+    if opt and ret.type == model.type:
+        return ret
+    return fill(model, ret)
 
 
 def zeros(shape, dtype=None):
