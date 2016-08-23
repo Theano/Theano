@@ -5024,12 +5024,12 @@ def local_useless_elemwise_comparison(node):
         return
 
     def zeros_like(model, dtype):
-        ret = T.zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)
+        ret = T.zeros_like(model, dtype=node.outputs[0].dtype)
         ret = pre_greedy_local_optimizer([local_useless_fill], ret)
         return ret
 
     def ones_like(model, dtype):
-        ret = T.ones_like(node.inputs[0], dtype=node.outputs[0].dtype)
+        ret = T.ones_like(model, dtype=node.outputs[0].dtype)
         ret = pre_greedy_local_optimizer([local_useless_fill], ret)
         return ret
 
