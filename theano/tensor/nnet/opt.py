@@ -10,6 +10,8 @@ from theano.gof.opt import copy_stack_trace
 
 from theano.tensor.nnet.corr import (
     CorrMM, CorrMM_gradInputs, CorrMM_gradWeights)
+from theano.tensor.nnet.corr3d import (
+    Corr3dMM, Corr3dMM_gradInputs, Corr3dMM_gradWeights)
 from theano.tensor.nnet.blocksparse import (
     SparseBlockGemv,
     SparseBlockOuter,
@@ -90,6 +92,28 @@ def local_abstractconv_gemm(node):
     return [rval]
 
 
+@local_optimizer([AbstractConv3d])
+def local_abstractconv3d_gemm(node):
+    if theano.config.cxx == "" or not theano.config.blas.ldflags:
+        return
+    if not isinstance(node.op, AbstractConv3d):
+        return None
+    img, kern = node.inputs
+    if not isinstance(img.type, TensorType) or \
+       not isinstance(kern.type, TensorType):
+        return None
+
+    # need to flip the kernel if necessary
+    if node.op.filter_flip:
+        kern = kern[:, :, ::-1, ::-1, ::-1]
+    rval = Corr3dMM(border_mode=node.op.border_mode,
+                    subsample=node.op.subsample,
+                    filter_dilation=node.op.filter_dilation)(img, kern)
+    copy_stack_trace(node.outputs[0], rval)
+
+    return [rval]
+
+
 @local_optimizer([AbstractConv2d_gradWeights])
 def local_abstractconv_gradweight_gemm(node):
     if theano.config.cxx == "" or not theano.config.blas.ldflags:
@@ -115,6 +139,31 @@ def local_abstractconv_gradweight_gemm(node):
     return [rval]
 
 
+@local_optimizer([AbstractConv3d_gradWeights])
+def local_abstractconv3d_gradweight_gemm(node):
+    if theano.config.cxx == "" or not theano.config.blas.ldflags:
+        return
+    if not isinstance(node.op, AbstractConv3d_gradWeights):
+        return None
+    img, topgrad, shape = node.inputs
+    if not isinstance(img.type, TensorType) or \
+       not isinstance(topgrad.type, TensorType):
+        return None
+
+    rval = Corr3dMM_gradWeights(border_mode=node.op.border_mode,
+                                subsample=node.op.subsample,
+                                filter_dilation=node.op.filter_dilation)(img, topgrad, shape)
+    copy_stack_trace(node.outputs[0], rval)
+
+    # need to flip the kernel if necessary
+    if node.op.filter_flip:
+        rval = rval[:, :, ::-1, ::-1, ::-1]
+    rval = theano.tensor.patternbroadcast(rval, node.outputs[0].broadcastable)
+    copy_stack_trace(node.outputs[0], rval)
+
+    return [rval]
+
+
 @local_optimizer([AbstractConv2d_gradInputs])
 def local_abstractconv_gradinputs_gemm(node):
     if theano.config.cxx == "" or not theano.config.blas.ldflags:
@@ -133,6 +182,29 @@ def local_abstractconv_gradinputs_gemm(node):
                              subsample=node.op.subsample,
                              filter_dilation=node.op.filter_dilation)(kern, topgrad,
                                                                       shape)
+    copy_stack_trace(node.outputs[0], rval)
+
+    return [rval]
+
+
+@local_optimizer([AbstractConv3d_gradInputs])
+def local_abstractconv3d_gradinputs_gemm(node):
+    if theano.config.cxx == "" or not theano.config.blas.ldflags:
+        return
+    if not isinstance(node.op, AbstractConv3d_gradInputs):
+        return None
+    kern, topgrad, shape = node.inputs
+    if not isinstance(kern.type, TensorType) or \
+       not isinstance(topgrad.type, TensorType):
+        return None
+
+    # need to flip the kernel if necessary
+    if node.op.filter_flip:
+        kern = kern[:, :, ::-1, ::-1, ::-1]
+    rval = Corr3dMM_gradInputs(border_mode=node.op.border_mode,
+                               subsample=node.op.subsample,
+                               filter_dilation=node.op.filter_dilation)(kern, topgrad,
+                                                                        shape)
     copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
@@ -480,6 +552,14 @@ conv_groupopt.register('local_abstractconv_gradweight_gemm',
                        'conv_gemm', 'fast_compile', 'fast_run')
 conv_groupopt.register('local_abstractconv_gradinputs_gemm',
                        local_abstractconv_gradinputs_gemm, 30,
+                       'conv_gemm', 'fast_compile', 'fast_run')
+conv_groupopt.register('local_abstractconv3d_gemm', local_abstractconv3d_gemm, 30,
+                       'conv_gemm', 'fast_compile', 'fast_run')
+conv_groupopt.register('local_abstractconv3d_gradweight_gemm',
+                       local_abstractconv3d_gradweight_gemm, 30,
+                       'conv_gemm', 'fast_compile', 'fast_run')
+conv_groupopt.register('local_abstractconv3d_gradinputs_gemm',
+                       local_abstractconv3d_gradinputs_gemm, 30,
                        'conv_gemm', 'fast_compile', 'fast_run')
 # Legacy convolution
 conv_groupopt.register('local_conv2d_cpu', local_conv2d_cpu, 40,

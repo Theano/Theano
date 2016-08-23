@@ -417,7 +417,7 @@ def conv3d_grad_wrt_inputs(output_grad,
     -----
 
     :note: If cuDNN is available, it will be used on the
-        GPU. Otherwise, it is the *CorrMM* convolution that will be used
+        GPU. Otherwise, it is the *Corr3dMM* convolution that will be used
         "caffe style convolution".
 
     :note: This is only supported in Theano 0.8 or the development
@@ -670,7 +670,7 @@ def conv3d_grad_wrt_weights(input,
     -----
 
     :note: If cuDNN is available, it will be used on the
-        GPU. Otherwise, it is the *CorrMM* convolution that will be used
+        GPU. Otherwise, it is the *Corr3dMM* convolution that will be used
         "caffe style convolution".
 
     :note: This is only supported in Theano 0.8 or the development

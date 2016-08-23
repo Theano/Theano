@@ -234,7 +234,7 @@ def conv3d(input, filters, input_shape=None, filter_shape=None,
     Notes
     -----
         If cuDNN is available, it will be used on the
-        GPU. Otherwise, it is the *CorrMM* convolution that will be used
+        GPU. Otherwise, it is the *Corr3dMM* convolution that will be used
         "caffe style convolution".
 
         This is only supported in Theano 0.8 or the development

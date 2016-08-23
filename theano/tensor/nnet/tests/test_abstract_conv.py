@@ -20,6 +20,8 @@ from theano.tensor.nnet.abstract_conv import bilinear_upsampling
 from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet.corr import (CorrMM, CorrMM_gradWeights,
                                      CorrMM_gradInputs)
+from theano.tensor.nnet.corr3d import (Corr3dMM, Corr3dMM_gradWeights,
+                                       Corr3dMM_gradInputs)
 from theano.tensor.nnet.Conv3D import Conv3D
 from theano.tensor.nnet.ConvGrad3D import ConvGrad3D
 from theano.tensor.nnet.ConvTransp3D import ConvTransp3D
@@ -734,11 +736,9 @@ class TestCorrConv3d(BaseTestConv3d):
         BaseTestConv3d.setup_class()
 
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1, 1)):
-        if b not in ((0, 0, 0), 'valid'):
-            raise SkipTest("Only border_mode valid is implemented for basic cpu Conv3D.")
-        if fd != (1, 1, 1):
-            raise SkipTest("No dilation implementation for basic cpu Conv3D.")
         o = self.get_output_shape(i, f, s, b, fd)
+        if fd != (1, 1, 1):
+            raise SkipTest("No reference implementation for 3D dilation.")
         if (not theano.config.blas.ldflags or
                 not theano.config.cxx or
                 theano.config.mode == "FAST_COMPILE"):
@@ -746,17 +746,17 @@ class TestCorrConv3d(BaseTestConv3d):
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                      verify_grad=True, provide_shape=provide_shape,
                      border_mode=b, filter_flip=flip,
-                     target_op=Conv3D, check_trace=True,
+                     target_op=Corr3dMM, check_trace=True,
                      filter_dilation=fd)
         self.run_gradweight(inputs_shape=i, filters_shape=f,
                             output_shape=o, subsample=s, verify_grad=True,
                             provide_shape=provide_shape, border_mode=b,
-                            filter_flip=flip, target_op=ConvGrad3D,
+                            filter_flip=flip, target_op=Corr3dMM_gradWeights,
                             check_trace=True, filter_dilation=fd)
         self.run_gradinput(inputs_shape=i, filters_shape=f,
                            output_shape=o, subsample=s, verify_grad=True,
                            provide_shape=provide_shape, border_mode=b,
-                           filter_flip=flip, target_op=ConvTransp3D,
+                           filter_flip=flip, target_op=Corr3dMM_gradInputs,
                            check_trace=True, filter_dilation=fd)
 
 
@@ -764,7 +764,6 @@ class TestCpuConv3d(BaseTestConv3d):
     @classmethod
     def setup(cls):
         BaseTestConv3d.setup_class()
-        # TODO check how conv_gemm works for conv3d
         cls.mode = theano.compile.mode.get_default_mode().excluding('conv_gemm')
         cls.opt_err = theano.config.on_opt_error
         theano.config.on_opt_error = 'ignore'
