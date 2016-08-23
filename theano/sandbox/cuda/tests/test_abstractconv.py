@@ -133,10 +133,6 @@ class TestCorrMMConv3d(test_abstract_conv.BaseTestConv3d):
         cls.mode = mode_with_gpu.excluding('cudnn')
 
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1, 1)):
-        if fd != (1, 1, 1):
-            # TODO
-            raise SkipTest("Dilation not supprted by the Conv3D reference implementation.")
-
         mode = self.mode
         o = self.get_output_shape(i, f, s, b, fd)
         self.run_fwd(inputs_shape=i, filters_shape=f,
