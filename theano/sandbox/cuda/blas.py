@@ -898,12 +898,6 @@ class BaseGpuCorrMM(GpuOp):
             return self.border_mode
         return (0, 0)
 
-    def __str__(self):
-        return '%s{%s, %s, %s}' % (
-            self.__class__.__name__,
-            self.border_mode,
-            str(self.subsample),
-            str(self.filter_dilation))
 
     def flops(self, inp, outp):
         """
@@ -1412,13 +1406,6 @@ class BaseGpuCorr3dMM(GpuOp):
         if (pad not in ("half", "full")) and (len(pad) != 3):
             raise ValueError("pad must be 'half', 'full', or have three elements")
         self.pad = pad
-
-    def __str__(self):
-        return '%s{%s, %s, pad=%r}' % (
-            self.__class__.__name__,
-            self.border_mode,
-            str(self.subsample),
-            self.pad)
 
     def flops(self, inp, outp):
         """ Useful with the hack in profilemode to print the MFlops"""
@@ -2214,18 +2201,6 @@ class GpuDownsampleFactorMax(GpuOp):
         self.ds = tuple(ds)
         self.ignore_border = ignore_border
 
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.ds == other.ds and
-                self.ignore_border == other.ignore_border)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
-
-    def __str__(self):
-        return '%s{%s,%s}' % (self.__class__.__name__,
-                              self.ds,
-                              self.ignore_border)
 
     def make_node(self, x):
         if not isinstance(x.type, CudaNdarrayType):

@@ -1912,7 +1912,7 @@ def local_gpu_downsample_factor_max(node):
         if (pad) != (0, 0) or node.op.mode != 'max' or stride != ws:
             return
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            gpu_ds = GpuDownsampleFactorMax(**node.op._props_dict())
+            gpu_ds = GpuDownsampleFactorMax(node.op.ds, node.op.ignore_border)
             return [host_from_gpu(gpu_ds(x.owner.inputs[0]))]
 
 
