@@ -20,7 +20,6 @@ from six.moves import xrange
 import theano
 from theano import gof
 from theano import scalar
-from theano.tensor import basic as tensor, subtensor, opt
 from theano.tensor import extra_ops
 from theano.gof.opt import copy_stack_trace
 from theano.tensor import basic as tensor, subtensor, opt, elemwise
