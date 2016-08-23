@@ -3432,6 +3432,9 @@ def test_local_fill_useless():
 
 
 class Test_local_useless_elemwise_comparison(unittest.TestCase):
+    def setUp(self):
+        self.rng = numpy.random.RandomState(utt.fetch_seed())
+
     def test_local_useless_elemwise_comparison(self):
         # TODO: test each case individually.
         # The following case is what made me discover those cases.
@@ -3469,6 +3472,8 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
         mode = theano.compile.get_default_mode().excluding('fusion')
         f = theano.function([X, Y], Z, mode=mode)
+        f(self.rng.rand(2, 3).astype(config.floatX),
+          self.rng.rand(2).astype(config.floatX))
         # theano.printing.debugprint(f, print_type=True)
         # here is the output for the debug print:
         """
@@ -3571,9 +3576,15 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
         f = theano.function([x], T.minimum(x.shape[0], 0), mode=mode)
         self.assert_eqs_const(f, 0)
+        assert f(x_val) == 0
 
         f = theano.function([x], T.minimum(0, x.shape[0]), mode=mode)
         self.assert_eqs_const(f, 0)
+        assert f(x_val) == 0
+        f = theano.function([x], T.minimum([0, 0], x.shape[0]), mode=mode)
+        # This case isn't optimized.
+#        self.assert_eqs_const(f, 0)
+        utt.assert_allclose(f(x_val), [0, 0])
 
     def test_shape_add_inequality(self):
         x = T.vector('x', dtype=config.floatX)

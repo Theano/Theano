@@ -5064,6 +5064,8 @@ def local_useless_elemwise_comparison(node):
        isinstance(node.inputs[0].owner.op, Shape_i) and \
        T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
         return [T.zeros_like(node.inputs[0], dtype=dtype, opt=True)]
+
+    # It don't detect case when the 0 is all zeros with ndim > 0.
     # Elemwise[minimum](0, X.shape[i]) -> 0
     if isinstance(node.op.scalar_op, scalar.Minimum) and \
        T.extract_constant(node.inputs[0], only_process_constants=True) == 0 and \
