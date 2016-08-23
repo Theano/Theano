@@ -723,7 +723,7 @@ def test_batchnorm_train():
     utt.seed_rng()
 
     for mode in ('per-activation', 'spatial'):
-        for vartype in (T.tensor4, T.tensor3, T.matrix, T.vector):
+        for vartype in (T.ftensor4, T.ftensor3, T.fmatrix, T.fvector):
             x, scale, bias = (vartype(n) for n in ('x', 'scale', 'bias'))
             ndim = x.ndim
             eps = 5e-3  # some non-standard value to test if it's used
@@ -751,15 +751,14 @@ def test_batchnorm_train():
                                 [out, x_mean, x_invstd, out2, x_mean2, x_invstd2] +
                                 grads + grads2, mode=mode_with_gpu)
             # run
-            floatX = theano.config.floatX
             for data_shape in ((10, 20, 30, 40), (4, 3, 1, 1), (1, 1, 5, 5)):
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes else s
                                     for d, s in enumerate(data_shape))
-                X = 4 + 3 * numpy.random.randn(*data_shape).astype(floatX)
-                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(floatX)
-                Scale = numpy.random.randn(*param_shape).astype(floatX)
-                Bias = numpy.random.randn(*param_shape).astype(floatX)
+                X = 4 + 3 * numpy.random.randn(*data_shape).astype('float32')
+                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype('float32')
+                Scale = numpy.random.randn(*param_shape).astype('float32')
+                Bias = numpy.random.randn(*param_shape).astype('float32')
                 outputs = f(X, Scale, Bias, Dy)
                 # compare outputs
                 utt.assert_allclose(outputs[0], outputs[0 + 3])  # out
@@ -779,7 +778,7 @@ def test_batchnorm_inference():
     utt.seed_rng()
 
     for mode in ('per-activation', 'spatial'):
-        for vartype in (T.tensor4, T.tensor3, T.matrix, T.vector):
+        for vartype in (T.ftensor4, T.ftensor3, T.fmatrix, T.fvector):
             x, scale, bias, mean, var = (vartype(n) for n in ('x', 'scale',
                                                               'bias', 'mean',
                                                               'var'))
@@ -806,17 +805,16 @@ def test_batchnorm_inference():
             f = theano.function([x, scale, bias, mean, var, dy],
                                 [out, out2] + grads + grads2, mode=mode_with_gpu)
             # run
-            floatX = theano.config.floatX
             for data_shape in ((10, 20, 30, 40), (4, 3, 1, 1), (1, 1, 5, 5)):
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes else s
                                     for d, s in enumerate(data_shape))
-                X = 4 + 3 * numpy.random.randn(*data_shape).astype(floatX)
-                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(floatX)
-                Scale = numpy.random.randn(*param_shape).astype(floatX)
-                Bias = numpy.random.randn(*param_shape).astype(floatX)
-                Mean = numpy.random.randn(*param_shape).astype(floatX)
-                Var = numpy.random.rand(*param_shape).astype(floatX)
+                X = 4 + 3 * numpy.random.randn(*data_shape).astype('float32')
+                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype('float32')
+                Scale = numpy.random.randn(*param_shape).astype('float32')
+                Bias = numpy.random.randn(*param_shape).astype('float32')
+                Mean = numpy.random.randn(*param_shape).astype('float32')
+                Var = numpy.random.rand(*param_shape).astype('float32')
                 outputs = f(X, Scale, Bias, Mean, Var, Dy)
                 # compare outputs
                 utt.assert_allclose(outputs[0], outputs[1])  # out
@@ -825,7 +823,7 @@ def test_batchnorm_inference():
                 utt.assert_allclose(outputs[3], outputs[3 + 5])  # dscale
                 utt.assert_allclose(outputs[4], outputs[4 + 5])  # dbias
                 utt.assert_allclose(outputs[5], outputs[5 + 5])  # dmean
-                utt.assert_allclose(outputs[6], outputs[6 + 5])  # dvar
+                utt.assert_allclose(outputs[6], outputs[6 + 5], rtol=2e-3, atol=5e-5)  # dvar
 
 
 def test_dnn_tag():
@@ -940,10 +938,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
     def test_conv3d(self):
         if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
             raise SkipTest('"cuDNN 3D convolution requires cuDNN v2')
-        ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
-        img = ftensor5('img')
-        kerns = ftensor5('kerns')
-        out = ftensor5('out')
+        img = T.ftensor5('img')
+        kerns = T.ftensor5('kerns')
+        out = T.ftensor5('out')
         img_val = numpy.asarray(
             numpy.random.rand(10, 2, 6, 4, 11),
             dtype='float32'
@@ -1028,10 +1025,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
     def test_conv3d_gradw(self):
         if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
             raise SkipTest('"cuDNN 3D convolution requires cuDNN v2')
-        ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
-        img = ftensor5('img')
-        kerns = ftensor5('kerns')
-        out = ftensor5('out')
+        img = T.ftensor5('img')
+        kerns = T.ftensor5('kerns')
+        out = T.ftensor5('out')
         img_val = numpy.asarray(
             numpy.random.rand(9, 2, 4, 8, 13),
             dtype='float32'
@@ -1118,10 +1114,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
     def test_conv3d_gradi(self):
         if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
             raise SkipTest('"cuDNN 3D convolution requires cuDNN v2')
-        ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
-        img = ftensor5('img')
-        kerns = ftensor5('kerns')
-        out = ftensor5('out')
+        img = T.ftensor5('img')
+        kerns = T.ftensor5('kerns')
+        out = T.ftensor5('out')
         img_val = numpy.asarray(
             numpy.random.rand(8, 4, 6, 7, 11),
             dtype='float32'

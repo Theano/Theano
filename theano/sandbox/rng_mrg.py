@@ -24,10 +24,11 @@ from . import multinomial
 
 import theano.sandbox.cuda
 from theano.sandbox.cuda import GpuOp
-from theano.gpuarray.basic_ops import GpuKernelBase, Kernel
+from theano.gpuarray.basic_ops import GpuKernelBase, Kernel, infer_context_name
 from theano.gpuarray.type import GpuArrayType
 from theano.gpuarray.fp16_help import write_w
 from theano.gpuarray.opt import (register_opt as register_gpua,
+                                 register_opt2,
                                  host_from_gpu as host_from_gpua)
 if theano.sandbox.cuda.cuda_available:
     from theano.sandbox.cuda import (CudaNdarrayType,
@@ -1551,17 +1552,22 @@ class MRG_RandomStreams(object):
         return final_samples
 
 
+@register_opt2([mrg_uniform], 'fast_compile')
+def local_gpua_mrg_graph(op, context_name, inputs, outputs):
+    if (type(op) == mrg_uniform and
+            isinstance(inputs[0].type, GpuArrayType)):
+        outs = GPUA_mrg_uniform.new(inputs[0],
+                                    op.output_type.ndim,
+                                    op.output_type.dtype,
+                                    inputs[1])
+        return [outs[0], host_from_gpua(outs[1])]
+
+
 @register_gpua('fast_compile')
 @local_optimizer([mrg_uniform])
 def local_gpua_mrg(node):
-    # TODO : need description for function
-    if (type(node.op) == mrg_uniform and
-            isinstance(node.inputs[0].type, GpuArrayType)):
-        outs = GPUA_mrg_uniform.new(node.inputs[0],
-                                    node.op.output_type.ndim,
-                                    node.op.output_type.dtype,
-                                    node.inputs[1])
-        return [outs[0], host_from_gpua(outs[1])]
+    context_name = infer_context_name(*node.inputs)
+    return local_gpua_mrg_graph(node.op, context_name, node.inputs, node.outputs)
 
 
 MRG_RNGs = (mrg_uniform, GPU_mrg_uniform, GPUA_mrg_uniform)

@@ -288,7 +288,32 @@ def conv3d(signals, filters,
                 _signals_shape_5d[3] - _filters_shape_5d[3] + 1,
                 _signals_shape_5d[4] - _filters_shape_5d[4] + 1,
             ))
-    elif border_mode[0] in ('full', 'same'):
+    elif border_mode[0] == 'full':
+        if _filters_shape_5d[1] != 1:
+            # pad out_tmp with zeros to have full convolution
+            out_tmp_padded = tensor.zeros(dtype=out_tmp.dtype, shape=(
+                _signals_shape_5d[0],  # Ns
+                _signals_shape_5d[1] + 2 * (_filters_shape_5d[1] - 1),  # Ts
+                _filters_shape_5d[0],  # Nf
+                _filters_shape_5d[1],  # Tf
+                _signals_shape_5d[3] + _filters_shape_5d[3] - 1,
+                _signals_shape_5d[4] + _filters_shape_5d[4] - 1,
+            ))
+            out_tmp_padded = tensor.set_subtensor(
+                out_tmp_padded[:,
+                               (_filters_shape_5d[1] - 1):(_signals_shape_5d[1] + _filters_shape_5d[1] - 1),
+                               :, :, :, :],
+                out_tmp)
+            out_5d = diagonal_subtensor(out_tmp_padded, 1, 3).sum(axis=3)
+        else:  # for tf==1, no sum along tf, the ts-axis of the output is unchanged!
+            out_5d = out_tmp.reshape((
+                _signals_shape_5d[0],
+                _signals_shape_5d[1],
+                _filters_shape_5d[0],
+                _signals_shape_5d[3] + _filters_shape_5d[3] - 1,
+                _signals_shape_5d[4] + _filters_shape_5d[4] - 1,
+            ))
+    elif border_mode[0] == 'same':
         raise NotImplementedError('sequence border mode', border_mode[0])
     else:
         raise ValueError('invalid border mode', border_mode[1])

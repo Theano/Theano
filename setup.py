@@ -54,7 +54,7 @@ PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
 MINOR               = 9
 MICRO               = 0
-SUFFIX              = "dev1"  # Should be blank except for rc's, betas, etc.
+SUFFIX              = "dev2"  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
 
 VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
@@ -166,7 +166,7 @@ def do_setup():
           install_requires=['numpy>=1.7.1', 'scipy>=0.11', 'six>=1.9.0'],
           # pygments is a dependency for Sphinx code highlight
           extras_require={
-              'test': ['nose>=1.3.0', 'nose-parameterized>=0.5.0'],
+              'test': ['nose>=1.3.0', 'nose-parameterized>=0.5.0', 'flake8<3'],
               'doc': ['Sphinx>=0.5.1', 'pygments']
           },
           package_data={

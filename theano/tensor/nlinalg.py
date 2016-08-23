@@ -685,6 +685,14 @@ class lstsq(Op):
 
 
 def matrix_power(M, n):
+    """
+    Raise a square matrix to the (integer) power n.
+
+    Parameters
+    ----------
+    M : Tensor variable
+    n : Python int
+    """
     result = 1
     for i in xrange(n):
         result = theano.dot(result, M)

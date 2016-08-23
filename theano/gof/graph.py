@@ -1,9 +1,5 @@
 """
 Node classes (`Apply`, `Variable`) and expression graph algorithms.
-
-To read about what theano graphs are from a user perspective, have a look at
-`graph.html <../doc/graph.html>`__.
-
 """
 from __future__ import absolute_import, print_function, division
 
@@ -1246,9 +1242,9 @@ def as_string(i, o,
         Input `Variable` s.
     o : list
         Output `Variable` s.
-    leaf_formatter : function
+    leaf_formatter : callable
         Takes a `Variable`  and returns a string to describe it.
-    node_formatter : function
+    node_formatter : callable
         Takes an `Op`  and the list of strings corresponding to its arguments
         and returns a string to describe it.
 

@@ -762,7 +762,7 @@ class PerformLinker(LocalLinker):
         if schedule:
             self.schedule = schedule
 
-    def accept(self, fgraph, no_recycling=None):
+    def accept(self, fgraph, no_recycling=None, profile=None):
         """
 
         Parameters
@@ -781,7 +781,8 @@ class PerformLinker(LocalLinker):
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
-            return type(self)(allow_gc=self.allow_gc).accept(fgraph, no_recycling)
+            return type(self)(allow_gc=self.allow_gc).accept(
+                fgraph, no_recycling, profile)
             # raise Exception("Cannot accept from a Linker that is already tied to another FunctionGraph.")
         self.fgraph = fgraph
         self.no_recycling = no_recycling
@@ -944,7 +945,7 @@ class WrapLinker(Linker):
             linkers=[l.clone(allow_gc=allow_gc) for l in self.linkers],
             wrapper=self.wrapper)
 
-    def accept(self, fgraph, no_recycling=None):
+    def accept(self, fgraph, no_recycling=None, profile=None):
         """
 
         Parameters

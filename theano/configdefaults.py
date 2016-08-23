@@ -242,6 +242,15 @@ AddConfigVar('gpuarray.preallocate',
              FloatParam(0),
              in_c_key=False)
 
+AddConfigVar('gpuarray.sched',
+             """The sched parameter passed for context creation to pygpu.
+                With CUDA, using "multi" is equivalent to using the parameter
+                cudaDeviceScheduleYield. This is useful to lower the
+                CPU overhead when waiting for GPU. One user found that it
+                speeds up his other processes that was doing data augmentation.
+             """,
+             EnumStr("default", "multi", "single"))
+
 AddConfigVar('gpuarray.single_stream',
              """
              If your computations are mostly lots of small elements,
@@ -345,8 +354,9 @@ AddConfigVar('dnn.conv.algo_bwd_filter',
 AddConfigVar('dnn.conv.precision',
              "Default data precision to use for the computation in cuDNN "
              "convolutions (defaults to the same dtype as the inputs of the "
-             "convolutions).",
-             EnumStr('as_input', 'float16', 'float32', 'float64'),
+             "convolutions, or float32 if inputs are float16).",
+             EnumStr('as_input_f32', 'as_input', 'float16', 'float32',
+                     'float64'),
              in_c_key=False)
 
 
@@ -374,7 +384,7 @@ AddConfigVar('dnn.enabled',
              " to not using it if not present."
              " If True and cuDNN can not be used, raise an error."
              " If False, disable cudnn",
-             StrParam("auto", "True", "False"),
+             EnumStr("auto", "True", "False"),
              in_c_key=False)
 
 # This flag determines whether or not to raise error/warning message if
@@ -1620,6 +1630,8 @@ def short_platform(r=None, p=None):
 
     return p
 compiledir_format_dict['short_platform'] = short_platform()
+# Allow to have easily one compiledir per device.
+compiledir_format_dict['device'] = config.device
 compiledir_format_keys = ", ".join(sorted(compiledir_format_dict.keys()))
 default_compiledir_format = ("compiledir_%(short_platform)s-%(processor)s-"
                              "%(python_version)s-%(python_bitwidth)s")

@@ -6,7 +6,7 @@
 ================================================
 
 
-.. module:: profilemode
+.. module:: theano.compile.profilemode
    :platform: Unix, Windows
    :synopsis: profiling Theano functions with ProfileMode
 .. moduleauthor:: LISA

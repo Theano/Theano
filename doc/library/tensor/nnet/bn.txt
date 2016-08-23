@@ -10,4 +10,7 @@
 .. moduleauthor:: LISA
 
 
+.. seealso:: :ref:`cuDNN batch normalization <libdoc_cuda_dnn_bn>`
+    must be added manually.
+
 .. autofunction:: theano.tensor.nnet.bn.batch_normalization

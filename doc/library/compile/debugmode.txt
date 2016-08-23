@@ -5,7 +5,7 @@
 :mod:`debugmode`
 =================
 
-.. module:: debugmode
+.. module:: theano.compile.debugmode
    :platform: Unix, Windows
    :synopsis: defines DebugMode
 .. moduleauthor:: LISA

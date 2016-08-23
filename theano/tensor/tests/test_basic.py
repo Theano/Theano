@@ -539,6 +539,8 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                     assert None not in in_grad_vars
 
     Checker.__name__ = name
+    if hasattr(Checker, '__qualname__'):
+        Checker.__qualname__ = name
     return Checker
 
 
@@ -1647,7 +1649,7 @@ TanhInplaceTester = makeBroadcastTester(
     grad=_grad_broadcast_unary_normal,
     inplace=True)
 
-_eps = 1e-10
+_eps = 1e-2
 _good_broadcast_unary_arctanh = dict(
     normal=(rand_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
     integers=(randint_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
@@ -3736,6 +3738,22 @@ class T_Join_and_Split(unittest.TestCase):
 
             assert (out == want).all()
 
+            # Test rolling on axis 0 with a positive shift that is
+            # larger than axis size
+            want = numpy.roll(a.get_value(borrow=True), 4, 0)
+            b = roll(a, get_shift(4), 0)
+            out = theano.function([], b)()
+
+            assert (out == want).all()
+
+            # Test rolling on axis 0 with a negative shift that is
+            # larger than axis size
+            want = numpy.roll(a.get_value(borrow=True), -4, 0)
+            b = roll(a, get_shift(-4), 0)
+            out = theano.function([], b)()
+
+            assert (out == want).all()
+
     def test_stack_vector(self):
         a = self.shared(numpy.array([1, 2, 3], dtype=self.floatX))
         b = as_tensor_variable(numpy.array([7, 8, 9], dtype=self.floatX))
@@ -5114,14 +5132,18 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
         self.ignore_topo = ignore_topo
         super(T_reshape, self).__init__(name)
 
-    def function(self, inputs, outputs):
+    def function(self, inputs, outputs, ignore_empty=False):
         f = function(inputs, outputs, mode=self.mode)
         if self.mode is not None or theano.config.mode != "FAST_COMPILE":
             topo = f.maker.fgraph.toposort()
             topo_ = [node for node in topo if not isinstance(node.op,
                                                              self.ignore_topo)]
-            assert len(topo_) == 1, topo_
-            assert type(topo_[0].op) is self.op
+            if ignore_empty:
+                assert len(topo_) <= 1, topo_
+            else:
+                assert len(topo_) == 1, topo_
+            if len(topo_) > 0:
+                assert type(topo_[0].op) is self.op
         return f
 
     def test_reshape(self):
@@ -5194,10 +5216,21 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
 
         # test broadcast flag for constant value of 1
         c = reshape(b, (b.shape[0], b.shape[1], 1))
-        f = self.function([b], c)
+        # That reshape may get replaced with a dimshuffle, with is ignored,
+        # so we pass "ignore_empty=True"
+        f = self.function([b], c, ignore_empty=True)
         assert numpy.all(f(numpy.asarray([[0, 1, 2], [3, 4, 5]])) ==
                          numpy.asarray([[[0], [1], [2]], [[3], [4], [5]]]))
-        assert (f.maker.fgraph.toposort()[-2].outputs[0].type.broadcastable ==
+        assert (f.maker.fgraph.toposort()[-1].outputs[0].type.broadcastable ==
+                (False, False, True))
+
+        # test broadcast flag for constant value of 1 if it cannot be
+        # replaced with dimshuffle
+        c = reshape(b, (b.shape[1], b.shape[0], 1))
+        f = self.function([b], c, ignore_empty=True)
+        assert numpy.all(f(numpy.asarray([[0, 1, 2], [3, 4, 5]])) ==
+                         numpy.asarray([[[0], [1]], [[2], [3]], [[4], [5]]]))
+        assert (f.maker.fgraph.toposort()[-1].outputs[0].type.broadcastable ==
                 (False, False, True))
 
     def test_m1(self):
@@ -6330,11 +6363,31 @@ def test_var():
     f = function([a], var(a, axis=2))
     assert numpy.allclose(numpy.var(a_val, axis=2), f(a_val))
 
-    f = function([a], var(a, corrected=True))
+    f = function([a], var(a, axis=0, ddof=0))
+    assert numpy.allclose(numpy.var(a_val, axis=0, ddof=0), f(a_val))
+
+    f = function([a], var(a, axis=1, ddof=1))
+    assert numpy.allclose(numpy.var(a_val, axis=1, ddof=1), f(a_val))
+
+    f = function([a], var(a, axis=2, ddof=1))
+    assert numpy.allclose(numpy.var(a_val, axis=2, ddof=1), f(a_val))
+
+    f = function([a], var(a, ddof=0, corrected=True))
     mean_a = numpy.mean(a_val)
     centered_a = a_val - mean_a
     v = numpy.mean(centered_a ** 2)
     error = (numpy.mean(centered_a)) ** 2
+    v = v - error
+    assert numpy.allclose(v, f(a_val))
+
+    f = function([a], var(a, axis=2, ddof=1, corrected=True))
+    mean_a = numpy.mean(a_val, axis=2, keepdims=True)
+    centered_a = a_val - mean_a
+    v = numpy.var(a_val, axis=2, ddof=1)
+    shp_inp = numpy.shape(a_val)
+    shp = shp_inp - numpy.array(1)
+    error = (numpy.sum(centered_a, axis=2))**2
+    error = numpy.true_divide(error, shp[1]*shp_inp[1])
     v = v - error
     assert numpy.allclose(v, f(a_val))
 
@@ -7009,6 +7062,9 @@ class T_get_scalar_constant_value(unittest.TestCase):
         assert get_scalar_constant_value(s) == 3
         s = opt.Shape_i(1)(c)
         assert get_scalar_constant_value(s) == 4
+        d = theano.shared(numpy.random.randn(1,1), broadcastable=(True, True))
+        f = theano.tensor.basic.ScalarFromTensor()(opt.Shape_i(0)(d))
+        assert get_scalar_constant_value(f) == 1
 
     def test_elemwise(self):
         # We test only for a few elemwise, the list of all supported

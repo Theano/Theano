@@ -41,7 +41,7 @@ def flatten(l):
     return rval
 
 
-def contains_nan(arr, node=None):
+def contains_nan(arr, node=None, var=None):
     """
     Test whether a numpy.ndarray contains any `np.nan` values.
 
@@ -50,6 +50,7 @@ def contains_nan(arr, node=None):
     arr : np.ndarray or output of any Theano op
     node : None or an Apply instance.
         If arr is the output of a Theano op, the node associated to it.
+    var : The Theano symbolic variable.
 
     Returns
     -------
@@ -67,6 +68,8 @@ def contains_nan(arr, node=None):
     if isinstance(arr, theano.gof.type.CDataType._cdata_type):
         return False
     elif isinstance(arr, np.random.mtrand.RandomState):
+        return False
+    elif var and getattr(var.tag, 'is_rng', False):
         return False
     elif isinstance(arr, slice):
         return False
@@ -86,7 +89,7 @@ def contains_nan(arr, node=None):
     return np.isnan(np.min(arr))
 
 
-def contains_inf(arr, node=None):
+def contains_inf(arr, node=None, var=None):
     """
     Test whether a numpy.ndarray contains any `np.inf` values.
 
@@ -95,6 +98,7 @@ def contains_inf(arr, node=None):
     arr : np.ndarray or output of any Theano op
     node : None or an Apply instance.
         If the output of a Theano op, the node associated to it.
+    var : The Theano symbolic variable.
 
     Returns
     -------
@@ -113,6 +117,8 @@ def contains_inf(arr, node=None):
     if isinstance(arr, theano.gof.type.CDataType._cdata_type):
         return False
     elif isinstance(arr, np.random.mtrand.RandomState):
+        return False
+    elif var and getattr(var.tag, 'is_rng', False):
         return False
     elif isinstance(arr, slice):
         return False
@@ -215,44 +221,47 @@ class NanGuardMode(Mode):
         assert nan_is_error or inf_is_error or big_is_error
         compile_gpu_func(nan_is_error, inf_is_error, big_is_error)
 
-        def do_check_on(var, nd):
+        def do_check_on(value, nd, var=None):
             """
-            Checks `var` for NaNs / Infs. If detected, raises an exception
+            Checks `value` for NaNs / Infs. If detected, raises an exception
             and / or prints information about `nd`, `f`, and `is_input` to
             help the user determine the cause of the invalid values.
 
             Parameters
             ----------
-            var : numpy.ndarray
+            value : numpy.ndarray
                 The value to be checked.
             nd : theano.gof.Apply
                 The Apply node being executed.
+            var : theano.gof.Variable
+                Not used if nd is there. Otherwise, used to print the stack
+                trace for inputs of the graph.
 
             """
             error = False
             sio = StringIO()
             if nan_is_error:
-                if contains_nan(var, nd):
+                if contains_nan(value, nd, var):
                     print('NaN detected', file=sio)
                     error = True
             if inf_is_error:
-                if contains_inf(var, nd):
+                if contains_inf(value, nd, var):
                     print('Inf detected', file=sio)
                     error = True
             if big_is_error:
                 err = False
-                if isinstance(var, theano.gof.type.CDataType._cdata_type):
+                if isinstance(value, theano.gof.type.CDataType._cdata_type):
                     err = False
-                elif isinstance(var, np.random.mtrand.RandomState):
+                elif isinstance(value, np.random.mtrand.RandomState):
                     err = False
-                elif isinstance(var, slice):
+                elif isinstance(value, slice):
                     err = False
-                elif var.size == 0:
+                elif value.size == 0:
                     err = False
-                elif cuda.cuda_available and isinstance(var, cuda.CudaNdarray):
-                    err = (f_gpuabsmax(var.reshape(var.size)) > 1e10)
+                elif cuda.cuda_available and isinstance(value, cuda.CudaNdarray):
+                    err = (f_gpuabsmax(value.reshape(value.size)) > 1e10)
                 else:
-                    err = (np.abs(var).max() > 1e10)
+                    err = (np.abs(value).max() > 1e10)
                 if err:
                     print('Big value detected', file=sio)
                     error = True
@@ -264,6 +273,11 @@ class NanGuardMode(Mode):
                 else:
                     print("NanGuardMode found an error in an input of the "
                           "graph.", file=sio)
+                # Add the stack trace
+                if nd:
+                    var = nd.outputs[0]
+                print(theano.gof.utils.get_variable_trace_string(var),
+                      file=sio)
                 msg = sio.getvalue()
                 if config.NanGuardMode.action == 'raise':
                     raise AssertionError(msg)
@@ -281,7 +295,7 @@ class NanGuardMode(Mode):
 
         def nan_check_input(var, value):
             if getattr(var.tag, 'nan_guard_mode_check', True):
-                do_check_on(value, None)
+                do_check_on(value, None, var=var)
 
         wrap_linker = theano.gof.vm.VM_Linker(callback=nan_check,
                                               callback_input=nan_check_input)

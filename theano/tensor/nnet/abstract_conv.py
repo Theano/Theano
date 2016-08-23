@@ -33,7 +33,7 @@ _logger = logging.getLogger("theano.tensor.nnet.abstract_conv")
 
 def get_conv_output_shape(image_shape, kernel_shape,
                           border_mode, subsample,
-                          filter_dilation=(1, 1)):
+                          filter_dilation=None):
     """
     This function compute the output shape of convolution operation.
 
@@ -66,6 +66,10 @@ def get_conv_output_shape(image_shape, kernel_shape,
     """
     bsize, imshp = image_shape[0], image_shape[2:]
     nkern, kshp = kernel_shape[0], kernel_shape[2:]
+
+    if filter_dilation is None:
+        filter_dilation = numpy.ones(len(subsample), dtype='int')
+
     if isinstance(border_mode, tuple):
         out_shp = tuple(get_conv_shape_1axis(
             imshp[i], kshp[i], border_mode[i],
@@ -119,7 +123,16 @@ def get_conv_shape_1axis(image_shape, kernel_shape, border_mode,
         pad = border_mode
         if pad < 0:
             raise ValueError("border_mode must be >= 0")
-    out_shp = (image_shape + 2 * pad - dil_kernel_shape) // subsample + 1
+
+    # In case of symbolic shape, we want to build the smallest graph
+    # (image_shape + 2 * pad - dil_kernel_shape) // subsample + 1
+    if pad == 0:
+        out_shp = (image_shape - dil_kernel_shape)
+    else:
+        out_shp = (image_shape + 2 * pad - dil_kernel_shape)
+    if subsample != 1:
+        out_shp = out_shp // subsample
+    out_shp = out_shp + 1
 
     return out_shp
 
@@ -953,12 +966,16 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
                 '"valid", "full", "half", an integer or a pair of'
                 ' integers'.format(mode))
 
+        dil_shape = ((shape[0] - 1) * self.filter_dilation[0] + 1,
+                     (shape[1] - 1) * self.filter_dilation[1] + 1)
+
         if mode == "full":
-            mode = (shape[0] - 1, shape[1] - 1)
+            mode = (dil_shape[0] - 1, dil_shape[1] - 1)
         elif mode == "half":
-            mode = (shape[0] // 2, shape[1] // 2)
+            mode = (dil_shape[0] // 2, dil_shape[1] // 2)
         if isinstance(mode, tuple):
             pad_h, pad_w = map(int, mode)
+
             mode = "valid"
             new_img = numpy.zeros((img.shape[0], img.shape[1],
                                    img.shape[2] + 2 * pad_h,
@@ -968,8 +985,8 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
 
         if self.subsample[0] > 1 or self.subsample[1] > 1:
             new_shape = (topgrad.shape[0], topgrad.shape[1],
-                         img.shape[2] - shape[0] + 1,
-                         img.shape[3] - shape[1] + 1)
+                         img.shape[2] - dil_shape[0] + 1,
+                         img.shape[3] - dil_shape[1] + 1)
             new_topgrad = numpy.zeros((new_shape), dtype=topgrad.dtype)
             new_topgrad[:, :, ::self.subsample[0], ::self.subsample[1]] = topgrad
             topgrad = new_topgrad
@@ -977,6 +994,8 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
         topgrad = topgrad.transpose(1, 0, 2, 3)[:, :, ::-1, ::-1]
         img = img.transpose(1, 0, 2, 3)
         kern = self.conv2d(img, topgrad, mode="valid")
+        if self.filter_dilation[0] > 1 or self.filter_dilation[1] > 1:
+            kern = kern[:, :, ::self.filter_dilation[0], ::self.filter_dilation[1]]
         if self.filter_flip:
             kern = kern.transpose(1, 0, 2, 3)[:, :, ::-1, ::-1]
         else:
@@ -1090,24 +1109,26 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
                 '"valid", "full", "half", an integer or a pair of'
                 ' integers'.format(mode))
 
+        dil_kernshp = ((kern.shape[2] - 1) * self.filter_dilation[0] + 1,
+                       (kern.shape[3] - 1) * self.filter_dilation[1] + 1)
         pad_h, pad_w = 0, 0
         if mode == "full":
-            pad_h, pad_w = (kern.shape[2] - 1, kern.shape[3] - 1)
+            pad_h, pad_w = (dil_kernshp[0] - 1, dil_kernshp[1] - 1)
         elif mode == "half":
-            pad_h, pad_w = (kern.shape[2] // 2, kern.shape[3] // 2)
+            pad_h, pad_w = (dil_kernshp[0] // 2, dil_kernshp[1] // 2)
         elif isinstance(mode, tuple):
             pad_h, pad_w = map(int, self.border_mode)
         if self.subsample[0] > 1 or self.subsample[1] > 1:
             new_shape = (topgrad.shape[0], topgrad.shape[1],
-                         shape[0] + 2 * pad_h - kern.shape[2] + 1,
-                         shape[1] + 2 * pad_w - kern.shape[3] + 1)
+                         shape[0] + 2 * pad_h - dil_kernshp[0] + 1,
+                         shape[1] + 2 * pad_w - dil_kernshp[1] + 1)
             new_topgrad = numpy.zeros((new_shape), dtype=topgrad.dtype)
             new_topgrad[:, :, ::self.subsample[0], ::self.subsample[1]] = topgrad
             topgrad = new_topgrad
         kern = kern.transpose(1, 0, 2, 3)
         if self.filter_flip:
             topgrad = topgrad[:, :, ::-1, ::-1]
-        img = self.conv2d(topgrad, kern, mode="full")
+        img = self.conv2d(topgrad, kern, mode="full", dilation=self.filter_dilation)
         if self.filter_flip:
             img = img[:, :, ::-1, ::-1]
         if pad_h > 0 or pad_w > 0:

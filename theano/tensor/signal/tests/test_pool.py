@@ -11,7 +11,8 @@ import theano.tensor as tensor
 from theano.tests import unittest_tools as utt
 from theano.tensor.signal.pool import (Pool, pool_2d,
                                        MaxPoolGrad, AveragePoolGrad,
-                                       max_pool_2d_same_size)
+                                       max_pool_2d_same_size,
+                                       DownsampleFactorMaxGradGrad)
 
 from theano.tensor.signal.downsample import DownsampleFactorMaxGrad
 
@@ -35,8 +36,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             if input.shape[-1] % ds[1]:
                 yi += 1
         out_shp = list(input.shape[:-2])
-        out_shp.append(input.shape[-2] / ds[0] + xi)
-        out_shp.append(input.shape[-1] / ds[1] + yi)
+        out_shp.append(input.shape[-2] // ds[0] + xi)
+        out_shp.append(input.shape[-1] // ds[1] + yi)
         output_val = numpy.zeros(out_shp)
         func = numpy.max
         if mode == 'sum':
@@ -651,6 +652,35 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         # and confirmed by the implementation.
 
         assert numpy.allclose(fn_hess([1, 2]), [[0., 0.], [0., 982.7667]])
+
+    def test_DownsampleFactorMaxGradGrad_grad(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        imgsizes = ((10, 10), (10, 5), (5, 5))
+        maxpoolsizes = ((5, 3), (3, 5), (3, 3))
+        stridesizes = ((3, 2), (2, 3), (3, 3))
+        paddingsizes = ((2, 2), (2, 1), (2, 2))
+
+        for i in range(len(imgsizes)):
+            imgsize = imgsizes[i]
+            imval1 = rng.rand(1, 1, imgsize[0], imgsize[1]) * 10.0
+            imval2 = rng.rand(1, 1, imgsize[0], imgsize[1]) * 10.0
+            maxpoolsize = maxpoolsizes[i]
+            stridesize = stridesizes[i]
+            paddingsize = paddingsizes[i]
+
+            def mp(input1, input2):
+                pooled_out = Pool(
+                    maxpoolsize, ignore_border=True,
+                    st=stridesize,
+                    padding=paddingsize,
+                    )(input1)
+                out = DownsampleFactorMaxGradGrad(
+                    ds=maxpoolsize,
+                    ignore_border=True,
+                    st=stridesize,
+                    padding=paddingsize)(input1, pooled_out, input2)
+                return out
+            utt.verify_grad(mp, [imval1, imval2], rng=rng)
 
     def test_max_pool_2d_2D(self):
         rng = numpy.random.RandomState(utt.fetch_seed())

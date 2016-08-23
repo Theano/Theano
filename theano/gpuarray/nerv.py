@@ -10,7 +10,7 @@ from theano.scalar import as_scalar, constant
 
 from . import opt
 from .basic_ops import (as_gpuarray_variable, GpuAllocEmpty,
-                        infer_context_name)
+                        infer_context_name, gpu_alloc_empty)
 from .type import gpu_context_type
 from .opt_util import alpha_merge, output_merge
 
@@ -147,17 +147,18 @@ if (GpuKernel_init(&k_%(name)s, c->ctx, 1, &bcode, &sz,
         return '\n'.join(codel)
 
 
-@opt.register_opt()
+@opt.register_opt('fast_compile')
 @opt.op_lifter([tensor.Dot])
-def local_dot_to_gemm16(node, ctx_name):
+@opt.register_opt2([tensor.Dot], 'fast_compile')
+def local_gpua_dot_to_gemm16(op, ctx_name, inputs, outputs):
     if nerv is None:
         return
-    A = node.inputs[0]
-    B = node.inputs[1]
+    A = inputs[0]
+    B = inputs[1]
     if (A.ndim == 2 and B.ndim == 2 and
             A.dtype == 'float16' and B.dtype == 'float16'):
-        fgraph = node.inputs[0].fgraph
-        C = GpuAllocEmpty(dtype='float16', context_name=ctx_name)(
+        fgraph = getattr(outputs[0], 'fgraph', None)
+        C = gpu_alloc_empty(ctx_name, dtype='float16')(
             shape_i(A, 0, fgraph), shape_i(B, 1, fgraph))
         return Gemm16()(C, 1.0, A, B, 0.0)
 

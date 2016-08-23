@@ -308,6 +308,8 @@ class Scalar(Type):
         """ % locals()
 
     def c_extract(self, name, sub, check_input=True):
+        if self.dtype == 'float16':
+            raise NotImplementedError('float16')
         specs = self.dtype_specs()
         if(check_input):
             pre = """

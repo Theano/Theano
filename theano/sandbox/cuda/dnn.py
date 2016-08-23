@@ -1108,7 +1108,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         Convolution implementation to use. Some of its  values may require certain
         versions of cuDNN to be installed. Default is the value of
         :attr:`config.dnn.conv.algo_fwd`.
-    precision : {'as_input', 'float16', 'float32', 'float64'}
+    precision : {'as_input_f32', 'as_input', 'float16', 'float32', 'float64'}
         Description of the dtype in which the computation of the convolution
         should be done. Possible values are 'as_input', 'float16', 'float32'
         and 'float64'. Default is the value of
@@ -1122,8 +1122,12 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     # Establish dtype in which to perform the computation of the convolution
     if precision is None:
         precision = theano.config.dnn.conv.precision
-    if precision == 'as_input':
-        precision = theano.scalar.upcast(img.dtype, kerns.dtype)
+    if precision == 'as_input' or precision == 'as_input_f32':
+        nprec = theano.scalar.upcast(img.dtype, kerns.dtype)
+        if nprec == 'float16' and precision == 'as_input_f32':
+            precision = 'float32'
+        else:
+            precision = nprec
 
     # Check if deprecated param 'workmem' is used
     if workmem is not None:
@@ -1218,8 +1222,8 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
         for the conv3d. Default is the value of
         :attr:`config.dnn.conv.algo_fwd`.
     :param precision : dtype in which the computation of the convolution
-        should be done. Possible values are 'as_input', 'float16', 'float32'
-        and 'float64'. Default is the value of
+        should be done. Possible values are 'as_input_f32', 'as_input',
+        'float16', 'float32' and 'float64'. Default is the value of
         :attr:`config.dnn.conv.precision`.
 
     :warning: The cuDNN library only works with GPU that have a compute
@@ -1234,8 +1238,12 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     # Establish dtype in which to perform the computation of the convolution
     if precision is None:
         precision = theano.config.dnn.conv.precision
-    if precision == 'as_input':
-        precision = theano.scalar.upcast(img.dtype, kerns.dtype)
+    if precision == 'as_input' or precision == 'as_input_f32':
+        nprec = theano.scalar.upcast(img.dtype, kerns.dtype)
+        if nprec == 'float16' and precision == 'as_input_f32':
+            precision = 'float32'
+        else:
+            precision = nprec
 
     # Check if deprecated param 'workmem' is used
     if workmem is not None:
@@ -2672,12 +2680,16 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
 
     Notes
     -----
+    Request cuDNN 5 and Theano 0.9dev2 or more recent.
+
     For 4d tensors, returned values are equivalent to:
 
-    >>> axes = 0 if mode == 'per-activation' else (0, 2, 3)
-    >>> mean = inputs.mean(axes, keepdims=True)
-    >>> stdinv = T.inv(T.sqrt(inputs.var(axes, keepdims=True) + epsilon))
-    >>> out = (inputs - mean) * gamma * stdinv + beta
+    .. code-block:: python
+
+        axes = 0 if mode == 'per-activation' else (0, 2, 3)
+        mean = inputs.mean(axes, keepdims=True)
+        stdinv = T.inv(T.sqrt(inputs.var(axes, keepdims=True) + epsilon))
+        out = (inputs - mean) * gamma * stdinv + beta
     """
     ndim = inputs.ndim
     if ndim > 4:
@@ -2695,7 +2707,8 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
         gamma = theano.tensor.shape_padright(gamma, 4 - ndim)
         beta = theano.tensor.shape_padright(beta, 4 - ndim)
     batchnorm_op = GpuDnnBatchNorm(mode=mode, epsilon=epsilon)
-    result = tuple(batchnorm_op(inputs, gamma, beta))
+    result = tuple(batchnorm_op(gpu_contiguous(inputs), gpu_contiguous(gamma),
+                                gpu_contiguous(beta)))
     if ndim < 4:
         result = tuple(theano.tensor.flatten(r, ndim) for r in result)
     return result
@@ -2736,12 +2749,16 @@ def dnn_batch_normalization_test(inputs, gamma, beta, mean, var,
 
     Notes
     -----
+    Request cuDNN 5 and Theano 0.9dev2 or more recent.
+
     For 4d tensors, the returned value is equivalent to:
 
-    >>> axes = (0,) if mode == 'per-activation' else (0, 2, 3)
-    >>> gamma, beta, mean, var = (T.addbroadcast(t, *axes)
-    ...                           for t in (gamma, beta, mean, var))
-    >>> out = (inputs - mean) * gamma / T.sqrt(var + epsilon) + beta
+    .. code-block:: python
+
+        axes = (0,) if mode == 'per-activation' else (0, 2, 3)
+        gamma, beta, mean, var = (T.addbroadcast(t, *axes)
+                                  for t in (gamma, beta, mean, var))
+        out = (inputs - mean) * gamma / T.sqrt(var + epsilon) + beta
     """
     ndim = inputs.ndim
     if ndim > 4:
@@ -2765,7 +2782,9 @@ def dnn_batch_normalization_test(inputs, gamma, beta, mean, var,
         mean = theano.tensor.shape_padright(mean, 4 - ndim)
         var = theano.tensor.shape_padright(var, 4 - ndim)
     batchnorm_op = GpuDnnBatchNormInference(mode=mode, epsilon=epsilon)
-    result = batchnorm_op(inputs, gamma, beta, mean, var)
+    result = batchnorm_op(gpu_contiguous(inputs), gpu_contiguous(gamma),
+                          gpu_contiguous(beta), gpu_contiguous(mean),
+                          gpu_contiguous(var))
     if ndim < 4:
         result = theano.tensor.flatten(result, ndim)
     return result

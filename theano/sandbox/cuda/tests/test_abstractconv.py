@@ -23,11 +23,12 @@ else:
 
 
 class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
-    def setUp(self):
-        super(TestDnnConv2d, self).setUp()
+    @classmethod
+    def setup_class(cls):
+        test_abstract_conv.BaseTestConv2d.setup_class()
         # provide_shape is not used by the cuDNN impementation
-        self.provide_shape = [False]
-        self.shared = gpu_shared
+        cls.provide_shape = [False]
+        cls.shared = staticmethod(gpu_shared)
 
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1)):
         if fd != (1, 1):
@@ -56,10 +57,11 @@ class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
 
 
 class TestCorrMMConv2d(test_abstract_conv.BaseTestConv2d):
-    def setUp(self):
-        super(TestCorrMMConv2d, self).setUp()
-        self.shared = gpu_shared
-        self.mode = mode_with_gpu.excluding('cudnn')
+    @classmethod
+    def setup_class(cls):
+        test_abstract_conv.BaseTestConv2d.setup_class()
+        cls.shared = staticmethod(gpu_shared)
+        cls.mode = mode_with_gpu.excluding('cudnn')
 
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1)):
         mode = self.mode

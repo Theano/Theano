@@ -12,7 +12,6 @@ import numpy
 from six import integer_types
 from six.moves import xrange
 import six.moves.builtins as builtins
-
 import theano
 from theano import gof, OpenMPOp, tensor, Variable, Apply
 
@@ -994,6 +993,15 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
 
     def infer_shape(self, node, in_shapes):
         return [in_shapes[1]]
+
+    def grad(self, inp, grads):
+        x, maxout, ggx = inp
+        gz, = grads
+        return [theano.tensor.zeros_like(x),
+                theano.tensor.zeros_like(maxout),
+                MaxPoolGrad(
+                    self.ds, ignore_border=self.ignore_border,
+                    st=self.st, padding=self.padding)(x, maxout, gz)]
 
     def c_code(self, node, name, inp, out, sub):
         if self.mode != 'max':

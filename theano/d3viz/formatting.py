@@ -25,7 +25,11 @@ except ImportError:
     try:
         # fall back on pydot if necessary
         import pydot as pd
-        if pd.find_graphviz():
+        if hasattr(pd, 'find_graphviz'):
+            if pd.find_graphviz():
+                pydot_imported = True
+        else:
+            pd.Dot.create(pd.Dot())
             pydot_imported = True
     except ImportError:
         pass  # tests should not fail on optional dependency

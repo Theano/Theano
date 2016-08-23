@@ -5,7 +5,7 @@
 :mod:`mode` -- controlling compilation
 ======================================
 
-.. module:: mode
+.. module:: theano.compile.mode
    :platform: Unix, Windows
    :synopsis: controlling compilation
 .. moduleauthor:: LISA

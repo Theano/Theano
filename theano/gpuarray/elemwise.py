@@ -51,13 +51,15 @@ class GpuElemwise(HideC, Elemwise):
 
     def make_node(self, *inputs):
         ctx_name = infer_context_name(*inputs)
-        res = Elemwise.make_node(self, *inputs)
-        outputs = [GpuArrayType(broadcastable=o.type.broadcastable,
+        inputs = [as_gpuarray_variable(i, ctx_name) for i in inputs]
+        out_info = Elemwise.get_output_info(self, GpuDimShuffle, *inputs)
+        inputs = out_info[2]
+        outputs = [GpuArrayType(broadcastable=br,
                                 context_name=ctx_name,
-                                dtype=o.type.dtype)() for o in res.outputs]
+                                dtype=dtype)() for dtype, br in
+                   zip(out_info[0], out_info[1])]
         if len(outputs) > 1:
             raise NotImplementedError()
-        inputs = [as_gpuarray_variable(i, ctx_name) for i in inputs]
         node = Apply(self, inputs, outputs)
 
         # Try to generate the kernel to catch SupportCodeErrors
@@ -621,7 +623,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
 
         try:
             self.c_code(node, name, inp, out, sub)
-            self.c_support_code_apply(node, name)
+            if not self.gpu_kernels(node, name):
+                return False
         except NotImplementedError:
             return False
         return True
@@ -2585,6 +2588,18 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             kernels.append(Kernel(code=sio.getvalue(), name=kname,
                                   params=params, flags=flags, objvar=k_var))
         return kernels
+
+
+# Caching GpuCAReduceCuda
+def gpu_ca_reduce_cuda(scalar_op, axis=None, reduce_mask=None, dtype=None, acc_dtype=None,
+                       pre_scalar_op=None):
+    key = (scalar_op, axis, reduce_mask, dtype, acc_dtype,
+           pre_scalar_op)
+    if key not in gpu_ca_reduce_cuda.cache:
+        gpu_ca_reduce_cuda.cache[key] = GpuCAReduceCuda(scalar_op, axis, reduce_mask, dtype,
+                                                        acc_dtype, pre_scalar_op)
+    return gpu_ca_reduce_cuda.cache[key]
+gpu_ca_reduce_cuda.cache = {}
 
 
 class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):

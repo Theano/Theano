@@ -64,9 +64,9 @@ get an error when cuDNN can not be used with them, use this flag:
      usage
    * ``none`` : use a slower implementation with minimal memory usage
    * ``large`` : use a sometimes faster implementation with large memory usage
-   * ``fft`` : use the Fast Fourrier Transform implementation of convolution
+   * ``fft`` : use the Fast Fourier Transform implementation of convolution
      (very high memory usage)
-   * ``fft_tiling`` : use the Fast Fourrier Transform implementation of convolution
+   * ``fft_tiling`` : use the Fast Fourier Transform implementation of convolution
      with tiling (high memory usage, but less then fft)
    * ``guess_once`` : the first time a convolution is executed, the
      implementation to use is chosen according to cuDNN's heuristics and reused
@@ -89,7 +89,7 @@ get an error when cuDNN can not be used with them, use this flag:
    * ``none`` (default) : use the default non-deterministic convolution
      implementation
    * ``deterministic`` : use a slower but deterministic implementation
-   * ``fft`` : use the Fast Fourrier Transform implementation of convolution
+   * ``fft`` : use the Fast Fourier Transform implementation of convolution
      (very high memory usage)
    * ``guess_once`` : the first time a convolution is executed, the
      implementation to use is chosen according to cuDNN's heuristics and reused
@@ -104,7 +104,7 @@ get an error when cuDNN can not be used with them, use this flag:
      implementation selected every time the shapes of the inputs and kernels
      don't match the shapes from the last execution.
 
-   * (algo_bwd_data only) ``fft_tiling`` : use the Fast Fourrier
+   * (algo_bwd_data only) ``fft_tiling`` : use the Fast Fourier
      Transform implementation of convolution with tiling (high memory
      usage, but less then fft)
 
@@ -173,3 +173,14 @@ Softmax Ops
 .. automodule:: theano.sandbox.cuda.dnn
    :noindex:
    :members: GpuDnnSoftmax, GpuDnnSoftmaxGrad
+
+
+
+.. _libdoc_cuda_dnn_bn:
+
+Batch Normalization
+===================
+
+.. automodule:: theano.sandbox.cuda.dnn
+   :noindex:
+   :members: dnn_batch_normalization_train, dnn_batch_normalization_test

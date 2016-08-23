@@ -54,7 +54,7 @@ def _atexit_print_fn():
         destination_file = open(config.profiling.destination, 'w')
 
     for ps in _atexit_print_list:
-        if ps.fct_callcount or ps.compile_time > 0:
+        if ps.fct_callcount >= 1 or ps.compile_time > 1:
             ps.summary(file=destination_file,
                        n_ops_to_print=config.profiling.n_ops,
                        n_apply_to_print=config.profiling.n_apply)
@@ -72,7 +72,8 @@ def _atexit_print_fn():
         for ps in to_sum[1:]:
             for attr in ["compile_time", "fct_call_time", "fct_callcount",
                          "vm_call_time", "optimizer_time", "linker_time",
-                         "validate_time", "import_time"]:
+                         "validate_time", "import_time",
+                         "linker_node_make_thunks"]:
                 setattr(cum, attr, getattr(cum, attr) + getattr(ps, attr))
 
             # merge dictonary
@@ -189,6 +190,8 @@ class ProfileStats(object):
 
     import_time = 0.0
     # time spent in importing compiled python module.
+
+    linker_node_make_thunks = 0.0
 
     line_width = config.profiling.output_line_width
 
@@ -665,6 +668,8 @@ class ProfileStats(object):
         print('    Theano Linker time (includes C, CUDA code '
               'generation/compiling): %es' % self.linker_time, file=file)
         print('       Import time %es' % self.import_time, file=file)
+        print('       Node make_thunk time %es' % self.linker_node_make_thunks,
+              file=file)
         print('', file=file)
 
         # The validation time is a subset of optimizer_time

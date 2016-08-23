@@ -7,6 +7,7 @@ from theano.compile import DeepCopyOp
 from theano.tensor.tests import test_subtensor
 
 from ..basic_ops import HostFromGpu, GpuFromHost
+from ..elemwise import GpuDimShuffle
 from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuAdvancedSubtensor1,
                          GpuAdvancedIncSubtensor1)
@@ -27,6 +28,7 @@ class G_subtensor(test_subtensor.T_subtensor):
             inc_sub=GpuIncSubtensor,
             adv_sub1=GpuAdvancedSubtensor1,
             adv_incsub1=GpuAdvancedIncSubtensor1,
+            dimshuffle=GpuDimShuffle,
             mode=mode_with_gpu,
             # avoid errors with limited devices
             dtype='float32',

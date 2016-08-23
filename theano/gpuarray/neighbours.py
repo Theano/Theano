@@ -13,7 +13,7 @@ except ImportError:
 
 from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel,
                         infer_context_name)
-from .opt import register_opt as register_gpu_opt, op_lifter
+from .opt import register_opt2, op_lifter, register_opt
 from .type import GpuArrayType
 
 
@@ -68,48 +68,48 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         code = """
 // a version that uses less registers but doesn't work in all cases.
         KERNEL void %(kname)s(
-            const int nb_batch,
-            const int nb_stack,
-            const int height,
-            const int width,
-            const int c,
-            const int d,
-            const int step_x,
-            const int step_y,
-            const int grid_c,
-            const int grid_d,
-            const size_t stride0, const size_t stride1,
-            const size_t stride2, const size_t stride3,
-            const %(type_ten4)s * global_ten4, const size_t offset_ten4,
-            const size_t out_s0, const size_t out_s1,
-            %(type_z)s * global_out, const size_t offset_out
+            const ga_int nb_batch,
+            const ga_int nb_stack,
+            const ga_int height,
+            const ga_int width,
+            const ga_int c,
+            const ga_int d,
+            const ga_int step_x,
+            const ga_int step_y,
+            const ga_int grid_c,
+            const ga_int grid_d,
+            const ga_size stride0, const ga_size stride1,
+            const ga_size stride2, const ga_size stride3,
+            GLOBAL_MEM const %(type_ten4)s * global_ten4, const ga_size offset_ten4,
+            const ga_size out_s0, const ga_size out_s1,
+            GLOBAL_MEM %(type_z)s * global_out, const ga_size offset_out
         )
         {
-            const int wrap_centered_idx_shift_x = c/2;
-            const int wrap_centered_idx_shift_y = d/2;
-            global_ten4 = (const %(type_ten4)s *)(((char *)global_ten4)+offset_ten4);
-            global_out = (%(type_z)s *)(((char *)global_out)+offset_out);
+            const ga_int wrap_centered_idx_shift_x = c/2;
+            const ga_int wrap_centered_idx_shift_y = d/2;
+            global_ten4 = (GLOBAL_MEM const %(type_ten4)s *)(((GLOBAL_MEM char *)global_ten4)+offset_ten4);
+            global_out = (GLOBAL_MEM %(type_z)s *)(((GLOBAL_MEM char *)global_out)+offset_out);
 
-            for(int tblock = blockIdx.x*blockDim.z+threadIdx.z;
+            for(ga_int tblock = GID_0*LDIM_2+LID_2;
                 tblock<nb_batch*nb_stack*grid_c*grid_d;
-                tblock+=gridDim.x*blockDim.z){
-                const int b = tblock%%grid_d;
-                int left = tblock/grid_d;
-                const int a = left%%grid_c;
+                tblock+=GDIM_0*LDIM_2){
+                const ga_int b = tblock%%grid_d;
+                ga_int left = tblock/grid_d;
+                const ga_int a = left%%grid_c;
                 left = left/grid_c;
-                const int s = left%%nb_stack;
+                const ga_int s = left%%nb_stack;
                 left = left/nb_stack;
-                const int n = left;
+                const ga_int n = left;
 
                 if(n>nb_batch)continue;
                 if(s>nb_stack)continue;
                 if(a>grid_c)continue;
                 if(b>grid_d)continue;
-                            int z_row = b + grid_d*(a + grid_c*
+                            ga_int z_row = b + grid_d*(a + grid_c*
                                                     (s + nb_stack*n));
-                            int i = threadIdx.y;     // loop over c
+                            ga_int i = LID_1;     // loop over c
                             {
-                                int ten4_2 = i + a * step_x;
+                                ga_int ten4_2 = i + a * step_x;
                                 if("%(mode)s"=="wrap_centered"){
                                     ten4_2 -= wrap_centered_idx_shift_x;
                                     if ( ten4_2 < 0 )
@@ -117,9 +117,9 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                     else if (ten4_2 >= height)
                                         ten4_2 -= height;
                                 }
-                                int j = threadIdx.x;  // loop over d
+                                ga_int j = LID_0;  // loop over d
                                 {
-                                    int ten4_3 = j + b * step_y;
+                                    ga_int ten4_3 = j + b * step_y;
                                     if("%(mode)s"=="wrap_centered"){
                                         ten4_3 -= wrap_centered_idx_shift_y;
                                         if ( ten4_3 < 0 )
@@ -128,12 +128,12 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                             ten4_3 -= width;
                                     }
 
-                                    int ten4_idx = stride3*ten4_3 +
+                                    ga_int ten4_idx = stride3*ten4_3 +
                                                    stride2*ten4_2 +
                                                    stride1*s + stride0*n;
 
-                                    int z_col = j + d * i;
-                                    int z_idx = z_col * out_s1 +
+                                    ga_int z_col = j + d * i;
+                                    ga_int z_idx = z_col * out_s1 +
                                                 z_row * out_s0;
                                     global_out[z_idx] = global_ten4[ten4_idx];
                                 }
@@ -155,49 +155,49 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         k_var = "k_multi_warp_" + nodename
         code = """
         KERNEL void %(kname)s(
-            const int nb_batch,
-            const int nb_stack,
-            const int height,
-            const int width,
-            const int c,
-            const int d,
-            const int step_x,
-            const int step_y,
-            const int grid_c,
-            const int grid_d,
-            const size_t stride0, const size_t stride1,
-            const size_t stride2, const size_t stride3,
-            const %(type_ten4)s * global_ten4, const size_t offset_ten4,
-            const size_t out_s0, const size_t out_s1,
-            %(type_z)s * global_out, const size_t offset_out
+            const ga_int nb_batch,
+            const ga_int nb_stack,
+            const ga_int height,
+            const ga_int width,
+            const ga_int c,
+            const ga_int d,
+            const ga_int step_x,
+            const ga_int step_y,
+            const ga_int grid_c,
+            const ga_int grid_d,
+            const ga_size stride0, const ga_size stride1,
+            const ga_size stride2, const ga_size stride3,
+            GLOBAL_MEM const %(type_ten4)s * global_ten4, const ga_size offset_ten4,
+            const ga_size out_s0, const ga_size out_s1,
+            GLOBAL_MEM %(type_z)s * global_out, const ga_size offset_out
         )
         {
-            const int wrap_centered_idx_shift_x = c/2;
-            const int wrap_centered_idx_shift_y = d/2;
-            global_ten4 = (const %(type_ten4)s *)(((char *)global_ten4)+offset_ten4);
-            global_out = (%(type_z)s *)(((char *)global_out)+offset_out);
+            const ga_int wrap_centered_idx_shift_x = c/2;
+            const ga_int wrap_centered_idx_shift_y = d/2;
+            global_ten4 = (GLOBAL_MEM const %(type_ten4)s *)(((GLOBAL_MEM char *)global_ten4)+offset_ten4);
+            global_out = (GLOBAL_MEM %(type_z)s *)(((GLOBAL_MEM char *)global_out)+offset_out);
 
-            for(int tblock = blockIdx.x*blockDim.z+threadIdx.z;
+            for(ga_int tblock = GID_0*LDIM_2+LID_2;
                 tblock<nb_batch*nb_stack*grid_c*grid_d;
-                tblock+=gridDim.x*blockDim.z){
-                const int b = tblock%%grid_d;
-                int left = tblock/grid_d;
-                const int a = left%%grid_c;
+                tblock+=GDIM_0*LDIM_2){
+                const ga_int b = tblock%%grid_d;
+                ga_int left = tblock/grid_d;
+                const ga_int a = left%%grid_c;
                 left = left/grid_c;
-                const int s = left%%nb_stack;
+                const ga_int s = left%%nb_stack;
                 left = left/nb_stack;
-                const int n = left;
+                const ga_int n = left;
 
                 if(n>nb_batch)continue;
                 if(s>nb_stack)continue;
                 if(a>grid_c)continue;
                 if(b>grid_d)continue;
-                            int z_row = b + grid_d*(a + grid_c*
+                            ga_int z_row = b + grid_d*(a + grid_c*
                                                     (s + nb_stack*n));
                             // loop over c
-                            for (int i = threadIdx.y; i < c; i+=blockDim.y)
+                            for (ga_int i = LID_1; i < c; i+=LDIM_1)
                             {
-                                int ten4_2 = i + a * step_x;
+                                ga_int ten4_2 = i + a * step_x;
                                 if("%(mode)s"=="wrap_centered"){
                                     ten4_2 -= wrap_centered_idx_shift_x;
                                     if ( ten4_2 < 0 )
@@ -206,9 +206,9 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                         ten4_2 -= height;
                                 }
                                 // loop over d
-                                for (int j = threadIdx.x; j < d; j+=blockDim.x)
+                                for (ga_int j = LID_0; j < d; j+=LDIM_0)
                                 {
-                                    int ten4_3 = j + b * step_y;
+                                    ga_int ten4_3 = j + b * step_y;
                                     if("%(mode)s"=="wrap_centered"){
                                         ten4_3 -= wrap_centered_idx_shift_y;
                                         if ( ten4_3 < 0 )
@@ -217,12 +217,12 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                             ten4_3 -= width;
                                     }
 
-                                    int ten4_idx = stride3*ten4_3 +
+                                    ga_int ten4_idx = stride3*ten4_3 +
                                                    stride2*ten4_2 +
                                                    stride1*s + stride0*n;
 
-                                    int z_col = j + d * i;
-                                    int z_idx = z_col * out_s1 +
+                                    ga_int z_col = j + d * i;
+                                    ga_int z_idx = z_col * out_s1 +
                                                 z_row * out_s0;
                                     global_out[z_idx] = global_ten4[ten4_idx];
                                 }
@@ -243,8 +243,6 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         return kernels
 
     def c_code(self, node, name, inp, out, sub):
-        if node.inputs[0].type.context.kind != b'cuda':
-            raise NotImplementedError("cuda only")
         dtype_ten4 = node.inputs[0].dtype
         dtype_neib_shape = node.inputs[1].dtype
         dtype_neib_step = node.inputs[2].dtype
@@ -410,9 +408,15 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                          PyArray_GETPTR1(%(neib_step)s, 1);
 
             size_t threads_per_block[3] = {d, c, 1};
-            //Their is a max of 512 threads per blocks
-            while(threads_per_block[0]*threads_per_block[1]>512 && threads_per_block[1]>1)threads_per_block[1]--;
-            while(threads_per_block[0]*threads_per_block[1]>512 && threads_per_block[0]>1)threads_per_block[0]--;
+            //get the max threads per blocks
+            size_t max_threads_dim;
+            int err = gpucontext_property(%(ctx)s->ctx, GA_CTX_PROP_MAXLSIZE, &max_threads_dim);
+            if (err != GA_NO_ERROR){
+                PyErr_SetString(PyExc_RuntimeError, "Could not fetch max_threads_dims");
+                %(fail)s;
+            }
+            while(threads_per_block[0]*threads_per_block[1]>max_threads_dim && threads_per_block[1]>1)threads_per_block[1]--;
+            while(threads_per_block[0]*threads_per_block[1]>max_threads_dim && threads_per_block[0]>1)threads_per_block[0]--;
 
             //Make bigger block to have better memory access pattern and
             //a higher core utilisation. for smaller patch size
@@ -434,7 +438,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
             }else{
                 fptr = &k_multi_warp_%(name)s;
             }
-
+            // printf("%%zu %%zu %%zu %%zu %%zu %%zu %%zu\\n", max_threads_dim, threads_per_block[0], threads_per_block[1], threads_per_block[2], n_blocks[0], n_blocks[1], n_blocks[2]);
             size_t stride_A0 = PyGpuArray_STRIDES(%(ten4)s)[0] / %(itemsize_ten4)s;
             size_t stride_A1 = PyGpuArray_STRIDES(%(ten4)s)[1] / %(itemsize_ten4)s;
             size_t stride_A2 = PyGpuArray_STRIDES(%(ten4)s)[2] / %(itemsize_ten4)s;
@@ -457,7 +461,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                      (void *)&stride_Z1,
                                      (void *)%(z)s->ga.data,
                                      (void *)&%(z)s->ga.offset};
-            int err = GpuKernel_call(fptr, 3, threads_per_block, n_blocks, 0, kernel_params);
+            err = GpuKernel_call(fptr, 3, threads_per_block, n_blocks, 0, kernel_params);
             %(err_check)s
             %(sync)s
         } // END NESTED SCOPE
@@ -468,9 +472,9 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         Op.perform(self, node, inp, out, ctx)
 
 
+@register_opt('fast_compile')
 @op_lifter([Images2Neibs])
-def use_gpu_images2neibs(node, context_name):
-    if node.op.mode in ['valid', 'ignore_borders', 'wrap_centered']:
-        return GpuImages2Neibs(node.op.mode)
-
-register_gpu_opt()(use_gpu_images2neibs)
+@register_opt2([Images2Neibs], 'fast_compile')
+def local_gpua_images2neibs(op, context_name, inputs, outputs):
+    if op.mode in ['valid', 'ignore_borders', 'wrap_centered']:
+        return GpuImages2Neibs(op.mode)
