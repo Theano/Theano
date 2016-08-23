@@ -154,6 +154,8 @@ To setup VIM:
         Plugin 'scrooloose/syntastic'
         Plugin 'jimf/vim-pep8-text-width'
 
+        call vundle#end()
+
         " Syntastic settings
         " You can run checkers explicitly by calling :SyntasticCheck <checker
         let g:syntastic_python_checkers = ['flake8'] "use one of the following checkers:
