@@ -5,8 +5,6 @@ WRITEME
 from __future__ import absolute_import, print_function, division
 import logging
 
-import numpy
-
 import theano
 from theano import gof
 import theano.gof.vm
