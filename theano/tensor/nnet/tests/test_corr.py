@@ -10,7 +10,6 @@ import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import corr, conv
-from theano.tensor.basic import _allclose
 
 
 class TestCorr2D(utt.InferShapeTester):
@@ -132,7 +131,7 @@ class TestCorr2D(utt.InferShapeTester):
                                 icol:icol + dil_fil_shape2d[1]:filter_dilation[1]] * filter2d[::-1, ::-1]
                             ).sum()
 
-        self.assertTrue(_allclose(theano_output, ref_output))
+        utt.assert_allclose(theano_output, ref_output)
 
         # TEST GRADIENT
         if verify_grad:
