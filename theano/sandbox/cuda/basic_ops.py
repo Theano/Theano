@@ -130,7 +130,6 @@ class GpuFromHost(GpuOp):
     def __str__(self):
         return 'GpuFromHost'
 
-
     def make_node(self, x):
         if not isinstance(x.type, tensor.TensorType):
             raise TypeError("Expected a Theano variable with type "
@@ -582,6 +581,14 @@ class GpuCAReduce(GpuOp):
         # For unpickling of old ops.
         if not hasattr(self, "pre_scalar_op"):
             self.pre_scalar_op = None
+
+    def __str__(self):
+        pre = ""
+        if self.pre_scalar_op:
+            pre = "pre=%s,red=" % str(self.pre_scalar_op)
+        return "GpuCAReduce{%s%s}{%s}" % (
+            pre, str(self.scalar_op),
+            ','.join(str(i) for i in self.reduce_mask))
 
     def make_node(self, x):
         x = as_cuda_ndarray_variable(x)
@@ -3634,6 +3641,7 @@ class GpuAllocEmpty(GpuOp):
     Implement Alloc on the gpu, but without initializing memory.
 
     """
+    __props__ = ()
 
     @staticmethod
     def validate_shape(shape):
@@ -3832,6 +3840,7 @@ class CopyOnNegativeStrides(GpuOp):
     If it does, returns a c contiguous copy.
 
     """
+    __props__ = ()
 
     view_map = {0: [0]}
     check_input = False

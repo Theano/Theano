@@ -898,7 +898,6 @@ class BaseGpuCorrMM(GpuOp):
             return self.border_mode
         return (0, 0)
 
-
     def flops(self, inp, outp):
         """
         Useful with the hack in profilemode to print the MFlops.
@@ -2194,13 +2193,11 @@ class GpuDownsampleFactorMax(GpuOp):
     Implement downsample with max on the gpu.
 
     """
-
     __props__ = ('ds', 'ignore_border')
 
     def __init__(self, ds, ignore_border=False):
         self.ds = tuple(ds)
         self.ignore_border = ignore_border
-
 
     def make_node(self, x):
         if not isinstance(x.type, CudaNdarrayType):

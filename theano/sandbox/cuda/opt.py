@@ -1127,9 +1127,9 @@ def local_gpu_advanced_incsubtensor1(node):
             compute_capability = device_properties(active_device_no)['major']
             if (compute_capability < 2 or y.ndim != 2 or x.ndim != 2):
 
-                gpu_op = GpuAdvancedIncSubtensor1(set_instead_of_inc=set_instead_of_inc)
+                gpu_op = GpuAdvancedIncSubtensor1(**node.op._props_dict())
             else:
-                gpu_op = theano.sandbox.cuda.basic_ops.GPUAdvancedIncSubtensor1_dev20(**node.op._props_dict())
+                gpu_op = GpuAdvancedIncSubtensor1_dev20(**node.op._props_dict())
             return [gpu_op(as_cuda_ndarray_variable(x),
                            as_cuda_ndarray_variable(y), *coords)]
 
@@ -1912,7 +1912,7 @@ def local_gpu_downsample_factor_max(node):
         if (pad) != (0, 0) or node.op.mode != 'max' or stride != ws:
             return
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            gpu_ds = GpuDownsampleFactorMax(node.op.ds, node.op.ignore_border)
+            gpu_ds = GpuDownsampleFactorMax(**node.op._props_dict())
             return [host_from_gpu(gpu_ds(x.owner.inputs[0]))]
 
 
@@ -1929,7 +1929,7 @@ def local_gpu_downsample_factor_max_grad(node):
         if pad != (0, 0) or node.op.mode != 'max' or stride != ws:
             return
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            gpu_ds_grad = GpuDownsampleFactorMaxGrad(ws, node.op.ignore_border)
+            gpu_ds_grad = GpuDownsampleFactorMaxGrad(**node.op._props_dict())
             return [host_from_gpu(gpu_ds_grad(x.owner.inputs[0],
                                               as_cuda_ndarray_variable(z),
                                               as_cuda_ndarray_variable(gz)))]
