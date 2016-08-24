@@ -2224,7 +2224,7 @@ def local_gpualloc(node):
 
 
 @register_opt()
-@local_optimizer([theano.tensor.opt.Assert])
+@local_optimizer([theano.tensor.opt.Assert, GpuFromHost])
 def local_assert(node):
     if (isinstance(node.op, theano.tensor.opt.Assert) and
         node.inputs[0].owner and
@@ -2232,6 +2232,13 @@ def local_assert(node):
                    HostFromGpu)):
         return [host_from_gpu(node.op(node.inputs[0].owner.inputs[0],
                                       *node.inputs[1:]))]
+    elif (isinstance(node.op, GpuFromHost) and
+          node.inputs[0].owner and
+          isinstance(node.inputs[0].owner.op,
+                     theano.tensor.opt.Assert)):
+        a = node.inputs[0].owner
+        new = a.op(gpu_from_host(a.inputs[0]), *a.inputs[1:])
+        return [new]
 
 
 @register_opt()
