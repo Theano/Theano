@@ -3186,16 +3186,17 @@ def var(input, axis=None, ddof=0, keepdims=False, corrected=False):
 
     Notes
     -----
-    By default, uses the two-pass algorithm for more stable results.
+    Default uses the two-pass algorithm (reference below).
     https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Two-pass_algorithm
-    Also supports 'corrected_two_pass' algorithm, as mentioned above.
-    There exist other implementations that are even more stable, but probably
-    slower.
+    Also supports 'corrected_two_pass' algorithm (using the 'corrected' flag)
+    which is numerically more stable. There exist other implementations that
+    offer better stability, but probably slower.
 
     """
 
     if isinstance(ddof, (bool)):
-        raise ValueError('Parameter keepdims is now at index 3: (input, axis=None, ddof=0, keepdims=False)')
+        raise ValueError('Parameter keepdims is now at index 3: (input, \
+                          axis=None, ddof=0, keepdims=False, corrected=False)')
 
     input_ndim = input.type.ndim
     if axis is None:
@@ -3239,34 +3240,42 @@ def var(input, axis=None, ddof=0, keepdims=False, corrected=False):
 
 
 @constructor
-def std(input, axis=None, ddof=0, keepdims=False):
+def std(input, axis=None, ddof=0, keepdims=False, corrected=False):
     """
     Computes the standard deviation along the given axis(es) of a tensor `input`.
 
     Parameters
     ----------
-    axis : None or int or (list of int) (see `Sum`)
-        Compute the standard deviation along this axis of the tensor.
+    axis: None or int or (list of int) (see `Sum`)
+        Compute the variance along this axis of the tensor.
         None means all axes (like numpy).
+    ddof: Degrees of freedom; 0 would compute the ML estimate, 1 would compute
+        the unbiased estimate.
     keepdims : bool
-        If this is set to True, the axes which are reduced are left in the
-        result as dimensions with size one. With this option, the result will
-        broadcast correctly against the original tensor.
+        If this is set to True, the axes which are reduced are
+        left in the result as dimensions with size one. With this option,
+        the result will broadcast correctly against the original tensor.
+    corrected : bool
+        If this is set to True, the 'corrected_two_pass' algorithm is
+        used to compute the variance.
+        Refer : http://www.cs.yale.edu/publications/techreports/tr222.pdf
 
     Notes
     -----
-    It calls `var()` and `var()` uses the two-pass algorithm for more stable
-    results.
+    It calls 'var()' and 'var()' uses the two-pass algorithm (reference below).
     https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Two-pass_algorithm
-    There exist other implementations that are even more stable, but probably
-    slower.
+    Function 'var()' also supports 'corrected_two_pass' algorithm (using the
+    'corrected' flag) which is numerically more stable. There exist other
+    implementations that offer better stability, but probably slower.
 
     """
 
     if isinstance(ddof, (bool)):
-        raise ValueError('Parameter keepdims is now at index 3: (input, axis=None, ddof=0, keepdims=False)')
+        raise ValueError('Parameter keepdims is now at index 3: (input, \
+                          axis=None, ddof=0, keepdims=False, corrected=False)')
 
-    ret = sqrt(var(input=input, axis=axis, ddof=ddof, keepdims=keepdims))
+    ret = sqrt(var(input=input, axis=axis, ddof=ddof,
+                   keepdims=keepdims, corrected=corrected))
     ret.name = 'std'
     return ret
 

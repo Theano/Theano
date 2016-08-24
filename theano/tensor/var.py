@@ -643,14 +643,15 @@ class _tensor_py_operators(object):
                                         dtype=dtype, keepdims=keepdims,
                                         acc_dtype=acc_dtype)
 
-    def var(self, axis=None, keepdims=False, corrected=False):
+    def var(self, axis=None, ddof=0, keepdims=False, corrected=False):
         """See `theano.tensor.var`."""
-        return theano.tensor.basic.var(self, axis, keepdims=keepdims,
-                                       corrected=corrected)
+        return theano.tensor.basic.var(self, axis=axis, ddof=ddof,
+                                       keepdims=keepdims, corrected=corrected)
 
-    def std(self, axis=None, keepdims=False):
+    def std(self, axis=None, ddof=0, keepdims=False, corrected=False):
         """See `theano.tensor.std`."""
-        return theano.tensor.basic.std(self, axis, keepdims=keepdims)
+        return theano.tensor.basic.std(self, axis=axis, ddof=ddof,
+                                       keepdims=keepdims, corrected=corrected)
 
     def min(self, axis=None, keepdims=False):
         """See `theano.tensor.min`."""
