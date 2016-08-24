@@ -3225,13 +3225,13 @@ def var(input, axis=None, ddof=0, keepdims=False, corrected=False):
     # use 'corrected_two_pass' algorithm
     if corrected:
         if ddof == 0:
-            error = mean(centered_input, axis, keepdims=keepdims)**2
+            error = mean(centered_input, axis, keepdims=keepdims) ** 2
         else:
             shp = shape(input) - ddof
             shp_inp = shape(input)
-            error = sum(centered_input, axis=axis, keepdims=keepdims)**2
+            error = sum(centered_input, axis=axis, keepdims=keepdims) ** 2
             for i in axis:
-                error = true_div(error, shp[i]*shp_inp[i])
+                error = true_div(error, shp[i] * shp_inp[i])
         v = v - error
 
     v.name = 'var'

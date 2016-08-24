@@ -6386,8 +6386,8 @@ def test_var():
     v = numpy.var(a_val, axis=2, ddof=1)
     shp_inp = numpy.shape(a_val)
     shp = shp_inp - numpy.array(1)
-    error = (numpy.sum(centered_a, axis=2))**2
-    error = numpy.true_divide(error, shp[1]*shp_inp[1])
+    error = (numpy.sum(centered_a, axis=2)) ** 2
+    error = numpy.true_divide(error, shp[1] * shp_inp[1])
     v = v - error
     assert numpy.allclose(v, f(a_val))
 
