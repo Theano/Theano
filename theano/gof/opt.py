@@ -2460,11 +2460,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 prof2[0].final_optimizers)
         else:
             final_optimizers = None
-        if len(prof1[0].cleanup_optimizers) > 0 or len(prof2[0].cleanup_optimizers) > 0:
-            cleanup_optimizers = OrderedSet(prof1[0].cleanup_optimizers).union(
-                prof2[0].cleanup_optimizers)
-        else:
-            cleanup_optimizers = None
+        cleanup_optimizers = list(OrderedSet(prof1[0].cleanup_optimizers).union(
+            prof2[0].cleanup_optimizers))
         new_opt = EquilibriumOptimizer(
             local_optimizers.union(global_optimizers),
             max_use_ratio=1,
@@ -2483,6 +2480,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         loop_timing = merge_list(prof1[1], prof2[1])
 
         loop_process_count = list(prof1[2])
+        cleanup_sub_profs = []
         for i in range(min(len(loop_process_count), len(prof2[2]))):
             process_count = loop_process_count[i]
             for process, count in iteritems(prof2[2][i]):
@@ -2490,6 +2488,23 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     process_count[process] += count
                 else:
                     process_count[process] = count
+            iter_cleanup_sub_profs = []
+            for cleanup_opt in cleanup_optimizers:
+                o1 = prof1[0].cleanup_optimizers
+                o2 = prof2[0].cleanup_optimizers
+                if cleanup_opt in o1 and cleanup_opt in o2:
+                    p1 = prof1[11][i][o1.index(cleanup_opt)]
+                    p2 = prof2[11][i][o2.index(cleanup_opt)]
+                    iter_cleanup_sub_profs.append(
+                        cleanup_opt.merge_profile(p1, p2))
+                elif cleanup_opt in o1:
+                    p1 = prof1[11][o1.index(cleanup_opt)]
+                    iter_cleanup_sub_profs.append(p1)
+                else:
+                    p2 = prof2[11][o2.index(cleanup_opt)]
+                    iter_cleanup_sub_profs.append(p2)
+            cleanup_sub_profs.append(iter_cleanup_sub_profs)
+
         loop_process_count.extend(prof2[2][len(loop_process_count):])
 
         max_nb_nodes = max(prof1[3], prof2[3])
@@ -2508,7 +2523,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         node_created = merge_dict(prof1[8], prof2[8])
         global_sub_profs = merge_list(prof1[9], prof2[9])
         final_sub_profs = merge_list(prof1[10], prof2[10])
-        cleanup_sub_profs = merge_list(prof1[10], prof2[10])
+
         return (new_opt,
                 loop_timing,
                 loop_process_count,
