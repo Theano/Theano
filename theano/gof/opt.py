@@ -1941,10 +1941,15 @@ class TopoOptimizer(NavigatorOptimizer):
 
     @staticmethod
     def print_profile(stream, prof, level=0):
+        blanc = ('    ' * level)
+        if prof is None: # Happen as merge_profile() isn't implemented
+            print(blanc, "TopoOptimizer merge_profile not implemented",
+                  file=stream)
+            return
+
         (opt, nb, nb_nodes_start, nb_nodes_end,
          io_t, loop_t, callback_time) = prof
 
-        blanc = ('    ' * level)
         print(blanc, "TopoOptimizer ",
               getattr(opt, "name", getattr(opt, "__name__", "")), file=stream)
 
@@ -2455,11 +2460,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             prof2[0].get_local_optimizers())
         global_optimizers = OrderedSet(prof1[0].global_optimizers).union(
             prof2[0].global_optimizers)
-        if len(prof1[0].final_optimizers) > 0 or len(prof2[0].final_optimizers) > 0:
-            final_optimizers = OrderedSet(prof1[0].final_optimizers).union(
-                prof2[0].final_optimizers)
-        else:
-            final_optimizers = None
+        final_optimizers = list(OrderedSet(prof1[0].final_optimizers).union(
+            prof2[0].final_optimizers))
         cleanup_optimizers = list(OrderedSet(prof1[0].cleanup_optimizers).union(
             prof2[0].cleanup_optimizers))
         new_opt = EquilibriumOptimizer(
@@ -2480,6 +2482,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         loop_timing = merge_list(prof1[1], prof2[1])
 
         loop_process_count = list(prof1[2])
+        final_sub_profs = []
         cleanup_sub_profs = []
         for i in range(min(len(loop_process_count), len(prof2[2]))):
             process_count = loop_process_count[i]
@@ -2488,21 +2491,41 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     process_count[process] += count
                 else:
                     process_count[process] = count
+            iter_final_sub_profs = []
             iter_cleanup_sub_profs = []
-            for cleanup_opt in cleanup_optimizers:
+            for opt in final_optimizers:
+                o1 = prof1[0].final_optimizers
+                o2 = prof2[0].final_optimizers
+                if opt in o1 and opt in o2:
+                    p1 = prof1[10][i][o1.index(opt)]
+                    p2 = prof2[10][i][o2.index(opt)]
+                    if hasattr(opt, 'merge_profile'):
+                        m = opt.merge_profile(p1, p2)
+                    else:
+                        m = None
+                    iter_final_sub_profs.append(m)
+                elif opt in o1:
+                    p1 = prof1[10][o1.index(opt)]
+                    iter_final_sub_profs.append(p1)
+                else:
+                    p2 = prof2[10][o2.index(opt)]
+                    iter_final_sub_profs.append(p2)
+
+            for opt in cleanup_optimizers:
                 o1 = prof1[0].cleanup_optimizers
                 o2 = prof2[0].cleanup_optimizers
-                if cleanup_opt in o1 and cleanup_opt in o2:
-                    p1 = prof1[11][i][o1.index(cleanup_opt)]
-                    p2 = prof2[11][i][o2.index(cleanup_opt)]
+                if opt in o1 and opt in o2:
+                    p1 = prof1[11][i][o1.index(opt)]
+                    p2 = prof2[11][i][o2.index(opt)]
                     iter_cleanup_sub_profs.append(
-                        cleanup_opt.merge_profile(p1, p2))
-                elif cleanup_opt in o1:
-                    p1 = prof1[11][o1.index(cleanup_opt)]
+                        opt.merge_profile(p1, p2))
+                elif opt in o1:
+                    p1 = prof1[11][o1.index(opt)]
                     iter_cleanup_sub_profs.append(p1)
                 else:
-                    p2 = prof2[11][o2.index(cleanup_opt)]
+                    p2 = prof2[11][o2.index(opt)]
                     iter_cleanup_sub_profs.append(p2)
+            final_sub_profs.append(iter_final_sub_profs)
             cleanup_sub_profs.append(iter_cleanup_sub_profs)
 
         loop_process_count.extend(prof2[2][len(loop_process_count):])
@@ -2522,7 +2545,6 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
         node_created = merge_dict(prof1[8], prof2[8])
         global_sub_profs = merge_list(prof1[9], prof2[9])
-        final_sub_profs = merge_list(prof1[10], prof2[10])
 
         return (new_opt,
                 loop_timing,
