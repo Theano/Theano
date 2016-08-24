@@ -1942,7 +1942,7 @@ class TopoOptimizer(NavigatorOptimizer):
     @staticmethod
     def print_profile(stream, prof, level=0):
         blanc = ('    ' * level)
-        if prof is None: # Happen as merge_profile() isn't implemented
+        if prof is None:  # Happen as merge_profile() isn't implemented
             print(blanc, "TopoOptimizer merge_profile not implemented",
                   file=stream)
             return
