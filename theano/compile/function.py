@@ -102,7 +102,8 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
         Variables that are neither in "updates" nor in "no_default_updates".
     accept_inplace : bool
         True iff the graph can contain inplace operations prior to the
-        optimization phase (default is False).
+        optimization phase (default is False). *Note* this parameter is unsupported,
+        and its use is not recommended.
     name : str
         An optional name for this function. The profile mode will print the time
         spent in this function.
