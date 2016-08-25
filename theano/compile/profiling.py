@@ -52,8 +52,9 @@ def _atexit_print_fn():
         destination_file = sys.stdout
     else:
         destination_file = open(config.profiling.destination, 'w')
-
-    for ps in _atexit_print_list:
+    # Reverse sort in the order of compile+exec time
+    for ps in sorted(_atexit_print_list,
+                     key=lambda a:a.compile_time + a.fct_call_time)[::-1]:
         if ps.fct_callcount >= 1 or ps.compile_time > 1:
             ps.summary(file=destination_file,
                        n_ops_to_print=config.profiling.n_ops,

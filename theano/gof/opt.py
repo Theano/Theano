@@ -2511,7 +2511,6 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         m = prof2[idx][i][o2.index(opt)]
                     tmp.append(m)
                 return tmp
-            t = merge(global_optimizers, 'global_optimizers', 9)
             global_sub_profs.append(merge(global_optimizers, 'global_optimizers', 9))
             final_sub_profs.append(merge(final_optimizers, 'final_optimizers', 10))
             cleanup_sub_profs.append(merge(cleanup_optimizers, 'cleanup_optimizers', 11))
