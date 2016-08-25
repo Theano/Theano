@@ -2493,62 +2493,28 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     process_count[process] += count
                 else:
                     process_count[process] = count
-            iter_global_sub_profs = []
-            iter_final_sub_profs = []
-            iter_cleanup_sub_profs = []
-            for opt in global_optimizers:
-                o1 = prof1[0].global_optimizers
-                o2 = prof2[0].global_optimizers
-                if opt in o1 and opt in o2:
-                    p1 = prof1[9][i][o1.index(opt)]
-                    p2 = prof2[9][i][o2.index(opt)]
-                    if hasattr(opt, 'merge_profile'):
-                        m = opt.merge_profile(p1, p2)
-                    else:
-                        m = None
-                    iter_global_sub_profs.append(m)
-                elif opt in o1:
-                    p1 = prof1[9][i][o1.index(opt)]
-                    iter_global_sub_profs.append(p1)
-                else:
-                    p2 = prof2[9][i][o2.index(opt)]
-                    iter_global_sub_profs.append(p2)
 
-            for opt in final_optimizers:
-                o1 = prof1[0].final_optimizers
-                o2 = prof2[0].final_optimizers
-                if opt in o1 and opt in o2:
-                    p1 = prof1[10][i][o1.index(opt)]
-                    p2 = prof2[10][i][o2.index(opt)]
-                    if hasattr(opt, 'merge_profile'):
-                        m = opt.merge_profile(p1, p2)
-                    else:
+            def merge(opts, attr, idx):
+                tmp = []
+                for opt in opts:
+                    o1 = getattr(prof1[0], attr)
+                    o2 = getattr(prof2[0], attr)
+                    if opt in o1 and opt in o2:
+                        p1 = prof1[idx][i][o1.index(opt)]
+                        p2 = prof2[idx][i][o2.index(opt)]
                         m = None
-                    iter_final_sub_profs.append(m)
-                elif opt in o1:
-                    p1 = prof1[10][i][o1.index(opt)]
-                    iter_final_sub_profs.append(p1)
-                else:
-                    p2 = prof2[10][i][o2.index(opt)]
-                    iter_final_sub_profs.append(p2)
-
-            for opt in cleanup_optimizers:
-                o1 = prof1[0].cleanup_optimizers
-                o2 = prof2[0].cleanup_optimizers
-                if opt in o1 and opt in o2:
-                    p1 = prof1[11][i][o1.index(opt)]
-                    p2 = prof2[11][i][o2.index(opt)]
-                    iter_cleanup_sub_profs.append(
-                        opt.merge_profile(p1, p2))
-                elif opt in o1:
-                    p1 = prof1[11][i][o1.index(opt)]
-                    iter_cleanup_sub_profs.append(p1)
-                else:
-                    p2 = prof2[11][i][o2.index(opt)]
-                    iter_cleanup_sub_profs.append(p2)
-            global_sub_profs.append(iter_global_sub_profs)
-            final_sub_profs.append(iter_final_sub_profs)
-            cleanup_sub_profs.append(iter_cleanup_sub_profs)
+                        if hasattr(opt, 'merge_profile'):
+                            m = opt.merge_profile(p1, p2)
+                    elif opt in o1:
+                        m = prof1[idx][i][o1.index(opt)]
+                    else:
+                        m = prof2[idx][i][o2.index(opt)]
+                    tmp.append(m)
+                return tmp
+            t = merge(global_optimizers, 'global_optimizers', 9)
+            global_sub_profs.append(merge(global_optimizers, 'global_optimizers', 9))
+            final_sub_profs.append(merge(final_optimizers, 'final_optimizers', 10))
+            cleanup_sub_profs.append(merge(cleanup_optimizers, 'cleanup_optimizers', 11))
 
         loop_process_count.extend(prof2[2][len(loop_process_count):])
 
