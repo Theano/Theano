@@ -4415,7 +4415,7 @@ class Reshape(Op):
 
     def __init__(self, ndim, name=None):
         self.ndim = ndim
-        self.name = name
+        assert name is None: 'name attribute for Reshape has been deprecated'
 
     def __str__(self):
         return '%s{%s}' % (self.__class__.__name__, self.ndim)
