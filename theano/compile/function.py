@@ -78,7 +78,8 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
              rebuild_strict=True, allow_input_downcast=None, profile=None,
              on_unused_input=None):
     """
-    Return a callable object that will calculate `outputs` from `inputs`.
+    Return a :class:`callable object <theano.compile.function_module.Function>`
+    that will calculate `outputs` from `inputs`.
 
     Parameters
     ----------
@@ -131,7 +132,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
     Returns
     -------
-    Function instance
+    :class:`theano.compile.function_module.Function` instance
         A callable object that will compute the outputs (given the inputs) and
         update the implicit function arguments according to the `updates`.
 
