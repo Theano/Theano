@@ -718,7 +718,7 @@ class CLinker(link.Linker):
                               [get_c_declare, get_c_extract_out,
                                   (get_c_sync, get_c_cleanup)]]
             else:
-                raise Exception("what the fuck")
+                raise Exception("this shouldn't be possible, please report this exception")
 
             builder, block = struct_variable_codeblocks(variable, policy,
                                                         id, symbol, sub)

@@ -1727,8 +1727,8 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
         Default of None means to use `config.mode` (see below for descriptive
         string list).
     name : str
-        An optional name for this fct. If used, the profile mode will print the
-        time spent in this fct.
+        An optional name for this function. If used, the profile mode will print the
+        time spent in this function.
     accept_inplace : bool
         True iff the graph can contain inplace operations prior to the
         optimization phase (default is False).
