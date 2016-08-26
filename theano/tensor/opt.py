@@ -1796,6 +1796,12 @@ def local_useless_alloc(node):
         # We don't need to copy over any stack traces here
         return [input]
 
+    # Allow local_merge_alloc to do its work first
+    clients = getattr(output, 'clients', [])
+    for client, i in clients :
+        if client != "output" and isinstance(client.op, Alloc) :
+            return
+
     # Check if alloc adds a broadcastable dimension with shape 1.
     output_shape = node.inputs[1:]
     num_dims_with_size_1_added_to_left = 0
