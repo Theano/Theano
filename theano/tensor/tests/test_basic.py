@@ -4978,7 +4978,7 @@ class T_scalarfromtensor(unittest.TestCase):
 
         self.assertTrue(v == 56, v)
         if config.cast_policy == 'custom':
-            self.assertTrue(isinstance(v, numpy.int8))
+            self.assertTrue(isinstance(v, numpy.int16))
         elif config.cast_policy in ('numpy', 'numpy+floatX'):
             self.assertTrue(isinstance(
                 v, getattr(numpy, str(numpy.asarray(56).dtype))))

@@ -1121,8 +1121,7 @@ Theano indexing with a "mask" (incorrect approach):
 .. doctest:: indexing
 
    >>> t = theano.tensor.arange(9).reshape((3,3))
-   >>> t[t > 4].eval()  # an array with shape (3, 3, 3)
-
+   >>> t[t > 4].eval()  # an array with shape (3, 3, 3)  # doctest: +ELLIPSIS
    Traceback (most recent call last):
      ...
    TypeError: TensorType does not support boolean mask for indexing such as tensor[x==0]. If you are indexing on purpose with an int8, please cast it to int32
