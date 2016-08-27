@@ -740,9 +740,6 @@ def test_scan_debugprint5():
     >Elemwise{mul,no_inplace} [id CS] ''"""
 
     for truth, out in zip(expected_output.split("\n"), lines):
-        if truth.strip() != out.strip():
-            import pdb
-            pdb.set_trace()
         assert truth.strip() == out.strip()
 
 

@@ -398,14 +398,24 @@ def local_gpu_dimshuffle_0(node):
         input, = node.inputs
         if input.owner and isinstance(input.owner.op, HostFromGpu):
             # move the add to a GpuAdd
-            new_op = GpuDimShuffle(**node.op._props_dict())
+            p_dict = node.op._props_dict()
+            try:
+                p_dict.pop('inplace')
+            except KeyError:
+                pass
+            new_op = GpuDimShuffle(**p_dict)
             return [host_from_gpu(new_op(as_cuda_ndarray_variable(input)))]
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op,
                                            tensor.DimShuffle):
             dimshuffle_node = host_input.owner
-            new_op = GpuDimShuffle(**dimshuffle_node.op._props_dict())
+            p_dict = dimshuffle_node.op._props_dict()
+            try:
+                p_dict.pop('inplace')
+            except KeyError:
+                pass
+            new_op = GpuDimShuffle(**p_dict)
             return [new_op(
                 as_cuda_ndarray_variable(dimshuffle_node.inputs[0]))]
     return False
@@ -1929,7 +1939,7 @@ def local_gpu_downsample_factor_max_grad(node):
         if pad != (0, 0) or node.op.mode != 'max' or stride != ws:
             return
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            gpu_ds_grad = GpuDownsampleFactorMaxGrad(**node.op._props_dict())
+            gpu_ds_grad = GpuDownsampleFactorMaxGrad(node.op.ds, node.op.ignore_border)
             return [host_from_gpu(gpu_ds_grad(x.owner.inputs[0],
                                               as_cuda_ndarray_variable(z),
                                               as_cuda_ndarray_variable(gz)))]

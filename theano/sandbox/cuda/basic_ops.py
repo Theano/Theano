@@ -121,14 +121,7 @@ class GpuFromHost(GpuOp):
 
     check_input = False
 
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return 'GpuFromHost'
+    __props__ = ()
 
     def make_node(self, x):
         if not isinstance(x.type, tensor.TensorType):
@@ -320,18 +313,13 @@ class GpuDimShuffle(GpuOp):
 
     check_broadcast = False
 
-    __props__ = ("input_broadcastable", "new_order", "inplace")
+    __props__ = ("input_broadcastable", "new_order")
 
-    def __init__(self, input_broadcastable, new_order, inplace=True):
+    def __init__(self, input_broadcastable, new_order):
         input_broadcastable = tuple(input_broadcastable)
         self.input_broadcastable = input_broadcastable
         self.new_order = tuple(new_order)
-        self.inplace = int(inplace)
-        if inplace is True:
-            self.inplace = inplace
-            self._props_dict().pop('inplace')
-        else:
-            raise ValueError("DimShuffle is inplace by default and hence the inplace for DimShuffle must be true")
+        self.inplace = True
 
         for i, b in enumerate(input_broadcastable):
             if i not in new_order:
@@ -392,6 +380,9 @@ class GpuDimShuffle(GpuOp):
                          hash(type(self).__module__) ^
                          hash(self.new_order) ^
                          hash(self.input_broadcastable))
+
+    def __str__(self):
+        return "GpuDimShuffle{%s}" % ",".join(str(x) for x in self.new_order)
 
     def c_code(self, node, name, inp, out, sub):
         input, = inp
