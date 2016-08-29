@@ -1941,10 +1941,15 @@ class TopoOptimizer(NavigatorOptimizer):
 
     @staticmethod
     def print_profile(stream, prof, level=0):
+        blanc = ('    ' * level)
+        if prof is None:  # Happen as merge_profile() isn't implemented
+            print(blanc, "TopoOptimizer merge_profile not implemented",
+                  file=stream)
+            return
+
         (opt, nb, nb_nodes_start, nb_nodes_end,
          io_t, loop_t, callback_time) = prof
 
-        blanc = ('    ' * level)
         print(blanc, "TopoOptimizer ",
               getattr(opt, "name", getattr(opt, "__name__", "")), file=stream)
 
@@ -2455,16 +2460,10 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             prof2[0].get_local_optimizers())
         global_optimizers = OrderedSet(prof1[0].global_optimizers).union(
             prof2[0].global_optimizers)
-        if len(prof1[0].final_optimizers) > 0 or len(prof2[0].final_optimizers) > 0:
-            final_optimizers = OrderedSet(prof1[0].final_optimizers).union(
-                prof2[0].final_optimizers)
-        else:
-            final_optimizers = None
-        if len(prof1[0].cleanup_optimizers) > 0 or len(prof2[0].cleanup_optimizers) > 0:
-            cleanup_optimizers = OrderedSet(prof1[0].cleanup_optimizers).union(
-                prof2[0].cleanup_optimizers)
-        else:
-            cleanup_optimizers = None
+        final_optimizers = list(OrderedSet(prof1[0].final_optimizers).union(
+            prof2[0].final_optimizers))
+        cleanup_optimizers = list(OrderedSet(prof1[0].cleanup_optimizers).union(
+            prof2[0].cleanup_optimizers))
         new_opt = EquilibriumOptimizer(
             local_optimizers.union(global_optimizers),
             max_use_ratio=1,
@@ -2483,6 +2482,10 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         loop_timing = merge_list(prof1[1], prof2[1])
 
         loop_process_count = list(prof1[2])
+        global_sub_profs = []
+        final_sub_profs = []
+        cleanup_sub_profs = []
+
         for i in range(min(len(loop_process_count), len(prof2[2]))):
             process_count = loop_process_count[i]
             for process, count in iteritems(prof2[2][i]):
@@ -2490,6 +2493,28 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     process_count[process] += count
                 else:
                     process_count[process] = count
+
+            def merge(opts, attr, idx):
+                tmp = []
+                for opt in opts:
+                    o1 = getattr(prof1[0], attr)
+                    o2 = getattr(prof2[0], attr)
+                    if opt in o1 and opt in o2:
+                        p1 = prof1[idx][i][o1.index(opt)]
+                        p2 = prof2[idx][i][o2.index(opt)]
+                        m = None
+                        if hasattr(opt, 'merge_profile'):
+                            m = opt.merge_profile(p1, p2)
+                    elif opt in o1:
+                        m = prof1[idx][i][o1.index(opt)]
+                    else:
+                        m = prof2[idx][i][o2.index(opt)]
+                    tmp.append(m)
+                return tmp
+            global_sub_profs.append(merge(global_optimizers, 'global_optimizers', 9))
+            final_sub_profs.append(merge(final_optimizers, 'final_optimizers', 10))
+            cleanup_sub_profs.append(merge(cleanup_optimizers, 'cleanup_optimizers', 11))
+
         loop_process_count.extend(prof2[2][len(loop_process_count):])
 
         max_nb_nodes = max(prof1[3], prof2[3])
@@ -2506,9 +2531,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         assert len(loop_timing) == max(len(prof1[1]), len(prof2[1]))
 
         node_created = merge_dict(prof1[8], prof2[8])
-        global_sub_profs = merge_list(prof1[9], prof2[9])
-        final_sub_profs = merge_list(prof1[10], prof2[10])
-        cleanup_sub_profs = merge_list(prof1[10], prof2[10])
+
         return (new_opt,
                 loop_timing,
                 loop_process_count,
