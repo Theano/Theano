@@ -439,6 +439,9 @@ if param != "":
     del newp
     del distutils
 
+# to support path that includes spaces, we need to wrap it with double quotes on Windows
+if param and os.name == 'nt':
+    param = '"%s"' % param
 AddConfigVar('cxx',
              "The C++ compiler to use. Currently only g++ is"
              " supported, but supporting additional compilers should not be "
@@ -1177,7 +1180,7 @@ def default_blas_ldflags():
             use_unix_epd = True
             if sys.platform == 'win32':
                 return ' '.join(
-                    ['-L%s' % os.path.join(sys.prefix, "Scripts")] +
+                    ['-L"%s"' % os.path.join(sys.prefix, "Scripts")] +
                     # Why on Windows, the library used are not the
                     # same as what is in
                     # blas_info['libraries']?
@@ -1247,7 +1250,7 @@ def default_blas_ldflags():
                     ['-l%s' % l for l in blas_info['libraries']])
             elif sys.platform == 'win32':
                 return ' '.join(
-                    ['-L%s' % lib_path] +
+                    ['-L"%s"' % lib_path] +
                     # Why on Windows, the library used are not the
                     # same as what is in blas_info['libraries']?
                     ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
@@ -1268,7 +1271,7 @@ def default_blas_ldflags():
             else:
                 # This branch is executed if no exception was raised
                 lib_path = os.path.join(sys.prefix, 'DLLs')
-                flags = ['-L%s' % lib_path]
+                flags = ['-L"%s"' % lib_path]
                 flags += ['-l%s' % l for l in ["mkl_core",
                                                "mkl_intel_thread",
                                                "mkl_rt"]]
@@ -1276,13 +1279,15 @@ def default_blas_ldflags():
                 if res:
                     return res
 
+        # to support path that includes spaces, we need to wrap it with double quotes on Windows
+        path_wrapper = "\"" if os.name == 'nt' else ""
         ret = (
             # TODO: the Gemm op below should separate the
             # -L and -l arguments into the two callbacks
             # that CLinker uses for that stuff.  for now,
             # we just pass the whole ldflags as the -l
             # options part.
-            ['-L%s' % l for l in blas_info.get('library_dirs', [])] +
+            ['-L%s%s%s' % (path_wrapper, l, path_wrapper) for l in blas_info.get('library_dirs', [])] +
             ['-l%s' % l for l in blas_info.get('libraries', [])] +
             blas_info.get('extra_link_args', []))
         # For some very strange reason, we need to specify -lm twice
@@ -1343,7 +1348,11 @@ def try_blas_flag(flags):
             return 0;
         }
         """)
-    cflags = flags + ['-L' + d for d in theano.gof.cmodule.std_lib_dirs()]
+    cflags = flags
+    # to support path that includes spaces, we need to wrap it with double quotes on Windows
+    path_wrapper = "\"" if os.name == 'nt' else ""
+    cflags.extend(['-L%s%s%s' % (path_wrapper, d, path_wrapper) for d in theano.gof.cmodule.std_lib_dirs()])
+
     res = GCC_compiler.try_compile_tmp(
         test_code, tmp_prefix='try_blas_',
         flags=cflags, try_run=True)

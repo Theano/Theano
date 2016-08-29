@@ -321,10 +321,12 @@ class NVCC_compiler(Compiler):
             # the -rpath option is not understood by the Microsoft linker
             for rpath in rpaths:
                 cmd.extend(['-Xlinker', ','.join(['-rpath', rpath])])
-        cmd.extend('-I%s' % idir for idir in include_dirs)
+        # to support path that includes spaces, we need to wrap it with double quotes on Windows
+        path_wrapper = "\"" if os.name == 'nt' else ""
+        cmd.extend(['-I%s%s%s' % (path_wrapper, idir, path_wrapper) for idir in include_dirs])
+        cmd.extend(['-L%s%s%s' % (path_wrapper, ldir, path_wrapper) for ldir in lib_dirs])
         cmd.extend(['-o', lib_filename])
         cmd.append(os.path.split(cppfilename)[-1])
-        cmd.extend(['-L%s' % ldir for ldir in lib_dirs])
         cmd.extend(['-l%s' % l for l in libs])
         if sys.platform == 'darwin':
             # This tells the compiler to use the already-loaded python
