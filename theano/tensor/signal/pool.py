@@ -243,7 +243,6 @@ class Pool(OpenMPOp):
 
     def prepare_node(self, node, storage_map, compute_map):
         if len(node.inputs) == 1:
-            warnings.warn("Theano Pool internal changed.", stacklevel=3)
             # Old interface
             self.mode = node.op.mode
             ws = theano.tensor.constant(node.op.ds)
@@ -277,12 +276,10 @@ class Pool(OpenMPOp):
         if stride is None:
             stride = ws
         if isinstance(pad, (tuple, list)):
-            pad = tuple(pad)
-            if pad != (0, 0) and not self.ignore_border:
+            if tuple(pad) != (0, 0) and not self.ignore_border:
                 raise NotImplementedError(
                     'padding works only with ignore_border=True')
             if isinstance(ws, (tuple, list)):
-                ws = tuple(ws)
                 if pad[0] >= ws[0] or pad[1] >= ws[1]:
                     raise NotImplementedError(
                         'padding_h and padding_w must be smaller than strides')
@@ -308,6 +305,7 @@ class Pool(OpenMPOp):
     def perform(self, node, inp, out):
         x, ws, stride, pad = inp
         z, = out
+        assert ws.shape == stride.shape == pad.shape == (2,)
         if len(x.shape) != 4:
             raise NotImplementedError(
                 'Pool requires 4D input for now')
@@ -401,6 +399,21 @@ class Pool(OpenMPOp):
         else:
             omp_parallel = ''
         ccode = """
+        if(PyArray_DIM(%(ws)s, 0)!=2)
+        {
+            PyErr_SetString(PyExc_ValueError, "ws must be a vector of size 2");
+            %(fail)s;
+        }
+        if(PyArray_DIM(%(stride)s, 0)!=2)
+        {
+            PyErr_SetString(PyExc_ValueError, "stride must be a vector of size 2");
+            %(fail)s;
+        }
+        if(PyArray_DIM(%(pad)s, 0)!=2)
+        {
+            PyErr_SetString(PyExc_ValueError, "pad must be a vector of size 2");
+            %(fail)s;
+        }
         // Getting ws, stride and pad
         int ws0, ws1, st0, st1, pd0, pd1;
         ws0 = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 0));
@@ -675,7 +688,6 @@ class PoolGrad(OpenMPOp):
 
     def prepare_node(self, node, storage_map, compute_map):
         if len(node.inputs) < 5:  # 5 for AveragePoolGrad, 6 for MaxPoolGrad
-            warnings.warn("Theano PoolGrad internal changed.", stacklevel=3)
             # Old interface
             self.mode = node.op.mode
             ws = theano.tensor.constant(node.op.ds)
@@ -728,12 +740,19 @@ class MaxPoolGrad(PoolGrad):
         assert isinstance(ws, Variable) and ws.ndim == 1
         assert isinstance(stride, Variable) and stride.ndim == 1
         assert isinstance(pad, Variable) and pad.ndim == 1
+        if not ws.dtype.startswith('int'):
+            raise TypeError('Pool downsample parameters must be ints.')
+        if not stride.dtype.startswith('int'):
+            raise TypeError('Stride parameters must be ints.')
+        if not pad.dtype.startswith('int'):
+            raise TypeError('Padding parameters must be ints.')
         return Apply(self, [x, maxout, gz, ws, stride, pad], [x.type()])
 
     def perform(self, node, inp, out):
         assert self.mode == 'max'
         x, maxout, gz, ws, stride, pad = inp
         gx_stg, = out
+        assert ws.shape == stride.shape == pad.shape == (2,)
         # number of pooling output rows
         pr = maxout.shape[-2]
         # number of pooling output cols
@@ -815,6 +834,21 @@ class MaxPoolGrad(PoolGrad):
         if(PyArray_NDIM(%(gz)s)!=4)
         {
             PyErr_SetString(PyExc_ValueError, "gz must be a 4d ndarray");
+            %(fail)s;
+        }
+        if(PyArray_DIM(%(ws)s, 0)!=2)
+        {
+            PyErr_SetString(PyExc_ValueError, "ws must be a vector of size 2");
+            %(fail)s;
+        }
+        if(PyArray_DIM(%(stride)s, 0)!=2)
+        {
+            PyErr_SetString(PyExc_ValueError, "stride must be a vector of size 2");
+            %(fail)s;
+        }
+        if(PyArray_DIM(%(pad)s, 0)!=2)
+        {
+            PyErr_SetString(PyExc_ValueError, "pad must be a vector of size 2");
             %(fail)s;
         }
         // Getting ws, stride and pad
@@ -927,11 +961,18 @@ class AveragePoolGrad(PoolGrad):
         assert isinstance(ws, Variable) and ws.ndim == 1
         assert isinstance(stride, Variable) and stride.ndim == 1
         assert isinstance(pad, Variable) and pad.ndim == 1
+        if not ws.dtype.startswith('int'):
+            raise TypeError('Pool downsample parameters must be ints.')
+        if not stride.dtype.startswith('int'):
+            raise TypeError('Stride parameters must be ints.')
+        if not pad.dtype.startswith('int'):
+            raise TypeError('Padding parameters must be ints.')
         return Apply(self, [x, gz, ws, stride, pad], [x.type()])
 
     def perform(self, node, inp, out):
         x, gz, ws, stride, pad = inp
         gx_stg, = out
+        assert ws.shape == stride.shape == pad.shape == (2,)
         if self.mode == 'average_exc_pad' and pad[0] != 0 and pad[1] != 0:
             raise NotImplementedError()
         z_shape = self.out_shape(x.shape, ws, self.ignore_border, stride, pad)
@@ -1016,12 +1057,10 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         if stride is None:
             stride = ws
         if isinstance(pad, (tuple, list)):
-            pad = tuple(pad)
-            if pad != (0, 0) and not self.ignore_border:
+            if tuple(pad) != (0, 0) and not self.ignore_border:
                 raise NotImplementedError(
                     'padding works only with ignore_border=True')
             if isinstance(ws, (tuple, list)):
-                ws = tuple(ws)
                 if pad[0] >= ws[0] or pad[1] >= ws[1]:
                     raise NotImplementedError(
                         'padding_h and padding_w must be smaller than strides')
@@ -1042,6 +1081,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
     def perform(self, node, inp, out):
         x, maxout, ggx, ws, stride, pad = inp
         z, = out
+        assert ws.shape == stride.shape == pad.shape == (2,)
         if len(x.shape) != 4:
             raise NotImplementedError(
                 'DownsampleFactorMaxGradGrad requires 4D input for now')
@@ -1114,6 +1154,21 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         else:
             omp_parallel = ''
         return """
+        if(PyArray_DIM(%(ws)s, 0)!=2)
+        {
+            PyErr_SetString(PyExc_ValueError, "ws must be a vector of size 2");
+            %(fail)s;
+        }
+        if(PyArray_DIM(%(stride)s, 0)!=2)
+        {
+            PyErr_SetString(PyExc_ValueError, "stride must be a vector of size 2");
+            %(fail)s;
+        }
+        if(PyArray_DIM(%(pad)s, 0)!=2)
+        {
+            PyErr_SetString(PyExc_ValueError, "pad must be a vector of size 2");
+            %(fail)s;
+        }
         // Getting ws, stride and pad
         int ws0, ws1, st0, st1, pd0, pd1;
         ws0 = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 0));

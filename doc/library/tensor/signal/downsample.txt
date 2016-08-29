@@ -1,0 +1,14 @@
+.. _libdoc_tensor_signal_downsample:
+
+======================================================
+:mod:`downsample` -- Down-Sampling
+======================================================
+
+.. module:: downsample
+   :platform: Unix, Windows
+   :synopsis: ops for performing various forms of downsampling
+.. moduleauthor:: LISA
+
+.. note:: 
+
+    This module is deprecated. Use the functions in :func:`theano.tensor.nnet.signal.pool`
