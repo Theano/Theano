@@ -281,28 +281,6 @@ def dnn_available():
             dnn_available.msg = "Device not supported"
             dnn_available.avail = False
         else:
-<<<<<<< HEAD
-            preambule = """
-#include <stdio.h>
-#include <cuda.h>
-#include <cudnn.h>
-#include <cudnn_helper.h>
-            """
-
-            body = """
-cudnnHandle_t _handle = NULL;
-cudnnStatus_t err;
-if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
-  fprintf(stderr, "could not create cuDNN handle: %s",
-          cudnnGetErrorString(err));
-  return 1;
-}
-"""
-            # to support path that includes spaces, we need to wrap it with double quotes on Windows
-            path_wrapper = "\"" if os.name =='nt' else ""
-            params = ["-l", "cudnn"]
-            params.extend(['-I%s%s%s' % (path_wrapper,os.path.dirname(__file__),path_wrapper)])
-=======
             preambule = textwrap.dedent(
                 """
                 #include <stdio.h>
@@ -321,10 +299,12 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
                   return 1;
                 }
                 """)
-            params = ["-l", "cudnn", "-I" + os.path.dirname(__file__)]
->>>>>>> refs/remotes/Theano/master
+            # to support path that includes spaces, we need to wrap it with double quotes on Windows
+            path_wrapper = "\"" if os.name =='nt' else ""
+            params = ["-l", "cudnn"]
+            params.extend(['-I%s%s%s' % (path_wrapper, os.path.dirname(__file__), path_wrapper)])
             if config.dnn.include_path:
-                params.extend(['-I%s%s%s' % (path_wrapper, config.dnn.include_path, path_wrapper)]) 
+                params.extend(['-I%s%s%s' % (path_wrapper, config.dnn.include_path, path_wrapper)])
             if config.dnn.library_path:
                 params.extend(['-L%s%s%s' % (path_wrapper, config.dnn.library_path, path_wrapper)])
             if config.nvcc.compiler_bindir:
