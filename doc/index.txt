@@ -125,6 +125,7 @@ Roughly in order of what you'll want to check out:
 * :ref:`install` -- How to install Theano.
 * :ref:`introduction` -- What is Theano?
 * :ref:`tutorial` -- Learn the basics.
+* :ref:`troubleshooting` -- Tips and tricks for common debugging.
 * :ref:`libdoc` -- Theano's functionality, module by module.
 * :ref:`faq` -- A set of commonly asked questions.
 * :ref:`optimizations` -- Guide to Theano's graph optimizations.
@@ -237,12 +238,15 @@ StackOverflow, follow their guidance for `answering questions <http://stackoverf
 
    NEWS
    introduction
+   requirements
    install
+   updating
    tutorial/index
    extending/index
    dev_start_guide
    optimizations
    library/index
+   troubleshooting
    glossary
    links
    internal/index

@@ -20,6 +20,7 @@ from six.moves import xrange
 import theano
 from theano import gof
 from theano import scalar
+from theano.tensor import extra_ops
 from theano.gof.opt import copy_stack_trace
 from theano.tensor import basic as tensor, subtensor, opt, elemwise
 from theano.tensor.type import (values_eq_approx_remove_inf,
@@ -31,7 +32,6 @@ from theano.tensor.nnet.sigm import sigmoid, softplus
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
 from theano.tensor.nnet.blocksparse import sparse_block_dot
-
 
 ############
 #
@@ -2407,3 +2407,56 @@ class ScalarSoftsign(theano.scalar.UnaryScalarOp):
 scalar_softsign = ScalarSoftsign(theano.scalar.upgrade_to_float,
                                  name='scalar_softsign')
 softsign = elemwise.Elemwise(scalar_softsign, name='softsign')
+
+
+def confusion_matrix(actual, pred):
+    """
+    Computes the confusion matrix of given vectors containing
+    actual observations and predicted observations.
+
+    Parameters
+    ----------
+    actual : 1-d tensor variable
+    pred : 1-d tensor variable
+
+    Returns
+    -------
+    conf_mat : Confusion matrix of actual and predictions observations as shown below.
+
+               | Predicted
+    ___________|___________
+       Actual  |
+               |
+
+    order : 1-d array of order of entries in rows and columns
+
+    Examples
+    --------
+    >>> import theano
+    >>> from theano.tensor.nnet import confusion_matrix
+
+    >>> x = theano.tensor.vector()
+    >>> y = theano.tensor.vector()
+    >>> f = theano.function([x, y], confusion_matrix(x, y))
+    >>> y_true = [2, 0, 2, 2, 0, 1]
+    >>> y_pred = [0, 0, 2, 2, 0, 2]
+    >>> print(f(y_true, y_pred))
+    [array([[2, 0, 0],
+       [0, 0, 1],
+       [1, 0, 2]]), array([ 0.,  1.,  2.])]
+    """
+    if actual.ndim != 1:
+        raise ValueError('actual must be 1-d tensor variable')
+    if pred.ndim != 1:
+        raise ValueError('pred must be 1-d tensor variable')
+
+    order = extra_ops.Unique(False, False, False)(tensor.concatenate([actual, pred]))
+
+    colA = actual.dimshuffle(0, 'x')
+    colP = pred.dimshuffle(0, 'x')
+
+    oneHotA = tensor.eq(colA, order).astype('int64')
+    oneHotP = tensor.eq(colP, order).astype('int64')
+
+    conf_mat = tensor.dot(oneHotA.T, oneHotP)
+    return [conf_mat, order]

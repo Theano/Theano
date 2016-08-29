@@ -735,9 +735,13 @@ class Function(object):
         kwargs : dict
             The function inputs can be passed as keyword argument. For this, use
             the name of the input or the input instance as the key.
+
             Keyword argument ``output_subset`` is a list of either indices of the
             function's outputs or the keys belonging to the `output_keys` dict
-            and represent outputs that are requested to be calculated.
+            and represent outputs that are requested to be calculated. Regardless
+            of the presence of ``output_subset``, the updates are always calculated
+            and processed. To disable the updates, you should use the ``copy``
+            method with ``delete_updates=True``.
 
         Returns
         -------
@@ -1496,9 +1500,10 @@ class FunctionMaker(object):
                      if not spec.borrow]
         if no_borrow:
             self.linker = linker.accept(
-                fgraph, no_recycling=infer_reuse_pattern(fgraph, no_borrow))
+                fgraph, no_recycling=infer_reuse_pattern(fgraph, no_borrow),
+                profile=profile)
         else:
-            self.linker = linker.accept(fgraph)
+            self.linker = linker.accept(fgraph, profile=profile)
 
         if hasattr(linker, 'accept_var_updates'):
             # hacky thing so VMLinker knows about updates
@@ -1722,8 +1727,8 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
         Default of None means to use `config.mode` (see below for descriptive
         string list).
     name : str
-        An optional name for this fct. If used, the profile mode will print the
-        time spent in this fct.
+        An optional name for this function. If used, the profile mode will print the
+        time spent in this function.
     accept_inplace : bool
         True iff the graph can contain inplace operations prior to the
         optimization phase (default is False).

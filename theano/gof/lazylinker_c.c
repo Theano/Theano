@@ -789,15 +789,47 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
 {
   CLazyLinker * self = (CLazyLinker*)_self;
   static char *kwlist[] = {
-    (char*)"time_thunks",
+    (char *)"time_thunks",
     (char *)"n_calls",
+    (char *)"output_subset",
     NULL};
   int n_calls=1;
-  if (! PyArg_ParseTupleAndKeywords(args, kwds, "|ii", kwlist,
+  PyObject *output_subset_ptr = NULL;
+  if (! PyArg_ParseTupleAndKeywords(args, kwds, "|iiO", kwlist,
                                     &self->do_timing,
-                                    &n_calls))
+                                    &n_calls,
+                                    &output_subset_ptr))
     return NULL;
+
   int err = 0;
+  // parse an output_subset list
+  // it is stored as a bool list of length n_output_vars: calculate a var or not
+  char *output_subset = NULL;
+  int output_subset_size = -1;
+  if (output_subset_ptr != NULL)
+    {
+      if (! PyList_Check(output_subset_ptr))
+        {
+          err = 1;
+          PyErr_SetString(PyExc_RuntimeError, "Output_subset is not a list");
+        }
+      else
+        {
+          output_subset_size = PyList_Size(output_subset_ptr);
+          output_subset = (char*)calloc(self->n_output_vars, sizeof(char));
+          for (int it = 0; it < output_subset_size; ++it)
+            {
+              PyObject *elem = PyList_GetItem(output_subset_ptr, it);
+              if (! PyInt_Check(elem))
+                {
+                  err = 1;
+                  PyErr_SetString(PyExc_RuntimeError, "Some elements of output_subset list are not int");
+                }
+              output_subset[PyInt_AsLong(elem)] = 1;
+            }
+        }
+    }
+
   self->position_of_error = -1;
   // create constants used to fill the var_compute_cells
   PyObject * one = PyInt_FromLong(1);
@@ -833,9 +865,13 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
             }
         }
 
+      int first_updated = self->n_output_vars - self->n_updates;
       for (int i = 0; i < self->n_output_vars && (!err); ++i)
         {
-          err = lazy_rec_eval(self, self->output_vars[i], one, zero);
+          if (i >= first_updated || output_subset == NULL || output_subset[i] == 1)
+            {
+              err = lazy_rec_eval(self, self->output_vars[i], one, zero);
+            }
         }
 
       if (!err)
@@ -848,7 +884,8 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
             {
               Py_ssize_t src = self->output_vars[i];
               PyObject * item = PyList_GetItem(self->var_value_cells[src], 0);
-              if (self->var_computed[src] != 1)
+              if ((output_subset == NULL || output_subset[i]) &&
+                  self->var_computed[src] != 1)
                 {
                   err = 1;
                   PyErr_Format(PyExc_AssertionError,
@@ -876,7 +913,7 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
     }
 
   /*
-    Clear everything that is left and not an output.  This is needed
+    Clear everything that is left and not an output. This is needed
     for lazy evaluation since the current GC algo is too conservative
     with lazy graphs.
   */
@@ -901,6 +938,9 @@ CLazyLinker_call(PyObject *_self, PyObject *args, PyObject *kwds)
           PyList_SetItem(self->var_value_cells[i], 0, Py_None);
         }
     }
+  if (output_subset != NULL)
+    free(output_subset);
+
   Py_DECREF(one);
   Py_DECREF(zero);
   if (err)
@@ -1014,7 +1054,7 @@ static PyTypeObject lazylinker_ext_CLazyLinkerType = {
 
 static PyObject * get_version(PyObject *dummy, PyObject *args)
 {
-  PyObject *result = PyFloat_FromDouble(0.21);
+  PyObject *result = PyFloat_FromDouble(0.211);
   return result;
 }
 

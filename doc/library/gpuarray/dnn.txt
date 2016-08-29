@@ -61,7 +61,7 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
      usage
    * ``none`` : use a slower implementation with minimal memory usage
    * ``large`` : use a sometimes faster implementation with large memory usage
-   * ``fft`` : use the Fast Fourrier Transform implementation of convolution
+   * ``fft`` : use the Fast Fourier Transform implementation of convolution
      (very high memory usage)
    * ``guess_once`` : the first time a convolution is executed, the
      implementation to use is chosen according to cuDNN's heuristics and reused
@@ -83,7 +83,7 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
    * ``none`` (default) : use the default non-deterministic convolution
      implementation
    * ``deterministic`` : use a slower but deterministic implementation
-   * ``fft`` : use the Fast Fourrier Transform implementation of convolution
+   * ``fft`` : use the Fast Fourier Transform implementation of convolution
      (very high memory usage)
    * ``guess_once`` : the first time a convolution is executed, the
      implementation to use is chosen according to cuDNN's heuristics and reused

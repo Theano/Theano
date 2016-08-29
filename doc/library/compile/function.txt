@@ -174,7 +174,8 @@ Reference
         list is not used in the graph. Possible values are 'raise',
         'warn', and 'ignore'.
 
-    :rtype: Function instance
+    :rtype: :class:`Function <theano.compile.function_module.Function>`
+            instance
 
     :returns: a callable object that will compute the outputs (given the inputs)
       and update the implicit function arguments according to the `updates`.

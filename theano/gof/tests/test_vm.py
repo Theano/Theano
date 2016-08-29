@@ -197,23 +197,53 @@ def test_speed_lazy():
 def test_partial_function():
     import numpy as np
     from theano.tests import unittest_tools as utt
-    x = tensor.scalar('input')
-    y = x ** 2
-    f = theano.function([x], [y + 7, y - 9, y / 14.], mode=Mode(
-        optimizer=None, linker=vm.VM_Linker(allow_partial_eval=True)))
 
-    assert f(3, output_subset=[0, 1, 2]) == f(3)
-    assert f(4, output_subset=[0, 2]) == [f(4)[0], f(4)[2]]
-    utt.assert_allclose(f(5), np.array([32., 16., 1.7857142857142858]))
+    def check_partial_function(linker_name):
+        x = tensor.scalar('input')
+        y = x ** 2
+        f = theano.function([x], [y + 7, y - 9, y / 14.], mode=Mode(
+            optimizer=None, linker=linker_name))
+
+        assert f(3, output_subset=[0, 1, 2]) == f(3)
+        assert f(4, output_subset=[0, 2]) == [f(4)[0], f(4)[2]]
+        utt.assert_allclose(f(5), np.array([32., 16., 1.7857142857142858]))
+
+    check_partial_function(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
+    check_partial_function('cvm')
 
 
-def test_partial_function_output_keys():
-    x = tensor.scalar('input')
-    y = 3 * x
-    f = theano.function([x], {'a': y * 5, 'b': y - 7}, mode=Mode(
-        optimizer=None, linker=vm.VM_Linker(allow_partial_eval=True)))
+def test_partial_function_with_output_keys():
 
-    assert f(5, output_subset=['a'])['a'] == f(5)['a']
+    def check_partial_function_output_keys(linker_name):
+        x = tensor.scalar('input')
+        y = 3 * x
+        f = theano.function([x], {'a': y * 5, 'b': y - 7}, mode=Mode(
+            optimizer=None, linker=linker_name))
+
+        assert f(5, output_subset=['a'])['a'] == f(5)['a']
+
+    check_partial_function_output_keys(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
+    check_partial_function_output_keys('cvm')
+
+
+def test_partial_function_with_updates():
+
+    def check_updates(linker_name):
+        x = tensor.lscalar('input')
+        y = theano.shared(numpy.asarray(1, 'int64'), name='global')
+        f = theano.function([x], [x, x + 34], updates=[(y, x + 1)], mode=Mode(
+            optimizer=None, linker=linker_name))
+        g = theano.function([x], [x - 6], updates=[(y, y + 3)], mode=Mode(
+            optimizer=None, linker=linker_name))
+
+        assert f(3, output_subset=[]) == []
+        assert y.get_value() == 4
+        assert g(30, output_subset=[0]) == [24]
+        assert g(40, output_subset=[]) == []
+        assert y.get_value() == 10
+
+    check_updates(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
+    check_updates('cvm')
 
 
 def test_allow_gc_cvm():

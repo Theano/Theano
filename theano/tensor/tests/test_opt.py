@@ -12,7 +12,7 @@ import unittest
 import numpy
 from six.moves import xrange
 from nose.plugins.skip import SkipTest
-from nose.tools import assert_raises
+from nose.tools import assert_raises, assert_true
 from numpy.testing import dec
 from numpy.testing.noseclasses import KnownFailureTest
 
@@ -32,8 +32,11 @@ import theano.tensor.opt as opt
 from theano.tensor.opt import (
         local_add_specialize,
         local_dimshuffle_lift,
+        local_useless_dimshuffle_in_reshape,
         local_useless_alloc,
         local_greedy_distributor,
+        local_useless_reshape,
+        local_reshape_to_dimshuffle,
         mul_canonizer,
         out2in,
         Shape_i,
@@ -60,7 +63,6 @@ from theano.tensor import (
         join,
         Subtensor,
         TensorType,
-        Tile,
         tile
         )
 from theano.tensor.elemwise import DimShuffle
@@ -222,32 +224,43 @@ class test_dimshuffle_lift(unittest.TestCase):
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
 
-    def test_useless_dimshuffle_in_presence_of_reshape(self):
-        vector = TensorType(broadcastable=(False,), dtype='float64')('vector')
-        mat = TensorType(broadcastable=(False, False), dtype='float64')('mat')
-        row = TensorType(broadcastable=(True, False), dtype='float64')('row')
-        col = TensorType(broadcastable=(False, True), dtype='float64')('col')
 
-        reshape_dimshuffle_vector = tensor.reshape(vector.dimshuffle('x', 0), vector.shape)
-        reshape_dimshuffle_mat = tensor.reshape(mat.dimshuffle('x', 0, 'x', 1), mat.shape)
-        reshape_dimshuffle_row = tensor.reshape(row.dimshuffle(1, 'x'), row.shape)
-        reshape_dimshuffle_col = tensor.reshape(col.dimshuffle(0), col.shape)
+def test_local_useless_dimshuffle_in_reshape():
+    vector = TensorType(broadcastable=(False,), dtype='float64')('vector')
+    mat = TensorType(broadcastable=(False, False), dtype='float64')('mat')
+    row = TensorType(broadcastable=(True, False), dtype='float64')('row')
+    col = TensorType(broadcastable=(False, True), dtype='float64')('col')
 
-        g = FunctionGraph([vector, mat, row, col],
-                          [reshape_dimshuffle_vector, reshape_dimshuffle_mat,
-                           reshape_dimshuffle_row, reshape_dimshuffle_col])
+    reshape_dimshuffle_vector = tensor.reshape(vector.dimshuffle('x', 0), vector.shape)
+    reshape_dimshuffle_mat = tensor.reshape(mat.dimshuffle('x', 0, 'x', 1), mat.shape)
+    reshape_dimshuffle_row = tensor.reshape(row.dimshuffle(1, 'x'), row.shape)
+    reshape_dimshuffle_col = tensor.reshape(col.dimshuffle(0), col.shape)
 
-        self.assertTrue(str(g) == "[Reshape{1}(DimShuffle{x,0}(vector), Shape(vector)), "
-                                  "Reshape{2}(DimShuffle{x,0,x,1}(mat), Shape(mat)), "
-                                  "Reshape{2}(DimShuffle{1,x}(row), Shape(row)), "
-                                  "Reshape{2}(DimShuffle{0}(col), Shape(col))]")
-        dimshuffle_lift.optimize(g)
-        self.assertTrue(str(g) == "[Reshape{1}(vector, Shape(vector)), "
-                                  "Reshape{2}(mat, Shape(mat)), "
-                                  "Reshape{2}(row, Shape(row)), "
-                                  "Reshape{2}(col, Shape(col))]")
-        # Check stacktrace was copied over correctly after opt was applied
-        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
+    g = FunctionGraph([vector, mat, row, col],
+                      [reshape_dimshuffle_vector, reshape_dimshuffle_mat,
+                       reshape_dimshuffle_row, reshape_dimshuffle_col])
+
+    assert_true(str(g) == "[Reshape{1}(DimShuffle{x,0}(vector), Shape(vector)), "
+                          "Reshape{2}(DimShuffle{x,0,x,1}(mat), Shape(mat)), "
+                          "Reshape{2}(DimShuffle{1,x}(row), Shape(row)), "
+                          "Reshape{2}(DimShuffle{0}(col), Shape(col))]")
+    useless_dimshuffle_in_reshape = out2in(local_useless_dimshuffle_in_reshape)
+    useless_dimshuffle_in_reshape.optimize(g)
+    assert_true(str(g) == "[Reshape{1}(vector, Shape(vector)), "
+                          "Reshape{2}(mat, Shape(mat)), "
+                          "Reshape{2}(row, Shape(row)), "
+                          "Reshape{2}(col, Shape(col))]")
+
+    # Check stacktrace was copied over correctly after opt was applied
+    assert_true(check_stack_trace(g, ops_to_check='all'))
+
+    # Check that the optimization does not get applied when the order
+    # of dimensions has changed.
+    reshape_dimshuffle_mat2 = tensor.reshape(mat.dimshuffle('x', 1, 'x', 0), mat.shape)
+    h = FunctionGraph([mat], [reshape_dimshuffle_mat2])
+    str_h = str(h)
+    useless_dimshuffle_in_reshape.optimize(h)
+    assert_true(str(h) == str(h))
 
 
 def test_add_canonizer_problem0():
@@ -1770,20 +1783,19 @@ def test_local_useless_subtensor():
     x_c = tensor.specify_shape(x, (2, 3))
     # Test constant
     for dims, res in [((slice(0, 2), ), True),
-                 ((slice(0, 2), slice(0, None)), True),
-                 ((slice(0, 2), slice(0, 3)), True),
-                 ((slice(0, None), slice(0, 3)), True),
-                 ((slice(0, 3), slice(0, 13)), True),
-                 ((slice(0, 3), slice(0, 2)), False),
-                 ((slice(0, 1), slice(0, None)), False),
-                 ((slice(0, 1), 1), False),
-                 ]:
+                      ((slice(0, 2), slice(0, None)), True),
+                      ((slice(0, 2), slice(0, 3)), True),
+                      ((slice(0, None), slice(0, 3)), True),
+                      ((slice(0, 3), slice(0, 13)), True),
+                      ((slice(0, 3), slice(0, 2)), False),
+                      ((slice(0, 1), slice(0, None)), False),
+                      ((slice(0, 1), 1), False)]:
         f = function([x], tensor.exp(x_c).__getitem__(dims), mode=mode_opt)
         # theano.printing.debugprint(f)
         prog = f.maker.fgraph.toposort()
         if res:
             assert isinstance(prog[0].op, theano.tensor.SpecifyShape), dims
-            assert prog[1].op == tensor.exp, dims
+            assert prog[1].op == tensor.exp, (dims, prog)
             assert len(prog) == 2, dims
         else:
             assert any([isinstance(node.op, Subtensor) for node in prog])
@@ -3420,6 +3432,9 @@ def test_local_fill_useless():
 
 
 class Test_local_useless_elemwise_comparison(unittest.TestCase):
+    def setUp(self):
+        self.rng = numpy.random.RandomState(utt.fetch_seed())
+
     def test_local_useless_elemwise_comparison(self):
         # TODO: test each case individually.
         # The following case is what made me discover those cases.
@@ -3457,6 +3472,8 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
         mode = theano.compile.get_default_mode().excluding('fusion')
         f = theano.function([X, Y], Z, mode=mode)
+        f(self.rng.rand(2, 3).astype(config.floatX),
+          self.rng.rand(2).astype(config.floatX))
         # theano.printing.debugprint(f, print_type=True)
         # here is the output for the debug print:
         """
@@ -3559,9 +3576,15 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
         f = theano.function([x], T.minimum(x.shape[0], 0), mode=mode)
         self.assert_eqs_const(f, 0)
+        assert f(x_val) == 0
 
         f = theano.function([x], T.minimum(0, x.shape[0]), mode=mode)
         self.assert_eqs_const(f, 0)
+        assert f(x_val) == 0
+        f = theano.function([x], T.minimum([0, 0], x.shape[0]), mode=mode)
+        # This case isn't optimized.
+#        self.assert_eqs_const(f, 0)
+        utt.assert_allclose(f(x_val), [0, 0])
 
     def test_shape_add_inequality(self):
         x = T.vector('x', dtype=config.floatX)
@@ -4217,23 +4240,31 @@ def test_local_mul_specialize():
 
 class T_Tile(unittest.TestCase):
     def test_local_useless_tile(self):
-        # Tile op is deprecated so the tile function doesn't use it
-        # anymore, we'll test here the op directly
         v = T.vector()
         m = T.matrix()
         mode = None
         if theano.config.mode == "FAST_COMPILE":
             mode = "FAST_RUN"
         for var, data in [(v, [1, 2, 3]), (m, [[1, 2], [3, 4]])]:
-            # Currently, only a repeat patter == ndim is supported.
-            for ndim in [var.ndim]:  # range(1, var.ndim):
-                f = theano.function([var], Tile(ndim)(var, (1,)*ndim), mode=mode)
+            # When len(repeat pattern) <= var.ndim, everything is removed
+            # for ndim in range(1, var.ndim):
+            for ndim in range(var.ndim + 1):
+                f = theano.function([var], tile(var, (1,) * ndim), mode=mode)
                 topo = f.maker.fgraph.toposort()
                 assert len(topo) == 1
                 assert isinstance(topo[0].op, compile.DeepCopyOp)
                 f(data)
                 # In this case the opt only removes nodes,
                 # no need to check_stack_trace
+            # When len(repeat pattern) > var.ndim, only a dimshuffle should be
+            # left, but there can be a DeepCopy as well
+            for ndim in range(var.ndim + 1, var.ndim + 3):
+                f = theano.function([var], tile(var, (1,) * ndim), mode=mode)
+                topo = f.maker.fgraph.toposort()
+                assert len(topo) <= 2
+                assert isinstance(topo[0].op, DimShuffle)
+                assert check_stack_trace(f, ops_to_check=[DimShuffle])
+                f(data)
 
 
 def speed_local_pow_specialize_range():
@@ -6164,14 +6195,80 @@ class Test_Reshape(unittest.TestCase):
         assert sum(isinstance(node.op, self.op) for node in topo) == 1
 
 
-def test_local_useless_reshape():
-    mode = theano.compile.get_default_mode().including(
+class Test_local_useless_reshape(unittest.TestCase):
+    def setUp(self):
+        self.rng = numpy.random.RandomState(utt.fetch_seed())
+
+    def test_0(self):
+        mode = theano.compile.get_default_mode().including(
             'local_useless_reshape')
-    i = T.iscalar('i')
-    m = theano.tensor.mgrid[0:i,]
-    f = theano.function([i], m, mode=mode)
-    topo = f.maker.fgraph.toposort()
-    assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+        i = T.iscalar('i')
+        m = theano.tensor.mgrid[0:i,]
+        f = theano.function([i], m, mode=mode)
+        topo = f.maker.fgraph.toposort()
+        assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+
+    def test_1(self):
+        x = theano.tensor.matrix('x')
+        r = x.reshape(x.shape)
+
+        m0 = theano.compile.get_default_mode()
+        m1 = m0.including('local_useless_reshape')
+        f1 = theano.function([x], r, mode=m1)
+        topo = f1.maker.fgraph.toposort()
+        assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+
+        m2 = m1.excluding('ShapeOpt')
+        f2 = theano.function([x], r, mode=m2)
+        topo = f2.maker.fgraph.toposort()
+        assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+
+    def test_2(self):
+        x = theano.tensor.matrix('x')
+        r = x.reshape([Shape_i(i)(x) for i in xrange(x.ndim)])
+
+        m0 = theano.compile.get_default_mode()
+        m1 = m0.including('local_useless_reshape')
+        f1 = theano.function([x], r, mode=m1)
+        topo = f1.maker.fgraph.toposort()
+        assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+
+        m2 = m1.excluding('ShapeOpt')
+        f2 = theano.function([x], r, mode=m2)
+        topo = f2.maker.fgraph.toposort()
+        assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+
+
+class Test_local_reshape_to_dimshuffle(unittest.TestCase):
+    def setUp(self):
+        self.rng = numpy.random.RandomState(utt.fetch_seed())
+
+    def test_1(self):
+        reshape_lift = out2in(local_reshape_to_dimshuffle)
+        useless_reshape = out2in(local_useless_reshape)
+        x = shared(self.rng.randn(4,))
+        y = shared(self.rng.randn(5, 6))
+        reshape_x = tensor.reshape(x, (1, 4))
+        reshape_y = tensor.reshape(y, (1, 5, 1, 6, 1, 1))
+
+        g = FunctionGraph([x, y], [reshape_x, reshape_y])
+        self.assertTrue(str(g) == ("[Reshape{2}"
+                                   "(<TensorType(float64, vector)>, "
+                                   "TensorConstant{[1 4]}), "
+                                   "Reshape{6}"
+                                   "(<TensorType(float64, matrix)>, "
+                                   "TensorConstant{[1 5 1 6 1 1]})]"))
+
+        reshape_lift.optimize(g)
+        useless_reshape.optimize(g)
+        self.assertTrue(str(g) == "[DimShuffle{x,0}"
+                                  "(<TensorType(float64, vector)>), "
+                                  "DimShuffle{x,0,x,1,x,x}"
+                                  "(Reshape{2}(<TensorType(float64, matrix)>, "
+                                  "TensorConstant{[5 6]}))]")
+
+        # Check stacktrace was copied over correctly after opt was applied
+        check_stack_trace(g, ops_to_check=(T.DimShuffle, T.Reshape))
 
 
 def test_local_reshape_lift():

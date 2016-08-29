@@ -2472,6 +2472,8 @@ def _hv_switch(op, expected_function):
         def expected_f(self, a, format=None, dtype=None):
             return expected_function(a, format, dtype)
     XStackTester.__name__ = op.__name__ + "Tester"
+    if hasattr(XStackTester, '__qualname__'):
+        XStackTester.__qualname__ = XStackTester.__name__
     return XStackTester
 
 HStackTester = _hv_switch(HStack, sp.hstack)
@@ -2687,6 +2689,8 @@ def elemwise_checker(op, expected_f, gap=None, test_dtypes=None,
     if name is None:
         name = op.__name__.capitalize() + 'Tester'
     Tester.__name__ = name
+    if hasattr(Tester, '__qualname__'):
+        Tester.__qualname__ = name
     assert 'Roundhalftoeven' not in Tester.__name__
 
     return Tester

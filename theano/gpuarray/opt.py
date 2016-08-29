@@ -6,6 +6,7 @@ import pdb
 import time
 from six import iteritems
 from six.moves import xrange
+import sys
 
 import theano
 from theano import tensor, scalar, gof, config
@@ -13,7 +14,6 @@ from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         SequenceDB, Optimizer, DB, toolbox, graph)
-from theano.gof.opt import NavigatorOptimizer
 from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
@@ -81,8 +81,8 @@ gpu_seqopt = SequenceDB()
 gpu_seqopt.register('gpuarray_graph_optimization', GraphToGPUDB(), -0.5,
                     'fast_compile', 'fast_run', 'gpuarray')
 
-gpu_seqopt.register('gpuarray_local_optimiziations', gpu_optimizer, 1,
-                    'fast_compile', 'fast_run', 'gpuarray')
+gpu_seqopt.register('gpuarray_local_optimizations', gpu_optimizer, 1,
+                    'fast_compile', 'fast_run', 'gpuarray', 'gpuarray_local_optimiziations')
 gpu_seqopt.register('gpuarray_cut_transfers', gpu_cut_copies, 2,
                     'fast_compile', 'fast_run', 'gpuarray')
 
@@ -262,7 +262,7 @@ gpu_seqopt.register('InputToGpuArrayOptimizer', InputToGpuOptimizer(),
                     0, 'fast_run', 'fast_compile', 'merge')
 
 
-class GraphToGPU(NavigatorOptimizer):
+class GraphToGPU(Optimizer):
     """
     Transfer the graph as a whole to GPU instead of transfering node by node.
 
@@ -373,6 +373,14 @@ class GraphToGPU(NavigatorOptimizer):
 
             if new_ops:
                 node_created[lopt] += len(graph.ops([mapping[i] for i in node.inputs], outputs))
+                if any([getattr(old_o, 'dtype', None) != getattr(new_o, 'dtype', None)
+                        for old_o, new_o in zip(outputs, node.outputs)]):
+                    _logger.warning(
+                        "The optimization %s returned bad dtype. Skipping it."
+                        " Write to theano-dev mailing list about this." %
+                        str(lopt))
+                    newnode = node.clone_with_new_inputs([mapping.get(i) for i in node.inputs])
+                    outputs = newnode.outputs
 
             for new_o, old_o in zip(outputs, node.outputs):
                 assert len(outputs) == len(node.outputs)
@@ -476,6 +484,16 @@ class GraphToGPU(NavigatorOptimizer):
                 time_opts,
                 node_created,
                 process_count)
+
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
+        print("%s%s (%i)" % (
+            (' ' * level), self.__class__.__name__, id(self)), file=stream)
+        if depth != 0:
+            map_values = []
+            for opts in self.local_optimizers_map.values():
+                map_values += opts
+            for opt in self.local_optimizers_all + map_values:
+                opt.print_summary(stream, level=(level + 2), depth=(depth - 1))
 
 
 @local_optimizer([GpuFromHost, GpuToGpu, HostFromGpu])
@@ -625,10 +643,7 @@ def local_gpua_contiguous(op, context_name, inputs, outputs):
 @op_lifter([tensor.Reshape])
 @register_opt2([tensor.Reshape], 'fast_compile')
 def local_gpua_reshape(op, context_name, inputs, outputs):
-    name = op.name
-    if name:
-        name = 'Gpu' + name
-    res = GpuReshape(op.ndim, op.name)
+    res = GpuReshape(op.ndim)
     return res
 
 
@@ -647,7 +662,7 @@ def local_gpua_flatten(op, context_name, inputs, outputs):
     if op.outdim != 1:
         shp = [inputs[0].shape[i] for i in range(op.outdim - 1)]
     shp += [-1]
-    res = GpuReshape(op.outdim, None)
+    res = GpuReshape(op.outdim)
     o = res(inputs[0], theano.tensor.as_tensor_variable(shp))
     return o
 
@@ -1009,10 +1024,9 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
         else:
             return False
         x, = inputs
-
         greduce = op2(
             op.scalar_op, axis=op.axis,
-            dtype=getattr(op, 'dtype', None),
+            dtype=getattr(op, 'dtype', outputs[0].dtype),
             acc_dtype=getattr(op, 'acc_dtype', None))
         gvar = greduce(x)
         # We need to have the make node called, otherwise the mask can
@@ -1051,7 +1065,7 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
             greduce = op2(
                 op.scalar_op,
                 axis=new_axis, reduce_mask=new_mask,
-                dtype=getattr(op, 'dtype', None),
+                dtype=getattr(op, 'dtype', outputs[0].dtype),
                 acc_dtype=getattr(op, 'acc_dtype', None))
 
             reshaped_x = x.reshape(tensor.stack(new_in_shp))

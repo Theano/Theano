@@ -5,7 +5,7 @@ from theano.gof.type import Type
 from theano.gof.op import Op
 
 from theano.gof.fg import FunctionGraph
-from theano.gof.toolbox import *  # noqa
+from theano.gof.toolbox import NodeFinder
 
 
 def as_variable(x):

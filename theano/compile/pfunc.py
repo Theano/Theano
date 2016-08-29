@@ -306,6 +306,10 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
         If False (default), perform them all. Else, perform automatic updates
         on all Variables that are neither in "updates" nor in
         "no_default_updates".
+    accept_inplace : bool
+        True iff the graph can contain inplace operations prior to the
+        optimization phase (default is False). *Note* this parameter is unsupported,
+        and its use is not recommended.
     name : None or string
         Attaches a name to the profiling result of this function.
     allow_input_downcast : bool

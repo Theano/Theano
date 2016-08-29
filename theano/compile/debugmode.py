@@ -147,7 +147,7 @@ class BadThunkOutput(DebugModeError):
         print("  thunk2  :", self.thunk2, file=sio)
 
         # Don't import it at the top of the file to prevent circular import.
-        utt = theano.tests.unittest_tools
+        import theano.tests.unittest_tools as utt
         print(utt.str_diagnostic(self.val1, self.val2, None, None), file=sio)
         ret = sio.getvalue()
         return ret
@@ -1769,12 +1769,13 @@ class _Linker(gof.link.LocalLinker):
         if schedule:
             self.schedule = schedule
 
-    def accept(self, fgraph, no_recycling=None):
+    def accept(self, fgraph, no_recycling=None, profile=None):
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
             assert type(self) is _Linker
-            return type(self)(maker=self.maker).accept(fgraph, no_recycling)
+            return type(self)(maker=self.maker).accept(
+                fgraph, no_recycling, profile)
         self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self

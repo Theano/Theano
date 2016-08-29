@@ -463,8 +463,8 @@ if int(config.tensor.cmp_sloppy) > 1:
     # When config.tensor.cmp_sloppy>1 we are even more sloppy. This is
     # useful to test the GPU as they don't use extended precision and
     # this cause some difference bigger then the normal sloppy.
-    float16_atol = 5e-3
-    float16_rtol = 1e-2
+    float16_atol = 1e-2
+    float16_rtol = 5e-2
 
     float32_atol = 5e-4
     float32_rtol = 1e-3
@@ -472,8 +472,8 @@ if int(config.tensor.cmp_sloppy) > 1:
     float64_rtol = 1e-4
     float64_atol = 1e-3
 elif int(config.tensor.cmp_sloppy):
-    float16_atol = 1e-3
-    float16_rtol = 5e-3
+    float16_atol = 5e-3
+    float16_rtol = 1e-2
 
     float32_atol = 1e-4
     float32_rtol = 1e-3
@@ -483,8 +483,8 @@ elif int(config.tensor.cmp_sloppy):
 else:
     # If you change those value in test don't forget to put them back
     # when the test end.  Don't forget the case when the test fail.
-    float16_atol = 5e-4
-    float16_rtol = 5e-4
+    float16_atol = 1e-3
+    float16_rtol = 1e-3
 
     float32_atol = 1e-5
     float32_rtol = 1e-5
@@ -1029,6 +1029,34 @@ def tensor4(name=None, dtype=None):
     return type(name)
 tensor4s, ftensor4s, dtensor4s, itensor4s, ltensor4s = _multi(
     tensor4, ftensor4, dtensor4, itensor4, ltensor4)
+
+ctensor5 = TensorType('complex64', ((False,) * 5))
+ztensor5 = TensorType('complex128', ((False,) * 5))
+ftensor5 = TensorType('float32', ((False,) * 5))
+dtensor5 = TensorType('float64', ((False,) * 5))
+btensor5 = TensorType('int8', ((False,) * 5))
+wtensor5 = TensorType('int16', ((False,) * 5))
+itensor5 = TensorType('int32', ((False,) * 5))
+ltensor5 = TensorType('int64', ((False,) * 5))
+
+
+def tensor5(name=None, dtype=None):
+    """Return a symbolic 5-D variable.
+
+    Parameters
+    ----------
+    dtype: numeric type
+        None means to use theano.config.floatX.
+    name
+        A name to attach to this variable.
+
+    """
+    if dtype is None:
+        dtype = config.floatX
+    type = TensorType(dtype, (False, False, False, False, False))
+    return type(name)
+tensor5s, ftensor5s, dtensor5s, itensor5s, ltensor5s = _multi(
+    tensor5, ftensor5, dtensor5, itensor5, ltensor5)
 
 
 Tensor = TensorType
@@ -2270,12 +2298,15 @@ pprint.assign(fill, printing.FunctionPrinter('fill'))
 
 
 @constructor
-def ones_like(model, dtype=None):
+def ones_like(model, dtype=None, opt=False):
     """equivalent of numpy.ones_like
     Parameters
     ----------
     model : tensor
     dtype : data-type, optional
+    opt : If True, we will return a constant instead of a graph when possible.
+          Useful for Theano optimization, not for user building a graph as this
+          have the consequence that model isn't always in the graph.
 
     Returns
     -------
@@ -2284,17 +2315,22 @@ def ones_like(model, dtype=None):
     """
     if dtype is None:
         dtype = model.type.dtype
-    ret = fill(model, constant(1.0, dtype=dtype))
-    return ret
+    ret = constant(1.0, dtype=dtype)
+    if opt and ret.type == model.type:
+        return ret
+    return fill(model, ret)
 
 
 @constructor
-def zeros_like(model, dtype=None):
+def zeros_like(model, dtype=None, opt=False):
     """equivalent of numpy.zeros_like
     Parameters
     ----------
     model : tensor
     dtype : data-type, optional
+    opt : If True, we will return a constant instead of a graph when possible.
+          Useful for Theano optimization, not for user building a graph as this
+          have the consequence that model isn't always in the graph.
 
     Returns
     -------
@@ -2304,7 +2340,10 @@ def zeros_like(model, dtype=None):
 
     if dtype is None:
         dtype = model.type.dtype
-    return fill(model, constant(0.0, dtype=dtype))
+    ret = constant(0.0, dtype=dtype)
+    if opt and ret.type == model.type:
+        return ret
+    return fill(model, ret)
 
 
 def zeros(shape, dtype=None):
@@ -2780,13 +2819,14 @@ class Alloc(gof.Op):
             }
 
             // This function takes care of broadcasting
-            PyArray_CopyInto(%(zz)s, %(vv)s);
+            if (PyArray_CopyInto(%(zz)s, %(vv)s) == -1)
+              %(fail)s
             """ % dict(vv=vv, ndim=ndim, zz=zz, fail=fail)
 
         return code
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def infer_shape(self, node, input_shapes):
         return [node.inputs[1:]]
@@ -3135,7 +3175,7 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
 
 
 @constructor
-def var(input, axis=None, keepdims=False):
+def var(input, axis=None, ddof=0, keepdims=False):
     """
     Computes the variance along the given axis(es) of a tensor `input`.
 
@@ -3144,6 +3184,8 @@ def var(input, axis=None, keepdims=False):
     axis: None or int or (list of int) (see `Sum`)
         Compute the variance along this axis of the tensor.
         None means all axes (like numpy).
+    ddof: Degrees of freedom; 0 would compute the ML estimate, 1 would compute
+        the unbiased estimate.
     keepdims : bool
         If this is set to True, the axes which are reduced are
         left in the result as dimensions with size one. With this option,
@@ -3157,6 +3199,9 @@ def var(input, axis=None, keepdims=False):
     slower.
 
     """
+
+    if isinstance(ddof, (bool)):
+        raise ValueError('Parameter keepdims is now at index 3: (input, axis=None, ddof=0, keepdims=False)')
 
     input_ndim = input.type.ndim
     if axis is None:
@@ -3175,13 +3220,19 @@ def var(input, axis=None, keepdims=False):
     centered_input = input - mean_input
 
     # return the mean sqr
-    v = mean((centered_input ** 2), axis, keepdims=keepdims)
+    if ddof == 0:
+        v = mean((centered_input ** 2), axis, keepdims=keepdims)
+    else:
+        shp = shape(input) - ddof
+        v = sum((centered_input ** 2), axis=axis, keepdims=keepdims)
+        for i in axis:
+            v = true_div(v, shp[i])
     v.name = 'var'
     return v
 
 
 @constructor
-def std(input, axis=None, keepdims=False):
+def std(input, axis=None, ddof=0, keepdims=False):
     """
     Computes the standard deviation along the given axis(es) of a tensor `input`.
 
@@ -3205,7 +3256,10 @@ def std(input, axis=None, keepdims=False):
 
     """
 
-    ret = sqrt(var(input=input, axis=axis, keepdims=keepdims))
+    if isinstance(ddof, (bool)):
+        raise ValueError('Parameter keepdims is now at index 3: (input, axis=None, ddof=0, keepdims=False)')
+
+    ret = sqrt(var(input=input, axis=axis, ddof=ddof, keepdims=keepdims))
     ret.name = 'std'
     return ret
 
@@ -4047,6 +4101,11 @@ def roll(x, shift, axis=None):
         else:
             axis = 0
 
+    # Shift may be larger than the size of the axis. If so, since the
+    # roll operation is cyclic, we can take the shift modulo the size
+    # of the axis
+    shift = shift % x.shape[axis]
+
     # A slice of all elements in a dimension ':'
     allslice = slice(None)
     # List of slices describing the front half [:, :, shift:, :]
@@ -4381,7 +4440,7 @@ class Reshape(Op):
 
     def __init__(self, ndim, name=None):
         self.ndim = ndim
-        self.name = name
+        assert name is None, 'name attribute for Reshape has been deprecated'
 
     def __str__(self):
         return '%s{%s}' % (self.__class__.__name__, self.ndim)
@@ -4557,7 +4616,7 @@ class Reshape(Op):
             return Op.c_code(self, node, name, inputs, outputs, sub)
 
 
-def reshape(x, newshape, ndim=None, name=None):
+def reshape(x, newshape, ndim=None):
     if ndim is None:
         newshape = as_tensor_variable(newshape)
         if newshape.ndim != 1:
@@ -4573,7 +4632,7 @@ def reshape(x, newshape, ndim=None, name=None):
                 "to know what the number of dimensions of the reshaped "
                 "variable will be. You can provide the 'ndim' keyword "
                 "argument to 'reshape' to avoid this problem." % newshape)
-    op = Reshape(ndim, name)
+    op = Reshape(ndim)
     rval = op(x, newshape)
     return rval
 

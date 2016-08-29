@@ -21,6 +21,7 @@ from ..basic_ops import (
     host_from_gpu, HostFromGpu, GpuFromHost, GpuReshape, GpuToGpu,
     GpuAlloc, GpuAllocEmpty, GpuContiguous,
     gpu_join, GpuJoin, GpuSplit, GpuEye, gpu_contiguous)
+from ..elemwise import GpuDimShuffle, GpuElemwise
 from ..subtensor import GpuSubtensor
 
 from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
@@ -167,6 +168,8 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
                                inputs, variables))
 
     Checker.__name__ = name
+    if hasattr(Checker, '__qualname__'):
+        Checker.__qualname__ = name
     return Checker
 
 
@@ -227,6 +230,7 @@ def gpu_alloc_expected(x, *shp):
     g = gpuarray.empty(shp, dtype=x.dtype, context=get_context(test_ctx_name))
     g[:] = x
     return g
+
 
 GpuAllocTester = makeTester(
     name="GpuAllocTester",
@@ -321,7 +325,7 @@ class G_reshape(test_basic.T_reshape):
             mode=mode_with_gpu,
             ignore_topo=(HostFromGpu, GpuFromHost,
                          theano.compile.DeepCopyOp,
-                         theano.gpuarray.elemwise.GpuElemwise,
+                         GpuDimShuffle, GpuElemwise,
                          theano.tensor.opt.Shape_i,
                          theano.tensor.opt.MakeVector))
         assert self.op == GpuReshape

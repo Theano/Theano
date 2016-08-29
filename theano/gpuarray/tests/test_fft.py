@@ -214,8 +214,7 @@ class TestFFT(unittest.TestCase):
         res_irfft = f_irfft()
 
         inputs_ref = inputs_val[:, :, :, 0] + 1j * inputs_val[:, :, :, 1]
-        irfft_ref = numpy.fft.irfftn(
-            inputs_ref, s=(M, M), axes=(1, 2), norm='ortho')
+        irfft_ref = numpy.fft.irfftn(inputs_ref, s=(M, M), axes=(1, 2)) * M
 
         utt.assert_allclose(irfft_ref, res_irfft, atol=1e-4, rtol=1e-4)
 

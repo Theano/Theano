@@ -28,6 +28,27 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
             raise SkipTest("Cuda specific tests")
         self.max_threads_dim0 = test_ctx.maxlsize0
         self.max_grid_size1 = test_ctx.maxgsize2
+        self.op_class = GpuCumsum
+
+    def test_infer_shape(self):
+        # GpuCumSum is only defined for float32 for now, so we skip it
+        # in the unsupported cases
+        gpucumsum_supported_dtypes = ('float32',)
+        if theano.config.floatX not in gpucumsum_supported_dtypes:
+            raise SkipTest('GpuCumSum not implemented for dtype %s'
+                           % theano.config.floatX)
+        x = T.tensor3('x')
+        a = np.random.random((3, 5, 2)).astype(theano.config.floatX)
+
+        for axis in range(-len(a.shape), len(a.shape)):
+            self._compile_and_check([x],
+                                    [cumsum(x, axis=axis)],
+                                    [a],
+                                    self.op_class)
+
+    def test_grad(self):
+        # no grad for GpuCumsum
+        pass
 
     def test_Strides1D(self):
         x = T.fvector('x')

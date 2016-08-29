@@ -242,6 +242,15 @@ AddConfigVar('gpuarray.preallocate',
              FloatParam(0),
              in_c_key=False)
 
+AddConfigVar('gpuarray.sched',
+             """The sched parameter passed for context creation to pygpu.
+                With CUDA, using "multi" is equivalent to using the parameter
+                cudaDeviceScheduleYield. This is useful to lower the
+                CPU overhead when waiting for GPU. One user found that it
+                speeds up his other processes that was doing data augmentation.
+             """,
+             EnumStr("default", "multi", "single"))
+
 AddConfigVar('gpuarray.single_stream',
              """
              If your computations are mostly lots of small elements,
@@ -1630,6 +1639,8 @@ def short_platform(r=None, p=None):
 
     return p
 compiledir_format_dict['short_platform'] = short_platform()
+# Allow to have easily one compiledir per device.
+compiledir_format_dict['device'] = config.device
 compiledir_format_keys = ", ".join(sorted(compiledir_format_dict.keys()))
 default_compiledir_format = ("compiledir_%(short_platform)s-%(processor)s-"
                              "%(python_version)s-%(python_bitwidth)s")
