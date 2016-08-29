@@ -3611,16 +3611,16 @@ class T_Join_and_Split(unittest.TestCase):
         f = function([a, b], s, mode=self.mode)
         v = numpy.zeros((2, 3, 2))
         v[:,:,0] = v1
-        v[:,:,1] = v2 
-        out = f(v1, v2) 
+        v[:,:,1] = v2
+        out = f(v1, v2)
         self.assertTrue(v.shape == out.shape)
         self.assertTrue(numpy.all(v == out))
         s = stack([a, b], axis=-2)
         f = function([a, b], s, mode=self.mode)
         v = numpy.zeros((2, 2, 3))
         v[:,0,:] = v1
-        v[:,1,:] = v2 
-        out = f(v1, v2) 
+        v[:,1,:] = v2
+        out = f(v1, v2)
         self.assertTrue(v.shape == out.shape)
         self.assertTrue(numpy.all(v == out))
         # Testing out-of-bounds axis
@@ -5470,7 +5470,7 @@ def test_tile():
     # Test 1,2,3,4-dimensional cases.
     # Test input x has the shape [2], [2, 4], [2, 4, 3], [2, 4, 3, 5].
     test_shape = [2, 4, 3, 5]
-    k = 0 
+    k = 0
     for xtype in [vector(), matrix(), tensor3(), tensor4()]:
         x = xtype
         k = k+1
@@ -5528,7 +5528,7 @@ def test_tile():
             reps_ = r[:k-1]
             f = function([x], tile(x, reps_, ndim_))
             assert numpy.all( f(x_) == numpy.tile(x_, [1, 1] + reps_))
-           
+
         # error raising test: ndim not specified when reps is vector
         reps = ivector()
         numpy.testing.assert_raises(ValueError, tile, x, reps)
@@ -5536,7 +5536,7 @@ def test_tile():
         # error raising test: not a integer
         for reps in [2.5, fscalar(), fvector()]:
             numpy.testing.assert_raises(ValueError, tile, x, reps)
-        
+
         # error raising test: the dimension of reps exceeds 1
         reps = imatrix()
         numpy.testing.assert_raises(ValueError, tile, x, reps)
@@ -5547,14 +5547,14 @@ def test_tile():
             if k > 1:
                 ndim = k-1
                 numpy.testing.assert_raises(ValueError, tile, x, reps, ndim)
-        
+
         # error raising test: reps is list, len(reps) > ndim
         r = [2, 3, 4, 5, 6]
         reps = r[:k+1]
         ndim = k
         numpy.testing.assert_raises(ValueError, tile, x, reps, ndim)
 
-        # error raising test: 
+        # error raising test:
         # reps is tensor.vector and len(reps_value) > ndim,
         # reps_value is the real value when excuting the function.
         reps = ivector()
@@ -6352,8 +6352,6 @@ def test_var():
     f = function([a], var(a))
 
     a_val = numpy.arange(60).reshape(3, 4, 5)
-    # print numpy.var(a_val)
-    # print f(a_val)
     assert numpy.allclose(numpy.var(a_val), f(a_val))
 
     f = function([a], var(a, axis=0))
@@ -6368,11 +6366,30 @@ def test_var():
     f = function([a], var(a, axis=0, ddof=0))
     assert numpy.allclose(numpy.var(a_val, axis=0, ddof=0), f(a_val))
 
-    f = function([a], var(a, axis=1,ddof=1))
-    assert numpy.allclose(numpy.var(a_val, axis=1,ddof=1), f(a_val))
+    f = function([a], var(a, axis=1, ddof=1))
+    assert numpy.allclose(numpy.var(a_val, axis=1, ddof=1), f(a_val))
 
     f = function([a], var(a, axis=2, ddof=1))
     assert numpy.allclose(numpy.var(a_val, axis=2, ddof=1), f(a_val))
+
+    f = function([a], var(a, ddof=0, corrected=True))
+    mean_a = numpy.mean(a_val)
+    centered_a = a_val - mean_a
+    v = numpy.mean(centered_a ** 2)
+    error = (numpy.mean(centered_a)) ** 2
+    v = v - error
+    assert numpy.allclose(v, f(a_val))
+
+    f = function([a], var(a, axis=2, ddof=1, corrected=True))
+    mean_a = numpy.mean(a_val, axis=2, keepdims=True)
+    centered_a = a_val - mean_a
+    v = numpy.var(a_val, axis=2, ddof=1)
+    shp_inp = numpy.shape(a_val)
+    shp = shp_inp - numpy.array(1)
+    error = (numpy.sum(centered_a, axis=2)) ** 2
+    error = numpy.true_divide(error, shp[1] * shp_inp[1])
+    v = v - error
+    assert numpy.allclose(v, f(a_val))
 
 
 class T_sum(unittest.TestCase):
