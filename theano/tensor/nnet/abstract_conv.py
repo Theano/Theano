@@ -422,7 +422,7 @@ def conv2d_grad_wrt_weights(input,
                                                filter_flip=filter_flip,
                                                filter_dilation=filter_dilation)
 
-    return gradWeight_op(input, output_grad, filter_shape[:-2])
+    return gradWeight_op(input, output_grad, filter_shape[-2:])
 
 
 def bilinear_kernel_2D(ratio, normalize=True):
