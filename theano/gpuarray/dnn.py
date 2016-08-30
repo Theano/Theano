@@ -1,5 +1,7 @@
 from __future__ import absolute_import, print_function, division
+import ctypes
 import os
+import sys
 import warnings
 
 import numpy
@@ -7,7 +9,7 @@ from six import integer_types
 
 import theano
 from theano import Op, Apply, tensor, config, Variable
-from theano.scalar import as_scalar, constant, Log
+from theano.scalar import as_scalar, constant, Log, get_scalar_type
 from theano.tensor import as_tensor_variable
 from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp
@@ -1789,6 +1791,325 @@ class GpuDnnBatchNormGrad(DnnBase):
 
     def infer_shape(self, node, shape):
         return [shape[0], shape[2], shape[2]]
+
+gpudata_type = CDataType('gpudata *', 'gpudata_release')
+dropoutdesc_type = CDataType('cudnnDropoutDescriptor_t',
+                             'cudnnDestroyDropoutDescriptor')
+
+
+class GpuDnnDropoutOp(DnnBase):
+    __props__ = ('inplace',)
+
+    def __init__(self, inplace=False):
+        DnnBase.__init__(self, ["dnn_dropout_fwd.c"], "dnn_dropout_fwd")
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {1: [2]}
+
+    def make_node(self, inp, descriptor, state):
+        ctx_name = infer_context_name(inp)
+        inp = as_gpuarray_variable(inp, ctx_name)
+        return Apply(self, [inp, descriptor, state],
+                     [inp.type(), state.type(), gpudata_type()])
+
+    def prepare_node(self, node, storage_map, compute_map):
+        assert self.inplace, "GpuDnnDropoutOp not inplace"
+
+
+class _DropoutDescriptor(DnnBase):
+    __props__ = ('context_name',)
+
+    def __init__(self, context_name):
+        DnnBase.__init__(self, ["dnn_dropout_desc.c"], "dnn_dropout_desc")
+        self.context_name = context_name
+
+    def dnn_context(self, node):
+        return self.context_name
+
+    def do_constant_folding(self, node):
+        return False
+
+    def make_node(self, dropout, seed, context_name):
+        dropout = as_scalar(dropout).astype('float32')
+        seed = as_scalar(seed).astype('uint64')
+
+        assert context_name == self.context_name
+        # This is a dirty hack to pass the context because params is
+        # occupied by the cudnn handle
+        context = gpu_context_type.make_constant(get_context(context_name))
+
+        return Apply(self, [dropout, seed, context],
+                     [dropoutdesc_type(),
+                      GpuArrayType('uint8', (False,),
+                                   context_name=context_name)()])
+
+    def c_code_cache_version_apply(self, node):
+        # disable the cache since we can't pickle contexts
+        return None
+
+
+def _make_dropout_desc(dropout, seed, context_name):
+    desc, states = theano.function([], _DropoutDescriptor(context_name)(
+        dropout, seed, context_name))()
+    return desc, states
+
+
+def dropout(x, dropout=0.0, seed=4242):
+    desc, states = _make_dropout_desc(dropout, seed, x.type.context_name)
+    y, odesc = GpuDnnDropoutOp()(x, desc)
+    return y, desc, odesc, states
+
+rnndesc_type = CDataType('cudnnRNNDescriptor_t',
+                         'cudnnDestroyRNNDescriptor')
+
+
+def as_i32(v):
+    return as_scalar(v).astype('int32')
+
+
+class _RNNDescriptor(DnnBase):
+    __props__ = ('context_name',)
+
+    def __init__(self, context_name):
+        DnnBase.__init__(self, ["dnn_rnn_desc.c"], "dnn_rnn_desc")
+        self.context_name = context_name
+
+    def dnn_context(self, node):
+        return self.context_name
+
+    def do_constant_folding(self, node):
+        return False
+
+    def make_node(self, hidden_size, num_layers, ddesc, input_mode,
+                  direction_mode, rnn_mode, dtype):
+
+        hidden_size = as_i32(hidden_size)
+        num_layers = as_i32(num_layers)
+
+        assert 5000 < version() < 5200, "Constants only work for cudnn 5, 5.1"
+
+        if input_mode == 'linear':
+            input_mode = as_i32(0)
+        elif input_mode == 'skip':
+            input_mode = as_i32(1)
+        else:
+            raise ValueError("input_mode")
+
+        if direction_mode == 'unidirectional':
+            direction_mode = as_i32(0)
+        elif direction_mode == 'bidirectional':
+            direction_mode = as_i32(1)
+        else:
+            raise ValueError("direction_mode")
+
+        if rnn_mode == 'rnn_relu':
+            rnn_mode = as_i32(0)
+        elif rnn_mode == 'rnn_tanh':
+            rnn_mode = as_i32(1)
+        elif rnn_mode == 'lstm':
+            rnn_mode = as_i32(2)
+        elif rnn_mode == 'gru':
+            rnn_mode = as_i32(3)
+        else:
+            raise ValueError("rnn_mode")
+
+        dtype = as_i32(gpuarray.dtype_to_typecode(dtype))
+
+        return Apply(self, [hidden_size, num_layers,
+                            dropoutdesc_type.make_constant(ddesc),
+                            input_mode, direction_mode, rnn_mode, dtype],
+                     [rnndesc_type()])
+
+
+def _make_rnn_desc(hidden_size, num_layers, ddesc, rnn_mode,
+                   input_mode, direction_mode, dtype, context_name):
+    desc = theano.function([], _RNNDescriptor(context_name)(
+        hidden_size, num_layers, ddesc, input_mode, direction_mode,
+        rnn_mode, dtype))()
+    return desc
+
+
+class _RNNParamSize(DnnBase):
+    __props__ = ('context_name',)
+
+    def __init__(self, context_name):
+        DnnBase.__init__(self, ["dnn_rnn_paramsize.c"],
+                         "dnn_rnn_paramsize")
+        self.context_name = context_name
+
+    def dnn_context(self, node):
+        return self.context_name
+
+    def do_constant_folding(self, node):
+        return False
+
+    def make_node(self, desc, input_size, typecode):
+        input_size = as_tensor_variable(input_size).astype('uint64')
+        typecode = as_i32(typecode)
+        return Apply(self, [rnndesc_type.make_constant(desc), input_size,
+                            typecode],
+                     [get_scalar_type('uint64')()])
+
+
+def _get_param_size(desc, input_size, dtype, context_name):
+    typecode = gpuarray.dtype_to_typecode(dtype)
+    return theano.function([], _RNNParamSize(context_name)(
+            desc, input_size, typecode))()
+
+
+class GpuDnnRNNOp(DnnBase):
+    __props__ = ()
+    _cop_numi = 5
+    _cop_numo = 4
+
+    def __init__(self, rnn_mode, direction_mode):
+        DnnBase.__init__(self, ["dnn_rnn_fwd.c"], 'dnn_rnn_fwd')
+        self.rnn_mode = rnn_mode
+        if direction_mode == 'bidirectional':
+            self.num_dirs = 2
+        elif direction_mode == 'unidirectional':
+            self.num_dirs = 1
+        else:
+            raise ValueError('direction_mode')
+
+    def dnn_context(self, node):
+        return node.outputs[1].type.context_name
+
+    def make_node(self, desc, w, x, hx, cx=None):
+        if cx is None:
+            context_name = infer_context_name(w, x, hx, cx)
+        else:
+            context_name = infer_context_name(w, x, hx)
+
+        w = as_gpuarray_variable(w, context_name)
+        x = as_gpuarray_variable(x, context_name)
+        hx = as_gpuarray_variable(hx, context_name)
+        inputs = [desc, w, x, hx]
+        assert w.ndim == 1
+        assert x.ndim == 3 # seqLength, minibatch, inputSize
+        assert hx.ndim == 3 # numLayers * bidi, minibatch, hiddenSize
+
+        if self.rnn_mode == 'lstm':
+            cx = as_gpuarray_variable(cx, context_name)
+            assert cx.ndim == 3 # numLayers * bidi, minibatch, hiddenSize
+            inputs.append(cx)
+
+        _3d = GpuArrayType(dtype=x.dtype, broadcastable=(False, False, False),
+                           context_name=context_name)
+        reserve = gpudata_type()
+        y = _3d() # seqLength, minibatch, hiddenSize * bidi
+        hy = _3d() # numLayers * bidi, miniBatch, hiddenSize
+        outputs = [reserve, y, hy]
+
+        if self.rnn_mode == 'lstm':
+            cy = _3d() # numLayers * bidi, miniBatch, hiddenSize
+            outputs.append(cy)
+
+        return Apply(self, inputs, outputs)
+
+    def grad2(self, inputs, outputs, output_grads):
+        desc, w, x, hx = inputs[:4]
+        cx = inputs[4] if len(inputs) == 5 else None
+        reserve, y, hy = outputs[:3]
+        _, dy, dhy = output_grads[:3]
+        dcy = output_grads[3] if len(output_grads) == 4 else None
+        dinputs = GpuDnnRNNGradInputs()(
+            desc, x, y, dy, dhy, dcy, w, hx, cx, reserve, return_list=True)
+        reserve2, dx, dhx = dinputs[:3]
+        dw = GpuDnnRNNGradWeights()(
+            desc, x, hx, y, reserve2, w)
+        res = [DisconnectedType()(), dw, dx, dhx]
+        if cx is not None:
+            res.append(dinputs[3])  # dcx
+        return res
+
+    def connection_pattern(self, node):
+        deconn = [[False] * len(node.outputs)]
+        conn = [[True] * len(node.outputs)] * (len(node.inputs) - 1)
+        return deconn + conn
+
+
+class GpuDnnRNNGradInputs(DnnBase):
+    __props__ = ()
+    _cop_numi = 10
+    _cop_numo = 4
+
+    def __init__(self):
+        DnnBase.__init__(self, ['dnn_rnn_gi.c'], 'dnn_rnn_gi')
+
+    def dnn_context(self, node):
+        return node.outputs[1].type.context_name
+
+    def make_node(self, desc, x, y, dy, dhy, dcy, w, hx, cx, reserve):
+        # We trust the callers here
+
+        xshp = as_scalar(x.shape[2]).astype('uint64')
+        inputs = [desc, xshp, y, dy, dhy, w, hx, reserve]
+        outputs = [reserve.type(), x.type(), hx.type()]
+        if dcy is not None:
+            inputs.append(dcy)
+            inputs.append(cx)
+            outputs.append(cx.type())
+        return Apply(self, inputs, outputs)
+
+
+class GpuDnnRNNGradWeights(DnnBase):
+    __props__ = ()
+
+    def __init__(self):
+        DnnBase.__init__(self, ['dnn_rnn_gw.c'], 'dnn_rnn_gw')
+
+    def make_node(self, desc, x, hx, y, reserve, w):
+        # We trust the callers here
+        wsize = as_scalar(w.shape[0]).astype('uint64')
+        inputs = [desc, wsize, x, hx, y, reserve]
+        outputs = [w.type()]
+        return Apply(self, inputs, outputs)
+
+
+class RNNBlock(object):
+    def __init__(self, dtype, hidden_size, num_layers, rnn_mode,
+                 input_mode='linear', direction_mode='unidirectional',
+                 dropout=0.0, dropout_seed=4242, context_name=None):
+        """
+        dtype: data type of computation
+        hidden_size: int
+        num_layers: int
+        rnn_mode: {'rnn_relu', 'rnn_tanh', 'lstm', 'gru'}
+          See cudnn documentation for cudnnRNNMode_t.
+        input_mode: {'linear', 'skip'}
+          linear: input will be multiplied by a biased matrix
+          skip: No operation is performed on the input.  The size must match the hidden size.
+        direction_mode: {'unidirectional', 'bidirectional'}
+          unidirectional: The network operates recurrently from the
+                          first input to the last.
+
+          bidirectional: The operates from first to last then from last to first and concatenates the results at each layer.
+
+        """
+        ddesc, states = _make_dropout_desc(dropout, dropout_seed, context_name)
+        self.ddesc = ddesc
+        self.dstates = states
+        self.desc = _make_rnn_desc(hidden_size, num_layers,
+                                   ddesc, rnn_mode, input_mode,
+                                   direction_mode, dtype, context_name)
+        self.rnn_mode = rnn_mode
+        self.direction_mode = direction_mode
+        self.context_name = context_name
+        self.dtype = dtype
+
+    def get_param_size(self, input_size):
+        bytesize = _get_param_size(self.desc, input_size, self.dtype,
+                                   self.context_name)
+        bytesize = int(bytesize)
+        assert bytesize % numpy.dtype(self.dtype).itemsize == 0
+        return bytesize // numpy.dtype(self.dtype).itemsize
+
+    def apply(self, w, x, hx, cx=None):
+        # Don't return the reserve as an output
+        return GpuDnnRNNOp(self.rnn_mode, self.direction_mode)(
+            rnndesc_type.make_constant(self.desc),
+            w, x, hx, cx, return_list=True)[1:]
 
 
 def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
