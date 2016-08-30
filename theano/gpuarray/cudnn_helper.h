@@ -11,15 +11,6 @@ static inline int cudnnGetVersion() {
 }
 #endif
 
-#include <assert.h>
 
-// If needed, define element of the V4 interface in terms of elements of
-// previous versions
-#if defined(CUDNN_VERSION) && CUDNN_VERSION < 4000
-
-#define CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING 5
-#define CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING 3
-
-#endif
 
 #endif
