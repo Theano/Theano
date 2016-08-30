@@ -26,11 +26,12 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
                          cudnnConvolutionDescriptor_t desc,
                          double alpha, double beta,
                          PyGpuArrayObject **output,
-                         PyGpuContextObject *c) {
-  cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
-  float af = alpha, bf = beta;
+                         cudnnHandle_t _handle) {
+  PyGpuContextObject *c = input->context;
   void *alpha_p;
   void *beta_p;
+  float af = alpha, bf = beta;
+  cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
 
   if (PyGpuArray_DIMS(input)[1] != PyGpuArray_DIMS(kerns)[1]) {
     PyErr_SetString(PyExc_ValueError,
@@ -92,7 +93,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     int count;
     cudnnConvolutionFwdAlgoPerf_t choice;
     err = cudnnFindConvolutionForwardAlgorithm(
-      APPLY_SPECIFIC(_handle), APPLY_SPECIFIC(input), APPLY_SPECIFIC(kerns),
+      _handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(kerns),
       desc, APPLY_SPECIFIC(output), 1, &count, &choice);
 
     if (err != CUDNN_STATUS_SUCCESS) {
@@ -115,7 +116,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     }
 
     err = cudnnGetConvolutionForwardAlgorithm(
-      APPLY_SPECIFIC(_handle), APPLY_SPECIFIC(input), APPLY_SPECIFIC(kerns),
+      _handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(kerns),
       desc, APPLY_SPECIFIC(output),
       CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT, free, &algo);
     if (err != CUDNN_STATUS_SUCCESS) {
@@ -198,7 +199,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   {
     size_t worksize;
     gpudata *workspace;
-    err = cudnnGetConvolutionForwardWorkspaceSize(APPLY_SPECIFIC(_handle),
+    err = cudnnGetConvolutionForwardWorkspaceSize(_handle,
                                                   APPLY_SPECIFIC(input),
                                                   APPLY_SPECIFIC(kerns),
                                                   desc,
@@ -211,7 +212,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       // TODO: Print a warning
       algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
 
-      err = cudnnGetConvolutionForwardWorkspaceSize(APPLY_SPECIFIC(_handle),
+      err = cudnnGetConvolutionForwardWorkspaceSize(_handle,
                                                     APPLY_SPECIFIC(input),
                                                     APPLY_SPECIFIC(kerns),
                                                     desc,
@@ -248,7 +249,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     cuda_wait((*output)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
 
     err = cudnnConvolutionForward(
-      APPLY_SPECIFIC(_handle),
+      _handle,
       alpha_p,
       APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(input),
       APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(kerns),

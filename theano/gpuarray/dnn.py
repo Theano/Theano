@@ -26,7 +26,8 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
 from theano.tensor.signal.pool import (
     Pool, MaxPoolGrad, AveragePoolGrad)
 from . import pygpu
-from .type import get_context, gpu_context_type, list_contexts
+from .type import (get_context, gpu_context_type, list_contexts,
+                   get_prop, set_prop)
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         gpu_contiguous, gpu_alloc_empty,
                         empty_like, GpuArrayType)
@@ -41,6 +42,44 @@ from .opt import (gpu_seqopt, register_opt,
 from .opt_util import alpha_merge, output_merge, inplace_allocempty, pad_dims, unpad_dims
 
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_BWD_FILTER
+
+try:
+    from pygpu import gpuarray
+except ImportError:
+    pass
+
+
+def _dnn_lib():
+    if _dnn_lib.handle is None:
+        import ctypes.util
+
+        lib_name = ctypes.util.find_library('cudnn')
+        if lib_name is None and sys.platform == 'win32':
+            # Update these names when new versions of cudnn are supported.
+            lib_name = ctypes.util.find_library('cudnn64_5.dll')
+            if lib_name is None:
+                lib_name = ctypes.util.find_library('cudnn64_4.dll')
+        if lib_name is None:
+            raise RuntimeError('Could not find cudnn library')
+        _dnn_lib.handle = ctypes.cdll.LoadLibrary(lib_name)
+        cudnn = _dnn_lib.handle
+        cudnn.cudnnCreate.argtypes = [ctypes.POINTER(ctypes.c_void_p)]
+        cudnn.cudnnCreate.restype = ctypes.c_int
+        cudnn.cudnnDestroy.argtypes = [ctypes.c_void_p]
+        cudnn.cudnnDestroy.restype = ctypes.c_int
+    return _dnn_lib.handle
+
+_dnn_lib.handle = None
+
+
+def _make_handle(ctx):
+    cudnn = _dnn_lib()
+    handle = ctypes.c_void_p()
+    with ctx:
+        err = cudnn.cudnnCreate(ctypes.byref(handle))
+    if err != 0:
+        raise RuntimeError("error creating cudnn handle")
+    return handle
 
 
 def raise_no_cudnn(msg="cuDNN is required for convolution and pooling"):
@@ -144,6 +183,12 @@ def dnn_available(context_name):
 
 dnn_available.msg = None
 
+handle_type = CDataType('cudnnHandle_t', 'cudnnDestroy',
+                        headers=['cudnn.h'],
+                        header_dirs=[config.dnn.include_path],
+                        libraries=['cudnn'],
+                        lib_dirs=[config.dnn.library_path])
+
 
 class DnnBase(COp):
 
@@ -154,10 +199,20 @@ class DnnBase(COp):
     # dnn does not know about broadcasting, so we do not need to assert
     # the input broadcasting pattern.
     check_broadcast = False
-    params_type = gpu_context_type
+    params_type = handle_type
+
+    def dnn_context(self, node):
+        return node.outputs[0].type.context_name
 
     def get_params(self, node):
-        return node.outputs[0].type.context
+        try:
+            return get_prop(self.dnn_context(node), 'cudnn_handle_param')
+        except KeyError:
+            pass
+        ptr = get_prop(self.dnn_context(node), 'cudnn_handle').value
+        res = handle_type.make_value(ptr)
+        set_prop(self.dnn_context(node), 'cudnn_handle_param', res)
+        return res
 
     def __init__(self, files=None, c_func=None):
         if files is None:
@@ -165,9 +220,10 @@ class DnnBase(COp):
         COp.__init__(self, ["dnn_base.c"] + files, c_func)
 
     def c_headers(self):
-        return ['cudnn.h', 'cudnn_helper.h', 'gpuarray_helper.h',
-                'gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/util.h',
-                'gpuarray/ext_cuda.h', 'gpuarray_api.h', 'numpy_compat.h']
+        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/kernel.h',
+                'gpuarray/util.h', 'gpuarray/ext_cuda.h', 'gpuarray_api.h',
+                'numpy_compat.h', 'cudnn.h', 'cudnn_helper.h',
+                'gpuarray_helper.h']
 
     def c_header_dirs(self):
         return [os.path.dirname(__file__), pygpu.get_include(),
@@ -183,7 +239,7 @@ class DnnBase(COp):
         return ['-Wl,-rpath,' + config.dnn.library_path]
 
     def c_code_cache_version(self):
-        return (super(DnnBase, self).c_code_cache_version(), version())
+        return (super(DnnBase, self).c_code_cache_version(), version(), 1)
 
 
 class DnnVersion(Op):

@@ -64,7 +64,8 @@ int APPLY_SPECIFIC(dnn_pool_grad)(PyGpuArrayObject *inp,
                                   PyArrayObject *stride,
                                   PyArrayObject *pad,
                                   PyGpuArrayObject **inp_grad,
-                                  PyGpuContextObject *c) {
+                                  cudnnHandle_t _handle) {
+  PyGpuContextObject *c = inp->context;
   cudnnStatus_t err;
 
   if (!GpuArray_IS_C_CONTIGUOUS(&inp->ga)) {
@@ -153,7 +154,7 @@ int APPLY_SPECIFIC(dnn_pool_grad)(PyGpuArrayObject *inp,
     cuda_wait((*inp_grad)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
 
     err = cudnnPoolingBackward(
-      APPLY_SPECIFIC(_handle), APPLY_SPECIFIC(pool),
+      _handle, APPLY_SPECIFIC(pool),
       alpha,
       APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(out),
       APPLY_SPECIFIC(output_grad), PyGpuArray_DEV_DATA(out_grad),

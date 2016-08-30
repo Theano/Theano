@@ -3,7 +3,9 @@
 int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
                      PyGpuArrayObject *bias, PyGpuArrayObject *est_mean,
                      PyGpuArrayObject *est_var, npy_float64 epsilon, 
-                     PyGpuArrayObject **outp, PyGpuContextObject *c) {
+                     PyGpuArrayObject **outp, cudnnHandle_t _handle) {
+  PyGpuContextObject *c = inp->context;
+
   if (c_set_tensorNd(inp, bn_input) != 0)
     return 1;
   if (c_set_tensorNd(scale, bn_params) != 0)
@@ -33,7 +35,7 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
       beta = (void *)&fbeta;
     }
     cudnnStatus_t err = cudnnBatchNormalizationForwardInference(
-      APPLY_SPECIFIC(_handle),
+      _handle,
       MODE,
       alpha,
       beta,

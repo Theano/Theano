@@ -35,7 +35,8 @@ if (APPLY_SPECIFIC(output) != NULL)
 
 int APPLY_SPECIFIC(softmax)(PyGpuArrayObject *x,
                             PyGpuArrayObject **out,
-                            PyGpuContextObject *c) {
+                            cudnnHandle_t _handle) {
+  PyGpuContextObject *c = x->context;
   cudnnStatus_t err;
 
   if (c_set_tensorNd(x, APPLY_SPECIFIC(input)) != 0)
@@ -77,7 +78,7 @@ int APPLY_SPECIFIC(softmax)(PyGpuArrayObject *x,
     cuda_wait((*out)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
 
     err = cudnnSoftmaxForward(
-      APPLY_SPECIFIC(_handle),
+      _handle,
       SOFTMAX_ALGO,
       SOFTMAX_MODE,
       alpha,
