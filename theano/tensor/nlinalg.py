@@ -794,6 +794,7 @@ def tensorinv(a, ind=2):
     """
     return TensorInv(ind)(a)
 
+
 class TensorSolve(Op):
     """
     Theano utilization of numpy.linalg.tensorsolve
@@ -848,5 +849,6 @@ def tensorsolve(a, b, axes=None):
     ------
     LinAlgError
         If `a` is singular or not 'square' (in the above sense).
+    """
 
     return TensorSolve(axes)(a, b)

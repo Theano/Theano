@@ -39,7 +39,7 @@ from theano.tensor.nlinalg import ( MatrixInverse,
                                     norm,
                                     svd,
                                     TensorInv,
-                                    tensorinv
+                                    tensorinv,
                                     tensorsolve
                                     )
 from nose.plugins.attrib import attr
@@ -172,9 +172,9 @@ def test_tensorsolve():
     fn = function([A, B], [X])
 
     # slightly modified example from numpy.linalg.tensorsolve docstring
-    a = numpy.eye(2*3*4).astype(theano.config.floatX)
-    a.shape = (2*3, 4, 2, 3*4)
-    b = rng.rand(2*3, 4).astype(theano.config.floatX)
+    a = numpy.eye(2 * 3 * 4).astype(theano.config.floatX)
+    a.shape = (2 * 3, 4, 2, 3 * 4)
+    b = rng.rand(2 * 3, 4).astype(theano.config.floatX)
 
     n_x = numpy.linalg.tensorsolve(a, b)
     t_x = fn(a, b)
@@ -186,9 +186,9 @@ def test_tensorsolve():
     Y = tensorsolve(C, D)
     fn = function([C, D], [Y])
 
-    c = numpy.eye(2*3*4).astype('float32')
-    c.shape = (2*3, 4, 2, 3*4)
-    d = rng.rand(2*3, 4).astype('float64')
+    c = numpy.eye(2 * 3 * 4, dtype='float32')
+    c.shape = (2 * 3, 4, 2, 3 * 4)
+    d = rng.rand(2 * 3, 4).astype('float64')
     n_y = numpy.linalg.tensorsolve(c, d)
     t_y = fn(c, d)
     assert _allclose(n_y, t_y)
@@ -200,9 +200,9 @@ def test_tensorsolve():
     Z = tensorsolve(E, F)
     fn = function([E, F], [Z])
 
-    e = numpy.eye(2*3*4).astype('int32')
-    e.shape = (2*3, 4, 2, 3*4)
-    f = rng.rand(2*3, 4).astype('float64')
+    e = numpy.eye(2 * 3 * 4, dtype='int32')
+    e.shape = (2 * 3, 4, 2, 3 * 4)
+    f = rng.rand(2 * 3, 4).astype('float64')
     n_z = numpy.linalg.tensorsolve(e, f)
     t_z = fn(e, f)
     assert _allclose(n_z, t_z)
