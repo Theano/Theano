@@ -20,6 +20,7 @@ except ImportError:
     pygpu = None
 
 _context_reg = {}
+_props_map = {}
 
 
 def move_to_gpu(data):
@@ -68,6 +69,7 @@ def reg_context(name, ctx):
     if not isinstance(ctx, gpuarray.GpuContext):
         raise TypeError("context is not GpuContext")
     _context_reg[name] = ctx
+    _props_map[ctx] = dict()
 
 
 def get_context(name):
@@ -87,6 +89,19 @@ def get_context(name):
     if name not in _context_reg:
         raise ContextNotDefined("context name %s not defined" % (name,))
     return _context_reg[name]
+
+
+def _get_props(name):
+    ctx = get_context(name)
+    return _props_map[ctx]
+
+
+def get_prop(name, k):
+    return _get_props(name)[k]
+
+
+def set_prop(name, k, v):
+    _get_props(name)[k] = v
 
 
 def list_contexts():
