@@ -54,6 +54,18 @@ c_set_tensorNd(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
   return 0;
 }
 
+static int c_make_tensorNd(PyGpuArrayObject *var, cudnnTensorDescriptor_t *desc) {
+  cudnnStatus_t err;
+  err = cudnnCreateTensorDescriptor(desc);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    PyErr_Format(PyExc_RuntimeError,
+                 "Could not create tensor descriptor: %s",
+                 cudnnGetErrorString(err));
+    return -1;
+  }
+  return c_set_tensorNd(var, *desc);
+}
+
 static int
 c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc) {
   cudnnDataType_t dt;
@@ -112,6 +124,18 @@ c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc) {
     return -1;
   }
   return 0;
+}
+
+static int c_make_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t *desc) {
+  cudnnStatus_t err;
+  err = cudnnCreateFilterDescriptor(desc);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    PyErr_Format(PyExc_RuntimeError,
+                 "Could not create tensor descriptor: %s",
+                 cudnnGetErrorString(err));
+    return -1;
+  }
+  return c_set_filter(var, *desc);
 }
 
 #section init_code
