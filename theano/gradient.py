@@ -1102,7 +1102,8 @@ def _populate_grad_dict(var_to_app_to_idx,
                                 str(o_shape) + " on an output of shape " +
                                 str(g_shape))
 
-                input_grads = node.op.grad(inputs, new_output_grads)
+                input_grads = node.op.grad2(inputs, node.outputs,
+                                            new_output_grads)
 
                 if input_grads is None:
                     raise TypeError("%s.grad returned NoneType, "
