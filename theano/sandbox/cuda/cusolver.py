@@ -3,9 +3,12 @@ from __future__ import absolute_import, division, print_function
 import pkg_resources
 import theano
 
-from theano.sandbox.cuda import CudaNdarray, GpuOp
+from theano.sandbox.cuda import GpuOp, cuda_available
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
 from theano.sandbox.cuda.type import CudaNdarrayType
+
+if cuda_available:
+    from theano.sandbox.cuda import CudaNdarray
 
 try:
     from theano.sandbox.cuda import cuda_ndarray
