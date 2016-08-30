@@ -323,21 +323,6 @@ try the following.
       [gcc]
       cxxflags = -L/opt/local/lib
 
-- An obscure ``Bus error`` can sometimes be caused when linking
-  Theano-generated object files against the ``framework`` library in Leopard.
-  For this reason, we have disabled linking with ``-framework Python``, since on
-  most configurations this solves the ``Bus error`` problem. If this default
-  configuration causes problems with your Python/Theano installation and you think
-  that linking with ``-framework Python`` might help, then either set
-  the :envvar:`THEANO_FLAGS` environment variable with
-  ``THEANO_FLAGS=cmodule.mac_framework_link`` or edit your ``~/.theanorc`` to
-  contain
-
-    .. code-block:: cfg
-
-      [cmodule]
-      mac_framework_link=True
-
 - More generally, to investigate libraries issues, you can use the ``otool -L``
   command on ``.so`` files found under your ``~/.theano`` directory. This will
   list shared libraries dependencies, and may help identify incompatibilities.
