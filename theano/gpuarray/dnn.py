@@ -1954,7 +1954,7 @@ class _RNNParamSize(DnnBase):
 def _get_param_size(desc, input_size, dtype, context_name):
     typecode = gpuarray.dtype_to_typecode(dtype)
     return theano.function([], _RNNParamSize(context_name)(
-            desc, input_size, typecode))()
+        desc, input_size, typecode))()
 
 
 class GpuDnnRNNOp(DnnBase):
@@ -1986,23 +1986,23 @@ class GpuDnnRNNOp(DnnBase):
         hx = as_gpuarray_variable(hx, context_name)
         inputs = [desc, w, x, hx]
         assert w.ndim == 1
-        assert x.ndim == 3 # seqLength, minibatch, inputSize
-        assert hx.ndim == 3 # numLayers * bidi, minibatch, hiddenSize
+        assert x.ndim == 3  # seqLength, minibatch, inputSize
+        assert hx.ndim == 3  # numLayers * bidi, minibatch, hiddenSize
 
         if self.rnn_mode == 'lstm':
             cx = as_gpuarray_variable(cx, context_name)
-            assert cx.ndim == 3 # numLayers * bidi, minibatch, hiddenSize
+            assert cx.ndim == 3  # numLayers * bidi, minibatch, hiddenSize
             inputs.append(cx)
 
         _3d = GpuArrayType(dtype=x.dtype, broadcastable=(False, False, False),
                            context_name=context_name)
         reserve = gpudata_type()
-        y = _3d() # seqLength, minibatch, hiddenSize * bidi
-        hy = _3d() # numLayers * bidi, miniBatch, hiddenSize
+        y = _3d()  # seqLength, minibatch, hiddenSize * bidi
+        hy = _3d()  # numLayers * bidi, miniBatch, hiddenSize
         outputs = [reserve, y, hy]
 
         if self.rnn_mode == 'lstm':
-            cy = _3d() # numLayers * bidi, miniBatch, hiddenSize
+            cy = _3d()  # numLayers * bidi, miniBatch, hiddenSize
             outputs.append(cy)
 
         return Apply(self, inputs, outputs)
