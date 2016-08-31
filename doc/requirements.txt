@@ -8,8 +8,11 @@ Requirements
 .. _BLAS: http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
 .. _Python: http://www.python.org/
 
-    Python_ >= 2.6 or >= 3.3
-        The development package (python-dev or python-devel on most Linux distributions) is recommended (see just below). Python 2.4 was supported up to and including the release 0.6. Python 3 is supported past the 3.3 release.
+    Python_ >= 2.7 or >= 3.3 The development package (python-dev or
+        python-devel on most Linux distributions) is recommended (see
+        just below). Python 2.4 was supported up to and including the
+        release 0.6. Python 2.6 was supported up to and including the
+        release 0.8.2. Python 3 is supported past the 3.3 release.
 
     `NumPy <http://numpy.scipy.org/>`_ >= 1.7.1 < 1.11.1
         Earlier versions could work, but we don’t test it.
