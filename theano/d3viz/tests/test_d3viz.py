@@ -11,9 +11,9 @@ import theano.d3viz as d3v
 from theano.d3viz.tests import models
 
 from nose.plugins.skip import SkipTest
-from theano.d3viz.formatting import pydot_imported
+from theano.d3viz.formatting import pydot_imported, pydot_imported_msg
 if not pydot_imported:
-    raise SkipTest('Missing requirements')
+    raise SkipTest('pydot not available: ' + pydot_imported_msg)
 
 
 class TestD3Viz(unittest.TestCase):

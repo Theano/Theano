@@ -30,7 +30,7 @@ try:
     if pd.find_graphviz():
         pydot_imported = True
     else:
-        pydot_imported_msg = "pydot-ng can't find graphviz"
+        pydot_imported_msg = "pydot-ng can't find graphviz. Install graphviz."
 except ImportError:
     try:
         # fall back on pydot if necessary
@@ -45,7 +45,8 @@ except ImportError:
             pydot_imported = True
     except ImportError:
         # tests should not fail on optional dependency
-        pydot_imported_msg = "Install the python package pydot or pydot-ng."
+        pydot_imported_msg = ("Install the python package pydot or pydot-ng."
+                              " Install graphviz.")
 
 
 _logger = logging.getLogger("theano.printing")
