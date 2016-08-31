@@ -169,11 +169,14 @@ class Kernel(object):
     objvar: str
         the name of the variable for the kernel object.
         (defaults to `k_` + name)
+    fname: str
+        the name of the function wrapper.
+        (defaults to name + `_call`)
 
     """
 
     def __init__(self, code, params, name, flags,
-                 codevar=None, binvar=None, objvar=None):
+                 codevar=None, binvar=None, objvar=None, fname=None):
         self.code = code
         self.params = params
         self.name = name
@@ -187,6 +190,9 @@ class Kernel(object):
         if objvar is None:
             objvar = 'k_' + name
         self.objvar = objvar
+        if fname is None:
+            fname = name + '_call'
+        self.fname = fname
 
     @staticmethod
     def get_flags(*types):
@@ -253,6 +259,17 @@ class Kernel(object):
         return ', '.join(m(t) for t in self.params)
 
 
+def get_ctype(dtype):
+    if dtype is gpuarray.GpuArray:
+        return "gpudata *"
+    if dtype == gpuarray.SIZE:
+        return "size_t"
+    if dtype == gpuarray.SSIZE:
+        return "ssize_t"
+    else:
+        return dtype.name + '_t'
+
+
 class GpuKernelBase(object):
     """
     Base class for operations that need to compile kernels.
@@ -295,6 +312,29 @@ class GpuKernelBase(object):
     def _generate_kernel_vars(self, k):
         return """GpuKernel %(kname)s;""" % dict(kname=k.objvar)
 
+    def _generate_kernel_wrap(self, k):
+        args = []
+        setargs = []
+        for i, p in enumerate(k.params):
+            args.append("{} arg{}".format(get_ctype(p), i))
+            if p is gpuarray.GpuArray:
+                setarg = "GpuKernel_setarg(&{0}, {1}, arg{1});"
+            else:
+                setarg = "GpuKernel_setarg(&{0}, {1}, &arg{1});"
+            setargs.append(setarg.format(k.objvar, i))
+
+        args = ', '.join(args)
+        setargs = '\n  '.join(setargs)
+
+        return """
+int {fname}(unsigned int nd, size_t *ldim, size_t *gdim, size_t shared,
+                  {args}) {{
+  {setargs}
+
+  return GpuKernel_call(&{kname}, nd, ldim, gdim, shared, NULL);
+}}
+        """.format(args=args, fname=k.fname, setargs=setargs, kname=k.objvar)
+
     def c_support_code(self):
         return """
         template <typename T>
@@ -313,7 +353,9 @@ class GpuKernelBase(object):
 
     def c_support_code_struct(self, node, name):
         kernels = self.gpu_kernels(node, name)
-        return '\n'.join(self._generate_kernel_vars(k) for k in kernels)
+        kvars = '\n'.join(self._generate_kernel_vars(k) for k in kernels)
+        wrappers = '\n'.join(self._generate_kernel_wrap(k) for k in kernels)
+        return kvars + '\n' + wrappers
 
     def _generate_zeros(self, k):
         return """memset(&%(v)s, 0, sizeof(%(v)s));""" % dict(v=k.objvar)
@@ -375,7 +417,7 @@ class GpuKernelBase(object):
             The node that we need the cache version for.
 
         """
-        return (4, self.get_params(node).bin_id)
+        return (5, self.get_params(node).bin_id)
 
 
 def forward_string_meth(name):
@@ -1309,7 +1351,7 @@ class GpuEye(GpuKernelBase, Op):
 
     def gpu_kernels(self, node, name):
         code = """
-KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
+KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
     ga_size nb = n < m ? n : m;
     for (ga_size i = LID_0; i < nb; i += LDIM_0) {
         a[i*m + i] = %(write_a)s(1);
@@ -1317,7 +1359,7 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
 }""" % dict(ctype=pygpu.gpuarray.dtype_to_ctype(self.dtype),
             name=name, write_a=write_w(self.dtype))
         return [Kernel(
-                code=code, name="k",
+                code=code, name="eye",
                 params=[gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE],
                 flags=Kernel.get_flags(self.dtype),
                 objvar='k_eye_' + name)]
@@ -1333,7 +1375,6 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
         s = """
         size_t dims[2] = {0, 0};
         size_t ls, gs;
-        void *args[3];
         int err;
 
         dims[0] = ((dtype_%(n)s*)PyArray_DATA(%(n)s))[0];
@@ -1348,12 +1389,9 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
             %(fail)s
         }
 
-        args[0] = %(z)s->ga.data;
-        args[1] = &dims[0];
-        args[2] = &dims[1];
         ls = 1;
         gs = 256;
-        err = GpuKernel_call(&%(kname)s, 1, &ls, &gs, 0, args);
+        err = eye_call(1, &ls, &gs, 0, %(z)s->ga.data, dims[0], dims[1]);
         if (err != GA_NO_ERROR) {
             PyErr_Format(PyExc_RuntimeError,
                          "gpuarray error: kEye: %%s. n%%lu, m=%%lu.",
@@ -1369,4 +1407,4 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
         return s
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
