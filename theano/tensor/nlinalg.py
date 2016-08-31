@@ -793,3 +793,62 @@ def tensorinv(a, ind=2):
         If `a` is singular or not 'square' (in the above sense).
     """
     return TensorInv(ind)(a)
+
+
+class TensorSolve(Op):
+    """
+    Theano utilization of numpy.linalg.tensorsolve
+    Class wrapper for tensorsolve function.
+
+    """
+    _numop = staticmethod(numpy.linalg.tensorsolve)
+    __props__ = ('axes', )
+
+    def __init__(self, axes=None):
+        self.axes = axes
+
+    def make_node(self, a, b):
+        a = as_tensor_variable(a)
+        b = as_tensor_variable(b)
+        out_dtype = theano.scalar.upcast(a.dtype, b.dtype)
+        x = theano.tensor.matrix(dtype=out_dtype)
+        return Apply(self, [a, b], [x])
+
+    def perform(self, node, inputs, outputs):
+        (a, b,) = inputs
+        (x,) = outputs
+        x[0] = self._numop(a, b, self.axes)
+
+
+def tensorsolve(a, b, axes=None):
+    """
+    Theano utilization of numpy.linalg.tensorsolve. Does not run on GPU!
+
+    Solve the tensor equation ``a x = b`` for x.
+    It is assumed that all indices of `x` are summed over in the product,
+    together with the rightmost indices of `a`, as is done in, for example,
+    ``tensordot(a, x, axes=len(b.shape))``.
+
+    Parameters
+    ----------
+    a : array_like
+        Coefficient tensor, of shape ``b.shape + Q``. `Q`, a tuple, equals
+        the shape of that sub-tensor of `a` consisting of the appropriate
+        number of its rightmost indices, and must be such that
+        ``prod(Q) == prod(b.shape)`` (in which sense `a` is said to be
+        'square').
+    b : array_like
+        Right-hand tensor, which can be of any shape.
+    axes : tuple of ints, optional
+        Axes in `a` to reorder to the right, before inversion.
+        If None (default), no reordering is done.
+    Returns
+    -------
+    x : ndarray, shape Q
+    Raises
+    ------
+    LinAlgError
+        If `a` is singular or not 'square' (in the above sense).
+    """
+
+    return TensorSolve(axes)(a, b)
