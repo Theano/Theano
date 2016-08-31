@@ -14,25 +14,7 @@ from theano import gof
 from theano.compile.profilemode import ProfileMode
 from theano.compile import Function
 from theano.compile import builders
-
-pydot_imported = False
-try:
-    # pydot-ng is a fork of pydot that is better maintained
-    import pydot_ng as pd
-    if pd.find_graphviz():
-        pydot_imported = True
-except ImportError:
-    try:
-        # fall back on pydot if necessary
-        import pydot as pd
-        if hasattr(pd, 'find_graphviz'):
-            if pd.find_graphviz():
-                pydot_imported = True
-        else:
-            pd.Dot.create(pd.Dot())
-            pydot_imported = True
-    except ImportError:
-        pass  # tests should not fail on optional dependency
+from theano.printing import pd, pydot_imported, pydot_imported_msg
 
 
 class PyDotFormatter(object):
@@ -56,9 +38,8 @@ class PyDotFormatter(object):
     def __init__(self, compact=True):
         """Construct PyDotFormatter object."""
         if not pydot_imported:
-            raise ImportError('Failed to import pydot. You must install '
-                              'graphviz and either pydot or pydot-ng for '
-                              '`PyDotFormatter` to work.')
+            raise ImportError('Failed to import pydot. ' +
+                              pydot_imported_msg)
 
         self.compact = compact
         self.node_colors = {'input': 'limegreen',
