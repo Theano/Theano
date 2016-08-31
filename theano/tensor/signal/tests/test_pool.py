@@ -360,7 +360,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             utt.verify_grad(mp, [imval], rng=rng)
 
     def test_DownsampleFactorMax_grad_st(self):
-        """checks the gradient for the case that stride is used"""
+        # checks the gradient for the case that stride is used
         rng = numpy.random.RandomState(utt.fetch_seed())
         maxpoolshps = ((1, 1), (3, 3), (5, 3))
         stridesizes = ((1, 1), (3, 3), (5, 7))
@@ -379,8 +379,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             utt.verify_grad(mp, [imval], rng=rng)
 
     def test_DownsampleFactorMax_grad_st_extra(self):
-        """checks the gradient for the case
-        that stride is used for extra examples"""
+        # checks the gradient for the case
+        # that stride is used for extra examples
         rng = numpy.random.RandomState(utt.fetch_seed())
         maxpoolshps = ((5, 3), (5, 3), (5, 3), (5, 5), (3, 2), (7, 7), (9, 9))
         stridesizes = ((3, 2), (7, 5), (10, 6), (1, 1),
@@ -446,8 +446,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                     utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
     def test_DownsampleFactorMaxGrad_grad_st(self):
-        """checks the gradient of the gradient for
-        the case that stride is used"""
+        # checks the gradient of the gradient for
+        # the case that stride is used
         rng = numpy.random.RandomState(utt.fetch_seed())
         maxpoolshps = ((1, 1), (3, 3), (5, 3))
         stridesizes = ((1, 1), (3, 3), (5, 7))
@@ -470,8 +470,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                     utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
     def test_AveragePoolGrad_grad_st(self):
-        """checks the gradient of the gradient for
-        the case that stride is used"""
+        # checks the gradient of the gradient for
+        # the case that stride is used
         rng = numpy.random.RandomState(utt.fetch_seed())
         avgpoolshps = ((1, 1), (3, 3), (5, 3))
         stridesizes = ((1, 1), (3, 3), (5, 7))
@@ -494,8 +494,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                         utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
     def test_DownsampleFactorMaxGrad_grad_st_extra(self):
-        """checks the gradient of the gradient for the case that
-        stride is used for extra examples"""
+        # checks the gradient of the gradient for the case that
+        # stride is used for extra examples
         rng = numpy.random.RandomState(utt.fetch_seed())
         maxpoolshps = ((5, 3), (5, 3), (5, 3), (5, 5), (3, 2), (7, 7), (9, 9))
         stridesizes = ((3, 2), (7, 5), (10, 6), (1, 1),
@@ -526,8 +526,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
     def test_AveragePoolGrad_grad_st_extra(self):
-        """checks the gradient of the gradient for the case that
-        stride is used for extra examples"""
+        # checks the gradient of the gradient for the case that
+        # stride is used for extra examples
         rng = numpy.random.RandomState(utt.fetch_seed())
         avgpoolshps = ((5, 3), (5, 3), (5, 3), (5, 5), (3, 2), (7, 7), (9, 9))
         stridesizes = ((3, 2), (7, 5), (10, 6), (1, 1),
