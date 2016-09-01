@@ -43,7 +43,8 @@ from theano.tensor.opt import (
         Assert,
         MakeVector,
         make_vector,
-        local_expm1
+        local_expm1,
+        local_canonicalize_alloc
         )
 from theano import tensor
 from theano import tensor as T
