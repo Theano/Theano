@@ -37,7 +37,7 @@ int APPLY_SPECIFIC(tstgpueye)(PyArrayObject *n, PyArrayObject *m,
   ls = 1;
   gs = 256;
   /* The eye_call name comes from the kernel declaration above. */
-  err = eye_call(1, &ls, &gs, 0, (*z)->ga.data, dims[0], dims[1]);
+  err = eye_call(1, &gs, &ls, 0, (*z)->ga.data, dims[0], dims[1]);
   if (err != GA_NO_ERROR) {
     PyErr_Format(PyExc_RuntimeError,
                  "gpuarray error: kEye: %s. n%lu, m=%lu.",

@@ -163,7 +163,7 @@ would be::
 
     ls = 1;
     gs = 256;
-    err = k_call(1, &ls, &gs, 0, input->ga.data, dims[0], dims[1]);
+    err = k_call(1, &gs, &ls, 0, input->ga.data, dims[0], dims[1]);
 
     // ...
 

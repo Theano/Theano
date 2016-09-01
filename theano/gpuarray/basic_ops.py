@@ -329,7 +329,7 @@ class GpuKernelBase(object):
         setargs = '\n  '.join(setargs)
 
         return """
-int {fname}(unsigned int nd, size_t *ldim, size_t *gdim, size_t shared,
+int {fname}(unsigned int nd, size_t *gdim, size_t *ldim, size_t shared,
                   {args}) {{
   {setargs}
 
@@ -419,7 +419,7 @@ int {fname}(unsigned int nd, size_t *ldim, size_t *gdim, size_t shared,
             The node that we need the cache version for.
 
         """
-        return (5, self.get_params(node).bin_id)
+        return (6, self.get_params(node).bin_id)
 
 
 def forward_string_meth(name):
@@ -1393,7 +1393,7 @@ KERNEL void eye(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
 
         ls = 1;
         gs = 256;
-        err = eye_call(1, &ls, &gs, 0, %(z)s->ga.data, dims[0], dims[1]);
+        err = eye_call(1, &gs, &ls, 0, %(z)s->ga.data, dims[0], dims[1]);
         if (err != GA_NO_ERROR) {
             PyErr_Format(PyExc_RuntimeError,
                          "gpuarray error: kEye: %%s. n%%lu, m=%%lu.",
