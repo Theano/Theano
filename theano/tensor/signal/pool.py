@@ -13,7 +13,7 @@ from six import integer_types
 from six.moves import xrange
 import six.moves.builtins as builtins
 import theano
-from theano import gof, OpenMPOp, tensor, Variable, Apply
+from theano import gof, Op, OpenMPOp, tensor, Variable, Apply
 
 
 def max_pool_2d_same_size(input, patch_size):
@@ -349,6 +349,21 @@ class Pool(OpenMPOp):
                                     mode=self.mode)(
                                         x, gz)]
 
+    def R_op(self, inputs, eval_points):
+        if self.mode != 'max':
+            return Op.R_op(self, inputs, eval_points)
+
+        # R_op can receive None as eval_points.
+        # That mean there is no diferientiable path through that input
+        # If this imply that you cannot compute some outputs,
+        # return None for those.
+        if eval_points[0] is None:
+            return [None]
+        rop = DownsampleFactorMaxRop(self.ds,
+                                     ignore_border=self.ignore_border,
+                                     st=self.st, padding=self.padding)
+        return [rop(inputs[0], eval_points[0])]
+
     def c_headers(self):
         headers = ['<algorithm>']
         headers += super(Pool, self).c_headers()
@@ -432,7 +447,7 @@ class Pool(OpenMPOp):
         }
         // memory allocation of z if necessary
         if ((!%(z)s)
-          || *PyArray_DIMS(%(z)s)!=4
+          || PyArray_NDIM(%(z)s)!=4
           ||(PyArray_DIMS(%(z)s)[0] != PyArray_DIMS(%(x)s)[0])
           ||(PyArray_DIMS(%(z)s)[1] != PyArray_DIMS(%(x)s)[1])
           ||(PyArray_DIMS(%(z)s)[2] != z_r)
@@ -538,7 +553,7 @@ class Pool(OpenMPOp):
         return ccode % locals()
 
     def c_code_cache_version(self):
-        return (0, 6, 8, 4, self.openmp)
+        return (0, 6, 8, 5, self.openmp)
 
 
 class PoolGrad(OpenMPOp):
@@ -756,7 +771,7 @@ class MaxPoolGrad(PoolGrad):
         // allocating memory for gx
         if ((!%(gx)s)
           || !PyArray_ISCONTIGUOUS(%(gx)s)
-          || *PyArray_DIMS(%(gx)s)!=4
+          || PyArray_NDIM(%(gx)s)!=4
           ||(PyArray_DIMS(%(gx)s)[0] != PyArray_DIMS(%(x)s)[0])
           ||(PyArray_DIMS(%(gx)s)[1] != PyArray_DIMS(%(x)s)[1])
           ||(PyArray_DIMS(%(gx)s)[2] != PyArray_DIMS(%(x)s)[2])
@@ -820,7 +835,7 @@ class MaxPoolGrad(PoolGrad):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 7, self.openmp)
+        return (0, 8, self.openmp)
 
 
 class AveragePoolGrad(PoolGrad):
@@ -1030,7 +1045,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         // allocating memory for output
         if ((!%(z)s)
           || !PyArray_ISCONTIGUOUS(%(z)s)
-          || *PyArray_DIMS(%(z)s)!=4
+          || PyArray_NDIM(%(z)s)!=4
           ||(PyArray_DIMS(%(z)s)[0] != PyArray_DIMS(%(maxout)s)[0])
           ||(PyArray_DIMS(%(z)s)[1] != PyArray_DIMS(%(maxout)s)[1])
           ||(PyArray_DIMS(%(z)s)[2] != PyArray_DIMS(%(maxout)s)[2])
@@ -1090,4 +1105,205 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 1, self.openmp)
+        return (0, 2, self.openmp)
+
+
+class DownsampleFactorMaxRop(Op):
+    """
+    Implements the R-operator for the downsample operation.
+    """
+
+    __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')
+
+    @staticmethod
+    def out_shape(imgshape, ds, ignore_border=False):
+        """Return the shape of the output from this op, for input of given shape and flags.
+        :param imgshape: the shape of a tensor of images. The last two elements are interpreted
+        as the number of rows, and the number of cols.
+        :type imgshape: tuple, list, or similar.
+        :param ds: downsample factor over rows and columns
+        :type ds: list or tuple of two ints
+        :param ignore_border: if ds doesn't divide imgshape, do we include an extra row/col of
+        partial downsampling (False) or ignore it (True).
+        :type ignore_border: bool
+        :rtype: list
+        :returns: the shape of the output from this op, for input of given shape.  This will
+        have the same length as imgshape, but with last two elements reduced as per the
+        downsampling & ignore_border flags.
+        """
+        if len(imgshape) < 2:
+            raise TypeError('imgshape must have at least two elements (rows, cols)')
+        r, c = imgshape[-2:]
+        rval = list(imgshape[:-2]) + [r / ds[0], c / ds[1]]
+        if not ignore_border:
+            if r % ds[0]:
+                rval[-2] += 1
+            if c % ds[1]:
+                rval[-1] += 1
+        return rval
+
+    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max'):
+        """
+        :param ds: downsample factor over rows and columns
+        :type ds: list or tuple of two ints
+        :param ignore_border: if ds doesn't divide imgshape, do we include an extra row/col of
+        partial downsampling (False) or ignore it (True).
+        :type ignore_border: bool
+        TODO: why is poolsize an op parameter here?
+        """
+        self.ds = tuple(ds)
+        self.ignore_border = ignore_border
+        if st is None:
+            st = ds
+        self.st = tuple(st)
+        self.padding = tuple(padding)
+        self.mode = mode
+        assert self.mode == 'max'
+        if padding != (0, 0):
+            raise NotImplementedError("DownsampleFactorMaxRop do not currently implement pad")
+        if st != ds:
+            raise NotImplementedError("DownsampleFactorMaxRop do not currently implement strides")
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.ds == other.ds and self.ignore_border == other.ignore_border
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
+
+    def __str__(self):
+        return '%s{%s,%s}' % (self.__class__.__name__, self.ds, self.ignore_border)
+
+    def make_node(self, x, eval_point):
+        if x.type.ndim != 4:
+            raise TypeError('Expected tensor4')
+        if x.type.ndim != 4:
+            return TypeError('Expected tensor4')
+        # TODO: consider restrucing the dtype?
+        x = tensor.as_tensor_variable(x)
+        eval_point = tensor.as_tensor_variable(eval_point)
+        return gof.Apply(self, [x, eval_point], [x.type()])
+
+    def perform(self, node, inp, out):
+        x, ex = inp
+        z, = out
+        if len(x.shape) != 4:
+            raise NotImplementedError('DownsampleFactorMax requires 4D input for now')
+        z_shape = self.out_shape(x.shape, self.ds, self.ignore_border)
+        if (z[0] is None) or (z[0].shape != z_shape):
+            z[0] = numpy.zeros(self.out_shape(x.shape, self.ds, self.ignore_border))
+            z[0] = theano._asarray(z[0], dtype=x.dtype)
+        zz = z[0]
+        fake_zz = numpy.zeros(self.out_shape(x.shape, self.ds,
+                                             self.ignore_border))
+
+        # zz needs to be initialized with -inf for the following to work
+        zz -= numpy.inf
+        fake_zz -= numpy.inf
+        ds0, ds1 = self.ds
+
+        if self.ignore_border:
+            x_usable2 = (x.shape[2] // ds0 * ds0)
+        else:
+            x_usable2 = x.shape[2]
+
+        if self.ignore_border:
+            x_usable3 = (x.shape[3] // ds1 * ds1)
+        else:
+            x_usable3 = x.shape[3]
+
+        for n in xrange(x.shape[0]):
+            for k in xrange(x.shape[1]):
+                for i in xrange(x_usable2):
+                    zi = i // ds0
+                    for j in xrange(x_usable3):
+                        zj = j // ds1
+                        if fake_zz[n, k, zi, zj] < x[n, k, i, j]:
+                            fake_zz[n, k, zi, zj] = x[n, k, i, j]
+                            zz[n, k, zi, zj] = ex[n, k, i, j]
+
+    def c_code(self, node, name, inp, out, sub):
+        x, ex = inp
+        z, = out
+        fail = sub['fail']
+        ignore_border = int(self.ignore_border)
+        ds0, ds1 = self.ds
+        return """
+        int typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
+        int x_shp0_usable;
+        int x_shp1_usable;
+        int z_shp0, z_shp1;
+        if(PyArray_NDIM(%(x)s)!=4)
+        {
+            PyErr_SetString(PyExc_ValueError, "x must be a 4d ndarray");
+            %(fail)s;
+        }
+        z_shp0 = PyArray_DIMS(%(x)s)[2] / %(ds0)s;
+        z_shp1 = PyArray_DIMS(%(x)s)[3] / %(ds1)s;
+        if (%(ignore_border)s)
+        {
+            x_shp0_usable = z_shp0 * %(ds0)s;
+            x_shp1_usable = z_shp1 * %(ds1)s;
+        }
+        else
+        {
+            z_shp0 += (PyArray_DIMS(%(x)s)[2] %% %(ds0)s) ? 1 : 0;
+            z_shp1 += (PyArray_DIMS(%(x)s)[3] %% %(ds1)s) ? 1 : 0;
+            x_shp0_usable = PyArray_DIMS(%(x)s)[2];
+            x_shp1_usable = PyArray_DIMS(%(x)s)[3];
+        }
+        if ((!%(z)s)
+          || PyArray_NDIM(%(z)s)!=4
+          ||(PyArray_DIMS(%(z)s)[0] != PyArray_DIMS(%(x)s)[0])
+          ||(PyArray_DIMS(%(z)s)[1] != PyArray_DIMS(%(x)s)[1])
+          ||(PyArray_DIMS(%(z)s)[2] != z_shp0)
+          ||(PyArray_DIMS(%(z)s)[3] != z_shp1)
+          )
+        {
+          if (%(z)s) Py_XDECREF(%(z)s);
+          npy_intp dims[4] = {0,0,0,0};
+          dims[0]=PyArray_DIMS(%(x)s)[0];
+          dims[1]=PyArray_DIMS(%(x)s)[1];
+          dims[2]=z_shp0;
+          dims[3]=z_shp1;
+          %(z)s = (PyArrayObject*) PyArray_ZEROS(4, dims, typenum,0); //TODO: zeros not necessary
+        }
+        if (z_shp0 && z_shp1)
+        {
+            npy_intp fake_dims[4] = {0,0,0,0};
+            fake_dims[0]=PyArray_DIMS(%(x)s)[0];
+            fake_dims[1]=PyArray_DIMS(%(x)s)[1];
+            fake_dims[2]=z_shp0;
+            fake_dims[3]=z_shp1;
+            PyArrayObject * fake_z = (PyArrayObject*) PyArray_ZEROS(4, fake_dims, typenum, 0);
+            for(int b=0;b<PyArray_DIMS(%(x)s)[0];b++){
+              for(int k=0;k<PyArray_DIMS(%(x)s)[1];k++){
+                int mini_i = 0;
+                int zi = 0;
+                for(int i=0;i< x_shp0_usable; i++){
+                  int mini_j = 0;
+                  int zj = 0;
+                  for(int j=0; j<x_shp1_usable; j++){
+                    dtype_%(x)s  a = ((dtype_%(x)s  *)(PyArray_GETPTR4(%(x)s ,b,k,i,j)))[0];
+                    dtype_%(ex)s fa = ((dtype_%(ex)s *)(PyArray_GETPTR4(%(ex)s,b,k,i,j)))[0];
+                    dtype_%(z)s * __restrict__ z = ((dtype_%(z)s*)(PyArray_GETPTR4(%(z)s,b,k,zi,zj)));
+                    dtype_%(z)s * __restrict__ fz = ((dtype_%(z)s*)(PyArray_GETPTR4(fake_z,b,k,zi,zj)));
+                    if (((mini_j| mini_i) == 0) || fz[0] < a)
+                    {
+                      fz[0] = a;
+                      z[0] = fa;
+                    }
+                    mini_j = ((mini_j + 1) == %(ds1)s) ? 0 : mini_j+1;
+                    zj += (mini_j == 0);
+                  }
+                  mini_i = ((mini_i + 1) == %(ds0)s) ? 0 : mini_i+1;
+                  zi += (mini_i == 0);
+                }
+              }
+            }
+            Py_XDECREF(fake_z);
+            //free(fake_z)
+        }
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (0, 2)
