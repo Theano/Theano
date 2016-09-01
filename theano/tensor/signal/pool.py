@@ -399,6 +399,10 @@ class Pool(OpenMPOp):
         else:
             omp_parallel = ''
         ccode = """
+        int ws0, ws1, st0, st1, pd0, pd1;
+        int typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
+        int z_r, z_c; // shape of the output
+        int r, c; // shape of the padded_input
         if(PyArray_DIM(%(ws)s, 0)!=2)
         {
             PyErr_SetString(PyExc_ValueError, "ws must be a vector of size 2");
@@ -415,16 +419,12 @@ class Pool(OpenMPOp):
             %(fail)s;
         }
         // Getting ws, stride and pad
-        int ws0, ws1, st0, st1, pd0, pd1;
         ws0 = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 0));
         ws1 = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 1));
         st0 = *((npy_intp*)PyArray_GETPTR1(%(stride)s, 0));
         st1 = *((npy_intp*)PyArray_GETPTR1(%(stride)s, 1));
         pd0 = *((npy_intp*)PyArray_GETPTR1(%(pad)s, 0));
         pd1 = *((npy_intp*)PyArray_GETPTR1(%(pad)s, 1));
-        int typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
-        int z_r, z_c; // shape of the output
-        int r, c; // shape of the padded_input
         if(PyArray_NDIM(%(x)s)!=4)
         {
             PyErr_SetString(PyExc_ValueError, "x must be a 4d ndarray");
@@ -591,7 +591,7 @@ class Pool(OpenMPOp):
         return ccode % locals()
 
     def c_code_cache_version(self):
-        return (0, 6, 8, 5, self.openmp)
+        return (0, 6, 8, 6, self.openmp)
 
 
 class PoolGrad(OpenMPOp):
@@ -816,6 +816,9 @@ class MaxPoolGrad(PoolGrad):
         int x_typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
         int z_typenum = PyArray_ObjectType((PyObject*)%(z)s, 0);
         int gz_typenum = PyArray_ObjectType((PyObject*)%(gz)s, 0);
+        int ws0, ws1, st0, st1, pd0, pd1;
+        int z_r, z_c;
+        int r, c; // shape of the padded_input
         if ((x_typenum != z_typenum) || (x_typenum != gz_typenum))
         {
             PyErr_SetString(PyExc_ValueError, "input types must all match");
@@ -852,17 +855,14 @@ class MaxPoolGrad(PoolGrad):
             %(fail)s;
         }
         // Getting ws, stride and pad
-        int ws0, ws1, st0, st1, pd0, pd1;
         ws0 = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 0));
         ws1 = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 1));
         st0 = *((npy_intp*)PyArray_GETPTR1(%(stride)s, 0));
         st1 = *((npy_intp*)PyArray_GETPTR1(%(stride)s, 1));
         pd0 = *((npy_intp*)PyArray_GETPTR1(%(pad)s, 0));
         pd1 = *((npy_intp*)PyArray_GETPTR1(%(pad)s, 1));
-        int z_r, z_c;
         z_r = PyArray_DIMS(%(z)s)[2];
         z_c = PyArray_DIMS(%(z)s)[3];
-        int r, c; // shape of the padded_input
         r = PyArray_DIMS(%(x)s)[2];
         c = PyArray_DIMS(%(x)s)[3];
         r += pd0 * 2;
@@ -934,7 +934,7 @@ class MaxPoolGrad(PoolGrad):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 8, self.openmp)
+        return (0, 9, self.openmp)
 
 
 class AveragePoolGrad(PoolGrad):
@@ -1154,6 +1154,10 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         else:
             omp_parallel = ''
         return """
+        int ws0, ws1, st0, st1, pd0, pd1;
+        int z_typenum = PyArray_ObjectType((PyObject*)%(maxout)s, 0);
+        int z_r, z_c;
+        int r, c; // shape of the padded_input
         if(PyArray_DIM(%(ws)s, 0)!=2)
         {
             PyErr_SetString(PyExc_ValueError, "ws must be a vector of size 2");
@@ -1170,18 +1174,14 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
             %(fail)s;
         }
         // Getting ws, stride and pad
-        int ws0, ws1, st0, st1, pd0, pd1;
         ws0 = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 0));
         ws1 = *((npy_intp*)PyArray_GETPTR1(%(ws)s, 1));
         st0 = *((npy_intp*)PyArray_GETPTR1(%(stride)s, 0));
         st1 = *((npy_intp*)PyArray_GETPTR1(%(stride)s, 1));
         pd0 = *((npy_intp*)PyArray_GETPTR1(%(pad)s, 0));
         pd1 = *((npy_intp*)PyArray_GETPTR1(%(pad)s, 1));
-        int z_typenum = PyArray_ObjectType((PyObject*)%(maxout)s, 0);
-        int z_r, z_c;
         z_r = PyArray_DIMS(%(maxout)s)[2];
         z_c = PyArray_DIMS(%(maxout)s)[3];
-        int r, c; // shape of the padded_input
         r = PyArray_DIMS(%(x)s)[2];
         c = PyArray_DIMS(%(x)s)[3];
         r += pd0 * 2;
@@ -1249,4 +1249,4 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 2, self.openmp)
+        return (0, 3, self.openmp)
