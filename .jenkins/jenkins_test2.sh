@@ -30,7 +30,7 @@ THEANO_CUDA_TESTS="theano/sandbox/cuda/tests \
             theano/sandbox/tests/test_rng_mrg.py:test_GPU_nstreams_limit \
             theano/sandbox/tests/test_rng_mrg.py:test_overflow_gpu_old_backend \
             theano/scan_module/tests/test_scan.py:T_Scan_Cuda"
-THEANO_PARAM="${THEANO_CUDA_TESTS} --with-timer --timer-top-n 10"
+THEANO_PARAM="${THEANO_CUDA_TESTS} --with-timer --timer-top-n 10 --with-xunit"
 FLAGS="mode=FAST_RUN,init_gpu_device=gpu,floatX=float32"
 THEANO_FLAGS=${FLAGS} bin/theano-nose ${THEANO_PARAM}
 
@@ -76,4 +76,4 @@ THEANO_GPUARRAY_TESTS="theano/gpuarray/tests \
                        theano/sandbox/tests/test_rng_mrg.py:test_consistency_GPUA_parallel \
                        theano/scan_module/tests/test_scan.py:T_Scan_Gpuarray"
 FLAGS="init_gpu_device=$DEVICE,gpuarray.preallocate=1000,mode=FAST_RUN"
-THEANO_FLAGS=${FLAGS} time nosetests -v ${THEANO_GPUARRAY_TESTS}
+THEANO_FLAGS=${FLAGS} time nosetests -v --with-xunit ${THEANO_GPUARRAY_TESTS}
