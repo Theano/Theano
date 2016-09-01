@@ -309,7 +309,7 @@ def dnn_available():
                 params.extend(['-L%s%s%s' % (path_wrapper, config.dnn.library_path, path_wrapper)])
             if config.nvcc.compiler_bindir:
                 params.extend(['--compiler-bindir',
-                               config.nvcc.compiler_bindir])
+                               '%s%s%s' % (path_wrapper, config.nvcc.compiler_bindir, path_wrapper)])
             params.extend([flag for flag in config.nvcc.flags.split(' ') if flag])
 
             # Do not run here the test program. It would run on the
