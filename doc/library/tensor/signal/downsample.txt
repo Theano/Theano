@@ -9,9 +9,6 @@
    :synopsis: ops for performing various forms of downsampling
 .. moduleauthor:: LISA
 
-.. seealso:: :func:`theano.tensor.nnet.neighbours.images2neibs`
+.. note:: 
 
-.. function:: fft(*todo)
-
-    [James has some code for this, but hasn't gotten it into the source tree yet.]
-
+    This module is deprecated. Use the functions in :func:`theano.tensor.nnet.signal.pool`

@@ -369,12 +369,12 @@ def test_downsample():
                 continue
             for ignore_border in (True, False):
                 # print 'test_downsample', shp, ds, ignore_border
-                ds_op = Pool(ds, ignore_border=ignore_border)
+                ds_op = Pool(ignore_border=ignore_border)
 
                 a = tcn.shared_constructor(my_rand(*shp), 'a')
-                f = pfunc([], ds_op(tensor.as_tensor_variable(a)),
+                f = pfunc([], ds_op(tensor.as_tensor_variable(a), ds),
                           mode=mode_with_gpu.excluding('cudnn'))
-                f2 = pfunc([], ds_op(tensor.as_tensor_variable(a)),
+                f2 = pfunc([], ds_op(tensor.as_tensor_variable(a), ds),
                            mode=mode_without_gpu)
                 assert any([isinstance(node.op,
                                        tcn.blas.GpuDownsampleFactorMax)
@@ -393,12 +393,12 @@ def test_downsample():
 
                 g = pfunc(
                     [],
-                    tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),
+                    tensor.grad(ds_op(tensor.as_tensor_variable(a), ds).sum(),
                                 a),
                     mode=mode_with_gpu.excluding('cudnn'))
                 g2 = pfunc(
                     [],
-                    tensor.grad(ds_op(tensor.as_tensor_variable(a)).sum(),
+                    tensor.grad(ds_op(tensor.as_tensor_variable(a), ds).sum(),
                                 a),
                     mode=mode_without_gpu)
                 assert any([isinstance(node.op,
@@ -409,7 +409,7 @@ def test_downsample():
                 assert numpy.allclose(g(), g2()), shp
 
                 ggf = gradient.Lop(tensor.grad((ds_op(
-                    tensor.as_tensor_variable(a))**2).sum(), a), a, a)
+                    tensor.as_tensor_variable(a), ds)**2).sum(), a), a, a)
 
                 ref_mode = copy.copy(mode_without_gpu)
                 ref_mode.check_py_code = False

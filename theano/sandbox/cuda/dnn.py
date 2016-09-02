@@ -2962,14 +2962,11 @@ if True:
         if isinstance(node.op, Pool):
             if not node.op.ignore_border:
                 return
-            img, = node.inputs
-            ds = node.op.ds
-            stride = node.op.st
-            pad = node.op.padding
+            img, ws, stride, pad = node.inputs
             mode = node.op.mode
             if (img.owner and isinstance(img.owner.op, HostFromGpu)):
                 ret = dnn_pool(gpu_contiguous(img.owner.inputs[0]),
-                               ds, stride=stride, pad=pad, mode=mode)
+                               ws, stride=stride, pad=pad, mode=mode)
                 return [host_from_gpu(ret)]
 
     @register_opt('cudnn')
@@ -2996,10 +2993,7 @@ if True:
         if isinstance(node.op, MaxPoolGrad):
             if not node.op.ignore_border:
                 return
-            inp, out, inp_grad = node.inputs
-            ds = node.op.ds
-            st = node.op.st
-            pad = node.op.padding
+            inp, out, inp_grad, ws, stride, pad = node.inputs
             mode = node.op.mode
 
             if ((inp.owner and isinstance(inp.owner.op, HostFromGpu)) or
@@ -3010,7 +3004,7 @@ if True:
                 ret = GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
                                                 gpu_contiguous(out),
                                                 gpu_contiguous(inp_grad),
-                                                ds, st, pad)
+                                                ws, stride, pad)
                 return [host_from_gpu(ret)]
 
     @register_opt('cudnn')
@@ -3021,10 +3015,7 @@ if True:
         if isinstance(node.op, AveragePoolGrad):
             if not node.op.ignore_border:
                 return
-            inp, inp_grad = node.inputs
-            ds = node.op.ds
-            st = node.op.st
-            pad = node.op.padding
+            inp, inp_grad, ws, stride, pad = node.inputs
             mode = node.op.mode
 
             if ((inp.owner and isinstance(inp.owner.op, HostFromGpu)) or
@@ -3034,7 +3025,7 @@ if True:
                 ret = GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
                                                 contiguous_inp_grad,
                                                 contiguous_inp_grad,
-                                                ds, st, pad)
+                                                ws, stride, pad)
                 return [host_from_gpu(ret)]
 
     @register_opt('cudnn')

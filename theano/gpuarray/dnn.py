@@ -1859,13 +1859,10 @@ def local_gpua_pool_dnn_alternative(op, ctx_name, inputs, outputs):
         raise_no_cudnn()
     if not op.ignore_border:
         return
-    img, = inputs
+    img, ws, stride, pad = inputs
     img = as_gpuarray_variable(img, ctx_name)
-    ds = op.ds
-    stride = op.st
-    pad = op.padding
     mode = op.mode
-    return dnn_pool(gpu_contiguous(img), ds, stride=stride, pad=pad, mode=mode)
+    return dnn_pool(gpu_contiguous(img), ws, stride=stride, pad=pad, mode=mode)
 
 
 @register_opt('cudnn', 'fast_compile')
@@ -1876,20 +1873,17 @@ def local_gpua_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
         raise_no_cudnn()
     if not op.ignore_border:
         return
-    inp, out, out_grad = inputs
+    inp, out, out_grad, ws, stride, pad = inputs
     inp = as_gpuarray_variable(inp, ctx_name)
     out = as_gpuarray_variable(out, ctx_name)
     out_grad = as_gpuarray_variable(out_grad, ctx_name)
-    ds = op.ds
-    st = op.st
-    pad = op.padding
     mode = op.mode
 
     return GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
                                      gpu_contiguous(out),
                                      gpu_contiguous(out_grad),
-                                     ds,
-                                     st,
+                                     ws,
+                                     stride,
                                      pad)
 
 
@@ -1901,12 +1895,9 @@ def local_gpua_avg_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
         raise_no_cudnn()
     if not op.ignore_border:
         return
-    inp, out_grad = inputs
+    inp, out_grad, ws, stride, pad = inputs
     inp = as_gpuarray_variable(inp, ctx_name)
     out_grad = as_gpuarray_variable(out_grad, ctx_name)
-    ds = op.ds
-    st = op.st
-    pad = op.padding
     mode = op.mode
 
     cg = gpu_contiguous(out_grad)
@@ -1914,7 +1905,7 @@ def local_gpua_avg_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
     # We reuse cg because cuDNN does not use the value of the `out`
     # argument but still checks its shape for average pooling. This
     # has been observed in v2 and v3 as far as I know.
-    return GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp), cg, cg, ds, st, pad)
+    return GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp), cg, cg, ws, stride, pad)
 
 
 @register_opt('cudnn', 'fast_compile')

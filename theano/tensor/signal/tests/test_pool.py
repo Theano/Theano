@@ -1,8 +1,13 @@
 from __future__ import absolute_import, print_function, division
 
+from nose.plugins.skip import SkipTest
 from itertools import product
+import os
 import unittest
+from six import reraise
+from six.moves import cPickle
 import six.moves.builtins as builtins
+import sys
 
 import numpy
 
@@ -13,8 +18,6 @@ from theano.tensor.signal.pool import (Pool, pool_2d,
                                        MaxPoolGrad, AveragePoolGrad,
                                        max_pool_2d_same_size,
                                        DownsampleFactorMaxGradGrad)
-
-from theano.tensor.signal.downsample import DownsampleFactorMaxGrad
 
 from theano import function
 
@@ -197,9 +200,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 utt.assert_allclose(output_val, numpy_output_val)
 
                 # Pool op
-                maxpool_op = Pool(maxpoolshp,
-                                  ignore_border=ignore_border,
-                                  mode=mode)(images)
+                maxpool_op = Pool(ignore_border=ignore_border,
+                                  mode=mode)(images, maxpoolshp)
 
                 output_shape = Pool.out_shape(imval.shape, maxpoolshp,
                                               ignore_border=ignore_border)
@@ -245,9 +247,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                         "outshape is %s, calculated shape is %s"
                         % (outputshp, numpy_output_val.shape))
                     maxpool_op = \
-                        Pool(maxpoolshp,
-                             ignore_border=ignore_border,
-                             st=stride, mode=mode)(images)
+                        Pool(ignore_border=ignore_border, mode=mode)(
+                            images, maxpoolshp, stride)
                     f = function([images], maxpool_op)
                     output_val = f(imval)
                     utt.assert_allclose(output_val, numpy_output_val)
@@ -286,9 +287,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                     "outshape is %s, calculated shape is %s"
                     % (outputshp, numpy_output_val.shape))
                 maxpool_op = \
-                    Pool(maxpoolshp,
-                         ignore_border=ignore_border,
-                         st=stride, mode=mode)(images)
+                    Pool(ignore_border=ignore_border, mode=mode)(
+                        images, maxpoolshp, stride)
                 f = function([images], maxpool_op)
                 output_val = f(imval)
                 utt.assert_allclose(output_val, numpy_output_val)
@@ -315,10 +315,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             numpy_output_val = self.numpy_max_pool_2d_stride_padding(
                 imval, maxpoolsize, ignore_border,
                 stridesize, paddingsize, mode)
-            maxpool_op = Pool(
-                maxpoolsize,
-                ignore_border=ignore_border,
-                st=stridesize, padding=paddingsize, mode=mode)(images)
+            maxpool_op = Pool(ignore_border=ignore_border, mode=mode)(
+                images, maxpoolsize, stridesize, paddingsize)
             f = function([images], maxpool_op)
             output_val = f(imval)
             utt.assert_allclose(output_val, numpy_output_val)
@@ -340,12 +338,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 paddingsize = paddingsizes[i]
 
                 def mp(input):
-                    return Pool(
-                        maxpoolsize, ignore_border=True,
-                        st=stridesize,
-                        padding=paddingsize,
-                        mode=mode,
-                        )(input)
+                    return Pool(ignore_border=True, mode=mode)(
+                        input, maxpoolsize, stridesize, paddingsize)
                 utt.verify_grad(mp, [imval], rng=rng)
 
     def test_DownsampleFactorMax_grad(self):
@@ -361,9 +355,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                                                         'average_inc_pad',
                                                         'average_exc_pad']):
             def mp(input):
-                return Pool(maxpoolshp,
-                            ignore_border=ignore_border,
-                            mode=mode)(input)
+                return Pool(ignore_border=ignore_border, mode=mode)(
+                    input, maxpoolshp)
             utt.verify_grad(mp, [imval], rng=rng)
 
     def test_DownsampleFactorMax_grad_st(self):
@@ -381,9 +374,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                                                                 'average_exc_pad'],
                                                                stridesizes):
             def mp(input):
-                return Pool(maxpoolshp,
-                            ignore_border=ignore_border,
-                            st=stride, mode=mode)(input)
+                return Pool(ignore_border=ignore_border, mode=mode)(
+                    input, maxpoolshp, stride)
             utt.verify_grad(mp, [imval], rng=rng)
 
     def test_DownsampleFactorMax_grad_st_extra(self):
@@ -404,10 +396,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 maxpoolshp = maxpoolshps[indx]
                 for ignore_border in [True, False]:
                     def mp(input):
-                        return Pool(maxpoolshp,
-                                    ignore_border=ignore_border,
-                                    st=stride,
-                                    mode=mode)(input)
+                        return Pool(ignore_border=ignore_border, mode=mode)(
+                            input, maxpoolshp, stride)
                     utt.verify_grad(mp, [imval], rng=rng)
 
     def test_DownsampleFactorMaxGrad_grad(self):
@@ -426,11 +416,9 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 grad_val = rng.rand(*grad_shape) * 10.0
 
                 def mp(input, grad):
-                    out = Pool(
-                        maxpoolshp, ignore_border=ignore_border)(input)
-                    grad_op = MaxPoolGrad(
-                        maxpoolshp, ignore_border=ignore_border)
-                    return grad_op(input, out, grad)
+                    out = Pool(ignore_border=ignore_border)(input, maxpoolshp)
+                    grad_op = MaxPoolGrad(ignore_border=ignore_border)
+                    return grad_op(input, out, grad, maxpoolshp)
 
                 utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
@@ -451,9 +439,9 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                     grad_val = rng.rand(*grad_shape) * 10.0
 
                     def mp(input, grad):
-                        grad_op = AveragePoolGrad(
-                            avgpoolshp, ignore_border=ignore_border, mode=mode)
-                        return grad_op(input, grad)
+                        grad_op = AveragePoolGrad(ignore_border=ignore_border,
+                                                  mode=mode)
+                        return grad_op(input, grad, avgpoolshp)
 
                     utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
@@ -474,13 +462,10 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                     grad_val = rng.rand(*grad_shape)
 
                     def mp(input, grad):
-                        out = Pool(
-                            maxpoolshp, ignore_border=ignore_border,
-                            st=stride)(input)
-                        grad_op = MaxPoolGrad(
-                            maxpoolshp, ignore_border=ignore_border,
-                            st=stride)
-                        return grad_op(input, out, grad)
+                        out = Pool(ignore_border=ignore_border)(
+                            input, maxpoolshp, stride)
+                        grad_op = MaxPoolGrad(ignore_border=ignore_border)
+                        return grad_op(input, out, grad, maxpoolshp, stride)
 
                     utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
@@ -503,9 +488,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
                         def mp(input, grad):
                             grad_op = AveragePoolGrad(
-                                avgpoolshp, ignore_border=ignore_border,
-                                st=stride, mode=mode)
-                            return grad_op(input, grad)
+                                ignore_border=ignore_border, mode=mode)
+                            return grad_op(input, grad, avgpoolshp, stride)
 
                         utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
@@ -531,13 +515,10 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 grad_val = rng.rand(*grad_shape)
 
                 def mp(input, grad):
-                    out = Pool(
-                        maxpoolshp, ignore_border=ignore_border,
-                        st=stride)(input)
-                    grad_op = MaxPoolGrad(
-                        maxpoolshp, ignore_border=ignore_border,
-                        st=stride)
-                    return grad_op(input, out, grad)
+                    out = Pool(ignore_border=ignore_border)(input, maxpoolshp,
+                                                            stride)
+                    grad_op = MaxPoolGrad(ignore_border=ignore_border)
+                    return grad_op(input, out, grad, maxpoolshp, stride)
 
                 # skip the grad verification when the output is empty
                 if numpy.prod(grad_shape) == 0:
@@ -567,10 +548,9 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                     grad_val = rng.rand(*grad_shape)
 
                     def mp(input, grad):
-                        grad_op = AveragePoolGrad(
-                            avgpoolshp, ignore_border=ignore_border,
-                            st=stride, mode=mode)
-                        return grad_op(input, grad)
+                        grad_op = AveragePoolGrad(ignore_border=ignore_border,
+                                                  mode=mode)
+                        return grad_op(input, grad, avgpoolshp, stride)
 
                     # skip the grad verification when the output is empty
                     if numpy.prod(grad_shape) == 0:
@@ -598,14 +578,11 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             grad_val = rng.rand(*grad_shape) * 10.0
 
             def mp(input, grad):
-                out = Pool(
-                    maxpoolsize, ignore_border=True,
-                    st=stridesize,
-                    padding=paddingsize,
-                    )(input)
-                grad_op = MaxPoolGrad(maxpoolsize, ignore_border=True,
-                                      st=stridesize, padding=paddingsize)
-                return grad_op(input, out, grad)
+                out = Pool(ignore_border=True)(input, maxpoolsize, stridesize,
+                                               paddingsize)
+                grad_op = MaxPoolGrad(ignore_border=True)
+                return grad_op(input, out, grad, maxpoolsize, stridesize,
+                               paddingsize)
             utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
     def test_AveragePoolPaddingStride_grad_grad(self):
@@ -630,10 +607,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 grad_val = rng.rand(*grad_shape) * 10.0
 
                 def mp(input, grad):
-                    grad_op = AveragePoolGrad(avgpoolsize, ignore_border=True,
-                                              st=stridesize, padding=paddingsize,
-                                              mode=mode)
-                    return grad_op(input, grad)
+                    grad_op = AveragePoolGrad(ignore_border=True, mode=mode)
+                    return grad_op(input, grad, avgpoolsize, stridesize, paddingsize)
                 utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
     def test_DownsampleFactorMax_hessian(self):
@@ -669,16 +644,12 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             paddingsize = paddingsizes[i]
 
             def mp(input1, input2):
-                pooled_out = Pool(
-                    maxpoolsize, ignore_border=True,
-                    st=stridesize,
-                    padding=paddingsize,
-                    )(input1)
-                out = DownsampleFactorMaxGradGrad(
-                    ds=maxpoolsize,
-                    ignore_border=True,
-                    st=stridesize,
-                    padding=paddingsize)(input1, pooled_out, input2)
+                op1 = Pool(ignore_border=True)
+                pooled_out = op1(input1, maxpoolsize, stride=stridesize,
+                                 pad=paddingsize)
+                op2 = DownsampleFactorMaxGradGrad(ignore_border=True)
+                out = op2(input1, pooled_out, input2, ws=maxpoolsize,
+                          stride=stridesize, pad=paddingsize)
                 return out
             utt.verify_grad(mp, [imval1, imval2], rng=rng)
 
@@ -813,19 +784,18 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                         continue
                     # checking shapes generated by Pool
                     self._compile_and_check([image],
-                                            [Pool(maxpoolshp,
-                                                  ignore_border=ignore_border,
-                                                  padding=padding)(image)],
+                                            [Pool(ignore_border=ignore_border)
+                                             (image, maxpoolshp, pad=padding)],
                                             [image_val], Pool)
 
                     # checking shapes generated by MaxPoolGrad
                     maxout_val = rng.rand(*out_shapes[k][i][j])
                     gz_val = rng.rand(*out_shapes[k][i][j])
                     self._compile_and_check([image, maxout, gz],
-                                            [MaxPoolGrad(maxpoolshp,
-                                                         ignore_border=ignore_border,
-                                                         padding=padding)
-                                            (image, maxout, gz)],
+                                            [MaxPoolGrad(
+                                                ignore_border=ignore_border)
+                                             (image, maxout, gz, maxpoolshp,
+                                              pad=padding)],
                                             [image_val, maxout_val, gz_val],
                                             MaxPoolGrad,
                                             warn=False)
@@ -835,33 +805,75 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         image_val = rng.rand(4, 6, 1, 1)
         self._compile_and_check(
             [image],
-            [Pool((2, 2),
-                  ignore_border=True,
-                  padding=(0, 0))(image)],
+            [Pool(ignore_border=True)(image, (2, 2), pad=(0, 0))],
             [image_val], Pool)
 
-    def test_DownsampleFactorMaxGrad(self):
-        im = theano.tensor.tensor4()
-        maxout = theano.tensor.tensor4()
-        grad = theano.tensor.tensor4()
+    def test_pooling_with_tensor_vars(self):
+        x = tensor.ftensor4()
+        window_size = tensor.ivector()
+        stride = tensor.ivector()
+        padding = tensor.ivector()
+        data = numpy.random.normal(0, 1, (1, 1, 5, 5)).astype('float32')
 
-        for mode in ['max', 'sum', 'average_inc_pad', 'average_exc_pad']:
-            f = theano.function([im, maxout, grad],
-                                DownsampleFactorMaxGrad(ds=(3, 3),
-                                                        ignore_border=False,
-                                                        mode=mode)(im, maxout, grad),
-                                on_unused_input='ignore')
+        # checking variable params vs fixed params
+        for ignore_border in [True, False]:
+            for mode in ['max', 'sum', 'average_inc_pad', 'average_exc_pad']:
+                y = pool_2d(x, window_size, ignore_border, stride, padding,
+                            mode)
+                dx = theano.gradient.grad(y.sum(), x)
+                var_fct = theano.function([x, window_size, stride, padding],
+                                          [y, dx])
+                for ws in (4, 2, 5):
+                    for st in (2, 3):
+                        for pad in (0, 1):
+                            if (pad > st or st > ws or
+                                    (pad != 0 and not ignore_border) or
+                                    (mode == 'average_exc_pad' and pad != 0)):
+                                continue
+                            y = pool_2d(x, (ws, ws), ignore_border, (st, st),
+                                        (pad, pad), mode)
+                            dx = theano.gradient.grad(y.sum(), x)
+                            fix_fct = theano.function([x], [y, dx])
+                            var_y, var_dx = var_fct(data, (ws, ws), (st, st),
+                                                    (pad, pad))
+                            fix_y, fix_dx = fix_fct(data)
+                            utt.assert_allclose(var_y, fix_y)
+                            utt.assert_allclose(var_dx, fix_dx)
 
-            if mode == 'max':
-                assert any(isinstance(n.op, MaxPoolGrad)
-                           for n in f.maker.fgraph.toposort())
-                assert not any(isinstance(n.op, AveragePoolGrad)
-                               for n in f.maker.fgraph.toposort())
-            else:
-                assert not any(isinstance(n.op, MaxPoolGrad)
-                               for n in f.maker.fgraph.toposort())
-                assert any(isinstance(n.op, AveragePoolGrad)
-                           for n in f.maker.fgraph.toposort())
+    def test_old_pool_interface(self):
+        if sys.version_info[0] != 3:
+            # Only tested with python 3 because of pickling issues.
+            raise SkipTest('Skip old pool interface with python 2.x')
+        # 1. Load the old version
+        testfile_dir = os.path.dirname(os.path.realpath(__file__))
+        fname = 'old_pool_interface.pkl'
+        with open(os.path.join(testfile_dir, fname), 'rb') as fp:
+            try:
+                old_fct = cPickle.load(fp, encoding='latin1')
+            except ImportError:
+                # Windows sometimes fail with nonsensical errors like:
+                #   ImportError: No module named type
+                #   ImportError: No module named copy_reg
+                # when "type" and "copy_reg" are builtin modules.
+                if sys.platform == 'win32':
+                    exc_type, exc_value, exc_trace = sys.exc_info()
+                    reraise(SkipTest, exc_value, exc_trace)
+                raise
+        # 2. Create the new version
+        x = theano.tensor.ftensor4()
+        y = pool_2d(x, (2, 2), mode='max', ignore_border=True)
+        z = pool_2d(x, (2, 2), mode='average_exc_pad', ignore_border=True)
+        dy_dx = theano.gradient.grad(y.sum(), x)
+        dz_dx = theano.gradient.grad(z.sum(), x)
+        new_fct = theano.function([x], [y, z, dy_dx, dz_dx])
+        # 3. Assert that the answer is the same
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        image_val = rng.rand(4, 6, 7, 9).astype(numpy.float32)
+        old_out = old_fct(image_val)
+        new_out = new_fct(image_val)
+        for o, n in zip(old_out, new_out):
+            utt.assert_allclose(o, n)
+
 
 if __name__ == '__main__':
     unittest.main()
