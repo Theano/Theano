@@ -1849,8 +1849,11 @@ class _DropoutDescriptor(DnnBase):
 
 
 def _make_dropout_desc(dropout, seed, context_name):
-    desc, states = theano.function([], _DropoutDescriptor(context_name)(
-        dropout, seed, context_name))()
+    desc, states = theano.function(
+        [],
+        _DropoutDescriptor(context_name)(dropout, seed, context_name),
+        theano.Mode(optimizer=None),
+        profile=False)()
     return desc, states
 
 
@@ -1923,9 +1926,13 @@ class _RNNDescriptor(DnnBase):
 
 def _make_rnn_desc(hidden_size, num_layers, ddesc, rnn_mode,
                    input_mode, direction_mode, dtype, context_name):
-    desc = theano.function([], _RNNDescriptor(context_name)(
-        hidden_size, num_layers, ddesc, input_mode, direction_mode,
-        rnn_mode, dtype))()
+    desc = theano.function(
+        [],
+        _RNNDescriptor(context_name)(hidden_size, num_layers, ddesc,
+                                     input_mode, direction_mode,
+                                     rnn_mode, dtype),
+        theano.Mode(optimizer=None),
+        profile=False)()
     return desc
 
 
@@ -1953,8 +1960,219 @@ class _RNNParamSize(DnnBase):
 
 def _get_param_size(desc, input_size, dtype, context_name):
     typecode = gpuarray.dtype_to_typecode(dtype)
-    return theano.function([], _RNNParamSize(context_name)(
-        desc, input_size, typecode))()
+    return theano.function(
+        [],
+        _RNNParamSize(context_name)(desc, input_size, typecode),
+        theano.Mode(optimizer=None),
+        profile=False)()
+
+
+class _RNNSplitParams(DnnBase):
+    __props__ = ('rnn_mode',)
+
+    def __init__(self, rnn_mode):
+        DnnBase.__init__(self)
+        self.rnn_mode = rnn_mode
+
+    def make_node(self, w, desc, layer, isize, typecode):
+        w = as_gpuarray_variable(w, infer_context_name(w))
+        layer = as_scalar(layer).astype('int32')
+        isize = as_tensor_variable(isize).astype('uint64')
+        typecode = as_scalar(typecode).astype('int32')
+        _1d = GpuArrayType(w.type.dtype, [False],
+                           context_name=w.type.context_name)
+        _2d = GpuArrayType(w.type.dtype, [False, False],
+                           context_name=w.type.context_name)
+        outputs = []
+        if self.rnn_mode == 'rnn_relu' or self.rnn_mode == 'rnn_tanh':
+            outputs.extend([_2d(), _1d()])  # input
+            outputs.extend([_2d(), _1d()])  # recurrent
+        elif self.rnn_mode == 'lstm':
+            outputs.extend([_2d(), _1d()])  # input input
+            outputs.extend([_2d(), _1d()])  # input forget
+            outputs.extend([_2d(), _1d()])  # input newmem
+            outputs.extend([_2d(), _1d()])  # input output
+            outputs.extend([_2d(), _1d()])  # recur input
+            outputs.extend([_2d(), _1d()])  # recur forget
+            outputs.extend([_2d(), _1d()])  # recur newmem
+            outputs.extend([_2d(), _1d()])  # recur output
+        elif self.rnn_mode == 'gru':
+            outputs.extend([_2d(), _1d()])  # input reset
+            outputs.extend([_2d(), _1d()])  # input update
+            outputs.extend([_2d(), _1d()])  # input newmem
+            outputs.extend([_2d(), _1d()])  # recur reset
+            outputs.extend([_2d(), _1d()])  # recur update
+            outputs.extend([_2d(), _1d()])  # recur newmem
+
+        return Apply(self, [w, layer, rnndesc_type.make_constant(desc),
+                            isize, typecode], outputs)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        kw = dict(fail=sub['fail'], w=inputs[0], layer=inputs[1],
+                  desc=inputs[2], isize=inputs[3], typecode=inputs[4],
+                  handle=sub['params'])
+        code = """
+  cudnnTensorDescriptor_t xdesc;
+  cudnnFilterDescriptor_t wdesc;
+  cudnnFilterDescriptor_t odesc;
+  size_t nshp[2];
+  void *w;
+  void *o;
+  ptrdiff_t off;
+  cudnnStatus_t err;
+  cudnnDataType_t dt;
+  cudnnTensorFormat_t tf;
+  int nd;
+  int dims[3];
+  int strs[3];
+
+  if (PyArray_DIM(%(isize)s, 0) != 2) {
+    PyErr_SetString(PyExc_ValueError, "input_size should be of length two");
+    %(fail)s;
+  }
+
+  switch (%(typecode)s) {
+  case GA_FLOAT:
+    dt = CUDNN_DATA_FLOAT;
+    break;
+  case GA_DOUBLE:
+    dt = CUDNN_DATA_DOUBLE;
+    break;
+  case GA_HALF:
+    dt = CUDNN_DATA_HALF;
+    break;
+  default:
+    PyErr_SetString(PyExc_ValueError, "Unsupported data type");
+    %(fail)s;
+  }
+
+  err = cudnnCreateTensorDescriptor(&xdesc);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    PyErr_SetString(PyExc_RuntimeError, "Could not create xdesc");
+    %(fail)s;
+  }
+
+  dims[0] = *(npy_uint64 *)PyArray_GETPTR1(%(isize)s, 0);
+  dims[1] = *(npy_uint64 *)PyArray_GETPTR1(%(isize)s, 1);
+  dims[2] = 1;
+  strs[0] = dims[2] * dims[1];
+  strs[1] = dims[2];
+  strs[2] = 1;
+
+  err = cudnnSetTensorNdDescriptor(xdesc, dt, 3, dims, strs);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    cudnnDestroyTensorDescriptor(xdesc);
+    PyErr_Format(PyExc_RuntimeError, "Could not set xdesc: %%s",
+                 cudnnGetErrorString(err));
+    %(fail)s;
+  }
+
+  if (c_make_filter(%(w)s, &wdesc)) {
+    cudnnDestroyTensorDescriptor(xdesc);
+    %(fail)s
+  }
+
+  err = cudnnCreateFilterDescriptor(&odesc);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    PyErr_SetString(PyExc_RuntimeError, "could not create odesc");
+    cudnnDestroyTensorDescriptor(xdesc);
+    cudnnDestroyFilterDescriptor(wdesc);
+    %(fail)s
+  }
+
+  w = PyGpuArray_DEV_DATA(%(w)s);
+  nshp[0] = PyGpuArray_DIM(%(w)s, 0);
+  nshp[1] = 1;
+        """ % kw
+        def get_matrix(id, out):
+            kw2 = kw.copy()
+            kw2['id'] = id
+            kw2['out'] = out
+            return """
+  err = cudnnGetRNNLinLayerMatrixParams(%(handle)s, %(desc)s, %(layer)s, xdesc, wdesc, w, %(id)s, odesc, &o);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    cudnnDestroyTensorDescriptor(xdesc);
+    cudnnDestroyFilterDescriptor(wdesc);
+    cudnnDestroyFilterDescriptor(odesc);
+    PyErr_SetString(PyExc_RuntimeError, "can't fetch matrix for id %(id)s");
+    %(fail)s
+  }
+  off = (intptr_t)o - (intptr_t)w;
+  assert(off >= 0 && "matrix");
+
+  // This is 3d because of cudnn limitations.
+  err = cudnnGetFilterNdDescriptor(odesc, 3, &dt, &tf, &nd, dims);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    cudnnDestroyTensorDescriptor(xdesc);
+    cudnnDestroyFilterDescriptor(wdesc);
+    cudnnDestroyFilterDescriptor(odesc);
+    PyErr_SetString(PyExc_RuntimeError, "could not get matrix shape for id %(id)s");
+    %(fail)s;
+  }
+  assert(dims[2] == 1);
+  // We assume that the typecode matches
+  %(out)s = pygpu_reshape(%(w)s, 2, nshp, GA_C_ORDER, 1, -1);
+  %(out)s->ga.offset = off;
+  %(out)s->ga.dimensions[0] = dims[0];
+  %(out)s->ga.dimensions[1] = dims[1];
+  %(out)s->ga.strides[0] = dims[1] * gpuarray_get_elsize(%(out)s->ga.typecode);
+  // strides[1] is already ok
+            """ % kw2
+
+        def get_bias(id, out):
+            kw2 = kw.copy()
+            kw2['id'] = id
+            kw2['out'] = out
+            return """
+  err = cudnnGetRNNLinLayerBiasParams(%(handle)s, %(desc)s, %(layer)s, xdesc, wdesc, w, %(id)s, odesc, &o);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    cudnnDestroyTensorDescriptor(xdesc);
+    cudnnDestroyFilterDescriptor(wdesc);
+    cudnnDestroyFilterDescriptor(odesc);
+    PyErr_SetString(PyExc_RuntimeError, "can't fetch bias for id %(id)s");
+    %(fail)s
+  }
+  off = (intptr_t)o - (intptr_t)w;
+  assert(off >= 0 && "bias");
+
+  err = cudnnGetFilterNdDescriptor(odesc, 3, &dt, &tf, &nd, dims);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    cudnnDestroyTensorDescriptor(xdesc);
+    cudnnDestroyFilterDescriptor(wdesc);
+    cudnnDestroyFilterDescriptor(odesc);
+    PyErr_SetString(PyExc_RuntimeError, "could not get bias shape for id %(id)s");
+    %(fail)s;
+  }
+  // We assume that the typecode matches
+  assert(dims[2] == 1);
+  assert(dims[1] == 1);
+  %(out)s = pygpu_view(%(w)s, Py_None);
+  %(out)s->ga.offset = off;
+  %(out)s->ga.dimensions[0] = dims[0];
+            """ % kw2
+
+        for i, o in enumerate(outputs):
+            if i % 2 == 0:
+                code += get_matrix(i // 2, o)
+            else:
+                code += get_bias(i // 2, o)
+
+        code += """
+  cudnnDestroyTensorDescriptor(xdesc);
+  cudnnDestroyFilterDescriptor(wdesc);
+  cudnnDestroyFilterDescriptor(odesc);
+        """
+        return code
+
+
+def _split_rnn_params(w, desc, layer, input_size, dtype, rnn_mode):
+    typecode = gpuarray.dtype_to_typecode(dtype)
+    outs = _RNNSplitParams(rnn_mode)(w, desc, layer, input_size, typecode)
+    outs = [theano.Out(o, borrow=True) for o in outs]
+    return theano.function(
+        [], outs,
+        theano.Mode(optimizer=None),
+        profile=False)()
 
 
 class GpuDnnRNNOp(DnnBase):
@@ -2104,6 +2322,9 @@ class RNNBlock(object):
         bytesize = int(bytesize)
         assert bytesize % numpy.dtype(self.dtype).itemsize == 0
         return bytesize // numpy.dtype(self.dtype).itemsize
+
+    def split_params(self, w, layer, input_size):
+        return _split_rnn_params(w, self.desc, layer, input_size, self.dtype, self.rnn_mode)
 
     def apply(self, w, x, hx, cx=None):
         # Don't return the reserve as an output
