@@ -39,6 +39,7 @@ import logging
 from theano import gof
 from theano.tensor.elemwise import CAReduce
 from theano.tensor import basic as T
+from theano.tensor import DimShuffle
 
 from theano.tensor.basic import (get_scalar_constant_value,
                                  NotScalarConstantError)
