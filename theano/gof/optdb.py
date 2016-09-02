@@ -402,15 +402,18 @@ class LocalGroupDB(DB):
 
     """
 
-    def __init__(self, apply_all_opts=False):
+    def __init__(self, apply_all_opts=False, profile=False):
         super(LocalGroupDB, self).__init__()
         self.failure_callback = None
         self.apply_all_opts = apply_all_opts
+        self.profile = profile
 
     def query(self, *tags, **kwtags):
         # For the new `useless` optimizer
         opts = super(LocalGroupDB, self).query(*tags, **kwtags)
-        ret = opt.LocalOptGroup(*opts, apply_all_opts=self.apply_all_opts)
+        ret = opt.LocalOptGroup(*opts,
+                                apply_all_opts=self.apply_all_opts,
+                                profile=self.profile)
         return ret
 
 

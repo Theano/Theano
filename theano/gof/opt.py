@@ -1261,19 +1261,23 @@ class LocalOptGroup(LocalOptimizer):
                                   for opt in optimizers)
 
         self.apply_all_opts = kwargs.pop('apply_all_opts', False)
+        self.profile = kwargs.pop('profile', False)
         self.track_map = defaultdict(lambda: [])
         assert len(kwargs) == 0
-        self.time_opts = {}
-        self.process_count = {}
-        self.applied_true = {}
-        self.node_created = {}
+        if self.profile:
+            self.time_opts = {}
+            self.time_nodes = {}
+            self.process_count = {}
+            self.applied_true = {}
+            self.node_created = {}
 
         for o in self.opts:
-            self.process_count.setdefault(o, 0)
-            self.time_opts.setdefault(o, 0)
-            self.process_count.setdefault(o, 0)
-            self.applied_true.setdefault(o, 0)
-            self.node_created.setdefault(o, 0)
+            if self.profile:
+                self.time_opts.setdefault(o, 0)
+                self.time_nodes.setdefault(o, 0)
+                self.process_count.setdefault(o, 0)
+                self.applied_true.setdefault(o, 0)
+                self.node_created.setdefault(o, 0)
 
             for c in o.tracks():
                 self.track_map[c].append(o)
@@ -1303,13 +1307,15 @@ class LocalOptGroup(LocalOptimizer):
                 opt_start = time.time()
                 repl = opt.transform(node)
                 opt_finish = time.time()
-                self.time_opts[opt] += opt_start - opt_finish
-                self.process_count[opt] += 1
+                if self.profile:
+                    self.time_opts[opt] += opt_start - opt_finish
+                    self.process_count[opt] += 1
                 if not repl:
                     continue
                 else:
-                    self.node_created[opt] += len(graph.ops(fgraph.variables, repl))
-                    self.applied_true[opt] += 1
+                    if self.profile:
+                        self.node_created[opt] += len(graph.ops(fgraph.variables, repl))
+                        self.applied_true[opt] += 1
                     if not multiple_opts or not repl[0].owner:
                         return repl
                     assert len(repl) == 1
@@ -1322,11 +1328,19 @@ class LocalOptGroup(LocalOptimizer):
             return repl
 
         new_var = apply_mult_opts(node, node.fgraph, self.apply_all_opts)
+
+        node_finish = time.time()
+        if self.profile:
+            self.time_nodes[node] = node_finish - node_start
         return new_var
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        (time_opts, process_count, applied_true, node_created) = prof
+
+        if not self.profile:
+            return
+
+        (time_opts, time_nodes, process_count, applied_true, node_created) = prof
         blanc = ('    ' * int(level))
         print(blanc, "LocalOptGroup", file=stream)
         print(blanc, "---------------------", file=stream)
