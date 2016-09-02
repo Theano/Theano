@@ -356,6 +356,18 @@ def test_pooling_opt():
 
     f(numpy.zeros((10, 10), dtype='float32'))
 
+    # Test sum pooling
+    f = theano.function(
+        [x],
+        pool_2d(x, ds=(2, 3), mode='sum',
+                ignore_border=True),
+        mode=mode_with_gpu)
+
+    assert any([isinstance(n.op, dnn.GpuDnnPool)
+                for n in f.maker.fgraph.toposort()])
+    data = numpy.random.rand(10, 10).astype('float32')
+    f(data)
+
 
 def test_dnn_tag():
     """
