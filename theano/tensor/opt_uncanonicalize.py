@@ -112,11 +112,11 @@ def local_alloc_dimshuffle(node):
             if not pattern[0] :
                 return False
             j = 0
-            for i, bool_ in enumerate(pattern) :
+            for i, bool_ in enumerate(pattern):
                 if not bool_ :
                     j = i
                     break
-            if sum(pattern[j:] == 0 :
+            if sum(pattern[j:]) == 0:
                 return input_.inputs
             else :
                 return False
