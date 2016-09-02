@@ -6,6 +6,7 @@ amount of useful generic optimization tools.
 from __future__ import absolute_import, print_function, division
 
 from collections import deque, defaultdict, OrderedDict
+
 import copy
 import inspect
 import logging
@@ -2315,6 +2316,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         global_sub_profs = []
         final_sub_profs = []
         cleanup_sub_profs = []
+        new_node = defaultdict(list)
         for opt in (self.global_optimizers +
                     list(self.get_local_optimizers()) +
                     self.final_optimizers +
@@ -2422,6 +2424,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         changed = True
                         node_created[lopt] += change_tracker.nb_imported - nb
                         changed |= apply_cleanup(iter_cleanup_sub_profs)
+                        new_node[lopt].append(node)
                         if global_process_count[lopt] > max_use:
                             max_use_abort = True
                             opt_name = (getattr(lopt, "name", None) or
@@ -2478,6 +2481,16 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                           "%f with the theano flag 'optdb.max_use_ratio'." %
                           config.optdb.max_use_ratio)
         fgraph.remove_feature(change_tracker)
+        for i, (k, v) in enumerate(new_node.iteritems()):
+            if i > 10:
+                break
+            print("Opt applied : " + k.__name__ )
+            for j, l in enumerate(v):
+                if j > 10:
+                    break
+                print("Node introduced : " + str(l))
+                print("Node imported by : " + str(l.tag.imported_by))
+
         assert len(loop_process_count) == len(loop_timing)
         assert len(loop_process_count) == len(global_opt_timing)
         assert len(loop_process_count) == len(nb_nodes)
