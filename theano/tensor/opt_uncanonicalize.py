@@ -98,3 +98,25 @@ def local_max_to_min(node):
                                  max.owner.op.axis)(neg.owner.inputs[0])]
 
     return False
+
+
+@register_uncanonicalize
+@gof.local_optimizer([T.alloc])
+def local_alloc_dimshuffle(node):
+    if node.op == T.alloc:
+        input_ = node.inputs[0]
+        if isinstance(input_.owner.op, DimShuffle):
+            # check if it only adds dimension to the left
+            pattern = input_.type.broadcastable
+            if not pattern[0] :
+                return False
+            j = 0
+            for i, bool_ in enumerate(pattern) :
+                if not bool_ :
+                    j = i
+                    break
+            if sum(pattern[j:] == 0 :
+                return input_.inputs
+            else :
+                return False
+    return False
