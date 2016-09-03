@@ -1266,7 +1266,6 @@ class LocalOptGroup(LocalOptimizer):
         assert len(kwargs) == 0
         if self.profile:
             self.time_opts = {}
-            self.time_nodes = {}
             self.process_count = {}
             self.applied_true = {}
             self.node_created = {}
@@ -1274,7 +1273,6 @@ class LocalOptGroup(LocalOptimizer):
         for o in self.opts:
             if self.profile:
                 self.time_opts.setdefault(o, 0)
-                self.time_nodes.setdefault(o, 0)
                 self.process_count.setdefault(o, 0)
                 self.applied_true.setdefault(o, 0)
                 self.node_created.setdefault(o, 0)
@@ -1329,18 +1327,15 @@ class LocalOptGroup(LocalOptimizer):
 
         new_var = apply_mult_opts(node, node.fgraph, self.apply_all_opts)
 
-        node_finish = time.time()
-        if self.profile:
-            self.time_nodes[node] = node_finish - node_start
         return new_var
 
     @staticmethod
     def print_profile(stream, prof, level=0):
+        (time_opts, process_count, applied_true, node_created, profile) = prof
 
-        if not self.profile:
+        if not profile:
             return
 
-        (time_opts, time_nodes, process_count, applied_true, node_created) = prof
         blanc = ('    ' * int(level))
         print(blanc, "LocalOptGroup", file=stream)
         print(blanc, "---------------------", file=stream)
@@ -2070,7 +2065,8 @@ class TopoOptimizer(NavigatorOptimizer):
             lopt.print_profile(stream, (lopt.time_opts,
                                         lopt.process_count,
                                         lopt.applied_true,
-                                        lopt.node_created),
+                                        lopt.node_created,
+                                        lopt.profile),
                                level=level + 1)
 
     def __str__(self):
