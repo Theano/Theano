@@ -418,7 +418,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         subi = 0
         data = numpy.asarray(rand(2, 3), dtype=self.dtype)
         n = self.shared(data)
-        z = scal.constant(subi)
+        z = scal.constant(subi).astype('int32')
         t = n[z:, z]
         gn = theano.tensor.grad(theano.tensor.sum(theano.tensor.exp(t)), n)
 

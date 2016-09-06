@@ -1131,18 +1131,12 @@ Theano indexing with a "mask" (incorrect approach):
 .. doctest:: indexing
 
    >>> t = theano.tensor.arange(9).reshape((3,3))
-   >>> t[t > 4].eval()  # an array with shape (3, 3, 3)
-   array([[[0, 1, 2],
-           [0, 1, 2],
-           [0, 1, 2]],
-   <BLANKLINE>
-          [[0, 1, 2],
-           [0, 1, 2],
-           [3, 4, 5]],
-   <BLANKLINE>
-          [[3, 4, 5],
-           [3, 4, 5],
-           [3, 4, 5]]])
+   >>> t[t > 4].eval()  # an array with shape (3, 3, 3)  # doctest: +ELLIPSIS
+   Traceback (most recent call last):
+     ...
+   TypeError: TensorType does not support boolean mask for indexing such as tensor[x==0].
+   Instead you can use non_zeros() such as tensor[(x == 0).nonzeros()].
+   If you are indexing on purpose with an int8, please cast it to int16.
 
 Getting a Theano result like NumPy:
 

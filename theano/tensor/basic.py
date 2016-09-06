@@ -302,7 +302,7 @@ class NumpyAutocaster(object):
         # returns either an exact x_==x, or the last cast x_
         return x_
 
-autocast_int = NumpyAutocaster(('int8', 'int16', 'int32', 'int64'))
+autocast_int = NumpyAutocaster(('int16', 'int32', 'int64'))
 autocast_float = NumpyAutocaster(('float16', 'float32', 'float64'))
 
 

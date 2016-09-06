@@ -696,12 +696,14 @@ def bincount(x, weights=None, minlength=None, assert_nonneg=False):
     if minlength is not None:
         max_value = theano.tensor.maximum(max_value, minlength)
 
+    # Note: we do not use inc_subtensor(out[x], ...) in the following lines,
+    # since out[x] raises an exception if the indices (x) are int8.
     if weights is None:
         out = theano.tensor.zeros([max_value], dtype=x.dtype)
-        out = theano.tensor.inc_subtensor(out[x], 1)
+        out = theano.tensor.advanced_inc_subtensor1(out, 1, x)
     else:
         out = theano.tensor.zeros([max_value], dtype=weights.dtype)
-        out = theano.tensor.inc_subtensor(out[x], weights)
+        out = theano.tensor.advanced_inc_subtensor1(out, weights, x)
     return out
 
 

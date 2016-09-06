@@ -2069,7 +2069,7 @@ def local_useless_elemwise(node):
                         return [T.zeros_like(node.inputs[1], dtype=dtype,
                                              opt=True)]
                     else:
-                        return [node.inputs[1]]
+                        return [node.inputs[1].astype(node.outputs[0].dtype)]
 
             if isinstance(node.inputs[1], T.TensorConstant):
                 const_val = T.extract_constant(node.inputs[1], only_process_constants=True)
@@ -2078,7 +2078,7 @@ def local_useless_elemwise(node):
                         return [T.zeros_like(node.inputs[0], dtype=dtype,
                                              opt=True)]
                     else:
-                        return [node.inputs[0]]
+                        return [node.inputs[0].astype(node.outputs[0].dtype)]
 
         elif (isinstance(node.op.scalar_op, scalar.OR) and
               len(node.inputs) == 2):
@@ -2087,7 +2087,7 @@ def local_useless_elemwise(node):
                 const_val = T.extract_constant(node.inputs[0], only_process_constants=True)
                 if not isinstance(const_val, Variable):
                     if const_val == 0:
-                        return [node.inputs[1]]
+                        return [node.inputs[1].astype(node.outputs[0].dtype)]
                     else:
                         return [T.ones_like(node.inputs[1], dtype=dtype,
                                             opt=True)]
@@ -2096,7 +2096,7 @@ def local_useless_elemwise(node):
                 const_val = T.extract_constant(node.inputs[1], only_process_constants=True)
                 if not isinstance(const_val, Variable):
                     if const_val == 0:
-                        return [node.inputs[0]]
+                        return [node.inputs[0].astype(node.outputs[0].dtype)]
                     else:
                         return [T.ones_like(node.inputs[0], dtype=dtype,
                                             opt=True)]

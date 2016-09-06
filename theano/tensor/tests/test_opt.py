@@ -3634,33 +3634,39 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
         x = T.scalar('x', dtype='int8')
 
-        f = theano.function([x], T.and_(x, 0), mode=mode)
-        self.assert_eqs_const(f, 0)
+        for zero, one in [(numpy.int8(0), numpy.int8(1)), (0, 1)]:
+            f = theano.function([x], T.and_(x, zero), mode=mode)
+            self.assert_eqs_const(f, 0)
 
-        f = theano.function([x], T.and_(0, x), mode=mode)
-        self.assert_eqs_const(f, 0)
+            f = theano.function([x], T.and_(zero, x), mode=mode)
+            self.assert_eqs_const(f, 0)
 
-        f = theano.function([x], T.and_(x, 1), mode=mode)
-        self.assert_identity(f)
+            f = theano.function([x], T.and_(x, one), mode=mode)
+            if f.outputs[0].variable.dtype == x.dtype:
+                self.assert_identity(f)
 
-        f = theano.function([x], T.and_(1, x), mode=mode)
-        self.assert_identity(f)
+            f = theano.function([x], T.and_(one, x), mode=mode)
+            if f.outputs[0].variable.dtype == x.dtype:
+                self.assert_identity(f)
 
     def test_or(self):
         mode = theano.compile.get_default_mode().including('canonicalize')
         x = T.scalar('x', dtype='int8')
 
-        f = theano.function([x], T.or_(x, 1), mode=mode)
-        self.assert_eqs_const(f, 1)
+        for zero, one in [(numpy.int8(0), numpy.int8(1)), (0, 1)]:
+            f = theano.function([x], T.or_(x, one), mode=mode)
+            self.assert_eqs_const(f, 1)
 
-        f = theano.function([x], T.or_(1, x), mode=mode)
-        self.assert_eqs_const(f, 1)
+            f = theano.function([x], T.or_(one, x), mode=mode)
+            self.assert_eqs_const(f, 1)
 
-        f = theano.function([x], T.or_(x, 0), mode=mode)
-        self.assert_identity(f)
+            f = theano.function([x], T.or_(x, zero), mode=mode)
+            if f.outputs[0].variable.dtype == x.dtype:
+                self.assert_identity(f)
 
-        f = theano.function([x], T.or_(0, x), mode=mode)
-        self.assert_identity(f)
+            f = theano.function([x], T.or_(zero, x), mode=mode)
+            if f.outputs[0].variable.dtype == x.dtype:
+                self.assert_identity(f)
 
     def test_xor(self):
         mode = theano.compile.get_default_mode().including('canonicalize')
