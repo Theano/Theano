@@ -1,4 +1,5 @@
 from __future__ import absolute_import, print_function, division
+import collections
 import copy
 import traceback as tb
 import warnings
@@ -466,6 +467,25 @@ class _tensor_py_operators(object):
 
     # SLICING/INDEXING
     def __getitem__(self, args):
+
+        def check_bool(args_el):
+            try:
+                if args_el.dtype == 'int8' or args_el.dtype == 'uint8':
+                    # isinstance(args_el, (numpy.bool_, bool)) or \
+                    raise TypeError(('TensorType does not support boolean '
+                                     'mask for indexing such as tensor[x==0]. '
+                                     'If you are indexing on purpose with an '
+                                     'int8, please cast it to int32'))
+            except AttributeError:
+                pass
+
+            if not isinstance(args_el, theano.tensor.Variable) and \
+               isinstance(args_el, collections.Iterable):
+                for el in args_el:
+                    check_bool(el)
+
+        check_bool(args)
+
         if (isinstance(args, list) and
                 any([isinstance(a, slice) for a in args])):
             pass
