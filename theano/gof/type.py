@@ -638,6 +638,8 @@ class CDataType(Type):
         have a `void` return and take a single pointer argument.
 
     """
+    __props__ = ('ctype', 'freefunc', 'headers', 'header_dirs',
+                 'libraries', 'lib_dirs', 'extra_support_code')
 
     def __init__(self, ctype, freefunc=None, headers=None, header_dirs=None,
                  libraries=None, lib_dirs=None, extra_support_code=""):
@@ -647,27 +649,19 @@ class CDataType(Type):
             assert isinstance(freefunc, string_types)
         self.freefunc = freefunc
         if headers is None:
-            headers = []
-        self.headers = headers
+            headers = ()
+        self.headers = tuple(headers)
         if header_dirs is None:
-            header_dirs = []
-        self.header_dirs = header_dirs
+            header_dirs = ()
+        self.header_dirs = tuple(header_dirs)
         if libraries is None:
-            libraries = []
-        self.libraries = libraries
+            libraries = ()
+        self.libraries = tuple(libraries)
         if lib_dirs is None:
-            lib_dirs = []
-        self.lib_dirs = lib_dirs
+            lib_dirs = ()
+        self.lib_dirs = tuple(lib_dirs)
         self.extra_support_code = extra_support_code
         self._fn = None
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.ctype == other.ctype and
-                self.freefunc == other.freefunc)
-
-    def __hash__(self):
-        return hash((type(self), self.ctype, self.freefunc))
 
     def filter(self, data, strict=False, allow_downcast=None):
         if data is not None and not isinstance(data, _cdata_type):
