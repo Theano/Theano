@@ -2019,6 +2019,7 @@ class _RNNSplitParams(DnnBase):
   void *w;
   void *o;
   ptrdiff_t off;
+  size_t bshp;
   cudnnStatus_t err;
   cudnnDataType_t dt;
   cudnnTensorFormat_t tf;
@@ -2084,45 +2085,11 @@ class _RNNSplitParams(DnnBase):
   nshp[0] = PyGpuArray_DIM(%(w)s, 0);
   nshp[1] = 1;
         """ % kw
-        def get_matrix(id, out):
+        def get_params(id, m, b):
             kw2 = kw.copy()
             kw2['id'] = id
-            kw2['out'] = out
-            return """
-  err = cudnnGetRNNLinLayerMatrixParams(%(handle)s, %(desc)s, %(layer)s, xdesc, wdesc, w, %(id)s, odesc, &o);
-  if (err != CUDNN_STATUS_SUCCESS) {
-    cudnnDestroyTensorDescriptor(xdesc);
-    cudnnDestroyFilterDescriptor(wdesc);
-    cudnnDestroyFilterDescriptor(odesc);
-    PyErr_SetString(PyExc_RuntimeError, "can't fetch matrix for id %(id)s");
-    %(fail)s
-  }
-  off = (intptr_t)o - (intptr_t)w;
-  assert(off >= 0 && "matrix");
-
-  // This is 3d because of cudnn limitations.
-  err = cudnnGetFilterNdDescriptor(odesc, 3, &dt, &tf, &nd, dims);
-  if (err != CUDNN_STATUS_SUCCESS) {
-    cudnnDestroyTensorDescriptor(xdesc);
-    cudnnDestroyFilterDescriptor(wdesc);
-    cudnnDestroyFilterDescriptor(odesc);
-    PyErr_SetString(PyExc_RuntimeError, "could not get matrix shape for id %(id)s");
-    %(fail)s;
-  }
-  assert(dims[2] == 1);
-  // We assume that the typecode matches
-  %(out)s = pygpu_reshape(%(w)s, 2, nshp, GA_C_ORDER, 1, -1);
-  %(out)s->ga.offset = off;
-  %(out)s->ga.dimensions[0] = dims[0];
-  %(out)s->ga.dimensions[1] = dims[1];
-  %(out)s->ga.strides[0] = dims[1] * gpuarray_get_elsize(%(out)s->ga.typecode);
-  // strides[1] is already ok
-            """ % kw2
-
-        def get_bias(id, out):
-            kw2 = kw.copy()
-            kw2['id'] = id
-            kw2['out'] = out
+            kw2['m'] = m
+            kw2['b'] = b
             return """
   err = cudnnGetRNNLinLayerBiasParams(%(handle)s, %(desc)s, %(layer)s, xdesc, wdesc, w, %(id)s, odesc, &o);
   if (err != CUDNN_STATUS_SUCCESS) {
@@ -2146,16 +2113,45 @@ class _RNNSplitParams(DnnBase):
   // We assume that the typecode matches
   assert(dims[2] == 1);
   assert(dims[1] == 1);
-  %(out)s = pygpu_view(%(w)s, Py_None);
-  %(out)s->ga.offset = off;
-  %(out)s->ga.dimensions[0] = dims[0];
+  %(b)s = pygpu_view(%(w)s, Py_None);
+  %(b)s->ga.offset = off;
+  %(b)s->ga.dimensions[0] = dims[0];
+  bshp = dims[0];
+
+  err = cudnnGetRNNLinLayerMatrixParams(%(handle)s, %(desc)s, %(layer)s, xdesc, wdesc, w, %(id)s, odesc, &o);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    cudnnDestroyTensorDescriptor(xdesc);
+    cudnnDestroyFilterDescriptor(wdesc);
+    cudnnDestroyFilterDescriptor(odesc);
+    PyErr_SetString(PyExc_RuntimeError, "can't fetch matrix for id %(id)s");
+    %(fail)s
+  }
+  off = (intptr_t)o - (intptr_t)w;
+  assert(off >= 0 && "matrix");
+
+  // This is 3d because of cudnn limitations.
+  err = cudnnGetFilterNdDescriptor(odesc, 3, &dt, &tf, &nd, dims);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    cudnnDestroyTensorDescriptor(xdesc);
+    cudnnDestroyFilterDescriptor(wdesc);
+    cudnnDestroyFilterDescriptor(odesc);
+    PyErr_SetString(PyExc_RuntimeError, "could not get matrix shape for id %(id)s");
+    %(fail)s;
+  }
+
+  assert(dims[1] == 1);
+  assert(dims[2] == 1);
+  // We assume that the typecode matches
+  %(m)s = pygpu_reshape(%(w)s, 2, nshp, GA_C_ORDER, 1, -1);
+  %(m)s->ga.offset = off;
+  %(m)s->ga.dimensions[0] = dims[0] / bshp;
+  %(m)s->ga.dimensions[1] = bshp;
+  %(m)s->ga.strides[0] = bshp * gpuarray_get_elsize(%(m)s->ga.typecode);
+  // strides[1] is already ok
             """ % kw2
 
-        for i, o in enumerate(outputs):
-            if i % 2 == 0:
-                code += get_matrix(i // 2, o)
-            else:
-                code += get_bias(i // 2, o)
+        for i in range(len(outputs)//2):
+            code += get_params(i, outputs[2 * i], outputs[(2 * i) + 1])
 
         code += """
   cudnnDestroyTensorDescriptor(xdesc);
