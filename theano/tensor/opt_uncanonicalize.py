@@ -106,14 +106,14 @@ def local_max_to_min(node):
 def local_alloc_dimshuffle(node):
     if node.op == T.alloc:
         input_ = node.inputs[0]
-        if isinstance(input_.owner.op, DimShuffle):
+        if getattr(input_, 'owner', None) and isinstance(input_.owner.op, DimShuffle):
             # check if it only adds dimension to the left
             pattern = input_.type.broadcastable
-            if not pattern[0] :
+            if not pattern[0]:
                 return False
             j = 0
             for i, bool_ in enumerate(pattern):
-                if not bool_ :
+                if not bool_:
                     j = i
                     break
             if sum(pattern[j:]) == 0:
