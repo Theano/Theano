@@ -624,7 +624,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert numpy.all(val1 == numpy_val1)
 
         # Specifying the size explicitly
-        g = function([low, high], random.randint(low=low, high=high+1, size=(3,)))
+        g = function([low, high], random.random_integers(low=low, high=high, size=(3,)))
         val2 = g(low_val, high_val)
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
         numpy_val2 = numpy.asarray([numpy_rng.randint(low=lv, high=hv+1)
