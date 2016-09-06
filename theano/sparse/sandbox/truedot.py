@@ -16,7 +16,6 @@ from theano.sparse import SparseType, dense_from_sparse, transpose
 
 from theano.sparse.tests.test_basic import sparse_random_inputs
 from theano.tests import unittest_tools as utt
-from theano.sparse import verify_grad_sparse
 
 # To maintain compatibility
 from theano.sparse.basic import TrueDot, true_dot
