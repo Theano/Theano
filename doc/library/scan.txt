@@ -400,7 +400,6 @@ Using the original Gibbs sampling example, with ``strict=True`` added to the
         return trng.binomial(size=vsample.shape, n=1, p=vmean,
                              dtype=theano.config.floatX)
 
-
     # The new scan, adding strict=True to the original call.
     # Produces an error, because W, bvis and bhid are used by OneStep, but not
     # passed explicitly.
