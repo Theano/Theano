@@ -8000,7 +8000,7 @@ class T_Choose(utt.InferShapeTester):
         a = tensor.vector(dtype='int32')
         b = tensor.matrix(dtype='float32')
 
-        A = numpy.random.randint(0, 4, 4, dtype='int32')
+        A = numpy.random.randint(0, 4, 4).astype('int32')
         B = numpy.asarray(numpy.random.rand(4, 4), dtype='float32')
 
         for m in self.modes:
@@ -8047,7 +8047,7 @@ class T_Choose(utt.InferShapeTester):
         b = tensor.tensor3(dtype='float32')
         c = tensor.tensor3(dtype='float32')
 
-        A = numpy.random.randint(0, 2, (2, 1, 1), dtype='int32')
+        A = numpy.random.randint(0, 2, (2, 1, 1)).astype('int32')
         B = numpy.asarray(numpy.random.rand(1, 6, 1), dtype='float32')
         C = numpy.asarray(numpy.random.rand(1, 1, 5), dtype='float32')
 
