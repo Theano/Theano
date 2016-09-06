@@ -390,7 +390,7 @@ ensured by the user. Otherwise, it will result in an error.
 Using the original Gibbs sampling example, with ``strict=True`` added to the
 ``scan()`` call:
 
-.. testcode:: scan_strict
+.. code-block:: python
 
     # Same OneStep as in original example.
     def OneStep(vsample) :
