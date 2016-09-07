@@ -19,6 +19,7 @@ from six.moves import xrange
 import scipy.sparse
 
 import theano
+import theano.tensor as T
 from theano import gof, tensor, scalar, config
 from theano.gradient import DisconnectedType
 from theano.sparse.utils import hash_from_sparse
