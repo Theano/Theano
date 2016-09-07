@@ -551,6 +551,8 @@ def random_integers_helper(random_state, low, high, size):
     This is a generalization of numpy.random.random_integers to the case where
     low and high are tensors.
 
+    Since random_integers is deprecated it calls randint() instead.
+
     """
     # Figure out the output shape
     if size is not None:
@@ -587,7 +589,7 @@ def random_integers_helper(random_state, low, high, size):
                                                    high.shape)
     # Iterate over these indices, drawing one sample at a time from numpy
     for oi, li, hi in zip(*broadcast_ind):
-        out[oi] = random_state.random_integers(low=low[li], high=high[hi])
+        out[oi] = random_state.randint(low=low[li], high=high[hi] + 1)
 
     return out
 

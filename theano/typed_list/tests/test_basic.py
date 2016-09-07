@@ -34,7 +34,7 @@ def random_lil(shape, dtype, nnz):
     huge = 2 ** 30
     for k in range(nnz):
         # set non-zeros in random locations (row x, col y)
-        idx = numpy.random.random_integers(huge, size=2) % shape
+        idx = numpy.random.randint(1, huge + 1, size=2) % shape
         value = numpy.random.rand()
         # if dtype *int*, value will always be zeros!
         if "int" in dtype:

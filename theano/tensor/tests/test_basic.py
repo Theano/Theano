@@ -561,7 +561,7 @@ def rand_nonzero(shape, eps=3e-4):
 
 
 def randint(*shape):
-    return numpy.random.random_integers(-5, 5, shape)
+    return numpy.random.randint(-5, 6, shape)
 
 def randuint(*shape):
     return numpy.array(numpy.random.randint(5, size=shape), dtype=numpy.uint32)
@@ -577,7 +577,7 @@ def randcomplex_nonzero(shape, eps=1e-4):
 
 
 def randint_nonzero(*shape):
-    r = numpy.random.random_integers(-5, 4, shape)
+    r = numpy.random.randint(-5, 5, shape)
     return r + (r == 0) * 5
 
 
@@ -587,7 +587,7 @@ def rand_ranged(min, max, shape):
 
 
 def randint_ranged(min, max, shape):
-    return numpy.random.random_integers(min, max, shape)
+    return numpy.random.randint(min, max+1, shape)
 
 
 def randc128_ranged(min, max, shape):
@@ -7576,17 +7576,17 @@ class TestInferShape(utt.InferShapeTester):
                                 [adtens4_bro_val], Rebroadcast)
 
         # Alloc
-        randint = numpy.random.random_integers
+        randint = numpy.random.randint
         adscal = dscalar()
         aiscal = lscalar()
         biscal = lscalar()
         ciscal = lscalar()
         discal = lscalar()
         adscal_val = rand()
-        aiscal_val = randint(3, 5, size=())
-        biscal_val = randint(3, 5, size=())
-        ciscal_val = randint(3, 5, size=())
-        discal_val = randint(3, 5, size=())
+        aiscal_val = randint(3, 6, size=())
+        biscal_val = randint(3, 6, size=())
+        ciscal_val = randint(3, 6, size=())
+        discal_val = randint(3, 6, size=())
         self._compile_and_check([adscal, aiscal, biscal, ciscal, discal],
                 [Alloc()(adscal, aiscal, biscal, ciscal, discal)],
                 [adscal_val, aiscal_val, biscal_val,
@@ -8041,8 +8041,7 @@ class T_Choose(utt.InferShapeTester):
         a = tensor.vector(dtype='int32')
         b = tensor.matrix(dtype='float32')
 
-        A = numpy.asarray(numpy.random.random_integers(0, 3, 4),
-                          dtype='int32')
+        A = numpy.random.randint(0, 4, 4).astype('int32')
         B = numpy.asarray(numpy.random.rand(4, 4), dtype='float32')
 
         for m in self.modes:
@@ -8089,8 +8088,7 @@ class T_Choose(utt.InferShapeTester):
         b = tensor.tensor3(dtype='float32')
         c = tensor.tensor3(dtype='float32')
 
-        A = numpy.asarray(numpy.random.random_integers(0, 1, (2, 1, 1)),
-                          dtype='int32')
+        A = numpy.random.randint(0, 2, (2, 1, 1)).astype('int32')
         B = numpy.asarray(numpy.random.rand(1, 6, 1), dtype='float32')
         C = numpy.asarray(numpy.random.rand(1, 1, 5), dtype='float32')
 

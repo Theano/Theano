@@ -378,8 +378,10 @@ class T_random_function(utt.InferShapeTester):
         self.assertTrue(numpy.allclose(val1, numpy_val1))
 
     def test_random_integers(self):
-        """Test that raw_random.random_integers generates the same
-        results as numpy."""
+        # Test that raw_random.random_integers generates the same
+        # results as numpy.  We use randint() for comparison since
+        # random_integers() is deprecated.
+
         # Check over two calls to see if the random state is correctly updated.
         rng_R = random_state_type()
         # Use non-default parameters, and larger dimensions because of
@@ -395,8 +397,8 @@ class T_random_function(utt.InferShapeTester):
         numpy_rng = numpy.random.RandomState(utt.fetch_seed())
         val0 = f()
         val1 = f()
-        numpy_val0 = numpy_rng.random_integers(-3, 16, size=(11, 8))
-        numpy_val1 = numpy_rng.random_integers(-3, 16, size=(11, 8))
+        numpy_val0 = numpy_rng.randint(-3, 17, size=(11, 8))
+        numpy_val1 = numpy_rng.randint(-3, 17, size=(11, 8))
         self.assertTrue(numpy.allclose(val0, numpy_val0))
         self.assertTrue(numpy.allclose(val1, numpy_val1))
 
@@ -845,13 +847,13 @@ class T_random_function(utt.InferShapeTester):
 
         # Arguments of size (3,)
         rng0, val0 = f(rng, low_val, high_val)
-        numpy_val0 = numpy.asarray([numpy_rng.random_integers(low=lv, high=hv)
+        numpy_val0 = numpy.asarray([numpy_rng.randint(low=lv, high=hv+1)
             for lv, hv in zip(low_val, high_val)])
         assert numpy.all(val0 == numpy_val0)
 
         # arguments of size (2,)
         rng1, val1 = f(rng0, low_val[:-1], high_val[:-1])
-        numpy_val1 = numpy.asarray([numpy_rng.random_integers(low=lv, high=hv)
+        numpy_val1 = numpy.asarray([numpy_rng.randint(low=lv, high=hv+1)
             for lv, hv in zip(low_val[:-1], high_val[:-1])])
         assert numpy.all(val1 == numpy_val1)
 
@@ -860,7 +862,7 @@ class T_random_function(utt.InferShapeTester):
                 random_integers(rng_R, low=low, high=high, size=(3,)),
                 accept_inplace=True)
         rng2, val2 = g(rng1, low_val, high_val)
-        numpy_val2 = numpy.asarray([numpy_rng.random_integers(low=lv, high=hv)
+        numpy_val2 = numpy.asarray([numpy_rng.randint(low=lv, high=hv+1)
             for lv, hv in zip(low_val, high_val)])
         assert numpy.all(val2 == numpy_val2)
         self.assertRaises(ValueError, g, rng2, low_val[:-1], high_val[:-1])

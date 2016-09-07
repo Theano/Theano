@@ -170,7 +170,10 @@ class T_SharedRandomStreams(unittest.TestCase):
         assert numpy.allclose(fn_val1, numpy_val1)
 
     def test_random_integers(self):
-        """Test that RandomStreams.random_integers generates the same results as numpy"""
+        # Test that RandomStreams.random_integers generates the same
+        # results as numpy.  We use randint() for numpy since
+        # random_integers() is deprecated.
+
         # Check over two calls to see if the random state is correctly updated.
         random = RandomStreams(utt.fetch_seed())
         fn = function([], random.random_integers((20, 20), -5, 5))
@@ -179,8 +182,8 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2**30)
         rng = numpy.random.RandomState(int(rng_seed))  # int() is for 32bit
-        numpy_val0 = rng.random_integers(-5, 5, size=(20, 20))
-        numpy_val1 = rng.random_integers(-5, 5, size=(20, 20))
+        numpy_val0 = rng.randint(-5, 6, size=(20, 20))
+        numpy_val1 = rng.randint(-5, 6, size=(20, 20))
 
         assert numpy.all(fn_val0 == numpy_val0)
         assert numpy.all(fn_val1 == numpy_val1)
@@ -610,13 +613,13 @@ class T_SharedRandomStreams(unittest.TestCase):
 
         # Arguments of size (3,)
         val0 = f(low_val, high_val)
-        numpy_val0 = numpy.asarray([numpy_rng.random_integers(low=lv, high=hv)
+        numpy_val0 = numpy.asarray([numpy_rng.randint(low=lv, high=hv+1)
             for lv, hv in zip(low_val, high_val)])
         assert numpy.all(val0 == numpy_val0)
 
         # arguments of size (2,)
         val1 = f(low_val[:-1], high_val[:-1])
-        numpy_val1 = numpy.asarray([numpy_rng.random_integers(low=lv, high=hv)
+        numpy_val1 = numpy.asarray([numpy_rng.randint(low=lv, high=hv+1)
             for lv, hv in zip(low_val[:-1], high_val[:-1])])
         assert numpy.all(val1 == numpy_val1)
 
@@ -624,7 +627,7 @@ class T_SharedRandomStreams(unittest.TestCase):
         g = function([low, high], random.random_integers(low=low, high=high, size=(3,)))
         val2 = g(low_val, high_val)
         numpy_rng = numpy.random.RandomState(int(seed_gen.randint(2**30)))
-        numpy_val2 = numpy.asarray([numpy_rng.random_integers(low=lv, high=hv)
+        numpy_val2 = numpy.asarray([numpy_rng.randint(low=lv, high=hv+1)
             for lv, hv in zip(low_val, high_val)])
         assert numpy.all(val2 == numpy_val2)
         self.assertRaises(ValueError, g, low_val[:-1], high_val[:-1])
