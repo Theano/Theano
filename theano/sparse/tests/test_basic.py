@@ -27,8 +27,9 @@ if not enable_sparse:
 from theano.sparse.basic import _is_dense, _is_sparse, _mtypes
 from theano.sparse.basic import _is_dense_variable, _is_sparse_variable
 from theano.sparse import (
-    verify_grad_sparse, as_sparse_variable,
-    CSC, CSM, CSMProperties, csm_properties,
+    as_sparse_variable, as_sparse_or_tensor_variable,
+    CSR, CSC, CSM, CSMProperties, csm_properties,
+    DenseFromSparse,
     SparseType, CSMGrad,
     StructuredDot,
     StructuredDotGradCSC, StructuredDotGradCSR,
@@ -179,6 +180,87 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None,
         data[0].data = theano._asarray(data[0].data, out_dtype)
     assert data[0].dtype.num == dtype.num
     return (variable, data)
+
+
+def verify_grad_sparse(op, pt, structured=False, *args, **kwargs):
+    """
+    Wrapper for theano.test.unittest_tools.py:verify_grad wich
+    converts sparse variables back and forth.
+
+    Parameters
+    ----------
+    op
+        Op to check.
+    pt
+        List of inputs to realize the tests.
+    structured
+        True to tests with a structured grad, False otherwise.
+    args
+        Other `verify_grad` parameters if any.
+    kwargs
+        Other `verify_grad` keywords if any.
+
+    Returns
+    -------
+    None
+
+    """
+
+    def conv_none(x):
+        return x
+
+    def conv_csr(ind, indptr, shp):
+        def f(spdata):
+            return CSR(spdata, ind, indptr, shp)
+        return f
+
+    def conv_csc(ind, indptr, shp):
+        def f(spdata):
+            return CSC(spdata, ind, indptr, shp)
+        return f
+
+    iconv = []
+    dpt = []
+
+    for p in pt:
+        if _is_sparse(p):
+            if structured:
+                dpt.append(p.data)
+            else:
+                dpt.append(p.toarray())
+            if p.format == 'csr':
+                if structured:
+                    iconv.append(conv_csr(p.indices[:p.size], p.indptr,
+                                          p.shape))
+                else:
+                    iconv.append(csr_from_dense)
+            elif p.format == 'csc':
+                if structured:
+                    iconv.append(conv_csc(p.indices[:p.size], p.indptr,
+                                          p.shape))
+                else:
+                    iconv.append(csc_from_dense)
+            else:
+                raise NotImplementedError("No conv for %s" % (p.format,))
+        else:
+            dpt.append(p)
+            iconv.append(conv_none)
+    output = op(*[as_sparse_or_tensor_variable(p) for p in pt])
+    if isinstance(output, (list, tuple)):
+        raise NotImplementedError("verify_grad can't deal with "
+                                  "multiple outputs")
+    if _is_sparse_variable(output):
+        oconv = DenseFromSparse(structured=structured)
+    else:
+        oconv = conv_none
+
+    def conv_op(*inputs):
+        ipt = [conv(i) for i, conv in zip(inputs, iconv)]
+        out = op(*ipt)
+        return oconv(out)
+
+    return utt.verify_grad(conv_op, dpt, *args, **kwargs)
+verify_grad_sparse.E_grad = utt.verify_grad.E_grad
 
 
 class T_verify_grad_sparse(unittest.TestCase):
@@ -2914,9 +2996,9 @@ class MulSVTester(unittest.TestCase):
                 spmat = sp_types[format](random_lil((4, 3), dtype, 3))
                 mat = numpy.asarray(numpy.random.rand(3), dtype=dtype)
 
-                theano.sparse.verify_grad_sparse(mul_s_v,
-                                                 [spmat, mat],
-                                                 structured=True)
+                verify_grad_sparse(mul_s_v,
+                                   [spmat, mat],
+                                   structured=True)
 
     def test_mul_s_v(self):
         sp_types = {'csc': sp.csc_matrix,
@@ -2949,9 +3031,9 @@ class StructuredAddSVTester(unittest.TestCase):
                 spmat = sp_types[format](random_lil((4, 3), dtype, 3))
                 mat = numpy.asarray(numpy.random.rand(3), dtype=dtype)
 
-                theano.sparse.verify_grad_sparse(structured_add_s_v,
-                                                 [spmat, mat],
-                                                 structured=True)
+                verify_grad_sparse(structured_add_s_v,
+                                   [spmat, mat],
+                                   structured=True)
 
     def test_structured_add_s_v(self):
         sp_types = {'csc': sp.csc_matrix,
