@@ -233,9 +233,7 @@ def verify_grad_sparse(op, pt, structured=False, *args, **kwargs):
         out = op(*ipt)
         return oconv(out)
 
-    seed_rng()
-    rng = numpy.random
-    T.verify_grad(conv_op, dpt, 2, rng, *args, **kwargs)
+    T.verify_grad(conv_op, dpt, 2, numpy.random, *args, **kwargs)
 verify_grad_sparse.E_grad = T.verify_grad.E_grad
 
 
