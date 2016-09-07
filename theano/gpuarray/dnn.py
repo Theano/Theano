@@ -1313,8 +1313,6 @@ class GpuDnnSoftmaxBase(DnnBase):
         DnnBase.__init__(self, [self.file], self.c_func)
 
         assert(algo in ('fast', 'accurate', 'log'))
-        if algo == 'log' and version(raises=False) < 3000:
-            raise RuntimeError("Need cuDNN v3 for log-softmax")
         self.algo = algo
 
         assert(mode in ('instance', 'channel'))
