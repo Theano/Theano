@@ -19,10 +19,10 @@ from six.moves import xrange
 import scipy.sparse
 
 import theano
+import theano.tensor as T
 from theano import gof, tensor, scalar, config
 from theano.gradient import DisconnectedType
 from theano.sparse.utils import hash_from_sparse
-import theano.tests.unittest_tools as utt
 from theano.gradient import grad_not_implemented, grad_undefined
 from theano.sparse.type import SparseType, _is_sparse
 
@@ -156,7 +156,6 @@ def as_sparse_or_tensor_variable(x, name=None):
     except (ValueError, TypeError):
         return theano.tensor.as_tensor_variable(x, name)
 
-
 def verify_grad_sparse(op, pt, structured=False, *args, **kwargs):
     """
     Wrapper for theano.test.unittest_tools.py:verify_grad wich
@@ -234,8 +233,8 @@ def verify_grad_sparse(op, pt, structured=False, *args, **kwargs):
         out = op(*ipt)
         return oconv(out)
 
-    return utt.verify_grad(conv_op, dpt, *args, **kwargs)
-verify_grad_sparse.E_grad = utt.verify_grad.E_grad
+    T.verify_grad(conv_op, dpt, 2, numpy.random, *args, **kwargs)
+verify_grad_sparse.E_grad = T.verify_grad.E_grad
 
 
 def constant(x, name=None):
