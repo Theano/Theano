@@ -22,7 +22,6 @@ import theano
 from theano import gof, tensor, scalar, config
 from theano.gradient import DisconnectedType
 from theano.sparse.utils import hash_from_sparse
-import theano.tests.unittest_tools as utt
 from theano.gradient import grad_not_implemented, grad_undefined
 from theano.sparse.type import SparseType, _is_sparse
 
