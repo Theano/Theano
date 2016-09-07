@@ -152,30 +152,24 @@ go this way, then you can look up the C API for kernels in
 libgpuarray.
 
 In any case you will need to call your compiled kernel with some data,
-in most cases in your :meth:`c_code` method.  This is done using the
-`GpuKernel_call()
-<http://deeplearning.net/software/libgpuarray/c_api.html#GpuKernel_call>`_
-function in your C code.  An example calling the above kernel would
-be::
+in most cases in your :meth:`c_code` method.  This is done by using
+the provided wrapper function. An example calling the above kernel
+would be::
 
     size_t ls, gs;
     size_t dims[2];
-    void *args[3];
 
     // ...
 
-    args[0] = input->ga.data;
-    args[1] = &dims[0];
-    args[2] = &dims[1];
     ls = 1;
     gs = 256;
-    err = GpuKernel_call(&k_k, 1, &ls, &gs, 0, args);
+    err = k_call(1, &gs, &ls, 0, input->ga.data, dims[0], dims[1]);
 
     // ...
 
-The name of the kernel object depends on the name you passed to
+The name of the wrapper function depends on the name you passed to
 ``Kernel()`` when you declared it (or the name in your `#kernel`
-statement).  It defaults to `'k_' + name`.
+statement).  It defaults to `name + '_call'`.
 
 For other operations in the C code you should refer to the
 `libgpuarray documentation
