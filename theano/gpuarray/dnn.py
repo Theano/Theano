@@ -1285,7 +1285,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     if mode == "sum":
         ret = GpuDnnPool(mode="average_inc_pad")(img, ws, stride, pad)
         context_name = ret.type.context_name
-        window_elem = numpy.prod(ws).astype(ret.dtype)
+        window_elem = theano.tensor.prod(ws).astype(ret.dtype)
         return as_gpuarray_variable(ret * window_elem, context_name)
     return GpuDnnPool(mode=mode)(img, ws, stride, pad)
 

@@ -2007,7 +2007,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     img = gpu_contiguous(img)
     if mode == "sum":
         ret = GpuDnnPool(mode="average_inc_pad")(img, ws, stride, pad)
-        window_elem = numpy.prod(ws).astype(ret.dtype)
+        window_elem = theano.tensor.prod(ws).astype(ret.dtype)
         return as_cuda_ndarray_variable(ret * window_elem)
 
     return GpuDnnPool(mode=mode)(img, ws, stride, pad)
