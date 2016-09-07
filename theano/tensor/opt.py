@@ -2238,7 +2238,7 @@ class Assert(T.Op):
     >>> func = theano.function([x], assert_op(x, x.size<2))
 
     """
-
+    _f16_ok = True
     __props__ = ('msg',)
     view_map = {0: [0]}
 
