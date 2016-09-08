@@ -1435,11 +1435,11 @@ class COp(Op):
         # function. The argstring will be of format :
         # "input0, input1, input2, &output0, &output1"
         inp = list(inp)
-        numi = getattr(self, '_cop_numi', len(inp))
+        numi = getattr(self, '_cop_num_inputs', len(inp))
         while len(inp) < numi:
             inp.append('NULL')
         out = ["&%s" % o for o in out]
-        numo = getattr(self, '_cop_numo', len(out))
+        numo = getattr(self, '_cop_num_outputs', len(out))
         while len(out) < numo:
             out.append('NULL')
         return ", ".join(inp + out)
