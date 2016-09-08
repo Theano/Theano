@@ -1987,7 +1987,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
         Subsampling window size.
     stride
         Subsampling stride (default: (1, 1)).
-    mode : {'max', 'average_inc_pad', 'average_exc_pad}
+    mode : {'max', 'average_inc_pad', 'average_exc_pad, 'sum'}
     pad :
         (pad_h, pad_w) padding information.
         pad_h is the number of zero-valued pixels added to each of the top and

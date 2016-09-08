@@ -1267,7 +1267,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
         Subsampling window size.
     stride : tuple
         Subsampling stride (default: (1, 1)).
-    mode : {'max', 'average_inc_pad', 'average_exc_pad'}
+    mode : {'max', 'average_inc_pad', 'average_exc_pad', 'sum'}
     pad : tuple
         (padX, padY) or (padX, padY, padZ)
         default: (0, 0)
