@@ -2062,12 +2062,13 @@ class TopoOptimizer(NavigatorOptimizer):
         print(blanc, "  loop time", loop_t, file=stream)
         print(blanc, "  callback_time", callback_time, file=stream)
         if isinstance(lopt, LocalOptGroup):
-            lopt.print_profile(stream, (lopt.time_opts,
-                                        lopt.process_count,
-                                        lopt.applied_true,
-                                        lopt.node_created,
-                                        lopt.profile),
-                               level=level + 1)
+            if lopt.profile:
+                lopt.print_profile(stream, (lopt.time_opts,
+                                            lopt.process_count,
+                                            lopt.applied_true,
+                                            lopt.node_created,
+                                            lopt.profile),
+                                   level=level + 1)
 
     def __str__(self):
         return getattr(self, '__name__',
