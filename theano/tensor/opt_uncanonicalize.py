@@ -125,7 +125,7 @@ def local_alloc_dimshuffle(node):
                     continue
                 else:
                     return False
-            return input_.inputs
+            return input_.owner.inputs
     return False
 
 
@@ -147,5 +147,5 @@ def local_reshape_dimshuffle(node):
                     continue
                 elif i != dim + offset:
                     return False
-            return input_.inputs
+            return input_.owner.inputs
     return False
