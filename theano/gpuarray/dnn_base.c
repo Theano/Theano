@@ -63,7 +63,11 @@ static int c_make_tensorNd(PyGpuArrayObject *var, cudnnTensorDescriptor_t *desc)
                  cudnnGetErrorString(err));
     return -1;
   }
-  return c_set_tensorNd(var, *desc);
+  if (c_set_tensorNd(var, *desc) != 0) {
+    cudnnDestroyTensorDescriptor(*desc);
+    return -1;
+  }
+  return 0;
 }
 
 static int
@@ -135,7 +139,11 @@ static int c_make_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t *desc) {
                  cudnnGetErrorString(err));
     return -1;
   }
-  return c_set_filter(var, *desc);
+  if (c_set_filter(var, *desc) != 0) {
+    cudnnDestroyFilterDescriptor(*desc);
+    return -1;
+  }
+  return 0;
 }
 
 #section init_code
