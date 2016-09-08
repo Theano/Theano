@@ -897,7 +897,9 @@ If you pass a function name to the ``__init__()`` method of the
         by setting the `_cop_num_inputs` and `_cop_num_outputs`
         attributes on your op.  The main function will always be
         called with that number of arguments, using NULL to fill in
-        for missing values at the end.
+        for missing values at the end.  This can be used if your op
+        has a variable number of inputs or outputs, but with a fixed
+        maximum.
 
 For example, the main C function of an op that takes two TensorTypes
 (which has ``PyArrayObject *`` as its C type) as inputs and returns
