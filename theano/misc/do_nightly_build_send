@@ -11,9 +11,9 @@ family=['theano-buildbot@googlegroups.com']
 me='lisa@iro.umontreal.ca'
 
 #Those file contain the output of the do_nightly_build script.
-files=["do_nightly_build_theano",
-       "do_nightly_build_deeplearning",
-       "do_nightly_build_theano_python3.3.0",
+files=["do_nightly_build_theano.log",
+       "do_nightly_build_deeplearning.log",
+       "do_nightly_build_theano_python3.3.0.log",
 ]
 msgs=['Theano buildbot',
       'Deep Learning Tutorial buildbot',
