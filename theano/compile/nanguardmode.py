@@ -274,7 +274,9 @@ class NanGuardMode(Mode):
             big_is_error = config.NanGuardMode.big_is_error
 
         assert nan_is_error or inf_is_error or big_is_error
-        compile_gpu_func(nan_is_error, inf_is_error, big_is_error)
+
+        if cuda.cuda_enabled:
+            compile_gpu_func(nan_is_error, inf_is_error, big_is_error)
 
         def do_check_on(value, nd, var=None):
             """
