@@ -346,7 +346,8 @@ class GraphToGPU(Optimizer):
                          self.local_optimizers_map.get(type(c.op), []))):
                         move_to_GPU = True
             new_ops = None
-            if move_to_GPU and any(["complex" in i.dtype for i in node.inputs]):
+            if move_to_GPU and any(["complex" in getattr(i, 'dtype', "")
+                                    for i in node.inputs]):
                 move_to_GPU = False
 
             # Apply the lifter
