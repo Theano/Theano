@@ -1005,6 +1005,9 @@ class GpuDnnPoolDesc(Op):
     pad : tuple
         (padX, padY) or (padX, padY, padZ)
 
+    Note
+    ----
+    Not used anymore. Only needed to reload old pickled files.
     """
 
     __props__ = ('ws', 'stride', 'mode', 'pad')

@@ -1365,6 +1365,10 @@ class GpuDnnPoolDesc(GpuOp):
         pad_w is the number of zero-valued pixels added to each of the left and
         right borders.
 
+    Note
+    ----
+    Not used anymore. Only needed to reload old pickled files.
+
     """
 
     __props__ = ('ws', 'stride', 'mode', 'pad')
