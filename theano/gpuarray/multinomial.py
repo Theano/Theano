@@ -12,15 +12,15 @@ import theano.sandbox.multinomial
 from theano import Apply, config
 from theano.gof import Op
 
-from theano import gpuarray
 from theano.tensor import NotScalarConstantError, get_scalar_constant_value
-from .basic_ops import as_gpuarray_variable, infer_context_name
+from .basic_ops import as_gpuarray_variable, infer_context_name, GpuKernelBase, Kernel
 from .opt import register_opt, op_lifter, register_opt2
 from .type import GpuArrayType
+from .elemwise import GpuDimShuffle
 from theano.scalar import as_scalar
 
 
-class GPUAMultinomialFromUniform(gpuarray.basic_ops.GpuKernelBase, Op):
+class GPUAMultinomialFromUniform(GpuKernelBase, Op):
     __props__ = ("odtype",)
 
     def __init__(self, odtype):
@@ -106,7 +106,7 @@ KERNEL void k_multi_warp_multinomial(
     }
 }
 """
-        return [gpuarray.basic_ops.Kernel(
+        return [Kernel(
             code=code, name="k_multi_warp_multinomial",
             params=[pygpu.gpuarray.SIZE,
                     pygpu.gpuarray.SIZE,
@@ -118,7 +118,7 @@ KERNEL void k_multi_warp_multinomial(
                     pygpu.gpuarray.GpuArray,
                     pygpu.gpuarray.SSIZE,
                     pygpu.gpuarray.SSIZE],
-            flags=gpuarray.basic_ops.Kernel.get_flags(node.outputs[0].dtype),
+            flags=Kernel.get_flags(node.outputs[0].dtype),
             objvar='k_multi_warp_multinomial_' + name)]
 
     def c_code(self, node, name, inp, outputs, sub):
@@ -229,7 +229,7 @@ KERNEL void k_multi_warp_multinomial(
         return (1,)
 
 
-class GPUAMultinomialWOReplacementFromUniform(gpuarray.basic_ops.GpuKernelBase, Op):
+class GPUAMultinomialWOReplacementFromUniform(GpuKernelBase, Op):
     """
     The output is transposed compared to MultinomialWOReplacementFromUniform.
     We must insert a Transpose op after it.
@@ -328,7 +328,7 @@ KERNEL void k_multi_warp_multinomial_wor(
     }
 }
 """
-        return [gpuarray.basic_ops.Kernel(
+        return [Kernel(
             code=code, name="k_multi_warp_multinomial_wor",
             params=[pygpu.gpuarray.SIZE,
                     pygpu.gpuarray.SIZE,
@@ -342,7 +342,7 @@ KERNEL void k_multi_warp_multinomial_wor(
                     pygpu.gpuarray.SSIZE,
                     pygpu.gpuarray.SSIZE
                     ],
-            flags=gpuarray.basic_ops.Kernel.get_flags(node.outputs[0].dtype),
+            flags=Kernel.get_flags(node.outputs[0].dtype),
             objvar='k_multi_warp_multinomial_wor_' + name)]
 
     def c_code(self, node, name, inp, outputs, sub):
@@ -481,7 +481,7 @@ def local_gpua_multinomial(op, context_name, inputs, outputs):
     m, = outputs
     if (p.dtype == u.dtype == m.dtype == 'float32'):
         gpu_op = GPUAMultinomialFromUniform(op.odtype)
-        return gpuarray.elemwise.GpuDimShuffle([False, False], [1, 0])(
+        return GpuDimShuffle([False, False], [1, 0])(
             gpu_op(p, u))
 
 
@@ -494,5 +494,5 @@ def local_gpua_multinomial_wor(op, context_name, inputs, outputs):
     m, = outputs
     if ((p.dtype == u.dtype == 'float32') and (m.dtype == 'int64')):
         gpu_op = GPUAMultinomialWOReplacementFromUniform(op.odtype)
-        return gpuarray.elemwise.GpuDimShuffle([False, False], [1, 0])(
+        return GpuDimShuffle([False, False], [1, 0])(
             gpu_op(p, u, n))
