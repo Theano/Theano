@@ -7130,7 +7130,7 @@ def local_add_mul_fusion(node):
     """Fuse consecutive add or mul in one such node with more inputs.
 
     It is better to fuse add/mul that way then in a Composite node as
-    this make the inner graph of the Compiste smaller. This allow to
+    this make the inner graph of the Composite smaller. This allow to
     put more computation in a Composite before hitting the max
     recusion limit when pickling Composite.
 
@@ -7140,16 +7140,30 @@ def local_add_mul_fusion(node):
         return False
 
     s_op = node.op.scalar_op.__class__
+    new_inp = []
+    fused = False
     for inp in node.inputs:
         if (inp.owner and
                 isinstance(inp.owner.op, Elemwise) and
                 isinstance(inp.owner.op.scalar_op, s_op)):
-            l = list(node.inputs)
-            l.remove(inp)
-            output_node = node.op(*(l + inp.owner.inputs))
+            new_inp.extend(inp.owner.inputs)
+            fused = True
+        else:
+            new_inp.append(inp)
 
-            copy_stack_trace(node.outputs[0], output_node)
-            return [output_node]
+    # We ca not compare the number of inputs as Mul and Add could have
+    # 0 or 1 inputs in some corner cases.
+    if fused:
+        output = node.op(*new_inp)
+        copy_stack_trace(node.outputs[0], output)
+
+        # Does the recursion here to help lower the number of
+        # FusionOptimizer iteration.
+        if output.owner:
+            output2 = local_add_mul_fusion(output.owner)
+            if output2:
+                return output2
+        return [output]
 
 if config.tensor.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion elemwise in fast_run")
