@@ -1434,7 +1434,15 @@ class COp(Op):
         # Generate an string containing the arguments sent to the external C
         # function. The argstring will be of format :
         # "input0, input1, input2, &output0, &output1"
-        return ", ".join(list(inp) + ["&%s" % o for o in out])
+        inp = list(inp)
+        numi = getattr(self, '_cop_num_inputs', len(inp))
+        while len(inp) < numi:
+            inp.append('NULL')
+        out = ["&%s" % o for o in out]
+        numo = getattr(self, '_cop_num_outputs', len(out))
+        while len(out) < numo:
+            out.append('NULL')
+        return ", ".join(inp + out)
 
     def get_c_macros(self, node, name, check_input=None):
         define_template = "#define %s %s"
