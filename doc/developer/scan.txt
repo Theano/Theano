@@ -14,7 +14,7 @@ regarding its inner workings.
 The `theano.scan()` function is the public-facing interface for looping in
 Theano. Under the hood, this function will perform some processing on its
 inputs and instantiate the `Scan` Op class which implements the looping
-mechanism. It achieves this by compiling it's own Theano function representing
+mechanism. It achieves this by compiling its own Theano function representing
 the computation to be done at every iteration of the loop and calling it as
 many times as necessary.
 
@@ -57,7 +57,7 @@ deal with, are :
 * ``scan_op.py`` implements the ``Scan`` Op class. The ``Scan`` respects
   the ``Op`` interface, and contains most of the logic of the scan operator.
 
-* ``scan_utils.py`` contains several helpful functions used through out the
+* ``scan_utils.py`` contains several helpful functions used throughout out the
   other files that are specific of the scan operator.
 
 * ``scan_views.py`` contains different views of the scan op that have
@@ -73,15 +73,15 @@ Notation
 Scan being a sizeable and complex module, it has its own naming convention for
 functions and variables which this section will attempt to introduce.
 
-Recall that a Scan op contains a Theano function representing the computation
+A Scan op contains a Theano function representing the computation
 that is done in a single iteration of the loop represented by the Scan op (in
 other words, the computation given by the function provided as value to
 theano.scan's ''fn'' argument ). Whenever we discuss a scan op, "outer function"
 refers to the Theano function that *contains* the Scan op whereas the "inner
-function" refers to the Theano function that is *contained* in the Scan op.
+function" refers to the Theano function that is *contained* inside the Scan op.
 
-In the same spirit, the inputs to the Apply node wrapping the Scan op (or "Scan
-node" for short) and its outputs are referred to as "outer inputs" and "outer
+In the same spirit, the inputs and outputs of the *Apply node wrapping the Scan
+op* (or "Scan node" for short) are referred to as "outer inputs" and "outer
 outputs", respectively, because these inputs and outputs are variables in the
 outer function graph. The inputs and outputs of scan's inner function are
 designated "inner inputs" and "inner outputs".
@@ -129,14 +129,14 @@ the two next terms of the sequence.
 
 **Mitmot (multiple input taps, multiple output taps)** : These outputs exist
 but they cannot be directly created by the user. They can appear in a theano
-graph as a result of taking the gradient of the output of a Scan : taking the
-gradient of the output of a Scan wrt its inputs will result in the creation of
-a new Scan node used to compute the gradients of the first Scan node. If the
-original Scan had sitsots or mitsots variables, the new Scan will use mitmots
-to compute the gradients through time for these variables.
+graph as a result of taking the gradient of the output of a Scan with respect
+to its inputs: This will result in the creation of a new Scan node used to
+compute the gradients of the first Scan node. If the original Scan had sitsots
+or mitsots variables, the new Scan will use mitmots to compute the gradients
+through time for these variables.
 
 
-To synthesise :
+To synthesize :
 
 ===========================================================  =====================================================  ==========================================================  ===========================================================  =========================================================  ======================================================
 Type of scan variables                                       Corresponding outer input                              Corresponding inner input at timestep `t` (indexed from 0)  Corresponding inner output at timestep `t` (indexed from 0)  Corresponding outer output `t`                             Corresponding argument of the `theano.scan()` function
@@ -159,7 +159,7 @@ remove_constants_and_unused_inputs_scan
 ---------------------------------------
 
 This optimization serves two purposes, The first is to remove a Scan Op's
-unused inputs. The second it to take a Scan Op's constant inputs and remove
+unused inputs. The second is to take a Scan Op's constant inputs and remove
 them, instead injecting the constants directly into the graph or the Scan
 Op's inner function. This will allow constant folding to happen inside the
 inner function.
@@ -264,8 +264,8 @@ Because of the complexity involved in dealing with Scan, a large number of
 helper classes and functions have been developped over time to implement
 operations commonly needed when dealing with the Scan op. The Scan op
 itself defines a large number of them and others can be found in the file
-`scan_utils.py`. This sections aims to point out the most useful ones and
-organize them according to their uses.
+`scan_utils.py`. This sections aims to point out the most useful ones sorted
+by usage.
 
 
 Accessing/manipulating Scan's inputs and outputs by type
@@ -322,7 +322,7 @@ multiple inner variables may be associated with the same state.
 If the goal is to navigate between variables that are *connected* (meaning
 that one of them is used to compute the other), the methods
 `connection_pattern()` and `inner_connection_pattern()` can be used.
-The method `connection_pattern()` returns a list of list detailing, for every
+The method `connection_pattern()` returns a list of lists detailing, for every
 pair of outer input and outer output whether they are connected or not. The
 method `inner_connection_pattern()` accomplishes the same goal but for every
 possible pair of inner output and inner input.
