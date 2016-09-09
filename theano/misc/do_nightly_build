@@ -7,7 +7,10 @@ RELEASE=""
 
 # If not jenkins, set workspace to local Tmp
 if [ -v $WORKSPACE ]; then
-   WORKSPACE=/Tmp
+   if [ -v $TMPDIR ]; then
+      TMPDIR=/tmp
+   fi
+   WORKSPACE=$TMPDIR
 fi
 
 echo "Hostname:"
