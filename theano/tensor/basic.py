@@ -651,8 +651,8 @@ def get_scalar_constant_value(orig_v, elemwise=True,
             # We put all the scalar Ops used by get_canonical_form_slice()
             # to allow it to determine the broadcast pattern correctly.
             elif isinstance(v.owner.op, (ScalarFromTensor, TensorFromScalar)):
-                return get_scalar_constant_value(v.owner.inputs[0],
-                                                 max_recur=max_recur)
+                v = v.owner.inputs[0]
+                continue
             elif isinstance(v.owner.op, scal.ScalarOp):
                 if isinstance(v.owner.op, scal.Second):
                     # We don't need both input to be constant for second
@@ -732,9 +732,8 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                             for joined in v.owner.inputs[0].owner.inputs[1:]:
                                 ll = get_vector_length(joined)
                                 if idx < length + ll:
-                                    return get_scalar_constant_value(
-                                        joined[idx - length],
-                                        max_recur=max_recur)
+                                    v = joined[idx - length]
+                                    continue
                                 length += ll
                         except TypeError:
                             pass
