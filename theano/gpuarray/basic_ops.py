@@ -269,7 +269,7 @@ def get_ctype(dtype):
     else:
         if not isinstance(dtype, numpy.dtype):
             dtype = numpy.dtype(dtype)
-        return dtype.name + '_t'
+        return 'npy_' + dtype.name
 
 
 class GpuKernelBase(object):
@@ -295,7 +295,15 @@ class GpuKernelBase(object):
             o = super(GpuKernelBase, self).c_headers()
         except MethodNotDefined:
             o = []
-        return o + ['gpuarray/types.h']
+        return o + ['gpuarray/types.h', 'numpy/npy_common.h']
+
+    def c_header_dirs(self):
+        try:
+            o = super(GpuKernelBase, self).c_header_dirs()
+        except MethodNotDefined:
+            o = []
+        # We rely on the input types for the directory to gpuarray includes
+        return o + [numpy.get_include()]
 
     def _generate_kernel_bin(self, k, ctx):
         gk = gpuarray.GpuKernel(k.code, k.name, k.params, context=ctx,
