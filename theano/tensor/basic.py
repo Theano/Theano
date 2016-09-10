@@ -729,12 +729,16 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                         try:
                             # TODO: assert joined axis is 0.
                             length = 0
+                            loop = False
                             for joined in v.owner.inputs[0].owner.inputs[1:]:
                                 ll = get_vector_length(joined)
                                 if idx < length + ll:
                                     v = joined[idx - length]
-                                    continue
+                                    loop = True
+                                    break
                                 length += ll
+                            if loop:
+                                continue
                         except TypeError:
                             pass
                         except ValueError:
