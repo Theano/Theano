@@ -434,7 +434,7 @@ class GpuDnnConvDesc(COp):
 def gpu_dnn_conv_desc():
     if 0 not in gpu_dnn_conv_desc.cache:
         gpu_dnn_conv_desc.cache[0] = GpuDnnConvDesc()
-    print gpu_dnn_conv_desc.cache[0]
+    print (gpu_dnn_conv_desc.cache[0])
     return gpu_dnn_conv_desc.cache[0]
 
 gpu_dnn_conv_desc.cache = {}
