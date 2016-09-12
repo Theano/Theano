@@ -7,12 +7,14 @@ import warnings
 
 import theano
 from theano.gof.link import WrapLinker
+import theano.tensor.signal.pool as pool
 from six import string_types, iteritems, itervalues
 from theano.compile.mode import (Mode, register_mode,
                                  predefined_modes, predefined_linkers,
                                  predefined_optimizers)
 from theano.configparser import config
 from theano.compile.function_module import FunctionMaker
+from theano.tensor.nnet import LogSoftmax
 
 from .profiling import ProfileStats
 
@@ -693,6 +695,17 @@ Test them first, as they are not guaranteed to always provide a speedup.""")
                           " generator supported on the GPU.")
                 break
 
+        # tip 6
+        # check whether the max pooling is running on CPU or GPU
+        '''for a, t in iteritems(apply_time):
+            node = a[1]
+            if (isinstance(node.op, pool.Pool)):
+                if not dnn_available:
+                    print ('Need CuDNN for pooling')
+            if (isinstance(node.op, LogSoftmax)):
+                if not dnn_available:
+                    print ('Need CuDNN for LogSoftmax')
+        '''
         if not printed_tip:
             print("  Sorry, no tip for today.")
 
