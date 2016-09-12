@@ -197,10 +197,11 @@ class SeqOptimizer(Optimizer, list):
         """
         Parameters
         ----------
-        opts : List
-        The List of optimizers to be applied to a node
-        kw : Dict
-        Dictonary containing failure callback. The only supported keyword is `failure_callback`.
+        *opts :
+            The List of optimizers to be applied to a node
+        failure_callback : callable or None
+            Keyword only argument. A callback used when a failure
+            happen during optimization.
 
         """
         if len(opts) == 1 and isinstance(opts[0], (list, tuple)):
@@ -1231,17 +1232,22 @@ def local_optimizer(tracks, inplace=False, requirements=()):
 
 
 class LocalOptGroup(LocalOptimizer):
-    """
-    Takes a list of LocalOptimizer and applies them to the nodes.
-    If apply_all_opts is False, it will return after the first optimizer applied.
-    Otherwise, it will start again with the node returned by the previous optimizer.
+    """Takes a list of LocalOptimizer and applies them to the node.
 
     Parameters
     ----------
-    optimizers : List
-    List of optimizers to be applied to a node
-    kwargs : Dict
-    Dictionary containing apply_all_opts parameter. When True, multiple optimizers are applied.
+    optimizers :
+        The List of optimizers to be applied to a node
+    reentrant : bool (Default True)
+        Keyword only argument. Reentrant information. Some global
+        optimizer like NavigatorOptimizer can use this value to
+        determine if it ignore new nodes during a pass on the
+        nodes. Sometimes, ignore_newtrees is not reentrant.
+    apply_all_opts : bool (Default False)
+        If False, it will return after the new node after the first optimizer
+        applied. Otherwise, it will start again with the new node until no new
+        optimization apply.
+
     """
 
     def __init__(self, *optimizers, **kwargs):
