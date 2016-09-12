@@ -430,6 +430,14 @@ class GpuDnnConvDesc(COp):
     def c_code_cache_version(self):
         return (super(GpuDnnConvDesc, self).c_code_cache_version(), version())
 
+
+def gpu_dnn_conv_desc():
+    if 0 not in gpu_dnn_conv_desc.cache:
+        gpu_dnn_conv_desc[0] = GpuDnnConvDesc()
+    return gpu_dnn_conv_desc.cache[0]
+
+gpu_dnn_conv_desc.cache = {}
+
 # scalar constants
 _zero = constant(numpy.asarray(0.0, dtype='float64'))
 _one = constant(numpy.asarray(1.0, dtype='float64'))
