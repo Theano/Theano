@@ -13,6 +13,9 @@ from theano.compile.mode import (Mode, register_mode,
                                  predefined_optimizers)
 from theano.configparser import config
 from theano.compile.function_module import FunctionMaker
+import theano.sandbox.cuda as cuda
+from theano.tensor.nnet import LogSoftmax
+import theano.tensor.signal.pool as pool
 
 from .profiling import ProfileStats
 
@@ -692,6 +695,15 @@ Test them first, as they are not guaranteed to always provide a speedup.""")
                     print("     - MRG_RandomStreams is the only random number"
                           " generator supported on the GPU.")
                 break
+        # tip 6
+        for a, t in iteritems(apply_time):
+            node = a[1]
+            if (isinstance(node.op, pool.Pool)):
+                if not cuda.dnn.dnn_available():
+                    print ('Need CuDNN for pooling')
+            if (isinstance(node.op, LogSoftmax)):
+                if not cuda.dnn.dnn_available():
+                    print ('Need CuDNN for LogSoftmax')
 
         if not printed_tip:
             print("  Sorry, no tip for today.")
