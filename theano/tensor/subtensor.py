@@ -398,7 +398,7 @@ class Subtensor(Op):
             raise AdvancedIndexingError(Subtensor.e_indextype, entry)
 
     def get_constant_idx(self, inputs, allow_partial=False,
-                         only_process_constants=False):
+                         only_process_constants=False, elemwise=True):
         """
         Return the idx_list with constant inputs replaced by their
         python scalar equivalent.
@@ -442,7 +442,8 @@ class Subtensor(Op):
                 try:
                     return get_scalar_constant_value(
                         val,
-                        only_process_constants=only_process_constants)
+                        only_process_constants=only_process_constants,
+                        elemwise=elemwise)
                 except theano.tensor.NotScalarConstantError:
                     if allow_partial:
                         return val

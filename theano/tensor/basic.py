@@ -576,7 +576,8 @@ get_scalar_constant_value_elemwises = (
 
 
 def get_scalar_constant_value(orig_v, elemwise=True,
-                              only_process_constants=False):
+                              only_process_constants=False,
+                              max_recur=10):
     """Return the constant scalar(0-D) value underlying variable `v`.
 
     If `v` is the output of dimshuffles, fills, allocs, rebroadcasts,
@@ -596,6 +597,8 @@ def get_scalar_constant_value(orig_v, elemwise=True,
         If True, we only attempt to obtain the value of `orig_v` if it's
         directly constant and don't try to dig through dimshuffles, fills,
         allocs, and other to figure out its value.
+    max_recur : int
+        The maximum number of recursion.
 
     Notes
     -----
@@ -623,7 +626,10 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                 data = v.data
             return numpy_scalar(data).copy()
 
-        if not only_process_constants and getattr(v, 'owner', None):
+        if (not only_process_constants and
+                getattr(v, 'owner', None) and
+                max_recur > 0):
+            max_recur -= 1
             if isinstance(v.owner.op, (Alloc, DimShuffle, Rebroadcast,
                                        compile.ops.OutputGuard,
                                        compile.DeepCopyOp)):
@@ -645,7 +651,8 @@ def get_scalar_constant_value(orig_v, elemwise=True,
             # We put all the scalar Ops used by get_canonical_form_slice()
             # to allow it to determine the broadcast pattern correctly.
             elif isinstance(v.owner.op, (ScalarFromTensor, TensorFromScalar)):
-                return get_scalar_constant_value(v.owner.inputs[0])
+                v = v.owner.inputs[0]
+                continue
             elif isinstance(v.owner.op, scal.ScalarOp):
                 if isinstance(v.owner.op, scal.Second):
                     # We don't need both input to be constant for second
@@ -653,7 +660,7 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                     v = val
                     continue
                 if isinstance(v.owner.op, get_scalar_constant_value_elemwises):
-                    const = [get_scalar_constant_value(i)
+                    const = [get_scalar_constant_value(i, max_recur=max_recur)
                              for i in v.owner.inputs]
                     ret = [[None]]
                     v.owner.op.perform(v.owner, const, ret)
@@ -670,7 +677,7 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                 elif elemwise and isinstance(
                         v.owner.op.scalar_op,
                         get_scalar_constant_value_elemwises):
-                    const = [get_scalar_constant_value(i)
+                    const = [get_scalar_constant_value(i, max_recur=max_recur)
                              for i in v.owner.inputs]
                     ret = [[None]]
                     v.owner.op.perform(v.owner, const, ret)
@@ -705,27 +712,33 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                                   v.owner.inputs[0].owner.inputs[1:]):
                         idx = v.owner.op.idx_list[0]
                         if isinstance(idx, gof.Type):
-                            idx = get_scalar_constant_value(v.owner.inputs[1])
+                            idx = get_scalar_constant_value(v.owner.inputs[1],
+                                                            max_recur=max_recur)
                         # Note the '+ 1' is because the first argument to Join
                         # is the axis.
                         ret = v.owner.inputs[0].owner.inputs[idx + 1]
-                        ret = get_scalar_constant_value(ret)
+                        ret = get_scalar_constant_value(ret, max_recur=max_recur)
                         # join can cast implicitly its input in some case.
                         return theano._asarray(ret, dtype=v.type.dtype)
                     if python_all(var.ndim == 1 for var in
                                   v.owner.inputs[0].owner.inputs[1:]):
                         idx = v.owner.op.idx_list[0]
                         if isinstance(idx, gof.Type):
-                            idx = get_scalar_constant_value(v.owner.inputs[1])
+                            idx = get_scalar_constant_value(v.owner.inputs[1],
+                                                            max_recur=max_recur)
                         try:
                             # TODO: assert joined axis is 0.
                             length = 0
+                            loop = False
                             for joined in v.owner.inputs[0].owner.inputs[1:]:
                                 ll = get_vector_length(joined)
                                 if idx < length + ll:
-                                    return get_scalar_constant_value(
-                                        joined[idx - length])
+                                    v = joined[idx - length]
+                                    loop = True
+                                    break
                                 length += ll
+                            if loop:
+                                continue
                         except TypeError:
                             pass
                         except ValueError:
@@ -742,12 +755,13 @@ def get_scalar_constant_value(orig_v, elemwise=True,
 
                     idx = v.owner.op.idx_list[0]
                     if isinstance(idx, gof.Type):
-                        idx = get_scalar_constant_value(v.owner.inputs[1])
+                        idx = get_scalar_constant_value(v.owner.inputs[1],
+                                                        max_recur=max_recur)
                     # Python 2.4 does not support indexing with numpy.integer
                     # So we cast it.
                     idx = int(idx)
                     ret = v.owner.inputs[0].owner.inputs[idx]
-                    ret = get_scalar_constant_value(ret)
+                    ret = get_scalar_constant_value(ret, max_recur=max_recur)
                     # MakeVector can cast implicitly its input in some case.
                     return theano._asarray(ret, dtype=v.type.dtype)
 
@@ -762,7 +776,8 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                     idx_list = op.idx_list
                     idx = idx_list[0]
                     if isinstance(idx, gof.Type):
-                        idx = get_scalar_constant_value(owner.inputs[1])
+                        idx = get_scalar_constant_value(owner.inputs[1],
+                                                        max_recur=max_recur)
                     grandparent = leftmost_parent.owner.inputs[0]
                     gp_broadcastable = grandparent.type.broadcastable
                     ndim = grandparent.type.ndim

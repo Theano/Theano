@@ -2048,9 +2048,9 @@ class test_local_subtensor_lift(unittest.TestCase):
                 Subtensor, tensor.DimShuffle]))
 
         prog = f.maker.fgraph.toposort()
-        assert isinstance(prog[0].op, tensor.DimShuffle)
-        assert isinstance(prog[1].op, tensor.Subtensor)  # first subtensor
-        assert isinstance(prog[2].op, tensor.Subtensor)  # first subtensor
+        assert isinstance(prog[0].op, tensor.Subtensor)
+        assert isinstance(prog[1].op, tensor.DimShuffle)
+        assert isinstance(prog[2].op, tensor.Subtensor)
         assert isinstance(prog[3].op.scalar_op, theano.scalar.
                           Composite)  # Composite{add,add}
         assert len(prog) == 4
@@ -2069,9 +2069,9 @@ class test_local_subtensor_lift(unittest.TestCase):
                 Subtensor, tensor.DimShuffle]))
 
         prog = f.maker.fgraph.toposort()
-        assert isinstance(prog[0].op, tensor.DimShuffle)
-        assert isinstance(prog[1].op, tensor.Subtensor)  # first subtensor
-        assert isinstance(prog[2].op, tensor.Subtensor)  # first subtensor
+        assert isinstance(prog[0].op, tensor.Subtensor)
+        assert isinstance(prog[1].op, tensor.DimShuffle)
+        assert isinstance(prog[2].op, tensor.Subtensor)
         assert isinstance(prog[3].op.scalar_op, theano.scalar.
                           Composite)  # Composite{add,add}
         assert len(prog) == 4
