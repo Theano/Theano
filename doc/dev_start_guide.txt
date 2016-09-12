@@ -138,7 +138,7 @@ To setup VIM:
 
 #. Edit ``~/.vimrc`` and add the lines:
 
-    .. code-block:: txt
+    .. code-block:: vim
 
         set nocompatible              " be iMproved, required
         filetype off                  " required
