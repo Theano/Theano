@@ -16,7 +16,7 @@ arrays efficiently. Theano features:
 Theano has been powering large-scale computationally intensive
 scientific investigations since 2007.  But it is also approachable
 enough to be used in the classroom (University of Montreal's `deep
-learning/machine learning <http://www.mila.umontreal.ca/Home/courses>`_ classes).
+learning/machine learning <https://mila.umontreal.ca/en/cours/>`_ classes).
 
 News
 ====
