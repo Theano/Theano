@@ -472,3 +472,12 @@ def test_local_assert_no_cpu_op():
         theano.function([], out, mode=mode_local_assert)
     finally:
         theano.config.assert_no_cpu_op = old
+
+
+def test_no_complex():
+    width_var = tensor.cscalar()
+    freq_var = tensor.fscalar()
+    signal_var = tensor.fscalar()
+    stft_out = tensor.exp(width_var * freq_var) * signal_var
+    theano.function([width_var, freq_var, signal_var], stft_out,
+                    mode=mode_with_gpu)

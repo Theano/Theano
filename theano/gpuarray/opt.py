@@ -191,8 +191,9 @@ def op_lifter(OP, cuda_only=False):
 
                 # Check if we should replace
                 if (not replace or
-                    (cuda_only and
-                     get_context(context_name).kind != b'cuda')):
+                        (cuda_only and
+                         get_context(context_name).kind != b'cuda') or
+                        any(["complex" in i.dtype for i in node.inputs])):
                     return False
 
                 # tag the inputs with the context in case
@@ -298,7 +299,8 @@ class GraphToGPU(Optimizer):
         for i in fgraph.inputs:
             # Do not move *int* scalar to the GPU.
             if (isinstance(i.type, tensor.TensorType) and
-               (i.ndim > 0 or 'int' not in i.dtype)):
+                    (i.ndim > 0 or 'int' not in i.dtype) and
+                    "complex" not in i.dtype):
                 mapping[i] = i.transfer(getattr(i.tag, 'target', target))
             else:
                 mapping[i] = i
@@ -344,6 +346,10 @@ class GraphToGPU(Optimizer):
                          self.local_optimizers_map.get(type(c.op), []))):
                         move_to_GPU = True
             new_ops = None
+            if move_to_GPU and any(["complex" in getattr(i, 'dtype', "")
+                                    for i in node.inputs]):
+                move_to_GPU = False
+
             # Apply the lifter
             if move_to_GPU:
                 for lopt in (self.local_optimizers_map.get(node.op, []) +

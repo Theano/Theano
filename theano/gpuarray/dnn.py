@@ -1270,7 +1270,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
         Subsampling window size.
     stride : tuple
         Subsampling stride (default: (1, 1)).
-    mode : {'max', 'average_inc_pad', 'average_exc_pad'}
+    mode : {'max', 'average_inc_pad', 'average_exc_pad', 'sum'}
     pad : tuple
         (padX, padY) or (padX, padY, padZ)
         default: (0, 0)
@@ -1285,6 +1285,11 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
 
     """
     img = gpu_contiguous(img)
+    if mode == "sum":
+        ret = GpuDnnPool(mode="average_inc_pad")(img, ws, stride, pad)
+        context_name = ret.type.context_name
+        window_elem = theano.tensor.prod(ws).astype(ret.dtype)
+        return as_gpuarray_variable(ret * window_elem, context_name)
     return GpuDnnPool(mode=mode)(img, ws, stride, pad)
 
 

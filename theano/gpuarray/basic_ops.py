@@ -626,6 +626,8 @@ class GpuFromHost(Op):
     def make_node(self, x):
         if not isinstance(x.type, tensor.TensorType):
             raise TypeError(x)
+        if "complex" in x.dtype:
+            raise TypeError("complex not supported in the new gpuarray back-end.", x)
         return Apply(self, [x], [GpuArrayType(broadcastable=x.broadcastable,
                                               context_name=self.context_name,
                                               dtype=x.dtype)()])
