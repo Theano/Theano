@@ -697,7 +697,7 @@ Test them first, as they are not guaranteed to always provide a speedup.""")
 
         # tip 6
         # check whether the max pooling is running on CPU or GPU
-        for a, t in iteritems(apply_time):
+        '''for a, t in iteritems(apply_time):
             node = a[1]
             if (isinstance(node.op, pool.Pool)):
                 if not dnn_available:
@@ -705,7 +705,7 @@ Test them first, as they are not guaranteed to always provide a speedup.""")
             if (isinstance(node.op, LogSoftmax)):
                 if not dnn_available:
                     print ('Need CuDNN for LogSoftmax')
-
+        '''
         if not printed_tip:
             print("  Sorry, no tip for today.")
 
