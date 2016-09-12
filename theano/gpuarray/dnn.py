@@ -413,9 +413,9 @@ class GpuDnnConvDesc(COp):
             subsample += (0,)
         padding = as_tensor_variable(padding)
         subsample = as_tensor_variable(list(subsample))
-        conv_mode = as_tensor_variable(conv_mode)
-        precision = as_tensor_variable(precision)
-        bmode = as_tensor_variable(bmode)
+        conv_mode = int(conv_mode)
+        precision = int(precision)
+        bmode = int(bmode)
         node = Apply(self, [kern_shape, padding, subsample, conv_mode, precision, bmode, nb_dims],
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
