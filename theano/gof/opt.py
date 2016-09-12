@@ -208,6 +208,7 @@ class SeqOptimizer(Optimizer, list):
             opts = opts[0]
         self[:] = opts
         self.failure_callback = kw.pop('failure_callback', None)
+        assert len(kw) == 0
 
     def apply(self, fgraph):
         """
@@ -1320,7 +1321,6 @@ class LocalOptGroup(LocalOptimizer):
                     if not multiple_opts or not repl[0].owner:
                         return repl
                     # Ensuring not the input of graph
-                    assert repl[0].owner
                     new_node = repl[0].owner
                     new_repl = apply_mult_opts(new_node, fgraph, True, repl)
             if new_repl:
