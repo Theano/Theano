@@ -7157,7 +7157,7 @@ def local_add_mul_fusion(node):
         output = node.op(*new_inp)
         copy_stack_trace(node.outputs[0], output)
 
-        # Does the recursion here to help lower the number of
+        # Do the recursion here to help lower the number of
         # FusionOptimizer iteration.
         if output.owner:
             output2 = local_add_mul_fusion(output.owner)
