@@ -1299,37 +1299,33 @@ class LocalOptGroup(LocalOptimizer):
     def transform(self, node):
         if len(self.opts) == 0:
             return
-
-        def apply_mult_opts(node, fgraph, multiple_opts=False, prev_repl=None):
+        fgraph = node.fgraph
+        repl = None
+        while True:
             opts = self.track_map[type(node.op)] + self.track_map[node.op] + self.track_map[None]
-            repl = prev_repl
             new_repl = None
             for opt in opts:
                 opt_start = time.time()
-                repl = opt.transform(node)
+                new_repl = opt.transform(node)
                 opt_finish = time.time()
                 if self.profile:
                     self.time_opts[opt] += opt_start - opt_finish
                     self.process_count[opt] += 1
-                if not repl:
+                if not new_repl:
                     continue
                 else:
-                    assert len(repl) == 1
+                    assert len(new_repl) == 1
                     if self.profile:
-                        self.node_created[opt] += len(graph.ops(fgraph.variables, repl))
+                        self.node_created[opt] += len(graph.ops(fgraph.variables, new_repl))
                         self.applied_true[opt] += 1
-                    if not multiple_opts or not repl[0].owner:
-                        return repl
-                    # Ensuring not the input of graph
-                    new_node = repl[0].owner
-                    new_repl = apply_mult_opts(new_node, fgraph, True, repl)
-            if new_repl:
-                repl = new_repl
-            return repl
-
-        new_var = apply_mult_opts(node, node.fgraph, self.apply_all_opts)
-
-        return new_var
+                    break  # break from the for loop over optimization.
+            if not new_repl:  # No optimization applied in the last iteration
+                return repl
+            # only 1 iteration or we are at the start of the graph.
+            if not self.apply_all_opts or not new_repl[0].owner:
+                return new_repl
+            repl = new_repl
+            node = repl[0].owner
 
     @staticmethod
     def print_profile(stream, prof, level=0):
