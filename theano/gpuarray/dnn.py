@@ -359,7 +359,7 @@ class GpuDnnConvDesc(COp):
 
     def make_node(self, kern_shape, border_mode, subsample=(1, 1), conv_mode='conv', precision="float32"):
         if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
-            raise TypeError('kern must be 1D shape tensor')
+            raise TypeError('kern must be 1D shape tensor with int64 dtype')
 
         if isinstance(border_mode, integer_types):
             border_mode = (border_mode,) * len(subsample)
