@@ -972,13 +972,14 @@ def local_gpua_inc_subtensor(op, context_name, inputs, outputs):
 @register_opt('fast_compile')
 @op_lifter([tensor.AdvancedSubtensor1])
 @register_opt2([tensor.AdvancedSubtensor1], 'fast_compile')
-def local_gpua_advanced_subtensor(op, context_name, inputs, outputs):
+def local_gpua_advanced_subtensor1(op, context_name, inputs, outputs):
     return GpuAdvancedSubtensor1()
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.AdvancedSubtensor])
-def local_gpua_advanced_subtensor_(node, context_name):
+@register_opt2([tensor.AdvancedSubtensor], 'fast_compile')
+def local_gpua_advanced_subtensor(op, context_name, inputs, outputs):
     return GpuAdvancedSubtensor()
 
 
