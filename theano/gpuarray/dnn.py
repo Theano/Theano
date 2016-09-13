@@ -2173,8 +2173,8 @@ def _split_rnn_params(w, desc, layer, input_size, dtype, rnn_mode):
 
 class GpuDnnRNNOp(DnnBase):
     __props__ = ()
-    _cop_numi = 5
-    _cop_numo = 4
+    _cop_num_inputs = 5
+    _cop_num_outputs = 4
 
     def __init__(self, rnn_mode, direction_mode):
         DnnBase.__init__(self, ["dnn_rnn_fwd.c"], 'dnn_rnn_fwd')
@@ -2245,8 +2245,8 @@ class GpuDnnRNNOp(DnnBase):
 
 class GpuDnnRNNGradInputs(DnnBase):
     __props__ = ()
-    _cop_numi = 10
-    _cop_numo = 4
+    _cop_num_inputs = 10
+    _cop_num_outputs = 4
 
     def __init__(self):
         DnnBase.__init__(self, ['dnn_rnn_gi.c'], 'dnn_rnn_gi')
