@@ -987,7 +987,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     img = gpu_contiguous(img)
     kerns = gpu_contiguous(kerns)
     desc = gpu_dnn_conv_desc()(kerns.shape, border_mode=border_mode, subsample=subsample,
-                            conv_mode=conv_mode, precision=precision)
+                               conv_mode=conv_mode, precision=precision)
     desc_op = desc.owner.op
     # We can use Shape_i and bypass the infer_shape here as this is on
     # the input of node and it will always be present.
@@ -1166,7 +1166,7 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
     topgrad = gpu_contiguous(topgrad)
     img_shp = as_tensor_variable(img_shp)
     desc = gpu_dnn_conv_desc()(kerns.shape, border_mode=border_mode, subsample=subsample,
-                            conv_mode=conv_mode)
+                               conv_mode=conv_mode)
     out = gpu_alloc_empty(ctx_name, kerns.dtype)(*img_shp)
     return gpu_dnn_conv_gradI()(kerns, topgrad, out, desc)
 
