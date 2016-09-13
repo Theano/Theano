@@ -99,7 +99,6 @@ class G_advancedsubtensor(test_subtensor.TestAdvancedSubtensor):
             self, name,
             shared=gpuarray_shared_constructor,
             sub=GpuAdvancedSubtensor,
-            inc_sub=GpuIncSubtensor,
             mode=mode_with_gpu,
             # avoid errors with limited devices
             dtype='float32',
