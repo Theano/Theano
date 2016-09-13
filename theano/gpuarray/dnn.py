@@ -1874,6 +1874,8 @@ class _RNNDescriptor(DnnBase):
     __props__ = ('context_name',)
 
     def __init__(self, context_name):
+        if version() < 5005:
+            raise RuntimeError("cudnn RNN require cudnn v5 final or higher.")
         DnnBase.__init__(self, ["dnn_rnn_desc.c"], "dnn_rnn_desc")
         self.context_name = context_name
 
