@@ -82,7 +82,7 @@ def _name_for_ctx(ctx):
     for k, v in iteritems(_context_reg):
         if v == ctx:
             return k
-        raise ContextNotDefined('context is not registered')
+    raise ContextNotDefined('context is not registered')
 
 
 # This is a private method for use by the tests only
