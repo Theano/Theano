@@ -118,6 +118,9 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
         This is only supported in Theano 0.8 or the development
         version until it is released.
 
+        The parameter filter_dilation is an implementation of `dilated
+        convolution <https://arxiv.org/pdf/1511.07122v3.pdf>`_.
+
     """
 
     if 'imshp_logical' in kwargs or 'kshp_logical' in kwargs:
