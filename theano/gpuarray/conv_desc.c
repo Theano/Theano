@@ -3,9 +3,9 @@
 int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, 
                               PyArrayObject *padding,
                               PyArrayObject *subsample,
-                              PyObject *conv_mode,
-                              PyObject *precision,
-                              PyObject *bmode,
+                              PyArrayObject *conv_mode,
+                              PyArrayObject *precision,
+                              PyArrayObject *bmode,
                               PyArrayObject *nb_dims,
                               cudnnConvolutionDescriptor_t *desc) {
   cudnnStatus_t err;
