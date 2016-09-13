@@ -1253,7 +1253,7 @@ def default_blas_ldflags():
                                           "mk2_rt"]])
 
         # Anaconda
-        if "Anaconda" in sys.version and sys.platform == "win32":
+        if "Anaconda" in sys.version or "Continuum" in sys.version:
             # If the "mkl-service" conda package (available
             # through Python package "mkl") is installed and
             # importable, then the libraries (installed by conda
@@ -1266,11 +1266,20 @@ def default_blas_ldflags():
                 _logger.info('Conda mkl is not available: %s', e)
             else:
                 # This branch is executed if no exception was raised
-                lib_path = os.path.join(sys.prefix, 'DLLs')
-                flags = ['-L"%s"' % lib_path]
+                if sys.platform == "win32":
+                    lib_path = os.path.join(sys.prefix, 'DLLs')
+                    flags = ['-L"%s"' % lib_path]
+                else:
+                    lib_path = blas_info.get('library_dirs', [])[0]
+                    flags = ['-L%s' % lib_path]
                 flags += ['-l%s' % l for l in ["mkl_core",
                                                "mkl_intel_thread",
                                                "mkl_rt"]]
+                res = try_blas_flag(flags)
+                if res:
+                    return res
+                flags.extend(['-Wl,-rpath,' + l for l in
+                              blas_info.get('library_dirs', [])])
                 res = try_blas_flag(flags)
                 if res:
                     return res
@@ -1344,7 +1353,7 @@ def try_blas_flag(flags):
             return 0;
         }
         """)
-    cflags = flags
+    cflags = list(flags)
     # to support path that includes spaces, we need to wrap it with double quotes on Windows
     path_wrapper = "\"" if os.name == 'nt' else ""
     cflags.extend(['-L%s%s%s' % (path_wrapper, d, path_wrapper) for d in theano.gof.cmodule.std_lib_dirs()])
