@@ -321,8 +321,11 @@ class SequenceDB(DB):
 
     def register(self, name, obj, position, *tags):
         super(SequenceDB, self).register(name, obj, *tags)
-        assert isinstance(position, (integer_types, float))
-        self.__position__[name] = position
+        if position == 'last':
+            self.__position__[name] = max(self.__position__.values())
+        else:
+            assert isinstance(position, (integer_types, float))
+            self.__position__[name] = position
 
     def query(self, *tags, **kwtags):
         """
@@ -390,7 +393,7 @@ class SequenceDB(DB):
         return sio.getvalue()
 
 
-class LocalGroupDB(SequenceDB):
+class LocalGroupDB(DB):
     """
     Generate a local optimizer of type LocalOptGroup instead
     of a global optimizer.
@@ -399,11 +402,41 @@ class LocalGroupDB(SequenceDB):
 
     """
 
-    seq_opt = opt.LocalOptGroup
-
-    def __init__(self, failure_callback=opt.SeqOptimizer.warn):
+    def __init__(self, apply_all_opts=False, profile=False):
         super(LocalGroupDB, self).__init__()
         self.failure_callback = None
+        self.apply_all_opts = apply_all_opts
+        self.profile = profile
+
+    def query(self, *tags, **kwtags):
+        # For the new `useless` optimizer
+        opts = super(LocalGroupDB, self).query(*tags, **kwtags)
+        ret = opt.LocalOptGroup(*opts,
+                                apply_all_opts=self.apply_all_opts,
+                                profile=self.profile)
+        return ret
+
+
+class TopoDB(DB):
+    """
+
+    Generate a Global Optimizer of type TopoOptimizer.
+
+    """
+
+    def __init__(self, db, order='in_to_out', ignore_newtrees=False,
+                 failure_callback=None):
+        super(TopoDB, self).__init__()
+        self.db = db
+        self.order = order
+        self.ignore_newtrees = ignore_newtrees
+        self.failure_callback = failure_callback
+
+    def query(self, *tags, **kwtags):
+        return opt.TopoOptimizer(self.db.query(*tags, **kwtags),
+                                 self.order,
+                                 self.ignore_newtrees,
+                                 self.failure_callback)
 
 
 class ProxyDB(DB):

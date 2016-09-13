@@ -39,12 +39,12 @@ from theano.tensor.opt import (
         local_useless_reshape,
         local_reshape_to_dimshuffle,
         mul_canonizer,
-        out2in,
         Shape_i,
         Assert,
         MakeVector,
         make_vector,
-        local_expm1
+        local_expm1,
+        local_canonicalize_alloc
         )
 from theano import tensor
 from theano import tensor as T
@@ -70,7 +70,7 @@ from theano.tensor.elemwise import DimShuffle
 from theano.tests import unittest_tools as utt
 from theano.compile.mode import optdb
 from theano.compile import Mode
-from theano.gof.opt import check_stack_trace
+from theano.gof.opt import check_stack_trace, out2in
 from nose.plugins.attrib import attr
 
 mode_opt = theano.config.mode
@@ -3175,7 +3175,7 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         # Exclude local_useless_alloc, since it does not introduce
         # assert in all the same cases.
         self.fast_run_mode = self.fast_run_mode.excluding(
-            'local_useless_alloc')
+            'local_useless_alloc', 'local_canonicalize_alloc')
         # No optimization on alloc
         func = function(
             [self.vec, self.mat],
@@ -3676,7 +3676,7 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
         self.assert_eqs_const(f, 0)
 
 
-class Test_local_useless_alloc(unittest.TestCase):
+class Test_local_canonicalize_alloc(unittest.TestCase):
     def setUp(self):
         self.rng = numpy.random.RandomState(utt.fetch_seed())
 
@@ -3698,11 +3698,11 @@ class Test_local_useless_alloc(unittest.TestCase):
             self.assertRaises(ValueError, f)
 
         # No need to check_stack_trace as the optimization
-        # local_useless_alloc only removes nodes.
+        # local_canonicalize_alloc only removes nodes.
 
     def test1(self):
         # Test that alloc never gets instantiated during optimization
-        mode = mode_opt.excluding('local_useless_alloc')
+        mode = mode_opt.excluding('local_canonicalize_alloc')
 
         x = tensor.matrix('x')
         xx = tensor.fill(x, x)
@@ -3714,11 +3714,11 @@ class Test_local_useless_alloc(unittest.TestCase):
         assert tensor.Alloc not in op_classes
 
         # No need to check_stack_trace as the optimization
-        # local_useless_alloc only removes nodes.
+        # local_canonicalize_alloc only removes nodes.
 
     def test2(self):
         # Test that alloc never gets instantiated during optimization
-        mode = mode_opt.excluding('local_useless_alloc')
+        mode = mode_opt.excluding('local_canonicalize_alloc')
 
         x = tensor.matrix('x')
         y = tensor.tile(x, (1,)*2)
@@ -3736,7 +3736,7 @@ class Test_local_useless_alloc(unittest.TestCase):
         # The correct opt removes nodes, no need for check_stack_trace
 
     def test_useless_alloc_with_shape_one(self):
-        alloc_lift = out2in(local_useless_alloc)
+        alloc_lift = out2in(local_canonicalize_alloc)
         x = shared(self.rng.randn(2,))
         y = shared(self.rng.randn())
         z = shared(self.rng.randn(1, 1))
