@@ -19,11 +19,27 @@
 
     The user-friendly constructor is :func:`shared`
 
-    .. attribute:: value
-
-        Read/write access to the [non-symbolic] value/data associated with this SharedVariable.
+    .. method:: get_value(self, borrow=False, return_internal_type=False)
+    
+       :param borrow: True to permit returning of an object aliased to internal memory.
+       :type borrow: bool
+               
+       :param return_internal_type: True to permit the returning of an arbitrary type object used
+               internally to store the shared variable.
+       :type return_internal_type: bool
+       
+       Changes to this value will be visible to all functions using this SharedVariable.
+    
+    .. method:: set_value(self, new_value, borrow=False)
+       :param new_value: 
+       :type new_value:
+       
+       :param borrow: True to use the new_value directly, potentially creating problems
+            related to aliased memory.
+       :type borrow: bool
+       
+        Changes to this value will be visible to all functions using this SharedVariable.
         
-        Changes to this value will be visible to all functions using this SharedVariable.  
 
     .. method:: __init__(self, name, type, value, strict, container=None)
 
