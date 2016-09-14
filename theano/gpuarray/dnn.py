@@ -269,7 +269,7 @@ class GpuDnnConvDesc(COp):
 
     """
 
-    __props__ = ('border_mode', 'subsample', 'conv_mode', 'precision')
+    __props__ = ('conv_mode', 'precision')
 
     def c_headers(self):
         return ['cudnn.h', 'cudnn_helper.h']
@@ -314,7 +314,29 @@ class GpuDnnConvDesc(COp):
         if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
             raise TypeError('kern must be 1D shape tensor')
 
-        node = Apply(self, [kern_shape],
+        pad = [0, 0, 0]
+        if isinstance(self.border_mode, tuple):
+            pad[0], pad[1] = self.border_mode[0], self.border_mode[1]
+            if len(self.border_mode) > 2:
+                pad[2] = self.border_mode[2]
+            bmode = 1
+        elif self.border_mode == "valid":
+            bmode = 1
+        elif self.border_mode == "half":
+            bmode = 2
+        elif self.border_mode == "full":
+            bmode = 0
+        else:
+            raise ValueError("Invalid value for border_mode")
+        pad = as_tensor_variable(pad)
+        bmode = as_scalar(bmode)
+
+        sub = [self.subsample[0], self.subsample[1], 0]
+        if len(self.subsample) > 2:
+            sub[2] = self.subsample[2]
+        sub = as_tensor_variable(sub)
+
+        node = Apply(self, [kern_shape, bmode, pad, sub],
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
         # DebugMode cannot compare the values of CDataType variables, so by
@@ -326,35 +348,11 @@ class GpuDnnConvDesc(COp):
         return node
 
     def get_op_params(self):
-        pad0 = '0'
-        pad1 = '0'
-        pad2 = '0'
-        if isinstance(self.border_mode, tuple):
-            pad0 = str(self.border_mode[0])
-            pad1 = str(self.border_mode[1])
-            if len(self.border_mode) > 2:
-                pad2 = str(self.border_mode[2])
-            bmode = '1'
-        elif self.border_mode == "valid":
-            bmode = '1'
-        elif self.border_mode == "half":
-            bmode = '2'
-        elif self.border_mode == "full":
-            bmode = '0'
-        else:
-            raise ValueError("Invalid value for border_mode")
 
         if self.conv_mode == 'conv':
             conv_flag = 'CUDNN_CONVOLUTION'
         else:
             conv_flag = 'CUDNN_CROSS_CORRELATION'
-
-        sub0 = str(self.subsample[0])
-        sub1 = str(self.subsample[1])
-        if len(self.subsample) > 2:
-            sub2 = str(self.subsample[2])
-        else:
-            sub2 = '0'
 
         if self.precision == 'float16':
             precision = 'CUDNN_DATA_HALF'
@@ -365,10 +363,7 @@ class GpuDnnConvDesc(COp):
             precision = 'CUDNN_DATA_DOUBLE'
 
         return [('NB_DIMS', str(len(self.subsample))),
-                ('BORDER_MODE', bmode),
-                ('PAD_0', pad0), ('PAD_1', pad1), ('PAD_2', pad2),
                 ('CONV_MODE', conv_flag),
-                ('SUB_0', sub0), ('SUB_1', sub1), ('SUB_2', sub2),
                 ('PRECISION', precision)]
 
     def c_code_cache_version(self):
