@@ -7,6 +7,7 @@ from tempfile import mkdtemp
 import time
 import unittest
 import copy
+from collections import OrderedDict
 
 import six.moves.cPickle as pickle
 from six.moves import xrange
@@ -23,7 +24,7 @@ from theano.compile.pfunc import rebuild_collect_shared
 from theano.tests import unittest_tools as utt
 import theano.scalar.sharedvar
 from theano.scan_module.scan_op import Scan
-from theano.compat import PY3, OrderedDict
+from theano.compat import PY3
 from theano.tests.unittest_tools import attr
 
 

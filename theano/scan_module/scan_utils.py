@@ -18,6 +18,7 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import copy
 import logging
 import warnings
+from collections import OrderedDict
 
 import numpy
 
@@ -28,7 +29,6 @@ from six.moves import xrange
 from theano.compile.pfunc import rebuild_collect_shared
 from theano import gof, compat
 from theano import tensor, scalar
-from theano.compat import OrderedDict
 from theano.tensor.basic import get_scalar_constant_value
 
 

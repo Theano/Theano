@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
+from collections import OrderedDict
 import theano
-from theano.compat import OrderedDict
 from theano.gof.utils import (
     give_variables_names, hash_from_dict, remove, unique)
 

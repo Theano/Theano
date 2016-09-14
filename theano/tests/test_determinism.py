@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
+from collections import OrderedDict
 from theano.tests.record import RecordMode, Record
-from theano.compat import OrderedDict
 from theano.tests import disturb_mem
 import numpy as np
 import theano

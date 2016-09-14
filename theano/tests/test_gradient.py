@@ -1,4 +1,5 @@
 from __future__ import absolute_import, print_function, division
+from collections import OrderedDict
 #
 # UNIT TEST
 #
@@ -9,7 +10,7 @@ from six.moves import xrange
 
 import theano
 from theano import gof
-from theano.compat import OrderedDict, izip
+from theano.compat import izip
 from theano.tests import unittest_tools as utt
 
 from theano import gradient

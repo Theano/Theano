@@ -47,6 +47,7 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import logging
 import numpy
 import warnings
+from collections import OrderedDict
 
 from theano.compat import ifilter, izip
 from six import iteritems, integer_types
@@ -59,7 +60,6 @@ from theano import tensor
 from theano import config
 from theano.updates import OrderedUpdates
 from theano.compile import ops
-from theano.compat import OrderedDict
 
 
 from theano.scan_module import scan_op

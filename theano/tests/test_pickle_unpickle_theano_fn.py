@@ -13,9 +13,9 @@ The config option is in configdefaults.py
 
 This note is written by Li Yao.
 """
+from collections import OrderedDict
 import numpy
 import six.moves.cPickle as pickle
-from theano.compat import OrderedDict
 import theano
 import theano.tensor as T
 

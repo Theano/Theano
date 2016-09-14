@@ -5,6 +5,7 @@ types that it can raise.
 
 """
 from __future__ import absolute_import, print_function, division
+from collections import OrderedDict
 import sys
 import time
 import traceback
@@ -15,7 +16,6 @@ from theano.gof import utils
 from theano.gof import toolbox
 from theano import config
 
-from theano.compat import OrderedDict
 from six import iteritems, itervalues
 from six.moves import StringIO
 from theano.misc.ordered_set import OrderedSet
