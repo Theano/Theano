@@ -703,11 +703,11 @@ Test them first, as they are not guaranteed to always provide a speedup.""")
             if (isinstance(node.op, pool.Pool)):
                 if not cuda.dnn.dnn_available():
                     print("Install CuDNN to do pooling faster"
-                            "this allows the operation to run on GPU")
+                          "this allows the operation to run on GPU")
             if (isinstance(node.op, LogSoftmax)):
                 if not cuda.dnn.dnn_available():
                     print("Install CuDNN to do LogSoftmax faster"
-                            "this allows the operation to run on GPU")
+                          "this allows the operation to run on GPU")
 
         if not printed_tip:
             print("  Sorry, no tip for today.")
