@@ -1417,7 +1417,7 @@ class GpuDnnBatchNorm(DnnBase):
         value is 1e-5 (imposed by cuDNN).
     """
 
-    __props__ = ('mode', 'epsilon')
+    __props__ = ('mode',)
 
     def __init__(self, mode='per-activation', epsilon=1e-4):
         DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm.c'],
@@ -1436,7 +1436,6 @@ class GpuDnnBatchNorm(DnnBase):
         params.append(('MODE', ("CUDNN_BATCHNORM_SPATIAL"
                                 if self.mode == "spatial"
                                 else "CUDNN_BATCHNORM_PER_ACTIVATION")))
-        params.append(('EPSILON', str(self.epsilon)))
         return params
 
     def infer_shape(self, node, shape):
@@ -1447,17 +1446,23 @@ class GpuDnnBatchNorm(DnnBase):
         x = as_gpuarray_variable(x, ctx_name)
         scale = as_gpuarray_variable(scale, ctx_name)
         bias = as_gpuarray_variable(bias, ctx_name)
+        epsilon = as_scalar(self.epsilon)
         assert x.ndim == 4
         assert scale.ndim == 4
         assert bias.ndim == 4
-        return Apply(self, [x, scale, bias], [x.type(), scale.type(), scale.type()])
+        return Apply(self, [x, scale, bias, epsilon], [x.type(), scale.type(), scale.type()])
 
     def grad(self, inputs, grads):
-        x, scale, bias = inputs
+        x, scale, bias, epsilon = inputs
         dy = grads[0]
         _, x_mean, x_invstd = self.make_node(x, scale, bias).outputs
-        return GpuDnnBatchNormGrad(self.mode, self.epsilon)(x, dy, scale,
-                                                            x_mean, x_invstd)
+        return GpuDnnBatchNormGrad(self.mode)(x, dy, scale, x_mean,
+                                              x_invstd) + [DisconnectedType()()]
+
+    def connection_pattern(self, node):
+        # Specificy that epsilon is not connected to outputs.
+        return [[True, True, True], [True, True, True], [True, True, True],
+                [False, False, False]]
 
 
 class GpuDnnBatchNormInference(DnnBase):
@@ -1476,7 +1481,7 @@ class GpuDnnBatchNormInference(DnnBase):
         value is 1e-5 (imposed by cuDNN).
     """
 
-    __props__ = ('mode', 'epsilon')
+    __props__ = ('mode',)
 
     def __init__(self, mode='per-activation', epsilon=1e-4):
         DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm_inf.c'],
@@ -1495,7 +1500,6 @@ class GpuDnnBatchNormInference(DnnBase):
         params.append(('MODE', ("CUDNN_BATCHNORM_SPATIAL"
                                 if self.mode == "spatial"
                                 else "CUDNN_BATCHNORM_PER_ACTIVATION")))
-        params.append(('EPSILON', str(self.epsilon)))
         return params
 
     def infer_shape(self, node, shape):
@@ -1509,15 +1513,16 @@ class GpuDnnBatchNormInference(DnnBase):
         bias = as_gpuarray_variable(bias, ctx_name)
         estimated_mean = as_gpuarray_variable(estimated_mean, ctx_name)
         estimated_variance = as_gpuarray_variable(estimated_variance, ctx_name)
+        epsilon = as_scalar(self.epsilon)
         assert x.ndim == 4
         assert scale.ndim == 4
         assert bias.ndim == 4
         assert estimated_mean.ndim == 4
         assert estimated_variance.ndim == 4
-        return Apply(self, [x, scale, bias, estimated_mean, estimated_variance], [x.type()])
+        return Apply(self, [x, scale, bias, estimated_mean, estimated_variance, epsilon], [x.type()])
 
     def grad(self, inputs, grads):
-        x, scale, bias, est_mean, est_var = inputs
+        x, scale, bias, est_mean, est_var, epsilon = inputs
         dy = grads[0]
 
         if self.mode == "per-activation":
@@ -1528,7 +1533,7 @@ class GpuDnnBatchNormInference(DnnBase):
                                           for t in (scale, bias, est_mean, est_var))
 
         # define helper expressions
-        est_var_eps = est_var + self.epsilon
+        est_var_eps = est_var + epsilon
         est_std = theano.tensor.sqrt(est_var_eps)
         two = theano.tensor.constant(2.)
 
@@ -1538,11 +1543,15 @@ class GpuDnnBatchNormInference(DnnBase):
         dbias = dy.sum(axes, keepdims=True)
         dmean = -dy.sum(axes, keepdims=True) * (scale / est_std)
         dvar = -(dy * (x - est_mean)).sum(axes, keepdims=True) * (scale / (two * est_var_eps * est_std))
-        return [dx, dscale, dbias, dmean, dvar]
+        return [dx, dscale, dbias, dmean, dvar, DisconnectedType()()]
+
+    def connection_pattern(self, node):
+        # Specificy that epsilon is not connected to outputs.
+        return [[True], [True], [True], [True], [True], [False]]
 
 
 class GpuDnnBatchNormGrad(DnnBase):
-    __props__ = ('mode', 'epsilon')
+    __props__ = ('mode',)
 
     def __init__(self, mode='per-activation', epsilon=1e-4):
         DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm_grad.c'],
@@ -1561,7 +1570,6 @@ class GpuDnnBatchNormGrad(DnnBase):
         params.append(('MODE', ("CUDNN_BATCHNORM_SPATIAL"
                                 if self.mode == "spatial"
                                 else "CUDNN_BATCHNORM_PER_ACTIVATION")))
-        params.append(('EPSILON', str(self.epsilon)))
         return params
 
     def make_node(self, x, dy, scale, x_mean, x_invstd):
@@ -1571,8 +1579,9 @@ class GpuDnnBatchNormGrad(DnnBase):
         scale = as_gpuarray_variable(scale, ctx_name)
         x_mean = as_gpuarray_variable(x_mean, ctx_name)
         x_invstd = as_gpuarray_variable(x_invstd, ctx_name)
+        epsilon = as_scalar(self.epsilon)
         assert x.ndim == 4 and dy.ndim == 4 and scale.ndim == 4 and x_mean.ndim == 4 and x_invstd.ndim == 4
-        return Apply(self, [x, dy, scale, x_mean, x_invstd], [x.type(), scale.type(), scale.type()])
+        return Apply(self, [x, dy, scale, x_mean, x_invstd, epsilon], [x.type(), scale.type(), scale.type()])
 
     def infer_shape(self, node, shape):
         return [shape[0], shape[2], shape[2]]
