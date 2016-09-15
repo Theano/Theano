@@ -30,7 +30,8 @@ from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
                                       GpuDownsampleFactorMaxGrad)
 from theano.sandbox.cuda.nnet import GpuSoftmax
-from theano.sandbox.cuda.opt_util import alpha_merge, output_merge
+from theano.sandbox.cuda.opt_util import (alpha_merge, output_merge,
+                                          pad_dims, unpad_dims)
 from theano.sandbox.cuda import gpu_seqopt, register_opt
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
@@ -1391,11 +1392,16 @@ class GpuDnnPoolDesc(GpuOp):
     def do_constant_folding(self, node):
         return False
 
-    def __init__(self, ws=(1, 1), stride=(1, 1), mode='max', pad=(0, 0)):
+    def __init__(self, ws=(1, 1), stride=None, mode='max', pad=None):
         if mode == 'average':
             mode = 'average_inc_pad'
         assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
         self.mode = mode
+
+        if stride is None:
+            stride = (1,) * len(ws)
+        if pad is None:
+            pad = (0,) * len(ws)
 
         assert len(ws) == len(stride) and len(stride) == len(pad)
         assert len(ws) in (2, 3)
@@ -1403,8 +1409,6 @@ class GpuDnnPoolDesc(GpuOp):
         self.stride = stride
         self.pad = pad
 
-        if (pad[0] != 0 or pad[1] != 0) and version() == -1:
-            raise RuntimeError("cuDNN pooling with padding requires cuDNN v2")
         if self.get_ndim() == 3 and version() < (3000, 3000):
             raise RuntimeError("cuDNN 3d pooling requires cuDNN v3")
         if (mode == 'average_exc_pad' and max(pad) > 0 and
@@ -1418,12 +1422,9 @@ class GpuDnnPoolDesc(GpuOp):
     def __setstate__(self, d):
         self.__dict__.update(d)
         if not hasattr(self, 'pad'):
-            self.pad = (0, 0)
+            self.pad = (0,) * self.get_ndim()
 
     def make_node(self):
-        if self.pad != (0, 0) and version() == -1:
-            raise RuntimeError("cuDNN pooling with padding requires cuDNN v2")
-
         node = Apply(self, [],
                      [CDataType("cudnnPoolingDescriptor_t",
                                 freefunc="cudnnDestroyPoolingDescriptor")()])
@@ -1444,8 +1445,6 @@ class GpuDnnPoolDesc(GpuOp):
             mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING'
         elif self.mode == "average_exc_pad":
             mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING'
-            if version() == -1:
-                raise Exception("cudnn v1 do not support average_exc_pad")
         else:
             raise NotImplementedError("Unsupported pooling model.")
 
@@ -1616,8 +1615,6 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
             mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING'
         elif self.mode == "average_exc_pad":
             mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING'
-            if version() == -1:
-                raise Exception("cudnn v1 do not support average_exc_pad")
         else:
             raise NotImplementedError("Unsupported pooling model.")
 
@@ -1872,8 +1869,6 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
             mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING'
         elif self.mode == "average_exc_pad":
             mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING'
-            if version() == -1:
-                raise Exception("cudnn v1 do not support average_exc_pad")
         else:
             raise NotImplementedError("Unsupported pooling model.")
 
@@ -1976,28 +1971,33 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
         return [shape[0]]
 
 
-def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
+def dnn_pool(img, ws, stride=None, mode='max', pad=None):
     """
     GPU pooling using cuDNN from NVIDIA.
 
-    The memory layout to use is 'bc01', that is 'batch', 'channel',
-    'first dim', 'second dim' in that order.
+    For 2D pooling, the memory layout to use is 'bc01', that is 'batch',
+    'channel', 'first dim', 'second dim' in that order.
+
+    For 3D pooling, the memory layout to use is 'bc012', that is 'batch',
+    'channel', 'first dim', 'second dim', 'third dim'.
 
     Parameters
     ----------
     img
         Images to do the pooling over.
     ws
-        Subsampling window size.
+        Subsampling window size.  Should have 2 or 3 elements.
     stride
-        Subsampling stride (default: (1, 1)).
-    mode : {'max', 'average_inc_pad', 'average_exc_pad, 'sum'}
-    pad :
-        (pad_h, pad_w) padding information.
+        Subsampling stride (default: (1, 1) or (1, 1, 1)).
+    mode : {'max', 'average_inc_pad', 'average_exc_pad', 'sum'}
+    pad
+        Padding: (pad_h, pad_w) for 2D or (pad_h, pad_w, pad_d) for 3D.
         pad_h is the number of zero-valued pixels added to each of the top and
         bottom borders.
         pad_w is the number of zero-valued pixels added to each of the left
         and right borders.
+        pad_d is the number of zero-valued pixels added to each of the front
+        and back borders (3D pooling only).
 
     .. warning:: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
@@ -2009,6 +2009,10 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
 
     """
     img = gpu_contiguous(img)
+    if stride is None:
+        stride = (1,) * len(ws)
+    if pad is None:
+        pad = (0,) * len(ws)
     if mode == "sum":
         ret = GpuDnnPool(mode="average_inc_pad")(img, ws, stride, pad)
         window_elem = theano.tensor.prod(ws).astype(ret.dtype)
@@ -2972,10 +2976,21 @@ if True:
             if not node.op.ignore_border:
                 return
             img, ws, stride, pad = node.inputs
+            nd = node.op.ndim if node.op.ndim else (img.ndim - 2)
             mode = node.op.mode
+            if nd not in (2, 3):
+                return
             if (img.owner and isinstance(img.owner.op, HostFromGpu)):
-                ret = dnn_pool(gpu_contiguous(img.owner.inputs[0]),
-                               ws, stride=stride, pad=pad, mode=mode)
+                if img.ndim == nd + 2:
+                    ret = dnn_pool(gpu_contiguous(img.owner.inputs[0]),
+                                   ws, stride=stride, pad=pad, mode=mode)
+                else:
+                    input = gpu_contiguous(img.owner.inputs[0])
+                    # reshape to 4D or 5D with 2 non-pooling dimensions
+                    input_padded = pad_dims(input, 2, nd)
+                    ret_padded = dnn_pool(input_padded,
+                                          ws, stride=stride, pad=pad, mode=mode)
+                    ret = unpad_dims(ret_padded, input, 2, nd)
                 return [host_from_gpu(ret)]
 
     @register_opt('cudnn')
@@ -3003,17 +3018,30 @@ if True:
             if not node.op.ignore_border:
                 return
             inp, out, inp_grad, ws, stride, pad = node.inputs
+            nd = node.op.ndim if node.op.ndim else (inp.ndim - 2)
             mode = node.op.mode
+            if nd not in (2, 3):
+                return
 
             if ((inp.owner and isinstance(inp.owner.op, HostFromGpu)) or
                 (out.owner and isinstance(out.owner.op, HostFromGpu)) or
                 (inp_grad.owner and isinstance(inp_grad.owner.op,
                                                HostFromGpu))):
-
-                ret = GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
-                                                gpu_contiguous(out),
-                                                gpu_contiguous(inp_grad),
-                                                ws, stride, pad)
+                if inp.ndim == nd + 2:
+                    ret = GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
+                                                    gpu_contiguous(out),
+                                                    gpu_contiguous(inp_grad),
+                                                    ws, stride, pad)
+                else:
+                    # reshape to 4D or 5D with 2 non-pooling dimensions
+                    inp_padded = pad_dims(gpu_contiguous(inp), 2, nd)
+                    out_padded = pad_dims(gpu_contiguous(out), 2, nd)
+                    inp_grad_padded = pad_dims(gpu_contiguous(inp_grad), 2, nd)
+                    ret_padded = GpuDnnPoolGrad(mode=mode)(inp_padded,
+                                                           out_padded,
+                                                           inp_grad_padded,
+                                                           ws, stride, pad)
+                    ret = unpad_dims(ret_padded, inp, 2, nd)
                 return [host_from_gpu(ret)]
 
     @register_opt('cudnn')
@@ -3025,16 +3053,28 @@ if True:
             if not node.op.ignore_border:
                 return
             inp, inp_grad, ws, stride, pad = node.inputs
+            nd = node.op.ndim if node.op.ndim else (inp.ndim - 2)
             mode = node.op.mode
+            if nd not in (2, 3):
+                return
 
             if ((inp.owner and isinstance(inp.owner.op, HostFromGpu)) or
                 (inp_grad.owner and isinstance(inp_grad.owner.op,
                                                HostFromGpu))):
-                contiguous_inp_grad = gpu_contiguous(inp_grad)
-                ret = GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
-                                                contiguous_inp_grad,
-                                                contiguous_inp_grad,
-                                                ws, stride, pad)
+                if inp.ndim == nd + 2:
+                    contiguous_inp_grad = gpu_contiguous(inp_grad)
+                    ret = GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
+                                                    contiguous_inp_grad,
+                                                    contiguous_inp_grad,
+                                                    ws, stride, pad)
+                else:
+                    inp_padded = pad_dims(gpu_contiguous(inp), 2, nd)
+                    inp_grad_padded = pad_dims(gpu_contiguous(inp_grad), 2, nd)
+                    ret_padded = GpuDnnPoolGrad(mode=mode)(inp_padded,
+                                                           inp_grad_padded,
+                                                           inp_grad_padded,
+                                                           ws, stride, pad)
+                    ret = unpad_dims(ret_padded, inp, 2, nd)
                 return [host_from_gpu(ret)]
 
     @register_opt('cudnn')

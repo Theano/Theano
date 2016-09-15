@@ -35,7 +35,7 @@ from .nnet import GpuSoftmax
 from .opt import (gpu_seqopt, register_opt,
                   op_lifter, register_opt2)
 
-from .opt_util import alpha_merge, output_merge, inplace_allocempty
+from .opt_util import alpha_merge, output_merge, inplace_allocempty, pad_dims, unpad_dims
 
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_BWD_FILTER
 
@@ -1253,7 +1253,7 @@ class GpuDnnPoolGrad(DnnBase):
         return [shape[0]]
 
 
-def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
+def dnn_pool(img, ws, stride=None, mode='max', pad=None):
     """
     GPU pooling using cuDNN from NVIDIA.
 
@@ -1267,13 +1267,13 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     img
         Images to do the pooling over.
     ws : tuple
-        Subsampling window size.
+        Subsampling window size.  Should have 2 or 3 elements.
     stride : tuple
-        Subsampling stride (default: (1, 1)).
+        Subsampling stride (default: (1, 1) or (1, 1, 1)).
     mode : {'max', 'average_inc_pad', 'average_exc_pad', 'sum'}
     pad : tuple
         (padX, padY) or (padX, padY, padZ)
-        default: (0, 0)
+        default: (0, 0) or (0, 0, 0)
 
     .. warning:: The cuDNN library only works with GPU that have a compute
         capability of 3.0 or higer.  This means that older GPU will not
@@ -1285,6 +1285,10 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
 
     """
     img = gpu_contiguous(img)
+    if stride is None:
+        stride = (1,) * len(ws)
+    if pad is None:
+        pad = (0,) * len(ws)
     if mode == "sum":
         ret = GpuDnnPool(mode="average_inc_pad")(img, ws, stride, pad)
         context_name = ret.type.context_name
@@ -1868,9 +1872,18 @@ def local_gpua_pool_dnn_alternative(op, ctx_name, inputs, outputs):
     if not op.ignore_border:
         return
     img, ws, stride, pad = inputs
-    img = as_gpuarray_variable(img, ctx_name)
+    nd = op.ndim if op.ndim else (img.ndim - 2)
+    if nd not in (2, 3):
+        return
+    img = gpu_contiguous(as_gpuarray_variable(img, ctx_name))
     mode = op.mode
-    return dnn_pool(gpu_contiguous(img), ws, stride=stride, pad=pad, mode=mode)
+    if img.ndim == nd + 2:
+        return dnn_pool(img, ws, stride=stride, pad=pad, mode=mode)
+    else:
+        # reshape to 4D or 5D with 2 non-pooling dimensions
+        img_padded = pad_dims(img, 2, nd)
+        ret_padded = dnn_pool(img_padded, ws, stride=stride, pad=pad, mode=mode)
+        return unpad_dims(ret_padded, img, 2, nd)
 
 
 @register_opt('cudnn', 'fast_compile')
@@ -1882,17 +1895,33 @@ def local_gpua_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
     if not op.ignore_border:
         return
     inp, out, out_grad, ws, stride, pad = inputs
-    inp = as_gpuarray_variable(inp, ctx_name)
-    out = as_gpuarray_variable(out, ctx_name)
-    out_grad = as_gpuarray_variable(out_grad, ctx_name)
+    nd = op.ndim if op.ndim else (inp.ndim - 2)
+    if nd not in (2, 3):
+        return
+    inp = gpu_contiguous(as_gpuarray_variable(inp, ctx_name))
+    out = gpu_contiguous(as_gpuarray_variable(out, ctx_name))
+    out_grad = gpu_contiguous(as_gpuarray_variable(out_grad, ctx_name))
     mode = op.mode
 
-    return GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
-                                     gpu_contiguous(out),
-                                     gpu_contiguous(out_grad),
-                                     ws,
-                                     stride,
-                                     pad)
+    if inp.ndim == nd + 2:
+        return GpuDnnPoolGrad(mode=mode)(inp,
+                                         out,
+                                         out_grad,
+                                         ws,
+                                         stride,
+                                         pad)
+    else:
+        # reshape to 4D or 5D with 2 non-pooling dimensions
+        inp_padded = pad_dims(inp, 2, nd)
+        out_padded = pad_dims(out, 2, nd)
+        out_grad_padded = pad_dims(out_grad, 2, nd)
+        ret_padded = GpuDnnPoolGrad(mode=mode)(inp_padded,
+                                               out_padded,
+                                               out_grad_padded,
+                                               ws,
+                                               stride,
+                                               pad)
+        return unpad_dims(ret_padded, inp, 2, nd)
 
 
 @register_opt('cudnn', 'fast_compile')
@@ -1904,16 +1933,28 @@ def local_gpua_avg_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
     if not op.ignore_border:
         return
     inp, out_grad, ws, stride, pad = inputs
-    inp = as_gpuarray_variable(inp, ctx_name)
-    out_grad = as_gpuarray_variable(out_grad, ctx_name)
+    nd = op.ndim if op.ndim else (inp.ndim - 2)
+    if nd not in (2, 3):
+        return
+    inp = gpu_contiguous(as_gpuarray_variable(inp, ctx_name))
+    out_grad = gpu_contiguous(as_gpuarray_variable(out_grad, ctx_name))
     mode = op.mode
 
-    cg = gpu_contiguous(out_grad)
-
-    # We reuse cg because cuDNN does not use the value of the `out`
-    # argument but still checks its shape for average pooling. This
-    # has been observed in v2 and v3 as far as I know.
-    return GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp), cg, cg, ws, stride, pad)
+    if inp.ndim == nd + 2:
+        # We reuse out_grad because cuDNN does not use the value of the `out`
+        # argument but still checks its shape for average pooling. This
+        # has been observed in v2 and v3 as far as I know.
+        return GpuDnnPoolGrad(mode=mode)(inp, out_grad, out_grad, ws, stride, pad)
+    else:
+        inp_padded = pad_dims(inp, 2, nd)
+        out_grad_padded = pad_dims(out_grad, 2, nd)
+        ret_padded = GpuDnnPoolGrad(mode=mode)(inp_padded,
+                                               out_grad_padded,
+                                               out_grad_padded,
+                                               ws,
+                                               stride,
+                                               pad)
+        return unpad_dims(ret_padded, inp, 2, nd)
 
 
 @register_opt('cudnn', 'fast_compile')

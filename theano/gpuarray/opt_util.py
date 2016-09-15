@@ -3,12 +3,12 @@ from functools import wraps
 
 import numpy
 
-from theano import scalar as scal, Constant
+from theano import tensor, scalar as scal, Constant
 from theano.gof import local_optimizer
 from theano.tensor import (DimShuffle, get_scalar_constant_value,
                            NotScalarConstantError)
 
-from .basic_ops import GpuFromHost, HostFromGpu, GpuAllocEmpty, gpu_alloc_empty
+from .basic_ops import GpuFromHost, HostFromGpu, GpuAllocEmpty, GpuReshape, gpu_alloc_empty
 from .elemwise import GpuDimShuffle, GpuElemwise
 
 _one = scal.constant(numpy.asarray(1.0, dtype='float32'))
@@ -329,3 +329,48 @@ def inplace_allocempty(op, idx):
             return maker(node, inputs)
         return opt
     return wrapper
+
+
+def pad_dims(input, leftdims, rightdims):
+    """Reshapes the input to a (leftdims + rightdims) tensor
+
+    This helper function is used to convert pooling inputs with arbitrary
+    non-pooling dimensions to the correct number of dimensions for the
+    GPU pooling ops.
+
+    This reduces or expands the number of dimensions of the input to
+    exactly `leftdims`, by adding extra dimensions on the left or by
+    combining some existing dimensions on the left of the input.
+    """
+    assert input.ndim >= rightdims
+
+    if input.ndim == (leftdims + rightdims):
+        return input
+
+    # extract image dimensions
+    img_shape = input.shape[-rightdims:]
+
+    # count the number of "leading" dimensions, store as dmatrix
+    batch_size = tensor.prod(input.shape[:-rightdims])
+    batch_size = tensor.shape_padright(batch_size, 1)
+
+    # store in the required shape, for example as a 4D tensor
+    # with shape: (batch_size,1,height,width)
+    new_shape = tensor.cast(tensor.join(0, batch_size,
+                                        tensor.as_tensor([1] * (leftdims - 1)),
+                                        img_shape), 'int64')
+    input_ND = GpuReshape(leftdims + rightdims)(input, new_shape)
+    return input_ND
+
+
+def unpad_dims(output, input, leftdims, rightdims):
+    """Reshapes the output after pad_dims.
+
+    This reverts the padding by `pad_dims`.
+    """
+    if output.ndim == input.ndim:
+        return output
+
+    # restore the output to the original shape
+    outshp = tensor.join(0, input.shape[:-rightdims], output.shape[-rightdims:])
+    return GpuReshape(input.ndim)(output, outshp)
