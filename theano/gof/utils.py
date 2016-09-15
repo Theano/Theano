@@ -4,7 +4,7 @@ import sys
 import traceback
 
 import numpy
-from six import iteritems, integer_types, string_types
+from six import iteritems, integer_types, string_types, with_metaclass
 from six.moves import StringIO
 
 from theano import config
@@ -152,22 +152,73 @@ class MethodNotDefined(Exception):
     function has been left out of an implementation class.
 
     """
+    pass
 
 
-class object2(object):
+class MetaObject(type):
+    def __new__(cls, name, bases, dct):
+        props = dct.get('__props__', None)
+        if props is not None:
+            if not isinstance(props, tuple):
+                raise TypeError("__props__ has to be a tuple")
+            if not all(isinstance(p, str) for p in props):
+                raise TypeError("elements of __props__ have to be strings")
+
+            def _props(self):
+                """
+                Tuple of properties of all attributes
+                """
+                return tuple(getattr(self, a) for a in props)
+            dct['_props'] = _props
+
+            def _props_dict(self):
+                """This return a dict of all ``__props__`` key-> value.
+
+                This is useful in optimization to swap op that should have the
+                same props. This help detect error that the new op have at
+                least all the original props.
+
+                """
+                return dict([(a, getattr(self, a))
+                             for a in props])
+            dct['_props_dict'] = _props_dict
+
+            if '__hash__' not in dct:
+                def __hash__(self):
+                    return hash((type(self),
+                                 tuple(getattr(self, a) for a in props)))
+                dct['__hash__'] = __hash__
+
+            if '__eq__' not in dct:
+                def __eq__(self, other):
+                    return (type(self) == type(other) and
+                            tuple(getattr(self, a) for a in props) ==
+                            tuple(getattr(other, a) for a in props))
+                dct['__eq__'] = __eq__
+
+            if '__str__' not in dct:
+                if len(props) == 0:
+                    def __str__(self):
+                        return "%s" % (self.__class__.__name__,)
+                else:
+                    def __str__(self):
+                        return "%s{%s}" % (
+                            self.__class__.__name__,
+                            ", ".join("%s=%r" % (p, getattr(self, p))
+                                      for p in props))
+                dct['__str__'] = __str__
+
+        return type.__new__(cls, name, bases, dct)
+
+
+class object2(with_metaclass(MetaObject, object)):
     __slots__ = []
-    if 0:
-        def __hash__(self):
-            # this fixes silent-error-prone new-style class behavior
-            if hasattr(self, '__eq__') or hasattr(self, '__cmp__'):
-                raise TypeError("unhashable object: %s" % self)
-            return id(self)
 
     def __ne__(self, other):
         return not self == other
 
 
-class scratchpad:
+class scratchpad(object):
     def clear(self):
         self.__dict__.clear()
 
