@@ -2146,10 +2146,11 @@ class _RNNSplitParams(DnnBase):
   // We assume that the typecode matches
   %(m)s = pygpu_reshape(%(w)s, 2, nshp, GA_C_ORDER, 1, -1);
   %(m)s->ga.offset = off;
+  assert(dims[0] %% bshp == 0);
   %(m)s->ga.dimensions[0] = dims[0] / bshp;
   %(m)s->ga.dimensions[1] = bshp;
-  %(m)s->ga.strides[0] = bshp * gpuarray_get_elsize(%(m)s->ga.typecode);
-  // strides[1] is already ok
+  %(m)s->ga.strides[0] = %(m)s->ga.strides[1];
+  %(m)s->ga.strides[1] = %(m)s->ga.dimensions[0] * gpuarray_get_elsize(%(m)s->ga.typecode);
             """ % kw2
 
         for i in range(len(outputs)//2):
@@ -2161,6 +2162,9 @@ class _RNNSplitParams(DnnBase):
   cudnnDestroyFilterDescriptor(odesc);
         """
         return code
+
+    def c_code_cache_version(self):
+        return (1,)
 
 
 def _split_rnn_params(w, desc, layer, input_size, dtype, rnn_mode):
