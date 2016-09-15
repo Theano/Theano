@@ -47,6 +47,9 @@ except ImportError:
         # tests should not fail on optional dependency
         pydot_imported_msg = ("Install the python package pydot or pydot-ng."
                               " Install graphviz.")
+    except Exception as e:
+        pydot_imported_msg = "An error happened while importing/trying pydot: "
+        pydot_imported_msg += str(e.args)
 
 
 _logger = logging.getLogger("theano.printing")
