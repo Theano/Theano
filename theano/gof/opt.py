@@ -1314,7 +1314,6 @@ class LocalOptGroup(LocalOptimizer):
                 if not new_repl:
                     continue
                 else:
-                    assert len(new_repl) == 1
                     if self.profile:
                         self.node_created[opt] += len(graph.ops(fgraph.variables, new_repl))
                         self.applied_true[opt] += 1
@@ -1324,6 +1323,9 @@ class LocalOptGroup(LocalOptimizer):
             # only 1 iteration or we are at the start of the graph.
             if not self.apply_all_opts or not new_repl[0].owner:
                 return new_repl
+            if len(new_repl) > 1:
+                s = set([v.owner for v in new_repl])
+                assert len(s) == 1
             repl = new_repl
             node = repl[0].owner
 
