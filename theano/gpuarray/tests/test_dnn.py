@@ -14,11 +14,13 @@ from theano.tensor.signal.pool import pool_2d, pool_3d
 from theano.tensor.signal.pool import Pool, MaxPoolGrad, AveragePoolGrad
 
 from .. import dnn
+from .. import gpuarray_shared_constructor
 from ..basic_ops import GpuAllocEmpty
 from ..type import gpuarray_shared_constructor
 
 from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
 from . import test_nnet
+from .rnn_support import Model, GRU, WrapperLayer
 
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_FWD
 
@@ -1434,3 +1436,78 @@ def test_batchnorm_inference():
                 utt.assert_allclose(outputs[4], outputs[4 + 5])  # dbias
                 utt.assert_allclose(outputs[5], outputs[5 + 5])  # dmean
                 utt.assert_allclose(outputs[6], outputs[6 + 5], rtol=2e-3, atol=4e-5)  # dvar
+
+
+def test_dnn_rnn_gru():
+    # test params
+    input_dim = 32
+    hidden_dim = 16
+    batch_size = 2
+    depth = 3
+    timesteps = 5
+
+    # test code
+    X = T.tensor3('X')
+    X.tag.test_value = numpy.zeros((timesteps, batch_size, input_dim), dtype=theano.config.floatX)
+    Y = T.tensor3('Y')
+    Y.tag.test_value = numpy.zeros((timesteps, batch_size, hidden_dim), dtype=theano.config.floatX)
+    h0 = T.tensor3('h0')
+    h0.tag.test_value = numpy.zeros((depth, batch_size, hidden_dim), dtype=theano.config.floatX)
+
+    rnnb = dnn.RNNBlock(theano.config.floatX, hidden_dim, depth, 'gru')
+    psize = rnnb.get_param_size([batch_size, input_dim])
+    params_cudnn = gpuarray_shared_constructor(
+        numpy.zeros((psize,), dtype=theano.config.floatX))
+
+    model = Model()
+    last_layer = WrapperLayer(X.dimshuffle(1, 0, 2))
+    last_dim = input_dim
+    for i in range(depth):
+        gru = GRU(last_dim, hidden_dim, last_layer, s0=h0[i, :, :])
+        model.add_layer(gru)
+        last_layer = gru
+        last_dim = hidden_dim
+        layer_params = gru.get_params()
+        dnn_params = rnnb.split_params(params_cudnn, i,
+                                       [batch_size, input_dim])
+        for j, p in enumerate(dnn_params):
+            p[:] = layer_params[j].get_value(borrow=True,
+                                             return_internal_type=True)
+
+    def funcs(out, params):
+        fn = theano.function([X, h0], out, mode=mode_with_gpu)
+        cost = T.mean((Y - out)**2)
+        grad = T.grad(cost, [X, h0] + params)
+        grad_fn = theano.function([X, Y, h0], grad, mode=mode_with_gpu)
+        return fn, grad_fn
+
+    ref_fn, ref_grad_fn = funcs(last_layer.output().dimshuffle((1, 0, 2)),
+                                model.get_params())
+    cudnn_fn, cudnn_grad_fn = funcs(rnnb.apply(params_cudnn, X, h0)[0],
+                                    [params_cudnn])
+
+    x_val = numpy.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
+    y_val = numpy.random.random((timesteps, batch_size, hidden_dim)).astype(theano.config.floatX)
+    h0_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+
+    ref_out = ref_fn(x_val, h0_val)
+    cudnn_out = cudnn_fn(x_val, h0_val)
+
+    utt.assert_allclose(ref_out, cudnn_out)
+
+    ref_grads = ref_grad_fn(x_val, y_val, h0_val)
+    cudnn_grads = cudnn_grad_fn(x_val, y_val, h0_val)
+
+    utt.assert_allclose(ref_grads[0], cudnn_grads[0])
+    utt.assert_allclose(ref_grads[1], cudnn_grads[1])
+
+    ref_grads_params = ref_grads[2:]
+    cudnn_grads_params = gpuarray_shared_constructor(cudnn_grads[2])
+
+    for i in range(depth):
+        cudnn_grads_layer = rnnb.split_params(cudnn_grads_params, i,
+                                              [batch_size, input_dim])
+        ref_grads_layer = ref_grads_params[i * len(cudnn_grads_layer):
+                                           (i + 1) * len(cudnn_grads_layer)]
+        for j, g in enumerate(cudnn_grads_layer):
+            utt.assert_allclose(ref_grads_layer[j], g)

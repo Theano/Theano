@@ -29,7 +29,7 @@ from theano.tensor.signal.pool import (
     Pool, MaxPoolGrad, AveragePoolGrad)
 from . import pygpu
 from .type import (get_context, gpu_context_type, list_contexts,
-                   get_prop, set_prop)
+                   get_prop, set_prop, GpuArraySharedVariable)
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         gpu_contiguous, gpu_alloc_empty,
                         empty_like, GpuArrayType)
@@ -2233,6 +2233,16 @@ class GpuDnnRNNOp(DnnBase):
         reserve, y, hy = outputs[:3]
         _, dy, dhy = output_grads[:3]
         dcy = output_grads[3] if len(output_grads) == 4 else None
+        # If both dy and dhy are disconnected, then this will error
+        # out, but it is indeed an error.
+        if isinstance(dy.type, DisconnectedType):
+            dy = as_gpuarray_variable(dhy[-1],
+                                      context_name=dhy.type.context_name)
+        if isinstance(dhy.type, DisconnectedType):
+            dhy = as_gpuarray_variable(hy.zeros_like(),
+                                       context_name=hy.type.context_name)
+        if dcy and isinstance(dcy.type, DisconnectedType):
+            dcy = None
         dinputs = GpuDnnRNNGradInputs()(
             desc, x, y, dy, dhy, dcy, w, hx, cx, reserve, return_list=True)
         reserve2, dx, dhx = dinputs[:3]
@@ -2326,6 +2336,8 @@ class RNNBlock(object):
         return bytesize // numpy.dtype(self.dtype).itemsize
 
     def split_params(self, w, layer, input_size):
+        if not isinstance(w, GpuArraySharedVariable):
+            raise TypeError("split_params only works on gpuarray shared variables")
         return _split_rnn_params(w, self.desc, layer, input_size, self.dtype, self.rnn_mode)
 
     def apply(self, w, x, hx, cx=None):
