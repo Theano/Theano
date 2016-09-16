@@ -442,12 +442,21 @@ if param != "":
 # to support path that includes spaces, we need to wrap it with double quotes on Windows
 if param and os.name == 'nt':
     param = '"%s"' % param
+
+
+def warn_cxx(val):
+    """We only support clang++ as otherwise we hit strange g++/OSX bugs."""
+    if sys.platform == 'darwin' and val != 'clang++':
+        _logger.warning("Only clang++ is supported. With g++,"
+                        " we end up with strange g++/OSX bugs.")
+    return True
+
 AddConfigVar('cxx',
              "The C++ compiler to use. Currently only g++ is"
              " supported, but supporting additional compilers should not be "
              "too difficult. "
              "If it is empty, no C++ code is compiled.",
-             StrParam(param),
+             StrParam(param, is_valid=warn_cxx),
              in_c_key=False)
 del param
 
