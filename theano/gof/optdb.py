@@ -407,10 +407,25 @@ class LocalGroupDB(DB):
         self.failure_callback = None
         self.apply_all_opts = apply_all_opts
         self.profile = profile
+        self.__position__ = {}
+
+    def register(self, name, obj, *tags, **kwargs):
+        super(LocalGroupDB, self).register(name, obj, *tags)
+        position = kwargs.pop('position', 'last')
+        if position == 'last':
+            if len(self.__position__) == 0:
+                self.__position__[name] = 0
+            else:
+                self.__position__[name] = max(self.__position__.values()) + 1
+        else:
+            assert isinstance(position, (integer_types, float))
+            self.__position__[name] = position
 
     def query(self, *tags, **kwtags):
         # For the new `useless` optimizer
-        opts = super(LocalGroupDB, self).query(*tags, **kwtags)
+        opts = list(super(LocalGroupDB, self).query(*tags, **kwtags))
+        opts.sort(key=lambda obj: (self.__position__[obj.name], obj.name))
+
         ret = opt.LocalOptGroup(*opts,
                                 apply_all_opts=self.apply_all_opts,
                                 profile=self.profile)
