@@ -14,6 +14,7 @@ import theano
 from theano.gof import utils
 from theano.gof.utils import MethodNotDefined, object2
 from theano.gof import graph
+from theano.configparser import change_flags
 
 ########
 # Type #
@@ -672,8 +673,10 @@ class CDataType(Type):
         from theano.scalar import get_scalar_type
 
         if self._fn is None:
-            v = get_scalar_type('int64')()
-            self._fn = theano.function([v], _make_cdata(self)(v), profile=False)
+            with change_flags(compute_test_value='off'):
+                v = get_scalar_type('int64')()
+                self._fn = theano.function([v], _make_cdata(self)(v),
+                                           profile=False)
         return self._fn
 
     def make_value(self, ptr):
