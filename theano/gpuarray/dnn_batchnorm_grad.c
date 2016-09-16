@@ -22,7 +22,7 @@ cudnnTensorDescriptor_t bn_doutput;
 
 int dnn_batchnorm_grad(PyGpuArrayObject *inp, PyGpuArrayObject *doutp,
                        PyGpuArrayObject *scale, PyGpuArrayObject *x_mean,
-                       PyGpuArrayObject *x_invstd, npy_int64 epsilon,
+                       PyGpuArrayObject *x_invstd, npy_float64 epsilon,
                        PyGpuArrayObject **dinp, PyGpuArrayObject **dscale,
                        PyGpuArrayObject **dbias, PyGpuContextObject *c) {
   if (c_set_tensorNd(inp, bn_input) != 0)

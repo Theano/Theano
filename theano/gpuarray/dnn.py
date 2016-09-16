@@ -329,7 +329,7 @@ class GpuDnnConvDesc(COp):
         else:
             raise ValueError("Invalid value for border_mode")
         pad = as_tensor_variable(pad)
-        bmode = as_scalar(bmode)
+        bmode = as_scalar(bmode).astype('int8')
 
         sub = [self.subsample[0], self.subsample[1], 0]
         if len(self.subsample) > 2:
@@ -1446,7 +1446,7 @@ class GpuDnnBatchNorm(DnnBase):
         x = as_gpuarray_variable(x, ctx_name)
         scale = as_gpuarray_variable(scale, ctx_name)
         bias = as_gpuarray_variable(bias, ctx_name)
-        epsilon = as_scalar(self.epsilon)
+        epsilon = as_scalar(self.epsilon).astype('float64')
         assert x.ndim == 4
         assert scale.ndim == 4
         assert bias.ndim == 4
@@ -1513,7 +1513,7 @@ class GpuDnnBatchNormInference(DnnBase):
         bias = as_gpuarray_variable(bias, ctx_name)
         estimated_mean = as_gpuarray_variable(estimated_mean, ctx_name)
         estimated_variance = as_gpuarray_variable(estimated_variance, ctx_name)
-        epsilon = as_scalar(self.epsilon)
+        epsilon = as_scalar(self.epsilon).astype('float64')
         assert x.ndim == 4
         assert scale.ndim == 4
         assert bias.ndim == 4
@@ -1579,7 +1579,7 @@ class GpuDnnBatchNormGrad(DnnBase):
         scale = as_gpuarray_variable(scale, ctx_name)
         x_mean = as_gpuarray_variable(x_mean, ctx_name)
         x_invstd = as_gpuarray_variable(x_invstd, ctx_name)
-        epsilon = as_scalar(self.epsilon)
+        epsilon = as_scalar(self.epsilon).astype('float64')
         assert x.ndim == 4 and dy.ndim == 4 and scale.ndim == 4 and x_mean.ndim == 4 and x_invstd.ndim == 4
         return Apply(self, [x, dy, scale, x_mean, x_invstd, epsilon], [x.type(), scale.type(), scale.type()])
 

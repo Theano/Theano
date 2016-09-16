@@ -2,7 +2,7 @@
 
 int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
                      PyGpuArrayObject *bias, PyGpuArrayObject *est_mean,
-                     PyGpuArrayObject *est_var, npy_int64 epsilon, 
+                     PyGpuArrayObject *est_var, npy_float64 epsilon, 
                      PyGpuArrayObject **outp, PyGpuContextObject *c) {
   if (c_set_tensorNd(inp, bn_input) != 0)
     return 1;

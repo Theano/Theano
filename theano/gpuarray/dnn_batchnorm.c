@@ -1,7 +1,7 @@
 #section support_code_struct
 
 int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
-                     PyGpuArrayObject *bias, npy_int64 epsilon,
+                     PyGpuArrayObject *bias, npy_float64 epsilon,
                      PyGpuArrayObject **outp, PyGpuArrayObject **x_mean,
                      PyGpuArrayObject **x_invstd, PyGpuContextObject *c) {
   if (c_set_tensorNd(inp, bn_input) != 0)

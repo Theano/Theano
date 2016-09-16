@@ -1,7 +1,7 @@
 #section support_code_apply
 
 int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
-                              npy_int64 bmode,
+                              npy_int8 bmode,
                               PyArrayObject *pad_in,
                               PyArrayObject *sub,
                               cudnnConvolutionDescriptor_t *desc) {
