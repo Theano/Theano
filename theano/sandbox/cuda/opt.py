@@ -1656,23 +1656,23 @@ register_opt()(conv_groupopt)
 
 # FFT gets the highest priority (lowest number), but is disabled by default.
 # It can be enabled by including 'conv_fft'.
-conv_groupopt.register('conv_fft_valid', local_conv_fft_valid, 10,
-                       'conv_fft')
-conv_groupopt.register('conv_fft_full', local_conv_fft_full, 10,
-                       'conv_fft')
+conv_groupopt.register('conv_fft_valid', local_conv_fft_valid,
+                       'conv_fft', position=10)
+conv_groupopt.register('conv_fft_full', local_conv_fft_full,
+                       'conv_fft', position=10)
 # cuDNN is the second, but only registered if cuDNN is available.
 # It can be disabled by excluding 'conv_dnn' or 'cudnn'.
 # We can't check at import if dnn is available, so we must always
 # register it. This do not cause problem as if it is not avail, the
 # opt will do nothing.
-conv_groupopt.register('local_conv_dnn', dnn.local_conv_dnn, 20,
+conv_groupopt.register('local_conv_dnn', dnn.local_conv_dnn,
                        'conv_dnn',
-                       'fast_compile', 'fast_run', 'cudnn')
+                       'fast_compile', 'fast_run', 'cudnn', position=20)
 # The GEMM-based convolution comes last to catch all remaining cases.
 # It can be disabled by excluding 'conv_gemm'.
-conv_groupopt.register('local_conv_gemm', local_conv_gemm, 30,
+conv_groupopt.register('local_conv_gemm', local_conv_gemm,
                        'conv_gemm',
-                       'fast_compile', 'fast_run')
+                       'fast_compile', 'fast_run', positin=30)
 
 
 class LocalCudaMetaOptimizer(LocalMetaOptimizer):
@@ -1733,7 +1733,7 @@ conv_metaopt = ConvMetaOptimizer(
 conv_metaopt.register(dnn.local_conv_dnn_alternative)
 # Finally, we register the metaoptimizer as the first optimizer in
 # conv_groupopt
-conv_groupopt.register('conv_meta', conv_metaopt, 0)
+conv_groupopt.register('conv_meta', conv_metaopt, position=0)
 
 
 @local_optimizer([Conv3D])
