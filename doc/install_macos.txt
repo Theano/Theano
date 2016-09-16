@@ -19,7 +19,9 @@ alternative instructions here.
 
 .. _theano-users: http://groups.google.com/group/theano-users?pli=1
 
-.. include:: requirements.txt
+.. |PlatformCompiler| replace:: ``clang`` (the system version)
+
+.. include:: requirements.inc
 
 .. _gpu_macos:
 
