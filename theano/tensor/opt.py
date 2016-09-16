@@ -5942,7 +5942,7 @@ def local_add_specialize(node):
 register_specialize(local_add_specialize)
 
 mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut,
-                                         local_fill_sink),
+                                         local_fill_sink, apply_all_opts=True),
                        name='mul_canonizer_groups')
 
 
@@ -6101,7 +6101,7 @@ def add_calculate(num, denum, aslist=False, out_type=None):
 
 local_add_canonizer = Canonizer(T.add, T.sub, T.neg, add_calculate)
 add_canonizer = in2out(gof.LocalOptGroup(local_add_canonizer, local_fill_cut,
-                                         local_fill_sink),
+                                         local_fill_sink, apply_all_opts=True),
                        name='add_canonizer_group')
 
 
