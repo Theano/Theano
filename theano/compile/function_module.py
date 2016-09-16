@@ -837,9 +837,9 @@ class Function(object):
                 for group in args_share_memory:
                     if len(group) > 1:
                         # copy all but the first
-                        for idx in group[1:]:
-                            self.input_storage[i].storage[0] = copy.copy(
-                                self.input_storage[i].storage[0])
+                        for j in group[1:]:
+                            self.input_storage[j].storage[0] = copy.copy(
+                                self.input_storage[j].storage[0])
 
         # Check if inputs are missing, or if inputs were set more than once, or
         # if we tried to provide inputs that are supposed to be implicit.
