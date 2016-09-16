@@ -130,7 +130,7 @@ def test_qr_modes():
     n_qr = numpy.linalg.qr(a)
     assert _allclose(n_qr, t_qr)
 
-    for mode in ["reduced", "r", "raw", "full", "economic"]:
+    for mode in ["reduced", "r", "raw"]:
         f = function([A], qr(A, mode))
         t_qr = f(a)
         n_qr = numpy.linalg.qr(a, mode)
