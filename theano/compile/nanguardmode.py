@@ -65,7 +65,8 @@ def contains_nan(arr, node=None, var=None):
     construction of a boolean array with the same shape as the input array.
 
     """
-    if isinstance(arr, theano.gof.type.CDataType._cdata_type):
+    # This should be a whitelist instead of a blacklist
+    if isinstance(arr, theano.gof.type._cdata_type):
         return False
     elif isinstance(arr, np.random.mtrand.RandomState):
         return False
@@ -114,7 +115,7 @@ def contains_inf(arr, node=None, var=None):
     boolean array with the same shape as the input array.
 
     """
-    if isinstance(arr, theano.gof.type.CDataType._cdata_type):
+    if isinstance(arr, theano.gof.type._cdata_type):
         return False
     elif isinstance(arr, np.random.mtrand.RandomState):
         return False
@@ -250,7 +251,7 @@ class NanGuardMode(Mode):
                     error = True
             if big_is_error:
                 err = False
-                if isinstance(value, theano.gof.type.CDataType._cdata_type):
+                if isinstance(value, theano.gof.type._cdata_type):
                     err = False
                 elif isinstance(value, np.random.mtrand.RandomState):
                     err = False

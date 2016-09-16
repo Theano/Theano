@@ -1024,10 +1024,10 @@ def _lessbroken_deepcopy(a):
     """
     # this exists because copy.deepcopy on numpy arrays is broken
     # This logic is also in link.py
-    from theano.gof.type import CDataType
+    from theano.gof.type import _cdata_type
     if type(a) in (numpy.ndarray, numpy.memmap):
         rval = a.copy()
-    elif type(a) is CDataType._cdata_type:
+    elif type(a) is _cdata_type:
         # This is not copyable (and should be used for constant data).
         rval = a
     else:
