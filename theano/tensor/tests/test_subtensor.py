@@ -36,6 +36,7 @@ from theano.tensor.subtensor import (AdvancedIncSubtensor,
 from theano.tensor.tests.test_basic import inplace_func, rand, randint_ranged
 from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import attr
+from theano.gof.opt import check_stack_trace
 
 if PY3:
     def L(i):
@@ -1739,3 +1740,13 @@ class TestInferShape(utt.InferShapeTester):
                                 [admat[1:3, aivec]],
                                 [admat_val, aivec_val], AdvancedSubtensor,
                                 check_topo=False)
+
+
+def test_local_inplace_incsubtensor1():
+    # Test local_inplace_incsubtensor1 for stack trace
+    x = fmatrix()
+    y = x**2
+    a = lmatrix()
+    z = advanced_inc_subtensor1(y, a, [1,3])
+    f = theano.function([x, a], z)
+    assert check_stack_trace(f, ops_to_check=tensor.AdvancedIncSubtensor1)

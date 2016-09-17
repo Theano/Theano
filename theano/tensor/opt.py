@@ -3063,21 +3063,24 @@ def local_subtensor_of_alloc(node):
 
     nw_val = val[tuple(val_slices)]
     nw_dims += dims[len(slices):]
+    copy_stack_trace(node.outputs[0], nw_val)
     if nw_val.ndim > len(nw_dims):
         return False
     rval = T.alloc(nw_val, *nw_dims)
-    if type(rval) not in (list, tuple):
-        rval = [rval]
-    if rval[0].type != node.outputs[0].type:
+    copy_stack_trace(node.outputs[0], rval)
+    copy_stack_trace(u, rval)
+    if rval.type != node.outputs[0].type:
         # It happen that the make_node() isn't able to infer that some
         # dimensions are broadcastable, but that now we can infer
         # that. So we need to remove that information here.
-        rval[0] = theano.tensor.unbroadcast(
-            rval[0],
-            *[i for i, (b1, b2) in enumerate(zip(rval[0].broadcastable,
+        temp_rval = rval
+        rval = theano.tensor.unbroadcast(
+            temp_rval,
+            *[i for i, (b1, b2) in enumerate(zip(temp_rval.broadcastable,
                                                  node.outputs[0].broadcastable))
               if b1 and not b2])
-    return rval
+        copy_stack_trace(temp_rval, rval)
+    return [rval]
 
 
 @register_canonicalize
@@ -4109,18 +4112,10 @@ def local_useless_tile(node):
                         # The Op don't support that case, so we can't
                         # implement the opt and test it.
                         return
-                        return [node.inputs[0]]
                     else:
                         # The Op don't support that case, so we can't
                         # implement the opt and test it.
                         return
-                        x_nd = node.inputs[0].ndim
-                        broad = ['x'] * (l - x_nd) + xrange(x_nd)
-                        ret = node.inputs[0].dimshuffle(broad)
-                        # Copy over stacktrace from previous output node,
-                        # and from node before tiling operation.
-                        copy_stack_trace(node.outputs + node.inputs[0], ret)
-                        return [ret]
                 except ValueError:
                     return
         except NotScalarConstantError:
