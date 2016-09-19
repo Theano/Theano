@@ -697,6 +697,7 @@ Test them first, as they are not guaranteed to always provide a speedup.""")
         import theano.sandbox.cuda as cuda
         from theano.tensor.nnet import LogSoftmax
         import theano.tensor.signal.pool as pool
+        import theano.gpuarray
 
         for a, t in iteritems(apply_time):
             node = a[1]
