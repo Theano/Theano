@@ -1,5 +1,6 @@
 """Driver for gradient calculations."""
 from __future__ import absolute_import, print_function, division
+from collections import OrderedDict
 import six.moves.builtins as builtins
 import logging
 import time
@@ -12,7 +13,7 @@ import theano
 
 from theano import gof
 from theano.gof import utils, Variable
-from theano.compat import OrderedDict, izip
+from theano.compat import izip
 from six.moves import xrange, reduce
 from theano.gof.null_type import NullType, null_type
 from theano.gof.op import get_debug_values

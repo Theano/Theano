@@ -5,14 +5,13 @@ and inplace operations.
 """
 from __future__ import absolute_import, print_function, division
 
-from collections import deque
+from collections import deque, OrderedDict
 
 from six import iteritems
 
 import theano
 from . import toolbox
 from . import graph
-from theano.compat import OrderedDict
 from theano.misc.ordered_set import OrderedSet
 
 from .fg import InconsistencyError

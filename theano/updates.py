@@ -2,7 +2,7 @@
 
 """
 from __future__ import absolute_import, print_function, division
-from theano.compat import OrderedDict
+from collections import OrderedDict
 
 from six import iteritems
 from theano.compile.sharedvalue import SharedVariable

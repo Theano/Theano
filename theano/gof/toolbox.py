@@ -1,12 +1,13 @@
 from __future__ import absolute_import, print_function, division
 from functools import partial
+from collections import OrderedDict
+
 import sys
 import time
 import inspect
 
 import theano
 from theano import config
-from theano.compat import OrderedDict
 from theano.gof import graph
 
 

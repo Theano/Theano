@@ -5,6 +5,7 @@ help make new Ops more rapidly.
 
 """
 from __future__ import absolute_import, print_function, division
+from collections import OrderedDict
 
 import copy
 import six.moves.cPickle as pickle
@@ -12,7 +13,6 @@ import warnings
 
 import theano
 from theano import gof
-from theano.compat import OrderedDict
 from six import iteritems, integer_types
 from six.moves import xrange
 

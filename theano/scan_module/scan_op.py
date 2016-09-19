@@ -60,6 +60,7 @@ import copy
 import itertools
 import logging
 import time
+from collections import OrderedDict
 
 import numpy
 from six import iteritems, integer_types
@@ -73,7 +74,7 @@ from theano import compile, config, gradient, gof, tensor
 from theano.gof import PureOp, Apply
 from theano.gof.graph import io_connection_pattern
 from theano.gof.toolbox import NoOutputFromInplace
-from theano.compat import OrderedDict, izip
+from theano.compat import izip
 from theano.tensor import TensorType
 from theano.tensor.opt import Shape_i
 from theano.gradient import grad_undefined, DisconnectedType, NullType

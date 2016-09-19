@@ -1,4 +1,5 @@
 from __future__ import absolute_import, print_function, division
+from collections import OrderedDict
 import linecache
 import sys
 import traceback
@@ -8,7 +9,7 @@ from six import iteritems, integer_types, string_types, with_metaclass
 from six.moves import StringIO
 
 from theano import config
-from theano.compat import OrderedDict, PY3
+from theano.compat import PY3
 
 
 def simple_extract_stack(f=None, limit=None, skips=[]):

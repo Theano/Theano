@@ -58,8 +58,7 @@ else:
 
     cmp = cmp
 
-    # Older Python 2.x compatibility
-    from theano.compat.python2x import DictMixin, OrderedDict
+    from collections import OrderedDict, MutableMapping as DictMixin
 
     def decode(x):
         return x

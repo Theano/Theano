@@ -53,13 +53,13 @@ from __future__ import absolute_import, print_function, division
 import logging
 import copy
 from sys import maxsize
+from collections import OrderedDict
 import numpy
 
 import theano
 from theano import tensor, scalar
 from theano.tensor import opt, get_scalar_constant_value, Alloc, AllocEmpty
 from theano import gof
-from theano.compat import OrderedDict
 from six import integer_types, iteritems
 from six.moves import xrange
 from theano.compile import optdb

@@ -5,7 +5,7 @@ amount of useful generic optimization tools.
 """
 from __future__ import absolute_import, print_function, division
 
-from collections import deque, defaultdict
+from collections import deque, defaultdict, OrderedDict
 import copy
 import inspect
 import logging
@@ -19,7 +19,7 @@ import numpy
 
 import theano
 from theano import config
-from theano.compat import izip, OrderedDict
+from theano.compat import izip
 from six import string_types, iteritems, itervalues, integer_types
 from six.moves import reduce
 from theano.gof import graph, op, utils, unify, toolbox

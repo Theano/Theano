@@ -7,11 +7,11 @@ from __future__ import absolute_import, print_function, division
 __docformat__ = 'restructedtext en'
 
 
+from collections import OrderedDict
 import numpy
 
 import theano
 import theano.tensor as T
-from theano.compat import OrderedDict
 
 
 def gen_data():
