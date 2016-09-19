@@ -75,7 +75,7 @@ def scan_with_checkpoints(fn, sequences=[], outputs_info=None,
                                   n_steps=o_n_steps, allow_gc=True)
                                   
     # Keep only the last timestep of every output but keep all the updates
-    return results, updates
+    return results, updates # TODO is it a bug?
     if not isinstance(results, list):
         return results[-1:], updates
     else:
