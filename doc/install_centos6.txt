@@ -11,7 +11,9 @@ CentOS 6 Installation Instructions
     from GitHub, please make sure you are reading `the latest version of this
     page <http://deeplearning.net/software/theano_versions/dev/install_centos6.html>`_.
 
-.. include:: requirements.txt
+.. |PlatformCompiler| replace:: ``python-dev``, ``g++`` >= 4.2
+
+.. include:: requirements.inc
 
 .. include:: install_generic.inc
     :start-line: 5

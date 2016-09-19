@@ -13,7 +13,9 @@ Ubuntu Installation Instructions
 
 .. _gpu_linux:
 
-.. include:: requirements.txt
+.. |PlatformCompiler| replace:: ``python-dev``, ``g++`` >= 4.2
+
+.. include:: requirements.inc
 
 .. include:: install_generic.inc
     :start-line: 5
