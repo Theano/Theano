@@ -93,6 +93,7 @@ int dnn_rnn_gw(cudnnRNNDescriptor_t desc, npy_uint64 _wsize,
 
   if (theano_prep_output(dw, 1, &wsize, x->ga.typecode, GA_C_ORDER, c) != 0)
     goto fail;
+  GpuArray_memset(&(*dw)->ga, 0);
 
   if (c_make_filter(*dw, &dwdesc) != 0)
     goto fail;
