@@ -4855,6 +4855,13 @@ class Canonizer(gof.LocalOptimizer):
         assert len(node.outputs) == 1
         out = node.outputs[0]
 
+        # out won't have a clients field when we didn't commit a
+        # started change in the graph.  We can't do the check if we
+        # want to skip it, so we force the skip it. It should be
+        # reapplied later.
+        if not hasattr(out, 'clients'):
+            return
+
         # check if any of the clients of this node would be part of
         # this canonized graph...  if so, we do nothing and wait for
         # them to be transformed.
