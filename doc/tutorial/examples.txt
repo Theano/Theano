@@ -289,7 +289,7 @@ functions but with different shared variables or updates. This is done using
 the :func:`copy()<theano.compile.function_module.Function.copy>` method of ``function`` objects. The optimized graph of the original function is copied,
 so compilation only needs to be performed once.
 
-Let's start from the accumulator defined above. Let's add the ``on_unused_input='ignore'`` parameter in case we don't want to use both of our current arguments in a future copy of the function (this isn't necessary on versions >= 0.8.2):
+Let's start from the accumulator defined above. Let's add the ``on_unused_input='ignore'`` parameter in case we don't want to use both of our current arguments in a future copy of the function (this isn't necessary on versions > 0.8.2):
 
 >>> import theano
 >>> import theano.tensor as T
