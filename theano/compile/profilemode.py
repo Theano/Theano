@@ -701,11 +701,11 @@ Test them first, as they are not guaranteed to always provide a speedup.""")
         for a, t in iteritems(apply_time):
             node = a[1]
             if (isinstance(node.op, pool.Pool)):
-                if not cuda.dnn.dnn_available() and not theano.gpuarray.dnn.dnn_present():
+                if (not cuda.dnn.dnn_available() and not theano.gpuarray.dnn.dnn_present()):
                     print("Install CuDNN to do pooling faster"
                           "this allows the operation to run on GPU")
             if (isinstance(node.op, LogSoftmax)):
-                if not cuda.dnn.dnn_available() and not theano.gpuarray.dnn.dnn_present():
+                if (not cuda.dnn.dnn_available() and not theano.gpuarray.dnn.dnn_present()):
                     print("Install CuDNN to do LogSoftmax faster"
                           "this allows the operation to run on GPU")
 
