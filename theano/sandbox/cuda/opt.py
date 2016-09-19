@@ -1672,7 +1672,7 @@ conv_groupopt.register('local_conv_dnn', dnn.local_conv_dnn,
 # It can be disabled by excluding 'conv_gemm'.
 conv_groupopt.register('local_conv_gemm', local_conv_gemm,
                        'conv_gemm',
-                       'fast_compile', 'fast_run', positin=30)
+                       'fast_compile', 'fast_run', position=30)
 
 
 class LocalCudaMetaOptimizer(LocalMetaOptimizer):
