@@ -176,7 +176,7 @@ class Pool(OpenMPOp):
 
     """
 
-    __props__ = ('ndim', 'ignore_border', 'mode')
+    __props__ = ('ignore_border', 'mode', 'ndim')
 
     @staticmethod
     def out_shape(imgshape, ds, ignore_border=False, st=None, padding=None, ndim=None):
@@ -722,7 +722,7 @@ class Pool(OpenMPOp):
 
 
 class PoolGrad(OpenMPOp):
-    __props__ = ('ndim', 'ignore_border', 'mode')
+    __props__ = ('ignore_border', 'mode', 'ndim')
 
     @staticmethod
     def out_shape(imgshape, ds, ignore_border=False, st=None, padding=None, ndim=None):
@@ -1505,7 +1505,7 @@ class AveragePoolGrad(PoolGrad):
 
 
 class DownsampleFactorMaxGradGrad(OpenMPOp):
-    __props__ = ('ndim', 'ignore_border', 'mode')
+    __props__ = ('ignore_border', 'mode', 'ndim')
 
     def __init__(self, ignore_border, mode='max', ndim=None, openmp=None):
         self.ndim = ndim

@@ -1914,7 +1914,7 @@ def _check_constant_args_pool(ndim, ws, stride, pad, node):
 @local_optimizer([pool.Pool])
 def local_gpu_downsample_factor_max(node):
     if (isinstance(node.op, pool.Pool)):
-        assert node.op.__props__ == ('ndim', 'ignore_border', 'mode')
+        assert node.op.__props__ == ('ignore_border', 'mode', 'ndim')
         x, ws, stride, pad = node.inputs
         nd = node.op.ndim if node.op.ndim else (x.ndim - 2)
         ret = _check_constant_args_pool(nd, ws, stride, pad, node)
@@ -1941,7 +1941,7 @@ def local_gpu_downsample_factor_max(node):
 @local_optimizer([pool.MaxPoolGrad])
 def local_gpu_downsample_factor_max_grad(node):
     if (isinstance(node.op, pool.MaxPoolGrad)):
-        assert node.op.__props__ == ('ndim', 'ignore_border', 'mode')
+        assert node.op.__props__ == ('ignore_border', 'mode', 'ndim')
         x, z, gz, ws, stride, pad = node.inputs
         nd = node.op.ndim if node.op.ndim else (x.ndim - 2)
         ret = _check_constant_args_pool(nd, ws, stride, pad, node)
@@ -1972,7 +1972,7 @@ def local_gpu_downsample_factor_max_grad(node):
 @local_optimizer([pool.DownsampleFactorMaxGradGrad])
 def local_gpu_downsample_factor_max_grad_grad(node):
     if isinstance(node.op, pool.DownsampleFactorMaxGradGrad):
-        assert node.op.__props__ == ('ndim', 'ignore_border', 'mode')
+        assert node.op.__props__ == ('ignore_border', 'mode', 'ndim')
         x, z, gx, ws, stride, pad = node.inputs
         nd = node.op.ndim if node.op.ndim else (x.ndim - 2)
         ret = _check_constant_args_pool(nd, ws, stride, pad, node)

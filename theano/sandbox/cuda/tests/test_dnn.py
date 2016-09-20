@@ -599,7 +599,7 @@ def test_pooling_opt_arbitrary_dimensions():
         for ws in ((2, 2), (3, 3, 3)):
             # create input shape: non-pooling dimensions
             # followed by 2 or 3 pooling dimensions
-            shp = (2,) * n_non_pool_dims + (5,) * len(ws)
+            shp = tuple(range(2, 2 + n_non_pool_dims)) + tuple(range(5, 5 + len(ws)))
             data = numpy.random.normal(0, 1, shp).astype('float32')
             input = shared(data)
 
