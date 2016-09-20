@@ -1,0 +1,19 @@
+#!/bin/bash
+
+BUILDBOT_DIR=$WORKSPACE/nightly_build
+THEANO_PARAM="theano --with-timer --timer-top-n 10"
+# Set test reports using nosetests xunit
+XUNIT="--with-xunit --xunit-file="
+export THEANO_FLAGS=init_gpu_device=gpu
+export GPUARRAY=none
+source $HOME/.bashrc
+
+mkdir -p ${BUILDBOT_DIR}
+ls -l ${BUILDBOT_DIR}
+echo "Directory of stdout/stderr ${BUILDBOT_DIR}"
+echo
+echo
+
+FILE=${BUILDBOT_DIR}/theano_python3_tests.xml
+set -x
+PYTHONPATH= THEANO_FLAGS=$THEANO_FLAGS,compiledir=$WORKSPACE/compile/theano_compile_dir_theano_p3.3.0,mode=FAST_COMPILE,warn.ignore_bug_before=0.5,on_opt_error=raise,on_shape_error=raise python3 bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE}
