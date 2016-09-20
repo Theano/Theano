@@ -213,6 +213,7 @@ def f_gpua_min(inp):
     return f(inp)
 f_gpua_min.cache = dict()
 
+
 def f_gpua_max(inp):
     dt = inp.dtype
     ctx_name = _name_for_ctx(inp.context)
