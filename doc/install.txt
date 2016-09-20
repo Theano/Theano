@@ -26,7 +26,7 @@ instructions below for detailed installation steps):
         Python 2.4 was supported up to and including the release 0.6.
         Python 3 is supported past the 3.3 release.
 
-    ``g++`` (Linux and Windows), ``python-dev`` (Linux), ``clang`` (macOS)
+    ``g++`` (Linux and Windows), ``clang`` (macOS), ``python-dev`` (All platforms)
         Not technically required but *highly* recommended, in order to compile
         generated C code. Theano `can` fall back on a NumPy-based Python execution
         model, but a C compiler allows for vastly faster execution.
