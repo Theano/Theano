@@ -6,7 +6,7 @@ global-include *.cpp
 global-include *.h
 global-include *.sh
 global-include *.pkl
-recursive-include docs
+recursive-include doc
 include bin/theano-cache
 include bin/theano-nose
 include bin/theano-test
