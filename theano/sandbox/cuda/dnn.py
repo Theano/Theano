@@ -2981,6 +2981,7 @@ if True:
             if nd not in (2, 3):
                 return
             if (img.owner and isinstance(img.owner.op, HostFromGpu)):
+                # dnn_pool expects exactly 2 non-pooling dimensions
                 if img.ndim == nd + 2:
                     ret = dnn_pool(gpu_contiguous(img.owner.inputs[0]),
                                    ws, stride=stride, pad=pad, mode=mode)
@@ -3027,6 +3028,7 @@ if True:
                 (out.owner and isinstance(out.owner.op, HostFromGpu)) or
                 (inp_grad.owner and isinstance(inp_grad.owner.op,
                                                HostFromGpu))):
+                # the GPU ops expect exactly 2 non-pooling dimensions
                 if inp.ndim == nd + 2:
                     ret = GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
                                                     gpu_contiguous(out),
@@ -3061,6 +3063,7 @@ if True:
             if ((inp.owner and isinstance(inp.owner.op, HostFromGpu)) or
                 (inp_grad.owner and isinstance(inp_grad.owner.op,
                                                HostFromGpu))):
+                # the GPU ops expect exactly 2 non-pooling dimensions
                 if inp.ndim == nd + 2:
                     contiguous_inp_grad = gpu_contiguous(inp_grad)
                     ret = GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),

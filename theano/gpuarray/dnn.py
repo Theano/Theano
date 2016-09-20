@@ -1877,6 +1877,7 @@ def local_gpua_pool_dnn_alternative(op, ctx_name, inputs, outputs):
         return
     img = gpu_contiguous(as_gpuarray_variable(img, ctx_name))
     mode = op.mode
+    # dnn_pool expects exactly 2 non-pooling dimensions
     if img.ndim == nd + 2:
         return dnn_pool(img, ws, stride=stride, pad=pad, mode=mode)
     else:
@@ -1903,6 +1904,7 @@ def local_gpua_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
     out_grad = gpu_contiguous(as_gpuarray_variable(out_grad, ctx_name))
     mode = op.mode
 
+    # the GPU ops expect exactly 2 non-pooling dimensions
     if inp.ndim == nd + 2:
         return GpuDnnPoolGrad(mode=mode)(inp,
                                          out,
@@ -1940,12 +1942,14 @@ def local_gpua_avg_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
     out_grad = gpu_contiguous(as_gpuarray_variable(out_grad, ctx_name))
     mode = op.mode
 
+    # the GPU ops expect exactly 2 non-pooling dimensions
     if inp.ndim == nd + 2:
         # We reuse out_grad because cuDNN does not use the value of the `out`
         # argument but still checks its shape for average pooling. This
         # has been observed in v2 and v3 as far as I know.
         return GpuDnnPoolGrad(mode=mode)(inp, out_grad, out_grad, ws, stride, pad)
     else:
+        # reshape to 4D or 5D with 2 non-pooling dimensions
         inp_padded = pad_dims(inp, 2, nd)
         out_grad_padded = pad_dims(out_grad, 2, nd)
         ret_padded = GpuDnnPoolGrad(mode=mode)(inp_padded,
