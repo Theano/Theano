@@ -849,6 +849,13 @@ second dimension
             char = numpy.sctype2char(out_dtype)
             sig = char * node.nin + '->' + char * node.nout
             node.tag.sig = sig
+        node.tag.fake_node = Apply(self.scalar_op,
+                  [get_scalar_type(dtype=input.type.dtype).make_variable()
+                   for input in node.inputs],
+                  [get_scalar_type(dtype=output.type.dtype).make_variable()
+                   for output in node.outputs])
+
+        self.scalar_op.prepare_node(node.tag.fake_node, [], [])
 
     def perform(self, node, inputs, output_storage):
         if len(node.inputs) >= 32:
@@ -1109,11 +1116,7 @@ second dimension
 
         # We generate the C code of the inner loop using the scalar op
         task_code = self.scalar_op.c_code(
-            Apply(self.scalar_op,
-                  [get_scalar_type(dtype=input.type.dtype).make_variable()
-                   for input in node.inputs],
-                  [get_scalar_type(dtype=output.type.dtype).make_variable()
-                   for output in node.outputs]),
+            node.tag.fake_node,
             nodename + '_scalar_',
             ["%s_i" % s for s in _inames],
             ["%s_i" % s for s in onames],
