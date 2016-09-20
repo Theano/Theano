@@ -3462,6 +3462,8 @@ class Composite(ScalarOp):
     init_param = ('inputs', 'outputs')
 
     def __str__(self):
+        if self.name is None:
+            self.init_name()
         return self.name
 
     def make_new_inplace(self, output_types_preference=None, name=None):
@@ -3476,7 +3478,7 @@ class Composite(ScalarOp):
         if name:
             out.name = name
         else:
-            name = out.name
+            name = getattr(out,'name', None)
         super(Composite, out).__init__(output_types_preference, name)
         return out
 
@@ -3558,6 +3560,8 @@ class Composite(ScalarOp):
         """
         try:
             rval = self.name
+            if rval is None:
+                raise AttributeError
         except AttributeError:
             if 0:
                 l = []
@@ -3642,7 +3646,10 @@ class Composite(ScalarOp):
         self.nin = len(inputs)
         self.nout = len(outputs)
         self.init_fgraph()       # self.fgraph
-        self.init_name()      # self.name
+
+        # Postpone the creation in case it isn't needed.
+        #  self.init_name()      # self.name
+        self.name = None
         self.init_c_code()    # self._c_code and self.nodenames
         self.init_py_impls()  # self._impls
 
