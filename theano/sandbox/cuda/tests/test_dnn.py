@@ -174,6 +174,7 @@ def pool3d2d(input, ds=(2, 2, 2), strides=None, pad=(0, 0, 0),
     if strides is None:
         strides = ds
 
+    assert input.ndim == 5
     shape = input.shape
 
     # resahpe to B, C*0, 1, 2 and do the pooling on 1, 2
