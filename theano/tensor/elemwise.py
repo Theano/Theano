@@ -142,7 +142,6 @@ class DimShuffle(Op):
         self.new_order = new_order
         if inplace is True:
             self.inplace = inplace
-            self._props_dict().pop('inplace')
         else:
             raise ValueError("DimShuffle is inplace by default and hence the inplace for DimShuffle must be true")
 

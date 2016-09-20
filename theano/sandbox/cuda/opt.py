@@ -399,10 +399,7 @@ def local_gpu_dimshuffle_0(node):
         if input.owner and isinstance(input.owner.op, HostFromGpu):
             # move the add to a GpuAdd
             p_dict = node.op._props_dict()
-            try:
-                p_dict.pop('inplace')
-            except KeyError:
-                pass
+            p_dict.pop('inplace', None)
             new_op = GpuDimShuffle(**p_dict)
             return [host_from_gpu(new_op(as_cuda_ndarray_variable(input)))]
     if isinstance(node.op, GpuFromHost):
@@ -411,10 +408,7 @@ def local_gpu_dimshuffle_0(node):
                                            tensor.DimShuffle):
             dimshuffle_node = host_input.owner
             p_dict = dimshuffle_node.op._props_dict()
-            try:
-                p_dict.pop('inplace')
-            except KeyError:
-                pass
+            p_dict.pop('inplace', None)
             new_op = GpuDimShuffle(**p_dict)
             return [new_op(
                 as_cuda_ndarray_variable(dimshuffle_node.inputs[0]))]
@@ -1189,6 +1183,7 @@ def local_gpu_incsubtensor(node):
         host_output = node.inputs[0]
         if host_output.owner and \
            type(host_output.owner.op) == tensor.IncSubtensor:
+            incsubt = host_output.owner.op
             x, y = host_output.owner.inputs[0:2]
             coords = host_output.owner.inputs[2:]
             if x.dtype != "float32":
@@ -1197,7 +1192,7 @@ def local_gpu_incsubtensor(node):
                 # The IncSubtensor upcast to float32 y, so we do it
                 # explicitly to move it to the GPU.
                 y = y.astype('float32')
-            ret = GpuIncSubtensor(**node.op._props_dict())(as_cuda_ndarray_variable(x),
+            ret = GpuIncSubtensor(**incsubt._props_dict())(as_cuda_ndarray_variable(x),
                                                            as_cuda_ndarray_variable(y),
                                                            *coords)
             ret.tag.nan_guard_mode_check = getattr(
@@ -1922,7 +1917,7 @@ def local_gpu_downsample_factor_max(node):
         if (pad) != (0, 0) or node.op.mode != 'max' or stride != ws:
             return
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            gpu_ds = GpuDownsampleFactorMax(**node.op._props_dict())
+            gpu_ds = GpuDownsampleFactorMax(ws, node.op.ignore_border)
             return [host_from_gpu(gpu_ds(x.owner.inputs[0]))]
 
 
@@ -1939,7 +1934,7 @@ def local_gpu_downsample_factor_max_grad(node):
         if pad != (0, 0) or node.op.mode != 'max' or stride != ws:
             return
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            gpu_ds_grad = GpuDownsampleFactorMaxGrad(node.op.ds, node.op.ignore_border)
+            gpu_ds_grad = GpuDownsampleFactorMaxGrad(ws, node.op.ignore_border)
             return [host_from_gpu(gpu_ds_grad(x.owner.inputs[0],
                                               as_cuda_ndarray_variable(z),
                                               as_cuda_ndarray_variable(gz)))]
