@@ -341,6 +341,24 @@ def pad_dims(input, leftdims, rightdims):
     This reduces or expands the number of dimensions of the input to
     exactly `leftdims`, by adding extra dimensions on the left or by
     combining some existing dimensions on the left of the input.
+
+    Use `unpad_dims` to reshape back to the original dimensions.
+
+    Examples
+    --------
+    Given input of shape (3, 5, 7), ``pad_dims(input, 2, 2)``
+    adds a singleton dimension and reshapes to (3, 1, 5, 7).
+    Given that output from pad_dims, ``unpad_dims(output, input, 2, 2)``
+    reshapes back to (3, 5, 7).
+
+    Given input of shape (3, 5, 7, 9), ``pad_dims(input, 2, 2)``
+    does not reshape and returns output with shape (3, 5, 7, 9).
+
+    Given input of shape (3, 5, 7, 9, 11), ``pad_dims(input, 2, 2)``
+    combines the first two dimensions and reshapes to (8, 7, 9, 11).
+
+    Given input of shape (3, 5, 7, 9), ``pad_dims(input, 2, 3)``
+    adds a singleton dimension and reshapes to (3, 1, 5, 7, 9).
     """
     assert input.ndim >= rightdims
 
@@ -350,15 +368,25 @@ def pad_dims(input, leftdims, rightdims):
     # extract image dimensions
     img_shape = input.shape[-rightdims:]
 
-    # count the number of "leading" dimensions, store as dmatrix
-    batch_size = tensor.prod(input.shape[:-rightdims])
-    batch_size = tensor.shape_padright(batch_size, 1)
+    non_pool_ndim = input.ndim - rightdims
+    if non_pool_ndim < leftdims:
+        # too few dimensions, pad on the left
+        dummy_dims = tensor.as_tensor([1] * (leftdims - non_pool_ndim))
+        new_shape = tensor.join(0, dummy_dims,
+                                input.shape[:non_pool_ndim],
+                                img_shape)
+    else:
+        # too many dimensions, combine the leading dimensions
+        batched_ndim = non_pool_ndim - leftdims + 1
+        batch_size = tensor.prod(input.shape[:batched_ndim])
+        # convert to a vector for tensor.join
+        batch_size = tensor.shape_padright(batch_size, 1)
+        new_shape = tensor.join(0, batch_size,
+                                input.shape[batched_ndim:non_pool_ndim],
+                                img_shape)
 
-    # store in the required shape, for example as a 4D tensor
-    # with shape: (batch_size,1,height,width)
-    new_shape = tensor.cast(tensor.join(0, batch_size,
-                                        tensor.as_tensor([1] * (leftdims - 1)),
-                                        img_shape), 'int64')
+    # store in the required shape
+    new_shape = tensor.cast(new_shape, 'int64')
     input_ND = GpuReshape(leftdims + rightdims)(input, new_shape)
     return input_ND
 
