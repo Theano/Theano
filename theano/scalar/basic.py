@@ -3478,7 +3478,7 @@ class Composite(ScalarOp):
         if name:
             out.name = name
         else:
-            name = getattr(out,'name', None)
+            name = getattr(out, 'name', None)
         super(Composite, out).__init__(output_types_preference, name)
         return out
 
