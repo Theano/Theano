@@ -258,9 +258,7 @@ def test_pooling():
             def fn(x):
                 return pool_2d(x, (ws, ws), ignore_border=True,
                                padding=pad, mode=mode)
-            utt.verify_grad(fn, [data],
-                            cast_to_output_type=False,
-                            mode=mode_with_gpu)
+            utt.verify_grad(fn, [data], mode=mode_with_gpu)
             # Confirm that the opt would have inserted it.
             fg = theano.function([x], theano.grad(fn(x).sum(), x),
                                  mode=mode_with_gpu)
@@ -275,9 +273,7 @@ def test_pooling():
                     pad=pad,
                     mode=mode)
                 return dnn_op
-            utt.verify_grad(fn, [data],
-                            cast_to_output_type=False,
-                            mode=mode_with_gpu)
+            utt.verify_grad(fn, [data], mode=mode_with_gpu)
             # Confirm that we get the good op.
             fg = theano.function([x], theano.grad(fn(x).sum(), x),
                                  mode=mode_with_gpu)
@@ -371,9 +367,7 @@ def test_pooling_3d():
             def fn(x):
                 return pool_3d(x, (ws, ws, ws), ignore_border=True,
                                padding=pad, mode=mode)
-            utt.verify_grad(fn, [data],
-                            cast_to_output_type=False,
-                            mode=mode_with_gpu)
+            utt.verify_grad(fn, [data], mode=mode_with_gpu)
             # Confirm that the opt would have inserted it.
             fg = theano.function([x], theano.grad(fn(x).sum(), x),
                                  mode=mode_with_gpu)
@@ -388,9 +382,7 @@ def test_pooling_3d():
                     pad=pad,
                     mode=mode)
                 return dnn_op
-            utt.verify_grad(fn, [data],
-                            cast_to_output_type=False,
-                            mode=mode_with_gpu)
+            utt.verify_grad(fn, [data], mode=mode_with_gpu)
             # Confirm that we get the good op.
             fg = theano.function([x], theano.grad(fn(x).sum(), x),
                                  mode=mode_with_gpu)
@@ -435,9 +427,7 @@ def test_pooling_with_tensor_vars():
                 (1, 1, 3, 3)]:
         data = numpy.random.normal(0, 1, shp).astype("float32") * 10
         theano.tests.unittest_tools.verify_grad(
-            fn, [data],
-            cast_to_output_type=False,
-            mode=mode_with_gpu)
+            fn, [data], mode=mode_with_gpu)
 
     out2 = pool_2d_i2n(x, ds=(2, 2), strides=(1, 1),
                        pad=(0, 0),
