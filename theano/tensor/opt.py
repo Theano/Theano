@@ -219,10 +219,8 @@ class InplaceElemwiseOptimizer(Optimizer):
 
         check_each_change = config.tensor.insert_inplace_optimizer_validate_nb
         if check_each_change == -1:
-            if len(fgraph.apply_nodes) > 500:
-                check_each_change = 10
-            else:
-                check_each_change = 1
+            #By default, check 10 times during the course of the optimization.
+            check_each_change = max(int(len(fgraph.apply_nodes)/10), 1)
 
         nb_change_no_validate = 0
         chk = fgraph.checkpoint()
