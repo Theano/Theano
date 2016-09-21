@@ -2017,10 +2017,7 @@ class TopoOptimizer(NavigatorOptimizer):
 
         def pruner(node):
             if node is not current_node:
-                try:
-                    q.remove(node)
-                except ValueError:
-                    pass
+                node.disavowed = True
         u = self.attach_updater(fgraph, importer, pruner,
                                 name=getattr(self, 'name', None))
         nb = 0
@@ -2031,6 +2028,8 @@ class TopoOptimizer(NavigatorOptimizer):
                     node = q.pop()
                 else:
                     node = q.popleft()
+                if getattr(node, 'disavowed', False):
+                    continue
                 current_node = node
                 nb += self.process_node(fgraph, node)
             loop_t = time.time() - t0
@@ -2145,15 +2144,15 @@ class OpKeyOptimizer(NavigatorOptimizer):
 
         def pruner(node):
             if node is not current_node and node.op == op:
-                try:
-                    q.remove(node)
-                except ValueError:
-                    pass
+                node.disavowed = True
+
         u = self.attach_updater(fgraph, importer, pruner,
                                 name=getattr(self, 'name', None))
         try:
             while q:
                 node = q.pop()
+                if getattr(node, "disavowed", False):
+                    continue
                 current_node = node
                 self.process_node(fgraph, node)
         finally:
@@ -2390,10 +2389,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
             def pruner(node):
                 if node is not current_node:
-                    try:
-                        q.remove(node)
-                    except ValueError:
-                        pass
+                    node.disavowed = True
             chin = None
             if self.tracks_on_change_inputs:
                 def chin(node, i, r, new_r, reason):
@@ -2405,6 +2401,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             try:
                 while q:
                     node = q.pop()
+                    if getattr(node, "disavowed", False):
+                        continue
                     current_node = node
 
                     for lopt in (self.local_optimizers_all +
