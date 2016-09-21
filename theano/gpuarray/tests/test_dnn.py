@@ -1448,11 +1448,8 @@ def test_dnn_rnn_gru():
 
     # test code
     X = T.tensor3('X')
-    X.tag.test_value = numpy.zeros((timesteps, batch_size, input_dim), dtype=theano.config.floatX)
     Y = T.tensor3('Y')
-    Y.tag.test_value = numpy.zeros((timesteps, batch_size, hidden_dim), dtype=theano.config.floatX)
     h0 = T.tensor3('h0')
-    h0.tag.test_value = numpy.zeros((depth, batch_size, hidden_dim), dtype=theano.config.floatX)
 
     rnnb = dnn.RNNBlock(theano.config.floatX, hidden_dim, depth, 'gru')
     psize = rnnb.get_param_size([batch_size, input_dim])

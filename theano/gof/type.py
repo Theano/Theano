@@ -670,6 +670,12 @@ class CDataType(Type):
         return data
 
     def _get_func(self):
+        """
+        Return a function that makes a value from an integer.
+
+        The integer value is assumed to be a valid pointer for the
+        type and no check is done to ensure that.
+        """
         from theano.scalar import get_scalar_type
 
         if self._fn is None:
@@ -680,6 +686,15 @@ class CDataType(Type):
         return self._fn
 
     def make_value(self, ptr):
+        """
+        Make a value of this type.
+
+        Parameters
+        ----------
+        ptr : int
+            Integer representation of a valid pointer value
+
+        """
         return self._get_func()(ptr)
 
     def c_declare(self, name, sub, check_input=True):

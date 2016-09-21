@@ -90,10 +90,11 @@ theano_cfg.read(config_files)
 theano_raw_cfg = ConfigParser.RawConfigParser()
 theano_raw_cfg.read(config_files)
 
+
 class change_flags(object):
     """
     Use this as a decorator or context manager to change the value of
-    Theano config variable.
+    Theano config variables.
 
     Useful during tests.
     """
@@ -112,6 +113,7 @@ class change_flags(object):
         def res(*args, **kwargs):
             with self:
                 return f(*args, **kwargs)
+        return res
 
     def __enter__(self):
         self.old_vals = {}

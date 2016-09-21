@@ -58,11 +58,12 @@ def _dnn_lib():
         lib_name = ctypes.util.find_library('cudnn')
         if lib_name is None and sys.platform == 'win32':
             # Update these names when new versions of cudnn are supported.
-            lib_name = ctypes.util.find_library('cudnn64_5.dll')
-            if lib_name is None:
-                lib_name = ctypes.util.find_library('cudnn64_4.dll')
+            for name in ['cudnn64_5.dll', 'cudnn64_4.dll']:
+                lib_name = ctypes.util.find_library(name)
+                if lib_name:
+                    break
         if lib_name is None:
-            raise RuntimeError('Could not find cudnn library')
+            raise RuntimeError('Could not find cudnn library (maybe your are using a )')
         _dnn_lib.handle = ctypes.cdll.LoadLibrary(lib_name)
         cudnn = _dnn_lib.handle
         cudnn.cudnnCreate.argtypes = [ctypes.POINTER(ctypes.c_void_p)]
@@ -1978,8 +1979,10 @@ class _RNNSplitParams(DnnBase):
 
     def make_node(self, w, desc, layer, isize, typecode):
         w = as_gpuarray_variable(w, infer_context_name(w))
+        assert w.ndim == 1
         layer = as_scalar(layer).astype('int32')
         isize = as_tensor_variable(isize).astype('uint64')
+        assert isize.ndim == 2
         typecode = as_scalar(typecode).astype('int32')
         _1d = GpuArrayType(w.type.dtype, [False],
                            context_name=w.type.context_name)
@@ -2087,6 +2090,7 @@ class _RNNSplitParams(DnnBase):
   nshp[0] = PyGpuArray_DIM(%(w)s, 0);
   nshp[1] = 1;
         """ % kw
+
         def get_params(id, m, b):
             kw2 = kw.copy()
             kw2['id'] = id
@@ -2152,7 +2156,7 @@ class _RNNSplitParams(DnnBase):
   %(m)s->ga.strides[1] = %(m)s->ga.dimensions[0] * gpuarray_get_elsize(%(m)s->ga.typecode);
             """ % kw2
 
-        for i in range(len(outputs)//2):
+        for i in range(len(outputs) // 2):
             code += get_params(i, outputs[2 * i], outputs[(2 * i) + 1])
 
         code += """
@@ -2189,16 +2193,16 @@ class GpuDnnRNNOp(DnnBase):
         elif direction_mode == 'unidirectional':
             self.num_dirs = 1
         else:
-            raise ValueError('direction_mode')
+            raise ValueError('direction_mode is invalid (got %s)' % (direction_mode,))
 
     def dnn_context(self, node):
         return node.outputs[1].type.context_name
 
     def make_node(self, desc, w, x, hx, cx=None):
         if cx is None:
-            context_name = infer_context_name(w, x, hx, cx)
-        else:
             context_name = infer_context_name(w, x, hx)
+        else:
+            context_name = infer_context_name(w, x, hx, cx)
 
         w = as_gpuarray_variable(w, context_name)
         x = as_gpuarray_variable(x, context_name)
@@ -2232,8 +2236,15 @@ class GpuDnnRNNOp(DnnBase):
         reserve, y, hy = outputs[:3]
         _, dy, dhy = output_grads[:3]
         dcy = output_grads[3] if len(output_grads) == 4 else None
-        # If both dy and dhy are disconnected, then this will error
-        # out, but it is indeed an error.
+        # Since the op return two outputs which contain essentially
+        # the same information, the user will most likely only use one
+        # of them.  This leads to the situation that the other is
+        # considered "disconnected" by theano in the gradient.
+        # However we know that this isn't really the case so we fix it
+        # up here.
+
+        # If both dy and dhy are disconnected the fixup will fail, but
+        # that's ok as in that case we really are disconnected.
         if isinstance(dy.type, DisconnectedType):
             dy = as_gpuarray_variable(dhy[-1],
                                       context_name=dhy.type.context_name)
