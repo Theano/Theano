@@ -337,16 +337,6 @@ class GpuDimShuffle(GpuOp):
 
         self.view_map = {0: [0]}
 
-        self._rehash()
-
-    def __getstate__(self):
-        d = dict(self.__dict__)
-        del d['_hashval']
-        return d
-
-    def __setstate__(self, d):
-        self.__dict__.update(d)
-
     def make_node(self, input):
         ib = tuple(input.type.broadcastable)
         if not ib == self.input_broadcastable:
