@@ -49,8 +49,10 @@ def test_gc_never_pickles_temporaries():
         g = theano.function([x], r, mode=theano.Mode(optimizer=optimizer,
                                                      linker=g_linker))
 
-        len_pre_f = len(pickle.dumps(f))
-        len_pre_g = len(pickle.dumps(g))
+        pre_f = pickle.dumps(f)
+        pre_g = pickle.dumps(g)
+        len_pre_f = len(pre_f)
+        len_pre_g = len(pre_g)
 
         # We can't compare the content or the length of the string
         # between f and g. 2 reason, we store some timming information
@@ -87,7 +89,17 @@ def test_gc_never_pickles_temporaries():
 
         # assert that f() didn't cause the function to grow
         # allow_gc should leave the function un-changed by calling
-        assert len_pre_f == len_post_f
+        if len_pre_f != len_post_f:
+            for i in range(len_pre_f//100):
+                p1 = pre_f[i*100:(i+1)*100]
+                p2 = post_f[i*100:(i+1)*100]
+                if p1 != p2:
+                    print(i)
+                    print("p1")
+                    print(p1)
+                    print("p2")
+                    print(p2)
+        assert len_pre_f == len_post_f, (len_pre_f, len_post_f)
 
         # assert that g() didn't cause g to grow because temporaries
         # that weren't collected shouldn't be pickled anyway
