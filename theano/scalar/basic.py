@@ -3478,7 +3478,7 @@ class Composite(ScalarOp):
         if name:
             out.name = name
         else:
-            name = getattr(out, 'name', None)
+            name = out.name
         super(Composite, out).__init__(output_types_preference, name)
         return out
 
@@ -3561,34 +3561,19 @@ class Composite(ScalarOp):
         Return a readable string representation of self.fgraph.
 
         """
-        try:
-            rval = self.name
-            if rval is None:
-                raise AttributeError
-        except AttributeError:
-            if 0:
-                l = []
-                for n in self.fgraph.toposort():
-                    if hasattr(n.op, "name") and n.op.name is not None:
-                        v = n.op.name
-                        if v.startswith("Composite"):
-                            v = v[len("Composite"):]
-                    else:
-                        v = n.op.__class__.__name__
-                    l.append(v)
-                rval = "Composite{" + ",".join(l) + "}"
-            else:
-                for i, r in enumerate(self.fgraph.inputs):
-                    r.name = 'i%i' % i
-                for i, r in enumerate(self.fgraph.outputs):
-                    r.name = 'o%i' % i
-                io = set(self.fgraph.inputs + self.fgraph.outputs)
-                for i, r in enumerate(self.fgraph.variables):
-                    if r not in io and len(r.clients) > 1:
-                        r.name = 't%i' % i
-                rval = "Composite{%s}" % ', '.join([pprint(output) for output
-                                                    in self.fgraph.outputs])
-        self.name = rval
+        rval = self.name
+        if rval is None:
+            for i, r in enumerate(self.fgraph.inputs):
+                r.name = 'i%i' % i
+            for i, r in enumerate(self.fgraph.outputs):
+                r.name = 'o%i' % i
+            io = set(self.fgraph.inputs + self.fgraph.outputs)
+            for i, r in enumerate(self.fgraph.variables):
+                if r not in io and len(r.clients) > 1:
+                    r.name = 't%i' % i
+            rval = "Composite{%s}" % ', '.join([pprint(output) for output
+                                                in self.fgraph.outputs])
+            self.name = rval
 
     def init_fgraph(self):
         # The clone done by FunctionGraph is needed as we don't want
