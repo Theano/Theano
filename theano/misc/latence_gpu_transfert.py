@@ -9,7 +9,7 @@ import theano
 y = theano.tensor.fvector()
 x = theano.shared(numpy.zeros(1, dtype='float32'))
 f1 = theano.function([y], updates={x: y})
-f2 = theano.function([], theano.sandbox.cuda.host_from_gpu(x))
+f2 = theano.function([], x.transfer('cpu'))
 print(f1.maker.fgraph.toposort())
 print(f2.maker.fgraph.toposort())
 for i in [1, 10, 100, 1000, 10000, 100000, 1000000, 10000000]:

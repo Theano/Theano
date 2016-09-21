@@ -2,13 +2,13 @@ from __future__ import absolute_import, print_function, division
 import os
 from theano import Apply, Op
 from theano.tensor.extra_ops import CumsumOp
-from .basic_ops import infer_context_name
+
 try:
     from pygpu import gpuarray
 except ImportError:
     pass
 
-from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel, GpuReshape)
+from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel, GpuReshape, infer_context_name)
 from .opt import register_opt, op_lifter, register_opt2
 
 
@@ -41,7 +41,6 @@ class GpuCumsum(GpuKernelBase, Op):
         assert x.type.dtype == 'float32', "Only float32 supported for GpuCumSum"
 
         context_name = infer_context_name(x)
-
         x = as_gpuarray_variable(x, context_name)
 
         if x.ndim > GpuCumsum.SUPPORTED_NDIMS:

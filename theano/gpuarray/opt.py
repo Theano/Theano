@@ -20,6 +20,7 @@ from theano.misc.ordered_set import OrderedSet
 from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
+# from theano.tensor.opt import out2in
 from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet.blocksparse import SparseBlockGemv, SparseBlockOuter
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
@@ -35,7 +36,7 @@ from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         HostFromGpu, GpuFromHost,
                         GpuSplit, GpuContiguous, gpu_contiguous,
                         GpuAlloc, GpuAllocEmpty, GpuReshape,
-                        GpuEye, gpu_join, GpuJoin, gpu_alloc_empty, gpu_alloc, gpu_from_host)
+                        GpuEye, gpu_join, GpuJoin)
 from .blas import (gpu_dot22, GpuGemm, GpuGer, GpuGemmBatch,
                    gpugemm_no_inplace, gpugemm_inplace, gpugemmbatch_no_inplace,
                    gpugemv_no_inplace, gpugemv_inplace)
@@ -47,7 +48,7 @@ from .nnet import (gpu_crossentropy_softmax_1hot_with_bias_dx,
                    gpu_softmax_with_bias, gpu_softmax)
 
 from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
-                       GpuCAReduceCPY, gpu_ca_reduce_cuda)
+                       GpuCAReduceCPY)
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedSubtensor1,
                         GpuAdvancedIncSubtensor1,
@@ -59,6 +60,7 @@ _logger = logging.getLogger("theano.gpuarray.opt")
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
+gpu_topo = LocalGroupDB()
 
 # Not used for an EquilibriumOptimizer. It has the "tracks" that we need for GraphToGPUDB.
 gpu_optimizer2 = EquilibriumDB()
@@ -85,6 +87,11 @@ gpu_seqopt.register('gpuarray_local_optimizations', gpu_optimizer, 1,
                     'fast_compile', 'fast_run', 'gpuarray', 'gpuarray_local_optimiziations')
 gpu_seqopt.register('gpuarray_cut_transfers', gpu_cut_copies, 2,
                     'fast_compile', 'fast_run', 'gpuarray')
+
+gpu_seqopt.register('op_lifter_topo', TopoOptimizer(gpu_topo.query('+fast_compile', '+fast_run', '+cudnn',
+                                                                   '+cudnn', '+conv_dnn', '+gpuarray'),
+                                                    order='out_to_in'),
+                    0.5, 'fast_run', 'gpuarray', 'fast_compile')
 
 # do not add 'fast_run' to these two as this would always enable gpuarray mode
 optdb.register('gpuarray_opt', gpu_seqopt,
@@ -142,16 +149,26 @@ gpu_optimizer.register('local_remove_all_assert',
 
 def safe_to_gpu(x, ctx_name):
     if isinstance(x.type, tensor.TensorType):
-        return gpu_from_host(ctx_name)(x)
+        return GpuFromHost(ctx_name)(x)
     else:
         return x
 
 
 def safe_to_cpu(x):
     if isinstance(x.type, GpuArrayType):
-        return host_from_gpu(x)
+        return x.transfer('cpu')
     else:
         return x
+
+
+def register_topo(*tags, **kwargs):
+    def f(local_opt):
+        name = (kwargs and kwargs.pop('name')) or local_opt.__name__
+        name = name + "_graph"
+        gpu_topo.register(name, local_opt,
+                          10, 'fast_run', 'gpuarray', *tags)
+        return local_opt
+    return f
 
 
 def op_lifter(OP, cuda_only=False):
@@ -161,6 +178,7 @@ def op_lifter(OP, cuda_only=False):
     gpu_from_host(OP(inp0, ...)) -> GpuOP(inp0, ...)
 
     """
+
     def f(maker):
         def local_opt(node):
             if type(node.op) in OP:
@@ -211,10 +229,10 @@ def op_lifter(OP, cuda_only=False):
                     elif isinstance(new_op, (tuple, list)):
                         return [safe_to_cpu(o) for o in new_op]
                     else:  # suppose it is a variable on the GPU
-                        return [host_from_gpu(new_op)]
+                        return [new_op.transfer('cpu')]
             return False
         local_opt.__name__ = maker.__name__
-        return local_optimizer(OP)(local_opt)
+        return register_topo('fast_compile')(local_optimizer(OP)(local_opt))
     return f
 
 
@@ -245,7 +263,7 @@ class InputToGpuOptimizer(Optimizer):
                 continue
 
             try:
-                new_input = host_from_gpu(gpu_from_host(target)(input))
+                new_input = GpuFromHost(target)(input).transfer('cpu')
                 fgraph.replace_validate(input, new_input,
                                         "InputToGpuOptimizer")
             except TypeError:
@@ -409,7 +427,7 @@ class GraphToGPU(Optimizer):
                         new_o.owner.inputs[0].type == o.type):
                     new_o = new_o.owner.inputs[0]
                 else:
-                    new_o = safe_to_cpu(new_o)
+                    new_o = new_o.transfer('cpu')
             new_nodes.append(new_o)
         fgraph.replace_all_validate(zip(fgraph.outputs, new_nodes),
                                     reason=self.__class__.__name__)
@@ -525,7 +543,7 @@ def local_cut_gpu_transfers(node):
 
         # gpub ->
         if isinstance(n2.op, GpuToGpu):
-            return [host_from_gpu(n2.inputs[0])]
+            return [n2.inputs[0].transfer('cpu')]
 
     # ? -> gpua -> gpub
     elif isinstance(node.op, GpuToGpu):
@@ -579,14 +597,14 @@ def local_gpua_alloc2(node):
                 i.owner.op in [host_from_gpu, tensor.alloc]
                 for i in c.inputs[1:])
             for c, idx in node.outputs[0].clients)):
-        return [host_from_gpu(gpu_alloc(None)(*node.inputs))]
+        return [GpuAlloc(None)(*node.inputs).transfer('cpu')]
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.Alloc])
 @register_opt2([tensor.Alloc], 'fast_compile')
-def local_gpua_alloc(op, context_name, inputs, outputs):
-    return gpu_alloc(context_name)
+def local_gpuaalloc(op, context_name, inputs, outputs):
+    return GpuAlloc(context_name)(*inputs)
 
 
 @register_opt('fast_compile')
@@ -595,7 +613,7 @@ def local_gpua_alloc(op, context_name, inputs, outputs):
 def local_gpua_alloc_empty(op, context_name, inputs, outputs):
     # We use _props_dict() to make sure that the GPU op know all the
     # CPU op props.
-    return gpu_alloc_empty(context_name, **op._props_dict())
+    return GpuAllocEmpty(**op._props_dict())(*inputs)
 
 
 @register_opt()
@@ -606,7 +624,7 @@ def local_gpualloc_memset_0(node):
         if (isinstance(inp, GpuArrayConstant) and
                 inp.data.size == 1 and
                 (numpy.asarray(inp.data) == 0).all()):
-            new_op = gpu_alloc(node.op.context_name, memset_0=True)
+            new_op = GpuAlloc(node.op.context_name, memset_0=True)
             return [new_op(*node.inputs)]
 
 
@@ -616,8 +634,8 @@ def local_gpua_alloc_empty_to_zeros(node):
     if isinstance(node.op, GpuAllocEmpty):
         context_name = infer_context_name(*node.inputs)
         z = numpy.asarray(0, dtype=node.outputs[0].dtype)
-        return [gpu_alloc(context_name)(as_gpuarray_variable(z, context_name),
-                                        *node.inputs)]
+        return [GpuAlloc(context_name)(as_gpuarray_variable(z, context_name),
+                                       *node.inputs)]
 optdb.register('local_gpua_alloc_empty_to_zeros',
                theano.tensor.opt.in2out(local_gpua_alloc_empty_to_zeros),
                # After move to gpu and merge2, before inplace.
@@ -862,7 +880,7 @@ def local_gpu_pdbbreakpoint_op(node):
         new_outputs = []
         for i in range(len(new_op_outputs)):
             if input_transfered[i]:
-                new_outputs.append(host_from_gpu(new_op_outputs[i]))
+                new_outputs.append(new_op_outputs[i].transfer('cpu'))
             else:
                 new_outputs.append(new_op_outputs[i])
 
@@ -927,7 +945,7 @@ def local_gpua_subtensor(op, context_name, inputs, outputs):
                         for n, _ in outputs[0].clients]):
                     return
                 else:
-                    return [host_from_gpu(gpu_x.owner.op(outputs[0]))]
+                    return [gpu_x.owner.op(outputs[0]).transfer('cpu')]
 
     return GpuSubtensor(op.idx_list)
 
@@ -1143,7 +1161,7 @@ def local_gpua_hgemm(op, context_name, inputs, outputs):
     if (A.ndim == 2 and B.ndim == 2 and
             A.dtype == 'float16' and B.dtype == 'float16'):
         fgraph = outputs[0].fgraph
-        C = gpu_alloc_empty(context_name, dtype='float16')(
+        C = GpuAllocEmpty('float16', context_name)(
             shape_i(A, 0, fgraph),
             shape_i(B, 1, fgraph))
         return gpugemm_no_inplace(C, 1.0, A, B, 0.0)
@@ -1194,7 +1212,7 @@ def local_gpua_dot22scalar(op, context_name, inputs, outputs):
     x, y, a = inputs
     x = as_gpuarray_variable(x, context_name)
     y = as_gpuarray_variable(y, context_name)
-    z = gpu_alloc_empty(context_name, dtype=x.dtype)(x.shape[0], y.shape[1])
+    z = GpuAllocEmpty(x.dtype, context_name)(x.shape[0], y.shape[1])
     return [gpugemm_no_inplace(z, a, x, y, 0)]
 
 
@@ -1335,10 +1353,10 @@ def local_gpu_elemwise_careduce(node):
             isinstance(node.inputs[0].owner.op.scalar_op, scalar.basic.Sqr)):
         op = node.op
         inp = node.inputs[0].owner.inputs[0]
-        return [gpu_ca_reduce_cuda(scalar_op=op.scalar_op,
-                                   axis=op.axis,
-                                   reduce_mask=op.reduce_mask,
-                                   pre_scalar_op=scalar.basic.sqr)(inp)]
+        return [GpuCAReduceCuda(scalar_op=op.scalar_op,
+                                axis=op.axis,
+                                reduce_mask=op.reduce_mask,
+                                pre_scalar_op=scalar.basic.sqr)(inp)]
 
 
 @local_optimizer(None)
