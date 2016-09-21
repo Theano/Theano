@@ -849,11 +849,12 @@ second dimension
             char = numpy.sctype2char(out_dtype)
             sig = char * node.nin + '->' + char * node.nout
             node.tag.sig = sig
-        node.tag.fake_node = Apply(self.scalar_op,
-                  [get_scalar_type(dtype=input.type.dtype).make_variable()
-                   for input in node.inputs],
-                  [get_scalar_type(dtype=output.type.dtype).make_variable()
-                   for output in node.outputs])
+        node.tag.fake_node = Apply(
+            self.scalar_op,
+            [get_scalar_type(dtype=input.type.dtype).make_variable()
+             for input in node.inputs],
+            [get_scalar_type(dtype=output.type.dtype).make_variable()
+             for output in node.outputs])
 
         self.scalar_op.prepare_node(node.tag.fake_node, [], [])
 
