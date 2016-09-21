@@ -999,6 +999,11 @@ second dimension
         return rval
 
     def _c_all(self, node, nodename, inames, onames, sub):
+        # Some ops call directly the Elemwise._c_all or Elemwise.c_code
+        # To not request all of them to call prepare_node(), do it here.
+        # There is no harm if it get called multile time.
+        if not hasattr(node.tag, 'fake_node'):
+            self.prepare_node(node, None, None)
         _inames = inames
         _onames = onames
 
