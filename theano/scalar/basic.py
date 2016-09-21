@@ -3538,21 +3538,38 @@ class Composite(ScalarOp):
         Return a list of functions that compute each output of self.
 
         """
+        # the memo is to reuse functions during this call and traverse
+        # the graph only once. We will still have the problem during
+        # execution for the next comment. But this speed up linker
+        # phase where this method is called. Not so big problem as
+        # this code isn,t when performance is important.
+        memo = {}
+
         def compose_impl(r):
             # this is not optimal at all eg in add(*1 -> mul(x, y), *1)
             # it will calculate *1 twice
             # it also doesn't follow fgraph.toposort but that's (presumably)
             # still correct since we only have scalar ops
+            if r in memo:
+                return memo[r]
             if r in self.fgraph.inputs:
                 idx = self.fgraph.inputs.index(r)
-                return lambda inputs: inputs[idx]
+
+                def f(inputs):
+                    return inputs[idx]
+                memo[r] = f
+                return f
             elif r.owner is None:  # in fgraph.orphans:
-                return lambda inputs: r.data
+                def f(inputs):
+                    return r.data
+                memo[r] = f
+                return f
             node = r.owner
             producers = [compose_impl(input) for input in node.inputs]
 
             def f(inputs):
                 return node.op.impl(*[p(inputs) for p in producers])
+            memo[r] = f
             return f
         self._impls = [compose_impl(r) for r in self.fgraph.outputs]
 
