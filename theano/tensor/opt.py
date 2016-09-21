@@ -3069,14 +3069,10 @@ def local_subtensor_of_alloc(node):
     if type(rval) not in (list, tuple):
         rval = [rval]
     if rval[0].type != node.outputs[0].type:
-        # It happen that the make_node() isn't able to infer that some
-        # dimensions are broadcastable, but that now we can infer
-        # that. So we need to remove that information here.
-        rval[0] = theano.tensor.unbroadcast(
-            rval[0],
-            *[i for i, (b1, b2) in enumerate(zip(rval[0].broadcastable,
-                                                 node.outputs[0].broadcastable))
-              if b1 and not b2])
+        # It happen that the make_node() isn't able to infer the same pattern.
+        # We know it is safe, so fix that.
+        rval[0] = T.patternbroadcast(rval[0], node.outputs[0].broadcastable)
+
     return rval
 
 
@@ -4855,6 +4851,13 @@ class Canonizer(gof.LocalOptimizer):
         assert len(node.outputs) == 1
         out = node.outputs[0]
 
+        # out won't have a clients field when we didn't commit a
+        # started change in the graph.  We can't do the check if we
+        # want to skip it, so we force the skip it. It should be
+        # reapplied later.
+        if not hasattr(out, 'clients'):
+            return
+
         # check if any of the clients of this node would be part of
         # this canonized graph...  if so, we do nothing and wait for
         # them to be transformed.
@@ -5942,7 +5945,7 @@ def local_add_specialize(node):
 register_specialize(local_add_specialize)
 
 mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut,
-                                         local_fill_sink),
+                                         local_fill_sink, apply_all_opts=True),
                        name='mul_canonizer_groups')
 
 
@@ -6101,7 +6104,7 @@ def add_calculate(num, denum, aslist=False, out_type=None):
 
 local_add_canonizer = Canonizer(T.add, T.sub, T.neg, add_calculate)
 add_canonizer = in2out(gof.LocalOptGroup(local_add_canonizer, local_fill_cut,
-                                         local_fill_sink),
+                                         local_fill_sink, apply_all_opts=True),
                        name='add_canonizer_group')
 
 

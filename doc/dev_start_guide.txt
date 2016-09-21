@@ -55,7 +55,7 @@ Requirements for Quality Contributions
 
 * All the code should be properly tested. 
 
-* The code should be compatible with Python 2.6 and above, as well as Python 
+* The code should be compatible with Python 2.7 and above, as well as Python
   3.3 and above (using `six` if needed).
 
 * All the code should respect the 
