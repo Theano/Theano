@@ -856,7 +856,7 @@ second dimension
             [get_scalar_type(dtype=output.type.dtype).make_variable()
              for output in node.outputs])
 
-        self.scalar_op.prepare_node(node.tag.fake_node, [], [])
+        self.scalar_op.prepare_node(node.tag.fake_node, None, None)
 
     def perform(self, node, inputs, output_storage):
         if len(node.inputs) >= 32:
