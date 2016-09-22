@@ -7180,7 +7180,9 @@ def local_add_mul_fusion(node):
     for inp in node.inputs:
         if (inp.owner and
                 isinstance(inp.owner.op, Elemwise) and
-                isinstance(inp.owner.op.scalar_op, s_op)):
+                isinstance(inp.owner.op.scalar_op, s_op) and
+                # Do not duplicate the operation.
+                len(inp.clients) == 1):
             new_inp.extend(inp.owner.inputs)
             fused = True
         else:
