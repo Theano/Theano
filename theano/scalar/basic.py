@@ -3538,18 +3538,26 @@ class Composite(ScalarOp):
         Return a list of functions that compute each output of self.
 
         """
-        # the memo is to reuse functions during this call and traverse
-        # the graph only once. We will still have the problem during
-        # execution for the next comment. But this speed up linker
-        # phase where this method is called. Not so big problem as
-        # this code isn,t when performance is important.
+        # In the case where the graph is a dag, but not a tree like:
+        # add(*1 -> mul(x, y), *1)
+
+        # We have an efficent way to build the executable (we build
+        # and traverse each node only once).
+
+        # But we don't have an efficient execution. We will execute
+        # like a tree, so nodes that have more then 1 client will be
+        # executed as many times as there number of clients. In the
+        # example aboce, it will calculate *1 twice. Doing otherwise
+        # imply making a complicated execution engine.
+
+        # We need the fast creation of the executor as we always do it
+        # even if we will use the c code. The Python implementation is
+        # already slow, so it is not as much important to have a fast
+        # execution there.
+
         memo = {}
 
         def compose_impl(r):
-            # this is not optimal at all eg in add(*1 -> mul(x, y), *1)
-            # it will calculate *1 twice
-            # it also doesn't follow fgraph.toposort but that's (presumably)
-            # still correct since we only have scalar ops
             if r in memo:
                 return memo[r]
             if r in self.fgraph.inputs:
