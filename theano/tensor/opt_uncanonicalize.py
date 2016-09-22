@@ -114,10 +114,10 @@ def local_alloc_dimshuffle(node):
             # check if it only adds dimension to the left
             new_order = input_.owner.op.new_order
             expected_new_order = ('x',) * (input_.ndim - input_.owner.inputs[0].ndim) + \
-                    tuple(range(input_.owner.inputs.ndim))
+                    tuple(range(input_.owner.inputs[0].ndim))
             if new_order != expected_new_order:
                 return False
-            return input_.owner.inputs
+            return [T.alloc(input_.owner.inputs[0], *node.inputs[1:])]
     return False
 
 
@@ -128,10 +128,10 @@ def local_reshape_dimshuffle(node):
     If a dimshuffle is inside a reshape and does not change the order
     of dimensions, remove it.
     """
-    if node.op == T.reshape:
+    if isinstance(node.op, T.Reshape):
         input_ = node.inputs[0]
         if input_.owner and isinstance(input_.owner.op, DimShuffle):
-            new_order = input_owner.op.new_order
+            new_order = input_.owner.op.new_order
             offset = 0
             for i, dim in enumerate(new_order):
                 if dim == 'x':
@@ -139,5 +139,5 @@ def local_reshape_dimshuffle(node):
                     continue
                 elif i != dim + offset:
                     return False
-            return input_.owner.inputs
+            return [T.reshape(input_.owner.inputs[0], tuple(node.inputs[1].owner.inputs))]
     return False
