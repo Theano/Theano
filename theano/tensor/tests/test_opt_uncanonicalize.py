@@ -121,10 +121,10 @@ def test_local_alloc_dimshuffle():
     x = T.vector('x')
     m = T.iscalar('m')
 
-    out = x.dimshuffle('x', 0)
-    out = T.alloc(x, m, 1, x.shape[0])
+    y = x.dimshuffle('x', 0)
+    out = T.alloc(y, m, 1, x.shape[0])
 
-    g = FunctionGraph(out)
+    g = FunctionGraph([x, m], [out])
     alloc_dimshuffle(g)
 
     topo = g.toposort()
@@ -140,7 +140,7 @@ def test_local_reshape_dimshuffle():
     y = x.dimshuffle('x', 0, 'x', 1)
     out = T.reshape(y, (1, x.shape[0] * x.shape[1], 1))
 
-    g = FunctionGraph(out)
+    g = FunctionGraph([x], [out])
     reshape_dimshuffle(g)
 
     topo = g.toposort()
