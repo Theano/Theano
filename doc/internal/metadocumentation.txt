@@ -119,7 +119,7 @@ The nightly build/tests process
 We use the Jenkins software to run daily buildbots for Theano, libgpuarray and
 the Deep Learning Tutorials. Jenkins downloads/updates the repos and then runs their test
 scripts. Those scripts test the projects under various condition.
-Jenkins also run some tests in 32 bit Python 2.7 and Python 3.5 for Theano.
+Jenkins also run some tests in 32 bit Python 2.7 and Python 3.4 for Theano.
 
 The output is emailed automatically to the `theano-buildbot`_ mailing list. The
 jenkins log and test reports are published online:
