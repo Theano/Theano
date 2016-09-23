@@ -865,8 +865,8 @@ class BaseGpuCorrMM(GpuOp):
     __props__ = ('border_mode', 'subsample', 'filter_dilation')
 
     def __init__(self, border_mode="valid", subsample=(1, 1),
-                 filter_dilation=(1, 1), pad=(0, 0)):
-        if pad != (0, 0):
+                 filter_dilation=(1, 1), pad=None):
+        if pad is not None:
             _logger.warning(
                 'do not use pad for BaseGpuCorrMM; please set padding in '
                 'border_mode parameter, see the docstring for more details')
@@ -1267,7 +1267,7 @@ class GpuCorrMM_gradWeights(BaseGpuCorrMM):
     def __init__(self, border_mode="valid",
                  subsample=(1, 1),
                  filter_dilation=(1, 1),
-                 pad=(0, 0)):
+                 pad=None):
         super(GpuCorrMM_gradWeights, self).__init__(border_mode,
                                                     subsample,
                                                     filter_dilation,
@@ -1338,7 +1338,7 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
     def __init__(self, border_mode="valid",
                  subsample=(1, 1),
                  filter_dilation=(1, 1),
-                 pad=(0, 0)):
+                 pad=None):
         super(GpuCorrMM_gradInputs, self).__init__(border_mode, subsample,
                                                    filter_dilation, pad)
 
@@ -1415,8 +1415,8 @@ class BaseGpuCorr3dMM(GpuOp):
     def __init__(self, border_mode="valid",
                  subsample=(1, 1, 1),
                  filter_dilation=(1, 1, 1),
-                 pad=(0, 0, 0)):
-        if pad != (0, 0, 0):
+                 pad=None):
+        if pad is not None:
             _logger.warning(
                 'do not use pad for BaseGpuCorr3dMM; please set padding in '
                 'border_mode parameter, see the docstring for more details')
@@ -1821,7 +1821,7 @@ class GpuCorr3dMM(BaseGpuCorr3dMM):
 
     """
     def __init__(self, border_mode="valid", subsample=(1, 1, 1),
-                 filter_dilation=(1, 1, 1), pad=(0, 0, 0)):
+                 filter_dilation=(1, 1, 1), pad=None):
         super(GpuCorr3dMM, self).__init__(border_mode, subsample,
                                           filter_dilation, pad)
 
@@ -1871,7 +1871,7 @@ class GpuCorr3dMM_gradWeights(BaseGpuCorr3dMM):
     def __init__(self, border_mode="valid",
                  subsample=(1, 1, 1),
                  filter_dilation=(1, 1, 1),
-                 pad=(0, 0, 0)):
+                 pad=None):
         super(GpuCorr3dMM_gradWeights, self).__init__(border_mode, subsample,
                                                       filter_dilation, pad)
 
@@ -1941,7 +1941,7 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
     def __init__(self, border_mode="valid",
                  subsample=(1, 1, 1),
                  filter_dilation=(1, 1, 1),
-                 pad=(0, 0, 0)):
+                 pad=None):
         super(GpuCorr3dMM_gradInputs, self).__init__(border_mode, subsample,
                                                      filter_dilation, pad)
 
