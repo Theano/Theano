@@ -795,7 +795,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         Make any special modifications that the Op needs before doing
         make_thunk().
 
-        This can either modify the node inplace or return a new one.
+        This can modify the node inplace and should return nothing.
 
         """
         pass
@@ -916,10 +916,9 @@ class Op(utils.object2, PureOp, CLinkerOp):
         """
         logger = logging.getLogger('theano.gof.op.Op')
 
-        new_node = self.prepare_node(node, storage_map=storage_map,
-                                     compute_map=compute_map)
-        if new_node is not None:
-            node = new_node
+        self.prepare_node(node, storage_map=storage_map,
+                          compute_map=compute_map)
+
         if not hasattr(self, '_op_use_c_code'):
             warnings.warn(
                 "The  __getstate__ method of '%s' is not implemented correctly."

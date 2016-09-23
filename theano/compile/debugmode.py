@@ -1838,9 +1838,7 @@ class _Linker(gof.link.LocalLinker):
                 thunk.outputs = [storage_map[v] for v in node.outputs]
                 thunk_other = thunk
             else:
-                new_node = node.op.prepare_node(node, storage_map, compute_map)
-                if new_node is not None:
-                    node = new_node
+                node.op.prepare_node(node, storage_map, compute_map)
 
             debug = hasattr(node.op, 'debug_perform')
 

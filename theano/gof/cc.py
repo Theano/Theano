@@ -1582,6 +1582,9 @@ class CLinker(link.Linker):
             # If we can't get a key, then forget the cache mechanism.
             module = self.compile_cmodule()
         else:
+            # Set compute_map as None as clinker do not support lazy evaluation
+            for node in self.node_order:
+                node.op.prepare_node(node, storage_map, None)
             module = get_module_cache().module_from_key(
                 key=key, lnk=self, keep_lock=keep_lock)
 
