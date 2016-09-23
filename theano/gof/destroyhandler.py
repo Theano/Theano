@@ -210,13 +210,12 @@ def _build_droot_impact(destroy_handler):
             # The code here add all the variables that are views of r into
             # an OrderedSet input_impact
             input_impact = OrderedSet()
-            queue = Queue()
-            queue.put(input_root)
-            while not queue.empty():
-                v = queue.get()
+            queue = [input_root]
+            while queue:
+                v = queue.pop()
                 for n in destroy_handler.view_o.get(v, []):
                     input_impact.add(n)
-                    queue.put(n)
+                    queue.append(n)
 
             for v in input_impact:
                 assert v not in droot
