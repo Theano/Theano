@@ -116,20 +116,19 @@ Pylint documentation is generated using pylintrc file: ``Theano/doc/pylintrc``
 The nightly build/tests process
 ---------------------------------------
 
-The user ``lisa`` runs a cronjob on the computer ``ceylon``,  this
-happens nightly. (To have the crontab executed, the ``lisa`` user must
-be logged into ``ceylon``, Fred leaves a shell open for that.)
+We use the Jenkins software to run daily buildbots for Theano, libgpuarray and
+the Deep Learning Tutorials. Jenkins downloads/updates the repos and then runs their test
+scripts. Those scripts test the projects under various condition.
+Jenkins also run some tests in 32 bit Python 2.7 and Python 3.4 for Theano.
 
-The cronjob executes a script that download/update the repo of Theano,
-Pylearn, Pylearn2 and the Deep Learning Tutorial, then run their tests
-script under ``*/misc/do_nightly_build``. Those script tests the
-project under various condition. The cron job also run some tests in
-Python 2.4 and Python 3.3 for Theano.
+The output is emailed automatically to the `theano-buildbot`_ mailing list. The
+jenkins log and test reports are published online:
 
-The output is emailed automatically to the `theano-buildbot`_ mailing list.
+* `Theano buildbot <http://darjeeling.iro.umontreal.ca:8080/job/Theano_buildbot_multijob/>`__
+* `gpuarray buildbot <http://darjeeling.iro.umontreal.ca:8080/job/Buildbot_gpuarray/>`__
+
 
 .. _theano-buildbot: https://groups.google.com/group/theano-buildbot
-
 
 TO WRITE
 ---------------------------------------
