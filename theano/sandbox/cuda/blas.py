@@ -1777,9 +1777,6 @@ class GpuCorr3dMM(BaseGpuCorr3dMM):
     Parameters
     ----------
     border_mode
-        Currently supports "valid" only; "full" can be simulated by setting
-        `pad="full"` (at the cost of performance), or by using
-        `GpuCorrMM_gradInputs`.
         The width of a border of implicit zeros to pad the
         input with. Must be a tuple with 3 elements giving the width of
         the padding on each side, or a single integer to pad the same

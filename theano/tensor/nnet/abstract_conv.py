@@ -974,7 +974,7 @@ class BaseAbstractConv(Op):
             if len(border_mode) != convdim:
                 raise ValueError(
                     'border mode must have exactly {} values, '
-                    'but was {}'.format(convdim))
+                    'but was {}'.format(convdim, border_mode))
             border_mode = tuple(map(int, border_mode))
         if border_mode == (0,) * convdim:
             border_mode = 'valid'
