@@ -7,7 +7,8 @@ import numpy
 from theano import Op, Apply, Type, Variable
 from theano import tensor, config
 from theano.gradient import grad_undefined
-from theano.tensor.basic import Alloc, Join, Split
+from theano.tensor.basic import (
+    Alloc, AllocEmpty, alloc_validate_shape, Join, Split)
 
 from theano.gof import HideC, COp
 from theano.gof.utils import MethodNotDefined
@@ -805,7 +806,7 @@ class GpuAlloc(HideC, Alloc):
 
     def make_node(self, value, *shape):
         value = as_gpuarray_variable(value, context_name=self.context_name)
-        sh, bcast = self.validate_shape(shape)
+        sh, bcast = alloc_validate_shape(shape)
         if value.ndim > len(sh):
             TypeError("The GpuAlloc value to use has more dimensions "
                       "than the specified shape", value.ndim, len(sh))
@@ -941,7 +942,7 @@ def gpu_alloc(ctx, memset_0=False):
 gpu_alloc.cache = {}
 
 
-class GpuAllocEmpty(HideC, Alloc):
+class GpuAllocEmpty(HideC, AllocEmpty):
     """
     Allocate uninitialized memory on the GPU.
 
@@ -958,7 +959,7 @@ class GpuAllocEmpty(HideC, Alloc):
         return get_context(self.context_name)
 
     def make_node(self, *shape):
-        sh, bcast = self.validate_shape(shape)
+        sh, bcast = alloc_validate_shape(shape)
         output = GpuArrayType(dtype=self.dtype, broadcastable=bcast,
                               context_name=self.context_name)()
         output.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
