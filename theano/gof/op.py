@@ -14,6 +14,7 @@ import os
 import re
 import sys
 import warnings
+import collections
 
 import theano
 from theano import config
@@ -475,6 +476,36 @@ class CLinkerOp(CLinkerObject):
                                      self.__class__.__name__)
 
 
+class SingletonOp(type):
+
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        key = []
+        # This will be fully revamped with _props_dict
+        if args:
+            for a in args:
+                key.append(a)
+        if kwargs:
+            for k, v in kwargs.iteritems():
+                key.append(v)
+
+        for k in key:
+            if not isinstance(k, collections.Hashable):
+                return object.__new__(cls).__init__(*args, **kwargs)
+
+        key = tuple(key)
+
+        if key not in cls._instances:
+            cls._instances[key] = object.__new__(cls)
+
+        cls._instances[key].__init__(*args, **kwargs)
+
+        if not hasattr(cls._instances[key], '_op_use_c_code'):
+            cls._instances[key]._op_use_c_code = theano.config.cxx
+        return cls._instances[key]
+
+
 class PureOp(object):
     """
     An :term:`Op` is a type of operation.
@@ -511,6 +542,7 @@ class PureOp(object):
     variable or an instance variable.
 
     """
+
 
     #############
     # make_node #
@@ -779,13 +811,8 @@ class Op(utils.object2, PureOp, CLinkerOp):
     Convenience class to bundle `PureOp` and `CLinkerOp`.
 
     """
-    def __new__(cls, *args, **kwargs):
-        # this function exists to silently and transparently ensure that all
-        # existing Ops get a _op_use_c_code attribute
-        obj = object.__new__(cls)
-        if not hasattr(obj, '_op_use_c_code'):
-            obj._op_use_c_code = theano.config.cxx
-        return obj
+
+    __metaclass__ = SingletonOp
 
     def __init__(self, use_c_code=theano.config.cxx):
         self._op_use_c_code = use_c_code
