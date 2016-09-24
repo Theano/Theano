@@ -16,9 +16,8 @@ from theano.scalar import get_scalar_type
 from theano.printing import pprint
 from theano.gradient import DisconnectedType
 from theano.gof.null_type import NullType
-from theano.gof.utils import hash_from_dict
 from theano.tensor import elemwise_cgen as cgen
-
+from theano.misc.frozendict import frozendict
 config = theano.config
 
 
@@ -472,14 +471,16 @@ second dimension
 
     """
 
+    __props__ = ("scalar_op", "inplace_pattern", "name", "nfunc_spec", "openmp")
+
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
                  nfunc_spec=None, openmp=None):
         if inplace_pattern is None:
-            inplace_pattern = {}
+            inplace_pattern = frozendict({})
         self.name = name
         self.scalar_op = scalar_op
-        self.inplace_pattern = inplace_pattern
-        self.destroy_map = dict((o, [i]) for o, i in inplace_pattern.items())
+        self.inplace_pattern = frozendict(inplace_pattern)
+        self.destroy_map = dict((o, [i]) for o, i in frozendict(inplace_pattern).items())
 
         self.ufunc = None
         self.nfunc = None
@@ -489,8 +490,6 @@ second dimension
         if nfunc_spec:
             self.nfunc = getattr(numpy, nfunc_spec[0])
 
-        # precompute the hash of this node
-        self._rehash()
         super(Elemwise, self).__init__(openmp=openmp)
 
     def __getstate__(self):
@@ -498,7 +497,6 @@ second dimension
         d.pop('ufunc')
         d.pop('nfunc')
         d.pop('__epydoc_asRoutine', None)
-        d.pop('_hashval')
         return d
 
     def __setstate__(self, d):
@@ -511,7 +509,6 @@ second dimension
             self.ufunc = numpy.frompyfunc(self.scalar_op.impl,
                                           self.scalar_op.nin,
                                           self.scalar_op.nout)
-        self._rehash()
 
     def get_output_info(self, dim_shuffle, *inputs):
         """Return the outputs dtype and broadcastable pattern and the
@@ -583,37 +580,6 @@ second dimension
                    for dtype, broadcastable in izip(out_dtypes,
                                                     out_broadcastables)]
         return Apply(self, inputs, outputs)
-
-    def __eq__(self, other):
-        if type(self) == type(other):
-            items = list(self.inplace_pattern.items())
-            other_items = list(other.inplace_pattern.items())
-            items.sort()
-            other_items.sort()
-            rval = ((self.scalar_op == other.scalar_op) and
-                    (items == other_items))
-            return rval
-        return False
-
-    def _rehash(self):
-        inplace_pattern_hash = hash_from_dict(self.inplace_pattern)
-        h = hash('Elemwise') ^ hash(self.scalar_op) ^ inplace_pattern_hash
-        assert h == getattr(self, '_hashval', h)
-        self._hashval = h
-
-    def __hash__(self):
-        return self._hashval
-
-    def __str__(self):
-        if self.name is None:
-            if self.inplace_pattern:
-                items = list(self.inplace_pattern.items())
-                items.sort()
-                return "Elemwise{%s}%s" % (self.scalar_op, str(items))
-            else:
-                return "Elemwise{%s}" % (self.scalar_op)
-        else:
-            return self.name
 
     def R_op(self, inputs, eval_points):
         outs = self(*inputs, **dict(return_list=True))
