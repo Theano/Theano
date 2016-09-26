@@ -1956,7 +1956,7 @@ def test_subtensor_inc_subtensor():
     v = tensor.tensor3('v')
     y = tensor.set_subtensor(x[i1, :i2, i3:, ::i4], v)
     z = y[i1, :i2, i3:, ::i4]
-    mode = theano.compile.mode.get_mode('FAST_COMPILE').including('local_subtensor_inc_subtensor')
+    mode = theano.compile.mode.get_default_mode().including('local_subtensor_inc_subtensor')
     f = theano.function([x, i1, i2, i3, i4, v], z, mode=mode)
     prog = f.maker.fgraph.toposort()
     assert len(prog) == 1
@@ -1964,7 +1964,7 @@ def test_subtensor_inc_subtensor():
 
     # case not use this optimization
     z = y[i1, :i3, i2:, ::i4]
-    mode = theano.compile.mode.get_mode('FAST_COMPILE').including('local_subtensor_inc_subtensor')
+    mode = theano.compile.mode.get_default_mode().including('local_subtensor_inc_subtensor')
     f = theano.function([x, i1, i2, i3, i4, v], z, mode=mode)
     prog = f.maker.fgraph.toposort()
     assert len(prog) != 1

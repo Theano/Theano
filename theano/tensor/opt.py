@@ -1895,11 +1895,14 @@ def local_track_shape_i(node):
         return [shape_feature.shape_of[replacement][node.op.i]]
 
 
-# Subtensor(SetSubtensor(x, y, idx), idx) -> y
 @register_specialize
 @register_canonicalize
 @gof.local_optimizer([Subtensor])
 def local_subtensor_inc_subtensor(node):
+    """
+    Subtensor(SetSubtensor(x, y, idx), idx) -> y
+
+    """
     if isinstance(node.op, Subtensor):
         x = node.inputs[0]
         if not x.owner or not isinstance(x.owner.op, IncSubtensor):
