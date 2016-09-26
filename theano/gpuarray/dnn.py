@@ -63,7 +63,7 @@ def _dnn_lib():
                 if lib_name:
                     break
         if lib_name is None:
-            raise RuntimeError('Could not find cudnn library (maybe your are using a )')
+            raise RuntimeError('Could not find cudnn library (looked for v4 and v5[.1])')
         _dnn_lib.handle = ctypes.cdll.LoadLibrary(lib_name)
         cudnn = _dnn_lib.handle
         cudnn.cudnnCreate.argtypes = [ctypes.POINTER(ctypes.c_void_p)]
