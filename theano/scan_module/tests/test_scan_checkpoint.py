@@ -13,11 +13,11 @@ def example1(checkpoint=True):
     # Symbolic description of the result
     if checkpoint:
         result, updates = theano.scan_with_checkpoints(
-                                    fn=lambda prior_result, A: prior_result * A,
-                                    outputs_info=T.ones_like(A),
-                                    non_sequences=A,
-                                    n_steps=k,
-                                    save_every_N=20)
+            fn=lambda prior_result, A: prior_result * A,
+            outputs_info=T.ones_like(A),
+            non_sequences=A,
+            n_steps=k,
+            save_every_N=20)
     else:
         result, updates = theano.scan(fn=lambda prior_result, A: prior_result * A,
                                       outputs_info=T.ones_like(A),
@@ -31,13 +31,13 @@ def example1(checkpoint=True):
 
     # compiled function that returns A**k
     start_compile = time.time()
-    power = theano.function(inputs=[A,k], outputs=result, updates=updates)
+    power = theano.function(inputs=[A, k], outputs=result, updates=updates)
     time_compile = time.time() - start_compile
 
     start_exec = time.time()
     out = power(range(10), 100)
     time_exec = time.time() - start_exec
-    
+
     if checkpoint:
         print("Example 1 with checkpoints")
     else:
@@ -45,7 +45,7 @@ def example1(checkpoint=True):
     print("Compile time:", time_compile)
     print("Exec time:", time_exec)
     print("Output:", out)
-    
+
 
 def example2(checkpoint=True):
 
@@ -57,26 +57,26 @@ def example2(checkpoint=True):
     seq = T.arange(up_to)
 
     outputs_info = T.as_tensor_variable(numpy.asarray(0, seq.dtype))
-    
+
     if checkpoint:
         scan_result, scan_updates = theano.scan_with_checkpoints(
-                                                fn=accumulate_by_adding,
-                                                outputs_info=outputs_info,
-                                                sequences=seq,
-                                                save_every_N=10)
+            fn=accumulate_by_adding,
+            outputs_info=outputs_info,
+            sequences=seq,
+            save_every_N=10)
     else:
         scan_result, scan_updates = theano.scan(fn=accumulate_by_adding,
                                                 outputs_info=outputs_info,
                                                 sequences=seq)
-        
-    start_compile = time.time()    
+
+    start_compile = time.time()
     triangular_sequence = theano.function(inputs=[up_to], outputs=scan_result)
     time_compile = time.time() - start_compile
-    
+
     start_exec = time.time()
     out = triangular_sequence(100)[-1]
     time_exec = time.time() - start_exec
-    
+
     if checkpoint:
         print("Example 2 with checkpoints")
     else:
