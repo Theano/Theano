@@ -1711,8 +1711,8 @@ class Compiler(object):
 
     """
 
-    @staticmethod
-    def _try_compile_tmp(src_code, tmp_prefix='', flags=(),
+    @classmethod
+    def _try_compile_tmp(cls, src_code, tmp_prefix='', flags=(),
                          try_run=False, output=False, compiler=None):
         """
         Try to compile (and run) a test program.
@@ -1730,8 +1730,9 @@ class Compiler(object):
         """
         if not compiler:
             return False
-
         flags = list(flags)
+        # Get compile arguments from compiler method
+        args = cls.compile_args()
         compilation_ok = True
         run_ok = False
         out, err = None, None
@@ -1748,7 +1749,7 @@ class Compiler(object):
                 os.close(fd)
                 fd = None
                 out, err, p_ret = output_subprocess_Popen(
-                    [compiler, path, '-o', exe_path] + flags)
+                    [compiler] + args + [path, '-o', exe_path] + flags)
                 if p_ret != 0:
                     compilation_ok = False
                 elif try_run:
@@ -1781,8 +1782,8 @@ class Compiler(object):
         else:
             return (compilation_ok, run_ok, out, err)
 
-    @staticmethod
-    def _try_flags(flag_list, preambule="", body="",
+    @classmethod
+    def _try_flags(cls, flag_list, preambule="", body="",
                    try_run=False, output=False, compiler=None):
         """
         Try to compile a dummy file with these flags.
@@ -1802,7 +1803,7 @@ class Compiler(object):
             return 0;
         }
         """ % locals())
-        return Compiler._try_compile_tmp(code, tmp_prefix='try_flags_',
+        return cls._try_compile_tmp(code, tmp_prefix='try_flags_',
                                          flags=flag_list, try_run=try_run,
                                          output=output, compiler=compiler)
 
@@ -2158,17 +2159,17 @@ class GCC_compiler(Compiler):
 
         return cxxflags
 
-    @staticmethod
-    def try_compile_tmp(src_code, tmp_prefix='', flags=(),
+    @classmethod
+    def try_compile_tmp(cls, src_code, tmp_prefix='', flags=(),
                         try_run=False, output=False):
-        return Compiler._try_compile_tmp(src_code, tmp_prefix, flags,
+        return cls._try_compile_tmp(src_code, tmp_prefix, flags,
                                          try_run, output,
                                          theano.config.cxx)
 
-    @staticmethod
-    def try_flags(flag_list, preambule="", body="",
+    @classmethod
+    def try_flags(cls, flag_list, preambule="", body="",
                   try_run=False, output=False):
-        return Compiler._try_flags(flag_list, preambule, body, try_run, output,
+        return cls._try_flags(flag_list, preambule, body, try_run, output,
                                    theano.config.cxx)
 
     @staticmethod
