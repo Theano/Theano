@@ -15,7 +15,6 @@ from . import graph
 from theano.misc.ordered_set import OrderedSet
 
 from .fg import InconsistencyError
-from six.moves.queue import Queue
 
 
 class ProtocolError(Exception):
@@ -210,13 +209,14 @@ def _build_droot_impact(destroy_handler):
             # The code here add all the variables that are views of r into
             # an OrderedSet input_impact
             input_impact = OrderedSet()
-            queue = Queue()
-            queue.put(input_root)
-            while not queue.empty():
-                v = queue.get()
+
+            q = deque()
+            q.append(input_root)
+            while len(q) > 0:
+                v = q.popleft()
                 for n in destroy_handler.view_o.get(v, []):
                     input_impact.add(n)
-                    queue.put(n)
+                    q.append(n)
 
             for v in input_impact:
                 assert v not in droot
