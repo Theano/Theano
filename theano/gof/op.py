@@ -696,7 +696,7 @@ class PureOp(object):
     # Python implementation #
     #########################
 
-    def grad2(self, inputs, outputs, output_grads):
+    def L_op(self, inputs, outputs, output_grads):
         return self.grad(inputs, output_grads)
 
     def R_op(self, inputs, eval_points):
