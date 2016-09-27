@@ -4752,10 +4752,25 @@ class Canonizer(gof.LocalOptimizer):
         | [a, b], [c, d] -> [a, b], [c, d]
 
         """
-        for v in list(num):
-            if v in denum:
-                num.remove(v)
-                denum.remove(v)
+        ln = len(num)
+        ld = len(denum)
+        if (ld > 2 and ln > 2):
+            # Faster version for "big" inputs.
+            while True:
+                s = set(num)
+                # Inputs can appear multiple times
+                redo = len(s) != len(num)
+                inter = s.intersection(denum)
+                for v in inter:
+                    num.remove(v)
+                    denum.remove(v)
+                if not redo or not inter:
+                    break
+        else:
+            for v in list(num):
+                if v in denum:
+                    num.remove(v)
+                    denum.remove(v)
         return num, denum
 
     def simplify_constants(self, orig_num, orig_denum, out_type=None):
