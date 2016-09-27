@@ -345,7 +345,7 @@ def Lop(f, wrt, eval_points, consider_constant=None,
         wrt = [wrt]
 
     assert len(f) == len(grads)
-    known = dict(izip(f, grads))
+    known = OrderedDict(izip(f, grads))
 
     ret = grad(cost=None, known_grads=known,
                consider_constant=consider_constant, wrt=wrt,
