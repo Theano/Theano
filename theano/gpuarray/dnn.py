@@ -1424,7 +1424,7 @@ class GpuDnnBatchNorm(DnnBase):
 
     __props__ = ('mode',)
 
-    def __init__(self, mode='per-activation', epsilon=1e-4):
+    def __init__(self, mode='per-activation'):
         DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm.c'],
                          'dnn_batchnorm_op')
 
@@ -1432,9 +1432,6 @@ class GpuDnnBatchNorm(DnnBase):
             raise RuntimeError("cuDNN Batch Normalization requires cuDNN v5 or later")
         assert (mode in ('per-activation', 'spatial'))
         self.mode = mode
-
-        assert (epsilon >= 1e-5)
-        self.epsilon = epsilon
 
     def get_op_params(self):
         params = []
@@ -1446,12 +1443,13 @@ class GpuDnnBatchNorm(DnnBase):
     def infer_shape(self, node, shape):
         return [shape[0], shape[1], shape[1]]
 
-    def make_node(self, x, scale, bias):
+    def make_node(self, x, scale, bias, epsilon=1e-4):
         ctx_name = infer_context_name(x, scale, bias)
         x = as_gpuarray_variable(x, ctx_name)
         scale = as_gpuarray_variable(scale, ctx_name)
         bias = as_gpuarray_variable(bias, ctx_name)
-        epsilon = as_scalar(self.epsilon).astype('float64')
+        assert (epsilon >= 1e-5)
+        epsilon = as_scalar(epsilon).astype('float64')
         assert x.ndim == 4
         assert scale.ndim == 4
         assert bias.ndim == 4
@@ -1460,9 +1458,9 @@ class GpuDnnBatchNorm(DnnBase):
     def grad(self, inputs, grads):
         x, scale, bias, epsilon = inputs
         dy = grads[0]
-        _, x_mean, x_invstd = self.make_node(x, scale, bias).outputs
+        _, x_mean, x_invstd = self.make_node(x, scale, bias, epsilon).outputs
         return GpuDnnBatchNormGrad(self.mode)(x, dy, scale, x_mean,
-                                              x_invstd) + [DisconnectedType()()]
+                                              x_invstd, epsilon) + [DisconnectedType()()]
 
     def connection_pattern(self, node):
         # Specificy that epsilon is not connected to outputs.
@@ -1488,7 +1486,7 @@ class GpuDnnBatchNormInference(DnnBase):
 
     __props__ = ('mode',)
 
-    def __init__(self, mode='per-activation', epsilon=1e-4):
+    def __init__(self, mode='per-activation'):
         DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm_inf.c'],
                          'dnn_batchnorm_op')
 
@@ -1496,9 +1494,6 @@ class GpuDnnBatchNormInference(DnnBase):
             raise RuntimeError("cuDNN Batch Normalization requires cuDNN v5 or later")
         assert (mode in ('per-activation', 'spatial'))
         self.mode = mode
-
-        assert (epsilon >= 1e-5)
-        self.epsilon = epsilon
 
     def get_op_params(self):
         params = []
@@ -1510,7 +1505,7 @@ class GpuDnnBatchNormInference(DnnBase):
     def infer_shape(self, node, shape):
         return [shape[0]]
 
-    def make_node(self, x, scale, bias, estimated_mean, estimated_variance):
+    def make_node(self, x, scale, bias, estimated_mean, estimated_variance, epsilon=1e-4):
         ctx_name = infer_context_name(x, scale, bias, estimated_mean,
                                       estimated_variance)
         x = as_gpuarray_variable(x, ctx_name)
@@ -1518,7 +1513,8 @@ class GpuDnnBatchNormInference(DnnBase):
         bias = as_gpuarray_variable(bias, ctx_name)
         estimated_mean = as_gpuarray_variable(estimated_mean, ctx_name)
         estimated_variance = as_gpuarray_variable(estimated_variance, ctx_name)
-        epsilon = as_scalar(self.epsilon).astype('float64')
+        assert (epsilon >= 1e-5)
+        epsilon = as_scalar(epsilon).astype('float64')
         assert x.ndim == 4
         assert scale.ndim == 4
         assert bias.ndim == 4
@@ -1558,7 +1554,7 @@ class GpuDnnBatchNormInference(DnnBase):
 class GpuDnnBatchNormGrad(DnnBase):
     __props__ = ('mode',)
 
-    def __init__(self, mode='per-activation', epsilon=1e-4):
+    def __init__(self, mode='per-activation'):
         DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm_grad.c'],
                          'dnn_batchnorm_grad')
 
@@ -1567,9 +1563,6 @@ class GpuDnnBatchNormGrad(DnnBase):
         assert (mode in ('per-activation', 'spatial'))
         self.mode = mode
 
-        assert (epsilon >= 1e-5)
-        self.epsilon = epsilon
-
     def get_op_params(self):
         params = []
         params.append(('MODE', ("CUDNN_BATCHNORM_SPATIAL"
@@ -1577,14 +1570,15 @@ class GpuDnnBatchNormGrad(DnnBase):
                                 else "CUDNN_BATCHNORM_PER_ACTIVATION")))
         return params
 
-    def make_node(self, x, dy, scale, x_mean, x_invstd):
+    def make_node(self, x, dy, scale, x_mean, x_invstd, epsilon=1e-4):
         ctx_name = infer_context_name(x, dy, scale, x_mean, x_invstd)
         x = as_gpuarray_variable(x, ctx_name)
         dy = as_gpuarray_variable(dy, ctx_name)
         scale = as_gpuarray_variable(scale, ctx_name)
         x_mean = as_gpuarray_variable(x_mean, ctx_name)
         x_invstd = as_gpuarray_variable(x_invstd, ctx_name)
-        epsilon = as_scalar(self.epsilon).astype('float64')
+        assert (epsilon >= 1e-5)
+        epsilon = as_scalar(epsilon).astype('float64')
         assert x.ndim == 4 and dy.ndim == 4 and scale.ndim == 4 and x_mean.ndim == 4 and x_invstd.ndim == 4
         return Apply(self, [x, dy, scale, x_mean, x_invstd, epsilon], [x.type(), scale.type(), scale.type()])
 
@@ -1651,9 +1645,9 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
         inputs = theano.tensor.shape_padright(inputs, 4 - ndim)
         gamma = theano.tensor.shape_padright(gamma, 4 - ndim)
         beta = theano.tensor.shape_padright(beta, 4 - ndim)
-    batchnorm_op = GpuDnnBatchNorm(mode=mode, epsilon=epsilon)
+    batchnorm_op = GpuDnnBatchNorm(mode=mode)
     result = tuple(batchnorm_op(gpu_contiguous(inputs), gpu_contiguous(gamma),
-                                gpu_contiguous(beta)))
+                                gpu_contiguous(beta), epsilon=epsilon))
     if ndim < 4:
         result = tuple(theano.tensor.flatten(r, ndim) for r in result)
     return result
@@ -1726,10 +1720,10 @@ def dnn_batch_normalization_test(inputs, gamma, beta, mean, var,
         beta = theano.tensor.shape_padright(beta, 4 - ndim)
         mean = theano.tensor.shape_padright(mean, 4 - ndim)
         var = theano.tensor.shape_padright(var, 4 - ndim)
-    batchnorm_op = GpuDnnBatchNormInference(mode=mode, epsilon=epsilon)
+    batchnorm_op = GpuDnnBatchNormInference(mode=mode)
     result = batchnorm_op(gpu_contiguous(inputs), gpu_contiguous(gamma),
                           gpu_contiguous(beta), gpu_contiguous(mean),
-                          gpu_contiguous(var))
+                          gpu_contiguous(var), epsilon=epsilon)
     if ndim < 4:
         result = theano.tensor.flatten(result, ndim)
     return result
