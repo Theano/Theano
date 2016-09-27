@@ -1804,8 +1804,8 @@ class Compiler(object):
         }
         """ % locals())
         return cls._try_compile_tmp(code, tmp_prefix='try_flags_',
-                                         flags=flag_list, try_run=try_run,
-                                         output=output, compiler=compiler)
+                                    flags=flag_list, try_run=try_run,
+                                    output=output, compiler=compiler)
 
 
 def try_march_flag(flags):
@@ -2163,14 +2163,14 @@ class GCC_compiler(Compiler):
     def try_compile_tmp(cls, src_code, tmp_prefix='', flags=(),
                         try_run=False, output=False):
         return cls._try_compile_tmp(src_code, tmp_prefix, flags,
-                                         try_run, output,
-                                         theano.config.cxx)
+                                    try_run, output,
+                                    theano.config.cxx)
 
     @classmethod
     def try_flags(cls, flag_list, preambule="", body="",
                   try_run=False, output=False):
         return cls._try_flags(flag_list, preambule, body, try_run, output,
-                                   theano.config.cxx)
+                              theano.config.cxx)
 
     @staticmethod
     def compile_str(module_name, src_code, location=None,
