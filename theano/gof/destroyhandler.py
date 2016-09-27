@@ -16,6 +16,7 @@ from theano.misc.ordered_set import OrderedSet
 
 from .fg import InconsistencyError
 from six.moves.queue import Queue
+from theano import config
 
 
 class ProtocolError(Exception):
@@ -55,6 +56,7 @@ def _contains_cycle(fgraph, orderings):
         True if the graph contains a cycle, False otherwise.
 
     """
+
     # These are lists of Variable instances
     outputs = fgraph.outputs
 
@@ -691,6 +693,7 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
         """
         self.root_destroyer = OrderedDict()
+        self.fail_validate = False
 
     def on_attach(self, fgraph):
         """
@@ -777,6 +780,68 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         delattr(self.fgraph, 'destroy_handler')
         self.fgraph = None
 
+    def fast_destroy(self, app):
+        """
+        Do the check for only 1 level.
+
+        For now:
+        - Destroyed variables can have only 1 clients.
+        - Allow sequence of destroy variables.
+        - Allow view to have multiple clients.
+        - Allow sequence of view.
+        """
+
+        if not config.faster_cycle:
+            return True
+
+        dm = getattr(app.op, 'destroy_map', None)
+        if not dm:
+            return
+
+        destroyed_inputs_idx = []  # list of app's destroyed inputs
+        for i in dm.values():
+            destroyed_inputs_idx += i
+        for d_inp_idx in destroyed_inputs_idx:
+            d_inp = app.inputs[d_inp_idx]  # The destroyed input variable
+            if len(d_inp.clients) != 1:
+                # We allow only 1 clients on variable we destroy
+                self.fail_validate = True
+
+            # If the variable destroyed isn't a view, we are fine.
+            if not d_inp.owner or not getattr(d_inp.owner.op,
+                                              'view_map', False):
+                continue
+            # The node have views, verify if this specific output is a view.
+            v_out_idx = d_inp.owner.outputs.index(d_inp)
+            if v_out_idx not in d_inp.owner.op.view_map:
+                continue
+            self.fail_validate = True
+
+            # Temp code to try to allow inplace on inputs with more
+            # then 1 clients, but not on view. To explore only after
+            # the first version completly work and is merged and there
+            # is time.
+
+            # if d_inp.owner:
+            #     d_inp_apply = d_inp.owner
+
+            #     # The output index of the node that created d_inp
+            #     out_idx = d_inp_apply.outputs.index(d_inp)
+
+            #     # d = the inputs d_inp destroy
+            #     d = getattr(d_inp_apply.op, 'destroy_map', {}).get(out_idx, [])
+            #     # v = the inputs d_inp view
+            #     v = getattr(d_inp_apply.op, 'view_map', {}).get(out_idx, [])
+            #     dv = d + v
+            #     assert len(dv) <= 1  # A current Theano limit as many places.
+            #     if len(v) > 0:
+            #         # If we destroy something that have more then 1
+            #         # clients, then there can't be any view of it
+            #         # except the destroyed one.
+            #         raise InconsistencyError()
+            # else:
+            #     raise InconsistencyError()
+
     def on_import(self, fgraph, app, reason):
         """
         Add Apply instance to set which must be computed.
@@ -790,7 +855,9 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
         # If it's a destructive op, add it to our watch list
         if getattr(app.op, 'destroy_map', {}):
+            # TODO: check here only one level of fast destroy_map.
             self.destroyers.add(app)
+            self.fast_destroy(app)
 
         # add this symbol to the forward and backward maps
         for o_idx, i_idx_list in iteritems(getattr(app.op, 'view_map', {})):
@@ -891,6 +958,8 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
                     self.view_o.setdefault(new_r, OrderedSet()).add(output)
 
+            # TODO: check here only one level of fast destroy_map.
+            self.fast_destroy(app)
         self.stale_droot = True
 
     def validate(self, fgraph):
@@ -902,6 +971,12 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         b) orderings cannot be topologically sorted.
 
         """
+        if config.faster_cycle and self.fail_validate:
+            self.fail_validate = False
+            raise InconsistencyError("fast_cycle doesn't accept this graph.")
+        elif config.faster_cycle:
+            return True
+
         if self.destroyers:
             ords = self.orderings(fgraph)
 
