@@ -73,14 +73,14 @@ class Layer(object):
 
 
 class GRU(Layer):
-    def __init__(self, input_dim, output_dim, input_layer, s0=None, batch_normalize=False, name=""):
+    def __init__(self, input_dim, output_dim, input_layer, s0=None, name=""):
         '''Layers information'''
         self.name = name
         self.input_dim = input_dim
         self.hidden_dim = output_dim
         self.output_dim = output_dim
         self.input_layer = input_layer
-        self.X = input_layer.output().dimshuffle(1, 0, 2)
+        self.X = input_layer.output()
         self.s0 = s0
         self.params = []
 
@@ -127,7 +127,7 @@ class GRU(Layer):
             outputs_info=outputs_info
             )
 
-        self.Y = states.dimshuffle(1, 0, 2)
+        self.Y = states
 
     def output(self):
         return self.Y

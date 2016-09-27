@@ -1457,7 +1457,7 @@ def test_dnn_rnn_gru():
         numpy.zeros((psize,), dtype=theano.config.floatX))
 
     model = Model()
-    last_layer = WrapperLayer(X.dimshuffle(1, 0, 2))
+    last_layer = WrapperLayer(X)
     last_dim = input_dim
     for i in range(depth):
         gru = GRU(last_dim, hidden_dim, last_layer, s0=h0[i, :, :])
@@ -1478,7 +1478,7 @@ def test_dnn_rnn_gru():
         grad_fn = theano.function([X, Y, h0], grad, mode=mode_with_gpu)
         return fn, grad_fn
 
-    ref_fn, ref_grad_fn = funcs(last_layer.output().dimshuffle((1, 0, 2)),
+    ref_fn, ref_grad_fn = funcs(last_layer.output(),
                                 model.get_params())
     cudnn_fn, cudnn_grad_fn = funcs(rnnb.apply(params_cudnn, X, h0)[0],
                                     [params_cudnn])

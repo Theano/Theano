@@ -1982,7 +1982,7 @@ class _RNNSplitParams(DnnBase):
         assert w.ndim == 1
         layer = as_scalar(layer).astype('int32')
         isize = as_tensor_variable(isize).astype('uint64')
-        assert isize.ndim == 2
+        assert isize.ndim == 1
         typecode = as_scalar(typecode).astype('int32')
         _1d = GpuArrayType(w.type.dtype, [False],
                            context_name=w.type.context_name)
@@ -2230,7 +2230,7 @@ class GpuDnnRNNOp(DnnBase):
 
         return Apply(self, inputs, outputs)
 
-    def grad2(self, inputs, outputs, output_grads):
+    def L_op(self, inputs, outputs, output_grads):
         desc, w, x, hx = inputs[:4]
         cx = inputs[4] if len(inputs) == 5 else None
         reserve, y, hy = outputs[:3]
