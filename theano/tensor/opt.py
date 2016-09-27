@@ -4713,13 +4713,17 @@ class Canonizer(gof.LocalOptimizer):
             numeric constant. If v is a plain Variable, returns None.
 
         """
-        if isinstance(v, Variable):
-            try:
-                # As the constant folding is in the canonicalize phase,
-                # We don't need to check all the graph each time.
-                return get_scalar_constant_value(v, only_process_constants=True)
-            except NotScalarConstantError:
+        if isinstance(v, Constant):
+            if getattr(v.tag, 'unique_value', None) is not None:
+                data = v.tag.unique_value
+            else:
+                data = v.data
+            if data.ndim == 0:
+                return data
+            else:
                 return None
+        elif isinstance(v, Variable):
+            return None
         else:
             return v
 
