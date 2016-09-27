@@ -4792,9 +4792,8 @@ class Canonizer(gof.LocalOptimizer):
         | [x, 2, y], [z, 2] -> [x, y], [z]
 
         """
-
         # Lists representing the numerator and denumerator
-        num, denum = list(orig_num), list(orig_denum)
+        num, denum = [], []
 
         # Lists representing the *constant* elements of num and denum
         numct, denumct = [], []
@@ -4803,15 +4802,16 @@ class Canonizer(gof.LocalOptimizer):
             ct = self.get_constant(v)
             if ct is not None:
                 # We found a constant in the numerator!
-                # We remove it from num
-                num.remove(v)
                 # We add it to numct
                 numct.append(ct)
+            else:
+                num.append(v)
         for v in orig_denum:
             ct = self.get_constant(v)
             if ct is not None:
-                denum.remove(v)
                 denumct.append(ct)
+            else:
+                denum.append(v)
 
         if self.use_reciprocal or num:
             # This will calculate either:
