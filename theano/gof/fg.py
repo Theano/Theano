@@ -6,7 +6,6 @@ types that it can raise.
 """
 from __future__ import absolute_import, print_function, division
 from collections import OrderedDict
-import sys
 import time
 import traceback
 
@@ -280,7 +279,7 @@ class FunctionGraph(utils.object2):
         r.clients.append(new_client)
 
     def __remove_client__(self, r, client_to_remove,
-                           prune=True, reason=None):
+                          prune=True, reason=None):
         """
         Removes all from the clients list of r.
 
