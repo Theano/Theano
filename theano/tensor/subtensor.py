@@ -64,7 +64,7 @@ def make_constant(args):
                              conv(a.stop),
                              conv(a.step))
             elif isinstance(a, (integer_types, numpy.integer)):
-                return scal.ScalarConstant(scal.int64, a)
+                return scal.constant(a, dtype=scal.int64)
             else:
                 return a
     return tuple(map(conv, args))

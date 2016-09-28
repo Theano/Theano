@@ -190,7 +190,7 @@ class InputToGpuOptimizer(Optimizer):
             # This happen frequently as we do 2 pass of the gpu optimizations
             if (len(input.clients) == 1 and
                 (input.clients[0][0] == 'output' or
-                 input.clients[0][0].op == gpu_from_host)):
+                 isinstance(input.clients[0][0].op, GpuFromHost))):
                 continue
 
             try:
@@ -213,7 +213,7 @@ gpu_seqopt.register('InputToGpuOptimizer', InputToGpuOptimizer(),
                     'merge')  # TODO: how to make it mandatory for gpu_seqopt?
 
 
-@local_optimizer([gpu_from_host, host_from_gpu])
+@local_optimizer([GpuFromHost, HostFromGpu])
 def local_cut_gpu_host_gpu(node):
     if tensor.opt.opt.check_chain(node, gpu_from_host, host_from_gpu):
         return [node.inputs[0].owner.inputs[0]]
@@ -331,7 +331,7 @@ def local_gpu_elemwise_0(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host])
+@local_optimizer([GpuFromHost])
 def local_gpu_elemwise_1(node):
     """
     gpu_from_host(Elemwise)) -> GpuElemwise(gpu_from_host(...))
@@ -341,6 +341,7 @@ def local_gpu_elemwise_1(node):
         host_i, = node.inputs
         if (host_i.owner and
                 isinstance(host_i.owner.op, tensor.Elemwise) and
+                len(host_i.owner.outputs) == 1 and
                 len(host_i.clients) == 1 and
                 dtype_in_elemwise_supported(node.op)):
 
@@ -361,11 +362,15 @@ def local_gpu_elemwise_1(node):
 
             if all([i.dtype == 'float32' for i in elemwise_node.inputs]):
                 gpu_elemwise = new_op(*[as_cuda_ndarray_variable(i)
-                                        for i in elemwise_node.inputs])
-                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner)
+                                        for i in elemwise_node.inputs],
+                                      return_list=True)
+                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise[0].owner)
                 if not gpu_elemwise:
                     return False
-                return [gpu_elemwise.outputs[0]]
+                if (max_inputs_to_GpuElemwise(node) <
+                        len(gpu_elemwise.inputs)):
+                    return False
+                return gpu_elemwise.outputs
     return False
 
 
@@ -387,7 +392,7 @@ def local_gpu_split(node):
 
 
 @register_opt()
-@local_optimizer([tensor.DimShuffle, gpu_from_host])
+@local_optimizer([tensor.DimShuffle, GpuFromHost])
 def local_gpu_dimshuffle_0(node):
     """
     dimshuffle(host_from_gpu()) -> host_from_gpu(gpu_dimshuffle)
@@ -414,7 +419,7 @@ def local_gpu_dimshuffle_0(node):
 
 
 @register_opt()
-@local_optimizer([tensor.SpecifyShape, gpu_from_host])
+@local_optimizer([tensor.SpecifyShape, GpuFromHost])
 def local_gpu_specifyShape_0(node):
     """
     specify_shape(host_from_gpu()) -> host_from_gpu(specify_shape)
@@ -438,7 +443,7 @@ def local_gpu_specifyShape_0(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.basic.Dot])
+@local_optimizer([GpuFromHost, tensor.basic.Dot])
 def local_gpu_dot_to_dot22(node):
     """
     gpu_from_host(dot) -> gpudot(gpu_from_host)
@@ -530,7 +535,7 @@ optdb.register('gpu_assert_no_cpu_op', assert_no_cpu_op, 49.2,
 
 
 @register_opt()
-@local_optimizer([theano.ifelse.IfElse, gpu_from_host])
+@local_optimizer([theano.ifelse.IfElse, GpuFromHost])
 def local_gpu_lazy_ifelse(node):
     """
     gpu_from_host(ifelse) -> gpu_ifelse(gpu_from_host)
@@ -599,7 +604,7 @@ def local_gpu_lazy_ifelse(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.blas.Dot22])
+@local_optimizer([GpuFromHost, tensor.blas.Dot22])
 def local_gpu_dot22(node):
     """
     gpu_from_host(dot22) -> gpudot(gpu_from_host)
@@ -624,7 +629,7 @@ def local_gpu_dot22(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.blas.BatchedDot])
+@local_optimizer([GpuFromHost, tensor.blas.BatchedDot])
 def local_gpu_batched_dot(node):
     """
     gpu_from_host(batched_dot) -> gpu_batched_dot(gpu_from_host)
@@ -663,7 +668,7 @@ def local_gpu_batched_dot(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.blas.Dot22Scalar])
+@local_optimizer([GpuFromHost, tensor.blas.Dot22Scalar])
 def local_gpu_dot22scalar(node):
     """
     gpu_from_host(dot22scalar) -> gpudot(gpu_from_host)
@@ -692,7 +697,7 @@ def local_gpu_dot22scalar(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, slinalg.Solve])
+@local_optimizer([GpuFromHost, slinalg.Solve])
 def local_gpu_solve(node):
     """
     gpu_from_host(CpuSolve) -> GpuSolve(gpu_from_host)
@@ -722,7 +727,7 @@ def local_gpu_solve(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.blas_c.CGemv, tensor.blas.Gemv])
+@local_optimizer([GpuFromHost, tensor.blas_c.CGemv, tensor.blas.Gemv])
 def local_gpu_gemv(node):
     """
     gpu_from_host(gemv) -> gpu_gemv(gpu_from_host)
@@ -760,7 +765,7 @@ def local_gpu_gemv(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.blas_c.CGer, tensor.blas.Ger,
+@local_optimizer([GpuFromHost, tensor.blas_c.CGer, tensor.blas.Ger,
                   tensor.blas_scipy.ScipyGer])
 def local_gpu_ger(node):
     """
@@ -800,7 +805,7 @@ def local_gpu_ger(node):
 
 
 @register_opt()
-@local_optimizer([tensor.blas.Gemm, gpu_from_host])
+@local_optimizer([tensor.blas.Gemm, GpuFromHost])
 def local_gpu_gemm(node):
     """
     gpu_from_host(gemm) -> gpu_gemm(gpu_from_host)
@@ -989,7 +994,7 @@ def local_gpu_elemwise_careduce(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.Reshape])
+@local_optimizer([GpuFromHost, tensor.Reshape])
 def local_gpu_reshape(node):
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
@@ -1024,7 +1029,7 @@ def local_gpu_reshape(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.Flatten])
+@local_optimizer([GpuFromHost, tensor.Flatten])
 def local_gpu_flatten(node):
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
@@ -1044,7 +1049,7 @@ def local_gpu_flatten(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.Subtensor])
+@local_optimizer([GpuFromHost, tensor.Subtensor])
 def local_gpu_subtensor(node):
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
@@ -1087,7 +1092,7 @@ def local_gpu_subtensor(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.AdvancedSubtensor1])
+@local_optimizer([GpuFromHost, tensor.AdvancedSubtensor1])
 def local_gpu_advanced_subtensor1(node):
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
@@ -1108,7 +1113,7 @@ def local_gpu_advanced_subtensor1(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.AdvancedIncSubtensor1])
+@local_optimizer([GpuFromHost, tensor.AdvancedIncSubtensor1])
 def local_gpu_advanced_incsubtensor1(node):
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
@@ -1181,7 +1186,7 @@ def local_gpu_advanced_incsubtensor1(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.IncSubtensor])
+@local_optimizer([GpuFromHost, tensor.IncSubtensor])
 def local_gpu_incsubtensor(node):
     if isinstance(node.op, GpuFromHost):
         host_output = node.inputs[0]
@@ -1498,7 +1503,7 @@ def values_eq_approx_high_tol(a, b):
     return CudaNdarrayType.values_eq_approx(a, b, atol=atol)
 
 
-@local_optimizer([gpu_from_host, conv.ConvOp])
+@local_optimizer([GpuFromHost, conv.ConvOp])
 def local_gpu_conv(node):
     """
     gpu_from_host(conv) -> gpu_conv(gpu_from_host)
@@ -2316,7 +2321,7 @@ def local_gpu_contiguous(node):
 
 
 @register_opt()
-@local_optimizer([gpu_from_host, tensor.Eye])
+@local_optimizer([GpuFromHost, tensor.Eye])
 def local_gpu_eye(node):
     """
     gpu_from_host(eye) -> gpueye(gpu_from_host)
@@ -2445,7 +2450,7 @@ def typeConstructor(broadcastable, dtype):
 
 
 @register_opt('scan')
-@local_optimizer([gpu_from_host, scan_op.Scan])
+@local_optimizer([GpuFromHost, scan_op.Scan])
 def gpuScanOptimization(node):
     """
     scan(host_from_gpu) -> host_from_gpu(GPUscan)
@@ -2567,7 +2572,7 @@ def gpuScanOptimization(node):
 
 
 @register_opt()
-@local_optimizer([tensor.AllocEmpty, gpu_from_host])
+@local_optimizer([tensor.AllocEmpty, GpuFromHost])
 def local_gpu_allocempty(node):
     if (isinstance(node.op, tensor.AllocEmpty) and
             node.op.dtype == "float32"):
@@ -2734,7 +2739,7 @@ optdb.register('local_inplace_gpu_sparse_block_outer',
 
 
 # Move to Gpu optimization
-@local_optimizer([gpu_from_host,
+@local_optimizer([GpuFromHost,
                   AbstractConv2d,
                   AbstractConv2d_gradWeights,
                   AbstractConv2d_gradInputs])

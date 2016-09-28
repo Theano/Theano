@@ -6897,6 +6897,7 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 32,
 
         if type(node.op) is not OP:
             return False
+
         inputs = []  # inputs of the new Elemwise op.
         s_inputs = []  # inputs of the new scalar op used by the Composite.
         # Inputs of the new scalar op that represents the current node.
@@ -7050,9 +7051,9 @@ your code will run correctly, but may be slower.""")
 
         # create the new node.
         # Do not call make_node to have test_value
-        n = maker(node, C)(*inputs).owner
-        assert len(n.outputs) == 1
-        assert node.outputs[0].dtype == n.outputs[0].dtype
+        n = maker(node, C)(*inputs, return_list=True)[0].owner
+        assert all([o1.dtype == o2.dtype for o1, o2 in zip(node.outputs,
+                                                           n.outputs)])
 
         if len(n.inputs) > max_nb_input:
             _logger.info('loop fusion failed because Op would exceed'
@@ -7226,6 +7227,53 @@ else:
                            'fusion', 'local_elemwise_fusion',
                            'FusionOptimizer')
 
+
+@register_canonicalize
+@gof.local_optimizer([Elemwise])
+def local_useless_composite(node):
+    """For elemwise Composite that have multiple outputs, remove the
+    outputs that are not used and if there is only 1 node in the
+    Composite, remove it in some cases.
+
+    """
+    if (not isinstance(node.op, Elemwise) or
+            not isinstance(node.op.scalar_op, scalar.Composite)):
+        return
+    comp = node.op.scalar_op
+
+    # Remove outputs not used.
+    idx = [i for i, o_extern in enumerate(node.outputs)
+           if o_extern.clients]
+    if len(idx) < len(node.outputs):
+        new_outputs = [comp.outputs[i] for i in idx]
+        new_inner_inputs = theano.gof.graph.inputs(new_outputs, comp.inputs)
+        new_inner_inputs = [i for i in new_inner_inputs
+                            if not isinstance(i, theano.Constant)]
+        new_out_inputs = []
+        for out_i, inner_i in zip(node.inputs, comp.inputs):
+            if inner_i in new_inner_inputs:
+                new_out_inputs.append(out_i)
+        assert len(new_inner_inputs) == len(new_out_inputs)
+        c = scalar.Composite(inputs=new_inner_inputs,
+                             outputs=new_outputs)
+        e = Elemwise(scalar_op=c)(*[i for i in node.inputs
+                                    if i in new_out_inputs],
+                                  return_list=True)
+        comp = e[0].owner.op.scalar_op
+
+    # If there is only 1 node in the inner graph, remove it.
+    ops = theano.gof.graph.ops(comp.inputs, comp.outputs)
+    if len(ops) == 1:
+        inode = ops.pop()
+        # There can be constant in the inner graph.
+        # For now, we don't push them out.
+        if len(inode.inputs) == len(node.inputs):
+            e = Elemwise(scalar_op=inode.op)(*node.inputs,
+                                             return_list=True)
+            return dict(zip([node.outputs[i] for i in idx], e))
+
+    if len(idx) < len(node.outputs):
+        return dict(zip([node.outputs[i] for i in idx], e))
 
 # ############################
 # # Remove consider_constant #

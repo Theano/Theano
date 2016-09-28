@@ -82,11 +82,11 @@ class Optimizer(object):
         """
         self.add_requirements(fgraph)
         try:
-            orig = theano.tensor.basic.constant.enable
-            theano.tensor.basic.constant.enable = False
+            orig = theano.constant_cache_enable
+            theano.constant_cache_enable = False
             ret = self.apply(fgraph, *args, **kwargs)
         finally:
-            theano.tensor.basic.constant.enable = orig
+            theano.constant_cache_enable = orig
         return ret
 
     def __call__(self, fgraph):

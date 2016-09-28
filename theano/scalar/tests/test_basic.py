@@ -24,7 +24,8 @@ from theano.scalar.basic import (floats, float32, float64,
                                  ints, int8, int32, complex64,
                                  ComplexError, IntDiv, TrueDiv,
                                  Composite, add, div_proxy,
-                                 and_, eq, neq, invert, mul, Scalar, InRange)
+                                 and_, eq, neq, invert, mul, Scalar, InRange,
+                                 constant)
 from theano.scalar.basic import (
     true_div, inv, log, log2, log10, log1p, exp, exp2, expm1, sqrt, deg2rad,
     rad2deg, cos, arccos, sin, arcsin, tan, arctan, arctan2, cosh, arccosh,
@@ -84,11 +85,31 @@ class test_composite(unittest.TestCase):
         C = Composite([x, y], [x + y])
         CC = Composite([x, y], [C(x * y, y)])
         assert not isinstance(CC.outputs[0].owner.op, Composite)
+        f = theano.function([x, y], CC(x, y))
+        assert f(1, 2) == 4
 
-        # Test with multiple outputs
+        # Test with multiple outputs on the 2nd Composite
         CC = Composite([x, y, z], [C(x * y, y), C(x * z, y)])
         # We don't flatten that case.
-        assert isinstance(CC.outputs[0].owner.op, Composite)
+        assert not isinstance(CC.outputs[0].owner.op, Composite)
+        f = theano.function([x, y, z], CC(x, y, z))
+        assert f(1, 2, 3) == [4, 5]
+
+        # Test with multiple outputs on the 2nd Composite and not all
+        # composite
+        CC = Composite([x, y, z], [C(x * y, y),x * z])
+        # We don't flatten that case.
+        assert not isinstance(CC.outputs[0].owner.op, Composite)
+        f = theano.function([x, y, z], CC(x, y, z))
+        assert f(1, 2, 3) == [4, 3]
+
+        # Test with multiple outputs on the 1st Composite
+        C = Composite([x, y, z], [x + y, x - z])
+        CC = Composite([x, y, z], C(x * y, y, z))
+        # We don't flatten that case.
+        assert not isinstance(CC.outputs[0].owner.op, Composite)
+        f = theano.function([x, y, z], CC(x, y, z))
+        assert f(1, 2, 3) == [4, -1]
 
     def test_with_constants(self):
         x, y, z = inputs()
@@ -465,6 +486,15 @@ def test_grad_abs():
 
 # Testing of Composite is done in tensor/tests/test_opt.py
 # in test_fusion, TestCompositeCodegen
+
+
+def test_constant():
+    c = constant(2, name='a')
+    assert c.name == 'a'
+    assert c.dtype == 'int8'
+    c = constant(2, dtype='float32')
+    assert c.name is None
+    assert c.dtype == 'float32'
 
 
 if __name__ == '__main__':

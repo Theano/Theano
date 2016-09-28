@@ -784,6 +784,8 @@ second dimension
 
         nd = len(inputs[0].type.broadcastable)  # this is the same for everyone
 
+        cache = {}  # Cache the node creation to speed up the merge opt.
+
         def transform(r):
             # From a graph of ScalarOps, make a graph of Broadcast ops.
             if isinstance(r.type, (NullType, DisconnectedType)):
@@ -800,9 +802,15 @@ second dimension
                 res = theano.tensor.constant(numpy.asarray(r.data),
                                              dtype=r.type.dtype)
                 return DimShuffle((), ['x'] * nd, inplace=False)(res)
-            new_r = Elemwise(node.op, {})(
-                *[transform(ipt) for ipt in node.inputs])
-            return new_r
+
+            if node in cache:
+                new_r = cache[node]
+            else:
+                new_r = Elemwise(node.op, {})(
+                    *[transform(ipt) for ipt in node.inputs], return_list=True)
+                cache[node] = new_r
+            idx = node.outputs.index(r)
+            return new_r[idx]
         ret = []
         for scalar_igrad, ipt in izip(scalar_igrads, inputs):
             if scalar_igrad is None:
@@ -1113,8 +1121,8 @@ second dimension
             Py_XINCREF(%(oname)s);
             """ % locals()
             # We alias the scalar variables
-            defines += "#define %(oname)s_i %(iname)s_i" % locals()
-            undefs += "#undef %(oname)s_i" % locals()
+            defines += "#define %(oname)s_i %(iname)s_i\n" % locals()
+            undefs += "#undef %(oname)s_i\n" % locals()
 
         # Note: here, olv_index is either the index of the last output
         # which is allocated, OR, if there are any aliased outputs,

@@ -120,33 +120,47 @@ def as_scalar(x, name=None):
         raise TypeError("Cannot convert %s to Scalar" % x, type(x))
 
 
-def constant(x):
+def constant(x, name=None, dtype=None):
     # pass through numpy scalars, since they are already typed on
     # purpose typically.
+    if dtype is not None:
+        x = theano._asarray(x, dtype=dtype)
+    ret = None
     if hasattr(x, 'dtype'):
         assert x.ndim == 0
-        return ScalarConstant(get_scalar_type(str(x.dtype)), x)
-    if isinstance(x, builtin_float):
+        ret = ScalarConstant(get_scalar_type(str(x.dtype)), x, name=name)
+    elif isinstance(x, builtin_float):
         for dtype in ['float32', 'float64']:
             x_ = theano._asarray(x, dtype=dtype)
             if numpy.all(x == x_):
                 break
             x_ = None
         assert x_ is not None
-        return ScalarConstant(get_scalar_type(str(x_.dtype)), x)
-    if isinstance(x, builtin_int):
+        ret = ScalarConstant(get_scalar_type(str(x_.dtype)), x, name=name)
+    elif isinstance(x, builtin_int):
         for dtype in ['int8', 'int16', 'int32', 'int64']:
             x_ = theano._asarray(x, dtype=dtype)
             if numpy.all(x == x_):
                 break
             x_ = None
         assert x_ is not None
-        return ScalarConstant(get_scalar_type(str(x_.dtype)), x)
-    if isinstance(x, builtin_complex):
+        ret = ScalarConstant(get_scalar_type(str(x_.dtype)), x, name=name)
+    elif isinstance(x, builtin_complex):
         # TODO: We have added the complex type, so this should be tested
         raise NotImplementedError()
-    raise TypeError(x)
-    # return ScalarConstant(float64, float(x))
+    if ret is None:
+        raise TypeError(x)
+    if not theano.constant_cache_enable:
+        return ret
+    sig = ret.signature()
+    if (theano.constant_cache_enable and
+            sig not in constant_cache and
+            (-10) <= ret.data <= 10 and
+            # Limit the size of the cache.
+            len(constant_cache) < 10000):
+        constant_cache[sig] = ret
+    return constant_cache.get(sig, ret)
+constant_cache = {}
 
 
 class Scalar(Type):
@@ -644,7 +658,7 @@ class _scalar_py_operators:
         # The second is needed for Elemwise ops to work right
         if dtype is None:
             dtype = str(self.type.dtype)
-        return second(self, ScalarConstant(get_scalar_type(dtype), 0))
+        return second(self, constant(0, dtype=get_scalar_type(dtype)))
 
     def astype(self, dtype):
         return cast(self, dtype)
@@ -655,7 +669,15 @@ class ScalarVariable(_scalar_py_operators, Variable):
 
 
 class ScalarConstant(_scalar_py_operators, Constant):
-    pass
+    def __copy__(self):
+        # We need to do this to remove the cached attribute
+        return type(self)(self.type, self.data, self.name)
+
+    def __deepcopy__(self, memo):
+        # We need to do this to remove the cached attribute
+        return type(self)(copy.deepcopy(self.type, memo),
+                          copy.deepcopy(self.data, memo),
+                          copy.deepcopy(self.name, memo))
 
 # Register ScalarConstant as the type of Constant corresponding to Scalar
 Scalar.Constant = ScalarConstant
@@ -3451,12 +3473,17 @@ complex_from_polar = ComplexFromPolar(name='complex_from_polar')
 
 
 class Composite(ScalarOp):
-    """
-    Composite is an Op that takes a graph of scalar operations and
+    """Composite is an Op that takes a graph of scalar operations and
     produces c code for the whole graph. Its purpose is to implement loop
     fusion.
 
     Composite depends on all the Ops in its graph having C code.
+
+    :note: It do not apply any optimizer to the inner graph, including
+        the merge optimizer.
+
+    :note: If the output nodes are Composite, they will be
+        flattened. This help work around Python recursion limit.
 
     """
     init_param = ('inputs', 'outputs')
@@ -3624,30 +3651,56 @@ class Composite(ScalarOp):
         # only 1 new Composite each time at the output.
         for i in inputs:
             assert i not in outputs  # This isn't supported, use identity
-        if len(outputs) > 1 or not any([isinstance(var.owner.op, Composite)
-                                        for var in outputs]):
+        if not any([isinstance(var.owner.op, Composite) for var in outputs]):
             # No inner Composite
             inputs, outputs = gof.graph.clone(inputs, outputs)
         else:
             # Inner Composite that we need to flatten
-            assert len(outputs) == 1
             # 1. Create a new graph from inputs up to the
             # Composite
+            out1 = []
+            for o in outputs:
+                for i in o.owner.inputs:
+                    out1.append(i)
             res = theano.compile.rebuild_collect_shared(
                 inputs=inputs,
-                outputs=outputs[0].owner.inputs,
+                outputs=out1,
                 copy_inputs_over=False)  # Clone also the inputs
-            # 2. We continue this partial clone with the graph in
-            # the inner Composite
-            res2 = theano.compile.rebuild_collect_shared(
-                inputs=outputs[0].owner.op.inputs,
-                outputs=outputs[0].owner.op.outputs,
-                replace=dict(izip(outputs[0].owner.op.inputs, res[1]))
-            )
-            assert len(res2[1]) == len(outputs)
+
+            # 2. We continue this partial clone with the graph in the
+            # inner Composite. If there is multiple outputs, o can be
+            # something else then a composite.
+            new_outputs = []
+            node_done = {}
+            for o_idx, o in enumerate(outputs):
+                if o.owner in node_done:
+                    out = node_done[o.owner]
+                elif not isinstance(o.owner.op, Composite):
+                    repl = {}  # replacement
+                    for i in o.owner.inputs:
+                        repl[i] = res[1][out1.index(i)]
+                    res2 = theano.compile.rebuild_collect_shared(
+                        inputs=o.owner.inputs,
+                        outputs=o.owner.outputs,
+                        replace=repl)
+                    out = res2[1]
+                    node_done[o.owner] = out
+                else:
+                    repl = {}  # replacement
+                    for i_extern, i_intern in zip(o.owner.inputs,
+                                                  o.owner.op.inputs):
+                        repl[i_intern] = res[1][out1.index(i_extern)]
+                    res2 = theano.compile.rebuild_collect_shared(
+                        inputs=o.owner.op.inputs,
+                        outputs=o.owner.op.outputs,
+                        replace=repl)
+                    out = res2[1]
+                    node_done[o.owner] = out
+                new_outputs.append(out[o.owner.outputs.index(o)])
+            assert len(new_outputs) == len(outputs)
             assert len(res[0]) == len(inputs)
             assert res[0] != inputs
-            inputs, outputs = res[0], res2[1]
+            inputs, outputs = res[0], new_outputs
             # Next assert comment just for speed
             # assert not any([isinstance(node.op, Composite) for node in
             #                theano.gof.graph.ops(inputs, outputs)])

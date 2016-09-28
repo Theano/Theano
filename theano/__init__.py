@@ -55,6 +55,7 @@ from theano.configdefaults import config
 # This number is not tied to the release version and should change
 # very rarely.
 __api_version__ = 1
+constant_cache_enable = True
 
 from theano.gof import (
     CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker,
