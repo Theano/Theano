@@ -2623,7 +2623,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             final_optimizers=final_optimizers,
             cleanup_optimizers=cleanup_optimizers)
 
-        def merge_list(l1, l2):
+        def add_append_list(l1, l2):
             l = copy.copy(l1)
             for idx, nb in enumerate(l2):
                 if idx < len(l):
@@ -2632,7 +2632,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     l.append(nb)
             return l
 
-        loop_timing = merge_list(prof1[1], prof2[1])
+        loop_timing = add_append_list(prof1[1], prof2[1])
 
         loop_process_count = list(prof1[2])
         global_sub_profs = []
@@ -2672,12 +2672,12 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
         max_nb_nodes = max(prof1[3], prof2[3])
 
-        global_opt_timing = merge_list(prof1[4], prof2[4])
+        global_opt_timing = add_append_list(prof1[4], prof2[4])
 
-        nb_nodes = merge_list(prof1[5], prof2[5])
+        nb_nodes = add_append_list(prof1[5], prof2[5])
 
         time_opts = merge_dict(prof1[6], prof2[6])
-        io_toposort_timing = merge_list(prof1[7], prof2[7])
+        io_toposort_timing = add_append_list(prof1[7], prof2[7])
 
         assert (len(loop_timing) == len(global_opt_timing) ==
                 len(io_toposort_timing) == len(nb_nodes))
