@@ -314,7 +314,9 @@ class FunctionGraph(utils.object2):
         """
         for entry in clients_to_remove:
             r.clients.remove(entry)
-            assert entry not in r.clients  # an op,i pair should be unique
+            # entry should be uniq in r. No need to assert it as it is
+            # already asserted in __add_client__.
+            # assert entry not in r.clients
         if r.clients:
             return False
         if not prune:
