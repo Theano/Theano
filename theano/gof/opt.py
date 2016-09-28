@@ -2668,7 +2668,15 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             final_sub_profs.append(merge(final_optimizers, 'final_optimizers', 10))
             cleanup_sub_profs.append(merge(cleanup_optimizers, 'cleanup_optimizers', 11))
 
-        loop_process_count.extend(prof2[2][len(loop_process_count):])
+        # Add the iteration done by only one of the profile.
+        loop_process_count.extend(prof1[2][len(loop_process_count):])
+        global_sub_profs.extend(prof1[9][len(global_sub_profs):])
+        final_sub_profs.extend(prof1[10][len(final_sub_profs):])
+        cleanup_sub_profs.extend(prof1[11][len(cleanup_sub_profs):])
+
+        global_sub_profs.extend(prof2[9][len(loop_process_count):])
+        final_sub_profs.extend(prof2[10][len(loop_process_count):])
+        cleanup_sub_profs.extend(prof2[11][len(loop_process_count):])
 
         max_nb_nodes = max(prof1[3], prof2[3])
 
@@ -2678,13 +2686,12 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
         time_opts = merge_dict(prof1[6], prof2[6])
         io_toposort_timing = add_append_list(prof1[7], prof2[7])
-
         assert (len(loop_timing) == len(global_opt_timing) ==
+                len(global_sub_profs) ==
                 len(io_toposort_timing) == len(nb_nodes))
         assert len(loop_timing) == max(len(prof1[1]), len(prof2[1]))
 
         node_created = merge_dict(prof1[8], prof2[8])
-
         return (new_opt,
                 loop_timing,
                 loop_process_count,
