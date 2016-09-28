@@ -150,7 +150,7 @@ Functions
 
 .. automodule:: theano.sandbox.cuda.dnn
    :noindex:
-   :members: dnn_conv, dnn_pool
+   :members: dnn_conv, dnn_pool, dnn_conv3d, dnn_gradweight, dnn_gradinput, dnn_pool, dnn_batch_normalization_train, dnn_batch_normalization_test
 
 Convolution Ops
 ===============

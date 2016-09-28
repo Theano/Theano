@@ -1221,14 +1221,14 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     :param algo: convolution implementation to use. Only 'none' is implemented
         for the conv3d. Default is the value of
         :attr:`config.dnn.conv.algo_fwd`.
-    :param precision : dtype in which the computation of the convolution
+    :param precision: dtype in which the computation of the convolution
         should be done. Possible values are 'as_input_f32', 'as_input',
         'float16', 'float32' and 'float64'. Default is the value of
         :attr:`config.dnn.conv.precision`.
 
     :warning: The cuDNN library only works with GPU that have a compute
-      capability of 3.0 or higer.  This means that older GPU will not
-      work with this Op.
+        capability of 3.0 or higer.  This means that older GPU will not
+        work with this Op.
     :warning: dnn_conv3d only works with cuDNN library 3.0
 
     """

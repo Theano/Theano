@@ -18,10 +18,12 @@
 - Others
    - :func:`softplus`
    - :func:`softmax`
+   - :func:`softsign`
    - :func:`relu() <theano.tensor.nnet.relu>`
    - :func:`binary_crossentropy`
    - :func:`.categorical_crossentropy`
    - :func:`h_softmax() <theano.tensor.nnet.h_softmax>`
+   - :func:`confusion_matrix <theano.tensor.nnet.confusion_matrix>`
 
 .. function:: sigmoid(x)
 
@@ -110,6 +112,12 @@
        x,y,b = T.dvectors('x','y','b')
        W = T.dmatrix('W')
        y = T.nnet.softplus(T.dot(W,x) + b)
+
+.. function:: softsign(x)
+
+   Return the elemwise softsign activation function
+   :math:`\\varphi(\\mathbf{x}) = \\frac{1}{1+|x|}`
+
 
 .. function:: softmax(x)
 
