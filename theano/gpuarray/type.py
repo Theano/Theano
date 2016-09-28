@@ -22,6 +22,26 @@ except ImportError:
 _context_reg = {}
 
 
+def move_to_gpu(data):
+    """
+    Do we want to move this computation to the GPU?
+
+    Currently, we don't move complex and scalar int.
+
+    Parameters
+    ----------
+    data : numpy.ndarray or TensorVariable
+           (it must have dtype and ndim parameter)
+    """
+    # We don't support complex on the GPU
+    if str(data.dtype) in tensor.basic.complex_dtypes:
+        return False
+    # We don't want scalar int on the GPU.
+    if data.ndim == 0 and str(data.dtype) in tensor.basic.discrete_dtypes:
+        return False
+    return True
+
+
 class ContextNotDefined(ValueError):
     pass
 
@@ -572,6 +592,8 @@ def gpuarray_shared_constructor(value, name=None, strict=False,
     See :func:`theano.shared`.
 
     """
+    if target is None and not move_to_gpu(value):
+        raise TypeError('We do not move that data by deault to the GPU')
     if target == 'gpu' or target == 'cpu':
         raise TypeError('not for me')
 
