@@ -32,6 +32,9 @@ int dnn_batchnorm_grad(PyGpuArrayObject *inp, PyGpuArrayObject *doutp,
   if (c_set_tensorNd(scale, bn_params) != 0)
     return 1;
 
+  if (epsilon < 1e-5)
+    return 1;
+
   if (theano_prep_output(dinp, inp->ga.nd, inp->ga.dimensions, inp->ga.typecode, GA_C_ORDER, c) != 0)
     return 1;
   if (theano_prep_output(dscale, scale->ga.nd, scale->ga.dimensions, scale->ga.typecode, GA_C_ORDER, c) != 0)
