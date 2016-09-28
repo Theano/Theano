@@ -2,11 +2,12 @@
 
 int dnn_rnn_gi(cudnnRNNDescriptor_t desc, npy_uint64 xshp,
                PyGpuArrayObject *y, PyGpuArrayObject *dy,
-               PyGpuArrayObject *dhy, PyGpuArrayObject *w,
-               PyGpuArrayObject *hx, gpudata *reserve, PyGpuArrayObject *dcy,
-               PyGpuArrayObject *cx, gpudata **oreserve,
-               PyGpuArrayObject **dx, PyGpuArrayObject **dhx,
-               PyGpuArrayObject **dcx, cudnnHandle_t _handle) {
+               PyGpuArrayObject *w, PyGpuArrayObject *hx,
+               gpudata *reserve, PyGpuArrayObject *cx,
+               PyGpuArrayObject *dhy, PyGpuArrayObject *dcy,
+               gpudata **oreserve, PyGpuArrayObject **dx,
+               PyGpuArrayObject **dhx, PyGpuArrayObject **dcx,
+               cudnnHandle_t _handle) {
   PyGpuContextObject *c = y->context;
   cudnnTensorDescriptor_t ydesc = NULL;
   cudnnTensorDescriptor_t dhydesc = NULL;
@@ -72,8 +73,9 @@ int dnn_rnn_gi(cudnnRNNDescriptor_t desc, npy_uint64 xshp,
     goto fail;
   }
 
-  if (c_make_tensorNd(dhy, &dhydesc) != 0)
-    goto fail;
+  if (dhy != NULL)
+    if (c_make_tensorNd(dhy, &dhydesc) != 0)
+      goto fail;
 
   if (dcy != NULL)
     if (c_make_tensorNd(dcy, &dcydesc) != 0)
