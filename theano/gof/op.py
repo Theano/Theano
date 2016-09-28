@@ -1140,7 +1140,10 @@ class OpenMPOp(Op):
         """
         self.update_self_openmp()
         if self.openmp:
-            return ['-fopenmp']
+            if config.cxx == "icpc":
+                return ['-fopenmp']
+            else:
+                return ['-qopenmp']
         return []
 
     def c_headers(self):
