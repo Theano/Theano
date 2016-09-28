@@ -4113,8 +4113,7 @@ class Join(Op):
 
 join = Join()
 
-pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Join),
-              printing.FunctionPrinter('join'))
+pprint.assign(Join, printing.FunctionPrinter('join'))
 
 
 def roll(x, shift, axis=None):

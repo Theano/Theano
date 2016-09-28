@@ -869,8 +869,7 @@ class MakeVectorPrinter:
         else:
             raise TypeError("Can only print make_vector.")
 
-T.pprint.assign(lambda pstate, r: r.owner and
-                isinstance(r.owner.op, MakeVector), MakeVectorPrinter())
+T.pprint.assign(MakeVector, MakeVectorPrinter())
 
 
 class ShapeFeature(object):
