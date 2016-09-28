@@ -152,7 +152,7 @@ class InplaceElemwiseOptimizer(Optimizer):
     We parametrise it to make it work for Elemwise and GpuElemwise op.
     """
     def __init__(self, OP):
-        self.OP = OP
+        self.op = OP
 
     def add_requirements(self, fgraph):
         fgraph.attach_feature(theano.gof.destroyhandler.DestroyHandler())
@@ -160,7 +160,7 @@ class InplaceElemwiseOptimizer(Optimizer):
     @staticmethod
     def print_profile(stream, prof, level=0):
         blanc = ('    ' * level)
-        print(blanc, "InplaceElemwiseOptimizer ", prof['opt'].OP, file=stream)
+        print(blanc, "InplaceElemwiseOptimizer ", prof['opt'].op, file=stream)
         for k in ['node_before',
                   'nb_call_replace',
                   'nb_call_validate',
@@ -238,7 +238,7 @@ class InplaceElemwiseOptimizer(Optimizer):
         for node in list(graph.io_toposort(fgraph.inputs, fgraph.outputs)):
             op = node.op
             # gpuarray GpuElemwise inherit from Elemwise
-            if not type(op) == self.OP:
+            if not type(op) == self.op:
                 continue
             # If big graph and the outputs are scalar, do not make it
             # inplace.
@@ -355,7 +355,7 @@ class InplaceElemwiseOptimizer(Optimizer):
                                 scalar.transfer_type(
                                     *[inplace_pattern.get(i, None)
                                       for i in xrange(len(node.outputs))]))
-                        new_outputs = self.OP(new_scal, inplace_pattern)(
+                        new_outputs = self.op(new_scal, inplace_pattern)(
                             *node.inputs, **dict(return_list=True))
                         new_node = new_outputs[0].owner
 
@@ -398,7 +398,7 @@ class InplaceElemwiseOptimizer(Optimizer):
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         print("%s%s (%s)" % (
-            (' ' * level), self.__class__.__name__, self.OP), file=stream)
+            (' ' * level), self.__class__.__name__, self.op), file=stream)
         return inplace_elemwise_optimizer
 
 inplace_elemwise_optimizer = InplaceElemwiseOptimizer(T.Elemwise)
