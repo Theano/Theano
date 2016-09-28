@@ -11,7 +11,7 @@ import sys
 import os
 
 from theano import config
-from theano.gof.cmodule import GCC_compiler
+from theano.gof.cmodule import CXX_compiler
 
 _logger = logging.getLogger('theano.tensor.blas')
 
@@ -82,7 +82,7 @@ def detect_macos_sdot_bug():
         """)
 
     _logger.debug('Trying to compile and run test case.')
-    compilation_ok, run_ok = GCC_compiler.try_compile_tmp(
+    compilation_ok, run_ok = CXX_compiler.try_compile_tmp(
         test_code,
         tmp_prefix='detect_macos_sdot_bug_',
         flags=flags, try_run=True)
@@ -128,7 +128,7 @@ def detect_macos_sdot_bug():
         """)
 
     _logger.debug('Trying to compile and run tentative workaround.')
-    compilation_fix_ok, run_fix_ok = GCC_compiler.try_compile_tmp(
+    compilation_fix_ok, run_fix_ok = CXX_compiler.try_compile_tmp(
         test_fix_code,
         tmp_prefix='detect_macos_sdot_bug_testfix_',
         flags=flags,

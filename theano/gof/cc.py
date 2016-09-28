@@ -1020,7 +1020,7 @@ class CLinker(link.Linker):
                                     ' different compilers',
                                     (c_compiler, x_compiler))
         if (c_compiler is None):
-            return cmodule.GCC_compiler
+            return cmodule.CXX_compiler
         else:
             return c_compiler
 

@@ -86,8 +86,9 @@ except ImportError:
                     assert e.errno == errno.EEXIST
                     assert os.path.exists(loc)
 
+            # TODO: Check work with cython
             preargs = ['-fwrapv', '-O2', '-fno-strict-aliasing']
-            preargs += cmodule.GCC_compiler.compile_args()
+            preargs += cmodule.CXX_compiler.compile_args()
             # Cython 19.1 always use the old NumPy interface.  So we
             # need to manually modify the .c file to get it compiled
             # by Theano. As by default, we tell NumPy to don't import
@@ -110,7 +111,7 @@ except ImportError:
                     preargs.append("-D NPY_C_CONTIGUOUS=NPY_ARRAY_C_CONTIGUOUS")
                     preargs.append("-D NPY_F_CONTIGUOUS=NPY_ARRAY_F_CONTIGUOUS")
 
-            cmodule.GCC_compiler.compile_str(dirname, code, location=loc,
+            cmodule.CXX_compiler.compile_str(dirname, code, location=loc,
                                              preargs=preargs,
                                              hide_symbols=False)
             # Save version into the __init__.py file.
