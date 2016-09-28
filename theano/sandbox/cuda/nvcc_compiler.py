@@ -65,18 +65,17 @@ def add_standard_rpath(rpath):
 class NVCC_compiler(Compiler):
     supports_amdlibm = False
 
-    @staticmethod
-    def try_compile_tmp(src_code, tmp_prefix='', flags=(),
-                        try_run=False, output=False):
-        return Compiler._try_compile_tmp(src_code, tmp_prefix, flags,
-                                         try_run, output,
-                                         nvcc_path)
+    @classmethod
+    def try_compile_tmp(cls, src_code, tmp_prefix='', flags=(),
+                        try_run=False, output=False, comp_args=False):
+        return cls._try_compile_tmp(src_code, tmp_prefix, flags,
+                                    try_run, output, nvcc_path, comp_args)
 
-    @staticmethod
-    def try_flags(flag_list, preambule="", body="",
-                  try_run=False, output=False):
-        return Compiler._try_flags(flag_list, preambule, body, try_run, output,
-                                   nvcc_path)
+    @classmethod
+    def try_flags(cls, flag_list, preambule="", body="",
+                  try_run=False, output=False, comp_args=False):
+        return cls._try_flags(flag_list, preambule, body, try_run, output,
+                              nvcc_path, comp_args)
 
     @staticmethod
     def version_str():
