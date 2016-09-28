@@ -23,7 +23,7 @@ from theano import gof
 from theano.compat import izip
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
-from theano.gof.opt import copy_stack_trace, in2out, Optimizer
+from theano.gof.opt import copy_stack_trace, in2out
 from theano.gof.utils import MethodNotDefined
 from theano.gradient import DisconnectedType
 from theano.configparser import config
@@ -395,8 +395,11 @@ class InplaceElemwiseOptimizer(Optimizer):
                           file=sys.stderr)
                 fgraph.revert(chk)
         return prof
-        def print_summary(self, stream=sys.stdout, level=0, depth=-1):
-            return inplace_elemwise_optimizer
+
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
+        print("%s%s (%s)" % (
+            (' ' * level), self.__class__.__name__, self.OP), file=stream)
+        return inplace_elemwise_optimizer
 
 inplace_elemwise_optimizer = InplaceElemwiseOptimizer(T.Elemwise)
 compile.optdb.register('inplace_elemwise_opt', inplace_elemwise_optimizer, 75,
