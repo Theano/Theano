@@ -43,7 +43,7 @@ except ImportError:
     pass
 
 _logger = logging.getLogger("theano.gof.cmodule")
-
+_logger.setLevel(logging.DEBUG)
 METH_VARARGS = "METH_VARARGS"
 METH_NOARGS = "METH_NOARGS"
 # global variable that represent the total time spent in importing module.
@@ -2422,6 +2422,9 @@ class ICC_compiler(Compiler):
         # Add the -xHOST
         cxxflags.extend(["-xHOST"])
 
+        if config.icc.vec_report:
+            cxxflags.extend(["-qopt-report=%s" % config.icc.vec_report, "-qopt-report-phase=vec"])
+        
         # NumPy 1.7 Deprecate the old API. I updated most of the places
         # to use the new API, but not everywhere. When finished, enable
         # the following macro to assert that we don't bring new code
@@ -2594,11 +2597,15 @@ class ICC_compiler(Compiler):
 
         try:
             p_out = output_subprocess_Popen(cmd)
+            compile_stdout = decode(p_out[0])
             compile_stderr = decode(p_out[1])
         except Exception:
             # An exception can occur e.g. if `icpc` is not found.
             print_command_line_error()
             raise
+
+        if config.icc.vec_report and "10397" in compile_stderr:
+            _logger.warn("Optimization reports are generated in *.optrpt files in the output location %s" % location)
 
         status = p_out[2]
 

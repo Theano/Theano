@@ -1126,7 +1126,16 @@ AddConfigVar('icc.cxxflags',
              in_c_key=False)
 
 if not config.cxx == "icpc" and config.icc.cxxflags:
-    _logger.warning("cxx is not set to icpc. gcc.cxxflags is not effective!")
+    _logger.warning("cxx is not set to icpc. icc.cxxflags is not effective!")
+
+AddConfigVar('icc.vec_report',
+             "Get reports about vector diagnostics",
+             EnumStr('1', '2', '3', '4', '5'),
+             # Added elsewhere in the c key only when needed.
+             in_c_key=False)
+
+if not config.cxx == "icpc" and config.icc.vec_report:
+    _logger.warning("cxx is not set to icpc. icc.vec_report is not effective!")
 
 AddConfigVar('cmodule.warn_no_version',
              "If True, will print a warning when compiling one or more Op "
