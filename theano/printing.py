@@ -482,7 +482,7 @@ class IgnorePrinter:
 class DefaultPrinter:
 
     def __init__(self):
-        pass
+        self.leaf_printer = LeafPrinter()
 
     def process(self, output, pstate):
         if output in pstate.memo:
@@ -490,7 +490,7 @@ class DefaultPrinter:
         pprinter = pstate.pprinter
         node = output.owner
         if node is None:
-            return LeafPrinter().process(output, pstate)
+            return self.leaf_printer.process(output, pstate)
         r = "%s(%s)" % (str(node.op), ", ".join(
             [pprinter.process(input, pstate.clone(precedence=-1000))
              for input in node.inputs]))
