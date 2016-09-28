@@ -35,12 +35,15 @@ from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         HostFromGpu, GpuFromHost,
                         GpuSplit, GpuContiguous, gpu_contiguous,
                         GpuAlloc, GpuAllocEmpty, GpuReshape,
-                        GpuEye, gpu_join, GpuJoin, gpu_alloc_empty, gpu_alloc, gpu_from_host)
+                        GpuEye, gpu_join, GpuJoin, gpu_alloc_empty,
+                        gpu_alloc, gpu_from_host)
 from .blas import (gpu_dot22, GpuGemm, GpuGer, GpuGemmBatch,
-                   gpugemm_no_inplace, gpugemm_inplace, gpugemmbatch_no_inplace,
+                   gpugemm_no_inplace, gpugemm_inplace,
+                   gpugemmbatch_no_inplace,
                    gpugemv_no_inplace, gpugemv_inplace)
 from .blocksparse import (GpuSparseBlockGemv, GpuSparseBlockOuter,
-                          gpu_sparse_block_outer, gpu_sparse_block_outer_inplace,
+                          gpu_sparse_block_outer,
+                          gpu_sparse_block_outer_inplace,
                           gpu_sparse_block_gemv, gpu_sparse_block_gemv_inplace)
 from .nnet import (gpu_crossentropy_softmax_1hot_with_bias_dx,
                    gpu_crossentropy_softmax_argmax_1hot_with_bias,
