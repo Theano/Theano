@@ -174,7 +174,7 @@ class InplaceElemwiseOptimizer(Optimizer):
 
     def apply(self, fgraph):
         """
-        Usage: InplaceElemwiseOptimizer(OP).optimize(fgraph)
+        Usage: InplaceElemwiseOptimizer(op).optimize(fgraph)
 
         Attempts to replace all Broadcast ops by versions of them
         that operate inplace. It operates greedily: for each Broadcast
@@ -184,8 +184,10 @@ class InplaceElemwiseOptimizer(Optimizer):
 
         Examples
         --------
-        x + y + z -> x += y += z
-        (x + y) * (x * y) -> (x += y) *= (x * y) or (x + y) *= (x *= y)
+
+            `x + y + z -> x += y += z`
+
+            `(x + y) * (x * y) -> (x += y) *= (x * y) or (x + y) *= (x *= y)`
 
         """
         # We should not validate too often as this takes too much time to
