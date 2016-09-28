@@ -260,7 +260,7 @@ class FunctionGraph(utils.object2):
         """
         return r.clients
 
-    def __add_client__(self, r, new_client, check=True):
+    def __add_client__(self, r, new_client):
         """
         Updates the list of clients of r with new_clients.
 
@@ -272,14 +272,11 @@ class FunctionGraph(utils.object2):
             (node, i) pairs such that node.inputs[i] is r.
 
         """
-        test = new_client in r.clients
-        if test:
-            print('ERROR: clients intersect!', file=sys.stderr)
-            print('  RCLIENTS of', r, [(n, i, type(n), id(n))
-                                       for n, i in r.clients], file=sys.stderr)
-            print('  NCLIENTS of', r, [(n, i, type(n), id(n))
-                                       for n, i in [new_client]], file=sys.stderr)
-        assert not test
+        # Ne need to do the assert as it is always True. The logic
+        # that call __add_client__ is valid. When the client list is
+        # long, the check it time consuming, so we don't enable it by
+        # default.
+        # assert not new_client in r.clients
         r.clients.append(new_client)
 
     def __remove_client__(self, r, client_to_remove,
