@@ -2167,17 +2167,8 @@ class AdvancedSubtensor(Op):
         # TODO: in general, we need to re-pack the inputs into a valid
         # index, just like subtensor
         out[0] = inputs[0].__getitem__(inputs[1:])
-        if (numpy.__version__ <= '1.6.1' and
-                out[0].size != numpy.uint32(out[0].size)):
-            warnings.warn(
-                'Numpy versions 1.6.1 and below have a bug preventing '
-                'advanced indexing from correctly filling arrays that '
-                'are too big (>= 2^32 elements). It is possible that '
-                'out[0] (%s), with shape %s, is not correctly filled.'
-                % (out[0], out[0].shape))
 
     def connection_pattern(self, node):
-
         rval = [[True]]
 
         for ipt in node.inputs[1:]:
