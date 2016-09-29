@@ -1022,7 +1022,7 @@ def io_toposort(inputs, outputs, orderings=None, clients=None):
                     rval = list(obj.inputs)
                 rval.extend(orderings.get(obj, []))
             else:
-                assert not orderings.get(obj, [])
+                assert not orderings.get(obj, None)
             return rval
 
     topo = general_toposort(outputs, deps=compute_deps,
