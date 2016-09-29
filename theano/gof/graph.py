@@ -878,7 +878,7 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
     return memo
 
 
-def general_toposort(r_out, deps, debug_print=False,
+def general_toposort(outputs, deps, debug_print=False,
                      compute_deps_cache=None, deps_cache=None,
                      clients=None):
     """
@@ -932,9 +932,9 @@ def general_toposort(r_out, deps, debug_print=False,
                 return deps_cache[io]
     assert deps_cache is not None
 
-    assert isinstance(r_out, (tuple, list, deque))
+    assert isinstance(outputs, (tuple, list, deque))
 
-    reachable, _clients = stack_search(deque(r_out), compute_deps_cache,
+    reachable, _clients = stack_search(deque(outputs), compute_deps_cache,
                                        'dfs', True)
     if clients is not None:
         clients.update(_clients)
