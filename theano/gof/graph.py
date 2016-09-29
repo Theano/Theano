@@ -948,9 +948,11 @@ def general_toposort(outputs, deps, debug_print=False,
             rlist.append(node)
             rset.add(node)
             for client in _clients.get(node, []):
+                d = [a for a in deps_cache[client] if a is not node]
+                deps_cache[client] = d
                 deps_cache[client] = [a for a in deps_cache[client]
                                       if a is not node]
-                if not deps_cache[client]:
+                if not d:
                     sources.append(client)
 
     if len(rlist) != len(reachable):
@@ -1023,7 +1025,7 @@ def io_toposort(inputs, outputs, orderings=None, clients=None):
                     rval = list(obj.inputs)
                 rval.extend(orderings.get(obj, []))
             else:
-                assert not orderings.get(obj, [])
+                assert not orderings.get(obj, None)
             return rval
 
     topo = general_toposort(outputs, deps=compute_deps,
