@@ -156,11 +156,11 @@ class LSTM(Layer):
         self.W_f = linear_transform_weights(input_dim, output_dim, param_list=self.params, name=name + ".W_f")
         self.b_wf = bias_weights((output_dim,), param_list=self.params, name=name + ".b_wf")
 
-        self.W_o = linear_transform_weights(input_dim, output_dim, param_list=self.params, name=name + ".W_o")
-        self.b_wo = bias_weights((output_dim,), param_list=self.params, name=name + ".b_wo")
-
         self.W_c = linear_transform_weights(input_dim, output_dim, param_list=self.params, name=name + ".W_c")
         self.b_wc = bias_weights((output_dim,), param_list=self.params, name=name + ".b_wc")
+
+        self.W_o = linear_transform_weights(input_dim, output_dim, param_list=self.params, name=name + ".W_o")
+        self.b_wo = bias_weights((output_dim,), param_list=self.params, name=name + ".b_wo")
 
         self.R_i = linear_transform_weights(output_dim, output_dim, param_list=self.params, name=name + ".R_i")
         self.b_ri = bias_weights((output_dim,), param_list=self.params, name=name + ".b_ri")
@@ -168,11 +168,11 @@ class LSTM(Layer):
         self.R_f = linear_transform_weights(output_dim, output_dim, param_list=self.params, name=name + ".R_f")
         self.b_rf = bias_weights((output_dim,), param_list=self.params, name=name + ".b_rf")
 
-        self.R_o = linear_transform_weights(output_dim, output_dim, param_list=self.params, name=name + ".R_o")
-        self.b_ro = bias_weights((output_dim,), param_list=self.params, name=name + ".b_ro")
-
         self.R_c = linear_transform_weights(output_dim, output_dim, param_list=self.params, name=name + ".R_c")
         self.b_rc = bias_weights((output_dim,), param_list=self.params, name=name + ".b_rc")
+
+        self.R_o = linear_transform_weights(output_dim, output_dim, param_list=self.params, name=name + ".R_o")
+        self.b_ro = bias_weights((output_dim,), param_list=self.params, name=name + ".b_ro")
 
         '''step through processed input to create output'''
         def step(x_t, h_tm1, c_tm1):
