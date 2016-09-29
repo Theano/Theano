@@ -104,6 +104,7 @@ def list_contexts():
 # the context.
 _props_map = {}
 
+
 def _get_props(name):
     ctx = get_context(name)
     return _props_map[ctx]
