@@ -1912,7 +1912,7 @@ def local_subtensor_inc_subtensor(node):
 
         if x.owner.inputs[2:] == node.inputs[1:] and tuple(x.owner.op.idx_list) == tuple(node.op.idx_list):
             # if x[idx] and y have the same ndim (and shape), directly return y
-            if x.owner.inputs[0].ndim-(len(node.op.idx_list)-sum([isinstance(idx, slice) for idx in node.op.idx_list])) == x.owner.inputs[1].ndim:
+            if x.owner.inputs[0].ndim - (len(node.op.idx_list) - sum([isinstance(idx, slice) for idx in node.op.idx_list])) == x.owner.inputs[1].ndim:
                 return [x.owner.inputs[1]]
             # else y is broadcastable, return alloc of broadcastable y
             else:
