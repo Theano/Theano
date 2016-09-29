@@ -268,7 +268,7 @@ class FunctionGraph(utils.object2):
         r
             Variable.
         new_client
-            (node, i) pairs such that node.inputs[i] is r.
+            (node, i) pair such that node.inputs[i] is r.
 
         """
         # Ne need to do the assert as it is always True. The logic
@@ -293,8 +293,8 @@ class FunctionGraph(utils.object2):
         ----------
         r : Variable
             The clients of r will be removed.
-        client_to_remove : (op, i) pairs
-            (op, i) pairs such that node.inputs[i] is not r anymore.
+        client_to_remove : (op, i) pair
+            (op, i) pair such that node.inputs[i] is not r anymore.
         prune : bool
             If prune is True, it remove r from this fgraph if it don't
             have clients left.

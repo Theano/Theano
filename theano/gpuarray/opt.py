@@ -299,7 +299,6 @@ class GraphToGPU(Optimizer):
         # Iterating through inputs of graph
         target = infer_context_name(*fgraph.inputs)
         for i in fgraph.inputs:
-            # Do not move *int* scalar to the GPU.
             if isinstance(i.type, tensor.TensorType) and move_to_gpu(i):
                 mapping[i] = i.transfer(getattr(i.tag, 'target', target))
             else:

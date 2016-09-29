@@ -581,25 +581,33 @@ class GpuArraySharedVariable(_operators, SharedVariable):
 
 
 GpuArrayType.SharedVariable = GpuArraySharedVariable
+notset = object()
 
 
 def gpuarray_shared_constructor(value, name=None, strict=False,
                                 allow_downcast=None, borrow=False,
-                                broadcastable=None, target=None):
+                                broadcastable=None, target=notset):
     """
     SharedVariable constructor for GpuArrayType.
 
     See :func:`theano.shared`.
 
+    :target: default None
+        The device target. As None is a valid value and we need to
+        differentiate from the parameter notset and None, we use a
+        notset object.
+
     """
-    if target is None and not move_to_gpu(value):
-        raise TypeError('We do not move that data by deault to the GPU')
     if target == 'gpu' or target == 'cpu':
         raise TypeError('not for me')
 
     if not isinstance(value, (numpy.ndarray, pygpu.gpuarray.GpuArray)):
         raise TypeError('ndarray or GpuArray required')
 
+    if target is notset:
+        target = None
+        if not move_to_gpu(value):
+            raise TypeError('We do not move that data by default to the GPU')
     try:
         get_context(target)
     except ContextNotDefined:
