@@ -133,6 +133,78 @@ class GRU(Layer):
         return self.Y
 
 
+class LSTM(Layer):
+    def __init__(self, input_dim, output_dim, input_layer, s0=None, c0=None,
+                 name=""):
+        '''Layers information'''
+        self.name = name
+        self.input_dim = input_dim
+        self.hidden_dim = output_dim
+        self.output_dim = output_dim
+        self.input_layer = input_layer
+        self.X = input_layer.output()
+        self.s0 = s0
+        self.c0 = c0
+        self.params = []
+
+        '''Layers weights'''
+
+        '''self.params is passed so that any paramters could be appended to it'''
+        self.W_i = linear_transform_weights(input_dim, output_dim, param_list=self.params, name=name + ".W_i")
+        self.b_wi = bias_weights((output_dim,), param_list=self.params, name=name + ".b_wi")
+
+        self.W_f = linear_transform_weights(input_dim, output_dim, param_list=self.params, name=name + ".W_f")
+        self.b_wf = bias_weights((output_dim,), param_list=self.params, name=name + ".b_wf")
+
+        self.W_o = linear_transform_weights(input_dim, output_dim, param_list=self.params, name=name + ".W_o")
+        self.b_wo = bias_weights((output_dim,), param_list=self.params, name=name + ".b_wo")
+
+        self.W_c = linear_transform_weights(input_dim, output_dim, param_list=self.params, name=name + ".W_c")
+        self.b_wc = bias_weights((output_dim,), param_list=self.params, name=name + ".b_wc")
+
+        self.R_i = linear_transform_weights(output_dim, output_dim, param_list=self.params, name=name + ".R_i")
+        self.b_ri = bias_weights((output_dim,), param_list=self.params, name=name + ".b_ri")
+
+        self.R_f = linear_transform_weights(output_dim, output_dim, param_list=self.params, name=name + ".R_f")
+        self.b_rf = bias_weights((output_dim,), param_list=self.params, name=name + ".b_rf")
+
+        self.R_o = linear_transform_weights(output_dim, output_dim, param_list=self.params, name=name + ".R_o")
+        self.b_ro = bias_weights((output_dim,), param_list=self.params, name=name + ".b_ro")
+
+        self.R_c = linear_transform_weights(output_dim, output_dim, param_list=self.params, name=name + ".R_c")
+        self.b_rc = bias_weights((output_dim,), param_list=self.params, name=name + ".b_rc")
+
+        '''step through processed input to create output'''
+        def step(x_t, h_tm1, c_tm1):
+            i_t = T.nnet.sigmoid(
+                T.dot(x_t, self.W_i) + T.dot(h_tm1, self.R_i) + self.b_wi + self.b_ri)
+            f_t = T.nnet.sigmoid(
+                T.dot(x_t, self.W_f) + T.dot(h_tm1, self.R_f) + self.b_wf + self.b_rf)
+            o_t = T.nnet.sigmoid(
+                T.dot(x_t, self.W_o) + T.dot(h_tm1, self.R_o) + self.b_ro + self.b_wo)
+
+            c_hat_t = T.tanh(
+                T.dot(x_t, self.W_c) + T.dot(h_tm1, self.R_c) + self.b_wc + self.b_rc)
+            c_t = f_t * c_tm1 + i_t * c_hat_t
+            h_t = o_t * T.tanh(c_t)
+
+            return h_t, c_t
+
+        outputs_info = [self.s0, self.c0]
+
+        states, updates = theano.scan(
+            fn=step,
+            sequences=[self.X],
+            outputs_info=outputs_info
+            )
+
+        self.Y = states[0]
+        self.C = states[1]
+
+    def output(self):
+        return self.Y
+
+
 class FC(Layer):
     def __init__(self, input_dim, output_dim, input_layer, name=""):
         self.input_layer = input_layer
