@@ -4751,13 +4751,17 @@ class Canonizer(gof.LocalOptimizer):
             numeric constant. If v is a plain Variable, returns None.
 
         """
-        if isinstance(v, Variable):
-            try:
-                # As the constant folding is in the canonicalize phase,
-                # We don't need to check all the graph each time.
-                return get_scalar_constant_value(v, only_process_constants=True)
-            except NotScalarConstantError:
+        if isinstance(v, Constant):
+            if getattr(v.tag, 'unique_value', None) is not None:
+                data = v.tag.unique_value
+            else:
+                data = v.data
+            if data.ndim == 0:
+                return data
+            else:
                 return None
+        elif isinstance(v, Variable):
+            return None
         else:
             return v
 
@@ -4790,10 +4794,25 @@ class Canonizer(gof.LocalOptimizer):
         | [a, b], [c, d] -> [a, b], [c, d]
 
         """
-        for v in list(num):
-            if v in denum:
-                num.remove(v)
-                denum.remove(v)
+        ln = len(num)
+        ld = len(denum)
+        if (ld > 2 and ln > 2):
+            # Faster version for "big" inputs.
+            while True:
+                s = set(num)
+                # Inputs can appear multiple times
+                redo = len(s) != len(num)
+                inter = s.intersection(denum)
+                for v in inter:
+                    num.remove(v)
+                    denum.remove(v)
+                if not redo or not inter:
+                    break
+        else:
+            for v in list(num):
+                if v in denum:
+                    num.remove(v)
+                    denum.remove(v)
         return num, denum
 
     def simplify_constants(self, orig_num, orig_denum, out_type=None):
@@ -4815,9 +4834,8 @@ class Canonizer(gof.LocalOptimizer):
         | [x, 2, y], [z, 2] -> [x, y], [z]
 
         """
-
         # Lists representing the numerator and denumerator
-        num, denum = list(orig_num), list(orig_denum)
+        num, denum = [], []
 
         # Lists representing the *constant* elements of num and denum
         numct, denumct = [], []
@@ -4826,15 +4844,16 @@ class Canonizer(gof.LocalOptimizer):
             ct = self.get_constant(v)
             if ct is not None:
                 # We found a constant in the numerator!
-                # We remove it from num
-                num.remove(v)
                 # We add it to numct
                 numct.append(ct)
+            else:
+                num.append(v)
         for v in orig_denum:
             ct = self.get_constant(v)
             if ct is not None:
-                denum.remove(v)
                 denumct.append(ct)
+            else:
+                denum.append(v)
 
         if self.use_reciprocal or num:
             # This will calculate either:

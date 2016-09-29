@@ -29,18 +29,21 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
 from theano.tests.breakpoint import PdbBreakpoint
 
 from .type import (GpuArrayType, GpuArrayConstant, get_context,
-                   ContextNotDefined)
+                   ContextNotDefined, move_to_gpu)
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         host_from_gpu, GpuToGpu,
                         HostFromGpu, GpuFromHost,
                         GpuSplit, GpuContiguous, gpu_contiguous,
                         GpuAlloc, GpuAllocEmpty, GpuReshape,
-                        GpuEye, gpu_join, GpuJoin, gpu_alloc_empty, gpu_alloc, gpu_from_host)
+                        GpuEye, gpu_join, GpuJoin, gpu_alloc_empty,
+                        gpu_alloc, gpu_from_host)
 from .blas import (gpu_dot22, GpuGemm, GpuGer, GpuGemmBatch,
-                   gpugemm_no_inplace, gpugemm_inplace, gpugemmbatch_no_inplace,
+                   gpugemm_no_inplace, gpugemm_inplace,
+                   gpugemmbatch_no_inplace,
                    gpugemv_no_inplace, gpugemv_inplace)
 from .blocksparse import (GpuSparseBlockGemv, GpuSparseBlockOuter,
-                          gpu_sparse_block_outer, gpu_sparse_block_outer_inplace,
+                          gpu_sparse_block_outer,
+                          gpu_sparse_block_outer_inplace,
                           gpu_sparse_block_gemv, gpu_sparse_block_gemv_inplace)
 from .nnet import (gpu_crossentropy_softmax_1hot_with_bias_dx,
                    gpu_crossentropy_softmax_argmax_1hot_with_bias,
@@ -239,9 +242,8 @@ class InputToGpuOptimizer(Optimizer):
             target = getattr(input.tag, 'target', None)
             if target == 'cpu':
                 continue
-            # Do not move *int* scalar to the GPU.
             if (isinstance(input.type, tensor.TensorType) and
-                    input.ndim == 0 and 'int' in input.dtype):
+                    not move_to_gpu(input)):
                 continue
 
             try:
@@ -297,10 +299,7 @@ class GraphToGPU(Optimizer):
         # Iterating through inputs of graph
         target = infer_context_name(*fgraph.inputs)
         for i in fgraph.inputs:
-            # Do not move *int* scalar to the GPU.
-            if (isinstance(i.type, tensor.TensorType) and
-                    (i.ndim > 0 or 'int' not in i.dtype) and
-                    "complex" not in i.dtype):
+            if isinstance(i.type, tensor.TensorType) and move_to_gpu(i):
                 mapping[i] = i.transfer(getattr(i.tag, 'target', target))
             else:
                 mapping[i] = i
