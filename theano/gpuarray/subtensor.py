@@ -491,26 +491,27 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         idx = inputs[1:]
 
         # detect and transpose array indices
-        transp = list(range(x.ndim))
-        p = 0
-        pp = 0
         nidx = []
         nshp = list(x.shape)
         for k, i in enumerate(idx):
+            if i is None:
+                nidx.append(slice(None))
+                nshp.insert(k, 1)
+            else:
+                nidx.append(i)
+
+        x = x.reshape(nshp)
+
+        transp = list(range(x.ndim))
+        p = 0
+        for k, i in enumerate(list(nidx)):
             if (isinstance(i, numpy.ndarray) and
                     i.ndim != 0):
                 transp.remove(k)
                 transp.insert(p, k)
+                i = nidx.pop(k)
                 nidx.insert(p, i)
                 p += 1
-            else:
-                if i is None:
-                    nidx.append(slice(None))
-                    nshp.insert(pp, 1)
-                else:
-                    nidx.append(i)
-            pp += 1
-        x = x.reshape(nshp)
         x = x.transpose(*transp)
 
         idx_ = ([slice(None)] * p + nidx[p:])

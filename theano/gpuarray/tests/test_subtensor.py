@@ -41,7 +41,7 @@ class G_subtensor(test_subtensor.T_subtensor):
 
 
 def test_advinc_subtensor1():
-    """ Test the second case in the opt local_gpu_advanced_incsubtensor1 """
+    # Test the second case in the opt local_gpu_advanced_incsubtensor1
     for shp in [(3, 3), (3, 3, 3)]:
         shared = gpuarray_shared_constructor
         xval = numpy.arange(numpy.prod(shp), dtype='float32').reshape(shp) + 1
@@ -110,7 +110,7 @@ class G_advancedsubtensor(test_subtensor.TestAdvancedSubtensor):
 
 
 def test_adv_subtensor():
-    """Test the advancedsubtensor on gpu."""
+    # Test the advancedsubtensor on gpu.
     shp = (2, 3, 4)
     shared = gpuarray_shared_constructor
     xval = numpy.arange(numpy.prod(shp), dtype=theano.config.floatX).reshape(shp)
