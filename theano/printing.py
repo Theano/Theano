@@ -482,7 +482,7 @@ class IgnorePrinter:
 class DefaultPrinter:
 
     def __init__(self):
-        pass
+        self.leaf_printer = LeafPrinter()
 
     def process(self, output, pstate):
         if output in pstate.memo:
@@ -490,7 +490,7 @@ class DefaultPrinter:
         pprinter = pstate.pprinter
         node = output.owner
         if node is None:
-            return LeafPrinter().process(output, pstate)
+            return self.leaf_printer.process(output, pstate)
         r = "%s(%s)" % (str(node.op), ", ".join(
             [pprinter.process(input, pstate.clone(precedence=-1000))
              for input in node.inputs]))
@@ -513,12 +513,13 @@ class LeafPrinter:
 class PPrinter:
     def __init__(self):
         self.printers = []
+        self.printers_dict = {}
 
     def assign(self, condition, printer):
-        if isinstance(condition, gof.Op):
-            op = condition
-            condition = (lambda pstate, r: r.owner is not None and
-                         r.owner.op == op)
+        # condition can be a class or an instance of an Op.
+        if isinstance(condition, (gof.Op, type)):
+            self.printers_dict[condition] = printer
+            return
         self.printers.insert(0, (condition, printer))
 
     def process(self, r, pstate=None):
@@ -526,6 +527,11 @@ class PPrinter:
             pstate = PrinterState(pprinter=self)
         elif isinstance(pstate, dict):
             pstate = PrinterState(pprinter=self, **pstate)
+        if getattr(r, 'owner', None) is not None:
+            if r.owner.op in self.printers_dict:
+                return self.printers_dict[r.owner.op].process(r, pstate)
+            if type(r.owner.op) in self.printers_dict:
+                return self.printers_dict[type(r.owner.op)].process(r, pstate)
         for condition, printer in self.printers:
             if condition(pstate, r):
                 return printer.process(r, pstate)
@@ -533,6 +539,7 @@ class PPrinter:
     def clone(self):
         cp = copy(self)
         cp.printers = list(self.printers)
+        cp.printers_dict = dict(self.printers_dict)
         return cp
 
     def clone_assign(self, condition, printer):

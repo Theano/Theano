@@ -446,8 +446,7 @@ class DimShufflePrinter:
         else:
             raise TypeError("Can only print DimShuffle.")
 
-pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, DimShuffle),
-              DimShufflePrinter())
+pprint.assign(DimShuffle, DimShufflePrinter())
 
 
 ################

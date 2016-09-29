@@ -1002,8 +1002,7 @@ class SubtensorPrinter:
         else:
             raise TypeError("Can only print Subtensor.")
 
-pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Subtensor),
-              SubtensorPrinter())
+pprint.assign(Subtensor, SubtensorPrinter())
 
 
 def set_subtensor(x, y, inplace=False,

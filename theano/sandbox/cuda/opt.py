@@ -2181,7 +2181,7 @@ else:
                    71.00, 'fusion', 'local_elemwise_fusion')
 
 # GpuElemwise inplace
-gpu_inplace_elemwise_optimizer = tensor.opt.inplace_elemwise_optimizer_op(
+gpu_inplace_elemwise_optimizer = tensor.opt.InplaceElemwiseOptimizer(
     GpuElemwise)
 # DO NOT PLACE add a 'gpu' tag here! This would enable it in fast_compile.
 # It still will be run in fast_run with device=gpu with the current tag.
