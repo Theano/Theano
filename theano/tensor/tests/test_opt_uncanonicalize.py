@@ -7,7 +7,7 @@ import theano
 from theano import function, config
 from theano import scalar
 from theano.gof import FunctionGraph
-from theano.tensor.opt import out2in
+from theano.tensor.gof.opt import out2in
 from theano.tensor.opt_uncanonicalize import (
     local_alloc_dimshuffle,
     local_reshape_dimshuffle
