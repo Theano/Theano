@@ -193,7 +193,7 @@ int dnn_rnn_gi(cudnnRNNDescriptor_t desc, npy_uint64 xshp,
                              yl, PyGpuArray_DEV_DATA(y),
                              /* y and dy are the same shape */
                              yl, PyGpuArray_DEV_DATA(dy),
-                             dhydesc, PyGpuArray_DEV_DATA(dhy),
+                             dhydesc, dhy ? PyGpuArray_DEV_DATA(dhy) : NULL,
                              dcydesc, dcy ? PyGpuArray_DEV_DATA(dcy) : NULL,
                              wdesc, PyGpuArray_DEV_DATA(w),
                              hxdesc, PyGpuArray_DEV_DATA(hx),
