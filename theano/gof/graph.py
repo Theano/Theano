@@ -952,8 +952,6 @@ def general_toposort(outputs, deps, debug_print=False,
             for client in _clients.get(node, []):
                 d = [a for a in deps_cache[client] if a is not node]
                 deps_cache[client] = d
-                deps_cache[client] = [a for a in deps_cache[client]
-                                      if a is not node]
                 if not d:
                     sources.append(client)
 
