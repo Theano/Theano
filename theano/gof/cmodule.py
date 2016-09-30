@@ -43,7 +43,7 @@ except ImportError:
     pass
 
 _logger = logging.getLogger("theano.gof.cmodule")
-_logger.setLevel(logging.DEBUG)
+
 METH_VARARGS = "METH_VARARGS"
 METH_NOARGS = "METH_NOARGS"
 # global variable that represent the total time spent in importing module.
@@ -2320,7 +2320,7 @@ class GCC_compiler(Compiler):
 
 
 class ICC_compiler(Compiler):
-    # The equivalent flags of --march=native used by icpc.
+
     march_flags = None
 
     # TODO: Can't check AMD CPU
@@ -2331,9 +2331,6 @@ class ICC_compiler(Compiler):
         icc_ver = [int(n) for n in icc_version_str.split('.')[:2]]
         if bool(icc_ver < [16, 0]):
             _logger.warn(
-                "WARNING: Your Intel Compiler Version is %s. "
-                "For better performance, we suggest you use the latest version. " % icc_version_str)
-            _logger.info(
                 "WARNING: Your Intel Compiler Version is %s. "
                 "For better performance, we suggest you use the latest version. " % icc_version_str)
         return theano.config.cxx + " " + icc_version_str
@@ -2387,10 +2384,6 @@ class ICC_compiler(Compiler):
                                      stderr=subprocess.PIPE,
                                      stdin=subprocess.PIPE,
                                      shell=True)
-                # For mingw64 with GCC >= 4.7, passing os.devnull
-                # as stdin (which is the default) results in the process
-                # waiting forever without returning. For that reason,
-                # we use a pipe, and use the empty string as input.
                 (stdout, stderr) = p.communicate(input=b(''))
                 if p.returncode != 0:
                     return None
@@ -2408,8 +2401,6 @@ class ICC_compiler(Compiler):
 
                 return lines
 
-            # The '-' at the end is needed. Otherwise, g++ do not output
-            # enough information.
             native_lines = get_lines("%s -xHOST -E -v -" % theano.config.cxx)
             if native_lines is None:
                 _logger.warn("Call to 'icpc -xHOST' failed,"
@@ -2420,10 +2411,12 @@ class ICC_compiler(Compiler):
                              native_lines)
 
         # Add the -xHOST
-        cxxflags.extend(["-xHOST"])
+        cxxflags.append("-xHOST")
 
-        if config.icc.vec_report:
-            cxxflags.extend(["-qopt-report=%s" % config.icc.vec_report, "-qopt-report-phase=vec"])
+        if config.icc.opt_report:
+            cxxflags.append("-qopt-report=%s" % config.icc.opt_report)
+            if config.icc.opt_report_phase:
+                cxxflags.append("-qopt-report-phase=%s" % config.icc.opt_report_phase)
         
         # NumPy 1.7 Deprecate the old API. I updated most of the places
         # to use the new API, but not everywhere. When finished, enable
@@ -2604,7 +2597,7 @@ class ICC_compiler(Compiler):
             print_command_line_error()
             raise
 
-        if config.icc.vec_report and "10397" in compile_stderr:
+        if config.icc.opt_report and "10397" in compile_stderr:
             _logger.warn("Optimization reports are generated in *.optrpt files in the output location %s" % location)
 
         status = p_out[2]

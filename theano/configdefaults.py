@@ -1128,14 +1128,23 @@ AddConfigVar('icc.cxxflags',
 if not config.cxx == "icpc" and config.icc.cxxflags:
     _logger.warning("cxx is not set to icpc. icc.cxxflags is not effective!")
 
-AddConfigVar('icc.vec_report',
+AddConfigVar('icc.opt_report',
              "Get reports about vector diagnostics",
              EnumStr('1', '2', '3', '4', '5'),
              # Added elsewhere in the c key only when needed.
              in_c_key=False)
 
-if not config.cxx == "icpc" and config.icc.vec_report:
-    _logger.warning("cxx is not set to icpc. icc.vec_report is not effective!")
+if not config.cxx == "icpc" and config.icc.opt_report:
+    _logger.warning("cxx is not set to icpc. icc.opt_report is not effective!")
+
+AddConfigVar('icc.opt_report_phase',
+             "Get reports about vector diagnostics",
+             EnumStr('all', 'vec', 'cg', 'ipo', 'loop', 'offload', 'openmp', 'par', 'pgo', 'tcollect'),
+             # Added elsewhere in the c key only when needed.
+             in_c_key=False)
+
+if not config.cxx == "icpc" and not config.icc.opt_report and config.icc.opt_report_phase:
+    _logger.warning("cxx is not set to icpc or icc.opt_report not set. icc.opt_report_phase is not effective!")
 
 AddConfigVar('cmodule.warn_no_version',
              "If True, will print a warning when compiling one or more Op "
