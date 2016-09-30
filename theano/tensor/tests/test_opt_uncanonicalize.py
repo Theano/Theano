@@ -7,7 +7,7 @@ import theano
 from theano import function, config
 from theano import scalar
 from theano.gof import FunctionGraph
-from theano.tensor.gof.opt import out2in
+from theano.gof.opt import out2in
 from theano.tensor.opt_uncanonicalize import (
     local_alloc_dimshuffle,
     local_reshape_dimshuffle
@@ -118,11 +118,11 @@ def test_local_alloc_dimshuffle():
 
     alloc_dimshuffle = out2in(local_alloc_dimshuffle)
 
-    x = T.vector('x')
-    m = T.iscalar('m')
+    x = tensor.vector('x')
+    m = tensor.iscalar('m')
 
     y = x.dimshuffle('x', 0)
-    out = T.alloc(y, m, 1, x.shape[0])
+    out = tensor.alloc(y, m, 1, x.shape[0])
 
     g = FunctionGraph([x, m], [out])
     alloc_dimshuffle(g)
@@ -135,10 +135,10 @@ def test_local_reshape_dimshuffle():
 
     reshape_dimshuffle = out2in(local_reshape_dimshuffle)
 
-    x = T.matrix('x')
+    x = tensor.matrix('x')
 
     y = x.dimshuffle('x', 0, 'x', 1)
-    out = T.reshape(y, (1, x.shape[0] * x.shape[1], 1))
+    out = tensor.reshape(y, (1, x.shape[0] * x.shape[1], 1))
 
     g = FunctionGraph([x], [out])
     reshape_dimshuffle(g)

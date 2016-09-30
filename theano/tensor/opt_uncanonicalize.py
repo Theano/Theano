@@ -137,11 +137,12 @@ def local_reshape_dimshuffle(node):
         if input_.owner and isinstance(input_.owner.op, DimShuffle):
             new_order = input_.owner.op.new_order
             offset = 0
-            for i, dim in enumerate(new_order):
+            for dim in new_order:
                 if dim == 'x':
-                    offset += 1
                     continue
-                elif i != dim + offset:
+                elif dim != offset:
                     return False
-            return [T.reshape(input_.owner.inputs[0], tuple(node.inputs[1].owner.inputs))]
+                else:
+                    offset += 1
+            return [T.reshape(input_.owner.inputs[0], node.inputs[1])]
     return False
