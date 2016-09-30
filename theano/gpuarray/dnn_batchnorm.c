@@ -1,12 +1,15 @@
 #section support_code_struct
 
 int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
-                     PyGpuArrayObject *bias, PyGpuArrayObject **outp,
-                     PyGpuArrayObject **x_mean, PyGpuArrayObject **x_invstd,
-                     PyGpuContextObject *c) {
+                     PyGpuArrayObject *bias, npy_float64 epsilon,
+                     PyGpuArrayObject **outp, PyGpuArrayObject **x_mean,
+                     PyGpuArrayObject **x_invstd, PyGpuContextObject *c) {
   if (c_set_tensorNd(inp, bn_input) != 0)
     return 1;
   if (c_set_tensorNd(scale, bn_params) != 0)
+    return 1;
+
+  if (epsilon < 1e-5)
     return 1;
 
   if (theano_prep_output(outp, inp->ga.nd, inp->ga.dimensions, inp->ga.typecode, GA_C_ORDER, c) != 0)
@@ -48,7 +51,7 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
       0,
       NULL,  // running mean, deliberately unused
       NULL,  // running var, deliberately unused
-      EPSILON,
+      epsilon,
       PyGpuArray_DEV_DATA(*x_mean),
       PyGpuArray_DEV_DATA(*x_invstd)
       );
