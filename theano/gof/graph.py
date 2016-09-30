@@ -607,6 +607,8 @@ def stack_search(start, expand, mode='bfs', build_inv=False):
     expand : callable
         When we get to a node, add expand(node) to the list of nodes to visit.
         This function should return a list, or None.
+    mode : string
+        'bfs' or 'dfs' for breath first search or depth first search.
 
     Returns
     -------
@@ -631,7 +633,7 @@ def stack_search(start, expand, mode='bfs', build_inv=False):
         start_pop = start.popleft
     else:
         start_pop = start.pop
-    expand_inv = {}
+    expand_inv = {}  # var: clients
     while start:
         l = start_pop()
         if id(l) not in rval_set:
