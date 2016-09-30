@@ -1711,9 +1711,10 @@ class Compiler(object):
 
     """
 
-    @staticmethod
-    def _try_compile_tmp(src_code, tmp_prefix='', flags=(),
-                         try_run=False, output=False, compiler=None):
+    @classmethod
+    def _try_compile_tmp(cls, src_code, tmp_prefix='', flags=(),
+                         try_run=False, output=False, compiler=None,
+                         comp_args=True):
         """
         Try to compile (and run) a test program.
 
@@ -1727,11 +1728,17 @@ class Compiler(object):
         If try_run is True, returns a (compile_status, run_status) pair.
         If output is there, we append the stdout and stderr to the output.
 
+        Compile arguments from the Compiler's compile_args() method are added
+        if comp_args=True.
         """
         if not compiler:
             return False
-
         flags = list(flags)
+        # Get compile arguments from compiler method if required
+        if comp_args:
+            args = cls.compile_args()
+        else:
+            args = []
         compilation_ok = True
         run_ok = False
         out, err = None, None
@@ -1748,7 +1755,7 @@ class Compiler(object):
                 os.close(fd)
                 fd = None
                 out, err, p_ret = output_subprocess_Popen(
-                    [compiler, path, '-o', exe_path] + flags)
+                    [compiler] + args + [path, '-o', exe_path] + flags)
                 if p_ret != 0:
                     compilation_ok = False
                 elif try_run:
@@ -1781,14 +1788,18 @@ class Compiler(object):
         else:
             return (compilation_ok, run_ok, out, err)
 
-    @staticmethod
-    def _try_flags(flag_list, preambule="", body="",
-                   try_run=False, output=False, compiler=None):
+    @classmethod
+    def _try_flags(cls, flag_list, preambule="", body="",
+                   try_run=False, output=False, compiler=None,
+                   comp_args=True):
         """
         Try to compile a dummy file with these flags.
 
         Returns True if compilation was successful, False if there
         were errors.
+
+        Compile arguments from the Compiler's compile_args() method are added
+        if comp_args=True.
 
         """
         if not compiler:
@@ -1802,9 +1813,10 @@ class Compiler(object):
             return 0;
         }
         """ % locals())
-        return Compiler._try_compile_tmp(code, tmp_prefix='try_flags_',
-                                         flags=flag_list, try_run=try_run,
-                                         output=output, compiler=compiler)
+        return cls._try_compile_tmp(code, tmp_prefix='try_flags_',
+                                    flags=flag_list, try_run=try_run,
+                                    output=output, compiler=compiler,
+                                    comp_args=comp_args)
 
 
 def try_march_flag(flags):
@@ -2158,18 +2170,18 @@ class GCC_compiler(Compiler):
 
         return cxxflags
 
-    @staticmethod
-    def try_compile_tmp(src_code, tmp_prefix='', flags=(),
-                        try_run=False, output=False):
-        return Compiler._try_compile_tmp(src_code, tmp_prefix, flags,
-                                         try_run, output,
-                                         theano.config.cxx)
+    @classmethod
+    def try_compile_tmp(cls, src_code, tmp_prefix='', flags=(),
+                        try_run=False, output=False, comp_args=True):
+        return cls._try_compile_tmp(src_code, tmp_prefix, flags,
+                                    try_run, output, theano.config.cxx,
+                                    comp_args)
 
-    @staticmethod
-    def try_flags(flag_list, preambule="", body="",
-                  try_run=False, output=False):
-        return Compiler._try_flags(flag_list, preambule, body, try_run, output,
-                                   theano.config.cxx)
+    @classmethod
+    def try_flags(cls, flag_list, preambule="", body="",
+                  try_run=False, output=False, comp_args=True):
+        return cls._try_flags(flag_list, preambule, body, try_run, output,
+                              theano.config.cxx, comp_args)
 
     @staticmethod
     def compile_str(module_name, src_code, location=None,
