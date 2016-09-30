@@ -990,7 +990,7 @@ def io_toposort(inputs, outputs, orderings=None, clients=None):
         # Do a new stack implementation with the vm algo.
         # This will change the order returned.
         computed = set(inputs)
-        todo = [o.owner for o in outputs if o.owner]
+        todo = [o.owner for o in reversed(outputs) if o.owner]
         order = []
         while todo:
             cur = todo.pop()
