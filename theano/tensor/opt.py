@@ -6297,15 +6297,10 @@ def constant_folding(node):
         compute_map[o] = [False]
     if (hasattr(node.op, 'python_constant_folding') and
             node.op.python_constant_folding(node)):
-        old_value = getattr(node.op, '_op_use_c_code', False)
-        try:
-            node.op._op_use_c_code = False
-            thunk = node.op.make_thunk(node,
-                                       storage_map,
-                                       compute_map,
-                                       [])
-        finally:
-            node.op._op_use_c_code = old_value
+        thunk = node.op.make_py_thunk(node,
+                                   storage_map,
+                                   compute_map,
+                                   [])
     else:
         thunk = node.op.make_thunk(node, storage_map, compute_map,
                                    no_recycling=[])

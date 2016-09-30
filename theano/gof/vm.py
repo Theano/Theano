@@ -1044,11 +1044,15 @@ class VM_Linker(link.LocalLinker):
         for node in order:
             try:
                 if self.c_thunks is False:
-                    node.op._op_use_c_code = False
-                thunks.append(node.op.make_thunk(node,
-                                                 storage_map,
-                                                 compute_map,
-                                                 no_recycling))
+                    thunks.append(node.op.make_py_thunk(node,
+                                                        storage_map,
+                                                        compute_map,
+                                                        no_recycling))
+                else:
+                    thunks.append(node.op.make_thunk(node,
+                                                     storage_map,
+                                                     compute_map,
+                                                     no_recycling))
                 if not hasattr(thunks[-1], 'lazy'):
                     # We don't want all ops maker to think about lazy Ops.
                     # So if they didn't specify that its lazy or not, it isn't.

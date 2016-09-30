@@ -1792,19 +1792,18 @@ class OpWiseCLinker(link.LocalLinker):
                 # There are ops that don't have _op_use_c_code property
                 # for example ifelse (or any ops that come with their own
                 # make_thunk
-                old_value = getattr(node.op, '_op_use_c_code', False)
-                try:
-                    if theano.config.cxx:
-                        node.op._op_use_c_code = True
+                if theano.config.cxx:
+                    thunks += [node.op.make_c_thunk(node,
+                                                    storage_map,
+                                                    compute_map,
+                                                    no_recycling)]
+                else:
                     thunks += [node.op.make_thunk(node,
                                                   storage_map,
                                                   compute_map,
                                                   no_recycling)]
-                    thunks[-1].inputs = [storage_map[v] for v in node.inputs]
-                    thunks[-1].outputs = [storage_map[v] for v in node.outputs]
-
-                finally:
-                    node.op._op_use_c_code = old_value
+                thunks[-1].inputs = [storage_map[v] for v in node.inputs]
+                thunks[-1].outputs = [storage_map[v] for v in node.outputs]
 
             for node in order:
                 if self.allow_gc:
