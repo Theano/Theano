@@ -1026,7 +1026,7 @@ def io_toposort(inputs, outputs, orderings=None, clients=None):
 
     topo = general_toposort(outputs, deps=compute_deps,
                             compute_deps_cache=compute_deps_cache,
-                            deps_cache=deps_cache, clients=clients)
+                      deps_cache=deps_cache, clients=clients)
     return [o for o in topo if isinstance(o, Apply)]
 
 
