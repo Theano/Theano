@@ -3711,8 +3711,7 @@ class Composite(ScalarOp):
         raise NotImplementedError("grad is not implemented for Composite")
 
     def c_code(self, node, nodename, inames, onames, sub):
-        if not hasattr(self, '_c_code'):
-            self.init_c_code()
+        self.init_c_code()
 
         d = dict(chain(izip(("i%i" % i for i in xrange(len(inames))), inames),
                        izip(("o%i" % i for i in xrange(len(onames))),
@@ -3746,6 +3745,7 @@ class Composite(ScalarOp):
         return "\n".join(sorted(set(rval)))
 
     def c_support_code_apply(self, node, name):
+        self.init_c_code()
         rval = []
         for subnode, subnodename in zip(self.fgraph.toposort(), self.nodenames):
             try:
@@ -3771,13 +3771,11 @@ class Composite(ScalarOp):
             return False
         # see __hash__ for comment on why there is no mention of fgraph
         # or module cache key here.
-        if not hasattr(self, '_c_code'):
-            self.init_c_code()    # self._c_code and self.nodenames
+        self.init_c_code()    # self._c_code and self.nodenames
         return (self._c_code == other._c_code)
 
     def __hash__(self):
-        if not hasattr(self, '_c_code'):
-            self.init_c_code()    # self._c_code and self.nodenames
+        self.init_c_code()    # self._c_code and self.nodenames
         rval = hash((type(self),
                     self.nin,
                     self.nout,
