@@ -39,6 +39,7 @@ import logging
 from theano import gof
 from theano.tensor.elemwise import CAReduce
 from theano.tensor import basic as T
+from theano.tensor import DimShuffle
 
 from theano.tensor.basic import (get_scalar_constant_value,
                                  NotScalarConstantError)
@@ -97,4 +98,51 @@ def local_max_to_min(node):
                 return [CAReduce(scal.minimum,
                                  max.owner.op.axis)(neg.owner.inputs[0])]
 
+    return False
+
+
+@register_uncanonicalize
+@gof.local_optimizer([T.Alloc])
+def local_alloc_dimshuffle(node):
+    """
+    If a dimshuffle is inside an alloc and only adds dimension to the
+    left, remove it.
+
+    Alloc(DimShuffle(x), ...) - > Alloc(x, ...)
+    """
+    if node.op == T.alloc:
+        input_ = node.inputs[0]
+        if input_.owner and isinstance(input_.owner.op, DimShuffle):
+            # check if it only adds dimension to the left
+            new_order = input_.owner.op.new_order
+            expected_new_order = ('x',) * (input_.ndim - input_.owner.inputs[0].ndim) + \
+                tuple(range(input_.owner.inputs[0].ndim))
+            if new_order != expected_new_order:
+                return False
+            return [T.alloc(input_.owner.inputs[0], *node.inputs[1:])]
+    return False
+
+
+@register_uncanonicalize
+@gof.local_optimizer([T.Reshape])
+def local_reshape_dimshuffle(node):
+    """
+    If a dimshuffle is inside a reshape and does not change the order
+    of dimensions, remove it.
+
+    Reshape(Dimshuffle(x), shp) -> Reshape(x, shp)
+    """
+    if isinstance(node.op, T.Reshape):
+        input_ = node.inputs[0]
+        if input_.owner and isinstance(input_.owner.op, DimShuffle):
+            new_order = input_.owner.op.new_order
+            offset = 0
+            for dim in new_order:
+                if dim == 'x':
+                    continue
+                elif dim != offset:
+                    return False
+                else:
+                    offset += 1
+            return [T.reshape(input_.owner.inputs[0], node.inputs[1])]
     return False
