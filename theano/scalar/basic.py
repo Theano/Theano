@@ -852,7 +852,6 @@ class ScalarOp(Op):
 
     nin = -1
     nout = 1
-
     __props__ = ("output_types_preference", "name")
 
     def __init__(self, output_types_preference=None, name=None):
@@ -1185,6 +1184,7 @@ isinf = IsInf()
 
 class InRange(LogicalComparison):
     nin = 3
+    __props__ = ("openlow", "openhi")
 
     def __init__(self, openlow, openhi):
         self.openlow = openlow
@@ -2036,6 +2036,8 @@ identity = Identity(same_out, name='identity')
 
 # CASTING OPERATIONS
 class Cast(UnaryScalarOp):
+    __props__ = ("o_type", "name")
+
     def __init__(self, o_type, name=None):
         if not isinstance(o_type, Scalar):
             raise TypeError(o_type)
@@ -3461,7 +3463,7 @@ class Composite(ScalarOp):
     Composite depends on all the Ops in its graph having C code.
 
     """
-    init_param = ('inputs', 'outputs')
+    __props__ = ('inputs', 'outputs')
 
     def __str__(self):
         if self.name is None:
@@ -3475,7 +3477,7 @@ class Composite(ScalarOp):
         This fct allow fix patch this.
 
         """
-        d = dict([(k, getattr(self, k)) for k in self.init_param])
+        d = dict([(k, getattr(self, k)) for k in self.__props__])
         out = self.__class__(**d)
         if name:
             out.name = name

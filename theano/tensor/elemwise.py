@@ -476,7 +476,6 @@ second dimension
     | Elemwise(log)(rand(3, 4, 5))
 
     """
-    __props__ = ("scalar_op", "inplace_pattern", "name", "nfunc_spec", "openmp")
 
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
                  nfunc_spec=None, openmp=None):
@@ -1992,6 +1991,18 @@ class Sum(CAReduceDtype):
     def __init__(self, axis=None, dtype=None, acc_dtype=None):
         CAReduceDtype.__init__(self, scalar.add, axis=axis,
                                dtype=dtype, acc_dtype=acc_dtype)
+
+    def __str__(self):
+        name = self.__class__.__name__
+        axis = ""
+        if self.axis is not None:
+            axis = ", ".join(str(x) for x in self.axis)
+            axis = "axis=[%s], " % axis
+        return "%s{%sacc_dtype=%s}" % (
+            name,
+            axis,
+            str(self.acc_dtype)
+        )
 
     def grad(self, inp, grads):
         x, = inp

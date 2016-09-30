@@ -2246,8 +2246,6 @@ AllocDimshuffleGradTester2 = makeBroadcastTester(
 
 
 class ApplyDefaultTestOp(theano.Op):
-
-    __props__ = ("id")
     def __init__(self, id):
         self.default_output = id
 
