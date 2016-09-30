@@ -982,14 +982,7 @@ def io_toposort(inputs, outputs, orderings=None, clients=None):
         node->clients for each node in the subgraph that is sorted
 
     """
-    # the inputs are used only here in the function that decides what 'predecessors' to explore
-    iset = set(inputs)
 
-    # We build 2 functions as a speed up
-    deps_cache = {}
-
-    compute_deps = None
-    compute_deps_cache = None
     if not orderings:  # can be None or empty dict
         # Specialized function that is faster when more then ~10 nodes
         # when no ordering.
@@ -1011,23 +1004,28 @@ def io_toposort(inputs, outputs, orderings=None, clients=None):
                 todo.append(cur)
                 todo.extend(i.owner for i in cur.inputs if i.owner)
         return order
-    else:
-        def compute_deps(obj):
-            rval = []
-            if obj not in iset:
-                if isinstance(obj, Variable):
-                    if obj.owner:
-                        rval = [obj.owner]
-                elif isinstance(obj, Apply):
-                    rval = list(obj.inputs)
-                rval.extend(orderings.get(obj, []))
-            else:
-                assert not orderings.get(obj, None)
-            return rval
+
+    # no ordering
+
+    # the inputs are used only here in the function that decides what
+    # 'predecessors' to explore
+    iset = set(inputs)
+
+    def compute_deps(obj):
+        rval = []
+        if obj not in iset:
+            if isinstance(obj, Variable):
+                if obj.owner:
+                    rval = [obj.owner]
+            elif isinstance(obj, Apply):
+                rval = list(obj.inputs)
+            rval.extend(orderings.get(obj, []))
+        else:
+            assert not orderings.get(obj, None)
+        return rval
 
     topo = general_toposort(outputs, deps=compute_deps,
-                            compute_deps_cache=compute_deps_cache,
-                            deps_cache=deps_cache, clients=clients)
+                            clients=clients)
     return [o for o in topo if isinstance(o, Apply)]
 
 
