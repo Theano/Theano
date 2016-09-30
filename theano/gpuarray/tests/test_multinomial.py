@@ -23,31 +23,33 @@ def test_multinomial_0():
     p = tensor.fmatrix()
     u = tensor.fvector()
 
-    m = theano.sandbox.multinomial.MultinomialFromUniform('auto')(p, u)
+    for dtype in ['int64', 'float32', 'auto']:
 
-    # the m*2 allows the multinomial to reuse output
-    f = function([p, u], m * 2, allow_input_downcast=True, mode=mode_with_gpu)
+        m = theano.sandbox.multinomial.MultinomialFromUniform(dtype)(p, u)
 
-    assert any([type(node.op) is GPUAMultinomialFromUniform
-                for node in f.maker.fgraph.toposort()])
+        # the m*2 allows the multinomial to reuse output
+        f = function([p, u], m * 2, allow_input_downcast=True, mode=mode_with_gpu)
 
-    # test that both first and second samples can be drawn
-    utt.assert_allclose(f([[1, 0], [0, 1]], [.1, .1]),
-                        [[2, 0], [0, 2]])
+        assert any([type(node.op) is GPUAMultinomialFromUniform
+                    for node in f.maker.fgraph.toposort()])
 
-    # test that both second labels can be drawn
-    r = f([[.2, .8], [.3, .7]], [.31, .31])
-    utt.assert_allclose(r, [[0, 2], [0, 2]])
+        # test that both first and second samples can be drawn
+        utt.assert_allclose(f([[1, 0], [0, 1]], [.1, .1]),
+                            [[2, 0], [0, 2]])
 
-    # test that both first labels can be drawn
-    r = f([[.2, .8], [.3, .7]], [.21, .21])
-    utt.assert_allclose(r, [[0, 2], [2, 0]])
+        # test that both second labels can be drawn
+        r = f([[.2, .8], [.3, .7]], [.31, .31])
+        utt.assert_allclose(r, [[0, 2], [0, 2]])
 
-    # change the size to make sure output gets reallocated ok
-    # and also make sure that the GPU version doesn't screw up the
-    # transposed-ness
-    r = f([[.2, .8]], [.25])
-    utt.assert_allclose(r, [[0, 2]])
+        # test that both first labels can be drawn
+        r = f([[.2, .8], [.3, .7]], [.21, .21])
+        utt.assert_allclose(r, [[0, 2], [2, 0]])
+
+        # change the size to make sure output gets reallocated ok
+        # and also make sure that the GPU version doesn't screw up the
+        # transposed-ness
+        r = f([[.2, .8]], [.25])
+        utt.assert_allclose(r, [[0, 2]])
 
 
 # TODO: check a bigger example (make sure blocking on GPU is handled correctly)
@@ -78,6 +80,23 @@ def test_multinomial_large():
     utt.assert_allclose(mval.sum(axis=1), 2)
     asdf = numpy.asarray([0, 0, 2, 0]) + 0 * pval
     utt.assert_allclose(mval, asdf)  # broadcast over all rows
+
+
+def test_gpu_opt_dtypes():
+    # Test if the returned samples are of the datatype specified
+    for dtype in ['uint32', 'float32', 'int64', 'float64']:
+        p = tensor.fmatrix()
+        u = tensor.fvector()
+        m = theano.sandbox.multinomial.MultinomialFromUniform(dtype)(p, u)
+
+        f = function([p, u], m, allow_input_downcast=True, mode=mode_with_gpu)
+        assert any([type(node.op) is GPUAMultinomialFromUniform
+                    for node in f.maker.fgraph.toposort()])
+        pval = numpy.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
+        pval = pval / pval.sum(axis=1)[:, None]
+        uval = numpy.ones_like(pval[:, 0]) * 0.5
+        samples = f(pval, uval)
+        assert samples.dtype == dtype, "%s != %s" % (samples.dtype, dtype)
 
 
 def test_gpu_opt():

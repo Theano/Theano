@@ -52,11 +52,6 @@ class GPUAMultinomialFromUniform(GpuKernelBase, Op):
             odtype = pvals.dtype
         else:
             odtype = self.odtype
-        assert odtype == 'float32', odtype
-        if odtype != pvals.dtype:
-            raise NotImplementedError(
-                'GpuMultinomialFromUniform works only if '
-                'self.odtype == pvals.dtype', odtype, pvals.dtype)
         br = (pvals.broadcastable[1], pvals.broadcastable[0])
         out = GpuArrayType(broadcastable=br,
                            dtype=odtype,
@@ -74,7 +69,7 @@ KERNEL void k_multi_warp_multinomial(
     const ga_ssize pvals_col_stride,
     GLOBAL_MEM float * global_unis,
     const ga_ssize unis_stride,
-    GLOBAL_MEM float * global_outs,
+    GLOBAL_MEM %(out_ctype)s * global_outs,
     const ga_ssize outs_row_stride,
     const ga_ssize outs_col_stride
 )
@@ -88,14 +83,14 @@ KERNEL void k_multi_warp_multinomial(
         const float unis_n = global_unis[n*unis_stride];
         for (ga_size m = 0; m < nb_outcomes; ++m)
         {
-            float current_out = 0.;
+            %(out_ctype)s current_out = 0;
             if (!done)
             {
                 cummul += global_pvals[m * pvals_col_stride +
                                        n * pvals_row_stride];
                 if (unis_n < cummul)
                 {
-                    current_out = 1.;
+                    current_out = 1;
                     done = true;
                 }
             }
@@ -105,7 +100,7 @@ KERNEL void k_multi_warp_multinomial(
         }
     }
 }
-"""
+""" % dict(out_ctype=pygpu.gpuarray.dtype_to_ctype(node.outputs[0].dtype))
         return [Kernel(
             code=code, name="k_multi_warp_multinomial",
             params=[pygpu.gpuarray.SIZE,
@@ -128,6 +123,7 @@ KERNEL void k_multi_warp_multinomial(
         ctx = sub['params']
         sync = bool(config.gpuarray.sync)
         kname = self.gpu_kernels(node, name)[0].objvar
+        out_typecode = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
         s = """
         PyGpuArrayObject * pvals = %(pvals)s;
         PyGpuArrayObject * unis = %(unis)s;
@@ -152,7 +148,7 @@ KERNEL void k_multi_warp_multinomial(
 
     dims[0] = PyGpuArray_DIMS(pvals)[1];
     dims[1] = PyGpuArray_DIMS(pvals)[0];
-    if (theano_prep_output(&out, 2, dims, unis->ga.typecode,
+    if (theano_prep_output(&out, 2, dims, %(out_typecode)s,
                            GA_C_ORDER, %(ctx)s) != 0){
       %(fail)s
     }
@@ -194,8 +190,8 @@ KERNEL void k_multi_warp_multinomial(
             PyGpuArray_STRIDES(pvals)[0]/sizeof(float),
             PyGpuArray_STRIDES(pvals)[1]/sizeof(float),
             PyGpuArray_STRIDES(unis)[0]/sizeof(float),
-            PyGpuArray_STRIDES(out)[0]/sizeof(float),
-            PyGpuArray_STRIDES(out)[1]/sizeof(float)
+            PyGpuArray_STRIDES(out)[0]/gpuarray_get_elsize(%(out_typecode)s),
+            PyGpuArray_STRIDES(out)[1]/gpuarray_get_elsize(%(out_typecode)s)
         };
         int err;
         args[0] = (void*)&PyGpuArray_DIMS(out)[1];
@@ -226,7 +222,7 @@ KERNEL void k_multi_warp_multinomial(
         return s
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 
 class GPUAMultinomialWOReplacementFromUniform(GpuKernelBase, Op):
@@ -479,10 +475,9 @@ def local_gpua_multinomial(op, context_name, inputs, outputs):
     except NotScalarConstantError:
         return None
     m, = outputs
-    if (p.dtype == u.dtype == m.dtype == 'float32'):
-        gpu_op = GPUAMultinomialFromUniform(op.odtype)
-        return GpuDimShuffle([False, False], [1, 0])(
-            gpu_op(p, u))
+    gpu_op = GPUAMultinomialFromUniform(op.odtype)
+    return GpuDimShuffle([False, False], [1, 0])(
+        gpu_op(p, u))
 
 
 @register_opt('fast_compile')
