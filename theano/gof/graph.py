@@ -1002,18 +1002,10 @@ def io_toposort(inputs, outputs, orderings=None, clients=None):
                     if obj.owner:
                         rval = [obj.owner]
                 elif isinstance(obj, Apply):
-                    rval = list(obj.inputs)
-                if rval:
-                    if not isinstance(rval, (list, OrderedSet)):
-                        raise TypeError(
-                            "Non-deterministic collections here make"
-                            " toposort non-deterministic.")
-                    deps_cache[obj] = list(rval)
-                else:
-                    deps_cache[obj] = rval
-            else:
-                deps_cache[obj] = rval
+                    rval = obj.inputs
+            deps_cache[obj] = rval
             return rval
+
     else:
         def compute_deps(obj):
             rval = []
