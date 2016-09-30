@@ -16,4 +16,4 @@ echo
 
 FILE=${BUILDBOT_DIR}/theano_python3_tests.xml
 set -x
-PYTHONPATH= THEANO_FLAGS=$THEANO_FLAGS,compiledir=$WORKSPACE/compile/theano_compile_dir_theano_p3.3.0,mode=FAST_COMPILE,warn.ignore_bug_before=0.5,on_opt_error=raise,on_shape_error=raise python3 bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE}
+PYTHONPATH= THEANO_FLAGS=$THEANO_FLAGS,compiledir=$WORKSPACE/compile/theano_compile_dir_theano_python3,mode=FAST_COMPILE,warn.ignore_bug_before=0.5,on_opt_error=raise,on_shape_error=raise python3 bin/theano-nose ${THEANO_PARAM} ${XUNIT}${FILE}

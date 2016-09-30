@@ -2726,6 +2726,36 @@ def identity_like(x):
     return eye(x.shape[0], x.shape[1], k=0, dtype=x.dtype)
 
 
+def alloc_validate_shape(shape):
+    sh = [as_tensor_variable(s) for s in shape]
+    bcast = []
+    for i, s in enumerate(sh):
+        def err_str():
+            if config.exception_verbosity == 'high':
+                return '\n' + min_informative_str(s)
+            else:
+                return str(s)
+        if s.type.dtype[:3] not in ('int', 'uin'):
+            s_as_str = err_str()
+            raise TypeError('Shape arguments to Alloc must be integers, '
+                            'but argument %s is not for apply node: %s' %
+                            (i, s_as_str))
+        if s.ndim != 0:
+            s_as_str = err_str()
+            raise TypeError(
+                "Each shape dimension to Alloc must be a scalar, ",
+                'but dimension %s have %d dimensions for apply node: %s' %
+                (i, s.ndim, s_as_str))
+
+        # if s is constant 1, then we're broadcastable in that dim
+        try:
+            const_shp = get_scalar_constant_value(s)
+        except NotScalarConstantError:
+            const_shp = None
+        bcast.append(1 == const_shp)
+    return sh, bcast
+
+
 class Alloc(gof.Op):
     """Create a Tensor from an initial value and a desired shape.
 
@@ -2747,37 +2777,11 @@ class Alloc(gof.Op):
     __props__ = ()
 
     def validate_shape(self, shape):
-        sh = [as_tensor_variable(s) for s in shape]
-        bcast = []
-        for i, s in enumerate(sh):
-            def err_str():
-                if config.exception_verbosity == 'high':
-                    return '\n' + min_informative_str(s)
-                else:
-                    return str(s)
-            if s.type.dtype[:3] not in ('int', 'uin'):
-                s_as_str = err_str()
-                raise TypeError('Shape arguments to Alloc must be integers, '
-                                'but argument %s is not for apply node: %s' %
-                                (i, s_as_str))
-            if s.ndim != 0:
-                s_as_str = err_str()
-                raise TypeError(
-                    "Each shape dimension to Alloc must be a scalar, ",
-                    'but dimension %s have %d dimensions for apply node: %s' %
-                    (i, s.ndim, s_as_str))
-
-            # if s is constant 1, then we're broadcastable in that dim
-            try:
-                const_shp = get_scalar_constant_value(s)
-            except NotScalarConstantError:
-                const_shp = None
-            bcast.append(1 == const_shp)
-        return sh, bcast
+        return alloc_validate_shape(shape)
 
     def make_node(self, value, *shape):
         v = as_tensor_variable(value)
-        sh, bcast = self.validate_shape(shape)
+        sh, bcast = alloc_validate_shape(shape)
         if v.ndim > len(sh):
             raise TypeError("The Alloc value to use has more dimensions"
                             " than the specified dimensions",
@@ -4109,8 +4113,7 @@ class Join(Op):
 
 join = Join()
 
-pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Join),
-              printing.FunctionPrinter('join'))
+pprint.assign(Join, printing.FunctionPrinter('join'))
 
 
 def roll(x, shift, axis=None):
@@ -6356,24 +6359,11 @@ class AllocEmpty(gof.Op):
         assert isinstance(dtype, str), dtype
         self.dtype = dtype.lower()
 
-    def validate_shape(self, shape):
-        sh = [as_tensor_variable(s) for s in shape]
-        bcast = []
-        for s in sh:
-            if s.type.dtype[:3] not in ('int', 'uin'):
-                raise TypeError('Shape arguments must be integers', s)
-            # if s is constant 1, then we're broadcastable in that dim
-            try:
-                const_shp = get_scalar_constant_value(s)
-            except NotScalarConstantError:
-                const_shp = None
-            bcast.append(1 == const_shp)
+    def make_node(self, *shape):
+        shape, bcast = alloc_validate_shape(shape)
         otype = TensorType(dtype=self.dtype, broadcastable=bcast)
         output = otype()
-        return sh, output
 
-    def make_node(self, *shape):
-        shape, output = self.validate_shape(shape)
         output.tag.values_eq_approx = values_eq_approx_always_true
         # The outut can contain nan/inf.  output.type is a new
         # instance, so we can do this only for that variable.

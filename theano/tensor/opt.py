@@ -5,6 +5,7 @@ Tensor optimizations addressing the ops in basic.py.
 # TODO: intelligent merge for mul/add
 # TODO: 0*x -> 0
 
+from collections import defaultdict
 import logging
 import itertools
 import operator
@@ -146,14 +147,34 @@ def broadcast_like(value, template, fgraph, dtype=None):
     return rval
 
 
-def inplace_elemwise_optimizer_op(OP):
+class InplaceElemwiseOptimizer(Optimizer):
     """
     We parametrise it to make it work for Elemwise and GpuElemwise op.
     """
-    @gof.inplace_optimizer
-    def inplace_elemwise_optimizer(fgraph):
+    def __init__(self, OP):
+        self.op = OP
+
+    def add_requirements(self, fgraph):
+        fgraph.attach_feature(theano.gof.destroyhandler.DestroyHandler())
+
+    @staticmethod
+    def print_profile(stream, prof, level=0):
+        blanc = ('    ' * level)
+        print(blanc, "InplaceElemwiseOptimizer ", prof['opt'].op, file=stream)
+        for k in ['node_before',
+                  'nb_call_replace',
+                  'nb_call_validate',
+                  'nb_inconsistent']:
+            print(blanc, k, prof[k], file=stream)
+        ndim = prof['ndim']
+        if ndim:
+            print(blanc, "ndim", "nb", file=stream)
+            for n in sorted(ndim.keys()):
+                print(blanc, n, ndim[n], file=stream)
+
+    def apply(self, fgraph):
         """
-        Usage: inplace_elemwise_optimizer.optimize(fgraph)
+        Usage: InplaceElemwiseOptimizer(op).optimize(fgraph)
 
         Attempts to replace all Broadcast ops by versions of them
         that operate inplace. It operates greedily: for each Broadcast
@@ -163,8 +184,10 @@ def inplace_elemwise_optimizer_op(OP):
 
         Examples
         --------
-        x + y + z -> x += y += z
-        (x + y) * (x * y) -> (x += y) *= (x * y) or (x + y) *= (x *= y)
+
+            `x + y + z -> x += y += z`
+
+            `(x + y) * (x * y) -> (x += y) *= (x * y) or (x + y) *= (x *= y)`
 
         """
         # We should not validate too often as this takes too much time to
@@ -187,6 +210,13 @@ def inplace_elemwise_optimizer_op(OP):
         # the solution is also applicable there.
 
         # We execute `validate` after this number of change.
+        prof = {'opt': self,
+                'node_before': len(fgraph.apply_nodes),
+                'nb_call_replace': 0,
+                'nb_call_validate': 0,
+                'nb_inconsistent': 0,
+                'ndim': defaultdict(lambda: 0)}
+
         check_each_change = config.tensor.insert_inplace_optimizer_validate_nb
         if check_each_change == -1:
             #By default, check 10 times during the course of the optimization.
@@ -208,7 +238,7 @@ def inplace_elemwise_optimizer_op(OP):
         for node in list(graph.io_toposort(fgraph.inputs, fgraph.outputs)):
             op = node.op
             # gpuarray GpuElemwise inherit from Elemwise
-            if not type(op) == OP:
+            if not type(op) == self.op:
                 continue
             # If big graph and the outputs are scalar, do not make it
             # inplace.
@@ -325,19 +355,23 @@ def inplace_elemwise_optimizer_op(OP):
                                 scalar.transfer_type(
                                     *[inplace_pattern.get(i, None)
                                       for i in xrange(len(node.outputs))]))
-                        new_outputs = OP(new_scal, inplace_pattern)(
+                        new_outputs = self.op(new_scal, inplace_pattern)(
                             *node.inputs, **dict(return_list=True))
                         new_node = new_outputs[0].owner
 
                         for r, new_r in zip(node.outputs, new_outputs):
+                            prof['nb_call_replace'] += 1
                             fgraph.replace(r, new_r,
                                            reason="inplace_elemwise_optimizer")
                         nb_change_no_validate += 1
+                        prof['ndim'][candidate_out_var.ndim] += 1
                         if nb_change_no_validate >= check_each_change:
+                            prof['nb_call_validate'] += 1
                             fgraph.validate()
                             chk = fgraph.checkpoint()
                             nb_change_no_validate = 0
                     except (ValueError, InconsistencyError) as e:
+                        prof['nb_inconsistent'] += 1
                         if check_each_change != 1 and not raised_warning:
                             print(("Some inplace optimization was not "
                                    "performed due to unexpected error:"),
@@ -360,9 +394,14 @@ def inplace_elemwise_optimizer_op(OP):
                            "performed due to unexpected error"),
                           file=sys.stderr)
                 fgraph.revert(chk)
-    return inplace_elemwise_optimizer
+        return prof
 
-inplace_elemwise_optimizer = inplace_elemwise_optimizer_op(T.Elemwise)
+    def print_summary(self, stream=sys.stdout, level=0, depth=-1):
+        print("%s%s (%s)" % (
+            (' ' * level), self.__class__.__name__, self.op), file=stream)
+        return inplace_elemwise_optimizer
+
+inplace_elemwise_optimizer = InplaceElemwiseOptimizer(T.Elemwise)
 compile.optdb.register('inplace_elemwise_opt', inplace_elemwise_optimizer, 75,
                        'inplace_opt',  # for historic reason
                        'inplace_elemwise_optimizer',
@@ -828,8 +867,7 @@ class MakeVectorPrinter:
         else:
             raise TypeError("Can only print make_vector.")
 
-T.pprint.assign(lambda pstate, r: r.owner and
-                isinstance(r.owner.op, MakeVector), MakeVectorPrinter())
+T.pprint.assign(MakeVector, MakeVectorPrinter())
 
 
 class ShapeFeature(object):
@@ -3067,14 +3105,10 @@ def local_subtensor_of_alloc(node):
     if type(rval) not in (list, tuple):
         rval = [rval]
     if rval[0].type != node.outputs[0].type:
-        # It happen that the make_node() isn't able to infer that some
-        # dimensions are broadcastable, but that now we can infer
-        # that. So we need to remove that information here.
-        rval[0] = theano.tensor.unbroadcast(
-            rval[0],
-            *[i for i, (b1, b2) in enumerate(zip(rval[0].broadcastable,
-                                                 node.outputs[0].broadcastable))
-              if b1 and not b2])
+        # It happen that the make_node() isn't able to infer the same pattern.
+        # We know it is safe, so fix that.
+        rval[0] = T.patternbroadcast(rval[0], node.outputs[0].broadcastable)
+
     return rval
 
 
@@ -4715,13 +4749,17 @@ class Canonizer(gof.LocalOptimizer):
             numeric constant. If v is a plain Variable, returns None.
 
         """
-        if isinstance(v, Variable):
-            try:
-                # As the constant folding is in the canonicalize phase,
-                # We don't need to check all the graph each time.
-                return get_scalar_constant_value(v, only_process_constants=True)
-            except NotScalarConstantError:
+        if isinstance(v, Constant):
+            if getattr(v.tag, 'unique_value', None) is not None:
+                data = v.tag.unique_value
+            else:
+                data = v.data
+            if data.ndim == 0:
+                return data
+            else:
                 return None
+        elif isinstance(v, Variable):
+            return None
         else:
             return v
 
@@ -4754,10 +4792,25 @@ class Canonizer(gof.LocalOptimizer):
         | [a, b], [c, d] -> [a, b], [c, d]
 
         """
-        for v in list(num):
-            if v in denum:
-                num.remove(v)
-                denum.remove(v)
+        ln = len(num)
+        ld = len(denum)
+        if (ld > 2 and ln > 2):
+            # Faster version for "big" inputs.
+            while True:
+                s = set(num)
+                # Inputs can appear multiple times
+                redo = len(s) != len(num)
+                inter = s.intersection(denum)
+                for v in inter:
+                    num.remove(v)
+                    denum.remove(v)
+                if not redo or not inter:
+                    break
+        else:
+            for v in list(num):
+                if v in denum:
+                    num.remove(v)
+                    denum.remove(v)
         return num, denum
 
     def simplify_constants(self, orig_num, orig_denum, out_type=None):
@@ -4779,9 +4832,8 @@ class Canonizer(gof.LocalOptimizer):
         | [x, 2, y], [z, 2] -> [x, y], [z]
 
         """
-
         # Lists representing the numerator and denumerator
-        num, denum = list(orig_num), list(orig_denum)
+        num, denum = [], []
 
         # Lists representing the *constant* elements of num and denum
         numct, denumct = [], []
@@ -4790,15 +4842,16 @@ class Canonizer(gof.LocalOptimizer):
             ct = self.get_constant(v)
             if ct is not None:
                 # We found a constant in the numerator!
-                # We remove it from num
-                num.remove(v)
                 # We add it to numct
                 numct.append(ct)
+            else:
+                num.append(v)
         for v in orig_denum:
             ct = self.get_constant(v)
             if ct is not None:
-                denum.remove(v)
                 denumct.append(ct)
+            else:
+                denum.append(v)
 
         if self.use_reciprocal or num:
             # This will calculate either:
@@ -4852,6 +4905,13 @@ class Canonizer(gof.LocalOptimizer):
 
         assert len(node.outputs) == 1
         out = node.outputs[0]
+
+        # out won't have a clients field when we didn't commit a
+        # started change in the graph.  We can't do the check if we
+        # want to skip it, so we force the skip it. It should be
+        # reapplied later.
+        if not hasattr(out, 'clients'):
+            return
 
         # check if any of the clients of this node would be part of
         # this canonized graph...  if so, we do nothing and wait for
@@ -5940,7 +6000,7 @@ def local_add_specialize(node):
 register_specialize(local_add_specialize)
 
 mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut,
-                                         local_fill_sink),
+                                         local_fill_sink, apply_all_opts=True),
                        name='mul_canonizer_groups')
 
 
@@ -6099,7 +6159,7 @@ def add_calculate(num, denum, aslist=False, out_type=None):
 
 local_add_canonizer = Canonizer(T.add, T.sub, T.neg, add_calculate)
 add_canonizer = in2out(gof.LocalOptGroup(local_add_canonizer, local_fill_cut,
-                                         local_fill_sink),
+                                         local_fill_sink, apply_all_opts=True),
                        name='add_canonizer_group')
 
 
@@ -7178,7 +7238,9 @@ def local_add_mul_fusion(node):
     for inp in node.inputs:
         if (inp.owner and
                 isinstance(inp.owner.op, Elemwise) and
-                isinstance(inp.owner.op.scalar_op, s_op)):
+                isinstance(inp.owner.op.scalar_op, s_op) and
+                # Do not duplicate the operation.
+                len(inp.clients) == 1):
             new_inp.extend(inp.owner.inputs)
             fused = True
         else:

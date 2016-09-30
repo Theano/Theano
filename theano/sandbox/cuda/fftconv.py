@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import string
 
 import numpy as np
 import theano
@@ -247,8 +246,8 @@ def sc_complex_dot_batched(bx_gpu, by_gpu, bc_gpu, transa='N', transb='N',
     alpha = np.complex64(1.0)
     beta = np.complex64(0.0)
 
-    transa = string.lower(transa)
-    transb = string.lower(transb)
+    transa = transa.lower()
+    transb = transb.lower()
 
     if transb in ['t', 'c']:
         N, m, k = by_shape

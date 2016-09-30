@@ -345,6 +345,11 @@ class PrinterState(gof.utils.scratchpad):
         else:
             self.__dict__.update(props)
         self.__dict__.update(more_props)
+        # A dict from the object to print to its string
+        # representation. If it is a dag and not a tree, it allow to
+        # parse each node of the graph only once. They will still be
+        # printed many times
+        self.memo = {}
 
     def clone(self, props=None, **more_props):
         if props is None:
@@ -361,6 +366,8 @@ class OperatorPrinter:
         assert self.assoc in VALID_ASSOC
 
     def process(self, output, pstate):
+        if output in pstate.memo:
+            return pstate.memo[output]
         pprinter = pstate.pprinter
         node = output.owner
         if node is None:
@@ -393,9 +400,11 @@ class OperatorPrinter:
         else:
             s = (" %s " % self.operator).join(input_strings)
         if parenthesize:
-            return "(%s)" % s
+            r = "(%s)" % s
         else:
-            return s
+            r = s
+        pstate.memo[output] = r
+        return r
 
 
 class PatternPrinter:
@@ -409,6 +418,8 @@ class PatternPrinter:
                 self.patterns.append((pattern[0], pattern[1:]))
 
     def process(self, output, pstate):
+        if output in pstate.memo:
+            return pstate.memo[output]
         pprinter = pstate.pprinter
         node = output.owner
         if node is None:
@@ -425,7 +436,9 @@ class PatternPrinter:
                  for i, x in enumerate(pp_process(input, precedence)
                                        for input, precedence in
                                        zip(node.inputs, precedences)))
-        return pattern % d
+        r = pattern % d
+        pstate.memo[output] = r
+        return r
 
 
 class FunctionPrinter:
@@ -434,6 +447,8 @@ class FunctionPrinter:
         self.names = names
 
     def process(self, output, pstate):
+        if output in pstate.memo:
+            return pstate.memo[output]
         pprinter = pstate.pprinter
         node = output.owner
         if node is None:
@@ -441,74 +456,70 @@ class FunctionPrinter:
                             "not the result of an operation" % self.names)
         idx = node.outputs.index(output)
         name = self.names[idx]
-        return "%s(%s)" % (name, ", ".join(
+        r = "%s(%s)" % (name, ", ".join(
             [pprinter.process(input, pstate.clone(precedence=-1000))
              for input in node.inputs]))
-
-
-class MemberPrinter:
-
-    def __init__(self, *names):
-        self.names = names
-
-    def process(self, output, pstate):
-        pprinter = pstate.pprinter
-        node = output.owner
-        if node is None:
-            raise TypeError("function %s cannot represent a variable that is"
-                            " not the result of an operation" % self.function)
-        idx = node.outputs.index(output)
-        name = self.names[idx]
-        input = node.inputs[0]
-        return "%s.%s" % (pprinter.process(input,
-                                           pstate.clone(precedence=1000)),
-                          name)
+        pstate.memo[output] = r
+        return r
 
 
 class IgnorePrinter:
 
     def process(self, output, pstate):
+        if output in pstate.memo:
+            return pstate.memo[output]
         pprinter = pstate.pprinter
         node = output.owner
         if node is None:
             raise TypeError("function %s cannot represent a variable that is"
                             " not the result of an operation" % self.function)
         input = node.inputs[0]
-        return "%s" % pprinter.process(input, pstate)
+        r = "%s" % pprinter.process(input, pstate)
+        pstate.memo[output] = r
+        return r
 
 
 class DefaultPrinter:
 
     def __init__(self):
-        pass
+        self.leaf_printer = LeafPrinter()
 
-    def process(self, r, pstate):
+    def process(self, output, pstate):
+        if output in pstate.memo:
+            return pstate.memo[output]
         pprinter = pstate.pprinter
-        node = r.owner
+        node = output.owner
         if node is None:
-            return LeafPrinter().process(r, pstate)
-        return "%s(%s)" % (str(node.op), ", ".join(
+            return self.leaf_printer.process(output, pstate)
+        r = "%s(%s)" % (str(node.op), ", ".join(
             [pprinter.process(input, pstate.clone(precedence=-1000))
              for input in node.inputs]))
+        pstate.memo[output] = r
+        return r
 
 
 class LeafPrinter:
-    def process(self, r, pstate):
-        if r.name in greek:
-            return greek[r.name]
+    def process(self, output, pstate):
+        if output in pstate.memo:
+            return pstate.memo[output]
+        if output.name in greek:
+            r = greek[output.name]
         else:
-            return str(r)
+            r = str(output)
+        pstate.memo[output] = r
+        return r
 
 
 class PPrinter:
     def __init__(self):
         self.printers = []
+        self.printers_dict = {}
 
     def assign(self, condition, printer):
-        if isinstance(condition, gof.Op):
-            op = condition
-            condition = (lambda pstate, r: r.owner is not None and
-                         r.owner.op == op)
+        # condition can be a class or an instance of an Op.
+        if isinstance(condition, (gof.Op, type)):
+            self.printers_dict[condition] = printer
+            return
         self.printers.insert(0, (condition, printer))
 
     def process(self, r, pstate=None):
@@ -516,6 +527,11 @@ class PPrinter:
             pstate = PrinterState(pprinter=self)
         elif isinstance(pstate, dict):
             pstate = PrinterState(pprinter=self, **pstate)
+        if getattr(r, 'owner', None) is not None:
+            if r.owner.op in self.printers_dict:
+                return self.printers_dict[r.owner.op].process(r, pstate)
+            if type(r.owner.op) in self.printers_dict:
+                return self.printers_dict[type(r.owner.op)].process(r, pstate)
         for condition, printer in self.printers:
             if condition(pstate, r):
                 return printer.process(r, pstate)
@@ -523,6 +539,7 @@ class PPrinter:
     def clone(self):
         cp = copy(self)
         cp.printers = list(self.printers)
+        cp.printers_dict = dict(self.printers_dict)
         return cp
 
     def clone_assign(self, condition, printer):

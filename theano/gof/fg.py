@@ -6,7 +6,6 @@ types that it can raise.
 """
 from __future__ import absolute_import, print_function, division
 from collections import OrderedDict
-import sys
 import time
 import traceback
 
@@ -260,7 +259,7 @@ class FunctionGraph(utils.object2):
         """
         return r.clients
 
-    def __add_clients__(self, r, new_clients):
+    def __add_client__(self, r, new_client):
         """
         Updates the list of clients of r with new_clients.
 
@@ -268,21 +267,19 @@ class FunctionGraph(utils.object2):
         ----------
         r
             Variable.
-        new_clients
-            List of (node, i) pairs such that node.inputs[i] is r.
+        new_client
+            (node, i) pair such that node.inputs[i] is r.
 
         """
-        if set(r.clients).intersection(set(new_clients)):
-            print('ERROR: clients intersect!', file=sys.stderr)
-            print('  RCLIENTS of', r, [(n, i, type(n), id(n))
-                                       for n, i in r.clients], file=sys.stderr)
-            print('  NCLIENTS of', r, [(n, i, type(n), id(n))
-                                       for n, i in new_clients], file=sys.stderr)
-        assert not set(r.clients).intersection(set(new_clients))
-        r.clients += new_clients
+        # Ne need to do the assert as it is always True. The logic
+        # that call __add_client__ is valid. When the client list is
+        # long, the check it time consuming, so we don't enable it by
+        # default.
+        # assert not new_client in r.clients
+        r.clients.append(new_client)
 
-    def __remove_clients__(self, r, clients_to_remove,
-                           prune=True, reason=None):
+    def __remove_client__(self, r, client_to_remove,
+                          prune=True, reason=None):
         """
         Removes all from the clients list of r.
 
@@ -296,8 +293,8 @@ class FunctionGraph(utils.object2):
         ----------
         r : Variable
             The clients of r will be removed.
-        clients_to_remove : List of (op, i) pairs
-            List of (op, i) pairs such that node.inputs[i] is not r anymore.
+        client_to_remove : (op, i) pair
+            (op, i) pair such that node.inputs[i] is not r anymore.
         prune : bool
             If prune is True, it remove r from this fgraph if it don't
             have clients left.
@@ -311,9 +308,11 @@ class FunctionGraph(utils.object2):
             clients_to_remove and prune=True will remove r.
 
         """
-        for entry in clients_to_remove:
-            r.clients.remove(entry)
-            assert entry not in r.clients  # an op,i pair should be unique
+        if client_to_remove:
+            r.clients.remove(client_to_remove)
+            # entry should be uniq in r. No need to assert it as it is
+            # already asserted in __add_client__.
+            # assert entry not in r.clients
         if r.clients:
             return False
         if not prune:
@@ -333,8 +332,8 @@ class FunctionGraph(utils.object2):
                 self.execute_callbacks('on_prune', apply_node, reason)
 
                 for i, input in enumerate(apply_node.inputs):
-                    self.__remove_clients__(input, [(apply_node, i)],
-                                            reason=reason)
+                    self.__remove_client__(input, (apply_node, i),
+                                           reason=reason)
         # variable should not have any clients.
         # assert not variable.clients
 
@@ -431,7 +430,7 @@ class FunctionGraph(utils.object2):
                 if input not in self.variables:
                     self.__setup_r__(input)
                     self.variables.add(input)
-                self.__add_clients__(input, [(node, i)])
+                self.__add_client__(input, (node, i))
             assert node.fgraph is self
             self.execute_callbacks('on_import', node, reason)
 
@@ -470,15 +469,15 @@ class FunctionGraph(utils.object2):
             return
 
         self.__import_r__(new_r, reason=reason)
-        self.__add_clients__(new_r, [(node, i)])
-        prune = self.__remove_clients__(r, [(node, i)], False)
+        self.__add_client__(new_r, (node, i))
+        prune = self.__remove_client__(r, (node, i), False)
         # Precondition: the substitution is semantically valid
         # However it may introduce cycles to the graph,  in which case the
         # transaction will be reverted later.
         self.execute_callbacks('on_change_input', node, i,
                                r, new_r, reason=reason)
         if prune:
-            self.__remove_clients__(r, [], True, reason=reason)
+            self.__remove_client__(r, None, True, reason=reason)
 
     # replace #
     def replace(self, r, new_r, reason=None, verbose=None):

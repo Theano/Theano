@@ -446,8 +446,7 @@ class DimShufflePrinter:
         else:
             raise TypeError("Can only print DimShuffle.")
 
-pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, DimShuffle),
-              DimShufflePrinter())
+pprint.assign(DimShuffle, DimShufflePrinter())
 
 
 ################
@@ -849,6 +848,14 @@ second dimension
             char = numpy.sctype2char(out_dtype)
             sig = char * node.nin + '->' + char * node.nout
             node.tag.sig = sig
+        node.tag.fake_node = Apply(
+            self.scalar_op,
+            [get_scalar_type(dtype=input.type.dtype).make_variable()
+             for input in node.inputs],
+            [get_scalar_type(dtype=output.type.dtype).make_variable()
+             for output in node.outputs])
+
+        self.scalar_op.prepare_node(node.tag.fake_node, None, None)
 
     def perform(self, node, inputs, output_storage):
         if len(node.inputs) >= 32:
@@ -991,6 +998,11 @@ second dimension
         return rval
 
     def _c_all(self, node, nodename, inames, onames, sub):
+        # Some ops call directly the Elemwise._c_all or Elemwise.c_code
+        # To not request all of them to call prepare_node(), do it here.
+        # There is no harm if it get called multile time.
+        if not hasattr(node.tag, 'fake_node'):
+            self.prepare_node(node, None, None)
         _inames = inames
         _onames = onames
 
@@ -1109,11 +1121,7 @@ second dimension
 
         # We generate the C code of the inner loop using the scalar op
         task_code = self.scalar_op.c_code(
-            Apply(self.scalar_op,
-                  [get_scalar_type(dtype=input.type.dtype).make_variable()
-                   for input in node.inputs],
-                  [get_scalar_type(dtype=output.type.dtype).make_variable()
-                   for output in node.outputs]),
+            node.tag.fake_node,
             nodename + '_scalar_',
             ["%s_i" % s for s in _inames],
             ["%s_i" % s for s in onames],

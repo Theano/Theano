@@ -55,18 +55,31 @@ def test_get_diagonal_subtensor_view(wrap=lambda a: a):
 
 
 def pyconv3d(signals, filters, border_mode='valid'):
-    if border_mode == 'full':
-        # zero-pad signals for full convolution
-        Ns, Ts, C, Hs, Ws = signals.shape
-        Nf, Tf, C, Hf, Wf = filters.shape
-        signals_padded = numpy.zeros((Ns, Ts + 2 * (Tf - 1), C,
-                                      Hs + 2 * (Hf - 1), Ws + 2 * (Wf - 1)), 'float32')
-        signals_padded[:, (Tf - 1):(Ts + Tf - 1), :, (Hf - 1):(Hs + Hf - 1),
-                       (Wf - 1):(Ws + Wf - 1)] = signals
-        signals = signals_padded
-
     Ns, Ts, C, Hs, Ws = signals.shape
     Nf, Tf, C, Hf, Wf = filters.shape
+
+    # if border_mode is not 'valid', the signals need zero-padding
+    if border_mode == 'full':
+        Tpad = Tf - 1
+        Hpad = Hf - 1
+        Wpad = Wf - 1
+    elif border_mode == 'half':
+        Tpad = Tf // 2
+        Hpad = Hf // 2
+        Wpad = Wf // 2
+    else:
+        Tpad = 0
+        Hpad = 0
+        Wpad = 0
+
+    if Tpad > 0 or Hpad > 0 or Wpad > 0:
+        # zero-pad signals
+        signals_padded = numpy.zeros((Ns, Ts + 2 * Tpad, C,
+                                      Hs + 2 * Hpad, Ws + 2 * Wpad), 'float32')
+        signals_padded[:, Tpad:(Ts + Tpad), :, Hpad:(Hs + Hpad),
+                       Wpad:(Ws + Wpad)] = signals
+        Ns, Ts, C, Hs, Ws = signals_padded.shape
+        signals = signals_padded
 
     Tf2 = Tf // 2
     Hf2 = Hf // 2
@@ -91,7 +104,7 @@ def check_diagonal_subtensor_view_traces(fn):
         fn, ops_to_check=(DiagonalSubtensor, IncDiagonalSubtensor))
 
 
-@parameterized.expand(('valid', 'full'), utt.custom_name_func)
+@parameterized.expand(('valid', 'full', 'half'), utt.custom_name_func)
 def test_conv3d(border_mode):
     check_conv3d(border_mode=border_mode,
                  mode=mode_without_gpu,

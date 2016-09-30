@@ -15,7 +15,6 @@ from . import graph
 from theano.misc.ordered_set import OrderedSet
 
 from .fg import InconsistencyError
-from six.moves.queue import Queue
 
 
 class ProtocolError(Exception):

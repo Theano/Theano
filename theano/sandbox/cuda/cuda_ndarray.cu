@@ -3310,7 +3310,6 @@ CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
             }
         }
     }
-    cudaThreadExit();
 
     Py_INCREF(Py_None);
     return Py_None;

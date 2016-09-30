@@ -1672,7 +1672,7 @@ conv_groupopt.register('local_conv_dnn', dnn.local_conv_dnn,
 # It can be disabled by excluding 'conv_gemm'.
 conv_groupopt.register('local_conv_gemm', local_conv_gemm,
                        'conv_gemm',
-                       'fast_compile', 'fast_run', positin=30)
+                       'fast_compile', 'fast_run', position=30)
 
 
 class LocalCudaMetaOptimizer(LocalMetaOptimizer):
@@ -2181,7 +2181,7 @@ else:
                    71.00, 'fusion', 'local_elemwise_fusion')
 
 # GpuElemwise inplace
-gpu_inplace_elemwise_optimizer = tensor.opt.inplace_elemwise_optimizer_op(
+gpu_inplace_elemwise_optimizer = tensor.opt.InplaceElemwiseOptimizer(
     GpuElemwise)
 # DO NOT PLACE add a 'gpu' tag here! This would enable it in fast_compile.
 # It still will be run in fast_run with device=gpu with the current tag.

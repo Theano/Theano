@@ -22,6 +22,26 @@ except ImportError:
 _context_reg = {}
 
 
+def move_to_gpu(data):
+    """
+    Do we want to move this computation to the GPU?
+
+    Currently, we don't move complex and scalar int.
+
+    Parameters
+    ----------
+    data : numpy.ndarray or TensorVariable
+           (it must have dtype and ndim parameter)
+    """
+    # We don't support complex on the GPU
+    if str(data.dtype) in tensor.basic.complex_dtypes:
+        return False
+    # We don't want scalar int on the GPU.
+    if data.ndim == 0 and str(data.dtype) in tensor.basic.discrete_dtypes:
+        return False
+    return True
+
+
 class ContextNotDefined(ValueError):
     pass
 
@@ -561,15 +581,21 @@ class GpuArraySharedVariable(_operators, SharedVariable):
 
 
 GpuArrayType.SharedVariable = GpuArraySharedVariable
+notset = object()
 
 
 def gpuarray_shared_constructor(value, name=None, strict=False,
                                 allow_downcast=None, borrow=False,
-                                broadcastable=None, target=None):
+                                broadcastable=None, target=notset):
     """
     SharedVariable constructor for GpuArrayType.
 
     See :func:`theano.shared`.
+
+    :target: default None
+        The device target. As None is a valid value and we need to
+        differentiate from the parameter notset and None, we use a
+        notset object.
 
     """
     if target == 'gpu' or target == 'cpu':
@@ -578,6 +604,10 @@ def gpuarray_shared_constructor(value, name=None, strict=False,
     if not isinstance(value, (numpy.ndarray, pygpu.gpuarray.GpuArray)):
         raise TypeError('ndarray or GpuArray required')
 
+    if target is notset:
+        target = None
+        if not move_to_gpu(value):
+            raise TypeError('We do not move that data by default to the GPU')
     try:
         get_context(target)
     except ContextNotDefined:
