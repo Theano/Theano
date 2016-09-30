@@ -73,8 +73,7 @@ class DimShuffle(Op):
         list can either be an index or 'x'. Indices must be encoded
         as python integers, not theano symbolic integers.
     inplace : bool, optional
-        If True, the output will be a view of the input.
-        If False (default), the output will be a copy of the input.
+        If True (default), the output will be a view of the input.
 
     Note
     ----
@@ -134,13 +133,17 @@ class DimShuffle(Op):
 
     _f16_ok = True
     check_input = False
+    __props__ = ("input_broadcastable", "new_order", "inplace")
 
-    def __init__(self, input_broadcastable, new_order, inplace=False):
+    def __init__(self, input_broadcastable, new_order, inplace=True):
         input_broadcastable = tuple(input_broadcastable)
         self.input_broadcastable = input_broadcastable
         new_order = tuple(new_order)
         self.new_order = new_order
-        self.inplace = inplace
+        if inplace is True:
+            self.inplace = inplace
+        else:
+            raise ValueError("DimShuffle is inplace by default and hence the inplace for DimShuffle must be true")
 
         for i, j in enumerate(new_order):
             if j != 'x':
@@ -186,17 +189,6 @@ class DimShuffle(Op):
         if self.inplace:
             self.view_map = {0: [0]}
 
-        self._rehash()
-
-    def __getstate__(self):
-        d = dict(self.__dict__)
-        del d['_hashval']
-        return d
-
-    def __setstate__(self, d):
-        self.__dict__.update(d)
-        self._rehash()
-
     def make_node(self, _input):
         input = as_tensor_variable(_input)
         ib = tuple(input.type.broadcastable)
@@ -226,23 +218,6 @@ class DimShuffle(Op):
                             broadcastable=ob)()
 
         return Apply(self, [input], [output])
-
-    def __eq__(self, other):
-        # it's probably not necessary to compare input_broadcastable
-        return type(self) == type(other) \
-            and self.inplace == other.inplace \
-            and self.new_order == other.new_order \
-            and self.input_broadcastable == other.input_broadcastable
-
-    def _rehash(self):
-        self._hashval = (hash(type(self).__name__) ^
-                         hash(type(self).__module__) ^
-                         hash(self.inplace) ^
-                         hash(self.new_order) ^
-                         hash(self.input_broadcastable))
-
-    def __hash__(self):
-        return self._hashval
 
     def __str__(self):
         if self.inplace:
@@ -564,8 +539,7 @@ second dimension
                 # TODO: use LComplete instead
                 args.append(dim_shuffle(
                     input.type.broadcastable,
-                    ['x'] * difference + list(range(length)),
-                    inplace=False)(input))
+                    ['x'] * difference + list(range(length)))(input))
         inputs = args
 
         # HERE: all the broadcast dims have the same length now
@@ -798,7 +772,8 @@ second dimension
                 # dimensions
                 res = theano.tensor.constant(numpy.asarray(r.data),
                                              dtype=r.type.dtype)
-                return DimShuffle((), ['x'] * nd, inplace=False)(res)
+                return DimShuffle((), ['x'] * nd)(res)
+
             new_r = Elemwise(node.op, {})(
                 *[transform(ipt) for ipt in node.inputs])
             return new_r

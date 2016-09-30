@@ -600,8 +600,7 @@ def local_dimshuffle_lift(node):
         new_inputs = []
         for inp in inode.inputs:
             new_inp = op.__class__(inp.type.broadcastable,
-                                   op.new_order,
-                                   op.inplace)(inp)
+                                   op.new_order)(inp)
             new_inputs.append(apply_local_dimshuffle_lift(new_inp))
         copy_stack_trace(node.outputs[0], new_inputs)
         ret = inode.op(*new_inputs, **dict(return_list=True))
@@ -609,14 +608,12 @@ def local_dimshuffle_lift(node):
     if inode and isinstance(inode.op, DimShuffle):
         new_order = [x == 'x' and 'x' or inode.op.new_order[x] for x in
                      new_order]
-        inplace = op.inplace and inode.op.inplace
         input = inode.inputs[0]
 
     if is_dimshuffle_useless(new_order, input):
         return [input]
     elif inode and isinstance(inode.op, DimShuffle):
-        ret = op.__class__(input.type.broadcastable, new_order,
-                           inplace)(input)
+        ret = op.__class__(input.type.broadcastable, new_order)(input)
         ret = apply_local_dimshuffle_lift(ret)
         copy_stack_trace(node.outputs[0], ret)
         return [ret]
@@ -659,7 +656,7 @@ def local_useless_dimshuffle_in_reshape(node):
 
 
 @register_canonicalize
-@gof.local_optimizer([T.DimShuffle])
+@gof.local_optimizer([DimShuffle])
 def local_lift_transpose_through_dot(node):
     """
     dot(x,y).T -> dot(y.T, x.T)
@@ -688,39 +685,13 @@ def local_lift_transpose_through_dot(node):
         copy_stack_trace(node.inputs[0], ret)
         return ret
 
-
-@gof.local_optimizer([DimShuffle])
-def dimshuffle_as_view(node):
-    op = node.op
-    if not isinstance(op, DimShuffle) or op.inplace:
-        return False
-    new_op = op.__class__(op.input_broadcastable, op.new_order, inplace=True)
-    v = new_op(*node.inputs)
-    copy_stack_trace(node.outputs[0], v)
-    return [v]
-
-# Step 60 is the inplace optimization stage.
-compile.optdb.register('dimshuffle_as_view',
-                       TopoOptimizer(
-                           dimshuffle_as_view,
-                           failure_callback=TopoOptimizer.warn_inplace),
-                       60,
-                       'fast_run', 'inplace')
 register_canonicalize(local_dimshuffle_lift)
 register_specialize(local_dimshuffle_lift)
-
-
-@register_canonicalize
-@gof.local_optimizer([T.DimShuffle])
-def local_dimshuffle_no_inplace_at_canonicalize(node):
-    if isinstance(node.op, T.DimShuffle) and node.op.inplace:
-        return [T.DimShuffle(node.op.input_broadcastable,
-                             node.op.new_order, inplace=False)(node.inputs[0])]
-
 
 ######################
 # Casting operations #
 ######################
+
 
 @register_canonicalize
 @register_specialize

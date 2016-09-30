@@ -321,10 +321,10 @@ def test_scan_debugprint1():
      | | | | | |Subtensor{int64} [id H] ''
      | | | | |   |Shape [id I] ''
      | | | | |   | |Rebroadcast{0} [id J] ''
-     | | | | |   |   |DimShuffle{x,0} [id K] ''
+     | | | | |   |   |InplaceDimShuffle{x,0} [id K] ''
      | | | | |   |     |Elemwise{second,no_inplace} [id L] ''
      | | | | |   |       |A [id M]
-     | | | | |   |       |DimShuffle{x} [id N] ''
+     | | | | |   |       |InplaceDimShuffle{x} [id N] ''
      | | | | |   |         |TensorConstant{1.0} [id O]
      | | | | |   |Constant{0} [id P]
      | | | | |Subtensor{int64} [id Q] ''
@@ -490,7 +490,7 @@ def test_scan_debugprint3():
 
     for{cpu,scan_fn} [id B] ''
      >Elemwise{mul,no_inplace} [id Y] ''
-     > |DimShuffle{x} [id Z] ''
+     > |InplaceDimShuffle{x} [id Z] ''
      > | |coefficients[t] [id BA] -> [id S]
      > |Elemwise{pow,no_inplace} [id BB] ''
      >   |Subtensor{int64} [id BC] ''
@@ -504,10 +504,10 @@ def test_scan_debugprint3():
      >   | | | | | | |Subtensor{int64} [id BJ] ''
      >   | | | | | |   |Shape [id BK] ''
      >   | | | | | |   | |Rebroadcast{0} [id BL] ''
-     >   | | | | | |   |   |DimShuffle{x,0} [id BM] ''
+     >   | | | | | |   |   |InplaceDimShuffle{x,0} [id BM] ''
      >   | | | | | |   |     |Elemwise{second,no_inplace} [id BN] ''
      >   | | | | | |   |       |A_copy [id BO] -> [id W]
-     >   | | | | | |   |       |DimShuffle{x} [id BP] ''
+     >   | | | | | |   |       |InplaceDimShuffle{x} [id BP] ''
      >   | | | | | |   |         |TensorConstant{1.0} [id BQ]
      >   | | | | | |   |Constant{0} [id BR]
      >   | | | | | |Subtensor{int64} [id BS] ''
@@ -520,7 +520,7 @@ def test_scan_debugprint3():
      >   | | | |A_copy [id BO] -> [id W]
      >   | | |Constant{1} [id BW]
      >   | |Constant{-1} [id BX]
-     >   |DimShuffle{x} [id BY] ''
+     >   |InplaceDimShuffle{x} [id BY] ''
      >     |<TensorType(int64, scalar)> [id BZ] -> [id U]
 
     for{cpu,scan_fn} [id BE] ''
@@ -636,10 +636,10 @@ def test_scan_debugprint5():
     | | | |   | | | |Subtensor{int64} [id K] ''
     | | | |   | | |   |Shape [id L] ''
     | | | |   | | |   | |Rebroadcast{0} [id M] ''
-    | | | |   | | |   |   |DimShuffle{x,0} [id N] ''
+    | | | |   | | |   |   |InplaceDimShuffle{x,0} [id N] ''
     | | | |   | | |   |     |Elemwise{second,no_inplace} [id O] ''
     | | | |   | | |   |       |A [id P]
-    | | | |   | | |   |       |DimShuffle{x} [id Q] ''
+    | | | |   | | |   |       |InplaceDimShuffle{x} [id Q] ''
     | | | |   | | |   |         |TensorConstant{1.0} [id R]
     | | | |   | | |   |Constant{0} [id S]
     | | | |   | | |Subtensor{int64} [id T] ''
@@ -675,20 +675,20 @@ def test_scan_debugprint5():
     | | | | | |k [id G]
     | | | | | |IncSubtensor{Set;:int64:} [id H] ''
     | | | | | |A [id P]
-    | | | | |DimShuffle{x,x} [id BP] ''
+    | | | | |InplaceDimShuffle{x,x} [id BP] ''
     | | | |   |TensorConstant{0.0} [id BQ]
     | | | |IncSubtensor{Inc;int64} [id BR] ''
     | | | | |Elemwise{second,no_inplace} [id BS] ''
     | | | | | |Subtensor{int64::} [id BT] ''
     | | | | | | |for{cpu,scan_fn} [id BO] ''
     | | | | | | |Constant{1} [id BU]
-    | | | | | |DimShuffle{x,x} [id BV] ''
+    | | | | | |InplaceDimShuffle{x,x} [id BV] ''
     | | | | |   |TensorConstant{0.0} [id BQ]
     | | | | |Elemwise{second} [id BW] ''
     | | | | | |Subtensor{int64} [id BX] ''
     | | | | | | |Subtensor{int64::} [id BT] ''
     | | | | | | |Constant{-1} [id BY]
-    | | | | | |DimShuffle{x} [id BZ] ''
+    | | | | | |InplaceDimShuffle{x} [id BZ] ''
     | | | | |   |Elemwise{second,no_inplace} [id CA] ''
     | | | | |     |Sum{acc_dtype=float64} [id CB] ''
     | | | | |     | |Subtensor{int64} [id BX] ''

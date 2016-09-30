@@ -379,7 +379,7 @@ def local_gpu_split(node):
         if (input.owner and isinstance(input.owner.op, HostFromGpu) or
             any(c != 'output' and isinstance(c.op, GpuFromHost) for c, idx
                 in outs_clients)):
-            new_op = GpuSplit(node.op.len_splits)
+            new_op = GpuSplit(**node.op._props_dict())
             split_res = new_op(as_cuda_ndarray_variable(input),
                                *node.inputs[1:], return_list=True)
             return [host_from_gpu(o) for o in split_res]
@@ -398,16 +398,18 @@ def local_gpu_dimshuffle_0(node):
         input, = node.inputs
         if input.owner and isinstance(input.owner.op, HostFromGpu):
             # move the add to a GpuAdd
-            new_op = GpuDimShuffle(node.op.input_broadcastable,
-                                   node.op.new_order)
+            p_dict = node.op._props_dict()
+            p_dict.pop('inplace', None)
+            new_op = GpuDimShuffle(**p_dict)
             return [host_from_gpu(new_op(as_cuda_ndarray_variable(input)))]
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op,
                                            tensor.DimShuffle):
             dimshuffle_node = host_input.owner
-            new_op = GpuDimShuffle(dimshuffle_node.op.input_broadcastable,
-                                   dimshuffle_node.op.new_order)
+            p_dict = dimshuffle_node.op._props_dict()
+            p_dict.pop('inplace', None)
+            new_op = GpuDimShuffle(**p_dict)
             return [new_op(
                 as_cuda_ndarray_variable(dimshuffle_node.inputs[0]))]
     return False
@@ -995,10 +997,8 @@ def local_gpu_reshape(node):
         host_input = node.inputs[0]
         if host_input.owner and \
            isinstance(host_input.owner.op, tensor.Reshape):
-            rshp = host_input.owner.op
             x, shp = host_input.owner.inputs
-            gpu_reshape = GpuReshape(rshp.ndim)(as_cuda_ndarray_variable(x),
-                                                shp)
+            gpu_reshape = GpuReshape(**host_input.owner.op._props_dict())(as_cuda_ndarray_variable(x), shp)
             if gpu_reshape.broadcastable != node.outputs[0].broadcastable:
                 # this can happen as we always return False for all broadcast
                 # dim in GpuReshape but not for Reshape
@@ -1011,7 +1011,7 @@ def local_gpu_reshape(node):
         x, shp = node.inputs
         if x.owner and isinstance(x.owner.op, HostFromGpu):
             gpu_x, = x.owner.inputs
-            gpu_reshape = GpuReshape(node.op.ndim)(gpu_x, shp)
+            gpu_reshape = GpuReshape(**node.op._props_dict())(gpu_x, shp)
             if gpu_reshape.broadcastable != node.outputs[0].broadcastable:
                 # this can happen as we always return False for all broadcast
                 # dim in GpuReshape but not for Reshape
@@ -1082,7 +1082,7 @@ def local_gpu_subtensor(node):
             gpu_x, = x.owner.inputs
             coords = node.inputs[1:]
             return [host_from_gpu(GpuSubtensor(
-                node.op.idx_list)(gpu_x, *coords))]
+                **node.op._props_dict())(gpu_x, *coords))]
     return False
 
 
@@ -1131,11 +1131,9 @@ def local_gpu_advanced_incsubtensor1(node):
             compute_capability = device_properties(active_device_no)['major']
             if (compute_capability < 2 or y.ndim != 2 or x.ndim != 2):
 
-                gpu_op = GpuAdvancedIncSubtensor1(
-                    set_instead_of_inc=set_instead_of_inc)
+                gpu_op = GpuAdvancedIncSubtensor1(**node.op._props_dict())
             else:
-                gpu_op = GpuAdvancedIncSubtensor1_dev20(
-                    set_instead_of_inc=set_instead_of_inc)
+                gpu_op = GpuAdvancedIncSubtensor1_dev20(**node.op._props_dict())
             return [gpu_op(as_cuda_ndarray_variable(x),
                            as_cuda_ndarray_variable(y), *coords)]
 
@@ -1171,11 +1169,9 @@ def local_gpu_advanced_incsubtensor1(node):
             active_device_no = theano.sandbox.cuda.active_device_number()
             compute_capability = device_properties(active_device_no)['major']
             if (compute_capability < 2 or y.ndim != 2 or x.ndim != 2):
-                gpu_op = GpuAdvancedIncSubtensor1(
-                    set_instead_of_inc=set_instead_of_inc)
+                gpu_op = GpuAdvancedIncSubtensor1(**node.op._props_dict())
             else:
-                gpu_op = GpuAdvancedIncSubtensor1_dev20(
-                    set_instead_of_inc=set_instead_of_inc)
+                gpu_op = GpuAdvancedIncSubtensor1_dev20(**node.op._props_dict())
             return [host_from_gpu(gpu_op(gpu_x, gpu_y, *coords))]
     return False
 
@@ -1196,13 +1192,9 @@ def local_gpu_incsubtensor(node):
                 # The IncSubtensor upcast to float32 y, so we do it
                 # explicitly to move it to the GPU.
                 y = y.astype('float32')
-            ret = GpuIncSubtensor(
-                incsubt.idx_list,
-                inplace=incsubt.inplace,
-                set_instead_of_inc=incsubt.set_instead_of_inc)(
-                    as_cuda_ndarray_variable(x),
-                    as_cuda_ndarray_variable(y),
-                    *coords)
+            ret = GpuIncSubtensor(**incsubt._props_dict())(as_cuda_ndarray_variable(x),
+                                                           as_cuda_ndarray_variable(y),
+                                                           *coords)
             ret.tag.nan_guard_mode_check = getattr(
                 host_output.tag, 'nan_guard_mode_check', True)
             return [ret]
@@ -1229,10 +1221,7 @@ def local_gpu_incsubtensor(node):
                 y = tensor.cast(y, 'float32')
             gpu_y = as_cuda_ndarray_variable(y)
         if go_gpu:
-            ret = GpuIncSubtensor(
-                node.op.idx_list, inplace=node.op.inplace,
-                set_instead_of_inc=node.op.set_instead_of_inc)(
-                    gpu_x, gpu_y, *coords)
+            ret = GpuIncSubtensor(**node.op._props_dict())(gpu_x, gpu_y, *coords)
 
             val = getattr(node.outputs[0].tag, 'nan_guard_mode_check', True)
             ret.tag.nan_guard_mode_check = val
@@ -2690,7 +2679,7 @@ def gpu_sparse_block_outer_opt(node):
 
         inputs = _clear_host_from_gpu(node.inputs)
 
-        return [host_from_gpu(GpuSparseBlockOuter(node.op.inplace)(*inputs))]
+        return [host_from_gpu(GpuSparseBlockOuter()(*inputs))]
 
     elif isinstance(node.op, GpuFromHost) and \
             _owner_isinstance(node.inputs[0], SparseBlockOuter):
@@ -2698,7 +2687,7 @@ def gpu_sparse_block_outer_opt(node):
         meta_node = node.inputs[0].owner
         inputs = _clear_host_from_gpu(meta_node.inputs)
 
-        return [GpuSparseBlockOuter(meta_node.op.inplace)(*inputs)]
+        return [GpuSparseBlockOuter()(*inputs)]
 
 
 @local_optimizer([GpuSparseBlockGemv], inplace=True)

@@ -615,13 +615,13 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
 
     >>> tensor = theano.tensor.tensor3()
     >>> theano.tensor.shape_padaxis(tensor, axis=0)
-    DimShuffle{x,0,1,2}.0
+    InplaceDimShuffle{x,0,1,2}.0
     >>> theano.tensor.shape_padaxis(tensor, axis=1)
-    DimShuffle{0,x,1,2}.0
+    InplaceDimShuffle{0,x,1,2}.0
     >>> theano.tensor.shape_padaxis(tensor, axis=3)
-    DimShuffle{0,1,2,x}.0
+    InplaceDimShuffle{0,1,2,x}.0
     >>> theano.tensor.shape_padaxis(tensor, axis=-1)
-    DimShuffle{0,1,2,x}.0
+    InplaceDimShuffle{0,1,2,x}.0
 
 .. autofunction:: unbroadcast(x, *axes)
 

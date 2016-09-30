@@ -121,14 +121,7 @@ class GpuFromHost(GpuOp):
 
     check_input = False
 
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return 'GpuFromHost'
+    __props__ = ()
 
     def make_node(self, x):
         if not isinstance(x.type, tensor.TensorType):
@@ -220,12 +213,6 @@ class GpuElemwise(GpuOp):
         self.sync = d.get('sync', True)
         self._rehash()
 
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.scalar_op == other.scalar_op and
-                self.inplace_pattern == other.inplace_pattern and
-                self.sync == other.sync)
-
     def _rehash(self):
         items = list(self.inplace_pattern.items())
         items.sort()
@@ -241,6 +228,12 @@ class GpuElemwise(GpuOp):
         # don't change a code that has already been  computed for this object
         assert h == getattr(self, '_hashval', h)
         self._hashval = h
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.scalar_op == other.scalar_op and
+                self.inplace_pattern == other.inplace_pattern and
+                self.sync == other.sync)
 
     def __hash__(self):
         return self._hashval
@@ -320,6 +313,8 @@ class GpuDimShuffle(GpuOp):
 
     check_broadcast = False
 
+    __props__ = ("input_broadcastable", "new_order")
+
     def __init__(self, input_broadcastable, new_order):
         input_broadcastable = tuple(input_broadcastable)
         self.input_broadcastable = input_broadcastable
@@ -341,17 +336,6 @@ class GpuDimShuffle(GpuOp):
         self.augment = [i for i, x in enumerate(new_order) if x == 'x']
 
         self.view_map = {0: [0]}
-
-        self._rehash()
-
-    def __getstate__(self):
-        d = dict(self.__dict__)
-        del d['_hashval']
-        return d
-
-    def __setstate__(self, d):
-        self.__dict__.update(d)
-        self._rehash()
 
     def make_node(self, input):
         ib = tuple(input.type.broadcastable)
@@ -378,21 +362,6 @@ class GpuDimShuffle(GpuOp):
             else:
                 ob.append(ib[value])
         return Apply(self, [input], [CudaNdarrayType(broadcastable=ob)()])
-
-    def __eq__(self, other):
-        # it's probably not necessary to compare input_broadcastable
-        return type(self) == type(other) \
-            and self.new_order == other.new_order \
-            and self.input_broadcastable == other.input_broadcastable
-
-    def _rehash(self):
-        self._hashval = (hash(type(self).__name__) ^
-                         hash(type(self).__module__) ^
-                         hash(self.new_order) ^
-                         hash(self.input_broadcastable))
-
-    def __hash__(self):
-        return self._hashval
 
     def __str__(self):
         return "GpuDimShuffle{%s}" % ",".join(str(x) for x in self.new_order)
@@ -568,6 +537,8 @@ class GpuCAReduce(GpuOp):
 
     """
 
+    __props__ = ("reduce_mask", "scalar_op", "pre_scalar_op", )
+
     def __init__(self, reduce_mask, scalar_op, pre_scalar_op=None):
         self.reduce_mask = tuple(reduce_mask)
         self.scalar_op = scalar_op
@@ -578,17 +549,11 @@ class GpuCAReduce(GpuOp):
         if pre_scalar_op:
             assert pre_scalar_op.nin == 1
 
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.reduce_mask == other.reduce_mask and
-                self.scalar_op == other.scalar_op and
-                self.pre_scalar_op == other.pre_scalar_op)
-
-    def __hash__(self):
-        return (hash(type(self)) ^
-                hash(self.reduce_mask) ^
-                hash(type(self.scalar_op)) ^
-                hash(type(self.pre_scalar_op)))
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        # For unpickling of old ops.
+        if not hasattr(self, "pre_scalar_op"):
+            self.pre_scalar_op = None
 
     def __str__(self):
         pre = ""
@@ -597,12 +562,6 @@ class GpuCAReduce(GpuOp):
         return "GpuCAReduce{%s%s}{%s}" % (
             pre, str(self.scalar_op),
             ','.join(str(i) for i in self.reduce_mask))
-
-    def __setstate__(self, d):
-        self.__dict__.update(d)
-        # For unpickling of old ops.
-        if not hasattr(self, "pre_scalar_op"):
-            self.pre_scalar_op = None
 
     def make_node(self, x):
         x = as_cuda_ndarray_variable(x)
@@ -3655,7 +3614,6 @@ class GpuAllocEmpty(GpuOp):
     Implement Alloc on the gpu, but without initializing memory.
 
     """
-
     __props__ = ()
 
     def make_node(self, *shape):
@@ -3852,10 +3810,10 @@ class CopyOnNegativeStrides(GpuOp):
     If it does, returns a c contiguous copy.
 
     """
+    __props__ = ()
 
     view_map = {0: [0]}
     check_input = False
-    __props__ = ()
 
     def grad(self, inputs, dout):
 

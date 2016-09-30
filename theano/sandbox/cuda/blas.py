@@ -2207,17 +2207,11 @@ class GpuDownsampleFactorMax(GpuOp):
     Implement downsample with max on the gpu.
 
     """
+    __props__ = ('ds', 'ignore_border')
+
     def __init__(self, ds, ignore_border=False):
         self.ds = tuple(ds)
         self.ignore_border = ignore_border
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.ds == other.ds and
-                self.ignore_border == other.ignore_border)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
 
     def __str__(self):
         return '%s{%s,%s}' % (self.__class__.__name__,
