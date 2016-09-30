@@ -1130,7 +1130,7 @@ if not config.cxx == "icpc" and config.icc.cxxflags:
 
 AddConfigVar('icc.opt_report',
              "Get reports about vector diagnostics",
-             EnumStr('1', '2', '3', '4', '5'),
+             EnumStr('', '1', '2', '3', '4', '5'),
              # Added elsewhere in the c key only when needed.
              in_c_key=False)
 
@@ -1139,7 +1139,7 @@ if not config.cxx == "icpc" and config.icc.opt_report:
 
 AddConfigVar('icc.opt_report_phase',
              "Get reports about vector diagnostics",
-             EnumStr('all', 'vec', 'cg', 'ipo', 'loop', 'offload', 'openmp', 'par', 'pgo', 'tcollect'),
+             EnumStr('', 'all', 'vec', 'cg', 'ipo', 'loop', 'offload', 'openmp', 'par', 'pgo', 'tcollect'),
              # Added elsewhere in the c key only when needed.
              in_c_key=False)
 
