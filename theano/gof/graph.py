@@ -991,21 +991,26 @@ def io_toposort(inputs, outputs, orderings=None, clients=None):
     compute_deps = None
     compute_deps_cache = None
     if not orderings:  # can be None or empty dict
-        # Specialized function that is faster when no ordering.
-        # Also include the cache in the function itself for speed up.
-        def compute_deps_cache(obj):
-            if obj in deps_cache:
-                return deps_cache[obj]
-            rval = []
-            if obj not in iset:
-                if isinstance(obj, Variable):
-                    if obj.owner:
-                        rval = [obj.owner]
-                elif isinstance(obj, Apply):
-                    rval = obj.inputs
-            deps_cache[obj] = rval
-            return rval
+        # Specialized function that is faster when more then ~10 nodes
+        # when no ordering.
 
+        # Do a new stack implementation with the vm algo.
+        # This will change the order returned.
+        computed = set(inputs)
+        todo = [o.owner for o in outputs if o.owner]
+        order = []
+        while todo:
+            cur = todo.pop()
+            # We suppose that all outputs are always computed
+            if cur.outputs[0] in computed:
+                continue
+            if all([i in computed or i.owner is None for i in cur.inputs]):
+                computed.update(cur.outputs)
+                order.append(cur)
+            else:
+                todo.append(cur)
+                todo.extend(i.owner for i in cur.inputs if i.owner)
+        return order
     else:
         def compute_deps(obj):
             rval = []
