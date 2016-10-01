@@ -73,7 +73,8 @@ def output_subprocess_Popen(command, **params):
     if 'stdout' in params or 'stderr' in params:
         raise TypeError("don't use stderr or stdout with output_subprocess_Popen")
     # stdin to devnull is a workaround for a crash in a weird Windows
-    # environement where sys.stdin was None
+    # environment where sys.stdin was None
+    null = None
     if not hasattr(params, 'stdin'):
         null = open(os.devnull, 'wb')
         params['stdin'] = null
@@ -81,6 +82,9 @@ def output_subprocess_Popen(command, **params):
     params['stderr'] = subprocess.PIPE
     p = subprocess_Popen(command, **params)
     # we need to use communicate to make sure we don't deadlock around
-    # the stdour/stderr pipe.
+    # the stdout/stderr pipe.
     out = p.communicate()
+    # if we had previously opened os.devnull for stdin, close it
+    if null is not None:
+        null.close()
     return out + (p.returncode,)
