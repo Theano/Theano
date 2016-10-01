@@ -1426,17 +1426,6 @@ class CAReduce(Op):
         self.__dict__.update(d)
         self.set_ufunc(self.scalar_op)
 
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.scalar_op == other.scalar_op and
-                self.axis == other.axis)
-
-    def __hash__(self):
-        if self.axis is None:
-            return hash(self.scalar_op)
-        else:
-            return hash(self.scalar_op) ^ hash(tuple(self.axis))
-
     def __str__(self):
         if self.axis is not None:
             return "Reduce{%s}{%s}" % (
@@ -1724,12 +1713,6 @@ class All(CAReduce):
     def _output_dtype(self, idtype):
         return "int8"
 
-    def __str__(self):
-        if self.axis is None:
-            return "All"
-        else:
-            return "All{%s}" % ", ".join(map(str, self.axis))
-
     def make_node(self, input):
         input = as_tensor_variable(input)
         if input.dtype not in ["int8", "uint8"]:
@@ -1756,12 +1739,6 @@ class Any(CAReduce):
 
     def _output_dtype(self, idtype):
         return "int8"
-
-    def __str__(self):
-        if self.axis is None:
-            return "Any"
-        else:
-            return "Any{%s}" % ", ".join(map(str, self.axis))
 
     def make_node(self, input):
         input = as_tensor_variable(input)
@@ -1833,14 +1810,6 @@ class CAReduceDtype(CAReduce):
         CAReduce.__init__(self, scalar_op, axis=axis)
         self.dtype = dtype
         self.acc_dtype = acc_dtype
-
-    def __eq__(self, other):
-        return (CAReduce.__eq__(self, other) and
-                self.dtype == other.dtype and
-                self.acc_dtype == other.acc_dtype)
-
-    def __hash__(self):
-        return CAReduce.__hash__(self) ^ hash((self.dtype, self.acc_dtype))
 
     def __setstate__(self, d):
         super(CAReduceDtype, self).__setstate__(d)
@@ -2061,14 +2030,6 @@ class Prod(CAReduceDtype):
         # Add default value to be able to reload old pickled objects.
         if 'no_zeros_in_input' not in dct:
             self.no_zeros_in_input = False
-
-    def __eq__(self, other):
-        return (CAReduceDtype.__eq__(self, other) and
-                self.no_zeros_in_input == other.no_zeros_in_input)
-
-    def __hash__(self):
-        return (CAReduceDtype.__hash__(self) ^
-                hash(self.no_zeros_in_input))
 
     def grad(self, inp, grads):
         """

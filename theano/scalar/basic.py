@@ -861,7 +861,7 @@ class ScalarOp(Op):
                 raise TypeError(
                     "Expected a callable for the 'output_types_preference' argument to %s. (got: %s)" %
                     (self.__class__, output_types_preference))
-            self.output_types_preference = output_types_preference
+        self.output_types_preference = output_types_preference
 
     def make_node(self, *inputs):
         if self.nin >= 0:
@@ -907,16 +907,6 @@ class ScalarOp(Op):
     def grad(self, inputs, output_gradients):
         raise utils.MethodNotDefined("grad", type(self),
                                      self.__class__.__name__)
-
-    def __eq__(self, other):
-        test = (type(self) == type(other) and
-                getattr(self, 'output_types_preference', None) ==
-                getattr(other, 'output_types_preference', None))
-        return test
-
-    def __hash__(self):
-        return hash(type(self).__name__) ^ hash(
-            getattr(self, 'output_types_preference', 0))
 
     def __str__(self):
         if hasattr(self, 'name') and self.name:
