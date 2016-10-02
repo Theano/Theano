@@ -122,14 +122,14 @@ class ProfileStats(object):
     """
     def reset(self):
         """ Ignore previous function call"""
-        #self.compile_time = 0.
+        # self.compile_time = 0.
         self.fct_call_time = 0.
         self.fct_callcount = 0
         self.vm_call_time = 0.
         self.apply_time = {}
         self.apply_callcount = {}
         # self.apply_cimpl = None
-        #self.messge = None
+        # self.messge = None
     #
     # Note on implementation:
     # Class variables are used here so that each one can be
@@ -716,10 +716,10 @@ class ProfileStats(object):
         max_sum_size = 0
 
         # statistics with the old and new order
-        stats = [[[0, 0, 0], [0, 0, 0], 0, 0], # old, with dmap
-                 [[0, 0, 0], [0, 0, 0], 0, 0], # old, without dmap
-                 [[0, 0, 0], [0, 0, 0], 0, 0], # new, with dmap
-                 [[0, 0, 0], [0, 0, 0], 0, 0]] # new, without dmap
+        stats = [[[0, 0, 0], [0, 0, 0], 0, 0],  # old, with dmap
+                 [[0, 0, 0], [0, 0, 0], 0, 0],  # old, without dmap
+                 [[0, 0, 0], [0, 0, 0], 0, 0],  # new, with dmap
+                 [[0, 0, 0], [0, 0, 0], 0, 0]]  # new, without dmap
 
         # track min peak memory usage
         min_max_peak = 0
@@ -1071,6 +1071,7 @@ class ProfileStats(object):
 
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
+            
             def compute_max_stats(running_memory, stats):
                 (max_node_memory_size,
                  max_running_max_memory_size,
@@ -1107,7 +1108,7 @@ class ProfileStats(object):
                                                     (order, True),
                                                     (new_order, False),
                                                     (new_order, True)]):
-                running_memory =  count_running_memory(
+                running_memory = count_running_memory(
                     ord, fgraph, nodes_mem, ignore_dmap=ignore_dmap)
 
                 stats[i] = compute_max_stats(running_memory, stats[i])
@@ -1260,7 +1261,7 @@ class ProfileStats(object):
     def print_tips(self, file):
         print("""Here are tips to potentially make your code run faster
                  (if you think of new ones, suggest them on the mailing list).
-                 Test them first, as they are not guaranteed to always provide a speedup.""", file = file)
+                 Test them first, as they are not guaranteed to always provide a speedup.""", file=file)
 
         RandomFunction = theano.tensor.raw_random.RandomFunction
         scal = theano.scalar
@@ -1309,7 +1310,7 @@ class ProfileStats(object):
                         return True
                     elif s_op.__class__ not in scalar_op_amdlibm_no_speed_up:
                         print("We don't know if amdlibm will accelerate "
-                              "this scalar op.", s_op , file = file)
+                              "this scalar op.", s_op, file=file)
                 return False
 
         def exp_float32_op(op):
@@ -1322,7 +1323,7 @@ class ProfileStats(object):
         printed_tip = False
         # tip 1
         if config.floatX == 'float64':
-            print("  - Try the Theano flag floatX=float32", file = file)
+            print("  - Try the Theano flag floatX=float32", file=file)
             printed_tip = True
 
         # tip 2
@@ -1330,7 +1331,7 @@ class ProfileStats(object):
                                            in self.apply_time]):
             print("  - Try installing amdlibm and set the Theano flag "
                   "lib.amdlibm=True. This speeds up only some Elemwise "
-                  "operation.", file = file)
+                  "operation.", file=file)
             printed_tip = True
 
         # tip 3
@@ -1339,7 +1340,7 @@ class ProfileStats(object):
                                            for a in self.apply_time]):
             print("  - With the default gcc libm, exp in float32 is slower "
                   "than in float64! Try Theano flag floatX=float64, or "
-                  "install amdlibm and set the theano flags lib.amdlibm=True", file = file)
+                  "install amdlibm and set the theano flags lib.amdlibm=True", file=file)
             printed_tip = True
 
         # tip 4
@@ -1352,7 +1353,7 @@ class ProfileStats(object):
                       " dot22 (which is faster). Make sure the inputs are "
                       "float32 or float64, and are the same for both inputs. "
                       "Currently they are: %s" %
-                      [i.type for i in node.inputs], file = file)
+                      [i.type for i in node.inputs], file=file)
                 printed_tip = True
 
         # tip 5
@@ -1363,20 +1364,19 @@ class ProfileStats(object):
                 print("  - Replace the default random number generator by "
                       "'from theano.sandbox.rng_mrg import MRG_RandomStreams "
                       "as RandomStreams', as this is is faster. It is still "
-                      "experimental, but seems to work correctly.", file = file)
+                      "experimental, but seems to work correctly.", file=file)
                 if config.device.startswith("gpu"):
                     print("     - MRG_RandomStreams is the only random number"
-                          " generator supported on the GPU.", file = file)
+                          " generator supported on the GPU.", file=file)
                 break
 
         # tip 6
         for a in self.apply_time:
             node = a
-            if (isinstance(node.op, T.Dot) and
-                len(set(i.dtype for i in node.inputs)) != 1):
+            if (isinstance(node.op, T.Dot) and len(set(i.dtype for i in node.inputs)) != 1):
                 print("  - You have a dot operation that has different dtype "
                       " for inputs (%s). Make sure that the inputs have same "
-                      " dtype." % [i.type for i in node.inputs], file = file)
+                      " dtype." % [i.type for i in node.inputs], file=file)
                 printed_tip = True
         
         # tip 7

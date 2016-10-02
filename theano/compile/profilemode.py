@@ -699,7 +699,7 @@ Test them first, as they are not guaranteed to always provide a speedup.""")
         # import theano.tensor.signal.pool as pool
         # import theano.gpuarray
 
-        #for a, t in iteritems(apply_time):
+        # for a, t in iteritems(apply_time):
         #    node = a[1]
         #    if (isinstance(node.op, pool.Pool)):
         #        if (not cuda.dnn.dnn_available() and not theano.gpuarray.dnn.dnn_present()):
