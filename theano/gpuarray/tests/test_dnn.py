@@ -805,6 +805,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
             'accurate',
             'channel'
         )
+
         def cmp(n, m, f, f_gpu):
             data = numpy.random.random((n, m)).astype('float16')
             gdata = numpy.asarray(data)[:, :, None, None]
