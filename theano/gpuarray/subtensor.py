@@ -505,15 +505,31 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         narrays = 0
         transp = list(range(x.ndim))
         p = 0
+        # ap gives the position of the array in case there is only one.
+        # if there are more than one (narray > 1) it should be ignored.
+        ap = 0
         for k, i in enumerate(list(nidx)):
             if (isinstance(i, numpy.ndarray) and
                     i.ndim != 0):
                 transp.remove(k)
                 transp.insert(p, k)
+                ap += k
                 i = nidx.pop(k)
                 nidx.insert(p, i)
                 p += 1
                 narrays += 1
+            else:
+                try:
+                    i.__index__()
+                    # We shift back the position of the array by the
+                    # number of dimensions that are removed by
+                    # indexing.  If ap is bigger than 0 it means we
+                    # have encountered at least one array.
+                    if ap >= 0:
+                        ap -= 1
+                except Exception:
+                    pass
+
         x = x.transpose(*transp)
 
         idx_ = ([slice(None)] * p + nidx[p:])
@@ -542,7 +558,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         # If there was only one array we need to move the indexed
         # dimension back
         if narrays == 1:
-            k = transp[0]
+            k = ap
             ntransp = list(range(1, o.ndim))
             ntransp.insert(k, 0)
             o = o.transpose(*ntransp)
