@@ -1379,14 +1379,14 @@ class ProfileStats(object):
                       " for inputs (%s). Make sure that the inputs have same "
                       " dtype." % [i.type for i in node.inputs], file=file)
                 printed_tip = True
-        
+
         # tip 7
         import theano.sandbox.cuda as cuda
         from theano.tensor.nnet import LogSoftmax
         import theano.tensor.signal.pool as pool
         import theano.gpuarray
 
-        for a, t in iteritems(apply_time):
+        for a, t in iteritems(self.apply_time):
             node = a[1]
             if (isinstance(node.op, pool.Pool)):
                 if (not cuda.dnn.dnn_available() and not theano.gpuarray.dnn.dnn_present()):
