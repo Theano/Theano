@@ -4,15 +4,66 @@ import theano
 def scan_with_checkpoints(fn, sequences=[], outputs_info=None,
                           non_sequences=[], name="checkpointscan_fn",
                           n_steps=None, save_every_N=10):
-    """
+    """Scan function that uses less memory, but is more restrictive.
+
+    In ``scan``, if you compute the gradient of the output with respect
+    to the input, you will have to store the intermediate results at
+    each time step, which can be prohibitively huge. This function allows
+    to do several steps of forward computations without storing the
+    intermediate results, and to recompute them during the gradient
+    computation.
+
     Current assumptions :
-    - Every sequence has the same length
-    - If n_steps is specified, it has the same value as the length of any sequence
+    - Every sequence has the same length.
+    - If n_steps is specified, it has the same value as the length of any
+      sequence.
     - The value of "save_every_N" divides the number of steps the Scan will
-      run without remainder
+      run without remainder.
     - Only singly-recurrent and non-recurrent outputs are used.
       No multiple recurrences.
     - Only the last timestep of any output will ever be used.
+
+    Parameters
+    ----------
+    fn
+        ``fn`` is a function that describes the operations involved in one
+        step of ``scan``. See the documentation of ``scan`` for more
+        information.
+
+    sequences
+        ``sequences`` is the list of Theano variables or dictionaries
+        describing the sequences ``scan`` has to iterate over. All
+        sequences must be the same length in this version of ``scan``.
+
+    outputs_info
+        ``outputs_info`` is the list of Theano variables or dictionaries
+        describing the initial state of the outputs computed
+        recurrently.
+
+    non_sequences
+        ``non_sequences`` is the list of arguments that are passed to
+        ``fn`` at each steps. One can opt to exclude variable
+        used in ``fn`` from this list as long as they are part of the
+        computational graph, though for clarity we encourage not to do so.
+
+    n_steps
+        ``n_steps`` is the number of steps to iterate given as an int
+        or Theano scalar. If any of the input sequences do not have
+        enough elements, scan will raise an error. If the *value is 0* the
+        outputs will have *0 rows*. If the value is negative, ``scan``
+        will run backwards in time. If the ``go_backwards`` flag is already
+        set and also ``n_steps`` is negative, ``scan`` will run forward
+        in time. If n_steps is not provided, ``scan`` will figure
+        out the amount of steps it should run given its input sequences.
+
+    save_every_N
+        ``save_every_N`` is the number of steps to go without storing
+        the computations of scan (ie they will have to be recomputed
+        during the gradient computation).
+
+    See Also
+    --------
+    scan : Looping in Theano.
 
     """
     # Standardize the format of input arguments
@@ -26,8 +77,6 @@ def scan_with_checkpoints(fn, sequences=[], outputs_info=None,
     # Determine how many steps the original scan would run
     if n_steps is None:
         n_steps = sequences[0].shape[0]
-    else:
-        n_steps = n_steps
 
     # Compute the number of steps of the inner and of the outer scan
     o_n_steps = theano.tensor.cast(n_steps / save_every_N, 'int64')
@@ -71,5 +120,4 @@ def scan_with_checkpoints(fn, sequences=[], outputs_info=None,
                                    name=name + "_outer",
                                    n_steps=o_n_steps, allow_gc=True)
 
-    # Keep only the last timestep of every output but keep all the updates
     return results, updates
