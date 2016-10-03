@@ -347,7 +347,7 @@ def pad_dims(input, leftdims, rightdims):
     Examples
     --------
     Given input of shape (3, 5, 7), ``pad_dims(input, 2, 2)``
-    adds a singleton dimension and reshapes to (3, 1, 5, 7).
+    adds a singleton dimension and reshapes to (1, 3, 5, 7).
     Given that output from pad_dims, ``unpad_dims(output, input, 2, 2)``
     reshapes back to (3, 5, 7).
 
@@ -355,10 +355,10 @@ def pad_dims(input, leftdims, rightdims):
     does not reshape and returns output with shape (3, 5, 7, 9).
 
     Given input of shape (3, 5, 7, 9, 11), ``pad_dims(input, 2, 2)``
-    combines the first two dimensions and reshapes to (8, 7, 9, 11).
+    combines the first two dimensions and reshapes to (15, 7, 9, 11).
 
     Given input of shape (3, 5, 7, 9), ``pad_dims(input, 2, 3)``
-    adds a singleton dimension and reshapes to (3, 1, 5, 7, 9).
+    adds a singleton dimension and reshapes to (1, 3, 5, 7, 9).
     """
     assert input.ndim >= rightdims
 
