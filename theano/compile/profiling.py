@@ -1386,8 +1386,8 @@ class ProfileStats(object):
         import theano.tensor.signal.pool as pool
         import theano.gpuarray
 
-        for a, t in iteritems(self.apply_time):
-            node = a[1]
+        for a  in self.apply_time):
+            node = a
             if (isinstance(node.op, pool.Pool)):
                 if (not cuda.dnn.dnn_available() and not theano.gpuarray.dnn.dnn_present()):
                     print("Install CuDNN to do pooling faster"
