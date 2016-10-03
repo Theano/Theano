@@ -1,0 +1,10 @@
+[global]
+base_compiledir=/tmp
+device=gpu
+floatX=float32
+
+[lib]
+cnmem=0.9
+
+[dnn]
+enabled=True

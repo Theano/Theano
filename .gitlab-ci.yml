@@ -1,0 +1,50 @@
+variables:
+    CUDA_BUILD_TOKEN: 6ZarsZHsrREDJuSnFUKF
+
+stages:
+    - build
+    - push
+    - deploy
+    - trigger
+
+theano:
+    stage: build
+    script:
+    - docker login -u gitlab-ci-token -p "${CUDA_BUILD_TOKEN}" "${CI_REGISTRY}"
+    - ORIGIN="${CI_BUILD_REPO##*@}" && git remote set-url origin git@${ORIGIN/\//:}
+    - if [[ "${CI_BUILD_REF_NAME}" == *-stage ]]; then
+        echo -e 'Dockerfile*\n.git*\n.dockerignore' > .dockerignore;
+      fi
+    - docker build --pull -t "${CI_REGISTRY_IMAGE}:${CI_BUILD_REF_NAME}"
+                   --label "com.nvidia.build.ref=${CI_BUILD_REF}"
+                   --label "com.nvidia.build.id=${CI_BUILD_ID}" .
+    only:
+    - /^.*-devel$/
+    - /^.*-stage$/
+
+all:
+    stage: push
+    script:
+    - docker login -u gitlab-ci-token -p "${CI_BUILD_TOKEN}" "${CI_REGISTRY}"
+    - docker push "${CI_REGISTRY_IMAGE}"
+    only:
+    - /^.*-devel$/
+    - /^.*-stage$/
+
+stage:
+    stage: deploy
+    environment: staging
+    script:
+    - ORIGIN="${CI_BUILD_REPO##*@}" && git remote set-url origin git@${ORIGIN/\//:}
+    - git push --delete origin refs/tags/${CI_BUILD_REF_NAME/%-devel/-stage}
+    - git push origin HEAD:refs/tags/${CI_BUILD_REF_NAME/%-devel/-stage}
+    when: manual
+    only:
+    - /^.*-devel$/
+
+qa:
+    stage: trigger
+    script:
+    - curl -fsS -X POST -F token="${QA_TRIGGER_TOKEN}" -F ref="${CI_BUILD_REF_NAME}" ${QA_TRIGGER_URL}
+    only:
+    - /^.*-stage$/
