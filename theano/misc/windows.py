@@ -43,7 +43,7 @@ def subprocess_Popen(command, **params):
         proc = subprocess.Popen(command, startupinfo=startupinfo, **params)
     finally:
         if stdin is not None:
-            del stdin
+            stdin.close()
     return proc
 
 
@@ -72,15 +72,10 @@ def output_subprocess_Popen(command, **params):
     """
     if 'stdout' in params or 'stderr' in params:
         raise TypeError("don't use stderr or stdout with output_subprocess_Popen")
-    # stdin to devnull is a workaround for a crash in a weird Windows
-    # environement where sys.stdin was None
-    if not hasattr(params, 'stdin'):
-        null = open(os.devnull, 'wb')
-        params['stdin'] = null
     params['stdout'] = subprocess.PIPE
     params['stderr'] = subprocess.PIPE
     p = subprocess_Popen(command, **params)
     # we need to use communicate to make sure we don't deadlock around
-    # the stdour/stderr pipe.
+    # the stdout/stderr pipe.
     out = p.communicate()
     return out + (p.returncode,)
