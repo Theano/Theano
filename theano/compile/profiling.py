@@ -1263,6 +1263,7 @@ class ProfileStats(object):
                  (if you think of new ones, suggest them on the mailing list).
                  Test them first, as they are not guaranteed to always provide a speedup.""", file=file)
 
+        import theano
         RandomFunction = theano.tensor.raw_random.RandomFunction
         scal = theano.scalar
         T = theano.tensor
