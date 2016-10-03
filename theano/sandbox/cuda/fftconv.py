@@ -48,7 +48,7 @@ class ScikitsCudaOp(GpuOp):
 
         return theano.Apply(self, [inp], [self.output_type(inp)()])
 
-    def make_thunk(self, node, storage_map, _, _2):
+    def make_thunk(self, node, storage_map, _, _2, impl=None):
         if not scikits_cuda_available:
             raise RuntimeError(
                 "scikits.cuda is needed for all GPU fft implementation,"
@@ -61,7 +61,7 @@ class CuFFTOp(ScikitsCudaOp):
         return CudaNdarrayType(
             broadcastable=[False] * (inp.type.ndim + 1))
 
-    def make_thunk(self, node, storage_map, _, _2):
+    def make_thunk(self, node, storage_map, _, _2, impl=None):
         super(CuFFTOp, self).make_thunk(node, storage_map, _, _2)
 
         from theano.misc.pycuda_utils import to_gpuarray
@@ -118,7 +118,7 @@ class CuIFFTOp(ScikitsCudaOp):
         return CudaNdarrayType(
             broadcastable=[False] * (inp.type.ndim - 1))
 
-    def make_thunk(self, node, storage_map, _, _2):
+    def make_thunk(self, node, storage_map, _, _2, impl=None):
         super(CuIFFTOp, self).make_thunk(node, storage_map, _, _2)
 
         from theano.misc.pycuda_utils import to_gpuarray
@@ -314,7 +314,7 @@ class BatchedComplexDotOp(ScikitsCudaOp):
     def output_type(self, inp):
         return CudaNdarrayType(broadcastable=[False] * inp.type.ndim)
 
-    def make_thunk(self, node, storage_map, _, _2):
+    def make_thunk(self, node, storage_map, _, _2, impl=None):
         super(BatchedComplexDotOp, self).make_thunk(node, storage_map, _, _2)
 
         inputs = [storage_map[v] for v in node.inputs]

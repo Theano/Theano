@@ -235,7 +235,7 @@ class IfElse(Op):
                 if_true_op(*if_true, **dict(return_list=True)) +
                 if_false_op(*if_false, **dict(return_list=True)))
 
-    def make_py_thunk(self, node, storage_map, compute_map, no_recycling):
+    def make_thunk(self, node, storage_map, compute_map, no_recycling, impl=None):
         cond = node.inputs[0]
         ts = node.inputs[1:][:self.n_outs]
         fs = node.inputs[1:][self.n_outs:]

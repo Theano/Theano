@@ -171,7 +171,7 @@ Optional methods or attributes
   returned, unless it is of length 1, where the single element will be
   returned by itself.
 
-.. function:: make_thunk(node, storage_map, compute_map, no_recycling)
+.. function:: make_thunk(node, storage_map, compute_map, no_recycling, impl=None)
 
    This function must return a thunk, that is a zero-arguments
    function that encapsulates the computation to be performed by this
@@ -192,6 +192,8 @@ Optional methods or attributes
      valid, but shouldn't be required anymore for this call.
    :param no_recycling: WRITEME
      WRITEME
+   :param impl: None, 'c' or 'py'
+     Which implementation to use.
 
    The returned function must ensure that is sets the computed
    variables as computed in the `compute_map`.

@@ -2640,7 +2640,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
     def get_params(self, node):
         return node.outputs[0].type.context
 
-    def prepare_node(self, node, storage_map, compute_map):
+    def prepare_node(self, node, storage_map, compute_map, impl):
         # cache the kernel object
         self.get_kernel_cache(node)
 

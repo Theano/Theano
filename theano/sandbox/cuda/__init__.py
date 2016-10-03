@@ -246,7 +246,7 @@ class GpuOp(theano.gof.Op):
 
     """
 
-    def prepare_node(self, node, storage_map, compute_map):
+    def prepare_node(self, node, storage_map, compute_map, impl):
         if use.device_number is None:
             use("gpu",
                 force=True,

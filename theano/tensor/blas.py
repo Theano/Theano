@@ -297,9 +297,6 @@ class Ger(Op):
     This interface to GER allows non-destructive operation on A via the
     `destructive` argument to the constructor.
 
-    :TODO: Create better classes ScipyGer and CGer that inherit from this class
-    and override the make_thunk() method to use Scipy and C respectively.
-
     """
 
     __props__ = ("destructive",)

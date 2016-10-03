@@ -2119,7 +2119,7 @@ class GpuConv(GpuOp):
                      images[2] * images[3] * 2)
         return flops
 
-    def prepare_node(self, node, storage_map, compute_map):
+    def prepare_node(self, node, storage_map, compute_map, impl):
         super(GpuConv, self).prepare_node(node, storage_map, compute_map, impl)
 
         if node.op.max_threads_dim0 is None:

@@ -22,7 +22,7 @@ if have_fblas:
 
 class ScipyGer(Ger):
 
-    def prepare_node(self, node, storage_map, compute_map):
+    def prepare_node(self, node, storage_map, compute_map, impl):
         if impl == 'py':
             node.tag.local_ger = _blas_ger_fns[numpy.dtype(
                 node.inputs[0].type.dtype)]

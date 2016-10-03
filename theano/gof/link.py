@@ -823,10 +823,11 @@ class PerformLinker(LocalLinker):
             # the python version
             # Note : ops that implement their own make thunk don't usually
             # have this attribute defiend !!
-            thunks += [node.op.make_py_thunk(node,
-                                             storage_map,
-                                             compute_map,
-                                             no_recycling)]
+            thunks += [node.op.make_thunk(node,
+                                          storage_map,
+                                          compute_map,
+                                          no_recycling,
+                                          'py')]
             thunks[-1].inputs = [storage_map[v] for v in node.inputs]
             thunks[-1].outputs = [storage_map[v] for v in node.outputs]
 

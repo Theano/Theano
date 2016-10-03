@@ -73,7 +73,7 @@ class CuRFFTOp(Op):
 
         return theano.Apply(self, [inp, s], [self.output_type(inp)()])
 
-    def make_thunk(self, node, storage_map, _, _2):
+    def make_thunk(self, node, storage_map, _, _2, impl=None):
 
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]
@@ -198,7 +198,7 @@ class CuIRFFTOp(Op):
 
         return theano.Apply(self, [inp, s], [self.output_type(inp)()])
 
-    def make_thunk(self, node, storage_map, _, _2):
+    def make_thunk(self, node, storage_map, _, _2, impl=None):
 
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]

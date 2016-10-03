@@ -792,19 +792,22 @@ class Op(utils.object2, PureOp, CLinkerOp):
     def __init__(self, use_c_code=theano.config.cxx):
         self._op_use_c_code = use_c_code
 
-    def prepare_node(self, node, storage_map, compute_map):
+    def prepare_node(self, node, storage_map, compute_map, impl):
         """
         Make any special modifications that the Op needs before doing
         make_thunk().
 
         This can modify the node inplace and should return nothing.
 
+        It can be called multiple time with different impl. It is the
+        op responsability to don't re-prepare the node when it isn't
+        good to do so.
+
         """
         pass
 
     def make_c_thunk(self, node, storage_map, compute_map, no_recycling):
-        """
-        Like make_thunk, but will only try to make a C thunk.
+        """Like make_thunk, but will only try to make a C thunk.
 
         """
         node_input_storage = [storage_map[r] for r in node.inputs]
@@ -883,7 +886,8 @@ class Op(utils.object2, PureOp, CLinkerOp):
         rval.lazy = False
         return rval
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def make_thunk(self, node, storage_map, compute_map, no_recycling,
+                   impl=None):
         """
         This function must return a thunk, that is a zero-arguments
         function that encapsulates the computation to be performed
@@ -904,6 +908,9 @@ class Op(utils.object2, PureOp, CLinkerOp):
         no_recycling
             List of variables for which it is forbidden to reuse memory
             allocated by a previous call.
+        impl
+            Currently, None, 'c' or 'py'. If 'c' or 'py' we will only try
+            that version of the code.
 
         Notes
         -----
@@ -913,26 +920,26 @@ class Op(utils.object2, PureOp, CLinkerOp):
         the thunk can potentially cache return values (like CLinker does),
         then it must not do so for variables in the no_recycling list.
 
+        self.prepare_node(node, ...) is always called. If we try 'c' and it
+        fail and we try again 'py', prepare_node will be called twice.
         """
 
-        self.prepare_node(node, storage_map=storage_map,
-                          compute_map=compute_map)
-
-        if not hasattr(self, '_op_use_c_code'):
-            warnings.warn(
-                "The  __getstate__ method of '%s' is not implemented correctly."
-                " It should keep the attributes added by the base class."
-                " To implement it correctly, it should keep all attributes"
-                " and only remove those it does not want." % (self),
-                stacklevel=2)
-        if getattr(self, '_op_use_c_code', theano.config.cxx):
+        if impl is None or impl == 'c':
+            self.prepare_node(node, storage_map=storage_map,
+                              compute_map=compute_map, impl='c')
             try:
                 return self.make_c_thunk(node, storage_map, compute_map,
                                          no_recycling)
             except (NotImplementedError, utils.MethodNotDefined):
+                # We requested the c code, so don't catch the error.
+                if impl == 'c':
+                    raise
                 _logger.debug('Falling back on perform')
 
-        # condition: either there was no c_code, or it failed
+        # condition: either there was no c_code, or it failed or
+        # python code was requested.
+        self.prepare_node(node, storage_map=storage_map,
+                          compute_map=compute_map, impl='py')
         return self.make_py_thunk(node, storage_map, compute_map, no_recycling)
 
     def make_node(self, *inputs):
@@ -1195,9 +1202,9 @@ int main( int argc, const char* argv[] )
                 self.openmp = False
                 theano.config.openmp = False
 
-    def prepare_node(self, node, storage_map,
-                     compute_map):
-        self.update_self_openmp()
+    def prepare_node(self, node, storage_map, compute_map, impl):
+        if impl == 'c':
+            self.update_self_openmp()
 
 
 def simple_meth(tag):

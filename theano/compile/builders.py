@@ -124,8 +124,8 @@ class OpFromGraph(gof.Op):
                          list(inputs) + self.shared_inputs,
                          [type() for type in self.output_types])
 
-    def prepare_node(self, node, storage_map, compute_map):
-        if not hasattr(node.tag, "fn"):
+    def prepare_node(self, node, storage_map, compute_map, impl):
+        if not hasattr(node.tag, "fn") and impl == 'py':
             node.tag.fn = orig_function(self.new_inputs,
                                         self.new_outputs,
                                         **self.kwargs)
