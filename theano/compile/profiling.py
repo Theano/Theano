@@ -1386,7 +1386,7 @@ class ProfileStats(object):
         import theano.tensor.signal.pool as pool
         import theano.gpuarray
 
-        for a  in self.apply_time):
+        for a in self.apply_time:
             node = a
             if (isinstance(node.op, pool.Pool)):
                 if (not cuda.dnn.dnn_available() and not theano.gpuarray.dnn.dnn_present()):
