@@ -797,6 +797,24 @@ class test_SoftMax(test_nnet.test_SoftMax):
     def test_softmax_shape_0(self):
         raise SkipTest("Cudnn doesn't support 0 shapes")
 
+    def test_softmax_f16(self):
+        x = T.matrix('x', 'float16')
+        x_gpu = T.tensor4('x_gpu', 'float16')
+        f_z = T.nnet.softmax_op
+        f_gpu = dnn.GpuDnnSoftmax(
+            'accurate',
+            'channel'
+        )
+        def cmp(n, m, f, f_gpu):
+            data = numpy.random.random((n, m)).astype('float16')
+            gdata = numpy.asarray(data)[:, :, None, None]
+
+            out = f(data)
+            gout = numpy.asarray(f_gpu(gdata))[:, :, 0, 0]
+            utt.assert_allclose(out, gout)
+
+        self._test_softmax(x, x_gpu, f_z, f_gpu, cmp)
+
     def test_softmax_grad(self):
         def cmp(n, m, f, f_gpu):
             data = numpy.arange(n * m, dtype='float32').reshape(n, m)
