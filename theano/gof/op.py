@@ -32,6 +32,8 @@ __contact__ = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
 
+_logger = logging.getLogger('theano.gof.op.Op')
+
 
 class CLinkerObject(object):
     """
@@ -805,8 +807,6 @@ class Op(utils.object2, PureOp, CLinkerOp):
         Like make_thunk, but will only try to make a C thunk.
 
         """
-        logger = logging.getLogger('theano.gof.op.Op')
-
         node_input_storage = [storage_map[r] for r in node.inputs]
         node_output_storage = [storage_map[r] for r in node.outputs]
 
@@ -828,7 +828,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         cl = theano.gof.cc.CLinker().accept(e,
                                             no_recycling=e_no_recycling)
 
-        logger.debug('Trying CLinker.make_thunk')
+        _logger.debug('Trying CLinker.make_thunk')
         outputs = cl.make_thunk(input_storage=node_input_storage,
                                 output_storage=node_output_storage)
         fill_storage, node_input_filters, node_output_filters = outputs
@@ -914,7 +914,6 @@ class Op(utils.object2, PureOp, CLinkerOp):
         then it must not do so for variables in the no_recycling list.
 
         """
-        logger = logging.getLogger('theano.gof.op.Op')
 
         self.prepare_node(node, storage_map=storage_map,
                           compute_map=compute_map)
@@ -931,7 +930,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
                 return self.make_c_thunk(node, storage_map, compute_map,
                                          no_recycling)
             except (NotImplementedError, utils.MethodNotDefined):
-                logger.debug('Falling back on perform')
+                _logger.debug('Falling back on perform')
 
         # condition: either there was no c_code, or it failed
         return self.make_py_thunk(node, storage_map, compute_map, no_recycling)
