@@ -6663,9 +6663,17 @@ def test_local_log_sum_exp1():
     MODE = theano.compile.get_default_mode().including('local_log_sum_exp')
     f = function([x], y, mode=MODE)
 
-    assert (theano.scalar.basic.maximum
-            in [node.op.scalar_op for node in f.maker.fgraph.toposort()
-                if (node.op and hasattr(node.op, 'scalar_op'))])
+    for node in f.maker.fgraph.toposort():
+        if (hasattr(node.op, 'scalar_op') and
+                node.op.scalar_op == theano.scalar.basic.maximum):
+            return
+
+        # in mode FAST_COMPILE, the optimisations don't replace the
+        # MaxAndArgmax op.
+        if isinstance(node.op, theano.tensor.MaxAndArgmax):
+            return
+
+    raise Exception('No maximum detected after log_sum_exp optimisation')
 
 
 def test_local_log_sum_exp2():
