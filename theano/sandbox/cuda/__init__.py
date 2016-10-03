@@ -246,18 +246,14 @@ class GpuOp(theano.gof.Op):
 
     """
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def prepare_node(self, node, storage_map, compute_map):
         if use.device_number is None:
             use("gpu",
                 force=True,
                 default_to_move_computation_to_gpu=False,
                 move_shared_float32_to_gpu=False,
                 enable_cuda=False)
-        return super(GpuOp, self).make_thunk(node, storage_map,
-                                             compute_map, no_recycling)
 
-theano.compile.debugmode.default_make_thunk.append(
-    get_unbound_function(GpuOp.make_thunk))
 
 # We must do those import to be able to create the full doc when
 # nvcc is not available

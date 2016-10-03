@@ -1513,6 +1513,8 @@ class GpuDnnPool(DnnBase):
         self.mode = mode
 
     def prepare_node(self, node, storage_map, compute_map):
+        super(GpuDnnPool, self).prepare_node(node, storage_map, compute_map)
+
         if len(node.inputs) == 2:
             warnings.warn("Theano GPUDnnPoolGrad internal changed.", stacklevel=3)
             # Old interface

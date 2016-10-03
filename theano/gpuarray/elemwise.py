@@ -2640,11 +2640,9 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
     def get_params(self, node):
         return node.outputs[0].type.context
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def prepare_node(self, node, storage_map, compute_map):
         # cache the kernel object
         self.get_kernel_cache(node)
-        return super(GpuCAReduceCPY, self).make_thunk(
-            node, storage_map, compute_map, no_recycling)
 
     def get_kernel_cache(self, node):
         attr = '@cache_reduction_k'
