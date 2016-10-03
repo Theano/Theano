@@ -55,6 +55,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                  inc_sub=tensor.IncSubtensor,
                  adv_sub1=tensor.AdvancedSubtensor1,
                  adv_incsub1=tensor.AdvancedIncSubtensor1,
+                 adv_sub=tensor.AdvancedSubtensor,
                  mode=None,
                  dtype=theano.config.floatX,
                  type=tensor.TensorType,
@@ -65,6 +66,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.inc_sub = inc_sub
         self.adv_sub1 = adv_sub1
         self.adv_incsub1 = adv_incsub1
+        self.adv_sub = adv_sub
         self.dimshuffle = dimshuffle
         if mode is None:
             mode = theano.compile.mode.get_default_mode()
@@ -359,7 +361,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         numpy_version = [int(v) for v in numpy.version.version.split('.')[0:2]]
         if numpy_version >= [1, 9]:
             test_cases.append(
-                (1, AdvancedSubtensor, AdvancedSubtensor,
+                (1, AdvancedSubtensor, self.adv_sub,
                  numpy.index_exp[..., numpy.newaxis, [1, 2]]))
 
         for length, op_type, op_type_opt, slice_ in test_cases:
