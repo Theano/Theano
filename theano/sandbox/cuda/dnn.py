@@ -2304,7 +2304,7 @@ class GpuDnnBatchNormBase(DnnBase):
     """
 
     __props__ = ('mode', 'epsilon')
-    tensor_4d_descs = []
+    tensor_descs = []
 
     def __init__(self, mode='per-activation', epsilon=1e-4):
         DnnBase.__init__(self)
@@ -2320,7 +2320,7 @@ class GpuDnnBatchNormBase(DnnBase):
 
     def c_support_code_struct(self, node, name):
         result = ''
-        for id in self.tensor_4d_descs:
+        for id in self.tensor_descs:
             result += c_define_tensor_desc('%s_%s' % (id, name))
         return result
 
@@ -2329,13 +2329,13 @@ class GpuDnnBatchNormBase(DnnBase):
 cudnnStatus_t err%(name)s;
 """ % dict(name=name)
 
-        for id in self.tensor_4d_descs:
+        for id in self.tensor_descs:
             result += c_init_tensor_desc('%s_%s' % (id, name), 'err' + name, sub['fail'])
         return result
 
     def c_cleanup_code_struct(self, node, name):
         result = ''
-        for id in self.tensor_4d_descs:
+        for id in self.tensor_descs:
             result += c_clean_tensor_desc('%s_%s' % (id, name))
         return result
 
@@ -2359,7 +2359,7 @@ double epsilon%(name)s = %(epsilon)e;
         return result
 
     def c_code_cache_version(self):
-        return (2, version())
+        return (3, version())
 
 
 class GpuDnnBatchNormInference(GpuDnnBatchNormBase):
@@ -2376,7 +2376,7 @@ class GpuDnnBatchNormInference(GpuDnnBatchNormBase):
     Note: scale, bias, mean and variance must follow the same tensor layout!
     """
 
-    tensor_4d_descs = ['bn_input', 'bn_output', 'bn_params']
+    tensor_descs = ['bn_input', 'bn_output', 'bn_params']
 
     def infer_shape(self, node, shape):
         # output shape equals shape of x
@@ -2388,11 +2388,8 @@ class GpuDnnBatchNormInference(GpuDnnBatchNormBase):
         bias = as_cuda_ndarray_variable(bias)
         estimated_mean = as_cuda_ndarray_variable(estimated_mean)
         estimated_variance = as_cuda_ndarray_variable(estimated_variance)
-        assert x.ndim == 4
-        assert scale.ndim == 4
-        assert bias.ndim == 4
-        assert estimated_mean.ndim == 4
-        assert estimated_variance.ndim == 4
+        assert x.ndim == scale.ndim == bias.ndim == estimated_mean.ndim == estimated_variance.ndim
+        assert x.ndim in (4, 5)
         return Apply(self, [x, scale, bias, estimated_mean, estimated_variance],
                      [x.type()])
 
@@ -2404,23 +2401,30 @@ class GpuDnnBatchNormInference(GpuDnnBatchNormBase):
         inp, scale, bias, est_mean, est_var = inputs
         outp, = outputs
 
-        # set input tensor descriptors from input tensors
-        result += c_set_tensor4d(inp, 'bn_input_' + name, 'err' + name, sub['fail'])
-        result += c_set_tensor4d(scale, 'bn_params_' + name, 'err' + name, sub['fail'])
-
-        # build and prepare the output variable
+        # call cuDNN function
         result += """
-if (CudaNdarray_prep_output(&%(outp)s, 4, CudaNdarray_HOST_DIMS(%(inp)s)) != 0)
+// set input tensor descriptors from input tensors
+if (c_set_tensorNd(%(inp)s, bn_input_%(name)s) != 0)
 {
     %(fail)s
 }
-""" % dict(outp=outp, inp=inp, fail=sub['fail'])
+if (c_set_tensorNd(%(scale)s, bn_params_%(name)s) != 0)
+{
+    %(fail)s
+}
 
-        # set output tensor descriptor from output tensor
-        result += c_set_tensor4d(outp, 'bn_output_' + name, 'err' + name, sub['fail'])
+// build and prepare the output variable
+if (CudaNdarray_prep_output(&%(outp)s, %(inp)s->nd, CudaNdarray_HOST_DIMS(%(inp)s)) != 0)
+{
+    %(fail)s
+}
 
-        # call cuDNN function
-        result += """
+// set output tensor descriptor from output tensor
+if (c_set_tensorNd(%(outp)s, bn_output_%(name)s) != 0)
+{
+    %(fail)s
+}
+
 {
 const float alpha = 1.;
 const float beta = 0.;
@@ -2442,7 +2446,7 @@ err%(name)s = cudnnBatchNormalizationForwardInference(
 );
 }
 """ % dict(name=name, inp=inp, scale=scale, bias=bias, est_mean=est_mean,
-           est_var=est_var, outp=outp)
+           est_var=est_var, outp=outp, fail=sub['fail'])
 
         return result
 
@@ -2454,7 +2458,7 @@ err%(name)s = cudnnBatchNormalizationForwardInference(
         if self.mode == 'per-activation':
             axes = (0,)
         elif self.mode == 'spatial':
-            axes = (0, 2, 3)
+            axes = (0,) + tuple(range(2, x.ndim))
         scale, bias, est_mean, est_var = (theano.tensor.addbroadcast(t, *axes)
                                           for t in (scale, bias, est_mean, est_var))
 
@@ -2487,7 +2491,7 @@ class GpuDnnBatchNorm(GpuDnnBatchNormBase):
     Note: scale and bias must follow the same tensor layout!
     """
 
-    tensor_4d_descs = ['bn_input', 'bn_output', 'bn_params']
+    tensor_descs = ['bn_input', 'bn_output', 'bn_params']
 
     def infer_shape(self, node, shape):
         # first output equals shape of x
@@ -2498,9 +2502,8 @@ class GpuDnnBatchNorm(GpuDnnBatchNormBase):
         x = as_cuda_ndarray_variable(x)
         scale = as_cuda_ndarray_variable(scale)
         bias = as_cuda_ndarray_variable(bias)
-        assert x.ndim == 4
-        assert scale.ndim == 4
-        assert bias.ndim == 4
+        assert x.ndim == scale.ndim == bias.ndim
+        assert x.ndim in (4, 5)
         return Apply(self, [x, scale, bias], [x.type(), scale.type(), scale.type()])
 
     def c_code(self, node, name, inputs, outputs, sub):
@@ -2512,25 +2515,31 @@ class GpuDnnBatchNorm(GpuDnnBatchNormBase):
         outp, x_mean, x_invstd = outputs
 
         # set input tensor descriptors from input tensors
-        result += c_set_tensor4d(inp, 'bn_input_' + name, 'err' + name, sub['fail'])
-        result += c_set_tensor4d(scale, 'bn_params_' + name, 'err' + name, sub['fail'])
-
-        # build and prepare the output variables
         result += """
-if ((CudaNdarray_prep_output(&%(outp)s, 4, CudaNdarray_HOST_DIMS(%(inp)s)) != 0) ||
-    (CudaNdarray_prep_output(&%(x_mean)s, 4, CudaNdarray_HOST_DIMS(%(scale)s)) != 0) ||
-    (CudaNdarray_prep_output(&%(x_invstd)s, 4, CudaNdarray_HOST_DIMS(%(scale)s)) != 0))
+// set input tensor descriptors from input tensors
+if (c_set_tensorNd(%(inp)s, bn_input_%(name)s) != 0)
 {
     %(fail)s
 }
-""" % dict(outp=outp, inp=inp, x_mean=x_mean, x_invstd=x_invstd, scale=scale,
-           fail=sub['fail'])
+if (c_set_tensorNd(%(scale)s, bn_params_%(name)s) != 0)
+{
+    %(fail)s
+}
 
-        # set output tensor descriptor from output tensor
-        result += c_set_tensor4d(outp, 'bn_output_' + name, 'err' + name, sub['fail'])
+// build and prepare the output variables
+if ((CudaNdarray_prep_output(&%(outp)s, %(inp)s->nd, CudaNdarray_HOST_DIMS(%(inp)s)) != 0) ||
+    (CudaNdarray_prep_output(&%(x_mean)s, %(inp)s->nd, CudaNdarray_HOST_DIMS(%(scale)s)) != 0) ||
+    (CudaNdarray_prep_output(&%(x_invstd)s, %(inp)s->nd, CudaNdarray_HOST_DIMS(%(scale)s)) != 0))
+{
+    %(fail)s
+}
 
-        # call cuDNN function
-        result += """
+// set output tensor descriptor from output tensor
+if (c_set_tensorNd(%(outp)s, bn_output_%(name)s) != 0)
+{
+    %(fail)s
+}
+
 {
 const float alpha = 1.;
 const float beta = 0.;
@@ -2555,7 +2564,7 @@ err%(name)s = cudnnBatchNormalizationForwardTraining(
 );
 }
 """ % dict(name=name, inp=inp, scale=scale, bias=bias, outp=outp,
-           x_mean=x_mean, x_invstd=x_invstd)
+           x_mean=x_mean, x_invstd=x_invstd, fail=sub['fail'])
 
         return result
 
@@ -2578,7 +2587,7 @@ class GpuDnnBatchNormGrad(GpuDnnBatchNormBase):
     Note: scale, mean and invstd must follow the same tensor layout!
     """
 
-    tensor_4d_descs = ['bn_input', 'bn_doutput', 'bn_dinput', 'bn_params']
+    tensor_descs = ['bn_input', 'bn_doutput', 'bn_dinput', 'bn_params']
 
     def infer_shape(self, node, shape):
         # first output equals shape of x
@@ -2591,7 +2600,8 @@ class GpuDnnBatchNormGrad(GpuDnnBatchNormBase):
         scale = as_cuda_ndarray_variable(scale)
         x_mean = as_cuda_ndarray_variable(x_mean)
         x_invstd = as_cuda_ndarray_variable(x_invstd)
-        assert x.ndim == 4 and dy.ndim == 4 and scale.ndim == 4 and x_mean.ndim == 4 and x_invstd.ndim == 4
+        assert x.ndim == dy.ndim == scale.ndim == x_mean.ndim == x_invstd.ndim
+        assert x.ndim in (4, 5)
         return Apply(self, [x, dy, scale, x_mean, x_invstd], [x.type(), scale.type(), scale.type()])
 
     def c_code(self, node, name, inputs, outputs, sub):
@@ -2602,27 +2612,36 @@ class GpuDnnBatchNormGrad(GpuDnnBatchNormBase):
         inp, doutp, scale, x_mean, x_invstd = inputs
         dinp, dscale, dbias = outputs
 
-        # set input tensor descriptors from input tensors
-        result += c_set_tensor4d(inp, 'bn_input_' + name, 'err' + name, sub['fail'])
-        result += c_set_tensor4d(doutp, 'bn_doutput_' + name, 'err' + name, sub['fail'])
-        result += c_set_tensor4d(scale, 'bn_params_' + name, 'err' + name, sub['fail'])
-
-        # build and prepare the output variables
+        # call cuDNN function
         result += """
-if ((CudaNdarray_prep_output(&%(dinp)s, 4, CudaNdarray_HOST_DIMS(%(inp)s)) != 0) ||
-    (CudaNdarray_prep_output(&%(dscale)s, 4, CudaNdarray_HOST_DIMS(%(scale)s)) != 0) ||
-    (CudaNdarray_prep_output(&%(dbias)s, 4, CudaNdarray_HOST_DIMS(%(scale)s)) != 0))
+// set input tensor descriptors from input tensors
+if (c_set_tensorNd(%(inp)s, bn_input_%(name)s) != 0)
 {
     %(fail)s
 }
-""" % dict(dinp=dinp, inp=inp, dscale=dscale, scale=scale, dbias=dbias,
-           fail=sub['fail'])
+if (c_set_tensorNd(%(doutp)s, bn_doutput_%(name)s) != 0)
+{
+    %(fail)s
+}
+if (c_set_tensorNd(%(scale)s, bn_params_%(name)s) != 0)
+{
+    %(fail)s
+}
 
-        # set output tensor descriptor from output tensor
-        result += c_set_tensor4d(dinp, 'bn_dinput_' + name, 'err' + name, sub['fail'])
+// build and prepare the output variables
+if ((CudaNdarray_prep_output(&%(dinp)s, %(inp)s->nd, CudaNdarray_HOST_DIMS(%(inp)s)) != 0) ||
+    (CudaNdarray_prep_output(&%(dscale)s, %(inp)s->nd, CudaNdarray_HOST_DIMS(%(scale)s)) != 0) ||
+    (CudaNdarray_prep_output(&%(dbias)s, %(inp)s->nd, CudaNdarray_HOST_DIMS(%(scale)s)) != 0))
+{
+    %(fail)s
+}
 
-        # call cuDNN function
-        result += """
+// set output tensor descriptor from output tensor
+if (c_set_tensorNd(%(dinp)s, bn_dinput_%(name)s) != 0)
+{
+    %(fail)s
+}
+
 {
 const float alphaData = 1.;
 const float betaData = 0.;
@@ -2651,7 +2670,7 @@ err%(name)s = cudnnBatchNormalizationBackward(
 );
 }
 """ % dict(name=name, inp=inp, doutp=doutp, scale=scale, x_mean=x_mean,
-           x_invstd=x_invstd, dinp=dinp, dscale=dscale, dbias=dbias)
+           x_invstd=x_invstd, dinp=dinp, dscale=dscale, dbias=dbias, fail=sub['fail'])
 
         return result
 
@@ -2699,11 +2718,13 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
         mean = inputs.mean(axes, keepdims=True)
         stdinv = T.inv(T.sqrt(inputs.var(axes, keepdims=True) + epsilon))
         out = (inputs - mean) * gamma * stdinv + beta
+
+    For 5d tensors, the axes are (0, 2, 3, 4).
     """
     ndim = inputs.ndim
-    if ndim > 4:
+    if ndim > 5:
         raise ValueError("dnn_batch_normalization_train currently supports "
-                         "up to 4-dimensional tensors only, got %d" % ndim)
+                         "up to 5-dimensional tensors only, got %d" % ndim)
     if gamma.ndim != ndim or beta.ndim != ndim:
         raise ValueError("gamma and beta must be of the same dimensionality "
                          "as inputs; got %d and %d instead of %d" %
@@ -2768,11 +2789,13 @@ def dnn_batch_normalization_test(inputs, gamma, beta, mean, var,
         gamma, beta, mean, var = (T.addbroadcast(t, *axes)
                                   for t in (gamma, beta, mean, var))
         out = (inputs - mean) * gamma / T.sqrt(var + epsilon) + beta
+
+    For 5d tensors, the axes would be (0, 2, 3, 4).
     """
     ndim = inputs.ndim
-    if ndim > 4:
+    if ndim > 5:
         raise ValueError("dnn_batch_normalization_test currently supports "
-                         "up to 4-dimensional tensors only, got %d" % ndim)
+                         "up to 5-dimensional tensors only, got %d" % ndim)
     if gamma.ndim != ndim or beta.ndim != ndim:
         raise ValueError("gamma and beta must be of the same dimensionality "
                          "as inputs; got %d and %d instead of %d" %
