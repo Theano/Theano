@@ -44,6 +44,8 @@ class TestScanCheckpoint(unittest.TestCase):
         out, out_check = f(range(10), 100)
         assert numpy.allclose(out, out_check)
 
+    @unittest.skipUnless(theano.gpuarray.type._context_reg[None],
+                         'Requires gpuarray backend.')
     def test_memory(self):
         """Test that scan_checkpoint reduces memory usage."""
         k = T.iscalar("k")
@@ -66,7 +68,8 @@ class TestScanCheckpoint(unittest.TestCase):
                             updates=updates + updates_check)
         f_check = theano.function(inputs=[A, k], outputs=grad_A_check,
                                   updates=updates + updates_check)
-        data = numpy.ones(10000, dtype=theano.config.floatX)
+        free_gmem = theano.gpuarray.type._context_reg[None].free_gmem
+        data = numpy.ones(free_gmem / 40., dtype=numpy.float32)
         # Check that it works with the checkpoints
         f_check(data, 1000000)
         # Check that the basic scan fails in that case

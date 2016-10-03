@@ -18,11 +18,11 @@ def scan_with_checkpoints(fn, sequences=[], outputs_info=None,
     Current assumptions :
     - Every sequence has the same length.
     - If n_steps is specified, it has the same value as the length of any
-      sequence.
+    sequence.
     - The value of "save_every_N" divides the number of steps the Scan will
-      run without remainder.
+    run without remainder.
     - Only singly-recurrent and non-recurrent outputs are used.
-      No multiple recurrences.
+    No multiple recurrences.
     - Only the last timestep of any output will ever be used.
 
     Parameters
