@@ -1355,6 +1355,7 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
         or per spatial location '01' per image across 'c'.
 
     """
+    _f16_ok = True
     direction = "forward"
     file = "dnn_softmax.c"
     c_func = "APPLY_SPECIFIC(softmax)"
@@ -1391,6 +1392,7 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
         image across 'c'.
 
     """
+    _f16_ok = True
     direction = 'backward'
     file = "dnn_softmax_grad.c"
     c_func = "APPLY_SPECIFIC(softmax_grad)"
