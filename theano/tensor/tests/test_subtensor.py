@@ -1435,6 +1435,42 @@ class TestAdvancedSubtensor(unittest.TestCase):
         rval = ft4v[0, :, ix2v, :]
         utt.assert_allclose(rval, aval)
 
+    def test_adv_subtensor_w_none_and_matrix(self):
+        subt = self.ft4[:, None, :, self.ix2, :]
+        f = theano.function([self.ft4, self.ix2], subt, mode=self.mode)
+        ft4v = numpy.random.random((2, 3, 4, 5)).astype('float32')
+        ix2v = numpy.asarray([[0, 1], [1, 0]])
+        aval = f(ft4v, ix2v)
+        rval = ft4v[:, None, :, ix2v, :]
+        utt.assert_allclose(rval, aval)
+
+    def test_adv_subtensor_w_slice_and_matrix(self):
+        subt = self.ft4[:, 0:1, self.ix2, :]
+        f = theano.function([self.ft4, self.ix2], subt, mode=self.mode)
+        ft4v = numpy.random.random((2, 3, 4, 5)).astype('float32')
+        ix2v = numpy.asarray([[0, 1], [1, 0]])
+        aval = f(ft4v, ix2v)
+        rval = ft4v[:, 0:1, ix2v, :]
+        utt.assert_allclose(rval, aval)
+
+    def test_adv_subtensor_w_matrix_and_int(self):
+        subt = self.ft4[:, :, self.ix2, 0]
+        f = theano.function([self.ft4, self.ix2], subt, mode=self.mode)
+        ft4v = numpy.random.random((2, 3, 4, 5)).astype('float32')
+        ix2v = numpy.asarray([[0, 1], [1, 0]])
+        aval = f(ft4v, ix2v)
+        rval = ft4v[:, :, ix2v, 0]
+        utt.assert_allclose(rval, aval)
+
+    def test_adv_subtensor_w_matrix_and_none(self):
+        subt = self.ft4[:, :, self.ix2, None, :]
+        f = theano.function([self.ft4, self.ix2], subt, mode=self.mode)
+        ft4v = numpy.random.random((2, 3, 4, 5)).astype('float32')
+        ix2v = numpy.asarray([[0, 1], [1, 0]])
+        aval = f(ft4v, ix2v)
+        rval = ft4v[:, :, ix2v, None, :]
+        utt.assert_allclose(rval, aval)
+
     def test_inc_adv_subtensor_w_2vec(self):
         if inplace_increment is None:
             raise inplace_increment_missing

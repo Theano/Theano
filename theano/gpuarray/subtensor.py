@@ -519,16 +519,24 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
                 p += 1
                 narrays += 1
             else:
-                try:
-                    i.__index__()
-                    # We shift back the position of the array by the
-                    # number of dimensions that are removed by
-                    # indexing.  If ap is bigger than 0 it means we
-                    # have encountered at least one array.
-                    if ap >= 0:
-                        ap -= 1
-                except Exception:
-                    pass
+                if narrays == 0:
+                    try:
+                        i.__index__()
+                        # We shift back the position of the array by the
+                        # number of dimensions that are removed by
+                        # indexing.  If ap is bigger than 0 it means we
+                        # have encountered at least one array.
+                        if ap >= 0:
+                            ap -= 1
+                        # If this index is before the first array then
+                        # we will not move the array back to its
+                        # position.  Mark this by faking that there
+                        # are more than two arrays.  This is crazy
+                        # numpy behaviour so blame them.
+                        if narrays == 0:
+                            narrays = 2
+                    except Exception:
+                        pass
 
         x = x.transpose(*transp)
 
@@ -556,11 +564,11 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         o = out_flat.reshape(out_flat_shp)
 
         # If there was only one array we need to move the indexed
-        # dimension back
+        # dimension(s) back to the position of the array, which is
+        # stored in ap.  Note that ap is invalid is narrays != 1.
         if narrays == 1:
-            k = ap
-            ntransp = list(range(1, o.ndim))
-            ntransp.insert(k, 0)
+            ntransp = list(range(take_idx.ndim, o.ndim))
+            ntransp[ap:ap] = list(range(take_idx.ndim))
             o = o.transpose(*ntransp)
 
         out[0] = o
