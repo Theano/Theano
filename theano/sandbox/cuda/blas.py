@@ -1216,7 +1216,7 @@ class GpuCorrMM(BaseGpuCorrMM):
     def __init__(self, border_mode="valid",
                  subsample=(1, 1),
                  filter_dilation=(1, 1),
-                 pad=(0, 0)):
+                 pad=None):
         super(GpuCorrMM, self).__init__(border_mode, subsample,
                                         filter_dilation, pad)
 
