@@ -356,13 +356,9 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             (3, DimShuffle, self.dimshuffle,
              numpy.index_exp[..., [0, 2, 3]]),
             (1, DimShuffle, self.dimshuffle,
-             numpy.index_exp[numpy.newaxis, ...])]
-        # The following test case is not supported by numpy before 1.9
-        numpy_version = [int(v) for v in numpy.version.version.split('.')[0:2]]
-        if numpy_version >= [1, 9]:
-            test_cases.append(
-                (1, AdvancedSubtensor, self.adv_sub,
-                 numpy.index_exp[..., numpy.newaxis, [1, 2]]))
+             numpy.index_exp[numpy.newaxis, ...]),
+            (1, AdvancedSubtensor, self.adv_sub,
+             numpy.index_exp[..., numpy.newaxis, [1, 2]])]
 
         for length, op_type, op_type_opt, slice_ in test_cases:
             numpy_tval = numpy_n[slice_]
