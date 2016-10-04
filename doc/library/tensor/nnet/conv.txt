@@ -31,8 +31,8 @@
     that will be replaced by an actual convolution implementation during
     the optimization phase.
 
-    As of October 2016, there is also a conv3d interface that provides a similar
-    operation for 3D convolution. :func:`nnet.conv3d <theano.tensor.nnet.conv3d>`
+    As of October 2016 (version 0.9.0dev3), there is also a conv3d interface that provides
+    a similar operation for 3D convolution. :func:`nnet.conv3d <theano.tensor.nnet.conv3d>`
     defines the abstract theano graph convolution operation
     :func:`nnet.abstract_conv.AbstractConv3d <theano.tensor.nnet.abstract_conv.AbstractConv3d>`.
 
