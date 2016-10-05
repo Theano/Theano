@@ -425,11 +425,6 @@ def run_conv_nnet2_classif(use_gpu, seed, isize, ksize, bsize,
         version=version,
         check_isfinite=check_isfinite)
 
-    if use_gpu:
-        device = 'GPU'
-    else:
-        device = 'CPU'
-
     xval = my_rand(*x_shape)
     yval = my_rand(*y_shape)
     lr = theano._asarray(0.01, dtype='float32')
