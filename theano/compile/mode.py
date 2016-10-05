@@ -391,7 +391,7 @@ def get_mode(orig_string):
                 default_mode_class):
             return instantiated_default_mode
 
-    if string in ['Mode', 'ProfileMode', 'DebugMode', 'NanGuardMode']:
+    if string in ['Mode', 'DebugMode', 'NanGuardMode']:
         if string == 'DebugMode':
             # need to import later to break circular dependency.
             from .debugmode import DebugMode
@@ -403,9 +403,6 @@ def get_mode(orig_string):
             # NanGuardMode use its own linker.
             ret = NanGuardMode(True, True, True, optimizer=config.optimizer)
         else:
-            # This might be required if the string is 'ProfileMode'
-            from .profilemode import ProfileMode  # noqa
-            from .profilemode import prof_mode_instance_to_print
             # TODO: Can't we look up the name and invoke it rather than using eval here?
             ret = eval(string +
                        '(linker=config.linker, optimizer=config.optimizer)')
@@ -423,11 +420,6 @@ def get_mode(orig_string):
         if theano.config.optimizer_requiring:
             ret = ret.requiring(*theano.config.optimizer_requiring.split(':'))
         instantiated_default_mode = ret
-
-    # must tell python to print the summary at the end.
-    if string == 'ProfileMode':
-        # need to import later to break circular dependency.
-        prof_mode_instance_to_print.append(ret)
 
     return ret
 
