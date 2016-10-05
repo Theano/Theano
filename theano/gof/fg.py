@@ -367,15 +367,15 @@ class FunctionGraph(utils.object2):
         reason
             reason is the name of the optimization or operation in progress.
         """
-        global NullType
-        if NullType is None:
-            from .null_type import NullType
         # Imports the owners of the variables
         if variable.owner and variable.owner not in self.apply_nodes:
                 self.__import__(variable.owner, reason=reason)
-        if (variable.owner is None and
+        elif (variable.owner is None and
                 not isinstance(variable, graph.Constant) and
                 variable not in self.inputs):
+            global NullType
+            if NullType is None:
+                from .null_type import NullType
             if isinstance(variable.type, NullType):
                 raise TypeError("Computation graph contains a NaN. " +
                                 variable.type.why_null)
