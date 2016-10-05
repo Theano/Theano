@@ -2831,7 +2831,8 @@ class Scan(PureOp):
 gof.ops_with_inner_function[Scan] = 'fn'
 
 
-@theano.compile.profilemode.register_profiler_printer
+# TODO: move that to the new back-end and new profiling.py print_tips
+#@theano.compile.profilemode.register_profiler_printer
 def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
                     apply_time, apply_cimpl, message, outputs_size,
                     other_time):

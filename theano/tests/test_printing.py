@@ -129,7 +129,6 @@ def test_pydotprint_profile():
     theano.printing.pydotprint(f, print_output_file=False)
 
 
-
 def test_min_informative_str():
     """ evaluates a reference output to make sure the
         min_informative_str function works as intended """
