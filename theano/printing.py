@@ -386,8 +386,8 @@ class OperatorPrinter:
             if (self.assoc == 'left' and i != 0 or self.assoc == 'right' and
                     i != max_i):
                 new_precedence += 1e-6
-            old_precedence = getattr(pstate, 'precedence', None)
             try:
+                old_precedence = getattr(pstate, 'precedence', None)
                 pstate.precedence = new_precedence
                 s = pprinter.process(input, pstate)
             finally:
@@ -429,7 +429,7 @@ class PatternPrinter:
 
         def pp_process(input, new_precedence):
             try:
-                old_precedence = pstate.precedence
+                old_precedence = getattr(pstate, 'precedence', None)
                 pstate.precedence = new_precedence
                 r = pprinter.process(input, pstate)
             finally:
@@ -461,9 +461,9 @@ class FunctionPrinter:
                             "not the result of an operation" % self.names)
         idx = node.outputs.index(output)
         name = self.names[idx]
-        new_precedense = -1000
+        new_precedence = -1000
         try:
-            old_precedence = pstate.precedence
+            old_precedence = getattr(pstate, 'precedence', None)
             pstate.precedence = new_precedence
             r = "%s(%s)" % (name, ", ".join(
                 [pprinter.process(input, pstate) for input in node.inputs]))
@@ -513,7 +513,7 @@ class DefaultPrinter:
             return leaf_printer.process(output, pstate)
         new_precedence = -1000
         try:
-            old_precedence = pstate.precedence
+            old_precedence = getattr(pstate, 'precedence', None)
             pstate.precedence = new_precedence
             r = "%s(%s)" % (str(node.op), ", ".join(
                 [pprinter.process(input, pstate)
