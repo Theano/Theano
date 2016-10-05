@@ -175,7 +175,7 @@ class Scan(PureOp):
 
         mode_instance = compile.mode.get_mode(self.mode)
         # Clone mode_instance, altering "allow_gc" for the linker,
-        # and adding a message if the mode is a ProfileMode.
+        # and adding a message if we profile
         if self.name:
             message = self.name + " sub profile"
         else:
@@ -1564,14 +1564,6 @@ class Scan(PureOp):
             if hasattr(self.fn.fn, 'update_profile'):
                 self.fn.fn.update_profile(profile)
 
-        #/* Old ProfileMode
-        # if hasattr(self.fn.maker.mode,'fct_call_time'):
-        #    self.fn.maker.mode.fct_call_time[self.fn] += t_fn
-        #    self.fn.maker.mode.fct_call[self.fn] += n_steps
-
-        #self.fn.maker.mode.call_time += t_fn
-        #self.fn.maker.mode.fn_time += t_fn
-        # Old Profile Mode */
         self.t_call = t_call
         self.t_fn = t_fn
 

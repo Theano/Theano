@@ -3,8 +3,6 @@ ProfileStats object for runtime and memory profiling.
 
 """
 #
-# TODO: measure memory usage like ProfileMode did
-# TODO: put the optimization tips into a tips section??
 # TODO: add tip to use specify_shape (is specify_shape even in library doc?)
 # TODO: ensure field width for string fields makes columns line up
 # TODO: what to do about 'diff summary'? (ask Fred?)
@@ -378,7 +376,7 @@ class ProfileStats(object):
         else:
             local_time = 0
         if local_time == 0:
-            print(('ProfileMode.summary_class: total time 0'
+            print(('ProfileStats.summary_class: total time 0'
                    ' (did you forget to enable counters?)'), file=file)
             return
         class_time = self.class_time()
@@ -462,7 +460,7 @@ class ProfileStats(object):
         else:
             local_time = 0
         if local_time == 0:
-            print(('ProfileMode.summary_ops: total time 0'
+            print(('ProfileStats.summary_ops: total time 0'
                    ' (did you forget to enable counters?)'), file=file)
             return
         op_time = self.op_time()
@@ -540,7 +538,7 @@ class ProfileStats(object):
         else:
             local_time = 0
         if local_time == 0:
-            print(('ProfileMode.summary_nodes: total time 0'
+            print(('ProfileStats.summary_nodes: total time 0'
                    ' (did you forget to enable counters?)'), file=file)
             return
 

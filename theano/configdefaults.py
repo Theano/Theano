@@ -405,9 +405,9 @@ AddConfigVar(
 AddConfigVar(
     'mode',
     "Default compilation mode",
-    EnumStr('Mode', 'ProfileMode', 'DebugMode', 'FAST_RUN',
+    EnumStr('Mode', 'DebugMode', 'FAST_RUN',
             'NanGuardMode',
-            'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'),
+            'FAST_COMPILE', 'DEBUG_MODE'),
     in_c_key=False)
 
 param = "g++"
@@ -463,8 +463,7 @@ del param
 if rc == 0 and config.cxx != "":
     # Keep the default linker the same as the one for the mode FAST_RUN
     AddConfigVar('linker',
-                 ("Default linker used if the theano flags mode is Mode "
-                  "or ProfileMode(deprecated)"),
+                 "Default linker used if the theano flags mode is Mode ",
                  EnumStr('cvm', 'c|py', 'py', 'c', 'c|py_nogc',
                          'vm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
@@ -472,8 +471,7 @@ else:
     # g++ is not present or the user disabled it,
     # linker should default to python only.
     AddConfigVar('linker',
-                 ("Default linker used if the theano flags mode is Mode "
-                  "or ProfileMode(deprecated)"),
+                 "Default linker used if the theano flags mode is Mode ",
                  EnumStr('vm', 'py', 'vm_nogc'),
                  in_c_key=False)
     try:
@@ -501,8 +499,7 @@ AddConfigVar('allow_gc',
 # Keep the default optimizer the same as the one for the mode FAST_RUN
 AddConfigVar(
     'optimizer',
-    ("Default optimizer. If not None, will use this linker with the Mode "
-     "object (not ProfileMode(deprecated) or DebugMode)"),
+    "Default optimizer. If not None, will use this optimizer with the Mode ",
     EnumStr('fast_run', 'merge', 'fast_compile', 'None'),
     in_c_key=False)
 
@@ -949,27 +946,6 @@ AddConfigVar('NanGuardMode.big_is_error',
 AddConfigVar('NanGuardMode.action',
              "What NanGuardMode does when it finds a problem",
              EnumStr('raise', 'warn', 'pdb'),
-             in_c_key=False)
-
-AddConfigVar('ProfileMode.n_apply_to_print',
-             "Number of apply instances to print by default",
-             IntParam(15, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('ProfileMode.n_ops_to_print',
-             "Number of ops to print by default",
-             IntParam(20, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('ProfileMode.min_memory_size',
-             "For the memory profile, do not print apply nodes if the size "
-             "of their outputs (in bytes) is lower then this threshold",
-             IntParam(1024, lambda i: i >= 0),
-             in_c_key=False)
-
-AddConfigVar('ProfileMode.profile_memory',
-             """Enable profiling of memory used by Theano functions""",
-             BoolParam(False),
              in_c_key=False)
 
 AddConfigVar('optimizer_excluding',

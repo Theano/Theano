@@ -1370,12 +1370,12 @@ def speed_adv_sub1():
     vec = tensor.lvector()
     for batch_size in [100, 1000, 10000, 100000]:
         idx = numpy.random.randint(0, 50000, batch_size)
-        mode_with_gpu = theano.compile.ProfileMode().including('gpu')
-        f = theano.function([vec], var[vec], mode=mode_with_gpu)
+        mode_with_gpu = theano.compile.get_default_mode().including('gpu')
+        f = theano.function([vec], var[vec], mode=mode_with_gpu, profile=True)
         for i in range(100):
             f(idx)
-        print("ProfileMode with batch size", batch_size)
-        mode_with_gpu.print_summary()
+        print("profile with batch size", batch_size)
+        mode_with_gpu.summary()
 
 
 def speed_reduce10():

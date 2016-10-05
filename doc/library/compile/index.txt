@@ -19,7 +19,6 @@
     ops
     mode
     debugmode
-    profilemode
     nanguardmode
 
 

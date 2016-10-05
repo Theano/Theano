@@ -20,7 +20,6 @@ from theano import gof
 from theano import config
 from theano.gof import Op, Apply
 from theano.compile import Function, debugmode, SharedVariable
-from theano.compile.profilemode import ProfileMode
 
 pydot_imported = False
 pydot_imported_msg = ""
@@ -746,15 +745,10 @@ def pydotprint(fct, outfile=None,
                                config.device + '.' + format)
 
     if isinstance(fct, Function):
-        mode = fct.maker.mode
         profile = getattr(fct, "profile", None)
-        if (not isinstance(mode, ProfileMode) or
-                fct not in mode.profile_stats):
-                mode = None
         outputs = fct.maker.fgraph.outputs
         topo = fct.maker.fgraph.toposort()
     elif isinstance(fct, gof.FunctionGraph):
-        mode = None
         profile = None
         outputs = fct.outputs
         topo = fct.toposort()
@@ -767,7 +761,6 @@ def pydotprint(fct, outfile=None,
         assert all(isinstance(v, gof.Variable) for v in fct)
         fct = gof.FunctionGraph(inputs=gof.graph.inputs(fct),
                                 outputs=fct)
-        mode = None
         profile = None
         outputs = fct.outputs
         topo = fct.toposort()
@@ -855,19 +848,7 @@ def pydotprint(fct, outfile=None,
         if node in apply_name_cache:
             return apply_name_cache[node], apply_name_id[node]
         prof_str = ''
-        if mode:
-            time = mode.profile_stats[fct].apply_time.get(node, 0)
-            # second, % total time in profiler, %fct time in profiler
-            if mode.local_time == 0:
-                pt = 0
-            else:
-                pt = time * 100 / mode.local_time
-            if mode.profile_stats[fct].fct_callcount == 0:
-                pf = 0
-            else:
-                pf = time * 100 / mode.profile_stats[fct].fct_call_time
-            prof_str = '   (%.3fs,%.3f%%,%.3f%%)' % (time, pt, pf)
-        elif profile:
+        if profile:
             time = profile.apply_time.get(node, 0)
             # second, %fct time in profiler
             if profile.fct_callcount == 0:

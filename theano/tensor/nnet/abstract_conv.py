@@ -719,7 +719,7 @@ class BaseAbstractConv2d(Op):
         self.filter_dilation = tuple(filter_dilation)
 
     def flops(self, inp, outp):
-        """ Useful with the hack in profilemode to print the MFlops"""
+        """ Useful with the hack in profiling to print the MFlops"""
         # if the output shape is correct, then this gives the correct
         # flops for any direction, sampling, padding, and border mode
         inputs, filters = inp

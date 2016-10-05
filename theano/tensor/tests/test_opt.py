@@ -1394,11 +1394,7 @@ class test_fusion(unittest.TestCase):
 
     def speed_log_exp(self):
         s = slice(31, 36)
-#        linker=gof.CLinker
-        linker = gof.OpWiseCLinker
-        mode = compile.Mode(linker(), copy.copy(compile.mode.OPT_FAST_RUN))
-        mode = compile.ProfileMode()
-        print("time", self.do(mode, shared, shp=(1000, 1000), gpu=False,
+        print("time", self.do(None, shared, shp=(1000, 1000), gpu=False,
                               assert_len_topo=False, slice=s, nb_repeat=100))
 
     def tes_memory_leak(self, mode=compile.mode.Mode('c', 'merge'),

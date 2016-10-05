@@ -115,15 +115,19 @@ def test_pydotprint_long_name():
 
 
 def test_pydotprint_profile():
-    """Just check that pydotprint does not crash with ProfileMode."""
+    """Just check that pydotprint does not crash with profile."""
 
     # Skip test if pydot is not available.
     if not theano.printing.pydot_imported:
         raise SkipTest('pydot not available')
 
     A = tensor.matrix()
-    f = theano.function([A], A + 1, mode='ProfileMode')
+    prof = theano.compile.ProfileStats(atexit_print=False)
+    f = theano.function([A], A + 1, profile=prof)
     theano.printing.pydotprint(f, print_output_file=False)
+    f([[1]])
+    theano.printing.pydotprint(f, print_output_file=False)
+
 
 
 def test_min_informative_str():
