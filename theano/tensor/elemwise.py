@@ -891,6 +891,14 @@ second dimension
             # numpy the first (faster) version leads to segfaults
             if self.ufunc:
                 ufunc = self.ufunc
+            elif not hasattr(node.tag, 'ufunc'):
+                # It happen that make_thunk isn't called, like in
+                # get_scalar_constant_value
+                self.prepare_node(node, None, None, 'py')
+                if self.ufunc:
+                    ufunc = self.ufunc
+                else:
+                    ufunc = node.tag.ufunc
             else:
                 ufunc = node.tag.ufunc
 
