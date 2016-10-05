@@ -1922,7 +1922,7 @@ def local_gpu_downsample_factor_max(node):
             return
         ws, stride, pad = ret
         if (nd != 2 or
-                max(node.op.padding) != 0 or
+                max(pad) != 0 or
                 node.op.mode != 'max' or
                 stride != ws):
             return
@@ -1949,7 +1949,7 @@ def local_gpu_downsample_factor_max_grad(node):
             return
         ws, stride, pad = ret
         if (nd != 2 or
-                max(node.op.padding) != 0 or
+                max(pad) != 0 or
                 node.op.mode != 'max' or
                 stride != ws):
             return
@@ -1980,7 +1980,7 @@ def local_gpu_downsample_factor_max_grad_grad(node):
             return
         ws, stride, pad = ret
         if (nd != 2 or
-                max(node.op.padding) != 0 or
+                max(pad) != 0 or
                 node.op.mode != 'max' or
                 stride != ws):
             return
