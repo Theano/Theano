@@ -43,7 +43,7 @@ class T_bunch_of_modes(unittest.TestCase):
         # - WrapLinker
         # - PerformLinker (FAST_COMPILE)
         # - DebugMode's Linker  (DEBUG_MODE)
-        assert 5 == len(set(linker_classes_involved))
+        assert 4 == len(set(linker_classes_involved))
 
 
 class T_WrapLinker(unittest.TestCase):

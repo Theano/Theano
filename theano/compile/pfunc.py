@@ -366,6 +366,8 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
     if profile is None:
         profile = config.profile
         # profile -> True or False
+        if profile is False:
+            profile = None
     if profile is True:
         profile = ProfileStats(message=name)
         # profile -> object
