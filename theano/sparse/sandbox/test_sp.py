@@ -47,7 +47,7 @@ class TestSP(unittest.TestCase):
         filters = rng.randn(nkern, numpy.prod(kshp))
         biasvals = rng.randn(nkern)
 
-        for mode in ('FAST_COMPILE', 'FAST_RUN'):  # , profmode):
+        for mode in ('FAST_COMPILE', 'FAST_RUN'):
             ttot, ntot = 0, 0
             for conv_mode in convmodes:
                 for ss in ssizes:
@@ -128,7 +128,6 @@ class TestSP(unittest.TestCase):
 #            print 'Numpy processing time: ', ntot
 #            print 'Theano processing time: ', ttot
 
-        # profmode.print_summary()
 
     # this doesn't compare the output of anything... but I manually verified that the patches
     # are properly generated
