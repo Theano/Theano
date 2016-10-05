@@ -351,11 +351,6 @@ class PrinterState(gof.utils.scratchpad):
         # printed many times
         self.memo = {}
 
-    def clone(self, props=None, **more_props):
-        if props is None:
-            return PrinterState(self, **more_props)
-        return PrinterState(self, **dict(props, **more_props))
-
 
 class OperatorPrinter:
 
@@ -387,13 +382,16 @@ class OperatorPrinter:
         input_strings = []
         max_i = len(node.inputs) - 1
         for i, input in enumerate(node.inputs):
+            new_precedence = self.precedence
             if (self.assoc == 'left' and i != 0 or self.assoc == 'right' and
                     i != max_i):
-                s = pprinter.process(input, pstate.clone(
-                    precedence=self.precedence + 1e-6))
-            else:
-                s = pprinter.process(input, pstate.clone(
-                    precedence=self.precedence))
+                new_precedence += 1e-6
+            old_precedence = getattr(pstate, 'precedence', None)
+            try:
+                pstate.precedence = new_precedence
+                s = pprinter.process(input, pstate)
+            finally:
+                pstate.precedence = old_precedence
             input_strings.append(s)
         if len(input_strings) == 1:
             s = self.operator + input_strings[0]
@@ -429,8 +427,15 @@ class PatternPrinter:
         pattern, precedences = self.patterns[idx]
         precedences += (1000,) * len(node.inputs)
 
-        def pp_process(input, precedence):
-            return pprinter.process(input, pstate.clone(precedence=precedence))
+        def pp_process(input, new_precedence):
+            try:
+                old_precedence = pstate.precedence
+                pstate.precedence = new_precedence
+                r = pprinter.process(input, pstate)
+            finally:
+                pstate.precedence = old_precedence
+
+            return r
 
         d = dict((str(i), x)
                  for i, x in enumerate(pp_process(input, precedence)
@@ -456,9 +461,15 @@ class FunctionPrinter:
                             "not the result of an operation" % self.names)
         idx = node.outputs.index(output)
         name = self.names[idx]
-        r = "%s(%s)" % (name, ", ".join(
-            [pprinter.process(input, pstate.clone(precedence=-1000))
-             for input in node.inputs]))
+        new_precedense = -1000
+        try:
+            old_precedence = pstate.precedence
+            pstate.precedence = new_precedence
+            r = "%s(%s)" % (name, ", ".join(
+                [pprinter.process(input, pstate) for input in node.inputs]))
+        finally:
+            pstate.precedence = old_precedence
+
         pstate.memo[output] = r
         return r
 
@@ -479,25 +490,6 @@ class IgnorePrinter:
         return r
 
 
-class DefaultPrinter:
-
-    def __init__(self):
-        self.leaf_printer = LeafPrinter()
-
-    def process(self, output, pstate):
-        if output in pstate.memo:
-            return pstate.memo[output]
-        pprinter = pstate.pprinter
-        node = output.owner
-        if node is None:
-            return self.leaf_printer.process(output, pstate)
-        r = "%s(%s)" % (str(node.op), ", ".join(
-            [pprinter.process(input, pstate.clone(precedence=-1000))
-             for input in node.inputs]))
-        pstate.memo[output] = r
-        return r
-
-
 class LeafPrinter:
     def process(self, output, pstate):
         if output in pstate.memo:
@@ -508,6 +500,30 @@ class LeafPrinter:
             r = str(output)
         pstate.memo[output] = r
         return r
+leaf_printer = LeafPrinter()
+
+
+class DefaultPrinter:
+    def process(self, output, pstate):
+        if output in pstate.memo:
+            return pstate.memo[output]
+        pprinter = pstate.pprinter
+        node = output.owner
+        if node is None:
+            return leaf_printer.process(output, pstate)
+        new_precedence = -1000
+        try:
+            old_precedence = pstate.precedence
+            pstate.precedence = new_precedence
+            r = "%s(%s)" % (str(node.op), ", ".join(
+                [pprinter.process(input, pstate)
+                 for input in node.inputs]))
+        finally:
+            pstate.precedence = old_precedence
+
+        pstate.memo[output] = r
+        return r
+default_printer = DefaultPrinter()
 
 
 class PPrinter:
@@ -562,7 +578,7 @@ class PPrinter:
         else:
             strings = []
         pprinter = self.clone_assign(lambda pstate, r: r.name is not None and
-                                     r is not current, LeafPrinter())
+                                     r is not current, leaf_printer)
         inv_updates = dict((b, a) for (a, b) in iteritems(updates))
         i = 1
         for node in gof.graph.io_toposort(list(inputs) + updates.keys(),
@@ -631,10 +647,7 @@ else:
 
 
 pprint = PPrinter()
-pprint.assign(lambda pstate, r: True, DefaultPrinter())
-pprint.assign(lambda pstate, r: hasattr(pstate, 'target') and
-              pstate.target is not r and r.name is not None,
-              LeafPrinter())
+pprint.assign(lambda pstate, r: True, default_printer)
 
 pp = pprint
 """
