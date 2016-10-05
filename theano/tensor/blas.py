@@ -834,10 +834,8 @@ class Gemm(GemmRelated):
         else:
             self.setup_z_Nz_Sz = self.setup_z_Nz_Sz_outplace
 
-        # Correctly reload older pickles where _op_use_c_code and
-        # destroy_map were not saved
-        if '_op_use_c_code' not in self.__dict__:
-            self._op_use_c_code = theano.config.cxx
+        # Correctly reload older pickles where destroy_map were not
+        # saved
         if 'destroy_map' not in self.__dict__ and self.inplace:
             self.destroy_map = {0: [0]}
 

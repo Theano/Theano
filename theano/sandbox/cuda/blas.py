@@ -541,10 +541,8 @@ class GpuGemm(GpuOp):
     def __setstate__(self, dct):
         self.__dict__.update(dct)
 
-        # Correctly reload older pickles where _op_use_c_code and
-        # destroy_map were not saved
-        if '_op_use_c_code' not in self.__dict__:
-            self._op_use_c_code = theano.config.cxx
+        # Correctly reload older pickles where destroy_map were not
+        # saved
         if 'destroy_map' not in self.__dict__ and self.inplace:
             self.destroy_map = {0: [0]}
 
@@ -661,10 +659,8 @@ class GpuGemv(GpuOp):
     def __setstate__(self, dct):
         self.__dict__.update(dct)
 
-        # Correctly reload older pickles where _op_use_c_code and
-        # destroy_map were not saved
-        if '_op_use_c_code' not in self.__dict__:
-            self._op_use_c_code = theano.config.cxx
+        # Correctly reload older pickles where destroy_map were not
+        # saved
         if 'destroy_map' not in self.__dict__ and self.inplace:
             self.destroy_map = {0: [0]}
 
@@ -761,10 +757,8 @@ class GpuGer(GpuOp):
     def __setstate__(self, dct):
         self.__dict__.update(dct)
 
-        # Correctly reload older pickles where _op_use_c_code and
-        # destroy_map were not saved
-        if '_op_use_c_code' not in self.__dict__:
-            self._op_use_c_code = theano.config.cxx
+        # Correctly reload older pickles where destroy_map were not
+        # saved
         if 'destroy_map' not in self.__dict__ and self.inplace:
             self.destroy_map = {0: [0]}
 

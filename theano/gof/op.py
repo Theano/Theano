@@ -781,17 +781,6 @@ class Op(utils.object2, PureOp, CLinkerOp):
     Convenience class to bundle `PureOp` and `CLinkerOp`.
 
     """
-    def __new__(cls, *args, **kwargs):
-        # this function exists to silently and transparently ensure that all
-        # existing Ops get a _op_use_c_code attribute
-        obj = object.__new__(cls)
-        if not hasattr(obj, '_op_use_c_code'):
-            obj._op_use_c_code = theano.config.cxx
-        return obj
-
-    def __init__(self, use_c_code=theano.config.cxx):
-        self._op_use_c_code = use_c_code
-
     def prepare_node(self, node, storage_map, compute_map, impl):
         """
         Make any special modifications that the Op needs before doing
