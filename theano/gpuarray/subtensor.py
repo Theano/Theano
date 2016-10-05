@@ -533,8 +533,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
                         # position.  Mark this by faking that there
                         # are more than two arrays.  This is crazy
                         # numpy behaviour so blame them.
-                        if narrays == 0:
-                            narrays = 2
+                        narrays = 2
                     except Exception:
                         pass
 
