@@ -6040,7 +6040,7 @@ def local_log1p(node):
                         ninp = T.add(*nonconsts)
                     else:
                         ninp = nonconsts[0]
-                    if ninp.dtype != node.outputs[0].dtype:
+                    if ninp.dtype != log_arg.type.dtype:
                         ninp = ninp.astype(node.outputs[0].dtype)
                     return _fill_chain(T.log1p(ninp), scalar_inputs)
 
