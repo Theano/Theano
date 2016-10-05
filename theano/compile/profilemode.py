@@ -693,6 +693,23 @@ Test them first, as they are not guaranteed to always provide a speedup.""")
                           " generator supported on the GPU.")
                 break
 
+        # tip 6
+        import theano.sandbox.cuda as cuda
+        from theano.tensor.nnet import LogSoftmax
+        import theano.tensor.signal.pool as pool
+        import theano.gpuarray
+
+        for a, t in iteritems(apply_time):
+            node = a[1]
+            if (isinstance(node.op, pool.Pool)):
+                if (not cuda.dnn.dnn_available() and not theano.gpuarray.dnn.dnn_present()):
+                    print("Install CuDNN to do pooling faster"
+                          "this allows the operation to run on GPU")
+            if (isinstance(node.op, LogSoftmax)):
+                if (not cuda.dnn.dnn_available() and not theano.gpuarray.dnn.dnn_present()):
+                    print("Install CuDNN to do LogSoftmax faster"
+                          "this allows the operation to run on GPU")
+
         if not printed_tip:
             print("  Sorry, no tip for today.")
 
