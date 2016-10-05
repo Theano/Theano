@@ -340,7 +340,7 @@ class PrinterState(gof.utils.scratchpad):
     def __init__(self, props=None, **more_props):
         if props is None:
             props = {}
-        if isinstance(props, gof.utils.scratchpad):
+        elif isinstance(props, gof.utils.scratchpad):
             self.__update__(props)
         else:
             self.__dict__.update(props)
@@ -353,7 +353,7 @@ class PrinterState(gof.utils.scratchpad):
 
     def clone(self, props=None, **more_props):
         if props is None:
-            props = {}
+            return PrinterState(self, **more_props)
         return PrinterState(self, **dict(props, **more_props))
 
 
