@@ -779,6 +779,201 @@ def test_dnn_conv_grad():
     utt.verify_grad(dconvw, [img_val, kern_val, out_val])
 
 
+def get_conv3d_test_cases():
+    # Every element of test_shapes follows the format
+    # [input_shape, filter_shape, subsample]
+    test_shapes = [[(128, 3, 5, 5, 5), (64, 3, 1, 2, 4), (1, 1, 1)],
+                   [(8, 4, 20, 12, 15), (5, 4, 6, 12, 4), (2, 2, 2)],
+                   [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 3, 3)],
+                   [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 2, 1)],
+                   [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 2, 1)],
+                   # Test with 1x1x1 filters
+                   [(8, 1, 10, 10, 10), (10, 1, 1, 1, 1), (1, 1, 1)],
+                   # Test with dimensions larger than 1024 (thread block dim)
+                   [(1025, 1, 2, 3, 4), (5, 1, 1, 2, 3), (1, 1, 1)],
+                   [(8, 1, 2, 3, 4), (1025, 1, 1, 2, 3), (1, 1, 1)],
+                   [(8, 1025, 2, 3, 4), (5, 1025, 1, 1, 2), (1, 1, 1)],
+                   [(8, 1, 1030, 3, 4), (5, 1, 1025, 1, 1), (1, 1, 1)],
+                   [(8, 1, 2, 1030, 4), (5, 1, 2, 1025, 1), (1, 1, 1)],
+                   [(8, 1, 2, 3, 1030), (5, 1, 1, 2, 1025), (1, 1, 1)],
+                   # The equivalent of this caused a crash with conv2d
+                   [(1, 1, 1, 44800, 1), (6, 1, 1, 1, 1), (1, 1, 1)]]
+
+    # With border mode 'full', test with kernel bigger than image in some/all
+    # dimensions
+    test_shapes_full = [[(6, 2, 2, 2, 2), (4, 2, 3, 1, 1), (1, 1, 1)],
+                        [(6, 2, 2, 2, 2), (4, 2, 1, 3, 1), (1, 1, 1)],
+                        [(6, 2, 2, 2, 2), (4, 2, 1, 1, 3), (1, 1, 1)],
+                        [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1)]]
+    border_modes = ['valid', 'full', 'half', (1, 2, 3), (3, 2, 1), 1, 2]
+    conv_modes = ['conv', 'cross']
+
+    itt = chain(product(test_shapes, border_modes, conv_modes),
+                product(test_shapes_full, ['full'], conv_modes))
+
+    return itt
+
+
+def test_conv3d_fwd():
+
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+
+    def run_conv3d_fwd(inputs_shape, filters_shape, subsample,
+                       border_mode, conv_mode):
+
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        filters_val = numpy.random.random(filters_shape).astype('float32')
+
+        # Scale down the input values to prevent very large absolute errors
+        # due to float rounding
+        inputs_val /= 10
+        filters_val /= 10
+
+        inputs = theano.shared(inputs_val)
+        filters = theano.shared(filters_val)
+        bias = theano.shared(numpy.zeros(filters_shape[0]).astype('float32'))
+
+        # Compile a theano function for the cuDNN implementation
+        conv = dnn.dnn_conv3d(img=inputs, kerns=filters,
+                              border_mode=border_mode, subsample=subsample,
+                              conv_mode=conv_mode)
+        f = theano.function([], conv, mode=mode_with_gpu)
+
+        # If conv_mode is 'conv' the reference implementation should use
+        # filters filpped according to the width, height and time axis
+        if conv_mode == 'conv':
+            flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
+        else:
+            flipped_filters = filters
+
+        # If border mode is anything but 'valid', the reference implementation
+        # should operate on padded inputs
+        if border_mode == 'valid':
+            padded_inputs = inputs
+        else:
+            if border_mode == 'full':
+                pad_per_dim = [filters_shape[i] - 1 for i in range(2, 5)]
+            elif border_mode == 'half':
+                pad_per_dim = [filters_shape[i] // 2 for i in range(2, 5)]
+            else:
+                if isinstance(border_mode, int):
+                    pad_per_dim = [border_mode] * 3
+                else:
+                    pad_per_dim = border_mode
+
+            pad_before_after = ([(0, 0), (0, 0)] +
+                                [(p, p) for p in pad_per_dim])
+            padded_inputs_val = numpy.pad(inputs_val, pad_before_after,
+                                          'constant')
+            padded_inputs = theano.shared(padded_inputs_val)
+
+        # Compile a theano function for the reference implementation
+        conv_ref = theano.tensor.nnet.conv3D(
+            V=padded_inputs.dimshuffle(0, 2, 3, 4, 1),
+            W=flipped_filters.dimshuffle(0, 2, 3, 4, 1),
+            b=bias, d=subsample)
+        f_ref = theano.function([], conv_ref.dimshuffle(0, 4, 1, 2, 3), mode="FAST_RUN")
+
+        # Compare the results of the two implementations
+        res_ref = f_ref()
+        res = f()
+        utt.assert_allclose(res_ref, res)
+
+    test_cases = get_conv3d_test_cases()
+    for (i_shape, f_shape, subsample), border_mode, conv_mode in test_cases:
+        yield (run_conv3d_fwd, i_shape, f_shape, subsample, border_mode,
+               conv_mode)
+
+
+def test_conv3d_bwd():
+
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+
+    def run_conv3d_bwd(inputs_shape, filters_shape, subsample,
+                       border_mode, conv_mode):
+
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        filters_val = numpy.random.random(filters_shape).astype('float32')
+
+        inputs = theano.shared(inputs_val)
+        filters = theano.shared(filters_val)
+        bias = theano.shared(numpy.zeros(filters_shape[0]).astype('float32'))
+
+        # Compile a theano function for the cuDNN implementation
+        conv = dnn.dnn_conv3d(img=inputs, kerns=filters,
+                              border_mode=border_mode, subsample=subsample,
+                              conv_mode=conv_mode)
+
+        grad_i, grad_w = theano.tensor.grad(conv.sum(), [inputs, filters])
+
+        f = theano.function([], [grad_i, grad_w], mode=mode_with_gpu)
+
+        # If conv_mode is 'conv' the reference implementation should use
+        # filters filpped according to the width, height and time axis
+        if conv_mode == 'conv':
+            flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
+        else:
+            flipped_filters = filters
+
+        # If border mode is anything but 'valid', the reference implementation
+        # should operate on padded inputs
+        if border_mode == 'valid':
+            padded_inputs = inputs
+        else:
+            if border_mode == 'full':
+                pad_per_dim = [filters_shape[i] - 1 for i in range(2, 5)]
+            elif border_mode == 'half':
+                pad_per_dim = [filters_shape[i] // 2 for i in range(2, 5)]
+            else:
+                if isinstance(border_mode, int):
+                    pad_per_dim = [border_mode] * 3
+                else:
+                    pad_per_dim = border_mode
+
+            pad_before_after = ([(0, 0), (0, 0)] +
+                                [(p, p) for p in pad_per_dim])
+            padded_inputs_val = numpy.pad(inputs_val, pad_before_after,
+                                          'constant')
+            padded_inputs = theano.shared(padded_inputs_val)
+
+        # Compile a theano function for the reference implementation
+        conv_ref = theano.tensor.nnet.conv3D(
+            V=padded_inputs.dimshuffle(0, 2, 3, 4, 1),
+            W=flipped_filters.dimshuffle(0, 2, 3, 4, 1),
+            b=bias, d=subsample)
+        (grad_padded_i_ref,
+         grad_w_ref) = theano.tensor.grad(conv_ref.sum(),
+                                          [padded_inputs, filters])
+
+        # Recover grad_i_ref from grad_padded_i_ref
+        if border_mode == 'valid':
+            grad_i_ref = grad_padded_i_ref
+        else:
+            shp = grad_padded_i_ref.shape
+            grad_i_ref = grad_padded_i_ref[
+                :, :,
+                pad_per_dim[0]:shp[2] - pad_per_dim[0],
+                pad_per_dim[1]:shp[3] - pad_per_dim[1],
+                pad_per_dim[2]:shp[4] - pad_per_dim[2]]
+
+        f_ref = theano.function([], [grad_i_ref, grad_w_ref], mode="FAST_RUN")
+
+        # Compare the results of the two implementations
+        res_ref = f_ref()
+        res = f()
+        # Needed for big size for some seed
+        # raise rtol to make the test pass with more seed.
+        utt.assert_allclose(res_ref[0], res[0], rtol=2e-5)
+        utt.assert_allclose(res_ref[1], res[1], rtol=2e-5)
+
+    test_cases = get_conv3d_test_cases()
+    for (i_shape, f_shape, subsample), border_mode, conv_mode in test_cases:
+        yield (run_conv3d_bwd, i_shape, f_shape, subsample, border_mode,
+               conv_mode)
+
+
 def test_version():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
