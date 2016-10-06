@@ -167,21 +167,19 @@ class GpuElemwise(HideC, Elemwise):
             """ % dict(n=n, name='"%s"' % (name,),
                        typecode=i.type.typecode)
 
-        p = 0
+        p = len(inps)
         for n, o in enumerate(node.outputs):
             if n in self.inplace_pattern:
                 assert(len(node.outputs) == 1)
                 res += "\nargs[%(n)s].flags |= GE_WRITE;\n" % dict(n=self.inplace_pattern[n])
             else:
-                nn = len(inps) + p
-                name = outs[p]
-                p += 1
                 res += """
                 args[%(n)s].name = %(name)s;
                 args[%(n)s].typecode = %(typecode)s;
                 args[%(n)s].flags = GE_WRITE;
-                """ % dict(n=nn, name='"%s"' % (name,),
+                """ % dict(n=p, name='"%s"' % (outs[n],),
                            typecode=o.type.typecode)
+                p += 1
 
         res += """
         ge = GpuElemwise_new(%(ctx)s->ctx, %(support)s, %(kop)s, %(nargs)s, args, %(nd)s, GE_CONVERT_F16);
