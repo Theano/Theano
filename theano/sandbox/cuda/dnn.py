@@ -1235,7 +1235,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     :warning: dnn_conv3d only works with cuDNN library 3.0
 
     """
-    if border_mode == (0, 0):
+    if border_mode == (0, 0, 0):
         border_mode = 'valid'
 
     # Establish dtype in which to perform the computation of the convolution
