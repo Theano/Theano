@@ -20,7 +20,7 @@ from theano.tensor.basic import alloc
 from theano.tensor.basic import (addbroadcast, clip, get_scalar_constant_value,
                                  ARange, TensorType, NotScalarConstantError)
 from theano.tensor.elemwise import DimShuffle
-from theano.tensor.type_other import NoneConst, SliceType, make_slice
+from theano.tensor.type_other import NoneConst, SliceType, NoneTypeT, make_slice
 from theano import config
 
 inplace_increment = None
@@ -2077,6 +2077,8 @@ def as_index_variable(idx):
         return make_slice(idx)
     if isinstance(idx, gof.Variable) and isinstance(idx.type, SliceType):
         return idx
+    if isinstance(idx, gof.Variable) and isinstance(idx.type, NoneTypeT):
+        return idx
     idx = theano.tensor.as_tensor_variable(idx)
     if idx.type.dtype[:3] not in ('int', 'uin'):
         raise TypeError('index must be integers')
@@ -2165,17 +2167,8 @@ class AdvancedSubtensor(Op):
         # TODO: in general, we need to re-pack the inputs into a valid
         # index, just like subtensor
         out[0] = inputs[0].__getitem__(inputs[1:])
-        if (numpy.__version__ <= '1.6.1' and
-                out[0].size != numpy.uint32(out[0].size)):
-            warnings.warn(
-                'Numpy versions 1.6.1 and below have a bug preventing '
-                'advanced indexing from correctly filling arrays that '
-                'are too big (>= 2^32 elements). It is possible that '
-                'out[0] (%s), with shape %s, is not correctly filled.'
-                % (out[0], out[0].shape))
 
     def connection_pattern(self, node):
-
         rval = [[True]]
 
         for ipt in node.inputs[1:]:

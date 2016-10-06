@@ -6692,14 +6692,11 @@ class test_arithmetic_cast(unittest.TestCase):
                                     config.int_division == 'floatX'):
                                     assert theano_dtype == config.floatX
                                     continue
-                                numpy_version = [int(v) for v in
-                                                 numpy.__version__.split('.')[:2]]
                                 if (cfg == 'numpy+floatX' and
                                     a_type == 'complex128' and
                                     (b_type == 'float32' or
                                      b_type == 'float16') and
                                     combo == ('scalar', 'array') and
-                                    bool(numpy_version >= [1, 6]) and
                                     theano_dtype == 'complex128' and
                                     numpy_dtype == 'complex64'):
                                     # In numpy 1.6.x adding a complex128 with
@@ -6707,7 +6704,7 @@ class test_arithmetic_cast(unittest.TestCase):
                                     # of 1.9.2. this is still the case so it is
                                     # probably by design
                                     raise SkipTest("Known issue with"
-                                                   "numpy >= 1.6.x see #761")
+                                                   "numpy see #761")
                                 # In any other situation: something wrong is
                                 # going on!
                                 assert False
