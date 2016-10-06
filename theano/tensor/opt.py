@@ -6095,7 +6095,10 @@ def local_log_sum_exp(node):
     sum_node = node.inputs[0].owner
     # If the sum has keepdims=True, there might be a dimshuffle
     if sum_node and isinstance(sum_node.op, T.DimShuffle):
+        dimshuffle_op = sum_node.op
         sum_node = sum_node.inputs[0].owner
+    else:
+        dimshuffle_op = None
 
     if not sum_node or not isinstance(sum_node.op, T.Sum):
         return
@@ -6107,14 +6110,15 @@ def local_log_sum_exp(node):
         return
 
     pre_exp = exp_node.inputs[0]
-    max_pre_keepdims = T.max(pre_exp, axis=axis, keepdims=True)
+    max_pre_exp = T.max(pre_exp, axis=axis)
+    max_pre_exp_keepdims = T.makeKeepDims(pre_exp, max_pre_exp, axis)
 
-    ret = (max_pre_keepdims + T.log(T.sum(T.exp(pre_exp - max_pre_keepdims),
-                                          axis=axis, keepdims=True)))
+    ret = (max_pre_exp +
+           T.log(T.sum(T.exp(pre_exp - max_pre_exp_keepdims), axis=axis)))
 
-    # Restore shape and broadcastable pattern
-    ret = T.reshape(ret, node.inputs[0].shape)
-    ret = T.patternbroadcast(ret, node.inputs[0].broadcastable)
+    # Restore the dimshuffle op, if any.
+    if dimshuffle_op:
+        ret = dimshuffle_op(ret)
 
     return [ret]
 
