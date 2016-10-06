@@ -2733,7 +2733,7 @@ optdb.register('local_inplace_gpu_sparse_block_outer',
                   AbstractConv3d,
                   AbstractConv3d_gradWeights,
                   AbstractConv3d_gradInputs])
-def local_conv2d_gpu_conv(node):
+def local_conv_gpu_conv(node):
     """
     gpu_from_host(AbstractConv) -> AbstractConv(gpu_from_host)
 
@@ -2785,7 +2785,7 @@ def local_conv2d_gpu_conv(node):
                 return [tensor.as_tensor_variable(out)]
             else:
                 return [out]
-register_opt()(local_conv2d_gpu_conv)
+register_opt()(local_conv_gpu_conv)
 
 
 # Corrmm opt
