@@ -47,6 +47,39 @@ class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
                            filter_flip=flip, target_op=GpuDnnConvGradI)
 
 
+class TestDnnConv3d(test_abstract_conv.BaseTestConv3d):
+    @classmethod
+    def setup_class(cls):
+        test_abstract_conv.BaseTestConv3d.setup_class()
+        cls.shared = staticmethod(gpuarray_shared_constructor)
+        # provide_shape is not used by the cuDNN impementation
+        cls.provide_shape = [False]
+
+    def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1, 1)):
+        if not dnn_available(test_ctx_name):
+            raise SkipTest(dnn_available.msg)
+        mode = mode_with_gpu
+
+        if fd != (1, 1, 1):
+            raise SkipTest("Doesn't have CUDNN implementation")
+        o = self.get_output_shape(i, f, s, b, fd)
+
+        self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
+                     verify_grad=True, mode=mode,
+                     provide_shape=provide_shape, border_mode=b,
+                     filter_flip=flip, target_op=GpuDnnConv)
+        self.run_gradweight(inputs_shape=i, filters_shape=f,
+                            output_shape=o, subsample=s,
+                            verify_grad=True, mode=mode,
+                            provide_shape=provide_shape, border_mode=b,
+                            filter_flip=flip, target_op=GpuDnnConvGradW)
+        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                           output_shape=o, subsample=s,
+                           verify_grad=True, mode=mode,
+                           provide_shape=provide_shape, border_mode=b,
+                           filter_flip=flip, target_op=GpuDnnConvGradI)
+
+
 class TestDnnConvTypes(test_abstract_conv.TestConvTypes):
     def setUp(self):
         self.input = gpu_ftensor4()

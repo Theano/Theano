@@ -24,7 +24,10 @@ from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet.blocksparse import SparseBlockGemv, SparseBlockOuter
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
-                                              AbstractConv2d_gradInputs)
+                                              AbstractConv2d_gradInputs,
+                                              AbstractConv3d,
+                                              AbstractConv3d_gradWeights,
+                                              AbstractConv3d_gradInputs)
 
 from theano.tests.breakpoint import PdbBreakpoint
 
@@ -1297,18 +1300,24 @@ def local_inplace_sparseblockouter(node):
 @register_opt('fast_compile', 'conv_dnn', 'cudnn')
 @op_lifter([AbstractConv2d,
             AbstractConv2d_gradWeights,
-            AbstractConv2d_gradInputs])
-def local_gpua_abstractconv2d(op, context_name, inputs, outputs):
+            AbstractConv2d_gradInputs,
+            AbstractConv3d,
+            AbstractConv3d_gradWeights,
+            AbstractConv3d_gradInputs])
+def local_gpua_abstractconv(op, context_name, inputs, outputs):
     if isinstance(outputs[0].type, GpuArrayType):
         # Don't handle this node here, it's already on the GPU.
         return
-    return local_gpua_lift_abstractconv2d_graph(op, context_name, inputs, outputs)
+    return local_gpua_lift_abstractconv_graph(op, context_name, inputs, outputs)
 
 
 @register_opt2([AbstractConv2d,
                 AbstractConv2d_gradWeights,
-                AbstractConv2d_gradInputs], 'fast_compile', 'conv_dnn', 'cudnn')
-def local_gpua_lift_abstractconv2d_graph(op, context_name, inputs, outputs):
+                AbstractConv2d_gradInputs,
+                AbstractConv3d,
+                AbstractConv3d_gradWeights,
+                AbstractConv3d_gradInputs], 'fast_compile', 'conv_dnn', 'cudnn')
+def local_gpua_lift_abstractconv_graph(op, context_name, inputs, outputs):
     inps = list(inputs)
     inps[0] = as_gpuarray_variable(inputs[0],
                                    context_name=context_name)

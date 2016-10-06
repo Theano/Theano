@@ -19,6 +19,9 @@ from theano.tensor.nnet import LogSoftmax, SoftmaxGrad
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs,
+                                              AbstractConv3d,
+                                              AbstractConv3d_gradWeights,
+                                              AbstractConv3d_gradInputs,
                                               get_conv_output_shape)
 from theano.tensor.signal.pool import (
     Pool, MaxPoolGrad, AveragePoolGrad)
@@ -1919,31 +1922,85 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
     return [rval]
 
 
+@register_opt2([AbstractConv3d, AbstractConv3d_gradWeights,
+                AbstractConv3d_gradInputs], 'fast_compile', 'conv_dnn', 'cudnn')
+def local_abstractconv3d_cudnn_graph(op, context_name, inputs, outputs):
+    if (not isinstance(op, (AbstractConv3d,
+                            AbstractConv3d_gradWeights,
+                            AbstractConv3d_gradInputs))):
+        return
+
+    if (op.filter_dilation != (1, 1, 1)):
+        return None
+
+    inp1 = inputs[0]
+    inp2 = inputs[1]
+
+    if not dnn_available(inp1.type.context_name):
+        raise_no_cudnn()
+
+    if op.filter_flip:
+        conv_mode = 'conv'
+    else:
+        conv_mode = 'cross'
+
+    if isinstance(op, AbstractConv3d):
+        rval = dnn_conv3d(inp1, inp2,
+                          border_mode=op.border_mode,
+                          subsample=op.subsample,
+                          direction_hint='forward!',
+                          conv_mode=conv_mode)
+    elif isinstance(op, AbstractConv3d_gradWeights):
+        shape = (inp2.shape[1], inp1.shape[1],
+                 inputs[2][0], inputs[2][1], inputs[2][2])
+        rval = dnn_gradweight3d(inp1, inp2, shape,
+                                border_mode=op.border_mode,
+                                subsample=op.subsample,
+                                conv_mode=conv_mode)
+    elif isinstance(op, AbstractConv3d_gradInputs):
+        shape = (inp2.shape[0], inp1.shape[1],
+                 inputs[2][0], inputs[2][1], inputs[2][2])
+        rval = dnn_gradinput3d(inp1, inp2, shape,
+                               border_mode=op.border_mode,
+                               subsample=op.subsample,
+                               conv_mode=conv_mode)
+    return [rval]
+
+
 @register_opt('fast_compile', 'conv_dnn', 'cudnn')
-@local_optimizer([AbstractConv2d])
+@local_optimizer([AbstractConv2d, AbstractConv3d])
 def local_abstractconv_cudnn(node):
     ctx = infer_context_name(*node.inputs)
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
-    return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+    if isinstance(node.op, AbstractConv2d):
+        return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+    elif isinstance(node.op, AbstractConv3d):
+        return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
 @register_opt('fast_compile', 'conv_dnn', 'cudnn')
-@local_optimizer([AbstractConv2d_gradWeights])
+@local_optimizer([AbstractConv2d_gradWeights, AbstractConv3d_gradWeights])
 def local_abstractconv_gw_cudnn(node):
     ctx = infer_context_name(*node.inputs)
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
-    return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+    if isinstance(node.op, AbstractConv2d_gradWeights):
+        return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+    elif isinstance(node.op, AbstractConv3d_gradWeights):
+        return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
 @register_opt('fast_compile', 'conv_dnn', 'cudnn')
-@local_optimizer([AbstractConv2d_gradInputs])
+@local_optimizer([AbstractConv2d_gradInputs, AbstractConv3d_gradInputs])
 def local_abstractconv_gi_cudnn(node):
     ctx = infer_context_name(*node.inputs)
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
-    return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+    if isinstance(node.op, AbstractConv2d_gradInputs):
+        return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+    elif isinstance(node.op, AbstractConv3d_gradInputs):
+        return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
 @inplace_allocempty(GpuDnnConv, 2)
