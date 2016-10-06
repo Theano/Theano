@@ -9,6 +9,9 @@ source $HOME/.bashrc
 # nosetests xunit for test profiling
 XUNIT="--with-xunit --xunit-file="
 
+# name test suites
+SUITE="--xunit-prefix-with-testsuite-name --xunit-testsuite-name="
+
 mkdir -p ${BUILDBOT_DIR}
 ls -l ${BUILDBOT_DIR}
 echo "Directory of stdout/stderr ${BUILDBOT_DIR}"
@@ -40,28 +43,31 @@ FLAGS=on_shape_error=raise,$FLAGS
 FLAGS=${FLAGS},device=cpu,floatX=float64
 
 echo "Executing tests with mode=FAST_RUN"
-FILE=${ROOT_CWD}/theano_fastrun_tests.xml
-echo "THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${THEANO_PARAM} ${XUNIT}${FILE}"
+NAME=fastrun
+FILE=${ROOT_CWD}/theano_${NAME}_tests.xml
+echo "THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}"
 date
-THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${THEANO_PARAM} ${XUNIT}${FILE}
+THEANO_FLAGS=cmodule.warn_no_version=True,${FLAGS},mode=FAST_RUN ${NOSETESTS} ${PROFILING} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 echo
 
 echo "Executing tests with mode=FAST_RUN,floatX=float32"
-FILE=${ROOT_CWD}/theano_fastrun_float32_tests.xml
-echo "THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE}"
+NAME=fastrun_float32
+FILE=${ROOT_CWD}/theano_${NAME}_tests.xml
+echo "THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}"
 date
-THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE}
+THEANO_FLAGS=${FLAGS},mode=FAST_RUN,floatX=float32 ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 echo
 
 echo "Executing tests with linker=vm,vm.lazy=True,floatX=float32"
-FILE=${ROOT_CWD}/theano_fastrun_float32_lazyvm_tests.xml
-echo "THEANO_FLAGS=${FLAGS},linker=vm,vm.lazy=True,floatX=float32 ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE}"
+NAME=fastrun_float32_lazyvm
+FILE=${ROOT_CWD}/theano_${NAME}_tests.xml
+echo "THEANO_FLAGS=${FLAGS},linker=vm,vm.lazy=True,floatX=float32 ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}"
 date
-THEANO_FLAGS=${FLAGS},linker=vm,vm.lazy=True,floatX=float32 ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE}
+THEANO_FLAGS=${FLAGS},linker=vm,vm.lazy=True,floatX=float32 ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 echo
@@ -70,10 +76,11 @@ echo
 #Until we fix the root of the problem we let the rest run, then we can kill this one in the morning.
 # with --batch=1000" # The buildbot freeze sometimes when collecting the tests to run
 echo "Executing tests with mode=FAST_COMPILE"
-FILE=${ROOT_CWD}/theano_fastcompile_tests.xml
-echo "THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE}"
+NAME=fastcompile
+FILE=${ROOT_CWD}/theano_${NAME}_tests.xml
+echo "THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}"
 date
-THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE}
+THEANO_FLAGS=${FLAGS},mode=FAST_COMPILE ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}${NAME}
 
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
