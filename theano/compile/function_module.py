@@ -1040,6 +1040,7 @@ def _constructor_Function(maker, input_storage, inputs_data):
 
 copyreg.pickle(Function, _pickle_Function)
 
+
 ###
 # FunctionMaker
 ###
@@ -1064,8 +1065,8 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
     assert len(wrapped_outputs) == len(fgraph.outputs)
     reason = "insert_deepcopy"
     updated_fgraph_inputs = set([fgraph_i for i, fgraph_i in
-                             zip(wrapped_inputs, fgraph.inputs)
-                             if getattr(i, 'update', False)])
+                                zip(wrapped_inputs, fgraph.inputs)
+                                if getattr(i, 'update', False)])
 
     # We can't use fgraph.inputs as this don't include Constant Value.
     all_graph_inputs = gof.graph.inputs(fgraph.outputs)
