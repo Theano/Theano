@@ -2299,8 +2299,8 @@ class RoundHalfToEven(UnaryScalarOp):
         (x,) = inputs
         (z,) = outputs
         typ = node.outputs[0].type.dtype
-        if not typ.startswith('float'):
-            raise NotImplementedError("The output should a float")
+        if typ not in ['float32', 'float64']:
+            raise NotImplementedError("The output should be float32 or float64")
 
         return dedent("""
             #ifndef ROUNDING_EPSILON
@@ -2398,7 +2398,7 @@ class RoundHalfAwayFromZero(UnaryScalarOp):
         if node.outputs[0].type.dtype in ['float32', 'float64']:
             return "%(z)s = round(%(x)s);" % locals()
         else:
-            raise NotImplementedError("The output should be a float")
+            raise NotImplementedError("The output should be float32 or float64")
 round_half_away_from_zero = RoundHalfAwayFromZero(same_out_float_only)
 
 
