@@ -1,3 +1,25 @@
+import logging
+import numpy
+import warnings
+
+from theano.compat import ifilter, izip
+from six import iteritems, integer_types
+from six.moves import xrange
+from theano.compile import SharedVariable, function
+from theano import compile
+from theano import gof
+from theano.tensor import opt
+from theano import tensor
+from theano import config
+from theano.updates import OrderedUpdates
+from theano.compile import ops
+from theano.compat import OrderedDict
+
+
+from theano.scan_module import scan_op
+from theano.scan_module import scan_utils
+from theano.scan_module.scan_utils import safe_new, traverse
+
 """
 This module provides the Scan Op.
 
@@ -43,28 +65,6 @@ __authors__ = ("Razvan Pascanu "
 __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
-
-import logging
-import numpy
-import warnings
-
-from theano.compat import ifilter, izip
-from six import iteritems, integer_types
-from six.moves import xrange
-from theano.compile import SharedVariable, function
-from theano import compile
-from theano import gof
-from theano.tensor import opt
-from theano import tensor
-from theano import config
-from theano.updates import OrderedUpdates
-from theano.compile import ops
-from theano.compat import OrderedDict
-
-
-from theano.scan_module import scan_op
-from theano.scan_module import scan_utils
-from theano.scan_module.scan_utils import safe_new, traverse
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan')
@@ -633,7 +633,7 @@ def scan(fn,
                         # No need to print a warning or raise an error now,
                         # it will be done when fn will be called.
                         _logger.info(('Cannot compute test value for the '
-                            'inner function of scan, input value missing %s'),
+                                      'inner function of scan, input value missing %s'),
                                      e)
 
             if getattr(init_out['initial'], 'name', None) is not None:
@@ -693,8 +693,8 @@ def scan(fn,
                             # No need to print a warning or raise an error now,
                             # it will be done when fn will be called.
                             _logger.info(('Cannot compute test value for '
-                                'the inner function of scan, input value '
-                                'missing. %s'), e)
+                                          'the inner function of scan, input value '
+                                          'missing. %s'), e)
 
                 # give it a name or debugging and pretty printing
                 if getattr(init_out['initial'], 'name', None) is not None:
@@ -722,19 +722,19 @@ def scan(fn,
         n_inputs = len(mit_sot_tap_array[idx])
         if n_fixed_steps in [1, -1]:
             _ordered_args[mit_sot_rightOrder[idx]] = \
-                            mit_sot_inner_slices[offset:offset + n_inputs]
+                mit_sot_inner_slices[offset:offset + n_inputs]
         else:
             _ordered_args[mit_sot_rightOrder[idx]] = \
-                            mit_sot_inner_inputs[offset:offset + n_inputs]
+                mit_sot_inner_inputs[offset:offset + n_inputs]
         offset += n_inputs
 
     for idx in xrange(n_sit_sot):
         if n_fixed_steps in [1, -1]:
             _ordered_args[sit_sot_rightOrder[idx]] = \
-                                        [sit_sot_inner_slices[idx]]
+                [sit_sot_inner_slices[idx]]
         else:
             _ordered_args[sit_sot_rightOrder[idx]] = \
-                                        [sit_sot_inner_inputs[idx]]
+                [sit_sot_inner_inputs[idx]]
 
     ordered_args = []
     for ls in _ordered_args:
@@ -772,8 +772,8 @@ def scan(fn,
         # the outputs and updates we have
         if condition is not None:
             _logger.warning(('When the number of steps is fixed and equal '
-                    'to 1, the provided stopping condition, ',
-                    str(condition), ' is ignored'))
+                'to 1, the provided stopping condition, ',
+                str(condition), ' is ignored'))
 
         for pos, inner_out in enumerate(outputs):
             # we need to see if we need to pad our sequences with an
@@ -912,7 +912,7 @@ def scan(fn,
     nit_sot_return_steps = OrderedDict()
     nit_sot_rightOrder = []
     for i, out in enumerate(outs_info):
-        if not 'taps' in out:
+        if 'taps' not in out:
             nit_sot_inner_outputs.append(outputs[i])
             if i in return_steps:
                 nit_sot_return_steps[n_nit_sot] = return_steps[i]
