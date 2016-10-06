@@ -151,8 +151,8 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       ``THEANO_FLAGS=optimizer_excluding=conv_gemm`` in your environment.
     - :func:`dnn_conv <theano.sandbox.cuda.dnn.dnn_conv>` GPU-only
       convolution using NVIDIA's cuDNN library. This requires that you have
-      cuDNN installed and available, which in turn requires CUDA 6.5 and a GPU
-      with compute capability 3.0 or more.
+      cuDNN 4.0 or newer installed and available, which in turn requires CUDA 7.0
+      and a GPU with compute capability 3.0 or more.
 
       If cuDNN is available, by default, Theano will replace all nnet.conv2d
       operations with dnn_conv. To explicitly disable it, set
@@ -205,8 +205,8 @@ TODO: Give examples on how to use these things! They are pretty complicated.
 
     - :func:`dnn_conv3d <theano.sandbox.cuda.dnn.dnn_conv3d>` GPU-only
       convolution using NVIDIA's cuDNN library. This requires that you have
-      cuDNN installed and available, which in turn requires CUDA 6.5 and a GPU
-      with compute capability 3.0 or more.
+      cuDNN 4.0 or newer installed and available, which in turn requires CUDA 7.0
+      and a GPU with compute capability 3.0 or more.
 
       If cuDNN is available, by default, Theano will replace all nnet.conv3d
       operations with dnn_conv3d. To explicitly disable it, set
