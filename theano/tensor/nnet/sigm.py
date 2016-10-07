@@ -352,7 +352,7 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
 
         # float16 limits: -17.0, 6.0
         # We use the float32 limits for float16 for now as the
-        # computation will happend in float32 anyway.
+        # computation will happen in float32 anyway.
         if (node.inputs[0].type == scalar.float32 or
                 node.inputs[0].type == scalar.float16):
             return """%(z)s = %(x)s < -103.0f ? 0.0 : %(x)s > 14.0f ? %(x)s : log1p(exp(%(x)s));""" % locals()

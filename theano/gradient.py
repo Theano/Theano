@@ -1373,10 +1373,10 @@ class numeric_grad(object):
     # perfectly accurate.
     type_eps = {'float64': 1e-7,
                 'float32': 3e-4,
-                'float16': 1e-3,
+                'float16': 1e-1,
                 numpy.dtype('float64'): 1e-7,
                 numpy.dtype('float32'): 3e-4,
-                numpy.dtype('float16'): 1e-3}
+                numpy.dtype('float16'): 1e-1}
 
     def __init__(self, f, pt, eps=None, out_type=None):
         """Return the gradient of f at pt.

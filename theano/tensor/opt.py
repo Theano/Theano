@@ -2247,7 +2247,7 @@ class Assert(T.Op):
     >>> func = theano.function([x], assert_op(x, x.size<2))
 
     """
-
+    _f16_ok = True
     __props__ = ('msg',)
     view_map = {0: [0]}
 
@@ -6063,20 +6063,24 @@ def local_log1p(node):
                 log_arg.owner.inputs, only_process_constants=True)
             # scalar_inputs are potentially dimshuffled and fill'd scalars
             if scalars and numpy.allclose(numpy.sum(scalars), 1):
-                if not nonconsts:
-                    pass  # leave for constant-merge
-                if len(nonconsts) == 1:
-                    return _fill_chain(T.log1p(nonconsts[0]), scalar_inputs)
-                else:
-                    return _fill_chain(T.log1p(T.add(*nonconsts)),
-                                       scalar_inputs)
+                if nonconsts:
+                    if len(nonconsts) > 1:
+                        ninp = T.add(*nonconsts)
+                    else:
+                        ninp = nonconsts[0]
+                    if ninp.dtype != log_arg.type.dtype:
+                        ninp = ninp.astype(node.outputs[0].dtype)
+                    return _fill_chain(T.log1p(ninp), scalar_inputs)
 
         elif log_arg.owner and log_arg.owner.op == T.sub:
             one = T.extract_constant(log_arg.owner.inputs[0],
                                      only_process_constants=True)
             if one != 1:
                 return
-            return [T.log1p(T.neg(log_arg.owner.inputs[1]))]
+            other = log_arg.owner.inputs[1]
+            if other.dtype != log_arg.dtype:
+                other = other.astype(log_arg.dtype)
+            return [T.log1p(T.neg(other))]
 
 
 # TODO: in canonicalize, change log10 and log2 -> log

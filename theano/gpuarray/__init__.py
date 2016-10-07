@@ -66,7 +66,9 @@ def init_dev(dev, name=None):
                          single_stream=config.gpuarray.single_stream,
                          sched=config.gpuarray.sched)
         init_dev.devmap[dev] = ctx
-        if config.gpuarray.preallocate > 0:
+        if config.gpuarray.preallocate < 0:
+            print("Disabling allocation cache on %s" % (dev,))
+        elif config.gpuarray.preallocate > 0:
             MB = (1024 * 1024)
             if config.gpuarray.preallocate <= 1:
                 gmem = min(config.gpuarray.preallocate, 0.95) * ctx.total_gmem

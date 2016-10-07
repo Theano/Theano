@@ -1319,8 +1319,6 @@ class GpuDnnSoftmaxBase(DnnBase):
         DnnBase.__init__(self, [self.file], self.c_func)
 
         assert(algo in ('fast', 'accurate', 'log'))
-        if algo == 'log' and version(raises=False) < 3000:
-            raise RuntimeError("Need cuDNN v3 for log-softmax")
         self.algo = algo
 
         assert(mode in ('instance', 'channel'))
@@ -1361,6 +1359,7 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
         or per spatial location '01' per image across 'c'.
 
     """
+    _f16_ok = True
     direction = "forward"
     file = "dnn_softmax.c"
     c_func = "APPLY_SPECIFIC(softmax)"
@@ -1397,6 +1396,7 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
         image across 'c'.
 
     """
+    _f16_ok = True
     direction = 'backward'
     file = "dnn_softmax_grad.c"
     c_func = "APPLY_SPECIFIC(softmax_grad)"

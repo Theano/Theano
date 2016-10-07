@@ -2774,6 +2774,7 @@ class Alloc(gof.Op):
     are lifted, the first argument to fill can often be pruned from the graph.
 
     """
+    _f16_ok = True
     __props__ = ()
 
     def validate_shape(self, shape):

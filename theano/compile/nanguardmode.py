@@ -10,6 +10,15 @@ from theano.configparser import config
 import theano.tensor as T
 import theano.sandbox.cuda as cuda
 from theano.compile import Mode
+from .mode import get_mode
+
+try:
+    from theano.gpuarray.type import GpuArrayType, _name_for_ctx
+    from pygpu.gpuarray import GpuArray
+    pygpu_available = True
+except ImportError:
+    pygpu_available = False
+
 
 logger = logging.getLogger("theano.compile.nanguardmode")
 
@@ -86,6 +95,8 @@ def contains_nan(arr, node=None, var=None):
         else:
             compile_gpu_func(True, False, False)
             return np.isnan(f_gpumin(arr.reshape(arr.size)))
+    elif pygpu_available and isinstance(arr, GpuArray):
+        return np.isnan(f_gpua_min(arr.reshape(arr.size)))
 
     return np.isnan(np.min(arr))
 
@@ -136,6 +147,9 @@ def contains_inf(arr, node=None, var=None):
             compile_gpu_func(False, True, False)
             return (np.isinf(f_gpumin(arr.reshape(arr.size))) or
                     np.isinf(f_gpumax(arr.reshape(arr.size))))
+    elif pygpu_available and isinstance(arr, GpuArray):
+        return (np.isinf(f_gpua_min(arr.reshape(arr.size))) or
+                np.isinf(f_gpua_max(arr.reshape(arr.size))))
 
     return np.isinf(np.nanmax(arr)) or np.isinf(np.nanmin(arr))
 
@@ -187,6 +201,27 @@ def compile_gpu_func(nan_is_error, inf_is_error, big_is_error):
             cuda_compile_failed = True
 
 
+def f_compute(op):
+    def result(inp):
+        dtype = inp.dtype
+        ctx_name = _name_for_ctx(inp.context)
+        key = (dtype, ctx_name)
+        f = result.cache.get(key, None)
+        if f is None:
+            guard_in = GpuArrayType(str(dtype), (False,), context_name=ctx_name)()
+            mode = get_mode('FAST_RUN').including('gpuarray')
+            f = theano.function([guard_in], op(guard_in),
+                                mode=mode, profile=False)
+            result.cache[key] = f
+        return f(inp)
+    result.cache = dict()
+    return result
+
+f_gpua_min = f_compute(T.min)
+f_gpua_max = f_compute(T.max)
+f_gpua_absmax = f_compute(lambda x: T.max(T.abs_(x)))
+
+
 class NanGuardMode(Mode):
     """
     A Theano compilation Mode that makes the compiled function automatically
@@ -220,7 +255,9 @@ class NanGuardMode(Mode):
             big_is_error = config.NanGuardMode.big_is_error
 
         assert nan_is_error or inf_is_error or big_is_error
-        compile_gpu_func(nan_is_error, inf_is_error, big_is_error)
+
+        if cuda.cuda_enabled:
+            compile_gpu_func(nan_is_error, inf_is_error, big_is_error)
 
         def do_check_on(value, nd, var=None):
             """
@@ -260,7 +297,10 @@ class NanGuardMode(Mode):
                 elif value.size == 0:
                     err = False
                 elif cuda.cuda_available and isinstance(value, cuda.CudaNdarray):
+                    compile_gpu_func(False, False, True)
                     err = (f_gpuabsmax(value.reshape(value.size)) > 1e10)
+                elif pygpu_available and isinstance(value, GpuArray):
+                    err = (f_gpua_absmax(value.reshape(value.size)) > 1e10)
                 else:
                     err = (np.abs(value).max() > 1e10)
                 if err:
