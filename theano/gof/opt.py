@@ -642,20 +642,22 @@ class MergeFeature(object):
                 continue
             if len(node.inputs) != len(candidate.inputs):
                 continue
-            if node.op != candidate.op:
-                continue
+#            if node.op != candidate.op:
+#                continue
             cand_has_assert = False
 
             # Get input list of the candidate with assert removed
-            cand_inputs_assert_removed = []
-            for i in candidate.inputs:
-                if i.owner and isinstance(i.owner.op,
-                                          theano.tensor.opt.Assert):
-                    cand_has_assert = True
-                    cand_inputs_assert_removed.append(i.owner.inputs[0])
-                else:
-                    cand_inputs_assert_removed.append(i)
-
+            if False:  # check_assert:
+                cand_inputs_assert_removed = []
+                for i in candidate.inputs:
+                    if i.owner and isinstance(i.owner.op,
+                                              theano.tensor.opt.Assert):
+                        cand_has_assert = True
+                        cand_inputs_assert_removed.append(i.owner.inputs[0])
+                    else:
+                        cand_inputs_assert_removed.append(i)
+            else:
+                cand_inputs_assert_removed = candidate.inputs
             # Get input list of the node with assert removed
             if node_has_assert:
                 node_inputs_assert_removed = []
@@ -673,7 +675,7 @@ class MergeFeature(object):
                                in zip(node_inputs_assert_removed,
                                       cand_inputs_assert_removed))
 
-            if inputs_match:
+            if inputs_match and node.op == candidate.op:
                 if (node, candidate) in self.blacklist:
                     # They were already tried, and there was an error
                     continue
