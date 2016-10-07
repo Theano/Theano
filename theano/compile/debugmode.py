@@ -1837,8 +1837,6 @@ class _Linker(gof.link.LocalLinker):
                 thunk.inputs = [storage_map[v] for v in node.inputs]
                 thunk.outputs = [storage_map[v] for v in node.outputs]
                 thunk_other = thunk
-            else:
-                node.op.prepare_node(node, storage_map, compute_map)
 
             debug = hasattr(node.op, 'debug_perform')
 
@@ -1852,6 +1850,7 @@ class _Linker(gof.link.LocalLinker):
                 if not isinstance(node.op, gof.op.Op):
                     raise utils.MethodNotDefined()
 
+                node.op.prepare_node(node, storage_map, compute_map, 'c')
                 thunk = node.op.make_c_thunk(node, storage_map, compute_map,
                                              no_recycling)
                 thunks_c.append(thunk)
@@ -1864,6 +1863,7 @@ class _Linker(gof.link.LocalLinker):
             if (((self.maker.mode.check_py_code or thunks_c[-1] is None) and
                  node.op.perform.__code__ != gof.op.PureOp.perform.__code__) or
                     debug):
+                node.op.prepare_node(node, storage_map, compute_map, 'py')
                 thunk = node.op.make_py_thunk(node, storage_map, compute_map,
                                               no_recycling, debug=debug)
                 thunks_py.append(thunk)
@@ -1873,6 +1873,7 @@ class _Linker(gof.link.LocalLinker):
             if not self.maker.mode.check_c_code and thunks_py[-1] is None:
                 _logger.warn("Op %s doesn't have a perform, "
                              "forcing check of the C code" % node.op)
+                node.op.prepare_node(node, storage_map, compute_map, 'c')
                 thunk = node.op.make_c_thunk(node, storage_map, compute_map,
                                              no_recycling)
                 thunks_c[-1] = thunk

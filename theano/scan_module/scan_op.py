@@ -697,7 +697,8 @@ class Scan(PureOp):
                      self._hash_inner_graph,
                      scan_utils.hash_listsDictsTuples(self.info)))
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def make_thunk(self, node, storage_map, compute_map, no_recycling,
+                   impl=None):
         """
 
         Parameters
@@ -715,7 +716,8 @@ class Scan(PureOp):
         no_recycling
             List of variables for which it is forbidden to reuse memory
             allocated by a previous call.
-
+        impl
+            Use 'py' if we want python execution.
         Notes
         -----
         If the thunk consults the storage_map on every call, it is safe
@@ -864,6 +866,8 @@ class Scan(PureOp):
                                for out in self.fn.maker.fgraph.outputs]
 
         try:
+            if impl  == 'py':
+                raise theano.gof.cmodule.MissingGXX
             cython_mintaps = numpy.asarray(self.mintaps, dtype='int32')
             cython_tap_array_len = \
                 numpy.asarray([len(x) for x in self.tap_array],
