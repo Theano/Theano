@@ -10,7 +10,7 @@ source $HOME/.bashrc
 XUNIT="--with-xunit --xunit-file="
 
 # name test suites
-SUITE="--xunit-prefix-with-testsuite-name --xunit-testsuite-name="
+SUITE="--xunit-testsuite-name="
 
 mkdir -p ${BUILDBOT_DIR}
 ls -l ${BUILDBOT_DIR}
