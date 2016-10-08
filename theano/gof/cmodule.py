@@ -34,7 +34,7 @@ from theano.misc.windows import (subprocess_Popen,
 
 # we will abuse the lockfile mechanism when reading and writing the registry
 from theano.gof import compilelock
-from theano.configdefaults import gcc_version_str, local_bitwidth
+from theano.configdefaults import gcc_version_str, icc_version_str, cxx_version_str, local_bitwidth
 
 importlib = None
 try:
@@ -50,7 +50,7 @@ METH_NOARGS = "METH_NOARGS"
 import_time = 0
 
 
-class MissingGXX(Exception):
+class MissingCXX(Exception):
     """
     This error is raised when we try to generate c code,
     but g++ is not available.
@@ -1565,6 +1565,15 @@ def get_gcc_shared_library_arg():
     else:
         return '-shared'
 
+def get_icc_shared_library_arg():
+    """
+    Return the platform-dependent GCC argument for shared libraries.
+
+    """
+    if sys.platform == 'darwin':
+        return '-dynamiclib'
+    else:
+        return '-shared'
 
 def std_include_dirs():
     numpy_inc_dirs = numpy.distutils.misc_util.get_numpy_include_dirs()
@@ -1841,7 +1850,7 @@ def try_march_flag(flags):
             """)
 
     cflags = flags + ['-L' + d for d in theano.gof.cmodule.std_lib_dirs()]
-    compilation_result, execution_result = GCC_compiler.try_compile_tmp(
+    compilation_result, execution_result = CXX_compiler.try_compile_tmp(
         test_code, tmp_prefix='try_march_',
         flags=cflags, try_run=True)
     return compilation_result, execution_result
@@ -2223,7 +2232,7 @@ class GCC_compiler(Compiler):
         # TODO: Do not do the dlimport in this function
 
         if not theano.config.cxx:
-            raise MissingGXX("g++ not available! We can't compile c code.")
+            raise MissingCXX("g++ not available! We can't compile c code.")
 
         if include_dirs is None:
             include_dirs = []
@@ -2322,5 +2331,314 @@ class GCC_compiler(Compiler):
             return dlimport(lib_filename)
 
 
-def icc_module_compile_str(*args):
-    raise NotImplementedError()
+class ICC_compiler(Compiler):
+
+    march_flags = None
+
+    # TODO: Can't check AMD CPU
+    supports_amdlibm = True
+
+    @staticmethod
+    def version_str():
+        icc_ver = [int(n) for n in icc_version_str.split('.')[:2]]
+        if bool(icc_ver < [16, 0]):
+            _logger.warn(
+                "WARNING: Your Intel Compiler Version is %s. "
+                "For better performance, we suggest you use the latest version. " % icc_version_str)
+        return theano.config.cxx + " " + icc_version_str
+
+    @staticmethod
+    def compile_args(march_flags=True):
+        cxxflags = [flag for flag in config.icc.cxxflags.split(' ') if flag]
+
+        # Add the equivalent of -xHOST flag.  We can't use
+        # -xHOST as when the compiledir is shared by multiple
+        # computers (for example, if the home directory is on NFS), this
+        # won't be optimum or cause crash depending if the file is compiled
+        # on an older or more recent computer.
+        detect_march = ICC_compiler.march_flags is None and march_flags
+        if detect_march:
+            for f in cxxflags:
+                # If the user give an -march=X parameter, don't add one ourself
+                if ((f.startswith("--march=") or
+                     f.startswith("-march=") or
+                     f.startswith("-m") or
+                     f.startswith("-x") or
+                     f.startswith("-ax")
+                 )):
+                    _logger.warn(
+                        "WARNING: your Theano flags `icc.cxxflags` specify"
+                        " an arch optimizing flags.\n"
+                        "         It is better to let Theano/icpc find it"
+                        " automatically, but we don't do it now")
+                    detect_march = False
+                    ICC_compiler.march_flags = []
+                    break
+
+        # TODO
+        if ('icpc' not in theano.config.cxx):
+            _logger.warn(
+                "OPTIMIZATION WARNING: your Theano flag `cxx` seems not to be"
+                " the icpc compiler. So we disable the compiler optimization"
+                " specific to icpc that tell to compile for a specific CPU."
+                " At worst, this could cause slow down.\n"
+                "         You can add those parameters to the compiler yourself"
+                " via the Theano flag `gcc.cxxflags`."
+            )
+            detect_march = False
+
+        if detect_march:
+            ICC_compiler.march_flags = []
+
+            def get_lines(cmd, parse=True):
+                p = subprocess_Popen(cmd,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE,
+                                     stdin=subprocess.PIPE,
+                                     shell=True)
+                (stdout, stderr) = p.communicate(input=b(''))
+                if p.returncode != 0:
+                    return None
+
+                lines = BytesIO(stdout + stderr).readlines()
+                lines = decode_iter(lines)
+                if parse:
+                    selected_lines = []
+                    for line in lines:
+                        if "AVX" in line:
+                            selected_lines.append(line.strip())
+                        elif "SSE" in line:
+                            selected_lines.append(line.strip())
+                    lines = list(set(selected_lines))  # to remove duplicate
+
+                return lines
+
+            native_lines = get_lines("%s -xHOST -E -v -" % theano.config.cxx)
+            if native_lines is None:
+                _logger.warn("Call to 'icpc -xHOST' failed,"
+                             "not setting -xHOST flag")
+                detect_march = False
+            else:
+                _logger.info("icpc -xHOST selected lines: %s",
+                             native_lines)
+
+        # Add the -xHOST
+        cxxflags.append("-xHOST")
+
+        if config.icc.opt_report:
+            cxxflags.append("-qopt-report=%s" % config.icc.opt_report)
+            if config.icc.opt_report_phase:
+                cxxflags.append("-qopt-report-phase=%s" % config.icc.opt_report_phase)
+        
+        # NumPy 1.7 Deprecate the old API. I updated most of the places
+        # to use the new API, but not everywhere. When finished, enable
+        # the following macro to assert that we don't bring new code
+        # that use the old API.
+        cxxflags.append("-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
+        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+
+        # numpy 1.7 deprecated the following macro but the new one didn't
+        # existed in the past
+        if bool(numpy_ver < [1, 7]):
+            cxxflags.append("-DNPY_ARRAY_ENSUREARRAY=NPY_ENSUREARRAY")
+            cxxflags.append("-DNPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
+            cxxflags.append("-DNPY_ARRAY_ALIGNED=NPY_ALIGNED")
+            cxxflags.append("-DNPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
+            cxxflags.append("-DNPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
+            cxxflags.append("-DNPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
+            cxxflags.append("-DNPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
+
+        # Platform-specific flags.
+        # We put them here, rather than in compile_str(), so they en up
+        # in the key of the compiled module, avoiding potential conflicts.
+
+    
+        # Figure out whether the current Python executable is 32
+        # or 64 bit and compile accordingly. This step is ignored for
+        # ARM (32-bit and 64-bit) architectures in order to make
+        # Theano compatible with the Raspberry Pi, Raspberry Pi 2, or
+        # other systems with ARM processors.
+        """
+        if (not any(['arm' in flag for flag in cxxflags]) and
+                not any(arch in platform.machine() for arch in ['arm', 'aarch'])):
+            n_bits = local_bitwidth()
+            cxxflags.append('-m%d' % n_bits)
+            _logger.debug("Compiling for %s bit architecture", n_bits)
+        """
+        if sys.platform != 'win32':
+            # Under Windows it looks like fPIC is useless. Compiler warning:
+            # '-fPIC ignored for target (all code is position independent)'
+            cxxflags.append('-fPIC')
+
+        if sys.platform == 'win32' and local_bitwidth() == 64:
+            # Under 64-bit Windows installation, sys.platform is 'win32'.
+            # We need to define MS_WIN64 for the preprocessor to be able to
+            # link with libpython.
+            cxxflags.append('-DMS_WIN64')
+
+        if sys.platform == 'darwin':
+            # Use the already-loaded python symbols.
+            cxxflags.extend(['-undefined', 'dynamic_lookup'])
+
+        return cxxflags
+
+    @staticmethod
+    def try_compile_tmp(src_code, tmp_prefix='', flags=(),
+                        try_run=False, output=False):
+        return Compiler._try_compile_tmp(src_code, tmp_prefix, flags,
+                                         try_run, output,
+                                         theano.config.cxx)
+
+    @staticmethod
+    def try_flags(flag_list, preambule="", body="",
+                  try_run=False, output=False):
+        return Compiler._try_flags(flag_list, preambule, body, try_run, output,
+                                   theano.config.cxx)
+
+    @staticmethod
+    def compile_str(module_name, src_code, location=None,
+                    include_dirs=None, lib_dirs=None, libs=None,
+                    preargs=None, py_module=True, hide_symbols=True):
+        """
+        Parameters
+        ----------
+        module_name : str
+            This has been embedded in the src_code.
+        src_code
+            A complete c or c++ source listing for the module.
+        location
+            A pre-existing filesystem directory where the cpp file and .so will
+            be written.
+        include_dirs
+            A list of include directory names (each gets prefixed with -I).
+        lib_dirs
+            A list of library search path directory names (each gets prefixed
+            with -L).
+        libs
+            A list of libraries to link with (each gets prefixed with -l).
+        preargs
+            A list of extra compiler arguments.
+        py_module
+            If False, compile to a shared library, but do not import it as a
+            Python module.
+        hide_symbols
+            If True (the default) all symbols will be hidden from the library
+            symbol table (which means that other objects can't use them).
+
+        Returns
+        -------
+        object
+            Dynamically-imported python module of the compiled code (unless
+            py_module is False, in that case returns None).
+
+        """
+        # TODO: Do not do the dlimport in this function
+
+        if not theano.config.cxx:
+            raise MissingCXX("icpc not available! We can't compile c code.")
+
+        if include_dirs is None:
+            include_dirs = []
+        if lib_dirs is None:
+            lib_dirs = []
+        if libs is None:
+            libs = []
+        if preargs is None:
+            preargs = []
+
+        # Remove empty string directory
+        include_dirs = [d for d in include_dirs if d]
+        lib_dirs = [d for d in lib_dirs if d]
+
+        include_dirs = include_dirs + std_include_dirs()
+        libs = libs + std_libs()
+        lib_dirs = lib_dirs + std_lib_dirs()
+
+        cppfilename = os.path.join(location, 'mod.cpp')
+        with open(cppfilename, 'w') as cppfile:
+
+            _logger.debug('Writing module C++ code to %s', cppfilename)
+
+            cppfile.write(src_code)
+            # Avoid icc warning "no newline at end of file".
+            if not src_code.endswith('\n'):
+                cppfile.write('\n')
+
+        lib_filename = os.path.join(
+            location,
+            '%s.%s' % (module_name, get_lib_extension()))
+
+        _logger.debug('Generating shared lib %s', lib_filename)
+        cmd = [theano.config.cxx, get_icc_shared_library_arg(), '-g']
+
+        if config.cmodule.remove_gxx_opt:
+            cmd.extend(p for p in preargs if not p.startswith('-O'))
+        else:
+            cmd.extend(preargs)
+        # to support path that includes spaces, we need to wrap it with double quotes on Windows
+        path_wrapper = "\"" if os.name == 'nt' else ""
+        cmd.extend(['-I%s%s%s' % (path_wrapper, idir, path_wrapper) for idir in include_dirs])
+        cmd.extend(['-L%s%s%s' % (path_wrapper, ldir, path_wrapper) for ldir in lib_dirs])
+        # TODO: Check
+        if hide_symbols and sys.platform != 'win32':
+            # This has been available since gcc 4.0 so we suppose it
+            # is always available. We pass it here since it
+            # significantly reduces the size of the symbol table for
+            # the objects we want to share. This in turns leads to
+            # improved loading times on most platforms (win32 is
+            # different, as usual).
+            cmd.append('-fvisibility=hidden')
+        cmd.extend(['-o', lib_filename])
+        cmd.append(cppfilename)
+        cmd.extend(['-l%s' % l for l in libs])
+        # print >> sys.stderr, 'COMPILING W CMD', cmd
+        _logger.debug('Running cmd: %s', ' '.join(cmd))
+
+        def print_command_line_error():
+            # Print command line when a problem occurred.
+            print(("Problem occurred during compilation with the "
+                   "command line below:"), file=sys.stderr)
+            print(' '.join(cmd), file=sys.stderr)
+
+        try:
+            p_out = output_subprocess_Popen(cmd)
+            compile_stdout = decode(p_out[0])
+            compile_stderr = decode(p_out[1])
+        except Exception:
+            # An exception can occur e.g. if `icpc` is not found.
+            print_command_line_error()
+            raise
+
+        if config.icc.opt_report and "10397" in compile_stderr:
+            _logger.warn("Optimization reports are generated in *.optrpt files in the output location %s" % location)
+
+        status = p_out[2]
+
+        if status:
+            print('===============================')
+            for i, l in enumerate(src_code.split('\n')):
+                # gcc put its messages to stderr, so we add ours now
+                print('%05i\t%s' % (i + 1, l), file=sys.stderr)
+            print('===============================')
+            print_command_line_error()
+            # Print errors just below the command line.
+            print(compile_stderr)
+            # We replace '\n' by '. ' in the error message because when Python
+            # prints the exception, having '\n' in the text makes it more
+            # difficult to read.
+            raise Exception('Compilation failed (return status=%s): %s' %
+                            (status, compile_stderr.replace('\n', '. ')))
+        elif config.cmodule.compilation_warning and compile_stderr:
+            # Print errors just below the command line.
+            print(compile_stderr)
+
+        if py_module:
+            # touch the __init__ file
+            open(os.path.join(location, "__init__.py"), 'w').close()
+            assert os.path.isfile(lib_filename)
+            return dlimport(lib_filename)
+
+if config.cxx == "icpc":
+    CXX_compiler = ICC_compiler
+else:
+    CXX_compiler = GCC_compiler        

@@ -11,7 +11,7 @@ from theano.scalar import as_scalar, constant, Log
 from theano.tensor import as_tensor_variable
 from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp
-from theano.gof.cmodule import GCC_compiler
+from theano.gof.cmodule import CXX_compiler
 from theano.gof.type import CDataType, Generic
 from theano.compile import optdb
 from theano.compile.ops import shape_i, shape_i_op
@@ -71,7 +71,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
     # default gpu, not the one selected by the user. If mixed
     # GPU are installed or if the GPUs are configured in
     # exclusive mode, this cause bad detection.
-    avail, out, err = GCC_compiler.try_flags(
+    avail, out, err = CXX_compiler.try_flags(
         params, preambule=preambule, body=body,
         try_run=False, output=True)
 

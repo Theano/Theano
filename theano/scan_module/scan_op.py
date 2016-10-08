@@ -939,7 +939,7 @@ class Scan(PureOp):
                         args,
                         outs,
                         self, node)
-        except (ImportError, theano.gof.cmodule.MissingGXX):
+        except (ImportError, theano.gof.cmodule.MissingCXX):
             p = self.execute
         # default arguments are stored in the closure of `rval`
 

@@ -9,7 +9,7 @@ from __future__ import absolute_import, print_function, division
 import numpy
 
 import theano
-from theano.gof.cmodule import GCC_compiler
+from theano.gof.cmodule import CXX_compiler
 
 
 class MyOp(theano.compile.ops.DeepCopyOp):
@@ -68,4 +68,4 @@ def test_flag_detection():
     # It used to happen on python 3 because of improper string handling,
     # but was not detected because that path is not usually taken,
     # so we test it here directly.
-    GCC_compiler.try_flags(["-lblas"])
+    CXX_compiler.try_flags(["-lblas"])
