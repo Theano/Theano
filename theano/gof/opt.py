@@ -535,9 +535,22 @@ class MergeFeature(object):
         # candidate, but it failed. This is used to avoid infinite loops
         # during the replacement phase.
         self.blacklist = []
+        self.d = defaultdict(list)
 
         for node in fgraph.toposort():
             self.on_import(fgraph, node, "on_attach")
+
+    def on_detach(self, fgraph):
+        # To allow pickling this object
+        fgraph.merge_feature = None
+        self.seen_constants = None
+        self.const_sig = None
+        self.const_sig_inv = None
+        self.nodes_seen = None
+        self.noinput_nodes = None
+        self.scheduled = None
+        self.blacklist = None
+        self.d = None
 
     def on_change_input(self, fgraph, node, i, r, new_r, reason):
         # If inputs to node change, it is not guaranteed that it is distinct
@@ -552,6 +565,15 @@ class MergeFeature(object):
 
         if isinstance(new_r, graph.Constant):
             self.process_constant(fgraph, new_r)
+        # Remove from self.d
+        if not isinstance(node, str):
+            old_inputs = list(node.inputs)
+            old_inputs[i] = r
+            old_k = (tuple(old_inputs), node.op)
+            # TODO: remove the next if
+            l = self.d[old_k]
+            if node in l:
+                l.remove(node)
 
     def on_import(self, fgraph, node, reason):
         for c in node.inputs:
@@ -571,6 +593,13 @@ class MergeFeature(object):
                 self.const_sig.discard(c)
                 self.const_sig_inv.discard(sig)
                 self.seen_constants.discard(id(c))
+        k = (tuple(node.inputs), node.op)
+        # TODO: remove the next if
+        l = self.d[k]
+        if node in l:
+            l.remove(node)
+#        else:
+#            import pdb;pdb.set_trace()
 
     def process_constant(self, fgraph, c):
         """
@@ -602,7 +631,30 @@ class MergeFeature(object):
             return
 
         node_has_assert = False
+        k = (tuple(node.inputs), node.op)
+        if k in self.d:
+            replacement_candidates2 = []
+            merge_candidates = [c for c in self.d[k] if c in self.nodes_seen]
+            for candidate in merge_candidates:
+                pairs = list(zip(node.outputs,
+                                 candidate.outputs,
+                                 ['merge'] * len(node.outputs)))
+                # transfer names
+                for pair in pairs:
+                    node_output, cand_output = pair[:2]
+                    # clobber old name with new one
+                    # it's arbitrary... one of the names has to go
+                    if node_output.name:
+                        cand_output.name = node_output.name
 
+                replacement_candidates2.append(pairs)
+            self.scheduled.append(replacement_candidates2)
+        else:
+#            self.nodes_seen.add(node)
+#            if not node.inputs:
+#                self.noinput_nodes.add(node)
+            self.d[k].append(node)
+#        return
         # These asserts ensure that the fgraph has set the clients field
         # properly.
         # The clients should at least contain `node` itself!
