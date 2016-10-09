@@ -1,3 +1,5 @@
+# License : https://github.com/slezica/python-frozendict/blob/master/LICENSE.txt
+
 import collections
 import operator
 import functools
