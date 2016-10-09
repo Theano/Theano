@@ -7,6 +7,9 @@ import numpy
 from theano.tensor.nnet.tests import test_abstract_conv
 from ..type import GpuArrayType, gpuarray_shared_constructor, get_context
 from ..dnn import dnn_available, GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI
+from ..blas import (
+    GpuCorrMM, GpuCorrMM_gradWeights, GpuCorrMM_gradInputs,
+    GpuCorr3dMM, GpuCorr3dMM_gradWeights, GpuCorr3dMM_gradInputs)
 
 from .config import mode_with_gpu, test_ctx_name
 from pygpu import gpuarray
@@ -78,6 +81,72 @@ class TestDnnConv3d(test_abstract_conv.BaseTestConv3d):
                            verify_grad=True, mode=mode,
                            provide_shape=provide_shape, border_mode=b,
                            filter_flip=flip, target_op=GpuDnnConvGradI)
+
+
+class TestCorrMMConv2d(test_abstract_conv.BaseTestConv2d):
+    @classmethod
+    def setup_class(cls):
+        test_abstract_conv.BaseTestConv2d.setup_class()
+        cls.shared = staticmethod(gpuarray_shared_constructor)
+        cls.mode = mode_with_gpu.excluding('cudnn')
+
+    def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1)):
+        mode = self.mode
+        o = self.get_output_shape(i, f, s, b, fd)
+        self.run_fwd(inputs_shape=i, filters_shape=f,
+                     subsample=s, verify_grad=True, mode=mode,
+                     provide_shape=provide_shape, border_mode=b,
+                     filter_flip=flip, target_op=(GpuCorrMM,
+                                                  GpuCorrMM_gradWeights,
+                                                  GpuCorrMM_gradInputs),
+                     filter_dilation=fd)
+        self.run_gradweight(inputs_shape=i, filters_shape=f,
+                            output_shape=o, subsample=s,
+                            verify_grad=True, mode=mode,
+                            provide_shape=provide_shape, border_mode=b,
+                            filter_flip=flip,
+                            target_op=GpuCorrMM_gradWeights,
+                            filter_dilation=fd)
+        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                           output_shape=o, subsample=s,
+                           verify_grad=True, mode=mode,
+                           provide_shape=provide_shape, border_mode=b,
+                           filter_flip=flip,
+                           target_op=GpuCorrMM_gradInputs,
+                           filter_dilation=fd)
+
+
+class TestCorrMMConv3d(test_abstract_conv.BaseTestConv3d):
+    @classmethod
+    def setup_class(cls):
+        test_abstract_conv.BaseTestConv3d.setup_class()
+        cls.shared = staticmethod(gpuarray_shared_constructor)
+        cls.mode = mode_with_gpu.excluding('cudnn')
+
+    def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1, 1)):
+        mode = self.mode
+        o = self.get_output_shape(i, f, s, b, fd)
+        self.run_fwd(inputs_shape=i, filters_shape=f,
+                     subsample=s, verify_grad=True, mode=mode,
+                     provide_shape=provide_shape, border_mode=b,
+                     filter_flip=flip, target_op=(GpuCorr3dMM,
+                                                  GpuCorr3dMM_gradWeights,
+                                                  GpuCorr3dMM_gradInputs),
+                     filter_dilation=fd)
+        self.run_gradweight(inputs_shape=i, filters_shape=f,
+                            output_shape=o, subsample=s,
+                            verify_grad=True, mode=mode,
+                            provide_shape=provide_shape, border_mode=b,
+                            filter_flip=flip,
+                            target_op=GpuCorr3dMM_gradWeights,
+                            filter_dilation=fd)
+        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                           output_shape=o, subsample=s,
+                           verify_grad=True, mode=mode,
+                           provide_shape=provide_shape, border_mode=b,
+                           filter_flip=flip,
+                           target_op=GpuCorr3dMM_gradInputs,
+                           filter_dilation=fd)
 
 
 class TestDnnConvTypes(test_abstract_conv.TestConvTypes):
