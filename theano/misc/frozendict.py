@@ -1,5 +1,6 @@
 # License : https://github.com/slezica/python-frozendict/blob/master/LICENSE.txt
 
+from __future__ import absolute_import, print_function, division
 import collections
 import operator
 import functools

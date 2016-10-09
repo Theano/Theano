@@ -28,11 +28,11 @@ import theano
 from six.moves import xrange
 from theano.compat import izip
 from theano.gof import Op, Apply, local_optimizer, EquilibriumDB
-from theano.gof.utils import hash_from_dict
 from theano.sandbox.cuda import GpuElemwise, CudaNdarrayType, GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous)
 from theano.sandbox.cuda.opt import gpu_seqopt
+from theano.misc.frozendict import frozendict
 
 import pycuda
 from pycuda.compiler import SourceModule
@@ -183,13 +183,14 @@ class PycudaElemwiseKernelOp(GpuOp):
 class PycudaElemwiseSourceModuleOp(GpuOp):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
+    __props__ = ("scalar_op", "inplace_pattern", "name")
 
     def __init__(self, scalar_op, inplace_pattern=None, name=None):
         if inplace_pattern is None:
-            inplace_pattern = {}
+            inplace_pattern = frozendict({})
         self.name = name
         self.scalar_op = scalar_op
-        self.inplace_pattern = inplace_pattern
+        self.inplace_pattern = frozendict(inplace_pattern)
 
     def __str__(self):
         if self.name is None:
@@ -202,15 +203,6 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
                 return self.__class__.__name__ + "{%s}" % (self.scalar_op)
         else:
             return self.name
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.scalar_op == other.scalar_op and
-                self.inplace_pattern == other.inplace_pattern)
-
-    def __hash__(self):
-        return (hash(type(self)) ^ hash(self.scalar_op) ^
-                hash_from_dict(self.inplace_pattern))
 
     def make_node(self, *inputs):
         _inputs = [gpu_contiguous(as_cuda_ndarray_variable(i)) for i in inputs]
@@ -284,12 +276,7 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
             inplace_pattern = {}
         self.name = name
         self.scalar_op = scalar_op
-        self.inplace_pattern = inplace_pattern
-
-    # As we have a dict in props, we need to implement __hash__
-    def __hash__(self):
-        return hash((type(self), hash(self.scalar_op),
-                    hash_from_dict(self.inplace_pattern)))
+        self.inplace_pattern = frozendict(inplace_pattern)
 
     def __str__(self):
         if self.name is None:

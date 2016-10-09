@@ -581,6 +581,17 @@ second dimension
                                                     out_broadcastables)]
         return Apply(self, inputs, outputs)
 
+    def __str__(self):
+        if self.name is None:
+            if self.inplace_pattern:
+                items = list(self.inplace_pattern.items())
+                items.sort()
+                return "Elemwise{%s}%s" % (self.scalar_op, str(items))
+            else:
+                return "Elemwise{%s}" % (self.scalar_op)
+        else:
+            return self.name
+
     def R_op(self, inputs, eval_points):
         outs = self(*inputs, **dict(return_list=True))
         rval = [None for x in outs]
