@@ -452,7 +452,7 @@ def warn_cxx(val):
     return True
 
 AddConfigVar('cxx',
-             "The C++ compiler to use. Currently only g++ and icpc is"
+             "The C++ compiler to use. Currently only g++ and icpc are"
              " supported, but supporting additional compilers should not be "
              "too difficult. "
              "If it is empty, no C++ code is compiled.",
@@ -1125,7 +1125,7 @@ AddConfigVar('gcc.cxxflags',
              # Added elsewhere in the c key only when needed.
              in_c_key=False)
 
-if not config.cxx == "gcc" and config.gcc.cxxflags:
+if config.cxx == "icpc" and config.gcc.cxxflags:
     _logger.warning("cxx is not set to g++. gcc.cxxflags is not effective!")
 
 AddConfigVar('icc.cxxflags',
@@ -1373,6 +1373,7 @@ def default_blas_ldflags():
     # Otherwise, there could be problem in the LD_LIBRARY_PATH.
     return try_blas_flag(['-lblas'])
 
+
 # TODO: Add icc support
 def try_blas_flag(flags):
     from theano.gof.cmodule import CXX_compiler
@@ -1581,6 +1582,7 @@ try:
 except OSError:
     # Typically means gcc cannot be found.
     icc_version_str = 'CXX_NOT_FOUND'
+
 
 def local_bitwidth():
     """

@@ -34,7 +34,7 @@ from theano.misc.windows import (subprocess_Popen,
 
 # we will abuse the lockfile mechanism when reading and writing the registry
 from theano.gof import compilelock
-from theano.configdefaults import gcc_version_str, icc_version_str, cxx_version_str, local_bitwidth
+from theano.configdefaults import gcc_version_str, icc_version_str, local_bitwidth
 
 importlib = None
 try:
@@ -1565,6 +1565,7 @@ def get_gcc_shared_library_arg():
     else:
         return '-shared'
 
+
 def get_icc_shared_library_arg():
     """
     Return the platform-dependent GCC argument for shared libraries.
@@ -1574,6 +1575,7 @@ def get_icc_shared_library_arg():
         return '-dynamiclib'
     else:
         return '-shared'
+
 
 def std_include_dirs():
     numpy_inc_dirs = numpy.distutils.misc_util.get_numpy_include_dirs()
@@ -2364,8 +2366,7 @@ class ICC_compiler(Compiler):
                      f.startswith("-march=") or
                      f.startswith("-m") or
                      f.startswith("-x") or
-                     f.startswith("-ax")
-                 )):
+                     f.startswith("-ax"))):
                     _logger.warn(
                         "WARNING: your Theano flags `icc.cxxflags` specify"
                         " an arch optimizing flags.\n"
@@ -2429,7 +2430,7 @@ class ICC_compiler(Compiler):
             cxxflags.append("-qopt-report=%s" % config.icc.opt_report)
             if config.icc.opt_report_phase:
                 cxxflags.append("-qopt-report-phase=%s" % config.icc.opt_report_phase)
-        
+
         # NumPy 1.7 Deprecate the old API. I updated most of the places
         # to use the new API, but not everywhere. When finished, enable
         # the following macro to assert that we don't bring new code
@@ -2452,19 +2453,6 @@ class ICC_compiler(Compiler):
         # We put them here, rather than in compile_str(), so they en up
         # in the key of the compiled module, avoiding potential conflicts.
 
-    
-        # Figure out whether the current Python executable is 32
-        # or 64 bit and compile accordingly. This step is ignored for
-        # ARM (32-bit and 64-bit) architectures in order to make
-        # Theano compatible with the Raspberry Pi, Raspberry Pi 2, or
-        # other systems with ARM processors.
-        """
-        if (not any(['arm' in flag for flag in cxxflags]) and
-                not any(arch in platform.machine() for arch in ['arm', 'aarch'])):
-            n_bits = local_bitwidth()
-            cxxflags.append('-m%d' % n_bits)
-            _logger.debug("Compiling for %s bit architecture", n_bits)
-        """
         if sys.platform != 'win32':
             # Under Windows it looks like fPIC is useless. Compiler warning:
             # '-fPIC ignored for target (all code is position independent)'
@@ -2602,7 +2590,7 @@ class ICC_compiler(Compiler):
 
         try:
             p_out = output_subprocess_Popen(cmd)
-            compile_stdout = decode(p_out[0])
+            # compile_stdout = decode(p_out[0])
             compile_stderr = decode(p_out[1])
         except Exception:
             # An exception can occur e.g. if `icpc` is not found.
@@ -2641,4 +2629,4 @@ class ICC_compiler(Compiler):
 if config.cxx == "icpc":
     CXX_compiler = ICC_compiler
 else:
-    CXX_compiler = GCC_compiler        
+    CXX_compiler = GCC_compiler
