@@ -591,7 +591,7 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
         xp = x.reshape((5, 5))
         y = T.nnet.softmax(xp.flatten()).sum()
         g = T.grad(y, x)
-        f = theano.function(inputs=[x], outputs=g, mode=self.mode)
+        theano.function(inputs=[x], outputs=g, mode=self.mode)
 
     def test_cudnn_softmax_grad_opt(self):
         # Verify that the SoftmaxGrad -> GpuDnnSoftmaxGrad optimization is
