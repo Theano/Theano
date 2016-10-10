@@ -1,6 +1,3 @@
-variables:
-    CUDA_BUILD_TOKEN: 6ZarsZHsrREDJuSnFUKF
-
 stages:
     - build
     - push
@@ -10,7 +7,7 @@ stages:
 theano:
     stage: build
     script:
-    - docker login -u gitlab-ci-token -p "${CUDA_BUILD_TOKEN}" "${CI_REGISTRY}"
+    - docker login -u gitlab-ci-token -p "${CI_BUILD_TOKEN}" "${CI_REGISTRY}"
     - ORIGIN="${CI_BUILD_REPO##*@}" && git remote set-url origin git@${ORIGIN/\//:}
     - if [[ "${CI_BUILD_REF_NAME}" == *-stage ]]; then
         echo -e 'Dockerfile*\n.git*\n.dockerignore' > .dockerignore;
