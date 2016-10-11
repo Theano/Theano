@@ -895,6 +895,9 @@ second dimension
                 # It happen that make_thunk isn't called, like in
                 # get_scalar_constant_value
                 self.prepare_node(node, None, None, 'py')
+                # prepare_node will add ufunc to self or the tag
+                # depending if we can reuse it or not. So we need to
+                # test both again.
                 if self.ufunc:
                     ufunc = self.ufunc
                 else:

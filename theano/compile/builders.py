@@ -125,13 +125,13 @@ class OpFromGraph(gof.Op):
                          [type() for type in self.output_types])
 
     def prepare_node(self, node, storage_map, compute_map, impl):
-        if not hasattr(node.tag, "fn") and impl == 'py':
-            node.tag.fn = orig_function(self.new_inputs,
-                                        self.new_outputs,
-                                        **self.kwargs)
+        if not hasattr(self, "fn") and impl == 'py':
+            self.fn = orig_function(self.new_inputs,
+                                    self.new_outputs,
+                                    **self.kwargs)
 
     def perform(self, node, inputs, outputs):
-        variables = node.tag.fn(*inputs)
+        variables = self.fn(*inputs)
         assert len(variables) == len(outputs)
         for output, variable in zip(outputs, variables):
             # TODO: when function's output-borrowing semantics are correct,

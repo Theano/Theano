@@ -55,6 +55,14 @@ class GpuCumsum(CumsumOp, GpuOp):
         if node_.op.max_threads_dim0 is None or node_.op.max_grid_size1 is None or node_.op.max_grid_size2 is None:
             cuda = theano.sandbox.cuda
             device_id = cuda.use.device_number
+            if device_id is None:
+                cuda.use("gpu",
+                         force=False,
+                         default_to_move_computation_to_gpu=False,
+                         move_shared_float32_to_gpu=False,
+                         enable_cuda=False,
+                         test_driver=True)
+                device_id = cuda.use.device_number
             cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
             prop = cuda_ndarray.device_properties(device_id)
             node_.op.max_threads_dim0 = prop['maxThreadsDim0']
