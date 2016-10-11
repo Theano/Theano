@@ -3110,8 +3110,9 @@ if True:
                 return
             ins = []
             for n in node.inputs:
-                if isinstance(n.owner.op, HostFromGpu):
-                    n = n.owner.inputs[0]
+                if n.owner is not None:
+                    if isinstance(n.owner.op, HostFromGpu):
+                        n = n.owner.inputs[0]
                 if n.ndim != 2:
                     return
                 ins.append(n.dimshuffle(0, 'x', 1, 'x'))

@@ -582,6 +582,19 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
         if cuda.dnn.version() != (3000, 3000):
             utt.verify_grad(softmax_op, [x_val2], mode=mode_with_gpu)
 
+    def test_local_softmax_dnn_grad(self):
+        """
+        Check for optimization error when grad of summed
+        softmax is taken over tensor with fixed shape.
+        """
+        x = T.fvector('x')
+        xp = x.reshape((5, 5))
+        y = T.nnet.softmax(xp.flatten()).sum()
+        g = T.grad(y, x)
+        f = theano.function(inputs=[x], outputs=g, mode=self.mode)
+        assert(any(n for n in f.maker.fgraph.toposort() if
+                   isinstance(n.op, dnn.GpuDnnSoftmaxGrad)))
+
     def test_cudnn_softmax_grad_opt(self):
         # Verify that the SoftmaxGrad -> GpuDnnSoftmaxGrad optimization is
         # applied when cudnn is required
