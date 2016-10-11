@@ -823,17 +823,13 @@ class PerformLinker(LocalLinker):
             # the python version
             # Note : ops that implement their own make thunk don't usually
             # have this attribute defiend !!
-            old_value = getattr(node.op, '_op_use_c_code', False)
-            try:
-                node.op._op_use_c_code = False
-                thunks += [node.op.make_thunk(node,
-                                              storage_map,
-                                              compute_map,
-                                              no_recycling)]
-                thunks[-1].inputs = [storage_map[v] for v in node.inputs]
-                thunks[-1].outputs = [storage_map[v] for v in node.outputs]
-            finally:
-                node.op._op_use_c_code = old_value
+            thunks += [node.op.make_thunk(node,
+                                          storage_map,
+                                          compute_map,
+                                          no_recycling,
+                                          'py')]
+            thunks[-1].inputs = [storage_map[v] for v in node.inputs]
+            thunks[-1].outputs = [storage_map[v] for v in node.outputs]
 
         computed, last_user = gc_helper(order)
         if self.allow_gc:

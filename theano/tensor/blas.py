@@ -297,9 +297,6 @@ class Ger(Op):
     This interface to GER allows non-destructive operation on A via the
     `destructive` argument to the constructor.
 
-    :TODO: Create better classes ScipyGer and CGer that inherit from this class
-    and override the make_thunk() method to use Scipy and C respectively.
-
     """
 
     __props__ = ("destructive",)
@@ -837,10 +834,8 @@ class Gemm(GemmRelated):
         else:
             self.setup_z_Nz_Sz = self.setup_z_Nz_Sz_outplace
 
-        # Correctly reload older pickles where _op_use_c_code and
-        # destroy_map were not saved
-        if '_op_use_c_code' not in self.__dict__:
-            self._op_use_c_code = theano.config.cxx
+        # Correctly reload older pickles where destroy_map were not
+        # saved
         if 'destroy_map' not in self.__dict__ and self.inplace:
             self.destroy_map = {0: [0]}
 

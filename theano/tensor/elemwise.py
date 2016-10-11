@@ -787,14 +787,15 @@ second dimension
 
         return ret
 
-    def prepare_node(self, node, storage_map, compute_map):
+    def prepare_node(self, node, storage_map, compute_map, impl):
         # Postpone the ufunc building to the last minutes
         # NumPy ufunc support only up to 31 inputs.
         # But our c code support more.
         if (len(node.inputs) < 32 and
                 (self.nfunc is None or
                  self.scalar_op.nin != len(node.inputs)) and
-                self.ufunc is None):
+                self.ufunc is None and
+                impl == 'py'):
 
             ufunc = numpy.frompyfunc(self.scalar_op.impl,
                                      len(node.inputs),
@@ -830,7 +831,7 @@ second dimension
             [get_scalar_type(dtype=output.type.dtype).make_variable()
              for output in node.outputs])
 
-        self.scalar_op.prepare_node(node.tag.fake_node, None, None)
+        self.scalar_op.prepare_node(node.tag.fake_node, None, None, impl)
 
     def perform(self, node, inputs, output_storage):
         if len(node.inputs) >= 32:
@@ -890,14 +891,15 @@ second dimension
             # numpy the first (faster) version leads to segfaults
             if self.ufunc:
                 ufunc = self.ufunc
+            elif not hasattr(node.tag, 'ufunc'):
+                # It happen that make_thunk isn't called, like in
+                # get_scalar_constant_value
+                self.prepare_node(node, None, None, 'py')
+                if self.ufunc:
+                    ufunc = self.ufunc
+                else:
+                    ufunc = node.tag.ufunc
             else:
-                if not hasattr(node.tag, 'ufunc'):
-                    # It happen that make_thunk isn't called, like in
-                    # get_scalar_constant_value
-                    node.tag.ufunc = numpy.frompyfunc(self.scalar_op.impl,
-                                                      len(node.inputs),
-                                                      self.scalar_op.nout)
-
                 ufunc = node.tag.ufunc
 
             nout = ufunc.nout
@@ -977,7 +979,7 @@ second dimension
         # To not request all of them to call prepare_node(), do it here.
         # There is no harm if it get called multile time.
         if not hasattr(node.tag, 'fake_node'):
-            self.prepare_node(node, None, None)
+            self.prepare_node(node, None, None, 'c')
         _inames = inames
         _onames = onames
 

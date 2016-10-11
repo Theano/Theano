@@ -320,7 +320,7 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
         out_node = Apply(self, _inputs, [otype() for o in xrange(self.nout)])
         return out_node
 
-    def make_thunk(self, node, storage_map, _, _2):
+    def make_thunk(self, node, storage_map, _, _2, impl=None):
         # TODO support broadcast!
         # TODO assert all input have the same shape
         fct_name = "pycuda_elemwise_%s" % str(self.scalar_op)

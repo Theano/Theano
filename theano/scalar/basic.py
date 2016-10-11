@@ -3664,10 +3664,13 @@ class Composite(ScalarOp):
         #  self.init_name()      # self.name
         self.name = None
 
-    def prepare_node(self, node, storage_map, compute_map):
-        self.init_py_impls()  # self._impls
-        for n in theano.gof.graph.list_of_nodes(self.inputs, self.outputs):
-            n.op.prepare_node(n, None, None)
+    def prepare_node(self, node, storage_map, compute_map, impl):
+        if impl == 'py':
+            self.init_py_impls()  # self._impls
+        if not getattr(node.tag, 'graph_prepare_node_called', False):
+            for n in theano.gof.graph.list_of_nodes(self.inputs, self.outputs):
+                n.op.prepare_node(n, None, None, impl)
+            node.tag.graph_prepare_node_called = True
 
     def output_types(self, input_types):
         if tuple(input_types) != self.inputs_type:

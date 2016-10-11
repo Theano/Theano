@@ -25,7 +25,7 @@ class IfElseIfElseIf(PureOp):
         assert t3.type == f3.type
         return Apply(self, [c1, t1, c2, t2, c3, t3, f3], [t1.type()])
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def make_thunk(self, node, storage_map, compute_map, no_recycling, impl):
 
         input_computed = [compute_map[v] for v in node.inputs]
         output_computed = [compute_map[v] for v in node.outputs]
@@ -93,7 +93,7 @@ class NotImplementedOp(PureOp):
     def make_node(self, x):
         return Apply(self, [x], [x.type()])
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def make_thunk(self, node, storage_map, compute_map, no_recycling, impl):
         def thunk():
             raise self.E()
         thunk.lazy = False
