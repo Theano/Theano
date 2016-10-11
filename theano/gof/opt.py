@@ -628,15 +628,16 @@ class MergeFeature(object):
         """
         Check if a node can be merged, and queue that replacement.
 
+        node should have been removed from self.nodes_seen and self.d.
         """
         if node in self.nodes_seen:
             return
 
         node_has_assert = False
         k = (tuple(node.inputs), node.op)
+        replacement_candidates2 = []
         if k in self.d:
-            replacement_candidates2 = []
-            merge_candidates = [c for c in self.d[k] if c in self.nodes_seen]
+            merge_candidates = self.d[k]
             for candidate in merge_candidates:
                 pairs = list(zip(node.outputs,
                                  candidate.outputs,
@@ -650,6 +651,9 @@ class MergeFeature(object):
                         cand_output.name = node_output.name
 
                 replacement_candidates2.append(pairs)
+        assert node not in self.nodes_seen
+
+        if replacement_candidates2:
             self.scheduled.append(replacement_candidates2)
         else:
             self.nodes_seen.add(node)
