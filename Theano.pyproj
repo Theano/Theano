@@ -34,7 +34,6 @@
     <Compile Include="theano\compile\mode.py" />
     <Compile Include="theano\compile\module.py" />
     <Compile Include="theano\compile\pfunc.py" />
-    <Compile Include="theano\compile\profilemode.py" />
     <Compile Include="theano\compile\profiling.py" />
     <Compile Include="theano\compile\sandbox\__init__.py" />
     <Compile Include="theano\compile\sharedvalue.py" />

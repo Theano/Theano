@@ -907,7 +907,7 @@ class BaseGpuCorrMM(GpuOp):
 
     def flops(self, inp, outp):
         """
-        Useful with the hack in profilemode to print the MFlops.
+        Useful with the hack in profiling to print the MFlops.
 
         """
         # if the output shape is correct, then this gives the correct
@@ -1421,7 +1421,7 @@ class BaseGpuCorr3dMM(GpuOp):
             self.pad)
 
     def flops(self, inp, outp):
-        """ Useful with the hack in profilemode to print the MFlops"""
+        """ Useful with the hack in profiling to print the MFlops"""
         # if the output shape is correct, then this gives the correct
         # flops for any direction, sampling, padding, and border mode
         inputs, filters = inp
@@ -2101,7 +2101,7 @@ class GpuConv(GpuOp):
         return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
 
     def flops(self, inputs, outputs):
-        """ Useful with the hack in profilemode to print the MFlops"""
+        """ Useful with the hack in profiling to print the MFlops"""
         images, kerns = inputs
         out, = outputs
         assert images[1] == kerns[1]

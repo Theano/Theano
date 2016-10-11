@@ -7,7 +7,7 @@ import unittest
 
 import theano
 import theano.tensor as T
-from theano.compile import Mode, ProfileMode
+from theano.compile import Mode
 
 
 class T_bunch_of_modes(unittest.TestCase):
@@ -18,9 +18,6 @@ class T_bunch_of_modes(unittest.TestCase):
         linker_classes_involved = []
 
         predef_modes = ['FAST_COMPILE', 'FAST_RUN', 'DEBUG_MODE']
-        # Use a new instance of ProfileMode instead of 'ProfileMode' to
-        # avoid printing a profile mode summary in nose output
-        predef_modes.append(ProfileMode())
 
         # Linkers to use with regular Mode
         if theano.config.cxx:
@@ -43,20 +40,13 @@ class T_bunch_of_modes(unittest.TestCase):
         # there should be
         # - VM_Linker
         # - OpWiseCLinker (FAST_RUN)
-        # - WrapLinker ("ProfileMode")
         # - PerformLinker (FAST_COMPILE)
         # - DebugMode's Linker  (DEBUG_MODE)
-        assert 5 == len(set(linker_classes_involved))
+        assert 4 == len(set(linker_classes_involved))
 
 
-class T_ProfileMode_WrapLinker(unittest.TestCase):
+class T_old_problem(unittest.TestCase):
     def test_1(self):
-        # First, compile a function with a new ProfileMode() object
-        # No need to call that function
-        x = T.matrix()
-        mode = ProfileMode()
-        theano.function([x], x * 2, mode=mode)
-
         # Then, build a mode with the same linker, and a modified optimizer
         default_mode = theano.compile.mode.get_default_mode()
         modified_mode = default_mode.including('specialize')

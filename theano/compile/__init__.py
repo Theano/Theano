@@ -19,8 +19,6 @@ from theano.compile.monitormode import MonitorMode
 
 from theano.compile.profiling import ProfileStats, ScanProfileStats
 
-from theano.compile.profilemode import ProfileMode
-
 from theano.compile.sharedvalue import (shared, shared_constructor,
                                         SharedVariable)
 from theano.compile.pfunc import pfunc, Param, rebuild_collect_shared

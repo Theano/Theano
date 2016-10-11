@@ -1378,17 +1378,11 @@ class FunctionMaker(object):
                  output_keys=None):
         mode = theano.compile.mode.get_mode(mode)
 
-        # figure out which profile object to use (if any)
-        # to help with forward-porting ProfileMode,
-        # we allow ProfileMode to provide a ProfileStats object
-        # using this somewhat awkward mechanism.
-        mode_profile = getattr(mode, 'profile', None)
-        if (profile is not None and
-                profile is not False and
-                mode_profile is not None):
+        # Assert old way of working isn't used
+        if getattr(mode, 'profile', None):
             raise TypeError(
-                'profile passed via both "mode" and "profile" arguments')
-        self.profile = profile = profile or mode_profile
+                "profile passed via 'mode'. This isn't supported anymore")
+        self.profile = profile
         if profile:
             # This is very important:
             # 1) We preload the cache here to don't have its timming
@@ -1744,9 +1738,6 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
     - FAST_RUN (default) (optimize without too much time)
 
     - FAST_COMPILE (minimal optimization)
-
-    - ProfileMode(deprecated): allow to print a profile mode with
-      mode.print_summary
 
     - DebugMode: verify many internal conditions that are normally assumed
       (slow)

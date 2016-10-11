@@ -91,7 +91,6 @@ class PrintEverythingMode(theano.Mode):
 
 def test_module_advanced_example():
 
-    profmode = theano.ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
     profmode = PrintEverythingMode(theano.gof.OpWiseCLinker(), 'fast_run')
 
     data_x = N.random.randn(4, 10)

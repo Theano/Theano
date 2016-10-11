@@ -11,7 +11,6 @@ from six import iteritems, itervalues
 
 import theano
 from theano import gof
-from theano.compile.profilemode import ProfileMode
 from theano.compile import Function
 from theano.compile import builders
 from theano.printing import pydot_imported, pydot_imported_msg
@@ -123,14 +122,7 @@ class PyDotFormatter(object):
 
         profile = None
         if isinstance(fct, Function):
-            mode = fct.maker.mode
-            if (not isinstance(mode, ProfileMode) or
-                    fct not in mode.profile_stats):
-                mode = None
-            if mode:
-                profile = mode.profile_stats[fct]
-            else:
-                profile = getattr(fct, "profile", None)
+            profile = getattr(fct, "profile", None)
             outputs = fct.maker.fgraph.outputs
             topo = fct.maker.fgraph.toposort()
         elif isinstance(fct, gof.FunctionGraph):

@@ -8,7 +8,7 @@ import theano
 import theano.tensor as T
 import theano.sandbox
 from six.moves import xrange
-from theano.compile import module, Mode, ProfileMode
+from theano.compile import module, Mode
 from theano import gof, Op, Apply
 
 from theano.tensor import blas, opt
@@ -191,7 +191,6 @@ class M(module.Module):
 
 mod = M()
 mode = 'FAST_RUN'
-#mode = ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
 mode = Mode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker(nice_errors=True))
 mode = Mode(optimizer='fast_run', linker='c')
 mode = Mode(optimizer='fast_run', linker='c|py')

@@ -19,7 +19,7 @@ import theano.sandbox.cuda as tcn
 import theano.tests.unittest_tools as utt
 
 
-if theano.config.mode not in ['FAST_RUN', 'Mode', 'ProfileMode']:
+if theano.config.mode not in ['FAST_RUN', 'Mode']:
     raise SkipTest('Skip test_mlp when not in normal optimization mode as '
                    'otherwise it is too slow!')
 
@@ -48,8 +48,6 @@ def get_mode(use_gpu, check_isfinite=True):
         ret = theano.compile.get_default_mode()
     else:
         ret = theano.compile.mode.get_mode('FAST_RUN')
-    if isinstance(ret, theano.compile.ProfileMode):
-        ret = copy.copy(ret)
     if isinstance(ret, theano.compile.DebugMode):
         ret = copy.copy(ret)
         ret.check_isfinite = check_isfinite
@@ -58,19 +56,6 @@ def get_mode(use_gpu, check_isfinite=True):
     else:
         ret = ret.excluding('gpu')
     return ret
-
-
-def print_mode(mode):
-    if mode is not None and isinstance(mode, (theano.compile.ProfileMode,)):
-        mode.print_summary()
-
-
-def print_diff_mode(a, b):
-    if (a is not None and
-        isinstance(a, (theano.compile.ProfileMode,)) and
-       isinstance(b, (theano.compile.ProfileMode,))):
-
-        a.print_diff_summary(b)
 
 
 def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10,
@@ -123,7 +108,6 @@ def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10,
         rval.append(train(xval, yval, lr))
     dt = time.time() - t0
 
-    print_mode(mode)
     return numpy.asarray(rval), dt
 
 
@@ -220,7 +204,6 @@ def run_conv_nnet1(use_gpu):
     for i in xrange(n_train):
         rval = train(xval, yval, lr)
     # print 'training done'
-    print_mode(mode)
     return rval
 
 
@@ -316,7 +299,6 @@ def run_conv_nnet2(use_gpu):  # pretend we are training LeNet for MNIST
     for i in xrange(n_train):
         rval = train(xval, yval, lr)
 
-    print_mode(mode)
     return rval
 
 
@@ -428,7 +410,6 @@ def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
 def run_conv_nnet2_classif(use_gpu, seed, isize, ksize, bsize,
                            n_train=10,
                            check_isfinite=True,
-                           pickle=False,
                            verbose=0,
                            version=-1):
     """Run the train function returned by build_conv_nnet2_classif on one device.
@@ -444,11 +425,6 @@ def run_conv_nnet2_classif(use_gpu, seed, isize, ksize, bsize,
         version=version,
         check_isfinite=check_isfinite)
 
-    if use_gpu:
-        device = 'GPU'
-    else:
-        device = 'CPU'
-
     xval = my_rand(*x_shape)
     yval = my_rand(*y_shape)
     lr = theano._asarray(0.01, dtype='float32')
@@ -456,17 +432,6 @@ def run_conv_nnet2_classif(use_gpu, seed, isize, ksize, bsize,
     rvals = my_zeros(n_train)
     for i in xrange(n_train):
         rvals[i] = train(xval, yval, lr)[0]
-    print_mode(mode)
-
-    if pickle and isinstance(mode, theano.compile.ProfileMode):
-        import pickle
-        print("BEGIN %s profile mode dump" % device)
-        print(pickle.dumps(mode))
-        print("END %s profile mode dump" % device)
-
-    # print "%s time: %.3f" % (device, t1-t0)
-    # print "estimated time for one pass through MNIST with %s: %f" % (
-    #        device, (t1-t0) * (60000.0 / (n_train*bsize)))
 
 
 def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
@@ -476,7 +441,6 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
                                cpu_only=False,
                                float_atol=1e-06,
                                check_isfinite=True,
-                               pickle=False,
                                verbose=0,
                                version=-1):
     """Run the nnet2 function on 1 or 2 devices, and compares the results.
@@ -512,7 +476,6 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
                 seed=seed, isize=isize, ksize=ksize, bsize=bsize,
                 n_train=n_train,
                 check_isfinite=check_isfinite,
-                pickle=pickle,
                 verbose=verbose,
                 version=version)
 

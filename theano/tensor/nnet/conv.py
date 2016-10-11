@@ -609,7 +609,7 @@ class ConvOp(OpenMPOp):
 
     def flops(self, inputs, outputs):
         """
-        Useful with the hack in profilemode to print the MFlops.
+        Useful with the hack in profiling to print the MFlops.
 
         """
         images, kerns = inputs

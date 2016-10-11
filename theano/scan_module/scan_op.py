@@ -175,7 +175,7 @@ class Scan(PureOp):
 
         mode_instance = compile.mode.get_mode(self.mode)
         # Clone mode_instance, altering "allow_gc" for the linker,
-        # and adding a message if the mode is a ProfileMode.
+        # and adding a message if we profile
         if self.name:
             message = self.name + " sub profile"
         else:
@@ -1564,14 +1564,6 @@ class Scan(PureOp):
             if hasattr(self.fn.fn, 'update_profile'):
                 self.fn.fn.update_profile(profile)
 
-        #/* Old ProfileMode
-        # if hasattr(self.fn.maker.mode,'fct_call_time'):
-        #    self.fn.maker.mode.fct_call_time[self.fn] += t_fn
-        #    self.fn.maker.mode.fct_call[self.fn] += n_steps
-
-        #self.fn.maker.mode.call_time += t_fn
-        #self.fn.maker.mode.fn_time += t_fn
-        # Old Profile Mode */
         self.t_call = t_call
         self.t_fn = t_fn
 
@@ -2839,7 +2831,8 @@ class Scan(PureOp):
 gof.ops_with_inner_function[Scan] = 'fn'
 
 
-@theano.compile.profilemode.register_profiler_printer
+# TODO: move that to the new back-end and new profiling.py print_tips
+#@theano.compile.profilemode.register_profiler_printer
 def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
                     apply_time, apply_cimpl, message, outputs_size,
                     other_time):

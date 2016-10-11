@@ -248,13 +248,3 @@ constructor arguments. The keyword version of DebugMode (which you get by using 
 is quite strict.
 
 For more detail, see :ref:`DebugMode<debugmode>` in the library.
-
-.. _using_profilemode:
-
-
-ProfileMode
-===========
-
-.. note::
-
-    ProfileMode is deprecated. Use :attr:`config.profile` instead.

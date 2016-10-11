@@ -79,7 +79,7 @@ class MonitorMode(Mode):
         Create a new instance of this Mode.
 
         Keyword arguments can be provided for the linker, but they will be
-        ignored, because ProfileMode needs to use its own linker.
+        ignored, because MonitorMode needs to use its own linker.
 
         """
         if optimizer == "":
