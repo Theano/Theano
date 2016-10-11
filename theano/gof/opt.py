@@ -534,7 +534,7 @@ class MergeFeature(object):
         # List of (node, candidate) pairs, where we tried to replace node by
         # candidate, but it failed. This is used to avoid infinite loops
         # during the replacement phase.
-        self.blacklist = []
+        self.blacklist = set()
         self.d = defaultdict(list)
 
         for node in fgraph.toposort():
@@ -911,7 +911,7 @@ class MergeOptimizer(Optimizer):
                 except InconsistencyError:
                     success = False
                     nb_fail += 1
-                    fgraph.merge_feature.blacklist.append(
+                    fgraph.merge_feature.blacklist.add(
                         (pairs[0][0].owner, pairs[0][1].owner))
                 if success:
                     nb_merged += len(pairs)
@@ -936,7 +936,7 @@ class MergeOptimizer(Optimizer):
             callback_time = None
             callbacks_time = {}
         # clear blacklist
-        fgraph.merge_feature.blacklist = []
+        fgraph.merge_feature.blacklist = set()
         return (nb_fail, time.time() - t0, validate_time,
                 callback_time, callbacks_time, nb_merged, nb_constant)
 
