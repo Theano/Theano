@@ -556,24 +556,26 @@ class MergeFeature(object):
         # If inputs to node change, it is not guaranteed that it is distinct
         # from the other nodes in nodes_seen
         if node in self.nodes_seen:
+            # Remove from self.d
+            if not isinstance(node, str):
+                old_inputs = list(node.inputs)
+                old_inputs[i] = r
+                old_k = (tuple(old_inputs), node.op)
+                # TODO: remove the next if
+                l = self.d[old_k]
+                if node in l:
+                    l.remove(node)
             self.nodes_seen.discard(node)
             self.process_node(fgraph, node)
+            # node is in self.nodes_seen or scheduled, not both
 
         # Since we are in on_change_input, node should have inputs.
-        if not isinstance(node, string_types):
-            assert node.inputs
+        # Always true.
+        # if not isinstance(node, string_types):
+        #    assert node.inputs
 
         if isinstance(new_r, graph.Constant):
             self.process_constant(fgraph, new_r)
-        # Remove from self.d
-        if not isinstance(node, str):
-            old_inputs = list(node.inputs)
-            old_inputs[i] = r
-            old_k = (tuple(old_inputs), node.op)
-            # TODO: remove the next if
-            l = self.d[old_k]
-            if node in l:
-                l.remove(node)
 
     def on_import(self, fgraph, node, reason):
         for c in node.inputs:
