@@ -650,11 +650,11 @@ class MergeFeature(object):
                 replacement_candidates2.append(pairs)
             self.scheduled.append(replacement_candidates2)
         else:
-#            self.nodes_seen.add(node)
-#            if not node.inputs:
-#                self.noinput_nodes.add(node)
+            self.nodes_seen.add(node)
+            if not node.inputs:
+                self.noinput_nodes.add(node)
             self.d[k].append(node)
-#        return
+        return
         # These asserts ensure that the fgraph has set the clients field
         # properly.
         # The clients should at least contain `node` itself!
