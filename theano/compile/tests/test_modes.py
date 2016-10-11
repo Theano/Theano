@@ -40,13 +40,12 @@ class T_bunch_of_modes(unittest.TestCase):
         # there should be
         # - VM_Linker
         # - OpWiseCLinker (FAST_RUN)
-        # - WrapLinker
         # - PerformLinker (FAST_COMPILE)
         # - DebugMode's Linker  (DEBUG_MODE)
         assert 4 == len(set(linker_classes_involved))
 
 
-class T_WrapLinker(unittest.TestCase):
+class T_old_problem(unittest.TestCase):
     def test_1(self):
         # Then, build a mode with the same linker, and a modified optimizer
         default_mode = theano.compile.mode.get_default_mode()

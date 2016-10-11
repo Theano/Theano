@@ -463,7 +463,7 @@ del param
 if rc == 0 and config.cxx != "":
     # Keep the default linker the same as the one for the mode FAST_RUN
     AddConfigVar('linker',
-                 "Default linker used if the theano flags mode is Mode ",
+                 "Default linker used if the theano flags mode is Mode",
                  EnumStr('cvm', 'c|py', 'py', 'c', 'c|py_nogc',
                          'vm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
@@ -471,7 +471,7 @@ else:
     # g++ is not present or the user disabled it,
     # linker should default to python only.
     AddConfigVar('linker',
-                 "Default linker used if the theano flags mode is Mode ",
+                 "Default linker used if the theano flags mode is Mode",
                  EnumStr('vm', 'py', 'vm_nogc'),
                  in_c_key=False)
     try:
@@ -499,7 +499,7 @@ AddConfigVar('allow_gc',
 # Keep the default optimizer the same as the one for the mode FAST_RUN
 AddConfigVar(
     'optimizer',
-    "Default optimizer. If not None, will use this optimizer with the Mode ",
+    "Default optimizer. If not None, will use this optimizer with the Mode",
     EnumStr('fast_run', 'merge', 'fast_compile', 'None'),
     in_c_key=False)
 
