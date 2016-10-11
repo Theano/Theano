@@ -729,6 +729,29 @@ def cblas_header_text():
 
 def blas_header_text():
     """C header for the fortran blas interface"""
+
+    gemm_code = ""
+    const = "const"
+    if not config.blas.ldflags:
+        # Include the Numpy version implementation of sgemm_ and dgemm_ from alt_sgemm.c and alt_dgemm.c
+        from os.path import dirname, normpath
+        current_filedir = dirname(__file__)
+        sgemm_filepath = normpath(current_filedir + "/alt_sgemm.c")
+        dgemm_filepath = normpath(current_filedir + "/alt_dgemm.c")
+        sgemm_code = ""
+        dgemm_code = ""
+        with open(sgemm_filepath) as code:
+            sgemm_code = code.read()
+        with open(dgemm_filepath) as code:
+            dgemm_code = code.read()
+        if not sgemm_code or not dgemm_code:
+            _logger.warning("Unable to load Numpy implementation of gemm code from C source files.")
+        else:
+            const = ""
+            # _logger.warning("Numpy implementation of gemm code loaded (config.blas.ldflags is empty)")
+        gemm_code += sgemm_code
+        gemm_code += dgemm_code
+
     header = """
     extern "C"
     {
@@ -890,7 +913,7 @@ def blas_header_text():
 
     /* Single Precision */
 
-        void sgemm_(char*, char*, const int*, const int*, const int*, const float *, const float *, const int*, const float *, const int*, const float *, float *, const int*);
+        void sgemm_(char*, char*, const int*, const int*, const int*, const float *, %(const)s float *, const int*, %(const)s float *, const int*, const float *, float *, const int*);
         void ssymm_(char*, char*, const int*, const int*, const float *, const float *, const int*, const float *, const int*, const float *, float *, const int*);
         void ssyrk_(char*, char*, const int*, const int*, const float *, const float *, const int*, const float *, float *, const int*);
         void ssyr2k_(char*, char*, const int*, const int*, const float *, const float *, const int*, const float *, const int*, const float *, float *, const int*);
@@ -899,7 +922,7 @@ def blas_header_text():
 
     /* Double Precision */
 
-        void dgemm_(char*, char*, const int*, const int*, const int*, const double *, const double *, const int*, const double *, const int*, const double *, double *, const int*);
+        void dgemm_(char*, char*, const int*, const int*, const int*, const double *, %(const)s double *, const int*, %(const)s double *, const int*, const double *, double *, const int*);
         void dsymm_(char*, char*, const int*, const int*, const double *, const double *, const int*, const double *, const int*, const double *, double *, const int*);
         void dsyrk_(char*, char*, const int*, const int*, const double *, const double *, const int*, const double *, double *, const int*);
         void dsyr2k_(char*, char*, const int*, const int*, const double *, const double *, const int*, const double *, const int*, const double *, double *, const int*);
@@ -958,7 +981,9 @@ def blas_header_text():
                     }
                     """)
 
-    return header
+   
+    header += gemm_code
+    return header % {'const':const}
 
 
 def mkl_threads_text():
