@@ -1015,7 +1015,7 @@ class GetItemList(gof.op.Op):
     def grad(self, inputs, g_outputs):
         x, indices = inputs
         gout, = g_outputs
-        return [GetItemListGrad(self)(x, indices, gout),
+        return [GetItemListGrad()(x, indices, gout),
                 grad_undefined(self, 1, indices, "No gradient for this input")]
 
 get_item_list = GetItemList()

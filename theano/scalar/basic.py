@@ -3064,7 +3064,7 @@ arctan = ArcTan(upgrade_to_float, name='arctan')
 
 
 class ArcTan2(BinaryScalarOp):
-    nfunc_spec = ('arctan2', 1, 1)
+    nfunc_spec = ('arctan2', 2, 1)
 
     def impl(self, y, x):
         # If x and y are int8 or uint8, numpy.arctan2 will compute the result
