@@ -3,19 +3,17 @@ C Implementation of dgemm_ based on NumPy
 Used instead of blas when Theano config flag blas.ldflags is empty.
 **/
 void alt_double_scalar_matrix_product_in_place(double scalar, double* matrix, int size_to_compute) {
-	int i;
-	for(i = 0; i < size_to_compute; ++i) {
+	for(int i = 0; i < size_to_compute; ++i) {
 		matrix[i] *= scalar;
 	}
 }
 void alt_double_matrix_sum_in_place(double* A, double* B, double* out, int size_to_compute) {
-	int i;
-	for(i = 0; i < size_to_compute; ++i) {
+	for(int i = 0; i < size_to_compute; ++i) {
 		out[i] = A[i] + B[i];
 	}
 }
 /* dgemm
- * NB: See sgemm_ for same assumptions.
+ * NB: See sgemm_ (in alt_sgemm.c) for same assumptions.
  * */
 void dgemm_(char* TRANSA, char* TRANSB, 
 			const int* M, const int* N, const int* K,
