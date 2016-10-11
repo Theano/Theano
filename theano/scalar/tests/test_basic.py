@@ -20,11 +20,12 @@ from theano.gof import FunctionGraph
 from theano import gof
 from theano.tests import unittest_tools as utt
 
-from theano.scalar.basic import (floats, float32, float64,
+from theano.scalar.basic import (floats, float16, float32, float64,
                                  ints, int8, int32, complex64,
                                  ComplexError, IntDiv, TrueDiv,
                                  Composite, add, div_proxy,
-                                 and_, eq, neq, invert, mul, Scalar, InRange)
+                                 and_, eq, neq, invert, mul, Scalar, InRange,
+                                 cast)
 from theano.scalar.basic import (
     true_div, inv, log, log2, log10, log1p, exp, exp2, expm1, sqrt, deg2rad,
     rad2deg, cos, arccos, sin, arcsin, tan, arctan, arctan2, cosh, arccosh,
@@ -66,7 +67,27 @@ class test_ScalarOps(unittest.TestCase):
             self.assertTrue(fn(a, b) == a%b, (a,))
 
 
+def has_f16(comp):
+    if any(i.type == float16 for i in comp.fgraph.inputs):
+        return True
+    for n in comp.fgraph.apply_nodes:
+        if any(o.type == float16 for o in n.outputs):
+            return True
+    return False
+
+
 class test_composite(unittest.TestCase):
+    def test_composite_clone_float32(self):
+        w = int8()
+        x = float16()
+        y = float32()
+        cz = Composite([x, y], [tanh(x + cast(y, 'float16'))])
+        c = Composite([w, x, y], [cz(x, y) - cz(x, y)**2 +
+                               cast(x, 'int16') + cast(x, 'float32') +
+                               cast(w, 'float16')])
+        assert has_f16(c)
+        nc = c.clone_float32()
+        assert not has_f16(nc)
 
     def test_straightforward(self):
         x, y, z = inputs()
