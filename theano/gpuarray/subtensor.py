@@ -599,7 +599,6 @@ class GpuAdvancedIncSubtensor1(Op):
         y_ = as_gpuarray_variable(y, ctx_name)
         ilist_ = tensor.as_tensor_variable(ilist)
 
-        assert x_.type.dtype == y_.type.dtype
         assert x_.type.ndim >= y_.type.ndim
 
         if ilist_.type.dtype[:3] not in ('int', 'uin'):

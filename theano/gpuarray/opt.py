@@ -994,19 +994,12 @@ def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
 
     x, y, ilist = inputs
 
-    # Gpu Ops needs both inputs to have the same dtype
-    if (x.type.dtype != y.type.dtype):
-        dtype = scalar.upcast(x.type.dtype, y.type.dtype)
-        if x.type.dtype != dtype:
-            x = tensor.cast(x, dtype)
-        if y.type.dtype != dtype:
-            y = tensor.cast(y, dtype)
-
     set_instead_of_inc = op.set_instead_of_inc
 
     compute_capability = int(context.bin_id[-2])
 
-    if (compute_capability < 2 or x.ndim != 2 or y.ndim != 2):
+    if (compute_capability < 2 or x.ndim != 2 or y.ndim != 2 or
+            x.type.dtype != y.type.dtype):
         return GpuAdvancedIncSubtensor1(
             set_instead_of_inc=set_instead_of_inc)
     else:
