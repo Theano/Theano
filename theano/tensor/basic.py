@@ -952,7 +952,7 @@ def _scal_elemwise_with_nfunc(nfunc, nin, nout):
                                      nfunc_spec=(nfunc and (nfunc, nin, nout)))
         else:
             scalar_op = getattr(scal, symbolname)
-            rval = elemwise.Elemwise(scalar_op, name=n,
+            rval = elemwise.Elemwise(scalar_op,
                                      nfunc_spec=(nfunc and (nfunc, nin, nout)))
 
         if getattr(symbol, '__doc__', False):

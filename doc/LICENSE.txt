@@ -12,7 +12,7 @@ All rights reserved.
 Contains CnMeM under the same license with this copyright:
 Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
 
-Contains frozendict code from slezica’s python-frozendict(https://github.com/slezica/python-frozendict/blob/master/frozendict/__init__.py), Copyright (c) 2012 Santiago Lezica. All rights reserved. 
+Contains frozendict code from slezica’s python-frozendict(https://github.com/slezica/python-frozendict/blob/master/frozendict/__init__.py), MIT License. See the top of the file theano/misc/frozendict.py for detail.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
