@@ -1246,6 +1246,10 @@ def _conversion(real_value, name):
 # what types you are casting to what.  That logic is implemented by the
 # `cast()` function below.
 
+_convert_to_bool = _conversion(
+    elemwise.Elemwise(scal.convert_to_bool), 'bool')
+"""Cast to boolean"""
+
 _convert_to_int8 = _conversion(
     elemwise.Elemwise(scal.convert_to_int8), 'int8')
 """Cast to 8-bit integer"""
@@ -1299,6 +1303,7 @@ _convert_to_complex128 = _conversion(
 """Cast to double-precision complex"""
 
 _cast_mapping = {
+    'bool': _convert_to_bool,
     'int8': _convert_to_int8,
     'int16': _convert_to_int16,
     'int32': _convert_to_int32,
