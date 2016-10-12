@@ -37,7 +37,10 @@ from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
-                                              AbstractConv2d_gradInputs)
+                                              AbstractConv2d_gradInputs,
+                                              AbstractConv3d,
+                                              AbstractConv3d_gradWeights,
+                                              AbstractConv3d_gradInputs)
 
 
 def c_define_tensor_desc(desc):
@@ -1232,7 +1235,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     :warning: dnn_conv3d only works with cuDNN library 3.0
 
     """
-    if border_mode == (0, 0):
+    if border_mode == (0, 0, 0):
         border_mode = 'valid'
 
     # Establish dtype in which to perform the computation of the convolution
@@ -1319,6 +1322,32 @@ def dnn_gradweight(img, topgrad,
     return GpuDnnConvGradW()(img, topgrad, out, desc)
 
 
+def dnn_gradweight3d(img, topgrad,
+                     kerns_shp,
+                     border_mode='valid', subsample=(1, 1, 1),
+                     conv_mode='conv'):
+    """
+    GPU convolution gradient with respect to weight using cuDNN from NVIDIA.
+
+    The memory layout to use is 'bct01', that is 'batch', 'channel',
+    'first dim', 'second dim' in that order.
+
+    FIXME parameters doc
+
+    :warning: The cuDNN library only works with GPU that have a compute
+      capability of 3.0 or higer.  This means that older GPU will not
+      work with this Op.
+    """
+
+    img = gpu_contiguous(img)
+    topgrad = gpu_contiguous(topgrad)
+    kerns_shp = theano.tensor.as_tensor_variable(kerns_shp)
+    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
+                          conv_mode=conv_mode)(img.shape, kerns_shp)
+    out = gpu_alloc_empty(*kerns_shp)
+    return GpuDnnConv3dGradW()(img, topgrad, out, desc)
+
+
 def dnn_gradinput(kerns, topgrad,
                   img_shp,
                   border_mode='valid', subsample=(1, 1),
@@ -1344,6 +1373,33 @@ def dnn_gradinput(kerns, topgrad,
 
     out = gpu_alloc_empty(*img_shp)
     return GpuDnnConvGradI()(kerns, topgrad, out, desc)
+
+
+def dnn_gradinput3d(kerns, topgrad,
+                    img_shp,
+                    border_mode='valid', subsample=(1, 1),
+                    conv_mode='conv'):
+    """
+    GPU convolution gradient with respect to input using cuDNN from NVIDIA.
+
+    The memory layout to use is 'bct01', that is 'batch', 'channel',
+    'first dim', 'second dim' in that order.
+
+    FIXME parameters doc
+
+    :warning: The cuDNN library only works with GPU that have a compute
+      capability of 3.0 or higer.  This means that older GPU will not
+      work with this Op.
+    """
+
+    kerns = gpu_contiguous(kerns)
+    topgrad = gpu_contiguous(topgrad)
+    img_shp = theano.tensor.as_tensor_variable(img_shp)
+    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
+                          conv_mode=conv_mode)(img_shp, kerns.shape)
+
+    out = gpu_alloc_empty(*img_shp)
+    return GpuDnnConv3dGradI()(kerns, topgrad, out, desc)
 
 
 class GpuDnnPoolDesc(GpuOp):
@@ -3175,4 +3231,54 @@ def local_abstractconv_cudnn(node):
                              border_mode=node.op.border_mode,
                              subsample=node.op.subsample,
                              conv_mode=conv_mode)
+        return [rval]
+
+
+@local_optimizer([AbstractConv3d,
+                  AbstractConv3d_gradWeights,
+                  AbstractConv3d_gradInputs])
+def local_abstractconv3d_cudnn(node):
+    if (not isinstance(node.op, (AbstractConv3d,
+                                 AbstractConv3d_gradWeights,
+                                 AbstractConv3d_gradInputs))):
+        return None
+    if (node.op.filter_dilation != (1, 1, 1)):
+        return None
+
+    inp1 = node.inputs[0]
+    inp2 = node.inputs[1]
+
+    if (not isinstance(inp1.type, CudaNdarrayType) or
+            not isinstance(inp2.type, CudaNdarrayType)):
+        return None
+
+    if not dnn_available():
+        return None
+
+    if node.op.filter_flip:
+        conv_mode = 'conv'
+    else:
+        conv_mode = 'cross'
+    if (isinstance(node.op, AbstractConv3d)):
+        rval = dnn_conv3d(inp1, inp2,
+                          border_mode=node.op.border_mode,
+                          subsample=node.op.subsample,
+                          direction_hint='forward',
+                          conv_mode=conv_mode)
+        return [rval]
+    if (isinstance(node.op, AbstractConv3d_gradWeights)):
+        shape = (inp2.shape[1], inp1.shape[1],
+                 node.inputs[2][0], node.inputs[2][1], node.inputs[2][2])
+        rval = dnn_gradweight3d(inp1, inp2, shape,
+                                border_mode=node.op.border_mode,
+                                subsample=node.op.subsample,
+                                conv_mode=conv_mode)
+        return [rval]
+    if (isinstance(node.op, AbstractConv3d_gradInputs)):
+        shape = (inp2.shape[0], inp1.shape[1],
+                 node.inputs[2][0], node.inputs[2][1], node.inputs[2][2])
+        rval = dnn_gradinput3d(inp1, inp2, shape,
+                               border_mode=node.op.border_mode,
+                               subsample=node.op.subsample,
+                               conv_mode=conv_mode)
         return [rval]

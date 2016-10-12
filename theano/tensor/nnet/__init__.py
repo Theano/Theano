@@ -32,6 +32,7 @@ from .bn import batch_normalization
 
 import warnings
 from .abstract_conv import conv2d as abstract_conv2d
+from .abstract_conv import conv3d
 
 
 def conv2d(input, filters, input_shape=None, filter_shape=None,

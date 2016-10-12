@@ -19,6 +19,9 @@ from theano.tensor.nnet import LogSoftmax, SoftmaxGrad
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs,
+                                              AbstractConv3d,
+                                              AbstractConv3d_gradWeights,
+                                              AbstractConv3d_gradInputs,
                                               get_conv_output_shape)
 from theano.tensor.signal.pool import (
     Pool, MaxPoolGrad, AveragePoolGrad)
@@ -962,6 +965,122 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     return gpu_dnn_conv(algo=algo)(img, kerns, out, desc)
 
 
+def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
+               conv_mode='conv', direction_hint=None,
+               algo='none', precision=None):
+    """
+    GPU convolution using cuDNN from NVIDIA.
+
+    The memory layout to use is 'bc012', that is 'batch', 'channel',
+    'first dim', 'second dim', 'third dim' in that order.
+
+    Parameters
+    ----------
+    img
+        Images to do the convolution over.
+    kerns
+        Convolution filters.
+    border_mode
+        One of 'valid', 'full', 'half'; additionally, the padding size
+        could be directly specified by an integer or a pair of integers.
+    subsample
+        Perform subsampling of the output (default: (1, 1)).
+    conv_mode
+        Perform convolution (kernels flipped) or cross-correlation.
+        One of 'conv', 'cross' (default: 'conv').
+    direction_hint
+        Used by graph optimizers to change algorithm choice.
+        By default, GpuDnnConv will be used to carry out the convolution.
+        If border_mode is 'valid', subsample is (1, 1) and direction_hint is
+        'bprop weights', it will use GpuDnnConvGradW.
+        If border_mode is 'full', subsample is (1, 1) and direction_hint is
+        *not* 'forward!', it will use GpuDnnConvGradI.
+        This parameter is used internally by graph optimizers and may be
+        removed at any time without a deprecation period. You have been warned.
+    algo : convolution implementation to use. Only 'none' is implemented
+        for the conv3d. Default is the value of :attr:`config.dnn.conv.algo_fwd`.
+    precision : {'as_input_f32', 'as_input', 'float16', 'float32', 'float64'}
+        Description of the dtype in which the computation of the convolution
+        should be done. Possible values are 'as_input', 'float16', 'float32'
+        and 'float64'. Default is the value of
+        :attr:`config.dnn.conv.precision`.
+
+    .. warning:: The cuDNN library only works with GPUs that have a compute
+        capability of 3.0 or higer. This means that older GPUs will not
+        work with this Op.
+
+    """
+
+    # Establish dtype in which to perform the computation of the convolution
+    if precision is None:
+        precision = theano.config.dnn.conv.precision
+    if precision == 'as_input' or precision == 'as_input_f32':
+        nprec = theano.scalar.upcast(img.dtype, kerns.dtype)
+        if nprec == 'float16' and precision == 'as_input_f32':
+            precision = 'float32'
+        else:
+            precision = nprec
+
+    fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
+    ctx_name = infer_context_name(img, kerns)
+    if (border_mode == 'valid' and subsample == (1, 1, 1) and
+            direction_hint == 'bprop weights'):
+        # Special case: We are asked to use GpuDnnConvGradW. We need to set
+        # up a suitable 'fake' convolution to compute the gradient for.
+        img = gpu_contiguous(img.dimshuffle(1, 0, 2, 3, 4))
+        if conv_mode == 'conv':
+            # We need to flip manually. These 'kerns' are not the kernels
+            # that would be flipped by conv_mode='conv' in GpuDnnConvGradW.
+            kerns = kerns[:, :, ::-1, ::-1]
+        kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3, 4))
+        shape2 = shape_i(img, 2, fgraph) - shape_i(kerns, 2, fgraph) + 1
+        shape3 = shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1
+        shape4 = shape_i(img, 4, fgraph) - shape_i(kerns, 4, fgraph) + 1
+        out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(
+            shape_i(kerns, 1, fgraph),
+            shape_i(img, 1, fgraph), shape2, shape3, shape4)
+        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1, 1),
+                              conv_mode='cross', precision=precision)(out.shape)
+        conv = gpu_dnn_conv_gradW()(img, kerns, out, desc)
+        return as_gpuarray_variable(conv.dimshuffle(1, 0, 2, 3, 4), ctx_name)
+
+    elif (border_mode == 'full' and subsample == (1, 1, 1) and
+          direction_hint != 'forward!'):
+        # Special case: We can be faster by using GpuDnnConvGradI to compute
+        # the full convolution as the backward pass of a valid convolution.
+        # We just need to set up a suitable 'fake' valid convolution.
+        img = gpu_contiguous(img)  # cudnn v2 rc3 need contiguous data
+        kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3, 4))
+        conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
+        shape2 = shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1
+        shape3 = shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1
+        shape4 = shape_i(img, 4, fgraph) + shape_i(kerns, 4, fgraph) - 1
+        out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(shape_i(img, 0, fgraph),
+                                                         shape_i(kerns, 1, fgraph),
+                                                         shape2, shape3, shape4)
+        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1, 1),
+                              conv_mode=conv_mode, precision=precision)(kerns.shape)
+        return gpu_dnn_conv_gradI()(kerns, img, out, desc)
+
+    # Standard case: We use GpuDnnConv with suitable padding.
+    # contig_version will return a gpu_contiguous copy
+    # if the img contains negative strides
+    img = gpu_contiguous(img)
+    kerns = gpu_contiguous(kerns)
+    desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
+                             conv_mode=conv_mode, precision=precision)(kerns.shape)
+    desc_op = desc.owner.op
+    # We can use Shape_i and bypass the infer_shape here as this is on
+    # the input of node and it will always be present.
+    ishape = [shape_i_op(i)(img) for i in range(img.ndim)]
+    kshape = [shape_i_op(i)(kerns) for i in range(kerns.ndim)]
+    out_shp = get_conv_output_shape(ishape, kshape,
+                                    desc_op.border_mode,
+                                    desc_op.subsample)
+    out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(*out_shp)
+    return gpu_dnn_conv(algo=algo)(img, kerns, out, desc)
+
+
 def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
                    subsample=(1, 1), conv_mode='conv'):
     ctx_name = infer_context_name(img, topgrad)
@@ -976,8 +1095,36 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
     return gpu_dnn_conv_gradW()(img, topgrad, out, desc)
 
 
+def dnn_gradweight3d(img, topgrad, kerns_shp, border_mode='valid',
+                     subsample=(1, 1, 1), conv_mode='conv'):
+    ctx_name = infer_context_name(img, topgrad)
+    img = as_gpuarray_variable(img, ctx_name)
+    topgrad = as_gpuarray_variable(topgrad, ctx_name)
+    img = gpu_contiguous(img)
+    topgrad = gpu_contiguous(topgrad)
+    kerns_shp = as_tensor_variable(kerns_shp)
+    desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
+                             conv_mode=conv_mode)(kerns_shp)
+    out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(*kerns_shp)
+    return gpu_dnn_conv_gradW()(img, topgrad, out, desc)
+
+
 def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
                   subsample=(1, 1), conv_mode='conv'):
+    ctx_name = infer_context_name(kerns, topgrad)
+    kerns = as_gpuarray_variable(kerns, ctx_name)
+    topgrad = as_gpuarray_variable(topgrad, ctx_name)
+    kerns = gpu_contiguous(kerns)
+    topgrad = gpu_contiguous(topgrad)
+    img_shp = as_tensor_variable(img_shp)
+    desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
+                             conv_mode=conv_mode)(kerns.shape)
+    out = gpu_alloc_empty(ctx_name, kerns.dtype)(*img_shp)
+    return gpu_dnn_conv_gradI()(kerns, topgrad, out, desc)
+
+
+def dnn_gradinput3d(kerns, topgrad, img_shp, border_mode='valid',
+                    subsample=(1, 1, 1), conv_mode='conv'):
     ctx_name = infer_context_name(kerns, topgrad)
     kerns = as_gpuarray_variable(kerns, ctx_name)
     topgrad = as_gpuarray_variable(topgrad, ctx_name)
@@ -1775,31 +1922,85 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
     return [rval]
 
 
+@register_opt2([AbstractConv3d, AbstractConv3d_gradWeights,
+                AbstractConv3d_gradInputs], 'fast_compile', 'conv_dnn', 'cudnn')
+def local_abstractconv3d_cudnn_graph(op, context_name, inputs, outputs):
+    if (not isinstance(op, (AbstractConv3d,
+                            AbstractConv3d_gradWeights,
+                            AbstractConv3d_gradInputs))):
+        return
+
+    if (op.filter_dilation != (1, 1, 1)):
+        return None
+
+    inp1 = inputs[0]
+    inp2 = inputs[1]
+
+    if not dnn_available(inp1.type.context_name):
+        raise_no_cudnn()
+
+    if op.filter_flip:
+        conv_mode = 'conv'
+    else:
+        conv_mode = 'cross'
+
+    if isinstance(op, AbstractConv3d):
+        rval = dnn_conv3d(inp1, inp2,
+                          border_mode=op.border_mode,
+                          subsample=op.subsample,
+                          direction_hint='forward!',
+                          conv_mode=conv_mode)
+    elif isinstance(op, AbstractConv3d_gradWeights):
+        shape = (inp2.shape[1], inp1.shape[1],
+                 inputs[2][0], inputs[2][1], inputs[2][2])
+        rval = dnn_gradweight3d(inp1, inp2, shape,
+                                border_mode=op.border_mode,
+                                subsample=op.subsample,
+                                conv_mode=conv_mode)
+    elif isinstance(op, AbstractConv3d_gradInputs):
+        shape = (inp2.shape[0], inp1.shape[1],
+                 inputs[2][0], inputs[2][1], inputs[2][2])
+        rval = dnn_gradinput3d(inp1, inp2, shape,
+                               border_mode=op.border_mode,
+                               subsample=op.subsample,
+                               conv_mode=conv_mode)
+    return [rval]
+
+
 @register_opt('fast_compile', 'conv_dnn', 'cudnn')
-@local_optimizer([AbstractConv2d])
+@local_optimizer([AbstractConv2d, AbstractConv3d])
 def local_abstractconv_cudnn(node):
     ctx = infer_context_name(*node.inputs)
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
-    return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+    if isinstance(node.op, AbstractConv2d):
+        return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+    elif isinstance(node.op, AbstractConv3d):
+        return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
 @register_opt('fast_compile', 'conv_dnn', 'cudnn')
-@local_optimizer([AbstractConv2d_gradWeights])
+@local_optimizer([AbstractConv2d_gradWeights, AbstractConv3d_gradWeights])
 def local_abstractconv_gw_cudnn(node):
     ctx = infer_context_name(*node.inputs)
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
-    return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+    if isinstance(node.op, AbstractConv2d_gradWeights):
+        return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+    elif isinstance(node.op, AbstractConv3d_gradWeights):
+        return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
 @register_opt('fast_compile', 'conv_dnn', 'cudnn')
-@local_optimizer([AbstractConv2d_gradInputs])
+@local_optimizer([AbstractConv2d_gradInputs, AbstractConv3d_gradInputs])
 def local_abstractconv_gi_cudnn(node):
     ctx = infer_context_name(*node.inputs)
     if not isinstance(node.inputs[0].type, GpuArrayType):
         return
-    return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+    if isinstance(node.op, AbstractConv2d_gradInputs):
+        return local_abstractconv_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
+    elif isinstance(node.op, AbstractConv3d_gradInputs):
+        return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
 @inplace_allocempty(GpuDnnConv, 2)

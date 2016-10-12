@@ -31,13 +31,18 @@
     that will be replaced by an actual convolution implementation during
     the optimization phase.
 
+    As of October 2016 (version 0.9.0dev3), there is also a conv3d interface that provides
+    a similar operation for 3D convolution. :func:`nnet.conv3d <theano.tensor.nnet.conv3d>`
+    defines the abstract theano graph convolution operation
+    :func:`nnet.abstract_conv.AbstractConv3d <theano.tensor.nnet.abstract_conv.AbstractConv3d>`.
+
     Since the abstract Op does not have any implementation, it will prevent
     computations in the un-optimized graph, and cause problems with DebugMode,
     test values, and when compiling with optimizer=None.
 
     By default, if :ref:`cuDNN <libdoc_cuda_dnn>`
     is available, we will use it, otherwise we will fall back to using the
-    gemm version (slower then cuDNN in most cases and uses more memory).
+    gemm version (slower than cuDNN in most cases and uses more memory).
 
     Either cuDNN and the gemm version can be disabled using the Theano flags
     ``optimizer_excluding=conv_dnn`` and ``optimizer_excluding=conv_gemm``,
@@ -51,9 +56,9 @@
     option. Disabling the gemm version is only useful if cuDNN is unavailable
     and you run out of GPU memory.
 
-    There are two other implementations: An FFT-based convolution integrated
-    into Theano, and an implementation by Alex Krizhevsky available via
-    Pylearn2. See the documentation below on how to use them.
+    There are two other implementations of 2D convolution: An FFT-based
+    convolution integrated into Theano, and an implementation by Alex Krizhevsky
+    available via Pylearn2. See the documentation below on how to use them.
 
     Old conv2d interface is still accessible through :func:`nnet.conv.conv2d <theano.tensor.nnet.conv.conv2d>`.
 
@@ -146,8 +151,8 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       ``THEANO_FLAGS=optimizer_excluding=conv_gemm`` in your environment.
     - :func:`dnn_conv <theano.sandbox.cuda.dnn.dnn_conv>` GPU-only
       convolution using NVIDIA's cuDNN library. This requires that you have
-      cuDNN installed and available, which in turn requires CUDA 6.5 and a GPU
-      with compute capability 3.0 or more.
+      cuDNN 4.0 or newer installed and available, which in turn requires CUDA 7.0
+      and a GPU with compute capability 3.0 or more.
 
       If cuDNN is available, by default, Theano will replace all nnet.conv2d
       operations with dnn_conv. To explicitly disable it, set
@@ -190,12 +195,31 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       please see the warning about a bug in CUDA 5.0 to 6.0
       in :func:`GpuCorrMM <theano.sandbox.cuda.blas.GpuCorrMM>`.
 
+    - :func:`Corr3dMM <theano.tensor.nnet.corr3d.Corr3dMM>`
+      This is a CPU-only 3d correlation implementation based on
+      the 2d version (:func:`CorrMM <theano.tensor.nnet.corr.CorrMM>`).
+      It does not flip the kernel. As it provides a gradient, you can use it as a
+      replacement for nnet.conv3d. For convolutions done on CPU,
+      nnet.conv3d will be replaced by Corr3dMM. To explicitly disable it, set
+      ``THEANO_FLAGS=optimizer_excluding=conv_gemm`` in your environment.
+
+    - :func:`dnn_conv3d <theano.sandbox.cuda.dnn.dnn_conv3d>` GPU-only
+      convolution using NVIDIA's cuDNN library. This requires that you have
+      cuDNN 4.0 or newer installed and available, which in turn requires CUDA 7.0
+      and a GPU with compute capability 3.0 or more.
+
+      If cuDNN is available, by default, Theano will replace all nnet.conv3d
+      operations with dnn_conv3d. To explicitly disable it, set
+      ``THEANO_FLAGS=optimizer_excluding=conv_dnn`` in your environment.
+      As dnn_conv3d has a gradient defined, you can also use it manually.
+
     - :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>`
       Another conv3d implementation that uses the conv2d with data reshaping.
       It is faster in some cases than conv3d, and work on the GPU.
       It flip the kernel.
 
 .. autofunction:: theano.tensor.nnet.conv2d
+.. autofunction:: theano.tensor.nnet.conv3d
 .. autofunction:: theano.sandbox.cuda.fftconv.conv2d_fft
 .. autofunction:: theano.tensor.nnet.Conv3D.conv3D
 .. autofunction:: theano.sandbox.cuda.fftconv.conv3d_fft
