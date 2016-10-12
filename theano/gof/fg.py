@@ -319,10 +319,10 @@ class FunctionGraph(utils.object2):
                 del variable.fgraph
             else:
                 apply_node = variable.owner
-                used_or_output = [output for output in apply_node.outputs
-                                  if output.clients or output in self.outputs]
+                used = [output for output in apply_node.outputs
+                        if output.clients]
                 # If the apply node is not used and is not an output
-                if not used_or_output:
+                if not used:
                     if not hasattr(apply_node.tag, 'removed_by'):
                         apply_node.tag.removed_by = []
                     apply_node.tag.removed_by.append(str(reason))
