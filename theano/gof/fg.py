@@ -318,7 +318,13 @@ class FunctionGraph(utils.object2):
         if not prune:
             return True
         variable = r
-        if variable.owner:
+        if not variable.owner:
+            # A Constant or input without client. Remove it.
+            self.variables.remove(variable)
+            # This allow to quickly know if a var is still in the fgraph
+            # or not.
+            del variable.fgraph
+        else:
             apply_node = variable.owner
             used_or_output = [output for output in apply_node.outputs
                               if output.clients or output in self.outputs]
@@ -346,7 +352,7 @@ class FunctionGraph(utils.object2):
         if variable in self.variables:
             # If the owner have other outputs still used,
             # then we must keep that variable in the graph.
-            if not variable.owner or not any(
+            if not any(
                 [var for var in variable.owner.outputs
                  if var.clients]):
 
