@@ -340,26 +340,6 @@ class FunctionGraph(utils.object2):
                 for i, input in enumerate(apply_node.inputs):
                     self.__remove_client__(input, (apply_node, i),
                                            reason=reason)
-        # variable should not have any clients.
-        # assert not variable.clients
-
-        # variable should be in self.variables
-        # Why this assert fail? Making it True could cause opt speed up
-        # I think this is caused as we remove var in self.variables in
-        # another place.
-        # assert variable in self.variables
-
-        if variable in self.variables:
-            # If the owner have other outputs still used,
-            # then we must keep that variable in the graph.
-            if not any(
-                [var for var in variable.owner.outputs
-                 if var.clients]):
-
-                self.variables.remove(variable)
-                # This allow to quickly know if a var is still in the fgraph
-                # or not.
-                del variable.fgraph
         return False
 
     # import #
