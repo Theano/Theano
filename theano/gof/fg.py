@@ -279,15 +279,16 @@ class FunctionGraph(utils.object2):
         r.clients.append(new_client)
 
     def __remove_client__(self, r, client_to_remove,
-                          prune=True, reason=None):
+                          reason=None):
         """
         Removes all from the clients list of r.
 
         This is the main method to remove variable or apply node from
         an FunctionGraph.
 
-        If called with an empty list of clients and prune=True, this
-        will remove the owner of the variable (so an apply_node).
+        Remove r from this fgraph if it don't have clients left. If it
+        have an owner and all the outputs of the owner have no
+        clients, it will be removed.
 
         Parameters
         ----------
@@ -295,28 +296,14 @@ class FunctionGraph(utils.object2):
             The clients of r will be removed.
         client_to_remove : (op, i) pair
             (op, i) pair such that node.inputs[i] is not r anymore.
-        prune : bool
-            If prune is True, it remove r from this fgraph if it don't
-            have clients left.
-
-        Returns
-        -------
-        bool
-            True if r is still in the fgraph and need to be pruned
-            later. This can happen only when prune is False. A second
-            call to this method with an empty list for
-            clients_to_remove and prune=True will remove r.
 
         """
-        if client_to_remove:
-            r.clients.remove(client_to_remove)
-            # entry should be uniq in r. No need to assert it as it is
-            # already asserted in __add_client__.
-            # assert entry not in r.clients
+        r.clients.remove(client_to_remove)
+        # entry should be uniq in r. No need to assert it as it is
+        # already asserted in __add_client__.
+        # assert entry not in r.clients
         if r.clients:
-            return False
-        if not prune:
-            return True
+            return
         variable = r
         if not variable.owner:
             # A Constant or input without client. Remove it.
@@ -343,7 +330,6 @@ class FunctionGraph(utils.object2):
                 for i, input in enumerate(apply_node.inputs):
                     self.__remove_client__(input, (apply_node, i),
                                            reason=reason)
-        return False
 
     # import #
     def __import_r__(self, variable, reason):
@@ -459,14 +445,12 @@ class FunctionGraph(utils.object2):
 
         self.__import_r__(new_r, reason=reason)
         self.__add_client__(new_r, (node, i))
-        prune = self.__remove_client__(r, (node, i), False)
+        self.__remove_client__(r, (node, i), reason=reason)
         # Precondition: the substitution is semantically valid
         # However it may introduce cycles to the graph,  in which case the
         # transaction will be reverted later.
         self.execute_callbacks('on_change_input', node, i,
                                r, new_r, reason=reason)
-        if prune:
-            self.__remove_client__(r, None, True, reason=reason)
 
     # replace #
     def replace(self, r, new_r, reason=None, verbose=None):
