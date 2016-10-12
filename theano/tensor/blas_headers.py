@@ -981,9 +981,8 @@ def blas_header_text():
                     }
                     """)
 
-   
     header += gemm_code
-    return header % {'const':const}
+    return header % {'const': const}
 
 
 def mkl_threads_text():

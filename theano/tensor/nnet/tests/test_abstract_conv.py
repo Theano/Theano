@@ -419,7 +419,7 @@ class TestCorrConv2d(BaseTestConv2d):
 
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1)):
         o = self.get_output_shape(i, f, s, b, fd)
-        #if (not theano.config.blas.ldflags or
+        # if (not theano.config.blas.ldflags or
         if (not theano.config.cxx or
                 theano.config.mode == "FAST_COMPILE"):
             raise SkipTest("Need blas to test conv2d")
