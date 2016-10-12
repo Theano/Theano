@@ -390,7 +390,8 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
             # it will only work if the long fits in int64. For NumPy 1.7.1+,
             # it will work if the long fits in int64 or uint64.
             x_ = numpy.asarray(x)
-
+            if x_.size == 0 and not hasattr(x, 'dtype'):
+                x_ = numpy.asarray(x, dtype=config.floatX)
     assert type(x_) in [numpy.ndarray, numpy.memmap]
 
     bcastable = [d == 1 for d in x_.shape]
