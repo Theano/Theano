@@ -471,13 +471,11 @@ class _tensor_py_operators(object):
         def check_bool(args_el):
             try:
                 if isinstance(args_el, (numpy.bool_, bool)) or \
-                   args_el.dtype == 'int8' or args_el.dtype == 'uint8':
-                    raise TypeError(('TensorType does not support boolean '
-                                     'mask for indexing such as tensor[x==0]. '
-                                     'Instead you can use non_zeros() such as '
-                                     'tensor[(x == 0).nonzeros()]. '
-                                     'If you are indexing on purpose with an '
-                                     'int8, please cast it to int16.'))
+                   args_el.dtype == 'bool':
+                    raise TypeError('TensorType does not support boolean '
+                                    'mask for indexing such as tensor[x==0]. '
+                                    'Instead you can use non_zeros() such as '
+                                    'tensor[(x == 0).nonzeros()]. ')
             except AttributeError:
                 pass
 

@@ -341,15 +341,9 @@ class TensorType(Type):
                 return False
             if a.dtype != b.dtype:
                 return False
-            if 'int' in str(a.dtype):
+            if 'float' not in str(a.dtype):
                 return numpy.all(a == b)
             else:
-                # work around a numpy.allclose bug:
-                # http://projects.scipy.org/numpy/ticket/1672
-                if a.ndim == 0 and numpy.isinf(a):
-                    a = a.reshape(1)
-                    b = b.reshape(1)
-
                 cmp = theano.tensor.basic._allclose(a, b, rtol=rtol, atol=atol)
                 if cmp:
                     # Numpy claims they are close, this is good enough for us.
