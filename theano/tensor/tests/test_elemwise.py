@@ -812,6 +812,7 @@ class T_reduce_dtype(unittest.TestCase):
 
     def test_reduce_default_acc_dtype(self):
         # Test the default acc_dtype of a reduce().
+
         # We try multiple axis combinations even though axis should not matter.
         for method in self.methods:
             for idx, dtype in enumerate(self.dtypes):
@@ -839,6 +840,7 @@ class T_reduce_dtype(unittest.TestCase):
     @attr('slow')
     def test_reduce_custom_dtype(self):
         # Test the ability to provide your own output dtype for a reduce.
+
         # We try multiple axis combinations even though axis should not matter.
         idx = 0
         for method in self.methods:
@@ -872,6 +874,7 @@ class T_reduce_dtype(unittest.TestCase):
 
     def test_reduce_custom_acc_dtype(self):
         # Test the ability to provide your own accumulator dtype for a reduce.
+
         # We try multiple axis combinations even though axis should not matter.
         idx = 0
         for method in self.methods:
@@ -928,9 +931,8 @@ class T_reduce_dtype(unittest.TestCase):
 
 class T_mean_dtype(unittest.TestCase):
     def test_mean_default_dtype(self):
-        """
-        Test the default dtype of a mean().
-        """
+        # Test the default dtype of a mean().
+
         # We try multiple axis combinations even though axis should not matter.
         axes = [None, 0, 1, [], [0], [1], [0, 1]]
         for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
@@ -948,9 +950,8 @@ class T_mean_dtype(unittest.TestCase):
 
     @attr('slow')
     def test_mean_custom_dtype(self):
-        """
-        Test the ability to provide your own output dtype for a mean.
-        """
+        # Test the ability to provide your own output dtype for a mean.
+
         # We try multiple axis combinations even though axis should not matter.
         axes = [None, 0, 1, [], [0], [1], [0, 1]]
         idx = 0
@@ -1007,9 +1008,8 @@ class T_mean_dtype(unittest.TestCase):
 
 class T_prod_without_zeros_dtype(unittest.TestCase):
     def test_prod_without_zeros_default_dtype(self):
-        """
-        Test the default dtype of a ProdWithoutZeros().
-        """
+        # Test the default dtype of a ProdWithoutZeros().
+
         # We try multiple axis combinations even though axis should not matter.
         axes = [None, 0, 1, [], [0], [1], [0, 1]]
         for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
@@ -1025,9 +1025,8 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
             ).get(dtype, dtype)
 
     def test_prod_without_zeros_default_acc_dtype(self):
-        """
-        Test the default dtype of a ProdWithoutZeros().
-        """
+        # Test the default dtype of a ProdWithoutZeros().
+
         # We try multiple axis combinations even though axis should not matter.
         axes = [None, 0, 1, [], [0], [1], [0, 1]]
         for idx, dtype in enumerate(imap(str, theano.scalar.all_types)):
@@ -1055,9 +1054,8 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
 
     @attr('slow')
     def test_prod_without_zeros_custom_dtype(self):
-        """
-        Test ability to provide your own output dtype for a ProdWithoutZeros().
-        """
+        # Test ability to provide your own output dtype for a ProdWithoutZeros().
+
         # We try multiple axis combinations even though axis should not matter.
         axes = [None, 0, 1, [], [0], [1], [0, 1]]
         idx = 0
@@ -1079,9 +1077,8 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
 
     @attr('slow')
     def test_prod_without_zeros_custom_acc_dtype(self):
-        """
-        Test ability to provide your own acc_dtype for a ProdWithoutZeros().
-        """
+        # Test ability to provide your own acc_dtype for a ProdWithoutZeros().
+
         # We try multiple axis combinations even though axis should not matter.
         axes = [None, 0, 1, [], [0], [1], [0, 1]]
         idx = 0

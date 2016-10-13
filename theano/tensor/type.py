@@ -341,7 +341,7 @@ class TensorType(Type):
                 return False
             if a.dtype != b.dtype:
                 return False
-            if 'float' not in str(a.dtype):
+            if str(a.dtype) not in theano.tensor.continuous_dtypes:
                 return numpy.all(a == b)
             else:
                 cmp = theano.tensor.basic._allclose(a, b, rtol=rtol, atol=atol)

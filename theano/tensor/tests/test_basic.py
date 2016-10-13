@@ -4996,7 +4996,7 @@ class T_scalarfromtensor(unittest.TestCase):
 
         self.assertTrue(v == 56, v)
         if config.cast_policy == 'custom':
-            self.assertTrue(isinstance(v, numpy.int16))
+            self.assertTrue(isinstance(v, numpy.int8))
         elif config.cast_policy in ('numpy', 'numpy+floatX'):
             self.assertTrue(isinstance(
                 v, getattr(numpy, str(numpy.asarray(56).dtype))))
@@ -7108,7 +7108,7 @@ class T_as_tensor_variable(unittest.TestCase):
 
     def test_ndarray_bool(self):
         ten = as_tensor_variable(numpy.array([True, False, False, True, True]))
-        assert ten.type.dtype == 'uint8'
+        assert ten.type.dtype == 'bool'
 
     def test_memmap(self):
         inp = numpy.random.rand(4, 3)
