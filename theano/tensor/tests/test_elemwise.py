@@ -939,7 +939,7 @@ class T_mean_dtype(unittest.TestCase):
             axis = axes[idx % len(axes)]
             x = tensor.matrix(dtype=dtype)
             m = x.mean(axis=axis)
-            if dtype in tensor.discrete_dtypes and axis != []:
+            if dtype in tensor.discrete_dtypes:
                 assert m.dtype == 'float64'
             else:
                 assert m.dtype == dtype, (m, m.dtype, dtype)

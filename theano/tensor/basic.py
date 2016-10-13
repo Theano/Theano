@@ -3182,6 +3182,9 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
     for i in axis:
         s = true_div(s, shp[i])
 
+    if s.dtype != shp.dtype and s.dtype in discrete_dtypes:
+        s = cast(s, shp.dtype)
+
     if dtype == 'float16' or (dtype is None and input.dtype == 'float16'):
         s = cast(s, 'float16')
     s.name = 'mean'
