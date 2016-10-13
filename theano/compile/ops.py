@@ -450,7 +450,7 @@ def shape_i(var, i, fgraph=None):
                     if inp.owner:
                         recur(inp.owner)
                 # If the output var isn't marked as being in the graph,
-                # we need to att it in the ShapeFeature.
+                # we need to add it in the ShapeFeature.
                 shape_feature.on_import(fgraph, node,
                                         'gof.ops.shape_i')
         if var not in shape_of:
