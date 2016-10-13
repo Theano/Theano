@@ -4,8 +4,6 @@ BUILDBOT_DIR=$WORKSPACE/nightly_build
 THEANO_PARAM="theano --with-timer --timer-top-n 10"
 # Set test reports using nosetests xunit
 XUNIT="--with-xunit --xunit-file="
-export GPUARRAY=none
-source $HOME/.bashrc
 
 mkdir -p ${BUILDBOT_DIR}
 ls -l ${BUILDBOT_DIR}
