@@ -20,12 +20,6 @@ from theano.tensor import elemwise_cgen as cgen
 
 config = theano.config
 
-# We cannot import discrete_dtypes or float_dtypes from tensor.basic yet,
-# so we redefine them here
-discrete_dtypes = list(map(str, scalar.discrete_types))
-float_dtypes = list(map(str, scalar.float_types))
-int_dtypes = list(map(str, scalar.int_types))
-
 
 # tensor depends on elemwise to provide definitions for several ops
 # but elemwise needs to make TensorType instances, so we have these as
@@ -817,9 +811,9 @@ second dimension
         # NumPy 1.10.1 raise an error when giving the signature
         # when the input is complex. So add it only when inputs is int.
         out_dtype = node.outputs[0].dtype
-        if (out_dtype in float_dtypes and
+        if (out_dtype in theano.tensor.float_dtypes and
                 isinstance(self.nfunc, numpy.ufunc) and
-                node.inputs[0].dtype in discrete_dtypes):
+                node.inputs[0].dtype in theano.tensor.discrete_dtypes):
             char = numpy.sctype2char(out_dtype)
             sig = char * node.nin + '->' + char * node.nout
             node.tag.sig = sig
@@ -2092,8 +2086,8 @@ class Prod(CAReduceDtype):
 
         out = self(*inp)
 
-        if (out.dtype in discrete_dtypes or
-                self.acc_dtype in discrete_dtypes):
+        if (out.dtype in theano.tensor.discrete_dtypes or
+                self.acc_dtype in theano.tensor.discrete_dtypes):
             # There is an int conversion in the way
             return [prod_in.zeros_like(dtype=theano.config.floatX)]
 
