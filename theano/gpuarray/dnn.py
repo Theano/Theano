@@ -2078,7 +2078,7 @@ def local_gpua_pool_dnn_alternative(op, ctx_name, inputs, outputs):
     if not op.ignore_border:
         return
     img, ws, stride, pad = inputs
-    nd = op.ndim if op.ndim else (img.ndim - 2)
+    nd = op.ndim
     if nd not in (2, 3):
         return
     img = gpu_contiguous(as_gpuarray_variable(img, ctx_name))
@@ -2102,7 +2102,7 @@ def local_gpua_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
     if not op.ignore_border:
         return
     inp, out, out_grad, ws, stride, pad = inputs
-    nd = op.ndim if op.ndim else (inp.ndim - 2)
+    nd = op.ndim
     if nd not in (2, 3):
         return
     inp = gpu_contiguous(as_gpuarray_variable(inp, ctx_name))
@@ -2141,7 +2141,7 @@ def local_gpua_avg_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
     if not op.ignore_border:
         return
     inp, out_grad, ws, stride, pad = inputs
-    nd = op.ndim if op.ndim else (inp.ndim - 2)
+    nd = op.ndim
     if nd not in (2, 3):
         return
     inp = gpu_contiguous(as_gpuarray_variable(inp, ctx_name))
