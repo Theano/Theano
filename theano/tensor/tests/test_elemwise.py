@@ -452,10 +452,6 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 else:
                     self.fail()
             else:
-                # numpy.{all,any} return bool type,
-                # but theano ops return an int8 array instead
-                if scalar_op in [scalar.and_, scalar.or_]:
-                    zv = numpy.asarray(zv, dtype='int8')
                 if test_nan:
                     try:
                         self.assertTrue(

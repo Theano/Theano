@@ -1703,10 +1703,8 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
 
 
 class All(CAReduce):
-    """ Applies `bitwise and` to all the values of a tensor along the
+    """ Applies `logical and` to all the values of a tensor along the
     specified axis(es).
-
-    Equivalent to `CAReduce(scalar.and\_, axis=axis)`.
 
     """
 
@@ -1714,7 +1712,7 @@ class All(CAReduce):
         CAReduce.__init__(self, scalar.and_, axis)
 
     def _output_dtype(self, idtype):
-        return "int8"
+        return "bool"
 
     def __str__(self):
         if self.axis is None:
@@ -1724,7 +1722,7 @@ class All(CAReduce):
 
     def make_node(self, input):
         input = as_tensor_variable(input)
-        if input.dtype not in ["int8", "uint8"]:
+        if input.dtype is not "bool":
             input = theano.tensor.neq(input, 0)
         ret = super(All, self).make_node(input)
         return ret
@@ -1738,15 +1736,13 @@ class Any(CAReduce):
     """ Applies `bitwise or` to all the values of a tensor along the
     specified axis(es).
 
-    Equivalent to `CAReduce(scalar.or\_, axis=axis)`.
-
     """
 
     def __init__(self, axis=None):
         CAReduce.__init__(self, scalar.or_, axis)
 
     def _output_dtype(self, idtype):
-        return "int8"
+        return "bool"
 
     def __str__(self):
         if self.axis is None:
@@ -1756,7 +1752,7 @@ class Any(CAReduce):
 
     def make_node(self, input):
         input = as_tensor_variable(input)
-        if input.dtype not in ["int8", "uint8"]:
+        if input.dtype is not "bool":
             input = theano.tensor.neq(input, 0)
         ret = super(Any, self).make_node(input)
         return ret
@@ -1985,7 +1981,7 @@ class Sum(CAReduceDtype):
 
         out = self(*inp)
 
-        if out.dtype.find('int') != -1:
+        if out.dtype not in theano.tensor.continuous_dtypes:
             return [x.zeros_like(dtype=theano.config.floatX)]
 
         gz, = grads
