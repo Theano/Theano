@@ -3083,6 +3083,15 @@ class T_max_and_argmax(unittest.TestCase):
         v = eval_outputs(max_and_argmax(x, [1, -1])[0].shape)
         assert tuple(v) == numpy.max(data, (1, -1)).shape
 
+    def test_zero_shape(self):
+        x = tensor.matrix()
+        m, i = max_and_argmax(x, axis=1)
+        f = theano.function([x], [m, i])
+        xv = numpy.zeros((0, 4), dtype=floatX)
+        mv, iv = f(xv)
+        assert mv.shape == (0,)
+        assert iv.shape == (0,)
+
 
 class T_argmin_argmax(unittest.TestCase):
     def setUp(self):
