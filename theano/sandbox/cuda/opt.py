@@ -2199,7 +2199,7 @@ else:
                    "fast_run"))
     optdb.register('gpu_elemwise_fusion',
                    tensor.opt.FusionOptimizer(gpu_local_elemwise_fusion),
-                   71.00, 'fusion', 'local_elemwise_fusion')
+                   49, 'fusion', 'local_elemwise_fusion')
 
 # GpuElemwise inplace
 gpu_inplace_elemwise_optimizer = tensor.opt.InplaceElemwiseOptimizer(
