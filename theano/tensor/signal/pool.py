@@ -206,9 +206,7 @@ class Pool(OpenMPOp):
             right margins. No padding is added if padding is None.
         ndim : int
             The number of pooling dimensions N.
-            If this number is not specified, the default is set to the
-            (input.ndim - 2), assuming that the first two dimensions of the input
-            are non-pooling dimensions.
+            If this number is not specified, the default is set 2.
 
         Returns
         -------
@@ -219,8 +217,8 @@ class Pool(OpenMPOp):
 
         """
         if ndim is None:
-            ndim = len(imgshape) - 2
-
+            ndim = 2
+        assert ndim > 0
         if len(imgshape) < ndim:
             raise TypeError('imgshape must have at least {} dimensions'.format(ndim))
 
