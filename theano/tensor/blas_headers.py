@@ -9,6 +9,7 @@ import logging
 import textwrap
 import sys
 import os
+from os.path import dirname, normpath
 
 from theano import config
 from theano.gof.cmodule import GCC_compiler
@@ -734,7 +735,6 @@ def blas_header_text():
     const = "const"
     if not config.blas.ldflags:
         # Include the Numpy version implementation of sgemm_ and dgemm_ from alt_sgemm.c and alt_dgemm.c
-        from os.path import dirname, normpath
         current_filedir = dirname(__file__)
         sgemm_filepath = normpath(current_filedir + "/alt_sgemm.c")
         dgemm_filepath = normpath(current_filedir + "/alt_dgemm.c")
@@ -745,10 +745,10 @@ def blas_header_text():
         with open(dgemm_filepath) as code:
             dgemm_code = code.read()
         if not sgemm_code or not dgemm_code:
-            _logger.warning("Unable to load Numpy implementation of gemm code from C source files.")
+            raise IOError("Unable to load NumPy implementation of gemm code from C source files.")
         else:
             const = ""
-            # _logger.warning("Numpy implementation of gemm code loaded (config.blas.ldflags is empty)")
+            # _logger.info("Numpy implementation of gemm code loaded (config.blas.ldflags is empty)")
         gemm_code += sgemm_code
         gemm_code += dgemm_code
 
