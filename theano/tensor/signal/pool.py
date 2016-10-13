@@ -170,9 +170,7 @@ class Pool(OpenMPOp):
         'average_exc_pad' include it)
     ndim : int
         The number of pooling dimensions N.
-        If this number is not specified, the default is set to the
-        (input.ndim - 2), assuming that the first two dimensions of the input
-        are non-pooling dimensions.
+        If this number is not specified, the default is set to 2.
 
     """
 
@@ -206,9 +204,7 @@ class Pool(OpenMPOp):
             right margins. No padding is added if padding is None.
         ndim : int
             The number of pooling dimensions N.
-            If this number is not specified, the default is set to the
-            (input.ndim - 2), assuming that the first two dimensions of the input
-            are non-pooling dimensions.
+            If this number is not specified, the default is set to 2.
 
         Returns
         -------
@@ -219,8 +215,8 @@ class Pool(OpenMPOp):
 
         """
         if ndim is None:
-            ndim = len(imgshape) - 2
-
+            ndim = 2
+        assert ndim > 0
         if len(imgshape) < ndim:
             raise TypeError('imgshape must have at least {} dimensions'.format(ndim))
 
@@ -259,6 +255,8 @@ class Pool(OpenMPOp):
 
     def __init__(self, ignore_border=False, mode='max', ndim=None, openmp=None):
         super(Pool, self).__init__(openmp=openmp)
+        if ndim is None:
+            ndim = 2
         self.ndim = ndim
         self.ignore_border = ignore_border
         if mode not in ['max', 'average_inc_pad', 'average_exc_pad', 'sum']:
@@ -301,8 +299,6 @@ class Pool(OpenMPOp):
         # TODO: consider restricting the dtype?
         x = tensor.as_tensor_variable(x)
         nd = self.ndim
-        if nd is None:
-            nd = x.type.ndim - 2
         if stride is None:
             stride = ws
         if pad is None:

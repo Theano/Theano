@@ -25,6 +25,10 @@ from theano import function
 
 class TestDownsampleFactorMax(utt.InferShapeTester):
 
+    def test_out_shape(self):
+        assert Pool.out_shape((9, 8, 6), (2, 2)) == [9, 4, 3]
+        assert Pool.out_shape((8, 6), (2, 2)) == [4, 3]
+
     @staticmethod
     def numpy_max_pool_2d(input, ds, ignore_border=False, mode='max'):
         '''Helper function, implementing pool_2d in pure numpy'''
