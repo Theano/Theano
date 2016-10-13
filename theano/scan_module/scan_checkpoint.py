@@ -63,6 +63,21 @@ def scan_with_checkpoints(fn, sequences=[], outputs_info=None,
         the computations of scan (ie they will have to be recomputed
         during the gradient computation).
 
+    Returns
+    -------
+    tuple
+        Tuple of the form (outputs, updates); ``outputs`` is either a
+        Theano variable or a list of Theano variables representing the
+        outputs of ``scan`` (in the same order as in ``outputs_info``).
+        ``updates`` is a subclass of dictionary specifying the update rules for
+        all shared variables used in scan.
+        This dictionary should be passed to ``theano.function`` when you compile
+        your function. The change compared to a normal dictionary is that we
+        validate that keys are SharedVariable and addition of those dictionary
+        are validated to be consistent.
+        Note that only the last time step of ``outputs`` can be used with this
+        type of scan.
+
     See Also
     --------
     scan : Looping in Theano.
@@ -75,6 +90,11 @@ def scan_with_checkpoints(fn, sequences=[], outputs_info=None,
         outputs_info = [outputs_info]
     if not isinstance(non_sequences, list):
         non_sequences = [non_sequences]
+
+    # Check that outputs_info has no taps:
+    for element in outputs_info:
+        if isinstance(element, dict) and 'taps' in element:
+            raise RuntimeError("scan_with_checkpoints doesn't work with taps.")
 
     # Determine how many steps the original scan would run
     if n_steps is None:
