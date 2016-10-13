@@ -538,9 +538,9 @@ uint_types = uint8, uint16, uint32, uint64
 float_types = float16, float32, float64
 complex_types = complex64, complex128
 
-discrete_types = int_types + uint_types
+discrete_types = (bool,) + int_types + uint_types
 continuous_types = float_types + complex_types
-all_types = (bool,) + discrete_types + continuous_types
+all_types = discrete_types + continuous_types
 
 
 class _scalar_py_operators:
