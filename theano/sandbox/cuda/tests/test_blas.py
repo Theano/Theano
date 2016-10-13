@@ -326,7 +326,9 @@ if 0:
 
 
 def test_downsample():
-    shps = [(1, 1, 1, 12),
+    shps = [(1, 12),
+            (1, 1, 12),
+            (1, 1, 1, 12),
             (1, 1, 2, 2),
             (1, 1, 1, 1),
             (1, 1, 4, 4),
@@ -359,17 +361,17 @@ def test_downsample():
 
     for shp in shps:
         for ds in (2, 2), (3, 2), (1, 1):
-            if ds[0] > shp[2]:
+            if ds[0] > shp[-2]:
                 continue
-            if ds[1] > shp[3]:
+            if ds[1] > shp[-1]:
                 continue
             # GpuDownsampleFactorMax doesn't like having more than 512 columns
             # in the output tensor.
-            if float(shp[3]) / ds[1] > 512:
+            if float(shp[-1]) / ds[1] > 512:
                 continue
             for ignore_border in (True, False):
                 # print 'test_downsample', shp, ds, ignore_border
-                ds_op = Pool(ignore_border=ignore_border)
+                ds_op = Pool(ndim=len(ds), ignore_border=ignore_border)
 
                 a = tcn.shared_constructor(my_rand(*shp), 'a')
                 f = pfunc([], ds_op(tensor.as_tensor_variable(a), ds),

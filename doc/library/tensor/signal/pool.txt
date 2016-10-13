@@ -13,3 +13,4 @@
 
 .. autofunction:: theano.tensor.signal.pool.pool_2d
 .. autofunction:: theano.tensor.signal.pool.max_pool_2d_same_size
+.. autofunction:: theano.tensor.signal.pool.pool_3d
