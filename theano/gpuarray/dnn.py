@@ -1604,9 +1604,8 @@ class GpuDnnBatchNorm(DnnBase):
         scale = as_gpuarray_variable(scale, ctx_name)
         bias = as_gpuarray_variable(bias, ctx_name)
         epsilon = as_scalar(epsilon).astype('float64')
-        assert x.ndim == 4
-        assert scale.ndim == 4
-        assert bias.ndim == 4
+        assert x.ndim == scale.ndim == bias.ndim
+        assert x.ndim in (4, 5)
         return Apply(self, [x, scale, bias, epsilon], [x.type(), scale.type(), scale.type()])
 
     def grad(self, inputs, grads):
@@ -1668,11 +1667,8 @@ class GpuDnnBatchNormInference(DnnBase):
         estimated_mean = as_gpuarray_variable(estimated_mean, ctx_name)
         estimated_variance = as_gpuarray_variable(estimated_variance, ctx_name)
         epsilon = as_scalar(epsilon).astype('float64')
-        assert x.ndim == 4
-        assert scale.ndim == 4
-        assert bias.ndim == 4
-        assert estimated_mean.ndim == 4
-        assert estimated_variance.ndim == 4
+        assert x.ndim == scale.ndim == bias.ndim == estimated_mean.ndim == estimated_variance.ndim
+        assert x.ndim in (4, 5)
         return Apply(self, [x, scale, bias, estimated_mean, estimated_variance, epsilon], [x.type()])
 
     def grad(self, inputs, grads):
@@ -1682,7 +1678,7 @@ class GpuDnnBatchNormInference(DnnBase):
         if self.mode == "per-activation":
             axes = (0,)
         elif self.mode == "spatial":
-            axes = (0, 2, 3)
+            axes = (0,) + tuple(range(2, x.ndim))
         scale, bias, est_mean, est_var = (theano.tensor.addbroadcast(t, *axes)
                                           for t in (scale, bias, est_mean, est_var))
 
@@ -1731,7 +1727,8 @@ class GpuDnnBatchNormGrad(DnnBase):
         x_mean = as_gpuarray_variable(x_mean, ctx_name)
         x_invstd = as_gpuarray_variable(x_invstd, ctx_name)
         epsilon = as_scalar(epsilon).astype('float64')
-        assert x.ndim == 4 and dy.ndim == 4 and scale.ndim == 4 and x_mean.ndim == 4 and x_invstd.ndim == 4
+        assert x.ndim == dy.ndim == scale.ndim == x_mean.ndim == x_invstd.ndim
+        assert x.ndim in (4, 5)
         return Apply(self, [x, dy, scale, x_mean, x_invstd, epsilon], [x.type(), scale.type(), scale.type()])
 
     def infer_shape(self, node, shape):
@@ -1781,11 +1778,13 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
         mean = inputs.mean(axes, keepdims=True)
         stdinv = T.inv(T.sqrt(inputs.var(axes, keepdims=True) + epsilon))
         out = (inputs - mean) * gamma * stdinv + beta
+
+    For 5d tensors, the axes are (0, 2, 3, 4).
     """
     ndim = inputs.ndim
-    if ndim > 4:
+    if ndim > 5:
         raise ValueError("dnn_batch_normalization_train currently supports "
-                         "up to 4-dimensional tensors only, got %d" % ndim)
+                         "up to 5-dimensional tensors only, got %d" % ndim)
     if gamma.ndim != ndim or beta.ndim != ndim:
         raise ValueError("gamma and beta must be of the same dimensionality "
                          "as inputs; got %d and %d instead of %d" %
@@ -1850,11 +1849,13 @@ def dnn_batch_normalization_test(inputs, gamma, beta, mean, var,
         gamma, beta, mean, var = (T.addbroadcast(t, *axes)
                                   for t in (gamma, beta, mean, var))
         out = (inputs - mean) * gamma / T.sqrt(var + epsilon) + beta
+
+    For 5d tensors, the axes would be (0, 2, 3, 4).
     """
     ndim = inputs.ndim
-    if ndim > 4:
+    if ndim > 5:
         raise ValueError("dnn_batch_normalization_test currently supports "
-                         "up to 4-dimensional tensors only, got %d" % ndim)
+                         "up to 5-dimensional tensors only, got %d" % ndim)
     if gamma.ndim != ndim or beta.ndim != ndim:
         raise ValueError("gamma and beta must be of the same dimensionality "
                          "as inputs; got %d and %d instead of %d" %
