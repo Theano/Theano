@@ -784,12 +784,10 @@ class T_reduce_dtype(unittest.TestCase):
     op = CAReduce
     axes = [None, 0, 1, [], [0], [1], [0, 1]]
     methods = ['sum', 'prod']
-    dtypes = imap(str, theano.scalar.all_types)
+    dtypes = list(imap(str, theano.scalar.all_types))
 
+    # Test the default dtype of a method().
     def test_reduce_default_dtype(self):
-        """
-        Test the default dtype of a method().
-        """
         # We try multiple axis combinations even though axis should not matter.
         for method in self.methods:
             for idx, dtype in enumerate(self.dtypes):
@@ -840,9 +838,7 @@ class T_reduce_dtype(unittest.TestCase):
 
     @attr('slow')
     def test_reduce_custom_dtype(self):
-        """
-        Test the ability to provide your own output dtype for a reduce.
-        """
+        # Test the ability to provide your own output dtype for a reduce.
         # We try multiple axis combinations even though axis should not matter.
         idx = 0
         for method in self.methods:
@@ -875,9 +871,7 @@ class T_reduce_dtype(unittest.TestCase):
                     idx += 1
 
     def test_reduce_custom_acc_dtype(self):
-        """
-        Test the ability to provide your own accumulator dtype for a reduce.
-        """
+        # Test the ability to provide your own accumulator dtype for a reduce.
         # We try multiple axis combinations even though axis should not matter.
         idx = 0
         for method in self.methods:
