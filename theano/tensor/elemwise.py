@@ -480,7 +480,6 @@ second dimension
         self.scalar_op = scalar_op
         self.inplace_pattern = frozendict(inplace_pattern)
         self.destroy_map = dict((o, [i]) for o, i in self.inplace_pattern.items())
-
         self.ufunc = None
         self.nfunc = None
         if nfunc_spec is None:
@@ -582,12 +581,20 @@ second dimension
         return Apply(self, inputs, outputs)
 
     def __str__(self):
-        if self.inplace_pattern:
-            items = list(self.inplace_pattern.items())
-            items.sort()
-            return "Elemwise{%s}%s" % (self.scalar_op, str(items))
+        name = None
+        if str(self.scalar_op).endswith("_inplace"):
+            inplace_string = "inplace"
         else:
-            return "Elemwise{%s}" % (self.scalar_op)
+            inplace_string="no_inplace"
+        if not name:
+            if self.inplace_pattern:
+                items = list(self.inplace_pattern.items())
+                items.sort()
+                return "Elemwise{%s,%s}" % (self.scalar_op, inplace_string)
+            else:
+                return "Elemwise{%s,%s}" % (self.scalar_op, inplace_string)
+        else:
+            return name
 
     def R_op(self, inputs, eval_points):
         outs = self(*inputs, **dict(return_list=True))

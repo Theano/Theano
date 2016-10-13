@@ -16,7 +16,7 @@ def _scal_inplace(symbol):
         rval = elemwise.Elemwise(inplace_scalar_op, {0: 0})
     else:
         scalar_op = getattr(scal, symbolname)
-        rval = elemwise.Elemwise(scalar_op, name=symbolname)
+        rval = elemwise.Elemwise(scalar_op)
 
     if getattr(symbol, '__doc__', False):
         rval.__doc__ = symbol.__doc__ + '\n' + rval.__doc__
