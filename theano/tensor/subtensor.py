@@ -933,8 +933,6 @@ class Subtensor(Op):
         """ % locals()
 
         finish_view = """
-        //This is needed for NumPy 1.5, but not 1.7.2
-        PyArray_UpdateFlags(xview, NPY_ARRAY_C_CONTIGUOUS| NPY_ARRAY_F_CONTIGUOUS);
         Py_XDECREF(%(z)s);
         Py_INCREF(py_%(x)s);
 #if NPY_API_VERSION < 0x00000007
@@ -1536,8 +1534,6 @@ class IncSubtensor(Op):
                 PyArray_BYTES(%(x)s) + xview_offset, //PyArray_DATA(%(x)s),
                 PyArray_FLAGS(%(x)s),
                 NULL);
-        //This is needed for NumPy 1.5, but not 1.7.2
-        PyArray_UpdateFlags(zview, NPY_ARRAY_C_CONTIGUOUS| NPY_ARRAY_F_CONTIGUOUS);
         """ % locals()
 
     def get_helper_c_code_args(self):
