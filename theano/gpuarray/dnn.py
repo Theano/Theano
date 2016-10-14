@@ -2238,16 +2238,17 @@ class GpuDnnRNNOp(DnnBase):
         dcy = output_grads[3] if len(output_grads) == 4 else None
         # Since the op return two outputs which contain essentially
         # the same information, the user will most likely only use one
-        # of them.  This leads to the situation that the other is
+        # of them. This leads to the situation that the other is
         # considered "disconnected" by theano in the gradient.
         # However we know that this isn't really the case so we fix it
-        # up here.
+        # here.
 
-        # If both dy and dhy are disconnected the fixup will fail, but
-        # that's ok as in that case we really are disconnected.
+        # If all the ys are disconnected, then you get a boring
+        # gradient instead of an error.  But in that case you
+        # shouldn't call this method anyway.
         if isinstance(dy.type, DisconnectedType):
-            dy = as_gpuarray_variable(dhy[-1],
-                                      context_name=dhy.type.context_name)
+            dy = as_gpuarray_variable(y.zeros_like(),
+                                      context_name=y.type.context_name)
         if isinstance(dhy.type, DisconnectedType):
             dhy = None
         if dcy and isinstance(dcy.type, DisconnectedType):
