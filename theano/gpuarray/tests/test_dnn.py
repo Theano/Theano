@@ -1622,7 +1622,7 @@ def test_dnn_rnn_lstm_grad_c():
 
     # test code
     X = T.tensor3('X')
-    CY = T.matrix('CY')
+    CY = T.tensor3('CY')
     h0 = T.tensor3('h0')
     c0 = T.tensor3('c0')
 
@@ -1647,27 +1647,23 @@ def test_dnn_rnn_lstm_grad_c():
                                              return_internal_type=True)
 
     def funcs(out, params):
-        fn = theano.function([X, h0, c0], out, mode=mode_with_gpu)
         cost = T.mean((CY - out)**2)
         grad = T.grad(cost, [X, h0, c0] + params)
         grad_fn = theano.function([X, CY, h0, c0], grad, mode=mode_with_gpu)
-        return fn, grad_fn
+        return grad_fn
 
-    ref_fn, ref_grad_fn = funcs(last_layer.C,
-                                model.get_params())
-    y, hy, cy = rnnb.apply(params_cudnn, X, h0, c0)
-    cudnn_fn, cudnn_grad_fn = funcs(cy[-1],
-                                    [params_cudnn])
+    _, _, cy = rnnb.apply(params_cudnn, X, h0, c0)
+    ref_cy = T.stack([model.layers[0].C[-1],
+                      model.layers[1].C[-1],
+                      model.layers[2].C[-1]])
+
+    ref_grad_fn = funcs(ref_cy, model.get_params())
+    cudnn_grad_fn = funcs(cy, [params_cudnn])
 
     x_val = numpy.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
     cy_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
     h0_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
     c0_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
-
-    ref_out = ref_fn(x_val, h0_val, c0_val)
-    cudnn_out = cudnn_fn(x_val, h0_val, c0_val)
-
-    utt.assert_allclose(ref_out, cudnn_out)
 
     ref_grads = ref_grad_fn(x_val, cy_val, h0_val, c0_val)
     cudnn_grads = cudnn_grad_fn(x_val, cy_val, h0_val, c0_val)
