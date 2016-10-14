@@ -1,0 +1,8 @@
+.. _libdoc_tests:
+
+=====================
+:mod:`tests` -- Tests
+=====================
+
+.. automodule:: theano.tests.breakpoint
+    :members:
