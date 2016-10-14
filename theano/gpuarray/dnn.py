@@ -2339,7 +2339,7 @@ class GpuDnnRNNGradWeights(DnnBase):
 class RNNBlock(object):
     def __init__(self, dtype, hidden_size, num_layers, rnn_mode,
                  input_mode='linear', direction_mode='unidirectional',
-                 dropout=0.0, dropout_seed=4242, context_name=None):
+                 context_name=None):
         """
         dtype: data type of computation
         hidden_size: int
@@ -2353,10 +2353,11 @@ class RNNBlock(object):
           unidirectional: The network operates recurrently from the
                           first input to the last.
 
-          bidirectional: The operates from first to last then from last to first and concatenates the results at each layer.
+          bidirectional: The network operates from first to last then from last to first and concatenates the results at each layer.
 
         """
-        ddesc, states = _make_dropout_desc(dropout, dropout_seed, context_name)
+        # This is not supported for any value other than 0, so don't change it
+        ddesc, states = _make_dropout_desc(0, 4242, context_name)
         self.ddesc = ddesc
         self.dstates = states
         self.desc = _make_rnn_desc(hidden_size, num_layers,
