@@ -147,12 +147,12 @@ class TestCorr3DMM(unittest.TestCase):
             conv_gemm = GpuCorr3dMM_gradWeights(subsample=subsample)(
                 img, topgrad)
         else:
-            conv_ref = GpuCorr3dMM_gradWeights(subsample=subsample)(
+            conv_ref = Corr3dMM_gradWeights(subsample=subsample)(
                 img, topgrad, shape=filters_shape[1:4])
             conv_gemm = GpuCorr3dMM_gradWeights(subsample=subsample)(
                 img, topgrad, shape=filters_shape[1:4])
 
-        f_ref = theano.function([], conv_ref)
+        f_ref = theano.function([], conv_ref, mode='FAST_RUN')
         f = theano.function([], conv_gemm, mode=mode_with_gpu)
 
         res_ref = f_ref()
@@ -206,7 +206,7 @@ class TestCorr3DMM(unittest.TestCase):
                 kern=weight, topgrad=top,
                 shape=bottom_shape)
 
-        f_ref = theano.function([], conv_ref)
+        f_ref = theano.function([], conv_ref, mode='FAST_RUN')
         f = theano.function([], conv_gemm, mode=mode_with_gpu)
 
         res_ref = f_ref()
