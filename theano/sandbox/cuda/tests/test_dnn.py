@@ -1599,7 +1599,6 @@ def test_conv3d_fwd():
 
         inputs = shared(inputs_val)
         filters = shared(filters_val)
-        bias = shared(numpy.zeros(filters_shape[0]).astype('float32'))
 
         # Compile a theano function for the cuDNN implementation
         conv = dnn.dnn_conv3d(img=inputs, kerns=filters,
@@ -1614,33 +1613,11 @@ def test_conv3d_fwd():
         else:
             flipped_filters = filters
 
-        # If border mode is anything but 'valid', the reference implementation
-        # should operate on padded inputs
-        if border_mode == 'valid':
-            padded_inputs = inputs
-        else:
-            if border_mode == 'full':
-                pad_per_dim = [filters_shape[i] - 1 for i in range(2, 5)]
-            elif border_mode == 'half':
-                pad_per_dim = [filters_shape[i] // 2 for i in range(2, 5)]
-            else:
-                if isinstance(border_mode, int):
-                    pad_per_dim = [border_mode] * 3
-                else:
-                    pad_per_dim = border_mode
-
-            pad_before_after = ([(0, 0), (0, 0)] +
-                                [(p, p) for p in pad_per_dim])
-            padded_inputs_val = numpy.pad(inputs_val, pad_before_after,
-                                          'constant')
-            padded_inputs = shared(padded_inputs_val)
-
         # Compile a theano function for the reference implementation
-        conv_ref = theano.tensor.nnet.conv3D(
-            V=padded_inputs.dimshuffle(0, 2, 3, 4, 1),
-            W=flipped_filters.dimshuffle(0, 2, 3, 4, 1),
-            b=bias, d=subsample)
-        f_ref = theano.function([], conv_ref.dimshuffle(0, 4, 1, 2, 3), mode="FAST_RUN")
+        conv_ref = theano.tensor.nnet.corr3d.Corr3dMM(border_mode=border_mode,
+                                                      subsample=subsample
+                                                      )(inputs, flipped_filters)
+        f_ref = theano.function([], conv_ref, mode="FAST_RUN")
 
         # Compare the results of the two implementations
         res_ref = f_ref()
@@ -1666,7 +1643,6 @@ def test_conv3d_bwd():
 
         inputs = shared(inputs_val)
         filters = shared(filters_val)
-        bias = shared(numpy.zeros(filters_shape[0]).astype('float32'))
 
         # Compile a theano function for the cuDNN implementation
         conv = dnn.dnn_conv3d(img=inputs, kerns=filters,
@@ -1684,46 +1660,13 @@ def test_conv3d_bwd():
         else:
             flipped_filters = filters
 
-        # If border mode is anything but 'valid', the reference implementation
-        # should operate on padded inputs
-        if border_mode == 'valid':
-            padded_inputs = inputs
-        else:
-            if border_mode == 'full':
-                pad_per_dim = [filters_shape[i] - 1 for i in range(2, 5)]
-            elif border_mode == 'half':
-                pad_per_dim = [filters_shape[i] // 2 for i in range(2, 5)]
-            else:
-                if isinstance(border_mode, int):
-                    pad_per_dim = [border_mode] * 3
-                else:
-                    pad_per_dim = border_mode
-
-            pad_before_after = ([(0, 0), (0, 0)] +
-                                [(p, p) for p in pad_per_dim])
-            padded_inputs_val = numpy.pad(inputs_val, pad_before_after,
-                                          'constant')
-            padded_inputs = shared(padded_inputs_val)
-
         # Compile a theano function for the reference implementation
-        conv_ref = theano.tensor.nnet.conv3D(
-            V=padded_inputs.dimshuffle(0, 2, 3, 4, 1),
-            W=flipped_filters.dimshuffle(0, 2, 3, 4, 1),
-            b=bias, d=subsample)
-        (grad_padded_i_ref,
+        conv_ref = theano.tensor.nnet.corr3d.Corr3dMM(border_mode=border_mode,
+                                                      subsample=subsample
+                                                      )(inputs, flipped_filters)
+        (grad_i_ref,
          grad_w_ref) = theano.tensor.grad(conv_ref.sum(),
-                                          [padded_inputs, filters])
-
-        # Recover grad_i_ref from grad_padded_i_ref
-        if border_mode == 'valid':
-            grad_i_ref = grad_padded_i_ref
-        else:
-            shp = grad_padded_i_ref.shape
-            grad_i_ref = grad_padded_i_ref[
-                :, :,
-                pad_per_dim[0]:shp[2] - pad_per_dim[0],
-                pad_per_dim[1]:shp[3] - pad_per_dim[1],
-                pad_per_dim[2]:shp[4] - pad_per_dim[2]]
+                                          [inputs, filters])
 
         f_ref = theano.function([], [grad_i_ref, grad_w_ref], mode="FAST_RUN")
 
