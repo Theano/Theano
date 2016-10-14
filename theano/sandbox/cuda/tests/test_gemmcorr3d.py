@@ -63,7 +63,8 @@ class TestCorr3DMM(unittest.TestCase):
                                         filter_dilation=filter_dilation,
                                         subsample=subsample),
                             [inputs_val.transpose(0, 4, 1, 2, 3),
-                             filters_val.transpose(0, 4, 1, 2, 3)])
+                             filters_val.transpose(0, 4, 1, 2, 3)],
+                            mode=mode_with_gpu)
 
     def test_valid(self):
         self.run_conv_valid(inputs_shape=(16, 20, 12, 16, 1),
