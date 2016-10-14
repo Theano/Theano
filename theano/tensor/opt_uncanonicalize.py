@@ -157,7 +157,7 @@ def local_dimshuffle_alloc(node):
 
     dimshuffle{x, 0, 1}(alloc([3 4], 3, 2) => alloc([3 4], 1, 3, 2)
     """
-    if isinstance(node.op, T.DimShuffle) and isinstance(node.inputs[0], T.Alloc):
+    if isinstance(node.op, T.DimShuffle) and isinstance(node.inputs[0].owner.op, T.Alloc):
         # check if it only adds dimension to the left
         new_order = node.op.new_order
         expected_new_order = ('x',) * (len(new_order) - node.inputs[0].ndim) + \
