@@ -573,4 +573,8 @@ the Ops from Theano and Pylearn2.
 Then send us filename.
 
 
-.. autoclass:: theano.tests.breakpoint.PdbBreakpoint
+Breakpoint during Theano function execution
+-------------------------------------------
+
+You can set breakpoing during the execution of a Theano function with
+:class:`PdbBreakpoint <theano.tests.breakpoint.PdbBreakpoint>`.
