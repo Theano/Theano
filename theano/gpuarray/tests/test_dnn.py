@@ -14,7 +14,6 @@ from theano.tensor.signal.pool import pool_2d, pool_3d
 from theano.tensor.signal.pool import Pool, MaxPoolGrad, AveragePoolGrad
 
 from .. import dnn
-from .. import gpuarray_shared_constructor
 from ..basic_ops import GpuAllocEmpty
 from ..type import gpuarray_shared_constructor
 
