@@ -1482,32 +1482,50 @@ def test_dnn_rnn_gru():
                                 model.get_params())
     cudnn_fn, cudnn_grad_fn = funcs(rnnb.apply(params_cudnn, X, h0)[0],
                                     [params_cudnn])
+    # Make a copy of the params
+    params_cudnn2 = gpuarray_shared_constructor(params_cudnn.get_value())
+    y, hy = rnnb.apply(params_cudnn2, X, h0)
+    # Test with grad connected to both y and hy
+    cudnn2_fn, cudnn2_grad_fn = funcs((y + hy[-1]) / 2,
+                                      [params_cudnn])
+
+    # Make a copy of the params
+    params_cudnn3 = gpuarray_shared_constructor(params_cudnn.get_value())
+    y, hy = rnnb.apply(params_cudnn3, X, h0)
+    # Test with grad connected to both y and hy
+    cudnn3_fn, cudnn3_grad_fn = funcs(hy[-1],
+                                      [params_cudnn])
+
+    cudnn_fns = [cudnn_fn, cudnn2_fn, cudnn3_fn]
+    cudnn_grad_fns = [cudnn_grad_fn, cudnn2_grad_fn, cudnn3_grad_fn]
 
     x_val = numpy.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
     y_val = numpy.random.random((timesteps, batch_size, hidden_dim)).astype(theano.config.floatX)
     h0_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
 
     ref_out = ref_fn(x_val, h0_val)
-    cudnn_out = cudnn_fn(x_val, h0_val)
+    cudnn_outs = [fn(x_val, h0_val) for fn in cudnn_fns]
 
-    utt.assert_allclose(ref_out, cudnn_out)
+    for cudnn_out in cudnn_outs:
+        utt.assert_allclose(ref_out, cudnn_out)
 
     ref_grads = ref_grad_fn(x_val, y_val, h0_val)
-    cudnn_grads = cudnn_grad_fn(x_val, y_val, h0_val)
+    cudnn_grads = [fn(x_val, y_val, h0_val) for fn in cudnn_grad_fns]
 
-    utt.assert_allclose(ref_grads[0], cudnn_grads[0])
-    utt.assert_allclose(ref_grads[1], cudnn_grads[1])
+    for cudnn_grad in cudnn_grads:
+        utt.assert_allclose(ref_grads[0], cudnn_grad[0])
+        utt.assert_allclose(ref_grads[1], cudnn_grad[1])
 
-    ref_grads_params = ref_grads[2:]
-    cudnn_grads_params = gpuarray_shared_constructor(cudnn_grads[2])
+        ref_grad_params = ref_grads[2:]
+        cudnn_grad_params = gpuarray_shared_constructor(cudnn_grad[2])
 
-    for i in range(depth):
-        cudnn_grads_layer = rnnb.split_params(cudnn_grads_params, i,
-                                              [batch_size, input_dim])
-        ref_grads_layer = ref_grads_params[i * len(cudnn_grads_layer):
-                                           (i + 1) * len(cudnn_grads_layer)]
-        for j, g in enumerate(cudnn_grads_layer):
-            utt.assert_allclose(ref_grads_layer[j], g)
+        for i in range(depth):
+            cudnn_grad_layer = rnnb.split_params(cudnn_grad_params, i,
+                                                  [batch_size, input_dim])
+            ref_grad_layer = ref_grad_params[i * len(cudnn_grad_layer):
+                                                   (i + 1) * len(cudnn_grad_layer)]
+            for j, g in enumerate(cudnn_grad_layer):
+                utt.assert_allclose(ref_grad_layer[j], g)
 
 
 def test_dnn_rnn_lstm():
