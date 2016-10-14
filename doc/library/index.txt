@@ -27,6 +27,7 @@ Types and Ops that you can use to build and compile expression graphs.
    sparse/sandbox
    tensor/index
    typed_list
+   tests
 
 There are also some top-level imports that you might find more convenient:
 
