@@ -7127,6 +7127,16 @@ class T_as_tensor_variable(unittest.TestCase):
         new_inp[...] = inp
         x = as_tensor_variable(new_inp)
 
+    def test_empty_dtype(self):
+        old = theano.config.floatX
+        for dtype in ['float16', 'float32', 'float64']:
+            try:
+                theano.config.floatX = dtype
+                assert theano.tensor.as_tensor_variable(()).dtype == dtype
+                assert theano.tensor.as_tensor_variable([]).dtype == dtype
+            finally:
+                theano.config.floatX = old
+
 
 class test_complex_mod(unittest.TestCase):
     """Make sure % fails on complex numbers."""
