@@ -22,7 +22,7 @@ import theano.gof.cc
 from six import itervalues
 from theano.gof import graph
 from theano.gof import utils
-from theano.gof.cmodule import GCC_compiler
+from theano.gof.cmodule import CXX_compiler
 from theano.gof.fg import FunctionGraph
 
 __authors__ = "theano-dev"
@@ -1139,7 +1139,10 @@ class OpenMPOp(Op):
         """
         self.update_self_openmp()
         if self.openmp:
-            return ['-fopenmp']
+            if config.cxx == "icpc":
+                return ['-qopenmp']
+            else:
+                return ['-fopenmp']
         return []
 
     def c_headers(self):
@@ -1167,11 +1170,19 @@ int main( int argc, const char* argv[] )
         }
 }
         """
-        default_openmp = GCC_compiler.try_compile_tmp(
-            src_code=code,
-            tmp_prefix='test_omp_',
-            flags=['-fopenmp'],
-            try_run=False)
+        # TODO: need to resolve different openmp flags
+        if config.cxx == "icpc":
+            default_openmp = CXX_compiler.try_compile_tmp(
+                src_code=code,
+                tmp_prefix='test_omp_',
+                flags=['-qopenmp'],
+                try_run=False)
+        else:
+            default_openmp = CXX_compiler.try_compile_tmp(
+                src_code=code,
+                tmp_prefix='test_omp_',
+                flags=['-fopenmp'],
+                try_run=False)
         return default_openmp
 
     def update_self_openmp(self):

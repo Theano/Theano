@@ -616,7 +616,7 @@ cgemv_no_inplace = CGemv(inplace=False)
 
 def check_force_gemv_init():
     if check_force_gemv_init._force_init_beta is None:
-        from theano.gof.cmodule import GCC_compiler
+        from theano.gof.cmodule import CXX_compiler
         """
         Test issue 1569.
         Namely when evaluating
@@ -652,7 +652,7 @@ int main() {
   return (isnan(y[0]) || isnan(y[1]) ? 1 : 0;
 }
 """
-        res = GCC_compiler.try_compile_tmp(test_code, tmp_prefix='check_beta_',
+        res = CXX_compiler.try_compile_tmp(test_code, tmp_prefix='check_beta_',
                                            flags=ldflags(libs=True, flags=True,
                                                          libs_dir=True),
                                            try_run=True)

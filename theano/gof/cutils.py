@@ -280,8 +280,8 @@ def compile_cutils():
             assert e.errno == errno.EEXIST
             assert os.path.exists(loc), loc
 
-    args = cmodule.GCC_compiler.compile_args(march_flags=False)
-    cmodule.GCC_compiler.compile_str('cutils_ext', code, location=loc,
+    args = cmodule.CXX_compiler.compile_args(march_flags=False)
+    cmodule.CXX_compiler.compile_str('cutils_ext', code, location=loc,
                                      preargs=args)
 
 try:

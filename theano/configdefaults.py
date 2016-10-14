@@ -452,7 +452,7 @@ def warn_cxx(val):
     return True
 
 AddConfigVar('cxx',
-             "The C++ compiler to use. Currently only g++ is"
+             "The C++ compiler to use. Currently only g++ and icpc are"
              " supported, but supporting additional compilers should not be "
              "too difficult. "
              "If it is empty, no C++ code is compiled.",
@@ -1101,6 +1101,36 @@ AddConfigVar('gcc.cxxflags',
              # Added elsewhere in the c key only when needed.
              in_c_key=False)
 
+if config.cxx == "icpc" and config.gcc.cxxflags:
+    _logger.warning("cxx is not set to g++. gcc.cxxflags is not effective!")
+
+AddConfigVar('icc.cxxflags',
+             "Extra compiler flags for icc",
+             StrParam(""),
+             # Added elsewhere in the c key only when needed.
+             in_c_key=False)
+
+if not config.cxx == "icpc" and config.icc.cxxflags:
+    _logger.warning("cxx is not set to icpc. icc.cxxflags is not effective!")
+
+AddConfigVar('icc.opt_report',
+             "Get reports about vector diagnostics",
+             EnumStr('', '1', '2', '3', '4', '5'),
+             # Added elsewhere in the c key only when needed.
+             in_c_key=False)
+
+if not config.cxx == "icpc" and config.icc.opt_report:
+    _logger.warning("cxx is not set to icpc. icc.opt_report is not effective!")
+
+AddConfigVar('icc.opt_report_phase',
+             "Get reports about vector diagnostics",
+             EnumStr('', 'all', 'vec', 'cg', 'ipo', 'loop', 'offload', 'openmp', 'par', 'pgo', 'tcollect'),
+             # Added elsewhere in the c key only when needed.
+             in_c_key=False)
+
+if not config.cxx == "icpc" and not config.icc.opt_report and config.icc.opt_report_phase:
+    _logger.warning("cxx is not set to icpc or icc.opt_report not set. icc.opt_report_phase is not effective!")
+
 AddConfigVar('cmodule.warn_no_version',
              "If True, will print a warning when compiling one or more Op "
              "with C code that can't be cached because there is no "
@@ -1320,8 +1350,9 @@ def default_blas_ldflags():
     return try_blas_flag(['-lblas'])
 
 
+# TODO: Add icc support
 def try_blas_flag(flags):
-    from theano.gof.cmodule import GCC_compiler
+    from theano.gof.cmodule import CXX_compiler
     test_code = textwrap.dedent("""\
         extern "C" double ddot_(int*, double*, int*, double*, int*);
         int main(int argc, char** argv)
@@ -1343,7 +1374,7 @@ def try_blas_flag(flags):
     path_wrapper = "\"" if os.name == 'nt' else ""
     cflags.extend(['-L%s%s%s' % (path_wrapper, d, path_wrapper) for d in theano.gof.cmodule.std_lib_dirs()])
 
-    res = GCC_compiler.try_compile_tmp(
+    res = CXX_compiler.try_compile_tmp(
         test_code, tmp_prefix='try_blas_',
         flags=cflags, try_run=True)
     # res[0]: shows successful compilation
@@ -1509,10 +1540,24 @@ period for running processes.""",
 
 try:
     p_out = output_subprocess_Popen([config.cxx, '-dumpversion'])
+    cxx_version_str = p_out[0].strip().decode()
+except OSError:
+    # Typically means gcc cannot be found.
+    cxx_version_str = 'CXX_NOT_FOUND'
+
+try:
+    p_out = output_subprocess_Popen(['g++', '-dumpversion'])
     gcc_version_str = p_out[0].strip().decode()
 except OSError:
     # Typically means gcc cannot be found.
-    gcc_version_str = 'GCC_NOT_FOUND'
+    gcc_version_str = 'CXX_NOT_FOUND'
+
+try:
+    p_out = output_subprocess_Popen([config.cxx, '-dumpversion'])
+    icc_version_str = p_out[0].strip().decode()
+except OSError:
+    # Typically means gcc cannot be found.
+    icc_version_str = 'CXX_NOT_FOUND'
 
 
 def local_bitwidth():
@@ -1549,8 +1594,10 @@ compiledir_format_dict = {
     "python_int_bitwidth": python_int_bitwidth(),
     "theano_version": theano.__version__,
     "numpy_version": numpy.__version__,
-    "gxx_version": gcc_version_str.replace(" ", "_"),
-    "hostname": socket.gethostname()}
+    "cxx_version": cxx_version_str.replace(" ", "_"),
+    "hostname": socket.gethostname(),
+    "pid": os.getpid()
+}
 
 
 def short_platform(r=None, p=None):
@@ -1632,7 +1679,7 @@ compiledir_format_dict['short_platform'] = short_platform()
 # Allow to have easily one compiledir per device.
 compiledir_format_dict['device'] = config.device
 compiledir_format_keys = ", ".join(sorted(compiledir_format_dict.keys()))
-default_compiledir_format = ("compiledir_%(short_platform)s-%(processor)s-"
+default_compiledir_format = ("compiledir_%(hostname)s-%(short_platform)s-%(processor)s-"
                              "%(python_version)s-%(python_bitwidth)s")
 
 AddConfigVar("compiledir_format",

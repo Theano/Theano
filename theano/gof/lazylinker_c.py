@@ -122,8 +122,8 @@ except ImportError:
                     assert e.errno == errno.EEXIST
                     assert os.path.exists(loc)
 
-            args = cmodule.GCC_compiler.compile_args()
-            cmodule.GCC_compiler.compile_str(dirname, code, location=loc,
+            args = cmodule.CXX_compiler.compile_args()
+            cmodule.CXX_compiler.compile_str(dirname, code, location=loc,
                                              preargs=args)
             # Save version into the __init__.py file.
             init_py = os.path.join(loc, '__init__.py')
