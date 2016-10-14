@@ -2210,22 +2210,22 @@ class GpuDnnRNNOp(DnnBase):
         inputs = [desc, w, x, hx]
         assert w.ndim == 1
         assert x.ndim == 3  # seqLength, minibatch, inputSize
-        assert hx.ndim == 3  # numLayers * bidi, minibatch, hiddenSize
+        assert hx.ndim == 3  # numLayers, minibatch, hiddenSize * bidi
 
         if self.rnn_mode == 'lstm':
             cx = as_gpuarray_variable(cx, context_name)
-            assert cx.ndim == 3  # numLayers * bidi, minibatch, hiddenSize
+            assert cx.ndim == 3  # numLayers, minibatch, hiddenSize * bidi
             inputs.append(cx)
 
         _3d = GpuArrayType(dtype=x.dtype, broadcastable=(False, False, False),
                            context_name=context_name)
         reserve = gpudata_type()
         y = _3d()  # seqLength, minibatch, hiddenSize * bidi
-        hy = _3d()  # numLayers * bidi, miniBatch, hiddenSize
+        hy = _3d()  # numLayers, miniBatch, hiddenSize * bidi
         outputs = [reserve, y, hy]
 
         if self.rnn_mode == 'lstm':
-            cy = _3d()  # numLayers * bidi, miniBatch, hiddenSize
+            cy = _3d()  # numLayers, miniBatch, hiddenSize * bidi
             outputs.append(cy)
 
         return Apply(self, inputs, outputs)
