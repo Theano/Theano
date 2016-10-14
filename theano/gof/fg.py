@@ -279,15 +279,16 @@ class FunctionGraph(utils.object2):
         r.clients.append(new_client)
 
     def __remove_client__(self, r, client_to_remove,
-                          prune=True, reason=None):
+                          reason=None):
         """
         Removes all from the clients list of r.
 
         This is the main method to remove variable or apply node from
         an FunctionGraph.
 
-        If called with an empty list of clients and prune=True, this
-        will remove the owner of the variable (so an apply_node).
+        Remove r from this fgraph if it don't have clients left. If it
+        have an owner and all the outputs of the owner have no
+        clients, it will be removed.
 
         Parameters
         ----------
@@ -295,68 +296,46 @@ class FunctionGraph(utils.object2):
             The clients of r will be removed.
         client_to_remove : (op, i) pair
             (op, i) pair such that node.inputs[i] is not r anymore.
-        prune : bool
-            If prune is True, it remove r from this fgraph if it don't
-            have clients left.
-
-        Returns
-        -------
-        bool
-            True if r is still in the fgraph and need to be pruned
-            later. This can happen only when prune is False. A second
-            call to this method with an empty list for
-            clients_to_remove and prune=True will remove r.
 
         """
-        if client_to_remove:
+        l = [(r, client_to_remove)]
+        while l:
+            r, client_to_remove = l.pop()
             r.clients.remove(client_to_remove)
             # entry should be uniq in r. No need to assert it as it is
             # already asserted in __add_client__.
             # assert entry not in r.clients
-        if r.clients:
-            return False
-        if not prune:
-            return True
-        variable = r
-        if variable.owner:
-            apply_node = variable.owner
-            used_or_output = [output for output in apply_node.outputs
-                              if output.clients or output in self.outputs]
-            # If the apply node is not used and is not an output
-            if not used_or_output:
-                if not hasattr(apply_node.tag, 'removed_by'):
-                    apply_node.tag.removed_by = []
-                apply_node.tag.removed_by.append(str(reason))
-                self.apply_nodes.remove(apply_node)
-                self.variables.difference_update(apply_node.outputs)
-                self.execute_callbacks('on_prune', apply_node, reason)
+            if r.clients:
+                continue
 
-                for i, input in enumerate(apply_node.inputs):
-                    self.__remove_client__(input, (apply_node, i),
-                                           reason=reason)
-        # variable should not have any clients.
-        # assert not variable.clients
-
-        # variable should be in self.variables
-        # Why this assert fail? Making it True could cause opt speed up
-        # I think this is caused as we remove var in self.variables in
-        # another place.
-        # assert variable in self.variables
-
-        if variable in self.variables:
-            # If the owner have other outputs still used,
-            # then we must keep that variable in the graph.
-            if not variable.owner or not any(
-                [var for var in variable.owner.outputs
-                 if var.clients]):
-
+            # r have no more clients, so check if we need to remove it
+            # and its parent.
+            variable = r
+            if not variable.owner:
+                # A Constant or input without client. Remove it.
                 self.variables.remove(variable)
                 # This allow to quickly know if a var is still in the fgraph
                 # or not.
                 del variable.fgraph
-        return False
+            else:
+                apply_node = variable.owner
+                used = [output for output in apply_node.outputs
+                        if output.clients]
+                # If the apply node is not used and is not an output
+                if not used:
+                    if not hasattr(apply_node.tag, 'removed_by'):
+                        apply_node.tag.removed_by = []
+                    apply_node.tag.removed_by.append(str(reason))
+                    self.apply_nodes.remove(apply_node)
+                    del apply_node.fgraph
+                    self.variables.difference_update(apply_node.outputs)
+                    for var in apply_node.outputs:
+                        del var.fgraph
+                    self.execute_callbacks('on_prune', apply_node, reason)
 
-    # import #
+                    for i, input in enumerate(apply_node.inputs):
+                        l.append((input, (apply_node, i)))
+
     def __import_r__(self, variable, reason):
         """
         Import variables to this FunctionGraph and also their apply_node,
@@ -470,14 +449,12 @@ class FunctionGraph(utils.object2):
 
         self.__import_r__(new_r, reason=reason)
         self.__add_client__(new_r, (node, i))
-        prune = self.__remove_client__(r, (node, i), False)
+        self.__remove_client__(r, (node, i), reason=reason)
         # Precondition: the substitution is semantically valid
         # However it may introduce cycles to the graph,  in which case the
         # transaction will be reverted later.
         self.execute_callbacks('on_change_input', node, i,
                                r, new_r, reason=reason)
-        if prune:
-            self.__remove_client__(r, None, True, reason=reason)
 
     # replace #
     def replace(self, r, new_r, reason=None, verbose=None):
