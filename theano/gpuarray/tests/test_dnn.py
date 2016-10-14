@@ -1517,9 +1517,9 @@ def test_dnn_rnn_gru():
 
         for i in range(depth):
             cudnn_grad_layer = rnnb.split_params(cudnn_grad_params, i,
-                                                  [batch_size, input_dim])
+                                                 [batch_size, input_dim])
             ref_grad_layer = ref_grad_params[i * len(cudnn_grad_layer):
-                                                   (i + 1) * len(cudnn_grad_layer)]
+                                             (i + 1) * len(cudnn_grad_layer)]
             for j, g in enumerate(cudnn_grad_layer):
                 utt.assert_allclose(ref_grad_layer[j], g)
 
@@ -1635,16 +1635,16 @@ def test_dnn_rnn_lstm_grad_c():
 
     def funcs(out, params):
         fn = theano.function([X, h0, c0], out, mode=mode_with_gpu)
-        cost = T.mean((CY-out)**2)
+        cost = T.mean((CY - out)**2)
         grad = T.grad(cost, [X, h0, c0] + params)
         grad_fn = theano.function([X, CY, h0, c0], grad, mode=mode_with_gpu)
         return fn, grad_fn
 
-    ref_fn, ref_grad_fn = funcs_c(last_layer.C,
-                                      model.get_params())
+    ref_fn, ref_grad_fn = funcs(last_layer.C,
+                                model.get_params())
     y, hy, cy = rnnb.apply(params_cudnn, X, h0, c0)
-    cudnn_fn, cudnn_grad_fn = funcs_c(cy[-1],
-                                      [params_cudnn])
+    cudnn_fn, cudnn_grad_fn = funcs(cy[-1],
+                                    [params_cudnn])
 
     x_val = numpy.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
     cy_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
