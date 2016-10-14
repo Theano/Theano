@@ -1567,7 +1567,10 @@ class GpuDnnPool(DnnBase):
         assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
         self.mode = mode
 
-    def prepare_node(self, node, storage_map, compute_map):
+    def prepare_node(self, node, storage_map, compute_map, impl):
+        super(GpuDnnPool, self).prepare_node(
+            node, storage_map, compute_map, impl)
+
         if len(node.inputs) == 2:
             warnings.warn("Theano GPUDnnPoolGrad internal changed.", stacklevel=3)
             # Old interface
@@ -1803,7 +1806,7 @@ class GpuDnnPoolGrad(DnnBase):
         assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
         self.mode = mode
 
-    def prepare_node(self, node, storage_map, compute_map):
+    def prepare_node(self, node, storage_map, compute_map, impl):
         if len(node.inputs) == 4:
             warnings.warn("Theano GPUDnnPoolGrad internal changed.", stacklevel=3)
             # Old interface

@@ -233,6 +233,7 @@ class PyDotFormatter(object):
                 gf = PyDotFormatter()
                 # Use different node prefix for sub-graphs
                 gf.__node_prefix = __node_id
+                node.op.prepare_node(node, None, None, 'py')
                 gf(node.op.fn, subgraph)
                 graph.add_subgraph(subgraph)
                 pd_node.get_attributes()['subg'] = subgraph.get_name()

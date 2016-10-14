@@ -49,7 +49,7 @@ class GpuCumsum(CumsumOp, GpuOp):
 
         return theano.Apply(self, [x], [x.type()])
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def make_thunk(self, node, storage_map, compute_map, no_recycling, impl=None):
         node_ = copy.copy(node)
         assert node.op is node_.op
         if node_.op.max_threads_dim0 is None or node_.op.max_grid_size1 is None or node_.op.max_grid_size2 is None:
@@ -70,7 +70,7 @@ class GpuCumsum(CumsumOp, GpuOp):
             node_.op.max_grid_size2 = prop['maxGridSize2']
 
         return super(GpuCumsum, node_.op).make_thunk(node_, storage_map,
-                                                     compute_map, no_recycling)
+                                                     compute_map, no_recycling, impl)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.axis)

@@ -1584,7 +1584,7 @@ class CLinker(link.Linker):
         else:
             # Set compute_map as None as clinker do not support lazy evaluation
             for node in self.node_order:
-                node.op.prepare_node(node, storage_map, None)
+                node.op.prepare_node(node, storage_map, None, 'c')
             module = get_module_cache().module_from_key(
                 key=key, lnk=self, keep_lock=keep_lock)
 
@@ -1787,24 +1787,14 @@ class OpWiseCLinker(link.LocalLinker):
 
             thunks = []
             for node in order:
-                # Maker sure we use the C version of the code whenever
-                # possible
-                # There are ops that don't have _op_use_c_code property
-                # for example ifelse (or any ops that come with their own
-                # make_thunk
-                old_value = getattr(node.op, '_op_use_c_code', False)
-                try:
-                    if theano.config.cxx:
-                        node.op._op_use_c_code = True
-                    thunks += [node.op.make_thunk(node,
-                                                  storage_map,
-                                                  compute_map,
-                                                  no_recycling)]
-                    thunks[-1].inputs = [storage_map[v] for v in node.inputs]
-                    thunks[-1].outputs = [storage_map[v] for v in node.outputs]
-
-                finally:
-                    node.op._op_use_c_code = old_value
+                # make_thunk will try by default C code, otherwise
+                # it fall back to python.
+                thunks += [node.op.make_thunk(node,
+                                              storage_map,
+                                              compute_map,
+                                              no_recycling)]
+                thunks[-1].inputs = [storage_map[v] for v in node.inputs]
+                thunks[-1].outputs = [storage_map[v] for v in node.outputs]
 
             for node in order:
                 if self.allow_gc:

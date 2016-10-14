@@ -3064,7 +3064,7 @@ arctan = ArcTan(upgrade_to_float, name='arctan')
 
 
 class ArcTan2(BinaryScalarOp):
-    nfunc_spec = ('arctan2', 1, 1)
+    nfunc_spec = ('arctan2', 2, 1)
 
     def impl(self, y, x):
         # If x and y are int8 or uint8, numpy.arctan2 will compute the result
@@ -3663,11 +3663,15 @@ class Composite(ScalarOp):
         # Postpone the creation in case it isn't needed.
         #  self.init_name()      # self.name
         self.name = None
+        self.prepare_node_called = set()
 
-    def prepare_node(self, node, storage_map, compute_map):
-        self.init_py_impls()  # self._impls
-        for n in theano.gof.graph.list_of_nodes(self.inputs, self.outputs):
-            n.op.prepare_node(n, None, None)
+    def prepare_node(self, node, storage_map, compute_map, impl):
+        if impl == 'py':
+            self.init_py_impls()  # self._impls
+        if impl not in self.prepare_node_called:
+            for n in theano.gof.graph.list_of_nodes(self.inputs, self.outputs):
+                n.op.prepare_node(n, None, None, impl)
+            self.prepare_node_called.add(impl)
 
     def output_types(self, input_types):
         if tuple(input_types) != self.inputs_type:

@@ -586,7 +586,7 @@ Modify and execute to work for a matrix of shape (20, 10).
             assert inp.dtype == "float32"
             return theano.Apply(self, [inp], [inp.type()])
 
-        def make_thunk(self, node, storage_map, _, _2):
+        def make_thunk(self, node, storage_map, _, _2, impl):
             mod = SourceModule("""
         __global__ void my_fct(float * i0, float * o0, int size) {
         int i = blockIdx.x*blockDim.x + threadIdx.x;

@@ -541,10 +541,8 @@ class GpuGemm(GpuOp):
     def __setstate__(self, dct):
         self.__dict__.update(dct)
 
-        # Correctly reload older pickles where _op_use_c_code and
-        # destroy_map were not saved
-        if '_op_use_c_code' not in self.__dict__:
-            self._op_use_c_code = theano.config.cxx
+        # Correctly reload older pickles where destroy_map were not
+        # saved
         if 'destroy_map' not in self.__dict__ and self.inplace:
             self.destroy_map = {0: [0]}
 
@@ -661,10 +659,8 @@ class GpuGemv(GpuOp):
     def __setstate__(self, dct):
         self.__dict__.update(dct)
 
-        # Correctly reload older pickles where _op_use_c_code and
-        # destroy_map were not saved
-        if '_op_use_c_code' not in self.__dict__:
-            self._op_use_c_code = theano.config.cxx
+        # Correctly reload older pickles where destroy_map were not
+        # saved
         if 'destroy_map' not in self.__dict__ and self.inplace:
             self.destroy_map = {0: [0]}
 
@@ -761,10 +757,8 @@ class GpuGer(GpuOp):
     def __setstate__(self, dct):
         self.__dict__.update(dct)
 
-        # Correctly reload older pickles where _op_use_c_code and
-        # destroy_map were not saved
-        if '_op_use_c_code' not in self.__dict__:
-            self._op_use_c_code = theano.config.cxx
+        # Correctly reload older pickles where destroy_map were not
+        # saved
         if 'destroy_map' not in self.__dict__ and self.inplace:
             self.destroy_map = {0: [0]}
 
@@ -2187,7 +2181,9 @@ class GpuConv(GpuOp):
                      images[2] * images[3] * 2)
         return flops
 
-    def prepare_node(self, node, storage_map, compute_map):
+    def prepare_node(self, node, storage_map, compute_map, impl):
+        super(GpuConv, self).prepare_node(node, storage_map, compute_map, impl)
+
         if node.op.max_threads_dim0 is None:
             cuda = theano.sandbox.cuda
             device_id = cuda.use.device_number
@@ -2240,8 +2236,8 @@ class GpuConv(GpuOp):
             bmode = 0
         if max_threads_dim0 is None:
             raise NotImplementedError("GpuConv.c_code should not be called "
-                                      "directly. It should be called by "
-                                      "make_thunk() that add some information "
+                                      "directly. It should be called after "
+                                      "prepare_node() that add some information "
                                       "related to the selected GPU.")
         sub.update(locals())
         return """

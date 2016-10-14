@@ -124,14 +124,11 @@ class OpFromGraph(gof.Op):
                          list(inputs) + self.shared_inputs,
                          [type() for type in self.output_types])
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        ret = super(OpFromGraph, self).make_thunk(node, storage_map,
-                                                  compute_map, no_recycling)
-        if not hasattr(self, "fn"):
+    def prepare_node(self, node, storage_map, compute_map, impl):
+        if not hasattr(self, "fn") and impl == 'py':
             self.fn = orig_function(self.new_inputs,
                                     self.new_outputs,
                                     **self.kwargs)
-        return ret
 
     def perform(self, node, inputs, outputs):
         variables = self.fn(*inputs)

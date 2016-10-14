@@ -92,7 +92,7 @@ You can use a GPU function compiled with PyCUDA in a Theano op:
                cuda.basic_ops.as_cuda_ndarray_variable(inp))
             assert inp.dtype == "float32"
             return theano.Apply(self, [inp], [inp.type()])
-        def make_thunk(self, node, storage_map, _, _2):
+        def make_thunk(self, node, storage_map, _, _2, impl=None):
             mod = SourceModule("""
         __global__ void my_fct(float * i0, float * o0, int size) {
         int i = blockIdx.x * blockDim.x + threadIdx.x;

@@ -20,7 +20,7 @@ import numpy
 import theano.tensor
 from theano.tensor import TensorType
 from theano import gof
-from theano.gof import PureOp, Apply
+from theano.gof import Op, Apply
 
 from six import iteritems
 from six.moves import xrange
@@ -41,7 +41,7 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 _logger = logging.getLogger('theano.ifelse')
 
 
-class IfElse(PureOp):
+class IfElse(Op):
     """
     Op that provides conditional graph evaluation if used with the CVM/VM
     linkers. Note that there exist a helpful function `ifelse` that should
@@ -235,7 +235,7 @@ class IfElse(PureOp):
                 if_true_op(*if_true, **dict(return_list=True)) +
                 if_false_op(*if_false, **dict(return_list=True)))
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def make_thunk(self, node, storage_map, compute_map, no_recycling, impl=None):
         cond = node.inputs[0]
         ts = node.inputs[1:][:self.n_outs]
         fs = node.inputs[1:][self.n_outs:]

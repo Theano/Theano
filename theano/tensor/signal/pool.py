@@ -263,7 +263,7 @@ class Pool(OpenMPOp):
                 " 'average_inc_pad' and 'average_exc_pad'. Got %s" % mode)
         self.mode = mode
 
-    def prepare_node(self, node, storage_map, compute_map):
+    def prepare_node(self, node, storage_map, compute_map, impl):
         if len(node.inputs) == 1:
             # Old interface
             self.ndim = len(node.op.ds)
@@ -796,7 +796,7 @@ class PoolGrad(OpenMPOp):
         self.mode = mode
         super(PoolGrad, self).__init__(openmp=openmp)
 
-    def prepare_node(self, node, storage_map, compute_map):
+    def prepare_node(self, node, storage_map, compute_map, impl):
         if len(node.inputs) < 5:  # 5 for AveragePoolGrad, 6 for MaxPoolGrad
             # Old interface
             self.ndim = len(node.op.ds)
