@@ -1471,28 +1471,42 @@ def test_dnn_rnn_gru():
             p[:] = layer_params[j].get_value(borrow=True,
                                              return_internal_type=True)
 
-    def funcs(out, params):
-        fn = theano.function([X, h0], out, mode=mode_with_gpu)
-        cost = T.mean((Y - out)**2)
+    def funcs(out, params, hy=None):
+        cost = 0
+        if out:
+            cost += T.mean((Y - out)**2)
+        if hy:
+            cost += T.mean(hy**2)
         grad = T.grad(cost, [X, h0] + params)
-        grad_fn = theano.function([X, Y, h0], grad, mode=mode_with_gpu)
-        return fn, grad_fn
+        grad_fn = theano.function([X, Y, h0], grad, mode=mode_with_gpu,
+                                  on_unused_input='ignore')
+        return grad_fn
 
-    ref_fn, ref_grad_fn = funcs(last_layer.output(),
-                                model.get_params())
-    cudnn_fn, cudnn_grad_fn = funcs(rnnb.apply(params_cudnn, X, h0)[0],
-                                    [params_cudnn])
-    # Test with grad connected to both y and hy
+    ref_y = last_layer.output()
+
+    # This will grab the hy from the scan implementation
+    ref_hy = T.stack([model.layers[0].Y[-1],
+                      model.layers[1].Y[-1],
+                      model.layers[2].Y[-1]])
+
     y, hy = rnnb.apply(params_cudnn, X, h0)
-    cudnn2_fn, cudnn2_grad_fn = funcs((y + hy[-1]) / 2,
-                                      [params_cudnn])
+
+    ref_fn = theano.function([X, h0], ref_y, mode=mode_with_gpu)
+    cudnn_fn = theano.function([X, h0], y, mode=mode_with_gpu)
+
+    # Test with grad connected to y
+    ref_grad_fn = funcs(ref_y, model.get_params())
+    cudnn_grad_fn = funcs(y, [params_cudnn])
 
     # Test with grad connected to both y and hy
-    y, hy = rnnb.apply(params_cudnn, X, h0)
-    cudnn3_fn, cudnn3_grad_fn = funcs(hy[-1],
-                                      [params_cudnn])
+    ref2_grad_fn = funcs(ref_y, model.get_params(), ref_hy)
+    cudnn2_grad_fn = funcs(y, [params_cudnn], hy)
 
-    cudnn_fns = [cudnn_fn, cudnn2_fn, cudnn3_fn]
+    # Test with grad connected to hy
+    ref3_grad_fn = funcs(None, model.get_params(), ref_hy)
+    cudnn3_grad_fn = funcs(None, [params_cudnn], hy)
+
+    ref_grad_fns = [ref_grad_fn, ref2_grad_fn, ref3_grad_fn]
     cudnn_grad_fns = [cudnn_grad_fn, cudnn2_grad_fn, cudnn3_grad_fn]
 
     x_val = numpy.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
@@ -1500,20 +1514,19 @@ def test_dnn_rnn_gru():
     h0_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
 
     ref_out = ref_fn(x_val, h0_val)
-    cudnn_outs = [fn(x_val, h0_val) for fn in cudnn_fns]
+    cudnn_out = cudnn_fn(x_val, h0_val)
 
-    for cudnn_out in cudnn_outs:
-        utt.assert_allclose(ref_out, cudnn_out)
+    utt.assert_allclose(ref_out, cudnn_out)
 
-    ref_grads = ref_grad_fn(x_val, y_val, h0_val)
-    cudnn_grads = [fn(x_val, y_val, h0_val) for fn in cudnn_grad_fns]
+    for ref_grad_fn, cudnn_grad_fn in zip(ref_grad_fns, cudnn_grad_fns):
+        ref_grads = ref_grad_fn(x_val, y_val, h0_val)
+        cudnn_grads = cudnn_grad_fn(x_val, y_val, h0_val)
 
-    for cudnn_grad in cudnn_grads:
-        utt.assert_allclose(ref_grads[0], cudnn_grad[0])
-        utt.assert_allclose(ref_grads[1], cudnn_grad[1])
+        utt.assert_allclose(ref_grads[0], cudnn_grads[0])
+        utt.assert_allclose(ref_grads[1], cudnn_grads[1])
 
         ref_grad_params = ref_grads[2:]
-        cudnn_grad_params = gpuarray_shared_constructor(cudnn_grad[2])
+        cudnn_grad_params = gpuarray_shared_constructor(cudnn_grads[2])
 
         for i in range(depth):
             cudnn_grad_layer = rnnb.split_params(cudnn_grad_params, i,
