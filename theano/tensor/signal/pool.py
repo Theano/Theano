@@ -170,14 +170,14 @@ class Pool(OpenMPOp):
         'average_exc_pad' include it)
     ndim : int
         The number of pooling dimensions N.
-        If this number is not specified, the default is set to 2.
+        The default is 2.
 
     """
 
     __props__ = ('ignore_border', 'mode', 'ndim')
 
     @staticmethod
-    def out_shape(imgshape, ds, ignore_border=False, st=None, padding=None, ndim=None):
+    def out_shape(imgshape, ds, ignore_border=False, st=None, padding=None, ndim=2):
         """
         Return the shape of the output from this op, for input of given
         shape and flags.
@@ -204,7 +204,7 @@ class Pool(OpenMPOp):
             right margins. No padding is added if padding is None.
         ndim : int
             The number of pooling dimensions N.
-            If this number is not specified, the default is set to 2.
+            The default is 2.
 
         Returns
         -------
@@ -253,10 +253,8 @@ class Pool(OpenMPOp):
         rval = list(imgshape[:-ndim]) + out_shape
         return rval
 
-    def __init__(self, ignore_border=False, mode='max', ndim=None, openmp=None):
+    def __init__(self, ignore_border=False, mode='max', ndim=2, openmp=None):
         super(Pool, self).__init__(openmp=openmp)
-        if ndim is None:
-            ndim = 2
         self.ndim = ndim
         self.ignore_border = ignore_border
         if mode not in ['max', 'average_inc_pad', 'average_exc_pad', 'sum']:
@@ -334,8 +332,6 @@ class Pool(OpenMPOp):
         x, ws, stride, pad = inp
         z, = out
         nd = self.ndim
-        if nd is None:
-            nd = len(x.shape) - 2
         assert ws.shape == stride.shape == pad.shape == (nd,)
         if len(x.shape) < nd:
             raise NotImplementedError(
@@ -419,8 +415,6 @@ class Pool(OpenMPOp):
         x, ws, stride, pad = inp
         z, = out
         nd = self.ndim
-        if nd is None:
-            nd = node.inputs[0].ndim - 2
         total_ndim = node.inputs[0].ndim
         non_pool_ndim = total_ndim - nd
         fail = sub['fail']
@@ -721,7 +715,7 @@ class PoolGrad(OpenMPOp):
     __props__ = ('ignore_border', 'mode', 'ndim')
 
     @staticmethod
-    def out_shape(imgshape, ds, ignore_border=False, st=None, padding=None, ndim=None):
+    def out_shape(imgshape, ds, ignore_border=False, st=None, padding=None, ndim=2):
         """Return the shape of the output from this op, for input of given
         shape and flags.
 
@@ -747,9 +741,7 @@ class PoolGrad(OpenMPOp):
             right margins. No padding is added if padding is None.
         ndim : int
             The number of pooling dimensions N.
-            If this number is not specified, the default is set to the
-            (input.ndim - 2), assuming that the first two dimensions of the input
-            are non-pooling dimensions.
+            The default is 2.
 
         Returns
         -------
@@ -760,8 +752,6 @@ class PoolGrad(OpenMPOp):
             ignore_border flags.
 
         """
-        if ndim is None:
-            ndim = len(imgshape) - 2
 
         if len(imgshape) < ndim:
             raise TypeError('imgshape must have at least {} dimensions'.format(ndim))
@@ -796,7 +786,7 @@ class PoolGrad(OpenMPOp):
         rval = list(imgshape[:-ndim]) + out_shape
         return rval
 
-    def __init__(self, ignore_border, mode='max', ndim=None, openmp=None):
+    def __init__(self, ignore_border, mode='max', ndim=2, openmp=None):
         self.ndim = ndim
         self.ignore_border = ignore_border
         if mode not in ['max', 'sum', 'average_inc_pad', 'average_exc_pad']:
@@ -841,7 +831,7 @@ class PoolGrad(OpenMPOp):
 
 
 class MaxPoolGrad(PoolGrad):
-    def __init__(self, ignore_border, ndim=None, openmp=None):
+    def __init__(self, ignore_border, ndim=2, openmp=None):
         PoolGrad.__init__(self, ignore_border, mode='max', ndim=ndim, openmp=openmp)
 
     def make_node(self, x, maxout, gz, ws, stride=None, pad=None):
@@ -851,8 +841,6 @@ class MaxPoolGrad(PoolGrad):
         maxout = tensor.as_tensor_variable(maxout)
         gz = tensor.as_tensor_variable(gz)
         nd = self.ndim
-        if nd is None:
-            nd = x.ndim - 2
         if stride is None:
             stride = ws
         if pad is None:
@@ -880,8 +868,6 @@ class MaxPoolGrad(PoolGrad):
         x, maxout, gz, ws, stride, pad = inp
         gx_stg, = out
         nd = self.ndim
-        if nd is None:
-            nd = len(x.shape) - 2
         assert ws.shape == stride.shape == pad.shape == (nd,)
         if len(x.shape) < nd:
             raise NotImplementedError(
@@ -944,8 +930,6 @@ class MaxPoolGrad(PoolGrad):
         x, z, gz, ws, stride, pad = inp
         gx, = out
         nd = self.ndim
-        if nd is None:
-            nd = node.inputs[0].ndim - 2
         total_ndim = node.inputs[0].ndim
         non_pool_ndim = total_ndim - nd
         fail = sub['fail']
@@ -1162,7 +1146,7 @@ class MaxPoolGrad(PoolGrad):
 
 
 class AveragePoolGrad(PoolGrad):
-    def __init__(self, ignore_border, mode='average_inc_pad', ndim=None):
+    def __init__(self, ignore_border, mode='average_inc_pad', ndim=2):
         assert mode in ['sum', 'average_inc_pad', 'average_exc_pad']
         PoolGrad.__init__(self, ignore_border, mode, ndim)
 
@@ -1176,8 +1160,6 @@ class AveragePoolGrad(PoolGrad):
         x = tensor.as_tensor_variable(x)
         gz = tensor.as_tensor_variable(gz)
         nd = self.ndim
-        if nd is None:
-            nd = x.ndim - 2
         if stride is None:
             stride = ws
         if pad is None:
@@ -1203,8 +1185,6 @@ class AveragePoolGrad(PoolGrad):
         x, gz, ws, stride, pad = inp
         gx_stg, = out
         nd = self.ndim
-        if nd is None:
-            nd = len(x.shape) - 2
         assert ws.shape == stride.shape == pad.shape == (nd,)
         if len(x.shape) < nd:
             raise NotImplementedError(
@@ -1275,8 +1255,6 @@ class AveragePoolGrad(PoolGrad):
         x, gz, ws, stride, pad = inp
         gx, = out
         nd = self.ndim
-        if nd is None:
-            nd = node.inputs[0].ndim - 2
         total_ndim = node.inputs[0].ndim
         non_pool_ndim = total_ndim - nd
         fail = sub['fail']
@@ -1503,7 +1481,7 @@ class AveragePoolGrad(PoolGrad):
 class DownsampleFactorMaxGradGrad(OpenMPOp):
     __props__ = ('ignore_border', 'mode', 'ndim')
 
-    def __init__(self, ignore_border, mode='max', ndim=None, openmp=None):
+    def __init__(self, ignore_border, mode='max', ndim=2, openmp=None):
         self.ndim = ndim
         self.ignore_border = ignore_border
         self.mode = mode
@@ -1517,8 +1495,6 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         maxout = tensor.as_tensor_variable(maxout)
         gz = tensor.as_tensor_variable(gz)
         nd = self.ndim
-        if nd is None:
-            nd = x.ndim - 2
         if stride is None:
             stride = ws
         if pad is None:
@@ -1550,8 +1526,6 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         x, maxout, ggx, ws, stride, pad = inp
         z, = out
         nd = self.ndim
-        if nd is None:
-            nd = len(x.shape) - 2
         assert ws.shape == stride.shape == pad.shape == (nd,)
         if len(x.shape) < nd:
             raise NotImplementedError(
@@ -1624,8 +1598,6 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         x, maxout, ggx, ws, stride, pad = inp
         z, = out  # the grad of grad
         nd = self.ndim
-        if nd is None:
-            nd = node.inputs[0].ndim - 2
         total_ndim = node.inputs[0].ndim
         non_pool_ndim = total_ndim - nd
         fail = sub['fail']

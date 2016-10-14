@@ -3055,7 +3055,7 @@ if True:
             if not node.op.ignore_border:
                 return
             img, ws, stride, pad = node.inputs
-            nd = node.op.ndim if node.op.ndim else (img.ndim - 2)
+            nd = node.op.ndim
             mode = node.op.mode
             if nd not in (2, 3):
                 return
@@ -3098,7 +3098,7 @@ if True:
             if not node.op.ignore_border:
                 return
             inp, out, inp_grad, ws, stride, pad = node.inputs
-            nd = node.op.ndim if node.op.ndim else (inp.ndim - 2)
+            nd = node.op.ndim
             mode = node.op.mode
             if nd not in (2, 3):
                 return
@@ -3134,7 +3134,7 @@ if True:
             if not node.op.ignore_border:
                 return
             inp, inp_grad, ws, stride, pad = node.inputs
-            nd = node.op.ndim if node.op.ndim else (inp.ndim - 2)
+            nd = node.op.ndim
             mode = node.op.mode
             if nd not in (2, 3):
                 return
