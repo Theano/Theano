@@ -3490,6 +3490,7 @@ class Composite(ScalarOp):
         # It was already called
         if hasattr(self, '_c_code'):
             return
+        self.init_fgraph()
         subd = dict(chain(
             ((e, "%%(i%i)s" % i) for i, e in enumerate(self.fgraph.inputs)),
             ((e, "%%(o%i)s" % i) for i, e in enumerate(self.fgraph.outputs))))
@@ -3556,6 +3557,7 @@ class Composite(ScalarOp):
         # execution there.
 
         memo = {}
+        self.init_fgraph()
 
         def compose_impl(r):
             if r in memo:
@@ -3588,6 +3590,7 @@ class Composite(ScalarOp):
         """
         rval = self.name
         if rval is None:
+            self.init_fgraph()
             for i, r in enumerate(self.fgraph.inputs):
                 r.name = 'i%i' % i
             for i, r in enumerate(self.fgraph.outputs):
@@ -3601,6 +3604,8 @@ class Composite(ScalarOp):
             self.name = rval
 
     def init_fgraph(self):
+        if hasattr(self, 'fgraph'):
+            return
         # The clone done by FunctionGraph is needed as we don't want
         # the fgraph to be set to the variable as we need to pickle
         # them for the cache of c module to work.
@@ -3725,6 +3730,7 @@ class Composite(ScalarOp):
         return self._c_code % d
 
     def c_code_cache_version(self):
+        self.init_fgraph()
         rval = [3]
         for x in self.fgraph.toposort():
             xv = x.op.c_code_cache_version()
@@ -3735,6 +3741,7 @@ class Composite(ScalarOp):
         return tuple(rval)
 
     def c_support_code(self):
+        self.init_fgraph()
         rval = []
         for subnode in self.fgraph.toposort():
             try:
@@ -3745,6 +3752,7 @@ class Composite(ScalarOp):
         return "\n".join(sorted(set(rval)))
 
     def c_support_code_apply(self, node, name):
+        self.init_fgraph()
         self.init_c_code()
         rval = []
         for subnode, subnodename in zip(self.fgraph.toposort(), self.nodenames):
@@ -3793,13 +3801,12 @@ class Composite(ScalarOp):
     def __getstate__(self):
         rval = dict(self.__dict__)
         rval.pop('_impls', None)
-        del rval['fgraph']
+        rval.pop('fgraph', None)
         return rval
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-        # We must call init to set fgraph and _impls again, as otherwise
-        # self.perform will not work.
-        self.init_fgraph()
-        self.init_py_impls()
+        # self.init_fgraph() and self.init_py_impls() will be called
+        # when needed. Do not do it now.
+
         assert self._c_code

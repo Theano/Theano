@@ -534,21 +534,45 @@ class MergeFeature(object):
         # List of (node, candidate) pairs, where we tried to replace node by
         # candidate, but it failed. This is used to avoid infinite loops
         # during the replacement phase.
-        self.blacklist = []
+        self.blacklist = set()
+        self.d = defaultdict(list)
 
         for node in fgraph.toposort():
             self.on_import(fgraph, node, "on_attach")
+
+    def on_detach(self, fgraph):
+        # To allow pickling this object
+        fgraph.merge_feature = None
+        self.seen_constants = None
+        self.const_sig = None
+        self.const_sig_inv = None
+        self.nodes_seen = None
+        self.noinput_nodes = None
+        self.scheduled = None
+        self.blacklist = None
+        self.d = None
 
     def on_change_input(self, fgraph, node, i, r, new_r, reason):
         # If inputs to node change, it is not guaranteed that it is distinct
         # from the other nodes in nodes_seen
         if node in self.nodes_seen:
+            # Remove from self.d
+            if not isinstance(node, str):
+                old_inputs = list(node.inputs)
+                old_inputs[i] = r
+                old_k = (tuple(old_inputs), node.op)
+                # TODO: remove the next if
+                l = self.d[old_k]
+                if node in l:
+                    l.remove(node)
             self.nodes_seen.discard(node)
             self.process_node(fgraph, node)
+            # node is in self.nodes_seen or scheduled, not both
 
         # Since we are in on_change_input, node should have inputs.
-        if not isinstance(node, string_types):
-            assert node.inputs
+        # Always true.
+        # if not isinstance(node, string_types):
+        #    assert node.inputs
 
         if isinstance(new_r, graph.Constant):
             self.process_constant(fgraph, new_r)
@@ -571,6 +595,13 @@ class MergeFeature(object):
                 self.const_sig.discard(c)
                 self.const_sig_inv.discard(sig)
                 self.seen_constants.discard(id(c))
+        k = (tuple(node.inputs), node.op)
+        # TODO: remove the next if
+        l = self.d[k]
+        if node in l:
+            l.remove(node)
+#        else:
+#            import pdb;pdb.set_trace()
 
     def process_constant(self, fgraph, c):
         """
@@ -597,12 +628,39 @@ class MergeFeature(object):
         """
         Check if a node can be merged, and queue that replacement.
 
+        node should have been removed from self.nodes_seen and self.d.
         """
         if node in self.nodes_seen:
             return
 
         node_has_assert = False
+        k = (tuple(node.inputs), node.op)
+        replacement_candidates2 = []
+        if k in self.d:
+            merge_candidates = self.d[k]
+            for candidate in merge_candidates:
+                pairs = list(zip(node.outputs,
+                                 candidate.outputs,
+                                 ['merge'] * len(node.outputs)))
+                # transfer names
+                for pair in pairs:
+                    node_output, cand_output = pair[:2]
+                    # clobber old name with new one
+                    # it's arbitrary... one of the names has to go
+                    if node_output.name:
+                        cand_output.name = node_output.name
 
+                replacement_candidates2.append(pairs)
+        assert node not in self.nodes_seen
+
+        if replacement_candidates2:
+            self.scheduled.append(replacement_candidates2)
+        else:
+            self.nodes_seen.add(node)
+            if not node.inputs:
+                self.noinput_nodes.add(node)
+            self.d[k].append(node)
+        return
         # These asserts ensure that the fgraph has set the clients field
         # properly.
         # The clients should at least contain `node` itself!
@@ -642,19 +700,22 @@ class MergeFeature(object):
                 continue
             if len(node.inputs) != len(candidate.inputs):
                 continue
-
+#            if node.op != candidate.op:
+#                continue
             cand_has_assert = False
 
             # Get input list of the candidate with assert removed
-            cand_inputs_assert_removed = []
-            for i in candidate.inputs:
-                if i.owner and isinstance(i.owner.op,
-                                          theano.tensor.opt.Assert):
-                    cand_has_assert = True
-                    cand_inputs_assert_removed.append(i.owner.inputs[0])
-                else:
-                    cand_inputs_assert_removed.append(i)
-
+            if False:  # check_assert:
+                cand_inputs_assert_removed = []
+                for i in candidate.inputs:
+                    if i.owner and isinstance(i.owner.op,
+                                              theano.tensor.opt.Assert):
+                        cand_has_assert = True
+                        cand_inputs_assert_removed.append(i.owner.inputs[0])
+                    else:
+                        cand_inputs_assert_removed.append(i)
+            else:
+                cand_inputs_assert_removed = candidate.inputs
             # Get input list of the node with assert removed
             if node_has_assert:
                 node_inputs_assert_removed = []
@@ -856,7 +917,7 @@ class MergeOptimizer(Optimizer):
                 except InconsistencyError:
                     success = False
                     nb_fail += 1
-                    fgraph.merge_feature.blacklist.append(
+                    fgraph.merge_feature.blacklist.add(
                         (pairs[0][0].owner, pairs[0][1].owner))
                 if success:
                     nb_merged += len(pairs)
@@ -881,7 +942,7 @@ class MergeOptimizer(Optimizer):
             callback_time = None
             callbacks_time = {}
         # clear blacklist
-        fgraph.merge_feature.blacklist = []
+        fgraph.merge_feature.blacklist = set()
         return (nb_fail, time.time() - t0, validate_time,
                 callback_time, callbacks_time, nb_merged, nb_constant)
 

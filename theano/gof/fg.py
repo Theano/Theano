@@ -328,7 +328,10 @@ class FunctionGraph(utils.object2):
                     apply_node.tag.removed_by = []
                 apply_node.tag.removed_by.append(str(reason))
                 self.apply_nodes.remove(apply_node)
+                del apply_node.fgraph
                 self.variables.difference_update(apply_node.outputs)
+                for var in apply_node.outputs:
+                    del var.fgraph
                 self.execute_callbacks('on_prune', apply_node, reason)
 
                 for i, input in enumerate(apply_node.inputs):

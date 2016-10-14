@@ -1783,6 +1783,10 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
 
     fn.name = name
     fn.maker.fgraph.name = name
+    fg = fn.maker.fgraph
+    for feature in fg._features:
+        if isinstance(feature, theano.gof.opt.MergeFeature):
+            fg.remove_feature(feature)
     return fn
 
 
