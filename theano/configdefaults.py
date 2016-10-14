@@ -19,6 +19,7 @@ from theano.configparser import (AddConfigVar, BoolParam, ConfigParam, EnumStr,
                                  TheanoConfigParser, THEANO_FLAGS_DICT)
 from theano.misc.cpucount import cpuCount
 from theano.misc.windows import call_subprocess_Popen, output_subprocess_Popen
+from theano.compat import maybe_add_to_os_environ_pathlist
 
 
 _logger = logging.getLogger('theano.configdefaults')
@@ -417,6 +418,19 @@ try:
     rc = call_subprocess_Popen(['g++', '-v'])
 except OSError:
     rc = 1
+
+# Anaconda on Windows has mingw-w64 packages including GCC, but it may not be on PATH.
+if rc != 0:
+    if sys.platform == "win32":
+        mingw_w64_gcc = os.path.join(os.path.dirname(sys.executable), "Library", "mingw-w64", "bin", "g++")
+        try:
+            rc = call_subprocess_Popen([mingw_w64_gcc, '-v'])
+            if rc == 0:
+                maybe_add_to_os_environ_pathlist('PATH', os.path.dirname(mingw_w64_gcc))
+        except OSError:
+            rc = 1
+        if rc != 0:
+            _logger.warning("conda g++ not available, use `conda install m2w64-toolchain`")
 
 if rc != 0:
     param = ""
@@ -1269,6 +1283,7 @@ def default_blas_ldflags():
                               blas_info.get('library_dirs', [])])
                 res = try_blas_flag(flags)
                 if res:
+                    maybe_add_to_os_environ_pathlist('PATH', lib_path)
                     return res
 
         # to support path that includes spaces, we need to wrap it with double quotes on Windows
