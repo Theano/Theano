@@ -153,9 +153,9 @@ def test_local_reshape_dimshuffle():
 
     reshape_dimshuffle = out2in(local_dimshuffle_alloc)
 
-    x = tensor.matrix('x')
+    x = tensor.vector('x')
 
-    out = tensor.alloc(x, 3, 2).dimshuffle('x','x',0,1)
+    out = tensor.alloc(x, 3, 2).dimshuffle('x', 'x', 0, 1)
 
     g = FunctionGraph([x], [out])
     reshape_dimshuffle(g)
@@ -164,7 +164,7 @@ def test_local_reshape_dimshuffle():
     l.accept(g)
     f=l.make_function()
 
-    assert f([3,4]).ndim == 4
+    assert f([3, 4]).ndim == 4
 
     topo = g.toposort()
     assert any([not isinstance(x, DimShuffle) for x in topo])
