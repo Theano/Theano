@@ -2235,16 +2235,25 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
               W1, b1, W2, b2, target=None):
     """ Two-level hierarchical softmax.
 
-    The architecture is composed of two softmax layers: the first predicts the
-    class of the input x while the second predicts the output of the input x in
-    the predicted class.
-    More explanations can be found in the original paper [1]_.
+    This function implements a two-layer hierarchical softmax. It is commonly
+    used as an alternative of the softmax when the number of outputs is
+    important (it is common to use it for millions of outputs). See
+    reference [1]_ for more information about the computational gains.
 
-    If target is specified, it will only compute the outputs of the
-    corresponding targets. Otherwise, if target is None, it will compute all
-    the outputs.
+    The `n_outputs` outputs are organized in `n_classes` classes, each class
+    containing the same number `n_outputs_per_class` of outputs.
+    For an input `x` (last hidden activation), the first softmax layer predicts
+    its class and the second softmax layer predicts its output among its class.
 
-    The outputs are grouped in the same order as they are initially defined.
+    If `target` is specified, it will only compute the outputs of the
+    corresponding targets. Otherwise, if `target` is `None`, it will compute
+    all the outputs.
+
+    The outputs are grouped in classes in the same order as they are initially
+    defined: if `n_outputs=10` and `n_classes=2`, then the first class is
+    composed of the outputs labeled `{0,1,2,3,4}` while the second class is
+    composed of `{5,6,7,8,9}`. If you need to change the classes, you have to
+    re-label your outputs.
 
     .. versionadded:: 0.7.1
 
@@ -2267,7 +2276,8 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
         probabilities of the classes.
     b1: tensor of shape (n_classes,)
         the bias vector of the first softmax layer.
-    W2: tensor of shape (n_classes, number of features of the input x, n_outputs_per_class)
+    W2: tensor of shape (n_classes, number of features of the input x,
+            n_outputs_per_class)
         the weight matrix of the second softmax, which maps the input x to
         the probabilities of the outputs.
     b2: tensor of shape (n_classes, n_outputs_per_class)
@@ -2281,22 +2291,74 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
 
     Returns
     -------
-    output_probs: tensor of shape (batch_size, n_outputs) or (batch_size, 1)
-        Output of the two-layer hierarchical softmax for input x. If target is
-        not specified (None), then all the outputs are computed and the
-        returned tensor has shape (batch_size, n_outputs). Otherwise, when
-        target is specified, only the corresponding outputs are computed and
-        the returned tensor has thus shape (batch_size, 1).
+    tensor of shape (`batch_size`, `n_outputs`) or (`batch_size`, 1)
+        Output tensor of the two-layer hierarchical softmax for input `x`.
+        Depending on argument `target`, it can have two different shapes.
+        If `target` is not specified (`None`), then all the outputs are
+        computed and the returned tensor has shape (`batch_size`, `n_outputs`).
+        Otherwise, when `target` is specified, only the corresponding outputs
+        are computed and the returned tensor has thus shape (`batch_size`, 1).
 
     Notes
     -----
-    The product of n_outputs_per_class and n_classes has to be greater or equal
-    to n_outputs. If it is strictly greater, then the irrelevant outputs will
-    be ignored.
-    n_outputs_per_class and n_classes have to be the same as the corresponding
-    dimensions of the tensors of W1, b1, W2 and b2.
-    The most computational efficient configuration is when n_outputs_per_class
-    and n_classes are equal to the square root of n_outputs.
+    The product of `n_outputs_per_class` and `n_classes` has to be greater or
+    equal to `n_outputs`. If it is strictly greater, then the irrelevant
+    outputs will be ignored.
+    `n_outputs_per_class` and `n_classes` have to be the same as the
+    corresponding dimensions of the tensors of `W1`, `b1`, `W2` and `b2`.
+    The most computational efficient configuration is when
+    `n_outputs_per_class` and `n_classes` are equal to the square root of
+    `n_outputs`.
+
+    Examples
+    --------
+    The following example builds a simple hierarchical softmax layer.
+
+    >>> import numpy as np
+    >>> import theano
+    >>> from theano import tensor
+    >>> from theano.tensor.nnet import h_softmax
+    >>>
+    >>> # Parameters
+    >>> batch_size = 32
+    >>> n_outputs = 100
+    >>> dim_x = 10  # dimension of the input
+    >>> n_classes = int(np.ceil(np.sqrt(n_outputs)))
+    >>> n_outputs_per_class = n_classes
+    >>> output_size = n_outputs_per_class * n_outputs_per_class
+    >>>
+    >>> # First level of h_softmax
+    >>> W1 = theano.shared(np.asarray(
+    ...     np.random.normal(0, 0.001, (dim_x, n_classes))))
+    >>> b1 = theano.shared(np.asarray(np.zeros((n_classes,))))
+    >>>
+    >>> # Second level of h_softmax
+    >>> W2 = np.asarray(np.random.normal(0, 0.001,
+    ...     size=(n_classes, dim_x, n_outputs_per_class)))
+    >>> W2 = theano.shared(W2)
+    >>> b2 = theano.shared(
+    ...    np.asarray(np.zeros((n_classes, n_outputs_per_class))))
+    >>>
+    >>> # We can now build the graph to compute a loss function, typically the
+    >>> # negative log-likelihood:
+    >>>
+    >>> x = tensor.imatrix('x')
+    >>> target = tensor.imatrix('target')
+    >>>
+    >>> # This only computes the output corresponding to the target.
+    >>> # The complexity is O(n_classes + n_outputs_per_class).
+    >>> y_hat_tg = h_softmax(x, batch_size, output_size, n_classes,
+    ...                      n_outputs_per_class, W1, b1, W2, b2, target)
+    >>>
+    >>> negll = -tensor.mean(tensor.log(y_hat_tg))
+    >>>
+    >>> # We may need to compute all the outputs (at test time usually):
+    >>>
+    >>> # This computes all the outputs.
+    >>> # The complexity is O(n_classes * n_outputs_per_class).
+    >>> output = h_softmax(x, batch_size, output_size, n_classes,
+    ...                    n_outputs_per_class, W1, b1, W2, b2)
+
 
     References
     ----------
