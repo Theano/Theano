@@ -532,7 +532,7 @@ by the inner function, otherwise an error will be raised.
 Reducing Scan's memory usage
 ----------------------------
 
-This section presents the ``scan_with_checkpoints`` function. In short, this
+This section presents the ``scan_checkpoints`` function. In short, this
 function reduces the memory usage of scan (at the cost of more computation
 time) by not keeping in memory all the intermediate time steps of the loop,
 and recomputing them when computing the gradients. This function is therefore
@@ -553,7 +553,7 @@ Before going more into the details, here are its current limitations:
 Often, in order to be able to compute the gradients through scan operations,
 Theano needs to keep in memory some intermediate computations of scan. This
 can sometimes use a prohibitively large amount of memory.
-``scan_with_checkpoints`` allows to discard some of those intermediate steps and
+``scan_checkpoints`` allows to discard some of those intermediate steps and
 recompute them again when computing the gradients. Its ``save_every_N`` argument
 specifies the number time steps to do without storing the intermediate results.
 For example, ``save_every_N = 4`` will reduce the memory usage by 4, while having
@@ -646,4 +646,4 @@ reference
 .. autofunction:: theano.foldl
 .. autofunction:: theano.foldr
 .. autofunction:: theano.scan
-.. autofunction:: theano.scan_with_checkpoints
+.. autofunction:: theano.scan_checkpoints

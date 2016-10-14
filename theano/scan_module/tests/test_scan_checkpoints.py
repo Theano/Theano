@@ -6,7 +6,11 @@ import unittest
 import theano
 import theano.tensor as T
 
-from pygpu.gpuarray import GpuArrayException
+try:
+    from pygpu.gpuarray import GpuArrayException
+    PYGPU_AVAILABLE = True
+except ImportError:
+    PYGPU_AVAILABLE = False
 
 
 class TestScanCheckpoint(unittest.TestCase):
@@ -19,7 +23,7 @@ class TestScanCheckpoint(unittest.TestCase):
             outputs_info=T.ones_like(self.A),
             non_sequences=self.A,
             n_steps=self.k)
-        result_check, _ = theano.scan_with_checkpoints(
+        result_check, _ = theano.scan_checkpoints(
             fn=lambda prior_result, A: prior_result * A,
             outputs_info=T.ones_like(self.A),
             non_sequences=self.A,
@@ -44,6 +48,7 @@ class TestScanCheckpoint(unittest.TestCase):
         out, out_check = f(range(10), 100)
         assert numpy.allclose(out, out_check)
 
+    @unittest.skipUnless(PYGPU_AVAILABLE, 'Requires pygpu.')
     def test_memory(self):
         """Test that scan_checkpoint reduces memory usage."""
         if None not in theano.gpuarray.type.list_contexts():
@@ -61,5 +66,5 @@ class TestScanCheckpoint(unittest.TestCase):
 
     def test_taps_error(self):
         """Test that an error rises if we use taps in outputs_info."""
-        self.assertRaises(RuntimeError, theano.scan_with_checkpoints,
+        self.assertRaises(RuntimeError, theano.scan_checkpoints,
                           lambda: None, [], {'initial': self.A, 'taps': [-2]})

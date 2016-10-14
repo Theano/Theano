@@ -3,34 +3,36 @@ from __future__ import absolute_import, print_function, division
 import theano
 
 
-def scan_with_checkpoints(fn, sequences=[], outputs_info=None,
-                          non_sequences=[], name="checkpointscan_fn",
-                          n_steps=None, save_every_N=10):
+def scan_checkpoints(fn, sequences=[], outputs_info=None, non_sequences=[],
+                     name="checkpointscan_fn", n_steps=None, save_every_N=10):
     """Scan function that uses less memory, but is more restrictive.
 
-    In ``scan``, if you compute the gradient of the output with respect
-    to the input, you will have to store the intermediate results at
-    each time step, which can be prohibitively huge. This function allows
-    to do several steps of forward computations without storing the
-    intermediate results, and to recompute them during the gradient
-    computation.
+    In :func:`~theano.scan`, if you compute the gradient of the output
+    with respect to the input, you will have to store the intermediate
+    results at each time step, which can be prohibitively huge. This
+    function allows to do ``save_every_N`` steps of forward computations
+    without storing the intermediate results, and to recompute them during
+    the gradient computation.
 
-    Current assumptions :
-    - Every sequence has the same length.
-    - If n_steps is specified, it has the same value as the length of any
-    sequence.
-    - The value of "save_every_N" divides the number of steps the Scan will
-    run without remainder.
-    - Only singly-recurrent and non-recurrent outputs are used.
-    No multiple recurrences.
-    - Only the last timestep of any output will ever be used.
+    Notes
+    -----
+    Current assumptions:
+
+    * Every sequence has the same length.
+    * If ``n_steps`` is specified, it has the same value as the length of
+      any sequence.
+    * The value of ``save_every_N`` divides the number of steps the scan
+      will run without remainder.
+    * Only singly-recurrent and non-recurrent outputs are used.
+      No multiple recurrences.
+    * Only the last timestep of any output will ever be used.
 
     Parameters
     ----------
     fn
         ``fn`` is a function that describes the operations involved in one
-        step of ``scan``. See the documentation of ``scan`` for more
-        information.
+        step of ``scan``. See the documentation of :func:`~theano.scan`
+        for more information.
 
     sequences
         ``sequences`` is the list of Theano variables or dictionaries
@@ -51,36 +53,30 @@ def scan_with_checkpoints(fn, sequences=[], outputs_info=None,
     n_steps
         ``n_steps`` is the number of steps to iterate given as an int
         or Theano scalar. If any of the input sequences do not have
-        enough elements, scan will raise an error. If the *value is 0* the
-        outputs will have *0 rows*. If the value is negative, ``scan``
-        will run backwards in time. If the ``go_backwards`` flag is already
-        set and also ``n_steps`` is negative, ``scan`` will run forward
-        in time. If n_steps is not provided, ``scan`` will figure
+        enough elements, scan will raise an error. If the **value is 0**
+        the outputs will have **0 rows**. If the value is negative,
+        ``scan`` will run backwards in time. If the ``go_backwards`` flag
+        is already set and also ``n_steps`` is negative, ``scan`` will run
+        forward in time. If n_steps is not provided, ``scan`` will figure
         out the amount of steps it should run given its input sequences.
 
     save_every_N
         ``save_every_N`` is the number of steps to go without storing
-        the computations of scan (ie they will have to be recomputed
+        the computations of ``scan`` (ie they will have to be recomputed
         during the gradient computation).
 
     Returns
     -------
     tuple
-        Tuple of the form (outputs, updates); ``outputs`` is either a
-        Theano variable or a list of Theano variables representing the
-        outputs of ``scan`` (in the same order as in ``outputs_info``).
-        ``updates`` is a subclass of dictionary specifying the update rules for
-        all shared variables used in scan.
-        This dictionary should be passed to ``theano.function`` when you compile
-        your function. The change compared to a normal dictionary is that we
-        validate that keys are SharedVariable and addition of those dictionary
-        are validated to be consistent.
-        Note that only the last time step of ``outputs`` can be used with this
-        type of scan.
+        Tuple of the form ``(outputs, updates)`` as in :func:`~theano.scan`, but
+        with a small change: It only contain the output at each
+        ``save_every_N`` step. The time steps that are not returned by
+        this function will be recomputed during the gradient computation
+        (if any).
 
     See Also
     --------
-    scan : Looping in Theano.
+    :func:`~theano.scan`: Looping in Theano.
 
     """
     # Standardize the format of input arguments
@@ -94,7 +90,7 @@ def scan_with_checkpoints(fn, sequences=[], outputs_info=None,
     # Check that outputs_info has no taps:
     for element in outputs_info:
         if isinstance(element, dict) and 'taps' in element:
-            raise RuntimeError("scan_with_checkpoints doesn't work with taps.")
+            raise RuntimeError("scan_checkpoints doesn't work with taps.")
 
     # Determine how many steps the original scan would run
     if n_steps is None:
