@@ -31,10 +31,6 @@ import logging
 
 import sys
 
-if sys.platform == 'win32' and sys.version_info[0:2] == (3, 5):
-    raise RuntimeError(
-        "Theano do not support Python 3.5 on Windows. Use Python 2.7 or 3.4.")
-
 theano_logger = logging.getLogger("theano")
 logging_default_handler = logging.StreamHandler()
 logging_default_formatter = logging.Formatter(
