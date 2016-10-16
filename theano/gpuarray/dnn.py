@@ -1882,8 +1882,6 @@ def dnn_batch_normalization_test(inputs, gamma, beta, mean, var,
     return result
 
 
-@register_opt2([AbstractConv2d, AbstractConv2d_gradWeights,
-                AbstractConv2d_gradInputs], 'fast_compile', 'conv_dnn', 'cudnn')
 def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
     if (not isinstance(op, (AbstractConv2d,
                             AbstractConv2d_gradWeights,
@@ -1927,8 +1925,6 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
     return [rval]
 
 
-@register_opt2([AbstractConv3d, AbstractConv3d_gradWeights,
-                AbstractConv3d_gradInputs], 'fast_compile', 'conv_dnn', 'cudnn')
 def local_abstractconv3d_cudnn_graph(op, context_name, inputs, outputs):
     if (not isinstance(op, (AbstractConv3d,
                             AbstractConv3d_gradWeights,
@@ -1972,7 +1968,6 @@ def local_abstractconv3d_cudnn_graph(op, context_name, inputs, outputs):
     return [rval]
 
 
-@register_opt('fast_compile', 'conv_dnn', 'cudnn')
 @local_optimizer([AbstractConv2d, AbstractConv3d])
 def local_abstractconv_cudnn(node):
     ctx = infer_context_name(*node.inputs)
@@ -1984,7 +1979,6 @@ def local_abstractconv_cudnn(node):
         return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
-@register_opt('fast_compile', 'conv_dnn', 'cudnn')
 @local_optimizer([AbstractConv2d_gradWeights, AbstractConv3d_gradWeights])
 def local_abstractconv_gw_cudnn(node):
     ctx = infer_context_name(*node.inputs)
@@ -1996,7 +1990,6 @@ def local_abstractconv_gw_cudnn(node):
         return local_abstractconv3d_cudnn_graph(node.op, ctx, node.inputs, node.outputs)
 
 
-@register_opt('fast_compile', 'conv_dnn', 'cudnn')
 @local_optimizer([AbstractConv2d_gradInputs, AbstractConv3d_gradInputs])
 def local_abstractconv_gi_cudnn(node):
     ctx = infer_context_name(*node.inputs)
