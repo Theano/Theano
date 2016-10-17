@@ -157,17 +157,19 @@ def local_dimshuffle_alloc(node):
 
     dimshuffle{x, 0, 1}(alloc([3 4], 3, 2) => alloc([3 4], 1, 3, 2)
     """
-    if isinstance(node.op, T.DimShuffle) and isinstance(node.inputs[0].owner.op, T.Alloc):
-        # check if it only adds dimension to the left
-        new_order = node.op.new_order
-        expected_new_order = ('x',) * (len(new_order) - node.inputs[0].ndim) + \
-            tuple(range(node.inputs[0].ndim))
-        if new_order != expected_new_order:
-            return False
+    if isinstance(node.op, T.DimShuffle) and node.inputs[0].owner:
+        input_ = node.inputs[0]
+        if isinstance(input_.owner.op, T.Alloc):
+            # check if it only adds dimension to the left
+            new_order = node.op.new_order
+            expected_new_order = ('x',) * (len(new_order) - input_.ndim) + \
+                tuple(range(input_.ndim))
+            if new_order != expected_new_order:
+                return False
 
-        # count numbers of 'x'
-        nb_new_dims = len(new_order) - node.inputs[0].ndim
-        new_shape_input = (1,) * nb_new_dims + tuple(node.inputs[0].owner.inputs[1:])
+            # count numbers of 'x'
+            nb_new_dims = len(new_order) - input_.ndim
+            new_shape_input = (1,) * nb_new_dims + tuple(input_.owner.inputs[1:])
 
-        return [T.alloc(node.inputs[0].owner.inputs[0], *new_shape_input)]
+            return [T.alloc(input_.owner.inputs[0], *new_shape_input)]
     return False
