@@ -27,11 +27,7 @@ class Solve(gof.Op):
     #      and keeps a memory workspace from call to call as a non-default Op
     #      output
 
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, A, b):
         A_ = tensor.as_tensor_variable(A)

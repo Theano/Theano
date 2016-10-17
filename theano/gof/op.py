@@ -781,7 +781,6 @@ class Op(utils.object2, PureOp, CLinkerOp):
     Convenience class to bundle `PureOp` and `CLinkerOp`.
 
     """
-
     def prepare_node(self, node, storage_map, compute_map, impl):
         """
         Make any special modifications that the Op needs before doing

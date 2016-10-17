@@ -852,7 +852,6 @@ class ScalarOp(Op):
 
     nin = -1
     nout = 1
-    __props__ = ("output_types_preference", "name")
 
     def __init__(self, output_types_preference=None, name=None):
         self.name = name
@@ -861,7 +860,7 @@ class ScalarOp(Op):
                 raise TypeError(
                     "Expected a callable for the 'output_types_preference' argument to %s. (got: %s)" %
                     (self.__class__, output_types_preference))
-        self.output_types_preference = output_types_preference
+            self.output_types_preference = output_types_preference
 
     def make_node(self, *inputs):
         if self.nin >= 0:
@@ -907,6 +906,16 @@ class ScalarOp(Op):
     def grad(self, inputs, output_gradients):
         raise utils.MethodNotDefined("grad", type(self),
                                      self.__class__.__name__)
+
+    def __eq__(self, other):
+        test = (type(self) == type(other) and
+                getattr(self, 'output_types_preference', None) ==
+                getattr(other, 'output_types_preference', None))
+        return test
+
+    def __hash__(self):
+        return hash(type(self).__name__) ^ hash(
+            getattr(self, 'output_types_preference', 0))
 
     def __str__(self):
         if hasattr(self, 'name') and self.name:
@@ -1174,7 +1183,6 @@ isinf = IsInf()
 
 class InRange(LogicalComparison):
     nin = 3
-    __props__ = ("openlow", "openhi")
 
     def __init__(self, openlow, openhi):
         self.openlow = openlow
@@ -2026,8 +2034,6 @@ identity = Identity(same_out, name='identity')
 
 # CASTING OPERATIONS
 class Cast(UnaryScalarOp):
-    __props__ = ("o_type", "name")
-
     def __init__(self, o_type, name=None):
         if not isinstance(o_type, Scalar):
             raise TypeError(o_type)
@@ -3453,7 +3459,7 @@ class Composite(ScalarOp):
     Composite depends on all the Ops in its graph having C code.
 
     """
-    __props__ = ('inputs', 'outputs')
+    init_param = ('inputs', 'outputs')
 
     def __str__(self):
         if self.name is None:
@@ -3467,7 +3473,7 @@ class Composite(ScalarOp):
         This fct allow fix patch this.
 
         """
-        d = dict([(k, getattr(self, k)) for k in self.__props__])
+        d = dict([(k, getattr(self, k)) for k in self.init_param])
         out = self.__class__(**d)
         if name:
             out.name = name
