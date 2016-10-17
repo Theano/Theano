@@ -18,9 +18,6 @@ from theano import tensor as T
 from theano import config, tensor, function
 from theano.tests.unittest_tools import attr
 
-numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-numpy_16 = bool(numpy_ver >= [1, 6])
-
 
 def test_cpu_contiguous():
     a = T.fmatrix('a')
@@ -290,8 +287,6 @@ class TestBinCountOp(utt.InferShapeTester):
                 assert (np.bincount(a) == f1(a)).all()
                 assert np.allclose(np.bincount(a, weights=weights),
                                    f2(a, weights))
-                if not numpy_16:
-                    continue
                 f3 = theano.function([x], BinCountOp(minlength=23)(x, weights=None))
                 f4 = theano.function([x], BinCountOp(minlength=5)(x, weights=None))
                 assert (np.bincount(a, minlength=23) == f3(a)).all()
@@ -327,8 +322,6 @@ class TestBinCountOp(utt.InferShapeTester):
                                             1, 51, size=(25,)).astype(dtype)],
                                         self.op_class)
 
-                if not numpy_16:
-                    continue
                 self._compile_and_check([x],
                                         [BinCountOp(minlength=60)(x, weights=weights)],
                                         [np.random.randint(
@@ -798,13 +791,11 @@ class test_Unique(utt.InferShapeTester):
         self.ops = [Unique(),
                     Unique(True),
                     Unique(False, True),
-                    Unique(True, True)]
-        if bool(numpy_ver >= [1, 9]):
-            self.ops.extend([
-                Unique(False, False, True),
-                Unique(True, False, True),
-                Unique(False, True, True),
-                Unique(True, True, True)])
+                    Unique(True, True),
+                    Unique(False, False, True),
+                    Unique(True, False, True),
+                    Unique(False, True, True),
+                    Unique(True, True, True)]
 
     def test_basic_vector(self):
         """
@@ -816,13 +807,11 @@ class test_Unique(utt.InferShapeTester):
         list_outs_expected = [[np.unique(inp)],
                               np.unique(inp, True),
                               np.unique(inp, False, True),
-                              np.unique(inp, True, True)]
-        if bool(numpy_ver >= [1, 9]):
-            list_outs_expected.extend([
-                np.unique(inp, False, False, True),
-                np.unique(inp, True, False, True),
-                np.unique(inp, False, True, True),
-                np.unique(inp, True, True, True)])
+                              np.unique(inp, True, True),
+                              np.unique(inp, False, False, True),
+                              np.unique(inp, True, False, True),
+                              np.unique(inp, False, True, True),
+                              np.unique(inp, True, True, True)]
         for op, outs_expected in zip(self.ops, list_outs_expected):
             f = theano.function(inputs=[x], outputs=op(x, return_list=True))
             outs = f(inp)
@@ -839,13 +828,11 @@ class test_Unique(utt.InferShapeTester):
         list_outs_expected = [[np.unique(inp)],
                               np.unique(inp, True),
                               np.unique(inp, False, True),
-                              np.unique(inp, True, True)]
-        if bool(numpy_ver >= [1, 9]):
-            list_outs_expected.extend([
-                np.unique(inp, False, False, True),
-                np.unique(inp, True, False, True),
-                np.unique(inp, False, True, True),
-                np.unique(inp, True, True, True)])
+                              np.unique(inp, True, True),
+                              np.unique(inp, False, False, True),
+                              np.unique(inp, True, False, True),
+                              np.unique(inp, False, True, True),
+                              np.unique(inp, True, True, True)]
         for op, outs_expected in zip(self.ops, list_outs_expected):
             f = theano.function(inputs=[x], outputs=op(x, return_list=True))
             outs = f(inp)

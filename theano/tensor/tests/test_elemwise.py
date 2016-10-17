@@ -826,6 +826,7 @@ class T_reduce_dtype(unittest.TestCase):
                     uint8='uint64',
                     uint16='uint64',
                     uint32='uint64',
+                    float16='float32',
                     float32='float64',
                     complex64='complex128',
                 ).get(dtype, dtype)
@@ -967,7 +968,7 @@ class T_mean_dtype(unittest.TestCase):
                     pass
                 else:
                     # Executed if no TypeError was raised
-                    if sum_dtype in tensor.discrete_dtypes and axis != []:
+                    if sum_dtype in tensor.discrete_dtypes:
                         assert mean_var.dtype == 'float64', (
                             (mean_var.dtype, sum_dtype))
                     else:

@@ -575,12 +575,6 @@ class BinCountOp(theano.Op):
 
     def __init__(self, minlength=None):
         self.minlength = minlength
-        if minlength is not None:
-            numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-            if not bool(numpy_ver >= [1, 6]):
-                raise NotImplementedError(
-                    "BinCountOp with minlength attribute"
-                    " requires NumPy 1.6 or higher.")
 
     def make_node(self, x, weights):
         warnings.warn((
