@@ -114,11 +114,14 @@ void sgemm_(char* TRANSA, char* TRANSB,
     PyObject* op_B = alt_op(TRANSB, (PyArrayObject*)matrix_B);
     if(*BETA == 0) {
         PyArray_MatrixProduct2(op_A, op_B, (PyArrayObject*)matrix_C);
-        alt_numpy_scalar_matrix_product_in_place(*ALPHA, (PyArrayObject*)matrix_C);
+        if(*ALPHA != 1.0)
+            alt_numpy_scalar_matrix_product_in_place(*ALPHA, (PyArrayObject*)matrix_C);
     } else {
         PyArrayObject* op_A_times_op_B = (PyArrayObject*)PyArray_MatrixProduct(op_A, op_B);
-        alt_numpy_scalar_matrix_product_in_place(*ALPHA, op_A_times_op_B);
-        alt_numpy_scalar_matrix_product_in_place(*BETA, (PyArrayObject*)matrix_C);
+        if(*ALPHA != 1.0)
+            alt_numpy_scalar_matrix_product_in_place(*ALPHA, op_A_times_op_B);
+        if(*BETA != 1.0)
+            alt_numpy_scalar_matrix_product_in_place(*BETA, (PyArrayObject*)matrix_C);
         alt_numpy_matrix_sum(op_A_times_op_B, (PyArrayObject*)matrix_C, (PyArrayObject*)matrix_C);
         Py_XDECREF(op_A_times_op_B);
     }
