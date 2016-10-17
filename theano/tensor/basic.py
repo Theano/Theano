@@ -52,6 +52,7 @@ python_all = all
 complex_dtypes = list(map(str, scal.complex_types))
 continuous_dtypes = list(map(str, scal.continuous_types))
 float_dtypes = list(map(str, scal.float_types))
+integer_dtypes = list(map(str, scal.integer_types))
 discrete_dtypes = list(map(str, scal.discrete_types))
 all_dtypes = list(map(str, scal.all_types))
 int_dtypes = list(map(str, scal.int_types))
