@@ -560,9 +560,9 @@ class Pool(OpenMPOp):
             // index for iterating over the pooling regions
             int r_idx[%(nd)s];
             // placeholder for PyArray indexing (output)
-            long int o_idx[%(total_ndim)s];
+            npy_intp o_idx[%(total_ndim)s];
             // placeholder for PyArray indexing (input)
-            long int i_idx[%(total_ndim)s];
+            npy_intp i_idx[%(total_ndim)s];
             // loop over non-pooling dimensions
             int non_pooling_prod = 1;
             for (int i=0; i<%(non_pool_ndim)s; i++)
@@ -1040,9 +1040,9 @@ class MaxPoolGrad(PoolGrad):
             // index for iterating over the pooling regions
             int r_idx[%(nd)s];
             // placeholder for PyArray indexing (output)
-            long int o_idx[%(total_ndim)s];
+            npy_intp o_idx[%(total_ndim)s];
             // placeholder for PyArray indexing (input)
-            long int i_idx[%(total_ndim)s];
+            npy_intp i_idx[%(total_ndim)s];
             // loop over non-pooling dimensions
             int non_pooling_prod = 1;
             for (int i=0; i<%(non_pool_ndim)s; i++)
@@ -1367,9 +1367,9 @@ class AveragePoolGrad(PoolGrad):
             // index for iterating over the pooling regions
             int r_idx[%(nd)s];
             // placeholder for PyArray indexing (output)
-            long int o_idx[%(total_ndim)s];
+            npy_intp o_idx[%(total_ndim)s];
             // placeholder for PyArray indexing (input)
-            long int i_idx[%(total_ndim)s];
+            npy_intp i_idx[%(total_ndim)s];
             // loop over non-pooling dimensions
             int non_pooling_prod = 1;
             for (int i=0; i<%(non_pool_ndim)s; i++)
@@ -1671,9 +1671,9 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         // index for iterating over the pooling regions
         int r_idx[%(nd)s];
         // placeholder for PyArray indexing (output)
-        long int o_idx[%(total_ndim)s];
+        npy_intp o_idx[%(total_ndim)s];
         // placeholder for PyArray indexing (input)
-        long int i_idx[%(total_ndim)s];
+        npy_intp i_idx[%(total_ndim)s];
         // loop over non-pooling dimensions
         int non_pooling_prod;
         non_pooling_prod = 1;
