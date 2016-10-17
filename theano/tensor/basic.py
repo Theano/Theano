@@ -3182,6 +3182,7 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
     for i in axis:
         s = true_div(s, shp[i])
 
+    # This can happen when axis is an empty list/tuple
     if s.dtype != shp.dtype and s.dtype in discrete_dtypes:
         s = cast(s, shp.dtype)
 

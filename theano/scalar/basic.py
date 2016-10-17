@@ -288,7 +288,7 @@ class Scalar(Type):
         if 'complex' in self.dtype:
             raise NotImplementedError("No literal for complex values.")
         if self.dtype == 'bool':
-            return '1' if b else '0'
+            return '1' if data else '0'
         return str(data)
 
     def c_declare(self, name, sub, check_input=True):
@@ -683,11 +683,6 @@ complexs64 = _multi(complex64)
 complexs128 = _multi(complex128)
 
 
-# Using a class instead of a function makes it possible to deep-copy it.
-# Note that currently only a few functions use this mechanism, because
-# it is enough to make the test-suite pass. However, it may prove
-# necessary to use this same mechanism in other places as well in the
-# future.
 def upcast_out(*types):
     dtype = Scalar.upcast(*types)
     return get_scalar_type(dtype),
@@ -698,7 +693,8 @@ def upgrade_to_float(*types):
     Upgrade any int types to float32 or float64 to avoid losing precision.
 
     """
-    conv = {int8: float32,
+    conv = {bool: float32,
+            int8: float32,
             int16: float32,
             int32: float64,
             int64: float64,
@@ -1265,7 +1261,7 @@ switch = Switch()
 class UnaryBitOp(UnaryScalarOp):
     def output_types(self, *input_types):
         for i in input_types[0]:
-            if i not in ((bool,) + discrete_types):
+            if i not in discrete_types:
                 raise TypeError('input to a BitOp must have type (u)int8, '
                                 '(u)int16, (u)int32 or (u)int64 or bool not %s' % i)
         return upcast_out(*input_types[0])

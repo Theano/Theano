@@ -1335,7 +1335,7 @@ def _float_ones_like(x):
     floating point dtype """
 
     dtype = x.type.dtype
-    if 'float' not in dtype:
+    if dtype not in tensor.float_dtypes:
         dtype = theano.config.floatX
 
     return tensor.ones_like(x, dtype=dtype)

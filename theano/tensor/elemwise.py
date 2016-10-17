@@ -1716,7 +1716,7 @@ class All(CAReduce):
 
     def make_node(self, input):
         input = as_tensor_variable(input)
-        if input.dtype is not "bool":
+        if input.dtype != "bool":
             input = theano.tensor.neq(input, 0)
         ret = super(All, self).make_node(input)
         return ret
@@ -1746,7 +1746,7 @@ class Any(CAReduce):
 
     def make_node(self, input):
         input = as_tensor_variable(input)
-        if input.dtype is not "bool":
+        if input.dtype != "bool":
             input = theano.tensor.neq(input, 0)
         ret = super(Any, self).make_node(input)
         return ret
