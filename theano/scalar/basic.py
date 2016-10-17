@@ -1003,6 +1003,10 @@ class LogicalComparison(BinaryScalarOp):
         return [x.zeros_like().astype(theano.config.floatX),
                 y.zeros_like().astype(theano.config.floatX)]
 
+    def c_code_cache_version(self):
+        super_version = super(LogicalComparison, self).c_code_cache_version()
+        return super_version + (0,)
+
 
 class FixedLogicalComparison(UnaryScalarOp):
     """
@@ -1017,6 +1021,10 @@ class FixedLogicalComparison(UnaryScalarOp):
         out = self(x)
         assert out.type == bool
         return [x.zeros_like().astype(theano.config.floatX)]
+
+    def c_code_cache_version(self):
+        super_version = super(FixedLogicalComparison, self).c_code_cache_version()
+        return super_version + (0,)
 
 
 class LT(LogicalComparison):
