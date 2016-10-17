@@ -6,7 +6,7 @@ import theano
 from theano import Apply, scalar, config, Op
 from six.moves import StringIO, xrange
 from theano.gof.utils import MethodNotDefined
-from theano.scalar import Scalar
+from theano.scalar import Scalar, Composite
 from theano.tensor.elemwise import (Elemwise, DimShuffle, CAReduceDtype)
 
 try:

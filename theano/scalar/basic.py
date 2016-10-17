@@ -23,8 +23,8 @@ from six.moves import xrange
 import theano
 from theano.compat import imap, izip
 from theano import gof, printing
-from theano.gof import (Op, Optimizer, utils, Variable, Constant, Type, Apply,
-                        FunctionGraph, toolbox)
+from theano.gof import (Op, utils, Variable, Constant, Type, Apply,
+                        FunctionGraph)
 from functools import partial
 from theano.configparser import config
 
@@ -3837,7 +3837,7 @@ class Compositef32(object):
                 continue
             # make sure we won't produce any float16.
             assert not any(o.dtype == 'float16' for o in
-                           node.op.output_types([mapping[i] for i in node.inputs]))
+                           node.op.output_types([mapping[i].type for i in node.inputs]))
             new_node = node.clone_with_new_inputs(
                 [mapping[i] for i in node.inputs],
                 strict=False)
