@@ -424,7 +424,7 @@ class TestRepeatOp(utt.InferShapeTester):
             a = np.random.random((10, ) * ndim).astype(config.floatX)
 
             for axis in self._possible_axis(ndim):
-                for dtype in tensor.discrete_dtypes:
+                for dtype in tensor.integer_dtypes:
                     r_var = T.scalar(dtype=dtype)
                     r = numpy.asarray(3, dtype=dtype)
                     if (dtype == 'uint64' or
@@ -483,7 +483,7 @@ class TestRepeatOp(utt.InferShapeTester):
             a = np.random.random(shp).astype(config.floatX)
 
             for axis in self._possible_axis(ndim):
-                for dtype in tensor.discrete_dtypes:
+                for dtype in tensor.integer_dtypes:
                     r_var = T.scalar(dtype=dtype)
                     r = numpy.asarray(3, dtype=dtype)
                     if dtype in self.numpy_unsupported_dtypes:

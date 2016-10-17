@@ -675,7 +675,7 @@ class RepeatOp(theano.Op):
         x = basic.as_tensor_variable(x)
         repeats = basic.as_tensor_variable(repeats)
 
-        if repeats.dtype not in tensor.discrete_dtypes:
+        if repeats.dtype not in tensor.integer_dtypes:
             raise TypeError("repeats.dtype must be an integer.")
 
         # Some dtypes are not supported by numpy's implementation of repeat.
