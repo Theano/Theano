@@ -511,18 +511,18 @@ class TensorType(Type):
                              (long int) %(type_num)s,
                              (long int) PyArray_TYPE((PyArrayObject*) py_%(name)s),
                              (long int) PyArray_NDIM(tmp),
-                             (long int) PyArray_NDIM(tmp) >= 3 ?
-            PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-3] : -1,
-                             (long int) PyArray_NDIM(tmp) >= 2 ?
-            PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-2] : -1,
-                             (long int) PyArray_NDIM(tmp) >= 1 ?
-            PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-1] : -1,
-                             (long int) PyArray_NDIM(tmp) >= 3 ?
-            PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-3] : -1,
-                             (long int) PyArray_NDIM(tmp) >= 2 ?
-            PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-2] : -1,
-                             (long int) PyArray_NDIM(tmp) >= 1 ?
-            PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-1] : -1
+                             (long int) (PyArray_NDIM(tmp) >= 3 ?
+            PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-3] : -1),
+                             (long int) (PyArray_NDIM(tmp) >= 2 ?
+            PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-2] : -1),
+                             (long int) (PyArray_NDIM(tmp) >= 1 ?
+            PyArray_DIMS(tmp)[PyArray_NDIM(tmp)-1] : -1),
+                             (long int) (PyArray_NDIM(tmp) >= 3 ?
+            PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-3] : -1),
+                             (long int) (PyArray_NDIM(tmp) >= 2 ?
+            PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-2] : -1),
+                             (long int) (PyArray_NDIM(tmp) >= 1 ?
+            PyArray_STRIDES(tmp)[PyArray_NDIM(tmp)-1] : -1)
             );
                 %(fail)s
             }
@@ -580,18 +580,18 @@ class TensorType(Type):
                          " and 3 last strides %%ld %%ld, %%ld.",
                          (long int) PyArray_TYPE((PyArrayObject*) py_%(name)s),
                          (long int) PyArray_NDIM(%(name)s),
-                         (long int) PyArray_NDIM(%(name)s) >= 3 ?
-        PyArray_DIMS(%(name)s)[PyArray_NDIM(%(name)s)-3] : -1,
-                         (long int) PyArray_NDIM(%(name)s) >= 2 ?
-        PyArray_DIMS(%(name)s)[PyArray_NDIM(%(name)s)-2] : -1,
-                         (long int) PyArray_NDIM(%(name)s) >= 1 ?
-        PyArray_DIMS(%(name)s)[PyArray_NDIM(%(name)s)-1] : -1,
-                         (long int) PyArray_NDIM(%(name)s) >= 3 ?
-        PyArray_STRIDES(%(name)s)[PyArray_NDIM(%(name)s)-3] : -1,
-                         (long int) PyArray_NDIM(%(name)s) >= 2 ?
-        PyArray_STRIDES(%(name)s)[PyArray_NDIM(%(name)s)-2] : -1,
-                         (long int) PyArray_NDIM(%(name)s) >= 1 ?
-        PyArray_STRIDES(%(name)s)[PyArray_NDIM(%(name)s)-1] : -1
+                         (long int) (PyArray_NDIM(%(name)s) >= 3 ?
+        PyArray_DIMS(%(name)s)[PyArray_NDIM(%(name)s)-3] : -1),
+                         (long int) (PyArray_NDIM(%(name)s) >= 2 ?
+        PyArray_DIMS(%(name)s)[PyArray_NDIM(%(name)s)-2] : -1),
+                         (long int) (PyArray_NDIM(%(name)s) >= 1 ?
+        PyArray_DIMS(%(name)s)[PyArray_NDIM(%(name)s)-1] : -1),
+                         (long int) (PyArray_NDIM(%(name)s) >= 3 ?
+        PyArray_STRIDES(%(name)s)[PyArray_NDIM(%(name)s)-3] : -1),
+                         (long int) (PyArray_NDIM(%(name)s) >= 2 ?
+        PyArray_STRIDES(%(name)s)[PyArray_NDIM(%(name)s)-2] : -1),
+                         (long int) (PyArray_NDIM(%(name)s) >= 1 ?
+        PyArray_STRIDES(%(name)s)[PyArray_NDIM(%(name)s)-1] : -1)
         );
             %(fail)s
         }
