@@ -363,8 +363,8 @@ class BaseTestConv(object):
 class BaseTestConv2d(BaseTestConv):
     @classmethod
     def setup_class(cls):
-        if theano.config.blas.ldflags == '':
-            raise SkipTest("BLAS required for reference")
+        # if theano.config.blas.ldflags == '':
+            # raise SkipTest("BLAS required for reference")
         cls.inputs_shapes = [(8, 1, 6, 6), (8, 1, 8, 8), (2, 1, 7, 7),
                              (6, 1, 10, 11), (2, 1, 6, 5), (1, 5, 9, 9)]
         cls.filters_shapes = [(5, 1, 2, 2), (4, 1, 3, 3), (2, 1, 3, 3),
