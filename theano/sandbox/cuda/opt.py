@@ -301,7 +301,7 @@ def local_gpu_elemwise_0(node):
 
                 #   first establish that float32 can store all inputs
                 upcastable = set(['float32', 'bool', 'int8', 'int16',
-                                  'uint8', 'uint16',])
+                                  'uint8', 'uint16'])
                 # case 1 - all inputs are already float32
                 if all([i.type.dtype == 'float32' for i in node.inputs]):
                     # TODO: change this when fusion makes Elemwise with
