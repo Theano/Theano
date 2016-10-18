@@ -902,8 +902,8 @@ class ScalarOp(Op):
         return test
 
     def __hash__(self):
-        return hash(type(self).__name__) ^ hash(
-            getattr(self, 'output_types_preference', 0))
+        return hash((type(self),
+                     getattr(self, 'output_types_preference', 0)))
 
     def __str__(self):
         if hasattr(self, 'name') and self.name:
@@ -994,8 +994,20 @@ class BinaryScalarOp(ScalarOp):
 ###############
 
 class LogicalComparison(BinaryScalarOp):
+    def __init__(self):
+        # This is for compat with old pickles.
+        self.bool = True
+
+    def __eq__(self, other):
+        return (BinaryScalarOp.__eq__(self, other) and
+                getattr(self, 'bool', False) == getattr(self, 'bool', False))
+
+    def __hash__(self):
+        # bool should always be True
+        return BinaryScalarOp.__hash__(self)
+
     def output_types(self, *input_dtypes):
-        return [bool]
+        return [bool] if getattr(self, 'bool', False) else [int8]
 
     def grad(self, inputs, output_gradients):
         x, y = inputs
@@ -1014,8 +1026,20 @@ class FixedLogicalComparison(UnaryScalarOp):
     Comparison to a fixed value.
 
     """
+    def __init__(self):
+        # This is for compat with old pickles
+        self.bool = True
+
+    def __eq__(self, other):
+        return (UnaryScalarOp.__eq__(self, other) and
+                getattr(self, 'bool', False) == getattr(self, 'bool', False))
+
+    def __hash__(self):
+        # bool should always be True
+        return UnaryScalarOp.__hash__(self)
+
     def output_types(self, *input_dtypes):
-        return [bool]
+        return [bool] if getattr(self, 'bool', False) else [int8]
 
     def grad(self, inputs, output_gradients):
         x, = inputs
