@@ -82,7 +82,7 @@ def test_nvcc_cast():
     https://groups.google.com/d/topic/theano-dev/LzHtP2OWeRE/discussion
     """
     var = theano.tensor.fvector()
-    f = theano.function([var], -1. * (var > 0), mode=mode_with_gpu)
+    f = theano.function([var], -1. * (var > 0).astype('int8'), mode=mode_with_gpu)
     if not numpy.allclose(f([-1, 0, 1]), [0, 0, -1]):
         raise Exception(
             "The version of nvcc that Theano detected on your system "

@@ -236,8 +236,11 @@ optdb['canonicalize'].register('local_cut_gpu_host_gpu',
 
 # 'float64', 'complex128' and 'complex64' are not supported in elemwise
 # on the gpu.
-elemwise_cuda_dtype_supported = ['float32', 'uint8', 'int8', 'uint16', 'int16',
-                                 'uint32', 'int32', 'uint64', 'int64']
+elemwise_cuda_dtype_supported = ['float32', 'bool',
+                                 'uint8', 'int8',
+                                 'uint16', 'int16',
+                                 'uint32', 'int32',
+                                 'uint64', 'int64']
 
 
 def dtype_in_elemwise_supported(op):
@@ -297,8 +300,8 @@ def local_gpu_elemwise_0(node):
                         return False
 
                 #   first establish that float32 can store all inputs
-                upcastable = set(['float32', 'int8', 'int16', 'uint8',
-                                  'uint16'])
+                upcastable = set(['float32', 'bool', 'int8', 'int16',
+                                  'uint8', 'uint16',])
                 # case 1 - all inputs are already float32
                 if all([i.type.dtype == 'float32' for i in node.inputs]):
                     # TODO: change this when fusion makes Elemwise with

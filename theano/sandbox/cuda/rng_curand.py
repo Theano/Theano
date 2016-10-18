@@ -28,7 +28,7 @@ class CURAND_Base(GpuOp):
     CURAND.  This Op uses a generic-typed shared variable to point to a CObject
     that encapsulates this opaque reference.
 
-    Each random variable is created with a generator of False.
+    Each random variable is created with a generator of None.
     The actual random number generator is allocated from the seed, on the first
     call to allocate random numbers (see c_code).
 
@@ -210,7 +210,7 @@ class CURAND_Base(GpuOp):
                 %(fail)s;
             }
             %(o_generator)s = PyCObject_FromVoidPtr(gen, &free_generator);
-            assert (%(i_generator)s == Py_False);
+            assert (%(i_generator)s == Py_None);
         }
         else if (%(destructive)s)
         {
@@ -244,7 +244,7 @@ class CURAND_Base(GpuOp):
         return code
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
 
 class CURAND_Normal(CURAND_Base):
@@ -328,7 +328,7 @@ class CURAND_RandomStreams(object):
         else:
             msg = "size must be a tuple of int or a Theano variable"
             assert isinstance(size, Variable) and size.ndim == 1, msg
-        generator = theano.shared(False)  # makes a generic
+        generator = theano.shared(None)  # makes a generic
         s_size = theano.tensor.as_tensor_variable(size)
         u = CURAND_Uniform.new_auto_update(generator, ndim, dtype, s_size,
                                            self.next_seed())
@@ -360,7 +360,7 @@ class CURAND_RandomStreams(object):
         else:
             msg = "size must be a tuple of int or a Theano variable"
             assert isinstance(size, Variable) and size.ndim == 1, msg
-        generator = theano.shared(False)  # makes a generic
+        generator = theano.shared(None)  # makes a generic
         s_size = theano.tensor.as_tensor_variable(size)
         u = CURAND_Normal.new_auto_update(generator, ndim, dtype, s_size,
                                           self.next_seed())
