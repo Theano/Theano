@@ -23,6 +23,12 @@ from .rnn_support import Model, GRU, LSTM, WrapperLayer
 
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_FWD
 
+# If using float16, set CUDNN precision to float32
+if theano.config.floatX == "float16":
+    precision = "float32"
+else:
+    precision = theano.config.floatX
+
 
 def test_dnn_conv_desc_merge():
     if not dnn.dnn_available(test_ctx_name):
@@ -50,11 +56,10 @@ def test_dnn_conv_merge():
         raise SkipTest(dnn.dnn_available.msg)
     img_shp = [2, 5, 6, 8]
     kern_shp = [3, 5, 5, 6]
-    img = T.ftensor4('img')
-    kern = T.ftensor4('kern')
-    out = T.ftensor4('out')
-    desc = dnn.GpuDnnConvDesc(
-        border_mode='valid')(kern.shape)
+    img = T.tensor4('img')
+    kern = T.tensor4('kern')
+    out = T.tensor4('out')
+    desc = dnn.GpuDnnConvDesc(border_mode='valid')(kern.shape)
 
     # Test forward op
     o1 = dnn.dnn_conv(img, kern)
@@ -89,9 +94,9 @@ def test_dnn_conv_inplace():
         raise SkipTest(dnn.dnn_available.msg)
     img_shp = [2, 5, 6, 8]
     kern_shp = [3, 5, 5, 6]
-    img = T.ftensor4('img')
-    kern = T.ftensor4('kern')
-    out = T.ftensor4('out')
+    img = T.tensor4('img')
+    kern = T.tensor4('kern')
+    out = T.tensor4('out')
     desc1 = dnn.GpuDnnConvDesc(border_mode='valid', conv_mode='conv')(
         kern.shape)
     desc2 = dnn.GpuDnnConvDesc(
@@ -142,7 +147,7 @@ def test_pooling():
     else:
         modes = ('max', 'average_inc_pad', 'average_exc_pad')
 
-    x = T.ftensor4()
+    x = T.tensor4()
     for mode, pad in product(modes,
                              ((0, 0), (1, 0), (0, 1), (2, 3), (3, 2))):
         if pad != (0, 0) and mode == 'average_exc_pad':
@@ -226,7 +231,7 @@ def test_pooling():
 def test_pooling_with_tensor_vars():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
-    x = T.ftensor4()
+    x = T.tensor4()
     ws = theano.shared(numpy.array([2, 2], dtype='int32'))
     st = theano.shared(numpy.array([1, 1], dtype='int32'))
     pad = theano.shared(numpy.array([0, 0], dtype='int32'))
@@ -291,7 +296,7 @@ def test_pooling3d():
     else:
         modes = ('max', 'average_inc_pad', 'average_exc_pad')
 
-    x = T.ftensor5()
+    x = T.tensor5()
     for mode, pad in product(modes,
                              ((0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1),
                               (2, 3, 2), (3, 2, 2), (2, 2, 3))):
@@ -370,7 +375,7 @@ def test_pooling_opt():
         raise SkipTest(dnn.dnn_available.msg)
 
     # 2D pooling
-    x = T.fmatrix()
+    x = T.matrix()
 
     f = theano.function(
         [x],
@@ -409,7 +414,7 @@ def test_pooling_opt():
     f(data)
 
     # 3D pooling
-    x = T.ftensor3()
+    x = T.tensor3()
 
     f = theano.function(
         [x],
@@ -491,7 +496,7 @@ def test_dnn_tag():
     """
     Test that if cudnn isn't avail we crash and that if it is avail, we use it.
     """
-    x = T.ftensor4()
+    x = T.tensor4()
     old = theano.config.on_opt_error
     theano.config.on_opt_error = "raise"
 
@@ -533,7 +538,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
     def test_softmax(self):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
-        t = T.ftensor4('t')
+        t = T.tensor4('t')
         rand_tensor = numpy.asarray(
             numpy.random.rand(5, 4, 3, 2),
             dtype=theano.config.floatX
@@ -576,7 +581,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
             desc = dnn.GpuDnnConvDesc(
                 border_mode=border_mode,
                 subsample=subsample,
-                conv_mode=conv_mode
+                conv_mode=conv_mode,
+                precision=precision
             )(kerns.shape)
             conv = dnn.GpuDnnConv(algo=algo)(img, kerns, out, desc)
             self._compile_and_check(
@@ -597,9 +603,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
         if algo == 'winograd' and dnn.version(raises=False) < 5000:
             raise SkipTest(dnn.dnn_available.msg)
 
-        self._test_conv(T.ftensor4('img'),
-                        T.ftensor4('kerns'),
-                        T.ftensor4('out'),
+        self._test_conv(T.tensor4('img'),
+                        T.tensor4('kerns'),
+                        T.tensor4('out'),
                         numpy.random.rand(7, 2, 8, 4),
                         numpy.random.rand(8, 2, 4, 3),
                         border_mode,
@@ -609,9 +615,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
     @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
     def test_conv3d_none(self, border_mode, conv_mode):
-        self._test_conv(T.ftensor5('img'),
-                        T.ftensor5('kerns'),
-                        T.ftensor5('out'),
+        self._test_conv(T.tensor5('img'),
+                        T.tensor5('kerns'),
+                        T.tensor5('out'),
                         numpy.random.rand(10, 2, 6, 4, 11),
                         numpy.random.rand(8, 2, 4, 3, 1),
                         border_mode,
@@ -646,7 +652,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         desc = dnn.GpuDnnConvDesc(
             border_mode=border_mode,
             subsample=subsample,
-            conv_mode=conv_mode
+            conv_mode=conv_mode,
+            precision=precision
         )(out.shape)
         conv_grad_w = dnn.GpuDnnConvGradW()(
             temp_img,
@@ -663,9 +670,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
     @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
     def test_conv_gradw(self, border_mode, conv_mode):
-        self._test_conv_gradw(T.ftensor4('img'),
-                              T.ftensor4('kerns'),
-                              T.ftensor4('out'),
+        self._test_conv_gradw(T.tensor4('img'),
+                              T.tensor4('kerns'),
+                              T.tensor4('out'),
                               numpy.random.rand(2, 5, 6, 8),
                               numpy.random.rand(2, 1, 5, 6),
                               border_mode,
@@ -675,9 +682,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
     def test_conv_gradi(self):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
-        img = T.ftensor4('img')
-        kerns = T.ftensor4('kerns')
-        out = T.ftensor4('out')
+        img = T.tensor4('img')
+        kerns = T.tensor4('kerns')
+        out = T.tensor4('out')
         kern_vals = numpy.asarray(
             numpy.random.rand(13, 14, 15, 16),
             dtype=theano.config.floatX
@@ -701,7 +708,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
             desc = dnn.GpuDnnConvDesc(
                 border_mode=params[0],
                 subsample=params[1],
-                conv_mode=params[2]
+                conv_mode=params[2],
+                precision=precision
             )(kerns.shape)
             conv_grad_i = dnn.GpuDnnConvGradI()(
                 kerns,
@@ -719,7 +727,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
     def test_pool(self):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
-        img = T.ftensor4('img')
+        img = T.tensor4('img')
         img_val = numpy.asarray(
             numpy.random.rand(2, 3, 4, 5),
             dtype=theano.config.floatX
@@ -746,7 +754,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
     def test_pool_3d(self):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
-        img = T.ftensor5('img')
+        img = T.tensor5('img')
         img_val = numpy.asarray(
             numpy.random.rand(2, 3, 4, 5, 6),
             dtype=theano.config.floatX
@@ -773,9 +781,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
     def test_pool_grad(self):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
-        img = T.ftensor4('img')
-        img_grad = T.ftensor4('img_grad')
-        out = T.ftensor4('out')
+        img = T.tensor4('img')
+        img_grad = T.tensor4('img_grad')
+        out = T.tensor4('out')
         img_val = numpy.asarray(
             numpy.random.rand(2, 3, 4, 5),
             dtype=theano.config.floatX
@@ -812,9 +820,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
     def test_pool_3d_grad(self):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
-        img = T.ftensor5('img')
-        img_grad = T.ftensor5('img_grad')
-        out = T.ftensor5('out')
+        img = T.tensor5('img')
+        img_grad = T.tensor5('img_grad')
+        out = T.tensor5('out')
         img_val = numpy.asarray(
             numpy.random.rand(2, 3, 4, 5, 6),
             dtype=theano.config.floatX
@@ -853,8 +861,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
 def test_dnn_conv_border_mode():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
-    img = T.ftensor4()
-    kern = T.ftensor4()
+    img = T.tensor4()
+    kern = T.tensor4()
 
     dnn.dnn_conv(img, kern, border_mode=1)
     dnn.dnn_conv(img, kern, border_mode=(2, 3))
@@ -866,9 +874,9 @@ def test_dnn_conv_border_mode():
 def test_dnn_conv_alpha_output_merge():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
-    img = T.ftensor4()
-    kern = T.ftensor4()
-    out = T.ftensor4()
+    img = T.tensor4()
+    kern = T.tensor4()
+    out = T.tensor4()
 
     b = 1
     c = 4
@@ -943,18 +951,18 @@ def test_dnn_conv_grad():
 
     def dconv(img, kern, out):
         desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                                  conv_mode='conv')(kern.shape)
+                                  conv_mode='conv', precision=precision)(kern.shape)
         return dnn.GpuDnnConv()(img, kern, out, desc, alpha=0.5, beta=0.75)
 
     def dconvi(img, kern, out):
         desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                                  conv_mode='conv')(kern.shape)
+                                  conv_mode='conv', precision=precision)(kern.shape)
         return dnn.GpuDnnConvGradI()(kern, out, img, desc, alpha=-1.0,
                                      beta=0.0)
 
     def dconvw(img, kern, out):
         desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                                  conv_mode='conv')(kern.shape)
+                                  conv_mode='conv', precision=precision)(kern.shape)
         return dnn.GpuDnnConvGradW()(img, out, kern, desc, alpha=0.75,
                                      beta=-1.0)
 
@@ -1146,8 +1154,8 @@ class test_SoftMax(test_nnet.test_SoftMax):
             gout = numpy.asarray(f_gpu(gdata))[:, :, 0, 0]
             utt.assert_allclose(out, gout)
 
-        x = T.matrix('x', theano.config.floatX)
-        x_gpu = T.tensor4('x_gpu', theano.config.floatX)
+        x = T.matrix('x')
+        x_gpu = T.tensor4('x_gpu')
         f_z = T.nnet.softmax_op
         f_gpu = dnn.GpuDnnSoftmax(
             'accurate',
@@ -1180,7 +1188,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
 
         # Verify that the SoftmaxGrad -> Gpu[Dnn]SoftmaxGrad
         # optimization is applied when cudnn is required
-        y = T.fvector('y')
+        y = T.vector('y')
         f = theano.function(
             [y],
             T.grad(T.nnet.softmax(y).mean(), y),
@@ -1206,7 +1214,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
         # optimization is not applied when cudnn is excluded or not
         # available
         mode_wo_cudnn = mode_with_gpu.excluding("cudnn")
-        y = T.fvector('y')
+        y = T.vector('y')
         f = theano.function(
             [y],
             T.grad(T.nnet.softmax(y).mean(), y),
@@ -1230,7 +1238,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
 
         # Verify that the SoftmaxGrad -> GpuDnnSoftmaxGrad do not
         # crash with manual graph
-        y = T.fvector('y')
+        y = T.vector('y')
         o = theano.tensor.nnet.SoftmaxGrad()(y, y * 2)
         f = theano.function([y], o, mode=mode_with_gpu)
         sorted_f = f.maker.fgraph.toposort()
@@ -1253,7 +1261,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
         if dnn.version(raises=False) < 3000:
             raise SkipTest("Log-softmax is only in cudnn v3+")
 
-        x = T.ftensor4()
+        x = T.tensor4()
         softmax_out = dnn.GpuDnnSoftmax('accurate', 'channel')(x)
         log_out = T.log(T.as_tensor_variable(softmax_out))
 
@@ -1296,7 +1304,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
 
         # Compile a reference function, on the CPU, to be used to validate the
         # results of the other function.
-        x = T.fmatrix()
+        x = T.matrix()
         f_ref = theano.function([x], T.nnet.LogSoftmax()(x))
 
         # Build the first graph and ensure that the optimization is applied
@@ -1334,7 +1342,7 @@ def test_dnn_batchnorm_train():
     utt.seed_rng()
 
     for mode in ('per-activation', 'spatial'):
-        for vartype in (T.ftensor5, T.ftensor4, T.ftensor3, T.fmatrix, T.fvector):
+        for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
             x, scale, bias = (vartype(n) for n in ('x', 'scale', 'bias'))
             ndim = x.ndim
             eps = 5e-3  # some non-standard value to test if it's used
@@ -1389,10 +1397,9 @@ def test_batchnorm_inference():
     utt.seed_rng()
 
     for mode in ('per-activation', 'spatial'):
-        for vartype in (T.ftensor5, T.ftensor4, T.ftensor3, T.fmatrix, T.fvector):
-            x, scale, bias, mean, var = (vartype(n) for n in ('x', 'scale',
-                                                              'bias', 'mean',
-                                                              'var'))
+        for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
+            x, scale, bias, mean, var = (vartype(n)
+                                         for n in ('x', 'scale', 'bias', 'mean', 'var'))
             ndim = x.ndim
             eps = 5e-3  # some non-standard value to test if it's used
 
