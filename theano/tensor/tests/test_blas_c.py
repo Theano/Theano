@@ -39,7 +39,7 @@ class TestCGer(TestCase, TestOptimizationMixin):
     def setUp(self, dtype='float64'):
         # if theano.config.blas.ldflags == "":
             # raise SkipTest("This test is useful only when Theano"
-                           # " is directly linked to blas.")
+                        # " is directly linked to blas.")
         self.dtype = dtype
         self.mode = theano.compile.get_default_mode().including('fast_run')
         self.A = tensor.tensor(dtype=dtype, broadcastable=(False, False))
@@ -126,7 +126,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
     def setUp(self, dtype='float64'):
         # if theano.config.blas.ldflags == "":
             # raise SkipTest("This test is useful only when Theano"
-                           # " is directly linked to blas.")
+                        # " is directly linked to blas.")
         self.dtype = dtype
         self.mode = theano.compile.get_default_mode().including('fast_run')
         # matrix
@@ -322,6 +322,7 @@ class TestCGemvFloat64(TestCase, BaseGemv, TestOptimizationMixin):
 
 class TestBlasStridesC(TestBlasStrides):
     mode = mode_blas_opt
+
     def test_ger_strides(self):
         skip_if_blas_ldflags_empty('dger_')
         super(TestBlasStridesC, self).test_ger_strides()
