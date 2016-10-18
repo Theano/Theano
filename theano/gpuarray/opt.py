@@ -1784,7 +1784,7 @@ optdb.register('gpua_scanOp_make_inplace',
 # which ones take precedence over others.
 abstractconv_groupopt = theano.gof.optdb.LocalGroupDB()
 abstractconv_groupopt.__name__ = "gpuarray_abstractconv_opts"
-register_opt()(abstractconv_groupopt)
+register_opt('fast_compile')(abstractconv_groupopt)
 
 # cuDNN is first, but only registered if cuDNN is available.
 # (we import these opts here instead of at the top of this file
