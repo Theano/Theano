@@ -530,6 +530,15 @@ def use(device,
         # No successful call to use() has been made yet
         if device != 'gpu' and device < 0:
             return
+        msg = ("Theano flag device=gpu* (old gpu back-end) only support"
+               " floatX=float32. You have floatX=%s. Use the new gpu"
+               " back-end with device=cuda* for that value of floatX." %
+               config.floatX)
+
+        if config.floatX == 'float16':
+            raise RuntimeError(msg)
+        elif config.floatX == 'float64':
+            warnings.warn(msg)
 
         # Has PyCUDA already initialized the GPU context
         pycuda_init_dev = False
