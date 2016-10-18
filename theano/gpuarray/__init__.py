@@ -26,7 +26,7 @@ except ImportError:
 # This is for documentation not to depend on the availability of pygpu
 from .type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
                    GpuArraySharedVariable, gpuarray_shared_constructor,
-                   reg_context, get_context, ContextNotDefined)
+                   reg_context, get_context, ContextNotDefined, _get_props)
 from .basic_ops import as_gpuarray_variable
 from . import fft, dnn, opt, nerv, extra_ops, multinomial
 
@@ -89,19 +89,24 @@ def init_dev(dev, name=None):
               (name, dev, context.devname),
               file=sys.stderr)
     pygpu_activated = True
+    ctx_props = _get_props(name)
+    ctx_props['dev'] = dev
     if dev.startswith('cuda'):
-        try:
-            cudnn_version = dnn.version()
-            # 5200 should not print warning with cudnn 5.1 final.
-            if cudnn_version >= 5200:
-                warnings.warn("Your cuDNN version is more recent than Theano."
-                              " If you see problems, try updating Theano or"
-                              " downgrading cuDNN to version 5.1.")
-            if config.print_active_device:
-                print("Using cuDNN version %d on context %s" %
-                      (cudnn_version, name), file=sys.stderr)
-        except Exception:
-            pass
+        if 'cudnn_version' not in ctx_props:
+            try:
+                ctx_props['cudnn_version'] = dnn.version()
+                # 5200 should not print warning with cudnn 5.1 final.
+                if ctx_props['cudnn_version'] >= 5200:
+                    warnings.warn("Your cuDNN version is more recent than "
+                                  "Theano. If you encounter problems, try "
+                                  "updating Theano or downgrading cuDNN to "
+                                  "version 5.1.")
+                if config.print_active_device:
+                    print("Using cuDNN version %d on context %s" %
+                          (ctx_props['cudnn_version'], name), file=sys.stderr)
+                ctx_props['cudnn_handle'] = dnn._make_handle(context)
+            except Exception:
+                pass
 
 # This maps things like 'cuda0' to the context object on that device.
 init_dev.devmap = {}
