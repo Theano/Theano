@@ -1285,7 +1285,7 @@ class BinaryBitOp(BinaryScalarOp):
         if t0 == bool and t1 == bool:
             return [bool]
         for i in input_types[0]:
-            if i not in discrete_types:
+            if i not in integer_types:
                 raise TypeError('input to a BitOp must have type (u)int8, '
                                 '(u)int16, (u)int32 or (u)int64 or '
                                 'be all bools not %s' % i)
