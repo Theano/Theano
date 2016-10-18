@@ -1336,7 +1336,11 @@ class ShapeFeature(object):
                     assert d.dtype in theano.tensor.discrete_dtypes, (node, d.dtype)
                     assert str(d.dtype) != 'uint64', node
                     new_shape += sh[len(new_shape):i + 1]
-                    new_shape[i] = theano.tensor.cast(d, 'int64')
+                    if isinstance(d, T.Constant):
+                        casted_d = T.constant(d.data, dtype='int64')
+                    else:
+                        casted_d = theano.tensor.cast(d, 'int64')
+                    new_shape[i] = casted_d
             if new_shape:
                 # We replace the shape with wrong dtype by the one with
                 # 'int64'.

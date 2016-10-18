@@ -535,14 +535,24 @@ class KeyData(object):
         """
         entry = self.get_entry()
         for key in self.keys:
-            del entry_from_key[key]
+            try:
+                del entry_from_key[key]
+            except KeyError:
+                # This happen if the compiledir was deleted during
+                # this process execution.
+                pass
         if do_manual_check:
             to_del = []
             for key, key_entry in iteritems(entry_from_key):
                 if key_entry == entry:
                     to_del.append(key)
             for key in to_del:
-                del entry_from_key[key]
+                try:
+                    del entry_from_key[key]
+                except KeyError:
+                    # This happen if the compiledir was deleted during
+                    # this process execution.
+                    pass
 
 
 class ModuleCache(object):
