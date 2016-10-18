@@ -1,10 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import os
 import pickle
-import sys
 import unittest
-
-from nose.plugins.skip import SkipTest
 
 import theano
 from theano.compat import PY3
