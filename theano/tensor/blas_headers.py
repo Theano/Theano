@@ -734,21 +734,25 @@ def blas_header_text():
     gemm_code = ""
     const = "const"
     if not config.blas.ldflags:
-        # Include the Numpy version implementation of sgemm_ and dgemm_ from alt_sgemm.c and alt_dgemm.c
+        # Include the Numpy version implementation of [sd]gemm_.
         current_filedir = dirname(__file__)
-        sgemm_filepath = normpath(current_filedir + "/alt_sgemm.c")
-        dgemm_filepath = normpath(current_filedir + "/alt_dgemm.c")
+        gemm_common_filepath   = normpath(current_filedir + "/alt_gemm_common.c")
+        gemm_template_filepath = normpath(current_filedir + "/alt_gemm_template.c")
+        common_code = ""
         sgemm_code = ""
         dgemm_code = ""
-        with open(sgemm_filepath) as code:
-            sgemm_code = code.read()
-        with open(dgemm_filepath) as code:
-            dgemm_code = code.read()
-        if not sgemm_code or not dgemm_code:
+        with open(gemm_common_filepath) as code:
+            common_code = code.read()
+        with open(gemm_template_filepath) as code:
+            template_code = code.read()
+            sgemm_code = template_code % {"float_type":"float",  "float_size":4, "npy_float":"NPY_FLOAT32", "name":"sgemm_"}
+            dgemm_code = template_code % {"float_type":"double", "float_size":8, "npy_float":"NPY_FLOAT64", "name":"dgemm_"}
+        if not common_code or not sgemm_code:
             raise IOError("Unable to load NumPy implementation of gemm code from C source files.")
         else:
             const = ""
             # _logger.info("Numpy implementation of gemm code loaded (config.blas.ldflags is empty)")
+        gemm_code += common_code
         gemm_code += sgemm_code
         gemm_code += dgemm_code
 

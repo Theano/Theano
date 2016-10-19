@@ -31,7 +31,7 @@ def skip_if_blas_ldflags_empty(*functions_detected):
         functions_string = ""
         if functions_detected:
             functions_string = " (at least " + (", ".join(functions_detected)) + ")"
-        raise SkipTest("This test is useful only when Theano can access to BLAS functions" + functions_string + ".")
+        raise SkipTest("This test is useful only when Theano can access to BLAS functions" + functions_string + " other than [sd]gemm_.")
 
 
 class TestCGer(TestCase, TestOptimizationMixin):
@@ -83,13 +83,13 @@ class TestCGer(TestCase, TestOptimizationMixin):
         self.assertTrue(hash(CGer(False)) != hash(CGer(True)))
 
     def test_optimization_pipeline(self):
-        skip_if_blas_ldflags_empty('dger_')
+        skip_if_blas_ldflags_empty()
         f = self.function([self.x, self.y], tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, CGer(destructive=True))
         f(self.xval, self.yval)  # DebugMode tests correctness
 
     def test_optimization_pipeline_float(self):
-        skip_if_blas_ldflags_empty('sger_')
+        skip_if_blas_ldflags_empty()
         self.setUp('float32')
         f = self.function([self.x, self.y], tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, CGer(destructive=True))
@@ -102,14 +102,14 @@ class TestCGer(TestCase, TestOptimizationMixin):
         self.assertFunctionContains0(f, CGer(destructive=False))
 
     def test_A_plus_outer(self):
-        skip_if_blas_ldflags_empty('sger_', 'dger_')
+        skip_if_blas_ldflags_empty()
         f = self.function([self.A, self.x, self.y],
                 self.A + tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, CGer(destructive=False))
         self.run_f(f)  # DebugMode tests correctness
 
     def test_A_plus_scaled_outer(self):
-        skip_if_blas_ldflags_empty('sger_', 'dger_')
+        skip_if_blas_ldflags_empty()
         f = self.function([self.A, self.x, self.y],
                 self.A + 0.1 * tensor.outer(self.x, self.y))
         self.assertFunctionContains(f, CGer(destructive=False))
@@ -155,7 +155,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         assert not numpy.isnan(zval).any()
 
     def test_optimizations_vm(self):
-        skip_if_blas_ldflags_empty('sdot_')
+        skip_if_blas_ldflags_empty()
         ''' Test vector dot matrix '''
         f = theano.function([self.x, self.A],
                 theano.dot(self.x, self.A),
@@ -177,7 +177,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
                 numpy.dot(self.xval, self.Aval[::-1, ::-1]))
 
     def test_optimizations_mv(self):
-        skip_if_blas_ldflags_empty('sdot_')
+        skip_if_blas_ldflags_empty()
         ''' Test matrix dot vector '''
         f = theano.function([self.A, self.y],
                 theano.dot(self.A, self.y),
@@ -248,7 +248,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
             numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
 
     def test_gemv1(self):
-        skip_if_blas_ldflags_empty('sdot_')
+        skip_if_blas_ldflags_empty()
         self.t_gemv1((3, 2))
         self.t_gemv1((1, 2))
         self.t_gemv1((0, 2))
@@ -283,7 +283,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         self.assertRaises(ValueError, f, A_val, ones_4, ones_6)
 
     def test_multiple_inplace(self):
-        skip_if_blas_ldflags_empty('sdot_')
+        skip_if_blas_ldflags_empty()
         x = tensor.dmatrix('x')
         y = tensor.dvector('y')
         z = tensor.dvector('z')
@@ -307,7 +307,7 @@ class TestCGemvFloat32(TestCase, BaseGemv, TestOptimizationMixin):
     gemv_inplace = CGemv(inplace=True)
 
     def setUp(self):
-        skip_if_blas_ldflags_empty('sdot_')
+        skip_if_blas_ldflags_empty()
 
 
 class TestCGemvFloat64(TestCase, BaseGemv, TestOptimizationMixin):
@@ -317,12 +317,8 @@ class TestCGemvFloat64(TestCase, BaseGemv, TestOptimizationMixin):
     gemv_inplace = CGemv(inplace=True)
 
     def setUp(self):
-        skip_if_blas_ldflags_empty('sdot_')
+        skip_if_blas_ldflags_empty()
 
 
 class TestBlasStridesC(TestBlasStrides):
     mode = mode_blas_opt
-
-    def test_ger_strides(self):
-        skip_if_blas_ldflags_empty('dger_')
-        super(TestBlasStridesC, self).test_ger_strides()

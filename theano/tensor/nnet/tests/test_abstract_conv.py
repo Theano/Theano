@@ -443,8 +443,8 @@ class TestCorrConv2d(BaseTestConv2d):
 class TestAbstractConvNoOptim(BaseTestConv2d):
     @classmethod
     def setup_class(cls):
-        if theano.config.blas.ldflags == "":
-            raise SkipTest()
+        # if theano.config.blas.ldflags == "":
+            # raise SkipTest()
         BaseTestConv2d.setup_class()
         cls.inputs_shapes = [(8, 1, 6, 6)]
         cls.filters_shapes = [(5, 1, 2, 2)]
@@ -517,8 +517,8 @@ class TestCpuConv2d(BaseTestConv2d):
             gradinput_OK = False
 
         if fwd_OK:
-            if not theano.config.blas.ldflags:
-                raise SkipTest("Need blas to test conv2d")
+            # if not theano.config.blas.ldflags:
+                # raise SkipTest("Need blas to test conv2d")
             self.run_fwd(inputs_shape=i, filters_shape=f,
                          subsample=s, verify_grad=(gradweight_OK and gradinput_OK),
                          mode=mode, provide_shape=provide_shape,
@@ -540,8 +540,8 @@ class TestCpuConv2d(BaseTestConv2d):
                           filter_dilation=fd)
 
         if gradweight_OK:
-            if not theano.config.blas.ldflags:
-                raise SkipTest("Need blas to test conv2d")
+            # if not theano.config.blas.ldflags:
+                # raise SkipTest("Need blas to test conv2d")
             self.run_gradweight(inputs_shape=i, filters_shape=f,
                                 output_shape=o, subsample=s,
                                 verify_grad=False, mode=mode,
@@ -566,8 +566,8 @@ class TestCpuConv2d(BaseTestConv2d):
                           filter_dilation=fd)
 
         if gradinput_OK:
-            if not theano.config.blas.ldflags:
-                raise SkipTest("Need blas to test conv2d")
+            # if not theano.config.blas.ldflags:
+                # raise SkipTest("Need blas to test conv2d")
             self.run_gradinput(inputs_shape=i, filters_shape=f,
                                output_shape=o, subsample=s,
                                verify_grad=False, mode=mode,
@@ -595,8 +595,8 @@ class TestCpuConv2d(BaseTestConv2d):
 class BaseTestConv3d(BaseTestConv):
     @classmethod
     def setup_class(cls):
-        if theano.config.blas.ldflags == '':
-            raise SkipTest("BLAS required for reference")
+        # if theano.config.blas.ldflags == '':
+            # raise SkipTest("BLAS required for reference")
         cls.inputs_shapes = [(2, 1, 5, 5, 5), (1, 2, 7, 5, 6)]
         cls.filters_shapes = [(2, 1, 2, 2, 2), (1, 2, 2, 1, 3)]
         cls.subsamples = [(1, 1, 1), (2, 2, 2), (1, 2, 3)]
@@ -644,14 +644,14 @@ class BaseTestConv3d(BaseTestConv):
 class TestCorrConv3d(BaseTestConv3d):
     @classmethod
     def setup_class(cls):
-        if theano.config.blas.ldflags == "":
-            raise SkipTest()
+        # if theano.config.blas.ldflags == "":
+            # raise SkipTest()
         BaseTestConv3d.setup_class()
 
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1, 1)):
         o = self.get_output_shape(i, f, s, b, fd)
-        if (not theano.config.blas.ldflags or
-                not theano.config.cxx or
+        # if (not theano.config.blas.ldflags or
+        if (not theano.config.cxx or
                 theano.config.mode == "FAST_COMPILE"):
             raise SkipTest("Need blas to test conv3d")
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
@@ -698,8 +698,8 @@ class TestCpuConv3d(BaseTestConv3d):
             gradinput_OK = False
 
         if fwd_OK:
-            if not theano.config.blas.ldflags:
-                raise SkipTest("Need blas to test conv3d")
+            # if not theano.config.blas.ldflags:
+                # raise SkipTest("Need blas to test conv3d")
             self.run_fwd(inputs_shape=i, filters_shape=f,
                          subsample=s, verify_grad=(gradweight_OK and gradinput_OK),
                          mode=mode, provide_shape=provide_shape,
@@ -721,8 +721,8 @@ class TestCpuConv3d(BaseTestConv3d):
                           filter_dilation=fd)
 
         if gradweight_OK:
-            if not theano.config.blas.ldflags:
-                raise SkipTest("Need blas to test conv3d")
+            # if not theano.config.blas.ldflags:
+                # raise SkipTest("Need blas to test conv3d")
             self.run_gradweight(inputs_shape=i, filters_shape=f,
                                 output_shape=o, subsample=s,
                                 verify_grad=False, mode=mode,
@@ -747,8 +747,8 @@ class TestCpuConv3d(BaseTestConv3d):
                           filter_dilation=fd)
 
         if gradinput_OK:
-            if not theano.config.blas.ldflags:
-                raise SkipTest("Need blas to test conv3d")
+            # if not theano.config.blas.ldflags:
+                # raise SkipTest("Need blas to test conv3d")
             self.run_gradinput(inputs_shape=i, filters_shape=f,
                                output_shape=o, subsample=s,
                                verify_grad=False, mode=mode,
@@ -918,7 +918,7 @@ class TestBilinearUpsampling(unittest.TestCase):
     if theano.config.mode == "FAST_COMPILE":
         compile_mode = compile_mode.excluding("conv_gemm")
         compile_mode = compile_mode.excluding('AbstractConvCheck')
-    elif not theano.config.blas.ldflags or not theano.config.cxx:
+    elif not theano.config.cxx: # not theano.config.blas.ldflags or 
         compile_mode = compile_mode.excluding('AbstractConvCheck')
 
     def numerical_kernel_1D(self, ratio):
