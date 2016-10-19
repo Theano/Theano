@@ -795,6 +795,7 @@ class T_reduce_dtype(unittest.TestCase):
                 x = tensor.matrix(dtype=dtype)
                 s = getattr(x, method)(axis=axis)
                 assert s.dtype == dict(
+                    bool='int64',
                     int8='int64',
                     int16='int64',
                     int32='int64',
@@ -820,6 +821,7 @@ class T_reduce_dtype(unittest.TestCase):
                 x = tensor.matrix(dtype=dtype)
                 s = getattr(x, method)(axis=axis)
                 assert s.owner.op.acc_dtype == dict(
+                    bool='int64',
                     int8='int64',
                     int16='int64',
                     int32='int64',
@@ -1017,6 +1019,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
             axis = axes[idx % len(axes)]
             x = ProdWithoutZeros(axis=axis)(tensor.matrix(dtype=dtype))
             assert x.dtype == dict(
+                bool='int64',
                 int8='int64',
                 int16='int64',
                 int32='int64',
@@ -1035,6 +1038,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
             x = tensor.matrix(dtype=dtype)
             p = ProdWithoutZeros(axis=axis)(x)
             assert p.owner.op.acc_dtype == dict(
+                    bool='int64',
                     int8='int64',
                     int16='int64',
                     int32='int64',
