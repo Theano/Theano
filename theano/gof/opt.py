@@ -5,7 +5,7 @@ amount of useful generic optimization tools.
 """
 from __future__ import absolute_import, print_function, division
 
-from collections import deque, defaultdict, OrderedDict
+from collections import deque, defaultdict, OrderedDict, Counter
 
 import copy
 import inspect
@@ -2486,15 +2486,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                           "%f with the theano flag 'optdb.max_use_ratio'." %
                           config.optdb.max_use_ratio)
         fgraph.remove_feature(change_tracker)
-        for i, (k, v) in enumerate(new_node.iteritems()):
-            if i > 10:
-                break
-            print("Opt applied : " + str(k))
-            for j, l in enumerate(v):
-                if j > 10:
-                    break
-                print("Node introduced : " + str(l))
-                print("Node imported by : " + str(l))
+        opt_node_map = Counter(opt_node_map).most_common(20)
 
         assert len(loop_process_count) == len(loop_timing)
         assert len(loop_process_count) == len(global_opt_timing)
@@ -2528,9 +2520,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
         blanc = ('    ' * level)
         print (blanc, " Imported by and local_opt pairs : ", file=stream)
-        for k, v in opt_node_map.iteritems():
-            print (blanc, "Opts Used : " + str(k[0]), file=stream)
-            print (blanc, "Nodes imported : " + str(k[1]), file=stream)
+        for k, v in opt_node_map:
+            print (blanc, "Opts Used on the node : " + str(k[0]), file=stream)
+            print (blanc, "Optimizer that introduced the Node: " + str(k[1]), file=stream)
             print (blanc, " Number of pairs found : %s " % (str(v)), file=stream)   
         print(blanc, "EquilibriumOptimizer", end=' ', file=stream)
         print(blanc, getattr(opt, "name",
