@@ -1848,6 +1848,7 @@ class CAReduceDtype(CAReduce):
         if dtype is None:
             # If input has a discrete dtype, upcast it to 64
             return dict(
+                bool='int64',
                 int8='int64',
                 int16='int64',
                 int32='int64',
@@ -1863,6 +1864,7 @@ class CAReduceDtype(CAReduce):
         acc_dtype = self.acc_dtype
         if acc_dtype is None:
             return dict(
+                bool='int64',
                 int8='int64',
                 int16='int64',
                 int32='int64',

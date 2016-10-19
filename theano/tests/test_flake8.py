@@ -56,7 +56,6 @@ whitelist_flake8 = [
     "tensor/tests/test_opt.py",
     "tensor/tests/test_basic.py",
     "tensor/tests/test_blas.py",
-    "tensor/tests/test_elemwise.py",
     "tensor/tests/test_merge.py",
     "tensor/tests/test_gc.py",
     "tensor/tests/test_complex.py",
