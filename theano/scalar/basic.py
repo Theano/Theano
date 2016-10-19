@@ -910,7 +910,7 @@ class ScalarOp(Op):
             return self.name
         else:
             param = [(k, v) for k, v in self.__dict__.items()
-                     if k not in ["name", "_op_use_c_code",
+                     if k not in ["name", "_op_use_c_code", "bool",
                                   "output_types_preference"]]
             if param:
                 return "%s{%s}" % (self.__class__.__name__,
