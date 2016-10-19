@@ -717,6 +717,7 @@ def upgrade_to_float(*types):
 def same_out(type):
     return type,
 
+
 def same_out_nobool(type):
     if type == bool:
         return int8,
