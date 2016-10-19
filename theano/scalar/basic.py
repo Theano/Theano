@@ -1488,7 +1488,7 @@ class Add(ScalarOp):
     def c_code(self, node, name, inputs, outputs, sub):
         (z,) = outputs
         op = " + "
-        if z.type == bool:
+        if node.outputs[0].type == bool:
             op = " || "
         if not inputs:
             return z + " = 0;"
@@ -1530,7 +1530,7 @@ class Mul(ScalarOp):
     def c_code(self, node, name, inputs, outputs, sub):
         (z,) = outputs
         op = " * "
-        if z.type == bool:
+        if node.outputs[0].type == bool:
             op = " && "
         if not inputs:
             return z + " = 1;"
@@ -1585,7 +1585,7 @@ class Sub(BinaryScalarOp):
     def c_code(self, node, name, inputs, outputs, sub):
         (x, y) = inputs
         (z,) = outputs
-        if z.type == bool:
+        if node.outputs[0].type == bool:
             # xor
             return "%(z)s = (%(x)s || %(y)s) && !(%(x)s && %(y)s);" % locals()
         return "%(z)s = %(x)s - %(y)s;" % locals()
@@ -2095,7 +2095,7 @@ class Cast(UnaryScalarOp):
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
         (z,) = outputs
-        if z.type == bool:
+        if node.outputs[0].type == bool:
             return "%s = (%s) ? 1 : 0" % (z, x)
         return "%s = (%s)%s;" % (z, node.outputs[0].type.dtype_specs()[1], x)
 
@@ -2468,7 +2468,7 @@ class Neg(UnaryScalarOp):
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
         (z,) = outputs
-        if z.type == bool:
+        if node.outputs[0].type == bool:
             return "%(z)s = !%(x)s;" % locals()
         return "%(z)s = -%(x)s;" % locals()
 neg = Neg(same_out, name='neg')
