@@ -994,7 +994,8 @@ class BinaryScalarOp(ScalarOp):
 ###############
 
 class LogicalComparison(BinaryScalarOp):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        BinaryScalarOp.__init__(self, *args, **kwargs)
         # This is for compat with old pickles.
         self.bool = True
 
@@ -1026,7 +1027,8 @@ class FixedLogicalComparison(UnaryScalarOp):
     Comparison to a fixed value.
 
     """
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        UnaryScalarOp.__init__(self, *args, **kwargs)
         # This is for compat with old pickles
         self.bool = True
 
