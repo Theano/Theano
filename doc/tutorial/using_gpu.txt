@@ -369,6 +369,9 @@ Consider again the logistic regression:
     print("prediction on D")
     print(predict(D[0]))
 
+    print("floatX=", theano.config.floatX)
+    print("device=", theano.config.device)
+
 .. testoutput::
    :hide:
    :options: + ELLIPSIS
