@@ -23,11 +23,14 @@ from .rnn_support import Model, GRU, LSTM, WrapperLayer
 
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_FWD
 
+
 # If using float16, set CUDNN precision to float32
-if theano.config.floatX == "float16":
-    precision = "float32"
-else:
-    precision = theano.config.floatX
+def set_precision(floatX):
+    if floatX == "float16":
+        precision = "float32"
+    else:
+        precision = theano.config.floatX
+    return precision
 
 
 def test_dnn_conv_desc_merge():
@@ -582,7 +585,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 border_mode=border_mode,
                 subsample=subsample,
                 conv_mode=conv_mode,
-                precision=precision
+                precision=set_precision(theano.config.floatX)
             )(kerns.shape)
             conv = dnn.GpuDnnConv(algo=algo)(img, kerns, out, desc)
             self._compile_and_check(
@@ -653,7 +656,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
             border_mode=border_mode,
             subsample=subsample,
             conv_mode=conv_mode,
-            precision=precision
+            precision=set_precision(theano.config.floatX)
         )(out.shape)
         conv_grad_w = dnn.GpuDnnConvGradW()(
             temp_img,
@@ -709,7 +712,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 border_mode=params[0],
                 subsample=params[1],
                 conv_mode=params[2],
-                precision=precision
+                precision=set_precision(theano.config.floatX)
             )(kerns.shape)
             conv_grad_i = dnn.GpuDnnConvGradI()(
                 kerns,
@@ -951,24 +954,24 @@ def test_dnn_conv_grad():
 
     def dconv(img, kern, out):
         desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                                  conv_mode='conv', precision=precision)(kern.shape)
+                                  conv_mode='conv', precision=set_precision(theano.config.floatX))(kern.shape)
         return dnn.GpuDnnConv()(img, kern, out, desc, alpha=0.5, beta=0.75)
 
     def dconvi(img, kern, out):
         desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                                  conv_mode='conv', precision=precision)(kern.shape)
+                                  conv_mode='conv', precision=set_precision(theano.config.floatX))(kern.shape)
         return dnn.GpuDnnConvGradI()(kern, out, img, desc, alpha=-1.0,
                                      beta=0.0)
 
     def dconvw(img, kern, out):
         desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                                  conv_mode='conv', precision=precision)(kern.shape)
+                                  conv_mode='conv', precision=set_precision(theano.config.floatX))(kern.shape)
         return dnn.GpuDnnConvGradW()(img, out, kern, desc, alpha=0.75,
                                      beta=-1.0)
 
-    utt.verify_grad(dconv, [img_val, kern_val, out_val])
-    utt.verify_grad(dconvi, [img_val, kern_val, out_val])
-    utt.verify_grad(dconvw, [img_val, kern_val, out_val])
+    utt.verify_grad(dconv, [img_val, kern_val, out_val], eps=1e-3)
+    utt.verify_grad(dconvi, [img_val, kern_val, out_val], eps=1e-3)
+    utt.verify_grad(dconvw, [img_val, kern_val, out_val], eps=1e-3)
 
 
 def get_conv3d_test_cases():
