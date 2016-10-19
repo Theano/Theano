@@ -918,7 +918,7 @@ class TestBilinearUpsampling(unittest.TestCase):
     if theano.config.mode == "FAST_COMPILE":
         compile_mode = compile_mode.excluding("conv_gemm")
         compile_mode = compile_mode.excluding('AbstractConvCheck')
-    elif not theano.config.cxx: # not theano.config.blas.ldflags or 
+    elif not theano.config.cxx:  # not theano.config.blas.ldflags or
         compile_mode = compile_mode.excluding('AbstractConvCheck')
 
     def numerical_kernel_1D(self, ratio):

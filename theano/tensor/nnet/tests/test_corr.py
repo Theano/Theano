@@ -131,7 +131,7 @@ class TestCorr2D(utt.InferShapeTester):
                                 icol:icol + dil_fil_shape2d[1]:filter_dilation[1]] * filter2d[::-1, ::-1]
                             ).sum()
 
-        #utt.assert_allclose(theano_output, ref_output)
+        # utt.assert_allclose(theano_output, ref_output)
         utt.assert_allclose(ref_output, theano_output)
 
         # TEST GRADIENT

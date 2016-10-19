@@ -736,7 +736,7 @@ def blas_header_text():
     if not config.blas.ldflags:
         # Include the Numpy version implementation of [sd]gemm_.
         current_filedir = dirname(__file__)
-        gemm_common_filepath   = normpath(current_filedir + "/alt_gemm_common.c")
+        gemm_common_filepath = normpath(current_filedir + "/alt_gemm_common.c")
         gemm_template_filepath = normpath(current_filedir + "/alt_gemm_template.c")
         common_code = ""
         sgemm_code = ""
@@ -745,8 +745,8 @@ def blas_header_text():
             common_code = code.read()
         with open(gemm_template_filepath) as code:
             template_code = code.read()
-            sgemm_code = template_code % {"float_type":"float",  "float_size":4, "npy_float":"NPY_FLOAT32", "name":"sgemm_"}
-            dgemm_code = template_code % {"float_type":"double", "float_size":8, "npy_float":"NPY_FLOAT64", "name":"dgemm_"}
+            sgemm_code = template_code % {"float_type": "float", "float_size": 4, "npy_float": "NPY_FLOAT32", "name": "sgemm_"}
+            dgemm_code = template_code % {"float_type": "double", "float_size": 8, "npy_float": "NPY_FLOAT64", "name": "dgemm_"}
         if not common_code or not sgemm_code:
             raise IOError("Unable to load NumPy implementation of gemm code from C source files.")
         else:
