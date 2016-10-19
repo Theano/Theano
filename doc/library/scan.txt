@@ -529,6 +529,40 @@ As a rule, scan always expects the condition to be the last thing returned
 by the inner function, otherwise an error will be raised.
 
 
+Reducing Scan's memory usage
+----------------------------
+
+This section presents the ``scan_checkpoints`` function. In short, this
+function reduces the memory usage of scan (at the cost of more computation
+time) by not keeping in memory all the intermediate time steps of the loop,
+and recomputing them when computing the gradients. This function is therefore
+only useful if you need to compute the gradient of the ouptut of scan with
+respect to its inputs, and shouldn't be used otherwise.
+
+Before going more into the details, here are its current limitations:
+
+* It only works in the case where only the output of the last time step is
+  needed, like when computing ``A**k`` or in an `encoder-decoder` setup.
+* It only accepts sequences of the same length.
+* If ``n_steps`` is specified, it has the same value as the length of any
+  sequences.
+* It is signly-recurrent, meaning that only the previous time step can be used
+  to compute the current one (ie ``h[t]`` can only depend on ``h[t-1]``). In
+  other words, ``taps`` can not be used in ``sequences`` and ``outputs_info``.
+
+Often, in order to be able to compute the gradients through scan operations,
+Theano needs to keep in memory some intermediate computations of scan. This
+can sometimes use a prohibitively large amount of memory.
+``scan_checkpoints`` allows to discard some of those intermediate steps and
+recompute them again when computing the gradients. Its ``save_every_N`` argument
+specifies the number time steps to do without storing the intermediate results.
+For example, ``save_every_N = 4`` will reduce the memory usage by 4, while having
+to recompute 3/4 time steps of the forward loop. Since the grad of scan is
+about 6x slower than the forward, a ~20% slowdown is expected. Apart from the
+``save_every_N`` argument and the current limitations, the usage of this function
+is similar to the classic ``scan`` function.
+
+
 Optimizing Scan's performance
 -----------------------------
 
@@ -612,4 +646,4 @@ reference
 .. autofunction:: theano.foldl
 .. autofunction:: theano.foldr
 .. autofunction:: theano.scan
-
+.. autofunction:: theano.scan_checkpoints

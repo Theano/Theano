@@ -80,7 +80,8 @@ from theano.misc.safe_asarray import _asarray
 
 from theano.printing import pprint, pp
 
-from theano.scan_module import scan, map, reduce, foldl, foldr, clone
+from theano.scan_module import (scan, map, reduce, foldl, foldr, clone,
+                                scan_checkpoints)
 
 from theano.updates import OrderedUpdates
 
