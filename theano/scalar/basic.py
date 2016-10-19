@@ -692,6 +692,13 @@ def upcast_out(*types):
 def upcast_out_nobool(*types):
     type = upcast_out(*types)
     if type[0] == bool:
+        raise TypeError("bool output not supported")
+    return type
+
+
+def upcast_out_min8(*types):
+    type = upcast_out(*types)
+    if type[0] == bool:
         return int8,
     return type
 
@@ -719,6 +726,12 @@ def same_out(type):
 
 
 def same_out_nobool(type):
+    if type == bool:
+        raise TypeError("bool input not supported")
+    return type,
+
+
+def same_out_min8(type):
     if type == bool:
         return int8,
     return type,
@@ -1585,9 +1598,6 @@ class Sub(BinaryScalarOp):
     def c_code(self, node, name, inputs, outputs, sub):
         (x, y) = inputs
         (z,) = outputs
-        if node.outputs[0].type == bool:
-            # xor
-            return "%(z)s = (%(x)s || %(y)s) && !(%(x)s && %(y)s);" % locals()
         return "%(z)s = %(x)s - %(y)s;" % locals()
 
     def grad(self, inputs, gout):
@@ -1604,7 +1614,7 @@ class Sub(BinaryScalarOp):
         second_part = -gz
 
         return first_part, second_part
-sub = Sub(upcast_out, name='sub')
+sub = Sub(upcast_out_nobool, name='sub')
 
 
 def int_or_true_div(x_discrete, y_discrete):
@@ -1970,7 +1980,7 @@ class Pow(BinaryScalarOp):
         raise theano.gof.utils.MethodNotDefined()
 
 
-pow = Pow(upcast_out_nobool, name='pow')
+pow = Pow(upcast_out_min8, name='pow')
 
 
 class Clip(ScalarOp):
@@ -2468,10 +2478,8 @@ class Neg(UnaryScalarOp):
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
         (z,) = outputs
-        if node.outputs[0].type == bool:
-            return "%(z)s = !%(x)s;" % locals()
         return "%(z)s = -%(x)s;" % locals()
-neg = Neg(same_out, name='neg')
+neg = Neg(same_out_nobool, name='neg')
 
 pprint.assign(add, printing.OperatorPrinter('+', -2, 'either'))
 pprint.assign(mul, printing.OperatorPrinter('*', -1, 'either'))
@@ -3461,7 +3469,7 @@ class Conj(UnaryScalarOp):
 
     def impl(self, x):
         return numpy.conj(x)
-conj = Conj(same_out_nobool, name='conj')
+conj = Conj(same_out_min8, name='conj')
 
 
 class ComplexFromPolar(BinaryScalarOp):
