@@ -167,7 +167,7 @@ class TestCorr3D(utt.InferShapeTester):
                 self.validate(img, fil, border_mode, verify_grad=False)
 
         # Very slow on with 'full' or 'half'
-        self.validate((1, 10, 213, 129, 129), (46, 10, 212, 1, 1), 'valid', verify_grad=False)
+        self.validate((1, 2, 53, 29, 11), (13, 2, 12, 1, 1), 'valid', verify_grad=False)
 
     def test_img_kernel_same_shape(self):
         self.validate((3, 2, 3, 3, 3), (1, 2, 3, 3, 3), 'full')
@@ -254,7 +254,7 @@ class TestCorr3D(utt.InferShapeTester):
         Tests basic correlation in full mode and case where filter
         is larger than the input image.
         """
-        self.validate((3, 2, 5, 5, 5), (4, 2, 8, 8, 8), 'full')
+        self.validate((3, 1, 4, 4, 4), (2, 1, 5, 5, 5), 'full')
 
         def f():
             self.validate((3, 2, 5, 5, 5), (4, 2, 8, 8, 8), 'valid')
@@ -410,18 +410,15 @@ class TestCorr3D(utt.InferShapeTester):
 
     def test_non_contiguous(self):
         self.validate((2, 2, 3, 3, 3), (2, 2, 2, 2, 2), 'valid', non_contiguous=True)
-        self.validate((3, 2, 8, 8, 8), (4, 2, 5, 5, 5), 'valid', non_contiguous=True)
-        self.validate((3, 2, 7, 5, 5), (5, 2, 2, 3, 3), 'valid', non_contiguous=True)
-        self.validate((3, 2, 7, 5, 5), (5, 2, 3, 2, 2), 'valid', non_contiguous=True)
-        self.validate((3, 2, 8, 8, 8), (4, 2, 5, 5, 5), 'full', non_contiguous=True)
-        self.validate((3, 2, 7, 5, 5), (5, 2, 2, 3, 3), 'full', non_contiguous=True)
-        self.validate((3, 2, 8, 8, 8), (4, 2, 5, 5, 5), 'half', non_contiguous=True)
-        self.validate((3, 2, 7, 5, 5), (5, 2, 2, 3, 3), 'half', non_contiguous=True)
-        self.validate((3, 2, 8, 8, 8), (4, 2, 5, 5, 5), (1, 1, 1), non_contiguous=True)
-        self.validate((3, 2, 7, 5, 5), (5, 2, 2, 3, 3), (1, 1, 2), non_contiguous=True)
-        self.validate((3, 2, 7, 5, 5), (5, 2, 2, 3, 3), (1, 2, 1), non_contiguous=True)
-        self.validate((3, 2, 7, 5, 5), (5, 2, 2, 3, 3), (2, 1, 1), non_contiguous=True)
-        self.validate((3, 2, 7, 5, 5), (5, 2, 2, 3, 3), 2, non_contiguous=True)
+        self.validate((3, 2, 8, 8, 8), (2, 2, 5, 5, 5), 'valid', non_contiguous=True)
+        self.validate((3, 2, 7, 5, 5), (3, 2, 2, 3, 3), 'valid', non_contiguous=True)
+        self.validate((3, 2, 7, 5, 5), (3, 2, 3, 2, 2), 'valid', non_contiguous=True)
+        self.validate((3, 1, 8, 8, 8), (2, 1, 5, 5, 5), 'full', non_contiguous=True)
+        self.validate((3, 1, 8, 8, 8), (2, 1, 5, 5, 5), 'half', non_contiguous=True)
+        self.validate((3, 1, 8, 8, 8), (2, 1, 5, 5, 5), (1, 1, 1), non_contiguous=True)
+        self.validate((3, 1, 7, 5, 5), (2, 1, 2, 3, 3), (1, 1, 2), non_contiguous=True)
+        self.validate((3, 1, 7, 5, 5), (2, 1, 2, 3, 3), (1, 2, 1), non_contiguous=True)
+        self.validate((3, 1, 7, 5, 5), (2, 1, 2, 3, 3), (2, 1, 1), non_contiguous=True)
 
 
 if __name__ == '__main__':
