@@ -1065,7 +1065,7 @@ second dimension
 
         # We loop over the "aliased" outputs, i.e., those that are
         # inplace (overwrite the contents of one of the inputs) and
-        # make the output pointers point to theur corresponding input
+        # make the output pointers point to their corresponding input
         # pointers.
         for output, oname in izip(aliased_outputs, aliased_onames):
             olv_index = inputs.index(dmap[output][0])
