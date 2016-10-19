@@ -148,6 +148,7 @@ get an error when cuDNN can not be used with them, use this flag:
 * :ref:`Convolution <libdoc_cuda_dnn_convolution>`
 * :ref:`Pooling <libdoc_cuda_dnn_pooling>`
 * :ref:`Batch Normalization <libdoc_cuda_dnn_bn>`
+* :ref:`RNN <libdoc_cuda_dnn_rnn>`
 * :ref:`Softmax <libdoc_cuda_dnn_softmax>`
 * :ref:`Internal Ops <libdoc_cuda_dnn_internal_ops>`
 
@@ -194,8 +195,8 @@ New back-end only! Without dropout support.
 Softmax
 =======
 
-You can manually use the op :ref:`GpuDnnSoftmax
-<theano.sandbox.cuda.dnn.GpuDnnSoftmax>` to use its extra feature.
+You can manually use the op `GpuDnnSoftmax
+<theano.sandbox.cuda.dnn.GpuDnnSoftmax>`_ to use its extra feature.
 
 .. _libdoc_cuda_dnn_internal_ops:
 
@@ -208,4 +209,4 @@ Internal Ops
              GpuDnnConv3dGradW, GpuDnnConvGradI, GpuDnnConv3dGradI,
 	     GpuDnnPoolDesc, GpuDnnPool, GpuDnnPoolGrad,
 	     GpuDnnBatchNormInference, GpuDnnBatchNorm, GpuDnnBatchNormGrad,
-	     GpuDnnSoftmax, GpuDnnSoftmaxGrad,
+	     GpuDnnSoftmax, GpuDnnSoftmaxGrad
