@@ -1206,9 +1206,7 @@ IntDivInplaceTester = makeBroadcastTester(
 
 
 CeilTester = makeBroadcastTester(op=tensor.ceil,
-        expected=lambda a: numpy.asarray(
-            numpy.ceil(a),
-            a.dtype),
+        expected=lambda a: numpy.ceil(a),
         good=_good_broadcast_unary_normal_no_complex,
         grad=copymod(_grad_broadcast_unary_normal,
             without=['corner_case'],
@@ -1217,7 +1215,7 @@ CeilTester = makeBroadcastTester(op=tensor.ceil,
                 dtype=floatX)]))
 
 CeilInplaceTester = makeBroadcastTester(op=inplace.ceil_inplace,
-        expected=lambda a: numpy.asarray(numpy.ceil(a), a.dtype),
+        expected=lambda a: numpy.ceil(a),
         good=_good_broadcast_unary_normal_no_complex,
         # corner cases includes a lot of integers: points where Ceil is not
         # continuous (not differentiable)
@@ -1229,7 +1227,7 @@ CeilInplaceTester = makeBroadcastTester(op=inplace.ceil_inplace,
         inplace=True)
 
 FloorTester = makeBroadcastTester(op=tensor.floor,
-        expected=lambda a: numpy.asarray(numpy.floor(a), a.dtype),
+        expected=lambda a: numpy.floor(a),
         good=_good_broadcast_unary_normal_no_complex,
         # XXX: why does grad of floor not give huge values at
         #      the integer points in the 'corner_case' in
@@ -1238,20 +1236,20 @@ FloorTester = makeBroadcastTester(op=tensor.floor,
         grad=_grad_broadcast_unary_normal)
 
 FloorInplaceTester = makeBroadcastTester(op=inplace.floor_inplace,
-        expected=lambda a: numpy.asarray(numpy.floor(a), a.dtype),
+        expected=lambda a: numpy.floor(a),
         good=_good_broadcast_unary_normal_no_complex,
         grad=_grad_broadcast_unary_normal,
         inplace=True)
 
 TruncInplaceTester = makeBroadcastTester(
     op=inplace.trunc_inplace,
-    expected=lambda a: numpy.asarray(numpy.trunc(a), a.dtype),
+    expected=lambda a: numpy.trunc(a),
     good=_good_broadcast_unary_normal_no_complex,
     inplace=True)
 
 TruncTester = makeBroadcastTester(
     op=tensor.trunc,
-    expected=lambda a: numpy.asarray(numpy.trunc(a), a.dtype),
+    expected=lambda a: numpy.trunc(a),
     good=_good_broadcast_unary_normal_no_complex)
 
 RoundHalfToEvenTester = makeBroadcastTester(
@@ -8170,25 +8168,3 @@ def test_symbolic_slice():
     a, b = x.shape[:2]
     output = a.eval({x: numpy.zeros((5, 4, 3, 2), dtype=theano.config.floatX)})
     assert output == numpy.array(5)
-
-
-def test_composite_neg_bool():
-    # Check that taking the negation of a Boolean intermediate value
-    # works correctly with Python code. It used to be an issue because
-    # `-numpy.bool_(True)` is False and `-numpy.bool_(False)` is True.
-    x = theano.tensor.vector()
-    f = theano.function([x], - (x > 0), mode=theano.Mode(linker='py'))
-    utt.assert_allclose(f([-1, 0, 1]), [False, False, True])
-
-"""
-
-if __name__ == '__main__':
-    if 0:
-        unittest.main()
-    else:
-        testcase = FloorInplaceTester
-
-        suite = unittest.TestLoader()
-        suite = suite.loadTestsFromTestCase(testcase)
-        unittest.TextTestRunner(verbosity=2).run(suite)
-"""
