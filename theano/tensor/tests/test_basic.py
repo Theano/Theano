@@ -1206,7 +1206,7 @@ IntDivInplaceTester = makeBroadcastTester(
 
 
 CeilTester = makeBroadcastTester(op=tensor.ceil,
-        expected=lambda a: numpy.ceil(a),
+        expected=upcast_float16_ufunc(numpy.ceil),
         good=_good_broadcast_unary_normal_no_complex,
         grad=copymod(_grad_broadcast_unary_normal,
             without=['corner_case'],
@@ -1215,7 +1215,7 @@ CeilTester = makeBroadcastTester(op=tensor.ceil,
                 dtype=floatX)]))
 
 CeilInplaceTester = makeBroadcastTester(op=inplace.ceil_inplace,
-        expected=lambda a: numpy.ceil(a),
+        expected=upcast_float16_ufunc(numpy.ceil),
         good=_good_broadcast_unary_normal_no_complex,
         # corner cases includes a lot of integers: points where Ceil is not
         # continuous (not differentiable)
@@ -1227,7 +1227,7 @@ CeilInplaceTester = makeBroadcastTester(op=inplace.ceil_inplace,
         inplace=True)
 
 FloorTester = makeBroadcastTester(op=tensor.floor,
-        expected=lambda a: numpy.floor(a),
+        expected=upcast_float16_ufunc(numpy.floor),
         good=_good_broadcast_unary_normal_no_complex,
         # XXX: why does grad of floor not give huge values at
         #      the integer points in the 'corner_case' in
@@ -1236,20 +1236,20 @@ FloorTester = makeBroadcastTester(op=tensor.floor,
         grad=_grad_broadcast_unary_normal)
 
 FloorInplaceTester = makeBroadcastTester(op=inplace.floor_inplace,
-        expected=lambda a: numpy.floor(a),
+        expected=upcast_float16_ufunc(numpy.floor),
         good=_good_broadcast_unary_normal_no_complex,
         grad=_grad_broadcast_unary_normal,
         inplace=True)
 
 TruncInplaceTester = makeBroadcastTester(
     op=inplace.trunc_inplace,
-    expected=lambda a: numpy.trunc(a),
+    expected=upcast_float16_ufunc(numpy.trunc),
     good=_good_broadcast_unary_normal_no_complex,
     inplace=True)
 
 TruncTester = makeBroadcastTester(
     op=tensor.trunc,
-    expected=lambda a: numpy.trunc(a),
+    expected=upcast_float16_ufunc(numpy.trunc),
     good=_good_broadcast_unary_normal_no_complex)
 
 RoundHalfToEvenTester = makeBroadcastTester(
