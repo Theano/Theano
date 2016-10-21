@@ -1679,12 +1679,10 @@ def test_h_softmax():
     y = tensor.ivector('y')
 
     # This only computes the output corresponding to the target
-    y_hat_tg = h_softmax(x, batch_size, output_size, h_softmax_level1_size,
-                         h_softmax_level2_size, W1, b1, W2, b2, y)
+    y_hat_tg = h_softmax(x, output_size, W1, b1, W2, b2, y)
 
     # This computes all the outputs
-    y_hat_all = h_softmax(x, batch_size, output_size, h_softmax_level1_size,
-                          h_softmax_level2_size, W1, b1, W2, b2)
+    y_hat_all = h_softmax(x, output_size, W1, b1, W2, b2)
 
     #############
     # Compile functions

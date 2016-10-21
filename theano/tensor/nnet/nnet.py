@@ -2231,8 +2231,7 @@ def relu(x, alpha=0):
         return f1 * x + f2 * abs(x)
 
 
-def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
-              W1, b1, W2, b2, target=None):
+def h_softmax(x, n_outputs, W1, b1, W2, b2, target=None):
     """ Two-level hierarchical softmax.
 
     The architecture is composed of two softmax layers: the first predicts the
@@ -2246,31 +2245,23 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
 
     The outputs are grouped in the same order as they are initially defined.
 
-    .. versionadded:: 0.7.1
+    .. versionadded:: 0.7.1 
 
     Parameters
     ----------
-    x: tensor of shape (batch_size, number of features)
+    x: tensor of shape (batch_size, number_of_features)
         the minibatch input of the two-layer hierarchical softmax.
-    batch_size: int
-        the size of the minibatch input x.
     n_outputs: int
         the number of outputs.
-    n_classes: int
-        the number of classes of the two-layer hierarchical softmax. It
-        corresponds to the number of outputs of the first softmax. See note at
-        the end.
-    n_outputs_per_class: int
-        the number of outputs per class. See note at the end.
     W1: tensor of shape (number of features of the input x, n_classes)
         the weight matrix of the first softmax, which maps the input x to the
         probabilities of the classes.
     b1: tensor of shape (n_classes,)
         the bias vector of the first softmax layer.
-    W2: tensor of shape (n_classes, number of features of the input x, n_outputs_per_class)
+    W2: tensor of shape (n_classes, number_of_features, n_outputs_per_class)
         the weight matrix of the second softmax, which maps the input x to
         the probabilities of the outputs.
-    b2: tensor of shape (n_classes, n_outputs_per_class)
+    b2: tensor of shape (n_classes, number_of_features)
         the bias vector of the second softmax layer.
     target: tensor of shape either (batch_size,) or (batch_size, 1)
         (optional, default None)
@@ -2290,19 +2281,27 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
 
     Notes
     -----
-    The product of n_outputs_per_class and n_classes has to be greater or equal
-    to n_outputs. If it is strictly greater, then the irrelevant outputs will
-    be ignored.
-    n_outputs_per_class and n_classes have to be the same as the corresponding
-    dimensions of the tensors of W1, b1, W2 and b2.
     The most computational efficient configuration is when n_outputs_per_class
     and n_classes are equal to the square root of n_outputs.
+
+    Compared to the last version, there are some _internal_ parameters derived
+    from the weight matrices:
+    - batch_size = x.shape[0], which could vary in each iteration; This is especially
+     advantageous for the evaluation of the model;
+    - n_classes is derived from the W1.shape[1];
+    - n_outputs_per_class is derived from W2.shape[2]
 
     References
     ----------
     .. [1] J. Goodman, "Classes for Fast Maximum Entropy Training,"
         ICASSP, 2001, <http://arxiv.org/abs/cs/0108006>`.
     """
+
+    # Added on 2016-02-02 ######################################################
+    batch_size = x.shape[0]
+    n_classes = int( W1.shape[1].eval() )
+    n_outputs_per_class = int( W2.shape[2].eval() )
+    ############################################################################
 
     # First softmax that computes the probabilities of belonging to each class
     class_probs = theano.tensor.nnet.softmax(tensor.dot(x, W1) + b1)
