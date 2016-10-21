@@ -2028,7 +2028,7 @@ class TopoOptimizer(NavigatorOptimizer):
                     node = q.pop()
                 else:
                     node = q.popleft()
-                if getattr(node, 'disavowed', False):
+                if node.disavowed:
                     continue
                 current_node = node
                 nb += self.process_node(fgraph, node)
@@ -2151,7 +2151,7 @@ class OpKeyOptimizer(NavigatorOptimizer):
         try:
             while q:
                 node = q.pop()
-                if getattr(node, "disavowed", False):
+                if node.disavowed:
                     continue
                 current_node = node
                 self.process_node(fgraph, node)
@@ -2401,7 +2401,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             try:
                 while q:
                     node = q.pop()
-                    if getattr(node, "disavowed", False):
+                    if node.disavowed:
                         continue
                     current_node = node
 
