@@ -1948,9 +1948,9 @@ def test_subtensor_inc_subtensor():
     assert isinstance(prog[0].op, DeepCopyOp)
     # basic test, numerical check
     x_ = numpy.random.uniform(size=[3, 4])
-    v_ = numpy.random.uniform(size=[4,])
+    v_ = numpy.random.uniform(size=[4, ])
     i_ = 1
-    assert f(x_, i_, v_) == v_
+    assert numpy.array_equal(f(x_, i_, v_), v_)
 
     # complicated test
     x = tensor.tensor4('x')
@@ -1968,9 +1968,9 @@ def test_subtensor_inc_subtensor():
     assert isinstance(prog[0].op, DeepCopyOp)
     # complicated test, numerical check
     x_ = numpy.random.uniform(size=[3, 4, 5, 6])
-    v_ = numpy.random.uniform(size=[2, 3, 2])
+    v_ = numpy.random.uniform(size=[2, 2, 2])
     i1_, i2_, i3_, i4_ = 1, 2, 3, 4
-    assert f(x_, i1_, i2_, i3_, i4_, v_) == v_
+    assert numpy.array_equal(f(x_, i1_, i2_, i3_, i4_, v_), v_)
 
     # case not use this optimization
     z = y[i1, :i3, i2:, ::i4]
@@ -1982,10 +1982,10 @@ def test_subtensor_inc_subtensor():
     assert any(isinstance(x.op, tensor.Subtensor) for x in prog)
     # case not use this optimization, numerical check
     x_ = numpy.random.uniform(size=[3, 4, 5, 6])
-    v_ = numpy.random.uniform(size=[2, 3, 2])
+    v_ = numpy.random.uniform(size=[2, 2, 2])
     i1_, i2_, i3_, i4_ = 1, 2, 3, 4
-    x_[i1, :i2, i3:, ::i4] = v_
-    assert f(x_, i1_, i2_, i3_, i4_, v_) == x_[i1, :i3, i2:, ::i4]
+    x_[i1_, :i2_, i3_:, ::i4_] = v_
+    assert numpy.array_equal(f(x_, i1_, i2_, i3_, i4_, v_), x_[i1_, :i3_, i2_:, ::i4_])
 
     # case when v is broadcastable
     x = tensor.matrix('x')
@@ -1997,14 +1997,13 @@ def test_subtensor_inc_subtensor():
     mode = theano.compile.mode.get_default_mode().including('local_subtensor_inc_subtensor')
     f = theano.function([x, i1, i2, v], z, mode=mode)
     prog = f.maker.fgraph.toposort()
-    import pdb
-    pdb.set_trace()
-    assert len(prog) == 1
-    # basic test, numerical check
+    assert any(isinstance(x.op, tensor.Alloc) for x in prog)
+    # case when v is broadcastable, numerical check
     x_ = numpy.random.uniform(size=[3, 4])
-    v_ = numpy.random.uniform(size=[2,])
-    i1_, i2_ = 1, 2
-    assert f(x_, i_, v_) == v_
+    v_ = numpy.random.uniform(size=[2, ])
+    i1_, i2_ = 2, 2
+    x_[:i1_, :i2_] = v_
+    assert numpy.array_equal(f(x_, i1_, i2_, v_), x_[:i1_, :i2_])
 
 
 class test_local_subtensor_make_vector(unittest.TestCase):
