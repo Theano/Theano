@@ -2,6 +2,7 @@ from __future__ import absolute_import, print_function, division
 import pkg_resources
 
 import theano
+from theano.tensor.slinalg import MATRIX_STRUCTURES
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
@@ -15,9 +16,10 @@ except ImportError:
 cula_available = False
 
 try:
-    from scikits.cuda import cula
+    from skcuda import cula
     cula_available = True
-except (ImportError, OSError, RuntimeError, pkg_resources.DistributionNotFound):
+except (ImportError, OSError, RuntimeError,
+        pkg_resources.DistributionNotFound):
     pass
 
 cula_initialized = False
@@ -31,13 +33,18 @@ class GpuSolve(GpuOp):
     ----------
     trans
         Whether to take the transpose of the input matrix or not.
+    A_structure
+        Any special structure to matrix system being solved
 
     """
 
-    __props__ = ('trans',)
+    __props__ = ('trans', 'A_structure')
 
-    def __init__(self, trans='N'):
+    def __init__(self, trans='N', A_structure='general'):
+        if A_structure not in MATRIX_STRUCTURES:
+            raise ValueError('Invalid matrix structure argument', A_structure)
         self.trans = trans
+        self.A_structure = A_structure
         super(GpuSolve, self).__init__()
 
     def output_type(self, inp):
@@ -48,7 +55,7 @@ class GpuSolve(GpuOp):
         inp2 = as_cuda_ndarray_variable(inp2)
 
         assert inp1.ndim == 2
-        assert inp2.ndim == 2
+        assert inp2.ndim in [1, 2]
         return theano.Apply(self, [inp1, inp2], [self.output_type(inp1)()])
 
     def make_thunk(self, node, storage_map, _, no_recycling, impl=None):
@@ -84,8 +91,16 @@ class GpuSolve(GpuOp):
             else:
                 trans = 'T'
 
+            # If b is one-dimensional reshape to two-dimensional array with
+            # singleton second dimension
+            if b.ndim == 1:
+                b_2d = b.reshape((b.shape[0], 1))
+            else:
+                b_2d = b
+
             # Convert b to F-order from c-order.
-            b_cpy = dimshuffle(b, (1, 0)).reshape((b.shape[0], b.shape[1]))
+            b_cpy = dimshuffle(b_2d, (1, 0)).reshape((b_2d.shape[0],
+                                                      b_2d.shape[1]))
 
             # This copy forces allocation of a new C-contiguous buffer
             # and returns it.
@@ -126,9 +141,15 @@ class GpuSolve(GpuOp):
 
             A_pycuda, b_pycuda = cula_gpu_solve(A_cpy, b_cpy, trans)
 
-            # Convert b to F-order from c-order and assign it to output:
-            b_cpy = b_cpy.reshape(b.shape[::-1])
+            # Convert b to F-order from c-order:
+            b_cpy = b_cpy.reshape(b_2d.shape[::-1])
             b_cpy = dimshuffle(b_cpy, (1, 0))
+
+            # If b was originally a one-dimensional array reshape back
+            if b.ndim == 1:
+                b_cpy = b_cpy.reshape(b.shape[0])
+
+            # Assign result to output
             z[0] = b_cpy
 
         thunk.inputs = inputs

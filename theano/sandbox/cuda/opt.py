@@ -49,7 +49,7 @@ from theano.sandbox.cuda.blas import (
     GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
 
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
-from theano.sandbox.cuda.cula import gpu_solve
+from theano.sandbox.cuda.cula import GpuSolve
 
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -713,17 +713,20 @@ def local_gpu_solve(node):
         if (host_input.owner and
             isinstance(host_input.owner.op,
                        slinalg.Solve)):
-            x, y = host_input.owner.inputs
-            return [gpu_solve(as_cuda_ndarray_variable(x),
-                              as_cuda_ndarray_variable(y))]
-
+            A, b = host_input.owner.inputs
+            A_structure = host_input.owner.op.A_structure
+            gpu_solve = GpuSolve(A_structure=A_structure)
+            return [gpu_solve(as_cuda_ndarray_variable(A),
+                              as_cuda_ndarray_variable(b))]
     if isinstance(node.op, slinalg.Solve):
         if any([i.owner and isinstance(i.owner.op, HostFromGpu)
                 for i in node.inputs]):
-            x, y = node.inputs
+            A, b = node.inputs
+            A_structure = node.op.A_structure
+            gpu_solve = GpuSolve(A_structure=A_structure)
             return [host_from_gpu(
-                    gpu_solve(as_cuda_ndarray_variable(x),
-                              as_cuda_ndarray_variable(y)))]
+                    gpu_solve(as_cuda_ndarray_variable(A),
+                              as_cuda_ndarray_variable(b)))]
     return False
 
 
