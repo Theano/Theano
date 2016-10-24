@@ -10,7 +10,8 @@ from theano.gof import FunctionGraph
 from theano.gof.opt import out2in
 from theano.tensor.opt_uncanonicalize import (
     local_alloc_dimshuffle,
-    local_reshape_dimshuffle
+    local_reshape_dimshuffle,
+    local_dimshuffle_alloc,
     )
 import theano.tensor as tensor
 #from theano.tensor import matrix,max_and_argmax,MaaxAndArgmax,neg
@@ -142,6 +143,28 @@ def test_local_reshape_dimshuffle():
 
     g = FunctionGraph([x], [out])
     reshape_dimshuffle(g)
+
+    topo = g.toposort()
+    assert any([not isinstance(x, DimShuffle) for x in topo])
+
+
+
+def test_local_reshape_dimshuffle():
+
+    reshape_dimshuffle = out2in(local_dimshuffle_alloc)
+
+    x = tensor.vector('x')
+
+    out = tensor.alloc(x, 3, 2).dimshuffle('x', 'x', 0, 1)
+
+    g = FunctionGraph([x], [out])
+    reshape_dimshuffle(g)
+
+    l=theano.gof.PerformLinker()
+    l.accept(g)
+    f=l.make_function()
+
+    assert f([3, 4]).ndim == 4
 
     topo = g.toposort()
     assert any([not isinstance(x, DimShuffle) for x in topo])
