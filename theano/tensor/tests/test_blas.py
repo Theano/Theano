@@ -95,7 +95,8 @@ class t_gemm(TestCase):
 
             cmp_linker(copy(z), a, x, y, b, 'c|py')
             cmp_linker(copy(z), a, x, y, b, 'py')
-            if (config.blas.ldflags and not dtype.startswith("complex")
+            # if (config.blas.ldflags and not dtype.startswith("complex")
+            if (not dtype.startswith("complex")
                 and theano.config.cxx):
                 # If blas.ldflags is equal to '', the C code will not
                 # be generated

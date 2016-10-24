@@ -73,7 +73,12 @@ void %(name)s(
     const %(float_type)s* ALPHA, %(float_type)s* A, const int* LDA, 
     %(float_type)s* B, const int* LDB, const %(float_type)s* BETA, 
     %(float_type)s* C, const int* LDC) {
-    if(*M < 0 || *N < 0 || *K < 0 || *LDA < 0 || *LDB < 0 || *LDC < 0)
+    /* NB: it seems that matrix+matrix and scalar*matrix functions
+     * defined above do not allocate iterator for a matrix with 0
+     * content, that is a matrix whose nrow*ncol == 0. As these
+     * functions actually work with M*N matrices (op(A)*op(B) and/or C),
+     * I think that we could just return if M or N is null. */
+    if(*M < 1 || *N < 1 || *K < 0 || *LDA < 0 || *LDB < 0 || *LDC < 0)
         return;
     int nrowa, ncola, nrowb, ncolb;
     int is_A_transposable = alt_trans_to_bool(TRANSA);
