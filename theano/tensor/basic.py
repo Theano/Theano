@@ -3155,11 +3155,9 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
         sum_dtype = dtype
     else:
         sum_dtype = None
-
-    # float16 overflows way too fast for sum
-    if ((sum_dtype == 'float16' or input.dtype == 'float16') and
-            acc_dtype != 'float16'):
-        sum_dtype == 'float32'
+        # float16 overflows on the cast way too often
+        if input.dtype == 'float16':
+            sum_dtype = 'float32'
 
     s = sum(input, axis=axis, dtype=sum_dtype, keepdims=keepdims,
             acc_dtype=acc_dtype)
