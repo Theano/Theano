@@ -1947,8 +1947,8 @@ def test_subtensor_inc_subtensor():
     assert len(prog) == 1
     assert isinstance(prog[0].op, DeepCopyOp)
     # basic test, numerical check
-    x_ = numpy.random.uniform(size=[3, 4])
-    v_ = numpy.random.uniform(size=[4, ])
+    x_ = numpy.random.uniform(size=[3, 4]).astype(config.floatX)
+    v_ = numpy.random.uniform(size=[4, ]).astype(config.floatX)
     i_ = 1
     assert numpy.array_equal(f(x_, i_, v_), v_)
 
@@ -1967,8 +1967,8 @@ def test_subtensor_inc_subtensor():
     assert len(prog) == 1
     assert isinstance(prog[0].op, DeepCopyOp)
     # complicated test, numerical check
-    x_ = numpy.random.uniform(size=[3, 4, 5, 6])
-    v_ = numpy.random.uniform(size=[2, 2, 2])
+    x_ = numpy.random.uniform(size=[3, 4, 5, 6]).astype(config.floatX)
+    v_ = numpy.random.uniform(size=[2, 2, 2]).astype(config.floatX)
     i1_, i2_, i3_, i4_ = 1, 2, 3, 4
     assert numpy.array_equal(f(x_, i1_, i2_, i3_, i4_, v_), v_)
 
@@ -1981,8 +1981,8 @@ def test_subtensor_inc_subtensor():
     assert any(isinstance(x.op, tensor.IncSubtensor) for x in prog)
     assert any(isinstance(x.op, tensor.Subtensor) for x in prog)
     # case not use this optimization, numerical check
-    x_ = numpy.random.uniform(size=[3, 4, 5, 6])
-    v_ = numpy.random.uniform(size=[2, 2, 2])
+    x_ = numpy.random.uniform(size=[3, 4, 5, 6]).astype(config.floatX)
+    v_ = numpy.random.uniform(size=[2, 2, 2]).astype(config.floatX)
     i1_, i2_, i3_, i4_ = 1, 2, 3, 4
     x_[i1_, :i2_, i3_:, ::i4_] = v_
     assert numpy.array_equal(f(x_, i1_, i2_, i3_, i4_, v_), x_[i1_, :i3_, i2_:, ::i4_])
@@ -1997,10 +1997,10 @@ def test_subtensor_inc_subtensor():
     mode = theano.compile.mode.get_default_mode().including('local_subtensor_inc_subtensor')
     f = theano.function([x, i1, i2, v], z, mode=mode)
     prog = f.maker.fgraph.toposort()
-    assert any(isinstance(x.op, tensor.Alloc) for x in prog)
+    assert any(isinstance(x.op, (tensor.Alloc, theano.sandbox.cuda.basic_ops.GpuAlloc)) for x in prog)
     # case when v is broadcastable, numerical check
-    x_ = numpy.random.uniform(size=[3, 4])
-    v_ = numpy.random.uniform(size=[2, ])
+    x_ = numpy.random.uniform(size=[3, 4]).astype(config.floatX)
+    v_ = numpy.random.uniform(size=[2, ]).astype(config.floatX)
     i1_, i2_ = 2, 2
     x_[:i1_, :i2_] = v_
     assert numpy.array_equal(f(x_, i1_, i2_, v_), x_[:i1_, :i2_])
