@@ -1485,14 +1485,10 @@ class TestCompositeCodegen(unittest.TestCase):
         upgrade_to_float = theano.scalar.basic.upgrade_to_float
 
         self.scal_times_2 = TimesN(2, upgrade_to_float, name='times_2')
-        self.times_2 = theano.tensor.elemwise.Elemwise(
-            self.scal_times_2,
-            name='times_2')
+        self.times_2 = theano.tensor.elemwise.Elemwise(self.scal_times_2)
 
         self.scal_times_3 = TimesN(3, upgrade_to_float, name='times_3')
-        self.times_3 = theano.tensor.elemwise.Elemwise(
-            self.scal_times_3,
-            name='times_3')
+        self.times_3 = theano.tensor.elemwise.Elemwise(self.scal_times_3)
 
         self.x = fvector()
 
