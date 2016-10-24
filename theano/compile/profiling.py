@@ -676,7 +676,7 @@ class ProfileStats(object):
               file=file)
 
         for node, t in sorted(self.linker_make_thunk_time.items(),
-                                 key=operator.itemgetter(1))[:5]:
+                                 key=operator.itemgetter(1))[::-1][:5]:
             print('           Node %s time %es' % (node, t),
                   file=file)
         print('', file=file)
