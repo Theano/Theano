@@ -616,6 +616,7 @@ def makeBroadcastTester(op, expected, checks=None, name=None, **kwargs):
     # this script. This is needed to properly identify the test e.g. with the
     # --with-id option of nosetests, or simply to rerun a specific test that
     # failed.
+
     capitalize = False
     if name.startswith('Elemwise{') and name.endswith(',no_inplace}'):
         # For instance: Elemwise{add,no_inplace} -> Add
@@ -624,8 +625,13 @@ def makeBroadcastTester(op, expected, checks=None, name=None, **kwargs):
     elif name.endswith('_inplace'):
         # For instance: sub_inplace -> SubInplace
         capitalize = True
+
+    # TODO : Make all the Ops' representation a Camel-case string and get rid of capitalization
     if capitalize:
-        name = ''.join([x.capitalize() for x in name.split('_')])
+        # This is a hack to avoid converting correct names to undesired ones
+        if not name[0].isupper():
+            name = ''.join([x.capitalize() for x in name.split('_')])
+
     # Some tests specify a name that already ends with 'Tester', while in other
     # cases we need to add it manually.
     if not name.endswith('Tester'):
@@ -1418,13 +1424,13 @@ if theano.config.floatX == 'float32':
 else:
     angle_eps = 1e-10
 
-Deg2radTester = makeBroadcastTester(
+Deg2RadTester = makeBroadcastTester(
     op=tensor.deg2rad,
     expected=upcast_float16_ufunc(numpy.deg2rad),
     good=_good_broadcast_unary_normal_no_complex,
     grad=_grad_broadcast_unary_normal_no_complex,
     eps=angle_eps)
-Deg2radInplaceTester = makeBroadcastTester(
+Deg2RadInplaceTester = makeBroadcastTester(
     op=inplace.deg2rad_inplace,
     expected=numpy.deg2rad,
     good=_good_broadcast_unary_normal_float_no_complex,
@@ -1432,13 +1438,13 @@ Deg2radInplaceTester = makeBroadcastTester(
     inplace=True,
     eps=angle_eps)
 
-Rad2degTester = makeBroadcastTester(
+Rad2DegTester = makeBroadcastTester(
     op=tensor.rad2deg,
     expected=upcast_float16_ufunc(numpy.rad2deg),
     good=_good_broadcast_unary_normal_no_complex,
     grad=_grad_broadcast_unary_normal_no_complex,
     eps=angle_eps)
-Rad2degInplaceTester = makeBroadcastTester(
+Rad2DegInplaceTester = makeBroadcastTester(
     op=inplace.rad2deg_inplace,
     expected=numpy.rad2deg,
     good=_good_broadcast_unary_normal_float_no_complex,
@@ -1472,11 +1478,11 @@ _good_broadcast_unary_arcsin_float = copymod(
 # unstable near those values
 _grad_broadcast_unary_arcsin = dict(normal=(rand_ranged(-0.9, 0.9, (2, 3)),),)
 
-ArcsinTester = makeBroadcastTester(op=tensor.arcsin,
+ArcSinTester = makeBroadcastTester(op=tensor.arcsin,
                                    expected=upcast_float16_ufunc(numpy.arcsin),
                                    good=_good_broadcast_unary_arcsin,
                                    grad=_grad_broadcast_unary_arcsin)
-ArcsinInplaceTester = makeBroadcastTester(
+ArcSinInplaceTester = makeBroadcastTester(
     op=inplace.arcsin_inplace,
     expected=numpy.arcsin,
     good=_good_broadcast_unary_arcsin_float,
@@ -1500,11 +1506,11 @@ def test_py_c_match():
     # This can fail in DebugMode
     f(numpy.asarray([1, 0, -1], dtype='int8'))
 
-ArccosTester = makeBroadcastTester(op=tensor.arccos,
+ArcCosTester = makeBroadcastTester(op=tensor.arccos,
                                    expected=upcast_float16_ufunc(numpy.arccos),
                                    good=_good_broadcast_unary_arcsin,
                                    grad=_grad_broadcast_unary_arcsin)
-ArccosInplaceTester = makeBroadcastTester(
+ArcCosInplaceTester = makeBroadcastTester(
     op=inplace.arccos_inplace,
     expected=numpy.arccos,
     good=_good_broadcast_unary_arcsin_float,
@@ -1534,11 +1540,11 @@ TanInplaceTester = makeBroadcastTester(
     grad=_grad_broadcast_unary_tan,
     inplace=True)
 
-ArctanTester = makeBroadcastTester(op=tensor.arctan,
+ArcTanTester = makeBroadcastTester(op=tensor.arctan,
                                    expected=upcast_float16_ufunc(numpy.arctan),
                                    good=_good_broadcast_unary_wide,
                                    grad=_grad_broadcast_unary_wide)
-ArctanInplaceTester = makeBroadcastTester(
+ArcTanInplaceTester = makeBroadcastTester(
     op=inplace.arctan_inplace,
     expected=numpy.arctan,
     good=_good_broadcast_unary_wide_float,
@@ -1567,12 +1573,12 @@ _grad_broadcast_binary_arctan2 = dict(
     column=(rand(2, 3), rand(2, 1)),
     )
 
-Arctan2Tester = makeBroadcastTester(
+ArcTan2Tester = makeBroadcastTester(
     op=tensor.arctan2,
     expected=upcast_float16_ufunc(numpy.arctan2),
     good=_good_broadcast_binary_arctan2,
     grad=_grad_broadcast_binary_arctan2)
-Arctan2InplaceTester = makeBroadcastTester(
+ArcTan2InplaceTester = makeBroadcastTester(
     op=inplace.arctan2_inplace,
     expected=numpy.arctan2,
     good=copymod(_good_broadcast_binary_arctan2, without=['integers', 'int8']),
@@ -1600,12 +1606,12 @@ _good_broadcast_unary_arccosh = dict(
     empty=(numpy.asarray([], dtype=config.floatX),),)
 _grad_broadcast_unary_arccosh = dict(normal=(rand_ranged(1, 1000, (2, 3)),),)
 
-ArccoshTester = makeBroadcastTester(
+ArcCoshTester = makeBroadcastTester(
     op=tensor.arccosh,
     expected=upcast_float16_ufunc(numpy.arccosh),
     good=_good_broadcast_unary_arccosh,
     grad=_grad_broadcast_unary_arccosh)
-ArccoshInplaceTester = makeBroadcastTester(
+ArcCoshInplaceTester = makeBroadcastTester(
     op=inplace.arccosh_inplace,
     expected=numpy.arccosh,
     good=copymod(_good_broadcast_unary_arccosh, without=['integers', 'uint8']),
@@ -1625,12 +1631,12 @@ SinhInplaceTester = makeBroadcastTester(
     grad=_grad_broadcast_unary_normal,
     inplace=True)
 
-ArcsinhTester = makeBroadcastTester(
+ArcSinhTester = makeBroadcastTester(
     op=tensor.arcsinh,
     expected=upcast_float16_ufunc(numpy.arcsinh),
     good=_good_broadcast_unary_normal,
     grad=_grad_broadcast_unary_normal)
-ArcsinhInplaceTester = makeBroadcastTester(
+ArcSinhInplaceTester = makeBroadcastTester(
     op=inplace.arcsinh_inplace,
     expected=numpy.arcsinh,
     good=_good_broadcast_unary_normal_float,
@@ -1658,12 +1664,12 @@ _good_broadcast_unary_arctanh = dict(
 _grad_broadcast_unary_arctanh = dict(
     normal=(rand_ranged(-1 + _eps, 1 - _eps, (2, 3)),),)
 
-ArctanhTester = makeBroadcastTester(
+ArcTanhTester = makeBroadcastTester(
     op=tensor.arctanh,
     expected=upcast_float16_ufunc(numpy.arctanh),
     good=_good_broadcast_unary_arctanh,
     grad=_grad_broadcast_unary_arctanh)
-ArctanhInplaceTester = makeBroadcastTester(
+ArcTanhInplaceTester = makeBroadcastTester(
     op=inplace.arctanh_inplace,
     expected=numpy.arctanh,
     good=copymod(_good_broadcast_unary_arctanh, without=['integers', 'int8']),
@@ -1807,7 +1813,7 @@ GammaInplaceTester = makeBroadcastTester(
     inplace=True,
     skip=skip_scipy)
 
-GammalnTester = makeBroadcastTester(
+GammaLnTester = makeBroadcastTester(
     op=tensor.gammaln,
     expected=expected_gammaln,
     good=_good_broadcast_unary_gammaln,
@@ -1815,7 +1821,7 @@ GammalnTester = makeBroadcastTester(
     eps=2e-10,
     mode=mode_no_scipy,
     skip=skip_scipy)
-GammalnInplaceTester = makeBroadcastTester(
+GammaLnInplaceTester = makeBroadcastTester(
     op=inplace.gammaln_inplace,
     expected=expected_gammaln,
     good=_good_broadcast_unary_gammaln,

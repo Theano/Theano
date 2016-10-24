@@ -582,17 +582,27 @@ second dimension
 
     def __str__(self):
         name = None
+
+        scalar_op_name = str(self.scalar_op)
+        if self.scalar_op.name:
+            if hasattr(scalar, self.scalar_op.name.replace("scalar_", "")):
+                scalar_op_name = getattr(scalar, self.scalar_op.name.replace("scalar_", "")).__class__.__name__
+            else:
+                scalar_op_name = self.scalar_op.name.replace("scalar_", "")
+
         if str(self.scalar_op).endswith("_inplace"):
             inplace_string = "inplace"
         else:
-            inplace_string="no_inplace"
+            inplace_string = "no_inplace"
+
         if not name:
             if self.inplace_pattern:
                 items = list(self.inplace_pattern.items())
                 items.sort()
-                return "Elemwise{%s,%s}" % (self.scalar_op, inplace_string)
+                return "Elemwise{%s,%s}" % (scalar_op_name, inplace_string)
             else:
-                return "Elemwise{%s,%s}" % (self.scalar_op, inplace_string)
+                return "Elemwise{%s,%s}" % (scalar_op_name, inplace_string)
+
         else:
             return name
 
