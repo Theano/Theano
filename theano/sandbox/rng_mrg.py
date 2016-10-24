@@ -868,7 +868,6 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
             const ga_int MULT2 = 21069;
 
             const ga_uint idx = GID_0 * LDIM_0 + LID_0;
-            const ga_uint step = GDIM_0 * LDIM_0;
             ga_int y1, y2, x11, x12, x13, x21, x22, x23;
 
             if (idx < Nstreams_used)
@@ -880,7 +879,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
             x22 = state_data[idx*6+4];
             x23 = state_data[idx*6+5];
 
-            for (ga_uint i = idx; i < Nsamples; i += step)
+            for (ga_uint i = idx; i < Nsamples; i += Nstreams_used)
             {
                 y1 = ((x12 & MASK12) << i22) + (x12 >> i9) + ((x13 & MASK13) << i7) + (x13 >> i24);
                 y1 -= (y1 < 0 || y1 >= M1) ? M1 : 0;
@@ -1035,12 +1034,14 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
 
         {
           size_t ls = 0, gs = 0;
-          int err = GpuKernel_sched(&%(kname)s, n_elements, &ls, &gs);
+          int err = GpuKernel_sched(&%(kname)s, n_streams, &ls, &gs);
           if (err != GA_NO_ERROR) {
               PyErr_Format(PyExc_RuntimeError, "GpuKernel_sched: %%s\\n",
                            GpuKernel_error(&%(kname)s, err));
               %(fail)s
           }
+          // Make sure we run as many blocks as we need to cover the whole n_streams
+          gs = (n_streams + ls - 1)/ls;
           err = mrg_uniform_call(1, &ls, &gs, 0, %(o_sample)s->ga.data, %(o_rstate)s->ga.data, n_elements, n_streams);
           if (err != GA_NO_ERROR) {
               PyErr_Format(PyExc_RuntimeError, "mrg_uniform_call: %%s\\n",
