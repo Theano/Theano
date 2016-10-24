@@ -868,6 +868,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
             const ga_int MULT2 = 21069;
 
             const ga_uint idx = GID_0 * LDIM_0 + LID_0;
+            const ga_uint step = GDIM_0 * LDIM_0;
             ga_int y1, y2, x11, x12, x13, x21, x22, x23;
 
             if (idx < Nstreams_used)
@@ -879,7 +880,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
             x22 = state_data[idx*6+4];
             x23 = state_data[idx*6+5];
 
-            for (ga_uint i = idx; i < Nsamples; i += Nstreams_used)
+            for (ga_uint i = idx; i < Nsamples; i += step)
             {
                 y1 = ((x12 & MASK12) << i22) + (x12 >> i9) + ((x13 & MASK13) << i7) + (x13 >> i24);
                 y1 -= (y1 < 0 || y1 >= M1) ? M1 : 0;
@@ -1033,21 +1034,16 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
           n_streams = n_elements;
 
         {
-          void *args[4];
           size_t ls = 0, gs = 0;
-          args[0] = %(o_sample)s->ga.data;
-          args[1] = %(o_rstate)s->ga.data;
-          args[2] = &n_elements;
-          args[3] = &n_streams;
           int err = GpuKernel_sched(&%(kname)s, n_elements, &ls, &gs);
           if (err != GA_NO_ERROR) {
               PyErr_Format(PyExc_RuntimeError, "GpuKernel_sched: %%s\\n",
                            GpuKernel_error(&%(kname)s, err));
               %(fail)s
           }
-          err = GpuKernel_call(&%(kname)s, 1, &ls, &gs, 0, args);
+          err = mrg_uniform_call(1, &ls, &gs, 0, %(o_sample)s->ga.data, %(o_rstate)s->ga.data, n_elements, n_streams);
           if (err != GA_NO_ERROR) {
-              PyErr_Format(PyExc_RuntimeError, "GpuKernel_call: %%s\\n",
+              PyErr_Format(PyExc_RuntimeError, "mrg_uniform_call: %%s\\n",
                            GpuKernel_error(&%(kname)s, err));
               %(fail)s
           }
@@ -1055,7 +1051,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (11,)
+        return (12,)
 
 
 def guess_n_streams(size, warn=False):
