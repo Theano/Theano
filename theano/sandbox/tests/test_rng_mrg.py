@@ -463,15 +463,13 @@ def test_consistency_GPUA_parallel():
 def test_GPUA_full_fill():
     # Make sure the whole sample buffer is filled.  Also make sure
     # large samples are consistent with CPU results.
-    from theano.gpuarray.tests.test_basic_ops import (mode_with_gpu as mode,
-                                                      test_ctx_name)
     from theano.gpuarray.type import gpuarray_shared_constructor
 
     # This needs to be large to trigger the problem on GPU
     size = (10, 1000)
 
     R = MRG_RandomStreams(234, use_cuda=False)
-    uni = R.uniform(size, nstreams=60*256)
+    uni = R.uniform(size, nstreams=60 * 256)
     f_cpu = theano.function([], uni)
 
     rstate_gpu = gpuarray_shared_constructor(R.state_updates[-1][0].get_value())
