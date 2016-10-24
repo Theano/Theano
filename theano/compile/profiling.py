@@ -9,6 +9,8 @@ ProfileStats object for runtime and memory profiling.
 #
 from __future__ import absolute_import, print_function, division
 
+import logging
+
 __authors__ = "James Bergstra"
 __reviewer__ = "Razvan Pascanu"
 __copyright__ = "(c) 2011, Universite de Montreal"
@@ -29,6 +31,8 @@ import numpy
 import theano
 from six import iteritems
 from theano.gof import graph
+
+logger = logging.getLogger('theano.compile.profiling')
 
 theano_imported_time = time.time()
 config = theano.config
@@ -220,6 +224,14 @@ class ProfileStats(object):
                     " You must set the environment variable"
                     " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA driver to"
                     " synchronize the execution to get a meaningful profile.")
+        if (config.profile and
+                hasattr(theano, 'gpuarray') and
+                theano.gpuarray.pygpu_activated and
+                not config.profiling.ignore_first_call):
+            logger.warn(
+                "Theano flag profiling.ignore_first_call is False."
+                " This cause bad profiling result in the new gpu"
+                " back-end, we as sometimes we compile at the first call.")
 
         self.apply_callcount = {}
         self.output_size = {}
