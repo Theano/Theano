@@ -206,9 +206,12 @@ class ProfileStats(object):
     # param is called flag_time_thunks because most other attributes with time
     # in the name are times *of* something, rather than configuration flags.
     def __init__(self, atexit_print=True, flag_time_thunks=None, **kwargs):
-        if (hasattr(theano, 'sandbox') and
-                hasattr(theano.sandbox, 'cuda') and
-                theano.sandbox.cuda.cuda_enabled):
+        if (config.profile and
+                ((hasattr(theano, 'sandbox') and
+                  hasattr(theano.sandbox, 'cuda') and
+                  theano.sandbox.cuda.cuda_enabled)) or(
+                      hasattr(theano, 'gpuarray') and
+                      theano.gpuarray.pygpu_activated)):
             if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
                 raise Exception(
                     "You are running the Theano profiler with CUDA enabled."
