@@ -2106,7 +2106,7 @@ class Cast(UnaryScalarOp):
         (x,) = inputs
         (z,) = outputs
         if node.outputs[0].type == bool:
-            return "%s = (%s) ? 1 : 0" % (z, x)
+            return "%s = (%s) ? 1 : 0;" % (z, x)
         return "%s = (%s)%s;" % (z, node.outputs[0].type.dtype_specs()[1], x)
 
     def grad(self, inputs, gout):
