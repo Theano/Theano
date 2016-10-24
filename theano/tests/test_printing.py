@@ -656,7 +656,7 @@ def test_scan_debugprint5():
     | | | | | | |Constant{1} [id BU]
     | | | | | |InplaceDimShuffle{x,x} [id BV] ''
     | | | | |   |TensorConstant{0.0} [id BQ]
-    | | | | |Elemwise{Second} [id BW] ''
+    | | | | |Elemwise{Second,no_inplace} [id BW] ''
     | | | | | |Subtensor{int64} [id BX] ''
     | | | | | | |Subtensor{int64::} [id BT] ''
     | | | | | | |Constant{-1} [id BY]
@@ -684,12 +684,12 @@ def test_scan_debugprint5():
 
     for{cpu,grad_of_scan_fn}.1 [id B] ''
     >Elemwise{Add,no_inplace} [id CJ] ''
-    > |Elemwise{Mul} [id CK] ''
+    > |Elemwise{Mul,no_inplace} [id CK] ''
     > | |<TensorType(float64, vector)> [id CL] -> [id BL]
     > | |A_copy [id CM] -> [id P]
     > |<TensorType(float64, vector)> [id CN] -> [id BL]
     >Elemwise{Add,no_inplace} [id CO] ''
-    > |Elemwise{Mul} [id CP] ''
+    > |Elemwise{Mul,no_inplace} [id CP] ''
     > | |<TensorType(float64, vector)> [id CL] -> [id BL]
     > | |<TensorType(float64, vector)> [id CQ] -> [id Z]
     > |<TensorType(float64, vector)> [id CR] -> [id CD]
