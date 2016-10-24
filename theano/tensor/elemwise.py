@@ -1633,7 +1633,7 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
                   [get_scalar_type(dtype=input.type.dtype).make_variable()
                    for input in (node.inputs * 2)],
                   [get_scalar_type(dtype=output.type.dtype).make_variable()
-                   for input in node.outputs]),
+                   for output in node.outputs]),
             None,
             ["%s_i" % aname, "%s_i" % inames[0]],
             ["%s_i" % aname],
