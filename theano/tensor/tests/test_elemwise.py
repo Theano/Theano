@@ -854,11 +854,10 @@ class T_reduce_dtype(unittest.TestCase):
             for input_dtype in self.dtypes:
                 x = tensor.matrix(dtype=input_dtype)
                 for output_dtype in self.dtypes:
-                    # If the output is a complex, the gradient of the reduce will
-                    # cast the complex to the input dtype. We can't call the normal
-                    # cast on a complex to a not complex as this is ambiguous.
-                    if (not input_dtype.startswith('complex') and
-                            output_dtype.startswith('complex')):
+                    # Only tests case where both input and output are complex.
+                    icomplex = input_dtype.startswith('complex')
+                    ocomplex = output_dtype.startswith('complex')
+                    if icomplex != ocomplex:
                         continue
 
                     axis = self.axes[idx % len(self.axes)]
