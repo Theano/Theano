@@ -9,7 +9,7 @@ import warnings
 import theano
 import theano.tensor as tensor
 from theano.tensor.nnet import conv
-
+from theano.tensor.nnet.abstract_conv import AbstractConv2d
 import logging
 
 __docformat__ = "restructuredtext en"
@@ -88,11 +88,11 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
 
     new_filter_shape = tensor.join(0, tensor.stack([sym_nkern, 1]), filters.shape[-2:])
     filters4D = tensor.reshape(filters, new_filter_shape, ndim=4)
-
-    # perform actual convolution ###
-    op = conv.ConvOp(output_mode=border_mode,
-                     dx=subsample[0], dy=subsample[1],
-                     imshp=imshp, kshp=kshp, nkern=nkern, bsize=bsize, **kargs)
+    op = AbstractConv2d(imshp = imshp,
+                             kshp=kshp,
+                             border_mode=border_mode,
+                             subsample=subsample
+                            )
 
     output = op(input4D, filters4D)
 
