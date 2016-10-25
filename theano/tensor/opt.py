@@ -4761,10 +4761,7 @@ class Canonizer(gof.LocalOptimizer):
 
         """
         if isinstance(v, Constant):
-            if getattr(v.tag, 'unique_value', None) is not None:
-                data = v.tag.unique_value
-            else:
-                data = v.data
+            data = v.data
             if data.ndim == 0:
                 return data
             else:
