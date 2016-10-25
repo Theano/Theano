@@ -943,8 +943,6 @@ def _scal_elemwise_with_nfunc(nfunc, nin, nout):
         else:
             msg = "no_inplace"
 
-        n = "Elemwise{%s,%s}" % (symbolname, msg)
-
         if inplace:
             scalar_op = getattr(scal, symbolname[:-len('_inplace')])
             inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
