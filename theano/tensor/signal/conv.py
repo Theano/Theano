@@ -8,13 +8,10 @@ import warnings
 
 import theano
 import theano.tensor as tensor
-from theano.tensor.nnet import conv
 from theano.tensor.nnet.abstract_conv import AbstractConv2d
 import logging
 
 __docformat__ = "restructuredtext en"
-
-
 _logger = logging.getLogger("theano.tensor.signal.conv")
 
 
@@ -54,23 +51,13 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
     """
     assert input.ndim in (2, 3)
     assert filters.ndim in (2, 3)
-
     # use shape information if it is given to us ###
     if filter_shape and image_shape:
-        if input.ndim == 3:
-            bsize = image_shape[0]
-        else:
-            bsize = 1
         imshp = (1,) + tuple(image_shape[-2:])
-
-        if filters.ndim == 3:
-            nkern = filter_shape[0]
-        else:
-            nkern = 1
         kshp = filter_shape[-2:]
     else:
-        nkern, kshp = None, None
-        bsize, imshp = None, None
+        kshp = None
+        imshp = None
 
     # reshape tensors to 4D, for compatibility with ConvOp ###
     if input.ndim == 3:
@@ -88,11 +75,9 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
 
     new_filter_shape = tensor.join(0, tensor.stack([sym_nkern, 1]), filters.shape[-2:])
     filters4D = tensor.reshape(filters, new_filter_shape, ndim=4)
-    op = AbstractConv2d(imshp = imshp,
-                             kshp=kshp,
-                             border_mode=border_mode,
-                             subsample=subsample
-                            )
+    op = AbstractConv2d(imshp=imshp, kshp=kshp,
+                        border_mode=border_mode,
+                        subsample=subsample)
 
     output = op(input4D, filters4D)
 
