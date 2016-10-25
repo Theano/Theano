@@ -1630,10 +1630,10 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
 
         task1_code = self.scalar_op.c_code(
             Apply(self.scalar_op,
-                  [get_scalar_type(dtype=input.type.dtype).make_variable()
-                   for input in (node.inputs * 2)],
-                  [get_scalar_type(dtype=output.type.dtype).make_variable()
-                   for output in node.outputs]),
+                  [get_scalar_type(dtype=iv.type.dtype).make_variable()
+                   for iv in (node.inputs * 2)],
+                  [get_scalar_type(dtype=ov.type.dtype).make_variable()
+                   for ov in node.outputs]),
             None,
             ["%s_i" % aname, "%s_i" % inames[0]],
             ["%s_i" % aname],
