@@ -970,7 +970,7 @@ class PoolGrad(OpenMPOp):
                 stride = st
 
         if padding is not None:
-            if pad is not (0, 0):
+            if pad is not None:
                 raise Exception(
                     "You can't provide a tuple value to both 'padding' and pad."
                     "  Please provide a value only to pad."
