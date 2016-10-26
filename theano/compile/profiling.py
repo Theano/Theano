@@ -213,9 +213,9 @@ class ProfileStats(object):
         if (config.profile and
                 ((hasattr(theano, 'sandbox') and
                   hasattr(theano.sandbox, 'cuda') and
-                  theano.sandbox.cuda.cuda_enabled)) or(
+                  theano.sandbox.cuda.cuda_enabled) or (
                       hasattr(theano, 'gpuarray') and
-                      theano.gpuarray.pygpu_activated)):
+                      theano.gpuarray.pygpu_activated))):
             if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
                 raise Exception(
                     "You are running the Theano profiler with CUDA enabled."
