@@ -1142,6 +1142,9 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
 
 def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
                    subsample=(1, 1), conv_mode='conv'):
+    """
+    TODO: document this
+    """
     ctx_name = infer_context_name(img, topgrad)
     img = as_gpuarray_variable(img, ctx_name)
     topgrad = as_gpuarray_variable(topgrad, ctx_name)
@@ -1156,6 +1159,9 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
 
 def dnn_gradweight3d(img, topgrad, kerns_shp, border_mode='valid',
                      subsample=(1, 1, 1), conv_mode='conv'):
+    """
+    TODO: document this
+    """
     ctx_name = infer_context_name(img, topgrad)
     img = as_gpuarray_variable(img, ctx_name)
     topgrad = as_gpuarray_variable(topgrad, ctx_name)
@@ -1170,6 +1176,9 @@ def dnn_gradweight3d(img, topgrad, kerns_shp, border_mode='valid',
 
 def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
                   subsample=(1, 1), conv_mode='conv'):
+    """
+    TODO: document this
+    """
     ctx_name = infer_context_name(kerns, topgrad)
     kerns = as_gpuarray_variable(kerns, ctx_name)
     topgrad = as_gpuarray_variable(topgrad, ctx_name)
@@ -1184,6 +1193,9 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
 
 def dnn_gradinput3d(kerns, topgrad, img_shp, border_mode='valid',
                     subsample=(1, 1, 1), conv_mode='conv'):
+    """
+    TODO: document this
+    """
     ctx_name = infer_context_name(kerns, topgrad)
     kerns = as_gpuarray_variable(kerns, ctx_name)
     topgrad = as_gpuarray_variable(topgrad, ctx_name)
