@@ -1037,7 +1037,6 @@ class Gemm(GemmRelated):
         if node.inputs[0].type.dtype.startswith('complex'):
             raise utils.MethodNotDefined('%s.c_code'
                                          % self.__class__.__name__)
-        # if not config.blas.ldflags: # return super(Gemm, self).c_code(node, name, (_z, _a, _x, _y, _b), (_zout, ), sub)
         full_code = self.build_gemm_call() % dict(locals(), **sub)
         return full_code
 
@@ -2150,8 +2149,6 @@ class BatchedDot(Op):
         _x, _y = inp
         _z, = out
         fail = sub["fail"]
-
-        # if not config.blas.ldflags: # return super(BatchedDot, self).c_code(node, name, inp, out, sub)
 
         # generate contiguity condition
         def contiguous(var, ndim):

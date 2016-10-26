@@ -98,7 +98,7 @@ def local_abstractconv_gemm(node):
 def local_abstractconv3d_gemm(node):
     # If theano.config.blas.ldflags is empty, Theano will use
     # a NumPy C implementation of [sd]gemm_.
-    if theano.config.cxx == "":  # or not theano.config.blas.ldflags:
+    if theano.config.cxx == "":
         return
     if not isinstance(node.op, AbstractConv3d):
         return None
@@ -120,7 +120,9 @@ def local_abstractconv3d_gemm(node):
 
 @local_optimizer([AbstractConv2d_gradWeights])
 def local_abstractconv_gradweight_gemm(node):
-    if theano.config.cxx == "":  # or not theano.config.blas.ldflags:
+    # If theano.config.blas.ldflags is empty, Theano will use
+    # a NumPy C implementation of [sd]gemm_.
+    if theano.config.cxx == "":
         return
     if not isinstance(node.op, AbstractConv2d_gradWeights):
         return None
@@ -145,7 +147,9 @@ def local_abstractconv_gradweight_gemm(node):
 
 @local_optimizer([AbstractConv3d_gradWeights])
 def local_abstractconv3d_gradweight_gemm(node):
-    if theano.config.cxx == "":  # or not theano.config.blas.ldflags:
+    # If theano.config.blas.ldflags is empty, Theano will use
+    # a NumPy C implementation of [sd]gemm_.
+    if theano.config.cxx == "":
         return
     if not isinstance(node.op, AbstractConv3d_gradWeights):
         return None
@@ -170,7 +174,9 @@ def local_abstractconv3d_gradweight_gemm(node):
 
 @local_optimizer([AbstractConv2d_gradInputs])
 def local_abstractconv_gradinputs_gemm(node):
-    if theano.config.cxx == "":  # or not theano.config.blas.ldflags:
+    # If theano.config.blas.ldflags is empty, Theano will use
+    # a NumPy C implementation of [sd]gemm_.
+    if theano.config.cxx == "":
         return
     if not isinstance(node.op, AbstractConv2d_gradInputs):
         return None
@@ -193,7 +199,9 @@ def local_abstractconv_gradinputs_gemm(node):
 
 @local_optimizer([AbstractConv3d_gradInputs])
 def local_abstractconv3d_gradinputs_gemm(node):
-    if theano.config.cxx == "":  # or not theano.config.blas.ldflags:
+    # If theano.config.blas.ldflags is empty, Theano will use
+    # a NumPy C implementation of [sd]gemm_.
+    if theano.config.cxx == "":
         return
     if not isinstance(node.op, AbstractConv3d_gradInputs):
         return None

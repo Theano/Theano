@@ -37,9 +37,7 @@ def skip_if_blas_ldflags_empty(*functions_detected):
 class TestCGer(TestCase, TestOptimizationMixin):
 
     def setUp(self, dtype='float64'):
-        # if theano.config.blas.ldflags == "":
-            # raise SkipTest("This test is useful only when Theano"
-                        # " is directly linked to blas.")
+        # This tests can run even when theano.config.blas.ldflags is empty.
         self.dtype = dtype
         self.mode = theano.compile.get_default_mode().including('fast_run')
         self.A = tensor.tensor(dtype=dtype, broadcastable=(False, False))
@@ -124,9 +122,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
 
     """
     def setUp(self, dtype='float64'):
-        # if theano.config.blas.ldflags == "":
-            # raise SkipTest("This test is useful only when Theano"
-                        # " is directly linked to blas.")
+        # This tests can run even when theano.config.blas.ldflags is empty.
         self.dtype = dtype
         self.mode = theano.compile.get_default_mode().including('fast_run')
         # matrix

@@ -1,5 +1,5 @@
 /** %(name)s **/
-void alt_numpy_scalar_matrix_product_in_place_%(float_type)s(%(float_type)s scalar, PyArrayObject* matrix) {
+void alt_numpy_scale_matrix_inplace_%(float_type)s(%(float_type)s scalar, PyArrayObject* matrix) {
     NpyIter* iterator = NpyIter_New(matrix, 
         NPY_ITER_READWRITE | NPY_ITER_EXTERNAL_LOOP | NPY_ITER_REFS_OK, 
         NPY_KEEPORDER, NPY_NO_CASTING, NULL);
@@ -25,7 +25,7 @@ void alt_numpy_scalar_matrix_product_in_place_%(float_type)s(%(float_type)s scal
 /*Matrix+Matrix function. Compute (coeffA * matrixA) + (coeffB * matrixB)
  * Remark: This function actually sums a C-contiguous matrix (alpha*op(A)*op(B)) with a F-contiguous matrix (beta*C)
  * (see gemm implementation at next function for more details) */
-void alt_numpy_matrix_extended_sum_in_place_%(float_type)s(
+void alt_numpy_matrix_extended_sum_inplace_%(float_type)s(
         const %(float_type)s* ALPHA, PyArrayObject* A,
         const %(float_type)s* BETA, PyArrayObject* B
 ) {
@@ -46,15 +46,15 @@ void alt_numpy_matrix_extended_sum_in_place_%(float_type)s(
     } while(get_next(iterators));
     NpyIter_Deallocate(iterators);
 }
-PyObject* alt_op_without_copy_%(float_type)s(int transposable, %(float_type)s* M, int nrow, int ncol, int LDM) {
+PyObject* alt_op_without_copy_%(float_type)s(int to_transpose, %(float_type)s* M, int nrow, int ncol, int LDM) {
     // By default, M is considered as a nrow*ncol F-contiguous matrix with LDM as stride indicator for the columns.
     npy_intp dims[2];
     npy_intp strides[2];
     int flags;
-    if(transposable) {
+    if(to_transpose) {
         dims[0] = ncol;
         dims[1] = nrow;
-        strides[0] = dims[1] * %(float_size)d;
+        strides[0] = LDM * %(float_size)d;
         strides[1] = %(float_size)d;
         flags = NPY_ARRAY_C_CONTIGUOUS;
     } else {
@@ -73,12 +73,14 @@ void %(name)s(
     const %(float_type)s* ALPHA, %(float_type)s* A, const int* LDA, 
     %(float_type)s* B, const int* LDB, const %(float_type)s* BETA, 
     %(float_type)s* C, const int* LDC) {
+    if(*M < 0 || *N < 0 || *K < 0 || *LDA < 0 || *LDB < 0 || *LDC < 0)
+        alt_fatal_error("The integer arguments passed to %(name)s must all be at least 0.");
     /* NB: it seems that matrix+matrix and scalar*matrix functions
      * defined above do not allocate iterator for a matrix with 0
      * content, that is a matrix whose nrow*ncol == 0. As these
      * functions actually work with M*N matrices (op(A)*op(B) and/or C),
      * I think that we could just return if M or N is null. */
-    if(*M < 1 || *N < 1 || *K < 0 || *LDA < 0 || *LDB < 0 || *LDC < 0)
+    if(*M == 0 || *N == 0)
         return;
     int nrowa, ncola, nrowb, ncolb;
     int is_A_transposable = alt_trans_to_bool(TRANSA);
@@ -111,7 +113,7 @@ void %(name)s(
         PyObject* op_B_transposed = alt_op_without_copy_%(float_type)s(!is_B_transposable, B, nrowb, ncolb, *LDB);
         PyArray_MatrixProduct2(op_B_transposed, op_A_transposed, (PyArrayObject*)matrix_C);
         if(*ALPHA != 1.0)
-            alt_numpy_scalar_matrix_product_in_place_%(float_type)s(*ALPHA, (PyArrayObject*)matrix_C);
+            alt_numpy_scale_matrix_inplace_%(float_type)s(*ALPHA, (PyArrayObject*)matrix_C);
         Py_XDECREF(op_B_transposed);
         Py_XDECREF(op_A_transposed);
         Py_XDECREF(matrix_C);
@@ -123,7 +125,7 @@ void %(name)s(
         PyObject* op_A = alt_op_without_copy_%(float_type)s(is_A_transposable, A, nrowa, ncola, *LDA);
         PyObject* op_B = alt_op_without_copy_%(float_type)s(is_B_transposable, B, nrowb, ncolb, *LDB);
         PyArrayObject* op_A_times_op_B = (PyArrayObject*)PyArray_MatrixProduct(op_A, op_B);
-        alt_numpy_matrix_extended_sum_in_place_%(float_type)s(ALPHA, op_A_times_op_B, BETA, (PyArrayObject*)matrix_C);
+        alt_numpy_matrix_extended_sum_inplace_%(float_type)s(ALPHA, op_A_times_op_B, BETA, (PyArrayObject*)matrix_C);
         /*C is already F-contiguous, thus no conversion needed for output.*/
         Py_XDECREF(op_A_times_op_B);
         Py_XDECREF(op_B);

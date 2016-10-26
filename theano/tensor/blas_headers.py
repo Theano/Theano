@@ -751,7 +751,6 @@ def blas_header_text():
             raise IOError("Unable to load NumPy implementation of gemm code from C source files.")
         else:
             const = ""
-            # _logger.info("Numpy implementation of gemm code loaded (config.blas.ldflags is empty)")
         gemm_code += common_code
         gemm_code += sgemm_code
         gemm_code += dgemm_code
