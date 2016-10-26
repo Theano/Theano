@@ -9,7 +9,7 @@
 `cuDNN <https://developer.nvidia.com/cuDNN>`_ is an NVIDIA library with
 functionality used by deep neural network. It provides optimized versions
 of some operations like the convolution. cuDNN is not currently
-installed with CUDA 6.5. You must download and install it
+installed with CUDA. You must download and install it
 yourself.
 
 To install it, decompress the downloaded file and make the ``*.h`` and
@@ -46,7 +46,7 @@ get an error when cuDNN can not be used with them, use this flag:
 
 .. note::
 
-   cuDNN v5rc is supported in Theano master version. So it dropped cuDNN v3 support.
+   cuDNN v5.1 is supported in Theano master version. So it dropped cuDNN v3 support.
    Theano 0.8.0 and 0.8.1 support only cuDNN v3 and v4.
    Theano 0.8.2 will support only v4 and v5.
 
@@ -184,11 +184,8 @@ Batch Normalization
 RNN
 ===
 
-New back-end only! Without dropout support.
+`New back-end only! <libdoc_gpuarray_dnn_rnn>`_
 
-.. automodule:: theano.gpuarray.dnn
-   :noindex:
-   :members: RNNBlock
 
 .. _libdoc_cuda_dnn_softmax:
 
