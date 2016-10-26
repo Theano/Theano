@@ -2120,7 +2120,7 @@ class Cast(UnaryScalarOp):
     def c_code_cache_version(self):
         s = super(Cast, self).c_code_cache_version()
         if s:
-            return (3,) + s
+            return (4,) + s
         else:
             return s
 
