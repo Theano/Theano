@@ -1033,21 +1033,18 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
           n_streams = n_elements;
 
         {
-          void *args[4];
           size_t ls = 0, gs = 0;
-          args[0] = %(o_sample)s->ga.data;
-          args[1] = %(o_rstate)s->ga.data;
-          args[2] = &n_elements;
-          args[3] = &n_streams;
-          int err = GpuKernel_sched(&%(kname)s, n_elements, &ls, &gs);
+          int err = GpuKernel_sched(&%(kname)s, n_streams, &ls, &gs);
           if (err != GA_NO_ERROR) {
               PyErr_Format(PyExc_RuntimeError, "GpuKernel_sched: %%s\\n",
                            GpuKernel_error(&%(kname)s, err));
               %(fail)s
           }
-          err = GpuKernel_call(&%(kname)s, 1, &ls, &gs, 0, args);
+          // Make sure we run as many blocks as we need to cover the whole n_streams
+          gs = (n_streams + ls - 1)/ls;
+          err = mrg_uniform_call(1, &ls, &gs, 0, %(o_sample)s->ga.data, %(o_rstate)s->ga.data, n_elements, n_streams);
           if (err != GA_NO_ERROR) {
-              PyErr_Format(PyExc_RuntimeError, "GpuKernel_call: %%s\\n",
+              PyErr_Format(PyExc_RuntimeError, "mrg_uniform_call: %%s\\n",
                            GpuKernel_error(&%(kname)s, err));
               %(fail)s
           }
@@ -1055,7 +1052,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (11,)
+        return (12,)
 
 
 def guess_n_streams(size, warn=False):
