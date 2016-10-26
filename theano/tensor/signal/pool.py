@@ -71,29 +71,60 @@ def pool_2d(input, ws=None, ignore_border=None, stride=None, pad=(0, 0),
     ds
         *deprecated*, use parameter ws instead.
     st
-        *deprecated*, use parameter st instead.
+        *deprecated*, use parameter stride instead.
     padding
         *deprecated*, use parameter pad instead.
 
     """
     # check for deprecated parameter names
     if ds is not None:
-        warnings.warn(
-            "pool_2d() ds parameter is deprecated, please use ws",
-            stacklevel=2)
-        ws = ds
+        if ws is not None:
+            raise Exception(
+                "You can't provide a tuple value to both 'ws' and 'ds'."
+                " Please provide a value only to 'ws'."
+            )
+        else:
+            warnings.warn(
+                "DEPRECATION: the 'ds' parameter is not going to exist"
+                " anymore as it is going to be replaced by the parameter"
+                " 'ws'.",
+                stacklevel=2
+            )
+            ws = ds
+    elif ds is None and ws is None:
+        raise Exception(
+            "You must provide a tuple value for the window size."
+        )
+
     if st is not None:
-        warnings.warn(
-            "pool_2d() st parameter is deprecated, please use stride",
-            stacklevel=2)
-        stride = st
+        if stride is not None:
+            raise Exception(
+                "You can't provide a tuple value to both 'st and 'stride'."
+                " Please provide a value only to 'stride'."
+            )
+        else:
+            warnings.warn(
+                "DEPRECATION: the 'st' parameter is not going to exist"
+                " anymore as it is going to be replaced by the parameter"
+                " 'stride'.",
+                stacklevel=2
+            )
+            stride = st
+
     if padding is not None:
-        warnings.warn(
-            "pool_2d() padding parameter is deprecated, please use pad",
-            stacklevel=2)
-        pad = padding
-    if ws is None:
-        raise ValueError('pool_2d() ws parameter can not be None')
+        if pad not in {None, (0, 0)}:
+            raise Exception(
+                "You can't provide a tuple value to both 'padding' and pad."
+                "  Please provide a value only to pad."
+            )
+        else:
+            warnings.warn(
+                "DEPRECATION: the 'padding' parameter is not going to exist"
+                " anymore as it is going to be replaced by the parameter"
+                " 'pad'.",
+                stacklevel=2
+            )
+            pad = padding
 
     if input.ndim < 2:
         raise NotImplementedError('pool_2d requires a dimension >= 2')
@@ -156,22 +187,53 @@ def pool_3d(input, ws=None, ignore_border=None, stride=None, pad=(0, 0, 0),
     """
     # check for deprecated parameter names
     if ds is not None:
-        warnings.warn(
-            "pool_3d() ds parameter is deprecated, please use ws",
-            stacklevel=2)
-        ws = ds
+        if ws is not None:
+            raise Exception(
+                "You can't provide a tuple value to both 'ws' and 'ds'."
+                " Please provide a value only to 'ws'."
+            )
+        else:
+            warnings.warn(
+                "DEPRECATION: the 'ds' parameter is not going to exist"
+                " anymore as it is going to be replaced by the parameter"
+                " 'ws'.",
+                stacklevel=2
+            )
+            ws = ds
+    elif ds is None and ws is None:
+        raise Exception(
+            "You must provide a tuple value for the window size."
+        )
+
     if st is not None:
-        warnings.warn(
-            "pool_3d() st parameter is deprecated, please use stride",
-            stacklevel=2)
-        stride = st
+        if stride is not None:
+            raise Exception(
+                "You can't provide a tuple value to both 'st and 'stride'."
+                " Please provide a value only to 'stride'."
+            )
+        else:
+            warnings.warn(
+                "DEPRECATION: the 'st' parameter is not going to exist"
+                " anymore as it is going to be replaced by the parameter"
+                " 'stride'.",
+                stacklevel=2
+            )
+            stride = st
+
     if padding is not None:
-        warnings.warn(
-            "pool_3d() padding parameter is deprecated, please use pad",
-            stacklevel=2)
-        pad = padding
-    if ws is None:
-        raise ValueError('pool_3d() ws parameter can not be None')
+        if pad not in {None, (0, 0, 0)}:
+            raise Exception(
+                "You can't provide a tuple value to both 'padding' and pad."
+                "  Please provide a value only to pad."
+            )
+        else:
+            warnings.warn(
+                "DEPRECATION: the 'padding' parameter is not going to exist"
+                " anymore as it is going to be replaced by the parameter"
+                " 'pad'.",
+                stacklevel=2
+            )
+            pad = padding
 
     if input.ndim < 3:
         raise NotImplementedError('pool_3d requires a dimension >= 3')
@@ -220,14 +282,21 @@ class Pool(OpenMPOp):
     ndim : int
         The number of pooling dimensions N.
         The default is 2.
+    ds
+        *deprecated*, use parameter ws instead.
+    st
+        *deprecated*, use parameter st instead.
+    padding
+        *deprecated*, use parameter pad instead.
+
 
     """
 
     __props__ = ('ignore_border', 'mode', 'ndim')
 
     @staticmethod
-    def out_shape(imgshape, ws=None, ignore_border=False, stride=None, pad=None, ndim=2,
-                  ds=None, st=None, padding=None):
+    def out_shape(imgshape, ws=None, ignore_border=False, stride=None, pad=None,
+                  ndim=2, ds=None, st=None, padding=None):
         """
         Return the shape of the output from this op, for input of given
         shape and flags.
@@ -255,6 +324,12 @@ class Pool(OpenMPOp):
         ndim : int
             The number of pooling dimensions N.
             The default is 2.
+        ds
+            *deprecated*, use parameter ws instead.
+        st
+            *deprecated*, use parameter st instead.
+        padding
+            *deprecated*, use parameter pad instead.
 
         Returns
         -------
@@ -266,22 +341,53 @@ class Pool(OpenMPOp):
         """
         # check for deprecated parameter names
         if ds is not None:
-            warnings.warn(
-                "Pool ds parameter is deprecated, please use ws",
-                stacklevel=2)
-            ws = ds
+            if ws is not None:
+                raise Exception(
+                    "You can't provide a tuple value to both 'ws' and 'ds'."
+                    " Please provide a value only to 'ws'."
+                )
+            else:
+                warnings.warn(
+                    "DEPRECATION: the 'ds' parameter is not going to exist"
+                    " anymore as it is going to be replaced by the parameter"
+                    " 'ws'.",
+                    stacklevel=2
+                )
+                ws = ds
+        elif ds is None and ws is None:
+            raise Exception(
+                "You must provide a tuple value for the window size."
+            )
+
         if st is not None:
-            warnings.warn(
-                "Pool st parameter is deprecated, please use stride",
-                stacklevel=2)
-            stride = st
+            if stride is not None:
+                raise Exception(
+                    "You can't provide a tuple value to both 'st and 'stride'."
+                    " Please provide a value only to 'stride'."
+                )
+            else:
+                warnings.warn(
+                    "DEPRECATION: the 'st' parameter is not going to exist"
+                    " anymore as it is going to be replaced by the parameter"
+                    " 'stride'.",
+                    stacklevel=2
+                )
+                stride = st
+
         if padding is not None:
-            warnings.warn(
-                "Pool padding parameter is deprecated, please use pad",
-                stacklevel=2)
-            pad = padding
-        if ws is None:
-            raise ValueError('Pool ws parameter can not be None')
+            if pad is not None:
+                raise Exception(
+                    "You can't provide a tuple value to both 'padding' and pad."
+                    "  Please provide a value only to pad."
+               )
+            else:
+                warnings.warn(
+                    "DEPRECATION: the 'padding' parameter is not going to"
+                    " exist anymore as it is going to be replaced by the"
+                    " parameter 'pad'.",
+                    stacklevel=2
+                )
+                pad = padding
 
         if ndim is None:
             ndim = 2
@@ -812,6 +918,12 @@ class PoolGrad(OpenMPOp):
         ndim : int
             The number of pooling dimensions N.
             The default is 2.
+        ds
+            *deprecated*, use parameter ws instead.
+        st
+            *deprecated*, use parameter st instead.
+        padding
+            *deprecated*, use parameter pad instead.
 
         Returns
         -------
@@ -824,22 +936,53 @@ class PoolGrad(OpenMPOp):
         """
         # check for deprecated parameter names
         if ds is not None:
-            warnings.warn(
-                "PoolGrad ds parameter is deprecated, please use ws",
-                stacklevel=2)
-            ws = ds
+            if ws is not None:
+                raise Exception(
+                    "You can't provide a tuple value to both 'ws' and 'ds'."
+                    " Please provide a value only to 'ws'."
+                )
+            else:
+                warnings.warn(
+                    "DEPRECATION: the 'ds' parameter in PoolGrad is not going"
+                    " to exist anymore as it is going to be replaced by the"
+                    " parameter 'ws'.",
+                    stacklevel=2
+                )
+                ws = ds
+        elif ds is None and ws is None:
+            raise Exception(
+                "You must provide a tuple value for the window size."
+            )
+
         if st is not None:
-            warnings.warn(
-                "PoolGrad st parameter is deprecated, please use stride",
-                stacklevel=2)
-            stride = st
+            if stride is not None:
+                raise Exception(
+                    "You can't provide a tuple value to both 'st and 'stride'."
+                    " Please provide a value only to 'stride'."
+                )
+            else:
+                warnings.warn(
+                    "DEPRECATION: the 'st' parameter in PoolGrad is not going"
+                    " to exist anymore as it is going to be replaced by the"
+                    " parameter 'stride'.",
+                    stacklevel=2
+                )
+                stride = st
+
         if padding is not None:
-            warnings.warn(
-                "PoolGrad padding parameter is deprecated, please use pad",
-                stacklevel=2)
-            pad = padding
-        if ws is None:
-            raise ValueError('PoolGrad ws parameter can not be None')
+            if pad is not (0, 0):
+                raise Exception(
+                    "You can't provide a tuple value to both 'padding' and pad."
+                    "  Please provide a value only to pad."
+                )
+            else:
+                warnings.warn(
+                    "DEPRECATION: the 'padding' parameter in PoolGrad is not"
+                    " going to exist anymore as it is going to be replaced"
+                    " by the parameter 'pad'.",
+                    stacklevel=2
+                )
+                pad = padding
 
         if len(imgshape) < ndim:
             raise TypeError('imgshape must have at least {} dimensions'.format(ndim))

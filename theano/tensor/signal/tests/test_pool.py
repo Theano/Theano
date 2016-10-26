@@ -915,6 +915,34 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                                    mode=mode)
                 utt.verify_grad(mp, [imval], rng=rng)
 
+    def test_max_pool_3d_3D_deprecated_interface(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        maxpoolshps = ((1, 1, 1), (3, 2, 1))
+        imval = rng.rand(4, 5, 6)
+        images = tensor.dtensor3()
+
+        for maxpoolshp, ignore_border, mode in product(maxpoolshps,
+                                                       [True, False],
+                                                       ['max', 'sum',
+                                                        'average_inc_pad',
+                                                        'average_exc_pad']):
+                # print 'maxpoolshp =', maxpoolshp
+                # print 'ignore_border =', ignore_border
+                numpy_output_val = self.numpy_max_pool_nd(imval, maxpoolshp,
+                                                          ignore_border,
+                                                          mode=mode)
+                output = pool_3d(input=images,
+                                 ds=maxpoolshp,
+                                 ignore_border=ignore_border,
+                                 mode=mode)
+                output_val = function([images], output)(imval)
+                utt.assert_allclose(output_val, numpy_output_val)
+
+                def mp(input):
+                    return pool_3d(input, maxpoolshp, ignore_border,
+                                   mode=mode)
+                utt.verify_grad(mp, [imval], rng=rng)
+
     def test_max_pool_2d_2D_same_size(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
         test_input_array = numpy.array([[[
@@ -1068,6 +1096,47 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                                 continue
                             y = pool_2d(x, (ws, ws), ignore_border, (st, st),
                                         (pad, pad), mode)
+                            dx = theano.gradient.grad(y.sum(), x)
+                            fix_fct = theano.function([x], [y, dx])
+                            var_y, var_dx = var_fct(data, (ws, ws), (st, st),
+                                                    (pad, pad))
+                            fix_y, fix_dx = fix_fct(data)
+                            utt.assert_allclose(var_y, fix_y)
+                            utt.assert_allclose(var_dx, fix_dx)
+
+    def test_pooling_with_tensor_vars_deprecated_interface(self):
+        x = tensor.ftensor4()
+        window_size = tensor.ivector()
+        stride = tensor.ivector()
+        padding = tensor.ivector()
+        data = numpy.random.normal(0, 1, (1, 1, 5, 5)).astype('float32')
+
+        # checking variable params vs fixed params
+        for ignore_border in [True, False]:
+            for mode in ['max', 'sum', 'average_inc_pad', 'average_exc_pad']:
+                y = pool_2d(input=x,
+                            ds=window_size,
+                            ignore_border=ignore_border,
+                            st=stride,
+                            pad=None,
+                            padding=padding,
+                            mode=mode)
+                dx = theano.gradient.grad(y.sum(), x)
+                var_fct = theano.function([x, window_size, stride, padding],
+                                          [y, dx])
+                for ws in (4, 2, 5):
+                    for st in (2, 3):
+                        for pad in (0, 1):
+                            if (pad > st or st > ws or
+                                    (pad != 0 and not ignore_border) or
+                                    (mode == 'average_exc_pad' and pad != 0)):
+                                continue
+                            y = pool_2d(input=x,
+                                        ds=(ws, ws),
+                                        ignore_border=ignore_border,
+                                        st=(st, st),
+                                        pad=(pad, pad),
+                                        mode=mode)
                             dx = theano.gradient.grad(y.sum(), x)
                             fix_fct = theano.function([x], [y, dx])
                             var_y, var_dx = var_fct(data, (ws, ws), (st, st),
