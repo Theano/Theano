@@ -82,13 +82,14 @@ class TestSignalConv2D(unittest.TestCase):
 
     def test_basic(self):
         """
-        Basic functionality of nnet.conv.ConvOp is already tested by
-        its own test suite.  We just have to test whether or not
-        signal.conv.conv2d can support inputs and filters of type
-        matrix or tensor3.
+        Basic functionality of nnet.abstract_conv.AbstractConvOp is
+        already tested by its own test suite.  We just have to test
+        whether or not signal.conv.conv2d can support inputs and
+        filters of type matrix or tensor3.
         """
         if(not theano.tensor.nnet.conv.imported_scipy_signal and
-           theano.config.cxx == ""):
+           theano.config.cxx == "" or
+           theano.config.mode == "FAST_COMPILE"):
             raise SkipTest("conv2d tests need SciPy or a c++ compiler")
 
         self.validate((1, 4, 5), (2, 2, 3), out_dim=4, verify_grad=True)
