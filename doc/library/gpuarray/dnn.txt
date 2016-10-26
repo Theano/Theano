@@ -1,7 +1,7 @@
 .. _libdoc_gpuarray_dnn:
 
 ===========================================
-:mod:`gpuarray.dnn` -- cuDNN
+:mod:`theano.gpuarray.dnn` -- cuDNN
 ===========================================
 
 .. moduleauthor:: LISA
@@ -173,7 +173,7 @@ Batch Normalization
 RNN
 ===
 
-New back-end only! Without dropout support.
+Without dropout support.
 
 .. automodule:: theano.gpuarray.dnn
    :noindex:

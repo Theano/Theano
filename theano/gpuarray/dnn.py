@@ -2339,12 +2339,13 @@ class GpuDnnRNNGradWeights(DnnBase):
 class RNNBlock(object):
     """
     An object that allow us to use CuDNN v5 RNN implementation.
-    TODO: make an example how to use. You can check that test until we have it.
+    TODO: make an example how to use. You can check Theano tests
+    test_dnn_rnn_gru() and test_dnn_rnn_lstm() in the file
+    theano/gpuarray/tests/test_dnn.py for now.
 
 
     Parameters
     ----------
-
     dtype : data type of computation
     hidden_size : int
     num_layers : int

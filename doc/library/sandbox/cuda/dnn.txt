@@ -1,8 +1,8 @@
 .. _libdoc_cuda_dnn:
 
-================================
-:mod:`sandbox.cuda.dnn` -- cuDNN
-================================
+=======================================
+:mod:`theano.sandbox.cuda.dnn` -- cuDNN
+=======================================
 
 .. moduleauthor:: LISA
 
@@ -192,8 +192,8 @@ RNN
 Softmax
 =======
 
-You can manually use the op `GpuDnnSoftmax
-<theano.sandbox.cuda.dnn.GpuDnnSoftmax>`_ to use its extra feature.
+You can manually use the op :class:`GpuDnnSoftmax
+<theano.sandbox.cuda.dnn.GpuDnnSoftmax>` to use its extra feature.
 
 .. _libdoc_cuda_dnn_internal_ops:
 
