@@ -6400,6 +6400,9 @@ def test_var():
     v = v - error
     assert numpy.allclose(v, f(a_val))
 
+    # Test that we don't upcast float16 computation
+    assert theano.tensor.vector(dtype='float16').var().dtype == 'float16'
+
 
 class T_sum(unittest.TestCase):
     def test_sum_overflow(self):
