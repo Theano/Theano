@@ -132,70 +132,24 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
     cudnn.h must be readable by everybody.
 
 
-* :ref:`Convolution <libdoc_gpuarray_dnn_convolution>`
-* :ref:`Pooling <libdoc_gpuarray_dnn_pooling>`
-* :ref:`Batch Normalization <libdoc_gpuarray_dnn_bn>`
-* :ref:`RNN <libdoc_gpuarray_dnn_rnn>`
-* :ref:`Softmax <libdoc_gpuarray_dnn_softmax>`
-* :ref:`Internal Ops <libdoc_gpuarray_dnn_internal_ops>`
+- Convolution:
+    - :func:`theano.gpuarray.dnn.dnn_conv`, :func:`theano.gpuarray.dnn.dnn_conv3d`.
+    - :func:`theano.gpuarray.dnn.dnn_gradweight`, :func:`theano.gpuarray.dnn.dnn_gradweight3d`.
+    - :func:`theano.gpuarray.dnn.dnn_gradinput`, :func:`theano.gpuarray.dnn.dnn_gradinput3d`.
+- Pooling:
+    - :func:`theano.gpuarray.dnn.dnn_pool`.
+- Batch Normalization:
+    - :func:`theano.gpuarray.dnn.dnn_batch_normalization_train`
+    - :func:`theano.gpuarray.dnn.dnn_batch_normalization_test`.
+- RNN:
+    - :class:`theano.gpuarray.dnn.RNNBlock`
+- Softmax:
+    - You can manually use the op :class:`GpuDnnSoftmax
+      <theano.gpuarray.dnn.GpuDnnSoftmax>` to use its extra feature.
 
-dnn_present, dnn_available
-
-.. _libdoc_gpuarray_dnn_convolution:
-
-Convolution
-===========
-
-.. automodule:: theano.gpuarray.dnn
-   :noindex:
-   :members: dnn_conv, dnn_conv3d, dnn_gradweight, dnn_gradweight3d, dnn_gradinput, dnn_gradinput3d
-
-.. _libdoc_gpuarray_dnn_pooling:
-
-Pooling
-=======
+List of Implemented Operations
+==============================
 
 .. automodule:: theano.gpuarray.dnn
-   :noindex:
-   :members: dnn_pool
-
-.. _libdoc_gpuarray_dnn_bn:
-
-Batch Normalization
-===================
-
-.. automodule:: theano.gpuarray.dnn
-   :noindex:
-   :members: dnn_batch_normalization_train, dnn_batch_normalization_test
-
-.. _libdoc_gpuarray_dnn_rnn:
-
-RNN
-===
-
-Without dropout support.
-
-.. automodule:: theano.gpuarray.dnn
-   :noindex:
-   :members: RNNBlock
-
-.. _libdoc_gpuarray_dnn_softmax:
-
-Softmax
-=======
-
-You can manually use the op :class:`GpuDnnSoftmax
-<theano.gpuarray.dnn.GpuDnnSoftmax>` to use its extra feature.
-
-.. _libdoc_gpuarray_dnn_internal_ops:
-
-Internal Ops
-============
-
-.. automodule:: theano.gpuarray.dnn
-   :noindex:
-   :members: GpuDnnConvDesc, GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI,
-	     GpuDnnPoolDesc, GpuDnnPool, GpuDnnPoolGrad,
-	     GpuDnnBatchNormInference, GpuDnnBatchNorm, GpuDnnBatchNormGrad,
-	     GpuDnnSoftmax, GpuDnnSoftmaxGrad
+   :members:
 

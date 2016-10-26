@@ -2,7 +2,7 @@
 
 =======================================
 :mod:`theano.sandbox.cuda.dnn` -- cuDNN
-=======================================
+=======================================r
 
 .. moduleauthor:: LISA
 
@@ -145,65 +145,24 @@ get an error when cuDNN can not be used with them, use this flag:
     cudnn.h must be readable by everybody.
 
 
-* :ref:`Convolution <libdoc_cuda_dnn_convolution>`
-* :ref:`Pooling <libdoc_cuda_dnn_pooling>`
-* :ref:`Batch Normalization <libdoc_cuda_dnn_bn>`
-* :ref:`RNN <libdoc_cuda_dnn_rnn>`
-* :ref:`Softmax <libdoc_cuda_dnn_softmax>`
-* :ref:`Internal Ops <libdoc_cuda_dnn_internal_ops>`
+- Convolution:
+    - :func:`theano.sandbox.cuda.dnn.dnn_conv`, :func:`theano.sandbox.cuda.dnn.dnn_conv3d`.
+    - :func:`theano.sandbox.cuda.dnn.dnn_gradweight`.
+    - :func:`theano.sandbox.cuda.dnn.dnn_gradinput`.
+- Pooling:
+    - :func:`theano.sandbox.cuda.dnn.dnn_pool`.
+- Batch Normalization:
+    - :func:`theano.sandbox.cuda.dnn.dnn_batch_normalization_train`
+    - :func:`theano.sandbox.cuda.dnn.dnn_batch_normalization_test`.
+- RNN:
+    - :class:`New back-end only! <theano.gpuarray.dnn.RNNBlock>`.
+- Softmax:
+    - You can manually use the op :class:`GpuDnnSoftmax
+      <theano.sandbox.cuda.dnn.GpuDnnSoftmax>` to use its extra feature.
 
-.. _libdoc_cuda_dnn_convolution:
 
-Convolution
-===========
-
-.. automodule:: theano.sandbox.cuda.dnn
-   :noindex:
-   :members: dnn_conv, dnn_conv3d, dnn_gradweight, dnn_gradinput
-
-.. _libdoc_cuda_dnn_pooling:
-
-Pooling
-=======
+List of Implemented Operations
+==============================
 
 .. automodule:: theano.sandbox.cuda.dnn
-   :noindex:
-   :members: dnn_pool
-
-.. _libdoc_cuda_dnn_bn:
-
-Batch Normalization
-===================
-
-.. automodule:: theano.sandbox.cuda.dnn
-   :noindex:
-   :members: dnn_batch_normalization_train, dnn_batch_normalization_test
-
-.. _libdoc_cuda_dnn_rnn:
-
-RNN
-===
-
-`New back-end only! <libdoc_gpuarray_dnn_rnn>`_
-
-
-.. _libdoc_cuda_dnn_softmax:
-
-Softmax
-=======
-
-You can manually use the op :class:`GpuDnnSoftmax
-<theano.sandbox.cuda.dnn.GpuDnnSoftmax>` to use its extra feature.
-
-.. _libdoc_cuda_dnn_internal_ops:
-
-Internal Ops
-============
-
-.. automodule:: theano.sandbox.cuda.dnn
-   :noindex:
-   :members: GpuDnnConvDesc, GpuDnnConv, GpuDnnConv3d, GpuDnnConvGradW,
-             GpuDnnConv3dGradW, GpuDnnConvGradI, GpuDnnConv3dGradI,
-	     GpuDnnPoolDesc, GpuDnnPool, GpuDnnPoolGrad,
-	     GpuDnnBatchNormInference, GpuDnnBatchNorm, GpuDnnBatchNormGrad,
-	     GpuDnnSoftmax, GpuDnnSoftmaxGrad
+   :members:
