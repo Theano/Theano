@@ -1424,7 +1424,7 @@ class GpuDnnPoolDesc(GpuOp):
 
     Note
     ----
-    Not used anymore. Only needed to reload old pickled files.
+    Do not used anymore. Only needed to reload old pickled files.
 
     """
 
