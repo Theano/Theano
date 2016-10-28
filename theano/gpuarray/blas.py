@@ -275,6 +275,7 @@ class GpuDot22(BlasOp):
     Dot22 on the GPU.
 
     """
+    _f16_ok = True
     __props__ = ()
 
     def make_node(self, x, y):
