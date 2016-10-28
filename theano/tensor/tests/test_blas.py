@@ -2161,6 +2161,23 @@ class TestBlasStrides(TestCase):
         self.cmp_ger((1, 0), 1, 0)
         self.cmp_ger((0, 0), 0, 0)
 
+    def test_gemm_non_contiguous(self):
+        """test_gemm_non_contiguous: Test if GEMM works well with non-contiguous matrices."""
+        aval = numpy.ones((6, 2))
+        bval = numpy.ones((2, 7))
+        cval = numpy.arange(7) + numpy.arange(0, .6, .1)[:, numpy.newaxis]
+
+        a = theano.shared(aval[:3], borrow=True)
+        b = theano.shared(bval[:, :5], borrow=True)
+        c = theano.shared(cval[:3, :5], borrow=True)
+
+        s = theano.tensor.scalar()
+        upd_c = s * c + theano.tensor.dot(a, b)
+        f = theano.function([s], [], updates={c: upd_c})
+
+        f(0)
+        ref_output = numpy.ones((3, 5)) * 2
+        unittest_tools.assert_allclose(c.get_value(), ref_output)
 
 class test_infer_shape(unittest_tools.InferShapeTester):
     def test_dot22(self):

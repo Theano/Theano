@@ -48,11 +48,11 @@ void alt_numpy_matrix_extended_sum_inplace_%(float_type)s(
     } while(get_next(iterators));
     NpyIter_Deallocate(iterators);
 }
-/* NumPy Wrapping function. Wraps a data into a Numpy's PyArrayObject.
+/* NumPy Wrapping function. Wraps a data into a NumPy's PyArrayObject.
  * By default, data is considered as Fortran-style array (column by column).
  * If to_transpose, data will be considered as C-style array (row by row)
- * with dimensions inversed. */
-PyObject* alt_op_without_copy_%(float_type)s(int to_transpose, %(float_type)s* M, int nrow, int ncol, int LDM) {
+ * with dimensions reversed. */
+PyObject* alt_op_%(float_type)s(int to_transpose, %(float_type)s* M, int nrow, int ncol, int LDM) {
     npy_intp dims[2];
     npy_intp strides[2];
     if(to_transpose) {
@@ -140,8 +140,8 @@ void %(name)s(
      * consider the buffer as a F-contiguous M*N matrix, so that
      * it will get the transposed of op_B_transposed * op_A_transposed,
      * that is op_A * op_B (M*N matrix) as expected. */
-    PyObject* opA_transposed = alt_op_without_copy_%(float_type)s(!to_transpose_A, A, nrowa, ncola, *LDA);
-    PyObject* opB_transposed = alt_op_without_copy_%(float_type)s(!to_transpose_B, B, nrowb, ncolb, *LDB);
+    PyObject* opA_transposed = alt_op_%(float_type)s(!to_transpose_A, A, nrowa, ncola, *LDA);
+    PyObject* opB_transposed = alt_op_%(float_type)s(!to_transpose_B, B, nrowb, ncolb, *LDB);
     PyObject* opB_trans_dot_opA_trans = PyArray_New(&PyArray_Type, 2, computation_dims, %(npy_float)s, computation_strides, computation_pointer, 0, computation_flags, NULL);
     PyArray_MatrixProduct2(opB_transposed, opA_transposed, (PyArrayObject*)opB_trans_dot_opA_trans);
     if(*BETA == 0) {
@@ -151,16 +151,16 @@ void %(name)s(
             /* A buffer has been created to compute ALPHA*op(A)*op(B),
              * so we must copy it to the real output, that is C. */
             PyObject* matrix_C = alt_wrap_fortran_writeable_matrix_%(float_type)s(C, M, N, LDC);
-            PyObject* alpha_opA_dot_opB = alt_op_without_copy_%(float_type)s(0, (%(float_type)s*)PyArray_DATA((PyArrayObject*)opB_trans_dot_opA_trans), *M, *N, *M);
+            PyObject* alpha_opA_dot_opB = PyArray_Transpose((PyArrayObject*)opB_trans_dot_opA_trans, NULL);
             if(0 != PyArray_CopyInto((PyArrayObject*)matrix_C, (PyArrayObject*)alpha_opA_dot_opB))
-                alt_fatal_error("Numpy %(name)s implementation: unable to copy ALPHA*op(A)*op(B) to C when BETA == 0.");
+                alt_fatal_error("NumPy %(name)s implementation: unable to copy ALPHA*op(A)*op(B) into C when BETA == 0.");
             Py_XDECREF(alpha_opA_dot_opB);
             Py_XDECREF(matrix_C);
         }
     } else {
         /* C is read, so we must consider it as Fortran-style matrix. */
         PyObject* matrix_C = alt_wrap_fortran_writeable_matrix_%(float_type)s(C, M, N, LDC);
-        PyObject* opA_dot_opB = alt_op_without_copy_%(float_type)s(0, (%(float_type)s*)PyArray_DATA((PyArrayObject*)opB_trans_dot_opA_trans), *M, *N, *M);
+        PyObject* opA_dot_opB = PyArray_Transpose((PyArrayObject*)opB_trans_dot_opA_trans, NULL);
         alt_numpy_matrix_extended_sum_inplace_%(float_type)s(ALPHA, (PyArrayObject*)opA_dot_opB, BETA, (PyArrayObject*)matrix_C);
         Py_XDECREF(opA_dot_opB);
         Py_XDECREF(matrix_C);
