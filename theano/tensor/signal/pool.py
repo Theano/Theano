@@ -79,7 +79,7 @@ def pool_2d(input, ws=None, ignore_border=None, stride=None, pad=(0, 0),
     # check for deprecated parameter names
     if ds is not None:
         if ws is not None:
-            raise Exception(
+            raise ValueError(
                 "You can't provide a tuple value to both 'ws' and 'ds'."
                 " Please provide a value only to 'ws'."
             )
@@ -92,13 +92,13 @@ def pool_2d(input, ws=None, ignore_border=None, stride=None, pad=(0, 0),
             )
             ws = ds
     elif ds is None and ws is None:
-        raise Exception(
+        raise ValueError(
             "You must provide a tuple value for the window size."
         )
 
     if st is not None:
         if stride is not None:
-            raise Exception(
+            raise ValueError(
                 "You can't provide a tuple value to both 'st and 'stride'."
                 " Please provide a value only to 'stride'."
             )
@@ -113,7 +113,7 @@ def pool_2d(input, ws=None, ignore_border=None, stride=None, pad=(0, 0),
 
     if padding is not None:
         if pad not in {None, (0, 0)}:
-            raise Exception(
+            raise ValueError(
                 "You can't provide a tuple value to both 'padding' and pad."
                 "  Please provide a value only to pad."
             )
@@ -188,7 +188,7 @@ def pool_3d(input, ws=None, ignore_border=None, stride=None, pad=(0, 0, 0),
     # check for deprecated parameter names
     if ds is not None:
         if ws is not None:
-            raise Exception(
+            raise ValueError(
                 "You can't provide a tuple value to both 'ws' and 'ds'."
                 " Please provide a value only to 'ws'."
             )
@@ -201,13 +201,13 @@ def pool_3d(input, ws=None, ignore_border=None, stride=None, pad=(0, 0, 0),
             )
             ws = ds
     elif ds is None and ws is None:
-        raise Exception(
+        raise ValueError(
             "You must provide a tuple value for the window size."
         )
 
     if st is not None:
         if stride is not None:
-            raise Exception(
+            raise ValueError(
                 "You can't provide a tuple value to both 'st and 'stride'."
                 " Please provide a value only to 'stride'."
             )
@@ -222,7 +222,7 @@ def pool_3d(input, ws=None, ignore_border=None, stride=None, pad=(0, 0, 0),
 
     if padding is not None:
         if pad not in {None, (0, 0, 0)}:
-            raise Exception(
+            raise ValueError(
                 "You can't provide a tuple value to both 'padding' and pad."
                 "  Please provide a value only to pad."
             )
@@ -342,7 +342,7 @@ class Pool(OpenMPOp):
         # check for deprecated parameter names
         if ds is not None:
             if ws is not None:
-                raise Exception(
+                raise ValueError(
                     "You can't provide a tuple value to both 'ws' and 'ds'."
                     " Please provide a value only to 'ws'."
                 )
@@ -355,13 +355,13 @@ class Pool(OpenMPOp):
                 )
                 ws = ds
         elif ds is None and ws is None:
-            raise Exception(
+            raise ValueError(
                 "You must provide a tuple value for the window size."
             )
 
         if st is not None:
             if stride is not None:
-                raise Exception(
+                raise ValueError(
                     "You can't provide a tuple value to both 'st and 'stride'."
                     " Please provide a value only to 'stride'."
                 )
@@ -375,11 +375,12 @@ class Pool(OpenMPOp):
                 stride = st
 
         if padding is not None:
-            if pad is not None:
-                raise Exception(
+            zero_pad = (0,) * ndim
+            if pad not in {None, zero_pad}:
+                raise ValueError(
                     "You can't provide a tuple value to both 'padding' and pad."
                     "  Please provide a value only to pad."
-               )
+                )
             else:
                 warnings.warn(
                     "DEPRECATION: the 'padding' parameter is not going to"
@@ -937,7 +938,7 @@ class PoolGrad(OpenMPOp):
         # check for deprecated parameter names
         if ds is not None:
             if ws is not None:
-                raise Exception(
+                raise ValueError(
                     "You can't provide a tuple value to both 'ws' and 'ds'."
                     " Please provide a value only to 'ws'."
                 )
@@ -950,13 +951,13 @@ class PoolGrad(OpenMPOp):
                 )
                 ws = ds
         elif ds is None and ws is None:
-            raise Exception(
+            raise ValueError(
                 "You must provide a tuple value for the window size."
             )
 
         if st is not None:
             if stride is not None:
-                raise Exception(
+                raise ValueError(
                     "You can't provide a tuple value to both 'st and 'stride'."
                     " Please provide a value only to 'stride'."
                 )
@@ -971,7 +972,7 @@ class PoolGrad(OpenMPOp):
 
         if padding is not None:
             if pad is not None:
-                raise Exception(
+                raise ValueError(
                     "You can't provide a tuple value to both 'padding' and pad."
                     "  Please provide a value only to pad."
                 )
