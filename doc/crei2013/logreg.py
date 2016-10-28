@@ -1,8 +1,8 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import theano
 import theano.tensor as tt
-rng = numpy.random
+rng = np.random
 
 N = 400
 feats = 784

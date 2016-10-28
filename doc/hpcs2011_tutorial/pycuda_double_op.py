@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy, theano
+import numpy as np, theano
 import theano.misc.pycuda_init
 from pycuda.compiler import SourceModule
 import theano.sandbox.cuda as cuda
@@ -32,15 +32,15 @@ class PyCUDADoubleOp(theano.Op):
             z = outputs[0]
             if z[0] is None or z[0].shape!=inputs[0][0].shape:
                 z[0] = cuda.CudaNdarray.zeros(inputs[0][0].shape)
-            grid = (int(numpy.ceil(inputs[0][0].size / 512.)),1)
-            pycuda_fct(inputs[0][0], z[0], numpy.intc(inputs[0][0].size),
+            grid = (int(np.ceil(inputs[0][0].size / 512.)),1)
+            pycuda_fct(inputs[0][0], z[0], np.intc(inputs[0][0].size),
                        block=(512,1,1), grid=grid)
 
         return thunk
 
 x = theano.tensor.fmatrix()
 f = theano.function([x], PyCUDADoubleOp()(x))
-xv=numpy.ones((4,5), dtype="float32")
+xv=np.ones((4,5), dtype="float32")
 
-assert numpy.allclose(f(xv), xv*2)
-print(numpy.asarray(f(xv)))
+assert np.allclose(f(xv), xv*2)
+print(np.asarray(f(xv)))

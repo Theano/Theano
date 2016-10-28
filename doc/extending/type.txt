@@ -50,7 +50,7 @@ default values.
       of this writing this is used only when we transfer new data to a
       shared variable on the gpu.
 
-      ``storage`` will be the old value. i.e. The old numpy array,
+      ``storage`` will be the old value. i.e. The old np array,
       CudaNdarray, ...
 
     .. method:: is_valid_value(value)

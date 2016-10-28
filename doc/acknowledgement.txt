@@ -14,7 +14,7 @@ Acknowledgements
 * All `Theano contributors <https://github.com/Theano/Theano/graphs/contributors>`_.
 * All Theano users that have given us feedback.
 * The GPU implementation of tensordot is based on code from Tijmen
-  Tieleman's `gnumpy <http://www.cs.toronto.edu/~tijmen/gnumpy.html>`_
+  Tieleman's `gnp <http://www.cs.toronto.edu/~tijmen/gnumpy.html>`_
 * The original version of the function ``cpuCount()`` in the file
   `theano/misc/cpucount.py` come from the project `pyprocessing
   <http://pyprocessing.berlios.de/>`_. It is available under the same license

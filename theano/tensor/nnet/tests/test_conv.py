@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 import time
 
 from nose.plugins.skip import SkipTest
-import numpy
+import numpy as np
 import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
@@ -79,8 +79,8 @@ class TestConv2D(utt.InferShapeTester):
         theano_conv = theano.function([input, filters], output, mode=self.mode)
 
         # initialize input and compute result
-        image_data = numpy.random.random(N_image_shape).astype(self.dtype)
-        filter_data = numpy.random.random(N_filter_shape).astype(self.dtype)
+        image_data = np.random.random(N_image_shape).astype(self.dtype)
+        filter_data = np.random.random(N_filter_shape).astype(self.dtype)
         try:
             theano_output = theano_conv(image_data, filter_data)
         except ValueError:
@@ -97,18 +97,18 @@ class TestConv2D(utt.InferShapeTester):
         orig_image_data = image_data
         if border_mode is not 'full':
             s = -1.
-        out_shape2d = numpy.array(N_image_shape[-2:]) +\
-            s * numpy.array(N_filter_shape[-2:]) - s
-        out_shape2d = numpy.ceil(out_shape2d / numpy.array(subsample))
-        # avoid numpy deprecation
+        out_shape2d = np.array(N_image_shape[-2:]) +\
+            s * np.array(N_filter_shape[-2:]) - s
+        out_shape2d = np.ceil(out_shape2d / np.array(subsample))
+        # avoid np deprecation
         out_shape2d = out_shape2d.astype('int32')
         out_shape = (N_image_shape[0], N_filter_shape[0]) + tuple(out_shape2d)
-        ref_output = numpy.zeros(out_shape)
+        ref_output = np.zeros(out_shape)
 
         # loop over output feature maps
         ref_output.fill(0)
         if border_mode == 'full':
-            image_data2 = numpy.zeros((N_image_shape[0], N_image_shape[1],
+            image_data2 = np.zeros((N_image_shape[0], N_image_shape[1],
                                       N_image_shape[2] + 2 * N_filter_shape[2] - 2,
                                       N_image_shape[3] + 2 * N_filter_shape[3] - 2))
             image_data2[
@@ -160,17 +160,17 @@ class TestConv2D(utt.InferShapeTester):
     def test_uint_image_shape_datatype(self):
         """Tests for uint datatype in image_shape.
         """
-        self.validate((2, 2, 3, numpy.uint8(3)), (3, 2, 3, 3), 'valid', verify_grad=False)
-        self.validate((numpy.uint16(2), 2, 3, 3), (3, 2, 3, 3), 'valid', verify_grad=False)
-        self.validate((2, numpy.uint32(2), 3, 3), (3, 2, 3, 3), 'valid', verify_grad=False)
+        self.validate((2, 2, 3, np.uint8(3)), (3, 2, 3, 3), 'valid', verify_grad=False)
+        self.validate((np.uint16(2), 2, 3, 3), (3, 2, 3, 3), 'valid', verify_grad=False)
+        self.validate((2, np.uint32(2), 3, 3), (3, 2, 3, 3), 'valid', verify_grad=False)
 
     def test_uint_filter_shape_datatype(self):
         """Tests for uint datatype in filter_shape
 
         """
-        self.validate((3, 2, 3, 3), (2, 2, 3, numpy.uint8(3)), 'valid', verify_grad=False)
-        self.validate((3, 2, 3, 3), (numpy.uint16(2), 2, 3, 3), 'valid', verify_grad=False)
-        self.validate((3, 2, 3, 3), (2, numpy.uint32(2), 3, 3), 'valid', verify_grad=False)
+        self.validate((3, 2, 3, 3), (2, 2, 3, np.uint8(3)), 'valid', verify_grad=False)
+        self.validate((3, 2, 3, 3), (np.uint16(2), 2, 3, 3), 'valid', verify_grad=False)
+        self.validate((3, 2, 3, 3), (2, np.uint32(2), 3, 3), 'valid', verify_grad=False)
 
     def test_img_kernel_same_shape(self):
         self.validate((3, 2, 3, 3), (4, 2, 3, 3), 'full')
@@ -474,8 +474,8 @@ class TestConv2D(utt.InferShapeTester):
                     print("filter_shapes", filter_shapes)
                     for filter_shape in filter_shapes:
 
-                        input = theano.shared(numpy.random.random(image_shape))
-                        filters = theano.shared(numpy.random.random(filter_shape))
+                        input = theano.shared(np.random.random(image_shape))
+                        filters = theano.shared(np.random.random(filter_shape))
 
                         output = self.conv2d(
                             input, filters,
@@ -498,7 +498,7 @@ class TestConv2D(utt.InferShapeTester):
         # must be provided explicitly
 
         def rand(*shape):
-            r = numpy.asarray(numpy.random.rand(*shape), dtype='float64')
+            r = np.asarray(np.random.rand(*shape), dtype='float64')
             return r * 2 - 1
 
         adtens = T.dtensor4()
@@ -613,7 +613,7 @@ class TestDefaultConv2D(TestConv2D):
 
 
 def test_broadcast_grad():
-    # rng = numpy.random.RandomState(utt.fetch_seed())
+    # rng = np.random.RandomState(utt.fetch_seed())
     x1 = T.tensor4('x')
     # x1_data = rng.randn(1, 1, 300, 300)
     sigma = T.scalar('sigma')

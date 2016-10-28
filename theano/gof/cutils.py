@@ -236,7 +236,7 @@ def compile_cutils():
             #if NPY_API_VERSION >= 0x00000008
             {"inplace_increment",  inplace_increment,
               METH_VARARGS,
-             "increments a numpy array inplace at the passed indexes."},
+             "increments a np array inplace at the passed indexes."},
             #endif
             {NULL, NULL, 0, NULL}        /* Sentinel */
         };""")

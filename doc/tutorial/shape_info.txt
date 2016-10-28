@@ -41,13 +41,13 @@ Shape Inference Problem
 Theano propagates information about shape in the graph. Sometimes this
 can lead to errors. Consider this example:
 
->>> import numpy
+>>> import numpy as np
 >>> import theano
 >>> x = theano.tensor.matrix('x')
 >>> y = theano.tensor.matrix('y')
 >>> z = theano.tensor.join(0, x, y)
->>> xv = numpy.random.rand(5, 4)
->>> yv = numpy.random.rand(3, 3)
+>>> xv = np.random.rand(5, 4)
+>>> yv = np.random.rand(3, 3)
 
 >>> f = theano.function([x, y], z.shape)
 >>> theano.printing.debugprint(f) # doctest: +NORMALIZE_WHITESPACE

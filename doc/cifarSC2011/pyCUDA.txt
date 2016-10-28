@@ -43,7 +43,7 @@ Example
 
   import pycuda.autoinit
   import pycuda.driver as drv
-  import numpy
+  import numpy as np
   
   from pycuda.compiler import SourceModule
   mod = SourceModule("""
@@ -56,15 +56,15 @@ Example
 
   multiply_them = mod.get_function("multiply_them")
   
-  a = numpy.random.randn(400).astype(numpy.float32)
-  b = numpy.random.randn(400).astype(numpy.float32)
+  a = np.random.randn(400).astype(np.float32)
+  b = np.random.randn(400).astype(np.float32)
   
-  dest = numpy.zeros_like(a)
+  dest = np.zeros_like(a)
   multiply_them(
           drv.Out(dest), drv.In(a), drv.In(b),
           block=(400,1,1), grid=(1,1))
 
-  assert numpy.allclose(dest, a*b)
+  assert np.allclose(dest, a*b)
   print dest
 
 
@@ -82,7 +82,7 @@ Theano + PyCUDA
 
 .. testcode::
 
-    import numpy, theano
+    import numpy as np, theano
     import theano.misc.pycuda_init
     from pycuda.compiler import SourceModule
     import theano.sandbox.cuda as cuda
@@ -114,8 +114,8 @@ Theano + PyCUDA
                 z = outputs[0]
                 if z[0] is None or z[0].shape!=inputs[0][0].shape:
                     z[0] = cuda.CudaNdarray.zeros(inputs[0][0].shape)
-                grid = (int(numpy.ceil(inputs[0][0].size / 512.)),1)
-                pycuda_fct(inputs[0][0], z[0], numpy.intc(inputs[0][0].size),
+                grid = (int(np.ceil(inputs[0][0].size / 512.)),1)
+                pycuda_fct(inputs[0][0], z[0], np.intc(inputs[0][0].size),
                            block=(512,1,1), grid=grid)
             return thunk
 
@@ -129,9 +129,9 @@ Test it!
 
 >>> x = theano.tensor.fmatrix() # doctest: +SKIP
 >>> f = theano.function([x], PyCUDADoubleOp()(x)) # doctest: +SKIP
->>> xv=numpy.ones((4,5), dtype="float32") # doctest: +SKIP
->>> assert numpy.allclose(f(xv), xv*2) # doctest: +SKIP
->>> print numpy.asarray(f(xv)) # doctest: +SKIP
+>>> xv=np.ones((4,5), dtype="float32") # doctest: +SKIP
+>>> assert np.allclose(f(xv), xv*2) # doctest: +SKIP
+>>> print np.asarray(f(xv)) # doctest: +SKIP
 
 Exercises 7
 -----------

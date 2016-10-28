@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 import theano.tensor as T
 from theano.misc import strutil
@@ -327,7 +327,7 @@ conv_transp_rows_stack( float* H, float* kern, float* bias, float* R,
                 int tk = t - tc * dt;
                 if(tk < 0)
                     break;
-                //R[i,j,r,c,t] += numpy.dot(W[:,j,rk,ck,tk], H[i,:,rc,cc,tc] )
+                //R[i,j,r,c,t] += np.dot(W[:,j,rk,ck,tk], H[i,:,rc,cc,tc] )
                         for(int q=0;q<nkern;q++){
                           sum += kern[q*kern_stride_nkern+stack_id*kern_stride_stack+rk*kern_stride_row+ck*kern_stride_col+tk*kern_stride_frame]*
                                  H[batch_id*H_stride_batch+q*H_stride_stack+rc*H_stride_row+cc*H_stride_col+tc*H_stride_frame];
@@ -357,9 +357,9 @@ gpu_conv_transpd = GpuConvTransp3D()
 @local_optimizer([ConvTransp3D])
 def local_gpu_conv_transp3d(node):
     if isinstance(node.op, ConvTransp3D):
-        if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu)
+        if np.any([i.owner and isinstance(i.owner.op, HostFromGpu)
                       for i in node.inputs]):
-            if numpy.all([o.type.dtype == 'float32' for o in node.outputs]):
+            if np.all([o.type.dtype == 'float32' for o in node.outputs]):
                 W, b, d, H, RShape = node.inputs
                 return [host_from_gpu(gpu_conv_transpd(W, b, d, H, RShape))]
 # Not enabled by default as we don't want people to use it.
@@ -402,7 +402,7 @@ def computeR(W, b, d, H, Rshape=None):
 
         # print "video size: " + str((videoHeight, videoWidth, videoDur))
 
-        R = numpy.zeros((batchSize, inputChannels, videoHeight,
+        R = np.zeros((batchSize, inputChannels, videoHeight,
                          videoWidth, videoDur),
                         dtype=H.dtype)
 
@@ -420,14 +420,14 @@ def computeR(W, b, d, H, Rshape=None):
 
                             ftc = max(
                                 [0,
-                                 int(numpy.ceil(
+                                 int(np.ceil(
                                      float(t - filterDur + 1) / float(dt)
                                      ))
                                  ]
                             )
                             fcc = max(
                                 [0,
-                                 int(numpy.ceil(
+                                 int(np.ceil(
                                      float(c - filterWidth + 1) / float(dc)
                                      ))
                                  ]
@@ -435,7 +435,7 @@ def computeR(W, b, d, H, Rshape=None):
 
                             rc = max(
                                 [0,
-                                 int(numpy.ceil(
+                                 int(np.ceil(
                                      float(r - filterHeight + 1) / float(dr)
                                      ))
                                  ]
@@ -457,7 +457,7 @@ def computeR(W, b, d, H, Rshape=None):
                                         if tk < 0:
                                             break
 
-                                        R[i, j, r, c, t] += numpy.dot(
+                                        R[i, j, r, c, t] += np.dot(
                                             W[:, j, rk, ck, tk],
                                             H[i, :, rc, cc, tc])
 

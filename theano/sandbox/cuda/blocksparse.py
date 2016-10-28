@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import logging
 
-import numpy
+import numpy as np
 from theano import Apply, tensor
 from theano.tensor import discrete_dtypes
 
@@ -358,7 +358,7 @@ class GpuSparseBlockOuter(GpuOp):
             self.destroy_map = {0: [0]}
 
     def make_node(self, o, x, y, xIdx, yIdx, alpha=None):
-        one = tensor.constant(numpy.asarray(1.0, dtype='float32'))
+        one = tensor.constant(np.asarray(1.0, dtype='float32'))
         o = basic_ops.as_cuda_ndarray_variable(o)
         x = basic_ops.as_cuda_ndarray_variable(x)
         y = basic_ops.as_cuda_ndarray_variable(y)

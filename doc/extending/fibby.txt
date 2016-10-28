@@ -77,8 +77,8 @@ TensorType also set up ``dtype_%(x)s`` to be a typdef to the C type for ``x``.
 The first line reduces the reference count of the data that y originally
 pointed to. The second line allocates the new data and makes y point to it.
 
-In C code for a theano op, numpy arrays are represented as ``PyArrayObject`` C
-structs. This is part of the numpy/scipy C API documented at
+In C code for a theano op, np arrays are represented as ``PyArrayObject`` C
+structs. This is part of the np/scipy C API documented at
 http://docs.scipy.org/doc/numpy/reference/c-api.types-and-structures.html
 
 TODO: NEEDS MORE EXPLANATION.
@@ -114,7 +114,7 @@ TODO: talk about OPTIMIZATION STAGES
        if node.op == fibby:
            x = node.inputs[0]
            try:
-               if numpy.all(0 == get_scalar_constant_value(x)):
+               if np.all(0 == get_scalar_constant_value(x)):
                    return [x]
            except NotScalarConstantError:
                pass
@@ -136,7 +136,7 @@ Here is some code to test that the optimization is applied only when needed.
 
 .. testcode::
 
-   import numpy
+   import numpy as np
    import theano.tensor as T
    from theano import function
    from theano import tensor
@@ -147,7 +147,7 @@ Here is some code to test that the optimization is applied only when needed.
 
    # We call the function to make sure it runs.
    # If you run in DebugMode, it will compare the C and Python outputs.
-   f(numpy.random.rand(5))
+   f(np.random.rand(5))
    topo = f.maker.fgraph.toposort()
    assert len(topo) == 1
    assert isinstance(topo[0].op, Fibby)

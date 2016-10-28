@@ -8,7 +8,7 @@ U{http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps}.
 """
 # COPIED FROM hpu/icml09/sp.py
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import scipy
 from scipy import sparse as scipy_sparse
 from six.moves import xrange
@@ -81,7 +81,7 @@ class ConvolutionIndices(Op):
             raise Exception("ws is obsolete and it must be always True")
 
         (dx, dy) = strides
-        N = numpy
+        N = np
 
         # inshp contains either 2 entries (height,width) or 3 (nfeatures,h,w)
         # in the first case, default nfeatures to 1
@@ -259,7 +259,7 @@ class ConvolutionIndices(Op):
         indices, indptr, spmatshp, outshp = self.evaluate(inshp, kshp)
         out_indices[0] = indices
         out_indptr[0] = indptr
-        spmat_shape[0] = numpy.asarray(spmatshp)
+        spmat_shape[0] = np.asarray(spmatshp)
 
 convolution_indices = ConvolutionIndices()
 
@@ -318,7 +318,7 @@ def convolve(kerns, kshp, nkern, images, imgshp, step=(1, 1), bias=None,
 
     :TODO: test for 1D and think of how to do n-d convolutions
     """
-    N = numpy
+    N = np
     # start by computing output dimensions, size, etc
     kern_size = N.int64(N.prod(kshp))
 
@@ -380,7 +380,7 @@ def max_pool(images, imgshp, maxpoolshp):
     :return: out1, symbolic result (2D tensor)
     :return: out2, logical shape of the output
     """
-    N = numpy
+    N = np
     poolsize = N.int64(N.prod(maxpoolshp))
 
     # imgshp contains either 2 entries (height,width) or 3 (nfeatures,h,w)

@@ -3,7 +3,7 @@ import errno
 import os
 import sys
 import logging
-import numpy
+import numpy as np
 import platform
 import textwrap
 import re
@@ -56,21 +56,21 @@ AddConfigVar('warn_float64',
 
 AddConfigVar('cast_policy',
              'Rules for implicit type casting',
-             EnumStr('custom', 'numpy+floatX',
-                     # The 'numpy' policy was originally planned to provide a
-                     # smooth transition from numpy. It was meant to behave the
-                     # same as numpy+floatX, but keeping float64 when numpy
+             EnumStr('custom', 'np+floatX',
+                     # The 'np' policy was originally planned to provide a
+                     # smooth transition from np. It was meant to behave the
+                     # same as np+floatX, but keeping float64 when np
                      # would. However the current implementation of some cast
                      # mechanisms makes it a bit more complex to add than what
                      # was expected, so it is currently not available.
-                     # numpy,
+                     # np,
                      ),
              )
 
 # python 2.* define int / int to return int and int // int to return int.
 # python 3* define int / int to return float and int // int to return int.
-# numpy 1.6.1 behaves as python 2.*. I think we should not change it faster
-# than numpy. When we will do the transition, we should create an int_warn
+# np 1.6.1 behaves as python 2.*. I think we should not change it faster
+# than np. When we will do the transition, we should create an int_warn
 # and floatX_warn option.
 AddConfigVar('int_division',
              "What to do when one computes x / y, where both x and y are of "
@@ -598,7 +598,7 @@ AddConfigVar(
     # We default to a number to be able to know where v1 + v2 is created in the
     # user script. The bigger this number is, the more run time it takes.
     # We need to default to 8 to support theano.tensor.tensor(...).
-    # import theano, numpy
+    # import theano, numpy as np
     # X = theano.tensor.matrix()
     # y = X.reshape((5,3,1))
     # assert y.tag.trace
@@ -613,11 +613,11 @@ AddConfigVar(
     in_c_key=False)
 
 AddConfigVar('experimental.unpickle_gpu_on_cpu',
-             "Allow unpickling of pickled CudaNdarrays as numpy.ndarrays."
+             "Allow unpickling of pickled CudaNdarrays as np.ndarrays."
              "This is useful, if you want to open a CudaNdarray without "
              "having cuda installed."
              "If you have cuda installed, this will force unpickling to"
-             "be done on the cpu to numpy.ndarray."
+             "be done on the cpu to np.ndarray."
              "Please be aware that this may get you access to the data,"
              "however, trying to unpicke gpu functions will not succeed."
              "This flag is experimental and may be removed any time, when"
@@ -625,11 +625,11 @@ AddConfigVar('experimental.unpickle_gpu_on_cpu',
              BoolParam(default=False),
              in_c_key=False)
 
-AddConfigVar('numpy.seterr_all',
-             ("Sets numpy's behaviour for floating-point errors, ",
-              "see numpy.seterr. "
-              "'None' means not to change numpy's default, which can be "
-              "different for different numpy releases. "
+AddConfigVar('np.seterr_all',
+             ("Sets np's behaviour for floating-point errors, ",
+              "see np.seterr. "
+              "'None' means not to change np's default, which can be "
+              "different for different np releases. "
               "This flag sets the default behaviour for all kinds of floating-"
               "point errors, its effect can be overriden for specific errors "
               "by the following flags: seterr_divide, seterr_over, "
@@ -638,33 +638,33 @@ AddConfigVar('numpy.seterr_all',
                      allow_override=False),
              in_c_key=False)
 
-AddConfigVar('numpy.seterr_divide',
-             ("Sets numpy's behavior for division by zero, see numpy.seterr. "
-              "'None' means using the default, defined by numpy.seterr_all."),
+AddConfigVar('np.seterr_divide',
+             ("Sets np's behavior for division by zero, see np.seterr. "
+              "'None' means using the default, defined by np.seterr_all."),
              EnumStr('None', 'ignore', 'warn', 'raise', 'call', 'print', 'log',
                      allow_override=False),
              in_c_key=False)
 
-AddConfigVar('numpy.seterr_over',
-             ("Sets numpy's behavior for floating-point overflow, "
-              "see numpy.seterr. "
-              "'None' means using the default, defined by numpy.seterr_all."),
+AddConfigVar('np.seterr_over',
+             ("Sets np's behavior for floating-point overflow, "
+              "see np.seterr. "
+              "'None' means using the default, defined by np.seterr_all."),
              EnumStr('None', 'ignore', 'warn', 'raise', 'call', 'print', 'log',
                      allow_override=False),
              in_c_key=False)
 
-AddConfigVar('numpy.seterr_under',
-             ("Sets numpy's behavior for floating-point underflow, "
-              "see numpy.seterr. "
-              "'None' means using the default, defined by numpy.seterr_all."),
+AddConfigVar('np.seterr_under',
+             ("Sets np's behavior for floating-point underflow, "
+              "see np.seterr. "
+              "'None' means using the default, defined by np.seterr_all."),
              EnumStr('None', 'ignore', 'warn', 'raise', 'call', 'print', 'log',
                      allow_override=False),
              in_c_key=False)
 
-AddConfigVar('numpy.seterr_invalid',
-             ("Sets numpy's behavior for invalid floating-point operation, "
-              "see numpy.seterr. "
-              "'None' means using the default, defined by numpy.seterr_all."),
+AddConfigVar('np.seterr_invalid',
+             ("Sets np's behavior for invalid floating-point operation, "
+              "see np.seterr. "
+              "'None' means using the default, defined by np.seterr_all."),
              EnumStr('None', 'ignore', 'warn', 'raise', 'call', 'print', 'log',
                      allow_override=False),
              in_c_key=False)
@@ -1087,7 +1087,7 @@ AddConfigVar('profiling.ignore_first_call',
 AddConfigVar('optdb.position_cutoff',
              'Where to stop eariler during optimization. It represent the'
              ' position of the optimizer where to stop.',
-             FloatParam(numpy.inf),
+             FloatParam(np.inf),
              in_c_key=False)
 
 AddConfigVar('optdb.max_use_ratio',
@@ -1131,13 +1131,13 @@ AddConfigVar('cmodule.preload_cache',
 
 
 def default_blas_ldflags():
-    global numpy
+    global np
     try:
-        if (hasattr(numpy.distutils, '__config__') and
-                numpy.distutils.__config__):
+        if (hasattr(np.distutils, '__config__') and
+                np.distutils.__config__):
             # If the old private interface is available use it as it
             # don't print information to the user.
-            blas_info = numpy.distutils.__config__.blas_opt_info
+            blas_info = np.distutils.__config__.blas_opt_info
         else:
             # We do this import only here, as in some setup, if we
             # just import theano and exit, with the import at global
@@ -1146,15 +1146,15 @@ def default_blas_ldflags():
             # Popen.__del__ of <subprocess.Popen object at 0x21359d0>>
             # ignored"
 
-            # This happen with Python 2.7.3 |EPD 7.3-1 and numpy 1.8.1
+            # This happen with Python 2.7.3 |EPD 7.3-1 and np 1.8.1
             import numpy.distutils.system_info  # noqa
 
             # We need to catch warnings as in some cases NumPy print
             # stuff that we don't want the user to see.
             # I'm not able to remove all printed stuff
             with warnings.catch_warnings(record=True):
-                numpy.distutils.system_info.system_info.verbosity = 0
-                blas_info = numpy.distutils.system_info.get_info("blas_opt")
+                np.distutils.system_info.system_info.verbosity = 0
+                blas_info = np.distutils.system_info.get_info("blas_opt")
 
         # If we are in a EPD installation, mkl is available
         if "EPD" in sys.version:
@@ -1244,7 +1244,7 @@ def default_blas_ldflags():
             # importable, then the libraries (installed by conda
             # package "mkl-rt") are actually available.  Using
             # "conda install mkl" will install both, as well as
-            # optimized versions of numpy and scipy.
+            # optimized versions of np and scipy.
             try:
                 import mkl  # noqa
             except ImportError as e:
@@ -1312,7 +1312,7 @@ def default_blas_ldflags():
     except KeyError:
         pass
 
-    # Even if we could not detect what was used for numpy, or if these
+    # Even if we could not detect what was used for np, or if these
     # libraries are not found, most Linux systems have a libblas.so
     # readily available. We try to see if that's the case, rather
     # than disable blas. To test it correctly, we must load a program.
@@ -1548,7 +1548,7 @@ compiledir_format_dict = {
     "python_bitwidth": local_bitwidth(),
     "python_int_bitwidth": python_int_bitwidth(),
     "theano_version": theano.__version__,
-    "numpy_version": numpy.__version__,
+    "np_version": np.__version__,
     "gxx_version": gcc_version_str.replace(" ", "_"),
     "hostname": socket.gethostname()}
 

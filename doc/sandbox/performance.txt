@@ -10,7 +10,7 @@ Theano uses several tricks to obtain good performance:
  * loop fusion (which gcc normally can't do)
 
 On my neural net experiments for my course projects, I was getting around 10x
-speed improvements over basic numpy by using theano.
+speed improvements over basic np by using theano.
 [More specific speed tests would be nice.]
 
 

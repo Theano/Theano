@@ -3,7 +3,7 @@ from unittest import TestCase
 from nose.plugins.skip import SkipTest
 import itertools
 
-import numpy
+import numpy as np
 
 import theano
 from theano import tensor
@@ -155,11 +155,11 @@ def test_hgemm_swap():
     assert len([node for node in f.maker.fgraph.apply_nodes
                 if isinstance(node.op, GpuGemm)]) == 1
 
-    v1 = numpy.random.random((3, 4)).astype('float16')
-    v2 = numpy.random.random((4, 2)).astype('float16')
+    v1 = np.random.random((3, 4)).astype('float16')
+    v2 = np.random.random((4, 2)).astype('float16')
 
     of = f(v1, v2)
-    on = numpy.dot(v1, v2)
+    on = np.dot(v1, v2)
 
     utt.assert_allclose(of, on)
 
@@ -174,7 +174,7 @@ def test_hgemm_alpha_output_merge():
 
     b = tensor.matrix(dtype='float16')
 
-    hgemm = numpy.asarray(0.05, dtype='float16') * (tensor.dot(m1, m2) + b)
+    hgemm = np.asarray(0.05, dtype='float16') * (tensor.dot(m1, m2) + b)
 
     f = theano.function([m1, m2, b], hgemm, mode=mode_with_gpu)
     # there should be 3 gpu_from_host, 1 hgemm and 1 host_from_gpu

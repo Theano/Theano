@@ -215,7 +215,7 @@ the :ref:`irow <libdoc_tensor_creation>` type in the ``theano.tensor`` package
 gives the following constraints on the data the Variables of type ``irow``
 may contain:
 
-#. Must be an instance of ``numpy.ndarray``: ``isinstance(x, numpy.ndarray)``
+#. Must be an instance of ``np.ndarray``: ``isinstance(x, np.ndarray)``
 #. Must be an array of 32-bit integers: ``str(x.dtype) == 'int32'``
 #. Must have a shape of 1xN: ``len(x.shape) == 2 and x.shape[0] == 1``
 
@@ -225,11 +225,11 @@ of loops over the dimensions.
 
 Note that a Theano :ref:`type` is not equivalent to a Python type or
 class. Indeed, in Theano, :ref:`irow <libdoc_tensor_creation>` and :ref:`dmatrix
-<libdoc_tensor_creation>` both use ``numpy.ndarray`` as the underlying type
+<libdoc_tensor_creation>` both use ``np.ndarray`` as the underlying type
 for doing computations and storing data, yet they are different Theano
 Types. Indeed, the constraints set by ``dmatrix`` are:
 
-#. Must be an instance of ``numpy.ndarray``: ``isinstance(x, numpy.ndarray)``
+#. Must be an instance of ``np.ndarray``: ``isinstance(x, np.ndarray)``
 #. Must be an array of 64-bit floating point numbers: ``str(x.dtype) == 'float64'``
 #. Must have a shape of MxN, no restriction on M or N: ``len(x.shape) == 2``
 

@@ -7,7 +7,7 @@ import sys
 import time
 import warnings
 
-import numpy
+import numpy as np
 from six.moves import reduce, xrange
 
 from . import dnn
@@ -1261,7 +1261,7 @@ def local_gpu_rebroadcast(node):
 
 
 def gpu_print_wrapper(op, cnda):
-    op.old_op.global_fn(op.old_op, numpy.asarray(cnda))
+    op.old_op.global_fn(op.old_op, np.asarray(cnda))
 
 
 @register_opt()
@@ -1525,13 +1525,13 @@ def local_gpu_conv(node):
             if logical_img_hw != op.imshp[1:3]:
                 # this case is not implemented
                 # return None
-                rstride = int(numpy.ceil(op.imshp_logical[1] /
+                rstride = int(np.ceil(op.imshp_logical[1] /
                                          float(op.imshp[1])))
-                cstride = int(numpy.ceil(op.imshp_logical[2] /
+                cstride = int(np.ceil(op.imshp_logical[2] /
                                          float(op.imshp[2])))
 
                 def make_graph(img, kern):
-                    buf = tensor.alloc(numpy.asarray(0, dtype=img.dtype),
+                    buf = tensor.alloc(np.asarray(0, dtype=img.dtype),
                                        img.shape[0], *op.imshp_logical)
                     img = tensor.set_subtensor(buf[:, :, ::rstride, ::cstride],
                                                img)
@@ -1709,9 +1709,9 @@ class ConvMetaOptimizer(LocalCudaMetaOptimizer):
                 result[var] = theano.shared(
                     # TODO: Use var.type.filter when cuda_ndarray.filter
                     # supports non-strict casts
-                    # var.type.filter(numpy.random.randn(*shape),
+                    # var.type.filter(np.random.randn(*shape),
                     # allow_downcast=True),
-                    numpy.require(numpy.random.randn(*shape),
+                    np.require(np.random.randn(*shape),
                                   dtype=var.dtype),
                     var.name,
                     broadcastable=var.broadcastable,
@@ -2293,7 +2293,7 @@ def local_gpualloc_memset_0(node):
         inp = node.inputs[0]
         if (isinstance(inp, CudaNdarrayConstant) and
                 inp.data.size == 1 and
-                (numpy.asarray(inp.data) == 0).all()):
+                (np.asarray(inp.data) == 0).all()):
 
             new_out = GpuAlloc(memset_0=True)(*node.inputs)
             old_bcast = node.outputs[0].type.broadcastable

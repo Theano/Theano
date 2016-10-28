@@ -22,7 +22,7 @@ IfElse vs Switch
 
    from theano import tensor as T
    from theano.ifelse import ifelse
-   import theano, time, numpy
+   import theano, time, numpy as np
 
    a,b = T.scalars('a', 'b')
    x,y = T.matrices('x', 'y')
@@ -37,8 +37,8 @@ IfElse vs Switch
 
    val1 = 0.
    val2 = 1.
-   big_mat1 = numpy.ones((10000, 1000))
-   big_mat2 = numpy.ones((10000, 1000))
+   big_mat1 = np.ones((10000, 1000))
+   big_mat2 = np.ones((10000, 1000))
 
    n_times = 10
 

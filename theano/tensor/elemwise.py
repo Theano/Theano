@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 import sys
 from copy import copy
 
-import numpy
+import numpy as np
 from six import iteritems, integer_types
 from six.moves import xrange
 
@@ -125,7 +125,7 @@ class DimShuffle(Op):
         DimShuffle((False, False), [0, 'x', 1])  # AxB to Ax1xB
         DimShuffle((False, False), [1, 'x', 0])  # AxB to Bx1xA
 
-    The reordering of the dimensions can be done with the numpy.transpose
+    The reordering of the dimensions can be done with the np.transpose
     function.
     Adding, subtracting dimensions can be done with reshape.
 
@@ -147,11 +147,11 @@ class DimShuffle(Op):
 
         for i, j in enumerate(new_order):
             if j != 'x':
-                # There is a bug in numpy that results in
+                # There is a bug in np that results in
                 # isinstance(x, integer_types) returning False for
-                # numpy integers.  See
+                # np integers.  See
                 # <http://projects.scipy.org/numpy/ticket/2235>.
-                if not isinstance(j, (integer_types, numpy.integer)):
+                if not isinstance(j, (integer_types, np.integer)):
                     raise TypeError(
                         "DimShuffle indices must be python ints. "
                         "Got: '%s' of type '%s'.",
@@ -231,7 +231,7 @@ class DimShuffle(Op):
         storage, = out
         # drop
         res = input
-        if type(res) != numpy.ndarray and type(res) != numpy.memmap:
+        if type(res) != np.ndarray and type(res) != np.memmap:
             raise TypeError(res)
 
         # transpose
@@ -245,9 +245,9 @@ class DimShuffle(Op):
 
         # copy (if not inplace)
         if not self.inplace:
-            res = numpy.copy(res)
+            res = np.copy(res)
 
-        storage[0] = numpy.asarray(res)  # asarray puts scalars back into array
+        storage[0] = np.asarray(res)  # asarray puts scalars back into array
 
     def infer_shape(self, node, shapes):
         ishp, = shapes
@@ -316,7 +316,7 @@ class DimShuffle(Op):
                 strides_statements += [('strides[' + str(i) + '] = 0')]
 
         # set the strides of the broadcasted dimensions
-        # this algorithm is from numpy: PyArray_Newshape() in
+        # this algorithm is from np: PyArray_Newshape() in
         # cvs/numpy/numpy/core/src/multiarraymodule.c
         if nd_out > 0:
             strides_statements.append(
@@ -456,11 +456,11 @@ class Elemwise(OpenMPOp):
         the input's storage. (Just like destroymap, but without the lists.)
     nfunc_spec
         Either None or a tuple of three elements,
-        (nfunc_name, nin, nout) such that getattr(numpy, nfunc_name)
+        (nfunc_name, nin, nout) such that getattr(np, nfunc_name)
         implements this operation, takes nin inputs and nout outputs.
         Note that nin cannot always be inferred from the scalar op's
         own nin field because that value is sometimes 0 (meaning a
-        variable number of inputs), whereas the numpy function may
+        variable number of inputs), whereas the np function may
         not have varargs.
 
     Note
@@ -492,7 +492,7 @@ second dimension
             nfunc_spec = getattr(scalar_op, 'nfunc_spec', None)
         self.nfunc_spec = nfunc_spec
         if nfunc_spec:
-            self.nfunc = getattr(numpy, nfunc_spec[0])
+            self.nfunc = getattr(np, nfunc_spec[0])
 
         # precompute the hash of this node
         self._rehash()
@@ -511,9 +511,9 @@ second dimension
         self.ufunc = None
         self.nfunc = None
         if getattr(self, 'nfunc_spec', None):
-            self.nfunc = getattr(numpy, self.nfunc_spec[0])
+            self.nfunc = getattr(np, self.nfunc_spec[0])
         elif 0 < self.scalar_op.nin < 32:
-            self.ufunc = numpy.frompyfunc(self.scalar_op.impl,
+            self.ufunc = np.frompyfunc(self.scalar_op.impl,
                                           self.scalar_op.nin,
                                           self.scalar_op.nout)
         self._rehash()
@@ -770,7 +770,7 @@ second dimension
                 # the gradient contains a constant, translate it as
                 # an equivalent TensorType of size 1 and proper number of
                 # dimensions
-                res = theano.tensor.constant(numpy.asarray(r.data),
+                res = theano.tensor.constant(np.asarray(r.data),
                                              dtype=r.type.dtype)
                 return DimShuffle((), ['x'] * nd)(res)
 
@@ -797,7 +797,7 @@ second dimension
                 self.ufunc is None and
                 impl == 'py'):
 
-            ufunc = numpy.frompyfunc(self.scalar_op.impl,
+            ufunc = np.frompyfunc(self.scalar_op.impl,
                                      len(node.inputs),
                                      self.scalar_op.nout)
             if self.scalar_op.nin > 0:
@@ -819,9 +819,9 @@ second dimension
         # when the input is complex. So add it only when inputs is int.
         out_dtype = node.outputs[0].dtype
         if (out_dtype in float_dtypes and
-                isinstance(self.nfunc, numpy.ufunc) and
+                isinstance(self.nfunc, np.ufunc) and
                 node.inputs[0].dtype in discrete_dtypes):
-            char = numpy.sctype2char(out_dtype)
+            char = np.sctype2char(out_dtype)
             sig = char * node.nin + '->' + char * node.nout
             node.tag.sig = sig
         node.tag.fake_node = Apply(
@@ -888,7 +888,7 @@ second dimension
             # should normally run the C version of the Op.
         else:
             # the second calling form is used because in certain versions of
-            # numpy the first (faster) version leads to segfaults
+            # np the first (faster) version leads to segfaults
             if self.ufunc:
                 ufunc = self.ufunc
             elif not hasattr(node.tag, 'ufunc'):
@@ -915,9 +915,9 @@ second dimension
         for variable, storage, nout in izip(variables, output_storage,
                                             node.outputs):
             if getattr(variable, "dtype", "") == 'object':
-                # Since numpy 1.6, function created with numpy.frompyfunc
+                # Since np 1.6, function created with np.frompyfunc
                 # always return an ndarray with dtype object
-                variable = numpy.asarray(variable, dtype=nout.dtype)
+                variable = np.asarray(variable, dtype=nout.dtype)
 
             if i in self.inplace_pattern:
                 odat = inputs[self.inplace_pattern[i]]
@@ -926,18 +926,18 @@ second dimension
             # Sometimes NumPy return a Python type.
             # Some Theano op return a different dtype like floor, ceil,
             # trunc, eq, ...
-            elif (not isinstance(variable, numpy.ndarray) or
+            elif (not isinstance(variable, np.ndarray) or
                   variable.dtype != nout.dtype):
-                variable = numpy.asarray(variable, nout.dtype)
-                # The next line is needed for numpy 1.9. Otherwise
+                variable = np.asarray(variable, nout.dtype)
+                # The next line is needed for np 1.9. Otherwise
                 # there are tests that fail in DebugMode.
                 # Normally we would call theano.misc._asarray, but it
                 # is faster to inline the code. We know that the dtype
                 # are the same string, just different typenum.
-                if numpy.dtype(nout.dtype).num != variable.dtype.num:
+                if np.dtype(nout.dtype).num != variable.dtype.num:
                     variable = variable.view(dtype=nout.dtype)
                 storage[0] = variable
-            # numpy.real return a view!
+            # np.real return a view!
             elif not variable.flags.owndata:
                 storage[0] = variable.copy()
             else:
@@ -1314,7 +1314,7 @@ class CAReduce(Op):
     ----
     .. code-block:: python
 
-        CAReduce(add)      # sum (ie, acts like the numpy sum operation)
+        CAReduce(add)      # sum (ie, acts like the np sum operation)
         CAReduce(mul)      # product
         CAReduce(maximum)  # max
         CAReduce(minimum)  # min
@@ -1343,12 +1343,12 @@ class CAReduce(Op):
 
         if axis is None:
             self.axis = axis
-        # There is a bug in numpy that results in isinstance(x,
-        # integer_types) returning False for numpy integers.  See
+        # There is a bug in np that results in isinstance(x,
+        # integer_types) returning False for np integers.  See
         # <http://projects.scipy.org/numpy/ticket/2235>.
-        elif isinstance(axis, (integer_types, numpy.integer)):
+        elif isinstance(axis, (integer_types, np.integer)):
             self.axis = (axis,)
-        elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+        elif isinstance(axis, np.ndarray) and axis.ndim == 0:
             self.axis = (int(axis),)
         else:
             self.axis = list(set(int(a) for a in axis))
@@ -1360,21 +1360,21 @@ class CAReduce(Op):
     def set_ufunc(self, scalar_op):
         # This is probably a speed up of the implementation
         if isinstance(scalar_op, theano.scalar.basic.Add):
-            self.ufunc = numpy.add
+            self.ufunc = np.add
         elif isinstance(scalar_op, theano.scalar.basic.Mul):
-            self.ufunc = numpy.multiply
+            self.ufunc = np.multiply
         elif isinstance(scalar_op, theano.scalar.basic.Maximum):
-            self.ufunc = numpy.maximum
+            self.ufunc = np.maximum
         elif isinstance(scalar_op, theano.scalar.basic.Minimum):
-            self.ufunc = numpy.minimum
+            self.ufunc = np.minimum
         elif isinstance(scalar_op, theano.scalar.basic.AND):
-            self.ufunc = numpy.bitwise_and
+            self.ufunc = np.bitwise_and
         elif isinstance(scalar_op, theano.scalar.basic.OR):
-            self.ufunc = numpy.bitwise_or
+            self.ufunc = np.bitwise_or
         elif isinstance(scalar_op, theano.scalar.basic.XOR):
-            self.ufunc = numpy.bitwise_xor
+            self.ufunc = np.bitwise_xor
         else:
-            self.ufunc = numpy.frompyfunc(scalar_op.impl, 2, 1)
+            self.ufunc = np.frompyfunc(scalar_op.impl, 2, 1)
 
     def _output_dtype(self, input_dtype):
         return input_dtype
@@ -1465,7 +1465,7 @@ class CAReduce(Op):
                         # Compute the shape of the output
                         v_shape = list(variable.shape)
                         del v_shape[dimension]
-                        variable = numpy.empty(tuple(v_shape),
+                        variable = np.empty(tuple(v_shape),
                                                dtype=acc_dtype)
                         variable.fill(self.scalar_op.identity)
                     else:
@@ -1487,16 +1487,16 @@ class CAReduce(Op):
                         variable = self.ufunc.reduce(variable, dimension,
                                                      dtype=acc_dtype)
 
-            variable = numpy.asarray(variable)
-            if numpy.may_share_memory(variable, input):
-                # perhaps numpy is clever for reductions of size 1?
+            variable = np.asarray(variable)
+            if np.may_share_memory(variable, input):
+                # perhaps np is clever for reductions of size 1?
                 # We don't want this.
                 variable = variable.copy()
             output[0] = theano._asarray(variable,
                                         dtype=node.outputs[0].type.dtype)
         else:
             # Force a copy
-            output[0] = numpy.array(variable, copy=True,
+            output[0] = np.array(variable, copy=True,
                                     dtype=node.outputs[0].type.dtype)
 
     def infer_shape(self, node, shapes):
@@ -1600,7 +1600,7 @@ class CAReduce(Op):
                 if input.type.dtype in ["float32", "float64"]:
                     identity = "-__builtin_inf()"
                 elif input.type.dtype.startswith("uint"):
-                    # numpy1.5.1 don't define NPY_MIN_UINT*
+                    # np1.5.1 don't define NPY_MIN_UINT*
                     identity = "0"
                 else:
                     identity = "NPY_MIN_" + str(input.type.dtype).upper()
@@ -1808,7 +1808,7 @@ class CAReduceDtype(CAReduce):
           which case we use uint64
 
         This default dtype does _not_ depend on the value of "acc_dtype".
-        This behavior is similar in spirit to that of numpy (except numpy
+        This behavior is similar in spirit to that of np (except np
         uses the default machine integer while we always use 64 bit
         integers to avoid platform-dependent behavior).
 

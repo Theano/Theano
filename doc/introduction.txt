@@ -7,7 +7,7 @@ Theano at a Glance
 
 Theano is a Python library that lets you to define, optimize, and evaluate
 mathematical expressions, especially ones with multi-dimensional arrays
-(numpy.ndarray).  Using Theano it is
+(np.ndarray).  Using Theano it is
 possible to attain speeds rivaling hand-crafted C implementations for problems
 involving large amounts of data.  It can also surpass C on a CPU by many orders
 of magnitude by taking advantage of recent GPUs.
@@ -95,8 +95,8 @@ What does it do that they don't?
 
 Theano is a Python library and optimizing compiler for manipulating
 and evaluating expressions, especially matrix-valued
-ones. Manipulation of matrices is typically done using the numpy
-package, so what does Theano do that Python and numpy do not?
+ones. Manipulation of matrices is typically done using the np
+package, so what does Theano do that Python and np do not?
 
 - *execution speed optimizations*: Theano can use `g++` or `nvcc` to compile
   parts your expression graph into CPU or GPU instructions, which run
@@ -113,7 +113,7 @@ Theano focuses more on tensor expressions than Sympy, and has more machinery
 for compilation.  Sympy has more sophisticated algebra rules and can
 handle a wider variety of mathematical operations (such as series, limits, and integrals).
 
-If numpy_ is to be compared to MATLAB_ and sympy_ to Mathematica_,
+If np_ is to be compared to MATLAB_ and sympy_ to Mathematica_,
 Theano is a sort of hybrid of the two which tries to combine the best of
 both worlds.
 
@@ -168,7 +168,7 @@ Theano Vision State
 Here is the state of that vision as of December 3th, 2013 (after Theano release
 0.6):
 
-* We support tensors using the `numpy.ndarray` object and we support many operations on them.
+* We support tensors using the `np.ndarray` object and we support many operations on them.
 * We support sparse types by using the `scipy.{csc,csr,bsr}_matrix` object and support some operations on them.
 * We have started implementing/wrapping more advanced linear algebra operations.
 * We have many graph transformations that cover the 4 categories listed above.
@@ -229,7 +229,7 @@ theano-dev_ mailing list.
 
 .. _LISA:  http://www.iro.umontreal.ca/rubrique.php3?id_rubrique=27
 .. _Greek mathematician: http://en.wikipedia.org/wiki/Theano_(mathematician)
-.. _numpy: http://numpy.scipy.org/
+.. _np: http://numpy.scipy.org/
 .. _BLAS: http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
 
 .. _sympy: http://code.google.com/p/sympy/

@@ -5,7 +5,7 @@ These pickled graphs can be used, for instance, as cases for
 unit tests or regression tests.
 """
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import os
 import pickle
 import sys
@@ -118,7 +118,7 @@ def load_reduce(self):
 if PY3:
     class CompatUnpickler(pickle._Unpickler):
         """
-        Allow to reload in python 3 some pickled numpy ndarray.
+        Allow to reload in python 3 some pickled np ndarray.
 
         .. versionadded:: 0.8
 
@@ -142,7 +142,7 @@ if PY3:
 else:
     class CompatUnpickler(pickle.Unpickler):
         """
-        Allow to reload in python 3 some pickled numpy ndarray.
+        Allow to reload in python 3 some pickled np ndarray.
 
         .. versionadded:: 0.8
 
@@ -188,10 +188,10 @@ class PersistentNdarrayID(object):
         return name
 
     def __call__(self, obj):
-        if type(obj) is numpy.ndarray:
+        if type(obj) is np.ndarray:
             if id(obj) not in self.seen:
                 def write_array(f):
-                    numpy.lib.format.write_array(f, obj)
+                    np.lib.format.write_array(f, obj)
                 name = self._resolve_name(obj)
                 zipadd(write_array, self.zip_file, name)
                 self.seen[id(obj)] = 'ndarray.{0}'.format(name)
@@ -204,7 +204,7 @@ class PersistentCudaNdarrayID(PersistentNdarrayID):
                 type(obj) is cuda_ndarray.cuda_ndarray.CudaNdarray):
             if id(obj) not in self.seen:
                 def write_array(f):
-                    numpy.lib.format.write_array(f, numpy.asarray(obj))
+                    np.lib.format.write_array(f, np.asarray(obj))
                 name = self._resolve_name(obj)
                 zipadd(write_array, self.zip_file, name)
                 self.seen[id(obj)] = 'cuda_ndarray.{0}'.format(name)
@@ -283,13 +283,13 @@ class PersistentNdarrayLoad(object):
         if name in self.cache:
             return self.cache[name]
         ret = None
-        array = numpy.lib.format.read_array(self.zip_file.open(name))
+        array = np.lib.format.read_array(self.zip_file.open(name))
         if array_type == 'cuda_ndarray':
             if config.experimental.unpickle_gpu_on_cpu:
-                # directly return numpy array
+                # directly return np array
                 warnings.warn("config.experimental.unpickle_gpu_on_cpu is set "
                               "to True. Unpickling CudaNdarray as "
-                              "numpy.ndarray")
+                              "np.ndarray")
                 ret = array
             elif cuda_ndarray:
                 ret = cuda_ndarray.cuda_ndarray.CudaNdarray(array)
@@ -319,7 +319,7 @@ def dump(obj, file_handler, protocol=DEFAULT_PROTOCOL,
 
     :param persistent_id: The callable that persists certain objects in the
         object hierarchy to separate files inside of the zip file. For example,
-        :class:`PersistentNdarrayID` saves any :class:`numpy.ndarray` to a
+        :class:`PersistentNdarrayID` saves any :class:`np.ndarray` to a
         separate NPY file inside of the zip file.
     :type persistent_id: callable
 
@@ -329,16 +329,16 @@ def dump(obj, file_handler, protocol=DEFAULT_PROTOCOL,
         The final file is simply a zipped file containing at least one file,
         `pkl`, which contains the pickled object. It can contain any other
         number of external objects. Note that the zip files are compatible with
-        NumPy's :func:`numpy.load` function.
+        NumPy's :func:`np.load` function.
 
     >>> import theano
     >>> foo_1 = theano.shared(0, name='foo')
     >>> foo_2 = theano.shared(1, name='foo')
     >>> with open('model.zip', 'wb') as f:
-    ...     dump((foo_1, foo_2, numpy.array(2)), f)
-    >>> numpy.load('model.zip').keys()
+    ...     dump((foo_1, foo_2, np.array(2)), f)
+    >>> np.load('model.zip').keys()
     ['foo', 'foo_2', 'array_0', 'pkl']
-    >>> numpy.load('model.zip')['foo']
+    >>> np.load('model.zip')['foo']
     array(0)
     >>> with open('model.zip', 'rb') as f:
     ...     foo_1, foo_2, array = load(f)

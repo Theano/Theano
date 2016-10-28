@@ -4,7 +4,7 @@ TODO: implement Images2Neibs.infer_shape() methods
 """
 from __future__ import absolute_import, print_function, division
 
-import numpy
+import numpy as np
 
 import theano
 from theano import Op, Apply
@@ -218,7 +218,7 @@ class Images2Neibs(Op):
 
         z_dim0 = grid_c * grid_d * ten4.shape[1] * ten4.shape[0]
         z_dim1 = c * d
-        z[0] = numpy.empty((z_dim0, z_dim1), dtype=node.outputs[0].dtype)
+        z[0] = np.empty((z_dim0, z_dim1), dtype=node.outputs[0].dtype)
 
         nb_batch = ten4.shape[0]
         nb_stack = ten4.shape[1]

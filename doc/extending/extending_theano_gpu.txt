@@ -1,4 +1,5 @@
 
+
 .. _extending_theano_gpu:
 
 ==============================
@@ -124,7 +125,7 @@ instead.  It adds a new section to the parsed files whose tag is
 ``#kernel name:params:flags``.
 
 Here ``name`` is the name of the kernel function in the following
-code, ``params`` is a comma-separeted list of numpy typecode names.
+code, ``params`` is a comma-separeted list of np typecode names.
 There are three exceptions for ``size_t`` which should be noted as
 ``size``, ``ssize_t`` which should be noted as ``ssize`` and a pointer
 which should be noted as ``*``.

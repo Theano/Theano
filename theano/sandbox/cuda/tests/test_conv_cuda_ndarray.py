@@ -8,7 +8,7 @@ import theano
 from theano import tensor
 from theano.tests.unittest_tools import seed_rng, assert_allclose
 from theano.sandbox import cuda
-import numpy
+import numpy as np
 from six.moves import xrange
 
 from theano.sandbox.cuda.dnn import GpuDnnConv, DnnBase, dnn_conv
@@ -34,7 +34,7 @@ else:
 
 device_id = theano.sandbox.cuda.use.device_number
 if device_id is None:
-    cuda.shared_constructor(numpy.zeros(2, dtype='float32'))
+    cuda.shared_constructor(np.zeros(2, dtype='float32'))
 device_id = theano.sandbox.cuda.use.device_number
 if device_id is None:
     cuda.use("gpu",
@@ -54,7 +54,7 @@ def py_conv_valid_numpy(img, kern):
     outshp = (img.shape[0], kern.shape[0],
               img.shape[2] - kern.shape[2] + 1,
               img.shape[3] - kern.shape[3] + 1)
-    out = numpy.zeros(outshp, dtype='float32')
+    out = np.zeros(outshp, dtype='float32')
     for b in xrange(out.shape[0]):
         for k in xrange(out.shape[1]):
             for rr in xrange(out.shape[2]):
@@ -71,7 +71,7 @@ def py_conv_valid_numpy(img, kern):
 
 def py_conv_pad_img(img, pad_h, pad_w):
     assert pad_h >= 0 and pad_w >= 0
-    padded_img = numpy.zeros(
+    padded_img = np.zeros(
         (img.shape[0], img.shape[1],
          pad_h * 2 + img.shape[2], pad_w * 2 + img.shape[3]),
         dtype=img.dtype)
@@ -121,7 +121,7 @@ def py_conv_scipy(img, kern, mode, subsample):
         outshp = (img.shape[0], kern.shape[0],
                   img.shape[2] + kern.shape[2] - 1,
                   img.shape[3] + kern.shape[3] - 1)
-    out = numpy.zeros(outshp, dtype='float32')
+    out = np.zeros(outshp, dtype='float32')
     for b in xrange(out.shape[0]):
         for k in xrange(out.shape[1]):
             for s in xrange(img.shape[1]):
@@ -156,19 +156,19 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
     #
     if ones:
         assert not random
-        npy_img = theano._asarray(numpy.ones(ishape), dtype='float32')
-        npy_kern = -theano._asarray(numpy.ones(kshape), dtype='float32')
+        npy_img = theano._asarray(np.ones(ishape), dtype='float32')
+        npy_kern = -theano._asarray(np.ones(kshape), dtype='float32')
     elif random:
-        npy_img = theano._asarray(numpy.random.rand(*ishape) + 1,
+        npy_img = theano._asarray(np.random.rand(*ishape) + 1,
                                   dtype='float32')
-        npy_kern = theano._asarray(numpy.random.rand(*kshape) - 2,
+        npy_kern = theano._asarray(np.random.rand(*kshape) - 2,
                                    dtype='float32')
     else:
         npy_img = theano._asarray(
-            numpy.arange(numpy.prod(ishape)).reshape(ishape),
+            np.arange(np.prod(ishape)).reshape(ishape),
             dtype='float32') + 1
         npy_kern = -(theano._asarray(
-            numpy.arange(numpy.prod(kshape)).reshape(kshape),
+            np.arange(np.prod(kshape)).reshape(kshape),
             dtype='float32') + 1)
 
     img = cuda_ndarray.CudaNdarray(npy_img)
@@ -201,8 +201,8 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
     t3 = time.time()
     for i in range(nb_iter):
         gpuval2 = f(img, kern)
-        assert (numpy.asarray(gpuval) == numpy.asarray(gpuval2)).all()
-    gpuval = numpy.asarray(gpuval)
+        assert (np.asarray(gpuval) == np.asarray(gpuval2)).all()
+    gpuval = np.asarray(gpuval)
 
     # CPU val computed after GPU val to get the GPU errors.
     t0 = time.time()
@@ -211,7 +211,7 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
 
     assert gpuval.shape == cpuval.shape, ("shape mismatch", gpuval.shape, cpuval.shape)
     assert_allclose(cpuval, gpuval, rtol=rtol, atol=atol)
-    assert numpy.all(numpy.isfinite(gpuval)), gpuval
+    assert np.all(np.isfinite(gpuval)), gpuval
     assert [(sh == 1) is br for
             sh, br in zip(cpuval.shape[:2], op.type.broadcastable[:2])]
 
@@ -692,8 +692,8 @@ class TestConvWithPadding(object):
             cls.conv_ops.append(cuda.dnn.dnn_conv)
 
     def test_invalid_arg(self):
-        img = theano._asarray(numpy.empty((1, 1, 1, 1)), dtype='float32')
-        kern = theano._asarray(numpy.empty((1, 1, 1, 1)), dtype='float32')
+        img = theano._asarray(np.empty((1, 1, 1, 1)), dtype='float32')
+        kern = theano._asarray(np.empty((1, 1, 1, 1)), dtype='float32')
         for i in self.conv_ops:
             assert_raises(ValueError, i, img, kern,
                           border_mode=(-1, 0))
@@ -703,8 +703,8 @@ class TestConvWithPadding(object):
                           border_mode='not border')
 
     def _run_onecase(self, img_shape, kern_shape, padding, op):
-        npy_img = numpy.random.rand(*img_shape).astype('float32')
-        npy_kern = numpy.random.rand(*kern_shape).astype('float32')
+        npy_img = np.random.rand(*img_shape).astype('float32')
+        npy_kern = np.random.rand(*kern_shape).astype('float32')
         img = theano._asarray(npy_img, dtype='float32')
         kern = theano.shared(npy_kern)
         border_mode = padding
@@ -712,7 +712,7 @@ class TestConvWithPadding(object):
         X = tensor.ftensor4()
         Y = op(X, kern, border_mode=border_mode)
         func = theano.function([X], Y, mode=theano_mode)
-        gpuval = numpy.asarray(func(img))
+        gpuval = np.asarray(func(img))
         assert_allclose(cpuval, gpuval, rtol=1e-5, atol=1e-5)
 
     def test_numeric_value(self):
@@ -733,8 +733,8 @@ def gemm_directly(bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsx, subsy,
     kshape = (nf, ch, rFlt1, rFlt2)
     subsample = (subsx, subsy)
 
-    npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
-    npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
+    npy_img = theano._asarray(np.random.rand(*ishape), dtype='float32')
+    npy_kern = theano._asarray(np.random.rand(*kshape), dtype='float32')
 
     if direction == 'fprop':
         i = cuda.CudaNdarrayType(
@@ -771,7 +771,7 @@ def gemm_directly(bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsx, subsy,
         op = theano.sandbox.cuda.blas.GpuCorrMM_gradWeights(
             border_mode='valid', subsample=subsample)(i, k)
         f = theano.function([i, k], op, mode=theano_mode)
-        gpuval = numpy.array(f(
+        gpuval = np.array(f(
             npy_img.transpose(1, 0, 2, 3),
             npy_kern.transpose(1, 0, 2, 3)[:, :, ::-1, ::-1])
             ).transpose(1, 0, 2, 3)
@@ -814,8 +814,8 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsample, op):
     ishape = (bs, ch, rImg1, rImg2)
     kshape = (nf, ch, rFlt1, rFlt2)
 
-    npy_img = theano._asarray(numpy.random.rand(*ishape), dtype='float32')
-    npy_kern = theano._asarray(numpy.random.rand(*kshape), dtype='float32')
+    npy_img = theano._asarray(np.random.rand(*ishape), dtype='float32')
+    npy_kern = theano._asarray(np.random.rand(*kshape), dtype='float32')
 
     i = cuda.CudaNdarrayType(
         broadcastable=[sh == 1 for sh in npy_img.shape])()
@@ -944,9 +944,9 @@ def test_stack_rows_segfault_070312():
     # Running this unittest with cuda-memcheck exposes an illegal read.
     # THEANO_FLAGS=device=gpu cuda-memcheck nosetests \
     # test_conv_cuda_ndarray.py:test_stack_rows_segfault_070312
-    img = theano.shared(numpy.random.rand(1, 80, 96, 96).astype('float32'))
-    kern = theano.shared(numpy.random.rand(1, 80, 9, 9).astype('float32'))
-    out = theano.shared(numpy.random.rand(1, 2, 2, 3).astype('float32'))
+    img = theano.shared(np.random.rand(1, 80, 96, 96).astype('float32'))
+    kern = theano.shared(np.random.rand(1, 80, 9, 9).astype('float32'))
+    out = theano.shared(np.random.rand(1, 2, 2, 3).astype('float32'))
     op = theano.tensor.nnet.conv.ConvOp(imshp=(80, 96, 96), kshp=(9, 9),
                                         nkern=1, bsize=1)
     f = theano.function([], [], updates=[(out, op(img, kern))], mode=theano_mode)

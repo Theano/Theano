@@ -17,7 +17,7 @@ except ImportError:
         def func(f):
             return f
         return func
-import numpy
+import numpy as np
 
 import theano
 import theano.tensor as T
@@ -42,13 +42,13 @@ def custom_name_func(testcase_func, param_num, param):
 def fetch_seed(pseed=None):
     """
     Returns the seed to use for running the unit tests.
-    If an explicit seed is given, it will be used for seeding numpy's rng.
+    If an explicit seed is given, it will be used for seeding np's rng.
     If not, it will use config.unittest.rseed (its default value is 666).
     If config.unittest.rseed is set to "random", it will seed the rng with
     None, which is equivalent to seeding with a random seed.
 
     Useful for seeding RandomState objects.
-    >>> rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+    >>> rng = np.random.RandomState(unittest_tools.fetch_seed())
     """
 
     seed = pseed or config.unittests.rseed
@@ -69,14 +69,14 @@ def fetch_seed(pseed=None):
 
 def seed_rng(pseed=None):
     """
-    Seeds numpy's random number generator with the value returned by fetch_seed.
+    Seeds np's random number generator with the value returned by fetch_seed.
     Usage: unittest_tools.seed_rng()
     """
 
     seed = fetch_seed(pseed)
     if pseed and pseed != seed:
         print('Warning: using seed given by config.unittests.rseed=%i' 'instead of seed %i given as parameter' % (seed, pseed), file=sys.stderr)
-    numpy.random.seed(seed)
+    np.random.seed(seed)
     return seed
 
 
@@ -87,7 +87,7 @@ def verify_grad(op, pt, n_tests=2, rng=None, *args, **kwargs):
     """
     if rng is None:
         seed_rng()
-        rng = numpy.random
+        rng = np.random
     T.verify_grad(op, pt, n_tests, rng, *args, **kwargs)
 
 #
@@ -251,7 +251,7 @@ class InferShapeTester(unittest.TestCase):
         numeric_outputs = outputs_function(*numeric_inputs)
         numeric_shapes = shapes_function(*numeric_inputs)
         for out, shape in zip(numeric_outputs, numeric_shapes):
-            assert numpy.all(out.shape == shape), (out.shape, shape)
+            assert np.all(out.shape == shape), (out.shape, shape)
 
 
 def str_diagnostic(expected, value, rtol, atol):
@@ -268,8 +268,8 @@ def str_diagnostic(expected, value, rtol, atol):
         print(expected.strides, end=' ', file=ssio)
         print(expected.min(), end=' ', file=ssio)
         print(expected.max(), end=' ', file=ssio)
-        print(numpy.isinf(expected).sum(), end=' ', file=ssio)
-        print(numpy.isnan(expected).sum(), end=' ', file=ssio)
+        print(np.isinf(expected).sum(), end=' ', file=ssio)
+        print(np.isnan(expected).sum(), end=' ', file=ssio)
         # only if all succeeds to we add anything to sio
         print(ssio.getvalue(), file=sio)
     except Exception:
@@ -282,8 +282,8 @@ def str_diagnostic(expected, value, rtol, atol):
         print(value.strides, end=' ', file=ssio)
         print(value.min(), end=' ', file=ssio)
         print(value.max(), end=' ', file=ssio)
-        print(numpy.isinf(value).sum(), end=' ', file=ssio)
-        print(numpy.isnan(value).sum(), end=' ', file=ssio)
+        print(np.isinf(value).sum(), end=' ', file=ssio)
+        print(np.isnan(value).sum(), end=' ', file=ssio)
         # only if all succeeds to we add anything to sio
         print(ssio.getvalue(), file=sio)
     except Exception:
@@ -293,19 +293,19 @@ def str_diagnostic(expected, value, rtol, atol):
     print("  value    :", value, file=sio)
 
     try:
-        ov = numpy.asarray(expected)
-        nv = numpy.asarray(value)
+        ov = np.asarray(expected)
+        nv = np.asarray(value)
         ssio = StringIO()
-        absdiff = numpy.absolute(nv - ov)
-        print("  Max Abs Diff: ", numpy.max(absdiff), file=ssio)
-        print("  Mean Abs Diff: ", numpy.mean(absdiff), file=ssio)
-        print("  Median Abs Diff: ", numpy.median(absdiff), file=ssio)
-        print("  Std Abs Diff: ", numpy.std(absdiff), file=ssio)
-        reldiff = numpy.absolute(nv - ov) / numpy.absolute(ov)
-        print("  Max Rel Diff: ", numpy.max(reldiff), file=ssio)
-        print("  Mean Rel Diff: ", numpy.mean(reldiff), file=ssio)
-        print("  Median Rel Diff: ", numpy.median(reldiff), file=ssio)
-        print("  Std Rel Diff: ", numpy.std(reldiff), file=ssio)
+        absdiff = np.absolute(nv - ov)
+        print("  Max Abs Diff: ", np.max(absdiff), file=ssio)
+        print("  Mean Abs Diff: ", np.mean(absdiff), file=ssio)
+        print("  Median Abs Diff: ", np.median(absdiff), file=ssio)
+        print("  Std Abs Diff: ", np.std(absdiff), file=ssio)
+        reldiff = np.absolute(nv - ov) / np.absolute(ov)
+        print("  Max Rel Diff: ", np.max(reldiff), file=ssio)
+        print("  Mean Rel Diff: ", np.mean(reldiff), file=ssio)
+        print("  Median Rel Diff: ", np.median(reldiff), file=ssio)
+        print("  Std Rel Diff: ", np.std(reldiff), file=ssio)
         # only if all succeeds to we add anything to sio
         print(ssio.getvalue(), file=sio)
     except Exception:

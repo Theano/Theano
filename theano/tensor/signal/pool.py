@@ -9,7 +9,7 @@ from __future__ import absolute_import, print_function, division
 import warnings
 import itertools
 
-import numpy
+import numpy as np
 from six.moves import xrange
 import six.moves.builtins as builtins
 import theano
@@ -236,7 +236,7 @@ class Pool(OpenMPOp):
                     if isinstance(out, theano.Variable):
                         return tensor.maximum(out, 0)
                     else:
-                        return numpy.maximum(out, 0)
+                        return np.maximum(out, 0)
             else:
                 if isinstance(v, theano.Variable):
                     return tensor.switch(tensor.ge(stride, downsample),
@@ -340,7 +340,7 @@ class Pool(OpenMPOp):
         if not self.ignore_border:
             assert all(z > 0 for z in z_shape[-nd:])
         if (z[0] is None) or (z[0].shape != z_shape):
-            z[0] = numpy.empty(z_shape, dtype=x.dtype)
+            z[0] = np.empty(z_shape, dtype=x.dtype)
         zz = z[0]
         # size of pooling output
         pool_out_shp = zz.shape[-nd:]
@@ -349,16 +349,16 @@ class Pool(OpenMPOp):
 
         # pad the image
         if max(pad) != 0:
-            y = numpy.zeros(x.shape[:-nd] + img_shp, dtype=x.dtype)
+            y = np.zeros(x.shape[:-nd] + img_shp, dtype=x.dtype)
             y[(slice(None),) * (len(x.shape) - nd) +
               tuple(slice(pad[i], img_shp[i] - pad[i]) for i in xrange(nd))] = x
         else:
             y = x
-        func = numpy.max
+        func = np.max
         if self.mode == 'sum':
-            func = numpy.sum
+            func = np.sum
         elif self.mode != 'max':
-            func = numpy.average
+            func = np.average
 
         # precompute the region boundaries for each dimension
         region_slices = [[] for i in xrange(nd)]
@@ -372,11 +372,11 @@ class Pool(OpenMPOp):
                 region_slices[i].append(slice(start, end))
 
         # iterate over non-pooling dimensions
-        for k in numpy.ndindex(*x.shape[:-nd]):
+        for k in np.ndindex(*x.shape[:-nd]):
             zzk = zz[k]
             yk = y[k]
             # iterate over pooling regions
-            for r in numpy.ndindex(*pool_out_shp):
+            for r in np.ndindex(*pool_out_shp):
                 zzk[r] = func(
                     yk[[region_slices[i][r[i]] for i in xrange(nd)]])
 
@@ -769,7 +769,7 @@ class PoolGrad(OpenMPOp):
                 if isinstance(out, theano.Variable):
                     return tensor.maximum(out, 0)
                 else:
-                    return numpy.maximum(out, 0)
+                    return np.maximum(out, 0)
             else:
                 if isinstance(v, theano.Variable):
                     return tensor.switch(tensor.ge(stride, downsample),
@@ -877,12 +877,12 @@ class MaxPoolGrad(PoolGrad):
 
         # pad the image
         if max(pad) != 0:
-            y = numpy.zeros(x.shape[:-nd] + img_shp, dtype=x.dtype)
+            y = np.zeros(x.shape[:-nd] + img_shp, dtype=x.dtype)
             y[(slice(None),) * (len(x.shape) - nd) +
               tuple(slice(pad[i], img_shp[i] - pad[i]) for i in xrange(nd))] = x
         else:
             y = x
-        gx = numpy.zeros_like(y)
+        gx = np.zeros_like(y)
 
         # precompute the region boundaries for each dimension
         region_ranges = [[] for i in xrange(nd)]
@@ -893,13 +893,13 @@ class MaxPoolGrad(PoolGrad):
                 region_ranges[i].append(xrange(start, end))
 
         # iterate over non-pooling dimensions
-        for k in numpy.ndindex(*x.shape[:-nd]):
+        for k in np.ndindex(*x.shape[:-nd]):
             gxk = gx[k]
             gzk = gz[k]
             yk = y[k]
             maxoutk = maxout[k]
             # iterate over pooling regions
-            for r in numpy.ndindex(*pool_out_shp):
+            for r in np.ndindex(*pool_out_shp):
                 maxout_value = maxoutk[r]
                 # iterate inside region
                 for c in itertools.product(*[region_ranges[i][r[i]]
@@ -1193,7 +1193,7 @@ class AveragePoolGrad(PoolGrad):
             raise NotImplementedError()
         z_shape = self.out_shape(x.shape, ws, self.ignore_border, stride, pad, nd)
         if (gx_stg[0] is None) or (gx_stg[0].shape != z_shape):
-            gx_stg[0] = numpy.empty(z_shape, dtype=x.dtype)
+            gx_stg[0] = np.empty(z_shape, dtype=x.dtype)
         zz = gx_stg[0]
         # size of pooling output
         pool_out_shp = zz.shape[-nd:]
@@ -1202,7 +1202,7 @@ class AveragePoolGrad(PoolGrad):
         sum_mode = self.mode == 'sum'
 
         # initialize the padded output
-        gx = numpy.zeros((x.shape[:-nd] + img_shp), dtype=x.dtype)
+        gx = np.zeros((x.shape[:-nd] + img_shp), dtype=x.dtype)
 
         # precompute the region boundaries and sizes for each dimension
         region_slices = [[] for i in xrange(nd)]
@@ -1219,11 +1219,11 @@ class AveragePoolGrad(PoolGrad):
 
         # iterate over non-pooling dimensions
         region_slice = [None] * nd
-        for k in numpy.ndindex(*x.shape[:-nd]):
+        for k in np.ndindex(*x.shape[:-nd]):
             gzk = gz[k]
             gxk = gx[k]
             # iterate over pooling regions
-            for r in numpy.ndindex(*pool_out_shp):
+            for r in np.ndindex(*pool_out_shp):
                 region_size = 1
                 for i in xrange(nd):
                     region_slice[i] = region_slices[i][r[i]]
@@ -1532,7 +1532,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
                 'DownsampleFactorMaxGradGrad requires input '
                 'with {} or more dimensions'.format(nd))
         if (z[0] is None) or (z[0].shape != maxout.shape):
-            z[0] = numpy.zeros(maxout.shape, dtype=x.dtype)
+            z[0] = np.zeros(maxout.shape, dtype=x.dtype)
         ggz = z[0]  # grad wrt maxout_grad has the same shape as maxout
         # size of pooling output
         pool_out_shp = ggz.shape[-nd:]
@@ -1540,10 +1540,10 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
 
         # pad the image and its gradients
         if max(pad) > 0:
-            y_padded = numpy.zeros(x.shape[:-nd] + img_shp, dtype=x.dtype)
+            y_padded = np.zeros(x.shape[:-nd] + img_shp, dtype=x.dtype)
             y_padded[(slice(None),) * (len(x.shape) - nd) +
                      tuple(slice(pad[i], img_shp[i] - pad[i]) for i in xrange(nd))] = x
-            ggx_padded = numpy.zeros(x.shape[:-nd] + img_shp, dtype=x.dtype)
+            ggx_padded = np.zeros(x.shape[:-nd] + img_shp, dtype=x.dtype)
             ggx_padded[(slice(None),) * (len(x.shape) - nd) +
                        tuple(slice(pad[i], img_shp[i] - pad[i]) for i in xrange(nd))] = ggx
 
@@ -1560,13 +1560,13 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
                 region_ranges[i].append(xrange(start, end))
 
         # iterate over non-pooling dimensions
-        for k in numpy.ndindex(*x.shape[:-nd]):
+        for k in np.ndindex(*x.shape[:-nd]):
             ggxk = ggx_padded[k]
             ggzk = ggz[k]
             yk = y_padded[k]
             maxoutk = maxout[k]
             # iterate over pooling regions
-            for r in numpy.ndindex(*pool_out_shp):
+            for r in np.ndindex(*pool_out_shp):
                 # iterate inside region
                 maxout_value = maxoutk[r]
                 for c in itertools.product(*[region_ranges[i][r[i]]

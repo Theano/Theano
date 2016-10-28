@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 import theano
 from theano import scalar, gof
@@ -43,8 +43,8 @@ def test_elemwise_pow():
             output = base ** exp
             f = theano.function([base, exp], output)
 
-            base_val = numpy.random.randint(0, 5, size=10).astype(dtype_base)
-            exp_val = numpy.random.randint(0, 3, size=10).astype(dtype_exp)
+            base_val = np.random.randint(0, 5, size=10).astype(dtype_base)
+            exp_val = np.random.randint(0, 3, size=10).astype(dtype_exp)
 
             # Call the function to make sure the output is valid
             out = f(base_val, exp_val)
@@ -217,9 +217,9 @@ class T_gpureduce_dtype(test_elemwise.T_reduce_dtype):
 
 
 def speed_reduce10():
-    import numpy
+    import numpy as np
     import theano
-    data = numpy.random.rand(1000, 1000).astype("float32")
+    data = np.random.rand(1000, 1000).astype("float32")
     m = theano.tensor.fmatrix()
     f = theano.function([m], [m.sum(axis=0), m.T.sum(axis=0)],
                         mode=mode_with_gpu)

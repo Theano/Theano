@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import unittest
 
-import numpy
+import numpy as np
 
 import theano
 import theano.typed_list
@@ -12,7 +12,7 @@ from theano.tests import unittest_tools as utt
 
 # took from tensors/tests/test_basic.py
 def rand_ranged_matrix(minimum, maximum, shape):
-    return numpy.asarray(numpy.random.rand(*shape) * (maximum - minimum) +
+    return np.asarray(np.random.rand(*shape) * (maximum - minimum) +
                          minimum, dtype=theano.config.floatX)
 
 
@@ -84,7 +84,7 @@ class test_typed_list_type(unittest.TestCase):
 
         x = rand_ranged_matrix(-1000, 1000, [100, 100])
 
-        self.assertTrue(numpy.array_equal(myType.filter([x]), [x]))
+        self.assertTrue(np.array_equal(myType.filter([x]), [x]))
 
     def test_intern_filter(self):
         """
@@ -95,9 +95,9 @@ class test_typed_list_type(unittest.TestCase):
         myType = TypedListType(T.TensorType('float64',
                                             (False, False)))
 
-        x = numpy.asarray([[4, 5], [4, 5]], dtype='float32')
+        x = np.asarray([[4, 5], [4, 5]], dtype='float32')
 
-        self.assertTrue(numpy.array_equal(myType.filter([x]), [x]))
+        self.assertTrue(np.array_equal(myType.filter([x]), [x]))
 
     # Will fail for unknown reasons
     # under search
@@ -111,7 +111,7 @@ class test_typed_list_type(unittest.TestCase):
         for i in range(10000):
             testList.append(x)
 
-        self.assertTrue(numpy.array_equal(myType.filter(testList), testList))
+        self.assertTrue(np.array_equal(myType.filter(testList), testList))
     """
 
     def test_basic_nested_list(self):
@@ -125,7 +125,7 @@ class test_typed_list_type(unittest.TestCase):
 
         x = rand_ranged_matrix(-1000, 1000, [100, 100])
 
-        self.assertTrue(numpy.array_equal(myType.filter([[x]]), [[x]]))
+        self.assertTrue(np.array_equal(myType.filter([[x]]), [[x]]))
 
     def test_comparison_different_depth(self):
         """

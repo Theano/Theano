@@ -23,13 +23,13 @@ NanGuardMode can be used as follows:
 
 .. testcode::
 
-    import numpy
+    import numpy as np
     import theano
     import theano.tensor as T
     from theano.compile.nanguardmode import NanGuardMode
     
     x = T.matrix()
-    w = theano.shared(numpy.random.randn(5, 7).astype(theano.config.floatX))
+    w = theano.shared(np.random.randn(5, 7).astype(theano.config.floatX))
     y = T.dot(x, w)
     fun = theano.function(
         [x], y,
@@ -43,8 +43,8 @@ example, if we pass the following values to ``fun``:
 
 .. testcode::
 
-    infa = numpy.tile(
-        (numpy.asarray(100.) ** 1000000).astype(theano.config.floatX), (3, 5))
+    infa = np.tile(
+        (np.asarray(100.) ** 1000000).astype(theano.config.floatX), (3, 5))
     fun(infa)
 
 .. testoutput::

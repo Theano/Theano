@@ -4,7 +4,7 @@ import logging
 import os
 import shutil
 
-import numpy
+import numpy as np
 
 import theano
 from six import string_types, iteritems
@@ -22,7 +22,7 @@ def cleanup():
     Old clean up include key in old format or with old version of the c_code:
     1) keys that have an ndarray in them.
        Now we use a hash in the keys of the constant data.
-    2) key that don't have the numpy ABI version in them
+    2) key that don't have the np ABI version in them
     3) They do not have a compile version string
 
     If there is no key left for a compiled module, we delete the module.
@@ -42,7 +42,7 @@ def cleanup():
                         have_npy_abi_version = False
                         have_c_compiler = False
                         for obj in flatten(key):
-                            if isinstance(obj, numpy.ndarray):
+                            if isinstance(obj, np.ndarray):
                                 # Reuse have_npy_abi_version to
                                 # force the removing of key
                                 have_npy_abi_version = False

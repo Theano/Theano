@@ -143,10 +143,10 @@ Exercise 2
 
 .. code-block:: python
 
-    import numpy
+    import numpy as np
     import theano
     import theano.tensor as tt
-    rng = numpy.random
+    rng = np.random
 
     N = 400
     feats = 784
@@ -158,7 +158,7 @@ Exercise 2
     x = tt.matrix("x")
     y = tt.vector("y")
     w = theano.shared(rng.randn(feats).astype(theano.config.floatX), name="w")
-    b = theano.shared(numpy.asarray(0., dtype=theano.config.floatX), name="b")
+    b = theano.shared(np.asarray(0., dtype=theano.config.floatX), name="b")
     x.tag.test_value = D[0]
     y.tag.test_value = D[1]
     #print "Initial model:"

@@ -11,7 +11,7 @@ from __future__ import absolute_import, print_function, division
 
 import logging
 
-import numpy
+import numpy as np
 
 from theano.scalar.basic import upgrade_to_float_no_complex, complex_types
 from theano.scalar.basic_scipy import Erfinv
@@ -26,7 +26,7 @@ _logger = logging.getLogger(_logger_name)
 
 
 def _logical_scalar(x):
-    return numpy.all(x.type.broadcastable)
+    return np.all(x.type.broadcastable)
 
 
 def get_str_list_logical_scalar(node, value_str='ii_i%i_value',
@@ -1005,7 +1005,7 @@ nd_collapse_[i]=0;
                 continue
 
             # with python 2.4 (at least), if a broadcastable pattern is made of
-            # numpy.bool_ instead of bool, calling int() once is not enough.
+            # np.bool_ instead of bool, calling int() once is not enough.
             broadcasts = map(int, map(int, node.inputs[id].broadcastable))
             broadcasts = ', '.join(map(str, broadcasts))
             nd = node.inputs[id].ndim

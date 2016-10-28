@@ -4,7 +4,7 @@ import shutil
 import unittest
 from tempfile import mkdtemp
 
-import numpy
+import numpy as np
 from numpy.testing import assert_allclose
 from nose.plugins.skip import SkipTest
 
@@ -62,14 +62,14 @@ class T_dump_load(unittest.TestCase):
         foo_2 = theano.shared(1, name='foo')
         foo_3 = theano.shared(2, name='foo')
         with open('model.zip', 'wb') as f:
-            dump((foo_1, foo_2, foo_3, numpy.array(3)), f)
-        keys = list(numpy.load('model.zip').keys())
+            dump((foo_1, foo_2, foo_3, np.array(3)), f)
+        keys = list(np.load('model.zip').keys())
         assert keys == ['foo', 'foo_2', 'foo_3', 'array_0', 'pkl']
-        foo_3 = numpy.load('model.zip')['foo_3']
-        assert foo_3 == numpy.array(2)
+        foo_3 = np.load('model.zip')['foo_3']
+        assert foo_3 == np.array(2)
         with open('model.zip', 'rb') as f:
             foo_1, foo_2, foo_3, array = load(f)
-        assert array == numpy.array(3)
+        assert array == np.array(3)
 
 
 class TestStripPickler(unittest.TestCase):

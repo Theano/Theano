@@ -125,30 +125,30 @@ if (config.device.startswith('cuda') or
         config.contexts != ''):
     import theano.gpuarray
 
-# Use config.numpy to call numpy.seterr
-import numpy
+# Use config.np to call np.seterr
+import numpy as np
 
-if config.numpy.seterr_all == 'None':
+if config.np.seterr_all == 'None':
     _all = None
 else:
-    _all = config.numpy.seterr_all
-if config.numpy.seterr_divide == 'None':
+    _all = config.np.seterr_all
+if config.np.seterr_divide == 'None':
     _divide = None
 else:
-    _divide = config.numpy.seterr_divide
-if config.numpy.seterr_over == 'None':
+    _divide = config.np.seterr_divide
+if config.np.seterr_over == 'None':
     _over = None
 else:
-    _over = config.numpy.seterr_over
-if config.numpy.seterr_under == 'None':
+    _over = config.np.seterr_over
+if config.np.seterr_under == 'None':
     _under = None
 else:
-    _under = config.numpy.seterr_under
-if config.numpy.seterr_invalid == 'None':
+    _under = config.np.seterr_under
+if config.np.seterr_invalid == 'None':
     _invalid = None
 else:
-    _invalid = config.numpy.seterr_invalid
-numpy.seterr(
+    _invalid = config.np.seterr_invalid
+np.seterr(
     all=_all,
     divide=_divide,
     over=_over,

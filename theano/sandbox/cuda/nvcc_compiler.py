@@ -6,7 +6,7 @@ import subprocess
 import sys
 from locale import getpreferredencoding
 
-import numpy
+import numpy as np
 
 from theano import config
 from theano.compat import decode, decode_with
@@ -101,10 +101,10 @@ class NVCC_compiler(Compiler):
         # that use the old API.
         flags.append("-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
 
-        # numpy 1.7 deprecated the following macro but the didn't
+        # np 1.7 deprecated the following macro but the didn't
         # existed in the past
-        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-        if bool(numpy_ver < [1, 7]):
+        np_ver = [int(n) for n in np.__version__.split('.')[:2]]
+        if bool(np_ver < [1, 7]):
             flags.append("-DNPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
             flags.append("-DNPY_ARRAY_ALIGNED=NPY_ALIGNED")
             flags.append("-DNPY_ARRAY_WRITEABLE=NPY_WRITEABLE")

@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 import os
 import copy
 import re
-import numpy
+import numpy as np
 
 from theano import Op, Apply, Type, Variable
 from theano import tensor, config
@@ -128,7 +128,7 @@ class Kernel(object):
 
     `params` should contain the data type for each argument.  Buffer
     arguments should use the GpuArray class as the data type and
-    scalar should use their equivalent numpy dtype.  For ga_size and
+    scalar should use their equivalent np dtype.  For ga_size and
     ga_ssize, use gpuarray.SIZE and gpuarray.SSIZE.
 
     If the `ctypes` flags is set to `True` then it should be a C
@@ -199,7 +199,7 @@ class Kernel(object):
     def get_flags(*types):
         def get_dtype(t):
             if isinstance(t, string_types):
-                return numpy.dtype(t)
+                return np.dtype(t)
             elif isinstance(t, Type):
                 return t.dtype
             elif isinstance(t, Variable):
@@ -208,13 +208,13 @@ class Kernel(object):
                 raise TypeError("can't get a dtype from %s" % (type(t),))
         dtypes = [get_dtype(t) for t in types]
         flags = dict(cluda=True)
-        if any(d == numpy.float64 for d in dtypes):
+        if any(d == np.float64 for d in dtypes):
             flags['have_double'] = True
         if any(d.itemsize < 4 for d in dtypes):
             flags['have_small'] = True
         if any(d.kind == 'c' for d in dtypes):
             flags['have_complex'] = True
-        if any(d == numpy.float16 for d in dtypes):
+        if any(d == np.float16 for d in dtypes):
             flags['have_half'] = True
         return flags
 
@@ -268,8 +268,8 @@ def get_ctype(dtype):
     elif dtype == gpuarray.SSIZE:
         return "ssize_t"
     else:
-        if not isinstance(dtype, numpy.dtype):
-            dtype = numpy.dtype(dtype)
+        if not isinstance(dtype, np.dtype):
+            dtype = np.dtype(dtype)
         return 'npy_' + dtype.name
 
 
@@ -451,7 +451,7 @@ def get_dtype(s):
     if s == 'ssize':
         return gpuarray.SSIZE
     else:
-        return numpy.dtype(s)
+        return np.dtype(s)
 
 
 class CGpuKernelBase(COp, GpuKernelBase):
@@ -548,7 +548,7 @@ class HostFromGpu(Op):
     def perform(self, node, inp, out):
         x, = inp
         z, = out
-        z[0] = numpy.asarray(x)
+        z[0] = np.asarray(x)
 
     def c_code(self, node, name, inputs, outputs, sub):
         return """

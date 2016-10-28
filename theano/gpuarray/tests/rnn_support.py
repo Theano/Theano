@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 
 import theano
 import theano.tensor as T
-import numpy
+import numpy as np
 
 
 class Model(object):
@@ -27,9 +27,9 @@ class Model(object):
 
 def uniform(stdev, size):
     """uniform distribution with the given stdev and size"""
-    return numpy.random.uniform(
-        low=-stdev * numpy.sqrt(3),
-        high=stdev * numpy.sqrt(3),
+    return np.random.uniform(
+        low=-stdev * np.sqrt(3),
+        high=stdev * np.sqrt(3),
         size=size
     ).astype(theano.config.floatX)
 
@@ -37,7 +37,7 @@ def uniform(stdev, size):
 def linear_transform_weights(input_dim, output_dim,
                              param_list=None, name=""):
     "theano shared variable given input and output dimension"
-    weight_inialization = uniform(numpy.sqrt(2.0 / input_dim),
+    weight_inialization = uniform(np.sqrt(2.0 / input_dim),
                                   (input_dim, output_dim))
     W = theano.shared(weight_inialization, name=name)
 
@@ -49,7 +49,7 @@ def linear_transform_weights(input_dim, output_dim,
 
 def bias_weights(length, param_list=None, name=""):
     "theano shared variable for bias unit, given length"
-    bias_initialization = numpy.zeros(length).astype(theano.config.floatX)
+    bias_initialization = np.zeros(length).astype(theano.config.floatX)
 
     bias = theano.shared(
         bias_initialization,

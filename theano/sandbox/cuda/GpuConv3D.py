@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 import theano
 import theano.tensor as T
@@ -303,9 +303,9 @@ gpu_convd = GpuConv3D()
 @local_optimizer([Conv3D])
 def local_gpu_conv3d(node):
     if isinstance(node.op, Conv3D):
-        if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu)
+        if np.any([i.owner and isinstance(i.owner.op, HostFromGpu)
                       for i in node.inputs]):
-            if numpy.all([o.type.dtype == 'float32' for o in node.outputs]):
+            if np.all([o.type.dtype == 'float32' for o in node.outputs]):
                 V, W, b, d = node.inputs
                 return [host_from_gpu(gpu_convd(as_cuda_ndarray_variable(V),
                                                 as_cuda_ndarray_variable(W),

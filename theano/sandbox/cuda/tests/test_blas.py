@@ -7,7 +7,7 @@ from theano import gradient
 from theano import tensor
 from theano.tests import unittest_tools
 
-import numpy
+import numpy as np
 import theano.sandbox.cuda as tcn
 import theano.compile.mode
 from theano.tensor.tests.test_blas import BaseGemv, TestBlasStrides, TestGer
@@ -42,7 +42,7 @@ mode_without_gpu.check_py_code = False
 
 
 def my_rand(*shape):
-    return theano._asarray(numpy.random.rand(*shape), dtype='float32')
+    return theano._asarray(np.random.rand(*shape), dtype='float32')
 
 
 class TestBatchedDot(unittest_tools.InferShapeTester):
@@ -55,8 +55,8 @@ class TestBatchedDot(unittest_tools.InferShapeTester):
 
             def cmp(a_shp, b_shp):
 
-                a = numpy.random.randn(* a_shp).astype(numpy.float32)
-                b = numpy.random.randn(* b_shp).astype(numpy.float32)
+                a = np.random.randn(* a_shp).astype(np.float32)
+                b = np.random.randn(* b_shp).astype(np.float32)
 
                 x = tensor.ftensor3()
                 y = tensor.ftensor3()
@@ -65,18 +65,18 @@ class TestBatchedDot(unittest_tools.InferShapeTester):
                                     batched_dot(x, y),
                                     mode=mode_with_gpu)
 
-                z0 = numpy.asarray(f(a, b))
+                z0 = np.asarray(f(a, b))
 
                 ga = cuda_ndarray.CudaNdarray(a)
                 gb = cuda_ndarray.CudaNdarray(b)
 
-                z1 = numpy.asarray(f(ga, gb))
+                z1 = np.asarray(f(ga, gb))
 
-                z_test = numpy.sum(
+                z_test = np.sum(
                     a[:, :, :, None] * b[:, None, :, :], axis=-2)
-                z1 = numpy.asarray(f(ga, gb))
+                z1 = np.asarray(f(ga, gb))
 
-                z_test = numpy.sum(
+                z_test = np.sum(
                     a[:, :, :, None] * b[:, None, :, :], axis=-2)
 
                 unittest_tools.assert_allclose(z0, z_test)
@@ -103,8 +103,8 @@ class TestBatchedDot(unittest_tools.InferShapeTester):
 
         def fail(a_shp, b_shp):
 
-            a = numpy.random.randn(* a_shp).astype(numpy.float32)
-            b = numpy.random.randn(* b_shp).astype(numpy.float32)
+            a = np.random.randn(* a_shp).astype(np.float32)
+            b = np.random.randn(* b_shp).astype(np.float32)
 
             x = tensor.ftensor3()
             y = tensor.ftensor3()
@@ -124,8 +124,8 @@ class TestBatchedDot(unittest_tools.InferShapeTester):
     def test_batched_dot_gradient(self):
         unittest_tools.verify_grad(
             batched_dot, [
-                numpy.random.randn(5, 7, 2).astype(numpy.float32),
-                numpy.random.randn(5, 2, 6).astype(numpy.float32)],
+                np.random.randn(5, 7, 2).astype(np.float32),
+                np.random.randn(5, 2, 6).astype(np.float32)],
             mode=mode_with_gpu)
 
     def test_infer_shape(self):
@@ -152,7 +152,7 @@ def test_dot22():
         bval = my_rand(* b_shp)
         f(bval)
 
-        assert numpy.allclose(numpy.dot(a0, bval), a.get_value())
+        assert np.allclose(np.dot(a0, bval), a.get_value())
 
         # Try with a matrix equal to a0, but with strides in both dims
         a.set_value(a0)
@@ -179,16 +179,16 @@ def test_dot22scalar():
 
         f = theano.function(
             [a, b],
-            tensor.dot(a, b) * numpy.asarray(4, 'float32'),
+            tensor.dot(a, b) * np.asarray(4, 'float32'),
             mode=mode_with_gpu)
         f2 = theano.function(
             [a, b],
-            tensor.dot(a, b) * numpy.asarray(4, 'float32'))
+            tensor.dot(a, b) * np.asarray(4, 'float32'))
         t = f.maker.fgraph.toposort()
         assert any([isinstance(n.op, tcn.blas.GpuDot22Scalar) for n in t])
 #        assert any([isinstance(n.op, tcn.basic_ops.GpuAllocEmpty)
 #                    for n in t])
-        assert numpy.allclose(f(av, bv), f2(av, bv))
+        assert np.allclose(f(av, bv), f2(av, bv))
 
         f = theano.function([a, b, scalar], tensor.dot(a, b) * scalar,
                             mode=mode_with_gpu)
@@ -197,7 +197,7 @@ def test_dot22scalar():
         assert any([isinstance(n.op, tcn.blas.GpuDot22Scalar) for n in t])
 #        assert any([isinstance(n.op, tcn.basic_ops.GpuAllocEmpty)
 #                    for n in t])
-        assert numpy.allclose(f(av, bv, 0.5), f2(av, bv, 0.5))
+        assert np.allclose(f(av, bv, 0.5), f2(av, bv, 0.5))
 
         f = theano.function([a, b, scalar],
                             tensor.blas._dot22scalar(a, b, scalar),
@@ -209,7 +209,7 @@ def test_dot22scalar():
         assert isinstance(t[1].op, tcn.GpuFromHost)
         assert isinstance(t[2].op, tcn.blas.GpuDot22Scalar)
         assert isinstance(t[3].op, tcn.HostFromGpu)
-        assert numpy.allclose(f(av, bv, 0.5), f2(av, bv, 0.5))
+        assert np.allclose(f(av, bv, 0.5), f2(av, bv, 0.5))
     cmp((3, 4), (4, 5))
     cmp((0, 4), (4, 5))
     cmp((3, 4), (4, 0))
@@ -235,7 +235,7 @@ def test_gemm():
         cval = my_rand(a_shp[0], b_shp[1])
         f(bval, cval)
 
-        assert numpy.allclose(numpy.dot(a0, bval) + numpy.exp(cval),
+        assert np.allclose(np.dot(a0, bval) + np.exp(cval),
                               a.get_value())
 
         # Try with a matrix equal to a0, but with strides in both dims
@@ -275,8 +275,8 @@ def test_gemm_no_inplace():
         bval2 = my_rand(*b_shp)
         rval = f(bval, bval2)
 
-        assert numpy.allclose(numpy.dot(a0, bval) + cval, a.get_value())
-        assert numpy.allclose(numpy.dot(a0, bval2) + cval, rval)
+        assert np.allclose(np.dot(a0, bval) + cval, a.get_value())
+        assert np.allclose(np.dot(a0, bval2) + cval, rval)
 
         # Try with a matrix equal to a0, but with strides in both dims
         a.set_value(a0)
@@ -312,13 +312,13 @@ if 0:
                                         (5, 5, [[[[6, 8], [16, 18], [21, 23]]]],
                                          [[[[6, 8, 9], [16, 18, 19], [21, 23, 24]]]])]:
             for border, ret in [(True, r_true), (False, r_false)]:
-                ret = numpy.array(ret)
+                ret = np.array(ret)
                 a = tcn.blas.Pool((2, 2), border)
                 dmatrix4 = tensor.TensorType("float32", (False, False, False, False))
                 b = dmatrix4()
                 f = pfunc([b], [a(b)], mode=mode_with_gpu)
 
-                bval = numpy.arange(0, d0 * d1).reshape(1, 1, d0, d1)
+                bval = np.arange(0, d0 * d1).reshape(1, 1, d0, d1)
                 r = f(bval)[0]
     #            print bval, bval.shape, border
                 # print r, r.shape
@@ -357,7 +357,7 @@ def test_downsample():
             (65536, 1, 10, 10),
             (1, 65536, 10, 10), ]
 
-    numpy.random.RandomState(unittest_tools.fetch_seed()).shuffle(shps)
+    np.random.RandomState(unittest_tools.fetch_seed()).shuffle(shps)
 
     for shp in shps:
         for ds in (2, 2), (3, 2), (1, 1):
@@ -383,7 +383,7 @@ def test_downsample():
                             for node in f.maker.fgraph.toposort()])
                 assert any([isinstance(node.op, Pool)
                             for node in f2.maker.fgraph.toposort()])
-                assert numpy.allclose(f(), f2())
+                assert np.allclose(f(), f2())
 
                 # The grad is too slow on GT220 GPU
                 # This cause the computer to freeze...
@@ -408,7 +408,7 @@ def test_downsample():
                             for node in g.maker.fgraph.toposort()])
                 assert any([isinstance(node.op, PoolGrad)
                             for node in g2.maker.fgraph.toposort()])
-                assert numpy.allclose(g(), g2()), shp
+                assert np.allclose(g(), g2()), shp
 
                 ggf = gradient.Lop(tensor.grad((ds_op(
                     tensor.as_tensor_variable(a), ds)**2).sum(), a), a, a)
@@ -426,7 +426,7 @@ def test_downsample():
                 assert any([isinstance(
                     node.op, DownsampleFactorMaxGradGrad)
                     for node in gg2.maker.fgraph.toposort()])
-                assert numpy.allclose(gg(), gg2()), shp
+                assert np.allclose(gg(), gg2()), shp
 
                 # We already check that the gpu version return
                 # the same value as the gpu version for
@@ -478,8 +478,8 @@ class TestVectorMatrixDot(TestCase):
 
     def test_dot_vm(self):
         ''' Test vector dot matrix '''
-        v = theano.shared(numpy.array(numpy.random.rand(2), dtype='float32'))
-        m = theano.shared(numpy.array(numpy.random.rand(2, 5),
+        v = theano.shared(np.array(np.random.rand(2), dtype='float32'))
+        m = theano.shared(np.array(np.random.rand(2, 5),
                                       dtype='float32'))
         no_gpu_f = theano.function([], theano.dot(v, m), mode=mode_without_gpu)
         gpu_f = theano.function([], theano.dot(v, m), mode=mode_with_gpu)
@@ -489,8 +489,8 @@ class TestVectorMatrixDot(TestCase):
                                  mode=mode_with_gpu)
 
         # Assert they produce the same output
-        assert numpy.allclose(no_gpu_f(), gpu_f(), atol=self.atol)
-        assert numpy.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
+        assert np.allclose(no_gpu_f(), gpu_f(), atol=self.atol)
+        assert np.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
         # Assert that the gpu version actually uses gpu
         assert sum([node.op is gpu_gemv_inplace for node in
                     gpu_f.maker.fgraph.toposort()]) == 1
@@ -502,13 +502,13 @@ class TestVectorMatrixDot(TestCase):
             m.get_value(borrow=True,
                         return_internal_type=True)[::-1, ::-1],
             borrow=True)
-        assert numpy.allclose(no_gpu_f(), gpu_f(), atol=self.atol)
-        assert numpy.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
+        assert np.allclose(no_gpu_f(), gpu_f(), atol=self.atol)
+        assert np.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
 
     def test_dot_mv(self):
         ''' Test matrix dot vector '''
-        v = theano.shared(numpy.array(numpy.random.rand(2), dtype='float32'))
-        m = theano.shared(numpy.array(numpy.random.rand(5, 2),
+        v = theano.shared(np.array(np.random.rand(2), dtype='float32'))
+        m = theano.shared(np.array(np.random.rand(5, 2),
                                       dtype='float32'))
         no_gpu_f = theano.function([], theano.dot(m, v), mode=mode_without_gpu)
         gpu_f = theano.function([], theano.dot(m, v), mode=mode_with_gpu)
@@ -518,8 +518,8 @@ class TestVectorMatrixDot(TestCase):
                                  mode=mode_with_gpu)
 
         # Assert they produce the same output
-        assert numpy.allclose(no_gpu_f(), gpu_f(), atol=self.atol)
-        assert numpy.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
+        assert np.allclose(no_gpu_f(), gpu_f(), atol=self.atol)
+        assert np.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
         # Assert that the gpu version actually uses gpu
         assert sum([node.op is gpu_gemv_inplace for node in
                     gpu_f.maker.fgraph.toposort()]) == 1
@@ -528,11 +528,11 @@ class TestVectorMatrixDot(TestCase):
 
     def test_gemv1(self):
         ''' test vector1+dot(matrix,vector2) '''
-        v1 = theano.tensor._shared(numpy.array(numpy.random.rand(2),
+        v1 = theano.tensor._shared(np.array(np.random.rand(2),
                                                dtype='float32'))
-        v2 = theano.tensor._shared(numpy.array(numpy.random.rand(5),
+        v2 = theano.tensor._shared(np.array(np.random.rand(5),
                                                dtype='float32'))
-        m = theano.tensor._shared(numpy.array(numpy.random.rand(5, 2),
+        m = theano.tensor._shared(np.array(np.random.rand(5, 2),
                                               dtype='float32'))
 
         no_gpu_f = theano.function([], v2 + theano.dot(m, v1),
@@ -546,8 +546,8 @@ class TestVectorMatrixDot(TestCase):
             mode=mode_with_gpu)
 
         # Assert they produce the same output
-        assert numpy.allclose(no_gpu_f(), gpu_f(), atol=self.atol)
-        assert numpy.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
+        assert np.allclose(no_gpu_f(), gpu_f(), atol=self.atol)
+        assert np.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
         # Assert that the gpu version actually uses gpu
         assert sum([node.op is gpu_gemv_inplace for node in
                     gpu_f2.maker.fgraph.toposort()]) == 1
@@ -556,9 +556,9 @@ class TestVectorMatrixDot(TestCase):
 
     def test_gemv2(self):
         ''' test vector1+dot(vector2,matrix) '''
-        v1 = theano.shared(numpy.array(numpy.random.rand(5), dtype='float32'))
-        v2 = tensor._shared(numpy.array(numpy.random.rand(2), dtype='float32'))
-        m = theano.shared(numpy.array(numpy.random.rand(5, 2),
+        v1 = theano.shared(np.array(np.random.rand(5), dtype='float32'))
+        v2 = tensor._shared(np.array(np.random.rand(2), dtype='float32'))
+        m = theano.shared(np.array(np.random.rand(5, 2),
                                       dtype='float32'))
 
         no_gpu_f = theano.function([], v2 + theano.dot(v1, m),
@@ -572,8 +572,8 @@ class TestVectorMatrixDot(TestCase):
             mode=mode_with_gpu)
 
         # Assert they produce the same output
-        assert numpy.allclose(no_gpu_f(), gpu_f(), atol=self.atol)
-        assert numpy.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
+        assert np.allclose(no_gpu_f(), gpu_f(), atol=self.atol)
+        assert np.allclose(no_gpu_f(), gpu_f2(), atol=self.atol)
         # Assert that the gpu version actually uses gpu
         assert sum([node.op is gpu_gemv_inplace for node in
                     gpu_f2.maker.fgraph.toposort()]) == 1

@@ -20,7 +20,7 @@ import logging
 import warnings
 from collections import OrderedDict
 
-import numpy
+import numpy as np
 
 import theano
 from theano.compat import izip
@@ -589,8 +589,8 @@ def get_updates_and_outputs(ls):
 def isNaN_or_Inf_or_None(x):
     isNone = x is None
     try:
-        isNaN = numpy.isnan(x)
-        isInf = numpy.isinf(x)
+        isNaN = np.isnan(x)
+        isInf = np.isinf(x)
         isStr = isinstance(x, string_types)
     except Exception:
         isNaN = False
@@ -599,8 +599,8 @@ def isNaN_or_Inf_or_None(x):
     if not isNaN and not isInf:
         try:
             val = get_scalar_constant_value(x)
-            isInf = numpy.isinf(val)
-            isNaN = numpy.isnan(val)
+            isInf = np.isinf(val)
+            isNaN = np.isnan(val)
         except Exception:
             isNaN = False
             isInf = False
@@ -929,7 +929,7 @@ def scan_can_remove_outs(op, out_idxs):
         added = False
         for pos, idx in enumerate(out_idxs):
             if (out_idxs_mask[pos] and
-                 numpy.any([x in required_inputs for x in out_ins[idx]])):
+                 np.any([x in required_inputs for x in out_ins[idx]])):
                 # This output is required ..
                 out_idxs_mask[pos] = 0
                 required_inputs += gof.graph.inputs([op.outputs[idx]])

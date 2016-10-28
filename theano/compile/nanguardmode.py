@@ -1,3 +1,5 @@
+
+logger = logging.getLogger("theano.compile.nanguardmode")
 from __future__ import absolute_import, print_function, division
 import collections
 import logging
@@ -19,8 +21,6 @@ try:
 except ImportError:
     pygpu_available = False
 
-
-logger = logging.getLogger("theano.compile.nanguardmode")
 
 
 def flatten(l):
@@ -52,7 +52,7 @@ def flatten(l):
 
 def contains_nan(arr, node=None, var=None):
     """
-    Test whether a numpy.ndarray contains any `np.nan` values.
+    Test whether a np.ndarray contains any `np.nan` values.
 
     Parameters
     ----------
@@ -103,7 +103,7 @@ def contains_nan(arr, node=None, var=None):
 
 def contains_inf(arr, node=None, var=None):
     """
-    Test whether a numpy.ndarray contains any `np.inf` values.
+    Test whether a np.ndarray contains any `np.inf` values.
 
     Parameters
     ----------
@@ -267,7 +267,7 @@ class NanGuardMode(Mode):
 
             Parameters
             ----------
-            value : numpy.ndarray
+            value : np.ndarray
                 The value to be checked.
             nd : theano.gof.Apply
                 The Apply node being executed.

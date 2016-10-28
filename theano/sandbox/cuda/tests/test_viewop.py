@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 from nose.plugins.skip import SkipTest
 
 import theano
@@ -19,5 +19,5 @@ def test_viewop_gpu():
     f = theano.function([x],
                         out,
                         mode=mode_with_gpu)
-    data = numpy.array([1, 2, 3], dtype='float32')
-    assert numpy.allclose(f(data), data)
+    data = np.array([1, 2, 3], dtype='float32')
+    assert np.allclose(f(data), data)

@@ -306,25 +306,25 @@ If a single ``Variable`` or ``Out`` instance is given as argument, then the comp
 
 If a list of ``Variable`` or ``Out`` instances is given as argument, then the compiled function will return a list of their values.
 
->>> import numpy
+>>> import numpy as np
 >>> from theano.compile.io import Out
 >>> x, y, s = T.matrices('xys')
 
 >>> # print a list of 2 ndarrays
 >>> fn1 = theano.function([x], [x+x, Out((x+x).T, borrow=True)])
->>> fn1(numpy.asarray([[1,0],[0,1]]))
+>>> fn1(np.asarray([[1,0],[0,1]]))
 [array([[ 2.,  0.],
        [ 0.,  2.]]), array([[ 2.,  0.],
        [ 0.,  2.]])]
 
 >>> # print a list of 1 ndarray
 >>> fn2 = theano.function([x], [x+x])
->>> fn2(numpy.asarray([[1,0],[0,1]]))
+>>> fn2(np.asarray([[1,0],[0,1]]))
 [array([[ 2.,  0.],
        [ 0.,  2.]])]
 
 >>> # print an ndarray
 >>> fn3 = theano.function([x], outputs=x+x)
->>> fn3(numpy.asarray([[1,0],[0,1]]))
+>>> fn3(np.asarray([[1,0],[0,1]]))
 array([[ 2.,  0.],
        [ 0.,  2.]])

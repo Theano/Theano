@@ -13,7 +13,7 @@ Basic Tensor Functionality
    from theano.tensor import scalar, iscalar, TensorType, dmatrix, ivector
    from theano.tensor import set_subtensor, inc_subtensor, batched_dot
    from theano import shared
-   import numpy
+   import numpy as np
    import numpy as np
 
 Theano supports any kind of Python object, but its focus is support for
@@ -258,10 +258,10 @@ precise) is by calling :func:`shared()`
 
 .. testcode::
 
-    x = shared(numpy.random.randn(3,4))
+    x = shared(np.random.randn(3,4))
 
 This will return a :term:`shared variable <shared variable>` whose ``.value`` is
-a numpy ndarray.  The number of dimensions and dtype of the Variable are
+a np ndarray.  The number of dimensions and dtype of the Variable are
 inferred from the ndarray argument.  The argument to `shared` *will not be
 copied*, and subsequent changes will be reflected in ``x.value``.
 
@@ -269,7 +269,7 @@ For additional information, see the :func:`shared() <shared.shared>` documentati
 
 .. _libdoc_tensor_autocasting:
 
-Finally, when you use a numpy ndarry or a Python number together with
+Finally, when you use a np ndarry or a Python number together with
 :class:`TensorVariable` instances in arithmetic expressions, the result is a
 :class:`TensorVariable`. What happens to the ndarray or the number?
 Theano requires that the inputs to all expressions be Variable instances, so
@@ -281,7 +281,7 @@ Theano automatically wraps them in a :class:`TensorConstant`.
     subsequent
     changes to that ndarray will not have any effect on the Theano expression.
 
-For numpy ndarrays the dtype is given, but the broadcastable pattern must be
+For np ndarrays the dtype is given, but the broadcastable pattern must be
 inferred.  The TensorConstant is given a type with a matching dtype,
 and a broadcastable pattern with a ``True`` for every shape dimension that is 1.
 
@@ -309,7 +309,7 @@ them perfectly, but a dscalar otherwise.
 
     When `x` is a Python number, the dtype is inferred as described above.
 
-    When `x` is a `list` or `tuple` it is passed through numpy.asarray
+    When `x` is a `list` or `tuple` it is passed through np.asarray
 
     If the `ndim` argument is not None, it must be an integer and the output
     will be broadcasted if necessary in order to have this many dimensions.
@@ -322,8 +322,8 @@ TensorType and TensorVariable
 
 .. class:: TensorType(Type)
 
-    The Type class used to mark Variables that stand for `numpy.ndarray`
-    values (`numpy.memmap`, which is a subclass of `numpy.ndarray`, is also allowed).
+    The Type class used to mark Variables that stand for `np.ndarray`
+    values (`np.memmap`, which is a subclass of `np.ndarray`, is also allowed).
     Recalling to the tutorial, the purple box in
     :ref:`the tutorial's graph-structure figure <tutorial-graphfigure>` is an instance of this class.
 
@@ -427,14 +427,14 @@ TensorVariable
 
 .. class:: TensorConstant(Variable, _tensor_py_operators)
 
-    Python and numpy numbers are wrapped in this type.
+    Python and np numbers are wrapped in this type.
 
     See :class:`_tensor_py_operators` for most of the attributes and methods
     you'll want to call.
 
 .. class:: TensorSharedVariable(Variable, _tensor_py_operators)
 
-    This type is returned by :func:`shared` when the value to share is a numpy
+    This type is returned by :func:`shared` when the value to share is a np
     ndarray.
 
     See :class:`_tensor_py_operators` for most of the attributes and methods
@@ -466,7 +466,7 @@ TensorVariable
     .. method:: reshape(shape, ndim=None)
 
         Returns a view of this tensor that has been reshaped as in
-        numpy.reshape.  If the shape is a Variable argument, then you might
+        np.reshape.  If the shape is a Variable argument, then you might
         need to use the optional `ndim` parameter to declare how many elements
         the shape has, and therefore how many dimensions the reshaped Variable
         will have.
@@ -512,7 +512,7 @@ TensorVariable
 
         .. note::
 
-            In numpy and in Theano, the transpose of a vector is exactly the
+            In np and in Theano, the transpose of a vector is exactly the
             same vector!  Use `reshape` or `dimshuffle` to turn your vector
             into a row or column matrix.
 
@@ -659,8 +659,8 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
     number of dimension of `x` and contains the number of times to
     tile `x` in each dimension.
 
-    :see: `numpy.tile
-        <http://docs.scipy.org/doc/numpy/reference/generated/numpy.tile.html>`_
+    :see: `np.tile
+        <http://docs.scipy.org/doc/numpy/reference/generated/np.tile.html>`_
         documentation for examples.
 
     :see: :func:`theano.tensor.extra_ops.repeat
@@ -870,7 +870,7 @@ Reductions
     :Returns: maximum of *x* along *axis*
 
     axis can be:
-     * *None* - in which case the maximum is computed along all axes (like numpy)
+     * *None* - in which case the maximum is computed along all axes (like np)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
@@ -883,7 +883,7 @@ Reductions
 		will broadcast correctly against the original tensor.
     :Returns: the index of the maximum value along a given axis
 
-    if axis=None, Theano 0.5rc1 or later: argmax over the flattened tensor (like numpy)
+    if axis=None, Theano 0.5rc1 or later: argmax over the flattened tensor (like np)
                   older: then axis is assumed to be ndim(x)-1
 
 .. function:: max_and_argmax(x, axis=None, keepdims=False)
@@ -895,7 +895,7 @@ Reductions
 		will broadcast correctly against the original tensor.
     :Returns: the maxium value along a given axis and its index.
 
-    if axis=None, Theano 0.5rc1 or later: max_and_argmax over the flattened tensor (like numpy)
+    if axis=None, Theano 0.5rc1 or later: max_and_argmax over the flattened tensor (like np)
                   older: then axis is assumed to be ndim(x)-1
 
 .. function:: min(x, axis=None, keepdims=False)
@@ -908,7 +908,7 @@ Reductions
     :Returns: minimum of *x* along *axis*
 
     axis can be:
-     * *None* - in which case the minimum is computed along all axes (like numpy)
+     * *None* - in which case the minimum is computed along all axes (like np)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
@@ -921,7 +921,7 @@ Reductions
 		will broadcast correctly against the original tensor.
     :Returns: the index of the minimum value along a given axis
 
-    if axis=None, Theano 0.5rc1 or later: argmin over the flattened tensor (like numpy)
+    if axis=None, Theano 0.5rc1 or later: argmin over the flattened tensor (like np)
                   older: then axis is assumed to be ndim(x)-1
 
 .. function:: sum(x, axis=None, dtype=None, keepdims=False, acc_dtype=None)
@@ -955,7 +955,7 @@ Reductions
     :Returns: sum of *x* along *axis*
 
     axis can be:
-     * *None* - in which case the sum is computed along all axes (like numpy)
+     * *None* - in which case the sum is computed along all axes (like np)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
@@ -1005,7 +1005,7 @@ Reductions
     :Returns: product of every term in *x* along *axis*
 
     axis can be:
-     * *None* - in which case the sum is computed along all axes (like numpy)
+     * *None* - in which case the sum is computed along all axes (like np)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
@@ -1028,7 +1028,7 @@ Reductions
     :Returns: mean value of *x* along *axis*
 
     axis can be:
-     * *None* - in which case the mean is computed along all axes (like numpy)
+     * *None* - in which case the mean is computed along all axes (like np)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
@@ -1042,7 +1042,7 @@ Reductions
     :Returns: variance of *x* along *axis*
 
     axis can be:
-     * *None* - in which case the variance is computed along all axes (like numpy)
+     * *None* - in which case the variance is computed along all axes (like np)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
@@ -1056,7 +1056,7 @@ Reductions
     :Returns: variance of *x* along *axis*
 
     axis can be:
-     * *None* - in which case the standard deviation is computed along all axes (like numpy)
+     * *None* - in which case the standard deviation is computed along all axes (like np)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
@@ -1070,7 +1070,7 @@ Reductions
     :Returns: bitwise and of *x* along *axis*
 
     axis can be:
-     * *None* - in which case the 'bitwise and' is computed along all axes (like numpy)
+     * *None* - in which case the 'bitwise and' is computed along all axes (like np)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
@@ -1084,7 +1084,7 @@ Reductions
     :Returns: bitwise or of *x* along *axis*
 
     axis can be:
-     * *None* - in which case the 'bitwise or' is computed along all axes (like numpy)
+     * *None* - in which case the 'bitwise or' is computed along all axes (like np)
      * an *int* - computed along this axis
      * a *list of ints* - computed along these axes
 
@@ -1107,7 +1107,7 @@ Indexing
 
 Like NumPy, Theano distinguishes between *basic* and *advanced* indexing.
 Theano fully supports basic indexing
-(see `NumPy's indexing  <http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_) 
+(see `NumPy's indexing  <http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html>`_)
 and `integer advanced indexing
 <http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html#integer>`_. We do not
 support boolean masks, as Theano does not have a boolean type (we use int8 for the output of 
@@ -1214,7 +1214,7 @@ Casting
     numerical type `dtype`.
 
     This is not a reinterpret cast, but a coersion cast, similar to
-    ``numpy.asarray(x, dtype=dtype)``.
+    ``np.asarray(x, dtype=dtype)``.
 
     .. testcode:: cast
 
@@ -1294,14 +1294,14 @@ The six usual equality and inequality operators share the same interface.
 
     Returns a variable representing the comparison of ``a`` elements with nan.
 
-    This is equivalent to ``numpy.isnan``.
+    This is equivalent to ``np.isnan``.
 
 .. function:: isinf(a)
 
     Returns a variable representing the comparison of ``a`` elements
     with inf or -inf.
 
-    This is equivalent to ``numpy.isinf``.
+    This is equivalent to ``np.isinf``.
 
 .. function:: isclose(a, b, rtol=1e-05, atol=1e-08, equal_nan=False)
 
@@ -1321,7 +1321,7 @@ The six usual equality and inequality operators share the same interface.
     If equal_nan is True, isclose considers NaN values in the same position to be close.
     Otherwise, NaN values are not considered close.
 
-    This is equivalent to ``numpy.isclose``.
+    This is equivalent to ``np.isclose``.
 
 .. function:: allclose(a, b, rtol=1e-05, atol=1e-08, equal_nan=False)
 
@@ -1330,7 +1330,7 @@ The six usual equality and inequality operators share the same interface.
 
     See notes in `isclose` for determining values equal within a tolerance.
 
-    This is equivalent to ``numpy.allclose``.
+    This is equivalent to ``np.allclose``.
 
 Condition
 ---------
@@ -1338,7 +1338,7 @@ Condition
 .. function:: switch(cond, ift, iff)
 
     Returns a variable representing a switch between ift (iftrue) and iff (iffalse)
-     based on the condition cond. This is the theano equivalent of numpy.where.
+     based on the condition cond. This is the theano equivalent of np.where.
 
       :Parameter:  *cond* - symbolic Tensor (or compatible)
       :Parameter:  *ift* - symbolic Tensor (or compatible)
@@ -1354,7 +1354,7 @@ Condition
 
 .. function:: where(cond, ift, iff)
 
-   Alias for `switch`. where is the numpy name.
+   Alias for `switch`. where is the np name.
 
 .. function:: clip(x, min, max)
 
@@ -1397,19 +1397,19 @@ The bitwise operators possess this interface:
 
 .. function:: bitwise_and(a, b)
 
-   Alias for `and_`. bitwise_and is the numpy name.
+   Alias for `and_`. bitwise_and is the np name.
 
 .. function:: bitwise_or(a, b)
 
-   Alias for `or_`. bitwise_or is the numpy name.
+   Alias for `or_`. bitwise_or is the np name.
 
 .. function:: bitwise_xor(a, b)
 
-   Alias for `xor_`. bitwise_xor is the numpy name.
+   Alias for `xor_`. bitwise_xor is the np name.
 
 .. function:: bitwise_not(a, b)
 
-   Alias for invert. invert is the numpy name.
+   Alias for invert. invert is the np name.
 
 Here is an example using the bit-wise ``and_`` via the ``&`` operator:
 
@@ -1553,16 +1553,16 @@ to the pattern), resulting in ``(1, 2)`` and ``(T, F)``.
 It would then behave just like the example above.
 
 
-Unlike numpy which does broadcasting dynamically, Theano needs
+Unlike np which does broadcasting dynamically, Theano needs
 to know, for any operation which supports broadcasting, which
 dimensions will need to be broadcasted. When applicable, this
 information is given in the :ref:`type` of a *Variable*.
 
 See also:
 
-* `SciPy documentation about numpy's broadcasting <http://www.scipy.org/EricsBroadcastingDoc>`_
+* `SciPy documentation about np's broadcasting <http://www.scipy.org/EricsBroadcastingDoc>`_
 
-* `OnLamp article about numpy's broadcasting <http://www.onlamp.com/pub/a/python/2000/09/27/numerically.html>`_
+* `OnLamp article about np's broadcasting <http://www.onlamp.com/pub/a/python/2000/09/27/numerically.html>`_
 
 
 
@@ -1615,7 +1615,7 @@ Linear Algebra
                  Note that the default value of 2 is not guaranteed to work
                  for all values of a and b, and an error will be raised if
                  that is the case. The reason for keeping the default is to
-                 maintain the same signature as numpy's tensordot function
+                 maintain the same signature as np's tensordot function
                  (and np.tensordot raises analogous errors for non-compatible
                  inputs).
 
@@ -1692,7 +1692,7 @@ Linear Algebra
         >>> print(c.shape)
         (2, 3, 4, 5, 6, 4, 3)
 
-    :note: See the documentation of `numpy.tensordot <http://docs.scipy.org/doc/numpy/reference/generated/numpy.tensordot.html>`_ for more examples.
+    :note: See the documentation of `np.tensordot <http://docs.scipy.org/doc/numpy/reference/generated/numpy.tensordot.html>`_ for more examples.
 
 .. function:: batched_dot(X, Y)
 
@@ -1708,8 +1708,8 @@ Linear Algebra
     >>> second = T.tensor3('second')
     >>> result = batched_dot(first, second)
 
-    :note:  This is a subset of numpy.einsum, but we do not provide it for now.
-        But numpy einsum is slower than dot or tensordot:
+    :note:  This is a subset of np.einsum, but we do not provide it for now.
+        But np einsum is slower than dot or tensordot:
         http://mail.scipy.org/pipermail/numpy-discussion/2012-October/064259.html
 
     :param X: left term

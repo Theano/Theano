@@ -25,10 +25,10 @@ that creates an image of the function. You can read about them in
 
 Consider again the logistic regression example:
 
->>> import numpy
+>>> import numpy as np
 >>> import theano
 >>> import theano.tensor as T
->>> rng = numpy.random
+>>> rng = np.random
 >>> # Training data
 >>> N = 400
 >>> feats = 784
@@ -38,7 +38,7 @@ Consider again the logistic regression example:
 >>> x = T.matrix("x")
 >>> y = T.vector("y")
 >>> w = theano.shared(rng.randn(feats).astype(theano.config.floatX), name="w")
->>> b = theano.shared(numpy.asarray(0., dtype=theano.config.floatX), name="b")
+>>> b = theano.shared(np.asarray(0., dtype=theano.config.floatX), name="b")
 >>> x.tag.test_value = D[0]
 >>> y.tag.test_value = D[1]
 >>> # Construct Theano expression graph

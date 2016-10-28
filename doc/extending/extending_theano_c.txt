@@ -472,7 +472,7 @@ storage with the right shape and number of dimensions.
 
 .. testcode:: examples
 
-    import numpy
+    import numpy as np
     import theano
     from theano import gof
     import theano.tensor as T
@@ -506,8 +506,8 @@ storage with the right shape and number of dimensions.
             dtype_y = node.inputs[1].dtype
             dtype_z = node.outputs[0].dtype
 
-            itemsize_x = numpy.dtype(dtype_x).itemsize
-            itemsize_z = numpy.dtype(dtype_z).itemsize
+            itemsize_x = np.dtype(dtype_x).itemsize
+            itemsize_z = np.dtype(dtype_z).itemsize
 
             fail = sub['fail']
 
@@ -659,11 +659,11 @@ C code.
             dtype_y = node.inputs[1].dtype
             dtype_z = node.outputs[0].dtype
 
-            itemsize_x = numpy.dtype(dtype_x).itemsize
-            itemsize_y = numpy.dtype(dtype_y).itemsize
-            itemsize_z = numpy.dtype(dtype_z).itemsize
+            itemsize_x = np.dtype(dtype_x).itemsize
+            itemsize_y = np.dtype(dtype_y).itemsize
+            itemsize_z = np.dtype(dtype_z).itemsize
 
-            typenum_z = numpy.dtype(dtype_z).num
+            typenum_z = np.dtype(dtype_z).num
 
             fail = sub['fail']
 

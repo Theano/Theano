@@ -239,7 +239,7 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
             dtype_%(x)s* x_data = (dtype_%(x)s*) PyArray_DATA(%(x)s);
             dtype_%(y)s* y_data = (dtype_%(y)s*) PyArray_DATA(%(y)s);
             // gemv expects pointers to the beginning of memory arrays,
-            // but numpy provides provides a pointer to the first element,
+            // but np provides provides a pointer to the first element,
             // so when the stride is negative, we need to get the last one.
             if (Sx < 0)
                 x_data += (Nz0 - 1) * Sx;
@@ -440,7 +440,7 @@ def gemv_c_code(y, A, x, z, alpha, beta, destructive, fail,
         dtype_%(x)s* x_data = (dtype_%(x)s*) PyArray_DATA(%(x)s);
         dtype_%(z)s* z_data = (dtype_%(z)s*) PyArray_DATA(%(z)s);
         // gemv expects pointers to the beginning of memory arrays,
-        // but numpy provides provides a pointer to the first element,
+        // but np provides provides a pointer to the first element,
         // so when the stride is negative, we need to get the last one.
         if (Sx < 0)
             x_data += (NA1 - 1) * Sx;

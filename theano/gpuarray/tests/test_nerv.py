@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
 
-import numpy
+import numpy as np
 
 from theano import function
 from theano.tests import unittest_tools as utt
@@ -40,10 +40,10 @@ def test_gemm16_value():
 
     f = function([m, m2], dot(m, m2), mode=mode_with_gpu)
 
-    v1 = numpy.random.random((3, 4)).astype('float16')
-    v2 = numpy.random.random((4, 2)).astype('float16')
+    v1 = np.random.random((3, 4)).astype('float16')
+    v2 = np.random.random((4, 2)).astype('float16')
 
     of = f(v1, v2)
-    on = numpy.dot(v1, v2)
+    on = np.dot(v1, v2)
 
     utt.assert_allclose(of, on)

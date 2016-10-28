@@ -6,7 +6,7 @@ from six import iteritems
 from theano.compile.pfunc import pfunc
 from theano import tensor
 
-import numpy
+import numpy as np
 from six.moves import xrange
 
 import theano.sandbox.cuda as tcn
@@ -36,11 +36,11 @@ def showtimes(times):
 
 def cmp_sigmoids(shape):
     def numpy_sigmoid(input):
-        1.0 / (1.0 + numpy.exp(-input))
+        1.0 / (1.0 + np.exp(-input))
     sinput = tensor.Tensor(
         dtype='float32', broadcastable=(0,) * len(shape))()
     shared_input = tcn.shared_constructor(
-        numpy.random.rand(*shape),
+        np.random.rand(*shape),
         'shared_input')
     times = compare_fns(dict(
         numpy=numpy_sigmoid,
@@ -57,11 +57,11 @@ def cmp_sigmoids(shape):
 
 def cmp_sigmoids_T(shape):
     def numpy_sigmoid(input):
-        1.0 / (1.0 + numpy.exp(-input.T))
+        1.0 / (1.0 + np.exp(-input.T))
     sinput = tensor.Tensor(
         dtype='float32', broadcastable=(0,) * len(shape))()
     shared_input = tcn.shared_constructor(
-        numpy.random.rand(*shape),
+        np.random.rand(*shape),
         'shared_input')
     times = compare_fns(dict(
         numpy=numpy_sigmoid,

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import os
-import numpy
+import numpy as np
 import warnings
 
 from six import integer_types
@@ -296,8 +296,8 @@ class GpuDnnConvDesc(GpuOp):
         return (4, version())
 
 # scalar constants
-_zero = constant(numpy.asarray(0.0, dtype='float32'))
-_one = constant(numpy.asarray(1.0, dtype='float32'))
+_zero = constant(np.asarray(0.0, dtype='float32'))
+_one = constant(np.asarray(1.0, dtype='float32'))
 
 
 def ensure_float(val, default, name):

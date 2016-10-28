@@ -11,7 +11,7 @@ from collections import OrderedDict
 
 import six.moves.cPickle as pickle
 from six.moves import xrange
-import numpy
+import numpy as np
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
 from nose.tools import raises
@@ -89,7 +89,7 @@ class multiple_outputs_numeric_grad:
 
         for i, p in enumerate(pt):
             if ndarray_mask[i]:
-                pt[i] = numpy.array(p)
+                pt[i] = np.array(p)
                 _eps = type_eps[str(pt[i].dtype)]
                 if _eps > dtype_eps:
                     dtype_eps = _eps
@@ -116,12 +116,12 @@ class multiple_outputs_numeric_grad:
                         t[pos] += _eps
                         t = t.reshape(pt[i].shape)
                         f_eps = f(*(pt[:i] + [t] + pt[i + 1:]))
-                        _g.append(numpy.asarray((f_eps - f_x) / _eps))
-                    gx.append(numpy.asarray(_g).reshape(pt[i].shape))
+                        _g.append(np.asarray((f_eps - f_x) / _eps))
+                    gx.append(np.asarray(_g).reshape(pt[i].shape))
                 else:
-                    t = numpy.array(pt[i] + _eps)
+                    t = np.array(pt[i] + _eps)
                     f_eps = f(*(pt[:i] + [t] + pt[i + 1:]))
-                    gx.append(numpy.asarray((f_eps - f_x) / _eps))
+                    gx.append(np.asarray((f_eps - f_x) / _eps))
         self.gx = gx
 
     @staticmethod
@@ -137,8 +137,8 @@ class multiple_outputs_numeric_grad:
         for i in xrange(len(_g_pt)):
             if self.ndarray_mask[i]:
                 g_pt.append(_g_pt[i])
-            elif isinstance(_g_pt[i], numpy.ndarray):
-                assert numpy.all(_g_pt[i] == 0)
+            elif isinstance(_g_pt[i], np.ndarray):
+                assert np.all(_g_pt[i] == 0)
         if len(g_pt) != len(self.gx):
             raise ValueError('argument has wrong number of elements',
                              len(g_pt))
@@ -149,12 +149,12 @@ class multiple_outputs_numeric_grad:
                 raise ValueError('argument element %i has wrong shape %s' %
                                  (i, str((a.shape, b.shape))))
             vv = multiple_outputs_numeric_grad.abs_rel_err(a, b)
-            errs.append(numpy.max(
+            errs.append(np.max(
                 multiple_outputs_numeric_grad.abs_rel_err(a, b)))
-        if numpy.all(numpy.isfinite(errs)):
-            return numpy.max(errs), numpy.argmax(errs)
+        if np.all(np.isfinite(errs)):
+            return np.max(errs), np.argmax(errs)
         else:
-            return numpy.inf, 0
+            return np.inf, 0
 
 
 # TODO: Test this function, and if it works,
@@ -262,14 +262,14 @@ class T_Scan(unittest.TestCase):
             if tmpdir is not None:
                 shutil.rmtree(tmpdir)
 
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         state = rng.uniform()
         steps = 5
 
-        numpy_values = numpy.array([state * (2 ** (k + 1)) for k
+        np_values = np.array([state * (2 ** (k + 1)) for k
                                     in xrange(steps)])
         theano_values = my_f(state, steps)
-        utt.assert_allclose(numpy_values, theano_values)
+        utt.assert_allclose(np_values, theano_values)
 
     # Test that the inner input_storage and output_storage are
     # properly cleared
@@ -300,7 +300,7 @@ class T_Scan(unittest.TestCase):
         assert all(i.value is None for i in scan_node.op.fn.input_storage)
         assert all(o.value is None for o in scan_node.op.fn.output_storage)
 
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         state = rng.uniform()
         steps = 5
 
@@ -330,14 +330,14 @@ class T_Scan(unittest.TestCase):
                                updates=updates,
                                allow_input_downcast=True)
 
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         state = rng.uniform()
         steps = 5
 
-        numpy_values = numpy.array([state * (2 ** (k + 1)) for k
+        np_values = np.array([state * (2 ** (k + 1)) for k
                                     in xrange(steps)])
         theano_values = my_f(state, steps)
-        utt.assert_allclose(numpy_values, theano_values)
+        utt.assert_allclose(np_values, theano_values)
 
     def test_subtensor_multiple_slices(self):
         # This addresses a bug reported by Matthias Zoehrer
@@ -368,10 +368,10 @@ class T_Scan(unittest.TestCase):
         # This assertation fails if savemem optimization failed on scan
         if theano.config.mode != "FAST_COMPILE":
             assert nodes[0].op._scan_savemem_visited
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         my_f(rng.uniform(size=(3,)),
              4,
-             numpy.int64([2, 2, 3]))
+             np.int64([2, 2, 3]))
 
     @attr('slow')
     def test_only_nonseq_inputs(self):
@@ -386,9 +386,9 @@ class T_Scan(unittest.TestCase):
         fun = theano.function([inp], [broadcasted_inp, gr])
 
         # Execute the Theano function and compare outputs to the expected outputs
-        inputs = numpy.array([[1, 2], [3, 4]], dtype=theano.config.floatX)
-        expected_out1 = numpy.repeat(inputs[None], n_steps, axis=0)
-        expected_out2 = numpy.ones(inputs.shape, dtype="int8") * n_steps
+        inputs = np.array([[1, 2], [3, 4]], dtype=theano.config.floatX)
+        expected_out1 = np.repeat(inputs[None], n_steps, axis=0)
+        expected_out2 = np.ones(inputs.shape, dtype="int8") * n_steps
 
         out1, out2 = fun(inputs)
         utt.assert_allclose(out1, expected_out1)
@@ -418,14 +418,14 @@ class T_Scan(unittest.TestCase):
                              updates=updates,
                              allow_input_downcast=True)
         # get random initial values
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         v_u = rng.uniform(size=(4,), low=-5., high=5.)
         v_x0 = rng.uniform()
         W = rng.uniform()
         W_in = rng.uniform()
 
-        # compute the output in numpy
-        v_out = numpy.zeros((4,))
+        # compute the output in np
+        v_out = np.zeros((4,))
         v_out[0] = v_u[0] * W_in + v_x0 * W
         for step in xrange(1, 4):
             v_out[step] = v_u[step] * W_in + v_out[step - 1] * W
@@ -435,7 +435,7 @@ class T_Scan(unittest.TestCase):
     # simple rnn, one input, one state, weights for each; input/state
     # are vectors, weights are scalars; using shared variables
     def test_one_sequence_one_output_weights_shared(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         u = theano.tensor.vector('u')
         x0 = theano.tensor.scalar('x0')
         W_in = theano.shared(asarrayX(rng.uniform()), name='w_in')
@@ -459,20 +459,20 @@ class T_Scan(unittest.TestCase):
 
         v_u = rng.uniform(size=(4,), low=-5., high=5.)
         v_x0 = rng.uniform()
-        # compute the output i numpy
-        v_out = numpy.zeros((4,))
+        # compute the output i np
+        v_out = np.zeros((4,))
         v_out[0] = v_u[0] * W_in.get_value() + v_x0 * W.get_value()
         for step in xrange(1, 4):
             v_out[step] = (v_u[step] * W_in.get_value() +
                            v_out[step - 1] * W.get_value())
 
         theano_values = f3(v_u, v_x0)
-        assert numpy.allclose(theano_values, v_out)
+        assert np.allclose(theano_values, v_out)
 
     # some rnn with multiple outputs and multiple inputs; other
     # dimension instead of scalars/vectors
     def test_multiple_inputs_multiple_outputs(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size=(2,), low=-5., high=5.))
         vW = asarrayX(rng.uniform(size=(2, 2), low=-5., high=5.))
         vWout = asarrayX(rng.uniform(size=(2,), low=-5., high=5.))
@@ -508,16 +508,16 @@ class T_Scan(unittest.TestCase):
                              updates=updates,
                              allow_input_downcast=True)
 
-        # compute the values in numpy
-        v_x = numpy.zeros((3, 2), dtype=theano.config.floatX)
-        v_y = numpy.zeros((3,), dtype=theano.config.floatX)
-        v_x[0] = (numpy.dot(v_u1[0], vW_in1) + v_u2[0] * vW_in2 +
-                  numpy.dot(v_x0, vW))
-        v_y[0] = numpy.dot(v_x0, vWout)
+        # compute the values in np
+        v_x = np.zeros((3, 2), dtype=theano.config.floatX)
+        v_y = np.zeros((3,), dtype=theano.config.floatX)
+        v_x[0] = (np.dot(v_u1[0], vW_in1) + v_u2[0] * vW_in2 +
+                  np.dot(v_x0, vW))
+        v_y[0] = np.dot(v_x0, vWout)
         for i in xrange(1, 3):
-            v_x[i] = (numpy.dot(v_u1[i], vW_in1) + v_u2[i] * vW_in2 +
-                      numpy.dot(v_x[i - 1], vW))
-            v_y[i] = numpy.dot(v_x[i - 1], vWout)
+            v_x[i] = (np.dot(v_u1[i], vW_in1) + v_u2[i] * vW_in2 +
+                      np.dot(v_x[i - 1], vW))
+            v_y[i] = np.dot(v_x[i - 1], vWout)
 
         (theano_x, theano_y) = f4(v_u1, v_u2, v_x0, v_y0, vW_in1)
         utt.assert_allclose(theano_x, v_x)
@@ -525,7 +525,7 @@ class T_Scan(unittest.TestCase):
 
     def test_multiple_outs_taps(self):
         l = 5
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size=(2,), low=-.2, high=.2))
         vW = asarrayX(rng.uniform(size=(2, 2), low=-.2, high=.2))
         vWout = asarrayX(rng.uniform(size=(2,), low=-.2, high=.2))
@@ -577,40 +577,40 @@ class T_Scan(unittest.TestCase):
                        v_y0,
                        vW_in1)
 
-        ny0 = numpy.zeros((5, 2))
-        ny1 = numpy.zeros((5,))
-        ny2 = numpy.zeros((5, 2))
-        ny0[0] = numpy.dot(v_u1[0], vW_in1) + \
-                (v_u2[1] + v_u2[0] * v_u2[2]) * vW_in2 + numpy.dot(v_x0, vW)
+        ny0 = np.zeros((5, 2))
+        ny1 = np.zeros((5,))
+        ny2 = np.zeros((5, 2))
+        ny0[0] = np.dot(v_u1[0], vW_in1) + \
+                (v_u2[1] + v_u2[0] * v_u2[2]) * vW_in2 + np.dot(v_x0, vW)
 
-        ny1[0] = (v_y0[2] + v_y0[0]) * numpy.dot(v_x0, vWout)
-        ny2[0] = numpy.dot(v_u1[0], vW_in1)
+        ny1[0] = (v_y0[2] + v_y0[0]) * np.dot(v_x0, vWout)
+        ny2[0] = np.dot(v_u1[0], vW_in1)
 
-        ny0[1] = numpy.dot(v_u1[1], vW_in1) + \
-                (v_u2[2] + v_u2[1] * v_u2[3]) * vW_in2 + numpy.dot(ny0[0], vW)
+        ny0[1] = np.dot(v_u1[1], vW_in1) + \
+                (v_u2[2] + v_u2[1] * v_u2[3]) * vW_in2 + np.dot(ny0[0], vW)
 
-        ny1[1] = (ny1[0] + v_y0[1]) * numpy.dot(ny0[0], vWout)
-        ny2[1] = numpy.dot(v_u1[1], vW_in1)
+        ny1[1] = (ny1[0] + v_y0[1]) * np.dot(ny0[0], vWout)
+        ny2[1] = np.dot(v_u1[1], vW_in1)
 
-        ny0[2] = numpy.dot(v_u1[2], vW_in1) + \
+        ny0[2] = np.dot(v_u1[2], vW_in1) + \
                 (v_u2[3] + v_u2[2] * v_u2[4]) * vW_in2 + \
-                numpy.dot(ny0[1], vW)
-        ny1[2] = (ny1[1] + v_y0[2]) * numpy.dot(ny0[1], vWout)
-        ny2[2] = numpy.dot(v_u1[2], vW_in1)
+                np.dot(ny0[1], vW)
+        ny1[2] = (ny1[1] + v_y0[2]) * np.dot(ny0[1], vWout)
+        ny2[2] = np.dot(v_u1[2], vW_in1)
 
-        ny0[3] = numpy.dot(v_u1[3], vW_in1) + \
+        ny0[3] = np.dot(v_u1[3], vW_in1) + \
                            (v_u2[4] + v_u2[3] * v_u2[5]) * vW_in2 + \
-                           numpy.dot(ny0[2], vW)
+                           np.dot(ny0[2], vW)
 
-        ny1[3] = (ny1[2] + ny1[0]) * numpy.dot(ny0[2], vWout)
-        ny2[3] = numpy.dot(v_u1[3], vW_in1)
+        ny1[3] = (ny1[2] + ny1[0]) * np.dot(ny0[2], vWout)
+        ny2[3] = np.dot(v_u1[3], vW_in1)
 
-        ny0[4] = numpy.dot(v_u1[4], vW_in1) + \
+        ny0[4] = np.dot(v_u1[4], vW_in1) + \
                            (v_u2[5] + v_u2[4] * v_u2[6]) * vW_in2 + \
-                           numpy.dot(ny0[3], vW)
+                           np.dot(ny0[3], vW)
 
-        ny1[4] = (ny1[3] + ny1[1]) * numpy.dot(ny0[3], vWout)
-        ny2[4] = numpy.dot(v_u1[4], vW_in1)
+        ny1[4] = (ny1[3] + ny1[1]) * np.dot(ny0[3], vWout)
+        ny2[4] = np.dot(v_u1[4], vW_in1)
 
     def test_using_taps_sequence(self):
         # this test refers to a bug reported by Nicolas
@@ -619,9 +619,9 @@ class T_Scan(unittest.TestCase):
         y, updates = theano.scan(lambda x: [x],
                                  sequences=dict(input=x, taps=[-1]),
                                  outputs_info=[None])
-        inp = numpy.arange(5).astype('float64')
+        inp = np.arange(5).astype('float64')
         rval = theano.function([x], y, updates=updates)(inp)
-        assert numpy.all(rval == inp[:-1])
+        assert np.all(rval == inp[:-1])
 
     def test_using_negative_taps_sequence(self):
         # This test refers to a bug reported on github on May 22 2015 by
@@ -634,7 +634,7 @@ class T_Scan(unittest.TestCase):
         f = theano.function([x], res, updates = upd)
 
         output =  f([1, 2, 3, 4, 5])
-        expected_output = numpy.array([1, 2, 3], dtype="float32")
+        expected_output = np.array([1, 2, 3], dtype="float32")
         utt.assert_allclose(output, expected_output)
 
     def test_connection_pattern(self):
@@ -647,8 +647,8 @@ class T_Scan(unittest.TestCase):
         def fn(a_m2, a_m1, b_m2, b_m1):
             return a_m1, b_m1
 
-        a0 = theano.shared(numpy.arange(2))
-        b0 = theano.shared(numpy.arange(2))
+        a0 = theano.shared(np.arange(2))
+        b0 = theano.shared(np.arange(2))
 
         (a, b), _ = theano.scan(fn,
                         outputs_info=[{'initial': a0, 'taps': [-2, -1]},
@@ -739,7 +739,7 @@ class T_Scan(unittest.TestCase):
 
         # Call verify_grad to ensure the correctness of the second gradients
         floatX = theano.config.floatX
-        inputs_test_values = [numpy.random.random((3)).astype(floatX)]
+        inputs_test_values = [np.random.random((3)).astype(floatX)]
         theano.tests.unittest_tools.verify_grad(get_sum_of_grad,
                                                 inputs_test_values)
 
@@ -766,8 +766,8 @@ class T_Scan(unittest.TestCase):
 
         # Call verify_grad to ensure the correctness of the second gradients
         floatX = theano.config.floatX
-        inputs_test_values = [numpy.random.random((2, 3)).astype(floatX),
-                              numpy.random.random((3)).astype(floatX)]
+        inputs_test_values = [np.random.random((2, 3)).astype(floatX),
+                              np.random.random((3)).astype(floatX)]
         theano.tests.unittest_tools.verify_grad(get_sum_of_grad,
                                                 inputs_test_values)
 
@@ -779,7 +779,7 @@ class T_Scan(unittest.TestCase):
 
         # forward pass
         W = theano.shared(
-            numpy.random.randn(2, 2).astype('float32'),
+            np.random.randn(2, 2).astype('float32'),
             name="W", borrow=True)
 
         def forward_scanner(x_t):
@@ -805,7 +805,7 @@ class T_Scan(unittest.TestCase):
     # vectors, weights are scalars; using shared variables and past
     # taps (sequences and outputs)
     def test_using_taps_input_output(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         vW = asarrayX(rng.uniform())
         vW_in = asarrayX(rng.uniform())
         vu = asarrayX(rng.uniform(size=(4,), low=-5., high=5.))
@@ -833,7 +833,7 @@ class T_Scan(unittest.TestCase):
                              allow_input_downcast=True)
         theano_out = f7(vu, vx0)
 
-        # compute output in numpy
+        # compute output in np
         # a bit of explaining:
         # due to the definition of sequences taps in scan, v_0[0] is
         # actually v_0[-2], and v_0[1] is v_0[-1]. The values v_0[2]
@@ -841,16 +841,16 @@ class T_Scan(unittest.TestCase):
         # in scan) which might seem strange, but then again why not use
         # v_0[t] instead of v_0[t-2] in a real application ??
         # also vx0[0] corresponds to vx0[-2], vx0[1] to vx0[-1]
-        numpy_out = numpy.zeros((2,))
-        numpy_out[0] = vu[0] * vW_in + vx0[1] * vW + vx0[0]
-        numpy_out[1] = vu[1] * vW_in + numpy_out[0] * vW + vx0[1]
-        utt.assert_allclose(numpy_out, theano_out)
+        np_out = np.zeros((2,))
+        np_out[0] = vu[0] * vW_in + vx0[1] * vW + vx0[0]
+        np_out[1] = vu[1] * vW_in + np_out[0] * vW + vx0[1]
+        utt.assert_allclose(np_out, theano_out)
 
     # simple rnn, one input, one state, weights for each; input/state are
     # vectors, weights are scalars; using shared variables and past
     # taps (sequences and outputs) and future taps for sequences
     def test_past_future_taps_shared(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         vW = asarrayX(rng.uniform())
         vW_in = asarrayX(rng.uniform())
         vu = asarrayX(rng.uniform(size=(6,), low=-5., high=5.))
@@ -877,19 +877,19 @@ class T_Scan(unittest.TestCase):
                              updates=updates,
                              allow_input_downcast=True)
         theano_out = f8(vu, vx0)
-        # compute output in numpy
-        numpy_out = numpy.zeros(2)
+        # compute output in np
+        np_out = np.zeros(2)
         # think of vu[0] as vu[-2], vu[4] as vu[2]
         # and vx0[0] as vx0[-2], vx0[1] as vx0[-1]
-        numpy_out[0] = (vu[0] + vu[4]) * vW_in + vx0[1] * vW + vx0[0]
-        numpy_out[1] = (vu[1] + vu[5]) * vW_in + numpy_out[0] * vW + vx0[1]
-        utt.assert_allclose(numpy_out, theano_out)
+        np_out[0] = (vu[0] + vu[4]) * vW_in + vx0[1] * vW + vx0[0]
+        np_out[1] = (vu[1] + vu[5]) * vW_in + np_out[0] * vW + vx0[1]
+        utt.assert_allclose(np_out, theano_out)
 
     # simple rnn ; compute inplace version 1
     def test_inplace1(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        vW = asarrayX(numpy.random.uniform())
-        vW_in = asarrayX(numpy.random.uniform())
+        rng = np.random.RandomState(utt.fetch_seed())
+        vW = asarrayX(np.random.uniform())
+        vW_in = asarrayX(np.random.uniform())
         vu0 = asarrayX(rng.uniform(size=(3,), low=-5., high=5.))
         vu1 = asarrayX(rng.uniform(size=(3,), low=-5., high=5.))
         vu2 = asarrayX(rng.uniform(size=(3,), low=-5., high=5.))
@@ -931,29 +931,29 @@ class T_Scan(unittest.TestCase):
                      if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert 0 in scan_node[0].op.destroy_map.keys()
         assert 1 in scan_node[0].op.destroy_map.keys()
-        # compute output in numpy
-        numpy_x0 = numpy.zeros((3,))
-        numpy_x1 = numpy.zeros((3,))
-        numpy_x0[0] = vu0[0] * vW_in + vx0 * vW + vu1[0] * vu2[0]
-        numpy_x1[0] = vu0[0] * vW_in + vx1 * vW + vu1[0] + vu2[0]
+        # compute output in np
+        np_x0 = np.zeros((3,))
+        np_x1 = np.zeros((3,))
+        np_x0[0] = vu0[0] * vW_in + vx0 * vW + vu1[0] * vu2[0]
+        np_x1[0] = vu0[0] * vW_in + vx1 * vW + vu1[0] + vu2[0]
         for i in xrange(1, 3):
-            numpy_x0[i] = (vu0[i] * vW_in + numpy_x0[i - 1] * vW +
+            np_x0[i] = (vu0[i] * vW_in + np_x0[i - 1] * vW +
                            vu1[i] * vu2[i])
-            numpy_x1[i] = (vu0[i] * vW_in + numpy_x1[i - 1] * vW +
+            np_x1[i] = (vu0[i] * vW_in + np_x1[i - 1] * vW +
                            vu1[i] + vu2[i])
 
-        # note theano computes inplace, so call function after numpy
+        # note theano computes inplace, so call function after np
         # equivalent is done
         (theano_x0, theano_x1) = f9(vu0, vu1, vu2, vx0, vx1)
         # assert that theano does what it should
-        utt.assert_allclose(theano_x0, numpy_x0)
-        utt.assert_allclose(theano_x1, numpy_x1)
+        utt.assert_allclose(theano_x0, np_x0)
+        utt.assert_allclose(theano_x1, np_x1)
 
     # simple rnn ; compute inplace version 2
     def test_inplace2(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        vW = asarrayX(numpy.random.uniform())
-        vW_in = asarrayX(numpy.random.uniform())
+        rng = np.random.RandomState(utt.fetch_seed())
+        vW = asarrayX(np.random.uniform())
+        vW_in = asarrayX(np.random.uniform())
         vu0 = asarrayX(rng.uniform(size=(3,), low=-5., high=5.))
         vu1 = asarrayX(rng.uniform(size=(4,), low=-5., high=5.))
         vu2 = asarrayX(rng.uniform(size=(5,), low=-5., high=5.))
@@ -1003,26 +1003,26 @@ class T_Scan(unittest.TestCase):
                      if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert 0 in scan_node[0].op.destroy_map.keys()
         assert 1 in scan_node[0].op.destroy_map.keys()
-        # compute output in numpy
-        numpy_x0 = numpy.zeros((3,))
-        numpy_x1 = numpy.zeros((3,))
-        numpy_x0[0] = vu0[0] * vW_in + vx0 * vW + vu1[0] * vu1[1]
-        numpy_x1[0] = vu0[0] * vW_in + vx1 * vW + vu2[0] + vu2[1] + vu2[2]
+        # compute output in np
+        np_x0 = np.zeros((3,))
+        np_x1 = np.zeros((3,))
+        np_x0[0] = vu0[0] * vW_in + vx0 * vW + vu1[0] * vu1[1]
+        np_x1[0] = vu0[0] * vW_in + vx1 * vW + vu2[0] + vu2[1] + vu2[2]
         for i in xrange(1, 3):
-            numpy_x0[i] = (vu0[i] * vW_in + numpy_x0[i - 1] * vW +
+            np_x0[i] = (vu0[i] * vW_in + np_x0[i - 1] * vW +
                            vu1[i] * vu1[i + 1])
-            numpy_x1[i] = (vu0[i] * vW_in + numpy_x1[i - 1] * vW +
+            np_x1[i] = (vu0[i] * vW_in + np_x1[i - 1] * vW +
                            vu2[i] + vu2[i + 1] + vu2[i + 2])
 
-        # note theano computes inplace, so call function after numpy
+        # note theano computes inplace, so call function after np
         # equivalent is done
         (theano_x0, theano_x1) = f9(vu0, vu1, vu2, vx0, vx1)
         # assert that theano does what it should
-        utt.assert_allclose(theano_x0, numpy_x0)
-        utt.assert_allclose(theano_x1, numpy_x1)
+        utt.assert_allclose(theano_x0, np_x0)
+        utt.assert_allclose(theano_x1, np_x1)
 
     def test_inplace3(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
 
         vx0 = asarrayX(rng.uniform())
         vx1 = asarrayX(rng.uniform())
@@ -1033,7 +1033,7 @@ class T_Scan(unittest.TestCase):
                                        [],
                                        [x0, x1],
                                        n_steps=3)
-        x0 = asarrayX(numpy.zeros((3,)))
+        x0 = asarrayX(np.zeros((3,)))
         x0[0] = vx0
         x0 = theano.tensor.constant(x0)
         to_replace = outputs[0].owner.inputs[0].owner.inputs[1]
@@ -1051,7 +1051,7 @@ class T_Scan(unittest.TestCase):
 
     # Shared variable with updates
     def test_shared_arguments_with_updates(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
 
         vW1 = asarrayX(rng.rand(2, 3))
         vW2 = asarrayX(rng.rand(3, 2))
@@ -1083,7 +1083,7 @@ class T_Scan(unittest.TestCase):
 #  File "/u/bastienf/repos/theano/tensor/basic.py", line 415, in filter
 #    data = theano._asarray(data, dtype = self.dtype) #TODO - consider to pad shape with ones
 #  File "/u/bastienf/repos/theano/misc/safe_asarray.py", line 30, in _asarray
-#    rval = numpy.asarray(a, dtype=dtype, order=order)
+#    rval = np.asarray(a, dtype=dtype, order=order)
 #  File "/u/lisa/local/byhost/ceylon.iro.umontreal.ca//lib64/python2.5/site-packages/numpy/core/numeric.py", line 230, in asarray
 #    return array(a, dtype, copy=False, order=order)
 # TypeError: ('__array__() takes no arguments (1 given)', <theano.scan.Scan object at 0x3dbbf90>(?_steps, u1, u2, y0, y1, 0.0, W1, W2), 'Sequence id of Apply node=0')
@@ -1125,31 +1125,31 @@ class T_Scan(unittest.TestCase):
         allstuff = f10(vu2, vy0)
         theano_y0, theano_y1, theano_y2 = allstuff
 
-        # do things in numpy
-        numpy_y0 = numpy.zeros((6, 2))
-        numpy_y1 = numpy.zeros((4, 2))
-        numpy_y2 = numpy.zeros((3, 3))
-        numpy_y0[:3] = vy0
-        numpy_y1[0] = vy1
-        numpy_W1 = vW1.copy()
-        numpy_W2 = vW2.copy()
+        # do things in np
+        np_y0 = np.zeros((6, 2))
+        np_y1 = np.zeros((4, 2))
+        np_y2 = np.zeros((3, 3))
+        np_y0[:3] = vy0
+        np_y1[0] = vy1
+        np_W1 = vW1.copy()
+        np_W2 = vW2.copy()
         for idx in xrange(3):
-            numpy_y0[idx + 3] = numpy.dot(numpy.dot(vu1[idx, :], numpy_W1),
-                                          numpy_W2) + \
-                                0.1 * numpy_y0[idx + 2] + \
-                                0.33 * numpy_y0[idx + 1] + \
-                                0.17 * numpy_y0[idx]
-            numpy_y1[idx + 1] = (numpy.dot(vu2[idx, :], numpy_W2) +
-                                 numpy_y1[idx])
-            numpy_y2[idx] = numpy.dot(vu1[idx, :], numpy_W1)
-            numpy_W1 = numpy_W1 + .1
-            numpy_W2 = numpy_W2 + .05
+            np_y0[idx + 3] = np.dot(np.dot(vu1[idx, :], np_W1),
+                                          np_W2) + \
+                                0.1 * np_y0[idx + 2] + \
+                                0.33 * np_y0[idx + 1] + \
+                                0.17 * np_y0[idx]
+            np_y1[idx + 1] = (np.dot(vu2[idx, :], np_W2) +
+                                 np_y1[idx])
+            np_y2[idx] = np.dot(vu1[idx, :], np_W1)
+            np_W1 = np_W1 + .1
+            np_W2 = np_W2 + .05
 
-        utt.assert_allclose(theano_y0, numpy_y0[3:])
-        utt.assert_allclose(theano_y1, numpy_y1[1:])
-        utt.assert_allclose(theano_y2, numpy_y2)
-        utt.assert_allclose(W1.get_value(), numpy_W1)
-        utt.assert_allclose(W2.get_value(), numpy_W2)
+        utt.assert_allclose(theano_y0, np_y0[3:])
+        utt.assert_allclose(theano_y1, np_y1[1:])
+        utt.assert_allclose(theano_y2, np_y2)
+        utt.assert_allclose(W1.get_value(), np_W1)
+        utt.assert_allclose(W2.get_value(), np_W2)
 
     def test_grad_dtype_change(self):
         x = tensor.fscalar('x')
@@ -1172,7 +1172,7 @@ class T_Scan(unittest.TestCase):
         f = theano.function([c, x, y], [gX, gY],
                             allow_input_downcast=True)
         # Check for runtime errors
-        f(numpy.int32(0), numpy.float32(1.), numpy.float32(.5))
+        f(np.int32(0), np.float32(1.), np.float32(.5))
 
     def test_simple_shared_mrg_random(self):
         theano_rng = theano.sandbox.rng_mrg.MRG_RandomStreams(utt.fetch_seed())
@@ -1209,25 +1209,25 @@ class T_Scan(unittest.TestCase):
                                updates=updates,
                                allow_input_downcast=True)
 
-        rng_seed = numpy.random.RandomState(utt.fetch_seed()).randint(2 ** 30)
-        rng = numpy.random.RandomState(int(rng_seed))  # int() is for 32bit
+        rng_seed = np.random.RandomState(utt.fetch_seed()).randint(2 ** 30)
+        rng = np.random.RandomState(int(rng_seed))  # int() is for 32bit
 
-        numpy_v = numpy.zeros((10, 2))
+        np_v = np.zeros((10, 2))
         for i in xrange(10):
-            numpy_v[i] = rng.uniform(-1, 1, size=(2,))
+            np_v[i] = rng.uniform(-1, 1, size=(2,))
 
         theano_v = my_f()
-        utt.assert_allclose(theano_v, numpy_v[:5, :])
+        utt.assert_allclose(theano_v, np_v[:5, :])
         theano_v = my_f()
-        utt.assert_allclose(theano_v, numpy_v[5:, :])
+        utt.assert_allclose(theano_v, np_v[5:, :])
 
     def test_gibbs_chain(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        v_W = numpy.array(rng.rand(20, 30) - .5, dtype='float32')
-        v_vsample = numpy.array(rng.binomial(1, .5, size=(3, 20),),
+        rng = np.random.RandomState(utt.fetch_seed())
+        v_W = np.array(rng.rand(20, 30) - .5, dtype='float32')
+        v_vsample = np.array(rng.binomial(1, .5, size=(3, 20),),
                                 dtype='float32')
-        v_bvis = numpy.array(rng.rand(20) - .5, dtype='float32')
-        v_bhid = numpy.array(rng.rand(30) - .5, dtype='float32')
+        v_bvis = np.array(rng.rand(20) - .5, dtype='float32')
+        v_bhid = np.array(rng.rand(30) - .5, dtype='float32')
         W = theano.shared(v_W, 'vW')
         bhid = theano.shared(v_bhid, 'vbhid')
         bvis = theano.shared(v_bvis, 'vbvis')
@@ -1259,24 +1259,24 @@ class T_Scan(unittest.TestCase):
                                updates=updates,
                                allow_input_downcast=True)
 
-        _rng = numpy.random.RandomState(utt.fetch_seed())
+        _rng = np.random.RandomState(utt.fetch_seed())
         rng_seed = _rng.randint(2 ** 30)
-        nrng1 = numpy.random.RandomState(int(rng_seed))  # int() is for 32bit
+        nrng1 = np.random.RandomState(int(rng_seed))  # int() is for 32bit
 
         rng_seed = _rng.randint(2 ** 30)
-        nrng2 = numpy.random.RandomState(int(rng_seed))  # int() is for 32bit
+        nrng2 = np.random.RandomState(int(rng_seed))  # int() is for 32bit
 
-        def numpy_implementation(vsample):
+        def np_implementation(vsample):
             for idx in range(10):
-                hmean = 1. / (1. + numpy.exp(-(numpy.dot(vsample, v_W) +\
+                hmean = 1. / (1. + np.exp(-(np.dot(vsample, v_W) +\
                         v_bhid)))
-                hsample = numpy.array(nrng1.binomial(1,
+                hsample = np.array(nrng1.binomial(1,
                                                      hmean,
                                                      size=hmean.shape),
                                       dtype='float32')
-                vmean = 1. / (1. + numpy.exp(-(numpy.dot(hsample, v_W.T) +\
+                vmean = 1. / (1. + np.exp(-(np.dot(hsample, v_W.T) +\
                         v_bvis)))
-                vsample = numpy.array(nrng2.binomial(1,
+                vsample = np.array(nrng2.binomial(1,
                                                      vmean,
                                                      size=vmean.shape),
                                       dtype='float32')
@@ -1284,11 +1284,11 @@ class T_Scan(unittest.TestCase):
             return vsample
 
         t_result = my_f(v_vsample)
-        n_result = numpy_implementation(v_vsample)
+        n_result = np_implementation(v_vsample)
         utt.assert_allclose(t_result, n_result)
 
     def test_only_shared_no_input_no_output(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         v_state = asarrayX(rng.uniform())
         state = theano.shared(v_state, 'vstate')
 
@@ -1308,8 +1308,8 @@ class T_Scan(unittest.TestCase):
                                 allow_input_downcast=True)
         n_steps = 3
         this_f(n_steps)
-        numpy_state = v_state * (2 ** (n_steps))
-        utt.assert_allclose(state.get_value(), numpy_state)
+        np_state = v_state * (2 ** (n_steps))
+        utt.assert_allclose(state.get_value(), np_state)
 
     def test_map_functionality(self):
         def f_rnn(u_t):
@@ -1329,12 +1329,12 @@ class T_Scan(unittest.TestCase):
                              outputs,
                              updates=updates,
                              allow_input_downcast=True)
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
 
         v_u = rng.uniform(size=(5,), low=-5., high=5.)
-        numpy_result = v_u + 3
+        np_result = v_u + 3
         theano_result = f2(v_u)
-        utt.assert_allclose(theano_result, numpy_result)
+        utt.assert_allclose(theano_result, np_result)
 
     def test_map(self):
         v = theano.tensor.vector('v')
@@ -1350,7 +1350,7 @@ class T_Scan(unittest.TestCase):
                             updates=abs_updates,
                             allow_input_downcast=True)
 
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         vals = rng.uniform(size=(10,), low=-5., high=5.)
         abs_vals = abs(vals)
         theano_vals = f(vals)
@@ -1378,14 +1378,14 @@ class T_Scan(unittest.TestCase):
                              updates=updates,
                              allow_input_downcast=True)
         # get random initial values
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         v_u = rng.uniform(size=(4,), low=-5., high=5.)
         v_x0 = rng.uniform()
         W = rng.uniform()
         W_in = rng.uniform()
 
-        # compute the output in numpy
-        v_out = numpy.zeros((4,))
+        # compute the output in np
+        v_out = np.zeros((4,))
         v_out[0] = v_u[3] * W_in + v_x0 * W
         for step in xrange(1, 4):
             v_out[step] = v_u[3 - step] * W_in + v_out[step - 1] * W
@@ -1402,9 +1402,9 @@ class T_Scan(unittest.TestCase):
                             result,
                             updates=updates,
                             allow_input_downcast=True)
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         v_v = rng.uniform(size=(5,), low=-5., high=5.)
-        assert abs(numpy.sum(v_v) - f(v_v, 0.)) < 1e-3
+        assert abs(np.sum(v_v) - f(v_v, 0.)) < 1e-3
 
     def test_grad_one_output(self):
         def f_rnn(u_t, x_tm1, W_in, W):
@@ -1438,12 +1438,12 @@ class T_Scan(unittest.TestCase):
             allow_input_downcast=True)
 
         # get random initial values
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        v_u = numpy.array(rng.uniform(size=(10,), low=-.5, high=.5),
+        rng = np.random.RandomState(utt.fetch_seed())
+        v_u = np.array(rng.uniform(size=(10,), low=-.5, high=.5),
                           dtype=theano.config.floatX)
-        v_x0 = numpy.array(rng.uniform(), dtype=theano.config.floatX)
-        W = numpy.array(rng.uniform(), dtype=theano.config.floatX)
-        W_in = numpy.array(rng.uniform(), dtype=theano.config.floatX)
+        v_x0 = np.array(rng.uniform(), dtype=theano.config.floatX)
+        W = np.array(rng.uniform(), dtype=theano.config.floatX)
+        W_in = np.array(rng.uniform(), dtype=theano.config.floatX)
         analytic_grad = grad_fn(v_u, v_x0, W_in, W)
 
         num_grad = multiple_outputs_numeric_grad(
@@ -1457,7 +1457,7 @@ class T_Scan(unittest.TestCase):
                              num_grad.gx[max_err_pos]))
 
     def test_grad_multiple_outs(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size=(2,), low=-.1, high=.1))
         vW = asarrayX(rng.uniform(size=(2, 2), low=-.1, high=.1))
         vWout = asarrayX(rng.uniform(size=(2,), low=-.1, high=.1))
@@ -1522,7 +1522,7 @@ class T_Scan(unittest.TestCase):
     @attr('slow')
     def test_grad_multiple_outs_taps(self):
         l = 5
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size=(2,), low=-.2, high=.2))
         vW = asarrayX(rng.uniform(size=(2, 2), low=-.2, high=.2))
         vWout = asarrayX(rng.uniform(size=(2,), low=-.2, high=.2))
@@ -1616,7 +1616,7 @@ class T_Scan(unittest.TestCase):
     @attr('slow')
     def test_grad_multiple_outs_taps_backwards(self):
         l = 5
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size=(2,), low=-.2, high=.2))
         vW = asarrayX(rng.uniform(size=(2, 2), low=-.2, high=.2))
         vWout = asarrayX(rng.uniform(size=(2,), low=-.2, high=.2))
@@ -1683,10 +1683,10 @@ class T_Scan(unittest.TestCase):
                              num_grad.gx[max_err_pos]))
 
     def test_grad_multiple_outs_some_uncomputable(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         vW_in = asarrayX(rng.uniform(size=(2, 2), low=-3., high=3.))
         v_u = asarrayX(rng.uniform(size=(5, 2), low=-3., high=3.))
-        v_u2 = numpy.array([1, 3, 4, 6, 8], dtype='int32')
+        v_u2 = np.array([1, 3, 4, 6, 8], dtype='int32')
         v_x0 = asarrayX(rng.uniform(size=(2,), low=-3., high=3.))
 
         W_in = theano.tensor.matrix('win')
@@ -1728,9 +1728,9 @@ class T_Scan(unittest.TestCase):
         def reset_rng_fn(fn, *args):
             for idx, arg in enumerate(fn.maker.expanded_inputs):
                 if (arg.value and type(arg.value.data) == \
-                    type(numpy.random.RandomState(123))):
+                    type(np.random.RandomState(123))):
                     obj = fn.maker.expanded_inputs[idx].value
-                    obj.data = numpy.random.RandomState(123)
+                    obj.data = np.random.RandomState(123)
                     fn.maker.expanded_inputs[idx].value = obj
             return fn(*args)
 
@@ -1762,7 +1762,7 @@ class T_Scan(unittest.TestCase):
         assert(result == expected_result)
 
     def test_grad_multiple_outs_some_truncate(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         vW_in = asarrayX(rng.uniform(size=(2, 2), low=-.1, high=.1))
         v_u = asarrayX(rng.uniform(size=(5, 2), low=-.1, high=.1))
         v_x0 = asarrayX(rng.uniform(size=(2,), low=-.1, high=.1))
@@ -1805,9 +1805,9 @@ class T_Scan(unittest.TestCase):
         def reset_rng_fn(fn, *args):
             for idx, arg in enumerate(fn.maker.expanded_inputs):
                 if (arg.value and
-                    isinstance(arg.value.data, numpy.random.RandomState)):
+                    isinstance(arg.value.data, np.random.RandomState)):
                     obj = fn.maker.expanded_inputs[idx].value
-                    obj.data = numpy.random.RandomState(123)
+                    obj.data = np.random.RandomState(123)
                     fn.maker.expanded_inputs[idx].value = obj
             out = fn(*args)
             return out
@@ -1817,7 +1817,7 @@ class T_Scan(unittest.TestCase):
         num_grad = multiple_outputs_numeric_grad(
             reset_rng_cost_fn, [v_u, v_x0, vW_in])
         analytic_grad = reset_rng_grad_fn(v_u, v_x0, vW_in)
-        utt.assert_allclose(analytic_grad[0][:2], numpy.zeros((2, 2)))
+        utt.assert_allclose(analytic_grad[0][:2], np.zeros((2, 2)))
 
     def test_grad_multiple_outs_some_disconnected(self):
         final_cost = self._grad_mout_helper(100, mode_nodebug)
@@ -1831,7 +1831,7 @@ class T_Scan(unittest.TestCase):
     def _grad_mout_helper(self, n_iters, mode):
         # Created on Tue Oct 07 13:28:51 2014
         # @author: vaneetke
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         n_hid = 3
         n_in = 1
         n_out = 1
@@ -1895,10 +1895,10 @@ class T_Scan(unittest.TestCase):
                                       mode=mode)
 
         # artificial data
-        x_v = numpy.arange(0., 10.49, 0.21, dtype=theano.config.floatX)
+        x_v = np.arange(0., 10.49, 0.21, dtype=theano.config.floatX)
         x_v = x_v.reshape(len(x_v), 1)
-        s_v = numpy.sin(x_v)
-        t_v = numpy.roll(s_v, -1)[:-1]
+        s_v = np.sin(x_v)
+        t_v = np.roll(s_v, -1)[:-1]
         s_v = s_v[:-1]
         for i in xrange(n_iters):
             cost = learn_rnn_fn(s_v, t_v)
@@ -1917,14 +1917,14 @@ class T_Scan(unittest.TestCase):
                             updates=updates,
                             allow_input_downcast=True)
 
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         nx = rng.uniform(size=(10, 10))
         ny1, nz1 = f(nx)
         ny2, nz2 = f(nx)
 
         utt.assert_allclose([ny1, ny1], nz1)
         utt.assert_allclose([ny2, ny2], nz2)
-        assert not numpy.allclose(ny1, ny2)
+        assert not np.allclose(ny1, ny2)
 
     def test_grad_of_shared(self):
         x1 = theano.shared(3.)
@@ -1940,7 +1940,7 @@ class T_Scan(unittest.TestCase):
 
     def test_computing_gradient(self):
         x1 = theano.tensor.scalar('x1')
-        x2 = theano.shared(numpy.array([1, 2, 3, 4, 5]), name='x2')
+        x2 = theano.shared(np.array([1, 2, 3, 4, 5]), name='x2')
         K = x2 * x1
 
         out, updates = theano.scan(lambda i, v: theano.tensor.grad(K[i], v),
@@ -1948,10 +1948,10 @@ class T_Scan(unittest.TestCase):
                 non_sequences=x1)
         f = theano.function([x1], out, allow_input_downcast=True)
 
-        assert numpy.all(f(3.) != 0.)
+        assert np.all(f(3.) != 0.)
 
     def test_shared_updates(self):
-        X = theano.shared(numpy.array(1))
+        X = theano.shared(np.array(1))
 
         out, updates = theano.scan(
             lambda: OrderedDict([(X, (X + 1))]),
@@ -1965,8 +1965,8 @@ class T_Scan(unittest.TestCase):
         assert X.get_value() == 11
 
     def test_memory_aliasing_updates(self):
-        x = theano.shared(numpy.array(1))
-        y = theano.shared(numpy.array(1))
+        x = theano.shared(np.array(1))
+        y = theano.shared(np.array(1))
 
         out, updates = theano.scan(
             lambda: OrderedDict([(x, x + 1), (y, x)]),
@@ -1977,7 +1977,7 @@ class T_Scan(unittest.TestCase):
 
         f = theano.function([], [], updates=updates)
         f()
-        assert not numpy.may_share_memory(x.container.storage[0],
+        assert not np.may_share_memory(x.container.storage[0],
                                           y.container.storage[0])
 
         assert x.get_value() != y.get_value()
@@ -1996,7 +1996,7 @@ class T_Scan(unittest.TestCase):
         """
         a = theano.tensor.vector()
         init_a = theano.tensor.vector()
-        b = theano.shared(numpy.random.rand(5, 4))
+        b = theano.shared(np.random.rand(5, 4))
 
         def inner_func(a):
             return a + 1, OrderedDict([(b, 2 * b)])
@@ -2030,9 +2030,9 @@ class T_Scan(unittest.TestCase):
             non_sequences=[gy, x])
 
         f = theano.function([x, A], hy, allow_input_downcast=True)
-        vx = numpy.array([1., 1.], dtype=theano.config.floatX)
-        vA = numpy.array([[1., 1.], [1., 0.]], dtype=theano.config.floatX)
-        vR = numpy.array([[3.6, 1.8], [1.8, 0.9]], dtype=theano.config.floatX)
+        vx = np.array([1., 1.], dtype=theano.config.floatX)
+        vA = np.array([[1., 1.], [1., 0.]], dtype=theano.config.floatX)
+        vR = np.array([[3.6, 1.8], [1.8, 0.9]], dtype=theano.config.floatX)
         out = f(vx, vA)
 
         utt.assert_allclose(out, vR)
@@ -2155,7 +2155,7 @@ class T_Scan(unittest.TestCase):
     # some rnn with multiple outputs and multiple inputs; other
     # dimension instead of scalars/vectors
     def test_reordering(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size=(2,), low=-5., high=5.))
         vW = asarrayX(rng.uniform(size=(2, 2), low=-5., high=5.))
         vWout = asarrayX(rng.uniform(size=(2,), low=-5., high=5.))
@@ -2197,16 +2197,16 @@ class T_Scan(unittest.TestCase):
                              updates=updates,
                              allow_input_downcast=True)
 
-        # compute the values in numpy
-        v_x = numpy.zeros((3, 2), dtype=theano.config.floatX)
-        v_y = numpy.zeros((3,), dtype=theano.config.floatX)
-        v_x[0] = numpy.dot(v_u1[0], vW_in1) + v_u2[0] * vW_in2 + \
-                    numpy.dot(v_x0, vW)
-        v_y[0] = numpy.dot(v_x0, vWout) + v_y0[2]
+        # compute the values in np
+        v_x = np.zeros((3, 2), dtype=theano.config.floatX)
+        v_y = np.zeros((3,), dtype=theano.config.floatX)
+        v_x[0] = np.dot(v_u1[0], vW_in1) + v_u2[0] * vW_in2 + \
+                    np.dot(v_x0, vW)
+        v_y[0] = np.dot(v_x0, vWout) + v_y0[2]
         for i in xrange(1, 3):
-            v_x[i] = numpy.dot(v_u1[i], vW_in1) + v_u2[i] * vW_in2 + \
-                        numpy.dot(v_x[i - 1], vW)
-            v_y[i] = numpy.dot(v_x[i - 1], vWout) + v_y[i - 1]
+            v_x[i] = np.dot(v_u1[i], vW_in1) + v_u2[i] * vW_in2 + \
+                        np.dot(v_x[i - 1], vW)
+            v_y[i] = np.dot(v_x[i - 1], vWout) + v_y[i - 1]
 
         (theano_dump1, theano_dump2, theano_x, theano_y) = f4(v_u1,
                                                               v_u2,
@@ -2245,7 +2245,7 @@ class T_Scan(unittest.TestCase):
                                  allow_input_downcast=True)
 
     def test_save_mem(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size=(2,), low=-5., high=5.))
         vW = asarrayX(rng.uniform(size=(2, 2), low=-5., high=5.))
         vWout = asarrayX(rng.uniform(size=(2,), low=-5., high=5.))
@@ -2285,17 +2285,17 @@ class T_Scan(unittest.TestCase):
                              updates=updates,
                              allow_input_downcast=True)
 
-        # compute the values in numpy
-        v_x = numpy.zeros((8, 2), dtype=theano.config.floatX)
-        v_y = numpy.zeros((8,), dtype=theano.config.floatX)
-        v_x[0] = numpy.dot(v_u1[0], vW_in1) + v_u2[0] * vW_in2 + \
-                        numpy.dot(v_x0, vW)
-        v_y[0] = numpy.dot(v_x0, vWout) + v_y0[2]
+        # compute the values in np
+        v_x = np.zeros((8, 2), dtype=theano.config.floatX)
+        v_y = np.zeros((8,), dtype=theano.config.floatX)
+        v_x[0] = np.dot(v_u1[0], vW_in1) + v_u2[0] * vW_in2 + \
+                        np.dot(v_x0, vW)
+        v_y[0] = np.dot(v_x0, vWout) + v_y0[2]
 
         for i in xrange(1, 8):
-            v_x[i] = numpy.dot(v_u1[i], vW_in1) + v_u2[i] * vW_in2 + \
-                        numpy.dot(v_x[i - 1], vW)
-            v_y[i] = numpy.dot(v_x[i - 1], vWout) + v_y[i - 1]
+            v_x[i] = np.dot(v_u1[i], vW_in1) + v_u2[i] * vW_in2 + \
+                        np.dot(v_x[i - 1], vW)
+            v_y[i] = np.dot(v_x[i - 1], vWout) + v_y[i - 1]
 
         (theano_dump, theano_x, theano_y) = f4(v_u1, v_u2, v_x0, v_y0, vW_in1)
 
@@ -2319,24 +2319,24 @@ class T_Scan(unittest.TestCase):
 
         sh = expr.shape[0]
 
-        v1 = theano.shared(numpy.ones(5, dtype=theano.config.floatX))
-        v2 = theano.shared(numpy.ones((5, 5), dtype=theano.config.floatX))
+        v1 = theano.shared(np.ones(5, dtype=theano.config.floatX))
+        v2 = theano.shared(np.ones((5, 5), dtype=theano.config.floatX))
         shapef = theano.function([W],
                                  expr,
                                  givens=OrderedDict([(initial, v1),
                                          (inpt, v2)]))
         # First execution to cache n_steps
-        shapef(numpy.ones((5, 5), dtype=theano.config.floatX))
+        shapef(np.ones((5, 5), dtype=theano.config.floatX))
 
         cost = expr.sum()
         d_cost_wrt_W = tensor.grad(cost, [W])
         f = theano.function(
             [W, inpt], d_cost_wrt_W,
-            givens=OrderedDict([(initial, theano.shared(numpy.zeros(5)))]))
+            givens=OrderedDict([(initial, theano.shared(np.zeros(5)))]))
 
-        rval = numpy.asarray([[5187989] * 5] * 5, dtype=theano.config.floatX)
-        arg1 = numpy.ones((5, 5), dtype=theano.config.floatX)
-        arg2 = numpy.ones((10, 5), dtype=theano.config.floatX)
+        rval = np.asarray([[5187989] * 5] * 5, dtype=theano.config.floatX)
+        arg1 = np.ones((5, 5), dtype=theano.config.floatX)
+        arg2 = np.ones((10, 5), dtype=theano.config.floatX)
         utt.assert_allclose(f(arg1, arg2), rval)
 
     def test_save_mem_reduced_number_of_steps(self):
@@ -2370,10 +2370,10 @@ class T_Scan(unittest.TestCase):
                               updates=updates,
                               allow_input_downcast=True)
         # get random initial values
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         v_u = rng.uniform(size=(20,), low=-5., high=5.)
 
-        # compute the output in numpy
+        # compute the output in np
         tx1, tx2, tx3, tx4, tx5, tx6, tx7 = f2(v_u, 3, 15)
 
         utt.assert_allclose(tx1, v_u[:2] + 1.)
@@ -2426,10 +2426,10 @@ class T_Scan(unittest.TestCase):
                              allow_input_downcast=True)
 
         # get random initial values
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         v_u = rng.uniform(size=(20,), low=-5., high=5.)
 
-        # compute the output in numpy
+        # compute the output in np
         tx1, tx2, tx3, tx4, tx5 = f2(v_u, [0, 0], 0, [0, 0], 0)
 
         utt.assert_allclose(tx1, v_u[-7] + 1.)
@@ -2472,7 +2472,7 @@ class T_Scan(unittest.TestCase):
         floatX = theano.config.floatX
 
         init_value = 5.0
-        seq_value = numpy.arange(4, dtype=floatX)
+        seq_value = np.arange(4, dtype=floatX)
         output1, output2 = fct(init_value, seq_value)
 
         expected_output1 = [init_value]
@@ -2507,13 +2507,13 @@ class T_Scan(unittest.TestCase):
                               [out1_direct, out2_direct])
 
         # Test that the function returns valid outputs
-        x_val = numpy.arange(0, 4)[:, None]
-        seq_val = numpy.arange(4, 8)[:, None]
+        x_val = np.arange(0, 4)[:, None]
+        seq_val = np.arange(4, 8)[:, None]
 
         out1, out2 = fct(x_val, seq_val)
 
-        expected_out1 = numpy.zeros((5, 4, 1))
-        expected_out2 = numpy.zeros((5, 4, 1))
+        expected_out1 = np.zeros((5, 4, 1))
+        expected_out2 = np.zeros((5, 4, 1))
         for i in range(4):
             expected_out2[i + 1] = expected_out2[i] + seq_val[i]
         for i in range(5):
@@ -2563,7 +2563,7 @@ class T_Scan(unittest.TestCase):
             diff = mitsot_m1 + seq1
             next_mitsot_val = mitsot_m2 + diff
             next_sitsot_val = sitsot_m1 - diff
-            nitsot_out = tensor.alloc(numpy.asarray(0., 'float32'),
+            nitsot_out = tensor.alloc(np.asarray(0., 'float32'),
                                       next_mitsot_val +
                                       next_sitsot_val)
             return next_sitsot_val, next_mitsot_val, nitsot_out
@@ -2582,7 +2582,7 @@ class T_Scan(unittest.TestCase):
         assert(len(scan_nodes_from_fct(f)) == 1)
 
         # This generate a scan crash during execution.
-        # output_shape = f(numpy.arange(5), 5, [1, 2])
+        # output_shape = f(np.arange(5), 5, [1, 2])
         # assert(all(output_shape == (5, 6)))
 
     # The following test will fail in DebugMode if there are
@@ -2606,7 +2606,7 @@ class T_Scan(unittest.TestCase):
         go1 = theano.tensor.grad(o1.mean(), wrt=x)
         f = theano.function([x], go1, updates=updates,
                             allow_input_downcast=True, mode=mode_with_opt)
-        self.assertTrue(numpy.allclose(f([1, 2, 3]), 2. / 3))
+        self.assertTrue(np.allclose(f([1, 2, 3]), 2. / 3))
 
         topo = f.maker.fgraph.toposort()
         # this new assert is here to test if scan_merging works ..
@@ -2709,7 +2709,7 @@ class T_Scan(unittest.TestCase):
             n.op, theano.scan_module.scan_op.Scan)]
         self.assertTrue(len(scans) == 2)
 
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         x_val = rng.uniform(size=(4,)).astype(theano.config.floatX)
         y_val = rng.uniform(size=(4,)).astype(theano.config.floatX)
         # Run it so DebugMode can detect optimization problems.
@@ -2750,7 +2750,7 @@ class T_Scan(unittest.TestCase):
             return M
 
         # some initializations
-        hypx = numpy.log(numpy.tile([1,1,1,1,1,1,0.01], (3,1)))
+        hypx = np.log(np.tile([1,1,1,1,1,1,0.01], (3,1)))
 
         # variables used in the following expressions
         hyp = theano.shared(hypx)
@@ -2761,10 +2761,10 @@ class T_Scan(unittest.TestCase):
 
         M = init_predictive_output(inputs,targets,hyp,x_star,s_star)
 
-        X = numpy.random.random((10,4))
-        Y = numpy.random.random((10,3))
-        test_m = numpy.random.random((4,))
-        test_s = numpy.eye(4)
+        X = np.random.random((10,4))
+        Y = np.random.random((10,3))
+        test_m = np.random.random((4,))
+        test_s = np.eye(4)
 
         # Compute expected outputs (jacobian of M wrt x_star)
         dfdm = theano.function([inputs,targets,x_star,s_star],
@@ -2849,9 +2849,9 @@ class T_Scan(unittest.TestCase):
 
         x = theano.tensor.fmatrix('x')
 
-        mem_val = numpy.zeros((2,), dtype='float32')
+        mem_val = np.zeros((2,), dtype='float32')
         memory = theano.shared(mem_val)
-        W = theano.shared(numpy.random.random((5, 2)).astype('float32'))
+        W = theano.shared(np.random.random((5, 2)).astype('float32'))
 
         def f(inp, mem):
             i = theano.tensor.join(0, inp, mem)
@@ -2865,7 +2865,7 @@ class T_Scan(unittest.TestCase):
         f = theano.function([x], outs[0])
         f2 = theano.function([x], outs[1])
 
-        x_val = numpy.random.random((4, 3)).astype('float32')
+        x_val = np.random.random((4, 3)).astype('float32')
 
         f_vals = f(x_val)
         memory.set_value(mem_val)
@@ -2874,12 +2874,12 @@ class T_Scan(unittest.TestCase):
 
     def test_reduce_memory_consumption(self):
 
-        x = theano.shared(numpy.asarray(
-            numpy.random.uniform(size=(10,)), dtype=theano.config.floatX))
+        x = theano.shared(np.asarray(
+            np.random.uniform(size=(10,)), dtype=theano.config.floatX))
         o, _ = theano.reduce(lambda v, acc: acc + v,
                              x,
                              theano.tensor.constant(
-                                 numpy.asarray(0.,
+                                 np.asarray(0.,
                                                dtype=theano.config.floatX)))
         mode = theano.compile.mode.FAST_RUN
         mode = mode.excluding('inplace')
@@ -2903,15 +2903,15 @@ class T_Scan(unittest.TestCase):
 
         gx = theano.tensor.grad(o, x)
         f2 = theano.function([], gx)
-        utt.assert_allclose(f2(), numpy.ones((10,)))
+        utt.assert_allclose(f2(), np.ones((10,)))
 
     def test_foldl_memory_consumption(self):
-        x = theano.shared(numpy.asarray(
-            numpy.random.uniform(size=(10,)), dtype=theano.config.floatX))
+        x = theano.shared(np.asarray(
+            np.random.uniform(size=(10,)), dtype=theano.config.floatX))
         o, _ = theano.foldl(lambda v, acc: acc + v,
                             x,
                             theano.tensor.constant(
-                                numpy.asarray(0.,
+                                np.asarray(0.,
                                               dtype=theano.config.floatX)))
 
         mode = theano.compile.mode.FAST_RUN
@@ -2936,16 +2936,16 @@ class T_Scan(unittest.TestCase):
 
         gx = theano.tensor.grad(o, x)
         f2 = theano.function([], gx)
-        utt.assert_allclose(f2(), numpy.ones((10,)))
+        utt.assert_allclose(f2(), np.ones((10,)))
 
     def test_foldr_memory_consumption(self):
 
-        x = theano.shared(numpy.asarray(
-            numpy.random.uniform(size=(10,)), dtype=theano.config.floatX))
+        x = theano.shared(np.asarray(
+            np.random.uniform(size=(10,)), dtype=theano.config.floatX))
         o, _ = theano.foldr(lambda v, acc: acc + v,
                             x,
                             theano.tensor.constant(
-                                numpy.asarray(0.,
+                                np.asarray(0.,
                                               dtype=theano.config.floatX)))
 
         mode = theano.compile.mode.FAST_RUN
@@ -2970,26 +2970,26 @@ class T_Scan(unittest.TestCase):
 
         gx = theano.tensor.grad(o, x)
         f2 = theano.function([], gx)
-        utt.assert_allclose(f2(), numpy.ones((10,)))
+        utt.assert_allclose(f2(), np.ones((10,)))
 
     @attr('slow')
     def test_rop2(self):
         seed = utt.fetch_seed()
-        rng = numpy.random.RandomState(seed)
+        rng = np.random.RandomState(seed)
         floatX = theano.config.floatX
-        v_u = numpy.array(rng.uniform(size=(3, 5)) - .5, dtype=floatX)
-        v_W = numpy.array(rng.uniform(size=(5, 5)) - .5, dtype=floatX)
-        v_h0 = numpy.array(rng.uniform(size=(5,)) - .5, dtype=floatX)
+        v_u = np.array(rng.uniform(size=(3, 5)) - .5, dtype=floatX)
+        v_W = np.array(rng.uniform(size=(5, 5)) - .5, dtype=floatX)
+        v_h0 = np.array(rng.uniform(size=(5,)) - .5, dtype=floatX)
 
-        v_eu = numpy.array(rng.uniform(size=(3, 5)) - .5, dtype=floatX)
-        v_eW = numpy.array(rng.uniform(size=(5, 5)) - .5, dtype=floatX)
-        v_eh0 = numpy.array(rng.uniform(size=(5,)) - .5, dtype=floatX)
+        v_eu = np.array(rng.uniform(size=(3, 5)) - .5, dtype=floatX)
+        v_eW = np.array(rng.uniform(size=(5, 5)) - .5, dtype=floatX)
+        v_eh0 = np.array(rng.uniform(size=(5,)) - .5, dtype=floatX)
 
         def rnn_fn(_u, _y, _W):
 
             srng = theano.tensor.shared_randomstreams.RandomStreams(seed)
             tmp_val = _u + _y + srng.uniform(size=v_h0.shape) *\
-                        numpy.asarray(1e-6, dtype=floatX)
+                        np.asarray(1e-6, dtype=floatX)
             sl_o = theano.tensor.tanh(theano.tensor.dot(_W, tmp_val))
             return sl_o, tmp_val
 
@@ -3051,15 +3051,15 @@ class T_Scan(unittest.TestCase):
 
     def test_rop(self):
         seed = utt.fetch_seed()
-        rng = numpy.random.RandomState(seed)
+        rng = np.random.RandomState(seed)
         floatX = theano.config.floatX
-        v_u = numpy.array(rng.uniform(size=(20, 5)), dtype=floatX)
-        v_W = numpy.array(rng.uniform(size=(5, 5)), dtype=floatX)
-        v_h0 = numpy.array(rng.uniform(size=(5,)), dtype=floatX)
+        v_u = np.array(rng.uniform(size=(20, 5)), dtype=floatX)
+        v_W = np.array(rng.uniform(size=(5, 5)), dtype=floatX)
+        v_h0 = np.array(rng.uniform(size=(5,)), dtype=floatX)
 
-        v_eu = numpy.array(rng.uniform(size=(20, 5)), dtype=floatX)
-        v_eW = numpy.array(rng.uniform(size=(5, 5)), dtype=floatX)
-        v_eh0 = numpy.array(rng.uniform(size=(5,)), dtype=floatX)
+        v_eu = np.array(rng.uniform(size=(20, 5)), dtype=floatX)
+        v_eW = np.array(rng.uniform(size=(5, 5)), dtype=floatX)
+        v_eh0 = np.array(rng.uniform(size=(5,)), dtype=floatX)
 
         def rnn_fn(_u, _y, _W):
             sl_o = theano.tensor.tanh(theano.tensor.dot(_W, (_u + _y)))
@@ -3161,14 +3161,14 @@ class T_Scan(unittest.TestCase):
         assert len(scan_nodes) == 0
 
         seed = utt.fetch_seed()
-        rng = numpy.random.RandomState(seed)
+        rng = np.random.RandomState(seed)
         floatX = theano.config.floatX
-        v_h = numpy.array(rng.uniform(size=(2,)), dtype=floatX)
-        v_W1 = numpy.array(rng.uniform(size=(2, 2)), dtype=floatX)
-        v_W2 = numpy.array(rng.uniform(size=(2, 2)), dtype=floatX)
+        v_h = np.array(rng.uniform(size=(2,)), dtype=floatX)
+        v_W1 = np.array(rng.uniform(size=(2, 2)), dtype=floatX)
+        v_W2 = np.array(rng.uniform(size=(2, 2)), dtype=floatX)
 
-        v_out = numpy.dot(v_h, v_W1 + v_W2)
-        sol = numpy.zeros((5, 2))
+        v_out = np.dot(v_h, v_W1 + v_W2)
+        sol = np.zeros((5, 2))
         # This line is here to make sol have the same shape as the output of
         # theano. Note that what we ask theano to do is to repeat the 2
         # elements vector v_out 5 times
@@ -3204,9 +3204,9 @@ class T_Scan(unittest.TestCase):
         f_ref = theano.function([W1, W2, step_indices], o, mode='FAST_COMPILE')
 
         # Compare the results of the two implementations
-        input_values = [numpy.random.random((5, 5)).astype("float32"),
-                        numpy.random.random((5, 5)).astype("float32"),
-                        numpy.arange(5).astype("float32")]
+        input_values = [np.random.random((5, 5)).astype("float32"),
+                        np.random.random((5, 5)).astype("float32"),
+                        np.arange(5).astype("float32")]
 
         out = f(*input_values)
         out_ref = f_ref(*input_values)
@@ -3241,10 +3241,10 @@ class T_Scan(unittest.TestCase):
 
         ([i_t, i_tm1], _) = theano.scan(
             fn, sequences=[inp],
-            outputs_info=[numpy.asarray([0.0, 0.0], theano.config.floatX),
+            outputs_info=[np.asarray([0.0, 0.0], theano.config.floatX),
                           None])
         f = theano.function([inp], [i_t, i_tm1])
-        val = numpy.arange(10).reshape(5, 2).astype(theano.config.floatX)
+        val = np.arange(10).reshape(5, 2).astype(theano.config.floatX)
         ret = f(val)
         utt.assert_allclose(ret[0], val + 10)
         utt.assert_allclose(ret[1], [[0.,  0.],
@@ -3328,7 +3328,7 @@ class T_Scan(unittest.TestCase):
             return x_t + 1, theano.scan_module.until(x_t > 3)
         o, _ = theano.scan(lambda_fn, x)
         f = theano.function([x], o)
-        vx = numpy.zeros((50,), dtype=theano.config.floatX)
+        vx = np.zeros((50,), dtype=theano.config.floatX)
         vx[23] = 4
         out = f(vx)
         assert len(out) == 24
@@ -3342,11 +3342,11 @@ class T_Scan(unittest.TestCase):
         o2, _ = theano.scan(lambda x_t: x_t + 2, x)
 
         f = theano.function([x], [o, o2], mode=mode_with_opt)
-        vx = numpy.zeros((50,), dtype=theano.config.floatX)
+        vx = np.zeros((50,), dtype=theano.config.floatX)
         vx[23] = 4
         out, out2 = f(vx)
         assert len(out) == 24
-        assert numpy.all(out2 == vx + 2)
+        assert np.all(out2 == vx + 2)
         lssc = [x for x in f.maker.fgraph.toposort()
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         # One scan node gets optimnized out
@@ -3400,7 +3400,7 @@ class T_Scan(unittest.TestCase):
                      polynomial3[-1],
                      polynomial4[-1]])
 
-        test_coeff = numpy.asarray([1, 0, 2], dtype=theano.config.floatX)
+        test_coeff = np.asarray([1, 0, 2], dtype=theano.config.floatX)
         # This will be tested by DEBUG_MODE
         out = calculate_polynomial(test_coeff, 3)
         assert out[0] == 19
@@ -3478,7 +3478,7 @@ class T_Scan(unittest.TestCase):
                             x)
 
         f = theano.function([x], [o, o2], mode=mode_with_opt)
-        vx = numpy.zeros((50,), dtype=theano.config.floatX)
+        vx = np.zeros((50,), dtype=theano.config.floatX)
         vx[23] = 4
         out, out2 = f(vx)
         assert len(out) == 24
@@ -3495,7 +3495,7 @@ class T_Scan(unittest.TestCase):
         o, _ = theano.scan(lambda_fn, x)
 
         f = theano.function([x], o.shape[0], mode=mode_with_opt)
-        vx = numpy.zeros((50,), dtype=theano.config.floatX)
+        vx = np.zeros((50,), dtype=theano.config.floatX)
         vx[23] = 4
         out = f(vx)
         assert out == 24
@@ -3514,7 +3514,7 @@ class T_Scan(unittest.TestCase):
                             [o1.shape[0], o2.shape[0]],
                             mode=mode_with_opt)
 
-        vx = numpy.ones((10,), dtype=theano.config.floatX)
+        vx = np.ones((10,), dtype=theano.config.floatX)
         out1, out2 = f(vx)
         assert out1 == 10
         assert out2 == 10
@@ -3533,7 +3533,7 @@ class T_Scan(unittest.TestCase):
                             [o1.shape[0], o2.shape[0]],
                             mode=mode_with_opt)
 
-        vx = numpy.ones((30,), dtype=theano.config.floatX)
+        vx = np.ones((30,), dtype=theano.config.floatX)
         o1, o2 = f(vx)
         assert o1 == 20
         assert o2 == 20
@@ -3633,13 +3633,13 @@ class T_Scan(unittest.TestCase):
 
         # Run the function and validate the outputs
         dtype = theano.config.floatX
-        seq_value = numpy.random.random((10, 3)).astype(dtype)
-        out_init_value = numpy.random.random((3, 3)).astype(dtype)
-        non_seq_value = numpy.random.random((3)).astype(dtype)
+        seq_value = np.random.random((10, 3)).astype(dtype)
+        out_init_value = np.random.random((3, 3)).astype(dtype)
+        non_seq_value = np.random.random((3)).astype(dtype)
 
         outputs =  fct(seq_value, out_init_value, non_seq_value)
 
-        expected_g_seq = numpy.array([[4, 4, 4],
+        expected_g_seq = np.array([[4, 4, 4],
                                       [3, 3, 3],
                                       [3, 3, 3],
                                       [3, 3, 3],
@@ -3650,7 +3650,7 @@ class T_Scan(unittest.TestCase):
                                       [1, 1, 1],
                                       [1, 1, 1]])
         expected_g_out_init = expected_g_seq[:3]
-        expected_g_non_seq = numpy.array([22, 22, 22])
+        expected_g_non_seq = np.array([22, 22, 22])
 
         utt.assert_allclose(outputs[0], expected_g_seq)
         utt.assert_allclose(outputs[1], expected_g_out_init)
@@ -3727,7 +3727,7 @@ class T_Scan(unittest.TestCase):
         assert tf([1.0, 2.0, -3.0, 4.0], 2.0) == 42
 
     def test_return_steps(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         vW_in2 = asarrayX(rng.uniform(size=(2,), low=-5., high=5.))
         vW = asarrayX(rng.uniform(size=(2, 2), low=-5., high=5.))
         vWout = asarrayX(rng.uniform(size=(2,), low=-5., high=5.))
@@ -3771,17 +3771,17 @@ class T_Scan(unittest.TestCase):
                              updates=updates,
                              allow_input_downcast=True)
 
-        # compute the values in numpy
-        v_x = numpy.zeros((8, 2), dtype=theano.config.floatX)
-        v_y = numpy.zeros((8,), dtype=theano.config.floatX)
-        v_x[0] = numpy.dot(v_u1[0], vW_in1) + v_u2[0] * vW_in2 + \
-                    numpy.dot(v_x0, vW)
-        v_y[0] = numpy.dot(v_x0, vWout) + v_y0[2]
+        # compute the values in np
+        v_x = np.zeros((8, 2), dtype=theano.config.floatX)
+        v_y = np.zeros((8,), dtype=theano.config.floatX)
+        v_x[0] = np.dot(v_u1[0], vW_in1) + v_u2[0] * vW_in2 + \
+                    np.dot(v_x0, vW)
+        v_y[0] = np.dot(v_x0, vWout) + v_y0[2]
 
         for i in xrange(1, 8):
-            v_x[i] = numpy.dot(v_u1[i], vW_in1) + v_u2[i] * vW_in2 + \
-                        numpy.dot(v_x[i - 1], vW)
-            v_y[i] = numpy.dot(v_x[i - 1], vWout) + v_y[i - 1]
+            v_x[i] = np.dot(v_u1[i], vW_in1) + v_u2[i] * vW_in2 + \
+                        np.dot(v_x[i - 1], vW)
+            v_y[i] = np.dot(v_x[i - 1], vWout) + v_y[i - 1]
 
         (theano_dump, theano_x, theano_y) = f4(v_u1, v_u2, v_x0, v_y0, vW_in1)
 
@@ -3809,14 +3809,14 @@ class T_Scan(unittest.TestCase):
             assert any([isinstance(node.op, tensor.blas.Dot22)
                         for node in topo])
 
-        vx = numpy.array([[1., 1.], [2., 2.]], dtype=theano.config.floatX)
-        vA = numpy.array([[1., 1.], [1., 0.]], dtype=theano.config.floatX)
-        vR = numpy.array([[[2, 1], [4, 2]], [[2, 1], [4, 2]]],
+        vx = np.array([[1., 1.], [2., 2.]], dtype=theano.config.floatX)
+        vA = np.array([[1., 1.], [1., 0.]], dtype=theano.config.floatX)
+        vR = np.array([[[2, 1], [4, 2]], [[2, 1], [4, 2]]],
                          dtype=theano.config.floatX)
         utt.assert_allclose(f(vx, vA), vR)
 
     def test_savemem_opt(self):
-        y0 = theano.shared(numpy.ones((2, 10)))
+        y0 = theano.shared(np.ones((2, 10)))
         [y1, y2], updates = theano.scan(lambda y: [y, y],
                                          outputs_info=[dict(initial=y0,
                                                             taps=[-2]), None],
@@ -3858,9 +3858,9 @@ class T_Scan(unittest.TestCase):
         f = theano.function(inputs=[x, w], outputs=get_outputs(x, w))
 
         # Test the function to ensure it returns valid results
-        x_value = numpy.random.random((2, 2, 3)).astype(theano.config.floatX)
-        w_value = numpy.random.random((3, 3)).astype(theano.config.floatX)
-        expected_output = numpy.tile(x_value[:, 0].sum(0), (3, 1)).transpose()
+        x_value = np.random.random((2, 2, 3)).astype(theano.config.floatX)
+        w_value = np.random.random((3, 3)).astype(theano.config.floatX)
+        expected_output = np.tile(x_value[:, 0].sum(0), (3, 1)).transpose()
 
         output = f(x_value, w_value)
         utt.assert_allclose(output, expected_output)
@@ -3889,17 +3889,17 @@ class T_Scan(unittest.TestCase):
         gw, gx = tensor.grad(loss, [w, xinit])
         grad_fn = theano.function([xinit, w], [gx, gw],
                                  allow_input_downcast=True)
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         # If numbers are small, the gradients with respect to x are small
         # and the numeric differentiation becomes unstable.
         # To fix this issue I ensure we are sampling numbers larger in
         # absolute value than 1.
-        v_x = numpy.array(rng.uniform(size=(5, 2, 2), low=1., high=3.),
+        v_x = np.array(rng.uniform(size=(5, 2, 2), low=1., high=3.),
                            dtype=theano.config.floatX)
         # Making some entries to be negative.
         pos = rng.uniform(size=(5, 2, 2), low=0., high=1) < .5
         v_x[pos] = -1 * v_x[pos]
-        v_w = numpy.array(rng.uniform(size=(2, 2), low=1., high=3.),
+        v_w = np.array(rng.uniform(size=(2, 2), low=1., high=3.),
                           dtype=theano.config.floatX)
         pos = rng.uniform(size=(2, 2), low=0., high=1.) < .5
         v_w[pos] = -1 * v_w[pos]
@@ -3914,11 +3914,11 @@ class T_Scan(unittest.TestCase):
                              num_grad.gx[max_err_pos]))
 
     def test_grad_numeric_shared(self):
-        shared_var = theano.shared(numpy.float32(1.))
+        shared_var = theano.shared(np.float32(1.))
 
         def inner_fn():
             return [], OrderedDict(
-                [(shared_var, shared_var + numpy.float32(1.))])
+                [(shared_var, shared_var + np.float32(1.))])
         _, updates = theano.scan(inner_fn,
                                  n_steps=10,
                                  truncate_gradient=-1,
@@ -3938,7 +3938,7 @@ class T_Scan(unittest.TestCase):
         n_pars = 1 * 3 + 3 * 3
 
         # Allocate big parameter array.
-        pars = theano.shared(numpy.empty(n_pars))
+        pars = theano.shared(np.empty(n_pars))
 
         # Assign slices.
         W1 = pars[:3].reshape(W1shape)
@@ -3981,15 +3981,15 @@ class T_Scan(unittest.TestCase):
         Hp = tensor.Rop(d_cost_wrt_pars, pars, p)
 
     def test_seq_tap_bug_jeremiah(self):
-        inp = numpy.arange(10).reshape(-1, 1).astype(theano.config.floatX)
-        exp_out = numpy.zeros((10, 1)).astype(theano.config.floatX)
+        inp = np.arange(10).reshape(-1, 1).astype(theano.config.floatX)
+        exp_out = np.zeros((10, 1)).astype(theano.config.floatX)
         exp_out[4:] = inp[:-4]
 
         def onestep(x, x_tm4):
             return x, x_tm4
 
         seq = tensor.matrix()
-        initial_value = theano.shared(numpy.zeros((4, 1),
+        initial_value = theano.shared(np.zeros((4, 1),
                                                   dtype=theano.config.floatX))
         outputs_info = [OrderedDict(
             [('initial', initial_value), ('taps', [-4])]), None]
@@ -3998,7 +3998,7 @@ class T_Scan(unittest.TestCase):
                                        outputs_info=outputs_info)
 
         f = theano.function([seq], results[1])
-        assert numpy.all(exp_out == f(inp))
+        assert np.all(exp_out == f(inp))
 
     def test_borrow_bug_jeremiah(self):
         # This tests two things. The first is a bug occuring when scan wrongly
@@ -4006,29 +4006,29 @@ class T_Scan(unittest.TestCase):
         # method will be able to remove the Scan node from the graph in this
         # case.
 
-        inp = numpy.arange(10).reshape(-1, 1).astype(theano.config.floatX)
-        exp_out = numpy.zeros((10, 1)).astype(theano.config.floatX)
+        inp = np.arange(10).reshape(-1, 1).astype(theano.config.floatX)
+        exp_out = np.zeros((10, 1)).astype(theano.config.floatX)
         exp_out[4:] = inp[:-4]
 
         def onestep(x, x_tm4):
             return x, x_tm4
 
         seq = tensor.matrix()
-        initial_value = theano.shared(numpy.zeros((4, 1),
+        initial_value = theano.shared(np.zeros((4, 1),
                                                   dtype=theano.config.floatX))
         outputs_info = [OrderedDict([('initial', initial_value),
                                      ('taps', [-4])]), None]
         results, _ = theano.scan(fn=onestep,
                                        sequences=seq,
                                        outputs_info=outputs_info)
-        sharedvar = theano.shared(numpy.zeros((1, 1),
+        sharedvar = theano.shared(np.zeros((1, 1),
                                               dtype=theano.config.floatX))
         updates = OrderedDict([(sharedvar, results[0][-1:])])
 
         f = theano.function([seq], results[1], updates=updates)
 
         # This fails if scan uses wrongly the borrow flag
-        assert numpy.all(exp_out == f(inp))
+        assert np.all(exp_out == f(inp))
 
         # This fails if Scan's infer_shape() is unable to remove the Scan
         # node from the graph.
@@ -4068,9 +4068,9 @@ class T_Scan(unittest.TestCase):
 
         # Compare obtained outputs with expected outputs
         floatX = theano.config.floatX
-        outputs = fct(numpy.arange(9, dtype=floatX).reshape(3,3))
+        outputs = fct(np.arange(9, dtype=floatX).reshape(3,3))
 
-        states = numpy.array([[0, 1, 2],
+        states = np.array([[0, 1, 2],
                               [3, 4, 5],
                               [6, 7, 8],
                               [9, 12, 15],
@@ -4142,8 +4142,8 @@ class T_Scan(unittest.TestCase):
         f = theano.function([v], gv)
 
         # Ensure the output of the function is valid
-        output = f(numpy.random.random(5))
-        utt.assert_allclose(output, numpy.ones(5))
+        output = f(np.random.random(5))
+        utt.assert_allclose(output, np.ones(5))
 
     def test_dot_optimization(self):
         A = tensor.matrix('A')
@@ -4153,10 +4153,10 @@ class T_Scan(unittest.TestCase):
                                         B.dimshuffle(0, 'x', 1)],
                            outputs_info=[tensor.zeros_like(A)])
         f = theano.function([A, B], S.owner.inputs[0][-1])
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         vA = rng.uniform(size=(5, 5)).astype(theano.config.floatX)
         vB = rng.uniform(size=(5, 5)).astype(theano.config.floatX)
-        utt.assert_allclose(f(vA, vB), numpy.dot(vA.T, vB))
+        utt.assert_allclose(f(vA, vB), np.dot(vA.T, vB))
 
     def test_pregreedy_optimizer(self):
         W = tensor.zeros((5, 4))
@@ -4169,7 +4169,7 @@ class T_Scan(unittest.TestCase):
             lambda x: tensor.dot(tensor.dot(x, W) + bh_t, W.T) + bv_t,
             outputs_info=v,
             n_steps=2)
-        theano.function([v], chain)(numpy.zeros((3, 5),
+        theano.function([v], chain)(np.zeros((3, 5),
                                                 dtype=theano.config.floatX))
 
     def test_savemem_does_not_duplicate_number_of_scan_nodes(self):
@@ -4208,7 +4208,7 @@ class T_Scan(unittest.TestCase):
                             updates=updates,
                             mode=theano.Mode(linker='py'),
                             allow_input_downcast=True)
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         v_u = asarrayX(rng.uniform(size=(5,)))
         outs = f(v_u, [0, 0, 0], 0)
         utt.assert_allclose(outs[0], v_u + 1)
@@ -4241,7 +4241,7 @@ class T_Scan(unittest.TestCase):
                             updates=updates,
                             mode=theano.Mode(linker='py'),
                             allow_input_downcast=True)
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         v_w = asarrayX(rng.uniform())
         outs = f(v_w, [0, 0, 0], 0)
         utt.assert_allclose(outs[0], v_w + 1)
@@ -4250,7 +4250,7 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(sh.get_value(), v_w + 4)
 
     def test_grad_bug_disconnected_input(self):
-        W = theano.shared(numpy.zeros((3, 3)), name='W')
+        W = theano.shared(np.zeros((3, 3)), name='W')
         v = theano.tensor.ivector(name='v')
         y, _ = theano.scan(lambda i, W: W[i], sequences=v, outputs_info=None, non_sequences=W)
 
@@ -4268,14 +4268,14 @@ class T_Scan(unittest.TestCase):
             # theano.printing.debugprint(out)
             return theano.function([], out)()
 
-        x = theano.shared(numpy.asarray(0., dtype=theano.config.floatX))
+        x = theano.shared(np.asarray(0., dtype=theano.config.floatX))
         utt.assert_allclose(test(x, tensor.sum((x+1)**2), mention_y=False),
                               1.21000003815)
         utt.assert_allclose(test(x, tensor.sum((x+1)**2), mention_y=True),
                               1.21000003815)
 
     def test_grad_find_input(self):
-        w = theano.shared(numpy.array(0, dtype='float32'), name='w')
+        w = theano.shared(np.array(0, dtype='float32'), name='w')
         init = tensor.fscalar('init')
 
         out, _ = theano.scan(
@@ -4331,7 +4331,7 @@ class T_Scan(unittest.TestCase):
         for out in [y1, y2, y3, y4, y5, y6]:
             # This used to raise an exception
             f = theano.function([W, v], out, mode=mode_with_opt)
-            f(numpy.zeros((3, 3), dtype=theano.config.floatX), [1, 2])
+            f(np.zeros((3, 3), dtype=theano.config.floatX), [1, 2])
 
             scan_nodes = scan_nodes_from_fct(f)
             assert len(scan_nodes) == 1
@@ -4373,9 +4373,9 @@ class T_Scan(unittest.TestCase):
             # This used to raise an exception
             f = theano.function([W, v, vv], out, on_unused_input='ignore',
                                 mode=mode_with_opt)
-            f(numpy.zeros((3, 3), theano.config.floatX),
+            f(np.zeros((3, 3), theano.config.floatX),
               [1, 2],
-              numpy.zeros((3, 3), theano.config.floatX))
+              np.zeros((3, 3), theano.config.floatX))
 
             scan_nodes = scan_nodes_from_fct(f)
             assert len(scan_nodes) == 1
@@ -4411,7 +4411,7 @@ class T_Scan(unittest.TestCase):
             result_inner, _ = theano.scan(
                 fn=loss_inner,
                 outputs_info=tensor.as_tensor_variable(
-                    numpy.asarray(0, dtype=numpy.float32)),
+                    np.asarray(0, dtype=np.float32)),
                 non_sequences=[W],
                 n_steps=1,
             )
@@ -4420,7 +4420,7 @@ class T_Scan(unittest.TestCase):
         result_outer, _ = theano.scan(
             fn=loss_outer,
             outputs_info=tensor.as_tensor_variable(
-                numpy.asarray(0, dtype=numpy.float32)),
+                np.asarray(0, dtype=np.float32)),
             non_sequences=[W],
             n_steps=n_steps,
         )
@@ -4429,14 +4429,14 @@ class T_Scan(unittest.TestCase):
         H = theano.gradient.hessian(cost, W)
         print(".", file=sys.stderr)
         f = theano.function([W, n_steps], H)
-        f(numpy.ones((8,), dtype='float32'), 1)
+        f(np.ones((8,), dtype='float32'), 1)
 
     def test_strict_mode(self):
         n = 10
 
-        w = numpy.array([[-1, 2], [3, -4]]).astype(theano.config.floatX)
+        w = np.array([[-1, 2], [3, -4]]).astype(theano.config.floatX)
         w_ = theano.shared(w)
-        x0 = numpy.array([1, 2]).astype(theano.config.floatX)
+        x0 = np.array([1, 2]).astype(theano.config.floatX)
         x0_ = tensor.vector(name='x0', dtype=theano.config.floatX)
 
         def _scan_loose(x):
@@ -4471,9 +4471,9 @@ class T_Scan(unittest.TestCase):
     def test_strict_mode_ex(self):
         n = 10
 
-        w = numpy.array([[-1, 2], [3, -4]]).astype(theano.config.floatX)
+        w = np.array([[-1, 2], [3, -4]]).astype(theano.config.floatX)
         w_ = theano.shared(w)
-        x0 = numpy.array([1, 2]).astype(theano.config.floatX)
+        x0 = np.array([1, 2]).astype(theano.config.floatX)
         x0_ = tensor.vector(name='x0', dtype=theano.config.floatX)
 
         def _scan_loose(x):
@@ -4497,7 +4497,7 @@ class T_Scan(unittest.TestCase):
         # Build a MonitorMode that counts how many values are greater than 10
         def detect_large_outputs(i, node, fn):
             for output in fn.outputs:
-                if isinstance(output[0], numpy.ndarray):
+                if isinstance(output[0], np.ndarray):
                     detect_large_outputs.large_count += (output[0] > 10).sum()
         detect_large_outputs.large_count = 0
 
@@ -4516,7 +4516,7 @@ class T_Scan(unittest.TestCase):
         f = theano.function(inputs=[A, k],
                             outputs=final_result,
                             updates=updates)
-        f(numpy.asarray([2, 3, .1, 0, 1], dtype=theano.config.floatX), 4)
+        f(np.asarray([2, 3, .1, 0, 1], dtype=theano.config.floatX), 4)
 
         # There should be 3 outputs greater than 10: prior_result[0] at step 3,
         # and prior_result[1] at steps 2 and 3.
@@ -4574,19 +4574,19 @@ class ScanGpuTests:
                              mode=self.mode_with_gpu)
 
         # get random initial values
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         v_u = rng.uniform(size=(4,), low=-5., high=5.)
         v_x0 = rng.uniform()
         W = rng.uniform()
         W_in = rng.uniform()
 
-        v_u = numpy.asarray(v_u, dtype='float32')
-        v_x0 = numpy.asarray(v_x0, dtype='float32')
-        W = numpy.asarray(W, dtype='float32')
-        W_in = numpy.asarray(W_in, dtype='float32')
+        v_u = np.asarray(v_u, dtype='float32')
+        v_x0 = np.asarray(v_x0, dtype='float32')
+        W = np.asarray(W, dtype='float32')
+        W_in = np.asarray(W_in, dtype='float32')
 
-        # compute the output in numpy
-        v_out = numpy.zeros((4,))
+        # compute the output in np
+        v_out = np.zeros((4,))
         v_out[0] = v_u[0] * W_in + v_x0 * W
         for step in xrange(1, 4):
             v_out[step] = v_u[step] * W_in + v_out[step - 1] * W
@@ -4646,14 +4646,14 @@ class ScanGpuTests:
                              mode=self.mode_with_gpu)
 
         # get random initial values
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         v_u = rng.uniform(size=(4,), low=-5., high=5.)
         v_x0 = rng.uniform()
         W = rng.uniform()
         W_in = rng.uniform()
 
-        # compute the output in numpy
-        v_out = numpy.zeros((4,))
+        # compute the output in np
+        v_out = np.zeros((4,))
         v_out[0] = v_u[0] * W_in + v_x0 * W
         for step in xrange(1, 4):
             v_out[step] = v_u[step] * W_in + v_out[step - 1] * W
@@ -4708,20 +4708,20 @@ class ScanGpuTests:
                              mode=self.mode_with_gpu)
 
         # get random initial values
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         v_u = rng.uniform(size=(4,), low=-5., high=5.)
         v_x0 = rng.uniform()
         W = rng.uniform()
         W_in = rng.uniform()
 
-        # compute the output in numpy
-        v_out1 = numpy.zeros((4,))
-        v_out2 = numpy.zeros((4,), dtype='int64')
+        # compute the output in np
+        v_out1 = np.zeros((4,))
+        v_out2 = np.zeros((4,), dtype='int64')
         v_out1[0] = v_u[0] * W_in + v_x0 * W
         v_out2[0] = v_u[0] + v_x0
         for step in xrange(1, 4):
             v_out1[step] = v_u[step] * W_in + v_out1[step - 1] * W
-            v_out2[step] = numpy.int64(v_u[step] + v_out1[step - 1])
+            v_out2[step] = np.int64(v_u[step] + v_out1[step - 1])
 
         theano_out1, theano_out2 = f2(v_u, v_x0, W_in, W)
         utt.assert_allclose(theano_out1, v_out1)
@@ -4735,8 +4735,8 @@ class ScanGpuTests:
         assert self.is_scan_on_gpu(scan_node)
 
     def test_gibbs_chain(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        v_vsample = numpy.array(rng.binomial(1, .5, size=(3, 20),),
+        rng = np.random.RandomState(utt.fetch_seed())
+        v_vsample = np.array(rng.binomial(1, .5, size=(3, 20),),
                                 dtype='float32')
         vsample = theano.shared(v_vsample)
         trng = theano.sandbox.rng_mrg.MRG_RandomStreams(
@@ -4788,11 +4788,11 @@ class ScanGpuTests:
 
         # Initialize the network parameters
         floatX = theano.config.floatX
-        U = theano.shared(numpy.zeros((n_in, n_hid), dtype="float32"),
+        U = theano.shared(np.zeros((n_in, n_hid), dtype="float32"),
                         name='W_xin_to_l1')
-        V = theano.shared(numpy.zeros((n_hid, n_hid), dtype="float32"),
+        V = theano.shared(np.zeros((n_hid, n_hid), dtype="float32"),
                         name='W_l1_to_l1')
-        W = theano.shared(numpy.zeros((n_hid, n_out), dtype="float32"),
+        W = theano.shared(np.zeros((n_hid, n_out), dtype="float32"),
                         name='W_l1_to_l2')
         nparams = [U, V, W]
 
@@ -4802,7 +4802,7 @@ class ScanGpuTests:
         def scan_l(baseline, last_step):
             return baseline + tensor.dot(last_step, V)
 
-        zero_output = tensor.alloc(numpy.asarray(0., dtype="float32"),
+        zero_output = tensor.alloc(np.asarray(0., dtype="float32"),
                                    mb_size, n_hid)
 
         l1_out, _ = theano.scan(scan_l, sequences=[l1_base],
@@ -4833,9 +4833,9 @@ class ScanGpuTests:
         assert len(grad_scan_node.outputs) == 2, len(grad_scan_node.outputs)
 
         # Call the theano function to ensure the absence of a memory error
-        feval_backprop(numpy.zeros((mb_length, mb_size, n_in),
+        feval_backprop(np.zeros((mb_length, mb_size, n_in),
                                    dtype="float32"),
-                       numpy.zeros((mb_length, mb_size, n_out),
+                       np.zeros((mb_length, mb_size, n_out),
                                    dtype="float32"))
 
     def test_memory_reuse_gpudimshuffle(self):
@@ -4864,11 +4864,11 @@ class ScanGpuTests:
         fct = theano.function([input1, init], [out1, out2],
                               mode=self.mode_with_gpu)
 
-        output = fct(numpy.ones((2, 1, 1), dtype="float32"),
-                     numpy.ones((1, 1, 1), dtype="float32"))
+        output = fct(np.ones((2, 1, 1), dtype="float32"),
+                     np.ones((1, 1, 1), dtype="float32"))
 
-        expected_output = (numpy.array([2, 4], dtype="float32"),
-                           numpy.array([3, 7], dtype="float32"))
+        expected_output = (np.array([2, 4], dtype="float32"),
+                           np.array([3, 7], dtype="float32"))
         utt.assert_allclose(output, expected_output)
 
 
@@ -4982,7 +4982,7 @@ def test_speed():
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")
 
-    r = numpy.arange(10000).astype(theano.config.floatX).reshape(1000, 10)
+    r = np.arange(10000).astype(theano.config.floatX).reshape(1000, 10)
 
     t0 = time.time()
     for i in xrange(1, 1000):
@@ -4990,7 +4990,7 @@ def test_speed():
     t1 = time.time()
     print('python', t1 - t0)
 
-    r = numpy.arange(10000).astype(theano.config.floatX).reshape(1000, 10)
+    r = np.arange(10000).astype(theano.config.floatX).reshape(1000, 10)
     t0 = time.time()
     r_i = iter(r[1:])
     r_ii = iter(r[:-1])
@@ -5012,7 +5012,7 @@ def test_speed():
     print('python with builtin iterator', t1 - t0)
 
     if 1:
-        r = numpy.arange(10000).astype(theano.config.floatX).reshape(1000, 10)
+        r = np.arange(10000).astype(theano.config.floatX).reshape(1000, 10)
         s_r = tensor.matrix()
         s_y, updates = theano.scan(fn=lambda ri, rii: ri + rii,
                 sequences=[s_r[1:]],
@@ -5027,9 +5027,9 @@ def test_speed():
         print('theano (scan, cvm)', t3 - t2)
 
     if 1:
-        r = numpy.arange(10000).astype(theano.config.floatX).reshape(-1, 10)
+        r = np.arange(10000).astype(theano.config.floatX).reshape(-1, 10)
         shared_r = theano.shared(r)
-        s_i = theano.shared(numpy.array(1))
+        s_i = theano.shared(np.array(1))
         s_rinc = tensor.inc_subtensor(shared_r[s_i], shared_r[s_i - 1],
                 tolerate_inplace_aliasing=True)
         # theano.printing.debugprint(s_rinc)
@@ -5072,18 +5072,18 @@ def test_speed_rnn():
     L = 10000
     N = 50
 
-    numpy.random.seed(2523452)
-    r = numpy.arange(L * N).astype(theano.config.floatX).reshape(L, N)
-    w = numpy.random.randn(N, N).astype(theano.config.floatX)
+    np.random.seed(2523452)
+    r = np.arange(L * N).astype(theano.config.floatX).reshape(L, N)
+    w = np.random.randn(N, N).astype(theano.config.floatX)
 
     t0 = time.time()
     for i in xrange(1, L):
-        r[i] = numpy.tanh(numpy.dot(r[i - 1], w))
+        r[i] = np.tanh(np.dot(r[i - 1], w))
     t1 = time.time()
     print('python', t1 - t0)
 
     if 1:
-        r = numpy.arange(L * N).astype(theano.config.floatX).reshape(L, N)
+        r = np.arange(L * N).astype(theano.config.floatX).reshape(L, N)
         s_r = tensor.matrix()
         s_y, updates = theano.scan(
                 fn=lambda ri, rii: tensor.tanh(tensor.dot(rii, w)),
@@ -5099,7 +5099,7 @@ def test_speed_rnn():
         print('theano (scan, cvm)', t3 - t2)
 
     if 1:
-        r = numpy.arange(L * N).astype(theano.config.floatX).reshape(L, N)
+        r = np.arange(L * N).astype(theano.config.floatX).reshape(L, N)
         s_w = theano.shared(w)
         shared_r = theano.shared(r)
         s_i = theano.scalar.sharedvar.shared(1)
@@ -5151,18 +5151,18 @@ def test_speed_batchrnn():
     B = 50
     N = 400
 
-    numpy.random.seed(2523452)
-    r = numpy.arange(B * L * N).astype(theano.config.floatX).reshape(L, B, N)
-    w = numpy.random.randn(N, N).astype(theano.config.floatX)
+    np.random.seed(2523452)
+    r = np.arange(B * L * N).astype(theano.config.floatX).reshape(L, B, N)
+    w = np.random.randn(N, N).astype(theano.config.floatX)
 
     t0 = time.time()
     for i in xrange(1, L):
-        r[i] = numpy.tanh(numpy.dot(r[i - 1], w))
+        r[i] = np.tanh(np.dot(r[i - 1], w))
     t1 = time.time()
     print('python', t1 - t0)
 
     if 1:
-        r = numpy.arange(B * L * N).astype(
+        r = np.arange(B * L * N).astype(
             theano.config.floatX).reshape(L, B, N)
         s_w = theano.shared(w)
         shared_r = theano.shared(r)
@@ -5325,9 +5325,9 @@ def test_compute_test_value():
     theano.config.compute_test_value = 'raise'
     try:
         x = tensor.vector('x')
-        xv = numpy.ones(3, dtype=theano.config.floatX)
+        xv = np.ones(3, dtype=theano.config.floatX)
         x.tag.test_value = xv
-        y = theano.shared(numpy.arange(3, dtype=theano.config.floatX),
+        y = theano.shared(np.arange(3, dtype=theano.config.floatX),
                           name='y')
         z, updates = theano.scan(
                 fn=lambda u, v: u + v,
@@ -5348,10 +5348,10 @@ def test_compute_test_value_nonseq():
     theano.config.compute_test_value = 'raise'
     try:
         x = tensor.vector('x')
-        xv = numpy.ones(3, dtype=theano.config.floatX)
+        xv = np.ones(3, dtype=theano.config.floatX)
         x.tag.test_value = xv
         y = theano.shared(
-                numpy.arange(9, dtype=theano.config.floatX).reshape(3, 3),
+                np.arange(9, dtype=theano.config.floatX).reshape(3, 3),
                 name='y')
         z, updates = theano.scan(
                 fn=lambda u, v: u + v,
@@ -5370,7 +5370,7 @@ def test_compute_test_value_nonseq():
 def test_compute_test_value_grad():
     # Test case originally reported by Bitton Tenessi
     # https://groups.google.com/d/msg/theano-users/fAP3i2CbskQ/3OgBf4yjqiQJ
-    WEIGHT = numpy.array([1, 2, 1, 3, 4, 1, 5, 6, 1, 7, 8, 1],
+    WEIGHT = np.array([1, 2, 1, 3, 4, 1, 5, 6, 1, 7, 8, 1],
                          dtype='float32')
 
     old_compute_test_val = theano.config.compute_test_value
@@ -5384,13 +5384,13 @@ def test_compute_test_value_grad():
         W = W_flat.reshape((2, 2, 3))
 
         outputs_mi = tensor.as_tensor_variable(
-                numpy.asarray(0, dtype='float32'))
-        outputs_mi.tag.test_value = numpy.asarray(0, dtype='float32')
+                np.asarray(0, dtype='float32'))
+        outputs_mi.tag.test_value = np.asarray(0, dtype='float32')
 
         def loss_mi(mi, sum_mi, W):
             outputs_ti = tensor.as_tensor_variable(
-                    numpy.asarray(0, dtype='float32'))
-            outputs_ti.tag.test_value = numpy.asarray(0, dtype='float32')
+                    np.asarray(0, dtype='float32'))
+            outputs_ti.tag.test_value = np.asarray(0, dtype='float32')
 
             def loss_ti(ti, sum_ti, mi, W):
                 return W.sum().sum().sum() + sum_ti
@@ -5427,10 +5427,10 @@ def test_compute_test_value_grad_cast():
     theano.config.compute_test_value = 'raise'
     try:
         h = tensor.matrix('h')
-        h.tag.test_value = numpy.array([[1, 2, 3, 4], [5, 6, 7, 8]],
+        h.tag.test_value = np.array([[1, 2, 3, 4], [5, 6, 7, 8]],
                                        dtype=floatX)
 
-        w = theano.shared(numpy.random.randn(4, 3).astype(floatX), name='w')
+        w = theano.shared(np.random.randn(4, 3).astype(floatX), name='w')
 
         outputs, _ = theano.scan(lambda i, h, w: (theano.dot(h[i], w), i),
                                  outputs_info=[None, 0], non_sequences=[h, w],

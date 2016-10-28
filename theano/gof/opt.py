@@ -15,7 +15,7 @@ import time
 import warnings
 import traceback
 
-import numpy
+import numpy as np
 
 import theano
 from theano import config
@@ -1653,7 +1653,7 @@ class PatternSub(LocalOptimizer):
                     u = u.merge(expr, v)
             elif (isinstance(pattern, (integer_types, float)) and
                     isinstance(expr, graph.Constant)):
-                if numpy.all(
+                if np.all(
                         theano.tensor.constant(pattern).value == expr.value):
                     return u
                 else:

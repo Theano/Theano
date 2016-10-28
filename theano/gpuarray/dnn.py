@@ -4,7 +4,7 @@ import os
 import sys
 import warnings
 
-import numpy
+import numpy as np
 from six import integer_types
 
 import theano
@@ -448,8 +448,8 @@ gpu_dnn_conv_desc.cache = {}
 
 
 # scalar constants
-_zero = constant(numpy.asarray(0.0, dtype='float64'))
-_one = constant(numpy.asarray(1.0, dtype='float64'))
+_zero = constant(np.asarray(0.0, dtype='float64'))
+_one = constant(np.asarray(1.0, dtype='float64'))
 
 
 def ensure_dt(val, default, name, dtype):
@@ -2372,8 +2372,8 @@ class RNNBlock(object):
         bytesize = _get_param_size(self.desc, input_size, self.dtype,
                                    self.context_name)
         bytesize = int(bytesize)
-        assert bytesize % numpy.dtype(self.dtype).itemsize == 0
-        return bytesize // numpy.dtype(self.dtype).itemsize
+        assert bytesize % np.dtype(self.dtype).itemsize == 0
+        return bytesize // np.dtype(self.dtype).itemsize
 
     def split_params(self, w, layer, input_size):
         if not isinstance(w, GpuArraySharedVariable):

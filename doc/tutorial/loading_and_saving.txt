@@ -132,12 +132,12 @@ ZIP-file.
 
 The main advantage of this approach is that you don't even need Theano installed
 in order to look at the values of shared variables that you pickled. You can
-just load the parameters manually with `numpy`.
+just load the parameters manually with `np`.
 
 .. code-block:: python
 
-    import numpy
-    numpy.load('model.zip')
+    import numpy as np
+    np.load('model.zip')
 
 This approach could be beneficial if you are sharing your model with people who
 might not have Theano installed, who are using a different Python version, or if

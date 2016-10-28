@@ -137,7 +137,7 @@ in it::
 
     C:\Users\user>ipython
     [...]
-    In [1]: import numpy
+    In [1]: import numpy as np
 
 If you see an error message telling you that ``DLL load failed``, that is
 probably due to a bug in the script launching ipython. If ``C:\SciSoft\Python27``

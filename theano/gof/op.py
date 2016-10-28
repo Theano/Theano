@@ -9,7 +9,7 @@ from __future__ import absolute_import, print_function, division
 
 import inspect
 import logging
-import numpy
+import numpy as np
 import os
 import re
 import sys
@@ -962,7 +962,7 @@ def get_test_value(v):
 
     If input `v` is not already a variable, it is turned into one by calling
     `as_tensor_variable(v)`, so that this function can be applied e.g.
-    on numpy arrays or Python lists and scalars, considering them as constants.
+    on np arrays or Python lists and scalars, considering them as constants.
 
     For a Constant, the test value is v.value.
     For a Shared variable, it is the internal value.
@@ -1428,7 +1428,7 @@ class COp(Op):
                     (macro_name, macro_value))
                 undef_macros.append(undef_template % macro_name)
 
-                d = numpy.dtype(v.dtype)
+                d = np.dtype(v.dtype)
 
                 macro_name = "TYPENUM_" + vname
                 macro_value = d.num

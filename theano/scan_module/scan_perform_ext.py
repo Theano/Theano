@@ -5,7 +5,7 @@ import os
 import sys
 import warnings
 
-import numpy
+import numpy as np
 
 import theano
 from theano import config
@@ -96,10 +96,10 @@ except ImportError:
                 # During scan cython development, it is helpful to keep the old interface, to don't manually edit the c file each time.
                 preargs.remove('-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION')
             else:
-                numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+                np_ver = [int(n) for n in np.__version__.split('.')[:2]]
                 # Add add some macro to lower the number of edit
                 # needed to the c file.
-                if bool(numpy_ver >= [1, 7]):
+                if bool(np_ver >= [1, 7]):
                     # Needed when we disable the old API, as cython
                     # use the old interface
                     preargs.append("-D NPY_ENSUREARRAY=NPY_ARRAY_ENSUREARRAY")
@@ -138,6 +138,6 @@ except ImportError:
 # To fix it completly, we would need to modify Cython to use the new API.
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore",
-                            message="numpy.ndarray size changed")
+                            message="np.ndarray size changed")
     from scan_perform.scan_perform import *
 assert version == get_version()

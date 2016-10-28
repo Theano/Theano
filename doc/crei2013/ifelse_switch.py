@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import time
 
-import numpy
+import numpy as np
 
 import theano
 from theano import tensor as tt
@@ -19,8 +19,8 @@ f_lazyifelse = theano.function([a, b, x, y], z_lazy)
 
 val1 = 0.
 val2 = 1.
-big_mat1 = numpy.ones((10000, 1000))
-big_mat2 = numpy.ones((10000, 1000))
+big_mat1 = np.ones((10000, 1000))
+big_mat2 = np.ones((10000, 1000))
 
 n_times = 10
 

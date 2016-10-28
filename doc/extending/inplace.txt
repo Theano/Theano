@@ -7,7 +7,7 @@ Views and inplace operations
 
 Theano allows the definition of Ops which return a :term:`view` on one
 of their inputs or operate :term:`inplace` on one or several
-inputs. This allows more efficient operations on numpy's ``ndarray``
+inputs. This allows more efficient operations on np's ``ndarray``
 data type than would be possible otherwise.
 However, in order to work correctly, these Ops need to
 implement an additional interface.
@@ -94,7 +94,7 @@ Inplace operations
 
 An inplace operation is one that modifies one or more of its
 inputs. For example, the expression ``x += y`` where ``x`` and ``y``
-are ``numpy.ndarray`` instances would normally represent an inplace
+are ``np.ndarray`` instances would normally represent an inplace
 operation on ``x``.
 
 .. note::

@@ -298,7 +298,7 @@ def dlimport(fullpath, suffix=None):
         t0 = time.time()
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore",
-                                    message="numpy.ndarray size changed")
+                                    message="np.ndarray size changed")
             rval = __import__(module_name, {}, {}, [module_name])
         t1 = time.time()
         import_time += t1 - t0
@@ -1577,7 +1577,7 @@ def get_gcc_shared_library_arg():
 
 
 def std_include_dirs():
-    numpy_inc_dirs = numpy.distutils.misc_util.get_numpy_include_dirs()
+    numpy_inc_dirs = numpy.distutils.misc_util.get_np_include_dirs()
     py_inc = distutils.sysconfig.get_python_inc()
     py_plat_spec_inc = distutils.sysconfig.get_python_inc(plat_specific=True)
     python_inc_dirs = ([py_inc] if py_inc == py_plat_spec_inc
@@ -2137,7 +2137,7 @@ class GCC_compiler(Compiler):
         cxxflags.append("-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 
-        # numpy 1.7 deprecated the following macro but the new one didn't
+        # np 1.7 deprecated the following macro but the new one didn't
         # existed in the past
         if bool(numpy_ver < [1, 7]):
             cxxflags.append("-DNPY_ARRAY_ENSUREARRAY=NPY_ENSUREARRAY")

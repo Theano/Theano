@@ -34,7 +34,7 @@ This does not cover all cases of broadcasting, but I believe they cover enough. 
   * In general, it only handles f(shape(head, ...), shape(head, ...), ...) and f(shape(..., tail), shape(..., tail), ...)
   * Maybe I could add a general case later... the thing is that I think the ones I am considering here are easier to streamline.
 
-Point of clarification: the order discussed here corresponds to a set of broadcasting rules, and is independent from the storage order.  The 'f' order corresponds to numpy's broadcasting rules, while the 'c' order is something new and different (TODO VERIFY!)
+Point of clarification: the order discussed here corresponds to a set of broadcasting rules, and is independent from the storage order.  The 'f' order corresponds to np's broadcasting rules, while the 'c' order is something new and different (TODO VERIFY!)
 
 Question: does it make sense to apply the order to the loop, or is this broadcast order something which will be local to each input argument.  What happens when the elemwise compiler deals with more complex subgraphs with multiple inputs and outputs?
 

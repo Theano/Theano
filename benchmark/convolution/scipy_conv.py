@@ -14,14 +14,14 @@ if len(sys.argv)>6:
 
 T = timeit.Timer("f()","""
 from scipy.signal import convolve2d
-import numpy
+import numpy as np
 
 img_shape =  int(sys.argv[1]), int(sys.argv[2])
 ker_shape =  int(sys.argv[3]), int(sys.argv[4])
 dtype = sys.argv[5]
 
-img = numpy.ones(img_shape, dtype=dtype)
-ker = numpy.ones(ker_shape, dtype=dtype)
+img = np.ones(img_shape, dtype=dtype)
+ker = np.ones(ker_shape, dtype=dtype)
 
 def f():
     convolve2d(img, ker, mode="valid")

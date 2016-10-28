@@ -96,9 +96,9 @@ So the proposal is to provide the missing functionality (the last three requirem
 == {{{MetaRandom}}} ==
 
 The {{{MetaRandom}}} class is the proposed interface for getting {{{RandomOp}}} instances.
-There are some syntactic similarities in the way {{{MetaRandom}}} is used to construct graphs, and the way {{{numpy.RandomState}}} appears in a corresponding procedural implementation.  But since theano is symbolic the meaning of {{{MetaRandom}}} is quite different.
+There are some syntactic similarities in the way {{{MetaRandom}}} is used to construct graphs, and the way {{{np.RandomState}}} appears in a corresponding procedural implementation.  But since theano is symbolic the meaning of {{{MetaRandom}}} is quite different.
 
-As with {{{numpy.RandomState}}} though, a global instance of {{{MetaRandom}}} will be instantiated at import time for the scripter's convenience.
+As with {{{np.RandomState}}} though, a global instance of {{{MetaRandom}}} will be instantiated at import time for the scripter's convenience.
 
 A {{{MetaRandom}}} instance will remember every {{{Result}}} that it returns during its lifetime.
 When calling functions like {{{seed, setstate}}}, this list is consulted so that only the streams associated with Results returned by {{{self}}} are modified.

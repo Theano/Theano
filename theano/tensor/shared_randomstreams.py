@@ -7,7 +7,7 @@ from __future__ import absolute_import, print_function, division
 
 import copy
 
-import numpy
+import numpy as np
 
 from theano.compile.sharedvalue import (SharedVariable, shared_constructor,
                                         shared)
@@ -27,7 +27,7 @@ def randomstate_constructor(value, name=None, strict=False,
     SharedVariable Constructor for RandomState.
 
     """
-    if not isinstance(value, numpy.random.RandomState):
+    if not isinstance(value, np.random.RandomState):
         raise TypeError
     if not borrow:
         value = copy.deepcopy(value)
@@ -41,8 +41,8 @@ def randomstate_constructor(value, name=None, strict=False,
 
 class RandomStreams(raw_random.RandomStreamsBase):
     """
-    Module component with similar interface to numpy.random
-    (numpy.random.RandomState)
+    Module component with similar interface to np.random
+    (np.random.RandomState)
 
     Parameters
     ----------
@@ -64,8 +64,8 @@ class RandomStreams(raw_random.RandomStreamsBase):
         # Instance variable should take None or integer value. Used to seed the
         # random number generator that provides seeds for member streams.
         self.default_instance_seed = seed
-        # numpy.RandomState instance that gen() uses to seed new streams.
-        self.gen_seedgen = numpy.random.RandomState(seed)
+        # np.RandomState instance that gen() uses to seed new streams.
+        self.gen_seedgen = np.random.RandomState(seed)
 
     def seed(self, seed=None):
         """
@@ -85,15 +85,15 @@ class RandomStreams(raw_random.RandomStreamsBase):
         if seed is None:
             seed = self.default_instance_seed
 
-        seedgen = numpy.random.RandomState(seed)
+        seedgen = np.random.RandomState(seed)
         for old_r, new_r in self.state_updates:
             old_r_seed = seedgen.randint(2 ** 30)
-            old_r.set_value(numpy.random.RandomState(int(old_r_seed)),
+            old_r.set_value(np.random.RandomState(int(old_r_seed)),
                             borrow=True)
 
     def __getitem__(self, item):
         """
-        Retrieve the numpy RandomState instance associated with a particular
+        Retrieve the np RandomState instance associated with a particular
         stream.
 
         Parameters
@@ -104,7 +104,7 @@ class RandomStreams(raw_random.RandomStreamsBase):
 
         Returns
         -------
-        numpy RandomState (or None, before initialize)
+        np RandomState (or None, before initialize)
 
         Notes
         -----
@@ -116,7 +116,7 @@ class RandomStreams(raw_random.RandomStreamsBase):
 
     def __setitem__(self, item, val):
         """
-        Set the numpy RandomState instance associated with a particular stream.
+        Set the np RandomState instance associated with a particular stream.
 
         Parameters
         ----------
@@ -124,7 +124,7 @@ class RandomStreams(raw_random.RandomStreamsBase):
             A variable of type RandomStateType, associated with this
             RandomStream.
 
-        val : numpy RandomState
+        val : np RandomState
             The new value.
 
         Returns
@@ -161,7 +161,7 @@ class RandomStreams(raw_random.RandomStreamsBase):
 
         """
         seed = int(self.gen_seedgen.randint(2 ** 30))
-        random_state_variable = shared(numpy.random.RandomState(seed))
+        random_state_variable = shared(np.random.RandomState(seed))
         # Add a reference to distinguish from other shared variables
         random_state_variable.tag.is_rng = True
         new_r, out = op(random_state_variable, *args, **kwargs)

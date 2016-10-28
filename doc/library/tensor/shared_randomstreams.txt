@@ -13,10 +13,10 @@ Guide
 =====
 
 Since Theano uses a functional design, producing pseudo-random numbers in a
-graph is not quite as straightforward as it is in numpy.
+graph is not quite as straightforward as it is in np.
 
 The way to think about putting randomness into Theano's computations is to
-put random variables in your graph.  Theano will allocate a numpy RandomState
+put random variables in your graph.  Theano will allocate a np RandomState
 object for each such variable, and draw from it as necessary.  We will call this sort of sequence of
 random numbers a *random stream*.
 
@@ -29,7 +29,7 @@ Reference
 
 .. class:: RandomStreams(raw_random.RandomStreamsBase)
 
-    This is a symbolic stand-in for ``numpy.random.RandomState``. 
+    This is a symbolic stand-in for ``np.random.RandomState``. 
     Random variables of various distributions are instantiated by calls to
     parent class :class:`raw_random.RandomStreamsBase`.
 
@@ -66,13 +66,13 @@ Reference
 
     .. attribute:: rng
 
-        The shared variable whose ``.value`` is the numpy RandomState
+        The shared variable whose ``.value`` is the np RandomState
         generator feeding this random variable.
 
     .. attribute:: update
         
         A pair
-        whose first element is a shared variable whose value is a numpy RandomState,
+        whose first element is a shared variable whose value is a np RandomState,
         and whose second element is an [symbolic] expression for the next value of that
         RandomState after drawing samples.
         Including this pair in the``updates`` list to function will cause the

@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 import unittest
 
 import theano
-import numpy
+import numpy as np
 import scipy.sparse as sp
 
 from theano import sparse

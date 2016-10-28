@@ -8,7 +8,7 @@ http://www.iro.umontreal.ca/~simardr/ssj/indexe.html
 from __future__ import absolute_import, print_function, division
 import warnings
 
-import numpy
+import numpy as np
 from six import integer_types
 from six.moves import xrange
 
@@ -38,7 +38,7 @@ if theano.sandbox.cuda.cuda_available:
 def matVecModM(A, s, m):
     # TODO : need description for method, parameter and return
     assert A.dtype == 'int64'
-    return numpy.int32(numpy.sum((A * s) % m, 1) % m)
+    return np.int32(np.sum((A * s) % m, 1) % m)
 
 
 def multMatVect(v, A, m1, B, m2):
@@ -97,7 +97,7 @@ class DotModulo(Op):
         (out,) = outputs
         o1 = matVecModM(A, s, m)
         o2 = matVecModM(A2, s2, m2)
-        out[0] = numpy.concatenate((o1, o2))
+        out[0] = np.concatenate((o1, o2))
 
     def c_code_cache_version(self):
         return (6,)
@@ -198,39 +198,39 @@ class DotModulo(Op):
 
 # MRG31k3p
 # generator constants :
-M1 = numpy.asarray(numpy.int32(2147483647))    # 2^31 - 1
-M2 = numpy.asarray(numpy.int32(2147462579))    # 2^31 - 21069
-MASK12 = numpy.int32(511)                      # 2^9 - 1
-MASK13 = numpy.int32(16777215)                 # 2^24 - 1
-MASK2 = numpy.int32(65535)                     # 2^16 - 1
-MULT2 = numpy.int32(21069)
+M1 = np.asarray(np.int32(2147483647))    # 2^31 - 1
+M2 = np.asarray(np.int32(2147462579))    # 2^31 - 21069
+MASK12 = np.int32(511)                      # 2^9 - 1
+MASK13 = np.int32(16777215)                 # 2^24 - 1
+MASK2 = np.int32(65535)                     # 2^16 - 1
+MULT2 = np.int32(21069)
 NORM = 4.656612873077392578125e-10  # 1./2^31
 
-# A1p0 = numpy.asarray([[0, 4194304, 129], [1, 0, 0], [0, 1, 0]],
+# A1p0 = np.asarray([[0, 4194304, 129], [1, 0, 0], [0, 1, 0]],
 #                      dtype='int64')
-# A2p0 = numpy.asarray([[32768, 0, 32769], [1, 0, 0], [0, 1, 0]],
+# A2p0 = np.asarray([[32768, 0, 32769], [1, 0, 0], [0, 1, 0]],
 #                      dtype='int64')
 
-A1p72 = numpy.asarray([[1516919229, 758510237, 499121365],
+A1p72 = np.asarray([[1516919229, 758510237, 499121365],
                        [1884998244, 1516919229, 335398200],
                        [601897748, 1884998244, 358115744]],
                       dtype='int64')
-A2p72 = numpy.asarray([[1228857673, 1496414766, 954677935],
+A2p72 = np.asarray([[1228857673, 1496414766, 954677935],
                        [1133297478, 1407477216, 1496414766],
                        [2002613992, 1639496704, 1407477216]],
                       dtype='int64')
 
-A1p134 = numpy.asarray(
+A1p134 = np.asarray(
     [[1702500920, 1849582496, 1656874625],
      [828554832, 1702500920, 1512419905],
      [1143731069, 828554832, 102237247]],
     dtype='int64')
-A2p134 = numpy.asarray(
+A2p134 = np.asarray(
     [[796789021, 1464208080, 607337906],
      [1241679051, 1431130166, 1464208080],
      [1401213391, 1178684362, 1431130166]],
     dtype='int64')
-np_int32_vals = [numpy.int32(i) for i in (0, 7, 9, 15, 16, 22, 24)]
+np_int32_vals = [np.int32(i) for i in (0, 7, 9, 15, 16, 22, 24)]
 
 
 def ff_2p134(rstate):
@@ -246,14 +246,14 @@ def ff_2p72(rstate):
 def mrg_next_value(rstate, new_rstate):
     # TODO : need description for method, parameter and return
     x11, x12, x13, x21, x22, x23 = rstate
-    assert type(x11) == numpy.int32
+    assert type(x11) == np.int32
 
     i0, i7, i9, i15, i16, i22, i24 = np_int32_vals
     # first component
     y1 = (((x12 & MASK12) << i22) + (x12 >> i9) +
           ((x13 & MASK13) << i7) + (x13 >> i24))
 
-    assert type(y1) == numpy.int32
+    assert type(y1) == np.int32
     if (y1 < 0 or y1 >= M1):  # must also check overflow
         y1 -= M1
     y1 += x13
@@ -266,11 +266,11 @@ def mrg_next_value(rstate, new_rstate):
 
     # second component
     y1 = ((x21 & MASK2) << i15) + (MULT2 * (x21 >> i16))
-    assert type(y1) == numpy.int32
+    assert type(y1) == np.int32
     if (y1 < 0 or y1 >= M2):
         y1 -= M2
     y2 = ((x23 & MASK2) << i15) + (MULT2 * (x23 >> i16))
-    assert type(y2) == numpy.int32
+    assert type(y2) == np.int32
     if (y2 < 0 or y2 >= M2):
         y2 -= M2
     y2 += x23
@@ -286,7 +286,7 @@ def mrg_next_value(rstate, new_rstate):
 
     # Must never return either 0 or M1+1
     new_rstate[...] = [x11, x12, x13, x21, x22, x23]
-    assert new_rstate.dtype == numpy.int32
+    assert new_rstate.dtype == np.int32
     if (x11 <= x21):
         return (x11 - x21 + M1) * NORM
     else:
@@ -303,7 +303,7 @@ class mrg_uniform_base(Op):
         self.inplace = inplace
         if inplace:
             self.destroy_map = {0: [0]}
-        self.warned_numpy_version = False
+        self.warned_np_version = False
 
     def __str__(self):
         if self.inplace:
@@ -355,22 +355,22 @@ class mrg_uniform(mrg_uniform_base):
             # some rng_mrg tests) I also add this limit here.
             raise ValueError("rng_mrg does not support more then (2**31 -1) samples")
 
-        rstate = numpy.asarray(rstate)  # bring state from GPU if necessary
+        rstate = np.asarray(rstate)  # bring state from GPU if necessary
         if not self.inplace:
             rstate = rstate.copy()
 
         n_streams, _ = rstate.shape
 
-        rval = numpy.zeros(n_elements, dtype=self.output_type.dtype)
+        rval = np.zeros(n_elements, dtype=self.output_type.dtype)
 
-        err_orig = numpy.seterr(over='ignore')
+        err_orig = np.seterr(over='ignore')
         try:
             for i in xrange(n_elements):
                 sample = mrg_next_value(rstate[i % n_streams],
                                         rstate[i % n_streams])
                 rval[i] = sample
         finally:
-            numpy.seterr(**err_orig)
+            np.seterr(**err_orig)
 
         # send to GPU if necessary
         o_rstate[0] = node.outputs[0].type.filter(rstate)
@@ -391,13 +391,13 @@ class mrg_uniform(mrg_uniform_base):
                 'NPY_ARRAY_ENSURECOPY|NPY_ARRAY_C_CONTIGUOUS|'
                 'NPY_ARRAY_ALIGNED')
         ndim = self.output_type.ndim
-        o_type_num = numpy.asarray(0, dtype=self.output_type.dtype).dtype.num
+        o_type_num = np.asarray(0, dtype=self.output_type.dtype).dtype.num
         fail = sub['fail']
         if self.output_type.dtype == 'float32':
             otype = 'float'
-            NORM = '4.6566126e-10f'  # numpy.float32(1.0/(2**31+65))
+            NORM = '4.6566126e-10f'  # np.float32(1.0/(2**31+65))
             # this was determined by finding the biggest number such that
-            # numpy.float32(number * M1) < 1.0
+            # np.float32(number * M1) < 1.0
         else:
             otype = 'double'
             NORM = '4.656612873077392578125e-10'
@@ -571,9 +571,9 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
     def c_support_code_apply(self, node, nodename):
         if self.output_type.dtype == 'float32':
             otype = 'float'
-            NORM = '4.6566126e-10f'  # numpy.float32(1.0/(2**31+65))
+            NORM = '4.6566126e-10f'  # np.float32(1.0/(2**31+65))
             # this was determined by finding the biggest number such that
-            # numpy.float32(number * M1) < 1.0
+            # np.float32(number * M1) < 1.0
         else:
             otype = 'double'
             NORM = '4.656612873077392578125e-10'
@@ -667,7 +667,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         o_rstate, o_sample = out
         inplace = int(self.inplace)
         ndim = self.output_type.ndim
-        o_type_num = numpy.asarray(0, dtype=self.output_type.dtype).dtype.num
+        o_type_num = np.asarray(0, dtype=self.output_type.dtype).dtype.num
         fail = sub['fail']
 
         if self.output_type.dtype == 'float32':
@@ -817,7 +817,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         return op(rstate, v_size)
 
     def c_headers(self):
-        return super(GPUA_mrg_uniform, self).c_headers() + ['numpy_compat.h']
+        return super(GPUA_mrg_uniform, self).c_headers() + ['np_compat.h']
 
     def gpu_kernels(self, node, name):
         write = write_w(self.output_type.dtype)
@@ -825,15 +825,15 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
             otype = 'ga_half'
             # limit the values of the state that we use.
             mask = '& 0x7fff'
-            NORM = '3.0518e-05f'  # numpy.float16(1.0/(2**15+8))
+            NORM = '3.0518e-05f'  # np.float16(1.0/(2**15+8))
             # this was determined by finding the biggest number such that
-            # numpy.float16(number * (M1 & 0x7fff)) < 1.0
+            # np.float16(number * (M1 & 0x7fff)) < 1.0
         elif self.output_type.dtype == 'float32':
             otype = 'float'
             mask = ''
-            NORM = '4.6566126e-10f'  # numpy.float32(1.0/(2**31+65))
+            NORM = '4.6566126e-10f'  # np.float32(1.0/(2**31+65))
             # this was determined by finding the biggest number such that
-            # numpy.float32(number * M1) < 1.0
+            # np.float32(number * M1) < 1.0
         elif self.output_type.dtype == 'float64':
             otype = 'double'
             mask = ''
@@ -936,7 +936,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         o_rstate, o_sample = out
         inplace = int(self.inplace)
         ndim = self.output_type.ndim
-        o_type_num = numpy.asarray(0, dtype=self.output_type.dtype).dtype.num
+        o_type_num = np.asarray(0, dtype=self.output_type.dtype).dtype.num
         fail = sub['fail']
         ctx = sub['params']
         kname = self.gpu_kernels(node, nodename)[0].objvar
@@ -1103,8 +1103,8 @@ def guess_n_streams(size, warn=False):
 class MRG_RandomStreams(object):
     # TODO : need description for parameter 'use_cuda'
     """
-    Module component with similar interface to numpy.random
-    (numpy.random.RandomState).
+    Module component with similar interface to np.random
+    (np.random.RandomState).
 
     Parameters
     ----------
@@ -1146,7 +1146,7 @@ class MRG_RandomStreams(object):
                 raise ValueError('seed should not be 0', seed)
             elif seed >= M2:
                 raise ValueError('seed should be less than %i' % M2, seed)
-            self.rstate = numpy.asarray([seed] * 6, dtype='int32')
+            self.rstate = np.asarray([seed] * 6, dtype='int32')
         elif len(seed) == 6:
             if seed[0] == 0 and seed[1] == 0 and seed[2] == 0:
                 raise ValueError(
@@ -1162,7 +1162,7 @@ class MRG_RandomStreams(object):
                 raise ValueError(
                     'The last 3 values of seed should be less than %i' % M2,
                     seed)
-            self.rstate = numpy.asarray(seed, dtype='int32')
+            self.rstate = np.asarray(seed, dtype='int32')
         else:
             raise TypeError("seed should be 1 integer or 6 integers")
 
@@ -1204,7 +1204,7 @@ class MRG_RandomStreams(object):
         """
         # self.rstate = ff_2p134(self.rstate)
         self.rstate = multMatVect(self.rstate, A1p134, M1, A2p134, M2)
-        assert self.rstate.dtype == numpy.int32
+        assert self.rstate.dtype == np.int32
 
     @theano.configparser.change_flags(compute_test_value='off')
     def get_substream_rstates(self, n_streams, dtype, inc_rstate=True):
@@ -1217,7 +1217,7 @@ class MRG_RandomStreams(object):
         assert isinstance(dtype, str)
         assert n_streams < 2**72
         assert n_streams > 0
-        rval = numpy.zeros((n_streams, 6), dtype='int32')
+        rval = np.zeros((n_streams, 6), dtype='int32')
         rval[0] = self.rstate
 
         # If multMatVect.dot_modulo isn't compiled, compile it.
@@ -1246,7 +1246,7 @@ class MRG_RandomStreams(object):
             # HACK - we use fact that int32 and float32 have same size to
             # sneak ints into the CudaNdarray type.
             # these *SHOULD NEVER BE USED AS FLOATS*
-            tmp_float_buf = numpy.frombuffer(rval.data, dtype='float32')
+            tmp_float_buf = np.frombuffer(rval.data, dtype='float32')
             assert tmp_float_buf.shape == rval.shape
             assert (tmp_float_buf.view('int32') == rval).all()
             rval = tmp_float_buf
@@ -1304,9 +1304,9 @@ class MRG_RandomStreams(object):
 
         if isinstance(size, tuple):
             msg = "size must be a tuple of int or a Theano variable"
-            assert all([isinstance(i, (numpy.integer, integer_types, Variable))
+            assert all([isinstance(i, (np.integer, integer_types, Variable))
                         for i in size]), msg
-            if any([isinstance(i, (numpy.integer, integer_types)) and i <= 0
+            if any([isinstance(i, (np.integer, integer_types)) and i <= 0
                     for i in size]):
                 raise ValueError(
                     "The specified size contains a dimension with value <= 0",
@@ -1498,10 +1498,10 @@ class MRG_RandomStreams(object):
         evened = False
         constant = False
         if (isinstance(size, tuple) and
-                all([isinstance(i, (numpy.integer, integer_types)) for i in size])):
+                all([isinstance(i, (np.integer, integer_types)) for i in size])):
             constant = True
             # Force dtype because it defaults to float when size is empty
-            n_samples = numpy.prod(size, dtype='int64')
+            n_samples = np.prod(size, dtype='int64')
 
             if n_samples % 2 == 1:
                 n_samples += 1
@@ -1523,14 +1523,14 @@ class MRG_RandomStreams(object):
         sqrt_ln_U1 = sqrt(-2.0 * log(U1))
         # TypeError: 'TensorVariable' object does not support item assignment
         # so this doesn't work...
-        # normal_samples[:n_samples/2] = sqrt_ln_U1 * cos(2.0*numpy.pi*U2)
-        # normal_samples[n_samples/2:] = sqrt_ln_U1 * sin(2.0*numpy.pi*U2)
+        # normal_samples[:n_samples/2] = sqrt_ln_U1 * cos(2.0*np.pi*U2)
+        # normal_samples[n_samples/2:] = sqrt_ln_U1 * sin(2.0*np.pi*U2)
 
         # so trying this instead
         first_half = sqrt_ln_U1 * cos(
-            numpy.array(2.0 * numpy.pi, dtype=dtype) * U2)
+            np.array(2.0 * np.pi, dtype=dtype) * U2)
         second_half = sqrt_ln_U1 * sin(
-            numpy.array(2.0 * numpy.pi, dtype=dtype) * U2)
+            np.array(2.0 * np.pi, dtype=dtype) * U2)
         normal_samples = join(0, first_half, second_half)
 
         final_samples = None

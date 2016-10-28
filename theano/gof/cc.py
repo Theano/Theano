@@ -11,7 +11,7 @@ import os
 import sys
 import logging
 
-import numpy
+import numpy as np
 
 import theano
 from theano import config
@@ -1204,7 +1204,7 @@ class CLinker(link.Linker):
         The signature has the following form:
         {{{
             'CLinker.cmodule_key', compilation args, libraries,
-            header_dirs, numpy ABI version, config md5,
+            header_dirs, np ABI version, config md5,
             (op0, input_signature0, output_signature0),
             (op1, input_signature1, output_signature1),
             ...
@@ -1344,10 +1344,10 @@ class CLinker(link.Linker):
             args = tuple(args)
             sig.append(args)
 
-        # We must always add the numpy ABI version here as
-        # DynamicModule always add the include <numpy/arrayobject.h>
+        # We must always add the np ABI version here as
+        # DynamicModule always add the include <np/arrayobject.h>
         sig.append('NPY_ABI_VERSION=0x%X' %
-                   numpy.core.multiarray._get_ndarray_c_version())
+                   np.core.multiarray._get_ndarray_c_version())
         if c_compiler:
             sig.append('c_compiler_str=' + c_compiler.version_str())
 

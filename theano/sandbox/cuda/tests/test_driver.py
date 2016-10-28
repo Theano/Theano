@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import theano
 
 # Skip test if cuda_ndarray is not available.
@@ -26,7 +26,7 @@ def test_nvidia_driver1():
     """ Some nvidia driver give bad result for reduction
         This execute some reduction test to ensure it run correctly
     """
-    a = numpy.random.rand(10000).astype("float32")
+    a = np.random.rand(10000).astype("float32")
     A = cuda.shared_constructor(a)
     f = theano.function(inputs=[], outputs=A.sum(), mode=mode_with_gpu,
                         profile=False)
@@ -37,7 +37,7 @@ def test_nvidia_driver1():
             ['Expected exactly one occurrence of GpuCAReduce ' +
              'but got:'] + [str(app) for app in topo])
         raise AssertionError(msg)
-    if not numpy.allclose(f(), a.sum()):
+    if not np.allclose(f(), a.sum()):
         raise Exception("The nvidia driver version installed with this OS "
                         "does not give good results for reduction."
                         "Installing the nvidia driver available on the same "
@@ -52,7 +52,7 @@ def test_nvidia_driver2():
         The driver should always be tested during theano initialization
         of the gpu device
     """
-    a = numpy.random.rand(10000).astype("float32")
+    a = np.random.rand(10000).astype("float32")
     cuda.shared_constructor(a)
     assert theano.sandbox.cuda.use.device_number is not None
 
@@ -83,7 +83,7 @@ def test_nvcc_cast():
     """
     var = theano.tensor.fvector()
     f = theano.function([var], -1. * (var > 0), mode=mode_with_gpu)
-    if not numpy.allclose(f([-1, 0, 1]), [0, 0, -1]):
+    if not np.allclose(f([-1, 0, 1]), [0, 0, -1]):
         raise Exception(
             "The version of nvcc that Theano detected on your system "
             "has a bug during conversion from integers to floating point. "

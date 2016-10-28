@@ -5,7 +5,7 @@ from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
 from nose_parameterized import parameterized
 
-import numpy
+import numpy as np
 
 import theano
 from theano import tensor
@@ -29,7 +29,7 @@ else:
 
 def test_shape_i():
     x = cuda.ftensor3()
-    v = cuda.CudaNdarray(numpy.zeros((3, 4, 5), dtype='float32'))
+    v = cuda.CudaNdarray(np.zeros((3, 4, 5), dtype='float32'))
     f = theano.function([x], x.shape[1])
     topo = f.maker.fgraph.toposort()
     assert f(v) == 4
@@ -40,10 +40,10 @@ def test_shape_i():
 
 def test_shape():
     x = cuda.ftensor3()
-    v = cuda.CudaNdarray(numpy.zeros((3, 4, 5), dtype='float32'))
+    v = cuda.CudaNdarray(np.zeros((3, 4, 5), dtype='float32'))
     f = theano.function([x], x.shape)
     topo = f.maker.fgraph.toposort()
-    assert numpy.all(f(v) == (3, 4, 5))
+    assert np.all(f(v) == (3, 4, 5))
     if theano.config.mode != 'FAST_COMPILE':
         assert len(topo) == 4
         assert isinstance(topo[0].op, T.opt.Shape_i)
@@ -74,10 +74,10 @@ def test_softmax_optimizations():
 
 def test_may_share_memory_cuda():
     from theano.misc.may_share_memory import may_share_memory
-    a = cuda.CudaNdarray(numpy.zeros((3, 4), dtype='float32'))
-    b = cuda.CudaNdarray(numpy.zeros((3, 4), dtype='float32'))
-    na = numpy.zeros((3, 4))
-    nb = numpy.zeros((3, 4))
+    a = cuda.CudaNdarray(np.zeros((3, 4), dtype='float32'))
+    b = cuda.CudaNdarray(np.zeros((3, 4), dtype='float32'))
+    na = np.zeros((3, 4))
+    nb = np.zeros((3, 4))
     va = a.view()
     vb = b.view()
     ra = a.reshape((4, 3))
@@ -87,7 +87,7 @@ def test_may_share_memory_cuda():
     # manual transpose of a
     # ta = a.reshape((4,3))
     # ta._strides = (ta._strides[1],ta._strides[0])#not implemented
-    # elem_size=elem_size = numpy.zeros(0,dtype=a.dtype).dtype.itemsize
+    # elem_size=elem_size = np.zeros(0,dtype=a.dtype).dtype.itemsize
     # ta.gpudata += ta.size*elem_size
 
     for a_, b_, rep in [(a, a, True), (b, b, True), (a, b, False),
@@ -118,7 +118,7 @@ def test_may_share_memory_cuda():
 
 def test_deepcopy():
     a = cuda.fmatrix()
-    a_v = cuda.CudaNdarray(numpy.zeros((3, 4), dtype='float32'))
+    a_v = cuda.CudaNdarray(np.zeros((3, 4), dtype='float32'))
 
     # We force the c code to check that we generate c code
     mode = theano.Mode("c", mode_with_gpu.optimizer)
@@ -126,7 +126,7 @@ def test_deepcopy():
     theano.printing.debugprint(f)
     out = f(a_v)
     assert out is not a_v
-    assert numpy.allclose(numpy.asarray(a_v), numpy.asarray(out))
+    assert np.allclose(np.asarray(a_v), np.asarray(out))
 
     # We force the python linker as the default code should work for this op
     mode = theano.Mode("py", mode_with_gpu.optimizer)
@@ -134,7 +134,7 @@ def test_deepcopy():
     theano.printing.debugprint(f)
     out = f(a_v)
     assert out is not a_v
-    assert numpy.allclose(numpy.asarray(a_v), numpy.asarray(out))
+    assert np.allclose(np.asarray(a_v), np.asarray(out))
 
 
 def test_get_diagonal_subtensor_view():

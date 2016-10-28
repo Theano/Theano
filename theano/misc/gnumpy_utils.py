@@ -1,5 +1,5 @@
 """
-This code can only work if gnumpy and theano are initialized on the
+This code can only work if gnp and theano are initialized on the
 same gpu as theano.
 """
 from __future__ import absolute_import, print_function, division

@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 import theano
 import theano.tensor as T
@@ -57,7 +57,7 @@ class GpuConvGrad3D(GpuOp):
         assert V.shape[0] == batchSize
         dr, dc, dt = d
 
-        dCdW = numpy.zeros(WShape, dtype=V.dtype)
+        dCdW = np.zeros(WShape, dtype=V.dtype)
 
         # block
         for j in xrange(0, WShape[0]):
@@ -356,9 +356,9 @@ gpu_conv_grad3d = GpuConvGrad3D()
 @local_optimizer([ConvGrad3D])
 def local_gpu_conv_grad3d(node):
     if isinstance(node.op, ConvGrad3D):
-        if numpy.any([i.owner and isinstance(i.owner.op, HostFromGpu)
+        if np.any([i.owner and isinstance(i.owner.op, HostFromGpu)
                       for i in node.inputs]):
-            if numpy.all([o.type.dtype == 'float32' for o in node.outputs]):
+            if np.all([o.type.dtype == 'float32' for o in node.outputs]):
                 V, d, WShape, dCdH = node.inputs
                 return [host_from_gpu(gpu_conv_grad3d(
                     as_cuda_ndarray_variable(V),

@@ -462,7 +462,7 @@ to another is shown below.
 
 >>> from __future__ import print_function
 >>> import theano
->>> import numpy
+>>> import numpy as np
 >>> import theano.tensor as T
 >>> from theano.sandbox.rng_mrg import MRG_RandomStreams
 >>> from theano.tensor.shared_randomstreams import RandomStreams
@@ -532,10 +532,10 @@ It will be used repeatedly.
 
 .. testcode::
 
-    import numpy
+    import numpy as np
     import theano
     import theano.tensor as T
-    rng = numpy.random
+    rng = np.random
 
     N = 400                                   # training sample size
     feats = 784                               # number of input variables

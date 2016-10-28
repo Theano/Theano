@@ -687,13 +687,13 @@ is a :ref:`variable` we statically know the value of.
 
 .. doctest:: mul
 
-   >>> import numpy
+   >>> import numpy as np
    >>> x = double('x')
    >>> z = mul(x, 2)
    >>> f = theano.function([x], z)
    >>> f(10)
    20.0
-   >>> numpy.allclose(f(3.4), 6.8)
+   >>> np.allclose(f(3.4), 6.8)
    True
 
 Now the code works the way we want it to.

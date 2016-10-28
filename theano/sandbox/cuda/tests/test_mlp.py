@@ -5,7 +5,7 @@ import time
 from theano.compat import izip
 
 from nose.plugins.skip import SkipTest
-import numpy
+import numpy as np
 from six.moves import xrange
 
 import theano
@@ -32,15 +32,15 @@ logging.getLogger('theano.sandbox.cuda.tests.test_nnet').setLevel(logging.INFO)
 
 
 def my_rand(*shape):
-    return theano._asarray(numpy.random.rand(*shape), dtype='float32')
+    return theano._asarray(np.random.rand(*shape), dtype='float32')
 
 
 def my_randn(*shape):
-    return theano._asarray(numpy.random.randn(*shape), dtype='float32')
+    return theano._asarray(np.random.randn(*shape), dtype='float32')
 
 
 def my_zeros(*shape):
-    return theano._asarray(numpy.zeros(*shape), dtype='float32')
+    return theano._asarray(np.zeros(*shape), dtype='float32')
 
 
 def get_mode(use_gpu, check_isfinite=True):
@@ -108,14 +108,14 @@ def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10,
         rval.append(train(xval, yval, lr))
     dt = time.time() - t0
 
-    return numpy.asarray(rval), dt
+    return np.asarray(rval), dt
 
 
 @utt.AttemptManyTimes(n_attempts=3, n_req_successes=1)
 def test_run_nnet():
     for n_in in 1024, 2048, 4096:
         for n_hid in 1024, 2048, 4096:
-            utt.seed_rng()  # Seeds numpy rng with utt.fetch_seed()
+            utt.seed_rng()  # Seeds np rng with utt.fetch_seed()
             rval_cpu, tc = run_nnet(False, n_in=n_in, n_hid=n_hid)
             utt.seed_rng()
             rval_gpu, tg = run_nnet(True, n_in=n_in, n_hid=n_hid)
@@ -131,7 +131,7 @@ def test_run_nnet():
             rtol = 1e-4
             if n_in * n_hid >= 2048 * 4096:
                 rtol = 7e-4
-            assert numpy.allclose(
+            assert np.allclose(
                 rval_cpu, rval_gpu, rtol=rtol, atol=1e-6), \
                 ("max_abs_diff, max_rel_diff, n_in, n_hid", max_abs_diff,
                  rel_diff.max(), n_in, n_hid)
@@ -415,7 +415,7 @@ def run_conv_nnet2_classif(use_gpu, seed, isize, ksize, bsize,
     """Run the train function returned by build_conv_nnet2_classif on one device.
     """
 
-    utt.seed_rng(seed)  # Seeds numpy.random with seed
+    utt.seed_rng(seed)  # Seeds np.random with seed
     train, params, x_shape, y_shape, mode = build_conv_nnet2_classif(
         use_gpu=use_gpu,
         isize=isize,
@@ -479,7 +479,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
                 verbose=verbose,
                 version=version)
 
-        utt.seed_rng(seed)  # Seeds numpy.random with seed
+        utt.seed_rng(seed)  # Seeds np.random with seed
         train_cpu, params_cpu, x_shape, y_shape, mode_cpu = \
             build_conv_nnet2_classif(
                 use_gpu=False,
@@ -490,7 +490,7 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
                 version=version,
                 check_isfinite=check_isfinite)
 
-        utt.seed_rng(seed)  # Seeds numpy.random with seed
+        utt.seed_rng(seed)  # Seeds np.random with seed
         train_gpu, params_gpu, x_shape_gpu, y_shape_gpu, mode_gpu = \
             build_conv_nnet2_classif(
                 use_gpu=True,
@@ -526,12 +526,12 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
 
             # Compare results
             if (verbose or not
-                    numpy.allclose(rval_cpu, rval_gpu, rtol=1e-5, atol=float_atol)):
+                    np.allclose(rval_cpu, rval_gpu, rtol=1e-5, atol=float_atol)):
                 print("At batch:", i + 1)
                 print("CPU:", rval_cpu)
                 print("GPU:", rval_gpu)
-                print("abs diff:", numpy.absolute(rval_gpu - rval_cpu))
-                print("rel diff:", numpy.absolute((
+                print("abs diff:", np.absolute(rval_gpu - rval_cpu))
+                print("rel diff:", np.absolute((
                     rval_gpu - rval_cpu) / rval_gpu))
 
             if not ignore_error:

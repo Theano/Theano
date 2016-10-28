@@ -12,7 +12,7 @@ from six import reraise
 
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
-import numpy
+import numpy as np
 
 from theano.compat import PY3
 from theano import config
@@ -29,7 +29,7 @@ except SkipTest:
 
 def test_unpickle_gpuarray_as_numpy_ndarray_flag1():
     # Only test when pygpu isn't
-    # available. test_unpickle_gpuarray_as_numpy_ndarray_flag0 in
+    # available. test_unpickle_gpuarray_as_np_ndarray_flag0 in
     # test_type.py test it when pygpu is there.
     if have_pygpu:
         raise SkipTest("pygpu active")
@@ -75,7 +75,7 @@ def test_unpickle_gpuarray_as_numpy_ndarray_flag2():
                     reraise(SkipTest, exc_value, exc_trace)
                 raise
 
-        assert isinstance(mat, numpy.ndarray)
+        assert isinstance(mat, np.ndarray)
         assert mat[0] == -42.0
 
     finally:

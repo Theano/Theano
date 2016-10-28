@@ -3,7 +3,7 @@ import time
 
 from nose.plugins.skip import SkipTest
 from nose_parameterized import parameterized
-import numpy
+import numpy as np
 try:
     from scipy import ndimage
 except ImportError:
@@ -23,14 +23,14 @@ else:
 
 
 def test_get_diagonal_subtensor_view(wrap=lambda a: a):
-    x = numpy.arange(20).reshape(5, 4).astype('float32')
+    x = np.arange(20).reshape(5, 4).astype('float32')
     x = wrap(x)
     xv01 = get_diagonal_subtensor_view(x, 0, 1)
 
     # test that it works in 2d
-    assert numpy.all(numpy.asarray(xv01) == [[12, 9, 6, 3], [16, 13, 10, 7]])
+    assert np.all(np.asarray(xv01) == [[12, 9, 6, 3], [16, 13, 10, 7]])
 
-    x = numpy.arange(24).reshape(4, 3, 2)
+    x = np.arange(24).reshape(4, 3, 2)
     xv01 = get_diagonal_subtensor_view(x, 0, 1)
     xv02 = get_diagonal_subtensor_view(x, 0, 2)
     xv12 = get_diagonal_subtensor_view(x, 1, 2)
@@ -38,11 +38,11 @@ def test_get_diagonal_subtensor_view(wrap=lambda a: a):
     # print 'x', x
     # print 'xv01', xv01
     # print 'xv02', xv02
-    assert numpy.all(numpy.asarray(xv01) == [
+    assert np.all(np.asarray(xv01) == [
         [[12, 13], [8, 9], [4, 5]],
         [[18, 19], [14, 15], [10, 11]]])
 
-    assert numpy.all(numpy.asarray(xv02) == [
+    assert np.all(np.asarray(xv02) == [
         [[6, 1], [8, 3], [10, 5]],
         [[12, 7], [14, 9], [16, 11]],
         [[18, 13], [20, 15], [22, 17]],
@@ -51,7 +51,7 @@ def test_get_diagonal_subtensor_view(wrap=lambda a: a):
     # diagonal views of each leading matrix is the same
     # as the slices out of the diagonal view of the entire 3d tensor
     for xi, xvi in zip(x, xv12):
-        assert numpy.all(xvi == get_diagonal_subtensor_view(xi, 0, 1))
+        assert np.all(xvi == get_diagonal_subtensor_view(xi, 0, 1))
 
 
 def pyconv3d(signals, filters, border_mode='valid'):
@@ -74,7 +74,7 @@ def pyconv3d(signals, filters, border_mode='valid'):
 
     if Tpad > 0 or Hpad > 0 or Wpad > 0:
         # zero-pad signals
-        signals_padded = numpy.zeros((Ns, Ts + 2 * Tpad, C,
+        signals_padded = np.zeros((Ns, Ts + 2 * Tpad, C,
                                       Hs + 2 * Hpad, Ws + 2 * Wpad), 'float32')
         signals_padded[:, Tpad:(Ts + Tpad), :, Hpad:(Hs + Hpad),
                        Wpad:(Ws + Wpad)] = signals
@@ -85,7 +85,7 @@ def pyconv3d(signals, filters, border_mode='valid'):
     Hf2 = Hf // 2
     Wf2 = Wf // 2
 
-    rval = numpy.zeros((Ns, Ts - Tf + 1, Nf, Hs - Hf + 1, Ws - Wf + 1))
+    rval = np.zeros((Ns, Ts - Tf + 1, Nf, Hs - Hf + 1, Ws - Wf + 1))
     for ns in xrange(Ns):
         for nf in xrange(Nf):
             for c in xrange(C):
@@ -120,8 +120,8 @@ def check_conv3d(border_mode, mode=mode_without_gpu, shared=theano.tensor._share
     Ns, Ts, C, Hs, Ws = 3, 10, 3, 32, 32
     Nf, Tf, C, Hf, Wf = 32, 5, 3, 5, 5
 
-    signals = numpy.arange(Ns * Ts * C * Hs * Ws).reshape(Ns, Ts, C, Hs, Ws).astype('float32')
-    filters = numpy.arange(Nf * Tf * C * Hf * Wf).reshape(Nf, Tf, C, Hf, Wf).astype('float32')
+    signals = np.arange(Ns * Ts * C * Hs * Ws).reshape(Ns, Ts, C, Hs, Ws).astype('float32')
+    filters = np.arange(Nf * Tf * C * Hf * Wf).reshape(Nf, Tf, C, Hf, Wf).astype('float32')
 
     t0 = time.time()
     pyres = pyconv3d(signals, filters, border_mode)
@@ -160,8 +160,8 @@ def check_conv3d(border_mode, mode=mode_without_gpu, shared=theano.tensor._share
     Ns, Ts, C, Hs, Ws = 3, 3, 3, 5, 5
     Nf, Tf, C, Hf, Wf = 4, 2, 3, 2, 2
 
-    signals = numpy.random.rand(Ns, Ts, C, Hs, Ws).astype('float32')
-    filters = numpy.random.rand(Nf, Tf, C, Hf, Wf).astype('float32')
+    signals = np.random.rand(Ns, Ts, C, Hs, Ws).astype('float32')
+    filters = np.random.rand(Nf, Tf, C, Hf, Wf).astype('float32')
     utt.verify_grad(lambda s, f: conv3d(s, f, border_mode=border_mode),
                     [signals, filters], eps=1e-1, mode=mode)
 
@@ -169,8 +169,8 @@ def check_conv3d(border_mode, mode=mode_without_gpu, shared=theano.tensor._share
     Ns, Ts, C, Hs, Ws = 3, 10, 3, 32, 32
     Nf, Tf, C, Hf, Wf = 32, 1, 3, 5, 5
 
-    signals = numpy.arange(Ns * Ts * C * Hs * Ws).reshape(Ns, Ts, C, Hs, Ws).astype('float32')
-    filters = numpy.arange(Nf * Tf * C * Hf * Wf).reshape(Nf, Tf, C, Hf, Wf).astype('float32')
+    signals = np.arange(Ns * Ts * C * Hs * Ws).reshape(Ns, Ts, C, Hs, Ws).astype('float32')
+    filters = np.arange(Nf * Tf * C * Hf * Wf).reshape(Nf, Tf, C, Hf, Wf).astype('float32')
 
     t0 = time.time()
     pyres = pyconv3d(signals, filters, border_mode)
@@ -207,7 +207,7 @@ def check_conv3d(border_mode, mode=mode_without_gpu, shared=theano.tensor._share
     Ns, Ts, C, Hs, Ws = 3, 3, 3, 5, 5
     Nf, Tf, C, Hf, Wf = 4, 1, 3, 2, 2
 
-    signals = numpy.random.rand(Ns, Ts, C, Hs, Ws).astype('float32')
-    filters = numpy.random.rand(Nf, Tf, C, Hf, Wf).astype('float32')
+    signals = np.random.rand(Ns, Ts, C, Hs, Ws).astype('float32')
+    filters = np.random.rand(Nf, Tf, C, Hf, Wf).astype('float32')
     utt.verify_grad(lambda s, f: conv3d(s, f, border_mode=border_mode),
                     [signals, filters], eps=1e-1, mode=mode)

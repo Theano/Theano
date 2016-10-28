@@ -17,7 +17,7 @@ from six import iteritems, integer_types
 from six.moves import xrange
 
 
-import numpy
+import numpy as np
 
 
 def register_view_op_c_code(type, code, version=()):
@@ -161,7 +161,7 @@ class DeepCopyOp(gof.Op):
     def perform(self, node, args, outs):
         if hasattr(args[0], 'copy'):
             # when args[0] is a an ndarray of 0 dimensions,
-            # this return a numpy.dtype and not an ndarray
+            # this return a np.dtype and not an ndarray
             # So when the args have a copy attribute we use it
             # as this don't have this problem
             outs[0][0] = args[0].copy()
@@ -338,7 +338,7 @@ class Shape_i(gof.Op):
     def __init__(self, i):
         # As i will be used in the hash and that ndarray are not hashable,
         # we need to convert it to an int as it is hashable.
-        if isinstance(i, numpy.ndarray):
+        if isinstance(i, np.ndarray):
             assert "int" in str(i.dtype)
         assert i == int(i)
         i = int(i)
@@ -586,8 +586,8 @@ def as_op(itypes, otypes, infer_shape=None):
     --------
     @as_op(itypes=[theano.tensor.fmatrix, theano.tensor.fmatrix],
            otypes=[theano.tensor.fmatrix])
-    def numpy_dot(a, b):
-        return numpy.dot(a, b)
+    def np_dot(a, b):
+        return np.dot(a, b)
 
     """
     if not isinstance(itypes, (list, tuple)):
@@ -665,11 +665,11 @@ class Rebroadcast(gof.Op):
         items = sorted(axis)
         self.axis = OrderedDict(items)
         for axis, broad in iteritems(self.axis):
-            if not isinstance(axis, (numpy.integer, integer_types)):
+            if not isinstance(axis, (np.integer, integer_types)):
                 raise TypeError("Rebroadcast needs integer axes. "
                                 "Got {}".format(axis))
 
-            if not isinstance(broad, (numpy.bool_, bool)):
+            if not isinstance(broad, (np.bool_, bool)):
                 raise TypeError("Rebroadcast needs bool for new broadcast "
                                 "pattern. Got {}".format(broad))
 
@@ -835,7 +835,7 @@ class SpecifyShape(gof.Op):
         x, shape = inp
         out, = out_
         assert x.ndim == shape.size
-        assert numpy.all(x.shape == shape), ("got shape", x.shape,
+        assert np.all(x.shape == shape), ("got shape", x.shape,
                                              "expected", shape)
         out[0] = x
 

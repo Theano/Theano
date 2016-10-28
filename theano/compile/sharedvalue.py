@@ -9,7 +9,7 @@ import copy
 import logging
 
 # Third-party imports
-import numpy
+import numpy as np
 
 # Theano imports
 from theano.gof import Container, Variable, generic, utils
@@ -162,7 +162,7 @@ class SharedVariable(Variable):
         # implemented at all, but with a more explicit error message to help
         # Theano users figure out the root of the problem more easily.
         value = self.get_value(borrow=True)
-        if isinstance(value, numpy.ndarray):
+        if isinstance(value, np.ndarray):
             # Array probably had an unknown dtype.
             msg = ("a Numpy array with dtype: '%s'. This data type is not "
                    "currently recognized by Theano tensors: please cast "

@@ -17,7 +17,7 @@ from theano.tests import unittest_tools as utt
 from theano import function
 import theano
 from theano import tensor
-import numpy
+import numpy as np
 from theano.gof import Op, Apply
 from theano.gradient import grad_undefined
 from theano.tests.unittest_tools import SkipTest
@@ -62,7 +62,7 @@ class RopLop_checker(unittest.TestCase):
         # computations using scan
         self.x = tensor.vector('x')
         self.v = tensor.vector('v')
-        self.rng = numpy.random.RandomState(utt.fetch_seed())
+        self.rng = np.random.RandomState(utt.fetch_seed())
         self.in_shape = (5 + self.rng.randint(3),)
         self.mx = tensor.matrix('mx')
         self.mv = tensor.matrix('mv')
@@ -101,9 +101,9 @@ class RopLop_checker(unittest.TestCase):
         If you want to test an Op with an output matrix, add a sum
         after the Op you want to test.
         """
-        vx = numpy.asarray(self.rng.uniform(size=self.mat_in_shape),
+        vx = np.asarray(self.rng.uniform(size=self.mat_in_shape),
                            theano.config.floatX)
-        vv = numpy.asarray(self.rng.uniform(size=self.mat_in_shape),
+        vv = np.asarray(self.rng.uniform(size=self.mat_in_shape),
                            theano.config.floatX)
         yv = tensor.Rop(y, self.mx, self.mv)
         rop_f = function([self.mx, self.mv], yv, on_unused_input='ignore')
@@ -116,11 +116,11 @@ class RopLop_checker(unittest.TestCase):
         v1 = rop_f(vx, vv)
         v2 = scan_f(vx, vv)
 
-        assert numpy.allclose(v1, v2), ('ROP mismatch: %s %s' % (v1, v2))
+        assert np.allclose(v1, v2), ('ROP mismatch: %s %s' % (v1, v2))
 
         self.check_nondiff_rop(theano.clone(y, replace={self.mx: break_op(self.mx)}))
 
-        vv = numpy.asarray(self.rng.uniform(size=out_shape), theano.config.floatX)
+        vv = np.asarray(self.rng.uniform(size=out_shape), theano.config.floatX)
         yv = tensor.Lop(y, self.mx, self.v)
         lop_f = function([self.mx, self.v], yv)
 
@@ -129,7 +129,7 @@ class RopLop_checker(unittest.TestCase):
 
         v1 = lop_f(vx, vv)
         v2 = scan_f(vx, vv)
-        assert numpy.allclose(v1, v2), ('LOP mismatch: %s %s' % (v1, v2))
+        assert np.allclose(v1, v2), ('LOP mismatch: %s %s' % (v1, v2))
 
     def check_rop_lop(self, y, out_shape):
         """
@@ -138,9 +138,9 @@ class RopLop_checker(unittest.TestCase):
 
         """
         # TEST ROP
-        vx = numpy.asarray(self.rng.uniform(size=self.in_shape),
+        vx = np.asarray(self.rng.uniform(size=self.in_shape),
                            theano.config.floatX)
-        vv = numpy.asarray(self.rng.uniform(size=self.in_shape),
+        vv = np.asarray(self.rng.uniform(size=self.in_shape),
                            theano.config.floatX)
 
         yv = tensor.Rop(y, self.x, self.v)
@@ -154,7 +154,7 @@ class RopLop_checker(unittest.TestCase):
 
         v1 = rop_f(vx, vv)
         v2 = scan_f(vx, vv)
-        assert numpy.allclose(v1, v2), ('ROP mismatch: %s %s' % (v1, v2))
+        assert np.allclose(v1, v2), ('ROP mismatch: %s %s' % (v1, v2))
         known_fail = False
         try:
             self.check_nondiff_rop(theano.clone(y, replace={self.x: break_op(self.x)}))
@@ -163,9 +163,9 @@ class RopLop_checker(unittest.TestCase):
 
         # TEST LOP
 
-        vx = numpy.asarray(self.rng.uniform(size=self.in_shape),
+        vx = np.asarray(self.rng.uniform(size=self.in_shape),
                            theano.config.floatX)
-        vv = numpy.asarray(self.rng.uniform(size=out_shape),
+        vv = np.asarray(self.rng.uniform(size=out_shape),
                            theano.config.floatX)
 
         yv = tensor.Lop(y, self.x, self.v)
@@ -179,7 +179,7 @@ class RopLop_checker(unittest.TestCase):
 
         v1 = lop_f(vx, vv)
         v2 = scan_f(vx, vv)
-        assert numpy.allclose(v1, v2), ('LOP mismatch: %s %s' % (v1, v2))
+        assert np.allclose(v1, v2), ('LOP mismatch: %s %s' % (v1, v2))
 
         if known_fail:
             raise SkipTest('Rop does not handle non-differentiable inputs '
@@ -211,21 +211,21 @@ class test_RopLop(RopLop_checker):
         self.check_rop_lop(self.x[:4], (4,))
 
     def test_incsubtensor1(self):
-        tv = numpy.asarray(self.rng.uniform(size=(3,)),
+        tv = np.asarray(self.rng.uniform(size=(3,)),
                            theano.config.floatX)
         t = theano.shared(tv)
         out = tensor.inc_subtensor(self.x[:3], t)
         self.check_rop_lop(out, self.in_shape)
 
     def test_incsubtensor2(self):
-        tv = numpy.asarray(self.rng.uniform(size=(10,)),
+        tv = np.asarray(self.rng.uniform(size=(10,)),
                            theano.config.floatX)
         t = theano.shared(tv)
         out = tensor.inc_subtensor(t[:4], self.x[:4])
         self.check_rop_lop(out, (10,))
 
     def test_setsubtensor1(self):
-        tv = numpy.asarray(self.rng.uniform(size=(3,)),
+        tv = np.asarray(self.rng.uniform(size=(3,)),
                            theano.config.floatX)
         t = theano.shared(tv)
         out = tensor.set_subtensor(self.x[:3], t)
@@ -236,7 +236,7 @@ class test_RopLop(RopLop_checker):
         self.check_rop_lop(out, self.in_shape)
 
     def test_setsubtensor2(self):
-        tv = numpy.asarray(self.rng.uniform(size=(10,)),
+        tv = np.asarray(self.rng.uniform(size=(10,)),
                            theano.config.floatX)
         t = theano.shared(tv)
         out = tensor.set_subtensor(t[:4], self.x[:4])
@@ -294,16 +294,16 @@ class test_RopLop(RopLop_checker):
                 scan_f = function([input, filters, ev_input, ev_filters], sy,
                                   on_unused_input='ignore', mode=mode)
                 dtype = theano.config.floatX
-                image_data = numpy.random.random(image_shape).astype(dtype)
-                filter_data = numpy.random.random(filter_shape).astype(dtype)
-                ev_image_data = numpy.random.random(image_shape).astype(dtype)
-                ev_filter_data = numpy.random.random(filter_shape).astype(dtype)
+                image_data = np.random.random(image_shape).astype(dtype)
+                filter_data = np.random.random(filter_shape).astype(dtype)
+                ev_image_data = np.random.random(image_shape).astype(dtype)
+                ev_filter_data = np.random.random(filter_shape).astype(dtype)
                 v1 = rop_f(image_data, filter_data, ev_image_data, ev_filter_data)
                 v2 = scan_f(image_data, filter_data, ev_image_data, ev_filter_data)
-                assert numpy.allclose(v1, v2), ("Rop mismatch: %s %s" % (v1, v2))
+                assert np.allclose(v1, v2), ("Rop mismatch: %s %s" % (v1, v2))
 
     def test_join(self):
-        tv = numpy.asarray(self.rng.uniform(size=(10,)),
+        tv = np.asarray(self.rng.uniform(size=(10,)),
                            theano.config.floatX)
         t = theano.shared(tv)
         out = tensor.join(0, self.x, t)
@@ -311,7 +311,7 @@ class test_RopLop(RopLop_checker):
 
     def test_dot(self):
         insh = self.in_shape[0]
-        vW = numpy.asarray(self.rng.uniform(size=(insh, insh)),
+        vW = np.asarray(self.rng.uniform(size=(insh, insh)),
                            theano.config.floatX)
         W = theano.shared(vW)
         self.check_rop_lop(tensor.dot(self.x, W), self.in_shape)
@@ -324,7 +324,7 @@ class test_RopLop(RopLop_checker):
                            self.in_shape)
 
     def test_reshape(self):
-        new_shape = tensor.constant(numpy.asarray([
+        new_shape = tensor.constant(np.asarray([
             self.mat_in_shape[0] * self.mat_in_shape[1]],
             dtype='int64'))
 
@@ -392,6 +392,6 @@ class test_RopLop(RopLop_checker):
         # one differentiable path (i.e. there is no gradient wrt to one of
         # the inputs).
         x = tensor.arange(20.0).reshape([1, 20])
-        v = theano.shared(numpy.ones([20]))
+        v = theano.shared(np.ones([20]))
         d = tensor.dot(x, v).sum()
         tensor.Rop(tensor.grad(d, v), v, v)

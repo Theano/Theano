@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import unittest
-import numpy
+import numpy as np
 
 import theano
 from theano.tests import unittest_tools as utt
@@ -28,43 +28,43 @@ else:
 
 class TestCula(unittest.TestCase):
     def run_gpu_solve(self, A_val, x_val):
-        b_val = numpy.dot(A_val, x_val)
+        b_val = np.dot(A_val, x_val)
         A = theano.tensor.matrix("A", dtype="float32")
         b = theano.tensor.matrix("b", dtype="float32")
 
         solver = cula.gpu_solve(A, b)
         fn = theano.function([A, b], [solver])
         res = fn(A_val, b_val)
-        x_res = numpy.array(res[0])
+        x_res = np.array(res[0])
         utt.assert_allclose(x_res, x_val)
 
     def test_diag_solve(self):
-        numpy.random.seed(1)
-        A_val = numpy.asarray([[2, 0, 0], [0, 1, 0], [0, 0, 1]],
+        np.random.seed(1)
+        A_val = np.asarray([[2, 0, 0], [0, 1, 0], [0, 0, 1]],
                               dtype="float32")
-        x_val = numpy.random.uniform(-0.4, 0.4, (A_val.shape[1],
+        x_val = np.random.uniform(-0.4, 0.4, (A_val.shape[1],
                                      1)).astype("float32")
         self.run_gpu_solve(A_val, x_val)
 
     def test_sym_solve(self):
-        numpy.random.seed(1)
-        A_val = numpy.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
+        np.random.seed(1)
+        A_val = np.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
         A_sym = (A_val + A_val.T) / 2.0
-        x_val = numpy.random.uniform(-0.4, 0.4, (A_val.shape[1],
+        x_val = np.random.uniform(-0.4, 0.4, (A_val.shape[1],
                                      1)).astype("float32")
         self.run_gpu_solve(A_sym, x_val)
 
     def test_orth_solve(self):
-        numpy.random.seed(1)
-        A_val = numpy.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
-        A_orth = numpy.linalg.svd(A_val)[0]
-        x_val = numpy.random.uniform(-0.4, 0.4, (A_orth.shape[1],
+        np.random.seed(1)
+        A_val = np.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
+        A_orth = np.linalg.svd(A_val)[0]
+        x_val = np.random.uniform(-0.4, 0.4, (A_orth.shape[1],
                                      1)).astype("float32")
         self.run_gpu_solve(A_orth, x_val)
 
     def test_uni_rand_solve(self):
-        numpy.random.seed(1)
-        A_val = numpy.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
-        x_val = numpy.random.uniform(-0.4, 0.4,
+        np.random.seed(1)
+        A_val = np.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
+        x_val = np.random.uniform(-0.4, 0.4,
                                      (A_val.shape[1], 4)).astype("float32")
         self.run_gpu_solve(A_val, x_val)

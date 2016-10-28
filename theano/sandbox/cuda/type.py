@@ -7,7 +7,7 @@ import os
 import six.moves.copyreg as copyreg
 import warnings
 
-import numpy
+import numpy as np
 
 import theano
 from theano import Type, Variable
@@ -113,7 +113,7 @@ class CudaNdarrayType(Type):
 
         else:  # (not strict) and (not allow_downcast)
             # Check if data.dtype can be accurately cast to self.dtype
-            if isinstance(data, numpy.ndarray):
+            if isinstance(data, np.ndarray):
                 up_dtype = scal.upcast(self.dtype, data.dtype)
                 if up_dtype == self.dtype:
                     return cuda.filter(data, self.broadcastable,
@@ -133,7 +133,7 @@ class CudaNdarrayType(Type):
                         self.dtype == theano.config.floatX):
                     return cuda.filter(converted_data, self.broadcastable,
                                        strict, old_data)
-                elif numpy.all(data == converted_data):
+                elif np.all(data == converted_data):
                     return cuda.filter(converted_data, self.broadcastable,
                                        strict, old_data)
                 else:
@@ -194,7 +194,7 @@ class CudaNdarrayType(Type):
         # stride is in the number of element.
         # we must convert that to bytes in case we
         # will view the element as a different type.
-        elem_size = numpy.zeros(0, dtype=a.dtype).dtype.itemsize
+        elem_size = np.zeros(0, dtype=a.dtype).dtype.itemsize
 
         for stri, shp in zip(a._strides, a.shape):
             if stri < 0:
@@ -206,7 +206,7 @@ class CudaNdarrayType(Type):
     @staticmethod
     def may_share_memory(a, b):
         # when this is called with a an ndarray and b
-        # a sparce matrix, numpy.may_share_memory fail.
+        # a sparce matrix, np.may_share_memory fail.
         if a is b:
             return True
         if a.__class__ is b.__class__:
@@ -221,15 +221,15 @@ class CudaNdarrayType(Type):
     @staticmethod
     def values_eq(a, b):
         # TODO: make the comparaison without transfert.
-        return tensor.TensorType.values_eq(numpy.asarray(a), numpy.asarray(b))
+        return tensor.TensorType.values_eq(np.asarray(a), np.asarray(b))
 
     @staticmethod
     def values_eq_approx(a, b, allow_remove_inf=False, allow_remove_nan=False,
                          rtol=None, atol=None):
         # TODO: make the comparaison without transfert.
         return tensor.TensorType.values_eq_approx(
-            numpy.asarray(a),
-            numpy.asarray(b),
+            np.asarray(a),
+            np.asarray(b),
             allow_remove_inf=allow_remove_inf,
             allow_remove_nan=allow_remove_nan,
             rtol=rtol, atol=atol
@@ -237,7 +237,7 @@ class CudaNdarrayType(Type):
 
     def dtype_specs(self):
         """
-        Return a tuple (python type, c type, numpy typenum) that corresponds
+        Return a tuple (python type, c type, np typenum) that corresponds
         to self.dtype.
 
         This function is used internally as part of C code generation.
@@ -316,7 +316,7 @@ class CudaNdarrayType(Type):
         else:
             b = self.broadcastable
             # bcast = str(self.broadcastable)
-            if not numpy.any(b):
+            if not np.any(b):
                 s = "%iD" % len(b)
             else:
                 s = str(b)
@@ -523,9 +523,9 @@ class CudaNdarrayType(Type):
 
     def get_size(self, shape_info):
         if shape_info:
-            return numpy.prod(shape_info) * numpy.dtype(self.dtype).itemsize
+            return np.prod(shape_info) * np.dtype(self.dtype).itemsize
         else:  # a scalar
-            return numpy.dtype(self.dtype).itemsize
+            return np.dtype(self.dtype).itemsize
 
 theano.compile.ops.expandable_types += (CudaNdarrayType,)
 
@@ -593,8 +593,8 @@ theano.compile.register_deep_copy_op_c_code(
 def CudaNdarray_unpickler(npa):
 
     if config.experimental.unpickle_gpu_on_cpu:
-        # directly return numpy array
-        warnings.warn("config.experimental.unpickle_gpu_on_cpu is set to True. Unpickling CudaNdarray as numpy.ndarray")
+        # directly return np array
+        warnings.warn("config.experimental.unpickle_gpu_on_cpu is set to True. Unpickling CudaNdarray as np.ndarray")
         return npa
     elif cuda:
         return cuda.CudaNdarray(npa)
@@ -605,7 +605,7 @@ copyreg.constructor(CudaNdarray_unpickler)
 
 
 def CudaNdarray_pickler(cnda):
-    return (CudaNdarray_unpickler, (numpy.asarray(cnda),))
+    return (CudaNdarray_unpickler, (np.asarray(cnda),))
 
 # In case cuda is not imported.
 if cuda is not None:

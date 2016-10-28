@@ -34,7 +34,7 @@ some of them might be outdated though:
 
 * :ref:`sandbox_elemwise` -- Description of element wise operations.
 
-* :ref:`sandbox_maxgotcha` -- Describes the difference between ``numpy.max``
+* :ref:`sandbox_maxgotcha` -- Describes the difference between ``np.max``
   and Python max (something to consider when using max).
 
 * :ref:`sandbox_randnb` -- Description of how Theano deals with random

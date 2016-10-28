@@ -95,8 +95,8 @@ class IRFFTOp(gof.Op):
         # Reconstruct complex array from two float dimensions
         inp = a[..., 0] + 1j * a[..., 1]
         out = np.fft.irfftn(inp, s=tuple(s))
-        # Remove numpy's default normalization
-        # Cast to input type (numpy outputs float64 by default)
+        # Remove np's default normalization
+        # Cast to input type (np outputs float64 by default)
         output_storage[0][0] = (out * s.prod()).astype(a.dtype)
 
     def grad(self, inputs, output_grads):
@@ -136,7 +136,7 @@ def rfft(inp, norm=None):
         Array of floats of size (m, ..., n), containing m inputs of
         size (..., n).
     norm : {None, 'ortho', 'no_norm'}
-        Normalization of transform. Following numpy, default *None* normalizes
+        Normalization of transform. Following np, default *None* normalizes
         only the inverse transform by n, 'ortho' yields the unitary transform
         (:math:`1/\sqrt n` forward and inverse). In addition, 'no_norm' leaves
         the transform unnormalized.
@@ -171,7 +171,7 @@ def irfft(inp, norm=None, is_odd=False):
         with n//2+1 non-trivial elements on the last dimension and real
         and imaginary parts stored as separate real arrays.
     norm : {None, 'ortho', 'no_norm'}
-        Normalization of transform. Following numpy, default *None* normalizes
+        Normalization of transform. Following np, default *None* normalizes
         only the inverse transform by n, 'ortho' yields the unitary transform
         (:math:`1/\sqrt n` forward and inverse). In addition, 'no_norm' leaves
         the transform unnormalized.

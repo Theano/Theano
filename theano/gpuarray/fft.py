@@ -45,7 +45,7 @@ class CuRFFTOp(Op):
         # A shape parameter s can be provided as an input. For now this is used to
         # manage odd transform sizes.
         # Later this could be extended to handle padding and trunkation,
-        # following numpy's interface. However, cuFFT expects array that match
+        # following np's interface. However, cuFFT expects array that match
         # the shape given to the plan, so padding will have to be done in the op.
         # The effect of padding on gradients has yet to be investigated.
 
@@ -170,7 +170,7 @@ class CuIRFFTOp(Op):
         # A shape parameter is expected as an input. For now this is used to
         # manage odd transform sizes.
         # Later this could be extended to handle padding and trunkation,
-        # following numpy's interface. However, cuFFT expects array that match
+        # following np's interface. However, cuFFT expects array that match
         # the shape given to the plan, so padding will have to be done in the op.
         # The effect of padding on gradients has yet to be investigated.
 
@@ -300,7 +300,7 @@ def curfft(inp, norm=None):
         Array of real-valued float32 of size (m, ..., n), containing m inputs of
         size (..., n).
     norm : {None, 'ortho', 'no_norm'}
-        Normalization of transform. Following numpy, default *None* normalizes
+        Normalization of transform. Following np, default *None* normalizes
         only the inverse transform by n, 'ortho' yields the unitary transform
         (:math:`1/\sqrt n` forward and inverse). In addition, 'no_norm' leaves
         the transform unnormalized.
@@ -335,7 +335,7 @@ def cuirfft(inp, norm=None, is_odd=False):
         with n//2+1 non-trivial elements on the last dimension and real
         and imaginary parts stored as separate arrays.
     norm : {None, 'ortho', 'no_norm'}
-        Normalization of transform. Following numpy, default *None* normalizes
+        Normalization of transform. Following np, default *None* normalizes
         only the inverse transform by n, 'ortho' yields the unitary transform
         (:math:`1/\sqrt n` forward and inverse). In addition, 'no_norm' leaves
         the transform unnormalized.

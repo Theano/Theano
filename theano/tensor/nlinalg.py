@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 
 import logging
 
-import numpy
+import numpy as np
 from six.moves import xrange
 
 import theano
@@ -44,7 +44,7 @@ class MatrixPinv(Op):
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
-        z[0] = numpy.linalg.pinv(x).astype(x.dtype)
+        z[0] = np.linalg.pinv(x).astype(x.dtype)
 
 pinv = MatrixPinv()
 
@@ -76,7 +76,7 @@ class MatrixInverse(Op):
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
-        z[0] = numpy.linalg.inv(x).astype(x.dtype)
+        z[0] = np.linalg.inv(x).astype(x.dtype)
 
     def grad(self, inputs, g_outputs):
         r"""The gradient function should return
@@ -158,7 +158,7 @@ class AllocDiag(Op):
         (z,) = outputs
         if x.ndim != 1:
             raise TypeError(x)
-        z[0] = numpy.diag(x)
+        z[0] = np.diag(x)
 
     def infer_shape(self, node, shapes):
         x_s, = shapes
@@ -195,7 +195,7 @@ class ExtractDiag(Op):
                                                   dtype=x.type.dtype)()])
 
     def perform(self, node, ins, outs):
-        """ For some reason numpy.diag(x) is really slow, so we
+        """ For some reason np.diag(x) is really slow, so we
         implemented our own. """
         x, = ins
         z, = outs
@@ -240,7 +240,7 @@ def diag(x):
     If `x` is a matrix, return its diagonal.
     If `x` is a vector return a matrix with it as its diagonal.
 
-    * This method does not support the `k` argument that numpy supports.
+    * This method does not support the `k` argument that np supports.
     """
     xx = as_tensor_variable(x)
     if xx.type.ndim == 1:
@@ -281,7 +281,7 @@ class Det(Op):
         (x,) = inputs
         (z,) = outputs
         try:
-            z[0] = numpy.asarray(numpy.linalg.det(x), dtype=x.dtype)
+            z[0] = np.asarray(np.linalg.det(x), dtype=x.dtype)
         except Exception:
             print('Failed to compute determinant', x)
             raise
@@ -305,7 +305,7 @@ class Eig(Op):
 
     """
 
-    _numop = staticmethod(numpy.linalg.eig)
+    _numop = staticmethod(np.linalg.eig)
     __props__ = ()
 
     def make_node(self, x):
@@ -333,7 +333,7 @@ class Eigh(Eig):
 
     """
 
-    _numop = staticmethod(numpy.linalg.eigh)
+    _numop = staticmethod(np.linalg.eigh)
     __props__ = ('UPLO',)
 
     def __init__(self, UPLO='L'):
@@ -348,7 +348,7 @@ class Eigh(Eig):
         # LAPACK.  Rather than trying to reproduce the (rather
         # involved) logic, we just probe linalg.eigh with a trivial
         # input.
-        w_dtype = self._numop([[numpy.dtype(x.dtype).type()]])[0].dtype.name
+        w_dtype = self._numop([[np.dtype(x.dtype).type()]])[0].dtype.name
         w = theano.tensor.vector(dtype=w_dtype)
         v = theano.tensor.matrix(dtype=x.dtype)
         return Apply(self, [x], [w, v])
@@ -411,11 +411,11 @@ class EighGrad(Op):
         assert UPLO in ['L', 'U']
         self.UPLO = UPLO
         if UPLO == 'L':
-            self.tri0 = numpy.tril
-            self.tri1 = lambda a: numpy.triu(a, 1)
+            self.tri0 = np.tril
+            self.tri1 = lambda a: np.triu(a, 1)
         else:
-            self.tri0 = numpy.triu
-            self.tri1 = lambda a: numpy.tril(a, -1)
+            self.tri0 = np.triu
+            self.tri1 = lambda a: np.tril(a, -1)
 
     def make_node(self, x, w, v, gw, gv):
         x, w, v, gw, gv = map(as_tensor_variable, (x, w, v, gw, gv))
@@ -437,7 +437,7 @@ class EighGrad(Op):
         """
         x, w, v, W, V = inputs
         N = x.shape[0]
-        outer = numpy.outer
+        outer = np.outer
 
         def G(n):
             return sum(v[:, m] * V.T[n].dot(v[:, m]) / (w[n] - w[m])
@@ -457,10 +457,10 @@ class EighGrad(Op):
         out = self.tri0(g) + self.tri1(g).T
 
         # The call to self.tri0 in perform upcast from float32 to
-        # float64 or from int* to int64 in numpy 1.6.1 but not in
+        # float64 or from int* to int64 in np 1.6.1 but not in
         # 1.6.2. We do not want version dependent dtype in Theano.
         # We think it should be the same as the output.
-        outputs[0][0] = numpy.asarray(out, dtype=node.outputs[0].dtype)
+        outputs[0][0] = np.asarray(out, dtype=node.outputs[0].dtype)
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]
@@ -480,7 +480,7 @@ class QRFull(Op):
 
     """
 
-    _numop = staticmethod(numpy.linalg.qr)
+    _numop = staticmethod(np.linalg.qr)
     __props__ = ('mode',)
 
     def __init__(self, mode):
@@ -513,7 +513,7 @@ class QRIncomplete(Op):
 
     """
 
-    _numop = staticmethod(numpy.linalg.qr)
+    _numop = staticmethod(np.linalg.qr)
     __props__ = ('mode',)
 
     def __init__(self, mode):
@@ -559,14 +559,14 @@ def qr(a, mode="reduced"):
         'raw'
           returns h, tau with dimensions (N, M), (K,)
 
-        The options 'reduced', 'complete', and 'raw' are new in numpy
+        The options 'reduced', 'complete', and 'raw' are new in np
         1.8, see the notes for more information. The default is
         'reduced' and to maintain backward compatibility with earlier
-        versions of numpy it can be
+        versions of np it can be
         omitted. Note that array h returned in 'raw' mode is
         transposed for calling Fortran.
 
-        Default mode is 'reduced' which is also default for numpy 1.8
+        Default mode is 'reduced' which is also default for np 1.8
 
     Returns
     -------
@@ -581,7 +581,7 @@ def qr(a, mode="reduced"):
     """
 
     x = [[2, 1], [3, 4]]
-    if isinstance(numpy.linalg.qr(x, mode), tuple):
+    if isinstance(np.linalg.qr(x, mode), tuple):
         return QRFull(mode)(a)
     else:
         return QRIncomplete(mode)(a)
@@ -604,7 +604,7 @@ class SVD(Op):
     """
 
     # See doc in the docstring of the function just after this class.
-    _numop = staticmethod(numpy.linalg.svd)
+    _numop = staticmethod(np.linalg.svd)
     __props__ = ('full_matrices', 'compute_uv')
 
     def __init__(self, full_matrices=True, compute_uv=True):
@@ -664,10 +664,10 @@ class lstsq(Op):
                              theano.tensor.lscalar(), theano.tensor.dvector()])
 
     def perform(self, node, inputs, outputs):
-        zz = numpy.linalg.lstsq(inputs[0], inputs[1], inputs[2])
+        zz = np.linalg.lstsq(inputs[0], inputs[1], inputs[2])
         outputs[0][0] = zz[0]
         outputs[1][0] = zz[1]
-        outputs[2][0] = numpy.array(zz[2])
+        outputs[2][0] = np.array(zz[2])
         outputs[3][0] = zz[3]
 
 
@@ -726,9 +726,9 @@ def norm(x, ord):
 class TensorInv(Op):
     """
     Class wrapper for tensorinv() function;
-    Theano utilization of numpy.linalg.tensorinv;
+    Theano utilization of np.linalg.tensorinv;
     """
-    _numop = staticmethod(numpy.linalg.tensorinv)
+    _numop = staticmethod(np.linalg.tensorinv)
     __props__ = ('ind',)
 
     def __init__(self, ind=2):
@@ -752,7 +752,7 @@ class TensorInv(Op):
 def tensorinv(a, ind=2):
     """
     Does not run on GPU;
-    Theano utilization of numpy.linalg.tensorinv;
+    Theano utilization of np.linalg.tensorinv;
 
     Compute the 'inverse' of an N-dimensional array.
     The result is an inverse for `a` relative to the tensordot operation
@@ -784,11 +784,11 @@ def tensorinv(a, ind=2):
 
 class TensorSolve(Op):
     """
-    Theano utilization of numpy.linalg.tensorsolve
+    Theano utilization of np.linalg.tensorsolve
     Class wrapper for tensorsolve function.
 
     """
-    _numop = staticmethod(numpy.linalg.tensorsolve)
+    _numop = staticmethod(np.linalg.tensorsolve)
     __props__ = ('axes', )
 
     def __init__(self, axes=None):
@@ -809,7 +809,7 @@ class TensorSolve(Op):
 
 def tensorsolve(a, b, axes=None):
     """
-    Theano utilization of numpy.linalg.tensorsolve. Does not run on GPU!
+    Theano utilization of np.linalg.tensorsolve. Does not run on GPU!
 
     Solve the tensor equation ``a x = b`` for x.
     It is assumed that all indices of `x` are summed over in the product,

@@ -257,12 +257,12 @@ Example: if we expect to call the op repeatedly on incrementally bigger inputs, 
 	
 	    def perform(self, node, (x, y), (z, stor)):
 	        if z[0] is None or stor[0] is None:
-	            stor[0] = numpy.ndarray(x.size * 2)
+	            stor[0] = np.ndarray(x.size * 2)
 	        else:
 	            if x.size > stor[0].size:
 	                stor[0].resize(x.size * 2, refcheck = 0)
 	        z[0] = stor[0][:x.size]
-	        numpy.add(x, y, z[0])
+	        np.add(x, y, z[0])
         ...
 
 Another example: for a FFTW Op, we would like to cache FFTW's plan along

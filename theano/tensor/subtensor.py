@@ -5,7 +5,7 @@ from textwrap import dedent
 import warnings
 import logging
 
-import numpy
+import numpy as np
 from six import integer_types
 from six.moves import xrange
 
@@ -63,7 +63,7 @@ def make_constant(args):
                 return slice(conv(a.start),
                              conv(a.stop),
                              conv(a.step))
-            elif isinstance(a, (integer_types, numpy.integer)):
+            elif isinstance(a, (integer_types, np.integer)):
                 return scal.ScalarConstant(scal.int64, a)
             else:
                 return a
@@ -108,7 +108,7 @@ def get_idx_list(inputs, idx_list, get_count=False):
 def get_canonical_form_slice(theslice, length):
     """
     Given a slice [start:stop:step] transform it into a canonical form
-    that respects the conventions imposed by python and numpy.
+    that respects the conventions imposed by python and np.
 
     In a canonical form a slice is represented by a canonical form slice,
     in which 0 <= start <= stop <= length and step > 0, and a flag which says
@@ -360,11 +360,11 @@ class Subtensor(Op):
 
         if (isinstance(entry, gof.Variable) and
                 entry.type in tensor_types and
-                numpy.all(entry.type.broadcastable)):
+                np.all(entry.type.broadcastable)):
             return scal.get_scalar_type(entry.type.dtype)
         elif (isinstance(entry, gof.Type) and
               entry in tensor_types and
-              numpy.all(entry.broadcastable)):
+              np.all(entry.broadcastable)):
             return scal.get_scalar_type(entry.dtype)
         elif slice_ok and isinstance(entry, slice):
             a = entry.start
@@ -390,7 +390,7 @@ class Subtensor(Op):
                 slice_c = None
 
             return slice(slice_a, slice_b, slice_c)
-        elif isinstance(entry, (integer_types, numpy.integer)):
+        elif isinstance(entry, (integer_types, np.integer)):
             # Disallow the use of python scalars in idx_list
             raise TypeError("Python scalar in idx_list."
                             "Please report this error to theano-dev.")
@@ -515,8 +515,8 @@ class Subtensor(Op):
                         if start is None:
                             start = 0
                         if (p.stop is None or
-                            (isinstance(p.stop, (integer_types, numpy.integer,
-                                                 numpy.ndarray)) and
+                            (isinstance(p.stop, (integer_types, np.integer,
+                                                 np.ndarray)) and
                              p.stop > start)):
                             broadcastable.append(True)
                             continue
@@ -536,7 +536,7 @@ class Subtensor(Op):
         if len(cdata) == 1:
             cdata = cdata[0]
 
-        out[0] = numpy.asarray(x.__getitem__(cdata))
+        out[0] = np.asarray(x.__getitem__(cdata))
 
     def infer_shape(self, node, shapes):
         xshp = shapes[0]
@@ -686,7 +686,7 @@ class Subtensor(Op):
             return pos[1]
 
         def init_entry(entry, depth=0):
-            if isinstance(entry, (numpy.integer, integer_types)):
+            if isinstance(entry, (np.integer, integer_types)):
                 init_cmds.append(
                     "subtensor_spec[%i] = %i;" % (spec_pos(),
                                                   entry))
@@ -1025,7 +1025,7 @@ def set_subtensor(x, y, inplace=False,
 
     Examples
     --------
-    To replicate the numpy expression "r[10:] = 5", type
+    To replicate the np expression "r[10:] = 5", type
 
     >>> r = ivector()
     >>> new_r = set_subtensor(r[10:], 5)
@@ -1058,7 +1058,7 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
 
     Examples
     --------
-    To replicate the numpy expression "r[10:] += 5", type
+    To replicate the np expression "r[10:] += 5", type
 
     >>> r = ivector()
     >>> new_r = inc_subtensor(r[10:], 5)
@@ -1206,7 +1206,7 @@ class IncSubtensor(Op):
     """
     Increment a subtensor.
 
-    This is like numpy's
+    This is like np's
 
         x[i,j,k] += y
 
@@ -1371,7 +1371,7 @@ class IncSubtensor(Op):
         # methods. This method implements the main logic
         # but subclasses may override the helper methods
         # to change the particulars, e.g. GpuIncSubtensor
-        # turns the view/copy operations on numpy arrays
+        # turns the view/copy operations on np arrays
         # into the same operations on cuda arrays.
 
         self.do_type_checking(node)
@@ -1389,7 +1389,7 @@ class IncSubtensor(Op):
             op_is_set = 0
         fail = sub['fail']
         view_ndim = (node.inputs[0].ndim -
-                     numpy.sum([not isinstance(idx, slice)
+                     np.sum([not isinstance(idx, slice)
                                 for idx in self.idx_list]))
 
         copy_of_x = self.copy_of_x(x)
@@ -1668,7 +1668,7 @@ def _sum_grad_over_bcasted_dims(x, gx):
 # Advanced indexing
 #########################
 #
-# Should reproduce numpy's behaviour, see url:
+# Should reproduce np's behaviour, see url:
 # docs.scipy.org/doc/numpy/reference/arrays.indexing.html#advanced-indexing
 
 
@@ -1701,23 +1701,23 @@ class AdvancedSubtensor1(Op):
     def perform(self, node, inp, out_):
         x, i = inp
         out, = out_
-        # Copy always implied by numpy advanced indexing semantic.
+        # Copy always implied by np advanced indexing semantic.
         if out[0] is not None and out[0].shape == (len(i),) + x.shape[1:]:
             o = out[0]
         else:
             o = None
 
-        # If i.dtype is more precise than numpy.intp (int32 on 32-bit machines,
-        # int64 on 64-bit machines), numpy may raise the following error:
+        # If i.dtype is more precise than np.intp (int32 on 32-bit machines,
+        # int64 on 64-bit machines), np may raise the following error:
         # TypeError: array cannot be safely cast to required type.
-        # We need to check if values in i can fit in numpy.intp, because
+        # We need to check if values in i can fit in np.intp, because
         # if they don't, that should be an error (no array can have that
         # many elements on a 32-bit arch).
-        if i.dtype != numpy.intp:
-            i_ = theano._asarray(i, dtype=numpy.intp)
-            if not numpy.can_cast(i.dtype, numpy.intp):
+        if i.dtype != np.intp:
+            i_ = theano._asarray(i, dtype=np.intp)
+            if not np.can_cast(i.dtype, np.intp):
                 # Check if there was actually an incorrect conversion
-                if numpy.any(i != i_):
+                if np.any(i != i_):
                     raise IndexError(
                         'index contains values that are bigger '
                         'than the maximum array size on this system.', i)
@@ -1763,7 +1763,7 @@ class AdvancedSubtensor1(Op):
         return [ilist + x[1:]]
 
     def c_support_code(self):
-        # In some versions of numpy, NPY_MIN_INTP is defined as MIN_LONG,
+        # In some versions of np, NPY_MIN_INTP is defined as MIN_LONG,
         # which is not defined. It should be NPY_MIN_LONG instead in that case.
         return dedent("""\
                 #ifndef MIN_LONG
@@ -1947,8 +1947,8 @@ class AdvancedIncSubtensor1(Op):
         return compile_cutils_code()
 
     def c_code(self, node, name, input_names, output_names, sub):
-        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-        if bool(numpy_ver < [1, 8]):
+        np_ver = [int(n) for n in np.__version__.split('.')[:2]]
+        if bool(np_ver < [1, 8]):
             raise NotImplementedError
         x, y, idx = input_names
         out = output_names[0]
@@ -2094,7 +2094,7 @@ def adv_index_broadcastable_pattern(a, idx):
     This function is only used to determine the broadcast pattern for
     AdvancedSubtensor output variable.
 
-    For this, we make a fake ndarray and a fake idx and call use ask numpy
+    For this, we make a fake ndarray and a fake idx and call use ask np
     the output. From this, we find the output broadcast pattern.
 
     """
@@ -2113,13 +2113,13 @@ def adv_index_broadcastable_pattern(a, idx):
         if isinstance(v.type, SliceType):
             return slice(None, None)
 
-        return numpy.zeros((2,) * v.ndim, int)
+        return np.zeros((2,) * v.ndim, int)
 
     newidx = tuple(map(replace_slice, idx))
 
     # 2 - True = 1; 2 - False = 2
     fakeshape = [2 - bc for bc in a.broadcastable]
-    retshape = numpy.empty(fakeshape)[newidx].shape
+    retshape = np.empty(fakeshape)[newidx].shape
     return tuple([dim == 1 for dim in retshape])
 
 
@@ -2196,8 +2196,8 @@ class AdvancedIncSubtensor(Op):
 
     Notes
     -----
-    We need the numpy.inplace_increment() function currently
-    numpy's PR 326 to be able to make an inplace version of this op.
+    We need the np.inplace_increment() function currently
+    np's PR 326 to be able to make an inplace version of this op.
 
     """
 
@@ -2239,14 +2239,14 @@ class AdvancedIncSubtensor(Op):
                     elif isinstance(ind1, Constant):
                         # Make sure no index is duplicated
                         val = ind1.value
-                        if numpy.unique(val).size == val.size:
+                        if np.unique(val).size == val.size:
                             legacy_conditions = True
                     elif ind2.owner and isinstance(ind2.owner.op, ARange):
                         legacy_conditions = True
                     elif isinstance(ind2, Constant):
                         # Make sure no index is duplicated
                         val = ind2.value
-                        if numpy.unique(val).size == val.size:
+                        if np.unique(val).size == val.size:
                             legacy_conditions = True
             if legacy_conditions:
                 op = copy(self)
@@ -2295,8 +2295,8 @@ class AdvancedIncSubtensor(Op):
                 'You may need to clear the cache (theano-cache clear) '
                 'afterwards.')
 
-        if (numpy.__version__ <= '1.6.1' and
-                out[0].size != numpy.uint32(out[0].size)):
+        if (np.__version__ <= '1.6.1' and
+                out[0].size != np.uint32(out[0].size)):
             warnings.warn(
                 'Numpy versions 1.6.1 and below have a bug preventing '
                 'advanced indexing from correctly filling arrays that '
