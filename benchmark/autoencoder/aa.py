@@ -13,7 +13,7 @@ from theano import gof, Op, Apply
 
 from theano.tensor import blas, opt
 
-# np: aa_np.py
+# np: aa_numpy.py
 # c : aa.cc
 
 
