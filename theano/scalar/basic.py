@@ -18,6 +18,7 @@ from copy import copy
 from textwrap import dedent
 
 import numpy
+import six
 from six.moves import xrange
 
 import theano
@@ -121,33 +122,165 @@ def as_scalar(x, name=None):
         raise TypeError("Cannot convert %s to Scalar" % x, type(x))
 
 
+class NumpyAutocaster(object):
+    """
+    This class is used to cast python ints and floats to numpy arrays.
+
+    The behavior when called on scalar `x` depends on `config.cast_policy`:
+        - 'numpy' will simply use the same type as found by `numpy.asarray(x)`.
+        - 'numpy+floatX' will do the same, except it will use float32 instead
+          of float64 if `x` is a Python float and `config.floatX` is set to
+          'float32' (note that if `x` is a numpy scalar whose data type is
+          float64, it is not modified since we assume the user is purposedly
+          using float64).
+        - 'custom' lets one define a tuple of data types such that:
+            - if `x` is already a numpy scalar and its data type is in this
+              tuple, then it is returned unchanged;
+            - otherwise, the first data type in this tuple that can represent
+              `x` without loss of precision will be used, unless `x` is a float
+              and 'float32' is in the tuple (in which case `x` is cast as a
+              float32);
+            - if no data type can represent `x` without loss of precision, then
+              the last data type in the tuple will be used.
+
+
+    Parameters
+    ----------
+    dtypes: tuple of strings
+        The ordered list of preferred data types (only used when
+        `config.cast_policy` is set to 'custom', see the `NumpyAutocaster`
+        help for details).
+
+    """
+
+    def __init__(self, dtypes):
+        self.dtypes = tuple(dtypes)
+
+    def __call__(self, x):
+        # Make sure we only deal with scalars.
+        assert (isinstance(x, six.integer_types) or
+                isinstance(x, builtin_float) or
+                (isinstance(x, numpy.ndarray) and x.ndim == 0))
+
+        if config.cast_policy == 'numpy':
+            return numpy.asarray(x)
+        elif config.cast_policy == 'numpy+floatX':
+            rval = numpy.asarray(x)
+            if ((not hasattr(x, 'dtype') and
+                 rval.dtype in ('float64', 'float32') and
+                 rval.dtype != config.floatX)):
+                rval = theano._asarray(rval, dtype=config.floatX)
+            return rval
+
+        # The following is the original code, corresponding to the 'custom'
+        # option for `config.cast_policy`.
+        assert config.cast_policy == 'custom'
+
+        try:
+            # Pass through numpy scalars, since they are already typed on
+            # purpose typically.
+            if str(x.dtype) in self.dtypes:
+                # No need to cast `x` into a new dtype. Note that we still
+                # need to convert it into an array, because it may not be
+                # one already (e.g. if x == numpy.float64(1.1)).
+                return numpy.asarray(x)
+        except AttributeError:
+            # Means `x` has no 'dtype' attribute.
+            pass
+
+        # unsafe downcast of float64 variables when config.floatX == 'float32'
+        # recall: float is numpy.float
+        if ((isinstance(x, float) and
+             config.floatX in self.dtypes and
+             config.floatX != 'float64')):
+            return theano._asarray(x, dtype=config.floatX)
+
+        # Don't autocast to float16 unless config.floatX is float16
+        try_dtypes = [d for d in self.dtypes
+                      if config.floatX == 'float16' or d != 'float16']
+
+        for dtype in try_dtypes:
+            x_ = theano._asarray(x, dtype=dtype)
+            if numpy.all(x == x_):
+                break
+        # returns either an exact x_==x, or the last cast x_
+        return x_
+
+autocast_int = NumpyAutocaster(('int8', 'int16', 'int32', 'int64'))
+# autocast_float dtypes might be manipulated in tensor.*
+autocast_float = NumpyAutocaster(('float16', 'float32', 'float64'))
+
+
+class autocast_float_as(object):
+    """
+    Temporarily adjust autocasting behavior.
+
+    This class makes it possible to temporarily and locally adjust autocasting
+    behavior when `config.cast_policy` is set to 'custom'.
+    If `config.cast_policy` is not 'custom', an exception is raised.
+    This class might be convenient in some code, but it definitely
+    helps to test the autocasting mechanism.
+
+    Examples
+    --------
+    >>> with autocast_float_as('float32'):
+    ...    assert (fvector() + 1.1).dtype == 'float32'  # temporary downcasting
+    >>> assert (fvector() + 1.1).dtype == 'float64' # back to default behaviour
+
+    """
+    def __init__(self, *dtypes):
+        self.dtypes = dtypes
+        assert config.cast_policy == 'custom'
+
+    def __enter__(self):
+        assert config.cast_policy == 'custom'
+        self.old_dtypes = autocast_float.dtypes
+        autocast_float.dtypes = self.dtypes
+
+    def __exit__(self, *args):
+        assert config.cast_policy == 'custom'
+        autocast_float.dtypes = self.old_dtypes
+
+
+def convert(x, dtype=None):
+    """
+    Convert the input to a properly typed numpy value according to the
+    current casting policy.  Work with scalars and tensors.
+
+    """
+    if dtype is not None:
+        # in this case, the semantics are that the caller is forcing the dtype
+        x_ = theano._asarray(x, dtype=dtype)
+    else:
+        # In this case, this function should infer the dtype according to the
+        # autocasting rules. See autocasting above.
+        x_ = None
+        if isinstance(x, six.integer_types):
+            try:
+                x_ = autocast_int(x)
+            except OverflowError:
+                # This is to imitate numpy behavior which tries to fit
+                # bigger numbers into a uint64.
+                x_ = theano._asarray(x, dtype='uint64')
+        elif isinstance(x, builtin_float):
+            x_ = autocast_float(x)
+        elif isinstance(x, numpy.ndarray):
+            x_ = x
+        else:
+            # Here x is probably a list or a tuple. If it contains a
+            # long, we will behave like the current NumPy version: it
+            # will work if the long fits in int64 or uint64.
+            x_ = numpy.asarray(x)
+            if x_.size == 0 and not hasattr(x, 'dtype'):
+                x_ = numpy.asarray(x, dtype=config.floatX)
+    assert type(x_) in [numpy.ndarray, numpy.memmap]
+    return x_
+
+
 def constant(x):
-    # pass through numpy scalars, since they are already typed on
-    # purpose typically.
-    if hasattr(x, 'dtype'):
-        assert x.ndim == 0
-        return ScalarConstant(get_scalar_type(str(x.dtype)), x)
-    if isinstance(x, builtin_float):
-        for dtype in ['float32', 'float64']:
-            x_ = theano._asarray(x, dtype=dtype)
-            if numpy.all(x == x_):
-                break
-            x_ = None
-        assert x_ is not None
-        return ScalarConstant(get_scalar_type(str(x_.dtype)), x)
-    if isinstance(x, builtin_int):
-        for dtype in ['int8', 'int16', 'int32', 'int64']:
-            x_ = theano._asarray(x, dtype=dtype)
-            if numpy.all(x == x_):
-                break
-            x_ = None
-        assert x_ is not None
-        return ScalarConstant(get_scalar_type(str(x_.dtype)), x)
-    if isinstance(x, builtin_complex):
-        # TODO: We have added the complex type, so this should be tested
-        raise NotImplementedError()
-    raise TypeError(x)
-    # return ScalarConstant(float64, float(x))
+    x = convert(x)
+    assert x.ndim == 0
+    return ScalarConstant(get_scalar_type(str(x.dtype)), x)
 
 
 class Scalar(Type):

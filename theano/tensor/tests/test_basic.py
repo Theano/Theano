@@ -26,11 +26,12 @@ from six.moves import StringIO, reduce
 from theano import compile, config, function, gof, tensor, shared
 from theano.compile import DeepCopyOp
 from theano.compile.mode import get_default_mode
-from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
+from theano.scalar import autocast_float_as, autocast_float
+from theano.tensor import (_shared, wvector, bvector,
         argmin, max_and_argmax, cscalar, ctensor3, join,
         horizontal_stack, vertical_stack, argmax, get_vector_length,
         fscalar, zeros_like, sum, tensor3, vector, add, addbroadcast,
-        alloc, as_tensor_variable, tensor_from_scalar, ARange, autocast_float,
+        alloc, as_tensor_variable, tensor_from_scalar, ARange,
         clip, constant, default, dot, batched_dot,
         dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
         tensor4, permute_row_elements, Flatten, fmatrix, fscalars, grad,
