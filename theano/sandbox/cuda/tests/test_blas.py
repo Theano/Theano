@@ -1,5 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import copy
+import itertools
 from unittest import TestCase
 
 from theano.compile.pfunc import pfunc
@@ -358,9 +359,11 @@ def test_downsample():
             (1, 65536, 10, 10), ]
 
     numpy.random.RandomState(unittest_tools.fetch_seed()).shuffle(shps)
+    test_ds = (2, 2), (3, 2), (1, 1)
+    test_st = (2, 2), (3, 2), (1, 1)
 
     for shp in shps:
-        for ds in (2, 2), (3, 2), (1, 1):
+        for ds, st in itertools.product(test_ds, test_st):
             if ds[0] > shp[-2]:
                 continue
             if ds[1] > shp[-1]:
@@ -370,13 +373,13 @@ def test_downsample():
             if float(shp[-1]) / ds[1] > 512:
                 continue
             for ignore_border in (True, False):
-                # print 'test_downsample', shp, ds, ignore_border
+                # print 'test_downsample', shp, ds, st, ignore_border
                 ds_op = Pool(ndim=len(ds), ignore_border=ignore_border)
 
                 a = tcn.shared_constructor(my_rand(*shp), 'a')
-                f = pfunc([], ds_op(tensor.as_tensor_variable(a), ds),
+                f = pfunc([], ds_op(tensor.as_tensor_variable(a), ds, st),
                           mode=mode_with_gpu.excluding('cudnn'))
-                f2 = pfunc([], ds_op(tensor.as_tensor_variable(a), ds),
+                f2 = pfunc([], ds_op(tensor.as_tensor_variable(a), ds, st),
                            mode=mode_without_gpu)
                 assert any([isinstance(node.op,
                                        tcn.blas.GpuDownsampleFactorMax)
@@ -393,16 +396,10 @@ def test_downsample():
                 if shp[0] > 30000 or shp[1] > 30000:
                     continue
 
-                g = pfunc(
-                    [],
-                    tensor.grad(ds_op(tensor.as_tensor_variable(a), ds).sum(),
-                                a),
-                    mode=mode_with_gpu.excluding('cudnn'))
-                g2 = pfunc(
-                    [],
-                    tensor.grad(ds_op(tensor.as_tensor_variable(a), ds).sum(),
-                                a),
-                    mode=mode_without_gpu)
+                gf = tensor.grad(
+                    ds_op(tensor.as_tensor_variable(a), ds, st).sum(), a)
+                g = pfunc([], gf, mode=mode_with_gpu.excluding('cudnn'))
+                g2 = pfunc([], gf, mode=mode_without_gpu)
                 assert any([isinstance(node.op,
                                        tcn.blas.GpuDownsampleFactorMaxGrad)
                             for node in g.maker.fgraph.toposort()])
@@ -411,7 +408,7 @@ def test_downsample():
                 assert numpy.allclose(g(), g2()), shp
 
                 ggf = gradient.Lop(tensor.grad((ds_op(
-                    tensor.as_tensor_variable(a), ds)**2).sum(), a), a, a)
+                    tensor.as_tensor_variable(a), ds, st)**2).sum(), a), a, a)
 
                 ref_mode = copy.copy(mode_without_gpu)
                 ref_mode.check_py_code = False
