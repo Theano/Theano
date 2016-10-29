@@ -1913,19 +1913,16 @@ def _check_constant_args_pool(ndim, ws, stride, pad, node):
 def local_gpu_downsample_factor_max(node):
     if (isinstance(node.op, pool.Pool)):
         assert node.op.__props__ == ('ignore_border', 'mode', 'ndim')
-        x, ws, stride, pad = node.inputs
+        x, ws, st, pad = node.inputs
         nd = node.op.ndim if node.op.ndim else (x.ndim - 2)
-        ret = _check_constant_args_pool(nd, ws, stride, pad, node)
+        ret = _check_constant_args_pool(nd, ws, st, pad, node)
         if ret is None:
             return
-        ws, stride, pad = ret
-        if (nd != 2 or
-                max(pad) != 0 or
-                node.op.mode != 'max' or
-                stride != ws):
+        ws, st, pad = ret
+        if (nd != 2 or max(pad) != 0 or node.op.mode != 'max'):
             return
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            gpu_ws = GpuDownsampleFactorMax(ws, node.op.ignore_border)
+            gpu_ws = GpuDownsampleFactorMax(ws, st, node.op.ignore_border)
             if node.inputs[0].ndim == 4:
                 return [host_from_gpu(gpu_ws(x.owner.inputs[0]))]
             else:
@@ -1940,19 +1937,16 @@ def local_gpu_downsample_factor_max(node):
 def local_gpu_downsample_factor_max_grad(node):
     if (isinstance(node.op, pool.MaxPoolGrad)):
         assert node.op.__props__ == ('ignore_border', 'mode', 'ndim')
-        x, z, gz, ws, stride, pad = node.inputs
+        x, z, gz, ws, st, pad = node.inputs
         nd = node.op.ndim if node.op.ndim else (x.ndim - 2)
-        ret = _check_constant_args_pool(nd, ws, stride, pad, node)
+        ret = _check_constant_args_pool(nd, ws, st, pad, node)
         if ret is None:
             return
-        ws, stride, pad = ret
-        if (nd != 2 or
-                max(pad) != 0 or
-                node.op.mode != 'max' or
-                stride != ws):
+        ws, st, pad = ret
+        if (nd != 2 or max(pad) != 0 or node.op.mode != 'max'):
             return
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            gpu_ws_grad = GpuDownsampleFactorMaxGrad(ws, node.op.ignore_border)
+            gpu_ws_grad = GpuDownsampleFactorMaxGrad(ws, st, node.op.ignore_border)
             if node.inputs[0].ndim == 4:
                 return [host_from_gpu(gpu_ws_grad(x.owner.inputs[0],
                                                   as_cuda_ndarray_variable(z),
@@ -1971,19 +1965,16 @@ def local_gpu_downsample_factor_max_grad(node):
 def local_gpu_downsample_factor_max_grad_grad(node):
     if isinstance(node.op, pool.DownsampleFactorMaxGradGrad):
         assert node.op.__props__ == ('ignore_border', 'mode', 'ndim')
-        x, z, gx, ws, stride, pad = node.inputs
+        x, z, gx, ws, st, pad = node.inputs
         nd = node.op.ndim if node.op.ndim else (x.ndim - 2)
-        ret = _check_constant_args_pool(nd, ws, stride, pad, node)
+        ret = _check_constant_args_pool(nd, ws, st, pad, node)
         if ret is None:
             return
-        ws, stride, pad = ret
-        if (nd != 2 or
-                max(pad) != 0 or
-                node.op.mode != 'max' or
-                stride != ws):
+        ws, st, pad = ret
+        if (nd != 2 or max(pad) != 0 or node.op.mode != 'max'):
             return
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            op = GpuDownsampleFactorMaxGradGrad(ws, node.op.ignore_border)
+            op = GpuDownsampleFactorMaxGradGrad(ws, st, node.op.ignore_border)
             if node.inputs[0].ndim == 4:
                 return [host_from_gpu(op(x.owner.inputs[0],
                                          as_cuda_ndarray_variable(z),
