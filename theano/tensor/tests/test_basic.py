@@ -5139,6 +5139,7 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
         # The tag canonicalize is needed for the shape test in FAST_COMPILE
         self.mode = mode
         self.ignore_topo = ignore_topo
+        self.is_fast_compile = config.mode == "FAST_COMPILE"
         super(T_reshape, self).__init__(name)
 
     def function(self, inputs, outputs, ignore_empty=False):
@@ -5156,6 +5157,8 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
         return f
 
     def test_reshape(self):
+        if self.is_fast_compile:
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         a = dvector()
         b = dmatrix()
         d = dmatrix()
@@ -5243,6 +5246,8 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
                 (False, False, True))
 
     def test_m1(self):
+        if self.is_fast_compile:
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         t = tensor3()
         rng = numpy.random.RandomState(seed=utt.fetch_seed())
         val = rng.uniform(size=(3, 4, 5)).astype(config.floatX)
@@ -7353,7 +7358,8 @@ class TestSpecifyShape(unittest.TestCase):
 class TestInferShape(utt.InferShapeTester):
 
     def test_infer_shape(self):
-
+        if config.mode == "FAST_COMPILE":
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         # Flatten
         atens3 = tensor3()
         atens3_val = rand(4, 5, 3)
@@ -8115,6 +8121,8 @@ class T_Choose(utt.InferShapeTester):
             assert numpy.allclose(t_c, n_c)
 
     def test_infer_shape(self):
+        if config.mode == "FAST_COMPILE":
+            raise SkipTest("FAST_COMPILE does not do shape optimization")
         for shp1, shp2 in [
             ((5, 4), (7, 4)),
             ((1, 4), (7, 4)),

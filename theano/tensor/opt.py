@@ -1484,7 +1484,7 @@ class UnShapeOptimizer(Optimizer):
 # Register it after merge1 optimization at 0. We don't want to track
 # the shape of merged node.
 theano.compile.mode.optdb.register('ShapeOpt', ShapeOptimizer(),
-                                   0.1, 'fast_run', 'fast_compile')
+                                   0.1, 'fast_run')
 # Not enabled by default for now. Some crossentropy opt use the
 # shape_feature.  They are at step 2.01. uncanonicalize is at step
 # 3. After it goes to 48.5 that move to the gpu. So 10 seem resonable.
@@ -3383,7 +3383,7 @@ def local_adv_sub1_adv_inc_sub1(node):
             T.extract_constant(x, elemwise=False) != 0):
         return
     cond = [T.all(T.and_(T.lt(idx, x.shape[0]), T.ge(idx, -x.shape[0])))]
-    if not node.fgraph.shape_feature.same_shape(idx, y, 0, 0):
+    if (not hasattr(node.fgraph, 'shape_feature')):
         cond.append(T.eq(idx.shape[0], y.shape[0]))
     r = Assert("Bad indexing or shapes in a AdvancedIncSubtensor1 "
                "that was optimized away")(y, *cond)
