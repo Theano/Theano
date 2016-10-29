@@ -140,7 +140,7 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
 
         th_out = f(W_val, h_val, iIdx_val, b_val, oIdx_val)
 
-        ref_out = BlockSparse_Gemv_and_Outer.gemv_np(
+        ref_out = BlockSparse_Gemv_and_Outer.gemv_numpy(
             b_val.take(oIdx_val, axis=0), W_val, h_val, iIdx_val, oIdx_val)
 
         utt.assert_allclose(ref_out, th_out)

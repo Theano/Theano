@@ -515,18 +515,18 @@ class T_function(unittest.TestCase):
     def test_borrow_output(self):
         a = T.dmatrix()
         f = function([a], Out(a, borrow=False))
-        o = N.ones((3, 3))
+        o = np.ones((3, 3))
         assert o is not f(o)  # function no longer permits aliasing outputs to inputs
 
         f = function([a], Out(a * 4, borrow=False))
-        o = N.ones((3, 3))
+        o = np.ones((3, 3))
         four = f(o)
         assert np.all(four == 4)
         f(o + .1)  # should not clobber the memory used to store four
         assert np.all(four == 4)
 
         f = function([a], Out(a * 4, borrow=True), mode=theano.Mode('c|py_nogc', 'fast_run'))
-        o = N.ones((3, 3))
+        o = np.ones((3, 3))
         four = f(o)
         assert np.all(four == 4)
         f(o + .1)  # should clobber the memory used to store four

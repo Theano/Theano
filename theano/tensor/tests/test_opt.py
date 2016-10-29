@@ -50,7 +50,7 @@ from theano import tensor
 from theano import tensor as T
 from theano.tensor import scalar, iscalar, lscalar, fscalar, dscalar
 from theano.tensor import vector, ivector, lvector, fvector, dvector
-from theano.tensor import matrix, imatrix, lmatrix, fmatrix, dmatrix
+from theano.tensor import matrix, imatrix, lmatrix, fmatrix, dmatrix, tensor3
 from theano.tensor import scalars, vectors, matrices, fmatrices, dmatrices
 from theano.tensor import (
         AdvancedSubtensor,
@@ -377,19 +377,19 @@ class test_canonize(unittest.TestCase):
 #            (dz*fy*(fx+fy),(fx,fy,dz),(dxv,dyv,dzv),2,'float64'),#check mixed type mul
             # check with dimshuffle of constant
             (fx + fy + fz + 2, (fx, fy, fz), (fxv, fyv, fzv), 1, {'custom':
-                 'float32', 'np+floatX': config.floatX, 'np': 'float64'}),
+                 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
             (fx * fy * fz * 2, (fx, fy, fz), (fxv, fyv, fzv), 1, {'custom':
-                 'float32', 'np+floatX': config.floatX, 'np': 'float64'}),
+                 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
 #            (2+fx+fy+fz,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
 #            (2*fx*fy*fz,(fx,fy,fz),(fxv,fyv,fzv),1,'float32'),
             (2 + fx + fy + fz + 2, (fx, fy, fz), (fxv, fyv, fzv), 1, {
-                'custom': 'float32', 'np+floatX': config.floatX, 'np': 'float64'}),
+                'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
             (2 * fx * fy * fz * 2, (fx, fy, fz), (fxv, fyv, fzv), 1, {
-                'custom': 'float32', 'np+floatX': config.floatX, 'np': 'float64'}),
+                'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
 #            (fx*fy*2*(fx+fy+fz),(fx,fy,fz),(fxv,fyv,fzv),2,'float32'),
 #            (fx*fy*(2+fx+fy+fz),(fx,fy,fz),(fxv,fyv,fzv),2,'float32'),
             (fx * fy * 2 * (fx + fy + fz+2), (fx, fy, fz), (fxv, fyv, fzv), 2, {
-                'custom': 'float32', 'np+floatX': config.floatX, 'np': 'float64'}),
+                'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
 
             # check with broadcast of row
 #            (fx+fy+fz+fv,(fx,fy,fz,fv),(fxv,fyv,fzv,fvv),1,'float32'),
@@ -664,11 +664,11 @@ class test_canonize(unittest.TestCase):
         # test (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
         for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([
                                                        (((2.0*dx)/(4.0*dy)), [dx, dy], [dxv, dyv], 'float64'),
-                                                       (((2.0*fx)/(4.0*fy)), [fx, fy], [fxv, fyv], {'custom': 'float32', 'np+floatX': config.floatX, 'np': 'float64'}),
+                                                       (((2.0*fx)/(4.0*fy)), [fx, fy], [fxv, fyv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                                                        (((2.0*dv)/(4.0*dy)), [dv, dy], [dvv, dyv], 'float64'),
-                                                       (((2.0*fv)/(4.0*fy)), [fv, fy], [fvv, fyv], {'custom': 'float32', 'np+floatX': config.floatX, 'np': 'float64'}),
+                                                       (((2.0*fv)/(4.0*fy)), [fv, fy], [fvv, fyv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                                                        (((2.0*dx)/(4.0*dv)), [dx, dv], [dxv, dvv], 'float64'),
-                                                       (((2.0*fx)/(4.0*fv)), [fx, fv], [fxv, fvv], {'custom': 'float32', 'np+floatX': config.floatX, 'np': 'float64'}),
+                                                       (((2.0*fx)/(4.0*fv)), [fx, fv], [fxv, fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
             ]):
 
             if isinstance(out_dtype, dict):
@@ -693,9 +693,9 @@ class test_canonize(unittest.TestCase):
         # test 2 * x / 2 -> x
         for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([
                                                        ((2*dx)/2, [dx], [dxv], 'float64'),
-                                                       ((2*fx)/2, [fx], [fxv], {'custom': 'float32', 'np+floatX': config.floatX, 'np': 'float64'}),
+                                                       ((2*fx)/2, [fx], [fxv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                                                        ((2*dv)/2, [dv], [dvv], 'float64'),
-                                                       ((2*fv)/2, [fv], [fvv], {'custom': 'float32', 'np+floatX': config.floatX, 'np': 'float64'}),
+                                                       ((2*fv)/2, [fv], [fvv], {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
             ]):
             if isinstance(out_dtype, dict):
                 out_dtype = out_dtype[config.cast_policy]
@@ -729,13 +729,13 @@ class test_canonize(unittest.TestCase):
         for id, (g, sym_inputs, val_inputs, out_dtype) in enumerate([
                 ((2 * dx) / (3 * abs(dx)), [dx], [0.5 - dxv], 'float64'),
                 ((2 * fx) / (3 * abs(fx)), [fx], [0.5 - fxv],
-                     {'custom': 'float32', 'np+floatX': config.floatX, 'np': 'float64'}),
+                     {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                 ((2 * dx) / (3 * abs(dx)), [dx], [0.1 * dxv], 'float64'),
                 ((2 * fx) / (3 * abs(fx)), [fx], [0.1 * fxv],
-                     {'custom': 'float32', 'np+floatX': config.floatX, 'np': 'float64'}),
+                     {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
                 ((2 * dv) / (3 * abs(dv)), [dv], [0.5 - dvv], 'float64'),
                 ((2 * fv) / (3 * abs(fv)), [fv], [0.5 - fvv],
-                     {'custom': 'float32', 'np+floatX': config.floatX, 'np': 'float64'}),
+                     {'custom': 'float32', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
             ]):
 
             if isinstance(out_dtype, dict):
@@ -1080,7 +1080,7 @@ class test_fusion(unittest.TestCase):
             (fx-theano.tensor.true_div(fy, fz), (fx, fy, fz), (fxv,
                 fyv, fzv), 1, fxv-(fyv/fzv), 'float32'),
             (fx-theano.tensor.int_div(ix*100, iy*1000), (fx, ix,
-                iy), (fxv, ixv, iyv), 1, fxv-((ixv*100)//(iyv*1000)), {'custom': 'float64', 'np+floatX': config.floatX, 'np': 'float64'}),  # 40
+                iy), (fxv, ixv, iyv), 1, fxv-((ixv*100)//(iyv*1000)), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),  # 40
             (fx-(fy/2), (fx, fy), (fxv, fyv), 1, fxv-(fyv/2), 'float32'),
             (fx-(fy%fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv%fzv), 'float32'),
             (fx-(fy > fz), (fx, fy, fz), (fxv, fyv, fzv), 1, fxv-(fyv > fzv), 'float32'),
@@ -1113,13 +1113,13 @@ class test_fusion(unittest.TestCase):
                 iyv, fzv), 1, ixv-iyv+np.round(fzv), 'int64'),
             # Bit op
             (fx-theano.tensor.or_(iy, iz), (fx, iy, iz), (fxv, iyv,
-                izv), 1, fxv-(iyv|izv), {'custom': 'float64', 'np+floatX': config.floatX, 'np': 'float64'}),
+                izv), 1, fxv-(iyv|izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
             (fx-theano.tensor.xor(iy, iz), (fx, iy, iz), (fxv, iyv,
-                izv), 1, fxv-(iyv^izv), {'custom': 'float64', 'np+floatX': config.floatX, 'np': 'float64'}),  # 60
+                izv), 1, fxv-(iyv^izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),  # 60
             (fx-theano.tensor.and_(iy, iz), (fx, iy, iz), (fxv, iyv,
-                izv), 1, fxv-(iyv&izv), {'custom': 'float64', 'np+floatX': config.floatX, 'np': 'float64'}),
+                izv), 1, fxv-(iyv&izv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
             (fx-theano.tensor.invert(iy), (fx, iy), (fxv, iyv), 1,
-                fxv-(~iyv), {'custom': 'float64', 'np+floatX': config.floatX, 'np': 'float64'}),
+                fxv-(~iyv), {'custom': 'float64', 'numpy+floatX': config.floatX, 'numpy': 'float64'}),
 
             (fx-theano.tensor.cast(fy, dtype='float64'), (fx, fy), (fxv, fyv), 1,
                               fxv-np.asarray(fyv, 'float64'), 'float64'),
@@ -4082,7 +4082,7 @@ class test_shapeoptimizer(unittest.TestCase):
         pkl_filename = os.path.join(os.path.dirname(theano.__file__),
                                     'tensor', 'tests', 'shape_opt_cycle.pkl')
         # Due to incompatibilities between python 2 and 3 in the format
-        # of pickled np ndarray, we have to force an encoding
+        # of pickled numpy ndarray, we have to force an encoding
         from theano.misc.pkl_utils import CompatUnpickler
         with open(pkl_filename, "rb") as pkl_file:
             if PY3:
@@ -6648,6 +6648,81 @@ def test_local_useless_alloc():
     assert isinstance(topo[-2].op, T.opt.Assert)
     assert isinstance(topo[-1].op, T.Alloc)
 
+
+def compile_graph_log_sum_exp(x, axis, dimshuffle_op=None):
+    sum_exp = T.sum(T.exp(x), axis=axis)
+    if dimshuffle_op:
+        sum_exp = dimshuffle_op(sum_exp)
+    y = T.log(sum_exp)
+    MODE = theano.compile.get_default_mode().including('local_log_sum_exp')
+    return function([x], y, mode=MODE)
+
+
+def check_max_log_sum_exp(x, axis, dimshuffle_op=None):
+    f = compile_graph_log_sum_exp(x, axis, dimshuffle_op)
+
+    fgraph = f.maker.fgraph.toposort()
+    for node in fgraph:
+        if (hasattr(node.op, 'scalar_op') and
+                node.op.scalar_op == theano.scalar.basic.maximum):
+            return
+
+        # in mode FAST_COMPILE, the optimisations don't replace the
+        # MaxAndArgmax op.
+        if isinstance(node.op, theano.tensor.MaxAndArgmax):
+            return
+
+    raise Exception('No maximum detected after log_sum_exp optimisation')
+
+
+def test_local_log_sum_exp1():
+    # Tests if optimization is applied by checking the presence of the maximum
+    x = tensor3('x')
+    check_max_log_sum_exp(x, axis=(0,), dimshuffle_op=None)
+    check_max_log_sum_exp(x, axis=(1,), dimshuffle_op=None)
+    check_max_log_sum_exp(x, axis=(2,), dimshuffle_op=None)
+    check_max_log_sum_exp(x, axis=(0, 1), dimshuffle_op=None)
+    check_max_log_sum_exp(x, axis=(0, 1, 2), dimshuffle_op=None)
+
+    # If a transpose is applied to the sum
+    transpose_op = DimShuffle((False, False), (1, 0))
+    check_max_log_sum_exp(x, axis=2, dimshuffle_op=transpose_op)
+
+    # If the sum is performed with keepdims=True
+    x = TensorType(dtype='floatX', broadcastable=(False, True, False))('x')
+    sum_keepdims_op = x.sum(axis=(0, 1), keepdims=True).owner.op
+    check_max_log_sum_exp(x, axis=(0, 1), dimshuffle_op=sum_keepdims_op)
+
+
+def test_local_log_sum_exp2():
+    # Tests if the optimization works (result is correct) around 1.0
+
+    x = tensor3('x')
+    x_val = 1.0 + np.random.rand(4, 3, 2).astype(config.floatX) / 10.0
+
+    f = compile_graph_log_sum_exp(x, axis=(1,))
+    naive_ret = np.log(np.sum(np.exp(x_val), axis=1))
+    optimised_ret = f(x_val)
+    assert np.allclose(naive_ret, optimised_ret)
+
+    # If a transpose is applied
+    transpose_op = DimShuffle((False, False), (1, 0))
+    f = compile_graph_log_sum_exp(x, axis=(1,), dimshuffle_op=transpose_op)
+    naive_ret = np.log(np.sum(np.exp(x_val), axis=1).T)
+    optimised_ret = f(x_val)
+    assert np.allclose(naive_ret, optimised_ret)
+
+
+def test_local_log_sum_exp3():
+    # Tests if the optimization works (result is correct) for extreme value 100
+    x = vector('x')
+    f = compile_graph_log_sum_exp(x, axis=0)
+
+    x_val = np.array([-100., 100.]).astype(config.floatX)
+
+    optimised_ret = f(x_val)
+
+    assert np.allclose(optimised_ret, 100.)
 
 
 if __name__ == '__main__':

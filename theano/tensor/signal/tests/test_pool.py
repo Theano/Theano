@@ -335,7 +335,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             images = theano.shared(imval)
 
             # Pure Numpy computation
-            numpy_output_val = self.np_max_pool_nd(imval, maxpoolshp,
+            numpy_output_val = self.numpy_max_pool_nd(imval, maxpoolshp,
                                                       ignore_border,
                                                       mode=mode)
 

@@ -13,7 +13,7 @@ from __future__ import absolute_import, print_function, division
 import sys
 
 import numpy as np
-from numpy.stride_tricks import as_strided
+from numpy.lib.stride_tricks import as_strided
 from six import integer_types
 from six.moves import xrange
 import scipy.sparse
