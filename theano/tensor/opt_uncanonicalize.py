@@ -39,7 +39,7 @@ import logging
 from theano import gof
 from theano.tensor.elemwise import CAReduce
 from theano.tensor import basic as T
-from theano.tensor import DimShuffle
+from theano.tensor import DimShuffle, Subtensor
 
 from theano.tensor.basic import (get_scalar_constant_value,
                                  NotScalarConstantError)
@@ -149,7 +149,7 @@ def local_reshape_dimshuffle(node):
 
 
 @register_uncanonicalize
-@gof.local_optimizer([T.DimShuffle])
+@gof.local_optimizer([DimShuffle])
 def local_dimshuffle_alloc(node):
     """
     If an alloc is inside a dimshuffle which only adds dimension to the left,
@@ -157,7 +157,7 @@ def local_dimshuffle_alloc(node):
 
     dimshuffle{x, 0, 1}(alloc([3 4], 3, 2) => alloc([3 4], 1, 3, 2)
     """
-    if isinstance(node.op, T.DimShuffle) and node.inputs[0].owner:
+    if isinstance(node.op, DimShuffle) and node.inputs[0].owner:
         input_ = node.inputs[0]
         if isinstance(input_.owner.op, T.Alloc):
             # check if it only adds dimension to the left
@@ -172,4 +172,51 @@ def local_dimshuffle_alloc(node):
             new_shape_input = (1,) * nb_new_dims + tuple(input_.owner.inputs[1:])
 
             return [T.alloc(input_.owner.inputs[0], *new_shape_input)]
+    return False
+
+
+@register_uncanonicalize
+@gof.local_optimizer([DimShuffle])
+def local_dimshuffle_subtensor(node):
+    """
+    If a subtensor is inside a dimshuffle which only drop broadcastable dimensions,
+    scrap the dimshuffle and index the subtensor with 0
+
+    x[i:j, :, k:l].dimshuffle(0, 2) => x[i:j, 0, k:l] if x.broadcastable == (False, True, False)
+    """
+    if isinstance(node.op, DimShuffle) and node.inputs[0].owner:
+        # the dimshuffle can only drop dimensions (cannot reshape nor add 'x')
+        if 'x' in node.op.new_order :
+            return False
+        new_order = node.op.new_order
+        past_dim = new_order[0]
+        for dim in new_order[1:]:
+            if not dim > past_dim:
+                return False
+            else:
+                past_dim = dim
+
+        input_ = node.inputs[0]
+        if isinstance(input_.owner.op, Subtensor):
+            # the arguments missing from the dimshuffles must be dims that are broadcastable
+            broadcastable = input_.broadcastable
+
+            missing_dims = range(input_.ndim)
+            for dim in new_order:
+                missing_dims.remove(dim)
+
+            if not all([broadcastable[i] for i in missing_dims]):
+                return False
+
+            # create a new idx_list for a new Subtensor object
+            # idx_list could be longer than the len(missing_dims), that would happen with
+            # x[0, :, :].dimshuffle(1,0)
+            new_idx_list = list(input_.owner.op.idx_list)
+            offset = len(new_idx_list) - len(missing_dims)
+            zero = T.constant(0)
+            for dim in missing_dims:
+                new_idx_list[dim + offset] = slice(zero, None, None)
+
+            input_.owner.op.idx_list = tuple(new_idx_list)
+            return [input_]
     return False
