@@ -2271,16 +2271,17 @@ class GpuDownsampleFactorMax(GpuOp):
     Implement downsample with max on the gpu.
 
     """
-    __props__ = ('ds', 'ignore_border')
+    __props__ = ('ds', 'st', 'ignore_border')
 
-    def __init__(self, ds, ignore_border=False):
+    def __init__(self, ds, st=None, ignore_border=False):
         self.ds = tuple(ds)
+        self.st = self.ds if st is None else tuple(st)
         self.ignore_border = ignore_border
 
     def __str__(self):
-        return '%s{%s,%s}' % (self.__class__.__name__,
-                              self.ds,
-                              self.ignore_border)
+        return '%s{%s,%s,%s}' % (self.__class__.__name__,
+                                 self.ds, self.st,
+                                 self.ignore_border)
 
     def make_node(self, x):
         if not isinstance(x.type, CudaNdarrayType):
@@ -2299,6 +2300,7 @@ class GpuDownsampleFactorMax(GpuOp):
         z, = out
         fail = sub['fail']
         ds0, ds1 = self.ds
+        st0, st1 = self.st
         ignore_border = int(self.ignore_border)
         return """
         int dims[4], xdim2, xdim3;
@@ -2312,13 +2314,15 @@ class GpuDownsampleFactorMax(GpuOp):
         xdim3 = CudaNdarray_HOST_DIMS(%(x)s)[3];
         dims[0] = CudaNdarray_HOST_DIMS(%(x)s)[0];
         dims[1] = CudaNdarray_HOST_DIMS(%(x)s)[1];
-        dims[2] = xdim2 / %(ds0)s;
-        dims[3] = xdim3 / %(ds1)s;
-        if (! %(ignore_border)s)
-        {
-            dims[2] += (xdim2%%(%(ds0)s)?1:0);
-            dims[3] += (xdim3%%(%(ds1)s)?1:0);
-        }
+
+        #define OUTPUT_DIMS(in_dim, ds, st) \
+            (%(ignore_border)s ? (in_dim - ds)/st + 1 :\
+                (st > ds ? (in_dim - 1)/st + 1 :\
+                           max(0, (in_dim - 1 - ds + st)/st) + 1))
+
+        dims[2] = OUTPUT_DIMS(xdim2, %(ds0)s, %(st0)s);
+        dims[3] = OUTPUT_DIMS(xdim3, %(ds1)s, %(st1)s);
+
         if(dims[3]>512){
             PyErr_Format(PyExc_ValueError,
                          "GpuDownsampleFactorMax: last dimention size of %%d"
@@ -2353,8 +2357,8 @@ class GpuDownsampleFactorMax(GpuOp):
             //TODO: implement this by supporting more outputs than threads
             dim3 block(dims[3]);
             if ((grid.x*grid.y) && dims[3])
-            kMaxPool_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block,
-                                                       xdim3*sizeof(float)>>>(
+            kMaxPool_%(nodename)s<%(ds0)s, %(ds1)s, %(st0)s, %(st1)s> <<<grid, block,
+                                                                       xdim3*sizeof(float)>>>(
                 dims[0], dims[1], dims[2], dims[3], xdim2, xdim3,
                 CudaNdarray_DEV_DATA(%(x)s),
                 CudaNdarray_HOST_STRIDES(%(x)s)[0],
@@ -2388,7 +2392,7 @@ class GpuDownsampleFactorMax(GpuOp):
     def c_support_code_apply(self, node, nodename):
         ignore_border = int(self.ignore_border)
         return """
-        template<int pf2, int pf3>
+        template<int pf2, int pf3, int st2, int st3>
         __global__ void kMaxPool_%(nodename)s(
            int D0, int D1, int D2, int D3, int xD2, int xD3,
            const float * x, int xS0, int xS1, int xS2, int xS3,
@@ -2409,41 +2413,30 @@ class GpuDownsampleFactorMax(GpuOp):
                 extern __shared__ float xbuf[]; //size [xD3]
 
                 for (int r2 = 0;
-                     (r2 < pf2) && (%(ignore_border)s || (r2 + i2*pf2 < xD2));
+                     (r2 < pf2) && (%(ignore_border)s || (r2 + i2*st2 < xD2));
                      ++r2)
                 {
                     __syncthreads();
                     // load the current row of the image into shared memory
                     for (int j = tx; j < xD3; j += blockDim.x)
                     {
-                        xbuf[j] = x[i0*xS0 + i1*xS1 + (i2*pf2+r2)*xS2 + j*xS3];
+                        xbuf[j] = x[i0*xS0 + i1*xS1 + (i2*st2+r2)*xS2 + j*xS3];
                     }
                     __syncthreads();
 
                     // initialize our max if this is the
                     // first row we're loading
-                    cur_max = (r2 == 0) ? xbuf[tx*pf3] : cur_max;
+                    cur_max = (r2 == 0) ? xbuf[tx*st3] : cur_max;
 
                     // do a mini-reduction over the pf3 relevant elements
                     // in the current row
 
-                    if (%(ignore_border)s)
+                    for (int k = 0; k < pf3; ++k)
                     {
-                        for (int k = 0; k < pf3; ++k)
+                        if (%(ignore_border)s || tx*st3 + k < xD3)
                         {
-                            cur_x = xbuf[tx*pf3+k];
+                            cur_x = xbuf[tx*st3+k];
                             cur_max = (cur_x > cur_max) ? cur_x : cur_max;
-                        }
-                    }
-                    else
-                    {
-                        for (int k = 0; k < pf3; ++k)
-                        {
-                            if (tx*pf3 + k < xD3)
-                            {
-                                cur_x = xbuf[tx*pf3+k];
-                                cur_max = (cur_x > cur_max) ? cur_x : cur_max;
-                            }
                         }
                     }
                 }
@@ -2459,22 +2452,24 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
     Implement the grad of downsample with max on the gpu.
 
     """
-    def __init__(self, ds, ignore_border):
+    def __init__(self, ds, st=None, ignore_border=False):
         self.ds = tuple(ds)
+        self.st = self.ds if st is None else tuple(st)
         self.ignore_border = ignore_border
 
     def __eq__(self, other):
         return (type(self) == type(other) and
                 self.ds == other.ds and
+                self.st == other.st and
                 self.ignore_border == other.ignore_border)
 
     def __hash__(self):
-        return hash(type(self)) ^ hash(self.ds) ^ hash(self.ignore_border)
+        return hash(type(self)) ^ hash(self.ds) ^ hash(self.st) ^ hash(self.ignore_border)
 
     def __str__(self):
-        return '%s{%s,%s}' % (self.__class__.__name__,
-                              self.ds,
-                              self.ignore_border)
+        return '%s{%s,%s,%s}' % (self.__class__.__name__,
+                                 self.ds, self.st,
+                                 self.ignore_border)
 
     def make_node(self, x, z, gz):
         return Apply(self, [x, z, gz], [x.type()])
@@ -2487,6 +2482,7 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
         gx, = out
         fail = sub['fail']
         ds0, ds1 = self.ds
+        st0, st1 = self.st
         ignore_border = int(self.ignore_border)
         return """
         if (%(x)s->nd != 4
@@ -2506,11 +2502,11 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
             || (CudaNdarray_HOST_DIMS(%(gx)s)[3] !=
                 CudaNdarray_HOST_DIMS(%(x)s)[3]))
         {
+            // init with zeros
+            // for st larger than ds some pixels in the input will be skipped
             Py_XDECREF(%(gx)s);
-            %(gx)s = (CudaNdarray*)CudaNdarray_New();
-            if ((NULL == %(gx)s)
-                || CudaNdarray_alloc_contiguous(%(gx)s, 4,
-                                                CudaNdarray_HOST_DIMS(%(x)s)))
+            %(gx)s = (CudaNdarray*)CudaNdarray_ZEROS(4, (int*)CudaNdarray_HOST_DIMS(%(x)s));
+            if (NULL == %(gx)s)
             {
                 Py_XDECREF(%(gx)s);
                 %(gx)s = NULL;
@@ -2521,16 +2517,17 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
             //TODO: supporting more output columns than threads
             // make sure we cover every x row when ignore border isset and
             // there's a border present to be ignored
-            int needs_extra_z_col = %(ignore_border)s && (CudaNdarray_HOST_DIMS(%(x)s)[2] %% %(ds0)s);
-            dim3 grid(std::min(CudaNdarray_HOST_DIMS(%(z)s)[0], 65535),
-                      CudaNdarray_HOST_DIMS(%(z)s)[2] + (needs_extra_z_col ? 1 : 0));
-            dim3 block(std::min(CudaNdarray_HOST_DIMS(%(x)s)[3], 512));
+            const int* z_dims = CudaNdarray_HOST_DIMS(%(z)s);
+            const int* x_dims = CudaNdarray_HOST_DIMS(%(x)s);
 
-            kDownsampleMaxGrad_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block>>>(
-                CudaNdarray_HOST_DIMS(%(z)s)[0],
-                CudaNdarray_HOST_DIMS(%(z)s)[1],
-                CudaNdarray_HOST_DIMS(%(z)s)[2],
-                CudaNdarray_HOST_DIMS(%(z)s)[3],
+            int needs_extra_z_row = %(ignore_border)s && (x_dims[2] %% %(st0)s);
+            int needs_extra_z_col = %(ignore_border)s && (x_dims[3] %% %(st1)s);
+            dim3 grid(std::min(z_dims[0] * z_dims[1], 65535),
+                      z_dims[2] + (needs_extra_z_row ? 1 : 0));
+            dim3 block(std::min(z_dims[3] + (needs_extra_z_col ? 1 : 0), 512));
+
+            kDownsampleMaxGrad_%(nodename)s<%(ds0)s, %(ds1)s, %(st0)s, %(st1)s> <<<grid, block>>>(
+                z_dims[0], z_dims[1], z_dims[2], z_dims[3],
                 CudaNdarray_HOST_DIMS(%(x)s)[2],
                 CudaNdarray_HOST_DIMS(%(x)s)[3],
                 CudaNdarray_DEV_DATA(%(x)s),
@@ -2584,7 +2581,7 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
 
         return """
         // ds0 is the downsampling factor in rows, ds1 in columns
-        template<int ds0, int ds1>
+        template<int ds2, int ds3, int st2, int st3>
         __global__ void kDownsampleMaxGrad_%(nodename)s(
            int D0, int D1, int D2, int D3, int xD2, int xD3,
            const float * x, int xS0, int xS1, int xS2, int xS3,
@@ -2600,76 +2597,38 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
             // xD3: number of x cols
             // various .S. variables are strides
 
-            float cur_max, cur_x, my_z, my_gz;
+            float my_z, my_gz;
+            int x_row, x_col;
             // Cast threadIdx.x into a signed int, to avoid problems with
             // indexing with negative offsets.
             int tx = threadIdx.x;
             int bdimx = blockDim.x;
+            for(int block_x_idx = blockIdx.x;
+                block_x_idx < D0 * D1;
+                block_x_idx += gridDim.x){
 
-            for(int i0 = blockIdx.x;
-                i0 < D0;
-                i0 += gridDim.x){
-
-                int i1 = 0;                // image col
-                // row wrt z and/or gz, ranges from 0 to D2 - 1 OR D2
-                // (as needed to cover all x rows)
+                int i0 = block_x_idx %% D0;
+                int i1 = block_x_idx / D0;
                 int i2 = blockIdx.y;
-                int x_col = tx;            // col wrt x, ranges from 0 to xD3 - 1
-                int z_col = x_col/ds1;     // z_col corresponding to this x_col
+                int i3 = tx;
 
+                // maximum in the region
+                my_z = z[i0*zS0 + i1*zS1 + i2*zS2 + i3*zS3];
 
-                //TODO: raise occupancy.  Use threadIdx.y to run several
-                //      iterations of this i1 loop in parallel
-
-                for (i1 = 0; i1 < D1; ++i1) // loop over images (same for z and x)
+                // iterate over pooling window
+                for (int r2 = 0; r2 < ds2 && (i2*st2 + r2 < xD2); ++r2)
                 {
-                    for(int col_iter = 0;
-                        (tx + col_iter * bdimx < xD3) ; col_iter++){
-
-                        //The if inside is to don't do the division if we
-                        // need only 1 col_iter
-
-                        if(tx + bdimx < xD3)
+                    for (int r3 = 0; r3 < ds3 && (i3*st3 + r3 < xD3); ++r3)
+                    {
+                        x_row = i2*st2 + r2;
+                        x_col = i3*st3 + r3;
+                        if (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3])
                         {
-                            x_col = tx + col_iter * bdimx;
-                            z_col = x_col/ds1;
+                            my_gz = gz[i0*gzS0 + i1*gzS1 + i2*gzS2 + i3*gzS3];
+                            // for overlapping pooling regions concurrent
+                            // writes are possible
+                            atomicAdd(&gx[i0*gxS0 + i1*gxS1 + x_row*gxS2 + x_col*gxS3], my_gz);
                         }
-
-                        if (%(ignore_border)s && ((x_col >= ds1 * D3) || (i2 >= D2)))
-                        {
-                            // This happens only if x_col, or i2*ds0, was ignored
-                            // (via ignore_border)
-                            // TODO: if ignore_border is False, this is impossible
-                            //        and we don't even need to generate this code.
-
-                            my_gz = 0.0f;
-
-                            //any fp number suffices for my_z, so we don't even
-                            //need to set it to anything in particular.
-
-                        }
-                        else
-                        {
-                            // this is effectively:
-                            // my_gz = gz[image_row][image_col][z_row][z_col]
-                            // my_z  = z[image_row][image_col][z_row][z_col]
-                            my_gz = gz[i0 * gzS0 + i1 * gzS1 + i2 * gzS2 +
-                                       z_col*gzS3];
-                            my_z =   z[i0 *  zS0 + i1 *  zS1 + i2 *  zS2 +
-                                       z_col* zS3];
-                        }
-                        for (int x_row = i2*ds0;
-                              (x_row < i2*ds0+ds0) && (x_row < xD2); ++x_row)
-                        {
-                            // this is effectively:
-                            // gx[image_row][image_col][x_row][x_col]
-                            //   = (my_z == x[image_row][image_col][
-                            //                x_row][x_col]) ? my_gz : 0.0f;
-                            gx[i0*gxS0 + i1*gxS1 + x_row*gxS2 + x_col*gxS3]
-                               = (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 +
-                                            x_col*xS3]) ? my_gz : 0.0f;
-                        }
-
                     }
                 }
             }
@@ -2682,10 +2641,11 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
     Implement the grad of downsample with max on the gpu.
 
     """
-    __props__ = ('ds', 'ignore_border')
+    __props__ = ('ds', 'st', 'ignore_border')
 
-    def __init__(self, ds, ignore_border):
+    def __init__(self, ds, st=None, ignore_border=False):
         self.ds = tuple(ds)
+        self.st = self.ds if st is None else tuple(st)
         self.ignore_border = ignore_border
 
     def make_node(self, x, z, gx):
@@ -2710,6 +2670,7 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
         gz, = out
         fail = sub['fail']
         ds0, ds1 = self.ds
+        st0, st1 = self.st
         ignore_border = int(self.ignore_border)
         return """
         if (%(x)s->nd != 4
@@ -2729,11 +2690,11 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
             || (CudaNdarray_HOST_DIMS(%(gz)s)[3] !=
                 CudaNdarray_HOST_DIMS(%(z)s)[3]))
         {
+            // init with zeros
+            // for st larger than ds some pixels in the input will be skipped
             Py_XDECREF(%(gz)s);
-            %(gz)s = (CudaNdarray*)CudaNdarray_New();
-            if ((NULL == %(gz)s)
-                || CudaNdarray_alloc_contiguous(%(gz)s, 4,
-                                                CudaNdarray_HOST_DIMS(%(z)s)))
+            %(gz)s = (CudaNdarray*)CudaNdarray_ZEROS(4, (int*)CudaNdarray_HOST_DIMS(%(z)s));
+            if (NULL == %(gz)s)
             {
                 Py_XDECREF(%(gz)s);
                 %(gz)s = NULL;
@@ -2741,17 +2702,17 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
             }
         }
         {
+            const int* z_dims = CudaNdarray_HOST_DIMS(%(z)s);
+            const int* x_dims = CudaNdarray_HOST_DIMS(%(x)s);
 
-            int needs_extra_z_col = %(ignore_border)s && (CudaNdarray_HOST_DIMS(%(x)s)[2] %% %(ds0)s);
-            dim3 grid(std::min(CudaNdarray_HOST_DIMS(%(z)s)[0], 65535),
-                      CudaNdarray_HOST_DIMS(%(z)s)[2] + (needs_extra_z_col ? 1 : 0));
-            dim3 block(std::min(CudaNdarray_HOST_DIMS(%(x)s)[3], 512));
+            int needs_extra_z_row = %(ignore_border)s && (x_dims[2] %% %(st0)s);
+            int needs_extra_z_col = %(ignore_border)s && (x_dims[3] %% %(st1)s);
+            dim3 grid(std::min(z_dims[0] * z_dims[1], 65535),
+                      z_dims[2] + (needs_extra_z_row ? 1 : 0));
+            dim3 block(std::min(z_dims[3] + (needs_extra_z_col ? 1 : 0), 512));
 
-            kDownsampleMaxGradGrad_%(nodename)s<%(ds0)s, %(ds1)s> <<<grid, block>>>(
-                CudaNdarray_HOST_DIMS(%(z)s)[0],
-                CudaNdarray_HOST_DIMS(%(z)s)[1],
-                CudaNdarray_HOST_DIMS(%(z)s)[2],
-                CudaNdarray_HOST_DIMS(%(z)s)[3],
+            kDownsampleMaxGradGrad_%(nodename)s<%(ds0)s, %(ds1)s, %(st0)s, %(st1)s> <<<grid, block>>>(
+                z_dims[0], z_dims[1], z_dims[2], z_dims[3],
                 CudaNdarray_HOST_DIMS(%(x)s)[2],
                 CudaNdarray_HOST_DIMS(%(x)s)[3],
                 CudaNdarray_DEV_DATA(%(x)s),
@@ -2795,7 +2756,8 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
     def c_support_code_apply(self, node, nodename):
         return """
         // ds0 is the downsampling factor in rows, ds1 in columns
-        template<int ds0, int ds1>
+        // st0 and st1 are row and column stride
+        template<int ds2, int ds3, int st2, int st3>
         __global__ void kDownsampleMaxGradGrad_%(nodename)s(
            int D0, int D1, int D2, int D3, int xD2, int xD3,
            const float * x, int xS0, int xS1, int xS2, int xS3,
@@ -2811,55 +2773,40 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
             // xD3: number of x cols
             // various .S. variables are strides
 
-            float cur_max, cur_x, my_z, my_gx;
+            float my_z, my_gx;
+            int x_row, x_col;
             // Cast threadIdx.x into a signed int, to avoid problems with
             // indexing with negative offsets.
             int tx = threadIdx.x;
             int bdimx = blockDim.x;
 
-            for(int i0 = blockIdx.x;
-                i0 < D0;
-                i0 += gridDim.x){
+            for(int block_x_idx = blockIdx.x;
+                block_x_idx < D0 * D1;
+                block_x_idx += gridDim.x){
 
-                int i1 = 0;                // image col
-                // row wrt z and/or gz, ranges from 0 to D2 - 1 OR D2
-                // (as needed to cover all x rows)
+                int i0 = block_x_idx %% D0;
+                int i1 = block_x_idx / D0;
                 int i2 = blockIdx.y;
-                int x_col = tx;            // col wrt x, ranges from 0 to xD3 - 1
-                int z_col = x_col/ds1;     // z_col corresponding to this x_col
+                int i3 = tx;
 
+                // maximum in the region
+                my_z = z[i0*zS0 + i1*zS1 + i2*zS2 + i3*zS3];
 
-                //TODO: raise occupancy.  Use threadIdx.y to run several
-                //      iterations of this i1 loop in parallel
-
-                for (i1 = 0; i1 < D1; ++i1) // loop over images (same for z and x)
+                // iteration over pooling window
+                for (int r2 = 0; r2 < ds2 && (i2*st2 + r2 < xD2); ++r2)
                 {
-                    for(int col_iter = 0;
-                        (tx + col_iter * bdimx < xD3) ; col_iter++){
-
-                        //The if inside is to don't do the division if we
-                        // need only 1 col_iter
-
-                        if(tx + bdimx < xD3)
-                        {
-                            x_col = tx + col_iter * bdimx;
-                            z_col = x_col/ds1;
-                        }
-
-                        my_z = z[i0 *  zS0 + i1 *  zS1 + i2 *  zS2 + z_col* zS3];
-
-                        for (int x_row = i2*ds0;
-                              (x_row < i2*ds0+ds0) && (x_row < xD2); ++x_row)
+                    for (int r3 = 0; r3 < ds3 && (i3*st3 + r3 < xD3); ++r3)
+                    {
+                        x_row = i2*st2 + r2;
+                        x_col = i3*st3 + r3;
+                        if (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3])
                         {
                             // my_gx = gx[image_row][image_col][x_row][x_col]
                             my_gx = gx[i0*gxS0 + i1*gxS1 + x_row*gxS2 + x_col*gxS3];
-
-                            if (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3]) {
-                                gz[i0 *  gzS0 + i1 *  gzS1 + i2 *  gzS2 + z_col* gzS3] = my_gx;
-                            }
+                            // for overlapping pooling regions concurrent
+                            // writes are possible
+                            atomicAdd(&gz[i0*gzS0 + i1*gzS1 + i2*gzS2 + i3*gzS3], my_gx);
                         }
-
-
                     }
                 }
             }
