@@ -695,12 +695,12 @@ def check_floatX(inputs, rval):
     :returns: Either `rval` unchanged, or `rval` cast in float32. The idea is
     that when a np function would have returned a float64, Theano may prefer
     to return a float32 instead when `config.cast_policy` is set to
-    'np+floatX' and config.floatX to 'float32', and there was no float64
+    'numpy+floatX' and config.floatX to 'float32', and there was no float64
     input.
     """
     if (isinstance(rval, np.ndarray) and
         rval.dtype == 'float64' and
-        config.cast_policy == 'np+floatX'
+        config.cast_policy == 'numpy+floatX'
         and config.floatX == 'float32' and
         all(x.dtype != 'float64' for x in inputs)):
         # Then we expect float32 instead of float64.
@@ -5006,7 +5006,7 @@ class T_scalarfromtensor(unittest.TestCase):
         self.assertTrue(v == 56, v)
         if config.cast_policy == 'custom':
             self.assertTrue(isinstance(v, np.int16))
-        elif config.cast_policy in ('np', 'np+floatX'):
+        elif config.cast_policy in ('np', 'numpy+floatX'):
             self.assertTrue(isinstance(
                 v, getattr(np, str(np.asarray(56).dtype))))
         else:
@@ -5623,7 +5623,7 @@ class TestARange(unittest.TestCase):
 
         if config.cast_policy == 'custom':
             assert out.dtype == 'int64'
-        elif config.cast_policy in ('np', 'np+floatX'):
+        elif config.cast_policy in ('np', 'numpy+floatX'):
             np_dtype = np.arange(np.array(1, dtype='int32')).dtype
             assert out.dtype == np_dtype
         else:
@@ -5648,7 +5648,7 @@ class TestARange(unittest.TestCase):
                                        np.array(1, dtype=stop.dtype),
                                        np.array(1, dtype=step.dtype)).dtype
             assert out.dtype == np_dtype
-        elif config.cast_policy == 'np+floatX':
+        elif config.cast_policy == 'numpy+floatX':
             assert out.dtype == config.floatX
         else:
             raise NotImplementedError(config.cast_policy)
@@ -5662,7 +5662,7 @@ class TestARange(unittest.TestCase):
             if config.cast_policy == 'custom':
                 expected_val = np.arange(start_v, stop_v, step_v,
                                             dtype=start.type.dtype)
-            elif config.cast_policy in ('np', 'np+floatX'):
+            elif config.cast_policy in ('np', 'numpy+floatX'):
                 expected_val = np.arange(start_v_, stop_v_, step_v_,
                                             dtype=out.dtype)
             else:
@@ -5686,7 +5686,7 @@ class TestARange(unittest.TestCase):
             if config.cast_policy == 'custom':
                 expected_val = np.arange(start_v, stop_v, step_v,
                                             dtype=start.type.dtype)
-            elif config.cast_policy in ('np', 'np+floatX'):
+            elif config.cast_policy in ('np', 'numpy+floatX'):
                 expected_val = np.arange(start_v_, stop_v_, step_v_)
             else:
                 raise NotImplementedError(config.cast_policy)
@@ -5700,7 +5700,7 @@ class TestARange(unittest.TestCase):
 
         if config.cast_policy == 'custom':
             assert out.dtype == 'int64'
-        elif config.cast_policy in ('np', 'np+floatX'):
+        elif config.cast_policy in ('np', 'numpy+floatX'):
             assert out.dtype == np.arange(np.int32(0),
                                              np.int32(1)).dtype
         else:
@@ -5728,7 +5728,7 @@ class TestARange(unittest.TestCase):
 
         if config.cast_policy == 'custom':
             assert out.dtype == 'int64'
-        elif config.cast_policy in ('np', 'np+floatX'):
+        elif config.cast_policy in ('np', 'numpy+floatX'):
             assert out.dtype == np.arange(np.int32(1)).dtype
         else:
             raise NotImplementedError(config.cast_policy)
@@ -5743,7 +5743,7 @@ class TestARange(unittest.TestCase):
             assert fout.dtype == fstop.type.dtype
         elif config.cast_policy == 'np':
             assert fout.dtype == np.arange(np.float32(1)).dtype
-        elif config.cast_policy == 'np+floatX':
+        elif config.cast_policy == 'numpy+floatX':
             if config.floatX == 'float32':
                 assert fout.dtype == 'float32'
             else:
@@ -5770,14 +5770,14 @@ class TestARange(unittest.TestCase):
 
             assert arange(iscalar(), fscalar(), dscalar()).dtype == \
                 dscalar().dtype
-        elif config.cast_policy in ('np', 'np+floatX'):
+        elif config.cast_policy in ('np', 'numpy+floatX'):
             for dtype in get_numeric_types():
                 # Test with a single argument.
                 arange_dtype = arange(scalar(dtype=str(dtype))).dtype
                 np_dtype = np.arange(np.array(1, dtype=dtype)).dtype
                 if (dtype != 'float64' and
                     np_dtype == 'float64' and
-                    config.cast_policy == 'np+floatX' and
+                    config.cast_policy == 'numpy+floatX' and
                     config.floatX == 'float32'):
                     # We want a float32 arange.
                     assert arange_dtype == 'float32'
@@ -5796,7 +5796,7 @@ class TestARange(unittest.TestCase):
                     if (dtype != 'float64' and
                         stop_dtype != 'float64' and
                         np_dtype == 'float64' and
-                        config.cast_policy == 'np+floatX' and
+                        config.cast_policy == 'numpy+floatX' and
                         config.floatX == 'float32'):
                         # We want a float32 arange.
                         assert arange_dtype == 'float32'
@@ -5818,7 +5818,7 @@ class TestARange(unittest.TestCase):
                             stop_dtype != 'float64' and
                             step_dtype != 'float64' and
                             np_dtype == 'float64' and
-                            config.cast_policy == 'np+floatX' and
+                            config.cast_policy == 'numpy+floatX' and
                             config.floatX == 'float32'):
                             # We want a float32 arange.
                             assert arange_dtype == 'float32'
@@ -5854,7 +5854,7 @@ class TestARange(unittest.TestCase):
 
         if config.cast_policy == 'custom':
             assert out.dtype == 'int64'
-        elif config.cast_policy in ('np', 'np+floatX'):
+        elif config.cast_policy in ('np', 'numpy+floatX'):
             np_dtype = np.arange(np.array(0, dtype=start.dtype),
                                        np.array(1, dtype=stop.dtype),
                                        np.array(1, dtype=step.dtype)).dtype
@@ -5875,7 +5875,7 @@ class TestARange(unittest.TestCase):
 # 4 [Elemwise{sub,no_inplace}(stop, start), Elemwise{Cast{int64}}(Elemwise{sub,no_inplace}.0), Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{Cast{int64}}.0, 0), MakeVector(Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)].0)]
         if config.cast_policy == 'custom':
             assert out.dtype == 'int64'
-        elif config.cast_policy in ('np', 'np+floatX'):
+        elif config.cast_policy in ('np', 'numpy+floatX'):
             assert out.dtype == np.arange(
                     np.int32(0), np.int32(1), np.int32(1)).dtype
         else:
@@ -5897,7 +5897,7 @@ class TestARange(unittest.TestCase):
 
         if config.cast_policy == 'custom':
             assert out.dtype == 'int64'
-        elif config.cast_policy in ('np', 'np+floatX'):
+        elif config.cast_policy in ('np', 'numpy+floatX'):
             np_dtype = np.arange(0,
                                        np.array(1, dtype=stop.dtype),
                                        1).dtype
@@ -6450,7 +6450,7 @@ def test_autocast():
     for autocast_cfg in (
             'custom',
             #'np', # Commented out until it is implemented properly.
-            'np+floatX',
+            'numpy+floatX',
             ):
         config.cast_policy = autocast_cfg
         try:
@@ -6549,7 +6549,7 @@ def _test_autocast_np():
 
 def _test_autocast_np_floatX():
     """Called from `test_autocast`."""
-    assert config.cast_policy == 'np+floatX'
+    assert config.cast_policy == 'numpy+floatX'
     backup_floatX = config.floatX
 
     def ok(z, floatX):
@@ -6587,7 +6587,7 @@ class test_arithmetic_cast(unittest.TestCase):
     Test output types of basic arithmeric operations (* / + - //).
 
     We only test the behavior for `config.cast_policy` set to either 'np' or
-    'np+floatX': the 'custom' behavior is (at least partially) tested in
+    'numpy+floatX': the 'custom' behavior is (at least partially) tested in
     `_test_autocast_custom`.
     """
 
@@ -6609,7 +6609,7 @@ class test_arithmetic_cast(unittest.TestCase):
             warnings.filterwarnings('ignore', message='Division of two integer',
                                     category=DeprecationWarning)
         try:
-            for cfg in ('np+floatX', ):  # Used to test 'np' as well.
+            for cfg in ('numpy+floatX', ):  # Used to test 'np' as well.
                 config.cast_policy = cfg
                 for op in (operator.add, operator.sub, operator.mul,
                            operator_div, operator.floordiv):
@@ -6665,7 +6665,7 @@ class test_arithmetic_cast(unittest.TestCase):
                                 if np_dtype == theano_dtype:
                                     # Same data type found, all is good!
                                     continue
-                                if (cfg == 'np+floatX' and
+                                if (cfg == 'numpy+floatX' and
                                     config.floatX == 'float32' and
                                     a_type != 'float64' and
                                     b_type != 'float64' and
@@ -6701,7 +6701,7 @@ class test_arithmetic_cast(unittest.TestCase):
                                     config.int_division == 'floatX'):
                                     assert theano_dtype == config.floatX
                                     continue
-                                if (cfg == 'np+floatX' and
+                                if (cfg == 'numpy+floatX' and
                                     a_type == 'complex128' and
                                     (b_type == 'float32' or
                                      b_type == 'float16') and

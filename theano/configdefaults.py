@@ -56,10 +56,10 @@ AddConfigVar('warn_float64',
 
 AddConfigVar('cast_policy',
              'Rules for implicit type casting',
-             EnumStr('custom', 'np+floatX',
+             EnumStr('custom', 'numpy+floatX',
                      # The 'np' policy was originally planned to provide a
                      # smooth transition from np. It was meant to behave the
-                     # same as np+floatX, but keeping float64 when np
+                     # same as numpy+floatX, but keeping float64 when np
                      # would. However the current implementation of some cast
                      # mechanisms makes it a bit more complex to add than what
                      # was expected, so it is currently not available.

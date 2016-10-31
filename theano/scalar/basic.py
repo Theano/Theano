@@ -58,9 +58,9 @@ class IntegerDivisionError(Exception):
 def upcast(dtype, *dtypes):
     # This tries to keep data in floatX or lower precision, unless we
     # explicitely request a higher precision datatype.
-    keep_float32 = [(config.cast_policy == 'np+floatX' and
+    keep_float32 = [(config.cast_policy == 'numpy+floatX' and
                      config.floatX == 'float32')]
-    keep_float16 = [(config.cast_policy == 'np+floatX' and
+    keep_float16 = [(config.cast_policy == 'numpy+floatX' and
                      config.floatX == 'float16')]
 
     def make_array(dt):

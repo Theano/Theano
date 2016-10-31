@@ -270,7 +270,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: cast_policy
 
-    String value: either ``'np+floatX'`` or ``'custom'``
+    String value: either ``'numpy+floatX'`` or ``'custom'``
 
     Default: ``'custom'``
 
@@ -279,11 +279,11 @@ import theano and print the config variable, as in:
     corresponds to a set of custom rules originally used in
     Theano (which can be partially customized, see e.g. the in-code help of
     ``tensor.NumpyAutocaster``), and will be deprecated in the future.
-    The 'np+floatX' setting attempts to mimic the np casting rules,
+    The 'numpy+floatX' setting attempts to mimic the np casting rules,
     although it prefers to use float32 numbers instead of float64 when
     ``config.floatX`` is set to 'float32' and the user uses data that is not
     explicitly typed as float64 (e.g. regular Python floats).
-    Note that 'np+floatX' is not currently behaving exactly as planned (it
+    Note that 'numpy+floatX' is not currently behaving exactly as planned (it
     is a work-in-progress), and thus you should consider it as experimental.
     At the moment it behaves differently from np in the following
     situations:

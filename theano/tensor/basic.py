@@ -224,7 +224,7 @@ class NumpyAutocaster(object):
 
     The behavior when called on scalar `x` depends on `config.cast_policy`:
         - 'np' will simply use the same type as found by `np.asarray(x)`.
-        - 'np+floatX' will do the same, except it will use float32 instead
+        - 'numpy+floatX' will do the same, except it will use float32 instead
           of float64 if `x` is a Python float and `config.floatX` is set to
           'float32' (note that if `x` is a np scalar whose data type is
           float64, it is not modified since we assume the user is purposedly
@@ -260,7 +260,7 @@ class NumpyAutocaster(object):
 
         if config.cast_policy == 'np':
             return np.asarray(x)
-        elif config.cast_policy == 'np+floatX':
+        elif config.cast_policy == 'numpy+floatX':
             rval = np.asarray(x)
             if ((not hasattr(x, 'dtype') and
                  rval.dtype in ('float64', 'float32') and
@@ -5187,9 +5187,9 @@ def arange(start, stop=None, step=1, dtype=None):
             dtype = 'int64'
         if dtype.startswith('uint'):
             dtype = 'uint64'
-        if config.cast_policy in ('np', 'np+floatX'):
+        if config.cast_policy in ('np', 'numpy+floatX'):
             # We enforce np semantics, except in the special case where
-            # `config.cast_policy` is 'np+floatX' and we want to use float32
+            # `config.cast_policy` is 'numpy+floatX' and we want to use float32
             # rather than float64.
             # As an example, if `start`, `stop` and `step` are all int32,
             # `np.arange` returns an int64 array (on 64-bit platforms),
@@ -5199,7 +5199,7 @@ def arange(start, stop=None, step=1, dtype=None):
                 stop=np.array(1, dtype=stop.dtype),
                 step=np.array(1, dtype=step.dtype)).dtype
             if np_dtype != dtype:
-                if (config.cast_policy == 'np+floatX' and
+                if (config.cast_policy == 'numpy+floatX' and
                     config.floatX == 'float32' and
                     np_dtype == 'float64' and
                     # No explicit float64 in the three arguments?

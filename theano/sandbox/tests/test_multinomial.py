@@ -168,7 +168,7 @@ def test_multinomial_large():
         assert mval.shape == pval.shape
         if config.cast_policy == 'custom':
             assert mval.dtype == pval.dtype
-        elif config.cast_policy == 'np+floatX':
+        elif config.cast_policy == 'numpy+floatX':
             assert mval.dtype == config.floatX
         elif config.cast_policy == 'np':
             assert mval.dtype == 'float64'
