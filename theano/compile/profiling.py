@@ -19,6 +19,7 @@ __docformat__ = "restructuredtext en"
 
 import atexit
 import copy
+import operator
 import os
 import sys
 import time
@@ -78,7 +79,8 @@ def _atexit_print_fn():
 
             # merge dictonary
             for attr in ["apply_time", "apply_callcount",
-                         "apply_cimpl", "variable_shape", "variable_strides"]:
+                         "apply_cimpl", "variable_shape", "variable_strides",
+                         "linker_make_thunk_time"]:
                 cum_attr = getattr(cum, attr)
                 for key, val in iteritems(getattr(ps, attr)):
                     assert key not in cum_attr
@@ -192,6 +194,8 @@ class ProfileStats(object):
     # time spent in importing compiled python module.
 
     linker_node_make_thunks = 0.0
+
+    linker_make_thunk_time = {}
 
     line_width = config.profiling.output_line_width
 
@@ -670,6 +674,11 @@ class ProfileStats(object):
         print('       Import time %es' % self.import_time, file=file)
         print('       Node make_thunk time %es' % self.linker_node_make_thunks,
               file=file)
+
+        for node, t in sorted(self.linker_make_thunk_time.items(),
+                                 key=operator.itemgetter(1))[::-1][:5]:
+            print('           Node %s time %es' % (node, t),
+                  file=file)
         print('', file=file)
 
         # The validation time is a subset of optimizer_time
