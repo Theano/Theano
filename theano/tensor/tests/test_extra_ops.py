@@ -8,7 +8,7 @@ from theano.tests import unittest_tools as utt
 
 from theano.tensor.extra_ops import (SearchsortedOp, searchsorted,
                                      CumsumOp, cumsum, CumprodOp, cumprod,
-                                     CpuContiguous, cpu_contiguous, BinCountOp,
+                                     CpuContiguous, cpu_contiguous,
                                      bincount, DiffOp, diff, squeeze, compress,
                                      RepeatOp, repeat, Bartlett, bartlett,
                                      FillDiagonal, fill_diagonal,
@@ -17,9 +17,6 @@ from theano.tensor.extra_ops import (SearchsortedOp, searchsorted,
 from theano import tensor as T
 from theano import config, tensor, function
 from theano.tests.unittest_tools import attr
-
-numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-numpy_16 = bool(numpy_ver >= [1, 6])
 
 
 def test_cpu_contiguous():
@@ -218,12 +215,7 @@ class TestCumprodOp(utt.InferShapeTester):
             utt.verify_grad(self.op_class(axis=axis), [a])
 
 
-class TestBinCountOp(utt.InferShapeTester):
-    def setUp(self):
-        super(TestBinCountOp, self).setUp()
-        self.op_class = BinCountOp
-        self.op = BinCountOp()
-
+class TestBinCount(utt.InferShapeTester):
     def test_bincountFn(self):
         w = T.vector('w')
 
@@ -262,84 +254,6 @@ class TestBinCountOp(utt.InferShapeTester):
                 a[0] = -1
                 f5 = theano.function([x], bincount(x, assert_nonneg=True))
                 self.assertRaises(AssertionError, f5, a)
-
-    def test_bincountOp(self):
-        w = T.vector('w')
-        for dtype in ('int8', 'int16', 'int32', 'int64',
-                      'uint8', 'uint16', 'uint32', 'uint64'):
-            # uint64 always fails
-            # int64 and uint32 also fail if python int are 32-bit
-            int_bitwidth = theano.configdefaults.python_int_bitwidth()
-            if int_bitwidth == 64:
-                numpy_unsupported_dtypes = ('uint64',)
-            if int_bitwidth == 32:
-                numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
-
-            x = T.vector('x', dtype=dtype)
-
-            if dtype in numpy_unsupported_dtypes:
-                self.assertRaises(TypeError, BinCountOp(), x)
-
-            else:
-                a = np.random.randint(1, 51, size=(25)).astype(dtype)
-                weights = np.random.random((25,)).astype(config.floatX)
-
-                f1 = theano.function([x], BinCountOp()(x, weights=None))
-                f2 = theano.function([x, w], BinCountOp()(x, weights=w))
-
-                assert (np.bincount(a) == f1(a)).all()
-                assert np.allclose(np.bincount(a, weights=weights),
-                                   f2(a, weights))
-                if not numpy_16:
-                    continue
-                f3 = theano.function([x], BinCountOp(minlength=23)(x, weights=None))
-                f4 = theano.function([x], BinCountOp(minlength=5)(x, weights=None))
-                assert (np.bincount(a, minlength=23) == f3(a)).all()
-                assert (np.bincount(a, minlength=5) == f4(a)).all()
-
-    @attr('slow')
-    def test_infer_shape(self):
-        for dtype in tensor.discrete_dtypes:
-            # uint64 always fails
-            # int64 and uint32 also fail if python int are 32-bit
-            int_bitwidth = theano.configdefaults.python_int_bitwidth()
-            if int_bitwidth == 64:
-                numpy_unsupported_dtypes = ('uint64',)
-            if int_bitwidth == 32:
-                numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
-
-            x = T.vector('x', dtype=dtype)
-
-            if dtype in numpy_unsupported_dtypes:
-                self.assertRaises(TypeError, BinCountOp(), x)
-
-            else:
-                self._compile_and_check([x],
-                                        [BinCountOp()(x, None)],
-                                        [np.random.randint(
-                                             1, 51, size=(25,)).astype(dtype)],
-                                        self.op_class)
-
-                weights = np.random.random((25,)).astype(config.floatX)
-                self._compile_and_check([x],
-                                        [BinCountOp()(x, weights=weights)],
-                                        [np.random.randint(
-                                            1, 51, size=(25,)).astype(dtype)],
-                                        self.op_class)
-
-                if not numpy_16:
-                    continue
-                self._compile_and_check([x],
-                                        [BinCountOp(minlength=60)(x, weights=weights)],
-                                        [np.random.randint(
-                                            1, 51, size=(25,)).astype(dtype)],
-                                        self.op_class)
-
-                self._compile_and_check([x],
-                                        [BinCountOp(minlength=5)(x, weights=weights)],
-                                        [np.random.randint(
-                                            1, 51, size=(25,)).astype(dtype)],
-                                        self.op_class)
 
 
 class TestDiffOp(utt.InferShapeTester):
@@ -510,7 +424,7 @@ class TestRepeatOp(utt.InferShapeTester):
             a = np.random.random((10, ) * ndim).astype(config.floatX)
 
             for axis in self._possible_axis(ndim):
-                for dtype in tensor.discrete_dtypes:
+                for dtype in tensor.integer_dtypes:
                     r_var = T.scalar(dtype=dtype)
                     r = numpy.asarray(3, dtype=dtype)
                     if (dtype == 'uint64' or
@@ -569,7 +483,7 @@ class TestRepeatOp(utt.InferShapeTester):
             a = np.random.random(shp).astype(config.floatX)
 
             for axis in self._possible_axis(ndim):
-                for dtype in tensor.discrete_dtypes:
+                for dtype in tensor.integer_dtypes:
                     r_var = T.scalar(dtype=dtype)
                     r = numpy.asarray(3, dtype=dtype)
                     if dtype in self.numpy_unsupported_dtypes:
@@ -798,13 +712,11 @@ class test_Unique(utt.InferShapeTester):
         self.ops = [Unique(),
                     Unique(True),
                     Unique(False, True),
-                    Unique(True, True)]
-        if bool(numpy_ver >= [1, 9]):
-            self.ops.extend([
-                Unique(False, False, True),
-                Unique(True, False, True),
-                Unique(False, True, True),
-                Unique(True, True, True)])
+                    Unique(True, True),
+                    Unique(False, False, True),
+                    Unique(True, False, True),
+                    Unique(False, True, True),
+                    Unique(True, True, True)]
 
     def test_basic_vector(self):
         """
@@ -816,13 +728,11 @@ class test_Unique(utt.InferShapeTester):
         list_outs_expected = [[np.unique(inp)],
                               np.unique(inp, True),
                               np.unique(inp, False, True),
-                              np.unique(inp, True, True)]
-        if bool(numpy_ver >= [1, 9]):
-            list_outs_expected.extend([
-                np.unique(inp, False, False, True),
-                np.unique(inp, True, False, True),
-                np.unique(inp, False, True, True),
-                np.unique(inp, True, True, True)])
+                              np.unique(inp, True, True),
+                              np.unique(inp, False, False, True),
+                              np.unique(inp, True, False, True),
+                              np.unique(inp, False, True, True),
+                              np.unique(inp, True, True, True)]
         for op, outs_expected in zip(self.ops, list_outs_expected):
             f = theano.function(inputs=[x], outputs=op(x, return_list=True))
             outs = f(inp)
@@ -839,13 +749,11 @@ class test_Unique(utt.InferShapeTester):
         list_outs_expected = [[np.unique(inp)],
                               np.unique(inp, True),
                               np.unique(inp, False, True),
-                              np.unique(inp, True, True)]
-        if bool(numpy_ver >= [1, 9]):
-            list_outs_expected.extend([
-                np.unique(inp, False, False, True),
-                np.unique(inp, True, False, True),
-                np.unique(inp, False, True, True),
-                np.unique(inp, True, True, True)])
+                              np.unique(inp, True, True),
+                              np.unique(inp, False, False, True),
+                              np.unique(inp, True, False, True),
+                              np.unique(inp, False, True, True),
+                              np.unique(inp, True, True, True)]
         for op, outs_expected in zip(self.ops, list_outs_expected):
             f = theano.function(inputs=[x], outputs=op(x, return_list=True))
             outs = f(inp)

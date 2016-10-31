@@ -5906,7 +5906,10 @@ def local_mul_specialize(node):
             if new_inputs:
                 if len(new_inputs) == 1:
                     if neg:
-                        rval = -new_inputs[0]
+                        if new_inputs[0].dtype in (T.uint_dtypes + ['bool']):
+                            return
+                        else:
+                            rval = -new_inputs[0]
                     else:
                         rval = new_inputs[0]
                 else:

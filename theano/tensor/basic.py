@@ -52,6 +52,7 @@ python_all = all
 complex_dtypes = list(map(str, scal.complex_types))
 continuous_dtypes = list(map(str, scal.continuous_types))
 float_dtypes = list(map(str, scal.float_types))
+integer_dtypes = list(map(str, scal.integer_types))
 discrete_dtypes = list(map(str, scal.discrete_types))
 all_dtypes = list(map(str, scal.all_types))
 int_dtypes = list(map(str, scal.int_types))
@@ -302,7 +303,7 @@ class NumpyAutocaster(object):
         # returns either an exact x_==x, or the last cast x_
         return x_
 
-autocast_int = NumpyAutocaster(('int16', 'int32', 'int64'))
+autocast_int = NumpyAutocaster(('int8', 'int16', 'int32', 'int64'))
 autocast_float = NumpyAutocaster(('float16', 'float32', 'float64'))
 
 
@@ -379,16 +380,10 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
             x_ = autocast_float(x)
         elif isinstance(x, numpy.ndarray):
             x_ = x
-            # Currently we do not have a bool dtype in Theano.
-            # So we upcast it to uint8 to avoid breaking our interface for
-            # constant.
-            if x.dtype == 'bool':
-                x_ = numpy.asarray(x_, dtype='uint8')
         else:
-            # Here x is probably a list or a tuple. If it contains a long,
-            # we will behave like the current NumPy version: 1.7 and below,
-            # it will only work if the long fits in int64. For NumPy 1.7.1+,
-            # it will work if the long fits in int64 or uint64.
+            # Here x is probably a list or a tuple. If it contains a
+            # long, we will behave like the current NumPy version: it
+            # will work if the long fits in int64 or uint64.
             x_ = numpy.asarray(x)
             if x_.size == 0 and not hasattr(x, 'dtype'):
                 x_ = numpy.asarray(x, dtype=config.floatX)
@@ -520,11 +515,6 @@ def _allclose(a, b, rtol=None, atol=None):
         rtol_ = rtol
     if atol is not None:
         atol_ = atol
-
-    # Work around bug in Numpy, see
-    # http://projects.scipy.org/numpy/ticket/1684
-    if str(b.dtype) in int_dtypes and (numpy.absolute(b) < 0).any():
-        b = theano._asarray(b, dtype='float64')
 
     return numpy.allclose(a, b, atol=atol_, rtol=rtol_)
 
@@ -1247,6 +1237,10 @@ def _conversion(real_value, name):
 # what types you are casting to what.  That logic is implemented by the
 # `cast()` function below.
 
+_convert_to_bool = _conversion(
+    elemwise.Elemwise(scal.convert_to_bool), 'bool')
+"""Cast to boolean"""
+
 _convert_to_int8 = _conversion(
     elemwise.Elemwise(scal.convert_to_int8), 'int8')
 """Cast to 8-bit integer"""
@@ -1300,6 +1294,7 @@ _convert_to_complex128 = _conversion(
 """Cast to double-precision complex"""
 
 _cast_mapping = {
+    'bool': _convert_to_bool,
     'int8': _convert_to_int8,
     'int16': _convert_to_int16,
     'int32': _convert_to_int32,
@@ -3190,6 +3185,10 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
     # This sequential division will possibly be optimized by Theano:
     for i in axis:
         s = true_div(s, shp[i])
+
+    # This can happen when axis is an empty list/tuple
+    if s.dtype != shp.dtype and s.dtype in discrete_dtypes:
+        s = cast(s, shp.dtype)
 
     if dtype == 'float16' or (dtype is None and input.dtype == 'float16'):
         s = cast(s, 'float16')

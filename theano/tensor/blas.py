@@ -1189,7 +1189,7 @@ def _gemm_canonicalize(r, scale, rval, maxclients):
     def scaled(thing):
         if scale == 1:
             return thing
-        if scale == -1:
+        if scale == -1 and thing.type.dtype != 'bool':
             return -thing
         else:
             return scale * thing

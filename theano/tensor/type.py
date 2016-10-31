@@ -255,6 +255,7 @@ class TensorType(Type):
                 'float16': (float, 'npy_float16', 'NPY_FLOAT16'),
                 'float32': (float, 'npy_float32', 'NPY_FLOAT32'),
                 'float64': (float, 'npy_float64', 'NPY_FLOAT64'),
+                'bool': (bool, 'npy_bool', 'NPY_BOOL'),
                 'uint8': (int, 'npy_uint8', 'NPY_UINT8'),
                 'int8': (int, 'npy_int8', 'NPY_INT8'),
                 'uint16': (int, 'npy_uint16', 'NPY_UINT16'),
@@ -340,15 +341,9 @@ class TensorType(Type):
                 return False
             if a.dtype != b.dtype:
                 return False
-            if 'int' in str(a.dtype):
+            if str(a.dtype) not in theano.tensor.continuous_dtypes:
                 return numpy.all(a == b)
             else:
-                # work around a numpy.allclose bug:
-                # http://projects.scipy.org/numpy/ticket/1672
-                if a.ndim == 0 and numpy.isinf(a):
-                    a = a.reshape(1)
-                    b = b.reshape(1)
-
                 cmp = theano.tensor.basic._allclose(a, b, rtol=rtol, atol=atol)
                 if cmp:
                     # Numpy claims they are close, this is good enough for us.

@@ -477,7 +477,7 @@ def grad(cost, wrt, consider_constant=None,
         # function, sure, but nonetheless one we can and should support.
         # So before we try to cast it make sure it even has a dtype
         if (hasattr(g_cost.type, 'dtype') and
-                cost.type.dtype not in tensor.discrete_dtypes):
+                cost.type.dtype in tensor.continuous_dtypes):
                 # Here we enforce the constraint that floating point variables
                 # have the same dtype as their gradient.
                 g_cost = g_cost.astype(cost.type.dtype)
@@ -485,7 +485,7 @@ def grad(cost, wrt, consider_constant=None,
         # This is to be enforced by the Op.grad method for the
         # Op that outputs cost.
         if hasattr(g_cost.type, 'dtype'):
-            assert g_cost.type.dtype not in tensor.discrete_dtypes
+            assert g_cost.type.dtype in tensor.continuous_dtypes
 
         grad_dict[cost] = g_cost
 
@@ -1335,12 +1335,11 @@ def _float_ones_like(x):
     """ Like ones_like, but forces the object to have a
     floating point dtype """
 
-    rval = tensor.ones_like(x)
+    dtype = x.type.dtype
+    if dtype not in tensor.float_dtypes:
+        dtype = theano.config.floatX
 
-    if rval.type.dtype.find('float') != -1:
-        return rval
-
-    return rval.astype(theano.config.floatX)
+    return tensor.ones_like(x, dtype=dtype)
 
 
 class numeric_grad(object):

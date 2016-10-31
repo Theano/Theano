@@ -129,7 +129,8 @@ class GpuElemwise(HideC, Elemwise):
             support_code += fake_node.op.c_support_code()
         except MethodNotDefined:
             pass
-        for npy, ga in [("npy_uint8", "ga_ubyte"),
+        for npy, ga in [("npy_bool", "ga_bool"),
+                        ("npy_uint8", "ga_ubyte"),
                         ("npy_uint16", "ga_ushort"),
                         ("npy_uint32", "ga_uint"),
                         ("npy_uint64", "ga_ulong"),
