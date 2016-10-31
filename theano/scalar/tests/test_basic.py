@@ -59,12 +59,12 @@ class test_ScalarOps(unittest.TestCase):
         as Python. That is what we want.
         """
         x, y = ints('xy')
-        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x%y])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x % y])).make_function()
         for a, b in ((0, 1), (1, 1), (0, -1), (1, -1), (-1, -1),
-                    (1, 2), (-1, 2), (1, -2), (-1, -2),
-                    (5, 3), (-5, 3), (5, -3), (-5, -3)
-                    ):
-            self.assertTrue(fn(a, b) == a%b, (a,))
+                     (1, 2), (-1, 2), (1, -2), (-1, -2),
+                     (5, 3), (-5, 3), (5, -3), (-5, -3)
+                     ):
+            self.assertTrue(fn(a, b) == a % b, (a,))
 
 
 def has_f16(comp):
@@ -145,7 +145,7 @@ class test_composite(unittest.TestCase):
         C = Composite([x, y, z], [e0, e1, e2, e3, e4, e5, e6, e7])
         c = C.make_node(x, y, z)
         g = FunctionGraph([x, y, z], c.outputs)
-        fn = gof.DualLinker().accept(g).make_function()
+        gof.DualLinker().accept(g).make_function()
 
         assert str(g) == ('[*1 -> Composite{((i0 + i1) + i2),'
                           ' (i0 + (i1 * i2)), (i0 / i1), '
@@ -225,13 +225,13 @@ class test_logical(unittest.TestCase):
 
     def test_or(self):
         x, y, z = ints('xyz')
-        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x|y])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x | y])).make_function()
         for a, b in ((0, 1), (0, 0), (1, 0), (1, 1)):
-            self.assertTrue(fn(a, b) == (a|b), (a, b))
+            self.assertTrue(fn(a, b) == (a | b), (a, b))
 
     def test_xor(self):
         x, y, z = ints('xyz')
-        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x^y])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x ^ y])).make_function()
         for a, b in ((0, 1), (0, 0), (1, 0), (1, 1)):
             self.assertTrue(fn(a, b) == (a ^ b), (a, b))
 
@@ -365,8 +365,9 @@ class test_upgrade_to_float(object):
         # Automatically define all individual unary tests
         for unary_op, x_range in self.unary_ops_vals:
             test_name = 'test_%s' % unary_op.name
-            # Make a lambda function so we can name the test
-            test = lambda: self._test_unary(unary_op, x_range)
+
+            def test():
+                self._test_unary(unary_op, x_range)
             test.description = test_name
             yield test
 
@@ -374,8 +375,9 @@ class test_upgrade_to_float(object):
         # Automatically define all individual binary tests
         for binary_op, x_range, y_range in self.binary_ops_vals:
             test_name = 'test_%s' % binary_op.name
-            # Make a lambda function so we can name the test
-            test = lambda: self._test_binary(binary_op, x_range, y_range)
+
+            def test():
+                self._test_binary(binary_op, x_range, y_range)
             test.description = test_name
             yield test
 
@@ -401,16 +403,15 @@ class test_div(unittest.TestCase):
         d = float64()
         f = float32()
 
-        #print (a//b).owner.op
-        assert isinstance((a//b).owner.op, IntDiv)
-        assert isinstance((b//a).owner.op, IntDiv)
-        assert isinstance((b/d).owner.op, TrueDiv)
-        assert isinstance((b/f).owner.op, TrueDiv)
-        assert isinstance((f/a).owner.op, TrueDiv)
-        assert isinstance((d/b).owner.op, TrueDiv)
-        assert isinstance((d/f).owner.op, TrueDiv)
-        assert isinstance((f/c).owner.op, TrueDiv)
-        assert isinstance((a/c).owner.op, TrueDiv)
+        assert isinstance((a // b).owner.op, IntDiv)
+        assert isinstance((b // a).owner.op, IntDiv)
+        assert isinstance((b / d).owner.op, TrueDiv)
+        assert isinstance((b / f).owner.op, TrueDiv)
+        assert isinstance((f / a).owner.op, TrueDiv)
+        assert isinstance((d / b).owner.op, TrueDiv)
+        assert isinstance((d / f).owner.op, TrueDiv)
+        assert isinstance((f / c).owner.op, TrueDiv)
+        assert isinstance((a / c).owner.op, TrueDiv)
 
 
 def test_grad_gt():
@@ -418,7 +419,7 @@ def test_grad_gt():
     y = float32(name='y')
     z = x > y
     g = theano.gradient.grad(z, y)
-    assert g.eval({ y : 1. }) == 0.
+    assert g.eval({y: 1.}) == 0.
 
 
 def test_grad_switch():
