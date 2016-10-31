@@ -363,8 +363,7 @@ class BaseTestConv(object):
 class BaseTestConv2d(BaseTestConv):
     @classmethod
     def setup_class(cls):
-        if theano.config.blas.ldflags == '':
-            raise SkipTest("BLAS required for reference")
+        # This tests can run even when theano.config.blas.ldflags is empty.
         cls.inputs_shapes = [(8, 1, 6, 6), (8, 1, 8, 8), (2, 1, 7, 7),
                              (6, 1, 10, 11), (2, 1, 6, 5), (1, 5, 9, 9)]
         cls.filters_shapes = [(5, 1, 2, 2), (4, 1, 3, 3), (2, 1, 3, 3),
@@ -414,14 +413,13 @@ class BaseTestConv2d(BaseTestConv):
 class TestCorrConv2d(BaseTestConv2d):
     @classmethod
     def setup_class(cls):
-        if theano.config.blas.ldflags == "":
-            raise SkipTest()
+        # This tests can run even when theano.config.blas.ldflags is empty.
         BaseTestConv2d.setup_class()
 
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1)):
         o = self.get_output_shape(i, f, s, b, fd)
-        if (not theano.config.blas.ldflags or
-                not theano.config.cxx or
+        # This tests can run even when theano.config.blas.ldflags is empty.
+        if (not theano.config.cxx or
                 theano.config.mode == "FAST_COMPILE"):
             raise SkipTest("Need blas to test conv2d")
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
@@ -444,8 +442,7 @@ class TestCorrConv2d(BaseTestConv2d):
 class TestAbstractConvNoOptim(BaseTestConv2d):
     @classmethod
     def setup_class(cls):
-        if theano.config.blas.ldflags == "":
-            raise SkipTest()
+        # This tests can run even when theano.config.blas.ldflags is empty.
         BaseTestConv2d.setup_class()
         cls.inputs_shapes = [(8, 1, 6, 6)]
         cls.filters_shapes = [(5, 1, 2, 2)]
@@ -518,8 +515,7 @@ class TestCpuConv2d(BaseTestConv2d):
             gradinput_OK = False
 
         if fwd_OK:
-            if not theano.config.blas.ldflags:
-                raise SkipTest("Need blas to test conv2d")
+            # This test can run even when theano.config.blas.ldflags is empty.
             self.run_fwd(inputs_shape=i, filters_shape=f,
                          subsample=s, verify_grad=(gradweight_OK and gradinput_OK),
                          mode=mode, provide_shape=provide_shape,
@@ -541,8 +537,7 @@ class TestCpuConv2d(BaseTestConv2d):
                           filter_dilation=fd)
 
         if gradweight_OK:
-            if not theano.config.blas.ldflags:
-                raise SkipTest("Need blas to test conv2d")
+            # This test can run even when theano.config.blas.ldflags is empty.
             self.run_gradweight(inputs_shape=i, filters_shape=f,
                                 output_shape=o, subsample=s,
                                 verify_grad=False, mode=mode,
@@ -567,8 +562,7 @@ class TestCpuConv2d(BaseTestConv2d):
                           filter_dilation=fd)
 
         if gradinput_OK:
-            if not theano.config.blas.ldflags:
-                raise SkipTest("Need blas to test conv2d")
+            # This test can run even when theano.config.blas.ldflags is empty.
             self.run_gradinput(inputs_shape=i, filters_shape=f,
                                output_shape=o, subsample=s,
                                verify_grad=False, mode=mode,
@@ -596,8 +590,7 @@ class TestCpuConv2d(BaseTestConv2d):
 class BaseTestConv3d(BaseTestConv):
     @classmethod
     def setup_class(cls):
-        if theano.config.blas.ldflags == '':
-            raise SkipTest("BLAS required for reference")
+        # This tests can run even when theano.config.blas.ldflags is empty.
         cls.inputs_shapes = [(2, 1, 5, 5, 5), (1, 2, 7, 5, 6)]
         cls.filters_shapes = [(2, 1, 2, 2, 2), (1, 2, 2, 1, 3)]
         cls.subsamples = [(1, 1, 1), (2, 2, 2), (1, 2, 3)]
@@ -645,14 +638,13 @@ class BaseTestConv3d(BaseTestConv):
 class TestCorrConv3d(BaseTestConv3d):
     @classmethod
     def setup_class(cls):
-        if theano.config.blas.ldflags == "":
-            raise SkipTest()
+        # This tests can run even when theano.config.blas.ldflags is empty.
         BaseTestConv3d.setup_class()
 
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1, 1)):
         o = self.get_output_shape(i, f, s, b, fd)
-        if (not theano.config.blas.ldflags or
-                not theano.config.cxx or
+        # This test can run even when theano.config.blas.ldflags is empty.
+        if (not theano.config.cxx or
                 theano.config.mode == "FAST_COMPILE"):
             raise SkipTest("Need blas to test conv3d")
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
@@ -699,8 +691,7 @@ class TestCpuConv3d(BaseTestConv3d):
             gradinput_OK = False
 
         if fwd_OK:
-            if not theano.config.blas.ldflags:
-                raise SkipTest("Need blas to test conv3d")
+            # This test can run even when theano.config.blas.ldflags is empty.
             self.run_fwd(inputs_shape=i, filters_shape=f,
                          subsample=s, verify_grad=(gradweight_OK and gradinput_OK),
                          mode=mode, provide_shape=provide_shape,
@@ -722,8 +713,7 @@ class TestCpuConv3d(BaseTestConv3d):
                           filter_dilation=fd)
 
         if gradweight_OK:
-            if not theano.config.blas.ldflags:
-                raise SkipTest("Need blas to test conv3d")
+            # This test can run even when theano.config.blas.ldflags is empty.
             self.run_gradweight(inputs_shape=i, filters_shape=f,
                                 output_shape=o, subsample=s,
                                 verify_grad=False, mode=mode,
@@ -748,8 +738,7 @@ class TestCpuConv3d(BaseTestConv3d):
                           filter_dilation=fd)
 
         if gradinput_OK:
-            if not theano.config.blas.ldflags:
-                raise SkipTest("Need blas to test conv3d")
+            # This test can run even when theano.config.blas.ldflags is empty.
             self.run_gradinput(inputs_shape=i, filters_shape=f,
                                output_shape=o, subsample=s,
                                verify_grad=False, mode=mode,
@@ -913,13 +902,13 @@ class TestConvTypes(unittest.TestCase):
 
 
 class TestBilinearUpsampling(unittest.TestCase):
-    # If BLAS is not available on CPU, then we accept the fallback to the
-    # slow Python implementation for that test.
+    # If theano.config.blas.ldflags is empty, Theano will use
+    # a NumPy C implementation of [sd]gemm_.
     compile_mode = theano.compile.mode.get_default_mode()
     if theano.config.mode == "FAST_COMPILE":
         compile_mode = compile_mode.excluding("conv_gemm")
         compile_mode = compile_mode.excluding('AbstractConvCheck')
-    elif not theano.config.blas.ldflags or not theano.config.cxx:
+    elif not theano.config.cxx:
         compile_mode = compile_mode.excluding('AbstractConvCheck')
 
     def numerical_kernel_1D(self, ratio):

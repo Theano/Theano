@@ -63,7 +63,8 @@ class BaseCorr3dMM(gof.OpenMPOp):
         self.filter_dilation = tuple(filter_dilation)
 
         if not theano.config.blas.ldflags:
-            raise NotImplementedError("C code for corrMM* classes need a blas library.")
+            # Theano will use a NumPy C implementation of [sd]gemm_ instead.
+            self.blas_type = ''
         else:
             if 'openblas' in theano.config.blas.ldflags:
                 self.blas_type = 'openblas'
