@@ -1283,7 +1283,8 @@ second dimension
         Return True if we do not want to compile c code
         when doing constant folding of this node.
         """
-        return node.outputs[0].ndim == 0
+        # The python code don't support 32 inputs or more.
+        return node.outputs[0].ndim == 0 and len(node.inputs) < 32
 
 
 ################
