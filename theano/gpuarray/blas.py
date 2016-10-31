@@ -1537,6 +1537,54 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
             return [[1], [1], [0], [0], [0]]  # no connection to height, width, depth
 
 
+class GpuDownsampleFactorMaxGradGrad(CGpuKernelBase):
+    """
+    Implement the grad of downsample with max on the gpu.
+
+    """
+    __props__ = ('ds', 'st', 'ignore_border')
+
+    def __init__(self, ds, st=None, ignore_border=False):
+        self.ds = tuple(ds)
+        self.st = self.ds if st is None else tuple(st)
+        self.ignore_border = ignore_border
+        CGpuKernelBase.__init__(self, ['pool_grad_grad.c'],
+                                'APPLY_SPECIFIC(pool_grad_grad)')
+
+    def c_headers(self):
+        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/kernel.h',
+                'gpuarray/util.h', 'gpuarray/ext_cuda.h', 'gpuarray_api.h',
+                'numpy_compat.h', 'gpuarray_helper.h']
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__), pygpu.get_include()]
+
+    def make_node(self, x, z, gx):
+        ctx_name = infer_context_name(x, z, gx)
+        x = as_gpuarray_variable(x, ctx_name)
+        z = as_gpuarray_variable(z, ctx_name)
+        gx = as_gpuarray_variable(gx, ctx_name)
+
+        if x.type.ndim != 4:
+            raise TypeError('x must be 4D tensor')
+        if z.type.ndim != 4:
+            raise TypeError('z must be 4D tensor')
+        if gx.type.ndim != 4:
+            raise TypeError('gx must be 4D tensor')
+
+        return Apply(self, [x, z, gx], [x.type()])
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
+    def get_op_params(self):
+        ds0, ds1 = self.ds
+        st0, st1 = self.st
+        ignore_border = int(self.ignore_border)
+        return [('DS0', ds0), ('DS1', ds1), ('ST0', st0), ('ST1', st1),
+                ('IGNORE_BORDER', ignore_border)]
+
+
 @inplace_allocempty(GpuGemv, 0)
 def local_inplace_gpuagemv(node, inputs):
     return [gpugemv_inplace(*inputs)]
