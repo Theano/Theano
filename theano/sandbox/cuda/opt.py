@@ -2436,7 +2436,7 @@ def tensor_to_cuda(x):
 
 
 @register_opt()
-@local_optimizer([nlinalg.ExtractDiag])
+@local_optimizer([nlinalg.ExtractDiag, theano.tensor.Diagonal])
 def local_gpu_extract_diagonal(node):
     """
     extract_diagonal(host_from_gpu()) -> host_from_gpu(extract_diagonal)
@@ -2444,21 +2444,29 @@ def local_gpu_extract_diagonal(node):
     gpu_from_host(extract_diagonal) -> extract_diagonal(gpu_from_host)
 
     """
-    if (isinstance(node.op, nlinalg.ExtractDiag) and
-        isinstance(node.inputs[0].type,
-                   theano.tensor.TensorType)):
+    if ((isinstance(node.op, nlinalg.ExtractDiag) or
+         isinstance(node.op, theano.tensor.Diagonal)) and
+        isinstance(node.inputs[0].type, theano.tensor.TensorType)):
         inp = node.inputs[0]
+        if (isinstance(node.op, theano.tensor.Diagonal) and
+           not node.op.has_default_props()):
+            warnings.warn("Diagonal Op has no GPU implementation for"
+                          "non-default properties. It will run on CPU.")
+            return False
         if inp.owner and isinstance(inp.owner.op, HostFromGpu):
-            return [host_from_gpu(nlinalg.extract_diag(
+            #import pdb
+            # pdb.set_trace()
+            return [host_from_gpu(theano.tensor.diagonal(
                 as_cuda_ndarray_variable(inp)))]
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
         if (host_input.owner and
-            isinstance(host_input.owner.op, nlinalg.ExtractDiag) and
+            (isinstance(host_input.owner.op, nlinalg.ExtractDiag) or
+             isinstance(host_input.owner.op, theano.tensor.Diagonal)) and
             isinstance(host_input.owner.inputs[0].type,
                        theano.tensor.TensorType)):
             diag_node = host_input.owner
-            return [nlinalg.extract_diag(
+            return [theano.tensor.diagonal(
                 as_cuda_ndarray_variable(diag_node.inputs[0]))]
     return False
 

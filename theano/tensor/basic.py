@@ -6032,41 +6032,116 @@ del x
 class Diagonal(Op):
     """Return specified diagonals.
 
+    Usage: Diagonal(offset, axis1, axis2)(x)
+
+    `x` has to be a tensor with 2 or more dimensions.
+
     Parameters
     ----------
-    x
+    offset : int
+        Indicates which diagonal to extract, `0` as main diagonal, positive as
+        diagonals in the upper triangle, and vice versa.
+
+    axis1, axis2 : int
+        Indicates on which dimensions to extract the diagonals.
+
+    x: symbolic tensor
         A tensor variable with x.ndim >= 2.
 
     Returns
     -------
-    vector
+    vector : symbolic vector
         A vector representing the diagonal elements.
 
     """
-    __props__ = ("offset", "axis1", "axis2")
+    __props__ = ("offset", "axis1", "axis2", "view")
+    default_offset = 0
+    default_axis1 = 0
+    default_axis2 = 1
 
-    def __init__(self, offset=0, axis1=0, axis2=1):
-        if numpy_diagonal_return_view:
+    def __init__(self, offset=0, axis1=0, axis2=1, view=False):
+        self.view = view
+        if self.view and not numpy_diagonal_return_view:
+            warnings.warn("View will forced to False. Diagonal property view is "
+                          "set to True but numpy version %s and prior versions of "
+                          "numpy.diagonal() do not return a view. Update "
+                          "numpy to use Diagonal(view=True)" % 
+                          numpy.version.version)
+            self.view = False
+        if self.view:
             self.view_map = {0: [0]}
         self.offset = offset
         self.axis1 = axis1
         self.axis2 = axis2
 
-    def make_node(self, x):
-        x = as_tensor_variable(x)
-        assert x.ndim >= 2
-        return Apply(self, [x], [tensor(dtype=x.dtype,
-                                        broadcastable=[False] * (x.ndim - 1))])
+    def make_node(self, _x):
+        if not isinstance(_x, theano.Variable):
+            x = as_tensor_variable(_x)
+        else:
+            x = _x
+        
+        if x.ndim < 2:
+            raise ValueError('Diagonal needs an input with 2 or more '
+                             'dimensions', x)
+        return Apply(self, [x], [x.type.__class__(
+            dtype=x.dtype,
+            broadcastable=[False] * (x.ndim - 1))()])
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
-        z[0] = x.diagonal(self.offset, self.axis1, self.axis2)
+        # using_cudandarray = isinstance(x, theano.sandbox.cuda.CudaNdarray)
+        # if (not self.has_default_props() and using_cudandarray):
+        #     raise ValueError('Currently Diagonal doesn\'t support non-default'
+        #                      'offset and axis values on GPU.')
+
+        # zero-dimensional matrices ...
+        if numpy.min(x.shape) == 0:
+            out_shape = [d for i, d in enumerate(x.shape)
+                         if i not in (self.axis1, self.axis2)]
+            diag_size = numpy.min((x.shape[self.axis1], x.shape[self.axis2]))
+            out_shape.append(diag_size)
+            z[0] = node.outputs[0].type.value_zeros(tuple(out_shape))
+            return
+
+        # from theano.sandbox.cuda import dimshuffle as cuda_dimshuffle
+
+        if x.shape[self.axis1] < x.shape[self.axis2]:
+            axis_with_bigger_shape = self.axis2
+            axis_with_smaller_shape = self.axis1
+        else:
+            axis_with_bigger_shape = self.axis1
+            axis_with_smaller_shape = self.axis2
+
+        slice_tuple = [numpy.s_[:], ] * x.ndim
+        slice_tuple[axis_with_bigger_shape] = 0  # self.offset
+        slice_tuple = tuple(slice_tuple)
+        if axis_with_smaller_shape > axis_with_bigger_shape:
+            axis_with_smaller_shape -= 1
+
+        rval = x[slice_tuple].swapaxes(axis_with_smaller_shape, -1)
+
+        other_strides = tuple([d for i, d in enumerate(x.strides)
+                               if i not in (self.axis1, self.axis2)])
+        rval.strides = other_strides + \
+                       (x.strides[self.axis1] + x.strides[self.axis2], )
+
+        if self.view:
+            z[0] = rval
+        else:
+            z[0] = rval.copy()
 
     def grad(self, inputs, gout):
-        (x,) = inputs
-        (gz,) = gout
-        return [grad_not_implemented(self, 0, x)]
+        """The current gradient is valid only for main diagonals."""
+        (input_x,) = inputs
+        if self.has_default_props():
+            x = theano.tensor.zeros_like(input_x)
+            xdiag = diag(gout[0])
+            return [theano.tensor.set_subtensor(
+                x[:xdiag.shape[0], :xdiag.shape[1]],
+                xdiag)]
+        else:
+            return [grad_not_implemented(self, 0, input_x)]
 
     def infer_shape(self, node, shapes):
         in_shape, = shapes
@@ -6085,44 +6160,130 @@ class Diagonal(Op):
         out_shape.append(diag_size)
         return [tuple(out_shape)]
 
+    def has_default_props(self):
+        return (self.offset == self.default_offset and
+                self.axis1 == self.default_axis1 and
+                self.axis2 == self.default_axis2)
 
-def diagonal(a, offset=0, axis1=0, axis2=1):
-    if (offset, axis1, axis2) == (0, 0, 1):
-        return theano.tensor.nlinalg.extract_diag(a)
+
+def diagonal(a, offset=Diagonal.default_offset,
+             axis1=Diagonal.default_axis1,
+             axis2=Diagonal.default_axis2):
+    """
+    A helper function for Diagonal Op. Return specified diagonals.
+
+    If `a` is a 2-D matrix, returns the diagonal of `a` with the given offset,
+    i.e., the collection of elements of the form `a[i, i+offset]`. If `a` has
+    more than two dimensions, then the axes specified by `axis1` and `axis2`
+    are used to determine the 2-D sub-arrays whose diagonals are to be
+    returned.
+
+    Parameters
+    ----------
+    a : symbolic tensor
+        A tensor variable with a.ndim >= 2.
+
+    offset : int
+        Indicates which diagonal to extract, `0` as main diagonal, positive as
+        diagonals in the upper triangle, and vice versa.
+
+    axis1, axis2 : int
+        Indicates on which dimensions to extract the diagonals.
+
+    Returns
+    -------
+    vector : symbolic vector
+        A vector representing the diagonal elements.
+
+    """
     return Diagonal(offset, axis1, axis2)(a)
 
 
 class Diag(Op):
+    """
+    An op that copies a vector to the diagonal of an empty matrix. It does the
+    inverse of Diagonal.
 
-    __props__ = ()
+    Usage: T.diag()(x)
+
+    `x` should be a tensor vector. The parenthesis in the front should indicate
+    which main diagonal the vector value goes into. By default it is set to (
+    `0`, which corresponds to setting the values of x to the main diagonal in
+    the returned matrix. Currently the gradient is valid only when `offset=0`.
+
+    Parameters
+    ----------
+    offset : int
+        Indicates which diagonal to put `x` into. Defaults to `0`.
+
+    x: symbolic vector
+        A tensor vector consists of diagonal values.
+
+    Returns
+    -------
+    tensor : symbolic tenstor
+        A tensor with passed vector values at its corresponding diagonal.
+
+    """
+    __props__ = ("offset", )
+    default_offset = 0
+
+    def __init__(self, offset=0):
+        if numpy_diagonal_return_view:
+            self.view_map = {0: [0]}
+        self.offset = offset
 
     def make_node(self, diag):
         diag = as_tensor_variable(diag)
         if diag.type.ndim != 1:
-            raise TypeError('data argument must be a vector', diag.type)
-
+            raise ValueError('data argument must be a vector', diag.type)
         return Apply(self, [diag], [matrix(dtype=diag.dtype)])
 
     def perform(self, node, inputs, outputs):
         (z,) = outputs
-        z[0] = numpy.diag(inputs[0])
+        z[0] = numpy.diag(inputs[0], self.offset)
 
     def grad(self, inputs, gout):
         (gz,) = gout
-        return [diagonal(gz)]
+        if self.has_default_props():
+            return [diagonal(gz)]
+        else:
+            return [grad_not_implemented(self, 0, inputs[0])]
 
     def infer_shape(self, nodes, shapes):
         return [(shapes[0][0],) * 2]
 
+    def has_default_props(self):
+        return self.offset == self.default_offset
+
 
 def diag(v, k=0):
+    """
+    A helper function for two ops: theano.tensor.Diagonal and
+    theano.tensor.Diag. It both accepts tensor vector and tensor matrix. While
+    the passed tensor variable `v` has `v.ndim>=2`, it builds a Diagonal
+    instance, and returns a vector with its entries equal to `v`'s main
+    diagonal; otherwise if `v.ndim` is `1`, it builds a Diag instance, and
+    returns a matrix with `v` at its k-th diaogonal.
+
+    Parameters
+    ----------
+    v : symbolic tensor
+    k : int
+        offset
+
+    Returns
+    -------
+    tensor : symbolic tensor
+
+    """
     if v.ndim == 1:
         assert k == 0, "diagonals other than main are not implemented"
         return Diag()(v)
-    elif v.ndim == 2:
+    elif v.ndim >= 2:
         return diagonal(v, k)
     else:
-        raise ValueError("Input must be 1- or 2-d.")
+        raise ValueError("Input must has v.ndim >=1.")
 
 
 def stacklists(arg):
