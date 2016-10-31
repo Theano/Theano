@@ -2855,6 +2855,11 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
                             my_gx = gx[i0*gxS0 + i1*gxS1 + x_row*gxS2 + x_col*gxS3];
 
                             if (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3]) {
+                                // TODO: This assumes that there is only one maximum.
+                                // The cpu implementation accepts multiple, by incrementing
+                                // with my_gx instead:
+                                // gz[i0 *  gzS0 + i1 *  gzS1 + i2 *  gzS2 + z_col* gzS3] += my_gx;
+                                // (That doesn't work in this parallelized version.)
                                 gz[i0 *  gzS0 + i1 *  gzS1 + i2 *  gzS2 + z_col* gzS3] = my_gx;
                             }
                         }
@@ -3062,6 +3067,11 @@ class GpuDownsampleFactorMaxGradGrad3d(GpuOp):
                                 my_gx = gx[i0*gxS0 + i1*gxS1 + x_row*gxS2 + x_col*gxS3 + x_slice*gxS4];
 
                                 if (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3 + x_slice*xS4]) {
+                                    // TODO: This assumes that there is only one maximum.
+                                    // The cpu implementation accepts multiple, by incrementing
+                                    // with my_gx instead:
+                                    // gz[i0*gzS0 + i1*gzS1 + z_row*gzS2 + z_col*gzS3 + z_slice*gzS4] += my_gx;
+                                    // (That doesn't work in this parallelized version.)
                                     gz[i0*gzS0 + i1*gzS1 + z_row*gzS2 + z_col*gzS3 + z_slice*gzS4] = my_gx;
                                 }
                             }

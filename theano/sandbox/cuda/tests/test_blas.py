@@ -373,7 +373,16 @@ def test_downsample():
                 # print 'test_downsample', shp, ds, ignore_border
                 ds_op = Pool(ndim=len(ds), ignore_border=ignore_border)
 
+                # TODO GpuDownsampleFactorMaxGradGrad assumes that there is only
+                # one unique maximum per pooling block, whereas the cpu version
+                # DownsampleFactorMaxGradGrad accepts multiple maxima.
+                # This would cause an error if you run with this input in DebugMode:
+                # a = tcn.shared_constructor(numpy.ones(shp).astype('float32'), 'a')
+                # To create an input with only unique values:
+                # a = tcn.shared_constructor(numpy.array(range(numpy.product(shp))).reshape(*shp).astype('float32'), 'a')
+                # Random values seem to work by accident:
                 a = tcn.shared_constructor(my_rand(*shp), 'a')
+
                 f = pfunc([], ds_op(tensor.as_tensor_variable(a), ds),
                           mode=mode_with_gpu.excluding('cudnn'))
                 f2 = pfunc([], ds_op(tensor.as_tensor_variable(a), ds),
@@ -476,6 +485,14 @@ def test_downsample_max_grad_grad_3d():
             for ignore_border in (True, False):
                 ds_op = Pool(ndim=len(ds), mode='max', ignore_border=ignore_border)
 
+                # TODO GpuDownsampleFactorMaxGradGrad3d assumes that there is only
+                # one unique maximum per pooling block, whereas the cpu version
+                # DownsampleFactorMaxGradGrad accepts multiple maxima.
+                # This would cause an error if you run with this input in DebugMode:
+                # a = tcn.shared_constructor(numpy.ones(shp).astype('float32'), 'a')
+                # Random values do not work, in this case:
+                # a = tcn.shared_constructor(my_rand(*shp), 'a')
+                # Instead, create an input with only unique values:
                 a = tcn.shared_constructor(numpy.array(range(numpy.product(shp))).reshape(*shp).astype('float32'), 'a')
 
                 ggf = gradient.Lop(tensor.grad((ds_op(
