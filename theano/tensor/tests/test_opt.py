@@ -1997,7 +1997,7 @@ def test_subtensor_inc_subtensor():
     mode = theano.compile.mode.get_default_mode().including('local_subtensor_inc_subtensor')
     f = theano.function([x, i1, i2, v], z, mode=mode)
     prog = f.maker.fgraph.toposort()
-    assert any(isinstance(x.op, (tensor.Alloc, theano.sandbox.cuda.basic_ops.GpuAlloc)) for x in prog)
+    assert any(isinstance(x.op, tensor.Alloc) for x in prog)
     # case when v is broadcastable, numerical check
     x_ = numpy.random.uniform(size=[3, 4]).astype(config.floatX)
     v_ = numpy.random.uniform(size=[2, ]).astype(config.floatX)
