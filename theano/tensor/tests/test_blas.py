@@ -2179,6 +2179,7 @@ class TestBlasStrides(TestCase):
         ref_output = numpy.ones((3, 5)) * 2
         unittest_tools.assert_allclose(c.get_value(), ref_output)
 
+
 class test_infer_shape(unittest_tools.InferShapeTester):
     def test_dot22(self):
         x, y = T.matrices('xy')
