@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 import logging
 
 logger = logging.getLogger(__name__)
-import numpy
+import numpy as np
 
 from six import iteritems, integer_types
 from six.moves import xrange

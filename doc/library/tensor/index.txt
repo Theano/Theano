@@ -1,7 +1,7 @@
 .. _libdoc_tensor:
 
 ==================================================
-:mod:`tensor`  -- Types and Ops for Symbolic numpy
+:mod:`tensor`  -- Types and Ops for Symbolic np
 ==================================================
 
 .. module:: tensor

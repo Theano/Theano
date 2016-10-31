@@ -113,7 +113,7 @@ class RecordMode(Mode):
     """
     Records all computations done with a function in a file at output_path.
     Writes into the file the index of each apply node and md5 digests of the
-    numpy ndarrays it receives as inputs and produces as output.
+    np ndarrays it receives as inputs and produces as output.
 
     Example:
        # We use RecordMode to test that the computation of a function is

@@ -21,8 +21,8 @@ In this way, we could express something like Logistic Regression like this:
     X, Y, s_idx = RV.empirical(my_dataset)
 
     # model parameters
-    v = shared(numpy.zeros(()))
-    b = shared(numpy.zeros(()))
+    v = shared(np.zeros(()))
+    b = shared(np.zeros(()))
 
     Y_hat = RV.multinomial(n=1, p=softmax(dot(X,v)+b))
 

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
-import numpy
+import numpy as np
 try:
     import scipy.sparse as sp
     import scipy.sparse
@@ -157,14 +157,14 @@ def test_local_dense_from_sparse_sparse_from_dense():
 
 def test_sd_csc():
 
-    A = sp.rand(4, 5, density=0.60, format='csc', dtype=numpy.float32)
-    b = numpy.random.rand(5,2).astype(numpy.float32)
+    A = sp.rand(4, 5, density=0.60, format='csc', dtype=np.float32)
+    b = np.random.rand(5,2).astype(np.float32)
     target = A*b
     
     a_val = theano.tensor.as_tensor_variable(A.data)
     a_ind = theano.tensor.as_tensor_variable(A.indices)
     a_ptr = theano.tensor.as_tensor_variable(A.indptr)
-    nrows = theano.tensor.as_tensor_variable(numpy.int32(A.shape[0]))
+    nrows = theano.tensor.as_tensor_variable(np.int32(A.shape[0]))
     b = theano.tensor.as_tensor_variable(b)
     
     res = theano.sparse.opt.sd_csc(a_val, a_ind, a_ptr, nrows, b).eval()

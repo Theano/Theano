@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import unittest
-import numpy
+import numpy as np
 
 import theano
 from theano.tests import unittest_tools as utt
@@ -22,8 +22,8 @@ class TestCorrMM(unittest.TestCase):
         inputs_shape = [inputs_shape[i] for i in (0, 3, 1, 2)]
         filters_shape = [filters_shape[i] for i in (0, 3, 1, 2)]
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
 
         inputs = gpuarray_shared_constructor(inputs_val)
         filters = gpuarray_shared_constructor(filters_val)
@@ -120,11 +120,11 @@ class TestCorrMM(unittest.TestCase):
         filters_shape = [filters_shape[i] for i in (0, 3, 1, 2)]
         dCdH_shape = [dCdH_shape[i] for i in (0, 3, 1, 2)]
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        dCdH_val = numpy.random.random(dCdH_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        dCdH_val = np.random.random(dCdH_shape).astype('float32')
         inputs = gpuarray_shared_constructor(inputs_val)
         dCdH = gpuarray_shared_constructor(dCdH_val)
-        shape = gpuarray_shared_constructor(numpy.array(filters_shape[2:]))
+        shape = gpuarray_shared_constructor(np.array(filters_shape[2:]))
 
         if (subsample == (1, 1)):
             conv_ref = CorrMM_gradWeights(subsample=subsample)(
@@ -167,14 +167,14 @@ class TestCorrMM(unittest.TestCase):
         inputs_shape = [inputs_shape[i] for i in (0, 3, 1, 2)]
         filters_shape = [filters_shape[i] for i in (0, 3, 1, 2)]
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
         inputs = gpuarray_shared_constructor(inputs_val)
         filters = gpuarray_shared_constructor(filters_val)
 
         bottom_height = (inputs_shape[2] - 1) * subsample[0] + filters_shape[2]
         bottom_width = (inputs_shape[3] - 1) * subsample[1] + filters_shape[3]
-        bottom_shape = gpuarray_shared_constructor(numpy.array([bottom_height, bottom_width]))
+        bottom_shape = gpuarray_shared_constructor(np.array([bottom_height, bottom_width]))
 
         if (subsample == (1, 1)):
             conv_ref = CorrMM_gradInputs(subsample=subsample)(

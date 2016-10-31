@@ -394,7 +394,7 @@ the argument order.
 All the ``inputs`` and ``outputs`` arguments to ``Apply`` must be Variables.
 A common and easy way to ensure inputs are variables is to run them through
 ``as_tensor_variable``. This function leaves TensorType variables alone, raises 
-an error for non-TensorType variables, and copies any ``numpy.ndarray`` into 
+an error for non-TensorType variables, and copies any ``np.ndarray`` into 
 the storage for a TensorType Constant. The ``make_node`` method dictates the 
 appropriate Type for all output variables.
 
@@ -416,10 +416,10 @@ You can try the new Op as follows:
     import theano
     x = theano.tensor.matrix()
     f = theano.function([x], DoubleOp1()(x))
-    import numpy
-    inp = numpy.random.rand(5, 4)
+    import numpy as np
+    inp = np.random.rand(5, 4)
     out = f(inp)
-    assert numpy.allclose(inp * 2, out)
+    assert np.allclose(inp * 2, out)
     print(inp)
     print(out)
 
@@ -447,10 +447,10 @@ You can try the new Op as follows:
     import theano
     x = theano.tensor.matrix()
     f = theano.function([x], DoubleOp2()(x))
-    import numpy
-    inp = numpy.random.rand(5, 4)
+    import numpy as np
+    inp = np.random.rand(5, 4)
     out = f(inp)
-    assert numpy.allclose(inp * 2, out)
+    assert np.allclose(inp * 2, out)
     print(inp)
     print(out)
 
@@ -536,10 +536,10 @@ We can test this by running the following segment:
     f = theano.function([x], mult4plus5op(x))
     g = theano.function([x], mult2plus3op(x))
 
-    import numpy
-    inp = numpy.random.rand(5, 4).astype(numpy.float32)
-    assert numpy.allclose(4 * inp + 5, f(inp))
-    assert numpy.allclose(2 * inp + 3, g(inp))
+    import numpy as np
+    inp = np.random.rand(5, 4).astype(np.float32)
+    assert np.allclose(4 * inp + 5, f(inp))
+    assert np.allclose(2 * inp + 3, g(inp))
 
 
 How To Test it
@@ -559,7 +559,7 @@ returns the right answer. If you detect an error, you must raise an
 
 .. testcode:: tests
 
-    import numpy
+    import numpy as np
     import theano
 
     from theano.tests import unittest_tools as utt
@@ -573,7 +573,7 @@ returns the right answer. If you detect an error, you must raise an
         def test_basic(self):
             x = theano.tensor.matrix()
             f = theano.function([x], self.op(x))
-            inp = numpy.asarray(numpy.random.rand(5, 4), dtype=config.floatX)
+            inp = np.asarray(np.random.rand(5, 4), dtype=config.floatX)
             out = f(inp)
             # Compare the result computed to the expected value.
             utt.assert_allclose(inp * 2, out)
@@ -628,7 +628,7 @@ your op works only with such matrices, you can disable the warning with the
                                     [self.op(x)],  # theano.function outputs
                                     # Always use not square matrix!
                                     # inputs data
-                                    [numpy.asarray(numpy.random.rand(5, 4),
+                                    [np.asarray(np.random.rand(5, 4),
                                                    dtype=config.floatX)],
                                     # Op that should be removed from the graph.
                                     self.op_class)
@@ -649,7 +649,7 @@ the multiplication by 2).
 
         def test_grad(self):
             theano.tests.unittest_tools.verify_grad(self.op,
-                                                    [numpy.random.rand(5, 7, 2)])
+                                                    [np.random.rand(5, 7, 2)])
 
 Testing the Rop
 ^^^^^^^^^^^^^^^
@@ -665,7 +665,7 @@ For instance, to verify the Rop method of the DoubleOp, you can use this:
 
 .. testcode:: tests
 
-   import numpy
+   import numpy as np
    import theano.tests
    from theano.tests.test_rop import RopLop_checker
    class test_DoubleRop(RopLop_checker):
@@ -836,7 +836,7 @@ as_op Example
 .. testcode:: asop
 
     import theano
-    import numpy
+    import numpy as np
     from theano import function
     from theano.compile.ops import as_op
 
@@ -847,7 +847,7 @@ as_op Example
     @as_op(itypes=[theano.tensor.fmatrix, theano.tensor.fmatrix],
            otypes=[theano.tensor.fmatrix], infer_shape=infer_shape_numpy_dot)
     def numpy_dot(a, b):
-       return numpy.dot(a, b)
+       return np.dot(a, b)
 
 You can try it as follows:
 
@@ -855,18 +855,18 @@ You can try it as follows:
 
     x = theano.tensor.fmatrix()
     y = theano.tensor.fmatrix()
-    f = function([x, y], numpy_dot(x, y))
-    inp1 = numpy.random.rand(5, 4).astype('float32')
-    inp2 = numpy.random.rand(4, 7).astype('float32')
+    f = function([x, y], np_dot(x, y))
+    inp1 = np.random.rand(5, 4).astype('float32')
+    inp2 = np.random.rand(4, 7).astype('float32')
     out = f(inp1, inp2)
 
 
 Exercise
 ^^^^^^^^
 
-Run the code of the *numpy_dot* example above.
+Run the code of the *np_dot* example above.
 
-Modify and execute to compute: numpy.add and numpy.subtract.
+Modify and execute to compute: np.add and np.subtract.
 
 Modify and execute the example to return two outputs: x + y
     and x - y.

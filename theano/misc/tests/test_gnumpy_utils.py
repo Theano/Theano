@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 import theano
 from theano.misc.gnumpy_utils import gnumpy_available
@@ -16,7 +16,7 @@ import gnumpy
 
 def test(shape=(3, 4, 5)):
     """
-    Make sure that the gnumpy conversion is exact from garray to
+    Make sure that the gnp conversion is exact from garray to
     CudaNdarray back to garray.
     """
     gpu = theano.sandbox.cuda.basic_ops.gpu_from_host
@@ -49,7 +49,7 @@ def test2(shape=(3, 4, 5)):
     U = gpu(theano.tensor.ftensor3('U'))
     theano.function([U], gpu(U + 1))
 
-    A = numpy.random.rand(*shape).astype('float32')
+    A = np.random.rand(*shape).astype('float32')
     A_cnd = theano.sandbox.cuda.CudaNdarray(A)
     A_gar = cudandarray_to_garray(A_cnd)
     assert A_cnd.shape == A_gar.shape
@@ -62,7 +62,7 @@ def test2(shape=(3, 4, 5)):
     # dtype always float32
     assert A_cnd._strides == B._strides
     assert A_cnd.gpudata == B.gpudata
-    v = numpy.asarray(B)
+    v = np.asarray(B)
     assert (v == A).all()
 
 

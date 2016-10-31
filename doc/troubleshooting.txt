@@ -111,7 +111,7 @@ Once you have installed Theano, you should run the test suite.
  
 .. code-block:: bash
  
-    python -c "import numpy; numpy.test()"
+    python -c "import numpy as np; np.test()"
     python -c "import scipy; scipy.test()"
     THEANO_FLAGS=''; python -c "import theano; theano.test()"
  
@@ -179,7 +179,7 @@ How do I configure/test my BLAS library
 There are many ways to configure BLAS for Theano. This is done with the Theano
 flags ``blas.ldflags`` (:ref:`libdoc_config`). The default is to use the BLAS
 installation information in NumPy, accessible via
-``numpy.distutils.__config__.show()``.  You can tell theano to use a different
+``np.distutils.__config__.show()``.  You can tell theano to use a different
 version of BLAS, in case you did not compile NumPy with a fast BLAS or if NumPy
 was compiled with a static library of BLAS (the latter is not supported in
 Theano).

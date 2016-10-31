@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import unittest
-import numpy
+import numpy as np
 
 import theano
 from theano.tests import unittest_tools as utt
@@ -32,8 +32,8 @@ class TestCorr3DMM(unittest.TestCase):
                        filter_dilation=(1, 1, 1),
                        subsample=(1, 1, 1),
                        verify_grad=False):
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
 
         inputs = shared(inputs_val)
         filters = shared(filters_val)
@@ -134,8 +134,8 @@ class TestCorr3DMM(unittest.TestCase):
 
     def run_gradweight(self, inputs_shape, filters_shape, dCdH_shape,
                        subsample=(1, 1, 1)):
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        dCdH_val = numpy.random.random(dCdH_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        dCdH_val = np.random.random(dCdH_shape).astype('float32')
         inputs = shared(inputs_val)
         dCdH = shared(dCdH_val)
 
@@ -180,8 +180,8 @@ class TestCorr3DMM(unittest.TestCase):
     def run_gradinput(self, inputs_shape, filters_shape,
                       subsample=(1, 1, 1)):
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
 
         inputs = shared(inputs_val)
         filters = shared(filters_val)
@@ -189,7 +189,7 @@ class TestCorr3DMM(unittest.TestCase):
         bottom_height = (inputs_shape[1] - 1) * subsample[0] + filters_shape[1]
         bottom_width = (inputs_shape[2] - 1) * subsample[1] + filters_shape[2]
         bottom_depth = (inputs_shape[3] - 1) * subsample[2] + filters_shape[3]
-        bottom_shape = theano.shared(numpy.array([bottom_height, bottom_width, bottom_depth]))
+        bottom_shape = theano.shared(np.array([bottom_height, bottom_width, bottom_depth]))
 
         weight = gpu_contiguous(filters.dimshuffle(0, 4, 1, 2, 3))
         top = gpu_contiguous(inputs.dimshuffle(0, 4, 1, 2, 3))
@@ -230,12 +230,12 @@ class TestCorr3DMM(unittest.TestCase):
         inputs_shape = (16, 20, 32, 16, 1)
         filters_shape = (10, 6, 12, 4, 1)
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
 
         inputs = shared(inputs_val)
         filters = shared(filters_val)
-        bias = shared(numpy.zeros(filters_shape[0]).astype('float32'))
+        bias = shared(np.zeros(filters_shape[0]).astype('float32'))
 
         conv = theano.tensor.nnet.conv3D(V=inputs, W=filters,
                                          b=bias, d=(1, 1, 1))
@@ -258,8 +258,8 @@ class TestCorr3DMM(unittest.TestCase):
         filters_shape = (10, 6, 12, 4, 1)
         dCdH_shape = (16, 5, 1, 13, 10)
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        dCdH_val = numpy.random.random(dCdH_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        dCdH_val = np.random.random(dCdH_shape).astype('float32')
 
         inputs = shared(inputs_val)
         dCdH = shared(dCdH_val)
@@ -284,9 +284,9 @@ class TestCorr3DMM(unittest.TestCase):
         inputs_shape = (16, 15, 12, 12, 10)
         filters_shape = (10, 6, 12, 4, 1)
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
-        bias = shared(numpy.zeros(filters_shape[4]).astype('float32'))
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
+        bias = shared(np.zeros(filters_shape[4]).astype('float32'))
 
         inputs = shared(inputs_val)
         filters = shared(filters_val)

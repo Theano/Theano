@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import unittest
-import numpy
+import numpy as np
 
 import theano
 from theano.tests import unittest_tools as utt
@@ -28,8 +28,8 @@ else:
 
 class TestConv2dFFT(unittest.TestCase):
     def run_conv(self, inputs_shape, filters_shape, pad=False, **other_args):
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
 
         inputs = shared(inputs_val)
         filters = shared(filters_val)
@@ -68,8 +68,8 @@ class TestConv2dFFT(unittest.TestCase):
         inputs_shape = (5, 3, 7, 6)
         filters_shape = (2, 3, 3, 3)
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
 
         inputs = shared(inputs_val)
         filters = shared(filters_val)
@@ -95,8 +95,8 @@ class TestConv2dFFT(unittest.TestCase):
         inputs_shape = (5, 3, 7, 6)
         filters_shape = (2, 3, 3, 3)
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
 
         inputs = shared(inputs_val)
         filters = shared(filters_val)
@@ -123,8 +123,8 @@ class TestConv2dFFT(unittest.TestCase):
         inputs_shape = (5, 3, 7, 6)
         filters_shape = (2, 3, 3, 3)
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
 
         inputs = shared(inputs_val)
         filters = shared(filters_val)
@@ -145,8 +145,8 @@ class TestConv2dFFT(unittest.TestCase):
         inputs_shape = (5, 3, 7, 6)
         filters_shape = (2, 3, 3, 3)
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
 
         inputs = shared(inputs_val)
         filters = shared(filters_val)
@@ -168,12 +168,12 @@ class TestConv2dFFT(unittest.TestCase):
 class TestConv3dFFT(unittest.TestCase):
 
     def run_conv_valid(self, inputs_shape, filters_shape, pad=False):
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
 
         inputs = shared(inputs_val)
         filters = shared(filters_val)
-        bias = shared(numpy.zeros(filters_shape[0]).astype('float32'))
+        bias = shared(np.zeros(filters_shape[0]).astype('float32'))
 
         # Flip filter as conv3D compute correlation
         filters_flip = filters[:, ::-1, ::-1, ::-1, :]
@@ -198,12 +198,12 @@ class TestConv3dFFT(unittest.TestCase):
         utt.assert_allclose(res_ref, res_fft, rtol=1e-05, atol=1e-05)
 
     def run_conv_full(self, inputs_shape, filters_shape, pad=False):
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
 
         inputs = shared(inputs_val)
         filters = shared(filters_val)
-        bias = shared(numpy.zeros(filters_shape[4]).astype('float32'))
+        bias = shared(np.zeros(filters_shape[4]).astype('float32'))
 
         conv_ref = theano.tensor.nnet.convTransp3D(
             W=filters, b=bias, d=(1, 1, 1),
@@ -243,12 +243,12 @@ class TestConv3dFFT(unittest.TestCase):
         inputs_shape = (16, 20, 32, 16, 1)
         filters_shape = (10, 6, 12, 4, 1)
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
 
         inputs = shared(inputs_val)
         filters = shared(filters_val)
-        bias = shared(numpy.zeros(filters_shape[0]).astype('float32'))
+        bias = shared(np.zeros(filters_shape[0]).astype('float32'))
 
         conv = theano.tensor.nnet.conv3D(V=inputs, W=filters,
                                          b=bias, d=(1, 1, 1))
@@ -277,8 +277,8 @@ class TestConv3dFFT(unittest.TestCase):
                       inputs_shape[3] - filters_shape[3] + 1,
                       filters_shape[0])
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        dCdH_val = numpy.random.random(dCdH_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        dCdH_val = np.random.random(dCdH_shape).astype('float32')
 
         inputs = shared(inputs_val)
         dCdH = shared(dCdH_val)
@@ -306,9 +306,9 @@ class TestConv3dFFT(unittest.TestCase):
         inputs_shape = (2, 9, 16, 12, 10)
         filters_shape = (10, 3, 8, 4, 1)
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
-        bias = shared(numpy.zeros(filters_shape[4]).astype('float32'))
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
+        bias = shared(np.zeros(filters_shape[4]).astype('float32'))
 
         inputs = shared(inputs_val)
         filters = shared(filters_val)

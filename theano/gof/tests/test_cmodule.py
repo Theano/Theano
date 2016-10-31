@@ -6,7 +6,7 @@ deterministic based on the input type and the op.
 """
 from __future__ import absolute_import, print_function, division
 
-import numpy
+import numpy as np
 
 import theano
 from theano.gof.cmodule import GCC_compiler
@@ -26,7 +26,7 @@ class MyOp(theano.compile.ops.DeepCopyOp):
         itype = node.inputs[0].type.__class__
         if itype in self.c_code_and_version:
             code, version = self.c_code_and_version[itype]
-            rand = numpy.random.rand()
+            rand = np.random.rand()
             return ("""printf("%(rand)s\\n");""" + code) % locals()
         # Else, no C code
         return super(theano.compile.ops.DeepCopyOp, self).c_code(
@@ -47,7 +47,7 @@ def test_inter_process_cache():
 
     x, y = theano.tensor.dvectors('xy')
     f = theano.function([x, y], [MyOp()(x), MyOp()(y)])
-    f(numpy.arange(60), numpy.arange(60))
+    f(np.arange(60), np.arange(60))
     if theano.config.mode == 'FAST_COMPILE' or theano.config.cxx == "":
         assert MyOp.nb_called == 0
     else:
@@ -56,7 +56,7 @@ def test_inter_process_cache():
     # What if we compile a new function with new variables?
     x, y = theano.tensor.dvectors('xy')
     f = theano.function([x, y], [MyOp()(x), MyOp()(y)])
-    f(numpy.arange(60), numpy.arange(60))
+    f(np.arange(60), np.arange(60))
     if theano.config.mode == 'FAST_COMPILE' or theano.config.cxx == "":
         assert MyOp.nb_called == 0
     else:

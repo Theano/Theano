@@ -57,8 +57,8 @@ A ``borrow`` argument can be provided to the shared-variable constructor.
 
 .. testcode:: borrow
 
-   import numpy, theano
-   np_array = numpy.ones(2, dtype='float32')
+   import numpy as np, theano
+   np_array = np.ones(2, dtype='float32')
 
    s_default = theano.shared(np_array)
    s_false   = theano.shared(np_array, borrow=False)
@@ -139,7 +139,7 @@ representation of a ``shared`` variable might not be what you expect.  When you
 create a ``shared`` variable by passing a NumPy array for example, then ``get_value()``
 must return a NumPy array too.  That's how Theano can make the GPU use
 transparent.  But when you are using a GPU (or in the future perhaps a remote machine),
-then the numpy.ndarray is not the internal representation of your data.
+then the np.ndarray is not the internal representation of your data.
 If you really want Theano to return its internal representation *and never copy it*
 then you should use the ``return_internal_type=True`` argument to
 ``get_value``.  It will never cast the internal object (always return in

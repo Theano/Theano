@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import itertools
 import unittest
-import numpy
+import numpy as np
 import theano
 from theano import tensor
 from theano.scan_module.scan_utils import equal_computations, map_variables
@@ -51,8 +51,8 @@ class TestMapVariables(unittest.TestCase):
         s2, = map_variables(self.replacer, [s])
 
         f = theano.function([x, y, z], [s, s2])
-        rval = f(x=numpy.array([1, 2, 3], dtype=numpy.float32), y=1, z=2)
-        assert numpy.array_equal(rval, [[1, 2, 3], [2, 4, 6]])
+        rval = f(x=np.array([1, 2, 3], dtype=np.float32), y=1, z=2)
+        assert np.array_equal(rval, [[1, 2, 3], [2, 4, 6]])
 
     def test_scan(self):
         x = tensor.vector('x')
@@ -64,7 +64,7 @@ class TestMapVariables(unittest.TestCase):
         # should do this as well.
         outer = tensor.scalar("outer")
         shared = theano.shared(
-            numpy.array(1., dtype=theano.config.floatX),
+            np.array(1., dtype=theano.config.floatX),
             name="shared")
         constant = tensor.constant(1, name="constant")
 
@@ -77,7 +77,7 @@ class TestMapVariables(unittest.TestCase):
             return r
 
         s, _ = theano.scan(step, sequences=x,
-                           outputs_info=[numpy.array(0.)])
+                           outputs_info=[np.array(0.)])
         # ensure z is owned by the outer graph so map_variables() will need to
         # jump through additional hoops to placate FunctionGraph.
         t = z * s
@@ -85,8 +85,8 @@ class TestMapVariables(unittest.TestCase):
         t2 = z * s2
 
         f = theano.function([x, outer], [t, t2])
-        rval = f(x=numpy.array([1, 2, 3], dtype=numpy.float32), outer=0.5)
-        assert numpy.array_equal(rval, [[1, 3, 6], [-1, -3, -6]])
+        rval = f(x=np.array([1, 2, 3], dtype=np.float32), outer=0.5)
+        assert np.array_equal(rval, [[1, 3, 6], [-1, -3, -6]])
 
     def test_scan_with_shared_update(self):
         x = tensor.vector('x')
@@ -104,7 +104,7 @@ class TestMapVariables(unittest.TestCase):
             return r
 
         s, _ = theano.scan(step, sequences=x,
-                           outputs_info=[numpy.array(0.)])
+                           outputs_info=[np.array(0.)])
         self.assertRaises(NotImplementedError,
                           map_variables, self.replacer, [s])
 
@@ -128,7 +128,7 @@ class TestMapVariables(unittest.TestCase):
             return r + counter
 
         s, _ = theano.scan(step, sequences=x,
-                           outputs_info=[numpy.array(0.)])
+                           outputs_info=[np.array(0.)])
         self.assertRaises(NotImplementedError,
                           map_variables, self.replacer, [s])
 
@@ -137,7 +137,7 @@ class TestMapVariables(unittest.TestCase):
         # inner graph.
         outer = tensor.scalar("outer")
         shared = theano.shared(
-            numpy.array(1., dtype=theano.config.floatX),
+            np.array(1., dtype=theano.config.floatX),
             name="shared")
         constant = tensor.constant(1., name="constant")
         z = outer * (shared + constant)

@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import copy
 
-import numpy
+import numpy as np
 
 import theano
 from theano import Variable, Constant
@@ -54,13 +54,13 @@ class CudaNdarrayConstantSignature(tensor.TensorConstantSignature):
 
 class CudaNdarrayConstant(_operators, Constant):
     def signature(self):
-        return CudaNdarrayConstantSignature((self.type, numpy.asarray(self.data)))
+        return CudaNdarrayConstantSignature((self.type, np.asarray(self.data)))
 
     def __str__(self):
         if self.name is not None:
             return self.name
         try:
-            data = str(numpy.asarray(self.data))
+            data = str(np.asarray(self.data))
         except Exception as e:
             data = "error while transferring the value: " + str(e)
         return "CudaNdarrayConstant{" + data + "}"
@@ -86,9 +86,9 @@ class CudaNdarraySharedVariable(_operators, SharedVariable):
             ``return_internal_type=True``.
         return_internal_type
             True to return the internal ``cuda_ndarray`` instance rather than a
-            ``numpy.ndarray`` (Default False).
+            ``np.ndarray`` (Default False).
 
-        By default ``get_value()`` copies from the GPU to a ``numpy.ndarray``
+        By default ``get_value()`` copies from the GPU to a ``np.ndarray``
         and returns that host-allocated array.
 
         ``get_value(False,True)`` will return a GPU-allocated copy of the
@@ -105,7 +105,7 @@ class CudaNdarraySharedVariable(_operators, SharedVariable):
             else:
                 return copy.deepcopy(self.container.value)
         else:  # return an ndarray
-            return numpy.asarray(self.container.value)
+            return np.asarray(self.container.value)
 
     def set_value(self, value, borrow=False):
         """
@@ -150,10 +150,10 @@ class CudaNdarraySharedVariable(_operators, SharedVariable):
         """
         if not borrow:
             # TODO: check for cuda_ndarray type
-            if not isinstance(value, numpy.ndarray):
+            if not isinstance(value, np.ndarray):
                 # in case this is a cuda_ndarray, we copy it
                 value = copy.deepcopy(value)
-        self.container.value = value  # this will copy a numpy ndarray
+        self.container.value = value  # this will copy a np ndarray
 
     def __getitem__(self, *args):
         # Defined to explicitly use the implementation from `_operators`, since
@@ -185,7 +185,7 @@ def cuda_shared_constructor(value, name=None, strict=False,
     else:
         _value = theano._asarray(value, dtype='float32')
 
-    if not isinstance(_value, numpy.ndarray):
+    if not isinstance(_value, np.ndarray):
         raise TypeError('ndarray required')
     if _value.dtype.num != CudaNdarrayType.typenum:
         raise TypeError('float32 ndarray required')
@@ -206,7 +206,7 @@ def float32_shared_constructor(value, name=None, strict=False,
                                allow_downcast=None, borrow=False,
                                broadcastable=None, target='gpu'):
     """
-    SharedVariable Constructor for CudaNdarrayType from numpy.ndarray or
+    SharedVariable Constructor for CudaNdarrayType from np.ndarray or
     CudaNdarray.
 
     """
@@ -221,9 +221,9 @@ def float32_shared_constructor(value, name=None, strict=False,
 
     # if value isn't a float32 ndarray, or a CudaNdarray then raise
 
-    if not isinstance(value, (numpy.ndarray, theano.sandbox.cuda.CudaNdarray)):
+    if not isinstance(value, (np.ndarray, theano.sandbox.cuda.CudaNdarray)):
         raise TypeError('ndarray or CudaNdarray required')
-    if isinstance(value, numpy.ndarray) and value.dtype.num != CudaNdarrayType.typenum:
+    if isinstance(value, np.ndarray) and value.dtype.num != CudaNdarrayType.typenum:
         raise TypeError('float32 ndarray required')
 
     if broadcastable is None:

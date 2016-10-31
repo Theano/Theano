@@ -8,7 +8,7 @@ import functools
 
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
-import numpy
+import numpy as np
 from six.moves import xrange
 
 import theano
@@ -43,7 +43,7 @@ utt.seed_rng()
 # 12 streams
 # 7 substreams for each stream
 # 5 samples drawn from each substream
-java_samples = numpy.loadtxt(os.path.join(os.path.split(theano.__file__)[0],
+java_samples = np.loadtxt(os.path.join(os.path.split(theano.__file__)[0],
                                           'sandbox',
                                           'samples_MRG31k3p_12_7_5.txt'))
 
@@ -64,15 +64,15 @@ def test_deterministic():
 
         fsample1 = f()
         fsample2 = f()
-        assert not numpy.allclose(fsample1, fsample2)
+        assert not np.allclose(fsample1, fsample2)
 
         R2 = MRG_RandomStreams(seed=seed, use_cuda=use_cuda)
         u2 = R2.uniform(size=sample_size)
         g = theano.function([], u2)
         gsample1 = g()
         gsample2 = g()
-        assert numpy.allclose(fsample1, gsample1)
-        assert numpy.allclose(fsample2, gsample2)
+        assert np.allclose(fsample1, gsample1)
+        assert np.allclose(fsample2, gsample2)
 
 
 def test_consistency_randomstreams():
@@ -101,12 +101,12 @@ def test_consistency_randomstreams():
             for j in range(n_samples):
                 s = f()
                 stream_samples.append(s)
-            stream_samples = numpy.array(stream_samples)
+            stream_samples = np.array(stream_samples)
             stream_samples = stream_samples.T.flatten()
             samples.append(stream_samples)
 
-        samples = numpy.array(samples).flatten()
-        assert(numpy.allclose(samples, java_samples))
+        samples = np.array(samples).flatten()
+        assert(np.allclose(samples, java_samples))
 
 
 def test_get_substream_rstates():
@@ -116,7 +116,7 @@ def test_get_substream_rstates():
         n_streams = 100
 
         dtype = 'float32'
-        rng = MRG_RandomStreams(numpy.random.randint(2147462579))
+        rng = MRG_RandomStreams(np.random.randint(2147462579))
 
         rng.get_substream_rstates(n_streams, dtype)
 
@@ -136,12 +136,12 @@ def test_consistency_cpu_serial():
     n_substreams = 7
 
     samples = []
-    curr_rstate = numpy.array([seed] * 6, dtype='int32')
+    curr_rstate = np.array([seed] * 6, dtype='int32')
 
     for i in range(n_streams):
         stream_rstate = curr_rstate.copy()
         for j in range(n_substreams):
-            rstate = theano.shared(numpy.array([stream_rstate.copy()],
+            rstate = theano.shared(np.array([stream_rstate.copy()],
                                                dtype='int32'))
             new_rstate, sample = rng_mrg.mrg_uniform.new(rstate, ndim=None,
                                                          dtype=config.floatX,
@@ -163,8 +163,8 @@ def test_consistency_cpu_serial():
         # next stream
         curr_rstate = rng_mrg.ff_2p134(curr_rstate)
 
-    samples = numpy.array(samples).flatten()
-    assert(numpy.allclose(samples, java_samples))
+    samples = np.array(samples).flatten()
+    assert(np.allclose(samples, java_samples))
 
 
 def test_consistency_cpu_parallel():
@@ -179,14 +179,14 @@ def test_consistency_cpu_parallel():
     n_substreams = 7  # 7 samples will be drawn in parallel
 
     samples = []
-    curr_rstate = numpy.array([seed] * 6, dtype='int32')
+    curr_rstate = np.array([seed] * 6, dtype='int32')
 
     for i in range(n_streams):
         stream_samples = []
         rstate = [curr_rstate.copy()]
         for j in range(1, n_substreams):
             rstate.append(rng_mrg.ff_2p72(rstate[-1]))
-        rstate = numpy.asarray(rstate)
+        rstate = np.asarray(rstate)
         rstate = theano.shared(rstate)
 
         new_rstate, sample = rng_mrg.mrg_uniform.new(rstate, ndim=None,
@@ -204,13 +204,13 @@ def test_consistency_cpu_parallel():
             s = f()
             stream_samples.append(s)
 
-        samples.append(numpy.array(stream_samples).T.flatten())
+        samples.append(np.array(stream_samples).T.flatten())
 
         # next stream
         curr_rstate = rng_mrg.ff_2p134(curr_rstate)
 
-    samples = numpy.array(samples).flatten()
-    assert(numpy.allclose(samples, java_samples))
+    samples = np.array(samples).flatten()
+    assert(np.allclose(samples, java_samples))
 
 
 def test_consistency_GPU_serial():
@@ -232,15 +232,15 @@ def test_consistency_GPU_serial():
     n_substreams = 7
 
     samples = []
-    curr_rstate = numpy.array([seed] * 6, dtype='int32')
+    curr_rstate = np.array([seed] * 6, dtype='int32')
 
     for i in range(n_streams):
         stream_rstate = curr_rstate.copy()
         for j in range(n_substreams):
-            substream_rstate = numpy.array(stream_rstate.copy(), dtype='int32')
+            substream_rstate = np.array(stream_rstate.copy(), dtype='int32')
             # HACK - we transfer these int32 to the GPU memory as float32
             # (reinterpret_cast)
-            tmp_float_buf = numpy.frombuffer(substream_rstate.data,
+            tmp_float_buf = np.frombuffer(substream_rstate.data,
                                              dtype='float32')
             # Transfer to device
             rstate = float32_shared_constructor(tmp_float_buf)
@@ -268,8 +268,8 @@ def test_consistency_GPU_serial():
         # next stream
         curr_rstate = rng_mrg.ff_2p134(curr_rstate)
 
-    samples = numpy.array(samples).flatten()
-    assert(numpy.allclose(samples, java_samples))
+    samples = np.array(samples).flatten()
+    assert(np.allclose(samples, java_samples))
 
 
 def test_consistency_GPU_parallel():
@@ -292,17 +292,17 @@ def test_consistency_GPU_parallel():
     n_substreams = 7  # 7 samples will be drawn in parallel
 
     samples = []
-    curr_rstate = numpy.array([seed] * 6, dtype='int32')
+    curr_rstate = np.array([seed] * 6, dtype='int32')
 
     for i in range(n_streams):
         stream_samples = []
         rstate = [curr_rstate.copy()]
         for j in range(1, n_substreams):
             rstate.append(rng_mrg.ff_2p72(rstate[-1]))
-        rstate = numpy.asarray(rstate).flatten()
+        rstate = np.asarray(rstate).flatten()
         # HACK - transfer these int32 to the GPU memory as float32
         # (reinterpret_cast)
-        tmp_float_buf = numpy.frombuffer(rstate.data, dtype='float32')
+        tmp_float_buf = np.frombuffer(rstate.data, dtype='float32')
         # Transfer to device
         rstate = float32_shared_constructor(tmp_float_buf)
 
@@ -324,13 +324,13 @@ def test_consistency_GPU_parallel():
             s = f()
             stream_samples.append(s)
 
-        samples.append(numpy.array(stream_samples).T.flatten())
+        samples.append(np.array(stream_samples).T.flatten())
 
         # next stream
         curr_rstate = rng_mrg.ff_2p134(curr_rstate)
 
-    samples = numpy.array(samples).flatten()
-    assert(numpy.allclose(samples, java_samples))
+    samples = np.array(samples).flatten()
+    assert(np.allclose(samples, java_samples))
 
 
 def test_GPU_nstreams_limit():
@@ -372,12 +372,12 @@ def test_consistency_GPUA_serial():
     n_substreams = 7
 
     samples = []
-    curr_rstate = numpy.array([seed] * 6, dtype='int32')
+    curr_rstate = np.array([seed] * 6, dtype='int32')
 
     for i in range(n_streams):
         stream_rstate = curr_rstate.copy()
         for j in range(n_substreams):
-            substream_rstate = numpy.array([stream_rstate.copy()],
+            substream_rstate = np.array([stream_rstate.copy()],
                                            dtype='int32')
             # Transfer to device
             rstate = gpuarray_shared_constructor(substream_rstate)
@@ -406,8 +406,8 @@ def test_consistency_GPUA_serial():
         # next stream
         curr_rstate = rng_mrg.ff_2p134(curr_rstate)
 
-    samples = numpy.array(samples).flatten()
-    assert(numpy.allclose(samples, java_samples))
+    samples = np.array(samples).flatten()
+    assert(np.allclose(samples, java_samples))
 
 
 def test_consistency_GPUA_parallel():
@@ -423,14 +423,14 @@ def test_consistency_GPUA_parallel():
     n_substreams = 7  # 7 samples will be drawn in parallel
 
     samples = []
-    curr_rstate = numpy.array([seed] * 6, dtype='int32')
+    curr_rstate = np.array([seed] * 6, dtype='int32')
 
     for i in range(n_streams):
         stream_samples = []
         rstate = [curr_rstate.copy()]
         for j in range(1, n_substreams):
             rstate.append(rng_mrg.ff_2p72(rstate[-1]))
-        rstate = numpy.asarray(rstate)
+        rstate = np.asarray(rstate)
         rstate = gpuarray_shared_constructor(rstate)
 
         new_rstate, sample = rng_mrg.GPUA_mrg_uniform.new(rstate, ndim=None,
@@ -451,13 +451,13 @@ def test_consistency_GPUA_parallel():
             s = f()
             stream_samples.append(s)
 
-        samples.append(numpy.array(stream_samples).T.flatten())
+        samples.append(np.array(stream_samples).T.flatten())
 
         # next stream
         curr_rstate = rng_mrg.ff_2p134(curr_rstate)
 
-    samples = numpy.array(samples).flatten()
-    assert(numpy.allclose(samples, java_samples))
+    samples = np.array(samples).flatten()
+    assert(np.allclose(samples, java_samples))
 
 
 def test_GPUA_full_fill():
@@ -495,16 +495,16 @@ def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=None,
         ival = f(*inputs)
         assert ival.shape == sample_size
         dt += time.time() - t0
-        ival = numpy.asarray(ival)
+        ival = np.asarray(ival)
         if i == 0:
-            mean = numpy.array(ival, copy=True)
-            avg_var = numpy.mean((ival - target_avg) ** 2)
+            mean = np.array(ival, copy=True)
+            avg_var = np.mean((ival - target_avg) ** 2)
             min_ = ival.min()
             max_ = ival.max()
         else:
             alpha = 1.0 / (1 + i)
             mean = alpha * ival + (1 - alpha) * mean
-            avg_var = (alpha * numpy.mean((ival - target_avg) ** 2) +
+            avg_var = (alpha * np.mean((ival - target_avg) ** 2) +
                        (1 - alpha) * avg_var)
             min_ = min(min_, ival.min())
             max_ = max(max_, ival.max())
@@ -513,19 +513,19 @@ def basictest(f, steps, sample_size, prefix="", allow_01=False, inputs=None,
             assert max_ < 1
 
     if hasattr(target_avg, 'shape'):  # looks if target_avg is an array
-        diff = numpy.mean(abs(mean - target_avg))
+        diff = np.mean(abs(mean - target_avg))
         # print prefix, 'mean diff with mean', diff
-        assert numpy.all(diff < mean_rtol * (1 + abs(target_avg))), (
+        assert np.all(diff < mean_rtol * (1 + abs(target_avg))), (
             'bad mean? %s %s' % (mean, target_avg))
     else:
         # if target_avg is a scalar, then we can do the mean of
         # `mean` to get something more precise
-        mean = numpy.mean(mean)
+        mean = np.mean(mean)
         # print prefix, 'mean', mean
         assert abs(mean - target_avg) < mean_rtol * (1 + abs(target_avg)), (
             'bad mean? %f %f' % (mean, target_avg))
 
-    std = numpy.sqrt(avg_var)
+    std = np.sqrt(avg_var)
     # print prefix, 'var', avg_var
     # print prefix, 'std', std
     if target_std is not None:
@@ -555,9 +555,9 @@ def test_uniform():
     for size, const_size, var_input, input in [
             (sample_size, sample_size, [], []),
             (x.shape, sample_size, [x],
-             [numpy.zeros(sample_size, dtype=config.floatX)]),
+             [np.zeros(sample_size, dtype=config.floatX)]),
             ((x.shape[0], sample_size[1]), sample_size, [x],
-             [numpy.zeros(sample_size, dtype=config.floatX)]),
+             [np.zeros(sample_size, dtype=config.floatX)]),
             # test empty size (scalar)
             ((), (), [], []),
             ]:
@@ -585,7 +585,7 @@ def test_uniform():
         # print cpu_out[-1, -10:]
 
         # Increase the number of steps if sizes implies only a few samples
-        if numpy.prod(const_size) < 10:
+        if np.prod(const_size) < 10:
             steps_ = steps * 100
         else:
             steps_ = steps
@@ -606,14 +606,14 @@ def test_uniform():
                                    theano.sandbox.rng_mrg.GPU_mrg_uniform)
                         for node in f.maker.fgraph.toposort()])
             # theano.printing.debugprint(f)
-            gpu_out = numpy.asarray(f(*input))
+            gpu_out = np.asarray(f(*input))
 
             # print 'GPU: random?[:10], random?[-10:]'
             # print gpu_out[0, 0:10]
             # print gpu_out[-1, -10:]
             basictest(f, steps_, const_size, prefix='mrg  gpu', inputs=input)
 
-            numpy.testing.assert_array_almost_equal(cpu_out, gpu_out,
+            np.testing.assert_array_almost_equal(cpu_out, gpu_out,
                                                     decimal=6)
 
         # print ''
@@ -622,7 +622,7 @@ def test_uniform():
 
         uu = RR.uniform(size=size)
         ff = theano.function(var_input, uu, mode=mode)
-        # It's not our problem if numpy generates 0 or 1
+        # It's not our problem if np generates 0 or 1
         basictest(ff, steps_, const_size, prefix='numpy',
                   allow_01=True, inputs=input)
 
@@ -652,9 +652,9 @@ def test_binomial():
         for size, const_size, var_input, input in [
                 (sample_size, sample_size, [], []),
                 (x.shape, sample_size, [x],
-                 [numpy.zeros(sample_size, dtype=config.floatX)]),
+                 [np.zeros(sample_size, dtype=config.floatX)]),
                 ((x.shape[0], sample_size[1]), sample_size, [x],
-                 [numpy.zeros(sample_size, dtype=config.floatX)]),
+                 [np.zeros(sample_size, dtype=config.floatX)]),
                 # test empty size (scalar)
                 ((), (), [], []),
                 ]:
@@ -669,7 +669,7 @@ def t_binomial(mean, size, const_size, var_input, input, steps, rtol):
     out = f(*input)
 
     # Increase the number of steps if sizes implies only a few samples
-    if numpy.prod(const_size) < 10:
+    if np.prod(const_size) < 10:
         steps_ = steps * 100
     else:
         steps_ = steps
@@ -685,19 +685,19 @@ def t_binomial(mean, size, const_size, var_input, input, steps, rtol):
         f = theano.function(var_input, theano.Out(
             theano.sandbox.cuda.basic_ops.gpu_from_host(u),
             borrow=True), mode=mode_with_gpu)
-        gpu_out = numpy.asarray(f(*input))
+        gpu_out = np.asarray(f(*input))
 
         basictest(f, steps_, const_size, prefix='mrg  gpu',
                   inputs=input, allow_01=True,
                   target_avg=mean, mean_rtol=rtol)
-        numpy.testing.assert_array_almost_equal(out, gpu_out,
+        np.testing.assert_array_almost_equal(out, gpu_out,
                                                 decimal=6)
 
     RR = theano.tensor.shared_randomstreams.RandomStreams(234)
 
     uu = RR.binomial(size=size, p=mean)
     ff = theano.function(var_input, uu, mode=mode)
-    # It's not our problem if numpy generates 0 or 1
+    # It's not our problem if np generates 0 or 1
     basictest(ff, steps_, const_size, prefix='numpy', allow_01=True,
               inputs=input, target_avg=mean, mean_rtol=rtol)
 
@@ -720,22 +720,22 @@ def test_normal0():
     for size, const_size, var_input, input, avg, rtol, std_tol in [
         (sample_size, sample_size, [], [], -5., default_rtol, default_rtol),
         (x.shape, sample_size, [x],
-         [numpy.zeros(sample_size, dtype=config.floatX)],
+         [np.zeros(sample_size, dtype=config.floatX)],
          -5., default_rtol, default_rtol),
         ((x.shape[0], sample_size[1]), sample_size, [x],
-         [numpy.zeros(sample_size, dtype=config.floatX)],
+         [np.zeros(sample_size, dtype=config.floatX)],
          -5., default_rtol, default_rtol),
         # test odd value
         (sample_size_odd, sample_size_odd, [], [], -5.,
          default_rtol, default_rtol),
         # test odd value
         (x.shape, sample_size_odd, [x],
-         [numpy.zeros(sample_size_odd, dtype=config.floatX)],
+         [np.zeros(sample_size_odd, dtype=config.floatX)],
          -5., default_rtol, default_rtol),
         (sample_size, sample_size, [], [],
-         numpy.arange(numpy.prod(sample_size),
+         np.arange(np.prod(sample_size),
                       dtype='float32').reshape(sample_size),
-         10. * std / numpy.sqrt(steps), default_rtol),
+         10. * std / np.sqrt(steps), default_rtol),
         # test empty size (scalar)
         ((), (), [], [], -5., default_rtol, 0.02),
         # test with few samples at the same time
@@ -756,7 +756,7 @@ def test_normal0():
         # print 'random?[:10]\n', out[0, 0:10]
 
         # Increase the number of steps if size implies only a few samples
-        if numpy.prod(const_size) < 10:
+        if np.prod(const_size) < 10:
             steps_ = steps * 50
         else:
             steps_ = steps
@@ -780,7 +780,7 @@ def test_normal0():
 
             # theano.printing.debugprint(f)
             sys.stdout.flush()
-            gpu_out = numpy.asarray(f(*input))
+            gpu_out = np.asarray(f(*input))
             # print 'random?[:10]\n', gpu_out[0, 0:10]
             # print '----'
             sys.stdout.flush()
@@ -789,7 +789,7 @@ def test_normal0():
                       mean_rtol=rtol, std_tol=std_tol)
             # Need to allow some rounding error as their is float
             # computation that are done on the gpu vs cpu
-            assert numpy.allclose(out, gpu_out, rtol=5e-6, atol=5e-6)
+            assert np.allclose(out, gpu_out, rtol=5e-6, atol=5e-6)
 
         # print ''
         # print 'ON CPU w NUMPY:'
@@ -806,26 +806,26 @@ def basic_multinomialtest(f, steps, sample_size, target_pvals, n_samples,
                           prefix="", mean_rtol=0.04):
 
     dt = 0.0
-    avg_pvals = numpy.zeros(target_pvals.shape, dtype=config.floatX)
+    avg_pvals = np.zeros(target_pvals.shape, dtype=config.floatX)
 
     for i in xrange(steps):
         t0 = time.time()
         ival = f()
         assert ival.shape == sample_size
-        assert numpy.all(numpy.sum(ival, axis=1) == n_samples)
+        assert np.all(np.sum(ival, axis=1) == n_samples)
         dt += time.time() - t0
         avg_pvals += ival
     avg_pvals /= (steps * n_samples)
 
-    assert numpy.mean(abs(avg_pvals - target_pvals)) < mean_rtol
+    assert np.mean(abs(avg_pvals - target_pvals)) < mean_rtol
 
-    print('random?[:10]\n', numpy.asarray(f()[:10]))
+    print('random?[:10]\n', np.asarray(f()[:10]))
     print(prefix, 'mean', avg_pvals)
     # < mean_rtol, 'bad mean? %s %s' % (str(avg_pvals), str(target_pvals))
-    print(numpy.mean(abs(avg_pvals - target_pvals)))
+    print(np.mean(abs(avg_pvals - target_pvals)))
     print(prefix, 'time', dt)
-    print(prefix, 'elements', steps * numpy.prod(target_pvals.shape))
-    print(prefix, 'samples/sec', steps * numpy.prod(target_pvals.shape) / dt)
+    print(prefix, 'elements', steps * np.prod(target_pvals.shape))
+    print(prefix, 'samples/sec', steps * np.prod(target_pvals.shape) / dt)
 
 
 def test_multinomial():
@@ -843,8 +843,8 @@ def test_multinomial():
     # print ''
     # print 'ON CPU:'
 
-    pvals = numpy.asarray(numpy.random.uniform(size=sample_size))
-    pvals = numpy.apply_along_axis(lambda row: row / numpy.sum(row), 1, pvals)
+    pvals = np.asarray(np.random.uniform(size=sample_size))
+    pvals = np.apply_along_axis(lambda row: row / np.sum(row), 1, pvals)
     R = MRG_RandomStreams(234, use_cuda=False)
     # Note: we specify `nstreams` to avoid a warning.
     m = R.multinomial(pvals=pvals, dtype=config.floatX, nstreams=30 * 256)
@@ -860,7 +860,7 @@ def test_multinomial():
         # print ''
         # print 'ON GPU:'
         R = MRG_RandomStreams(234, use_cuda=True)
-        pvals = numpy.asarray(pvals, dtype='float32')
+        pvals = np.asarray(pvals, dtype='float32')
         # We give the number of streams to avoid a warning.
         n = R.multinomial(pvals=pvals, dtype='float32', nstreams=30 * 256)
         # well, it's really that this test w GPU doesn't make sense otw
@@ -875,7 +875,7 @@ def test_multinomial():
         sys.stdout.flush()
         basic_multinomialtest(f, steps, sample_size, pvals, n_samples=1,
                               prefix='gpu mrg ')
-        numpy.testing.assert_array_almost_equal(out, gpu_out, decimal=6)
+        np.testing.assert_array_almost_equal(out, gpu_out, decimal=6)
 
 
 def test_multinomial_n_samples():
@@ -890,8 +890,8 @@ def test_multinomial_n_samples():
         sample_size = (450, 6)
     mode_ = theano.compile.mode.get_mode(mode_)
 
-    pvals = numpy.asarray(numpy.random.uniform(size=sample_size))
-    pvals = numpy.apply_along_axis(lambda row: row / numpy.sum(row), 1, pvals)
+    pvals = np.asarray(np.random.uniform(size=sample_size))
+    pvals = np.apply_along_axis(lambda row: row / np.sum(row), 1, pvals)
     R = MRG_RandomStreams(234, use_cuda=False)
 
     for n_samples, steps in zip([5, 10, 100, 1000], [20, 10, 1, 1]):
@@ -904,7 +904,7 @@ def test_multinomial_n_samples():
 
         if mode != 'FAST_COMPILE' and cuda_available:
             R = MRG_RandomStreams(234, use_cuda=True)
-            pvals = numpy.asarray(pvals, dtype='float32')
+            pvals = np.asarray(pvals, dtype='float32')
             n = R.multinomial(pvals=pvals, n=n_samples,
                               dtype='float32', nstreams=30 * 256)
             assert n.dtype == 'float32'
@@ -967,14 +967,14 @@ def test_random_state_transfer():
     for (su1, su2) in zip(g1.rng.state_updates, g2.rng.state_updates):
         su2[0].set_value(su1[0].get_value())
 
-    numpy.testing.assert_array_almost_equal(f1(), f2(), decimal=6)
+    np.testing.assert_array_almost_equal(f1(), f2(), decimal=6)
 
 
 def test_gradient_scan():
     # Test for a crash when using MRG inside scan and taking the gradient
     # See https://groups.google.com/d/msg/theano-dev/UbcYyU5m-M8/UO9UgXqnQP0J
     theano_rng = MRG_RandomStreams(10)
-    w = theano.shared(numpy.ones(1, dtype='float32'))
+    w = theano.shared(np.ones(1, dtype='float32'))
 
     def one_step(x):
         return x + theano_rng.uniform((1,), dtype='float32') * w
@@ -983,7 +983,7 @@ def test_gradient_scan():
     values, updates = theano.scan(one_step, outputs_info=x, n_steps=10)
     gw = theano.grad(tensor.sum(values[-1]), w)
     f = theano.function([x], gw)
-    f(numpy.arange(1, dtype='float32'))
+    f(np.arange(1, dtype='float32'))
 
 
 def test_multMatVect():
@@ -997,14 +997,14 @@ def test_multMatVect():
     g0 = rng_mrg.DotModulo()(A1, s1, m1, A2, s2, m2)
     f0 = theano.function([A1, s1, m1, A2, s2, m2], g0)
 
-    i32max = numpy.iinfo(numpy.int32).max
+    i32max = np.iinfo(np.int32).max
 
-    A1 = numpy.random.randint(0, i32max, (3, 3)).astype('int64')
-    s1 = numpy.random.randint(0, i32max, 3).astype('int32')
-    m1 = numpy.asarray(numpy.random.randint(i32max), dtype="int32")
-    A2 = numpy.random.randint(0, i32max, (3, 3)).astype('int64')
-    s2 = numpy.random.randint(0, i32max, 3).astype('int32')
-    m2 = numpy.asarray(numpy.random.randint(i32max), dtype="int32")
+    A1 = np.random.randint(0, i32max, (3, 3)).astype('int64')
+    s1 = np.random.randint(0, i32max, 3).astype('int32')
+    m1 = np.asarray(np.random.randint(i32max), dtype="int32")
+    A2 = np.random.randint(0, i32max, (3, 3)).astype('int64')
+    s2 = np.random.randint(0, i32max, 3).astype('int32')
+    m2 = np.asarray(np.random.randint(i32max), dtype="int32")
 
     f0.input_storage[0].storage[0] = A1
     f0.input_storage[1].storage[0] = s1
@@ -1018,8 +1018,8 @@ def test_multMatVect():
     f0.fn()
     r_b = f0.output_storage[0].value
 
-    assert numpy.allclose(r_a1, r_b[:3])
-    assert numpy.allclose(r_a2, r_b[3:])
+    assert np.allclose(r_a1, r_b[:3])
+    assert np.allclose(r_a2, r_b[3:])
 
 
 def test_seed_fn():
@@ -1047,13 +1047,13 @@ def test_seed_fn():
 
             fn1_val0 = fn1()
             fn1_val1 = fn1()
-            assert not numpy.allclose(fn1_val0, fn1_val1)
+            assert not np.allclose(fn1_val0, fn1_val1)
             fn2_val0 = fn2()
             fn2_val1 = fn2()
-            assert not numpy.allclose(fn2_val0, fn2_val1)
+            assert not np.allclose(fn2_val0, fn2_val1)
             fn3_val0 = fn3([4])
             fn3_val1 = fn3([4])
-            assert not numpy.allclose(fn3_val0, fn3_val1)
+            assert not np.allclose(fn3_val0, fn3_val1)
             assert fn1_val0.size == 4
             assert fn2_val0.size == 9
 
@@ -1065,12 +1065,12 @@ def test_seed_fn():
             fn2_val3 = fn2()
             fn3_val2 = fn3([4])
             fn3_val3 = fn3([4])
-            assert numpy.allclose(fn1_val0, fn1_val2) == same
-            assert numpy.allclose(fn1_val1, fn1_val3) == same
-            assert numpy.allclose(fn2_val0, fn2_val2) == same
-            assert numpy.allclose(fn2_val1, fn2_val3) == same
-            assert numpy.allclose(fn3_val0, fn3_val2) == same
-            assert numpy.allclose(fn3_val1, fn3_val3) == same
+            assert np.allclose(fn1_val0, fn1_val2) == same
+            assert np.allclose(fn1_val1, fn1_val3) == same
+            assert np.allclose(fn2_val0, fn2_val2) == same
+            assert np.allclose(fn2_val1, fn2_val3) == same
+            assert np.allclose(fn3_val0, fn3_val2) == same
+            assert np.allclose(fn3_val1, fn3_val3) == same
 
 
 def rng_mrg_overflow(sizes, fct, mode, should_raise_error):
@@ -1086,7 +1086,7 @@ def rng_mrg_overflow(sizes, fct, mode, should_raise_error):
 
 def test_overflow_cpu():
     # run with THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32
-    rng = MRG_RandomStreams(numpy.random.randint(1234))
+    rng = MRG_RandomStreams(np.random.randint(1234))
     fct = rng.uniform
     # should raise error as the size overflows
     sizes = [(2**31, ), (2**32, ), (2**15, 2**16,), (2, 2**15, 2**15)]
@@ -1095,8 +1095,8 @@ def test_overflow_cpu():
     sizes = [(2**5, ), (2**5, 2**5), (2**5, 2**5, 2**5)]
     rng_mrg_overflow(sizes, fct, config.mode, should_raise_error=False)
     # should support int32 sizes
-    sizes = [(numpy.int32(2**10), ),
-             (numpy.int32(2), numpy.int32(2**10), numpy.int32(2**10))]
+    sizes = [(np.int32(2**10), ),
+             (np.int32(2), np.int32(2**10), np.int32(2**10))]
     rng_mrg_overflow(sizes, fct, config.mode, should_raise_error=False)
 
 
@@ -1115,8 +1115,8 @@ def test_overflow_gpu_old_backend():
     sizes = [(2**5, ), (2**5, 2**5), (2**5, 2**5, 2**5)]
     rng_mrg_overflow(sizes, fct, mode, should_raise_error=False)
     # should support int32 sizes
-    sizes = [(numpy.int32(2**10), ),
-             (numpy.int32(2), numpy.int32(2**10), numpy.int32(2**10))]
+    sizes = [(np.int32(2**10), ),
+             (np.int32(2), np.int32(2**10), np.int32(2**10))]
     rng_mrg_overflow(sizes, fct, mode, should_raise_error=False)
 
 
@@ -1127,11 +1127,11 @@ def test_overflow_gpu_new_backend():
     from theano.gpuarray.type import gpuarray_shared_constructor
     seed = 12345
     n_substreams = 7
-    curr_rstate = numpy.array([seed] * 6, dtype='int32')
+    curr_rstate = np.array([seed] * 6, dtype='int32')
     rstate = [curr_rstate.copy()]
     for j in range(1, n_substreams):
         rstate.append(rng_mrg.ff_2p72(rstate[-1]))
-    rstate = numpy.asarray(rstate)
+    rstate = np.asarray(rstate)
     rstate = gpuarray_shared_constructor(rstate)
     fct = functools.partial(rng_mrg.GPUA_mrg_uniform.new, rstate,
                             ndim=None, dtype='float32')
@@ -1142,13 +1142,13 @@ def test_overflow_gpu_new_backend():
     sizes = [(2**5, ), (2**5, 2**5), (2**5, 2**5, 2**5)]
     rng_mrg_overflow(sizes, fct, mode, should_raise_error=False)
     # should support int32 sizes
-    sizes = [(numpy.int32(2**10), ),
-             (numpy.int32(2), numpy.int32(2**10), numpy.int32(2**10))]
+    sizes = [(np.int32(2**10), ),
+             (np.int32(2), np.int32(2**10), np.int32(2**10))]
     rng_mrg_overflow(sizes, fct, mode, should_raise_error=False)
 
 
 if __name__ == "__main__":
-    rng = MRG_RandomStreams(numpy.random.randint(2147462579))
+    rng = MRG_RandomStreams(np.random.randint(2147462579))
     print(theano.__file__)
     pvals = theano.tensor.fmatrix()
     for i in range(10):

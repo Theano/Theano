@@ -6,7 +6,7 @@ Theano is a Python library that allows you to define, optimize, and
 evaluate mathematical expressions involving multi-dimensional
 arrays efficiently. Theano features:
 
-* **tight integration with NumPy** -- Use `numpy.ndarray` in Theano-compiled functions.
+* **tight integration with NumPy** -- Use `np.ndarray` in Theano-compiled functions.
 * **transparent use of a GPU** -- Perform data-intensive calculations up to 140x faster than with CPU.(float32 only)
 * **efficient symbolic differentiation** -- Theano does your derivatives for function with one or many inputs.
 * **speed and stability optimizations** -- Get the right answer for ``log(1+x)`` even when ``x`` is really tiny.
@@ -198,7 +198,7 @@ address facet Y" and link to the previous discussion.
 
 When asking questions on StackOverflow, please use the *theano* tag, so your question can be found, and follow
 StackOverflow's guidance on `asking questions <http://stackoverflow.com/help/asking>`__. Consider also using the
-*python* and *numpy* tags, especially if you are unsure which library your problem relates to.
+*python* and *np* tags, especially if you are unsure which library your problem relates to.
 
 It's often helpful to include the following details with your question:
 

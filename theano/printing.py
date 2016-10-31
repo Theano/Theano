@@ -1432,7 +1432,7 @@ def position_independent_str(obj):
 
 def hex_digest(x):
     """
-    Returns a short, mostly hexadecimal hash of a numpy ndarray
+    Returns a short, mostly hexadecimal hash of a np ndarray
     """
     assert isinstance(x, np.ndarray)
     rval = hashlib.md5(x.tostring()).hexdigest()

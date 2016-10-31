@@ -54,8 +54,8 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 import cython
 
-import numpy
-cimport numpy
+import numpy as np
+cimport numpy as np
 from theano import gof
 import time
 import copy
@@ -75,19 +75,19 @@ def perform(
             unsigned int n_nit_sot,
             int n_steps,
             bint as_while,
-            numpy.ndarray[numpy.int32_t,ndim=1] mintaps,
-            numpy.ndarray[numpy.int32_t,ndim=2] tap_array,
-            numpy.ndarray[numpy.int32_t,ndim=1] tap_array_len,
-            numpy.ndarray[numpy.int32_t,ndim=1] vector_seqs,
-            numpy.ndarray[numpy.int32_t,ndim=1] vector_outs,
-            numpy.ndarray[numpy.int32_t,ndim=2] mit_mot_out_slices,
-            numpy.ndarray[numpy.int32_t,ndim=1] mit_mot_out_nslices,
-            numpy.ndarray[numpy.int32_t,ndim=1] mitmots_preallocated,
-            numpy.ndarray[numpy.int32_t,ndim=1] inps_is_tensor,
-            numpy.ndarray[numpy.int32_t,ndim=1] outs_is_tensor,
+            np.ndarray[np.int32_t,ndim=1] mintaps,
+            np.ndarray[np.int32_t,ndim=2] tap_array,
+            np.ndarray[np.int32_t,ndim=1] tap_array_len,
+            np.ndarray[np.int32_t,ndim=1] vector_seqs,
+            np.ndarray[np.int32_t,ndim=1] vector_outs,
+            np.ndarray[np.int32_t,ndim=2] mit_mot_out_slices,
+            np.ndarray[np.int32_t,ndim=1] mit_mot_out_nslices,
+            np.ndarray[np.int32_t,ndim=1] mitmots_preallocated,
+            np.ndarray[np.int32_t,ndim=1] inps_is_tensor,
+            np.ndarray[np.int32_t,ndim=1] outs_is_tensor,
             fn,
             fnct,
-            numpy.ndarray[numpy.int32_t,ndim=1] destroy_map,
+            np.ndarray[np.int32_t,ndim=1] destroy_map,
             args,
             outs,
             self,

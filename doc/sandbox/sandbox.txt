@@ -86,7 +86,7 @@ write an Op:**
         def st_impl(x):
             if x == 0.0:
                 return 0.0
-            return x * numpy.log(x)
+            return x * np.log(x)
         def impl(self, x):
             return XlogX.st_impl(x)
         def grad(self, inp, grads):
@@ -126,7 +126,7 @@ Guillaume can you make sure to hit these points:
 
     * What is the right eq function to use?
 
-        * There are a lot of tests that define their own epsilon, but this should be standardized.  e.g. in test_elemwise.py ``self.assertTrue((numpy.abs(f(xv) - zv) < 1e-10).all())``
+        * There are a lot of tests that define their own epsilon, but this should be standardized.  e.g. in test_elemwise.py ``self.assertTrue((np.abs(f(xv) - zv) < 1e-10).all())``
 
     * If the expected variable of a test is that an Exception is thrown, how do we correctly detect and handle that?
 
@@ -166,17 +166,17 @@ Type checking
         If the type is wrong, what exception should be raised?
 
 ======================================
-More simple numpy stuff
+More simple np stuff
 ======================================
 
     * If we have a matrix with only one row, how do we convert it to a vector?
         ``x.reshape(x.size)``
         You can also use ``resize`` but there is not reason to ''resize''
-    * How do you convert the type of a numpy array?
+    * How do you convert the type of a np array?
         ``theano._asarray(x, dtype = 'int32')``
-        Note that using ``numpy.asarray`` is potentially dangerous, due to
-        a problem in numpy where the type may not be properly set (see
-        numpy's Track ticket #870).
+        Note that using ``np.asarray`` is potentially dangerous, due to
+        a problem in np where the type may not be properly set (see
+        np's Track ticket #870).
 
 
 =========================================

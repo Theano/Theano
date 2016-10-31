@@ -11,7 +11,7 @@ To get us started with Theano and get a feel of what we're working with,
 let's make a simple function: add two numbers together. Here is how you do
 it:
 
->>> import numpy
+>>> import numpy as np
 >>> import theano.tensor as T
 >>> from theano import function
 >>> x = T.dscalar('x')
@@ -23,7 +23,7 @@ And now that we've created our function we can use it:
 
 >>> f(2, 3)
 array(5.0)
->>> numpy.allclose(f(16.3, 12.1), 28.4)
+>>> np.allclose(f(16.3, 12.1), 28.4)
 True
 
 Let's break this down into several steps. The first step is to define
@@ -31,7 +31,7 @@ two symbols (*Variables*) representing the quantities that you want
 to add. Note that from now on, we will use the term
 *Variable* to mean "symbol" (in other words,
 *x*, *y*, *z* are all *Variable* objects). The output of the function
-*f* is a ``numpy.ndarray`` with zero dimensions.
+*f* is a ``np.ndarray`` with zero dimensions.
 
 If you are following along and typing into an interpreter, you may have
 noticed that there was a slight delay in executing the ``function``
@@ -123,12 +123,12 @@ then be used like a normal Python function.
     the tutorial so far. It has the added benefit of not requiring
     you to import :func:`function` . Here is how :func:`eval` works:
 
-    >>> import numpy
+    >>> import numpy as np
     >>> import theano.tensor as T
     >>> x = T.dscalar('x')
     >>> y = T.dscalar('y')
     >>> z = x + y
-    >>> numpy.allclose(z.eval({x : 16.3, y : 12.1}), 28.4)
+    >>> np.allclose(z.eval({x : 16.3, y : 12.1}), 28.4)
     True
 
     We passed :func:`eval` a dictionary mapping symbolic theano
@@ -164,8 +164,8 @@ array([[ 11.,  22.],
 The variable is a NumPy array. We can also use NumPy arrays directly as
 inputs:
 
->>> import numpy
->>> f(numpy.array([[1, 2], [3, 4]]), numpy.array([[10, 20], [30, 40]]))
+>>> import numpy as np
+>>> f(np.array([[1, 2], [3, 4]]), np.array([[10, 20], [30, 40]]))
 array([[ 11.,  22.],
        [ 33.,  44.]])
 

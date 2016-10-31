@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
@@ -30,7 +30,7 @@ class TestPdbBreakpoint(utt.InferShapeTester):
 
     def test_infer_shape(self):
 
-        input1_value = numpy.arange(6).reshape(2, 3).astype("float32")
+        input1_value = np.arange(6).reshape(2, 3).astype("float32")
         input2_value = 10.0
 
         self._compile_and_check([self.input1, self.input2],
@@ -42,7 +42,7 @@ class TestPdbBreakpoint(utt.InferShapeTester):
 
     def test_grad(self):
 
-        input1_value = numpy.arange(9).reshape(3, 3).astype("float32")
+        input1_value = np.arange(9).reshape(3, 3).astype("float32")
         input2_value = 10.0
 
         grads = [T.grad(self.monitored_input1.sum(), self.input1),
@@ -56,22 +56,22 @@ class TestPdbBreakpoint(utt.InferShapeTester):
 
         gradients = fct(input1_value, input2_value)[:-1]
 
-        expected_gradients = [numpy.ones((3, 3), dtype="float32"),
-                              numpy.array(1., dtype="float32")]
+        expected_gradients = [np.ones((3, 3), dtype="float32"),
+                              np.array(1., dtype="float32")]
 
         for i in range(len(gradients)):
-            numpy.testing.assert_allclose(gradients[i], expected_gradients[i])
+            np.testing.assert_allclose(gradients[i], expected_gradients[i])
 
     def test_fprop(self):
 
-        input1_value = numpy.arange(9).reshape(3, 3).astype("float32")
+        input1_value = np.arange(9).reshape(3, 3).astype("float32")
         input2_value = 10.0
         fct = theano.function([self.input1, self.input2],
                               [self.monitored_input1, self.monitored_input2])
 
         output = fct(input1_value, input2_value)
-        numpy.testing.assert_allclose(output[0], input1_value)
-        numpy.testing.assert_allclose(output[1], input2_value)
+        np.testing.assert_allclose(output[0], input1_value)
+        np.testing.assert_allclose(output[1], input2_value)
 
     def test_connection_pattern(self):
 

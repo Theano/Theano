@@ -299,7 +299,7 @@ class Variable(Node):
     - `Constant` (a subclass) which adds a default and un-replaceable
       :literal:`value`, and requires that owner is None.
 
-    - `TensorVariable` subclass of Variable that represents a numpy.ndarray
+    - `TensorVariable` subclass of Variable that represents a np.ndarray
        object.
 
     - `TensorSharedVariable` Shared version of TensorVariable.
@@ -308,7 +308,7 @@ class Variable(Node):
       a scipy.sparse.{csc,csr}_matrix object.
 
     - `CudaNdarrayVariable` subclass of Variable that represents our object on
-      the GPU that is a subset of numpy.ndarray.
+      the GPU that is a subset of np.ndarray.
 
     - `RandomVariable`.
 
@@ -481,12 +481,12 @@ class Variable(Node):
         Examples
         --------
 
-        >>> import numpy
+        >>> import numpy as np
         >>> import theano.tensor as T
         >>> x = T.dscalar('x')
         >>> y = T.dscalar('y')
         >>> z = x + y
-        >>> numpy.allclose(z.eval({x : 16.3, y : 12.1}), 28.4)
+        >>> np.allclose(z.eval({x : 16.3, y : 12.1}), 28.4)
         True
 
         We passed :func:`eval` a dictionary mapping symbolic theano

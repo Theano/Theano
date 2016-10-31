@@ -7,7 +7,7 @@ from copy import copy, deepcopy
 from sys import getsizeof
 import sys
 import traceback
-import numpy
+import numpy as np
 
 import theano
 from theano.compat import izip
@@ -236,11 +236,11 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
             # storage_map_item[3]: bytes
             if hasattr(storage_map[k][0], 'dtype'):
                 dtype = storage_map[k][0].dtype
-                storage_map_item.append(numpy.dtype(dtype).itemsize)
+                storage_map_item.append(np.dtype(dtype).itemsize)
                 if shapeinfo is None:
                     storage_map_item.append(-1)
                 else:
-                    sz = numpy.dtype(dtype).itemsize * numpy.prod(shapeinfo)
+                    sz = np.dtype(dtype).itemsize * np.prod(shapeinfo)
                     storage_map_item.append(sz)
                     total_size += sz
                     if not k.owner:

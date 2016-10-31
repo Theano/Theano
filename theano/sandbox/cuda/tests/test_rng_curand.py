@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import theano
 from theano.tensor import constant
 from theano.sandbox.cuda.rng_curand import CURAND_RandomStreams
@@ -66,9 +66,9 @@ def check_uniform_basic(shape_as_symbolic, dim_as_symbolic=False):
     # print v0list
     # print v1list
     # assert that elements are different in a few ways
-    assert numpy.all(v0list[0] != v0list[1])
-    assert numpy.all(v1list[0] != v1list[1])
-    assert numpy.all(v0list[0] != v1list[0])
+    assert np.all(v0list[0] != v0list[1])
+    assert np.all(v1list[0] != v1list[1])
+    assert np.all(v0list[0] != v1list[0])
 
     for v in v0list:
         assert v.shape == (10, 10)
@@ -134,9 +134,9 @@ def check_normal_basic(shape_as_symbolic, dim_as_symbolic=False):
     # print v0list
     # print v1list
     # assert that elements are different in a few ways
-    assert numpy.all(v0list[0] != v0list[1])
-    assert numpy.all(v1list[0] != v1list[1])
-    assert numpy.all(v0list[0] != v1list[0])
+    assert np.all(v0list[0] != v0list[1])
+    assert np.all(v1list[0] != v1list[1])
+    assert np.all(v0list[0] != v1list[0])
 
     for v in v0list:
         assert v.shape == (10, 10)
@@ -165,7 +165,7 @@ def compare_speed():
 
     N = 1000 * 100
 
-    dest = theano.shared(numpy.zeros(N, dtype=theano.config.floatX))
+    dest = theano.shared(np.zeros(N, dtype=theano.config.floatX))
 
     mrg_u = theano.function([], [], updates={dest: mrg.uniform((N,))},
                             profile='mrg uniform')

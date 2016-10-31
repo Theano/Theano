@@ -3,7 +3,7 @@ from __future__ import absolute_import, print_function, division
 import unittest
 import sys
 
-import numpy
+import numpy as np
 import scipy.linalg
 
 import theano
@@ -16,7 +16,7 @@ class Solve(gof.Op):
     Find the solution to the linear equation Ax=b.
 
     A is a 2d matrix and b is a 1d or 2d matrix.
-    It use numpy.solve to find the solution.
+    It use np.solve to find the solution.
 
     """
 
@@ -62,14 +62,14 @@ solve = Solve()
 
 class T_solve(unittest.TestCase):
     def setUp(self):
-        self.rng = numpy.random.RandomState(utt.fetch_seed(666))
+        self.rng = np.random.RandomState(utt.fetch_seed(666))
 
     def test0(self):
         A = self.rng.randn(5, 5)
-        b = numpy.arange(5, dtype=float)
+        b = np.arange(5, dtype=float)
         x = scipy.linalg.solve(A, b)
-        Ax = numpy.dot(A, x)
+        Ax = np.dot(A, x)
         are = tensor.numeric_grad.abs_rel_err(Ax, b)
-        self.assertTrue(numpy.all(are < 1.0e-5), (are, Ax, b))
+        self.assertTrue(np.all(are < 1.0e-5), (are, Ax, b))
         # print A,b
-        # print numpy.dot(A,x)
+        # print np.dot(A,x)

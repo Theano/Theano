@@ -12,7 +12,7 @@ Why a common GPU ndarray?
   - CudaNdarray (Theano), GPUArray (PyCUDA), CUDAMatrix (cudamat), GPUArray (PyOpenCL), ...
   - There are even more if we include other languages
 
-- All of them are a subset of the functionality of ``numpy.ndarray`` on the GPU
+- All of them are a subset of the functionality of ``np.ndarray`` on the GPU
 - Lots of duplicated effort
 
   - GPU code is harder/slower to do {\bf correctly} and {\bf fast} than on the CPU/Python
@@ -24,7 +24,7 @@ Why a common GPU ndarray?
 
 Design Goals
 
-- Make it VERY similar to ``numpy.ndarray``
+- Make it VERY similar to ``np.ndarray``
 - Be compatible with both CUDA and OpenCL
 - Have the base object accessible from C to allow collaboration with more projects, across high-level languages
 

@@ -5,7 +5,7 @@ Broadcasting
 ============
 
 The following may go either in:
-a) numpy refresher.
+a) np refresher.
 b) more details of broadcasting in the types section.
 
 

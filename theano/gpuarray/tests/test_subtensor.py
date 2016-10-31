@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 import theano
 from theano import tensor
@@ -44,8 +44,8 @@ def test_advinc_subtensor1():
     # Test the second case in the opt local_gpu_advanced_incsubtensor1
     for shp in [(3, 3), (3, 3, 3)]:
         shared = gpuarray_shared_constructor
-        xval = numpy.arange(numpy.prod(shp), dtype='float32').reshape(shp) + 1
-        yval = numpy.empty((2,) + shp[1:], dtype='float32')
+        xval = np.arange(np.prod(shp), dtype='float32').reshape(shp) + 1
+        yval = np.empty((2,) + shp[1:], dtype='float32')
         yval[:] = 10
         x = shared(xval, name='x')
         y = tensor.tensor(dtype='float32',
@@ -58,14 +58,14 @@ def test_advinc_subtensor1():
         rval = f(yval)
         rep = xval.copy()
         rep[[0, 2]] += yval
-        assert numpy.allclose(rval, rep)
+        assert np.allclose(rval, rep)
 
 
 def test_incsub_f16():
     shp = (3, 3)
     shared = gpuarray_shared_constructor
-    xval = numpy.arange(numpy.prod(shp), dtype='float16').reshape(shp) + 1
-    yval = numpy.empty((2,) + shp[1:], dtype='float16')
+    xval = np.arange(np.prod(shp), dtype='float16').reshape(shp) + 1
+    yval = np.empty((2,) + shp[1:], dtype='float16')
     yval[:] = 2
     x = shared(xval, name='x')
     y = tensor.tensor(dtype='float16',
@@ -78,7 +78,7 @@ def test_incsub_f16():
     rval = f(yval)
     rep = xval.copy()
     rep[[0, 2]] += yval
-    assert numpy.allclose(rval, rep)
+    assert np.allclose(rval, rep)
 
     expr = tensor.inc_subtensor(x[1:], y)
     f = theano.function([y], expr, mode=mode_with_gpu)
@@ -87,7 +87,7 @@ def test_incsub_f16():
     rval = f(yval)
     rep = xval.copy()
     rep[1:] += yval
-    assert numpy.allclose(rval, rep)
+    assert np.allclose(rval, rep)
 
 
 class G_advancedsubtensor(test_subtensor.TestAdvancedSubtensor):
@@ -113,7 +113,7 @@ def test_adv_subtensor():
     # Test the advancedsubtensor on gpu.
     shp = (2, 3, 4)
     shared = gpuarray_shared_constructor
-    xval = numpy.arange(numpy.prod(shp), dtype=theano.config.floatX).reshape(shp)
+    xval = np.arange(np.prod(shp), dtype=theano.config.floatX).reshape(shp)
     idx1, idx2 = tensor.ivectors('idx1', 'idx2')
     idxs = [idx1, None, slice(0, 2, 1), idx2, None]
     x = shared(xval, name='x')
@@ -125,4 +125,4 @@ def test_adv_subtensor():
     idx2_val = [0, 1]
     rval = f(idx1_val, idx2_val)
     rep = xval[idx1_val, None, slice(0, 2, 1), idx2_val, None]
-    assert numpy.allclose(rval, rep)
+    assert np.allclose(rval, rep)

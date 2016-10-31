@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 from six.moves import xrange
 import theano
 import scipy.sparse
@@ -74,7 +74,7 @@ class Poisson(gof.op.Op):
         assert _is_sparse(x)
         assert x.format in ["csr", "csc"]
         out[0] = x.copy()
-        out[0].data = numpy.asarray(numpy.random.poisson(out[0].data),
+        out[0].data = np.asarray(np.random.poisson(out[0].data),
                                     dtype=x.dtype)
         out[0].eliminate_zeros()
 
@@ -123,7 +123,7 @@ class Binomial(gof.op.Op):
     def perform(self, node, inputs, outputs):
         (n, p, shape) = inputs
         (out,) = outputs
-        binomial = numpy.random.binomial(n, p, size=shape)
+        binomial = np.random.binomial(n, p, size=shape)
         csx_matrix = getattr(scipy.sparse, self.format + '_matrix')
         out[0] = csx_matrix(binomial, dtype=self.dtype)
 
@@ -195,14 +195,14 @@ class Multinomial(gof.op.Op):
         if n.ndim == 0:
             for i in xrange(p.shape[0]):
                 k, l = p.indptr[i], p.indptr[i + 1]
-                out[0].data[k:l] = numpy.random.multinomial(n, p.data[k:l])
+                out[0].data[k:l] = np.random.multinomial(n, p.data[k:l])
         elif n.ndim == 1:
             if n.shape[0] != p.shape[0]:
                 raise ValueError('The number of element of n must be '
                                  'the same as the number of row of p.')
             for i in xrange(p.shape[0]):
                 k, l = p.indptr[i], p.indptr[i + 1]
-                out[0].data[k:l] = numpy.random.multinomial(n[i], p.data[k:l])
+                out[0].data[k:l] = np.random.multinomial(n[i], p.data[k:l])
 
     def grad(self, inputs, outputs_gradients):
         comment_n = "No gradient exists for the number of samples in class\

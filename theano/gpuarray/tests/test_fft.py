@@ -91,7 +91,7 @@ class TestFFT(unittest.TestCase):
 
         utt.assert_allclose(inputs_val, np.asarray(res_ifft))
 
-        inputs_val = numpy.random.random((1, N, N, 2)).astype('float32')
+        inputs_val = np.random.random((1, N, N, 2)).astype('float32')
         inputs = theano.shared(inputs_val)
 
         irfft = theano.gpuarray.fft.cuirfft(inputs)
@@ -195,7 +195,7 @@ class TestFFT(unittest.TestCase):
         res_rfft_comp = (np.asarray(res_rfft[:, :, :, 0]) +
                          1j * np.asarray(res_rfft[:, :, :, 1]))
 
-        rfft_ref = numpy.fft.rfftn(inputs_val, s=(M, M), axes=(1, 2))
+        rfft_ref = np.fft.rfftn(inputs_val, s=(M, M), axes=(1, 2))
 
         utt.assert_allclose(rfft_ref, res_rfft_comp, atol=1e-4, rtol=1e-4)
 
@@ -243,12 +243,12 @@ class TestFFT(unittest.TestCase):
         utt.verify_grad(f_irfft, [inputs_val], eps=eps)
 
     def test_params(self):
-        inputs_val = numpy.random.random((1, N)).astype('float32')
+        inputs_val = np.random.random((1, N)).astype('float32')
         inputs = theano.shared(inputs_val)
 
         self.assertRaises(ValueError, theano.gpuarray.fft.curfft, inputs, norm=123)
 
-        inputs_val = numpy.random.random((1, N // 2 + 1, 2)).astype('float32')
+        inputs_val = np.random.random((1, N // 2 + 1, 2)).astype('float32')
         inputs = theano.shared(inputs_val)
 
         self.assertRaises(ValueError, theano.gpuarray.fft.cuirfft, inputs, norm=123)

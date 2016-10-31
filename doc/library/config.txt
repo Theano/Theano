@@ -279,23 +279,23 @@ import theano and print the config variable, as in:
     corresponds to a set of custom rules originally used in
     Theano (which can be partially customized, see e.g. the in-code help of
     ``tensor.NumpyAutocaster``), and will be deprecated in the future.
-    The 'numpy+floatX' setting attempts to mimic the numpy casting rules,
+    The 'numpy+floatX' setting attempts to mimic the np casting rules,
     although it prefers to use float32 numbers instead of float64 when
     ``config.floatX`` is set to 'float32' and the user uses data that is not
     explicitly typed as float64 (e.g. regular Python floats).
     Note that 'numpy+floatX' is not currently behaving exactly as planned (it
     is a work-in-progress), and thus you should consider it as experimental.
-    At the moment it behaves differently from numpy in the following
+    At the moment it behaves differently from np in the following
     situations:
 
     * Depending on the value of :attr:`config.int_division`, the resulting type
       of a division of integer types with the ``/`` operator may not match
-      that of numpy.
-    * On mixed scalar / array operations, numpy tries to prevent the scalar
+      that of np.
+    * On mixed scalar / array operations, np tries to prevent the scalar
       from upcasting the array's type unless it is of a fundamentally
       different type. Theano does not attempt to do the same at this point,
       so you should be careful that scalars may upcast arrays when they
-      would not when using numpy. This behavior should change in the near
+      would not when using np. This behavior should change in the near
       future.
 
 .. attribute:: int_division
@@ -898,7 +898,7 @@ import theano and print the config variable, as in:
 
     This section contains different attributes for configuring NumPy's
     behaviour, described by `numpy.seterr
-    <http://docs.scipy.org/doc/numpy/reference/generated/numpy.seterr.html>`__.
+    <http://docs.scipy.org/doc/numpy/reference/generated/np.seterr.html>`__.
 
 .. attribute:: config.numpy.seterr_all
 
@@ -907,12 +907,12 @@ import theano and print the config variable, as in:
 
     Default: ``'ignore'``
 
-    Set the default behaviour described by `numpy.seterr
-    <http://docs.scipy.org/doc/numpy/reference/generated/numpy.seterr.html>`__.
+    Set the default behaviour described by `np.seterr
+    <http://docs.scipy.org/doc/numpy/reference/generated/np.seterr.html>`__.
 
-    ``'None'`` means that numpy's default behaviour will not be changed (unless
-    one of the other ``config.numpy.seterr_*`` overrides it), but this behaviour
-    can change between numpy releases.
+    ``'None'`` means that np's default behaviour will not be changed (unless
+    one of the other ``config.np.seterr_*`` overrides it), but this behaviour
+    can change between np releases.
 
     This flag sets the default behaviour for all kinds of floating-pont
     errors, and it can be overriden for specific errors by setting one
@@ -927,7 +927,7 @@ import theano and print the config variable, as in:
 
     Default: ``'None'``
 
-    Sets numpy's behavior for division by zero. ``'None'`` means using the
+    Sets np's behavior for division by zero. ``'None'`` means using the
     default, defined by config.numpy.seterr_all.
 
     This flag's value cannot be modified during the program execution.
@@ -939,7 +939,7 @@ import theano and print the config variable, as in:
 
     Default: ``'None'``
 
-    Sets numpy's behavior for floating-point overflow. ``'None'`` means
+    Sets np's behavior for floating-point overflow. ``'None'`` means
     using the default, defined by config.numpy.seterr_all.
 
     This flag's value cannot be modified during the program execution.
@@ -951,7 +951,7 @@ import theano and print the config variable, as in:
 
     Default: ``'None'``
 
-    Sets numpy's behavior for floating-point underflow. ``'None'`` means
+    Sets np's behavior for floating-point underflow. ``'None'`` means
     using the default, defined by config.numpy.seterr_all.
 
     This flag's value cannot be modified during the program execution.
@@ -963,7 +963,7 @@ import theano and print the config variable, as in:
 
     Default: ``'None'``
 
-    Sets numpy's behavior for invalid floating-point operation. ``'None'``
+    Sets np's behavior for invalid floating-point operation. ``'None'``
     means using the default, defined by :attr:`config.numpy.seterr_all`.
 
     This flag's value cannot be modified during the program execution.
@@ -982,7 +982,7 @@ import theano and print the config variable, as in:
     Theano will execute the graph using the Constants and/or shared variables
     provided by the user. Purely symbolic variables (e.g. ``x = T.dmatrix()``) can be
     augmented with test values, by writing to their ``'tag.test_value'``
-    attribute (e.g. ``x.tag.test_value = numpy.random.rand(5, 4)``).
+    attribute (e.g. ``x.tag.test_value = np.random.rand(5, 4)``).
 
     When not ``'off'``, the value of this option dictates what happens when
     an Op's inputs do not provide appropriate test values:

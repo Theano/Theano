@@ -6,7 +6,7 @@ from theano.tensor.basic import mul, arange
 
 class SortOp(theano.Op):
     """
-    This class is a wrapper for numpy sort function.
+    This class is a wrapper for np sort function.
 
     """
 
@@ -59,7 +59,7 @@ class SortOp(theano.Op):
         index_shape = [1] * a.ndim
         index_shape[i] = a.shape[i]
         # it's a way to emulate
-        # numpy.ogrid[0: a.shape[0], 0: a.shape[1], 0: a.shape[2]]
+        # np.ogrid[0: a.shape[0], 0: a.shape[1], 0: a.shape[2]]
         index_val = arange(a.shape[i]).reshape(index_shape)
         return index_val
 
@@ -133,7 +133,7 @@ def sort(a, axis=-1, kind='quicksort', order=None):
 
 class ArgSortOp(theano.Op):
     """
-    This class is a wrapper for numpy argsort function.
+    This class is a wrapper for np argsort function.
 
     """
 

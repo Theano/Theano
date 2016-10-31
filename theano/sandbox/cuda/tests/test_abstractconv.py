@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
-import numpy
+import numpy as np
 import theano
 from theano.tensor.nnet.tests import test_abstract_conv
 from theano.sandbox.cuda import float32_shared_constructor as gpu_shared
@@ -164,4 +164,4 @@ class TestDnnConvTypes(test_abstract_conv.TestConvTypes):
         self.filters = cuda.ftensor4()
         self.topgrad = cuda.ftensor4()
         self.constant_tensor = cuda.CudaNdarray(
-            numpy.zeros((3, 5, 7, 11), dtype='float32'))
+            np.zeros((3, 5, 7, 11), dtype='float32'))

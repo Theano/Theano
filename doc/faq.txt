@@ -137,14 +137,14 @@ with
 
 .. testcode:: faster
 
-    import numpy
+    import numpy as np
     import theano
     from theano import function
 
     x = theano.tensor.scalar('x')
     f = function([x], x + 1.)
     f.trust_input = True
-    f(numpy.array([10.], dtype=theano.config.floatX))
+    f(np.array([10.], dtype=theano.config.floatX))
 
 Also, for small Theano functions, you can remove more Python overhead by
 making a Theano function that does not take any input. You can use shared

@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 from functools import wraps
 
-import numpy
+import numpy as np
 
 from theano import tensor, scalar as scal, Constant
 from theano.gof import local_optimizer
@@ -11,7 +11,7 @@ from theano.tensor import (DimShuffle, get_scalar_constant_value,
 from theano.sandbox.cuda.basic_ops import (
     GpuFromHost, HostFromGpu, host_from_gpu, GpuDimShuffle, GpuElemwise, GpuReshape)
 
-_one = scal.constant(numpy.asarray(1.0, dtype='float32'))
+_one = scal.constant(np.asarray(1.0, dtype='float32'))
 
 
 def grab_cpu_scalar(v, nd):

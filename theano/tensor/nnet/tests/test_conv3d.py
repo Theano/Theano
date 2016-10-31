@@ -8,7 +8,7 @@ from theano.tensor.nnet.ConvGrad3D import convGrad3D, ConvGrad3D
 from theano.tensor.nnet.Conv3D import conv3D, Conv3D
 from theano.tests.unittest_tools import attr
 from nose.plugins.skip import SkipTest
-import numpy as N
+import numpy as np
 from six.moves import xrange
 import copy
 import theano.sparse
@@ -117,20 +117,20 @@ class TestConv3D(utt.InferShapeTester):
     def setUp(self):
         super(TestConv3D, self).setUp()
         utt.seed_rng()
-        self.rng = N.random.RandomState(utt.fetch_seed())
+        self.rng = np.random.RandomState(utt.fetch_seed())
 
         mode = copy.copy(theano.compile.mode.get_default_mode())
         mode.check_py_code = False
 
-        self.W = shared(N.ndarray(shape=(1, 1, 1, 1, 1), dtype=floatX))
+        self.W = shared(np.ndarray(shape=(1, 1, 1, 1, 1), dtype=floatX))
         self.W.name = 'W'
-        self.b = shared(N.zeros(1, dtype=floatX))
+        self.b = shared(np.zeros(1, dtype=floatX))
         self.b.name = 'b'
-        self.rb = shared(N.zeros(1, dtype=floatX))
+        self.rb = shared(np.zeros(1, dtype=floatX))
         self.rb.name = 'rb'
-        self.V = shared(N.ndarray(shape=(1, 1, 1, 1, 1), dtype=floatX))
+        self.V = shared(np.ndarray(shape=(1, 1, 1, 1, 1), dtype=floatX))
         self.V.name = 'V'
-        self.d = shared(N.ndarray(shape=(3, ), dtype=int))
+        self.d = shared(np.ndarray(shape=(3, ), dtype=int))
         self.d.name = 'd'
 
         self.H = conv3D(self.V, self.W, self.b, self.d)
@@ -177,7 +177,7 @@ class TestConv3D(utt.InferShapeTester):
         self.dCdW_shape_func = function([self.RShape], T.grad(self.reconsObj, self.W).shape, mode=mode)
 
     def random_tensor(self, *dims):
-        return N.asarray(self.rng.uniform(-.05, .05, dims), dtype=floatX)
+        return np.asarray(self.rng.uniform(-.05, .05, dims), dtype=floatX)
 
     def randomize(self):
         batchSize = self.rng.randint(1, 4)
@@ -269,9 +269,9 @@ class TestConv3D(utt.InferShapeTester):
         assert Hv.shape[3] == 1
 
         n = inputChannels * videoHeight * videoWidth * videoDur
-        W_mat = N.zeros((n, numFilters))
-        V_mat = N.zeros((batchSize, n))
-        Hv_mat = N.zeros((batchSize, numFilters))
+        W_mat = np.zeros((n, numFilters))
+        V_mat = np.zeros((batchSize, n))
+        Hv_mat = np.zeros((batchSize, numFilters))
         for qi in xrange(0, numFilters):
             W_mat[:, qi] = \
                 self.W.get_value(borrow=True)[qi, :, :, :, :].reshape((n))
@@ -280,19 +280,19 @@ class TestConv3D(utt.InferShapeTester):
             V_mat[qi, :] = \
                 self.V.get_value(borrow=True)[qi, :, :, :, :].reshape((n))
 
-        H_mat = N.dot(V_mat, W_mat) + self.b.get_value(borrow=True)
+        H_mat = np.dot(V_mat, W_mat) + self.b.get_value(borrow=True)
 
         tol = 1e-5
         if floatX == 'float32':
             tol = 1e-4
 
-        if N.abs(H_mat - Hv_mat).max() > tol and not N.allclose(H_mat, Hv_mat):
+        if np.abs(H_mat - Hv_mat).max() > tol and not np.allclose(H_mat, Hv_mat):
             print(H_mat)
             print(Hv_mat)
-            print('max error: ' + str(N.abs(H_mat - Hv_mat).max()))
+            print('max error: ' + str(np.abs(H_mat - Hv_mat).max()))
             self.W.get_value(borrow=True)[self.W.get_value(borrow=True) != 0] += 1.0
             print('min non-zero kernel mag: ' + str(
-                N.abs(self.W.get_value(borrow=True)).min()))
+                np.abs(self.W.get_value(borrow=True)).min()))
             assert False
 
     def test_c_against_mat_transp_mul(self):
@@ -339,13 +339,13 @@ class TestConv3D(utt.InferShapeTester):
         Vv = self.transp_func(Hv, [videoHeight, videoWidth, videoDur])
 
         n = inputChannels * videoHeight * videoWidth * videoDur
-        rbim = N.zeros((videoHeight, videoWidth, videoDur, inputChannels))
+        rbim = np.zeros((videoHeight, videoWidth, videoDur, inputChannels))
         for qi in xrange(0, inputChannels):
             rbim[:, :, :, qi] = self.rb.get_value(borrow=True)[qi]
         rbv = rbim.reshape((n))
-        W_mat = N.zeros((numFilters, n))
-        Vv_mat = N.zeros((n, batchSize))
-        Hv_mat = N.zeros((numFilters, batchSize))
+        W_mat = np.zeros((numFilters, n))
+        Vv_mat = np.zeros((n, batchSize))
+        Hv_mat = np.zeros((numFilters, batchSize))
         for qi in xrange(0, numFilters):
             W_mat[qi, :] = \
                 self.W.get_value(borrow=True)[qi, :, :, :, :].reshape((n))
@@ -353,10 +353,10 @@ class TestConv3D(utt.InferShapeTester):
         for qi in xrange(0, batchSize):
             Vv_mat[:, qi] = Vv[qi, :, :, :, :].reshape((n))
 
-        V_mat = (N.dot(W_mat.transpose(), Hv_mat).transpose() +
+        V_mat = (np.dot(W_mat.transpose(), Hv_mat).transpose() +
                  rbv).transpose()
 
-        if N.abs(V_mat - Vv_mat).max() > 1e-5:
+        if np.abs(V_mat - Vv_mat).max() > 1e-5:
             print(V_mat)
             print(Vv_mat)
 
@@ -416,10 +416,10 @@ class TestConv3D(utt.InferShapeTester):
         H_shape = self.H_shape_func()
 
         # make index maps
-        h = N.zeros(H_shape[1:], dtype='int32')
-        r = N.zeros(H_shape[1:], dtype='int32')
-        c = N.zeros(H_shape[1:], dtype='int32')
-        t = N.zeros(H_shape[1:], dtype='int32')
+        h = np.zeros(H_shape[1:], dtype='int32')
+        r = np.zeros(H_shape[1:], dtype='int32')
+        c = np.zeros(H_shape[1:], dtype='int32')
+        t = np.zeros(H_shape[1:], dtype='int32')
 
         for qi in xrange(0, H_shape[4]):
             h[:, :, :, qi] = qi
@@ -442,21 +442,21 @@ class TestConv3D(utt.InferShapeTester):
         Vv = self.transp_func(Hv, [videoHeight, videoWidth, videoDur])
 
         n = inputChannels * videoHeight * videoWidth * videoDur
-        rbim = N.zeros((videoHeight, videoWidth, videoDur, inputChannels))
+        rbim = np.zeros((videoHeight, videoWidth, videoDur, inputChannels))
         for qi in xrange(0, inputChannels):
             rbim[:, :, :, qi] = self.rb.get_value(borrow=True)[qi]
         rbv = rbim.reshape((n))
 
-        W_mat = N.zeros((hn, n))
-        Vv_mat = N.zeros((n, batchSize))
-        Hv_mat = N.zeros((hn, batchSize))
+        W_mat = np.zeros((hn, n))
+        Vv_mat = np.zeros((n, batchSize))
+        Hv_mat = np.zeros((hn, batchSize))
         for qi in xrange(0, hn):
             hi = h[qi]
             ri = r[qi]
             ci = c[qi]
             ti = t[qi]
 
-            placed_filter = N.zeros(self.V.get_value(borrow=True).shape[1:])
+            placed_filter = np.zeros(self.V.get_value(borrow=True).shape[1:])
 
             placed_filter[
                 ri * dr:ri * dr + self.W.get_value(borrow=True).shape[1],
@@ -474,7 +474,7 @@ class TestConv3D(utt.InferShapeTester):
         temp = W_mat_T * Hv_mat
         V_mat = (temp.transpose() + rbv).transpose()
 
-        if N.abs(V_mat - Vv_mat).max() > 1e-5:
+        if np.abs(V_mat - Vv_mat).max() > 1e-5:
             print('mul')
             print(V_mat)
             print('conv')

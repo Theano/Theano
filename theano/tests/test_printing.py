@@ -5,7 +5,7 @@ from __future__ import absolute_import, print_function, division
 import logging
 
 from nose.plugins.skip import SkipTest
-import numpy
+import numpy as np
 
 from six.moves import StringIO
 
@@ -540,8 +540,8 @@ def test_scan_debugprint4():
     def fn(a_m2, a_m1, b_m2, b_m1):
         return a_m1 + a_m2, b_m1 + b_m2
 
-    a0 = theano.shared(numpy.arange(2, dtype='int64'))
-    b0 = theano.shared(numpy.arange(2, dtype='int64'))
+    a0 = theano.shared(np.arange(2, dtype='int64'))
+    b0 = theano.shared(np.arange(2, dtype='int64'))
 
     (a, b), _ = theano.scan(
         fn, outputs_info=[{'initial': a0, 'taps': [-2, -1]},

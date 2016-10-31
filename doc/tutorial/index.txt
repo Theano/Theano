@@ -27,7 +27,7 @@ Prerequisites
 .. toctree::
 
     python
-    numpy
+    np
 
 Basics
 ------

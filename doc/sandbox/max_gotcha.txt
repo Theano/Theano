@@ -15,7 +15,7 @@ corner cases.)
 
 IN CONTRAST
 
-numpy's max() function takes multiple arguments and returns the
+np's max() function takes multiple arguments and returns the
 largest element[s] from the *first* argument.  The second argument is
 used to identify the axis along which to evaluate the [python-style]
 max.  The third argument is an array into which the result can be
@@ -26,13 +26,13 @@ So for example:
 .. doctest::
    :options: +SKIP
 
-   >>> import numpy
+   >>> import numpy as np
    >>> max(3, 4)
    4
-   >>> numpy.max(3, 4) # This is an error
+   >>> np.max(3, 4) # This is an error
    3
-   >>> a, b, c = [numpy.asarray(i) for i in [0, 1, 2]]
-   >>> numpy.max(a, b, c) # This is an error
+   >>> a, b, c = [np.asarray(i) for i in [0, 1, 2]]
+   >>> np.max(a, b, c) # This is an error
    0
    >>> c
    array(0)
@@ -40,7 +40,7 @@ So for example:
 Be careful!
 
 Theano defines a max function (called theano.tensor.max) that is
-similar numpy's max.
+similar np's max.
 
 Theano also defines a function called theano.tensor.largest that is
 closer to python's, but not identical since it works elemwise for

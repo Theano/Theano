@@ -186,7 +186,7 @@ simple one.
 .. code-block:: python
 
 
-    import numpy, theano
+    import numpy as np, theano
 
     from pfunc import pfunc
     from sharedvalue import shared
@@ -204,8 +204,8 @@ simple one.
             self.input = input
             self.target = target
             self.lr = shared(lr, 'learning_rate')
-            self.w1 = shared(numpy.zeros((n_hidden, n_input)), 'w1')
-            self.w2 = shared(numpy.zeros((n_output, n_hidden)), 'w2')
+            self.w1 = shared(np.zeros((n_hidden, n_input)), 'w1')
+            self.w2 = shared(np.zeros((n_output, n_hidden)), 'w2')
 
             self.hidden = sigmoid(tensor.dot(self.w1, self.input))
             self.output = tensor.dot(self.w2, self.hidden)

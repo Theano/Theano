@@ -12,7 +12,7 @@ from __future__ import absolute_import, print_function, division
 # since this job is not restartable, channel is also ignored
 import logging
 
-import numpy
+import numpy as np
 from six.moves import xrange
 
 import theano
@@ -183,8 +183,8 @@ class Kouh2008(object):
         def shared_uniform(low, high, size, name):
             return _shared_uniform(rng, low, high, size, dtype, name)
 
-        f_list = [shared_uniform(low=-2.0 / numpy.sqrt(n_in),
-                                 high=2.0 / numpy.sqrt(n_in),
+        f_list = [shared_uniform(low=-2.0 / np.sqrt(n_in),
+                                 high=2.0 / np.sqrt(n_in),
                                  size=(n_in, n_out),
                                  name='f_%i' % i)
                   for i in xrange(n_terms)]
@@ -222,7 +222,7 @@ class Kouh2008(object):
         n_in, n_out = self.f_list[0].value.shape
 
         if rows is None and cols is None:
-            rows = int(numpy.sqrt(n_out))
+            rows = int(np.sqrt(n_out))
         if cols is None:
             cols = n_out // rows
             if n_out % rows:
@@ -236,7 +236,7 @@ class Kouh2008(object):
         height = rows * (row_gap + filter_shape[0]) - row_gap
         width = cols * (col_gap + filter_shape[1]) - col_gap
 
-        out_array = numpy.zeros((height, width, 3), dtype='uint8')
+        out_array = np.zeros((height, width, 3), dtype='uint8')
 
         w = self.w.value
         w_col = 0
@@ -346,7 +346,7 @@ if 0:
         x = theano.tensor.TensorType(dtype=conf.dtype, broadcastable=(0, 0), shape=sshape)()
         y = theano.tensor.lvector()
 
-        rng = numpy.random.RandomState(conf.rng_seed)
+        rng = np.random.RandomState(conf.rng_seed)
 
         if not debug:
             layer = Kouh2008.new_filters_expbounds(rng, x, x.type.shape[1], conf.n_hid, conf.n_terms)
@@ -369,6 +369,6 @@ if 0:
             rng.uniform(size=(conf.ft_batchsize, x.type.shape[1])),
             dtype=conf.dtype2,
             )
-        yval = numpy.arange(conf.ft_batchsize)
+        yval = np.arange(conf.ft_batchsize)
         for i in xrange(n_iter):
             train_nll(xval, yval, conf.lr)

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import copy
-import numpy
+import numpy as np
 import logging
 import pdb
 import time
@@ -611,7 +611,7 @@ def local_gpualloc_memset_0(node):
         inp = node.inputs[0]
         if (isinstance(inp, GpuArrayConstant) and
                 inp.data.size == 1 and
-                (numpy.asarray(inp.data) == 0).all()):
+                (np.asarray(inp.data) == 0).all()):
             new_op = gpu_alloc(node.op.context_name, memset_0=True)
             return [new_op(*node.inputs)]
 
@@ -621,7 +621,7 @@ def local_gpualloc_memset_0(node):
 def local_gpua_alloc_empty_to_zeros(node):
     if isinstance(node.op, GpuAllocEmpty):
         context_name = infer_context_name(*node.inputs)
-        z = numpy.asarray(0, dtype=node.outputs[0].dtype)
+        z = np.asarray(0, dtype=node.outputs[0].dtype)
         return [gpu_alloc(context_name)(as_gpuarray_variable(z, context_name),
                                         *node.inputs)]
 optdb.register('local_gpua_alloc_empty_to_zeros',
@@ -795,7 +795,7 @@ def local_gpua_shape_graph(op, context_name, inputs, outputs):
 
 
 def gpu_print_wrapper(op, cnda):
-    op.old_op.global_fn(op.old_op, numpy.asarray(cnda))
+    op.old_op.global_fn(op.old_op, np.asarray(cnda))
 
 
 @register_opt('fast_compile')

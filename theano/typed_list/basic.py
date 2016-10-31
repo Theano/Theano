@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
-import numpy
+import numpy as np
 
 from .type import TypedListType
 import theano
@@ -500,7 +500,7 @@ class Index(Op):
         (out,) = outputs
         for y in range(len(x)):
             if node.inputs[0].ttype.values_eq(x[y], elem):
-                out[0] = numpy.asarray(y, dtype=theano.config.floatX)
+                out[0] = np.asarray(y, dtype=theano.config.floatX)
                 break
 
     def __str__(self):
@@ -530,7 +530,7 @@ class Count(Op):
         for y in range(len(x)):
             if node.inputs[0].ttype.values_eq(x[y], elem):
                 out[0] += 1
-        out[0] = numpy.asarray(out[0], dtype=theano.config.floatX)
+        out[0] = np.asarray(out[0], dtype=theano.config.floatX)
 
     def __str__(self):
         return self.__class__.__name__
@@ -565,7 +565,7 @@ class Length(Op):
 
     def perform(self, node, x, outputs):
         (out,) = outputs
-        out[0] = numpy.asarray(len(x[0]), 'int64')
+        out[0] = np.asarray(len(x[0]), 'int64')
 
     def __str__(self):
         return self.__class__.__name__

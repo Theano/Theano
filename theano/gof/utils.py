@@ -4,7 +4,7 @@ import linecache
 import sys
 import traceback
 
-import numpy
+import numpy as np
 from six import iteritems, integer_types, string_types, with_metaclass
 from six.moves import StringIO
 
@@ -560,8 +560,8 @@ else:
         try:
             return hashlib.md5(msg).hexdigest()
         except TypeError:
-            assert isinstance(msg, numpy.ndarray)
-            return hashlib.md5(numpy.getbuffer(msg)).hexdigest()
+            assert isinstance(msg, np.ndarray)
+            return hashlib.md5(np.getbuffer(msg)).hexdigest()
 
 
 def hash_from_file(file_path):

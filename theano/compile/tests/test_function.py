@@ -5,7 +5,7 @@ import shutil
 import tempfile
 import unittest
 
-import numpy
+import numpy as np
 
 import theano
 from theano.compile.io import In
@@ -27,7 +27,7 @@ def test_function_dump():
 
     fct2 = theano.function(**l)
     x = [1, 2, 3]
-    assert numpy.allclose(fct1(x), fct2(x))
+    assert np.allclose(fct1(x), fct2(x))
 
 
 class TestFunctionIn(unittest.TestCase):
@@ -40,14 +40,14 @@ class TestFunctionIn(unittest.TestCase):
 
         f = theano.function([In(a, strict=False)], out)
         # works, rand generates float64 by default
-        f(numpy.random.rand(8))
+        f(np.random.rand(8))
         # works, casting is allowed
-        f(numpy.array([1, 2, 3, 4], dtype='int32'))
+        f(np.array([1, 2, 3, 4], dtype='int32'))
 
         f = theano.function([In(a, strict=True)], out)
         try:
             # fails, f expects float64
-            f(numpy.array([1, 2, 3, 4], dtype='int32'))
+            f(np.array([1, 2, 3, 4], dtype='int32'))
         except TypeError:
             pass
 
@@ -70,17 +70,17 @@ class TestFunctionIn(unittest.TestCase):
 
         # using mutable=True will let f change the value in aval
         f = theano.function([In(a, mutable=True)], a_out, mode='FAST_RUN')
-        aval = numpy.random.rand(10)
+        aval = np.random.rand(10)
         aval2 = aval.copy()
-        assert numpy.all(f(aval) == (aval2 * 2))
-        assert not numpy.all(aval == aval2)
+        assert np.all(f(aval) == (aval2 * 2))
+        assert not np.all(aval == aval2)
 
         # using mutable=False should leave the input untouched
         f = theano.function([In(a, mutable=False)], a_out, mode='FAST_RUN')
-        aval = numpy.random.rand(10)
+        aval = np.random.rand(10)
         aval2 = aval.copy()
-        assert numpy.all(f(aval) == (aval2 * 2))
-        assert numpy.all(aval == aval2)
+        assert np.all(f(aval) == (aval2 * 2))
+        assert np.all(aval == aval2)
 
     def test_in_update(self):
         a = theano.tensor.dscalar('a')
@@ -115,7 +115,7 @@ class TestFunctionIn(unittest.TestCase):
         # changes occur at the same time and one doesn't overwrite the other.
         for i in range(5):
             f()
-            assert numpy.allclose(shared_var.get_value(), i % 2)
+            assert np.allclose(shared_var.get_value(), i % 2)
 
     def test_in_allow_downcast_int(self):
         a = theano.tensor.wvector('a')  # int16
@@ -128,16 +128,16 @@ class TestFunctionIn(unittest.TestCase):
 
         # Both values are in range. Since they're not ndarrays (but lists),
         # they will be converted, and their value checked.
-        assert numpy.all(f([3], [6], 1) == 10)
+        assert np.all(f([3], [6], 1) == 10)
 
         # Values are in range, but a dtype too large has explicitly been given
         # For performance reasons, no check of the data is explicitly performed
         # (It might be OK to change this in the future.)
-        self.assertRaises(TypeError, f, [3], numpy.array([6], dtype='int16'),
+        self.assertRaises(TypeError, f, [3], np.array([6], dtype='int16'),
                           1)
 
         # Value too big for a, silently ignored
-        assert numpy.all(f([2 ** 20], numpy.ones(1, dtype='int8'), 1) == 2)
+        assert np.all(f([2 ** 20], np.ones(1, dtype='int8'), 1) == 2)
 
         # Value too big for b, raises TypeError
         self.assertRaises(TypeError, f, [3], [312], 1)
@@ -156,17 +156,17 @@ class TestFunctionIn(unittest.TestCase):
                             (a + b + c))
 
         # If the values can be accurately represented, everything is OK
-        assert numpy.all(f(0, 0, 0) == 0)
+        assert np.all(f(0, 0, 0) == 0)
 
         # If allow_downcast is True, idem
-        assert numpy.allclose(f(0.1, 0, 0), 0.1)
+        assert np.allclose(f(0.1, 0, 0), 0.1)
 
         # If allow_downcast is False, nope
         self.assertRaises(TypeError, f, 0, 0.1, 0)
 
         # If allow_downcast is None, it should work iff floatX=float32
         if theano.config.floatX == 'float32':
-            assert numpy.allclose(f(0, 0, 0.1), 0.1)
+            assert np.allclose(f(0, 0, 0.1), 0.1)
         else:
             self.assertRaises(TypeError, f, 0, 0, 0.1)
 
@@ -182,10 +182,10 @@ class TestFunctionIn(unittest.TestCase):
 
         # If the values can be accurately represented, everything is OK
         z = [0]
-        assert numpy.all(f(z, z, z) == 0)
+        assert np.all(f(z, z, z) == 0)
 
         # If allow_downcast is True, idem
-        assert numpy.allclose(f([0.1], z, z), 0.1)
+        assert np.allclose(f([0.1], z, z), 0.1)
 
         # If allow_downcast is False, nope
         self.assertRaises(TypeError, f, z, [0.1], z)

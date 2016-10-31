@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import theano.gof
 from theano.compat import PY3
 from theano.sandbox.cuda import CudaNdarrayType, GpuOp
@@ -143,7 +143,7 @@ class CURAND_Base(GpuOp):
         o_generator, o_sample = out
         destructive = int(self.destructive)
         ndim = self.output_type.ndim
-        o_type_num = numpy.asarray(0, dtype=self.output_type.dtype).dtype.num
+        o_type_num = np.asarray(0, dtype=self.output_type.dtype).dtype.num
         fail = sub['fail']
         seed = self.seed
         call_string = self._curand_call_str(o_sample=o_sample)

@@ -14,7 +14,7 @@ import time
 import traceback
 import warnings
 
-import numpy
+import numpy as np
 from six import integer_types, iteritems
 from six.moves import reduce, xrange
 
@@ -786,7 +786,7 @@ class MakeVector(T.Op):
         # So there will be (1 * nb_dtype) + ((nb len(inp) - 1 ))
         # different c code with the following algo
         out_shape = len(inp)
-        out_num = numpy.dtype(node.outputs[0].dtype).num
+        out_num = np.dtype(node.outputs[0].dtype).num
         # don't use dtype_%(out)s as when check_input=False, it isn't defined.
         out_dtype = node.outputs[0].type.dtype_specs()[1]
         if len(inp) > 0:
@@ -1056,8 +1056,8 @@ class ShapeFeature(object):
         if type(s_i) is float and int(s_i) == s_i:
             s_i = int(s_i)
         if (type(s_i) in integer_types or
-                isinstance(s_i, numpy.integer) or
-                (isinstance(s_i, numpy.ndarray) and s_i.ndim == 0)):
+                isinstance(s_i, np.integer) or
+                (isinstance(s_i, np.ndarray) and s_i.ndim == 0)):
             # this shape is a constant
             assert s_i >= 0
             return T.constant(s_i, dtype='int64')
@@ -1929,7 +1929,7 @@ def local_subtensor_remove_broadcastable_index(node):
         elif isinstance(elem, slice):
             if elem != slice(None):
                 return
-        elif isinstance(elem, (integer_types, numpy.integer)):
+        elif isinstance(elem, (integer_types, np.integer)):
             if elem in [0, -1] and node.inputs[0].broadcastable[dim]:
                 remove_dim.append(dim)
         else:
@@ -1981,7 +1981,7 @@ def local_subtensor_make_vector(node):
     else:
         return
 
-    if isinstance(idx, (integer_types, numpy.integer)):
+    if isinstance(idx, (integer_types, np.integer)):
         # We don't need to copy over any stack traces here
         return [x.owner.inputs[idx]]
     elif isinstance(idx, Variable):
@@ -1989,7 +1989,7 @@ def local_subtensor_make_vector(node):
             # if it is a constant we can do something with it
             try:
                 v = get_scalar_constant_value(idx, only_process_constants=True)
-                if isinstance(v, numpy.integer):
+                if isinstance(v, np.integer):
                     # Python 2.4 wants to index only with Python integers
                     v = int(v)
                 # We don't need to copy over any stack traces here
@@ -2269,14 +2269,14 @@ class Assert(T.Op):
         if not isinstance(value, Variable):
             value = T.as_tensor_variable(value)
         cond = [T.as_tensor_variable(c) for c in conds]
-        assert numpy.all([c.type.ndim == 0 for c in cond])
+        assert np.all([c.type.ndim == 0 for c in cond])
         return gof.Apply(self, [value] + cond, [value.type()])
 
     def perform(self, node, inputs, out_):
         out, = out_
         v = inputs[0]
         out[0] = v
-        assert numpy.all(inputs[1:]), self.msg
+        assert np.all(inputs[1:]), self.msg
 
     def grad(self, input, output_gradients):
         return output_gradients + [DisconnectedType()()] * (len(input) - 1)
@@ -2614,7 +2614,7 @@ def local_useless_subtensor(node):
 
             length_pos = shape_of[node.inputs[0]][pos]
 
-            if isinstance(idx.stop, (integer_types, numpy.integer)):
+            if isinstance(idx.stop, (integer_types, np.integer)):
                 length_pos_data = sys.maxsize
                 try:
                     length_pos_data = get_scalar_constant_value(length_pos,
@@ -2672,7 +2672,7 @@ def local_useless_subtensor(node):
             idx = idx.value
             if len(idx) != length:
                 return False
-            if numpy.any(idx != numpy.arange(length)):
+            if np.any(idx != np.arange(length)):
                 return False
         elif idx.owner is not None and isinstance(idx.owner.op, T.ARange):
             try:
@@ -3528,7 +3528,7 @@ def local_useless_rebroadcast(node):
     """
     if isinstance(node.op, T.Rebroadcast):
         x = node.inputs[0]
-        if numpy.all(x.broadcastable == node.outputs[0].broadcastable):
+        if np.all(x.broadcastable == node.outputs[0].broadcastable):
             # No broadcastable flag was modified
             # No need to copy over stack trace,
             # because x should already have a stack trace.
@@ -3841,8 +3841,8 @@ def local_useless_switch(node):
             isinstance(node.op.scalar_op, scalar.basic.Switch)):
         cond = T.extract_constant(node.inputs[0],
                                   only_process_constants=True)
-        if ((type(cond) is numpy.ndarray and cond.ndim == 0) or
-                isinstance(cond, numpy.number)):
+        if ((type(cond) is np.ndarray and cond.ndim == 0) or
+                isinstance(cond, np.number)):
             if cond == 0:
                 correct_out = node.inputs[2]
             else:
@@ -4503,7 +4503,7 @@ class Canonizer(gof.LocalOptimizer):
         A function such that main(x, reciprocal(y)) == inverse(x, y)
         e.g. neg or inv
     calculate
-        Function that takes a list of numpy.ndarray instances
+        Function that takes a list of np.ndarray instances
         for the numerator, another list for the denumerator,
         and calculates inverse(main(\*num), main(\*denum)). It
         takes a keyword argument, aslist. If True, the value
@@ -4909,7 +4909,7 @@ class Canonizer(gof.LocalOptimizer):
         num, denum = self.simplify(list(orig_num), list(orig_denum), out.type)
 
         def same(x, y):
-            return len(x) == len(y) and all(numpy.all(xe == ye) for xe, ye in
+            return len(x) == len(y) and all(np.all(xe == ye) for xe, ye in
                                             zip(x, y))
 
         if same(orig_num, num) and same(orig_denum, denum):
@@ -4950,7 +4950,7 @@ def mul_calculate(num, denum, aslist=False, out_type=None):
         if aslist:
             return []
         else:
-            return numpy.int8(1)
+            return np.int8(1)
 
     # Make sure we do not accidently upcast data types.
     if out_type is None:
@@ -4959,9 +4959,9 @@ def mul_calculate(num, denum, aslist=False, out_type=None):
         out_dtype = out_type.dtype
     one = theano._asarray(1, dtype=out_dtype)
 
-    v = reduce(numpy.multiply, num, one) / reduce(numpy.multiply, denum, one)
+    v = reduce(np.multiply, num, one) / reduce(np.multiply, denum, one)
     if aslist:
-        if numpy.all(v == 1):
+        if np.all(v == 1):
             return []
         else:
             return [v]
@@ -4974,7 +4974,7 @@ register_canonicalize(local_mul_canonizer, name='local_mul_canonizer')
 @gof.local_optimizer([T.neg])
 def local_neg_to_mul(node):
     if node.op == T.neg:
-        return [T.mul(numpy.array(-1, dtype=node.inputs[0].dtype),
+        return [T.mul(np.array(-1, dtype=node.inputs[0].dtype),
                 node.inputs[0])]
 register_canonicalize(local_neg_to_mul)
 
@@ -4999,13 +4999,13 @@ def local_sum_prod_mul_by_scalar(node):
         if node_inps.owner and node_inps.owner.op == T.mul:
             terms = node_inps.owner.inputs
             scalars = [t.dimshuffle() for t in terms if
-                       numpy.all(t.type.broadcastable)]
+                       np.all(t.type.broadcastable)]
 
             if len(scalars) == 0:
                 # Nothing to optimize here
                 return
 
-            non_scalars = [t for t in terms if not numpy.all(t.broadcastable)]
+            non_scalars = [t for t in terms if not np.all(t.broadcastable)]
 
             # Perform the op only on the non-scalar inputs, if applicable
             if len(non_scalars) == 0:
@@ -5640,7 +5640,7 @@ def local_neg_div_neg(node):
                     # No other clients of the original division
                     new_num = num.owner.inputs[0]
                     return [T.true_div(new_num, denom)]
-            elif numpy.all(num.broadcastable) and isinstance(num, Constant):
+            elif np.all(num.broadcastable) and isinstance(num, Constant):
                 if len(frac.clients) == 1:
                     new_num = -num.data
                     return [T.true_div(new_num, denom)]
@@ -5671,7 +5671,7 @@ register_canonicalize(local_mul_zero)
 
 @gof.local_optimizer([T.true_div])
 def local_div_to_inv(node):
-    if node.op == T.true_div and numpy.all(
+    if node.op == T.true_div and np.all(
             local_mul_canonizer.get_constant(node.inputs[0]) == 1.0):
         out = node.outputs[0]
         new_out = T.inv(local_mul_canonizer.merge_num_denum(node.inputs[1:],
@@ -5733,7 +5733,7 @@ def local_intdiv_by_one(node):
     """
     if node.op in [T.int_div]:
         if isinstance(node.inputs[1], T.TensorConstant) and \
-           numpy.all(node.inputs[1].value == 1):
+           np.all(node.inputs[1].value == 1):
             return [node.inputs[0].astype(node.outputs[0].dtype)]
 
 
@@ -5766,19 +5766,19 @@ def local_pow_specialize(node):
                                               ysym.type.broadcastable):
             rval = None
 
-            if numpy.all(y == 2):
+            if np.all(y == 2):
                 rval = [T.sqr(xsym)]
-            if numpy.all(y == 1):
+            if np.all(y == 1):
                 rval = [xsym]
-            if numpy.all(y == 0):
-                rval = [T.fill(xsym, numpy.asarray(1, dtype=odtype))]
-            if numpy.all(y == 0.5):
+            if np.all(y == 0):
+                rval = [T.fill(xsym, np.asarray(1, dtype=odtype))]
+            if np.all(y == 0.5):
                 rval = [T.sqrt(xsym)]
-            if numpy.all(y == -0.5):
+            if np.all(y == -0.5):
                 rval = [T.inv(T.sqrt(xsym))]
-            if numpy.all(y == -1):
+            if np.all(y == -1):
                 rval = [T.inv(xsym)]
-            if numpy.all(y == -2):
+            if np.all(y == -2):
                 rval = [T.inv(T.sqr(xsym))]
             if rval:
                 rval[0] = T.cast(rval[0], odtype)
@@ -5809,9 +5809,9 @@ def local_pow_specialize_device(node):
         # y is a ndarray with dtype int8 and value 2,4 or 6. This make
         # the abs(y) <= 512 fail!
         # taking the value outside ndarray solve the problem.
-        # it could be that in that case, numpy make the comparaison
+        # it could be that in that case, np make the comparaison
         # into the wrong type(do in int8 that overflow.)
-        if isinstance(y, numpy.ndarray):
+        if isinstance(y, np.ndarray):
             assert y.size == 1
             try:
                 y = y[0]
@@ -5826,13 +5826,13 @@ def local_pow_specialize_device(node):
                 pow2 = [xsym]
                 pow2_scal = [theano.scalar.get_scalar_type(xsym.dtype)()]
                 y_to_do = abs(y)
-                for i in xrange(int(numpy.log2(y_to_do))):
+                for i in xrange(int(np.log2(y_to_do))):
                     pow2.append(T.sqr(pow2[i]))
                     pow2_scal.append(theano.scalar.sqr(pow2_scal[i]))
                 rval1 = None
                 rval1_scal = None
                 while y_to_do > 0:
-                    log_to_do = int(numpy.log2(y_to_do))
+                    log_to_do = int(np.log2(y_to_do))
                     if rval1:
                         rval1 *= pow2[log_to_do]
                         rval1_scal *= pow2_scal[log_to_do]
@@ -5918,7 +5918,7 @@ def local_mul_specialize(node):
                     elif neg:
                         # Don't add an extra neg node as we can't
                         # fully replace this mul by a neg.
-                        m1 = numpy.asarray(-1, dtype=node.outputs[0].dtype)
+                        m1 = np.asarray(-1, dtype=node.outputs[0].dtype)
                         new_inputs = [m1] + new_inputs
                     rval = T.mul(*new_inputs)
 
@@ -5949,7 +5949,7 @@ def local_add_specialize(node):
                 y = get_scalar_constant_value(input)
             except NotScalarConstantError:
                 y = input
-            if numpy.all(y == 0.0):
+            if np.all(y == 0.0):
                 continue
             new_inputs.append(input)
 
@@ -5959,7 +5959,7 @@ def local_add_specialize(node):
                 # we got rid of the entire expression!
                 ndim = node.outputs[0].type.ndim
                 # Reuse call to constant for cache()
-                cst = T.constant(numpy.zeros((1,) * ndim, dtype=dtype))
+                cst = T.constant(np.zeros((1,) * ndim, dtype=dtype))
                 assert cst.type.broadcastable == (True,) * ndim
                 return fill_chain(cst)
 
@@ -6066,7 +6066,7 @@ def local_log1p(node):
             scalars, scalar_inputs, nonconsts = scalarconsts_rest(
                 log_arg.owner.inputs, only_process_constants=True)
             # scalar_inputs are potentially dimshuffled and fill'd scalars
-            if scalars and numpy.allclose(numpy.sum(scalars), 1):
+            if scalars and np.allclose(np.sum(scalars), 1):
                 if nonconsts:
                     if len(nonconsts) > 1:
                         ninp = T.add(*nonconsts)
@@ -6172,9 +6172,9 @@ def add_calculate(num, denum, aslist=False, out_type=None):
         zero = theano._asarray(0, dtype=out_type.dtype)
     # zero = 0.0 if out_type is None else theano._asarray(0,
     # dtype=out_type.dtype)
-    v = reduce(numpy.add, num, zero) - reduce(numpy.add, denum, zero)
+    v = reduce(np.add, num, zero) - reduce(np.add, denum, zero)
     if aslist:
-        if numpy.all(v == 0):
+        if np.all(v == 0):
             return []
         else:
             return [v]
@@ -6545,10 +6545,10 @@ register_specialize(local_erf_neg_minus_one2)
 # log(erfc(x)) => when x>threashold,
 #              -x**2-log(x)-.5*log(pi)+log(1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6))
 # for float64: threshold=26.641747557 was choosed with:
-#  [(i,numpy.log(scipy.special.erfc(numpy.asarray([i],dtype='float64'))))
-#   for i in numpy.arange(26.641747557,26.6417475571,.00000000001)]
-# for float32: threshold=10.0541949, [(i,numpy.log(scipy.special.erfc(
-#        numpy.asarray([i],dtype='float32')))) for i in numpy.arange(
+#  [(i,np.log(scipy.special.erfc(np.asarray([i],dtype='float64'))))
+#   for i in np.arange(26.641747557,26.6417475571,.00000000001)]
+# for float32: threshold=10.0541949, [(i,np.log(scipy.special.erfc(
+#        np.asarray([i],dtype='float32')))) for i in np.arange(
 #        10.0541948,10.0541951,.0000001)]
 @register_stabilize
 @register_specialize
@@ -6565,7 +6565,7 @@ def local_log_erfc(node):
     node.tag.local_log_erfc_applied = True
 
     x = node.inputs[0].owner.inputs[0]
-    stab_value = (-x ** 2 - T.log(x) - .5 * T.log(numpy.pi) +
+    stab_value = (-x ** 2 - T.log(x) - .5 * T.log(np.pi) +
                   T.log(1 - 1 / (2 * x ** 2) + 3 / (4 * x ** 4) -
                   15 / (8 * x ** 6)))
 
@@ -6720,7 +6720,7 @@ def local_grad_log_erfc_neg(node):
     # aaron value
     stab_value = (x * T.pow(1 - 1 / (2 * (x ** 2)) +
                   3 / (4 * (x ** 4)) - 15 / (8 * (x ** 6)), -1) *
-                  T.cast(T.sqrt(numpy.pi), dtype=x.dtype))
+                  T.cast(T.sqrt(np.pi), dtype=x.dtype))
 
     if x.dtype == 'float32' or x.dtype == 'float16':
         threshold = 9.3
@@ -6739,34 +6739,34 @@ The libm used for the test is amdlibm
 #-x*(1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6))*sqrt(pi) for float64:
 #threshold=26.63 see below for float32: threshold=9.3 see below TODO
 #remove the contraint that there are only 2 inputs to mul TODO: should
-#we cast numpy.pi to x.dtype?
+#we cast np.pi to x.dtype?
 
 #float32 threshold 9.3 as the approximation is more precise at that
 #point and more stable.
-import numpy, scipy.special
-r = numpy.arange(9,10.06,.01)
+import numpy as np, scipy.special
+r = np.arange(9,10.06,.01)
 
-p64=[(numpy.exp(-(x**2)))/scipy.special.erfc(x) for x in r]
-p32=[(numpy.exp(-(x**2)))/scipy.special.erfc(x) for x in
-numpy.asarray(r,dtype='float32')]
-a64=[x*((1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6))**(-1))*numpy.sqrt(numpy.pi)
+p64=[(np.exp(-(x**2)))/scipy.special.erfc(x) for x in r]
+p32=[(np.exp(-(x**2)))/scipy.special.erfc(x) for x in
+np.asarray(r,dtype='float32')]
+a64=[x*((1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6))**(-1))*np.sqrt(np.pi)
 for x in r]
 a32=[x*((1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6))**(-1))
-     * numpy.float32(numpy.sqrt(numpy.pi))
-for x in numpy.asarray(r,dtype='float32')] for idx,(a,b,c,d,e) in
+     * np.float32(np.sqrt(np.pi))
+for x in np.asarray(r,dtype='float32')] for idx,(a,b,c,d,e) in
 enumerate(zip(r,p64,p32,a64,a32)):print
-a,b,c,d,e,c-b,e-b,numpy.absolute(c-b)<numpy.absolute(e-b)
+a,b,c,d,e,c-b,e-b,np.absolute(c-b)<np.absolute(e-b)
 
 #, show that the value don't look stable at some point before inf.
 for i in xrange(1,len(p32)): print r[i], p32[i]-p32[i-1]
 
 #float64 threshold is 26.63 the approx seam more precise at that
-point.  r = numpy.arange(26.2,26.7,.001)
-#scipy.special.erfc(numpy.float128(x)) don't work
-#p128=[(numpy.exp(-(x**2)))/scipy.special.erfc(x)for x in
-numpy.float128(r)] #those value have been computed with g++
+point.  r = np.arange(26.2,26.7,.001)
+#scipy.special.erfc(np.float128(x)) don't work
+#p128=[(np.exp(-(x**2)))/scipy.special.erfc(x)for x in
+np.float128(r)] #those value have been computed with g++
 theano/misc/erfc_stability_threshold.c && ./a.out
-p128=numpy.float128(['46.47206725', '46.47383842', '46.47560959',
+p128=np.float128(['46.47206725', '46.47383842', '46.47560959',
 '46.47738076', '46.47915193', '46.48092309', '46.48269426',
 '46.48446543', '46.48623660', '46.48800777', '46.48977894',
 '46.49155011', '46.49332128', '46.49509245', '46.49686362',
@@ -6891,12 +6891,12 @@ p128=numpy.float128(['46.47206725', '46.47383842', '46.47560959',
 '47.33640886', '47.33818007', '47.33995129', '47.34172250',
 '47.34349372', '47.34526493', '47.34703615', '47.34880736',
 '47.35057858', '47.35234979', '47.35412101', '47.35589223'])
-p64=[(numpy.exp(-(x**2)))/scipy.special.erfc(x)for x in r]
+p64=[(np.exp(-(x**2)))/scipy.special.erfc(x)for x in r]
 a128=[x*((1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6))**(-1))
-      *numpy.float128(numpy.sqrt(numpy.pi))
-      for x in numpy.asarray(r,dtype='float128')]
+      *np.float128(np.sqrt(np.pi))
+      for x in np.asarray(r,dtype='float128')]
 a64=[x*((1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6)+63/(7*x**8))**(-1))
-     *numpy.sqrt(numpy.pi)
+     *np.sqrt(np.pi)
      for x in r] for a,b,c,d in zip(r,p128,p64,a64):print a,b,c,d,c-b,d-b
 
 for i in xrange(1,len(p64)): print i, 64[i]-p64[i-1]
@@ -6925,7 +6925,7 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 32,
         that 256 limit.
 
         On the CPU we limit to 32 input variables
-        since that is the maximum numpy support.
+        since that is the maximum np support.
 
     """
     if maker is None:
@@ -7147,7 +7147,7 @@ your code will run correctly, but may be slower.""")
 
 
 def elemwise_max_input_fct(node):
-    # The Elemwise.perform use numpy ufunc and they are limited to 31
+    # The Elemwise.perform use np ufunc and they are limited to 31
     # inputs.
     if not theano.config.cxx:
         return 31

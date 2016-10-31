@@ -114,10 +114,10 @@ Printing/Drawing Theano graphs
 
 Consider the following logistic regression model:
 
->>> import numpy
+>>> import numpy as np
 >>> import theano
 >>> import theano.tensor as T
->>> rng = numpy.random
+>>> rng = np.random
 >>> # Training data
 >>> N = 400
 >>> feats = 784
@@ -127,7 +127,7 @@ Consider the following logistic regression model:
 >>> x = T.matrix("x")
 >>> y = T.vector("y")
 >>> w = theano.shared(rng.randn(feats).astype(theano.config.floatX), name="w")
->>> b = theano.shared(numpy.asarray(0., dtype=theano.config.floatX), name="b")
+>>> b = theano.shared(np.asarray(0., dtype=theano.config.floatX), name="b")
 >>> x.tag.test_value = D[0]
 >>> y.tag.test_value = D[1]
 >>> # Construct Theano expression graph
@@ -248,7 +248,7 @@ Debugging
   - Allows you to find the bug earlier (ex: shape mismatch)
   - Makes it easier to identify where the problem is in *your* code
   - Use the value of constants and shared variables directly
-  - For pure symbolic variables uses ``x.tag.test_value = numpy.random.rand(5,10)``
+  - For pure symbolic variables uses ``x.tag.test_value = np.random.rand(5,10)``
 
 - Run with the flag ``mode=FAST_COMPILE``
   

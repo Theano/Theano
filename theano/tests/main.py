@@ -3,11 +3,12 @@ import os
 import unittest
 import sys
 
+import numpy as np
 from numpy.testing.nosetester import NoseTester
 
 
 # This class contains code adapted from NumPy,
-# numpy/testing/nosetester.py,
+# np/testing/nosetester.py,
 # Copyright (c) 2005-2011, NumPy Developers
 class TheanoNoseTester(NoseTester):
     """
@@ -55,7 +56,7 @@ class TheanoNoseTester(NoseTester):
         # compile argv
         argv = self._test_argv(verbose, extra_argv)
 
-        # numpy way of doing coverage
+        # np way of doing coverage
         if coverage:
             argv += ['--cover-package=%s' % self.package_name,
                      '--with-coverage', '--cover-tests',

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import numpy as np
-import numpy
+import numpy as np
 import warnings
 from six.moves import xrange
 
@@ -71,13 +71,13 @@ cpu_contiguous = CpuContiguous()
 
 
 class SearchsortedOp(theano.Op):
-    """Wrapper of numpy.searchsorted.
+    """Wrapper of np.searchsorted.
 
     For full documentation, see :func:`searchsorted`.
 
     See Also
     --------
-    searchsorted : numpy-like function to use the SearchsortedOp
+    searchsorted : np-like function to use the SearchsortedOp
 
     """
 
@@ -105,7 +105,7 @@ class SearchsortedOp(theano.Op):
             if (theano.configdefaults.python_int_bitwidth() == 32 and
                     sorter.dtype == 'int64'):
                 raise TypeError(
-                    "numpy.searchsorted with Python 32bit do not support a"
+                    "np.searchsorted with Python 32bit do not support a"
                     " sorter of int64.")
             if sorter.type not in basic.int_vector_types:
                 raise TypeError('sorter must be an integer vector',
@@ -188,7 +188,7 @@ class SearchsortedOp(theano.Op):
 def searchsorted(x, v, side='left', sorter=None):
     """Find indices where elements should be inserted to maintain order.
 
-    Wrapping of numpy.searchsorted. Find the indices into a sorted array
+    Wrapping of np.searchsorted. Find the indices into a sorted array
     `x` such that, if the corresponding elements in `v` were inserted
     before the indices, the order of `x` would be preserved.
 
@@ -216,7 +216,7 @@ def searchsorted(x, v, side='left', sorter=None):
 
     See Also
     --------
-    `numpy.searchsorted <https://docs.scipy.org/doc/numpy-1.10.0/reference/generated/numpy.searchsorted.html>`_
+    `np.searchsorted <https://docs.scipy.org/doc/numpy-1.10.0/reference/generated/numpy.searchsorted.html>`_
 
     Notes
     -----
@@ -349,7 +349,7 @@ class CumsumOp(theano.Op):
 def cumsum(x, axis=None):
     """Return the cumulative sum of the elements along a given axis.
 
-    Wraping of numpy.cumsum.
+    Wraping of np.cumsum.
 
     Parameters
     ----------
@@ -473,7 +473,7 @@ class CumprodOp(theano.Op):
 def cumprod(x, axis=None):
     """Return the cumulative product of the elements along a given axis.
 
-    Wraping of numpy.cumprod.
+    Wraping of np.cumprod.
 
     Parameters
     ----------
@@ -498,7 +498,7 @@ class DiffOp(theano.Op):
     def __init__(self, n=1, axis=-1):
         self.n = n
         self.axis = axis
-        # numpy return a view in that case.
+        # np return a view in that case.
         # TODO, make an optimization that remove this op in this case.
         if n == 0:
             self.view_map = {0: [0]}
@@ -542,7 +542,7 @@ def diff(x, n=1, axis=-1):
 
     The first order difference is given by out[i] = a[i + 1] - a[i]
     along the given axis, higher order differences are calculated by
-    using diff recursively. Wraping of numpy.diff.
+    using diff recursively. Wraping of np.diff.
 
     Parameters
     ----------
@@ -576,8 +576,8 @@ class BinCountOp(theano.Op):
     def __init__(self, minlength=None):
         self.minlength = minlength
         if minlength is not None:
-            numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-            if not bool(numpy_ver >= [1, 6]):
+            np_ver = [int(n) for n in np.__version__.split('.')[:2]]
+            if not bool(np_ver >= [1, 6]):
                 raise NotImplementedError(
                     "BinCountOp with minlength attribute"
                     " requires NumPy 1.6 or higher.")
@@ -592,24 +592,24 @@ class BinCountOp(theano.Op):
         if x.dtype not in BinCountOp.compatible_type:
             raise TypeError("Inputs dtype must be an integer.")
 
-        # Some dtypes are not supported by numpy's implementation of bincount.
+        # Some dtypes are not supported by np's implementation of bincount.
         # Until another one is available, we should fail at graph construction
         # time, not wait for execution.
         int_bitwidth = theano.configdefaults.python_int_bitwidth()
         if int_bitwidth == 64:
-            numpy_unsupported_dtypes = ('uint64',)
+            np_unsupported_dtypes = ('uint64',)
         if int_bitwidth == 32:
-            numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
+            np_unsupported_dtypes = ('uint32', 'int64', 'uint64')
         intp_bitwidth = theano.configdefaults.local_bitwidth()
         if intp_bitwidth == 32:
             out_type = basic.ivector()
         elif intp_bitwidth == 64:
             out_type = basic.lvector()
 
-        if x.dtype in numpy_unsupported_dtypes:
+        if x.dtype in np_unsupported_dtypes:
             raise TypeError(
-                ("Input dtypes %s are not supported by numpy.bincount, "
-                 % numpy_unsupported_dtypes), x.dtype)
+                ("Input dtypes %s are not supported by np.bincount, "
+                 % np_unsupported_dtypes), x.dtype)
 
         if x.ndim != 1:
             raise TypeError("Inputs must be of dimension 1.")
@@ -633,7 +633,7 @@ class BinCountOp(theano.Op):
         if weights is not None and weights.shape != x.shape:
             raise TypeError("All inputs must have the same shape.")
 
-        # Needed for numpy 1.4.1 compatibility
+        # Needed for np 1.4.1 compatibility
         if self.minlength:
             out = np.bincount(x, weights=weights, minlength=self.minlength)
         else:
@@ -739,7 +739,7 @@ def compress(condition, x, axis=None):
 
     It returns the input tensor, but with selected slices along a given axis
     retained. If no axis is provided, the tensor is flattened.
-    Corresponds to numpy.compress
+    Corresponds to np.compress
 
     .. versionadded:: 0.7
 
@@ -776,20 +776,20 @@ class RepeatOp(theano.Op):
         if repeats.dtype not in tensor.discrete_dtypes:
             raise TypeError("repeats.dtype must be an integer.")
 
-        # Some dtypes are not supported by numpy's implementation of repeat.
+        # Some dtypes are not supported by np's implementation of repeat.
         # Until another one is available, we should fail at graph construction
         # time, not wait for execution.
         ptr_bitwidth = theano.configdefaults.local_bitwidth()
         if ptr_bitwidth == 64:
-            numpy_unsupported_dtypes = ('uint64',)
+            np_unsupported_dtypes = ('uint64',)
         if ptr_bitwidth == 32:
-            numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
+            np_unsupported_dtypes = ('uint32', 'int64', 'uint64')
 
-        if repeats.dtype in numpy_unsupported_dtypes:
+        if repeats.dtype in np_unsupported_dtypes:
             raise TypeError(
-                ("dtypes %s are not supported by numpy.repeat "
+                ("dtypes %s are not supported by np.repeat "
                  "for the 'repeats' parameter, "
-                 % str(numpy_unsupported_dtypes)), repeats.dtype)
+                 % str(np_unsupported_dtypes)), repeats.dtype)
 
         if self.axis is None:
             broadcastable = [False]
@@ -933,7 +933,7 @@ def repeat(x, repeats, axis=None):
         shape[axis] = shape[axis] * repeats
 
         # dims_ is the dimension of that intermediate tensor.
-        dims_ = list(numpy.arange(x.ndim))
+        dims_ = list(np.arange(x.ndim))
         dims_.insert(axis + 1, 'x')
 
         # After the original tensor is duplicated along the additional
@@ -962,7 +962,7 @@ class Bartlett(gof.Op):
     def perform(self, node, inputs, out_):
         M = inputs[0]
         out, = out_
-        out[0] = numpy.bartlett(M)
+        out[0] = np.bartlett(M)
 
     def infer_shape(self, node, in_shapes):
         temp = node.inputs[0]
@@ -1030,7 +1030,7 @@ class FillDiagonal(gof.Op):
         a = inputs[0].copy()
         val = inputs[1]
         if a.ndim == 2:
-            # numpy.fill_diagonal up to date(including 1.6.2) have a
+            # np.fill_diagonal up to date(including 1.6.2) have a
             # bug for tall matrix.
             # For 2-d arrays, we accept rectangular ones.
             step = a.shape[1] + 1
@@ -1038,7 +1038,7 @@ class FillDiagonal(gof.Op):
             # Write the value out into the diagonal.
             a.flat[:end:step] = val
         else:
-            numpy.fill_diagonal(a, val)
+            np.fill_diagonal(a, val)
 
         output_storage[0][0] = a
 
@@ -1139,8 +1139,8 @@ class FillDiagonalOffset(gof.Op):
         Notes
         -----
         The fill_diagonal only support rectangular matrix. The output
-        of tall matrix is "wrapped", which is an option in numpy 1.9.0
-        but was regarded as a bug in numpy 1.6.2. Here I implement the
+        of tall matrix is "wrapped", which is an option in np 1.9.0
+        but was regarded as a bug in np 1.6.2. Here I implement the
         fill_diagonal_offset with unwrapped output, so fill_diagonal_offset
         supports tall matrix.(This make a little difference between the output
         of fill_diagonal and fill_diagonal_offset only in the case of tall
@@ -1262,7 +1262,7 @@ def to_one_hot(y, nb_class, dtype=None):
 
 class Unique(theano.Op):
     """
-    Wraps numpy.unique. This op is not implemented on the GPU.
+    Wraps np.unique. This op is not implemented on the GPU.
 
     Examples
     --------
@@ -1288,8 +1288,8 @@ class Unique(theano.Op):
         self.return_index = return_index
         self.return_inverse = return_inverse
         self.return_counts = return_counts
-        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-        if self.return_counts and bool(numpy_ver < [1, 9]):
+        np_ver = [int(n) for n in np.__version__.split('.')[:2]]
+        if self.return_counts and bool(np_ver < [1, 9]):
             raise RuntimeError(
                 "Numpy version = " + np.__version__ +
                 ". Option 'return_counts=True' works starting"

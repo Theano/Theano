@@ -1,6 +1,5 @@
 from __future__ import absolute_import, print_function, division
 import unittest
-import numpy
 import numpy as np
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises, assert_true
@@ -165,8 +164,8 @@ class BaseTestConv(object):
         if filter_dilation is None:
             filter_dilation = (1,) * (len(inputs_shape) - 2)
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
 
         # scale down values to prevent rounding errors
         inputs_val /= 10
@@ -208,8 +207,8 @@ class BaseTestConv(object):
             if check_trace:
                 assert_true(check_stack_trace(f, ops_to_check=target_op))
 
-        res_ref = numpy.array(f_ref())
-        res = numpy.array(f())
+        res_ref = np.array(f_ref())
+        res = np.array(f())
         utt.assert_allclose(res_ref, res)
         if verify_grad:
             utt.verify_grad(conv_op(border_mode=border_mode,
@@ -230,8 +229,8 @@ class BaseTestConv(object):
         if filter_dilation is None:
             filter_dilation = (1,) * (len(inputs_shape) - 2)
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        output_val = numpy.random.random(output_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        output_val = np.random.random(output_shape).astype('float32')
 
         inputs = self.shared(inputs_val)
         output = self.shared(output_val)
@@ -267,8 +266,8 @@ class BaseTestConv(object):
             if check_trace:
                 assert_true(check_stack_trace(f, ops_to_check=target_op))
 
-        res_ref = numpy.array(f_ref())
-        res = numpy.array(f())
+        res_ref = np.array(f_ref())
+        res = np.array(f())
         utt.assert_allclose(res_ref, res)
 
         def abstract_conv_gradweight(inputs_val, output_val):
@@ -293,8 +292,8 @@ class BaseTestConv(object):
         if filter_dilation is None:
             filter_dilation = (1,) * (len(inputs_shape) - 2)
 
-        output_val = numpy.random.random(output_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        output_val = np.random.random(output_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
         output = self.shared(output_val)
         filters = self.shared(filters_val)
 
@@ -326,8 +325,8 @@ class BaseTestConv(object):
             if check_trace:
                 assert_true(check_stack_trace(f, ops_to_check=target_op))
 
-        res_ref = numpy.array(f_ref())
-        res = numpy.array(f())
+        res_ref = np.array(f_ref())
+        res = np.array(f())
         utt.assert_allclose(res_ref, res)
 
         def abstract_conv_gradinputs(filters_val, output_val):
@@ -827,7 +826,7 @@ class TestConvTypes(unittest.TestCase):
         self.filters = tensor.ftensor4()
         self.topgrad = tensor.ftensor4()
 
-        self.constant_tensor = numpy.zeros((3, 5, 7, 11), dtype='float32')
+        self.constant_tensor = np.zeros((3, 5, 7, 11), dtype='float32')
 
     def test_grad_types(self):
         # This function simply tests the behaviour of the AbstractConv
@@ -997,7 +996,7 @@ class TestBilinearUpsampling(unittest.TestCase):
 
         Returns
         -------
-        1D numpy array
+        1D np array
             The multiplers that can be used in bilinear interpolation
             to upsample an array.
 
@@ -1011,12 +1010,12 @@ class TestBilinearUpsampling(unittest.TestCase):
     def get_upsampled_twobytwo_mat(self, two_by_two, ratio):
         """Upsample 4D array with two rows and two columns
 
-        This method gets a 4D numpy array with two rows and two columns
+        This method gets a 4D np array with two rows and two columns
         and computes its upsampled array by using bilinear interpolation
 
         Parameters
         ----------
-        two_by_two: numpy 4D array
+        two_by_two: np 4D array
             The array that will be upsampled by bilinear interpolation.
             Array is of shape (batch size, num channels, 2, 2)
 
@@ -1026,7 +1025,7 @@ class TestBilinearUpsampling(unittest.TestCase):
 
         Returns
         -------
-        4D numpy array
+        4D np array
             The array upsampled by using bilinear interpolation. Array
             is of shape (batch size, num channels, 2*ratio, 2*ratio).
 

@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 try:
     import scipy.sparse
     imported_scipy = True
@@ -17,13 +17,13 @@ def _is_sparse(x):
     Returns
     -------
     boolean
-        True iff x is a L{scipy.sparse.spmatrix} (and not a L{numpy.ndarray}).
+        True iff x is a L{scipy.sparse.spmatrix} (and not a L{np.ndarray}).
 
     """
-    if not isinstance(x, (scipy.sparse.spmatrix, numpy.ndarray, tuple, list)):
+    if not isinstance(x, (scipy.sparse.spmatrix, np.ndarray, tuple, list)):
         raise NotImplementedError("this function should only be called on "
                                   "sparse.scipy.sparse.spmatrix or "
-                                  "numpy.ndarray, not,", x)
+                                  "np.ndarray, not,", x)
     return isinstance(x, scipy.sparse.spmatrix)
 
 
@@ -33,7 +33,7 @@ class SparseType(gof.Type):
 
     Parameters
     ----------
-    dtype : numpy dtype string such as 'int64' or 'float64' (among others)
+    dtype : np dtype string such as 'int64' or 'float64' (among others)
         Type of numbers in the matrix.
     format: str
         The sparse storage strategy.
@@ -107,12 +107,12 @@ class SparseType(gof.Type):
             return (SparseType.may_share_memory(a, b.data) or
                     SparseType.may_share_memory(a, b.indices) or
                     SparseType.may_share_memory(a, b.indptr))
-        if _is_sparse(b) and isinstance(a, numpy.ndarray):
+        if _is_sparse(b) and isinstance(a, np.ndarray):
             a, b = b, a
-        if _is_sparse(a) and isinstance(b, numpy.ndarray):
-            if (numpy.may_share_memory(a.data, b) or
-                    numpy.may_share_memory(a.indices, b) or
-                    numpy.may_share_memory(a.indptr, b)):
+        if _is_sparse(a) and isinstance(b, np.ndarray):
+            if (np.may_share_memory(a.data, b) or
+                    np.may_share_memory(a.indices, b) or
+                    np.may_share_memory(a.indptr, b)):
                 # currently we can't share memory with a.shape as it is a tuple
                 return True
         return False
@@ -146,7 +146,7 @@ class SparseType(gof.Type):
         # reduction. It returns a sparse matrix wich cannot be compared to a
         # scalar. When comparing sparse to scalar, no exceptions is raised and
         # the returning value is not consistent. That is why it is apply to a
-        # numpy.ndarray.
+        # np.ndarray.
         return max(diff.data) < eps
 
     def values_eq(self, a, b):
@@ -168,8 +168,8 @@ class SparseType(gof.Type):
                 obj.indices.size, obj.indptr.size, obj.nnz)
 
     def get_size(self, shape_info):
-        return (shape_info[1] * numpy.dtype(self.dtype).itemsize +
-                (shape_info[2] + shape_info[3]) * numpy.dtype('int32').itemsize)
+        return (shape_info[1] * np.dtype(self.dtype).itemsize +
+                (shape_info[2] + shape_info[3]) * np.dtype('int32').itemsize)
 
 # Register SparseType's C code for ViewOp.
 theano.compile.register_view_op_c_code(

@@ -1,7 +1,7 @@
 .. _gpu_data_convert:
 
 ===================================
-PyCUDA/CUDAMat/Gnumpy compatibility
+PyCUDA/CUDAMat/Gnp compatibility
 ===================================
 
 PyCUDA
@@ -39,7 +39,7 @@ CudaNdarrays. Here is an example from the file ``theano/misc/tests/test_pycuda_t
 .. code-block:: python
 
   import sys
-  import numpy
+  import numpy as np
   import theano
   import theano.sandbox.cuda as cuda_ndarray
   import theano.misc.pycuda_init
@@ -61,8 +61,8 @@ CudaNdarrays. Here is an example from the file ``theano/misc/tests/test_pycuda_t
 
       multiply_them = mod.get_function("multiply_them")
 
-      a = numpy.random.randn(100).astype(numpy.float32)
-      b = numpy.random.randn(100).astype(numpy.float32)
+      a = np.random.randn(100).astype(np.float32)
+      b = np.random.randn(100).astype(np.float32)
   
       # Test with Theano object
       ga = cuda_ndarray.CudaNdarray(a)
@@ -70,7 +70,7 @@ CudaNdarrays. Here is an example from the file ``theano/misc/tests/test_pycuda_t
       dest = cuda_ndarray.CudaNdarray.zeros(a.shape)
       multiply_them(dest, ga, gb,
                     block=(400, 1, 1), grid=(1, 1))
-      assert (numpy.asarray(dest) == a * b).all()
+      assert (np.asarray(dest) == a * b).all()
 
 
 Theano Op using a PyCUDA function
@@ -80,7 +80,7 @@ You can use a GPU function compiled with PyCUDA in a Theano op:
 
 .. code-block:: python
 
-    import numpy, theano
+    import numpy as np, theano
     import theano.misc.pycuda_init
     from pycuda.compiler import SourceModule
     import theano.sandbox.cuda as cuda
@@ -107,8 +107,8 @@ You can use a GPU function compiled with PyCUDA in a Theano op:
                 z = outputs[0]
                 if z[0] is None or z[0].shape!=inputs[0][0].shape:
                     z[0] = cuda.CudaNdarray.zeros(inputs[0][0].shape)
-                grid = (int(numpy.ceil(inputs[0][0].size / 512.)),1)
-                pycuda_fct(inputs[0][0], z[0], numpy.intc(inputs[0][0].size),
+                grid = (int(np.ceil(inputs[0][0].size / 512.)),1)
+                pycuda_fct(inputs[0][0], z[0], np.intc(inputs[0][0].size),
                            block=(512, 1, 1), grid=grid)
             thunk.lazy = False
             return thunk
@@ -125,8 +125,8 @@ They obey the same principles as Theano's PyCUDA functions and can be found in
 WARNING: There is a peculiar problem associated with stride/shape with those converters. 
 In order to work, the test needs a *transpose* and *reshape*...
 
-Gnumpy
+Gnp
 ======
 
-There are conversion functions between Gnumpy *garray* objects and Theano CudaNdArray objects. 
-They are also similar to Theano's PyCUDA functions and can be found in ``theano.misc.gnumpy_utils.py``.
+There are conversion functions between Gnp *garray* objects and Theano CudaNdArray objects. 
+They are also similar to Theano's PyCUDA functions and can be found in ``theano.misc.gnp_utils.py``.

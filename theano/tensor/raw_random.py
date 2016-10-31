@@ -4,7 +4,7 @@ from __future__ import absolute_import, print_function, division
 import sys
 from copy import copy
 
-import numpy
+import numpy as np
 from six import string_types
 from six.moves import reduce, xrange
 
@@ -20,7 +20,7 @@ __docformat__ = "restructuredtext en"
 
 class RandomStateType(gof.Type):
     """
-    A Type wrapper for numpy.random.RandomState.
+    A Type wrapper for np.random.RandomState.
 
     The reason this exists (and `Generic` doesn't suffice) is that
     RandomState objects that would appear to be equal do not compare
@@ -38,7 +38,7 @@ class RandomStateType(gof.Type):
             raise TypeError()
 
     def is_valid_value(self, a):
-        return type(a) == numpy.random.RandomState
+        return type(a) == np.random.RandomState
 
     def values_eq(self, a, b):
         sa = a.get_state()
@@ -47,7 +47,7 @@ class RandomStateType(gof.Type):
         if sa[0] != sb[0]:
             return False
         # 1-D array of 624 unsigned integer keys
-        if not numpy.all(sa[1] == sb[1]):
+        if not np.all(sa[1] == sb[1]):
             return False
         # integer "pos" representing the position in the array
         if sa[2] != sb[2]:
@@ -67,17 +67,17 @@ class RandomStateType(gof.Type):
 
     def get_size(self, shape_info):
         # The size is the data, that have constant size.
-        state = numpy.random.RandomState().get_state()
+        state = np.random.RandomState().get_state()
         size = 0
         for elem in state:
             if isinstance(elem, str):
                 size += len(elem)
-            elif isinstance(elem, numpy.ndarray):
+            elif isinstance(elem, np.ndarray):
                 size += elem.size * elem.itemsize
             elif isinstance(elem, int):
-                size += numpy.dtype("int").itemsize
+                size += np.dtype("int").itemsize
             elif isinstance(elem, float):
-                size += numpy.dtype("float").itemsize
+                size += np.dtype("float").itemsize
             else:
                 raise NotImplementedError()
         return size
@@ -101,16 +101,16 @@ random_state_type = RandomStateType()
 
 class RandomFunction(gof.Op):
     """
-    Op that draws random numbers from a numpy.random.RandomState object.
+    Op that draws random numbers from a np.random.RandomState object.
 
     Parameters
     ----------
     fn : string or function reference
-        A member function of numpy.random.RandomState. A string will
+        A member function of np.random.RandomState. A string will
         be interpreted as the name of a member function of
-        numpy.random.RandomState.
+        np.random.RandomState.
         Technically, any function with a signature like the ones in
-        numpy.random.RandomState will do. This function must accept
+        np.random.RandomState will do. This function must accept
         the shape (sometimes called size) of the output as the last
         positional argument.
     outtype
@@ -151,7 +151,7 @@ class RandomFunction(gof.Op):
         fn, outtype, inplace, ndim_added = state
         self.fn = fn
         if isinstance(fn, string_types):
-            self.exec_fn = getattr(numpy.random.RandomState, fn)
+            self.exec_fn = getattr(np.random.RandomState, fn)
         else:
             self.exec_fn = fn
         self.outtype = outtype
@@ -168,7 +168,7 @@ class RandomFunction(gof.Op):
         Parameters
         ----------
         r
-            A numpy.random.RandomState instance, or a Variable of Type
+            A np.random.RandomState instance, or a Variable of Type
             RandomStateType that will contain a RandomState instance.
         shape
             An lvector with a shape defining how many samples
@@ -240,12 +240,12 @@ class RandomFunction(gof.Op):
         # Numbers are drawn from r if self.inplace is True, and from a
         # copy of r if self.inplace is False
         r, shape, args = inputs[0], inputs[1], inputs[2:]
-        assert type(r) == numpy.random.RandomState, (type(r), r)
+        assert type(r) == np.random.RandomState, (type(r), r)
 
-        # If shape == [], that means no shape is enforced, and numpy is
-        # trusted to draw the appropriate number of samples, numpy uses
-        # shape "None" to represent that. Else, numpy expects a tuple.
-        # TODO: compute the appropriate shape, and pass it to numpy.
+        # If shape == [], that means no shape is enforced, and np is
+        # trusted to draw the appropriate number of samples, np uses
+        # shape "None" to represent that. Else, np expects a tuple.
+        # TODO: compute the appropriate shape, and pass it to np.
         if len(shape) == 0:
             shape = None
         else:
@@ -260,11 +260,11 @@ class RandomFunction(gof.Op):
             r = copy(r)
         rout[0] = r
         rval = self.exec_fn(r, *(args + [shape]))
-        if (not isinstance(rval, numpy.ndarray) or
+        if (not isinstance(rval, np.ndarray) or
                 str(rval.dtype) != node.outputs[1].type.dtype):
             rval = theano._asarray(rval, dtype=node.outputs[1].type.dtype)
 
-        # When shape is None, numpy has a tendency to unexpectedly
+        # When shape is None, np has a tendency to unexpectedly
         # return a scalar instead of a higher-dimension array containing
         # only one element. This value should be reshaped
         if shape is None and rval.ndim == 0 and self.outtype.ndim > 0:
@@ -421,7 +421,7 @@ def _generate_broadcasting_indices(out_shape, *shapes):
     """
     Return indices over each shape that broadcast them to match out_shape.
 
-    The first returned list is equivalent to numpy.ndindex(out_shape),
+    The first returned list is equivalent to np.ndindex(out_shape),
     the other returned lists are indices corresponding to the other shapes,
     such that looping over these indices produce tensors of shape out_shape.
     In particular, the indices over broadcasted dimensions should all be 0.
@@ -528,13 +528,13 @@ def binomial(random_state, size=None, n=1, p=0.5, ndim=None,
     """
     if prob is not None:
         p = prob
-        print("DEPRECATION WARNING: the parameter prob to the binomal fct have been renamed to p to have the same name as numpy.", file=sys.stderr)
+        print("DEPRECATION WARNING: the parameter prob to the binomal fct have been renamed to p to have the same name as np.", file=sys.stderr)
     n = tensor.as_tensor_variable(n)
     p = tensor.as_tensor_variable(p)
     ndim, size, bcast = _infer_ndim_bcast(ndim, size, n, p)
     if n.dtype == 'int64':
         try:
-            numpy.random.binomial(n=numpy.asarray([2, 3, 4], dtype='int64'), p=numpy.asarray([.1, .2, .3], dtype='float64'))
+            np.random.binomial(n=np.asarray([2, 3, 4], dtype='int64'), p=np.asarray([.1, .2, .3], dtype='float64'))
         except TypeError:
             # THIS WORKS AROUND A NUMPY BUG on 32bit machine
             n = tensor.cast(n, 'int32')
@@ -548,7 +548,7 @@ def random_integers_helper(random_state, low, high, size):
     """
     Helper function to draw random integers.
 
-    This is a generalization of numpy.random.random_integers to the case where
+    This is a generalization of np.random.random_integers to the case where
     low and high are tensors.
 
     Since random_integers is deprecated it calls randint() instead.
@@ -584,10 +584,10 @@ def random_integers_helper(random_state, low, high, size):
             out_size = out_size + (dim_len,)
 
     # Build the indices over which to loop
-    out = numpy.ndarray(out_size)
+    out = np.ndarray(out_size)
     broadcast_ind = _generate_broadcasting_indices(out_size, low.shape,
                                                    high.shape)
-    # Iterate over these indices, drawing one sample at a time from numpy
+    # Iterate over these indices, drawing one sample at a time from np
     for oi, li, hi in zip(*broadcast_ind):
         out[oi] = random_state.randint(low=low[li], high=high[hi] + 1)
 
@@ -616,9 +616,9 @@ def random_integers(random_state, size=None, low=0, high=1, ndim=None,
 
 def choice_helper(random_state, a, replace, p, size):
     """
-    Helper function to draw random numbers using numpy's choice function.
+    Helper function to draw random numbers using np's choice function.
 
-    This is a generalization of numpy.random.choice that coerces
+    This is a generalization of np.random.choice that coerces
     `replace` to a bool and replaces `p` with None when p is a vector
     of 0 elements.
 
@@ -647,11 +647,11 @@ def choice(random_state, size=None, a=2, replace=True, p=None, ndim=None,
     If size is None, a scalar will be returned.
 
     """
-    # numpy.random.choice is only available for numpy versions >= 1.7
-    major, minor, _ = numpy.version.short_version.split('.')
+    # np.random.choice is only available for np versions >= 1.7
+    major, minor, _ = np.version.short_version.split('.')
     if (int(major), int(minor)) < (1, 7):
         raise ImportError('choice requires at NumPy version >= 1.7 '
-                          '(%s)' % numpy.__version__)
+                          '(%s)' % np.__version__)
     a = tensor.as_tensor_variable(a)
     if isinstance(replace, bool):
         replace = tensor.constant(replace, dtype='int8')
@@ -707,14 +707,14 @@ def permutation_helper(random_state, n, shape):
     If you wish to perform a permutation of the elements of an existing vector,
     see shuffle_row_elements.
 
-    This is a generalization of numpy.random.permutation to tensors.
+    This is a generalization of np.random.permutation to tensors.
     Otherwise it behaves the same.
 
     """
     # n should be a 0-dimension array
     assert n.shape == ()
     # Note that it is important to convert `n` into an integer, because if it
-    # is a long, the numpy permutation function will crash on Windows.
+    # is a long, the np permutation function will crash on Windows.
     n = int(n.item())
 
     if shape is None:
@@ -722,8 +722,8 @@ def permutation_helper(random_state, n, shape):
         shape = ()
     out_shape = list(shape)
     out_shape.append(n)
-    out = numpy.empty(out_shape, int)
-    for i in numpy.ndindex(*shape):
+    out = np.empty(out_shape, int)
+    for i in np.ndindex(*shape):
         out[i] = random_state.permutation(n)
 
     # print 'RETURNING', out.shape
@@ -768,7 +768,7 @@ def multinomial_helper(random_state, n, pvals, size):
     """
     Helper function drawing from multinomial distributions.
 
-    This is a generalization of numpy.random.multinomial to the case where
+    This is a generalization of np.random.multinomial to the case where
     n and pvals are tensors.
 
     """
@@ -807,30 +807,30 @@ def multinomial_helper(random_state, n, pvals, size):
     # Build the indices over which to loop
     # Note that here, the rows (inner-most 1D subtensors) of pvals and out
     # are indexed, not their individual elements
-    out = numpy.ndarray(out_size)
+    out = np.ndarray(out_size)
     broadcast_ind = _generate_broadcasting_indices(size, n.shape,
                                                    pvals.shape[:-1])
     # Iterate over these indices, drawing from one multinomial at a
-    # time from numpy
+    # time from np
     assert pvals.min() >= 0
     for mi, ni, pi in zip(*broadcast_ind):
         pvi = pvals[pi]
 
         # This might someday be fixed upstream
-        # Currently numpy raises an exception in this method if the sum
+        # Currently np raises an exception in this method if the sum
         # of probabilities meets or exceeds 1.0.
         # In  perfect arithmetic this would be correct, but in float32 or
         # float64 it is too strict.
-        pisum = numpy.sum(pvi)
+        pisum = np.sum(pvi)
         if 1.0 < pisum < 1.0 + 1e-5:  # correct if we went a little over
             # because mtrand.pyx has a ValueError that will trigger if
             # sum(pvals[:-1]) > 1.0
             pvi = pvi * (1.0 - 5e-5)
             # pvi = pvi * .9
-            pisum = numpy.sum(pvi)
+            pisum = np.sum(pvi)
         elif pvi[-1] < 5e-5:  # will this even work?
             pvi = pvi * (1.0 - 5e-5)
-            pisum = numpy.sum(pvi)
+            pisum = np.sum(pvi)
         assert pisum <= 1.0, pisum
         out[mi] = random_state.multinomial(n=n[ni],
                                            pvals=pvi.astype('float64'))
@@ -848,7 +848,7 @@ def multinomial(random_state, size=None, n=1, pvals=[0.5, 0.5],
     pvals
         A tensor of shape "nmulti+(L,)" describing each multinomial
         distribution.  This tensor must have the property that
-        numpy.allclose(pvals.sum(axis=-1), 1) is true.
+        np.allclose(pvals.sum(axis=-1), 1) is true.
     size
         A vector of shape information for the output; this can also
         specify the "nmulti" part of pvals' shape.  A -1 in the k'th position
@@ -869,7 +869,7 @@ def multinomial(random_state, size=None, n=1, pvals=[0.5, 0.5],
         the specified ``dtype``, with the experiment counts. See
         examples to understand the shape of the return value, which is
         derived from both size and pvals.shape. In return value rval,
-        "numpy.allclose(rval.sum(axis=-1), n)" will be true.
+        "np.allclose(rval.sum(axis=-1), n)" will be true.
 
     Extended Summary
     ----------------
@@ -943,7 +943,7 @@ class RandomStreamsBase(object):
         """
         if prob is not None:
             p = prob
-            print("DEPRECATION WARNING: the parameter prob to the binomal fct have been renamed to p to have the same name as numpy.", file=sys.stderr)
+            print("DEPRECATION WARNING: the parameter prob to the binomal fct have been renamed to p to have the same name as np.", file=sys.stderr)
         return self.gen(binomial, size, n, p, ndim=ndim, dtype=dtype)
 
     def uniform(self, size=None, low=0.0, high=1.0, ndim=None, dtype=None):

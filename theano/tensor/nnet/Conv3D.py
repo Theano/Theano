@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
-import numpy as N
+import numpy as np
 from six.moves import xrange
 
 import theano
@@ -21,7 +21,7 @@ from theano.gradient import grad_undefined
 # V[i,r,c,t,j] = pixel at (r,c,t) within video featuremap j of video i within the minibatch
 # i.e., H[i,j,r,c,t] = b_j + sum_k sum_l sum_m sum_z W[j,k,l,m,z] V[i,z, dr*r+k,dc*c+l,dt*t+m]
 # The layouts of these variables are chosen to improve locality of reference.
-# numpy seems to put the largest stride on axis 0 and decrease the stride from there. If we do convolution
+# np seems to put the largest stride on axis 0 and decrease the stride from there. If we do convolution
 # one filter at a time, one example at a time, then we want the largest strides to
 # be over the examples. We want the smallest stride to be over the input channel because as we change
 # the channel we re-visit the same location in the input.
@@ -407,7 +407,7 @@ class Conv3D(theano.Op):
                                     long long Vposl = Vpos;
                                     for (int m = 0; m < filterDur; m++) {
 
-                                      //H[i,r,c,t,:] += N.dot(W[:,k,l,m,:],V[i,dr*r+k,dc*c+l,dt*t+m,:])
+                                      //H[i,r,c,t,:] += np.dot(W[:,k,l,m,:],V[i,dr*r+k,dc*c+l,dt*t+m,:])
 
 
                                       //note: changing the weights so that outputChannels and inputChannels were the last two rather than
@@ -619,7 +619,7 @@ def computeH(V, W, b, d):
     outputWidth = int((vidWidth - filterWidth) / dy) + 1
     outputDur = int((vidDur - filterDur) / dt) + 1
 
-    H = N.zeros((batchSize, outputHeight,
+    H = np.zeros((batchSize, outputHeight,
                 outputWidth, outputDur, outputChannels), dtype=V.dtype)
 
     # H[i,j,x,y,t] = b_j + sum_k sum_l sum_m sum_z W[j,z,k,l,m] V[i,z, dx*x+k,dy*y+l,dt*t+m]

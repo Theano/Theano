@@ -9,7 +9,7 @@ import six.moves.cPickle as pickle
 from six import StringIO
 from six import reraise
 
-import numpy
+import numpy as np
 
 import theano
 import theano.tensor as T
@@ -40,9 +40,9 @@ def test_dnn_conv_desc_merge():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
     img_shp = T.as_tensor_variable(
-        numpy.asarray([2, 1, 8, 8]).astype('int64'))
+        np.asarray([2, 1, 8, 8]).astype('int64'))
     kern_shp = T.as_tensor_variable(
-        numpy.asarray([3, 1, 2, 2]).astype('int64'))
+        np.asarray([3, 1, 2, 2]).astype('int64'))
     desc1 = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(2, 2),
                                conv_mode='conv')(img_shp, kern_shp)
     desc2 = dnn.GpuDnnConvDesc(border_mode='full', subsample=(1, 1),
@@ -96,8 +96,8 @@ def test_dnn_conv_merge():
     o1 = dnn.dnn_conv(img, kern)
     o2 = dnn.dnn_conv(img, kern)
     f = theano.function([img, kern], [o1, o2], mode=mode_with_gpu)
-    d1, d2 = f(numpy.random.rand(*img_shp).astype('float32'),
-               numpy.random.rand(*kern_shp).astype('float32'))
+    d1, d2 = f(np.random.rand(*img_shp).astype('float32'),
+               np.random.rand(*kern_shp).astype('float32'))
     topo = f.maker.fgraph.toposort()
     assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnConv)]) == 1
 
@@ -137,8 +137,8 @@ def test_dnn_conv_inplace():
     o1 = dnn.dnn_conv(img, kern, conv_mode='conv')
     o2 = dnn.dnn_conv(img, kern, conv_mode='cross')
     f = theano.function([img, kern], [o1, o2], mode=mode_with_gpu)
-    d1, d2 = f(numpy.random.rand(*img_shp).astype('float32'),
-               numpy.random.rand(*kern_shp).astype('float32'))
+    d1, d2 = f(np.random.rand(*img_shp).astype('float32'),
+               np.random.rand(*kern_shp).astype('float32'))
     topo = f.maker.fgraph.toposort()
     convs = [n for n in topo if isinstance(n.op, dnn.GpuDnnConv)]
     assert len(convs) == 2
@@ -216,7 +216,7 @@ def test_pooling():
                             (1, 3, 99, 99),
                             (32, 1, 147, 197),
                             ]:
-                    data = numpy.random.normal(0, 1, shp).astype("float32")
+                    data = np.random.normal(0, 1, shp).astype("float32")
                     a = f_cpu(data).__array__()
                     b = f_gpu(data).__array__()
                     utt.assert_allclose(a, b)
@@ -224,7 +224,7 @@ def test_pooling():
         # Test the grad
         for shp in [(1, 1, 2, 2),
                     (1, 1, 3, 3)]:
-            data = numpy.random.normal(0, 1, shp).astype("float32") * 10
+            data = np.random.normal(0, 1, shp).astype("float32") * 10
 
             ws = 2
             stride = 2
@@ -263,9 +263,9 @@ def test_pooling_with_tensor_vars():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
     x = T.ftensor4()
-    ws = theano.shared(numpy.array([2, 2], dtype='int32'))
-    st = theano.shared(numpy.array([1, 1], dtype='int32'))
-    pad = theano.shared(numpy.array([0, 0], dtype='int32'))
+    ws = theano.shared(np.array([2, 2], dtype='int32'))
+    st = theano.shared(np.array([1, 1], dtype='int32'))
+    pad = theano.shared(np.array([0, 0], dtype='int32'))
     mode = 'max'
 
     def fn(x):
@@ -278,7 +278,7 @@ def test_pooling_with_tensor_vars():
 
     for shp in [(1, 1, 2, 2),
                 (1, 1, 3, 3)]:
-        data = numpy.random.normal(0, 1, shp).astype("float32") * 10
+        data = np.random.normal(0, 1, shp).astype("float32") * 10
         theano.tests.unittest_tools.verify_grad(
             fn, [data], mode=mode_with_gpu)
 
@@ -302,10 +302,10 @@ def test_pooling_with_tensor_vars():
     for shp in [(1, 10, 100, 100),
                 (1, 3, 99, 99),
                 (32, 1, 147, 197)]:
-        data = numpy.random.normal(0, 1, shp).astype("float32")
+        data = np.random.normal(0, 1, shp).astype("float32")
 
         # Change the window size dynamically
-        ws.set_value(numpy.array([i, i]).astype('int32'))
+        ws.set_value(np.array([i, i]).astype('int32'))
         a = f_gpu(data).__array__()
         b = f_cpu(data).__array__()
         utt.assert_allclose(a, b)
@@ -384,11 +384,11 @@ def test_pooling3d():
                             (1, 3, 99, 99, 29),
                             (2, 1, 147, 97, 37),
                             ]:
-                    data = numpy.random.normal(0, 1, shp).astype("float32")
+                    data = np.random.normal(0, 1, shp).astype("float32")
                     a = f_cpu(data).__array__()
                     b = f_gpu(data).__array__()
                     utt.assert_allclose(a, b,
-                                        atol=numpy.finfo(numpy.float32).eps)
+                                        atol=np.finfo(np.float32).eps)
 
         # Test the grad
         for shp in [(1, 1, 2, 2, 2),
@@ -398,7 +398,7 @@ def test_pooling3d():
                     (1, 1, 4, 3, 3),
                     (1, 1, 4, 4, 4),
                     (1, 1, 5, 5, 5)]:
-            data = numpy.random.normal(0, 1, shp).astype("float32") * 10
+            data = np.random.normal(0, 1, shp).astype("float32") * 10
 
             ws = 2
             stride = 2
@@ -437,7 +437,7 @@ def test_pooling_opt():
     assert any([isinstance(n.op, cuda.dnn.GpuDnnPool)
                 for n in f.maker.fgraph.toposort()])
 
-    f(numpy.zeros((10, 10), dtype='float32'))
+    f(np.zeros((10, 10), dtype='float32'))
 
     # gradient of 2D pooling
     f = theano.function(
@@ -449,7 +449,7 @@ def test_pooling_opt():
     assert any([isinstance(n.op, cuda.dnn.GpuDnnPoolGrad)
                 for n in f.maker.fgraph.toposort()])
 
-    f(numpy.zeros((10, 10), dtype='float32'))
+    f(np.zeros((10, 10), dtype='float32'))
 
     # Test sum pooling
     f = theano.function(
@@ -460,7 +460,7 @@ def test_pooling_opt():
 
     assert any([isinstance(n.op, dnn.GpuDnnPool)
                 for n in f.maker.fgraph.toposort()])
-    data = numpy.random.rand(10, 10).astype('float32')
+    data = np.random.rand(10, 10).astype('float32')
     f(data)
 
     # 3D pooling
@@ -474,7 +474,7 @@ def test_pooling_opt():
     assert any([isinstance(n.op, cuda.dnn.GpuDnnPool)
                 for n in f.maker.fgraph.toposort()])
 
-    f(numpy.zeros((10, 10, 10), dtype='float32'))
+    f(np.zeros((10, 10, 10), dtype='float32'))
 
     # gradient of 3D pooling
     f = theano.function(
@@ -486,7 +486,7 @@ def test_pooling_opt():
     assert any([isinstance(n.op, cuda.dnn.GpuDnnPoolGrad)
                 for n in f.maker.fgraph.toposort()])
 
-    f(numpy.zeros((10, 10, 10), dtype='float32'))
+    f(np.zeros((10, 10, 10), dtype='float32'))
 
 
 def test_pooling_opt_arbitrary_dimensions():
@@ -507,7 +507,7 @@ def test_pooling_opt_arbitrary_dimensions():
             # create input shape: non-pooling dimensions
             # followed by 2 or 3 pooling dimensions
             shp = tuple(range(2, 2 + n_non_pool_dims)) + tuple(range(5, 5 + len(ws)))
-            data = numpy.random.normal(0, 1, shp).astype('float32')
+            data = np.random.normal(0, 1, shp).astype('float32')
             input = shared(data)
 
             for mode in modes:
@@ -555,8 +555,8 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
     def test_dnn_softmax_grad(self):
         softmax_op = dnn.GpuDnnSoftmax('bc01', 'accurate', 'channel')
 
-        x_val = numpy.random.normal(0, 1, (3, 4, 2, 5)).astype('float32')
-        x_val2 = numpy.random.normal(0, 1, (3, 4, 1, 1)).astype('float32')
+        x_val = np.random.normal(0, 1, (3, 4, 2, 5)).astype('float32')
+        x_val2 = np.random.normal(0, 1, (3, 4, 1, 1)).astype('float32')
 
         utt.verify_grad(softmax_op, [x_val], mode=mode_with_gpu)
 
@@ -587,7 +587,7 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
             mode=mode_with_gpu
         )
         sorted_f = f.maker.fgraph.toposort()
-        val = numpy.random.rand(5).astype('float32')
+        val = np.random.rand(5).astype('float32')
         out_dnn = f(val)
         assert(len([i
                     for i in sorted_f
@@ -676,12 +676,12 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
                         (2, 3, 4, 66000)]
 
         for inp_shape in input_shapes:
-            input_val = numpy.random.normal(0, 1, inp_shape).astype("float32")
+            input_val = np.random.normal(0, 1, inp_shape).astype("float32")
 
             out = f(input_val)
-            expected_out = numpy.log(
-                numpy.exp(input_val) /
-                numpy.exp(input_val).sum(1)[:, None, :, :])
+            expected_out = np.log(
+                np.exp(input_val) /
+                np.exp(input_val).sum(1)[:, None, :, :])
 
             utt.assert_allclose(out, expected_out)
 
@@ -704,7 +704,7 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
         assert dnn_softmax_nodes[0].op.algo == "log"
 
         # Compare the output of the function with the reference function
-        inp = numpy.random.normal(0, 1, (5, 6)).astype("float32")
+        inp = np.random.normal(0, 1, (5, 6)).astype("float32")
         utt.assert_allclose(f(inp), f_ref(inp))
 
         # Build the first graph and ensure that the optimization is applied
@@ -717,7 +717,7 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
         assert dnn_softmax_nodes[0].op.algo == "log"
 
         # Compare the output of the function with the reference function
-        inp = numpy.random.normal(0, 1, (5, 6)).astype("float32")
+        inp = np.random.normal(0, 1, (5, 6)).astype("float32")
         utt.assert_allclose(f(inp), f_ref(inp))
 
 
@@ -761,10 +761,10 @@ def test_batchnorm_train():
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes else s
                                     for d, s in enumerate(data_shape))
-                X = 4 + 3 * numpy.random.randn(*data_shape).astype('float32')
-                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype('float32')
-                Scale = numpy.random.randn(*param_shape).astype('float32')
-                Bias = numpy.random.randn(*param_shape).astype('float32')
+                X = 4 + 3 * np.random.randn(*data_shape).astype('float32')
+                Dy = -1 + 2 * np.random.randn(*data_shape).astype('float32')
+                Scale = np.random.randn(*param_shape).astype('float32')
+                Bias = np.random.randn(*param_shape).astype('float32')
                 outputs = f(X, Scale, Bias, Dy)
                 # compare outputs
                 utt.assert_allclose(outputs[0], outputs[0 + 3])  # out
@@ -815,12 +815,12 @@ def test_batchnorm_inference():
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes else s
                                     for d, s in enumerate(data_shape))
-                X = 4 + 3 * numpy.random.randn(*data_shape).astype('float32')
-                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype('float32')
-                Scale = numpy.random.randn(*param_shape).astype('float32')
-                Bias = numpy.random.randn(*param_shape).astype('float32')
-                Mean = numpy.random.randn(*param_shape).astype('float32')
-                Var = numpy.random.rand(*param_shape).astype('float32')
+                X = 4 + 3 * np.random.randn(*data_shape).astype('float32')
+                Dy = -1 + 2 * np.random.randn(*data_shape).astype('float32')
+                Scale = np.random.randn(*param_shape).astype('float32')
+                Bias = np.random.randn(*param_shape).astype('float32')
+                Mean = np.random.randn(*param_shape).astype('float32')
+                Var = np.random.rand(*param_shape).astype('float32')
                 outputs = f(X, Scale, Bias, Mean, Var, Dy)
                 # compare outputs
                 utt.assert_allclose(outputs[0], outputs[1])  # out
@@ -876,8 +876,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         if not dnn.dnn_available():
             raise SkipTest(dnn.dnn_available.msg)
         t = T.ftensor4('t')
-        rand_tensor = numpy.asarray(
-            numpy.random.rand(5, 4, 3, 2),
+        rand_tensor = np.asarray(
+            np.random.rand(5, 4, 3, 2),
             dtype='float32'
         )
         self._compile_and_check(
@@ -909,12 +909,12 @@ class TestDnnInferShapes(utt.InferShapeTester):
         img = T.ftensor4('img')
         kerns = T.ftensor4('kerns')
         out = T.ftensor4('out')
-        img_val = numpy.asarray(
-            numpy.random.rand(10, 2, 6, 4),
+        img_val = np.asarray(
+            np.random.rand(10, 2, 6, 4),
             dtype='float32'
         )
-        kern_vals = numpy.asarray(
-            numpy.random.rand(8, 2, 4, 3),
+        kern_vals = np.asarray(
+            np.random.rand(8, 2, 4, 3),
             dtype='float32'
         )
 
@@ -923,7 +923,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
             [(1, 1), (2, 2)],
             ['conv', 'cross']
         ):
-            out_vals = numpy.zeros(
+            out_vals = np.zeros(
                 dnn.GpuDnnConv.get_out_shape(img_val.shape, kern_vals.shape,
                                              border_mode=params[0],
                                              subsample=params[1]),
@@ -947,12 +947,12 @@ class TestDnnInferShapes(utt.InferShapeTester):
         img = T.ftensor5('img')
         kerns = T.ftensor5('kerns')
         out = T.ftensor5('out')
-        img_val = numpy.asarray(
-            numpy.random.rand(10, 2, 6, 4, 11),
+        img_val = np.asarray(
+            np.random.rand(10, 2, 6, 4, 11),
             dtype='float32'
         )
-        kern_vals = numpy.asarray(
-            numpy.random.rand(8, 2, 4, 3, 1),
+        kern_vals = np.asarray(
+            np.random.rand(8, 2, 4, 3, 1),
             dtype='float32'
         )
 
@@ -961,7 +961,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
             [(1, 1, 1), (2, 2, 2)],
             ['conv', 'cross']
         ):
-            out_vals = numpy.zeros(
+            out_vals = np.zeros(
                 dnn.GpuDnnConv3d.get_out_shape(img_val.shape, kern_vals.shape,
                                                border_mode=params[0],
                                                subsample=params[1]),
@@ -985,12 +985,12 @@ class TestDnnInferShapes(utt.InferShapeTester):
         img = T.ftensor4('img')
         kerns = T.ftensor4('kerns')
         out = T.ftensor4('out')
-        img_val = numpy.asarray(
-            numpy.random.rand(2, 5, 6, 8),
+        img_val = np.asarray(
+            np.random.rand(2, 5, 6, 8),
             dtype='float32'
         )
-        kern_vals = numpy.asarray(
-            numpy.random.rand(2, 1, 5, 6),
+        kern_vals = np.asarray(
+            np.random.rand(2, 1, 5, 6),
             dtype='float32'
         )
 
@@ -1009,7 +1009,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 img_val.shape[2] - kern_vals.shape[2] + 1,
                 img_val.shape[3] - kern_vals.shape[3] + 1
             )
-            out_vals = numpy.zeros(shape, dtype='float32')
+            out_vals = np.zeros(shape, dtype='float32')
             desc = dnn.GpuDnnConvDesc(
                 border_mode=params[0],
                 subsample=params[1],
@@ -1034,12 +1034,12 @@ class TestDnnInferShapes(utt.InferShapeTester):
         img = T.ftensor5('img')
         kerns = T.ftensor5('kerns')
         out = T.ftensor5('out')
-        img_val = numpy.asarray(
-            numpy.random.rand(9, 2, 4, 8, 13),
+        img_val = np.asarray(
+            np.random.rand(9, 2, 4, 8, 13),
             dtype='float32'
         )
-        kern_vals = numpy.asarray(
-            numpy.random.rand(11, 2, 3, 1, 4),
+        kern_vals = np.asarray(
+            np.random.rand(11, 2, 3, 1, 4),
             dtype='float32'
         )
 
@@ -1048,7 +1048,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
             [(1, 1, 1), (2, 2, 2)],
             ['conv', 'cross']
         ):
-            out_vals = numpy.zeros(
+            out_vals = np.zeros(
                 dnn.GpuDnnConv3d.get_out_shape(img_val.shape, kern_vals.shape,
                                                border_mode=params[0],
                                                subsample=params[1]),
@@ -1078,12 +1078,12 @@ class TestDnnInferShapes(utt.InferShapeTester):
         img = T.ftensor4('img')
         kerns = T.ftensor4('kerns')
         out = T.ftensor4('out')
-        img_val = numpy.asarray(
-            numpy.random.rand(3, 4, 5, 6),
+        img_val = np.asarray(
+            np.random.rand(3, 4, 5, 6),
             dtype='float32'
         )
-        kern_vals = numpy.asarray(
-            numpy.random.rand(4, 14, 15, 16),
+        kern_vals = np.asarray(
+            np.random.rand(4, 14, 15, 16),
             dtype='float32'
         )
 
@@ -1098,7 +1098,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 img_val.shape[2] + kern_vals.shape[2] - 1,
                 img_val.shape[3] + kern_vals.shape[3] - 1
             )
-            out_vals = numpy.zeros(shape, dtype='float32')
+            out_vals = np.zeros(shape, dtype='float32')
             desc = dnn.GpuDnnConvDesc(
                 border_mode=params[0],
                 subsample=params[1],
@@ -1123,12 +1123,12 @@ class TestDnnInferShapes(utt.InferShapeTester):
         img = T.ftensor5('img')
         kerns = T.ftensor5('kerns')
         out = T.ftensor5('out')
-        img_val = numpy.asarray(
-            numpy.random.rand(8, 4, 6, 7, 11),
+        img_val = np.asarray(
+            np.random.rand(8, 4, 6, 7, 11),
             dtype='float32'
         )
-        kern_vals = numpy.asarray(
-            numpy.random.rand(9, 4, 5, 1, 2),
+        kern_vals = np.asarray(
+            np.random.rand(9, 4, 5, 1, 2),
             dtype='float32'
         )
 
@@ -1137,7 +1137,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
             [(1, 1, 1), (2, 2, 2)],
             ['conv', 'cross']
         ):
-            out_vals = numpy.zeros(
+            out_vals = np.zeros(
                 dnn.GpuDnnConv3d.get_out_shape(img_val.shape, kern_vals.shape,
                                                border_mode=params[0],
                                                subsample=params[1]),
@@ -1165,8 +1165,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         if not dnn.dnn_available():
             raise SkipTest(dnn.dnn_available.msg)
         img = T.ftensor4('img')
-        img_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5),
+        img_val = np.asarray(
+            np.random.rand(2, 3, 4, 5),
             dtype='float32'
         )
 
@@ -1193,8 +1193,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         if not dnn.dnn_available():
             raise SkipTest(dnn.dnn_available.msg)
         img = T.ftensor5('img')
-        img_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5, 6),
+        img_val = np.asarray(
+            np.random.rand(2, 3, 4, 5, 6),
             dtype='float32'
         )
 
@@ -1222,16 +1222,16 @@ class TestDnnInferShapes(utt.InferShapeTester):
         img = T.ftensor4('img')
         img_grad = T.ftensor4('img_grad')
         out = T.ftensor4('out')
-        img_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5),
+        img_val = np.asarray(
+            np.random.rand(2, 3, 4, 5),
             dtype='float32'
         )
-        img_grad_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5),
+        img_grad_val = np.asarray(
+            np.random.rand(2, 3, 4, 5),
             dtype='float32'
         )
-        out_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5),
+        out_val = np.asarray(
+            np.random.rand(2, 3, 4, 5),
             dtype='float32'
         )
 
@@ -1261,16 +1261,16 @@ class TestDnnInferShapes(utt.InferShapeTester):
         img = T.ftensor5('img')
         img_grad = T.ftensor5('img_grad')
         out = T.ftensor5('out')
-        img_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5, 6),
+        img_val = np.asarray(
+            np.random.rand(2, 3, 4, 5, 6),
             dtype='float32'
         )
-        img_grad_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5, 6),
+        img_grad_val = np.asarray(
+            np.random.rand(2, 3, 4, 5, 6),
             dtype='float32'
         )
-        out_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5, 6),
+        out_val = np.asarray(
+            np.random.rand(2, 3, 4, 5, 6),
             dtype='float32'
         )
 
@@ -1323,16 +1323,16 @@ def test_dnn_conv_alpha_output_merge():
     iw = 8
     kh = 2
     kw = 6
-    img_val = numpy.random.random((b, c, ih, iw)).astype('float32')
-    kern_val = numpy.random.random((f, c, kh, kw)).astype('float32')
-    out_val = numpy.random.random((b, f, ih - kh + 1,
+    img_val = np.random.random((b, c, ih, iw)).astype('float32')
+    kern_val = np.random.random((f, c, kh, kw)).astype('float32')
+    out_val = np.random.random((b, f, ih - kh + 1,
                                    iw - kw + 1)).astype('float32')
 
     conv = dnn.dnn_conv(img, kern)
     gw = theano.grad(conv.sum(), kern)
     gi = theano.grad(conv.sum(), img)
 
-    lr = numpy.asarray(0.05, dtype='float32')
+    lr = np.asarray(0.05, dtype='float32')
 
     if cuda.dnn.version() == -1:
         # Can't merge alpha with cudnn v1
@@ -1397,16 +1397,16 @@ def test_dnn_conv3d_alpha_output_merge():
     kt = 3
     kh = 2
     kw = 6
-    img_val = numpy.random.random((b, c, it, ih, iw)).astype('float32')
-    kern_val = numpy.random.random((f, c, kt, kh, kw)).astype('float32')
-    out_val = numpy.random.random((b, f, it - kt + 1, ih - kh + 1,
+    img_val = np.random.random((b, c, it, ih, iw)).astype('float32')
+    kern_val = np.random.random((f, c, kt, kh, kw)).astype('float32')
+    out_val = np.random.random((b, f, it - kt + 1, ih - kh + 1,
                                    iw - kw + 1)).astype('float32')
 
     conv = dnn.dnn_conv3d(img, kern)
     gw = theano.grad(conv.sum(), kern)
     gi = theano.grad(conv.sum(), img)
 
-    lr = numpy.asarray(0.05, dtype='float32')
+    lr = np.asarray(0.05, dtype='float32')
 
     if cuda.dnn.version() == -1:
         # Can't merge alpha with cudnn v1
@@ -1463,7 +1463,7 @@ def test_dnn_conv_merge_mouts():
 
     conv = dnn.dnn_conv(img, kern)
 
-    lr = numpy.asarray(0.05, dtype='float32')
+    lr = np.asarray(0.05, dtype='float32')
 
     if cuda.dnn.version() == -1:
         # Can't merge alpha with cudnn v1
@@ -1487,7 +1487,7 @@ def test_dnn_conv_merge_broad():
 
     conv = dnn.dnn_conv(img, kern)
 
-    lr = numpy.asarray(0.05, dtype='float32')
+    lr = np.asarray(0.05, dtype='float32')
 
     # this does broadcasting
     fr = conv + lr
@@ -1512,9 +1512,9 @@ def test_dnn_conv_grad():
     iw = 8
     kh = 2
     kw = 2
-    img_val = numpy.random.random((b, c, ih, iw)).astype('float32')
-    kern_val = numpy.random.random((f, c, kh, kw)).astype('float32')
-    out_val = numpy.random.random((b, f, ih - kw + 1,
+    img_val = np.random.random((b, c, ih, iw)).astype('float32')
+    kern_val = np.random.random((f, c, kh, kw)).astype('float32')
+    out_val = np.random.random((b, f, ih - kw + 1,
                                    iw - kw + 1)).astype('float32')
 
     def dconv(img, kern, out):
@@ -1589,8 +1589,8 @@ def test_conv3d_fwd():
     def run_conv3d_fwd(inputs_shape, filters_shape, subsample,
                        border_mode, conv_mode):
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
 
         # Scale down the input values to prevent very large absolute errors
         # due to float rounding
@@ -1638,8 +1638,8 @@ def test_conv3d_bwd():
     def run_conv3d_bwd(inputs_shape, filters_shape, subsample,
                        border_mode, conv_mode):
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
 
         inputs = shared(inputs_val)
         filters = shared(filters_val)

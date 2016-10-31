@@ -298,7 +298,7 @@ def dlimport(fullpath, suffix=None):
         t0 = time.time()
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore",
-                                    message="numpy.ndarray size changed")
+                                    message="np.ndarray size changed")
             rval = __import__(module_name, {}, {}, [module_name])
         t1 = time.time()
         import_time += t1 - t0
@@ -2137,7 +2137,7 @@ class GCC_compiler(Compiler):
         cxxflags.append("-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 
-        # numpy 1.7 deprecated the following macro but the new one didn't
+        # np 1.7 deprecated the following macro but the new one didn't
         # existed in the past
         if bool(numpy_ver < [1, 7]):
             cxxflags.append("-DNPY_ARRAY_ENSUREARRAY=NPY_ENSUREARRAY")

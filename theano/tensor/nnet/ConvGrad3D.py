@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 from six.moves import xrange
 
-import numpy as N
+import numpy as np
 
 import theano
 from theano.tensor import basic as T
@@ -71,7 +71,7 @@ class ConvGrad3D(theano.Op):
         assert V.shape[0] == batchSize
         dr, dc, dt = d
 
-        dCdW = N.zeros(WShape, dtype=V.dtype)
+        dCdW = np.zeros(WShape, dtype=V.dtype)
 
         # print 'computing output of shape '+str(WShape)
 

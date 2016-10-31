@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
-import numpy
+import numpy as np
 import unittest
 
 import theano
@@ -50,16 +50,16 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     # case.
     dot_result = T.fmatrix('dot_result')
 
-    # Seed numpy.random with config.unittests.rseed
+    # Seed np.random with config.unittests.rseed
     utt.seed_rng()
 
-    xx = numpy.asarray(numpy.random.rand(batch_size, n_in),
-                       dtype=numpy.float32)
-    yy = numpy.ones((batch_size,), dtype='int32')
-    b_values = numpy.zeros((n_out,), dtype='float32')
-    W_values = numpy.asarray(numpy.random.rand(n_in, n_out), dtype='float32')
+    xx = np.asarray(np.random.rand(batch_size, n_in),
+                       dtype=np.float32)
+    yy = np.ones((batch_size,), dtype='int32')
+    b_values = np.zeros((n_out,), dtype='float32')
+    W_values = np.asarray(np.random.rand(n_in, n_out), dtype='float32')
 
-    dot_value = numpy.asarray(numpy.dot(xx, W_values), dtype='float32')
+    dot_value = np.asarray(np.dot(xx, W_values), dtype='float32')
     del W_values
     p_y_given_x = T.nnet.softmax(dot_result + b)
     y_pred = T.argmax(p_y_given_x, axis=-1)
@@ -85,10 +85,10 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     gout = classify_gpu(yy, b_values, dot_value)
 
     assert len(out) == len(gout) == 3
-    assert numpy.allclose(out[0], gout[0])
-    assert numpy.allclose(out[2], gout[2], atol=3e-6), numpy.absolute(
+    assert np.allclose(out[0], gout[0])
+    assert np.allclose(out[2], gout[2], atol=3e-6), np.absolute(
         gout - out).max()
-    assert numpy.allclose(out[1], gout[1]), [(id, out[1][id], gout[1][id], val)
+    assert np.allclose(out[1], gout[1]), [(id, out[1][id], gout[1][id], val)
                                              for id, val in enumerate(out[1] -
                                                                       gout[1])
                                              if val != 0]
@@ -107,13 +107,13 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     if not isinstance(mode_with_gpu, theano.compile.DebugMode):
         n_out = 4099
 
-    # Seed numpy.random with config.unittests.rseed
+    # Seed np.random with config.unittests.rseed
     utt.seed_rng()
 
-    softmax_output_value = numpy.random.rand(batch_size,
+    softmax_output_value = np.random.rand(batch_size,
                                              n_out).astype('float32')
-    dnll_value = numpy.asarray(numpy.random.rand(batch_size), dtype='float32')
-    y_idx_value = numpy.random.randint(low=0, high=5, size=batch_size)
+    dnll_value = np.asarray(np.random.rand(batch_size), dtype='float32')
+    y_idx_value = np.random.randint(low=0, high=5, size=batch_size)
 
     softmax_output = T.fmatrix()
     softmax_output /= softmax_output.sum(axis=1).reshape(
@@ -139,9 +139,9 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
 
     rtol = 1e-5
     atol = 1e-6
-    if not numpy.allclose(cpu_out, gpu_out, rtol=rtol, atol=atol):
+    if not np.allclose(cpu_out, gpu_out, rtol=rtol, atol=atol):
         abs_err, rel_err = T.numeric_grad.abs_rel_err(cpu_out, gpu_out)
-        scaled_err = numpy.minimum(abs_err / atol, rel_err / rtol)
+        scaled_err = np.minimum(abs_err / atol, rel_err / rtol)
         max_i = scaled_err.argmax()
 
         print('max err index:', max_i, max_i / batch_size, end=' ')
@@ -156,7 +156,7 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
         print('dnll_value:', dnll_value[max_i / n_out])
         print('y_idx_value:', y_idx_value[max_i / n_out])
 
-        assert False, "numpy.allclose(cpu_out, gpu_out, rtol=%s, atol=%s)" % (
+        assert False, "np.allclose(cpu_out, gpu_out, rtol=%s, atol=%s)" % (
             rtol, atol)
 
 
@@ -183,10 +183,10 @@ def test_softmax_with_bias():
 
     def cmp(n, m):
         # print "test_softmax",n,m
-        data = numpy.arange(n * m, dtype='float32').reshape(n, m)
+        data = np.arange(n * m, dtype='float32').reshape(n, m)
         out = f(data)
         gout = f_gpu(data)
-        assert numpy.allclose(out, gout), numpy.absolute(out - gout)
+        assert np.allclose(out, gout), np.absolute(out - gout)
 
     cmp(2, 5)
     # we need to test n>32*1024 to check that we make the block loop.
@@ -261,7 +261,7 @@ class test_SoftMax(unittest.TestCase):
         return f, f_gpu
 
     def _cmp(self, n, m, f, f_gpu):
-        data = numpy.arange(n * m, dtype='float32').reshape(n, m)
+        data = np.arange(n * m, dtype='float32').reshape(n, m)
         out = f(data)
         gout = f_gpu(data)
         utt.assert_allclose(out, gout)

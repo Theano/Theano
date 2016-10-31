@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 from nose.plugins.skip import SkipTest
 
 import theano
@@ -48,7 +48,7 @@ class BlockSparse_Gemv_and_Outer(
         o = gpu_sparse_block_gemv(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
         gW = theano.grad(o.sum(), W)
 
-        lr = numpy.asarray(0.05, dtype='float32')
+        lr = np.asarray(0.05, dtype='float32')
 
         upd = W - lr * gW
 

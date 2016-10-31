@@ -5,7 +5,7 @@ from six import reraise
 
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
-import numpy
+import numpy as np
 
 from theano import config
 from theano.compat import PY3
@@ -56,7 +56,7 @@ def test_unpickle_cudandarray_as_numpy_ndarray_flag0():
                     raise
 
                 assert isinstance(mat, CudaNdarray)
-                assert numpy.asarray(mat)[0] == -42.0
+                assert np.asarray(mat)[0] == -42.0
             else:
                 assert_raises(ImportError, u.load)
     finally:
@@ -88,7 +88,7 @@ def test_unpickle_cudandarray_as_numpy_ndarray_flag1():
                     reraise(SkipTest, exc_value, exc_trace)
                 raise
 
-        assert isinstance(mat, numpy.ndarray)
+        assert isinstance(mat, np.ndarray)
         assert mat[0] == -42.0
 
     finally:

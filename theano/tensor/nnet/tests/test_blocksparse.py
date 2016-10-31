@@ -3,7 +3,7 @@
 """
 from __future__ import absolute_import, print_function, division
 
-import numpy
+import numpy as np
 from numpy.random import randn
 
 import theano
@@ -41,10 +41,10 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
         batchSize = 2
 
         input = randn(batchSize, inputWindowSize, inputSize).astype('float32')
-        permutation = numpy.random.permutation
-        inputIndice = numpy.vstack(permutation(nInputBlock)[:inputWindowSize]
+        permutation = np.random.permutation
+        inputIndice = np.vstack(permutation(nInputBlock)[:inputWindowSize]
                                    for _ in range(batchSize)).astype('int32')
-        outputIndice = numpy.vstack(
+        outputIndice = np.vstack(
             permutation(nOutputBlock)[:outputWindowSize]
             for _ in range(batchSize)).astype('int32')
         weight = randn(nInputBlock, nOutputBlock,
@@ -66,10 +66,10 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
         o = randn(nInputBlock, nOutputBlock, xSize, ySize).astype('float32')
         x = randn(batchSize, xWindowSize, xSize).astype('float32')
         y = randn(batchSize, yWindowSize, ySize).astype('float32')
-        randint = numpy.random.randint
-        xIdx = numpy.vstack(randint(0, nInputBlock, size=xWindowSize)
+        randint = np.random.randint
+        xIdx = np.vstack(randint(0, nInputBlock, size=xWindowSize)
                             for _ in range(batchSize)).astype('int32')
-        yIdx = numpy.vstack(randint(0, nOutputBlock, size=yWindowSize)
+        yIdx = np.vstack(randint(0, nOutputBlock, size=yWindowSize)
                             for _ in range(batchSize)).astype('int32')
 
         return o, x, y, xIdx, yIdx
@@ -82,7 +82,7 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
                 for i in range(h.shape[1]):
                     inputIdx = iIdx[b, i]
                     w = W[inputIdx, outputIdx]
-                    o[b, j, :] += numpy.dot(h[b, i], w)
+                    o[b, j, :] += np.dot(h[b, i], w)
         return o
 
     @staticmethod
@@ -94,7 +94,7 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
         for b in range(o.shape[0]):
             w = W[ix_(iIdx[b], oIdx[b])].swapaxes(1, 2)
             w = w.reshape((w.shape[0] * w.shape[1], w.shape[2] * w.shape[3]))
-            o[b] += numpy.dot(h[b].ravel(), w).reshape(o.shape[1:])
+            o[b] += np.dot(h[b].ravel(), w).reshape(o.shape[1:])
         return o
 
     @staticmethod
@@ -108,8 +108,8 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
             # The next three lines do the same operation. The last one is the
             # fastest
             # o[b] += (h[b][:, None, :, None] * w).sum(axis=(0, 2))
-            # o[b] += numpy.tensordot(h[b], w, [(0,1),(0,2)])
-            o[b] += numpy.einsum('ik,ijkl', h[b], w)
+            # o[b] += np.tensordot(h[b], w, [(0,1),(0,2)])
+            o[b] += np.einsum('ik,ijkl', h[b], w)
         return o
 
     @staticmethod
@@ -117,13 +117,13 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
         for b in range(x.shape[0]):
             for i in range(xIdx.shape[1]):
                 for j in range(yIdx.shape[1]):
-                    o[xIdx[b, i], yIdx[b, j]] += numpy.outer(x[b, i, :],
+                    o[xIdx[b, i], yIdx[b, j]] += np.outer(x[b, i, :],
                                                              y[b, j, :])
         return o
 
     def test_sparseblockdot(self):
         """
-        Compares the numpy version of sparseblockgemv to sparse_block_dot.
+        Compares the np version of sparseblockgemv to sparse_block_dot.
         """
         b = tensor.fmatrix()
         W = tensor.ftensor4()
@@ -147,7 +147,7 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
 
     def test_sparseblockgemv(self):
         """
-        Compares the numpy and theano versions of sparseblockgemv.
+        Compares the np and theano versions of sparseblockgemv.
         """
         b = tensor.fmatrix()
         W = tensor.ftensor4()
@@ -190,7 +190,7 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
         W_val, h_val, iIdx_val, b_val, oIdx_val = \
             BlockSparse_Gemv_and_Outer.gemv_data()
 
-        th_out = f(numpy.swapaxes(W_val, 2, 3), h_val, iIdx_val, b_val,
+        th_out = f(np.swapaxes(W_val, 2, 3), h_val, iIdx_val, b_val,
                    oIdx_val)
         ref_out = BlockSparse_Gemv_and_Outer.gemv_numpy(
             b_val.take(oIdx_val, axis=0), W_val, h_val, iIdx_val, oIdx_val)
@@ -218,8 +218,8 @@ class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
     def test_sparseblockgemv_grad_1(self):
         # Test that we correctly handle cases where dimensions are 1.
         h_val = randn(1, 1, 1).astype('float32')
-        iIdx_val = numpy.random.permutation(1)[:1][None, :]
-        oIdx_val = numpy.random.permutation(1)[:1][None, :]
+        iIdx_val = np.random.permutation(1)[:1][None, :]
+        oIdx_val = np.random.permutation(1)[:1][None, :]
         W_val = randn(1, 1, 1, 1).astype('float32')
         b_val = randn(1, 1).astype('float32')
 

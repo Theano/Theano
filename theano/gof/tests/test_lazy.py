@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 from copy import deepcopy
 
-import numpy
+import numpy as np
 
 import theano
 from theano.gof.op import PureOp
@@ -154,13 +154,13 @@ def more_complex_test():
                                                  optimizer='fast_run'))
     if theano.config.vm.lazy is False:
         try:
-            f(1, 0, numpy.array(10, dtype=x1.dtype), 0)
+            f(1, 0, np.array(10, dtype=x1.dtype), 0)
             assert False
         except NotImplementedOp.E:
             pass
     else:
-        print(f(1, 0, numpy.array(10, dtype=x1.dtype), 0))
-        assert f(1, 0, numpy.array(10, dtype=x1.dtype), 0) == 20.5
+        print(f(1, 0, np.array(10, dtype=x1.dtype), 0))
+        assert f(1, 0, np.array(10, dtype=x1.dtype), 0) == 20.5
     print('... passed')
 
 if __name__ == '__main__':

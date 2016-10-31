@@ -16,7 +16,7 @@ from theano.gof import Apply, Op
 from six.moves import xrange
 
 import warnings
-import numpy
+import numpy as np
 import numpy as np
 
 try:
@@ -68,7 +68,7 @@ def get_conv_output_shape(image_shape, kernel_shape,
     nkern, kshp = kernel_shape[0], kernel_shape[2:]
 
     if filter_dilation is None:
-        filter_dilation = numpy.ones(len(subsample), dtype='int')
+        filter_dilation = np.ones(len(subsample), dtype='int')
 
     if isinstance(border_mode, tuple):
         out_shp = tuple(get_conv_shape_1axis(
@@ -1139,11 +1139,11 @@ class BaseAbstractConv(Op):
         out_shape = get_conv_output_shape(img.shape, kern.shape,
                                           mode, [1] * self.convdim, dilation)
 
-        out = numpy.zeros(out_shape, dtype=img.dtype)
+        out = np.zeros(out_shape, dtype=img.dtype)
         dil_kern_shp = kern.shape[:-self.convdim] + tuple(
             (kern.shape[-self.convdim + i] - 1) * dilation[i] + 1
             for i in range(self.convdim))
-        dilated_kern = numpy.zeros(dil_kern_shp, dtype=kern.dtype)
+        dilated_kern = np.zeros(dil_kern_shp, dtype=kern.dtype)
         dilated_kern[(slice(None), slice(None)) +
                      tuple(slice(None, None, dilation[i]) for i in range(self.convdim))
                      ] = kern
@@ -1153,7 +1153,7 @@ class BaseAbstractConv(Op):
             bval = _bvalfromboundary('fill')
 
             with warnings.catch_warnings():
-                warnings.simplefilter('ignore', numpy.ComplexWarning)
+                warnings.simplefilter('ignore', np.ComplexWarning)
                 for b in xrange(img.shape[0]):
                     for n in xrange(kern.shape[0]):
                         for im0 in xrange(img.shape[1]):
@@ -1216,8 +1216,8 @@ class AbstractConv(BaseAbstractConv):
 
     def perform(self, node, inp, out_):
         img, kern = inp
-        img = numpy.asarray(img)
-        kern = numpy.asarray(kern)
+        img = np.asarray(img)
+        kern = np.asarray(kern)
         dil_kernshp = tuple((kern.shape[2 + i] - 1) * self.filter_dilation[i] + 1
                             for i in range(self.convdim))
         o, = out_
@@ -1237,7 +1237,7 @@ class AbstractConv(BaseAbstractConv):
         if isinstance(mode, tuple):
             pad = tuple(int(mode[i]) for i in range(self.convdim))
             mode = "valid"
-            new_img = numpy.zeros((img.shape[0], img.shape[1]) +
+            new_img = np.zeros((img.shape[0], img.shape[1]) +
                                   tuple(img.shape[i + 2] + 2 * pad[i]
                                         for i in range(self.convdim)),
                                   dtype=img.dtype)
@@ -1428,8 +1428,8 @@ class AbstractConv_gradWeights(BaseAbstractConv):
 
     def perform(self, node, inp, out_):
         img, topgrad, shape = inp
-        img = numpy.asarray(img)
-        topgrad = numpy.asarray(topgrad)
+        img = np.asarray(img)
+        topgrad = np.asarray(topgrad)
 
         o, = out_
 
@@ -1452,7 +1452,7 @@ class AbstractConv_gradWeights(BaseAbstractConv):
             pad = tuple(int(mode[i]) for i in range(self.convdim))
 
             mode = "valid"
-            new_img = numpy.zeros((img.shape[0], img.shape[1]) +
+            new_img = np.zeros((img.shape[0], img.shape[1]) +
                                   tuple(img.shape[i + 2] + 2 * pad[i]
                                         for i in range(self.convdim)),
                                   dtype=img.dtype)
@@ -1465,7 +1465,7 @@ class AbstractConv_gradWeights(BaseAbstractConv):
             new_shape = ((topgrad.shape[0], topgrad.shape[1]) +
                          tuple(img.shape[i + 2] - dil_shape[i] + 1
                                for i in range(self.convdim)))
-            new_topgrad = numpy.zeros((new_shape), dtype=topgrad.dtype)
+            new_topgrad = np.zeros((new_shape), dtype=topgrad.dtype)
             new_topgrad[(slice(None), slice(None)) +
                         tuple(slice(None, None, self.subsample[i])
                               for i in range(self.convdim))] = topgrad
@@ -1663,8 +1663,8 @@ class AbstractConv_gradInputs(BaseAbstractConv):
 
     def perform(self, node, inp, out_):
         kern, topgrad, shape = inp
-        kern = numpy.asarray(kern)
-        topgrad = numpy.asarray(topgrad)
+        kern = np.asarray(kern)
+        topgrad = np.asarray(topgrad)
         o, = out_
 
         mode = self.border_mode
@@ -1688,7 +1688,7 @@ class AbstractConv_gradInputs(BaseAbstractConv):
             new_shape = ((topgrad.shape[0], topgrad.shape[1]) +
                          tuple(shape[i] + 2 * pad[i] - dil_kernshp[i] + 1
                                for i in range(self.convdim)))
-            new_topgrad = numpy.zeros((new_shape), dtype=topgrad.dtype)
+            new_topgrad = np.zeros((new_shape), dtype=topgrad.dtype)
             new_topgrad[(slice(None), slice(None)) +
                         tuple(slice(None, None, self.subsample[i])
                               for i in range(self.convdim))] = topgrad

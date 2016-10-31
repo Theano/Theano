@@ -6,7 +6,7 @@ from __future__ import absolute_import, print_function, division
 
 import unittest
 
-import numpy
+import numpy as np
 
 import theano
 from six.moves import StringIO
@@ -45,7 +45,7 @@ class Test_profiling(unittest.TestCase):
             f = theano.function(x, z, profile=p, name="test_profiling",
                                 mode=m)
 
-            inp = [numpy.arange(1024, dtype='float32') + 1 for i in range(len(x))]
+            inp = [np.arange(1024, dtype='float32') + 1 for i in range(len(x))]
             f(*inp)
 
             buf = StringIO()

@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 from theano import config, function, tensor
 from theano.sandbox import multinomial
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
@@ -21,15 +21,15 @@ class test_OP(unittest.TestCase):
 
         n_elements = 1000
         all_indices = range(n_elements)
-        numpy.random.seed(12345)
+        np.random.seed(12345)
         for i in [5, 10, 50, 100, 500, n_elements]:
-            uni = numpy.random.rand(i).astype(config.floatX)
-            pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+            uni = np.random.rand(i).astype(config.floatX)
+            pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
             pvals /= pvals.sum(1)
             res = f(pvals, uni, i)
-            res = numpy.squeeze(res)
+            res = np.squeeze(res)
             assert len(res) == i
-            assert numpy.all(numpy.in1d(numpy.unique(res), all_indices)), res
+            assert np.all(np.in1d(np.unique(res), all_indices)), res
 
     def test_fail_select_alot(self):
         """
@@ -45,9 +45,9 @@ class test_OP(unittest.TestCase):
 
         n_elements = 100
         n_selected = 200
-        numpy.random.seed(12345)
-        uni = numpy.random.rand(n_selected).astype(config.floatX)
-        pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+        np.random.seed(12345)
+        uni = np.random.rand(n_selected).astype(config.floatX)
+        pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
         self.assertRaises(ValueError, f, pvals, uni, n_selected)
 
@@ -66,18 +66,18 @@ class test_OP(unittest.TestCase):
         n_elements = 100
         n_selected = 10
         mean_rtol = 0.0005
-        numpy.random.seed(12345)
-        pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+        np.random.seed(12345)
+        pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
-        avg_pvals = numpy.zeros((n_elements,), dtype=config.floatX)
+        avg_pvals = np.zeros((n_elements,), dtype=config.floatX)
 
         for rep in range(10000):
-            uni = numpy.random.rand(n_selected).astype(config.floatX)
+            uni = np.random.rand(n_selected).astype(config.floatX)
             res = f(pvals, uni, n_selected)
-            res = numpy.squeeze(res)
+            res = np.squeeze(res)
             avg_pvals[res] += 1
         avg_pvals /= avg_pvals.sum()
-        avg_diff = numpy.mean(abs(avg_pvals - pvals))
+        avg_diff = np.mean(abs(avg_pvals - pvals))
         assert avg_diff < mean_rtol, avg_diff
 
 
@@ -97,14 +97,14 @@ class test_function(unittest.TestCase):
 
         n_elements = 1000
         all_indices = range(n_elements)
-        numpy.random.seed(12345)
+        np.random.seed(12345)
         for i in [5, 10, 50, 100, 500, n_elements]:
-            pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+            pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
             pvals /= pvals.sum(1)
             res = f(pvals, i)
-            res = numpy.squeeze(res)
+            res = np.squeeze(res)
             assert len(res) == i
-            assert numpy.all(numpy.in1d(numpy.unique(res), all_indices)), res
+            assert np.all(np.in1d(np.unique(res), all_indices)), res
 
     def test_fail_select_alot(self):
         """
@@ -121,8 +121,8 @@ class test_function(unittest.TestCase):
 
         n_elements = 100
         n_selected = 200
-        numpy.random.seed(12345)
-        pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+        np.random.seed(12345)
+        pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
         self.assertRaises(ValueError, f, pvals, n_selected)
 
@@ -142,15 +142,15 @@ class test_function(unittest.TestCase):
         n_elements = 100
         n_selected = 10
         mean_rtol = 0.0005
-        numpy.random.seed(12345)
-        pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+        np.random.seed(12345)
+        pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
-        avg_pvals = numpy.zeros((n_elements,), dtype=config.floatX)
+        avg_pvals = np.zeros((n_elements,), dtype=config.floatX)
 
         for rep in range(10000):
             res = f(pvals, n_selected)
-            res = numpy.squeeze(res)
+            res = np.squeeze(res)
             avg_pvals[res] += 1
         avg_pvals /= avg_pvals.sum()
-        avg_diff = numpy.mean(abs(avg_pvals - pvals))
+        avg_diff = np.mean(abs(avg_pvals - pvals))
         assert avg_diff < mean_rtol

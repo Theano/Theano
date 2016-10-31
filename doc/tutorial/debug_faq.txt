@@ -101,7 +101,7 @@ following example. Here, we use ``exception_verbosity=high`` and
 
 .. testcode:: testvalue
 
-    import numpy
+    import numpy as np
     import theano
     import theano.tensor as T
 
@@ -109,15 +109,15 @@ following example. Here, we use ``exception_verbosity=high`` and
     theano.config.compute_test_value = 'off' # Use 'warn' to activate this feature
 
     # configure shared variables
-    W1val = numpy.random.rand(2, 10, 10).astype(theano.config.floatX)
+    W1val = np.random.rand(2, 10, 10).astype(theano.config.floatX)
     W1 = theano.shared(W1val, 'W1')
-    W2val = numpy.random.rand(15, 20).astype(theano.config.floatX)
+    W2val = np.random.rand(15, 20).astype(theano.config.floatX)
     W2 = theano.shared(W2val, 'W2')
 
     # input which will be of shape (5,10)
     x  = T.matrix('x')
     # provide Theano with a default test-value
-    #x.tag.test_value = numpy.random.rand(5, 10)
+    #x.tag.test_value = np.random.rand(5, 10)
 
     # transform the shared variable in some way. Theano does not
     # know off hand that the matrix func_of_W1 has shape (20, 10)
@@ -131,7 +131,7 @@ following example. Here, we use ``exception_verbosity=high`` and
 
     # compile and call the actual function
     f = theano.function([x], h2)
-    f(numpy.random.rand(5, 10))
+    f(np.random.rand(5, 10))
 
 Running the above code generates the following error message:
 
@@ -139,7 +139,7 @@ Running the above code generates the following error message:
 
     Traceback (most recent call last):
       File "test1.py", line 31, in <module>
-        f(numpy.random.rand(5, 10))
+        f(np.random.rand(5, 10))
       File "PATH_TO_THEANO/theano/compile/function_module.py", line 605, in __call__
         self.fn.thunks[self.fn.position_of_error])
       File "PATH_TO_THEANO/theano/compile/function_module.py", line 595, in __call__
@@ -174,7 +174,7 @@ so slightly, we can get Theano to reveal the exact source of the error.
     # input which will be of shape (5, 10)
     x  = T.matrix('x')
     # provide Theano with a default test-value
-    x.tag.test_value = numpy.random.rand(5, 10)
+    x.tag.test_value = np.random.rand(5, 10)
 
 In the above, we are tagging the symbolic matrix *x* with a special test
 value. This allows Theano to evaluate symbolic expressions on-the-fly (by
@@ -195,7 +195,7 @@ following error message, which properly identifies *line 24* as the culprit.
       File "PATH_TO_THEANO/theano/gof/op.py", line 752, in rval
         r = p(n, [x[0] for x in i], o)
       File "PATH_TO_THEANO/theano/tensor/basic.py", line 4554, in perform
-        z[0] = numpy.asarray(numpy.dot(x, y))
+        z[0] = np.asarray(np.dot(x, y))
     ValueError: matrices are not aligned
 
 The ``compute_test_value`` mechanism works as follows:
@@ -228,7 +228,7 @@ Theano provides a 'Print' op to do this.
 
 .. testcode::
 
-    import numpy
+    import numpy as np
     import theano
 
     x = theano.tensor.dvector('x')
@@ -239,10 +239,10 @@ Theano provides a 'Print' op to do this.
     f_with_print = theano.function([x], x_printed * 5)
 
     #this runs the graph without any printing
-    assert numpy.all( f([1, 2, 3]) == [5, 10, 15])
+    assert np.all( f([1, 2, 3]) == [5, 10, 15])
 
     #this runs the graph with the message, and value printed
-    assert numpy.all( f_with_print([1, 2, 3]) == [5, 10, 15])
+    assert np.all( f_with_print([1, 2, 3]) == [5, 10, 15])
 
 .. testoutput::
 
@@ -366,7 +366,7 @@ can be achieved as follows:
 
 .. testcode:: compiled
 
-    import numpy
+    import numpy as np
 
     import theano
 
@@ -378,8 +378,8 @@ can be achieved as follows:
 
     def detect_nan(i, node, fn):
         for output in fn.outputs:
-            if (not isinstance(output[0], numpy.random.RandomState) and
-                numpy.isnan(output[0]).any()):
+            if (not isinstance(output[0], np.random.RandomState) and
+                np.isnan(output[0]).any()):
                 print('*** NaN detected ***')
                 theano.printing.debugprint(node)
                 print('Inputs : %s' % [input[0] for input in fn.inputs])
@@ -454,7 +454,7 @@ Consider this example script ("ex.py"):
 .. testcode::
 
    import theano
-   import numpy
+   import numpy as np
    import theano.tensor as T
 
    a = T.dmatrix('a')
@@ -463,8 +463,8 @@ Consider this example script ("ex.py"):
    f = theano.function([a, b], [a * b])
 
    # matrices chosen so dimensions are unsuitable for multiplication
-   mat1 = numpy.arange(12).reshape((3, 4))
-   mat2 = numpy.arange(25).reshape((5, 5))
+   mat1 = np.arange(12).reshape((3, 4))
+   mat2 = np.arange(25).reshape((5, 5))
 
    f(mat1, mat2)
 

@@ -31,7 +31,7 @@ tf= theano.function([a,b],%(expr)s)
 
 def timeit_2vector(nb_element=1e6, nb_repeat=3, nb_call=int(1e2), expr="a**2 + b**2 + 2*a*b", do_unalign=False, do_amd=True):
     """Returns a dictionary whose keys are implementations ('numpy', 'numexpr', 'theano', etc.)
-    and whose values are numpy arrays of times taken to evalute the given problem.
+    and whose values are np arrays of times taken to evalute the given problem.
     """
     rval = dict() 
     print()
@@ -42,9 +42,9 @@ def timeit_2vector(nb_element=1e6, nb_repeat=3, nb_call=int(1e2), expr="a**2 + b
     else:
         init = "import numpy as np; a = np.arange(%(nb_element)s);b = np.arange(%(nb_element)s)"%locals()
     t1 = timeit.Timer("%(expr)s"%locals(),"from numpy import exp; %(init)s"%locals())
-    numpy_times = np.asarray(t1.repeat(nb_repeat,nb_call))
-    print("NumPy time: each time=",numpy_times, "min_time=", numpy_times.min())
-    rval['numpy'] = numpy_times
+    np_times = np.asarray(t1.repeat(nb_repeat,nb_call))
+    print("NumPy time: each time=",np_times, "min_time=", np_times.min())
+    rval['np'] = np_times
 
     t2 = timeit.Timer("""ne.evaluate("%(expr)s")"""%locals(),
                       "import numexpr as ne; %(init)s"%locals())
@@ -63,11 +63,11 @@ def timeit_2vector(nb_element=1e6, nb_repeat=3, nb_call=int(1e2), expr="a**2 + b
         print("Theano+amdlibm time",theanoamd_times, theanoamd_times.min())
         rval['theano_amd'] = theanoamd_times
 
-    print("time(NumPy) /  time(numexpr) = ",numpy_times.min()/numexpr_times.min())
-    print("time(NumPy) / time(Theano)",numpy_times.min()/theano_times.min())
+    print("time(NumPy) /  time(numexpr) = ",np_times.min()/numexpr_times.min())
+    print("time(NumPy) / time(Theano)",np_times.min()/theano_times.min())
     print("time(numexpr) / time(Theano)",numexpr_times.min()/theano_times.min())
     if do_amd:
-        print("time(NumPy) / time(Theano+amdlibm)",numpy_times.min()/theanoamd_times.min())
+        print("time(NumPy) / time(Theano+amdlibm)",np_times.min()/theanoamd_times.min())
         print("time(numexpr) / time(Theano+amdlibm)",numexpr_times.min()/theanoamd_times.min())
     return rval
 
@@ -87,11 +87,11 @@ def exec_timeit_2vector(expr, nb_call_scal=1, fname=None, do_unalign=False, do_a
             runtimes_unalign.append(timeit_2vector(nb_element=nb_e, nb_repeat=3, nb_call=nb_c*nb_call_scal, expr=expr, do_unalign=True, do_amd=do_amd))
 
     print('Runtimes list = ', runtimes)
-    numexpr_speedup = np.asarray([t['numpy'].min()/t['numexpr'].min() for t in runtimes],"float32")
+    numexpr_speedup = np.asarray([t['np'].min()/t['numexpr'].min() for t in runtimes],"float32")
     print("time(NumPy) / time(numexpr)", end=' ')
     print(numexpr_speedup, numexpr_speedup.min(), numexpr_speedup.max())
 
-    theano_speedup = np.asarray([t['numpy'].min()/t['theano'].min() for t in runtimes],"float32")
+    theano_speedup = np.asarray([t['np'].min()/t['theano'].min() for t in runtimes],"float32")
     print("time(NumPy) / time(Theano)", end=' ')
     print(theano_speedup, theano_speedup.min(), theano_speedup.max())
 
@@ -100,7 +100,7 @@ def exec_timeit_2vector(expr, nb_call_scal=1, fname=None, do_unalign=False, do_a
     print(theano_numexpr_speedup, theano_numexpr_speedup.min(), theano_numexpr_speedup.max())
 
     if do_amd:
-        theano_speedup2 = np.asarray([t['numpy'].min()/t['theano_amd'].min() for t in runtimes],"float32")
+        theano_speedup2 = np.asarray([t['np'].min()/t['theano_amd'].min() for t in runtimes],"float32")
         print("time(NumPy) / time(theano+amdlibm)", end=' ')
         print(theano_speedup,theano_speedup.min(),theano_speedup.max())
 
@@ -189,10 +189,10 @@ def execs_timeit_2vector(exprs, fname=None):
         pylab.subplots_adjust(wspace=0.25, hspace=0.25)
         #legend=[]
         #plot = fig.add_subplot(1,len(exprs),idx)
-        speedup = [t["numpy"].min()/t["numexpr"].min() for t in time]
+        speedup = [t["np"].min()/t["numexpr"].min() for t in time]
 
         pylab.semilogx(nb_calls, speedup, linewidth=1.0,  color='r')
-        speedup = [t["numpy"].min()/t["theano"].min() for t in time]
+        speedup = [t["np"].min()/t["theano"].min() for t in time]
         pylab.semilogx(nb_calls, speedup, linewidth=1.0, color = 'b')
         pylab.grid(True)
         if (idx == 2) or (idx == 3):

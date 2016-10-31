@@ -3,7 +3,7 @@ import copy
 import logging
 import sys
 import warnings
-import numpy
+import numpy as np
 from six import iteritems
 from six.moves import StringIO, xrange
 
@@ -47,7 +47,7 @@ def as_cuda_ndarray_variable(x):
 
 
 def as_cuda_array(obj):
-    if isinstance(obj, numpy.ndarray):
+    if isinstance(obj, np.ndarray):
         return cuda_ndarray.cuda_ndarray.CudaNdarray(obj)
     elif isinstance(obj, cuda_ndarray.cuda_ndarray.CudaNdarray):
         return obj
@@ -83,7 +83,7 @@ class HostFromGpu(GpuOp):
     def perform(self, node, inp, out):
         x, = inp
         z, = out
-        z[0] = numpy.asarray(x)
+        z[0] = np.asarray(x)
 
     def grad(self, inputs, grads):
         gz, = grads
@@ -2432,7 +2432,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
             elif nb_m1 == 1:
                 if (x.size % ss) != 0:
                     raise ValueError("When using -1 in new shape, the computed new shape must be an multiple of the original shape.")
-                shp_new = numpy.copy(shp)
+                shp_new = np.copy(shp)
                 shp_new[m1_idx] = x.size / ss
                 shp = shp_new
 
@@ -2691,20 +2691,20 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
         # TODO: if more than 3 dims, reshape the inputs even if not all
         # dimensions are c contiguous
         if x.ndim > 3 and x.is_c_contiguous():
-            x = x.reshape((x.shape[0], numpy.prod(x.shape[1:])))
+            x = x.reshape((x.shape[0], np.prod(x.shape[1:])))
         out_shape = (len(idx),) + x_orig.shape[1:]
         if x.ndim <= 3:
             # CudaNdarray.take only supports ndim <= 3
             if self.perform_using_take is not None:
                 assert self.perform_using_take is True, (
                     "GpuAdvancedSubtensor1 used the fast version")
-            if idx.dtype != numpy.int64:
-                if idx.dtype in [numpy.int8, numpy.int16, numpy.int32,
-                                 numpy.int64, numpy.uint8, numpy.uint16,
-                                 numpy.uint32]:
-                    idx = idx.astype(numpy.int64)
+            if idx.dtype != np.int64:
+                if idx.dtype in [np.int8, np.int16, np.int32,
+                                 np.int64, np.uint8, np.uint16,
+                                 np.uint32]:
+                    idx = idx.astype(np.int64)
             if not idx.flags.c_contiguous:
-                idx = numpy.ascontiguousarray(idx)
+                idx = np.ascontiguousarray(idx)
 
             idx = idx.view("float32")
             idx = cuda_ndarray.cuda_ndarray.CudaNdarray(idx)
@@ -3378,7 +3378,7 @@ class GpuJoin(tensor.Join, GpuOp):
     def perform(self, node, axis_and_tensors, out_):
         out, = out_
         axis, cndas = axis_and_tensors[0], axis_and_tensors[1:]
-        # In case axis is numpy.int8 and has no __index__() method
+        # In case axis is np.int8 and has no __index__() method
         axis = int(axis)
         ndim = cndas[0].ndim
         if axis < -ndim:
@@ -3630,7 +3630,7 @@ class GpuAllocEmpty(GpuOp):
     def debug_perform(self, node, inputs, out_):
         self.perform(node, inputs, out_)
         # __setitem__ is limited on CudaNdarray
-        tmp = numpy.empty(out_[0][0].shape, dtype='float32')
+        tmp = np.empty(out_[0][0].shape, dtype='float32')
         tmp.fill(-123456789)
         out_[0][0][:] = tmp
 

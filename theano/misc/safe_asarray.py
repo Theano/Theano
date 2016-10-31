@@ -3,7 +3,7 @@ Helper function to safely convert an array to a new data type.
 """
 from __future__ import absolute_import, print_function, division
 
-import numpy
+import numpy as np
 
 import theano
 
@@ -14,7 +14,7 @@ def _asarray(a, dtype, order=None):
     """Convert the input to a Numpy array.
 
     This function is almost identical to ``numpy.asarray``, but it should be
-    used instead of its numpy counterpart when a data type is provided in
+    used instead of its np counterpart when a data type is provided in
     order to perform type conversion if required.
     The reason is that ``numpy.asarray`` may not actually update the array's
     data type to the user-provided type. For more information see ticket
@@ -30,15 +30,15 @@ def _asarray(a, dtype, order=None):
     """
     if str(dtype) == 'floatX':
         dtype = theano.config.floatX
-    dtype = numpy.dtype(dtype)  # Convert into dtype object.
-    rval = numpy.asarray(a, dtype=dtype, order=order)
+    dtype = np.dtype(dtype)  # Convert into dtype object.
+    rval = np.asarray(a, dtype=dtype, order=order)
     # Note that dtype comparison must be done by comparing their `num`
     # attribute. One cannot assume that two identical data types are pointers
     # towards the same object (e.g. under Windows this appears not to be the
     # case).
     if rval.dtype.num != dtype.num:
         # Type mismatch between the data type we asked for, and the one
-        # returned by numpy.asarray.
+        # returned by np.asarray.
         # If both types have the same string description (byte order, basic
         # type, and number of bytes), then it is safe to return a view.
         if (dtype.str == rval.dtype.str):

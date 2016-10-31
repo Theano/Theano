@@ -195,8 +195,8 @@ htmlhelp_basename = 'theanodoc'
 # This function is used to populate the (source) links in the API
 def linkcode_resolve(domain, info):
     def find_source():
-        # try to find the file and line number, based on code from numpy:
-        # https://github.com/numpy/numpy/blob/master/doc/source/conf.py#L286
+        # try to find the file and line number, based on code from np:
+        # https://github.com/np/numpy/blob/master/doc/source/conf.py#L286
         obj = sys.modules[info['module']]
         for part in info['fullname'].split('.'):
             obj = getattr(obj, part)

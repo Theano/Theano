@@ -17,7 +17,7 @@ import warnings
 from copy import copy
 from textwrap import dedent
 
-import numpy
+import numpy as np
 from six.moves import xrange
 
 import theano
@@ -70,7 +70,7 @@ def upcast(dtype, *dtypes):
             keep_float16[0] = False
         if dt == 'float32':
             keep_float16[0] = False
-        return numpy.zeros((), dtype=dt)
+        return np.zeros((), dtype=dt)
     z = make_array(dtype)
     for dt in dtypes:
         z = z + make_array(dt=dt)
@@ -121,7 +121,7 @@ def as_scalar(x, name=None):
 
 
 def constant(x):
-    # pass through numpy scalars, since they are already typed on
+    # pass through np scalars, since they are already typed on
     # purpose typically.
     if hasattr(x, 'dtype'):
         assert x.ndim == 0
@@ -129,7 +129,7 @@ def constant(x):
     if isinstance(x, builtin_float):
         for dtype in ['float32', 'float64']:
             x_ = theano._asarray(x, dtype=dtype)
-            if numpy.all(x == x_):
+            if np.all(x == x_):
                 break
             x_ = None
         assert x_ is not None
@@ -137,7 +137,7 @@ def constant(x):
     if isinstance(x, builtin_int):
         for dtype in ['int8', 'int16', 'int32', 'int64']:
             x_ = theano._asarray(x, dtype=dtype)
-            if numpy.all(x == x_):
+            if np.all(x == x_):
                 break
             x_ = None
         assert x_ is not None
@@ -173,7 +173,7 @@ class Scalar(Type):
     @staticmethod
     def may_share_memory(a, b):
         # This class represent basic c type, represented in python
-        # with numpy.scalar. They are read only. So from python, they
+        # with np.scalar. They are read only. So from python, they
         # can never share memory.
         return False
 
@@ -236,7 +236,7 @@ class Scalar(Type):
     def dtype_specs(self):
         try:
             # To help debug dtype/typenum problem, here is code to get
-            # the list of numpy typenum.  This list change between 32
+            # the list of np typenum.  This list change between 32
             # and 64 bit platform and probably also also between
             # Windows and Linux.
             # NOTE: equivalent type on a platform can have different typenum.
@@ -254,20 +254,20 @@ class Scalar(Type):
                 print(dtype, np.zeros(1, dtype=dtype).dtype.num)
             """
             return {  # dtype: (py_type, c_type, cls_name)
-                'float16': (numpy.float16, 'npy_float16', 'Float16'),
-                'float32': (numpy.float32, 'npy_float32', 'Float32'),
-                'float64': (numpy.float64, 'npy_float64', 'Float64'),
-                'complex128': (numpy.complex128, 'theano_complex128',
+                'float16': (np.float16, 'npy_float16', 'Float16'),
+                'float32': (np.float32, 'npy_float32', 'Float32'),
+                'float64': (np.float64, 'npy_float64', 'Float64'),
+                'complex128': (np.complex128, 'theano_complex128',
                                'Complex128'),
-                'complex64': (numpy.complex64, 'theano_complex64', 'Complex64'),
-                'uint8': (numpy.uint8, 'npy_uint8', 'UInt8'),
-                'int8': (numpy.int8, 'npy_int8', 'Int8'),
-                'uint16': (numpy.uint16, 'npy_uint16', 'UInt16'),
-                'int16': (numpy.int16, 'npy_int16', 'Int16'),
-                'uint32': (numpy.uint32, 'npy_uint32', 'UInt32'),
-                'int32': (numpy.int32, 'npy_int32', 'Int32'),
-                'uint64': (numpy.uint64, 'npy_uint64', 'UInt64'),
-                'int64': (numpy.int64, 'npy_int64', 'Int64')
+                'complex64': (np.complex64, 'theano_complex64', 'Complex64'),
+                'uint8': (np.uint8, 'npy_uint8', 'UInt8'),
+                'int8': (np.int8, 'npy_int8', 'Int8'),
+                'uint16': (np.uint16, 'npy_uint16', 'UInt16'),
+                'int16': (np.int16, 'npy_int16', 'Int16'),
+                'uint32': (np.uint32, 'npy_uint32', 'UInt32'),
+                'int32': (np.int32, 'npy_int32', 'Int32'),
+                'uint64': (np.uint64, 'npy_uint64', 'UInt64'),
+                'int64': (np.int64, 'npy_int64', 'Int64')
             }[self.dtype]
         except KeyError:
             raise TypeError("Unsupported dtype for %s: %s" % (
@@ -360,8 +360,8 @@ class Scalar(Type):
             # If the 'int' C type is not exactly the same as an existing
             # 'npy_intX', some C code may not compile, e.g. when assigning
             # the value 0 (cast to 'int' in C) to a theano_complex64.
-            if (numpy.dtype('intc').num not in
-                    [numpy.dtype(d[4:]).num for d in real_types]):
+            if (np.dtype('intc').num not in
+                    [np.dtype(d[4:]).num for d in real_types]):
                 # In that case we add the 'int' type to the real types.
                 real_types.append('int')
 
@@ -500,7 +500,7 @@ class Scalar(Type):
         return ["import_array();"]
 
     def c_code_cache_version(self):
-        return (13, numpy.__version__)
+        return (13, np.__version__)
 
     def get_shape_info(self, obj):
         return obj.itemsize
@@ -1040,7 +1040,7 @@ class LT(LogicalComparison):
 
     def impl(self, x, y):
         # built-in < don't support complex
-        return numpy.less(x, y)
+        return np.less(x, y)
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x, y) = inputs
@@ -1059,7 +1059,7 @@ class GT(LogicalComparison):
 
     def impl(self, x, y):
         # built-in > don't support complex
-        return numpy.greater(x, y)
+        return np.greater(x, y)
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x, y) = inputs
@@ -1078,7 +1078,7 @@ class LE(LogicalComparison):
 
     def impl(self, x, y):
         # built-in <= don't support complex
-        return numpy.less_equal(x, y)
+        return np.less_equal(x, y)
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x, y) = inputs
@@ -1097,7 +1097,7 @@ class GE(LogicalComparison):
 
     def impl(self, x, y):
         # built-in >= don't support complex
-        return numpy.greater_equal(x, y)
+        return np.greater_equal(x, y)
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x, y) = inputs
@@ -1146,7 +1146,7 @@ class IsNan(FixedLogicalComparison):
     nfunc_spec = ('isnan', 1, 1)
 
     def impl(self, x):
-        return numpy.isnan(x)
+        return np.isnan(x)
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
@@ -1154,7 +1154,7 @@ class IsNan(FixedLogicalComparison):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
         # Windows tries to be different and sometimes return -1, but we want
-        # to be consistent with numpy (which returns True), hence the "abs".
+        # to be consistent with np (which returns True), hence the "abs".
         return "%(z)s = abs(isnan(%(x)s));" % locals()
 
     def c_code_cache_version(self):
@@ -1167,7 +1167,7 @@ class IsInf(FixedLogicalComparison):
     nfunc_spec = ('isinf', 1, 1)
 
     def impl(self, x):
-        return numpy.isinf(x)
+        return np.isinf(x)
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
@@ -1175,7 +1175,7 @@ class IsInf(FixedLogicalComparison):
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
         # Note that the C isinf returns -1 for -Inf and +1 for +Inf, while
-        # numpy simply returns True: we mimic numpy's behavior here, thus
+        # np simply returns True: we mimic np's behavior here, thus
         # the absolute value.
         return "%(z)s = abs(isinf(%(x)s));" % locals()
 isinf = IsInf()
@@ -1385,7 +1385,7 @@ class Maximum(BinaryScalarOp):
 
     def impl(self, *inputs):
         # The built-in max function don't support complex type
-        return numpy.maximum(*inputs)
+        return np.maximum(*inputs)
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x, y) = inputs
@@ -1424,7 +1424,7 @@ class Minimum(BinaryScalarOp):
 
     def impl(self, *inputs):
         # The built-in min function don't support complex type
-        return numpy.minimum(*inputs)
+        return np.minimum(*inputs)
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x, y) = inputs
@@ -1498,7 +1498,7 @@ class Mul(ScalarOp):
     nfunc_spec = ('multiply', 2, 1)
 
     def impl(self, *inputs):
-        return numpy.product(inputs)
+        return np.product(inputs)
 
     def c_code(self, node, name, inputs, outputs, sub):
         (z,) = outputs
@@ -1646,10 +1646,10 @@ class TrueDiv(BinaryScalarOp):
             return super(TrueDiv, self).output_types(types)
 
     def impl(self, x, y):
-        x = numpy.asarray(x)
-        y = numpy.asarray(y)
+        x = np.asarray(x)
+        y = np.asarray(y)
         if all(a.dtype in discrete_types for a in (x, y)):
-            return numpy.sctypeDict[config.floatX](float(x) / y)
+            return np.sctypeDict[config.floatX](float(x) / y)
         else:
             return x / y
 
@@ -1697,7 +1697,7 @@ class IntDiv(BinaryScalarOp):
     nfunc_spec = ('floor_divide', 2, 1)
     complex_error = ComplexError(
         "Theano does not support integer division (//) on "
-        "complex numbers, since numpy deprecated it.")
+        "complex numbers, since np deprecated it.")
 
     def impl(self, x, y):
         return x // y
@@ -1783,10 +1783,10 @@ class Mod(BinaryScalarOp):
     nfunc_spec = ('mod', 2, 1)
     complex_error = ComplexError(
         "Theano does not support the mod operator (%) on "
-        "complex numbers, since numpy deprecated it.")
+        "complex numbers, since np deprecated it.")
 
     def impl(self, x, y):
-        if isinstance(x, numpy.complex) or isinstance(y, numpy.complex):
+        if isinstance(x, np.complex) or isinstance(y, np.complex):
             raise self.complex_error
         return x % y
 
@@ -1942,7 +1942,7 @@ pow = Pow(upcast_out, name='pow')
 
 class Clip(ScalarOp):
     nin = 3
-    # The numpy.clip don't work correctly when the min is bigger then the max,
+    # The np.clip don't work correctly when the min is bigger then the max,
     # So we do not use nfunc_spec = ('clip', 3, 1)
 
     def impl(self, x, min, max):
@@ -1975,7 +1975,7 @@ class Clip(ScalarOp):
 
         return list(map(handle_int, [gx, gmn, gmx]))
 
-# Don't allow complex even if numpy do
+# Don't allow complex even if np do
 # As there is no mathematical reason for this function on complex
 clip = Clip(upcast_out_no_complex, name='clip')
 
@@ -2039,7 +2039,7 @@ class Cast(UnaryScalarOp):
             raise TypeError(o_type)
         super(Cast, self).__init__(specific_out(o_type), name=name)
         self.o_type = o_type
-        self.ctor = getattr(numpy, o_type.dtype)
+        self.ctor = getattr(np, o_type.dtype)
 
     def __str__(self):
         return '%s{%s}' % (self.__class__.__name__, self.o_type.dtype)
@@ -2141,7 +2141,7 @@ class Abs(UnaryScalarOp):
         return Apply(self, inputs, outputs)
 
     def impl(self, x):
-        return numpy.abs(x)
+        return np.abs(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2175,7 +2175,7 @@ class Sgn(UnaryScalarOp):
 
     def impl(self, x):
         # casting to output type is handled by filter
-        return numpy.sign(x)
+        return np.sign(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2212,7 +2212,7 @@ class Ceil(UnaryScalarOp):
     nfunc_spec = ('ceil', 1, 1)
 
     def impl(self, x):
-        return numpy.ceil(x)
+        return np.ceil(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2235,7 +2235,7 @@ class Floor(UnaryScalarOp):
     nfunc_spec = ('floor', 1, 1)
 
     def impl(self, x):
-        return numpy.floor(x)
+        return np.floor(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2258,7 +2258,7 @@ class Trunc(UnaryScalarOp):
     nfunc_spec = ('trunc', 1, 1)
 
     def impl(self, x):
-        return numpy.trunc(x)
+        return np.trunc(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2274,7 +2274,7 @@ trunc = Trunc(same_out_nocomplex, name='trunc')
 
 class RoundHalfToEven(UnaryScalarOp):
     """
-    This function implement the same rounding than numpy: Round half to even.
+    This function implement the same rounding than np: Round half to even.
 
     c/c++ round fct IS DIFFERENT!
     See http://en.wikipedia.org/wiki/Rounding for more details.
@@ -2283,7 +2283,7 @@ class RoundHalfToEven(UnaryScalarOp):
     nfunc_spec = ('around', 1, 1)
 
     def impl(self, x):
-        return numpy.round(x)
+        return np.round(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2352,21 +2352,21 @@ round_half_to_even = RoundHalfToEven(same_out_float_only)
 
 def round_half_away_from_zero_(a):
     if a > 0:
-        return numpy.floor(a + 0.5)
+        return np.floor(a + 0.5)
     else:
-        return numpy.ceil(a - 0.5)
+        return np.ceil(a - 0.5)
 
-round_half_away_from_zero_vec64 = numpy.vectorize(
+round_half_away_from_zero_vec64 = np.vectorize(
     round_half_away_from_zero_,
     doc='round_half_away_from_zero_vec64')
-round_half_away_from_zero_vec32 = numpy.vectorize(
+round_half_away_from_zero_vec32 = np.vectorize(
     round_half_away_from_zero_,
     doc='round_half_away_from_zero_vec32',
     otypes=['float32'])
 
 
 def round_half_away_from_zero_vec(a):
-    if getattr(a, 'dtype', None) == numpy.float32:
+    if getattr(a, 'dtype', None) == np.float32:
         return round_half_away_from_zero_vec32(a)
     return round_half_away_from_zero_vec64(a)
 
@@ -2375,7 +2375,7 @@ class RoundHalfAwayFromZero(UnaryScalarOp):
     """
     Implement the same rounding algo as c round() fct.
 
-    numpy.round fct IS DIFFERENT!
+    np.round fct IS DIFFERENT!
     See http://en.wikipedia.org/wiki/Rounding for more details.
 
     """
@@ -2403,19 +2403,19 @@ round_half_away_from_zero = RoundHalfAwayFromZero(same_out_float_only)
 
 
 class Neg(UnaryScalarOp):
-    # We can use numpy.negative here, because even if it gives unexpected
+    # We can use np.negative here, because even if it gives unexpected
     # results on Boolean arrays, it will be passed other dtypes as Theano
     # does not have a Boolean type for tensors.
     nfunc_spec = ('negative', 1, 1)
 
     def impl(self, x):
-        # We have to make sure x is not a numpy.bool_, because
-        # `-numpy.bool_(True)` is `False` (we want 0), and
-        # `-numpy.bool_(False)` is `True` (we want 1).
+        # We have to make sure x is not a np.bool_, because
+        # `-np.bool_(True)` is `False` (we want 0), and
+        # `-np.bool_(False)` is `True` (we want 1).
         # This happens for Composite, as the intermediate results are not
         # casted in the dtype of the intermediate variable in general.
-        if isinstance(x, numpy.bool_):
-            x = numpy.int8(x)
+        if isinstance(x, np.bool_):
+            x = np.int8(x)
         return -x
 
     def grad(self, inputs, gout):
@@ -2451,7 +2451,7 @@ class Inv(UnaryScalarOp):
 
     """
     def impl(self, x):
-        return numpy.float32(1.0) / x
+        return np.float32(1.0) / x
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2485,12 +2485,12 @@ class Log(UnaryScalarOp):
     amd_float64 = "amd_vrda_log"
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.log will compute the result in
+        # If x is an int8 or uint8, np.log will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.log(x, sig='f')
-        return numpy.log(x)
+            return np.log(x, sig='f')
+        return np.log(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2527,12 +2527,12 @@ class Log2(UnaryScalarOp):
     amd_float64 = "amd_vrda_log2"
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.log2 will compute the result in
+        # If x is an int8 or uint8, np.log2 will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.log2(x, sig='f')
-        return numpy.log2(x)
+            return np.log2(x, sig='f')
+        return np.log2(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2545,7 +2545,7 @@ class Log2(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        return gz / (x * numpy.asarray(math.log(2.0)).astype(x.dtype)),
+        return gz / (x * np.asarray(math.log(2.0)).astype(x.dtype)),
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
@@ -2566,12 +2566,12 @@ class Log10(UnaryScalarOp):
     amd_float64 = "amd_vrda_log10"
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.log10 will compute the result in
+        # If x is an int8 or uint8, np.log10 will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.log10(x, sig='f')
-        return numpy.log10(x)
+            return np.log10(x, sig='f')
+        return np.log10(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2584,7 +2584,7 @@ class Log10(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        return gz / (x * numpy.log(10.0)),
+        return gz / (x * np.log(10.0)),
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
@@ -2603,12 +2603,12 @@ class Log1p(UnaryScalarOp):
     nfunc_spec = ('log1p', 1, 1)
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.log1p will compute the result in
+        # If x is an int8 or uint8, np.log1p will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.log1p(x, sig='f')
-        return numpy.log1p(x)
+            return np.log1p(x, sig='f')
+        return np.log1p(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2638,12 +2638,12 @@ class Exp(UnaryScalarOp):
     amd_float64 = "amd_vrda_exp"
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.exp will compute the result in
+        # If x is an int8 or uint8, np.exp will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.exp(x, sig='f')
-        return numpy.exp(x)
+            return np.exp(x, sig='f')
+        return np.exp(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2671,12 +2671,12 @@ class Exp2(UnaryScalarOp):
     nfunc_spec = ('exp2', 1, 1)
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.exp2 will compute the result in
+        # If x is an int8 or uint8, np.exp2 will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.exp2(x, sig='f')
-        return numpy.exp2(x)
+            return np.exp2(x, sig='f')
+        return np.exp2(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2689,7 +2689,7 @@ class Exp2(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        return gz * exp2(x) * log(numpy.cast[x.type](2)),
+        return gz * exp2(x) * log(np.cast[x.type](2)),
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
@@ -2704,12 +2704,12 @@ class Expm1(UnaryScalarOp):
     nfunc_spec = ('expm1', 1, 1)
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.expm1 will compute the result in
+        # If x is an int8 or uint8, np.expm1 will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.expm1(x, sig='f')
-        return numpy.expm1(x)
+            return np.expm1(x, sig='f')
+        return np.expm1(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2766,12 +2766,12 @@ class Sqrt(UnaryScalarOp):
     nfunc_spec = ('sqrt', 1, 1)
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.sqrt will compute the result in
+        # If x is an int8 or uint8, np.sqrt will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.sqrt(x, sig='f')
-        return numpy.sqrt(x)
+            return np.sqrt(x, sig='f')
+        return np.sqrt(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2799,12 +2799,12 @@ class Deg2Rad(UnaryScalarOp):
     nfunc_spec = ('deg2rad', 1, 1)
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.deg2rad will compute the result in
+        # If x is an int8 or uint8, np.deg2rad will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.deg2rad(x, sig='f')
-        return numpy.deg2rad(x)
+            return np.deg2rad(x, sig='f')
+        return np.deg2rad(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2817,7 +2817,7 @@ class Deg2Rad(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        return gz * numpy.asarray(numpy.pi / 180, gz.type),
+        return gz * np.asarray(np.pi / 180, gz.type),
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
@@ -2832,12 +2832,12 @@ class Rad2Deg(UnaryScalarOp):
     nfunc_spec = ('rad2deg', 1, 1)
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.rad2deg will compute the result in
+        # If x is an int8 or uint8, np.rad2deg will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.rad2deg(x, sig='f')
-        return numpy.rad2deg(x)
+            return np.rad2deg(x, sig='f')
+        return np.rad2deg(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2850,7 +2850,7 @@ class Rad2Deg(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        return gz * numpy.asarray(180. / numpy.pi, gz.type),
+        return gz * np.asarray(180. / np.pi, gz.type),
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
@@ -2867,12 +2867,12 @@ class Cos(UnaryScalarOp):
     amd_float64 = "amd_vrda_cos"
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.cos will compute the result in
+        # If x is an int8 or uint8, np.cos will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.cos(x, sig='f')
-        return numpy.cos(x)
+            return np.cos(x, sig='f')
+        return np.cos(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2900,12 +2900,12 @@ class ArcCos(UnaryScalarOp):
     nfunc_spec = ('arccos', 1, 1)
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.arccos will compute the result in
+        # If x is an int8 or uint8, np.arccos will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.arccos(x, sig='f')
-        return numpy.arccos(x)
+            return np.arccos(x, sig='f')
+        return np.arccos(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2918,7 +2918,7 @@ class ArcCos(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        return - gz / sqrt(numpy.cast[x.type](1) - sqr(x)),
+        return - gz / sqrt(np.cast[x.type](1) - sqr(x)),
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
@@ -2935,12 +2935,12 @@ class Sin(UnaryScalarOp):
     amd_float64 = "amd_vrda_sin"
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.sin will compute the result in
+        # If x is an int8 or uint8, np.sin will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.sin(x, sig='f')
-        return numpy.sin(x)
+            return np.sin(x, sig='f')
+        return np.sin(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2968,12 +2968,12 @@ class ArcSin(UnaryScalarOp):
     nfunc_spec = ('arcsin', 1, 1)
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.arcsin will compute the result in
+        # If x is an int8 or uint8, np.arcsin will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.arcsin(x, sig='f')
-        return numpy.arcsin(x)
+            return np.arcsin(x, sig='f')
+        return np.arcsin(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2986,7 +2986,7 @@ class ArcSin(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        return gz / sqrt(numpy.cast[x.type](1) - sqr(x)),
+        return gz / sqrt(np.cast[x.type](1) - sqr(x)),
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
@@ -3001,12 +3001,12 @@ class Tan(UnaryScalarOp):
     nfunc_spec = ('tan', 1, 1)
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.tan will compute the result in
+        # If x is an int8 or uint8, np.tan will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.tan(x, sig='f')
-        return numpy.tan(x)
+            return np.tan(x, sig='f')
+        return np.tan(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -3034,12 +3034,12 @@ class ArcTan(UnaryScalarOp):
     nfunc_spec = ('arctan', 1, 1)
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.arctan will compute the result in
+        # If x is an int8 or uint8, np.arctan will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.arctan(x, sig='f')
-        return numpy.arctan(x)
+            return np.arctan(x, sig='f')
+        return np.arctan(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -3052,7 +3052,7 @@ class ArcTan(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        return gz / (numpy.cast[x.type](1) + sqr(x)),
+        return gz / (np.cast[x.type](1) + sqr(x)),
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
@@ -3067,14 +3067,14 @@ class ArcTan2(BinaryScalarOp):
     nfunc_spec = ('arctan2', 2, 1)
 
     def impl(self, y, x):
-        # If x and y are int8 or uint8, numpy.arctan2 will compute the result
+        # If x and y are int8 or uint8, np.arctan2 will compute the result
         # in half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
             y_dtype = str(getattr(x, 'dtype', ''))
             if y_dtype in ('int8', 'uint8'):
-                return numpy.arctan2(y, x, sig='f')
-        return numpy.arctan2(y, x)
+                return np.arctan2(y, x, sig='f')
+        return np.arctan2(y, x)
 
     def grad(self, inputs, gout):
         (y, x) = inputs
@@ -3116,12 +3116,12 @@ class Cosh(UnaryScalarOp):
     nfunc_spec = ('cosh', 1, 1)
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.cosh will compute the result in
+        # If x is an int8 or uint8, np.cosh will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.cosh(x, sig='f')
-        return numpy.cosh(x)
+            return np.cosh(x, sig='f')
+        return np.cosh(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -3149,12 +3149,12 @@ class ArcCosh(UnaryScalarOp):
     nfunc_spec = ('arccosh', 1, 1)
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.arccosh will compute the result in
+        # If x is an int8 or uint8, np.arccosh will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.arccosh(x, sig='f')
-        return numpy.arccosh(x)
+            return np.arccosh(x, sig='f')
+        return np.arccosh(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -3167,7 +3167,7 @@ class ArcCosh(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        return gz / sqrt(sqr(x) - numpy.cast[x.type](1)),
+        return gz / sqrt(sqr(x) - np.cast[x.type](1)),
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
@@ -3186,12 +3186,12 @@ class Sinh(UnaryScalarOp):
     nfunc_spec = ('sinh', 1, 1)
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.sinh will compute the result in
+        # If x is an int8 or uint8, np.sinh will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.sinh(x, sig='f')
-        return numpy.sinh(x)
+            return np.sinh(x, sig='f')
+        return np.sinh(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -3219,12 +3219,12 @@ class ArcSinh(UnaryScalarOp):
     nfunc_spec = ('arcsinh', 1, 1)
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.arcsinh will compute the result in
+        # If x is an int8 or uint8, np.arcsinh will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.arcsinh(x, sig='f')
-        return numpy.arcsinh(x)
+            return np.arcsinh(x, sig='f')
+        return np.arcsinh(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -3237,7 +3237,7 @@ class ArcSinh(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        return gz / sqrt(sqr(x) + numpy.cast[x.type](1)),
+        return gz / sqrt(sqr(x) + np.cast[x.type](1)),
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
@@ -3257,12 +3257,12 @@ class Tanh(UnaryScalarOp):
     nfunc_spec = ('tanh', 1, 1)
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.tanh will compute the result in
+        # If x is an int8 or uint8, np.tanh will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.tanh(x, sig='f')
-        return numpy.tanh(x)
+            return np.tanh(x, sig='f')
+        return np.tanh(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -3290,12 +3290,12 @@ class ArcTanh(UnaryScalarOp):
     nfunc_spec = ('arctanh', 1, 1)
 
     def impl(self, x):
-        # If x is an int8 or uint8, numpy.arctanh will compute the result in
+        # If x is an int8 or uint8, np.arctanh will compute the result in
         # half-precision (float16), where we want float32.
         x_dtype = str(getattr(x, 'dtype', ''))
         if x_dtype in ('int8', 'uint8'):
-            return numpy.arctanh(x, sig='f')
-        return numpy.arctanh(x)
+            return np.arctanh(x, sig='f')
+        return np.arctanh(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -3308,7 +3308,7 @@ class ArcTanh(UnaryScalarOp):
             else:
                 return [x.zeros_like()]
 
-        return gz / (numpy.cast[x.type](1) - sqr(x)),
+        return gz / (np.cast[x.type](1) - sqr(x)),
 
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
@@ -3324,11 +3324,11 @@ class Real(UnaryScalarOp):
     Extract the real coordinate of a complex number.
 
     """
-    # numpy.real(float32) return a view on the inputs.
+    # np.real(float32) return a view on the inputs.
     # nfunc_spec = ('real', 1, 1)
 
     def impl(self, x):
-        return numpy.real(x)
+        return np.real(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -3342,7 +3342,7 @@ class Imag(UnaryScalarOp):
     nfunc_spec = ('imag', 1, 1)
 
     def impl(self, x):
-        return numpy.imag(x)
+        return np.imag(x)
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -3361,7 +3361,7 @@ class Angle(UnaryScalarOp):
     nfunc_spec = ('angle', 1, 1)
 
     def impl(self, x):
-        return numpy.angle(x)
+        return np.angle(x)
 
     def grad(self, inputs, gout):
         # y = x.imag
@@ -3370,9 +3370,9 @@ class Angle(UnaryScalarOp):
         # if x == 0 and y == 0:
         #     theta = 0
         # elif x >= 0:
-        #     theta = numpy.arcsin(g)
+        #     theta = np.arcsin(g)
         # else:
-        #     theta = -numpy.arcsin(g)+numpy.pi
+        #     theta = -np.arcsin(g)+np.pi
 
         (c,) = inputs
         (gtheta,) = gout
@@ -3408,7 +3408,7 @@ class Complex(BinaryScalarOp):
             return [complex64]
 
     def impl(self, x, y):
-        return numpy.complex(x, y)
+        return np.complex(x, y)
 
     def grad(self, inputs, gout):
         (x, y) = inputs
@@ -3422,7 +3422,7 @@ class Conj(UnaryScalarOp):
     nfunc_spec = ('conj', 1, 1)
 
     def impl(self, x):
-        return numpy.conj(x)
+        return np.conj(x)
 conj = Conj(same_out, name='conj')
 
 
@@ -3434,12 +3434,12 @@ class ComplexFromPolar(BinaryScalarOp):
     def impl(self, r, theta):
         if r < 0:
             raise ValueError('polar radius must be non-negative', r)
-        x = r * numpy.cos(theta)
-        y = r * numpy.sin(theta)
+        x = r * np.cos(theta)
+        y = r * np.sin(theta)
         if x.dtype == 'float32':
-            return numpy.complex64(numpy.complex(x, y))
+            return np.complex64(np.complex(x, y))
         else:
-            return numpy.complex128(numpy.complex(x, y))
+            return np.complex128(np.complex(x, y))
 
     def grad(self, inputs, gout):
         (r, theta) = inputs

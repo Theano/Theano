@@ -24,8 +24,8 @@ Glossary
         the dimensions that it is lacking.  
         
         For more detail, see :ref:`libdoc_tensor_broadcastable`, and also
-        * `SciPy documentation about numpy's broadcasting <http://www.scipy.org/EricsBroadcastingDoc>`_
-        * `OnLamp article about numpy's broadcasting <http://www.onlamp.com/pub/a/python/2000/09/27/numerically.html>`_
+        * `SciPy documentation about np's broadcasting <http://www.scipy.org/EricsBroadcastingDoc>`_
+        * `OnLamp article about np's broadcasting <http://www.onlamp.com/pub/a/python/2000/09/27/numerically.html>`_
 
     Constant
         A variable with an immutable value.

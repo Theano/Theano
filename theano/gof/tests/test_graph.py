@@ -4,7 +4,7 @@ import pickle
 import unittest
 
 from nose.plugins.skip import SkipTest
-import numpy
+import numpy as np
 
 from theano import (
     sparse,
@@ -355,7 +355,7 @@ class TestAutoName:
         r1 = tensor.TensorType(dtype='int32', broadcastable=())('myvar')
         r2 = tensor.TensorVariable(tensor.TensorType(dtype='int32',
                                                      broadcastable=()))
-        r3 = shared(numpy.random.randn(3, 4))
+        r3 = shared(np.random.randn(3, 4))
         assert r1.auto_name == "auto_" + str(autoname_id)
         assert r2.auto_name == "auto_" + str(autoname_id + 1)
         assert r3.auto_name == "auto_" + str(autoname_id + 2)
