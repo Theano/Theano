@@ -3831,16 +3831,17 @@ class Compositef32(object):
             for i in node.inputs:
                 if i not in mapping:
                     assert type(i) is ScalarConstant
+                    if i.type == float16:
+                        i = ScalarConstant(float32, i.data)
                     mapping[i] = i
             if type(node.op) in self.special:
                 self.special[type(node.op)](node, mapping)
                 continue
-            # make sure we won't produce any float16.
-            assert not any(o.dtype == 'float16' for o in
-                           node.op.output_types([mapping[i].type for i in node.inputs]))
             new_node = node.clone_with_new_inputs(
                 [mapping[i] for i in node.inputs],
                 strict=False)
+            # make sure we don't produce any float16.
+            assert not any(o.dtype == 'float16' for o in new_node.outputs)
             for o, no in zip(node.outputs, new_node.outputs):
                 mapping[o] = no
 

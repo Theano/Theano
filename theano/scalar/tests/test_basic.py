@@ -25,7 +25,7 @@ from theano.scalar.basic import (floats, float16, float32, float64,
                                  ComplexError, IntDiv, TrueDiv,
                                  Composite, add, div_proxy,
                                  and_, eq, neq, invert, mul, Scalar, InRange,
-                                 cast)
+                                 cast, constant)
 from theano.scalar.basic import (
     true_div, inv, log, log2, log10, log1p, exp, exp2, expm1, sqrt, deg2rad,
     rad2deg, cos, arccos, sin, arcsin, tan, arctan, arctan2, cosh, arccosh,
@@ -68,11 +68,8 @@ class test_ScalarOps(unittest.TestCase):
 
 
 def has_f16(comp):
-    if any(i.type == float16 for i in comp.fgraph.inputs):
+    if any(v.type == float16 for v in comp.fgraph.variables):
         return True
-    for n in comp.fgraph.apply_nodes:
-        if any(o.type == float16 for o in n.outputs):
-            return True
     return False
 
 
@@ -83,8 +80,9 @@ class test_composite(unittest.TestCase):
         y = float32()
         cz = Composite([x, y], [tanh(x + cast(y, 'float16'))])
         c = Composite([w, x, y], [cz(x, y) - cz(x, y)**2 +
-                               cast(x, 'int16') + cast(x, 'float32') +
-                               cast(w, 'float16')])
+                                  cast(x, 'int16') + cast(x, 'float32') +
+                                  cast(w, 'float16') -
+                                  constant(np.float16(1.0))])
         assert has_f16(c)
         nc = c.clone_float32()
         assert not has_f16(nc)
