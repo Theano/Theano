@@ -887,7 +887,7 @@ import theano and print the config variable, as in:
 
     Controls whether NanGuardMode generates an error when it sees an inf.
 
-.. attribute:: config.NanGuardMode.nan_is_error
+.. attribute:: config.NanGuardMode.big_is_error
 
     Bool value, default: ``True``
 
