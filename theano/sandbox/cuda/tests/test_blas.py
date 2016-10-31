@@ -434,6 +434,74 @@ def test_downsample():
                 # verify_grad here.
 
 
+def test_downsample_max_grad_grad_3d():
+    shps = [(1, 12, 12),
+            (1, 1, 12, 12),
+            (1, 1, 1, 12, 12),
+            (1, 1, 2, 2, 2),
+            (1, 1, 1, 1, 1),
+            (1, 1, 4, 4, 4),
+            (1, 1, 10, 11, 11),
+            (1, 2, 2, 2, 2),
+            (3, 5, 4, 4, 4),
+            (25, 1, 7, 7, 7),
+            (1, 1, 12, 12, 12),
+            (1, 1, 2, 14, 14),
+            (1, 1, 12, 14, 14),
+            (1, 1, 14, 14, 14),
+            (1, 1, 16, 16, 16),
+            (1, 1, 18, 18, 18),
+            (1, 1, 24, 24, 24),
+            (1, 6, 24, 24, 24),
+            (10, 1, 24, 24, 24),
+            (10, 6, 24, 24, 24),
+            (30, 6, 12, 12, 12),
+            (30, 2, 24, 24, 24),
+            (30, 6, 24, 24, 24),
+            (10, 10, 10, 11, 12),
+            (1, 1, 10, 10, 511),
+            (1, 1, 10, 511, 10),
+            (1, 1, 511, 10, 10), ]
+
+    numpy.random.RandomState(unittest_tools.fetch_seed()).shuffle(shps)
+
+    for shp in shps:
+        for ds in (2, 2, 2), (3, 2, 2), (1, 1, 1):
+            if ds[0] > shp[-3]:
+                continue
+            if ds[1] > shp[-2]:
+                continue
+            if ds[2] > shp[-1]:
+                continue
+            for ignore_border in (True, False):
+                ds_op = Pool(ndim=len(ds), mode='max', ignore_border=ignore_border)
+
+                a = tcn.shared_constructor(numpy.array(range(numpy.product(shp))).reshape(*shp).astype('float32'), 'a')
+
+                ggf = gradient.Lop(tensor.grad((ds_op(
+                    tensor.as_tensor_variable(a), ds)**2).sum(), a), a, a)
+
+                ref_mode = copy.copy(mode_without_gpu)
+                ref_mode.check_py_code = False
+                gpu_mode = copy.copy(mode_with_gpu)
+                gpu_mode.check_py_code = False
+                gg = pfunc([], ggf, mode=gpu_mode)
+                gg2 = pfunc([], ggf, mode=ref_mode)
+
+                assert any([isinstance(
+                    node.op, tcn.blas.GpuDownsampleFactorMaxGradGrad3d)
+                    for node in gg.maker.fgraph.toposort()])
+                assert any([isinstance(
+                    node.op, DownsampleFactorMaxGradGrad)
+                    for node in gg2.maker.fgraph.toposort()])
+                unittest_tools.assert_allclose(gg(), gg2())
+
+                # We already check that the gpu version returns
+                # the same value as the gpu version for
+                # GpuDownsampleFactorMaxGrad. So no need to call
+                # verify_grad here.
+
+
 class TestGpuGemv(TestCase, BaseGemv,
                   unittest_tools.TestOptimizationMixin):
     mode = mode_with_gpu

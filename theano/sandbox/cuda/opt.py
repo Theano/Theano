@@ -56,7 +56,7 @@ from theano.sandbox.cuda.blas import gpu_ger_inplace
 from theano.sandbox.cuda.blas import gpu_ger_no_inplace
 from theano.sandbox.cuda.blas import (
     GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad,
-    GpuDownsampleFactorMaxGradGrad)
+    GpuDownsampleFactorMaxGradGrad, GpuDownsampleFactorMaxGradGrad3d)
 
 from theano.tensor.nnet.blocksparse import SparseBlockGemv, SparseBlockOuter
 from theano.sandbox.cuda.blocksparse import (
@@ -1973,23 +1973,28 @@ def local_gpu_downsample_factor_max_grad_grad(node):
         if ret is None:
             return
         ws, stride, pad = ret
-        if (nd != 2 or
+        if (nd not in (2, 3) or
                 max(pad) != 0 or
                 node.op.mode != 'max' or
                 stride != ws):
             return
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            op = GpuDownsampleFactorMaxGradGrad(ws, node.op.ignore_border)
-            if node.inputs[0].ndim == 4:
+            if nd == 2:
+                op = GpuDownsampleFactorMaxGradGrad(ws, node.op.ignore_border)
+            elif nd == 3:
+                op = GpuDownsampleFactorMaxGradGrad3d(ws, node.op.ignore_border)
+            else:
+                assert False
+            if node.inputs[0].ndim == 2 + nd:
                 return [host_from_gpu(op(x.owner.inputs[0],
                                          as_cuda_ndarray_variable(z),
                                          as_cuda_ndarray_variable(gx)))]
             else:
-                x_4D = pad_dims(x.owner.inputs[0], 2, 2)
-                z_4D = pad_dims(as_cuda_ndarray_variable(z), 2, 2)
-                gx_4D = pad_dims(as_cuda_ndarray_variable(gx), 2, 2)
-                output_4D = op(x_4D, z_4D, gx_4D)
-                output = unpad_dims(output_4D, x.owner.inputs[0], 2, 2)
+                x_padded = pad_dims(x.owner.inputs[0], 2, nd)
+                z_padded = pad_dims(as_cuda_ndarray_variable(z), 2, nd)
+                gx_padded = pad_dims(as_cuda_ndarray_variable(gx), 2, nd)
+                output_padded = op(x_padded, z_padded, gx_padded)
+                output = unpad_dims(output_padded, x.owner.inputs[0], 2, nd)
                 return [host_from_gpu(output)]
 
 

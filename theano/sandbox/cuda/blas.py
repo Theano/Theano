@@ -2865,3 +2865,209 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
             }
         }
         """ % locals()
+
+
+class GpuDownsampleFactorMaxGradGrad3d(GpuOp):
+    """
+    Implement the grad of downsample with max on the gpu.
+
+    """
+    __props__ = ('ds', 'ignore_border')
+
+    def __init__(self, ds, ignore_border):
+        self.ds = tuple(ds)
+        self.ignore_border = ignore_border
+
+    def make_node(self, x, z, gx):
+        x = as_cuda_ndarray_variable(x)
+        z = as_cuda_ndarray_variable(z)
+        gx = as_cuda_ndarray_variable(gx)
+
+        if x.type.ndim != 5:
+            raise TypeError('x must be 5D tensor')
+        if z.type.ndim != 5:
+            raise TypeError('z must be 5D tensor')
+        if gx.type.ndim != 5:
+            raise TypeError('gx must be 5D tensor')
+
+        return Apply(self, [x, z, gx], [x.type()])
+
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_code(self, node, nodename, inp, out, sub):
+        x, z, gx = inp
+        gz, = out
+        fail = sub['fail']
+        ds0, ds1, ds2 = self.ds
+        ignore_border = int(self.ignore_border)
+        return """
+        if (%(x)s->nd != 5
+            || %(z)s->nd != 5
+            || %(gx)s->nd != 5)
+        {
+            PyErr_SetString(PyExc_ValueError, "GpuDownsampleFactorMaxGradGrad: rank error");
+            %(fail)s;
+        }
+        if ((NULL == %(gz)s)
+            || (CudaNdarray_HOST_DIMS(%(gz)s)[0] !=
+                CudaNdarray_HOST_DIMS(%(z)s)[0])
+            || (CudaNdarray_HOST_DIMS(%(gz)s)[1] !=
+                CudaNdarray_HOST_DIMS(%(z)s)[1])
+            || (CudaNdarray_HOST_DIMS(%(gz)s)[2] !=
+                CudaNdarray_HOST_DIMS(%(z)s)[2])
+            || (CudaNdarray_HOST_DIMS(%(gz)s)[3] !=
+                CudaNdarray_HOST_DIMS(%(z)s)[3])
+            || (CudaNdarray_HOST_DIMS(%(gz)s)[4] !=
+                CudaNdarray_HOST_DIMS(%(z)s)[4]))
+        {
+            Py_XDECREF(%(gz)s);
+            %(gz)s = (CudaNdarray*)CudaNdarray_New();
+            if ((NULL == %(gz)s)
+                || CudaNdarray_alloc_contiguous(%(gz)s, 5,
+                                                CudaNdarray_HOST_DIMS(%(z)s)))
+            {
+                Py_XDECREF(%(gz)s);
+                %(gz)s = NULL;
+                %(fail)s;
+            }
+        }
+        {
+
+            int needs_extra_z_row = %(ignore_border)s && (CudaNdarray_HOST_DIMS(%(x)s)[2] %% %(ds0)s);
+            int needs_extra_z_col = %(ignore_border)s && (CudaNdarray_HOST_DIMS(%(x)s)[3] %% %(ds1)s);
+            dim3 grid(std::min(CudaNdarray_HOST_DIMS(%(z)s)[0], 65535),
+                      CudaNdarray_HOST_DIMS(%(z)s)[2] + (needs_extra_z_row ? 1 : 0),
+                      CudaNdarray_HOST_DIMS(%(z)s)[3] + (needs_extra_z_col ? 1 : 0));
+            dim3 block(std::min(CudaNdarray_HOST_DIMS(%(x)s)[4], 512));
+
+            kDownsampleMaxGradGrad3d_%(nodename)s<%(ds0)s, %(ds1)s, %(ds2)s> <<<grid, block>>>(
+                CudaNdarray_HOST_DIMS(%(z)s)[0],
+                CudaNdarray_HOST_DIMS(%(z)s)[1],
+                CudaNdarray_HOST_DIMS(%(z)s)[2],
+                CudaNdarray_HOST_DIMS(%(z)s)[3],
+                CudaNdarray_HOST_DIMS(%(z)s)[4],
+                CudaNdarray_HOST_DIMS(%(x)s)[2],
+                CudaNdarray_HOST_DIMS(%(x)s)[3],
+                CudaNdarray_HOST_DIMS(%(x)s)[4],
+                CudaNdarray_DEV_DATA(%(x)s),
+                CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                CudaNdarray_HOST_STRIDES(%(x)s)[2],
+                CudaNdarray_HOST_STRIDES(%(x)s)[3],
+                CudaNdarray_HOST_STRIDES(%(x)s)[4],
+                CudaNdarray_DEV_DATA(%(z)s),
+                CudaNdarray_HOST_STRIDES(%(z)s)[0],
+                CudaNdarray_HOST_STRIDES(%(z)s)[1],
+                CudaNdarray_HOST_STRIDES(%(z)s)[2],
+                CudaNdarray_HOST_STRIDES(%(z)s)[3],
+                CudaNdarray_HOST_STRIDES(%(z)s)[4],
+                CudaNdarray_DEV_DATA(%(gz)s),
+                CudaNdarray_HOST_STRIDES(%(gz)s)[0],
+                CudaNdarray_HOST_STRIDES(%(gz)s)[1],
+                CudaNdarray_HOST_STRIDES(%(gz)s)[2],
+                CudaNdarray_HOST_STRIDES(%(gz)s)[3],
+                CudaNdarray_HOST_STRIDES(%(gz)s)[4],
+                CudaNdarray_DEV_DATA(%(gx)s),
+                CudaNdarray_HOST_STRIDES(%(gx)s)[0],
+                CudaNdarray_HOST_STRIDES(%(gx)s)[1],
+                CudaNdarray_HOST_STRIDES(%(gx)s)[2],
+                CudaNdarray_HOST_STRIDES(%(gx)s)[3],
+                CudaNdarray_HOST_STRIDES(%(gx)s)[4]);
+            CNDA_THREAD_SYNC;
+            cudaError_t err = cudaGetLastError();
+            if( cudaSuccess != err)
+            {
+                PyErr_Format(PyExc_RuntimeError,
+    "Cuda error: %%s: %%s. (grid: %%i x %%i x %%i; block: %%i x %%i x %%i)\\n",
+                    "kDownsampleMaxGradGrad3d_%(nodename)s",
+                    cudaGetErrorString(err),
+                    grid.x,
+                    grid.y,
+                    grid.z,
+                    block.x,
+                    block.y,
+                    block.z);
+                %(fail)s;
+            }
+        }
+        """ % locals()
+
+    def c_support_code_apply(self, node, nodename):
+        ignore_border = int(self.ignore_border)
+        return """
+        // ds0 is the downsampling factor in rows, ds1 in columns, ds2 in slices
+        template<int ds0, int ds1, int ds2>
+        __global__ void kDownsampleMaxGradGrad3d_%(nodename)s(
+           int D0, int D1, int D2, int D3, int D4,
+           int xD2, int xD3, int xD4,
+           const float * x, int xS0, int xS1, int xS2, int xS3, int xS4,
+           const float * z, int zS0, int zS1, int zS2, int zS3, int zS4,
+           float * gz, int gzS0, int gzS1, int gzS2, int gzS3, int gzS4,
+           const float *gx, int gxS0, int gxS1, int gxS2, int gxS3, int gxS4)
+        {
+            //  D0: number of image rows
+            //  D1: number of image cols
+            //  D2: number of z rows
+            //  D3: number of z cols
+            //  D4: number of z slices
+            // xD2: number of x rows
+            // xD3: number of x cols
+            // xD4: number of x slices
+            // various .S. variables are strides
+
+            float cur_max, cur_x, my_z, my_gx;
+            // Cast threadIdx.x into a signed int, to avoid problems with
+            // indexing with negative offsets.
+            int tx = threadIdx.x;
+            int bdimx = blockDim.x;
+
+            for(int i0 = blockIdx.x;
+                i0 < D0;
+                i0 += gridDim.x){
+
+                int i1 = 0;                // image col
+                // row wrt z and/or gz, ranges from 0 to D2 - 1 OR D2
+                // (as needed to cover all x rows)
+                int z_row = blockIdx.y;
+                // col wrt z and/or gz, ranges from 0 to D3 - 1 OR D3
+                // (as needed to cover all x cols)
+                int z_col = blockIdx.z;
+                int x_slice = tx;          // slice wrt x, ranges from 0 to xD4 - 1
+                int z_slice = x_slice/ds2; // z_slice corresponding to this x_slice
+
+                for (i1 = 0; i1 < D1; ++i1) // loop over images (same for z and x)
+                {
+                    for(int slice_iter = 0;
+                        (tx + slice_iter * bdimx < xD4) ; slice_iter++){
+
+                        //The if inside is to don't do the division if we
+                        // need only 1 slice_iter
+
+                        if(tx + bdimx < xD4)
+                        {
+                            x_slice = tx + slice_iter * bdimx;
+                            z_slice = x_slice/ds2;
+                        }
+
+                        my_z = z[i0*zS0 + i1*zS1 + z_row*zS2 + z_col*zS3 + z_slice*zS4];
+
+                        for (int x_col = z_col*ds1;
+                              (x_col < z_col*ds1+ds1) && (x_col < xD3); ++x_col)
+                        {
+                            for (int x_row = z_row*ds0;
+                                  (x_row < z_row*ds0+ds0) && (x_row < xD2); ++x_row)
+                            {
+                                // my_gx = gx[image_row][image_col][x_row][x_col][x_slice]
+                                my_gx = gx[i0*gxS0 + i1*gxS1 + x_row*gxS2 + x_col*gxS3 + x_slice*gxS4];
+
+                                if (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3 + x_slice*xS4]) {
+                                    gz[i0*gzS0 + i1*gzS1 + z_row*gzS2 + z_col*gzS3 + z_slice*gzS4] = my_gx;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """ % locals()
