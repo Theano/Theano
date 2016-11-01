@@ -1595,28 +1595,26 @@ def local_gpua_lift_abstractconv_graph(op, context_name, inputs, outputs):
 @op_lifter([pool.DownsampleFactorMaxGradGrad])
 @register_opt2([pool.DownsampleFactorMaxGradGrad])
 def local_gpu_downsample_factor_max_grad_grad(op, ctx_name, inputs, outputs):
-    from theano.sandbox.cuda.opt import _check_constant_args_pool
     assert op.__props__ == ('ignore_border', 'mode', 'ndim')
-    inp, out, out_grad, ws, st, pad = inputs
+    inp, out, out_grad, ws, stride, pad = inputs
     nd = op.ndim
-    ret = _check_constant_args_pool(nd, ws, st, pad, op)
-    if ret is None:
-        return
-    ws, st, pad = ret
-    if nd != 2 or max(pad) != 0 or op.mode != 'max':
+    if nd not in (2, 3):
         return
     inp = gpu_contiguous(as_gpuarray_variable(inp, ctx_name))
     out = gpu_contiguous(as_gpuarray_variable(out, ctx_name))
     out_grad = gpu_contiguous(as_gpuarray_variable(out_grad, ctx_name))
-    op = GpuDownsampleFactorMaxGradGrad(ws, st, op.ignore_border)
+
+    op = GpuDownsampleFactorMaxGradGrad(op.ignore_border, op.mode, op.ndim)
     if inp.ndim == nd + 2:
-        return op(inp, out, out_grad)
+        return op(inp, out, out_grad, ws, stride, pad)
     else:
-        inp_4D = pad_dims(inp, 2, 2)
-        out_4D = pad_dims(out, 2, 2)
-        out_grad_4D = pad_dims(out_grad, 2, 2)
-        output_4D = op(inp_4D, out_4D, out_grad_4D)
-        return unpad_dims(output_4D, inp, 2, 2)
+        # reshape to 4D or 5D with 2 non-pooling dimensions
+        inp_padded = pad_dims(inp, 2, nd)
+        out_padded = pad_dims(out, 2, nd)
+        out_grad_padded = pad_dims(out_grad, 2, nd)
+        ret_padded = op(inp_padded, out_padded, out_grad_padded,
+                        ws, stride, pad)
+        return unpad_dims(ret_padded, inp, 2, nd)
 
 
 @register_opt("low_memory")
