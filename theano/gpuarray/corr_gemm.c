@@ -1,6 +1,6 @@
 #section kernels
 
-#kernel dilated_im2col_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, size, * : 
+#kernel dilated_im2col_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, size, * :
 // TODO check kernel flags
 // This uses a lot of code from Caffe (http://caffe.berkeleyvision.org/);
 // sources are clearly marked. Below we reproduce the original license of
@@ -70,7 +70,7 @@ KERNEL void dilated_im2col_kernel(const ga_size n,
   }
 }
 
-#kernel im2col_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, * : 
+#kernel im2col_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, * :
 KERNEL void im2col_kernel(const ga_size n,
     GLOBAL_MEM const DTYPE_i0 * data_im,
     const ga_size data_im_offset,
@@ -108,7 +108,7 @@ KERNEL void im2col_kernel(const ga_size n,
 }
 
 // GPU kernel for the case of dilation
-#kernel dilated_col2im_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, size, *, size : 
+#kernel dilated_col2im_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, size, size, *, size :
 KERNEL void dilated_col2im_kernel(const ga_size n,
     GLOBAL_MEM const DTYPE_i0 * data_col,
     const ga_size height, const ga_size width, const ga_size channels,
@@ -153,7 +153,7 @@ KERNEL void dilated_col2im_kernel(const ga_size n,
   }
 }
 
-#kernel col2im_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, *, size : 
+#kernel col2im_kernel : size, *, size, size, size, size, size, size, size, size, size, size, size, *, size :
 KERNEL void col2im_kernel(const ga_size n,
     GLOBAL_MEM const DTYPE_i0 * data_col,
     const ga_size height, const ga_size width, const ga_size channels,
@@ -191,6 +191,165 @@ KERNEL void col2im_kernel(const ga_size n,
   }
 }
 
+#kernel dilated_im2col_int_kernel : int, *, int, int, int, int, int, int, int, int, int, int, int, int, int, * :
+KERNEL void dilated_im2col_int_kernel(const ga_int n,
+    GLOBAL_MEM const DTYPE_i0 * data_im,
+    const ga_int data_im_offset,
+    const ga_int height, const ga_int width,
+    const ga_int kernel_h, const ga_int kernel_w,
+    const ga_int dilation_h, const ga_int dilation_w,
+    const ga_int pad_h, const ga_int pad_w,
+    const ga_int stride_h, const ga_int stride_w,
+    const ga_int height_col, const ga_int width_col,
+    GLOBAL_MEM DTYPE_i0 * data_col) {
+  // grid stride looping
+  for (ga_int index = GID_0 * LDIM_0 + LID_0;
+       index < (n); index += LDIM_0 * GDIM_0) {
+    const ga_int h_index = index / width_col;
+    const ga_int h_col = h_index % height_col;
+    const ga_int w_col = index % width_col;
+    const ga_int c_im = h_index / height_col;
+    const ga_int c_col = c_im * kernel_h * kernel_w;
+    const ga_int h_offset = h_col * stride_h - pad_h;
+    const ga_int w_offset = w_col * stride_w - pad_w;
+    DTYPE_i0 * data_col_ptr = data_col;
+    data_col_ptr += (c_col * height_col + h_col) * width_col + w_col;
+    const DTYPE_i0 * data_im_ptr = data_im + data_im_offset;
+    data_im_ptr += (c_im * height + h_offset) * width + w_offset;
+    for (ga_int i = 0; i < kernel_h; ++i) {
+      for (ga_int j = 0; j < kernel_w; ++j) {
+        ga_int h_im = h_offset + i * dilation_h;
+        ga_int w_im = w_offset + j * dilation_w;
+        *data_col_ptr =
+          (h_im >= 0 && w_im >= 0 && h_im < height && w_im < width) ?
+            data_im_ptr[i * dilation_h * width + j * dilation_w] : 0;
+        data_col_ptr += height_col * width_col;
+      }
+    }
+  }
+}
+
+#kernel im2col_int_kernel : int, *, int, int, int, int, int, int, int, int, int, int, int, * :
+KERNEL void im2col_int_kernel(const int n,
+    GLOBAL_MEM const DTYPE_i0 * data_im,
+    const int data_im_offset,
+    const int height, const int width,
+    const int kernel_h, const int kernel_w,
+    const int pad_h, const int pad_w,
+    const int stride_h, const int stride_w,
+    const int height_col, const int width_col,
+    GLOBAL_MEM DTYPE_i0 * data_col) {
+  // grid stride looping
+  for (int index = GID_0 * LDIM_0 + LID_0;
+       index < (n); index += LDIM_0 * GDIM_0) {
+    const int h_index = index / width_col;
+    const int h_col = h_index % height_col;
+    const int w_col = index % width_col;
+    const int c_im = h_index / height_col;
+    const int c_col = c_im * kernel_h * kernel_w;
+    const int h_offset = h_col * stride_h - pad_h;
+    const int w_offset = w_col * stride_w - pad_w;
+    DTYPE_i0 * data_col_ptr = data_col;
+    data_col_ptr += (c_col * height_col + h_col) * width_col + w_col;
+    const DTYPE_i0 * data_im_ptr = data_im + data_im_offset;
+    data_im_ptr += (c_im * height + h_offset) * width + w_offset;
+    for (int i = 0; i < kernel_h; ++i) {
+      for (int j = 0; j < kernel_w; ++j) {
+        int h_im = h_offset + i ;
+        int w_im = w_offset + j ;
+        *data_col_ptr =
+          (h_im >= 0 && w_im >= 0 && h_im < height && w_im < width) ?
+           data_im_ptr[i * width + j] : 0;
+        data_col_ptr += height_col * width_col;
+      }
+    }
+  }
+}
+
+// GPU kernel for the case of dilation
+#kernel dilated_col2im_int_kernel : int, *, int, int, int, int, int, int, int, int, int, int, int, int, int, *, int :
+KERNEL void dilated_col2im_int_kernel(const int n,
+    GLOBAL_MEM const DTYPE_i0 * data_col,
+    const int height, const int width, const int channels,
+    const int kernel_h, const int kernel_w,
+    const int dilation_h, const int dilation_w,
+    const int pad_h, const int pad_w,
+    const int stride_h, const int stride_w,
+    const int height_col, const int width_col,
+    GLOBAL_MEM DTYPE_i0 * data_im,
+    const int data_im_offset) {
+  // grid stride looping
+  for (int index = GID_0 * LDIM_0 + LID_0;
+       index < (n); index += LDIM_0 * GDIM_0) {
+    DTYPE_i0 val = 0;
+    const int w_im = index % width + pad_w;
+    const int h_im = (index / width) % height + pad_h;
+    const int c_im = index / (width * height);
+    int kernel_extent_w = (kernel_w - 1) * dilation_w + 1;
+    int kernel_extent_h = (kernel_h - 1) * dilation_h + 1;
+    // compute the start and end of the output
+    const int w_col_start =
+        (w_im < kernel_extent_w) ? 0 : (w_im - kernel_extent_w) / stride_w + 1;
+    const int w_col_end = min(w_im / stride_w + 1, width_col);
+    const int h_col_start =
+        (h_im < kernel_extent_h) ? 0 : (h_im - kernel_extent_h) / stride_h + 1;
+    const int h_col_end = min(h_im / stride_h + 1, height_col);
+    // TODO: use LCM of stride and dilation to avoid unnecessary loops
+    for (int h_col = h_col_start; h_col < h_col_end; h_col += 1) {
+      for (int w_col = w_col_start; w_col < w_col_end; w_col += 1) {
+        int h_k = (h_im - h_col * stride_h);
+        int w_k = (w_im - w_col * stride_w);
+        if (h_k % dilation_h == 0 && w_k % dilation_w == 0) {
+          h_k /= dilation_h;
+          w_k /= dilation_w;
+          int data_col_index = (((c_im * kernel_h + h_k) * kernel_w + w_k) *
+                                height_col + h_col) * width_col + w_col;
+          val += data_col[data_col_index];
+        }
+      }
+    }
+    data_im[data_im_offset + index] = val;
+  }
+}
+
+#kernel col2im_int_kernel : int, *, int, int, int, int, int, int, int, int, int, int, int, *, int :
+KERNEL void col2im_int_kernel(const int n,
+    GLOBAL_MEM const DTYPE_i0 * data_col,
+    const int height, const int width, const int channels,
+    const int kernel_h, const int kernel_w,
+    const int pad_h, const int pad_w,
+    const int stride_h, const int stride_w,
+    const int height_col, const int width_col,
+    GLOBAL_MEM DTYPE_i0 * data_im,
+    const int data_im_offset) {
+  // grid stride looping
+  for (int index = GID_0 * LDIM_0 + LID_0;
+       index < (n); index += LDIM_0 * GDIM_0) {
+    DTYPE_i0 val = 0;
+    const int w_im = index % width + pad_w;
+    const int h_im = (index / width) % height + pad_h;
+    const int c_im = index / (width * height);
+    // compute the start and end of the output
+    const int w_col_start =
+        (w_im < kernel_w) ? 0 : (w_im - kernel_w) / stride_w + 1;
+    const int w_col_end = min(w_im / stride_w + 1, width_col);
+    const int h_col_start =
+        (h_im < kernel_h) ? 0 : (h_im - kernel_h) / stride_h + 1;
+    const int h_col_end = min(h_im / stride_h + 1, height_col);
+    // equivalent implementation, no dilation
+    int offset =
+      (c_im * kernel_h * kernel_w + h_im * kernel_w + w_im) * height_col * width_col;
+    int coeff_h_col = (1 - stride_h * kernel_w * height_col) * width_col;
+    int coeff_w_col = (1 - stride_w * height_col * width_col);
+    for (int h_col = h_col_start; h_col < h_col_end; ++h_col) {
+      for (int w_col = w_col_start; w_col < w_col_end; ++w_col) {
+        val += data_col[offset + h_col * coeff_h_col + w_col * coeff_w_col];
+      }
+    }
+    data_im[data_im_offset + index] = val;
+  }
+}
+
 
 
 #section support_code_struct
@@ -213,12 +372,23 @@ int im2col(const size_t max_threads_dim,
   size_t n_blocks = (num_kernels + threads_per_block - 1) / threads_per_block;
   int err;
   GpuKernel *kernel;
+  // Here, we only accept non signed stride. So no need to compare to SADDR32_MIN
+  int use_int = (data_im_offset < ADDR32_MAX) &&
+    (stride_h < SADDR32_MAX) && (stride_w < SADDR32_MAX);
   if(dilation_h != 1 || dilation_w != 1){
-    err = dilated_im2col_kernel_call(
-      1, &threads_per_block, &n_blocks, 0,
-      num_kernels, data_im, data_im_offset, height, width, kernel_h, kernel_w,
-      dilation_h, dilation_w, pad_h, pad_w, stride_h, stride_w, height_col,
-      width_col, data_col);
+    if(use_int){
+      err = dilated_im2col_int_kernel_call(
+        1, &threads_per_block, &n_blocks, 0,
+        num_kernels, data_im, data_im_offset, height, width, kernel_h, kernel_w,
+        dilation_h, dilation_w, pad_h, pad_w, stride_h, stride_w, height_col,
+        width_col, data_col);
+    }else{
+      err = dilated_im2col_kernel_call(
+        1, &threads_per_block, &n_blocks, 0,
+        num_kernels, data_im, data_im_offset, height, width, kernel_h, kernel_w,
+        dilation_h, dilation_w, pad_h, pad_w, stride_h, stride_w, height_col,
+        width_col, data_col);
+    }
     if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
                      "gpuarray error: dilated_im2col_kernel: %s.",
@@ -226,11 +396,19 @@ int im2col(const size_t max_threads_dim,
     }
   }
   else{
-    err = im2col_kernel_call(
-      1, &threads_per_block, &n_blocks, 0,
-      num_kernels, data_im, data_im_offset, height, width, kernel_h, kernel_w,
-      pad_h, pad_w, stride_h, stride_w, height_col,
-      width_col, data_col);
+    if(use_int){
+      err = im2col_int_kernel_call(
+        1, &threads_per_block, &n_blocks, 0,
+        num_kernels, data_im, data_im_offset, height, width, kernel_h, kernel_w,
+        pad_h, pad_w, stride_h, stride_w, height_col,
+        width_col, data_col);
+    }else{
+      err = im2col_kernel_call(
+        1, &threads_per_block, &n_blocks, 0,
+        num_kernels, data_im, data_im_offset, height, width, kernel_h, kernel_w,
+        pad_h, pad_w, stride_h, stride_w, height_col,
+        width_col, data_col);
+    }
     if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
                      "gpuarray error: im2col_kernel: %s.",
@@ -255,12 +433,23 @@ int col2im(const size_t max_threads_dim, gpudata * data_col, const size_t channe
   // To avoid involving atomic operations, we will launch one kernel per
   // bottom dimension, and then in the kernel add up the top dimensions.
   int err;
+  // Here, we only accept non signed stride. So no need to compare to SADDR32_MIN
+  int use_int = (data_im_offset < ADDR32_MAX) &&
+    (stride_h < SADDR32_MAX) && (stride_w < SADDR32_MAX);
   if(dilation_h != 1 || dilation_w != 1){
-    err = dilated_col2im_kernel_call(
-      1, &threads_per_block, &n_blocks, 0,
-      num_kernels, data_col, height, width, channels, patch_h, patch_w,
-      dilation_h, dilation_w, pad_h, pad_w, stride_h, stride_w,
-      height_col, width_col, data_im, data_im_offset);
+    if(use_int){
+      err = dilated_col2im_int_kernel_call(
+        1, &threads_per_block, &n_blocks, 0,
+        num_kernels, data_col, height, width, channels, patch_h, patch_w,
+        dilation_h, dilation_w, pad_h, pad_w, stride_h, stride_w,
+        height_col, width_col, data_im, data_im_offset);
+    }else{
+      err = dilated_col2im_kernel_call(
+        1, &threads_per_block, &n_blocks, 0,
+        num_kernels, data_col, height, width, channels, patch_h, patch_w,
+        dilation_h, dilation_w, pad_h, pad_w, stride_h, stride_w,
+        height_col, width_col, data_im, data_im_offset);
+    }
     if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
                      "gpuarray error: dilated_col2im_kernel: %s.",
@@ -268,11 +457,19 @@ int col2im(const size_t max_threads_dim, gpudata * data_col, const size_t channe
     }
   }
   else{
-    err = col2im_kernel_call(
-      1, &threads_per_block, &n_blocks, 0,
-      num_kernels, data_col, height, width, channels, patch_h, patch_w,
-      pad_h, pad_w, stride_h, stride_w,
-      height_col, width_col, data_im, data_im_offset);
+    if(use_int){
+      err = col2im_int_kernel_call(
+        1, &threads_per_block, &n_blocks, 0,
+        num_kernels, data_col, height, width, channels, patch_h, patch_w,
+        pad_h, pad_w, stride_h, stride_w,
+        height_col, width_col, data_im, data_im_offset);
+    }else{
+      err = col2im_kernel_call(
+        1, &threads_per_block, &n_blocks, 0,
+        num_kernels, data_col, height, width, channels, patch_h, patch_w,
+        pad_h, pad_w, stride_h, stride_w,
+        height_col, width_col, data_im, data_im_offset);
+    }
     if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
                      "gpuarray error: col2im_kernel: %s.",

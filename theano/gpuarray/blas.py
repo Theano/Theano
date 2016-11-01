@@ -488,6 +488,11 @@ class BaseGpuCorrMM(CGpuKernelBase, BlasOp):
     def get_params(self, node):
         return node.inputs[0].type.context
 
+    def get_op_params(self):
+        return [("ADDR32_MAX", "4294967295"),
+                ("SADDR32_MIN", "-2147483648"),
+                ("SADDR32_MAX",  "2147483647")]
+
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
         return (0, 1)

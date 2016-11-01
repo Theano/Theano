@@ -263,6 +263,9 @@ class Kernel(object):
 def get_ctype(dtype):
     if dtype is gpuarray.GpuArray:
         return "gpudata *"
+    elif isinstance(dtype, numpy.dtype):
+        # The if is needed as numpy.dtype can't be compared to gpuarray.[S]SIZE
+        return 'npy_' + dtype.name
     elif dtype == gpuarray.SIZE:
         return "size_t"
     elif dtype == gpuarray.SSIZE:
