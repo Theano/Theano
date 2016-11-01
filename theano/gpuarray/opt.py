@@ -1775,6 +1775,14 @@ def _scan_type_infer(node):
                             context_name=context_name)
     return typebuild
 
+## Add optimization : maxandargmax (CPU -> GPU)
+@register_opt('fast_compile')
+@op_lifter([tensor.MaxAndArgmax])
+@register_opt2([tensor.MaxAndArgmax], 'fast_compile')
+def local_gpu_maxandargmax(op, context_name, inputs, outputs):
+    return gpu_maxandargmax
+##
+
 # Do not register in fast_run or fast_compile.
 # It will be added to fast_run if the GPU is enabled.
 optdb.register('gpua_scanOp_make_inplace',
