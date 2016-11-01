@@ -135,9 +135,9 @@ class TensorType(Type):
                             'this loss, you can: '
                             '1) explicitly cast your data to %s, or '
                             '2) set "allow_input_downcast=True" when calling '
-                            '"function".'
-                            % (self, data.dtype, self.dtype))
-                        raise TypeError(err_msg, data)
+                            '"function". Value: "%s"'
+                            % (self, data.dtype, self.dtype, repr(data)))
+                        raise TypeError(err_msg)
                 elif (allow_downcast is None and
                         type(data) is float and
                         self.dtype == theano.config.floatX):

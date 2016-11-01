@@ -794,9 +794,16 @@ class Function(object):
                             function_name += ' with name "' + self.name + '"'
                         if hasattr(arg, 'name') and arg.name:
                             argument_name += ' with name "' + arg.name + '"'
-                        e.args = ("Bad input " + argument_name + " to " +
-                                  function_name + " at index %d (0-based)"
-                                  % i,) + e.args
+                        where = theano.gof.utils.get_variable_trace_string(
+                            self.maker.inputs[i].variable)
+                        if len(e.args) == 1:
+                            e.args = ("Bad input " + argument_name + " to " +
+                                      function_name + " at index %d (0-based). %s"
+                                      % (i, where) + e.args[0],)
+                        else:
+                            e.args = ("Bad input " + argument_name + " to " +
+                                      function_name + " at index %d (0-based). %s"
+                                      % (i, where),) + e.args
                         raise
                 s.provided += 1
                 i += 1
