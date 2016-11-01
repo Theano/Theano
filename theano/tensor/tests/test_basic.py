@@ -4596,6 +4596,12 @@ class T_mean(unittest.TestCase):
         except AttributeError:
             self.fail()
 
+    def test_mean_f16(self):
+        x = tensor.vector(dtype='float16')
+        y = x.mean()
+        f = theano.function([x], y)
+        utt.assert_allclose(f(numpy.ones((100000,), dtype='float16')), 1.0)
+
     def test0(self):
         # Simple test...
         x = tensor.vector()
