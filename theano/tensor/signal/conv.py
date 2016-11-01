@@ -53,8 +53,8 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
     assert filters.ndim in (2, 3)
     # use shape information if it is given to us ###
     if filter_shape and image_shape:
-        imshp = (1,) + tuple(image_shape[-2:])
-        kshp = filter_shape[-2:]
+        imshp = (1, 1) + tuple(image_shape[-2:])
+        kshp = (1, 1) + filter_shape[-2:]
     else:
         kshp = None
         imshp = None
