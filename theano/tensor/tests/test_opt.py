@@ -149,19 +149,19 @@ class test_dimshuffle_lift(unittest.TestCase):
         # It does not really matter if the DimShuffles are inplace
         # or not.
         init_str_g_inplace = (
-            "[Elemwise{add,no_inplace}(InplaceDimShuffle{x,0,1}"
-            "(Elemwise{add,no_inplace}(InplaceDimShuffle{x,0}(x), y)), z)]")
+            "[Elemwise{Add,no_inplace}(InplaceDimShuffle{x,0,1}"
+            "(Elemwise{Add,no_inplace}(InplaceDimShuffle{x,0}(x), y)), z)]")
         init_str_g_noinplace = (
-            "[Elemwise{add,no_inplace}(DimShuffle{x,0,1}"
-            "(Elemwise{add,no_inplace}(DimShuffle{x,0}(x), y)), z)]")
+            "[Elemwise{Add,no_inplace}(DimShuffle{x,0,1}"
+            "(Elemwise{Add,no_inplace}(DimShuffle{x,0}(x), y)), z)]")
         self.assertTrue(str(g) in (init_str_g_inplace, init_str_g_noinplace),
                         str(g))
 
         opt_str_g_inplace = (
-            "[Elemwise{add,no_inplace}(Elemwise{add,no_inplace}"
+            "[Elemwise{Add,no_inplace}(Elemwise{Add,no_inplace}"
             "(InplaceDimShuffle{x,x,0}(x), InplaceDimShuffle{x,0,1}(y)), z)]")
         opt_str_g_noinplace = (
-            "[Elemwise{add,no_inplace}(Elemwise{add,no_inplace}"
+            "[Elemwise{Add,no_inplace}(Elemwise{Add,no_inplace}"
             "(DimShuffle{x,x,0}(x), DimShuffle{x,0,1}(y)), z)]")
         dimshuffle_lift.optimize(g)
         self.assertTrue(str(g) in (opt_str_g_inplace, opt_str_g_noinplace),
@@ -174,20 +174,20 @@ class test_dimshuffle_lift(unittest.TestCase):
         m = T.matrix(dtype="float64")
         out = ((v + 42) * (m + 84)).T
         g = FunctionGraph([v, m], [out])
-        init_str_g = ("[InplaceDimShuffle{1,0}(Elemwise{mul,no_inplace}"
-                      "(InplaceDimShuffle{x,0}(Elemwise{add,no_inplace}"
+        init_str_g = ("[InplaceDimShuffle{1,0}(Elemwise{Mul,no_inplace}"
+                      "(InplaceDimShuffle{x,0}(Elemwise{Add,no_inplace}"
                       "(<TensorType(float64, vector)>, "
                       "InplaceDimShuffle{x}(TensorConstant{42}))), "
-                      "Elemwise{add,no_inplace}"
+                      "Elemwise{Add,no_inplace}"
                       "(<TensorType(float64, matrix)>, "
                       "InplaceDimShuffle{x,x}(TensorConstant{84}))))]")
         self.assertTrue(str(g) == init_str_g)
         new_out = local_dimshuffle_lift.transform(g.outputs[0].owner)[0]
         new_g = FunctionGraph(g.inputs, [new_out])
-        opt_str_g = ("[Elemwise{mul,no_inplace}(Elemwise{add,no_inplace}"
+        opt_str_g = ("[Elemwise{Mul,no_inplace}(Elemwise{Add,no_inplace}"
                      "(InplaceDimShuffle{0,x}(<TensorType(float64, vector)>), "
                      "InplaceDimShuffle{x,x}(TensorConstant{42})), "
-                     "Elemwise{add,no_inplace}(InplaceDimShuffle{1,0}"
+                     "Elemwise{Add,no_inplace}(InplaceDimShuffle{1,0}"
                      "(<TensorType(float64, matrix)>), "
                      "InplaceDimShuffle{x,x}(TensorConstant{84})))]")
         self.assertTrue(str(new_g) == opt_str_g)
