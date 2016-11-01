@@ -490,7 +490,7 @@ class BaseGpuCorrMM(CGpuKernelBase, BlasOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 1)
+        return (0, 2)
 
     def c_code_helper(self, bottom, weights, top, direction, sub, height=None, width=None):
         """
@@ -1029,7 +1029,7 @@ class BaseGpuCorr3dMM(CGpuKernelBase, BlasOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 1)
+        return (0, 2)
 
     def c_code_helper(self, bottom, weights, top, direction, sub,
                       height=None, width=None, depth=None):

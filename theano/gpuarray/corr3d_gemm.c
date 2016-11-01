@@ -263,7 +263,7 @@ int im3d2col(const size_t max_threads_dim,
   GpuKernel *kernel;
   if(dilation_h != 1 || dilation_w != 1 || dilation_d != 1){
     err = dilated_im3d2col_kernel_call(
-      1, &threads_per_block, &n_blocks, 0,
+      1, &n_blocks, &threads_per_block, 0,
       num_kernels, data_im, data_im_offset, height, width, depth,
       kernel_h, kernel_w, kernel_d, dilation_h, dilation_w, dilation_d,
       pad_h, pad_w, pad_d, stride_h, stride_w, stride_d, height_col,
@@ -276,7 +276,7 @@ int im3d2col(const size_t max_threads_dim,
   }
   else{
     err = im3d2col_kernel_call(
-      1, &threads_per_block, &n_blocks, 0,
+      1, &n_blocks, &threads_per_block, 0,
       num_kernels, data_im, data_im_offset, height, width, depth,
       kernel_h, kernel_w, kernel_d, pad_h, pad_w, pad_d,
       stride_h, stride_w, stride_d, height_col, width_col, depth_col,
@@ -311,7 +311,7 @@ int col2im3d(const size_t max_threads_dim, gpudata * data_col, const size_t chan
   int err;
   if(dilation_h != 1 || dilation_w != 1 || dilation_d != 1){
     err = dilated_col2im3d_kernel_call(
-      1, &threads_per_block, &n_blocks, 0,
+      1, &n_blocks, &threads_per_block, 0,
       num_kernels, data_col, height, width, depth, channels, patch_h, patch_w,
       patch_d, dilation_h, dilation_w, dilation_d, pad_h, pad_w, pad_d,
       stride_h, stride_w, stride_d, height_col, width_col, depth_col,
@@ -324,7 +324,7 @@ int col2im3d(const size_t max_threads_dim, gpudata * data_col, const size_t chan
   }
   else{
     err = col2im3d_kernel_call(
-      1, &threads_per_block, &n_blocks, 0,
+      1, &n_blocks, &threads_per_block, 0,
       num_kernels, data_col, height, width, depth, channels, patch_h, patch_w,
       patch_d, pad_h, pad_w, pad_d, stride_h, stride_w, stride_d,
       height_col, width_col, depth_col, data_im, data_im_offset);

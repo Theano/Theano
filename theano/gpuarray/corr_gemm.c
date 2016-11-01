@@ -215,7 +215,7 @@ int im2col(const size_t max_threads_dim,
   GpuKernel *kernel;
   if(dilation_h != 1 || dilation_w != 1){
     err = dilated_im2col_kernel_call(
-      1, &threads_per_block, &n_blocks, 0,
+      1, &n_blocks, &threads_per_block, 0,
       num_kernels, data_im, data_im_offset, height, width, kernel_h, kernel_w,
       dilation_h, dilation_w, pad_h, pad_w, stride_h, stride_w, height_col,
       width_col, data_col);
@@ -227,7 +227,7 @@ int im2col(const size_t max_threads_dim,
   }
   else{
     err = im2col_kernel_call(
-      1, &threads_per_block, &n_blocks, 0,
+      1, &n_blocks, &threads_per_block, 0,
       num_kernels, data_im, data_im_offset, height, width, kernel_h, kernel_w,
       pad_h, pad_w, stride_h, stride_w, height_col,
       width_col, data_col);
@@ -257,7 +257,7 @@ int col2im(const size_t max_threads_dim, gpudata * data_col, const size_t channe
   int err;
   if(dilation_h != 1 || dilation_w != 1){
     err = dilated_col2im_kernel_call(
-      1, &threads_per_block, &n_blocks, 0,
+      1, &n_blocks, &threads_per_block, 0,
       num_kernels, data_col, height, width, channels, patch_h, patch_w,
       dilation_h, dilation_w, pad_h, pad_w, stride_h, stride_w,
       height_col, width_col, data_im, data_im_offset);
@@ -269,7 +269,7 @@ int col2im(const size_t max_threads_dim, gpudata * data_col, const size_t channe
   }
   else{
     err = col2im_kernel_call(
-      1, &threads_per_block, &n_blocks, 0,
+      1, &n_blocks, &threads_per_block, 0,
       num_kernels, data_col, height, width, channels, patch_h, patch_w,
       pad_h, pad_w, stride_h, stride_w,
       height_col, width_col, data_im, data_im_offset);
