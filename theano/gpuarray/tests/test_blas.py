@@ -3,8 +3,6 @@ from unittest import TestCase
 from nose.plugins.skip import SkipTest
 import itertools
 
-import numpy
-
 import theano
 from theano import tensor
 from theano.tests import unittest_tools as utt
@@ -18,7 +16,7 @@ from .test_basic_ops import makeTester, rand
 from ..blas import (gpugemv_inplace, gpugemv_no_inplace,
                     gpugemm_inplace, gpugemmbatch_no_inplace,
                     gpuger_inplace, gpuger_no_inplace,
-                    GpuGer, gpu_dot22, GpuGemm)
+                    GpuGer, gpu_dot22)
 
 
 GpuGemvTester = makeTester(
