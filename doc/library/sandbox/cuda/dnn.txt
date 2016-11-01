@@ -29,7 +29,7 @@ There are at least three possible ways of doing so:
 
       export LD_LIBRARY_PATH=/home/user/path_to_CUDNN_folder/lib64:$LD_LIBRARY_PATH
       export CPATH=/home/user/path_to_CUDNN_folder/include:$CPATH
-      export LIBRARY_PATH=/home/user/path_to_CUDNN_folder/lib64:$LD_LIBRARY_PATH
+      export LIBRARY_PATH=/home/user/path_to_CUDNN_folder/lib64:$LIBRARY_PATH
 
 - And as a third way, also on Linux, you can copy the ``*.h`` files
   to ``/usr/include`` and the ``*.so*`` files to ``/lib64``.
