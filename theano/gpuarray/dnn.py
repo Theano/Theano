@@ -1142,6 +1142,9 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
 
 def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
                    subsample=(1, 1), conv_mode='conv'):
+    """
+    TODO: document this
+    """
     ctx_name = infer_context_name(img, topgrad)
     img = as_gpuarray_variable(img, ctx_name)
     topgrad = as_gpuarray_variable(topgrad, ctx_name)
@@ -1156,6 +1159,9 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
 
 def dnn_gradweight3d(img, topgrad, kerns_shp, border_mode='valid',
                      subsample=(1, 1, 1), conv_mode='conv'):
+    """
+    TODO: document this
+    """
     ctx_name = infer_context_name(img, topgrad)
     img = as_gpuarray_variable(img, ctx_name)
     topgrad = as_gpuarray_variable(topgrad, ctx_name)
@@ -1170,6 +1176,9 @@ def dnn_gradweight3d(img, topgrad, kerns_shp, border_mode='valid',
 
 def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
                   subsample=(1, 1), conv_mode='conv'):
+    """
+    TODO: document this
+    """
     ctx_name = infer_context_name(kerns, topgrad)
     kerns = as_gpuarray_variable(kerns, ctx_name)
     topgrad = as_gpuarray_variable(topgrad, ctx_name)
@@ -1184,6 +1193,9 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
 
 def dnn_gradinput3d(kerns, topgrad, img_shp, border_mode='valid',
                     subsample=(1, 1, 1), conv_mode='conv'):
+    """
+    TODO: document this
+    """
     ctx_name = infer_context_name(kerns, topgrad)
     kerns = as_gpuarray_variable(kerns, ctx_name)
     topgrad = as_gpuarray_variable(topgrad, ctx_name)
@@ -2337,25 +2349,35 @@ class GpuDnnRNNGradWeights(DnnBase):
 
 
 class RNNBlock(object):
+    """
+    An object that allow us to use CuDNN v5 RNN implementation.
+    TODO: make an example how to use. You can check Theano tests
+    test_dnn_rnn_gru() and test_dnn_rnn_lstm() in the file
+    theano/gpuarray/tests/test_dnn.py for now.
+
+
+    Parameters
+    ----------
+    dtype : data type of computation
+    hidden_size : int
+    num_layers : int
+    rnn_mode : {'rnn_relu', 'rnn_tanh', 'lstm', 'gru'}
+        See cudnn documentation for ``cudnnRNNMode_t``.
+
+    input_mode : {'linear', 'skip'}
+        linear: input will be multiplied by a biased matrix
+        skip: No operation is performed on the input.  The size must match the hidden size.
+    direction_mode : {'unidirectional', 'bidirectional'}
+        unidirectional: The network operates recurrently from the
+                        first input to the last.
+
+        bidirectional: The network operates from first to last then from last to first and concatenates the results at each layer.
+
+    """
+
     def __init__(self, dtype, hidden_size, num_layers, rnn_mode,
                  input_mode='linear', direction_mode='unidirectional',
                  context_name=None):
-        """
-        dtype: data type of computation
-        hidden_size: int
-        num_layers: int
-        rnn_mode: {'rnn_relu', 'rnn_tanh', 'lstm', 'gru'}
-          See cudnn documentation for cudnnRNNMode_t.
-        input_mode: {'linear', 'skip'}
-          linear: input will be multiplied by a biased matrix
-          skip: No operation is performed on the input.  The size must match the hidden size.
-        direction_mode: {'unidirectional', 'bidirectional'}
-          unidirectional: The network operates recurrently from the
-                          first input to the last.
-
-          bidirectional: The network operates from first to last then from last to first and concatenates the results at each layer.
-
-        """
         # This is not supported for any value other than 0, so don't change it
         ddesc, states = _make_dropout_desc(0, 4242, context_name)
         self.ddesc = ddesc

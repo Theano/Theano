@@ -18,7 +18,8 @@ Highlight:
 Computation and compilation speed up
 Multi-cores convolution and pooling on CPU
 More numerical stability by default for some graph.
-CuDNN: 5.1, batch normalization, (RNN soon)
+New 3d convolution and pooling interface
+CuDNN: 5.1, batch normalization, RNN
 Dilated convolution
 Multiple-GPU, synchrone update (via platoon, use NCCL)
 Partial function evaluation

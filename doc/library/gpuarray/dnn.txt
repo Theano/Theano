@@ -1,7 +1,7 @@
 .. _libdoc_gpuarray_dnn:
 
 ===========================================
-:mod:`gpuarray.dnn` -- cuDNN
+:mod:`theano.gpuarray.dnn` -- cuDNN
 ===========================================
 
 .. moduleauthor:: LISA
@@ -43,7 +43,7 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
 
 .. note::
 
-   cuDNN v5rc is supported in Theano master version. So it dropped cuDNN v3 support.
+   cuDNN v5.1 is supported in Theano master version. So it dropped cuDNN v3 support.
    Theano 0.8.0 and 0.8.1 support only cuDNN v3 and v4.
    Theano 0.8.2 will support only v4 and v5.
 
@@ -132,30 +132,24 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
     cudnn.h must be readable by everybody.
 
 
-Functions
-=========
+- Convolution:
+    - :func:`theano.gpuarray.dnn.dnn_conv`, :func:`theano.gpuarray.dnn.dnn_conv3d`.
+    - :func:`theano.gpuarray.dnn.dnn_gradweight`, :func:`theano.gpuarray.dnn.dnn_gradweight3d`.
+    - :func:`theano.gpuarray.dnn.dnn_gradinput`, :func:`theano.gpuarray.dnn.dnn_gradinput3d`.
+- Pooling:
+    - :func:`theano.gpuarray.dnn.dnn_pool`.
+- Batch Normalization:
+    - :func:`theano.gpuarray.dnn.dnn_batch_normalization_train`
+    - :func:`theano.gpuarray.dnn.dnn_batch_normalization_test`.
+- RNN:
+    - :class:`theano.gpuarray.dnn.RNNBlock`
+- Softmax:
+    - You can manually use the op :class:`GpuDnnSoftmax
+      <theano.gpuarray.dnn.GpuDnnSoftmax>` to use its extra feature.
+
+List of Implemented Operations
+==============================
 
 .. automodule:: theano.gpuarray.dnn
-   :noindex:
-   :members: dnn_conv, dnn_pool
+   :members:
 
-Convolution Ops
-===============
-
-.. automodule:: theano.gpuarray.dnn
-   :noindex:
-   :members: GpuDnnConvDesc, GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI
-
-Pooling Ops
-===========
-
-.. automodule:: theano.gpuarray.dnn
-   :noindex:
-   :members: GpuDnnPoolDesc, GpuDnnPool, GpuDnnPoolGrad
-
-Softmax Ops
-===========
-
-.. automodule:: theano.gpuarray.dnn
-   :noindex:
-   :members: GpuDnnSoftmax, GpuDnnSoftmaxGrad
