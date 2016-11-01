@@ -206,3 +206,13 @@ class TestCorrMM(unittest.TestCase):
         self.run_gradinput(inputs_shape=(16, 15, 12, 10),
                            filters_shape=(10, 6, 12, 1),
                            subsample=(3, 1))
+
+    def test_large_input(self):
+        # This tests the number-of-threads computation
+        # by making (channels * height) > (max_threads_dim ** 2).
+        # (See also issue #5165.)
+        self.run_conv_valid(inputs_shape=(1, 1024, 3, 1024),
+                            filters_shape=(1, 1, 1, 1024),
+                            verify_grad=False)
+        self.run_gradinput(inputs_shape=(1, 1024, 3, 1),
+                           filters_shape=(1, 1, 1, 1024))
