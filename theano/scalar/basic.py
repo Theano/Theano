@@ -3838,7 +3838,7 @@ class Compositef32(object):
                 self.special[type(node.op)](node, mapping)
                 continue
             new_node = node.clone_with_new_inputs(
-                [mapping[i] for i in node.inputs],
+                [mapping[inp] for inp in node.inputs],
                 strict=False)
             # make sure we don't produce any float16.
             assert not any(o.dtype == 'float16' for o in new_node.outputs)
