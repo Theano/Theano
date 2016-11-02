@@ -1,5 +1,3 @@
-from unittest import TestCase
-
 from theano.gpuarray import GpuArrayType
 from theano.tests import unittest_tools as utt
 import numpy as np
