@@ -1134,27 +1134,6 @@ def local_gpua_gemmbatch(op, context_name, inputs, outputs):
     return gpugemmbatch_no_inplace(c, 1.0, a, b, 0.0)
 
 
-@register_opt('fast_compile')
-@op_lifter([tensor.basic.Dot])
-@register_opt2([tensor.basic.Dot], 'fast_compile')
-def local_gpua_hgemm(op, context_name, inputs, outputs):
-    from theano.sandbox.cuda import nvcc_compiler
-    if nvcc_compiler.nvcc_version < '7.5':
-        _logger.warning("Not performing dot of float16 on the GPU since "
-                        "cuda 7.5 is not available. Updating could speed up "
-                        "your code.")
-        return
-    A = inputs[0]
-    B = inputs[1]
-    if (A.ndim == 2 and B.ndim == 2 and
-            A.dtype == 'float16' and B.dtype == 'float16'):
-        fgraph = outputs[0].fgraph
-        C = gpu_alloc_empty(context_name, dtype='float16')(
-            shape_i(A, 0, fgraph),
-            shape_i(B, 1, fgraph))
-        return gpugemm_no_inplace(C, 1.0, A, B, 0.0)
-
-
 @register_opt()
 @alpha_merge(GpuGemm, alpha_in=1, beta_in=4)
 def local_gpua_gemm_alpha_merge(node, *inputs):
