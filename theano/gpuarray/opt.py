@@ -65,6 +65,7 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedIncSubtensor1,
                         GpuAdvancedIncSubtensor1_dev20)
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
+from .reduction import gpu_maxandargmax
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 

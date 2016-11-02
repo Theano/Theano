@@ -28,7 +28,7 @@ from .type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
                    GpuArraySharedVariable, gpuarray_shared_constructor,
                    reg_context, get_context, ContextNotDefined, _get_props)
 from .basic_ops import as_gpuarray_variable
-from . import fft, dnn, opt, nerv, extra_ops, multinomial
+from . import fft, dnn, opt, nerv, extra_ops, multinomial, reduction
 
 def transfer(x, target):
     try:

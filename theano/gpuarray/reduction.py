@@ -1,11 +1,9 @@
 import os
 import numpy
-from six import integer_types
 import theano
-from theano.gof import Variable, Op, Apply
-from theano.tensor.type_other import NoneConst
+from theano.gof import Op, Apply
 from theano.tensor.var import TensorConstant
-# from theano.tensor import as_tensor_variable
+
 from .basic_ops import (infer_context_name, as_gpuarray_variable)
 from .type import GpuArrayType
 
@@ -25,49 +23,24 @@ class GpuMaxAndArgmax(Op):
 
     def make_node(self, X, axis=None):
         context_name = infer_context_name(X)
-        # Check axis and convert it to Python variable.
-        if (isinstance(axis, (integer_types, numpy.integer)) or
-           (isinstance(axis, numpy.ndarray) and axis.ndim == 0)):
-            axis = [int(axis)]
-        elif isinstance(axis, (tuple, list, numpy.ndarray)):
-            axis = [int(a) for a in axis]
-        elif isinstance(axis, Variable):
-            if NoneConst.equals(axis):
-                axis = None
-            elif not isinstance(axis, TensorConstant):
-                raise TypeError("MaxAndArgmax needs a constant axis. Got %s" % axis)
-            else:
-                assert (axis.dtype.startswith("int") or axis.dtype.startswith("uint"))
-                if (isinstance(axis.data, (integer_types, numpy.integer)) or
-                   (isinstance(axis.data, numpy.ndarray) and axis.data.ndim == 0)):
-                    axis = [int(axis.data)]
-                elif isinstance(axis.data, (list, numpy.ndarray)):
-                    axis = [int(i) for i in axis.data]
-        # Make axis entries non-negative, and verify that axes are valid.
-        if isinstance(axis, list):
-            for idx in xrange(len(axis)):
-                if axis[idx] < 0:
-                    axis[idx] += X.type.ndim
-                if axis[idx] < 0 or axis[idx] >= X.type.ndim:
-                    raise ValueError('Invalid axis: %s (the number of dimensions of the '
-                                     'input is: %s)' % (axis[idx], X.type.ndim))
-        # Sort axes and make them unique.
-        axis_set = set()  # used to build "broadcastable" variable below.
-        all_axes = []
-        if isinstance(axis, list):
-            axis_set = set(axis)
-            all_axes = list(axis_set)
-            all_axes.sort()
-            if all_axes == range(X.type.ndim):
-                axis = None
-        else:
-            all_axes = range(X.ndim)
-            axis_set = set(all_axes)
         if axis is None:
-            axis = NoneConst.clone()
-        else:
-            axis = theano.tensor.as_tensor_variable(all_axes)
-            # assert axis.ndim == 1
+            axis = range(X.type.ndim)
+        elif isinstance(axis, TensorConstant) and isinstance(axis.data, (list, numpy.ndarray)):
+            axis = [int(i) for i in axis.data]
+        elif not isinstance(axis, list):
+            raise TypeError("Axis must be a list. Got %s" % axis)
+        # Make axis entries non-negative, and verify that axes are valid.
+        for idx in xrange(len(axis)):
+            if axis[idx] < 0:
+                axis[idx] += X.type.ndim
+            if axis[idx] < 0 or axis[idx] >= X.type.ndim:
+                raise ValueError('Invalid axis: %s (the number of dimensions of the '
+                                 'input is: %s)' % (axis[idx], X.type.ndim))
+        # Sort axes and make them unique.
+        axis_set = set(axis)  # used to build "broadcastable" variable below.
+        axis = list(axis_set)
+        axis.sort()
+        axis = theano.tensor.as_tensor_variable(axis)
         inputs = [as_gpuarray_variable(X, context_name), axis]
         # We keep the original broadcastable flags for dimensions on which
         # we do not perform the max / argmax.
@@ -78,13 +51,11 @@ class GpuMaxAndArgmax(Op):
         return Apply(self, inputs, outputs)
 
     def perform(self, node, inputs, outputs):
-        X, axes = inputs
+        # NB: I must rewrite this method with pygpu functions instead of numpy functions.
+        x, axes = inputs
         max, max_idx = outputs
-        if axes is None:
-            axes = tuple(range(X.ndim))
-        else:
-            axes = tuple(axes)
-            # axes = tuple(int(ax) for ax in axes)
+        X = numpy.asarray(x)
+        axes = tuple(axes)
         max[0] = theano._asarray(numpy.max(X, axes), dtype=node.outputs[0].dtype)
         # Numpy does not support multiple axes for argmax
         # Work around
@@ -110,45 +81,33 @@ class GpuMaxAndArgmax(Op):
         # Recall: fail = sub['fail']
         max_typecode = pygpu.gpuarray.dtype_to_typecode(node.inputs[0].dtype)
         argmax_typecode = pygpu.gpuarray.dtype_to_typecode(self.argmax_dtype)
-        # axes_ctype = pygpu.gpuarray.dtype_to_ctype(node.inputs[1].dtype)
         axes_ctype = 'int64_t'
+        assert node.inputs[1].ndim == 1
         ret = """
+        GpuArray temp;
         GpuArray* %(name)s_input = &%(X)s->ga;
         size_t %(name)s_input_ndim = PyGpuArray_NDIM(%(X)s);
-        """
-        if NoneConst.equals(node.inputs[1]):
-            ret += """
-            unsigned  %(name)s_redux_len = %(name)s_input_ndim;
-            unsigned* %(name)s_axes_to_reduce = new unsigned[%(name)s_redux_len];
-            for(unsigned i = 0; i < %(name)s_redux_len; ++i) {
-                %(name)s_axes_to_reduce[i] = i;
-            }
-            """
-        else:
-            assert node.inputs[1].ndim == 1
-            ret += """
-            unsigned  %(name)s_redux_len = PyArray_DIM(%(axes)s, 0);
-            unsigned* %(name)s_axes_to_reduce = new unsigned[%(name)s_redux_len];
-            for(unsigned i = 0; i < %(name)s_redux_len; ++i) {
-                %(name)s_axes_to_reduce[i] =
-                    (unsigned)( ((%(axes_ctype)s*)PyArray_DATA(%(axes)s)) [i * (PyArray_STRIDES(%(axes)s)[0] / sizeof(%(axes_ctype)s))] );
-            }
-            """
-        ret += """
+
+        unsigned  %(name)s_redux_len = PyArray_DIM(%(axes)s, 0);
+        unsigned* %(name)s_axes_to_reduce = (unsigned*)malloc(%(name)s_redux_len * sizeof(unsigned));
+        for (unsigned i = 0; i < %(name)s_redux_len; ++i) {
+            %(name)s_axes_to_reduce[i] = (unsigned) (*(%(axes_ctype)s*)PyArray_GETPTR1(%(axes)s, i));
+        }
+
         size_t  %(name)s_output_ndim = %(name)s_input_ndim - %(name)s_redux_len;
         size_t* %(name)s_output_dims = NULL;
-        if(%(name)s_output_ndim == 0) {
+        if (%(name)s_output_ndim == 0) {
             /* Current backend function GpuArray_maxandargmax does not work when
              * all axes need to be reduced. So to handle this case, we create a view
              * of the input as a matrix with 1 row and as many columns as elements
              * in the input, so that the 2nd dimenson of the matrix will be reduced. */
             size_t total_size = 1;
-            for(size_t i = 0; i < %(name)s_input_ndim; ++i) {
+            for (size_t i = 0; i < %(name)s_input_ndim; ++i) {
                 total_size *= PyGpuArray_DIM(%(X)s, i);
             }
             size_t newdims[2] = {1, total_size};
-            %(name)s_input = new GpuArray;
-            if(GA_NO_ERROR !=
+            %(name)s_input = &temp;
+            if (GA_NO_ERROR !=
                 GpuArray_reshape(%(name)s_input, &%(X)s->ga, 2, newdims, GA_ANY_ORDER, 0)
             ) {
                 %(fail)s
@@ -156,34 +115,34 @@ class GpuMaxAndArgmax(Op):
             %(name)s_redux_len = 1;
             %(name)s_axes_to_reduce[0] = 1;
         } else {
-            %(name)s_output_dims = new size_t[%(name)s_output_ndim];
-            if(%(name)s_redux_len == 1) {
-                for(unsigned i = 0; i < %(name)s_axes_to_reduce[0]; ++i) {
+            %(name)s_output_dims = (size_t*)malloc(%(name)s_output_ndim * sizeof(size_t));
+            if (%(name)s_redux_len == 1) {
+                for (unsigned i = 0; i < %(name)s_axes_to_reduce[0]; ++i) {
                     %(name)s_output_dims[i] = PyGpuArray_DIM(%(X)s, i);
                 }
-                for(unsigned i = %(name)s_axes_to_reduce[0] + 1; i < %(name)s_input_ndim; ++i) {
+                for (unsigned i = %(name)s_axes_to_reduce[0] + 1; i < %(name)s_input_ndim; ++i) {
                     %(name)s_output_dims[i-1] = PyGpuArray_DIM(%(X)s, i);
                 }
             } else {
                 int64_t current_input_pos = -1;
                 int64_t current_output_pos = -1;
-                for(unsigned i = 0; i < %(name)s_redux_len; ++i) {
-                    for(++current_input_pos; current_input_pos < %(name)s_axes_to_reduce[i]; ++current_input_pos) {
+                for (unsigned i = 0; i < %(name)s_redux_len; ++i) {
+                    for (++current_input_pos; current_input_pos < %(name)s_axes_to_reduce[i]; ++current_input_pos) {
                         %(name)s_output_dims[++current_output_pos] = PyGpuArray_DIM(%(X)s, current_input_pos);
                     }
                 }
-                for(++current_input_pos; current_input_pos < %(name)s_input_ndim; ++current_input_pos) {
+                for (++current_input_pos; current_input_pos < %(name)s_input_ndim; ++current_input_pos) {
                     %(name)s_output_dims[++current_output_pos] = PyGpuArray_DIM(%(X)s, current_input_pos);
                 }
             }
         }
-        if(theano_prep_output(&%(max)s, %(name)s_output_ndim, %(name)s_output_dims, %(max_typecode)s, GA_C_ORDER, %(X)s->context)) {
+        if (theano_prep_output(&%(max)s, %(name)s_output_ndim, %(name)s_output_dims, %(max_typecode)s, GA_C_ORDER, %(X)s->context)) {
             %(fail)s
         }
-        if(theano_prep_output(&%(argmax)s, %(name)s_output_ndim, %(name)s_output_dims, %(argmax_typecode)s, GA_C_ORDER, %(X)s->context)) {
+        if (theano_prep_output(&%(argmax)s, %(name)s_output_ndim, %(name)s_output_dims, %(argmax_typecode)s, GA_C_ORDER, %(X)s->context)) {
             %(fail)s
         }
-        if(GA_NO_ERROR !=
+        if (GA_NO_ERROR !=
             GpuArray_maxandargmax(&%(max)s->ga, &%(argmax)s->ga, %(name)s_input, %(name)s_redux_len, %(name)s_axes_to_reduce)
         ) {
             %(fail)s
@@ -200,9 +159,8 @@ class GpuMaxAndArgmax(Op):
 
     def c_code_cleanup(self, node, name, inputs, outputs, sub):
         return """
-        delete[] %(name)s_output_dims;
-        if(%(name)s_input != &%(X)s->ga) delete %(name)s_input;
-        delete[] %(name)s_axes_to_reduce;
+        free(%(name)s_output_dims);
+        free(%(name)s_axes_to_reduce);
         """ % {'name': name, 'X': inputs[0]}
 
 
