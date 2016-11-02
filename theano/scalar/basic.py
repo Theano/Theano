@@ -3832,8 +3832,10 @@ class Compositef32(object):
                 if i not in mapping:
                     assert type(i) is ScalarConstant
                     if i.type == float16:
-                        i = ScalarConstant(float32, i.data)
-                    mapping[i] = i
+                        ni = ScalarConstant(float32, i.data)
+                    else:
+                        ni = i
+                    mapping[i] = ni
             if type(node.op) in self.special:
                 self.special[type(node.op)](node, mapping)
                 continue
