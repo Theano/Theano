@@ -3845,8 +3845,8 @@ class Compositef32(object):
             for o, no in zip(node.outputs, new_node.outputs):
                 mapping[o] = no
 
-        new_ins = [mapping[i] for i in fgraph.inputs]
-        new_outs = [mapping[o] for o in fgraph.outputs]
+        new_ins = [mapping[inp] for inp in fgraph.inputs]
+        new_outs = [mapping[out] for out in fgraph.outputs]
         return new_ins, new_outs
 
 composite_f32 = Compositef32()
