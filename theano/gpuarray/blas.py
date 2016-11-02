@@ -1554,9 +1554,7 @@ class GpuDownsampleFactorMaxGradGrad(CGpuKernelBase):
         assert self.ndim in [2, 3]
 
     def c_headers(self):
-        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/kernel.h',
-                'gpuarray/util.h', 'gpuarray/ext_cuda.h', 'gpuarray_api.h',
-                'numpy_compat.h', 'gpuarray_helper.h']
+        return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
 
     def c_header_dirs(self):
         return [os.path.dirname(__file__), pygpu.get_include()]
