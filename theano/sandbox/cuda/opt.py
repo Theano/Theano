@@ -1138,11 +1138,12 @@ def local_gpu_advanced_incsubtensor1(node):
                     'least \'0.6\'.', stacklevel=1)
             active_device_no = theano.sandbox.cuda.active_device_number()
             compute_capability = device_properties(active_device_no)['major']
+            props_dict = host_input.owner.op._props_dict()
             if (compute_capability < 2 or y.ndim != 2 or x.ndim != 2):
 
-                gpu_op = GpuAdvancedIncSubtensor1(**node.op._props_dict())
+                gpu_op = GpuAdvancedIncSubtensor1(**props_dict)
             else:
-                gpu_op = GpuAdvancedIncSubtensor1_dev20(**node.op._props_dict())
+                gpu_op = GpuAdvancedIncSubtensor1_dev20(**props_dict)
             return [gpu_op(as_cuda_ndarray_variable(x),
                            as_cuda_ndarray_variable(y), *coords)]
 
