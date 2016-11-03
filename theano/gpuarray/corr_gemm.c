@@ -407,8 +407,6 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
     const size_t K_ = col_dim[0];
     const size_t N_ = col_dim[1];
     const size_t M_ = nFilters;
-    const DTYPE_INPUT_0 one = 1.0f;
-    const DTYPE_INPUT_0 zero = 0.0f;
 
     PyGpuArrayObject *output;
     if (direction == 0) {  // forward pass
@@ -426,15 +424,37 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                 return NULL;
             }
             // Second, gemm
-            err = gpublas_sgemm(cb_fortran, cb_no_trans, cb_no_trans,
-                                N_, M_, K_, one,
-                                col->ga.data, 0, N_,
-                                weight->ga.data, 0, K_,
-                                zero,
-                                top->ga.data, n * top_stride, N_);
+            switch (col->ga.typecode) {
+            case GA_FLOAT:
+              err = gpublas_sgemm(cb_fortran, cb_no_trans, cb_no_trans,
+                                  N_, M_, K_, 1,
+                                  col->ga.data, 0, N_,
+                                  weight->ga.data, 0, K_,
+                                  0,
+                                  top->ga.data, n * top_stride, N_);
+              break;
+            case GA_DOUBLE:
+              err = gpublas_dgemm(cb_fortran, cb_no_trans, cb_no_trans,
+                                  N_, M_, K_, 1,
+                                  col->ga.data, 0, N_,
+                                  weight->ga.data, 0, K_,
+                                  0,
+                                  top->ga.data, n * top_stride, N_);
+              break;
+            case GA_HALF:
+              err = gpublas_hgemm(cb_fortran, cb_no_trans, cb_no_trans,
+                                  N_, M_, K_, 1,
+                                  col->ga.data, 0, N_,
+                                  weight->ga.data, 0, K_,
+                                  0,
+                                  top->ga.data, n * top_stride, N_);
+              break;
+            default:
+              err = GA_UNSUPPORTED_ERROR;
+            }
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
-                        "GpuCorrMM encountered an error running sgemm.\n");
+                             "(0) GpuCorrMM encountered an error running gemm: %d", err);
                 Py_DECREF(col);
                 return NULL;
             }
@@ -458,15 +478,37 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
             // Note that we accumulate into weight. We do so by setting beta = 0
             // for the first iteration and beta = 1 for subsequent ones. (This
             // is faster than setting weight to all zeros before the loop.)
-            err = gpublas_sgemm(cb_fortran, cb_trans, cb_no_trans,
-                                K_, M_, N_, one,
-                                col->ga.data, 0, N_,
-                                top->ga.data, n * top_stride, N_,
-                                (n == 0) ? zero : one,
-                                weight->ga.data, 0, K_);
+            switch (col->ga.typecode) {
+            case GA_FLOAT:
+              err = gpublas_sgemm(cb_fortran, cb_trans, cb_no_trans,
+                                  K_, M_, N_, 1,
+                                  col->ga.data, 0, N_,
+                                  top->ga.data, n * top_stride, N_,
+                                  (n == 0) ? 0 : 1,
+                                  weight->ga.data, 0, K_);
+              break;
+            case GA_DOUBLE:
+              err = gpublas_dgemm(cb_fortran, cb_trans, cb_no_trans,
+                                  K_, M_, N_, 1,
+                                  col->ga.data, 0, N_,
+                                  top->ga.data, n * top_stride, N_,
+                                  (n == 0) ? 0 : 1,
+                                  weight->ga.data, 0, K_);
+              break;
+            case GA_HALF:
+              err = gpublas_hgemm(cb_fortran, cb_trans, cb_no_trans,
+                                  K_, M_, N_, 1,
+                                  col->ga.data, 0, N_,
+                                  top->ga.data, n * top_stride, N_,
+                                  (n == 0) ? 0 : 1,
+                                  weight->ga.data, 0, K_);
+              break;
+            default:
+                err = GA_UNSUPPORTED_ERROR;
+            }
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
-                        "GpuCorrMM encountered an error running sgemm.\n");
+                             "(1) GpuCorrMM encountered an error running gemm: %d", err);
                 Py_DECREF(col);
                 return NULL;
             }
