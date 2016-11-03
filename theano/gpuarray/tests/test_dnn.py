@@ -17,7 +17,7 @@ from .. import dnn
 from ..basic_ops import GpuAllocEmpty
 from ..type import gpuarray_shared_constructor
 
-from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
+from .config import mode_with_gpu, mode_without_gpu, test_ctx_name, ref_cast
 from . import test_nnet
 from .rnn_support import Model, GRU, LSTM, WrapperLayer
 
@@ -31,13 +31,6 @@ def set_precision(floatX):
     else:
         precision = theano.config.floatX
     return precision
-
-
-# If using float16, cast reference input to float32
-def ref_cast(x):
-    if theano.config.floatX == 'float16':
-        x = T.cast(x, 'float32')
-    return x
 
 
 def test_dnn_conv_desc_merge():
