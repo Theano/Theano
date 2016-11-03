@@ -135,7 +135,7 @@ GpuDot22Tester = makeTester(
 )
 
 
-def test_downsample_max_grad_grad():
+def test_max_pool2d_grad_grad():
     shps = [(1, 12),
             (1, 1, 12),
             (1, 1, 1, 12),
@@ -171,18 +171,76 @@ def test_downsample_max_grad_grad():
 
     for shp in shps:
         for ds, st in itertools.product(test_ds, test_st):
-            if ds[0] > shp[-2]:
+            if ds[0] > shp[-2] or ds[1] > shp[-1]:
                 continue
-            if ds[1] > shp[-1]:
-                continue
-            for ignore_border in (True, False):
-                # print 'test_downsample', shp, ds, st, ignore_border
+            for ignore_border, pad in zip((True, False), [(1, 1), (0, 0)]):
+                if pad[0] >= ds[0] or pad[1] >= ds[1]:
+                    continue
+                # print('test_downsample', shp, ds, st, pad, ignore_border)
                 ds_op = Pool(ndim=len(ds), ignore_border=ignore_border)
 
                 a = theano.shared(rand(*shp), 'a')
 
                 ggf = gradient.Lop(tensor.grad((ds_op(
-                    tensor.as_tensor_variable(a), ds, st)**2).sum(), a), a, a)
+                    tensor.as_tensor_variable(a), ds, st, pad)**2).sum(), a), a, a)
+
+                ref_mode = copy.copy(mode_without_gpu)
+                ref_mode.check_py_code = False
+                gpu_mode = copy.copy(mode_with_gpu)
+                gpu_mode.check_py_code = False
+                gg = theano.function([], ggf, mode=gpu_mode)
+                gg2 = theano.function([], ggf, mode=ref_mode)
+
+                assert any([
+                    isinstance(node.op, GpuDownsampleFactorMaxGradGrad)
+                    for node in gg.maker.fgraph.toposort()
+                ])
+                assert any([
+                    isinstance(node.op, DownsampleFactorMaxGradGrad)
+                    for node in gg2.maker.fgraph.toposort()
+                ])
+                assert numpy.allclose(gg(), gg2()), (shp, ds, st,
+                                                     ignore_border)
+
+
+def test_max_pool3d_grad_grad():
+    shps = [(1, 1, 12),
+            (1, 1, 1, 1, 1),
+            (1, 1, 1, 1, 1025),
+            (1, 1, 2, 2, 2),
+            (1, 1, 7, 7, 7),
+            (1, 1, 9, 10, 11),
+            (1, 6, 18, 18, 18),
+            (1, 1, 6, 24, 24),
+            (1, 10, 1, 24, 24),
+            (1, 10, 6, 24, 24),
+            (1, 30, 6, 12, 12),
+            (1, 30, 2, 24, 24),
+            (1, 30, 6, 24, 24),
+            (1, 10, 10, 10, 11),
+            (1, 1, 10, 10, 1025),
+            (1, 1, 10, 10, 1023),
+            (1, 1, 10, 1025, 10),
+            (1, 1, 10, 1023, 10), ]
+
+    numpy.random.RandomState(utt.fetch_seed()).shuffle(shps)
+    test_ds = (2, 2, 2), (3, 2, 3), (1, 1, 1)
+    test_st = (2, 2, 2), (2, 3, 2), (1, 1, 1)
+
+    for shp in shps:
+        for ds, st in itertools.product(test_ds, test_st):
+            if ds[0] > shp[-3] or ds[1] > shp[-2] or ds[2] > shp[-1]:
+                continue
+            for ignore_border, pad in zip((True, False), [(1, 1, 1), (0, 0, 0)]):
+                if pad[0] >= ds[0] or pad[1] >= ds[1] or pad[2] >= ds[2]:
+                    continue
+                # print('test_downsample', shp, ds, st, pad, ignore_border)
+                ds_op = Pool(ndim=len(ds), ignore_border=ignore_border)
+
+                a = theano.shared(rand(*shp), 'a')
+
+                ggf = gradient.Lop(tensor.grad((ds_op(
+                    tensor.as_tensor_variable(a), ds, st, pad)**2).sum(), a), a, a)
 
                 ref_mode = copy.copy(mode_without_gpu)
                 ref_mode.check_py_code = False
