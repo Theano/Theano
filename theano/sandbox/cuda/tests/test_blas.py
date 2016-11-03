@@ -421,7 +421,6 @@ def test_max_pool2d():
                 assert numpy.allclose(gg(), gg2()), shp
 
 
-
 def test_max_pool3d():
     shps = [(1, 1, 12),
             (1, 1, 1, 1, 1),
