@@ -2271,179 +2271,233 @@ class GpuDownsampleFactorMax(GpuOp):
     Implement downsample with max on the gpu.
 
     """
-    __props__ = ('ds', 'st', 'ignore_border')
+    __props__ = ('ignore_border', 'mode', 'ndim')
 
-    def __init__(self, ds, st=None, ignore_border=False):
-        self.ds = tuple(ds)
-        self.st = self.ds if st is None else tuple(st)
+    def __init__(self, ignore_border, mode='max', ndim=2):
+        self.ndim = ndim
         self.ignore_border = ignore_border
+        self.mode = mode
+        assert self.mode == 'max'
+        assert self.ndim in [2, 3]
 
-    def __str__(self):
-        return '%s{%s,%s,%s}' % (self.__class__.__name__,
-                                 self.ds, self.st,
-                                 self.ignore_border)
+    def make_node(self, inp, ws, stride, pad):
+        inp = as_cuda_ndarray_variable(inp)
+        assert (inp.type.ndim in [4, 5])
 
-    def make_node(self, x):
-        if not isinstance(x.type, CudaNdarrayType):
-            raise TypeError()
-        if not x.type.ndim == 4:
-            raise TypeError()
-        return Apply(self, [x], [x.type()])
+        ws = as_tensor_variable(ws)
+        stride = as_tensor_variable(stride)
+        pad = as_tensor_variable(pad)
+        assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
+        assert ws.type.ndim == 1
 
-    # def perform(self, node, input_storage, output_storage):
-        # raise NotImplementedError('only C is implemented')
+        return Apply(self, [inp, ws, stride, pad], [inp.type()])
+
     def c_code_cache_version(self):
         return (6)
 
+    def c_headers(self):
+        return ['<float.h>']
+
     def c_code(self, node, nodename, inp, out, sub):
-        x, = inp
+        x, ws, stride, pad = inp
         z, = out
         fail = sub['fail']
-        ds0, ds1 = self.ds
-        st0, st1 = self.st
         ignore_border = int(self.ignore_border)
+        nd = self.ndim
         return """
-        int dims[4], xdim2, xdim3;
-        if (%(x)s->nd != 4)
+        if (%(x)s->nd != 2 + %(nd)s)
         {
-            PyErr_SetString(PyExc_ValueError,
-                            "GpuDownsampleFactorMax: rank error");
-            %(fail)s;
+          PyErr_SetString(PyExc_ValueError, "GpuDownsampleFactorMax: rank error");
+          %(fail)s;
         }
-        xdim2 = CudaNdarray_HOST_DIMS(%(x)s)[2];
-        xdim3 = CudaNdarray_HOST_DIMS(%(x)s)[3];
-        dims[0] = CudaNdarray_HOST_DIMS(%(x)s)[0];
-        dims[1] = CudaNdarray_HOST_DIMS(%(x)s)[1];
-
         #define OUTPUT_DIMS(in_dim, ds, st) \
-            (%(ignore_border)s ? (in_dim - ds)/st + 1 :\
-                (st > ds ? (in_dim - 1)/st + 1 :\
-                           max(0, (in_dim - 1 - ds + st)/st) + 1))
+          (%(ignore_border)s ? (in_dim - ds)/st + 1 : \
+            (st > ds ? (in_dim - 1)/st + 1 : \
+                      max(0, (in_dim - 1 - ds + st)/st) + 1))
 
-        dims[2] = OUTPUT_DIMS(xdim2, %(ds0)s, %(st0)s);
-        dims[3] = OUTPUT_DIMS(xdim3, %(ds1)s, %(st1)s);
-
-        if(dims[3]>512){
-            PyErr_Format(PyExc_ValueError,
-                         "GpuDownsampleFactorMax: last dimention size of %%d"
-                         " is bigger then 512. This case is not implemented.",
-                         dims[3]);
-            %(fail)s;
+        int z_dims[5]; // avoid warning if use 2 + nd
+        int w[3];
+        int s[3];
+        int p[3];
+        z_dims[0] = CudaNdarray_HOST_DIMS(%(x)s)[0];
+        z_dims[1] = CudaNdarray_HOST_DIMS(%(x)s)[1];
+        for (int i = 0; i < %(nd)s; i++) {
+          w[i] = *((npy_intp*)PyArray_GETPTR1(%(ws)s, i));
+          s[i] = *((npy_intp*)PyArray_GETPTR1(%(stride)s, i));
+          p[i] = *((npy_intp*)PyArray_GETPTR1(%(pad)s, i));
+          z_dims[2 + i] = OUTPUT_DIMS(CudaNdarray_HOST_DIMS(%(x)s)[2 + i] + 2*p[i], w[i], s[i]);
         }
 
         if ((NULL == %(z)s)
-            || (CudaNdarray_HOST_DIMS(%(z)s)[0] != dims[0])
-            || (CudaNdarray_HOST_DIMS(%(z)s)[1] != dims[1])
-            || (CudaNdarray_HOST_DIMS(%(z)s)[2] != dims[2])
-            || (CudaNdarray_HOST_DIMS(%(z)s)[3] != dims[3]))
+            || (CudaNdarray_HOST_DIMS(%(z)s)[0] != z_dims[0])
+            || (CudaNdarray_HOST_DIMS(%(z)s)[1] != z_dims[1])
+            || (CudaNdarray_HOST_DIMS(%(z)s)[2] != z_dims[2])
+            || (CudaNdarray_HOST_DIMS(%(z)s)[3] != z_dims[3]))
         {
+          Py_XDECREF(%(z)s);
+          %(z)s = (CudaNdarray*)CudaNdarray_New();
+          if ((NULL == %(z)s)
+              || CudaNdarray_alloc_contiguous(%(z)s, 2 + %(nd)s, z_dims))
+          {
             Py_XDECREF(%(z)s);
-            %(z)s = (CudaNdarray*)CudaNdarray_New();
-            if ((NULL == %(z)s)
-                || CudaNdarray_alloc_contiguous(%(z)s, 4, dims))
-            {
-                Py_XDECREF(%(z)s);
-                %(z)s = NULL;
-                PyErr_SetString(PyExc_ValueError,
-                                "GpuDownsampleFactorMax:"
-                                "Was not able to allocate output!");
-                %(fail)s;
-            }
+            %(z)s = NULL;
+            %(fail)s;
+          }
         }
         {
-            dim3 grid(std::min(dims[0] * dims[1], 65535),
-                      dims[2]);
-            //dim3 block(std::min(dims[3], 512));
-            //TODO: implement this by supporting more outputs than threads
-            dim3 block(dims[3]);
-            if ((grid.x*grid.y) && dims[3])
-            kMaxPool_%(nodename)s<%(ds0)s, %(ds1)s, %(st0)s, %(st1)s> <<<grid, block,
-                                                                       xdim3*sizeof(float)>>>(
-                dims[0], dims[1], dims[2], dims[3], xdim2, xdim3,
+          // scope for running kernel
+          if (%(nd)s == 2) {
+            size_t num_kernels = z_dims[0] * z_dims[1] * z_dims[2] * z_dims[3];
+            kMaxPool2d_%(nodename)s<<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS>>>(
+              num_kernels, z_dims[0], z_dims[1], z_dims[2], z_dims[3],
+              CudaNdarray_HOST_DIMS(%(x)s)[2],
+              CudaNdarray_HOST_DIMS(%(x)s)[3],
+              CudaNdarray_DEV_DATA(%(x)s),
+              CudaNdarray_HOST_STRIDES(%(x)s)[0],
+              CudaNdarray_HOST_STRIDES(%(x)s)[1],
+              CudaNdarray_HOST_STRIDES(%(x)s)[2],
+              CudaNdarray_HOST_STRIDES(%(x)s)[3],
+              CudaNdarray_DEV_DATA(%(z)s),
+              CudaNdarray_HOST_STRIDES(%(z)s)[0],
+              CudaNdarray_HOST_STRIDES(%(z)s)[1],
+              CudaNdarray_HOST_STRIDES(%(z)s)[2],
+              CudaNdarray_HOST_STRIDES(%(z)s)[3],
+              w[0], w[1], s[0], s[1], p[0], p[1]);
+            CNDA_THREAD_SYNC;
+            cudaError_t err = cudaGetLastError();
+            if (cudaSuccess != err)
+            {
+              PyErr_Format(PyExc_RuntimeError, "Cuda error: kMaxPool2d_%(nodename)s");
+              %(fail)s;
+            }
+          }
+          else if (%(nd)s == 3) {
+            size_t num_kernels = z_dims[0] * z_dims[1] * z_dims[2] * z_dims[3] * z_dims[4];
+            kMaxPool3d_%(nodename)s<<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS>>> (
+                num_kernels, z_dims[0], z_dims[1], z_dims[2], z_dims[3], z_dims[4],
+                CudaNdarray_HOST_DIMS(%(x)s)[2],
+                CudaNdarray_HOST_DIMS(%(x)s)[3],
+                CudaNdarray_HOST_DIMS(%(x)s)[4],
                 CudaNdarray_DEV_DATA(%(x)s),
                 CudaNdarray_HOST_STRIDES(%(x)s)[0],
                 CudaNdarray_HOST_STRIDES(%(x)s)[1],
                 CudaNdarray_HOST_STRIDES(%(x)s)[2],
                 CudaNdarray_HOST_STRIDES(%(x)s)[3],
+                CudaNdarray_HOST_STRIDES(%(x)s)[4],
                 CudaNdarray_DEV_DATA(%(z)s),
                 CudaNdarray_HOST_STRIDES(%(z)s)[0],
                 CudaNdarray_HOST_STRIDES(%(z)s)[1],
                 CudaNdarray_HOST_STRIDES(%(z)s)[2],
-                CudaNdarray_HOST_STRIDES(%(z)s)[3]);
+                CudaNdarray_HOST_STRIDES(%(z)s)[3],
+                CudaNdarray_HOST_STRIDES(%(z)s)[4],
+                w[0], w[1], w[2], s[0], s[1], s[2], p[0], p[1], p[2]);
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
             if( cudaSuccess != err)
             {
-                PyErr_Format(PyExc_RuntimeError,
-                    "Cuda error: %%s: %%s. (grid: %%i x %%i;"
-                    " block: %%i x %%i x %%i)\\n",
-                    "kMaxPool_%(nodename)s",
-                    cudaGetErrorString(err),
-                    grid.x,
-                    grid.y,
-                    block.x,
-                    block.y,
-                    block.z);
-                %(fail)s;
+              PyErr_Format(PyExc_RuntimeError, "Cuda error: kMaxPool3dGradGrad_%(nodename)s");
+              %(fail)s;
             }
+          }
         }
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
         ignore_border = int(self.ignore_border)
         return """
-        template<int pf2, int pf3, int st2, int st3>
-        __global__ void kMaxPool_%(nodename)s(
-           int D0, int D1, int D2, int D3, int xD2, int xD3,
-           const float * x, int xS0, int xS1, int xS2, int xS3,
-           float *z, int zS0, int zS1, int zS2, int zS3)
-        {
-            float cur_max, cur_x;
-            // Cast threadIdx.x into a signed int, to avoid problems with
-            // indexing with negative offsets.
-            int tx = threadIdx.x;
-            for(int block_x_idx = blockIdx.x;
-                block_x_idx < D0 * D1;
-                block_x_idx += gridDim.x){
+// (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/caffe_common.hpp)
+// CUDA: grid stride looping
+#define CUDA_KERNEL_LOOP(i, n)                        \
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; \
+       i < (n);                                       \
+       i += blockDim.x * gridDim.x)
 
-                int i0 = block_x_idx %% D0;
-                int i1 = block_x_idx / D0;
-                int i2 = blockIdx.y;
+// CUDA: thread number configuration.
+// Use 1024 threads per block, which requires cuda sm_2x or above,
+// or fall back to attempt compatibility (best of luck to you).
+#if __CUDA_ARCH__ >= 200
+const int CUDA_NUM_THREADS = 1024;
+#else
+const int CUDA_NUM_THREADS = 512;
+#endif
 
-                extern __shared__ float xbuf[]; //size [xD3]
+// CUDA: number of blocks for threads.
+inline int GET_BLOCKS(const int N) {
+  return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
+}
 
-                for (int r2 = 0;
-                     (r2 < pf2) && (%(ignore_border)s || (r2 + i2*st2 < xD2));
-                     ++r2)
-                {
-                    __syncthreads();
-                    // load the current row of the image into shared memory
-                    for (int j = tx; j < xD3; j += blockDim.x)
-                    {
-                        xbuf[j] = x[i0*xS0 + i1*xS1 + (i2*st2+r2)*xS2 + j*xS3];
-                    }
-                    __syncthreads();
+// (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/pooling_layer.cu)
+__global__ void kMaxPool2d_%(nodename)s(size_t nthreads,
+  int num, int channels, int pooled_height, int pooled_width, int height, int width,
+  const float * x, int xS0, int xS1, int xS2, int xS3,
+  float * z, int zS0, int zS1, int zS2, int zS3,
+  int kernel_h, int kernel_w, int stride_h, int stride_w, int pad_h, int pad_w)
+{
+  CUDA_KERNEL_LOOP(index, nthreads) {
+    int pw = index %% pooled_width;
+    int ph = (index / pooled_width) %% pooled_height;
+    int c = (index / pooled_width / pooled_height) %% channels;
+    int n = (index / pooled_width / pooled_height / channels);
+    int hstart = ph*stride_h - pad_h;
+    int hend = min(hstart + kernel_h, height);
+    int wstart = pw*stride_w - pad_w;
+    int wend = min(wstart + kernel_w, width);
+    hstart = max(hstart, 0);
+    wstart = max(wstart, 0);
 
-                    // initialize our max if this is the
-                    // first row we're loading
-                    cur_max = (r2 == 0) ? xbuf[tx*st3] : cur_max;
+    const float* x_slice = x + n*xS0 + c*xS1;
+    float maxval = -FLT_MAX;
 
-                    // do a mini-reduction over the pf3 relevant elements
-                    // in the current row
-
-                    for (int k = 0; k < pf3; ++k)
-                    {
-                        if (%(ignore_border)s || tx*st3 + k < xD3)
-                        {
-                            cur_x = xbuf[tx*st3+k];
-                            cur_max = (cur_x > cur_max) ? cur_x : cur_max;
-                        }
-                    }
-                }
-
-                z[i0*zS0 + i1*zS1 + i2*zS2 + tx*zS3] = cur_max;
-            }
+    for (int h = hstart; h < hend; ++h) {
+      for (int w = wstart; w < wend; ++w) {
+        if (x_slice[h*xS2 + w*xS3] > maxval) {
+          maxval = x_slice[h*xS2 + w*xS3];
         }
+      }
+    }
+    z[n*zS0 + c*zS1 + ph*zS2 + pw*zS3] = maxval;
+  }
+}
+
+__global__ void kMaxPool3d_%(nodename)s(size_t nthreads,
+  int num, int channels, int pooled_depth, int pooled_height, int pooled_width,
+  int depth, int height, int width,
+  const float * x, int xS0, int xS1, int xS2, int xS3, int xS4,
+  float * z, int zS0, int zS1, int zS2, int zS3, int zS4,
+  int kernel_d, int kernel_h, int kernel_w, int stride_d, int stride_h,
+  int stride_w, int pad_d, int pad_h, int pad_w)
+{
+  CUDA_KERNEL_LOOP(index, nthreads) {
+    int pw = index %% pooled_width;
+    int ph = (index / pooled_width) %% pooled_height;
+    int pd = (index / pooled_width / pooled_height) %% pooled_depth;
+    int c = (index / pooled_width / pooled_height / pooled_depth) %% channels;
+    int n = (index / pooled_width / pooled_height / pooled_depth / channels);
+    int dstart = pd*stride_d - pad_d;
+    int dend = min(dstart + kernel_d, depth);
+    int hstart = ph*stride_h - pad_h;
+    int hend = min(hstart + kernel_h, height);
+    int wstart = pw*stride_w - pad_w;
+    int wend = min(wstart + kernel_w, width);
+    dstart = max(dstart, 0);
+    hstart = max(hstart, 0);
+    wstart = max(wstart, 0);
+
+    const float* x_slice = x + n*xS0 + c*xS1;
+    float maxval = -FLT_MAX;
+
+    for (int d=dstart; d < dend; ++d) {
+      for (int h=hstart; h < hend; ++h) {
+        for (int w=wstart; w < wend; ++w) {
+          if (x_slice[d*xS2 + h*xS3 + w*xS4] > maxval) {
+            maxval = x_slice[d*xS2 + h*xS3 + w*xS4];
+          }
+        }
+      }
+    }
+    z[n*zS0 + c*zS1 + pd*zS2 + ph*zS3 + pw*zS4] = maxval;
+  }
+}
         """ % locals()
 
 
@@ -2452,44 +2506,48 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
     Implement the grad of downsample with max on the gpu.
 
     """
-    def __init__(self, ds, st=None, ignore_border=False):
-        self.ds = tuple(ds)
-        self.st = self.ds if st is None else tuple(st)
+    __props__ = ('ignore_border', 'mode', 'ndim')
+
+    def __init__(self, ignore_border, mode='max', ndim=2):
+        self.ndim = ndim
         self.ignore_border = ignore_border
+        self.mode = mode
+        assert self.mode == 'max'
+        assert self.ndim in [2, 3]
 
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.ds == other.ds and
-                self.st == other.st and
-                self.ignore_border == other.ignore_border)
+    def make_node(self, inp, out, out_grad, ws, stride, pad):
+        inp = as_cuda_ndarray_variable(inp)
+        assert (inp.type.ndim in [4, 5])
+        out = as_cuda_ndarray_variable(out)
+        assert(out.type.ndim in [4, 5])
+        out_grad = as_cuda_ndarray_variable(out_grad)
+        assert (out_grad.type.ndim in [4, 5])
 
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.ds) ^ hash(self.st) ^ hash(self.ignore_border)
+        assert (out_grad.type.ndim == inp.type.ndim)
+        assert (inp.type.ndim == out.type.ndim)
 
-    def __str__(self):
-        return '%s{%s,%s,%s}' % (self.__class__.__name__,
-                                 self.ds, self.st,
-                                 self.ignore_border)
+        ws = as_tensor_variable(ws)
+        stride = as_tensor_variable(stride)
+        pad = as_tensor_variable(pad)
+        assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
+        assert ws.type.ndim == 1
 
-    def make_node(self, x, z, gz):
-        return Apply(self, [x, z, gz], [x.type()])
+        return Apply(self, [inp, out, out_grad, ws, stride, pad], [inp.type()])
 
     def c_code_cache_version(self):
         return (9,)
 
     def c_code(self, node, nodename, inp, out, sub):
-        x, z, gz = inp
+        x, z, gz, ws, stride, pad = inp
         gx, = out
+        nd = self.ndim
         fail = sub['fail']
-        ds0, ds1 = self.ds
-        st0, st1 = self.st
-        ignore_border = int(self.ignore_border)
         return """
-        if (%(x)s->nd != 4
-            || %(z)s->nd != 4
-            || %(gz)s->nd != 4)
+        if (%(x)s->nd != 2 + %(nd)s
+            || %(z)s->nd != 2 + %(nd)s
+            || %(gz)s->nd != 2 + %(nd)s)
         {
-            PyErr_SetString(PyExc_ValueError, "rank error");
+            PyErr_SetString(PyExc_ValueError, "GpuDownsampleFactorMaxGrad: rank error");
             %(fail)s;
         }
         if ((NULL == %(gx)s)
@@ -2502,11 +2560,11 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
             || (CudaNdarray_HOST_DIMS(%(gx)s)[3] !=
                 CudaNdarray_HOST_DIMS(%(x)s)[3]))
         {
-            // init with zeros
-            // for st larger than ds some pixels in the input will be skipped
             Py_XDECREF(%(gx)s);
-            %(gx)s = (CudaNdarray*)CudaNdarray_ZEROS(4, (int*)CudaNdarray_HOST_DIMS(%(x)s));
-            if (NULL == %(gx)s)
+            %(gx)s = (CudaNdarray*)CudaNdarray_New();
+            if ((NULL == %(gx)s)
+                || CudaNdarray_alloc_contiguous(%(gx)s, 2 + %(nd)s,
+                                                CudaNdarray_HOST_DIMS(%(x)s)))
             {
                 Py_XDECREF(%(gx)s);
                 %(gx)s = NULL;
@@ -2514,59 +2572,95 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
             }
         }
         {
-            //TODO: supporting more output columns than threads
-            // make sure we cover every x row when ignore border isset and
-            // there's a border present to be ignored
-            const int* z_dims = CudaNdarray_HOST_DIMS(%(z)s);
+            // scope for running kernel
+            size_t w[3];
+            size_t s[3];
+            size_t p[3];
+            for(int i = 0; i < %(nd)s; i++) {
+                w[i] = *((npy_intp*)PyArray_GETPTR1(%(ws)s, i));
+                s[i] = *((npy_intp*)PyArray_GETPTR1(%(stride)s, i));
+                p[i] = *((npy_intp*)PyArray_GETPTR1(%(pad)s, i));
+            }
+
             const int* x_dims = CudaNdarray_HOST_DIMS(%(x)s);
 
-            int needs_extra_z_row = %(ignore_border)s && (x_dims[2] %% %(st0)s);
-            int needs_extra_z_col = %(ignore_border)s && (x_dims[3] %% %(st1)s);
-            dim3 grid(std::min(z_dims[0] * z_dims[1], 65535),
-                      z_dims[2] + (needs_extra_z_row ? 1 : 0));
-            dim3 block(std::min(z_dims[3] + (needs_extra_z_col ? 1 : 0), 512));
-
-            kDownsampleMaxGrad_%(nodename)s<%(ds0)s, %(ds1)s, %(st0)s, %(st1)s> <<<grid, block>>>(
-                z_dims[0], z_dims[1], z_dims[2], z_dims[3],
-                CudaNdarray_HOST_DIMS(%(x)s)[2],
-                CudaNdarray_HOST_DIMS(%(x)s)[3],
-                CudaNdarray_DEV_DATA(%(x)s),
-                CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                CudaNdarray_HOST_STRIDES(%(x)s)[1],
-                CudaNdarray_HOST_STRIDES(%(x)s)[2],
-                CudaNdarray_HOST_STRIDES(%(x)s)[3],
-                CudaNdarray_DEV_DATA(%(z)s),
-                CudaNdarray_HOST_STRIDES(%(z)s)[0],
-                CudaNdarray_HOST_STRIDES(%(z)s)[1],
-                CudaNdarray_HOST_STRIDES(%(z)s)[2],
-                CudaNdarray_HOST_STRIDES(%(z)s)[3],
-                CudaNdarray_DEV_DATA(%(gz)s),
-                CudaNdarray_HOST_STRIDES(%(gz)s)[0],
-                CudaNdarray_HOST_STRIDES(%(gz)s)[1],
-                CudaNdarray_HOST_STRIDES(%(gz)s)[2],
-                CudaNdarray_HOST_STRIDES(%(gz)s)[3],
-                CudaNdarray_DEV_DATA(%(gx)s),
-                CudaNdarray_HOST_STRIDES(%(gx)s)[0],
-                CudaNdarray_HOST_STRIDES(%(gx)s)[1],
-                CudaNdarray_HOST_STRIDES(%(gx)s)[2],
-                CudaNdarray_HOST_STRIDES(%(gx)s)[3]);
-            CNDA_THREAD_SYNC;
-            cudaError_t err = cudaGetLastError();
-            if( cudaSuccess != err)
-            {
-                PyErr_Format(PyExc_RuntimeError,
-    "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                    "kDownsampleMaxGrad_%(nodename)s",
-                    cudaGetErrorString(err),
-                    grid.x,
-                    grid.y,
-                    block.x,
-                    block.y,
-                    block.z);
-                %(fail)s;
+            if (%(nd)s == 2) {
+                size_t num_kernels = x_dims[0] * x_dims[1] * x_dims[2] * x_dims[3];
+                kMaxPool2dGrad_%(nodename)s<<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS>>>(
+                    num_kernels, x_dims[0], x_dims[1], x_dims[2], x_dims[3],
+                    CudaNdarray_HOST_DIMS(%(z)s)[2],
+                    CudaNdarray_HOST_DIMS(%(z)s)[3],
+                    CudaNdarray_DEV_DATA(%(x)s),
+                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[3],
+                    CudaNdarray_DEV_DATA(%(z)s),
+                    CudaNdarray_HOST_STRIDES(%(z)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(z)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(z)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(z)s)[3],
+                    CudaNdarray_DEV_DATA(%(gz)s),
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[3],
+                    CudaNdarray_DEV_DATA(%(gx)s),
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[3],
+                    w[0], w[1], s[0], s[1], p[0], p[1]);
+                CNDA_THREAD_SYNC;
+                cudaError_t err = cudaGetLastError();
+                if( cudaSuccess != err)
+                {
+                    PyErr_Format(PyExc_RuntimeError, "Cuda error: kMaxPool2dGrad_%(nodename)s");
+                    %(fail)s;
+                }
             }
-        }
-        """ % locals()
+            else if (%(nd)s == 3) {
+                size_t num_kernels = x_dims[0] * x_dims[1] * x_dims[2] * x_dims[3] * x_dims[4];
+                kMaxPool3dGrad_%(nodename)s<<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS>>>(
+                    num_kernels, x_dims[0], x_dims[1], x_dims[2], x_dims[3], x_dims[4],
+                    CudaNdarray_HOST_DIMS(%(z)s)[2],
+                    CudaNdarray_HOST_DIMS(%(z)s)[3],
+                    CudaNdarray_HOST_DIMS(%(z)s)[4],
+                    CudaNdarray_DEV_DATA(%(x)s),
+                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[3],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[4],
+                    CudaNdarray_DEV_DATA(%(z)s),
+                    CudaNdarray_HOST_STRIDES(%(z)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(z)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(z)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(z)s)[3],
+                    CudaNdarray_HOST_STRIDES(%(z)s)[4],
+                    CudaNdarray_DEV_DATA(%(gz)s),
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[3],
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[4],
+                    CudaNdarray_DEV_DATA(%(gx)s),
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[3],
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[4],
+                    w[0], w[1], w[2], s[0], s[1], s[2], p[0], p[1], p[2]);
+                CNDA_THREAD_SYNC;
+                cudaError_t err = cudaGetLastError();
+                if( cudaSuccess != err)
+                {
+                    PyErr_Format(PyExc_RuntimeError, "Cuda error: kMaxPool3dGrad_%(nodename)s");
+                    %(fail)s;
+                }
+
+            }
+        }""" % locals()
 
     def c_support_code_apply(self, node, nodename):
         # This code considers every position in the output z, andthen
@@ -2580,59 +2674,99 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
         ignore_border = int(self.ignore_border)
 
         return """
-        // ds0 is the downsampling factor in rows, ds1 in columns
-        template<int ds2, int ds3, int st2, int st3>
-        __global__ void kDownsampleMaxGrad_%(nodename)s(
-           int D0, int D1, int D2, int D3, int xD2, int xD3,
-           const float * x, int xS0, int xS1, int xS2, int xS3,
-           const float * z, int zS0, int zS1, int zS2, int zS3,
-           const float * gz, int gzS0, int gzS1, int gzS2, int gzS3,
-           float *gx, int gxS0, int gxS1, int gxS2, int gxS3)
-        {
-            //  D0: number of image rows
-            //  D1: number of image cols
-            //  D2: number of z rows
-            //  D3: number of z cols
-            // xD2: number of x rows
-            // xD3: number of x cols
-            // various .S. variables are strides
+// (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/caffe_common.hpp)
+// CUDA: grid stride looping
+#define CUDA_KERNEL_LOOP(i, n)                        \
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; \
+       i < (n);                                       \
+       i += blockDim.x * gridDim.x)
 
-            float my_z, my_gz;
-            int x_row, x_col;
-            // Cast threadIdx.x into a signed int, to avoid problems with
-            // indexing with negative offsets.
-            int tx = threadIdx.x;
-            int bdimx = blockDim.x;
-            for(int block_x_idx = blockIdx.x;
-                block_x_idx < D0 * D1;
-                block_x_idx += gridDim.x){
+// CUDA: thread number configuration.
+// Use 1024 threads per block, which requires cuda sm_2x or above,
+// or fall back to attempt compatibility (best of luck to you).
+#if __CUDA_ARCH__ >= 200
+const int CUDA_NUM_THREADS = 1024;
+#else
+const int CUDA_NUM_THREADS = 512;
+#endif
 
-                int i0 = block_x_idx %% D0;
-                int i1 = block_x_idx / D0;
-                int i2 = blockIdx.y;
-                int i3 = tx;
+// CUDA: number of blocks for threads.
+inline int GET_BLOCKS(const int N) {
+  return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
+}
 
-                // maximum in the region
-                my_z = z[i0*zS0 + i1*zS1 + i2*zS2 + i3*zS3];
+// (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/pooling_layer.cu)
+__global__ void kMaxPool2dGrad_%(nodename)s(size_t nthreads,
+  int num, int channels, int height, int width, int pooled_height, int pooled_width,
+  const float * x, int xS0, int xS1, int xS2, int xS3,
+  const float * z, int zS0, int zS1, int zS2, int zS3,
+  const float * gz, int gzS0, int gzS1, int gzS2, int gzS3,
+  float *gx, int gxS0, int gxS1, int gxS2, int gxS3,
+  int kernel_h, int kernel_w, int stride_h, int stride_w, int pad_h, int pad_w)
+{
 
-                // iterate over pooling window
-                for (int r2 = 0; r2 < ds2 && (i2*st2 + r2 < xD2); ++r2)
-                {
-                    for (int r3 = 0; r3 < ds3 && (i3*st3 + r3 < xD3); ++r3)
-                    {
-                        x_row = i2*st2 + r2;
-                        x_col = i3*st3 + r3;
-                        if (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3])
-                        {
-                            my_gz = gz[i0*gzS0 + i1*gzS1 + i2*gzS2 + i3*gzS3];
-                            // for overlapping pooling regions concurrent
-                            // writes are possible
-                            atomicAdd(&gx[i0*gxS0 + i1*gxS1 + x_row*gxS2 + x_col*gxS3], my_gz);
-                        }
-                    }
-                }
-            }
+  CUDA_KERNEL_LOOP(index, nthreads) {
+    int w = index %% width;
+    int h = (index / width) %% height;
+    int c = (index / width / height) %% channels;
+    int n = (index / width / height / channels);
+    const int phstart = (h + pad_h < kernel_h) ? 0 : (h + pad_h - kernel_h) / stride_h + 1;
+    const int phend = min((h + pad_h) / stride_h + 1, pooled_height);
+    const int pwstart = (w + pad_w < kernel_w) ? 0 : (w + pad_w - kernel_w) / stride_w + 1;
+    const int pwend = min((w + pad_w) / stride_w + 1, pooled_width);
+
+    const float curr_x = x[n*xS0 + c*xS1 + h*xS2 + w*xS3];
+    float gradient = 0;
+    for (int ph=phstart; ph < phend; ++ph) {
+      for (int pw=pwstart; pw < pwend; ++pw) {
+        float curr_max = z[n*zS0 + c*zS1 + ph*zS2 + pw*zS3];
+        if (curr_max == curr_x) {
+          gradient += gz[n*zS0 + c*zS1 + ph*zS2 + pw*zS3];
         }
+      }
+    }
+    gx[n*gxS0 + c*gxS1 + h*gxS2 + w*gxS3] = gradient;
+  }
+}
+
+__global__ void kMaxPool3dGrad_%(nodename)s(size_t nthreads,
+  int num, int channels, int depth, int height, int width,
+  int pooled_depth, int pooled_height, int pooled_width,
+  const float * x, int xS0, int xS1, int xS2, int xS3, int xS4,
+  const float * z, int zS0, int zS1, int zS2, int zS3, int zS4,
+  const float * gz, int gzS0, int gzS1, int gzS2, int gzS3, int gzS4,
+  float *gx, int gxS0, int gxS1, int gxS2, int gxS3, int gxS4,
+  int kernel_d, int kernel_h, int kernel_w, int stride_d, int stride_h,
+  int stride_w, int pad_d, int pad_h, int pad_w)
+{
+  CUDA_KERNEL_LOOP(index, nthreads) {
+    int w = index %% width;
+    int h = (index / width) %% height;
+    int d = (index / width / height) %% depth;
+    int c = (index / width / height / depth) %% channels;
+    int n = (index / width / height / depth / channels);
+    const int pdstart = (d + pad_d < kernel_d) ? 0 : (d + pad_d - kernel_d) / stride_d + 1;
+    const int pdend = min((d + pad_d) / stride_d + 1, pooled_depth);
+    const int phstart = (h + pad_h < kernel_h) ? 0 : (h + pad_h - kernel_h) / stride_h + 1;
+    const int phend = min((h + pad_h) / stride_h + 1, pooled_height);
+    const int pwstart = (w + pad_w < kernel_w) ? 0 : (w + pad_w - kernel_w) / stride_w + 1;
+    const int pwend = min((w + pad_w) / stride_w + 1, pooled_width);
+
+    const float curr_x = x[n*xS0 + c*xS1 + d*xS2 + h*xS3 + w*xS4];
+    float gradient = 0;
+    for (int pd=pdstart; pd < pdend; ++pd) {
+      for (int ph=phstart; ph < phend; ++ph) {
+        for (int pw=pwstart; pw < pwend; ++pw) {
+          float curr_max = z[n*zS0 + c*zS1 + pd*zS2 + ph*zS3 + pw*zS4];
+          if (curr_max == curr_x) {
+            gradient += gz[n*zS0 + c*zS1 + pd*zS2 + ph*zS3 + pw*zS4];
+          }
+        }
+      }
+    }
+    gx[n*gxS0 + c*gxS1 + d*gxS2 + h*gxS3 + w*gxS4] = gradient;
+  }
+}
         """ % locals()
 
 
@@ -2641,41 +2775,46 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
     Implement the grad of downsample with max on the gpu.
 
     """
-    __props__ = ('ds', 'st', 'ignore_border')
+    __props__ = ('ignore_border', 'mode', 'ndim')
 
-    def __init__(self, ds, st=None, ignore_border=False):
-        self.ds = tuple(ds)
-        self.st = self.ds if st is None else tuple(st)
+    def __init__(self, ignore_border, mode='max', ndim=2):
+        self.ndim = ndim
         self.ignore_border = ignore_border
+        self.mode = mode
+        assert self.mode == 'max'
+        assert self.ndim in [2, 3]
 
-    def make_node(self, x, z, gx):
-        x = as_cuda_ndarray_variable(x)
-        z = as_cuda_ndarray_variable(z)
-        gx = as_cuda_ndarray_variable(gx)
+    def make_node(self, inp, out, out_grad, ws, stride, pad):
+        inp = as_cuda_ndarray_variable(inp)
+        assert (inp.type.ndim in [4, 5])
+        out = as_cuda_ndarray_variable(out)
+        assert(out.type.ndim in [4, 5])
+        out_grad = as_cuda_ndarray_variable(out_grad)
+        assert (out_grad.type.ndim in [4, 5])
 
-        if x.type.ndim != 4:
-            raise TypeError('x must be 4D tensor')
-        if z.type.ndim != 4:
-            raise TypeError('z must be 4D tensor')
-        if gx.type.ndim != 4:
-            raise TypeError('gx must be 4D tensor')
+        assert (out_grad.type.ndim == inp.type.ndim)
+        assert (inp.type.ndim == out.type.ndim)
 
-        return Apply(self, [x, z, gx], [x.type()])
+        ws = as_tensor_variable(ws)
+        stride = as_tensor_variable(stride)
+        pad = as_tensor_variable(pad)
+        assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
+        assert ws.type.ndim == 1
+
+        return Apply(self, [inp, out, out_grad, ws, stride, pad], [inp.type()])
 
     def c_code_cache_version(self):
         return (1,)
 
     def c_code(self, node, nodename, inp, out, sub):
-        x, z, gx = inp
+        x, z, gx, ws, stride, pad = inp
         gz, = out
+        nd = self.ndim
         fail = sub['fail']
-        ds0, ds1 = self.ds
-        st0, st1 = self.st
-        ignore_border = int(self.ignore_border)
         return """
-        if (%(x)s->nd != 4
-            || %(z)s->nd != 4
-            || %(gx)s->nd != 4)
+        if (%(x)s->nd != 2 + %(nd)s
+            || %(z)s->nd != 2 + %(nd)s
+            || %(gx)s->nd != 2 + %(nd)s)
         {
             PyErr_SetString(PyExc_ValueError, "GpuDownsampleFactorMaxGradGrad: rank error");
             %(fail)s;
@@ -2690,11 +2829,11 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
             || (CudaNdarray_HOST_DIMS(%(gz)s)[3] !=
                 CudaNdarray_HOST_DIMS(%(z)s)[3]))
         {
-            // init with zeros
-            // for st larger than ds some pixels in the input will be skipped
             Py_XDECREF(%(gz)s);
-            %(gz)s = (CudaNdarray*)CudaNdarray_ZEROS(4, (int*)CudaNdarray_HOST_DIMS(%(z)s));
-            if (NULL == %(gz)s)
+            %(gz)s = (CudaNdarray*)CudaNdarray_New();
+            if ((NULL == %(gz)s)
+                || CudaNdarray_alloc_contiguous(%(gz)s, 2 + %(nd)s,
+                                                CudaNdarray_HOST_DIMS(%(z)s)))
             {
                 Py_XDECREF(%(gz)s);
                 %(gz)s = NULL;
@@ -2702,113 +2841,200 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
             }
         }
         {
-            const int* z_dims = CudaNdarray_HOST_DIMS(%(z)s);
-            const int* x_dims = CudaNdarray_HOST_DIMS(%(x)s);
-
-            int needs_extra_z_row = %(ignore_border)s && (x_dims[2] %% %(st0)s);
-            int needs_extra_z_col = %(ignore_border)s && (x_dims[3] %% %(st1)s);
-            dim3 grid(std::min(z_dims[0] * z_dims[1], 65535),
-                      z_dims[2] + (needs_extra_z_row ? 1 : 0));
-            dim3 block(std::min(z_dims[3] + (needs_extra_z_col ? 1 : 0), 512));
-
-            kDownsampleMaxGradGrad_%(nodename)s<%(ds0)s, %(ds1)s, %(st0)s, %(st1)s> <<<grid, block>>>(
-                z_dims[0], z_dims[1], z_dims[2], z_dims[3],
-                CudaNdarray_HOST_DIMS(%(x)s)[2],
-                CudaNdarray_HOST_DIMS(%(x)s)[3],
-                CudaNdarray_DEV_DATA(%(x)s),
-                CudaNdarray_HOST_STRIDES(%(x)s)[0],
-                CudaNdarray_HOST_STRIDES(%(x)s)[1],
-                CudaNdarray_HOST_STRIDES(%(x)s)[2],
-                CudaNdarray_HOST_STRIDES(%(x)s)[3],
-                CudaNdarray_DEV_DATA(%(z)s),
-                CudaNdarray_HOST_STRIDES(%(z)s)[0],
-                CudaNdarray_HOST_STRIDES(%(z)s)[1],
-                CudaNdarray_HOST_STRIDES(%(z)s)[2],
-                CudaNdarray_HOST_STRIDES(%(z)s)[3],
-                CudaNdarray_DEV_DATA(%(gz)s),
-                CudaNdarray_HOST_STRIDES(%(gz)s)[0],
-                CudaNdarray_HOST_STRIDES(%(gz)s)[1],
-                CudaNdarray_HOST_STRIDES(%(gz)s)[2],
-                CudaNdarray_HOST_STRIDES(%(gz)s)[3],
-                CudaNdarray_DEV_DATA(%(gx)s),
-                CudaNdarray_HOST_STRIDES(%(gx)s)[0],
-                CudaNdarray_HOST_STRIDES(%(gx)s)[1],
-                CudaNdarray_HOST_STRIDES(%(gx)s)[2],
-                CudaNdarray_HOST_STRIDES(%(gx)s)[3]);
-            CNDA_THREAD_SYNC;
-            cudaError_t err = cudaGetLastError();
-            if( cudaSuccess != err)
-            {
-                PyErr_Format(PyExc_RuntimeError,
-    "Cuda error: %%s: %%s. (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                    "kDownsampleMaxGradGrad_%(nodename)s",
-                    cudaGetErrorString(err),
-                    grid.x,
-                    grid.y,
-                    block.x,
-                    block.y,
-                    block.z);
-                %(fail)s;
+            // scope for running kernel
+            size_t w[3];
+            size_t s[3];
+            size_t p[3];
+            for (int i = 0; i < %(nd)s; i++) {
+              w[i] = *((npy_intp*)PyArray_GETPTR1(%(ws)s, i));
+              s[i] = *((npy_intp*)PyArray_GETPTR1(%(stride)s, i));
+              p[i] = *((npy_intp*)PyArray_GETPTR1(%(pad)s, i));
             }
+
+            const int* z_dims = CudaNdarray_HOST_DIMS(%(z)s);
+
+            if (%(nd)s == 2) {
+                size_t num_kernels = z_dims[0] * z_dims[1] * z_dims[2] * z_dims[3];
+                kMaxPool2dGradGrad_%(nodename)s<<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS>>>(
+                    num_kernels, z_dims[0], z_dims[1], z_dims[2], z_dims[3],
+                    CudaNdarray_HOST_DIMS(%(x)s)[2],
+                    CudaNdarray_HOST_DIMS(%(x)s)[3],
+                    CudaNdarray_DEV_DATA(%(x)s),
+                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[3],
+                    CudaNdarray_DEV_DATA(%(z)s),
+                    CudaNdarray_HOST_STRIDES(%(z)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(z)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(z)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(z)s)[3],
+                    CudaNdarray_DEV_DATA(%(gz)s),
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[3],
+                    CudaNdarray_DEV_DATA(%(gx)s),
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[3],
+                    w[0], w[1], s[0], s[1], p[0], p[1]);
+                CNDA_THREAD_SYNC;
+                cudaError_t err = cudaGetLastError();
+                if( cudaSuccess != err)
+                {
+                    PyErr_Format(PyExc_RuntimeError, "Cuda error: kMaxPool2dGradGrad_%(nodename)s");
+                    %(fail)s;
+                }
+            } else if (%(nd)s == 3) {
+                size_t num_kernels = z_dims[0] * z_dims[1] * z_dims[2] * z_dims[3] * z_dims[4];
+                kMaxPool3dGradGrad_%(nodename)s<<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS>>>(
+                    num_kernels, z_dims[0], z_dims[1], z_dims[2], z_dims[3], z_dims[4],
+                    CudaNdarray_HOST_DIMS(%(x)s)[2],
+                    CudaNdarray_HOST_DIMS(%(x)s)[3],
+                    CudaNdarray_HOST_DIMS(%(x)s)[4],
+                    CudaNdarray_DEV_DATA(%(x)s),
+                    CudaNdarray_HOST_STRIDES(%(x)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[3],
+                    CudaNdarray_HOST_STRIDES(%(x)s)[4],
+                    CudaNdarray_DEV_DATA(%(z)s),
+                    CudaNdarray_HOST_STRIDES(%(z)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(z)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(z)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(z)s)[3],
+                    CudaNdarray_HOST_STRIDES(%(z)s)[4],
+                    CudaNdarray_DEV_DATA(%(gz)s),
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[3],
+                    CudaNdarray_HOST_STRIDES(%(gz)s)[4],
+                    CudaNdarray_DEV_DATA(%(gx)s),
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[0],
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[1],
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[2],
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[3],
+                    CudaNdarray_HOST_STRIDES(%(gx)s)[4],
+                    w[0], w[1], w[2], s[0], s[1], s[2], p[0], p[1], p[2]);
+                CNDA_THREAD_SYNC;
+                cudaError_t err = cudaGetLastError();
+                if( cudaSuccess != err)
+                {
+                    PyErr_Format(PyExc_RuntimeError, "Cuda error: kMaxPool3dGradGrad_%(nodename)s");
+                    %(fail)s;
+                }
+            }
+
         }
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
         return """
-        // ds0 is the downsampling factor in rows, ds1 in columns
-        // st0 and st1 are row and column stride
-        template<int ds2, int ds3, int st2, int st3>
-        __global__ void kDownsampleMaxGradGrad_%(nodename)s(
-           int D0, int D1, int D2, int D3, int xD2, int xD3,
-           const float * x, int xS0, int xS1, int xS2, int xS3,
-           const float * z, int zS0, int zS1, int zS2, int zS3,
-           float * gz, int gzS0, int gzS1, int gzS2, int gzS3,
-           const float *gx, int gxS0, int gxS1, int gxS2, int gxS3)
-        {
-            //  D0: number of image rows
-            //  D1: number of image cols
-            //  D2: number of z rows
-            //  D3: number of z cols
-            // xD2: number of x rows
-            // xD3: number of x cols
-            // various .S. variables are strides
+// (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/caffe_common.hpp)
+// CUDA: grid stride looping
+#define CUDA_KERNEL_LOOP(i, n)                        \
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; \
+       i < (n);                                       \
+       i += blockDim.x * gridDim.x)
 
-            float my_z, my_gx;
-            int x_row, x_col;
-            // Cast threadIdx.x into a signed int, to avoid problems with
-            // indexing with negative offsets.
-            int tx = threadIdx.x;
-            int bdimx = blockDim.x;
+// CUDA: thread number configuration.
+// Use 1024 threads per block, which requires cuda sm_2x or above,
+// or fall back to attempt compatibility (best of luck to you).
+#if __CUDA_ARCH__ >= 200
+const int CUDA_NUM_THREADS = 1024;
+#else
+const int CUDA_NUM_THREADS = 512;
+#endif
 
-            for(int block_x_idx = blockIdx.x;
-                block_x_idx < D0 * D1;
-                block_x_idx += gridDim.x){
+// CUDA: number of blocks for threads.
+inline int GET_BLOCKS(const int N) {
+  return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
+}
 
-                int i0 = block_x_idx %% D0;
-                int i1 = block_x_idx / D0;
-                int i2 = blockIdx.y;
-                int i3 = tx;
+__global__ void kMaxPool2dGradGrad_%(nodename)s(size_t nthreads,
+  int num, int channels, int pooled_height, int pooled_width, int height, int width,
+  const float * x, int xS0, int xS1, int xS2, int xS3,
+  const float * z, int zS0, int zS1, int zS2, int zS3,
+  float * gz, int gzS0, int gzS1, int gzS2, int gzS3,
+  const float *gx, int gxS0, int gxS1, int gxS2, int gxS3,
+  int kernel_h, int kernel_w, int stride_h, int stride_w, int pad_h, int pad_w)
+{
+  CUDA_KERNEL_LOOP(index, nthreads) {
+    int pw = index %% pooled_width;
+    int ph = (index / pooled_width) %% pooled_height;
+    int c = (index / pooled_width / pooled_height) %% channels;
+    int n = (index / pooled_width / pooled_height / channels);
+    int hstart = ph*stride_h - pad_h;
+    int hend = min(hstart + kernel_h, height);
+    int wstart = pw*stride_w - pad_w;
+    int wend = min(wstart + kernel_w, width);
+    hstart = max(hstart, 0);
+    wstart = max(wstart, 0);
 
-                // maximum in the region
-                my_z = z[i0*zS0 + i1*zS1 + i2*zS2 + i3*zS3];
+    const float* x_slice = x + n*xS0 + c*xS1;
+    const float* gx_slice = gx + n*gxS0 + c*gxS1;
+    // maximum in the region
+    const float curr_max = z[n*zS0 + c*zS1 + ph*zS2 + pw*zS3];
+    float gradient = 0;
 
-                // iteration over pooling window
-                for (int r2 = 0; r2 < ds2 && (i2*st2 + r2 < xD2); ++r2)
-                {
-                    for (int r3 = 0; r3 < ds3 && (i3*st3 + r3 < xD3); ++r3)
-                    {
-                        x_row = i2*st2 + r2;
-                        x_col = i3*st3 + r3;
-                        if (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3])
-                        {
-                            // my_gx = gx[image_row][image_col][x_row][x_col]
-                            my_gx = gx[i0*gxS0 + i1*gxS1 + x_row*gxS2 + x_col*gxS3];
-                            // for overlapping pooling regions concurrent
-                            // writes are possible
-                            atomicAdd(&gz[i0*gzS0 + i1*gzS1 + i2*gzS2 + i3*gzS3], my_gx);
-                        }
-                    }
-                }
-            }
+    for (int h=hstart; h < hend; ++h) {
+      for (int w=wstart; w < wend; ++w) {
+        // essentially: z[n,c,ph,pw] == x[n,c,h,w]
+        if (curr_max == x_slice[h*xS2 + w*xS3]) {
+          gradient += gx_slice[h*gxS2 + w*gxS3];
         }
+      }
+    }
+    gz[n*gzS0 + c*gzS1 + ph*gzS2 + pw*gzS3] = gradient;
+  }
+}
+
+__global__ void kMaxPool3dGradGrad_%(nodename)s(size_t nthreads,
+  int num, int channels, int pooled_depth, int pooled_height, int pooled_width,
+  int depth, int height, int width,
+  const float * x, int xS0, int xS1, int xS2, int xS3, int xS4,
+  const float * z, int zS0, int zS1, int zS2, int zS3, int zS4,
+  float * gz, int gzS0, int gzS1, int gzS2, int gzS3, int gzS4,
+  const float *gx, int gxS0, int gxS1, int gxS2, int gxS3, int gxS4,
+  int kernel_d, int kernel_h, int kernel_w, int stride_d, int stride_h,
+  int stride_w, int pad_d, int pad_h, int pad_w)
+{
+  CUDA_KERNEL_LOOP(index, nthreads) {
+    int pw = index %% pooled_width;
+    int ph = (index / pooled_width) %% pooled_height;
+    int pd = (index / pooled_width / pooled_height) %% pooled_depth;
+    int c = (index / pooled_width / pooled_height / pooled_depth) %% channels;
+    int n = (index / pooled_width / pooled_height / pooled_depth / channels);
+    int dstart = pd*stride_d - pad_d;
+    int dend = min(dstart + kernel_d, depth);
+    int hstart = ph*stride_h - pad_h;
+    int hend = min(hstart + kernel_h, height);
+    int wstart = pw*stride_w - pad_w;
+    int wend = min(wstart + kernel_w, width);
+    dstart = max(dstart, 0);
+    hstart = max(hstart, 0);
+    wstart = max(wstart, 0);
+
+    const float* x_slice = x + n*xS0 + c*xS1;
+    const float* gx_slice = gx + n*gxS0 + c*gxS1;
+    // maximum in the region
+    const float curr_max = z[n*zS0 + c*zS1 + pd*zS2 + ph*zS3 + pw*zS4];
+    float gradient = 0;
+
+    for (int d=dstart; d < dend; ++d) {
+      for (int h=hstart; h < hend; ++h) {
+        for (int w=wstart; w < wend; ++w) {
+          // essentially: z[n,c,pd,ph,pw] == x[n,c,d,h,w]
+          if (curr_max == x_slice[d*xS2 + h*xS3 + w*xS4]) {
+            gradient += gx_slice[d*gxS2 + h*gxS3 + w*gxS4];
+          }
+        }
+      }
+    }
+    gz[n*gzS0 + c*gzS1 + pd*gzS2 + ph*gzS3 + pw*gzS4] = gradient;
+  }
+}
         """ % locals()

@@ -1890,45 +1890,25 @@ def local_convtransp3d_gemm(node):
 gpu_optimizer.register("convtransp3d_gemm", local_convtransp3d_gemm)
 
 
-def _check_constant_args_pool(ndim, ws, stride, pad, node):
-    """Check if the args of pool are constants. Warns if not."""
-    try:
-        ws = tuple(tensor.get_scalar_constant_value(ws[i]) for i in range(ndim))
-        stride = tuple(tensor.get_scalar_constant_value(stride[i]) for i in range(ndim))
-        pad = tuple(tensor.get_scalar_constant_value(pad[i]) for i in range(ndim))
-    except tensor.NotScalarConstantError:
-        msg = ("Pool with tensor variable for the window size, stride or "
-               "padding is only supported in the new GPU backend, so this op "
-               "will run on CPU. (op %s)" % node)
-        if config.assert_no_cpu_op == "warn":
-            _logger.warning(msg)
-        elif config.assert_no_cpu_op == "raise":
-            raise AssertionError(msg)
-        return None
-    return ws, stride, pad
-
-
 @register_opt()
 @local_optimizer([pool.Pool])
 def local_gpu_downsample_factor_max(node):
     if (isinstance(node.op, pool.Pool)):
         assert node.op.__props__ == ('ignore_border', 'mode', 'ndim')
-        x, ws, st, pad = node.inputs
-        nd = node.op.ndim if node.op.ndim else (x.ndim - 2)
-        ret = _check_constant_args_pool(nd, ws, st, pad, node)
-        if ret is None:
+        inp, ws, stride, pad = node.inputs
+        nd = node.op.ndim
+        if nd not in (2, 3):
             return
-        ws, st, pad = ret
-        if (nd != 2 or max(pad) != 0 or node.op.mode != 'max'):
-            return
-        if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            gpu_ws = GpuDownsampleFactorMax(ws, st, node.op.ignore_border)
+
+        ignore_border, mode = node.op.ignore_border, node.op.mode
+        if (inp.owner and isinstance(inp.owner.op, HostFromGpu)):
+            op = GpuDownsampleFactorMax(ignore_border, mode, nd)
             if node.inputs[0].ndim == 4:
-                return [host_from_gpu(gpu_ws(x.owner.inputs[0]))]
+                return [host_from_gpu(op(inp.owner.inputs[0], ws, stride, pad))]
             else:
-                input_4D = pad_dims(x.owner.inputs[0], 2, 2)
-                output_4D = gpu_ws(input_4D)
-                output = unpad_dims(output_4D, x.owner.inputs[0], 2, 2)
+                inp_padded = pad_dims(inp.owner.inputs[0], 2, nd)
+                output_padded = op(inp_padded, ws, stride, pad)
+                output = unpad_dims(output_padded, inp.owner.inputs[0], 2, nd)
                 return [host_from_gpu(output)]
 
 
@@ -1937,26 +1917,26 @@ def local_gpu_downsample_factor_max(node):
 def local_gpu_downsample_factor_max_grad(node):
     if (isinstance(node.op, pool.MaxPoolGrad)):
         assert node.op.__props__ == ('ignore_border', 'mode', 'ndim')
-        x, z, gz, ws, st, pad = node.inputs
-        nd = node.op.ndim if node.op.ndim else (x.ndim - 2)
-        ret = _check_constant_args_pool(nd, ws, st, pad, node)
-        if ret is None:
+        inp, out, out_grad, ws, stride, pad = node.inputs
+        nd = node.op.ndim
+        if nd not in (2, 3):
             return
-        ws, st, pad = ret
-        if (nd != 2 or max(pad) != 0 or node.op.mode != 'max'):
-            return
-        if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            gpu_ws_grad = GpuDownsampleFactorMaxGrad(ws, st, node.op.ignore_border)
+
+        ignore_border, mode = node.op.ignore_border, node.op.mode
+        if (inp.owner and isinstance(inp.owner.op, HostFromGpu)):
+            op = GpuDownsampleFactorMaxGrad(ignore_border, mode, nd)
             if node.inputs[0].ndim == 4:
-                return [host_from_gpu(gpu_ws_grad(x.owner.inputs[0],
-                                                  as_cuda_ndarray_variable(z),
-                                                  as_cuda_ndarray_variable(gz)))]
+                out = as_cuda_ndarray_variable(out)
+                out_grad = as_cuda_ndarray_variable(out_grad)
+                return [host_from_gpu(op(inp.owner.inputs[0], out, out_grad,
+                                         ws, stride, pad))]
             else:
-                x_4D = pad_dims(x.owner.inputs[0], 2, 2)
-                z_4D = pad_dims(as_cuda_ndarray_variable(z), 2, 2)
-                gz_4D = pad_dims(as_cuda_ndarray_variable(gz), 2, 2)
-                output_4D = gpu_ws_grad(x_4D, z_4D, gz_4D)
-                output = unpad_dims(output_4D, x.owner.inputs[0], 2, 2)
+                inp_padded = pad_dims(inp.owner.inputs[0], 2, nd)
+                out_padded = pad_dims(as_cuda_ndarray_variable(out), 2, nd)
+                out_grad_padded = pad_dims(as_cuda_ndarray_variable(out_grad), 2, nd)
+                output_padded = op(inp_padded, out_padded, out_grad_padded,
+                                   ws, stride, pad)
+                output = unpad_dims(output_padded, inp.owner.inputs[0], 2, nd)
                 return [host_from_gpu(output)]
 
 
@@ -1965,26 +1945,27 @@ def local_gpu_downsample_factor_max_grad(node):
 def local_gpu_downsample_factor_max_grad_grad(node):
     if isinstance(node.op, pool.DownsampleFactorMaxGradGrad):
         assert node.op.__props__ == ('ignore_border', 'mode', 'ndim')
-        x, z, gx, ws, st, pad = node.inputs
-        nd = node.op.ndim if node.op.ndim else (x.ndim - 2)
-        ret = _check_constant_args_pool(nd, ws, st, pad, node)
-        if ret is None:
+        inp, out, out_grad, ws, stride, pad = node.inputs
+        nd = node.op.ndim
+        if nd not in (2, 3):
             return
-        ws, st, pad = ret
-        if (nd != 2 or max(pad) != 0 or node.op.mode != 'max'):
-            return
-        if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            op = GpuDownsampleFactorMaxGradGrad(ws, st, node.op.ignore_border)
+
+        ignore_border, mode = node.op.ignore_border, node.op.mode
+
+        if (inp.owner and isinstance(inp.owner.op, HostFromGpu)):
+            op = GpuDownsampleFactorMaxGradGrad(ignore_border, mode, nd)
             if node.inputs[0].ndim == 4:
-                return [host_from_gpu(op(x.owner.inputs[0],
-                                         as_cuda_ndarray_variable(z),
-                                         as_cuda_ndarray_variable(gx)))]
+                out = as_cuda_ndarray_variable(out)
+                out_grad = as_cuda_ndarray_variable(out_grad)
+                return [host_from_gpu(op(inp.owner.inputs[0], out, out_grad,
+                                         ws, stride, pad))]
             else:
-                x_4D = pad_dims(x.owner.inputs[0], 2, 2)
-                z_4D = pad_dims(as_cuda_ndarray_variable(z), 2, 2)
-                gx_4D = pad_dims(as_cuda_ndarray_variable(gx), 2, 2)
-                output_4D = op(x_4D, z_4D, gx_4D)
-                output = unpad_dims(output_4D, x.owner.inputs[0], 2, 2)
+                inp_padded = pad_dims(inp.owner.inputs[0], 2, nd)
+                out_padded = pad_dims(as_cuda_ndarray_variable(out), 2, nd)
+                out_grad_padded = pad_dims(as_cuda_ndarray_variable(out_grad), 2, nd)
+                output_padded = op(inp_padded, out_padded, out_grad_padded,
+                                   ws, stride, pad)
+                output = unpad_dims(output_padded, inp.owner.inputs[0], 2, nd)
                 return [host_from_gpu(output)]
 
 
