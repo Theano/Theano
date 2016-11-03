@@ -55,8 +55,7 @@ from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
 from theano.sandbox.cuda.blas import gpu_ger_no_inplace
 from theano.sandbox.cuda.blas import (
-    GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad,
-    GpuDownsampleFactorMaxGradGrad)
+    GpuMaxPool, GpuMaxPoolGrad, GpuMaxPoolGradGrad)
 
 from theano.tensor.nnet.blocksparse import SparseBlockGemv, SparseBlockOuter
 from theano.sandbox.cuda.blocksparse import (
@@ -1892,17 +1891,17 @@ gpu_optimizer.register("convtransp3d_gemm", local_convtransp3d_gemm)
 
 @register_opt()
 @local_optimizer([pool.Pool])
-def local_gpu_downsample_factor_max(node):
+def local_gpu_max_pool(node):
     if (isinstance(node.op, pool.Pool)):
         assert node.op.__props__ == ('ignore_border', 'mode', 'ndim')
         inp, ws, stride, pad = node.inputs
-        nd = node.op.ndim
-        if nd not in (2, 3):
+        nd, mode = node.op.ndim, node.op.mode
+        if nd not in (2, 3) or mode != 'max':
             return
 
         ignore_border, mode = node.op.ignore_border, node.op.mode
         if (inp.owner and isinstance(inp.owner.op, HostFromGpu)):
-            op = GpuDownsampleFactorMax(ignore_border, mode, nd)
+            op = GpuMaxPool(ignore_border, mode, nd)
             if node.inputs[0].ndim == 4:
                 return [host_from_gpu(op(inp.owner.inputs[0], ws, stride, pad))]
             else:
@@ -1914,7 +1913,7 @@ def local_gpu_downsample_factor_max(node):
 
 @register_opt()
 @local_optimizer([pool.MaxPoolGrad])
-def local_gpu_downsample_factor_max_grad(node):
+def local_gpu_max_pool_grad(node):
     if (isinstance(node.op, pool.MaxPoolGrad)):
         assert node.op.__props__ == ('ignore_border', 'mode', 'ndim')
         inp, out, out_grad, ws, stride, pad = node.inputs
@@ -1924,7 +1923,7 @@ def local_gpu_downsample_factor_max_grad(node):
 
         ignore_border, mode = node.op.ignore_border, node.op.mode
         if (inp.owner and isinstance(inp.owner.op, HostFromGpu)):
-            op = GpuDownsampleFactorMaxGrad(ignore_border, mode, nd)
+            op = GpuMaxPoolGrad(ignore_border, mode, nd)
             if node.inputs[0].ndim == 4:
                 out = as_cuda_ndarray_variable(out)
                 out_grad = as_cuda_ndarray_variable(out_grad)
@@ -1942,7 +1941,7 @@ def local_gpu_downsample_factor_max_grad(node):
 
 @register_opt()
 @local_optimizer([pool.DownsampleFactorMaxGradGrad])
-def local_gpu_downsample_factor_max_grad_grad(node):
+def local_gpu_max_pool_grad_grad(node):
     if isinstance(node.op, pool.DownsampleFactorMaxGradGrad):
         assert node.op.__props__ == ('ignore_border', 'mode', 'ndim')
         inp, out, out_grad, ws, stride, pad = node.inputs
@@ -1953,7 +1952,7 @@ def local_gpu_downsample_factor_max_grad_grad(node):
         ignore_border, mode = node.op.ignore_border, node.op.mode
 
         if (inp.owner and isinstance(inp.owner.op, HostFromGpu)):
-            op = GpuDownsampleFactorMaxGradGrad(ignore_border, mode, nd)
+            op = GpuMaxPoolGradGrad(ignore_border, mode, nd)
             if node.inputs[0].ndim == 4:
                 out = as_cuda_ndarray_variable(out)
                 out_grad = as_cuda_ndarray_variable(out_grad)

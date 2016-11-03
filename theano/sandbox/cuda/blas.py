@@ -2266,7 +2266,7 @@ class GpuConv(GpuOp):
 """ % sub
 
 
-class GpuDownsampleFactorMax(GpuOp):
+class GpuMaxPool(GpuOp):
     """
     Implement downsample with max on the gpu.
 
@@ -2501,7 +2501,7 @@ __global__ void kMaxPool3d_%(nodename)s(size_t nthreads,
         """ % locals()
 
 
-class GpuDownsampleFactorMaxGrad(GpuOp):
+class GpuMaxPoolGrad(GpuOp):
     """
     Implement the grad of downsample with max on the gpu.
 
@@ -2770,7 +2770,7 @@ __global__ void kMaxPool3dGrad_%(nodename)s(size_t nthreads,
         """ % locals()
 
 
-class GpuDownsampleFactorMaxGradGrad(GpuOp):
+class GpuMaxPoolGradGrad(GpuOp):
     """
     Implement the grad of downsample with max on the gpu.
 

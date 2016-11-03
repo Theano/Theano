@@ -382,7 +382,7 @@ def test_downsample():
                 f2 = pfunc([], ds_op(tensor.as_tensor_variable(a), ds, st),
                            mode=mode_without_gpu)
                 assert any([isinstance(node.op,
-                                       tcn.blas.GpuDownsampleFactorMax)
+                                       tcn.blas.GpuMaxPool)
                             for node in f.maker.fgraph.toposort()])
                 assert any([isinstance(node.op, Pool)
                             for node in f2.maker.fgraph.toposort()])
@@ -401,7 +401,7 @@ def test_downsample():
                 g = pfunc([], gf, mode=mode_with_gpu.excluding('cudnn'))
                 g2 = pfunc([], gf, mode=mode_without_gpu)
                 assert any([isinstance(node.op,
-                                       tcn.blas.GpuDownsampleFactorMaxGrad)
+                                       tcn.blas.GpuMaxPoolGrad)
                             for node in g.maker.fgraph.toposort()])
                 assert any([isinstance(node.op, PoolGrad)
                             for node in g2.maker.fgraph.toposort()])
@@ -418,7 +418,7 @@ def test_downsample():
                 gg2 = pfunc([], ggf, mode=ref_mode)
 
                 assert any([isinstance(
-                    node.op, tcn.blas.GpuDownsampleFactorMaxGradGrad)
+                    node.op, tcn.blas.GpuMaxPoolGradGrad)
                     for node in gg.maker.fgraph.toposort()])
                 assert any([isinstance(
                     node.op, DownsampleFactorMaxGradGrad)
