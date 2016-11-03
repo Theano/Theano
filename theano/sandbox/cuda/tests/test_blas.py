@@ -1,10 +1,8 @@
 from __future__ import absolute_import, print_function, division
 import copy
-import itertools
 from unittest import TestCase
 
 from theano.compile.pfunc import pfunc
-from theano import gradient
 from theano import tensor
 from theano.tests import unittest_tools
 
@@ -15,7 +13,6 @@ from theano.tensor.tests.test_blas import BaseGemv, TestBlasStrides, TestGer
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace, gpu_gemv_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace, gpu_ger_no_inplace
 from theano.sandbox.cuda.blas import batched_dot, GpuBatchedDot
-from theano.tensor.signal.pool import (Pool, PoolGrad, DownsampleFactorMaxGradGrad)
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
@@ -300,205 +297,6 @@ class TestBlasStridesGpu(TestBlasStrides):
     dtype = 'float32'
     shared = staticmethod(tcn.shared_constructor)
     mode = mode_with_gpu
-
-
-if 0:
-    # This is commented out because it doesn't make sense...
-    # tcn.blas has no op called Pool
-    # tcn.blas has an op called GpuDownsampleFactorMax, but that op requires arguments that are
-    # CudaNdarrayType variables... so rethink this test?
-    def test_maxpool():
-        """TODO: test the gpu version!!! """
-        for d0, d1, r_true, r_false in [(4, 4, [[[[5, 7], [13, 15]]]], [[[[5, 7], [13, 15]]]]),
-                                        (5, 5, [[[[6, 8], [16, 18], [21, 23]]]],
-                                         [[[[6, 8, 9], [16, 18, 19], [21, 23, 24]]]])]:
-            for border, ret in [(True, r_true), (False, r_false)]:
-                ret = numpy.array(ret)
-                a = tcn.blas.Pool((2, 2), border)
-                dmatrix4 = tensor.TensorType("float32", (False, False, False, False))
-                b = dmatrix4()
-                f = pfunc([b], [a(b)], mode=mode_with_gpu)
-
-                bval = numpy.arange(0, d0 * d1).reshape(1, 1, d0, d1)
-                r = f(bval)[0]
-    #            print bval, bval.shape, border
-                # print r, r.shape
-                assert (ret == r).all()
-
-
-def test_max_pool2d():
-    shps = [(1, 12),
-            (1, 1, 12),
-            (1, 1, 1, 12),
-            (1, 1, 2, 2),
-            (1, 1, 1, 1),
-            (1, 1, 4, 4),
-            (1, 1, 10, 11),
-            (1, 2, 2, 2),
-            (3, 5, 4, 4),
-            (25, 1, 7, 7),
-            (1, 1, 12, 12),
-            (1, 1, 2, 14),
-            (1, 1, 12, 14),
-            (1, 1, 14, 14),
-            (1, 1, 16, 16),
-            (1, 1, 18, 18),
-            (1, 1, 24, 24),
-            (1, 6, 24, 24),
-            (10, 1, 24, 24),
-            (10, 6, 24, 24),
-            (30, 6, 12, 12),
-            (30, 2, 24, 24),
-            (30, 6, 24, 24),
-            (10, 10, 10, 11),
-            (1, 1, 10, 1025),
-            (1, 1, 10, 1023),
-            (1, 1, 1025, 10),
-            (1, 1, 1023, 10),
-            (65536, 1, 10, 10),
-            (1, 65536, 10, 10), ]
-
-    numpy.random.RandomState(unittest_tools.fetch_seed()).shuffle(shps)
-    test_ds = (2, 2), (3, 2), (1, 1)
-    test_st = (2, 2), (2, 3), (1, 1)
-
-    for shp in shps:
-        for ds, st in itertools.product(test_ds, test_st):
-            if ds[0] > shp[-2] and ds[1] > shp[-1]:
-                continue
-            for ignore_border, pad in zip((True, False), [(1, 1), (0, 0)]):
-                if pad[0] >= ds[0] or pad[1] >= ds[1]:
-                    continue
-                # print 'test_downsample', shp, ds, st, pad, ignore_border
-                ds_op = Pool(ndim=len(ds), ignore_border=ignore_border)
-
-                a = tcn.shared_constructor(my_rand(*shp), 'a')
-                f = pfunc([], ds_op(tensor.as_tensor_variable(a), ds, st, pad),
-                          mode=mode_with_gpu.excluding('cudnn'))
-                f2 = pfunc([], ds_op(tensor.as_tensor_variable(a), ds, st, pad),
-                           mode=mode_without_gpu)
-                assert any([isinstance(node.op, tcn.blas.GpuMaxPool)
-                            for node in f.maker.fgraph.toposort()])
-                assert any([isinstance(node.op, Pool)
-                            for node in f2.maker.fgraph.toposort()])
-                assert numpy.allclose(f(), f2())
-
-                # The grad is too slow on GT220 GPU
-                # This cause the computer to freeze...
-                # Remove this when it gets optimized enough
-                # This only bypass the last 2 checks
-                # Those tests where passing in all Mode on a GTX470
-                if shp[0] > 30000 or shp[1] > 30000:
-                    continue
-
-                gf = tensor.grad(
-                    ds_op(tensor.as_tensor_variable(a), ds, st, pad).sum(), a)
-                g = pfunc([], gf, mode=mode_with_gpu.excluding('cudnn'))
-                g2 = pfunc([], gf, mode=mode_without_gpu)
-                assert any([isinstance(node.op,
-                                       tcn.blas.GpuMaxPoolGrad)
-                            for node in g.maker.fgraph.toposort()])
-                assert any([isinstance(node.op, PoolGrad)
-                            for node in g2.maker.fgraph.toposort()])
-                assert numpy.allclose(g(), g2()), shp
-
-                ggf = gradient.Lop(tensor.grad((ds_op(
-                    tensor.as_tensor_variable(a), ds, st, pad)**2).sum(), a), a, a)
-
-                ref_mode = copy.copy(mode_without_gpu)
-                ref_mode.check_py_code = False
-                gpu_mode = copy.copy(mode_with_gpu)
-                gpu_mode.check_py_code = False
-                gg = pfunc([], ggf, mode=gpu_mode)
-                gg2 = pfunc([], ggf, mode=ref_mode)
-
-                assert any([isinstance(
-                    node.op, tcn.blas.GpuMaxPoolGradGrad)
-                    for node in gg.maker.fgraph.toposort()])
-                assert any([isinstance(
-                    node.op, DownsampleFactorMaxGradGrad)
-                    for node in gg2.maker.fgraph.toposort()])
-                assert numpy.allclose(gg(), gg2()), shp
-
-
-def test_max_pool3d():
-    shps = [(1, 1, 12),
-            (1, 1, 1, 1, 1),
-            (1, 1, 1, 1, 1025),
-            (1, 1, 2, 2, 2),
-            (1, 1, 7, 7, 7),
-            (1, 1, 9, 10, 11),
-            (1, 6, 18, 18, 18),
-            (1, 1, 6, 24, 24),
-            (1, 10, 1, 24, 24),
-            (1, 10, 6, 24, 24),
-            (1, 30, 6, 12, 12),
-            (1, 30, 2, 24, 24),
-            (1, 30, 6, 24, 24),
-            (1, 10, 10, 10, 11),
-            (1, 1, 10, 10, 1025),
-            (1, 1, 10, 10, 1023),
-            (1, 1, 10, 1025, 10),
-            (1, 1, 10, 1023, 10), ]
-
-    numpy.random.RandomState(unittest_tools.fetch_seed()).shuffle(shps)
-    test_ds = (2, 2, 2), (3, 2, 3), (1, 1, 1)
-    test_st = (2, 2, 2), (2, 3, 2), (1, 1, 1)
-
-    for shp in shps:
-        for ds, st in itertools.product(test_ds, test_st):
-            if ds[0] > shp[-3] or ds[1] > shp[-2] or ds[2] > shp[-1]:
-                continue
-            for ignore_border, pad in zip((True, False), [(1, 1, 1), (0, 0, 0)]):
-                if pad[0] >= ds[0] or pad[1] >= ds[1] or pad[2] >= ds[2]:
-                    continue
-                # print('test_downsample', shp, ds, st, pad, ignore_border)
-                ds_op = Pool(ndim=len(ds), ignore_border=ignore_border)
-
-                a = tcn.shared_constructor(my_rand(*shp), 'a')
-                f = pfunc([], ds_op(tensor.as_tensor_variable(a), ds, st, pad),
-                          mode=mode_with_gpu.excluding('cudnn'))
-                f2 = pfunc([], ds_op(tensor.as_tensor_variable(a), ds, st, pad),
-                           mode=mode_without_gpu)
-                assert any([isinstance(node.op, tcn.blas.GpuMaxPool)
-                            for node in f.maker.fgraph.toposort()])
-                assert any([isinstance(node.op, Pool)
-                            for node in f2.maker.fgraph.toposort()])
-                assert numpy.allclose(f(), f2()), (shp, ds, st, pad,
-                                                   ignore_border)
-
-                gf = tensor.grad(
-                    ds_op(tensor.as_tensor_variable(a), ds, st, pad).sum(), a)
-                g = pfunc([], gf, mode=mode_with_gpu.excluding('cudnn'))
-                g2 = pfunc([], gf, mode=mode_without_gpu)
-                assert any([isinstance(node.op,
-                                       tcn.blas.GpuMaxPoolGrad)
-                            for node in g.maker.fgraph.toposort()])
-                assert any([isinstance(node.op, PoolGrad)
-                            for node in g2.maker.fgraph.toposort()])
-                assert numpy.allclose(g(), g2()), (shp, ds, st, pad,
-                                                   ignore_border)
-
-                ggf = gradient.Lop(tensor.grad((ds_op(
-                    tensor.as_tensor_variable(a), ds, st, pad)**2).sum(), a), a, a)
-
-                ref_mode = copy.copy(mode_without_gpu)
-                ref_mode.check_py_code = False
-                gpu_mode = copy.copy(mode_with_gpu)
-                gpu_mode.check_py_code = False
-                gg = theano.function([], ggf, mode=gpu_mode)
-                gg2 = theano.function([], ggf, mode=ref_mode)
-
-                assert any([
-                    isinstance(node.op, tcn.blas.GpuMaxPoolGradGrad)
-                    for node in gg.maker.fgraph.toposort()
-                ])
-                assert any([
-                    isinstance(node.op, DownsampleFactorMaxGradGrad)
-                    for node in gg2.maker.fgraph.toposort()
-                ])
-                assert numpy.allclose(gg(), gg2()), (shp, ds, st, pad,
-                                                     ignore_border)
 
 
 class TestGpuGemv(TestCase, BaseGemv,

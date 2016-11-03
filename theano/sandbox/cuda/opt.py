@@ -54,8 +54,8 @@ from theano.sandbox.cuda.cula import gpu_solve, cula_available
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
 from theano.sandbox.cuda.blas import gpu_ger_no_inplace
-from theano.sandbox.cuda.blas import (
-    GpuMaxPool, GpuMaxPoolGrad, GpuMaxPoolGradGrad)
+from theano.sandbox.cuda.pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad,
+                                      GpuMaxPoolGradGrad)
 
 from theano.tensor.nnet.blocksparse import SparseBlockGemv, SparseBlockOuter
 from theano.sandbox.cuda.blocksparse import (
@@ -1895,13 +1895,13 @@ def local_gpu_max_pool(node):
     if (isinstance(node.op, pool.Pool)):
         assert node.op.__props__ == ('ignore_border', 'mode', 'ndim')
         inp, ws, stride, pad = node.inputs
-        nd, mode = node.op.ndim, node.op.mode
-        if nd not in (2, 3) or mode != 'max':
+        nd = node.op.ndim
+        if nd not in (2, 3):
             return
 
         ignore_border, mode = node.op.ignore_border, node.op.mode
-        if (inp.owner and isinstance(inp.owner.op, HostFromGpu)):
-            op = GpuMaxPool(ignore_border, mode, nd)
+        if inp.owner and isinstance(inp.owner.op, HostFromGpu):
+            op = GpuPool(ignore_border, mode, nd)
             if node.inputs[0].ndim == 4:
                 return [host_from_gpu(op(inp.owner.inputs[0], ws, stride, pad))]
             else:
@@ -1914,7 +1914,7 @@ def local_gpu_max_pool(node):
 @register_opt()
 @local_optimizer([pool.MaxPoolGrad])
 def local_gpu_max_pool_grad(node):
-    if (isinstance(node.op, pool.MaxPoolGrad)):
+    if isinstance(node.op, pool.MaxPoolGrad):
         assert node.op.__props__ == ('ignore_border', 'mode', 'ndim')
         inp, out, out_grad, ws, stride, pad = node.inputs
         nd = node.op.ndim
@@ -1922,7 +1922,7 @@ def local_gpu_max_pool_grad(node):
             return
 
         ignore_border, mode = node.op.ignore_border, node.op.mode
-        if (inp.owner and isinstance(inp.owner.op, HostFromGpu)):
+        if inp.owner and isinstance(inp.owner.op, HostFromGpu):
             op = GpuMaxPoolGrad(ignore_border, mode, nd)
             if node.inputs[0].ndim == 4:
                 out = as_cuda_ndarray_variable(out)
@@ -1940,6 +1940,30 @@ def local_gpu_max_pool_grad(node):
 
 
 @register_opt()
+@local_optimizer([pool.AveragePoolGrad])
+def local_gpu_average_pool_grad(node):
+    if isinstance(node.op, pool.AveragePoolGrad):
+        assert node.op.__props__ == ('ignore_border', 'mode', 'ndim')
+        inp, out_grad, ws, stride, pad = node.inputs
+        nd = node.op.ndim
+        if nd not in (2, 3):
+            return
+
+        ignore_border, mode = node.op.ignore_border, node.op.mode
+        if inp.owner and isinstance(inp.owner.op, HostFromGpu):
+            op = GpuAveragePoolGrad(ignore_border, mode, nd)
+            if node.inputs[0].ndim == 4:
+                out_grad = as_cuda_ndarray_variable(out_grad)
+                return [host_from_gpu(op(inp.owner.inputs[0], out_grad, ws, stride, pad))]
+            else:
+                inp_padded = pad_dims(inp.owner.inputs[0], 2, nd)
+                out_grad_padded = pad_dims(as_cuda_ndarray_variable(out_grad), 2, nd)
+                output_padded = op(inp_padded, out_grad_padded, ws, stride, pad)
+                output = unpad_dims(output_padded, inp.owner.inputs[0], 2, nd)
+                return [host_from_gpu(output)]
+
+
+@register_opt()
 @local_optimizer([pool.DownsampleFactorMaxGradGrad])
 def local_gpu_max_pool_grad_grad(node):
     if isinstance(node.op, pool.DownsampleFactorMaxGradGrad):
@@ -1951,7 +1975,7 @@ def local_gpu_max_pool_grad_grad(node):
 
         ignore_border, mode = node.op.ignore_border, node.op.mode
 
-        if (inp.owner and isinstance(inp.owner.op, HostFromGpu)):
+        if inp.owner and isinstance(inp.owner.op, HostFromGpu):
             op = GpuMaxPoolGradGrad(ignore_border, mode, nd)
             if node.inputs[0].ndim == 4:
                 out = as_cuda_ndarray_variable(out)
