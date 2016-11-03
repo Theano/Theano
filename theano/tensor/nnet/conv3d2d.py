@@ -26,8 +26,9 @@ def get_diagonal_subtensor_view(x, i0, i1):
     idx[i0] = slice(x.shape[i1] - 1, None, None)
     xview = x.__getitem__(tuple(idx))
     strides = list(xview.strides)
-    strides[i1] -= strides[i0]
-    xview.strides = strides
+    if x.shape[i1] != 1:
+        strides[i1] -= strides[i0]
+        xview.strides = strides
     return xview
 
 
