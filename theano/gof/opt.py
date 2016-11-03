@@ -2855,6 +2855,10 @@ def copy_stack_trace(from_var, to_var):
         # so just store that particular stack trace
         tr = getattr(from_var.tag, 'trace', [])
 
+    if tr and isinstance(tr[0], tuple):
+        # There was one single stack trace, we encapsulate it in a list
+        tr = [tr]
+
     # Copy over stack traces to to_var
     if type(to_var) is list:
         # Copy over stack traces from from_var to each variable in

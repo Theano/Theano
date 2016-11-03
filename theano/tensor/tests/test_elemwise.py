@@ -870,6 +870,10 @@ class T_reduce_dtype(unittest.TestCase):
                         (topo, output_dtype)
                     data = numpy.random.rand(3, 4) * 10
                     data = data.astype(input_dtype)
+                    if output_dtype == 'float16' and method == 'prod':
+                        # We will likely get something infinite,
+                        # and DebugMode will complain.
+                        data = data[0:1]
                     f(data)
                     if "complex" in input_dtype:
                         continue
