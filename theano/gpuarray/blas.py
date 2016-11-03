@@ -1537,6 +1537,52 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
             return [[1], [1], [0], [0], [0]]  # no connection to height, width, depth
 
 
+class GpuDownsampleFactorMaxGradGrad(CGpuKernelBase):
+    """
+    Implement the grad of downsample with max on the gpu.
+
+    """
+    __props__ = ('ignore_border', 'mode', 'ndim')
+
+    def __init__(self, ignore_border, mode='max', ndim=2):
+        self.ndim = ndim
+        self.ignore_border = ignore_border
+        self.mode = mode
+        CGpuKernelBase.__init__(self, ['pool_grad_grad.c'],
+                                'APPLY_SPECIFIC(pool_grad_grad)')
+        assert self.mode == 'max'
+        assert self.ndim in [2, 3]
+
+    def c_headers(self):
+        return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__), pygpu.get_include()]
+
+    def make_node(self, inp, out, out_grad, ws, stride, pad):
+        ctx_name = infer_context_name(inp, out, out_grad)
+        inp = as_gpuarray_variable(inp, ctx_name)
+        assert (inp.ndim in [4, 5])
+        out = as_gpuarray_variable(out, ctx_name)
+        assert (out_grad.ndim in [4, 5])
+        out_grad = as_gpuarray_variable(out_grad, ctx_name)
+        assert(out.ndim in [4, 5])
+
+        assert (out_grad.ndim == inp.ndim)
+        assert (inp.ndim == out.ndim)
+
+        ws = as_tensor_variable(ws)
+        stride = as_tensor_variable(stride)
+        pad = as_tensor_variable(pad)
+        assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
+        assert ws.type.ndim == 1
+
+        return Apply(self, [inp, out, out_grad, ws, stride, pad], [inp.type()])
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
+
 @inplace_allocempty(GpuGemv, 0)
 def local_inplace_gpuagemv(node, inputs):
     return [gpugemv_inplace(*inputs)]
