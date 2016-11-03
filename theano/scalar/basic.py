@@ -3852,6 +3852,11 @@ class Composite(ScalarOp):
                 n.op.prepare_node(n, None, None, impl)
             self.prepare_node_called.add(impl)
 
+    def clone_float32(self):
+        # This will not modify the fgraph or the nodes
+        new_ins, new_outs = composite_f32.apply(self.fgraph)
+        return Composite(new_ins, new_outs)
+
     def output_types(self, input_types):
         if tuple(input_types) != self.inputs_type:
             raise TypeError("Wrong types for Composite. Expected %s, got %s."
@@ -3986,3 +3991,82 @@ class Composite(ScalarOp):
         self.init_fgraph()
         self.init_py_impls()
         assert self._c_code
+
+
+class Compositef32(object):
+    # This is a dict of scalar op classes that need special handling
+    special = {}
+
+    def apply(self, fgraph):
+        mapping = {}
+        topo = fgraph.toposort()
+        for i in fgraph.inputs:
+            if i.dtype == 'float16':
+                mapping[i] = get_scalar_type('float32')()
+            else:
+                mapping[i] = i
+        for node in topo:
+            # Patch up for constants
+            for i in node.inputs:
+                if i not in mapping:
+                    assert type(i) is ScalarConstant
+                    if i.type == float16:
+                        ni = ScalarConstant(float32, i.data)
+                    else:
+                        ni = i
+                    mapping[i] = ni
+            if type(node.op) in self.special:
+                self.special[type(node.op)](node, mapping)
+                continue
+            new_node = node.clone_with_new_inputs(
+                [mapping[inp] for inp in node.inputs],
+                strict=False)
+            # make sure we don't produce any float16.
+            assert not any(o.dtype == 'float16' for o in new_node.outputs)
+            for o, no in zip(node.outputs, new_node.outputs):
+                mapping[o] = no
+
+        new_ins = [mapping[inp] for inp in fgraph.inputs]
+        new_outs = [mapping[out] for out in fgraph.outputs]
+        return new_ins, new_outs
+
+composite_f32 = Compositef32()
+
+
+def handle_cast(node, mapping):
+    inp = mapping[node.inputs[0]]
+    out = node.outputs[0]
+    node_ok = False
+    if node.op.o_type == float16:
+        if node.inputs[0].type == float32:
+            # cast f32 -> f16, remove
+            mapping[out] = inp
+            return
+        else:
+            # cast to f16, convert to f32
+            new_out = cast(inp, 'float32')
+            # change the node for the following if
+            node = new_out.owner
+            mapping[out] = new_out
+            node_ok = True
+    if node.inputs[0].type == float16:
+        if node.op.o_type == inp.type:
+            # cast f16 to new input type, remove
+            mapping[out] = inp
+            return
+    if not node_ok:
+        new_node = node.clone_with_new_inputs([inp],
+                                              strict=False)
+        mapping[out] = new_node.outputs[0]
+
+Compositef32.special[Cast] = handle_cast
+
+
+def handle_composite(node, mapping):
+    new_op = node.op.clone_float32()
+    new_outs = new_op(*[mapping[i] for i in node.inputs], return_list=True)
+    assert len(new_outs) == len(node.outputs)
+    for o, no in zip(node.outputs, new_outs):
+        mapping[o] = no
+
+Compositef32.special[Composite] = handle_composite

@@ -76,7 +76,6 @@ whitelist_flake8 = [
     "tensor/signal/tests/__init__.py",
     "scalar/__init__.py",
     "scalar/tests/__init__.py",
-    "scalar/tests/test_basic.py",
     "sandbox/__init__.py",
     "sandbox/tests/test_theano_object.py",
     "sandbox/tests/test_scan.py",
