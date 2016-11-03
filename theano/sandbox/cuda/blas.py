@@ -2367,8 +2367,9 @@ class GpuMaxPool(GpuOp):
             cudaError_t err = cudaGetLastError();
             if (cudaSuccess != err)
             {
-              PyErr_Format(PyExc_RuntimeError, "Cuda error: kMaxPool2d_%(nodename)s");
-              %(fail)s;
+                PyErr_Format(PyExc_RuntimeError,  "Cuda error: %%s: %%s.",
+                            "kMaxPool2d_%(nodename)s", cudaGetErrorString(err));
+                %(fail)s;
             }
           }
           else if (%(nd)s == 3) {
@@ -2393,10 +2394,11 @@ class GpuMaxPool(GpuOp):
                 w[0], w[1], w[2], s[0], s[1], s[2], p[0], p[1], p[2]);
             CNDA_THREAD_SYNC;
             cudaError_t err = cudaGetLastError();
-            if( cudaSuccess != err)
+            if (cudaSuccess != err)
             {
-              PyErr_Format(PyExc_RuntimeError, "Cuda error: kMaxPool3dGradGrad_%(nodename)s");
-              %(fail)s;
+                PyErr_Format(PyExc_RuntimeError,  "Cuda error: %%s: %%s.",
+                            "kMaxPool3d_%(nodename)s", cudaGetErrorString(err));
+                %(fail)s;
             }
           }
         }
@@ -2613,9 +2615,10 @@ class GpuMaxPoolGrad(GpuOp):
                     w[0], w[1], s[0], s[1], p[0], p[1]);
                 CNDA_THREAD_SYNC;
                 cudaError_t err = cudaGetLastError();
-                if( cudaSuccess != err)
+                if (cudaSuccess != err)
                 {
-                    PyErr_Format(PyExc_RuntimeError, "Cuda error: kMaxPool2dGrad_%(nodename)s");
+                    PyErr_Format(PyExc_RuntimeError,  "Cuda error: %%s: %%s.",
+                                "kMaxPool2dGrad_%(nodename)s", cudaGetErrorString(err));
                     %(fail)s;
                 }
             }
@@ -2653,9 +2656,10 @@ class GpuMaxPoolGrad(GpuOp):
                     w[0], w[1], w[2], s[0], s[1], s[2], p[0], p[1], p[2]);
                 CNDA_THREAD_SYNC;
                 cudaError_t err = cudaGetLastError();
-                if( cudaSuccess != err)
+                if (cudaSuccess != err)
                 {
-                    PyErr_Format(PyExc_RuntimeError, "Cuda error: kMaxPool3dGrad_%(nodename)s");
+                    PyErr_Format(PyExc_RuntimeError,  "Cuda error: %%s: %%s.",
+                                "kMaxPool3dGrad_%(nodename)s", cudaGetErrorString(err));
                     %(fail)s;
                 }
 
@@ -2882,9 +2886,10 @@ class GpuMaxPoolGradGrad(GpuOp):
                     w[0], w[1], s[0], s[1], p[0], p[1]);
                 CNDA_THREAD_SYNC;
                 cudaError_t err = cudaGetLastError();
-                if( cudaSuccess != err)
+                if (cudaSuccess != err)
                 {
-                    PyErr_Format(PyExc_RuntimeError, "Cuda error: kMaxPool2dGradGrad_%(nodename)s");
+                    PyErr_Format(PyExc_RuntimeError,  "Cuda error: %%s: %%s.",
+                                "kMaxPool2dGradGrad_%(nodename)s", cudaGetErrorString(err));
                     %(fail)s;
                 }
             } else if (%(nd)s == 3) {
@@ -2921,9 +2926,10 @@ class GpuMaxPoolGradGrad(GpuOp):
                     w[0], w[1], w[2], s[0], s[1], s[2], p[0], p[1], p[2]);
                 CNDA_THREAD_SYNC;
                 cudaError_t err = cudaGetLastError();
-                if( cudaSuccess != err)
+                if (cudaSuccess != err)
                 {
-                    PyErr_Format(PyExc_RuntimeError, "Cuda error: kMaxPool3dGradGrad_%(nodename)s");
+                    PyErr_Format(PyExc_RuntimeError,  "Cuda error: %%s: %%s.",
+                                "kMaxPool3dGradGrad_%(nodename)s", cudaGetErrorString(err));
                     %(fail)s;
                 }
             }
