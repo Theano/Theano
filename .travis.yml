@@ -9,7 +9,7 @@ cache:
 language: python
 python:
   - "2.7"
-  - "3.3"
+  # - "3.3"
 
 # command to install dependencies
 before_install:
