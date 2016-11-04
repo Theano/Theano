@@ -49,11 +49,6 @@ class GpuElemwise(HideC, Elemwise):
     nout = property(lambda self: self.scalar_op.nout)
     _f16_ok = True
 
-    def __init__(self, scalar_op, *args, **kwargs):
-        if isinstance(scalar_op, Composite):
-            scalar_op = scalar_op.clone_float32()
-        Elemwise.__init__(self, scalar_op, *args, **kwargs)
-
     def __str__(self):
         if self.name is not None:
             return self.name
@@ -108,7 +103,14 @@ class GpuElemwise(HideC, Elemwise):
         inps, outs = self._get_vnames(node)
         scal_v_ins = [get_scal(i.dtype)() for i in node.inputs]
 
-        fake_node = self.scalar_op.make_node(*scal_v_ins)
+        # As float16 isn't a c type and most GPU don't compute on it,
+        # We convert the computation to float32, and let libgpuarray
+        # load in float16 and cast to float32 and do the reverse for
+        # the output.
+        scalar_op = self.scalar_op
+        if isinstance(scalar_op, (scalar.Cast, Composite)):
+            scalar_op = scalar_op.clone_float32()
+        fake_node = scalar_op.make_node(*scal_v_ins)
         scal_v_out = fake_node.outputs
         assert len(scal_v_out) == len(node.outputs)
 
@@ -116,6 +118,8 @@ class GpuElemwise(HideC, Elemwise):
                                   inps, outs,
                                   dict(fail='return;'))
 
+        # If the following assert fail, then we need to update the
+        # code handler above.
         assert 'npy_float16' not in kop
 
         support_code = ""

@@ -2220,6 +2220,11 @@ class Cast(UnaryScalarOp):
     def __str__(self):
         return '%s{%s}' % (self.__class__.__name__, self.o_type.dtype)
 
+    def clone_float32(self):
+        if self.o_type == float16:
+            return convert_to_float32
+        return self
+
     def make_new_inplace(self, output_types_preference=None, name=None):
         """
         This op.__init__ fct don't have the same parameter as other scalar op.
