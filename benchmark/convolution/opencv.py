@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import sys, timeit
-import numpy
+import numpy as np
 import scikits.image.opencv
 
 try:
