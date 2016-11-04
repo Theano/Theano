@@ -93,12 +93,8 @@ class test_composite(unittest.TestCase):
         y = float16()
         z = float16()
 
-        o = switch(v, mul(w, x, y), z)
-        cz = Composite([x, y], [tanh(x + cast(y, 'float16'))])
-        c = Composite([w, x, y], [cz(x, y) - cz(x, y)**2 +
-                                  cast(x, 'int16') + cast(x, 'float32') +
-                                  cast(w, 'float16') -
-                                  constant(np.float16(1.0))])
+        c = switch(v, mul(w, x, y), z)
+
         assert has_f16(c)
         nc = c.clone_float32()
         assert not has_f16(nc)

@@ -63,7 +63,7 @@ def test_composite_elemwise_float16():
          tensor.cast(w, 'float16') -
          tensor.constant(numpy.float16(1.0)))
 
-    f = theano.function([w, x, y], o, mode=mode_with_gpu)
+    theano.function([w, x, y], o, mode=mode_with_gpu)
 
     v = theano.tensor.vector(dtype='uint8')
     w = theano.tensor.vector(dtype='float16')
@@ -72,7 +72,7 @@ def test_composite_elemwise_float16():
     z = theano.tensor.vector(dtype='float16')
 
     o = tensor.switch(v, tensor.mul(w, x, y), z)
-    f = theano.function([v, w, x, y, z], o, mode=mode_with_gpu)
+    theano.function([v, w, x, y, z], o, mode=mode_with_gpu)
 
 
 class test_GpuDimShuffle(test_elemwise.test_DimShuffle):
