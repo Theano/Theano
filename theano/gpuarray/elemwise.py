@@ -108,9 +108,8 @@ class GpuElemwise(HideC, Elemwise):
         # load in float16 and cast to float32 and do the reverse for
         # the output.
         scalar_op = self.scalar_op
-        if isinstance(scalar_op, Composite):
-            s = scalar_op.clone_float32()
-            scalar_op = s
+        if isinstance(scalar_op, (scalar.Cast, Composite)):
+            scalar_op = scalar_op.clone_float32()
         fake_node = scalar_op.make_node(*scal_v_ins)
         scal_v_out = fake_node.outputs
         assert len(scal_v_out) == len(node.outputs)
@@ -119,9 +118,9 @@ class GpuElemwise(HideC, Elemwise):
                                   inps, outs,
                                   dict(fail='return;'))
 
-        if isinstance(scalar_op, Composite):
-            # Other op like cast should handle float16 themself.
-            assert 'npy_float16' not in kop
+        # If the following assert fail, then we need to update the
+        # code handler above.
+        assert 'npy_float16' not in kop
 
         support_code = ""
         try:
