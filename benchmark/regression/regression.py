@@ -50,7 +50,7 @@ class RegressionLayer(M.Module):
         if input_size and target_size:
             # initialize w and b in a special way using input_size and target_size
             sz = (input_size, target_size)
-            rng = N.random.RandomState(seed)
+            rng = np.random.RandomState(seed)
             obj.w = rng.uniform(size = sz, low = -0.5, high = 0.5)
             obj.b = np.zeros(target_size)
             obj.stepsize = 0.01
