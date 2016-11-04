@@ -67,6 +67,7 @@ from theano.tensor import (
         tile
         )
 from theano.tensor.elemwise import DimShuffle
+from theano.tensor.type import values_eq_approx_remove_nan
 from theano.tests import unittest_tools as utt
 from theano.compile.mode import optdb
 from theano.compile import Mode
@@ -4678,6 +4679,28 @@ class T_local_switch_sink(unittest.TestCase):
         self.mode = copy.copy(self.mode)
         self.mode.check_isfinite = False
 
+    def function_remove_nan(self, *args, **kwargs):
+        """Wrapper around theano.function for this test.
+
+        It disables checking
+        for NaN removed by optimizations in DebugMode (it has false
+        positives in that case.
+        """
+        f = theano.function(*args, **kwargs)
+
+        def wrapped_f(*args, **kwargs):
+            # This is a bit ugly since it changes the global value of
+            # TensorType.values_eq_approx.
+            old_values_eq_approx = TensorType.values_eq_approx
+            TensorType.values_eq_approx = staticmethod(values_eq_approx_remove_nan)
+            try:
+                out = f(*args, **kwargs)
+            finally:
+                TensorType.values_eq_approx = old_values_eq_approx
+            return out
+
+        return wrapped_f
+
     def test_local_mul_switch_sink(self):
         c = T.dscalar()
         idx = 0
@@ -4689,8 +4712,8 @@ class T_local_switch_sink(unittest.TestCase):
                 y = T.mul(T.switch(condition[0] > 0, 1. * x[0], 0. * x[0]),
                           T.switch(condition[0] > 0,
                                    1. * x[0], T.log(c) * x[0]))
-                f = theano.function([condition[0], x[0], c],
-                                    [y], mode=self.mode)
+                f = self.function_remove_nan([condition[0], x[0], c],
+                                             [y], mode=self.mode)
                 if type(condition[1]) is list:
                     for i in xrange(len(condition[1])):
                         res = f(condition[1][i], x[1], -1)
@@ -4705,7 +4728,7 @@ class T_local_switch_sink(unittest.TestCase):
         # This case caused a missed optimization in the past.
         x = T.dscalar('x')
         y = T.switch(x < 7, x, T.sqrt(x - 7))
-        f = theano.function([x], T.grad(y, x), self.mode)
+        f = self.function_remove_nan([x], T.grad(y, x), self.mode)
         assert f(5) == 1, f(5)
 
     @attr('slow')
@@ -4716,8 +4739,8 @@ class T_local_switch_sink(unittest.TestCase):
             for x in [(T.dmatrix('x'), self.xm), (T.dvector('x'), self.xv), (T.dscalar('x'), self.xs)]:
                 y = T.true_div(T.switch(condition[0] > 0, 1. *
                     x[0], 0.*x[0]), T.switch(condition[0] > 0, 1.*x[0], T.log(c)*x[0]))
-                f = theano.function([condition[0], x[0], c]
-                    , [y], mode=self.mode)
+                f = self.function_remove_nan([condition[0], x[0], c],
+                                             [y], mode=self.mode)
                 if type(condition[1]) is list:
                     for i in xrange(len(condition[1])):
                         res = f(condition[1][i], x[1], -1)
