@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import sys, timeit, time
-import numpy
+import numpy as np
 import theano, theano.tensor.signal.conv
 
 try:
