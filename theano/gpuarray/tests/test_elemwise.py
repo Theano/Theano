@@ -78,22 +78,33 @@ class test_float16():
     def test_cast_float16(self):
         f16 = theano.tensor.vector(dtype='float16')
         f32 = theano.tensor.fvector()
-        f = theano.function([f16, f32],
+        i8 = theano.tensor.bvector()
+        f = theano.function([f16, f32, i8],
                             [f16.astype('float32'),
                              f32.astype('float16'),
-                             f32.astype('float64')],
+                             f32.astype('float64'),
+                             f16.astype('int8'),
+                             f32.astype('int8'),
+                             i8.astype('float16'),
+                             i8.astype('float32')],
                             mode=mode_with_gpu)
 
-        d1 = numpy.random.rand(4).astype('float16')
-        d2 = numpy.random.rand(5).astype('float32')
-        res = f(d1, d2)
+        d1 = (numpy.random.rand(4) * 10).astype('float16')
+        d2 = (numpy.random.rand(5) * 10).astype('float32')
+        d3 = (numpy.random.rand(6) * 10).astype('int8')
+        res = f(d1, d2, d3)
 
-        assert res[0].dtype == "float32"
-        assert res[1].dtype == "float16"
-        assert res[2].dtype == "float64"
-        assert_allclose(d1, res[0])
-        assert_allclose(d2, res[1])
-        assert_allclose(d2, res[2])
+        for i, out in enumerate(f.outputs):
+            dtype = out.variable.dtype
+            assert res[i].dtype == dtype
+            inp = out.variable.owner.inputs[0]
+            if inp.dtype == 'float16':
+                d = d1
+            elif inp.dtype == 'float32':
+                d = d2
+            else:
+                d = d3
+            assert_allclose(d.astype(dtype), res[i])
 
 
 class test_GpuDimShuffle(test_elemwise.test_DimShuffle):
