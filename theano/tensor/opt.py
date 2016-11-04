@@ -1916,7 +1916,7 @@ def local_subtensor_inc_subtensor(node):
                 return [x.owner.inputs[1]]
             # else y is broadcastable, return alloc of broadcastable y
             else:
-                x_subtensor = Subtensor(node.op.idx_list)(x.owner.inputs[0], *x.owner.inputs[2:])
+                x_subtensor = node.op(x.owner.inputs[0], *x.owner.inputs[2:])
                 return [T.alloc(x.owner.inputs[1], *x_subtensor.shape)]
         else:
             return
