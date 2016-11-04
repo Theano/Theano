@@ -981,8 +981,7 @@ def io_toposort(inputs, outputs, orderings=None, clients=None):
         node->clients for each node in the subgraph that is sorted
 
     """
-
-    if not orderings:  # can be None or empty dict
+    if not orderings and clients is None:  # ordering can be None or empty dict
         # Specialized function that is faster when more then ~10 nodes
         # when no ordering.
 
@@ -1004,27 +1003,56 @@ def io_toposort(inputs, outputs, orderings=None, clients=None):
                 todo.extend(i.owner for i in cur.inputs if i.owner)
         return order
 
-    # no ordering
-
-    # the inputs are used only here in the function that decides what
-    # 'predecessors' to explore
+    compute_deps = None
+    compute_deps_cache = None
     iset = set(inputs)
+    deps_cache = {}
 
-    def compute_deps(obj):
-        rval = []
-        if obj not in iset:
-            if isinstance(obj, Variable):
-                if obj.owner:
-                    rval = [obj.owner]
-            elif isinstance(obj, Apply):
-                rval = list(obj.inputs)
-            rval.extend(orderings.get(obj, []))
-        else:
-            assert not orderings.get(obj, None)
-        return rval
+    if not orderings:  # ordering can be None or empty dict
+        # Specialized function that is faster when no ordering.
+        # Also include the cache in the function itself for speed up.
+
+        def compute_deps_cache(obj):
+            if obj in deps_cache:
+                return deps_cache[obj]
+            rval = []
+            if obj not in iset:
+                if isinstance(obj, Variable):
+                    if obj.owner:
+                        rval = [obj.owner]
+                elif isinstance(obj, Apply):
+                    rval = list(obj.inputs)
+                if rval:
+                    if not isinstance(rval, (list, OrderedSet)):
+                        raise TypeError(
+                            "Non-deterministic collections here make"
+                            " toposort non-deterministic.")
+                    deps_cache[obj] = list(rval)
+                else:
+                    deps_cache[obj] = rval
+            else:
+                deps_cache[obj] = rval
+            return rval
+    else:
+
+        # the inputs are used only here in the function that decides what
+        # 'predecessors' to explore
+        def compute_deps(obj):
+            rval = []
+            if obj not in iset:
+                if isinstance(obj, Variable):
+                    if obj.owner:
+                        rval = [obj.owner]
+                elif isinstance(obj, Apply):
+                    rval = list(obj.inputs)
+                rval.extend(orderings.get(obj, []))
+            else:
+                assert not orderings.get(obj, None)
+            return rval
 
     topo = general_toposort(outputs, deps=compute_deps,
-                            clients=clients)
+                            compute_deps_cache=compute_deps_cache,
+                            deps_cache=deps_cache, clients=clients)
     return [o for o in topo if isinstance(o, Apply)]
 
 
