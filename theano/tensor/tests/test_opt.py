@@ -2207,8 +2207,9 @@ class test_local_subtensor_lift(unittest.TestCase):
         assert isinstance(prog[0].op, tensor.DimShuffle)
         assert isinstance(prog[1].op.scalar_op, theano.scalar.
                           Composite)  # Composite{add,exp}
-        assert prog[2].op == tensor.add
-        assert isinstance(prog[3].op, tensor.Subtensor)  # first subtensor
+        assert prog[2].op == tensor.add or prog[3].op == tensor.add
+        # first subtensor
+        assert isinstance(prog[2].op, tensor.Subtensor) or isinstance(prog[3].op, tensor.Subtensor)
         assert len(prog) == 4
         f([[0, 1], [2, 3]], [4, 5])  # let debugmode test something
 

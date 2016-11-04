@@ -256,8 +256,10 @@ class T_sigmoid_opts(unittest.TestCase):
             [x, y],
             (sigmoid(x) * sigmoid(-y) * -tensor.exp(-x) *
                 tensor.exp(x * y) * tensor.exp(y)), mode=m)
-        match(f, [sigmoid, tensor.mul, tensor.neg, tensor.exp, sigmoid,
-                  tensor.mul])
+        topo = f.maker.fgraph.toposort()
+        for op, nb in [(sigmoid, 2), (tensor.mul, 2),
+                       (tensor.neg, 1), (tensor.exp, 1)]:
+            assert sum([n.op == op for n in topo]) == nb
         # assert check_stack_trace(f, ops_to_check=[sigmoid, tensor.mul,
         #                                           tensor.exp])
 
