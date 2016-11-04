@@ -564,8 +564,11 @@ def rand_nonzero(shape, eps=3e-4):
 def randint(*shape):
     return numpy.random.randint(-5, 6, shape)
 
-def randuint(*shape):
+def randuint32(*shape):
     return numpy.array(numpy.random.randint(5, size=shape), dtype=numpy.uint32)
+
+def randuint16(*shape):
+    return numpy.array(numpy.random.randint(5, size=shape), dtype=numpy.uint16)
 
 # XXX: this so-called complex random array as all-zero imaginary parts
 def randcomplex(*shape):
@@ -654,7 +657,9 @@ _good_broadcast_binary_normal = dict(
     scalar=(rand(2, 3), rand(1, 1)),
     row=(rand(2, 3), rand(1, 3)),
     column=(rand(2, 3), rand(2, 1)),
-    integers=(randint(2, 3), randint(2, 3)),
+    int=(randint(2, 3), randint(2, 3)),
+    uint32=(randuint32(2, 3), randuint32(2, 3)),
+    uint16=(randuint16(2, 3), randuint16(2, 3)),
     dtype_mixup_1=(rand(2, 3), randint(2, 3)),
     dtype_mixup_2=(randint(2, 3), rand(2, 3)),
     complex1=(randcomplex(2, 3), randcomplex(2, 3)),
@@ -718,9 +723,9 @@ AddTester = makeBroadcastTester(
         three_inputs_same_shapes=(rand(2, 3),
                                   rand(2, 3),
                                   rand(2, 3)),
-        three_inputs_same_shapes_uint=(randuint(2,3),
-                                       randuint(2,3),
-                                       randuint(2,3)),
+        three_inputs_same_shapes_uint=(randuint32(2,3),
+                                       randuint32(2,3),
+                                       randuint32(2,3)),
         four_inputs_broadcast=(rand(2, 3),
                                rand(1, 3),
                                rand(2, 1),
