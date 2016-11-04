@@ -119,7 +119,9 @@ class GpuElemwise(HideC, Elemwise):
                                   inps, outs,
                                   dict(fail='return;'))
 
-        assert 'npy_float16' not in kop
+        if isinstance(scalar_op, Composite):
+            # Other op like cast should handle float16 themself.
+            assert 'npy_float16' not in kop
 
         support_code = ""
         try:
