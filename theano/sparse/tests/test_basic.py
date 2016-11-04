@@ -1572,12 +1572,13 @@ class UsmmTests(unittest.TestCase):
                 # Usmm is tested at the same time in debugmode
                 # Check if the optimization local_usmm and local_usmm_csx is
                 # applied
-                assert isinstance(topo[0].op,
-                                  theano.sparse.basic.CSMProperties)
-                assert isinstance(topo[1].op, theano.tensor.DimShuffle)
-                assert isinstance(topo[2].op, theano.tensor.Subtensor)
-                assert topo[3].op == theano.tensor.neg
-                assert isinstance(topo[4].op, UsmmCscDense)
+                def check_once(x):
+                    assert sum([isinstance(n.op, x) for n in topo]) == 1
+                check_once(theano.sparse.basic.CSMProperties)
+                check_once(theano.tensor.DimShuffle)
+                check_once(theano.tensor.Subtensor)
+                check_once(UsmmCscDense)
+                check_once(theano.tensor.Elemwise)
                 if inplace:
                     assert topo[4].op.inplace
             elif not fast_compile:
