@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 import numpy
 
 import theano
-from theano import scalar, gof
+from theano import scalar, gof, tensor
 from theano.tests.unittest_tools import SkipTest, assert_allclose
 
 from theano.tensor.tests import test_elemwise
@@ -50,6 +50,31 @@ def test_elemwise_pow():
             out = f(base_val, exp_val)
             expected_out = base_val ** exp_val
             assert_allclose(out, expected_out)
+
+
+def test_composite_elemwise_float16():
+    w = theano.tensor.bvector()
+    x = theano.tensor.vector(dtype='float16')
+    y = theano.tensor.fvector()
+
+    cz = tensor.tanh(x + tensor.cast(y, 'float16'))
+    o = (cz - cz**2 +
+         tensor.cast(x, 'int16') + tensor.cast(x, 'float32') +
+         tensor.cast(w, 'float16') -
+         tensor.constant(numpy.float16(1.0)))
+
+    f = theano.function([w, x, y], o, mode=mode_with_gpu)
+    theano.printing.debugprint(f)
+
+    v = theano.tensor.vector(dtype='uint8')
+    w = theano.tensor.vector(dtype='float16')
+    x = theano.tensor.vector(dtype='float16')
+    y = theano.tensor.vector(dtype='float16')
+    z = theano.tensor.vector(dtype='float16')
+
+    o = tensor.switch(v, tensor.mul(w, x, y), z)
+    f = theano.function([v, w, x, y, z], o, mode=mode_with_gpu)
+    theano.printing.debugprint(f)
 
 
 class test_GpuDimShuffle(test_elemwise.test_DimShuffle):

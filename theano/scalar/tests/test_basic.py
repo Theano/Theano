@@ -21,11 +21,11 @@ from theano import gof
 from theano.tests import unittest_tools as utt
 
 from theano.scalar.basic import (floats, float16, float32, float64,
-                                 ints, int8, int32, complex64,
+                                 ints, int8, int32, complex64, uint8,
                                  ComplexError, IntDiv, TrueDiv,
                                  Composite, add, div_proxy,
                                  and_, eq, neq, invert, mul, Scalar, InRange,
-                                 cast, constant)
+                                 cast, constant, switch)
 from theano.scalar.basic import (
     true_div, inv, log, log2, log10, log1p, exp, exp2, expm1, sqrt, deg2rad,
     rad2deg, cos, arccos, sin, arcsin, tan, arctan, arctan2, cosh, arccosh,
@@ -78,6 +78,22 @@ class test_composite(unittest.TestCase):
         w = int8()
         x = float16()
         y = float32()
+        cz = Composite([x, y], [tanh(x + cast(y, 'float16'))])
+        c = Composite([w, x, y], [cz(x, y) - cz(x, y)**2 +
+                                  cast(x, 'int16') + cast(x, 'float32') +
+                                  cast(w, 'float16') -
+                                  constant(np.float16(1.0))])
+        assert has_f16(c)
+        nc = c.clone_float32()
+        assert not has_f16(nc)
+
+        v = uint8()
+        w = float16()
+        x = float16()
+        y = float16()
+        z = float16()
+
+        o = switch(v, mul(w, x, y), z)
         cz = Composite([x, y], [tanh(x + cast(y, 'float16'))])
         c = Composite([w, x, y], [cz(x, y) - cz(x, y)**2 +
                                   cast(x, 'int16') + cast(x, 'float32') +
