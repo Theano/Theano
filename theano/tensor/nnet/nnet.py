@@ -1568,9 +1568,9 @@ def local_softmax_grad_to_crossentropy_with_softmax_grad(node):
 
 
 @opt.register_specialize('fast_compile_gpu')
-@gof.local_optimizer([tensor._max_and_argmax])
+@gof.local_optimizer([tensor.MaxAndArgmax])
 def local_argmax_pushdown(node):
-    if node.op == tensor._max_and_argmax and node.inputs[0].owner and \
+    if isinstance(node.op, tensor.MaxAndArgmax) and node.inputs[0].owner and \
             len(node.outputs[0].clients) > 0 and node.inputs[0].owner.op in \
             (softmax_op, softplus, tensor.exp, tensor.log, tensor.tanh, sigmoid,
              softmax_with_bias):
@@ -1584,20 +1584,21 @@ def local_argmax_pushdown(node):
                 "warning set the Theano flags 'warn.argmax_pushdown_bug' "
                 "to False")
 
-    if (node.op == tensor._max_and_argmax and
+    if (isinstance(node.op, tensor.MaxAndArgmax) and
             node.inputs[0].owner and len(node.outputs[0].clients) == 0):
         x_max, x_argmax = node.outputs
-        x, axis = node.inputs
+        x = node.inputs[0]
+        axis = node.op.get_params(node)
         # TODO: Make a list/set of monotonic ops...
         if x.owner and x.owner.op in (softmax_op, softplus, tensor.exp,
                                       tensor.log, tensor.tanh, sigmoid):
             pre_x, = x.owner.inputs
-            ret = tensor._max_and_argmax(pre_x, axis)
+            ret = tensor.max_and_argmax(pre_x, axis)
             copy_stack_trace(x_max, ret)
             return ret
         if x.owner and x.owner.op == softmax_with_bias:
             pre_x, pre_bias = x.owner.inputs
-            ret = tensor._max_and_argmax(pre_x +
+            ret = tensor.max_and_argmax(pre_x +
                                          tensor.DimShuffle(
                                              pre_bias.broadcastable,
                                              ('x', 0))(pre_bias), axis)

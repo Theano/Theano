@@ -7619,23 +7619,23 @@ class TestInferShape(utt.InferShapeTester):
         # MaxAndArgmax,
         adtens3_val = rand(4, 5, 3)
         self._compile_and_check([adtens3],
-                MaxAndArgmax()(adtens3, None),
+                max_and_argmax(adtens3, None),
                 [adtens3_val], MaxAndArgmax)
 
         self._compile_and_check([adtens3],
-                MaxAndArgmax()(adtens3, 0),
+                max_and_argmax(adtens3, 0),
                 [adtens3_val], MaxAndArgmax)
 
         self._compile_and_check([adtens3],
-                MaxAndArgmax()(adtens3, 1),
+                max_and_argmax(adtens3, 1),
                 [adtens3_val], MaxAndArgmax)
 
         self._compile_and_check([adtens3],
-                MaxAndArgmax()(adtens3, 2),
+                max_and_argmax(adtens3, 2),
                 [adtens3_val], MaxAndArgmax)
 
         self._compile_and_check([adtens3],
-                MaxAndArgmax()(adtens3, [0, 1, 2]),
+                max_and_argmax(adtens3, [0, 1, 2]),
                 [adtens3_val], MaxAndArgmax)
 
         # ARange

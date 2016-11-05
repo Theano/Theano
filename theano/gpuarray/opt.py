@@ -65,7 +65,7 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedIncSubtensor1,
                         GpuAdvancedIncSubtensor1_dev20)
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
-from .reduction import gpu_maxandargmax
+from .reduction import GpuMaxAndArgmax
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -1782,7 +1782,7 @@ def _scan_type_infer(node):
 @op_lifter([tensor.MaxAndArgmax])
 @register_opt2([tensor.MaxAndArgmax], 'fast_compile')
 def local_gpu_maxandargmax(op, context_name, inputs, outputs):
-    return gpu_maxandargmax
+    return GpuMaxAndArgmax(op.get_params(None))
 
 # Do not register in fast_run or fast_compile.
 # It will be added to fast_run if the GPU is enabled.
