@@ -1314,10 +1314,10 @@ def test_argmax_pushdown():
         # for node in fgraph.toposort():
         # print node.op
         assert len(fgraph.toposort()) == 2  # an output_guard is second
-        assert fgraph.toposort()[0].op == tensor.basic._max_and_argmax
+        assert fgraph.toposort()[0].op == tensor.basic._argmax
         assert str(fgraph.toposort()[1].op) == 'OutputGuard'
         assert check_stack_trace(
-            fgraph, ops_to_check=tensor.basic._max_and_argmax)
+            fgraph, ops_to_check=tensor.basic._argmax)
         x = tensor.matrix()
         # test that the max_and_argmax is not pushed down if the max is used
         out = tensor.max_and_argmax(
@@ -1362,7 +1362,7 @@ def test_argmax_pushdown_bias():
     # print 'AFTER'
     # for node in fgraph.toposort():
     #    print node.op
-    types_to_check = (tensor.DimShuffle, tensor.Elemwise, tensor.MaxAndArgmax)
+    types_to_check = (tensor.DimShuffle, tensor.Elemwise, tensor.Argmax)
     assert len(fgraph.toposort()) == 4
     for i, type in enumerate(types_to_check):
         assert isinstance(fgraph.toposort()[i].op, type)

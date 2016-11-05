@@ -1732,26 +1732,6 @@ class Argmax(Op):
             node.inputs[0].type.broadcastable) if i not in axis.data])
         return [rval]
 
-    def R_op(self, inputs, eval_points):
-        if eval_points[0] is None:
-            return [None]
-        if not isinstance(inputs[1], theano.Constant):
-            raise ValueError(('R_op supported for argmax only for '
-                              'constant axis!'))
-        if inputs[1].data > 1:
-            raise ValueError(('R_op supported for argmax only when '
-                              ' axis is 0 or 1'))
-        if inputs[0].ndim != 2:
-            raise ValueError(('R_op supported for argmax only when '
-                              ' input is a matrix'))
-        max_pos = self.make_node(*inputs).outputs
-        if inputs[1].data == 0:
-            return [eval_points[0][max_pos,
-                                   arange(eval_points[0].shape[1])], None]
-        else:
-            return [eval_points[0][arange(eval_points[0].shape[0]),
-                                   max_pos], None]
-
     def grad(self, inp, grads):
         x, axis = inp
 
@@ -1887,7 +1867,7 @@ def argmax(x, axis=None, keepdims=False):
         will broadcast correctly against the original tensor.
 
     """
-    argout = _argmax(x, axis)
+    argout = max_and_argmax(x, axis)[1]
 
     if keepdims:
         argout = makeKeepDims(x, argout, axis)
