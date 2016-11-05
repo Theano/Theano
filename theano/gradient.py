@@ -2067,7 +2067,7 @@ def grad_clip(x, lower_bound, upper_bound):
 class GradScale(ViewOp):
     def __init__(self,multiplier):
         self.multiplier=multiplier
-        
+
     def grad(self, args, g_outs):
         return [self.multiplier*g_out for g_out in g_outs]
 
@@ -2075,14 +2075,14 @@ class GradScale(ViewOp):
 def grad_scale(x,multiplier):
     """
     This op scale or inverse the gradient in the backpropagation.
-    
+
     :param x: the variable we want its gradient inputs scale
     :param multiplier: scale of the gradient
-    
+
     :examples:
     x = theano.tensor.fscalar()
     fx = theano.tensor.sin(x)
-    
+
     fp = theano.tensor.grad(fx, wrt=x)
     fprime = theano.function([x], fp)
     print(fprime(2))#-0.416
