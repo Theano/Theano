@@ -381,7 +381,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                     expecteds = self.expected(*inputs)
                     eps = 1e-10
 
-                if any([i.dtype in ('float32', 'int8', 'uint8')
+                if any([i.dtype in ('float32', 'int8', 'uint8', 'uint16')
                         for i in inputs]):
                     eps = 1e-6
                 eps = numpy.max([eps, _eps])
@@ -657,7 +657,7 @@ _good_broadcast_binary_normal = dict(
     scalar=(rand(2, 3), rand(1, 1)),
     row=(rand(2, 3), rand(1, 3)),
     column=(rand(2, 3), rand(2, 1)),
-    int=(randint(2, 3), randint(2, 3)),
+    integers=(randint(2, 3), randint(2, 3)),
     uint32=(randuint32(2, 3), randuint32(2, 3)),
     uint16=(randuint16(2, 3), randuint16(2, 3)),
     dtype_mixup_1=(rand(2, 3), randint(2, 3)),
@@ -860,8 +860,10 @@ _good_broadcast_div_mod_normal_float_no_complex = dict(
     dtype_mixup_1=(rand(2, 3), randint_nonzero(2, 3)),
     dtype_mixup_2=(randint_nonzero(2, 3), rand_nonzero((2, 3))),
     integer=(randint(2, 3), randint_nonzero(2, 3)),
-    uinteger=(randint(2, 3).astype("uint8"),
-              randint_nonzero(2, 3).astype("uint8")),
+    uinteger8=(randint(2, 3).astype("uint8"),
+               randint_nonzero(2, 3).astype("uint8")),
+    uinteger16=(randint(2, 3).astype("uint16"),
+                randint_nonzero(2, 3).astype("uint16")),
     int8=[numpy.tile(numpy.arange(-127, 128, dtype='int8'), [254, 1]).T,
           numpy.tile(numpy.array(list(range(-127, 0)) + list(range(1, 128)),
                                  dtype='int8'),
@@ -952,12 +954,14 @@ _good_inv = dict(
     normal=[5 * rand_nonzero((2, 3))],
     integers=[randint_nonzero(2, 3)],
     int8=[numpy.array(list(range(-127, 0)) + list(range(1, 127)), dtype='int8')],
+    uint8=[numpy.array(list(range(0, 255)), dtype='uint8')],
+    uint16=[numpy.array(list(range(0, 65535)), dtype='uint16')],
     complex=[randcomplex_nonzero((2, 3))],
     empty=[numpy.asarray([], dtype=config.floatX)])
 
-_good_inv_inplace = copymod(_good_inv, without=['integers', 'int8', 'complex'])
+_good_inv_inplace = copymod(_good_inv, without=['integers', 'int8', 'uint8', 'uint16', 'complex'])
 _grad_inv = copymod(_good_inv,
-                    without=['integers', 'int8', 'complex', 'empty'])
+                    without=['integers', 'int8', 'uint8', 'uint16', 'complex', 'empty'])
 
 _bad_runtime_inv = dict(
     float=[numpy.zeros((2, 3))],
@@ -1113,6 +1117,8 @@ _good_broadcast_unary_normal = dict(
         integers=[randint_ranged(-5, 5, (2, 3))],
         # not using -128 because numpy.allclose would return False
         int8=[numpy.arange(-127, 128, dtype='int8')],
+        uint8=[numpy.arange(0, 255, dtype='uint8')],
+        uint16=[numpy.arange(0, 65535, dtype='uint16')],
         corner_case=[corner_case],
         complex=[randcomplex(2, 3)],
         empty=[numpy.asarray([], dtype=config.floatX)],
@@ -1122,6 +1128,8 @@ _good_broadcast_unary_normal_no_complex = dict(
         normal=[numpy.asarray(rand_ranged(-5, 5, (2, 3)), dtype=floatX)],
         integers=[randint_ranged(-5, 5, (2, 3))],
         int8=[numpy.arange(-127, 128, dtype='int8')],
+        uint8=[numpy.arange(0, 255, dtype='uint8')],
+        uint16=[numpy.arange(0, 65535, dtype='uint16')],
         corner_case=[corner_case],
         empty=[numpy.asarray([], dtype=config.floatX)],
         )
@@ -1303,7 +1311,9 @@ ExpTester = makeBroadcastTester(
     op=tensor.exp,
     expected=upcast_float16_ufunc(numpy.exp),
     good=dict(_good_broadcast_unary_normal,
-              int8=[numpy.arange(-127, 89, dtype='int8')]),
+              int8=[numpy.arange(-127, 89, dtype='int8')],
+              uint8=[numpy.arange(0, 255, dtype='uint8')],
+              uint16=[numpy.arange(0, 65535, dtype='uint16')]),
     grad=_grad_broadcast_unary_normal)
 ExpInplaceTester = makeBroadcastTester(
     op=inplace.exp_inplace,
@@ -1328,7 +1338,9 @@ Expm1Tester = makeBroadcastTester(
     op=tensor.expm1,
     expected=upcast_float16_ufunc(numpy.expm1),
     good=dict(_good_broadcast_unary_normal,
-              int8=[numpy.arange(-127, 89, dtype='int8')]),
+              int8=[numpy.arange(-127, 89, dtype='int8')],
+              uint8=[numpy.arange(0, 255, dtype='uint8')],
+              uint16=[numpy.arange(0, 65535, dtype='uint16')]),
               grad=_grad_broadcast_unary_normal)
 Expm1InplaceTester = makeBroadcastTester(
     op=inplace.expm1_inplace,
@@ -1411,11 +1423,13 @@ _good_broadcast_unary_wide = dict(
     normal=(rand_ranged(-1000, 1000, (2, 3)),),
     integers=(randint_ranged(-1000, 1000, (2, 3)),),
     int8=[numpy.arange(-127, 128, dtype='int8')],
+    uint8=[numpy.arange(0, 255, dtype='uint8')],
+    uint16=[numpy.arange(0, 65535, dtype='uint16')],
     complex=(randc128_ranged(-1000, 1000, (2, 3)),),
     empty=(numpy.asarray([], dtype=config.floatX),),)
 _good_broadcast_unary_wide_float = copymod(
     _good_broadcast_unary_wide,
-    without=['integers', 'int8'])
+    without=['integers', 'int8', 'int8', 'uint16'])
 _grad_broadcast_unary_wide = dict(normal=(rand_ranged(-1000, 1000, (2, 3)),),)
 
 if theano.config.floatX == 'float32':
@@ -1466,12 +1480,14 @@ _good_broadcast_unary_arcsin = dict(
     normal=(rand_ranged(-1, 1, (2, 3)),),
     integers=(randint_ranged(-1, 1, (2, 3)),),
     int8=[numpy.arange(-1, 2, dtype='int8')],
+    uint8=[numpy.arange(0, 2, dtype='uint8')],
+    uint16=[numpy.arange(0, 2, dtype='uint16')],
     complex=(randc128_ranged(-1, 1, (2, 3)),),
     empty=(numpy.asarray([], dtype=config.floatX),),)
 
 _good_broadcast_unary_arcsin_float = copymod(
     _good_broadcast_unary_arcsin,
-    without=['integers', 'int8'])
+    without=['integers', 'int8', 'uint8', 'uint16'])
 
 # The actual range is [-1, 1] but the numerical gradient is too
 # unstable near those values
@@ -1521,6 +1537,8 @@ _good_broadcast_unary_tan = dict(
     shifted=(rand_ranged(3.15, 6.28, (2, 3)),),
     integers=(randint_ranged(-3, 3, (2, 3)),),
     int8=[numpy.arange(-3, 4, dtype='int8')],
+    uint8=[numpy.arange(0, 4, dtype='uint8')],
+    uint16=[numpy.arange(0, 4, dtype='uint16')],
     complex=(randc128_ranged(-3.14, 3.14, (2, 3)),),
     empty=(numpy.asarray([], dtype=config.floatX),),)
 # We do not want to test around the discontinuity.
@@ -1535,7 +1553,7 @@ TanTester = makeBroadcastTester(op=tensor.tan,
 TanInplaceTester = makeBroadcastTester(
     op=inplace.tan_inplace,
     expected=numpy.tan,
-    good=copymod(_good_broadcast_unary_tan, without=['integers', 'int8']),
+    good=copymod(_good_broadcast_unary_tan, without=['integers', 'int8', 'uint8', 'uint16']),
     grad=_grad_broadcast_unary_tan,
     inplace=True)
 
@@ -1559,6 +1577,10 @@ _good_broadcast_binary_arctan2 = dict(
     integers=(randint(2, 3), randint(2, 3)),
     int8=[numpy.arange(-127, 128, dtype='int8'),
           numpy.arange(-127, 128, dtype='int8')[:, numpy.newaxis]],
+    uint8=[numpy.arange(0, 255, dtype='uint8'),
+           numpy.arange(0, 255, dtype='uint8')[:, numpy.newaxis]],
+    uint16=[numpy.arange(0, 65535, dtype='uint16'),
+            numpy.arange(0, 65535, dtype='uint16')[:, numpy.newaxis]],
     dtype_mixup_1=(rand(2, 3), randint(2, 3)),
     dtype_mixup_2=(randint(2, 3), rand(2, 3)),
     empty=(numpy.asarray([], dtype=config.floatX),
@@ -1580,7 +1602,7 @@ Arctan2Tester = makeBroadcastTester(
 Arctan2InplaceTester = makeBroadcastTester(
     op=inplace.arctan2_inplace,
     expected=numpy.arctan2,
-    good=copymod(_good_broadcast_binary_arctan2, without=['integers', 'int8']),
+    good=copymod(_good_broadcast_binary_arctan2, without=['integers', 'int8', 'uint8', 'uint16']),
     grad=_grad_broadcast_binary_arctan2,
     inplace=True)
 
@@ -1588,7 +1610,9 @@ CoshTester = makeBroadcastTester(
     op=tensor.cosh,
     expected=upcast_float16_ufunc(numpy.cosh),
     good=dict(_good_broadcast_unary_normal,
-              int8=[numpy.arange(-89, 90, dtype='int8')]),
+              int8=[numpy.arange(-89, 90, dtype='int8')],
+              uint8=[numpy.arange(0, 90, dtype='uint8')],
+              uint16=[numpy.arange(0, 90, dtype='uint16')]),
     grad=_grad_broadcast_unary_normal)
 CoshInplaceTester = makeBroadcastTester(
     op=inplace.cosh_inplace,
@@ -1621,7 +1645,9 @@ SinhTester = makeBroadcastTester(
     op=tensor.sinh,
     expected=upcast_float16_ufunc(numpy.sinh),
     good=dict(_good_broadcast_unary_normal,
-              int8=[numpy.arange(-89, 90, dtype='int8')]),
+              int8=[numpy.arange(-89, 90, dtype='int8')],
+              uint8=[numpy.arange(0, 90, dtype='uint8')],
+              uint16=[numpy.arange(0, 90, dtype='uint16')]),
               grad=_grad_broadcast_unary_normal)
 SinhInplaceTester = makeBroadcastTester(
     op=inplace.sinh_inplace,
@@ -1658,6 +1684,8 @@ _good_broadcast_unary_arctanh = dict(
     normal=(rand_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
     integers=(randint_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
     int8=[numpy.arange(0, 1, dtype='int8')],
+    uint8=[numpy.arange(0, 1, dtype='uint8')],
+    uint16=[numpy.arange(0, 1, dtype='uint16')],
     complex=(randc128_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
     empty=(numpy.asarray([], dtype=config.floatX),),)
 _grad_broadcast_unary_arctanh = dict(
@@ -1671,7 +1699,7 @@ ArctanhTester = makeBroadcastTester(
 ArctanhInplaceTester = makeBroadcastTester(
     op=inplace.arctanh_inplace,
     expected=numpy.arctanh,
-    good=copymod(_good_broadcast_unary_arctanh, without=['integers', 'int8']),
+    good=copymod(_good_broadcast_unary_arctanh, without=['integers', 'int8', 'uint8', 'uint16']),
     grad=_grad_broadcast_unary_arctanh,
     inplace=True)
 
@@ -1789,7 +1817,10 @@ ErfcinvTester = makeBroadcastTester(
 
 _good_broadcast_unary_gammaln = dict(
     normal=(rand_ranged(-1 + 1e-2, 10, (2, 3)),),
-    empty=(numpy.asarray([], dtype=config.floatX),),)
+    empty=(numpy.asarray([], dtype=config.floatX),),
+    int=(randint_ranged(1, 10, (2, 3)),),
+    uint8=(randint_ranged(1, 10, (2, 3)).astype('uint8'),),
+    uint16=(randint_ranged(1, 10, (2, 3)).astype('uint16'),),)
 _grad_broadcast_unary_gammaln = dict(
     # smaller range as our grad method does not estimate it well enough.
     normal=(rand_ranged(1e-1, 8, (2, 3)),),)
@@ -1832,7 +1863,10 @@ GammalnInplaceTester = makeBroadcastTester(
 
 _good_broadcast_unary_psi = dict(
     normal=(rand_ranged(1, 10, (2, 3)),),
-    empty=(numpy.asarray([], dtype=config.floatX),),)
+    empty=(numpy.asarray([], dtype=config.floatX),),
+    int=(randint_ranged(1, 10, (2, 3)),),
+    uint8=(randint_ranged(1, 10, (2, 3)).astype('uint8'),),
+    uint16=(randint_ranged(1, 10, (2, 3)).astype('uint16'),),)
 
 PsiTester = makeBroadcastTester(
     op=tensor.psi,
@@ -1855,9 +1889,13 @@ PsiInplaceTester = makeBroadcastTester(
 # not sure how to deal with that here...
 
 _good_broadcast_unary_chi2sf = dict(
-    normal=(rand_ranged(1, 10, (2, 3)), numpy.asarray(1, dtype=config.floatX)),
+    normal=(rand_ranged(1, 10, (2, 3)),
+            numpy.asarray(1, dtype=config.floatX)),
     empty=(numpy.asarray([], dtype=config.floatX),
-           numpy.asarray(1, dtype=config.floatX)))
+           numpy.asarray(1, dtype=config.floatX)),
+    # The test seems to fail!!
+    int=(randint_ranged(1, 10, (2, 3)),
+            numpy.asarray(1, dtype=config.floatX)))
 
 Chi2SFTester = makeBroadcastTester(
     op=tensor.chi2sf,
@@ -2042,7 +2080,7 @@ BatchedDotTester = makeTester(
 def _numpy_second(x, y):
     return numpy.broadcast_arrays(x, y)[1]
 
-ALL_DTYPES = ('int8', 'int16', 'int32', 'int64',
+ALL_DTYPES = ('int8', 'int16', 'int32', 'int64', 'uint8', 'uint16',
               'float32', 'float64', 'complex64', 'complex128')
 REAL_DTYPES = ALL_DTYPES[:-2]
 COMPLEX_DTYPES = ALL_DTYPES[-2:]
@@ -2662,7 +2700,13 @@ ClipTester = makeTester(name='ClipTester',
                                     # should be same as NumPy's
                                     correct7=((5 * rand(5, 5)).astype('float64'),
                                           numpy.array(1, dtype='float64'),
-                                          numpy.array(-1, dtype='float64')))
+                                          numpy.array(-1, dtype='float64')),
+                                    correct8=(randint(0, 5).astype('uint8'),
+                                          numpy.array(2, dtype='uint8'),
+                                          numpy.array(4, dtype='uint8')),
+                                    correct9=(randint(0, 5).astype('uint16'),
+                                          numpy.array(2, dtype='uint16'),
+                                          numpy.array(4, dtype='uint16')),)
                        )
                         # I can't think of any way to make this fail at runtime
 
