@@ -1599,9 +1599,9 @@ def local_argmax_pushdown(node):
         if x.owner and x.owner.op == softmax_with_bias:
             pre_x, pre_bias = x.owner.inputs
             ret = tensor.max_and_argmax(pre_x +
-                                         tensor.DimShuffle(
-                                             pre_bias.broadcastable,
-                                             ('x', 0))(pre_bias), axis)
+                                        tensor.DimShuffle(
+                                            pre_bias.broadcastable,
+                                            ('x', 0))(pre_bias), axis)
             # copy both stack traces
             copy_stack_trace(x_max, ret)
             return ret

@@ -1346,11 +1346,6 @@ class MaxAndArgmax(Op):
         if g_max_disconnected and g_max_idx_disconnected:
             return [DisconnectedType()(), DisconnectedType()()]
 
-        axis_grad = grad_undefined(
-            self, 1, axis,
-            "argmax is not defined for non-integer axes so"
-            " argmax(x, axis+eps) is undefined")
-
         # if the max is disconnected but the argmax is not,
         # the gradient on its inputs is zero
         if g_max_disconnected:
