@@ -57,9 +57,8 @@ def local_max_and_argmax(node):
         if len(node.outputs[1].clients) == 0:
             # MaxAndArgmax support variable axis,
             # but CAReduce support only constant axis.
+            # Axis il already constant in the new version of MaxAndArgmax.
             axis = node.op.get_params(node)
-            if len(axis) != 1:
-                return False
 
             new = CAReduce(scal.maximum, axis)(node.inputs[0])
             return [new, None]
