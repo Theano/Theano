@@ -44,7 +44,7 @@ Running the code above we see:
    Traceback (most recent call last):
      ...
    ValueError: Input dimension mis-match. (input[0].shape[0] = 3, input[1].shape[0] = 2)
-   Apply node that caused the error: Elemwise{add,no_inplace}(<TensorType(float64, vector)>, <TensorType(float64, vector)>, <TensorType(float64, vector)>)
+   Apply node that caused the error: Elemwise{Add,no_inplace}(<TensorType(float64, vector)>, <TensorType(float64, vector)>, <TensorType(float64, vector)>)
    Inputs types: [TensorType(float64, vector), TensorType(float64, vector), TensorType(float64, vector)]
    Inputs shapes: [(3,), (2,), (2,)]
    Inputs strides: [(8,), (8,), (8,)]
@@ -74,8 +74,8 @@ message becomes :
         z = z + y
 
     Debugprint of the apply node:
-    Elemwise{add,no_inplace} [id A] <TensorType(float64, vector)> ''
-     |Elemwise{add,no_inplace} [id B] <TensorType(float64, vector)> ''
+    Elemwise{Add,no_inplace} [id A] <TensorType(float64, vector)> ''
+     |Elemwise{Add,no_inplace} [id B] <TensorType(float64, vector)> ''
      | |<TensorType(float64, vector)> [id C] <TensorType(float64, vector)>
      | |<TensorType(float64, vector)> [id C] <TensorType(float64, vector)>
      |<TensorType(float64, vector)> [id D] <TensorType(float64, vector)>
@@ -349,7 +349,7 @@ shows how to print all inputs and outputs:
 
 .. testoutput::
 
-    0 Elemwise{mul,no_inplace}(TensorConstant{5.0}, x) input(s) value(s): [array(5.0), array(3.0)] output(s) value(s): [array(15.0)]
+    0 Elemwise{Mul,no_inplace}(TensorConstant{5.0}, x) input(s) value(s): [array(5.0), array(3.0)] output(s) value(s): [array(15.0)]
 
 When using these ``inspect_inputs`` and ``inspect_outputs`` functions
 with ``MonitorMode``, you should see [potentially a lot of] printed output.
@@ -396,7 +396,7 @@ can be achieved as follows:
    :options: +NORMALIZE_WHITESPACE
 
    *** NaN detected ***
-   Elemwise{Composite{(log(i0) * i0)}} [id A] ''
+   Elemwise{Composite{(log(i0) * i0)},no_inplace} [id A] ''
     |x [id B]
    Inputs : [array(0.0)]
    Outputs: [array(nan)]
@@ -475,7 +475,7 @@ Consider this example script ("ex.py"):
    Traceback (most recent call last):
      ...
    ValueError: Input dimension mis-match. (input[0].shape[0] = 3, input[1].shape[0] = 5)
-   Apply node that caused the error: Elemwise{mul,no_inplace}(a, b)
+   Apply node that caused the error: Elemwise{Mul,no_inplace}(a, b)
    Toposort index: 0
    Inputs types: [TensorType(float64, matrix), TensorType(float64, matrix)]
    Inputs shapes: [(3, 4), (5, 5)]
@@ -500,7 +500,7 @@ illustrative purposes. As the matrices can't be multiplied element-wise
     File "/u/username/Theano/theano/compile/function_module.py", line 451, in __call__
     File "/u/username/Theano/theano/gof/link.py", line 271, in streamline_default_f
     File "/u/username/Theano/theano/gof/link.py", line 267, in streamline_default_f
-    File "/u/username/Theano/theano/gof/cc.py", line 1049, in execute ValueError: ('Input dimension mis-match. (input[0].shape[0] = 3, input[1].shape[0] = 5)', Elemwise{mul,no_inplace}(a, b), Elemwise{mul,no_inplace}(a, b))
+    File "/u/username/Theano/theano/gof/cc.py", line 1049, in execute ValueError: ('Input dimension mis-match. (input[0].shape[0] = 3, input[1].shape[0] = 5)', Elemwise{Mul,no_inplace}(a, b), Elemwise{Mul,no_inplace}(a, b))
 
 The call stack contains some useful information to trace back the source
 of the error. There's the script where the compiled function was called --

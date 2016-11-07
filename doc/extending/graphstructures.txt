@@ -89,7 +89,7 @@ output. You can now print the name of the op that is applied to get
 *y*:
 
 >>> y.owner.op.name
-'Elemwise{mul,no_inplace}'
+'Elemwise{Mul,no_inplace}'
 
 Hence, an elementwise multiplication is used to compute *y*. This
 multiplication is done between the inputs:
@@ -353,13 +353,13 @@ such that: ``var.clients[*][0].inputs[index]`` or
 >>> f = theano.function([v], (v+1).sum())
 >>> theano.printing.debugprint(f)
 Sum{acc_dtype=float64} [id A] ''   1
- |Elemwise{add,no_inplace} [id B] ''   0
+ |Elemwise{Add,no_inplace} [id B] ''   0
    |TensorConstant{(1,) of 1.0} [id C]
    |<TensorType(float64, vector)> [id D]
 >>> # Sorted list of all nodes in the compiled graph.
 >>> topo = f.maker.fgraph.toposort()
 >>> topo[0].outputs[0].clients
-[(Sum{acc_dtype=float64}(Elemwise{add,no_inplace}.0), 0)]
+[(Sum{acc_dtype=float64}(Elemwise{Add,no_inplace}.0), 0)]
 >>> topo[1].outputs[0].clients
 [('output', 0)]
 
@@ -367,7 +367,7 @@ Sum{acc_dtype=float64} [id A] ''   1
 >>> var = topo[0].outputs[0]
 >>> client = var.clients[0]
 >>> client
-(Sum{acc_dtype=float64}(Elemwise{add,no_inplace}.0), 0)
+(Sum{acc_dtype=float64}(Elemwise{Add,no_inplace}.0), 0)
 >>> type(client[0])
 <class 'theano.gof.graph.Apply'>
 >>> assert client[0].inputs[client[1]] is var
