@@ -2332,7 +2332,7 @@ class test_local_subtensor_merge(unittest.TestCase):
                 f = function([x], x[idx1:][:idx2], mode=mode_opt)
 
                 # Check stacktrace was copied over correctly after opt was applied
-                self.assertTrue(check_stack_trace(f, ops_to_check='all'))
+                self.assertTrue(check_stack_trace(f, ops_to_check=Subtensor))
 
                 # theano.printing.debugprint(f, print_type=True)
                 topo = f.maker.fgraph.toposort()
