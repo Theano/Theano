@@ -2827,8 +2827,8 @@ class Test_alloc_zero(unittest.TestCase):
         x0 = tensor.zeros_like(x)
         z = tensor.set_subtensor(x0[:4], y0)
         f = theano.function([x], z, mode=self.mode)
-        assert numpy.all([not isinstance(x.op, tensor.IncSubtensor)
-                          for x in f.maker.fgraph.toposort()])
+        assert numpy.all([not isinstance(n.op, tensor.IncSubtensor)
+                          for n in f.maker.fgraph.toposort()])
 
     def test_incsubtensor_allocs0(self):
         x = tensor.matrix()
@@ -2854,8 +2854,8 @@ class Test_alloc_zero(unittest.TestCase):
                                            dtype=config.floatX))
         z = tensor.inc_subtensor(x[:4], y0)
         f = theano.function([x], z, mode=self.mode)
-        assert numpy.all([not isinstance(x.op, tensor.IncSubtensor)
-                          for x in f.maker.fgraph.toposort()])
+        assert numpy.all([not isinstance(n.op, tensor.IncSubtensor)
+                          for n in f.maker.fgraph.toposort()])
 
     def test_advancedincsubtensor1_allocs0(self):
         x = tensor.matrix()
