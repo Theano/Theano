@@ -242,6 +242,15 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                               flags=flags, objvar=k_var))
         return kernels
 
+    def c_support_code(self):
+        return """
+        template <typename T>
+        static T ceil_intdiv(T a, T b)
+        {
+            return (a/b) + ((a % b) ? 1: 0);
+        }
+        """
+
     def c_code(self, node, name, inp, out, sub):
         dtype_ten4 = node.inputs[0].dtype
         dtype_neib_shape = node.inputs[1].dtype
