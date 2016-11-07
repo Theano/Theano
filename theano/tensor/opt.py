@@ -1898,6 +1898,33 @@ def local_track_shape_i(node):
 @register_specialize
 @register_canonicalize
 @gof.local_optimizer([Subtensor])
+def local_subtensor_inc_subtensor(node):
+    """
+    Subtensor(SetSubtensor(x, y, idx), idx) -> y
+
+    """
+    if isinstance(node.op, Subtensor):
+        x = node.inputs[0]
+        if not x.owner or not isinstance(x.owner.op, IncSubtensor):
+            return
+        if not x.owner.op.set_instead_of_inc:
+            return
+
+        if x.owner.inputs[2:] == node.inputs[1:] and tuple(x.owner.op.idx_list) == tuple(node.op.idx_list):
+            # if x[idx] and y have the same ndim (and shape), directly return y
+            if x.owner.inputs[0].ndim - (len(node.op.idx_list) - sum([isinstance(idx, slice) for idx in node.op.idx_list])) == x.owner.inputs[1].ndim:
+                return [x.owner.inputs[1]]
+            # else y is broadcastable, return alloc of broadcastable y
+            else:
+                x_subtensor = node.op(x.owner.inputs[0], *x.owner.inputs[2:])
+                return [T.alloc(x.owner.inputs[1], *x_subtensor.shape)]
+        else:
+            return
+
+
+@register_specialize
+@register_canonicalize
+@gof.local_optimizer([Subtensor])
 def local_subtensor_remove_broadcastable_index(node):
     """
     Remove broadcastable dimension with index 0 or -1
