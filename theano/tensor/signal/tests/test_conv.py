@@ -87,8 +87,6 @@ class TestSignalConv2D(unittest.TestCase):
         whether or not signal.conv.conv2d can support inputs and
         filters of type matrix or tensor3.
         """
-        if(theano.config.cxx == "" or theano.config.mode == "FAST_COMPILE"):
-            raise SkipTest("conv2d tests need a c++ compiler")
 
         self.validate((1, 4, 5), (2, 2, 3), out_dim=4, verify_grad=True)
         self.validate((7, 5), (5, 2, 3), out_dim=3, verify_grad=False)

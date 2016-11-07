@@ -55,7 +55,7 @@ OPT_FAST_RUN_STABLE = OPT_FAST_RUN.requiring('stable')
 # fast_compile+gpu. We can't tag them just as 'gpu', as this would
 # exclude them if we exclude 'gpu'.
 OPT_FAST_COMPILE = gof.Query(include=['fast_compile', 'fast_compile_gpu'],
-                             exclude=exclude)
+                             exclude=['cxx_only'])
 OPT_STABILIZE = gof.Query(include=['fast_run'], exclude=exclude)
 OPT_STABILIZE.position_cutoff = 1.5000001
 OPT_NONE.name = 'OPT_NONE'

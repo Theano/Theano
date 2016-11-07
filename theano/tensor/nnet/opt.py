@@ -546,21 +546,27 @@ register_specialize_device(conv_groupopt, 'fast_compile', 'fast_run')
 # GEMM-based convolution
 # It can be disabled by excluding 'conv_gemm'.
 conv_groupopt.register('local_abstractconv_gemm', local_abstractconv_gemm, 30,
-                       'conv_gemm', 'fast_compile', 'fast_run')
+                       'conv_gemm', 'fast_compile', 'fast_run',
+                       'cxx_only')
 conv_groupopt.register('local_abstractconv_gradweight_gemm',
                        local_abstractconv_gradweight_gemm, 30,
-                       'conv_gemm', 'fast_compile', 'fast_run')
+                       'conv_gemm', 'fast_compile', 'fast_run',
+                       'cxx_only')
 conv_groupopt.register('local_abstractconv_gradinputs_gemm',
                        local_abstractconv_gradinputs_gemm, 30,
-                       'conv_gemm', 'fast_compile', 'fast_run')
+                       'conv_gemm', 'fast_compile', 'fast_run',
+                       'cxx_only')
 conv_groupopt.register('local_abstractconv3d_gemm', local_abstractconv3d_gemm, 30,
-                       'conv_gemm', 'fast_compile', 'fast_run')
+                       'conv_gemm', 'fast_compile', 'fast_run',
+                       'cxx_only')
 conv_groupopt.register('local_abstractconv3d_gradweight_gemm',
                        local_abstractconv3d_gradweight_gemm, 30,
-                       'conv_gemm', 'fast_compile', 'fast_run')
+                       'conv_gemm', 'fast_compile', 'fast_run',
+                       'cxx_only')
 conv_groupopt.register('local_abstractconv3d_gradinputs_gemm',
                        local_abstractconv3d_gradinputs_gemm, 30,
-                       'conv_gemm', 'fast_compile', 'fast_run')
+                       'conv_gemm', 'fast_compile', 'fast_run',
+                       'cxx_only')
 # Legacy convolution
 conv_groupopt.register('local_conv2d_cpu', local_conv2d_cpu, 40,
                        'fast_compile', 'fast_run')
