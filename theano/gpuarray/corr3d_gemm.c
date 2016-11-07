@@ -522,7 +522,7 @@ PyGpuArrayObject* corr3dMM(PyGpuArrayObject *const bottom,
             }
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
-                             "(0) GpuCorr3dMM encountered an error running gemm.");
+                             "GpuCorr3dMM forward encountered an error running gemm.");
                 Py_DECREF(col);
                 return NULL;
             }
@@ -576,7 +576,7 @@ PyGpuArrayObject* corr3dMM(PyGpuArrayObject *const bottom,
             }
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
-                             "(1) GpuCorr3dMM encountered an error running gemm.");
+                             "GpuCorr3dMM grad weights encountered an error running gemm.");
                 Py_DECREF(col);
                 return NULL;
             }
@@ -618,7 +618,7 @@ PyGpuArrayObject* corr3dMM(PyGpuArrayObject *const bottom,
           }
           if (err != GA_NO_ERROR) {
             PyErr_Format(PyExc_RuntimeError,
-                         "(2) GpuCorr3dMM encountered an error running gemm.");
+                         "GpuCorr3dMM grad inputs encountered an error running gemm.");
             Py_DECREF(col);
             return NULL;
           }
