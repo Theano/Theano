@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import sys, timeit, time
-import numpy
+import numpy as np
 import theano, theano.tensor.signal.conv
 
 try:
@@ -17,16 +17,16 @@ if len(sys.argv)>6:
 
 setup="""
 import sys, timeit, time
-import numpy
+import numpy as np
 import theano, theano.tensor.signal.conv
 
 img_shape =  int(sys.argv[1]), int(sys.argv[2])
 ker_shape =  int(sys.argv[3]), int(sys.argv[4])
 dtype = sys.argv[5]
 
-img = theano.shared(numpy.ones(img_shape, dtype=dtype))
-ker = theano.shared(numpy.ones(ker_shape, dtype=dtype))
-out = theano.shared(numpy.ones((2,2,2), dtype=dtype))
+img = theano.shared(np.ones(img_shape, dtype=dtype))
+ker = theano.shared(np.ones(ker_shape, dtype=dtype))
+out = theano.shared(np.ones((2,2,2), dtype=dtype))
 """
 
 T = timeit.Timer("f()", 
