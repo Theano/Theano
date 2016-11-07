@@ -4637,7 +4637,7 @@ class T_local_switch_sink(unittest.TestCase):
         def wrapped_f(*args, **kwargs):
             # This is a bit ugly since it changes the global value of
             # TensorType.values_eq_approx.
-            old_values_eq_approx = TensorType.values_eq_approx
+            old_values_eq_approx = staticmethod(TensorType.values_eq_approx)
             TensorType.values_eq_approx = staticmethod(values_eq_approx_remove_nan)
             try:
                 out = f(*args, **kwargs)
