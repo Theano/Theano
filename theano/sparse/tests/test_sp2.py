@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 import unittest
 
 from nose.plugins.skip import SkipTest
-import numpy
+import numpy as np
 try:
     import scipy.sparse as sp
 except ImportError:
@@ -30,7 +30,7 @@ class PoissonTester(utt.InferShapeTester):
     for format in sparse.sparse_formats:
         variable = getattr(theano.sparse, format + '_matrix')
 
-        rand = numpy.array(numpy.random.randint(1, 4, size=(3, 4)) - 1,
+        rand = np.array(np.random.randint(1, 4, size=(3, 4)) - 1,
                            dtype=theano.config.floatX)
 
         x[format] = variable()
@@ -50,7 +50,7 @@ class PoissonTester(utt.InferShapeTester):
 
             assert tested.format == format
             assert tested.dtype == self.a[format].dtype
-            assert numpy.allclose(numpy.floor(tested.data), tested.data)
+            assert np.allclose(np.floor(tested.data), tested.data)
             assert tested.shape == self.a[format].shape
 
     def test_infer_shape(self):
@@ -67,7 +67,7 @@ class BinomialTester(utt.InferShapeTester):
     shape = tensor.lvector()
     _n = 5
     _p = .25
-    _shape = numpy.asarray([3, 5], dtype='int64')
+    _shape = np.asarray([3, 5], dtype='int64')
 
     inputs = [n, p, shape]
     _inputs = [_n, _p, _shape]
@@ -88,7 +88,7 @@ class BinomialTester(utt.InferShapeTester):
                 assert tested.shape == tuple(self._shape)
                 assert tested.format == sp_format
                 assert tested.dtype == o_type
-                assert numpy.allclose(numpy.floor(tested.todense()),
+                assert np.allclose(np.floor(tested.todense()),
                                    tested.todense())
 
     def test_infer_shape(self):
@@ -103,7 +103,7 @@ class BinomialTester(utt.InferShapeTester):
 
 class MultinomialTester(utt.InferShapeTester):
     p = sparse.csr_matrix()
-    _p = sp.csr_matrix(numpy.asarray([[0.0, 0.5, 0.0, 0.5],
+    _p = sp.csr_matrix(np.asarray([[0.0, 0.5, 0.0, 0.5],
                                       [0.1, 0.2, 0.3, 0.4],
                                       [0.0, 1.0, 0.0, 0.0],
                                       [0.3, 0.3, 0.0, 0.4]],
@@ -120,16 +120,16 @@ class MultinomialTester(utt.InferShapeTester):
         _n = 5
         tested = f(self._p, _n)
         assert tested.shape == self._p.shape
-        assert numpy.allclose(numpy.floor(tested.todense()), tested.todense())
+        assert np.allclose(np.floor(tested.todense()), tested.todense())
         assert tested[2, 1] == _n
 
         n = tensor.lvector()
         f = theano.function([self.p, n], multinomial(n, self.p))
 
-        _n = numpy.asarray([1, 2, 3, 4], dtype='int64')
+        _n = np.asarray([1, 2, 3, 4], dtype='int64')
         tested = f(self._p, _n)
         assert tested.shape == self._p.shape
-        assert numpy.allclose(numpy.floor(tested.todense()), tested.todense())
+        assert np.allclose(np.floor(tested.todense()), tested.todense())
         assert tested[2, 1] == _n[2]
 
     def test_infer_shape(self):

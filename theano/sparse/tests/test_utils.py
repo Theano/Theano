@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
-import numpy
+import numpy as np
 import theano.sparse
 if not theano.sparse.enable_sparse:
     raise SkipTest('Optional package sparse disabled')
@@ -11,21 +11,21 @@ from theano.sparse.tests.test_basic import as_sparse_format
 
 def test_hash_from_sparse():
     hashs = []
-    rng = numpy.random.rand(5, 5)
+    rng = np.random.rand(5, 5)
 
     for format in ['csc', 'csr']:
         rng = as_sparse_format(rng, format)
         for data in [[[-2]], [[-1]], [[0]], [[1]], [[2]],
-                     numpy.zeros((1, 5)), numpy.zeros((1, 6)),
+                     np.zeros((1, 5)), np.zeros((1, 6)),
                      # Data buffer empty but different shapes
-                     # numpy.zeros((1, 0)), numpy.zeros((2, 0)),
+                     # np.zeros((1, 0)), np.zeros((2, 0)),
                      # Same data buffer and shapes but different strides
-                     numpy.arange(25).reshape(5, 5),
-                     numpy.arange(25).reshape(5, 5).T,
+                     np.arange(25).reshape(5, 5),
+                     np.arange(25).reshape(5, 5).T,
                      # Same data buffer, shapes and strides
                      # but different dtypes
-                     numpy.zeros((5, 5), dtype="uint32"),
-                     numpy.zeros((5, 5), dtype="int32"),
+                     np.zeros((5, 5), dtype="uint32"),
+                     np.zeros((5, 5), dtype="int32"),
                      # Test slice
                      rng, rng[1:], rng[:4], rng[1:3],
                      # Don't test step as they are not supported by sparse
