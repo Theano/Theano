@@ -668,8 +668,8 @@ second dimension
         # TODO: make sure that zeros are clearly identifiable
         # to the gradient.grad method when the outputs have
         # some integer and some floating point outputs
-        if False in [str(out.type.dtype) in theano.tensor.continuous_dtypes
-                     for out in outs]:
+        if any(out.type.dtype not in theano.tensor.continuous_dtypes
+               for out in outs):
             # For integer output, return value may
             # only be zero or undefined
             # We don't bother with trying to check
