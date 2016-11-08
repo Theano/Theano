@@ -88,7 +88,7 @@ KERNEL void ave_pool3d_grad_kernel(const ga_size nthreads,
             const ga_size dstart = pd * stride_d - pad_d;
             const ga_size hstart = ph * stride_h - pad_h;
             const ga_size wstart = pw * stride_w - pad_w;
-            const ga_size dend = min(dstart + kernel_h, depth + pad_d);
+            const ga_size dend = min(dstart + kernel_d, depth + pad_d);
             const ga_size hend = min(hstart + kernel_h, height + pad_h);
             const ga_size wend = min(wstart + kernel_w, width + pad_w);
             const ga_size pool_size = (dend - dstart) * (hend - hstart) * (wend - wstart);
