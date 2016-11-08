@@ -9,6 +9,7 @@ from six.moves import xrange
 import theano
 from theano import gof
 from theano.compat import izip
+from theano.configparser import change_flags
 from theano.gof import Apply, Op, OpenMPOp
 from theano import scalar
 from theano.scalar import get_scalar_type
@@ -667,8 +668,8 @@ second dimension
         # TODO: make sure that zeros are clearly identifiable
         # to the gradient.grad method when the outputs have
         # some integer and some floating point outputs
-        if False in [str(out.type.dtype).find('int') == -1
-                     for out in outs]:
+        if any(out.type.dtype not in theano.tensor.continuous_dtypes
+               for out in outs):
             # For integer output, return value may
             # only be zero or undefined
             # We don't bother with trying to check
@@ -684,7 +685,7 @@ second dimension
                     new_rval.append(elem)
                 else:
                     elem = ipt.zeros_like()
-                    if str(elem.type.dtype).find('int') != -1:
+                    if str(elem.type.dtype) not in theano.tensor.continuous_dtypes:
                         elem = elem.astype(theano.config.floatX)
                     assert str(elem.type.dtype).find('int') == -1
                     new_rval.append(elem)
@@ -724,12 +725,7 @@ second dimension
     def _bgrad(self, inputs, ograds):
         # returns grad, with respect to broadcasted versions of inputs
 
-        prev_setting = theano.config.compute_test_value
-
-        try:
-
-            theano.config.compute_test_value = 'off'
-
+        with change_flags(compute_test_value='off'):
             def as_scalar(t):
                 if isinstance(t.type, (NullType, DisconnectedType)):
                     return t
@@ -740,10 +736,6 @@ second dimension
             scalar_igrads = self.scalar_op.grad(scalar_inputs, scalar_ograds)
             for igrad in scalar_igrads:
                 assert igrad is not None, self.scalar_op
-
-        finally:
-
-            theano.config.compute_test_value = prev_setting
 
         if not isinstance(scalar_igrads, (list, tuple)):
             raise TypeError('%s.grad returned %s instead of list or tuple' %

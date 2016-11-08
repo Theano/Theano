@@ -1154,6 +1154,11 @@ class TestBitOpReduceGrad(unittest.TestCase):
 
 
 class TestElemwise(unittest_tools.InferShapeTester):
+    def test_elemwise_grad_bool(self):
+        x = theano.tensor.scalar(dtype='bool')
+        y = theano.tensor.bscalar()
+        z = x * y
+        dx, dy = theano.grad(z, [x, y])
 
     def test_infer_shape(self):
 
