@@ -83,9 +83,10 @@ def test_pycuda_memory_to_theano():
     # This increase the ref count with never pycuda. Do pycuda also
     # cache ndarray?
     # print y.get()
+    initial_refcount = sys.getrefcount(y)
     print("gpuarray ref count before creating a CudaNdarray", end=' ')
     print(sys.getrefcount(y))
-    assert sys.getrefcount(y) == 2
+    assert sys.getrefcount(y) == initial_refcount
     rand = numpy.random.randn(*y.shape).astype(numpy.float32)
     cuda_rand = cuda_ndarray.CudaNdarray(rand)
 
@@ -100,16 +101,16 @@ def test_pycuda_memory_to_theano():
     y_ptr = int(y.gpudata)
     z = cuda_ndarray.from_gpu_pointer(y_ptr, y.shape, strides, y)
     print("gpuarray ref count after creating a CudaNdarray", sys.getrefcount(y))
-    assert sys.getrefcount(y) == 3
+    assert sys.getrefcount(y) == initial_refcount + 1
     assert (numpy.asarray(z) == 0).all()
     assert z.base is y
 
     # Test that we can take a view from this cuda view on pycuda memory
     zz = z.view()
-    assert sys.getrefcount(y) == 4
+    assert sys.getrefcount(y) == initial_refcount + 2
     assert zz.base is y
     del zz
-    assert sys.getrefcount(y) == 3
+    assert sys.getrefcount(y) == initial_refcount + 1
 
     cuda_ones = cuda_ndarray.CudaNdarray(numpy.asarray([[[1]]],
                                                        dtype='float32'))
@@ -127,4 +128,4 @@ def test_pycuda_memory_to_theano():
     del z
     print("gpuarray ref count after deleting the CudaNdarray", end=' ')
     print(sys.getrefcount(y))
-    assert sys.getrefcount(y) == 2
+    assert sys.getrefcount(y) == initial_refcount
