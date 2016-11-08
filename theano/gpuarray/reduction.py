@@ -55,6 +55,12 @@ class GpuMaxAndArgmax(Op):
         max_typecode = pygpu.gpuarray.dtype_to_typecode(node.inputs[0].dtype)
         argmax_typecode = pygpu.gpuarray.dtype_to_typecode(self.argmax_dtype)
         ret = """
+        #if PY_MAJOR_VERSION >= 3
+            #ifndef PyInt_AS_LONG
+                #define PyInt_AS_LONG PyLong_AS_LONG
+            #endif
+        #endif
+
         unsigned  %(name)s_redux_len = PyTuple_GET_SIZE(%(axes)s);
         unsigned* %(name)s_axes_to_reduce = (unsigned*)malloc(%(name)s_redux_len * sizeof(unsigned));
         for (unsigned i = 0; i < %(name)s_redux_len; ++i) {

@@ -1237,6 +1237,12 @@ class MaxAndArgmax(Op):
         max, argmax = out
         fail = sub["fail"]
         ret = """
+        #if PY_MAJOR_VERSION >= 3
+            #ifndef PyInt_AS_LONG
+                #define PyInt_AS_LONG PyLong_AS_LONG
+            #endif
+        #endif
+
         int axis;
 
         if (PyTuple_GET_SIZE(%(axis)s) == PyArray_NDIM(%(x)s)) {
@@ -1597,7 +1603,7 @@ def max_and_argmax(a, axis=None, keepdims=False):
     # Check axis and convert it to a Python list of integers.
     # Axis will be used as an op param of MaxAndArgmax.
     if axis is None:
-        axis = range(a.type.ndim)
+        axis = list(range(a.type.ndim))
     elif (isinstance(axis, (integer_types, numpy.integer)) or
             (isinstance(axis, numpy.ndarray) and axis.ndim == 0)):
         axis = [int(axis)]
@@ -1605,7 +1611,7 @@ def max_and_argmax(a, axis=None, keepdims=False):
         axis = [int(i) for i in axis]
     elif isinstance(axis, Variable):
         if NoneConst.equals(axis):
-            axis = range(a.type.ndim)
+            axis = list(range(a.type.ndim))
         elif not isinstance(axis, TensorConstant):
             raise TypeError("max and argmax computation needs a constant axis. Got %s" % axis)
         else:
@@ -1616,7 +1622,7 @@ def max_and_argmax(a, axis=None, keepdims=False):
             elif isinstance(axis.data, (list, numpy.ndarray)):
                 axis = [int(i) for i in axis.data]
     if len(axis) == 0:
-        axis = range(a.type.ndim)
+        axis = list(range(a.type.ndim))
     else:
         for i in range(len(axis)):
             if axis[i] < 0:
