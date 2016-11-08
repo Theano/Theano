@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import scipy
 
 import theano
@@ -879,7 +879,7 @@ local_usmm = gof.opt.PatternSub(
     (theano.tensor.sub, 'z',
      (theano.tensor.mul,
       {'pattern': 'alpha',
-       'constraint': lambda expr: (numpy.all(expr.type.broadcastable) and
+       'constraint': lambda expr: (np.all(expr.type.broadcastable) and
                                    theano.config.blas.ldflags)},
       (sparse._dot, 'x', 'y'))),
     (usmm, (theano.tensor.neg, 'alpha'), 'x', 'y', 'z'))

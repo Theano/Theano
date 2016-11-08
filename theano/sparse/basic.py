@@ -12,7 +12,7 @@ from __future__ import absolute_import, print_function, division
 
 import sys
 
-import numpy
+import numpy as np
 from numpy.lib.stride_tricks import as_strided
 from six import integer_types
 from six.moves import xrange
@@ -86,11 +86,11 @@ def _is_dense(x):
         L{numpy.ndarray}).
 
     """
-    if not isinstance(x, (scipy.sparse.spmatrix, numpy.ndarray)):
+    if not isinstance(x, (scipy.sparse.spmatrix, np.ndarray)):
         raise NotImplementedError("this function should only be called on "
                                   "sparse.scipy.sparse.spmatrix or "
                                   "numpy.ndarray, not,", x)
-    return isinstance(x, numpy.ndarray)
+    return isinstance(x, np.ndarray)
 
 
 # Wrapper type
@@ -205,8 +205,8 @@ def sp_zeros_like(x):
 
     # TODO: don't restrict to CSM formats
     _, _, indptr, shape = csm_properties(x)
-    return CSM(format=x.format)(data=numpy.array([], dtype=x.type.dtype),
-                                indices=numpy.array([], dtype='int32'),
+    return CSM(format=x.format)(data=np.array([], dtype=x.type.dtype),
+                                indices=np.array([], dtype='int32'),
                                 indptr=tensor.zeros_like(indptr),
                                 shape=shape)
 
@@ -293,9 +293,9 @@ class _sparse_py_operators:
             args = args,
 
         if len(args) == 2:
-            scalar_arg_1 = (numpy.isscalar(args[0]) or
+            scalar_arg_1 = (np.isscalar(args[0]) or
                             getattr(args[0], 'type', None) == tensor.iscalar)
-            scalar_arg_2 = (numpy.isscalar(args[1]) or
+            scalar_arg_2 = (np.isscalar(args[1]) or
                             getattr(args[1], 'type', None) == tensor.iscalar)
             if scalar_arg_1 and scalar_arg_2:
                 ret = get_item_scalar(self, args)
@@ -554,17 +554,17 @@ class CSM(gof.Op):
         data = tensor.as_tensor_variable(data)
 
         if not isinstance(indices, gof.Variable):
-            indices_ = numpy.asarray(indices)
+            indices_ = np.asarray(indices)
             indices_32 = theano._asarray(indices, dtype='int32')
             assert (indices_ == indices_32).all()
             indices = indices_32
         if not isinstance(indptr, gof.Variable):
-            indptr_ = numpy.asarray(indptr)
+            indptr_ = np.asarray(indptr)
             indptr_32 = theano._asarray(indptr, dtype='int32')
             assert (indptr_ == indptr_32).all()
             indptr = indptr_32
         if not isinstance(shape, gof.Variable):
-            shape_ = numpy.asarray(shape)
+            shape_ = np.asarray(shape)
             shape_32 = theano._asarray(shape, dtype='int32')
             assert (shape_ == shape_32).all()
             shape = shape_32
@@ -606,7 +606,7 @@ class CSM(gof.Op):
         if self.format == 'csc':
             out[0] = scipy.sparse.csc_matrix((data, indices.copy(),
                                               indptr.copy()),
-                                             numpy.asarray(shape), copy=False)
+                                             np.asarray(shape), copy=False)
         else:
             assert self.format == 'csr'
             out[0] = scipy.sparse.csr_matrix((data, indices.copy(),
@@ -729,8 +729,8 @@ class CSMGrad(gof.op.Op):
         else:
             sp_dim = x_shape[0]
 
-        g_row = numpy.zeros(sp_dim, dtype=g_data.dtype)
-        gout_data = numpy.zeros(x_data.shape, dtype=node.outputs[0].dtype)
+        g_row = np.zeros(sp_dim, dtype=g_data.dtype)
+        gout_data = np.zeros(x_data.shape, dtype=node.outputs[0].dtype)
 
         for i in range(len(x_indptr) - 1):
             for j_ptr in range(g_indptr[i], g_indptr[i + 1]):
@@ -1100,7 +1100,7 @@ class GetItem2Lists(gof.op.Op):
         x = inp[0]
         ind1 = inp[1]
         ind2 = inp[2]
-        out[0] = numpy.asarray(x[ind1, ind2]).flatten()
+        out[0] = np.asarray(x[ind1, ind2]).flatten()
         """
         Here scipy returns the corresponding elements in a matrix which isn't
         what we are aiming for. Using asarray and flatten, out[0] becomes an
@@ -1244,7 +1244,7 @@ class GetItem2d(gof.op.Op):
 
             elif ((isinstance(ind, gof.Variable) and
                     getattr(ind, 'ndim', -1) == 0) or
-                    numpy.isscalar(ind)):
+                    np.isscalar(ind)):
                 raise NotImplementedError(
                     'Theano has no sparse vector' +
                     'Use X[a:b, c:d], X[a:b, c:c+1] or X[a:b] instead.')
@@ -1653,9 +1653,9 @@ class SpSum(gof.op.Op):
         (x,) = inputs
         (z,) = outputs
         if self.axis is None:
-            z[0] = numpy.asarray(x.sum())
+            z[0] = np.asarray(x.sum())
         else:
-            z[0] = numpy.asarray(x.sum(self.axis)).ravel()
+            z[0] = np.asarray(x.sum(self.axis)).ravel()
 
     def grad(self, inputs, gout):
         (x,) = inputs
@@ -2540,7 +2540,7 @@ class __ComparisonOpSD(gof.op.Op):
         assert x.shape == y.shape
         assert _is_dense(y)
         o = self.comparison(x, y).astype('uint8')
-        o = numpy.asarray(o)
+        o = np.asarray(o)
         out[0] = o
 
     def infer_shape(self, node, ins_shapes):
@@ -3382,7 +3382,7 @@ class TrueDot(gof.op.Op):
         # 'ushort', 'intc', 'uintc', 'longlong', 'ulonglong', 'single',
         # 'double', 'longdouble', 'csingle', 'cdouble', 'clongdouble']
         # But ulonglong is uint64 on x86-64, but with a different typenum!
-        if rval.dtype.num != numpy.dtype(str(rval.dtype)).num:
+        if rval.dtype.num != np.dtype(str(rval.dtype)).num:
             assert str(rval.dtype) == node.outputs[0].dtype
             # Create a view with the expected typenum.
             format = node.outputs[0].type.format
@@ -3509,7 +3509,7 @@ class StructuredDot(gof.Op):
         # dot of an NxM sparse matrix, with a Mx1 dense matrix, returns vector
         # not matrix
         if variable.ndim == 1:
-            variable = numpy.expand_dims(variable, 1)
+            variable = np.expand_dims(variable, 1)
         elif variable.ndim != 2:
             raise Exception('Output of structured dot should be a matrix '
                             '(ndim=2)')
@@ -3622,7 +3622,7 @@ class StructuredDotGradCSC(gof.Op):
     def perform(self, node, inputs, outputs):
         (a_indices, a_indptr, b, g_ab) = inputs
         (out,) = outputs
-        g_a_data = numpy.zeros(a_indices.shape, dtype=g_ab.dtype)
+        g_a_data = np.zeros(a_indices.shape, dtype=g_ab.dtype)
         for j in xrange(len(a_indptr) - 1):
             ind0 = a_indptr[j]
             ind1 = a_indptr[j + 1]
@@ -3631,7 +3631,7 @@ class StructuredDotGradCSC(gof.Op):
                 # Depending on the type of g_ab and b (sparse or dense),
                 # the following dot product can result in a scalar or
                 # a (1, 1) sparse matrix.
-                dot_val = numpy.dot(g_ab[i], b[j].T)
+                dot_val = np.dot(g_ab[i], b[j].T)
                 if isinstance(dot_val, scipy.sparse.spmatrix):
                     dot_val = dot_val[0, 0]
                 g_a_data[i_idx] = dot_val
@@ -3752,7 +3752,7 @@ class StructuredDotGradCSR(gof.Op):
     def perform(self, node, inputs, outputs):
         (a_indices, a_indptr, b, g_ab) = inputs
         (out,) = outputs
-        g_a_data = numpy.zeros(a_indices.shape, dtype=g_ab.dtype)
+        g_a_data = np.zeros(a_indices.shape, dtype=g_ab.dtype)
         for i in xrange(len(a_indptr) - 1):  # loop over rows
             ind0 = a_indptr[i]
             ind1 = a_indptr[i + 1]
@@ -3763,7 +3763,7 @@ class StructuredDotGradCSR(gof.Op):
                 # Depending on the type of g_ab and b (sparse or dense),
                 # the following dot product can result in a scalar or
                 # a (1, 1) sparse matrix.
-                dot_val = numpy.dot(g_ab[i], b[j].T)
+                dot_val = np.dot(g_ab[i], b[j].T)
                 if isinstance(dot_val, scipy.sparse.spmatrix):
                     dot_val = dot_val[0, 0]
                 g_a_data[j_idx] = dot_val
@@ -3910,7 +3910,7 @@ class SamplingDot(gof.op.Op):
         if not _is_sparse(p):
             raise TypeError(p)
 
-        out[0] = p.__class__(p.multiply(numpy.dot(x, y.T)))
+        out[0] = p.__class__(p.multiply(np.dot(x, y.T)))
 
     def grad(self, inputs, gout):
         (x, y, p) = inputs
@@ -4243,7 +4243,7 @@ class ConstructSparseFromList(gof.Op):
         out, = out_
         rows, cols = values.shape
         assert rows == len(ilist)
-        indptr = numpy.arange(cols + 1) * rows
+        indptr = np.arange(cols + 1) * rows
         indices = as_strided(ilist,
                              strides=(0, ilist.strides[0]),
                              shape=(cols, ilist.shape[0])).flatten()
