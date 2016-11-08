@@ -449,6 +449,16 @@ def scan(fn,
                              getattr(outs_info[i]['initial'], 'name', 'None'),
                              i)
                 outs_info[i]['taps'] = [-1]
+            elif outs_info[i].get('taps', None) is not None:
+                # Check that taps are valid (< 0 and all dfferent)
+                taps = outs_info[i]['taps']
+                if len(taps) > len(set(taps)):
+                    raise ValueError(('All the taps must be different in '
+                                      ' `outputs_info`'), outs_info[i])
+                for t in taps:
+                    if t >= 0:
+                        raise ValueError(('All the tap values must be '
+                                          'smaller than 0.'), outs_info[i])
         else:
             # if a None is provided as the output info we replace it
             # with an empty OrdereDict() to simplify handling
