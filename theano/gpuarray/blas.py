@@ -414,7 +414,7 @@ gpugemmbatch_no_inplace = GpuGemmBatch(inplace=False)
 gpugemmbatch_inplace = GpuGemmBatch(inplace=True)
 
 
-class BaseGpuCorrMM(CGpuKernelBase, BlasOp):
+class BaseGpuCorrMM(CGpuKernelBase):
     """
     Base class for `GpuCorrMM`, `GpuCorrMM_gradWeights` and
     `GpuCorrMM_gradInputs`. Cannot be used directly.
@@ -429,9 +429,9 @@ class BaseGpuCorrMM(CGpuKernelBase, BlasOp):
     filter_dilation
         Perform subsampling of the input, also known as dilation (default: (1, 1)).
     """
-
     check_broadcast = False
     __props__ = ('border_mode', 'subsample', 'filter_dilation')
+    _f16_ok = True
 
     def __init__(self, border_mode="valid", subsample=(1, 1),
                  filter_dilation=(1, 1)):
@@ -489,9 +489,15 @@ class BaseGpuCorrMM(CGpuKernelBase, BlasOp):
     def get_params(self, node):
         return node.inputs[0].type.context
 
+    def c_headers(self):
+        return ["<gpuarray/array.h>", "<gpuarray/blas.h>", "gpuarray_helper.h"]
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__)]
+
     def c_code_cache_version(self):
-        # raise this whenever modifying any of the support_code_files
-        return (0, 2)
+        # Raise this whenever modifying the code below.
+        return (2,)
 
     def c_code_helper(self, bottom, weights, top, direction, sub, height=None, width=None):
         """
@@ -953,7 +959,7 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
             return [[1], [1], [0], [0]]  # no connection to height, width
 
 
-class BaseGpuCorr3dMM(CGpuKernelBase, BlasOp):
+class BaseGpuCorr3dMM(CGpuKernelBase):
     """
     Base class for `GpuCorr3dMM`, `GpuCorr3dMM_gradWeights` and
     `GpuCorr3dMM_gradInputs`. Cannot be used directly.
@@ -967,10 +973,11 @@ class BaseGpuCorr3dMM(CGpuKernelBase, BlasOp):
         Perform subsampling of the output (default: (1, 1, 1)).
     filter_dilation
         Perform subsampling of the input, also known as dilation (default: (1, 1, 1)).
-    """
 
+    """
     check_broadcast = False
     __props__ = ('border_mode', 'subsample', 'filter_dilation')
+    _f16_ok = True
 
     def __init__(self, border_mode="valid", subsample=(1, 1, 1),
                  filter_dilation=(1, 1, 1)):
@@ -1028,9 +1035,15 @@ class BaseGpuCorr3dMM(CGpuKernelBase, BlasOp):
     def get_params(self, node):
         return node.inputs[0].type.context
 
+    def c_headers(self):
+        return ["<gpuarray/array.h>", "<gpuarray/blas.h>", "gpuarray_helper.h"]
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__)]
+
     def c_code_cache_version(self):
-        # raise this whenever modifying any of the support_code_files
-        return (0, 2)
+        # raise this whenever modifying the code below.
+        return (2,)
 
     def c_code_helper(self, bottom, weights, top, direction, sub,
                       height=None, width=None, depth=None):

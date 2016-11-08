@@ -613,6 +613,15 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
+    def c_support_code(self):
+        return """
+        template <typename T>
+        static T ceil_intdiv(T a, T b)
+        {
+            return (a/b) + ((a % b) ? 1: 0);
+        }
+        """
+
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
