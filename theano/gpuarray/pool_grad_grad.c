@@ -18,11 +18,11 @@ KERNEL void max_pool2d_grad_grad_kernel(const ga_size nthreads,
     const ga_size c = (index / pooled_width / pooled_height) % channels;
     const ga_size n = (index / pooled_width / pooled_height / channels);
     ga_int hstart = static_cast<ga_int>(ph*stride_h) - static_cast<ga_int>(pad_h);
-    hstart = max(hstart, 0);
     const ga_size hend = min(hstart + kernel_h, height);
     ga_int wstart = static_cast<ga_int>(pw*stride_w) - static_cast<ga_int>(pad_w);
-    wstart = max(wstart, 0);
     const ga_size wend = min(wstart + kernel_w, width);
+    hstart = max(hstart, 0);
+    wstart = max(wstart, 0);
 
     const ga_size offset = (n*channels + c) * height * width;
 
@@ -63,14 +63,14 @@ KERNEL void max_pool3d_grad_grad_kernel(const ga_size nthreads,
     const ga_size c = (index / pooled_width / pooled_height / pooled_depth) % channels;
     const ga_size n = (index / pooled_width / pooled_height / pooled_depth / channels);
     ga_int dstart = static_cast<ga_int>(pd*stride_d) - static_cast<ga_int>(pad_d);
-    dstart = max(dstart, 0);
     const ga_size dend = min(dstart + kernel_d, depth);
     ga_int hstart = static_cast<ga_int>(ph*stride_h) - static_cast<ga_int>(pad_h);
-    hstart = max(hstart, 0);
     const ga_size hend = min(hstart + kernel_h, height);
     ga_int wstart = static_cast<ga_int>(pw*stride_w) - static_cast<ga_int>(pad_w);
-    wstart = max(wstart, 0);
     const ga_size wend = min(wstart + kernel_w, width);
+    dstart = max(dstart, 0);
+    hstart = max(hstart, 0);
+    wstart = max(wstart, 0);
 
     const ga_size offset = (n*channels + c) * depth * height * width;
 
@@ -142,7 +142,7 @@ int APPLY_SPECIFIC(pool_grad_grad)(PyGpuArrayObject *x,
     const size_t* z_dims = PyGpuArray_DIMS(z);
     const size_t* x_dims = PyGpuArray_DIMS(x);
 
-    // Get the max threads per blocks
+    // get the max threads per blocks
     err = gpucontext_property(ctx->ctx, GA_CTX_PROP_MAXLSIZE0, &max_threads_dim);
     if (err != GA_NO_ERROR){
       PyErr_SetString(PyExc_RuntimeError, "Could not fetch max_threads_dims");
