@@ -331,4 +331,3 @@ def test_pool3d():
                     for node in gg2.maker.fgraph.toposort()
                 ])
                 assert numpy.allclose(gg(), gg2()), (shp, ws, st, pad, mode, ignore_border)
-
