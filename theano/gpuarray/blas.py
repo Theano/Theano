@@ -1550,6 +1550,58 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
             return [[1], [1], [0], [0], [0]]  # no connection to height, width, depth
 
 
+class GpuPool(CGpuKernelBase):
+    """
+    Implement the max and average pooling on the gpu.
+
+    """
+    __props__ = ('ignore_border', 'mode', 'ndim')
+
+    def __init__(self, ignore_border, mode='max', ndim=2):
+        self.ndim = ndim
+        self.ignore_border = ignore_border
+        if mode == 'average':
+            mode = 'average_inc_pad'
+        self.mode = mode
+        CGpuKernelBase.__init__(self, ['pool.c'],
+                                'APPLY_SPECIFIC(pool)')
+        assert mode in ('max', 'sum', 'average_inc_pad', 'average_exc_pad')
+        assert self.ndim in [2, 3]
+
+    def c_headers(self):
+        return ['gpuarray_api.h', 'gpuarray_helper.h',
+                'numpy_compat.h', 'float.h']
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__), pygpu.get_include()]
+
+    def make_node(self, inp, ws, stride, pad):
+        ctx_name = infer_context_name(inp)
+        inp = as_gpuarray_variable(inp, ctx_name)
+        assert (inp.ndim in [4, 5])
+
+        ws = as_tensor_variable(ws)
+        stride = as_tensor_variable(stride)
+        pad = as_tensor_variable(pad)
+        assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
+        assert ws.type.ndim == 1
+
+        return Apply(self, [inp, ws, stride, pad], [inp.type()])
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
+    def get_op_params(self):
+        ignore_border = int(self.ignore_border)
+        max_pool = int(self.mode == 'max')
+        inc_pad = int(self.mode != 'average_exc_pad')
+        sum_mode = int(self.mode == 'sum')
+        return [('IGNORE_BORDER', ignore_border),
+                ('INC_PAD', inc_pad),
+                ('MAX_POOL', max_pool),
+                ('SUM_MODE', sum_mode)]
+
+
 class GpuDownsampleFactorMaxGradGrad(CGpuKernelBase):
     """
     Implement the grad of downsample with max on the gpu.
