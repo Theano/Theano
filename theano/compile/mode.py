@@ -55,7 +55,10 @@ OPT_FAST_RUN_STABLE = OPT_FAST_RUN.requiring('stable')
 # fast_compile+gpu. We can't tag them just as 'gpu', as this would
 # exclude them if we exclude 'gpu'.
 OPT_FAST_COMPILE = gof.Query(include=['fast_compile', 'fast_compile_gpu'],
-                             exclude=['cxx_only'])
+                             exclude=exclude)
+OPT_FAST_COMPILE_NO_C = gof.Query(include=['fast_compile',
+                                           'fast_compile_gpu'],
+                                  exclude=['cxx_only'])
 OPT_STABILIZE = gof.Query(include=['fast_run'], exclude=exclude)
 OPT_STABILIZE.position_cutoff = 1.5000001
 OPT_NONE.name = 'OPT_NONE'
@@ -63,6 +66,7 @@ OPT_MERGE.name = 'OPT_MERGE'
 OPT_FAST_RUN.name = 'OPT_FAST_RUN'
 OPT_FAST_RUN_STABLE.name = 'OPT_FAST_RUN_STABLE'
 OPT_FAST_COMPILE.name = 'OPT_FAST_COMPILE'
+OPT_FAST_COMPILE_NO_C.name = 'OPT_FAST_COMPILE_NO_C'
 OPT_STABILIZE.name = 'OPT_STABILIZE'
 
 predefined_optimizers = {
@@ -72,6 +76,7 @@ predefined_optimizers = {
     'fast_run': OPT_FAST_RUN,
     'fast_run_stable': OPT_FAST_RUN_STABLE,
     'fast_compile': OPT_FAST_COMPILE,
+    'fast_compile_no_c': OPT_FAST_COMPILE_NO_C,
     'stabilize': OPT_STABILIZE}
 
 
@@ -358,7 +363,7 @@ class Mode(object):
 # string as the key
 # Use VM_linker to allow lazy evaluation by default.
 FAST_COMPILE = Mode(theano.gof.vm.VM_Linker(use_cloop=False, c_thunks=False),
-                    'fast_compile')
+                    'fast_compile_no_c')
 if theano.config.cxx:
     FAST_RUN = Mode('cvm', 'fast_run')
 else:
