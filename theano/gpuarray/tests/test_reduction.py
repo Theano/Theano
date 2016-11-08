@@ -104,7 +104,7 @@ class BaseTest:
     def compute_host(self, test_tensor, axis):
         M = self.get_host_tensor()
         f = theano.function([M], [T.max(M, axis=axis), T.argmax(M, axis=axis)],
-                            name='HOST/shape:'+str(test_tensor.shape)+'/axis:'+str(axis), mode=mode_without_gpu)
+                            name='HOST/shape:' + str(test_tensor.shape) + '/axis:' + str(axis), mode=mode_without_gpu)
         check_if_gpu_maxandargmax_not_in_graph(f)
         f(test_tensor)
         theano_max, theano_argmax = f(test_tensor)
@@ -115,7 +115,7 @@ class BaseTest:
     def compute_gpu(self, test_gpu_tensor, test_host_tensor, axis):
         M = self.get_gpu_tensor()
         f = theano.function([M], [T.max(M, axis=axis), T.argmax(M, axis=axis)],
-                            name='GPU/shape:'+str(test_gpu_tensor.shape)+'/axis:'+str(axis), mode=mode_with_gpu)
+                            name='GPU/shape:' + str(test_gpu_tensor.shape) + '/axis:' + str(axis), mode=mode_with_gpu)
         check_if_gpu_maxandargmax_in_graph(f)
         f(test_gpu_tensor)
         theano_max, theano_argmax = f(test_gpu_tensor)
@@ -176,10 +176,12 @@ class TestScalar(BaseTest, TestCase):
 class TestVector(BaseTest, TestCase):
     tensor_size = 1
 
+
 # Special case
 class TestRow(BaseTest, TestCase):
     tensor_size = 2
-    shape = [1,test_size]
+    shape = [1, test_size]
+
 
 # Special case
 class TestColumn(BaseTest, TestCase):
@@ -193,4 +195,3 @@ class TestMatrix(BaseTest, TestCase):
 
 class TestTensor5(BaseTest, TestCase):
     tensor_size = 5
-
