@@ -28,12 +28,13 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               assert_conv_shape)
 from theano.tensor.signal.pool import (
     Pool, MaxPoolGrad, AveragePoolGrad)
+from theano.tensor.nnet import bn
 from . import pygpu
 from .type import (get_context, gpu_context_type, list_contexts,
                    GpuArraySharedVariable)
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         gpu_contiguous, gpu_alloc_empty,
-                        empty_like, GpuArrayType)
+                        empty_like, GpuArrayType, HostFromGpu)
 from .elemwise import GpuElemwise
 
 # These don't exist in gpuarray
@@ -2928,3 +2929,182 @@ def local_gpua_softmax_dnn_grad(op, ctx_name, inputs, outputs):
     out = GpuDnnSoftmaxGrad('accurate', 'instance')(
         gpu_contiguous(ins[0]), gpu_contiguous(ins[1]))
     return [out.dimshuffle(0, 2)]
+
+
+@local_optimizer([bn.AbstractBatchNormTrain])
+def local_abstract_batch_norm_train_cudnn(node):
+    if not isinstance(node.op, bn.AbstractBatchNormTrain):
+        return None
+
+    x, scale, bias, epsilon = node.inputs
+
+    if x.ndim > 5:
+        # TODO do something better than this (reshape?)
+        return None
+
+    # input on gpu?  TODO what about the output?
+    x_on_gpu = (isinstance(x.type, GpuArrayType) or
+                (x.owner and isinstance(x.owner.op, HostFromGpu)))
+    if not x_on_gpu:
+        return None
+
+    # convert axes to cuDNN mode
+    axes = tuple(node.op.axes)
+    if axes == (0,):
+        mode = 'per-activation'
+    elif axes == (0,) + tuple(range(2, x.ndim)):
+        mode = 'spatial'
+    else:
+        return None
+
+    try:
+        eps = theano.tensor.get_scalar_constant_value(epsilon)
+    except theano.tensor.NotScalarConstantError:
+        return None
+    if eps < 1e-5:
+        return None
+
+    ctx = infer_context_name(*node.inputs)
+    if not dnn_available(ctx):
+        # TODO should this raise_no_cudnn?
+        return None
+    x = as_gpuarray_variable(x, context_name=ctx)
+    scale = as_gpuarray_variable(scale, context_name=ctx)
+    bias = as_gpuarray_variable(bias, context_name=ctx)
+
+    out, mean, invstd = dnn_batch_normalization_train(x, scale, bias, mode, eps)
+
+    # If the original output was on CPU, we have to transfer it
+    if isinstance(node.outputs[0].type, tensor.TensorType):
+        out = tensor.as_tensor_variable(out)
+    if isinstance(node.outputs[1].type, tensor.TensorType):
+        mean = tensor.as_tensor_variable(mean)
+    if isinstance(node.outputs[2].type, tensor.TensorType):
+        invstd = tensor.as_tensor_variable(invstd)
+    # TODO copy_stack_trace?
+    return [out, mean, invstd]
+
+
+@local_optimizer([bn.AbstractBatchNormTrainGrad])
+def local_abstract_batch_norm_train_grad_cudnn(node):
+    if not isinstance(node.op, bn.AbstractBatchNormTrainGrad):
+        return None
+
+    x, dy, scale, x_mean, x_invstd, epsilon = node.inputs
+
+    if x.ndim > 5:
+        # TODO do something better than this (reshape?)
+        return None
+
+    # input on gpu?  TODO what about the output?
+    x_on_gpu = (isinstance(x.type, GpuArrayType) or
+                (x.owner and isinstance(x.owner.op, HostFromGpu)))
+    dy_on_gpu = (isinstance(dy.type, GpuArrayType) or
+                 (dy.owner and isinstance(dy.owner.op, HostFromGpu)))
+    if not (x_on_gpu or dy_on_gpu):
+        return None
+
+    # convert axes to cuDNN mode
+    axes = tuple(node.op.axes)
+    if axes == (0,):
+        mode = 'per-activation'
+    elif axes == (0,) + tuple(range(2, x.ndim)):
+        mode = 'spatial'
+    else:
+        return None
+
+    ndim = x.ndim
+    if ndim < 4:
+        x = theano.tensor.shape_padright(x, 4 - ndim)
+        dy = theano.tensor.shape_padright(dy, 4 - ndim)
+        scale = theano.tensor.shape_padright(scale, 4 - ndim)
+        x_mean = theano.tensor.shape_padright(x_mean, 4 - ndim)
+        x_invstd = theano.tensor.shape_padright(x_invstd, 4 - ndim)
+
+    try:
+        eps = theano.tensor.get_scalar_constant_value(epsilon)
+    except theano.tensor.NotScalarConstantError:
+        return None
+    if eps < 1e-5:
+        return None
+
+    ctx = infer_context_name(*node.inputs)
+    if not dnn_available(ctx):
+        # TODO should this raise_no_cudnn?
+        return None
+    x = as_gpuarray_variable(x, context_name=ctx)
+    dy = as_gpuarray_variable(dy, context_name=ctx)
+    scale = as_gpuarray_variable(scale, context_name=ctx)
+    x_mean = as_gpuarray_variable(x_mean, context_name=ctx)
+    x_invstd = as_gpuarray_variable(x_invstd, context_name=ctx)
+
+    g_wrt_inputs, g_wrt_scale, g_wrt_bias = \
+        GpuDnnBatchNormGrad(mode)(x, dy, scale, x_mean, x_invstd, eps)
+
+    if ndim < 4:
+        g_wrt_inputs = theano.tensor.flatten(g_wrt_inputs, ndim)
+        g_wrt_scale = theano.tensor.flatten(g_wrt_scale, ndim)
+        g_wrt_bias = theano.tensor.flatten(g_wrt_bias, ndim)
+
+    # If the original output was on CPU, we have to transfer it
+    if isinstance(node.outputs[0].type, tensor.TensorType):
+        g_wrt_inputs = tensor.as_tensor_variable(g_wrt_inputs)
+    if isinstance(node.outputs[1].type, tensor.TensorType):
+        g_wrt_scale = tensor.as_tensor_variable(g_wrt_scale)
+    if isinstance(node.outputs[2].type, tensor.TensorType):
+        g_wrt_bias = tensor.as_tensor_variable(g_wrt_bias)
+    # TODO copy_stack_trace?
+    return [g_wrt_inputs, g_wrt_scale, g_wrt_bias]
+
+
+@local_optimizer([bn.AbstractBatchNormInference])
+def local_abstract_batch_norm_inference_cudnn(node):
+    if not isinstance(node.op, bn.AbstractBatchNormInference):
+        return None
+
+    x, scale, bias, estimated_mean, estimated_variance, epsilon = node.inputs
+
+    if x.ndim > 5:
+        # TODO do something better than this (reshape?)
+        return None
+
+    axes = tuple(node.op.axes)
+    if axes == (0,):
+        mode = 'per-activation'
+    elif axes == (0,) + tuple(range(2, x.ndim)):
+        mode = 'spatial'
+    else:
+        return None
+
+    # input on gpu?  TODO what about the output?
+    x_on_gpu = (isinstance(x.type, GpuArrayType) or
+                (x.owner and isinstance(x.owner.op, HostFromGpu)))
+    if not x_on_gpu:
+        return None
+
+    try:
+        eps = theano.tensor.get_scalar_constant_value(epsilon)
+    except theano.tensor.NotScalarConstantError:
+        return None
+    if eps < 1e-5:
+        return None
+
+    ctx = infer_context_name(*node.inputs)
+    if not dnn_available(ctx):
+        # TODO should this raise_no_cudnn?
+        return None
+    x = as_gpuarray_variable(x, context_name=ctx)
+    scale = as_gpuarray_variable(scale, context_name=ctx)
+    bias = as_gpuarray_variable(bias, context_name=ctx)
+    estimated_mean = as_gpuarray_variable(estimated_mean, context_name=ctx)
+    estimated_variance = as_gpuarray_variable(estimated_variance, context_name=ctx)
+
+    out = dnn_batch_normalization_test(x, scale, bias, estimated_mean, estimated_variance,
+                                       mode, eps)
+
+    # If the original output was on CPU, we have to transfer it
+    # TODO copy_stack_trace?
+    if isinstance(node.outputs[0].type, tensor.TensorType):
+        return [tensor.as_tensor_variable(out)]
+    else:
+        return [out]

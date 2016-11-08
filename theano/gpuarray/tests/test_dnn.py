@@ -13,6 +13,7 @@ import theano.tests.unittest_tools as utt
 from theano.tensor.signal.pool import pool_2d, pool_3d
 from theano.tensor.signal.pool import Pool, MaxPoolGrad, AveragePoolGrad
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape
+from theano.tensor.nnet import bn
 
 from .. import dnn
 from ..basic_ops import GpuAllocEmpty
@@ -1385,28 +1386,47 @@ def test_dnn_batchnorm_train():
             ndim = x.ndim
             eps = 5e-3  # some non-standard value to test if it's used
 
-            # forward pass
-            out, x_mean, x_invstd = dnn.dnn_batch_normalization_train(
+            # forward pass, direct interface
+            out_gpu, x_mean_gpu, x_invstd_gpu = dnn.dnn_batch_normalization_train(
+                x, scale, bias, mode, eps)
+            # forward pass, abstract interface
+            out_abstract, x_mean_abstract, x_invstd_abstract = bn.batch_normalization_train(
                 x, scale, bias, mode, eps)
             # reference forward pass
             if mode == 'per-activation':
                 axes = (0,)
             elif mode == 'spatial':
                 axes = (0,) + tuple(range(2, ndim))
-            x_mean2 = x.mean(axis=axes, keepdims=True)
-            x_invstd2 = T.inv(T.sqrt(x.var(axis=axes, keepdims=True) + eps))
-            scale2 = T.addbroadcast(scale, *axes)
-            bias2 = T.addbroadcast(bias, *axes)
-            out2 = (x - x_mean2) * (scale2 * x_invstd2) + bias2
+            x_mean_ref = x.mean(axis=axes, keepdims=True)
+            x_invstd_ref = T.inv(T.sqrt(x.var(axis=axes, keepdims=True) + eps))
+            scale_ref = T.addbroadcast(scale, *axes)
+            bias_ref = T.addbroadcast(bias, *axes)
+            out_ref = (x - x_mean_ref) * (scale_ref * x_invstd_ref) + bias_ref
             # backward pass
             dy = vartype('dy')
-            grads = T.grad(None, wrt=[x, scale, bias], known_grads={out: dy})
+            grads_gpu = T.grad(None, wrt=[x, scale, bias], known_grads={out_gpu: dy})
+            grads_abstract = T.grad(None, wrt=[x, scale, bias], known_grads={out_abstract: dy})
             # reference backward pass
-            grads2 = T.grad(None, wrt=[x, scale, bias], known_grads={out2: dy})
+            grads_ref = T.grad(None, wrt=[x, scale, bias], known_grads={out_ref: dy})
             # compile
-            f = theano.function([x, scale, bias, dy],
-                                [out, x_mean, x_invstd, out2, x_mean2, x_invstd2] +
-                                grads + grads2, mode=mode_with_gpu)
+            f_gpu = theano.function([x, scale, bias, dy],
+                                    [out_gpu, x_mean_gpu, x_invstd_gpu] + grads_gpu,
+                                    mode=mode_with_gpu)
+            f_abstract = theano.function([x, scale, bias, dy],
+                                         [out_abstract, x_mean_abstract, x_invstd_abstract] +
+                                         grads_abstract,
+                                         mode=mode_with_gpu)
+            f_ref = theano.function([x, scale, bias, dy],
+                                    [out_ref, x_mean_ref, x_invstd_ref] + grads_ref)
+            # check if the abstract Ops have been replaced
+            assert any([isinstance(n.op, dnn.GpuDnnBatchNorm) for n
+                        in f_abstract.maker.fgraph.toposort()])
+            assert any([isinstance(n.op, dnn.GpuDnnBatchNormGrad) for n
+                        in f_abstract.maker.fgraph.toposort()])
+            assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
+                                              bn.AbstractBatchNormInference,
+                                              bn.AbstractBatchNormTrainGrad)) for n
+                            in f_abstract.maker.fgraph.toposort()])
             # run
             for data_shape in ((5, 10, 30, 40, 10), (4, 3, 1, 1, 1), (1, 1, 5, 5, 5)):
                 data_shape = data_shape[:ndim]
@@ -1416,15 +1436,23 @@ def test_dnn_batchnorm_train():
                 Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
                 Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
                 Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                outputs = f(X, Scale, Bias, Dy)
+                outputs_gpu = f_gpu(X, Scale, Bias, Dy)
+                outputs_abstract = f_abstract(X, Scale, Bias, Dy)
+                outputs_ref = f_ref(X, Scale, Bias, Dy)
                 # compare outputs
-                utt.assert_allclose(outputs[0], outputs[0 + 3])  # out
-                utt.assert_allclose(outputs[1], outputs[1 + 3])  # mean
-                utt.assert_allclose(outputs[2], outputs[2 + 3])  # invstd
+                utt.assert_allclose(outputs_gpu[0], outputs_ref[0])  # out
+                utt.assert_allclose(outputs_gpu[1], outputs_ref[1])  # mean
+                utt.assert_allclose(outputs_gpu[2], outputs_ref[2])  # invstd
+                utt.assert_allclose(outputs_abstract[0], outputs_ref[0])  # out
+                utt.assert_allclose(outputs_abstract[1], outputs_ref[1])  # mean
+                utt.assert_allclose(outputs_abstract[2], outputs_ref[2])  # invstd
                 # compare gradients
-                utt.assert_allclose(outputs[6], outputs[6 + 3], atol=1e-4)  # dx
-                utt.assert_allclose(outputs[7], outputs[7 + 3], rtol=2e-4, atol=1e-4)  # dscale
-                utt.assert_allclose(outputs[8], outputs[8 + 3])  # dbias
+                utt.assert_allclose(outputs_gpu[3], outputs_ref[3], atol=1e-4)  # dx
+                utt.assert_allclose(outputs_gpu[4], outputs_ref[4], rtol=2e-4, atol=1e-4)  # dscale
+                utt.assert_allclose(outputs_gpu[5], outputs_ref[5])  # dbias
+                utt.assert_allclose(outputs_abstract[3], outputs_ref[3], atol=1e-4)  # dx
+                utt.assert_allclose(outputs_abstract[4], outputs_ref[4], rtol=2e-4, atol=1e-4)  # dscale
+                utt.assert_allclose(outputs_abstract[5], outputs_ref[5])  # dbias
 
 
 def test_batchnorm_inference():
@@ -1439,25 +1467,40 @@ def test_batchnorm_inference():
             ndim = x.ndim
             eps = 5e-3  # some non-standard value to test if it's used
 
-            # forward pass
-            out = dnn.dnn_batch_normalization_test(x, scale, bias, mean,
-                                                   var, mode, eps)
+            # forward pass, direct interface
+            out_gpu = dnn.dnn_batch_normalization_test(x, scale, bias, mean,
+                                                       var, mode, eps)
+            # forward pass, abstract interface
+            out_abstract = bn.batch_normalization_test(x, scale, bias, mean,
+                                                       var, mode, eps)
             # reference forward pass
             if mode == 'per-activation':
                 axes = (0,)
             elif mode == 'spatial':
                 axes = (0,) + tuple(range(2, ndim))
-            scale2, bias2, mean2, var2 = (T.addbroadcast(t, *axes)
-                                          for t in (scale, bias, mean, var))
-            out2 = (x - mean2) * (scale2 / T.sqrt(var2 + eps)) + bias2
+            scale_ref, bias_ref, mean_ref, var_ref = (T.addbroadcast(t, *axes)
+                                                      for t in (scale, bias, mean, var))
+            out_ref = (x - mean_ref) * (scale_ref / T.sqrt(var_ref + eps)) + bias_ref
             # backward pass
             dy = vartype('dy')
-            grads = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out: dy})
+            grads_gpu = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out_gpu: dy})
+            grads_abstract = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out_abstract: dy})
             # reference backward pass
-            grads2 = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out2: dy})
+            grads_ref = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out_ref: dy})
             # compile
-            f = theano.function([x, scale, bias, mean, var, dy],
-                                [out, out2] + grads + grads2, mode=mode_with_gpu)
+            f_gpu = theano.function([x, scale, bias, mean, var, dy],
+                                    [out_gpu] + grads_gpu, mode=mode_with_gpu)
+            f_abstract = theano.function([x, scale, bias, mean, var, dy],
+                                         [out_abstract] + grads_abstract, mode=mode_with_gpu)
+            f_ref = theano.function([x, scale, bias, mean, var, dy],
+                                    [out_ref] + grads_ref)
+            # check if the abstract Ops have been replaced
+            assert any([isinstance(n.op, dnn.GpuDnnBatchNormInference) for n
+                        in f_abstract.maker.fgraph.toposort()])
+            assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
+                                              bn.AbstractBatchNormInference,
+                                              bn.AbstractBatchNormTrainGrad)) for n
+                            in f_abstract.maker.fgraph.toposort()])
             # run
             for data_shape in ((10, 20, 30, 40, 10), (4, 3, 1, 1, 1), (1, 1, 5, 5, 5)):
                 data_shape = data_shape[:ndim]
@@ -1469,15 +1512,76 @@ def test_batchnorm_inference():
                 Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
                 Mean = numpy.random.randn(*param_shape).astype(theano.config.floatX)
                 Var = numpy.random.rand(*param_shape).astype(theano.config.floatX)
-                outputs = f(X, Scale, Bias, Mean, Var, Dy)
+                outputs_gpu = f_gpu(X, Scale, Bias, Mean, Var, Dy)
+                outputs_abstract = f_abstract(X, Scale, Bias, Mean, Var, Dy)
+                outputs_ref = f_ref(X, Scale, Bias, Mean, Var, Dy)
                 # compare outputs
-                utt.assert_allclose(outputs[0], outputs[1])  # out
+                utt.assert_allclose(outputs_gpu[0], outputs_ref[0])  # out
+                utt.assert_allclose(outputs_abstract[0], outputs_ref[0])  # out
                 # compare gradients
-                utt.assert_allclose(outputs[2], outputs[2 + 5], atol=4e-5)  # dx
-                utt.assert_allclose(outputs[3], outputs[3 + 5], atol=4e-5)  # dscale
-                utt.assert_allclose(outputs[4], outputs[4 + 5])  # dbias
-                utt.assert_allclose(outputs[5], outputs[5 + 5])  # dmean
-                utt.assert_allclose(outputs[6], outputs[6 + 5], rtol=2e-3, atol=4e-5)  # dvar
+                utt.assert_allclose(outputs_gpu[1], outputs_ref[1], atol=4e-5)  # dx
+                utt.assert_allclose(outputs_gpu[2], outputs_ref[2], atol=4e-5)  # dscale
+                utt.assert_allclose(outputs_gpu[3], outputs_ref[3])  # dbias
+                utt.assert_allclose(outputs_gpu[4], outputs_ref[4])  # dmean
+                utt.assert_allclose(outputs_gpu[5], outputs_ref[5], rtol=2e-3, atol=4e-5)  # dvar
+                utt.assert_allclose(outputs_abstract[1], outputs_ref[1], atol=4e-5)  # dx
+                utt.assert_allclose(outputs_abstract[2], outputs_ref[2], atol=4e-5)  # dscale
+                utt.assert_allclose(outputs_abstract[3], outputs_ref[3])  # dbias
+                utt.assert_allclose(outputs_abstract[4], outputs_ref[4])  # dmean
+                utt.assert_allclose(outputs_abstract[5], outputs_ref[5], rtol=2e-3, atol=4e-5)  # dvar
+
+
+def test_dnn_batchnorm_valid_and_invalid_axes():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    if dnn.version(raises=False) < 5000:
+        raise SkipTest("batch normalization requires cudnn v5+")
+
+    for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix):
+        x, scale, bias, mean, var, dy = (vartype(n)
+                                         for n in ('x', 'scale', 'bias', 'mean', 'var', 'dy'))
+        ndim = x.ndim
+
+        # supported: per-activation and spatial
+        valid_axes_lists = ((0,), (0,) + tuple(range(2, ndim)))
+        # not supported: an axes list without 0 and including 1
+        invalid_axes_lists = (tuple(range(1, ndim)),)
+        for axes in valid_axes_lists + invalid_axes_lists:
+            # forward pass, abstract interface
+            out_train, x_mean, x_invstd = bn.batch_normalization_train(
+                x, scale, bias, axes)
+            out_test = bn.batch_normalization_test(
+                x, scale, bias, mean, var, axes)
+            # backward pass
+            dy = vartype('dy')
+            grads_train = T.grad(None, wrt=[x, scale, bias], known_grads={out_train: dy})
+            grads_test = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out_test: dy})
+            # compile
+            f = theano.function([x, scale, bias, mean, var, dy],
+                                [out_train, x_mean, x_invstd, out_test] +
+                                grads_train + grads_test,
+                                mode=mode_with_gpu)
+
+            if axes in valid_axes_lists:
+                # check if the abstract Ops have been replaced by the cuDNN Ops
+                assert any([isinstance(n.op, dnn.GpuDnnBatchNorm) for n
+                            in f.maker.fgraph.toposort()])
+                assert any([isinstance(n.op, dnn.GpuDnnBatchNormGrad) for n
+                            in f.maker.fgraph.toposort()])
+                assert any([isinstance(n.op, dnn.GpuDnnBatchNormInference) for n
+                            in f.maker.fgraph.toposort()])
+                assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
+                                                  bn.AbstractBatchNormInference,
+                                                  bn.AbstractBatchNormTrainGrad)) for n
+                                in f.maker.fgraph.toposort()])
+            else:
+                # check if the abstract Ops have been replaced, but not by the cuDNN Ops
+                assert not any([isinstance(n.op, (dnn.GpuDnnBatchNorm,
+                                                  dnn.GpuDnnBatchNormGrad,
+                                                  bn.AbstractBatchNormTrain,
+                                                  bn.AbstractBatchNormInference,
+                                                  bn.AbstractBatchNormTrainGrad)) for n
+                                in f.maker.fgraph.toposort()])
 
 
 def test_dnn_rnn_gru():
