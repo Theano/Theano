@@ -48,7 +48,8 @@ from .blas import (gpu_dot22, GpuGemm, GpuGer, GpuGemmBatch,
                    gpugemv_no_inplace, gpugemv_inplace,
                    GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights,
                    GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights,
-                   GpuPool, GpuDownsampleFactorMaxGradGrad)
+                   GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad,
+                   GpuDownsampleFactorMaxGradGrad)
 from .blocksparse import (GpuSparseBlockGemv, GpuSparseBlockOuter,
                           gpu_sparse_block_outer,
                           gpu_sparse_block_outer_inplace,
@@ -1609,6 +1610,56 @@ def local_gpu_pool(op, ctx_name, inputs, outputs):
         # reshape to 4D or 5D with 2 non-pooling dimensions
         inp_padded = pad_dims(inp, 2, nd)
         ret_padded = op(inp_padded, ws, stride, pad)
+        return unpad_dims(ret_padded, inp, 2, nd)
+
+
+@register_opt()
+@op_lifter([pool.MaxPoolGrad])
+@register_opt2([pool.MaxPoolGrad])
+def local_gpu_max_pool_grad(op, ctx_name, inputs, outputs):
+    assert op.__props__ == ('ignore_border', 'mode', 'ndim')
+    inp, out, out_grad, ws, stride, pad = inputs
+    nd = op.ndim
+    if nd not in (2, 3):
+        return
+    inp = gpu_contiguous(as_gpuarray_variable(inp, ctx_name))
+    out = gpu_contiguous(as_gpuarray_variable(out, ctx_name))
+    out_grad = gpu_contiguous(as_gpuarray_variable(out_grad, ctx_name))
+
+    op = GpuMaxPoolGrad(op.ignore_border, op.mode, op.ndim)
+    if inp.ndim == nd + 2:
+        return op(inp, out, out_grad, ws, stride, pad)
+    else:
+        # reshape to 4D or 5D with 2 non-pooling dimensions
+        inp_padded = pad_dims(inp, 2, nd)
+        out_padded = pad_dims(out, 2, nd)
+        out_grad_padded = pad_dims(out_grad, 2, nd)
+        ret_padded = op(inp_padded, out_padded, out_grad_padded,
+                        ws, stride, pad)
+        return unpad_dims(ret_padded, inp, 2, nd)
+
+
+@register_opt()
+@op_lifter([pool.AveragePoolGrad])
+@register_opt2([pool.AveragePoolGrad])
+def local_gpu_average_pool_grad(op, ctx_name, inputs, outputs):
+    assert op.__props__ == ('ignore_border', 'mode', 'ndim')
+    inp, out_grad, ws, stride, pad = inputs
+    nd = op.ndim
+    if nd not in (2, 3):
+        return
+    inp = gpu_contiguous(as_gpuarray_variable(inp, ctx_name))
+    out_grad = gpu_contiguous(as_gpuarray_variable(out_grad, ctx_name))
+
+    op = GpuAveragePoolGrad(op.ignore_border, op.mode, op.ndim)
+    if inp.ndim == nd + 2:
+        return op(inp, out_grad, ws, stride, pad)
+    else:
+        # reshape to 4D or 5D with 2 non-pooling dimensions
+        inp_padded = pad_dims(inp, 2, nd)
+        out_grad_padded = pad_dims(out_grad, 2, nd)
+        ret_padded = op(inp_padded, out_grad_padded,
+                        ws, stride, pad)
         return unpad_dims(ret_padded, inp, 2, nd)
 
 
