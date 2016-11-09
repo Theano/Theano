@@ -1312,7 +1312,7 @@ class MaxAndArgmax(Op):
             return [None, None]
         if len(self.axis) != 1:
             raise ValueError(('R_op supported for arg_max only for '
-                              'constant axis!'))
+                              'one axis!'))
         if self.axis[0] > 1:
             raise ValueError(('R_op supported for arg_max only when '
                               ' axis is 0 or 1'))
