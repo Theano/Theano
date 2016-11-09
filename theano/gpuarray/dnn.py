@@ -2432,7 +2432,7 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
         Batch-normalized inputs.
     mean : tensor
         Means of `inputs` across the normalization axes.
-    stdinv : tensor
+    invstd : tensor
         Inverse standard deviations of `inputs` across the normalization axes.
 
     Notes
@@ -2445,8 +2445,8 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
 
         axes = 0 if mode == 'per-activation' else (0, 2, 3)
         mean = inputs.mean(axes, keepdims=True)
-        stdinv = T.inv(T.sqrt(inputs.var(axes, keepdims=True) + epsilon))
-        out = (inputs - mean) * gamma * stdinv + beta
+        invstd = T.inv(T.sqrt(inputs.var(axes, keepdims=True) + epsilon))
+        out = (inputs - mean) * gamma * invstd + beta
 
     For 5d tensors, the axes are (0, 2, 3, 4).
     """

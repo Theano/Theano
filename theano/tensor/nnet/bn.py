@@ -114,7 +114,7 @@ def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
         Batch-normalized inputs.
     mean : tensor
         Means of `inputs` across the normalization axes.
-    stdinv : tensor
+    invstd : tensor
         Inverse standard deviations of `inputs` across the normalization axes.
 
     Notes
@@ -131,8 +131,8 @@ def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
         # for spatial normalization
         axes = (0,) + tuple(range(2, inputs.ndim))
         mean = inputs.mean(axes, keepdims=True)
-        stdinv = T.inv(T.sqrt(inputs.var(axes, keepdims=True) + epsilon))
-        out = (inputs - mean) * gamma * stdinv + beta
+        invstd = T.inv(T.sqrt(inputs.var(axes, keepdims=True) + epsilon))
+        out = (inputs - mean) * gamma * invstd + beta
     """
     ndim = inputs.ndim
     if gamma.ndim != ndim or beta.ndim != ndim:
@@ -315,12 +315,12 @@ class AbstractBatchNormTrain(Op):
             raise ValueError('axes should be less than ndim (<%d), but %s given' % (x.ndim, str(axes)))
 
         mean = x.mean(axes, keepdims=True)
-        stdinv = 1.0 / numpy.sqrt(x.var(axes, keepdims=True) + epsilon)
-        out = (x - mean) * (scale * stdinv) + bias
+        invstd = 1.0 / numpy.sqrt(x.var(axes, keepdims=True) + epsilon)
+        out = (x - mean) * (scale * invstd) + bias
 
         output_storage[0][0] = out
         output_storage[1][0] = mean
-        output_storage[2][0] = stdinv
+        output_storage[2][0] = invstd
 
 
 class AbstractBatchNormInference(Op):
@@ -440,10 +440,10 @@ def local_abstract_batch_norm_train(node):
         return None
 
     mean = x.mean(axes, keepdims=True)
-    stdinv = T.inv(T.sqrt(x.var(axes, keepdims=True) + epsilon))
-    out = (x - mean) * (scale * stdinv) + bias
+    invstd = T.inv(T.sqrt(x.var(axes, keepdims=True) + epsilon))
+    out = (x - mean) * (scale * invstd) + bias
     # TODO copy_stack_trace?
-    return [out, mean, stdinv]
+    return [out, mean, invstd]
 
 
 @local_optimizer([AbstractBatchNormTrainGrad])
