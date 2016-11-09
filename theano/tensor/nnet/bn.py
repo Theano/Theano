@@ -119,9 +119,8 @@ def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
 
     Notes
     -----
-    For 5d and lower-dimensional inputs, and only if per-activation or spatial
-    normalization is selected, this operation will use the cuDNN implementation.
-    (This requires cuDNN 5 or newer.)
+    If per-activation or spatial normalization is selected, this operation
+    will use the cuDNN implementation. (This requires cuDNN 5 or newer.)
 
     The returned values are equivalent to:
 
@@ -205,9 +204,8 @@ def batch_normalization_test(inputs, gamma, beta, mean, var,
 
     Notes
     -----
-    For 5d and lower-dimensional inputs, and only if per-activation or spatial
-    normalization is selected, this operation will use the cuDNN implementation.
-    (This requires cuDNN 5 or newer.)
+    If per-activation or spatial normalization is selected, this operation
+    will use the cuDNN implementation. (This requires cuDNN 5 or newer.)
 
     The returned value is equivalent to:
 

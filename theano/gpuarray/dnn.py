@@ -2451,9 +2451,6 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
     For 5d tensors, the axes are (0, 2, 3, 4).
     """
     ndim = inputs.ndim
-    if ndim > 5:
-        raise ValueError("dnn_batch_normalization_train currently supports "
-                         "up to 5-dimensional tensors only, got %d" % ndim)
     if gamma.ndim != ndim or beta.ndim != ndim:
         raise ValueError("gamma and beta must be of the same dimensionality "
                          "as inputs; got %d and %d instead of %d" %
@@ -2465,11 +2462,21 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
         inputs = theano.tensor.shape_padright(inputs, 4 - ndim)
         gamma = theano.tensor.shape_padright(gamma, 4 - ndim)
         beta = theano.tensor.shape_padright(beta, 4 - ndim)
+    elif ndim > 5:
+        inputs_shape = inputs.shape
+        params_shape = gamma.shape
+        inputs = theano.tensor.flatten(inputs, 5)
+        gamma = theano.tensor.flatten(gamma, 5)
+        beta = theano.tensor.flatten(beta, 5)
     batchnorm_op = GpuDnnBatchNorm(mode=mode)
     result = tuple(batchnorm_op(gpu_contiguous(inputs), gpu_contiguous(gamma),
                                 gpu_contiguous(beta), epsilon=epsilon))
     if ndim < 4:
         result = tuple(theano.tensor.flatten(r, ndim) for r in result)
+    elif ndim > 5:
+        result = (theano.tensor.reshape(result[0], inputs_shape),
+                  theano.tensor.reshape(result[1], params_shape),
+                  theano.tensor.reshape(result[2], params_shape))
     return result
 
 
@@ -2522,9 +2529,6 @@ def dnn_batch_normalization_test(inputs, gamma, beta, mean, var,
     For 5d tensors, the axes would be (0, 2, 3, 4).
     """
     ndim = inputs.ndim
-    if ndim > 5:
-        raise ValueError("dnn_batch_normalization_test currently supports "
-                         "up to 5-dimensional tensors only, got %d" % ndim)
     if gamma.ndim != ndim or beta.ndim != ndim:
         raise ValueError("gamma and beta must be of the same dimensionality "
                          "as inputs; got %d and %d instead of %d" %
@@ -2542,12 +2546,21 @@ def dnn_batch_normalization_test(inputs, gamma, beta, mean, var,
         beta = theano.tensor.shape_padright(beta, 4 - ndim)
         mean = theano.tensor.shape_padright(mean, 4 - ndim)
         var = theano.tensor.shape_padright(var, 4 - ndim)
+    elif ndim > 5:
+        inputs_shape = inputs.shape
+        inputs = theano.tensor.flatten(inputs, 5)
+        gamma = theano.tensor.flatten(gamma, 5)
+        beta = theano.tensor.flatten(beta, 5)
+        mean = theano.tensor.flatten(mean, 5)
+        var = theano.tensor.flatten(var, 5)
     batchnorm_op = GpuDnnBatchNormInference(mode=mode)
     result = batchnorm_op(gpu_contiguous(inputs), gpu_contiguous(gamma),
                           gpu_contiguous(beta), gpu_contiguous(mean),
                           gpu_contiguous(var), epsilon=epsilon)
     if ndim < 4:
         result = theano.tensor.flatten(result, ndim)
+    elif ndim > 5:
+        result = theano.tensor.reshape(result, inputs_shape)
     return result
 
 
@@ -2938,10 +2951,6 @@ def local_abstract_batch_norm_train_cudnn(node):
 
     x, scale, bias, epsilon = node.inputs
 
-    if x.ndim > 5:
-        # TODO do something better than this (reshape?)
-        return None
-
     # input on gpu?  TODO what about the output?
     x_on_gpu = (isinstance(x.type, GpuArrayType) or
                 (x.owner and isinstance(x.owner.op, HostFromGpu)))
@@ -2992,10 +3001,6 @@ def local_abstract_batch_norm_train_grad_cudnn(node):
 
     x, dy, scale, x_mean, x_invstd, epsilon = node.inputs
 
-    if x.ndim > 5:
-        # TODO do something better than this (reshape?)
-        return None
-
     # input on gpu?  TODO what about the output?
     x_on_gpu = (isinstance(x.type, GpuArrayType) or
                 (x.owner and isinstance(x.owner.op, HostFromGpu)))
@@ -3020,6 +3025,14 @@ def local_abstract_batch_norm_train_grad_cudnn(node):
         scale = theano.tensor.shape_padright(scale, 4 - ndim)
         x_mean = theano.tensor.shape_padright(x_mean, 4 - ndim)
         x_invstd = theano.tensor.shape_padright(x_invstd, 4 - ndim)
+    elif ndim > 5:
+        x_shape = x.shape
+        params_shape = scale.shape
+        x = theano.tensor.flatten(x, 5)
+        dy = theano.tensor.flatten(dy, 5)
+        scale = theano.tensor.flatten(scale, 5)
+        x_mean = theano.tensor.flatten(x_mean, 5)
+        x_invstd = theano.tensor.flatten(x_invstd, 5)
 
     try:
         eps = theano.tensor.get_scalar_constant_value(epsilon)
@@ -3045,6 +3058,10 @@ def local_abstract_batch_norm_train_grad_cudnn(node):
         g_wrt_inputs = theano.tensor.flatten(g_wrt_inputs, ndim)
         g_wrt_scale = theano.tensor.flatten(g_wrt_scale, ndim)
         g_wrt_bias = theano.tensor.flatten(g_wrt_bias, ndim)
+    elif ndim > 5:
+        g_wrt_inputs = theano.tensor.reshape(g_wrt_inputs, x_shape)
+        g_wrt_scale = theano.tensor.reshape(g_wrt_scale, params_shape)
+        g_wrt_bias = theano.tensor.reshape(g_wrt_bias, params_shape)
 
     # If the original output was on CPU, we have to transfer it
     if isinstance(node.outputs[0].type, tensor.TensorType):
@@ -3063,10 +3080,6 @@ def local_abstract_batch_norm_inference_cudnn(node):
         return None
 
     x, scale, bias, estimated_mean, estimated_variance, epsilon = node.inputs
-
-    if x.ndim > 5:
-        # TODO do something better than this (reshape?)
-        return None
 
     axes = tuple(node.op.axes)
     if axes == (0,):

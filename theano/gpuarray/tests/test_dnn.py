@@ -1380,8 +1380,10 @@ def test_dnn_batchnorm_train():
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
 
+    tensor6 = T.TensorType(theano.config.floatX, (False,) * 6)
+
     for mode in ('per-activation', 'spatial'):
-        for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
+        for vartype in (tensor6, T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
             x, scale, bias = (vartype(n) for n in ('x', 'scale', 'bias'))
             ndim = x.ndim
             eps = 5e-3  # some non-standard value to test if it's used
@@ -1428,7 +1430,7 @@ def test_dnn_batchnorm_train():
                                               bn.AbstractBatchNormTrainGrad)) for n
                             in f_abstract.maker.fgraph.toposort()])
             # run
-            for data_shape in ((5, 10, 30, 40, 10), (4, 3, 1, 1, 1), (1, 1, 5, 5, 5)):
+            for data_shape in ((5, 10, 30, 40, 10, 5), (4, 3, 1, 1, 1, 1), (1, 1, 5, 5, 5, 5)):
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes else s
                                     for d, s in enumerate(data_shape))
@@ -1447,10 +1449,10 @@ def test_dnn_batchnorm_train():
                 utt.assert_allclose(outputs_abstract[1], outputs_ref[1])  # mean
                 utt.assert_allclose(outputs_abstract[2], outputs_ref[2])  # invstd
                 # compare gradients
-                utt.assert_allclose(outputs_gpu[3], outputs_ref[3], atol=1e-4)  # dx
+                utt.assert_allclose(outputs_gpu[3], outputs_ref[3], atol=2e-4)  # dx
                 utt.assert_allclose(outputs_gpu[4], outputs_ref[4], rtol=2e-4, atol=1e-4)  # dscale
                 utt.assert_allclose(outputs_gpu[5], outputs_ref[5])  # dbias
-                utt.assert_allclose(outputs_abstract[3], outputs_ref[3], atol=1e-4)  # dx
+                utt.assert_allclose(outputs_abstract[3], outputs_ref[3], atol=2e-4)  # dx
                 utt.assert_allclose(outputs_abstract[4], outputs_ref[4], rtol=2e-4, atol=1e-4)  # dscale
                 utt.assert_allclose(outputs_abstract[5], outputs_ref[5])  # dbias
 
@@ -1460,8 +1462,10 @@ def test_batchnorm_inference():
         raise SkipTest(dnn.dnn_available.msg)
     utt.seed_rng()
 
+    tensor6 = T.TensorType(theano.config.floatX, (False,) * 6)
+
     for mode in ('per-activation', 'spatial'):
-        for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
+        for vartype in (tensor6, T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
             x, scale, bias, mean, var = (vartype(n)
                                          for n in ('x', 'scale', 'bias', 'mean', 'var'))
             ndim = x.ndim
@@ -1502,7 +1506,7 @@ def test_batchnorm_inference():
                                               bn.AbstractBatchNormTrainGrad)) for n
                             in f_abstract.maker.fgraph.toposort()])
             # run
-            for data_shape in ((10, 20, 30, 40, 10), (4, 3, 1, 1, 1), (1, 1, 5, 5, 5)):
+            for data_shape in ((10, 20, 30, 40, 10, 5), (4, 3, 1, 1, 1, 1), (1, 1, 5, 5, 5, 5)):
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes else s
                                     for d, s in enumerate(data_shape))
