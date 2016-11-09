@@ -5,7 +5,7 @@ from six.moves import builtins
 import sys
 import warnings
 
-import numpy
+import numpy as np
 from six import integer_types
 from six.moves import xrange
 import numbers
@@ -71,12 +71,12 @@ def check_equal_numpy(x, y):
     Checks the dtype and shape if x and y are numpy.ndarray instances.
 
     """
-    if isinstance(x, numpy.ndarray) and isinstance(y, numpy.ndarray):
+    if isinstance(x, np.ndarray) and isinstance(y, np.ndarray):
         return (x.dtype == y.dtype and x.shape == y.shape and
-                numpy.all(abs(x - y) < 1e-10))
-    elif (isinstance(x, numpy.random.RandomState) and
-          isinstance(y, numpy.random.RandomState)):
-        return python_all(numpy.all(a == b) for a, b in
+                np.all(abs(x - y) < 1e-10))
+    elif (isinstance(x, np.random.RandomState) and
+          isinstance(y, np.random.RandomState)):
+        return python_all(np.all(a == b) for a, b in
                           izip(x.__getstate__(), y.__getstate__()))
     else:
         return x == y
@@ -351,15 +351,15 @@ def _get_atol_rtol(a, b):
 
 
 def _allclose(a, b, rtol=None, atol=None):
-    a = numpy.asarray(a)
-    b = numpy.asarray(b)
+    a = np.asarray(a)
+    b = np.asarray(b)
     atol_, rtol_ = _get_atol_rtol(a, b)
     if rtol is not None:
         rtol_ = rtol
     if atol is not None:
         atol_ = atol
 
-    return numpy.allclose(a, b, atol=atol_, rtol=rtol_)
+    return np.allclose(a, b, atol=atol_, rtol=rtol_)
 
 
 class NotScalarConstantError(Exception):
@@ -390,10 +390,10 @@ def numpy_scalar(data):
     if (data.ndim > 0 and
         (len(data.shape) == 0 or
          builtins.max(data.shape) == 0)):
-        assert numpy.all(numpy.array([]) == data)
+        assert np.all(np.array([]) == data)
         raise EmptyConstantError()
     try:
-        numpy.complex(data)  # works for all numeric scalars
+        np.complex(data)  # works for all numeric scalars
         return data
     except Exception:
         raise NotScalarConstantError(
@@ -447,10 +447,10 @@ def get_scalar_constant_value(orig_v, elemwise=True,
             # to depend on passing it None)
             raise NotScalarConstantError()
 
-        if isinstance(v, (numpy.integer, integer_types, float)):
-            return numpy.asarray(v)
+        if isinstance(v, (np.integer, integer_types, float)):
+            return np.asarray(v)
 
-        if isinstance(v, numpy.ndarray):
+        if isinstance(v, np.ndarray):
             return numpy_scalar(v).copy()
 
         if isinstance(v, Constant):
@@ -473,11 +473,11 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                 i = v.owner.op.i
                 inp = v.owner.inputs[0]
                 if isinstance(inp, Constant):
-                    return numpy.asarray(inp.data.shape[i])
+                    return np.asarray(inp.data.shape[i])
                 # The shape of a broadcastable dimension is 1
                 if (hasattr(inp.type, 'broadcastable') and
                         inp.type.broadcastable[i]):
-                    return numpy.asarray(1)
+                    return np.asarray(1)
 
             # Don't act as the constant_folding optimization here as this
             # fct is used too early in the optimization phase.  This would
@@ -635,7 +635,7 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                         raise ValueError(msg)
 
                     if gp_broadcastable[idx]:
-                        return numpy.asarray(1)
+                        return np.asarray(1)
 
         raise NotScalarConstantError(v)
 
@@ -998,7 +998,7 @@ class TensorFromScalar(Op):
     def perform(self, node, inp, out_):
         s, = inp
         out, = out_
-        out[0] = numpy.asarray(s)
+        out[0] = np.asarray(s)
 
     def infer_shape(self, node, in_shapes):
         return [()]
@@ -1186,11 +1186,11 @@ class MaxAndArgmax(Op):
     def make_node(self, x, axis=None):
         x = _as_tensor_variable(x)
 
-        if isinstance(axis, (integer_types, numpy.integer)):
+        if isinstance(axis, (integer_types, np.integer)):
             axis = [int(axis)]
-        elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+        elif isinstance(axis, np.ndarray) and axis.ndim == 0:
             axis = [int(axis)]
-        elif isinstance(axis, (tuple, list, numpy.ndarray)):
+        elif isinstance(axis, (tuple, list, np.ndarray)):
             axis = [int(a) for a in axis]
             if axis == list(range(x.type.ndim)):
                 axis = None
@@ -1203,11 +1203,11 @@ class MaxAndArgmax(Op):
             else:
                 assert (axis.dtype.startswith("int") or
                         axis.dtype.startswith("uint"))
-                if isinstance(axis.data, (integer_types, numpy.integer)) or \
-                   (isinstance(axis.data, numpy.ndarray) and
+                if isinstance(axis.data, (integer_types, np.integer)) or \
+                   (isinstance(axis.data, np.ndarray) and
                         axis.data.ndim == 0):
                     axis = [int(axis.data)]
-                elif isinstance(axis.data, (list, numpy.ndarray)):
+                elif isinstance(axis.data, (list, np.ndarray)):
                     axis = [int(i) for i in axis.data]
 
         # Make axis entries non-negative, and sort them
@@ -1252,20 +1252,20 @@ class MaxAndArgmax(Op):
             axes = tuple(range(x.ndim))
         else:
             axes = tuple(int(ax) for ax in axes)
-        max[0] = theano._asarray(numpy.max(x, axes),
+        max[0] = theano._asarray(np.max(x, axes),
                                  dtype=node.outputs[0].dtype)
         # Numpy does not support multiple axes for argmax
         # Work around
-        keep_axes = numpy.array([i for i in range(x.ndim) if i not in axes],
+        keep_axes = np.array([i for i in range(x.ndim) if i not in axes],
                                 dtype='int64')
         # Not-reduced axes in front
-        transposed_x = numpy.transpose(x, numpy.concatenate((keep_axes, axes)))
+        transposed_x = np.transpose(x, np.concatenate((keep_axes, axes)))
         kept_shape = transposed_x.shape[:len(keep_axes)]
         reduced_shape = transposed_x.shape[len(keep_axes):]
-        new_shape = kept_shape + (numpy.prod(reduced_shape),)
+        new_shape = kept_shape + (np.prod(reduced_shape),)
         reshaped_x = transposed_x.reshape(new_shape)
 
-        max_idx[0] = theano._asarray(numpy.argmax(reshaped_x, axis=-1),
+        max_idx[0] = theano._asarray(np.argmax(reshaped_x, axis=-1),
                                      dtype='int64')
 
     def c_code(self, node, name, inp, out, sub):
@@ -1431,11 +1431,11 @@ class Argmax(Op):
     def make_node(self, x, axis=None):
         x = _as_tensor_variable(x)
 
-        if isinstance(axis, (integer_types, numpy.integer)):
+        if isinstance(axis, (integer_types, np.integer)):
             axis = [int(axis)]
-        elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+        elif isinstance(axis, np.ndarray) and axis.ndim == 0:
             axis = [int(axis)]
-        elif isinstance(axis, (tuple, list, numpy.ndarray)):
+        elif isinstance(axis, (tuple, list, np.ndarray)):
             axis = [int(a) for a in axis]
             if axis == list(range(x.type.ndim)):
                 axis = None
@@ -1448,11 +1448,11 @@ class Argmax(Op):
             else:
                 assert (axis.dtype.startswith("int") or
                         axis.dtype.startswith("uint"))
-                if isinstance(axis.data, (integer_types, numpy.integer)) or \
-                   (isinstance(axis.data, numpy.ndarray) and
+                if isinstance(axis.data, (integer_types, np.integer)) or \
+                   (isinstance(axis.data, np.ndarray) and
                         axis.data.ndim == 0):
                     axis = [int(axis.data)]
-                elif isinstance(axis.data, (list, numpy.ndarray)):
+                elif isinstance(axis.data, (list, np.ndarray)):
                     axis = [int(i) for i in axis.data]
 
         # Make axis entries non-negative, and sort them
@@ -1499,17 +1499,17 @@ class Argmax(Op):
 
         # Numpy does not support multiple axes for argmax
         # Work around
-        keep_axes = numpy.array([i for i in range(x.ndim) if i not in axes],
+        keep_axes = np.array([i for i in range(x.ndim) if i not in axes],
                                 dtype='int64')
         # Not-reduced axes in front
-        transposed_x = numpy.transpose(x, numpy.concatenate((keep_axes,
+        transposed_x = np.transpose(x, np.concatenate((keep_axes,
                                                              axes)))
         kept_shape = transposed_x.shape[:len(keep_axes)]
         reduced_shape = transposed_x.shape[len(keep_axes):]
-        new_shape = kept_shape + (numpy.prod(reduced_shape),)
+        new_shape = kept_shape + (np.prod(reduced_shape),)
         reshaped_x = transposed_x.reshape(new_shape)
 
-        max_idx[0] = theano._asarray(numpy.argmax(reshaped_x, axis=-1),
+        max_idx[0] = theano._asarray(np.argmax(reshaped_x, axis=-1),
                                      dtype='int64')
 
     def c_code(self, node, name, inp, out, sub):
@@ -1595,9 +1595,9 @@ def makeKeepDims(x, y, axis):
 
     if axis is None:
         axis = list(range(x.type.ndim))
-    elif isinstance(axis, (integer_types, numpy.integer)):
+    elif isinstance(axis, (integer_types, np.integer)):
         axis = [axis]
-    elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+    elif isinstance(axis, np.ndarray) and axis.ndim == 0:
         axis = [int(axis)]
     else:
         axis = [int(a) for a in axis]
@@ -2371,7 +2371,7 @@ def zeros(shape, dtype=None):
         shape = [shape]
     if dtype is None:
         dtype = config.floatX
-    return alloc(numpy.array(0, dtype=dtype), *shape)
+    return alloc(np.array(0, dtype=dtype), *shape)
 
 
 def ones(shape, dtype=None):
@@ -2382,7 +2382,7 @@ def ones(shape, dtype=None):
         shape = [shape]
     if dtype is None:
         dtype = config.floatX
-    return alloc(numpy.array(1, dtype=dtype), *shape)
+    return alloc(np.array(1, dtype=dtype), *shape)
 
 
 class Nonzero(gof.Op):
@@ -2426,11 +2426,11 @@ class Nonzero(gof.Op):
         a = inp[0]
         out, = out_
 
-        result_tuple = numpy.nonzero(a)
+        result_tuple = np.nonzero(a)
         if len(result_tuple[0]) > 0:
-            result = numpy.vstack(result_tuple)
+            result = np.vstack(result_tuple)
         else:
-            result = numpy.zeros((len(result_tuple), 0))
+            result = np.zeros((len(result_tuple), 0))
 
         out[0] = result.astype('int64')
 
@@ -2572,7 +2572,7 @@ class Tri(gof.Op):
     def perform(self, node, inp, out_):
         N, M, k = inp
         out, = out_
-        out[0] = numpy.tri(N, M, k, dtype=self.dtype)
+        out[0] = np.tri(N, M, k, dtype=self.dtype)
 
     def infer_shape(self, node, in_shapes):
         out_shape = [node.inputs[0], node.inputs[1]]
@@ -2683,7 +2683,7 @@ class Eye(gof.Op):
     def perform(self, node, inp, out_):
         n, m, k = inp
         out, = out_
-        out[0] = numpy.eye(n, m, k, dtype=self.dtype)
+        out[0] = np.eye(n, m, k, dtype=self.dtype)
 
     def infer_shape(self, node, in_shapes):
         out_shape = [node.inputs[0], node.inputs[1]]
@@ -2798,9 +2798,9 @@ class Alloc(gof.Op):
         sh = tuple([int(i) for i in inputs[1:]])
         if out[0] is None or out[0].shape != sh:
             if v.size == 1 and v.item() == 0:
-                out[0] = numpy.zeros(sh, dtype=v.dtype)
+                out[0] = np.zeros(sh, dtype=v.dtype)
             else:
-                out[0] = numpy.empty(sh, dtype=v.dtype)
+                out[0] = np.empty(sh, dtype=v.dtype)
                 out[0][...] = v  # broadcast v to fill us up
         else:
             # reuse the allocated memory.
@@ -3084,7 +3084,7 @@ class Mean(elemwise.CAReduce):
             axis = self.axis[0]
         # numpy.asarray is needed as otherwise we can end up with a
         # numpy scalar.
-        output[0] = numpy.asarray(numpy.mean(input, dtype='float64',
+        output[0] = np.asarray(np.mean(input, dtype='float64',
                                              axis=axis))
 
     def c_code(self, node, name, inames, onames, sub):
@@ -3177,9 +3177,9 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
 
     if axis is None:
         axis = list(range(input.ndim))
-    elif isinstance(axis, (integer_types, numpy.integer)):
+    elif isinstance(axis, (integer_types, np.integer)):
         axis = [axis]
-    elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+    elif isinstance(axis, np.ndarray) and axis.ndim == 0:
         axis = [int(axis)]
     else:
         axis = [int(a) for a in axis]
@@ -3236,9 +3236,9 @@ def var(input, axis=None, ddof=0, keepdims=False, corrected=False):
     input_ndim = input.type.ndim
     if axis is None:
         axis = list(range(input_ndim))
-    elif isinstance(axis, (integer_types, numpy.integer)):
+    elif isinstance(axis, (integer_types, np.integer)):
         axis = [axis]
-    elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+    elif isinstance(axis, np.ndarray) and axis.ndim == 0:
         axis = [int(axis)]
     else:
         axis = [int(a) for a in axis]
@@ -3562,7 +3562,7 @@ def batched_dot(a, b):
         return a * b.dimshuffle(*([0] + ["x"] * (a.ndim - 1)))
     elif a.ndim > 3 or b.ndim > 3:
         return batched_tensordot(
-            a, b, [[a.ndim - 1], [numpy.maximum(1, b.ndim - 2)]])
+            a, b, [[a.ndim - 1], [np.maximum(1, b.ndim - 2)]])
     else:
         # avoid circular import
         return theano.tensor.blas.BatchedDot()(a, b)
@@ -3681,9 +3681,9 @@ class Split(Op):
             raise ValueError('In Split.perform(), len(splits) != len_splits.',
                              (len(splits), self.len_splits))
 
-        if numpy.sum(splits) != len_along_axis:
+        if np.sum(splits) != len_along_axis:
             raise ValueError('The splits sum to %s, expected %s' %
-                             (numpy.sum(splits), len_along_axis))
+                             (np.sum(splits), len_along_axis))
         if python_any([nb < 0 for nb in splits]):
             raise ValueError('Split: you tried to make an ndarray with a '
                              'negative number of elements.')
@@ -3975,7 +3975,7 @@ class Join(Op):
             raise IndexError("Join axis %d out of bounds [0, %d)" %
                              (axis, ndim))
 
-        out[0] = theano._asarray(numpy.concatenate(tensors, axis=axis),
+        out[0] = theano._asarray(np.concatenate(tensors, axis=axis),
                                  dtype=node.outputs[0].type.dtype)
 
     def c_code_cache_version(self):
@@ -4330,9 +4330,9 @@ def stack(*tensors, **kwargs):
     # And DebugMode can't detect error in this code as it is not in an
     # optimization.
     # See ticket #660
-    if numpy.all(
+    if np.all(
         [  # in case there is direct int in tensors.
-            isinstance(t, (numpy.number, float, integer_types,
+            isinstance(t, (np.number, float, integer_types,
                            python_complex)) or
             (isinstance(t, Variable) and
              isinstance(t.type, TensorType) and
@@ -4415,7 +4415,7 @@ def get_vector_length(v):
             v.owner.inputs, v.owner.op.idx_list)[0].step)
 
         ndim = v.owner.inputs[0].owner.inputs[0].ndim
-        types = (numbers.Integral, numpy.integer)
+        types = (numbers.Integral, np.integer)
         if start is None:
             start = 0
         elif isinstance(start, types) and start < 0:
@@ -4536,7 +4536,7 @@ class Reshape(Op):
                              ' length %i'
                              ', should be %i' % (len(shp), self.ndim), shp)
         try:
-            out[0] = numpy.reshape(x, shp)
+            out[0] = np.reshape(x, shp)
         except Exception:
             raise ValueError('Cannot reshape input of shape %s to shape %s' %
                              (x.shape, shp))
@@ -4739,12 +4739,12 @@ class Flatten(Op):
             try:
                 out[0] = x.reshape(x.size)
             except AttributeError:
-                out[0] = x.reshape((numpy.prod(x.shape),))
+                out[0] = x.reshape((np.prod(x.shape),))
         elif outdim == len(x.shape):
             out[0] = x
         else:
             newshape = (x.shape[:outdim - 1] +
-                        (numpy.prod(x.shape[outdim - 1:]),))
+                        (np.prod(x.shape[outdim - 1:]),))
             out[0] = x.reshape(newshape)
 
     def infer_shape(self, node, in_shapes):
@@ -4925,7 +4925,7 @@ def flatten(x, outdim=1):
 #         gx, = out
 #         xsh = x.shape
 #         if len(reps) == 2 and reps[1] == 1 and len(x.shape) == 1:
-#             gx[0] = numpy.sum(g_out, axis=0)
+#             gx[0] = np.sum(g_out, axis=0)
 #         else:
 #             raise NotImplementedError('x.shape, reps combination not '
 #                                       'supported', (x.shape, reps))
@@ -4968,16 +4968,16 @@ class Tile(Op):
     def perform(self, node, inp, out_):
         x, reps = inp
         out, = out_
-        res = numpy.tile(x, reps)
+        res = np.tile(x, reps)
         if res.ndim != self.ndim:
             raise ValueError(
                 'Tile.perform produced incorrect number of dimensions')
 
-        if (numpy.asarray(reps) == 1).all():
+        if (np.asarray(reps) == 1).all():
             # In that case, some NumPy version return a view!  As this
             # op isn't declared as inplace, we need to check that and
             # copy the data.
-            if numpy.may_share_memory(res, x):
+            if np.may_share_memory(res, x):
                 res = res.copy()
         out[0] = res
 
@@ -5061,7 +5061,7 @@ def tile(x, reps, ndim=None):
     else:
         if ndim is not None and len(reps) > ndim:
             raise ValueError("len(reps) should be equal or less than ndim")
-        if not numpy.all([isinstance(r, integer_types) or
+        if not np.all([isinstance(r, integer_types) or
                           (isinstance(r, TensorVariable) and
                            r.dtype in theano.tensor.discrete_dtypes) for r in reps]):
             raise ValueError("elements of reps must be scalars of integer dtype")
@@ -5077,7 +5077,7 @@ def tile(x, reps, ndim=None):
     shape = [1] * (ndim - x.ndim) + [x.shape[i] for i in xrange(x.ndim)]
     alloc_shape = reps + shape
     y = alloc(x, *alloc_shape)
-    shuffle_ind = numpy.arange(ndim * 2).reshape(2, ndim)
+    shuffle_ind = np.arange(ndim * 2).reshape(2, ndim)
     shuffle_ind = shuffle_ind.transpose().flatten()
     y = y.dimshuffle(*shuffle_ind)
     new_shapes = [sh * reps[i] for i, sh in enumerate(shape)]
@@ -5115,7 +5115,7 @@ class ARange(Op):
         def is_constant_value(var, value):
             try:
                 v = get_scalar_constant_value(var)
-                return numpy.all(v == value)
+                return np.all(v == value)
             except NotScalarConstantError:
                 pass
             return False
@@ -5150,7 +5150,7 @@ class ARange(Op):
         start = start.item()
         stop = stop.item()
         step = step.item()
-        out[0] = numpy.arange(start, stop, step, dtype=self.dtype)
+        out[0] = np.arange(start, stop, step, dtype=self.dtype)
 
     def connection_pattern(self, node):
 
@@ -5196,10 +5196,10 @@ def arange(start, stop=None, step=1, dtype=None):
             # As an example, if `start`, `stop` and `step` are all int32,
             # `numpy.arange` returns an int64 array (on 64-bit platforms),
             # while the upcast above returns int32.
-            numpy_dtype = numpy.arange(
-                start=numpy.array(0, dtype=start.dtype),
-                stop=numpy.array(1, dtype=stop.dtype),
-                step=numpy.array(1, dtype=step.dtype)).dtype
+            numpy_dtype = np.arange(
+                start=np.array(0, dtype=start.dtype),
+                stop=np.array(1, dtype=stop.dtype),
+                step=np.array(1, dtype=step.dtype)).dtype
             if numpy_dtype != dtype:
                 if (config.cast_policy == 'numpy+floatX' and
                     config.floatX == 'float32' and
@@ -5387,8 +5387,8 @@ class PermuteRowElements(Op):
                 out[y] = x[:]
             else:
                 out[:] = x[y]
-            if (numpy.__version__ <= '1.6.1' and
-                    out.size != numpy.uint32(out.size)):
+            if (np.__version__ <= '1.6.1' and
+                    out.size != np.uint32(out.size)):
                 warnings.warn(
                     'Numpy versions 1.6.1 and below have a bug preventing '
                     'advanced indexing from correctly filling arrays that '
@@ -5436,7 +5436,7 @@ class PermuteRowElements(Op):
             out_s.append(outdim)
 
         if outs[0] is None or outs[0].shape != out_s:
-            outs[0] = numpy.empty(out_s, dtype=x.dtype)
+            outs[0] = np.empty(out_s, dtype=x.dtype)
 
         self._rec_perform(node, x, y, inverse, outs[0], curdim=0)
 
@@ -5579,7 +5579,7 @@ class Dot(Op):
         # the asarray is here because dot between two vectors
         # gives a numpy float object but we need to return a 0d
         # ndarray
-        z[0] = numpy.asarray(numpy.dot(x, y))
+        z[0] = np.asarray(np.dot(x, y))
 
     def grad(self, inp, grads):
 
@@ -5759,7 +5759,7 @@ def dot(a, b):
     if a.ndim == 0 or b.ndim == 0:
         return a * b
     elif a.ndim > 2 or b.ndim > 2:
-        return tensordot(a, b, [[a.ndim - 1], [numpy.maximum(0, b.ndim - 2)]])
+        return tensordot(a, b, [[a.ndim - 1], [np.maximum(0, b.ndim - 2)]])
     else:
         return _dot(a, b)
 
@@ -5795,14 +5795,14 @@ def _tensordot_as_dot(a, b, axes, dot, batched):
     """
     a, b = as_tensor_variable(a), as_tensor_variable(b)
 
-    if not numpy.isscalar(axes) and len(axes) != 2:
+    if not np.isscalar(axes) and len(axes) != 2:
         raise ValueError('Axes should be an integer or a '
                          'list/tuple of len 2 (%s was provided)'
                          % str(axes))
 
     # if 'axes' is a number of axes to multiply and sum over (trailing axes
     # of a, leading axes of b), we can just reshape and use dot.
-    elif numpy.isscalar(axes):
+    elif np.isscalar(axes):
         axes = int(axes)
 
         for operand_name, operand in (("a", a), ("b", b)):
@@ -5866,12 +5866,12 @@ def _tensordot_as_dot(a, b, axes, dot, batched):
                     'the dimensions of %s (%s.ndim=%i, len(axes[0])=%i).' %
                     (i, operand_name, operand_name, operand.ndim,
                      len(axes[i])))
-            if len(axes[i]) > 0 and numpy.max(axes[i]) >= operand.ndim:
+            if len(axes[i]) > 0 and np.max(axes[i]) >= operand.ndim:
                 raise ValueError(
                     'axes[%i] contains dimensions greater than or equal '
                     'to %s.ndim (%s.ndim=%i, max(axes[0])=%i).' %
                     (i, operand_name, operand_name, operand.ndim,
-                     numpy.max(numpy.array(axes[i]))))
+                     np.max(np.array(axes[i]))))
             if batched and 0 in axes[i]:
                 raise ValueError(
                     'axes to sum over must not contain the batch axis '
@@ -6026,8 +6026,8 @@ def all(x, axis=None, keepdims=False):
 
 
 # Some NumPy version like 1.9.2 return a view for numpy.diagonal
-x = numpy.zeros((4, 4))
-numpy_diagonal_return_view = numpy.may_share_memory(numpy.diagonal(x), x)
+x = np.zeros((4, 4))
+numpy_diagonal_return_view = np.may_share_memory(np.diagonal(x), x)
 del x
 
 
@@ -6107,7 +6107,7 @@ class Diag(Op):
 
     def perform(self, node, inputs, outputs):
         (z,) = outputs
-        z[0] = numpy.diag(inputs[0])
+        z[0] = np.diag(inputs[0])
 
     def grad(self, inputs, gout):
         (gz,) = gout
@@ -6321,7 +6321,7 @@ class Choose(Op):
             choice = as_tensor_variable(choices)
             choice_ndim = choice.ndim - 1
             choice_bcast = choice.broadcastable[1:]
-        out_ndim = numpy.max([a.ndim, choice_ndim])
+        out_ndim = np.max([a.ndim, choice_ndim])
 
         # Make explicit all added broadcastable dimensions.
         a = shape_padleft(a, out_ndim - a.ndim)
@@ -6352,7 +6352,7 @@ class Choose(Op):
         a = inputs[0]
         choice = inputs[1]
         # TODO reuse out?
-        z[0] = numpy.choose(a, choice, mode=self.mode)
+        z[0] = np.choose(a, choice, mode=self.mode)
 
 
 class AllocEmpty(gof.Op):
@@ -6391,7 +6391,7 @@ class AllocEmpty(gof.Op):
         out, = out_
         sh = tuple([int(i) for i in inputs])
         if out[0] is None or out[0].shape != sh:
-            out[0] = numpy.empty(sh, dtype=self.dtype)
+            out[0] = np.empty(sh, dtype=self.dtype)
 
     def c_code(self, node, name, inputs, out_, sub):
         dtype = "NPY_" + self.dtype.upper()
