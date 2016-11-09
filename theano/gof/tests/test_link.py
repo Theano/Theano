@@ -153,7 +153,7 @@ class TestWrapLinker(unittest.TestCase):
         i[0].data = 1
         i[1].data = 2
         fn()
-        assert nodes == [div, add, mul]
+        assert nodes == [div, add, mul] or nodes == [add, div, mul]
         assert o[0].data is None
 
     def test_1(self):
@@ -171,7 +171,7 @@ class TestWrapLinker(unittest.TestCase):
         i[0].data = 1
         i[1].data = 2
         fn()
-        assert nodes == [div, add, mul]
+        assert nodes == [div, add, mul] or nodes == [add, div, mul]
         assert o[0].data == 1.5
 
 

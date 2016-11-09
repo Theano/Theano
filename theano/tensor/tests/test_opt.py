@@ -1548,14 +1548,19 @@ def test_log1p():
     y = fmatrix()
     f = function([x, y], T.log(tensor.fill(y, 1) + (x)), mode=m)
     # the first three ops are Shape_i, Shape_i, and Dimshuffle
-    assert [node.op for node in f.maker.fgraph.toposort()][3:] == [
-        T.log1p, tensor.alloc]
+    topo = f.maker.fgraph.toposort()
+    assert topo[-1].op == tensor.alloc
+    assert T.log1p in [node.op for node in topo]
+
     f = function([x, y], T.log(0 + (x) + tensor.fill(y, 1.0)), mode=m)
-    assert [node.op for node in f.maker.fgraph.toposort()][3:] == [
-        T.log1p, tensor.alloc]
+    topo = f.maker.fgraph.toposort()
+    assert topo[-1].op == tensor.alloc
+    assert T.log1p in [node.op for node in topo]
+
     f = function([x, y], T.log(2 + (x) - tensor.fill(y, 1.0)), mode=m)
-    assert ([node.op for node in f.maker.fgraph.toposort()][3:] ==
-            [T.log1p, tensor.alloc])
+    topo = f.maker.fgraph.toposort()
+    assert topo[-1].op == tensor.alloc
+    assert T.log1p in [node.op for node in topo]
 
     f([1e-7, 10], [[0, 0], [0, 0]])  # debugmode will verify values
 
