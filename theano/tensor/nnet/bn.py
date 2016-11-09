@@ -43,7 +43,7 @@ def batch_normalization(inputs, gamma, beta, mean, std,
     """
     This function will build the symbolic graph for applying batch normalization
     to a set of activations.
-    Also works on GPUs
+    Also works on GPUs, but is not optimized using cuDNN.
 
     .. versionadded:: 0.7.1
 
@@ -96,12 +96,12 @@ def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
         normalizes per activation and is equal to ``axes=(0,)``.
         ``'spatial'`` shares normalization factors across spatial dimensions
         (i.e., all dimensions past the second), which for 4D inputs would be
-        equal to ``axes=(0,2,3)``.
+        equal to ``axes=(0, 2, 3)``.
     gamma : tensor
         Learnable scale factors. Must match the dimensionality of `inputs`,
         but have sizes of `1` for all axes normalized over (i.e., in the first
-        dimension for ``mode='per-activation'`, and additionally in all
-        dimensions past the second for ``mode='spatial'``).
+        dimension for ``axes='per-activation'``, and additionally in all
+        dimensions past the second for ``axes='spatial'``).
     beta : tensor
         Learnable biases. Must match the tensor layout of `gamma`.
     epsilon : float
@@ -119,21 +119,21 @@ def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
 
     Notes
     -----
-    Requires cuDNN 5 and Theano 0.9dev2 or more recent.
+    For 5d and lower-dimensional inputs, and only if per-activation or spatial
+    normalization is selected, this operation will use the cuDNN implementation.
+    (This requires cuDNN 5 or newer.)
 
-    For 4d tensors, returned values are equivalent to:
+    The returned values are equivalent to:
 
     .. code-block:: python
 
-        # for 'per-activation'
+        # for per-activation normalization
         axes = (0,)
-        # for 'spatial'
-        axes = (0, 2, 3)
+        # for spatial normalization
+        axes = (0,) + tuple(range(2, inputs.ndim))
         mean = inputs.mean(axes, keepdims=True)
         stdinv = T.inv(T.sqrt(inputs.var(axes, keepdims=True) + epsilon))
         out = (inputs - mean) * gamma * stdinv + beta
-
-    For 5d tensors, the axes are (0, 2, 3, 4).
     """
     ndim = inputs.ndim
     if gamma.ndim != ndim or beta.ndim != ndim:
@@ -180,12 +180,12 @@ def batch_normalization_test(inputs, gamma, beta, mean, var,
         normalizes per activation and is equal to ``axes=(0,)``.
         ``'spatial'`` shares normalization factors across spatial dimensions
         (i.e., all dimensions past the second), which for 4D inputs would be
-        equal to ``axes=(0,2,3)``.
+        equal to ``axes=(0, 2, 3)``.
     gamma : tensor
         Scale factors. Must match the dimensionality of `inputs`, but have
         sizes of `1` for all axes normalized over (i.e., in the first dimension
-        for ``mode='per-activation'`, and additionally in all dimensions past
-        the second for ``mode='spatial'``).
+        for ``axes='per-activation'``, and additionally in all dimensions past
+        the second for ``axes='spatial'``).
     beta : tensor
         Biases. Must match the tensor layout of `gamma`.
     mean : tensor
@@ -205,22 +205,21 @@ def batch_normalization_test(inputs, gamma, beta, mean, var,
 
     Notes
     -----
-    This operation will use the cuDNN implementation if this is available.
-    (Requires cuDNN 5 or newer.)
+    For 5d and lower-dimensional inputs, and only if per-activation or spatial
+    normalization is selected, this operation will use the cuDNN implementation.
+    (This requires cuDNN 5 or newer.)
 
-    For 4d tensors, the returned value is equivalent to:
+    The returned value is equivalent to:
 
     .. code-block:: python
 
-        # for 'per-activation'
+        # for per-activation normalization
         axes = (0,)
-        # for 'spatial'
-        axes = (0, 2, 3)
+        # for spatial normalization
+        axes = (0,) + tuple(range(2, inputs.ndim))
         gamma, beta, mean, var = (T.addbroadcast(t, *axes)
                                   for t in (gamma, beta, mean, var))
         out = (inputs - mean) * gamma / T.sqrt(var + epsilon) + beta
-
-    For 5d tensors, the axes would be (0, 2, 3, 4).
     """
     ndim = inputs.ndim
     if gamma.ndim != ndim or beta.ndim != ndim:
