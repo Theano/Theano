@@ -148,9 +148,13 @@ def test_batch_normalization_train():
 
     for axes in ('per-activation', 'spatial', (1, 2, 3, 4)):
         for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
-            x, scale, bias = (vartype(n) for n in ('x', 'scale', 'bias'))
+            x, scale, bias, running_mean, running_var = (vartype(n)
+                                                         for n in ('x', 'scale', 'bias',
+                                                                   'running_mean',
+                                                                   'running_var'))
             ndim = x.ndim
             eps = 5e-3  # some non-standard value to test if it's used
+            running_average_factor = 0.3
 
             # remove non-existing axes
             if isinstance(axes, tuple):
@@ -159,8 +163,10 @@ def test_batch_normalization_train():
                 continue
 
             # forward pass
-            out, x_mean, x_invstd = bn.batch_normalization_train(
-                x, scale, bias, axes, eps)
+            out, x_mean, x_invstd, out_running_mean, out_running_var = \
+                bn.batch_normalization_train(
+                    x, scale, bias, axes, eps,
+                    running_average_factor, running_mean, running_var)
             # reference forward pass
             if axes == 'per-activation':
                 axes2 = (0,)
@@ -169,18 +175,25 @@ def test_batch_normalization_train():
             else:
                 axes2 = axes
             x_mean2 = x.mean(axis=axes2, keepdims=True)
-            x_invstd2 = T.inv(T.sqrt(x.var(axis=axes2, keepdims=True) + eps))
+            x_var2 = x.var(axis=axes2, keepdims=True)
+            x_invstd2 = T.inv(T.sqrt(x_var2 + eps))
             scale2 = T.addbroadcast(scale, *axes2)
             bias2 = T.addbroadcast(bias, *axes2)
             out2 = (x - x_mean2) * (scale2 * x_invstd2) + bias2
+            m = T.cast(T.prod(x.shape) / T.prod(scale.shape), theano.config.floatX)
+            out_running_mean2 = running_mean * (1 - running_average_factor) + \
+                x_mean2 * running_average_factor
+            out_running_var2 = running_var * (1 - running_average_factor) + \
+                (m / (m - 1)) * x_var2 * running_average_factor
             # backward pass
             dy = vartype('dy')
             grads = T.grad(None, wrt=[x, scale, bias], known_grads={out: dy})
             # reference backward pass
             grads2 = T.grad(None, wrt=[x, scale, bias], known_grads={out2: dy})
             # compile
-            f = theano.function([x, scale, bias, dy],
-                                [out, x_mean, x_invstd, out2, x_mean2, x_invstd2] +
+            f = theano.function([x, scale, bias, running_mean, running_var, dy],
+                                [out, x_mean, x_invstd, out_running_mean, out_running_var,
+                                 out2, x_mean2, x_invstd2, out_running_mean2, out_running_var2] +
                                 grads + grads2, mode='FAST_RUN')
             # check if the abstract Ops have been replaced
             assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
@@ -196,15 +209,47 @@ def test_batch_normalization_train():
                 Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
                 Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
                 Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                outputs = f(X, Scale, Bias, Dy)
+                Running_mean = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+                Running_var = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+                outputs = f(X, Scale, Bias, Running_mean, Running_var, Dy)
                 # compare outputs
-                utt.assert_allclose(outputs[0], outputs[0 + 3])  # out
-                utt.assert_allclose(outputs[1], outputs[1 + 3])  # mean
-                utt.assert_allclose(outputs[2], outputs[2 + 3])  # invstd
+                utt.assert_allclose(outputs[0], outputs[0 + 5])  # out
+                utt.assert_allclose(outputs[1], outputs[1 + 5])  # mean
+                utt.assert_allclose(outputs[2], outputs[2 + 5])  # invstd
+                utt.assert_allclose(outputs[3], outputs[3 + 5])  # running_mean
+                utt.assert_allclose(numpy.nan_to_num(outputs[4]),
+                                    numpy.nan_to_num(outputs[4 + 5]))  # running_var
                 # compare gradients
-                utt.assert_allclose(outputs[6], outputs[6 + 3], atol=1e-4)  # dx
-                utt.assert_allclose(outputs[7], outputs[7 + 3], rtol=2e-4, atol=1e-4)  # dscale
-                utt.assert_allclose(outputs[8], outputs[8 + 3])  # dbias
+                utt.assert_allclose(outputs[10], outputs[10 + 3], atol=1e-4)  # dx
+                utt.assert_allclose(outputs[11], outputs[11 + 3], rtol=2e-4, atol=1e-4)  # dscale
+                utt.assert_allclose(outputs[12], outputs[12 + 3])  # dbias
+
+
+def test_batch_normalization_train_without_running_averages():
+    # compile and run batch_normalization_train without running averages
+    utt.seed_rng()
+
+    x, scale, bias, dy = T.tensor4('x'), T.tensor4('scale'), T.tensor4('bias'), T.tensor4('dy')
+    data_shape = (5, 10, 30, 25)
+    param_shape = (1, 10, 30, 25)
+
+    # forward pass
+    out, x_mean, x_invstd = bn.batch_normalization_train(x, scale, bias, 'per-activation')
+    # backward pass
+    grads = T.grad(None, wrt=[x, scale, bias], known_grads={out: dy})
+    # compile
+    f = theano.function([x, scale, bias, dy], [out, x_mean, x_invstd] + grads, mode='FAST_RUN')
+    # check if the abstract Ops have been replaced
+    assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
+                                      bn.AbstractBatchNormInference,
+                                      bn.AbstractBatchNormTrainGrad))
+                    for n in f.maker.fgraph.toposort()])
+    # run
+    X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
+    Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
+    Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    f(X, Scale, Bias, Dy)
 
 
 def test_batch_normalization_test():

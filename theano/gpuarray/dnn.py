@@ -2949,7 +2949,9 @@ def local_abstract_batch_norm_train_cudnn(node):
     if not isinstance(node.op, bn.AbstractBatchNormTrain):
         return None
 
-    x, scale, bias, epsilon = node.inputs
+    x, scale, bias, epsilon, running_average_factor = node.inputs[:5]
+    running_mean = node.inputs[5] if len(node.inputs) > 5 else None
+    running_var = node.inputs[6] if len(node.inputs) > 6 else None
 
     # input on gpu?  TODO what about the output?
     x_on_gpu = (isinstance(x.type, GpuArrayType) or
@@ -2983,15 +2985,24 @@ def local_abstract_batch_norm_train_cudnn(node):
 
     out, mean, invstd = dnn_batch_normalization_train(x, scale, bias, mode, eps)
 
+    results = [out, mean, invstd]
+    if running_mean is not None:
+        running_mean = running_mean * (1 - running_average_factor) + \
+            mean * running_average_factor
+        results.append(running_mean)
+    if running_var is not None:
+        var = x.var(axis=axes, keepdims=True)
+        m = tensor.cast(tensor.prod(x.shape) / tensor.prod(scale.shape), theano.config.floatX)
+        running_var = running_var * (1 - running_average_factor) + \
+            (m / (m - 1)) * var * running_average_factor
+        results.append(running_var)
+
     # If the original output was on CPU, we have to transfer it
-    if isinstance(node.outputs[0].type, tensor.TensorType):
-        out = tensor.as_tensor_variable(out)
-    if isinstance(node.outputs[1].type, tensor.TensorType):
-        mean = tensor.as_tensor_variable(mean)
-    if isinstance(node.outputs[2].type, tensor.TensorType):
-        invstd = tensor.as_tensor_variable(invstd)
+    for i in range(len(node.outputs)):
+        if isinstance(node.outputs[i].type, tensor.TensorType):
+            results[i] = tensor.as_tensor_variable(results[i])
     # TODO copy_stack_trace?
-    return [out, mean, invstd]
+    return results
 
 
 @local_optimizer([bn.AbstractBatchNormTrainGrad])

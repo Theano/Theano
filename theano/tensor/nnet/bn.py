@@ -84,7 +84,8 @@ def batch_normalization(inputs, gamma, beta, mean, std,
 
 
 def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
-                              epsilon=1e-4):
+                              epsilon=1e-4, running_average_factor=0.1,
+                              running_mean=None, running_var=None):
     """
     Performs batch normalization of the given inputs, using the mean and
     variance of the inputs.
@@ -107,6 +108,23 @@ def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
     epsilon : float
         Epsilon value used in the batch normalization formula. Minimum allowed
         value is 1e-5 (imposed by cuDNN).
+    running_average_factor : float
+        Factor for updating the values or `running_mean` and `running_var`.
+        If the factor is close to one, the running averages will update quickly,
+        if the factor is close to zero it will update slowly.
+    running_mean : tensor or None
+        Previous value of the running mean. If this is given, the new value
+        ``running_mean * (1 - r_a_factor) + batch mean * r_a_factor``
+        will be returned as one of the outputs of this function.
+        `running_mean` and `running_var` should either both be given or
+        both be None.
+    running_var : tensor or None
+        Previous value of the running variance. If this is given, the new value
+        ``running_var * (1 - r_a_factor) + (m / (m - 1)) * batch var * r_a_factor``
+        will be returned as one of the outputs of this function,
+        where `m` is the product of lengths of the averaged-over dimensions.
+        `running_mean` and `running_var` should either both be given or
+        both be None.
 
     Returns
     -------
@@ -116,6 +134,12 @@ def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
         Means of `inputs` across the normalization axes.
     invstd : tensor
         Inverse standard deviations of `inputs` across the normalization axes.
+    new_running_mean : tensor
+        New value of the running mean (only if both `running_mean` and
+        `running_var` were given).
+    new_running_var : tensor
+        New value of the running variance (only if both `running_var` and
+        `running_mean` were given).
 
     Notes
     -----
@@ -131,14 +155,32 @@ def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
         # for spatial normalization
         axes = (0,) + tuple(range(2, inputs.ndim))
         mean = inputs.mean(axes, keepdims=True)
-        invstd = T.inv(T.sqrt(inputs.var(axes, keepdims=True) + epsilon))
+        var = inputs.var(axes, keepdims=True)
+        invstd = T.inv(T.sqrt(var + epsilon))
         out = (inputs - mean) * gamma * invstd + beta
+
+        m = T.cast(T.prod(inputs.shape) / T.prod(mean.shape), 'float32')
+        running_mean = running_mean * (1 - running_average_factor) + \\
+                       mean * running_average_factor
+        running_var = running_var * (1 - running_average_factor) + \\
+                      (m / (m - 1)) * var * running_average_factor
     """
     ndim = inputs.ndim
     if gamma.ndim != ndim or beta.ndim != ndim:
         raise ValueError("gamma and beta must be of the same dimensionality "
                          "as inputs; got %d and %d instead of %d" %
                          (gamma.ndim, beta.ndim, ndim))
+    if (running_mean is None) != (running_var is None):
+        raise ValueError("running_mean and running_var must either both be "
+                         "given or both be None")
+    if running_mean is not None and running_mean.ndim != ndim:
+        raise ValueError("running_mean must be of the same dimensionality "
+                         "as inputs; got %d instead of %d" %
+                         (running_mean.ndim, ndim))
+    if running_var is not None and running_var.ndim != ndim:
+        raise ValueError("running_var must be of the same dimensionality "
+                         "as inputs; got %d instead of %d" %
+                         (running_var.ndim, ndim))
     if epsilon < 1e-5:
         raise ValueError("epsilon must be at least 1e-5, got %f" % epsilon)
 
@@ -163,7 +205,23 @@ def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
     beta = T.addbroadcast(beta, *axes)
 
     batchnorm_op = AbstractBatchNormTrain(axes=axes)
-    return tuple(batchnorm_op(inputs, gamma, beta, epsilon=epsilon))
+
+    if running_mean is not None and running_var is not None:
+        running_mean = as_tensor_variable(running_mean)
+        running_var = as_tensor_variable(running_var)
+        running_mean_bc = T.addbroadcast(running_mean, *axes)
+        running_var_bc = T.addbroadcast(running_var, *axes)
+        out, mean, invstd, new_running_mean, new_running_var = batchnorm_op(
+            inputs, gamma, beta, epsilon=epsilon,
+            running_average_factor=running_average_factor,
+            running_mean=running_mean_bc, running_var=running_var_bc)
+        if new_running_mean.broadcastable != running_mean.broadcastable:
+            new_running_mean = T.patternbroadcast(new_running_mean, running_mean.broadcastable)
+        if new_running_var.broadcastable != running_var.broadcastable:
+            new_running_var = T.patternbroadcast(new_running_var, running_var.broadcastable)
+        return out, mean, invstd, new_running_mean, new_running_var
+    else:
+        return tuple(batchnorm_op(inputs, gamma, beta, epsilon=epsilon))
 
 
 def batch_normalization_test(inputs, gamma, beta, mean, var,
@@ -277,6 +335,23 @@ class AbstractBatchNormTrain(Op):
     epsilon
         Epsilon value used in the batch normalization formula. Minimum allowed
         value is 1e-5 (imposed by cuDNN).
+    running_average_factor : float
+        Factor for updating the values or `running_mean` and `running_var`.
+        If the factor is close to one, the running averages will update quickly,
+        if the factor is close to zero it will update slowly.
+    running_mean : tensor or None
+        Previous value of the running mean. If this is given, the new value
+        ``running_mean * (1 - running_average_factor) + batch mean * running_average_factor``
+        will be returned as one of the outputs of this function.
+        `running_mean` and `running_var` should either both be given or
+        both be None.
+    running_var : tensor or None
+        Previous value of the running variance. If this is given, the new value
+        ``running_var * (1 - running_average_factor) + (m / (m - 1)) * batch var * running_average_factor``
+        will be returned as one of the outputs of this function,
+        where `m` is the product of lengths of the averaged-over dimensions.
+        `running_mean` and `running_var` should either both be given or
+        both be None.
     """
 
     __props__ = ('axes',)
@@ -288,39 +363,84 @@ class AbstractBatchNormTrain(Op):
         self.axes = axes
 
     def infer_shape(self, node, shape):
-        return [shape[0], shape[1], shape[1]]
+        return [shape[0]] + [shape[1]] * (len(node.outputs) - 1)
 
-    def make_node(self, x, scale, bias, epsilon=1e-4):
+    def make_node(self, x, scale, bias, epsilon=1e-4,
+                  running_average_factor=0.1,
+                  running_mean=None, running_var=None):
         assert x.ndim == scale.ndim == bias.ndim
+        assert ((running_mean is None and running_var is None) or
+                (running_mean is not None and running_var is not None))
+        assert (running_mean is None or running_mean.ndim == x.ndim)
+        assert (running_var is None or running_var.ndim == x.ndim)
         if not isinstance(epsilon, theano.Variable):
             epsilon = as_tensor_variable(epsilon)
-        return Apply(self, [x, scale, bias, epsilon], [x.type(), scale.type(), scale.type()])
+        if not isinstance(running_average_factor, theano.Variable):
+            running_average_factor = as_tensor_variable(running_average_factor)
+        inputs = [x, scale, bias, epsilon, running_average_factor]
+        output_types = [x.type(), scale.type(), scale.type()]
+        if running_mean is not None and running_var is not None:
+            inputs.append(running_mean)
+            inputs.append(running_var)
+            output_types.append(scale.type())
+            output_types.append(scale.type())
+        return Apply(self, inputs, output_types)
 
     def grad(self, inputs, grads):
-        x, scale, bias, epsilon = inputs
+        x, scale, bias, epsilon, running_average_factor = inputs[:5]
         dy = grads[0]
-        _, x_mean, x_invstd = self(x, scale, bias, epsilon)
+        _, x_mean, x_invstd = self(*inputs)[:3]
+        disconnected_outputs = [
+            theano.gradient.DisconnectedType()(),  # epsilon
+            theano.gradient.DisconnectedType()()]  # running_average_factor
+        # Optional running_mean and running_var.
+        for i in range(5, len(inputs)):
+            disconnected_outputs.append(theano.gradient.DisconnectedType()())
         return AbstractBatchNormTrainGrad(self.axes)(
-            x, dy, scale, x_mean, x_invstd, epsilon) + [theano.gradient.DisconnectedType()()]
+            x, dy, scale, x_mean, x_invstd, epsilon) + disconnected_outputs
 
     def connection_pattern(self, node):
-        # Specificy that epsilon is not connected to outputs.
-        return [[True, True, True], [True, True, True], [True, True, True],
-                [False, False, False]]
+        # Specificy that epsilon and running_average_factor are not connected to outputs.
+        patterns = [[True, True, True],     # x
+                    [True, True, True],     # scale
+                    [True, True, True],     # bias
+                    [False, False, False],  # epsilon
+                    [False, False, False]]  # running_average_factor
+        # Optional running_mean and running_var are only
+        # connected to their new values.
+        for i in range(5, len(node.inputs)):
+            patterns[0].append(True)
+            for pattern in patterns[1:]:
+                pattern.append(False)
+            patterns.append([False] * (3 + i - 5) + [True])
+        return patterns
 
     def perform(self, node, inputs, output_storage):
-        x, scale, bias, epsilon = inputs
+        x, scale, bias, epsilon, running_average_factor = inputs[:5]
         axes = self.axes
         if min(axes) < 0 or max(axes) >= x.ndim:
             raise ValueError('axes should be less than ndim (<%d), but %s given' % (x.ndim, str(axes)))
 
         mean = x.mean(axes, keepdims=True)
-        invstd = 1.0 / numpy.sqrt(x.var(axes, keepdims=True) + epsilon)
+        var = x.var(axes, keepdims=True)
+        invstd = 1.0 / numpy.sqrt(var + epsilon)
         out = (x - mean) * (scale * invstd) + bias
 
         output_storage[0][0] = out
         output_storage[1][0] = mean
         output_storage[2][0] = invstd
+
+        if len(inputs) > 5:
+            running_mean = inputs[5]
+            running_mean = running_mean * (1.0 - running_average_factor) + \
+                mean * running_average_factor
+            output_storage[3][0] = running_mean
+        if len(inputs) > 6:
+            m = float(numpy.prod(x.shape) / numpy.prod(scale.shape))
+            running_var = inputs[6]
+            running_var = running_var * (1.0 - running_average_factor) + \
+                (m / (m - 1)) * var * running_average_factor
+            output_storage[4][0] = running_var
 
 
 class AbstractBatchNormInference(Op):
@@ -429,21 +549,42 @@ def local_abstract_batch_norm_train(node):
     if not isinstance(node.op, AbstractBatchNormTrain):
         return None
 
-    x, scale, bias, epsilon = node.inputs
+    x, scale, bias, epsilon, running_average_factor = node.inputs[:5]
     axes = node.op.axes
     if min(axes) < 0 or max(axes) > x.ndim:
         return None
     if not isinstance(x.type, TensorType) or \
        not isinstance(scale.type, TensorType) or \
        not isinstance(bias.type, TensorType) or \
-       not isinstance(epsilon.type, TensorType):
+       not isinstance(epsilon.type, TensorType) or \
+       not isinstance(running_average_factor.type, TensorType):
+        return None
+    # optional running_mean and running_var
+    if len(node.inputs) > 5 and not isinstance(node.inputs[5].type, TensorType):
+        return None
+    if len(node.inputs) > 6 and not isinstance(node.inputs[6].type, TensorType):
         return None
 
     mean = x.mean(axes, keepdims=True)
-    invstd = T.inv(T.sqrt(x.var(axes, keepdims=True) + epsilon))
+    var = x.var(axes, keepdims=True)
+    invstd = T.inv(T.sqrt(var + epsilon))
     out = (x - mean) * (scale * invstd) + bias
+    results = [out, mean, invstd]
+
+    if len(node.inputs) > 5:
+        running_mean = node.inputs[5]
+        running_mean = running_mean * (1.0 - running_average_factor) + \
+            mean * running_average_factor
+        results.append(running_mean)
+    if len(node.inputs) > 6:
+        m = T.cast(T.prod(x.shape) / T.prod(scale.shape), theano.config.floatX)
+        running_var = node.inputs[6]
+        running_var = running_var * (1.0 - running_average_factor) + \
+            (m / (m - 1)) * var * running_average_factor
+        results.append(running_var)
+
     # TODO copy_stack_trace?
-    return [out, mean, invstd]
+    return results
 
 
 @local_optimizer([AbstractBatchNormTrainGrad])
