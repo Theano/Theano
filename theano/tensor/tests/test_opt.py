@@ -6765,6 +6765,28 @@ def test_local_log_sum_exp3():
     assert numpy.allclose(optimised_ret, 100.)
 
 
+
+def test_gemm_bug_with_complex():
+    # Regression test for bug in GemmOptimizer.
+    # Note that this test is currently failing because the bug has not been
+    # fixed yet.
+    x = tensor.matrix()
+    y = tensor.matrix()
+    try:
+        on_opt_error = config.on_opt_error
+        try:
+            config.on_opt_error = 'raise'
+            function([x, y], x + y * 1j)
+        finally:
+            config.on_opt_error = on_opt_error
+    except TypeError, e:
+        if 'Casting from complex to real is ambiguous' in str(e):
+            raise KnownFailureTest('Known bug in GemmOptimizer that still '
+                                   'needs to be fixed')
+        else:
+            raise
+
+
 if __name__ == '__main__':
     t = TestMakeVector('setUp')
     t.setUp()
