@@ -85,8 +85,16 @@ def init_dev(dev, name=None):
     # This will map the context name to the real context object.
     reg_context(name, context)
     if config.print_active_device:
+        try:
+            pcibusid = context.pcibusid
+        except pygpu.gpuarray.UnsupportedException:
+            pcibusid = '(unsupported for device %s)' % dev
+        except:
+            warnings.warn('Unable to get PCI Bus ID. Please consider updating libgpuarray and pygpu.')
+            pcibusid = 'unknown'
+
         print("Mapped name %s to device %s: %s; PCI Bus ID: %s" %
-              (name, dev, context.devname, context.pcibusid),
+              (name, dev, context.devname, pcibusid),
               file=sys.stderr)
     pygpu_activated = True
     ctx_props = _get_props(name)
