@@ -1,5 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import logging
+from collections import OrderedDict
 
 from nose.plugins.skip import SkipTest
 from nose_parameterized import parameterized
@@ -1529,6 +1530,51 @@ def test_dnn_batchnorm_train_without_running_averages():
     Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
     f_gpu(X, Scale, Bias, Dy)
     f_abstract(X, Scale, Bias, Dy)
+
+
+def test_dnn_batchnorm_train_inplace():
+    # test inplace_running_mean and inplace_running_var
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    if dnn.version(raises=False) < 5000:
+        raise SkipTest("batch normalization requires cudnn v5+")
+    utt.seed_rng()
+
+    x, scale, bias = T.tensor4('x'), T.tensor4('scale'), T.tensor4('bias')
+    data_shape = (5, 10, 30, 25)
+    param_shape = (1, 10, 30, 25)
+    running_mean = gpuarray_shared_constructor(
+        numpy.random.randn(*param_shape).astype(theano.config.floatX),
+        broadcastable=(True, False, False, False))
+    running_var = gpuarray_shared_constructor(
+        numpy.random.randn(*param_shape).astype(theano.config.floatX),
+        broadcastable=(True, False, False, False))
+
+    # forward pass
+    out, x_mean, x_invstd, new_running_mean, new_running_var = \
+        dnn.dnn_batch_normalization_train(x, scale, bias, 'per-activation',
+                                          epsilon=5e-3, running_average_factor=0.3,
+                                          running_mean=running_mean, running_var=running_var)
+    # update running averages
+    updates = OrderedDict()
+    updates[running_mean] = new_running_mean
+    updates[running_var] = new_running_var
+    # compile
+    f = theano.function([x, scale, bias],
+                        [out, x_mean, x_invstd],
+                        updates=updates,
+                        mode=mode_with_gpu)
+    # check for the inplace settings
+    nodes = [n for n in f.maker.fgraph.toposort()
+             if isinstance(n.op, dnn.GpuDnnBatchNorm)]
+    assert len(nodes) == 1
+    assert nodes[0].op.inplace_running_mean
+    assert nodes[0].op.inplace_running_var
+    # run
+    X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
+    Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    f(X, Scale, Bias)
 
 
 def test_batchnorm_inference():

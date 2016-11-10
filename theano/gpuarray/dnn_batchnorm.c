@@ -36,16 +36,28 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
     return 1;
 
 #ifdef RUNNING_AVERAGES
+#ifdef INPLACE_RUNNING_MEAN
+  Py_XDECREF(out_running_mean);
+  PyGpuArrayObject *running_mean = in_running_mean;
+  Py_INCREF(running_mean);
+#else
   PyGpuArrayObject *running_mean = *out_running_mean;
-  PyGpuArrayObject *running_var = *out_running_var;
   running_mean = theano_try_copy(running_mean, in_running_mean);
   if (running_mean == NULL) {
     return 1;
   }
+#endif
+#ifdef INPLACE_RUNNING_VAR
+  Py_XDECREF(out_running_var);
+  PyGpuArrayObject *running_var = in_running_var;
+  Py_INCREF(running_var);
+#else
+  PyGpuArrayObject *running_var = *out_running_var;
   running_var = theano_try_copy(running_var, in_running_var);
   if (running_var == NULL) {
     return 1;
   }
+#endif
 #endif
 
   {
