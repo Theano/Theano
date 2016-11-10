@@ -27,8 +27,7 @@ KERNEL void max_pool2d_kernel(const ga_size nthreads,
 
     const ga_size offset = (n*channels + c) * height * width;
     const DTYPE_i0* x_slice = x + offset;
-    // TODO: use DTYPE_o0_MAX for max value
-    DTYPE_o0 maxval = -__int_as_float(0x7f800000);  // ieee754 float max
+    DTYPE_o0 maxval = x_slice[hstart*width + wstart];
 
     for (ga_size h=hstart; h < hend; ++h) {
       for (ga_size w=wstart; w < wend; ++w) {
@@ -75,8 +74,7 @@ KERNEL void max_pool3d_kernel(const ga_size nthreads,
 
     const ga_size offset = (n*channels + c) * depth * height * width;
     const DTYPE_i0* x_slice = x + offset;
-    // TODO: use DTYPE_o0_MAX for max value
-    DTYPE_o0 maxval = -__int_as_float(0x7f800000);  // ieee754 float max
+    DTYPE_o0 maxval = x_slice[(dstart*height + hstart)*width + wstart];
 
     for (ga_size d=dstart; d < dend; ++d) {
       for (ga_size h=hstart; h < hend; ++h) {
