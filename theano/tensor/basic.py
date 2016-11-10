@@ -5429,14 +5429,6 @@ class PermuteRowElements(Op):
                 out[y] = x[:]
             else:
                 out[:] = x[y]
-            if (numpy.__version__ <= '1.6.1' and
-                    out.size != numpy.uint32(out.size)):
-                warnings.warn(
-                    'Numpy versions 1.6.1 and below have a bug preventing '
-                    'advanced indexing from correctly filling arrays that '
-                    'are too big (>= 2^32 elements). It is possible that '
-                    'out (%s), with shape %s, is not correctly filled.'
-                    % (out, out.shape))
         else:
             xs0 = x.shape[0]
             ys0 = y.shape[0]
