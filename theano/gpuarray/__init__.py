@@ -93,9 +93,10 @@ def init_dev(dev, name=None):
             warnings.warn('Unable to get PCI Bus ID. Please consider updating libgpuarray and pygpu.')
             pcibusid = 'unknown'
 
-        print("Mapped name %s to device %s: %s; PCI Bus ID: %s" %
-              (name, dev, context.devname, pcibusid),
+        print("Mapped name %s to device %s: %s" %
+              (name, dev, context.devname),
               file=sys.stderr)
+        print("PCI Bus ID:", pcibusid, file=sys.stderr)
     pygpu_activated = True
     ctx_props = _get_props(name)
     ctx_props['dev'] = dev
