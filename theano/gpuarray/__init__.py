@@ -89,7 +89,7 @@ def init_dev(dev, name=None):
             pcibusid = context.pcibusid
         except pygpu.gpuarray.UnsupportedException:
             pcibusid = '(unsupported for device %s)' % dev
-        except:
+        except Exception:
             warnings.warn('Unable to get PCI Bus ID. Please consider updating libgpuarray and pygpu.')
             pcibusid = 'unknown'
 
