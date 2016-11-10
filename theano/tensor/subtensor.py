@@ -2295,15 +2295,6 @@ class AdvancedIncSubtensor(Op):
                 'You may need to clear the cache (theano-cache clear) '
                 'afterwards.')
 
-        if (numpy.__version__ <= '1.6.1' and
-                out[0].size != numpy.uint32(out[0].size)):
-            warnings.warn(
-                'Numpy versions 1.6.1 and below have a bug preventing '
-                'advanced indexing from correctly filling arrays that '
-                'are too big (>= 2^32 elements). It is possible that '
-                'out[0] (%s), with shape %s, is not correctly filled.'
-                % (out[0], out[0].shape))
-
     def infer_shape(self, node, ishapes):
         return [ishapes[0]]
 
