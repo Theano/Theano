@@ -85,8 +85,8 @@ def init_dev(dev, name=None):
     # This will map the context name to the real context object.
     reg_context(name, context)
     if config.print_active_device:
-        print("Mapped name %s to device %s: %s" %
-              (name, dev, context.devname),
+        print("Mapped name %s to device %s: %s; PCI Bus ID: %s" %
+              (name, dev, context.devname, context.pcibusid),
               file=sys.stderr)
     pygpu_activated = True
     ctx_props = _get_props(name)
