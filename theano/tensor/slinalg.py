@@ -263,10 +263,31 @@ class Solve(Op):
             A_bar = tensor.triu(A_bar)
         return [A_bar, b_bar]
 
-solve = Solve()  # general solve
+solve = Solve()
+"""
+Solves the equation ``a x = b`` for x, where ``a`` is a matrix and
+``b`` can be either a vector or a matrix.
+
+Note
+
+Parameters
+----------
+a : (M, M) symbolix matrix
+    A square matrix
+b : (M,) or (M, N) symbolic vector or matrix
+    Right hand side matrix in ``a x = b``
+
+
+Returns
+-------
+x : (M, ) or (M, N) symbolic vector or matrix
+    x will have the same shape as b
+"""
 # lower and upper triangular solves
 solve_lower_triangular = Solve(A_structure='lower_triangular', lower=True)
+"""Optimized implementation of :func:`theano.tensor.slinalg.solve` when A is lower triangular."""
 solve_upper_triangular = Solve(A_structure='upper_triangular', lower=False)
+"""Optimized implementation of :func:`theano.tensor.slinalg.solve` when A is upper triangular."""
 
 # TODO: Optimizations to replace multiplication by matrix inverse
 #      with solve() Op (still unwritten)
