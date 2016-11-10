@@ -209,11 +209,6 @@ KERNEL void ave_pool3d_kernel(const ga_size nthreads,
 
 #section support_code
 
-// CUDA: number of blocks for threads.
-inline int GET_BLOCKS(const int nkernels, const int nthreads) {
-  return (nkernels + nthreads - 1) / nthreads;
-}
-
 // output shape for a given input padded shape, window shape and stride
 #define OUTPUT_DIMS(in_dim, ws, st)                       \
   (IGNORE_BORDER ? (in_dim - ws)/st + 1 :                 \
@@ -262,27 +257,16 @@ int APPLY_SPECIFIC(pool)(PyGpuArrayObject *x,
     }
   {
     // scope for running kernel
-    size_t max_threads_dim;
     int err;
-
-    // get the max threads per blocks
-    err = gpucontext_property(ctx->ctx, GA_CTX_PROP_MAXLSIZE0, &max_threads_dim);
-    if (err != GA_NO_ERROR){
-      PyErr_SetString(PyExc_RuntimeError, "Could not fetch max_threads_dims");
-      return 1;
-    }
-    size_t threads_per_block = max_threads_dim;
 
     if (ndims == 2) {
       size_t num_kernels = z_dims[0] * z_dims[1] * z_dims[2] * z_dims[3];
-      size_t n_blocks = GET_BLOCKS(num_kernels, threads_per_block);
       if (MAX_POOL) {
-        err = max_pool2d_kernel_call(1, &n_blocks, &threads_per_block, 0,
-                                     num_kernels,
-                                     z_dims[0], z_dims[1], z_dims[2], z_dims[3],
-                                     x_dims[2], x_dims[3],
-                                     x->ga.data, w[0], w[1], s[0], s[1], p[0], p[1],
-                                     (*z)->ga.data);
+        err = max_pool2d_kernel_scall(1, &num_kernels, 0, num_kernels,
+                                      z_dims[0], z_dims[1], z_dims[2], z_dims[3],
+                                      x_dims[2], x_dims[3],
+                                      x->ga.data, w[0], w[1], s[0], s[1], p[0], p[1],
+                                      (*z)->ga.data);
         if (err != GA_NO_ERROR) {
           PyErr_Format(PyExc_RuntimeError,
                        "GpuPool: max_pool2d_kernel %s.",
@@ -290,12 +274,11 @@ int APPLY_SPECIFIC(pool)(PyGpuArrayObject *x,
           return 1;
         }
       } else {
-        err = ave_pool2d_kernel_call(1, &n_blocks, &threads_per_block, 0,
-                                     num_kernels,
-                                     z_dims[0], z_dims[1], z_dims[2], z_dims[3],
-                                     x_dims[2], x_dims[3],
-                                     x->ga.data, w[0], w[1], s[0], s[1], p[0], p[1],
-                                     INC_PAD, SUM_MODE, (*z)->ga.data);
+        err = ave_pool2d_kernel_scall(1, &num_kernels, 0, num_kernels,
+                                      z_dims[0], z_dims[1], z_dims[2], z_dims[3],
+                                      x_dims[2], x_dims[3],
+                                      x->ga.data, w[0], w[1], s[0], s[1], p[0], p[1],
+                                      INC_PAD, SUM_MODE, (*z)->ga.data);
         if (err != GA_NO_ERROR) {
           PyErr_Format(PyExc_RuntimeError,
                        "GpuPool: ave_pool2d_kernel %s.",
@@ -306,14 +289,12 @@ int APPLY_SPECIFIC(pool)(PyGpuArrayObject *x,
     }
     else if (ndims == 3) {
       size_t num_kernels = z_dims[0] * z_dims[1] * z_dims[2] * z_dims[3] * z_dims[4];
-      size_t n_blocks = GET_BLOCKS(num_kernels, threads_per_block);
       if (MAX_POOL) {
-        err = max_pool3d_kernel_call(1, &n_blocks, &threads_per_block, 0,
-                                     num_kernels,
-                                     z_dims[0], z_dims[1], z_dims[2], z_dims[3], z_dims[4],
-                                     x_dims[2], x_dims[3], x_dims[4],
-                                     x->ga.data, w[0], w[1], w[2], s[0], s[1], s[2],
-                                     p[0], p[1], p[2], (*z)->ga.data);
+        err = max_pool3d_kernel_scall(1, &num_kernels, 0, num_kernels,
+                                      z_dims[0], z_dims[1], z_dims[2], z_dims[3], z_dims[4],
+                                      x_dims[2], x_dims[3], x_dims[4],
+                                      x->ga.data, w[0], w[1], w[2], s[0], s[1], s[2],
+                                      p[0], p[1], p[2], (*z)->ga.data);
         if (err != GA_NO_ERROR) {
           PyErr_Format(PyExc_RuntimeError,
                        "GpuPool: max_pool3d_kernel %s.",
@@ -321,13 +302,12 @@ int APPLY_SPECIFIC(pool)(PyGpuArrayObject *x,
           return 1;
         }
       } else {
-        err = ave_pool3d_kernel_call(1, &n_blocks, &threads_per_block, 0,
-                                     num_kernels,
-                                     z_dims[0], z_dims[1], z_dims[2], z_dims[3], z_dims[4],
-                                     x_dims[2], x_dims[3], x_dims[4],
-                                     x->ga.data, w[0], w[1], w[2], s[0], s[1], s[2],
-                                     p[0], p[1], p[2],
-                                     INC_PAD, SUM_MODE, (*z)->ga.data);
+        err = ave_pool3d_kernel_scall(1, &num_kernels, 0, num_kernels,
+                                      z_dims[0], z_dims[1], z_dims[2], z_dims[3], z_dims[4],
+                                      x_dims[2], x_dims[3], x_dims[4],
+                                      x->ga.data, w[0], w[1], w[2], s[0], s[1], s[2],
+                                      p[0], p[1], p[2],
+                                      INC_PAD, SUM_MODE, (*z)->ga.data);
         if (err != GA_NO_ERROR) {
           PyErr_Format(PyExc_RuntimeError,
                        "GpuPool: ave_pool3d_kernel %s.",

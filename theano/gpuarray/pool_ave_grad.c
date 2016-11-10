@@ -101,15 +101,7 @@ KERNEL void ave_pool3d_grad_kernel(const ga_size nthreads,
   }
 }
 
-#section support_code
-
-// CUDA: number of blocks for threads.
-inline int GET_BLOCKS(const int nkernels, const int nthreads) {
-  return (nkernels + nthreads - 1) / nthreads;
-}
-
 #section support_code_struct
-
 
 int APPLY_SPECIFIC(ave_pool_grad)(PyGpuArrayObject *x,
                                   PyGpuArrayObject *gz,
@@ -151,29 +143,18 @@ int APPLY_SPECIFIC(ave_pool_grad)(PyGpuArrayObject *x,
       p[i] = *((npy_intp*)PyArray_GETPTR1(pad, i));
     }
 
-    size_t max_threads_dim;
     int err;
     const size_t* z_dims = PyGpuArray_DIMS(gz);
     const size_t* x_dims = PyGpuArray_DIMS(x);
 
-    // Get the max threads per blocks
-    err = gpucontext_property(ctx->ctx, GA_CTX_PROP_MAXLSIZE0, &max_threads_dim);
-    if (err != GA_NO_ERROR){
-      PyErr_SetString(PyExc_RuntimeError, "Could not fetch max_threads_dims");
-      return 1;
-    }
-    size_t threads_per_block = max_threads_dim;
-
     if (ndims == 2) {
       size_t num_kernels = x_dims[0] * x_dims[1] * x_dims[2] * x_dims[3];
-      size_t n_blocks = GET_BLOCKS(num_kernels, threads_per_block);
-      err = ave_pool2d_grad_kernel_call(1, &n_blocks, &threads_per_block, 0,
-                                        num_kernels,
-                                        x_dims[0], x_dims[1], x_dims[2], x_dims[3],
-                                        z_dims[2], z_dims[3],
-                                        x->ga.data, gz->ga.data,
-                                        w[0], w[1], s[0], s[1], p[0], p[1],
-                                        INC_PAD, SUM_MODE, (*gx)->ga.data);
+      err = ave_pool2d_grad_kernel_scall(1, &num_kernels, 0, num_kernels,
+                                         x_dims[0], x_dims[1], x_dims[2], x_dims[3],
+                                         z_dims[2], z_dims[3],
+                                         x->ga.data, gz->ga.data,
+                                         w[0], w[1], s[0], s[1], p[0], p[1],
+                                         INC_PAD, SUM_MODE, (*gx)->ga.data);
       if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
                      "GpuAveragePoolGrad: ave_pool2d_grad_kernel %s.",
@@ -182,15 +163,13 @@ int APPLY_SPECIFIC(ave_pool_grad)(PyGpuArrayObject *x,
       }
     } else if (ndims == 3) {
       size_t num_kernels = x_dims[0] * x_dims[1] * x_dims[2] * x_dims[3] * x_dims[4];
-      size_t n_blocks = GET_BLOCKS(num_kernels, threads_per_block);
-      err = ave_pool3d_grad_kernel_call(1, &n_blocks, &threads_per_block, 0,
-                                        num_kernels,
-                                        x_dims[0], x_dims[1], x_dims[2], x_dims[3], x_dims[4],
-                                        z_dims[2], z_dims[3], z_dims[4],
-                                        x->ga.data, gz->ga.data,
-                                        w[0], w[1], w[2], s[0], s[1], s[2],
-                                        p[0], p[1], p[2], INC_PAD, SUM_MODE,
-                                        (*gx)->ga.data);
+      err = ave_pool3d_grad_kernel_scall(1, &num_kernels, 0, num_kernels,
+                                         x_dims[0], x_dims[1], x_dims[2], x_dims[3], x_dims[4],
+                                         z_dims[2], z_dims[3], z_dims[4],
+                                         x->ga.data, gz->ga.data,
+                                         w[0], w[1], w[2], s[0], s[1], s[2],
+                                         p[0], p[1], p[2], INC_PAD, SUM_MODE,
+                                         (*gx)->ga.data);
       if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
                      "GpuAveragePoolGrad: ave_pool3d_grad_kernel %s.",
