@@ -1,11 +1,16 @@
 from __future__ import absolute_import, print_function, division
 import os.path
 
-import pygpu
 from theano import Apply
 from theano.tensor.basic import as_tensor_variable
 
 from .basic_ops import CGpuKernelBase, infer_context_name, as_gpuarray_variable
+
+try:
+    import pygpu
+except ImportError as e:
+    # To make sure theano is importable
+    pass
 
 
 class GpuPool(CGpuKernelBase):
