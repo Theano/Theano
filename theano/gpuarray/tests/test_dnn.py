@@ -1393,8 +1393,11 @@ def test_dnn_batchnorm_train():
             running_average_factor = 0.3
 
             # forward pass, direct interface
-            out_gpu, x_mean_gpu, x_invstd_gpu = dnn.dnn_batch_normalization_train(
-                x, scale, bias, mode, eps)
+            out_gpu, x_mean_gpu, x_invstd_gpu, \
+                out_running_mean_gpu, out_running_var_gpu = \
+                dnn.dnn_batch_normalization_train(x, scale, bias, mode, eps,
+                                                  running_average_factor,
+                                                  running_mean, running_var)
             # forward pass, abstract interface
             out_abstract, x_mean_abstract, x_invstd_abstract, \
                 out_running_mean_abstract, out_running_var_abstract = \
@@ -1424,8 +1427,9 @@ def test_dnn_batchnorm_train():
             # reference backward pass
             grads_ref = T.grad(None, wrt=[x, scale, bias], known_grads={out_ref: dy})
             # compile
-            f_gpu = theano.function([x, scale, bias, dy],
-                                    [out_gpu, x_mean_gpu, x_invstd_gpu] + grads_gpu,
+            f_gpu = theano.function([x, scale, bias, running_mean, running_var, dy],
+                                    [out_gpu, x_mean_gpu, x_invstd_gpu,
+                                     out_running_mean_gpu, out_running_var_gpu] + grads_gpu,
                                     mode=mode_with_gpu)
             f_abstract = theano.function([x, scale, bias, running_mean, running_var, dy],
                                          [out_abstract, x_mean_abstract, x_invstd_abstract,
@@ -1455,13 +1459,16 @@ def test_dnn_batchnorm_train():
                 Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
                 Running_mean = numpy.random.randn(*param_shape).astype(theano.config.floatX)
                 Running_var = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                outputs_gpu = f_gpu(X, Scale, Bias, Dy)
+                outputs_gpu = f_gpu(X, Scale, Bias, Running_mean, Running_var, Dy)
                 outputs_abstract = f_abstract(X, Scale, Bias, Running_mean, Running_var, Dy)
                 outputs_ref = f_ref(X, Scale, Bias, Running_mean, Running_var, Dy)
                 # compare outputs
                 utt.assert_allclose(outputs_gpu[0], outputs_ref[0])  # out
                 utt.assert_allclose(outputs_gpu[1], outputs_ref[1])  # mean
                 utt.assert_allclose(outputs_gpu[2], outputs_ref[2])  # invstd
+                utt.assert_allclose(outputs_gpu[3], outputs_ref[3])  # running_mean
+                utt.assert_allclose(numpy.nan_to_num(outputs_gpu[4]),
+                                    numpy.nan_to_num(outputs_ref[4]))  # running_var
                 utt.assert_allclose(outputs_abstract[0], outputs_ref[0])  # out
                 utt.assert_allclose(outputs_abstract[1], outputs_ref[1])  # mean
                 utt.assert_allclose(outputs_abstract[2], outputs_ref[2])  # invstd
@@ -1469,9 +1476,9 @@ def test_dnn_batchnorm_train():
                 utt.assert_allclose(numpy.nan_to_num(outputs_abstract[4]),
                                     numpy.nan_to_num(outputs_ref[4]))  # running_var
                 # compare gradients
-                utt.assert_allclose(outputs_gpu[3], outputs_ref[5], atol=2e-4)  # dx
-                utt.assert_allclose(outputs_gpu[4], outputs_ref[6], rtol=4e-4, atol=1e-4)  # dscale
-                utt.assert_allclose(outputs_gpu[5], outputs_ref[7])  # dbias
+                utt.assert_allclose(outputs_gpu[5], outputs_ref[5], atol=2e-4)  # dx
+                utt.assert_allclose(outputs_gpu[6], outputs_ref[6], rtol=4e-4, atol=1e-4)  # dscale
+                utt.assert_allclose(outputs_gpu[7], outputs_ref[7])  # dbias
                 utt.assert_allclose(outputs_abstract[5], outputs_ref[5], atol=2e-4)  # dx
                 utt.assert_allclose(outputs_abstract[6], outputs_ref[6], rtol=4e-4, atol=1e-4)  # dscale
                 utt.assert_allclose(outputs_abstract[7], outputs_ref[7])  # dbias
@@ -1490,11 +1497,22 @@ def test_dnn_batchnorm_train_without_running_averages():
     param_shape = (1, 10, 30, 25)
 
     # forward pass
-    out, x_mean, x_invstd = bn.batch_normalization_train(x, scale, bias, 'per-activation')
+    out_gpu, x_mean_gpu, x_invstd_gpu = \
+        dnn.dnn_batch_normalization_train(x, scale, bias, 'per-activation')
+    out_abstract, x_mean_abstract, x_invstd_abstract = \
+        bn.batch_normalization_train(x, scale, bias, 'per-activation')
     # backward pass
-    grads = T.grad(None, wrt=[x, scale, bias], known_grads={out: dy})
+    grads_gpu = T.grad(None, wrt=[x, scale, bias], known_grads={out_gpu: dy})
+    grads_abstract = T.grad(None, wrt=[x, scale, bias], known_grads={out_gpu: dy})
     # compile
-    f_abstract = theano.function([x, scale, bias, dy], [out, x_mean, x_invstd] + grads, mode=mode_with_gpu)
+    f_gpu = theano.function([x, scale, bias, dy],
+                            [out_gpu, x_mean_gpu, x_invstd_gpu] +
+                            grads_gpu,
+                            mode=mode_with_gpu)
+    f_abstract = theano.function([x, scale, bias, dy],
+                                 [out_abstract, x_mean_abstract, x_invstd_abstract] +
+                                 grads_abstract,
+                                 mode=mode_with_gpu)
     # check if the abstract Ops have been replaced
     assert any([isinstance(n.op, dnn.GpuDnnBatchNorm)
                 for n in f_abstract.maker.fgraph.toposort()])
@@ -1509,6 +1527,7 @@ def test_dnn_batchnorm_train_without_running_averages():
     Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
     Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
     Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    f_gpu(X, Scale, Bias, Dy)
     f_abstract(X, Scale, Bias, Dy)
 
 

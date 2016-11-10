@@ -2,8 +2,19 @@
 
 int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
                      PyGpuArrayObject *bias, npy_float64 epsilon,
-                     PyGpuArrayObject **outp, PyGpuArrayObject **x_mean,
-                     PyGpuArrayObject **x_invstd, cudnnHandle_t _handle) {
+                     npy_float64 running_average_factor,
+#ifdef RUNNING_AVERAGES
+                     PyGpuArrayObject *in_running_mean,
+                     PyGpuArrayObject *in_running_var,
+#endif
+                     PyGpuArrayObject **outp,
+                     PyGpuArrayObject **x_mean,
+                     PyGpuArrayObject **x_invstd,
+#ifdef RUNNING_AVERAGES
+                     PyGpuArrayObject **out_running_mean,
+                     PyGpuArrayObject **out_running_var,
+#endif
+                     cudnnHandle_t _handle) {
   PyGpuContextObject *c = inp->context;
 
   if (c_set_tensorNd(inp, bn_input) != 0)
@@ -23,6 +34,19 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
 
   if (c_set_tensorNd(*outp, bn_output) != 0)
     return 1;
+
+#ifdef RUNNING_AVERAGES
+  PyGpuArrayObject *running_mean = *out_running_mean;
+  PyGpuArrayObject *running_var = *out_running_var;
+  running_mean = theano_try_copy(running_mean, in_running_mean);
+  if (running_mean == NULL) {
+    return 1;
+  }
+  running_var = theano_try_copy(running_var, in_running_var);
+  if (running_var == NULL) {
+    return 1;
+  }
+#endif
 
   {
     const float falpha = 1.;
@@ -50,9 +74,15 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
       bn_params,
       PyGpuArray_DEV_DATA(scale),
       PyGpuArray_DEV_DATA(bias),
+#ifdef RUNNING_AVERAGES
+      running_average_factor,
+      PyGpuArray_DEV_DATA(running_mean),
+      PyGpuArray_DEV_DATA(running_var),
+#else
       0,
       NULL,  // running mean, deliberately unused
       NULL,  // running var, deliberately unused
+#endif
       epsilon,
       PyGpuArray_DEV_DATA(*x_mean),
       PyGpuArray_DEV_DATA(*x_invstd)
@@ -62,6 +92,10 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
                    cudnnGetErrorString(err));
       return 1;
     }
+#ifdef RUNNING_AVERAGES
+    *out_running_mean = running_mean;
+    *out_running_var = running_var;
+#endif
   }
   return 0;
 }
