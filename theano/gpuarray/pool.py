@@ -3,9 +3,9 @@ import os.path
 
 import pygpu
 from theano import Apply
-from theano.gpuarray import as_gpuarray_variable
-from theano.gpuarray.basic_ops import CGpuKernelBase, infer_context_name
 from theano.tensor.basic import as_tensor_variable
+
+from .basic_ops import CGpuKernelBase, infer_context_name, as_gpuarray_variable
 
 
 class GpuPool(CGpuKernelBase):
