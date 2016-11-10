@@ -47,8 +47,8 @@ from .blas import (gpu_dot22, GpuGemm, GpuGer, GpuGemmBatch,
                    gpugemmbatch_no_inplace,
                    gpugemv_no_inplace, gpugemv_inplace,
                    GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights,
-                   GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights,
-                   GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad,
+                   GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
+from .pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad,
                    GpuDownsampleFactorMaxGradGrad)
 from .blocksparse import (GpuSparseBlockGemv, GpuSparseBlockOuter,
                           gpu_sparse_block_outer,
