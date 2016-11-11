@@ -68,10 +68,27 @@
     return vswitch.join('');
   }
 
+  function build_vswitch_up() {
+  // Build HTML string for version selector, based on ReadTheDocs theme's versions.html
+
+    var vlabel = current_version.replace("theano_versions/", "");
+    if (vlabel == 'theano') {
+      vlabel = 'release';
+    }
+    var vswitch = ['<div class="rst-versions-up" data-toggle="rst-versions" role="note" aria-label="versions" align=center>'];
+    vswitch.push('<span class="rst-current-version" data-toggle="rst-current-version">');
+    vswitch.push(vlabel);
+    vswitch.push('<span class="fa fa-caret-down"></span>');
+    vswitch.push('</span>');
+    vswitch.push('</div>');
+    return vswitch.join('');
+  }
+
 // Create HTML for version switcher and assign to placeholder in layout.html.
   $(document).ready(function() {
     // Build default switcher
     $('.version_switcher_placeholder').html(build_vswitch());
+    $('.version_switcher_placeholder_up').html(build_vswitch_up());
 
     // Check server for other doc versions and update switcher.
     if (url.startsWith('http')) {
@@ -79,7 +96,8 @@
         $.each(data, function(version, dir) {
             versions_dir[version] = dir;
         });
-        $('.version_switcher_placeholder').html(build_vswitch()); 
+        $('.version_switcher_placeholder').html(build_vswitch());
+        $('.version_switcher_placeholder_up').html(build_vswitch_up());
       });
     }    
   });

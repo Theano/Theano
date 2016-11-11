@@ -9,6 +9,8 @@ ProfileStats object for runtime and memory profiling.
 #
 from __future__ import absolute_import, print_function, division
 
+import logging
+
 __authors__ = "James Bergstra"
 __reviewer__ = "Razvan Pascanu"
 __copyright__ = "(c) 2011, Universite de Montreal"
@@ -19,6 +21,7 @@ __docformat__ = "restructuredtext en"
 
 import atexit
 import copy
+import operator
 import os
 import sys
 import time
@@ -29,6 +32,8 @@ import numpy
 import theano
 from six import iteritems
 from theano.gof import graph
+
+logger = logging.getLogger('theano.compile.profiling')
 
 theano_imported_time = time.time()
 config = theano.config
@@ -78,7 +83,8 @@ def _atexit_print_fn():
 
             # merge dictonary
             for attr in ["apply_time", "apply_callcount",
-                         "apply_cimpl", "variable_shape", "variable_strides"]:
+                         "apply_cimpl", "variable_shape", "variable_strides",
+                         "linker_make_thunk_time"]:
                 cum_attr = getattr(cum, attr)
                 for key, val in iteritems(getattr(ps, attr)):
                     assert key not in cum_attr
@@ -193,6 +199,8 @@ class ProfileStats(object):
 
     linker_node_make_thunks = 0.0
 
+    linker_make_thunk_time = {}
+
     line_width = config.profiling.output_line_width
 
     nb_nodes = -1
@@ -206,9 +214,12 @@ class ProfileStats(object):
     # param is called flag_time_thunks because most other attributes with time
     # in the name are times *of* something, rather than configuration flags.
     def __init__(self, atexit_print=True, flag_time_thunks=None, **kwargs):
-        if (hasattr(theano, 'sandbox') and
-                hasattr(theano.sandbox, 'cuda') and
-                theano.sandbox.cuda.cuda_enabled):
+        if (config.profile and
+                ((hasattr(theano, 'sandbox') and
+                  hasattr(theano.sandbox, 'cuda') and
+                  theano.sandbox.cuda.cuda_enabled) or (
+                      hasattr(theano, 'gpuarray') and
+                      theano.gpuarray.pygpu_activated))):
             if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
                 raise Exception(
                     "You are running the Theano profiler with CUDA enabled."
@@ -217,6 +228,14 @@ class ProfileStats(object):
                     " You must set the environment variable"
                     " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA driver to"
                     " synchronize the execution to get a meaningful profile.")
+        if (config.profile and
+                hasattr(theano, 'gpuarray') and
+                theano.gpuarray.pygpu_activated and
+                not config.profiling.ignore_first_call):
+            logger.warn(
+                "Theano flag profiling.ignore_first_call is False."
+                " This cause bad profiling result in the new gpu"
+                " back-end, we as sometimes we compile at the first call.")
 
         self.apply_callcount = {}
         self.output_size = {}
@@ -670,6 +689,11 @@ class ProfileStats(object):
         print('       Import time %es' % self.import_time, file=file)
         print('       Node make_thunk time %es' % self.linker_node_make_thunks,
               file=file)
+
+        for node, t in sorted(self.linker_make_thunk_time.items(),
+                                 key=operator.itemgetter(1))[::-1][:5]:
+            print('           Node %s time %es' % (node, t),
+                  file=file)
         print('', file=file)
 
         # The validation time is a subset of optimizer_time

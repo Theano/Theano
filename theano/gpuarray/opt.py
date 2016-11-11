@@ -29,6 +29,7 @@ from theano.tensor.nnet.abstract_conv import (BaseAbstractConv,
                                               AbstractConv3d,
                                               AbstractConv3d_gradWeights,
                                               AbstractConv3d_gradInputs)
+import theano.tensor.signal.pool as pool
 
 from theano.tests.breakpoint import PdbBreakpoint
 
@@ -46,7 +47,8 @@ from .blas import (gpu_dot22, GpuGemm, GpuGer, GpuGemmBatch,
                    gpugemmbatch_no_inplace,
                    gpugemv_no_inplace, gpugemv_inplace,
                    GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights,
-                   GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
+                   GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights,
+                   GpuDownsampleFactorMaxGradGrad)
 from .blocksparse import (GpuSparseBlockGemv, GpuSparseBlockOuter,
                           gpu_sparse_block_outer,
                           gpu_sparse_block_outer_inplace,
@@ -62,7 +64,7 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedSubtensor1,
                         GpuAdvancedIncSubtensor1,
                         GpuAdvancedIncSubtensor1_dev20)
-from .opt_util import alpha_merge, output_merge
+from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -1134,27 +1136,6 @@ def local_gpua_gemmbatch(op, context_name, inputs, outputs):
     return gpugemmbatch_no_inplace(c, 1.0, a, b, 0.0)
 
 
-@register_opt('fast_compile')
-@op_lifter([tensor.basic.Dot])
-@register_opt2([tensor.basic.Dot], 'fast_compile')
-def local_gpua_hgemm(op, context_name, inputs, outputs):
-    from theano.sandbox.cuda import nvcc_compiler
-    if nvcc_compiler.nvcc_version < '7.5':
-        _logger.warning("Not performing dot of float16 on the GPU since "
-                        "cuda 7.5 is not available. Updating could speed up "
-                        "your code.")
-        return
-    A = inputs[0]
-    B = inputs[1]
-    if (A.ndim == 2 and B.ndim == 2 and
-            A.dtype == 'float16' and B.dtype == 'float16'):
-        fgraph = outputs[0].fgraph
-        C = gpu_alloc_empty(context_name, dtype='float16')(
-            shape_i(A, 0, fgraph),
-            shape_i(B, 1, fgraph))
-        return gpugemm_no_inplace(C, 1.0, A, B, 0.0)
-
-
 @register_opt()
 @alpha_merge(GpuGemm, alpha_in=1, beta_in=4)
 def local_gpua_gemm_alpha_merge(node, *inputs):
@@ -1608,6 +1589,32 @@ def local_gpua_lift_abstractconv_graph(op, context_name, inputs, outputs):
     inps[1] = as_gpuarray_variable(inputs[1],
                                    context_name=context_name)
     return [op(*inps)]
+
+
+@register_opt()
+@op_lifter([pool.DownsampleFactorMaxGradGrad])
+@register_opt2([pool.DownsampleFactorMaxGradGrad])
+def local_gpu_downsample_factor_max_grad_grad(op, ctx_name, inputs, outputs):
+    assert op.__props__ == ('ignore_border', 'mode', 'ndim')
+    inp, out, out_grad, ws, stride, pad = inputs
+    nd = op.ndim
+    if nd not in (2, 3):
+        return
+    inp = gpu_contiguous(as_gpuarray_variable(inp, ctx_name))
+    out = gpu_contiguous(as_gpuarray_variable(out, ctx_name))
+    out_grad = gpu_contiguous(as_gpuarray_variable(out_grad, ctx_name))
+
+    op = GpuDownsampleFactorMaxGradGrad(op.ignore_border, op.mode, op.ndim)
+    if inp.ndim == nd + 2:
+        return op(inp, out, out_grad, ws, stride, pad)
+    else:
+        # reshape to 4D or 5D with 2 non-pooling dimensions
+        inp_padded = pad_dims(inp, 2, nd)
+        out_padded = pad_dims(out, 2, nd)
+        out_grad_padded = pad_dims(out_grad, 2, nd)
+        ret_padded = op(inp_padded, out_padded, out_grad_padded,
+                        ws, stride, pad)
+        return unpad_dims(ret_padded, inp, 2, nd)
 
 
 @register_opt("low_memory")

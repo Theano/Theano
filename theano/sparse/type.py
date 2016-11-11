@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 try:
     import scipy.sparse
     imported_scipy = True
@@ -20,7 +20,7 @@ def _is_sparse(x):
         True iff x is a L{scipy.sparse.spmatrix} (and not a L{numpy.ndarray}).
 
     """
-    if not isinstance(x, (scipy.sparse.spmatrix, numpy.ndarray, tuple, list)):
+    if not isinstance(x, (scipy.sparse.spmatrix, np.ndarray, tuple, list)):
         raise NotImplementedError("this function should only be called on "
                                   "sparse.scipy.sparse.spmatrix or "
                                   "numpy.ndarray, not,", x)
@@ -107,12 +107,12 @@ class SparseType(gof.Type):
             return (SparseType.may_share_memory(a, b.data) or
                     SparseType.may_share_memory(a, b.indices) or
                     SparseType.may_share_memory(a, b.indptr))
-        if _is_sparse(b) and isinstance(a, numpy.ndarray):
+        if _is_sparse(b) and isinstance(a, np.ndarray):
             a, b = b, a
-        if _is_sparse(a) and isinstance(b, numpy.ndarray):
-            if (numpy.may_share_memory(a.data, b) or
-                    numpy.may_share_memory(a.indices, b) or
-                    numpy.may_share_memory(a.indptr, b)):
+        if _is_sparse(a) and isinstance(b, np.ndarray):
+            if (np.may_share_memory(a.data, b) or
+                    np.may_share_memory(a.indices, b) or
+                    np.may_share_memory(a.indptr, b)):
                 # currently we can't share memory with a.shape as it is a tuple
                 return True
         return False
@@ -168,8 +168,8 @@ class SparseType(gof.Type):
                 obj.indices.size, obj.indptr.size, obj.nnz)
 
     def get_size(self, shape_info):
-        return (shape_info[1] * numpy.dtype(self.dtype).itemsize +
-                (shape_info[2] + shape_info[3]) * numpy.dtype('int32').itemsize)
+        return (shape_info[1] * np.dtype(self.dtype).itemsize +
+                (shape_info[2] + shape_info[3]) * np.dtype('int32').itemsize)
 
 # Register SparseType's C code for ViewOp.
 theano.compile.register_view_op_c_code(

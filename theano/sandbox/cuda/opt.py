@@ -49,7 +49,7 @@ from theano.sandbox.cuda.blas import (
     GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
 
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
-from theano.sandbox.cuda.cula import gpu_solve
+from theano.sandbox.cuda.cula import gpu_solve, cula_available
 
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -237,8 +237,11 @@ optdb['canonicalize'].register('local_cut_gpu_host_gpu',
 
 # 'float64', 'complex128' and 'complex64' are not supported in elemwise
 # on the gpu.
-elemwise_cuda_dtype_supported = ['float32', 'uint8', 'int8', 'uint16', 'int16',
-                                 'uint32', 'int32', 'uint64', 'int64']
+elemwise_cuda_dtype_supported = ['float32', 'bool',
+                                 'uint8', 'int8',
+                                 'uint16', 'int16',
+                                 'uint32', 'int32',
+                                 'uint64', 'int64']
 
 
 def dtype_in_elemwise_supported(op):
@@ -298,8 +301,8 @@ def local_gpu_elemwise_0(node):
                         return False
 
                 #   first establish that float32 can store all inputs
-                upcastable = set(['float32', 'int8', 'int16', 'uint8',
-                                  'uint16'])
+                upcastable = set(['float32', 'bool', 'int8', 'int16',
+                                  'uint8', 'uint16'])
                 # case 1 - all inputs are already float32
                 if all([i.type.dtype == 'float32' for i in node.inputs]):
                     # TODO: change this when fusion makes Elemwise with
@@ -706,6 +709,8 @@ def local_gpu_solve(node):
     CpuSolve(host_from_gpu) -> host_from_gpu(GpuSolve)
 
     """
+    if not cula_available:
+        return
     if node.outputs[0].dtype != 'float32':
         return
     if isinstance(node.op, GpuFromHost):
@@ -1133,11 +1138,12 @@ def local_gpu_advanced_incsubtensor1(node):
                     'least \'0.6\'.', stacklevel=1)
             active_device_no = theano.sandbox.cuda.active_device_number()
             compute_capability = device_properties(active_device_no)['major']
+            props_dict = host_input.owner.op._props_dict()
             if (compute_capability < 2 or y.ndim != 2 or x.ndim != 2):
 
-                gpu_op = GpuAdvancedIncSubtensor1(**node.op._props_dict())
+                gpu_op = GpuAdvancedIncSubtensor1(**props_dict)
             else:
-                gpu_op = GpuAdvancedIncSubtensor1_dev20(**node.op._props_dict())
+                gpu_op = GpuAdvancedIncSubtensor1_dev20(**props_dict)
             return [gpu_op(as_cuda_ndarray_variable(x),
                            as_cuda_ndarray_variable(y), *coords)]
 

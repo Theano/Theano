@@ -52,6 +52,7 @@ python_all = all
 complex_dtypes = list(map(str, scal.complex_types))
 continuous_dtypes = list(map(str, scal.continuous_types))
 float_dtypes = list(map(str, scal.float_types))
+integer_dtypes = list(map(str, scal.integer_types))
 discrete_dtypes = list(map(str, scal.discrete_types))
 all_dtypes = list(map(str, scal.all_types))
 int_dtypes = list(map(str, scal.int_types))
@@ -218,138 +219,6 @@ _as_tensor_variable = as_tensor_variable
 as_tensor = as_tensor_variable
 
 
-class NumpyAutocaster(object):
-    """
-    This class is used to cast python ints and floats to numpy arrays.
-
-    The behavior when called on scalar `x` depends on `config.cast_policy`:
-        - 'numpy' will simply use the same type as found by `numpy.asarray(x)`.
-        - 'numpy+floatX' will do the same, except it will use float32 instead
-          of float64 if `x` is a Python float and `config.floatX` is set to
-          'float32' (note that if `x` is a numpy scalar whose data type is
-          float64, it is not modified since we assume the user is purposedly
-          using float64).
-        - 'custom' lets one define a tuple of data types such that:
-            - if `x` is already a numpy scalar and its data type is in this
-              tuple, then it is returned unchanged;
-            - otherwise, the first data type in this tuple that can represent
-              `x` without loss of precision will be used, unless `x` is a float
-              and 'float32' is in the tuple (in which case `x` is cast as a
-              float32);
-            - if no data type can represent `x` without loss of precision, then
-              the last data type in the tuple will be used.
-
-
-    Parameters
-    ----------
-    dtypes: tuple of strings
-        The ordered list of preferred data types (only used when
-        `config.cast_policy` is set to 'custom', see the `NumpyAutocaster`
-        help for details).
-
-    """
-
-    def __init__(self, dtypes):
-        self.dtypes = tuple(dtypes)
-
-    def __call__(self, x):
-        # Make sure we only deal with scalars.
-        assert (isinstance(x, integer_types) or
-                isinstance(x, float) or
-                (isinstance(x, numpy.ndarray) and x.ndim == 0))
-
-        if config.cast_policy == 'numpy':
-            return numpy.asarray(x)
-        elif config.cast_policy == 'numpy+floatX':
-            rval = numpy.asarray(x)
-            if ((not hasattr(x, 'dtype') and
-                 rval.dtype in ('float64', 'float32') and
-                 rval.dtype != config.floatX)):
-                rval = theano._asarray(rval, dtype=config.floatX)
-            return rval
-
-        # The following is the original code, corresponding to the 'custom'
-        # option for `config.cast_policy`.
-        assert config.cast_policy == 'custom'
-
-        try:
-            # Pass through numpy scalars, since they are already typed on
-            # purpose typically.
-            if str(x.dtype) in self.dtypes:
-                # No need to cast `x` into a new dtype. Note that we still
-                # need to convert it into an array, because it may not be
-                # one already (e.g. if x == numpy.float64(1.1)).
-                return numpy.asarray(x)
-        except AttributeError:
-            # Means `x` has no 'dtype' attribute.
-            pass
-
-        # unsafe downcast of float64 variables when config.floatX == 'float32'
-        # recall: float is numpy.float
-        if ((isinstance(x, float) and
-             config.floatX in self.dtypes and
-             config.floatX != 'float64')):
-            return theano._asarray(x, dtype=config.floatX)
-
-        # Don't autocast to float16 unless config.floatX is float16
-        try_dtypes = [d for d in self.dtypes
-                      if config.floatX == 'float16' or d != 'float16']
-
-        for dtype in try_dtypes:
-            x_ = theano._asarray(x, dtype=dtype)
-            if numpy.all(x == x_):
-                break
-        # returns either an exact x_==x, or the last cast x_
-        return x_
-
-autocast_int = NumpyAutocaster(('int16', 'int32', 'int64'))
-autocast_float = NumpyAutocaster(('float16', 'float32', 'float64'))
-
-
-# autocast_float dtypes might be manipulated in tensor.__init__
-#
-# Note: it's a bit weird for a compiler to automatically downcast
-# literals like this, and it might have implications for efficiency
-# when mixing types.  For example when you add 1.0 + dmatrix(), the
-# 1.0 could be converted to float32, and require upcasting for the +
-# operation at every position in the dmatrix.  using
-# theano._asarray(1.0, dtype='float64') will circumvent this
-# autocasting, and in future, our ops might be smarter about factoring
-# out upcasts.  The advantage of this mechanism is to combine it with
-# floatX so that 1.0 + xmatrix() will always have the same type as the
-# xmatrix().
-#
-class autocast_float_as(object):
-    """
-    Temporarily adjust autocasting behavior.
-
-    This class makes it possible to temporarily and locally adjust autocasting
-    behavior when `config.cast_policy` is set to 'custom'.
-    If `config.cast_policy` is not 'custom', an exception is raised.
-    This class might be convenient in some code, but it definitely
-    helps to test the autocasting mechanism.
-
-    Examples
-    --------
-    >>> with autocast_float_as('float32'):
-    ...    assert (fvector() + 1.1).dtype == 'float32'  # temporary downcasting
-    >>> assert (fvector() + 1.1).dtype == 'float64' # back to default behaviour
-
-    """
-    def __init__(self, *dtypes):
-        self.dtypes = dtypes
-        assert config.cast_policy == 'custom'
-
-    def __enter__(self):
-        assert config.cast_policy == 'custom'
-        self.old_dtypes = autocast_float.dtypes
-        autocast_float.dtypes = self.dtypes
-
-    def __exit__(self, *args):
-        assert config.cast_policy == 'custom'
-        autocast_float.dtypes = self.old_dtypes
-
-
 def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
     """Return a symbolic `Constant` with value `x`.
 
@@ -361,38 +230,7 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
         `x` could not be expanded to have ndim dimensions.
 
     """
-    if dtype is not None:
-        # in this case, the semantics are that the caller is forcing the dtype
-        x_ = theano._asarray(x, dtype=dtype)
-    else:
-        # In this case, this function should infer the dtype according to the
-        # autocasting rules. See autocasting above.
-        x_ = None
-        if rtype is TensorConstant and isinstance(x, integer_types):
-            try:
-                x_ = autocast_int(x)
-            except OverflowError:
-                # This is to imitate numpy behavior which tries to fit
-                # bigger numbers into a uint64.
-                x_ = theano._asarray(x, dtype='uint64')
-        elif rtype is TensorConstant and isinstance(x, float):
-            x_ = autocast_float(x)
-        elif isinstance(x, numpy.ndarray):
-            x_ = x
-            # Currently we do not have a bool dtype in Theano.
-            # So we upcast it to uint8 to avoid breaking our interface for
-            # constant.
-            if x.dtype == 'bool':
-                x_ = numpy.asarray(x_, dtype='uint8')
-        else:
-            # Here x is probably a list or a tuple. If it contains a long,
-            # we will behave like the current NumPy version: 1.7 and below,
-            # it will only work if the long fits in int64. For NumPy 1.7.1+,
-            # it will work if the long fits in int64 or uint64.
-            x_ = numpy.asarray(x)
-            if x_.size == 0 and not hasattr(x, 'dtype'):
-                x_ = numpy.asarray(x, dtype=config.floatX)
-    assert type(x_) in [numpy.ndarray, numpy.memmap]
+    x_ = scal.convert(x, dtype=dtype)
 
     bcastable = [d == 1 for d in x_.shape]
     if ndim is not None:
@@ -520,11 +358,6 @@ def _allclose(a, b, rtol=None, atol=None):
         rtol_ = rtol
     if atol is not None:
         atol_ = atol
-
-    # Work around bug in Numpy, see
-    # http://projects.scipy.org/numpy/ticket/1684
-    if str(b.dtype) in int_dtypes and (numpy.absolute(b) < 0).any():
-        b = theano._asarray(b, dtype='float64')
 
     return numpy.allclose(a, b, atol=atol_, rtol=rtol_)
 
@@ -1247,6 +1080,10 @@ def _conversion(real_value, name):
 # what types you are casting to what.  That logic is implemented by the
 # `cast()` function below.
 
+_convert_to_bool = _conversion(
+    elemwise.Elemwise(scal.convert_to_bool), 'bool')
+"""Cast to boolean"""
+
 _convert_to_int8 = _conversion(
     elemwise.Elemwise(scal.convert_to_int8), 'int8')
 """Cast to 8-bit integer"""
@@ -1300,6 +1137,7 @@ _convert_to_complex128 = _conversion(
 """Cast to double-precision complex"""
 
 _cast_mapping = {
+    'bool': _convert_to_bool,
     'int8': _convert_to_int8,
     'int16': _convert_to_int16,
     'int32': _convert_to_int32,
@@ -1581,6 +1419,170 @@ class MaxAndArgmax(Op):
 _max_and_argmax = MaxAndArgmax()
 
 
+class Argmax(Op):
+    """
+    Calculate the argmax over a given axis or over all axes.
+    """
+    nin = 2  # tensor, axis
+    nout = 1
+    E_axis = 'invalid axis'
+    __props__ = ()
+
+    def make_node(self, x, axis=None):
+        x = _as_tensor_variable(x)
+
+        if isinstance(axis, (integer_types, numpy.integer)):
+            axis = [int(axis)]
+        elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
+            axis = [int(axis)]
+        elif isinstance(axis, (tuple, list, numpy.ndarray)):
+            axis = [int(a) for a in axis]
+            if axis == list(range(x.type.ndim)):
+                axis = None
+        elif isinstance(axis, Variable):
+            if NoneConst.equals(axis):
+                axis = None
+            elif not isinstance(axis, TensorConstant):
+                raise TypeError(
+                    "Argmax needs a constant axis. Got %s" % axis)
+            else:
+                assert (axis.dtype.startswith("int") or
+                        axis.dtype.startswith("uint"))
+                if isinstance(axis.data, (integer_types, numpy.integer)) or \
+                   (isinstance(axis.data, numpy.ndarray) and
+                        axis.data.ndim == 0):
+                    axis = [int(axis.data)]
+                elif isinstance(axis.data, (list, numpy.ndarray)):
+                    axis = [int(i) for i in axis.data]
+
+        # Make axis entries non-negative, and sort them
+        if isinstance(axis, list):
+            for idx in xrange(len(axis)):
+                if axis[idx] < 0:
+                    axis[idx] += x.type.ndim
+            axis.sort()
+
+        # Verify that axes are valid
+        all_axes = []
+        if isinstance(axis, list):
+            for ax in axis:
+                if ax < 0 or ax >= x.type.ndim:
+                    raise ValueError(
+                        'Invalid axis: %s (the number of dimensions of the '
+                        'input is: %s)' % (ax, x.type.ndim))
+                if ax not in all_axes:
+                    all_axes.append(ax)
+        else:
+            all_axes = list(range(x.ndim))
+
+        if axis is None or axis == list(range(x.type.ndim)):
+            axis = NoneConst.clone()
+        else:
+            axis = _as_tensor_variable(all_axes)
+            assert axis.ndim == 1
+        inputs = [x, axis]
+
+        # We keep the original broadcastable flags for dimensions on which
+        # we do not perform the argmax.
+        broadcastable = [b for i, b in enumerate(x.type.broadcastable)
+                         if i not in all_axes]
+        outputs = [tensor('int64', broadcastable, name='argmax')]
+        return Apply(self, inputs, outputs)
+
+    def perform(self, node, inp, outs):
+        x, axes = inp
+        max_idx, = outs
+        if axes is None:
+            axes = tuple(range(x.ndim))
+        else:
+            axes = tuple(int(ax) for ax in axes)
+
+        # Numpy does not support multiple axes for argmax
+        # Work around
+        keep_axes = numpy.array([i for i in range(x.ndim) if i not in axes],
+                                dtype='int64')
+        # Not-reduced axes in front
+        transposed_x = numpy.transpose(x, numpy.concatenate((keep_axes,
+                                                             axes)))
+        kept_shape = transposed_x.shape[:len(keep_axes)]
+        reduced_shape = transposed_x.shape[len(keep_axes):]
+        new_shape = kept_shape + (numpy.prod(reduced_shape),)
+        reshaped_x = transposed_x.reshape(new_shape)
+
+        max_idx[0] = theano._asarray(numpy.argmax(reshaped_x, axis=-1),
+                                     dtype='int64')
+
+    def c_code(self, node, name, inp, out, sub):
+        x, axis = inp
+        argmax, = out
+        fail = sub["fail"]
+        if NoneConst.equals(node.inputs[1]):
+            axis_code = "axis = NPY_MAXDIMS;"
+        else:
+            assert node.inputs[1].ndim == 1
+            # Fall back to perform() if there are multiple axes
+            if len(node.inputs[1].data) > 1:
+                raise NotImplementedError()
+            axis_code = """
+            axis = ((dtype_%(axis)s*)PyArray_DATA(%(axis)s))[0];
+            if(axis > PyArray_NDIM(%(x)s)-1 || axis < -PyArray_NDIM(%(x)s)){
+                PyErr_SetString(PyExc_ValueError,
+                "Argmax, bad axis argument");
+                %(fail)s
+            }
+            """ % locals()
+        ret = """
+        int axis;
+
+        Py_CLEAR(%(argmax)s);//todo pass them as out parameter.
+        %(axis_code)s
+
+        %(argmax)s = (PyArrayObject*)PyArray_ArgMax(%(x)s, axis, NULL);
+        if(%(argmax)s == NULL){
+            %(fail)s;
+        }
+        if(!PyArray_CheckExact(%(argmax)s)){
+            %(argmax)s = (PyArrayObject*)PyArray_FromAny((PyObject*)%(argmax)s, NULL, 0, 0, NPY_ARRAY_ENSUREARRAY, NULL);
+            if(%(argmax)s == NULL){
+                %(fail)s;
+            }
+        }
+        if(PyArray_TYPE(%(argmax)s) != NPY_INT64){
+            PyObject * tmp = PyArray_Cast(%(argmax)s, NPY_INT64);
+            if (NULL == tmp){
+                %(fail)s;
+            }
+            Py_DECREF(%(argmax)s);
+            %(argmax)s = (PyArrayObject*)tmp;
+        }
+        """
+        return ret % locals()
+
+    def c_code_cache_version(self):
+        return (0,)
+
+    def infer_shape(self, node, shapes):
+        ishape, axis_shape = shapes
+        axis = node.inputs[1]
+        if axis.data is None:
+            return [()]
+        rval = tuple([ishape[i] for (i, b) in enumerate(
+            node.inputs[0].type.broadcastable) if i not in axis.data])
+        return [rval]
+
+    def grad(self, inp, grads):
+        x, axis = inp
+
+        axis_grad = grad_undefined(
+            self, 1, axis,
+            "argmax is not defined for non-integer axes so"
+            " argmax(x, axis+eps) is undefined")
+
+        return [x.zeros_like(), axis_grad]
+
+_argmax = Argmax()
+
+
 def makeKeepDims(x, y, axis):
     """
     Reintroduces in y with length one the axes of x which have been left out
@@ -1703,9 +1705,6 @@ def argmax(x, axis=None, keepdims=False):
         will broadcast correctly against the original tensor.
 
     """
-    # In python (using MaxAndArgmax.perform()) this leads to a wasteful
-    # implementation that goes through the data twice instead of once
-    # but when Argmax.c_impl() is in place, it should be fine.
     argout = max_and_argmax(x, axis)[1]
 
     if keepdims:
@@ -3160,11 +3159,9 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
         sum_dtype = dtype
     else:
         sum_dtype = None
-
-    # float16 overflows way too fast for sum
-    if ((sum_dtype == 'float16' or input.dtype == 'float16') and
-            acc_dtype != 'float16'):
-        sum_dtype == 'float32'
+        # float16 overflows on the cast way too often
+        if input.dtype == 'float16':
+            sum_dtype = 'float32'
 
     s = sum(input, axis=axis, dtype=sum_dtype, keepdims=keepdims,
             acc_dtype=acc_dtype)
@@ -3190,6 +3187,10 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
     # This sequential division will possibly be optimized by Theano:
     for i in axis:
         s = true_div(s, shp[i])
+
+    # This can happen when axis is an empty list/tuple
+    if s.dtype != shp.dtype and s.dtype in discrete_dtypes:
+        s = cast(s, shp.dtype)
 
     if dtype == 'float16' or (dtype is None and input.dtype == 'float16'):
         s = cast(s, 'float16')
@@ -3249,11 +3250,12 @@ def var(input, axis=None, ddof=0, keepdims=False, corrected=False):
     centered_input = input - mean_input
 
     # return the mean sqr
+    two = constant(2, dtype=centered_input.dtype)
     if ddof == 0:
-        v = mean((centered_input ** 2), axis, keepdims=keepdims)
+        v = mean((centered_input ** two), axis, keepdims=keepdims)
     else:
         shp = shape(input) - ddof
-        v = sum((centered_input ** 2), axis=axis, keepdims=keepdims)
+        v = sum((centered_input ** two), axis=axis, keepdims=keepdims)
         for i in axis:
             v = true_div(v, shp[i])
 

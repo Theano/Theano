@@ -9,6 +9,7 @@ from six.moves import xrange
 import theano
 from theano import gof
 from theano.compat import izip
+from theano.configparser import change_flags
 from theano.gof import Apply, Op, OpenMPOp
 from theano import scalar
 from theano.scalar import get_scalar_type
@@ -19,12 +20,6 @@ from theano.gof.utils import hash_from_dict
 from theano.tensor import elemwise_cgen as cgen
 
 config = theano.config
-
-# We cannot import discrete_dtypes or float_dtypes from tensor.basic yet,
-# so we redefine them here
-discrete_dtypes = list(map(str, scalar.discrete_types))
-float_dtypes = list(map(str, scalar.float_types))
-int_dtypes = list(map(str, scalar.int_types))
 
 
 # tensor depends on elemwise to provide definitions for several ops
@@ -673,8 +668,8 @@ second dimension
         # TODO: make sure that zeros are clearly identifiable
         # to the gradient.grad method when the outputs have
         # some integer and some floating point outputs
-        if False in [str(out.type.dtype).find('int') == -1
-                     for out in outs]:
+        if any(out.type.dtype not in theano.tensor.continuous_dtypes
+               for out in outs):
             # For integer output, return value may
             # only be zero or undefined
             # We don't bother with trying to check
@@ -690,7 +685,7 @@ second dimension
                     new_rval.append(elem)
                 else:
                     elem = ipt.zeros_like()
-                    if str(elem.type.dtype).find('int') != -1:
+                    if str(elem.type.dtype) not in theano.tensor.continuous_dtypes:
                         elem = elem.astype(theano.config.floatX)
                     assert str(elem.type.dtype).find('int') == -1
                     new_rval.append(elem)
@@ -730,12 +725,7 @@ second dimension
     def _bgrad(self, inputs, ograds):
         # returns grad, with respect to broadcasted versions of inputs
 
-        prev_setting = theano.config.compute_test_value
-
-        try:
-
-            theano.config.compute_test_value = 'off'
-
+        with change_flags(compute_test_value='off'):
             def as_scalar(t):
                 if isinstance(t.type, (NullType, DisconnectedType)):
                     return t
@@ -746,10 +736,6 @@ second dimension
             scalar_igrads = self.scalar_op.grad(scalar_inputs, scalar_ograds)
             for igrad in scalar_igrads:
                 assert igrad is not None, self.scalar_op
-
-        finally:
-
-            theano.config.compute_test_value = prev_setting
 
         if not isinstance(scalar_igrads, (list, tuple)):
             raise TypeError('%s.grad returned %s instead of list or tuple' %
@@ -818,9 +804,9 @@ second dimension
         # NumPy 1.10.1 raise an error when giving the signature
         # when the input is complex. So add it only when inputs is int.
         out_dtype = node.outputs[0].dtype
-        if (out_dtype in float_dtypes and
+        if (out_dtype in theano.tensor.float_dtypes and
                 isinstance(self.nfunc, numpy.ufunc) and
-                node.inputs[0].dtype in discrete_dtypes):
+                node.inputs[0].dtype in theano.tensor.discrete_dtypes):
             char = numpy.sctype2char(out_dtype)
             sig = char * node.nin + '->' + char * node.nout
             node.tag.sig = sig
@@ -1076,7 +1062,7 @@ second dimension
 
         # We loop over the "aliased" outputs, i.e., those that are
         # inplace (overwrite the contents of one of the inputs) and
-        # make the output pointers point to theur corresponding input
+        # make the output pointers point to their corresponding input
         # pointers.
         for output, oname in izip(aliased_outputs, aliased_onames):
             olv_index = inputs.index(dmap[output][0])
@@ -1283,7 +1269,8 @@ second dimension
         Return True if we do not want to compile c code
         when doing constant folding of this node.
         """
-        return node.outputs[0].ndim == 0
+        # The python code don't support 32 inputs or more.
+        return node.outputs[0].ndim == 0 and len(node.inputs) < 32
 
 
 ################
@@ -1641,10 +1628,10 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
 
         task1_code = self.scalar_op.c_code(
             Apply(self.scalar_op,
-                  [get_scalar_type(dtype=input.type.dtype).make_variable()
-                   for input in (node.inputs * 2)],
-                  [get_scalar_type(dtype=output.type.dtype).make_variable()
-                   for input in node.outputs]),
+                  [get_scalar_type(dtype=iv.type.dtype).make_variable()
+                   for iv in (node.inputs * 2)],
+                  [get_scalar_type(dtype=ov.type.dtype).make_variable()
+                   for ov in node.outputs]),
             None,
             ["%s_i" % aname, "%s_i" % inames[0]],
             ["%s_i" % aname],
@@ -1708,10 +1695,8 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
 
 
 class All(CAReduce):
-    """ Applies `bitwise and` to all the values of a tensor along the
+    """ Applies `logical and` to all the values of a tensor along the
     specified axis(es).
-
-    Equivalent to `CAReduce(scalar.and\_, axis=axis)`.
 
     """
 
@@ -1719,7 +1704,7 @@ class All(CAReduce):
         CAReduce.__init__(self, scalar.and_, axis)
 
     def _output_dtype(self, idtype):
-        return "int8"
+        return "bool"
 
     def __str__(self):
         if self.axis is None:
@@ -1729,7 +1714,7 @@ class All(CAReduce):
 
     def make_node(self, input):
         input = as_tensor_variable(input)
-        if input.dtype not in ["int8", "uint8"]:
+        if input.dtype != "bool":
             input = theano.tensor.neq(input, 0)
         ret = super(All, self).make_node(input)
         return ret
@@ -1743,15 +1728,13 @@ class Any(CAReduce):
     """ Applies `bitwise or` to all the values of a tensor along the
     specified axis(es).
 
-    Equivalent to `CAReduce(scalar.or\_, axis=axis)`.
-
     """
 
     def __init__(self, axis=None):
         CAReduce.__init__(self, scalar.or_, axis)
 
     def _output_dtype(self, idtype):
-        return "int8"
+        return "bool"
 
     def __str__(self):
         if self.axis is None:
@@ -1761,7 +1744,7 @@ class Any(CAReduce):
 
     def make_node(self, input):
         input = as_tensor_variable(input)
-        if input.dtype not in ["int8", "uint8"]:
+        if input.dtype != "bool":
             input = theano.tensor.neq(input, 0)
         ret = super(Any, self).make_node(input)
         return ret
@@ -1863,6 +1846,7 @@ class CAReduceDtype(CAReduce):
         if dtype is None:
             # If input has a discrete dtype, upcast it to 64
             return dict(
+                bool='int64',
                 int8='int64',
                 int16='int64',
                 int32='int64',
@@ -1878,6 +1862,7 @@ class CAReduceDtype(CAReduce):
         acc_dtype = self.acc_dtype
         if acc_dtype is None:
             return dict(
+                bool='int64',
                 int8='int64',
                 int16='int64',
                 int32='int64',
@@ -1990,7 +1975,7 @@ class Sum(CAReduceDtype):
 
         out = self(*inp)
 
-        if out.dtype.find('int') != -1:
+        if out.dtype not in theano.tensor.continuous_dtypes:
             return [x.zeros_like(dtype=theano.config.floatX)]
 
         gz, = grads
@@ -2101,8 +2086,8 @@ class Prod(CAReduceDtype):
 
         out = self(*inp)
 
-        if (out.dtype in discrete_dtypes or
-                self.acc_dtype in discrete_dtypes):
+        if (out.dtype in theano.tensor.discrete_dtypes or
+                self.acc_dtype in theano.tensor.discrete_dtypes):
             # There is an int conversion in the way
             return [prod_in.zeros_like(dtype=theano.config.floatX)]
 

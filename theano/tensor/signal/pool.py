@@ -38,29 +38,29 @@ def max_pool_2d_same_size(input, patch_size):
     return outs
 
 
-def pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
-            mode='max'):
+def pool_2d(input, ws=None, ignore_border=None, stride=None, pad=(0, 0),
+            mode='max', ds=None, st=None, padding=None):
     """Downscale the input by a specified factor
 
     Takes as input a N-D tensor, where N >= 2. It downscales the input image by
     the specified factor, by keeping only the maximum value of non-overlapping
-    patches of size (ds[0],ds[1])
+    patches of size (ws[0],ws[1])
 
     Parameters
     ----------
     input : N-D theano tensor of input images
         Input images. Max pooling will be done over the 2 last dimensions.
-    ds : tuple of length 2 or theano vector of ints of size 2.
-        Factor by which to downscale (vertical ds, horizontal ds).
+    ws : tuple of length 2 or theano vector of ints of size 2.
+        Factor by which to downscale (vertical ws, horizontal ws).
         (2,2) will halve the image in each dimension.
     ignore_border : bool (default None, will print a warning and set to False)
-        When True, (5,5) input with ds=(2,2) will generate a (2,2) output.
+        When True, (5,5) input with ws=(2,2) will generate a (2,2) output.
         (3,3) otherwise.
-    st : tuple of two ints or theano vector of ints of size 2.
+    stride : tuple of two ints or theano vector of ints of size 2.
         Stride size, which is the number of shifts over rows/cols to get the
-        next pool region. If st is None, it is considered equal to ds
+        next pool region. If stride is None, it is considered equal to ws
         (no overlap on pooling regions).
-    padding : tuple of two ints or theano vector of ints of size 2.
+    pad : tuple of two ints or theano vector of ints of size 2.
         (pad_h, pad_w), pad zeros to extend beyond four borders of the
         images, pad_h is the size of the top and bottom margins, and
         pad_w is the size of the left and right margins.
@@ -68,8 +68,64 @@ def pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
         Operation executed on each window. `max` and `sum` always exclude
         the padding in the computation. `average` gives you the choice to
         include or exclude it.
+    ds
+        *deprecated*, use parameter ws instead.
+    st
+        *deprecated*, use parameter stride instead.
+    padding
+        *deprecated*, use parameter pad instead.
 
     """
+    # check for deprecated parameter names
+    if ds is not None:
+        if ws is not None:
+            raise ValueError(
+                "You can't provide a tuple value to both 'ws' and 'ds'."
+                " Please provide a value only to 'ws'."
+            )
+        else:
+            warnings.warn(
+                "DEPRECATION: the 'ds' parameter is not going to exist"
+                " anymore as it is going to be replaced by the parameter"
+                " 'ws'.",
+                stacklevel=2
+            )
+            ws = ds
+    elif ds is None and ws is None:
+        raise ValueError(
+            "You must provide a tuple value for the window size."
+        )
+
+    if st is not None:
+        if stride is not None:
+            raise ValueError(
+                "You can't provide a tuple value to both 'st and 'stride'."
+                " Please provide a value only to 'stride'."
+            )
+        else:
+            warnings.warn(
+                "DEPRECATION: the 'st' parameter is not going to exist"
+                " anymore as it is going to be replaced by the parameter"
+                " 'stride'.",
+                stacklevel=2
+            )
+            stride = st
+
+    if padding is not None:
+        if pad not in {None, (0, 0)}:
+            raise ValueError(
+                "You can't provide a tuple value to both 'padding' and pad."
+                "  Please provide a value only to pad."
+            )
+        else:
+            warnings.warn(
+                "DEPRECATION: the 'padding' parameter is not going to exist"
+                " anymore as it is going to be replaced by the parameter"
+                " 'pad'.",
+                stacklevel=2
+            )
+            pad = padding
+
     if input.ndim < 2:
         raise NotImplementedError('pool_2d requires a dimension >= 2')
     if ignore_border is None:
@@ -81,38 +137,38 @@ def pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
             " On the GPU, using ignore_border=True is needed to use cuDNN."
             " When using ignore_border=False and not using cuDNN, the only"
             " GPU combination supported is when"
-            " `ds == st and padding == (0, 0) and mode == 'max'`."
+            " `ws == stride and pad == (0, 0) and mode == 'max'`."
             " Otherwise, the convolution will be executed on CPU.",
             stacklevel=2)
         ignore_border = False
     op = Pool(ignore_border, ndim=2, mode=mode)
-    output = op(input, ds, st, padding)
+    output = op(input, ws, stride, pad)
     return output
 
 
-def pool_3d(input, ds, ignore_border=None, st=None, padding=(0, 0, 0),
-            mode='max'):
+def pool_3d(input, ws=None, ignore_border=None, stride=None, pad=(0, 0, 0),
+            mode='max', ds=None, st=None, padding=None):
     """Downscale the input by a specified factor
 
     Takes as input a N-D tensor, where N >= 3. It downscales the input image by
     the specified factor, by keeping only the maximum value of non-overlapping
-    patches of size (ds[0],ds[1],ds[2])
+    patches of size (ws[0],ws[1],ws[2])
 
     Parameters
     ----------
     input : N-D theano tensor of input images
         Input images. Max pooling will be done over the 3 last dimensions.
-    ds : tuple of length 3 or theano vector of ints of size 3
-        Factor by which to downscale (vertical ds, horizontal ds, depth ds).
+    ws : tuple of length 3 or theano vector of ints of size 3
+        Factor by which to downscale (vertical ws, horizontal ws, depth ws).
         (2,2,2) will halve the image in each dimension.
     ignore_border : bool (default None, will print a warning and set to False)
-        When True, (5,5,5) input with ds=(2,2,2) will generate a (2,2,2) output.
+        When True, (5,5,5) input with ws=(2,2,2) will generate a (2,2,2) output.
         (3,3,3) otherwise.
     st : tuple of three ints or theano vector of ints of size 3
         Stride size, which is the number of shifts over rows/cols/slices to get
-        the next pool region. If st is None, it is considered equal to ds
+        the next pool region. If st is None, it is considered equal to ws
         (no overlap on pooling regions).
-    padding : tuple of two ints or theano vector of ints of size 3
+    pad : tuple of two ints or theano vector of ints of size 3
         (pad_h, pad_w, pad_d), pad zeros to extend beyond six borders of the
         images, pad_h is the size of the top and bottom margins,
         pad_w is the size of the left and right margins, and pad_d is the size
@@ -121,8 +177,64 @@ def pool_3d(input, ds, ignore_border=None, st=None, padding=(0, 0, 0),
         Operation executed on each window. `max` and `sum` always exclude
         the padding in the computation. `average` gives you the choice to
         include or exclude it.
+    ds
+        *deprecated*, use parameter ws instead.
+    st
+        *deprecated*, use parameter st instead.
+    padding
+        *deprecated*, use parameter pad instead.
 
     """
+    # check for deprecated parameter names
+    if ds is not None:
+        if ws is not None:
+            raise ValueError(
+                "You can't provide a tuple value to both 'ws' and 'ds'."
+                " Please provide a value only to 'ws'."
+            )
+        else:
+            warnings.warn(
+                "DEPRECATION: the 'ds' parameter is not going to exist"
+                " anymore as it is going to be replaced by the parameter"
+                " 'ws'.",
+                stacklevel=2
+            )
+            ws = ds
+    elif ds is None and ws is None:
+        raise ValueError(
+            "You must provide a tuple value for the window size."
+        )
+
+    if st is not None:
+        if stride is not None:
+            raise ValueError(
+                "You can't provide a tuple value to both 'st and 'stride'."
+                " Please provide a value only to 'stride'."
+            )
+        else:
+            warnings.warn(
+                "DEPRECATION: the 'st' parameter is not going to exist"
+                " anymore as it is going to be replaced by the parameter"
+                " 'stride'.",
+                stacklevel=2
+            )
+            stride = st
+
+    if padding is not None:
+        if pad not in {None, (0, 0, 0)}:
+            raise ValueError(
+                "You can't provide a tuple value to both 'padding' and pad."
+                "  Please provide a value only to pad."
+            )
+        else:
+            warnings.warn(
+                "DEPRECATION: the 'padding' parameter is not going to exist"
+                " anymore as it is going to be replaced by the parameter"
+                " 'pad'.",
+                stacklevel=2
+            )
+            pad = padding
+
     if input.ndim < 3:
         raise NotImplementedError('pool_3d requires a dimension >= 3')
     if ignore_border is None:
@@ -134,50 +246,57 @@ def pool_3d(input, ds, ignore_border=None, st=None, padding=(0, 0, 0),
             " On the GPU, using ignore_border=True is needed to use cuDNN."
             " When using ignore_border=False and not using cuDNN, the only"
             " GPU combination supported is when"
-            " `ds == st and padding == (0, 0, 0) and mode == 'max'`."
+            " `ws == stride and pad == (0, 0, 0) and mode == 'max'`."
             " Otherwise, the convolution will be executed on CPU.",
             stacklevel=2)
         ignore_border = False
     op = Pool(ignore_border, ndim=3, mode=mode)
-    output = op(input, ds, st, padding)
+    output = op(input, ws, stride, pad)
     return output
 
 
 class Pool(OpenMPOp):
     """
-    This Op downsamples the last N dimensions of the input by taking the max,
     sum or average over different patches.
 
     Parameters
     ----------
-    ds : list or tuple of N ints
+    ws : list or tuple of N ints
         Downsample factor over rows, columns etc.
-        ds indicates the size of the pooling region.
+        ws indicates the size of the pooling region.
     ignore_border : bool
-        If ds doesn't divide imgshape, do we include an extra row/col/slice
+        If ws doesn't divide imgshape, do we include an extra row/col/slice
         of partial downsampling (False) or ignore it (True).
-    st : list or tuple of N ints or None
+    stride : list or tuple of N ints or None
         Stride size, which is the number of shifts over rows/cols/slices to get the
-        next pool region. If st is None, it is considered equal to ds
+        next pool region. If stride is None, it is considered equal to ws
         (no overlap on pooling regions).
-    padding : tuple of N ints or None
+    pad : tuple of N ints or None
         For each downsampling dimension, this specifies the number of zeros to
         add as padding on both sides. For 2D and (pad_h, pad_w), pad_h specifies the
         size of the top and bottom margins, pad_w specifies the size of the left and
-        right margins. No padding is added if padding is None.
+        right margins. No padding is added if pad is None.
     mode : {'max', 'sum', 'average_inc_pad', 'average_exc_pad'}
         ('average_inc_pad' excludes the padding from the count,
         'average_exc_pad' include it)
     ndim : int
         The number of pooling dimensions N.
         The default is 2.
+    ds
+        *deprecated*, use parameter ws instead.
+    st
+        *deprecated*, use parameter st instead.
+    padding
+        *deprecated*, use parameter pad instead.
+
 
     """
 
     __props__ = ('ignore_border', 'mode', 'ndim')
 
     @staticmethod
-    def out_shape(imgshape, ds, ignore_border=False, st=None, padding=None, ndim=2):
+    def out_shape(imgshape, ws=None, ignore_border=False, stride=None, pad=None,
+                  ndim=2, ds=None, st=None, padding=None):
         """
         Return the shape of the output from this op, for input of given
         shape and flags.
@@ -187,24 +306,30 @@ class Pool(OpenMPOp):
         imgshape : tuple, list, or similar of integer or scalar Theano variable
             The shape of a tensor of images. The last N elements are
             interpreted as the number of rows, and the number of cols.
-        ds : list or tuple of N ints
+        ws : list or tuple of N ints
             Downsample factor over rows and column.
-            ds indicates the pool region size.
+            ws indicates the pool region size.
         ignore_border : bool
-            If ds doesn't divide imgshape, do we include an extra row/col/slice
+            If ws doesn't divide imgshape, do we include an extra row/col/slice
             of partial downsampling (False) or ignore it (True).
-        st : list or tuple of N ints or None
+        stride : list or tuple of N ints or None
             Stride size, which is the number of shifts over rows/cols/slices to get the
-            next pool region. If st is None, it is considered equal to ds
+            next pool region. If stride is None, it is considered equal to ws
             (no overlap on pooling regions).
-        padding : tuple of N ints or None
+        pad : tuple of N ints or None
             For each downsampling dimension, this specifies the number of zeros to
             add as padding on both sides. For 2D and (pad_h, pad_w), pad_h specifies the
             size of the top and bottom margins, pad_w specifies the size of the left and
-            right margins. No padding is added if padding is None.
+            right margins. No padding is added if pad is None.
         ndim : int
             The number of pooling dimensions N.
             The default is 2.
+        ds
+            *deprecated*, use parameter ws instead.
+        st
+            *deprecated*, use parameter st instead.
+        padding
+            *deprecated*, use parameter pad instead.
 
         Returns
         -------
@@ -214,17 +339,68 @@ class Pool(OpenMPOp):
             elements reduced as per the downsampling & ignore_border flags.
 
         """
+        # check for deprecated parameter names
+        if ds is not None:
+            if ws is not None:
+                raise ValueError(
+                    "You can't provide a tuple value to both 'ws' and 'ds'."
+                    " Please provide a value only to 'ws'."
+                )
+            else:
+                warnings.warn(
+                    "DEPRECATION: the 'ds' parameter is not going to exist"
+                    " anymore as it is going to be replaced by the parameter"
+                    " 'ws'.",
+                    stacklevel=2
+                )
+                ws = ds
+        elif ds is None and ws is None:
+            raise ValueError(
+                "You must provide a tuple value for the window size."
+            )
+
+        if st is not None:
+            if stride is not None:
+                raise ValueError(
+                    "You can't provide a tuple value to both 'st and 'stride'."
+                    " Please provide a value only to 'stride'."
+                )
+            else:
+                warnings.warn(
+                    "DEPRECATION: the 'st' parameter is not going to exist"
+                    " anymore as it is going to be replaced by the parameter"
+                    " 'stride'.",
+                    stacklevel=2
+                )
+                stride = st
+
+        if padding is not None:
+            zero_pad = (0,) * ndim
+            if pad not in {None, zero_pad}:
+                raise ValueError(
+                    "You can't provide a tuple value to both 'padding' and pad."
+                    "  Please provide a value only to pad."
+                )
+            else:
+                warnings.warn(
+                    "DEPRECATION: the 'padding' parameter is not going to"
+                    " exist anymore as it is going to be replaced by the"
+                    " parameter 'pad'.",
+                    stacklevel=2
+                )
+                pad = padding
+
         if ndim is None:
             ndim = 2
         assert ndim > 0
         if len(imgshape) < ndim:
             raise TypeError('imgshape must have at least {} dimensions'.format(ndim))
 
-        if st is None:
-            st = ds
-        if padding is None:
-            padding = (0,) * ndim
-        patch_shape = tuple(tensor.extract_constant(imgshape[-ndim + i]) + padding[i] * 2
+        if stride is None:
+            stride = ws
+        if pad is None:
+            pad = (0,) * ndim
+        patch_shape = tuple(tensor.extract_constant(imgshape[-ndim + i]) + pad[i] * 2
                             for i in xrange(ndim))
 
         def compute_out(v, downsample, stride):
@@ -248,7 +424,7 @@ class Pool(OpenMPOp):
                 else:
                     return max(0, (v - 1 - downsample + stride) // stride) + 1
 
-        out_shape = [compute_out(patch_shape[i], ds[i], st[i]) for i in xrange(ndim)]
+        out_shape = [compute_out(patch_shape[i], ws[i], stride[i]) for i in xrange(ndim)]
 
         rval = list(imgshape[:-ndim]) + out_shape
         return rval
@@ -308,7 +484,7 @@ class Pool(OpenMPOp):
             if isinstance(ws, (tuple, list)):
                 if any(pad[i] >= ws[i] for i in range(nd)):
                     raise NotImplementedError(
-                        'padding_h and padding_w must be smaller than strides')
+                        'padding must be smaller than strides')
         ws = tensor.as_tensor_variable(ws)
         stride = tensor.as_tensor_variable(stride)
         pad = tensor.as_tensor_variable(pad)
@@ -715,7 +891,8 @@ class PoolGrad(OpenMPOp):
     __props__ = ('ignore_border', 'mode', 'ndim')
 
     @staticmethod
-    def out_shape(imgshape, ds, ignore_border=False, st=None, padding=None, ndim=2):
+    def out_shape(imgshape, ws=None, ignore_border=False, stride=None, pad=None, ndim=2,
+                  ds=None, st=None, padding=None):
         """Return the shape of the output from this op, for input of given
         shape and flags.
 
@@ -724,24 +901,30 @@ class PoolGrad(OpenMPOp):
         imgshape : tuple of integers or scalar Theano variables
             the shape of a tensor of images. The last N elements are
             interpreted as the downsampling dimensions.
-        ds : tuple of N ints
+        ws : tuple of N ints
             downsample factor over rows and columns this parameter
             indicates the size of the pooling region
         ignore_border : bool
-            If ds doesn't divide imgshape, do we include an extra row/col/slice
+            If ws doesn't divide imgshape, do we include an extra row/col/slice
             of partial downsampling (False) or ignore it (True).
-        st : list or tuple of N ints or None
+        stride : list or tuple of N ints or None
             Stride size, which is the number of shifts over rows/cols/slices to get the
-            next pool region. If st is None, it is considered equal to ds
+            next pool region. If stride is None, it is considered equal to ws
             (no overlap on pooling regions).
-        padding : tuple of N ints or None
+        pad : tuple of N ints or None
             For each downsampling dimension, this specifies the number of zeros to
             add as padding on both sides. For 2D and (pad_h, pad_w), pad_h specifies the
             size of the top and bottom margins, pad_w specifies the size of the left and
-            right margins. No padding is added if padding is None.
+            right margins. No padding is added if pad is None.
         ndim : int
             The number of pooling dimensions N.
             The default is 2.
+        ds
+            *deprecated*, use parameter ws instead.
+        st
+            *deprecated*, use parameter st instead.
+        padding
+            *deprecated*, use parameter pad instead.
 
         Returns
         -------
@@ -752,15 +935,64 @@ class PoolGrad(OpenMPOp):
             ignore_border flags.
 
         """
+        # check for deprecated parameter names
+        if ds is not None:
+            if ws is not None:
+                raise ValueError(
+                    "You can't provide a tuple value to both 'ws' and 'ds'."
+                    " Please provide a value only to 'ws'."
+                )
+            else:
+                warnings.warn(
+                    "DEPRECATION: the 'ds' parameter in PoolGrad is not going"
+                    " to exist anymore as it is going to be replaced by the"
+                    " parameter 'ws'.",
+                    stacklevel=2
+                )
+                ws = ds
+        elif ds is None and ws is None:
+            raise ValueError(
+                "You must provide a tuple value for the window size."
+            )
+
+        if st is not None:
+            if stride is not None:
+                raise ValueError(
+                    "You can't provide a tuple value to both 'st and 'stride'."
+                    " Please provide a value only to 'stride'."
+                )
+            else:
+                warnings.warn(
+                    "DEPRECATION: the 'st' parameter in PoolGrad is not going"
+                    " to exist anymore as it is going to be replaced by the"
+                    " parameter 'stride'.",
+                    stacklevel=2
+                )
+                stride = st
+
+        if padding is not None:
+            if pad is not None:
+                raise ValueError(
+                    "You can't provide a tuple value to both 'padding' and pad."
+                    "  Please provide a value only to pad."
+                )
+            else:
+                warnings.warn(
+                    "DEPRECATION: the 'padding' parameter in PoolGrad is not"
+                    " going to exist anymore as it is going to be replaced"
+                    " by the parameter 'pad'.",
+                    stacklevel=2
+                )
+                pad = padding
 
         if len(imgshape) < ndim:
             raise TypeError('imgshape must have at least {} dimensions'.format(ndim))
 
-        if st is None:
-            st = ds
-        if padding is None:
-            padding = (0,) * ndim
-        patch_shape = tuple(tensor.extract_constant(imgshape[-ndim + i]) + padding[i] * 2
+        if stride is None:
+            stride = ws
+        if pad is None:
+            pad = (0,) * ndim
+        patch_shape = tuple(tensor.extract_constant(imgshape[-ndim + i]) + pad[i] * 2
                             for i in xrange(ndim))
 
         def compute_out(v, downsample, stride):
@@ -781,7 +1013,7 @@ class PoolGrad(OpenMPOp):
                 else:
                     return max(0, (v - 1 - downsample) // stride + 1) + 1
 
-        out_shape = [compute_out(patch_shape[i], ds[i], st[i]) for i in xrange(ndim)]
+        out_shape = [compute_out(patch_shape[i], ws[i], stride[i]) for i in xrange(ndim)]
 
         rval = list(imgshape[:-ndim]) + out_shape
         return rval
@@ -1506,7 +1738,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
             if isinstance(ws, (tuple, list)):
                 if any(pad[i] >= ws[i] for i in range(nd)):
                     raise NotImplementedError(
-                        'padding_h and padding_w must be smaller than strides')
+                        'padding must be smaller than strides')
         ws = tensor.as_tensor_variable(ws)
         stride = tensor.as_tensor_variable(stride)
         pad = tensor.as_tensor_variable(pad)

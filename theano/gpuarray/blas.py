@@ -275,6 +275,7 @@ class GpuDot22(BlasOp):
     Dot22 on the GPU.
 
     """
+    _f16_ok = True
     __props__ = ()
 
     def make_node(self, x, y):
@@ -413,7 +414,7 @@ gpugemmbatch_no_inplace = GpuGemmBatch(inplace=False)
 gpugemmbatch_inplace = GpuGemmBatch(inplace=True)
 
 
-class BaseGpuCorrMM(CGpuKernelBase, BlasOp):
+class BaseGpuCorrMM(CGpuKernelBase):
     """
     Base class for `GpuCorrMM`, `GpuCorrMM_gradWeights` and
     `GpuCorrMM_gradInputs`. Cannot be used directly.
@@ -428,9 +429,9 @@ class BaseGpuCorrMM(CGpuKernelBase, BlasOp):
     filter_dilation
         Perform subsampling of the input, also known as dilation (default: (1, 1)).
     """
-
     check_broadcast = False
     __props__ = ('border_mode', 'subsample', 'filter_dilation')
+    _f16_ok = True
 
     def __init__(self, border_mode="valid", subsample=(1, 1),
                  filter_dilation=(1, 1)):
@@ -488,9 +489,15 @@ class BaseGpuCorrMM(CGpuKernelBase, BlasOp):
     def get_params(self, node):
         return node.inputs[0].type.context
 
+    def c_headers(self):
+        return ["<gpuarray/array.h>", "<gpuarray/blas.h>", "gpuarray_helper.h"]
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__)]
+
     def c_code_cache_version(self):
-        # raise this whenever modifying any of the support_code_files
-        return (0, 1)
+        # Raise this whenever modifying the code below.
+        return (2,)
 
     def c_code_helper(self, bottom, weights, top, direction, sub, height=None, width=None):
         """
@@ -952,7 +959,7 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
             return [[1], [1], [0], [0]]  # no connection to height, width
 
 
-class BaseGpuCorr3dMM(CGpuKernelBase, BlasOp):
+class BaseGpuCorr3dMM(CGpuKernelBase):
     """
     Base class for `GpuCorr3dMM`, `GpuCorr3dMM_gradWeights` and
     `GpuCorr3dMM_gradInputs`. Cannot be used directly.
@@ -966,10 +973,11 @@ class BaseGpuCorr3dMM(CGpuKernelBase, BlasOp):
         Perform subsampling of the output (default: (1, 1, 1)).
     filter_dilation
         Perform subsampling of the input, also known as dilation (default: (1, 1, 1)).
-    """
 
+    """
     check_broadcast = False
     __props__ = ('border_mode', 'subsample', 'filter_dilation')
+    _f16_ok = True
 
     def __init__(self, border_mode="valid", subsample=(1, 1, 1),
                  filter_dilation=(1, 1, 1)):
@@ -1027,9 +1035,15 @@ class BaseGpuCorr3dMM(CGpuKernelBase, BlasOp):
     def get_params(self, node):
         return node.inputs[0].type.context
 
+    def c_headers(self):
+        return ["<gpuarray/array.h>", "<gpuarray/blas.h>", "gpuarray_helper.h"]
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__)]
+
     def c_code_cache_version(self):
-        # raise this whenever modifying any of the support_code_files
-        return (0, 1)
+        # raise this whenever modifying the code below.
+        return (2,)
 
     def c_code_helper(self, bottom, weights, top, direction, sub,
                       height=None, width=None, depth=None):
@@ -1534,6 +1548,52 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
             return [[1], [1]]
         else:
             return [[1], [1], [0], [0], [0]]  # no connection to height, width, depth
+
+
+class GpuDownsampleFactorMaxGradGrad(CGpuKernelBase):
+    """
+    Implement the grad of downsample with max on the gpu.
+
+    """
+    __props__ = ('ignore_border', 'mode', 'ndim')
+
+    def __init__(self, ignore_border, mode='max', ndim=2):
+        self.ndim = ndim
+        self.ignore_border = ignore_border
+        self.mode = mode
+        CGpuKernelBase.__init__(self, ['pool_grad_grad.c'],
+                                'APPLY_SPECIFIC(pool_grad_grad)')
+        assert self.mode == 'max'
+        assert self.ndim in [2, 3]
+
+    def c_headers(self):
+        return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__), pygpu.get_include()]
+
+    def make_node(self, inp, out, out_grad, ws, stride, pad):
+        ctx_name = infer_context_name(inp, out, out_grad)
+        inp = as_gpuarray_variable(inp, ctx_name)
+        assert (inp.ndim in [4, 5])
+        out = as_gpuarray_variable(out, ctx_name)
+        assert (out_grad.ndim in [4, 5])
+        out_grad = as_gpuarray_variable(out_grad, ctx_name)
+        assert(out.ndim in [4, 5])
+
+        assert (out_grad.ndim == inp.ndim)
+        assert (inp.ndim == out.ndim)
+
+        ws = as_tensor_variable(ws)
+        stride = as_tensor_variable(stride)
+        pad = as_tensor_variable(pad)
+        assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
+        assert ws.type.ndim == 1
+
+        return Apply(self, [inp, out, out_grad, ws, stride, pad], [inp.type()])
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
 
 
 @inplace_allocempty(GpuGemv, 0)

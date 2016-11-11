@@ -14,7 +14,7 @@
   })();
 </script>
 
-<!--Insert version switcher at bottom of sidebar-->
+<!--Insert version switcher at bottom and top of sidebar-->
 <script type="text/javascript">
   var span = document.createElement("SPAN")
   var span_class = document.createAttribute("class");
@@ -24,6 +24,13 @@
   div.appendChild(span);
   var nav_div = document.getElementsByClassName("wy-nav-side")[0];
   nav_div.appendChild(div);
+
+  var span_up = document.createElement("SPAN")
+  var span_class_up = document.createAttribute("class");
+  span_class_up.value = "version_switcher_placeholder_up";
+  span_up.setAttributeNode(span_class_up);
+  var nav_div_up = document.getElementsByClassName("version")[0];
+  nav_div_up.appendChild(span_up);
 </script>
 
 <script type="text/javascript"

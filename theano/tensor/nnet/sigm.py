@@ -75,7 +75,7 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
 
         # float16 limits: -11.0, 7.0f
         # We use the float32 limits for float16 for now as the
-        # computation will happend in float32 anyway.
+        # computation will happen in float32 anyway.
         if (node.inputs[0].type == scalar.float32 or
                 node.inputs[0].type == scalar.float16):
             return """%(z)s = %(x)s < -88.0f ? 0.0 : %(x)s > 15.0f ? 1.0f : 1.0f /(1.0f + exp(-%(x)s));""" % locals()

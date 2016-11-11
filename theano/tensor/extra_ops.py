@@ -1,7 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import numpy as np
 import numpy
-import warnings
 from six.moves import xrange
 
 import theano
@@ -561,103 +560,6 @@ def diff(x, n=1, axis=-1):
     return DiffOp(n=n, axis=axis)(x)
 
 
-class BinCountOp(theano.Op):
-    """
-    .. note:: Deprecated
-              Use bincount() instead.
-              See function bincount for docstring.
-
-    """
-    compatible_type = ('int8', 'int16', 'int32', 'int64',
-                       'uint8', 'uint16', 'uint32', 'uint64')
-    """Tuple of all compatible dtype for the parameter of this op."""
-    __props__ = ("minlength",)
-
-    def __init__(self, minlength=None):
-        self.minlength = minlength
-        if minlength is not None:
-            numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-            if not bool(numpy_ver >= [1, 6]):
-                raise NotImplementedError(
-                    "BinCountOp with minlength attribute"
-                    " requires NumPy 1.6 or higher.")
-
-    def make_node(self, x, weights):
-        warnings.warn((
-            "Tile op is deprecated, use tile function instead."),
-            stacklevel=3)
-
-        x = basic.as_tensor_variable(x)
-
-        if x.dtype not in BinCountOp.compatible_type:
-            raise TypeError("Inputs dtype must be an integer.")
-
-        # Some dtypes are not supported by numpy's implementation of bincount.
-        # Until another one is available, we should fail at graph construction
-        # time, not wait for execution.
-        int_bitwidth = theano.configdefaults.python_int_bitwidth()
-        if int_bitwidth == 64:
-            numpy_unsupported_dtypes = ('uint64',)
-        if int_bitwidth == 32:
-            numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
-        intp_bitwidth = theano.configdefaults.local_bitwidth()
-        if intp_bitwidth == 32:
-            out_type = basic.ivector()
-        elif intp_bitwidth == 64:
-            out_type = basic.lvector()
-
-        if x.dtype in numpy_unsupported_dtypes:
-            raise TypeError(
-                ("Input dtypes %s are not supported by numpy.bincount, "
-                 % numpy_unsupported_dtypes), x.dtype)
-
-        if x.ndim != 1:
-            raise TypeError("Inputs must be of dimension 1.")
-
-        if weights is None:
-            weights = theano.gof.Constant(theano.gof.Generic(), None)
-        else:
-            weights = basic.as_tensor_variable(weights)
-            out_type = basic.dvector()
-            if weights.ndim != 1:
-                raise TypeError("Weights cannot have a number of"
-                                "dimension different of 1.")
-
-        return theano.Apply(self, [x, weights], [out_type])
-
-    def perform(self, node, inputs, output_storage):
-        x = inputs[0]
-        weights = inputs[1]
-        z = output_storage[0]
-
-        if weights is not None and weights.shape != x.shape:
-            raise TypeError("All inputs must have the same shape.")
-
-        # Needed for numpy 1.4.1 compatibility
-        if self.minlength:
-            out = np.bincount(x, weights=weights, minlength=self.minlength)
-        else:
-            out = np.bincount(x, weights=weights)
-
-        z[0] = theano._asarray(out, dtype=node.outputs[0].dtype)
-
-    def grad(self, inputs, outputs_gradients):
-        output = self(*inputs)
-
-        if output.dtype.find('int') != -1:
-            return [inp.zeros_like().astype(theano.config.floatX)
-                    for inp in inputs]
-
-        raise NotImplementedError()
-
-    def infer_shape(self, node, ins_shapes):
-        x = node.inputs[0]
-        m = basic.max(x) + 1
-        if self.minlength is not None:
-            m = basic.maximum(m, self.minlength)
-        return [[m]]
-
-
 def bincount(x, weights=None, minlength=None, assert_nonneg=False):
     """Count number of occurrences of each value in array of ints.
 
@@ -773,7 +675,7 @@ class RepeatOp(theano.Op):
         x = basic.as_tensor_variable(x)
         repeats = basic.as_tensor_variable(repeats)
 
-        if repeats.dtype not in tensor.discrete_dtypes:
+        if repeats.dtype not in tensor.integer_dtypes:
             raise TypeError("repeats.dtype must be an integer.")
 
         # Some dtypes are not supported by numpy's implementation of repeat.

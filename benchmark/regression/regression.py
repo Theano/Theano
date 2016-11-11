@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import theano
-import numpy as N
+import numpy as np
 from theano import tensor as T
 from theano.tensor import nnet as NN
 from six.moves import xrange
@@ -50,9 +50,9 @@ class RegressionLayer(M.Module):
         if input_size and target_size:
             # initialize w and b in a special way using input_size and target_size
             sz = (input_size, target_size)
-            rng = N.random.RandomState(seed)
+            rng = np.random.RandomState(seed)
             obj.w = rng.uniform(size = sz, low = -0.5, high = 0.5)
-            obj.b = N.zeros(target_size)
+            obj.b = np.zeros(target_size)
             obj.stepsize = 0.01
         # here we call the default_initialize method, which takes all the name: value
         # pairs in init and sets the property with that name to the provided value
@@ -93,8 +93,8 @@ def test_module_advanced_example():
 
     profmode = PrintEverythingMode(theano.gof.OpWiseCLinker(), 'fast_run')
 
-    data_x = N.random.randn(4, 10)
-    data_y = [ [int(x)] for x in (N.random.randn(4) > 0)]
+    data_x = np.random.randn(4, 10)
+    data_y = [ [int(x)] for x in (np.random.randn(4) > 0)]
 
 
     model = SpecifiedRegressionLayer(regularize = False).make(input_size = 10,

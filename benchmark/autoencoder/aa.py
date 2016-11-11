@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import sys
 import time
 
@@ -198,7 +198,7 @@ print(mod.pretty(mode=mode))
 m = mod.make(mode=mode)
 
 neg, nout, nhid, niter = [int(a) for a in sys.argv[1:]]
-rng = numpy.random.RandomState(342)
+rng = np.random.RandomState(342)
 m.w = rng.rand(nout, nhid)
 m.a = rng.randn(nhid) * 0.0
 m.b = rng.randn(nout) * 0.0

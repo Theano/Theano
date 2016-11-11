@@ -135,9 +135,9 @@ class TensorType(Type):
                             'this loss, you can: '
                             '1) explicitly cast your data to %s, or '
                             '2) set "allow_input_downcast=True" when calling '
-                            '"function".'
-                            % (self, data.dtype, self.dtype))
-                        raise TypeError(err_msg, data)
+                            '"function". Value: "%s"'
+                            % (self, data.dtype, self.dtype, repr(data)))
+                        raise TypeError(err_msg)
                 elif (allow_downcast is None and
                         type(data) is float and
                         self.dtype == theano.config.floatX):
@@ -255,6 +255,7 @@ class TensorType(Type):
                 'float16': (float, 'npy_float16', 'NPY_FLOAT16'),
                 'float32': (float, 'npy_float32', 'NPY_FLOAT32'),
                 'float64': (float, 'npy_float64', 'NPY_FLOAT64'),
+                'bool': (bool, 'npy_bool', 'NPY_BOOL'),
                 'uint8': (int, 'npy_uint8', 'NPY_UINT8'),
                 'int8': (int, 'npy_int8', 'NPY_INT8'),
                 'uint16': (int, 'npy_uint16', 'NPY_UINT16'),
@@ -320,89 +321,8 @@ class TensorType(Type):
     @staticmethod
     def values_eq_approx(a, b, allow_remove_inf=False, allow_remove_nan=False,
                          rtol=None, atol=None):
-        """
-        Parameters
-        ----------
-        allow_remove_inf
-            If True, when there is an inf in a, we allow any value in b in
-            that position. Event -inf
-        allow_remove_nan
-            If True, when there is a nan in a, we allow any value in b in
-            that position. Event +-inf
-        rtol
-            Relative tolerance, passed to _allclose.
-        atol
-            Absolute tolerance, passed to _allclose.
-
-        """
-        if isinstance(a, numpy.ndarray) and isinstance(b, numpy.ndarray):
-            if a.shape != b.shape:
-                return False
-            if a.dtype != b.dtype:
-                return False
-            if 'int' in str(a.dtype):
-                return numpy.all(a == b)
-            else:
-                # work around a numpy.allclose bug:
-                # http://projects.scipy.org/numpy/ticket/1672
-                if a.ndim == 0 and numpy.isinf(a):
-                    a = a.reshape(1)
-                    b = b.reshape(1)
-
-                cmp = theano.tensor.basic._allclose(a, b, rtol=rtol, atol=atol)
-                if cmp:
-                    # Numpy claims they are close, this is good enough for us.
-                    return True
-                # Numpy is unhappy, but it does not necessarily mean that a and
-                # b are different. Indeed, Numpy does not like missing values
-                # and will return False whenever some are found in a or b.
-                # The proper way would be to use the MaskArray stuff available
-                # in Numpy. However, it looks like it has been added to Numpy's
-                # core recently, so it may not be available to everyone. Thus,
-                # for now we use a home-made recipe, that should probably be
-                # revisited in the future.
-                a_missing = numpy.isnan(a)
-                a_inf = numpy.isinf(a)
-
-                if not (a_missing.any() or (allow_remove_inf and a_inf.any())):
-                    # There are no missing values in a, thus this is not the
-                    # reason why numpy.allclose(a, b) returned False.
-                    _logger.info(
-                        'numpy allclose failed for abs_err %f and rel_err %f',
-                        numpy.max(abs(a - b)),
-                        numpy.max(abs(a - b) / (abs(a) + abs(b))))
-                    return False
-                # The following line is what numpy.allclose bases its decision
-                # upon, according to its documentation.
-                rtol = 1.0000000000000001e-05
-                atol = 1e-8
-                cmp_elemwise = (numpy.absolute(a - b) <=
-                                (atol + rtol * numpy.absolute(b)))
-                # Find places where both a and b have missing values.
-                both_missing = a_missing * numpy.isnan(b)
-
-                # Find places where both a and b have inf of the same sign.
-                both_inf = a_inf * numpy.isinf(b)
-
-                # cmp_elemwise is weird when we have inf and -inf.
-                # set it to False
-                cmp_elemwise = numpy.where(
-                    both_inf & cmp_elemwise,
-                    a == b,
-                    cmp_elemwise)
-
-                # check the sign of the inf
-                both_inf = numpy.where(both_inf, (a == b), both_inf)
-
-                if allow_remove_inf:
-                    both_inf += a_inf
-                if allow_remove_nan:
-                    both_missing += a_missing
-
-                # Combine all information.
-                return (cmp_elemwise + both_missing + both_inf).all()
-
-        return False
+        return values_eq_approx(a, b, allow_remove_inf, allow_remove_nan,
+                                rtol, atol)
 
     def __hash__(self):
         """Hash equal for same kinds of TensorType"""
@@ -686,16 +606,97 @@ class TensorType(Type):
 theano.compile.ops.expandable_types += (TensorType,)
 
 
+def values_eq_approx(a, b, allow_remove_inf=False, allow_remove_nan=False,
+                     rtol=None, atol=None):
+    """
+    Parameters
+    ----------
+    allow_remove_inf
+        If True, when there is an inf in a, we allow any value in b in
+        that position. Event -inf
+    allow_remove_nan
+        If True, when there is a nan in a, we allow any value in b in
+        that position. Event +-inf
+    rtol
+        Relative tolerance, passed to _allclose.
+    atol
+        Absolute tolerance, passed to _allclose.
+
+    """
+    if isinstance(a, numpy.ndarray) and isinstance(b, numpy.ndarray):
+        if a.shape != b.shape:
+            return False
+        if a.dtype != b.dtype:
+            return False
+        if str(a.dtype) not in theano.tensor.continuous_dtypes:
+            return numpy.all(a == b)
+        else:
+            cmp = theano.tensor.basic._allclose(a, b, rtol=rtol, atol=atol)
+            if cmp:
+                # Numpy claims they are close, this is good enough for us.
+                return True
+            # Numpy is unhappy, but it does not necessarily mean that a and
+            # b are different. Indeed, Numpy does not like missing values
+            # and will return False whenever some are found in a or b.
+            # The proper way would be to use the MaskArray stuff available
+            # in Numpy. However, it looks like it has been added to Numpy's
+            # core recently, so it may not be available to everyone. Thus,
+            # for now we use a home-made recipe, that should probably be
+            # revisited in the future.
+            a_missing = numpy.isnan(a)
+            a_inf = numpy.isinf(a)
+
+            if not (a_missing.any() or (allow_remove_inf and a_inf.any())):
+                # There are no missing values in a, thus this is not the
+                # reason why numpy.allclose(a, b) returned False.
+                _logger.info(
+                    'numpy allclose failed for abs_err %f and rel_err %f',
+                    numpy.max(abs(a - b)),
+                    numpy.max(abs(a - b) / (abs(a) + abs(b))))
+                return False
+            # The following line is what numpy.allclose bases its decision
+            # upon, according to its documentation.
+            rtol = 1.0000000000000001e-05
+            atol = 1e-8
+            cmp_elemwise = (numpy.absolute(a - b) <=
+                            (atol + rtol * numpy.absolute(b)))
+            # Find places where both a and b have missing values.
+            both_missing = a_missing * numpy.isnan(b)
+
+            # Find places where both a and b have inf of the same sign.
+            both_inf = a_inf * numpy.isinf(b)
+
+            # cmp_elemwise is weird when we have inf and -inf.
+            # set it to False
+            cmp_elemwise = numpy.where(
+                both_inf & cmp_elemwise,
+                a == b,
+                cmp_elemwise)
+
+            # check the sign of the inf
+            both_inf = numpy.where(both_inf, (a == b), both_inf)
+
+            if allow_remove_inf:
+                both_inf += a_inf
+            if allow_remove_nan:
+                both_missing += a_missing
+
+            # Combine all information.
+            return (cmp_elemwise + both_missing + both_inf).all()
+
+    return False
+
+
 def values_eq_approx_remove_inf(a, b):
-    return TensorType.values_eq_approx(a, b, True)
+    return values_eq_approx(a, b, True)
 
 
 def values_eq_approx_remove_nan(a, b):
-    return TensorType.values_eq_approx(a, b, False, True)
+    return values_eq_approx(a, b, False, True)
 
 
 def values_eq_approx_remove_inf_nan(a, b):
-    return TensorType.values_eq_approx(a, b, True, True)
+    return values_eq_approx(a, b, True, True)
 
 
 def values_eq_approx_always_true(a, b):

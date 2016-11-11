@@ -2328,16 +2328,16 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
     >>> output_size = n_outputs_per_class * n_outputs_per_class
     >>>
     >>> # First level of h_softmax
-    >>> W1 = theano.shared(np.asarray(
-    ...     np.random.normal(0, 0.001, (dim_x, n_classes))))
-    >>> b1 = theano.shared(np.asarray(np.zeros((n_classes,))))
+    >>> floatX = theano.config.floatX
+    >>> W1 = theano.shared(
+    ...     np.random.normal(0, 0.001, (dim_x, n_classes)).astype(floatX))
+    >>> b1 = theano.shared(np.zeros((n_classes,), floatX))
     >>>
     >>> # Second level of h_softmax
-    >>> W2 = np.asarray(np.random.normal(0, 0.001,
-    ...     size=(n_classes, dim_x, n_outputs_per_class)))
+    >>> W2 = np.random.normal(0, 0.001,
+    ...     size=(n_classes, dim_x, n_outputs_per_class)).astype(floatX)
     >>> W2 = theano.shared(W2)
-    >>> b2 = theano.shared(
-    ...    np.asarray(np.zeros((n_classes, n_outputs_per_class))))
+    >>> b2 = theano.shared(np.zeros((n_classes, n_outputs_per_class), floatX))
     >>>
     >>> # We can now build the graph to compute a loss function, typically the
     >>> # negative log-likelihood:

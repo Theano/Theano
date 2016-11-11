@@ -752,9 +752,11 @@ class VM_Linker(link.LocalLinker):
 
         """
         if (config.profile and
-                hasattr(theano, 'sandbox') and
-                hasattr(theano.sandbox, 'cuda') and
-                theano.sandbox.cuda.cuda_enabled):
+                ((hasattr(theano, 'sandbox') and
+                  hasattr(theano.sandbox, 'cuda') and
+                  theano.sandbox.cuda.cuda_enabled) or
+                 (hasattr(theano, 'gpuarray') and
+                  theano.gpuarray.pygpu_activated))):
             if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
                 raise Exception(
                     "You are running the Theano profiler with CUDA enabled."
@@ -1041,16 +1043,19 @@ class VM_Linker(link.LocalLinker):
         reallocated_info = calculate_reallocate_info(
             order, fgraph, storage_map, compute_map_re, dependencies)
         t0 = time.time()
+        linker_make_thunk_time = {}
+        impl = None
+        if self.c_thunks is False:
+            impl = 'py'
         for node in order:
             try:
-                impl = None
-                if self.c_thunks is False:
-                    impl = 'py'
+                thunk_start = time.time()
                 thunks.append(node.op.make_thunk(node,
                                                  storage_map,
                                                  compute_map,
                                                  no_recycling,
                                                  impl=impl))
+                linker_make_thunk_time[node] = time.time() - thunk_start
                 if not hasattr(thunks[-1], 'lazy'):
                     # We don't want all ops maker to think about lazy Ops.
                     # So if they didn't specify that its lazy or not, it isn't.
@@ -1064,6 +1069,7 @@ class VM_Linker(link.LocalLinker):
 
         if self.profile:
             self.profile.linker_node_make_thunks += t1 - t0
+            self.profile.linker_make_thunk_time = linker_make_thunk_time
 
         for node, thunk in zip(order, thunks):
             thunk.inputs = [storage_map[v] for v in node.inputs]

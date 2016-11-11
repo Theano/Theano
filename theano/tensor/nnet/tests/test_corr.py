@@ -27,8 +27,7 @@ class TestCorr2D(utt.InferShapeTester):
         self.filters.name = 'default_filters'
         if not conv.imported_scipy_signal and theano.config.cxx == "":
             raise SkipTest("CorrMM tests need SciPy or a c++ compiler")
-        if not theano.config.blas.ldflags:
-            raise SkipTest("CorrMM tests need a BLAS")
+        # This tests can run even when theano.config.blas.ldflags is empty.
 
     def validate(self, image_shape, filter_shape,
                  border_mode='valid', subsample=(1, 1),
@@ -131,7 +130,7 @@ class TestCorr2D(utt.InferShapeTester):
                                 icol:icol + dil_fil_shape2d[1]:filter_dilation[1]] * filter2d[::-1, ::-1]
                             ).sum()
 
-        utt.assert_allclose(theano_output, ref_output)
+        utt.assert_allclose(ref_output, theano_output)
 
         # TEST GRADIENT
         if verify_grad:

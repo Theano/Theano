@@ -3,13 +3,14 @@ import unittest
 import numpy
 
 import theano
+from theano import config
 from theano.tests import unittest_tools as utt
 
 from theano.tensor.nnet.corr3d import Corr3dMM, Corr3dMM_gradWeights, Corr3dMM_gradInputs
 
 from ..type import gpuarray_shared_constructor
 from ..blas import GpuCorr3dMM, GpuCorr3dMM_gradWeights, GpuCorr3dMM_gradInputs
-from .config import mode_with_gpu, mode_without_gpu
+from .config import mode_with_gpu, mode_without_gpu, ref_cast
 
 
 class TestCorr3dMM(unittest.TestCase):
@@ -22,15 +23,15 @@ class TestCorr3dMM(unittest.TestCase):
         inputs_shape = [inputs_shape[i] for i in (0, 4, 1, 2, 3)]
         filters_shape = [filters_shape[i] for i in (0, 4, 1, 2, 3)]
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = numpy.random.random(inputs_shape).astype(config.floatX)
+        filters_val = numpy.random.random(filters_shape).astype(config.floatX)
 
         inputs = gpuarray_shared_constructor(inputs_val)
         filters = gpuarray_shared_constructor(filters_val)
 
         conv_ref = Corr3dMM(border_mode=border_mode,
                             filter_dilation=filter_dilation,
-                            subsample=subsample)(inputs, filters)
+                            subsample=subsample)(ref_cast(inputs), ref_cast(filters))
         f_ref = theano.function([], conv_ref, mode=mode_without_gpu)
 
         conv = GpuCorr3dMM(border_mode=border_mode,
@@ -120,20 +121,20 @@ class TestCorr3dMM(unittest.TestCase):
         filters_shape = [filters_shape[i] for i in (0, 4, 1, 2, 3)]
         dCdH_shape = [dCdH_shape[i] for i in (0, 4, 1, 2, 3)]
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        dCdH_val = numpy.random.random(dCdH_shape).astype('float32')
+        inputs_val = numpy.random.random(inputs_shape).astype(config.floatX)
+        dCdH_val = numpy.random.random(dCdH_shape).astype(config.floatX)
         inputs = gpuarray_shared_constructor(inputs_val)
         dCdH = gpuarray_shared_constructor(dCdH_val)
         shape = gpuarray_shared_constructor(numpy.array(filters_shape[2:]))
 
         if (subsample == (1, 1, 1)):
             conv_ref = Corr3dMM_gradWeights(subsample=subsample)(
-                inputs, dCdH)
+                ref_cast(inputs), ref_cast(dCdH))
             conv_gemm = GpuCorr3dMM_gradWeights(subsample=subsample)(
                 inputs, dCdH)
         else:
             conv_ref = Corr3dMM_gradWeights(subsample=subsample)(
-                inputs, dCdH, shape=shape)
+                ref_cast(inputs), ref_cast(dCdH), shape=shape)
             conv_gemm = GpuCorr3dMM_gradWeights(subsample=subsample)(
                 inputs, dCdH, shape=shape)
 
@@ -167,8 +168,8 @@ class TestCorr3dMM(unittest.TestCase):
         inputs_shape = [inputs_shape[i] for i in (0, 4, 1, 2, 3)]
         filters_shape = [filters_shape[i] for i in (0, 4, 1, 2, 3)]
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = numpy.random.random(inputs_shape).astype(config.floatX)
+        filters_val = numpy.random.random(filters_shape).astype(config.floatX)
         inputs = gpuarray_shared_constructor(inputs_val)
         filters = gpuarray_shared_constructor(filters_val)
 
@@ -179,12 +180,12 @@ class TestCorr3dMM(unittest.TestCase):
 
         if (subsample == (1, 1, 1)):
             conv_ref = Corr3dMM_gradInputs(subsample=subsample)(
-                kern=filters, topgrad=inputs)
+                kern=ref_cast(filters), topgrad=ref_cast(inputs))
             conv_gemm = GpuCorr3dMM_gradInputs(subsample=subsample)(
                 kern=filters, topgrad=inputs)
         else:
             conv_ref = Corr3dMM_gradInputs(subsample=subsample)(
-                kern=filters, topgrad=inputs, shape=bottom_shape)
+                kern=ref_cast(filters), topgrad=ref_cast(inputs), shape=bottom_shape)
             conv_gemm = GpuCorr3dMM_gradInputs(subsample=subsample)(
                 kern=filters, topgrad=inputs, shape=bottom_shape)
 
@@ -207,3 +208,13 @@ class TestCorr3dMM(unittest.TestCase):
         self.run_gradinput(inputs_shape=(16, 15, 12, 12, 10),
                            filters_shape=(10, 6, 12, 4, 1),
                            subsample=(3, 1, 2))
+
+    def test_large_input(self):
+        # This tests the number-of-threads computation
+        # by making (channels * height) > (max_threads_dim ** 2).
+        # (See also issue #5165.)
+        self.run_conv_valid(inputs_shape=(1, 1024, 3, 3, 1024),
+                            filters_shape=(1, 1, 1, 1, 1024),
+                            verify_grad=False)
+        self.run_gradinput(inputs_shape=(1, 1024, 3, 3, 1),
+                           filters_shape=(1, 1, 1, 1, 1024))

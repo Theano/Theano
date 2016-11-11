@@ -1,0 +1,189 @@
+#section kernels
+
+#kernel max_pool2d_grad_grad_kernel : size, size, size, size, size, size, size, *, *, *, size, size, size, size, size, size, * :
+
+KERNEL void max_pool2d_grad_grad_kernel(const ga_size nthreads,
+   const ga_size num, const ga_size channels, const ga_size pooled_height,
+   const ga_size pooled_width, const ga_size height, const ga_size width,
+   GLOBAL_MEM const DTYPE_i0 *x, GLOBAL_MEM const DTYPE_i1 *z, GLOBAL_MEM const DTYPE_i2 *gx,
+   const ga_size kernel_h, const ga_size kernel_w, const ga_size stride_h, const ga_size stride_w,
+   const ga_size pad_h, const ga_size pad_w,
+   GLOBAL_MEM DTYPE_o0 *gz)
+{
+  // grid stride looping
+  for (ga_size index = GID_0 * LDIM_0 + LID_0;
+       index < nthreads; index += LDIM_0 * GDIM_0) {
+    const ga_size pw = index % pooled_width;
+    const ga_size ph = (index / pooled_width) % pooled_height;
+    const ga_size c = (index / pooled_width / pooled_height) % channels;
+    const ga_size n = (index / pooled_width / pooled_height / channels);
+    ga_int hstart = static_cast<ga_int>(ph*stride_h) - static_cast<ga_int>(pad_h);
+    hstart = max(hstart, 0);
+    const ga_size hend = min(hstart + kernel_h, height);
+    ga_int wstart = static_cast<ga_int>(pw*stride_w) - static_cast<ga_int>(pad_w);
+    wstart = max(wstart, 0);
+    const ga_size wend = min(wstart + kernel_w, width);
+
+    const ga_size offset = (n*channels + c) * height * width;
+
+    const DTYPE_i0* x_slice = x + offset;
+    const DTYPE_i2* gx_slice = gx + offset;
+    DTYPE_o0 gradient = 0;
+
+    for (ga_size h=hstart; h < hend; ++h) {
+      for (ga_size w=wstart; w < wend; ++w) {
+        // maximum in the region
+        if (z[index] == x_slice[h * width + w]) {
+          gradient += gx_slice[h * width + w];
+        }
+      }
+    }
+    gz[index] = gradient;
+  }
+}
+
+#kernel max_pool3d_grad_grad_kernel : size, size, size, size, size, size, size, size, size, *, *, *, size, size, size, size, size, size, size, size, size, * :
+
+KERNEL void max_pool3d_grad_grad_kernel(const ga_size nthreads,
+   const ga_size num, const ga_size channels, const ga_size pooled_depth,
+   const ga_size pooled_height, const ga_size pooled_width,
+   const ga_size depth, const ga_size height, const ga_size width,
+   GLOBAL_MEM const DTYPE_i0 *x, GLOBAL_MEM const DTYPE_i1 *z, GLOBAL_MEM const DTYPE_i2 *gx,
+   const ga_size kernel_d, const ga_size kernel_h, const ga_size kernel_w,
+   const ga_size stride_d, const ga_size stride_h, const ga_size stride_w,
+   const ga_size pad_d, const ga_size pad_h, const ga_size pad_w,
+   GLOBAL_MEM DTYPE_o0 *gz)
+{
+  // grid stride looping
+  for (ga_size index = GID_0 * LDIM_0 + LID_0;
+       index < nthreads; index += LDIM_0 * GDIM_0) {
+    const ga_size pw = index % pooled_width;
+    const ga_size ph = (index / pooled_width) % pooled_height;
+    const ga_size pd = (index / pooled_width / pooled_height) % pooled_depth;
+    const ga_size c = (index / pooled_width / pooled_height / pooled_depth) % channels;
+    const ga_size n = (index / pooled_width / pooled_height / pooled_depth / channels);
+    ga_int dstart = static_cast<ga_int>(pd*stride_d) - static_cast<ga_int>(pad_d);
+    dstart = max(dstart, 0);
+    const ga_size dend = min(dstart + kernel_d, depth);
+    ga_int hstart = static_cast<ga_int>(ph*stride_h) - static_cast<ga_int>(pad_h);
+    hstart = max(hstart, 0);
+    const ga_size hend = min(hstart + kernel_h, height);
+    ga_int wstart = static_cast<ga_int>(pw*stride_w) - static_cast<ga_int>(pad_w);
+    wstart = max(wstart, 0);
+    const ga_size wend = min(wstart + kernel_w, width);
+
+    const ga_size offset = (n*channels + c) * depth * height * width;
+
+    const DTYPE_i0* x_slice = x + offset;
+    const DTYPE_i2* gx_slice = gx + offset;
+    DTYPE_o0 gradient = 0;
+
+    for (ga_size d=dstart; d < dend; ++d) {
+      for (ga_size h=hstart; h < hend; ++h) {
+        for (ga_size w=wstart; w < wend; ++w) {
+          // maximum in the region
+          if (z[index] == x_slice[(d * height + h) * width + w]) {
+            gradient += gx_slice[(d * height + h)* width + w];
+          }
+        }
+      }
+    }
+    gz[index] = gradient;
+  }
+}
+
+#section support_code_struct
+
+int APPLY_SPECIFIC(pool_grad_grad)(PyGpuArrayObject *x,
+                                   PyGpuArrayObject *z,
+                                   PyGpuArrayObject *gx,
+                                   PyArrayObject *ws,
+                                   PyArrayObject *stride,
+                                   PyArrayObject *pad,
+                                   PyGpuArrayObject **gz,
+                                   PyGpuContextObject *ctx) {
+  if (!GpuArray_IS_C_CONTIGUOUS(&x->ga)
+      || !GpuArray_IS_C_CONTIGUOUS(&z->ga)
+      || !GpuArray_IS_C_CONTIGUOUS(&gx->ga))
+    {
+      PyErr_Format(PyExc_ValueError,
+                   "GpuPoolingGradGrad: requires data to be C-contiguous");
+      return 1;
+    }
+  size_t ndims = PyArray_DIM(ws, 0);
+  if (PyGpuArray_NDIM(x) != ndims + 2
+      || PyGpuArray_NDIM(z) != ndims + 2
+      || PyGpuArray_NDIM(gx) != ndims + 2)
+    {
+      PyErr_SetString(PyExc_ValueError, "GpuPoolingGradGrad: rank error");
+      return 1;
+    }
+  if (theano_prep_output(gz, PyGpuArray_NDIM(z), PyGpuArray_DIMS(z),
+                         z->ga.typecode, GA_C_ORDER, ctx) != 0)
+    {
+      PyErr_SetString(PyExc_RuntimeError,
+                      "GpuPoolingGradGrad: failed to allocate memory");
+      return 1;
+    }
+
+  {
+    // scope for running kernel
+    size_t w[3];
+    size_t s[3];
+    size_t p[3];
+    for(int i = 0; i < ndims; i++) {
+      w[i] = *((npy_intp*)PyArray_GETPTR1(ws, i));
+      s[i] = *((npy_intp*)PyArray_GETPTR1(stride, i));
+      p[i] = *((npy_intp*)PyArray_GETPTR1(pad, i));
+    }
+
+    size_t max_threads_dim;
+    int err;
+    const size_t* z_dims = PyGpuArray_DIMS(z);
+    const size_t* x_dims = PyGpuArray_DIMS(x);
+
+    // Get the max threads per blocks
+    err = gpucontext_property(ctx->ctx, GA_CTX_PROP_MAXLSIZE0, &max_threads_dim);
+    if (err != GA_NO_ERROR){
+      PyErr_SetString(PyExc_RuntimeError, "Could not fetch max_threads_dims");
+      return 1;
+    }
+    size_t threads_per_block = max_threads_dim;
+
+    if (ndims == 2) {
+      size_t num_kernels = z_dims[0] * z_dims[1] * z_dims[2] * z_dims[3];
+      size_t n_blocks = (num_kernels + threads_per_block - 1) / threads_per_block;
+      err = max_pool2d_grad_grad_kernel_call(1, &n_blocks, &threads_per_block, 0,
+                                             num_kernels,
+                                             z_dims[0], z_dims[1], z_dims[2], z_dims[3],
+                                             x_dims[2], x_dims[3],
+                                             x->ga.data, z->ga.data, gx->ga.data,
+                                             w[0], w[1], s[0], s[1], p[0], p[1],
+                                             (*gz)->ga.data);
+      if (err != GA_NO_ERROR) {
+        PyErr_Format(PyExc_RuntimeError,
+                     "GpuPoolingGradGrad: max_pool2d_grad_grad_kernel %s.",
+                     GpuKernel_error(&k_max_pool2d_grad_grad_kernel, err));
+        return 1;
+      }
+    }
+    else if (ndims == 3) {
+      size_t num_kernels = z_dims[0] * z_dims[1] * z_dims[2] * z_dims[3] * z_dims[4];
+      size_t n_blocks = (num_kernels + threads_per_block - 1) / threads_per_block;
+      err = max_pool3d_grad_grad_kernel_call(1, &n_blocks, &threads_per_block, 0,
+                                             num_kernels,
+                                             z_dims[0], z_dims[1], z_dims[2], z_dims[3], z_dims[4],
+                                             x_dims[2], x_dims[3], x_dims[4],
+                                             x->ga.data, z->ga.data, gx->ga.data,
+                                             w[0], w[1], w[2], s[0], s[1], s[2], p[0], p[1], p[2],
+                                             (*gz)->ga.data);
+      if (err != GA_NO_ERROR) {
+        PyErr_Format(PyExc_RuntimeError,
+                     "GpuPoolingGradGrad: max_pool3d_grad_grad_kernel %s.",
+                     GpuKernel_error(&k_max_pool3d_grad_grad_kernel, err));
+        return 1;
+      }
+    }
+  }
+  return 0;
+}

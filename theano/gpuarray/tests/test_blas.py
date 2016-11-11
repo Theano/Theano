@@ -2,23 +2,26 @@ from __future__ import absolute_import, print_function, division
 from unittest import TestCase
 from nose.plugins.skip import SkipTest
 import itertools
+import copy
 
 import numpy
 
 import theano
+from theano import gradient
 from theano import tensor
 from theano.tests import unittest_tools as utt
 from theano.tensor.blas import gemv_inplace, gemm_inplace, _dot22, batched_dot
 from theano.tensor.tests.test_blas import TestGer, BaseGemv
+from theano.tensor.signal.pool import Pool, DownsampleFactorMaxGradGrad
 
 from .. import gpuarray_shared_constructor
-from .config import mode_with_gpu
+from .config import mode_with_gpu, mode_without_gpu
 from .test_basic_ops import makeTester, rand
 
 from ..blas import (gpugemv_inplace, gpugemv_no_inplace,
                     gpugemm_inplace, gpugemmbatch_no_inplace,
                     gpuger_inplace, gpuger_no_inplace,
-                    GpuGer, gpu_dot22, GpuGemm)
+                    GpuGer, gpu_dot22, GpuDownsampleFactorMaxGradGrad)
 
 
 GpuGemvTester = makeTester(
@@ -132,50 +135,127 @@ GpuDot22Tester = makeTester(
 )
 
 
-def test_hgemm_swap():
-    from theano.sandbox.cuda import nvcc_compiler
-    if nvcc_compiler.nvcc_version < '7.5':
-        raise SkipTest("SgemmEx is only avaialble on cuda 7.5+")
+def test_max_pool2d_grad_grad():
+    shps = [(1, 12),
+            (1, 1, 12),
+            (1, 1, 1, 12),
+            (1, 1, 2, 2),
+            (1, 1, 1, 1),
+            (1, 1, 4, 4),
+            (1, 1, 10, 11),
+            (1, 2, 2, 2),
+            (3, 5, 4, 4),
+            (25, 1, 7, 7),
+            (1, 1, 12, 12),
+            (1, 1, 2, 14),
+            (1, 1, 12, 14),
+            (1, 1, 14, 14),
+            (1, 1, 16, 16),
+            (1, 1, 18, 18),
+            (1, 1, 24, 24),
+            (1, 6, 24, 24),
+            (10, 1, 24, 24),
+            (10, 6, 24, 24),
+            (30, 6, 12, 12),
+            (30, 2, 24, 24),
+            (30, 6, 24, 24),
+            (10, 10, 10, 11),
+            (1, 1, 10, 1025),
+            (1, 1, 10, 1023),
+            (1, 1, 1025, 10),
+            (1, 1, 1023, 10), ]
 
-    v = tensor.vector(dtype='float16')
-    m = tensor.matrix(dtype='float16')
-    m2 = tensor.matrix(dtype='float16')
-    m32 = tensor.matrix(dtype='float32')
+    numpy.random.RandomState(utt.fetch_seed()).shuffle(shps)
+    test_ds = (2, 2), (3, 2), (1, 1)
+    test_st = (2, 2), (3, 2), (1, 1)
 
-    # test that we don't try to replace anything but matrix x matrix in float16
-    f = theano.function([v, m], tensor.dot(v, m), mode=mode_with_gpu)
-    assert len([node for node in f.maker.fgraph.apply_nodes
-                if isinstance(node.op, GpuGemm)]) == 0
+    for shp in shps:
+        for ds, st in itertools.product(test_ds, test_st):
+            if ds[0] > shp[-2] or ds[1] > shp[-1]:
+                continue
+            for ignore_border, pad in zip((True, False), [(1, 1), (0, 0)]):
+                if pad[0] >= ds[0] or pad[1] >= ds[1]:
+                    continue
+                # print('test_downsample', shp, ds, st, pad, ignore_border)
+                ds_op = Pool(ndim=len(ds), ignore_border=ignore_border)
 
-    f = theano.function([m32, m], tensor.dot(m32, m), mode=mode_with_gpu)
-    assert len([node for node in f.maker.fgraph.apply_nodes
-                if isinstance(node.op, GpuGemm)]) == 0
+                a = theano.shared(rand(*shp), 'a')
 
-    f = theano.function([m, m2], tensor.dot(m, m2), mode=mode_with_gpu)
-    assert len([node for node in f.maker.fgraph.apply_nodes
-                if isinstance(node.op, GpuGemm)]) == 1
+                ggf = gradient.Lop(tensor.grad((ds_op(
+                    tensor.as_tensor_variable(a), ds, st, pad)**2).sum(), a), a, a)
 
-    v1 = numpy.random.random((3, 4)).astype('float16')
-    v2 = numpy.random.random((4, 2)).astype('float16')
+                ref_mode = copy.copy(mode_without_gpu)
+                ref_mode.check_py_code = False
+                gpu_mode = copy.copy(mode_with_gpu)
+                gpu_mode.check_py_code = False
+                gg = theano.function([], ggf, mode=gpu_mode)
+                gg2 = theano.function([], ggf, mode=ref_mode)
 
-    of = f(v1, v2)
-    on = numpy.dot(v1, v2)
+                assert any([
+                    isinstance(node.op, GpuDownsampleFactorMaxGradGrad)
+                    for node in gg.maker.fgraph.toposort()
+                ])
+                assert any([
+                    isinstance(node.op, DownsampleFactorMaxGradGrad)
+                    for node in gg2.maker.fgraph.toposort()
+                ])
+                assert numpy.allclose(gg(), gg2()), (shp, ds, st,
+                                                     ignore_border)
 
-    utt.assert_allclose(of, on)
 
+def test_max_pool3d_grad_grad():
+    shps = [(1, 1, 12),
+            (1, 1, 1, 1, 1),
+            (1, 1, 1, 1, 1025),
+            (1, 1, 2, 2, 2),
+            (1, 1, 7, 7, 7),
+            (1, 1, 9, 10, 11),
+            (1, 6, 18, 18, 18),
+            (1, 1, 6, 24, 24),
+            (1, 10, 1, 24, 24),
+            (1, 10, 6, 24, 24),
+            (1, 30, 6, 12, 12),
+            (1, 30, 2, 24, 24),
+            (1, 30, 6, 24, 24),
+            (1, 10, 10, 10, 11),
+            (1, 1, 10, 10, 1025),
+            (1, 1, 10, 10, 1023),
+            (1, 1, 10, 1025, 10),
+            (1, 1, 10, 1023, 10), ]
 
-def test_hgemm_alpha_output_merge():
-    from theano.sandbox.cuda import nvcc_compiler
-    if nvcc_compiler.nvcc_version < '7.5':
-        raise SkipTest("SgemmEx is only avaialble on cuda 7.5+")
+    numpy.random.RandomState(utt.fetch_seed()).shuffle(shps)
+    test_ds = (2, 2, 2), (3, 2, 3), (1, 1, 1)
+    test_st = (2, 2, 2), (2, 3, 2), (1, 1, 1)
 
-    m1 = tensor.matrix(dtype='float16')
-    m2 = tensor.matrix(dtype='float16')
+    for shp in shps:
+        for ds, st in itertools.product(test_ds, test_st):
+            if ds[0] > shp[-3] or ds[1] > shp[-2] or ds[2] > shp[-1]:
+                continue
+            for ignore_border, pad in zip((True, False), [(1, 1, 1), (0, 0, 0)]):
+                if pad[0] >= ds[0] or pad[1] >= ds[1] or pad[2] >= ds[2]:
+                    continue
+                # print('test_downsample', shp, ds, st, pad, ignore_border)
+                ds_op = Pool(ndim=len(ds), ignore_border=ignore_border)
 
-    b = tensor.matrix(dtype='float16')
+                a = theano.shared(rand(*shp), 'a')
 
-    hgemm = numpy.asarray(0.05, dtype='float16') * (tensor.dot(m1, m2) + b)
+                ggf = gradient.Lop(tensor.grad((ds_op(
+                    tensor.as_tensor_variable(a), ds, st, pad)**2).sum(), a), a, a)
 
-    f = theano.function([m1, m2, b], hgemm, mode=mode_with_gpu)
-    # there should be 3 gpu_from_host, 1 hgemm and 1 host_from_gpu
-    assert len(f.maker.fgraph.apply_nodes) == 5
+                ref_mode = copy.copy(mode_without_gpu)
+                ref_mode.check_py_code = False
+                gpu_mode = copy.copy(mode_with_gpu)
+                gpu_mode.check_py_code = False
+                gg = theano.function([], ggf, mode=gpu_mode)
+                gg2 = theano.function([], ggf, mode=ref_mode)
+
+                assert any([
+                    isinstance(node.op, GpuDownsampleFactorMaxGradGrad)
+                    for node in gg.maker.fgraph.toposort()
+                ])
+                assert any([
+                    isinstance(node.op, DownsampleFactorMaxGradGrad)
+                    for node in gg2.maker.fgraph.toposort()
+                ])
+                assert numpy.allclose(gg(), gg2()), (shp, ds, st,
+                                                     ignore_border)

@@ -5,6 +5,7 @@ cache:
   directories:
     - $HOME/download
     - $HOME/.cache/pip
+    - $HOME/.theano
 
 language: python
 python:

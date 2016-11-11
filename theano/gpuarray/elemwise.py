@@ -6,7 +6,7 @@ import theano
 from theano import Apply, scalar, config, Op
 from six.moves import StringIO, xrange
 from theano.gof.utils import MethodNotDefined
-from theano.scalar import Scalar
+from theano.scalar import Scalar, Composite
 from theano.tensor.elemwise import (Elemwise, DimShuffle, CAReduceDtype)
 
 try:
@@ -86,15 +86,7 @@ class GpuElemwise(HideC, Elemwise):
         except MethodNotDefined:
             pass
 
-        if fake_node.op != self.scalar_op:
-            # If the new op is different due to type changes, we make a new
-            # op for it.
-            elem = GpuElemwise(fake_node.op, self.inplace_pattern, self.name,
-                               self.nfunc_spec, self.openmp)
-        else:
-            elem = self
-
-        node = Apply(elem, inputs, outputs)
+        node = Apply(self, inputs, outputs)
         return node
 
     def get_params(self, node):
@@ -111,7 +103,14 @@ class GpuElemwise(HideC, Elemwise):
         inps, outs = self._get_vnames(node)
         scal_v_ins = [get_scal(i.dtype)() for i in node.inputs]
 
-        fake_node = self.scalar_op.make_node(*scal_v_ins)
+        # As float16 isn't a c type and most GPU don't compute on it,
+        # We convert the computation to float32, and let libgpuarray
+        # load in float16 and cast to float32 and do the reverse for
+        # the output.
+        scalar_op = self.scalar_op
+        if isinstance(scalar_op, (scalar.Cast, Composite)):
+            scalar_op = scalar_op.clone_float32()
+        fake_node = scalar_op.make_node(*scal_v_ins)
         scal_v_out = fake_node.outputs
         assert len(scal_v_out) == len(node.outputs)
 
@@ -119,8 +118,9 @@ class GpuElemwise(HideC, Elemwise):
                                   inps, outs,
                                   dict(fail='return;'))
 
-        # Some ops like cast will reintroduce float16 in the internal graph.
-        kop = kop.replace('npy_float16', 'ga_float')
+        # If the following assert fail, then we need to update the
+        # code handler above.
+        assert 'npy_float16' not in kop
 
         support_code = ""
         try:
@@ -129,7 +129,8 @@ class GpuElemwise(HideC, Elemwise):
             support_code += fake_node.op.c_support_code()
         except MethodNotDefined:
             pass
-        for npy, ga in [("npy_uint8", "ga_ubyte"),
+        for npy, ga in [("npy_bool", "ga_bool"),
+                        ("npy_uint8", "ga_ubyte"),
                         ("npy_uint16", "ga_ushort"),
                         ("npy_uint32", "ga_uint"),
                         ("npy_uint64", "ga_ulong"),
@@ -611,6 +612,15 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
+
+    def c_support_code(self):
+        return """
+        template <typename T>
+        static T ceil_intdiv(T a, T b)
+        {
+            return (a/b) + ((a % b) ? 1: 0);
+        }
+        """
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp

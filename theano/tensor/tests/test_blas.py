@@ -95,10 +95,11 @@ class t_gemm(TestCase):
 
             cmp_linker(copy(z), a, x, y, b, 'c|py')
             cmp_linker(copy(z), a, x, y, b, 'py')
-            if (config.blas.ldflags and not dtype.startswith("complex")
+
+            if (not dtype.startswith("complex")
                 and theano.config.cxx):
-                # If blas.ldflags is equal to '', the C code will not
-                # be generated
+                # If theano.config.blas.ldflags is empty, Theano will use
+                # a NumPy C implementation of [sd]gemm_.
                 cmp_linker(copy(z), a, x, y, b, 'c')
 
     def test0a(self):
@@ -2159,6 +2160,24 @@ class TestBlasStrides(TestCase):
         self.cmp_ger((0, 1), 0, 1)
         self.cmp_ger((1, 0), 1, 0)
         self.cmp_ger((0, 0), 0, 0)
+
+    def test_gemm_non_contiguous(self):
+        """test_gemm_non_contiguous: Test if GEMM works well with non-contiguous matrices."""
+        aval = numpy.ones((6, 2))
+        bval = numpy.ones((2, 7))
+        cval = numpy.arange(7) + numpy.arange(0, .6, .1)[:, numpy.newaxis]
+
+        a = theano.shared(aval[:3], borrow=True)
+        b = theano.shared(bval[:, :5], borrow=True)
+        c = theano.shared(cval[:3, :5], borrow=True)
+
+        s = theano.tensor.scalar()
+        upd_c = s * c + theano.tensor.dot(a, b)
+        f = theano.function([s], [], updates={c: upd_c})
+
+        f(0)
+        ref_output = numpy.ones((3, 5)) * 2
+        unittest_tools.assert_allclose(c.get_value(), ref_output)
 
 
 class test_infer_shape(unittest_tools.InferShapeTester):

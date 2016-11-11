@@ -1037,10 +1037,6 @@ class Gemm(GemmRelated):
         if node.inputs[0].type.dtype.startswith('complex'):
             raise utils.MethodNotDefined('%s.c_code'
                                          % self.__class__.__name__)
-        if not config.blas.ldflags:
-            return super(Gemm, self).c_code(node, name,
-                                            (_z, _a, _x, _y, _b), (_zout, ),
-                                            sub)
         full_code = self.build_gemm_call() % dict(locals(), **sub)
         return full_code
 
@@ -1097,14 +1093,14 @@ def _as_scalar(res, dtype=None):
 
 
 def _is_real_matrix(res):
-    return (res.type.dtype in ('float32', 'float64') and
+    return (res.type.dtype in ('float16', 'float32', 'float64') and
             res.type.ndim == 2 and
             res.type.broadcastable[0] is False and
             res.type.broadcastable[1] is False)  # cope with tuple vs. list
 
 
 def _is_real_vector(res):
-    return (res.type.dtype in ('float32', 'float64') and
+    return (res.type.dtype in ('float16', 'float32', 'float64') and
             res.type.ndim == 1 and
             res.type.broadcastable[0] is False)
 
@@ -1189,7 +1185,7 @@ def _gemm_canonicalize(r, scale, rval, maxclients):
     def scaled(thing):
         if scale == 1:
             return thing
-        if scale == -1:
+        if scale == -1 and thing.type.dtype != 'bool':
             return -thing
         else:
             return scale * thing
@@ -1199,7 +1195,7 @@ def _gemm_canonicalize(r, scale, rval, maxclients):
         return None
 
     if ((r.type.ndim not in (1, 2)) or
-            r.type.dtype not in ('float32', 'float64',
+            r.type.dtype not in ('float16', 'float32', 'float64',
                                  'complex64', 'complex128')):
         rval.append(scaled(r))
         return rval
@@ -1532,7 +1528,7 @@ class Dot22(GemmRelated):
     """
 
     def make_node(self, x, y):
-        dtypes = ('float32', 'float64', 'complex64', 'complex128')
+        dtypes = ('float16', 'float32', 'float64', 'complex64', 'complex128')
         if x.type.ndim != 2 or x.type.dtype not in dtypes:
             raise TypeError(x)
         if y.type.ndim != 2 or y.type.dtype not in dtypes:
@@ -1625,7 +1621,7 @@ def local_dot_to_dot22(node):
                      x, y, x.type, y.type)
         return
 
-    if y.type.dtype in ['float32', 'float64', 'complex64', 'complex128']:
+    if y.type.dtype in ['float16', 'float32', 'float64', 'complex64', 'complex128']:
         if x.ndim == 2 and y.ndim == 2:
             # print "local_dot_to_dot22: MM"
             return [_dot22(*node.inputs)]
@@ -2153,10 +2149,6 @@ class BatchedDot(Op):
         _x, _y = inp
         _z, = out
         fail = sub["fail"]
-
-        if not config.blas.ldflags:
-            return super(BatchedDot, self).c_code(node, name,
-                                                  inp, out, sub)
 
         # generate contiguity condition
         def contiguous(var, ndim):

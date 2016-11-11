@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 import numpy
 
 import theano
-from theano import scalar, gof
+from theano import scalar, gof, tensor
 from theano.tests.unittest_tools import SkipTest, assert_allclose
 
 from theano.tensor.tests import test_elemwise
@@ -50,6 +50,61 @@ def test_elemwise_pow():
             out = f(base_val, exp_val)
             expected_out = base_val ** exp_val
             assert_allclose(out, expected_out)
+
+
+class test_float16():
+    def test_composite_elemwise_float16(self):
+        w = theano.tensor.bvector()
+        x = theano.tensor.vector(dtype='float16')
+        y = theano.tensor.fvector()
+
+        cz = tensor.tanh(x + tensor.cast(y, 'float16'))
+        o = (cz - cz**2 +
+             tensor.cast(x, 'int16') + tensor.cast(x, 'float32') +
+             tensor.cast(w, 'float16') -
+             tensor.constant(numpy.float16(1.0)))
+
+        theano.function([w, x, y], o, mode=mode_with_gpu)
+
+        v = theano.tensor.vector(dtype='uint8')
+        w = theano.tensor.vector(dtype='float16')
+        x = theano.tensor.vector(dtype='float16')
+        y = theano.tensor.vector(dtype='float16')
+        z = theano.tensor.vector(dtype='float16')
+
+        o = tensor.switch(v, tensor.mul(w, x, y), z)
+        theano.function([v, w, x, y, z], o, mode=mode_with_gpu)
+
+    def test_cast_float16(self):
+        f16 = theano.tensor.vector(dtype='float16')
+        f32 = theano.tensor.fvector()
+        i8 = theano.tensor.bvector()
+        f = theano.function([f16, f32, i8],
+                            [f16.astype('float32'),
+                             f32.astype('float16'),
+                             f32.astype('float64'),
+                             f16.astype('int8'),
+                             f32.astype('int8'),
+                             i8.astype('float16'),
+                             i8.astype('float32')],
+                            mode=mode_with_gpu)
+
+        d1 = (numpy.random.rand(4) * 10).astype('float16')
+        d2 = (numpy.random.rand(5) * 10).astype('float32')
+        d3 = (numpy.random.rand(6) * 10).astype('int8')
+        res = f(d1, d2, d3)
+
+        for i, out in enumerate(f.outputs):
+            dtype = out.variable.dtype
+            assert res[i].dtype == dtype
+            inp = out.variable.owner.inputs[0]
+            if inp.dtype == 'float16':
+                d = d1
+            elif inp.dtype == 'float32':
+                d = d2
+            else:
+                d = d3
+            assert_allclose(d.astype(dtype), res[i])
 
 
 class test_GpuDimShuffle(test_elemwise.test_DimShuffle):

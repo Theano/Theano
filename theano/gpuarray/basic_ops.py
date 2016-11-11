@@ -173,11 +173,15 @@ class Kernel(object):
     fname: str
         the name of the function wrapper.
         (defaults to name + `_call`)
+    sname: str
+        the name of the scheduled call function
+        (defaults to name _ `_scall`)
 
     """
 
     def __init__(self, code, params, name, flags,
-                 codevar=None, binvar=None, objvar=None, fname=None):
+                 codevar=None, binvar=None, objvar=None, fname=None,
+                 sname=None):
         self.code = code
         self.params = params
         self.name = name
@@ -194,6 +198,9 @@ class Kernel(object):
         if fname is None:
             fname = name + '_call'
         self.fname = fname
+        if sname is None:
+            sname = name + '_scall'
+        self.sname = sname
 
     @staticmethod
     def get_flags(*types):
@@ -338,22 +345,30 @@ class GpuKernelBase(object):
         setargs = '\n  '.join(setargs)
 
         return """
-int {fname}(unsigned int nd, size_t *gdim, size_t *ldim, size_t shared,
+int {fname}(unsigned int _nd, size_t *_gdim, size_t *_ldim, size_t _shared,
                   {args}) {{
   {setargs}
 
-  return GpuKernel_call(&{kname}, nd, ldim, gdim, shared, NULL);
+  return GpuKernel_call(&{kname}, _nd, _ldim, _gdim, _shared, NULL);
 }}
-        """.format(args=args, fname=k.fname, setargs=setargs, kname=k.objvar)
 
-    def c_support_code(self):
-        return """
-        template <typename T>
-        static T ceil_intdiv(T a, T b)
-        {
-            return (a/b) + ((a % b) ? 1: 0);
-        }
-        """
+int {sname}(unsigned int _nd, size_t *_n, size_t _shared, {args}) {{
+  size_t _ls = 0;
+  size_t _gs = 0;
+  int _err;
+
+  if (_nd != 1) return GA_UNSUPPORTED_ERROR;
+
+  _err = GpuKernel_sched(&{kname}, _n[0], &_ls, &_gs);
+  if (_err != GA_NO_ERROR)
+    return _err;
+
+  {setargs}
+
+  return GpuKernel_call(&{kname}, 1, &_ls, &_gs, _shared, NULL);
+}}
+        """.format(args=args, fname=k.fname, setargs=setargs, sname=k.sname,
+                   kname=k.objvar)
 
     def c_support_code_apply(self, node, name):
         kernels = self.gpu_kernels(node, name)
@@ -428,7 +443,7 @@ int {fname}(unsigned int nd, size_t *gdim, size_t *ldim, size_t shared,
             The node that we need the cache version for.
 
         """
-        return (6, self.get_params(node).bin_id)
+        return (7, self.get_params(node).bin_id)
 
 
 def forward_string_meth(name):
@@ -466,11 +481,13 @@ class CGpuKernelBase(COp, GpuKernelBase):
 
     kernel_re = re.compile(r'^#kernel ([a-zA-Z_].*?)$', re.MULTILINE)
 
-    c_support_code = forward_string_meth('c_support_code')
     c_support_code_apply = forward_string_meth('c_support_code_apply')
     c_support_code_struct = forward_string_meth('c_support_code_struct')
     c_init_code_struct = forward_string_meth('c_init_code_struct')
     c_cleanup_code_struct = forward_string_meth('c_cleanup_code_struct')
+
+    def c_code_cache_version_apply(self, node):
+        return GpuKernelBase.c_code_cache_version_apply(self, node)
 
     def _type_macros(self, node):
         define_template = "#define %s %s\n"

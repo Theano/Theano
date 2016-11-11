@@ -195,8 +195,7 @@ KERNEL void col2im_kernel(const ga_size n,
 
 #section support_code_struct
 
-int im2col(const size_t max_threads_dim,
-    gpudata * data_im, const size_t data_im_offset, const size_t channels,
+int im2col(gpudata *data_im, const size_t data_im_offset, const size_t channels,
     const size_t height, const size_t width, const size_t kernel_h, const size_t kernel_w,
     const size_t dilation_h, const size_t dilation_w,
     const size_t pad_h, const size_t pad_w,
@@ -209,13 +208,10 @@ int im2col(const size_t max_threads_dim,
   size_t height_col = (height + 2 * pad_h - dil_kernel_h) / stride_h + 1;
   size_t width_col = (width + 2 * pad_w - dil_kernel_w) / stride_w + 1;
   size_t num_kernels = channels * height_col * width_col;
-  size_t threads_per_block = max_threads_dim;
-  size_t n_blocks = (num_kernels + threads_per_block - 1) / threads_per_block;
   int err;
-  GpuKernel *kernel;
-  if(dilation_h != 1 || dilation_w != 1){
-    err = dilated_im2col_kernel_call(
-      1, &threads_per_block, &n_blocks, 0,
+  if (dilation_h != 1 || dilation_w != 1) {
+    err = dilated_im2col_kernel_scall(
+      1, &num_kernels, 0,
       num_kernels, data_im, data_im_offset, height, width, kernel_h, kernel_w,
       dilation_h, dilation_w, pad_h, pad_w, stride_h, stride_w, height_col,
       width_col, data_col);
@@ -224,10 +220,9 @@ int im2col(const size_t max_threads_dim,
                      "gpuarray error: dilated_im2col_kernel: %s.",
                      GpuKernel_error(&k_dilated_im2col_kernel, err));
     }
-  }
-  else{
-    err = im2col_kernel_call(
-      1, &threads_per_block, &n_blocks, 0,
+  } else {
+    err = im2col_kernel_scall(
+      1, &num_kernels, 0,
       num_kernels, data_im, data_im_offset, height, width, kernel_h, kernel_w,
       pad_h, pad_w, stride_h, stride_w, height_col,
       width_col, data_col);
@@ -240,7 +235,7 @@ int im2col(const size_t max_threads_dim,
   return err;
 }
 
-int col2im(const size_t max_threads_dim, gpudata * data_col, const size_t channels,
+int col2im(gpudata * data_col, const size_t channels,
     const size_t height, const size_t width, const size_t patch_h, const size_t patch_w,
     const size_t dilation_h, const size_t dilation_w,
     const size_t pad_h, const size_t pad_w, const size_t stride_h,
@@ -250,14 +245,12 @@ int col2im(const size_t max_threads_dim, gpudata * data_col, const size_t channe
   size_t height_col = (height + 2 * pad_h - dil_patch_h) / stride_h + 1;
   size_t width_col = (width + 2 * pad_w - dil_patch_w) / stride_w + 1;
   size_t num_kernels = channels * height * width;
-  size_t threads_per_block = max_threads_dim;
-  size_t n_blocks = (num_kernels + threads_per_block - 1) / threads_per_block;
   // To avoid involving atomic operations, we will launch one kernel per
   // bottom dimension, and then in the kernel add up the top dimensions.
   int err;
-  if(dilation_h != 1 || dilation_w != 1){
-    err = dilated_col2im_kernel_call(
-      1, &threads_per_block, &n_blocks, 0,
+  if (dilation_h != 1 || dilation_w != 1) {
+    err = dilated_col2im_kernel_scall(
+      1, &num_kernels, 0,
       num_kernels, data_col, height, width, channels, patch_h, patch_w,
       dilation_h, dilation_w, pad_h, pad_w, stride_h, stride_w,
       height_col, width_col, data_im, data_im_offset);
@@ -266,10 +259,9 @@ int col2im(const size_t max_threads_dim, gpudata * data_col, const size_t channe
                      "gpuarray error: dilated_col2im_kernel: %s.",
                      GpuKernel_error(&k_dilated_col2im_kernel, err));
     }
-  }
-  else{
-    err = col2im_kernel_call(
-      1, &threads_per_block, &n_blocks, 0,
+  } else {
+    err = col2im_kernel_scall(
+      1, &num_kernels, 0,
       num_kernels, data_col, height, width, channels, patch_h, patch_w,
       pad_h, pad_w, stride_h, stride_w,
       height_col, width_col, data_im, data_im_offset);
@@ -393,15 +385,6 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
         return NULL;
     }
 
-    // Get the max threads per blocks
-    size_t max_threads_dim;
-    err = gpucontext_property(bottom->context->ctx, GA_CTX_PROP_MAXLSIZE, &max_threads_dim);
-    if (err != GA_NO_ERROR){
-        PyErr_Format(PyExc_RuntimeError,
-                     "Could not fetch max_threads_dim.");
-        return NULL;
-    }
-
     // Create temporary columns
     size_t col_dim[2];
     col_dim[0] = nChannels * kW * kH;
@@ -411,8 +394,7 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                                                            GA_C_ORDER,
                                                            bottom->context,
                                                            Py_None);
-    if (NULL == col)
-    {
+    if (NULL == col) {
         PyErr_Format(PyExc_RuntimeError,
                 "GpuCorrMM failed to allocate working memory of %ld x %ld\n",
                 col_dim[0], col_dim[1]);
@@ -425,8 +407,6 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
     const size_t K_ = col_dim[0];
     const size_t N_ = col_dim[1];
     const size_t M_ = nFilters;
-    const DTYPE_INPUT_0 one = 1.0f;
-    const DTYPE_INPUT_0 zero = 0.0f;
 
     PyGpuArrayObject *output;
     if (direction == 0) {  // forward pass
@@ -435,8 +415,8 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
         // Iterate over batch
         for (size_t n = 0; n < batchSize; n++) {
             // First, im2col
-            err = im2col(max_threads_dim,
-                         bottom->ga.data, n * bottom_stride, nChannels, bottomHeight,
+            err = im2col(bottom->ga.data, n * bottom_stride,
+                         nChannels, bottomHeight,
                          bottomWidth, kH, kW, dilH, dilW,
                          padH, padW, dH, dW, col->ga.data);
             if (err != GA_NO_ERROR) {
@@ -444,15 +424,37 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
                 return NULL;
             }
             // Second, gemm
-            err = gpublas_sgemm(cb_fortran, cb_no_trans, cb_no_trans,
-                                N_, M_, K_, one,
-                                col->ga.data, 0, N_,
-                                weight->ga.data, 0, K_,
-                                zero,
-                                top->ga.data, n * top_stride, N_);
+            switch (col->ga.typecode) {
+            case GA_FLOAT:
+              err = gpublas_sgemm(cb_fortran, cb_no_trans, cb_no_trans,
+                                  N_, M_, K_, 1,
+                                  col->ga.data, 0, N_,
+                                  weight->ga.data, 0, K_,
+                                  0,
+                                  top->ga.data, n * top_stride, N_);
+              break;
+            case GA_DOUBLE:
+              err = gpublas_dgemm(cb_fortran, cb_no_trans, cb_no_trans,
+                                  N_, M_, K_, 1,
+                                  col->ga.data, 0, N_,
+                                  weight->ga.data, 0, K_,
+                                  0,
+                                  top->ga.data, n * top_stride, N_);
+              break;
+            case GA_HALF:
+              err = gpublas_hgemm(cb_fortran, cb_no_trans, cb_no_trans,
+                                  N_, M_, K_, 1,
+                                  col->ga.data, 0, N_,
+                                  weight->ga.data, 0, K_,
+                                  0,
+                                  top->ga.data, n * top_stride, N_);
+              break;
+            default:
+              err = GA_UNSUPPORTED_ERROR;
+            }
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
-                        "GpuCorrMM encountered an error running sgemm.\n");
+                             "GpuCorrMM forward encountered an error running gemm: %d", err);
                 Py_DECREF(col);
                 return NULL;
             }
@@ -464,8 +466,8 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
         // Iterate over batch
         for (size_t n = 0; n < batchSize; n++) {
             // First, im2col
-            err = im2col(max_threads_dim,
-                         bottom->ga.data, n * bottom_stride, nChannels, bottomHeight,
+            err = im2col(bottom->ga.data, n * bottom_stride,
+                         nChannels, bottomHeight,
                          bottomWidth, kH, kW, dilH, dilW,
                          padH, padW, dH, dW, col->ga.data);
             if (err != GA_NO_ERROR) {
@@ -476,15 +478,37 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
             // Note that we accumulate into weight. We do so by setting beta = 0
             // for the first iteration and beta = 1 for subsequent ones. (This
             // is faster than setting weight to all zeros before the loop.)
-            err = gpublas_sgemm(cb_fortran, cb_trans, cb_no_trans,
-                                K_, M_, N_, one,
-                                col->ga.data, 0, N_,
-                                top->ga.data, n * top_stride, N_,
-                                (n == 0) ? zero : one,
-                                weight->ga.data, 0, K_);
+            switch (col->ga.typecode) {
+            case GA_FLOAT:
+              err = gpublas_sgemm(cb_fortran, cb_trans, cb_no_trans,
+                                  K_, M_, N_, 1,
+                                  col->ga.data, 0, N_,
+                                  top->ga.data, n * top_stride, N_,
+                                  (n == 0) ? 0 : 1,
+                                  weight->ga.data, 0, K_);
+              break;
+            case GA_DOUBLE:
+              err = gpublas_dgemm(cb_fortran, cb_trans, cb_no_trans,
+                                  K_, M_, N_, 1,
+                                  col->ga.data, 0, N_,
+                                  top->ga.data, n * top_stride, N_,
+                                  (n == 0) ? 0 : 1,
+                                  weight->ga.data, 0, K_);
+              break;
+            case GA_HALF:
+              err = gpublas_hgemm(cb_fortran, cb_trans, cb_no_trans,
+                                  K_, M_, N_, 1,
+                                  col->ga.data, 0, N_,
+                                  top->ga.data, n * top_stride, N_,
+                                  (n == 0) ? 0 : 1,
+                                  weight->ga.data, 0, K_);
+              break;
+            default:
+                err = GA_UNSUPPORTED_ERROR;
+            }
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
-                        "GpuCorrMM encountered an error running sgemm.\n");
+                             "GpuCorrMM grad weights encountered an error running gemm: %d", err);
                 Py_DECREF(col);
                 return NULL;
             }
@@ -496,21 +520,42 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
         // Iterate over batch
         for (size_t n = 0; n < batchSize; n++) {
             // gemm into columns
+          switch (top->ga.typecode) {
+          case GA_FLOAT:
             err = gpublas_sgemm(cb_fortran, cb_no_trans, cb_trans,
-                                N_, K_, M_, one,
+                                N_, K_, M_, 1,
                                 top->ga.data, n * top_stride, N_,
                                 weight->ga.data, 0, K_,
-                                zero,
+                                0,
                                 col->ga.data, 0, N_);
+            break;
+          case GA_DOUBLE:
+            err = gpublas_dgemm(cb_fortran, cb_no_trans, cb_trans,
+                                N_, K_, M_, 1,
+                                top->ga.data, n * top_stride, N_,
+                                weight->ga.data, 0, K_,
+                                0,
+                                col->ga.data, 0, N_);
+            break;
+          case GA_HALF:
+            err = gpublas_hgemm(cb_fortran, cb_no_trans, cb_trans,
+                                N_, K_, M_, 1,
+                                top->ga.data, n * top_stride, N_,
+                                weight->ga.data, 0, K_,
+                                0,
+                                col->ga.data, 0, N_);
+            break;
+          default:
+            err = GA_UNSUPPORTED_ERROR;
+          }
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
-                        "GpuCorrMM encountered an error running sgemm.\n");
+                             "GpuCorrMM grad inputs encountered an error running gemm: %d", err);
                 Py_DECREF(col);
                 return NULL;
             }
             // col2im back to the data
-            err = col2im(max_threads_dim,
-                         col->ga.data, nChannels, bottomHeight, bottomWidth,
+            err = col2im(col->ga.data, nChannels, bottomHeight, bottomWidth,
                          kH, kW, dilH, dilW, padH, padW,
                          dH, dW, bottom->ga.data, n * bottom_stride);
             if (err != GA_NO_ERROR) {

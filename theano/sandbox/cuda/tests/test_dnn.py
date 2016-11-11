@@ -194,9 +194,9 @@ def test_pooling():
                     continue
                 # We will check that the opt introduced it.
                 out = pool_2d(x, (ws, ws),
-                              st=(stride, stride),
+                              stride=(stride, stride),
                               ignore_border=True,
-                              padding=pad, mode=mode)
+                              pad=pad, mode=mode)
                 mode_without_gpu2 = mode_without_gpu.including()
                 mode_without_gpu2.check_isfinite = False
 
@@ -235,7 +235,7 @@ def test_pooling():
             # This tests the CPU grad + opt + GPU implementation
             def fn(x):
                 return pool_2d(x, (ws, ws), ignore_border=True,
-                               padding=pad, mode=mode)
+                               pad=pad, mode=mode)
             utt.verify_grad(fn, [data], mode=mode_with_gpu)
             # Confirm that the opt would have inserted it.
             fg = theano.function([x], theano.grad(fn(x).sum(), x),
@@ -264,14 +264,14 @@ def test_pooling_with_tensor_vars():
         raise SkipTest(cuda.dnn.dnn_available.msg)
     x = T.ftensor4()
     ws = theano.shared(numpy.array([2, 2], dtype='int32'))
-    st = theano.shared(numpy.array([1, 1], dtype='int32'))
+    stride = theano.shared(numpy.array([1, 1], dtype='int32'))
     pad = theano.shared(numpy.array([0, 0], dtype='int32'))
     mode = 'max'
 
     def fn(x):
         dnn_op = cuda.dnn.dnn_pool(
             x, ws=ws,
-            stride=st,
+            stride=stride,
             pad=pad,
             mode=mode)
         return dnn_op
@@ -291,7 +291,7 @@ def test_pooling_with_tensor_vars():
                 for node in f_gpu.maker.fgraph.apply_nodes])
 
     # CPU implementation
-    out_cpu = pool_2d(x, ws, ignore_border=True, st=st, padding=pad, mode=mode)
+    out_cpu = pool_2d(x, ws, ignore_border=True, stride=stride, pad=pad, mode=mode)
     f_cpu = theano.function([x], out_cpu, mode=mode_without_gpu2)
     assert not any([isinstance(node.op, cuda.dnn.GpuDnnPool)
                    for node in f_cpu.maker.fgraph.apply_nodes])
@@ -364,9 +364,9 @@ def test_pooling3d():
                     # Not implemented
                     continue
                 out = pool_3d(x, (ws, ws, ws),
-                              st=(stride, stride, stride),
+                              stride=(stride, stride, stride),
                               ignore_border=True,
-                              padding=pad, mode=mode)
+                              pad=pad, mode=mode)
 
                 # GPU implementation
                 f_gpu = theano.function([x], out, mode=mode_with_gpu)
@@ -431,7 +431,7 @@ def test_pooling_opt():
 
     f = theano.function(
         [x],
-        pool_2d(x, ds=(2, 2), mode='average_inc_pad', ignore_border=True),
+        pool_2d(x, ws=(2, 2), mode='average_inc_pad', ignore_border=True),
         mode=mode_with_gpu)
 
     assert any([isinstance(n.op, cuda.dnn.GpuDnnPool)
@@ -442,7 +442,7 @@ def test_pooling_opt():
     # gradient of 2D pooling
     f = theano.function(
         [x],
-        T.grad(pool_2d(x, ds=(2, 2), mode='average_inc_pad',
+        T.grad(pool_2d(x, ws=(2, 2), mode='average_inc_pad',
                        ignore_border=True).sum(), x),
         mode=mode_with_gpu.including("cudnn"))
 
@@ -454,7 +454,7 @@ def test_pooling_opt():
     # Test sum pooling
     f = theano.function(
         [x],
-        pool_2d(x, ds=(2, 3), mode='sum',
+        pool_2d(x, ws=(2, 3), mode='sum',
                 ignore_border=True),
         mode=mode_with_gpu)
 
@@ -468,7 +468,7 @@ def test_pooling_opt():
 
     f = theano.function(
         [x],
-        pool_3d(x, ds=(2, 2, 2), mode='average_inc_pad', ignore_border=True),
+        pool_3d(x, ws=(2, 2, 2), mode='average_inc_pad', ignore_border=True),
         mode=mode_with_gpu)
 
     assert any([isinstance(n.op, cuda.dnn.GpuDnnPool)
@@ -479,7 +479,7 @@ def test_pooling_opt():
     # gradient of 3D pooling
     f = theano.function(
         [x],
-        T.grad(pool_3d(x, ds=(2, 2, 2), mode='average_inc_pad',
+        T.grad(pool_3d(x, ws=(2, 2, 2), mode='average_inc_pad',
                        ignore_border=True).sum(), x),
         mode=mode_with_gpu.including("cudnn"))
 
@@ -849,7 +849,7 @@ def test_dnn_tag():
     try:
         f = theano.function(
             [x],
-            pool_2d(x, ds=(2, 2), ignore_border=True),
+            pool_2d(x, ws=(2, 2), ignore_border=True),
             mode=mode_with_gpu.including("cudnn"))
     except (AssertionError, RuntimeError):
         assert not cuda.dnn.dnn_available()

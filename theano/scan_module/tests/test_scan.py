@@ -5454,3 +5454,15 @@ def test_constant_folding_n_steps():
         theano.function([], res)()
     finally:
         theano.config.on_opt_error = on_opt_error
+
+
+def test_outputs_taps_check():
+    """Checks that errors are raised with bad output_info taps."""
+    x = tensor.fvector('x')
+    y = tensor.fvector('y')
+    f = lambda x, y: [x]
+    outputs_info = {'initial': y, 'taps': [0]}
+    assert_raises(ValueError, theano.scan, f, x, outputs_info)
+    outputs_info = {'initial': y, 'taps': [-1, -1]}
+    assert_raises(ValueError, theano.scan, f, x, outputs_info)
+    print('done')

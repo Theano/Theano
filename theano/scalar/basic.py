@@ -18,6 +18,7 @@ from copy import copy
 from textwrap import dedent
 
 import numpy
+import six
 from six.moves import xrange
 
 import theano
@@ -34,6 +35,7 @@ from theano.gradient import grad_undefined
 from theano.printing import pprint
 import collections
 
+builtin_bool = bool
 builtin_complex = complex
 builtin_int = int
 builtin_float = float
@@ -120,33 +122,165 @@ def as_scalar(x, name=None):
         raise TypeError("Cannot convert %s to Scalar" % x, type(x))
 
 
+class NumpyAutocaster(object):
+    """
+    This class is used to cast python ints and floats to numpy arrays.
+
+    The behavior when called on scalar `x` depends on `config.cast_policy`:
+        - 'numpy' will simply use the same type as found by `numpy.asarray(x)`.
+        - 'numpy+floatX' will do the same, except it will use float32 instead
+          of float64 if `x` is a Python float and `config.floatX` is set to
+          'float32' (note that if `x` is a numpy scalar whose data type is
+          float64, it is not modified since we assume the user is purposedly
+          using float64).
+        - 'custom' lets one define a tuple of data types such that:
+            - if `x` is already a numpy scalar and its data type is in this
+              tuple, then it is returned unchanged;
+            - otherwise, the first data type in this tuple that can represent
+              `x` without loss of precision will be used, unless `x` is a float
+              and 'float32' is in the tuple (in which case `x` is cast as a
+              float32);
+            - if no data type can represent `x` without loss of precision, then
+              the last data type in the tuple will be used.
+
+
+    Parameters
+    ----------
+    dtypes: tuple of strings
+        The ordered list of preferred data types (only used when
+        `config.cast_policy` is set to 'custom', see the `NumpyAutocaster`
+        help for details).
+
+    """
+
+    def __init__(self, dtypes):
+        self.dtypes = tuple(dtypes)
+
+    def __call__(self, x):
+        # Make sure we only deal with scalars.
+        assert (isinstance(x, six.integer_types) or
+                isinstance(x, builtin_float) or
+                (isinstance(x, numpy.ndarray) and x.ndim == 0))
+
+        if config.cast_policy == 'numpy':
+            return numpy.asarray(x)
+        elif config.cast_policy == 'numpy+floatX':
+            rval = numpy.asarray(x)
+            if ((not hasattr(x, 'dtype') and
+                 rval.dtype in ('float64', 'float32') and
+                 rval.dtype != config.floatX)):
+                rval = theano._asarray(rval, dtype=config.floatX)
+            return rval
+
+        # The following is the original code, corresponding to the 'custom'
+        # option for `config.cast_policy`.
+        assert config.cast_policy == 'custom'
+
+        try:
+            # Pass through numpy scalars, since they are already typed on
+            # purpose typically.
+            if str(x.dtype) in self.dtypes:
+                # No need to cast `x` into a new dtype. Note that we still
+                # need to convert it into an array, because it may not be
+                # one already (e.g. if x == numpy.float64(1.1)).
+                return numpy.asarray(x)
+        except AttributeError:
+            # Means `x` has no 'dtype' attribute.
+            pass
+
+        # unsafe downcast of float64 variables when config.floatX == 'float32'
+        # recall: float is numpy.float
+        if ((isinstance(x, float) and
+             config.floatX in self.dtypes and
+             config.floatX != 'float64')):
+            return theano._asarray(x, dtype=config.floatX)
+
+        # Don't autocast to float16 unless config.floatX is float16
+        try_dtypes = [d for d in self.dtypes
+                      if config.floatX == 'float16' or d != 'float16']
+
+        for dtype in try_dtypes:
+            x_ = theano._asarray(x, dtype=dtype)
+            if numpy.all(x == x_):
+                break
+        # returns either an exact x_==x, or the last cast x_
+        return x_
+
+autocast_int = NumpyAutocaster(('int8', 'int16', 'int32', 'int64'))
+# autocast_float dtypes might be manipulated in tensor.*
+autocast_float = NumpyAutocaster(('float16', 'float32', 'float64'))
+
+
+class autocast_float_as(object):
+    """
+    Temporarily adjust autocasting behavior.
+
+    This class makes it possible to temporarily and locally adjust autocasting
+    behavior when `config.cast_policy` is set to 'custom'.
+    If `config.cast_policy` is not 'custom', an exception is raised.
+    This class might be convenient in some code, but it definitely
+    helps to test the autocasting mechanism.
+
+    Examples
+    --------
+    >>> with autocast_float_as('float32'):
+    ...    assert (fvector() + 1.1).dtype == 'float32'  # temporary downcasting
+    >>> assert (fvector() + 1.1).dtype == 'float64' # back to default behaviour
+
+    """
+    def __init__(self, *dtypes):
+        self.dtypes = dtypes
+        assert config.cast_policy == 'custom'
+
+    def __enter__(self):
+        assert config.cast_policy == 'custom'
+        self.old_dtypes = autocast_float.dtypes
+        autocast_float.dtypes = self.dtypes
+
+    def __exit__(self, *args):
+        assert config.cast_policy == 'custom'
+        autocast_float.dtypes = self.old_dtypes
+
+
+def convert(x, dtype=None):
+    """
+    Convert the input to a properly typed numpy value according to the
+    current casting policy.  Work with scalars and tensors.
+
+    """
+    if dtype is not None:
+        # in this case, the semantics are that the caller is forcing the dtype
+        x_ = theano._asarray(x, dtype=dtype)
+    else:
+        # In this case, this function should infer the dtype according to the
+        # autocasting rules. See autocasting above.
+        x_ = None
+        if isinstance(x, six.integer_types):
+            try:
+                x_ = autocast_int(x)
+            except OverflowError:
+                # This is to imitate numpy behavior which tries to fit
+                # bigger numbers into a uint64.
+                x_ = theano._asarray(x, dtype='uint64')
+        elif isinstance(x, builtin_float):
+            x_ = autocast_float(x)
+        elif isinstance(x, numpy.ndarray):
+            x_ = x
+        else:
+            # Here x is probably a list or a tuple. If it contains a
+            # long, we will behave like the current NumPy version: it
+            # will work if the long fits in int64 or uint64.
+            x_ = numpy.asarray(x)
+            if x_.size == 0 and not hasattr(x, 'dtype'):
+                x_ = numpy.asarray(x, dtype=config.floatX)
+    assert type(x_) in [numpy.ndarray, numpy.memmap]
+    return x_
+
+
 def constant(x):
-    # pass through numpy scalars, since they are already typed on
-    # purpose typically.
-    if hasattr(x, 'dtype'):
-        assert x.ndim == 0
-        return ScalarConstant(get_scalar_type(str(x.dtype)), x)
-    if isinstance(x, builtin_float):
-        for dtype in ['float32', 'float64']:
-            x_ = theano._asarray(x, dtype=dtype)
-            if numpy.all(x == x_):
-                break
-            x_ = None
-        assert x_ is not None
-        return ScalarConstant(get_scalar_type(str(x_.dtype)), x)
-    if isinstance(x, builtin_int):
-        for dtype in ['int8', 'int16', 'int32', 'int64']:
-            x_ = theano._asarray(x, dtype=dtype)
-            if numpy.all(x == x_):
-                break
-            x_ = None
-        assert x_ is not None
-        return ScalarConstant(get_scalar_type(str(x_.dtype)), x)
-    if isinstance(x, builtin_complex):
-        # TODO: We have added the complex type, so this should be tested
-        raise NotImplementedError()
-    raise TypeError(x)
-    # return ScalarConstant(float64, float(x))
+    x = convert(x)
+    assert x.ndim == 0
+    return ScalarConstant(get_scalar_type(str(x.dtype)), x)
 
 
 class Scalar(Type):
@@ -161,7 +295,7 @@ class Scalar(Type):
     TODO: refactor to be named ScalarType for consistency with TensorType.
 
     """
-
+    __props__ = ('dtype',)
     ndim = 0
 
     def __init__(self, dtype):
@@ -200,6 +334,8 @@ class Scalar(Type):
 
     def values_eq_approx(self, a, b, tolerance=1e-4):
         # The addition have risk of overflow especially with [u]int8
+        if self.dtype == 'bool':
+            return a == b
         diff = a - b
         if diff == 0:
             return True
@@ -227,12 +363,6 @@ class Scalar(Type):
         else:
             return []
 
-    def __eq__(self, other):
-        return type(self) == type(other) and other.dtype == self.dtype
-
-    def __hash__(self):
-        return hash('theano.scalar.Scalar') ^ hash(self.dtype)
-
     def dtype_specs(self):
         try:
             # To help debug dtype/typenum problem, here is code to get
@@ -244,7 +374,8 @@ class Scalar(Type):
             #     now, as Theano always expect the exact typenum that
             #     correspond to our supported dtype.
             """
-            for dtype in ['int8', 'uint8', 'short', 'ushort', 'intc', 'uintc',
+            for dtype in ['bool', 'int8', 'uint8', 'short', 'ushort', 'intc',
+                          'uintc',
                           'longlong', 'ulonglong', 'single', 'double',
                           'longdouble', 'csingle', 'cdouble', 'clongdouble',
                           'float32', 'float64', 'int8', 'int16', 'int32',
@@ -260,6 +391,7 @@ class Scalar(Type):
                 'complex128': (numpy.complex128, 'theano_complex128',
                                'Complex128'),
                 'complex64': (numpy.complex64, 'theano_complex64', 'Complex64'),
+                'bool': (numpy.bool_, 'npy_bool', 'Bool'),
                 'uint8': (numpy.uint8, 'npy_uint8', 'UInt8'),
                 'int8': (numpy.int8, 'npy_int8', 'Int8'),
                 'uint16': (numpy.uint16, 'npy_uint16', 'UInt16'),
@@ -288,12 +420,13 @@ class Scalar(Type):
     def c_literal(self, data):
         if 'complex' in self.dtype:
             raise NotImplementedError("No literal for complex values.")
+        if self.dtype == 'bool':
+            return '1' if data else '0'
         return str(data)
 
     def c_declare(self, name, sub, check_input=True):
         if(check_input):
             pre = """
-                typedef %(dtype)s %(name)s_dtype; // Deprecated use dtype_%(name)s instead.
                 typedef %(dtype)s dtype_%(name)s;
             """ % dict(name=name, dtype=self.dtype_specs()[1])
         else:
@@ -309,6 +442,7 @@ class Scalar(Type):
 
     def c_extract(self, name, sub, check_input=True):
         if self.dtype == 'float16':
+            # This doesn't work at the numpy level
             raise NotImplementedError('float16')
         specs = self.dtype_specs()
         if(check_input):
@@ -517,6 +651,7 @@ theano.compile.register_view_op_c_code(
     1)
 
 
+bool = get_scalar_type('bool')
 int8 = get_scalar_type('int8')
 int16 = get_scalar_type('int16')
 int32 = get_scalar_type('int32')
@@ -536,7 +671,8 @@ uint_types = uint8, uint16, uint32, uint64
 float_types = float16, float32, float64
 complex_types = complex64, complex128
 
-discrete_types = int_types + uint_types
+integer_types = int_types + uint_types
+discrete_types = (bool,) + integer_types
 continuous_types = float_types + complex_types
 all_types = discrete_types + continuous_types
 
@@ -681,38 +817,57 @@ complexs64 = _multi(complex64)
 complexs128 = _multi(complex128)
 
 
-# Using a class instead of a function makes it possible to deep-copy it in
-# Python 2.4.
-# Note that currently only a few functions use this mechanism, because it is
-# enough to make the test-suite pass with Python 2.4. However, it may prove
-# necessary to use this same mechanism in other places as well in the future.
-class upcast_out(object):
-    def __new__(self, *types):
-        dtype = Scalar.upcast(*types)
-        return get_scalar_type(dtype),
+def upcast_out(*types):
+    dtype = Scalar.upcast(*types)
+    return get_scalar_type(dtype),
 
 
-class upgrade_to_float(object):
-    def __new__(self, *types):
-        """
-        Upgrade any int types to float32 or float64 to avoid losing precision.
-
-        """
-        conv = {int8: float32,
-                int16: float32,
-                int32: float64,
-                int64: float64,
-                uint8: float32,
-                uint16: float32,
-                uint32: float64,
-                uint64: float64}
-        return get_scalar_type(Scalar.upcast(*[conv.get(type, type)
-                               for type in types])),
+def upcast_out_nobool(*types):
+    type = upcast_out(*types)
+    if type[0] == bool:
+        raise TypeError("bool output not supported")
+    return type
 
 
-class same_out(object):
-    def __new__(self, type):
-        return type,
+def upcast_out_min8(*types):
+    type = upcast_out(*types)
+    if type[0] == bool:
+        return int8,
+    return type
+
+
+def upgrade_to_float(*types):
+    """
+    Upgrade any int types to float32 or float64 to avoid losing precision.
+
+    """
+    conv = {bool: float32,
+            int8: float32,
+            int16: float32,
+            int32: float64,
+            int64: float64,
+            uint8: float32,
+            uint16: float32,
+            uint32: float64,
+            uint64: float64}
+    return get_scalar_type(Scalar.upcast(*[conv.get(type, type)
+                                           for type in types])),
+
+
+def same_out(type):
+    return type,
+
+
+def same_out_nobool(type):
+    if type == bool:
+        raise TypeError("bool input not supported")
+    return type,
+
+
+def same_out_min8(type):
+    if type == bool:
+        return int8,
+    return type,
 
 
 def upcast_out_no_complex(*types):
@@ -728,6 +883,8 @@ def same_out_float_only(type):
 
 
 class transfer_type(gof.utils.object2):
+    __props__ = ('transfer',)
+
     def __init__(self, *transfer):
         assert all(type(x) in [int, str] or x is None for x in transfer)
         self.transfer = transfer
@@ -748,25 +905,15 @@ class transfer_type(gof.utils.object2):
         return retval
         # return [upcast if i is None else types[i] for i in self.transfer]
 
-    def __eq__(self, other):
-        return type(self) == type(other) and self.transfer == other.transfer
-
-    def __hash__(self):
-        return hash(self.transfer)
-
 
 class specific_out(gof.utils.object2):
+    __props__ = ('spec',)
+
     def __init__(self, *spec):
         self.spec = spec
 
     def __call__(self, *types):
         return self.spec
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.spec == other.spec
-
-    def __hash__(self):
-        return hash(self.spec)
 
 
 def int_out(*types):
@@ -914,15 +1061,15 @@ class ScalarOp(Op):
         return test
 
     def __hash__(self):
-        return hash(type(self).__name__) ^ hash(
-            getattr(self, 'output_types_preference', 0))
+        return hash((type(self),
+                     getattr(self, 'output_types_preference', 0)))
 
     def __str__(self):
         if hasattr(self, 'name') and self.name:
             return self.name
         else:
             param = [(k, v) for k, v in self.__dict__.items()
-                     if k not in ["name", "_op_use_c_code",
+                     if k not in ["name", "_op_use_c_code", "bool",
                                   "output_types_preference"]]
             if param:
                 return "%s{%s}" % (self.__class__.__name__,
@@ -1006,15 +1153,32 @@ class BinaryScalarOp(ScalarOp):
 ###############
 
 class LogicalComparison(BinaryScalarOp):
+    def __init__(self, *args, **kwargs):
+        BinaryScalarOp.__init__(self, *args, **kwargs)
+        # This is for compat with old pickles.
+        self.bool = True
+
+    def __eq__(self, other):
+        return (BinaryScalarOp.__eq__(self, other) and
+                getattr(self, 'bool', False) == getattr(self, 'bool', False))
+
+    def __hash__(self):
+        # bool should always be True
+        return BinaryScalarOp.__hash__(self)
+
     def output_types(self, *input_dtypes):
-        return [int8]
+        return [bool] if getattr(self, 'bool', False) else [int8]
 
     def grad(self, inputs, output_gradients):
         x, y = inputs
         out = self(x, y)
-        assert str(out.type.dtype).find('int') != -1
+        assert out.type == bool
         return [x.zeros_like().astype(theano.config.floatX),
                 y.zeros_like().astype(theano.config.floatX)]
+
+    def c_code_cache_version(self):
+        super_version = super(LogicalComparison, self).c_code_cache_version()
+        return super_version + (0,)
 
 
 class FixedLogicalComparison(UnaryScalarOp):
@@ -1022,14 +1186,31 @@ class FixedLogicalComparison(UnaryScalarOp):
     Comparison to a fixed value.
 
     """
+    def __init__(self, *args, **kwargs):
+        UnaryScalarOp.__init__(self, *args, **kwargs)
+        # This is for compat with old pickles
+        self.bool = True
+
+    def __eq__(self, other):
+        return (UnaryScalarOp.__eq__(self, other) and
+                getattr(self, 'bool', False) == getattr(self, 'bool', False))
+
+    def __hash__(self):
+        # bool should always be True
+        return UnaryScalarOp.__hash__(self)
+
     def output_types(self, *input_dtypes):
-        return [int8]
+        return [bool] if getattr(self, 'bool', False) else [int8]
 
     def grad(self, inputs, output_gradients):
         x, = inputs
         out = self(x)
-        assert str(out.type.dtype).find('int') != -1
+        assert out.type == bool
         return [x.zeros_like().astype(theano.config.floatX)]
+
+    def c_code_cache_version(self):
+        super_version = super(FixedLogicalComparison, self).c_code_cache_version()
+        return super_version + (0,)
 
 
 class LT(LogicalComparison):
@@ -1202,21 +1383,10 @@ class InRange(LogicalComparison):
     def c_code(self, node, name, inputs, outputs, sub):
         (x, low, hi) = inputs
         (z,) = outputs
-        if self.openlow:
-            cmp1 = '>'
-        else:
-            cmp1 = '>='
 
-        # backport
-        # cmp1 = '>' if self.openlow else '>='
+        cmp1 = '>' if self.openlow else '>='
+        cmp2 = '<' if self.openhi else '<='
 
-        if self.openhi:
-            cmp2 = '<'
-        else:
-            cmp2 = '<='
-
-        # backport
-        # cmp2 = '<' if self.openhi else '<='
         return ("%(z)s = %(x)s %(cmp1)s %(low)s &&"
                 " %(x)s %(cmp2)s %(hi)s;" % locals())
 
@@ -1247,13 +1417,8 @@ class Switch(ScalarOp):
     nfunc_spec = ('where', 3, 1)
 
     def impl(self, cond, ift, iff):
-        if cond:
-            return ift
-        else:
-            return iff
+        return ift if cond else iff
 
-            # backport
-            # return ift if cond else iff
     def c_code(self, node, name, inputs, outputs, sub):
         (cond, ift, iff) = inputs
         (z,) = outputs
@@ -1290,9 +1455,9 @@ switch = Switch()
 class UnaryBitOp(UnaryScalarOp):
     def output_types(self, *input_types):
         for i in input_types[0]:
-            if i not in (int8, int16, int32, int64):
-                raise TypeError('input to a BitOp must have type int8,'
-                                ' int16, int32 or int64... not %s' % i)
+            if i not in discrete_types:
+                raise TypeError('input to a BitOp must have type (u)int8, '
+                                '(u)int16, (u)int32 or (u)int64 or bool not %s' % i)
         return upcast_out(*input_types[0])
 
     def grad(self, inputs, output_gradients):
@@ -1302,10 +1467,13 @@ class UnaryBitOp(UnaryScalarOp):
 class BinaryBitOp(BinaryScalarOp):
     def output_types(self, *input_types):
         t0, t1 = input_types[0]
+        if t0 == bool and t1 == bool:
+            return [bool]
         for i in input_types[0]:
-            if i not in (int8, int16, int32, int64):
-                raise TypeError('input to a BitOp must have type int8,'
-                                ' int16, int32 or int64... not %s' % i)
+            if i not in integer_types:
+                raise TypeError('input to a BitOp must have type (u)int8, '
+                                '(u)int16, (u)int32 or (u)int64 or '
+                                'be all bools not %s' % i)
         return upcast_out(*input_types[0])
 
     def grad(self, inputs, output_gradients):
@@ -1371,6 +1539,8 @@ class Invert(UnaryBitOp):
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
         (z,) = outputs
+        if node.outputs[0].type == bool:
+            return "%(z)s = (!%(x)s);" % locals()
         return "%(z)s = (~%(x)s);" % locals()
 invert = Invert()
 
@@ -1463,10 +1633,13 @@ class Add(ScalarOp):
 
     def c_code(self, node, name, inputs, outputs, sub):
         (z,) = outputs
+        op = " + "
+        if node.outputs[0].type == bool:
+            op = " || "
         if not inputs:
             return z + " = 0;"
         else:
-            return z + " = " + " + ".join(inputs) + ";"
+            return z + " = " + op.join(inputs) + ";"
 
     def grad(self, inputs, gout):
         (gz,) = gout
@@ -1502,10 +1675,13 @@ class Mul(ScalarOp):
 
     def c_code(self, node, name, inputs, outputs, sub):
         (z,) = outputs
+        op = " * "
+        if node.outputs[0].type == bool:
+            op = " && "
         if not inputs:
             return z + " = 1;"
         else:
-            return z + " = " + " * ".join(inputs) + ";"
+            return z + " = " + op.join(inputs) + ";"
 
     def grad(self, inputs, gout):
         (gz,) = gout
@@ -1571,7 +1747,7 @@ class Sub(BinaryScalarOp):
         second_part = -gz
 
         return first_part, second_part
-sub = Sub(upcast_out, name='sub')
+sub = Sub(upcast_out_nobool, name='sub')
 
 
 def int_or_true_div(x_discrete, y_discrete):
@@ -1937,7 +2113,7 @@ class Pow(BinaryScalarOp):
         raise theano.gof.utils.MethodNotDefined()
 
 
-pow = Pow(upcast_out, name='pow')
+pow = Pow(upcast_out_min8, name='pow')
 
 
 class Clip(ScalarOp):
@@ -2044,6 +2220,11 @@ class Cast(UnaryScalarOp):
     def __str__(self):
         return '%s{%s}' % (self.__class__.__name__, self.o_type.dtype)
 
+    def clone_float32(self):
+        if self.o_type == float16:
+            return convert_to_float32
+        return self
+
     def make_new_inplace(self, output_types_preference=None, name=None):
         """
         This op.__init__ fct don't have the same parameter as other scalar op.
@@ -2062,6 +2243,8 @@ class Cast(UnaryScalarOp):
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
         (z,) = outputs
+        if node.outputs[0].type == bool:
+            return "%s = (%s) ? 1 : 0;" % (z, x)
         return "%s = (%s)%s;" % (z, node.outputs[0].type.dtype_specs()[1], x)
 
     def grad(self, inputs, gout):
@@ -2075,10 +2258,11 @@ class Cast(UnaryScalarOp):
     def c_code_cache_version(self):
         s = super(Cast, self).c_code_cache_version()
         if s:
-            return (3,) + s
+            return (4,) + s
         else:
             return s
 
+convert_to_bool = Cast(bool, name='convert_to_bool')
 convert_to_int8 = Cast(int8, name='convert_to_int8')
 convert_to_int16 = Cast(int16, name='convert_to_int16')
 convert_to_int32 = Cast(int32, name='convert_to_int32')
@@ -2094,6 +2278,7 @@ convert_to_complex64 = Cast(complex64, name='convert_to_complex64')
 convert_to_complex128 = Cast(complex128, name='convert_to_complex128')
 
 _cast_mapping = {
+    'bool': convert_to_bool,
     'int8': convert_to_int8,
     'int16': convert_to_int16,
     'int32': convert_to_int32,
@@ -2173,6 +2358,12 @@ abs_ = Abs(same_out)
 class Sgn(UnaryScalarOp):
     nfunc_spec = ('sign', 1, 1)
 
+    @staticmethod
+    def output_types_preference(x):
+        if x == bool:
+            raise TypeError(x)
+        return same_out_nocomplex(x)
+
     def impl(self, x):
         # casting to output type is handled by filter
         return numpy.sign(x)
@@ -2205,7 +2396,7 @@ class Sgn(UnaryScalarOp):
             return (4,) + s
         else:  # if parent is unversioned, we are too
             return s
-sgn = Sgn(same_out_nocomplex, name='sgn')
+sgn = Sgn(name='sgn')
 
 
 class Ceil(UnaryScalarOp):
@@ -2228,7 +2419,7 @@ class Ceil(UnaryScalarOp):
         (x,) = inputs
         (z,) = outputs
         return "%(z)s = ceil(%(x)s);" % locals()
-ceil = Ceil(same_out_nocomplex, name='ceil')
+ceil = Ceil(upgrade_to_float_no_complex, name='ceil')
 
 
 class Floor(UnaryScalarOp):
@@ -2251,7 +2442,7 @@ class Floor(UnaryScalarOp):
         (x,) = inputs
         (z,) = outputs
         return "%(z)s = floor(%(x)s);" % locals()
-floor = Floor(same_out_nocomplex, name='floor')
+floor = Floor(upgrade_to_float_no_complex, name='floor')
 
 
 class Trunc(UnaryScalarOp):
@@ -2269,7 +2460,7 @@ class Trunc(UnaryScalarOp):
         (x,) = inputs
         (z,) = outputs
         return "%(z)s = %(x)s >= 0? floor(%(x)s): -floor(-%(x)s);" % locals()
-trunc = Trunc(same_out_nocomplex, name='trunc')
+trunc = Trunc(upgrade_to_float_no_complex, name='trunc')
 
 
 class RoundHalfToEven(UnaryScalarOp):
@@ -2409,13 +2600,6 @@ class Neg(UnaryScalarOp):
     nfunc_spec = ('negative', 1, 1)
 
     def impl(self, x):
-        # We have to make sure x is not a numpy.bool_, because
-        # `-numpy.bool_(True)` is `False` (we want 0), and
-        # `-numpy.bool_(False)` is `True` (we want 1).
-        # This happens for Composite, as the intermediate results are not
-        # casted in the dtype of the intermediate variable in general.
-        if isinstance(x, numpy.bool_):
-            x = numpy.int8(x)
         return -x
 
     def grad(self, inputs, gout):
@@ -2433,7 +2617,7 @@ class Neg(UnaryScalarOp):
         (x,) = inputs
         (z,) = outputs
         return "%(z)s = -%(x)s;" % locals()
-neg = Neg(same_out, name='neg')
+neg = Neg(same_out_nobool, name='neg')
 
 pprint.assign(add, printing.OperatorPrinter('+', -2, 'either'))
 pprint.assign(mul, printing.OperatorPrinter('*', -1, 'either'))
@@ -3423,7 +3607,7 @@ class Conj(UnaryScalarOp):
 
     def impl(self, x):
         return numpy.conj(x)
-conj = Conj(same_out, name='conj')
+conj = Conj(same_out_min8, name='conj')
 
 
 class ComplexFromPolar(BinaryScalarOp):
@@ -3673,6 +3857,11 @@ class Composite(ScalarOp):
                 n.op.prepare_node(n, None, None, impl)
             self.prepare_node_called.add(impl)
 
+    def clone_float32(self):
+        # This will not modify the fgraph or the nodes
+        new_ins, new_outs = composite_f32.apply(self.fgraph)
+        return Composite(new_ins, new_outs)
+
     def output_types(self, input_types):
         if tuple(input_types) != self.inputs_type:
             raise TypeError("Wrong types for Composite. Expected %s, got %s."
@@ -3807,3 +3996,82 @@ class Composite(ScalarOp):
         self.init_fgraph()
         self.init_py_impls()
         assert self._c_code
+
+
+class Compositef32(object):
+    # This is a dict of scalar op classes that need special handling
+    special = {}
+
+    def apply(self, fgraph):
+        mapping = {}
+        topo = fgraph.toposort()
+        for i in fgraph.inputs:
+            if i.dtype == 'float16':
+                mapping[i] = get_scalar_type('float32')()
+            else:
+                mapping[i] = i
+        for node in topo:
+            # Patch up for constants
+            for i in node.inputs:
+                if i not in mapping:
+                    assert type(i) is ScalarConstant
+                    if i.type == float16:
+                        ni = ScalarConstant(float32, i.data)
+                    else:
+                        ni = i
+                    mapping[i] = ni
+            if type(node.op) in self.special:
+                self.special[type(node.op)](node, mapping)
+                continue
+            new_node = node.clone_with_new_inputs(
+                [mapping[inp] for inp in node.inputs],
+                strict=False)
+            # make sure we don't produce any float16.
+            assert not any(o.dtype == 'float16' for o in new_node.outputs)
+            for o, no in zip(node.outputs, new_node.outputs):
+                mapping[o] = no
+
+        new_ins = [mapping[inp] for inp in fgraph.inputs]
+        new_outs = [mapping[out] for out in fgraph.outputs]
+        return new_ins, new_outs
+
+composite_f32 = Compositef32()
+
+
+def handle_cast(node, mapping):
+    inp = mapping[node.inputs[0]]
+    out = node.outputs[0]
+    node_ok = False
+    if node.op.o_type == float16:
+        if node.inputs[0].type == float32:
+            # cast f32 -> f16, remove
+            mapping[out] = inp
+            return
+        else:
+            # cast to f16, convert to f32
+            new_out = cast(inp, 'float32')
+            # change the node for the following if
+            node = new_out.owner
+            mapping[out] = new_out
+            node_ok = True
+    if node.inputs[0].type == float16:
+        if node.op.o_type == inp.type:
+            # cast f16 to new input type, remove
+            mapping[out] = inp
+            return
+    if not node_ok:
+        new_node = node.clone_with_new_inputs([inp],
+                                              strict=False)
+        mapping[out] = new_node.outputs[0]
+
+Compositef32.special[Cast] = handle_cast
+
+
+def handle_composite(node, mapping):
+    new_op = node.op.clone_float32()
+    new_outs = new_op(*[mapping[i] for i in node.inputs], return_list=True)
+    assert len(new_outs) == len(node.outputs)
+    for o, no in zip(node.outputs, new_outs):
+        mapping[o] = no
+
+Compositef32.special[Composite] = handle_composite
