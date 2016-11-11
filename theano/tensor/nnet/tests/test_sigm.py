@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import unittest
 
-import numpy
+import numpy as np
 
 from theano.compat import imap
 import theano.tensor.inplace
@@ -26,13 +26,13 @@ class T_sigmoid(unittest.TestCase):
         utt.seed_rng()
 
     def test_elemwise(self):
-        utt.verify_grad(sigmoid, [numpy.random.rand(3, 4)])
+        utt.verify_grad(sigmoid, [np.random.rand(3, 4)])
 
 
 SigmoidTester = makeBroadcastTester(
     op=sigmoid,
     expected=upcast_int8_nfunc(lambda inputs: check_floatX(
-        inputs, 1 / (1 + numpy.exp(-inputs)))),
+        inputs, 1 / (1 + np.exp(-inputs)))),
     good=_good_broadcast_unary_normal_no_complex,
     # grad=_grad_broadcast_unary_normal,
     name='SigmoidTester',
@@ -41,7 +41,7 @@ SigmoidTester = makeBroadcastTester(
 UltraFastSigmoidTester = makeBroadcastTester(
     op=ultra_fast_sigmoid,
     expected=upcast_int8_nfunc(lambda inputs: check_floatX(
-        inputs, 1 / (1 + numpy.exp(-inputs)))),
+        inputs, 1 / (1 + np.exp(-inputs)))),
     good=_good_broadcast_unary_normal_no_complex,
     # grad=_grad_broadcast_unary_normal,
     name='UltraFastSigmoidTester',
@@ -51,7 +51,7 @@ UltraFastSigmoidTester = makeBroadcastTester(
 HardSigmoidTester = makeBroadcastTester(
     op=hard_sigmoid,
     expected=upcast_int8_nfunc(lambda inputs: check_floatX(
-        inputs, 1 / (1 + numpy.exp(-inputs)))),
+        inputs, 1 / (1 + np.exp(-inputs)))),
     good=_good_broadcast_unary_normal_no_complex,
     # grad=_grad_broadcast_unary_normal,
     name='HardSigmoidTester',
@@ -62,9 +62,9 @@ HardSigmoidTester = makeBroadcastTester(
 SoftplusTester = makeBroadcastTester(
     op=softplus,
     expected=upcast_int8_nfunc(lambda inputs: check_floatX(
-        inputs, numpy.log1p(numpy.exp(inputs)))),
+        inputs, np.log1p(np.exp(inputs)))),
     good=dict(_good_broadcast_unary_normal_no_complex,
-              int8=[numpy.arange(-127, 89, dtype='int8')]),
+              int8=[np.arange(-127, 89, dtype='int8')]),
     # grad=_grad_broadcast_unary_normal,
     name='SoftplusTester',
 )
@@ -75,7 +75,7 @@ class T_softplus(unittest.TestCase):
         utt.seed_rng()
 
     def test_elemwise(self):
-        utt.verify_grad(softplus, [numpy.random.rand(3, 4)])
+        utt.verify_grad(softplus, [np.random.rand(3, 4)])
 
 
 class T_sigmoid_opts(unittest.TestCase):
@@ -106,7 +106,7 @@ class T_sigmoid_opts(unittest.TestCase):
         m = self.get_mode(excluding=['local_elemwise_fusion'])
 
         x = T.vector()
-        data = numpy.random.rand(54).astype(config.floatX)
+        data = np.random.rand(54).astype(config.floatX)
 
         backup = config.warn.identify_1pexp_bug
         config.warn.identify_1pexp_bug = False
@@ -313,7 +313,7 @@ class T_sigmoid_opts(unittest.TestCase):
         if not isinstance(mode, theano.compile.DebugMode):
             f = theano.function([x, lr], ux, mode=mode)
             ux_v = f([[50]], 0.1)
-            assert not numpy.isnan(ux_v)
+            assert not np.isnan(ux_v)
 
     def test_local_ultra_fast_sigmoid(self):
         x = tensor.matrix('x')
@@ -383,7 +383,7 @@ class T_softplus_opts(unittest.TestCase):
         assert isinstance(topo[1].op.scalar_op,
                           theano.tensor.nnet.sigm.ScalarSoftplus)
         assert isinstance(topo[2].op.scalar_op, theano.scalar.Neg)
-        f(numpy.random.rand(54).astype(config.floatX))
+        f(np.random.rand(54).astype(config.floatX))
 
     def test_log1msigm_to_softplus(self):
         x = T.matrix()
@@ -396,7 +396,7 @@ class T_softplus_opts(unittest.TestCase):
                           theano.tensor.nnet.sigm.ScalarSoftplus)
         assert isinstance(topo[1].op.scalar_op, theano.scalar.Neg)
         # assert check_stack_trace(f, ops_to_check='all')
-        f(numpy.random.rand(54, 11).astype(config.floatX))
+        f(np.random.rand(54, 11).astype(config.floatX))
 
         # Same test with a flatten
         out = T.log(1 - T.flatten(sigmoid(x)))
@@ -409,7 +409,7 @@ class T_softplus_opts(unittest.TestCase):
         assert isinstance(topo[1].op.scalar_op,
                           theano.tensor.nnet.sigm.ScalarSoftplus)
         assert isinstance(topo[2].op.scalar_op, theano.scalar.Neg)
-        f(numpy.random.rand(54, 11).astype(config.floatX))
+        f(np.random.rand(54, 11).astype(config.floatX))
 
         # Same test with a reshape
         out = T.log(1 - sigmoid(x).reshape([x.size]))
@@ -420,7 +420,7 @@ class T_softplus_opts(unittest.TestCase):
         assert any(isinstance(getattr(node.op, 'scalar_op', None),
                               theano.tensor.nnet.sigm.ScalarSoftplus)
                    for node in topo)
-        f(numpy.random.rand(54, 11).astype(config.floatX))
+        f(np.random.rand(54, 11).astype(config.floatX))
 
     def test_log1pexp_to_softplus(self):
         m = theano.config.mode
@@ -438,7 +438,7 @@ class T_softplus_opts(unittest.TestCase):
         assert len(topo) == 1
         assert isinstance(topo[0].op.scalar_op,
                           theano.tensor.nnet.sigm.ScalarSoftplus)
-        f(numpy.random.rand(54).astype(config.floatX))
+        f(np.random.rand(54).astype(config.floatX))
 
 
 class T_sigmoid_utils(unittest.TestCase):

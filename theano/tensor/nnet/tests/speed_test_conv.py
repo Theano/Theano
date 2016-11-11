@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import time
 
-import numpy as N
+import numpy as np
 from six.moves import xrange
 
 
@@ -12,7 +12,7 @@ from theano.tensor.nnet.conv import ConvOp
 
 def flip(kern, kshp):
     "flip the kernel as scipy.convolv2d do it flipped."
-    flip = N.zeros(kern.shape)
+    flip = np.zeros(kern.shape)
     if len(kern.shape) == 2:
         kern = kern.reshape(-1)
         it = reversed(kern)
@@ -38,7 +38,7 @@ def flip(kern, kshp):
         raise NotImplementedError()
     return flip
 
-global_rng = N.random.RandomState(3423489)
+global_rng = np.random.RandomState(3423489)
 
 dmatrix4 = T.TensorType('float64', (False, False, False, False))
 
@@ -69,23 +69,23 @@ def exec_multilayer_conv_nnet_old(
                 print(conv_mode, ss, n_layer, kshp, nkern)
 
             # actual values
-            w = global_rng.random_sample(N.r_[nkern, imshp[0], kshp])
+            w = global_rng.random_sample(np.r_[nkern, imshp[0], kshp])
             w_flip = flip(w, kshp).reshape(w.shape)
 
             # manual implementation
             # check first stage
             padimg = imgval
             if conv_mode == 'full':
-                padimg_shp = N.array(imshp[1:]) + 2 * (N.array(kshp) - N.array([1, 1]))
-                padimg = N.zeros(N.r_[bsize, imshp[0], padimg_shp])
+                padimg_shp = np.array(imshp[1:]) + 2 * (np.array(kshp) - np.array([1, 1]))
+                padimg = np.zeros(np.r_[bsize, imshp[0], padimg_shp])
                 padimg[
                     :, :, kshp[0] - 1:-kshp[0] + 1,
                     kshp[1] - 1:-kshp[1] + 1] = imgval
 
-            outshp = N.hstack((nkern, ConvOp.getOutputShape(imshp[1:], kshp, ss, conv_mode)))
+            outshp = np.hstack((nkern, ConvOp.getOutputShape(imshp[1:], kshp, ss, conv_mode)))
 
             time1 = time.time()
-            outval = N.zeros(N.r_[bsize, outshp])
+            outval = np.zeros(np.r_[bsize, outshp])
             if validate:
                 # causes an atexit problem
                 from scipy.signal.sigtools import _convolve2d
@@ -106,7 +106,7 @@ def exec_multilayer_conv_nnet_old(
             else:
                 conv_op = ConvOp(imshp, kshp, nkern, bsize, ss[0], ss[1], conv_mode,
                                  unroll_batch=unroll_batch, unroll_kern=unroll_kern, unroll_patch=unroll_patch, verbose=verbose)(inputs4, kerns4)
-            # l1shp = N.hstack((nkern,
+            # l1shp = np.hstack((nkern,
             #                ConvOp.getOutputShape(imshp[1:], kshp, ss, conv_mode)))
             propup2 = function([inputs4, kerns4], conv_op)
             propup3 = function([inputs4, kerns4], conv_op, mode=Mode(linker="py"))
@@ -123,15 +123,15 @@ def exec_multilayer_conv_nnet_old(
                     hidval3_ = propup3(imgval, w_flip)
                 hidval3 = hidval3_  # [:,:,0::ss[0],0::ss[1]]
                 tpytot += time.time() - time1
-                assert (N.abs(hidval2 - hidval3) < 1e-5).all()
+                assert (np.abs(hidval2 - hidval3) < 1e-5).all()
             else:
                 tpytot += 0
 
             if validate:
-                temp = N.abs(outval - hidval2)
+                temp = np.abs(outval - hidval2)
                 assert (temp < 1e-5).all()
             if validate and conv_op_py:
-                temp = N.abs(outval - hidval3)
+                temp = np.abs(outval - hidval3)
                 assert (temp < 1e-5).all()
 
             imshp = tuple(outshp)
@@ -165,13 +165,13 @@ def exec_multilayer_conv_nnet(
                 print(conv_mode, ss, n_layer, kshp, nkern)
 
             # actual values
-            w = global_rng.random_sample(N.r_[nkern, imshp[0], kshp])
+            w = global_rng.random_sample(np.r_[nkern, imshp[0], kshp])
             w_flip = flip(w, kshp).reshape(w.shape)
 
-            outshp = N.hstack((nkern, ConvOp.getOutputShape(imshp[1:], kshp, ss, conv_mode)))
+            outshp = np.hstack((nkern, ConvOp.getOutputShape(imshp[1:], kshp, ss, conv_mode)))
 
             time1 = time.time()
-            # outval = N.zeros(N.r_[bsize, outshp])
+            # outval = np.zeros(np.r_[bsize, outshp])
 
             # ConvOp
             if unroll_patch and not unroll_patch_size:
@@ -180,7 +180,7 @@ def exec_multilayer_conv_nnet(
             else:
                 conv_op = ConvOp(imshp, kshp, nkern, bsize, ss[0], ss[1], conv_mode,
                                  unroll_batch=unroll_batch, unroll_kern=unroll_kern, unroll_patch=unroll_patch, verbose=verbose)(inputs4, kerns4)
-            # l1shp = N.hstack((nkern,
+            # l1shp = np.hstack((nkern,
             #                ConvOp.getOutputShape(imshp[1:], kshp, ss, conv_mode)))
             propup2 = function([inputs4, kerns4], conv_op)
 
@@ -219,7 +219,7 @@ def speed_multilayer_conv():
         kerns = [a for i in nkerns]
 
         assert len(kshps) == len(nkerns) == len(kerns)
-        timing = N.zeros((len(unroll_batch), len(unroll_kern), 3, len(convmodes) * len(ssizes)))
+        timing = np.zeros((len(unroll_batch), len(unroll_kern), 3, len(convmodes) * len(ssizes)))
         t_b_k = []
         # calculate the timing with unrolling
 
@@ -250,7 +250,7 @@ def speed_multilayer_conv():
             t = timing[:, :, 0, :]  # We select only the c timing.
         else:
             t = t_
-        t = N.asarray(t)
+        t = np.asarray(t)
         # calculate the old timing
         print('time old version')
         tctot, tpytot, ntot = [], [], []
@@ -264,10 +264,10 @@ def speed_multilayer_conv():
                     tpytot += [tpytot_]
                     ntot += [ntot_]
         else:
-            tctot = N.asarray(tctot_)
+            tctot = np.asarray(tctot_)
         print("old code timing %.3fs" % sum(tctot), tctot)
-        best = N.asarray(best)
-        worst = N.asarray(worst)
+        best = np.asarray(best)
+        worst = np.asarray(worst)
         print("timing for unrolled version")
         print("unroll_batch/unroll_kern valid_mode full_mode")
         for n_b in xrange(len(unroll_batch)):

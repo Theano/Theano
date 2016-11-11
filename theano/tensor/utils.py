@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 import theano
 from theano.compat import izip
@@ -25,7 +25,7 @@ def hash_from_ndarray(data):
         # Version 1.7.1 and previous of NumPy allowed calling
         # hash_from_code on an F-contiguous array, but more recent
         # versions need a C-contiguous one.
-        data = numpy.ascontiguousarray(data)
+        data = np.ascontiguousarray(data)
     return hash_from_code(hash_from_code(data) +
                           hash_from_code(str(data.shape)) +
                           hash_from_code(str(data.strides)) +

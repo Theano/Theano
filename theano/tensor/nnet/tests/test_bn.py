@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import theano
 from theano.tests import unittest_tools as utt
-import numpy
+import numpy as np
 
 from theano.tensor.nnet.bn import batch_normalization
 
@@ -16,12 +16,12 @@ def test_BNComposite():
             n = (x - M) / V
             return n * G + B
 
-        numpy.random.seed(1234)
-        X = 1 + numpy.random.random([10, 20]).astype('float32')
-        B = 1 + numpy.random.random([20]).astype('float32')
-        G = 1 + numpy.random.random([20]).astype('float32')
-        M = 1 + numpy.random.random([20]).astype('float32')
-        V = 1 + numpy.random.random([20]).astype('float32')
+        np.random.seed(1234)
+        X = 1 + np.random.random([10, 20]).astype('float32')
+        B = 1 + np.random.random([20]).astype('float32')
+        G = 1 + np.random.random([20]).astype('float32')
+        M = 1 + np.random.random([20]).astype('float32')
+        V = 1 + np.random.random([20]).astype('float32')
 
         x = theano.tensor.matrix('x')
         b = theano.tensor.vector('b')
@@ -29,11 +29,11 @@ def test_BNComposite():
         m = theano.tensor.vector('m')
         v = theano.tensor.vector('v')
 
-        x.tag.test_value = numpy.random.rand(2, 2).astype(theano.config.floatX)
-        b.tag.test_value = numpy.random.rand(2).astype(theano.config.floatX)
-        g.tag.test_value = numpy.random.rand(2).astype(theano.config.floatX)
-        m.tag.test_value = numpy.random.rand(2).astype(theano.config.floatX)
-        v.tag.test_value = numpy.random.rand(2).astype(theano.config.floatX)
+        x.tag.test_value = np.random.rand(2, 2).astype(theano.config.floatX)
+        b.tag.test_value = np.random.rand(2).astype(theano.config.floatX)
+        g.tag.test_value = np.random.rand(2).astype(theano.config.floatX)
+        m.tag.test_value = np.random.rand(2).astype(theano.config.floatX)
+        v.tag.test_value = np.random.rand(2).astype(theano.config.floatX)
 
         bn_ref_op = bn_ref(x, g, b, m, v)
         f_ref = theano.function([x, b, g, m, v], [bn_ref_op])
@@ -53,12 +53,12 @@ def test_bn():
         n = (x - M) / V
         return n * G + B
 
-    numpy.random.seed(1234)
-    X = 1 + numpy.random.random([10, 20]).astype('float32')
-    B = 1 + numpy.random.random([20]).astype('float32')
-    G = 1 + numpy.random.random([20]).astype('float32')
-    M = 1 + numpy.random.random([20]).astype('float32')
-    V = 1 + numpy.random.random([20]).astype('float32')
+    np.random.seed(1234)
+    X = 1 + np.random.random([10, 20]).astype('float32')
+    B = 1 + np.random.random([20]).astype('float32')
+    G = 1 + np.random.random([20]).astype('float32')
+    M = 1 + np.random.random([20]).astype('float32')
+    V = 1 + np.random.random([20]).astype('float32')
 
     x = theano.tensor.matrix('x')
     b = theano.tensor.vector('b')
@@ -91,7 +91,7 @@ def test_bn():
         def bn(inputs, gamma, beta, mean, std):
             return batch_normalization(inputs, gamma, beta, mean, std, mode=mode)
         utt.verify_grad(batch_normalization, [X, G, B,
-                                              X.mean(axis=0)[numpy.newaxis], X.std(axis=0)[numpy.newaxis]])
+                                              X.mean(axis=0)[np.newaxis], X.std(axis=0)[np.newaxis]])
 
 
 def test_bn_feature_maps():
@@ -100,12 +100,12 @@ def test_bn_feature_maps():
         n = (x - M) / V
         return n * G + B
 
-    numpy.random.seed(1234)
-    X = 1 + numpy.random.random([2, 3, 4, 4]).astype('float32')
-    B = 1 + numpy.random.random([3]).astype('float32')
-    G = 1 + numpy.random.random([3]).astype('float32')
-    M = 1 + numpy.random.random([3]).astype('float32')
-    V = 1 + numpy.random.random([3]).astype('float32')
+    np.random.seed(1234)
+    X = 1 + np.random.random([2, 3, 4, 4]).astype('float32')
+    B = 1 + np.random.random([3]).astype('float32')
+    G = 1 + np.random.random([3]).astype('float32')
+    M = 1 + np.random.random([3]).astype('float32')
+    V = 1 + np.random.random([3]).astype('float32')
 
     x = theano.tensor.tensor4('x')
     b = theano.tensor.vector('b')
