@@ -1,7 +1,8 @@
 from __future__ import absolute_import, print_function, division
 
 from theano import Apply
-from theano.sandbox.cuda import GpuOp, as_cuda_ndarray_variable
+from theano.sandbox.cuda import GpuOp
+from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
 from theano.tensor.basic import as_tensor_variable
 
 
