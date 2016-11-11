@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import sys
-import numpy
+import numpy as np
 import theano
 import theano.tensor as tensor
 from theano.tensor.blas_scipy import ScipyGer
@@ -20,9 +20,9 @@ class TestScipyGer(TestCase, TestOptimizationMixin):
         self.a = tensor.tensor(dtype=dtype, broadcastable=())
         self.x = tensor.tensor(dtype=dtype, broadcastable=(False,))
         self.y = tensor.tensor(dtype=dtype, broadcastable=(False,))
-        self.Aval = numpy.ones((2, 3), dtype=dtype)
-        self.xval = numpy.asarray([1, 2], dtype=dtype)
-        self.yval = numpy.asarray([1.5, 2.7, 3.9], dtype=dtype)
+        self.Aval = np.ones((2, 3), dtype=dtype)
+        self.xval = np.asarray([1, 2], dtype=dtype)
+        self.yval = np.asarray([1.5, 2.7, 3.9], dtype=dtype)
         if not theano.tensor.blas_scipy.have_fblas:
             self.SkipTest()
 
@@ -34,7 +34,7 @@ class TestScipyGer(TestCase, TestOptimizationMixin):
         f(self.Aval[::-1, ::-1], self.xval[::-1], self.yval[::-1])
 
     def b(self, bval):
-        return tensor.as_tensor_variable(numpy.asarray(bval, dtype=self.dtype))
+        return tensor.as_tensor_variable(np.asarray(bval, dtype=self.dtype))
 
     def test_outer(self):
         f = self.function([self.x, self.y], tensor.outer(self.x, self.y))
