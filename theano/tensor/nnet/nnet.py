@@ -773,7 +773,7 @@ def local_logsoftmax_grad(node):
     if (isinstance(node.op, SoftmaxGrad) and
         len(node.inputs) == 2 and
         node.inputs[0].owner is not None and
-        isinstance(node.inputs[0].owner.op, tensor.Elemwise) and
+        node.inputs[0].owner.op == tensor.true_div and
         len(node.inputs[0].owner.inputs) >= 2 and
         node.inputs[0].owner.inputs[1].owner is not None and
         node.inputs[0].owner.inputs[1].owner.op == softmax_op and
