@@ -1656,6 +1656,36 @@ def test_batchnorm_inference():
                 utt.assert_allclose(outputs_abstract[5], outputs_ref[5], rtol=2e-3, atol=4e-5)  # dvar
 
 
+def test_batchnorm_inference_inplace():
+    # test inplace
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    if dnn.version(raises=False) < 5000:
+        raise SkipTest("batch normalization requires cudnn v5+")
+    utt.seed_rng()
+
+    x, scale, bias, mean, var = (T.tensor4(n) for n in ('x', 'scale', 'bias', 'mean', 'var'))
+    data_shape = (5, 10, 30, 25)
+    param_shape = (1, 10, 30, 25)
+
+    out = dnn.dnn_batch_normalization_test(x, scale, bias, mean, var)
+    f = theano.function([x, scale, bias, mean, var], [out], mode=mode_with_gpu)
+
+    # check for the inplace settings
+    nodes = [n for n in f.maker.fgraph.toposort()
+             if isinstance(n.op, dnn.GpuDnnBatchNormInference)]
+    assert len(nodes) == 1
+    assert nodes[0].op.inplace
+
+    # run
+    X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
+    Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    Mean = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    Var = numpy.random.rand(*param_shape).astype(theano.config.floatX)
+    f(X, Scale, Bias, Mean, Var)
+
+
 def test_dnn_batchnorm_valid_and_invalid_axes():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)

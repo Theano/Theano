@@ -1776,17 +1776,22 @@ class GpuDnnBatchNormInference(DnnBase):
         value is 1e-5 (imposed by cuDNN).
     """
 
-    __props__ = ('mode',)
+    __props__ = ('mode', 'inplace')
 
-    def __init__(self, mode='per-activation'):
+    def __init__(self, mode='per-activation', inplace=False):
         DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm_inf.c'],
                          'dnn_batchnorm_op')
 
         assert (mode in ('per-activation', 'spatial'))
         self.mode = mode
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
 
     def get_op_params(self):
         params = []
+        if self.inplace:
+            params.append(('INPLACE_OUTPUT', '1'))
         params.append(('MODE', ("CUDNN_BATCHNORM_SPATIAL"
                                 if self.mode == "spatial"
                                 else "CUDNN_BATCHNORM_PER_ACTIVATION")))
@@ -3165,6 +3170,13 @@ def local_batch_norm_inplace_running_var(node):
                                inplace_running_mean=node.op.inplace_running_mean,
                                inplace_running_var=True,
                                inplace_output=node.op.inplace_output)(*node.inputs)
+
+
+@register_inplace()
+@local_optimizer([GpuDnnBatchNormInference], inplace=True)
+def local_batch_norm_inference_inplace(node):
+    if isinstance(node.op, GpuDnnBatchNormInference) and not node.op.inplace:
+        return [GpuDnnBatchNormInference(mode=node.op.mode, inplace=True)(*node.inputs)]
 
 
 @local_optimizer([bn.AbstractBatchNormTrainGrad])
