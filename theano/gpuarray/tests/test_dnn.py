@@ -1570,6 +1570,7 @@ def test_dnn_batchnorm_train_inplace():
     assert len(nodes) == 1
     assert nodes[0].op.inplace_running_mean
     assert nodes[0].op.inplace_running_var
+    assert nodes[0].op.inplace_output
     # run
     X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
     Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)

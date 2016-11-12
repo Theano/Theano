@@ -1666,19 +1666,24 @@ class GpuDnnBatchNorm(DnnBase):
         both be None.
     """
 
-    __props__ = ('mode', 'running_averages', 'inplace_running_mean', 'inplace_running_var')
+    __props__ = ('mode', 'running_averages', 'inplace_running_mean',
+                 'inplace_running_var', 'inplace_output')
 
     def __init__(self, mode='per-activation', running_averages=False,
-                 inplace_running_mean=False, inplace_running_var=False):
+                 inplace_running_mean=False, inplace_running_var=False,
+                 inplace_output=False):
         DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm.c'],
                          'dnn_batchnorm_op')
 
         assert (mode in ('per-activation', 'spatial'))
         self.mode = mode
         self.running_averages = running_averages
+        self.inplace_output = inplace_output
         self.inplace_running_mean = inplace_running_mean
         self.inplace_running_var = inplace_running_var
         self.destroy_map = {}
+        if self.inplace_output:
+            self.destroy_map[0] = [0]
         if self.running_averages and self.inplace_running_mean:
             self.destroy_map[3] = [5]
         if self.running_averages and self.inplace_running_var:
@@ -1686,6 +1691,8 @@ class GpuDnnBatchNorm(DnnBase):
 
     def get_op_params(self):
         params = []
+        if self.inplace_output:
+            params.append(('INPLACE_OUTPUT', '1'))
         if self.running_averages:
             params.append(('RUNNING_AVERAGES', '1'))
             if self.inplace_running_mean:
@@ -3129,12 +3136,24 @@ def local_abstract_batch_norm_train_cudnn(node):
 
 @register_inplace()
 @local_optimizer([GpuDnnBatchNorm], inplace=True)
+def local_batch_norm_inplace_output(node):
+    if isinstance(node.op, GpuDnnBatchNorm) and not node.op.inplace_output:
+        return GpuDnnBatchNorm(mode=node.op.mode,
+                               running_averages=node.op.running_averages,
+                               inplace_running_mean=node.op.inplace_running_mean,
+                               inplace_running_var=node.op.inplace_running_var,
+                               inplace_output=True)(*node.inputs)
+
+
+@register_inplace()
+@local_optimizer([GpuDnnBatchNorm], inplace=True)
 def local_batch_norm_inplace_running_mean(node):
     if isinstance(node.op, GpuDnnBatchNorm) and node.op.running_averages and not node.op.inplace_running_mean:
         return GpuDnnBatchNorm(mode=node.op.mode,
                                running_averages=node.op.running_averages,
                                inplace_running_mean=True,
-                               inplace_running_var=node.op.inplace_running_var)(*node.inputs)
+                               inplace_running_var=node.op.inplace_running_var,
+                               inplace_output=node.op.inplace_output)(*node.inputs)
 
 
 @register_inplace()
@@ -3144,7 +3163,8 @@ def local_batch_norm_inplace_running_var(node):
         return GpuDnnBatchNorm(mode=node.op.mode,
                                running_averages=node.op.running_averages,
                                inplace_running_mean=node.op.inplace_running_mean,
-                               inplace_running_var=True)(*node.inputs)
+                               inplace_running_var=True,
+                               inplace_output=node.op.inplace_output)(*node.inputs)
 
 
 @local_optimizer([bn.AbstractBatchNormTrainGrad])

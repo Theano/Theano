@@ -25,8 +25,14 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
   if (epsilon < 1e-5)
     return 1;
 
+#ifdef INPLACE_OUTPUT
+  Py_XDECREF(*outp);
+  *outp = inp;
+  Py_INCREF(*outp);
+#else
   if (theano_prep_output(outp, inp->ga.nd, inp->ga.dimensions, inp->ga.typecode, GA_C_ORDER, c) != 0)
     return 1;
+#endif
   if (theano_prep_output(x_mean, scale->ga.nd, scale->ga.dimensions, scale->ga.typecode, GA_C_ORDER, c) != 0)
     return 1;
   if (theano_prep_output(x_invstd, scale->ga.nd, scale->ga.dimensions, scale->ga.typecode, GA_C_ORDER, c) != 0)
