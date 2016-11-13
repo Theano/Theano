@@ -416,13 +416,59 @@ import theano and print the config variable, as in:
     `amdlibm <http://developer.amd.com/cpu/libraries/libm/>`__
     library, which is faster than the standard libm.
 
+.. attribute:: config.gpuarray.preallocate
+
+    Float value
+
+    Default: 0 (Preallocation of size 0, only cache the allocation)
+
+    Controls the preallocation of memory with the gpuarray backend.
+
+    The value represents the start size (either in MB or the fraction
+    of total GPU memory) of the memory pool. If more memory is needed,
+    Theano will try to obtain more, but this can cause memory
+    fragmentation.
+
+    A negative value will completely disable the allocation cache.
+    This can have a severe impact on performance and so should not be
+    done outside of debugging.
+
+        * < 0: disabled
+        * 0 <= N <= 1: use this fraction of the total GPU memory (clipped to .95 for driver memory).
+        * > 1: use this number in megabytes (MB) of memory.
+
+    .. note::
+
+        This value allocates GPU memory ONLY when using (:ref:`gpuarray`).
+        For the old backend, please see ``config.lib.cnmem``
+
+    .. note::
+
+        This could cause memory fragmentation. So if you have a memory
+        error while using the cache, try to allocate more memory at
+        the start or disable it. If you try this, report your result
+        on :ref`theano-dev`.
+
+    .. note::
+
+        The clipping at 95% can be bypassed by specifing the exact
+        number of megabytes. If more then 95% are needed, it will try
+        automatically to get more memory. But this can cause
+        fragmentation, see note above.
+
 .. attribute:: config.lib.cnmem
+
+    .. note::
+
+        This value allocates GPU memory ONLY when using (:ref:`cuda`)
+        and has no effect when the GPU backend is (:ref:`gpuarray`).
+        For the new backend, please see ``config.gpuarray.preallocate``
 
     Float value: >= 0
 
     Controls the use of `CNMeM <https://github.com/NVIDIA/cnmem>`_ (a
-    faster CUDA memory allocator). In Theano dev version until 0.8
-    is released.
+    faster CUDA memory allocator). Applies to the old GPU backend 
+    :ref:`cuda` up to Theano release 0.8.
 
     The CNMeM library is included in Theano and does not need to be
     separately installed.
@@ -442,41 +488,6 @@ import theano and print the config variable, as in:
 
         This could cause memory fragmentation. So if you have a
         memory error while using CNMeM, try to allocate more memory at
-        the start or disable it. If you try this, report your result
-        on :ref`theano-dev`.
-
-    .. note::
-
-        The clipping at 95% can be bypassed by specifing the exact
-        number of megabytes. If more then 95% are needed, it will try
-        automatically to get more memory. But this can cause
-        fragmentation, see note above.
-
-.. attribute:: config.gpuarray.preallocate
-
-    Float value
-
-    Default: 0
-
-    Controls the preallocation of memory with the gpuarray backend.
-
-    The value represents the start size (either in MB or the fraction
-    of total GPU memory) of the memory pool. If more memory is needed,
-    Theano will try to obtain more, but this can cause memory
-    fragmentation.
-
-    A negative value will completely disable the allocation cache.
-    This can have a severe impact on performance and so should not be
-    done outside of debugging.
-
-        * < 0: disabled
-        * 0 <= N <= 1: use this fraction of the total GPU memory (clipped to .95 for driver memory).
-        * > 1: use this number in megabytes (MB) of memory.
-
-    .. note::
-
-        This could cause memory fragmentation. So if you have a memory
-        error while using the cache, try to allocate more memory at
         the start or disable it. If you try this, report your result
         on :ref`theano-dev`.
 

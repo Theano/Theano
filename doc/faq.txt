@@ -162,6 +162,12 @@ but requires that all nodes in the graph have a C implementation:
     f = function([x], (x + 1.) * 2, mode=theano.Mode(linker='c'))
     f(10.)
 
+New GPU backend using libgpuarray
+---------------------------------
+
+The new theano GPU backend (:ref:`gpuarray`) uses ``config.gpuarray.preallocate`` for GPU memory allocation. 
+
+Likewise, the old back-end uses ``config.lib.cnmem`` for GPU memory allocation. 
 
 Related Projects
 ----------------
