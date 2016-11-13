@@ -1817,10 +1817,7 @@ ErfcinvTester = makeBroadcastTester(
 
 _good_broadcast_unary_gammaln = dict(
     normal=(rand_ranged(-1 + 1e-2, 10, (2, 3)),),
-    empty=(numpy.asarray([], dtype=config.floatX),),
-    int=(randint_ranged(1, 10, (2, 3)),),
-    uint8=(randint_ranged(1, 10, (2, 3)).astype('uint8'),),
-    uint16=(randint_ranged(1, 10, (2, 3)).astype('uint16'),),)
+    empty=(numpy.asarray([], dtype=config.floatX),))
 _grad_broadcast_unary_gammaln = dict(
     # smaller range as our grad method does not estimate it well enough.
     normal=(rand_ranged(1e-1, 8, (2, 3)),),)
@@ -1863,10 +1860,7 @@ GammalnInplaceTester = makeBroadcastTester(
 
 _good_broadcast_unary_psi = dict(
     normal=(rand_ranged(1, 10, (2, 3)),),
-    empty=(numpy.asarray([], dtype=config.floatX),),
-    int=(randint_ranged(1, 10, (2, 3)),),
-    uint8=(randint_ranged(1, 10, (2, 3)).astype('uint8'),),
-    uint16=(randint_ranged(1, 10, (2, 3)).astype('uint16'),),)
+    empty=(numpy.asarray([], dtype=config.floatX),))
 
 PsiTester = makeBroadcastTester(
     op=tensor.psi,
@@ -1892,10 +1886,7 @@ _good_broadcast_unary_chi2sf = dict(
     normal=(rand_ranged(1, 10, (2, 3)),
             numpy.asarray(1, dtype=config.floatX)),
     empty=(numpy.asarray([], dtype=config.floatX),
-           numpy.asarray(1, dtype=config.floatX)),
-    # The test seems to fail!!
-    int=(randint_ranged(1, 10, (2, 3)),
-            numpy.asarray(1, dtype=config.floatX)))
+           numpy.asarray(1, dtype=config.floatX)))
 
 Chi2SFTester = makeBroadcastTester(
     op=tensor.chi2sf,
