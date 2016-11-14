@@ -1312,8 +1312,8 @@ ExpTester = makeBroadcastTester(
     expected=upcast_float16_ufunc(numpy.exp),
     good=dict(_good_broadcast_unary_normal,
               int8=[numpy.arange(-127, 89, dtype='int8')],
-              uint8=[numpy.arange(0, 255, dtype='uint8')],
-              uint16=[numpy.arange(0, 65535, dtype='uint16')]),
+              uint8=[numpy.arange(0, 89, dtype='uint8')],
+              uint16=[numpy.arange(0, 89, dtype='uint16')]),
     grad=_grad_broadcast_unary_normal)
 ExpInplaceTester = makeBroadcastTester(
     op=inplace.exp_inplace,
@@ -1339,8 +1339,8 @@ Expm1Tester = makeBroadcastTester(
     expected=upcast_float16_ufunc(numpy.expm1),
     good=dict(_good_broadcast_unary_normal,
               int8=[numpy.arange(-127, 89, dtype='int8')],
-              uint8=[numpy.arange(0, 255, dtype='uint8')],
-              uint16=[numpy.arange(0, 65535, dtype='uint16')]),
+              uint8=[numpy.arange(0, 89, dtype='uint8')],
+              uint16=[numpy.arange(0, 89, dtype='uint16')]),
               grad=_grad_broadcast_unary_normal)
 Expm1InplaceTester = makeBroadcastTester(
     op=inplace.expm1_inplace,
@@ -1429,7 +1429,7 @@ _good_broadcast_unary_wide = dict(
     empty=(numpy.asarray([], dtype=config.floatX),),)
 _good_broadcast_unary_wide_float = copymod(
     _good_broadcast_unary_wide,
-    without=['integers', 'int8', 'int8', 'uint16'])
+    without=['integers', 'int8', 'uint8', 'uint16'])
 _grad_broadcast_unary_wide = dict(normal=(rand_ranged(-1000, 1000, (2, 3)),),)
 
 if theano.config.floatX == 'float32':
@@ -1577,10 +1577,6 @@ _good_broadcast_binary_arctan2 = dict(
     integers=(randint(2, 3), randint(2, 3)),
     int8=[numpy.arange(-127, 128, dtype='int8'),
           numpy.arange(-127, 128, dtype='int8')[:, numpy.newaxis]],
-    uint8=[numpy.arange(0, 255, dtype='uint8'),
-           numpy.arange(0, 255, dtype='uint8')[:, numpy.newaxis]],
-    uint16=[numpy.arange(0, 65535, dtype='uint16'),
-            numpy.arange(0, 65535, dtype='uint16')[:, numpy.newaxis]],
     dtype_mixup_1=(rand(2, 3), randint(2, 3)),
     dtype_mixup_2=(randint(2, 3), rand(2, 3)),
     empty=(numpy.asarray([], dtype=config.floatX),
@@ -1602,7 +1598,7 @@ Arctan2Tester = makeBroadcastTester(
 Arctan2InplaceTester = makeBroadcastTester(
     op=inplace.arctan2_inplace,
     expected=numpy.arctan2,
-    good=copymod(_good_broadcast_binary_arctan2, without=['integers', 'int8', 'uint8', 'uint16']),
+    good=copymod(_good_broadcast_binary_arctan2, without=['integers', 'int8']),
     grad=_grad_broadcast_binary_arctan2,
     inplace=True)
 
