@@ -186,7 +186,7 @@ def local_dimshuffle_subtensor(node):
     """
     if isinstance(node.op, DimShuffle) and node.inputs[0].owner:
         # the dimshuffle can only drop dimensions (cannot reshape nor add 'x')
-        if 'x' in node.op.new_order :
+        if 'x' in node.op.new_order:
             return False
         new_order = node.op.new_order
         # new order could be empty
@@ -218,7 +218,7 @@ def local_dimshuffle_subtensor(node):
             new_idx_list = list(input_.owner.op.idx_list)
             new_inputs = [input_.owner.inputs[0]]
             zero = T.constant(0)
-            slice_attr_list = ['start','stop','step']
+            slice_attr_list = ['start', 'stop', 'step']
             j = 0
             slice_i = -1
             for idx in input_.owner.op.idx_list:
@@ -227,7 +227,7 @@ def local_dimshuffle_subtensor(node):
                     slice_i += 1
                     for slice_attr in slice_attr_list:
                         if getattr(idx, slice_attr) is not None:
-                            new_inputs += [input_.owner.inputs[1+j]]
+                            new_inputs += [input_.owner.inputs[1 + j]]
                             j += 1
                     # if past_j == j indicates a slice(None, None, None), that's where
                     # we want to index with 0 if it is also at the same
@@ -236,7 +236,7 @@ def local_dimshuffle_subtensor(node):
                         new_idx_list[j] = zero
                         new_inputs += [zero]
                 else:
-                    new_inputs += [input_.owner.inputs[1+j]]
+                    new_inputs += [input_.owner.inputs[1 + j]]
                     j += 1
             return [Subtensor(new_idx_list)(*new_inputs)]
     return False
