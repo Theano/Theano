@@ -220,16 +220,19 @@ def local_dimshuffle_subtensor(node):
             zero = T.constant(0)
             slice_attr_list = ['start','stop','step']
             j = 0
+            slice_i = -1
             for idx in input_.owner.op.idx_list:
                 if isinstance(idx, slice):
                     past_j = j
+                    slice_i += 1
                     for slice_attr in slice_attr_list:
                         if getattr(idx, slice_attr) is not None:
                             new_inputs += [input_.owner.inputs[1+j]]
                             j += 1
-                    if past_j == j:
-                        # here is a slice(None, None, None), that's where
-                        # we want to index with 0.
+                    # if past_j == j indicates a slice(None, None, None), that's where
+                    # we want to index with 0 if it is also at the same
+                    # spot of a missing dim
+                    if past_j == j and slice_i in missing_dims:
                         new_idx_list[j] = zero
                         new_inputs += [zero]
                 else:

@@ -178,7 +178,7 @@ def test_local_dimshuffle_subtensor():
     x = tensor.patternbroadcast(x, (False, True, False, False))
     i = tensor.iscalar('i')
 
-    out = x[i, :, 10:30, ::-1].dimshuffle(1,2)
+    out = x[:, :, 10:30, ::i].dimshuffle(0,2,3)
 
     g = FunctionGraph([x,i], [out])
     dimshuffle_subtensor(g)
