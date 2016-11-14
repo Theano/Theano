@@ -41,8 +41,6 @@ from theano.tensor.elemwise import CAReduce
 from theano.tensor import basic as T
 from theano.tensor import DimShuffle
 
-from theano.tensor.basic import (get_scalar_constant_value,
-                                 NotScalarConstantError)
 from theano.tensor.opt import register_uncanonicalize
 from theano import scalar as scal
 
@@ -50,31 +48,19 @@ _logger = logging.getLogger('theano.tensor.opt')
 
 
 @register_uncanonicalize
-@gof.local_optimizer([T._max_and_argmax])
+@gof.local_optimizer([T.MaxAndArgmax])
 def local_max_and_argmax(node):
     """
     If we don't use the argmax, change it to a max only.
     """
-    if node.op == T._max_and_argmax:
+    if isinstance(node.op, T.MaxAndArgmax):
+        axis = node.op.get_params(node)
         if len(node.outputs[1].clients) == 0:
-            # MaxAndArgmax support variable axis,
-            # but CAReduce support only constant axis.
-            if node.inputs[1].data is None:
-                axis = None
-            else:
-                try:
-                    axis = get_scalar_constant_value(node.inputs[1])
-                except NotScalarConstantError:
-                    axis = node.inputs[1]
-                    if not isinstance(axis, T.TensorConstant):
-                        return False
-                    axis = axis.data
-
             new = CAReduce(scal.maximum, axis)(node.inputs[0])
             return [new, None]
 
         if len(node.outputs[0].clients) == 0:
-            return [None, T._argmax(node.inputs[0], node.inputs[1])]
+            return [None, T._argmax(node.inputs[0], axis)]
 
 
 @register_uncanonicalize
