@@ -178,10 +178,9 @@ def test_local_dimshuffle_subtensor():
     x = tensor.patternbroadcast(x, (False, True, False, False))
     i = tensor.iscalar('i')
 
-    out = x[i, :, 10:30, :-1].dimshuffle(1,2)
+    out = x[i, :, 10:30, ::-1].dimshuffle(1,2)
 
     g = FunctionGraph([x,i], [out])
-    import ipdb; ipdb.set_trace()
     dimshuffle_subtensor(g)
 
     topo = g.toposort()
