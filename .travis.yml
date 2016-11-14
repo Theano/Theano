@@ -43,15 +43,20 @@ install:
 env:
   - PART="theano/tests/test_flake8.py" DOC=1
   - PART="-e test_flake8.py theano/compat theano/compile theano/d3viz theano/gof theano/misc theano/sandbox theano/scalar theano/scan_module theano/sparse theano/tests theano/typed_list"
-  - PART="theano/tensor"
+  - PART="theano/tensor -e theano/tensor/tests/test_basic.py"
+  - PART="theano/tensor/tests/test_basic.py"
 
 matrix:
   fast_finish: true
   include:
     - python: "3.3"
-      env: PART="-e test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE"
+      env:
+        - PART="-e theano/tensor test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE"
+        - PART="theano/tensor" THEANO_FLAGS="mode=FAST_COMPILE"
     - python: "2.7"
-      env: PART="-e test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
+      env:
+        - PART="-e theano/tensor test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
+        - PART="theano/tensor" THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
 
 script:
   - export THEANO_FLAGS=$THEANO_FLAGS,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,gcc.cxxflags=-pipe
