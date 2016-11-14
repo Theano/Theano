@@ -220,7 +220,6 @@ def local_dimshuffle_subtensor(node):
             zero = T.constant(0)
             slice_attr_list = ['start','stop','step']
             j = 0
-            import ipdb; ipdb.set_trace()
             for idx in input_.owner.op.idx_list:
                 if isinstance(idx, slice):
                     past_j = j
@@ -236,6 +235,5 @@ def local_dimshuffle_subtensor(node):
                 else:
                     new_inputs += [input_.owner.inputs[1+j]]
                     j += 1
-            import ipdb; ipdb.set_trace()
             return [Subtensor(new_idx_list)(*new_inputs)]
     return False
