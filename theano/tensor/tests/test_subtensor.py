@@ -1248,6 +1248,11 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         finally:
             config.warn.inc_set_subtensor1 = orig_warn
 
+    def test_take(self):
+        a = tensor.matrix()
+        f = theano.function([a], a.take(0, axis=-1), allow_input_downcast=True)
+        x = f(numpy.random.normal(0, 1, (30, 4)))
+
 
 class TestIncSubtensor1(unittest.TestCase):
     # test inc_subtensor
