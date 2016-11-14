@@ -86,6 +86,7 @@ whitelist_flake8 = [
     "sandbox/linalg/__init__.py",
     "sandbox/linalg/tests/__init__.py",
     "sandbox/linalg/tests/test_linalg.py",
+    "sandbox/solve.py",
     "scan_module/scan_utils.py",
     "scan_module/scan_views.py",
     "scan_module/scan.py",
