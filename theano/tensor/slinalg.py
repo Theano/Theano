@@ -202,10 +202,16 @@ class Solve(Op):
         b = as_tensor_variable(b)
         assert A.ndim == 2
         assert b.ndim in [1, 2]
-        otype = tensor.tensor(
+        if ((A.dtype == 'float32' and b.dtype == 'float32')
+                or (A.dtype in ['int8', 'int16'] and b.dtype == 'float32')
+                or (b.dtype in ['int8', 'int16'] and A.dtype == 'float32')):
+            o_dtype = 'float32'
+        else:
+            o_dtype = 'float64'
+        x = tensor.tensor(
             broadcastable=b.broadcastable,
-            dtype=(A * b).dtype)
-        return Apply(self, [A, b], [otype])
+            dtype=o_dtype)
+        return Apply(self, [A, b], [x])
 
     def perform(self, node, inputs, output_storage):
         A, b = inputs
