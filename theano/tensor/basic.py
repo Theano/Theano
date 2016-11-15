@@ -1602,6 +1602,7 @@ def max_and_argmax(a, axis=None, keepdims=False):
     """
     # Check axis and convert it to a Python list of integers.
     # Axis will be used as an op param of MaxAndArgmax.
+    a = as_tensor_variable(a)
     if axis is None:
         axis = list(range(a.type.ndim))
     elif (isinstance(axis, (integer_types, numpy.integer)) or

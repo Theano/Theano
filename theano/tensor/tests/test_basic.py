@@ -3091,6 +3091,12 @@ class T_max_and_argmax(unittest.TestCase):
         assert mv.shape == (0,)
         assert iv.shape == (0,)
 
+    def test_numpy_input(self):
+        ar = numpy.array([1, 2, 3])
+        max, argmax = max_and_argmax(ar, axis=None)
+        self.assertEqual(max.eval(), 3)
+        self.assertEqual(argmax.eval(), 2)
+
 
 class T_argmin_argmax(unittest.TestCase):
     def setUp(self):
