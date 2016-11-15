@@ -32,18 +32,20 @@ addons:
 
 install:
 # In Python 3.3, we test the min version of NumPy and SciPy. In Python 2.7, we test more recent version.
+# nose-exclude plugin should allow use to tell nosetests to exclude folder with --exclude-dir=path/to/directory.
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then conda create --yes -q -n pyenv mkl python=2.7 numpy=1.9.1 scipy=0.14.0 nose=1.3.0 pip flake8=2.3 six=1.9.0 pep8=1.6.2 pyflakes=0.8.1 sphinx mkl-service libgfortran=1; fi
   - if [[ $TRAVIS_PYTHON_VERSION == '3.3' ]]; then conda create --yes -q -n pyenv mkl python=3.3 numpy=1.9.1 scipy=0.14.0 nose=1.3.4 pip flake8=2.3 six=1.9.0 pep8=1.6.2 pyflakes=0.8.1 sphinx mkl-service; fi
   - source activate pyenv
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then pip install pydot; else pip install pydot-ng; fi
   - pip install . --no-deps
   - pip install flake8-future-import nose-parameterized==0.5.0 sphinx_rtd_theme
+  - pip install nose-exclude
 
 # command to run tests
 env:
   - PART="theano/tests/test_flake8.py" DOC=1
   - PART="-e test_flake8.py theano/compat theano/compile theano/d3viz theano/gof theano/misc theano/sandbox theano/scalar theano/scan_module theano/sparse theano/tests theano/typed_list"
-  - PART="theano/tensor -e theano/tensor/tests/test_basic.py"
+  - PART="theano/tensor -e test_basic.py"
   - PART="theano/tensor/tests/test_basic.py"
 
 matrix:
@@ -51,11 +53,11 @@ matrix:
   include:
     - python: "3.3"
       env:
-        - PART="-e theano/tensor test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE"
+        - PART="--exclude-dir=theano/tensor -e test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE"
         - PART="theano/tensor" THEANO_FLAGS="mode=FAST_COMPILE"
     - python: "2.7"
       env:
-        - PART="-e theano/tensor test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
+        - PART="--exclude-dir=theano/tensor -e test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
         - PART="theano/tensor" THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
 
 script:
