@@ -52,13 +52,13 @@ matrix:
   fast_finish: true
   include:
     - python: "3.3"
-      env:
-        - PART="--exclude-dir=theano/tensor -e test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE"
-        - PART="theano/tensor" THEANO_FLAGS="mode=FAST_COMPILE"
+      env: PART="--exclude-dir=theano/tensor -e test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE"
+    - python: "3.3"
+      env: PART="theano/tensor" THEANO_FLAGS="mode=FAST_COMPILE" 
     - python: "2.7"
-      env:
-        - PART="--exclude-dir=theano/tensor -e test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
-        - PART="theano/tensor" THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
+      env: PART="--exclude-dir=theano/tensor -e test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
+    - python: "2.7"
+      env: PART="theano/tensor" THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
 
 script:
   - export THEANO_FLAGS=$THEANO_FLAGS,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,gcc.cxxflags=-pipe
