@@ -25,6 +25,13 @@ focusing on how to install the appropriate dependencies.
 
 Nicolas Pinto provides `ebuild scripts <https://github.com/npinto/sekyfsr-gentoo-overlay/tree/master/sci-libs/Theano>`_.
 
+AWS Marketplace with Bitfusion AMI
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+AWS EC2 AMI pre-installed with Nvidia drivers, CUDA, cuDNN, Theano, Keras, Lasagne, Python 2, Python 3, PyCuda, Scikit-Learn, Pandas, Enum34, iPython, and Jupyter. Note, as always there is no charge for Theano and other open software, however there is a charge for AWS hosting + Bitfusion.
+
+`Launch <https://aws.amazon.com/marketplace/pp/B01IRAMCM8/ref=_ptnr_referral_docs_theano>`_ an instance from the AWS Marketplace.
+
 Docker
 ~~~~~~
 
