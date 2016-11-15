@@ -125,8 +125,8 @@ Ops
    4.3%    96.4%       0.050s       4.98e-06s     C     10000        1   Elemwise{Composite{GT(scalar_sigmoid(i0), i1)}}
    1.0%    97.4%       0.011s       1.14e-06s     C     10000        1   Sum{acc_dtype=float64}
    0.5%    97.9%       0.006s       2.83e-07s     C     20001        3   InplaceDimShuffle{x}
-   0.4%    98.3%       0.004s       4.22e-07s     C     10000        1   Elemwise{sub,no_inplace}
-   0.3%    98.6%       0.004s       3.70e-07s     C     10000        1   Elemwise{neg,no_inplace}
+   0.4%    98.3%       0.004s       4.22e-07s     C     10000        1   Elemwise{Sub,no_inplace}
+   0.3%    98.6%       0.004s       3.70e-07s     C     10000        1   Elemwise{Neg,no_inplace}
    0.3%    98.9%       0.004s       3.64e-07s     C     10001        2   AllocEmpty{dtype='float32'}
    0.3%    99.2%       0.004s       1.78e-07s     C     20001        3   Shape_i{0}
    0.2%    99.5%       0.003s       2.88e-07s     C     10000        1   InplaceDimShuffle{1,0}
@@ -141,13 +141,13 @@ Apply
 <% time> <sum %> <apply time> <time per call> <#call> <id> <Apply name>
   34.0%    34.0%       0.394s       3.94e-05s   10000     7   CGemv{inplace}(AllocEmpty{dtype='float32'}.0, TensorConstant{1.0}, x, w, TensorConstant{0.0})
   30.5%    64.5%       0.353s       3.53e-05s   10000    15   CGemv{inplace}(w, TensorConstant{-0.00999999977648}, x.T, Elemwise{Composite{(((scalar_sigmoid(i0) * i1 * i2) / i3) - ((scalar_sigmoid((-i0)) * i1 * i4) / i3))}}[(0, 0)].0, TensorConstant{0.999800026417})
-  18.7%    83.2%       0.217s       2.17e-05s   10000    12   Elemwise{Composite{((i0 * scalar_softplus(i1)) - (i2 * i3 * scalar_softplus(i4)))}}[(0, 4)](y, Elemwise{Composite{((-i0) - i1)}}[(0, 0)].0, TensorConstant{(1,) of -1.0}, Elemwise{sub,no_inplace}.0, Elemwise{neg,no_inplace}.0)
-   8.9%    92.1%       0.103s       1.03e-05s   10000    13   Elemwise{Composite{(((scalar_sigmoid(i0) * i1 * i2) / i3) - ((scalar_sigmoid((-i0)) * i1 * i4) / i3))}}[(0, 0)](Elemwise{Composite{((-i0) - i1)}}[(0, 0)].0, TensorConstant{(1,) of -1.0}, y, Elemwise{Cast{float32}}.0, Elemwise{sub,no_inplace}.0)
-   4.3%    96.4%       0.050s       4.98e-06s   10000    11   Elemwise{Composite{GT(scalar_sigmoid(i0), i1)}}(Elemwise{neg,no_inplace}.0, TensorConstant{(1,) of 0.5})
+  18.7%    83.2%       0.217s       2.17e-05s   10000    12   Elemwise{Composite{((i0 * scalar_softplus(i1)) - (i2 * i3 * scalar_softplus(i4)))}}[(0, 4)](y, Elemwise{Composite{((-i0) - i1)}}[(0, 0)].0, TensorConstant{(1,) of -1.0}, Elemwise{Sub,no_inplace}.0, Elemwise{Neg,no_inplace}.0)
+   8.9%    92.1%       0.103s       1.03e-05s   10000    13   Elemwise{Composite{(((scalar_sigmoid(i0) * i1 * i2) / i3) - ((scalar_sigmoid((-i0)) * i1 * i4) / i3))}}[(0, 0)](Elemwise{Composite{((-i0) - i1)}}[(0, 0)].0, TensorConstant{(1,) of -1.0}, y, Elemwise{Cast{float32}}.0, Elemwise{Sub,no_inplace}.0)
+   4.3%    96.4%       0.050s       4.98e-06s   10000    11   Elemwise{Composite{GT(scalar_sigmoid(i0), i1)}}(Elemwise{Neg,no_inplace}.0, TensorConstant{(1,) of 0.5})
    1.0%    97.4%       0.011s       1.14e-06s   10000    14   Sum{acc_dtype=float64}(Elemwise{Composite{(((scalar_sigmoid(i0) * i1 * i2) / i3) - ((scalar_sigmoid((-i0)) * i1 * i4) / i3))}}[(0, 0)].0)
-   0.4%    97.8%       0.004s       4.22e-07s   10000     4   Elemwise{sub,no_inplace}(TensorConstant{(1,) of 1.0}, y)
+   0.4%    97.8%       0.004s       4.22e-07s   10000     4   Elemwise{Sub,no_inplace}(TensorConstant{(1,) of 1.0}, y)
    0.3%    98.1%       0.004s       3.76e-07s   10000     0   InplaceDimShuffle{x}(b)
-   0.3%    98.4%       0.004s       3.70e-07s   10000    10   Elemwise{neg,no_inplace}(Elemwise{Composite{((-i0) - i1)}}[(0, 0)].0)
+   0.3%    98.4%       0.004s       3.70e-07s   10000    10   Elemwise{Neg,no_inplace}(Elemwise{Composite{((-i0) - i1)}}[(0, 0)].0)
    0.3%    98.7%       0.004s       3.64e-07s   10000     5   AllocEmpty{dtype='float32'}(Shape_i{0}.0)
    0.2%    99.0%       0.003s       2.88e-07s   10000     2   InplaceDimShuffle{1,0}(x)
    0.2%    99.2%       0.003s       2.65e-07s   10000     9   Elemwise{Composite{((-i0) - i1)}}[(0, 0)](CGemv{inplace}.0, InplaceDimShuffle{x}.0)
@@ -213,12 +213,12 @@ Ops
    4.1%    63.6%       0.162s       8.10e-06s     C     20001        3   HostFromGpu(gpuarray)
    4.0%    67.6%       0.157s       1.57e-05s     C     10000        1   GpuElemwise{Composite{((i0 * scalar_softplus(i1)) - (i2 * i3 * scalar_softplus(i4)))}}[]<gpuarray>
    3.8%    71.4%       0.149s       1.49e-05s     C     10000        1   GpuElemwise{Composite{(((scalar_sigmoid(i0) * i1 * i2) / i3) - ((i4 * i1 * i5) / i3))}}[(0, 0)]<gpuarray>
-   3.7%    75.1%       0.144s       1.44e-05s     C     10000        1   GpuElemwise{sub,no_inplace}
-   3.6%    78.7%       0.141s       1.41e-05s     C     10000        1   GpuElemwise{gt,no_inplace}
+   3.7%    75.1%       0.144s       1.44e-05s     C     10000        1   GpuElemwise{Sub,no_inplace}
+   3.6%    78.7%       0.141s       1.41e-05s     C     10000        1   GpuElemwise{GT,no_inplace}
    3.4%    82.1%       0.133s       1.33e-05s     C     10000        1   GpuElemwise{Cast{float32}}[]<gpuarray>
    3.4%    85.5%       0.133s       1.33e-05s     C     10000        1   GpuElemwise{Composite{((-i0) - i1)}}[(0, 0)]<gpuarray>
    3.3%    88.8%       0.131s       1.31e-05s     C     10000        1   GpuCAReduceCuda{add}
-   2.9%    91.7%       0.112s       1.12e-05s     C     10000        1   GpuElemwise{neg,no_inplace}
+   2.9%    91.7%       0.112s       1.12e-05s     C     10000        1   GpuElemwise{Neg,no_inplace}
    2.6%    94.3%       0.102s       1.02e-05s     C     10000        1   GpuElemwise{Composite{(i0 - (i1 * i2))}}[(0, 0)]<gpuarray>
    2.5%    96.7%       0.096s       9.63e-06s     C     10000        1   GpuElemwise{ScalarSigmoid}[(0, 0)]<gpuarray>
    1.6%    98.3%       0.061s       6.10e-06s     C     10000        1   GpuFromHost<None>
@@ -234,17 +234,17 @@ Apply
 <% time> <sum %> <apply time> <time per call> <#call> <id> <Apply name>
   55.0%    55.0%       2.154s       2.15e-04s   10000     7   GpuGemv{inplace=True}(GpuAllocEmpty{dtype='float32', context_name=None}.0, TensorConstant{1.0}, x, w, TensorConstant{0.0})
    4.5%    59.5%       0.176s       1.76e-05s   10000    18   GpuGemv{inplace=True}(w, TensorConstant{-0.00999999977648}, InplaceGpuDimShuffle{1,0}.0, GpuElemwise{Composite{(((scalar_sigmoid(i0) * i1 * i2) / i3) - ((i4 * i1 * i5) / i3))}}[(0, 0)]<gpuarray>.0, TensorConstant{0.999800026417})
-   4.0%    63.5%       0.157s       1.57e-05s   10000    12   GpuElemwise{Composite{((i0 * scalar_softplus(i1)) - (i2 * i3 * scalar_softplus(i4)))}}[]<gpuarray>(y, GpuElemwise{Composite{((-i0) - i1)}}[(0, 0)]<gpuarray>.0, GpuArrayConstant{[-1.]}, GpuElemwise{sub,no_inplace}.0, GpuElemwise{neg,no_inplace}.0)
-   3.8%    67.3%       0.149s       1.49e-05s   10000    15   GpuElemwise{Composite{(((scalar_sigmoid(i0) * i1 * i2) / i3) - ((i4 * i1 * i5) / i3))}}[(0, 0)]<gpuarray>(GpuElemwise{Composite{((-i0) - i1)}}[(0, 0)]<gpuarray>.0, GpuArrayConstant{[-1.]}, y, GpuElemwise{Cast{float32}}[]<gpuarray>.0, GpuElemwise{ScalarSigmoid}[(0, 0)]<gpuarray>.0, GpuElemwise{sub,no_inplace}.0)
-   3.7%    71.0%       0.144s       1.44e-05s   10000     4   GpuElemwise{sub,no_inplace}(GpuArrayConstant{[ 1.]}, y)
-   3.6%    74.6%       0.141s       1.41e-05s   10000    16   GpuElemwise{gt,no_inplace}(GpuElemwise{ScalarSigmoid}[(0, 0)]<gpuarray>.0, GpuArrayConstant{[ 0.5]})
+   4.0%    63.5%       0.157s       1.57e-05s   10000    12   GpuElemwise{Composite{((i0 * scalar_softplus(i1)) - (i2 * i3 * scalar_softplus(i4)))}}[]<gpuarray>(y, GpuElemwise{Composite{((-i0) - i1)}}[(0, 0)]<gpuarray>.0, GpuArrayConstant{[-1.]}, GpuElemwise{Sub,no_inplace}.0, GpuElemwise{Neg,no_inplace}.0)
+   3.8%    67.3%       0.149s       1.49e-05s   10000    15   GpuElemwise{Composite{(((scalar_sigmoid(i0) * i1 * i2) / i3) - ((i4 * i1 * i5) / i3))}}[(0, 0)]<gpuarray>(GpuElemwise{Composite{((-i0) - i1)}}[(0, 0)]<gpuarray>.0, GpuArrayConstant{[-1.]}, y, GpuElemwise{Cast{float32}}[]<gpuarray>.0, GpuElemwise{ScalarSigmoid}[(0, 0)]<gpuarray>.0, GpuElemwise{Sub,no_inplace}.0)
+   3.7%    71.0%       0.144s       1.44e-05s   10000     4   GpuElemwise{Sub,no_inplace}(GpuArrayConstant{[ 1.]}, y)
+   3.6%    74.6%       0.141s       1.41e-05s   10000    16   GpuElemwise{GT,no_inplace}(GpuElemwise{ScalarSigmoid}[(0, 0)]<gpuarray>.0, GpuArrayConstant{[ 0.5]})
    3.4%    78.0%       0.133s       1.33e-05s   10000    10   GpuElemwise{Cast{float32}}[]<gpuarray>(InplaceGpuDimShuffle{x}.0)
    3.4%    81.4%       0.133s       1.33e-05s   10000     9   GpuElemwise{Composite{((-i0) - i1)}}[(0, 0)]<gpuarray>(GpuGemv{inplace=True}.0, InplaceGpuDimShuffle{x}.0)
    3.3%    84.7%       0.131s       1.31e-05s   10000    17   GpuCAReduceCuda{add}(GpuElemwise{Composite{(((scalar_sigmoid(i0) * i1 * i2) / i3) - ((i4 * i1 * i5) / i3))}}[(0, 0)]<gpuarray>.0)
-   2.9%    87.5%       0.112s       1.12e-05s   10000    11   GpuElemwise{neg,no_inplace}(GpuElemwise{Composite{((-i0) - i1)}}[(0, 0)]<gpuarray>.0)
+   2.9%    87.5%       0.112s       1.12e-05s   10000    11   GpuElemwise{Neg,no_inplace}(GpuElemwise{Composite{((-i0) - i1)}}[(0, 0)]<gpuarray>.0)
    2.6%    90.1%       0.102s       1.02e-05s   10000    20   GpuElemwise{Composite{(i0 - (i1 * i2))}}[(0, 0)]<gpuarray>(b, GpuArrayConstant{0.00999999977648}, GpuCAReduceCuda{add}.0)
-   2.5%    92.6%       0.096s       9.63e-06s   10000    13   GpuElemwise{ScalarSigmoid}[(0, 0)]<gpuarray>(GpuElemwise{neg,no_inplace}.0)
-   2.3%    94.9%       0.090s       9.04e-06s   10000    19   HostFromGpu(gpuarray)(GpuElemwise{gt,no_inplace}.0)
+   2.5%    92.6%       0.096s       9.63e-06s   10000    13   GpuElemwise{ScalarSigmoid}[(0, 0)]<gpuarray>(GpuElemwise{Neg,no_inplace}.0)
+   2.3%    94.9%       0.090s       9.04e-06s   10000    19   HostFromGpu(gpuarray)(GpuElemwise{GT,no_inplace}.0)
    1.8%    96.7%       0.072s       7.16e-06s   10000    14   HostFromGpu(gpuarray)(GpuElemwise{Composite{((i0 * scalar_softplus(i1)) - (i2 * i3 * scalar_softplus(i4)))}}[]<gpuarray>.0)
    1.6%    98.3%       0.061s       6.10e-06s   10000     6   GpuFromHost<None>(Shape_i{0}.0)
    0.7%    99.0%       0.026s       2.59e-06s   10000     5   GpuAllocEmpty{dtype='float32', context_name=None}(Shape_i{0}.0)

@@ -125,7 +125,7 @@ input *x* is stored on the GPU.
    :hide:
    :options: +ELLIPSIS
 
-   [Elemwise{exp,no_inplace}(<TensorType(float64, vector)>)]
+   [Elemwise{Exp,no_inplace}(<TensorType(float64, vector)>)]
    Looping 1000 times took ... seconds
    Result is ...
    Used the cpu
@@ -133,7 +133,7 @@ input *x* is stored on the GPU.
 .. code-block:: none
 
   $ THEANO_FLAGS=device=cpu python gpu_tutorial1.py
-  [Elemwise{exp,no_inplace}(<TensorType(float64, vector)>)]
+  [Elemwise{Exp,no_inplace}(<TensorType(float64, vector)>)]
   Looping 1000 times took 2.271284 seconds
   Result is [ 1.23178032  1.61879341  1.52278065 ...,  2.20771815  2.29967753
     1.62323285]
@@ -141,7 +141,7 @@ input *x* is stored on the GPU.
 
   $ THEANO_FLAGS=device=cuda0 python gpu_tutorial1.py
   Mapped name None to device cuda0: GeForce GTX 680 (cuDNN version 5004)
-  [GpuElemwise{exp,no_inplace}(<GpuArrayType<None>(float64, (False,))>), HostFromGpu(gpuarray)(GpuElemwise{exp,no_inplace}.0)]
+  [GpuElemwise{Exp,no_inplace}(<GpuArrayType<None>(float64, (False,))>), HostFromGpu(gpuarray)(GpuElemwise{Exp,no_inplace}.0)]
   Looping 1000 times took 1.202734 seconds
   Result is [ 1.23178032  1.61879341  1.52278065 ...,  2.20771815  2.29967753
     1.62323285]
@@ -198,7 +198,7 @@ The output is
 
    $ THEANO_FLAGS=device=cuda0 python gpu_tutorial2.py
    Mapped name None to device cuda0: GeForce GTX 680 (cuDNN version 5004)
-   [GpuElemwise{exp,no_inplace}(<GpuArrayType<None>(float64, (False,))>)]
+   [GpuElemwise{Exp,no_inplace}(<GpuArrayType<None>(float64, (False,))>)]
    Looping 1000 times took 0.088381 seconds
    Result is [ 1.23178032  1.61879341  1.52278065 ...,  2.20771815  2.29967753
      1.62323285]
@@ -209,7 +209,7 @@ The output is
 
   $ THEANO_FLAGS=device=cuda0 python gpu_tutorial2.py
   Mapped name None to device cuda0: GeForce GTX 680 (cuDNN version 5004)
-  [GpuElemwise{exp,no_inplace}(<GpuArrayType<None>(float64, (False,))>)]
+  [GpuElemwise{Exp,no_inplace}(<GpuArrayType<None>(float64, (False,))>)]
   Looping 1000 times took 0.089194 seconds
   Result is [ 1.23178032  1.61879341  1.52278065 ...,  2.20771815  2.29967753
     1.62323285]

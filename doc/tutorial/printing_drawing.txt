@@ -67,16 +67,16 @@ Debug Print
 The pre-compilation graph:
 
 >>> theano.printing.debugprint(prediction) # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
-Elemwise{gt,no_inplace} [id A] ''
- |Elemwise{true_div,no_inplace} [id B] ''
+Elemwise{GT,no_inplace} [id A] ''
+ |Elemwise{TrueDiv,no_inplace} [id B] ''
  | |InplaceDimShuffle{x} [id C] ''
  | | |TensorConstant{1} [id D]
- | |Elemwise{add,no_inplace} [id E] ''
+ | |Elemwise{Add,no_inplace} [id E] ''
  |   |InplaceDimShuffle{x} [id F] ''
  |   | |TensorConstant{1} [id D]
- |   |Elemwise{exp,no_inplace} [id G] ''
- |     |Elemwise{sub,no_inplace} [id H] ''
- |       |Elemwise{neg,no_inplace} [id I] ''
+ |   |Elemwise{Exp,no_inplace} [id G] ''
+ |     |Elemwise{Sub,no_inplace} [id H] ''
+ |       |Elemwise{Neg,no_inplace} [id I] ''
  |       | |dot [id J] ''
  |       |   |x [id K]
  |       |   |w [id L]
@@ -88,7 +88,7 @@ Elemwise{gt,no_inplace} [id A] ''
 The post-compilation graph:
 
 >>> theano.printing.debugprint(predict)  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
-Elemwise{Composite{GT(scalar_sigmoid((-((-i0) - i1))), i2)}} [id A] ''   4
+Elemwise{Composite{GT(sigmoid((-((-i0) - i1))), i2)}} [id A] ''   4
  |...Gemv{inplace} [id B] ''   3
  | |AllocEmpty{dtype='float64'} [id C] ''   2
  | | |Shape_i{0} [id D] ''   1

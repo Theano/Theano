@@ -938,10 +938,6 @@ def _scal_elemwise_with_nfunc(nfunc, nin, nout):
     def construct(symbol):
         symbolname = symbol.__name__
         inplace = symbolname.endswith('_inplace')
-        if inplace:
-            msg = "inplace"
-        else:
-            msg = "no_inplace"
 
         if inplace:
             scalar_op = getattr(scal, symbolname[:-len('_inplace')])
