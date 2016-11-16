@@ -235,12 +235,14 @@ class test_Solve(utt.InferShapeTester):
         if not imported_scipy:
             raise SkipTest("Scipy needed for the Solve op.")
 
-        dtypes = ['int8', 'int16', 'int32', 'int64',
-                  'float32', 'float64']
+        dtypes = ['uint8', 'uint16', 'uint32', 'uint64',
+                  'int8', 'int16', 'int32', 'int64',
+                  'float16', 'float32', 'float64']
 
         A_val = numpy.eye(2)
         b_val = numpy.ones((2, 1))
 
+        # try all dtype combinations
         for A_dtype, b_dtype in itertools.product(dtypes, dtypes):
             A = tensor.matrix(dtype=A_dtype)
             b = tensor.matrix(dtype=b_dtype)

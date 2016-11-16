@@ -202,12 +202,12 @@ class Solve(Op):
         b = as_tensor_variable(b)
         assert A.ndim == 2
         assert b.ndim in [1, 2]
-        if ((A.dtype == 'float32' and b.dtype == 'float32')
-                or (A.dtype in ['int8', 'int16'] and b.dtype == 'float32')
-                or (b.dtype in ['int8', 'int16'] and A.dtype == 'float32')):
-            o_dtype = 'float32'
-        else:
-            o_dtype = 'float64'
+
+        # infer dtype by solving the most simple
+        # case with (1, 1) matrices
+        o_dtype = scipy.linalg.solve(
+            numpy.eye(1).astype(A.dtype),
+            numpy.eye(1).astype(b.dtype)).dtype
         x = tensor.tensor(
             broadcastable=b.broadcastable,
             dtype=o_dtype)
