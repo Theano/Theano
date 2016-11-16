@@ -1248,7 +1248,7 @@ def test_grad_useless_sum():
     When an operation (such as T.mul) is done on a broadcastable vector and
     a matrix, the gradient in backward path is computed for the broadcasted
     vector. So a sum reverts the broadcasted vector to a vector. In the case
-    of operations on two vectors, the sum should not be generated.
+    of operations on two broadcastable vectors, the sum should not be generated.
 
     This test checks whether there is a useless sum in the gradient
     computations.
