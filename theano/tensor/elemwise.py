@@ -700,7 +700,7 @@ second dimension
             # we can sum over them
             # todo: only count dimensions that were effectively broadcasted
             to_sum = [j for j, bcast in enumerate(ipt.type.broadcastable)
-                      if bcast]
+                      if bcast and not outs[0].broadcastable[j]]
 
             if to_sum:
                 shuffle = []

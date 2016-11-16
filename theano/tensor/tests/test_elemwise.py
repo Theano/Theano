@@ -1242,6 +1242,36 @@ def test_clip_grad():
                                [numpy.asarray([-1., 0.5, 2.]), 0., 1.])
 
 
+def test_grad_useless_sum():
+    """Test absence of useless sum.
+
+    When an operation (such as T.mul) is done on a broadcastable vector and
+    a matrix, the gradient in backward path is computed for the broadcasted
+    vector. So a sum reverts the broadcasted vector to a vector. In the case
+    of operations on two vectors, the sum should not be generated.
+
+    This test checks whether there is a useless sum in the gradient
+    computations.
+    """
+    x = tensor.TensorType(theano.config.floatX, (True,))('x')
+    l = tensor.log(1.0 - tensor.nnet.sigmoid(x))[0]
+    g = tensor.grad(l, x)
+    nodes = theano.gof.graph.ops([x], [g])
+
+    f = theano.function([x], g)
+    test_values = [-100, -1, 0, 1, 100]
+    outputs = []
+    for test_value in test_values:
+        outputs.append(f(numpy.array([test_value]).astype('float32')))
+
+    assert not any([isinstance(node.op, theano.tensor.elemwise.Sum) for node in nodes])
+    numpy.allclose(outputs, [[-3.72007598e-44],
+                             [-0.26894142],
+                             [-0.5],
+                             [-0.73105858],
+                             [-1.]])
+
+
 def test_clip_grad_int():
 
     # test that integers don't crash clip gradient
