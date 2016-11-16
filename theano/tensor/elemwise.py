@@ -1713,6 +1713,12 @@ class All(CAReduce):
     def _output_dtype(self, idtype):
         return "int8"
 
+    def __str__(self):
+        if self.axis is None:
+            return "All"
+        else:
+            return "All{%s}" % ", ".join(map(str, self.axis))
+
     def make_node(self, input):
         input = as_tensor_variable(input)
         if input.dtype not in ["int8", "uint8"]:
@@ -1739,6 +1745,12 @@ class Any(CAReduce):
 
     def _output_dtype(self, idtype):
         return "int8"
+
+    def __str__(self):
+        if self.axis is None:
+            return "Any"
+        else:
+            return "Any{%s}" % ", ".join(map(str, self.axis))
 
     def make_node(self, input):
         input = as_tensor_variable(input)
