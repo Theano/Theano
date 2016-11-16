@@ -757,6 +757,8 @@ inplace_gpu_elemwise_opt = tensor.opt.InplaceElemwiseOptimizer(
 optdb.register('gpua_inplace_opt', inplace_gpu_elemwise_opt, 75,
                'inplace_elemwise_optimizer', 'fast_run', 'inplace', 'gpuarray')
 
+register_opt(tensor.opt.local_useless_elemwise)
+
 
 @register_opt('fast_compile')
 @op_lifter([tensor.DimShuffle])
