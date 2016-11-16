@@ -1384,6 +1384,48 @@ class LocalOptGroup(LocalOptimizer):
             opt.add_requirements(fgraph)
 
 
+class GraphToGPULocalOptGroup(LocalOptGroup):
+    """
+    This is the equivalent of LocalOptGroup for GraphToGPU
+    """
+    def __init__(self, *optimizers, **kwargs):
+        super(GraphToGPULocalOptGroup, self).__init__(*optimizers, **kwargs)
+        assert self.apply_all_opts is False
+
+    def transform(self, op, context_name, inputs, outputs):
+        if len(self.opts) == 0:
+            return
+        fgraph = outputs[0].fgraph
+        repl = None
+        while True:
+            opts = self.track_map[type(op)] + self.track_map[op] + self.track_map[None]
+            new_repl = None
+            for opt in opts:
+                opt_start = time.time()
+                new_repl = opt.transform(op, context_name, inputs, outputs)
+                opt_finish = time.time()
+                if self.profile:
+                    self.time_opts[opt] += opt_start - opt_finish
+                    self.process_count[opt] += 1
+                if not new_repl:
+                    continue
+                else:
+                    if self.profile:
+                        self.node_created[opt] += len(graph.ops(fgraph.variables, new_repl))
+                        self.applied_true[opt] += 1
+                    break  # break from the for loop over optimization.
+            if not new_repl:  # No optimization applied in the last iteration
+                return repl
+            # only 1 iteration or we are at the start of the graph.
+            if not self.apply_all_opts or not new_repl[0].owner:
+                return new_repl
+            if len(new_repl) > 1:
+                s = set([v.owner for v in new_repl])
+                assert len(s) == 1
+            repl = new_repl
+            node = repl[0].owner
+
+
 class OpSub(LocalOptimizer):
     """
 

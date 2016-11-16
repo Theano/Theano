@@ -38,7 +38,7 @@ from .elemwise import GpuElemwise
 # These don't exist in gpuarray
 # GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
 from .nnet import GpuSoftmax
-from .opt import (gpu_seqopt, register_opt,
+from .opt import (gpu_seqopt, register_opt, pool_db, pool_db2,
                   op_lifter, register_opt2)
 
 from .opt_util import alpha_merge, output_merge, inplace_allocempty, pad_dims, unpad_dims
@@ -2736,9 +2736,6 @@ def local_dnn_convi_output_merge(node, *inputs):
     return [gpu_dnn_conv_gradI(algo=node.op.algo)(*inputs)]
 
 
-@register_opt('cudnn', 'fast_compile')
-@op_lifter([Pool])
-@register_opt2([Pool], 'fast_compile', 'cudnn')
 def local_gpua_pool_dnn_alternative(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn()
@@ -2758,11 +2755,16 @@ def local_gpua_pool_dnn_alternative(op, ctx_name, inputs, outputs):
         img_padded = pad_dims(img, 2, nd)
         ret_padded = dnn_pool(img_padded, ws, stride=stride, pad=pad, mode=mode)
         return unpad_dims(ret_padded, img, 2, nd)
+pool_db.register("local_gpua_pool_dnn_alternative",
+                 op_lifter([Pool])(local_gpua_pool_dnn_alternative),
+                 'gpuarray', 'fast_compile', 'fast_run', 'cudnn',
+                 position=0)
+pool_db2.register("local_gpua_pool_dnn_alternative",
+                  local_optimizer([Pool])(local_gpua_pool_dnn_alternative),
+                  'gpuarray', 'fast_compile', 'fast_run', 'cudnn',
+                  position=0)
 
 
-@register_opt('cudnn', 'fast_compile')
-@op_lifter([MaxPoolGrad])
-@register_opt2([MaxPoolGrad], 'fast_compile', 'cudnn')
 def local_gpua_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn()
@@ -2797,11 +2799,16 @@ def local_gpua_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
                                                stride,
                                                pad)
         return unpad_dims(ret_padded, inp, 2, nd)
+pool_db.register("local_gpua_pool_dnn_grad_stride",
+                 op_lifter([MaxPoolGrad])(local_gpua_pool_dnn_grad_stride),
+                 'gpuarray', 'fast_compile', 'fast_run', 'cudnn',
+                 position=0)
+pool_db2.register("local_gpua_pool_dnn_grad_stride",
+                  local_optimizer([MaxPoolGrad])(local_gpua_pool_dnn_grad_stride),
+                  'gpuarray', 'fast_compile', 'fast_run', 'cudnn',
+                  position=0)
 
 
-@register_opt('cudnn', 'fast_compile')
-@op_lifter([AveragePoolGrad])
-@register_opt2([AveragePoolGrad], 'fast_compile', 'cudnn')
 def local_gpua_avg_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
         raise_no_cudnn()
@@ -2832,6 +2839,14 @@ def local_gpua_avg_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
                                                stride,
                                                pad)
         return unpad_dims(ret_padded, inp, 2, nd)
+pool_db.register("local_gpua_avg_pool_dnn_grad_stride",
+                 op_lifter([AveragePoolGrad])(local_gpua_avg_pool_dnn_grad_stride),
+                 'gpuarray', 'fast_compile', 'fast_run', 'cudnn',
+                 position=0)
+pool_db2.register("local_gpua_avg_pool_dnn_grad_stride",
+                  local_optimizer([AveragePoolGrad])(local_gpua_avg_pool_dnn_grad_stride),
+                  'gpuarray', 'fast_compile', 'fast_run', 'cudnn',
+                  position=0)
 
 
 @register_opt('cudnn', 'fast_compile')

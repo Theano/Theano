@@ -13,6 +13,7 @@ from theano import tensor, scalar, gof, config
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
+                        LocalGroupDB,
                         SequenceDB, Optimizer, DB, toolbox, graph)
 from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
@@ -129,7 +130,10 @@ def register_opt2(tracks, *tags, **kwargs):
     '''
     def f(local_opt):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
-        opt = theano.gof.local_optimizer(tracks)(local_opt)
+        if isinstance(local_opt, theano.gof.DB):
+            opt = local_opt
+        else:
+            opt = theano.gof.local_optimizer(tracks)(local_opt)
         gpu_optimizer2.register(name, opt, 'fast_run', 'gpuarray', *tags)
         return local_opt
     return f
@@ -1592,15 +1596,8 @@ def local_gpua_lift_abstractconv_graph(op, context_name, inputs, outputs):
     return [op(*inps)]
 
 
-@register_opt()
-@op_lifter([pool.Pool])
-@register_opt2([pool.Pool])
 def local_gpu_pool(op, ctx_name, inputs, outputs):
-    from .dnn import dnn_available
     assert op.__props__ == ('ignore_border', 'mode', 'ndim')
-    if op.ignore_border and dnn_available(ctx_name):
-        return
-
     inp, ws, stride, pad = inputs
     nd = op.ndim
     if nd not in (2, 3):
@@ -1615,16 +1612,23 @@ def local_gpu_pool(op, ctx_name, inputs, outputs):
         inp_padded = pad_dims(inp, 2, nd)
         ret_padded = op(inp_padded, ws, stride, pad)
         return unpad_dims(ret_padded, inp, 2, nd)
+pool_db = LocalGroupDB()
+pool_db2 = LocalGroupDB(local_opt=theano.gof.opt.GraphToGPULocalOptGroup)
+pool_db2.__name__ = "pool_db2"
+lifter = op_lifter([pool.Pool])(local_gpu_pool)
+pool_db.register("local_gpu_pool", lifter,
+                 'gpuarray', 'fast_compile', 'fast_run',
+                 position=1)
+pool_db2.register("local_gpu_pool",
+                  local_optimizer([pool.Pool])(local_gpu_pool),
+                  'gpuarray', 'fast_compile', 'fast_run',
+                  position=1)
+register_opt('fast_compile', name='pool_db')(pool_db)
+register_opt2([pool.Pool], 'fast_compile', name='pool_db2')(pool_db2)
 
 
-@register_opt()
-@op_lifter([pool.MaxPoolGrad])
-@register_opt2([pool.MaxPoolGrad])
 def local_gpu_max_pool_grad(op, ctx_name, inputs, outputs):
-    from .dnn import dnn_available
     assert op.__props__ == ('ignore_border', 'mode', 'ndim')
-    if op.ignore_border and dnn_available(ctx_name):
-        return
 
     inp, out, out_grad, ws, stride, pad = inputs
     nd = op.ndim
@@ -1645,16 +1649,18 @@ def local_gpu_max_pool_grad(op, ctx_name, inputs, outputs):
         ret_padded = op(inp_padded, out_padded, out_grad_padded,
                         ws, stride, pad)
         return unpad_dims(ret_padded, inp, 2, nd)
+lifter = op_lifter([pool.MaxPoolGrad])(local_gpu_max_pool_grad)
+pool_db.register("local_gpu_max_pool_grad", lifter,
+                 'gpuarray', 'fast_compile', 'fast_run',
+                 position=1)
+pool_db2.register("local_gpu_max_pool_grad",
+                  local_optimizer([pool.MaxPoolGrad])(local_gpu_max_pool_grad),
+                  'gpuarray', 'fast_compile', 'fast_run',
+                  position=1)
 
 
-@register_opt()
-@op_lifter([pool.AveragePoolGrad])
-@register_opt2([pool.AveragePoolGrad])
 def local_gpu_average_pool_grad(op, ctx_name, inputs, outputs):
-    from .dnn import dnn_available
     assert op.__props__ == ('ignore_border', 'mode', 'ndim')
-    if op.ignore_border and dnn_available(ctx_name):
-        return
 
     inp, out_grad, ws, stride, pad = inputs
     nd = op.ndim
@@ -1673,6 +1679,14 @@ def local_gpu_average_pool_grad(op, ctx_name, inputs, outputs):
         ret_padded = op(inp_padded, out_grad_padded,
                         ws, stride, pad)
         return unpad_dims(ret_padded, inp, 2, nd)
+lifter = op_lifter([pool.AveragePoolGrad])(local_gpu_average_pool_grad)
+pool_db.register("local_gpu_average_pool_grad", lifter,
+                 'gpuarray', 'fast_compile', 'fast_run',
+                 position=1)
+pool_db2.register("local_gpu_average_pool_grad",
+                  local_optimizer([pool.AveragePoolGrad])(local_gpu_average_pool_grad),
+                  'gpuarray', 'fast_compile', 'fast_run',
+                  position=1)
 
 
 @register_opt()

@@ -54,7 +54,7 @@ def test_pool2d():
 
     ref_mode = copy.copy(mode_without_gpu)
     ref_mode.check_py_code = False
-    gpu_mode = copy.copy(mode_with_gpu)
+    gpu_mode = copy.copy(mode_with_gpu).excluding("cudnn")
     gpu_mode.check_py_code = False
 
     for shp in shps:
@@ -147,7 +147,7 @@ def test_pool3d():
 
     ref_mode = copy.copy(mode_without_gpu)
     ref_mode.check_py_code = False
-    gpu_mode = copy.copy(mode_with_gpu)
+    gpu_mode = copy.copy(mode_with_gpu).excluding("cudnn")
     gpu_mode.check_py_code = False
 
     for shp in shps:
