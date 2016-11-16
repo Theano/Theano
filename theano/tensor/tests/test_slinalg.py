@@ -249,8 +249,6 @@ class test_Solve(utt.InferShapeTester):
             x = solve(A, b)
             fn = function([A, b], x)
             x_result = fn(A_val.astype(A_dtype), b_val.astype(b_dtype))
-            print(A_dtype, b_dtype)
-            print('x', x.dtype, x_result.dtype, x.dtype == x_result.dtype)
 
             assert x.dtype == x_result.dtype
 
