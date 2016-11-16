@@ -15,6 +15,8 @@ class Minimal(gof.Op):
     # If two Apply nodes have the same inputs and the ops compare equal...
     # then they will be MERGED so they had better have computed the same thing!
 
+    __props__ = ()
+
     def __init__(self):
         # If you put things here, think about whether they change the outputs
         # computed by # self.perform()
@@ -24,12 +26,6 @@ class Minimal(gof.Op):
         #    __eq__ and __hash__
 
         super(Minimal, self).__init__()
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 
     def make_node(self, *args):
         # HERE `args` must be THEANO VARIABLES
