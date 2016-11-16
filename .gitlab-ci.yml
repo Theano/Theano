@@ -12,7 +12,8 @@ theano:
     - if [[ "${CI_BUILD_REF_NAME}" == *-stage ]]; then
         echo -e 'Dockerfile*\n.git*\n.dockerignore' > .dockerignore;
       fi
-    - docker build --pull -t "${CI_REGISTRY_IMAGE}:${CI_BUILD_REF_NAME}"
+    - docker pull $(grep "^FROM" Dockerfile | sed 's/FROM //')
+    - docker build -t "${CI_REGISTRY_IMAGE}:${CI_BUILD_REF_NAME}"
                    --label "com.nvidia.build.ref=${CI_BUILD_REF}"
                    --label "com.nvidia.build.id=${CI_BUILD_ID}" .
     only:
