@@ -23,3 +23,27 @@ RUN python setup.py develop
 
 COPY theanorc /workspace/.theanorc
 ENV THEANORC /workspace/.theanorc
+
+RUN chmod -R a+w /workspace
+
+################################################################################
+# Show installed packages
+################################################################################
+
+RUN echo "------------------------------------------------------" && \
+    echo "-- INSTALLED PACKAGES --------------------------------" && \
+    echo "------------------------------------------------------" && \
+    echo "[[dpkg -l]]" && \
+    dpkg -l && \
+    echo "" && \
+    echo "[[pip list]]" && \
+    pip list && \
+    echo "" && \
+    echo "------------------------------------------------------" && \
+    echo "-- FILE SIZE, DATE, HASH -----------------------------" && \
+    echo "------------------------------------------------------" && \
+    echo "[[find /usr/bin /usr/sbin /usr/lib /usr/local /workspace -type f | xargs ls -al]]" && \
+    (find /usr/bin /usr/sbin /usr/lib /usr/local /workspace -type f | xargs ls -al || true) && \
+    echo "" && \
+    echo "[[find /usr/bin /usr/sbin /usr/lib /usr/local /workspace -type f | xargs md5sum]]" && \
+    (find /usr/bin /usr/sbin /usr/lib /usr/local /workspace -type f | xargs md5sum || true)
