@@ -989,6 +989,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         all_inputs_num = []
         all_outputs_var = []
         all_outputs_num = []
+        all_params = []
         for set_instead_of_inc in (False, True):
             for inplace in (False, True):
                 for data_shape in ((10,), (4, 5), (1, 2, 3), (4, 5, 6, 7)):
@@ -1021,7 +1022,11 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                                 data_shape[0] > 1):
                             n_to_inc = 2
                         # Corresponding numeric variable.
-                        idx_num = rng.randint(0, data_shape[0], n_to_inc)
+                        # If set_instead_of_inc, we want to avoid repeating
+                        # indices, as the order is not guaranteed.
+                        idx_num = rng.choice(numpy.arange(data_shape[0]),
+                                             n_to_inc,
+                                             replace=(not set_instead_of_inc))
                         idx_num = idx_num.astype('int64')
                         # Symbolic variable with increment value.
                         inc_var = self.type(
@@ -1079,6 +1084,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                         all_inputs_num += [data_num, idx_num, inc_num]
                         all_outputs_var.append(output)
                         all_outputs_num.append(data_copy)
+                        all_params.append((set_instead_of_inc, inplace, data_shape, inc_shape))
                         if False:  # Enable for debugging purpose.
                             f = self.function([data_var, idx_var, inc_var],
                                               output, accept_inplace=inplace,
@@ -1105,10 +1111,10 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
         f_outs = f(*all_inputs_num)
         assert len(f_outs) == len(all_outputs_num)
-        for f_out, output_num in izip(f_outs, all_outputs_num):
+        for params, f_out, output_num in izip(all_params, f_outs, all_outputs_num):
             # NB: if this assert fails, it will probably be easier to debug if
             # you enable the debug code above.
-            assert numpy.allclose(f_out, output_num)
+            assert numpy.allclose(f_out, output_num), (params, f_out, output_num)
 
     def test_adv_constant_arg(self):
         # Test case provided (and bug detected, gh-607) by John Salvatier
