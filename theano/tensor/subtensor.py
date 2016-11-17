@@ -2384,6 +2384,8 @@ def take(a, indices, axis=None, mode='raise'):
             shape = theano.tensor.concatenate(
                 [indices.shape, a.shape[axis + 1:]])
         else:
+            if axis < 0:
+                axis += a.ndim
             shape = theano.tensor.concatenate(
                 [a.shape[:axis], indices.shape, a.shape[axis + 1:]])
         ndim = a.ndim + indices.ndim - 1
