@@ -885,11 +885,12 @@ Dilated convolutions
 --------------------
 
 Those familiar with the deep learning literature may have noticed the term
-"dilated convolutions" (or *convolutions à trous*) appear in recent papers. Here
-we attempt to provide an intuitive understanding of dilated convolutions. For a
-more in-depth description and to understand in what contexts they are applied,
-see `Chen et al. (2014) <https://arxiv.org/abs/1412.7062>`_ [#]_; `Yu and Koltun
-(2015) <https://arxiv.org/abs/1511.07122>`_ [#]_.
+"dilated convolutions" (or "atrous convolutions", from the French expression
+*convolutions à trous*) appear in recent papers. Here we attempt to provide an
+intuitive understanding of dilated convolutions. For a more in-depth description
+and to understand in what contexts they are applied, see `Chen et al. (2014)
+<https://arxiv.org/abs/1412.7062>`_ [#]_; `Yu and Koltun (2015)
+<https://arxiv.org/abs/1511.07122>`_ [#]_.
 
 Dilated convolutions "inflate" the kernel by inserting spaces between the kernel
 elements. The dilation "rate" is controlled by an additional hyperparameter
