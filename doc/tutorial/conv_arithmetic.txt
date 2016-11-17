@@ -878,8 +878,69 @@ Here is an example for :math:`i = 6`, :math:`k = 3`, :math:`s = 2` and :math:`p
 .. figure:: conv_arithmetic_figures/padding_strides_odd_transposed.*
     :figclass: align-center
 
+Miscellaneous convolutions
+==========================
+
+Dilated convolutions
+--------------------
+
+Those familiar with the deep learning literature may have noticed the term
+"dilated convolutions" (or *convolutions à trous*) appear in recent papers. Here
+we attempt to provide an intuitive understanding of dilated convolutions. For a
+more in-depth description and to understand in what contexts they are applied,
+see `Chen et al. (2014) <https://arxiv.org/abs/1412.7062>`_ [#]_; `Yu and Koltun
+(2015) <https://arxiv.org/abs/1511.07122>`_ [#]_.
+
+Dilated convolutions "inflate" the kernel by inserting spaces between the kernel
+elements. The dilation "rate" is controlled by an additional hyperparameter
+:math:`d`. Implementations may vary, but there are usually :math:`d - 1` spaces
+inserted between kernel elements such that :math:`d = 1` corresponds to a
+regular convolution.
+
+To understand the relationship tying the dilation rate :math:`d` and the output
+size :math:`o`, it is useful to think of the impact of :math:`d` on the
+*effective kernel size*. A kernel of size :math:`k` dilated by a factor
+:math:`d` has an effective size
+
+.. math::
+
+    \hat{k} = k + (k - 1)(d - 1).
+
+This can be combined with Relationship 6 to form the following relationship for
+dilated convolutions:
+
+.. admonition:: Relationship 14
+
+    For any :math:`i`, :math:`k`, :math:`p` and :math:`s`, and for a dilation
+    rate :math:`d`,
+
+    .. math::
+
+        o = \left\lfloor \frac{i + 2p - k - (k - 1)(d - 1)}{s} \right\rfloor + 1.
+
+    This translates to the following Theano code:
+
+    .. code-block:: python
+
+        output = theano.tensor.nnet.conv2d(
+            input, filters, input_shape=(b, c2, i1, i2), filter_shape=(c1, c2, k1, k2),
+            border_mode=(p1, p2), subsample=(s1, s2), filter_dilation=(d1, d2))
+        # output.shape[2] == (i1 + 2 * p1 - k1 - (k1 - 1) * (d1 - 1)) // s1 + 1
+        # output.shape[3] == (i2 + 2 * p2 - k2 - (k2 - 1) * (d2 - 1)) // s2 + 1
+
+Here is an example for :math:`i = 7`, :math:`k = 3`, :math:`d = 2`, :math:`s =
+1` and :math:`p = 0`:
+
+.. figure:: conv_arithmetic_figures/dilation.*
+    :figclass: align-center
+
 .. [#] Dumoulin, Vincent, and Visin, Francesco. "A guide to convolution
-       arithmetic for deep learning." arXiv preprint arXiv:1603.07285 (2016)
+       arithmetic for deep learning". arXiv preprint arXiv:1603.07285 (2016)
+.. [#] Chen, Liang-Chieh, Papandreou, George, Kokkinos, Iasonas, Murphy, Kevin
+       and Yuille, Alan L. "Semantic image segmentation with deep convolutional
+       nets and fully connected CRFs". arXiv preprint arXiv:1412.7062 (2014).
+.. [#] Yu, Fisher and Koltun, Vladlen. "Multi-scale context aggregation by
+       dilated convolutions". arXiv preprint arXiv:1511.07122 (2015)
 
 Quick reference
 ===============
