@@ -25,9 +25,9 @@ Currently, information regarding shape is used in two ways in Theano:
 >>> f = theano.function([x], (x ** 2).shape)
 >>> theano.printing.debugprint(f) # doctest: +NORMALIZE_WHITESPACE
 MakeVector{dtype='int64'} [id A] ''   2
- |Shape_i{0} [id B] ''   0
+ |Shape_i{0} [id B] ''   1
  | |x [id C]
- |Shape_i{1} [id D] ''   1
+ |Shape_i{1} [id D] ''   0
    |x [id C]
     
 
