@@ -3607,6 +3607,16 @@ class Conj(UnaryScalarOp):
 
     def impl(self, x):
         return numpy.conj(x)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
+        if node.inputs[0].type in complex_types:
+            # For non complex, th
+            raise NotImplementedError('type have no c code',
+                                      node.inputs[0].type)
+        return "%(z)s = %(x)s;" % locals()
+
 conj = Conj(same_out_min8, name='conj')
 
 
