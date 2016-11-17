@@ -725,6 +725,8 @@ class VM_Linker(link.LocalLinker):
         self.callback = callback
         self.callback_input = callback_input
         self.lazy = lazy
+        if c_thunks is None:
+            c_thunks = bool(theano.config.cxx)
         self.c_thunks = c_thunks
         self.allow_partial_eval = allow_partial_eval
         self.updated_vars = {}
