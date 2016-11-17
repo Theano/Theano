@@ -1253,23 +1253,23 @@ def test_grad_useless_sum():
     This test checks whether there is a useless sum in the gradient
     computations.
     """
+    mode = theano.compile.get_default_mode().including('canonicalize')
     x = tensor.TensorType(theano.config.floatX, (True,))('x')
     l = tensor.log(1.0 - tensor.nnet.sigmoid(x))[0]
     g = tensor.grad(l, x)
     nodes = theano.gof.graph.ops([x], [g])
 
-    f = theano.function([x], g)
+    f = theano.function([x], g, mode=mode)
     test_values = [-100, -1, 0, 1, 100]
     outputs = []
     for test_value in test_values:
         outputs.append(f(numpy.array([test_value]).astype('float32')))
-
     assert not any([isinstance(node.op, theano.tensor.elemwise.Sum) for node in nodes])
-    numpy.allclose(outputs, [[-3.72007598e-44],
-                             [-0.26894142],
-                             [-0.5],
-                             [-0.73105858],
-                             [-1.]])
+    assert numpy.allclose(outputs, [[-3.72007598e-44],
+                                    [-0.26894142],
+                                    [-0.5],
+                                    [-0.73105858],
+                                    [-1.]])
 
 
 def test_clip_grad_int():
