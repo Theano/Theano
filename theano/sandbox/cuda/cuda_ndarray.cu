@@ -74,7 +74,6 @@ void * device_malloc(size_t size)
     return device_malloc(size, VERBOSE_DEVICE_MALLOC);
 }
 
-///@TODO: thejaswi: link this option to a theano config variable?
 static bool g_use_cnmem = false;
 static const int g_max_devices = 8;
 int initCnmem(int card_number_provided, int card_nb, size_t mem) {
