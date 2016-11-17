@@ -58,37 +58,6 @@ def test_pydotprint_return_image():
     assert isinstance(ret, (str, bytes))
 
 
-def test_pydotprint_variables():
-    """
-    This is a REALLY PARTIAL TEST.
-
-    I did them to help debug stuff.
-
-    It make sure the code run.
-    """
-
-    # Skip test if pydot is not available.
-    if not theano.printing.pydot_imported:
-        raise SkipTest('pydot not available')
-
-    x = tensor.dvector()
-
-    s = StringIO()
-    new_handler = logging.StreamHandler(s)
-    new_handler.setLevel(logging.DEBUG)
-    orig_handler = theano.logging_default_handler
-
-    theano.theano_logger.removeHandler(orig_handler)
-    theano.theano_logger.addHandler(new_handler)
-    try:
-        theano.printing.pydotprint(x * 2)
-        if not theano.printing.pd.__name__ == "pydot_ng":
-            theano.printing.pydotprint(x * 2)
-    finally:
-        theano.theano_logger.addHandler(orig_handler)
-        theano.theano_logger.removeHandler(new_handler)
-
-
 def test_pydotprint_long_name():
     """This is a REALLY PARTIAL TEST.
 
