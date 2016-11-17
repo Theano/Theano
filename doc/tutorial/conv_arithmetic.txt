@@ -919,7 +919,8 @@ dilated convolutions:
 
         o = \left\lfloor \frac{i + 2p - k - (k - 1)(d - 1)}{s} \right\rfloor + 1.
 
-    This translates to the following Theano code:
+    This translates to the following Theano code using the ``filter_dilation``
+    parameter:
 
     .. code-block:: python
 
