@@ -709,8 +709,6 @@ def local_gpu_solve(node):
     CpuSolve(host_from_gpu) -> host_from_gpu(GpuSolve)
 
     """
-    if not cula_available:
-        return
     if node.outputs[0].dtype != 'float32':
         return
     if isinstance(node.op, GpuFromHost):

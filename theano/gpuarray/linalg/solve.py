@@ -3,21 +3,12 @@ from __future__ import absolute_import, division, print_function
 import pkg_resources
 import theano
 
-from theano.sandbox.cuda import GpuOp, cuda_available
-from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
-from theano.sandbox.cuda.type import CudaNdarrayType
+from theano import Op
+from theano.gpuarray import basic_ops, GpuArrayType
 
-if cuda_available:
-    from theano.sandbox.cuda import CudaNdarray
-
-try:
-    from theano.sandbox.cuda import cuda_ndarray
-    dimshuffle = cuda_ndarray.cuda_ndarray.dimshuffle
-except ImportError:
-    pass
+from pygpu import gpuarray
 
 cusolver_available = False
-
 try:
     from scikits.cuda import cusolver
     cusolver_available = True
@@ -26,8 +17,7 @@ except (ImportError, OSError, RuntimeError, pkg_resources.DistributionNotFound):
 
 cusolver_handle = None
 
-
-class GpuCusolverSolve(GpuOp):
+class GpuCusolverSolve(Op):
     """
     CUSOLVER GPU solver OP.
 
@@ -45,19 +35,31 @@ class GpuCusolverSolve(GpuOp):
         super(GpuCusolverSolve, self).__init__()
 
     def make_node(self, inp1, inp2):
-        inp1 = as_cuda_ndarray_variable(inp1)
-        inp2 = as_cuda_ndarray_variable(inp2)
+        self.context = basic_ops.infer_context_name(inp1, inp2)
 
+        inp1 = basic_ops.as_gpuarray_variable(inp1, self.context)
+        inp2 = basic_ops.as_gpuarray_variable(inp2, self.context)
+
+        inp1 = basic_ops.gpu_contiguous(inp1)
+        inp2 = basic_ops.gpu_contiguous(inp2)
+
+        # this op can only operate on float32 matrices
         assert inp1.ndim == 2
         assert inp2.ndim == 2
+        assert inp1.dtype == 'float32'
+        assert inp2.dtype == 'float32'
+
         return theano.Apply(
             self, [inp1, inp2],
-            [CudaNdarrayType(broadcastable=[False] * inp1.type.ndim)()])
+            [GpuArrayType('float32',
+                          broadcastable=[False] * inp1.ndim,
+                          context_name=self.context)()])
 
     def make_thunk(self,
                    node,
                    storage_map, _,
-                   no_recycling=[]):
+                   no_recycling=[],
+                   impl=None):
         if not cusolver_available:
             raise RuntimeError('CUSOLVER is not available and '
                                'GpuCusolverSolve Op can not be constructed.')
@@ -65,8 +67,12 @@ class GpuCusolverSolve(GpuOp):
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]
 
+        global cusolver_handle
+        if cusolver_handle is None:
+            cusolver_handle = cusolver.cusolverDnCreate()
+
         def thunk():
-            global cusolver_handle
+            context = inputs[0][0].context
 
             # Size of the matrices to invert.
             z = outputs[0]
@@ -77,76 +83,68 @@ class GpuCusolverSolve(GpuOp):
             # Solution vectors.
             b = inputs[1][0]
 
-            # A is not explicitly converted between C and F order, instead we
-            # switch the "transpose" flag.
-            if self.trans in ('T', 'C'):
-                trans = 'N'
-            else:
-                trans = 'T'
-
-            # Convert b to F-order from C-order.
-            b_cpy = dimshuffle(b, (1, 0)).reshape((b.shape[0], b.shape[1]))
-
-            # This copy forces allocation of a new C-contiguous buffer
-            # and returns it.
-            A_cpy = A.copy()
-            b_cpy = b_cpy.copy()
-
             assert(len(A.shape) == 2)
             assert(len(b.shape) == 2)
 
-            if trans in ['T', 'C']:
-                trans = 1
+            # A is not explicitly converted between C and F order, instead we
+            # switch the "transpose" flag.
+            if self.trans in ['T', 'C']:
+                trans = 0
                 l, n = A.shape
                 k, m = b.shape
-                if n != k:
-                    raise ValueError('A and b must be aligned.')
-            elif trans in ['N']:
-                trans = 0
+            elif self.trans == 'N':
+                trans = 1
                 n, l = A.shape
                 k, m = b.shape
-                if l != m:
-                    raise ValueError('A and b must be aligned.')
             else:
                 raise ValueError('Invalid value for trans')
+            if l != n:
+                raise ValueError('A must be a square matrix')
+            if n != k:
+                raise ValueError('A and b must be aligned.')
 
             lda = max(1, n)
-            ldb = max(1, n, l)
+            ldb = max(1, k, m)
 
-            A_ptr = A_cpy.gpudata
+            if trans == 0:
+                A = gpuarray.asfortranarray(A)
+                trans = 1
+            A_ptr = A.gpudata
+            # We copy b as cusolver operates inplace
+            b_cpy = gpuarray.array(b, copy=True, order='F')
             b_ptr = b_cpy.gpudata
 
-            if cusolver_handle is None:
-                cusolver_handle = cusolver.cusolverDnCreate()
-
             workspace_size = cusolver.cusolverDnSgetrf_bufferSize(
-                cusolver_handle, m, n, A_ptr, lda)
+                cusolver_handle, n, n, A_ptr, lda)
 
             if (thunk.workspace is None or
                     thunk.workspace.size != workspace_size):
-                thunk.workspace = CudaNdarray.zeros((workspace_size,))
+                thunk.workspace = gpuarray.zeros((workspace_size,),
+                                                 dtype='float32',
+                                                 context=context)
 
-            if thunk.pivots is None or thunk.pivots.size != min(m, n):
-                thunk.pivots = CudaNdarray.zeros((min(m, n),))
+            if thunk.pivots is None or thunk.pivots.size != min(n, n):
+                thunk.pivots = gpuarray.zeros((min(n, n),),
+                                              dtype='float32',
+                                              context=context)
 
             if thunk.dev_info is None:
-                thunk.dev_info = CudaNdarray.zeros((1,))
+                thunk.dev_info = gpuarray.zeros((1,),
+                                                dtype='float32',
+                                                context=context)
 
             workspace_ptr = thunk.workspace.gpudata
             pivots_ptr = thunk.pivots.gpudata
             dev_info_ptr = thunk.dev_info.gpudata
 
             cusolver.cusolverDnSgetrf(
-                cusolver_handle, n, l, A_ptr, lda, workspace_ptr,
+                cusolver_handle, n, n, A_ptr, lda, workspace_ptr,
                 pivots_ptr, dev_info_ptr)
 
             cusolver.cusolverDnSgetrs(
                 cusolver_handle, trans, n, m, A_ptr, lda,
                 pivots_ptr, b_ptr, ldb, dev_info_ptr)
 
-            # Convert b to F-order from C-order and assign it to output.
-            b_cpy = b_cpy.reshape(b.shape[::-1])
-            b_cpy = dimshuffle(b_cpy, (1, 0))
             z[0] = b_cpy
 
         thunk.inputs = inputs
@@ -159,4 +157,6 @@ class GpuCusolverSolve(GpuOp):
 
         return thunk
 
-gpu_solve = GpuCusolverSolve()
+
+def gpu_solve(A, b, trans='N'):
+    return GpuCusolverSolve(trans)(A, b)
