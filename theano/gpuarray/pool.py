@@ -37,16 +37,35 @@ class GpuPool(CGpuKernelBase):
     def c_header_dirs(self):
         return [os.path.dirname(__file__), pygpu.get_include()]
 
-    def make_node(self, inp, ws, stride, pad):
+    def make_node(self, inp, ws, stride=None, pad=None):
         ctx_name = infer_context_name(inp)
         inp = as_gpuarray_variable(inp, ctx_name)
-        assert (inp.ndim == self.ndim + 2)
+        nd = self.ndim
+        assert (inp.ndim == nd + 2)
+        if stride is None:
+            stride = ws
+        if pad is None:
+            pad = (0,) * nd
+        elif isinstance(pad, (tuple, list)):
+            if max(pad) != 0 and not self.ignore_border:
+                raise NotImplementedError(
+                    'Padding works only with ignore_border=True')
+            if isinstance(ws, (tuple, list)):
+                if any(pad[i] >= ws[i] for i in range(nd)):
+                    raise NotImplementedError(
+                        'Padding must be smaller than strides')
 
         ws = as_tensor_variable(ws)
         stride = as_tensor_variable(stride)
         pad = as_tensor_variable(pad)
-        assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
-        assert ws.type.ndim == 1
+        assert ws.ndim == stride.ndim and ws.ndim == pad.ndim
+        assert ws.ndim == 1
+        if not ws.dtype.startswith('int'):
+            raise TypeError('Window shape parameters must be ints.')
+        if not stride.dtype.startswith('int'):
+            raise TypeError('Stride parameters must be ints.')
+        if not pad.dtype.startswith('int'):
+            raise TypeError('Padding parameters must be ints.')
 
         return Apply(self, [inp, ws, stride, pad], [inp.type()])
 
@@ -86,24 +105,34 @@ class GpuMaxPoolGrad(CGpuKernelBase):
     def c_header_dirs(self):
         return [os.path.dirname(__file__), pygpu.get_include()]
 
-    def make_node(self, inp, out, out_grad, ws, stride, pad):
+    def make_node(self, inp, out, out_grad, ws, stride=None, pad=None):
         ctx_name = infer_context_name(inp, out, out_grad)
+        nd = self.ndim
         inp = as_gpuarray_variable(inp, ctx_name)
-        assert (inp.ndim == self.ndim + 2)
+        assert (inp.ndim == nd + 2)
         out = as_gpuarray_variable(out, ctx_name)
-        assert (out.ndim == self.ndim + 2)
+        assert (out.ndim == nd + 2)
         out_grad = as_gpuarray_variable(out_grad, ctx_name)
-        assert (out_grad.ndim in [4, 5])
+        assert (out_grad.ndim == nd + 2)
 
         assert (out_grad.ndim == inp.ndim)
         assert (inp.ndim == out.ndim)
 
+        if stride is None:
+            stride = ws
+        if pad is None:
+            pad = (0,) * nd
         ws = as_tensor_variable(ws)
         stride = as_tensor_variable(stride)
         pad = as_tensor_variable(pad)
-        assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
-        assert ws.type.ndim == 1
-
+        assert ws.ndim == stride.ndim and ws.ndim == pad.ndim
+        assert ws.ndim == 1
+        if not ws.dtype.startswith('int'):
+            raise TypeError('Window shape parameters must be ints.')
+        if not stride.dtype.startswith('int'):
+            raise TypeError('Stride parameters must be ints.')
+        if not pad.dtype.startswith('int'):
+            raise TypeError('Padding parameters must be ints.')
         return Apply(self, [inp, out, out_grad, ws, stride, pad], [inp.type()])
 
     def get_params(self, node):
@@ -134,21 +163,31 @@ class GpuAveragePoolGrad(CGpuKernelBase):
     def c_header_dirs(self):
         return [os.path.dirname(__file__), pygpu.get_include()]
 
-    def make_node(self, inp, out_grad, ws, stride, pad):
+    def make_node(self, inp, out_grad, ws, stride=None, pad=None):
         ctx_name = infer_context_name(inp, out_grad)
+        nd = self.ndim
         inp = as_gpuarray_variable(inp, ctx_name)
-        assert (inp.ndim == self.ndim + 2)
+        assert (inp.ndim == nd + 2)
         out_grad = as_gpuarray_variable(out_grad, ctx_name)
-        assert (out_grad.ndim == self.ndim + 2)
+        assert (out_grad.ndim == nd + 2)
 
         assert (out_grad.ndim == inp.ndim)
 
+        if stride is None:
+            stride = ws
+        if pad is None:
+            pad = (0,) * nd
         ws = as_tensor_variable(ws)
         stride = as_tensor_variable(stride)
         pad = as_tensor_variable(pad)
-        assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
-        assert ws.type.ndim == 1
-
+        assert ws.ndim == stride.ndim and ws.ndim == pad.ndim
+        assert ws.ndim == 1
+        if not ws.dtype.startswith('int'):
+            raise TypeError('Window shape parameters must be ints.')
+        if not stride.dtype.startswith('int'):
+            raise TypeError('Stride parameters must be ints.')
+        if not pad.dtype.startswith('int'):
+            raise TypeError('Padding parameters must be ints.')
         return Apply(self, [inp, out_grad, ws, stride, pad], [inp.type()])
 
     def get_params(self, node):
@@ -183,24 +222,34 @@ class GpuDownsampleFactorMaxGradGrad(CGpuKernelBase):
     def c_header_dirs(self):
         return [os.path.dirname(__file__), pygpu.get_include()]
 
-    def make_node(self, inp, out, out_grad, ws, stride, pad):
+    def make_node(self, inp, out, out_grad, ws, stride=None, pad=None):
         ctx_name = infer_context_name(inp, out, out_grad)
+        nd = self.ndim
         inp = as_gpuarray_variable(inp, ctx_name)
-        assert (inp.ndim == self.ndim + 2)
+        assert (inp.ndim == nd + 2)
         out = as_gpuarray_variable(out, ctx_name)
-        assert (out_grad.ndim == self.ndim + 2)
+        assert (out_grad.ndim == nd + 2)
         out_grad = as_gpuarray_variable(out_grad, ctx_name)
-        assert (out.ndim == self.ndim + 2)
+        assert (out.ndim == nd + 2)
 
         assert (out_grad.ndim == inp.ndim)
         assert (inp.ndim == out.ndim)
 
+        if stride is None:
+            stride = ws
+        if pad is None:
+            pad = (0,) * nd
         ws = as_tensor_variable(ws)
         stride = as_tensor_variable(stride)
         pad = as_tensor_variable(pad)
-        assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
-        assert ws.type.ndim == 1
-
+        assert ws.ndim == stride.ndim and ws.ndim == pad.ndim
+        assert ws.ndim == 1
+        if not ws.dtype.startswith('int'):
+            raise TypeError('Window shape parameters must be ints.')
+        if not stride.dtype.startswith('int'):
+            raise TypeError('Stride parameters must be ints.')
+        if not pad.dtype.startswith('int'):
+            raise TypeError('Padding parameters must be ints.')
         return Apply(self, [inp, out, out_grad, ws, stride, pad], [inp.type()])
 
     def get_params(self, node):
