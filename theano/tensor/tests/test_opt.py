@@ -1882,76 +1882,122 @@ def test_local_subtensor_remove_broadcastable_index():
     f2(xn)
 
 
-def test_subtensor_inc_subtensor():
-    # basic test
-    x = tensor.matrix('x')
-    i = tensor.iscalar('i')
-    v = tensor.vector('v')
-    y = tensor.set_subtensor(x[i], v)
-    z = y[i]
-    mode = theano.compile.mode.get_default_mode().including('local_subtensor_inc_subtensor')
-    f = theano.function([x, i, v], z, mode=mode)
-    prog = f.maker.fgraph.toposort()
-    assert len(prog) == 1
-    assert isinstance(prog[0].op, DeepCopyOp)
-    # basic test, numerical check
-    x_ = numpy.random.uniform(size=[3, 4]).astype(config.floatX)
-    v_ = numpy.random.uniform(size=[4, ]).astype(config.floatX)
-    i_ = 1
-    assert numpy.array_equal(f(x_, i_, v_), v_)
+class Test_subtensor_inc_subtensor(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.mode = theano.compile.mode.get_default_mode().including('local_subtensor_inc_subtensor')
 
-    # complicated test
-    x = tensor.tensor4('x')
-    i1 = tensor.iscalar('i1')
-    i2 = tensor.iscalar('i2')
-    i3 = tensor.iscalar('i3')
-    i4 = tensor.iscalar('i4')
-    v = tensor.tensor3('v')
-    y = tensor.set_subtensor(x[i1, :i2, i3:, ::i4], v)
-    z = y[i1, :i2, i3:, ::i4]
-    mode = theano.compile.mode.get_default_mode().including('local_subtensor_inc_subtensor')
-    f = theano.function([x, i1, i2, i3, i4, v], z, mode=mode)
-    prog = f.maker.fgraph.toposort()
-    assert len(prog) == 1
-    assert isinstance(prog[0].op, DeepCopyOp)
-    # complicated test, numerical check
-    x_ = numpy.random.uniform(size=[3, 4, 5, 6]).astype(config.floatX)
-    v_ = numpy.random.uniform(size=[2, 2, 2]).astype(config.floatX)
-    i1_, i2_, i3_, i4_ = 1, 2, 3, 4
-    assert numpy.array_equal(f(x_, i1_, i2_, i3_, i4_, v_), v_)
+    def test_basic(self):
+        # basic test
+        x = tensor.matrix('x')
+        i = tensor.iscalar('i')
+        v = tensor.vector('v')
+        y = tensor.set_subtensor(x[i], v)
+        z = y[i]
+        f = theano.function([x, i, v], z, mode=self.mode)
+        prog = f.maker.fgraph.toposort()
+        assert len(prog) == 1
+        assert isinstance(prog[0].op, DeepCopyOp)
+        # basic test, numerical check
+        x_ = numpy.random.uniform(size=[3, 4]).astype(config.floatX)
+        v_ = numpy.random.uniform(size=[4, ]).astype(config.floatX)
+        i_ = 1
+        assert numpy.array_equal(f(x_, i_, v_), v_)
 
-    # case not use this optimization
-    z = y[i1, :i3, i2:, ::i4]
-    mode = theano.compile.mode.get_default_mode().including('local_subtensor_inc_subtensor')
-    f = theano.function([x, i1, i2, i3, i4, v], z, mode=mode)
-    prog = f.maker.fgraph.toposort()
-    assert len(prog) != 1
-    assert any(isinstance(x.op, tensor.IncSubtensor) for x in prog)
-    assert any(isinstance(x.op, tensor.Subtensor) for x in prog)
-    # case not use this optimization, numerical check
-    x_ = numpy.random.uniform(size=[3, 4, 5, 6]).astype(config.floatX)
-    v_ = numpy.random.uniform(size=[2, 2, 2]).astype(config.floatX)
-    i1_, i2_, i3_, i4_ = 1, 2, 3, 4
-    x_[i1_, :i2_, i3_:, ::i4_] = v_
-    assert numpy.array_equal(f(x_, i1_, i2_, i3_, i4_, v_), x_[i1_, :i3_, i2_:, ::i4_])
+    def test_multiple_idx(self):
+        # complicated test
+        x = tensor.tensor4('x')
+        i1 = tensor.iscalar('i1')
+        i2 = tensor.iscalar('i2')
+        i3 = tensor.iscalar('i3')
+        i4 = tensor.iscalar('i4')
+        v = tensor.tensor3('v')
+        y = tensor.set_subtensor(x[i1, :i2, i3:, ::i4], v)
+        z = y[i1, :i2, i3:, ::i4]
+        f = theano.function([x, i1, i2, i3, i4, v], z, mode=self.mode)
+        prog = f.maker.fgraph.toposort()
+        assert len(prog) == 1
+        assert isinstance(prog[0].op, DeepCopyOp)
+        # complicated test, numerical check
+        x_ = numpy.random.uniform(size=[3, 4, 5, 6]).astype(config.floatX)
+        v_ = numpy.random.uniform(size=[2, 2, 2]).astype(config.floatX)
+        i1_, i2_, i3_, i4_ = 1, 2, 3, 4
+        assert numpy.array_equal(f(x_, i1_, i2_, i3_, i4_, v_), v_)
 
-    # case when v is broadcastable
-    x = tensor.matrix('x')
-    i1 = tensor.iscalar('i')
-    i2 = tensor.iscalar('i')
-    v = tensor.vector('v')
-    y = tensor.set_subtensor(x[:i1, :i2], v)
-    z = y[:i1, :i2]
-    mode = theano.compile.mode.get_default_mode().including('local_subtensor_inc_subtensor')
-    f = theano.function([x, i1, i2, v], z, mode=mode)
-    prog = f.maker.fgraph.toposort()
-    assert any(isinstance(x.op, tensor.Alloc) for x in prog)
-    # case when v is broadcastable, numerical check
-    x_ = numpy.random.uniform(size=[3, 4]).astype(config.floatX)
-    v_ = numpy.random.uniform(size=[2, ]).astype(config.floatX)
-    i1_, i2_ = 2, 2
-    x_[:i1_, :i2_] = v_
-    assert numpy.array_equal(f(x_, i1_, i2_, v_), x_[:i1_, :i2_])
+    def test_not_applied(self):
+        # case not use this optimization
+        x = tensor.tensor4('x')
+        i1 = tensor.iscalar('i1')
+        i2 = tensor.iscalar('i2')
+        i3 = tensor.iscalar('i3')
+        i4 = tensor.iscalar('i4')
+        v = tensor.tensor3('v')
+        y = tensor.set_subtensor(x[i1, :i2, i3:, ::i4], v)
+        z = y[i1, :i3, i2:, ::i4]
+        f = theano.function([x, i1, i2, i3, i4, v], z, mode=self.mode)
+        prog = f.maker.fgraph.toposort()
+        assert len(prog) != 1
+        assert any(isinstance(x.op, tensor.IncSubtensor) for x in prog)
+        assert any(isinstance(x.op, tensor.Subtensor) for x in prog)
+        # case not use this optimization, numerical check
+        x_ = numpy.random.uniform(size=[3, 4, 5, 6]).astype(config.floatX)
+        v_ = numpy.random.uniform(size=[2, 2, 2]).astype(config.floatX)
+        i1_, i2_, i3_, i4_ = 1, 2, 3, 4
+        x_[i1_, :i2_, i3_:, ::i4_] = v_
+        assert numpy.array_equal(f(x_, i1_, i2_, i3_, i4_, v_), x_[i1_, :i3_, i2_:, ::i4_])
+
+    def test_fewer_dims(self):
+        # case when v has fewer dimensions
+        x = tensor.matrix('x')
+        i1 = tensor.iscalar('i')
+        i2 = tensor.iscalar('i')
+        v = tensor.vector('v')
+        y = tensor.set_subtensor(x[:i1, :i2], v)
+        z = y[:i1, :i2]
+        f = theano.function([x, i1, i2, v], z, mode=self.mode)
+        prog = f.maker.fgraph.toposort()
+        assert any(isinstance(x.op, tensor.Alloc) for x in prog)
+        # case when v is broadcastable, numerical check
+        x_ = numpy.random.uniform(size=[3, 4]).astype(config.floatX)
+        v_ = numpy.random.uniform(size=[2, ]).astype(config.floatX)
+        i1_, i2_ = 2, 2
+        x_[:i1_, :i2_] = v_
+        assert numpy.array_equal(f(x_, i1_, i2_, v_), x_[:i1_, :i2_])
+
+    def test_broadcasted(self):
+        # case when v has the same number of dimensions, some broadcastable
+        x = tensor.matrix('x')
+        i1 = tensor.iscalar('i')
+        i2 = tensor.iscalar('i')
+        v = tensor.col('v')
+        y = tensor.set_subtensor(x[:i1, :i2], v)
+        z = y[:i1, :i2]
+        f = theano.function([x, i1, i2, v], z, mode=self.mode)
+        prog = f.maker.fgraph.toposort()
+        assert any(isinstance(x.op, tensor.Alloc) for x in prog)
+        # case when v is broadcastable, numerical check
+        x_ = numpy.random.uniform(size=[3, 4]).astype(config.floatX)
+        v_ = numpy.random.uniform(size=[2, 1]).astype(config.floatX)
+        i1_, i2_ = 2, 2
+        x_[:i1_, :i2_] = v_
+        assert numpy.array_equal(f(x_, i1_, i2_, v_), x_[:i1_, :i2_])
+
+    def test_different_dtypes(self):
+        # Case when the dtype differs
+        x = tensor.bmatrix('x')
+        i = tensor.iscalar('i')
+        v = tensor.vector('v')
+        y = tensor.set_subtensor(x[i], v)
+        z = y[i]
+        f = theano.function([x, i, v], z, mode=self.mode)
+        prog = f.maker.fgraph.toposort()
+        assert len(prog) == 1
+        assert prog[0].op == tensor.basic._convert_to_int8
+        # basic test, numerical check
+        x_ = numpy.random.randint(12, size=[3, 4]).astype('int8')
+        v_ = numpy.random.uniform(12, size=[4, ]).astype(config.floatX)
+        i_ = 1
+        assert numpy.array_equal(f(x_, i_, v_), v_.astype('int8'))
 
 
 class test_local_subtensor_make_vector(unittest.TestCase):
