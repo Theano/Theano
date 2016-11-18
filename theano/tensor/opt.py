@@ -5542,11 +5542,7 @@ def local_useless_reduce(node):
             return [summed]
 
 
-# Enabling this optimization at canonicalization step break this test:
-# theano/tensor/tests/test_opt.py:T_local_reduce.test_local_reduce_broadcast_some_0
-# see gh-790 issue.
-#
-# @register_canonicalize
+@register_canonicalize
 @register_uncanonicalize
 @register_specialize
 @gof.local_optimizer(ALL_REDUCE)
