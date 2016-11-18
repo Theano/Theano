@@ -15,22 +15,20 @@ import theano
 import theano.scalar as scal
 import theano.tensor as tensor
 from theano import config, gof
-from theano.compat import PY3, exc_message, izip
+from theano.compat import PY3, izip
 from theano.compile import DeepCopyOp
-from theano.tensor import (MakeSlice, NotScalarConstantError, _shared,
-                           as_tensor_variable, cscalar, ctensor3, dmatrix,
+from theano.tensor import (_shared, cscalar, ctensor3, dmatrix,
                            dscalar, dtensor4, dvector, fmatrix, fscalar,
                            fvector, ftensor4, iscalar, lmatrix, lrow, lvector,
                            matrix, vector)
 from theano.tensor.basic import DimShuffle
 from theano.tensor.subtensor import (AdvancedIncSubtensor,
                                      AdvancedIncSubtensor1, AdvancedSubtensor,
-                                     AdvancedSubtensor1, IncSubtensor,
+                                     IncSubtensor,
                                      Subtensor, advanced_inc_subtensor,
                                      advanced_inc_subtensor1,
                                      advanced_set_subtensor,
                                      advanced_set_subtensor1,
-                                     advanced_subtensor1,
                                      get_canonical_form_slice, inc_subtensor,
                                      inplace_increment, set_subtensor)
 from theano.tensor.tests.test_basic import inplace_func, rand, randint_ranged
@@ -42,7 +40,7 @@ if PY3:
         return i
 else:
     def L(i):
-        return long(i)
+        return long(i)  # noqa for Python 3
 
 
 class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
@@ -122,7 +120,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         # it is impossible to retrieve a view of a 0-d tensor
         n = self.shared(numpy.ones((), dtype=self.dtype))
         try:
-            t = n[0]
+            n[0]
         except ValueError as e:
             self.assertTrue(hasattr(e, 'subtensor_invalid'))
             return
@@ -144,7 +142,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         try:
             try:
                 self.eval_output_and_check(t)
-            except IndexError as e:
+            except IndexError:
                 return
             self.fail()
         finally:
@@ -153,8 +151,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
     def test1_err_subslice(self):
         n = self.shared(numpy.ones(3, dtype=self.dtype))
         try:
-            t = n[slice(0, slice(1, 2, None), None)]
-        except Exception as e:
+            n[slice(0, slice(1, 2, None), None)]
+        except Exception:
             # Relax constraint on the type of Exception,
             # since this might be handled by AvancedSubtensor
             # if e[0] != Subtensor.e_indextype:
@@ -190,7 +188,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
     def test1_err_invalid(self):
         n = self.shared(numpy.ones(1, dtype=self.dtype))
         try:
-            t = n[0, 0]
+            n[0, 0]
         except ValueError as e:
             self.assertTrue(hasattr(e, 'subtensor_invalid'))
             return
@@ -407,10 +405,10 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         vs1, vn3, vn4 = theano.function([s], [s1, n3, n4])(-2.0)
 
         assert numpy.all(vs1 == [-2.0])
-        assert numpy.all(vn3
-                == numpy.arange(24)[newaxis, :, newaxis])
-        assert numpy.all(vn4
-                == numpy.arange(24).reshape((2, 3, 4))[:, :, :, newaxis])
+        assert numpy.all(vn3 ==
+                         numpy.arange(24)[newaxis, :, newaxis])
+        assert numpy.all(vn4 ==
+                         numpy.arange(24).reshape((2, 3, 4))[:, :, :, newaxis])
 
     def test_grad_1d(self):
         subi = 0
@@ -463,14 +461,14 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         gn = theano.tensor.grad(theano.tensor.sum(theano.tensor.exp(t)), n)
         f = self.function([], gn)
         topo = f.maker.fgraph.toposort()
-        topo_ = [node for node in topo if not isinstance(node.op,
-             self.ignore_topo)]
+        topo_ = [node for node in topo
+                 if not isinstance(node.op, self.ignore_topo)]
         if not self.fast_compile:
             assert_equal(len(topo_), 6)
         assert numpy.sum([isinstance(node.op, self.inc_sub)
-             for node in topo_]) == 1
+                          for node in topo_]) == 1
         assert numpy.sum([isinstance(node.op, self.sub)
-             for node in topo_]) == 1
+                          for node in topo_]) == 1
 
         gval = f()
         good = numpy.zeros_like(data)
@@ -487,8 +485,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                           # Test 4 dims as gpu code use another algo
                           # in that case This new algo is not as much
                           # optimized for that case.
-                          (rand(4, 4, 2, 3), [3,
-                               3, 1, 1, 2, 2, 0, 0, -1, -2, -3, -4]),
+                          (rand(4, 4, 2, 3),
+                           [3, 3, 1, 1, 2, 2, 0, 0, -1, -2, -3, -4]),
                           # Test with TensorConstant index.
                           (rand(4, 2, 3),
                            theano.tensor.constant([3, 3, 1, 1, 2, 2, 0, 0])),
@@ -526,7 +524,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             g = self.function([], gn, op=self.adv_incsub1)
             utt.verify_grad(lambda m: m[[1, 3]],
                             [numpy.random.rand(5, 5).astype(self.dtype)])
-            g_0 = g()
+            g()
             utt.verify_grad(lambda m: m[idx],
                             [data])
 
@@ -558,7 +556,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def test_adv_sub1_broadcast(self):
         v = numpy.arange(3, dtype=self.dtype).reshape((1, 3))
-        n = self.shared(v*5, broadcastable=(True, False))
+        n = self.shared(v * 5, broadcastable=(True, False))
         idx = tensor.lvector()
         t = n[idx]
         self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
@@ -571,10 +569,10 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
         f_0 = f([0])
         self.assertTrue(f_0.shape == (1, 3))
-        self.assertTrue(numpy.allclose(f_0, v*5))
+        self.assertTrue(numpy.allclose(f_0, v * 5))
         f_00 = f([0, 0])
         self.assertTrue(f_00.shape == (2, 3))
-        self.assertTrue(numpy.allclose(f_00, v*5))
+        self.assertTrue(numpy.allclose(f_00, v * 5))
         self.assertRaises(IndexError, f, [0, 1])
 
         # Test the gradient
@@ -603,7 +601,6 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
         # test set_subtensor broadcast
         self.dtype = 'float32'
-        from theano.sandbox.cuda.dnn import dnn_conv
 
         x = tensor.tensor4('x', dtype=self.dtype)
         indexes = theano.shared(numpy.int32([1, 2, 3, 4]))
@@ -667,8 +664,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             t_shapes = f()
             for t_shape, shape in zip(t_shapes, shapes):
                 assert numpy.all(t_shape == shape)
-            assert tensor.Subtensor not in [x.op for x in
-                                           f.maker.fgraph.toposort()]
+            assert tensor.Subtensor not in [x.op
+                                            for x in f.maker.fgraph.toposort()]
 
     def test_shape_i_scalar(self):
         # Each axis is treated independently by shape_i/shape operators
@@ -685,8 +682,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                           mode=mode_opt,
                           op=self.ops,
                           N=0)
-        assert tensor.Subtensor not in [x.op for x in f.maker.
-            fgraph.toposort()]
+        assert tensor.Subtensor not in [x.op
+                                        for x in f.maker.fgraph.toposort()]
         for start in [-8, -5, -4, -1, 0, 1, 4, 5, 8]:
             for stop in [-8, -5, -4, -1, 0, 1, 4, 5, 8]:
                 for step in [-3, -1, 2, 5]:
@@ -708,7 +705,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         length = 5
         a = numpy.arange(length)
         for start in [-8, -5, -4, -1, 0, 1, 4, 5, 8]:
-            for stop in  [-8, -5, -4, -1, 0, 1, 4, 5, 8]:
+            for stop in [-8, -5, -4, -1, 0, 1, 4, 5, 8]:
                 for step in [-6, -3, -1, 2, 5]:
                     out = f(start, stop, step, length)
                     t_out = a[out[0]:out[1]:out[2]][::out[3]]
@@ -729,7 +726,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
         length = 5
         a = numpy.arange(length)
-        for stop in  [-8, -5, -4, -1, 0, 1, 4, 5, 8]:
+        for stop in [-8, -5, -4, -1, 0, 1, 4, 5, 8]:
             for step in [-6, -3, -1, 2, 5]:
                 out = f(stop, step, length)
                 t_out = a[out[0]:out[1]:out[2]][::out[3]]
@@ -772,7 +769,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         length = 5
         a = numpy.arange(length)
         for start in [-8, -5, -4, -1, 0, 1, 4, 5, 8]:
-            for stop in  [-8, -5, -4, -1, 0, 1, 4, 5, 8]:
+            for stop in [-8, -5, -4, -1, 0, 1, 4, 5, 8]:
                 out = f(start, stop, length)
                 t_out = a[out[0]:out[1]:out[2]][::out[3]]
                 v_out = a[start:stop:None]
@@ -829,7 +826,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
         length = 5
         a = numpy.arange(length)
-        for stop in  [-8, -5, -4, -1, 0, 1, 4, 5, 8]:
+        for stop in [-8, -5, -4, -1, 0, 1, 4, 5, 8]:
             out = f(stop, length)
             t_out = a[out[0]:out[1]:out[2]][::out[3]]
             v_out = a[None:stop:None]
@@ -847,11 +844,11 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             f = self.function([], [gn, gn.shape], op=self.adv_incsub1)
             topo = f.maker.fgraph.toposort()
             if not self.fast_compile:
-                assert any([isinstance(node.op, self.
-                    adv_incsub1) and node.op.inplace for node in topo])
+                assert any([isinstance(node.op, self.adv_incsub1) and
+                            node.op.inplace for node in topo])
             else:
-                assert any([isinstance(node.op, self.
-                    adv_incsub1) for node in topo])
+                assert any([isinstance(node.op, self.adv_incsub1)
+                            for node in topo])
             assert any([isinstance(node.op, self.adv_sub1) for node in topo])
             gval, gshape = f()
             good = numpy.zeros_like(data)
@@ -970,7 +967,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         """
 
         X = self.shared(numpy.ones((9, 9)).astype(self.dtype))
-        y = set_subtensor(X[1::, 1::],  0)
+        y = set_subtensor(X[1::, 1::], 0)
         f = self.function([], [y],
                           op=self.inc_sub,
                           N=1)
@@ -1257,7 +1254,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
     def test_take(self):
         a = tensor.matrix()
         f = theano.function([a], a.take(0, axis=-1), allow_input_downcast=True)
-        x = f(numpy.random.normal(0, 1, (30, 4)))
+        f(numpy.random.normal(0, 1, (30, 4)))
 
 
 class TestIncSubtensor1(unittest.TestCase):
@@ -1370,8 +1367,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
     def eval_output_and_check(self, t):
         f = inplace_func([], t, mode=self.mode)
         topo = f.maker.fgraph.toposort()
-        topo_ = [node for node in topo if not isinstance(node.op,
-             self.ignore_topo)]
+        topo_ = [node for node in topo
+                 if not isinstance(node.op, self.ignore_topo)]
         assert len(topo_) == 1
         assert isinstance(topo_[0].op, self.sub)
         tval = f()
@@ -1388,7 +1385,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         a = self.v[self.ix2]
         assert a.dtype == self.v.dtype, (a.dtype, self.v.dtype)
         assert a.broadcastable == self.ix2.broadcastable, (
-                a.broadcastable, self.ix2.broadcastable)
+            a.broadcastable, self.ix2.broadcastable)
 
     def test_index_into_mat_w_row(self):
         a = self.m[self.ixr]
@@ -1406,8 +1403,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
                           # Test 4 dims as gpu code use another algo
                           # in that case This new algo is not as much
                           # optimized for that case.
-                          (rand(4, 4, 2, 3), [3,
-                               3, 1, 1, 2, 2, 0, 0, -1, -2, -3, -4]),
+                          (rand(4, 4, 2, 3),
+                           [3, 3, 1, 1, 2, 2, 0, 0, -1, -2, -3, -4]),
                           # Test with TensorConstant index.
                           (rand(2, 4, 3),
                            theano.tensor.constant([3, 3, 1, 1, 2, 2, 0, 0])),
@@ -1499,9 +1496,9 @@ class TestAdvancedSubtensor(unittest.TestCase):
                  [1, 2, 1],
                  [0, 1, 0])
         assert numpy.allclose(aval,
-                [[.4, .9, .1],
-                  [5 * 3, 6, 7],
-                  [.5, .3 * 2, .15]]), aval
+                              [[.4, .9, .1],
+                               [5 * 3, 6, 7],
+                               [.5, .3 * 2, .15]]), aval
 
     def test_inc_adv_subtensor_with_broadcasting(self):
         if inplace_increment is None:
@@ -1521,9 +1518,9 @@ class TestAdvancedSubtensor(unittest.TestCase):
                        [0, 1, 0],
                        2.1)
         assert numpy.allclose(aval,
-                [[.4, .9, .1],
-                  [5 + 2.1 * 2, 6, 7],
-                  [.5, .3 + 2.1, .15]]), aval
+                              [[.4, .9, .1],
+                               [5 + 2.1 * 2, 6, 7],
+                               [.5, .3 + 2.1, .15]]), aval
         assert numpy.allclose(gval, 3.0), gval
 
     def test_inc_adv_subtensor1_with_broadcasting(self):
@@ -1543,9 +1540,9 @@ class TestAdvancedSubtensor(unittest.TestCase):
                        [0, 1, 0],
                        2.1)
         assert numpy.allclose(aval,
-                [[.4 + 2.1 * 2, .9  + 2.1 * 2, .1 + 2.1 * 2],
-                  [5 + 2.1, 6 + 2.1, 7 + 2.1],
-                  [.5, .3, .15]]), aval
+                              [[.4 + 2.1 * 2, .9 + 2.1 * 2, .1 + 2.1 * 2],
+                               [5 + 2.1, 6 + 2.1, 7 + 2.1],
+                               [.5, .3, .15]]), aval
         assert numpy.allclose(gval, 9.0), gval
 
     def test_inc_adv_subtensor_with_index_broadcasting(self):
@@ -1564,9 +1561,9 @@ class TestAdvancedSubtensor(unittest.TestCase):
                  [[0, 1, 0],
                   [2, 2, 2]])
         assert numpy.allclose(aval,
-                [[.4 + 2 * 2.1, .9, .1 + 2 * 2.1],
-                  [5, 6, 7],
-                  [.5, .3 + 2.1, .15 + 2.1]]), aval
+                              [[.4 + 2 * 2.1, .9, .1 + 2 * 2.1],
+                               [5, 6, 7],
+                               [.5, .3 + 2.1, .15 + 2.1]]), aval
 
     def test_advanced_indexing(self):
         # tests advanced indexing in Theano for 2D and 3D tensors
@@ -1620,72 +1617,72 @@ class TestInferShape(utt.InferShapeTester):
         adscal = dscalar()
         admat_val = rand(5, 4)
         self._compile_and_check([admat, bdmat],
-                            [inc_subtensor(admat[2:4], bdmat)],
-                            [admat_val, [[1, 2, 3, 4]]], IncSubtensor)
+                                [inc_subtensor(admat[2:4], bdmat)],
+                                [admat_val, [[1, 2, 3, 4]]], IncSubtensor)
 
         self._compile_and_check([admat, advec],
-                            [inc_subtensor(admat[2], advec)],
-                            [admat_val, [1, 2, 3, 4]], IncSubtensor)
+                                [inc_subtensor(admat[2], advec)],
+                                [admat_val, [1, 2, 3, 4]], IncSubtensor)
 
         self._compile_and_check([admat, adscal],
-                            [inc_subtensor(admat[2, 3], adscal)],
-                            [admat_val, 1], IncSubtensor)
+                                [inc_subtensor(admat[2, 3], adscal)],
+                                [admat_val, 1], IncSubtensor)
 
         self._compile_and_check([admat, adscal],
-                            [inc_subtensor(admat[1:3, 2], adscal)],
-                            [admat_val, 1], IncSubtensor)
+                                [inc_subtensor(admat[1:3, 2], adscal)],
+                                [admat_val, 1], IncSubtensor)
 
         self._compile_and_check([admat, bdmat],
-                            [set_subtensor(admat[2:4], bdmat)],
-                            [admat_val, [[1, 2, 3, 4]]], IncSubtensor)
+                                [set_subtensor(admat[2:4], bdmat)],
+                                [admat_val, [[1, 2, 3, 4]]], IncSubtensor)
 
         self._compile_and_check([admat, advec],
-                            [set_subtensor(admat[2], advec)],
-                            [admat_val, [1, 2, 3, 4]], IncSubtensor)
+                                [set_subtensor(admat[2], advec)],
+                                [admat_val, [1, 2, 3, 4]], IncSubtensor)
 
         self._compile_and_check([admat, adscal],
-                            [set_subtensor(admat[2, 3], adscal)],
-                            [admat_val, 1], IncSubtensor)
+                                [set_subtensor(admat[2, 3], adscal)],
+                                [admat_val, 1], IncSubtensor)
 
         self._compile_and_check([admat, adscal],
-                            [set_subtensor(admat[1:3, 2], adscal)],
-                            [admat_val, 1], IncSubtensor)
+                                [set_subtensor(admat[1:3, 2], adscal)],
+                                [admat_val, 1], IncSubtensor)
 
         adtens4 = dtensor4()
         bdtens4 = dtensor4()
         adtens4_val = rand(3, 4, 2, 5)
         self._compile_and_check([adtens4, bdtens4],
-                            [inc_subtensor(adtens4[::, 2:4, ::, ::], bdtens4)],
-                            [adtens4_val, [[[[1, 2, 3, 4, 5]]]]], IncSubtensor,
-                            warn=False)
+                                [inc_subtensor(adtens4[::, 2:4, ::, ::], bdtens4)],
+                                [adtens4_val, [[[[1, 2, 3, 4, 5]]]]], IncSubtensor,
+                                warn=False)
         self._compile_and_check([adtens4, bdmat],
-                            [inc_subtensor(adtens4[2, 2:4, 1, ::], bdmat)],
-                            [adtens4_val, [[1, 2, 3, 4, 5]]], IncSubtensor)
+                                [inc_subtensor(adtens4[2, 2:4, 1, ::], bdmat)],
+                                [adtens4_val, [[1, 2, 3, 4, 5]]], IncSubtensor)
 
         self._compile_and_check([adtens4, advec],
-                            [inc_subtensor(adtens4[0, 1, ::, 4], advec)],
-                            [adtens4_val, [1, 2]], IncSubtensor)
+                                [inc_subtensor(adtens4[0, 1, ::, 4], advec)],
+                                [adtens4_val, [1, 2]], IncSubtensor)
 
         self._compile_and_check([adtens4, adscal],
-                            [inc_subtensor(adtens4[1:3, 1, ::, 2:4], adscal)],
-                            [adtens4_val, 1], IncSubtensor)
+                                [inc_subtensor(adtens4[1:3, 1, ::, 2:4], adscal)],
+                                [adtens4_val, 1], IncSubtensor)
 
         self._compile_and_check([adtens4, bdtens4],
-                            [set_subtensor(adtens4[::, 2:4, ::, ::], bdtens4)],
-                            [adtens4_val, [[[[1, 2, 3, 4, 5]]]]], IncSubtensor,
-                            warn=False)
+                                [set_subtensor(adtens4[::, 2:4, ::, ::], bdtens4)],
+                                [adtens4_val, [[[[1, 2, 3, 4, 5]]]]], IncSubtensor,
+                                warn=False)
 
         self._compile_and_check([adtens4, bdmat],
-                            [set_subtensor(adtens4[2, 2:4, 1, ::], bdmat)],
-                            [adtens4_val, [[1, 2, 3, 4, 5]]], IncSubtensor)
+                                [set_subtensor(adtens4[2, 2:4, 1, ::], bdmat)],
+                                [adtens4_val, [[1, 2, 3, 4, 5]]], IncSubtensor)
 
         self._compile_and_check([adtens4, advec],
-                            [set_subtensor(adtens4[0, 1, ::, 4], advec)],
-                            [adtens4_val, [1, 2]], IncSubtensor)
+                                [set_subtensor(adtens4[0, 1, ::, 4], advec)],
+                                [adtens4_val, [1, 2]], IncSubtensor)
 
         self._compile_and_check([adtens4, adscal],
-                            [set_subtensor(adtens4[1:3, 1, ::, 2:4], adscal)],
-                            [adtens4_val, 1], IncSubtensor)
+                                [set_subtensor(adtens4[1:3, 1, ::, 2:4], adscal)],
+                                [adtens4_val, 1], IncSubtensor)
 
         # AdvancedIncSubtensor1
         admat = dmatrix()
@@ -1695,39 +1692,39 @@ class TestInferShape(utt.InferShapeTester):
         admat_val = rand(5, 4)
         aivec_val = [2, 3]
         self._compile_and_check([admat, bdmat],
-                            [set_subtensor(admat[aivec_val], bdmat)],
-                            [admat_val, [[1, 2, 3, 4]]], AdvancedIncSubtensor1)
+                                [set_subtensor(admat[aivec_val], bdmat)],
+                                [admat_val, [[1, 2, 3, 4]]], AdvancedIncSubtensor1)
 
         aivec_val = [1, 3, 2]
         self._compile_and_check([admat, advec],
-                            [set_subtensor(admat[aivec_val], advec)],
-                            [admat_val, [1, 2, 3, 4]], AdvancedIncSubtensor1)
+                                [set_subtensor(admat[aivec_val], advec)],
+                                [admat_val, [1, 2, 3, 4]], AdvancedIncSubtensor1)
 
         aivec_val = [0, 3, 0]
         self._compile_and_check([admat, adscal],
-                            [set_subtensor(admat[aivec_val], adscal)],
-                            [admat_val, 1], AdvancedIncSubtensor1)
+                                [set_subtensor(admat[aivec_val], adscal)],
+                                [admat_val, 1], AdvancedIncSubtensor1)
 
         bdtens4 = dtensor4()
         adtens4_val = rand(4, 3, 2, 5)
         aivec_val = [2, 3]
         self._compile_and_check([adtens4, bdtens4],
-                            [set_subtensor(adtens4[aivec_val], bdtens4)],
-                            [adtens4_val, [[[[1, 2, 3, 4, 5]]]]],
-                            AdvancedIncSubtensor1,
-                            warn=False)
+                                [set_subtensor(adtens4[aivec_val], bdtens4)],
+                                [adtens4_val, [[[[1, 2, 3, 4, 5]]]]],
+                                AdvancedIncSubtensor1,
+                                warn=False)
 
         aivec_val = [1, 3, 2]
         self._compile_and_check([adtens4, advec],
-                            [set_subtensor(adtens4[aivec_val], advec)],
-                            [adtens4_val, [1, 2, 3, 4, 5]],
-                            AdvancedIncSubtensor1)
+                                [set_subtensor(adtens4[aivec_val], advec)],
+                                [adtens4_val, [1, 2, 3, 4, 5]],
+                                AdvancedIncSubtensor1)
 
         aivec_val = [0, 3, 0]
         self._compile_and_check([adtens4, adscal],
-                            [set_subtensor(adtens4[aivec_val], adscal)],
-                            [adtens4_val, 1],
-                            AdvancedIncSubtensor1)
+                                [set_subtensor(adtens4[aivec_val], adscal)],
+                                [adtens4_val, 1],
+                                AdvancedIncSubtensor1)
 
         aivec_val = [2, 3]
         self._compile_and_check([admat, bdmat],
@@ -1737,43 +1734,43 @@ class TestInferShape(utt.InferShapeTester):
 
         aivec_val = [1, 3, 2]
         self._compile_and_check([admat, advec],
-                            [inc_subtensor(admat[aivec_val], advec)],
-                            [admat_val, [1, 2, 3, 4]], AdvancedIncSubtensor1)
+                                [inc_subtensor(admat[aivec_val], advec)],
+                                [admat_val, [1, 2, 3, 4]], AdvancedIncSubtensor1)
 
         aivec_val = [0, 3, 0]
         self._compile_and_check([admat, adscal],
-                            [inc_subtensor(admat[aivec_val], adscal)],
-                            [admat_val, 1], AdvancedIncSubtensor1)
+                                [inc_subtensor(admat[aivec_val], adscal)],
+                                [admat_val, 1], AdvancedIncSubtensor1)
 
         bdtens4 = dtensor4()
         adtens4_val = rand(4, 3, 2, 5)
         aivec_val = [2, 3]
         self._compile_and_check([adtens4, bdtens4],
-                            [inc_subtensor(adtens4[aivec_val], bdtens4)],
-                            [adtens4_val, [[[[1, 2, 3, 4, 5]]],
-                                           [[[6, 7, 8, 9, 10]]]]],
-                            AdvancedIncSubtensor1,
-                            warn=False)
+                                [inc_subtensor(adtens4[aivec_val], bdtens4)],
+                                [adtens4_val, [[[[1, 2, 3, 4, 5]]],
+                                               [[[6, 7, 8, 9, 10]]]]],
+                                AdvancedIncSubtensor1,
+                                warn=False)
 
         aivec_val = [1, 2, 1]
         self._compile_and_check([adtens4, advec],
-                            [inc_subtensor(adtens4[aivec_val], advec)],
-                            [adtens4_val, [1, 2, 3, 4, 5]],
-                            AdvancedIncSubtensor1)
+                                [inc_subtensor(adtens4[aivec_val], advec)],
+                                [adtens4_val, [1, 2, 3, 4, 5]],
+                                AdvancedIncSubtensor1)
 
         aivec_val = [0, 3, 0]
         self._compile_and_check([adtens4, adscal],
-                            [inc_subtensor(adtens4[aivec_val], adscal)],
-                            [adtens4_val, 2],
-                            AdvancedIncSubtensor1)
+                                [inc_subtensor(adtens4[aivec_val], adscal)],
+                                [adtens4_val, 2],
+                                AdvancedIncSubtensor1)
 
         # AdvancedIncSubtensor
         aivec_val = [1, 3, 2]
         bivec_val = [0, 3, 3]
         advec_val = [23, 24, 25]
         self._compile_and_check([admat, advec],
-                    [set_subtensor(admat[aivec_val, bivec_val], advec)],
-                    [admat_val, advec_val], AdvancedIncSubtensor)
+                                [set_subtensor(admat[aivec_val, bivec_val], advec)],
+                                [admat_val, advec_val], AdvancedIncSubtensor)
 
     def test_adv_sub(self):
         admat = dmatrix()
