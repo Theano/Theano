@@ -4,8 +4,10 @@ sudo: false
 cache:
   directories:
     - $HOME/download
+    - $HOME/download/miniconda.sh
     - $HOME/.cache/pip
     - $HOME/.theano
+
 
 language: python
 python:
