@@ -420,7 +420,7 @@ def _ldflags(ldflags_str, libs, flags, libs_dir, include_dir):
         l = _ldflags(ldflags_str=ldflags_str, libs=True,
                      flags=False, libs_dir=False, include_dir=False)
         for d in dirs:
-            for f in os.listdir(d):
+            for f in os.listdir(d.strip('"')):
                 if (f.endswith('.so') or f.endswith('.dylib') or
                         f.endswith('.dll')):
                     if any([f.find(ll) >= 0 for ll in l]):
@@ -433,10 +433,8 @@ def _ldflags(ldflags_str, libs, flags, libs_dir, include_dir):
 
     for t in ldflags_str.split():
         # Remove extra quote.
-        if t.startswith("'") or t.startswith('"'):
-            t = t[1:]
-        if t.endswith("'") or t.endswith('"'):
-            t = t[:-1]
+        if (t.startswith("'") and t.endswith("'")) or (t.startswith('"') and t.endswith('"')):
+            t = t[1:-1]
 
         try:
             t0, t1, t2 = t[0:3]
