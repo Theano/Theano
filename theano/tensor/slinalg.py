@@ -202,10 +202,16 @@ class Solve(Op):
         b = as_tensor_variable(b)
         assert A.ndim == 2
         assert b.ndim in [1, 2]
-        otype = tensor.tensor(
+
+        # infer dtype by solving the most simple
+        # case with (1, 1) matrices
+        o_dtype = scipy.linalg.solve(
+            numpy.eye(1).astype(A.dtype),
+            numpy.eye(1).astype(b.dtype)).dtype
+        x = tensor.tensor(
             broadcastable=b.broadcastable,
-            dtype=(A * b).dtype)
-        return Apply(self, [A, b], [otype])
+            dtype=o_dtype)
+        return Apply(self, [A, b], [x])
 
     def perform(self, node, inputs, output_storage):
         A, b = inputs
@@ -263,10 +269,31 @@ class Solve(Op):
             A_bar = tensor.triu(A_bar)
         return [A_bar, b_bar]
 
-solve = Solve()  # general solve
+solve = Solve()
+"""
+Solves the equation ``a x = b`` for x, where ``a`` is a matrix and
+``b`` can be either a vector or a matrix.
+
+Note
+
+Parameters
+----------
+a : (M, M) symbolix matrix
+    A square matrix
+b : (M,) or (M, N) symbolic vector or matrix
+    Right hand side matrix in ``a x = b``
+
+
+Returns
+-------
+x : (M, ) or (M, N) symbolic vector or matrix
+    x will have the same shape as b
+"""
 # lower and upper triangular solves
 solve_lower_triangular = Solve(A_structure='lower_triangular', lower=True)
+"""Optimized implementation of :func:`theano.tensor.slinalg.solve` when A is lower triangular."""
 solve_upper_triangular = Solve(A_structure='upper_triangular', lower=False)
+"""Optimized implementation of :func:`theano.tensor.slinalg.solve` when A is upper triangular."""
 
 # TODO: Optimizations to replace multiplication by matrix inverse
 #      with solve() Op (still unwritten)

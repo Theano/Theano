@@ -7,6 +7,8 @@ from numpy.testing import assert_array_almost_equal
 from numpy.testing import dec, assert_array_equal, assert_allclose
 from numpy import inf
 
+import itertools
+
 import theano
 from theano import tensor, function
 from theano.tensor.basic import _allclose
@@ -228,6 +230,27 @@ class test_Solve(utt.InferShapeTester):
         U_val = scipy.linalg.cholesky(A_val, lower=False)
         assert numpy.allclose(scipy.linalg.solve_triangular(U_val, b_val, lower=False),
                               upper_solve_func(U_val, b_val))
+
+    def test_solve_dtype(self):
+        if not imported_scipy:
+            raise SkipTest("Scipy needed for the Solve op.")
+
+        dtypes = ['uint8', 'uint16', 'uint32', 'uint64',
+                  'int8', 'int16', 'int32', 'int64',
+                  'float16', 'float32', 'float64']
+
+        A_val = numpy.eye(2)
+        b_val = numpy.ones((2, 1))
+
+        # try all dtype combinations
+        for A_dtype, b_dtype in itertools.product(dtypes, dtypes):
+            A = tensor.matrix(dtype=A_dtype)
+            b = tensor.matrix(dtype=b_dtype)
+            x = solve(A, b)
+            fn = function([A, b], x)
+            x_result = fn(A_val.astype(A_dtype), b_val.astype(b_dtype))
+
+            assert x.dtype == x_result.dtype
 
     def verify_solve_grad(self, m, n, A_structure, lower, rng):
         # ensure diagonal elements of A relatively large to avoid numerical
