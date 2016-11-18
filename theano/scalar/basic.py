@@ -3853,7 +3853,6 @@ class Composite(ScalarOp):
         self.nin = len(inputs)
         self.nout = len(outputs)
         self.init_fgraph()       # self.fgraph
-        self.init_c_code()
         # Postpone the creation in case it isn't needed.
         #  self.init_name()      # self.name
         self.name = None

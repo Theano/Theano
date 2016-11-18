@@ -471,7 +471,7 @@ second dimension
 
     """
 
-    __props__ = ("scalar_op", "inplace_pattern", "name", "nfunc_spec", "openmp")
+    __props__ = ("scalar_op", "inplace_pattern")
 
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
                  nfunc_spec=None, openmp=None):
