@@ -1,10 +1,13 @@
 from __future__ import absolute_import, print_function, division
 import os.path
 
+import theano
 from theano import Apply
 from theano.tensor.basic import as_tensor_variable
+from theano.tensor.signal.pool import Pool
 
-from .basic_ops import CGpuKernelBase, infer_context_name, as_gpuarray_variable
+from .basic_ops import (CGpuKernelBase, infer_context_name,
+                        as_gpuarray_variable, gpu_contiguous)
 
 try:
     import pygpu
@@ -80,6 +83,35 @@ class GpuPool(CGpuKernelBase):
                 ('MAX_POOL', max_pool),
                 ('SUM_MODE', sum_mode)]
 
+    def infer_shape(self, node, in_shapes):
+        ws, stride, pad = [node.inputs[1], node.inputs[2], node.inputs[3]]
+        shp = Pool.out_shape(in_shapes[0], ws, self.ignore_border, stride,
+                             pad, self.ndim)
+        return [shp]
+
+    def grad(self, inp, grads):
+        img, ws, stride, pad = inp
+        grad, = grads
+
+        grad = gpu_contiguous(grad)
+
+        disc = [theano.gradient.DisconnectedType()() for i in inp[1:]]
+        if self.mode == 'max':
+            out = self(inp, ws, stride, pad)
+            g_out = GpuMaxPoolGrad(ndim=self.ndim,
+                                   ignore_border=self.ignore_border)(
+                                       img, out, grad, ws, stride, pad)
+            return [g_out] + disc
+        else:
+            g_out = GpuAveragePoolGrad(ndim=self.ndim,
+                                       ignore_border=self.ignore_border,
+                                       mode=self.mode)(
+                                           img, grad, ws, stride, pad)
+            return [g_out] + disc
+
+    def connection_pattern(self, node):
+        return [[1], [0], [0], [0]]
+
 
 class GpuMaxPoolGrad(CGpuKernelBase):
     """
@@ -135,6 +167,22 @@ class GpuMaxPoolGrad(CGpuKernelBase):
 
     def get_params(self, node):
         return node.inputs[0].type.context
+
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[0]]
+
+    def grad(self, inp, grads):
+        x, maxout, gz, ws, stride, pad = inp
+        ggx, = grads
+        return ([theano.tensor.zeros_like(x),
+                 theano.tensor.zeros_like(maxout),
+                 GpuDownsampleFactorMaxGradGrad(ndim=self.ndim,
+                                                ignore_border=self.ignore_border)(
+                                                    x, maxout, ggx, ws, stride, pad)] +
+                [theano.tensor.DisconnectedType()() for i in inp[3:]])
+
+    def connection_pattern(self, node):
+        return [[1], [1], [1], [0], [0], [0]]
 
 
 class GpuAveragePoolGrad(CGpuKernelBase):
@@ -200,6 +248,21 @@ class GpuAveragePoolGrad(CGpuKernelBase):
         return [('INC_PAD', inc_pad),
                 ('SUM_MODE', sum_mode)]
 
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[0]]
+
+    def grad(self, inp, grads):
+        x, gz, ws, stride, pad = inp
+        ggx, = grads
+        return ([theano.tensor.zeros_like(x),
+                 GpuPool(ignore_border=self.ignore_border,
+                         ndim=self.ndim, mode=self.mode)(
+                             ggx, ws, stride, pad)] +
+                [theano.gradient.DisconnectedType()() for i in inp[2:]])
+
+    def connection_pattern(self, node):
+        return [[1], [1], [0], [0], [0]]
+
 
 class GpuDownsampleFactorMaxGradGrad(CGpuKernelBase):
     """
@@ -255,3 +318,19 @@ class GpuDownsampleFactorMaxGradGrad(CGpuKernelBase):
 
     def get_params(self, node):
         return node.inputs[0].type.context
+
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[1]]
+
+    def grad(self, inp, grads):
+        x, maxout, ggx, ws, stride, pad = inp
+        gz, = grads
+        return ([theano.tensor.zeros_like(x),
+                theano.tensor.zeros_like(maxout),
+                GpuMaxPoolGrad(ignore_border=self.ignore_border,
+                               ndim=self.ndim)(
+                                   x, maxout, gz, ws, stride, pad)] +
+                [theano.gradient.DisconnectedType()() for i in inp[3:]])
+
+    def connection_pattern(self, node):
+        return [[1], [1], [1], [0], [0], [0]]
