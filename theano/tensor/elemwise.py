@@ -480,7 +480,7 @@ second dimension
         self.name = name
         self.scalar_op = scalar_op
         self.inplace_pattern = frozendict(inplace_pattern)
-        self.destroy_map = dict((o, [i]) for o, i in frozendict(inplace_pattern).items())
+        self.destroy_map = dict((o, [i]) for o, i in self.inplace_pattern.items())
 
         self.ufunc = None
         self.nfunc = None
@@ -503,6 +503,7 @@ second dimension
         super(Elemwise, self).__setstate__(d)
         self.ufunc = None
         self.nfunc = None
+        self.inplace_pattern = frozendict(self.inplace_pattern)
         if getattr(self, 'nfunc_spec', None):
             self.nfunc = getattr(numpy, self.nfunc_spec[0])
         elif 0 < self.scalar_op.nin < 32:
