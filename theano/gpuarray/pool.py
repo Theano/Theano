@@ -48,12 +48,10 @@ class GpuPool(CGpuKernelBase):
             pad = (0,) * nd
         elif isinstance(pad, (tuple, list)):
             if max(pad) != 0 and not self.ignore_border:
-                raise NotImplementedError(
-                    'Padding works only with ignore_border=True')
+                raise ValueError('Padding works only with ignore_border=True')
             if isinstance(ws, (tuple, list)):
                 if any(pad[i] >= ws[i] for i in range(nd)):
-                    raise NotImplementedError(
-                        'Padding must be smaller than strides')
+                    raise ValueError('Padding must be smaller than strides')
 
         ws = as_tensor_variable(ws)
         stride = as_tensor_variable(stride)
@@ -177,6 +175,9 @@ class GpuAveragePoolGrad(CGpuKernelBase):
             stride = ws
         if pad is None:
             pad = (0,) * nd
+        elif isinstance(pad, (tuple, list)):
+            if max(pad) != 0 and not self.mode == 'average_exc_pad':
+                raise ValueError('Padding must be zero for average_exc_pad')
         ws = as_tensor_variable(ws)
         stride = as_tensor_variable(stride)
         pad = as_tensor_variable(pad)

@@ -1,4 +1,5 @@
 from __future__ import absolute_import, print_function, division
+import unittest
 
 import copy
 import itertools
@@ -15,6 +16,36 @@ from .config import mode_with_gpu, mode_without_gpu
 from .test_basic_ops import rand
 from ..pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad,
                     GpuDownsampleFactorMaxGradGrad)
+
+
+class TestPool(unittest.TestCase):
+
+    def test_pool_py_interface(self):
+        shp = (2, 2, 2, 2)
+        inp = theano.shared(rand(*shp), 'a')
+        inp = tensor.as_tensor_variable(inp)
+        with self.assertRaises(ValueError):
+            # test when pad >= ws
+            ds_op = GpuPool(ignore_border=True, ndim=2)
+            ds_op(inp, [2, 2], pad=[3, 3])
+        with self.assertRaises(ValueError):
+            # test when ignore_border and pad >= 0
+            ds_op = GpuPool(ignore_border=False, ndim=2)
+            ds_op(inp, [2, 2], pad=[1, 1])
+
+    def test_pool_c_interface(self):
+        gpu_mode = copy.copy(mode_with_gpu).excluding("cudnn")
+        gpu_mode.check_py_code = False
+
+        shp = (2, 2, 2, 2)
+        inp = theano.shared(rand(*shp), 'a')
+        inp = tensor.as_tensor_variable(inp)
+        with self.assertRaises(ValueError):
+            # test when ignore_border and pad >= 0
+            ds_op = GpuPool(ignore_border=False, ndim=2)
+            pad = tensor.as_tensor_variable([1, 1])
+            f = theano.function([], ds_op(inp, [2, 2], pad=pad), mode=gpu_mode)
+            f()
 
 
 def test_pool2d():
