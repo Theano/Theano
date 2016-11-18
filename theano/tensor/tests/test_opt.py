@@ -6809,15 +6809,3 @@ def test_local_log_sum_exp3():
     optimised_ret = f(x_val)
 
     assert numpy.allclose(optimised_ret, 100.)
-
-
-if __name__ == '__main__':
-    t = TestMakeVector('setUp')
-    t.setUp()
-    # t.test_perform()
-    t.test_infer_shape()
-    test_subtensor_inc_subtensor()
-    """
-#    unittest.main()
-    test_fusion().tes_memory_leak()
-    """
