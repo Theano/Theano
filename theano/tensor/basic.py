@@ -6026,7 +6026,7 @@ numpy_diagonal_return_view = numpy.may_share_memory(numpy.diagonal(x), x)
 del x
 
 
-class Diagonal(Op):
+class ExtractDiag(Op):
     """Return specified diagonals.
 
     Parameters
@@ -6040,10 +6040,18 @@ class Diagonal(Op):
         A vector representing the diagonal elements.
 
     """
-    __props__ = ("offset", "axis1", "axis2")
+    __props__ = ("offset", "axis1", "axis2", "view")
 
-    def __init__(self, offset=0, axis1=0, axis2=1):
-        if numpy_diagonal_return_view:
+    def __init__(self, offset=0, axis1=0, axis2=1, view=False):
+        self.view = view
+        if self.view and not numpy_diagonal_return_view:
+            warnings.warn("View will forced to False. Diagonal property view is "
+                          "set to True but numpy version %s and prior versions of "
+                          "numpy.diagonal() do not return a view. Update "
+                          "numpy to use Diagonal(view=True)" %
+                          numpy.version.version)
+            self.view = False
+        if self.view:
             self.view_map = {0: [0]}
         self.offset = offset
         self.axis1 = axis1
@@ -6051,9 +6059,13 @@ class Diagonal(Op):
 
     def make_node(self, x):
         x = as_tensor_variable(x)
-        assert x.ndim >= 2
-        return Apply(self, [x], [tensor(dtype=x.dtype,
-                                        broadcastable=[False] * (x.ndim - 1))])
+
+        if x.ndim < 2:
+            raise ValueError('Diagonal needs an input with 2 or more '
+                             'dimensions', x)
+        return Apply(self, [x], [x.type.__class__(
+            dtype=x.dtype,
+            broadcastable=[False] * (x.ndim - 1))()])
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
