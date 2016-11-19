@@ -20,7 +20,7 @@ class OpFromGraphBase(gof.Op):
     def __init__(self, inputs, outputs, grad_overrides=None, **kwargs):
         if not isinstance(outputs, list):
             raise TypeError('outputs must be list', outputs)
-        for i in inputs+outputs:
+        for i in inputs + outputs:
             if not isinstance(i, gof.Variable):
                 raise TypeError(
                     'inputs and outputs must be Variable instances', i)
@@ -75,7 +75,7 @@ class OpFromGraphBase(gof.Op):
             if isinstance(grad_ops_l, list):
                 assert len(grad_ops_l) <= len(self.internal_inputs)
                 if len(grad_ops_l) < len(self.internal_inputs):
-                    grad_ops_l += [None]*(
+                    grad_ops_l += [None] * (
                         len(self.internal_inputs) - len(grad_ops_l))
                 # It is normal if some inputs are not needed in order
                 # to compute the gradient, so we ignore them.
@@ -94,7 +94,7 @@ class OpFromGraphBase(gof.Op):
                 # additional filtering is needed
                 def grad_ops(inps, grds):
                     # nonlocal gs, grad_ops_l
-                    return [(go(inps, grds) if ov else go(*(inps+grds)))
+                    return [(go(inps, grds) if ov else go(*(inps + grds)))
                             for go, ov in izip(gs, grad_ops_l)]
             else:
                 grad_ops = grad_ops_l
@@ -115,7 +115,7 @@ class OpFromGraphBase(gof.Op):
 
             def grad_ops(inps, grds):
                 # nonlocal grad_ops_l
-                return [go(*(inps+grds)) for go in grad_ops_l]
+                return [go(*(inps + grds)) for go in grad_ops_l]
             self.grad_ops = grad_ops
         self.cached_grad_ops = True
         return grad_ops(inputs, output_grads)
@@ -194,7 +194,7 @@ class OpFromGraphInline(OpFromGraphBase):
     """
     def perform(self, node, inputs, outputs):
         raise RuntimeError(
-            type(self).__name__+' is not supposed to be executed at runtime')
+            type(self).__name__ + ' is not supposed to be executed at runtime')
 
 
 @gof.local_optimizer([OpFromGraphInline])

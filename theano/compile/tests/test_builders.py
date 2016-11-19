@@ -126,11 +126,11 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         def go(inps, gs):
             x, y = inps
             g = gs[0]
-            return [g*y*2, g*x*1.5]
+            return [g * y * 2, g * x * 1.5]
         # no override case is coverd in "grad" test
 
         # single override case
-        op_mul = cls_ofg([x, y], [x*y], grad_overrides=go)
+        op_mul = cls_ofg([x, y], [x * y], grad_overrides=go)
         xx, yy = T.vector('xx'), T.vector('yy')
         zz = T.sum(op_mul(xx, yy))
         dx, dy = T.grad(zz, [xx, yy])
@@ -138,23 +138,23 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         xv = numpy.random.rand(16).astype(config.floatX)
         yv = numpy.random.rand(16).astype(config.floatX)
         dxv, dyv = fn(xv, yv)
-        assert numpy.allclose(yv*2, dxv)
-        assert numpy.allclose(xv*1.5, dyv)
+        assert numpy.allclose(yv * 2, dxv)
+        assert numpy.allclose(xv * 1.5, dyv)
 
         # list override case
         def go1(inps, gs):
             x, w, b = inps
             g = gs[0]
-            return g*w*2
+            return g * w * 2
 
         def go2(inps, gs):
             x, w, b = inps
             g = gs[0]
-            return g*x*1.5
+            return g * x * 1.5
 
         w, b = T.vectors('wb')
         # we make the 3rd gradient default (no override)
-        op_linear = cls_ofg([x, w, b], [x*w+b], grad_overrides=[go1, go2])
+        op_linear = cls_ofg([x, w, b], [x * w + b], grad_overrides=[go1, go2])
         xx, ww, bb = T.vector('xx'), T.vector('yy'), T.vector('bb')
         zz = T.sum(op_linear(xx, ww, bb))
         dx, dw, db = T.grad(zz, [xx, ww, bb])
@@ -163,16 +163,16 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         wv = numpy.random.rand(16).astype(config.floatX)
         bv = numpy.random.rand(16).astype(config.floatX)
         dxv, dwv, dbv = fn(xv, wv, bv)
-        assert numpy.allclose(wv*2, dxv)
-        assert numpy.allclose(xv*1.5, dwv)
+        assert numpy.allclose(wv * 2, dxv)
+        assert numpy.allclose(xv * 1.5, dwv)
         assert numpy.allclose(numpy.ones(16, dtype=config.floatX), dbv)
 
     @test_params
     def test_nested(self, cls_ofg):
         x, y = T.vectors('xy')
-        u, v = x+y, x-y
+        u, v = x + y, x - y
         op_ft = cls_ofg([x, y], [u, v])
-        op_ift = cls_ofg([x, y], [u/2, v/2])
+        op_ift = cls_ofg([x, y], [u / 2, v / 2])
 
         xx, yy = T.vector('xx'), T.vector('yy')
         xx2, yy2 = op_ift(*op_ft(xx, yy))
