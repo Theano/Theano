@@ -18,7 +18,6 @@ test_params = unittest_tools.parameterized.expand(
 
 class T_OpFromGraph(unittest_tools.InferShapeTester):
 
-
     @test_params
     def test_straightforward(self, cls_ofg):
         x, y, z = T.matrices('xyz')
@@ -122,7 +121,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
 
     @test_params
     def test_grad_override(self, cls_ofg):
-        x,y = T.vectors('xy')
+        x, y = T.vectors('xy')
 
         def go(inps, gs):
             x, y = inps
@@ -132,8 +131,8 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
 
         # single override case
         op_mul = cls_ofg([x, y], [x*y], grad_overrides=go)
-        xx,yy = T.vector('xx'), T.vector('yy')
-        zz = T.sum(op_mul(xx,yy))
+        xx, yy = T.vector('xx'), T.vector('yy')
+        zz = T.sum(op_mul(xx, yy))
         dx, dy = T.grad(zz, [xx, yy])
         fn = function([xx, yy], [dx, dy])
         xv = numpy.random.rand(16).astype(config.floatX)
@@ -247,4 +246,3 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
                                  np.ones([3, 4], dtype=config.floatX)],
                                 cls_ofg,
                                 check_topo=is_compile)
-
