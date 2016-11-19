@@ -124,12 +124,13 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
     def test_grad_override(self, cls_ofg):
         x,y = T.vectors('xy')
 
-        def go(args):
-            x, y, g = args
+        def go(inps, gs):
+            x, y = inps
+            g = gs[0]
             return [g*y*2, g*x*1.5]
-        # no override is coverd in "grad" test
+        # no override case is coverd in "grad" test
 
-        # single override
+        # single override case
         op_mul = cls_ofg([x, y], [x*y], grad_overrides=go)
         xx,yy = T.vector('xx'), T.vector('yy')
         zz = T.sum(op_mul(xx,yy))
@@ -141,13 +142,15 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         assert numpy.allclose(yv*2, dxv)
         assert numpy.allclose(xv*1.5, dyv)
 
-        # list override
-        def go1(args):
-            x, w, b, g = args
+        # list override case
+        def go1(inps, gs):
+            x, w, b = inps
+            g = gs[0]
             return g*w*2
 
-        def go2(args):
-            x, w, b, g = args
+        def go2(inps, gs):
+            x, w, b = inps
+            g = gs[0]
             return g*x*1.5
 
         w, b = T.vectors('wb')
