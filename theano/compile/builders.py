@@ -93,7 +93,7 @@ class OpFromGraphBase(gof.Op):
                 # since OpFromGraphBase only accepts input sequence,
                 # additional filtering is needed
                 def grad_ops(inps, grds):
-                    nonlocal gs, grad_ops_l
+                    # nonlocal gs, grad_ops_l
                     return [(go(inps, grds) if ov else go(*(inps+grds)))
                             for go, ov in izip(gs, grad_ops_l)]
             else:
@@ -114,7 +114,7 @@ class OpFromGraphBase(gof.Op):
                         grad_inps, [g], on_unused_input='ignore'))
 
             def grad_ops(inps, grds):
-                nonlocal grad_ops_l
+                # nonlocal grad_ops_l
                 return [go(*(inps+grds)) for go in grad_ops_l]
             self.grad_ops = grad_ops
         self.cached_grad_ops = True
