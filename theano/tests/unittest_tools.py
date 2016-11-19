@@ -244,9 +244,9 @@ class InferShapeTester(unittest.TestCase):
         # Check that the Op is removed from the compiled function.
         if check_topo:
             topo_shape = shapes_function.maker.fgraph.toposort()
+            topo_out = outputs_function.maker.fgraph.toposort()
             assert not any(isinstance(t.op, cls) for t in topo_shape)
-        topo_out = outputs_function.maker.fgraph.toposort()
-        assert any(isinstance(t.op, cls) for t in topo_out)
+            assert any(isinstance(t.op, cls) for t in topo_out)
         # Check that the shape produced agrees with the actual shape.
         numeric_outputs = outputs_function(*numeric_inputs)
         numeric_shapes = shapes_function(*numeric_inputs)

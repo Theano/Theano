@@ -6,37 +6,17 @@ import theano
 from theano import gof
 from theano.compat import izip
 from theano.compile.function_module import orig_function
-from theano.compile import SharedVariable, rebuild_collect_shared
-from theano.compile import optdb
+from theano.compile import SharedVariable, rebuild_collect_shared, optdb
 from theano.gof import ops_with_inner_function
 from theano.gof.graph import io_connection_pattern
 
 
-class BaseOpFromGraph(gof.Op):
+class OpFromGraphBase(gof.Op):
     """
-    General syntax is similar to theano.function
-    Currently does not support 'updates' or 'givens'argument
-
-    Parameters
-    ----------
-
-    inputs: list of variables
-    outputs: list of variables
-    grad_overrides: None or function or list of [None|function]
-        Used to override default gradient routine.
-        Overriding function must take two list as inputs: original inputs
-        and upstream gradients
-        If is None, will use default gradient routine.
-        If is function, must return list of Variable.
-        If is list, each function must return a single Variable. The order
-            of the list must corresponds to inputs
-
-    Notes
-    -----
-
-    You can use regular function for grad_overrides, but the function
-    must take (list of) Variable as input and output.
+    base class for Ops with custom inner graph
     """
+    # NOTE: if you make a subclass of this, make sure add it under:
+    #     theano/compile/tests/test_builders.py
     def __init__(self, inputs, outputs, grad_overrides=None, **kwargs):
         if not isinstance(outputs, list):
             raise TypeError('outputs must be list', outputs)
@@ -111,7 +91,7 @@ class BaseOpFromGraph(gof.Op):
                         disconnected_inputs='ignore'),
                     on_unused_input='ignore'
                 ) for go, inp in izip(grad_ops_l, self.internal_inputs)]
-                # since BaseOpFromGraph only accepts and outputs list,
+                # since OpFromGraphBase only accepts and outputs list,
                 # additional filtering is needed
                 grad_ops = lambda inps:[
                     (go(inps) if ov else go(*inps))
@@ -184,8 +164,10 @@ class BaseOpFromGraph(gof.Op):
     def perform(self, node, inputs, outputs):
         raise NotImplementedError()
 
-class OpFromGraphPrecompiled(BaseOpFromGraph):
-    """WRITEME"""
+class OpFromGraphPrecompiled(OpFromGraphBase):
+    """
+    The Op's inner graph is compiled into a theano function.
+    """
     def prepare_node(self, node, storage_map, compute_map, impl):
         if not hasattr(self, "fn") and impl == 'py':
             self.fn = orig_function(self.internal_inputs,
@@ -200,11 +182,12 @@ class OpFromGraphPrecompiled(BaseOpFromGraph):
             # we wont need this copy anymore
             output[0] = variable.copy()
 
-class OpFromGraphInline(BaseOpFromGraph):
-    """WRITEME"""
+class OpFromGraphInline(OpFromGraphBase):
+    """
+    The Op's inner graph is expanded into the outer graph at compile time
+    """
     def perform(self, node, inputs, outputs):
-        raise RuntimeError('OpFromGraphInline is not supposed to be executed at runtime')
-        pass
+        raise RuntimeError(type(self).__name__+' is not supposed to be executed at runtime')
 
 @gof.local_optimizer([OpFromGraphInline])
 def inline_ofg_expansion(node):
@@ -227,23 +210,37 @@ ops_with_inner_function[OpFromGraphPrecompiled] = 'fn'
 # for backward compatibility
 OpFromGraph = OpFromGraphPrecompiled
 
-# APIs for OpFromGraph*
+
+# API for OpFromGraph*
 def op_from_graph(
     inputs, outputs, inline=False, grad_overrides=None, **kwargs):
-    cls_opfromgraph = OpFromGraphInline if inline else OpFromGraphPrecompiled
-    return cls_opfromgraph(
-        inputs, outputs, grad_overrides=grad_overrides, **kwargs)
-
-#BELOW is the original OpFromGraph
-'''
-class OpFromGraph(gof.Op):
     """
     This creates an `Op` from inputs and outputs lists of variables.
-
     The signature is similar to theano.function() and the resulting
     `Op`'s perform will do the same operation as::
 
         orig_function(inputs, outputs, **kwargs)
+    Currently does not support 'updates' or 'givens' argument.
+
+    Parameters
+    ----------
+
+    inputs: list of variables
+    outputs: list of variables
+    inline: bool
+        if True, will cause the Op's original graph being used during
+        compilation, otherwise will use a pre-compiled function inside.
+    grad_overrides: None | function | list of (None|function)
+        Used to override default gradient routine.
+        Overriding function must take two list as inputs: original inputs
+        and upstream gradients
+        If is None, will use default gradient routine.
+        If is function, must return list of Variable.
+        If is list, each function must return a single Variable. The order
+            of the list must corresponds to inputs
+
+    Notes
+    -----
 
     TODO:
         - examples for a multi-layer mlp. where?
@@ -251,13 +248,14 @@ class OpFromGraph(gof.Op):
           gof.opt.is_same_graph_with_merge(op1.internal_outputs, op2,
           internal_outputs)
         - c_code() to remove the double overhead?
-        - opt to unfold it, work inplace on inputs
         - grad() make it support DisconnectedType and the new interface
         - check how it works with updates.
         - add test with constant as input or inside the inner graph.
         - Add support for the GPU? Probably just need an opt to remove transfer
         - Add support to pickle this Op.
         - Add support/test with random generator
+        - Recursion detection to prevent Op "forkbomb", either set depth
+          limit or manually check them.
 
     Notes
     -----
@@ -265,6 +263,8 @@ class OpFromGraph(gof.Op):
       invisible to the user. They can be as input to the node or in the
       inner graph.
     - We support unused inputs. This is needed for the grad.
+    - inline=True will cause better optimization at the cost of longer
+      compilation, only works with optimizer "fast_run" or "fast_compile"
 
     Examples
     --------
@@ -273,10 +273,10 @@ class OpFromGraph(gof.Op):
 
     .. code-block:: python
 
-        from theano import function, OpFromGraph, tensor
+        from theano import function, op_from_graph, tensor
         x, y, z = tensor.scalars('xyz')
         e = x + y * z
-        op = OpFromGraph([x, y, z], [e])
+        op = op_from_graph([x, y, z], [e])
         # op behaves like a normal theano op
         e2 = op(x, y, z) + op(z, y, x)
         fn = function([x, y, z], [e2])
@@ -287,134 +287,39 @@ class OpFromGraph(gof.Op):
 
         import numpy as np
         import theano
-        from theano import config, function, OpFromGraph, tensor
+        from theano import config, function, op_from_graph, tensor
         x, y, z = tensor.scalars('xyz')
         s = theano.shared(np.random.rand(2, 2).astype(config.floatX))
         e = x + y * z + s
-        op = OpFromGraph([x, y, z], [e])
+        op = op_from_graph([x, y, z], [e])
         # op behaves like a normal theano op
         e2 = op(x, y, z) + op(z, y, x)
         fn = function([x, y, z], [e2])
 
+    Example 3 override gradient
+
+    .. code-block:: python
+
+        from thenao import funciton, op_from_graph, tensor, grad
+        x, y, z = tensor.scalars('xyz')
+        e = x + y * z
+        def rescale_dy(inps, grads):
+            x, y, z = inps
+            g = grads
+            return z*2
+
+        op = op_from_graph(
+            [x, y, z], [e], grad_overrides=[None, rescale_dy, None])
+        e2 = op(x, y, z)
+        dx, dy, dz = grad(e2, [x, y, z])
+        fn = function([x, y, z], [dx, dy, dz])
+        fn(2., 3., 4.) # [1., 8., 3.]
+
     """
+    if inline and theano.config.optimizer in ['fast_run', 'fast_compile']:
+        cls_opfromgraph = OpFromGraphInline
+    else:
+        cls_opfromgraph = OpFromGraphPrecompiled
+    return cls_opfromgraph(
+        inputs, outputs, grad_overrides=grad_overrides, **kwargs)
 
-    def __init__(self, inputs, outputs, **kwargs):
-        if not isinstance(outputs, list):
-            raise TypeError('outputs must be list', outputs)
-        for i in inputs + outputs:
-            if not isinstance(i, gof.Variable):
-                raise TypeError(
-                    'inputs and outputs must be Variable instances', i)
-        if 'updates' in kwargs or 'givens' in kwargs:
-            raise TypeError('updates and givens are not allowed in kwargs')
-
-        # To correctly support shared variables the inner fct should
-        # not see them. Otherwise there is a problem with the gradient.
-        self.shared_inputs = [var for var in gof.graph.inputs(outputs)
-                              if isinstance(var, SharedVariable)]
-        shared_vars = [var.type() for var in self.shared_inputs]
-        new = rebuild_collect_shared(outputs, inputs=inputs + shared_vars,
-                                     replace=dict(izip(self.shared_inputs,
-                                                       shared_vars)),
-                                     copy_inputs_over=False)
-        (internal_inputs, internal_outputs,
-         [clone_d, update_d, update_expr, shared_inputs]) = new
-        assert len(internal_inputs) == len(inputs) + len(self.shared_inputs)
-        assert len(internal_outputs) == len(outputs)
-        assert not update_d
-        assert not update_expr
-        assert not shared_inputs
-
-        self.internal_inputs = internal_inputs
-        self.internal_outputs = internal_outputs
-        self.inputs = inputs
-        self.outputs = outputs
-        self.kwargs = kwargs
-        self.input_types = [input.type for input in inputs]
-        self.output_types = [output.type for output in outputs]
-
-    def __eq__(self, other):
-        # TODO: recognize a copy
-        return self is other
-
-    def __hash__(self):
-        # TODO: use internal variables in hash
-        return hash(type(self))
-
-    def make_node(self, *inputs):
-        for input, type in zip(inputs, self.input_types):
-            if not type == input.type:
-                raise TypeError("Wrong type, expected %s but got %s" %
-                                (type, input.type))
-        return gof.Apply(self,
-                         list(inputs) + self.shared_inputs,
-                         [type() for type in self.output_types])
-
-    def prepare_node(self, node, storage_map, compute_map, impl):
-        if not hasattr(self, "fn") and impl == 'py':
-            self.fn = orig_function(self.internal_inputs,
-                                    self.internal_outputs,
-                                    **self.kwargs)
-
-    def perform(self, node, inputs, outputs):
-        variables = self.fn(*inputs)
-        assert len(variables) == len(outputs)
-        for output, variable in zip(outputs, variables):
-            # TODO: when function's output-borrowing semantics are correct,
-            # we wont need this copy anymore
-            output[0] = variable.copy()
-
-    def connection_pattern(self, node):
-        """
-        Return connection pattern of subfgraph defined by inputs and outputs.
-
-        """
-        return io_connection_pattern(self.internal_inputs, self.internal_outputs)
-
-    def infer_shape(self, node, shapes):
-        out_shp = theano.scan_module.scan_utils.infer_shape(self.internal_outputs,
-                                                            self.internal_inputs,
-                                                            shapes)
-
-        # Clone the output shape so that shape are computed from outer inputs.
-        # Note:
-        # Here we can do it more simply like:
-        #      ret = [theano.clone(shp, replace=repl) for shp in out_shp]
-        # But  doing it multiple time could duplicate common subgraph between
-        # each shape call. Theano optimizer will clean this up later, but this
-        # will ask extra work to the optimizer.
-        repl = dict(zip(self.internal_inputs, node.inputs))
-        cloned = theano.clone(reduce(tuple.__add__, out_shp), replace=repl)
-        ret = []
-        used = 0
-        for i in range(len(out_shp)):
-            nb = len(out_shp[i])
-            ret.append(cloned[used: used + nb])
-            used += nb
-
-        return ret
-
-    def grad(self, inputs, output_grads):
-        if hasattr(self, "grad_ops"):
-            grad_ops = self.grad_ops
-        else:
-            gs = theano.gradient.grad(cost=None,
-                                      known_grads=dict(izip(self.internal_outputs,
-                                                            output_grads)),
-                                      wrt=self.internal_inputs,
-                                      disconnected_inputs='ignore')
-
-            grad_ops = []
-            for g in gs:
-                if g is None:
-                    grad_ops.append(lambda *args: None)
-                else:
-                    # It is normal if some inputs are not needed in order
-                    # to compute the gradient, so we ignore them.
-                    grad_ops.append(OpFromGraph(self.internal_inputs + output_grads,
-                                                [g],
-                                                on_unused_input='ignore'))
-            self.grad_ops = grad_ops
-
-        return [go(*(inputs + output_grads)) for go in grad_ops]
-'''
