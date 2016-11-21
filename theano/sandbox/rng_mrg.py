@@ -317,9 +317,14 @@ class mrg_uniform_base(Op):
         # this op should not be called directly.
         #
         # call through MRG_RandomStreams instead.
+        broad=[]
+        for i in self.output_type.ndim:
+                broad.append(T.extract_constant(size[i]) == 1)
+        output_type = self.output_type.clone(broadcastab le=broad)()
         return Apply(self,
                      [rstate, size],
-                     [rstate.type(), self.output_type()])
+                     [rstate.type(), output_type])
+
 
     def grad(self, inputs, ograd):
         return [gradient.grad_undefined(self, k, inp,
