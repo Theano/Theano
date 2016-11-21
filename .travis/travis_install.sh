@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # In Python 3.3, we test the min version of NumPy and SciPy. In Python 2.7, we test more recent version.
 # nose-exclude plugin should allow use to tell nosetests to exclude folder with --exclude-dir=path/to/directory.
 if ! test -e $HOME/miniconda2/envs/pyenv

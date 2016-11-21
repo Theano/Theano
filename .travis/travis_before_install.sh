@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Install miniconda to avoid compiling scipy
 if ! test -e $HOME/miniconda2/bin ; then
     wget -c https://repo.continuum.io/miniconda/Miniconda2-4.1.11-Linux-x86_64.sh -O $HOME/download/miniconda.sh

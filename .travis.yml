@@ -15,7 +15,9 @@ python:
   - "3.3"
 
 # command to install dependencies
-before_install: ./.travis/travis_before_install.sh
+before_install:
+  - chmod +x ./.travis/travis_before_install.sh
+  - ./.travis/travis_before_install.sh
 
 addons:
   apt_packages:
@@ -24,7 +26,9 @@ addons:
    - texlive-fonts-recommended
    - dvipng
 
-install: ./.travis/travis_install.sh
+install:
+  - chmod +x ./.travis/travis_install.sh
+  - ./.travis/travis_install.sh
 
 # command to run tests
 env:
