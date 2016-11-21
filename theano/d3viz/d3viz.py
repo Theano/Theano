@@ -6,6 +6,7 @@ Author: Christof Angermueller <cangermueller@gmail.com>
 import os
 import shutil
 import re
+import six
 from six import iteritems
 
 from theano.d3viz.formatting import PyDotFormatter
@@ -77,7 +78,10 @@ def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
     # Create DOT graph
     formatter = PyDotFormatter(*args, **kwargs)
     graph = formatter(fct)
-    dot_graph = escape_quotes(str(graph.create_dot())).replace('\n', '').replace('\r', '')
+    dot_graph_raw = graph.create_dot()
+    if not six.PY2:
+        dot_graph_raw = dot_graph_raw.decode('utf8')
+    dot_graph = escape_quotes(dot_graph_raw).replace('\n', '').replace('\r', '')
 
     # Create output directory if not existing
     outdir = os.path.dirname(outfile)

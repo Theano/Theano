@@ -80,7 +80,7 @@ the rows and with a matrix that have a lower number of rows, ``csr`` format is a
 
 .. note::
 
-    If shape[0] > shape[1], use ``csr`` format. Otherwise, use ``csc``.
+    If shape[0] > shape[1], use ``csc`` format. Otherwise, use ``csr``.
 
 Sometimes, since the sparse module is young, ops does not exist for both format. So here is
 what may be the most relevent rule:

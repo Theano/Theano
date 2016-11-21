@@ -1,0 +1,11 @@
+/* work around https://github.com/snide/sphinx_rtd_theme/issues/149 */
+.rst-content table.field-list .field-body {
+    padding-top: 8px;
+}
+.rst-versions-up {
+    cursor: pointer;
+    display: inline;
+}
+.wy-side-nav-search>div.version {
+    color: white;
+}

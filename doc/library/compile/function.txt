@@ -5,7 +5,7 @@
 :mod:`function` - defines theano.function
 ===========================================
 
-.. module:: function
+.. module:: theano.compile.function
    :platform: Unix, Windows
    :synopsis: defines theano.function and related classes
 .. moduleauthor:: LISA

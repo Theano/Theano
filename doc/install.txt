@@ -4,6 +4,10 @@
 Installing Theano
 =================
 
+.. warning::
+    If you want to install the bleeding-edge or development version of Theano
+    from GitHub, please make sure you are reading `the latest version of this
+    page <http://deeplearning.net/software/theano_versions/dev/install.html>`_.
 
 Requirements
 ------------
@@ -22,7 +26,7 @@ instructions below for detailed installation steps):
         Python 2.4 was supported up to and including the release 0.6.
         Python 3 is supported past the 3.3 release.
 
-    ``g++``, ``python-dev``
+    ``g++`` (Linux and Windows), ``clang`` (macOS), ``python-dev`` (All platforms)
         Not technically required but *highly* recommended, in order to compile
         generated C code. Theano `can` fall back on a NumPy-based Python execution
         model, but a C compiler allows for vastly faster execution.
@@ -59,9 +63,9 @@ The following libraries and software are optional:
     `Git <http://git-scm.com>`_
         To download bleeding-edge versions of Theano.
 
-    `pydot-ng <https://github.com/pydot/pydot-ng>`_ or `pydot <https://code.google.com/p/pydot/>`_
+    `graphiz <http://www.graphviz.org/>`__ and either `pydot-ng <https://github.com/pydot/pydot-ng>`__ or `pydot <https://code.google.com/p/pydot/>`__
         To be able to make picture of Theano computation graph.
-	pydot-ng is a pydot compatible replacement that support newer Python.
+        pydot-ng is a pydot compatible replacement that support newer Python.
 
     `NVIDIA CUDA drivers and SDK`_
         Required for GPU code generation/execution on NVIDIA gpus
@@ -117,21 +121,31 @@ A contributor made rpm package for Mandriva_ 2010.2 of Theano 0.3.1.
 
 .. _linux_basic:
 
-Docker images
-~~~~~~~~~~~~~
+AWS Marketplace with Bitfusion AMI
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Builds of Theano are available as `Docker <https://www.docker.com/whatisdocker>`_ images:
-`Theano Docker (CPU) <https://hub.docker.com/r/kaixhin/theano/>`_ or `Theano Docker (CUDA) <https://hub.docker.com/r/kaixhin/cuda-theano/>`_.
-These are updated on a weekly basis with bleeding-edge builds of Theano. Examples of running bash in a Docker container
-are as follows:
+AWS EC2 AMI pre-installed with Nvidia drivers, CUDA, cuDNN, Theano, Keras, Lasagne, Python 2, Python 3, PyCuda, Scikit-Learn, Pandas, Enum34, iPython, and Jupyter. Note, as always there is no charge for Theano and other open software, however there is a charge for AWS hosting + Bitfusion.
+
+`Launch <https://aws.amazon.com/marketplace/pp/B01IRAMCM8/ref=_ptnr_referral_docs_theano>`_ an instance from the AWS Marketplace.
+
+Docker
+~~~~~~
+
+Builds of Theano are available as `Docker <https://www.docker.com>`_
+images: `Theano Docker (CPU) <https://hub.docker.com/r/kaixhin/theano/>`_ or
+`Theano Docker (CUDA) <https://hub.docker.com/r/kaixhin/cuda-theano/>`_. These
+are updated on a weekly basis with bleeding-edge builds of Theano.
+Examples of running bash in a Docker container are as follows:
 
 .. code-block:: bash
 
     sudo docker run -it kaixhin/theano
-    sudo docker run -it --device /dev/nvidiactl --device /dev/nvidia-uvm --device /dev/nvidia0 kaixhin/cuda-theano:7.0
+    sudo nvidia-docker run -it kaixhin/cuda-theano:7.0
 
-For a guide to Docker, see the `official docs <https://docs.docker.com/userguide/>`_. For more details on how to use the
-Theano Docker images, including requirements for CUDA support, consult the `source project <https://github.com/Kaixhin/dockerfiles>`_.
+For a guide to Docker, see the `official docs <https://docs.docker.com>`_.
+CUDA support requires `NVIDIA Docker <https://github.com/NVIDIA/nvidia-docker>`_.
+For more details on how to use the Theano Docker images,
+consult the `source project <https://github.com/Kaixhin/dockerfiles>`_.
 
 Basic user install instructions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -613,7 +627,7 @@ To install the missing Theano optional dependency (pydot):
 
 .. code-block:: bash
 
-    $ conda install pydot
+    $ conda install pydot-ng
 
 If you want the bleeding edge version instead execute this command:
 
@@ -745,7 +759,7 @@ Theano dependencies is easy, but be aware that it will take a long time
 
 - Afterwards, please check that the ``scipy`` module that is imported in
   Python is the right one (and is a recent one). For instance, ``import
-  scipy`` followed by ``print scipy.__version__`` and ``print scipy.__path__``
+  scipy`` followed by ``print(scipy.__version__)`` and ``print(scipy.__path__)``
   should result in a version number of at least 0.7.0 and a path that starts
   with ``/opt/local`` (the path where MacPorts installs its packages). If this
   is not the case, then you might have some old installation of ``scipy`` in your

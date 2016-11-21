@@ -76,18 +76,22 @@ class DimShuffle(Op):
         If True, the output will be a view of the input.
         If False (default), the output will be a copy of the input.
 
-    If j = new_order[i] is an index, the output's ith dimension
+    Note
+    ----
+    If `j = new_order[i]` is an index, the output's ith dimension
     will be the input's jth dimension.
-    If new_order[i] is 'x', the output's ith dimension will
+    If `new_order[i]` is `x`, the output's ith dimension will
     be 1 and Broadcast operations will be allowed to do broadcasting
     over that dimension.
 
-    If input.broadcastable[i] == False then i must be found in new_order.
+    If `input.broadcastable[i] == False` then `i` must be found in new_order.
     Broadcastable dimensions, on the other hand, can be discarded.
 
-    Extended Summary
-    ----------------
-    DimShuffle((False, False, False), ['x', 2, 'x', 0, 1])
+    Note
+    ----
+    .. code-block:: python
+
+        DimShuffle((False, False, False), ['x', 2, 'x', 0, 1])
 
     This op will only work on 3d tensors with no broadcastable
     dimensions.  The first dimension will be broadcastable,
@@ -96,7 +100,9 @@ class DimShuffle(Op):
     shape (20, 30, 40), the resulting tensor will have dimensions
     (1, 40, 1, 20, 30). (AxBxC tensor is mapped to 1xCx1xAxB tensor)
 
-    DimShuffle((True, False), [1])
+    .. code-block:: python
+
+        DimShuffle((True, False), [1])
 
     This op will only work on 2d tensors with the first dimension
     broadcastable.
@@ -105,20 +111,23 @@ class DimShuffle(Op):
     If the tensor has shape (1, 20), the resulting tensor will have shape
     (20, ).
 
-    More examples :
-    DimShuffle((), ['x']) -> make a 0d (scalar) into a 1d vector
-    DimShuffle((False, False), [0, 1]) -> identity
-    DimShuffle((False, False), [1, 0]) -> inverts the 1st and 2nd dimensions
-    DimShuffle((False,), ['x', 0]) -> make a row out
-                                      of a 1d vector (N to 1xN)
-    DimShuffle((False,), [0, 'x']) -> make a column
-                                      out of a 1d vector (N to Nx1)
-    DimShuffle((False, False, False), [2, 0, 1]) -> AxBxC to CxAxB
-    DimShuffle((False, False), [0, 'x', 1]) -> AxB to Ax1xB
-    DimShuffle((False, False), [1, 'x', 0]) -> AxB to Bx1xA
+    Example
+    -------
+    .. code-block:: python
 
-    The reordering of the dimensions can be done in numpy with the
-    transpose function.
+        DimShuffle((), ['x'])  # make a 0d (scalar) into a 1d vector
+        DimShuffle((False, False), [0, 1])  # identity
+        DimShuffle((False, False), [1, 0])  # inverts the 1st and 2nd dimensions
+        DimShuffle((False,), ['x', 0])  # make a row out of a 1d vector
+                                        # (N to 1xN)
+        DimShuffle((False,), [0, 'x'])  # make a column out of a 1d vector
+                                        # (N to Nx1)
+        DimShuffle((False, False, False), [2, 0, 1])  # AxBxC to CxAxB
+        DimShuffle((False, False), [0, 'x', 1])  # AxB to Ax1xB
+        DimShuffle((False, False), [1, 'x', 0])  # AxB to Bx1xA
+
+    The reordering of the dimensions can be done with the numpy.transpose
+    function.
     Adding, subtracting dimensions can be done with reshape.
 
     """
@@ -297,13 +306,14 @@ class DimShuffle(Op):
         # get the copy / view of the input depending on whether we're doingi
         # things inplace or not.
         if self.inplace:
-            get_base = [
-                '{ PyArrayObject * %(basename)s = %(input)s', 'Py_INCREF((PyObject*)%(basename)s)']
+            get_base = ['{ PyArrayObject * %(basename)s = %(input)s',
+                        'Py_INCREF((PyObject*)%(basename)s)']
         else:
-            get_base = [('{ PyArrayObject * %(basename)s = '
-                         '(PyArrayObject*)PyArray_FromAny((PyObject*)%(input)s,'
-                         ' NULL, 0, 0, NPY_ARRAY_ALIGNED|NPY_ARRAY_ENSURECOPY,'
-                         ' NULL)')]
+            get_base = [
+                ('{ PyArrayObject * %(basename)s = '
+                 '(PyArrayObject*)PyArray_FromAny((PyObject*)%(input)s,'
+                 ' NULL, 0, 0, NPY_ARRAY_ALIGNED|NPY_ARRAY_ENSURECOPY,'
+                 ' NULL)')]
 
         shape_statements = ['npy_intp dimensions[%i]' % nd_out]
         for i, o in enumerate(self.new_order):
@@ -340,12 +350,9 @@ class DimShuffle(Op):
             )
         for i in xrange(nd_out - 2, -1, -1):
             strides_statements.append(
-                "if (strides[%(i)s] == 0) strides[%(i)s] = strides[%(i)s+1] * dimensions[%(i)s+1]" % dict(i=str(i)))
+                "if (strides[%(i)s] == 0) strides[%(i)s] = strides[%(i)s+1] * "
+                "dimensions[%(i)s+1]" % dict(i=str(i)))
 
-        #
-        # PyObject* PyArray_New(PyTypeObject* subtype, int nd, npy_intp* dims, int type_num,
-        #                       npy_intp* strides, void* data, int itemsize, int flags, PyObject* obj)
-        #
         close_bracket = [
             # create a new array,
             ('%(res)s = (PyArrayObject*)PyArray_New(&PyArray_Type, '
@@ -479,17 +486,17 @@ class Elemwise(OpenMPOp):
         variable number of inputs), whereas the numpy function may
         not have varargs.
 
-    Examples
-    --------
-    Elemwise(add) # represents + on tensors (x + y)
-    Elemwise(add, {0 : 0}) # represents the += operation (x += y)
-    Elemwise(add, {0 : 1}) # represents += on the second argument (y += x)
-    Elemwise(mul)(rand(10, 5), rand(1, 5)) # the second input is completed
-    # along the first dimension to match the first input
-    Elemwise(true_div)(rand(10, 5), rand(10, 1)) # same but along the
-    # second dimension
-    Elemwise(int_div)(rand(1, 5), rand(10, 1)) # the output has size (10, 5)
-    Elemwise(log)(rand(3, 4, 5))
+    Note
+    ----
+    | Elemwise(add) represents + on tensors (x + y)
+    | Elemwise(add, {0 : 0}) represents the += operation (x += y)
+    | Elemwise(add, {0 : 1}) represents += on the second argument (y += x)
+    | Elemwise(mul)(rand(10, 5), rand(1, 5)) the second input is completed \
+along the first dimension to match the first input
+    | Elemwise(true_div)(rand(10, 5), rand(10, 1)) same but along the \
+second dimension
+    | Elemwise(int_div)(rand(1, 5), rand(10, 1)) the output has size (10, 5)
+    | Elemwise(log)(rand(3, 4, 5))
 
     """
 
@@ -778,7 +785,8 @@ class Elemwise(OpenMPOp):
                 # the gradient contains a constant, translate it as
                 # an equivalent TensorType of size 1 and proper number of
                 # dimensions
-                res = theano.tensor.constant(numpy.asarray(r.data), dtype=r.type.dtype)
+                res = theano.tensor.constant(numpy.asarray(r.data),
+                                             dtype=r.type.dtype)
                 return DimShuffle((), ['x'] * nd, inplace=False)(res)
             new_r = Elemwise(node.op, {})(
                 *[transform(ipt) for ipt in node.inputs])
@@ -1124,15 +1132,20 @@ class Elemwise(OpenMPOp):
                                             idtypes + list(real_odtypes))])
 
                 preloops = {}
-                for i, (loop_order, dtype) in enumerate(zip(loop_orders, dtypes)):
+                for i, (loop_order, dtype) in enumerate(zip(loop_orders,
+                                                            dtypes)):
                     for j, index in enumerate(loop_order):
                         if index != 'x':
                             preloops.setdefault(j, "")
-                            preloops[j] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
+                            preloops[j] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)"
+                                            "(PyArray_DATA(%%(lv%(i)s)s));\n"
+                                            % locals()) % sub
                             break
                     else:  # all broadcastable
                             preloops.setdefault(0, "")
-                            preloops[0] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
+                            preloops[0] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)"
+                                            "(PyArray_DATA(%%(lv%(i)s)s));\n"
+                                            % locals()) % sub
 
                 init_array = preloops.get(0, " ")
                 loop = """
@@ -1199,7 +1212,8 @@ class Elemwise(OpenMPOp):
             dtype_%(x)s& %(x)s_i = ((dtype_%(x)s*) PyArray_DATA(%(x)s))[0];
                             """ % locals()
                     if self.openmp:
-                        contig += """#pragma omp parallel for if(n>=%d)""" % (config.openmp_elemwise_minsize)
+                        contig += """#pragma omp parallel for if(n>=%d)
+                        """ % (config.openmp_elemwise_minsize)
                     contig += """
                     for(int i=0; i<n; i++){
                         %(index)s
@@ -1256,7 +1270,8 @@ class Elemwise(OpenMPOp):
              for output in node.outputs])
         version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
-            version.append(get_scalar_type(dtype=i.type.dtype).c_code_cache_version())
+            version.append(
+                get_scalar_type(dtype=i.type.dtype).c_code_cache_version())
         version.append(('openmp', self.openmp))
         if all(version):
             return tuple(version)
@@ -1295,20 +1310,22 @@ class CAReduce(Op):
         - List of dimensions that we want to reduce
         - If None, all dimensions are reduced
 
-    Examples
-    --------
-    CAReduce(add) -> sum (ie, acts like the numpy sum operation)
-    CAReduce(mul) -> product
-    CAReduce(maximum) -> max
-    CAReduce(minimum) -> min
-    CAReduce(or_) -> any # not lazy
-    CAReduce(and_) -> all # not lazy
-    CAReduce(xor) -> a bit at 1 tell that there was an odd number of bit at
-                      that position that where 1.
-                      0 it was an even number ...
+    Note
+    ----
+    .. code-block:: python
+
+        CAReduce(add)      # sum (ie, acts like the numpy sum operation)
+        CAReduce(mul)      # product
+        CAReduce(maximum)  # max
+        CAReduce(minimum)  # min
+        CAReduce(or_)      # any # not lazy
+        CAReduce(and_)     # all # not lazy
+        CAReduce(xor)      # a bit at 1 tell that there was an odd number of
+                           # bit at that position that where 1. 0 it was an
+                           # even number ...
 
     In order to (eventually) optimize memory usage patterns,
-    L{CAReduce} makes zero guarantees on the order in which it
+    CAReduce makes zero guarantees on the order in which it
     iterates over the dimensions and the elements of the
     array(s). Therefore, to ensure consistent variables, the scalar
     operation represented by the reduction must be both commutative
@@ -1504,7 +1521,8 @@ class CAReduce(Op):
 
         if hasattr(self, 'acc_dtype') and self.acc_dtype is not None:
             if self.acc_dtype == 'float16':
-                raise theano.gof.utils.MethodNotDefined("no c_code for float16")
+                raise theano.gof.utils.MethodNotDefined("no c_code for "
+                                                        "float16")
             acc_type = TensorType(
                 broadcastable=node.outputs[0].broadcastable,
                 dtype=self.acc_dtype)
@@ -1681,7 +1699,8 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
              for output in node.outputs])
         version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
-            version.append(get_scalar_type(dtype=i.type.dtype).c_code_cache_version())
+            version.append(
+                get_scalar_type(dtype=i.type.dtype).c_code_cache_version())
         if all(version):
             return tuple(version)
         else:
@@ -1692,7 +1711,7 @@ class All(CAReduce):
     """ Applies `bitwise and` to all the values of a tensor along the
     specified axis(es).
 
-    Equivalent to CAReduce(scalar.and_, axis=axis).
+    Equivalent to `CAReduce(scalar.and\_, axis=axis)`.
 
     """
 
@@ -1724,7 +1743,7 @@ class Any(CAReduce):
     """ Applies `bitwise or` to all the values of a tensor along the
     specified axis(es).
 
-    Equivalent to CAReduce(scalar.or_, axis=axis).
+    Equivalent to `CAReduce(scalar.or\_, axis=axis)`.
 
     """
 
@@ -1775,17 +1794,19 @@ class CAReduceDtype(CAReduce):
         It must be commutative and associative.
 
     axis
-        - the dimension along which we want to reduce
-        - list of dimensions that we want to reduce
-        - if None, all dimensions are reduced
+        * the dimension along which we want to reduce
+        * list of dimensions that we want to reduce
+        * if None, all dimensions are reduced
 
     dtype
         The dtype of the returned tensor. If None, then we use the default
         dtype which is the same as the input tensor's dtype except when:
-        - the input dtype is a signed integer of precision < 64 bit, in
-        which case we use int64
-        - the input dtype is an unsigned integer of precision < 64 bit, in
-        which case we use uint64
+
+        * the input dtype is a signed integer of precision < 64 bit, in which
+          case we use int64
+        * the input dtype is an unsigned integer of precision < 64 bit, in
+          which case we use uint64
+
         This default dtype does _not_ depend on the value of "acc_dtype".
         This behavior is similar in spirit to that of numpy (except numpy
         uses the default machine integer while we always use 64 bit
@@ -1795,10 +1816,11 @@ class CAReduceDtype(CAReduce):
         The dtype of the internal accumulator.
         If None (default), we use the dtype in the list below,
         or the input dtype if its precision is higher:
-        - for int dtypes, we use at least int64;
-        - for uint dtypes, we use at least uint64;
-        - for float dtypes, we use at least float64;
-        - for complex dtypes, we use at least complex128.
+
+        * for int dtypes, we use at least int64;
+        * for uint dtypes, we use at least uint64;
+        * for float dtypes, we use at least float64;
+        * for complex dtypes, we use at least complex128.
 
     """
 
@@ -1927,7 +1949,7 @@ class Sum(CAReduceDtype):
     """
     Sums all the values of a tensor along the specified axis(es).
 
-    Equivalent to CAReduceDtype(scalar.add, axis=axis, dtype=dtype),
+    Equivalent to `CAReduceDtype(scalar.add, axis=axis, dtype=dtype)`,
     with the difference that this defines the gradient of sum wrt its
     tensor input.
 
@@ -2002,7 +2024,7 @@ class Prod(CAReduceDtype):
     """
     Multiplies all the values of a tensor along the specified axis(es).
 
-    Equivalent to CAReduce(scalar.prod, axis = axis), with the
+    Equivalent to `CAReduce(scalar.prod, axis = axis)`, with the
     difference that this defines the gradient of prod wrt its tensor
     input.
 
@@ -2049,10 +2071,9 @@ class Prod(CAReduceDtype):
         "incoming gradient", ie. the gradient of the cost relative to the
         output/product).
 
-        -----
-
         With zeros, things get more complicated. For a given group, we have 3
         cases:
+
         * No zeros in the group. Use previous trick.
         * If only one zero is present, then the gradient for that element is
             non-zero, but is zero for all others.
@@ -2185,7 +2206,8 @@ class MulWithoutZeros(scalar.BinaryScalarOp):
     def c_code_cache_version(self):
         return (1,)
 
-mul_without_zeros = MulWithoutZeros(scalar.upcast_out, name='mul_without_zeros')
+mul_without_zeros = MulWithoutZeros(scalar.upcast_out,
+                                    name='mul_without_zeros')
 
 
 class ProdWithoutZeros(CAReduceDtype):

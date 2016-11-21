@@ -15,12 +15,10 @@ later).
 The Theano release plan is detailed below. Comments and/or suggestions are
 welcome on the mailing list.
 
-1) We will perform a monthly release of Theano. These will be "lightweight"
-   releases and will include everything that was done in the last month. All
-   outstanding feature requests are pushed back to the following month, so as
-   not to delay the current release.
+1) We aim to update Theano several times a year. These releases will be made
+   as new features are implemented.     
 
-2) Asynchronous releases will only be made when a bug generating incorrect
+2) Urgent releases will only be made when a bug generating incorrect
    output is discovered and fixed.
 
 3) Each release must satisfy the following criteria. Non-compliance will
@@ -43,8 +41,8 @@ welcome on the mailing list.
 
 4) The release numbers will follow the X.Y.Z scheme:
 
-   1) We update Z by 1 for each lightweight release.
-   2) We update Y for bug fixes, interface changes and/or significant features
+   1) We update Z for small urgent bugs or support for new versions of dependencies.
+   2) We update Y for interface changes and/or significant features
       we wish to publicize.
    3) The Theano v1.0.0 release will be made when the interface is deemed
       stable enough and covers most of numpy's interface.

@@ -652,12 +652,10 @@ class FunctionGraph(utils.object2):
 
     # callback utils #
     def execute_callbacks(self, name, *args, **kwargs):
-        """
-        WRITEME
+        """Execute callbacks
 
-        Calls
-          getattr(feature, name)(*args)
-        for each feature which has a method called after name.
+        Calls `getattr(feature, name)(*args)` for each feature which has
+        a method called after name.
 
         """
         t0 = time.time()
@@ -675,13 +673,11 @@ class FunctionGraph(utils.object2):
         self.execute_callbacks_time += time.time() - t0
 
     def collect_callbacks(self, name, *args):
-        """
-        WRITEME
+        """Collects callbacks
 
-        Returns a dictionary d such that:
-          d[feature] == getattr(feature, name)(*args)
+        Returns a dictionary d such that
+        `d[feature] == getattr(feature, name)(*args)`
         For each feature which has a method called after name.
-
         """
         d = {}
         for feature in self._features:
@@ -694,19 +690,18 @@ class FunctionGraph(utils.object2):
 
     # misc #
     def toposort(self):
-        """
-        WRITEME
+        """Toposort
 
-        Return an ordering of the graph's Apply nodes such that:
-        - All the nodes of the inputs of a node are before that node.
-        - Satisfies the orderings provided by each feature that has
+        Return an ordering of the graph's Apply nodes such that
+
+        * All the nodes of the inputs of a node are before that node.
+        * Satisfies the orderings provided by each feature that has
           an 'orderings' method.
 
         If a feature has an 'orderings' method, it will be called with
         this FunctionGraph as sole argument. It should return a dictionary of
-        {node: predecessors} where predecessors is a list of nodes
-        that should be computed before the key node.
-
+        `{node: predecessors}` where predecessors is a list of nodes that
+        should be computed before the key node.
         """
         if len(self.apply_nodes) < 2:
             # optimization
@@ -827,17 +822,20 @@ class FunctionGraph(utils.object2):
         return self.clone_get_equiv(check_integrity)[0]
 
     def clone_get_equiv(self, check_integrity=True, attach_feature=True):
-        """Clone the graph and get a memo( a dict )that map old node to new node
-        ----------------------------
+        """Clone the graph and get a dict that maps old nodes to new ones
+
         Parameters:
-            check_integrity - { bool } Whether to check integrity.
-                                Default is True.
-            attach_feature - { bool } Whether to attach feature of origin graph to
-                                cloned graph. Default is True.
-        ----------------------------
+            check_integrity: bool
+                Whether to check integrity. Default is True.
+            attach_feature: bool
+                Whether to attach feature of origin graph to cloned graph.
+                Default is True.
+
         Returns:
-            e - { FunctionGraph } Cloned fgraph. Every node in cloned graph is cloned.
-            equiv - { dict } A dict that map old node to new node.
+            e: FunctionGraph
+                Cloned fgraph. Every node in cloned graph is cloned.
+            equiv: dict
+                A dict that map old node to new node.
         """
         equiv = graph.clone_get_equiv(self.inputs, self.outputs)
 

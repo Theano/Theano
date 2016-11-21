@@ -6,6 +6,11 @@
 Easy Installation of an optimized Theano on CentOS 6
 ====================================================
 
+.. warning::
+    If you want to install the bleeding-edge or development version of Theano
+    from GitHub, please make sure you are reading `the latest version of this
+    page <http://deeplearning.net/software/theano_versions/dev/install_centos6.html>`_.
+
 .. note::
 
     It is possible to have a faster installation of Theano than the one these

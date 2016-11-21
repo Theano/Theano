@@ -15,7 +15,7 @@ ERROR: The IPython test suite requires nose to run.
 
 Please install nose on your system first and try again.
 For information on installing nose, see:
-http://somethingaboutorange.com/mrl/projects/nose
+http://nose.readthedocs.org/en/latest/
 
 Exiting."""
     import sys

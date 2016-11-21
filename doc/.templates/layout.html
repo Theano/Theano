@@ -1,24 +1,39 @@
 {% extends "!layout.html" %}
 
-{%- block extrahead %}
+{% block footer %}
 {{ super() }}
 <script type="text/javascript">
   var _gaq = _gaq || [];
   _gaq.push(['_setAccount', 'UA-168290-9']);
   _gaq.push(['_trackPageview']);
-</script>
-{% endblock %}
 
-{% block footer %}
-{{ super() }}
-<script type="text/javascript">
   (function() {
-    var ga = document.createElement('script');
-    ga.src = ('https:' == document.location.protocol ?
-              'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-    ga.setAttribute('async', 'true');
-    document.documentElement.firstChild.appendChild(ga);
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
   })();
 </script>
-{% endblock %}
 
+<!--Insert version switcher at bottom and top of sidebar-->
+<script type="text/javascript">
+  var span = document.createElement("SPAN")
+  var span_class = document.createAttribute("class");
+  span_class.value = "version_switcher_placeholder";
+  span.setAttributeNode(span_class);
+  var div = document.createElement("DIV");
+  div.appendChild(span);
+  var nav_div = document.getElementsByClassName("wy-nav-side")[0];
+  nav_div.appendChild(div);
+
+  var span_up = document.createElement("SPAN")
+  var span_class_up = document.createAttribute("class");
+  span_class_up.value = "version_switcher_placeholder_up";
+  span_up.setAttributeNode(span_class_up);
+  var nav_div_up = document.getElementsByClassName("version")[0];
+  nav_div_up.appendChild(span_up);
+</script>
+
+<script type="text/javascript"
+    src="{{ pathto('_static/version_switch.js', 1) }}">
+</script>
+{% endblock %}

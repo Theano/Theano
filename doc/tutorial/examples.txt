@@ -185,7 +185,7 @@ internal state, and returns the old state value.
 
 This code introduces a few new concepts.  The ``shared`` function constructs
 so-called :ref:`shared variables<libdoc_compile_shared>`.
-These are hybrid symbolic and non-symbolic variables whose value may be shared 
+These are hybrid symbolic and non-symbolic variables whose value may be shared
 between multiple functions.  Shared variables can be used in symbolic expressions just like
 the objects returned by ``dmatrices(...)`` but they also have an internal
 value that defines the value taken by this symbolic variable in *all* the
@@ -274,9 +274,6 @@ In practice, a good way of thinking about the ``givens`` is as a mechanism
 that allows you to replace any part of your formula with a different
 expression that evaluates to a tensor of same shape and dtype.
 
-.. _using_random_numbers:
-
-
 .. note::
 
     Theano shared variable broadcast pattern default to False for each
@@ -284,6 +281,57 @@ expression that evaluates to a tensor of same shape and dtype.
     use the shape to find the broadcastable pattern. If you want a
     different pattern, just pass it as a parameter
     ``theano.shared(..., broadcastable=(True, False))``
+
+Copying functions
+=================
+Theano functions can be copied, which can be useful for creating similar
+functions but with different shared variables or updates. This is done using
+the :func:`copy()<theano.compile.function_module.Function.copy>` method of ``function`` objects. The optimized graph of the original function is copied,
+so compilation only needs to be performed once.
+
+Let's start from the accumulator defined above. Let's add the ``on_unused_input='ignore'`` parameter in case we don't want to use both of our current arguments in a future copy of the function (this isn't necessary on versions > 0.8.2):
+
+>>> import theano
+>>> import theano.tensor as T
+>>> state = theano.shared(0)
+>>> inc = T.iscalar('inc')
+>>> accumulator = theano.function([inc], state, updates=[(state, state+inc)], on_unused_input='ignore')
+
+We can use it to increment the state as usual:
+
+>>> accumulator(10)
+array(0)
+>>> print(state.get_value())
+10
+
+We can use ``copy()`` to create a similar accumulator but with its own internal state
+using the ``swap`` parameter, which is a dictionary of shared variables to exchange:
+
+>>> new_state = theano.shared(0)
+>>> new_accumulator = accumulator.copy(swap={state:new_state})
+>>> new_accumulator(100)
+[array(0)]
+>>> print(new_state.get_value())
+100
+
+The state of the first function is left untouched:
+
+>>> print(state.get_value())
+10
+
+We now create a copy with updates removed using the ``delete_updates``
+parameter, which is set to ``False`` by default. Notice our new copy doesn't actually use the ``inc`` argument after removing the ``updates`` parameter:
+
+>>> null_accumulator = accumulator.copy(delete_updates=True)
+
+As expected, the shared state is no longer updated:
+
+>>> null_accumulator(9000)
+[array(10)]
+>>> print(state.get_value())
+10
+
+.. _using_random_numbers:
 
 Using Random Numbers
 ====================
@@ -299,8 +347,8 @@ RandomStream object (a random number generator) for each such
 variable, and draw from it as necessary. We will call this sort of
 sequence of random numbers a *random stream*. *Random streams* are at
 their core shared variables, so the observations on shared variables
-hold here as well. Theanos's random objects are defined and implemented in 
-:ref:`RandomStreams<libdoc_tensor_shared_randomstreams>` and, at a lower level, 
+hold here as well. Theanos's random objects are defined and implemented in
+:ref:`RandomStreams<libdoc_tensor_shared_randomstreams>` and, at a lower level,
 in :ref:`RandomStreamsBase<libdoc_tensor_raw_random>`.
 
 Brief Example
@@ -453,7 +501,7 @@ array([ 0.59044123])
 Other Random Distributions
 --------------------------
 
-There are :ref:`other distributions implemented <libdoc_tensor_raw_random>`. 
+There are :ref:`other distributions implemented <libdoc_tensor_raw_random>`.
 
 .. _example_other_random:
 
@@ -488,17 +536,17 @@ It will be used repeatedly.
     import theano
     import theano.tensor as T
     rng = numpy.random
-  
+
     N = 400                                   # training sample size
     feats = 784                               # number of input variables
 
     # generate a dataset: D = (input_values, target_class)
     D = (rng.randn(N, feats), rng.randint(size=N, low=0, high=2))
     training_steps = 10000
-  
+
     # Declare Theano symbolic variables
-    x = T.matrix("x")
-    y = T.vector("y")
+    x = T.dmatrix("x")
+    y = T.dvector("y")
 
     # initialize the weight vector w randomly
     #

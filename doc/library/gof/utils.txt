@@ -8,14 +8,12 @@
 
    from theano.gof.utils import *
 
-.. module:: utils
-   :platform: Unix, Windows
-   :synopsis: Utilities functions operating on the graph
-.. moduleauthor:: LISA
-
 ---------
 Reference
 ---------
 
 .. automodule:: theano.gof.utils
-    :members:
+   :platform: Unix, Windows
+   :synopsis: Utilities functions operating on the graph
+   :members:
+.. moduleauthor:: LISA

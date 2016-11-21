@@ -1,17 +1,15 @@
-.. _libdoc_tensor_signal_downsample:
+.. _libdoc_tensor_signal_pool:
 
 ======================================================
-:mod:`downsample` -- Down-Sampling
+:mod:`pool` -- Down-Sampling
 ======================================================
 
-.. module:: downsample
+.. module:: pool
    :platform: Unix, Windows
    :synopsis: ops for performing various forms of downsampling
 .. moduleauthor:: LISA
 
 .. seealso:: :func:`theano.tensor.nnet.neighbours.images2neibs`
 
-.. function:: fft(*todo)
-
-    [James has some code for this, but hasn't gotten it into the source tree yet.]
-
+.. autofunction:: theano.tensor.signal.pool.pool_2d
+.. autofunction:: theano.tensor.signal.pool.max_pool_2d_same_size

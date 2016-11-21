@@ -269,7 +269,8 @@ def safe_no_dnn_workmem_bwd(workmem):
     return True
 
 AddConfigVar('dnn.conv.workmem_bwd',
-             "This flag is deprecated; use dnn.conv.algo_bwd.",
+             "This flag is deprecated; use `dnn.conv.algo_bwd_filter` "
+             "and `dnn.conv.algo_bwd_data` instead.",
              ConfigParam('', allow_override=False,
                          filter=safe_no_dnn_workmem_bwd),
              in_c_key=False)
@@ -634,8 +635,8 @@ AddConfigVar('warn.ignore_bug_before',
               "bugs found after that version. "
               "Warning for specific bugs can be configured with specific "
               "[warn] flags."),
-             EnumStr('0.7', 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.7',
-                     '0.8', '0.8.1', '0.8.2',
+             EnumStr('0.7', 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.6',
+                     '0.7', '0.8', '0.8.1', '0.8.2',
                      allow_override=False),
              in_c_key=False)
 

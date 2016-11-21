@@ -139,10 +139,10 @@ Theano defines the following modes by name:
 
 - ``'FAST_COMPILE'``: Apply just a few graph optimizations and only use Python implementations. So GPU is disabled.
 - ``'FAST_RUN'``: Apply all optimizations and use C implementations where possible.
-- ``'DebugMode``: Verify the correctness of all optimizations, and compare C and Python
+- ``'DebugMode'``: Verify the correctness of all optimizations, and compare C and Python
     implementations. This mode can take much longer than the other modes, but can identify
     several kinds of problems.
-- ``'ProfileMode'`` (deprecated): Same optimization as FAST_RUN, but print some profiling information.
+- ``'NanGuardMode'``: Same optimization as FAST_RUN, but :ref:`check if a node generate nans. <nanguardmode>`
 
 The default mode is typically ``FAST_RUN``, but it can be controlled via
 the configuration variable :attr:`config.mode`,
@@ -155,7 +155,6 @@ short name        Full constructor                                              
 ``FAST_COMPILE``  ``compile.mode.Mode(linker='py', optimizer='fast_compile')``    Python implementations only, quick and cheap graph transformations
 ``FAST_RUN``      ``compile.mode.Mode(linker='cvm', optimizer='fast_run')``       C implementations where available, all available graph transformations.
 ``DebugMode``     ``compile.debugmode.DebugMode()``                               Both implementations where available, all available graph transformations.
-``ProfileMode``   ``compile.profilemode.ProfileMode()``                           Deprecated. C implementations where available, all available graph transformations, print profile information.
 ================= =============================================================== ===============================================================================
 
 .. Note::
@@ -169,8 +168,8 @@ Linkers
 =======
 
 A mode is composed of 2 things: an optimizer and a linker. Some modes,
-like ``ProfileMode`` and ``DebugMode``, add logic around the optimizer and
-linker. ``ProfileMode`` and ``DebugMode`` use their own linker.
+like ``NanGuardMode`` and ``DebugMode``, add logic around the optimizer and
+linker. ``NanGuardMode`` and ``DebugMode`` use their own linker.
 
 You can select which linker to use with the Theano flag :attr:`config.linker`.
 Here is a table to compare the different linkers.
@@ -184,7 +183,7 @@ c|py [#cpy1]_  yes        yes                "+++"      Try C code. If none exis
 c|py_nogc      no         yes                "++"       As c|py, but without gc
 c              no         yes                "+"        Use only C code (if none available for an op, raise an error)
 py             yes        yes                "+++"      Use only Python code
-ProfileMode    no         no                 "++++"     (Deprecated) Compute some extra profiling info
+NanGuardMode    no         no                 "++++"    Check if nodes generate NaN
 DebugMode      no         yes                VERY HIGH  Make many checks on what Theano computes
 =============  =========  =================  =========  ===
 
@@ -259,123 +258,3 @@ ProfileMode
 .. note::
 
     ProfileMode is deprecated. Use :attr:`config.profile` instead.
-
-
-Besides checking for errors, another important task is to profile your
-code. For this Theano uses a special mode called ProfileMode which has
-to be passed as an argument to :func:`theano.function <function.function>`.
-Using the ProfileMode is a three-step process.
-
-.. note::
-
-    To switch the default accordingly, set the Theano flag
-    :attr:`config.mode` to ProfileMode.  In that case, when the Python
-    process exits, it will automatically print the profiling
-    information on the standard output.
-
-    The memory profile of the output of each ``apply`` node can be enabled with the
-    Theano flag :attr:`config.ProfileMode.profile_memory`.
-
-For more detail, see :ref:`ProfileMode <profilemode>` in the library.
-
-Creating a ProfileMode Instance
--------------------------------
-
-First create a ProfileMode instance:
-
->>> from theano import ProfileMode
->>> profmode = theano.ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
-
-The ProfileMode constructor takes as input an optimizer and a
-linker. Which optimizer and linker to use will depend on the
-application. For example, a user wanting to profile the Python
-implementation only, should use the gof.PerformLinker (or "py" for
-short). On the other hand, a user wanting to profile his graph using C
-implementations wherever possible should use the ``gof.OpWiseCLinker``
-(or "c|py"). For testing the speed of your code we would recommend
-using the ``fast_run`` optimizer and the ``gof.OpWiseCLinker`` linker.
-
-Compiling your Graph with ProfileMode
--------------------------------------
-
-Once the ProfileMode instance is created, simply compile your graph as you
-would normally, by specifying the mode parameter.
-
->>> v1, v2 = T.vectors(2)
->>> o = v1 + v2
->>> f = theano.function([v1,v2],[o], mode=profmode)
-
-Retrieving Timing Information
------------------------------
-
-Once your graph is compiled, simply run the program or operation you wish to
-profile, then call ``profmode.print_summary()``. This will provide you with
-the desired timing information, indicating where your graph is spending most
-of its time. This is best shown through an example. Let's use our logistic
-regression example.
-
-Compiling the module with ``ProfileMode`` and calling ``profmode.print_summary()``
-generates the following output:
-
-.. code-block:: python
-
-    """
-    ProfileMode.print_summary()
-    ---------------------------
-
-    local_time 0.0749197006226 (Time spent running thunks)
-    Apply-wise summary: <fraction of local_time spent at this position> (<Apply position>, <Apply Op name>)
-            0.069   15      _dot22
-            0.064   1       _dot22
-            0.053   0       InplaceDimShuffle{x,0}
-            0.049   2       InplaceDimShuffle{1,0}
-            0.049   10      mul
-            0.049   6       Elemwise{ScalarSigmoid{output_types_preference=<theano.scalar.basic.transfer_type object at 0x171e650>}}[(0, 0)]
-            0.049   3       InplaceDimShuffle{x}
-            0.049   4       InplaceDimShuffle{x,x}
-            0.048   14      Sum{0}
-            0.047   7       sub
-            0.046   17      mul
-            0.045   9       sqr
-            0.045   8       Elemwise{sub}
-            0.045   16      Sum
-            0.044   18      mul
-       ... (remaining 6 Apply instances account for 0.25 of the runtime)
-    Op-wise summary: <fraction of local_time spent on this kind of Op> <Op name>
-            0.139   * mul
-            0.134   * _dot22
-            0.092   * sub
-            0.085   * Elemwise{Sub{output_types_preference=<theano.scalar.basic.transfer_type object at 0x1779f10>}}[(0, 0)]
-            0.053   * InplaceDimShuffle{x,0}
-            0.049   * InplaceDimShuffle{1,0}
-            0.049   * Elemwise{ScalarSigmoid{output_types_preference=<theano.scalar.basic.transfer_type object at 0x171e650>}}[(0, 0)]
-            0.049   * InplaceDimShuffle{x}
-            0.049   * InplaceDimShuffle{x,x}
-            0.048   * Sum{0}
-            0.045   * sqr
-            0.045   * Sum
-            0.043   * Sum{1}
-            0.042   * Elemwise{Mul{output_types_preference=<theano.scalar.basic.transfer_type object at 0x17a0f50>}}[(0, 1)]
-            0.041   * Elemwise{Add{output_types_preference=<theano.scalar.basic.transfer_type object at 0x1736a50>}}[(0, 0)]
-            0.039   * Elemwise{Second{output_types_preference=<theano.scalar.basic.transfer_type object at 0x1736d90>}}[(0, 1)]
-       ... (remaining 0 Ops account for 0.00 of the runtime)
-    (*) Op is running a c implementation
-
-    """
-
-
-This output has two components. In the first section called
-*Apply-wise summary*, timing information is provided for the worst
-offending ``Apply`` nodes. This corresponds to individual op applications
-within your graph which took longest to execute (so if you use
-``dot`` twice, you will see two entries there). In the second portion,
-the *Op-wise summary*, the execution time of all ``Apply`` nodes executing
-the same op are grouped together and the total execution time per op
-is shown (so if you use ``dot`` twice, you will see only one entry
-there corresponding to the sum of the time spent in each of them).
-Finally, notice that the ``ProfileMode`` also shows which ops were running a C
-implementation.
-
-
-For more detail, see :ref:`ProfileMode<profilemode>` in the library.
-

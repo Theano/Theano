@@ -6,6 +6,11 @@
 Installation of Theano on Windows
 ==================================
 
+.. warning::
+    If you want to install the bleeding-edge or development version of Theano
+    from GitHub, please make sure you are reading `the latest version of this
+    page <http://deeplearning.net/software/theano_versions/dev/install_windows.html>`_.
+
 These instructions show step-by-step how to install Theano and
 required dependencies on a 32- or 64-bit system using freely available
 tools and compilers.
@@ -278,7 +283,7 @@ MinGW, but this has not been tested yet.
   ``C:\\Python27\\libs`` folder.
 
 - In order to run Theano's test-suite, you will need `nose
-  <http://somethingaboutorange.com/mrl/projects/nose>`__.
+  <http://nose.readthedocs.org/en/latest/>`__.
   After unpacking its source code (you may use `7-zip
   <http://www.7-zip.org/>`__), you can build and install it from within
   its code directory by running the following command (either from a Windows
@@ -427,12 +432,12 @@ Create a test file containing:
 .. testoutput::
    :hide:
    :options: +ELLIPSIS
-   
+
    NP time: ...[s], theano time: ...[s] (times should be close when run on CPU!)
    Result difference: ...
 
 .. code-block:: none
-   
+
    NP time: 1.480863[s], theano time: 1.475381[s] (times should be close when run on CPU!)
    Result difference: 0.000000
 
