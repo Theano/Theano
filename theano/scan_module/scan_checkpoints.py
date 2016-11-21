@@ -5,7 +5,7 @@ import theano
 
 def scan_checkpoints(fn, sequences=[], outputs_info=None, non_sequences=[],
                      name="checkpointscan_fn", n_steps=None, save_every_N=10,
-                     no_padding=False):
+                     padding=True):
     """Scan function that uses less memory, but is more restrictive.
 
     In :func:`~theano.scan`, if you compute the gradient of the output
@@ -63,11 +63,11 @@ def scan_checkpoints(fn, sequences=[], outputs_info=None, non_sequences=[],
         the computations of ``scan`` (ie they will have to be recomputed
         during the gradient computation).
 
-    no_padding
+    padding
         If the length of the sequences is not a multiple of ``save_every_N``,
         the sequences will be zero padded to make this version of ``scan``
         work properly, but will also result in a memory copy. It can be
-        avoided by setting ``no_padding`` to True, but you need to make
+        avoided by setting ``padding`` to False, but you need to make
         sure the length of the sequences is a multple of ``save_every_N``.
 
     Returns
@@ -111,7 +111,7 @@ def scan_checkpoints(fn, sequences=[], outputs_info=None, non_sequences=[],
     i_n_steps = theano.tensor.set_subtensor(i_n_steps[-1], rest)
 
     # Pad the sequences if needed
-    if not no_padding:
+    if padding:
         for i, s in enumerate(sequences):
             n = s.shape[0] % save_every_N
             z = theano.tensor.zeros((n, s.shape[1:]), dtype=s.dtype)
