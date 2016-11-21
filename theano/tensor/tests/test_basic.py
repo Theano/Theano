@@ -1128,8 +1128,8 @@ _good_broadcast_unary_normal_no_complex = dict(
         normal=[numpy.asarray(rand_ranged(-5, 5, (2, 3)), dtype=floatX)],
         integers=[randint_ranged(-5, 5, (2, 3))],
         int8=[numpy.arange(-127, 128, dtype='int8')],
-        uint8=[numpy.arange(0, 255, dtype='uint8')],
-        uint16=[numpy.arange(0, 65535, dtype='uint16')],
+        uint8=[numpy.arange(0, 89, dtype='uint8')],
+        uint16=[numpy.arange(0, 89, dtype='uint16')],
         corner_case=[corner_case],
         empty=[numpy.asarray([], dtype=config.floatX)],
         )
