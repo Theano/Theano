@@ -354,7 +354,6 @@ class GpuDnnConv(DnnBase, COp):
         if self.inplace:
             self.destroy_map = {0: [2]}
 
-
         if version() < (5000, 5000):
             if self.algo == 'winograd':
                 raise RuntimeError("cuDNN winograd convolution requires "
@@ -376,7 +375,6 @@ class GpuDnnConv(DnnBase, COp):
         # Work around to reload old pickle.
         # We need to find the new file name and reload c code.
         self.__init__(**self._props_dict())
-
 
     def get_op_params(self):
         if self.inplace:
