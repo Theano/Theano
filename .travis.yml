@@ -6,6 +6,7 @@ cache:
     - $HOME/download
     - $HOME/.cache/pip
     - $HOME/.theano
+    - $HOME/miniconda2/envs/pyenv
 
 
 language: python
