@@ -354,25 +354,6 @@ class GpuDnnConv(DnnBase, COp):
         if self.inplace:
             self.destroy_map = {0: [2]}
 
-        # In cuDNN version older than V3, the FFT implementation and the
-        # option to time the different implementations to get the fastest
-        # are both unavailable.
-        if version() < (3000, 3000):
-            if self.algo == 'fft':
-                raise RuntimeError("cuDNN FFT convolution requires cuDNN v3")
-            elif self.algo in ['guess_once', 'guess_on_shape_change']:
-                raise RuntimeError("cuDNN selection of convolution "
-                                   "implementation based on heuristics "
-                                   "requires cuDNN v3")
-            elif self.algo in ['time_once', 'time_on_shape_change']:
-                raise RuntimeError("cuDNN convolution timing requires cuDNN "
-                                   "v3")
-
-        # The fft_tiling implementation is only available from cuDNN V4 onward
-        if version() < (4000, 4000):
-            if self.algo == 'fft_tiling':
-                raise RuntimeError("cuDNN tiled-FFT convolution requires "
-                                   "cuDNN v4 or more recent")
 
         if version() < (5000, 5000):
             if self.algo == 'winograd':
@@ -864,13 +845,6 @@ class GpuDnnConvGradI(DnnBase, COp):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [2]}
-
-        # The small-workspace implementation is only available from cuDNN V4
-        # onward.
-        if version() < (4000, 4000):
-            if self.algo == 'fft_tiling':
-                raise RuntimeError("cuDNN's tiled-FFT convolution requires "
-                                   "cuDNN v4 or more recent")
 
         if version() < (5000, 5000):
             if self.algo == 'winograd':
@@ -1464,13 +1438,6 @@ class GpuDnnPoolDesc(GpuOp):
         self.ws = ws
         self.stride = stride
         self.pad = pad
-
-        if self.get_ndim() == 3 and version() < (3000, 3000):
-            raise RuntimeError("cuDNN 3d pooling requires cuDNN v3")
-        if (mode == 'average_exc_pad' and max(pad) > 0 and
-                version() < (4004, 4004)):
-            raise RuntimeError(
-                "cuDNN pooling mode 'average_exc_pad' requires at least v4")
 
     def get_ndim(self):
         return len(self.ws)
@@ -2109,9 +2076,6 @@ class GpuDnnSoftmaxBase(DnnBase):
                 "ran with this code.")
         DnnBase.__init__(self)
         self.tensor_format = tensor_format
-
-        if algo == 'log' and version() < (3000, 3000):
-            raise RuntimeError("cuDNN log-softmax requires cuDNN v3")
 
         assert(algo in ('fast', 'accurate', 'log'))
         self.algo = algo
@@ -3179,7 +3143,7 @@ if True:
     @local_optimizer([GpuElemwise, LogSoftmax])
     def local_log_softmax_dnn(node):
         # The log-softmax implementation is only available starting at cuDNN V3
-        if not dnn_available() or version() < (3000, 3000):
+        if not dnn_available():
             return
 
         if (isinstance(node.op, GpuElemwise) and
