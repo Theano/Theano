@@ -60,7 +60,7 @@ def local_max_and_argmax(node):
             return [new, None]
 
         if len(node.outputs[0].clients) == 0:
-            return [None, T._argmax(node.inputs[0], axis)]
+            return [None, T.Argmax(axis)(node.inputs[0])]
 
 
 @register_uncanonicalize
