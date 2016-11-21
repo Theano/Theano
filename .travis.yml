@@ -4,7 +4,6 @@ sudo: false
 cache:
   directories:
     - $HOME/download
-    - $HOME/download/miniconda.sh
     - $HOME/.cache/pip
     - $HOME/.theano
 
@@ -17,15 +16,11 @@ python:
 # command to install dependencies
 before_install:
 # Install miniconda to avoid compiling scipy
-  - echo check some directories
-  - pwd
-  - file /home/travis/download/miniconda.sh
-  - echo directories checked
   - mkdir -p download
   - cd download
-  - wget -c https://repo.continuum.io/miniconda/Miniconda2-4.1.11-Linux-x86_64.sh -O miniconda.sh
-  - chmod +x miniconda.sh
-  - ./miniconda.sh -b
+  - wget -c https://repo.continuum.io/miniconda/Miniconda2-4.1.11-Linux-x86_64.sh -O $HOME/download/miniconda.sh
+  - chmod +x $HOME/download/miniconda.sh
+  - $HOME/download/miniconda.sh -b
   - cd ..
   - export PATH=/home/travis/miniconda2/bin:$PATH
 
@@ -46,6 +41,7 @@ install:
   - pip install . --no-deps
   - pip install flake8-future-import nose-parameterized==0.5.0 sphinx_rtd_theme
   - pip install nose-exclude
+  - conda info --envs | grep "*" | cut -d"*" -f 2 | sed 's/^ *//g' | sed 's/ *$//g'
 
 # command to run tests
 env:
