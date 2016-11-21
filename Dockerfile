@@ -1,4 +1,4 @@
-FROM nvdl.githost.io:4678/dgx/cuda:8.0-cudnn5-devel-ubuntu14.04
+FROM nvdl.githost.io:4678/dgx/cuda:8.0-cudnn6-devel-ubuntu14.04
 MAINTAINER NVIDIA CORPORATION <cudatools@nvidia.com>
 
 ENV THEANO_VERSION 0.8.2
