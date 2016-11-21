@@ -41,6 +41,7 @@ install:
   - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then pip install pydot; else pip install pydot-ng; fi
   - pip install . --no-deps
   - pip install flake8-future-import nose-parameterized==0.5.0 sphinx_rtd_theme
+  # nose-exclude plugin allow us to tell nosetests to exclude folder with --exclude-dir=path/to/directory.
   - pip install nose-exclude
 
 # command to run tests
