@@ -860,10 +860,10 @@ _good_broadcast_div_mod_normal_float_no_complex = dict(
     dtype_mixup_1=(rand(2, 3), randint_nonzero(2, 3)),
     dtype_mixup_2=(randint_nonzero(2, 3), rand_nonzero((2, 3))),
     integer=(randint(2, 3), randint_nonzero(2, 3)),
-    uinteger8=(randint(2, 3).astype("uint8"),
-               randint_nonzero(2, 3).astype("uint8")),
-    uinteger16=(randint(2, 3).astype("uint16"),
-                randint_nonzero(2, 3).astype("uint16")),
+    uint8=(randint(2, 3).astype("uint8"),
+           randint_nonzero(2, 3).astype("uint8")),
+    uint16=(randint(2, 3).astype("uint16"),
+            randint_nonzero(2, 3).astype("uint16")),
     int8=[numpy.tile(numpy.arange(-127, 128, dtype='int8'), [254, 1]).T,
           numpy.tile(numpy.array(list(range(-127, 0)) + list(range(1, 128)),
                                  dtype='int8'),
@@ -944,7 +944,7 @@ TrueDivInplaceTester = makeBroadcastTester(
         good=copymod(
             _good_broadcast_div_mod_normal_float_inplace,
             # The output is now in float, we cannot work inplace on an int.
-            without=['integer', 'uinteger', 'int8']),
+            without=['integer', 'uint8', 'uint16', 'int8']),
         grad=_grad_broadcast_div_mod_normal,
         grad_rtol=div_grad_rtol,
         inplace=True)
@@ -1577,6 +1577,10 @@ _good_broadcast_binary_arctan2 = dict(
     integers=(randint(2, 3), randint(2, 3)),
     int8=[numpy.arange(-127, 128, dtype='int8'),
           numpy.arange(-127, 128, dtype='int8')[:, numpy.newaxis]],
+    uint8=[numpy.arange(0, 128, dtype='uint8'),
+           numpy.arange(0, 128, dtype='uint8')[:, numpy.newaxis]],
+    uint16=[numpy.arange(0, 128, dtype='uint16'),
+            numpy.arange(0, 128, dtype='uint16')[:, numpy.newaxis]],
     dtype_mixup_1=(rand(2, 3), randint(2, 3)),
     dtype_mixup_2=(randint(2, 3), rand(2, 3)),
     empty=(numpy.asarray([], dtype=config.floatX),
@@ -1595,10 +1599,12 @@ Arctan2Tester = makeBroadcastTester(
     expected=upcast_float16_ufunc(numpy.arctan2),
     good=_good_broadcast_binary_arctan2,
     grad=_grad_broadcast_binary_arctan2)
+
 Arctan2InplaceTester = makeBroadcastTester(
     op=inplace.arctan2_inplace,
     expected=numpy.arctan2,
-    good=copymod(_good_broadcast_binary_arctan2, without=['integers', 'int8']),
+    good=copymod(_good_broadcast_binary_arctan2,
+                 without=['integers', 'int8', 'uint8', 'uint16']),
     grad=_grad_broadcast_binary_arctan2,
     inplace=True)
 
@@ -1712,7 +1718,7 @@ if imported_scipy_special:
     expected_gamma = scipy.special.gamma
     expected_gammaln = scipy.special.gammaln
     expected_psi = scipy.special.psi
-    expected_chi2sf = lambda x, df: scipy.stats.chi2.sf(x, df).astype(x.dtype)
+    expected_chi2sf = lambda x, df: scipy.stats.chi2.sf(x, df)
     expected_j0 = scipy.special.j0
     expected_j1 = scipy.special.j1
     skip_scipy = False
@@ -1813,7 +1819,10 @@ ErfcinvTester = makeBroadcastTester(
 
 _good_broadcast_unary_gammaln = dict(
     normal=(rand_ranged(-1 + 1e-2, 10, (2, 3)),),
-    empty=(numpy.asarray([], dtype=config.floatX),))
+    empty=(numpy.asarray([], dtype=config.floatX),),
+    int=(randint_ranged(1, 10, (2, 3)),),
+    uint8=(randint_ranged(1, 10, (2, 3)).astype('uint8'),),
+    uint16=(randint_ranged(1, 10, (2, 3)).astype('uint16'),))
 _grad_broadcast_unary_gammaln = dict(
     # smaller range as our grad method does not estimate it well enough.
     normal=(rand_ranged(1e-1, 8, (2, 3)),),)
@@ -1856,7 +1865,10 @@ GammalnInplaceTester = makeBroadcastTester(
 
 _good_broadcast_unary_psi = dict(
     normal=(rand_ranged(1, 10, (2, 3)),),
-    empty=(numpy.asarray([], dtype=config.floatX),))
+    empty=(numpy.asarray([], dtype=config.floatX),),
+    int=(randint_ranged(1, 10, (2, 3)),),
+    uint8=(randint_ranged(1, 10, (2, 3)).astype('uint8'),),
+    uint16=(randint_ranged(1, 10, (2, 3)).astype('uint16'),))
 
 PsiTester = makeBroadcastTester(
     op=tensor.psi,
@@ -1882,7 +1894,13 @@ _good_broadcast_unary_chi2sf = dict(
     normal=(rand_ranged(1, 10, (2, 3)),
             numpy.asarray(1, dtype=config.floatX)),
     empty=(numpy.asarray([], dtype=config.floatX),
-           numpy.asarray(1, dtype=config.floatX)))
+           numpy.asarray(1, dtype=config.floatX)),
+    integers=(randint_ranged(1, 10, (2, 3)),
+              numpy.asarray(1, dtype=config.floatX)),
+    uint8=(randint_ranged(1, 10, (2, 3)).astype('uint8'),
+           numpy.asarray(1, dtype=config.floatX)),
+    uint16=(randint_ranged(1, 10, (2, 3)).astype('uint16'),
+            numpy.asarray(1, dtype=config.floatX)))
 
 Chi2SFTester = makeBroadcastTester(
     op=tensor.chi2sf,
@@ -1892,6 +1910,7 @@ Chi2SFTester = makeBroadcastTester(
     mode=mode_no_scipy,
     skip=skip_scipy,
     name='Chi2SF')
+
 Chi2SFInplaceTester = makeBroadcastTester(
     op=inplace.chi2sf_inplace,
     expected=expected_chi2sf,
