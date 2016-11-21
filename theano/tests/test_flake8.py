@@ -46,7 +46,6 @@ whitelist_flake8 = [
     "typed_list/tests/__init__.py",
     "tensor/__init__.py",
     "tensor/tests/__init__.py",
-    "tensor/tests/test_subtensor.py",
     "tensor/tests/test_utils.py",
     "tensor/tests/test_nlinalg.py",
     "tensor/tests/test_shared_randomstreams.py",
