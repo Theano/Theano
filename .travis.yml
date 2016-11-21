@@ -30,6 +30,11 @@ addons:
 install:
   - chmod +x ./.travis/travis_install.sh
   - ./.travis/travis_install.sh
+  - source activate pyenv
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then pip install pydot; else pip install pydot-ng; fi
+  - pip install . --no-deps
+  - pip install flake8-future-import nose-parameterized==0.5.0 sphinx_rtd_theme
+  - pip install nose-exclude
 
 # command to run tests
 env:
