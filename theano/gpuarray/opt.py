@@ -1788,14 +1788,13 @@ def local_gpu_maxandargmax(op, context_name, inputs, outputs):
 
 
 @register_opt('fast_compile')
-@local_optimizer([tensor.Argmax])
-def local_gpu_argmax(node):
-    if isinstance(node.op, tensor.Argmax):
-        inp, = node.inputs
-        if inp.owner and isinstance(inp.owner.op, HostFromGpu):
-            axis = node.op.get_params(None)
-            argmax = GpuMaxAndArgmax(axis)(inp.owner.inputs[0])[1]
-            return [host_from_gpu(argmax)]
+@op_lifter([tensor.Argmax])
+@register_opt2([tensor.Argmax])
+def local_gpu_argmax(op, context_name, inputs, outputs):
+    inp, = inputs
+    axis = op.get_params(None)
+    argmax = GpuMaxAndArgmax(axis)(inp)[1]
+    return argmax
 
 
 # Do not register in fast_run or fast_compile.
