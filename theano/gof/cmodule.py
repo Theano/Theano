@@ -189,7 +189,7 @@ static struct PyModuleDef moduledef = {{
 
     def add_support_code(self, code):
         assert not self.finalized
-        if code not in self.support_code:  # TODO: KLUDGE
+        if code and code not in self.support_code:  # TODO: KLUDGE
             self.support_code.append(code)
 
     def add_function(self, fn):
