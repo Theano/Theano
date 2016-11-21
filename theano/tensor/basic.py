@@ -1444,6 +1444,12 @@ class Argmax(Op):
         argmax, = out
         fail = sub["fail"]
         ret = """
+        #if PY_MAJOR_VERSION >= 3
+            #ifndef PyInt_AS_LONG
+                #define PyInt_AS_LONG PyLong_AS_LONG
+            #endif
+        #endif
+
         int axis;
 
         if (PyTuple_GET_SIZE(%(axis)s) == PyArray_NDIM(%(x)s)) {

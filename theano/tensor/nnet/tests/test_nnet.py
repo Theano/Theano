@@ -1338,10 +1338,10 @@ def test_argmax_pushdown():
         # for node in fgraph.toposort():
         # print node.op
         assert len(fgraph.toposort()) == 2  # an output_guard is second
-        assert fgraph.toposort()[0].op == tensor.basic._argmax
+        assert isinstance(fgraph.toposort()[0].op, tensor.basic.Argmax)
         assert str(fgraph.toposort()[1].op) == 'OutputGuard'
         assert check_stack_trace(
-            fgraph, ops_to_check=tensor.basic._argmax)
+            fgraph, ops_to_check=tensor.basic.Argmax)
         x = tensor.matrix()
         # test that the max_and_argmax is not pushed down if the max is used
         out = tensor.max_and_argmax(
