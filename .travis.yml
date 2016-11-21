@@ -6,7 +6,7 @@ cache:
     - $HOME/download
     - $HOME/.cache/pip
     - $HOME/.theano
-    - $HOME/miniconda2/envs/pyenv
+    - $HOME/miniconda2
 
 
 language: python
@@ -18,6 +18,7 @@ python:
 before_install:
   - chmod +x ./.travis/travis_before_install.sh
   - ./.travis/travis_before_install.sh
+  - export PATH=/home/travis/miniconda2/bin:$PATH
 
 addons:
   apt_packages:

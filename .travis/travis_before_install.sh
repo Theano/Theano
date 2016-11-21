@@ -8,4 +8,3 @@ if ! test -e $HOME/miniconda2/bin ; then
 else
     echo "miniconda already installed."
 fi
-export PATH=/home/travis/miniconda2/bin:$PATH
