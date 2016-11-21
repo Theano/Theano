@@ -53,13 +53,10 @@ def scan_checkpoints(fn, sequences=[], outputs_info=None, non_sequences=[],
 
     n_steps
         ``n_steps`` is the number of steps to iterate given as an int
-        or Theano scalar. If any of the input sequences do not have
-        enough elements, scan will raise an error. If the **value is 0**
-        the outputs will have **0 rows**. If the value is negative,
-        ``scan`` will run backwards in time. If the ``go_backwards`` flag
-        is already set and also ``n_steps`` is negative, ``scan`` will run
-        forward in time. If n_steps is not provided, ``scan`` will figure
-        out the amount of steps it should run given its input sequences.
+        or Theano scalar (> 0). If any of the input sequences do not have
+        enough elements, scan will raise an error. If n_steps is not provided,
+        ``scan`` will figure out the amount of steps it should run given its
+        input sequences.
 
     save_every_N
         ``save_every_N`` is the number of steps to go without storing
@@ -108,8 +105,10 @@ def scan_checkpoints(fn, sequences=[], outputs_info=None, non_sequences=[],
     o_n_steps = theano.tensor.cast(theano.tensor.ceil(n_steps / save_every_N),
                                    'int64')
     i_n_steps = save_every_N * theano.tensor.ones((o_n_steps,), 'int64')
-    i_n_steps = theano.tensor.inc_subtensor(i_n_steps[-1],
-                                            - n_steps % save_every_N)
+    mod = n_steps % save_every_N
+    sign = theano.tensor.sgn(mod)
+    rest = (1 - sign) * save_every_N + sign * mod
+    i_n_steps = theano.tensor.set_subtensor(i_n_steps[-1], rest)
 
     # Pad the sequences if needed
     if not no_padding:
