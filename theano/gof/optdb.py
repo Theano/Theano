@@ -168,7 +168,7 @@ class Query(object):
     """
 
     def __init__(self, include, require=None, exclude=None,
-                 subquery=None, position_cutoff=None,
+                 subquery=None, position_cutoff=float('inf'),
                  extra_optimizations=None):
         self.include = OrderedSet(include)
         self.require = require or OrderedSet()
@@ -185,7 +185,7 @@ class Query(object):
 
     def __str__(self):
         return ("Query{inc=%s,ex=%s,require=%s,subquery=%s,"
-                "position_cutoff=%d,extra_opts=%s}" %
+                "position_cutoff=%f,extra_opts=%s}" %
                 (self.include, self.exclude, self.require, self.subquery,
                  self.position_cutoff, self.extra_optimizations))
 

@@ -24,6 +24,9 @@ Scan
 
 The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 
+`A good ipython notebook with explanation and more examples.
+<https://github.com/lamblin/ccw_tutorial/blob/master/Scan_W2016/scan_tutorial.ipynb>`_
+
 **Scan Example: Computing tanh(x(t).dot(W) + b) elementwise**
 
 .. testcode::

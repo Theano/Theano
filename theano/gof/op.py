@@ -916,7 +916,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         fail and we try again 'py', prepare_node will be called twice.
         """
 
-        if impl is None or impl == 'c':
+        if (impl is None and theano.config.cxx) or impl == 'c':
             self.prepare_node(node, storage_map=storage_map,
                               compute_map=compute_map, impl='c')
             try:
