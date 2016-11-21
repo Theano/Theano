@@ -373,6 +373,10 @@ class GpuDnnConv(DnnBase, COp):
                 self.algo = config.dnn.conv.algo_fwd
         if not hasattr(self, 'inplace'):
             self.inplace = False
+        # Work around to reload old pickle.
+        # We need to find the new file name and reload c code.
+        self.__init__(**self._props_dict())
+
 
     def get_op_params(self):
         if self.inplace:
@@ -864,6 +868,7 @@ class GpuDnnConvGradI(DnnBase, COp):
                 self.algo = config.dnn.conv.algo_bwd_data
         if not hasattr(self, 'inplace'):
             self.inplace = False
+        self.__init__(**self._props_dict())
 
     def grad(self, inp, grads):
         kerns, top, output, desc, alpha, beta = inp
