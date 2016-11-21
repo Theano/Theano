@@ -1786,6 +1786,18 @@ def _scan_type_infer(node):
 def local_gpu_maxandargmax(op, context_name, inputs, outputs):
     return GpuMaxAndArgmax(op.get_params(None))
 
+
+@register_opt('fast_compile')
+@local_optimizer([tensor.Argmax])
+def local_gpu_argmax(node):
+    if isinstance(node.op, tensor.Argmax):
+        inp, = node.inputs
+        if inp.owner and isinstance(inp.owner.op, HostFromGpu):
+            axis = node.op.get_params(None)
+            argmax = GpuMaxAndArgmax(axis)(inp.owner.inputs[0])[1]
+            return [host_from_gpu(argmax)]
+
+
 # Do not register in fast_run or fast_compile.
 # It will be added to fast_run if the GPU is enabled.
 optdb.register('gpua_scanOp_make_inplace',
