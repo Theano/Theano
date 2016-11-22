@@ -603,3 +603,41 @@ def hash_from_dict(d):
             second_part += [v]
     tuple_items = tuple(first_part + second_part + [d.__class__])
     return hash(tuple_items)
+
+
+def move_shared_vars(graph, target='cpu', allow_borrow=True):
+    """
+    Clones a graph, moving all contained shared variables to a particular
+    target device or replacing them by constants.
+
+    Parameters
+    ----------
+    graph : Theano expression or list of Theano expressions
+        The computational graph to clone, represented by its output expressions
+    target : str
+        The target device for shared variables, or ``"constant"`` to replace
+        by constants
+    allow_borrow : bool
+        If True, allow (but not guarantee) newly created variables to share
+        storage with the original variables if residing on the same device.
+
+    Returns
+    -------
+    Theano expression or list of Theano expressions
+        The cloned graph with all shared variables replaced by copies on the
+        given target device, or by constants
+    """
+    import theano
+    graph_list = [graph] if isinstance(graph, theano.Variable) else graph
+    orig_vars = [v for v in theano.gof.graph.inputs(graph_list)
+                 if isinstance(v, theano.compile.SharedVariable)]
+    if target == 'constant':
+        new_vars = [theano.tensor.constant(v.get_value(borrow=True),
+                                           name=v.name)
+                    for v in orig_vars]
+    else:
+        new_vars = [theano.shared(v.get_value(borrow=True),
+                                  name=v.name, broadcastable=v.broadcastable,
+                                  target=target, borrow=allow_borrow)
+                    for v in orig_vars]
+    return theano.clone(graph, replace=dict(zip(orig_vars, new_vars)))
