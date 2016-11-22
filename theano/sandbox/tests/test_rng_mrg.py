@@ -627,6 +627,22 @@ def test_uniform():
                   allow_01=True, inputs=input)
 
 
+def test_uniform_broadcastable():
+    x = tensor.matrix()
+    size1 = (10, 1)
+    size2 = (x.shape[0], 1)
+
+    R = MRG_RandomStreams(234, use_cuda=False)
+
+    # check when all dimensions are constant
+    uu = R.uniform(size=size1)
+    assert uu.broadcastable == (False, True)
+
+    # check when some dimensions are theano variables
+    uu = R.uniform(size=size2)
+    assert uu.broadcastable == (False, True)
+
+
 @attr('slow')
 def test_binomial():
     # TODO: test size=None, ndim=X

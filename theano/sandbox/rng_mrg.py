@@ -318,9 +318,9 @@ class mrg_uniform_base(Op):
         #
         # call through MRG_RandomStreams instead.
         broad=[]
-        for i in self.output_type.ndim:
-                broad.append(T.extract_constant(size[i]) == 1)
-        output_type = self.output_type.clone(broadcastab le=broad)()
+        for i in range(self.output_type.ndim):
+                broad.append(tensor.extract_constant(size[i]) == 1)
+        output_type = self.output_type.clone(broadcastable=broad)()
         return Apply(self,
                      [rstate, size],
                      [rstate.type(), output_type])
