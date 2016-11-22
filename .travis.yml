@@ -3,9 +3,9 @@
 sudo: false
 cache:
   directories:
-    - $HOME/download # Sufficient to add miniconda.sh to TRAVIS cache.
     - $HOME/.cache/pip
     - $HOME/.theano
+    - $HOME/download # Sufficient to add miniconda.sh to TRAVIS cache.
     - $HOME/miniconda2 # Add the installation to TRAVIS cache.
 
 
@@ -19,7 +19,7 @@ python:
 # some codes have been moved to separate files
 # to better handle if-else shell syntax
 # for multiple lines. New files are in
-# new .travis folder added.
+# new folder ".travis".
 
 # command to install dependencies
 before_install:
