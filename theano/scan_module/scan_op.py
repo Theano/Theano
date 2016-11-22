@@ -139,8 +139,9 @@ class Scan(PureOp):
         self.output_types = []
         idx = 0
         jdx = 0
-        tensorConstructor = lambda broadcastable, dtype: TensorType(
-            broadcastable=broadcastable, dtype=dtype)
+
+        def tensorConstructor(broadcastable, dtype):
+            return TensorType(broadcastable=broadcastable, dtype=dtype)
         if typeConstructor is None:
             typeConstructor = tensorConstructor
 
@@ -208,7 +209,8 @@ class Scan(PureOp):
         else:
             tmp_in, tmp_out = scan_utils.reconstruct_graph(self.inputs,
                                                            self.outputs)
-            local_fgraph = gof.FunctionGraph(tmp_in, tmp_out, clone=False)
+            # This is actually required for the line just after.
+            gof.FunctionGraph(tmp_in, tmp_out, clone=False)
             self._cmodule_key = gof.CLinker().cmodule_key_variables(self.inputs,
                                                                     self.outputs,
                                                                     [])
@@ -735,9 +737,6 @@ class Scan(PureOp):
 
         node_input_storage = [storage_map[r] for r in node.inputs]
         node_output_storage = [storage_map[r] for r in node.outputs]
-        node_input_compute = [compute_map[r] for r in node.inputs]
-        node_output_compute = [compute_map[r] for r in node.outputs]
-        #_logger.debug('Compiling node %i of graph' % node_idx)
         # If a shared variable is the result of a ViewOp it is a clear
         # indication that we need to copy that value after the perform of
         # scan is done
@@ -914,32 +913,33 @@ class Scan(PureOp):
             cython_destroy_map = numpy.asarray(cython_destroy_map,
                                                dtype='int32')
             from . import scan_perform_ext
-            p = lambda node, args, outs:\
-                scan_perform_ext.perform(self.n_shared_outs,
-                                         self.n_mit_mot_outs,
-                                         self.n_seqs,
-                                         self.n_mit_mot,
-                                         self.n_mit_sot,
-                                         self.n_sit_sot,
-                                         self.n_nit_sot,
-                                         args[0],
-                                         self.as_while,
-                                         cython_mintaps,
-                                         cython_tap_array,
-                                         cython_tap_array_len,
-                                         cython_vector_seqs,
-                                         cython_vector_outs,
-                                         cython_mit_mot_out_slices,
-                                         cython_mit_mot_out_nslices,
-                                         cython_mitmots_preallocated,
-                                         cython_inps_is_tensor,
-                                         cython_outs_is_tensor,
-                                         self.fn.fn,
-                                         self.fn,
-                                         cython_destroy_map,
-                                         args,
-                                         outs,
-                                         self, node)
+
+            def p(node, args, outs):
+                return scan_perform_ext.perform(self.n_shared_outs,
+                                                self.n_mit_mot_outs,
+                                                self.n_seqs,
+                                                self.n_mit_mot,
+                                                self.n_mit_sot,
+                                                self.n_sit_sot,
+                                                self.n_nit_sot,
+                                                args[0],
+                                                self.as_while,
+                                                cython_mintaps,
+                                                cython_tap_array,
+                                                cython_tap_array_len,
+                                                cython_vector_seqs,
+                                                cython_vector_outs,
+                                                cython_mit_mot_out_slices,
+                                                cython_mit_mot_out_nslices,
+                                                cython_mitmots_preallocated,
+                                                cython_inps_is_tensor,
+                                                cython_outs_is_tensor,
+                                                self.fn.fn,
+                                                self.fn,
+                                                cython_destroy_map,
+                                                args,
+                                                outs,
+                                                self, node)
         except (ImportError, theano.gof.cmodule.MissingGXX):
             p = self.execute
         # default arguments are stored in the closure of `rval`
@@ -1759,7 +1759,7 @@ class Scan(PureOp):
                     j_inp_idx = self.var_mappings["outer_inp_from_outer_out"][jidx]
 
                     if j_inp_idx != -1:
-                        if connection_pattern[j_inp_idx][iidx] == True:
+                        if connection_pattern[j_inp_idx][iidx] is True:
                             for k in xrange(len(connection_pattern)):
                                 if connection_pattern[k][jidx]:
                                     connection_pattern[k][iidx] = True
@@ -2165,7 +2165,6 @@ class Scan(PureOp):
         outer_inp_seqs = [x[::-1] for x in inputs[1:1 + self.n_seqs]]
         for idx in xrange(self.n_mit_mot + self.n_mit_sot):
             mintap = numpy.min(self.tap_array[idx])
-            maxtap = numpy.max(self.tap_array[idx])
             if idx < self.n_mit_mot:
                 outmaxtap = numpy.max(self.mitmot_out_taps()[idx])
             else:
@@ -2221,7 +2220,6 @@ class Scan(PureOp):
         inner_inp_seqs += Xts
         # mitmot
         outer_inp_mitmot = []
-        outer_out_mitmot = []
         inner_inp_mitmot = []
         inner_out_mitmot = []
         mitmot_inp_taps = []
@@ -2506,7 +2504,6 @@ class Scan(PureOp):
                         self.outer_shared(inputs) +
                         self.outer_non_seqs(inputs))
 
-        inner_other_args = self_inputs[offset:]
         inner_gfn_ins = (inner_inp_seqs +
                          inner_inp_mitmot +
                          inner_inp_sitsot +
