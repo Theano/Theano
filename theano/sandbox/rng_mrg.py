@@ -325,7 +325,6 @@ class mrg_uniform_base(Op):
                      [rstate, size],
                      [rstate.type(), output_type])
 
-
     def grad(self, inputs, ograd):
         return [gradient.grad_undefined(self, k, inp,
                                         'No gradient defined through '
