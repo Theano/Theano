@@ -2210,7 +2210,7 @@ class Scan(PureOp):
 
         # Restrict the length of the outer sequences to the number of grad
         # steps
-        outer_inp_seqs = [seq[:grad_steps] for seq in outer_inp_seqs]
+        outer_inp_seqs = [s_[:grad_steps] for s_ in outer_inp_seqs]
 
         inner_inp_seqs = self.inner_seqs(self_inputs)
         inner_inp_seqs += self.inner_mitmot(self_inputs)
@@ -2500,7 +2500,7 @@ class Scan(PureOp):
                         outer_inp_seqs +
                         outer_inp_mitmot +
                         outer_inp_sitsot +
-                        [inputs[0] for x in xrange(n_nit_sot)] +
+                        [inputs[0] for _ in xrange(n_nit_sot)] +
                         self.outer_shared(inputs) +
                         self.outer_non_seqs(inputs))
 
