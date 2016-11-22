@@ -1432,8 +1432,17 @@ class Scan(PureOp):
                         output_reused = False
 
                     if not output_reused:
-                        outs[j][0][pos[j]] = \
-                            output_storage[offset_out + j].storage[0]
+                        try:
+                            outs[j][0][pos[j]] = \
+                                output_storage[offset_out + j].storage[0]
+                        except ValueError as e:
+                            ne = ValueError(
+                                "An output of the scan has changed shape. "
+                                "This may be caused by a pushout optimization."
+                                " Try adding "
+                                "'optimizer_excluding=scanOp_pushout_output' "
+                                "to your Theano flags.")
+                            raise_from(ne, e)
 
             # 5.5 Copy over the values for nit_sot outputs
             begin = end
