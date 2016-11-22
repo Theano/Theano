@@ -317,7 +317,7 @@ class mrg_uniform_base(Op):
         # this op should not be called directly.
         #
         # call through MRG_RandomStreams instead.
-        broad=[]
+        broad = []
         for i in range(self.output_type.ndim):
                 broad.append(tensor.extract_constant(size[i]) == 1)
         output_type = self.output_type.clone(broadcastable=broad)()
