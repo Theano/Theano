@@ -371,6 +371,7 @@ class BaseTestConv2d(BaseTestConv):
         cls.subsamples = [(1, 1), (2, 2), (2, 4)]
         cls.default_subsamples = (1, 1)
         cls.filters_dilations = [(1, 1), (1, 2), (2, 1)]
+        cls.default_filters_dilations = (1, 1)
         cls.border_modes = ["valid", "half", "full", (0, 0), (1, 1), (5, 5), (5, 2)]
         cls.default_border_mode = (0, 0)
         cls.filter_flip = [True, False]
@@ -378,6 +379,30 @@ class BaseTestConv2d(BaseTestConv):
         cls.provide_shape = [True, False]
         cls.default_provide_shape = True
         cls.shared = staticmethod(theano.compile.shared)
+
+    def test_gradinput_arbitrary_output_shapes(self):
+        # this computes the grad wrt inputs for an output shape
+        # that the forward convolution would not produce
+        input_shape = (2, 1, 7, 7)
+        filter_shape = (2, 1, 3, 3)
+        for output_shape in [(2, 2, 8, 8), (2, 2, 9, 9), (2, 2, 12, 12)]:
+            for border_mode in ["valid", "half", "full"]:
+                # is this output shape large enough?
+                min_output_shape = self.get_output_shape(
+                    input_shape, filter_shape, self.default_subsamples,
+                    border_mode, self.default_filters_dilations)
+                if not all(o >= min_o for (o, min_o) in zip(output_shape, min_output_shape)):
+                    continue
+                for provide_shape in self.provide_shape:
+                    yield (self.tcase_gi,
+                           input_shape,
+                           filter_shape,
+                           output_shape,
+                           self.default_subsamples,
+                           border_mode,
+                           True,
+                           provide_shape,
+                           self.default_filters_dilations)
 
     def run_fwd(self, inputs_shape, filters_shape,
                 conv_fn=conv.conv2d, conv_op=conv.AbstractConv2d,
@@ -438,6 +463,17 @@ class TestCorrConv2d(BaseTestConv2d):
                            filter_flip=flip, target_op=CorrMM_gradInputs,
                            check_trace=True, filter_dilation=fd)
 
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1)):
+        # This tests can run even when theano.config.blas.ldflags is empty.
+        if (not theano.config.cxx or
+                theano.config.mode == "FAST_COMPILE"):
+            raise SkipTest("Need blas to test conv2d")
+        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                           output_shape=o, subsample=s, verify_grad=True,
+                           provide_shape=provide_shape, border_mode=b,
+                           filter_flip=flip, target_op=CorrMM_gradInputs,
+                           check_trace=True, filter_dilation=fd)
+
 
 class TestAbstractConvNoOptim(BaseTestConv2d):
     @classmethod
@@ -470,6 +506,15 @@ class TestAbstractConvNoOptim(BaseTestConv2d):
                             filter_flip=flip, target_op=None,
                             check_trace=True, filter_dilation=fd,
                             mode=mode)
+        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                           output_shape=o, subsample=s, verify_grad=True,
+                           provide_shape=provide_shape, border_mode=b,
+                           filter_flip=flip, target_op=None,
+                           check_trace=True, filter_dilation=fd,
+                           mode=mode)
+
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1)):
+        mode = theano.Mode(optimizer=None)
         self.run_gradinput(inputs_shape=i, filters_shape=f,
                            output_shape=o, subsample=s, verify_grad=True,
                            provide_shape=provide_shape, border_mode=b,
@@ -592,6 +637,29 @@ class TestCpuConv2d(BaseTestConv2d):
                           check_trace=True,
                           filter_dilation=fd)
 
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1)):
+        if fd != (1, 1):
+            raise SkipTest("No dilation implementation for basic cpu ConvOp.")
+        mode = self.mode
+
+        if not flip:
+            return
+        if b not in ((0, 0), 'valid', 'full'):
+            return
+        if (not provide_shape) and (s != (1, 1)) and (b == 'full'):
+            return
+        if ((s[0] not in (1, 2)) or (s[1] not in (1, 2))) and (b == 'full'):
+            return
+
+        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                           output_shape=o, subsample=s,
+                           verify_grad=False, mode=mode,
+                           provide_shape=provide_shape, border_mode=b,
+                           filter_flip=flip,
+                           target_op=(ConvOp, ConvTransp3D),
+                           check_trace=True,
+                           filter_dilation=fd)
+
 
 class BaseTestConv3d(BaseTestConv):
     @classmethod
@@ -602,6 +670,7 @@ class BaseTestConv3d(BaseTestConv):
         cls.subsamples = [(1, 1, 1), (2, 2, 2), (1, 2, 3)]
         cls.default_subsamples = (1, 1, 1)
         cls.filters_dilations = [(1, 1, 1), (1, 2, 1), (2, 1, 2)]
+        cls.default_filters_dilations = (1, 1, 1)
         cls.border_modes = ["valid", "half", "full", (0, 0, 0), (2, 2, 3)]
         cls.default_border_mode = (0, 0, 0)
         cls.filter_flip = [True, False]
@@ -609,6 +678,30 @@ class BaseTestConv3d(BaseTestConv):
         cls.provide_shape = [True, False]
         cls.default_provide_shape = True
         cls.shared = staticmethod(theano.compile.shared)
+
+    def test_gradinput_arbitrary_output_shapes(self):
+        # this computes the grad wrt inputs for an output shape
+        # that the forward convolution would not produce
+        input_shape = (2, 1, 7, 7, 7)
+        filter_shape = (1, 1, 3, 3, 3)
+        for output_shape in [(2, 1, 8, 8, 8), (2, 1, 9, 9, 9), (2, 1, 12, 12, 12)]:
+            for border_mode in ["valid", "half", "full"]:
+                # is this output shape large enough?
+                min_output_shape = self.get_output_shape(
+                    input_shape, filter_shape, self.default_subsamples,
+                    border_mode, self.default_filters_dilations)
+                if not all(o >= min_o for (o, min_o) in zip(output_shape, min_output_shape)):
+                    continue
+                for provide_shape in self.provide_shape:
+                    yield (self.tcase_gi,
+                           input_shape,
+                           filter_shape,
+                           output_shape,
+                           self.default_subsamples,
+                           border_mode,
+                           True,
+                           provide_shape,
+                           self.default_filters_dilations)
 
     def run_fwd(self, inputs_shape, filters_shape,
                 conv_fn=conv.conv3d, conv_op=conv.AbstractConv3d,
@@ -663,6 +756,17 @@ class TestCorrConv3d(BaseTestConv3d):
                             provide_shape=provide_shape, border_mode=b,
                             filter_flip=flip, target_op=Corr3dMM_gradWeights,
                             check_trace=True, filter_dilation=fd)
+        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                           output_shape=o, subsample=s, verify_grad=True,
+                           provide_shape=provide_shape, border_mode=b,
+                           filter_flip=flip, target_op=Corr3dMM_gradInputs,
+                           check_trace=True, filter_dilation=fd)
+
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1, 1)):
+        # This test can run even when theano.config.blas.ldflags is empty.
+        if (not theano.config.cxx or
+                theano.config.mode == "FAST_COMPILE"):
+            raise SkipTest("Need blas to test conv3d")
         self.run_gradinput(inputs_shape=i, filters_shape=f,
                            output_shape=o, subsample=s, verify_grad=True,
                            provide_shape=provide_shape, border_mode=b,
@@ -769,6 +873,23 @@ class TestCpuConv3d(BaseTestConv3d):
                           filter_flip=flip,
                           check_trace=True,
                           filter_dilation=fd)
+
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1, 1)):
+        if fd != (1, 1, 1):
+            raise SkipTest("No dilation implementation for basic cpu Conv3D.")
+        mode = self.mode
+
+        if b not in ((0, 0, 0), 'valid'):
+            return
+
+        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                           output_shape=o, subsample=s,
+                           verify_grad=False, mode=mode,
+                           provide_shape=provide_shape, border_mode=b,
+                           filter_flip=flip,
+                           target_op=ConvTransp3D,
+                           check_trace=True,
+                           filter_dilation=fd)
 
 
 def test_constant_shapes():

@@ -57,6 +57,19 @@ class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
                            filter_flip=flip, target_op=GpuDnnConvGradI,
                            filter_dilation=fd)
 
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1)):
+        if fd != (1, 1):
+            raise SkipTest("No dilation implementation for cuDNN ConvOp.")
+        if not dnn_available():
+            raise SkipTest(cuda.dnn.dnn_available.msg)
+        mode = mode_with_gpu
+        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                           output_shape=o, subsample=s,
+                           verify_grad=True, mode=mode,
+                           provide_shape=provide_shape, border_mode=b,
+                           filter_flip=flip, target_op=GpuDnnConvGradI,
+                           filter_dilation=fd)
+
 
 class TestDnnConv3d(test_abstract_conv.BaseTestConv3d):
     @classmethod
@@ -89,6 +102,19 @@ class TestDnnConv3d(test_abstract_conv.BaseTestConv3d):
                            verify_grad=True, mode=mode,
                            provide_shape=provide_shape, border_mode=b,
                            filter_flip=flip, target_op=GpuDnnConv3dGradI,
+                           filter_dilation=fd)
+
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1, 1)):
+        if fd != (1, 1, 1):
+            raise SkipTest("No dilation implementation for cuDNN ConvOp.")
+        if not dnn_available():
+            raise SkipTest(cuda.dnn.dnn_available.msg)
+        mode = mode_with_gpu
+        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                           output_shape=o, subsample=s,
+                           verify_grad=True, mode=mode,
+                           provide_shape=provide_shape, border_mode=b,
+                           filter_flip=flip, target_op=GpuDnnConvGradI,
                            filter_dilation=fd)
 
 
@@ -124,6 +150,16 @@ class TestCorrMMConv2d(test_abstract_conv.BaseTestConv2d):
                            target_op=GpuCorrMM_gradInputs,
                            filter_dilation=fd)
 
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1)):
+        mode = self.mode
+        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                           output_shape=o, subsample=s,
+                           verify_grad=True, mode=mode,
+                           provide_shape=provide_shape, border_mode=b,
+                           filter_flip=flip,
+                           target_op=GpuCorrMM_gradInputs,
+                           filter_dilation=fd)
+
 
 class TestCorrMMConv3d(test_abstract_conv.BaseTestConv3d):
     @classmethod
@@ -149,6 +185,16 @@ class TestCorrMMConv3d(test_abstract_conv.BaseTestConv3d):
                             filter_flip=flip,
                             target_op=GpuCorr3dMM_gradWeights,
                             filter_dilation=fd)
+        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                           output_shape=o, subsample=s,
+                           verify_grad=True, mode=mode,
+                           provide_shape=provide_shape, border_mode=b,
+                           filter_flip=flip,
+                           target_op=GpuCorr3dMM_gradInputs,
+                           filter_dilation=fd)
+
+    def tcase_gi(self, i, f, o, s, b, flip, provide_shape, fd=(1, 1, 1)):
+        mode = self.mode
         self.run_gradinput(inputs_shape=i, filters_shape=f,
                            output_shape=o, subsample=s,
                            verify_grad=True, mode=mode,
