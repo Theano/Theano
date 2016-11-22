@@ -4468,7 +4468,7 @@ int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B,
 
     if (CUBLAS_STATUS_SUCCESS != err)
     {
-        if (used_dot)
+        if (!used_dot)
         {
             PyErr_Format(PyExc_RuntimeError,
                          "cublasSgemv failed (%i)",
