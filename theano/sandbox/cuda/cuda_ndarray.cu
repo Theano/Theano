@@ -4396,36 +4396,25 @@ int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B,
     if (sa_0 == 0) sa_0 = 1;
     if (sa_1 == 0) sa_1 = 1;
 
+    int used_dot = 0;
+
     // This is important because we can end up not calling Sgemv at all
     cublasStatus_t err = CUBLAS_STATUS_SUCCESS;
     if (CudaNdarray_SIZE(C)) {
         // A is row vector & alpha==1 & beta==0 -> use cublasSdot
         if (CudaNdarray_HOST_DIMS(A)[0] == 1 && alpha==1.f && beta==0.f) {
-            //TODO: this is a rather temporary solution
-            // 1. better temp solution:
-            // replace this with custom inner product kernel with
-            // alpha and beta parameter
-            // 2. permanant solution:
-            // define a new "InnerProduct" Op, add an optimization
-            // "gemv -> inner_prod", perhaps for CPU/GPU both
-            float* dev_dst = CudaNdarray_DEV_DATA(C)+1-sc_0;
+            //replace this with custom inner product kernel with alpha and beta parameter?
             cublasPointerMode_t pmode;
+            //set pointer mode to make sure cublas not storing on host pointer
             cublasGetPointerMode(handle, &pmode);
-            // need to store dot result on device here
             cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_DEVICE);
             err = cublasSdot(
                     handle, CudaNdarray_HOST_DIMS(A)[1],
                     CudaNdarray_DEV_DATA(A), sa_1,
                     CudaNdarray_DEV_DATA(B), sb_0,
-                    dev_dst);
+                    CudaNdarray_DEV_DATA(C));
             cublasSetPointerMode(handle, pmode);
-            if (CUBLAS_STATUS_SUCCESS != err)
-            {
-                PyErr_Format(PyExc_RuntimeError,
-                             "cublasSdot failed (%i)",
-                             err);
-                return -1;
-            }
+            used_dot = 1;
         }
         // A is row-contiguous | row vector
         else if ((CudaNdarray_HOST_DIMS(A)[0] <= 1)
@@ -4479,9 +4468,16 @@ int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B,
 
     if (CUBLAS_STATUS_SUCCESS != err)
     {
+        if (used_dot)
+        {
+            PyErr_Format(PyExc_RuntimeError,
+                         "cublasSgemv failed (%i)",
+                         err);
+        } else {
         PyErr_Format(PyExc_RuntimeError,
-                     "cublasSgemv failed (%i)",
+                     "cublasSdot failed (%i)",
                      err);
+        }
         return -1;
     }
     return 0;
