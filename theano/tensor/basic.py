@@ -3886,7 +3886,12 @@ class Join(Op):
 
     """
     check_input = False
-    __props__ = ()
+    __props__ = ("view",)
+
+    def __init__(self, view=False):
+        self.view = view
+        if view:
+            self.view_map = {0: [0]}
 
     def make_node(self, *axis_and_tensors):
         """
@@ -3999,18 +4004,27 @@ class Join(Op):
     def perform(self, node, axis_and_tensors, out_):
         out, = out_
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
-        ndim = tensors[0].ndim
-        if axis < -ndim:
-            raise IndexError("Join axis %d out of bounds [0, %d)" %
-                             (axis, ndim))
+        nonempty_tensors = [0 if tensor.size == 0 else 1 for tensor in tensors]
+        num_nonempty = numpy.sum(nonempty_tensors)
+        # checking if more than one non-empty tensors are joined.
+        if num_nonempty > 1:
+            ndim = tensors[0].ndim
+            if axis < -ndim:
+                raise IndexError("Join axis %d out of bounds [0, %d)" %
+                                 (axis, ndim))
 
-        out[0] = theano._asarray(numpy.concatenate(tensors, axis=axis),
-                                 dtype=node.outputs[0].type.dtype)
+            out[0] = theano._asarray(numpy.concatenate(tensors, axis=axis),
+                                     dtype=node.outputs[0].type.dtype)
+        elif num_nonempty == 1:
+            nonempty_tensor_index = numpy.argmax(nonempty_tensors)
+            self.view_map = {0: [nonempty_tensor_index]}
+            out[0] = tensors[nonempty_tensor_index]
 
     def c_code_cache_version(self):
+        return
         return (3,)
 
-    def c_code(self, node, name, inputs, outputs, sub):
+    def c_code_(self, node, name, inputs, outputs, sub):
         axis, tensors = inputs[0], inputs[1:]
         input_1 = tensors[0]
         l = len(tensors)
