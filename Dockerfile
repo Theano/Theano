@@ -14,12 +14,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python-scipy && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade nose nose-parameterized
+RUN pip install --upgrade pip setuptools wheel
+RUN pip install --upgrade --no-cache-dir nose nose-parameterized
 
 WORKDIR /workspace
 COPY . .
 
-RUN python setup.py develop
+RUN pip install -e .
 
 COPY theanorc /workspace/.theanorc
 ENV THEANORC /workspace/.theanorc
