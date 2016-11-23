@@ -203,7 +203,7 @@ def local_dimshuffle_subtensor(node):
             # the arguments missing from the dimshuffles must be dims that are broadcastable
             broadcastable = input_.broadcastable
 
-            missing_dims = range(input_.ndim)
+            missing_dims = list(range(input_.ndim))
             for dim in new_order:
                 missing_dims.remove(dim)
 
