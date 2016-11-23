@@ -6191,8 +6191,6 @@ def local_log_sum_exp(node):
     return [ret]
 
 
-
-
 def add_calculate(num, denum, aslist=False, out_type=None):
     # TODO: make sure that this function and mul_calculate are similar
     if out_type is None:
