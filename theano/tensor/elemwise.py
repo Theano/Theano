@@ -703,19 +703,8 @@ second dimension
                       if bcast and not outs[0].broadcastable[j]]
 
             if to_sum:
-                shuffle = []
-                j = 0
-                for bcast in ipt.type.broadcastable:
-                    if bcast == 1:
-                        shuffle.append('x')
-                    else:
-                        shuffle.append(j)
-                        j += 1
-                    # close if
-                # close for
-                sr = Sum(axis=to_sum)(rval[i])
-                sr = sr.dimshuffle(shuffle)
-                # sr = DimShuffle(sr.type.broadcastable, shuffle)(sr)
+                sr = theano.tensor.basic.sum(
+                    rval[i], axis=to_sum, keepdims=True)
                 rval[i] = sr
             # close if
         # close for
