@@ -1254,7 +1254,8 @@ def test_grad_useless_sum():
     computations.
     """
     mode = theano.compile.get_default_mode().including('canonicalize')
-    x = tensor.TensorType(theano.config.floatX, (True,))('x')
+    mode.check_isfinite = False
+    x = TensorType(theano.config.floatX, (True,))('x')
     l = tensor.log(1.0 - tensor.nnet.sigmoid(x))[0]
     g = tensor.grad(l, x)
     nodes = theano.gof.graph.ops([x], [g])
@@ -1262,8 +1263,15 @@ def test_grad_useless_sum():
     f = theano.function([x], g, mode=mode)
     test_values = [-100, -1, 0, 1, 100]
     outputs = []
-    for test_value in test_values:
-        outputs.append(f(numpy.array([test_value]).astype('float32')))
+    old_values_eq_approx = staticmethod(TensorType.values_eq_approx)
+    TensorType.values_eq_approx = staticmethod(
+        tensor.type.values_eq_approx_remove_nan)
+    try:
+        for test_value in test_values:
+            outputs.append(f(numpy.array([test_value]).astype('float32')))
+    finally:
+        TensorType.values_eq_approx = old_values_eq_approx
+
     assert not any([isinstance(node.op, theano.tensor.elemwise.Sum) for node in nodes])
     assert numpy.allclose(outputs, [[-3.72007598e-44],
                                     [-0.26894142],

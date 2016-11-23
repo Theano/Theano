@@ -1821,7 +1821,7 @@ class T_Scan(unittest.TestCase):
 
     def test_grad_multiple_outs_some_disconnected(self):
         final_cost = self._grad_mout_helper(100, mode_nodebug)
-        assert final_cost < 0.02
+        assert final_cost < 0.02, final_cost
 
     def test_grad_multiple_outs_some_disconnected_2(self):
         # This is to try the network in DEBUG_MODE, but not fully
