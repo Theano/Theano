@@ -5737,6 +5737,7 @@ def local_pow_canonicalize(node):
             return [broadcast_like(node.inputs[0], node.outputs[0], node.fgraph)]
     else:
         return False
+register_canonicalize(local_pow_canonicalize)
 
 
 @register_specialize
@@ -6250,8 +6251,7 @@ def local_mul_exp(node):
         return False
 
 compile.optdb.register('local_log_sum_exp',
-                       in2out([local_pow_canonicalize,
-                               local_log_sum_exp,
+                       in2out([local_log_sum_exp,
                                local_mul_exp],
                               ignore_newtrees=True),
                        # between stabilize at 1.5 and specialize at 2
