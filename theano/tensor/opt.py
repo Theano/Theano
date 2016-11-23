@@ -6191,15 +6191,6 @@ def local_log_sum_exp(node):
     return [ret]
 
 
-compile.optdb.register('local_log_sum_exp',
-                       in2out([local_pow_canonicalize,
-                               local_log_sum_exp,
-                               local_mul_exp],
-                              ignore_newtrees=True),
-                       # between stabilize at 1.5 and specialize at 2
-                       # local_mul_exp should be after local_greedy_distributor
-                       # and before local_pow_specialize
-                       1.6, 'fast_run')
 
 
 def add_calculate(num, denum, aslist=False, out_type=None):
@@ -6260,6 +6251,15 @@ def local_mul_exp(node):
     else:
         return False
 
+compile.optdb.register('local_log_sum_exp',
+                       in2out([local_pow_canonicalize,
+                               local_log_sum_exp,
+                               local_mul_exp],
+                              ignore_newtrees=True),
+                       # between stabilize at 1.5 and specialize at 2
+                       # local_mul_exp should be after local_greedy_distributor
+                       # and before local_pow_specialize
+                       1.6, 'fast_run')
 ##################
 # Distributivity #
 ##################
