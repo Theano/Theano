@@ -31,8 +31,11 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               get_conv_output_shape,
                                               assert_conv_shape)
 from theano.tensor.signal.pool import (
-    Pool, MaxPoolGrad, AveragePoolGrad)
+    Pool, MaxPoolGrad, AveragePoolGrad, RoIPoolOp, RoIPoolGradOp)
 from . import pygpu, cudnn_defs
+
+from . import pygpu
+
 from .type import (get_context, gpu_context_type, list_contexts,
                    GpuArraySharedVariable)
 from .basic_ops import (as_gpuarray_variable, infer_context_name, gpuarray_helper_inc_dir,

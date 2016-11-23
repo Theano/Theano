@@ -2475,7 +2475,7 @@ class RoIPoolOp(gof.COp):
 
     def __init__(self, pooled_h, pooled_w, spatial_scale):
         super(RoIPoolOp, self).__init__(self.func_file,
-                                            self.func_name)
+                                        self.func_name)
         self.pooled_h = pooled_h
         self.pooled_w = pooled_w
         self.spatial_scale = spatial_scale
@@ -2490,47 +2490,45 @@ class RoIPoolOp(gof.COp):
         roi_tuples = tensor.as_tensor_variable(roi)
         assert feature_maps.ndim == 4
         assert roi.ndim == 2
-        return Apply(self, [feature_maps, roi], [feature_maps.type(), roi_tuples.type()])
+        return Apply(self, [feature_maps, roi_tuples], [feature_maps.type()])
 
     def c_code_cache_version(self):
         return (1, 0)
 
     def grad(self, inp, grads):
-        import pdb
-        pdb.set_trace()
         return [RoIPoolGradOp(self.pooled_h, self.pooled_w,
-                         self.spatial_scale)(*(inp + [grads[0]])), grad_undefined(self, 1, inp[1])]
+                              self.spatial_scale)(*(inp + [grads[0]])), grad_undefined(self, 1, inp[1])]
 
 
 class RoIPoolGradOp(gof.COp):
-  __props__ = ('spatial_scale', 'pooled_h', 'pooled_w')
 
-  func_file = "./roi_pool.c"
-  func_name = "APPLY_SPECIFIC(CPUBackward)"
+    __props__ = ('spatial_scale', 'pooled_h', 'pooled_w')
+    func_file = "./roi_pool.c"
+    func_name = "APPLY_SPECIFIC(CPUBackward)"
 
-  def __init__(self, pooled_h, pooled_w, spatial_scale):
-    super(RoIPoolGradOp, self).__init__(self.func_file,
-                                           self.func_name)
-    self.pooled_h = pooled_h
-    self.pooled_w = pooled_w
-    self.spatial_scale = spatial_scale
+    def __init__(self, pooled_h, pooled_w, spatial_scale):
+        super(RoIPoolGradOp, self).__init__(self.func_file,
+                                            self.func_name)
+        self.pooled_h = pooled_h
+        self.pooled_w = pooled_w
+        self.spatial_scale = spatial_scale
 
-  def make_node(self, feature_maps, rois, out_grad):
-    feature_maps = tensor.as_tensor_variable(feature_maps)
-    rois = tensor.as_tensor_variable(rois)
-    out_grad = tensor.as_tensor_variable(out_grad)
-    assert feature_maps.ndim == 4
-    assert rois.ndim == 2
-    assert out_grad.ndim == 4
-    return Apply(self, [feature_maps, rois, out_grad], [feature_maps.type(), rois.type(), out_grad.type()])
+    def make_node(self, feature_maps, rois, out_grad):
+        feature_maps = tensor.as_tensor_variable(feature_maps)
+        roi_tuples = tensor.as_tensor_variable(rois)
+        out_grad = tensor.as_tensor_variable(out_grad)
+        assert feature_maps.ndim == 4
+        assert rois.ndim == 2
+        assert out_grad.ndim == 4
+        return Apply(self, [feature_maps, roi_tuples, out_grad], [feature_maps.type()])
 
-  def get_op_params(self):
-    return [('POOLED_HEIGHT', str(self.pooled_h)),
-            ('POOLED_WIDTH', str(self.pooled_w)),
-            ('SPATIAL_SCALE', str(self.spatial_scale))]
+    def get_op_params(self):
+        return [('POOLED_HEIGHT', str(self.pooled_h)),
+                ('POOLED_WIDTH', str(self.pooled_w)),
+                ('SPATIAL_SCALE', str(self.spatial_scale))]
 
     def c_code_cache_version(self):
         return (1, 0)
 
-  def grad(self, inp, grads):
-    return [grad_undefined(self, i, inp[i]) for i in range(3)]
+    def grad(self, inp, grads):
+        return [grad_undefined(self, i, inp[i]) for i in range(3)]
