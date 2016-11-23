@@ -17,7 +17,7 @@ from theano.gof import cmodule
 _logger = logging.getLogger('theano.scan_module.scan_perform')
 
 
-version = 0.293  # must match constant returned in function get_version()
+version = 0.294  # must match constant returned in function get_version()
 
 need_reload = False
 
@@ -94,7 +94,7 @@ except ImportError:
             # the old interface.
             if False:
                 # During scan cython development, it is helpful to keep the old interface, to don't manually edit the c file each time.
-                preargs.remove('-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION')
+                preargs.remove('-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION')
             else:
                 numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
                 # Add add some macro to lower the number of edit
@@ -102,13 +102,13 @@ except ImportError:
                 if bool(numpy_ver >= [1, 7]):
                     # Needed when we disable the old API, as cython
                     # use the old interface
-                    preargs.append("-D NPY_ENSUREARRAY=NPY_ARRAY_ENSUREARRAY")
-                    preargs.append("-D NPY_ENSURECOPY=NPY_ARRAY_ENSURECOPY")
-                    preargs.append("-D NPY_ALIGNED=NPY_ARRAY_ALIGNED")
-                    preargs.append("-D NPY_WRITEABLE=NPY_ARRAY_WRITEABLE")
-                    preargs.append("-D NPY_UPDATE_ALL=NPY_ARRAY_UPDATE_ALL")
-                    preargs.append("-D NPY_C_CONTIGUOUS=NPY_ARRAY_C_CONTIGUOUS")
-                    preargs.append("-D NPY_F_CONTIGUOUS=NPY_ARRAY_F_CONTIGUOUS")
+                    preargs.append("-DNPY_ENSUREARRAY=NPY_ARRAY_ENSUREARRAY")
+                    preargs.append("-DNPY_ENSURECOPY=NPY_ARRAY_ENSURECOPY")
+                    preargs.append("-DNPY_ALIGNED=NPY_ARRAY_ALIGNED")
+                    preargs.append("-DNPY_WRITEABLE=NPY_ARRAY_WRITEABLE")
+                    preargs.append("-DNPY_UPDATE_ALL=NPY_ARRAY_UPDATE_ALL")
+                    preargs.append("-DNPY_C_CONTIGUOUS=NPY_ARRAY_C_CONTIGUOUS")
+                    preargs.append("-DNPY_F_CONTIGUOUS=NPY_ARRAY_F_CONTIGUOUS")
 
             cmodule.GCC_compiler.compile_str(dirname, code, location=loc,
                                              preargs=preargs,

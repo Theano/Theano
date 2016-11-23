@@ -62,7 +62,7 @@ import copy
 
 
 def get_version():
-    return 0.293
+    return 0.294
 
 @cython.boundscheck(False)
 def perform(
@@ -544,7 +544,15 @@ def perform(
                     output_reused = False
 
                 if not output_reused:
-                    outs[j][0][pos[j]] = output_storage[j+offset_out].storage[0]
+                    try:
+                        outs[j][0][pos[j]] = output_storage[j+offset_out].storage[0]
+                    except ValueError as e:
+                        raise ValueError(
+                            "An output of the scan has changed shape. "
+                            "This may be caused by a pushout optimization."
+                            " Try adding "
+                            "'optimizer_excluding=scanOp_pushout_output' "
+                            "to your Theano flags.")
 
         # 5.6 Copy over the values for outputs corresponding to shared
         # variables

@@ -88,7 +88,6 @@ whitelist_flake8 = [
     "scan_module/scan_utils.py",
     "scan_module/scan_views.py",
     "scan_module/scan.py",
-    "scan_module/scan_op.py",
     "scan_module/scan_perform_ext.py",
     "scan_module/__init__.py",
     "scan_module/tests/__init__.py",
