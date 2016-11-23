@@ -8,7 +8,8 @@ from six.moves import StringIO
 
 from theano import tensor, gof, Op
 from theano.gradient import grad_not_implemented
-import theano.tensor.clip, theano.tensor.minimum
+import theano.tensor.clip
+import theano.tensor.minimum
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
 
 try:
@@ -1149,7 +1150,6 @@ class GpuDiagonal(Subtensor):
         new_dim_order = tuple(new_dim_order[:stride_axis] +
                               new_dim_order[stride_axis + 1:] +
                               [stride_axis, ])
-        # rval = cuda_ndarray.cuda_ndarray.dimshuffle(x[slicer], new_dim_order)
         rval = x[slicer].transpose(new_dim_order)
 
         # step 3) modify the strides in the last axis, such that rval becomes
