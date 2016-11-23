@@ -6098,7 +6098,7 @@ class ExtractDiag(Op):
 def diagonal(a, offset=0, axis1=0, axis2=1):
     if (offset, axis1, axis2) == (0, 0, 1):
         return theano.tensor.nlinalg.extract_diag(a)
-    return Diagonal(offset, axis1, axis2)(a)
+    return ExtractDiag(offset, axis1, axis2)(a)
 
 
 class Diag(Op):

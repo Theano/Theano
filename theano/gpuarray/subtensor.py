@@ -7,6 +7,8 @@ from six import integer_types
 from six.moves import StringIO
 
 from theano import tensor, gof, Op
+from theano.gradient import grad_not_implemented
+import theano.tensor.clip, theano.tensor.minimum
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
 
 try:
@@ -1078,7 +1080,7 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
         """ % locals()
 
 
-class GpuDiagonal(GpuOp):
+class GpuDiagonal(Subtensor):
     __props__ = ("offset", "axis1", "axis2", "view")
 
     def __init__(self, offset=0, axis1=0, axis2=1, view=False):
@@ -1090,7 +1092,8 @@ class GpuDiagonal(GpuOp):
         self.axis2 = axis2
 
     def make_node(self, _x):
-        x = as_cuda_ndarray_variable(_x)
+        ctx_name = infer_context_name(_x)
+        x = as_gpuarray_variable(_x, ctx_name)
 
         if x.ndim < 2:
             raise ValueError('Diagonal needs an input with 2 or more '
@@ -1099,7 +1102,7 @@ class GpuDiagonal(GpuOp):
         broadcastable = x.broadcastable[:axis_small] + \
             x.broadcastable[axis_small + 1:axis_large] + \
             x.broadcastable[axis_large + 1:] + (False,)
-        return Apply(self, [x], [x.type.__class__(
+        return gof.Apply(self, [x], [x.type.__class__(
             dtype=x.dtype,
             broadcastable=broadcastable)()])
 
@@ -1146,7 +1149,8 @@ class GpuDiagonal(GpuOp):
         new_dim_order = tuple(new_dim_order[:stride_axis] +
                               new_dim_order[stride_axis + 1:] +
                               [stride_axis, ])
-        rval = cuda_ndarray.cuda_ndarray.dimshuffle(x[slicer], new_dim_order)
+        # rval = cuda_ndarray.cuda_ndarray.dimshuffle(x[slicer], new_dim_order)
+        rval = x[slicer].transpose(new_dim_order)
 
         # step 3) modify the strides in the last axis, such that rval becomes
         # a view on the diagonal.

@@ -1,5 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import numpy
+import unittest
 
 import theano
 from theano import tensor
@@ -11,7 +12,8 @@ from ..elemwise import GpuDimShuffle
 from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuAdvancedSubtensor1,
                          GpuAdvancedSubtensor,
-                         GpuAdvancedIncSubtensor1)
+                         GpuAdvancedIncSubtensor1,
+                         GpuDiagonal)
 from ..type import gpuarray_shared_constructor
 
 from .config import mode_with_gpu
@@ -132,11 +134,11 @@ class test_gpudiagonal(unittest.TestCase):
     def test_matrix(self):
         x = cuda.fmatrix()
         np_x = numpy.arange(77).reshape(7, 11).astype('float32')
-        fn = theano.function([x], B.GpuDiagonal()(x), mode=mode_with_gpu)
+        fn = theano.function([x], GpuDiagonal()(x), mode=mode_with_gpu)
         assert numpy.allclose(fn(np_x), np_x.diagonal())
-        fn = theano.function([x], B.GpuDiagonal(2)(x), mode=mode_with_gpu)
+        fn = theano.function([x], GpuDiagonal(2)(x), mode=mode_with_gpu)
         assert numpy.allclose(fn(np_x), np_x.diagonal(2))
-        fn = theano.function([x], B.GpuDiagonal(-3)(x), mode=mode_with_gpu)
+        fn = theano.function([x], GpuDiagonal(-3)(x), mode=mode_with_gpu)
         assert numpy.allclose(fn(np_x), np_x.diagonal(-3))
 
     def test_tensor(self):
@@ -147,6 +149,5 @@ class test_gpudiagonal(unittest.TestCase):
                 (-3, 1, 0), (-2, 2, 0), (3, 3, 0), (-1, 3, 2),
                 (2, 2, 3), (-1, 2, 1), (1, 3, 1), (-1, 1, 3)]:
             assert numpy.allclose(
-                B.GpuDiagonal(offset, axis1, axis2)(x).eval({x: np_x}),
+                GpuDiagonal(offset, axis1, axis2)(x).eval({x: np_x}),
                 np_x.diagonal(offset, axis1, axis2))
-
