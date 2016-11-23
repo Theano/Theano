@@ -1527,6 +1527,43 @@ class TestCompositeCodegen(unittest.TestCase):
         assert numpy.all(fval == [6, 12, 18]), fval
 
 
+def test_mul_exp():
+    m = theano.config.mode
+    if m == 'FAST_COMPILE':
+        m = 'FAST_RUN'
+    m = compile.mode.get_mode(m)
+    m = m.excluding('fusion')
+    # check some basic cases
+    x = dvector()
+    y = dvector()
+    z = dvector()
+    f = function([x, y, z], z**x * z**y, mode=m)
+    # We should have only one Elemwise-Op in the graph
+    # One mul and one pow in the composite graph
+
+    assert len(f.maker.fgraph.toposort()) == 2
+
+    f = function([x, y], x**y * y**x, mode=m)
+    # Two pow and one mul
+    assert len(f.maker.fgraph.toposort()) == 3
+
+    # check trickier cases (and use different dtype)
+    y = fmatrix()
+    f = function([x, y], T.pow(tensor.fill(x, 10), y) * 10**x, mode=m)
+    assert len(f.maker.fgraph.toposort()) == 3
+
+    # check some wierd cases
+    # TODO: Test for x**(y + (-y)) getting optimized to 1
+    # f = function([x,y], x**y*x**(-y), mode=m)
+
+    # Check numerical correctness
+    y = dvector()
+    f = function([x, y, z], z**x * z**y * x * 3, mode=m)
+    fval = f([2, 3], [0.5, 0], [100, 4])
+    fres = [10000 * 10 * 2 * 3, 64 * 1 * 3 * 3]
+    assert numpy.allclose(fres, fval)
+
+
 def test_log1p():
     m = theano.config.mode
     if m == 'FAST_COMPILE':

@@ -6222,7 +6222,6 @@ register_canonicalize(local_add_canonizer, name='local_add_canonizer')
 def local_mul_exp(node):
     if not node.op == T.mul:
         return False
-
     pow_base_dict = defaultdict(list)
     unchanged_inputs = []
     pow_nodes_cnt = 0
@@ -6251,8 +6250,8 @@ def local_mul_exp(node):
         return False
 
 compile.optdb.register('local_log_sum_exp',
-                       in2out([local_log_sum_exp,
-                               local_mul_exp],
+                       in2out(local_log_sum_exp,
+                              local_mul_exp,
                               ignore_newtrees=True),
                        # between stabilize at 1.5 and specialize at 2
                        # local_mul_exp should be after local_greedy_distributor
