@@ -6243,7 +6243,7 @@ def local_mul_exp(node):
             unchanged_inputs.append(i)
     if pow_nodes_cnt > 1:
         mul_list = unchanged_inputs
-        for base, exp in pow_base_dict.iteritems():
+        for base, exp in iteritems(pow_base_dict):
             mul_list.append(T.pow(base, T.add(*exp)))
         rval = T.mul(*mul_list)
         return [broadcast_like(rval, node.outputs[0], node.fgraph)]
