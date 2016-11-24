@@ -1280,6 +1280,19 @@ def test_grad_useless_sum():
                                     [-1.]])
 
 
+def test_elemwise_grad_broadcast():
+    # This crashed in the past.
+
+    x = tensor.tensor(dtype='float32',
+                      broadcastable=(True, False, False, False))
+    y = tensor.tensor(dtype='float32',
+                      broadcastable=(True, True, False, False))
+
+    theano.grad(theano.tensor.tanh(x).sum(), x)
+    theano.grad(theano.tensor.tanh(x+y).sum(), y)
+    theano.grad(theano.tensor.tanh(x+y).sum(), [x, y])
+
+
 def test_clip_grad_int():
 
     # test that integers don't crash clip gradient
