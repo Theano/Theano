@@ -265,11 +265,9 @@ def scan(fn,
         ``n_steps`` is the number of steps to iterate given as an int
         or Theano scalar. If any of the input sequences do not have
         enough elements, scan will raise an error. If the *value is 0* the
-        outputs will have *0 rows*. If the value is negative, ``scan``
-        will run backwards in time. If the ``go_backwards`` flag is already
-        set and also ``n_steps`` is negative, ``scan`` will run forward
-        in time. If n_steps is not provided, ``scan`` will figure
-        out the amount of steps it should run given its input sequences.
+        outputs will have *0 rows*. If n_steps is not provided, ``scan`` will
+        figure out the amount of steps it should run given its input
+        sequences. ``n_steps`` < 0 is not supported anymore.
 
     truncate_gradient
         ``truncate_gradient`` is the number of steps to use in truncated
