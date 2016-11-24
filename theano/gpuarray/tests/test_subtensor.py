@@ -16,7 +16,7 @@ from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuDiagonal)
 from ..type import gpuarray_shared_constructor
 
-from .config import mode_with_gpu, floatX
+from .config import mode_with_gpu
 
 
 class G_subtensor(test_subtensor.T_subtensor):
@@ -143,7 +143,7 @@ class test_gpudiagonal(unittest.TestCase):
 
     def test_tensor(self):
         x = tensor.ftensor4()
-        np_x = numpy.arange(30107).reshape(7, 11, 17, 23).astype(floatX)
+        np_x = numpy.arange(30107).reshape(7, 11, 17, 23).astype(theano.config.floatX)
         for offset, axis1, axis2 in [
                 (1, 0, 1), (-1, 0, 1), (0, 1, 0), (-2, 1, 0),
                 (-3, 1, 0), (-2, 2, 0), (3, 3, 0), (-1, 3, 2),
