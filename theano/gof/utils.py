@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-from collections import OrderedDict
 import linecache
 import sys
 import traceback
@@ -570,36 +569,3 @@ def hash_from_file(file_path):
 
     """
     return hash_from_code(open(file_path, 'rb').read())
-
-
-def hash_from_dict(d):
-    """
-    Work around the fact that dict are not hashable in python.
-
-    This request that all object have a sorted order that depend only
-    on the key of the object. We support only integer/float/string keys.
-
-    Also, we transform values that are list into tuple as list are not
-    hashable.
-
-    Notes
-    -----
-    Special case for OrderedDict, it use the order of the dict,
-    so the key don't need to be sortable.
-
-    """
-    if isinstance(d, OrderedDict):
-        items = list(iteritems(d))
-    else:
-        items = list(d.items())
-        items.sort()
-    first_part = [k for k, v in items]
-    second_part = []
-    for k, v in items:
-        assert isinstance(k, (string_types, integer_types, float))
-        if isinstance(v, (tuple, list)):
-            second_part += [tuple(v)]
-        else:
-            second_part += [v]
-    tuple_items = tuple(first_part + second_part + [d.__class__])
-    return hash(tuple_items)
