@@ -2490,14 +2490,24 @@ class RoIPoolOp(gof.COp):
         roi_tuples = tensor.as_tensor_variable(roi)
         assert feature_maps.ndim == 4
         assert roi.ndim == 2
-        return Apply(self, [feature_maps, roi_tuples], [feature_maps.type()])
+        return Apply(self, [feature_maps, roi_tuples], [feature_maps.type(), feature_maps.type()])
+
+    def infer_shape(self, node, in_shapes):
+        feature_maps_shape = tensor.shape(node.inputs[0])
+        rois_shape = tensor.shape(node.inputs[1])
+        batch_size = rois_shape[0]
+        num_maps = feature_maps_shape[1]
+        h = self.pooled_h
+        w = self.pooled_w
+        out_shape = [batch_size, num_maps, h, w]
+        return [out_shape, out_shape]
 
     def c_code_cache_version(self):
         return (1, 0)
 
     def grad(self, inp, grads):
         return [RoIPoolGradOp(self.pooled_h, self.pooled_w,
-                              self.spatial_scale)(*(inp + [grads[0]])), grad_undefined(self, 1, inp[1])]
+                              self.spatial_scale)(*(inp + [self(*inp)[1], grads[0]])), grad_undefined(self, 1, inp[1])]
 
 
 class RoIPoolGradOp(gof.COp):
@@ -2513,14 +2523,19 @@ class RoIPoolGradOp(gof.COp):
         self.pooled_w = pooled_w
         self.spatial_scale = spatial_scale
 
-    def make_node(self, feature_maps, rois, out_grad):
+    def make_node(self, feature_maps, rois, argmaxes, out_grad):
         feature_maps = tensor.as_tensor_variable(feature_maps)
         roi_tuples = tensor.as_tensor_variable(rois)
+        argmaxes = tensor.as_tensor_variable(argmaxes)
         out_grad = tensor.as_tensor_variable(out_grad)
         assert feature_maps.ndim == 4
         assert rois.ndim == 2
+        assert argmaxes.ndim == 4
         assert out_grad.ndim == 4
-        return Apply(self, [feature_maps, roi_tuples, out_grad], [feature_maps.type()])
+        return Apply(self, [feature_maps, roi_tuples, argmaxes, out_grad], [feature_maps.type()])
+
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[0]]
 
     def get_op_params(self):
         return [('POOLED_HEIGHT', str(self.pooled_h)),

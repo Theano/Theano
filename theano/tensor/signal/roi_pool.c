@@ -5,17 +5,19 @@
 #include <math.h>
 #include <stdbool.h>
 #include <float.h>
+#include <stdlib.h>
+
 
 #define max(a,b) (a>b?a:b)
 #define min(a,b) (a<b?a:b)
 
 void APPLY_SPECIFIC(ROIPoolForward)(
-    const int nchannels, const float* bottom_data,
+    const int nloops, const float* bottom_data,
     const float spatial_scale, const int channels, const int height,
     const int width, const int pooled_height, const int pooled_width,
     const float* bottom_rois, float* top_data, float* argmax_data) {
     
-    for (int index = 0; index < nchannels; ++index) {
+    for (int index = 0; index < nloops; ++index) {
 
         int pw = index % pooled_width;
         int ph = (index / pooled_width) % pooled_height;
@@ -67,13 +69,14 @@ void APPLY_SPECIFIC(ROIPoolForward)(
     }
 }
 
-int APPLY_SPECIFIC(CPUFwd)(PyArrayObject* data,
+int APPLY_SPECIFIC(CPUFwd)(PyArrayObject* datas,
                       PyArrayObject* rois,
-                      PyArrayObject* out) {
+                      PyArrayObject** out,
+                      PyArrayObject** argmaxes) {
   int batch_size = PyArray_DIMS(rois)[0];
-  int channels = PyArray_DIMS(data)[1];
-  int height = PyArray_DIMS(data)[2];
-  int width = PyArray_DIMS(data)[3];
+  int channels = PyArray_DIMS(datas)[1];
+  int height = PyArray_DIMS(datas)[2];
+  int width = PyArray_DIMS(datas)[3];
 
   // Prepare outputs.
   int dims[] = {0, 0, 0, 0};
@@ -86,20 +89,20 @@ int APPLY_SPECIFIC(CPUFwd)(PyArrayObject* data,
 
 
   APPLY_SPECIFIC(ROIPoolForward)(
-          count, data->devdata, SPATIAL_SCALE, channels, height, width,
-          POOLED_HEIGHT, POOLED_WIDTH, rois->devdata, (*out)->devdata);
+          count, datas->atof(data), SPATIAL_SCALE, channels, height, width,
+          POOLED_HEIGHT, POOLED_WIDTH, rois->atof(data), (*out)->atof(data), (*argmaxes));
 
   return 0;
 }
 
 
 void APPLY_SPECIFIC(ROIPoolBackward)(
-    const int nchannels, const float* top_diff,
+    const int nloops, const float* top_diff,
     const float* argmax_data, const int num_rois, const float spatial_scale,
     const int channels, const int height, const int width,
     const int pooled_height, const int pooled_width, float* bottom_diff,
     const float* bottom_rois) {
-    for (int index = 0; index < nchannels; ++index) {
+    for (int index = 0; index < nloops; ++index) {
         // (n, c, h, w) coords in bottom data
         int w = index % width;
         int h = (index / width) % height;
@@ -167,21 +170,22 @@ void APPLY_SPECIFIC(ROIPoolBackward)(
 }
 
 
-int APPLY_SPECIFIC(CPUBackward)(PyArrayObject* data,
+int APPLY_SPECIFIC(CPUBackward)(PyArrayObject* datas,
                            PyArrayObject* rois,
+                           PyArrayObject* argmaxes,
                            PyArrayObject* out_grad,
                            PyArrayObject** data_grad) {
-    int count = PyArray_SIZE(data);
+    int count = PyArray_SIZE(datas);
     int batch_size = PyArray_DIMS(rois)[0];
-    int channels = PyArray_DIMS(data)[1];
-    int height = PyArray_DIMS(data)[2];
-    int width = PyArray_DIMS(data)[3];
+    int channels = PyArray_DIMS(datas)[1];
+    int height = PyArray_DIMS(datas)[2];
+    int width = PyArray_DIMS(datas)[3];
 
 
     APPLY_SPECIFIC(ROIPoolBackward)(
-        count, out_grad->devdata, batch_size, 
+        count, out_grad->atof(data), argmaxes->atof(data), batch_size , 
         SPATIAL_SCALE, channels, height, width, POOLED_HEIGHT, POOLED_WIDTH, 
-        (*data_grad)->devdata, rois->devdata);
+        (*data_grad)->atof(data), rois->atof(data));
 
   return 0;
 }
