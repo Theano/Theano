@@ -482,7 +482,7 @@ import theano and print the config variable, as in:
         * > 1: use this number in megabytes (MB) of memory.
 
 
-    Default: 0 (but should change later)
+    Default: 0
 
     .. note::
 
