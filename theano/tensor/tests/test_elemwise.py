@@ -1289,8 +1289,8 @@ def test_elemwise_grad_broadcast():
                       broadcastable=(True, True, False, False))
 
     theano.grad(theano.tensor.tanh(x).sum(), x)
-    theano.grad(theano.tensor.tanh(x+y).sum(), y)
-    theano.grad(theano.tensor.tanh(x+y).sum(), [x, y])
+    theano.grad(theano.tensor.tanh(x + y).sum(), y)
+    theano.grad(theano.tensor.tanh(x + y).sum(), [x, y])
 
 
 def test_clip_grad_int():
