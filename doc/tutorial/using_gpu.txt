@@ -64,6 +64,10 @@ While all types of devices are supported if using OpenCL, for the
 remainder of this section, whatever compute device you are using will
 be referred to as GPU.
 
+.. note::
+  GpuArray backend uses ``config.gpuarray.preallocate`` for GPU memory allocation.
+  For the old backend, please see ``config.lib.cnmem``
+
 .. warning::
 
   If you want to use the new GpuArray backend, make sure to have the
@@ -283,6 +287,9 @@ Tips for Improving Performance on GPU
   a value to `assert_no_cpu_op` flag, i.e. `warn`, for warning, `raise` for
   raising an error or `pdb` for putting a breakpoint in the computational
   graph if there is a CPU Op.
+* Please note that ``config.lib.cnmem`` and ``config.gpuarray.preallocate``
+  controls GPU memory allocation when using (:ref:`cuda`) and 
+  (:ref:`gpuarray`) as theano backends respectively.
 
   .. _gpu_async:
 
@@ -409,8 +416,8 @@ We provide installation instructions for :ref:`Linux <gpu_linux>`,
 The old CUDA backend can be activated using the flags ``device=gpu`` or
 ``device=gpu{0,1,...}``
 
-.. Note::
-
+.. note::
+   * CUDA backend uses ``config.lib.cnmem`` for GPU memory allocation. For the new backend(:ref:`gpuarray`), please see ``config.gpuarray.preallocate``
    * Only 32 bit floats are supported.
    * ``Shared`` variables with *float32* dtype are by default moved to the GPU memory space.
 
