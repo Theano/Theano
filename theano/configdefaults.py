@@ -1252,7 +1252,7 @@ def default_blas_ldflags():
             else:
                 # This branch is executed if no exception was raised
                 if sys.platform == "win32":
-                    lib_path = os.path.join(sys.prefix, 'DLLs')
+                    lib_path = os.path.join(sys.prefix, 'Library', 'bin')
                     flags = ['-L"%s"' % lib_path]
                 else:
                     lib_path = blas_info.get('library_dirs', [])
