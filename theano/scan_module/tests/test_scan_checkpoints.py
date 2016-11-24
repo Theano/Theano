@@ -38,14 +38,14 @@ class TestScanCheckpoint(unittest.TestCase):
         """Test forward computation of A**k."""
         f = theano.function(inputs=[self.A, self.k],
                             outputs=[self.result, self.result_check])
-        out, out_check = f(range(10), 100)
+        out, out_check = f(range(10), 101)
         assert numpy.allclose(out, out_check)
 
     def test_backward_pass(self):
         """Test gradient computation of A**k."""
         f = theano.function(inputs=[self.A, self.k],
                             outputs=[self.grad_A, self.grad_A_check])
-        out, out_check = f(range(10), 100)
+        out, out_check = f(range(10), 101)
         assert numpy.allclose(out, out_check)
 
     @unittest.skipUnless(PYGPU_AVAILABLE, 'Requires pygpu.')
