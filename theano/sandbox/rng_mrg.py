@@ -25,7 +25,7 @@ from . import multinomial
 import theano.sandbox.cuda
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
-from theano.gpuarray.basic_ops import GpuKernelBase, Kernel, infer_context_name,as_gpuarray_variable
+from theano.gpuarray.basic_ops import GpuKernelBase, Kernel, infer_context_name, as_gpuarray_variable
 from theano.gpuarray.type import GpuArrayType
 from theano.gpuarray.fp16_help import write_w
 from theano.gpuarray.opt import (register_opt as register_gpua,
@@ -326,7 +326,6 @@ class mrg_uniform_base(Op):
 class mrg_uniform(mrg_uniform_base):
     # CPU VERSION
 
-
     def make_node(self, rstate, size):
         # error checking slightly redundant here, since
         # this op should not be called directly.
@@ -566,7 +565,7 @@ class mrg_uniform(mrg_uniform_base):
 
 class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
     # GPU VERSION
-    
+
     def make_node(self, rstate, size):
         # error checking slightly redundant here, since
         # this op should not be called directly.
@@ -835,7 +834,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         for i in range(self.output_type.ndim):
                 broad.append(tensor.extract_constant(size[i]) == 1)
         output_type = self.output_type.clone(broadcastable=broad)()
-        rstate = as_gpuarray_variable(rstate,infer_context_name(rstate))
+        rstate = as_gpuarray_variable(rstate, infer_context_name(rstate))
         return Apply(self,
                      [rstate, size],
                      [rstate.type(), output_type])
