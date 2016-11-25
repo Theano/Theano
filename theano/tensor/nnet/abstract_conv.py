@@ -137,6 +137,189 @@ def get_conv_shape_1axis(image_shape, kernel_shape, border_mode,
     return out_shp
 
 
+def get_conv_gradinputs_shape(kernel_shape, top_shape,
+                              border_mode, subsample,
+                              filter_dilation=None):
+    """
+    This function tries to compute the image shape of convolution gradInputs.
+
+    The image shape can only be computed exactly when subsample is 1.
+    If subsample for a dimension is not 1, this function will return None for
+    that dimension.
+
+    Parameters
+    ----------
+    kernel_shape: tuple of int (symbolic or numeric) corresponding to the
+        kernel shape. Its four (or five) elements must correspond respectively
+        to: number of output channels, number of input channels, height and
+        width (and possibly depth) of the kernel. None where undefined.
+    top_shape: tuple of int (symbolic or numeric) corresponding to the top
+        image shape. Its four (or five) element must correspond respectively
+        to: batch size, number of output channels, height and width (and
+        possibly depth) of the image. None where undefined.
+    border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
+        or numeric). If it is a string, it must be 'valid', 'half' or 'full'.
+        If it is a tuple, its two (or three) elements respectively correspond
+        to the padding on height and width (and possibly depth) axis.
+    subsample: tuple of int (symbolic or numeric). Its two or three elements
+        respectively correspond to the subsampling on height and width (and
+        possibly depth) axis.
+    filter_dilation: tuple of int (symbolic or numeric). Its two elements
+        correspond respectively to the dilation on height and width axis.
+
+    Returns
+    -------
+    image_shape: tuple of int corresponding to the input image shape. Its
+        four element must correspond respectively to: batch size, number of
+        output channels, height and width of the image. None where undefined.
+
+    """
+    bsize, topshp = top_shape[0], top_shape[2:]
+    nkern, kshp = kernel_shape[1], kernel_shape[2:]
+
+    if filter_dilation is None:
+        filter_dilation = numpy.ones(len(subsample), dtype='int')
+
+    if isinstance(border_mode, tuple):
+        out_shp = tuple(get_conv_gradinputs_shape_1axis(
+            kshp[i], topshp[i], border_mode[i],
+            subsample[i], filter_dilation[i]) for i in range(len(subsample)))
+    else:
+        out_shp = tuple(get_conv_gradinputs_shape_1axis(
+            kshp[i], topshp[i], border_mode,
+            subsample[i], filter_dilation[i]) for i in range(len(subsample)))
+    return (bsize, nkern) + out_shp
+
+
+def get_conv_gradinputs_shape_1axis(kernel_shape, top_shape, border_mode,
+                                    subsample, dilation):
+    """
+    This function tries to compute the image shape of convolution gradInputs.
+
+    The image shape can only be computed exactly when subsample is 1.
+    If subsample is not 1, this function will return None.
+
+    Parameters
+    ----------
+    kernel_shape: int or None. Corresponds to the kernel shape on a given
+        axis. None if undefined.
+    top_shape: int or None. Corresponds to the top shape on a given axis.
+        None if undefined.
+    border_mode: string or int. If it is a string, it must be
+        'valid', 'half' or 'full'. If it is an integer, it must correspond to
+        the padding on the considered axis.
+    subsample: int. It must correspond to the subsampling on the
+        considered axis.
+    dilation: int. It must correspond to the dilation on the
+        considered axis.
+
+    Returns
+    -------
+    image_shape: int or None. Corresponds to the input image shape on a
+        given axis. None if undefined.
+
+    """
+    if None in [kernel_shape, top_shape, border_mode,
+                subsample, dilation]:
+        return None
+    if subsample != 1:
+        return None
+
+    # Implicit dilated kernel shape
+    dil_kernel_shape = (kernel_shape - 1) * dilation + 1
+    if border_mode == "half":
+        pad = dil_kernel_shape // 2
+    elif border_mode == "full":
+        pad = dil_kernel_shape - 1
+    elif border_mode == "valid":
+        pad = 0
+    else:
+        pad = border_mode
+        if pad < 0:
+            raise ValueError("border_mode must be >= 0")
+
+    # In case of symbolic shape, we want to build the smallest graph
+    # image_shape = (top_shape - 1) * s - 2 * pad + dil_kernel_shape + a
+    # where 0 <= a < subsample, but we have checked that subsample == 1
+    if pad == 0:
+        image_shape = (top_shape + dil_kernel_shape - 1)
+    else:
+        image_shape = (top_shape - 2 * pad + dil_kernel_shape - 1)
+
+    return image_shape
+
+
+def check_conv_gradinputs_shape(image_shape, kernel_shape, output_shape,
+                                border_mode, subsample,
+                                filter_dilation=None):
+    """
+    This function checks if the given image shapes are consistent.
+
+    Parameters
+    ----------
+    image_shape: tuple of int (symbolic or numeric) corresponding to the input
+        image shape. Its four (or five) element must correspond respectively
+        to: batch size, number of input channels, height and width (and
+        possibly depth) of the image. None where undefined.
+    kernel_shape: tuple of int (symbolic or numeric) corresponding to the
+        kernel shape. Its four (or five) elements must correspond respectively
+        to: number of output channels, number of input channels, height and
+        width (and possibly depth) of the kernel. None where undefined.
+    output_shape: tuple of int (symbolic or numeric) corresponding to the
+        output shape. Its four (or five) elements must correspond respectively
+        to: batch size, number of output channels, height and width
+        (and possibly depth) of the output. None where undefined.
+    border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
+        or numeric). If it is a string, it must be 'valid', 'half' or 'full'.
+        If it is a tuple, its two (or three) elements respectively correspond
+        to the padding on height and width (and possibly depth) axis.
+    subsample: tuple of int (symbolic or numeric). Its two or three elements
+        respectively correspond to the subsampling on height and width (and
+        possibly depth) axis.
+    filter_dilation: tuple of int (symbolic or numeric). Its two elements
+        correspond respectively to the dilation on height and width axis.
+
+    Returns
+    -------
+    Returns False if a convolution with the given input shape, kernel shape
+    and parameters would not have produced the given output shape.
+
+    Returns True in all other cases: if the given output shape matches the
+    computed output shape, but also if the shape could not be checked because
+    because the shape contains symbolic values.
+
+    """
+    image_shape = tuple(image_shape)
+    kernel_shape = tuple(kernel_shape)
+    output_shape = tuple(output_shape)
+
+    if len(image_shape) != len(kernel_shape) or len(image_shape) != len(output_shape):
+        return False
+    if len(image_shape) - 2 != len(subsample):
+        return False
+    if filter_dilation is not None and len(image_shape) - 2 != len(filter_dilation):
+        return False
+
+    # compute the predicted output shape
+    computed_output_shape = get_conv_output_shape(
+        image_shape, kernel_shape, border_mode, subsample, filter_dilation)
+
+    # check if the given output shape matches the computed shape
+    def check_dim(given, computed):
+        if given is None or computed is None:
+            return True
+        try:
+            given = get_scalar_constant_value(given)
+            computed = get_scalar_constant_value(computed)
+            return int(given) == int(computed)
+        except NotScalarConstantError:
+            # no answer possible, accept for now
+            return True
+
+    return all(check_dim(given, computed)
+               for (given, computed) in zip(output_shape, computed_output_shape))
+
+
 def conv2d(input,
            filters,
            input_shape=None,

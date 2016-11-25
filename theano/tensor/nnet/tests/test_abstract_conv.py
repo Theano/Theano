@@ -10,7 +10,9 @@ from theano import tensor
 from theano.gof.opt import check_stack_trace
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import corr, corr3d, abstract_conv as conv
-from theano.tensor.nnet.abstract_conv import get_conv_output_shape
+from theano.tensor.nnet.abstract_conv import (get_conv_output_shape,
+                                              get_conv_gradinputs_shape,
+                                              check_conv_gradinputs_shape)
 from theano.tensor.nnet.abstract_conv import AbstractConv2d
 from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradInputs
 from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradWeights
@@ -131,6 +133,64 @@ class TestGetConvOutShape(unittest.TestCase):
         self.assertTrue(test2_params == (3, 4, 12, 5, 8))
         self.assertTrue(test3_params == (3, 4, 20, 7, 10))
         self.assertTrue(test4_params == (3, 4, 6, 4, 10))
+
+
+class TestConvGradInputsShape(unittest.TestCase):
+    def test_check_shape(self):
+        for i in range(1, 20):
+            for k in range(1, 10):
+                for b in ('valid', 'half', 'full', (0, 2)):
+                    for s in (1, 2, 3):
+                        for d in (1, 2, 3):
+                            image_shape = (59, 61, i, i)
+                            kernel_shape = (67, 61, k, k)
+
+                            # compute the output that these inputs and parameters would produce
+                            computed_shape = get_conv_output_shape(
+                                image_shape, kernel_shape, b, (s, s), (d, d))
+                            # this should be accepted
+                            self.assertTrue(check_conv_gradinputs_shape(
+                                image_shape, kernel_shape, computed_shape, b, (s, s), (d, d)))
+
+                            # one or more None should also be accepted
+                            trial_shape = (None, None, computed_shape[2], None)
+                            self.assertTrue(check_conv_gradinputs_shape(
+                                image_shape, kernel_shape, trial_shape, b, (s, s), (d, d)))
+
+                            # the batch size and number of filters are important
+                            trial_shape = (1, 1, computed_shape[2], computed_shape[3])
+                            self.assertFalse(check_conv_gradinputs_shape(
+                                image_shape, kernel_shape, trial_shape, b, (s, s), (d, d)))
+
+                            # outputs that are too large or too small should be rejected
+                            for o in (-3, -2, -1, 1, 2, 3):
+                                trial_shape = (computed_shape[0], computed_shape[1],
+                                               computed_shape[2] + o, computed_shape[3] + o)
+                                self.assertFalse(check_conv_gradinputs_shape(
+                                    image_shape, kernel_shape, trial_shape, b, (s, s), (d, d)))
+
+    def test_get_shape(self):
+        for i in range(1, 20):
+            for k in range(1, 10):
+                for b in ('valid', 'half', 'full', (0, 2)):
+                    for d in (1, 2, 3):
+                        image_shape = (59, 61, i, i)
+                        kernel_shape = (67, 61, k, k)
+
+                        # compute the output that these inputs and parameters would produce
+                        output_shape = get_conv_output_shape(
+                            image_shape, kernel_shape, b, (1, 1), (d, d))
+
+                        # compute the image_shape given this output_shape
+                        computed_image_shape = get_conv_gradinputs_shape(
+                            kernel_shape, output_shape, b, (1, 1), (d, d))
+                        self.assertEqual(computed_image_shape, image_shape)
+
+                        # if subsample > 1, the shape should be None
+                        computed_image_shape = get_conv_gradinputs_shape(
+                            kernel_shape, output_shape, b, (2, 3), (d, d))
+                        image_shape_with_None = image_shape[:2] + (None, None)
+                        self.assertEqual(computed_image_shape, image_shape_with_None)
 
 
 class BaseTestConv(object):
