@@ -405,12 +405,14 @@ class LocalGroupDB(DB):
 
     """
 
-    def __init__(self, apply_all_opts=False, profile=False):
+    def __init__(self, apply_all_opts=False, profile=False,
+                 local_opt=opt.LocalOptGroup):
         super(LocalGroupDB, self).__init__()
         self.failure_callback = None
         self.apply_all_opts = apply_all_opts
         self.profile = profile
         self.__position__ = {}
+        self.local_opt = local_opt
 
     def register(self, name, obj, *tags, **kwargs):
         super(LocalGroupDB, self).register(name, obj, *tags)
@@ -429,9 +431,9 @@ class LocalGroupDB(DB):
         opts = list(super(LocalGroupDB, self).query(*tags, **kwtags))
         opts.sort(key=lambda obj: (self.__position__[obj.name], obj.name))
 
-        ret = opt.LocalOptGroup(*opts,
-                                apply_all_opts=self.apply_all_opts,
-                                profile=self.profile)
+        ret = self.local_opt(*opts,
+                             apply_all_opts=self.apply_all_opts,
+                             profile=self.profile)
         return ret
 
 
