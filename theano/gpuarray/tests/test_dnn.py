@@ -12,6 +12,7 @@ import theano.tensor as T
 import theano.tests.unittest_tools as utt
 from theano.tensor.signal.pool import pool_2d, pool_3d
 from theano.tensor.signal.pool import Pool, MaxPoolGrad, AveragePoolGrad
+from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 
 from .. import dnn
 from ..basic_ops import GpuAllocEmpty
@@ -628,56 +629,50 @@ class TestDnnInferShapes(utt.InferShapeTester):
                         [(1, 1, 1), (2, 2, 2)],
                         'none')
 
-    def _test_conv_gradw(self, img, kerns, out, img_val, kern_vals, border_mode, conv_mode, subsample):
+    def _test_conv_gradw(self, img, topgrad, kerns, img_shape, kerns_shape, border_mode, conv_mode, subsample):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
 
+        topgrad_shape = get_conv_output_shape(img_shape, kerns_shape,
+                                              border_mode, subsample)
+
         img_val = numpy.asarray(
-            img_val,
+            numpy.random.rand(*img_shape),
             dtype=theano.config.floatX
         )
-        kern_vals = numpy.asarray(
-            kern_vals,
+        topgrad_vals = numpy.asarray(
+            numpy.random.rand(*topgrad_shape),
             dtype=theano.config.floatX
         )
 
-        temp_img = img.dimshuffle(1, 0, 2, 3)
-        temp_kerns = kerns
-        if conv_mode == 'conv':
-            temp_kerns = temp_kerns[:, :, ::-1, ::-1]
-        temp_kerns = temp_kerns.dimshuffle(1, 0, 2, 3)
-        shape = (
-            kern_vals.shape[1], img_val.shape[1],
-            img_val.shape[2] - kern_vals.shape[2] + 1,
-            img_val.shape[3] - kern_vals.shape[3] + 1
-        )
-        out_vals = numpy.zeros(shape, dtype=theano.config.floatX)
+        kerns_vals = numpy.zeros(kerns_shape, dtype=theano.config.floatX)
+        kerns_shape = theano.shared(numpy.asarray(kerns_shape))
         desc = dnn.GpuDnnConvDesc(
             border_mode=border_mode,
             subsample=subsample,
             conv_mode=conv_mode,
             precision=set_precision(theano.config.floatX)
-        )(out.shape)
+        )(kerns_shape)
         conv_grad_w = dnn.GpuDnnConvGradW()(
-            temp_img,
-            temp_kerns,
-            out,
+            img,
+            topgrad,
+            kerns,
             desc,
         )
         self._compile_and_check(
-            [temp_img, temp_kerns, out],
+            [img, topgrad, kerns],
             [conv_grad_w],
-            [img_val, kern_vals, out_vals],
+            [img_val, topgrad_vals, kerns_vals],
             dnn.GpuDnnConvGradW
         )
 
     @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
     def test_conv_gradw(self, border_mode, conv_mode):
         self._test_conv_gradw(T.tensor4('img'),
+                              T.tensor4('topgrad'),
                               T.tensor4('kerns'),
-                              T.tensor4('out'),
-                              numpy.random.rand(2, 5, 6, 8),
-                              numpy.random.rand(2, 1, 5, 6),
+                              (5, 2, 6, 13),
+                              (1, 2, 3, 7),
                               border_mode,
                               conv_mode,
                               (1, 1))
