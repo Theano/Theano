@@ -2,6 +2,7 @@ from __future__ import absolute_import, print_function, division
 from unittest import TestCase
 from nose.plugins.skip import SkipTest
 import itertools
+import numpy
 
 import theano
 from theano import tensor
@@ -128,3 +129,17 @@ GpuDot22Tester = makeTester(
         # test9=[rand(0, 0), rand(0, 0)],
     )
 )
+
+
+def test_gemv_zeros():
+    W = tensor.matrix()
+    v = tensor.vector()
+    f = theano.function([W, v], W.dot(v), mode=mode_with_gpu)
+
+    # Apply to an empty matrix shape (5,0) and an empty vector shape (0,)
+    dim = 1000
+    A = numpy.zeros((dim, 0), dtype=theano.config.floatX)
+    b = numpy.zeros((0,), dtype=theano.config.floatX)
+    tmp = f(A, b)
+    assert numpy.allclose(tmp,
+                          numpy.zeros((dim,)))
