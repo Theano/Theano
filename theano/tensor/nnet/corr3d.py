@@ -123,7 +123,7 @@ class BaseCorr3dMM(gof.OpenMPOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (1, self.openmp, blas_header_version())
+        return (2, self.openmp, blas_header_version())
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -241,23 +241,23 @@ class BaseCorr3dMM(gof.OpenMPOp):
         # When subsampling, we cannot unambiguously infer the height and width
         # of bottom and weights from top, so we require them to be given.
         # Similarly, when border_mode="half", we cannot infer the weight size.
-        if ((direction != 0) and (dH != 1)) or ((direction == 1) and (padH == -1)):
-            if not height:
-                raise ValueError("height must be given for backprop with vertical sampling or border_mode='half'")
+        if height:
             height = '(*(npy_int64 *)(PyArray_DATA(%s)))' % height
         else:
+            if ((direction != 0) and (dH != 1)) or ((direction == 1) and (padH == -1)):
+                raise ValueError("height must be given for backprop with vertical sampling or border_mode='half'")
             height = '-1'
-        if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW == -1)):
-            if not width:
-                raise ValueError("width must be given for backprop with horizontal sampling or border_mode='half'")
+        if width:
             width = '(*(npy_int64 *)(PyArray_DATA(%s)))' % width
         else:
+            if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW == -1)):
+                raise ValueError("width must be given for backprop with horizontal sampling or border_mode='half'")
             width = '-1'
-        if ((direction != 0) and (dD != 1)) or ((direction == 1) and (padD == -1)):
-            if not depth:
-                raise ValueError("depth must be given for backprop with depth sampling or border_mode='half'")
+        if depth:
             depth = '(*(npy_int64 *)(PyArray_DATA(%s)))' % depth
         else:
+            if ((direction != 0) and (dD != 1)) or ((direction == 1) and (padD == -1)):
+                raise ValueError("depth must be given for backprop with depth sampling or border_mode='half'")
             depth = '-1'
         sub = sub.copy()
         sub.update(locals())
@@ -284,7 +284,7 @@ class BaseCorr3dMM(gof.OpenMPOp):
 
     // Obtain or infer kernel width, height and depth
     // (we need to know it early to be able to handle auto-padding)
-    int kH, kW, kD;
+    int kH, kW, kD, dil_kH, dil_kW, dil_kD;
     if (direction != 1) {
         // weight is an input variable, we can just read its shape
         kH = PyArray_DIMS(weights)[2];
@@ -322,12 +322,23 @@ class BaseCorr3dMM(gof.OpenMPOp):
         else {
             kD = (PyArray_DIMS(bottom)[4] + 2*padD - (PyArray_DIMS(top)[4] - 1) * dD - 1) / dilD + 1;
         }
+        if ((%(height)s != -1 && %(height)s != kH) ||
+            (%(width)s != -1 && %(width)s != kW) ||
+            (%(depth)s != -1 && %(depth)s != kD))
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "BaseCorr3dMM: computed kernel shape %%lldx%%lldx%%lld "
+                         "does not match given shape %%lldx%%lldx%%lld",
+                         (long long)kH, (long long)kW, (long long)kD,
+                         (long long)%(height)s, (long long)%(width)s, (long long)%(depth)s);
+            %(fail)s
+        }
     }
 
     // Implicit dilated kernel size
-    int dil_kH = (kH - 1) * dilH + 1;
-    int dil_kW = (kW - 1) * dilW + 1;
-    int dil_kD = (kD - 1) * dilD + 1;
+    dil_kH = (kH - 1) * dilH + 1;
+    dil_kW = (kW - 1) * dilW + 1;
+    dil_kD = (kD - 1) * dilD + 1;
 
     // Auto-padding if requested
     if (padH == -1) {  // vertical half padding
@@ -390,9 +401,30 @@ class BaseCorr3dMM(gof.OpenMPOp):
         out_dim[2] = (npy_intp)((dH != 1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + (PyArray_DIMS(weights)[2]-1)*dilH + 1 - 2*padH);
         out_dim[3] = (npy_intp)((dW != 1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + (PyArray_DIMS(weights)[3]-1)*dilW + 1 - 2*padW);
         out_dim[4] = (npy_intp)((dD != 1) ? %(depth)s : (PyArray_DIMS(top)[4] - 1) * dD + (PyArray_DIMS(weights)[4]-1)*dilD + 1 - 2*padD);
+        if ((%(height)s != -1 && %(height)s != out_dim[2]) ||
+            (%(width)s != -1 && %(width)s != out_dim[3]) ||
+            (%(depth)s != -1 && %(depth)s != out_dim[4]))
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "BaseCorr3dMM: computed output shape %%lldx%%lldx%%lld "
+                         "does not match given shape %%lldx%%lldx%%lld",
+                         (long long)out_dim[2], (long long)out_dim[3], (long long)out_dim[4],
+                         (long long)%(height)s, (long long)%(width)s, (long long)%(depth)s);
+            %(fail)s
+        }
         break;
     default:
         PyErr_SetString(PyExc_ValueError, "BaseCorr3dMM: direction must be 0, 1, or 2\\n");
+        %(fail)s
+    }
+
+    if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] < 0 || out_dim[3] < 0 || out_dim[4] < 0)
+    {
+        PyErr_Format(PyExc_ValueError,
+                     "BaseCorr3dMM: impossible output shape: "
+                     "%%lldx%%lldx%%lldx%%lld%%lld",
+                     (long long)out_dim[0], (long long)out_dim[1],
+                     (long long)out_dim[2], (long long)out_dim[3], (long long)out_dim[4]);
         %(fail)s
     }
 
@@ -533,15 +565,15 @@ class Corr3dMM_gradWeights(BaseCorr3dMM):
             raise TypeError('img must be 5D tensor')
         if topgrad.type.ndim != 5:
             raise TypeError('topgrad must be 5D tensor')
-        if self.subsample != (1, 1, 1) or self.border_mode == "half":
-            if shape is None:
+        if shape is None:
+            if self.subsample != (1, 1, 1) or self.border_mode == "half":
                 raise ValueError('shape must be given if subsample != (1, 1, 1)'
                                  ' or border_mode == "half"')
+            height_width_depth = []
+        else:
             height_width_depth = [as_tensor_variable(shape[0]).astype('int64'),
                                   as_tensor_variable(shape[1]).astype('int64'),
                                   as_tensor_variable(shape[2]).astype('int64')]
-        else:
-            height_width_depth = []
 
         broadcastable = [topgrad.type.broadcastable[1], img.type.broadcastable[1],
                          False, False, False]
@@ -638,14 +670,14 @@ class Corr3dMM_gradInputs(BaseCorr3dMM):
             raise TypeError('kern must be 5D tensor')
         if topgrad.type.ndim != 5:
             raise TypeError('topgrad must be 5D tensor')
-        if self.subsample != (1, 1, 1) and shape is None:
-            raise ValueError('shape must be given if subsample != (1, 1, 1)')
-        if self.subsample != (1, 1, 1):
+        if shape is None:
+            if self.subsample != (1, 1, 1):
+                raise ValueError('shape must be given if subsample != (1, 1, 1)')
+            height_width_depth = []
+        else:
             height_width_depth = [as_tensor_variable(shape[0]).astype('int64'),
                                   as_tensor_variable(shape[1]).astype('int64'),
                                   as_tensor_variable(shape[2]).astype('int64')]
-        else:
-            height_width_depth = []
 
         broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
                          False, False, False]
