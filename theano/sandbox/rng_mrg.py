@@ -24,7 +24,8 @@ from . import multinomial
 
 import theano.sandbox.cuda
 from theano.sandbox.cuda import GpuOp
-from theano.gpuarray.basic_ops import GpuKernelBase, Kernel, infer_context_name
+from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
+from theano.gpuarray.basic_ops import GpuKernelBase, Kernel, infer_context_name,as_gpuarray_variable
 from theano.gpuarray.type import GpuArrayType
 from theano.gpuarray.fp16_help import write_w
 from theano.gpuarray.opt import (register_opt as register_gpua,
@@ -312,19 +313,6 @@ class mrg_uniform_base(Op):
             s = "no_inplace"
         return self.__class__.__name__ + "{%s,%s}" % (self.output_type, s)
 
-    def make_node(self, rstate, size):
-        # error checking slightly redundant here, since
-        # this op should not be called directly.
-        #
-        # call through MRG_RandomStreams instead.
-        broad = []
-        for i in range(self.output_type.ndim):
-                broad.append(tensor.extract_constant(size[i]) == 1)
-        output_type = self.output_type.clone(broadcastable=broad)()
-        return Apply(self,
-                     [rstate, size],
-                     [rstate.type(), output_type])
-
     def grad(self, inputs, ograd):
         return [gradient.grad_undefined(self, k, inp,
                                         'No gradient defined through '
@@ -337,6 +325,21 @@ class mrg_uniform_base(Op):
 
 class mrg_uniform(mrg_uniform_base):
     # CPU VERSION
+
+
+    def make_node(self, rstate, size):
+        # error checking slightly redundant here, since
+        # this op should not be called directly.
+        #
+        # call through MRG_RandomStreams instead.
+        broad = []
+        for i in range(self.output_type.ndim):
+                broad.append(tensor.extract_constant(size[i]) == 1)
+        output_type = self.output_type.clone(broadcastable=broad)()
+        rstate = as_tensor_variable(rstate)
+        return Apply(self,
+                     [rstate, size],
+                     [rstate.type(), output_type])
 
     @classmethod
     def new(cls, rstate, ndim, dtype, size):
@@ -563,6 +566,20 @@ class mrg_uniform(mrg_uniform_base):
 
 class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
     # GPU VERSION
+    
+    def make_node(self, rstate, size):
+        # error checking slightly redundant here, since
+        # this op should not be called directly.
+        #
+        # call through MRG_RandomStreams instead.
+        broad = []
+        for i in range(self.output_type.ndim):
+                broad.append(tensor.extract_constant(size[i]) == 1)
+        output_type = self.output_type.clone(broadcastable=broad)()
+        rstate = as_cuda_ndarray_variable(rstate)
+        return Apply(self,
+                     [rstate, size],
+                     [rstate.type(), output_type])
 
     @classmethod
     def new(cls, rstate, ndim, dtype, size):
@@ -808,6 +825,20 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
 class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
     # GpuArray version
     _f16_ok = True
+
+    def make_node(self, rstate, size):
+        # error checking slightly redundant here, since
+        # this op should not be called directly.
+        #
+        # call through MRG_RandomStreams instead.
+        broad = []
+        for i in range(self.output_type.ndim):
+                broad.append(tensor.extract_constant(size[i]) == 1)
+        output_type = self.output_type.clone(broadcastable=broad)()
+        rstate = as_gpuarray_variable(rstate,infer_context_name(rstate))
+        return Apply(self,
+                     [rstate, size],
+                     [rstate.type(), output_type])
 
     def get_params(self, node):
         return node.inputs[0].type.context
