@@ -6,7 +6,9 @@ from theano import Op
 import theano.tensor as T
 from theano.gradient import DisconnectedType
 
-from theano.gpuarray import (basic_ops, GpuArrayType)
+from .basic_ops import (gpu_contiguous, as_gpuarray_variable,
+                        infer_context_name)
+from .type import GpuArrayType
 
 import theano.tensor.fft
 from .opt import register_opt, op_lifter, register_opt2
@@ -58,9 +60,8 @@ class CuRFFTOp(Op):
         if not pycuda_available:
             raise RuntimeError("pycuda is needed for CuFFTOp")
 
-        inp = basic_ops.gpu_contiguous(
-            basic_ops.as_gpuarray_variable(inp,
-                                           basic_ops.infer_context_name(inp)))
+        inp = gpu_contiguous(as_gpuarray_variable(inp,
+                                                  infer_context_name(inp)))
 
         # If no shape is provided as input, default to input data shape.
         if s is None:
@@ -183,9 +184,8 @@ class CuIRFFTOp(Op):
         if not pycuda_available:
             raise RuntimeError("pycuda is needed for CuIFFTOp")
 
-        inp = basic_ops.gpu_contiguous(
-            basic_ops.as_gpuarray_variable(inp,
-                                           basic_ops.infer_context_name(inp)))
+        inp = gpu_contiguous(as_gpuarray_variable(inp,
+                                                  infer_context_name(inp)))
 
         # If no shape is provided as input, calculate shape assuming even real transform.
         if s is None:
