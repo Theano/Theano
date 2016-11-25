@@ -11,6 +11,7 @@ from theano.gof.opt import check_stack_trace
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import corr, corr3d, abstract_conv as conv
 from theano.tensor.nnet.abstract_conv import (get_conv_output_shape,
+                                              get_conv_gradweights_shape,
                                               get_conv_gradinputs_shape,
                                               check_conv_gradinputs_shape)
 from theano.tensor.nnet.abstract_conv import AbstractConv2d
@@ -191,6 +192,23 @@ class TestConvGradInputsShape(unittest.TestCase):
                             kernel_shape, output_shape, b, (2, 3), (d, d))
                         image_shape_with_None = image_shape[:2] + (None, None)
                         self.assertEqual(computed_image_shape, image_shape_with_None)
+
+                        # compute the kernel_shape given this output_shape
+                        computed_kernel_shape = get_conv_gradweights_shape(
+                            image_shape, output_shape, b, (1, 1), (d, d))
+
+                        # if border_mode == 'half', the shape should be None
+                        if b == 'half':
+                            kernel_shape_with_None = kernel_shape[:2] + (None, None)
+                            self.assertEqual(computed_kernel_shape, kernel_shape_with_None)
+                        else:
+                            self.assertEqual(computed_kernel_shape, kernel_shape)
+
+                        # if subsample > 1, the shape should be None
+                        computed_kernel_shape = get_conv_gradweights_shape(
+                            kernel_shape, output_shape, b, (2, 3), (d, d))
+                        kernel_shape_with_None = kernel_shape[:2] + (None, None)
+                        self.assertEqual(computed_kernel_shape, kernel_shape_with_None)
 
 
 class BaseTestConv(object):
