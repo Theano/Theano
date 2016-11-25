@@ -1157,7 +1157,11 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
             inplace=inplace,
             set_instead_of_inc=set_instead_of_inc,
             tolerate_inplace_aliasing=tolerate_inplace_aliasing)
-        return x.owner.op(inner_incsubtensor, *x.owner.inputs[1:])
+        # The broadcastable pattern of inner_x may not be the same as
+        # the one of x, so we have to build a new dimshuffle here,
+        # instead of reusing x.owner.op().
+        return inner_incsubtensor.dimshuffle(x.owner.op.new_order)
+
     elif isinstance(x.owner.op, theano.tensor.Reshape):
         # This case happens when the indices are not arranged as a vector, but
         # as a higher-dimensional array. This is handled by the subtensor

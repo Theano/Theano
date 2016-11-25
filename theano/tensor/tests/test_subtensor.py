@@ -1325,6 +1325,20 @@ class TestIncSubtensor1(unittest.TestCase):
         utt.assert_allclose(a2val[2], mval[2] * 3)
         utt.assert_allclose(a2val[3], mval[3] * 2)
 
+    def test_inc_bcastableidx(self):
+        idx = tensor.constant([0])
+        c_inc = tensor.col()
+        m_inc = tensor.matrix()
+        out1 = inc_subtensor(self.m[:, idx], c_inc)
+        out2 = inc_subtensor(self.m[:, idx], m_inc)
+
+        f = theano.function([self.m, c_inc, m_inc], [out1, out2])
+        mval = self.rng.random_sample((10, 5))
+        incval = self.rng.random_sample((10, 1)).astype(config.floatX)
+
+        out1val, out2val = f(mval, incval, incval)
+        utt.assert_allclose(out1val, out2val)
+
 
 inplace_increment_missing = SkipTest(
     "inc_subtensor with advanced indexing not enabled. "
