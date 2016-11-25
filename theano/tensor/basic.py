@@ -1825,6 +1825,18 @@ def neq(a, b):
 def isnan(a):
     """isnan(a)"""
 
+# Rename isnan to isnan_ to allow to bypass it when not needed.
+# glibc 2.23 don't allow isnan on int, so we remove it from the graph.
+isnan_ = isnan
+
+
+def isnan(a):
+    """isnan(a)"""
+    if a.dtype in discrete_dtypes:
+        return alloc(numpy.asarray(False, dtype="bool"),
+                     *[a.shape[i] for i in range(a.ndim)])
+    return isnan_(a)
+
 
 @_scal_elemwise
 def isinf(a):
