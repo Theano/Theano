@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Anaconda python
+export PATH=/usr/local/miniconda2/bin:$PATH
+
 BUILDBOT_DIR=$WORKSPACE/nightly_build
 THEANO_PARAM="theano --with-timer --timer-top-n 10"
 
