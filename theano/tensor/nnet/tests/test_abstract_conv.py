@@ -500,32 +500,26 @@ class BaseTestConv2d(BaseTestConv):
                            True)
 
     def test_gradinput_impossible_output_shapes(self):
-        for i in range(1, 10):
-            for k in range(1, 5):
-                for border_mode in ('valid', 'half', 'full', (0, 2)):
-                    for s in (1, 2, 3):
-                        for d in (1, 2, 3):
-                            image_shape = (1, 1, i, i)
-                            kernel_shape = (1, 1, k, k)
+        def run_for_output_offsets(image_shape, kernel_shape, s, border_mode, d):
+            # outputs that are too large or too small should be rejected
+            for o in (-3, -1, 1, 2):
+                output_shape = (1, 1, computed_shape[2] + o, computed_shape[3] + o)
+                # expect an error
+                self.tcase_gi(image_shape, kernel_shape, output_shape,
+                              (s, s), border_mode, True, True, (d, d), True)
 
-                            # compute the output that these inputs and parameters would produce
-                            computed_shape = get_conv_output_shape(
-                                image_shape, kernel_shape, border_mode, (s, s), (d, d))
+        for (i, k) in ((1, 1), (1, 2), (2, 1), (4, 2), (4, 3), (7, 3), (9, 5)):
+            for border_mode in ('valid', 'half', 'full', (0, 2)):
+                for (s, d) in ((1, 1), (1, 2), (2, 1), (2, 2), (3, 1), (1, 3)):
+                    image_shape = (1, 1, i, i)
+                    kernel_shape = (1, 1, k, k)
 
-                            # outputs that are too large or too small should be rejected
-                            for o in (-3, -2, -1, 1, 2, 3):
-                                output_shape = (1, 1, computed_shape[2] + o, computed_shape[3] + o)
-                                # expect an error
-                                yield (self.tcase_gi,
-                                       image_shape,
-                                       kernel_shape,
-                                       output_shape,
-                                       (s, s),
-                                       border_mode,
-                                       True,
-                                       True,
-                                       (d, d),
-                                       True)
+                    # compute the output that these inputs and parameters would produce
+                    computed_shape = get_conv_output_shape(
+                        image_shape, kernel_shape, border_mode, (s, s), (d, d))
+
+                    yield (run_for_output_offsets,
+                           image_shape, kernel_shape, s, border_mode, d)
 
     def run_fwd(self, inputs_shape, filters_shape,
                 conv_fn=conv.conv2d, conv_op=conv.AbstractConv2d,
@@ -862,32 +856,27 @@ class BaseTestConv3d(BaseTestConv):
                            True)
 
     def test_gradinput_impossible_output_shapes(self):
-        for i in range(1, 10):
-            for k in range(1, 5):
-                for border_mode in ('valid', 'half', 'full', (0, 2, 1)):
-                    for s in (1, 2, 3):
-                        for d in (1, 2, 3):
-                            image_shape = (1, 1, i, i, i)
-                            kernel_shape = (1, 1, k, k, k)
+        def run_for_output_offsets(image_shape, kernel_shape, s, border_mode, d):
+            # outputs that are too large or too small should be rejected
+            for o in (-3, -1, 1, 2):
+                output_shape = (1, 1, computed_shape[2] + o,
+                                computed_shape[3] + o, computed_shape[4] + o)
+                # expect an error
+                self.tcase_gi(image_shape, kernel_shape, output_shape,
+                              (s, s), border_mode, True, True, (d, d), True)
 
-                            # compute the output that these inputs and parameters would produce
-                            computed_shape = get_conv_output_shape(
-                                image_shape, kernel_shape, border_mode, (s, s, s), (d, d, d))
+        for (i, k) in ((1, 1), (1, 2), (2, 1), (4, 2), (4, 3), (7, 3), (9, 5)):
+            for border_mode in ('valid', 'half', 'full', (0, 2, 1)):
+                for (s, d) in ((1, 1), (1, 2), (2, 1), (2, 2), (3, 1), (1, 3)):
+                    image_shape = (1, 1, i, i, i)
+                    kernel_shape = (1, 1, k, k, k)
 
-                            # outputs that are too large or too small should be rejected
-                            for o in (-3, -2, -1, 1, 2, 3):
-                                output_shape = (1, 1, computed_shape[2] + o,
-                                                computed_shape[3] + o, computed_shape[4] + o)
-                                yield (self.tcase_gi,
-                                       image_shape,
-                                       kernel_shape,
-                                       output_shape,
-                                       (s, s, s),
-                                       border_mode,
-                                       True,
-                                       True,
-                                       (d, d, d),
-                                       True)
+                    # compute the output that these inputs and parameters would produce
+                    computed_shape = get_conv_output_shape(
+                        image_shape, kernel_shape, border_mode, (s, s, s), (d, d, d))
+
+                    yield (run_for_output_offsets,
+                           image_shape, kernel_shape, s, border_mode, d)
 
     def run_fwd(self, inputs_shape, filters_shape,
                 conv_fn=conv.conv3d, conv_op=conv.AbstractConv3d,
