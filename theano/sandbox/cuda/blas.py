@@ -922,7 +922,7 @@ class BaseGpuCorrMM(GpuOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 27)
+        return (0, 28)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -1042,8 +1042,8 @@ class BaseGpuCorrMM(GpuOp):
         kW = CudaNdarray_HOST_DIMS(weights)[3];
     }
     else {
-        if ((dH != 1) || (padH == -1)) {
-            // vertical subsampling or half padding, kernel height is specified
+        if (%(height)s != -1) {
+            // kernel height is specified (perhaps vertical subsampling or half padding)
             kH = %(height)s;
         }
         else if (padH == -2) {
@@ -1054,7 +1054,7 @@ class BaseGpuCorrMM(GpuOp):
             // explicit padding, we can infer the kernel height
             kH = (CudaNdarray_HOST_DIMS(bottom)[2] + 2*padH - (CudaNdarray_HOST_DIMS(top)[2] - 1)*dH - 1) / dilH + 1 ;
         }
-        if ((dW != 1) || (padW == -1)) {
+        if (%(width)s != -1) {
             kW = %(width)s;
         }
         else if (padW == -2) {
@@ -1062,15 +1062,6 @@ class BaseGpuCorrMM(GpuOp):
         }
         else {
             kW = (CudaNdarray_HOST_DIMS(bottom)[3] + 2*padW - (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW - 1) / dilW + 1;
-        }
-        if ((%(height)s != -1 && %(height)s != kH) ||
-            (%(width)s != -1 && %(width)s != kW))
-        {
-            PyErr_Format(PyExc_ValueError,
-                         "BaseGpuCorrMM: computed kernel shape %%dx%%d "
-                         "does not match given shape %%dx%%d",
-                         kH, kW, %(height)s, %(width)s);
-            %(fail)s
         }
     }
 
@@ -1124,18 +1115,8 @@ class BaseGpuCorrMM(GpuOp):
         // height and width: bottom = (top - 1) * sample + (weights-1)*dil + 1 - 2*pad
         out_dim[0] = CudaNdarray_HOST_DIMS(top)[0];
         out_dim[1] = CudaNdarray_HOST_DIMS(weights)[1];
-        out_dim[2] = (dH != 1) ? %(height)s : (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH + (CudaNdarray_HOST_DIMS(weights)[2]-1)*dilH + 1 - 2*padH;
-        out_dim[3] = (dW != 1) ? %(width)s : (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW + (CudaNdarray_HOST_DIMS(weights)[3]-1)*dilW + 1 - 2*padW;
-        if ((%(height)s != -1 && %(height)s != out_dim[2]) ||
-            (%(width)s != -1 && %(width)s != out_dim[3]))
-        {
-            PyErr_Format(PyExc_ValueError,
-                         "BaseGpuCorrMM: computed output shape %%dx%%d "
-                         "does not match given shape %%dx%%d",
-                         out_dim[2], out_dim[3],
-                         %(height)s, %(width)s);
-            %(fail)s
-        }
+        out_dim[2] = (%(height)s != -1) ? %(height)s : (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH + (CudaNdarray_HOST_DIMS(weights)[2]-1)*dilH + 1 - 2*padH;
+        out_dim[3] = (%(width)s != -1) ? %(width)s : (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW + (CudaNdarray_HOST_DIMS(weights)[3]-1)*dilW + 1 - 2*padW;
         break;
     default:
         PyErr_SetString(PyExc_ValueError, "BaseGpuCorrMM: direction must be 0, 1, or 2\\n");
@@ -1500,7 +1481,7 @@ class BaseGpuCorr3dMM(GpuOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 26)
+        return (0, 27)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -1642,9 +1623,9 @@ class BaseGpuCorr3dMM(GpuOp):
     }
     else
     {
-      if ((dH != 1) || (padH == -1))
+      if (%(height)s != -1)
       {
-         // vertical subsampling or half padding, kernel height is specified
+         // kernel height is specified (perhaps vertical subsampling or half padding)
          kH = %(height)s;
       }
       else if (padH == -2)
@@ -1657,7 +1638,7 @@ class BaseGpuCorr3dMM(GpuOp):
         // explicit padding, we can infer the kernel height
         kH = (CudaNdarray_HOST_DIMS(bottom)[2] + 2*padH - (CudaNdarray_HOST_DIMS(top)[2] - 1)*dH - 1) / dilH + 1 ;
       }
-      if ((dW != 1) || (padW == -1))
+      if (%(width)s != -1)
       {
         kW = %(width)s;
       }
@@ -1669,7 +1650,7 @@ class BaseGpuCorr3dMM(GpuOp):
       {
         kW = (CudaNdarray_HOST_DIMS(bottom)[3] + 2*padW - (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW - 1) / dilW + 1;
       }
-      if ((dD != 1) || (padD == -1))
+      if (%(depth)s != -1)
       {
         kD = %(depth)s;
       }
@@ -1680,16 +1661,6 @@ class BaseGpuCorr3dMM(GpuOp):
       else
       {
         kD = (CudaNdarray_HOST_DIMS(bottom)[4] + 2*padD - (CudaNdarray_HOST_DIMS(top)[4] - 1) * dD - 1) / dilD+ 1;
-      }
-      if ((%(height)s != -1 && %(height)s != kH) ||
-          (%(width)s != -1 && %(width)s != kW) ||
-          (%(depth)s != -1 && %(depth)s != kD))
-      {
-        PyErr_Format(PyExc_ValueError,
-                     "BaseGpuCorr3dMM: computed kernel shape %%dx%%dx%%d "
-                     "does not match given shape %%dx%%dx%%d",
-                     kH, kW, kD, %(height)s, %(width)s, %(depth)s);
-        %(fail)s
       }
     }
 
@@ -1763,20 +1734,9 @@ class BaseGpuCorr3dMM(GpuOp):
         // height, width and depth: bottom = (top - 1) * sample + (weights-1)*dil + 1 - 2*pad
         out_dim[0] = CudaNdarray_HOST_DIMS(top)[0];
         out_dim[1] = CudaNdarray_HOST_DIMS(weights)[1];
-        out_dim[2] = (dH != 1) ? %(height)s : (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH + (CudaNdarray_HOST_DIMS(weights)[2]-1)*dilH + 1 - 2*padH;
-        out_dim[3] = (dW != 1) ? %(width)s : (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW + (CudaNdarray_HOST_DIMS(weights)[3]-1)*dilW + 1 - 2*padW;
-        out_dim[4] = (dD != 1) ? %(depth)s : (CudaNdarray_HOST_DIMS(top)[4] - 1) * dD + (CudaNdarray_HOST_DIMS(weights)[4]-1)*dilD + 1 - 2*padD;
-        if ((%(height)s != -1 && %(height)s != out_dim[2]) ||
-            (%(width)s != -1 && %(width)s != out_dim[3]) ||
-            (%(depth)s != -1 && %(depth)s != out_dim[4]))
-        {
-            PyErr_Format(PyExc_ValueError,
-                         "BaseGpuCorr3dMM: computed output shape %%dx%%dx%%d "
-                         "does not match given shape %%dx%%dx%%d",
-                         out_dim[2], out_dim[3], out_dim[4],
-                         %(height)s, %(width)s, %(depth)s);
-            %(fail)s
-        }
+        out_dim[2] = (%(height)s != -1) ? %(height)s : (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH + (CudaNdarray_HOST_DIMS(weights)[2]-1)*dilH + 1 - 2*padH;
+        out_dim[3] = (%(width)s != -1) ? %(width)s : (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW + (CudaNdarray_HOST_DIMS(weights)[3]-1)*dilW + 1 - 2*padW;
+        out_dim[4] = (%(depth)s != -1) ? %(depth)s : (CudaNdarray_HOST_DIMS(top)[4] - 1) * dD + (CudaNdarray_HOST_DIMS(weights)[4]-1)*dilD + 1 - 2*padD;
         break;
     default:
         PyErr_SetString(PyExc_ValueError, "BaseGpuCorr3dMM: direction must be 0, 1, or 2\\n");

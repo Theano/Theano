@@ -425,9 +425,17 @@ PyGpuArrayObject* corr3dMM(PyGpuArrayObject *const bottom,
     const size_t dil_kW = (kW - 1) * dilW + 1;
     const size_t dil_kD = (kD - 1) * dilD + 1;
     // top: (batchSize, nFilters, topHeight, topWidth, topDepth)
-    const size_t topHeight = (bottomHeight + 2*padH - dil_kH) / dH + 1;
-    const size_t topWidth  = (bottomWidth + 2*padW - dil_kW) / dW + 1;
-    const size_t topDepth  = (bottomDepth + 2*padD - dil_kD) / dD + 1;
+    const size_t topHeightNoDH = (bottomHeight + 2*padH - dil_kH);
+    const size_t topWidthNoDW  = (bottomWidth + 2*padW - dil_kW);
+    const size_t topDepthNoDD  = (bottomDepth + 2*padD - dil_kD);
+    // the above values might be negative so we need to use Python-like
+    // flooring integer division to be compatible with get_conv_output.
+    // note: this macro implements Python's // for negative x only
+#define _CONV_FLOORDIV_X(x,y) ((x < 0) ? (- ((-x) / y) - (((-x) % y) == 0 ? 0 : 1)) : (x / y))
+    const size_t topHeight = _CONV_FLOORDIV_X(topHeightNoDH, dH) + 1;
+    const size_t topWidth  = _CONV_FLOORDIV_X(topWidthNoDW, dW) + 1;
+    const size_t topDepth  = _CONV_FLOORDIV_X(topDepthNoDD, dD) + 1;
+#undef _CONV_FLOORDIV
     if (batchSize != PyGpuArray_DIMS(top)[0] ||
             nFilters != PyGpuArray_DIMS(top)[1] ||
             topHeight != PyGpuArray_DIMS(top)[2] ||

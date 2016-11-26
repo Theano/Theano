@@ -123,7 +123,7 @@ class BaseCorrMM(gof.OpenMPOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (2, self.openmp, blas_header_version())
+        return (3, self.openmp, blas_header_version())
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -275,8 +275,8 @@ class BaseCorrMM(gof.OpenMPOp):
         kW = PyArray_DIMS(weights)[3];
     }
     else {
-        if ((dH != 1) || (padH == -1)) {
-            // vertical subsampling or half padding, kernel height is specified
+        if (%(height)s != -1) {
+            // kernel height is specified (perhaps vertical subsampling or half padding)
             kH = %(height)s;
         }
         else if (padH == -2) {
@@ -287,7 +287,8 @@ class BaseCorrMM(gof.OpenMPOp):
             // explicit padding, we can infer the kernel height
             kH = (PyArray_DIMS(bottom)[2] + 2*padH - (PyArray_DIMS(top)[2] - 1) * dH - 1) / dilH +1;
         }
-        if ((dW != 1) || (padW == -1)) {
+        if (%(width)s != -1) {
+            // kernel width is specified (perhaps horizontal subsampling or half padding)
             kW = %(width)s;
         }
         else if (padW == -2) {
@@ -295,15 +296,6 @@ class BaseCorrMM(gof.OpenMPOp):
         }
         else {
             kW = (PyArray_DIMS(bottom)[3] + 2*padW - (PyArray_DIMS(top)[3] - 1) * dW - 1) / dilW + 1;
-        }
-        if ((%(height)s != -1 && %(height)s != kH) ||
-            (%(width)s != -1 && %(width)s != kW))
-        {
-            PyErr_Format(PyExc_ValueError,
-                         "BaseCorrMM: computed kernel shape %%lldx%%lld "
-                         "does not match given shape %%lldx%%lld",
-                         (long long)kH, (long long)kW, (long long)%(height)s, (long long)%(width)s);
-            %(fail)s
         }
     }
 
@@ -357,18 +349,8 @@ class BaseCorrMM(gof.OpenMPOp):
         // height and width: bottom = (top - 1) * sample + (weights-1)*dil + 1 - 2*pad
         out_dim[0] = (npy_intp)PyArray_DIMS(top)[0];
         out_dim[1] = (npy_intp)PyArray_DIMS(weights)[1];
-        out_dim[2] = (npy_intp)((dH != 1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + (PyArray_DIMS(weights)[2]-1)*dilH + 1 - 2*padH);
-        out_dim[3] = (npy_intp)((dW != 1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + (PyArray_DIMS(weights)[3]-1)*dilW + 1 - 2*padW);
-        if ((%(height)s != -1 && %(height)s != out_dim[2]) ||
-            (%(width)s != -1 && %(width)s != out_dim[3]))
-        {
-            PyErr_Format(PyExc_ValueError,
-                         "BaseCorrMM: computed output shape %%lldx%%lld "
-                         "does not match given shape %%lldx%%lld",
-                         (long long)out_dim[2], (long long)out_dim[3],
-                         (long long)%(height)s, (long long)%(width)s);
-            %(fail)s
-        }
+        out_dim[2] = (npy_intp)((%(height)s != -1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + (PyArray_DIMS(weights)[2]-1)*dilH + 1 - 2*padH);
+        out_dim[3] = (npy_intp)((%(width)s != -1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + (PyArray_DIMS(weights)[3]-1)*dilW + 1 - 2*padW);
         break;
     default:
         PyErr_SetString(PyExc_ValueError, "BaseCorrMM: direction must be 0, 1, or 2\\n");

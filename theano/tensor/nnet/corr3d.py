@@ -123,7 +123,7 @@ class BaseCorr3dMM(gof.OpenMPOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (2, self.openmp, blas_header_version())
+        return (3, self.openmp, blas_header_version())
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -292,8 +292,8 @@ class BaseCorr3dMM(gof.OpenMPOp):
         kD = PyArray_DIMS(weights)[4];
     }
     else {
-        if ((dH != 1) || (padH == -1)) {
-            // vertical subsampling or half padding, kernel height is specified
+        if (%(height)s != -1) {
+            // kernel height is specified (perhaps vertical subsampling or half padding)
             kH = %(height)s;
         }
         else if (padH == -2) {
@@ -304,7 +304,7 @@ class BaseCorr3dMM(gof.OpenMPOp):
             // explicit padding, we can infer the kernel height
             kH = (PyArray_DIMS(bottom)[2] + 2*padH - (PyArray_DIMS(top)[2] - 1) * dH - 1) / dilH +1;
         }
-        if ((dW != 1) || (padW == -1)) {
+        if (%(width)s != -1) {
             kW = %(width)s;
         }
         else if (padW == -2) {
@@ -313,7 +313,7 @@ class BaseCorr3dMM(gof.OpenMPOp):
         else {
             kW = (PyArray_DIMS(bottom)[3] + 2*padW - (PyArray_DIMS(top)[3] - 1) * dW - 1) / dilW + 1;
         }
-        if ((dD != 1) || (padD == -1)) {
+        if (%(depth)s != -1) {
             kD = %(depth)s;
         }
         else if (padD == -2) {
@@ -321,17 +321,6 @@ class BaseCorr3dMM(gof.OpenMPOp):
         }
         else {
             kD = (PyArray_DIMS(bottom)[4] + 2*padD - (PyArray_DIMS(top)[4] - 1) * dD - 1) / dilD + 1;
-        }
-        if ((%(height)s != -1 && %(height)s != kH) ||
-            (%(width)s != -1 && %(width)s != kW) ||
-            (%(depth)s != -1 && %(depth)s != kD))
-        {
-            PyErr_Format(PyExc_ValueError,
-                         "BaseCorr3dMM: computed kernel shape %%lldx%%lldx%%lld "
-                         "does not match given shape %%lldx%%lldx%%lld",
-                         (long long)kH, (long long)kW, (long long)kD,
-                         (long long)%(height)s, (long long)%(width)s, (long long)%(depth)s);
-            %(fail)s
         }
     }
 
@@ -398,20 +387,9 @@ class BaseCorr3dMM(gof.OpenMPOp):
         // height and width: bottom = (top - 1) * sample + (weights-1)*dil + 1 - 2*pad
         out_dim[0] = (npy_intp)PyArray_DIMS(top)[0];
         out_dim[1] = (npy_intp)PyArray_DIMS(weights)[1];
-        out_dim[2] = (npy_intp)((dH != 1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + (PyArray_DIMS(weights)[2]-1)*dilH + 1 - 2*padH);
-        out_dim[3] = (npy_intp)((dW != 1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + (PyArray_DIMS(weights)[3]-1)*dilW + 1 - 2*padW);
-        out_dim[4] = (npy_intp)((dD != 1) ? %(depth)s : (PyArray_DIMS(top)[4] - 1) * dD + (PyArray_DIMS(weights)[4]-1)*dilD + 1 - 2*padD);
-        if ((%(height)s != -1 && %(height)s != out_dim[2]) ||
-            (%(width)s != -1 && %(width)s != out_dim[3]) ||
-            (%(depth)s != -1 && %(depth)s != out_dim[4]))
-        {
-            PyErr_Format(PyExc_ValueError,
-                         "BaseCorr3dMM: computed output shape %%lldx%%lldx%%lld "
-                         "does not match given shape %%lldx%%lldx%%lld",
-                         (long long)out_dim[2], (long long)out_dim[3], (long long)out_dim[4],
-                         (long long)%(height)s, (long long)%(width)s, (long long)%(depth)s);
-            %(fail)s
-        }
+        out_dim[2] = (npy_intp)((%(height)s != -1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + (PyArray_DIMS(weights)[2]-1)*dilH + 1 - 2*padH);
+        out_dim[3] = (npy_intp)((%(width)s != -1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + (PyArray_DIMS(weights)[3]-1)*dilW + 1 - 2*padW);
+        out_dim[4] = (npy_intp)((%(depth)s != -1) ? %(depth)s : (PyArray_DIMS(top)[4] - 1) * dD + (PyArray_DIMS(weights)[4]-1)*dilD + 1 - 2*padD);
         break;
     default:
         PyErr_SetString(PyExc_ValueError, "BaseCorr3dMM: direction must be 0, 1, or 2\\n");
