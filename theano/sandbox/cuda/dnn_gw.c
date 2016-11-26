@@ -33,6 +33,45 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
   if (c_set_filterNd(*kerns, APPLY_SPECIFIC(kerns)) == -1)
     return 1;
 
+  int expected_output_dims[5] = {0};
+  err = cudnnGetConvolutionNdForwardOutputDim(desc, APPLY_SPECIFIC(input), APPLY_SPECIFIC(kerns),
+                                              nb_dim, expected_output_dims);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    PyErr_Format(PyExc_RuntimeError, "error computing convolution output dim: %s",
+                 cudnnGetErrorString(err));
+    return 1;
+  }
+  if (nb_dim == 4) {
+    if ((CudaNdarray_HOST_DIMS(output)[0] != expected_output_dims[0]) ||
+        (CudaNdarray_HOST_DIMS(output)[1] != expected_output_dims[1]) ||
+        (CudaNdarray_HOST_DIMS(output)[2] != expected_output_dims[2]) ||
+        (CudaNdarray_HOST_DIMS(output)[3] != expected_output_dims[3])) {
+      PyErr_Format(PyExc_ValueError, "impossible convolution output dim: expected %ldx%ldx%dx%ld"
+                                     " but received gradient with shape %ldx%ldx%dx%ld",
+                   (long int)expected_output_dims[0], (long int)expected_output_dims[1],
+                   (long int)expected_output_dims[2], (long int)expected_output_dims[3],
+                   (long int)CudaNdarray_HOST_DIMS(output)[0], (long int)CudaNdarray_HOST_DIMS(output)[1],
+                   (long int)CudaNdarray_HOST_DIMS(output)[2], (long int)CudaNdarray_HOST_DIMS(output)[3]);
+      return 1;
+    }
+  } else if (nb_dim == 5) {
+    if ((CudaNdarray_HOST_DIMS(output)[0] != expected_output_dims[0]) ||
+        (CudaNdarray_HOST_DIMS(output)[1] != expected_output_dims[1]) ||
+        (CudaNdarray_HOST_DIMS(output)[2] != expected_output_dims[2]) ||
+        (CudaNdarray_HOST_DIMS(output)[3] != expected_output_dims[3]) ||
+        (CudaNdarray_HOST_DIMS(output)[4] != expected_output_dims[4])) {
+      PyErr_Format(PyExc_ValueError, "impossible convolution output dim: expected %ldx%ldx%ldx%ldx%ld"
+                                     " but received gradient with shape %ldx%ldx%ldx%ldx%ld",
+                   (long int)expected_output_dims[0], (long int)expected_output_dims[1],
+                   (long int)expected_output_dims[2], (long int)expected_output_dims[3],
+                   (long int)expected_output_dims[4],
+                   (long int)CudaNdarray_HOST_DIMS(output)[0], (long int)CudaNdarray_HOST_DIMS(output)[1],
+                   (long int)CudaNdarray_HOST_DIMS(output)[2], (long int)CudaNdarray_HOST_DIMS(output)[3],
+                   (long int)CudaNdarray_HOST_DIMS(output)[4]);
+      return 1;
+    }
+  }
+
   {
     size_t worksize;
     void *workspace;
