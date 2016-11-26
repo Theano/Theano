@@ -528,7 +528,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
 
     def c_code_cache_version(self):
         # Raise this whenever modifying the code below.
-        return (4,)
+        return (5,)
 
     def c_code_helper(self, bottom, weights, top, direction, sub, height=None, width=None):
         """
@@ -700,7 +700,9 @@ class BaseGpuCorrMM(CGpuKernelBase):
     }
 
     // Infer output shape and type
-    size_t out_dim[4];
+    // The inferred shape can be negative.
+    long long out_dim[4];
+    size_t out_dim_size[4];
     int out_typecode;
     PyGpuContextObject *out_context;
     switch(direction) {
@@ -744,16 +746,21 @@ class BaseGpuCorrMM(CGpuKernelBase):
         PyErr_Format(PyExc_ValueError,
                      "BaseGpuCorrMM: impossible output shape: "
                      "%%lldx%%lldx%%lldx%%lld",
-                     (long long)out_dim[0], (long long)out_dim[1],
-                     (long long)out_dim[2], (long long)out_dim[3]);
+                     out_dim[0], out_dim[1],
+                     out_dim[2], out_dim[3]);
         %(fail)s
     }
 
+    out_dim_size[0] = (size_t)out_dim[0];
+    out_dim_size[1] = (size_t)out_dim[1];
+    out_dim_size[2] = (size_t)out_dim[2];
+    out_dim_size[3] = (size_t)out_dim[3];
+
     // Prepare output array
-    if (theano_prep_output(&%(out)s, 4, out_dim, out_typecode, GA_C_ORDER, out_context) != 0)
+    if (theano_prep_output(&%(out)s, 4, out_dim_size, out_typecode, GA_C_ORDER, out_context) != 0)
     {
         PyErr_Format(PyExc_RuntimeError,
-                "BaseGpuCorrMM: Failed to allocate output of %%ld x %%ld x %%ld x %%ld",
+                "BaseGpuCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld",
                 out_dim[0], out_dim[1], out_dim[2], out_dim[3]);
         %(fail)s
     }
@@ -1086,7 +1093,7 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
 
     def c_code_cache_version(self):
         # raise this whenever modifying the code below.
-        return (4,)
+        return (5,)
 
     def c_code_helper(self, bottom, weights, top, direction, sub,
                       height=None, width=None, depth=None):
@@ -1296,7 +1303,9 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
     }
 
     // Infer output shape and type
-    size_t out_dim[5];
+    // The inferred shape can be negative.
+    long long out_dim[5];
+    size_t out_dim_size[5];
     int out_typecode;
     PyGpuContextObject *out_context;
     switch(direction) {
@@ -1343,16 +1352,22 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
         PyErr_Format(PyExc_ValueError,
                      "BaseGpuCorr3dMM: impossible output shape: "
                      "%%lldx%%lldx%%lldx%%lld%%lld",
-                     (long long)out_dim[0], (long long)out_dim[1],
-                     (long long)out_dim[2], (long long)out_dim[3], (long long)out_dim[4]);
+                     out_dim[0], out_dim[1],
+                     out_dim[2], out_dim[3], out_dim[4]);
         %(fail)s
     }
 
+    out_dim_size[0] = (size_t)out_dim[0];
+    out_dim_size[1] = (size_t)out_dim[1];
+    out_dim_size[2] = (size_t)out_dim[2];
+    out_dim_size[3] = (size_t)out_dim[3];
+    out_dim_size[4] = (size_t)out_dim[4];
+
     // Prepare output array
-    if (theano_prep_output(&%(out)s, 5, out_dim, out_typecode, GA_C_ORDER, out_context) != 0)
+    if (theano_prep_output(&%(out)s, 5, out_dim_size, out_typecode, GA_C_ORDER, out_context) != 0)
     {
         PyErr_Format(PyExc_RuntimeError,
-                "BaseGpuCorrMM: Failed to allocate output of %%ld x %%ld x %%ld x %%ld x %%ld",
+                "BaseGpuCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld x %%lld",
                 out_dim[0], out_dim[1], out_dim[2], out_dim[3], out_dim[4]);
         %(fail)s
     }
