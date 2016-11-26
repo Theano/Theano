@@ -500,8 +500,8 @@ class BaseTestConv2d(BaseTestConv):
                            True)
 
     def test_gradinput_impossible_output_shapes(self):
-        for i in range(1, 20):
-            for k in range(1, 10):
+        for i in range(1, 10):
+            for k in range(1, 5):
                 for border_mode in ('valid', 'half', 'full', (0, 2)):
                     for s in (1, 2, 3):
                         for d in (1, 2, 3):
@@ -862,8 +862,8 @@ class BaseTestConv3d(BaseTestConv):
                            True)
 
     def test_gradinput_impossible_output_shapes(self):
-        for i in range(1, 20):
-            for k in range(1, 10):
+        for i in range(1, 10):
+            for k in range(1, 5):
                 for border_mode in ('valid', 'half', 'full', (0, 2, 1)):
                     for s in (1, 2, 3):
                         for d in (1, 2, 3):
