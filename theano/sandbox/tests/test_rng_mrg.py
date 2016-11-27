@@ -627,20 +627,35 @@ def test_uniform():
                   allow_01=True, inputs=input)
 
 
-def test_uniform_broadcastable():
+def test_broadcastable():
+    R = MRG_RandomStreams(234, use_cuda=False)
     x = tensor.matrix()
     size1 = (10, 1)
     size2 = (x.shape[0], 1)
+    pvals_1 = numpy.random.uniform(0, 1, size=size1)
+    pvals_1 = pvals_1/sum(pvals_1)
+    pvals_2 = R.uniform(size=size2)
+    pvals_2 = pvals_2/tensor.sum(pvals_2)
 
-    R = MRG_RandomStreams(234, use_cuda=False)
+    for distribution in [R.uniform, R.binomial, R.multinomial, R.multinomial_wo_replacement, R.normal]:
+        # multinomial or multinomial_wo_replacement does not support "size" argument,
+        # the size of them are implicitly defined with "pvals" argument.
+        if distribution in [R.multinomial, R.multinomial_wo_replacement]:
+            # check when all dimensions are constant
+            uu = distribution(pvals=pvals_1)
+            assert uu.broadcastable == (False, True)
 
-    # check when all dimensions are constant
-    uu = R.uniform(size=size1)
-    assert uu.broadcastable == (False, True)
+            # check when some dimensions are theano variables
+            uu = distribution(pvals=pvals_2)
+            assert uu.broadcastable == (False, True)
+        else:
+            # check when all dimensions are constant
+            uu = distribution(size=size1)
+            assert uu.broadcastable == (False, True)
 
-    # check when some dimensions are theano variables
-    uu = R.uniform(size=size2)
-    assert uu.broadcastable == (False, True)
+            # check when some dimensions are theano variables
+            uu = distribution(size=size2)
+            assert uu.broadcastable == (False, True)
 
 
 @attr('slow')
