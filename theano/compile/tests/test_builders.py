@@ -1,4 +1,5 @@
 from __future__ import absolute_import, print_function, division
+from functools import partial
 import numpy as np
 
 from theano import config, shared
@@ -8,12 +9,12 @@ from theano.compile import function
 from theano import tensor as T
 from theano.tensor.shared_randomstreams import RandomStreams
 
-from theano.compile.builders import OpFromGraphInline, OpFromGraphPrecompiled
+from theano.compile.builders import OpFromGraph
 
 from theano.tests import unittest_tools
 
 test_params = unittest_tools.parameterized.expand(
-    [(OpFromGraphInline,), (OpFromGraphPrecompiled,)])
+    [(OpFromGraph,), (partial(OpFromGraph, inline=True),)])
 
 
 class T_OpFromGraph(unittest_tools.InferShapeTester):
@@ -135,11 +136,11 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         zz = T.sum(op_mul(xx, yy))
         dx, dy = T.grad(zz, [xx, yy])
         fn = function([xx, yy], [dx, dy])
-        xv = numpy.random.rand(16).astype(config.floatX)
-        yv = numpy.random.rand(16).astype(config.floatX)
+        xv = np.random.rand(16).astype(config.floatX)
+        yv = np.random.rand(16).astype(config.floatX)
         dxv, dyv = fn(xv, yv)
-        assert numpy.allclose(yv * 2, dxv)
-        assert numpy.allclose(xv * 1.5, dyv)
+        assert np.allclose(yv * 2, dxv)
+        assert np.allclose(xv * 1.5, dyv)
 
         # list override case
         def go1(inps, gs):
@@ -159,13 +160,13 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         zz = T.sum(op_linear(xx, ww, bb))
         dx, dw, db = T.grad(zz, [xx, ww, bb])
         fn = function([xx, ww, bb], [dx, dw, db])
-        xv = numpy.random.rand(16).astype(config.floatX)
-        wv = numpy.random.rand(16).astype(config.floatX)
-        bv = numpy.random.rand(16).astype(config.floatX)
+        xv = np.random.rand(16).astype(config.floatX)
+        wv = np.random.rand(16).astype(config.floatX)
+        bv = np.random.rand(16).astype(config.floatX)
         dxv, dwv, dbv = fn(xv, wv, bv)
-        assert numpy.allclose(wv * 2, dxv)
-        assert numpy.allclose(xv * 1.5, dwv)
-        assert numpy.allclose(numpy.ones(16, dtype=config.floatX), dbv)
+        assert np.allclose(wv * 2, dxv)
+        assert np.allclose(xv * 1.5, dwv)
+        assert np.allclose(np.ones(16, dtype=config.floatX), dbv)
 
     @test_params
     def test_nested(self, cls_ofg):
@@ -178,11 +179,11 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         xx2, yy2 = op_ift(*op_ft(xx, yy))
         fn = function([xx, yy], [xx2, yy2])
 
-        xv = numpy.random.rand(16).astype(config.floatX)
-        yv = numpy.random.rand(16).astype(config.floatX)
+        xv = np.random.rand(16).astype(config.floatX)
+        yv = np.random.rand(16).astype(config.floatX)
         xv2, yv2 = fn(xv, yv)
-        assert numpy.allclose(xv, xv2)
-        assert numpy.allclose(yv, yv2)
+        assert np.allclose(xv, xv2)
+        assert np.allclose(yv, yv2)
 
     @test_params
     def test_connection_pattern(self, cls_ofg):
@@ -239,10 +240,9 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         p = T.matrix('p')
         # we don't want check_topo for inline ops
         # since the inline op is replaced during optimization
-        is_compile = not issubclass(cls_ofg, OpFromGraphInline)
         self._compile_and_check([q, p],
                                 op_graph(q, p),
                                 [np.ones([3, 4], dtype=config.floatX),
                                  np.ones([3, 4], dtype=config.floatX)],
                                 cls_ofg,
-                                check_topo=is_compile)
+                                check_topo=not op_graph.is_inline)

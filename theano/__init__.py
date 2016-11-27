@@ -69,7 +69,7 @@ from theano.compile import (
     Mode,
     predefined_modes, predefined_linkers, predefined_optimizers,
     FunctionMaker, function, function_dump,
-    OpFromGraph, OpFromGraphInline, OpFromGraphPrecompiled, op_from_graph,
+    OpFromGraph, op_from_graph,
     ProfileStats,
     Param, shared, as_op)
 
