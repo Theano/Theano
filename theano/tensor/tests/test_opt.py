@@ -5024,6 +5024,7 @@ class T_local_erfc(unittest.TestCase):
         mode_fusion.check_isfinite = False
 
         f = theano.function([x], T.grad(T.log(T.erfc(x)).sum(), x), mode=mode)
+
         assert len(f.maker.fgraph.apply_nodes) == 23, len(f.maker.fgraph.apply_nodes)
         assert all(numpy.isfinite(f(val)))
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX

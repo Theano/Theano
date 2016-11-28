@@ -3853,7 +3853,6 @@ class Composite(ScalarOp):
         self.nin = len(inputs)
         self.nout = len(outputs)
         self.init_fgraph()       # self.fgraph
-
         # Postpone the creation in case it isn't needed.
         #  self.init_name()      # self.name
         self.name = None
@@ -3975,6 +3974,7 @@ class Composite(ScalarOp):
         # see __hash__ for comment on why there is no mention of fgraph
         # or module cache key here.
         self.init_c_code()    # self._c_code and self.nodenames
+        other.init_c_code()
         return (self._c_code == other._c_code)
 
     def __hash__(self):

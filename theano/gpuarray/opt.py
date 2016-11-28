@@ -13,6 +13,7 @@ from theano import tensor, scalar, gof, config
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
+                        LocalGroupDB,
                         SequenceDB, Optimizer, DB, toolbox, graph)
 from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
@@ -47,7 +48,8 @@ from .blas import (gpu_dot22, GpuGemm, GpuGer, GpuGemmBatch,
                    gpugemmbatch_no_inplace,
                    gpugemv_no_inplace, gpugemv_inplace,
                    GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights,
-                   GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights,
+                   GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
+from .pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad,
                    GpuDownsampleFactorMaxGradGrad)
 from .blocksparse import (GpuSparseBlockGemv, GpuSparseBlockOuter,
                           gpu_sparse_block_outer,
@@ -129,7 +131,10 @@ def register_opt2(tracks, *tags, **kwargs):
     '''
     def f(local_opt):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
-        opt = theano.gof.local_optimizer(tracks)(local_opt)
+        if isinstance(local_opt, theano.gof.DB):
+            opt = local_opt
+        else:
+            opt = theano.gof.local_optimizer(tracks)(local_opt)
         gpu_optimizer2.register(name, opt, 'fast_run', 'gpuarray', *tags)
         return local_opt
     return f
@@ -1592,6 +1597,99 @@ def local_gpua_lift_abstractconv_graph(op, context_name, inputs, outputs):
     inps[1] = as_gpuarray_variable(inputs[1],
                                    context_name=context_name)
     return [op(*inps)]
+
+
+def local_gpu_pool(op, ctx_name, inputs, outputs):
+    assert op.__props__ == ('ignore_border', 'mode', 'ndim')
+    inp, ws, stride, pad = inputs
+    nd = op.ndim
+    if nd not in (2, 3):
+        return
+    inp = gpu_contiguous(as_gpuarray_variable(inp, ctx_name))
+
+    op = GpuPool(op.ignore_border, op.mode, op.ndim)
+    if inp.ndim == nd + 2:
+        return op(inp, ws, stride, pad)
+    else:
+        # reshape to 4D or 5D with 2 non-pooling dimensions
+        inp_padded = pad_dims(inp, 2, nd)
+        ret_padded = op(inp_padded, ws, stride, pad)
+        return unpad_dims(ret_padded, inp, 2, nd)
+pool_db = LocalGroupDB()
+pool_db2 = LocalGroupDB(local_opt=theano.gof.opt.GraphToGPULocalOptGroup)
+pool_db2.__name__ = "pool_db2"
+lifter = op_lifter([pool.Pool])(local_gpu_pool)
+pool_db.register("local_gpu_pool", lifter,
+                 'gpuarray', 'fast_compile', 'fast_run',
+                 position=1)
+pool_db2.register("local_gpu_pool",
+                  local_optimizer([pool.Pool])(local_gpu_pool),
+                  'gpuarray', 'fast_compile', 'fast_run',
+                  position=1)
+register_opt('fast_compile', name='pool_db')(pool_db)
+register_opt2([pool.Pool], 'fast_compile', name='pool_db2')(pool_db2)
+
+
+def local_gpu_max_pool_grad(op, ctx_name, inputs, outputs):
+    assert op.__props__ == ('ignore_border', 'mode', 'ndim')
+
+    inp, out, out_grad, ws, stride, pad = inputs
+    nd = op.ndim
+    if nd not in (2, 3):
+        return
+    inp = gpu_contiguous(as_gpuarray_variable(inp, ctx_name))
+    out = gpu_contiguous(as_gpuarray_variable(out, ctx_name))
+    out_grad = gpu_contiguous(as_gpuarray_variable(out_grad, ctx_name))
+
+    op = GpuMaxPoolGrad(op.ignore_border, op.mode, op.ndim)
+    if inp.ndim == nd + 2:
+        return op(inp, out, out_grad, ws, stride, pad)
+    else:
+        # reshape to 4D or 5D with 2 non-pooling dimensions
+        inp_padded = pad_dims(inp, 2, nd)
+        out_padded = pad_dims(out, 2, nd)
+        out_grad_padded = pad_dims(out_grad, 2, nd)
+        ret_padded = op(inp_padded, out_padded, out_grad_padded,
+                        ws, stride, pad)
+        return unpad_dims(ret_padded, inp, 2, nd)
+lifter = op_lifter([pool.MaxPoolGrad])(local_gpu_max_pool_grad)
+pool_db.register("local_gpu_max_pool_grad", lifter,
+                 'gpuarray', 'fast_compile', 'fast_run',
+                 position=1)
+pool_db2.register("local_gpu_max_pool_grad",
+                  local_optimizer([pool.MaxPoolGrad])(local_gpu_max_pool_grad),
+                  'gpuarray', 'fast_compile', 'fast_run',
+                  position=1)
+
+
+def local_gpu_average_pool_grad(op, ctx_name, inputs, outputs):
+    assert op.__props__ == ('ignore_border', 'mode', 'ndim')
+
+    inp, out_grad, ws, stride, pad = inputs
+    nd = op.ndim
+    if nd not in (2, 3):
+        return
+    inp = gpu_contiguous(as_gpuarray_variable(inp, ctx_name))
+    out_grad = gpu_contiguous(as_gpuarray_variable(out_grad, ctx_name))
+
+    op = GpuAveragePoolGrad(op.ignore_border, op.mode, op.ndim)
+    if inp.ndim == nd + 2:
+        return op(inp, out_grad, ws, stride, pad)
+    else:
+        # reshape to 4D or 5D with 2 non-pooling dimensions
+        inp_padded = pad_dims(inp, 2, nd)
+        out_grad_padded = pad_dims(out_grad, 2, nd)
+        ret_padded = op(inp_padded, out_grad_padded,
+                        ws, stride, pad)
+        return unpad_dims(ret_padded, inp, 2, nd)
+lifter = op_lifter([pool.AveragePoolGrad])(local_gpu_average_pool_grad)
+pool_db.register("local_gpu_average_pool_grad", lifter,
+                 'gpuarray', 'fast_compile', 'fast_run',
+                 position=1)
+pool_db2.register("local_gpu_average_pool_grad",
+                  local_optimizer([pool.AveragePoolGrad])(local_gpu_average_pool_grad),
+                  'gpuarray', 'fast_compile', 'fast_run',
+                  position=1)
 
 
 @register_opt()

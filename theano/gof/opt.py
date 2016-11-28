@@ -1384,6 +1384,41 @@ class LocalOptGroup(LocalOptimizer):
             opt.add_requirements(fgraph)
 
 
+class GraphToGPULocalOptGroup(LocalOptGroup):
+    """This is the equivalent of LocalOptGroup for GraphToGPU.
+
+    The main different is the function signature of the local
+    optimizer that use the GraphToGPU signature and not the normal
+    LocalOptimizer signature.
+
+    apply_all_opts=True is not supported
+
+    """
+    def __init__(self, *optimizers, **kwargs):
+        super(GraphToGPULocalOptGroup, self).__init__(*optimizers, **kwargs)
+        assert self.apply_all_opts is False
+
+    def transform(self, op, context_name, inputs, outputs):
+        if len(self.opts) == 0:
+            return
+        fgraph = outputs[0].fgraph
+        opts = self.track_map[type(op)] + self.track_map[op] + self.track_map[None]
+        for opt in opts:
+            opt_start = time.time()
+            new_repl = opt.transform(op, context_name, inputs, outputs)
+            opt_finish = time.time()
+            if self.profile:
+                self.time_opts[opt] += opt_start - opt_finish
+                self.process_count[opt] += 1
+            if not new_repl:
+                continue
+            if self.profile:
+                self.node_created[opt] += len(graph.ops(fgraph.variables, new_repl))
+                self.applied_true[opt] += 1
+
+            return new_repl
+
+
 class OpSub(LocalOptimizer):
     """
 

@@ -167,10 +167,10 @@ class IfElse(Op):
             "Wrong number of arguments to make_node: "
             "expected %d, got %d" % (2 * self.n_outs, len(args))
         )
+        c = theano.tensor.as_tensor_variable(c)
         if not self.gpu:
             # When gpu is true, we are given only cuda ndarrays, and we want
             # to keep them be cuda ndarrays
-            c = theano.tensor.as_tensor_variable(c)
             nw_args = []
             for x in args:
                 if isinstance(x, theano.Variable):

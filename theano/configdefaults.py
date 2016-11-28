@@ -1255,8 +1255,10 @@ def default_blas_ldflags():
                     lib_path = os.path.join(sys.prefix, 'DLLs')
                     flags = ['-L"%s"' % lib_path]
                 else:
-                    lib_path = blas_info.get('library_dirs', [])[0]
-                    flags = ['-L%s' % lib_path]
+                    lib_path = blas_info.get('library_dirs', [])
+                    flags = []
+                    if lib_path:
+                        flags = ['-L%s' % lib_path[0]]
                 flags += ['-l%s' % l for l in ["mkl_core",
                                                "mkl_intel_thread",
                                                "mkl_rt"]]

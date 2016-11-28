@@ -191,8 +191,8 @@ class ExtractDiag(Op):
 
         if x.type.ndim != 2:
             raise TypeError('ExtractDiag only works on matrices', _x)
-        return Apply(self, [x], [x.type.__class__(broadcastable=(False,),
-                                                  dtype=x.type.dtype)()])
+        y = x.type.clone(broadcastable=(False,))()
+        return Apply(self, [x], [y])
 
     def perform(self, node, ins, outs):
         """ For some reason numpy.diag(x) is really slow, so we

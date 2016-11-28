@@ -249,6 +249,21 @@ class test_gpu_ifelse(test_ifelse.test_ifelse):
     def get_ifelse(self, n):
         return theano.ifelse.IfElse(n, gpu=True, as_view=True)
 
+    def test_lifter_with_inputs_of_graph(self):
+        x = tensor.vector()
+        cond = tensor.iscalar()
+        f = theano.function([x, cond],
+                            theano.ifelse.ifelse(cond, x.mean(), x.sum()),
+                            mode=mode_with_gpu)
+        assert f(numpy.float32([1, 2, 3]), 0) == 6
+
+        x = tensor.vector()
+        cond = tensor.scalar()
+        f = theano.function([x, cond],
+                            theano.ifelse.ifelse(cond, x.mean(), x.sum()),
+                            mode=mode_with_gpu)
+        assert f(numpy.float32([1, 2, 3]), 0) == 6
+
 
 def test_print_op():
     """ Test that print ops don't block gpu optimization"""
