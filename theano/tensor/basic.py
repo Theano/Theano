@@ -1832,6 +1832,7 @@ isnan_ = isnan
 
 def isnan(a):
     """isnan(a)"""
+    a = as_tensor_variable(a)
     if a.dtype in discrete_dtypes:
         return alloc(numpy.asarray(False, dtype="bool"),
                      *[a.shape[i] for i in range(a.ndim)])
@@ -1841,6 +1842,20 @@ def isnan(a):
 @_scal_elemwise
 def isinf(a):
     """isinf(a)"""
+
+
+# Rename isnan to isnan_ to allow to bypass it when not needed.
+# glibc 2.23 don't allow isnan on int, so we remove it from the graph.
+isinf_ = isinf
+
+
+def isinf(a):
+    """isinf(a)"""
+    a = as_tensor_variable(a)
+    if a.dtype in discrete_dtypes:
+        return alloc(numpy.asarray(False, dtype="bool"),
+                     *[a.shape[i] for i in range(a.ndim)])
+    return isinf_(a)
 
 
 def allclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
