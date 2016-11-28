@@ -250,12 +250,7 @@ class PyDotFormatter(object):
                 pd_node.get_attributes()['subg_map_inputs'] = h
 
                 # Outputs mapping
-                ext_outputs = []
-                for n in topo:
-                    for i in n.inputs:
-                        h = i.owner if i.owner else i
-                        if h is node:
-                            ext_outputs.append(self.__node_id(n))
+                ext_outputs = [self.__node_id(x) for x in node.outputs]
                 int_outputs = node.op.fn.maker.fgraph.outputs
                 int_outputs = [gf.__node_id(x) for x in int_outputs]
                 assert len(ext_outputs) == len(int_outputs)

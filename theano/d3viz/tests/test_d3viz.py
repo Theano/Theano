@@ -54,3 +54,8 @@ class TestD3Viz(unittest.TestCase):
         m = models.OfgNested()
         f = th.function(m.inputs, m.outputs)
         self.check(f)
+
+    def test_ofg_simple(self):
+        m = models.OfgSimple()
+        f = th.function(m.inputs, m.outputs)
+        self.check(f)
