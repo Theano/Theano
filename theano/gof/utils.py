@@ -569,7 +569,9 @@ def hash_from_file(file_path):
     Return the MD5 hash of a file.
 
     """
-    return hash_from_code(open(file_path, 'rb').read())
+    with open(file_path, 'rb') as f:
+        file_content = f.read()
+    return hash_from_code(file_content)
 
 
 def hash_from_dict(d):
