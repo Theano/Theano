@@ -89,8 +89,8 @@ int APPLY_SPECIFIC(CPUFwd)(PyArrayObject* datas,
 
 
   APPLY_SPECIFIC(ROIPoolForward)(
-          count, datas->atof(data), SPATIAL_SCALE, channels, height, width,
-          POOLED_HEIGHT, POOLED_WIDTH, rois->atof(data), (*out)->atof(data), (*argmaxes));
+          count, (float *)PyArray_DATA(datas), SPATIAL_SCALE, channels, height, width,
+          POOLED_HEIGHT, POOLED_WIDTH, (float *)PyArray_DATA(rois), (float *)PyArray_DATA(*out), (float *)PyArray_DATA(*argmaxes));
 
   return 0;
 }
@@ -183,9 +183,9 @@ int APPLY_SPECIFIC(CPUBackward)(PyArrayObject* datas,
 
 
     APPLY_SPECIFIC(ROIPoolBackward)(
-        count, out_grad->atof(data), argmaxes->atof(data), batch_size , 
+        count, (float *)PyArray_DATA(out_grad), (float *)PyArray_DATA(argmaxes), batch_size , 
         SPATIAL_SCALE, channels, height, width, POOLED_HEIGHT, POOLED_WIDTH, 
-        (*data_grad)->atof(data), rois->atof(data));
+        (float *)PyArray_DATA(*data_grad), (float *)PyArray_DATA(rois));
 
   return 0;
 }
