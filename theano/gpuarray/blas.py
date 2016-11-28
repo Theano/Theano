@@ -92,7 +92,14 @@ class GpuGemv(BlasOp):
                    }
                    """ % vars
         code += """
-        if (pygpu_blas_rgemv(cb_no_trans,
+        if (PyGpuArray_DIM(%(A)s, 1) == 0) {
+          int code;
+          code = GpuArray_memset(&%(out)s->ga, 0);
+          if (code != GA_NO_ERROR) {
+            PyErr_SetString(PyExc_RuntimeError, "Memset failed");
+            %(fail)s
+          }
+        } else if (pygpu_blas_rgemv(cb_no_trans,
                              ((dtype_%(alpha)s *)PyArray_DATA(%(alpha)s))[0],
                              %(A)s, %(x)s,
                              ((dtype_%(beta)s *)PyArray_DATA(%(beta)s))[0],
@@ -107,7 +114,7 @@ class GpuGemv(BlasOp):
         return code
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
 gpugemv_no_inplace = GpuGemv(inplace=False)
 gpugemv_inplace = GpuGemv(inplace=True)
