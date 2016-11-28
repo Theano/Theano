@@ -83,6 +83,24 @@ def batch_normalization(inputs, gamma, beta, mean, std,
     return rval
 
 
+def _prepare_batch_normalization_axes(axes, ndim):
+    if axes == 'per-activation':
+        axes = (0,)
+    elif axes == 'spatial':
+        axes = (0,) + tuple(range(2, ndim))
+    elif isinstance(axes, (tuple, list, numpy.ndarray)):
+        axes = tuple(int(a) for a in axes)
+    else:
+        raise ValueError('invalid axes: %s', str(axes))
+    axes = tuple(sorted(axes))
+    if len(axes) == 0:
+        raise ValueError('there should be at least one normalization axis')
+    if min(axes) < 0 or max(axes) >= ndim:
+        raise ValueError('axes should be less than ndim (<%d), but %s given' % (ndim, str(axes)))
+    non_bc_axes = tuple(i for i in range(ndim) if i not in axes)
+    return axes, non_bc_axes
+
+
 def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
                               epsilon=1e-4, running_average_factor=0.1,
                               running_mean=None, running_var=None):
@@ -99,10 +117,9 @@ def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
         (i.e., all dimensions past the second), which for 4D inputs would be
         equal to ``axes=(0, 2, 3)``.
     gamma : tensor
-        Learnable scale factors. Must match the dimensionality of `inputs`,
-        but have sizes of `1` for all axes normalized over (i.e., in the first
-        dimension for ``axes='per-activation'``, and additionally in all
-        dimensions past the second for ``axes='spatial'``).
+        Learnable scale factors. The shape must match the shape of `inputs`,
+        except for the axes in `axes`. These axes should be set to 1 or be
+        skipped altogether (such that `gamma.ndim == inputs.ndim - len(axes)`).
     beta : tensor
         Learnable biases. Must match the tensor layout of `gamma`.
     epsilon : float
@@ -117,14 +134,14 @@ def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
         ``running_mean * (1 - r_a_factor) + batch mean * r_a_factor``
         will be returned as one of the outputs of this function.
         `running_mean` and `running_var` should either both be given or
-        both be None.
+        both be None. The shape should match that of `gamma` and `beta`.
     running_var : tensor or None
         Previous value of the running variance. If this is given, the new value
         ``running_var * (1 - r_a_factor) + (m / (m - 1)) * batch var * r_a_factor``
         will be returned as one of the outputs of this function,
         where `m` is the product of lengths of the averaged-over dimensions.
         `running_mean` and `running_var` should either both be given or
-        both be None.
+        both be None. The shape should match that of `gamma` and `beta`.
 
     Returns
     -------
@@ -166,62 +183,76 @@ def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
                       (m / (m - 1)) * var * running_average_factor
     """
     ndim = inputs.ndim
-    if gamma.ndim != ndim or beta.ndim != ndim:
-        raise ValueError("gamma and beta must be of the same dimensionality "
-                         "as inputs; got %d and %d instead of %d" %
-                         (gamma.ndim, beta.ndim, ndim))
+    axes, non_bc_axes = _prepare_batch_normalization_axes(axes, ndim)
+
+    # have the parameter tensors been broadcasted yet?
+    if gamma.ndim == ndim:
+        params_ndim = ndim
+    else:
+        params_ndim = len(non_bc_axes)
+        params_dimshuffle_pattern = ['x'] * ndim
+        for i, axis in enumerate(non_bc_axes):
+            params_dimshuffle_pattern[axis] = i
+
+    if gamma.ndim != params_ndim or beta.ndim != params_ndim:
+        raise ValueError("gamma and beta dimensionality must match the "
+                         "number of non-normalized axes, or have the "
+                         "same number of dimensions as the inputs; "
+                         "got %d and %d instead of %d" %
+                         (gamma.ndim, beta.ndim, params_ndim))
     if (running_mean is None) != (running_var is None):
         raise ValueError("running_mean and running_var must either both be "
                          "given or both be None")
-    if running_mean is not None and running_mean.ndim != ndim:
+    if running_mean is not None and running_mean.ndim != params_ndim:
         raise ValueError("running_mean must be of the same dimensionality "
-                         "as inputs; got %d instead of %d" %
-                         (running_mean.ndim, ndim))
-    if running_var is not None and running_var.ndim != ndim:
+                         "as gamma and beta; got %d instead of %d" %
+                         (running_mean.ndim, params_ndim))
+    if running_var is not None and running_var.ndim != params_ndim:
         raise ValueError("running_var must be of the same dimensionality "
-                         "as inputs; got %d instead of %d" %
-                         (running_var.ndim, ndim))
+                         "as gamma and beta; got %d instead of %d" %
+                         (running_var.ndim, params_ndim))
     if epsilon < 1e-5:
         raise ValueError("epsilon must be at least 1e-5, got %f" % epsilon)
-
-    if axes == 'per-activation':
-        axes = (0,)
-    elif axes == 'spatial':
-        axes = (0,) + tuple(range(2, inputs.ndim))
-    elif isinstance(axes, (tuple, list, numpy.ndarray)):
-        axes = tuple(int(a) for a in axes)
-    else:
-        raise ValueError('invalid axes: %s', str(axes))
-    if len(axes) == 0:
-        raise ValueError('there should be at least one normalization axis')
-    if min(axes) < 0 or max(axes) >= ndim:
-        raise ValueError('axes should be less than ndim (<%d), but %s given' % (ndim, str(axes)))
 
     inputs = as_tensor_variable(inputs)
     gamma = as_tensor_variable(gamma)
     beta = as_tensor_variable(beta)
 
-    gamma = T.addbroadcast(gamma, *axes)
-    beta = T.addbroadcast(beta, *axes)
+    if params_ndim != ndim:
+        gamma = gamma.dimshuffle(params_dimshuffle_pattern)
+        beta = beta.dimshuffle(params_dimshuffle_pattern)
+    else:
+        gamma = T.addbroadcast(gamma, *axes)
+        beta = T.addbroadcast(beta, *axes)
 
     batchnorm_op = AbstractBatchNormTrain(axes=axes)
 
     if running_mean is not None and running_var is not None:
         running_mean = as_tensor_variable(running_mean)
         running_var = as_tensor_variable(running_var)
-        running_mean_bc = T.addbroadcast(running_mean, *axes)
-        running_var_bc = T.addbroadcast(running_var, *axes)
+        if params_ndim != ndim:
+            running_mean = running_mean.dimshuffle(params_dimshuffle_pattern)
+            running_var = running_var.dimshuffle(params_dimshuffle_pattern)
+        else:
+            running_mean = T.addbroadcast(running_mean, *axes)
+            running_var = T.addbroadcast(running_var, *axes)
         out, mean, invstd, new_running_mean, new_running_var = batchnorm_op(
             inputs, gamma, beta, epsilon=epsilon,
             running_average_factor=running_average_factor,
-            running_mean=running_mean_bc, running_var=running_var_bc)
+            running_mean=running_mean, running_var=running_var)
         if new_running_mean.broadcastable != running_mean.broadcastable:
             new_running_mean = T.patternbroadcast(new_running_mean, running_mean.broadcastable)
         if new_running_var.broadcastable != running_var.broadcastable:
             new_running_var = T.patternbroadcast(new_running_var, running_var.broadcastable)
-        return out, mean, invstd, new_running_mean, new_running_var
+        results = (out, mean, invstd, new_running_mean, new_running_var)
     else:
-        return tuple(batchnorm_op(inputs, gamma, beta, epsilon=epsilon))
+        results = batchnorm_op(inputs, gamma, beta, epsilon=epsilon)
+
+    if params_ndim != ndim:
+        # remove the broadcasted dimensions (except from the output)
+        results = ([results[0]] +
+                   [r.dimshuffle(non_bc_axes) for r in results[1:]])
+    return tuple(results)
 
 
 def batch_normalization_test(inputs, gamma, beta, mean, var,
@@ -239,10 +270,9 @@ def batch_normalization_test(inputs, gamma, beta, mean, var,
         (i.e., all dimensions past the second), which for 4D inputs would be
         equal to ``axes=(0, 2, 3)``.
     gamma : tensor
-        Scale factors. Must match the dimensionality of `inputs`, but have
-        sizes of `1` for all axes normalized over (i.e., in the first dimension
-        for ``axes='per-activation'``, and additionally in all dimensions past
-        the second for ``axes='spatial'``).
+        Scale factors. The shape must match the shape of `inputs`,
+        except for the axes in `axes`. These axes should be set to 1 or be
+        skipped altogether (such that `gamma.ndim == inputs.ndim - len(axes)`).
     beta : tensor
         Biases. Must match the tensor layout of `gamma`.
     mean : tensor
@@ -278,39 +308,45 @@ def batch_normalization_test(inputs, gamma, beta, mean, var,
         out = (inputs - mean) * gamma / T.sqrt(var + epsilon) + beta
     """
     ndim = inputs.ndim
-    if gamma.ndim != ndim or beta.ndim != ndim:
-        raise ValueError("gamma and beta must be of the same dimensionality "
-                         "as inputs; got %d and %d instead of %d" %
-                         (gamma.ndim, beta.ndim, ndim))
-    if mean.ndim != ndim or var.ndim != ndim:
+    axes, non_bc_axes = _prepare_batch_normalization_axes(axes, ndim)
+
+    # have the parameter tensors been broadcasted yet?
+    if gamma.ndim == ndim:
+        params_ndim = ndim
+    else:
+        params_ndim = len(non_bc_axes)
+        params_dimshuffle_pattern = ['x'] * ndim
+        for i, axis in enumerate(non_bc_axes):
+            params_dimshuffle_pattern[axis] = i
+
+    if gamma.ndim != params_ndim or beta.ndim != params_ndim:
+        raise ValueError("gamma and beta dimensionality must match the "
+                         "number of non-normalized axes, or have the "
+                         "same number of dimensions as the inputs; "
+                         "got %d and %d instead of %d" %
+                         (gamma.ndim, beta.ndim, params_ndim))
+    if mean.ndim != params_ndim or var.ndim != params_ndim:
         raise ValueError("mean and var must be of the same dimensionality "
-                         "as inputs; got %d and %d instead of %d" %
-                         (mean.ndim, var.ndim, ndim))
+                         "as gamma and beta; got %d and %d instead of %d" %
+                         (mean.ndim, var.ndim, params_ndim))
     if epsilon < 1e-5:
         raise ValueError("epsilon must be at least 1e-5, got %f" % epsilon)
-
-    if axes == 'per-activation':
-        axes = (0,)
-    elif axes == 'spatial':
-        axes = (0,) + tuple(range(2, inputs.ndim))
-    elif isinstance(axes, (tuple, list, numpy.ndarray)):
-        axes = tuple(int(a) for a in axes)
-    else:
-        raise ValueError('invalid axes: %s', str(axes))
-    if len(axes) == 0:
-        raise ValueError('there should be at least one normalization axis')
-    if min(axes) < 0 or max(axes) >= ndim:
-        raise ValueError('axes should be less than ndim (<%d), but %s given' % (ndim, str(axes)))
 
     gamma = as_tensor_variable(gamma)
     beta = as_tensor_variable(beta)
     mean = as_tensor_variable(mean)
     var = as_tensor_variable(var)
 
-    gamma = T.addbroadcast(gamma, *axes)
-    beta = T.addbroadcast(beta, *axes)
-    mean = T.addbroadcast(mean, *axes)
-    var = T.addbroadcast(var, *axes)
+    if params_ndim != ndim:
+        gamma = gamma.dimshuffle(params_dimshuffle_pattern)
+        beta = beta.dimshuffle(params_dimshuffle_pattern)
+        mean = mean.dimshuffle(params_dimshuffle_pattern)
+        var = var.dimshuffle(params_dimshuffle_pattern)
+    else:
+        gamma = T.addbroadcast(gamma, *axes)
+        beta = T.addbroadcast(beta, *axes)
+        mean = T.addbroadcast(mean, *axes)
+        var = T.addbroadcast(var, *axes)
 
     batchnorm_op = AbstractBatchNormInference(axes=axes)
     return batchnorm_op(inputs, gamma, beta, mean, var, epsilon=epsilon)
