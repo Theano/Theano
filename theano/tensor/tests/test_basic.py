@@ -45,7 +45,7 @@ from theano.tensor import (_shared, wvector, bvector,
         tile, patternbroadcast, Eye, Shape, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean,
-        itensor3, Tile, switch, Diagonal, Diag,
+        itensor3, Tile, switch, ExtractDiag, Diag,
         nonzero, flatnonzero, nonzero_values,
         stacklists, DimShuffle, hessian, ptp, power,
         swapaxes, choose, Choose, NoneConst, AllocEmpty,
@@ -7427,27 +7427,27 @@ class TestInferShape(utt.InferShapeTester):
                                 [Tri()(aiscal, biscal, ciscal)],
                                 [3, 5, 0], Tri)
 
-        # Diagonal
+        # ExtractDiag
         atens3 = tensor3()
         atens3_val = rand(4, 5, 3)
-        atens3_diag = Diagonal()(atens3)
+        atens3_diag = ExtractDiag()(atens3)
         self._compile_and_check([atens3], [atens3_diag],
-                                [atens3_val], Diagonal)
-        atens3_diag = Diagonal(1)(atens3)
+                                [atens3_val], ExtractDiag)
+        atens3_diag = ExtractDiag(1)(atens3)
         self._compile_and_check([atens3], [atens3_diag],
-                                [atens3_val], Diagonal)
-        atens3_diag = Diagonal(-1)(atens3)
+                                [atens3_val], ExtractDiag)
+        atens3_diag = ExtractDiag(-1)(atens3)
         self._compile_and_check([atens3], [atens3_diag],
-                                [atens3_val], Diagonal)
-        atens3_diag = Diagonal(1, 0, 2)(atens3)
+                                [atens3_val], ExtractDiag)
+        atens3_diag = ExtractDiag(1, 0, 2)(atens3)
         self._compile_and_check([atens3], [atens3_diag],
-                                [atens3_val], Diagonal)
-        atens3_diag = Diagonal(1, 1, 2)(atens3)
+                                [atens3_val], ExtractDiag)
+        atens3_diag = ExtractDiag(1, 1, 2)(atens3)
         self._compile_and_check([atens3], [atens3_diag],
-                                [atens3_val], Diagonal)
-        atens3_diag = Diagonal(1, 2, 0)(atens3)
+                                [atens3_val], ExtractDiag)
+        atens3_diag = ExtractDiag(1, 2, 0)(atens3)
         self._compile_and_check([atens3], [atens3_diag],
-                                [atens3_val], Diagonal)
+                                [atens3_val], ExtractDiag)
 
         # Diag
         advec = dvector()

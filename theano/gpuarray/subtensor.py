@@ -8,8 +8,7 @@ from six.moves import StringIO
 
 from theano import tensor, gof, Op
 from theano.gradient import grad_not_implemented
-import theano.tensor.clip
-import theano.tensor.minimum
+import theano.tensor as T
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
 
 try:
@@ -1177,10 +1176,10 @@ class GpuDiagonal(Subtensor):
         # The following logic is inspired by C code of PyArray_Diagonal().
         offset = self.offset
         if offset > 0:
-            diag_size = theano.tensor.clip(dim2 - offset, 0, dim1)
+            diag_size = T.clip(dim2 - offset, 0, dim1)
         elif offset < 0:
-            diag_size = theano.tensor.clip(dim1 + offset, 0, dim2)
+            diag_size = T.clip(dim1 + offset, 0, dim2)
         else:
-            diag_size = theano.tensor.minimum(dim1, dim2)
+            diag_size = T.minimum(dim1, dim2)
         out_shape.append(diag_size)
         return [tuple(out_shape)]

@@ -6045,10 +6045,10 @@ class ExtractDiag(Op):
     def __init__(self, offset=0, axis1=0, axis2=1, view=False):
         self.view = view
         if self.view and not numpy_diagonal_return_view:
-            warnings.warn("View will forced to False. Diagonal property view is "
+            warnings.warn("View will forced to False. ExtractDiag property view is "
                           "set to True but numpy version %s and prior versions of "
                           "numpy.diagonal() do not return a view. Update "
-                          "numpy to use Diagonal(view=True)" %
+                          "numpy to use ExtractDiag(view=True)" %
                           numpy.version.version)
             self.view = False
         if self.view:
@@ -6061,7 +6061,7 @@ class ExtractDiag(Op):
         x = as_tensor_variable(x)
 
         if x.ndim < 2:
-            raise ValueError('Diagonal needs an input with 2 or more '
+            raise ValueError('ExtractDiag needs an input with 2 or more '
                              'dimensions', x)
         return Apply(self, [x], [x.type.__class__(
             dtype=x.dtype,
