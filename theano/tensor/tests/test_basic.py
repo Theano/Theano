@@ -2867,6 +2867,13 @@ def test_isnan():
             x.dtype not in tensor.discrete_dtypes)
         assert y.dtype == 'bool'
 
+        # Test c code generator even for int type.
+        y = tensor.isnan_(x)
+        assert isinstance(y.owner.op, tensor.Elemwise)
+        assert y.dtype == 'bool'
+        f = theano.function([x], y, allow_input_downcast=True)
+        f([[0, 1, 2]])
+
 
 class T_Shape(unittest.TestCase):
     def test_basic0(self):
