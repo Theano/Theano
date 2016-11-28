@@ -20,6 +20,7 @@ pygpu_activated = False
 try:
     import pygpu
     import pygpu.gpuarray
+    import pygpu.version
 except ImportError:
     pygpu = None
 
@@ -42,6 +43,8 @@ register_transfer(transfer)
 
 def init_dev(dev, name=None):
     global pygpu_activated
+    if (pygpu.version.major, pygpu.version.minor) < (0, 6):
+        raise ValueError("Your installed version of pygpu is too old, please upgrade to 0.6 or later")
     if dev not in init_dev.devmap:
         ctx = pygpu.init(dev,
                          disable_alloc_cache=config.gpuarray.preallocate < 0,
@@ -142,4 +145,4 @@ else:
             config.device.startswith('opencl') or
             config.device.startswith('cuda') or
             config.contexts != ''):
-        error("pygpu was configured but could not be imported", exc_info=True)
+        error("pygpu was configured but could not be imported or is too old (version 0.6 or higher required)", exc_info=True)
