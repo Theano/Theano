@@ -19,6 +19,7 @@ from theano import config, gof
 from theano.compat import izip
 from theano.gof import graph
 import theano.compile.mode
+import theano.compile.profiling
 from theano.compile.io import (
     In, SymbolicInput, SymbolicOutput)
 from theano.compile.ops import deep_copy_op, view_op
@@ -937,11 +938,11 @@ class Function(object):
         #
 
         dt_call = time.time() - t0
+        theano.compile.profiling.total_fct_exec_time += dt_call
         self.maker.mode.call_time += dt_call
         if profile:
             profile.fct_callcount += 1
             profile.fct_call_time += dt_call
-            profile.total_fct_exec_time += dt_call
             if hasattr(self.fn, 'update_profile'):
                 self.fn.update_profile(profile)
             if profile.ignore_first_call:
@@ -1467,9 +1468,9 @@ class FunctionMaker(object):
 
                 end_optimizer = time.time()
                 opt_time = end_optimizer - start_optimizer
+                theano.compile.profiling.total_graph_opt_time += opt_time
                 if profile:
                     profile.optimizer_time += opt_time
-                    profile.total_graph_opt_time += opt_time
                     if theano.config.profile_optimizer:
                         profile.optimizer_profile = (optimizer,
                                                      optimizer_profile)
