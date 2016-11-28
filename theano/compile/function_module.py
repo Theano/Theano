@@ -1658,10 +1658,10 @@ class FunctionMaker(object):
         end_linker = time.time()
 
         linker_time = end_linker - start_linker
+        theano.compile.profiling.total_time_linker += linker_time
         _logger.debug('Linker took %f seconds', linker_time)
         if self.profile:
             self.profile.linker_time += linker_time
-            self.profile.total_time_linker += linker_time
             _fn.time_thunks = self.profile.flag_time_thunks
             import_time = theano.gof.cmodule.import_time - start_import_time
             self.profile.import_time += import_time
