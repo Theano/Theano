@@ -941,6 +941,7 @@ class Function(object):
         if profile:
             profile.fct_callcount += 1
             profile.fct_call_time += dt_call
+            profile.total_fct_exec_time += dt_call
             if hasattr(self.fn, 'update_profile'):
                 self.fn.update_profile(profile)
             if profile.ignore_first_call:
@@ -1468,6 +1469,7 @@ class FunctionMaker(object):
                 opt_time = end_optimizer - start_optimizer
                 if profile:
                     profile.optimizer_time += opt_time
+                    profile.total_graph_opt_time += opt_time
                     if theano.config.profile_optimizer:
                         profile.optimizer_profile = (optimizer,
                                                      optimizer_profile)
@@ -1658,6 +1660,7 @@ class FunctionMaker(object):
         _logger.debug('Linker took %f seconds', linker_time)
         if self.profile:
             self.profile.linker_time += linker_time
+            self.profile.total_time_linker += linker_time
             _fn.time_thunks = self.profile.flag_time_thunks
             import_time = theano.gof.cmodule.import_time - start_import_time
             self.profile.import_time += import_time

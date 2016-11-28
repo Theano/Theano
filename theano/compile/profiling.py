@@ -36,6 +36,9 @@ from theano.gof import graph
 logger = logging.getLogger('theano.compile.profiling')
 
 theano_imported_time = time.time()
+total_fct_exec_time = 0.
+total_graph_opt_time = 0.
+total_time_linker = 0.
 config = theano.config
 
 _atexit_print_list = []
@@ -107,6 +110,34 @@ def _atexit_print_fn():
         cum.summary(file=destination_file,
                     n_ops_to_print=config.profiling.n_ops,
                     n_apply_to_print=config.profiling.n_apply)
+
+
+def print_global_stats():
+    """
+    Print the following stats:
+      -- Time elapsed since Theano was imported
+      -- Time spent inside Theano functions
+      -- Time spent in compiling Theano functions
+           -- on graph optimization
+           -- on linker
+    """
+
+    if config.profiling.destination == 'stderr':
+        destination_file = sys.stderr
+    elif config.profiling.destination == 'stdout':
+        destination_file = sys.stdout
+    else:
+        destination_file = open(config.profiling.destination, 'w')
+
+    print('Time elasped since Theano import = %6.2fs, '
+          'Time spent in Theano functions = %6.2fs, '
+          'Time spent compiling Theano functions: '
+          ' optimzation = %6.2s, linker = %6.2s ' %
+          (theano_imported_time,
+           total_fct_exec_time,
+           total_graph_opt_time,
+           total_time_linker),
+          file=file)
 
 
 class ProfileStats(object):
