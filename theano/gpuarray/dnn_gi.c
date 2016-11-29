@@ -140,13 +140,31 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
 #endif
 
   if (!reuse_algo) {
+    size_t free;
+    int err2 = gpucontext_property(c->ctx, GA_CTX_PROP_LARGEST_MEMBLOCK, &free);
+
+    if (err2 != GA_NO_ERROR) {
+      PyErr_Format(PyExc_RuntimeError, "Error when trying to find the "
+                   "memory information on the GPU");
+      cuda_exit(c->ctx);
+      return 1;
+    }
+
 #ifdef CHOOSE_TIME
     int count;
     cudnnConvolutionBwdDataAlgoPerf_t choice;
+    gpudata *tmpmem;
 
-    err = cudnnFindConvolutionBackwardDataAlgorithm(
+    tmpmem = gpudata_alloc(ctx, mem_sz, NULL, 0, NULL);
+    if (tmpmem == NULL) {
+      PyErr_SetString(PyExc_MemoryError, "Could not allocate working GPU memory");
+      return -1;
+    }
+
+    err = cudnnFindConvolutionBackwardDataAlgorithmEx(
       _handle, APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output), desc,
-      APPLY_SPECIFIC(input), 1, &count, &choice);
+      APPLY_SPECIFIC(input), 1, &count, &choice, *(void **)tmpmem, free);
+    gpudata_release(tmpmem);
 
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError, "error selecting convolution algo: %s",
@@ -157,16 +175,6 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
 
     algo = choice.algo;
 #else
-    size_t free;
-    int err2 = gpucontext_property(c->ctx, GA_CTX_PROP_FREE_GMEM, &free);
-
-    if (err2 != GA_NO_ERROR) {
-      PyErr_Format(PyExc_RuntimeError, "Error when trying to find the "
-                   "memory information on the GPU");
-      cuda_exit(c->ctx);
-      return 1;
-    }
-
     err = cudnnGetConvolutionBackwardDataAlgorithm(
       _handle, APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output),
       desc, APPLY_SPECIFIC(input),
