@@ -111,11 +111,7 @@ int APPLY_SPECIFIC(dnn_pool_grad)(PyGpuArrayObject *inp,
      s[i] = *((npy_intp*)PyArray_GETPTR1(stride, i));
   }
 
-#if CUDNN_VERSION >= 5000
   err = cudnnSetPoolingNdDescriptor(APPLY_SPECIFIC(pool), MODE_FLAG, CUDNN_PROPAGATE_NAN, ndims, w, p, s);
-#else
-  err = cudnnSetPoolingNdDescriptor(APPLY_SPECIFIC(pool), MODE_FLAG, ndims, w, p, s);
-#endif
 
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "could not set op descriptor %s", cudnnGetErrorString(err));
