@@ -1145,10 +1145,6 @@ Getting a Theano result like NumPy:
    >>> t[(t > 4).nonzero()].eval()
    array([5, 6, 7, 8])
 
-The gradient of Advanced indexing needs in many cases NumPy
-1.8. It is not released yet as of April 30th, 2013. You can use NumPy
-development version to have this feature now.
-
 
 Index-assignment is *not* supported.  If you want to do something like ``a[5]
 = b`` or ``a[5]+=b``, see :func:`theano.tensor.set_subtensor` and :func:`theano.tensor.inc_subtensor` below.
