@@ -74,3 +74,13 @@ THEANO_FLAGS=${FLAGS},cxx= ${NOSETESTS} ${THEANO_PARAM} ${XUNIT}${FILE} ${SUITE}
 echo "Number of elements in the compiledir:"
 ls ${COMPILEDIR}|wc -l
 echo
+
+# Test shortcut to default test suite
+echo "Running tests using theano.test()"
+mkdir -p test_default
+rm -rf test_default/*
+cd test_default
+NAME=import
+FILE=${ROOT_CWD}/theano_${NAME}_tests.xml
+EXTRA_ARGS='["--with-xunit", "--xunit-file='${FILE}$'", "'${SUITE}${NAME}'"]'
+THEANO_FLAGS=base_compiledir=$BASE_COMPILEDIR python -c "import theano; theano.test(extra_argv=${EXTRA_ARGS})"
