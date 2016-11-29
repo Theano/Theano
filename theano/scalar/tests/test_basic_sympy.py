@@ -11,7 +11,6 @@ try:
     xs = sympy.Symbol('x')
     ys = sympy.Symbol('y')
 except ImportError:
-    from nose.plugins.skip import SkipTest
     raise SkipTest('optional package sympy disabled')
 
 xt, yt = floats('xy')

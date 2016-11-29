@@ -1,4 +1,7 @@
 from __future__ import absolute_import, print_function, division
+
+from nose.plugins.skip import SkipTest
+
 import theano
 from theano.compile.mode import Mode, AddFeatureOptimizer
 from theano.gof.toolbox import NoOutputFromInplace
