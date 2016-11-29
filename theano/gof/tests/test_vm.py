@@ -209,6 +209,8 @@ def test_partial_function():
         utt.assert_allclose(f(5), np.array([32., 16., 1.7857142857142858]))
 
     check_partial_function(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
+    if not theano.config.cxx:
+        raise SkipTest("Need cxx for this test")
     check_partial_function('cvm')
 
 
@@ -223,6 +225,8 @@ def test_partial_function_with_output_keys():
         assert f(5, output_subset=['a'])['a'] == f(5)['a']
 
     check_partial_function_output_keys(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
+    if not theano.config.cxx:
+        raise SkipTest("Need cxx for this test")
     check_partial_function_output_keys('cvm')
 
 
@@ -243,6 +247,8 @@ def test_partial_function_with_updates():
         assert y.get_value() == 10
 
     check_updates(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
+    if not theano.config.cxx:
+        raise SkipTest("Need cxx for this test")
     check_updates('cvm')
 
 

@@ -456,6 +456,9 @@ class TestAbstractConvNoOptim(BaseTestConv2d):
         o = self.get_output_shape(i, f, s, b, fd)
         mode = theano.Mode(optimizer=None)
 
+        if not theano.config.cxx:
+            raise SkipTest("Need cxx to test conv2d")
+
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                      verify_grad=True, provide_shape=provide_shape,
                      border_mode=b, filter_flip=flip,
@@ -490,6 +493,9 @@ class TestCpuConv2d(BaseTestConv2d):
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1)):
         if fd != (1, 1):
             raise SkipTest("No dilation implementation for basic cpu ConvOp.")
+        if not theano.config.cxx:
+            raise SkipTest("Need cxx to test conv2d")
+
         mode = self.mode
         o = self.get_output_shape(i, f, s, b, fd)
         fwd_OK = True
@@ -679,6 +685,8 @@ class TestCpuConv3d(BaseTestConv3d):
     def tcase(self, i, f, s, b, flip, provide_shape, fd=(1, 1, 1)):
         if fd != (1, 1, 1):
             raise SkipTest("No dilation implementation for basic cpu Conv3D.")
+        if not theano.config.cxx:
+            raise SkipTest("Need cxx to test conv2d")
         mode = self.mode
         o = self.get_output_shape(i, f, s, b, fd)
         fwd_OK = True

@@ -18,6 +18,8 @@ def test_no_output_from_implace():
     op = fct_no_opt.maker.fgraph.outputs[0].owner.op
     assert (hasattr(op, 'destroy_map') and 0 in op.destroy_map)
 
+    if not theano.config.cxx:
+        raise SkipTest("Need cxx for this test")
     # Ensure that the elemwise op that produces the output is not inplace when
     # using a mode that includes the optimization
     opt = AddFeatureOptimizer(NoOutputFromInplace())

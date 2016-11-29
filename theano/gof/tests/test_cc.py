@@ -390,6 +390,9 @@ def test_shared_input_output():
     # Test bug reported on the mailing list by Alberto Orlandi
     # https://groups.google.com/d/topic/theano-users/6dLaEqc2R6g/discussion
     # The shared variable is both an input and an output of the function.
+    if not theano.config.cxx:
+        raise SkipTest("Need cxx for this test")
+
     inc = theano.tensor.iscalar('inc')
     state = theano.shared(0)
     state.name = 'state'
