@@ -1419,8 +1419,8 @@ class CAReduce(Op):
                             "self.scalar_op (%s) has no attribute 'identity'"
                             % (variable, dimension, self.scalar_op)))
                 else:
-		    variable = self.ufunc.reduce(variable, dimension,
-                                                     dtype=acc_dtype)
+                    variable = self.ufunc.reduce(variable, dimension,
+                                                 dtype=acc_dtype)
 
             variable = numpy.asarray(variable)
             if numpy.may_share_memory(variable, input):
