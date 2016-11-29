@@ -456,10 +456,8 @@ class EighGrad(Op):
         # implements the necessary logic.
         out = self.tri0(g) + self.tri1(g).T
 
-        # The call to self.tri0 in perform upcast from float32 to
-        # float64 or from int* to int64 in numpy 1.6.1 but not in
-        # 1.6.2. We do not want version dependent dtype in Theano.
-        # We think it should be the same as the output.
+        # Make sure we return the right dtype even if NumPy performed
+        # upcasting in self.tri0.
         outputs[0][0] = numpy.asarray(out, dtype=node.outputs[0].dtype)
 
     def infer_shape(self, node, shapes):
