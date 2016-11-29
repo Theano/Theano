@@ -18,6 +18,7 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.sandbox.cuda import cuda_available
 from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import attr
+import theano.gpuarray.tests.config
 
 if cuda_available:
     from theano.sandbox.cuda import float32_shared_constructor
@@ -1177,6 +1178,16 @@ def test_overflow_gpu_new_backend():
              (numpy.int32(2), numpy.int32(2**10), numpy.int32(2**10))]
     rng_mrg_overflow(sizes, fct, mode, should_raise_error=False)
 
+
+def test_validate_input_types_gpuarray_backend():
+    from theano.sandbox.rng_mrg import mrg_uniform
+    from theano.gpuarray.type import gpuarray_shared_constructor
+    from theano.configparser import change_flags
+
+    with change_flags(compute_test_value="raise"):
+        rstate = numpy.zeros((7, 6), dtype="int32")
+        rstate = gpuarray_shared_constructor(rstate)
+        mrg_uniform.new(rstate, ndim=None, dtype="float32", size=(3,))
 
 if __name__ == "__main__":
     rng = MRG_RandomStreams(numpy.random.randint(2147462579))
