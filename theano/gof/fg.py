@@ -17,8 +17,8 @@ from theano import config
 
 from six import iteritems, itervalues
 from six.moves import StringIO
+from theano.gof.utils import get_variable_trace_string
 from theano.misc.ordered_set import OrderedSet
-
 NullType = None
 
 
@@ -387,13 +387,14 @@ class FunctionGraph(utils.object2):
                             not isinstance(r, graph.Constant) and
                             r not in self.inputs):
                         # Standard error message
-                        raise MissingInputError((
-                            "An input of the graph, used to compute %s, "
-                            "was not provided and not given a value."
-                            "Use the Theano flag exception_verbosity='high',"
-                            "for more information on this error."
-                            % str(node)),
-                            variable=r)
+                        error_msg = ("Input %d of the graph (indices start "
+                                     "from 0), used to compute %s, was not "
+                                     "provided and not given a value. Use the "
+                                     "Theano flag exception_verbosity='high', "
+                                     "for more information on this error."
+                                     % (node.inputs.index(r), str(node)))
+                        error_msg += get_variable_trace_string(r)
+                        raise MissingInputError(error_msg, variable=r)
 
         for node in new_nodes:
             assert node not in self.apply_nodes
