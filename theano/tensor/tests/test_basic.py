@@ -4251,6 +4251,29 @@ class T_Join_and_Split(unittest.TestCase):
                     for node in f.maker.fgraph.toposort()])
         self.assertRaises(ValueError, f)
 
+def test_join_inplace():
+    """Test join to work inplace.
+
+    This function tests the case when several elements are passed to the
+    join function but all except one of them are empty. In this case join
+    should work inplace and the output should be the view of the non-empty
+    element.
+    """
+    s = tensor.lscalar()
+    x = tensor.vector('x')
+    z = tensor.zeros((s,))
+
+    join = Join(view=0)
+    c = join(0, x, z, z)
+
+    f = theano.function([theano.In(x, borrow=True), s], theano.Out(c, borrow=True))
+
+    data = numpy.array([3, 4, 5], dtype=theano.config.floatX)
+    print (f(data, 0))
+
+    assert f(data, 0) is data
+    assert numpy.allclose(f(data, 0), [3, 4, 5])
+
 
 class test_comparison(unittest.TestCase):
     """Test <, >, <=, >=, == and !=
