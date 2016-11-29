@@ -239,7 +239,7 @@ AddConfigVar('gpuarray.preallocate',
              preallocates that fraction of the total GPU memory.  If 1
              or greater it will preallocate that amount of memory (in
              megabytes).""",
-             FloatParam(0),
+             FloatParam(0, allow_override=False),
              in_c_key=False)
 
 AddConfigVar('gpuarray.sched',

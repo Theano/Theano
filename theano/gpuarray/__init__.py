@@ -43,6 +43,8 @@ register_transfer(transfer)
 
 def init_dev(dev, name=None):
     global pygpu_activated
+    if not config.cxx:
+        raise RuntimeError("The new gpu-backend need a c++ compiler.")
     if (pygpu.version.major, pygpu.version.minor) < (0, 6):
         raise ValueError("Your installed version of pygpu is too old, please upgrade to 0.6 or later")
     if dev not in init_dev.devmap:
