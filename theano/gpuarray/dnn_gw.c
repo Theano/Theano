@@ -89,13 +89,34 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
 #endif
 
   if (!reuse_algo) {
+    size_t free;
+
+    int err2 = gpucontext_property(ctx, GA_CTX_PROP_LARGEST_MEMBLOCK, &free);
+    if (err2 != GA_NO_ERROR) {
+      PyErr_Format(PyExc_RuntimeError, "Error when trying to find the "
+                   "memory information on the GPU");
+      cuda_exit(c->ctx);
+      return 1;
+    }
+
+    // Guess 4Mb if the info is not available
+    if (free == 0) free = 4 * 1024 * 1024;
+
 #ifdef CHOOSE_TIME
     int count;
     cudnnConvolutionBwdFilterAlgoPerf_t choice;
+    gpudata *tmpmem;
 
-    err = cudnnFindConvolutionBackwardFilterAlgorithm(
+    tmpmem = gpudata_alloc(ctx, free, NULL, 0, NULL);
+    if (tmpmem == NULL) {
+      PyErr_SetString(PyExc_MemoryError, "Could not allocate working GPU memory");
+      return -1;
+    }
+
+    err = cudnnFindConvolutionBackwardFilterAlgorithmEx(
       _handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(output), desc,
-      APPLY_SPECIFIC(kerns), 1, &count, &choice);
+      APPLY_SPECIFIC(kerns), 1, &count, &choice, *(void **)tmpmem, free);
+    gpudata_release(tmpmem);
 
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError,
@@ -107,16 +128,6 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
 
     algo = choice.algo;
 #else
-    size_t free;
-    int err2 = gpucontext_property(c->ctx, GA_CTX_PROP_FREE_GMEM, &free);
-
-    if (err2 != GA_NO_ERROR) {
-      PyErr_Format(PyExc_RuntimeError, "Error when trying to find the "
-                   "memory information on the GPU");
-      cuda_exit(c->ctx);
-      return 1;
-    }
-
     err = cudnnGetConvolutionBackwardFilterAlgorithm(
       _handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(output),
       desc, APPLY_SPECIFIC(kerns),
