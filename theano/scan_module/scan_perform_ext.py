@@ -1,3 +1,10 @@
+"""
+To update the scan Cython code in Theano you must
+- update the version in this file and scan_perform.py
+- call "cd theano/scan_module/; cython scan_perform.pyx; patch scan_perform.c numpy_api_changes.diff"
+
+"""
+
 from __future__ import absolute_import, print_function, division
 import errno
 import logging
