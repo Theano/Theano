@@ -10,7 +10,7 @@ from six.moves import StringIO, xrange
 import theano
 from theano import gof, Type, Apply
 from theano import tensor, scalar, config
-from theano.gradient import grad_undefined
+from theano.gradient import grad_undefined, grad_not_implemented
 from theano.scalar import Scalar
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -4235,4 +4235,109 @@ __global__ void kEye(float* a, int n, int m) {
 
     def c_code_cache_version(self):
         return (3,)
+
 gpu_eye = GpuEye(dtype='float32')
+
+
+class GpuDiagonal(GpuOp):
+    __props__ = ("offset", "axis1", "axis2", "view")
+
+    def __init__(self, offset=0, axis1=0, axis2=1, view=False):
+        self.view = view
+        if self.view:
+            self.view_map = {0: [0]}
+        self.offset = offset
+        self.axis1 = axis1
+        self.axis2 = axis2
+
+    def make_node(self, _x):
+        x = as_cuda_ndarray_variable(_x)
+
+        if x.ndim < 2:
+            raise ValueError('Diagonal needs an input with 2 or more '
+                             'dimensions', x)
+        axis_small, axis_large = sorted((self.axis1, self.axis2))
+        broadcastable = x.broadcastable[:axis_small] + \
+            x.broadcastable[axis_small + 1:axis_large] + \
+            x.broadcastable[axis_large + 1:] + (False,)
+        return Apply(self, [x], [x.type.__class__(
+            dtype=x.dtype,
+            broadcastable=broadcastable)()])
+
+    def perform(self, node, inputs, outputs):
+        (x,) = inputs
+        (z,) = outputs
+        # zero-dimensional matrices ...
+        if x.size == 0:
+            out_shape = [d for i, d in enumerate(x.shape)
+                         if i not in (self.axis1, self.axis2)]
+            diag_size = numpy.min((x.shape[self.axis1], x.shape[self.axis2]))
+            out_shape.append(diag_size)
+            z[0] = node.outputs[0].type.value_zeros(tuple(out_shape))
+            return
+
+        # step 1) slicing on axis1 and axis2.
+        if self.offset >= 0:
+            stride_axis, slice_axis = self.axis1, self.axis2
+        else:
+            slice_axis, stride_axis = self.axis1, self.axis2
+
+        small_axis, large_axis = sorted((x.shape[self.axis1],
+                                         x.shape[self.axis2]))
+
+        if x.shape[stride_axis] < x.shape[slice_axis]:
+            # in the bigger triangle
+            numstride = small_axis - numpy.max((
+                0, small_axis + numpy.abs(self.offset) - large_axis))
+        else:
+            # in the smaller triangle
+            numstride = small_axis - numpy.abs(self.offset)
+
+        slicer = [numpy.s_[:], ] * x.ndim
+        slicer[stride_axis] = numpy.s_[:numstride]
+        slicer[slice_axis] = numpy.abs(self.offset)
+        slicer = tuple(slicer)
+
+        # step 2) Swap stride_axis to the last dim because we want the dim on
+        # which the diags extracted be listed as the last dim of the tensor.
+        # This is also in consistence with the interface of numpy.diagonal.
+        if slice_axis < stride_axis:
+            stride_axis -= 1
+        new_dim_order = range(x[slicer].ndim)
+        new_dim_order = tuple(new_dim_order[:stride_axis] +
+                              new_dim_order[stride_axis + 1:] +
+                              [stride_axis, ])
+        rval = cuda_ndarray.cuda_ndarray.dimshuffle(x[slicer], new_dim_order)
+
+        # step 3) modify the strides in the last axis, such that rval becomes
+        # a view on the diagonal.
+        other_strides = tuple([d for i, d in enumerate(x.strides)
+                               if i not in (self.axis1, self.axis2)])
+        rval.strides = other_strides + \
+            (x.strides[self.axis1] + x.strides[self.axis2], )
+
+        if self.view:
+            z[0] = rval
+        else:
+            z[0] = rval.copy()
+
+    def grad(self, inputs, gout):
+        (input_x,) = inputs
+        return [grad_not_implemented(self, 0, input_x)]
+
+    def infer_shape(self, node, shapes):
+        in_shape, = shapes
+        dim1 = in_shape[self.axis1]
+        dim2 = in_shape[self.axis2]
+        out_shape = [d for i, d in enumerate(in_shape)
+                     if i not in (self.axis1, self.axis2)]
+        # The following logic is inspired by C code of PyArray_Diagonal().
+        offset = self.offset
+        if offset > 0:
+            diag_size = theano.tensor.clip(dim2 - offset, 0, dim1)
+        elif offset < 0:
+            diag_size = theano.tensor.clip(dim1 + offset, 0, dim2)
+        else:
+            diag_size = theano.tensor.minimum(dim1, dim2)
+        out_shape.append(diag_size)
+        return [tuple(out_shape)]

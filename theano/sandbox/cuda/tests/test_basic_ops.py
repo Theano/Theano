@@ -1296,12 +1296,31 @@ def test_gpueye():
         yield check, dtype, 5, 3, 1
 
 
+class test_gpudiagonal(unittest.TestCase):
+    def test_matrix(self):
+        x = cuda.fmatrix()
+        np_x = numpy.arange(77).reshape(7, 11).astype('float32')
+        fn = theano.function([x], B.GpuDiagonal()(x), mode=mode_with_gpu)
+        assert numpy.allclose(fn(np_x), np_x.diagonal())
+        fn = theano.function([x], B.GpuDiagonal(2)(x), mode=mode_with_gpu)
+        assert numpy.allclose(fn(np_x), np_x.diagonal(2))
+        fn = theano.function([x], B.GpuDiagonal(-3)(x), mode=mode_with_gpu)
+        assert numpy.allclose(fn(np_x), np_x.diagonal(-3))
+
+    def test_tensor(self):
+        x = theano.tensor.ftensor4()
+        np_x = numpy.arange(30107).reshape(7, 11, 17, 23).astype('float32')
+        for offset, axis1, axis2 in [
+                (1, 0, 1), (-1, 0, 1), (0, 1, 0), (-2, 1, 0),
+                (-3, 1, 0), (-2, 2, 0), (3, 3, 0), (-1, 3, 2),
+                (2, 2, 3), (-1, 2, 1), (1, 3, 1), (-1, 1, 3)]:
+            assert numpy.allclose(
+                B.GpuDiagonal(offset, axis1, axis2)(x).eval({x: np_x}),
+                np_x.diagonal(offset, axis1, axis2))
+
+
 class test_size(unittest.TestCase):
-
-    """
-    Ensure the `size` attribute of CUDA tensors behaves as in numpy.
-    """
-
+    """Ensure the `size` attribute of CUDA tensors behaves as in numpy."""
     def test_matrix(self):
         x = cuda.fmatrix()
         y = numpy.zeros((5, 7), dtype='float32')
