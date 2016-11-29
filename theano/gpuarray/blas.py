@@ -75,7 +75,6 @@ class GpuGemv(BlasOp):
         inplace = self.inplace
         if inplace and y.strides[0] < 0:
             inplace = False
-        print(alpha, beta)
         out_storage[0][0] = blas.gemv(alpha, A, x, beta, y,
                                       overwrite_y=inplace)
 
