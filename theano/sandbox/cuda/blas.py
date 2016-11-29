@@ -922,7 +922,7 @@ class BaseGpuCorrMM(GpuOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 28)
+        return (0, 29)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -1101,6 +1101,20 @@ class BaseGpuCorrMM(GpuOp):
         out_dim[1] = CudaNdarray_HOST_DIMS(weights)[0];
         out_dim[2] = (CudaNdarray_HOST_DIMS(bottom)[2] + 2*padH - ((CudaNdarray_HOST_DIMS(weights)[2]-1)*dilH + 1)) / dH + 1;
         out_dim[3] = (CudaNdarray_HOST_DIMS(bottom)[3] + 2*padW - ((CudaNdarray_HOST_DIMS(weights)[3]-1)*dilW + 1)) / dW + 1;
+        if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuCorrMM: impossible output shape\\n"
+                         "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                         "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
+                         "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                         CudaNdarray_HOST_DIMS(bottom)[0], CudaNdarray_HOST_DIMS(bottom)[1],
+                         CudaNdarray_HOST_DIMS(bottom)[2], CudaNdarray_HOST_DIMS(bottom)[3],
+                         CudaNdarray_HOST_DIMS(weights)[0], CudaNdarray_HOST_DIMS(weights)[1],
+                         CudaNdarray_HOST_DIMS(weights)[2], CudaNdarray_HOST_DIMS(weights)[3],
+                         out_dim[0], out_dim[1], out_dim[2], out_dim[3]);
+            %(fail)s
+        }
         break;
     case 1:  // backprop wrt. weights
         // output is weights: (num_filters, num_channels, height, width)
@@ -1109,6 +1123,20 @@ class BaseGpuCorrMM(GpuOp):
         out_dim[1] = CudaNdarray_HOST_DIMS(bottom)[1];
         out_dim[2] = kH;  // already inferred further above
         out_dim[3] = kW;  // how convenient
+        if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuCorrMM backprop wrt. weights: impossible output shape\\n"
+                         "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                         "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
+                         "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                         CudaNdarray_HOST_DIMS(bottom)[0], CudaNdarray_HOST_DIMS(bottom)[1],
+                         CudaNdarray_HOST_DIMS(bottom)[2], CudaNdarray_HOST_DIMS(bottom)[3],
+                         out_dim[0], out_dim[1], out_dim[2], out_dim[3],
+                         CudaNdarray_HOST_DIMS(top)[0], CudaNdarray_HOST_DIMS(top)[1],
+                         CudaNdarray_HOST_DIMS(top)[2], CudaNdarray_HOST_DIMS(top)[3]);
+            %(fail)s
+        }
         break;
     case 2:  // backprop wrt. inputs
         // output is bottom: (batchsize, num_channels, height, width)
@@ -1117,19 +1145,23 @@ class BaseGpuCorrMM(GpuOp):
         out_dim[1] = CudaNdarray_HOST_DIMS(weights)[1];
         out_dim[2] = (%(height)s != -1) ? %(height)s : (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH + (CudaNdarray_HOST_DIMS(weights)[2]-1)*dilH + 1 - 2*padH;
         out_dim[3] = (%(width)s != -1) ? %(width)s : (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW + (CudaNdarray_HOST_DIMS(weights)[3]-1)*dilW + 1 - 2*padW;
+        if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuCorrMM backprop wrt. inputs: impossible output shape\\n"
+                         "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                         "  weight shape: %%ld x %%ld x %%ld x %%ld\\n"
+                         "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                         out_dim[0], out_dim[1], out_dim[2], out_dim[3],
+                         CudaNdarray_HOST_DIMS(weights)[0], CudaNdarray_HOST_DIMS(weights)[1],
+                         CudaNdarray_HOST_DIMS(weights)[2], CudaNdarray_HOST_DIMS(weights)[3],
+                         CudaNdarray_HOST_DIMS(top)[0], CudaNdarray_HOST_DIMS(top)[1],
+                         CudaNdarray_HOST_DIMS(top)[2], CudaNdarray_HOST_DIMS(top)[3]);
+            %(fail)s
+        }
         break;
     default:
         PyErr_SetString(PyExc_ValueError, "BaseGpuCorrMM: direction must be 0, 1, or 2\\n");
-        %(fail)s
-    }
-
-    if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] < 0 || out_dim[3] < 0)
-    {
-        PyErr_Format(PyExc_ValueError,
-                     "BaseGpuCorrMM: impossible output shape: "
-                     "%%dx%%dx%%dx%%d",
-                     out_dim[0], out_dim[1],
-                     out_dim[2], out_dim[3]);
         %(fail)s
     }
 
@@ -1481,7 +1513,7 @@ class BaseGpuCorr3dMM(GpuOp):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 27)
+        return (0, 28)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -1719,6 +1751,22 @@ class BaseGpuCorr3dMM(GpuOp):
         out_dim[2] = (CudaNdarray_HOST_DIMS(bottom)[2] + 2*padH - ((CudaNdarray_HOST_DIMS(weights)[2]-1)*dilH + 1)) / dH + 1;
         out_dim[3] = (CudaNdarray_HOST_DIMS(bottom)[3] + 2*padW - ((CudaNdarray_HOST_DIMS(weights)[3]-1)*dilW + 1)) / dW + 1;
         out_dim[4] = (CudaNdarray_HOST_DIMS(bottom)[4] + 2*padD - ((CudaNdarray_HOST_DIMS(weights)[4]-1)*dilD + 1)) / dD + 1;
+        if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0 || out_dim[4] <= 0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuCorr3dMM: impossible output shape\\n"
+                         "  bottom shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n"
+                         "  weights shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n"
+                         "  top shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n",
+                         CudaNdarray_HOST_DIMS(bottom)[0], CudaNdarray_HOST_DIMS(bottom)[1],
+                         CudaNdarray_HOST_DIMS(bottom)[2], CudaNdarray_HOST_DIMS(bottom)[3],
+                         CudaNdarray_HOST_DIMS(bottom)[4],
+                         CudaNdarray_HOST_DIMS(weights)[0], CudaNdarray_HOST_DIMS(weights)[1],
+                         CudaNdarray_HOST_DIMS(weights)[2], CudaNdarray_HOST_DIMS(weights)[3],
+                         CudaNdarray_HOST_DIMS(weights)[4],
+                         out_dim[0], out_dim[1], out_dim[2], out_dim[3], out_dim[4]);
+            %(fail)s
+        }
         break;
     case 1:  // backprop wrt. weights
         // output is weights: (num_filters, num_channels, height, width, depth)
@@ -1728,6 +1776,22 @@ class BaseGpuCorr3dMM(GpuOp):
         out_dim[2] = kH;  // already inferred further above
         out_dim[3] = kW;  // how convenient
         out_dim[4] = kD;
+        if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0 || out_dim[4] <= 0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuCorr3dMM backprop wrt. weights: impossible output shape\\n"
+                         "  bottom shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n"
+                         "  weights shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n"
+                         "  top shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n",
+                         CudaNdarray_HOST_DIMS(bottom)[0], CudaNdarray_HOST_DIMS(bottom)[1],
+                         CudaNdarray_HOST_DIMS(bottom)[2], CudaNdarray_HOST_DIMS(bottom)[3],
+                         CudaNdarray_HOST_DIMS(bottom)[4],
+                         out_dim[0], out_dim[1], out_dim[2], out_dim[3], out_dim[4],
+                         CudaNdarray_HOST_DIMS(top)[0], CudaNdarray_HOST_DIMS(top)[1],
+                         CudaNdarray_HOST_DIMS(top)[2], CudaNdarray_HOST_DIMS(top)[3],
+                         CudaNdarray_HOST_DIMS(top)[4]);
+            %(fail)s
+        }
         break;
     case 2:  // backprop wrt. inputs
         // output is bottom: (batchsize, num_channels, height, width, depth)
@@ -1737,19 +1801,25 @@ class BaseGpuCorr3dMM(GpuOp):
         out_dim[2] = (%(height)s != -1) ? %(height)s : (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH + (CudaNdarray_HOST_DIMS(weights)[2]-1)*dilH + 1 - 2*padH;
         out_dim[3] = (%(width)s != -1) ? %(width)s : (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW + (CudaNdarray_HOST_DIMS(weights)[3]-1)*dilW + 1 - 2*padW;
         out_dim[4] = (%(depth)s != -1) ? %(depth)s : (CudaNdarray_HOST_DIMS(top)[4] - 1) * dD + (CudaNdarray_HOST_DIMS(weights)[4]-1)*dilD + 1 - 2*padD;
+        if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0 || out_dim[4] <= 0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuCorr3dMM backprop wrt. inputs: impossible output shape\\n"
+                         "  bottom shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n"
+                         "  weights shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n"
+                         "  top shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n",
+                         out_dim[0], out_dim[1], out_dim[2], out_dim[3], out_dim[4],
+                         CudaNdarray_HOST_DIMS(weights)[0], CudaNdarray_HOST_DIMS(weights)[1],
+                         CudaNdarray_HOST_DIMS(weights)[2], CudaNdarray_HOST_DIMS(weights)[3],
+                         CudaNdarray_HOST_DIMS(weights)[4],
+                         CudaNdarray_HOST_DIMS(top)[0], CudaNdarray_HOST_DIMS(top)[1],
+                         CudaNdarray_HOST_DIMS(top)[2], CudaNdarray_HOST_DIMS(top)[3],
+                         CudaNdarray_HOST_DIMS(top)[4]);
+            %(fail)s
+        }
         break;
     default:
         PyErr_SetString(PyExc_ValueError, "BaseGpuCorr3dMM: direction must be 0, 1, or 2\\n");
-        %(fail)s
-    }
-
-    if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] < 0 || out_dim[3] < 0 || out_dim[4] < 0)
-    {
-        PyErr_Format(PyExc_ValueError,
-                     "BaseGpuCorr3dMM: impossible output shape: "
-                     "%%dx%%dx%%dx%%d%%d",
-                     out_dim[0], out_dim[1],
-                     out_dim[2], out_dim[3], out_dim[4]);
         %(fail)s
     }
 
