@@ -772,6 +772,15 @@ if (py_%(name)s == NULL) { %(freefunc)s(%(name)s); }
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.ctype)
 
+    def __setstate__(self, dct):
+        self.__dict__.update(dct)
+        if not hasattr(self, 'headers'):
+            self.headers = ()
+            self.header_dirs = ()
+            self.libraries = ()
+            self.lib_dirs = ()
+            self.extra_support_code = ""
+
 
 class CDataTypeConstant(graph.Constant):
     def merge_signature(self):

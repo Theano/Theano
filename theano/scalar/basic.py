@@ -3996,6 +3996,7 @@ class Composite(ScalarOp):
     def __getstate__(self):
         rval = dict(self.__dict__)
         rval.pop('_impls', None)
+        rval.pop('prepare_node_called', None)
         del rval['fgraph']
         return rval
 
@@ -4003,6 +4004,7 @@ class Composite(ScalarOp):
         self.__dict__.update(d)
         # We must call init to set fgraph and _impls again, as otherwise
         # self.perform will not work.
+        self.prepare_node_called = set()
         self.init_fgraph()
         self.init_py_impls()
         assert self._c_code
