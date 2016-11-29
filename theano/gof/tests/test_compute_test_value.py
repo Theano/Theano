@@ -326,12 +326,7 @@ class TestComputeTestValue(unittest.TestCase):
                     n_steps=k)
                 assert False
             except ValueError as e:
-                # The first message is for numpy before 1.6.
-                # The second is a new message in numpy 1.6.
-                assert (str(e).startswith("shape mismatch") or
-                        str(e).startswith("operands could not be broadcast "
-                                          "together with shapes") or
-                        str(e).startswith("could not broadcast input")), str(e)
+                assert (str(e).startswith("could not broadcast input")), str(e)
 
         finally:
             theano.config.compute_test_value = orig_compute_test_value
