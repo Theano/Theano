@@ -20,6 +20,7 @@ pygpu_activated = False
 try:
     import pygpu
     import pygpu.gpuarray
+    import pygpu.version
 except ImportError:
     pygpu = None
 
@@ -41,25 +42,9 @@ register_transfer(transfer)
 
 
 def init_dev(dev, name=None):
-    v = pygpu.gpuarray.api_version()
-    expected = -9997
-    if v[0] != expected:
-        raise RuntimeError("Wrong major API version for gpuarray:", v[0],
-                           "Make sure Theano and libgpuarray/pygpu "
-                           "are in sync. Expected", expected)
-    if v[1] < 0:
-        raise RuntimeError("Wrong minor API version for gpuarray:", v[1],
-                           "Please update libgpuarray/pygpu.")
-    if len(v) < 3:
-        vpy = -1
-    else:
-        vpy = v[2]
-    vpye = 0
-    if vpy < vpye:
-        print("Wrong python API version for gpuarray:", vpy, "expected:", vpye,
-              "Some python ops may not work correctly and/or crash. "
-              "Consider updating pygpu.", file=sys.stderr)
     global pygpu_activated
+    if (pygpu.version.major, pygpu.version.minor) < (0, 6):
+        raise ValueError("Your installed version of pygpu is too old, please upgrade to 0.6 or later")
     if dev not in init_dev.devmap:
         ctx = pygpu.init(dev,
                          disable_alloc_cache=config.gpuarray.preallocate < 0,
@@ -160,4 +145,4 @@ else:
             config.device.startswith('opencl') or
             config.device.startswith('cuda') or
             config.contexts != ''):
-        error("pygpu was configured but could not be imported", exc_info=True)
+        error("pygpu was configured but could not be imported or is too old (version 0.6 or higher required)", exc_info=True)
