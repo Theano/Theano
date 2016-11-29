@@ -132,8 +132,8 @@ def test_adv_subtensor():
 
 class test_gpudiagonal(unittest.TestCase):
     def test_matrix(self):
-        x = tensor.fmatrix()
-        np_x = numpy.arange(77).reshape(7, 11).astype('float32')
+        x = tensor.matrix()
+        np_x = numpy.arange(77).reshape(7, 11).astype(theano.config.floatX)
         fn = theano.function([x], GpuDiagonal()(x), mode=mode_with_gpu)
         assert numpy.allclose(fn(np_x), np_x.diagonal())
         fn = theano.function([x], GpuDiagonal(2)(x), mode=mode_with_gpu)
@@ -142,7 +142,7 @@ class test_gpudiagonal(unittest.TestCase):
         assert numpy.allclose(fn(np_x), np_x.diagonal(-3))
 
     def test_tensor(self):
-        x = tensor.ftensor4()
+        x = tensor.tensor4()
         np_x = numpy.arange(30107).reshape(7, 11, 17, 23).astype(theano.config.floatX)
         for offset, axis1, axis2 in [
                 (1, 0, 1), (-1, 0, 1), (0, 1, 0), (-2, 1, 0),
