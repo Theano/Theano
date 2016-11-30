@@ -253,7 +253,23 @@ PyArrayObject* corr3dMM(PyArrayObject* bottom,
     char Trans = 'T';
     PyArrayObject *output;
 
-    if (direction == 0) {  // forward pass
+    if (batchSize == 0 || nChannels == 0 || nFilters == 0) {
+        switch(direction) {
+        case 0:
+            output = top;
+            break;
+        case 1:
+            output = weight;
+            break;
+        case 2:
+            output = bottom;
+            break;
+        default:
+            return NULL;
+        }
+        PyArray_FILLWBYTE(output, 0);
+    }
+    else if (direction == 0) {  // forward pass
         output = top;
         // valid correlation: im3d2col, then gemm
         // Iterate over batch
