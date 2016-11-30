@@ -65,7 +65,7 @@ array([8, 4])
 
 >>> f = theano.function([x,y], z)# Do not take the shape.
 >>> theano.printing.debugprint(f) # doctest: +NORMALIZE_WHITESPACE
-Join [id A] ''   0
+Join{view=-1} [id A] ''   0
  |TensorConstant{0} [id B]
  |x [id C]
  |y [id D]
