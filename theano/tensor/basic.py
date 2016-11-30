@@ -3895,6 +3895,11 @@ class Join(Op):
             # start from index 1.
             self.view_map = {0: [1 + view]}
 
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, "view"):
+            self.view = -1
+
     def make_node(self, *axis_and_tensors):
         """
         Parameters
