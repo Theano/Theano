@@ -486,6 +486,19 @@ CudaNdarray* corr3dMM(CudaNdarray *const bottom,
     if (direction == 0)
     { // forward pass
       output = top;
+      if (batchSize == 0 || nChannels == 0 || nFilters == 0) {
+          cudaError_t err = cudaMemset(output->devdata, 0,
+                                       CudaNdarray_SIZE(output) * sizeof(real));
+          if (err != cudaSuccess) {
+            PyErr_Format(PyExc_RuntimeError,
+                         "GpuCorr3dMM could not fill the output with zeros: %s",
+                         cudaGetErrorString(err));
+            Py_DECREF(col);
+            return NULL;
+          }
+          Py_DECREF(col);
+          return output;
+      }
       // valid correlation: im2col, then gemm
       // Iterate over batch
       for (int n = 0; n < batchSize; n++)
@@ -535,6 +548,19 @@ CudaNdarray* corr3dMM(CudaNdarray *const bottom,
     {
       // backprop wrt. weights
       output = weight;
+      if (batchSize == 0 || nChannels == 0 || nFilters == 0) {
+          cudaError_t err = cudaMemset(output->devdata, 0,
+                                       CudaNdarray_SIZE(output) * sizeof(real));
+          if (err != cudaSuccess) {
+            PyErr_Format(PyExc_RuntimeError,
+                         "GpuCorr3dMM grad wrt. weights could not fill the output with zeros: %s",
+                         cudaGetErrorString(err));
+            Py_DECREF(col);
+            return NULL;
+          }
+          Py_DECREF(col);
+          return output;
+      }
       // valid convolution: im2col, then gemm
       // Iterate over batch
       for (int n = 0; n < batchSize; n++)
@@ -586,6 +612,19 @@ CudaNdarray* corr3dMM(CudaNdarray *const bottom,
     {
       // backprop wrt. inputs
       output = bottom;
+      if (batchSize == 0 || nChannels == 0 || nFilters == 0) {
+          cudaError_t err = cudaMemset(output->devdata, 0,
+                                       CudaNdarray_SIZE(output) * sizeof(real));
+          if (err != cudaSuccess) {
+            PyErr_Format(PyExc_RuntimeError,
+                         "GpuCorr3dMM grad wrt. inputs could not fill the output with zeros: %s",
+                         cudaGetErrorString(err));
+            Py_DECREF(col);
+            return NULL;
+          }
+          Py_DECREF(col);
+          return output;
+      }
       // full convolution: gemm, then col2im3d
       // Iterate over batch
       for (int n = 0; n < batchSize; n++)
