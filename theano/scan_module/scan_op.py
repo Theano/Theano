@@ -1436,6 +1436,11 @@ class Scan(PureOp):
                             outs[j][0][pos[j]] = \
                                 output_storage[offset_out + j].storage[0]
                         except ValueError as e:
+                            if i == 0:
+                                # First iteration, so don't change the
+                                # error message as it can't be the
+                                # case we write about.
+                                raise
                             ne = ValueError(
                                 "An output of the scan has changed shape. "
                                 "This may be caused by a pushout optimization."

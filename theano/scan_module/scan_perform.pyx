@@ -62,7 +62,7 @@ import copy
 
 
 def get_version():
-    return 0.294
+    return 0.295
 
 @cython.boundscheck(False)
 def perform(
@@ -547,6 +547,8 @@ def perform(
                     try:
                         outs[j][0][pos[j]] = output_storage[j+offset_out].storage[0]
                     except ValueError as e:
+                        if i == 0:
+                            raise
                         raise ValueError(
                             "An output of the scan has changed shape. "
                             "This may be caused by a pushout optimization."

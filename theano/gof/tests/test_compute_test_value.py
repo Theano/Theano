@@ -331,7 +331,7 @@ class TestComputeTestValue(unittest.TestCase):
                 assert (str(e).startswith("shape mismatch") or
                         str(e).startswith("operands could not be broadcast "
                                           "together with shapes") or
-                        str(e).startswith("could not broadcast input"))
+                        str(e).startswith("could not broadcast input")), str(e)
 
         finally:
             theano.config.compute_test_value = orig_compute_test_value
