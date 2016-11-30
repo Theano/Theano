@@ -12,11 +12,6 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
     return 1;
   }
 
-  if (c_set_tensorNd(input, APPLY_SPECIFIC(input)) == -1)
-    return 1;
-  if (c_set_filterNd(kerns, APPLY_SPECIFIC(kerns)) == -1)
-    return 1;
-
   int nb_dim = CudaNdarray_NDIM(input);
 
 #ifdef CONV_INPLACE
@@ -30,8 +25,24 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
     return 1;
 #endif
 
-   if (c_set_tensorNd(*output, APPLY_SPECIFIC(output)) == -1)
-     return 1;
+  if (CudaNdarray_DIMS(input)[0] == 0 || CudaNdarray_DIMS(kerns)[0] == 0 || CudaNdarray_DIMS(kerns)[1] == 0) {
+    cudaError_t err2 = cudaMemset((*output)->devdata, 0,
+                                  CudaNdarray_SIZE(*output) * sizeof(real));
+    if (err2 != cudaSuccess) {
+      PyErr_Format(PyExc_RuntimeError,
+                   "GpuDnnConv could not fill the output with zeros: %s",
+                   cudaGetErrorString(err2));
+      return 1;
+    }
+    return 0;
+  }
+
+  if (c_set_tensorNd(input, APPLY_SPECIFIC(input)) == -1)
+    return 1;
+  if (c_set_filterNd(kerns, APPLY_SPECIFIC(kerns)) == -1)
+    return 1;
+  if (c_set_tensorNd(*output, APPLY_SPECIFIC(output)) == -1)
+    return 1;
 
   {
     size_t worksize;
