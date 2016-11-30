@@ -19,6 +19,7 @@ from theano.configparser import (AddConfigVar, BoolParam, ConfigParam, EnumStr,
                                  TheanoConfigParser, THEANO_FLAGS_DICT)
 from theano.misc.cpucount import cpuCount
 from theano.misc.windows import call_subprocess_Popen, output_subprocess_Popen
+from theano.compat import maybe_add_to_os_environ_pathlist
 
 
 _logger = logging.getLogger('theano.configdefaults')
@@ -417,6 +418,19 @@ try:
     rc = call_subprocess_Popen(['g++', '-v'])
 except OSError:
     rc = 1
+
+# Anaconda on Windows has mingw-w64 packages including GCC, but it may not be on PATH.
+if rc != 0:
+    if sys.platform == "win32":
+        mingw_w64_gcc = os.path.join(os.path.dirname(sys.executable), "Library", "mingw-w64", "bin", "g++")
+        try:
+            rc = call_subprocess_Popen([mingw_w64_gcc, '-v'])
+            if rc == 0:
+                maybe_add_to_os_environ_pathlist('PATH', os.path.dirname(mingw_w64_gcc))
+        except OSError:
+            rc = 1
+        if rc != 0:
+            _logger.warning("g++ not available, if using conda: `conda install m2w64-toolchain`")
 
 if rc != 0:
     param = ""
@@ -1237,39 +1251,38 @@ def default_blas_ldflags():
                     ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
                                           "mk2_rt"]])
 
-        # Anaconda
-        if "Anaconda" in sys.version or "Continuum" in sys.version:
-            # If the "mkl-service" conda package (available
-            # through Python package "mkl") is installed and
-            # importable, then the libraries (installed by conda
-            # package "mkl-rt") are actually available.  Using
-            # "conda install mkl" will install both, as well as
-            # optimized versions of numpy and scipy.
-            try:
-                import mkl  # noqa
-            except ImportError as e:
-                _logger.info('Conda mkl is not available: %s', e)
+        # MKL
+        # If mkl can be imported then use it. On conda:
+        # "conda install mkl-service" installs the Python wrapper and
+        # the low-level C libraries as well as optimised version of
+        # numpy and scipy.
+        try:
+            import mkl  # noqa
+        except ImportError as e:
+            if any([m for m in ('conda', 'Continuum') if m in sys.version]):
+                _logger.warning('install mkl with `conda install mkl-service`: %s', e)
+        else:
+            # This branch is executed if no exception was raised
+            if sys.platform == "win32":
+                lib_path = [os.path.join(sys.prefix, 'Library', 'bin')]
+                flags = ['-L"%s"' % lib_path]
             else:
-                # This branch is executed if no exception was raised
-                if sys.platform == "win32":
-                    lib_path = os.path.join(sys.prefix, 'DLLs')
-                    flags = ['-L"%s"' % lib_path]
-                else:
-                    lib_path = blas_info.get('library_dirs', [])
-                    flags = []
-                    if lib_path:
-                        flags = ['-L%s' % lib_path[0]]
-                flags += ['-l%s' % l for l in ["mkl_core",
-                                               "mkl_intel_thread",
-                                               "mkl_rt"]]
-                res = try_blas_flag(flags)
-                if res:
-                    return res
-                flags.extend(['-Wl,-rpath,' + l for l in
-                              blas_info.get('library_dirs', [])])
-                res = try_blas_flag(flags)
-                if res:
-                    return res
+                lib_path = blas_info.get('library_dirs', [])
+                flags = []
+                if lib_path:
+                    flags = ['-L%s' % lib_path[0]]
+            flags += ['-l%s' % l for l in ["mkl_core",
+                                           "mkl_intel_thread",
+                                           "mkl_rt"]]
+            res = try_blas_flag(flags)
+            if res:
+                return res
+            flags.extend(['-Wl,-rpath,' + l for l in
+                          blas_info.get('library_dirs', [])])
+            res = try_blas_flag(flags)
+            if res:
+                maybe_add_to_os_environ_pathlist('PATH', lib_path[0])
+                return res
 
         # to support path that includes spaces, we need to wrap it with double quotes on Windows
         path_wrapper = "\"" if os.name == 'nt' else ""
@@ -1298,13 +1311,10 @@ def default_blas_ldflags():
         if res:
             return res
 
-        # Try to add the anaconda lib directory to runtime loading of lib.
-        # This fix some case with Anaconda 2.3 on Linux.
-        # Newer Anaconda still have this problem but only have
-        # Continuum in sys.version.
-        if (("Anaconda" in sys.version or
-             "Continuum" in sys.version) and
-                "linux" in sys.platform):
+        # Add sys.prefix/lib to the runtime search path. On
+        # non-system installations of Python that use the
+        # system linker, this is generally neccesary.
+        if sys.platform in ("linux", "darwin"):
             lib_path = os.path.join(sys.prefix, 'lib')
             ret.append('-Wl,-rpath,' + lib_path)
             res = try_blas_flag(ret)
