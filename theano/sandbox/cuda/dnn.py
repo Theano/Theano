@@ -14,7 +14,8 @@ from theano.gof.type import CDataType
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.tensor.nnet import LogSoftmax, SoftmaxGrad
-from theano.tensor.nnet.abstract_conv import get_conv_output_shape
+from theano.tensor.nnet.abstract_conv import (get_conv_output_shape,
+                                              assert_conv_shape)
 from theano.tensor.signal.pool import (
     Pool, MaxPoolGrad, AveragePoolGrad)
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -1132,10 +1133,12 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
             # that would be flipped by conv_mode='conv' in GpuDnnConvGradW.
             kerns = kerns[:, :, ::-1, ::-1]
         kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
-        shape2 = shape_i(img, 2, fgraph) - shape_i(kerns, 2, fgraph) + 1
-        shape3 = shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1
-        out = gpu_alloc_empty(shape_i(kerns, 1, fgraph),
-                              shape_i(img, 1, fgraph), shape2, shape3)
+        out_shp = (shape_i(kerns, 1, fgraph),
+                   shape_i(img, 1, fgraph),
+                   shape_i(img, 2, fgraph) - shape_i(kerns, 2, fgraph) + 1,
+                   shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1)
+        out_shp = assert_conv_shape(out_shp)
+        out = gpu_alloc_empty(*out_shp)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode='cross', precision=precision)(img.shape,
                                                                       out.shape)
@@ -1149,10 +1152,12 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         img = gpu_contiguous(img)
         kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
         conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
-        shape2 = shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1
-        shape3 = shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1
-        out = gpu_alloc_empty(shape_i(img, 0, fgraph),
-                              shape_i(kerns, 1, fgraph), shape2, shape3)
+        out_shp = (shape_i(img, 0, fgraph),
+                   shape_i(kerns, 1, fgraph),
+                   shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1,
+                   shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1)
+        out_shp = assert_conv_shape(out_shp)
+        out = gpu_alloc_empty(*out_shp)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode=conv_mode, precision=precision)(out.shape,
                                                                         kerns.shape)
@@ -1170,6 +1175,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     out_shp = GpuDnnConv.get_out_shape(img.shape, kerns.shape,
                                        desc_op.border_mode,
                                        desc_op.subsample)
+    out_shp = assert_conv_shape(out_shp)
     out = gpu_alloc_empty(*out_shp)
     return GpuDnnConv(algo=algo)(img, kerns, out, desc)
 
@@ -1248,11 +1254,13 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
             # that would be flipped by conv_mode='conv' in GpuDnnConvGradW.
             kerns = kerns[:, :, ::-1, ::-1, ::-1]
         kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3, 4))
-        shape2 = shape_i(img, 2, fgraph) - shape_i(kerns, 2, fgraph) + 1
-        shape3 = shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1
-        shape4 = shape_i(img, 4, fgraph) - shape_i(kerns, 4, fgraph) + 1
-        out = gpu_alloc_empty(shape_i(kerns, 1, fgraph),
-                              shape_i(img, 1, fgraph), shape2, shape3, shape4)
+        out_shp = (shape_i(kerns, 1, fgraph),
+                   shape_i(img, 1, fgraph),
+                   shape_i(img, 2, fgraph) - shape_i(kerns, 2, fgraph) + 1,
+                   shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1,
+                   shape_i(img, 4, fgraph) - shape_i(kerns, 4, fgraph) + 1)
+        out_shp = assert_conv_shape(out_shp)
+        out = gpu_alloc_empty(*out_shp)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1, 1),
                               conv_mode='cross', precision=precision)(img.shape,
                                                                       out.shape)
@@ -1271,6 +1279,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     out_shp = GpuDnnConv3d.get_out_shape(img.shape, kerns.shape,
                                          desc_op.border_mode,
                                          desc_op.subsample)
+    out_shp = assert_conv_shape(out_shp)
     out = gpu_alloc_empty(*out_shp)
     return GpuDnnConv3d(algo=algo)(img, kerns, out, desc)
 

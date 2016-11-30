@@ -13,7 +13,8 @@ from theano.tensor.nnet import corr, corr3d, abstract_conv as conv
 from theano.tensor.nnet.abstract_conv import (get_conv_output_shape,
                                               get_conv_gradweights_shape,
                                               get_conv_gradinputs_shape,
-                                              check_conv_gradinputs_shape)
+                                              check_conv_gradinputs_shape,
+                                              assert_conv_shape)
 from theano.tensor.nnet.abstract_conv import AbstractConv2d
 from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradInputs
 from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradWeights
@@ -209,6 +210,20 @@ class TestConvGradInputsShape(unittest.TestCase):
                             kernel_shape, output_shape, b, (2, 3), (d, d))
                         kernel_shape_with_None = kernel_shape[:2] + (None, None)
                         self.assertEqual(computed_kernel_shape, kernel_shape_with_None)
+
+
+class TestAssertConvShape(unittest.TestCase):
+    def test_basic(self):
+        shape = tuple(tensor.iscalar() for i in range(4))
+        f = theano.function(shape, assert_conv_shape(shape))
+
+        self.assertEqual([1, 2, 3, 4], f(1, 2, 3, 4))
+        self.assertEqual([0, 0, 1, 1], f(0, 0, 1, 1))
+        assert_raises(AssertionError, f, 3, 3, 3, 0)
+        assert_raises(AssertionError, f, 3, 3, 0, 3)
+        assert_raises(AssertionError, f, 3, 3, -1, 3)
+        assert_raises(AssertionError, f, 3, -1, 3, 3)
+        assert_raises(AssertionError, f, -1, 3, 3, 3)
 
 
 class BaseTestConv(object):

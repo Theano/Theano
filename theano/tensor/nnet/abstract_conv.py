@@ -11,6 +11,7 @@ import theano
 
 from theano.tensor import as_tensor_variable, patternbroadcast
 from theano.tensor import get_scalar_constant_value, NotScalarConstantError
+from theano.tensor.opt import Assert
 from theano.gof import Apply, Op
 
 from six.moves import xrange
@@ -426,6 +427,34 @@ def check_conv_gradinputs_shape(image_shape, kernel_shape, output_shape,
 
     return all(check_dim(given, computed)
                for (given, computed) in zip(output_shape, computed_output_shape))
+
+
+def assert_conv_shape(shape):
+    """This function adds Assert nodes that check if shape is a valid convolution shape.
+
+    Parameters
+    ----------
+    shape: tuple of int (symbolic or numeric) corresponding to the input, output or
+        kernel shape of a convolution. For input and output, the first elements should
+        should be the batch size and number of channels. For kernels, the first and
+        second elements should contain the number of input and output channels.
+        The remaining dimensions are the convolution dimensions.
+
+    Returns
+    -------
+    Returns a tuple similar to the given `shape`, but with each element wrapped in
+    an `Assert` op that checks that dimension. The first two dimensions should be
+    larger than or equal to zero. The convolution dimensions should be larger than zero.
+    """
+    out_shape = []
+    for i, n in enumerate(shape):
+        if i < 2:
+            assert_shp = Assert('The convolution would produce an invalid shape (dim[%d] < 0).' % i)
+            out_shape.append(assert_shp(n, theano.tensor.ge(n, 0)))
+        else:
+            assert_shp = Assert('The convolution would produce an invalid shape (dim[%d] <= 0).' % i)
+            out_shape.append(assert_shp(n, theano.tensor.gt(n, 0)))
+    return tuple(out_shape)
 
 
 def conv2d(input,
