@@ -528,7 +528,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
 
     def c_code_cache_version(self):
         # Raise this whenever modifying the code below.
-        return (6,)
+        return (7,)
 
     def c_code_helper(self, bottom, weights, top, direction, sub, height=None, width=None):
         """
@@ -1125,7 +1125,7 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
 
     def c_code_cache_version(self):
         # raise this whenever modifying the code below.
-        return (6,)
+        return (7,)
 
     def c_code_helper(self, bottom, weights, top, direction, sub,
                       height=None, width=None, depth=None):

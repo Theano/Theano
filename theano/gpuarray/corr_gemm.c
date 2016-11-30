@@ -418,6 +418,17 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
     PyGpuArrayObject *output;
     if (direction == 0) {  // forward pass
         output = top;
+        if (batchSize == 0 || nChannels == 0 || nFilters == 0) {
+            err = GpuArray_memset(&output->ga, 0);
+            if (err != GA_NO_ERROR) {
+                PyErr_Format(PyExc_RuntimeError,
+                             "GpuCorrMM could not fill the output with zeros: %d", err);
+                Py_DECREF(col);
+                return NULL;
+            }
+            Py_DECREF(col);
+            return output;
+        }
         // valid correlation: im2col, then gemm
         // Iterate over batch
         for (size_t n = 0; n < batchSize; n++) {
@@ -469,6 +480,17 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
     }
     else if (direction == 1) {  // backprop wrt. weights
         output = weight;
+        if (batchSize == 0 || nChannels == 0 || nFilters == 0) {
+            err = GpuArray_memset(&output->ga, 0);
+            if (err != GA_NO_ERROR) {
+                PyErr_Format(PyExc_RuntimeError,
+                             "GpuCorrMM grad wrt. weights could not fill the output with zeros: %d", err);
+                Py_DECREF(col);
+                return NULL;
+            }
+            Py_DECREF(col);
+            return output;
+        }
         // valid convolution: im2col, then gemm
         // Iterate over batch
         for (size_t n = 0; n < batchSize; n++) {
@@ -523,6 +545,17 @@ PyGpuArrayObject* corrMM(PyGpuArrayObject *const bottom,
     }
     else if (direction == 2) {  // backprop wrt. inputs
         output = bottom;
+        if (batchSize == 0 || nChannels == 0 || nFilters == 0) {
+            err = GpuArray_memset(&output->ga, 0);
+            if (err != GA_NO_ERROR) {
+                PyErr_Format(PyExc_RuntimeError,
+                             "GpuCorrMM grad wrt. inputs could not fill the output with zeros: %d", err);
+                Py_DECREF(col);
+                return NULL;
+            }
+            Py_DECREF(col);
+            return output;
+        }
         // full convolution: gemm, then col2im
         // Iterate over batch
         for (size_t n = 0; n < batchSize; n++) {
