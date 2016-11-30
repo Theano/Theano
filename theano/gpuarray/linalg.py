@@ -10,7 +10,7 @@ from pygpu import gpuarray
 
 cusolver_available = False
 try:
-    from scikits.cuda import cusolver
+    from skcuda import cusolver
     cusolver_available = True
 except (ImportError, OSError, RuntimeError, pkg_resources.DistributionNotFound):
     pass
@@ -30,8 +30,11 @@ class GpuCusolverSolve(Op):
 
     __props__ = ('trans',)
 
-    def __init__(self, trans='N'):
+    def __init__(self, trans='N', inplace=False):
         self.trans = trans
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0, 1]}
         super(GpuCusolverSolve, self).__init__()
 
     def make_node(self, inp1, inp2):
@@ -52,7 +55,7 @@ class GpuCusolverSolve(Op):
         return theano.Apply(
             self, [inp1, inp2],
             [GpuArrayType('float32',
-                          broadcastable=[False] * inp1.ndim,
+                          broadcastable=inp1.broadcastable,
                           context_name=self.context)()])
 
     def make_thunk(self,
@@ -86,14 +89,12 @@ class GpuCusolverSolve(Op):
             assert(len(A.shape) == 2)
             assert(len(b.shape) == 2)
 
-            # A is not explicitly converted between C and F order, instead we
-            # switch the "transpose" flag.
             if self.trans in ['T', 'C']:
-                trans = 0
+                trans = 1
                 l, n = A.shape
                 k, m = b.shape
             elif self.trans == 'N':
-                trans = 1
+                trans = 0
                 n, l = A.shape
                 k, m = b.shape
             else:
@@ -106,13 +107,18 @@ class GpuCusolverSolve(Op):
             lda = max(1, n)
             ldb = max(1, k, m)
 
-            if trans == 0:
-                A = gpuarray.asfortranarray(A)
-                trans = 1
+            # We copy A and b as cusolver operates inplace
+            if not self.inplace:
+                A = gpuarray.array(A, copy=True)
+                b = gpuarray.array(b, copy=True, order='F')
             A_ptr = A.gpudata
-            # We copy b as cusolver operates inplace
-            b_cpy = gpuarray.array(b, copy=True, order='F')
-            b_ptr = b_cpy.gpudata
+            b_ptr = b.gpudata
+
+            # cusolver expects a F ordered matrix, but A is not explicitly
+            # converted between C and F order, instead we switch the
+            # "transpose" flag.
+            if A.flags['C_CONTIGUOUS']:
+                trans = 1 - trans
 
             workspace_size = cusolver.cusolverDnSgetrf_bufferSize(
                 cusolver_handle, n, n, A_ptr, lda)
@@ -145,7 +151,7 @@ class GpuCusolverSolve(Op):
                 cusolver_handle, trans, n, m, A_ptr, lda,
                 pivots_ptr, b_ptr, ldb, dev_info_ptr)
 
-            z[0] = b_cpy
+            z[0] = b
 
         thunk.inputs = inputs
         thunk.outputs = outputs
