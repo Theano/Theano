@@ -3895,6 +3895,12 @@ class Join(Op):
             # start from index 1.
             self.view_map = {0: [1 + view]}
 
+    def __str__(self):
+        if self.view == -1:
+            return "Join"
+        else:
+            return super(Join, self).__str__()
+
     def __setstate__(self, d):
         self.__dict__.update(d)
         if not hasattr(self, "view"):
@@ -4070,7 +4076,7 @@ class Join(Op):
             }
             Py_XDECREF(%(out)s);
             %(out)s = (PyArrayObject *)PyArray_Concatenate(list, axis);
-             (list);
+            Py_DECREF(list);
             if(!%(out)s){
                 %(fail)s
             }
