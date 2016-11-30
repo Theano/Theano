@@ -39,11 +39,6 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     return 1;
   }
 
-  if (c_set_tensorNd(input, APPLY_SPECIFIC(input)) == -1)
-    return 1;
-  if (c_set_filter(kerns, APPLY_SPECIFIC(kerns)) == -1)
-    return 1;
-
   switch (input->ga.typecode) {
   case GA_DOUBLE:
     alpha_p = (void *)&alpha;
@@ -71,6 +66,20 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     return 1;
 #endif
 
+  if (PyGpuArray_DIMS(input)[0] == 0 || PyGpuArray_DIMS(kerns)[0] == 0 || PyGpuArray_DIMS(kerns)[1] == 0) {
+    int err2 = GpuArray_memset(&(*output)->ga, 0);
+    if (err2 != GA_NO_ERROR) {
+        PyErr_Format(PyExc_RuntimeError,
+                     "GpuDnnConv could not fill the output with zeros: %d", err2);
+        return 1;
+    }
+    return 0;
+  }
+
+  if (c_set_tensorNd(input, APPLY_SPECIFIC(input)) == -1)
+    return 1;
+  if (c_set_filter(kerns, APPLY_SPECIFIC(kerns)) == -1)
+    return 1;
   if (c_set_tensorNd(*output, APPLY_SPECIFIC(output)) == -1)
     return 1;
 
