@@ -240,7 +240,7 @@ def Rop(f, wrt, eval_points):
             elif inp.owner is None:
                 try:
                     local_eval_points.append(inp.zeros_like())
-                except:
+                except Exception:
                     # None should be used for non-differentiable
                     # arguments, like for example random states
                     local_eval_points.append(None)

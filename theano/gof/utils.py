@@ -161,7 +161,7 @@ class MetaObject(type):
         if props is not None:
             if not isinstance(props, tuple):
                 raise TypeError("__props__ has to be a tuple")
-            if not all(isinstance(p, str) for p in props):
+            if not all(isinstance(p, string_types) for p in props):
                 raise TypeError("elements of __props__ have to be strings")
 
             def _props(self):
