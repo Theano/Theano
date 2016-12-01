@@ -615,6 +615,7 @@ class MergeFeature(object):
 
             # Put all clients of Assert inputs (if exist) into merge_candidates
             # TODO: Deactivated for now as this cause cycle in the graph.
+            # (There is a second deactivation part below.)
             for i in []:  # node.inputs:
                 if i.owner and isinstance(i.owner.op,
                                           theano.tensor.opt.Assert):
@@ -647,13 +648,19 @@ class MergeFeature(object):
 
             # Get input list of the candidate with assert removed
             cand_inputs_assert_removed = []
-            for i in candidate.inputs:
+            # TODO: Deactivated while Assert merging is disabled. (See above and below.)
+            for i in []:  # candidate.inputs:
                 if i.owner and isinstance(i.owner.op,
                                           theano.tensor.opt.Assert):
                     cand_has_assert = True
                     cand_inputs_assert_removed.append(i.owner.inputs[0])
                 else:
                     cand_inputs_assert_removed.append(i)
+
+            # TODO: Remove this when Assert merging is re-enabled. (See above.)
+            # Without Assert merging we can still look for identical Asserts,
+            # so we should not treat Asserts separately for now.
+            cand_inputs_assert_removed = candidate.inputs
 
             # Get input list of the node with assert removed
             if node_has_assert:
