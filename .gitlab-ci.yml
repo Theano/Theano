@@ -43,6 +43,16 @@ stage:
 qa:
     stage: trigger
     script:
-    - curl -fsS -X POST -F token="${QA_TRIGGER_TOKEN}" -F ref="${CI_BUILD_REF_NAME}" ${QA_TRIGGER_URL}
+    - ORIGIN="${CI_BUILD_REPO##*@}" &&
+      REPO="${ORIGIN/dgx/qa}" &&
+      mkdir triggers && cd triggers &&
+      git config --global user.name "gitlab-runner" &&
+      git config --global user.email "gitlab-runner@${REPO%%/*}" &&
+      git config --global push.default simple &&
+      git clone git@${REPO/\//:} --branch ${CI_BUILD_REF_NAME} qa &&
+      cd qa &&
+      FROM1=${ORIGIN#*/} && FROM=${FROM1%.git} &&
+      git commit --allow-empty -m "Trigger build from ${FROM} at ${CI_BUILD_REF}" &&
+      git push
     only:
     - /^.*-stage$/
