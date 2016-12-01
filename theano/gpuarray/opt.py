@@ -19,6 +19,7 @@ from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
 from theano.scalar.basic import Scalar, Pow, Cast
+from theano.scalar.basic_scipy import Erfinv, Erfcinv
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
 from theano.tensor.nnet.conv import ConvOp
@@ -60,7 +61,7 @@ from .nnet import (gpu_crossentropy_softmax_1hot_with_bias_dx,
                    gpu_softmax_with_bias, gpu_softmax)
 
 from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
-                       GpuCAReduceCPY, gpu_ca_reduce_cuda)
+                       GpuCAReduceCPY, gpu_ca_reduce_cuda, gpu_erfinv, gpu_erfcinv)
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedSubtensor,
                         GpuAdvancedSubtensor1,
@@ -697,6 +698,28 @@ def local_gpua_elemwise(op, context_name, inputs, outputs):
         name = 'Gpu' + name
     if len(outputs) > 1:
         return
+    have_cuda = False
+    have_opencl = False
+    if inputs and isinstance(inputs[0].type, GpuArrayType):
+        kind = inputs[0].type.context.kind
+        if kind.startswith('opencl'):
+            have_opencl = True
+        elif kind.startswith('cuda'):
+            have_cuda = True
+    opname = False
+    if isinstance(scal_op, Erfinv):
+        opname = 'erfinv'
+        if have_cuda:
+            scal_op = gpu_erfinv
+    elif isinstance(scal_op, Erfcinv):
+        opname = 'erfcinv'
+        if have_cuda:
+            scal_op = gpu_erfcinv
+    if opname:
+        if have_opencl:
+            _logger.warning('Function "%s" is not supported with OpenCL. Use "device=cuda" instead.' % opname)
+        if not have_cuda:
+            return None
     res = GpuElemwise(scal_op, name=name,
                       inplace_pattern=copy.copy(op.inplace_pattern),
                       nfunc_spec=op.nfunc_spec)

@@ -8,6 +8,8 @@ from six.moves import StringIO, xrange
 from theano.gof.utils import MethodNotDefined
 from theano.scalar import Scalar, Composite
 from theano.tensor.elemwise import (Elemwise, DimShuffle, CAReduceDtype)
+from theano.scalar.basic_scipy import Erfinv, Erfcinv
+from theano.scalar.basic import upgrade_to_float_no_complex, complex_types
 
 try:
     import pygpu
@@ -2579,6 +2581,50 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                                   params=params, flags=flags, objvar=k_var))
         return kernels
 
+
+class GpuErfinv(Erfinv):
+    """
+    Inverse error function for GPU.
+
+    """
+
+    def c_headers(self):
+        return ['math_functions.h', 'cublas_v2.h']
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        # NB: CUDA erfinv function (GPU op) returns NaN if x not in [-1;1],
+        # while `scipy.special.erfinv` (CPU op) returns an infinite (-inf if x < -1, +inf if x > 1).
+        # For consistency of CPU and GPU ops, we wrap the CUDA erfinv in the following conditions
+        # to ensure that GPU op returns the same values as CPU op.
+        return "%(z)s = (%(x)s <= -1) ? erfinv(-1.0): ((%(x)s >= 1) ? erfinv(1.0): erfinv(%(x)s));" % locals()
+
+
+class GpuErfcinv(Erfinv):
+    """
+    Inverse complementary error function for GPU.
+
+    """
+
+    def c_headers(self):
+        return ['math_functions.h', 'cublas_v2.h']
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        # NB: CUDA erfcinv function (GPU op) returns NaN if x not in [0;2],
+        # while `scipy.special.erfcinv` (CPU op) returns an infinite (+inf if x < 0, -inf if x > 2).
+        # For consistency of CPU and GPU ops, we wrap the CUDA erfcinv in the following conditions
+        # to ensure that GPU op returns the same values as CPU op.
+        return "%(z)s = (%(x)s <= 0) ? erfcinv(0.0): ((%(x)s >= 2) ? erfcinv(2.0): erfcinv(%(x)s));" % locals()
+
+gpu_erfinv = GpuErfinv(upgrade_to_float_no_complex, name='gpu_erfinv')
+gpu_erfcinv = GpuErfcinv(upgrade_to_float_no_complex, name='gpu_erfcinv')
 
 # Caching GpuCAReduceCuda
 def gpu_ca_reduce_cuda(scalar_op, axis=None, reduce_mask=None, dtype=None, acc_dtype=None,
