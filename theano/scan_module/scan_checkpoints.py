@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 
 import theano
+from theano.tensor.basic import Join
 
 
 def scan_checkpoints(fn, sequences=[], outputs_info=None, non_sequences=[],
@@ -114,10 +115,12 @@ def scan_checkpoints(fn, sequences=[], outputs_info=None, non_sequences=[],
 
     # Pad the sequences if needed
     if padding:
+        # Since padding could be an empty tensor, Join returns a view of s.
+        join = Join(view=0)
         for i, s in enumerate(sequences):
             n = s.shape[0] % save_every_N
             z = theano.tensor.zeros((n, s.shape[1:]), dtype=s.dtype)
-            sequences[i] = theano.tensor.concatenate([s, z], axis=0)
+            sequences[i] = join(0, [s, z])
 
     # Establish the input variables of the outer scan
     o_sequences = [s.reshape([s.shape[0] / save_every_N, save_every_N] +
