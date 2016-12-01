@@ -97,26 +97,6 @@ def list_contexts():
     """
     return _context_reg.keys()
 
-# Mappings of properties to contexts.  Please never use this if you
-# can avoid it.
-
-# This is basically a way to store "global" variables that depend on
-# the context.
-_props_map = {}
-
-
-def _get_props(name):
-    ctx = get_context(name)
-    return _props_map[ctx]
-
-
-def get_prop(name, k):
-    return _get_props(name)[k]
-
-
-def set_prop(name, k, v):
-    _get_props(name)[k] = v
-
 
 # Private method
 def _name_for_ctx(ctx):

@@ -27,7 +27,7 @@ except ImportError:
 # This is for documentation not to depend on the availability of pygpu
 from .type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
                    GpuArraySharedVariable, gpuarray_shared_constructor,
-                   reg_context, get_context, ContextNotDefined, _get_props)
+                   reg_context, get_context, ContextNotDefined)
 from .basic_ops import as_gpuarray_variable
 from . import fft, dnn, opt, nerv, extra_ops, multinomial, reduction
 
@@ -48,68 +48,65 @@ def init_dev(dev, name=None):
     # This is for the C headers API
     if pygpu.gpuarray.api_version()[0] < 0:
         raise ValueError("Your installed libgpuarray is too old, please update")
-    need_preallocate = False
+    if init_dev.dnn_version is None and dev.startswith('cuda'):
+        try:
+            init_dev.dnn_version = dnn.version()
+            # 5200 should not print warning with cudnn 5.1 final.
+            if init_dev.dnn_version >= 5200:
+                warnings.warn("Your cuDNN version is more recent than "
+                              "Theano. If you encounter problems, try "
+                              "updating Theano or downgrading cuDNN to "
+                              "version 5.1.")
+            if config.print_active_device:
+                print("Using cuDNN version %d" % (init_dev.dnn_version, name),
+                      file=sys.stderr)
+        except Exception:
+            pass
     if dev not in init_dev.devmap:
         ctx = pygpu.init(dev,
                          disable_alloc_cache=config.gpuarray.preallocate < 0,
                          single_stream=config.gpuarray.single_stream,
                          sched=config.gpuarray.sched)
+        ctx.dev = dev
         init_dev.devmap[dev] = ctx
+        if dev.startswith('cuda'):
+            ctx.cudnn_handle = dnn._make_handle(ctx)
         if config.gpuarray.preallocate < 0:
             print("Disabling allocation cache on %s" % (dev,))
         elif config.gpuarray.preallocate > 0:
-            need_preallocate = True
+            MB = (1024 * 1024)
+            if config.gpuarray.preallocate <= 1:
+                gmem = min(config.gpuarray.preallocate, 0.95) * context.total_gmem
+            else:
+                gmem = config.gpuarray.preallocate * MB
+            if gmem > context.free_gmem - 50 * MB:
+                print ("WARNING: Preallocating too much memory can prevent cudnn and cublas from working properly")
+
+            # This will allocate and immediatly free an object of size gmem
+            # which will reserve that amount of memory on the GPU.
+            pygpu.empty((gmem,), dtype='int8', context=ctx)
+            if config.print_active_device:
+                print("Preallocating %d/%d Mb (%f) on %s" %
+                      (gmem//MB, ctx.total_gmem//MB, gmem/ctx.total_gmem, dev),
+                      file=sys.stderr)
+
     context = init_dev.devmap[dev]
     # This will map the context name to the real context object.
     reg_context(name, context)
     if config.print_active_device:
         try:
-            pcibusid = context.pcibusid
+            pcibusid = '(' + context.pcibusid + ')'
         except pygpu.gpuarray.UnsupportedException:
-            pcibusid = '(unsupported for device %s)' % dev
+            pcibusid = ''
 
-        print("Mapped name %s to device %s: %s" %
-              (name, dev, context.devname),
+        print("Mapped name %s to device %s: %s %s" %
+              (name, dev, context.devname, pcibusid),
               file=sys.stderr)
-        print("PCI Bus ID:", pcibusid, file=sys.stderr)
     pygpu_activated = True
-    ctx_props = _get_props(name)
-    ctx_props['dev'] = dev
-    if dev.startswith('cuda'):
-        if 'cudnn_version' not in ctx_props:
-            try:
-                ctx_props['cudnn_version'] = dnn.version()
-                # 5200 should not print warning with cudnn 5.1 final.
-                if ctx_props['cudnn_version'] >= 5200:
-                    warnings.warn("Your cuDNN version is more recent than "
-                                  "Theano. If you encounter problems, try "
-                                  "updating Theano or downgrading cuDNN to "
-                                  "version 5.1.")
-                if config.print_active_device:
-                    print("Using cuDNN version %d on context %s" %
-                          (ctx_props['cudnn_version'], name), file=sys.stderr)
-                ctx_props['cudnn_handle'] = dnn._make_handle(context)
-            except Exception:
-                pass
-    if need_preallocate:
-        MB = (1024 * 1024)
-        if config.gpuarray.preallocate <= 1:
-            gmem = min(config.gpuarray.preallocate, 0.95) * context.total_gmem
-        else:
-            gmem = config.gpuarray.preallocate * MB
-        if gmem > context.free_gmem - 50 * MB:
-            print ("WARNING: Preallocating too much memory can prevent cudnn and cublas from working properly")
-
-        # This will allocate and immediatly free an object of size gmem
-        # which will reserve that amount of memory on the GPU.
-        pygpu.empty((gmem,), dtype='int8', context=ctx)
-        if config.print_active_device:
-            print("Preallocating %d/%d Mb (%f) on %s" %
-                  (gmem//MB, ctx.total_gmem//MB, gmem/ctx.total_gmem, dev),
-                  file=sys.stderr)
 
 # This maps things like 'cuda0' to the context object on that device.
 init_dev.devmap = {}
+init_dev.dnn_version = None
 
 if pygpu:
     try:

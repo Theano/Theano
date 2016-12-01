@@ -29,7 +29,7 @@ from theano.tensor.signal.pool import (
     Pool, MaxPoolGrad, AveragePoolGrad)
 from . import pygpu
 from .type import (get_context, gpu_context_type, list_contexts,
-                   get_prop, set_prop, GpuArraySharedVariable)
+                   GpuArraySharedVariable)
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         gpu_contiguous, gpu_alloc_empty,
                         empty_like, GpuArrayType)
@@ -208,14 +208,12 @@ class DnnBase(COp):
         return node.outputs[0].type.context_name
 
     def get_params(self, node):
-        try:
-            return get_prop(self.dnn_context(node), 'cudnn_handle_param')
-        except KeyError:
-            pass
-        ptr = get_prop(self.dnn_context(node), 'cudnn_handle').value
-        res = handle_type.make_value(ptr)
-        set_prop(self.dnn_context(node), 'cudnn_handle_param', res)
-        return res
+        ctx = self.dnn_context(node)
+        if not hasattr(ctx, 'cudnn_handle_param'):
+            ptr = ctx.cudnn_handle.value
+            res = handle_type.make_value(ptr)
+            ctx.cudnn_handle_param = res
+        return ctx.cudnn_handle_param
 
     def __init__(self, files=None, c_func=None):
         if files is None:
