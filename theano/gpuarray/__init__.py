@@ -45,6 +45,9 @@ def init_dev(dev, name=None):
     global pygpu_activated
     if (pygpu.version.major, pygpu.version.minor) < (0, 6):
         raise ValueError("Your installed version of pygpu is too old, please upgrade to 0.6 or later")
+    # This is for the C headers API
+    if pygpu.gpuarray.api_version()[0] < 0:
+        raise ValueError("Your installed libgpuarray is too old, please update")
     need_preallocate = False
     if dev not in init_dev.devmap:
         ctx = pygpu.init(dev,
