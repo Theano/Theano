@@ -68,7 +68,6 @@ def reg_context(name, ctx):
     if not isinstance(ctx, gpuarray.GpuContext):
         raise TypeError("context is not GpuContext")
     _context_reg[name] = ctx
-    _props_map[ctx] = dict()
 
 
 def get_context(name):
