@@ -111,6 +111,8 @@ def _atexit_print_fn():
                     n_ops_to_print=config.profiling.n_ops,
                     n_apply_to_print=config.profiling.n_apply)
 
+    if config.print_global_stats:
+        print_global_stats()
 
 def print_global_stats():
     """
@@ -129,15 +131,18 @@ def print_global_stats():
     else:
         destination_file = open(config.profiling.destination, 'w')
 
-    print('Time elasped since Theano import = %6.2fs, '
-          'Time spent in Theano functions = %6.2fs, '
+    print('='*50, file=destination_file)
+    print('Global stats: ',
+          'Time elasped since Theano import = %6.3fs, '
+          'Time spent in Theano functions = %6.3fs, '
           'Time spent compiling Theano functions: '
-          ' optimzation = %6.2s, linker = %6.2s ' %
-          (theano_imported_time,
+          ' optimzation = %6.3fs, linker = %6.3fs ' %
+          (time.time() - theano_imported_time,
            total_fct_exec_time,
            total_graph_opt_time,
            total_time_linker),
-          file=file)
+          file=destination_file)
+    print('='*50, file=destination_file)
 
 
 class ProfileStats(object):
