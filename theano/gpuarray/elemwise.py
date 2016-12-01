@@ -2603,7 +2603,7 @@ class GpuErfinv(Erfinv):
         return "%(z)s = (%(x)s <= -1) ? erfinv(-1.0): ((%(x)s >= 1) ? erfinv(1.0): erfinv(%(x)s));" % locals()
 
 
-class GpuErfcinv(Erfinv):
+class GpuErfcinv(Erfcinv):
     """
     Inverse complementary error function for GPU.
 
@@ -2625,6 +2625,7 @@ class GpuErfcinv(Erfinv):
 
 gpu_erfinv = GpuErfinv(upgrade_to_float_no_complex, name='gpu_erfinv')
 gpu_erfcinv = GpuErfcinv(upgrade_to_float_no_complex, name='gpu_erfcinv')
+
 
 # Caching GpuCAReduceCuda
 def gpu_ca_reduce_cuda(scalar_op, axis=None, reduce_mask=None, dtype=None, acc_dtype=None,

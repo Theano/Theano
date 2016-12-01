@@ -63,7 +63,7 @@ class TestMathErrorFunctions(TestCase):
     def setUp(self):
         # NB: erfinv is defined in ]-1;1[, and erfcinv is defined in ]0;2[,
         # so we just take some values in an interval that covers both domains
-        #  (this will also allow to test some values outside the domains).
+        # (this will also allow to test some values outside the domains).
         # We take [-5;5[ by default and we concatenate it 1000 times
         # to have the GPU ops run on large data.
         default_array = [x / 10.0 for x in range(-50, 50)] * 1000
@@ -131,6 +131,7 @@ class TestMathErrorFunctions(TestCase):
         for dtype in self.dtypes:
             self.compute_erfcinv_host(dtype)
             self.compute_erfcinv_gpu(dtype)
+
 
 class test_float16():
     def test_composite_elemwise_float16(self):
