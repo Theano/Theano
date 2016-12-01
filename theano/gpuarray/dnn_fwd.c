@@ -100,7 +100,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   if (!reuse_algo) {
     size_t free;
 
-    int err2 = gpucontext_property(ctx, GA_CTX_PROP_LARGEST_MEMBLOCK, &free);
+    int err2 = gpucontext_property(c->ctx, GA_CTX_PROP_LARGEST_MEMBLOCK, &free);
     if (err2 != GA_NO_ERROR) {
       PyErr_Format(PyExc_RuntimeError, "Error when trying to find the "
                    "memory information on the GPU");
@@ -116,7 +116,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     cudnnConvolutionFwdAlgoPerf_t choice;
     gpudata *tmpmem;
 
-    tmpmem = gpudata_alloc(ctx, free, NULL, 0, NULL);
+    tmpmem = gpudata_alloc(c->ctx, free, NULL, 0, NULL);
     if (tmpmem == NULL) {
       PyErr_SetString(PyExc_MemoryError, "Could not allocate working GPU memory");
       return -1;

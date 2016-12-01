@@ -69,9 +69,6 @@ def init_dev(dev, name=None):
             pcibusid = context.pcibusid
         except pygpu.gpuarray.UnsupportedException:
             pcibusid = '(unsupported for device %s)' % dev
-        except Exception:
-            warnings.warn('Unable to get PCI Bus ID. Please consider updating libgpuarray and pygpu.')
-            pcibusid = 'unknown'
 
         print("Mapped name %s to device %s: %s" %
               (name, dev, context.devname),
@@ -99,10 +96,11 @@ def init_dev(dev, name=None):
     if need_preallocate:
         MB = (1024 * 1024)
         if config.gpuarray.preallocate <= 1:
-            gmem = min(config.gpuarray.preallocate, 0.95) * ctx.total_gmem
+            gmem = min(config.gpuarray.preallocate, 0.95) * context.total_gmem
         else:
             gmem = config.gpuarray.preallocate * MB
-        gmem = min(ctx.free_gmem - 50 * MB, gmem)
+        if gmem > context.free_gmem - 50 * MB:
+            print ("WARNING: Preallocating too much memory can prevent cudnn and cublas from working properly")
 
         # This will allocate and immediatly free an object of size gmem
         # which will reserve that amount of memory on the GPU.
