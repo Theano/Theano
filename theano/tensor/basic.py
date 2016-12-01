@@ -488,6 +488,13 @@ def get_scalar_constant_value(orig_v, elemwise=True,
             elif isinstance(v.owner.op, (ScalarFromTensor, TensorFromScalar)):
                 v = v.owner.inputs[0]
                 continue
+            elif isinstance(v.owner.op, theano.tensor.opt.Assert):
+                # check if all conditions are constant and true
+                cond = [get_scalar_constant_value(c, max_recur=max_recur)
+                        for c in v.owner.inputs[1:]]
+                if builtins.all([0 == c.ndim and c != 0 for c in cond]):
+                    v = v.owner.inputs[0]
+                    continue
             elif isinstance(v.owner.op, scal.ScalarOp):
                 if isinstance(v.owner.op, scal.Second):
                     # We don't need both input to be constant for second

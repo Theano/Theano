@@ -7116,6 +7116,28 @@ class T_get_scalar_constant_value(unittest.TestCase):
         s = tensor.second(c, .4)
         assert numpy.allclose(get_scalar_constant_value(s), .4)
 
+    def test_assert(self):
+        # Make sure we still get the constant value if it is wrapped in
+        # an Assert.
+        c = theano.tensor.constant(2)
+        x = theano.tensor.scalar()
+
+        # condition is always True
+        a = opt.Assert()(c, c > 1)
+        assert get_scalar_constant_value(a) == 2
+
+        # condition is always False
+        a = opt.Assert()(c, c > 2)
+        self.assertRaises(
+            tensor.NotScalarConstantError,
+            get_scalar_constant_value, a)
+
+        # condition is not constant
+        a = opt.Assert()(c, c > x)
+        self.assertRaises(
+            tensor.NotScalarConstantError,
+            get_scalar_constant_value, a)
+
     def test_second(self):
         # Second should apply when the value is constant but not the shape
         c = theano.tensor.constant(numpy.random.rand())
