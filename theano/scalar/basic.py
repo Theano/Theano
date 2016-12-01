@@ -1334,13 +1334,17 @@ class IsNan(FixedLogicalComparison):
         (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
+        # Discrete type can never be nan
+        if node.inputs[0].type in discrete_types:
+            return "%(z)s = false;" % locals()
+
         # Windows tries to be different and sometimes return -1, but we want
         # to be consistent with numpy (which returns True), hence the "abs".
         return "%(z)s = abs(isnan(%(x)s));" % locals()
 
     def c_code_cache_version(self):
         scalarop_version = super(IsNan, self).c_code_cache_version()
-        return tuple(scalarop_version) + (2,)
+        return tuple(scalarop_version) + (3,)
 isnan = IsNan()
 
 
@@ -1355,10 +1359,18 @@ class IsInf(FixedLogicalComparison):
         (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
+        # Discrete type can never be inf
+        if node.inputs[0].type in discrete_types:
+            return "%(z)s = false;" % locals()
+
         # Note that the C isinf returns -1 for -Inf and +1 for +Inf, while
         # numpy simply returns True: we mimic numpy's behavior here, thus
         # the absolute value.
         return "%(z)s = abs(isinf(%(x)s));" % locals()
+
+    def c_code_cache_version(self):
+        scalarop_version = super(IsInf, self).c_code_cache_version()
+        return tuple(scalarop_version) + (3,)
 isinf = IsInf()
 
 
