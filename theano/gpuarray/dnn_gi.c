@@ -150,12 +150,15 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       return 1;
     }
 
+    // Guess 4Mb if the info is not available
+    if (free == 0) free = 4 * 1024 * 1024;
+
 #ifdef CHOOSE_TIME
     int count;
     cudnnConvolutionBwdDataAlgoPerf_t choice;
     gpudata *tmpmem;
 
-    tmpmem = gpudata_alloc(c->ctx, mem_sz, NULL, 0, NULL);
+    tmpmem = gpudata_alloc(c->ctx, free, NULL, 0, NULL);
     if (tmpmem == NULL) {
       PyErr_SetString(PyExc_MemoryError, "Could not allocate working GPU memory");
       return -1;
