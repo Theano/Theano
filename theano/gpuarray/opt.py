@@ -702,9 +702,9 @@ def local_gpua_elemwise(op, context_name, inputs, outputs):
     have_opencl = False
     if inputs and isinstance(inputs[0].type, GpuArrayType):
         kind = inputs[0].type.context.kind
-        if kind.startswith('opencl'):
+        if kind.startswith(b'opencl'):
             have_opencl = True
-        elif kind.startswith('cuda'):
+        elif kind.startswith(b'cuda'):
             have_cuda = True
     opname = False
     if isinstance(scal_op, Erfinv):
