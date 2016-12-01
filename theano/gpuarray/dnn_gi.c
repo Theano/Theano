@@ -104,7 +104,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     cudnnConvolutionBwdDataAlgoPerf_t choice;
     gpudata *tmpmem;
 
-    tmpmem = gpudata_alloc(ctx, mem_sz, NULL, 0, NULL);
+    tmpmem = gpudata_alloc(c->ctx, mem_sz, NULL, 0, NULL);
     if (tmpmem == NULL) {
       PyErr_SetString(PyExc_MemoryError, "Could not allocate working GPU memory");
       return -1;
