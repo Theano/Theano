@@ -80,57 +80,41 @@ class TestMathErrorFunctions(TestCase):
         theano.printing.debugprint(theano_function)
         return False
 
-    def compute_erfinv_host(self, dtype):
-        vector = theano.tensor.vector(dtype=dtype)
-        output = theano.tensor.erfinv(vector)
-        f = theano.function([vector], output, name='HOST/erfinv/' + dtype, mode=mode_without_gpu)
-        assert len([n for n in f.maker.fgraph.apply_nodes if isinstance(n.op, GpuElemwise)]) == 0
-        vector_val = self.default_arrays[dtype]
-        f(vector_val)
-        out = f(vector_val)
-        assert_allclose(self.expected_erfinv_outputs[dtype], out)
-
-    def compute_erfinv_gpu(self, dtype):
-        vector = theano.tensor.vector(dtype=dtype)
-        output = theano.tensor.erfinv(vector)
-        f = theano.function([vector], output, name='GPU/erfinv/' + dtype, mode=mode_with_gpu)
-        if not theano.config.device.startswith('opencl'):
-            assert self.check_gpu_scalar_op(f, GpuErfinv), 'Function graph does not contains scalar op "GpuErfinv".'
-        vector_val = self.default_arrays[dtype]
-        f(vector_val)
-        out = f(vector_val)
-        assert_allclose(self.expected_erfinv_outputs[dtype], out)
-
-    def compute_erfcinv_host(self, dtype):
-        vector = theano.tensor.vector(dtype=dtype)
-        output = theano.tensor.erfcinv(vector)
-        f = theano.function([vector], output, name='HOST/erfcinv/' + dtype, mode=mode_without_gpu)
-        assert len([n for n in f.maker.fgraph.apply_nodes if isinstance(n.op, GpuElemwise)]) == 0
-        vector_val = self.default_arrays[dtype]
-        f(vector_val)
-        out = f(vector_val)
-        assert_allclose(self.expected_erfcinv_outputs[dtype], out)
-
-    def compute_erfcinv_gpu(self, dtype):
-        vector = theano.tensor.vector(dtype=dtype)
-        output = theano.tensor.erfcinv(vector)
-        f = theano.function([vector], output, name='GPU/erfcinv/' + dtype, mode=mode_with_gpu)
-        if not theano.config.device.startswith('opencl'):
-            assert self.check_gpu_scalar_op(f, GpuErfcinv), 'Function graph does not contains scalar op "GpuErfcinv".'
-        vector_val = self.default_arrays[dtype]
-        f(vector_val)
-        out = f(vector_val)
-        assert_allclose(self.expected_erfcinv_outputs[dtype], out)
-
     def test_elemwise_erfinv(self):
         for dtype in self.dtypes:
-            self.compute_erfinv_host(dtype)
-            self.compute_erfinv_gpu(dtype)
+            vector = theano.tensor.vector(dtype=dtype)
+            output = theano.tensor.erfinv(vector)
+            f_host = theano.function([vector], output, name='HOST/erfinv/' + dtype, mode=mode_without_gpu)
+            f_gpu = theano.function([vector], output, name='GPU/erfinv/' + dtype, mode=mode_with_gpu)
+            assert len([n for n in f_host.maker.fgraph.apply_nodes if isinstance(n.op, GpuElemwise)]) == 0
+            if not theano.config.device.startswith('opencl'):
+                assert self.check_gpu_scalar_op(f_gpu, GpuErfinv), \
+                    'Function graph does not contains scalar op "GpuErfinv".'
+            vector_val = self.default_arrays[dtype]
+            f_host(vector_val)
+            f_gpu(vector_val)
+            out_host = f_host(vector_val)
+            out_gpu = f_gpu(vector_val)
+            assert_allclose(out_host, out_gpu)
+            assert_allclose(self.expected_erfinv_outputs[dtype], out_gpu)
 
     def test_elemwise_erfcinv(self):
         for dtype in self.dtypes:
-            self.compute_erfcinv_host(dtype)
-            self.compute_erfcinv_gpu(dtype)
+            vector = theano.tensor.vector(dtype=dtype)
+            output = theano.tensor.erfcinv(vector)
+            f_host = theano.function([vector], output, name='HOST/erfcinv/' + dtype, mode=mode_without_gpu)
+            f_gpu = theano.function([vector], output, name='GPU/erfcinv/' + dtype, mode=mode_with_gpu)
+            assert len([n for n in f_host.maker.fgraph.apply_nodes if isinstance(n.op, GpuElemwise)]) == 0
+            if not theano.config.device.startswith('opencl'):
+                assert self.check_gpu_scalar_op(f_gpu, GpuErfcinv), \
+                    'Function graph does not contains scalar op "GpuErfcinv".'
+            vector_val = self.default_arrays[dtype]
+            f_host(vector_val)
+            f_gpu(vector_val)
+            out_host = f_host(vector_val)
+            out_gpu = f_gpu(vector_val)
+            assert_allclose(out_host, out_gpu)
+            assert_allclose(self.expected_erfcinv_outputs[dtype], out_gpu)
 
 
 class test_float16():
