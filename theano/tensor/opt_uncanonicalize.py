@@ -133,7 +133,8 @@ def local_reshape_dimshuffle(node):
                     return False
                 else:
                     offset += 1
-            return [T.reshape(input_.owner.inputs[0], node.inputs[1])]
+            return [T.reshape(input_.owner.inputs[0], node.inputs[1],
+                              ndim=node.outputs[0].ndim)]
     return False
 
 

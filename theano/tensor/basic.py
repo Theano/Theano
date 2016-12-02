@@ -6105,6 +6105,8 @@ class ExtractDiag(Op):
         (x,) = inputs
         (z,) = outputs
         z[0] = x.diagonal(self.offset, self.axis1, self.axis2)
+        if not self.view:
+            z[0] = z[0].copy()
 
     def grad(self, inputs, gout):
         (x,) = inputs
