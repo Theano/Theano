@@ -3886,7 +3886,25 @@ class Join(Op):
 
     """
     check_input = False
-    __props__ = ()
+    __props__ = ("view",)
+
+    def __init__(self, view=-1):
+        self.view = view
+        if view != -1:
+            # since the first input is always the axis, the tensors
+            # start from index 1.
+            self.view_map = {0: [1 + view]}
+
+    def __str__(self):
+        if self.view == -1:
+            return "Join"
+        else:
+            return super(Join, self).__str__()
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, "view"):
+            self.view = -1
 
     def make_node(self, *axis_and_tensors):
         """
@@ -3998,27 +4016,50 @@ class Join(Op):
 
     def perform(self, node, axis_and_tensors, out_):
         out, = out_
+        view = self.view
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
-        ndim = tensors[0].ndim
-        if axis < -ndim:
-            raise IndexError("Join axis %d out of bounds [0, %d)" %
-                             (axis, ndim))
+        # we check these tensors for being empty.
+        if (view != -1) and numpy.all(
+                [tensor.shape[axis] == 0 for tensor in
+                 tensors[0:view] + tensors[view + 1:]]):
+            out[0] = tensors[view]
 
-        out[0] = theano._asarray(numpy.concatenate(tensors, axis=axis),
-                                 dtype=node.outputs[0].type.dtype)
+        else:
+            ndim = tensors[0].ndim
+            if axis < -ndim:
+                raise IndexError("Join axis %d out of bounds [0, %d)" %
+                                 (axis, ndim))
+
+            out[0] = theano._asarray(numpy.concatenate(tensors, axis=axis),
+                                     dtype=node.outputs[0].type.dtype)
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         axis, tensors = inputs[0], inputs[1:]
+        view = self.view
+        non_empty_tensor = tensors[view]
         input_1 = tensors[0]
         l = len(tensors)
         out, = outputs
         fail = sub['fail']
         adtype = node.inputs[0].type.dtype_specs()[1]
         code = """
-        PyObject* list = PyList_New(%(l)s);
+        int axis = ((%(adtype)s *)PyArray_DATA(%(axis)s))[0];
+        int tensors_lens_sum = 0""" % locals()
+        for i, inp in enumerate(tensors):
+            code += """ + PyArray_DIM(%(inp)s, axis) """ % locals()
+        code += """;\n
+        tensors_lens_sum -= PyArray_DIM(%(non_empty_tensor)s, axis);
+
+        if(%(view)s != -1 && tensors_lens_sum == 0){
+            Py_XDECREF(%(out)s);
+            Py_INCREF(%(non_empty_tensor)s);
+            %(out)s = %(non_empty_tensor)s;
+        }
+        else{
+            PyObject* list = PyList_New(%(l)s);
         """ % locals()
         for i, inp in enumerate(tensors):
             code += """
@@ -4026,21 +4067,19 @@ class Join(Op):
             PyList_SetItem(list, %(i)s, (PyObject*)%(inp)s);
             """ % locals()
         code += """
-        //PyObject* PyArray_Concatenate(PyObject* obj, int axis)
-        int axis = ((%(adtype)s *)PyArray_DATA(%(axis)s))[0];
-        int ndim = PyArray_NDIM(%(input_1)s);
-        if( axis < -ndim ){
-            PyErr_Format(PyExc_IndexError,
-                         "Join axis %%d out of bounds [0, %%d)", axis, ndim);
-            %(fail)s
-        }
-
-        Py_XDECREF(%(out)s);
-        %(out)s = (PyArrayObject *)PyArray_Concatenate(list, axis);
-
-        Py_DECREF(list);
-        if(!%(out)s){
-            %(fail)s
+            //PyObject* PyArray_Concatenate(PyObject* obj, int axis)
+            int ndim = PyArray_NDIM(%(input_1)s);
+            if( axis < -ndim ){
+                PyErr_Format(PyExc_IndexError,
+                             "Join axis %%d out of bounds [0, %%d)", axis, ndim);
+                %(fail)s
+            }
+            Py_XDECREF(%(out)s);
+            %(out)s = (PyArrayObject *)PyArray_Concatenate(list, axis);
+            Py_DECREF(list);
+            if(!%(out)s){
+                %(fail)s
+            }
         }
         """ % locals()
         return code
