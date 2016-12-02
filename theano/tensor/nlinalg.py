@@ -557,14 +557,10 @@ def qr(a, mode="reduced"):
         'raw'
           returns h, tau with dimensions (N, M), (K,)
 
-        The options 'reduced', 'complete', and 'raw' are new in numpy
-        1.8, see the notes for more information. The default is
-        'reduced' and to maintain backward compatibility with earlier
-        versions of numpy it can be
-        omitted. Note that array h returned in 'raw' mode is
+        Note that array h returned in 'raw' mode is
         transposed for calling Fortran.
 
-        Default mode is 'reduced' which is also default for numpy 1.8
+        Default mode is 'reduced'
 
     Returns
     -------

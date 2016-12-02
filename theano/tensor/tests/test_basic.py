@@ -6797,33 +6797,6 @@ class T_long_tensor(unittest.TestCase):
             assert numpy.all(matrix_ct.value == val)
 
     def test_too_big(self):
-        val = L(2 ** 63)
-        # NumPy 1.7 this will raise an exception
-        # NumPy 1.7.1 this will work
-        try:
-            cst = constant(val)
-            assert cst.value == val
-            assert cst.dtype == "uint64"
-        except OverflowError:
-            pass
-
-        try:
-            cst = constant([val, val])
-            assert cst.value[0] == val
-            assert cst.value[1] == val
-            assert cst.value.size == 2
-            assert cst.dtype == "uint64"
-        except TypeError:
-            pass
-        try:
-            cst = constant([[val, val]])
-            assert cst.value[0, 0] == val
-            assert cst.value[0, 1] == val
-            assert cst.value.size == 2
-            assert cst.dtype == "uint64"
-        except TypeError:
-            pass
-
         val = L(2 ** 64)
         # This fail for all NumPy version.
         self.assertRaises(Exception, constant, val)
