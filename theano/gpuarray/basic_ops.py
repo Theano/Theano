@@ -1245,7 +1245,26 @@ class GpuJoin(HideC, Join):
 
     """
     _f16_ok = True
+    __props__ = ("view",)
     params_type = gpu_context_type
+
+    def __init__(self, view=-1):
+        self.view = view
+        if view != -1:
+            # since the first input is always the axis, the tensors
+            # start from index 1.
+            self.view_map = {0: [1 + view]}
+
+    # def __str__(self):
+    #     if self.view == -1:
+    #         return "Join"
+    #     else:
+    #         return super(Join, self).__str__()
+
+    # def __setstate__(self, d):
+    #     self.__dict__.update(d)
+    #     if not hasattr(self, "view"):
+    #         self.view = -1
 
     def make_node(self, axis, *tensors):
         node = Join.make_node(self, axis, *tensors)
@@ -1265,26 +1284,36 @@ class GpuJoin(HideC, Join):
 
     def perform(self, node, axis_and_tensors, out_, ctx):
         out, = out_
+        view = self.view
         axis = int(axis_and_tensors[0])
+        tensors = axis_and_tensors[1:]
+
         if axis < -axis_and_tensors[1].ndim:
             raise IndexError
         if axis < 0:
             axis += axis_and_tensors[1].ndim
-        tensors = axis_and_tensors[1:]
-        out[0] = pygpu.concatenate(tensors, axis=axis, context=ctx).astype(
-            node.outputs[0].dtype)
+        # we check these tensors for being empty.
+        if (view != -1) and numpy.all(
+                [tensor.shape[axis] == 0 for tensor in
+                 tensors[0:view] + tensors[view + 1:]]):
+            import ipdb; ipdb.set_trace()
+            out[0] = tensors[view]
+        else:
+            out[0] = pygpu.concatenate(tensors, axis=axis, context=ctx).astype(
+                node.outputs[0].dtype)
 
     def c_code_cache_version(self):
+        return
         return (2,)
 
-    def c_support_code(self):
+    def c_support_code_(self):
         return """
 #if PY_MAJOR_VERSION >= 3
 #define PyInt_AsLong PyLong_AsLong
 #endif
 """
 
-    def c_code(self, node, name, inputs, out_, sub):
+    def c_code_(self, node, name, inputs, out_, sub):
         copy_to_list = []
         restype = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
         for i, inp in enumerate(inputs[1:]):
