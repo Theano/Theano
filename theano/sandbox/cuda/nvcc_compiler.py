@@ -6,8 +6,6 @@ import subprocess
 import sys
 from locale import getpreferredencoding
 
-import numpy
-
 from theano import config
 from theano.compat import decode, decode_with
 from theano.configdefaults import local_bitwidth

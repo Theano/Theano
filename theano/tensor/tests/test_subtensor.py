@@ -30,7 +30,8 @@ from theano.tensor.subtensor import (AdvancedIncSubtensor,
                                      advanced_set_subtensor,
                                      advanced_set_subtensor1,
                                      get_canonical_form_slice, inc_subtensor,
-                                     inplace_increment, set_subtensor)
+                                     set_subtensor)
+
 from theano.tensor.tests.test_basic import inplace_func, rand, randint_ranged
 from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import attr
@@ -1340,12 +1341,6 @@ class TestIncSubtensor1(unittest.TestCase):
         utt.assert_allclose(out1val, out2val)
 
 
-inplace_increment_missing = SkipTest(
-    "inc_subtensor with advanced indexing not enabled. "
-    "Installing NumPy 1.8 or the latest development version "
-    "should make that feature available.")
-
-
 class TestAdvancedSubtensor(unittest.TestCase):
     # test inc_subtensor
     # also tests set_subtensor
@@ -1494,8 +1489,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
         utt.assert_allclose(rval, aval)
 
     def test_inc_adv_subtensor_w_2vec(self):
-        if inplace_increment is None:
-            raise inplace_increment_missing
+        if not config.cxx:
+            raise SkipTest('config.cxx empty')
 
         subt = self.m[self.ix1, self.ix12]
         a = inc_subtensor(subt, subt)
@@ -1515,8 +1510,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
                                [.5, .3 * 2, .15]]), aval
 
     def test_inc_adv_subtensor_with_broadcasting(self):
-        if inplace_increment is None:
-            raise inplace_increment_missing
+        if not config.cxx:
+            raise SkipTest('config.cxx empty')
 
         inc = dscalar()
         a = inc_subtensor(self.m[self.ix1, self.ix12], inc)
@@ -1538,8 +1533,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
         assert numpy.allclose(gval, 3.0), gval
 
     def test_inc_adv_subtensor1_with_broadcasting(self):
-        if inplace_increment is None:
-            raise inplace_increment_missing
+        if not config.cxx:
+            raise SkipTest('config.cxx empty')
 
         inc = dscalar()
         a = inc_subtensor(self.m[self.ix1], inc)
@@ -1560,8 +1555,8 @@ class TestAdvancedSubtensor(unittest.TestCase):
         assert numpy.allclose(gval, 9.0), gval
 
     def test_inc_adv_subtensor_with_index_broadcasting(self):
-        if inplace_increment is None:
-            raise inplace_increment_missing
+        if not config.cxx:
+            raise SkipTest('config.cxx empty')
 
         a = inc_subtensor(self.m[self.ix1, self.ix2], 2.1)
 
