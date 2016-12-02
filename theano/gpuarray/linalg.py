@@ -17,6 +17,7 @@ except (ImportError, OSError, RuntimeError, pkg_resources.DistributionNotFound):
 
 cusolver_handle = None
 
+
 class GpuCusolverSolve(Op):
     """
     CUSOLVER GPU solver OP.
@@ -108,9 +109,9 @@ class GpuCusolverSolve(Op):
             ldb = max(1, k, m)
 
             # We copy A and b as cusolver operates inplace
+            b = gpuarray.array(b, copy=True, order='F')
             if not self.inplace:
                 A = gpuarray.array(A, copy=True)
-                b = gpuarray.array(b, copy=True, order='F')
             A_ptr = A.gpudata
             b_ptr = b.gpudata
 
