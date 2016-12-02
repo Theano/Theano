@@ -69,7 +69,7 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedIncSubtensor1_dev20)
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
-from .linalg import GpuCusolverSolve
+from .linalg import (GpuCusolverSolve, cusolver_available)
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -1889,9 +1889,11 @@ def local_gpu_maxandargmax(op, context_name, inputs, outputs):
 
 # solve
 @register_opt('fast_compile')
-@op_lifter([theano.tensor.slinalg.Solve])
+@op_lifter([slinalg.Solve])
 @register_opt2([theano.tensor.slinalg.Solve], 'fast_compile')
 def local_gpu_solve(op, context_name, inputs, outputs):
+    if not cusolver_available:
+        return
     return GpuCusolverSolve()
 
 # Do not register in fast_run or fast_compile.
