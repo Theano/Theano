@@ -3185,6 +3185,30 @@ class SamplingDotTester(utt.InferShapeTester):
         verify_grad_sparse(_helper, self.a[:2])
 
 
+class TestSparseOp(utt.InferShapeTester):
+
+    def test_sparse_copy(self):
+        for sp_format in ['csr', 'csc']:
+            x = theano.sparse.SparseType(format=sp_format,
+                    dtype=theano.config.floatX)(name='input')
+            y = x.copy(name='output')
+            warn_msg = r"%s"%' '.join(["Optimization Warning:",
+                "input idx 0 marked as viewed but new memory allocated by node"
+                ])
+            f = theano.function([x], y)
+            x_inp = sp.sparse.eye(5).tocsr()
+            if theano.config.mode == 'DebugMode':
+                with self.assertLogs("theano.compile", level='WARNING') as logs:
+                    y_inp = f(x_inp)
+                for output in logs.output:
+                    if output.startswith('WARNING:theano.compile.debugmode'):
+                        print(output)
+                        self.assertRegex(output, warn_msg)
+            else:
+                y_inp = f(x_inp)
+            np.testing.assert_array_equal(x_inp.toarray(), y_inp.toarray())
+            self.assertFalse(SparseType.may_share_memory(x_inp, y_inp))
+
 import theano.tensor.tests.test_sharedvar
 test_shared_options = theano.tensor.tests.test_sharedvar.makeSharedTester(
     shared_constructor_=theano.sparse.shared,
