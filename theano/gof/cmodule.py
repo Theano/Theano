@@ -2130,23 +2130,10 @@ class GCC_compiler(Compiler):
         if march_flags and GCC_compiler.march_flags:
             cxxflags.extend(GCC_compiler.march_flags)
 
-        # NumPy 1.7 Deprecate the old API. I updated most of the places
-        # to use the new API, but not everywhere. When finished, enable
-        # the following macro to assert that we don't bring new code
+        # NumPy 1.7 Deprecate the old API.
+        # The following macro asserts that we don't bring new code
         # that use the old API.
         cxxflags.append("-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
-        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-
-        # numpy 1.7 deprecated the following macro but the new one didn't
-        # existed in the past
-        if bool(numpy_ver < [1, 7]):
-            cxxflags.append("-DNPY_ARRAY_ENSUREARRAY=NPY_ENSUREARRAY")
-            cxxflags.append("-DNPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
-            cxxflags.append("-DNPY_ARRAY_ALIGNED=NPY_ALIGNED")
-            cxxflags.append("-DNPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
-            cxxflags.append("-DNPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
-            cxxflags.append("-DNPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
-            cxxflags.append("-DNPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
 
         # Platform-specific flags.
         # We put them here, rather than in compile_str(), so they en up

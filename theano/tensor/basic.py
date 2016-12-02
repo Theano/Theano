@@ -4680,7 +4680,7 @@ class Reshape(Op):
                            for i in xrange(self.ndim)])]
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         if isinstance(node.inputs[0], TensorVariable):
