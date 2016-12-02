@@ -2086,9 +2086,11 @@ BatchedDotTester = makeTester(
 def _numpy_second(x, y):
     return numpy.broadcast_arrays(x, y)[1]
 
-ALL_DTYPES = ('int8', 'int16', 'int32', 'int64', 'uint8', 'uint16',
-              'float32', 'float64', 'complex64', 'complex128')
-REAL_DTYPES = ALL_DTYPES[:-2]
+# Don't forget to modify the two lines after!
+ALL_DTYPES = ('int8', 'int16', 'int32', 'int64', 'float32', 'float64',
+              'uint8', 'uint16',
+              'complex64', 'complex128')
+REAL_DTYPES = ALL_DTYPES[:6]
 COMPLEX_DTYPES = ALL_DTYPES[-2:]
 
 
