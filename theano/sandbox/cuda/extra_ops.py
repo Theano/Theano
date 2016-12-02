@@ -5,7 +5,7 @@ from theano import Op
 from theano.gof import local_optimizer
 from theano.sandbox.cuda import cuda_available, GpuOp
 from theano.sandbox.cuda.basic_ops import gpu_flatten
-from theano.tensor.extra_ops import CumsumOp
+from theano.tensor.extra_ops import CumOp
 
 if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType
@@ -13,7 +13,7 @@ if cuda_available:
     from theano.sandbox.cuda import register_opt as register_gpu_opt
 
 
-class GpuCumsum(CumsumOp, GpuOp):
+class GpuCumsum(CumOp, GpuOp):
     """
 
     Parameters
@@ -438,12 +438,15 @@ def values_eq_approx_high_tol(a, b):
 
 
 @register_gpu_opt()
-@local_optimizer([CumsumOp])
+@local_optimizer([CumOp])
 def use_gpu_cumsum(node):
-    if type(node.op) is CumsumOp \
+    if type(node.op) is CumOp \
        and node.inputs[0].dtype == 'float32' \
        and node.inputs[0].owner \
        and isinstance(node.inputs[0].owner.op, HostFromGpu):
+
+        if node.op.mode != 'add':
+            return None
 
         axis = node.op.axis
         x = node.inputs[0]

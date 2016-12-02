@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import os
 from theano import Apply, Op
-from theano.tensor.extra_ops import CumsumOp, CumprodOp
+from theano.tensor.extra_ops import CumOp
 from .basic_ops import infer_context_name
 try:
     from pygpu import gpuarray
@@ -23,7 +23,7 @@ class GpuCumOp(GpuKernelBase, Op):
     __props__ = ('axis', 'mode')
 
     def __init__(self, axis, mode='add'):
-        self.axis = axis
+        self.axis = axis if axis else 0
         self.mode = mode
 
     def __eq__(self, other):
@@ -463,16 +463,10 @@ class GpuCumOp(GpuKernelBase, Op):
 
 
 @register_opt('fast_compile')
-@op_lifter([CumsumOp, CumprodOp])
-@register_opt2([CumsumOp, CumprodOp], 'fast_compile')
+@op_lifter([CumOp])
+@register_opt2([CumOp], 'fast_compile')
 def local_gpua_cumop(op, ctx_name, inputs, outputs):
     if inputs[0].dtype != 'float32':
-        return False
-    if isinstance(op, CumsumOp):
-        mode = 'add'
-    elif isinstance(op, CumprodOp):
-        mode = 'mul'
-    else:
         return False
     axis = op.axis
     x = inputs[0]
@@ -488,4 +482,4 @@ def local_gpua_cumop(op, ctx_name, inputs, outputs):
     if axis is None:
         axis = 0
 
-    return GpuCumOp(axis, mode)(x)
+    return GpuCumOp(axis, op.mode)(x)

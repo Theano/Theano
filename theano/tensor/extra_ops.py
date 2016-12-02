@@ -242,13 +242,14 @@ def searchsorted(x, v, side='left', sorter=None):
     return SearchsortedOp(side=side)(x, v, sorter)
 
 
-class CumsumOp(theano.Op):
-    # See function cumsum for docstring
+class CumOp(theano.Op):
+    # See function cumsum/cumprod for docstring
 
-    __props__ = ("axis",)
+    __props__ = ("axis", "mode")
 
-    def __init__(self, axis=None):
+    def __init__(self, axis=None, mode='add'):
         self.axis = axis
+        self.mode = mode
 
     def make_node(self, x):
         x = basic.as_tensor_variable(x)
@@ -264,20 +265,37 @@ class CumsumOp(theano.Op):
     def perform(self, node, inputs, output_storage):
         x = inputs[0]
         z = output_storage[0]
-        z[0] = np.cumsum(x, axis=self.axis)
+        z[0] = {'add': np.cumsum, 'mul': np.cumprod}[self.mode](x, axis=self.axis)
 
     def grad(self, inputs, output_gradients):
-        [gi] = output_gradients
+        x, = inputs
+        gi, = output_gradients
+        if self.mode == 'mul':
+            fx = cumprod(x, axis=self.axis)
+        noimpl = NotImplementedError(
+            'CumOp: unknown gradient for mode %s' % self.mode)
 
         if self.axis is None:
-            return [cumsum(gi[::-1])[::-1].reshape(inputs[0].shape)]
+            if self.mode == 'add':
+                return [cumsum(gi[::-1])[::-1].reshape(x.shape)]
+            elif self.mode == 'mul':
+                return [cumsum(
+                    (fx * gi)[::-1])[::-1].reshape(x.shape) / x]
+            else:
+                raise noimpl
 
-        # We need to reverse the gradients along ``self.axis``,
-        #  compute cumsum, then reverse again
         reverse_slicing = [slice(None, None, None)] * gi.ndim
         reverse_slicing[self.axis] = slice(None, None, -1)
         reverse_slicing = tuple(reverse_slicing)
-        return [cumsum(gi[reverse_slicing], self.axis)[reverse_slicing]]
+        if self.mode == 'add':
+            return [cumsum(gi[reverse_slicing], self.axis)[reverse_slicing]]
+        elif self.mode == 'mul':
+            # We need to reverse the gradients along ``self.axis``,
+            #  compute cumsum, then reverse again
+            return [cumsum(
+                (fx * gi)[reverse_slicing], self.axis)[reverse_slicing] / x]
+        else:
+            raise noimpl
 
     def infer_shape(self, node, shapes):
         if self.axis is None:
@@ -290,6 +308,7 @@ class CumsumOp(theano.Op):
         z, = onames
         axis = self.axis
         fail = sub['fail']
+        func = dict(mul='CumProd', add='CumSum')[self.mode]
 
         if self.axis is None or (self.axis == 0 and node.inputs[0].ndim == 1):
             code = """
@@ -303,13 +322,13 @@ class CumsumOp(theano.Op):
                 if (!%(z)s)
                     %(fail)s;
                 {
-                    PyObject * t = PyArray_CumSum(
+                    PyObject * t = PyArray_%(func)s(
                         %(x)s, NPY_MAXDIMS,
                         PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
                     if (!t){
                        %(fail)s;
                     }
-                    // Because PyArray_CumSum returns a newly created reference on t.
+                    // Because PyArray_%(func)s returns a newly created reference on t.
                     Py_XDECREF(t);
                 }
             """ % locals()
@@ -325,13 +344,13 @@ class CumsumOp(theano.Op):
                     %(fail)s;
                 {
 
-                    PyObject * t = PyArray_CumSum(
+                    PyObject * t = PyArray_%(func)s(
                         %(x)s, %(axis)s,
                         PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
                     if (!t){
                        %(fail)s;
                     }
-                    // Because PyArray_CumSum returns a newly created reference on t.
+                    // Because PyArray_%(func)s returns a newly created reference on t.
                     Py_XDECREF(t);
                 }
             """ % locals()
@@ -339,10 +358,10 @@ class CumsumOp(theano.Op):
         return code
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
     def __str__(self):
-        return "%s{%s}" % (self.__class__.__name__, self.axis)
+        return "%s{%s, %s}" % (self.__class__.__name__, self.axis, self.mode)
 
 
 def cumsum(x, axis=None):
@@ -361,112 +380,7 @@ def cumsum(x, axis=None):
     .. versionadded:: 0.7
 
     """
-    return CumsumOp(axis=axis)(x)
-
-
-class CumprodOp(theano.Op):
-    # See function cumprod for docstring
-
-    __props__ = ("axis",)
-
-    def __init__(self, axis=None):
-        self.axis = axis
-
-    def make_node(self, x):
-        x = basic.as_tensor_variable(x)
-        out_type = x.type()
-
-        if self.axis is None:
-            out_type = theano.tensor.vector(dtype=x.dtype)  # Flatten
-        elif self.axis >= x.ndim or self.axis < -x.ndim:
-            raise ValueError('axis(={0}) out of bounds'.format(self.axis))
-
-        return theano.Apply(self, [x], [out_type])
-
-    def perform(self, node, inputs, output_storage):
-        x = inputs[0]
-        z = output_storage[0]
-        z[0] = np.cumprod(x, axis=self.axis)
-
-    def grad(self, inputs, output_gradients):
-        x, = inputs
-        gi, = output_gradients
-        fx = cumprod(x, axis=self.axis)
-
-        if self.axis is None:
-            return [cumsum((fx * gi)[::-1])[::-1].reshape(inputs[0].shape) / x]
-
-        # We need to reverse the gradients along ``self.axis``,
-        #  compute cumsum, then reverse again
-        reverse_slicing = [slice(None, None, None)] * gi.ndim
-        reverse_slicing[self.axis] = slice(None, None, -1)
-        reverse_slicing = tuple(reverse_slicing)
-        return [cumsum((fx * gi)[reverse_slicing],
-                       self.axis)[reverse_slicing] / x]
-
-    def infer_shape(self, node, shapes):
-        if self.axis is None:
-            return [(tensor.prod(shapes[0]),)]  # Flatten
-
-        return shapes
-
-    def c_code(self, node, name, inames, onames, sub):
-        x, = inames
-        z, = onames
-        axis = self.axis
-        fail = sub['fail']
-
-        if self.axis is None or (self.axis == 0 and node.inputs[0].ndim == 1):
-            code = """
-                npy_intp shape[1] = { PyArray_SIZE(%(x)s) };
-                if(!(%(z)s && PyArray_DIMS(%(z)s)[0] == shape[0]))
-                {
-                    Py_XDECREF(%(z)s);
-                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, PyArray_TYPE((PyArrayObject*) py_%(x)s));
-                }
-
-                if (!%(z)s)
-                    %(fail)s;
-                {
-                    PyObject * t = PyArray_CumProd(
-                        %(x)s, NPY_MAXDIMS,
-                        PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
-                    if (!t){
-                       %(fail)s;
-                    }
-                    // Because PyArray_CumSum returns a newly created reference on t.
-                    Py_XDECREF(t);
-                }
-            """ % locals()
-        else:
-            code = """
-                if(!(%(z)s && PyArray_CompareLists(PyArray_DIMS(%(z)s), PyArray_DIMS(%(x)s), PyArray_NDIM(%(x)s)) ))
-                {
-                    Py_XDECREF(%(z)s);
-                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), PyArray_TYPE((PyArrayObject*) py_%(x)s));
-                }
-
-                if (!%(z)s)
-                    %(fail)s;
-                {
-                    PyObject * t = PyArray_CumProd(
-                        %(x)s, %(axis)s,
-                        PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
-                    if (!t){
-                       %(fail)s;
-                    }
-                    // Because PyArray_CumSum returns a newly created reference on t.
-                    Py_XDECREF(t);
-                }
-            """ % locals()
-
-        return code
-
-    def c_code_cache_version(self):
-        return (4,)
-
-    def __str__(self):
-        return "%s{%s}" % (self.__class__.__name__, self.axis)
+    return CumOp(axis=axis, mode='add')(x)
 
 
 def cumprod(x, axis=None):
@@ -486,7 +400,7 @@ def cumprod(x, axis=None):
     .. versionadded:: 0.7
 
     """
-    return CumprodOp(axis=axis)(x)
+    return CumOp(axis=axis, mode='mul')(x)
 
 
 class DiffOp(theano.Op):
