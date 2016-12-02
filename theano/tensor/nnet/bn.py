@@ -211,8 +211,12 @@ def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
         raise ValueError("running_var must be of the same dimensionality "
                          "as gamma and beta; got %d instead of %d" %
                          (running_var.ndim, params_ndim))
+
+    # epsilon will be converted to floatX later. we need to check
+    # for rounding errors now, since numpy.float32(1e-5) < 1e-5.
+    epsilon = numpy.cast[theano.config.floatX](epsilon)
     if epsilon < 1e-5:
-        raise ValueError("epsilon must be at least 1e-5, got %f" % epsilon)
+        raise ValueError("epsilon must be at least 1e-5, got %s" % str(epsilon))
 
     inputs = as_tensor_variable(inputs)
     gamma = as_tensor_variable(gamma)
@@ -329,8 +333,12 @@ def batch_normalization_test(inputs, gamma, beta, mean, var,
         raise ValueError("mean and var must be of the same dimensionality "
                          "as gamma and beta; got %d and %d instead of %d" %
                          (mean.ndim, var.ndim, params_ndim))
+
+    # epsilon will be converted to floatX later. we need to check
+    # for rounding errors now, since numpy.float32(1e-5) < 1e-5.
+    epsilon = numpy.cast[theano.config.floatX](epsilon)
     if epsilon < 1e-5:
-        raise ValueError("epsilon must be at least 1e-5, got %f" % epsilon)
+        raise ValueError("epsilon must be at least 1e-5, got %s" % str(epsilon))
 
     gamma = as_tensor_variable(gamma)
     beta = as_tensor_variable(beta)
