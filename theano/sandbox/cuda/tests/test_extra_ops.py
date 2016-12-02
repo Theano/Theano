@@ -232,4 +232,4 @@ class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumOp):
         x = T.ftensor4('x')
         f = theano.function([x], cumsum(x, axis=1), mode=self.mode)
         assert [n for n in f.maker.fgraph.toposort()
-                if isinstance(n.op, CumsumOp)]
+                if isinstance(n.op, CumOp)]
