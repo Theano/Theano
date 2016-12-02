@@ -7,7 +7,7 @@ import numpy as np
 from six.moves import xrange
 from theano import tensor as T
 import theano
-from theano.tensor.extra_ops import cumsum, CumsumOp
+from theano.tensor.extra_ops import cumsum, CumOp
 from theano.tests import unittest_tools as utt
 import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available:
@@ -22,7 +22,7 @@ else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 
-class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumsumOp):
+class TestGpuCumsum(theano.tensor.tests.test_extra_ops.TestCumOp):
     mode = mode_with_gpu
 
     def setUp(self):
