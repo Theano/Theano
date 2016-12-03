@@ -112,6 +112,22 @@ class GpuPool(CGpuKernelBase):
     def connection_pattern(self, node):
         return [[1], [0], [0], [0]]
 
+    def R_op(self, inputs, eval_points):
+        if self.mode != 'max':
+            # Rop for average or sum is simply pooling evaluated at eval point
+            eval_inputs = [eval_points[0]] + inputs[1:]
+            return [self(*eval_inputs)]
+
+        # R_op can receive None as eval_points.
+        # That mean there is no diferientiable path through that input
+        # If this imply that you cannot compute some outputs,
+        # return None for those.
+        if eval_points[0] is None:
+            return [None]
+        x, ws, stride, pad = inputs
+        rop = GpuMaxPoolRop(ignore_border=self.ignore_border)
+        return [rop(x, eval_points[0], ws, stride=stride, pad=pad)]
+
 
 class GpuMaxPoolGrad(CGpuKernelBase):
     """
@@ -334,3 +350,72 @@ class GpuDownsampleFactorMaxGradGrad(CGpuKernelBase):
 
     def connection_pattern(self, node):
         return [[1], [1], [1], [0], [0], [0]]
+
+
+class GpuMaxPoolRop(CGpuKernelBase):
+    """
+    Implements the R-operator for the downsample operation.
+
+    """
+    __props__ = ('ignore_border', 'mode', 'ndim')
+
+    def __init__(self, ignore_border, mode='max', ndim=2):
+        self.ndim = ndim
+        self.ignore_border = ignore_border
+        self.mode = mode
+        CGpuKernelBase.__init__(self, ['pool_max_rop.c'],
+                                'APPLY_SPECIFIC(max_pool_rop)')
+        assert mode == 'max'
+        assert ndim in [2, 3]
+
+    def c_headers(self):
+        return ['gpuarray_api.h', 'gpuarray_helper.h', 'numpy_compat.h']
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__), pygpu.get_include()]
+
+    def make_node(self, inp, eval_point, ws, stride=None, pad=None):
+        ctx_name = infer_context_name(inp)
+        nd = self.ndim
+        inp = as_gpuarray_variable(inp, ctx_name)
+        assert (inp.ndim == nd + 2)
+        eval_point = as_gpuarray_variable(eval_point, ctx_name)
+        assert (eval_point.ndim == nd + 2)
+
+        if stride is None:
+            stride = ws
+        if pad is None:
+            pad = (0,) * nd
+        elif isinstance(pad, (tuple, list)):
+            if max(pad) != 0 and not self.ignore_border:
+                raise ValueError('Padding works only with ignore_border=True')
+            if isinstance(ws, (tuple, list)):
+                if any(pad[i] >= ws[i] for i in range(nd)):
+                    raise ValueError('Padding must be smaller than strides')
+
+        ws = as_tensor_variable(ws)
+        stride = as_tensor_variable(stride)
+        pad = as_tensor_variable(pad)
+        assert ws.ndim == stride.ndim and ws.ndim == pad.ndim
+        assert ws.ndim == 1
+        if not ws.dtype.startswith('int'):
+            raise TypeError('Window shape parameters must be ints.')
+        if not stride.dtype.startswith('int'):
+            raise TypeError('Stride parameters must be ints.')
+        if not pad.dtype.startswith('int'):
+            raise TypeError('Padding parameters must be ints.')
+
+        return Apply(self, [inp, eval_point, ws, stride, pad], [eval_point.type()])
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
+    def get_op_params(self):
+        ignore_border = int(self.ignore_border)
+        return [('IGNORE_BORDER', ignore_border)]
+
+    def infer_shape(self, node, in_shapes):
+        ws, stride, pad = [node.inputs[2], node.inputs[3], node.inputs[4]]
+        shp = Pool.out_shape(in_shapes[0], ws, self.ignore_border, stride,
+                             pad, self.ndim)
+        return [shp]
