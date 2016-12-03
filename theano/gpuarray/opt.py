@@ -49,7 +49,7 @@ from .blas import (gpu_dot22, GpuGemm, GpuGer, GpuGemmBatch,
                    gpugemv_no_inplace, gpugemv_inplace,
                    GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights,
                    GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
-from .pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad,
+from .pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad, GpuMaxPoolRop,
                    GpuDownsampleFactorMaxGradGrad)
 from .blocksparse import (GpuSparseBlockGemv, GpuSparseBlockOuter,
                           gpu_sparse_block_outer,
@@ -1717,6 +1717,28 @@ def local_gpu_downsample_factor_max_grad_grad(op, ctx_name, inputs, outputs):
                         ws, stride, pad)
         return unpad_dims(ret_padded, inp, 2, nd)
 
+
+@register_opt()
+@op_lifter([pool.MaxPoolRop])
+@register_opt2([pool.MaxPoolRop])
+def local_gpu_max_pool_rop(op, ctx_name, inputs, outputs):
+    assert op.__props__ == ('ignore_border', 'mode', 'ndim')
+    inp, eval_inp, ws, stride, pad = inputs
+    nd = op.ndim
+    if nd not in (2, 3):
+        return
+    inp = gpu_contiguous(as_gpuarray_variable(inp, ctx_name))
+    eval_inp = gpu_contiguous(as_gpuarray_variable(eval_inp, ctx_name))
+
+    op = GpuMaxPoolRop(op.ignore_border, op.mode, op.ndim)
+    if inp.ndim == nd + 2:
+        return op(inp, eval_inp, ws, stride, pad)
+    else:
+        # reshape to 4D or 5D with 2 non-pooling dimensions
+        inp_padded = pad_dims(inp, 2, nd)
+        eval_inp_padded = pad_dims(eval_inp, 2, nd)
+        ret_padded = op(inp_padded, eval_inp_padded, ws, stride, pad)
+        return unpad_dims(ret_padded, inp, 2, nd)
 
 @register_opt("low_memory")
 @local_optimizer([GpuCAReduceCuda])
