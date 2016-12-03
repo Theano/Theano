@@ -33,7 +33,7 @@ from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
 from theano.sandbox.cuda.nnet import GpuSoftmax
 from theano.sandbox.cuda.opt_util import (alpha_merge, output_merge,
                                           pad_dims, unpad_dims)
-from theano.sandbox.cuda import gpu_seqopt, register_opt
+from theano.sandbox.cuda import gpu_seqopt, register_opt, register_inplace
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
