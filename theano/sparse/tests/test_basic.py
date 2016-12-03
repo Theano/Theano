@@ -3196,7 +3196,7 @@ class TestSparseOp(utt.InferShapeTester):
                 "input idx 0 marked as viewed but new memory allocated by node"
                 ])
             f = theano.function([x], y)
-            x_inp = sp.sparse.eye(5).tocsr()
+            x_inp = scipy.sparse.eye(5).tocsr()
             if theano.config.mode == 'DebugMode':
                 with self.assertLogs("theano.compile", level='WARNING') as logs:
                     y_inp = f(x_inp)
