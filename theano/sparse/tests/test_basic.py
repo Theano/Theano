@@ -3189,12 +3189,13 @@ class TestSparseOp(utt.InferShapeTester):
 
     def test_sparse_copy(self):
         for sp_format in ['csr', 'csc']:
-            x = theano.sparse.SparseType(format=sp_format,
-                    dtype=theano.config.floatX)(name='input')
+            x = theano.sparse.SparseType(
+                format=sp_format,
+                dtype=theano.config.floatX)(name='input')
             y = x.copy(name='output')
-            warn_msg = r"%s"%' '.join(["Optimization Warning:",
-                "input idx 0 marked as viewed but new memory allocated by node"
-                ])
+            warn_msg = r"%s" % ' '.join([
+                "Optimization Warning:",
+                "input idx 0 marked as viewed but new memory allocated by node"])
             f = theano.function([x], y)
             x_inp = scipy.sparse.eye(5).tocsr()
             if theano.config.mode == 'DebugMode':
