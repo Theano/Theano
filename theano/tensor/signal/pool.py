@@ -593,7 +593,7 @@ class Pool(OpenMPOp):
         if eval_points[0] is None:
             return [None]
         x, ws, stride, pad = inputs
-        rop = MaxPoolRop(ignore_border=self.ignore_border)
+        rop = MaxPoolRop(ignore_border=self.ignore_border, ndim=self.ndim)
         return [rop(x, eval_points[0], ws, stride=stride, pad=pad)]
 
     def c_headers(self):

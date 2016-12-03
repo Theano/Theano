@@ -17,6 +17,7 @@ from theano.tests import unittest_tools as utt
 from theano import function
 import theano
 from theano import tensor
+import itertools
 import numpy
 from theano.gof import Op, Apply
 from theano.gradient import grad_undefined
@@ -258,25 +259,42 @@ class test_RopLop(RopLop_checker):
 
     def test_downsample(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
-        test_ws = ((1, 1), (3, 2), (2, 3))
-        vx = (rng.rand(2, 3, 3, 4) * 2.0).astype(theano.config.floatX)
-        vv = (rng.rand(2, 3, 3, 4) * 2.0).astype(theano.config.floatX)
-        input = theano.shared(vx)
-        eval_p = theano.shared(vv)
-        for ws in test_ws:
-            for ignore_border in [False, True]:
-                out = Pool(ignore_border)(input, ws).flatten()
-                yv = tensor.Rop(out, input, eval_p)
-                rop_f = function([], yv, on_unused_input='ignore')
-                sy, _ = theano.scan(lambda i, y, x, v:
-                                    (tensor.grad(y[i], x) * v).sum(),
-                                    sequences=tensor.arange(out.shape[0]),
-                                    non_sequences=[out, input, eval_p])
-                scan_f = function([], sy, on_unused_input='ignore')
-                v1 = rop_f()
-                v2 = scan_f()
-                assert numpy.allclose(v1, v2), ("Rop mismatch: %s %s" %
-                                                (v1, v2))
+        # ws, shp
+        examples = (
+            ((2,), (16,)),
+            ((2,), (4, 16,)),
+            ((2,), (4, 2, 16,)),
+            ((1, 1), (4, 2, 16, 16)),
+            ((2, 2), (4, 2, 16, 16)),
+            ((3, 3), (4, 2, 16, 16)),
+            ((3, 2), (4, 2, 16, 16)),
+            ((3, 2, 2), (3, 2, 16, 16, 16)),
+            ((2, 3, 2), (3, 2, 16, 16, 16)),
+            ((2, 2, 3), (3, 2, 16, 16, 16)),
+            ((2, 2, 3, 2), (3, 2, 6, 6, 6, 5)),
+        )
+
+        for example, ignore_border in itertools.product(examples, [True, False]):
+            (ws, shp) = example
+            vx = rng.rand(*shp)
+            vex = rng.rand(*shp)
+
+            x = theano.shared(vx)
+            ex = theano.shared(vex)
+
+            maxpool_op = Pool(ignore_border, ndim=len(ws))
+            a_pooled = maxpool_op(x, ws).flatten()
+            yv = tensor.Rop(a_pooled, x, ex)
+            rop_f = function([], yv, on_unused_input='ignore')
+            sy, _ = theano.scan(lambda i, y, x, v:
+                                (tensor.grad(y[i], x) * v).sum(),
+                                sequences=tensor.arange(a_pooled.shape[0]),
+                                non_sequences=[a_pooled, x, ex])
+            scan_f = function([], sy, on_unused_input='ignore')
+            v1 = rop_f()
+            v2 = scan_f()
+            assert numpy.allclose(v1, v2), ("Rop mismatch: %s %s" %
+                                            (v1, v2))
 
     def test_conv(self):
         for conv_op in [conv.conv2d, conv2d]:
