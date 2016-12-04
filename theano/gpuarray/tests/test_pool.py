@@ -8,13 +8,13 @@ import numpy
 import theano
 from theano import gradient
 from theano import tensor
-from theano.tensor.signal.pool import (Pool, MaxPoolGrad, AveragePoolGrad,
+from theano.tensor.signal.pool import (Pool, MaxPoolGrad, AveragePoolGrad, MaxPoolRop,
                                        DownsampleFactorMaxGradGrad)
 from theano.tests import unittest_tools as utt
 
 from .config import mode_with_gpu, mode_without_gpu
 from .test_basic_ops import rand
-from ..pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad,
+from ..pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad, GpuMaxPoolRop,
                     GpuDownsampleFactorMaxGradGrad)
 
 
@@ -133,10 +133,25 @@ def test_pool2d():
 
                 assert numpy.allclose(g(), g2()), (shp, ws, st, pad, mode, ignore_border)
 
-                # test grad grad for max pooling
+                # test rop and grad grad for max pooling
                 # for average pooling grad grad is just average pooling grad
                 if mode != 'max':
                     continue
+
+                ea = theano.shared(rand(*shp), 'ea')
+
+                gr = theano.function([], tensor.Rop(a_pooled, a, ea), mode=gpu_mode)
+                gr2 = theano.function([], tensor.Rop(a_pooled, a, ea), mode=ref_mode)
+
+                assert any([
+                    isinstance(node.op, GpuMaxPoolRop)
+                    for node in gr.maker.fgraph.toposort()
+                ])
+                assert any([
+                    isinstance(node.op, MaxPoolRop)
+                    for node in gr2.maker.fgraph.toposort()
+                ])
+                assert numpy.allclose(gr(), gr2()), (shp, ws, st, pad, mode, ignore_border)
 
                 ggf = gradient.Lop(tensor.grad((a_pooled**2).sum(), a), a, a)
 
@@ -228,10 +243,25 @@ def test_pool3d():
 
                 assert numpy.allclose(g(), g2()), (shp, ws, st, pad, mode, ignore_border)
 
-                # test grad grad for max pooling
+                # test rop and grad grad for max pooling
                 # for average pooling grad grad is just average pooling grad
                 if mode != 'max':
                     continue
+
+                ea = theano.shared(rand(*shp), 'ea')
+
+                gr = theano.function([], tensor.Rop(a_pooled, a, ea), mode=gpu_mode)
+                gr2 = theano.function([], tensor.Rop(a_pooled, a, ea), mode=ref_mode)
+
+                assert any([
+                    isinstance(node.op, GpuMaxPoolRop)
+                    for node in gr.maker.fgraph.toposort()
+                ])
+                assert any([
+                    isinstance(node.op, MaxPoolRop)
+                    for node in gr2.maker.fgraph.toposort()
+                ])
+                assert numpy.allclose(gr(), gr2()), (shp, ws, st, pad, mode, ignore_border)
 
                 ggf = gradient.Lop(tensor.grad((a_pooled**2).sum(), a), a, a)
 
