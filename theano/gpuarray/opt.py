@@ -1740,6 +1740,7 @@ def local_gpu_max_pool_rop(op, ctx_name, inputs, outputs):
         ret_padded = op(inp_padded, eval_inp_padded, ws, stride, pad)
         return unpad_dims(ret_padded, inp, 2, nd)
 
+
 @register_opt("low_memory")
 @local_optimizer([GpuCAReduceCuda])
 def local_gpu_elemwise_careduce(node):

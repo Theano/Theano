@@ -285,16 +285,18 @@ class test_RopLop(RopLop_checker):
             maxpool_op = Pool(ignore_border, ndim=len(ws))
             a_pooled = maxpool_op(x, ws).flatten()
             yv = tensor.Rop(a_pooled, x, ex)
-            rop_f = function([], yv, on_unused_input='ignore')
+            mode = None
+            if theano.config.mode == "FAST_COMPILE":
+                mode = "FAST_RUN"
+            rop_f = function([], yv, on_unused_input='ignore', mode=mode)
             sy, _ = theano.scan(lambda i, y, x, v:
                                 (tensor.grad(y[i], x) * v).sum(),
                                 sequences=tensor.arange(a_pooled.shape[0]),
                                 non_sequences=[a_pooled, x, ex])
-            scan_f = function([], sy, on_unused_input='ignore')
+            scan_f = function([], sy, on_unused_input='ignore', mode=mode)
             v1 = rop_f()
             v2 = scan_f()
-            assert numpy.allclose(v1, v2), ("Rop mismatch: %s %s" %
-                                            (v1, v2))
+            assert numpy.allclose(v1, v2), ("Rop mismatch: %s %s" % (v1, v2))
 
     def test_conv(self):
         for conv_op in [conv.conv2d, conv2d]:

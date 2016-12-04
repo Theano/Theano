@@ -165,11 +165,11 @@ int APPLY_SPECIFIC(max_pool_rop)(PyGpuArrayObject *x,
     if (ndims == 2) {
       size_t num_kernels = z_dims[0] * z_dims[1] * z_dims[2] * z_dims[3];
       err = max_pool2d_rop_kernel_scall(1, &num_kernels, 0, num_kernels,
-                                    z_dims[0], z_dims[1], z_dims[2], z_dims[3],
-                                    x_dims[2], x_dims[3],
-                                    x->ga.data, ex->ga.data,
-                                    w[0], w[1], s[0], s[1], p[0], p[1],
-                                    (*z)->ga.data);
+                                        z_dims[0], z_dims[1], z_dims[2], z_dims[3],
+                                        x_dims[2], x_dims[3],
+                                        x->ga.data, ex->ga.data,
+                                        w[0], w[1], s[0], s[1], p[0], p[1],
+                                        (*z)->ga.data);
       if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
                      "GpuMaxPoolRop: max_pool2d_rop_kernel %s.",
@@ -180,11 +180,11 @@ int APPLY_SPECIFIC(max_pool_rop)(PyGpuArrayObject *x,
     else if (ndims == 3) {
       size_t num_kernels = z_dims[0] * z_dims[1] * z_dims[2] * z_dims[3] * z_dims[4];
       err = max_pool3d_rop_kernel_scall(1, &num_kernels, 0, num_kernels,
-                                    z_dims[0], z_dims[1], z_dims[2], z_dims[3], z_dims[4],
-                                    x_dims[2], x_dims[3], x_dims[4],
-                                    x->ga.data, ex->ga.data,
-                                    w[0], w[1], w[2], s[0], s[1], s[2],
-                                    p[0], p[1], p[2], (*z)->ga.data);
+                                        z_dims[0], z_dims[1], z_dims[2], z_dims[3], z_dims[4],
+                                        x_dims[2], x_dims[3], x_dims[4],
+                                        x->ga.data, ex->ga.data,
+                                        w[0], w[1], w[2], s[0], s[1], s[2],
+                                        p[0], p[1], p[2], (*z)->ga.data);
       if (err != GA_NO_ERROR) {
         PyErr_Format(PyExc_RuntimeError,
                      "GpuMaxPoolRop: max_pool3d_rop_kernel %s.",
