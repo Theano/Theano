@@ -82,7 +82,6 @@ from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
 
 from theano.tensor import nlinalg
-from theano.tensor import slinalg
 
 from theano.tensor.nnet.Conv3D import Conv3D
 from theano.tests.breakpoint import PdbBreakpoint
