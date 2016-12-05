@@ -169,6 +169,47 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         assert np.allclose(np.ones(16, dtype=config.floatX), dbv)
 
     @test_params
+    def test_rop(self, cls_ofg):
+        a = T.vector()
+        M = T.matrix()
+        b = T.dot(a, M)
+        op_matmul = cls_ofg([a, M], [b])
+        x = T.vector()
+        W = T.matrix()
+        y = op_matmul(x, W)
+        du = T.vector()
+        dv = T.Rop(y, x, du)
+        fn = function([x, W, du], dv)
+        xval = numpy.random.rand(16).astype(config.floatX)
+        Wval = numpy.random.rand(16, 16).astype(config.floatX)
+        duval = numpy.random.rand(16).astype(config.floatX)
+        dvval = numpy.dot(duval, Wval)
+        dvval2 = fn(xval, Wval, duval)
+        print(dvval, dvval2)
+        assert numpy.allclose(dvval2, dvval)
+
+    @test_params
+    def test_rop_override(self, cls_ofg):
+        x, y = T.vectors('xy')
+
+        def ro(inps, epts):
+            x, y = inps
+            u, v = epts
+            return [u * y * 2. + x * v * 1.5]
+
+        op_mul = cls_ofg([x, y], [x * y], rop_overrides=ro)
+        xx, yy = T.vector('xx'), T.vector('yy')
+        zz = op_mul(xx, yy)
+
+        du, dv = T.vector('du'), T.vector('dv')
+        dw = T.Rop(zz, [xx, yy], [du, dv])
+        fn = function([xx, yy, du, dv], dw)
+        vals = numpy.random.rand(4, 32).astype(config.floatX)
+        dwval = fn(*vals)
+        assert numpy.allclose(
+            dwval, vals[0] * vals[3] * 1.5 + vals[1] * vals[2] * 2.)
+
+    @test_params
     def test_nested(self, cls_ofg):
         x, y = T.vectors('xy')
         u, v = x + y, x - y
