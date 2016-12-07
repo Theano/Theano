@@ -174,7 +174,7 @@ def Rop(f, wrt, eval_points):
                described by `f`
     :type eval_points: Variable or list of Variables
                        evalutation points for each of the variables in `wrt`
-    :rtype: Variable or list/tuple of Variables depending on type of f
+    :rtype: :class:`~theano.gof.Variable` or list/tuple of Variables depending on type of f
     :return: symbolic expression such that
         R_op[i] = sum_j ( d f[i] / d wrt[j]) eval_point[j]
         where the indices in that expression are magic multidimensional
@@ -321,7 +321,7 @@ def Lop(f, wrt, eval_points, consider_constant=None,
     :type eval_points: Variable or list of Variables
                         evalutation points for each of the variables in `f`
 
-    :rtype: Variable or list/tuple of Variables depending on type of f
+    :rtype: :class:`~theano.gof.Variable` or list/tuple of Variables depending on type of f
     :return: symbolic expression such that
         L_op[i] = sum_i ( d f[i] / d wrt[j]) eval_point[i]
         where the indices in that expression are magic multidimensional
@@ -373,10 +373,10 @@ def grad(cost, wrt, consider_constant=None,
 
     Parameters
     ----------
-    cost : scalar (0-dimensional) tensor variable or None
+    cost : :class:`~theano.gof.Variable` scalar (0-dimensional) tensor variable or None
         Value with respect to which we are differentiating.  May be
         `None` if known_grads is provided.
-    wrt : variable or list of variables
+    wrt : :class:`~theano.gof.Variable` or list of Variables
         term[s] for which we want gradients
     consider_constant : list of variables
         expressions not to backpropagate through
@@ -654,7 +654,7 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
       to the variables in `end` (they are used as known_grad in
       theano.grad).
 
-    :type cost: scalar (0-dimensional) variable
+    :type cost: :class:`~theano.gof.Variable` scalar (0-dimensional) variable
     :param cost:
       Additional costs for which to compute the gradients.  For
       example, these could be weight decay, an l1 constraint, MSE,

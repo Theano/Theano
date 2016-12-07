@@ -864,6 +864,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         and 'float64'. Default is the value of
         :attr:`config.dnn.conv.precision`.
 
+
     .. warning:: The cuDNN library only works with GPUs that have a compute
         capability of 3.0 or higer. This means that older GPUs will not
         work with this Op.
@@ -1254,6 +1255,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     pad : tuple
         (padX, padY) or (padX, padY, padZ)
         default: (0, 0)
+
 
     .. warning:: The cuDNN library only works with GPU that have a compute
         capability of 3.0 or higer.  This means that older GPU will not

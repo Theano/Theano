@@ -2193,7 +2193,7 @@ def relu(x, alpha=0):
     ----------
     x : symbolic tensor
         Tensor to compute the activation function for.
-    alpha : scalar or tensor, optional
+    alpha : `scalar or tensor, optional`
         Slope for negative input, usually between 0 and 1. The default value
         of 0 will lead to the standard rectifier, 1 will lead to
         a linear activation function, and any value in between will give a
