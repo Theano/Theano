@@ -14,7 +14,8 @@ from theano.tensor.nnet.abstract_conv import (get_conv_output_shape,
                                               get_conv_gradweights_shape,
                                               get_conv_gradinputs_shape,
                                               check_conv_gradinputs_shape,
-                                              assert_conv_shape)
+                                              assert_conv_shape,
+                                              assert_shape)
 from theano.tensor.nnet.abstract_conv import AbstractConv2d
 from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradInputs
 from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradWeights
@@ -224,6 +225,23 @@ class TestAssertConvShape(unittest.TestCase):
         assert_raises(AssertionError, f, 3, 3, -1, 3)
         assert_raises(AssertionError, f, 3, -1, 3, 3)
         assert_raises(AssertionError, f, -1, 3, 3, 3)
+
+
+class TestAssertShape(unittest.TestCase):
+    def test_basic(self):
+        x = tensor.tensor4()
+        s1 = tensor.iscalar()
+        s2 = tensor.iscalar()
+        expected_shape = [None, s1, s2, None]
+        f = theano.function([x, s1, s2], assert_shape(x, expected_shape))
+
+        v = numpy.zeros((3, 5, 7, 11), dtype='float32')
+        self.assertEqual(0, numpy.sum(f(v, 5, 7)))
+
+        assert_raises(AssertionError, f, v, 5, 0)
+        assert_raises(AssertionError, f, v, 5, 9)
+        assert_raises(AssertionError, f, v, 0, 7)
+        assert_raises(AssertionError, f, v, 7, 7)
 
 
 class BaseTestConv(object):
