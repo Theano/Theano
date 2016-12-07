@@ -2029,6 +2029,7 @@ def dnn_pool(img, ws, stride=None, mode='max', pad=None):
         pad_d is the number of zero-valued pixels added to each of the front
         and back borders (3D pooling only).
 
+
     .. warning:: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
       work with this Op.

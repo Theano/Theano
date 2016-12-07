@@ -278,15 +278,15 @@ Note
 
 Parameters
 ----------
-a : (M, M) symbolix matrix
+a : `(M, M) symbolix matrix`
     A square matrix
-b : (M,) or (M, N) symbolic vector or matrix
+b : `(M,) or (M, N) symbolic vector or matrix`
     Right hand side matrix in ``a x = b``
 
 
 Returns
 -------
-x : (M, ) or (M, N) symbolic vector or matrix
+x : `(M, ) or (M, N) symbolic vector or matrix`
     x will have the same shape as b
 """
 # lower and upper triangular solves

@@ -358,6 +358,7 @@ def cumsum(x, axis=None):
         The axis along which the cumulative sum is computed.
         The default (None) is to compute the cumsum over the flattened array.
 
+
     .. versionadded:: 0.7
 
     """
@@ -483,6 +484,7 @@ def cumprod(x, axis=None):
         The axis along which the cumulative product is computed.
         The default (None) is to compute the cumprod over the flattened array.
 
+
     .. versionadded:: 0.7
 
     """
@@ -554,6 +556,7 @@ def diff(x, n=1, axis=-1):
     axis
         The axis along which the difference is taken, default is the last axis.
 
+
     .. versionadded:: 0.6
 
     """
@@ -581,6 +584,7 @@ def bincount(x, weights=None, minlength=None, assert_nonneg=False):
     assert_nonneg : A flag that inserts an assert_op to check if
         every input x is nonnegative.
         Optional.
+
 
     .. versionadded:: 0.6
 
@@ -788,7 +792,8 @@ def repeat(x, repeats, axis=None):
     ----------
     x
         Input data, tensor variable.
-    repeats : int, scalar or tensor variable
+    repeats
+        int, scalar or tensor variable
     axis : int, optional
 
     See Also
