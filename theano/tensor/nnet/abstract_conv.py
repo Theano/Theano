@@ -501,7 +501,7 @@ def assert_shape(x, expected_shape, msg='Unexpected shape.'):
         if expected_shape[i] is not None:
             tests.append(theano.tensor.eq(shape[i], expected_shape[i]))
     if tests:
-        return Assert(msg)(x, theano.tensor.all(tests))
+        return Assert(msg)(x, *tests)
     else:
         return x
 
