@@ -6,6 +6,8 @@ LABEL com.nvidia.theano.version="0.8.2"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
+		ca-certificates \
+		curl \
         libopenblas-dev \
         python-dev && \
     rm -rf /var/lib/apt/lists/*
