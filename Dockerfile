@@ -14,37 +14,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python-scipy && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade pip setuptools wheel
-RUN pip install --upgrade --no-cache-dir nose nose-parameterized
+RUN pip install --upgrade --no-cache-dir pip setuptools wheel && \
+    pip install --upgrade --no-cache-dir nose nose-parameterized
 
-WORKDIR /workspace
+WORKDIR /opt/theano
 COPY . .
 
-RUN pip install -e .
+RUN umask 0000 & \
+    pip install -e .
 
+WORKDIR /workspace
+COPY README.txt .
+COPY LICENSE.txt .
 COPY theanorc /workspace/.theanorc
 ENV THEANORC /workspace/.theanorc
 
-RUN chmod -R a+w /workspace
-
-################################################################################
-# Show installed packages
-################################################################################
-
-RUN echo "------------------------------------------------------" && \
-    echo "-- INSTALLED PACKAGES --------------------------------" && \
-    echo "------------------------------------------------------" && \
-    echo "[[dpkg -l]]" && \
-    dpkg -l && \
-    echo "" && \
-    echo "[[pip list]]" && \
-    pip list && \
-    echo "" && \
-    echo "------------------------------------------------------" && \
-    echo "-- FILE SIZE, DATE, HASH -----------------------------" && \
-    echo "------------------------------------------------------" && \
-    echo "[[find /usr/bin /usr/sbin /usr/lib /usr/local /workspace -type f | xargs ls -al]]" && \
-    (find /usr/bin /usr/sbin /usr/lib /usr/local /workspace -type f | xargs ls -al || true) && \
-    echo "" && \
-    echo "[[find /usr/bin /usr/sbin /usr/lib /usr/local /workspace -type f | xargs md5sum]]" && \
-    (find /usr/bin /usr/sbin /usr/lib /usr/local /workspace -type f | xargs md5sum || true)
+RUN ln -sf /opt/theano/benchmark /workspace && \
+    chmod a+w /opt/theano /workspace
