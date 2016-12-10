@@ -7,18 +7,18 @@ LABEL com.nvidia.theano.version="0.8.2"
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
         libopenblas-dev \
-        python-dev \
-        python-pip \
-        python-nose \
-        python-numpy \
-        python-scipy && \
+        python-dev && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install --upgrade --no-cache-dir pip setuptools wheel && \
-    pip install --upgrade --no-cache-dir nose nose-parameterized
+RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
+    python get-pip.py && \
+    rm get-pip.py
 
 WORKDIR /opt/theano
 COPY . .
+
+RUN pip install --upgrade --no-cache-dir pip setuptools wheel && \
+    cat requirement-rtd.txt | xargs -n1 pip install --no-cache-dir
 
 RUN umask 0000 & \
     pip install -e .
