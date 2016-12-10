@@ -1582,7 +1582,7 @@ Linear Algebra
     :param Y: right term
     :type X: symbolic tensor
     :type Y: symbolic tensor
-    :rtype: symbolic matrix or vector
+    :rtype: `symbolic matrix or vector`
     :return: the inner product of `X` and `Y`.
 
 .. function:: outer(X, Y)

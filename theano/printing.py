@@ -60,7 +60,7 @@ def debugprint(obj, depth=-1, print_type=False,
                used_ids=None):
     """Print a computation graph as text to stdout or a file.
 
-    :type obj: Variable, Apply, or Function instance
+    :type obj: :class:`~theano.gof.Variable`, Apply, or Function instance
     :param obj: symbolic thing to print
     :type depth: integer
     :param depth: print graph to this depth (-1 for unlimited)

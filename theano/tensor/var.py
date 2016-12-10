@@ -314,6 +314,7 @@ class _tensor_py_operators(object):
             The length of the shape. Passing None here means for
             Theano to try and guess the length of `shape`.
 
+
         .. warning:: This has a different signature than numpy's
                      ndarray.reshape!
                      In numpy you do not need to wrap the shape arguments

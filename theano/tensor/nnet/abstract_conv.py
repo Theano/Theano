@@ -864,7 +864,7 @@ def bilinear_upsampling(input,
         mini-batch of feature map stacks, of shape (batch size,
         input channels, input rows, input columns) that will be upsampled.
 
-    ratio: int or Constant or Scalar Tensor of int* dtype
+    ratio: `int or Constant or Scalar Tensor of int* dtype`
         the ratio by which the input is upsampled in the 2D space (row and
         col size).
 
