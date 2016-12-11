@@ -34,7 +34,7 @@ class TestGpuCumOp(theano.tensor.tests.test_extra_ops.TestCumOp):
 
     @cum_modes
     def test_infer_shape(self, mode):
-        # GpuCum is only defined for float32 for now, so we skip it
+        # GpuCumOp is only defined for float32 for now, so we skip it
         # in the unsupported cases
         op_class = partial(self.op_class, mode=mode)
         gpucumop_supported_dtypes = ('float32',)

@@ -248,6 +248,8 @@ class CumOp(theano.Op):
     __props__ = ("axis", "mode")
 
     def __init__(self, axis=None, mode='add'):
+        if mode not in ('add', 'mul'):
+            raise ValueError('%s: Unknown mode "%s"' % (type(self).__name__, mode))
         self.axis = axis
         self.mode = mode
 
@@ -270,32 +272,34 @@ class CumOp(theano.Op):
     def grad(self, inputs, output_gradients):
         x, = inputs
         gi, = output_gradients
-        if self.mode == 'mul':
-            fx = cumprod(x, axis=self.axis)
-        noimpl = NotImplementedError(
-            'CumOp: unknown gradient for mode %s' % self.mode)
 
         if self.axis is None:
             if self.mode == 'add':
                 return [cumsum(gi[::-1])[::-1].reshape(x.shape)]
             elif self.mode == 'mul':
+                fx = cumprod(x, axis=self.axis)
                 return [cumsum(
                     (fx * gi)[::-1])[::-1].reshape(x.shape) / x]
             else:
-                raise noimpl
+                raise NotImplementedError(
+                    '%s: unknown gradient for mode "%s"' %
+                    (type(self).__name__, self.mode))
 
         reverse_slicing = [slice(None, None, None)] * gi.ndim
         reverse_slicing[self.axis] = slice(None, None, -1)
         reverse_slicing = tuple(reverse_slicing)
+        # We need to reverse the gradients along ``self.axis``,
+        #  compute cumsum, then reverse again
         if self.mode == 'add':
             return [cumsum(gi[reverse_slicing], self.axis)[reverse_slicing]]
         elif self.mode == 'mul':
-            # We need to reverse the gradients along ``self.axis``,
-            #  compute cumsum, then reverse again
+            fx = cumprod(x, axis=self.axis)
             return [cumsum(
                 (fx * gi)[reverse_slicing], self.axis)[reverse_slicing] / x]
         else:
-            raise noimpl
+            raise NotImplementedError(
+                '%s: unknown gradient for mode "%s"' %
+                (type(self).__name__, self.mode))
 
     def infer_shape(self, node, shapes):
         if self.axis is None:
