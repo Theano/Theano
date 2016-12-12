@@ -1934,12 +1934,10 @@ class GCC_compiler(Compiler):
                                 "CXXFLAGS=" in line or
                                 "-march=native" in line):
                             continue
-                        elif "-march=" in line:
-                            selected_lines.append(line.strip())
-                        elif "-mtune=" in line:
-                            selected_lines.append(line.strip())
-                        elif "-target-cpu" in line:
-                            selected_lines.append(line.strip())
+                        for reg in ["-march=", "-mtune=",
+                                    "-target-cpu", "-mabi="]:
+                            if reg in line:
+                                selected_lines.append(line.strip())
                     lines = list(set(selected_lines))  # to remove duplicate
 
                 return lines
