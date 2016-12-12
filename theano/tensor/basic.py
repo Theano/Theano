@@ -4608,14 +4608,6 @@ class Reshape(Op):
         except Exception:
             raise ValueError('Cannot reshape input of shape %s to shape %s' %
                              (x.shape, shp))
-        if not out[0].flags.aligned:
-            raise RuntimeError("numpy.reshape returned a not aligned tensor."
-                               " NumPy versions 1.6.2, 1.7.0 and 1.7.1 have"
-                               " this problem for some input shape/new shape"
-                               " combinations. Use another NumPy version."
-                               " Input shape: %s, input stride: %s,"
-                               " new_shape: %s, new_strides: %s." % (
-                                   x.shape, x.strides, shp, out[0].strides))
 
     def connection_pattern(self, node):
         return [[True], [False]]
@@ -4688,7 +4680,7 @@ class Reshape(Op):
                            for i in xrange(self.ndim)])]
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         if isinstance(node.inputs[0], TensorVariable):
@@ -4719,15 +4711,6 @@ class Reshape(Op):
             if (!%(z)s)
             {
                 //The error message should have been set by PyArray_Newshape
-                %(fail)s;
-            }
-            if (!PyArray_ISALIGNED(%(z)s)) {
-                PyErr_Format(
-                    PyExc_RuntimeError,
-                    "PyArray_Newshape returned an object that isn't aligned!"
-                    " NumPy versions 1.6.2, 1.7.0 and 1.7.1 have"
-                    " this problem for some input shape/new shape"
-                    " combinations. Use another NumPy version.");
                 %(fail)s;
             }
             """ % locals()
@@ -4900,15 +4883,6 @@ class Flatten(Op):
         {
             //The error message should have been set by
             // PyArray_Newshape
-            %(fail)s;
-        }
-        if (!PyArray_ISALIGNED(%(out)s)) {
-            PyErr_Format(
-                PyExc_RuntimeError,
-                "PyArray_Newshape returned an object that isn't"
-                " aligned! NumPy versions 1.6.2, 1.7.0 and 1.7.1 have"
-                " this problem for some input shape/new shape"
-                " combinations. Use another NumPy version.");
             %(fail)s;
         }
         """ % locals()
@@ -5455,14 +5429,6 @@ class PermuteRowElements(Op):
                 out[y] = x[:]
             else:
                 out[:] = x[y]
-            if (numpy.__version__ <= '1.6.1' and
-                    out.size != numpy.uint32(out.size)):
-                warnings.warn(
-                    'Numpy versions 1.6.1 and below have a bug preventing '
-                    'advanced indexing from correctly filling arrays that '
-                    'are too big (>= 2^32 elements). It is possible that '
-                    'out (%s), with shape %s, is not correctly filled.'
-                    % (out, out.shape))
         else:
             xs0 = x.shape[0]
             ys0 = y.shape[0]

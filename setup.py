@@ -161,7 +161,6 @@ def do_setup():
           license=LICENSE,
           platforms=PLATFORMS,
           packages=find_packages(),
-          # 1.7.0 give too much warning related to numpy.diagonal.
           install_requires=['numpy>=1.9.1', 'scipy>=0.14', 'six>=1.9.0'],
           # pygments is a dependency for Sphinx code highlight
           extras_require={

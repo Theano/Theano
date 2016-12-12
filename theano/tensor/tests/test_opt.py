@@ -3003,9 +3003,6 @@ class Test_alloc_zero(unittest.TestCase):
                           for n in f.maker.fgraph.toposort()])
 
     def test_advancedincsubtensor_allocs0(self):
-        if tensor.inplace_increment is None:
-            raise SkipTest('NumPy version >= 1.8 not available')
-
         x = tensor.matrix()
         y = tensor.matrix()
         y0 = tensor.zeros_like(y)
@@ -3015,9 +3012,6 @@ class Test_alloc_zero(unittest.TestCase):
                           for n in f.maker.fgraph.toposort()])
 
     def test_advancedincsubtensor_allocs0t(self):
-        if tensor.inplace_increment is None:
-            raise SkipTest('NumPy version >= 1.8 not available')
-
         x = tensor.matrix()
         y = tensor.matrix()
         y0 = tensor.zeros_like(y)
@@ -3027,9 +3021,6 @@ class Test_alloc_zero(unittest.TestCase):
                           for n in f.maker.fgraph.toposort()])
 
     def test_advancedincsubtensor_allocs1(self):
-        if tensor.inplace_increment is None:
-            raise SkipTest('NumPy version >= 1.8 not available')
-
         x = tensor.matrix()
         y0 = tensor.constant(numpy.asarray(numpy.zeros_like((2, 2)),
                                            dtype=config.floatX))
@@ -3856,9 +3847,6 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
         self.mode = compile.mode.get_mode(mode)
 
     def test_advanced_inc_subtensor(self):
-        if tensor.inplace_increment is None:
-            raise SkipTest('NumPy version >= 1.8 not available')
-
         x = tensor.vector('x')
         y = tensor.scalar('y')
         i = tensor.matrix('i', dtype='int64')
@@ -3889,9 +3877,6 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
         self.assertTrue(check_stack_trace(f2, ops_to_check=tensor.AdvancedIncSubtensor))
 
     def test_advanced_inc_subtensor1(self):
-        if tensor.inplace_increment is None:
-            raise SkipTest('NumPy version >= 1.8 not available')
-
         x = tensor.vector('x')
         y = tensor.scalar('y')
         i = tensor.vector('i', dtype='int64')

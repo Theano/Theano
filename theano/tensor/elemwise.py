@@ -1419,18 +1419,8 @@ class CAReduce(Op):
                             "self.scalar_op (%s) has no attribute 'identity'"
                             % (variable, dimension, self.scalar_op)))
                 else:
-                    # Numpy 1.6 has a bug where you sometimes have to specify
-                    # "dtype='object'" in reduce for it to work, if the ufunc
-                    # was built with "frompyfunc". We need to find out if we
-                    # are in one of these cases (only "object" is supported in
-                    # the output).
-                    if ((self.ufunc.ntypes == 1) and
-                            (self.ufunc.types[0][-1] == 'O')):
-                        variable = self.ufunc.reduce(variable, dimension,
-                                                     dtype='object')
-                    else:
-                        variable = self.ufunc.reduce(variable, dimension,
-                                                     dtype=acc_dtype)
+                    variable = self.ufunc.reduce(variable, dimension,
+                                                 dtype=acc_dtype)
 
             variable = numpy.asarray(variable)
             if numpy.may_share_memory(variable, input):
@@ -1545,7 +1535,7 @@ class CAReduce(Op):
                 if input.type.dtype in ["float32", "float64"]:
                     identity = "-__builtin_inf()"
                 elif input.type.dtype.startswith("uint"):
-                    # numpy1.5.1 don't define NPY_MIN_UINT*
+                    # numpy does not define NPY_MIN_UINT*
                     identity = "0"
                 else:
                     identity = "NPY_MIN_" + str(input.type.dtype).upper()
