@@ -29,7 +29,8 @@ class OpFromGraph(gof.Op):
     inline: bool, optional
         if True, will cause the Op's original graph being used during
         compilation, otherwise will use a pre-compiled function inside.
-    grad_overrides: None | undef | function | list of (None|undef|function), optional
+    grad_overrides: None | undef | OpFromGraph instance | function | \
+        list of (None|undef|function), optional
         Used to override default gradient routine.
         Overriding function(s) must take two list of variable(s) as inputs,
         the original inputs and ups gradients
@@ -37,11 +38,15 @@ class OpFromGraph(gof.Op):
 
         - `None` : will use default gradient routine.
         - theano.utils.undef : No gradient will be used (zero)
+        - OpFromGraph instance: the OfG instance should accept inputs with same
+            order and types as specified in "inputs" and "outputs" arguments
         - function : must return list of Variable.
         - list : each function must return a single Variable. The order
             of the list must corresponds to inputs
-    rop_overrides: None | undef | function | list of (None|undef|function), optional
-        similar to grad_overrides, list order should match output instead
+    rop_overrides: None | undef | OpFromGraph instance | function | \
+        list of (None|undef|function), optional
+        similar to grad_overrides, list order should match two list of "inputs"
+        concatenated.
 
     TODO:
         - examples for a multi-layer mlp. where?
@@ -169,6 +174,9 @@ class OpFromGraph(gof.Op):
         return hash(type(self))
 
     def _recompute_grad_op(self):
+        if isinstance(self._grad_op, OpFromGraph):
+            self._grad_op_is_cached = True
+            return
         output_grads = [out_t() for out_t in self.output_types]
         if self._grad_op is None:
             self._grad_op = []
@@ -226,6 +234,9 @@ class OpFromGraph(gof.Op):
         self._grad_op_is_cached = True
 
     def _recompute_rop_op(self):
+        if isinstance(self._rop_op, OpFromGraph):
+            self._rop_op_is_cached = True
+            return
         eval_points = [inp_t() for inp_t in self.input_types]
         if self._rop_op is None:
             self._rop_op = []
