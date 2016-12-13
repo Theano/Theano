@@ -1597,7 +1597,7 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
     def grad(self, inp, grads):
         x, = inp
         g_sm, = grads
-        sm = self.make_node(x).outputs[0]
+        sm = self(x)
         return [GpuDnnSoftmaxGrad(
                 self.algo,
                 self.mode
@@ -1685,7 +1685,7 @@ class GpuDnnBatchNorm(DnnBase):
     def grad(self, inputs, grads):
         x, scale, bias, epsilon = inputs
         dy = grads[0]
-        _, x_mean, x_invstd = self.make_node(x, scale, bias, epsilon).outputs
+        _, x_mean, x_invstd = self(x, scale, bias, epsilon)
         return GpuDnnBatchNormGrad(self.mode)(x, dy, scale, x_mean,
                                               x_invstd, epsilon) + [DisconnectedType()()]
 
