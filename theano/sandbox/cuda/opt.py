@@ -49,7 +49,7 @@ from theano.sandbox.cuda.blas import (
     GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
 
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
-from theano.sandbox.cuda.cula import gpu_solve, cula_available
+from theano.sandbox.cuda.cusolver import gpu_solve
 
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -709,8 +709,6 @@ def local_gpu_solve(node):
     CpuSolve(host_from_gpu) -> host_from_gpu(GpuSolve)
 
     """
-    if not cula_available:
-        return
     if node.outputs[0].dtype != 'float32':
         return
     if isinstance(node.op, GpuFromHost):
