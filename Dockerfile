@@ -3,6 +3,13 @@ MAINTAINER NVIDIA CORPORATION <cudatools@nvidia.com>
 
 ENV THEANO_VERSION 0.8.2
 LABEL com.nvidia.theano.version="0.8.2"
+ENV NVIDIA_THEANO_VERSION 16.12
+
+ARG NVIDIA_BUILD_ID
+ENV NVIDIA_BUILD_ID ${NVIDIA_BUILD_ID:-<unknown>}
+LABEL com.nvidia.build.id="${NVIDIA_BUILD_ID}"
+ARG NVIDIA_BUILD_REF
+LABEL com.nvidia.build.ref="${NVIDIA_BUILD_REF}"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
@@ -22,14 +29,14 @@ COPY . .
 RUN pip install --upgrade --no-cache-dir pip setuptools wheel && \
     cat requirement-rtd.txt | xargs -n1 pip install --no-cache-dir
 
-RUN umask 0000 & \
-    pip install -e .
+RUN pip install -e .
 
 WORKDIR /workspace
-COPY README.txt .
-COPY LICENSE.txt .
+COPY NVREADME.md .
 COPY theanorc /workspace/.theanorc
 ENV THEANORC /workspace/.theanorc
+COPY benchmark .
+RUN chmod a+w /workspace
 
-RUN ln -sf /opt/theano/benchmark /workspace && \
-    chmod a+w /opt/theano /workspace
+COPY nvidia_entrypoint.sh /usr/local/bin
+ENTRYPOINT ["/usr/local/bin/nvidia_entrypoint.sh"]
