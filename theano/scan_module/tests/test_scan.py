@@ -5491,4 +5491,4 @@ def test_default_value_broadcasted():
     gW_x = theano.tensor.grad(cost, W_x)
     updates = [(W_x, W_x - 0.1 * gW_x)]
     f = theano.function([X], outputs=cost, updates=updates)
-    test = f(numpy.random.rand(10, in_size).astype(X.dtype))
+    f(numpy.random.rand(10, in_size).astype(X.dtype))
