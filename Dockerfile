@@ -32,11 +32,11 @@ RUN pip install --upgrade --no-cache-dir pip setuptools wheel && \
 RUN pip install -e .
 
 WORKDIR /workspace
-COPY NVREADME.md .
+COPY NVREADME.md README.md
+COPY benchmark benchmark
 COPY theanorc /workspace/.theanorc
 ENV THEANORC /workspace/.theanorc
-COPY benchmark .
-RUN chmod a+w /workspace
+RUN chmod -R a+w /workspace
 
 COPY nvidia_entrypoint.sh /usr/local/bin
 ENTRYPOINT ["/usr/local/bin/nvidia_entrypoint.sh"]
