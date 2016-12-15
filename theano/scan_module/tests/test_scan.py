@@ -5492,4 +5492,3 @@ def test_default_value_broadcasted():
     updates = [(W_x, W_x - 0.1 * gW_x)]
     f = theano.function([X], outputs=cost, updates=updates)
     test = f(numpy.random.rand(10, in_size).astype(X.dtype))
-    print(test)
