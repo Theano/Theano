@@ -407,6 +407,26 @@ def cumprod(x, axis=None):
     return CumOp(axis=axis, mode='mul')(x)
 
 
+# CumsumOp and CumprodOp are for compatibility with old version,
+# just in case unpickling a theano function with old Ops.
+class CumsumOp(theano.Op):
+    __props__ = ("axis",)
+
+    def __new__(typ, *args, **kwargs):
+        obj = object.__new__(CumOp, *args, **kwargs)
+        obj.mode = 'add'
+        return obj
+
+
+class CumprodOp(theano.Op):
+    __props__ = ("axis",)
+
+    def __new__(typ, *args, **kwargs):
+        obj = object.__new__(CumOp, *args, **kwargs)
+        obj.mode = 'mul'
+        return obj
+
+
 class DiffOp(theano.Op):
     # See function diff for docstring
 

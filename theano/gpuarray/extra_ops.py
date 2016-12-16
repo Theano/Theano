@@ -462,6 +462,18 @@ class GpuCumOp(GpuKernelBase, Op):
         return super(GpuCumOp, self).c_support_code_struct(node, nodename) + code
 
 
+# GpuCumsumOp exists only to serve backward compatibility.
+# Once an object is created, it will be converted to CumOp object.
+class GpuCumsumOp(GpuKernelBase, Op):
+    SUPPORTED_NDIMS = 3
+    __props__ = ("axis",)
+
+    def __new__(typ, *args, **kwargs):
+        obj = object.__new__(GpuCumOp, *args, **kwargs)
+        obj.mode = 'add'
+        return obj
+
+
 @register_opt('fast_compile')
 @op_lifter([CumOp])
 @register_opt2([CumOp], 'fast_compile')
