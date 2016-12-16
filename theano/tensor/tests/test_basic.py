@@ -2868,8 +2868,7 @@ class test_matmul(unittest.TestCase):
         assert result.shape[2] == second_val.shape[-1]
         assert numpy.allclose(
             result, numpy.dot(
-                first_val,
-                second_val.transpose(1, 2, 0)).transpose(2, 0, 1))
+                second_val.transpose(0, 2, 1), first_val.T).transpose(0, 2, 1))
 
 
 def test_batched_tensordot():
