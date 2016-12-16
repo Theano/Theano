@@ -36,6 +36,35 @@ else:
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
 
+def test_dnn_empty_batch():
+    img_shp = (0, 5, 6, 8)
+    kern_shp = (3, 5, 5, 6)
+    img = T.ftensor4('img')
+    kern = T.ftensor4('kern')
+    out = T.ftensor4('out')
+    desc = dnn.GpuDnnConvDesc(
+        border_mode='valid')(img.shape, kern.shape)
+
+    o = dnn.dnn_conv(img, kern)
+    f = theano.function([img, kern], o, mode=mode_with_gpu)
+    d = f(numpy.random.rand(*img_shp).astype('float32'),
+          numpy.random.rand(*kern_shp).astype('float32'))
+    assert d.shape == (0, 3, 2, 3)
+
+    out = gpu_alloc_empty(*kern_shp)
+    o = dnn.GpuDnnConvGradW()(img, kern, out, desc)
+    f = theano.function([img, kern], o, mode=mode_with_gpu)
+    d = f(numpy.random.rand(*img_shp).astype('float32'),
+          numpy.random.rand(*kern_shp).astype('float32'))
+
+    out = gpu_alloc_empty(*img_shp)
+    o = dnn.GpuDnnConvGradI()(kern, img, out, desc)
+    f = theano.function([img, kern], o, mode=mode_with_gpu)
+    d = f(numpy.random.rand(*img_shp).astype('float32'),
+          numpy.random.rand(*kern_shp).astype('float32'))
+    assert numpy.all(d == numpy.zeros(img_shp))
+
+
 def test_dnn_conv_desc_merge():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)

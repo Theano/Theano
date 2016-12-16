@@ -12,8 +12,6 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
     return 1;
   }
 
-  if (c_set_tensorNd(input, APPLY_SPECIFIC(input)) == -1)
-    return 1;
   if (c_set_filterNd(kerns, APPLY_SPECIFIC(kerns)) == -1)
     return 1;
 
@@ -30,7 +28,17 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
     return 1;
 #endif
 
-   if (c_set_tensorNd(*output, APPLY_SPECIFIC(output)) == -1)
+  if (CudaNdarray_HOST_DIMS(input)[0] == 0) {
+    // if input batch is empty, we return the empty output without calling cuDNN
+    // (which will fail on zero batch size)
+    return 0;
+  }
+
+  if (c_set_tensorNd(input, APPLY_SPECIFIC(input)) == -1)
+    return 1;
+
+
+  if (c_set_tensorNd(*output, APPLY_SPECIFIC(output)) == -1)
      return 1;
 
   {

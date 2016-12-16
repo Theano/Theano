@@ -12,8 +12,6 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
     return 1;
   }
 
-  if (c_set_tensorNd(output, APPLY_SPECIFIC(output)) == -1)
-    return 1;
   if (c_set_filterNd(kerns, APPLY_SPECIFIC(kerns)) == -1)
     return 1;
 
@@ -29,6 +27,14 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
   if (beta != 0.0 && CudaNdarray_CopyFromCudaNdarray(*input, im))
     return 1;
 #endif
+
+  if (CudaNdarray_HOST_DIMS(output)[0] == 0) {
+    // Zero batch size for output image, return zero batch size gradient
+    return 0;
+  }
+
+  if (c_set_tensorNd(output, APPLY_SPECIFIC(output)) == -1)
+    return 1;
 
   if (c_set_tensorNd(*input, APPLY_SPECIFIC(input)) == -1)
     return 1;
