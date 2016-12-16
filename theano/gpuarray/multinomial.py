@@ -318,8 +318,8 @@ KERNEL void k_multi_warp_multinomial_wor(
             // No need to renormalize after the last samples.
             if (c == (n_samples - 1))
                 break;
-            // renormalize the multinomial
-            for (ga_int k = 0; k < nb_outcomes; ++k)
+            // parallel renormalize the multinomial
+            for (ga_int k = LID_1; k < nb_outcomes; k+=LDIM_1)
             {
                 global_pvals_copy[k * pvals_col_stride + n * pvals_row_stride] /= cummul;
             }
@@ -442,7 +442,18 @@ KERNEL void k_multi_warp_multinomial_wor(
         args[9] = (void*)&strides[3];
         args[10] = (void*)&strides[4];
 
-        err = GpuKernel_call(&%(kname)s, 1, &nb_threads, &nb_blocks, 0, args);
+        size_t nb_threads2[2], nb_blocks2[2];
+        nb_threads2[0] = nb_threads;
+        nb_threads2[1] = 1;
+        // If we can't schedule enough threads parallelize the renormalization.
+        // I do this because we don't always use those extra threads.
+        if (nb_threads * nb_blocks < 2048)
+            nb_threads2[1] = 1024 / nb_threads;
+
+        nb_blocks2[0] = nb_blocks;
+        nb_blocks2[1] = 1;
+
+        err = GpuKernel_call(&%(kname)s, 2, nb_threads2, nb_blocks2, 0, args);
         if (err != GA_NO_ERROR) {
            PyErr_Format(
                 PyExc_RuntimeError,
@@ -458,7 +469,7 @@ KERNEL void k_multi_warp_multinomial_wor(
         return s
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 
 @register_opt('fast_compile')
