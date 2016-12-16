@@ -4271,7 +4271,8 @@ def test_join_inplace():
     data = numpy.array([3, 4, 5], dtype=theano.config.floatX)
     print (f(data, 0))
 
-    assert f(data, 0) is data
+    if theano.config.mode not in ["DebugMode", "DEBUG_MODE"]:
+        assert f(data, 0) is data
     assert numpy.allclose(f(data, 0), [3, 4, 5])
 
 
