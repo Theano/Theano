@@ -773,8 +773,11 @@ class Scan(PureOp):
                         # function exectution. Also, since an update is
                         # defined, a default value must also be (this is
                         # verified by DebugMode). Use an array of size 0 but
-                        # the right ndim and dtype.
-                        default_val = numpy.zeros([0] * inp.ndim,
+                        # the right ndim and dtype (use a shape of 1 on
+                        # broadcastable dimensions, 0 on the others).
+                        default_shape = [1 if _b else 0
+                                         for _b in inp.broadcastable]
+                        default_val = numpy.zeros(default_shape,
                                                   dtype=inp.dtype)
                         wrapped_inp = In(variable=inp, value=default_val,
                                          update=self.outputs[output_idx])
