@@ -340,11 +340,10 @@ class OpFromGraph(gof.Op):
         return self._grad_op(*(list(inputs) + list(output_grads)), return_list=True)
 
     def make_node(self, *inputs):
-        for input, type in zip(inputs, self.input_types):
-            if not type == input.type:
-                raise TypeError("Wrong type, expected %s but got %s" %
-                                (type, input.type))
-
+        num_expected_inps = len(self.local_inputs) - len(self.shared_inputs)
+        if len(inputs) != num_expected_inps:
+            raise ValueError("Expected %d inputs, got %d" % (num_expected_inps, len(inputs)))
+        inputs = [inp_t.filter_variable(inp) for inp, inp_t in izip(inputs, self.input_types)]
         apply_node = gof.Apply(
             self, list(inputs) + self.shared_inputs,
             [type() for type in self.output_types])
