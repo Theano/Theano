@@ -329,6 +329,9 @@ class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
                     if (cummul > *unis_n)
                     {
                         *z_nc = m;
+                        // No need to renormalize after the last samples.
+                        if (c == (n_samples - 1))
+                            break;
                         // renormalize the nth row of pvals, reuse (cummul-*pvals_nm) to initialize the sum
                         dtype_%(pvals)s sum = cummul - *pvals_nm;
                         dtype_%(pvals)s* pvals_n = (dtype_%(pvals)s*)PyArray_GETPTR2(pvals_copy, n, m);
@@ -434,7 +437,7 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
         return Op.perform(self, node, ins, outs)
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
     def c_support_code_apply(self, node, nodename):
         return """

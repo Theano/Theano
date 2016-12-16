@@ -315,6 +315,9 @@ KERNEL void k_multi_warp_multinomial_wor(
                     done = true;
                 }
             }
+            // No need to renormalize after the last samples.
+            if (c == (n_samples - 1))
+                break;
             // renormalize the multinomial
             for (ga_int k = 0; k < nb_outcomes; ++k)
             {
@@ -455,7 +458,7 @@ KERNEL void k_multi_warp_multinomial_wor(
         return s
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 
 @register_opt('fast_compile')
