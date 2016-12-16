@@ -2773,7 +2773,7 @@ def test_batched_dot():
 
 class test_matmul(unittest.TestCase):
     def setUp(self):
-        self.np_fct = numpy.matmul
+        pass
 
     def test_matmul_3d_3d(self):
         # TODO fill this up once matmul support arbitrary dimensions
@@ -2789,7 +2789,7 @@ class test_matmul(unittest.TestCase):
         result = result_fn(first_val, second_val)
         assert result.shape[0] == first_val.shape[0]
         assert result.shape[1] == second_val.shape[1]
-        assert numpy.allclose(result, self.np_fct(first_val, second_val))
+        assert numpy.allclose(result, numpy.dot(first_val, second_val))
 
     def test_matmul_2d_1d(self):
         first = theano.tensor.matrix("first")
@@ -2801,7 +2801,7 @@ class test_matmul(unittest.TestCase):
         result = result_fn(first_val, second_val)
         assert result.ndim == 1
         assert result.shape[0] == first_val.shape[0]
-        assert numpy.allclose(result, self.np_fct(first_val, second_val))
+        assert numpy.allclose(result, numpy.dot(first_val, second_val))
 
     def test_matmul_1d_2d(self):
         first = theano.tensor.vector("first")
@@ -2813,7 +2813,7 @@ class test_matmul(unittest.TestCase):
         result = result_fn(first_val, second_val)
         assert result.ndim == 1
         assert result.shape[0] == second_val.shape[1]
-        assert numpy.allclose(result, self.np_fct(first_val, second_val))
+        assert numpy.allclose(result, numpy.dot(first_val, second_val))
 
     def test_matmul_3d_1d(self):
         first = theano.tensor.tensor3("first")
@@ -2825,7 +2825,7 @@ class test_matmul(unittest.TestCase):
         result = result_fn(first_val, second_val)
         assert result.ndim == 2
         assert result.shape == first_val.shape[:-1]
-        assert numpy.allclose(result, self.np_fct(first_val, second_val))
+        assert numpy.allclose(result, numpy.dot(first_val, second_val))
 
     def test_matmul_3d_2d(self):
         first = theano.tensor.tensor3("first")
@@ -2838,7 +2838,7 @@ class test_matmul(unittest.TestCase):
         assert result.ndim == 3
         assert result.shape[:-1] == first_val.shape[:-1]
         assert result.shape[-1] == second_val.shape[-1]
-        assert numpy.allclose(result, self.np_fct(first_val, second_val))
+        assert numpy.allclose(result, numpy.dot(first_val, second_val))
 
     def test_matmul_1d_3d(self):
         first = theano.tensor.vector("first")
@@ -2851,7 +2851,8 @@ class test_matmul(unittest.TestCase):
         assert result.ndim == 2
         assert result.shape[0] == second_val.shape[0]
         assert result.shape[1] == second_val.shape[2]
-        assert numpy.allclose(result, self.np_fct(first_val, second_val))
+        assert numpy.allclose(
+            result, numpy.dot(second_val.transpose(0, 2, 1), first_val))
 
     def test_matmul_2d_3d(self):
         first = theano.tensor.matrix("first")
@@ -2865,7 +2866,10 @@ class test_matmul(unittest.TestCase):
         assert result.shape[0] == second_val.shape[0]
         assert result.shape[1] == first_val.shape[0]
         assert result.shape[2] == second_val.shape[-1]
-        assert numpy.allclose(result, self.np_fct(first_val, second_val))
+        assert numpy.allclose(
+            result, numpy.dot(
+                first_val,
+                second_val.transpose(1, 2, 0)).transpose(2, 0, 1))
 
 
 def test_batched_tensordot():
