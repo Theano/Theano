@@ -5797,8 +5797,9 @@ def dot(a, b):
     else:
         return _dot(a, b)
 
+
 def matmul(a, b):
-    """
+    '''
     Compute matrix multiplication of two variables
 
     This routine is similar to theano.tensosr.dot, except:
@@ -5809,61 +5810,44 @@ def matmul(a, b):
 
     Notes
     -----
-    The runtime behavior is same as numpy.matmul
-    Since python 3.5, this operation can be used via "@" operator
-    """
+    Compared to numpy.matmul, this operation currently does not
+    allow both operand having dimensions larger than two.
+    With python 3.5+, this operation can be used via "@" operator
+    '''
+    # TODO figure out a way to completely and efficiently support
+    # numpy style matmul
     a, b = tuple(map(as_tensor_variable, (a, b)))
-    if a.ndim == 0:
+    if a.ndim == 0 or b.ndim == 0:
         raise ValueError(
-            'matmul: 0d tensor (scalar) operand is not allowed, use "*" instead', a)
-
-    if b.ndim == 0:
-        raise ValueError(
-            'matmul: 0d tensor (scalar) operand is not allowed, use "*" instead', b)
-
-    maxdim = a.ndim if a.ndim > b.ndim else b.ndim
-    if maxdim == 1:
-        raise ValueError(
-            'matmul: requires at least one argument with ndim >= 2', (a,b))
-
-    if maxdim == 2:
-        return _dot(a, b)
+            'matmul: 0d tensor (scalar) operand is not allowed, use "*" instead')
 
     if a.ndim > b.ndim:
-        if b.ndim == 1:
-            pre_shuf = ['x'] * (a.ndim-2) + [0, 'x']
-            post_shuf = list(range(a.ndim-1))
-            return batched_dot(
-                a, b.dimshuffle(*pre_shuf)).dimshuffle(*post_shuf)
-        else:
-            pre_shuf = ['x'] * (a.ndim-b.ndim) + list(range(b.ndim))
-            return batched_dot(a, b.dimshuffle(*pre_shuf))
-    elif a.ndim < b.ndim:
-        if a.ndim == 1:
-            pre_shuf = ['x'] * (b.ndim-1)
-            pre_shuf.append(0)
-            post_shuf = list(range(b.ndim-2))
-            post_shuf.append(b.ndim-1)
-            return batched_dot(
-                a.dimshuffle(*pre_shuf), b).dimshuffle(*post_shuf)
-        else:
-            pre_shuf = ['x'] * (b.ndim-a.ndim) + list(range(a.ndim))
-            return batched_dot(a.dimshuffle(*pre_shuf), b)
+        maxdim, mindim, altb = a.ndim, b.ndim, True
     else:
-        return batched_dot(a, b)
-    if a.ndim == 1:
-        return batched_dot(a.dimshuffle(*pre_shuf), b).dimshuffle(*post_shuf)
-    elif b.ndim == 1:
-        pre_shuf = ('x',)*(b.ndim-1)
-        post_shuf = tuple(range(1, b.ndim))
-        return batched_dot(a, b.dimshuffle(*pre_shuf)).dimshuffle(*post_shuffle)
-    else:
-        return batched_dot(a, b)
+        maxdim, mindim, altb = b.ndim, a.ndim, False
 
+    if maxdim <= 2:
+        return _dot(a, b)
+    elif mindim > 2:
+        raise ValueError(
+            'matmul: curently does not support batched mode with broadcasting,'
+            ' this requires at least one tensor with dimensions <= 2,'
+            ' got %d' % mindim)
+
+    if altb:
+        return dot(a, b)
+    else:
+        shuf = list(range(maxdim))
+        shuf[-1], shuf[-2] = shuf[-2], shuf[-1]
+        if mindim == 2:
+            return dot(b.dimshuffle(shuf), a.T).dimshuffle(shuf)
+        else:
+            return dot(b.dimshuffle(shuf), a)
 
 #########################
 # Linalg : TensorDot
 #########################
+
 
 def _tensordot_as_dot(a, b, axes, dot, batched):
     """
