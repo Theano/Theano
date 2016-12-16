@@ -388,7 +388,8 @@ KERNEL void k_multi_warp_multinomial_wor(
 
     if (theano_prep_output(&out, 2, dims, GA_LONG,
                            GA_C_ORDER, %(ctx)s) != 0){
-      %(fail)s
+        Py_DECREF(pvals_copy);
+        %(fail)s
     }
 
     %(out)s = out;
@@ -416,6 +417,7 @@ KERNEL void k_multi_warp_multinomial_wor(
                 PyExc_ValueError,
                 "Multinomial is not implemented for so many rows in the matrix (%%i)",
                 nb_multi);
+            Py_DECREF(pvals_copy);
             %(fail)s
         }
 
@@ -460,16 +462,18 @@ KERNEL void k_multi_warp_multinomial_wor(
                 "gpuarray error: %%s: %%s.\\n",
                 "k_multi_warp_%(name)s",
                 GpuKernel_error(&%(kname)s, err));
-            %(fail)s;
+           Py_DECREF(pvals_copy);
+           %(fail)s;
         }
         if(%(sync)d)
             GpuArray_sync(&(out->ga));
+        Py_DECREF(pvals_copy);
     } // END NESTED SCOPE
         """ % locals()
         return s
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
 
 @register_opt('fast_compile')
