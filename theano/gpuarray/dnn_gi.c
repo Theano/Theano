@@ -38,11 +38,6 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     return 1;
   }
 
-  if (c_set_tensorNd(output, APPLY_SPECIFIC(output)) == -1)
-    return 1;
-  if (c_set_filter(kerns, APPLY_SPECIFIC(kerns)) == -1)
-    return 1;
-
   switch (im->ga.typecode) {
   case GA_DOUBLE:
     alpha_p = (void *)&alpha;
@@ -70,12 +65,68 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     return 1;
 #endif
 
+  if (PyGpuArray_DIMS(im)[0] == 0 || PyGpuArray_DIMS(kerns)[0] == 0 || PyGpuArray_DIMS(kerns)[1] == 0) {
+    int err2 = GpuArray_memset(&(*input)->ga, 0);
+    if (err2 != GA_NO_ERROR) {
+        PyErr_Format(PyExc_RuntimeError,
+                     "GpuDnnConv grad wrt. inputs could not fill the output with zeros: %d", err2);
+        return 1;
+    }
+    return 0;
+  }
+
+  if (c_set_tensorNd(output, APPLY_SPECIFIC(output)) == -1)
+    return 1;
+  if (c_set_filter(kerns, APPLY_SPECIFIC(kerns)) == -1)
+    return 1;
   if (c_set_tensorNd(*input, APPLY_SPECIFIC(input)) == -1)
     return 1;
 
   cudnnConvolutionBwdDataAlgo_t algo = CONV_ALGO;
 
   cuda_enter(c->ctx);
+
+  int expected_output_dims[5] = {0};
+  err = cudnnGetConvolutionNdForwardOutputDim(desc, APPLY_SPECIFIC(input), APPLY_SPECIFIC(kerns),
+                                              PyGpuArray_NDIM(im), expected_output_dims);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    PyErr_Format(PyExc_RuntimeError, "error computing convolution output dim: %s",
+                 cudnnGetErrorString(err));
+    cuda_exit(c->ctx);
+    return 1;
+  }
+  if (PyGpuArray_NDIM(im) == 4) {
+    if ((PyGpuArray_DIMS(output)[0] != expected_output_dims[0]) ||
+        (PyGpuArray_DIMS(output)[1] != expected_output_dims[1]) ||
+        (PyGpuArray_DIMS(output)[2] != expected_output_dims[2]) ||
+        (PyGpuArray_DIMS(output)[3] != expected_output_dims[3])) {
+      PyErr_Format(PyExc_ValueError, "impossible convolution output dim: expected %ldx%ldx%ldx%ld"
+                                     " but received gradient with shape %ldx%ldx%ldx%ld",
+                   expected_output_dims[0], expected_output_dims[1],
+                   expected_output_dims[2], expected_output_dims[3],
+                   PyGpuArray_DIMS(output)[0], PyGpuArray_DIMS(output)[1],
+                   PyGpuArray_DIMS(output)[2], PyGpuArray_DIMS(output)[3]);
+      cuda_exit(c->ctx);
+      return 1;
+    }
+  } else if (PyGpuArray_NDIM(im) == 5) {
+    if ((PyGpuArray_DIMS(output)[0] != expected_output_dims[0]) ||
+        (PyGpuArray_DIMS(output)[1] != expected_output_dims[1]) ||
+        (PyGpuArray_DIMS(output)[2] != expected_output_dims[2]) ||
+        (PyGpuArray_DIMS(output)[3] != expected_output_dims[3]) ||
+        (PyGpuArray_DIMS(output)[4] != expected_output_dims[4])) {
+      PyErr_Format(PyExc_ValueError, "impossible convolution output dim: expected %ldx%ldx%ldx%ldx%ld"
+                                     " but received gradient with shape %ldx%ldx%ldx%ldx%ld",
+                   expected_output_dims[0], expected_output_dims[1],
+                   expected_output_dims[2], expected_output_dims[3],
+                   expected_output_dims[4],
+                   PyGpuArray_DIMS(output)[0], PyGpuArray_DIMS(output)[1],
+                   PyGpuArray_DIMS(output)[2], PyGpuArray_DIMS(output)[3],
+                   PyGpuArray_DIMS(output)[4]);
+      cuda_exit(c->ctx);
+      return 1;
+    }
+  }
 
 #ifdef CHOOSE_ALGO
 #ifndef CHOOSE_ONCE

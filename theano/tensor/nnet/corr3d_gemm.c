@@ -188,9 +188,17 @@ PyArrayObject* corr3dMM(PyArrayObject* bottom,
     const int dil_kW = (kW - 1) * dilW + 1;
     const int dil_kD = (kD - 1) * dilD + 1;
     // top: (batchSize, nFilters, topHeight, topWidth, topDepth)
-    const int topHeight = (bottomHeight + 2*padH - dil_kH) / dH + 1;
-    const int topWidth  = (bottomWidth + 2*padW - dil_kW) / dW + 1;
-    const int topDepth  = (bottomDepth + 2*padD - dil_kD) / dD + 1;
+    const int topHeightNoDH = (bottomHeight + 2*padH - dil_kH);
+    const int topWidthNoDW  = (bottomWidth + 2*padW - dil_kW);
+    const int topDepthNoDD  = (bottomDepth + 2*padD - dil_kD);
+    // the above values might be negative so we need to use Python-like
+    // flooring integer division to be compatible with get_conv_output.
+    // note: this macro implements Python's // for negative x only
+#define _CONV_FLOORDIV_X(x,y) ((x < 0) ? (- ((-x) / y) - (((-x) %% y) == 0 ? 0 : 1)) : (x / y))
+    const int topHeight = _CONV_FLOORDIV_X(topHeightNoDH, dH) + 1;
+    const int topWidth  = _CONV_FLOORDIV_X(topWidthNoDW, dW) + 1;
+    const int topDepth  = _CONV_FLOORDIV_X(topDepthNoDD, dD) + 1;
+#undef _CONV_FLOORDIV
     if (batchSize != PyArray_DIMS(top)[0] ||
             nFilters != PyArray_DIMS(top)[1] ||
             topHeight != PyArray_DIMS(top)[2] ||
@@ -245,7 +253,23 @@ PyArrayObject* corr3dMM(PyArrayObject* bottom,
     char Trans = 'T';
     PyArrayObject *output;
 
-    if (direction == 0) {  // forward pass
+    if (batchSize == 0 || nChannels == 0 || nFilters == 0) {
+        switch(direction) {
+        case 0:
+            output = top;
+            break;
+        case 1:
+            output = weight;
+            break;
+        case 2:
+            output = bottom;
+            break;
+        default:
+            return NULL;
+        }
+        PyArray_FILLWBYTE(output, 0);
+    }
+    else if (direction == 0) {  // forward pass
         output = top;
         // valid correlation: im3d2col, then gemm
         // Iterate over batch

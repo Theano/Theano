@@ -12,11 +12,6 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
     return 1;
   }
 
-  if (c_set_tensorNd(output, APPLY_SPECIFIC(output)) == -1)
-    return 1;
-  if (c_set_filterNd(kerns, APPLY_SPECIFIC(kerns)) == -1)
-    return 1;
-
   int nb_dim = CudaNdarray_NDIM(output);
 
 #ifdef CONV_INPLACE
@@ -30,8 +25,63 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
     return 1;
 #endif
 
+  if (CudaNdarray_DIMS(im)[0] == 0 || CudaNdarray_DIMS(kerns)[0] == 0 || CudaNdarray_DIMS(kerns)[1] == 0) {
+    cudaError_t err2 = cudaMemset((*input)->devdata, 0,
+                                  CudaNdarray_SIZE(*input) * sizeof(real));
+    if (err2 != cudaSuccess) {
+      PyErr_Format(PyExc_RuntimeError,
+                   "GpuDnnConv grad wrt. inputs could not fill the output with zeros: %s",
+                   cudaGetErrorString(err2));
+      return 1;
+    }
+    return 0;
+  }
+
+  if (c_set_tensorNd(output, APPLY_SPECIFIC(output)) == -1)
+    return 1;
+  if (c_set_filterNd(kerns, APPLY_SPECIFIC(kerns)) == -1)
+    return 1;
   if (c_set_tensorNd(*input, APPLY_SPECIFIC(input)) == -1)
     return 1;
+
+  int expected_output_dims[5] = {0};
+  err = cudnnGetConvolutionNdForwardOutputDim(desc, APPLY_SPECIFIC(input), APPLY_SPECIFIC(kerns),
+                                              nb_dim, expected_output_dims);
+  if (err != CUDNN_STATUS_SUCCESS) {
+    PyErr_Format(PyExc_RuntimeError, "error computing convolution output dim: %s",
+                 cudnnGetErrorString(err));
+    return 1;
+  }
+  if (nb_dim == 4) {
+    if ((CudaNdarray_HOST_DIMS(output)[0] != expected_output_dims[0]) ||
+        (CudaNdarray_HOST_DIMS(output)[1] != expected_output_dims[1]) ||
+        (CudaNdarray_HOST_DIMS(output)[2] != expected_output_dims[2]) ||
+        (CudaNdarray_HOST_DIMS(output)[3] != expected_output_dims[3])) {
+      PyErr_Format(PyExc_ValueError, "impossible convolution output dim: expected %ldx%ldx%ldx%ld"
+                                     " but received gradient with shape %ldx%ldx%ldx%ld",
+                   (long int)expected_output_dims[0], (long int)expected_output_dims[1],
+                   (long int)expected_output_dims[2], (long int)expected_output_dims[3],
+                   (long int)CudaNdarray_HOST_DIMS(output)[0], (long int)CudaNdarray_HOST_DIMS(output)[1],
+                   (long int)CudaNdarray_HOST_DIMS(output)[2], (long int)CudaNdarray_HOST_DIMS(output)[3]);
+      return 1;
+    }
+  } else if (nb_dim == 5) {
+    if ((CudaNdarray_HOST_DIMS(output)[0] != expected_output_dims[0]) ||
+        (CudaNdarray_HOST_DIMS(output)[1] != expected_output_dims[1]) ||
+        (CudaNdarray_HOST_DIMS(output)[2] != expected_output_dims[2]) ||
+        (CudaNdarray_HOST_DIMS(output)[3] != expected_output_dims[3]) ||
+        (CudaNdarray_HOST_DIMS(output)[4] != expected_output_dims[4])) {
+      PyErr_Format(PyExc_ValueError, "impossible convolution output dim: expected %ldx%ldx%ldx%ldx%ld"
+                                     " but received gradient with shape %ldx%ldx%ldx%ldx%ld",
+                   (long int)expected_output_dims[0], (long int)expected_output_dims[1],
+                   (long int)expected_output_dims[2], (long int)expected_output_dims[3],
+                   (long int)expected_output_dims[4],
+                   (long int)CudaNdarray_HOST_DIMS(output)[0], (long int)CudaNdarray_HOST_DIMS(output)[1],
+                   (long int)CudaNdarray_HOST_DIMS(output)[2], (long int)CudaNdarray_HOST_DIMS(output)[3],
+                   (long int)CudaNdarray_HOST_DIMS(output)[4]);
+      return 1;
+    }
+  }
 
   {
     size_t worksize;

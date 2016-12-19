@@ -11,6 +11,7 @@ import theano
 
 from theano.tensor import as_tensor_variable, patternbroadcast
 from theano.tensor import get_scalar_constant_value, NotScalarConstantError
+from theano.tensor.opt import Assert
 from theano.gof import Apply, Op
 
 from six.moves import xrange
@@ -51,11 +52,11 @@ def get_conv_output_shape(image_shape, kernel_shape,
         or numeric). If it is a string, it must be 'valid', 'half' or 'full'.
         If it is a tuple, its two (or three) elements respectively correspond
         to the padding on height and width (and possibly depth) axis.
-    subsample: tuple of int (symbolic or numeric). Its or three elements
+    subsample: tuple of int (symbolic or numeric). Its two or three elements
         espectively correspond to the subsampling on height and width (and
         possibly depth) axis.
-    filter_dilation: tuple of int (symbolic or numeric). Its two elements
-        correspond respectively to the dilation on height and width axis.
+    filter_dilation: tuple of int (symbolic or numeric). Its two or three
+        elements correspond respectively to the dilation on height and width axis.
 
     Returns
     -------
@@ -135,6 +136,374 @@ def get_conv_shape_1axis(image_shape, kernel_shape, border_mode,
     out_shp = out_shp + 1
 
     return out_shp
+
+
+def get_conv_gradweights_shape(image_shape, top_shape,
+                               border_mode, subsample,
+                               filter_dilation=None):
+    """
+    This function tries to compute the kernel shape of convolution gradWeights.
+
+    The weights shape can only be computed exactly when subsample is 1 and
+    border_mode is not 'half'. If subsample is not 1 or border_mode is 'half',
+    this function will return None.
+
+    Parameters
+    ----------
+    image_shape: tuple of int corresponding to the input image shape. Its
+        four (or five) elements must correspond respectively to: batch size,
+        number of output channels, height and width of the image. None where
+        undefined.
+    top_shape: tuple of int (symbolic or numeric) corresponding to the top
+        image shape. Its four (or five) element must correspond respectively
+        to: batch size, number of output channels, height and width (and
+        possibly depth) of the image. None where undefined.
+    border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
+        or numeric). If it is a string, it must be 'valid', 'half' or 'full'.
+        If it is a tuple, its two (or three) elements respectively correspond
+        to the padding on height and width (and possibly depth) axis.
+    subsample: tuple of int (symbolic or numeric). Its two or three elements
+        respectively correspond to the subsampling on height and width (and
+        possibly depth) axis.
+    filter_dilation: tuple of int (symbolic or numeric). Its two or three
+        elements correspond respectively to the dilation on height and
+        width axis.
+
+    Returns
+    -------
+    kernel_shape: tuple of int (symbolic or numeric) corresponding to the
+        kernel shape. Its four (or five) elements correspond respectively
+        to: number of output channels, number of input channels, height and
+        width (and possibly depth) of the kernel. None where undefined.
+
+    """
+    nkern, imshp = image_shape[1], image_shape[2:]
+    nchan, topshp = top_shape[1], top_shape[2:]
+
+    if filter_dilation is None:
+        filter_dilation = numpy.ones(len(subsample), dtype='int')
+
+    if isinstance(border_mode, tuple):
+        out_shp = tuple(get_conv_gradweights_shape_1axis(
+            imshp[i], topshp[i], border_mode[i],
+            subsample[i], filter_dilation[i]) for i in range(len(subsample)))
+    else:
+        out_shp = tuple(get_conv_gradweights_shape_1axis(
+            imshp[i], topshp[i], border_mode,
+            subsample[i], filter_dilation[i]) for i in range(len(subsample)))
+    return (nchan, nkern) + out_shp
+
+
+def get_conv_gradweights_shape_1axis(image_shape, top_shape, border_mode,
+                                     subsample, dilation):
+    """
+    This function tries to compute the image shape of convolution gradWeights.
+
+    The weights shape can only be computed exactly when subsample is 1 and
+    border_mode is not 'half'. If subsample is not 1 or border_mode is 'half',
+    this function will return None.
+
+    Parameters
+    ----------
+    image_shape: int or None. Corresponds to the input image shape on a
+        given axis. None if undefined.
+    top_shape: int or None. Corresponds to the top shape on a given axis.
+        None if undefined.
+    border_mode: string or int. If it is a string, it must be
+        'valid', 'half' or 'full'. If it is an integer, it must correspond to
+        the padding on the considered axis.
+    subsample: int. It must correspond to the subsampling on the
+        considered axis.
+    dilation: int. It must correspond to the dilation on the
+        considered axis.
+
+    Returns
+    -------
+    kernel_shape: int or None. Corresponds to the kernel shape on a given
+        axis. None if undefined.
+
+    """
+    if None in [image_shape, top_shape, border_mode,
+                subsample, dilation]:
+        return None
+    if subsample != 1 or border_mode == "half":
+        return None
+
+    if border_mode == "full":
+        kernel_shape = top_shape - image_shape
+    elif border_mode == "valid":
+        kernel_shape = image_shape - top_shape
+    else:
+        if border_mode < 0:
+            raise ValueError("border_mode must be >= 0")
+        kernel_shape = (image_shape + 2 * border_mode - top_shape)
+
+    if dilation > 1:
+        kernel_shape = kernel_shape / dilation
+
+    return kernel_shape + 1
+
+
+def get_conv_gradinputs_shape(kernel_shape, top_shape,
+                              border_mode, subsample,
+                              filter_dilation=None):
+    """
+    This function tries to compute the image shape of convolution gradInputs.
+
+    The image shape can only be computed exactly when subsample is 1.
+    If subsample for a dimension is not 1, this function will return None for
+    that dimension.
+
+    Parameters
+    ----------
+    kernel_shape: tuple of int (symbolic or numeric) corresponding to the
+        kernel shape. Its four (or five) elements must correspond respectively
+        to: number of output channels, number of input channels, height and
+        width (and possibly depth) of the kernel. None where undefined.
+    top_shape: tuple of int (symbolic or numeric) corresponding to the top
+        image shape. Its four (or five) element must correspond respectively
+        to: batch size, number of output channels, height and width (and
+        possibly depth) of the image. None where undefined.
+    border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
+        or numeric). If it is a string, it must be 'valid', 'half' or 'full'.
+        If it is a tuple, its two (or three) elements respectively correspond
+        to the padding on height and width (and possibly depth) axis.
+    subsample: tuple of int (symbolic or numeric). Its two or three elements
+        respectively correspond to the subsampling on height and width (and
+        possibly depth) axis.
+    filter_dilation: tuple of int (symbolic or numeric). Its two or three
+        elements correspond respectively to the dilation on height and
+        width axis.
+
+    Returns
+    -------
+    image_shape: tuple of int corresponding to the input image shape. Its
+        four element must correspond respectively to: batch size, number of
+        output channels, height and width of the image. None where undefined.
+
+    """
+    bsize, topshp = top_shape[0], top_shape[2:]
+    nkern, kshp = kernel_shape[1], kernel_shape[2:]
+
+    if filter_dilation is None:
+        filter_dilation = numpy.ones(len(subsample), dtype='int')
+
+    if isinstance(border_mode, tuple):
+        out_shp = tuple(get_conv_gradinputs_shape_1axis(
+            kshp[i], topshp[i], border_mode[i],
+            subsample[i], filter_dilation[i]) for i in range(len(subsample)))
+    else:
+        out_shp = tuple(get_conv_gradinputs_shape_1axis(
+            kshp[i], topshp[i], border_mode,
+            subsample[i], filter_dilation[i]) for i in range(len(subsample)))
+    return (bsize, nkern) + out_shp
+
+
+def get_conv_gradinputs_shape_1axis(kernel_shape, top_shape, border_mode,
+                                    subsample, dilation):
+    """
+    This function tries to compute the image shape of convolution gradInputs.
+
+    The image shape can only be computed exactly when subsample is 1.
+    If subsample is not 1, this function will return None.
+
+    Parameters
+    ----------
+    kernel_shape: int or None. Corresponds to the kernel shape on a given
+        axis. None if undefined.
+    top_shape: int or None. Corresponds to the top shape on a given axis.
+        None if undefined.
+    border_mode: string or int. If it is a string, it must be
+        'valid', 'half' or 'full'. If it is an integer, it must correspond to
+        the padding on the considered axis.
+    subsample: int. It must correspond to the subsampling on the
+        considered axis.
+    dilation: int. It must correspond to the dilation on the
+        considered axis.
+
+    Returns
+    -------
+    image_shape: int or None. Corresponds to the input image shape on a
+        given axis. None if undefined.
+
+    """
+    if None in [kernel_shape, top_shape, border_mode,
+                subsample, dilation]:
+        return None
+    if subsample != 1:
+        return None
+
+    # Implicit dilated kernel shape
+    dil_kernel_shape = (kernel_shape - 1) * dilation + 1
+    if border_mode == "half":
+        pad = dil_kernel_shape // 2
+    elif border_mode == "full":
+        pad = dil_kernel_shape - 1
+    elif border_mode == "valid":
+        pad = 0
+    else:
+        pad = border_mode
+        if pad < 0:
+            raise ValueError("border_mode must be >= 0")
+
+    # In case of symbolic shape, we want to build the smallest graph
+    # image_shape = (top_shape - 1) * s - 2 * pad + dil_kernel_shape + a
+    # where 0 <= a < subsample, but we have checked that subsample == 1
+    if pad == 0:
+        image_shape = (top_shape + dil_kernel_shape - 1)
+    else:
+        image_shape = (top_shape - 2 * pad + dil_kernel_shape - 1)
+
+    return image_shape
+
+
+def check_conv_gradinputs_shape(image_shape, kernel_shape, output_shape,
+                                border_mode, subsample,
+                                filter_dilation=None):
+    """
+    This function checks if the given image shapes are consistent.
+
+    Parameters
+    ----------
+    image_shape: tuple of int (symbolic or numeric) corresponding to the input
+        image shape. Its four (or five) element must correspond respectively
+        to: batch size, number of input channels, height and width (and
+        possibly depth) of the image. None where undefined.
+    kernel_shape: tuple of int (symbolic or numeric) corresponding to the
+        kernel shape. Its four (or five) elements must correspond respectively
+        to: number of output channels, number of input channels, height and
+        width (and possibly depth) of the kernel. None where undefined.
+    output_shape: tuple of int (symbolic or numeric) corresponding to the
+        output shape. Its four (or five) elements must correspond respectively
+        to: batch size, number of output channels, height and width
+        (and possibly depth) of the output. None where undefined.
+    border_mode: string, int (symbolic or numeric) or tuple of int (symbolic
+        or numeric). If it is a string, it must be 'valid', 'half' or 'full'.
+        If it is a tuple, its two (or three) elements respectively correspond
+        to the padding on height and width (and possibly depth) axis.
+    subsample: tuple of int (symbolic or numeric). Its two or three elements
+        respectively correspond to the subsampling on height and width (and
+        possibly depth) axis.
+    filter_dilation: tuple of int (symbolic or numeric). Its two or three
+        elements correspond respectively to the dilation on height and
+        width axis.
+
+    Returns
+    -------
+    Returns False if a convolution with the given input shape, kernel shape
+    and parameters would not have produced the given output shape.
+
+    Returns True in all other cases: if the given output shape matches the
+    computed output shape, but also if the shape could not be checked because
+    because the shape contains symbolic values.
+
+    """
+    image_shape = tuple(image_shape)
+    kernel_shape = tuple(kernel_shape)
+    output_shape = tuple(output_shape)
+
+    if len(image_shape) != len(kernel_shape) or len(image_shape) != len(output_shape):
+        return False
+    if len(image_shape) - 2 != len(subsample):
+        return False
+    if filter_dilation is not None and len(image_shape) - 2 != len(filter_dilation):
+        return False
+
+    # compute the predicted output shape
+    computed_output_shape = get_conv_output_shape(
+        image_shape, kernel_shape, border_mode, subsample, filter_dilation)
+
+    # check if the given output shape matches the computed shape
+    def check_dim(given, computed):
+        if given is None or computed is None:
+            return True
+        try:
+            given = get_scalar_constant_value(given)
+            computed = get_scalar_constant_value(computed)
+            return int(given) == int(computed)
+        except NotScalarConstantError:
+            # no answer possible, accept for now
+            return True
+
+    return all(check_dim(given, computed)
+               for (given, computed) in zip(output_shape, computed_output_shape))
+
+
+def assert_conv_shape(shape):
+    """This function adds Assert nodes that check if shape is a valid convolution shape.
+
+    The first two dimensions should be larger than or equal to zero. The convolution
+    dimensions should be larger than zero.
+
+    Parameters
+    ----------
+    shape: tuple of int (symbolic or numeric) corresponding to the input, output or
+        kernel shape of a convolution. For input and output, the first elements should
+        should be the batch size and number of channels. For kernels, the first and
+        second elements should contain the number of input and output channels.
+        The remaining dimensions are the convolution dimensions.
+
+    Returns
+    -------
+    Returns a tuple similar to the given `shape`. For constant elements in `shape`,
+    the function checks the value and raises a `ValueError` if the dimension is invalid.
+    The elements that are not constant are wrapped in an `Assert` op that checks the
+    dimension at run time.
+    """
+    out_shape = []
+    for i, n in enumerate(shape):
+        try:
+            const_n = get_scalar_constant_value(n)
+            if i < 2:
+                if const_n < 0:
+                    raise ValueError('The convolution would produce an invalid shape (dim[%d]: %d < 0).' % (i, const_n))
+            else:
+                if const_n <= 0:
+                    raise ValueError('The convolution would produce an invalid shape (dim[%d]: %d <= 0).' % (i, const_n))
+            out_shape.append(n)
+        except NotScalarConstantError:
+            if i < 2:
+                assert_shp = Assert('The convolution would produce an invalid shape (dim[%d] < 0).' % i)
+                out_shape.append(assert_shp(n, theano.tensor.ge(n, 0)))
+            else:
+                assert_shp = Assert('The convolution would produce an invalid shape (dim[%d] <= 0).' % i)
+                out_shape.append(assert_shp(n, theano.tensor.gt(n, 0)))
+    return tuple(out_shape)
+
+
+def assert_shape(x, expected_shape, msg='Unexpected shape.'):
+    """Wraps `x` in an `Assert` to check its shape.
+
+    Parameters
+    ----------
+    x : Tensor
+        x will be wrapped in an `Assert`.
+    expected_shape : tuple or list
+        The expected shape of `x`. The size of a dimension can be None,
+        which means it will not be checked.
+    msg : str
+        The error message of the `Assert`.
+
+    Returns
+    -------
+    Tensor
+        `x` wrapped in an `Assert`. At execution time, this will throw an
+        AssertionError if the shape of `x` does not match `expected_shape`.
+        If `expected_shape` is None or contains only Nones, the function
+        will return `x` directly.
+
+    """
+    if expected_shape is None:
+        return x
+    shape = x.shape
+    tests = []
+    for i in range(x.ndim):
+        if expected_shape[i] is not None:
+            tests.append(theano.tensor.eq(shape[i], expected_shape[i]))
+    if tests:
+        return Assert(msg)(x, *tests)
+    else:
+        return x
 
 
 def conv2d(input,
@@ -782,7 +1151,7 @@ def conv3d_grad_wrt_weights(input,
                                                filter_flip=filter_flip,
                                                filter_dilation=filter_dilation)
 
-    return gradWeight_op(input, output_grad, filter_shape[:-3])
+    return gradWeight_op(input, output_grad, filter_shape[-3:])
 
 
 def bilinear_kernel_2D(ratio, normalize=True):
@@ -1209,6 +1578,13 @@ class AbstractConv(BaseAbstractConv):
         if kern.type.ndim != 2 + self.convdim:
             raise TypeError('kern must be %dD tensor' % (2 + self.convdim))
 
+        img = assert_shape(img, self.imshp,
+                           'AbstractConv shape mismatch: shape of '
+                           'image does not match given imshp.')
+        kern = assert_shape(kern, self.kshp,
+                            'AbstractConv shape mismatch: shape of '
+                            'filters does not match given kshp.')
+
         broadcastable = [img.broadcastable[0],
                          kern.broadcastable[0]] + ([False] * self.convdim)
         output = img.type.clone(broadcastable=broadcastable)()
@@ -1419,6 +1795,10 @@ class AbstractConv_gradWeights(BaseAbstractConv):
             raise TypeError('img must be %dD tensor' % (2 + self.convdim))
         if topgrad.type.ndim != 2 + self.convdim:
             raise TypeError('topgrad must be %dD tensor' % (2 + self.convdim))
+
+        img = assert_shape(img, self.imshp,
+                           'AbstractConv_gradWeights shape mismatch: shape of '
+                           'image does not match given imshp.')
 
         shape = as_tensor_variable(shape)
         broadcastable = [topgrad.broadcastable[1],
@@ -1655,6 +2035,10 @@ class AbstractConv_gradInputs(BaseAbstractConv):
         if topgrad.type.ndim != 2 + self.convdim:
             raise TypeError('topgrad must be %dD tensor' % (2 + self.convdim))
 
+        kern = assert_shape(kern, self.kshp,
+                            'AbstractConv_gradInputs shape mismatch: shape of '
+                            'filters does not match given kshp.')
+
         shape = as_tensor_variable(shape)
         broadcastable = [topgrad.type.broadcastable[0],
                          kern.type.broadcastable[1]] + ([False] * self.convdim)
@@ -1674,6 +2058,21 @@ class AbstractConv_gradInputs(BaseAbstractConv):
                 'invalid border_mode {}, which must be either '
                 '"valid", "full", "half", an integer or a tuple of'
                 ' integers'.format(mode))
+
+        imshp = self.imshp[:] if self.imshp is not None else [None] * (2 + self.convdim)
+        fallback_imshp = ([topgrad.shape[0], kern.shape[1]] +
+                          [shape[i] for i in range(self.convdim)])
+        imshp = [fallback_imshp[i] if imshp[i] is None else imshp[i]
+                 for i in range(2 + self.convdim)]
+        expected_topgrad_shape = get_conv_output_shape(
+            imshp, kern.shape,
+            self.border_mode, self.subsample, self.filter_dilation)
+        if not tuple(expected_topgrad_shape) == tuple(topgrad.shape):
+            raise ValueError(
+                'invalid input_shape for gradInputs: the given input_shape '
+                'would produce an output of shape {}, but the given topgrad '
+                'has shape {}'.format(tuple(expected_topgrad_shape),
+                                      tuple(topgrad.shape)))
 
         dil_kernshp = tuple((kern.shape[i + 2] - 1) * self.filter_dilation[i] + 1
                             for i in range(self.convdim))

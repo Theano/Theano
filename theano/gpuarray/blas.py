@@ -528,7 +528,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
 
     def c_code_cache_version(self):
         # Raise this whenever modifying the code below.
-        return (2,)
+        return (7,)
 
     def c_code_helper(self, bottom, weights, top, direction, sub, height=None, width=None):
         """
@@ -558,19 +558,19 @@ class BaseGpuCorrMM(CGpuKernelBase):
         sub
             Dictionary of substitutions useable to help generating the C code.
         height
-            If self.subsample[0] != 1, a variable giving the height of the
-            filters for direction="backprop weights" or the height of the input
-            images for direction="backprop inputs".
-            If self.border_mode == 'half', a variable giving the height of the
-            filters for direction="backprop weights".
-            Ignored otherwise.
-        width
-            If self.subsample[1] != 1, a variable giving the width of the
-            filters for direction="backprop weights" or the width of the
+            Required if self.subsample[0] != 1, a variable giving the height of
+            the filters for direction="backprop weights" or the height of the
             input images for direction="backprop inputs".
-            If self.border_mode == 'half', a variable giving the width of the
-            filters for direction="backprop weights".
-            Ignored otherwise.
+            Required if self.border_mode == 'half', a variable giving the height
+            of the filters for direction="backprop weights".
+            Not required otherwise, but if a value is given this will be checked.
+        width
+            Required if self.subsample[1] != 1, a variable giving the width of
+            the filters for direction="backprop weights" or the width of the
+            input images for direction="backprop inputs".
+            Required if self.border_mode == 'half', a variable giving the width
+            of the filters for direction="backprop weights".
+            Not required otherwise, but if a value is given this will be checked.
 
         """
         dH, dW = self.subsample
@@ -599,18 +599,18 @@ class BaseGpuCorrMM(CGpuKernelBase):
         # When subsampling, we cannot unambiguously infer the height and width
         # of bottom and weights from top, so we require them to be given.
         # Similarly, when pad="half", we cannot infer the weight size.
-        if ((direction != 0) and (dH != 1)) or ((direction == 1) and (padH == -1)):
-            if not height:
-                raise ValueError("height must be given for backprop with vertical sampling or pad='half'")
+        if height:
             height = '(*(npy_int*)(PyArray_DATA(%s)))' % height
         else:
-            height = '0'
-        if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW == -1)):
-            if not width:
-                raise ValueError("width must be given for backprop with horizontal sampling or pad='half'")
+            if ((direction != 0) and (dH != 1)) or ((direction == 1) and (padH == -1)):
+                raise ValueError("height must be given for backprop with vertical sampling or pad='half'")
+            height = '-1'
+        if width:
             width = '(*(npy_int*)(PyArray_DATA(%s)))' % width
         else:
-            width = '0'
+            if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW == -1)):
+                raise ValueError("width must be given for backprop with horizontal sampling or pad='half'")
+            width = '-1'
         sync = ""
         if config.gpuarray.sync:
             sync = """
@@ -643,15 +643,15 @@ class BaseGpuCorrMM(CGpuKernelBase):
 
     // Obtain or infer kernel width and height
     // (we need to know it early to be able to handle auto-padding)
-    size_t kH, kW;
+    size_t kH, kW, dil_kH, dil_kW;
     if (direction != 1) {
         // weight is an input variable, we can just read its shape
         kH = PyGpuArray_DIMS(weights)[2];
         kW = PyGpuArray_DIMS(weights)[3];
     }
     else {
-        if ((dH != 1) || (padH == -1)) {
-            // vertical subsampling or half padding, kernel height is specified
+        if (%(height)s != -1) {
+            // kernel height is specified (perhaps vertical subsampling or half padding)
             kH = %(height)s;
         }
         else if (padH == -2) {
@@ -662,7 +662,7 @@ class BaseGpuCorrMM(CGpuKernelBase):
             // explicit padding, we can infer the kernel height
             kH = (PyGpuArray_DIMS(bottom)[2] + 2*padH - (PyGpuArray_DIMS(top)[2] - 1) * dH - 1) / dilH + 1 ;
         }
-        if ((dW != 1) || (padW == -1)) {
+        if (%(width)s != -1) {
             kW = %(width)s;
         }
         else if (padW == -2) {
@@ -674,8 +674,8 @@ class BaseGpuCorrMM(CGpuKernelBase):
     }
 
     // Implicit dilated kernel size
-    size_t dil_kH = (kH - 1) * dilH + 1;
-    size_t dil_kW = (kW - 1) * dilW + 1;
+    dil_kH = (kH - 1) * dilH + 1;
+    dil_kW = (kW - 1) * dilW + 1;
 
     // Auto-padding if requested
     if (padH == -1) {  // vertical half padding
@@ -700,7 +700,9 @@ class BaseGpuCorrMM(CGpuKernelBase):
     }
 
     // Infer output shape and type
-    size_t out_dim[4];
+    // The inferred shape can be negative.
+    long long out_dim[4];
+    size_t out_dim_size[4];
     int out_typecode;
     PyGpuContextObject *out_context;
     switch(direction) {
@@ -713,6 +715,20 @@ class BaseGpuCorrMM(CGpuKernelBase):
         out_dim[3] = (PyGpuArray_DIMS(bottom)[3] + 2*padW - ((PyGpuArray_DIMS(weights)[3]-1)*dilW + 1)) / dW + 1;
         out_typecode = bottom->ga.typecode;
         out_context = bottom->context;
+        if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuCorrMM: impossible output shape\\n"
+                         "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                         "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
+                         "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                         PyGpuArray_DIMS(bottom)[0], PyGpuArray_DIMS(bottom)[1],
+                         PyGpuArray_DIMS(bottom)[2], PyGpuArray_DIMS(bottom)[3],
+                         PyGpuArray_DIMS(weights)[0], PyGpuArray_DIMS(weights)[1],
+                         PyGpuArray_DIMS(weights)[2], PyGpuArray_DIMS(weights)[3],
+                         out_dim[0], out_dim[1], out_dim[2], out_dim[3]);
+            %(fail)s
+        }
         break;
     case 1:  // backprop wrt. weights
         // output is weights: (num_filters, num_channels, height, width)
@@ -723,27 +739,60 @@ class BaseGpuCorrMM(CGpuKernelBase):
         out_dim[3] = kW;  // how convenient
         out_typecode = top->ga.typecode;
         out_context = top->context;
+        if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuCorrMM backprop wrt. weights: impossible output shape\\n"
+                         "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                         "  weights shape: %%ld x %%ld x %%ld x %%ld\\n"
+                         "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                         PyGpuArray_DIMS(bottom)[0], PyGpuArray_DIMS(bottom)[1],
+                         PyGpuArray_DIMS(bottom)[2], PyGpuArray_DIMS(bottom)[3],
+                         out_dim[0], out_dim[1], out_dim[2], out_dim[3],
+                         PyGpuArray_DIMS(top)[0], PyGpuArray_DIMS(top)[1],
+                         PyGpuArray_DIMS(top)[2], PyGpuArray_DIMS(top)[3]);
+            %(fail)s
+        }
         break;
     case 2:  // backprop wrt. inputs
         // output is bottom: (batchsize, num_channels, height, width)
         // height and width: bottom = (top - 1) * sample + (weights-1)*dil + 1 - 2*pad
         out_dim[0] = PyGpuArray_DIMS(top)[0];
         out_dim[1] = PyGpuArray_DIMS(weights)[1];
-        out_dim[2] = (dH != 1) ? %(height)s : (PyGpuArray_DIMS(top)[2] - 1) * dH + (PyGpuArray_DIMS(weights)[2]-1)*dilH + 1 - 2*padH;
-        out_dim[3] = (dW != 1) ? %(width)s : (PyGpuArray_DIMS(top)[3] - 1) * dW + (PyGpuArray_DIMS(weights)[3]-1)*dilW + 1 - 2*padW;
+        out_dim[2] = (%(height)s != -1) ? %(height)s : (PyGpuArray_DIMS(top)[2] - 1) * dH + (PyGpuArray_DIMS(weights)[2]-1)*dilH + 1 - 2*padH;
+        out_dim[3] = (%(width)s != -1) ? %(width)s : (PyGpuArray_DIMS(top)[3] - 1) * dW + (PyGpuArray_DIMS(weights)[3]-1)*dilW + 1 - 2*padW;
         out_typecode = top->ga.typecode;
         out_context = top->context;
+        if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuCorrMM backprop wrt. inputs: impossible output shape\\n"
+                         "  bottom shape: %%ld x %%ld x %%ld x %%ld\\n"
+                         "  weight shape: %%ld x %%ld x %%ld x %%ld\\n"
+                         "  top shape: %%ld x %%ld x %%ld x %%ld\\n",
+                         out_dim[0], out_dim[1], out_dim[2], out_dim[3],
+                         PyGpuArray_DIMS(weights)[0], PyGpuArray_DIMS(weights)[1],
+                         PyGpuArray_DIMS(weights)[2], PyGpuArray_DIMS(weights)[3],
+                         PyGpuArray_DIMS(top)[0], PyGpuArray_DIMS(top)[1],
+                         PyGpuArray_DIMS(top)[2], PyGpuArray_DIMS(top)[3]);
+            %(fail)s
+        }
         break;
     default:
         PyErr_SetString(PyExc_ValueError, "BaseGpuCorrMM: direction must be 0, 1, or 2\\n");
         %(fail)s
     }
 
+    out_dim_size[0] = (size_t)out_dim[0];
+    out_dim_size[1] = (size_t)out_dim[1];
+    out_dim_size[2] = (size_t)out_dim[2];
+    out_dim_size[3] = (size_t)out_dim[3];
+
     // Prepare output array
-    if (theano_prep_output(&%(out)s, 4, out_dim, out_typecode, GA_C_ORDER, out_context) != 0)
+    if (theano_prep_output(&%(out)s, 4, out_dim_size, out_typecode, GA_C_ORDER, out_context) != 0)
     {
         PyErr_Format(PyExc_RuntimeError,
-                "BaseGpuCorrMM: Failed to allocate output of %%ld x %%ld x %%ld x %%ld",
+                "BaseGpuCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld",
                 out_dim[0], out_dim[1], out_dim[2], out_dim[3]);
         %(fail)s
     }
@@ -875,15 +924,15 @@ class GpuCorrMM_gradWeights(BaseGpuCorrMM):
             raise TypeError('img must be 4D tensor')
         if topgrad.type.ndim != 4:
             raise TypeError('topgrad must be 4D tensor')
-        if self.subsample != (1, 1) or self.border_mode == "half":
-            if shape is None:
+        if shape is None:
+            if self.subsample != (1, 1) or self.border_mode == "half":
                 raise ValueError('shape must be given if subsample != (1, 1)'
                                  ' or border_mode == "half"')
+            height_width = []
+        else:
             height_width = [shape[0], shape[1]]
             assert shape[0].ndim == 0
             assert shape[1].ndim == 0
-        else:
-            height_width = []
 
         broadcastable = [topgrad.type.broadcastable[1], img.type.broadcastable[1],
                          False, False]
@@ -946,10 +995,12 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
             raise TypeError('kern must be 4D tensor')
         if topgrad.type.ndim != 4:
             raise TypeError('topgrad must be 4D tensor')
-        if self.subsample != (1, 1) and shape is None:
-            raise ValueError('shape must be given if subsample != (1, 1)')
-        height_width = [shape[0], shape[1]] if self.subsample != (1, 1) else []
-        if height_width:
+        if shape is None:
+            if self.subsample != (1, 1):
+                raise ValueError('shape must be given if subsample != (1, 1)')
+            height_width = []
+        else:
+            height_width = [shape[0], shape[1]]
             assert shape[0].ndim == 0
             assert shape[1].ndim == 0
 
@@ -1074,7 +1125,7 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
 
     def c_code_cache_version(self):
         # raise this whenever modifying the code below.
-        return (2,)
+        return (7,)
 
     def c_code_helper(self, bottom, weights, top, direction, sub,
                       height=None, width=None, depth=None):
@@ -1105,26 +1156,26 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
         sub
             Dictionary of substitutions useable to help generating the C code.
         height
-            If self.subsample[0] != 1, a variable giving the height of the
-            filters for direction="backprop weights" or the height of the input
-            images for direction="backprop inputs".
-            If self.border_mode == 'half', a variable giving the height of the
-            filters for direction="backprop weights".
-            Ignored otherwise.
+            Required if self.subsample[0] != 1, a variable giving the height of
+            the filters for direction="backprop weights" or the height of the
+            input images for direction="backprop inputs".
+            Required if self.border_mode == 'half', a variable giving the height
+            of the filters for direction="backprop weights".
+            Not required otherwise, but if a value is given this will be checked.
         width
-            If self.subsample[1] != 1, a variable giving the width of the
-            filters for direction="backprop weights" or the width of the
+            Required if self.subsample[1] != 1, a variable giving the width of
+            the filters for direction="backprop weights" or the width of the
             input images for direction="backprop inputs".
-            If self.border_mode == 'half', a variable giving the width of the
-            filters for direction="backprop weights".
-            Ignored otherwise.
+            Required if self.border_mode == 'half', a variable giving the width
+            of the filters for direction="backprop weights".
+            Not required otherwise, but if a value is given this will be checked.
         depth
-            If self.subsample[2] != 1, a variable giving the depth of the
-            filters for direction="backprop weights" or the depth of the
+            Required if self.subsample[2] != 1, a variable giving the depth of
+            the filters for direction="backprop weights" or the depth of the
             input images for direction="backprop inputs".
-            If self.border_mode == 'half', a variable giving the depth of the
-            filters for direction="backprop weights".
-            Ignored otherwise.
+            Required if self.border_mode == 'half', a variable giving the depth
+            of the filters for direction="backprop weights".
+            Not required otherwise, but if a value is given this will be checked.
 
         """
         dH, dW, dD = self.subsample
@@ -1153,24 +1204,24 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
         # When subsampling, we cannot unambiguously infer the height and width
         # of bottom and weights from top, so we require them to be given.
         # Similarly, when pad="half", we cannot infer the weight size.
-        if ((direction != 0) and (dH != 1)) or ((direction == 1) and (padH == -1)):
-            if not height:
-                raise ValueError("height must be given for backprop with vertical sampling or pad='half'")
+        if height:
             height = '(*(npy_int*)(PyArray_DATA(%s)))' % height
         else:
-            height = '0'
-        if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW == -1)):
-            if not width:
-                raise ValueError("width must be given for backprop with horizontal sampling or pad='half'")
+            if ((direction != 0) and (dH != 1)) or ((direction == 1) and (padH == -1)):
+                raise ValueError("height must be given for backprop with vertical sampling or pad='half'")
+            height = '-1'
+        if width:
             width = '(*(npy_int*)(PyArray_DATA(%s)))' % width
         else:
-            width = '0'
-        if ((direction != 0) and (dD != 1)) or ((direction == 1) and (padD == -1)):
-            if not depth:
-                raise ValueError("depth must be given for backprop with horizontal sampling or pad='half'")
+            if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW == -1)):
+                raise ValueError("width must be given for backprop with horizontal sampling or pad='half'")
+            width = '-1'
+        if depth:
             depth = '(*(npy_int*)(PyArray_DATA(%s)))' % depth
         else:
-            depth = '0'
+            if ((direction != 0) and (dD != 1)) or ((direction == 1) and (padD == -1)):
+                raise ValueError("depth must be given for backprop with horizontal sampling or pad='half'")
+            depth = '-1'
         sync = ""
         if config.gpuarray.sync:
             sync = """
@@ -1206,7 +1257,7 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
 
     // Obtain or infer kernel height, width and depth
     // (we need to know it early to be able to handle auto-padding)
-    size_t kH, kW, kD;
+    size_t kH, kW, kD, dil_kH, dil_kW, dil_kD;
     if (direction != 1) {
         // weight is an input variable, we can just read its shape
         kH = PyGpuArray_DIMS(weights)[2];
@@ -1214,8 +1265,8 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
         kD = PyGpuArray_DIMS(weights)[4];
     }
     else {
-        if ((dH != 1) || (padH == -1)) {
-            // vertical subsampling or half padding, kernel height is specified
+        if (%(height)s != -1) {
+            // kernel height is specified (perhaps vertical subsampling or half padding)
             kH = %(height)s;
         }
         else if (padH == -2) {
@@ -1226,7 +1277,7 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
             // explicit padding, we can infer the kernel height
             kH = (PyGpuArray_DIMS(bottom)[2] + 2*padH - (PyGpuArray_DIMS(top)[2] - 1) * dH - 1) / dilH + 1 ;
         }
-        if ((dW != 1) || (padW == -1)) {
+        if (%(width)s != -1) {
             kW = %(width)s;
         }
         else if (padW == -2) {
@@ -1235,7 +1286,7 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
         else {
             kW = (PyGpuArray_DIMS(bottom)[3] + 2*padW - (PyGpuArray_DIMS(top)[3] - 1) * dW - 1) / dilW + 1;
         }
-        if ((dD != 1) || (padD == -1)) {
+        if (%(depth)s != -1) {
             kD = %(depth)s;
         }
         else if (padD == -2) {
@@ -1247,9 +1298,9 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
     }
 
     // Implicit dilated kernel size
-    size_t dil_kH = (kH - 1) * dilH + 1;
-    size_t dil_kW = (kW - 1) * dilW + 1;
-    size_t dil_kD = (kD - 1) * dilD + 1;
+    dil_kH = (kH - 1) * dilH + 1;
+    dil_kW = (kW - 1) * dilW + 1;
+    dil_kD = (kD - 1) * dilD + 1;
 
     // Auto-padding if requested
     if (padH == -1) {  // vertical half padding
@@ -1284,7 +1335,9 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
     }
 
     // Infer output shape and type
-    size_t out_dim[5];
+    // The inferred shape can be negative.
+    long long out_dim[5];
+    size_t out_dim_size[5];
     int out_typecode;
     PyGpuContextObject *out_context;
     switch(direction) {
@@ -1298,6 +1351,22 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
         out_dim[4] = (PyGpuArray_DIMS(bottom)[4] + 2*padD - ((PyGpuArray_DIMS(weights)[4]-1)*dilD + 1)) / dD + 1;
         out_typecode = bottom->ga.typecode;
         out_context = bottom->context;
+        if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0 || out_dim[4] <= 0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuCorr3dMM: impossible output shape\\n"
+                         "  bottom shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n"
+                         "  weights shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n"
+                         "  top shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n",
+                         PyGpuArray_DIMS(bottom)[0], PyGpuArray_DIMS(bottom)[1],
+                         PyGpuArray_DIMS(bottom)[2], PyGpuArray_DIMS(bottom)[3],
+                         PyGpuArray_DIMS(bottom)[4],
+                         PyGpuArray_DIMS(weights)[0], PyGpuArray_DIMS(weights)[1],
+                         PyGpuArray_DIMS(weights)[2], PyGpuArray_DIMS(weights)[3],
+                         PyGpuArray_DIMS(weights)[4],
+                         out_dim[0], out_dim[1], out_dim[2], out_dim[3], out_dim[4]);
+            %(fail)s
+        }
         break;
     case 1:  // backprop wrt. weights
         // output is weights: (num_filters, num_channels, height, width, depth)
@@ -1309,28 +1378,66 @@ class BaseGpuCorr3dMM(CGpuKernelBase):
         out_dim[4] = kD;
         out_typecode = top->ga.typecode;
         out_context = top->context;
+        if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0 || out_dim[4] <= 0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuCorr3dMM backprop wrt. weights: impossible output shape\\n"
+                         "  bottom shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n"
+                         "  weights shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n"
+                         "  top shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n",
+                         PyGpuArray_DIMS(bottom)[0], PyGpuArray_DIMS(bottom)[1],
+                         PyGpuArray_DIMS(bottom)[2], PyGpuArray_DIMS(bottom)[3],
+                         PyGpuArray_DIMS(bottom)[4],
+                         out_dim[0], out_dim[1], out_dim[2], out_dim[3], out_dim[4],
+                         PyGpuArray_DIMS(top)[0], PyGpuArray_DIMS(top)[1],
+                         PyGpuArray_DIMS(top)[2], PyGpuArray_DIMS(top)[3],
+                         PyGpuArray_DIMS(top)[4]);
+            %(fail)s
+        }
         break;
     case 2:  // backprop wrt. inputs
         // output is bottom: (batchsize, num_channels, height, width, depth)
         // height, width and depth: bottom = (top - 1) * sample + (weights-1)*dil + 1 - 2*pad
         out_dim[0] = PyGpuArray_DIMS(top)[0];
         out_dim[1] = PyGpuArray_DIMS(weights)[1];
-        out_dim[2] = (dH != 1) ? %(height)s : (PyGpuArray_DIMS(top)[2] - 1) * dH + (PyGpuArray_DIMS(weights)[2]-1)*dilH + 1 - 2*padH;
-        out_dim[3] = (dW != 1) ? %(width)s : (PyGpuArray_DIMS(top)[3] - 1) * dW + (PyGpuArray_DIMS(weights)[3]-1)*dilW + 1 - 2*padW;
-        out_dim[4] = (dD != 1) ? %(depth)s : (PyGpuArray_DIMS(top)[4] - 1) * dD + (PyGpuArray_DIMS(weights)[4]-1)*dilD + 1 - 2*padD;
+        out_dim[2] = (%(height)s != -1) ? %(height)s : (PyGpuArray_DIMS(top)[2] - 1) * dH + (PyGpuArray_DIMS(weights)[2]-1)*dilH + 1 - 2*padH;
+        out_dim[3] = (%(width)s != -1) ? %(width)s : (PyGpuArray_DIMS(top)[3] - 1) * dW + (PyGpuArray_DIMS(weights)[3]-1)*dilW + 1 - 2*padW;
+        out_dim[4] = (%(depth)s != -1) ? %(depth)s : (PyGpuArray_DIMS(top)[4] - 1) * dD + (PyGpuArray_DIMS(weights)[4]-1)*dilD + 1 - 2*padD;
         out_typecode = top->ga.typecode;
         out_context = top->context;
+        if (out_dim[0] < 0 || out_dim[1] < 0 || out_dim[2] <= 0 || out_dim[3] <= 0 || out_dim[4] <= 0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuCorr3dMM backprop wrt. inputs: impossible output shape\\n"
+                         "  bottom shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n"
+                         "  weights shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n"
+                         "  top shape: %%ld x %%ld x %%ld x %%ld x %%ld\\n",
+                         out_dim[0], out_dim[1], out_dim[2], out_dim[3], out_dim[4],
+                         PyGpuArray_DIMS(weights)[0], PyGpuArray_DIMS(weights)[1],
+                         PyGpuArray_DIMS(weights)[2], PyGpuArray_DIMS(weights)[3],
+                         PyGpuArray_DIMS(weights)[4],
+                         PyGpuArray_DIMS(top)[0], PyGpuArray_DIMS(top)[1],
+                         PyGpuArray_DIMS(top)[2], PyGpuArray_DIMS(top)[3],
+                         PyGpuArray_DIMS(top)[4]);
+            %(fail)s
+        }
         break;
     default:
         PyErr_SetString(PyExc_ValueError, "BaseGpuCorr3dMM: direction must be 0, 1, or 2\\n");
         %(fail)s
     }
 
+    out_dim_size[0] = (size_t)out_dim[0];
+    out_dim_size[1] = (size_t)out_dim[1];
+    out_dim_size[2] = (size_t)out_dim[2];
+    out_dim_size[3] = (size_t)out_dim[3];
+    out_dim_size[4] = (size_t)out_dim[4];
+
     // Prepare output array
-    if (theano_prep_output(&%(out)s, 5, out_dim, out_typecode, GA_C_ORDER, out_context) != 0)
+    if (theano_prep_output(&%(out)s, 5, out_dim_size, out_typecode, GA_C_ORDER, out_context) != 0)
     {
         PyErr_Format(PyExc_RuntimeError,
-                "BaseGpuCorrMM: Failed to allocate output of %%ld x %%ld x %%ld x %%ld x %%ld",
+                "BaseGpuCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld x %%lld",
                 out_dim[0], out_dim[1], out_dim[2], out_dim[3], out_dim[4]);
         %(fail)s
     }
@@ -1464,16 +1571,16 @@ class GpuCorr3dMM_gradWeights(BaseGpuCorr3dMM):
             raise TypeError('img must be 5D tensor')
         if topgrad.type.ndim != 5:
             raise TypeError('topgrad must be 5D tensor')
-        if self.subsample != (1, 1, 1) or self.border_mode == "half":
-            if shape is None:
+        if shape is None:
+            if self.subsample != (1, 1, 1) or self.border_mode == "half":
                 raise ValueError('shape must be given if subsample != (1, 1, 1)'
                                  ' or border_mode == "half"')
+            height_width_depth = []
+        else:
             height_width_depth = [shape[0], shape[1], shape[2]]
             assert shape[0].ndim == 0
             assert shape[1].ndim == 0
             assert shape[2].ndim == 0
-        else:
-            height_width_depth = []
 
         broadcastable = [topgrad.type.broadcastable[1], img.type.broadcastable[1],
                          False, False, False]
@@ -1536,10 +1643,12 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
             raise TypeError('kern must be 5D tensor')
         if topgrad.type.ndim != 5:
             raise TypeError('topgrad must be 5D tensor')
-        if self.subsample != (1, 1, 1) and shape is None:
-            raise ValueError('shape must be given if subsample != (1, 1, 1)')
-        height_width_depth = [shape[0], shape[1], shape[2]] if self.subsample != (1, 1, 1) else []
-        if height_width_depth:
+        if shape is None:
+            if self.subsample != (1, 1, 1):
+                raise ValueError('shape must be given if subsample != (1, 1, 1)')
+            height_width_depth = []
+        else:
+            height_width_depth = [shape[0], shape[1], shape[2]]
             assert shape[0].ndim == 0
             assert shape[1].ndim == 0
             assert shape[2].ndim == 0

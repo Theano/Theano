@@ -4,6 +4,7 @@ import os
 import sys
 
 from nose.plugins.skip import SkipTest
+from nose_parameterized import parameterized
 from itertools import chain, product
 import six.moves.cPickle as pickle
 from six import StringIO
@@ -16,6 +17,7 @@ import theano.tensor as T
 import theano.tests.unittest_tools as utt
 from theano.tensor.signal.pool import pool_2d, pool_3d
 from theano.tensor.signal.pool import Pool, MaxPoolGrad, AveragePoolGrad
+from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 import theano.sandbox.cuda.dnn as dnn
 from theano.sandbox.cuda.basic_ops import GpuAllocEmpty, gpu_alloc_empty
 from theano.sandbox.cuda import float32_shared_constructor as shared
@@ -979,98 +981,104 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 dnn.GpuDnnConv3d
             )
 
-    def test_conv_gradw(self):
+    def _test_conv_gradw(self, img, topgrad, kerns, img_shape, kerns_shape, border_mode, conv_mode, subsample):
         if not dnn.dnn_available():
             raise SkipTest(dnn.dnn_available.msg)
-        img = T.ftensor4('img')
-        kerns = T.ftensor4('kerns')
-        out = T.ftensor4('out')
+
+        topgrad_shape = get_conv_output_shape(img_shape, kerns_shape,
+                                              border_mode, subsample)
+
         img_val = numpy.asarray(
-            numpy.random.rand(2, 5, 6, 8),
-            dtype='float32'
+            numpy.random.rand(*img_shape),
+            dtype=theano.config.floatX
         )
-        kern_vals = numpy.asarray(
-            numpy.random.rand(2, 1, 5, 6),
-            dtype='float32'
+        topgrad_vals = numpy.asarray(
+            numpy.random.rand(*topgrad_shape),
+            dtype=theano.config.floatX
         )
 
-        for params in product(
-            ['valid', 'full', 'half'],
-            [(1, 1)],  # strides besides (1, 1)
-            ['conv', 'cross']
-        ):
-            temp_img = img.dimshuffle(1, 0, 2, 3)
-            temp_kerns = kerns
-            if params[2] == 'conv':
-                temp_kerns = temp_kerns[:, :, ::-1, ::-1]
-            temp_kerns = temp_kerns.dimshuffle(1, 0, 2, 3)
-            shape = (
-                kern_vals.shape[1], img_val.shape[1],
-                img_val.shape[2] - kern_vals.shape[2] + 1,
-                img_val.shape[3] - kern_vals.shape[3] + 1
-            )
-            out_vals = numpy.zeros(shape, dtype='float32')
-            desc = dnn.GpuDnnConvDesc(
-                border_mode=params[0],
-                subsample=params[1],
-                conv_mode=params[2]
-            )(temp_img.shape, out.shape)
-            conv_grad_w = dnn.GpuDnnConvGradW()(
-                temp_img,
-                temp_kerns,
-                out,
-                desc,
-            )
-            self._compile_and_check(
-                [temp_img, temp_kerns, out],
-                [conv_grad_w],
-                [img_val, kern_vals, out_vals],
-                dnn.GpuDnnConvGradW
-            )
+        kerns_vals = numpy.zeros(kerns_shape, dtype=theano.config.floatX)
+        kerns_shape = theano.shared(numpy.asarray(kerns_shape))
+        topgrad_shape = theano.shared(numpy.asarray(topgrad_shape))
+        desc = dnn.GpuDnnConvDesc(
+            border_mode=border_mode,
+            subsample=subsample,
+            conv_mode=conv_mode
+        )(topgrad_shape, kerns_shape)
+        conv_grad_w = dnn.GpuDnnConvGradW()(
+            img,
+            topgrad,
+            kerns,
+            desc,
+        )
+        self._compile_and_check(
+            [img, topgrad, kerns],
+            [conv_grad_w],
+            [img_val, topgrad_vals, kerns_vals],
+            dnn.GpuDnnConvGradW
+        )
 
-    def test_conv3d_gradw(self):
+    border_modes = ['valid', 'full', 'half']
+    conv_modes = ['conv', 'cross']
+
+    @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
+    def test_conv_gradw(self, border_mode, conv_mode):
+        self._test_conv_gradw(T.tensor4('img'),
+                              T.tensor4('topgrad'),
+                              T.tensor4('kerns'),
+                              (5, 2, 6, 13),
+                              (1, 2, 3, 7),
+                              border_mode,
+                              conv_mode,
+                              (1, 1))
+
+    def _test_conv3d_gradw(self, img, topgrad, kerns, img_shape, kerns_shape, border_mode, conv_mode, subsample):
         if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
             raise SkipTest('"cuDNN 3D convolution requires cuDNN v2')
-        img = T.ftensor5('img')
-        kerns = T.ftensor5('kerns')
-        out = T.ftensor5('out')
+
+        topgrad_shape = get_conv_output_shape(img_shape, kerns_shape,
+                                              border_mode, subsample)
+
         img_val = numpy.asarray(
-            numpy.random.rand(9, 2, 4, 8, 13),
-            dtype='float32'
+            numpy.random.rand(*img_shape),
+            dtype=theano.config.floatX
         )
-        kern_vals = numpy.asarray(
-            numpy.random.rand(11, 2, 3, 1, 4),
-            dtype='float32'
+        topgrad_vals = numpy.asarray(
+            numpy.random.rand(*topgrad_shape),
+            dtype=theano.config.floatX
         )
 
-        for params in product(
-            ['valid', 'full', 'half'],
-            [(1, 1, 1), (2, 2, 2)],
-            ['conv', 'cross']
-        ):
-            out_vals = numpy.zeros(
-                dnn.GpuDnnConv3d.get_out_shape(img_val.shape, kern_vals.shape,
-                                               border_mode=params[0],
-                                               subsample=params[1]),
-                dtype='float32')
+        kerns_vals = numpy.zeros(kerns_shape, dtype=theano.config.floatX)
+        kerns_shape = theano.shared(numpy.asarray(kerns_shape))
+        topgrad_shape = theano.shared(numpy.asarray(topgrad_shape))
+        desc = dnn.GpuDnnConvDesc(
+            border_mode=border_mode,
+            subsample=subsample,
+            conv_mode=conv_mode
+        )(topgrad_shape, kerns_shape)
+        conv_grad_w = dnn.GpuDnnConv3dGradW()(
+            img,
+            topgrad,
+            kerns,
+            desc,
+        )
+        self._compile_and_check(
+            [img, topgrad, kerns],
+            [conv_grad_w],
+            [img_val, topgrad_vals, kerns_vals],
+            dnn.GpuDnnConv3dGradW
+        )
 
-            desc = dnn.GpuDnnConvDesc(
-                border_mode=params[0],
-                subsample=params[1],
-                conv_mode=params[2]
-            )(img.shape, out.shape)
-            conv_grad_w = dnn.GpuDnnConv3dGradW()(
-                img,
-                out,
-                kerns,
-                desc,
-            )
-            self._compile_and_check(
-                [img, out, kerns],
-                [conv_grad_w],
-                [img_val, out_vals, kern_vals],
-                dnn.GpuDnnConv3dGradW
-            )
+    @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
+    def test_conv3d_gradw(self, border_mode, conv_mode):
+        self._test_conv3d_gradw(T.tensor5('img'),
+                                T.tensor5('topgrad'),
+                                T.tensor5('kerns'),
+                                (5, 2, 6, 13, 21),
+                                (1, 2, 3, 7, 9),
+                                border_mode,
+                                conv_mode,
+                                (1, 1, 1))
 
     def test_conv_gradi(self):
         if not dnn.dnn_available():
