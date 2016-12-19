@@ -185,3 +185,12 @@ def test_local_dimshuffle_subtensor():
 
     topo = g.toposort()
     assert any([not isinstance(x, DimShuffle) for x in topo])
+
+    x = tensor.tensor(broadcastable=(False, True, False), dtype='floatX')
+    out = x[i].dimshuffle(1)
+
+    g = FunctionGraph([x, i], [out])
+    dimshuffle_subtensor(g)
+
+    topo = g.toposort()
+    assert any([not isinstance(x, DimShuffle) for x in topo])
