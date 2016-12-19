@@ -69,14 +69,14 @@ void APPLY_SPECIFIC(ROIPoolForward)(
     }
 }
 
-int APPLY_SPECIFIC(CPUFwd)(PyArrayObject* datas,
+int APPLY_SPECIFIC(CPUFwd)(PyArrayObject* data,
                       PyArrayObject* rois,
                       PyArrayObject** out,
                       PyArrayObject** argmaxes) {
   int batch_size = PyArray_DIMS(rois)[0];
-  int channels = PyArray_DIMS(datas)[1];
-  int height = PyArray_DIMS(datas)[2];
-  int width = PyArray_DIMS(datas)[3];
+  int channels = PyArray_DIMS(data)[1];
+  int height = PyArray_DIMS(data)[2];
+  int width = PyArray_DIMS(data)[3];
 
   // Prepare outputs.
   int dims[] = {0, 0, 0, 0};
@@ -89,7 +89,7 @@ int APPLY_SPECIFIC(CPUFwd)(PyArrayObject* datas,
 
 
   APPLY_SPECIFIC(ROIPoolForward)(
-          count, (float *)PyArray_DATA(datas), SPATIAL_SCALE, channels, height, width,
+          count, (float *)PyArray_DATA(data), SPATIAL_SCALE, channels, height, width,
           POOLED_HEIGHT, POOLED_WIDTH, (float *)PyArray_DATA(rois), (float *)PyArray_DATA(*out), (float *)PyArray_DATA(*argmaxes));
 
   return 0;
