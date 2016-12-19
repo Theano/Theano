@@ -160,9 +160,9 @@ def test_local_dimshuffle_alloc():
     g = FunctionGraph([x], [out])
     reshape_dimshuffle(g)
 
-    l=theano.gof.PerformLinker()
+    l = theano.gof.PerformLinker()
     l.accept(g)
-    f=l.make_function()
+    f = l.make_function()
 
     assert f([3, 4]).ndim == 4
 
@@ -178,9 +178,9 @@ def test_local_dimshuffle_subtensor():
     x = tensor.patternbroadcast(x, (False, True, False, False))
     i = tensor.iscalar('i')
 
-    out = x[:, :, 10:30, ::i].dimshuffle(0,2,3)
+    out = x[:, :, 10:30, ::i].dimshuffle(0, 2, 3)
 
-    g = FunctionGraph([x,i], [out])
+    g = FunctionGraph([x, i], [out])
     dimshuffle_subtensor(g)
 
     topo = g.toposort()
