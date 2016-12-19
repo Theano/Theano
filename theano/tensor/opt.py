@@ -4226,7 +4226,7 @@ def local_flatten_lift(node):
         # Copy over stacktrace from previous output node and from unary
         # elementwise output node since if there was an error, it would
         # probably have come from that operation.
-        copy_stack_trace(node.outputs + node.inputs, e)
+        copy_stack_trace(node.outputs + node.inputs[0], e)
 
         return [e]
 
@@ -4289,6 +4289,10 @@ def local_useless_reshape(node):
         return False
 
     input = node.inputs[0]
+
+    # Copy over stack trace
+    copy_stack_trace(node.outputs[0], input)
+
     output = node.outputs[0]
     output_shape = node.inputs[1]
 
@@ -4597,6 +4601,7 @@ def local_fill_cut(node):
     # Since we are certain that an error in the cg can never come
     # from the removed fill op, it must come from the elemntwise op.
     copy_stack_trace(node.outputs, rval)
+
 
     if isinstance(rval, gof.Variable):
         return rval.owner.outputs
@@ -5157,10 +5162,9 @@ def local_sum_prod_mul_by_scalar(node):
                 new_op_input_nb_elements = new_op_input.size
                 new_op_output = node.op(new_op_input)
 
-            if not len(non_scalars) == 0:
-                # Copy over stacktrace from previous output to new mul op,
-                # for same reason as above.
-                copy_stack_trace(node.outputs, new_op_output)
+            # Copy over stacktrace from previous output to new mul op,
+            # for same reason as above.
+            copy_stack_trace(node.outputs, new_op_output)
 
             # If node.op is a T.elemwise.Prod, then the scalars need to be
             # raised to the power of the number of elements in the input
@@ -5186,7 +5190,7 @@ def local_sum_prod_mul_by_scalar(node):
                 ret = T.mul(*mul_inputs)
                 # Copy over stacktrace from previous output to new mul op,
                 # for same reason as above.
-                copy_stack_trace(node.outputs, [ret] + mul_inputs)
+                copy_stack_trace(node.outputs, ret+mul_inputs)
 
                 return [ret]
 
@@ -5196,7 +5200,7 @@ def local_sum_prod_mul_by_scalar(node):
             # There are never errors in the negative op, thus
             # we need only to copy over stacktrace from previous output node to
             # the two new ops.
-            copy_stack_trace(node.outputs, [s, ret])
+            copy_stack_trace(node.outputs, s+ret)
 
             return [ret]
 
@@ -5212,8 +5216,8 @@ def local_elemwise_sub_zeros(node):
             node.op.scalar_op == scalar.sub and
             node.inputs[0] == node.inputs[1]):
         res = T.zeros_like(node.inputs[0])
-
         # Copy over stacktrace from previous output.
+        # Julian: Pascal, is this really necessary? Is there anyway zeros_like can ever fail?
         copy_stack_trace(node.outputs, res)
         return [res]
 
