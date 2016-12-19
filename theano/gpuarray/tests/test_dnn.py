@@ -1131,7 +1131,24 @@ class test_SoftMax(test_nnet.test_SoftMax):
             raise SkipTest(dnn.dnn_available.msg)
 
     def test_softmax_shape_0(self):
-        raise SkipTest("Cudnn doesn't support 0 shapes")
+        dims = (2, 0, 4, 5)
+        data = numpy.arange(
+            numpy.product(dims),
+            dtype=theano.config.floatX
+        ).reshape(dims)
+
+        # Verify the forward op
+        x_gpu = T.tensor4('x_gpu')
+        f_gpu = dnn.GpuDnnSoftmax('accurate', 'channel')(x_gpu)
+        f_gpu = theano.function([x_gpu], f_gpu, mode=self.mode)
+        assert f_gpu(data).shape == dims
+
+        # Verify the gradient op
+        dy_gpu = T.tensor4('dy_gpu')
+        sm_gpu = T.tensor4('sm_gpu')
+        f_grad_gpu = dnn.GpuDnnSoftmaxGrad('accurate', 'channel')(dy_gpu, sm_gpu)
+        f_grad_gpu = theano.function([dy_gpu, sm_gpu], f_grad_gpu, mode=self.mode)
+        assert f_grad_gpu(data, data).shape == dims
 
     def test_softmax_f16(self):
         x = T.matrix('x', 'float16')
