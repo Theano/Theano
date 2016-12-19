@@ -84,7 +84,7 @@ The package will be installed to ``C:\Program Files
 (x86)\Common Files\Microsoft\Visual C++ for Python\9.0``.
 
 Finally download the ``stdint.h`` header from
-`here <http://msinttypes.googlecode.com/svn/trunk/stdint.h>`_ and save it as
+`here <https://sourceforge.net/p/mspgcc/msp430-libc/ci/master/tree/include/stdint.h>`_ and save it as
 ``C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for
 Python\9.0\VC\include\stdint.h``.
 
