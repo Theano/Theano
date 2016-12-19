@@ -215,6 +215,7 @@ def local_dimshuffle_subtensor(node):
             slice_attr_list = ['start', 'stop', 'step']
             j = 0
             slice_i = -1
+            subtensor_removed_dims = 0
             for idx in input_.owner.op.idx_list:
                 if isinstance(idx, slice):
                     past_j = j
@@ -232,5 +233,12 @@ def local_dimshuffle_subtensor(node):
                 else:
                     new_inputs += [input_.owner.inputs[1 + j]]
                     j += 1
+                    subtensor_removed_dims += 1
+            # Verify the trailing dimensions the subtensor didn't look at.
+            for idx in range(len(input_.owner.op.idx_list),
+                             new_inputs[0].ndim):
+                if (idx - subtensor_removed_dims) in missing_dims:
+                    new_idx_list.append(zero)
+                    new_inputs.append(zero)
             return [Subtensor(new_idx_list)(*new_inputs)]
     return False
