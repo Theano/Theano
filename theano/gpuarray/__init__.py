@@ -60,7 +60,7 @@ def init_dev(dev, name=None):
                               "updating Theano or downgrading cuDNN to "
                               "version 5.1.")
             if config.print_active_device:
-                print("Using cuDNN version %d" % (init_dev.dnn_version, name),
+                print("Using cuDNN version %d" % init_dev.dnn_version,
                       file=sys.stderr)
         except Exception:
             pass
