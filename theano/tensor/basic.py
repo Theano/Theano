@@ -4567,7 +4567,7 @@ class Reshape(Op):
         x = as_tensor_variable(x)
         shp_orig = shp
         shp = as_tensor_variable(shp, ndim=1)
-        if not (shp.dtype in int_types or
+        if not (shp.dtype in int_dtypes or
                 (isinstance(shp, TensorConstant) and shp.data.size == 0)):
             # It raises an error if shp is not of integer type,
             # except when shp is constant and empty
