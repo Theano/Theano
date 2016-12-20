@@ -514,7 +514,8 @@ def perform(
             if i == 0:
                 jout = j+offset_out
                 shape = (store_steps[j],) + output_storage[jout].storage[0].shape
-                if len(output_storage[jout].storage[0].shape) == 0:
+                if output_storage[jout].storage[0].ndim == 0 and \
+                    isinstance(output_storage[jout].storage[0], numpy.ndarray):
                     vector_outs[j] = 1
                 dtype = output_storage[jout].storage[0].dtype
                 if (outs[j][0] is None or
