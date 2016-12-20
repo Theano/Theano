@@ -4226,7 +4226,7 @@ def local_flatten_lift(node):
         # Copy over stacktrace from previous output node and from unary
         # elementwise output node since if there was an error, it would
         # probably have come from that operation.
-        copy_stack_trace(node.outputs + node.inputs[0], e)
+        copy_stack_trace(node.outputs + [node.inputs[0]], e)
 
         return [e]
 
@@ -4498,9 +4498,9 @@ def local_reshape_lift(node):
         if e.type != node.outputs[0].type:
             re = T.patternbroadcast(e, node.outputs[0].broadcastable)
 
-            # We assume that the broadcast op cannot fail. Thus, if the
-            # graph fails it must be due to previous UnaryElemwise op, and
-            # therefore we must copy its stacktrace over.
+            # Copy over stack trace.
+            # If the graph fails it is usually due to the fact that a dimension
+            # that should be broadcastable does not actually have length 1,
             copy_stack_trace(e, re)
         else:
             re = e
@@ -5200,7 +5200,7 @@ def local_sum_prod_mul_by_scalar(node):
             # There are never errors in the negative op, thus
             # we need only to copy over stacktrace from previous output node to
             # the two new ops.
-            copy_stack_trace(node.outputs, s+ret)
+            copy_stack_trace(node.outputs, [s, ret])
 
             return [ret]
 
@@ -5217,7 +5217,7 @@ def local_elemwise_sub_zeros(node):
             node.inputs[0] == node.inputs[1]):
         res = T.zeros_like(node.inputs[0])
         # Copy over stacktrace from previous output.
-        # Julian: Pascal, is this really necessary? Is there anyway zeros_like can ever fail?
+        # This could help for failures due to out-of-memory.
         copy_stack_trace(node.outputs, res)
         return [res]
 
@@ -5394,9 +5394,14 @@ def local_useless_elemwise_comparison(node):
         try:
             cst = get_scalar_constant_value(node.inputs[1],
                                             only_process_constants=True)
+
+            # Copy over stacktrace from previous output.
+            res = T.zeros_like(node.inputs[0], dtype=dtype, opt=True)
+            copy_stack_trace(node.outputs, res)
+
             if cst < 0:
-                return [T.zeros_like(node.inputs[0],
-                                     dtype=dtype, opt=True)]
+                return [res]
+
         except NotScalarConstantError:
             pass
     return

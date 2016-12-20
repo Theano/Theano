@@ -3566,7 +3566,6 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
             assert isinstance(elem.inputs[0], T.TensorConstant), elem
             assert T.extract_constant(elem.inputs[0]) == val, val
 
-
     def assert_identity(self, f):
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
@@ -3662,7 +3661,6 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
             f = theano.function([x], T.eq(g, 0))
             assert f([3, 3]) == 0
             assert f([]) == 1
-            self.assertTrue(check_stack_trace(f, ops_to_check='last'))
 
             f = theano.function([x], T.eq(g, -1))
             self.assert_eqs_const(f, 0)
@@ -3674,12 +3672,12 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
         f = theano.function([x], T.eq(g, 0))
         assert (f([3, 3]) == 0).all()
         assert (f([]) == 1).all()
-        self.assertTrue(check_stack_trace(f, ops_to_check='last'))
 
         f = theano.function([x], T.eq(g, -1))
         self.assert_eqs_const(f, 0, op=T.alloc)
         assert (f([3, 3]) == 0).all()
 
+ 
     def test_and(self):
         mode = theano.compile.get_default_mode().including('canonicalize')
 
@@ -3725,6 +3723,22 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
         f = theano.function([x], T.xor(x, x), mode=mode)
         self.assert_eqs_const(f, 0)
+
+
+    def test_stacktrace(self):
+        mode = theano.compile.get_default_mode().including(
+            'local_useless_elemwise_comparison')
+
+        x = T.vector('x', dtype=config.floatX)
+        f = theano.function([x], T.gt(x, x), mode=mode)
+        self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+
+        f = theano.function([x], T.le(x, x), mode=mode)
+        self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+
+        # Julian: I tried testing the stack trace for a bunch of different
+        # functions, including maximum and shapes, but other opts remove
+        # the stack traces in this case.
 
 
 class Test_local_canonicalize_alloc(unittest.TestCase):
