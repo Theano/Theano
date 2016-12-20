@@ -174,7 +174,7 @@ def test_local_dimshuffle_subtensor():
 
     dimshuffle_subtensor = out2in(local_dimshuffle_subtensor)
 
-    x = tensor.tensor4('x')
+    x = tensor.dtensor4('x')
     x = tensor.patternbroadcast(x, (False, True, False, False))
     i = tensor.iscalar('i')
 
@@ -186,7 +186,8 @@ def test_local_dimshuffle_subtensor():
     topo = g.toposort()
     assert any([not isinstance(x, DimShuffle) for x in topo])
 
-    x = tensor.tensor(broadcastable=(False, True, False), dtype='floatX')
+    # Test dimshuffle remove dimensions the subtensor don't "see".
+    x = tensor.tensor(broadcastable=(False, True, False), dtype='float64')
     out = x[i].dimshuffle(1)
 
     g = FunctionGraph([x, i], [out])
@@ -194,3 +195,15 @@ def test_local_dimshuffle_subtensor():
 
     topo = g.toposort()
     assert any([not isinstance(x, DimShuffle) for x in topo])
+
+    # Test dimshuffle remove dimensions the subtensor don't "see" but
+    # have in between dimensions.
+    x = tensor.tensor(broadcastable=(False, True, False, True),
+                      dtype='float64')
+    out = x[i].dimshuffle(1)
+
+    f = theano.function([x, i], out)
+
+    topo = f.maker.fgraph.toposort()
+    assert any([not isinstance(x, DimShuffle) for x in topo])
+    assert f(numpy.random.rand(5, 1, 4, 1), 2).shape == (4,)

@@ -238,6 +238,9 @@ def local_dimshuffle_subtensor(node):
             for idx in range(len(input_.owner.op.idx_list),
                              new_inputs[0].ndim):
                 if (idx - subtensor_removed_dims) in missing_dims:
+                    while len(new_idx_list) < idx:
+                        new_idx_list.append(slice(None))
+
                     new_idx_list.append(zero)
                     new_inputs.append(zero)
             return [Subtensor(new_idx_list)(*new_inputs)]
