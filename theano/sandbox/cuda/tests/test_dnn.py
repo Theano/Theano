@@ -990,14 +990,14 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
         img_val = numpy.asarray(
             numpy.random.rand(*img_shape),
-            dtype=theano.config.floatX
+            dtype="float32"
         )
         topgrad_vals = numpy.asarray(
             numpy.random.rand(*topgrad_shape),
-            dtype=theano.config.floatX
+            dtype="float32"
         )
 
-        kerns_vals = numpy.zeros(kerns_shape, dtype=theano.config.floatX)
+        kerns_vals = numpy.zeros(kerns_shape, dtype="float32")
         kerns_shape = theano.shared(numpy.asarray(kerns_shape))
         topgrad_shape = theano.shared(numpy.asarray(topgrad_shape))
         desc = dnn.GpuDnnConvDesc(
@@ -1041,14 +1041,14 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
         img_val = numpy.asarray(
             numpy.random.rand(*img_shape),
-            dtype=theano.config.floatX
+            dtype="float32"
         )
         topgrad_vals = numpy.asarray(
             numpy.random.rand(*topgrad_shape),
-            dtype=theano.config.floatX
+            dtype="float32"
         )
 
-        kerns_vals = numpy.zeros(kerns_shape, dtype=theano.config.floatX)
+        kerns_vals = numpy.zeros(kerns_shape, dtype="float32")
         kerns_shape = theano.shared(numpy.asarray(kerns_shape))
         topgrad_shape = theano.shared(numpy.asarray(topgrad_shape))
         desc = dnn.GpuDnnConvDesc(
