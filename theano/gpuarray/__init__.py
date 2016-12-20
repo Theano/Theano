@@ -65,14 +65,14 @@ def init_dev(dev, name=None):
         except Exception:
             pass
     if dev not in init_dev.devmap:
-        ctx = pygpu.init(dev,
+        context = pygpu.init(dev,
                          disable_alloc_cache=config.gpuarray.preallocate < 0,
                          single_stream=config.gpuarray.single_stream,
                          sched=config.gpuarray.sched)
-        ctx.dev = dev
-        init_dev.devmap[dev] = ctx
+        context.dev = dev
+        init_dev.devmap[dev] = context
         if dev.startswith('cuda'):
-            ctx.cudnn_handle = dnn._make_handle(ctx)
+            context.cudnn_handle = dnn._make_handle(context)
         if config.gpuarray.preallocate < 0:
             print("Disabling allocation cache on %s" % (dev,))
         elif config.gpuarray.preallocate > 0:
@@ -86,10 +86,10 @@ def init_dev(dev, name=None):
 
             # This will allocate and immediatly free an object of size gmem
             # which will reserve that amount of memory on the GPU.
-            pygpu.empty((gmem,), dtype='int8', context=ctx)
+            pygpu.empty((gmem,), dtype='int8', context=context)
             if config.print_active_device:
                 print("Preallocating %d/%d Mb (%f) on %s" %
-                      (gmem//MB, ctx.total_gmem//MB, gmem/ctx.total_gmem, dev),
+                      (gmem//MB, context.total_gmem//MB, gmem/context.total_gmem, dev),
                       file=sys.stderr)
 
     context = init_dev.devmap[dev]
