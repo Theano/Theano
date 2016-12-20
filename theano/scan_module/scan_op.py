@@ -601,7 +601,7 @@ class Scan(PureOp):
             # For every nit_sot input we get as input a int/uint that
             # depicts the size in memory for that sequence. This feature is
             # used by truncated BPTT and by scan space optimization
-            if (str(outer_nitsot.type.dtype)[:3] not in ('uin', 'int') or
+            if (str(outer_nitsot.type.dtype) not in tensor.integer_dtypes or
                     outer_nitsot.ndim != 0):
                 raise ValueError('For output %s you need to provide a '
                                  'scalar int !', str(outer_nitsot))
@@ -2012,7 +2012,7 @@ class Scan(PureOp):
             g_y_s = known_grads.values()
 
             for g_y in g_y_s:
-                if 'int' in str(g_y.dtype):
+                if str(g_y.dtype) in tensor.integer_dtypes:
                     raise TypeError("Gradients may never be integers but g_y "
                                     "has type " + str(g_y.type))
 

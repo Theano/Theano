@@ -335,7 +335,7 @@ class GpuArrayType(Type):
                          rtol=None, atol=None):
         if a.shape != b.shape or a.dtype != b.dtype:
             return False
-        if 'int' in str(a.dtype):
+        if str(a.dtype) in theano.tensor.discrete_dtypes:
             return GpuArrayType.values_eq(a, b)
         else:
             if allow_remove_inf or allow_remove_nan:

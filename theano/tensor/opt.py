@@ -812,7 +812,7 @@ class MakeVector(T.Op):
 
     def grad(self, inputs, output_gradients):
         # If the output is of an integer dtype, no gradient shall pass
-        if 'int' in self.dtype:
+        if self.dtype in theano.tensor.discrete_dtypes:
             return [ipt.zeros_like().astype(theano.config.floatX)
                     for ipt in inputs]
 
@@ -1094,7 +1094,7 @@ class ShapeFeature(object):
                 # x should already have been imported, and should be in shape_of.
                 s_i = self.shape_of[x][i]
 
-        if s_i.type.dtype[:3] in ('int', 'uint'):
+        if s_i.type.dtype in theano.tensor.integer_dtypes:
             if getattr(s_i.type, 'ndim', 0):
                 raise TypeError('Shape element must be scalar', s_i)
             return s_i

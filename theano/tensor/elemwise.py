@@ -386,7 +386,7 @@ PyArray_SetBaseObject(%(res)s, (PyObject*)%(basename)s);
         # Do not make the DimShuffle inplace as an optimization at the
         # canonicalization optimization phase will remove the inplace.
         # The inplace will be reintroduced automatically later in the graph.
-        if 'int' in inp[0].dtype:
+        if inp[0].dtype in theano.tensor.integer_dtypes:
             return [inp[0].zeros_like(dtype=theano.config.floatX)]
         else:
             return [DimShuffle(gz.type.broadcastable, grad_order)(
@@ -665,7 +665,7 @@ second dimension
                     elem = ipt.zeros_like()
                     if str(elem.type.dtype) not in theano.tensor.continuous_dtypes:
                         elem = elem.astype(theano.config.floatX)
-                    assert str(elem.type.dtype).find('int') == -1
+                    assert str(elem.type.dtype) not in theano.tensor.discrete_dtypes
                     new_rval.append(elem)
             return new_rval
 

@@ -51,8 +51,7 @@ class Fourier(gof.Op):
             axis = tensor.as_tensor_variable(axis)
         else:
             axis = tensor.as_tensor_variable(axis)
-            if (not axis.dtype.startswith('int')) and \
-               (not axis.dtype.startswith('uint')):
+            if axis.dtype not in tensor.integer_dtypes:
                 raise TypeError('%s: index of the transformed axis must be'
                                 ' of type integer' % self.__class__.__name__)
             elif axis.ndim != 0 or (isinstance(axis, tensor.TensorConstant) and
@@ -65,8 +64,7 @@ class Fourier(gof.Op):
             n = tensor.as_tensor_variable(n)
         else:
             n = tensor.as_tensor_variable(n)
-            if (not n.dtype.startswith('int')) and \
-               (not n.dtype.startswith('uint')):
+            if n.dtype not in tensor.integer_dtypes:
                 raise TypeError('%s: length of the transformed axis must be'
                                 ' of type integer' % self.__class__.__name__)
             elif n.ndim != 0 or (isinstance(n, tensor.TensorConstant) and

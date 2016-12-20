@@ -2665,7 +2665,7 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
     def make_node(self, x, ilist):
         x_ = as_cuda_ndarray_variable(x)
         ilist_ = tensor.as_tensor_variable(ilist)
-        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+        if ilist_.type.dtype not in theano.tensor.integer_dtypes:
             raise TypeError('index must be integers')
         if ilist_.type.ndim != 1:
             raise TypeError('index must be vector')
@@ -2782,7 +2782,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         assert x_.type.dtype == y_.type.dtype
         assert x_.type.ndim >= y_.type.ndim
 
-        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+        if ilist_.type.dtype not in theano.tensor.integer_dtypes:
             raise TypeError('index must be integers')
         if ilist_.type.ndim != 1:
             raise TypeError('index must be vector')
@@ -2976,7 +2976,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
         assert x_.type.dtype == y_.type.dtype
         assert x_.type.ndim >= y_.type.ndim
 
-        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+        if ilist_.type.dtype not in theano.tensor.integer_dtypes:
             raise TypeError('index must be integers')
         if ilist_.type.ndim != 1:
             raise TypeError('index must be vector')

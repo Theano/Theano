@@ -403,8 +403,7 @@ def _infer_ndim_bcast(ndim, shape, *args):
         raise TypeError("shape must be a vector or list of scalar, got '%s'" %
                         v_shape)
 
-    if (not (v_shape.dtype.startswith('int') or
-             v_shape.dtype.startswith('uint'))):
+    if v_shape.dtype not in theano.tensor.integer_dtypes:
         raise TypeError('shape must be an integer vector or list',
                         v_shape.dtype)
 

@@ -1076,7 +1076,7 @@ def _as_scalar(res, dtype=None):
             rval = res.dimshuffle()
         else:
             rval = res
-        if rval.type.dtype[:3] in ('int', 'uin'):
+        if rval.type.dtype in theano.tensor.integer_dtypes:
             # We check that the upcast of res and dtype won't change dtype.
             # If dtype is float64, we will cast int64 to float64.
             # This is valid when res is a scalar used as input to a dot22

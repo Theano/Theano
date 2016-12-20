@@ -597,11 +597,11 @@ def randc128_ranged(min, max, shape):
 
 
 def rand_of_dtype(shape, dtype):
-    if 'int' in dtype:
+    if dtype in tensor.discrete_dtypes:
         return randint(*shape).astype(dtype)
-    elif 'float' in dtype:
+    elif dtype in tensor.float_dtypes:
         return rand(*shape).astype(dtype)
-    elif 'complex' in dtype:
+    elif dtype in tensor.complex_dtypes:
         return randcomplex(*shape).astype(dtype)
     else:
         raise TypeError()
@@ -6786,7 +6786,7 @@ class T_long_tensor(unittest.TestCase):
             val = L(2 ** exp - 1)
             scalar_ct = constant(val)
 
-            assert scalar_ct.dtype.startswith('int'), (exp, val, scalar_ct.dtype)
+            assert scalar_ct.dtype in tensor.int_dtypes, (exp, val, scalar_ct.dtype)
             assert scalar_ct.value == val
 
             vector_ct = constant([val, val])

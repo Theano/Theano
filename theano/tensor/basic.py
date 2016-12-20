@@ -1416,8 +1416,7 @@ class Argmax(Op):
                 raise TypeError(
                     "Argmax needs a constant axis. Got %s" % axis)
             else:
-                assert (axis.dtype.startswith("int") or
-                        axis.dtype.startswith("uint"))
+                assert axis.dtype in integer_dtypes
                 if isinstance(axis.data, (integer_types, numpy.integer)) or \
                    (isinstance(axis.data, numpy.ndarray) and
                         axis.data.ndim == 0):
@@ -1623,7 +1622,7 @@ def max_and_argmax(a, axis=None, keepdims=False):
         elif not isinstance(axis, TensorConstant):
             raise TypeError("max and argmax computation needs a constant axis. Got %s" % axis)
         else:
-            assert (axis.dtype.startswith("int") or axis.dtype.startswith("uint"))
+            assert axis.dtype in integer_dtypes
             if (isinstance(axis.data, (integer_types, numpy.integer)) or
                     (isinstance(axis.data, numpy.ndarray) and axis.data.ndim == 0)):
                 axis = [int(axis.data)]
@@ -2766,7 +2765,7 @@ def alloc_validate_shape(shape):
                 return '\n' + min_informative_str(s)
             else:
                 return str(s)
-        if s.type.dtype[:3] not in ('int', 'uin'):
+        if s.type.dtype not in integer_dtypes:
             s_as_str = err_str()
             raise TypeError('Shape arguments to Alloc must be integers, '
                             'but argument %s is not for apply node: %s' %
@@ -4568,7 +4567,7 @@ class Reshape(Op):
         x = as_tensor_variable(x)
         shp_orig = shp
         shp = as_tensor_variable(shp, ndim=1)
-        if not (shp.dtype.startswith('int') or
+        if not (shp.dtype in int_types or
                 (isinstance(shp, TensorConstant) and shp.data.size == 0)):
             # It raises an error if shp is not of integer type,
             # except when shp is constant and empty
@@ -5163,7 +5162,7 @@ class ARange(Op):
             return False
 
         def upcast(var):
-            if ('int' in var.dtype and
+            if (var.dtype in integer_dtypes and
                     # We do not want to cast uint64 to int64 as this can
                     # loose information. If we upcast uint64 with int64,
                     # this give float64. This is safer then checking for
@@ -5227,9 +5226,9 @@ def arange(start, stop=None, step=1, dtype=None):
         dtype = scal.upcast(start.type.dtype, stop.type.dtype, step.type.dtype)
         # don't try to be stingy and byte-optimize, this leads to
         # overflow problems.
-        if dtype.startswith('int'):
+        if dtype in int_dtypes:
             dtype = 'int64'
-        if dtype.startswith('uint'):
+        if dtype in uint_dtypes:
             dtype = 'uint64'
         if config.cast_policy in ('numpy', 'numpy+floatX'):
             # We enforce numpy semantics, except in the special case where
@@ -5373,12 +5372,9 @@ class PermuteRowElements(Op):
             inverse = as_tensor_variable(0)
 
         # y should contain integers
-        assert (y.type.dtype.startswith('int') or
-                y.type.dtype.startswith('uint'))
+        assert y.type.dtype in integer_dtypes
         # Inverse should be an integer scalar
-        assert (inverse.type.ndim == 0 and
-                (inverse.type.dtype.startswith('int') or
-                 inverse.type.dtype.startswith('uint')))
+        assert (inverse.type.ndim == 0 and inverse.type.dtype in integer_dtypes)
 
         # Match shapes of x and y
         x_dim = x.type.ndim
@@ -5516,7 +5512,7 @@ class PermuteRowElements(Op):
         # if x is an integer type, then so is the output.
         # this means f(x+eps) = f(x) so the gradient with respect
         # to x is zero
-        if x.type.dtype.find('int') != -1:
+        if x.type.dtype in discrete_dtypes:
             gx = x.zeros_like()
 
         # The elements of y and of inverse both affect the output,

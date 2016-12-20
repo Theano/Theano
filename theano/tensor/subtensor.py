@@ -568,7 +568,7 @@ class Subtensor(Op):
         gz, = grads
         x = inputs[0]
         rest = inputs[1:]
-        if x.dtype.find('int') != -1:
+        if x.dtype in theano.tensor.discrete_dtypes:
             first = x.zeros_like().astype(theano.config.floatX)
         else:
             # For best optimization, we let this as an inc.
@@ -1683,7 +1683,7 @@ class AdvancedSubtensor1(Op):
     def make_node(self, x, ilist):
         x_ = theano.tensor.as_tensor_variable(x)
         ilist_ = theano.tensor.as_tensor_variable(ilist)
-        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+        if ilist_.type.dtype not in theano.tensor.integer_dtypes:
             raise TypeError('index must be integers')
         if ilist_.type.ndim != 1:
             raise TypeError('index must be vector')
@@ -1892,7 +1892,7 @@ class AdvancedIncSubtensor1(Op):
         y_ = theano.tensor.as_tensor_variable(y)
         ilist_ = theano.tensor.as_tensor_variable(ilist)
 
-        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+        if ilist_.type.dtype not in theano.tensor.integer_dtypes:
             raise TypeError('index must be integers')
         if ilist_.type.ndim != 1:
             raise TypeError('index must be vector')
@@ -2080,7 +2080,7 @@ def as_index_variable(idx):
     if isinstance(idx, gof.Variable) and isinstance(idx.type, NoneTypeT):
         return idx
     idx = theano.tensor.as_tensor_variable(idx)
-    if idx.type.dtype[:3] not in ('int', 'uin'):
+    if idx.type.dtype not in theano.tensor.integer_dtypes:
         raise TypeError('index must be integers')
     return idx
 

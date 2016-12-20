@@ -16,7 +16,7 @@ def as_int_none_variable(x):
     elif NoneConst.equals(x):
         return x
     x = theano.tensor.as_tensor_variable(x, ndim=0)
-    if x.type.dtype[:3] not in ('int', 'uin'):
+    if x.type.dtype not in theano.tensor.integer_dtypes:
         raise TypeError('index must be integers')
     return x
 
@@ -80,15 +80,15 @@ class SliceConstant(Constant):
         # Numpy ndarray aren't hashable, so get rid of them.
         if isinstance(data.start, numpy.ndarray):
             assert data.start.ndim == 0
-            assert "int" in str(data.start.dtype)
+            assert str(data.start.dtype) in theano.tensor.integer_dtypes
             data = slice(int(data.start), data.stop, data.step)
         elif isinstance(data.stop, numpy.ndarray):
             assert data.stop.ndim == 0
-            assert "int" in str(data.stop.dtype)
+            assert str(data.stop.dtype) in theano.tensor.integer_dtypes
             data = slice(data.start, int(data.stop), data.step)
         elif isinstance(data.step, numpy.ndarray):
             assert data.step.ndim == 0
-            assert "int" in str(data.step.dtype)
+            assert str(data.step.dtype) in theano.tensor.integer_dtypes
             data = slice(data.start, int(data.stop), data.step)
         Constant.__init__(self, type, data, name)
 

@@ -38,8 +38,8 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         assert ten4.ndim == 4
         assert neib_shape.ndim == 1
         assert neib_step.ndim == 1
-        assert "int" in neib_shape.dtype
-        assert "int" in neib_step.dtype
+        assert neib_shape.dtype in T.integer_dtypes
+        assert neib_step.dtype in T.integer_dtypes
 
         return Apply(self, [ten4, neib_shape, neib_step],
                      [GpuArrayType(broadcastable=(False, False),
