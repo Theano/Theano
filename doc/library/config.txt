@@ -1071,6 +1071,14 @@ import theano and print the config variable, as in:
 
     If set to True, will preload the C module cache at import time
 
+.. attribute:: config.cmodule.age_thresh_use
+
+    Int value, default: ``60 * 60 * 24 * 24``  # 24 days
+
+    In seconds. The time after which a compiled c module won't be
+    reused by Theano. Automatic deletion of those c module 7 days
+    after that time.
+
 .. attribute:: config.traceback.limit
 
     Int value, default: 8

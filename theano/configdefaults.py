@@ -1143,6 +1143,13 @@ AddConfigVar('cmodule.preload_cache',
              BoolParam(False, allow_override=False),
              in_c_key=False)
 
+AddConfigVar('cmodule.age_thresh_use',
+             "In seconds. The time after which "
+             "Theano won't reuse a compile c module.",
+             # 24 days
+             IntParam(60 * 60 * 24 * 24, allow_override=False),
+             in_c_key=False)
+
 
 def default_blas_ldflags():
     global numpy
