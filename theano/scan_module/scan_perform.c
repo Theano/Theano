@@ -1825,7 +1825,7 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_get_version(CYTHO
 static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_UNUSED PyObject *__pyx_self, unsigned int __pyx_v_n_shared_outs, unsigned int __pyx_v_n_mit_mot_outs, unsigned int __pyx_v_n_seqs, unsigned int __pyx_v_n_mit_mot, unsigned int __pyx_v_n_mit_sot, unsigned int __pyx_v_n_sit_sot, unsigned int __pyx_v_n_nit_sot, int __pyx_v_n_steps, int __pyx_v_as_while, PyArrayObject *__pyx_v_mintaps, PyArrayObject *__pyx_v_tap_array, PyArrayObject *__pyx_v_tap_array_len, PyArrayObject *__pyx_v_vector_seqs, PyArrayObject *__pyx_v_vector_outs, CYTHON_UNUSED PyArrayObject *__pyx_v_mit_mot_out_slices, CYTHON_UNUSED PyArrayObject *__pyx_v_mit_mot_out_nslices, PyArrayObject *__pyx_v_mitmots_preallocated, PyArrayObject *__pyx_v_inps_is_tensor, PyArrayObject *__pyx_v_outs_is_tensor, PyObject *__pyx_v_fn, PyObject *__pyx_v_fnct, PyArrayObject *__pyx_v_destroy_map, PyObject *__pyx_v_args, PyObject *__pyx_v_outs, PyObject *__pyx_v_self, PyObject *__pyx_v_node); /* proto */
 static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info, int __pyx_v_flags); /* proto */
 static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info); /* proto */
-static PyObject *__pyx_float_0_295;
+static PyObject *__pyx_float_0_296;
 static PyObject *__pyx_int_0;
 static PyObject *__pyx_int_1;
 static PyObject *__pyx_int_neg_1;
@@ -1861,7 +1861,7 @@ static PyObject *__pyx_codeobj__27;
  * 
  * 
  * def get_version():             # <<<<<<<<<<<<<<
- *     return 0.295
+ *     return 0.296
  * 
  */
 
@@ -1887,20 +1887,20 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_get_version(CYTHO
   /* "theano/scan_module/scan_perform.pyx":65
  * 
  * def get_version():
- *     return 0.295             # <<<<<<<<<<<<<<
+ *     return 0.296             # <<<<<<<<<<<<<<
  * 
  * @cython.boundscheck(False)
  */
   __Pyx_XDECREF(__pyx_r);
-  __Pyx_INCREF(__pyx_float_0_295);
-  __pyx_r = __pyx_float_0_295;
+  __Pyx_INCREF(__pyx_float_0_296);
+  __pyx_r = __pyx_float_0_296;
   goto __pyx_L0;
 
   /* "theano/scan_module/scan_perform.pyx":64
  * 
  * 
  * def get_version():             # <<<<<<<<<<<<<<
- *     return 0.295
+ *     return 0.296
  * 
  */
 
@@ -10868,7 +10868,7 @@ static int __Pyx_InitCachedConstants(void) {
  * 
  * 
  * def get_version():             # <<<<<<<<<<<<<<
- *     return 0.295
+ *     return 0.296
  * 
  */
   __pyx_codeobj__25 = (PyObject*)__Pyx_PyCode_New(0, 0, 0, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_home_khaotik_WKSP_DL_dev_Theano, __pyx_n_s_get_version, 64, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__25)) __PYX_ERR(0, 64, __pyx_L1_error)
@@ -10893,7 +10893,7 @@ static int __Pyx_InitCachedConstants(void) {
 
 static int __Pyx_InitGlobals(void) {
   if (__Pyx_InitStrings(__pyx_string_tab) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
-  __pyx_float_0_295 = PyFloat_FromDouble(0.295); if (unlikely(!__pyx_float_0_295)) __PYX_ERR(0, 1, __pyx_L1_error)
+  __pyx_float_0_296 = PyFloat_FromDouble(0.296); if (unlikely(!__pyx_float_0_296)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_int_0 = PyInt_FromLong(0); if (unlikely(!__pyx_int_0)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_int_1 = PyInt_FromLong(1); if (unlikely(!__pyx_int_1)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_int_neg_1 = PyInt_FromLong(-1); if (unlikely(!__pyx_int_neg_1)) __PYX_ERR(0, 1, __pyx_L1_error)
@@ -11095,7 +11095,7 @@ PyMODINIT_FUNC PyInit_scan_perform(void)
  * 
  * 
  * def get_version():             # <<<<<<<<<<<<<<
- *     return 0.295
+ *     return 0.296
  * 
  */
   __pyx_t_2 = PyCFunction_NewEx(&__pyx_mdef_6theano_11scan_module_12scan_perform_1get_version, NULL, __pyx_n_s_theano_scan_module_scan_perform); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 64, __pyx_L1_error)
