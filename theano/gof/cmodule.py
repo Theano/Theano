@@ -669,7 +669,7 @@ class ModuleCache(object):
         if do_refresh:
             self.refresh()
 
-    age_thresh_use = 60 * 60 * 24 * 24    # 24 days
+    age_thresh_use = config.cmodule.age_thresh_use  # default 24 days
     """
     The default age threshold (in seconds) for cache files we want to use.
 
@@ -1241,7 +1241,8 @@ class ModuleCache(object):
 
         self.time_spent_in_check_key += time.time() - start_time
 
-    age_thresh_del = 60 * 60 * 24 * 31  # 31 days
+    # default 31 days
+    age_thresh_del = config.cmodule.age_thresh_use + 60 * 60 * 24 * 7
     age_thresh_del_unversioned = 60 * 60 * 24 * 7  # 7 days
     """
     The default age threshold for `clear_old` (in seconds).
