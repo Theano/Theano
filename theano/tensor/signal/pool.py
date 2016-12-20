@@ -1748,7 +1748,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         assert x.ndim == maxout.ndim == gz.ndim >= nd
         if ws.dtype not in tensor.int_dtypes:
             raise TypeError('Pool downsample parameters must be ints.')
-        if stride.dtypes not in tensor.int_dtypes:
+        if stride.dtype not in tensor.int_dtypes:
             raise TypeError('Stride parameters must be ints.')
         if pad.dtype not in tensor.int_dtypes:
             raise TypeError('Padding parameters must be ints.')
