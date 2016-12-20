@@ -1093,7 +1093,6 @@ class GetItem2Lists(gof.op.Op):
         assert ind1.dtype in integer_dtypes
         assert ind2.dtype in integer_dtypes
 
-
         return gof.Apply(self, [x, ind1, ind2],
                          [theano.tensor.vector()])
 
