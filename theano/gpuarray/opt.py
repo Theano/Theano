@@ -442,7 +442,7 @@ class GraphToGPU(Optimizer):
 
         print(blanc, "  time io_toposort %.3fs" % toposort_timing, file=stream)
 
-        s = sum([v for k, v in time_opts.iteritems()])
+        s = sum(time_opts.values())
         print(blanc, "Total time taken by local optimizers %.3fs " % s, file=stream)
 
         count_opt = []
