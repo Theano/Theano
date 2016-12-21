@@ -310,7 +310,7 @@ def version(raises=True):
     """
     if not dnn_present():
         if raises:
-            raise Exception(
+            raise RuntimeError(
                 "We can't determine the cudnn version as it is not available",
                 dnn_available.msg)
         else:
