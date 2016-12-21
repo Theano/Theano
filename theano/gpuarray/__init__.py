@@ -55,12 +55,6 @@ def init_dev(dev, name=None):
     if init_dev.dnn_version is None and dev.startswith('cuda'):
         try:
             init_dev.dnn_version = dnn.version()
-            # 5200 should not print warning with cudnn 5.1 final.
-            if init_dev.dnn_version >= 5200:
-                warnings.warn("Your cuDNN version is more recent than "
-                              "Theano. If you encounter problems, try "
-                              "updating Theano or downgrading cuDNN to "
-                              "version 5.1.")
             if config.print_active_device:
                 print("Using cuDNN version %d" % init_dev.dnn_version,
                       file=sys.stderr)
