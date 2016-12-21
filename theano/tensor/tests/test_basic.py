@@ -2783,16 +2783,22 @@ def test_batched_dot_not_contiguous():
     Z = batched_dot(X, W)
     f = function([X, W], Z)
 
+    w = np_genarray(30, 10, 5)
     reversed_x_container = np_genarray(20, 40, 30)
     x_container = reversed_x_container.T
-    x = x_container[::1, ::2, ::2]
-    assert x.shape == (30, 20, 10)
-    assert x.strides[0] == numpy.dtype(floatX).itemsize
-    assert not (x.flags['C_CONTIGUOUS'] or x.flags['F_CONTIGUOUS'])
-    w = np_genarray(30, 10, 5)
-    result = f(x, w)
-    ref_result = numpy.asarray(list(numpy.dot(u, v) for u, v in zip(x, w)))
-    utt.assert_allclose(ref_result, result)
+
+    def check_first_dim(inverted):
+        direction = -1 if inverted else 1
+        x = x_container[::direction, ::2, ::2]
+        assert x.shape == (30, 20, 10)
+        assert x.strides[0] == direction * numpy.dtype(floatX).itemsize
+        assert not (x.flags['C_CONTIGUOUS'] or x.flags['F_CONTIGUOUS'])
+        result = f(x, w)
+        ref_result = numpy.asarray(list(numpy.dot(u, v) for u, v in zip(x, w)))
+        utt.assert_allclose(ref_result, result)
+
+    for inverted in (0, 1):
+        yield (check_first_dim, inverted)
 
 
 def test_batched_tensordot():
