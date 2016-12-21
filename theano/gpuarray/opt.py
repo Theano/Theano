@@ -1036,9 +1036,7 @@ def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
     set_instead_of_inc = op.set_instead_of_inc
 
     compute_capability = int(context.bin_id[-2])
-
-    if (compute_capability < 2 or x.ndim != 2 or y.ndim != 2 or
-            x.type.dtype != y.type.dtype):
+    if compute_capability < 2 or x.ndim != 2 or y.ndim != 2:
         return GpuAdvancedIncSubtensor1(
             set_instead_of_inc=set_instead_of_inc)
     else:

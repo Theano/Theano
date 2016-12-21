@@ -803,7 +803,6 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
         y_ = as_gpuarray_variable(y, ctx_name)
         ilist_ = as_gpuarray_variable(ilist, ctx_name)
 
-        assert x_.type.dtype == y_.type.dtype
         assert x_.type.ndim >= y_.type.ndim
 
         if ilist_.type.dtype not in tensor.integer_dtypes:
