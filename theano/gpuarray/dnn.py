@@ -109,7 +109,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
 """
 
     params = ["-l", "cudnn", "-I" + os.path.dirname(__file__)]
-    path_wrapper = "\"" if os.name =='nt' else ""
+    path_wrapper = "\"" if os.name == 'nt' else ""
     params = ["-l", "cudnn"]
     params.extend(['-I%s%s%s' % (path_wrapper, os.path.dirname(__file__), path_wrapper)])
     if config.dnn.include_path:
