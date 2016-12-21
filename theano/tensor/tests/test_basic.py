@@ -2771,6 +2771,30 @@ def test_batched_dot():
     assert result.shape[0] == first_mat_val.shape[0]
 
 
+def test_batched_dot_not_contiguous():
+    def np_genarray(*_shape):
+        size = 1
+        for dimsize in _shape:
+            size *= dimsize
+        return numpy.arange(size, dtype=floatX).reshape(_shape)
+
+    X = tensor3()
+    W = tensor3()
+    Z = batched_dot(X, W)
+    f = function([X, W], Z)
+
+    reversed_x_container = np_genarray(20, 40, 30)
+    x_container = reversed_x_container.T
+    x = x_container[::1, ::2, ::2]
+    assert x.shape == (30, 20, 10)
+    assert x.strides[0] == numpy.dtype(floatX).itemsize
+    assert not (x.flags['C_CONTIGUOUS'] or x.flags['F_CONTIGUOUS'])
+    w = np_genarray(30, 10, 5)
+    result = f(x, w)
+    ref_result = numpy.asarray(list(numpy.dot(u, v) for u, v in zip(x, w)))
+    utt.assert_allclose(ref_result, result)
+
+
 def test_batched_tensordot():
     first = theano.tensor.tensor4("first")
     second = theano.tensor.tensor4("second")

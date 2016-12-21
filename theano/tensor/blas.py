@@ -2149,14 +2149,8 @@ class BatchedDot(Op):
         fail = sub["fail"]
 
         # generate contiguity condition
-        def contiguous(var, ndim):
-            strides = "PyArray_STRIDES(%s)" % var
-            return " && ".join([
-                " && ".join("{strides}[{i}] > 0 && {strides}[{i}] % type_size == 0"
-                            .format(strides=strides, i=i) for i in range(ndim)),
-                "(%s)" % " || ".join("{strides}[{i}] == type_size"
-                                     .format(strides=strides, i=i) for i in range(ndim)),
-            ])
+        def contiguous(var):
+            return "(PyArray_IS_C_CONTIGUOUS(%s) || PyArray_IS_F_CONTIGUOUS(%s))" % (var, var)
 
         x_ndim, y_ndim, z_ndim = node.inputs[0].ndim, node.inputs[1].ndim, node.outputs[0].ndim
 
@@ -2171,7 +2165,7 @@ class BatchedDot(Op):
         z_shape_correct = " && ".join("PyArray_DIMS(%s)[%i] == %s"
                                       % (_z, i, dim) for i, dim in enumerate(z_dims))
         z_shape = ", ".join(z_dims)
-        z_contiguous = contiguous(_z, z_ndim)
+        z_contiguous = contiguous(_z)
         allocate = """
             if (NULL == %(_z)s || !(%(z_shape_correct)s)  || !(%(z_contiguous)s))
             {
@@ -2189,8 +2183,8 @@ class BatchedDot(Op):
 
         # code to reallocate inputs contiguously if necessary
         contiguate = []
-        for var, ndim in [(_x, x_ndim), (_y, y_ndim)]:
-            _contiguous = contiguous(var, ndim)
+        for var in (_x, _y):
+            _contiguous = contiguous(var)
             contiguate.append("""
                 if (!(%(_contiguous)s)) {
                     PyArrayObject * _copy = (PyArrayObject *) PyArray_Copy(%(var)s);
@@ -2309,7 +2303,7 @@ class BatchedDot(Op):
 
     def c_code_cache_version(self):
         from theano.tensor.blas_headers import blas_header_version
-        return (1, blas_header_version())
+        return (2, blas_header_version())
 
     def grad(self, inp, grads):
         x, y = inp
