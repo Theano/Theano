@@ -31,7 +31,7 @@ try:
         pydot_imported = True
     else:
         pydot_imported_msg = "pydot-ng can't find graphviz. Install graphviz."
-except ImportError:
+except (ImportError, AttributeError):
     try:
         # fall back on pydot if necessary
         import pydot as pd
