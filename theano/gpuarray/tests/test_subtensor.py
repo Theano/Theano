@@ -13,6 +13,7 @@ from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuAdvancedSubtensor1,
                          GpuAdvancedSubtensor,
                          GpuAdvancedIncSubtensor1,
+                         GpuAdvancedIncSubtensor1_dev20,
                          GpuDiagonal)
 from ..type import gpuarray_shared_constructor
 
@@ -56,6 +57,49 @@ def test_advinc_subtensor1():
         expr = tensor.advanced_inc_subtensor1(x, y, [0, 2])
         f = theano.function([y], expr, mode=mode_with_gpu)
         assert sum([isinstance(node.op, GpuAdvancedIncSubtensor1)
+                    for node in f.maker.fgraph.toposort()]) == 1
+        rval = f(yval)
+        rep = xval.copy()
+        rep[[0, 2]] += yval
+        assert numpy.allclose(rval, rep)
+
+
+def test_advinc_subtensor1_dtype():
+    # Test the mixed dtype case
+    shp = (3, 4)
+    for dtype1, dtype2 in [('float32', 'int8'), ('float32', 'float64')]:
+        shared = gpuarray_shared_constructor
+        xval = numpy.arange(numpy.prod(shp), dtype=dtype1).reshape(shp) + 1
+        yval = numpy.empty((2,) + shp[1:], dtype=dtype2)
+        yval[:] = 10
+        x = shared(xval, name='x')
+        y = tensor.tensor(dtype=yval.dtype,
+                          broadcastable=(False,) * len(yval.shape),
+                          name='y')
+        expr = tensor.advanced_inc_subtensor1(x, y, [0, 2])
+        f = theano.function([y], expr, mode=mode_with_gpu)
+        assert sum([isinstance(node.op, GpuAdvancedIncSubtensor1_dev20)
+                    for node in f.maker.fgraph.toposort()]) == 1
+        rval = f(yval)
+        rep = xval.copy()
+        rep[[0, 2]] += yval
+        assert numpy.allclose(rval, rep)
+
+
+def test_advinc_subtensor1_vector_scalar():
+    # Test the case where x is a vector and y a scalar
+    shp = (3,)
+    for dtype1, dtype2 in [('float32', 'int8'), ('float32', 'float64')]:
+        shared = gpuarray_shared_constructor
+        xval = numpy.arange(numpy.prod(shp), dtype=dtype1).reshape(shp) + 1
+        yval = numpy.asarray(10, dtype=dtype2)
+        x = shared(xval, name='x')
+        y = tensor.tensor(dtype=yval.dtype,
+                          broadcastable=(False,) * len(yval.shape),
+                          name='y')
+        expr = tensor.advanced_inc_subtensor1(x, y, [0, 2])
+        f = theano.function([y], expr, mode=mode_with_gpu)
+        assert sum([isinstance(node.op, GpuAdvancedIncSubtensor1_dev20)
                     for node in f.maker.fgraph.toposort()]) == 1
         rval = f(yval)
         rep = xval.copy()
