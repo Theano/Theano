@@ -1462,8 +1462,6 @@ class Scan(PureOp):
                     jout = j + offset_out
                     shape = (store_steps[j],) + \
                         output_storage[jout].storage[0].shape
-                    if len(output_storage[jout].storage[0].shape) == 0:
-                        self.vector_outs[j] = True
                     dtype = output_storage[jout].storage[0].dtype
                     if (outs[j][0] is None or
                             outs[j][0].shape[0] < store_steps[j] or
