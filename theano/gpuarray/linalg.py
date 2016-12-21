@@ -6,7 +6,10 @@ import theano
 from theano import Op
 from theano.gpuarray import basic_ops, GpuArrayType
 
-from pygpu import gpuarray
+try:
+    from pygpu import gpuarray
+except ImportError:
+    pass
 
 cusolver_available = False
 try:
