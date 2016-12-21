@@ -3677,7 +3677,6 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
         self.assert_eqs_const(f, 0, op=T.alloc)
         assert (f([3, 3]) == 0).all()
 
- 
     def test_and(self):
         mode = theano.compile.get_default_mode().including('canonicalize')
 
@@ -3723,7 +3722,6 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
         f = theano.function([x], T.xor(x, x), mode=mode)
         self.assert_eqs_const(f, 0)
-
 
     def test_stacktrace(self):
         mode = theano.compile.get_default_mode().including(
@@ -6310,7 +6308,7 @@ class Test_local_useless_reshape(unittest.TestCase):
 
         # TODO: Check that stack trace is maintained.
         #       Currently, stack trace gets removed by some other opt.
-        #assert check_stack_trace(f1, ops_to_check='all')
+        #       assert check_stack_trace(f1, ops_to_check='all')
 
         m2 = m0.excluding('local_useless_reshape')
 
@@ -6331,7 +6329,7 @@ class Test_local_useless_reshape(unittest.TestCase):
 
         # TODO: Check that stack trace is maintained.
         #       Currently, stack trace gets removed by some other opt.
-        #assert check_stack_trace(f1, ops_to_check='all')
+        #       assert check_stack_trace(f1, ops_to_check='all')
 
         m2 = m1.excluding('ShapeOpt')
         f2 = theano.function([x], r, mode=m2)
@@ -6384,6 +6382,7 @@ def test_local_reshape_lift():
     assert isinstance(topo[-1].op, tensor.Elemwise)
     # Check stacktrace was copied over correctly after opt was applied
     assert check_stack_trace(f, ops_to_check='last')
+
 
 class Test_lift_transpose_through_dot(unittest.TestCase):
     def simple_optimize(self, g):

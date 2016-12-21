@@ -4602,7 +4602,6 @@ def local_fill_cut(node):
     # from the removed fill op, it must come from the elemntwise op.
     copy_stack_trace(node.outputs, rval)
 
-
     if isinstance(rval, gof.Variable):
         return rval.owner.outputs
     else:
@@ -5190,7 +5189,7 @@ def local_sum_prod_mul_by_scalar(node):
                 ret = T.mul(*mul_inputs)
                 # Copy over stacktrace from previous output to new mul op,
                 # for same reason as above.
-                copy_stack_trace(node.outputs, ret+mul_inputs)
+                copy_stack_trace(node.outputs,[ret]+mul_inputs)
 
                 return [ret]
 
