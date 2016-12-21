@@ -52,14 +52,6 @@ def init_dev(dev, name=None):
     if pygpu.gpuarray.api_version()[0] < 0:
         raise ValueError(
             "Your installed libgpuarray is too old, please update")
-    if init_dev.dnn_version is None and dev.startswith('cuda'):
-        try:
-            init_dev.dnn_version = dnn.version()
-            if config.print_active_device:
-                print("Using cuDNN version %d" % init_dev.dnn_version,
-                      file=sys.stderr)
-        except Exception:
-            pass
     if dev not in init_dev.devmap:
         context = pygpu.init(
             dev,
@@ -68,8 +60,19 @@ def init_dev(dev, name=None):
             sched=config.gpuarray.sched)
         context.dev = dev
         init_dev.devmap[dev] = context
+        reg_context(name, context)
+
         if dev.startswith('cuda'):
-            context.cudnn_handle = dnn._make_handle(context)
+            avail = dnn.dnn_available(name)
+            if avail:
+                context.cudnn_handle = dnn._make_handle(context)
+            if config.print_active_device:
+                if avail:
+                    print("Using cuDNN version %d on context %s" % (dnn.version(), name),
+                          file=sys.stderr)
+                else:
+                    print("Can not use cuDNN on context %s: %s" % (name, dnn.dnn_available.msg),
+                          file=sys.stderr)
         if config.gpuarray.preallocate < 0:
             print("Disabling allocation cache on %s" % (dev,))
         elif config.gpuarray.preallocate > 0:
@@ -90,10 +93,9 @@ def init_dev(dev, name=None):
                       (gmem//MB, context.total_gmem//MB,
                        gmem/context.total_gmem, dev),
                       file=sys.stderr)
-
-    context = init_dev.devmap[dev]
+    else:
+        context = init_dev.devmap[dev]
     # This will map the context name to the real context object.
-    reg_context(name, context)
     if config.print_active_device:
         try:
             pcibusid = '(' + context.pcibusid + ')'
@@ -107,7 +109,6 @@ def init_dev(dev, name=None):
 
 # This maps things like 'cuda0' to the context object on that device.
 init_dev.devmap = {}
-init_dev.dnn_version = None
 
 if pygpu:
     try:
