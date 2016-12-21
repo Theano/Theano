@@ -610,8 +610,9 @@ class Scan(PureOp):
         # The vector_seqs and vector_outs are just a workaround
         # strange NumPy behavior: vector_ndarray[int] return a NumPy
         # scalar and not a NumPy ndarray of 0 dimensions.
-        is_cpu_vector = lambda s: isinstance(s.type, tensor.TensorType) \
-            and s.ndim == 1
+        def is_cpu_vector(s):
+            return isinstance(s.type, tensor.TensorType) and s.ndim == 1
+
         self.vector_seqs = [
             is_cpu_vector(seq) for seq in new_inputs[1:1 + self.n_seqs]]
         self.vector_outs = [
