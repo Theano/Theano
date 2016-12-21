@@ -46,10 +46,12 @@ def init_dev(dev, name=None):
     if not config.cxx:
         raise RuntimeError("The new gpu-backend need a c++ compiler.")
     if (pygpu.version.major, pygpu.version.minor) < (0, 6):
-        raise ValueError("Your installed version of pygpu is too old, please upgrade to 0.6 or later")
+        raise ValueError(
+            "Your installed version of pygpu is too old, please upgrade to 0.6 or later")
     # This is for the C headers API
     if pygpu.gpuarray.api_version()[0] < 0:
-        raise ValueError("Your installed libgpuarray is too old, please update")
+        raise ValueError(
+            "Your installed libgpuarray is too old, please update")
     if init_dev.dnn_version is None and dev.startswith('cuda'):
         try:
             init_dev.dnn_version = dnn.version()
@@ -65,10 +67,11 @@ def init_dev(dev, name=None):
         except Exception:
             pass
     if dev not in init_dev.devmap:
-        context = pygpu.init(dev,
-                         disable_alloc_cache=config.gpuarray.preallocate < 0,
-                         single_stream=config.gpuarray.single_stream,
-                         sched=config.gpuarray.sched)
+        context = pygpu.init(
+            dev,
+            disable_alloc_cache=config.gpuarray.preallocate < 0,
+            single_stream=config.gpuarray.single_stream,
+            sched=config.gpuarray.sched)
         context.dev = dev
         init_dev.devmap[dev] = context
         if dev.startswith('cuda'):
@@ -82,14 +85,16 @@ def init_dev(dev, name=None):
             else:
                 gmem = config.gpuarray.preallocate * MB
             if gmem > context.free_gmem - 50 * MB:
-                print ("WARNING: Preallocating too much memory can prevent cudnn and cublas from working properly")
+                print(
+                    "WARNING: Preallocating too much memory can prevent cudnn and cublas from working properly")
 
             # This will allocate and immediatly free an object of size gmem
             # which will reserve that amount of memory on the GPU.
             pygpu.empty((gmem,), dtype='int8', context=context)
             if config.print_active_device:
                 print("Preallocating %d/%d Mb (%f) on %s" %
-                      (gmem//MB, context.total_gmem//MB, gmem/context.total_gmem, dev),
+                      (gmem//MB, context.total_gmem//MB,
+                       gmem/context.total_gmem, dev),
                       file=sys.stderr)
 
     context = init_dev.devmap[dev]
@@ -122,7 +127,8 @@ if pygpu:
         elif (config.init_gpu_device.startswith('cuda') or
               config.init_gpu_device.startswith('opencl')):
             if config.device != 'cpu':
-                raise ValueError('you must set device=cpu to use init_gpu_device.')
+                raise ValueError(
+                    'you must set device=cpu to use init_gpu_device.')
             if config.contexts != '':
                 print("Using contexts will make init_gpu_device act like device and move all computations by default, which might not be what you want.")
             init_dev(config.init_gpu_device)
@@ -150,4 +156,5 @@ else:
             config.device.startswith('opencl') or
             config.device.startswith('cuda') or
             config.contexts != ''):
-        error("pygpu was configured but could not be imported or is too old (version 0.6 or higher required)", exc_info=True)
+        error("pygpu was configured but could not be imported or is too old (version 0.6 or higher required)",
+              exc_info=True)
