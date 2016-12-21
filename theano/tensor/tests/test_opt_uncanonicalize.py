@@ -160,9 +160,9 @@ def test_local_dimshuffle_alloc():
     g = FunctionGraph([x], [out])
     reshape_dimshuffle(g)
 
-    l=theano.gof.PerformLinker()
+    l = theano.gof.PerformLinker()
     l.accept(g)
-    f=l.make_function()
+    f = l.make_function()
 
     assert f([3, 4]).ndim == 4
 
@@ -174,14 +174,36 @@ def test_local_dimshuffle_subtensor():
 
     dimshuffle_subtensor = out2in(local_dimshuffle_subtensor)
 
-    x = tensor.tensor4('x')
+    x = tensor.dtensor4('x')
     x = tensor.patternbroadcast(x, (False, True, False, False))
     i = tensor.iscalar('i')
 
-    out = x[:, :, 10:30, ::i].dimshuffle(0,2,3)
+    out = x[:, :, 10:30, ::i].dimshuffle(0, 2, 3)
 
-    g = FunctionGraph([x,i], [out])
+    g = FunctionGraph([x, i], [out])
     dimshuffle_subtensor(g)
 
     topo = g.toposort()
     assert any([not isinstance(x, DimShuffle) for x in topo])
+
+    # Test dimshuffle remove dimensions the subtensor don't "see".
+    x = tensor.tensor(broadcastable=(False, True, False), dtype='float64')
+    out = x[i].dimshuffle(1)
+
+    g = FunctionGraph([x, i], [out])
+    dimshuffle_subtensor(g)
+
+    topo = g.toposort()
+    assert any([not isinstance(x, DimShuffle) for x in topo])
+
+    # Test dimshuffle remove dimensions the subtensor don't "see" but
+    # have in between dimensions.
+    x = tensor.tensor(broadcastable=(False, True, False, True),
+                      dtype='float64')
+    out = x[i].dimshuffle(1)
+
+    f = theano.function([x, i], out)
+
+    topo = f.maker.fgraph.toposort()
+    assert any([not isinstance(x, DimShuffle) for x in topo])
+    assert f(numpy.random.rand(5, 1, 4, 1), 2).shape == (4,)
