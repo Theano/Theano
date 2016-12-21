@@ -5948,13 +5948,13 @@ class TestMakeVector(utt.InferShapeTester):
             g_val = g(val[b], val[i], val[d])
             # print 'g_val =', g_val
 
-            if dtype.startswith('int'):
+            if dtype in tensor.int_dtypes:
                 # The gradient should be 0
                 utt.assert_allclose(g_val, 0)
             else:
                 for var, grval in zip((b, i, d), g_val):
                     float_inputs = []
-                    if var.dtype.startswith('int'):
+                    if var.dtype in tensor.int_dtypes:
                         pass
                         # Currently we don't do any checks on these variables
                         # verify_grad doesn't support integer inputs yet

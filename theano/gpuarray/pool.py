@@ -61,11 +61,11 @@ class GpuPool(CGpuKernelBase):
         pad = as_tensor_variable(pad)
         assert ws.ndim == stride.ndim and ws.ndim == pad.ndim
         assert ws.ndim == 1
-        if not ws.dtype.startswith('int'):
+        if ws.dtype not in theano.tensor.int_dtypes:
             raise TypeError('Window shape parameters must be ints.')
-        if not stride.dtype.startswith('int'):
+        if stride.dtype not in theano.tensor.int_dtypes:
             raise TypeError('Stride parameters must be ints.')
-        if not pad.dtype.startswith('int'):
+        if pad.dtype not in theano.tensor.int_dtypes:
             raise TypeError('Padding parameters must be ints.')
 
         return Apply(self, [inp, ws, stride, pad], [inp.type()])
@@ -157,11 +157,11 @@ class GpuMaxPoolGrad(CGpuKernelBase):
         pad = as_tensor_variable(pad)
         assert ws.ndim == stride.ndim and ws.ndim == pad.ndim
         assert ws.ndim == 1
-        if not ws.dtype.startswith('int'):
+        if ws.dtype not in theano.tensor.int_dtypes:
             raise TypeError('Window shape parameters must be ints.')
-        if not stride.dtype.startswith('int'):
+        if stride.dtype not in theano.tensor.int_dtypes:
             raise TypeError('Stride parameters must be ints.')
-        if not pad.dtype.startswith('int'):
+        if pad.dtype not in theano.tensor.int_dtypes:
             raise TypeError('Padding parameters must be ints.')
         return Apply(self, [inp, out, out_grad, ws, stride, pad], [inp.type()])
 
@@ -231,11 +231,11 @@ class GpuAveragePoolGrad(CGpuKernelBase):
         pad = as_tensor_variable(pad)
         assert ws.ndim == stride.ndim and ws.ndim == pad.ndim
         assert ws.ndim == 1
-        if not ws.dtype.startswith('int'):
+        if ws.dtype not in theano.tensor.int_dtypes:
             raise TypeError('Window shape parameters must be ints.')
-        if not stride.dtype.startswith('int'):
+        if stride.dtype not in theano.tensor.int_dtypes:
             raise TypeError('Stride parameters must be ints.')
-        if not pad.dtype.startswith('int'):
+        if pad.dtype not in theano.tensor.int_dtypes:
             raise TypeError('Padding parameters must be ints.')
         return Apply(self, [inp, out_grad, ws, stride, pad], [inp.type()])
 
@@ -308,11 +308,11 @@ class GpuDownsampleFactorMaxGradGrad(CGpuKernelBase):
         pad = as_tensor_variable(pad)
         assert ws.ndim == stride.ndim and ws.ndim == pad.ndim
         assert ws.ndim == 1
-        if not ws.dtype.startswith('int'):
+        if ws.dtype not in theano.tensor.int_dtypes:
             raise TypeError('Window shape parameters must be ints.')
-        if not stride.dtype.startswith('int'):
+        if stride.dtype not in theano.tensor.int_dtypes:
             raise TypeError('Stride parameters must be ints.')
-        if not pad.dtype.startswith('int'):
+        if pad.dtype not in theano.tensor.int_dtypes:
             raise TypeError('Padding parameters must be ints.')
         return Apply(self, [inp, out, out_grad, ws, stride, pad], [inp.type()])
 

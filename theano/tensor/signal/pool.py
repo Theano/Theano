@@ -493,11 +493,11 @@ class Pool(OpenMPOp):
         assert pad.ndim == 1
         if x.type.ndim < nd:
             raise TypeError()
-        if not ws.dtype.startswith('int'):
+        if ws.dtype not in tensor.int_dtypes:
             raise TypeError('Pool downsample parameters must be ints.')
-        if not stride.dtype.startswith('int'):
+        if stride.dtype not in tensor.int_dtypes:
             raise TypeError('Stride parameters must be ints.')
-        if not pad.dtype.startswith('int'):
+        if pad.dtype not in tensor.int_dtypes:
             raise TypeError('Padding parameters must be ints.')
         # If the input shape are broadcastable we can have 0 in the output shape
         broad = x.broadcastable[:-nd] + (False,) * nd
@@ -1087,11 +1087,11 @@ class MaxPoolGrad(PoolGrad):
         assert isinstance(stride, Variable) and stride.ndim == 1
         assert isinstance(pad, Variable) and pad.ndim == 1
         assert x.ndim == maxout.ndim == gz.ndim >= nd
-        if not ws.dtype.startswith('int'):
+        if ws.dtype not in tensor.int_dtypes:
             raise TypeError('Pool downsample parameters must be ints.')
-        if not stride.dtype.startswith('int'):
+        if stride.dtype not in tensor.int_dtypes:
             raise TypeError('Stride parameters must be ints.')
-        if not pad.dtype.startswith('int'):
+        if pad.dtype not in tensor.int_dtypes:
             raise TypeError('Padding parameters must be ints.')
         return Apply(self, [x, maxout, gz, ws, stride, pad], [x.type()])
 
@@ -1405,11 +1405,11 @@ class AveragePoolGrad(PoolGrad):
         assert isinstance(stride, Variable) and stride.ndim == 1
         assert x.ndim == gz.ndim >= nd
         assert isinstance(pad, Variable) and pad.ndim == 1
-        if not ws.dtype.startswith('int'):
+        if ws.dtype not in tensor.int_dtypes:
             raise TypeError('Pool downsample parameters must be ints.')
-        if not stride.dtype.startswith('int'):
+        if stride.dtype not in tensor.int_dtypes:
             raise TypeError('Stride parameters must be ints.')
-        if not pad.dtype.startswith('int'):
+        if pad.dtype not in tensor.int_dtypes:
             raise TypeError('Padding parameters must be ints.')
         return Apply(self, [x, gz, ws, stride, pad], [x.type()])
 
@@ -1746,11 +1746,11 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         assert stride.ndim == 1
         assert pad.ndim == 1
         assert x.ndim == maxout.ndim == gz.ndim >= nd
-        if not ws.dtype.startswith('int'):
+        if ws.dtype not in tensor.int_dtypes:
             raise TypeError('Pool downsample parameters must be ints.')
-        if not stride.dtype.startswith('int'):
+        if stride.dtype not in tensor.int_dtypes:
             raise TypeError('Stride parameters must be ints.')
-        if not pad.dtype.startswith('int'):
+        if pad.dtype not in tensor.int_dtypes:
             raise TypeError('Padding parameters must be ints.')
         return Apply(self, [x, maxout, gz, ws, stride, pad], [x.type()])
 

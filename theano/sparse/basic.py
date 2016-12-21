@@ -399,6 +399,7 @@ complex_dtypes = [t for t in all_dtypes if t[:7] == 'complex']
 float_dtypes = [t for t in all_dtypes if t[:5] == 'float']
 int_dtypes = [t for t in all_dtypes if t[:3] == 'int']
 uint_dtypes = [t for t in all_dtypes if t[:4] == 'uint']
+integer_dtypes = int_dtypes + uint_dtypes
 
 continuous_dtypes = complex_dtypes + float_dtypes
 discrete_dtypes = int_dtypes + uint_dtypes
@@ -1001,7 +1002,7 @@ class GetItemList(gof.op.Op):
 
         ind = tensor.as_tensor_variable(index)
         assert ind.ndim == 1
-        assert "int" in ind.dtype
+        assert ind.dtype in integer_dtypes
 
         return gof.Apply(self, [x, ind], [x.type()])
 
@@ -1053,7 +1054,7 @@ class GetItemListGrad(gof.op.Op):
 
         ind = tensor.as_tensor_variable(index)
         assert ind.ndim == 1
-        assert "int" in ind.dtype
+        assert ind.dtype in integer_dtypes
 
         scipy_ver = [int(n) for n in scipy.__version__.split('.')[:2]]
 
@@ -1089,8 +1090,8 @@ class GetItem2Lists(gof.op.Op):
         assert x.format in ["csr", "csc"]
         ind1 = tensor.as_tensor_variable(ind1)
         ind2 = tensor.as_tensor_variable(ind2)
-        assert "int" in ind1.dtype
-        assert "int" in ind2.dtype
+        assert ind1.dtype in integer_dtypes
+        assert ind2.dtype in integer_dtypes
 
         return gof.Apply(self, [x, ind1, ind2],
                          [theano.tensor.vector()])
@@ -1150,8 +1151,8 @@ class GetItem2ListsGrad(gof.op.Op):
         ind2 = tensor.as_tensor_variable(ind2)
         assert ind1.ndim == 1
         assert ind2.ndim == 1
-        assert "int" in ind1.dtype
-        assert "int" in ind2.dtype
+        assert ind1.dtype in integer_dtypes
+        assert ind2.dtype in integer_dtypes
 
         return gof.Apply(self, [x, ind1, ind2, gz], [x.type()])
 
@@ -4218,7 +4219,7 @@ class ConstructSparseFromList(gof.Op):
         values_ = theano.tensor.as_tensor_variable(values)
         ilist_ = theano.tensor.as_tensor_variable(ilist)
 
-        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+        if ilist_.type.dtype not in integer_dtypes:
             raise TypeError('index must be integers')
         if ilist_.type.ndim != 1:
             raise TypeError('index must be vector')

@@ -339,7 +339,7 @@ class Shape_i(gof.Op):
         # As i will be used in the hash and that ndarray are not hashable,
         # we need to convert it to an int as it is hashable.
         if isinstance(i, numpy.ndarray):
-            assert "int" in str(i.dtype)
+            assert i.dtype in theano.tensor.integer_dtypes
         assert i == int(i)
         i = int(i)
         self.i = i
@@ -826,7 +826,7 @@ class SpecifyShape(gof.Op):
             x = theano.tensor.as_tensor_variable(x)
         shape = theano.tensor.as_tensor_variable(shape)
         assert shape.ndim == 1
-        assert "int" in shape.dtype
+        assert shape.dtype in theano.tensor.integer_dtypes
         if isinstance(shape, theano.tensor.TensorConstant):
             assert shape.data.size == x.ndim
         return gof.Apply(self, [x, shape], [x.type()])

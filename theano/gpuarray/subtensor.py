@@ -408,7 +408,7 @@ class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
         x_ = as_gpuarray_variable(x, ctx_name)
 
         ilist__ = tensor.as_tensor_variable(ilist)
-        if ilist__.type.dtype[:3] not in ('int', 'uin'):
+        if ilist__.type.dtype not in tensor.integer_dtypes:
             raise TypeError('index must be integers')
         if ilist__.type.dtype != 'int64':
             ilist__ = tensor.cast(ilist__, 'int64')
@@ -603,7 +603,7 @@ class GpuAdvancedIncSubtensor1(Op):
 
         assert x_.type.ndim >= y_.type.ndim
 
-        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+        if ilist_.type.dtype not in tensor.integer_dtypes:
             raise TypeError('index must be integers')
         if ilist_.type.ndim != 1:
             raise TypeError('index must be vector')
@@ -806,7 +806,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
         assert x_.type.dtype == y_.type.dtype
         assert x_.type.ndim >= y_.type.ndim
 
-        if ilist_.type.dtype[:3] not in ('int', 'uin'):
+        if ilist_.type.dtype not in tensor.integer_dtypes:
             raise TypeError('index must be integers')
         if ilist_.type.ndim != 1:
             raise TypeError('index must be vector')

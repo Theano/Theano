@@ -70,7 +70,7 @@ class CuRFFTOp(Op):
 
         assert inp.dtype == "float32"
         assert s.ndim == 1
-        assert 'int' in s.dtype
+        assert s.dtype in theano.tensor.integer_dtypes
 
         return theano.Apply(self, [inp, s], [self.output_type(inp)()])
 

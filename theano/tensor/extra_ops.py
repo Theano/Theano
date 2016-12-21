@@ -859,8 +859,7 @@ class Bartlett(gof.Op):
         if M.ndim != 0:
             raise TypeError('%s only works on scalar input'
                             % self.__class__.__name__)
-        elif (not M.dtype.startswith('int') and
-              not M.dtype.startswith('uint')):
+        elif M.dtype not in theano.tensor.integer_dtypes:
             # dtype is a theano attribute here
             raise TypeError('%s only works on integer input'
                             % self.__class__.__name__)
@@ -1029,7 +1028,7 @@ class FillDiagonalOffset(gof.Op):
         if val.dtype != a.dtype:
             raise TypeError('%s: type of second parameter must be the same'
                             ' as the first\'s' % self.__class__.__name__)
-        elif offset.dtype[:3] != 'int':
+        elif offset.dtype not in theano.tensor.integer_dtypes:
             raise TypeError('%s: type of third parameter must be as integer'
                             ' use theano.tensor.cast( input, \'int32/int64\')'
                             % self.__class__.__name__)

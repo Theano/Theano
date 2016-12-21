@@ -396,7 +396,7 @@ def scan(fn,
 
     # Check n_steps is an int
     if (hasattr(n_steps, 'dtype') and
-        str(n_steps.dtype)[:3] not in ('uin', 'int')):
+        str(n_steps.dtype) not in tensor.integer_dtypes):
         raise ValueError(' n_steps must be an int. dtype provided '
                          'is %s' % n_steps.dtype)
 

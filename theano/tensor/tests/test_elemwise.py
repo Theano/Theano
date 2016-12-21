@@ -370,7 +370,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             f = copy(linker).accept(FunctionGraph([x], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
 
-            if "int" not in dtype:
+            if dtype not in tensor.discrete_dtypes:
                 xv = numpy.asarray(xv, dtype=dtype)
             else:
                 xv = numpy.asarray(xv < 0.5, dtype=dtype)
