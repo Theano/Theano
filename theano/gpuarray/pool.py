@@ -1,11 +1,18 @@
 from __future__ import absolute_import, print_function, division
 
 import theano
+<<<<<<< 46b40cb73f0b75d5fdaadadb17d07c2cd27a442e
 from theano import Apply
 from theano.gof import ParamsType
 from theano.scalar import bool as bool_t
 from theano.tensor.basic import as_tensor_variable
 from theano.tensor.signal.pool import Pool, PoolingMode_t
+=======
+from theano import Apply, Op, tensor, config
+from theano.tensor.basic import as_tensor_variable
+from theano.tensor.signal.pool import Pool
+from theano.gradient import grad_undefined
+>>>>>>> Moved the Op to pool.py after rebasing
 
 from .type import gpu_context_type
 from .basic_ops import (CGpuKernelBase, infer_context_name, gpuarray_helper_inc_dir,
@@ -422,8 +429,98 @@ class GpuMaxPoolRop(CGpuKernelBase):
 
         return Apply(self, [inp, eval_point, ws, stride, pad], [eval_point.type()])
 
+<<<<<<< 46b40cb73f0b75d5fdaadadb17d07c2cd27a442e
+=======
+
+class GpuRoIPool(CGpuKernelBase, Op):
+
+    __props__ = ('spatial_scale', 'pooled_h', 'pooled_w')
+    _f16_ok = True
+
+    def __init__(self, pooled_h, pooled_w, spatial_scale):
+        self.pooled_h = pooled_h
+        self.pooled_w = pooled_w
+        self.spatial_scale = spatial_scale
+        CGpuKernelBase.__init__(self, ['roi_pool.c'], 'APPLY_SPECIFIC(ROIPoolGPUFwd)')
+
+    def c_headers(self):
+        return ['<gpuarray/types.h>', '<gpuarray/kernel.h>', 'math.h', 'stdbool.h', 'float.h']
+
+    def make_node(self, feature_maps, roi):
+        ctx_name = infer_context_name(feature_maps, roi)
+        feature_maps = as_gpuarray_variable(feature_maps, ctx_name)
+        roi_tuples = as_gpuarray_variable(roi, ctx_name)
+        assert feature_maps.ndim == 4
+        assert roi.ndim == 2
+        return Apply(self, [feature_maps, roi_tuples], [feature_maps.type(), feature_maps.type()])
+
+    def get_op_params(self):
+        return [('POOLED_HEIGHT', str(self.pooled_h)),
+                ('POOLED_WIDTH', str(self.pooled_w)),
+                ('SPATIAL_SCALE', str(self.spatial_scale))]
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
     def infer_shape(self, node, in_shapes):
-        ws, stride, pad = [node.inputs[2], node.inputs[3], node.inputs[4]]
-        shp = Pool.out_shape(in_shapes[0], ws, self.ignore_border, stride,
-                             pad, self.ndim)
-        return [shp]
+        data_shape = tensor.shape(node.inputs[0])
+        rois_shape = tensor.shape(node.inputs[1])
+        batch_size = rois_shape[0]
+        num_maps = data_shape[1]
+        h = self.pooled_h
+        w = self.pooled_w
+        out_shape = [batch_size, num_maps, h, w]
+        return [out_shape, out_shape]
+
+    def c_code_cache_version(self):
+        return (1, 0)
+
+    def grad(self, inp, grads):
+        return [GpuRoIPoolGradOp(self.pooled_h, self.pooled_w,
+                                 self.spatial_scale)(*(inp + [self(*inp)[1], grads[0]])), grad_undefined(self, 1, inp[1])]
+
+
+class GpuRoIPoolGradOp(CGpuKernelBase, Op):
+
+    __props__ = ('spatial_scale', 'pooled_h', 'pooled_w')
+    _f16_ok = True
+
+    def __init__(self, pooled_h, pooled_w, spatial_scale):
+        self.dtype = config.floatX
+        self.pooled_h = pooled_h
+        self.pooled_w = pooled_w
+        self.spatial_scale = spatial_scale
+        CGpuKernelBase.__init__(self, ['roi_pool.c'], 'APPLY_SPECIFIC(GPUBackward)')
+
+    def c_headers(self):
+        return ['<gpuarray/types.h>', '<gpuarray/kernel.h>', 'math.h', 'stdbool.h', 'float.h']
+
+    def make_node(self, feature_maps, rois, argmaxes, out_grad):
+        ctx_name = infer_context_name(feature_maps, rois, argmaxes, out_grad)
+        feature_maps = as_gpuarray_variable(feature_maps, ctx_name)
+        roi_tuples = as_gpuarray_variable(rois, ctx_name)
+        out_grad = as_gpuarray_variable(out_grad, ctx_name)
+        argmaxes = as_gpuarray_variable(argmaxes, ctx_name)
+        assert feature_maps.ndim == 4
+        assert rois.ndim == 2
+        assert argmaxes.ndim == 4
+        assert out_grad.ndim == 4
+        return Apply(self, [feature_maps, roi_tuples, out_grad], [feature_maps.type()])
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
+    def get_op_params(self):
+        return [('POOLED_HEIGHT', str(self.pooled_h)),
+                ('POOLED_WIDTH', str(self.pooled_w)),
+                ('SPATIAL_SCALE', str(self.spatial_scale))]
+
+>>>>>>> Moved the Op to pool.py after rebasing
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[0]]
+
+    def c_code_cache_version(self):
+        return (1, 0)
+
+    def grad(self, inp, grads):
+        return [grad_undefined(self, i, inp[i]) for i in range(3)]
