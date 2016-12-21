@@ -2155,7 +2155,7 @@ class BatchedDot(Op):
                 " && ".join("{strides}[{i}] > 0 && {strides}[{i}] % type_size == 0"
                             .format(strides=strides, i=i) for i in range(ndim)),
                 "(%s)" % (" || ".join("{strides}[{i}] == type_size"
-                                     .format(strides=strides, i=i) for i in range(1, ndim)) or '1'),
+                                      .format(strides=strides, i=i) for i in range(1, ndim)) or '1'),
             ])
 
         x_ndim, y_ndim, z_ndim = node.inputs[0].ndim, node.inputs[1].ndim, node.outputs[0].ndim
