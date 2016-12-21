@@ -1,4 +1,5 @@
 from __future__ import absolute_import, print_function, division
+from functools import partial
 
 import numpy as np
 import numpy
@@ -7,7 +8,7 @@ import theano
 from theano.tests import unittest_tools as utt
 
 from theano.tensor.extra_ops import (SearchsortedOp, searchsorted,
-                                     CumsumOp, cumsum, CumprodOp, cumprod,
+                                     CumOp, cumsum, cumprod,
                                      CpuContiguous, cpu_contiguous,
                                      bincount, DiffOp, diff, squeeze, compress,
                                      RepeatOp, repeat, Bartlett, bartlett,
@@ -121,27 +122,33 @@ class TestSearchsortedOp(utt.InferShapeTester):
         utt.verify_grad(self.op, [self.a[self.idx_sorted], self.b])
 
 
-class TestCumsumOp(utt.InferShapeTester):
+class TestCumOp(utt.InferShapeTester):
 
     def setUp(self):
-        super(TestCumsumOp, self).setUp()
-        self.op_class = CumsumOp
-        self.op = CumsumOp()
+        super(TestCumOp, self).setUp()
+        self.op_class = CumOp
+        self.op = CumOp()
 
-    def test_cumsumOp(self):
+    def test_cum_op(self):
         x = T.tensor3('x')
         a = np.random.random((3, 5, 2)).astype(config.floatX)
 
         # Test axis out of bounds
         self.assertRaises(ValueError, cumsum, x, axis=3)
         self.assertRaises(ValueError, cumsum, x, axis=-4)
+        self.assertRaises(ValueError, cumprod, x, axis=3)
+        self.assertRaises(ValueError, cumprod, x, axis=-4)
 
-        f = theano.function([x], cumsum(x))
-        assert np.allclose(np.cumsum(a), f(a))  # Test axis=None
+        f = theano.function([x], [cumsum(x), cumprod(x)])
+        s, p = f(a)
+        assert np.allclose(np.cumsum(a), s)  # Test axis=None
+        assert np.allclose(np.cumprod(a), p)  # Test axis=None
 
         for axis in range(-len(a.shape), len(a.shape)):
-            f = theano.function([x], cumsum(x, axis=axis))
-            assert np.allclose(np.cumsum(a, axis=axis), f(a))
+            f = theano.function([x], [cumsum(x, axis=axis), cumprod(x, axis=axis)])
+            s, p = f(a)
+            assert np.allclose(np.cumsum(a, axis=axis), s)
+            assert np.allclose(np.cumprod(a, axis=axis), p)
 
     def test_infer_shape(self):
         x = T.tensor3('x')
@@ -162,57 +169,12 @@ class TestCumsumOp(utt.InferShapeTester):
     def test_grad(self):
         a = np.random.random((3, 5, 2)).astype(config.floatX)
 
-        utt.verify_grad(self.op, [a])  # Test axis=None
+        utt.verify_grad(self.op_class(mode='add'), [a])  # Test axis=None
+        utt.verify_grad(self.op_class(mode='mul'), [a])  # Test axis=None
 
         for axis in range(-len(a.shape), len(a.shape)):
-            utt.verify_grad(self.op_class(axis=axis), [a], eps=4e-4)
-
-
-class TestCumprodOp(utt.InferShapeTester):
-
-    def setUp(self):
-        super(TestCumprodOp, self).setUp()
-        self.op_class = CumprodOp
-        self.op = CumprodOp()
-
-    def test_CumprodOp(self):
-        x = T.tensor3('x')
-        a = np.random.random((3, 5, 2)).astype(config.floatX)
-
-        # Test axis out of bounds
-        self.assertRaises(ValueError, cumprod, x, axis=3)
-        self.assertRaises(ValueError, cumprod, x, axis=-4)
-
-        f = theano.function([x], cumprod(x))
-        assert np.allclose(np.cumprod(a), f(a))  # Test axis=None
-
-        for axis in range(-len(a.shape), len(a.shape)):
-            f = theano.function([x], cumprod(x, axis=axis))
-            assert np.allclose(np.cumprod(a, axis=axis), f(a))
-
-    def test_infer_shape(self):
-        x = T.tensor3('x')
-        a = np.random.random((3, 5, 2)).astype(config.floatX)
-
-        # Test axis=None
-        self._compile_and_check([x],
-                                [self.op(x)],
-                                [a],
-                                self.op_class)
-
-        for axis in range(-len(a.shape), len(a.shape)):
-            self._compile_and_check([x],
-                                    [cumprod(x, axis=axis)],
-                                    [a],
-                                    self.op_class)
-
-    def test_grad(self):
-        a = np.random.random((3, 5, 2)).astype(config.floatX)
-
-        utt.verify_grad(self.op, [a])  # Test axis=None
-
-        for axis in range(-len(a.shape), len(a.shape)):
-            utt.verify_grad(self.op_class(axis=axis), [a])
+            utt.verify_grad(self.op_class(axis=axis, mode='add'), [a], eps=4e-4)
+            utt.verify_grad(self.op_class(axis=axis, mode='mul'), [a], eps=4e-4)
 
 
 class TestBinCount(utt.InferShapeTester):
