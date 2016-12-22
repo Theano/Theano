@@ -115,11 +115,7 @@ c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc) {
   if (nd < 3)
     nd = 3;
 
-#if CUDNN_VERSION >= 5000
     err = cudnnSetFilterNdDescriptor(desc, dt, CUDNN_TENSOR_NCHW, nd, dims);
-#else
-    err = cudnnSetFilterNdDescriptor(desc, dt, nd, dims);
-#endif
 
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,

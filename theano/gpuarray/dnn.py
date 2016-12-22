@@ -30,7 +30,7 @@ from theano.tensor.signal.pool import (
     Pool, MaxPoolGrad, AveragePoolGrad)
 from . import pygpu
 from .type import (get_context, gpu_context_type, list_contexts,
-                   get_prop, set_prop, GpuArraySharedVariable)
+                   GpuArraySharedVariable)
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         gpu_contiguous, gpu_alloc_empty,
                         empty_like, GpuArrayType)
@@ -59,12 +59,12 @@ def _dnn_lib():
         lib_name = ctypes.util.find_library('cudnn')
         if lib_name is None and sys.platform == 'win32':
             # Update these names when new versions of cudnn are supported.
-            for name in ['cudnn64_5.dll', 'cudnn64_4.dll']:
+            for name in ['cudnn64_5.dll']:
                 lib_name = ctypes.util.find_library(name)
                 if lib_name:
                     break
         if lib_name is None:
-            raise RuntimeError('Could not find cudnn library (looked for v4 and v5[.1])')
+            raise RuntimeError('Could not find cudnn library (looked for v5[.1])')
         _dnn_lib.handle = ctypes.cdll.LoadLibrary(lib_name)
         cudnn = _dnn_lib.handle
         cudnn.cudnnCreate.argtypes = [ctypes.POINTER(ctypes.c_void_p)]
@@ -129,7 +129,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
 
 def _dnn_check_version():
     v = version()
-    if v < 4007:
+    if v < 5000:
         return False, "cuDNN version is too old. Update to v5, was %d." % v
 
     return True, None
@@ -209,14 +209,12 @@ class DnnBase(COp):
         return node.outputs[0].type.context_name
 
     def get_params(self, node):
-        try:
-            return get_prop(self.dnn_context(node), 'cudnn_handle_param')
-        except KeyError:
-            pass
-        ptr = get_prop(self.dnn_context(node), 'cudnn_handle').value
-        res = handle_type.make_value(ptr)
-        set_prop(self.dnn_context(node), 'cudnn_handle_param', res)
-        return res
+        ctx = self.dnn_context(node)
+        if not hasattr(ctx, 'cudnn_handle_param'):
+            ptr = ctx.cudnn_handle.value
+            res = handle_type.make_value(ptr)
+            ctx.cudnn_handle_param = res
+        return ctx.cudnn_handle_param
 
     def __init__(self, files=None, c_func=None):
         if files is None:
@@ -500,10 +498,6 @@ class GpuDnnConv(DnnBase):
         if self.inplace:
             self.destroy_map = {0: [2]}
 
-        if version() < 5000 and self.algo == 'winograd':
-            raise RuntimeError("cuDNN winograd convolution requires "
-                               "cuDNN v5 or more recent")
-
         assert self.algo in ['none', 'small', 'large', 'fft', 'fft_tiling',
                              'winograd', 'guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']
@@ -524,9 +518,9 @@ class GpuDnnConv(DnnBase):
             defs.append(('CONV_INPLACE', '1'))
 
         alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM'
-        if self.algo == 'none':  # 3d (at least in v4)
+        if self.algo == 'none':  # 3d
             alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM'
-        elif self.algo == 'small':  # 3d (at least in v4)
+        elif self.algo == 'small':  # 3d
             alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM'
         elif self.algo == 'large':
             alg = 'CUDNN_CONVOLUTION_FWD_ALGO_GEMM'
@@ -534,10 +528,9 @@ class GpuDnnConv(DnnBase):
             alg = 'CUDNN_CONVOLUTION_FWD_ALGO_DIRECT'
         elif self.algo == 'fft':
             alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT'
-        elif self.algo == 'fft_tiling':  # 3d (not in v4, in v5)
+        elif self.algo == 'fft_tiling':  # 3d
             alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING'
         elif self.algo == 'winograd':
-            # need v5
             alg = 'CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD'
         defs.append(('CONV_ALGO', alg))
 
@@ -571,10 +564,6 @@ class GpuDnnConv(DnnBase):
         if img.type.ndim == 5 and self.algo in ['large', 'fft']:
             raise ValueError("convolution algo %s can't be used for "
                              "3d convolutions", (self.algo,))
-        if (img.type.ndim == 5 and
-                self.algo in ['fft_tiling'] and
-                version() < 5000):
-            raise ValueError("3d convolution algo fft_tiling need cudnn v5")
 
         if (not isinstance(desc.type, CDataType) or
                 desc.type.ctype != 'cudnnConvolutionDescriptor_t'):
@@ -700,13 +689,13 @@ class GpuDnnConvGradW(DnnBase):
             defs.append(('CONV_INPLACE', '1'))
 
         alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0'
-        if self.algo == 'none':  # 3d in at least v4
+        if self.algo == 'none':  # 3d
             alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0'
         if self.algo == 'deterministic':
             alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1'
         if self.algo == 'fft':
             alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT'
-        if self.algo == 'small':  # 3d in at least v4
+        if self.algo == 'small':  # 3d
             # non-deterministic, small workspace
             alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3'
         if self.algo in ['guess_once', 'guess_on_shape_change',
@@ -793,10 +782,6 @@ class GpuDnnConvGradI(DnnBase):
             algo = config.dnn.conv.algo_bwd_data
         self.algo = algo
 
-        if version() < 5000 and self.algo == 'winograd':
-            raise RuntimeError("cuDNN's winograd convolution requires cuDNN "
-                               "v5 or more recent")
-
         assert self.algo in ['none', 'deterministic', 'fft', 'fft_tiling',
                              'winograd', 'guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']
@@ -832,17 +817,16 @@ class GpuDnnConvGradI(DnnBase):
             defs.append(('CONV_INPLACE', '1'))
 
         alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0'
-        if self.algo == 'none':  # 3d at least v4
+        if self.algo == 'none':  # 3d
             alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0'
-        elif self.algo == 'deterministic':  # 3d at least v4
+        elif self.algo == 'deterministic':  # 3d
             alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_1'
         elif self.algo == 'fft':
             alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT'
-        elif self.algo == 'fft_tiling':  # 3d not v4, since v5
+        elif self.algo == 'fft_tiling':  # 3d
             # big workspace but less than fft
             alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING'
         elif self.algo == 'winograd':
-            # need v5
             alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD'
 
         if self.algo in ['guess_once', 'guess_on_shape_change',
@@ -877,10 +861,6 @@ class GpuDnnConvGradI(DnnBase):
         if kern.type.ndim == 5 and self.algo in ['fft']:
             raise ValueError("convolution algo %s can't be used for "
                              "3d convolutions", (self.algo,))
-        if (kern.type.ndim == 5 and
-                self.algo == 'fft_tiling' and
-                version() < 5000):
-            raise ValueError("3d convolution algo fft_tiling need cudnn v5")
 
         if (not isinstance(desc.type, CDataType) or
                 desc.type.ctype != 'cudnnConvolutionDescriptor_t'):
@@ -1316,11 +1296,7 @@ class GpuDnnPoolDesc(Op):
   static const int pad[%(nd)d] = {%(pad)s};
   static const int str[%(nd)d] = {%(str)s};
 
-#if CUDNN_VERSION >= 5000
     err = cudnnSetPoolingNdDescriptor(%(desc)s, %(mode_flag)s, CUDNN_PROPAGATE_NAN, %(nd)d, win, pad, str);
-#else
-    err = cudnnSetPoolingNdDescriptor(%(desc)s, %(mode_flag)s, %(nd)d, win, pad, str);
-#endif
 
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
@@ -1664,8 +1640,6 @@ class GpuDnnBatchNorm(DnnBase):
         DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm.c'],
                          'dnn_batchnorm_op')
 
-        if version() < 5000:
-            raise RuntimeError("cuDNN Batch Normalization requires cuDNN v5 or later")
         assert (mode in ('per-activation', 'spatial'))
         self.mode = mode
 
@@ -1724,8 +1698,6 @@ class GpuDnnBatchNormInference(DnnBase):
         DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm_inf.c'],
                          'dnn_batchnorm_op')
 
-        if version() < 5000:
-            raise RuntimeError("cuDNN Batch Normalization requires cuDNN v5 or later")
         assert (mode in ('per-activation', 'spatial'))
         self.mode = mode
 
@@ -1788,8 +1760,6 @@ class GpuDnnBatchNormGrad(DnnBase):
         DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm_grad.c'],
                          'dnn_batchnorm_grad')
 
-        if version() < 5000:
-            raise RuntimeError("cuDNN Batch Normalization requires cuDNN v5 or later")
         assert (mode in ('per-activation', 'spatial'))
         self.mode = mode
 

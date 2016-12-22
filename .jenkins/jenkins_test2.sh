@@ -8,7 +8,7 @@ set -x
 # Anaconda python
 export PATH=/usr/local/miniconda2/bin:$PATH
 
-# CUDA                                                                          
+# CUDA
 export PATH=/usr/local/cuda/bin:$PATH
 export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 export LIBRARY_PATH=/usr/local/cuda/lib64:$LIBRARY_PATH
@@ -38,13 +38,13 @@ echo "===== Testing gpuarray backend"
 
 GPUARRAY_CONFIG="Release"
 DEVICE=cuda0
-LIBDIR=~/tmp/local
+LIBDIR=${WORKSPACE}/local
 
 # Make fresh clones of libgpuarray (with no history since we don't need it)
 rm -rf libgpuarray
 git clone --depth 1 "https://github.com/Theano/libgpuarray.git"
 
-# Clean up previous installs (to make sure no old files are left) 
+# Clean up previous installs (to make sure no old files are left)
 rm -rf $LIBDIR
 mkdir $LIBDIR
 
@@ -52,25 +52,25 @@ mkdir $LIBDIR
 mkdir libgpuarray/build
 (cd libgpuarray/build && cmake .. -DCMAKE_BUILD_TYPE=${GPUARRAY_CONFIG} -DCMAKE_INSTALL_PREFIX=$LIBDIR && make)
 
-# Finally install                                                               
+# Finally install
 (cd libgpuarray/build && make install)
 
 # Export paths
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LIBDIR/lib64/
-export LIBRARY_PATH=$LIBRARY_PATH:$LIBDIR/lib64/
 export CPATH=$CPATH:$LIBDIR/include
 export LIBRARY_PATH=$LIBRARY_PATH:$LIBDIR/lib
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LIBDIR/lib
 
-# Build the pygpu modules                                                       
+# Build the pygpu modules
 (cd libgpuarray && python setup.py build_ext --inplace -I$LIBDIR/include -L$LIBDIR/lib)
 ls $LIBDIR
 mkdir $LIBDIR/lib/python
 export PYTHONPATH=${PYTHONPATH}:$LIBDIR/lib/python
-# Then install                                                                  
+# Then install
 (cd libgpuarray && python setup.py install --home=$LIBDIR)
 
-# Testing theano (the gpuarray parts)                                           
+python -c 'import pygpu; print(pygpu.__file__)'
+
+# Testing theano (the gpuarray parts)
 THEANO_GPUARRAY_TESTS="theano/gpuarray/tests \
                        theano/sandbox/tests/test_rng_mrg.py:test_consistency_GPUA_serial \
                        theano/sandbox/tests/test_rng_mrg.py:test_consistency_GPUA_parallel \

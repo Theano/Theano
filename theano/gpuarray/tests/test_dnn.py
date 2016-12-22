@@ -604,9 +604,6 @@ class TestDnnInferShapes(utt.InferShapeTester):
                                         [conv_modes[0]])),
                           testcase_func_name=utt.custom_name_func)
     def test_conv(self, algo, border_mode, conv_mode):
-        if algo == 'winograd' and dnn.version(raises=False) < 5000:
-            raise SkipTest(dnn.dnn_available.msg)
-
         self._test_conv(T.tensor4('img'),
                         T.tensor4('kerns'),
                         T.tensor4('out'),
@@ -1361,8 +1358,6 @@ class test_SoftMax(test_nnet.test_SoftMax):
 def test_dnn_batchnorm_train():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
-    if dnn.version(raises=False) < 5000:
-        raise SkipTest("batch normalization requires cudnn v5+")
     utt.seed_rng()
 
     for mode in ('per-activation', 'spatial'):
@@ -1416,8 +1411,6 @@ def test_dnn_batchnorm_train():
 def test_batchnorm_inference():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
-    if dnn.version(raises=False) < 5000:
-        raise SkipTest("batch normalization requires cudnn v5+")
     utt.seed_rng()
 
     for mode in ('per-activation', 'spatial'):
