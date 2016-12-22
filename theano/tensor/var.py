@@ -623,6 +623,10 @@ class _tensor_py_operators(object):
 
     dot = __dot__
 
+    def __matmul__(left, right):
+        return theano.tensor.basic.matmul
+    matmul = __matmul__
+
     def sum(self, axis=None, dtype=None, keepdims=False, acc_dtype=None):
         """See `theano.tensor.sum`."""
         return theano.tensor.basic.sum(self, axis=axis,

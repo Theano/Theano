@@ -5794,9 +5794,56 @@ def dot(a, b):
         return _dot(a, b)
 
 
+def matmul(a, b):
+    '''
+    Compute matrix multiplication of two variables
+
+    This routine is similar to theano.tensosr.dot, except:
+        - "a" and "b" must not be scalars
+        - at least one of "a" or "b" must have dimensions >=2
+        - for tensor with dimensions >2, this will perform batched
+          matrix multiplication
+
+    Notes
+    -----
+    Compared to numpy.matmul, this operation currently does not
+    allow both operand having dimensions larger than two.
+    With python 3.5+, this operation can be used via "@" operator
+    '''
+    # TODO figure out a way to completely and efficiently support
+    # numpy style matmul
+    a, b = tuple(map(as_tensor_variable, (a, b)))
+    if a.ndim == 0 or b.ndim == 0:
+        raise ValueError(
+            'matmul: 0d tensor (scalar) operand is not allowed, use "*" instead')
+
+    if a.ndim > b.ndim:
+        maxdim, mindim, altb = a.ndim, b.ndim, True
+    else:
+        maxdim, mindim, altb = b.ndim, a.ndim, False
+
+    if maxdim <= 2:
+        return _dot(a, b)
+    elif mindim > 2:
+        raise ValueError(
+            'matmul: curently does not support batched mode with broadcasting,'
+            ' this requires at least one tensor with dimensions <= 2,'
+            ' got %d' % mindim)
+
+    if altb:
+        return dot(a, b)
+    else:
+        shuf = list(range(maxdim))
+        shuf[-1], shuf[-2] = shuf[-2], shuf[-1]
+        if mindim == 2:
+            return dot(b.dimshuffle(shuf), a.T).dimshuffle(shuf)
+        else:
+            return dot(b.dimshuffle(shuf), a)
+
 #########################
 # Linalg : TensorDot
 #########################
+
 
 def _tensordot_as_dot(a, b, axes, dot, batched):
     """

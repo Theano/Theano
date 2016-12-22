@@ -32,7 +32,7 @@ from theano.tensor import (_shared, wvector, bvector,
         horizontal_stack, vertical_stack, argmax, get_vector_length,
         fscalar, zeros_like, sum, tensor3, vector, add, addbroadcast,
         alloc, as_tensor_variable, tensor_from_scalar, ARange,
-        clip, constant, default, dot, batched_dot,
+        clip, constant, default, dot, batched_dot, matmul,
         dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
         tensor4, permute_row_elements, Flatten, fmatrix, fscalars, grad,
         inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
@@ -2769,6 +2769,106 @@ def test_batched_dot():
     result = result_fn(first_mat_val, second_mat_val)
 
     assert result.shape[0] == first_mat_val.shape[0]
+
+
+class test_matmul(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_matmul_3d_3d(self):
+        # TODO fill this up once matmul support arbitrary dimensions
+        raise SkipTest('Currently does not support arbitrary dimensions matmul')
+
+    def test_matmul_2d_2d(self):
+        first = theano.tensor.matrix("first")
+        second = theano.tensor.matrix("second")
+        output = theano.tensor.basic.matmul(first, second)
+        first_val = numpy.random.rand(5, 4).astype(config.floatX)
+        second_val = numpy.random.rand(4, 3).astype(config.floatX)
+        result_fn = theano.function([first, second], output)
+        result = result_fn(first_val, second_val)
+        assert result.shape[0] == first_val.shape[0]
+        assert result.shape[1] == second_val.shape[1]
+        assert numpy.allclose(result, numpy.dot(first_val, second_val))
+
+    def test_matmul_2d_1d(self):
+        first = theano.tensor.matrix("first")
+        second = theano.tensor.vector("second")
+        output = theano.tensor.basic.matmul(first, second)
+        first_val = numpy.random.rand(5, 4).astype(config.floatX)
+        second_val = numpy.random.rand(4).astype(config.floatX)
+        result_fn = theano.function([first, second], output)
+        result = result_fn(first_val, second_val)
+        assert result.ndim == 1
+        assert result.shape[0] == first_val.shape[0]
+        assert numpy.allclose(result, numpy.dot(first_val, second_val))
+
+    def test_matmul_1d_2d(self):
+        first = theano.tensor.vector("first")
+        second = theano.tensor.matrix("second")
+        output = theano.tensor.basic.matmul(first, second)
+        first_val = numpy.random.rand(5).astype(config.floatX)
+        second_val = numpy.random.rand(5, 4).astype(config.floatX)
+        result_fn = theano.function([first, second], output)
+        result = result_fn(first_val, second_val)
+        assert result.ndim == 1
+        assert result.shape[0] == second_val.shape[1]
+        assert numpy.allclose(result, numpy.dot(first_val, second_val))
+
+    def test_matmul_3d_1d(self):
+        first = theano.tensor.tensor3("first")
+        second = theano.tensor.vector("second")
+        output = theano.tensor.basic.matmul(first, second)
+        first_val = numpy.random.rand(10, 5, 4).astype(config.floatX)
+        second_val = numpy.random.rand(4).astype(config.floatX)
+        result_fn = theano.function([first, second], output)
+        result = result_fn(first_val, second_val)
+        assert result.ndim == 2
+        assert result.shape == first_val.shape[:-1]
+        assert numpy.allclose(result, numpy.dot(first_val, second_val))
+
+    def test_matmul_3d_2d(self):
+        first = theano.tensor.tensor3("first")
+        second = theano.tensor.matrix("second")
+        output = theano.tensor.basic.matmul(first, second)
+        first_val = numpy.random.rand(10, 5, 4).astype(config.floatX)
+        second_val = numpy.random.rand(4, 3).astype(config.floatX)
+        result_fn = theano.function([first, second], output)
+        result = result_fn(first_val, second_val)
+        assert result.ndim == 3
+        assert result.shape[:-1] == first_val.shape[:-1]
+        assert result.shape[-1] == second_val.shape[-1]
+        assert numpy.allclose(result, numpy.dot(first_val, second_val))
+
+    def test_matmul_1d_3d(self):
+        first = theano.tensor.vector("first")
+        second = theano.tensor.tensor3("second")
+        output = theano.tensor.basic.matmul(first, second)
+        first_val = numpy.random.rand(5).astype(config.floatX)
+        second_val = numpy.random.rand(10, 5, 4).astype(config.floatX)
+        result_fn = theano.function([first, second], output)
+        result = result_fn(first_val, second_val)
+        assert result.ndim == 2
+        assert result.shape[0] == second_val.shape[0]
+        assert result.shape[1] == second_val.shape[2]
+        assert numpy.allclose(
+            result, numpy.dot(second_val.transpose(0, 2, 1), first_val))
+
+    def test_matmul_2d_3d(self):
+        first = theano.tensor.matrix("first")
+        second = theano.tensor.tensor3("second")
+        output = theano.tensor.basic.matmul(first, second)
+        first_val = numpy.random.rand(5, 4).astype(config.floatX)
+        second_val = numpy.random.rand(10, 4, 3).astype(config.floatX)
+        result_fn = theano.function([first, second], output)
+        result = result_fn(first_val, second_val)
+        assert result.ndim == 3
+        assert result.shape[0] == second_val.shape[0]
+        assert result.shape[1] == first_val.shape[0]
+        assert result.shape[2] == second_val.shape[-1]
+        assert numpy.allclose(
+            result, numpy.dot(
+                second_val.transpose(0, 2, 1), first_val.T).transpose(0, 2, 1))
 
 
 def test_batched_tensordot():
