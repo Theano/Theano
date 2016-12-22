@@ -12,10 +12,10 @@
 #define min(a,b) (a<b?a:b)
 
 void APPLY_SPECIFIC(ROIPoolForward)(
-    const int nloops, const float* bottom_data,
-    const float spatial_scale, const int channels, const int height,
-    const int width, const int pooled_height, const int pooled_width,
-    const float* bottom_rois, float* top_data, float* argmax_data) {
+    int nloops, float* bottom_data,
+    float spatial_scale, int channels, int height,
+    int width, int pooled_height, int pooled_width,
+    float* bottom_rois, float* top_data, float* argmax_data) {
     
     for (int index = 0; index < nloops; ++index) {
 
@@ -51,7 +51,7 @@ void APPLY_SPECIFIC(ROIPoolForward)(
         bool is_empty = (hend <= hstart) || (wend <= wstart);
 
         // Define an empty pooling region to be zero
-        float maxval = is_empty ? 0 : -FLT_MAX;
+        float maxval = is_empty ? 0 : -1000;
         // If nothing is pooled, argmax = -1 causes nothing to be backprop'd
         int maxidx = -1;
         bottom_data += (roi_batch_index * channels + c) * height * width;
@@ -97,11 +97,11 @@ int APPLY_SPECIFIC(CPUFwd)(PyArrayObject* data,
 
 
 void APPLY_SPECIFIC(ROIPoolBackward)(
-    const int nloops, const float* top_diff,
-    const float* argmax_data, const int num_rois, const float spatial_scale,
-    const int channels, const int height, const int width,
-    const int pooled_height, const int pooled_width, float* bottom_diff,
-    const float* bottom_rois) {
+    int nloops, float* top_diff,
+    float* argmax_data, int num_rois, float spatial_scale,
+    int channels, int height, int width,
+    int pooled_height, int pooled_width, float* bottom_diff,
+    float* bottom_rois) {
     for (int index = 0; index < nloops; ++index) {
         // (n, c, h, w) coords in bottom data
         int w = index % width;

@@ -1,12 +1,11 @@
 #section kernels
 
 #kernel ROIPoolGPUFwd_kernel : size, *, size, size, size, size, size, size, *, *, * :
-
 KERNEL void ROIPoolGPUFwd_kernel(
-    const ga_size nloops, GLOBAL_MEM const DTYPE_i0 * bottom_data,
-    const DTYPE_i0 spatial_scale, const ga_size channels, const ga_size height,
-    const ga_size width, const ga_size pooled_height, const ga_size pooled_width,
-    const DTYPE_i0* bottom_rois, DTYPE_i0* top_data, DTYPE_i0* argmax_data) {
+    ga_size nloops, DTYPE_i0 * bottom_data,
+    DTYPE_i0 spatial_scale, ga_size channels, ga_size height,
+    ga_size width, ga_size pooled_height, ga_size pooled_width,
+    DTYPE_i0* bottom_rois, DTYPE_i0* top_data, DTYPE_i0* argmax_data) {
     
     for (ga_size index = 0; index < nloops; ++index) {
 
@@ -44,7 +43,7 @@ KERNEL void ROIPoolGPUFwd_kernel(
         // Define an empty pooling region to be zero
         DTYPE_i0 maxval = is_empty ? 0 : - 100000.0;
         // If nothing is pooled, argmax = -1 causes nothing to be backprop'd
-        ga_size maxidx = -1;
+        ga_ssize maxidx = -1;
         bottom_data += (roi_batch_index * channels + c) * height * width;
         for (ga_size h = hstart; h < hend; ++h) {
             for (ga_size w = wstart; w < wend; ++w) {
@@ -60,17 +59,17 @@ KERNEL void ROIPoolGPUFwd_kernel(
     }
 }
 
-#section support_code_struct 
+#section support_code_struct
 
-int APPLY_SPECIFIC(ROIPoolGPUFwd)(PyGpuArrayObject* data,
+int APPLY_SPECIFIC(ROIPoolGPUFwd)(PyGpuArrayObject* features,
                       PyGpuArrayObject* rois,
                       PyGpuArrayObject** out,
-                      PyGpuArrayObject** argmaxes
+                      PyGpuArrayObject** argmaxes,
                       ) {
   size_t batch_size = PyGpuArray_DIMS(rois)[0];
-  size_t channels = PyGpuArray_DIMS(data)[1];
-  size_t height = PyGpuArray_DIMS(data)[2];
-  size_t width = PyGpuArray_DIMS(data)[3];
+  size_t channels = PyGpuArray_DIMS(features)[1];
+  size_t height = PyGpuArray_DIMS(features)[2];
+  size_t width = PyGpuArray_DIMS(features)[3];
 
   // Prepare outputs.
   size_t dims[] = {0, 0, 0, 0};
@@ -80,22 +79,10 @@ int APPLY_SPECIFIC(ROIPoolGPUFwd)(PyGpuArrayObject* data,
   dims[3] = POOLED_WIDTH;
 
   size_t num_kernel = batch_size * channels * POOLED_HEIGHT * POOLED_WIDTH;
-  //Getting maximum number of threads per block
-  
-  size_t max_threads_dim;
-  err = gpucontext_property(data->context->ctx, GA_CTX_PROP_MAXLSIZE, &max_threads_dim);
-  if (err != GA_NO_ERROR){
-    PyErr_Format(PyExc_RuntimeError,
-        "Could not fetch max_threads_dim.");
-    return -1;
-    }
+  int err;
 
-  size_t threads_per_block = max_threads_dim;
-
-  size_t n_blocks = (size_t) ((num_kernel + threads_per_block - 1) / threads_per_block);
-
-  err = ROIPoolGPUFwd_kernel_scall(1, &threads_per_block, &n_blocks, 0,
-          num_kernel, data->ga.data, SPATIAL_SCALE, channels, height, width,
+  err = ROIPoolGPUFwd_kernel_scall(1, &num_kernel, 0,
+          num_kernel, features->ga.data, SPATIAL_SCALE, channels, height, width,
           POOLED_HEIGHT, POOLED_WIDTH, rois->ga.data, (*out)->ga.data,
           (*argmaxes)->ga.data);
   if (err != GA_NO_ERROR) {
