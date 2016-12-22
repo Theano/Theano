@@ -53,7 +53,7 @@ class MissingInputError(Exception):
             # The call to list is needed for Python 3
             assert list(kwargs.keys()) == ["variable"]
             tr = getattr(list(kwargs.values())[0].tag, 'trace', [])
-            if isinstance(tr, list) is list and len(tr) > 0:
+            if isinstance(tr, list) and len(tr) > 0:
                 sio = StringIO()
                 print("\nBacktrace when the variable is created:", file=sio)
                 for subtr in list(kwargs.values())[0].tag.trace:

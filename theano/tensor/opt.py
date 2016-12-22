@@ -4289,10 +4289,6 @@ def local_useless_reshape(node):
         return False
 
     input = node.inputs[0]
-
-    # Copy over stack trace
-    copy_stack_trace(node.outputs[0], input)
-
     output = node.outputs[0]
     output_shape = node.inputs[1]
 
@@ -4303,6 +4299,9 @@ def local_useless_reshape(node):
     # This could hide errors if the user provides inconsistent shapes.
     if (input.ndim == 1 and output.ndim == 1 and
             input.broadcastable == output.broadcastable):
+        # Copy over stack trace
+        copy_stack_trace(node.outputs[0], input)
+
         return [input]
 
     # Second case: all the shapes match the input shape
@@ -4310,62 +4309,9 @@ def local_useless_reshape(node):
     if output_shape.owner and isinstance(output_shape.owner.op, Shape):
         shape_input = output_shape.owner.inputs[0]
         if shape_input == input:
-            return [input]
+            # Copy over stack trace
+            copy_stack_trace(node.outputs[0], input)
 
-    # Match Reshape(x, [x.shape[0], ..., x.shape[-1]]), accounting for
-    # broadcastable and constant dimensions
-    if output_shape.owner and isinstance(output_shape.owner.op, MakeVector):
-        output_shape_is = output_shape.owner.inputs
-
-        if not hasattr(node, 'fgraph'):
-            shape_feature = None
-        else:
-            shape_feature = getattr(node.fgraph, 'shape_feature', None)
-
-        shape_match = [False] * input.ndim
-        for dim in xrange(input.ndim):
-            outshp_i = output_shape_is[dim]
-            # Match Shape_i{dim}(input)
-            if (outshp_i.owner and isinstance(outshp_i.owner.op, Shape_i) and
-                    outshp_i.owner.op.i == dim and
-                    outshp_i.owner.inputs[0] == input):
-                shape_match[dim] = True
-                continue
-
-            # Match Shape(input)[dim]
-            if (outshp_i.owner and isinstance(outshp_i.owner.op, Subtensor) and
-                    len(outshp_i.owner.inputs) == 2 and
-                    extract_constant(outshp_i.owner.inputs[1]) == dim):
-                subtensor_inp = outshp_i.owner.inputs[0]
-                if (subtensor_inp.owner and
-                        isinstance(subtensor_inp.owner.op, Shape)):
-                    shape_input_i = subtensor_inp.owner.inputs[0]
-                    if shape_input_i == input:
-                        shape_match[dim] = True
-                        continue
-
-    op = node.op
-    if not isinstance(op, Reshape):
-        return False
-
-    input = node.inputs[0]
-    output = node.outputs[0]
-    output_shape = node.inputs[1]
-
-    if input.ndim != output.ndim:
-        return False
-
-    # Simple case: both input and output have a single dimension.
-    # This could hide errors if the user provides inconsistent shapes.
-    if (input.ndim == 1 and output.ndim == 1 and
-            input.broadcastable == output.broadcastable):
-        return [input]
-
-    # Second case: all the shapes match the input shape
-    # Match Reshape(x, x.shape)
-    if output_shape.owner and isinstance(output_shape.owner.op, Shape):
-        shape_input = output_shape.owner.inputs[0]
-        if shape_input == input:
             return [input]
 
     # Match Reshape(x, [x.shape[0], ..., x.shape[-1]]), accounting for
@@ -4416,6 +4362,9 @@ def local_useless_reshape(node):
                     continue
 
         if all(shape_match):
+            # Copy over stack trace
+            copy_stack_trace(node.outputs[0], input)
+
             return [input]
 
         # TODO later: if all the shapes except one match, we may want to
@@ -4558,7 +4507,6 @@ def local_fill_cut(node):
     f(fill(a,b), c) -> f(b, c)
     If c.type == a.type.
     """
-
     # this optimization is basically for getting broadcasting to
     # replace fill.  This is always possible when using a Compound
     # Elemwise operation, but it is not always possible without one
@@ -4567,7 +4515,14 @@ def local_fill_cut(node):
     # scalars, but we can't ignore the large matrix because it gives
     # the shape of the result.
 
-    if node.op != T.Elemwise:
+    # Julian: I've fixed the if line below to check if it's an instance.
+    #         Is this correct?
+    #         Also, I doubt this optimization is being applied anywhere.
+    #         See my comment below.
+
+    #if node.op != T.Elemwise:
+    #    return False
+    if (not isinstance(node.op, T.Elemwise)):
         return False
 
     output = node.outputs[0]
@@ -4584,6 +4539,10 @@ def local_fill_cut(node):
     new_inputs = []
     new = False
     for input in node.inputs:
+        # Julian: no matter what kind of function I create,
+        #         it seems that input.owner.op == T.fill is never true.
+        #         Somehow the fill ops are replaced by other ops (e.g. Elemwise{second,no_inplace}).
+        #         If that's true, I don't think we have any tests for this opt.
         if input.owner and input.owner.op == T.fill:
             model, filling = input.owner.inputs
             if encompasses_broadcastable(reference.type.broadcastable,
@@ -5161,9 +5120,10 @@ def local_sum_prod_mul_by_scalar(node):
                 new_op_input_nb_elements = new_op_input.size
                 new_op_output = node.op(new_op_input)
 
-            # Copy over stacktrace from previous output to new mul op,
-            # for same reason as above.
-            copy_stack_trace(node.outputs, new_op_output)
+            if not len(non_scalars) == 0:
+                # Copy over stacktrace from previous output to new mul op,
+                # for same reason as above.
+                copy_stack_trace(node.outputs, new_op_output)
 
             # If node.op is a T.elemwise.Prod, then the scalars need to be
             # raised to the power of the number of elements in the input
@@ -5189,7 +5149,7 @@ def local_sum_prod_mul_by_scalar(node):
                 ret = T.mul(*mul_inputs)
                 # Copy over stacktrace from previous output to new mul op,
                 # for same reason as above.
-                copy_stack_trace(node.outputs,[ret]+mul_inputs)
+                copy_stack_trace(node.outputs, [ret] + mul_inputs)
 
                 return [ret]
 
@@ -5394,11 +5354,12 @@ def local_useless_elemwise_comparison(node):
             cst = get_scalar_constant_value(node.inputs[1],
                                             only_process_constants=True)
 
-            # Copy over stacktrace from previous output.
             res = T.zeros_like(node.inputs[0], dtype=dtype, opt=True)
-            copy_stack_trace(node.outputs, res)
 
             if cst < 0:
+                # Copy over stacktrace from previous output.
+                copy_stack_trace(node.outputs, res)
+
                 return [res]
 
         except NotScalarConstantError:

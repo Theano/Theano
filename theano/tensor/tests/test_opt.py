@@ -3446,6 +3446,8 @@ def test_local_fill_useless():
     f = function([x], T.fill(x, x) * 2, mode=mode_opt)
     assert [node.op for node in f.maker.fgraph.toposort()] == [T.mul]
     f(x_)
+    # Julian: This doesn't work. See comments inside local_fill_cut.
+    # assert check_stack_trace(f, ops_to_check='all')
 
     # basic case
     f = function([x, y], T.second(y, x) * 2, mode=mode_opt)
@@ -3733,10 +3735,6 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
         f = theano.function([x], T.le(x, x), mode=mode)
         self.assertTrue(check_stack_trace(f, ops_to_check='last'))
-
-        # Julian: I tried testing the stack trace for a bunch of different
-        # functions, including maximum and shapes, but other opts remove
-        # the stack traces in this case.
 
 
 class Test_local_canonicalize_alloc(unittest.TestCase):
@@ -6282,6 +6280,9 @@ class Test_Reshape(unittest.TestCase):
         topo = f.maker.fgraph.toposort()
         assert sum(isinstance(node.op, self.op) for node in topo) == 1
 
+        # Check stack trace
+        self.assertTrue(check_stack_trace(f, ops_to_check=[self.op]))
+
 
 class Test_local_useless_reshape(unittest.TestCase):
     def setUp(self):
@@ -6306,16 +6307,13 @@ class Test_local_useless_reshape(unittest.TestCase):
         topo = f1.maker.fgraph.toposort()
         assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
 
-        # TODO: Check that stack trace is maintained.
-        #       Currently, stack trace gets removed by some other opt.
-        #       assert check_stack_trace(f1, ops_to_check='all')
-
-        m2 = m0.excluding('local_useless_reshape')
-
         m2 = m1.excluding('ShapeOpt')
         f2 = theano.function([x], r, mode=m2)
         topo = f2.maker.fgraph.toposort()
         assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+
+        # We do not need tests checking that stack traces are copied over,
+        # because local_useless_reshape only removes nodes from the graph
 
     def test_2(self):
         x = theano.tensor.matrix('x')
@@ -6326,10 +6324,6 @@ class Test_local_useless_reshape(unittest.TestCase):
         f1 = theano.function([x], r, mode=m1)
         topo = f1.maker.fgraph.toposort()
         assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
-
-        # TODO: Check that stack trace is maintained.
-        #       Currently, stack trace gets removed by some other opt.
-        #       assert check_stack_trace(f1, ops_to_check='all')
 
         m2 = m1.excluding('ShapeOpt')
         f2 = theano.function([x], r, mode=m2)
