@@ -4,6 +4,7 @@ from nose.tools import assert_raises
 
 import theano
 from theano import tensor
+import theano.tensor.slinalg as slinalg
 from theano.tests.breakpoint import PdbBreakpoint
 from theano.tests import unittest_tools as utt, test_ifelse
 from theano.tensor.tests import test_basic
@@ -16,6 +17,7 @@ from ..basic_ops import (
 from ..blas import GpuGemm
 from ..elemwise import GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise
 from ..subtensor import GpuSubtensor
+from ..linalg import GpuCusolverSolve
 
 from .config import mode_with_gpu, test_ctx_name
 
@@ -496,3 +498,18 @@ def test_no_complex():
     stft_out = tensor.exp(width_var * freq_var) * signal_var
     theano.function([width_var, freq_var, signal_var], stft_out,
                     mode=mode_with_gpu)
+
+
+def test_local_lift_solve():
+    A = tensor.fmatrix()
+    b = tensor.fmatrix()
+    o = slinalg.solve(A, b)
+    f_cpu = theano.function([A, b], o)
+    f_gpu = theano.function([A, b], o, mode=mode_with_gpu)
+    assert not any(isinstance(n.op, slinalg.Solve)
+                   for n in f_gpu.maker.fgraph.apply_nodes)
+    assert any(isinstance(n.op, GpuCusolverSolve)
+               for n in f_gpu.maker.fgraph.apply_nodes)
+    A_val = numpy.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
+    b_val = numpy.random.uniform(-0.4, 0.4, (5, 3)).astype("float32")
+    utt.assert_allclose(f_cpu(A_val, b_val), f_gpu(A_val, b_val))

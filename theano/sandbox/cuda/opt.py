@@ -49,7 +49,6 @@ from theano.sandbox.cuda.blas import (
     GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
 
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
-from theano.sandbox.cuda.cula import gpu_solve, cula_available
 
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -83,7 +82,6 @@ from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano.tensor.blas import _is_real_vector, _is_real_matrix
 
 from theano.tensor import nlinalg
-from theano.tensor import slinalg
 
 from theano.tensor.nnet.Conv3D import Conv3D
 from theano.tests.breakpoint import PdbBreakpoint
@@ -697,38 +695,6 @@ def local_gpu_dot22scalar(node):
                 gpu_dot22scalar(as_cuda_ndarray_variable(x),
                                 as_cuda_ndarray_variable(y),
                                 tensor.blas._as_scalar(scalar)))]
-    return False
-
-
-@register_opt()
-@local_optimizer([gpu_from_host, slinalg.Solve])
-def local_gpu_solve(node):
-    """
-    gpu_from_host(CpuSolve) -> GpuSolve(gpu_from_host)
-
-    CpuSolve(host_from_gpu) -> host_from_gpu(GpuSolve)
-
-    """
-    if not cula_available:
-        return
-    if node.outputs[0].dtype != 'float32':
-        return
-    if isinstance(node.op, GpuFromHost):
-        host_input = node.inputs[0]
-        if (host_input.owner and
-            isinstance(host_input.owner.op,
-                       slinalg.Solve)):
-            x, y = host_input.owner.inputs
-            return [gpu_solve(as_cuda_ndarray_variable(x),
-                              as_cuda_ndarray_variable(y))]
-
-    if isinstance(node.op, slinalg.Solve):
-        if any([i.owner and isinstance(i.owner.op, HostFromGpu)
-                for i in node.inputs]):
-            x, y = node.inputs
-            return [host_from_gpu(
-                    gpu_solve(as_cuda_ndarray_variable(x),
-                              as_cuda_ndarray_variable(y)))]
     return False
 
 
