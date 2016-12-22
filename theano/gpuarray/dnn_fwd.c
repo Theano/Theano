@@ -121,10 +121,12 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       PyErr_SetString(PyExc_MemoryError, "Could not allocate working GPU memory");
       return -1;
     }
-
+    // We don't sync the buffer as we don't care about the values.
     err = cudnnFindConvolutionForwardAlgorithmEx(
-      _handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(kerns),
-      desc, APPLY_SPECIFIC(output), 1, &count, &choice, *(void **)tmpmem,
+      _handle, APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(input),
+      APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(kerns),
+      desc, APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(*output),
+      1, &count, &choice, *(void **)tmpmem,
       free);
     gpudata_release(tmpmem);
 
