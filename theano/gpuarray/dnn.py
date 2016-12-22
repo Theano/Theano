@@ -220,7 +220,8 @@ class DnnBase(COp):
         return node.outputs[0].type.context_name
 
     def get_params(self, node):
-        ctx = self.dnn_context(node)
+        ctx_name = self.dnn_context(node)
+        ctx = get_context(ctx_name)
         if not hasattr(ctx, 'cudnn_handle_param'):
             ptr = ctx.cudnn_handle.value
             res = handle_type.make_value(ptr)
