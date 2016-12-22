@@ -4520,7 +4520,7 @@ def local_fill_cut(node):
     #         Also, I doubt this optimization is being applied anywhere.
     #         See my comment below.
 
-    #if node.op != T.Elemwise:
+    # if node.op != T.Elemwise:
     #    return False
     if (not isinstance(node.op, T.Elemwise)):
         return False
