@@ -5363,6 +5363,8 @@ class T_local_sum_prod(unittest.TestCase):
                            (s1_val * s2_val * v_val * m_val).prod(), 2)
 
     def test_local_sum_prod_all_to_none(self):
+        # Julian: It appears that the opt local_sum_prod_mul_by_scalar
+        #         is never used in any of these tests...
         a = T.tensor3()
         input = numpy.arange(3 * 4 * 5, dtype=config.floatX).reshape(3, 4, 5)
         # test sum
@@ -5596,6 +5598,37 @@ class T_local_sum_prod(unittest.TestCase):
             theano.function([x], y)
         finally:
             config.on_opt_error = backup
+
+    def test_stack_trace(self):
+        """
+        Test that stack trace is copied over correctly.
+        """
+        m0 = theano.compile.get_default_mode()\
+                .excluding('inplace_elemwise_opt')\
+                .including('canonicalize', 'specialize')
+
+        vect = T.dvector()
+        mat = T.dmatrix()
+        scalar = T.dscalar()
+
+        f = theano.function([vect, scalar], T.sum(vect*scalar), mode=m0)
+        assert check_stack_trace(f, ops_to_check='all')
+
+        f = theano.function([vect], T.sum(-vect), mode=m0)
+        assert check_stack_trace(f, ops_to_check=[T.Sum])
+
+        f = theano.function([vect, scalar], 
+                            T.elemwise.Prod()(vect*scalar), mode=m0)
+        assert check_stack_trace(f, ops_to_check=[T.elemwise.Prod])
+
+        f = theano.function([vect], T.elemwise.Prod()(-vect), mode=m0)
+        assert check_stack_trace(f, ops_to_check=[T.elemwise.Prod])
+
+        f = theano.function([mat, scalar], T.sum(mat*scalar), mode=m0)
+        assert check_stack_trace(f, ops_to_check='all')
+
+        f = theano.function([mat], T.sum(-mat), mode=m0)
+        assert check_stack_trace(f, ops_to_check=[T.Sum])
 
 
 class T_local_opt_alloc(unittest.TestCase):
