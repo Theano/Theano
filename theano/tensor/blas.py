@@ -2151,11 +2151,13 @@ class BatchedDot(Op):
         # generate contiguity condition
         def contiguous(var, ndim):
             strides = "PyArray_STRIDES(%s)" % var
+            if ndim == 1:
+                return "{strides}[0] == type_size".format(strides=strides)
             return " && ".join([
                 " && ".join("{strides}[{i}] > 0 && {strides}[{i}] % type_size == 0"
-                            .format(strides=strides, i=i) for i in range(ndim)),
+                            .format(strides=strides, i=i) for i in range(1, ndim)),
                 "(%s)" % " || ".join("{strides}[{i}] == type_size"
-                                     .format(strides=strides, i=i) for i in range(ndim)),
+                                     .format(strides=strides, i=i) for i in range(1, ndim)),
             ])
 
         x_ndim, y_ndim, z_ndim = node.inputs[0].ndim, node.inputs[1].ndim, node.outputs[0].ndim
@@ -2309,7 +2311,7 @@ class BatchedDot(Op):
 
     def c_code_cache_version(self):
         from theano.tensor.blas_headers import blas_header_version
-        return (1, blas_header_version())
+        return (3, blas_header_version())
 
     def grad(self, inp, grads):
         x, y = inp
