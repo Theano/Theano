@@ -260,4 +260,4 @@ class TestGpuCumOp(theano.tensor.tests.test_extra_ops.TestCumOp):
         x = T.ftensor4('x')
         f = theano.function([x], op_class(axis=1)(x), mode=self.mode)
         assert [n for n in f.maker.fgraph.toposort()
-                if isinstance(n.op, GpuCumOp)]
+                if isinstance(n.op, CumOp)]
