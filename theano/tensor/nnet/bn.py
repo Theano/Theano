@@ -627,6 +627,9 @@ def local_abstract_batch_norm_train(node):
             (m / (m - 1)) * var * running_average_factor
         results.append(running_var)
 
+    results = [T.patternbroadcast(r, r_orig.broadcastable)
+               for (r, r_orig) in zip(results, node.outputs)]
+
     # TODO copy_stack_trace?
     return results
 
@@ -655,8 +658,13 @@ def local_abstract_batch_norm_train_grad(node):
     g_wrt_inputs = scale * (c - T.mean(c, axis=axes, keepdims=True))
     g_wrt_scale = T.sum(dy * x_invstd * x_diff, axis=axes, keepdims=True)
     g_wrt_bias = T.sum(dy, axis=axes, keepdims=True)
+    results = [g_wrt_inputs, g_wrt_scale, g_wrt_bias]
+
+    results = [T.patternbroadcast(r, r_orig.broadcastable)
+               for (r, r_orig) in zip(results, node.outputs)]
+
     # TODO copy_stack_trace?
-    return [g_wrt_inputs, g_wrt_scale, g_wrt_bias]
+    return results
 
 
 @local_optimizer([AbstractBatchNormInference])
@@ -674,8 +682,11 @@ def local_abstract_batch_norm_inference(node):
        not isinstance(epsilon.type, TensorType):
         return None
 
+    result = (x - estimated_mean) * (scale / T.sqrt(estimated_variance + epsilon)) + bias
+    result = T.patternbroadcast(result, node.outputs[0].broadcastable)
+
     # TODO copy_stack_trace?
-    return [(x - estimated_mean) * (scale / T.sqrt(estimated_variance + epsilon)) + bias]
+    return [result]
 
 
 # Register Cpu Optmization

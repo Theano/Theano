@@ -392,3 +392,24 @@ def test_batch_normalization_test():
                 utt.assert_allclose(outputs[4], outputs[4 + 5])  # dbias
                 utt.assert_allclose(outputs[5], outputs[5 + 5])  # dmean
                 utt.assert_allclose(outputs[6], outputs[6 + 5], rtol=2e-3, atol=4e-5)  # dvar
+
+
+def test_batch_normalization_broadcastable():
+    # check if the broadcastable pattern is preserved by the optimizations
+    x, dy, scale, bias, mean, var = (T.scalar(n).dimshuffle(['x'] * 5)
+                                     for n in ('x', 'dy', 'scale', 'bias', 'mean', 'var'))
+
+    # forward pass
+    out_train, x_mean, x_invstd = bn.batch_normalization_train(x, scale, bias, 'spatial')
+    out_test = bn.batch_normalization_test(x, scale, bias, mean, var, 'spatial')
+    # backward pass
+    grads_train = T.grad(None, wrt=[x, scale, bias], known_grads={out_train: dy})
+    grads_test = T.grad(None, wrt=[x, scale, bias], known_grads={out_test: dy})
+    # compile
+    f = theano.function([x, scale, bias, mean, var, dy],
+                        [out_train, x_mean, x_invstd, out_test] + grads_train + grads_test,
+                        mode='FAST_RUN')
+    assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
+                                      bn.AbstractBatchNormInference,
+                                      bn.AbstractBatchNormTrainGrad))
+                    for n in f.maker.fgraph.toposort()])
