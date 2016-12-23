@@ -4299,9 +4299,6 @@ def local_useless_reshape(node):
     # This could hide errors if the user provides inconsistent shapes.
     if (input.ndim == 1 and output.ndim == 1 and
             input.broadcastable == output.broadcastable):
-        # Copy over stack trace
-        copy_stack_trace(node.outputs[0], input)
-
         return [input]
 
     # Second case: all the shapes match the input shape
@@ -4309,9 +4306,6 @@ def local_useless_reshape(node):
     if output_shape.owner and isinstance(output_shape.owner.op, Shape):
         shape_input = output_shape.owner.inputs[0]
         if shape_input == input:
-            # Copy over stack trace
-            copy_stack_trace(node.outputs[0], input)
-
             return [input]
 
     # Match Reshape(x, [x.shape[0], ..., x.shape[-1]]), accounting for
@@ -4362,9 +4356,6 @@ def local_useless_reshape(node):
                     continue
 
         if all(shape_match):
-            # Copy over stack trace
-            copy_stack_trace(node.outputs[0], input)
-
             return [input]
 
         # TODO later: if all the shapes except one match, we may want to

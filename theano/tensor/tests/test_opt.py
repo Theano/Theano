@@ -3502,6 +3502,8 @@ def test_local_elemwise_sub_zeros():
     f = function([scalar], scalar - scalar, mode=mode)
     # Check optimized graph is correct
     assert isinstance(f.maker.fgraph.toposort()[0].op, T.Elemwise)
+    assert f.maker.fgraph.toposort()[0].op.name\
+        == 'Elemwise{second,no_inplace}'
     assert isinstance(f.maker.fgraph.toposort()[0].inputs[1],
                       T.TensorConstant) or\
         isinstance(f.maker.fgraph.toposort()[0].inputs[1],
@@ -3514,6 +3516,8 @@ def test_local_elemwise_sub_zeros():
     f = function([vect], vect - vect, mode=mode)
     # Check optimized graph is correct
     assert isinstance(f.maker.fgraph.toposort()[0].op, T.Elemwise)
+    assert f.maker.fgraph.toposort()[0].op.name\
+        == 'Elemwise{second,no_inplace}'
     assert isinstance(f.maker.fgraph.toposort()[0].inputs[1],
                       T.TensorConstant) or\
         isinstance(f.maker.fgraph.toposort()[0].inputs[1],
@@ -3526,6 +3530,8 @@ def test_local_elemwise_sub_zeros():
     f = function([mat], mat - mat, mode=mode)
     # Check optimized graph is correct
     assert isinstance(f.maker.fgraph.toposort()[0].op, T.Elemwise)
+    assert f.maker.fgraph.toposort()[0].op.name\
+        == 'Elemwise{second,no_inplace}'
     assert isinstance(f.maker.fgraph.toposort()[0].inputs[1],
                       T.TensorConstant) or\
         isinstance(f.maker.fgraph.toposort()[0].inputs[1],
@@ -5416,8 +5422,6 @@ class T_local_sum_prod(unittest.TestCase):
                            (s1_val * s2_val * v_val * m_val).prod(), 2)
 
     def test_local_sum_prod_all_to_none(self):
-        # Julian: It appears that the opt local_sum_prod_mul_by_scalar
-        #         is never used in any of these tests...
         a = T.tensor3()
         input = numpy.arange(3 * 4 * 5, dtype=config.floatX).reshape(3, 4, 5)
         # test sum
@@ -5652,10 +5656,8 @@ class T_local_sum_prod(unittest.TestCase):
         finally:
             config.on_opt_error = backup
 
-    def test_stack_trace(self):
-        """
-        Test that stack trace is copied over correctly.
-        """
+    def test_local_sum_prod_mul_by_scalar_stack_trace(self):
+        # Test that stack trace is copied over correctly for local_sum_prod_mul_by_scalar.
         m0 = theano.compile.get_default_mode()\
             .excluding('inplace_elemwise_opt')\
             .including('canonicalize', 'specialize')
