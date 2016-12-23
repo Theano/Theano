@@ -3488,9 +3488,9 @@ def test_local_elemwise_sub_zeros():
     mat = T.matrix()
 
     rng = numpy.random.RandomState(seed=utt.fetch_seed())
-    scalar_val = rng.rand(1)[0]
-    vect_val = rng.rand(5)
-    mat_val = rng.rand(3, 2)
+    scalar_val = rng.rand(1).astype(config.floatX)[0]
+    vect_val = rng.rand(5).astype(config.floatX)
+    mat_val = rng.rand(3, 2).astype(config.floatX)
 
     mode = theano.compile.get_default_mode()\
         .excluding('canonicalize', 'uncanonicalize',
