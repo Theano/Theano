@@ -3496,8 +3496,8 @@ def test_local_elemwise_sub_zeros():
 
     mode = theano.compile.get_default_mode()\
         .excluding('canonicalize', 'uncanonicalize',
-                       'ShapeOpt', 'local_fill_to_alloc',
-                       'local_elemwise_alloc')\
+                   'ShapeOpt', 'local_fill_to_alloc',
+                   'local_elemwise_alloc')\
         .including('local_elemwise_sub_zeros')
 
     # Test scalar minus scalar
@@ -3506,7 +3506,7 @@ def test_local_elemwise_sub_zeros():
     assert isinstance(f.maker.fgraph.toposort()[0].op, T.Elemwise)
     assert isinstance(f.maker.fgraph.toposort()[0].inputs[1],
                       T.TensorConstant) or\
-        isinstance(f.maker.fgraph.toposort()[0].inputs[1],\
+        isinstance(f.maker.fgraph.toposort()[0].inputs[1],
                    T.TensorConstant)
     utt.assert_allclose(f(scalar_val), 0.0)
     # Check stack trace is copied over
@@ -3518,7 +3518,7 @@ def test_local_elemwise_sub_zeros():
     assert isinstance(f.maker.fgraph.toposort()[0].op, T.Elemwise)
     assert isinstance(f.maker.fgraph.toposort()[0].inputs[1],
                       T.TensorConstant) or\
-        isinstance(f.maker.fgraph.toposort()[0].inputs[1],\
+        isinstance(f.maker.fgraph.toposort()[0].inputs[1],
                    T.TensorConstant)
     utt.assert_allclose(f(vect_val), numpy.zeros(vect_val.shape))
     # Check stack trace is copied over
@@ -3530,7 +3530,7 @@ def test_local_elemwise_sub_zeros():
     assert isinstance(f.maker.fgraph.toposort()[0].op, T.Elemwise)
     assert isinstance(f.maker.fgraph.toposort()[0].inputs[1],
                       T.TensorConstant) or\
-        isinstance(f.maker.fgraph.toposort()[0].inputs[1],\
+        isinstance(f.maker.fgraph.toposort()[0].inputs[1],
                    T.TensorConstant)
     utt.assert_allclose(f(mat_val), numpy.zeros(mat_val.shape))
     # Check stack trace is copied over
@@ -5659,8 +5659,8 @@ class T_local_sum_prod(unittest.TestCase):
         Test that stack trace is copied over correctly.
         """
         m0 = theano.compile.get_default_mode()\
-          .excluding('inplace_elemwise_opt')\
-          .including('canonicalize', 'specialize')
+         .excluding('inplace_elemwise_opt')\
+         .including('canonicalize', 'specialize')
 
         vect = T.dvector()
         mat = T.dmatrix()
