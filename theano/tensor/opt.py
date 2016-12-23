@@ -4500,75 +4500,6 @@ if 0:
 # Middleman cuts #
 ##################
 
-
-@gof.local_optimizer([T.Elemwise])
-def local_fill_cut(node):
-    """
-    f(fill(a,b), c) -> f(b, c)
-    If c.type == a.type.
-    """
-    # this optimization is basically for getting broadcasting to
-    # replace fill.  This is always possible when using a Compound
-    # Elemwise operation, but it is not always possible without one
-    # (consider filling a large matrix with a scalar, and then adding
-    # another scalar).  The only numbers that count are the two
-    # scalars, but we can't ignore the large matrix because it gives
-    # the shape of the result.
-
-    # Julian: I've fixed the if line below to check if it's an instance.
-    #         Is this correct?
-    #         Also, I doubt this optimization is being applied anywhere.
-    #         See my comment below.
-
-    # if node.op != T.Elemwise:
-    #    return False
-    if (not isinstance(node.op, T.Elemwise)):
-        return False
-
-    output = node.outputs[0]
-    try:
-        # reference is some input with the same type as the output but
-        # that is not produced by a fill
-        reference = [input
-                     for input in node.inputs
-                     if input.type == output.type and
-                     (not input.owner or input.owner.op != T.fill)][0]
-    except IndexError:
-        return False
-
-    new_inputs = []
-    new = False
-    for input in node.inputs:
-        # Julian: no matter what kind of function I create,
-        #         it seems that input.owner.op == T.fill is never true.
-        #         Somehow the fill ops are replaced by other ops (e.g. Elemwise{second,no_inplace}).
-        #         If that's true, I don't think we have any tests for this opt.
-        if input.owner and input.owner.op == T.fill:
-            model, filling = input.owner.inputs
-            if encompasses_broadcastable(reference.type.broadcastable,
-                                         filling.type.broadcastable):
-                new_inputs.append(filling)
-                new = True
-                continue
-        new_inputs.append(input)
-
-    if not new:
-        return False
-
-    rval = node.op(*new_inputs)
-    # Copy over stacktrace from previous elementwise op output.
-    # Since we are certain that an error in the cg can never come
-    # from the removed fill op, it must come from the elemntwise op.
-    copy_stack_trace(node.outputs, rval)
-
-    if isinstance(rval, gof.Variable):
-        return rval.owner.outputs
-    else:
-        return rval[0].owner.outputs
-
-register_canonicalize(local_fill_cut)
-
-
 register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy')
 
 ################
@@ -6136,7 +6067,7 @@ def local_add_specialize(node):
         return False
 register_specialize(local_add_specialize)
 
-mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut,
+mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer,
                                          local_fill_sink, apply_all_opts=True),
                        name='mul_canonizer_groups')
 
@@ -6342,7 +6273,7 @@ def add_calculate(num, denum, aslist=False, out_type=None):
 
 
 local_add_canonizer = Canonizer(T.add, T.sub, T.neg, add_calculate)
-add_canonizer = in2out(gof.LocalOptGroup(local_add_canonizer, local_fill_cut,
+add_canonizer = in2out(gof.LocalOptGroup(local_add_canonizer,
                                          local_fill_sink, apply_all_opts=True),
                        name='add_canonizer_group')
 

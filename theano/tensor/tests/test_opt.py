@@ -3431,7 +3431,7 @@ def test_local_subtensor_of_alloc():
 
 
 def test_local_fill_useless():
-    # Test opt local_fill_cut
+    # Test opt local_fill_useless
     x = dvector()
     y = dvector()
     z = lvector()
@@ -3446,8 +3446,6 @@ def test_local_fill_useless():
     f = function([x], T.fill(x, x) * 2, mode=mode_opt)
     assert [node.op for node in f.maker.fgraph.toposort()] == [T.mul]
     f(x_)
-    # Julian: This doesn't work. See comments inside local_fill_cut.
-    # assert check_stack_trace(f, ops_to_check='all')
 
     # basic case
     f = function([x, y], T.second(y, x) * 2, mode=mode_opt)
@@ -5659,8 +5657,8 @@ class T_local_sum_prod(unittest.TestCase):
         Test that stack trace is copied over correctly.
         """
         m0 = theano.compile.get_default_mode()\
-         .excluding('inplace_elemwise_opt')\
-         .including('canonicalize', 'specialize')
+            .excluding('inplace_elemwise_opt')\
+            .including('canonicalize', 'specialize')
 
         vect = T.dvector()
         mat = T.dmatrix()
