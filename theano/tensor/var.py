@@ -244,6 +244,18 @@ class _tensor_py_operators(object):
     def __rpow__(self, other):
         return theano.tensor.basic.pow(other, self)
 
+    # ARITHMETIC - MATRIX MULTIPLICATION
+    def __matmul__(self, other):
+        # See explanation in __add__ for the error catched
+        # adn the return value in that case
+        try:
+            return theano.tensor.basic.matmul(self, other)
+        except (NotImplementedError, AsTensorError):
+            return NotImplemented
+
+    def __rmatmul__(self, other):
+        return theano.tensor.basic.matmul(other, self)
+
     # TRANSPOSE
     T = property(lambda self: theano.tensor.basic.transpose(self))
 
