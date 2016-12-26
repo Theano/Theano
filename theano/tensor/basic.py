@@ -6065,18 +6065,24 @@ def matmul(x, y):
     if (x.ndim == 0) or (y.ndim == 0):
         raise ValueError("Scalar operands are not allowed, use '*' instead")
 
-    if (x.ndim == 1):
+    prepend = False
+    append = False
+
+    if x.ndim == 1:
         # Prepend an axis to x and remove the last second axis afterwards.
         x = x.dimshuffle('x', 0)
-        r = _matmul2(x, y)
-        return r.dimshuffle(*(list(range(x.ndim - 2)) + [x.ndim - 1]))
-    elif (y.ndim == 1):
+        prepend = True
+    if y.ndim == 1:
         # Append an axis to y and remove the last axis afterwards.
         y = y.dimshuffle(0, 'x')
-        r = _matmul2(x, y)
-        return r.dimshuffle(*(list(range(x.ndim - 1))))
-    else:
-        return _matmul2(x, y)
+        append = True
+
+    r = _matmul2(x, y)
+
+    if prepend:
+        r = r.dimshuffle(*(list(range(r.ndim - 2)) + [r.ndim - 1]))
+    if append:
+        r = r.dimshuffle(*(list(range(r.ndim - 1))))
 
 
 def any(x, axis=None, keepdims=False):
