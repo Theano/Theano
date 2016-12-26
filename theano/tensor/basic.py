@@ -6084,6 +6084,8 @@ def matmul(x, y):
     if append:
         r = r.dimshuffle(*(list(range(r.ndim - 1))))
 
+    return r
+
 
 def any(x, axis=None, keepdims=False):
     out = elemwise.Any(axis)(x)
