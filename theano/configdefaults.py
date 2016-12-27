@@ -380,11 +380,17 @@ AddConfigVar('dnn.library_path',
              in_c_key=False)
 
 AddConfigVar('dnn.enabled',
-             "'auto', use cuDNN if available, but silently fall back"
-             " to not using it if not present."
-             " If True and cuDNN can not be used, raise an error."
-             " If False, disable cudnn",
-             EnumStr("auto", "True", "False"),
+             "'auto', When device is CPU, use mkl if it's available, but"
+             " silently fall back to not using it if it's not present."
+             " When device is NOT GPU/CUDA, use cuDNN if it's available,"
+             " but silently fall back to not using it if not present."
+             " 'cudnn',  use cuDNN and raise an error if cuDNN can not be used."
+             " 'mkl',  use mkl and raise an error if mkl can not be used."
+             " 'False', both mkl and cuDNN are disabled, use original function",
+             # leave mkl-dnn here for future use.
+             # " 'mkl-dnn',  use mkl-dnn and raise an error if mkl-dnn can not be used."
+             # EnumStr("auto", "cudnn", "mkl", "mkl-dnn"),
+             EnumStr("auto", "cudnn", "mkl", "False"),
              in_c_key=False)
 
 # This flag determines whether or not to raise error/warning message if
