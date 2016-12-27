@@ -64,6 +64,14 @@ def batch_normalization(inputs, gamma, beta, mean, std,
         time difference compare the batch_normalization operation only, time difference
         between implementation is likely to be less important on the full model fprop/bprop.
     """
+    # Add support for MKLDNN
+    if theano.sandbox.mkl.mkl_available.avail is None:
+        theano.sandbox.mkl.mkl_available()
+
+    if (theano.sandbox.mkl.mkl_available.avail is True) and (inputs.type.ndim == 4):
+        from theano.sandbox.mkl import mkl_bn
+        return mkl_bn.AbstractBatchNormalization()(inputs, gamma, beta, mean, std)
+
     if mode == 'low_mem':
         elm_bn = theano.tensor.elemwise.Elemwise(scalar_op=BNComposite(dtype=inputs.dtype))
         rval = elm_bn(inputs, mean, std, gamma, beta)

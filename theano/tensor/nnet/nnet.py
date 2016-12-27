@@ -2215,6 +2215,21 @@ def relu(x, alpha=0):
     formulation or an optimized Op, so we encourage to use this function.
 
     """
+    # For CPU platform, there's an optimal Relu function for use, which is
+    # only applied when mkl_avaialbe is True. Since MKL function may requires
+    # layout conversion, we put this into the local graph optimizer, so the Op
+    # of Relu could be regarded as empty implementation, just a placeholder in
+    # the graph.
+    # Otherwise, Use the default relu function as it was.
+
+    if theano.sandbox.mkl.mkl_available.avail is None:
+        theano.sandbox.mkl.mkl_available()
+
+    if theano.sandbox.mkl.mkl_available.avail and \
+       isinstance(x, theano.Variable) and x.type.ndim == 4:
+        from theano.sandbox.mkl.mkl_relu import AbstractRelu
+        return AbstractRelu(slope=alpha)(x)
+
     # This is probably the fastest implementation for GPUs. Both the forward
     # pass and the gradient get compiled into a single GpuElemwise call.
     # TODO: Check if it's optimal for CPU as well; add an "if" clause if not.

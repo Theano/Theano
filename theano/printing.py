@@ -658,13 +658,24 @@ Print to the terminal a math-like expression.
 # used by default: green, blue, grey, red
 default_colorCodes = {'GpuFromHost': 'red',
                       'HostFromGpu': 'red',
+                      'I2UElemwiseSum': '#FF8000',
                       'Scan': 'yellow',
                       'Shape': 'brown',
                       'IfElse': 'magenta',
                       'Elemwise': '#FFAABB',  # dark pink
                       'Subtensor': '#FFAAFF',  # purple
                       'Alloc': '#FFAA22',  # orange
-                      'Output': 'blue'}
+                      'Output': 'blue',
+                      'U2IPool': '#FF8000',
+                      'U2IRelu': '#FF8000',
+                      'U2IConv': '#FF8000',
+                      'U2ILRN': '#FF8000',
+                      'U2IGrad': '#FF8000',
+                      'I2U': '#FF8000',
+                      'I2UGrad': '#FF8000',
+                      'U2IElemwiseSum': '#FF8000',
+                      'U2IBatchNormalization': '#FF8000',
+                      }
 
 
 def pydotprint(fct, outfile=None,

@@ -161,3 +161,9 @@ def mkl_available():
 
 mkl_available.avail = None
 mkl_available.msg = None
+
+
+# register name of 'mkl_opt' in opt.py and then add tags for it.
+if mkl_available():
+    from . import opt
+    opt.optdb.add_tags('mkl_opt', 'fast_compile', 'fast_run')
