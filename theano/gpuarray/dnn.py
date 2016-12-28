@@ -116,9 +116,6 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
         params.extend(['-I%s%s%s' % (path_wrapper, config.dnn.include_path, path_wrapper)])
     if config.dnn.library_path:
         params.extend(['-L%s%s%s' % (path_wrapper, config.dnn.library_path, path_wrapper)])
-    if config.nvcc.compiler_bindir:
-        params.extend(['--compiler-bindir',
-                       '%s%s%s' % (path_wrapper, config.nvcc.compiler_bindir, path_wrapper)])
     # Do not run here the test program. It would run on the
     # default gpu, not the one selected by the user. If mixed
     # GPU are installed or if the GPUs are configured in
