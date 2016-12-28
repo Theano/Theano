@@ -39,7 +39,8 @@ class OpFromGraph(gof.Op):
         - `None` : will use default gradient routine.
         - theano.utils.undef : No gradient will be used (zero)
         - OpFromGraph instance: the OfG instance should accept inputs with same
-            order and types as specified in "inputs" and "outputs" arguments
+            order and types of "inputs" and "output_grads" arguments as one would
+            specify in grad() method
         - function : must return list of Variable.
         - list : each function must return a single Variable. The order
             of the list must corresponds to inputs
@@ -47,6 +48,11 @@ class OpFromGraph(gof.Op):
         list of (None|undef|function), optional
         similar to grad_overrides, list order should match two list of "inputs"
         concatenated.
+    **kwargs: optional
+        Whenever this OfG instance is precompiled instead of inline, a call to
+        theano.compile.function_module.orig_function during precompile phase
+        will take the extra keyword args
+
 
     TODO:
         - examples for a multi-layer mlp. where?
@@ -55,14 +61,13 @@ class OpFromGraph(gof.Op):
           local_outputs)
         - c_code() to remove the double overhead?
         - grad() make it support DisconnectedType and the new interface
-        - implement R_op()
         - check how it works with updates.
         - add test with constant as input or inside the inner graph.
         - Add support for the GPU? Probably just need an opt to remove transfer
         - Add support to pickle this Op.
         - Add support/test with random generator
-        - Recursion detection to prevent Op "forkbomb", either set depth
-          limit or manually check them.
+        - Add optimization prior to inilne expansion such as removing unused
+          inputs/outputs
 
     Notes
     -----
@@ -74,6 +79,8 @@ class OpFromGraph(gof.Op):
       of compilation time. Like "inline" keyword in C, this is merely a
       suggestion to compiler which is not guaranteed. Currently only
       works with "fast_compile" or "fast_run" mode.
+    - The function(s) supplied for overrding gradient/rop will be called
+      only once
 
     Examples
     --------
@@ -125,8 +132,6 @@ class OpFromGraph(gof.Op):
         fn(2., 3., 4.) # [1., 8., 3.]
 
     """
-    # NOTE: if you make a subclass of this, make sure add test for it under:
-    # theano/compile/tests/test_builders.py
     def __init__(self, inputs, outputs, inline=False, grad_overrides=None, rop_overrides=None, **kwargs):
         if not isinstance(outputs, list):
             raise TypeError('outputs must be list', outputs)
@@ -416,13 +421,13 @@ def inline_ofg_expansion(node):
             u: v for u, v in izip(
                 node.op.local_inputs, node.inputs)})
 
+# We want to run this before the first merge optimizer
+# and before the first scan optimizer.
 optdb.register(
     'inline_ofg_expansion',
     gof.opt.in2out(inline_ofg_expansion),
-    0.5, 'fast_compile', 'fast_run')
+    -0.01, 'fast_compile', 'fast_run')
 
 # Since OpFromGraph contains a Theano compiled function,
 # we should let DebugMode know about it
 ops_with_inner_function[OpFromGraph] = 'fn'
-
-
