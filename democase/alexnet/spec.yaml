@@ -1,0 +1,8 @@
+# If want to input None, use !!null
+sock_data: 5001
+
+batch_size: 256 # def: 256
+
+# Directories
+train_folder: /data/user/ciyong/dataset/alexnet_full_dataset_for_cpu/train_hkl_b256_b256_bchw/
+val_folder: /data/user/ciyong/dataset/alexnet_full_dataset_for_cpu/val_hkl_b256_b256_bchw/

@@ -1,0 +1,37 @@
+# If want to input None, use !!null
+# Resume Training, start from scratch or resume training
+resume_train: False
+load_epoch: 20
+
+# Learning Parameters
+n_epochs: 90
+learning_rate: 0.01  # def:0.01
+lr_policy: step  # def: step or auto
+lr_adapt_threshold: 0.01
+lr_step: [20, 40, 60, 80]  # def: 20, learning rate will be reduced by 10 times at these steps
+
+# Data
+use_data_layer: False
+rand_crop: True # def: True
+shuffle: False # def: False, if shuffle the batches
+para_load: False
+batch_crop_mirror: False  # if False, do randomly on each image separately
+
+# Momentum
+use_momentum: True # def: True
+use_nesterov_momentum: False # def: False
+momentum: 0.9 # def: 0.9
+
+# Weight Decay
+weight_decay: 0.0005 # def: 0.0005
+
+# Directories
+label_folder: /data/user/ciyong/dataset/alexnet_full_dataset_for_cpu/labels/
+mean_file: /data/user/ciyong/dataset/alexnet_full_dataset_for_cpu/misc/img_mean.npy
+weights_dir: ./weight/  # directory for saving weights and results
+
+snapshot_freq: 1  # frequency of saving weights
+print_train_error: True
+print_freq: 20  # frequency of printing training error rate
+
+flag_top_5: True

@@ -1,0 +1,20 @@
+
+train_img_dir: '/path/to/your/path/of/ILSVRC2012_img_train/'
+# the dir that contains folders like n01440764, n01443537, ...
+
+val_img_dir: '/path/to/your/path/of/ILSVRC2012_img_val/'
+# the dir that contains ILSVRC2012_val_00000001~50000.JPEG
+
+tar_root_dir: '/path/to/store/your/parsed_data'  # dir to store all the preprocessed files
+tar_train_dir: '/path/to/store/your/parsed_data/train_hkl'  # dir to store training batches
+tar_val_dir: '/path/to/store/your/parsed_data/val_hkl'  # dir to store validation batches
+misc_dir: '/path/to/store/your/parsed_data/misc'  
+# dir to store img_mean.npy, shuffled_train_filenames.npy, train.txt, val.txt 
+
+meta_clsloc_mat: '/path/to/your/path/of/meta_clsloc.mat'
+val_label_file: '/path/to/your/path/of/ILSVRC2014_clsloc_validation_ground_truth.txt'
+# although from ILSVRC2014, these 2 files still work for ILSVRC2012
+
+# caffe style train and validation labels
+valtxt_filename: '/path/to/store/your/parsed_data/misc/val.txt'
+traintxt_filename: '/path/to/store/your/parsed_data/misc/train.txt'
