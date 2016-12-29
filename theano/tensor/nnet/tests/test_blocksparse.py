@@ -14,6 +14,8 @@ from theano.tensor.nnet.blocksparse import (
     sparse_block_dot, sparse_block_gemv, sparse_block_outer,
     SparseBlockGemv, SparseBlockOuter)
 
+theano.config.dnn.enabled = "False"
+
 
 class BlockSparse_Gemv_and_Outer(utt.InferShapeTester):
     def setUp(self):

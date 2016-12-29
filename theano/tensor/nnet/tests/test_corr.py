@@ -12,6 +12,8 @@ from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import corr, conv
 from theano.tensor.basic import _allclose
 
+theano.config.dnn.enabled = "False"
+
 
 class TestCorr2D(utt.InferShapeTester):
     if theano.config.mode == "FAST_COMPILE":

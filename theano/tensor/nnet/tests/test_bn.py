@@ -5,6 +5,8 @@ import numpy
 
 from theano.tensor.nnet.bn import batch_normalization
 
+theano.config.dnn.enabled = "False"
+
 
 def test_BNComposite():
     try:

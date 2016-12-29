@@ -12,6 +12,8 @@ from theano.tensor.signal import conv
 
 from theano.tensor.basic import _allclose
 
+theano.config.dnn.enabled = "False"
+
 
 class TestSignalConv2D(unittest.TestCase):
 

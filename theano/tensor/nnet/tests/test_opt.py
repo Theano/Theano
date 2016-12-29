@@ -6,6 +6,8 @@ from theano.tensor.nnet.blocksparse import (
     sparse_block_dot, sparse_block_gemv_inplace, sparse_block_outer_inplace,
     sparse_block_gemv, sparse_block_outer)
 
+theano.config.dnn.enabled = "False"    
+
 
 def test_blocksparse_inplace_gemv_opt():
     b = tensor.fmatrix()

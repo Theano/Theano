@@ -40,6 +40,8 @@ from theano.tensor.tests.test_basic import (makeBroadcastTester, check_floatX,
                                             _good_broadcast_unary_normal_float_no_complex,
                                             upcast_int8_nfunc)
 
+theano.config.dnn.enabled = "False"                                            
+
 
 class T_sigmoid(unittest.TestCase):
 

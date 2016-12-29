@@ -15,6 +15,8 @@ from theano.gof.opt import check_stack_trace
 from theano.tensor.nnet.conv3d2d import conv3d, get_diagonal_subtensor_view, DiagonalSubtensor, IncDiagonalSubtensor
 import theano.tests.unittest_tools as utt
 
+theano.config.dnn.enabled = "False"
+
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpu')

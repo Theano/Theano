@@ -3,6 +3,7 @@ import unittest
 
 import numpy
 
+import theano
 from theano.compat import imap
 import theano.tensor.inplace
 from theano.tensor import basic as tensor
@@ -19,6 +20,8 @@ from theano.tensor.nnet.sigm import (
 from theano.tensor.tests.test_basic import (makeBroadcastTester,
                                             check_floatX, upcast_int8_nfunc,
                                             _good_broadcast_unary_normal_no_complex)
+
+theano.config.dnn.enabled = "False"
 
 
 class T_sigmoid(unittest.TestCase):

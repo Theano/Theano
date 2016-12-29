@@ -17,6 +17,8 @@ if theano.sparse.enable_sparse:
 
 floatX = theano.config.floatX
 
+theano.config.dnn.enabled = "False"
+
 # TODO: each individual test method should seed rng with utt.fetch_seed()
 #      as it is right now, setUp does the seeding, so if you run just
 #      a subset of the tests they will do different things than if you

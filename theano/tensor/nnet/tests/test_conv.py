@@ -10,6 +10,8 @@ from theano.tensor.nnet import conv
 from theano.tensor.basic import _allclose, NotScalarConstantError
 from theano.tests.unittest_tools import attr
 
+theano.config.dnn.enabled = "False"
+
 
 class TestConv2D(utt.InferShapeTester):
     # This class contains tests for the legacy 2d convolution,

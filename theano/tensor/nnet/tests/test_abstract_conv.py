@@ -23,6 +23,8 @@ from theano.tensor.nnet.corr import (CorrMM, CorrMM_gradWeights,
 from theano.tensor.nnet.ConvGrad3D import ConvGrad3D
 from theano.tensor.nnet.ConvTransp3D import ConvTransp3D
 
+theano.config.dnn.enabled = "False"
+
 
 def conv_corr(inputs, filters, border_mode="valid",
               subsample=(1, 1), conv_mode='conv',

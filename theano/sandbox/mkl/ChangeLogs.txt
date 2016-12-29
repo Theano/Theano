@@ -1,3 +1,29 @@
+Date: 2016/12/28
+Autho: lvtao
+Changes:
+----------------------------------
+1. Add AbstractConvGroup and AbstractConvGroupGrad in mkl_conv.py.
+2. Update mkl/opt.py to support AbstractConvGroup optimization.
+3. Upate AlexNet model to use AbstractConvGroup in democase/alexnet/.
+4. Update 'broadcastable' variable in Conv2D, ConvGradInputs and
+ConvGradWeights to support the case with 5-dim weight.
+
+
+Date: 2016/12/28
+Author: Patric
+Changes:
+----------------------------------
+1. ConvGradWeight return tpye 
+
+
+Date: 2016/12/27
+Author: Patric
+Changes:
+----------------------------------
+1. Conv return if shape is None.
+2. Add testcase.
+
+
 Date: 2016/12/27
 Author: lvtao
 Changes:

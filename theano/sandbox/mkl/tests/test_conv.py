@@ -28,9 +28,7 @@ class test_mkl_conv_forward(unittest.TestCase):
                              uniq_id=1)(images)
         out = I2U(uniq_id=2)(a_internal)
 
-        theano.printing.pydotprint(out, outfile="conv_UU_fwd_befor_opt.png", var_with_name_simple=True)
         fopt = theano.function([images], out, mode=mode_with_mkl)
-        theano.printing.pydotprint(fopt, outfile="conv_UU_fwd_after_opt.png", var_with_name_simple=True)
         ival = numpy.random.rand(12, 3, 256, 256).astype(numpy.float32)
         assert numpy.allclose(fopt(ival), ival)
 
@@ -41,9 +39,7 @@ class test_mkl_conv_forward(unittest.TestCase):
         ival = numpy.random.rand(12, 3, 256, 256).astype(numpy.float32)
         wval = numpy.random.rand(12, 3, 3, 3).astype(numpy.float32)
 
-        theano.printing.pydotprint(convOut, outfile="conv_noBias_fwd_befor_opt.png", var_with_name_simple=True)
         fopt = theano.function(inputs=[images, weights], outputs=convOut, mode=mode_with_mkl)
-        theano.printing.pydotprint(fopt, outfile="conv_noBias_fwd_after_opt.png", var_with_name_simple=True)
         new_out = fopt(ival, wval)
 
         fori = theano.function(inputs=[images, weights], outputs=convOut, mode=mode_without_mkl)
@@ -62,15 +58,28 @@ class test_mkl_conv_forward(unittest.TestCase):
         wval = numpy.random.rand(12, 3, 3, 3).astype(numpy.float32)
         bval = numpy.random.rand(12).astype(numpy.float32)
 
-        theano.printing.pydotprint(convOutBias, outfile="conv_Bias_fwd_befor_opt.png", var_with_name_simple=True)
         fopt = theano.function(inputs=[images, weights, bias], outputs=convOutBias, mode=mode_with_mkl)
-        theano.printing.pydotprint(fopt, outfile="conv_Bias_fwd_after_opt.png", var_with_name_simple=True)
         new_old = fopt(ival, wval, bval)
 
         fori = theano.function(inputs=[images, weights, bias], outputs=convOutBias, mode=mode_without_mkl)
         old_out = fori(ival, wval, bval)
 
         assert numpy.allclose(old_out, new_old)
+
+    def test_no_shape(self):
+        images = T.ftensor4('inputs')
+        weights = T.ftensor4('weights')
+        convOut = conv2d(images, weights, filter_shape=(12, 3, 3, 3), filter_flip=False)
+        ival = numpy.random.rand(24, 3, 256, 256).astype(numpy.float32)
+        wval = numpy.random.rand(12, 3, 3, 3).astype(numpy.float32)
+
+        fopt = theano.function(inputs=[images, weights], outputs=convOut, mode=mode_with_mkl)
+        new_out = fopt(ival, wval)
+
+        fori = theano.function(inputs=[images, weights], outputs=convOut, mode=mode_without_mkl)
+        old_out = fori(ival, wval)
+
+        assert numpy.allclose(old_out, new_out)
 
 
 class test_mkl_conv_backward(unittest.TestCase):
@@ -87,9 +96,7 @@ class test_mkl_conv_backward(unittest.TestCase):
         ival = numpy.random.rand(12, 3, 256, 256).astype(numpy.float32)
         wval = numpy.random.rand(12, 3, 3, 3).astype(numpy.float32)
 
-        theano.printing.pydotprint(convOutBack, outfile="conv_noBias_bwd_befor_opt.png", var_with_name_simple=True)
         fopt = theano.function(inputs=[images, weights], outputs=convOutBack, mode=mode_with_mkl)
-        theano.printing.pydotprint(fopt, outfile="conv_noBias_bwd_after_opt.png", var_with_name_simple=True)
         new_out = fopt(ival, wval)
 
         fori = theano.function(inputs=[images, weights], outputs=convOutBack, mode=mode_without_mkl)
@@ -116,9 +123,7 @@ class test_mkl_conv_backward(unittest.TestCase):
         wval = numpy.random.rand(12, 3, 3, 3).astype(numpy.float32)
         bval = numpy.random.rand(12).astype(numpy.float32)
 
-        theano.printing.pydotprint(convOutBack, outfile="conv_Bias_bwd_befor_opt.png", var_with_name_simple=True)
         fopt = theano.function(inputs=[images, weights, bias], outputs=convOutBack, mode=mode_with_mkl)
-        theano.printing.pydotprint(fopt, outfile="conv_Bias_bwd_after_opt.png", var_with_name_simple=True)
         new_out = fopt(ival, wval, bval)
 
         fori = theano.function(inputs=[images, weights, bias], outputs=convOutBack, mode=mode_without_mkl)

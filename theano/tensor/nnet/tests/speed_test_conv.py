@@ -8,6 +8,9 @@ from six.moves import xrange
 from theano import function, Mode
 import theano.tensor as T
 from theano.tensor.nnet.conv import ConvOp
+import theano
+
+theano.config.dnn.enabled = "False"
 
 
 def flip(kern, kshp):

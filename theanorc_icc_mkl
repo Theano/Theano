@@ -1,0 +1,14 @@
+[global]
+device = cpu
+floatX = float32
+cxx = icpc
+mode = FAST_RUN
+openmp = True
+openmp_elemwise_minsize = 10
+allow_gc = False
+[dnn]
+enabled = mkl
+[gcc]
+cxxflags = -qopenmp -march=native -O3  -qopt-report=3 -fno-alias -qopt-prefetch=2 -fp-trap=none
+[blas]
+ldflags = -lmkl_rt

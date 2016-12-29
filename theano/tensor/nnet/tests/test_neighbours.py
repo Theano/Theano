@@ -11,6 +11,8 @@ from theano.tests import unittest_tools
 
 mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
+theano.config.dnn.enabled = "False"
+
 
 class T_Images2Neibs(unittest_tools.InferShapeTester):
     mode = mode_without_gpu

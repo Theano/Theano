@@ -6,8 +6,7 @@ from theano.tensor.signal import pool
 from theano.tensor.nnet import conv2d
 import theano.tensor.nnet.lrn as LRN
 
-from theano.sandbox.mkl.basic_ops import U2IConv, I2U
-from theano.sandbox.mkl.mkl_conv import Conv2D
+from theano.sandbox.mkl.mkl_conv import AbstractConvGroup
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -16,29 +15,6 @@ rng = np.random.RandomState(23455)
 # set a fixed number for 2 purpose:
 # 1. repeatable experiments; 2. for multiple-GPU, the same initial weights
 uniq_id = 10000
-
-
-def convGroupWithBiasLayer(image, kernel, bias, imshp, kshp,
-                           subsample, border_mode, filter_flip=False, group=1):
-    global uniq_id
-    uniq_id += 1
-
-    if group == 1:
-        conv_out = conv2d(input=image, filters=kernel, filter_shape=kshp,
-                          input_shape=imshp, subsample=subsample,
-                          border_mode=border_mode, filter_flip=filter_flip)
-
-        conv_out = conv_out + bias.dimshuffle('x', 0, 'x', 'x')
-    else:
-        u2i_input = U2IConv(imshp=imshp, kshp=kshp, border_mode=border_mode,
-                            subsample=subsample, uniq_id=uniq_id)(image)
-
-        conv_out = Conv2D(imshp=imshp, kshp=kshp, border_mode=border_mode,
-                          subsample=subsample, filter_flip=filter_flip,
-                          uniq_id=uniq_id)(u2i_input, kernel, bias)
-        conv_out = I2U(uniq_id=uniq_id)(conv_out)
-
-    return conv_out
 
 
 class Weight(object):
@@ -128,10 +104,12 @@ class ConvPoolLayer(object):
             self.W = Weight(new_filter_shape)
             self.b = Weight(self.filter_shape[0], bias_init, std=0)
 
-        conv_out = convGroupWithBiasLayer(input, self.W.val, self.b.val,
-                                          image_shape, new_filter_shape,
-                                          (convstride, convstride), padsize, False, group)
-
+        conv_out = AbstractConvGroup(imshp=image_shape,
+                                     kshp=new_filter_shape,
+                                     subsample=(convstride, convstride),
+                                     border_mode=(padsize, padsize),
+                                     filter_flip=False,
+                                     group=group)(input, self.W.val, self.b.val)
         # ReLu
         self.output = T.nnet.relu(conv_out, 0)
 
@@ -141,10 +119,11 @@ class ConvPoolLayer(object):
 
         # Pooling
         if self.poolsize != 1:
-            self.output = pool.Pool(ignore_border=True,
-                                    mode='max')(self.output,
-                                                (poolsize, poolsize),
-                                                (poolstride, poolstride))
+            self.output = pool.pool_2d(input=self.output,
+                                       ws=(poolsize, poolsize),
+                                       ignore_border=True,
+                                       stride=(poolstride, poolstride),
+                                       mode='max')
         self.params = [self.W.val, self.b.val]
         self.weight_type = ['W', 'b']
 
@@ -243,6 +222,7 @@ class SoftmaxLayer(object):
             # represents a mistake in prediction
             y_pred_top_x = T.argsort(self.p_y_given_x, axis=1)[:, -num_top:]
             y_top_x = y.reshape((y.shape[0], 1)).repeat(num_top, axis=1)
-            return T.mean(T.min(T.neq(y_pred_top_x, y_top_x), axis=1))
+            return T.mean(T.neq(y_pred_top_x, y_top_x))
+            #return T.mean(T.min(T.neq(y_pred_top_x, y_top_x), axis=1))
         else:
             raise NotImplementedError()

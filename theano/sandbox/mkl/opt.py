@@ -665,6 +665,12 @@ def local_Conv2D_mkl(node):
     if node.inputs[1].type.ndim != 4 and node.inputs[1].type.ndim != 5:
         return
 
+    if None in node.op.kshp:
+        return
+
+    if None in node.op.imshp:
+        return
+
     try:
         image, weight = node.inputs
         image_internal = U2IConv(imshp=node.op.imshp,
@@ -705,6 +711,12 @@ def local_ConvGradInputs_mkl(node):
         return
 
     if node.op.filter_dilation != (1, 1):
+        return
+
+    if None in node.op.kshp:
+        return
+
+    if None in node.op.imshp:
         return
 
     try:
@@ -753,6 +765,12 @@ def local_ConvGradWeights_mkl(node):
         return
 
     if node.op.filter_dilation != (1, 1):
+        return
+
+    if None in node.op.kshp:
+        return
+
+    if None in node.op.imshp:
         return
 
     try:
@@ -862,6 +880,131 @@ def local_bnGrad_mkl(node):
                                                    uniq_id=uniq_id)(x_u2i, gz_u2i, scale, shift)
         gx_i2u = U2IGrad(uniq_id=uniq_id)(x, bn_GradOut[0])
         rval = [gx_i2u, bn_GradOut[1], bn_GradOut[2]]
+        return rval
+    except Exception as e:
+        msg = ('Failed to apply local opt to Op %s. '
+               'Exception message: %s\n') % (node.op, str(e))
+        _logger.warning(msg)
+        return
+
+
+@register_opt()
+@local_optimizer([mkl_conv.AbstractConvGroup])
+def local_ConvGroup_mkl(node):
+    global uniq_id
+    uniq_id += 1
+
+    if not mkl_available.avail:
+        return
+
+    if not isinstance(node.op, mkl_conv.AbstractConvGroup):
+        return
+
+    # image
+    if node.inputs[0].type.ndim != 4:
+        return
+
+    # weight
+    if node.inputs[1].type.ndim not in [4, 5]:
+        return
+
+    try:
+        assert len(node.inputs) in [2, 3]
+        if len(node.inputs) == 2:
+            image, weight, = node.inputs
+            bias = None
+        else:
+            image, weight, bias, = node.inputs
+        image_internal = U2IConv(imshp=node.op.imshp,
+                                 kshp=node.op.kshp,
+                                 subsample=node.op.subsample,
+                                 border_mode=node.op.border_mode,
+                                 filter_dilation=node.op.filter_dilation,
+                                 uniq_id=uniq_id)(image)
+        conv_out = mkl_conv.Conv2D(imshp=node.op.imshp,
+                                   kshp=node.op.kshp,
+                                   subsample=node.op.subsample,
+                                   border_mode=node.op.border_mode,
+                                   filter_flip=node.op.filter_flip,
+                                   filter_dilation=node.op.filter_dilation,
+                                   uniq_id=uniq_id)(image_internal, weight, bias)
+        conv_out = I2U(uniq_id=uniq_id)(conv_out)
+        rval = conv_out
+        return [rval]
+    except Exception as e:
+        msg = ('Failed to apply local opt to Op %s. '
+               'Exception message: %s\n') % (node.op, str(e))
+        _logger.warning(msg)
+        return
+
+
+@register_opt()
+@local_optimizer([mkl_conv.AbstractConvGroupGrad])
+def local_ConvGroupGrad_mkl(node):
+    global uniq_id
+    uniq_id += 1
+
+    if not mkl_available.avail:
+        return
+
+    if not isinstance(node.op, mkl_conv.AbstractConvGroupGrad):
+        return
+
+    # image
+    if node.inputs[0].type.ndim != 4:
+        return
+
+    # weight
+    if node.inputs[2].type.ndim not in [4, 5]:
+        return
+
+    try:
+        assert len(node.inputs) in [3, 4]
+        if len(node.inputs) == 3:
+            image, gz, weight = node.inputs
+            bias = None
+        else:
+            image, gz, weight, bias = node.inputs
+        image_internal = U2IConv(imshp=node.op.imshp,
+                                 kshp=node.op.kshp,
+                                 subsample=node.op.subsample,
+                                 border_mode=node.op.border_mode,
+                                 filter_dilation=node.op.filter_dilation,
+                                 uniq_id=uniq_id)(image)
+        conv_out = mkl_conv.Conv2D(imshp=node.op.imshp,
+                                   kshp=node.op.kshp,
+                                   subsample=node.op.subsample,
+                                   border_mode=node.op.border_mode,
+                                   filter_flip=node.op.filter_flip,
+                                   filter_dilation=node.op.filter_dilation,
+                                   uniq_id=uniq_id)(image_internal, weight, bias)
+        gz_internal = I2UGrad(uniq_id=uniq_id)(conv_out, gz)
+        grad_image = mkl_conv.ConvGradInputs(imshp=node.op.imshp,
+                                             kshp=node.op.kshp,
+                                             subsample=node.op.subsample,
+                                             border_mode=node.op.border_mode,
+                                             filter_flip=node.op.filter_flip,
+                                             filter_dilation=node.op.filter_dilation,
+                                             uniq_id=uniq_id)(image_internal, weight, gz_internal)
+        grad_image = U2IGrad(uniq_id=uniq_id)(image, grad_image)
+
+        grad_out = mkl_conv.ConvGradWeights(imshp=node.op.imshp,
+                                            kshp=node.op.kshp,
+                                            subsample=node.op.subsample,
+                                            border_mode=node.op.border_mode,
+                                            filter_flip=node.op.filter_flip,
+                                            filter_dilation=node.op.filter_dilation,
+                                            uniq_id=uniq_id)(image_internal, weight, gz_internal, bias)
+        if isinstance(grad_out, (list, tuple)):
+            grad_weight, grad_bias, = grad_out
+        else:
+            grad_weight = grad_out
+
+        if len(node.outputs) == 3:
+            assert len(grad_out) == 2
+            rval = [grad_image, grad_weight, grad_bias]
+        else:
+            rval = [grad_image, grad_weight]
         return rval
     except Exception as e:
         msg = ('Failed to apply local opt to Op %s. '

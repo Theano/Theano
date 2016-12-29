@@ -21,6 +21,8 @@ from theano.tensor.signal.pool import (Pool, pool_2d,
 
 from theano import function
 
+theano.config.dnn.enabled = "False"
+
 
 class TestDownsampleFactorMax(utt.InferShapeTester):
 
