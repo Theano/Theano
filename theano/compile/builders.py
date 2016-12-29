@@ -80,7 +80,9 @@ class OpFromGraph(gof.Op):
       suggestion to compiler which is not guaranteed. Currently only
       works with "fast_compile" or "fast_run" mode.
     - The function(s) supplied for overrding gradient/rop will be called
-      only once
+      only once at the first call to grad/R_op, and will be converted to
+      OfG instances. Any side effect (modifying non local states) of the
+      overriding function should not be relied on.
 
     Examples
     --------
@@ -89,10 +91,10 @@ class OpFromGraph(gof.Op):
 
     .. code-block:: python
 
-        from theano import function, op_from_graph, tensor
+        from theano import function, tensor
         x, y, z = tensor.scalars('xyz')
         e = x + y * z
-        op = op_from_graph([x, y, z], [e])
+        op = OpFromGraph([x, y, z], [e])
         # op behaves like a normal theano op
         e2 = op(x, y, z) + op(z, y, x)
         fn = function([x, y, z], [e2])
@@ -103,11 +105,11 @@ class OpFromGraph(gof.Op):
 
         import numpy as np
         import theano
-        from theano import config, function, op_from_graph, tensor
+        from theano import config, function, OpFromGraph, tensor
         x, y, z = tensor.scalars('xyz')
         s = theano.shared(np.random.rand(2, 2).astype(config.floatX))
         e = x + y * z + s
-        op = op_from_graph([x, y, z], [e])
+        op = OpFromGraph([x, y, z], [e])
         # op behaves like a normal theano op
         e2 = op(x, y, z) + op(z, y, x)
         fn = function([x, y, z], [e2])
@@ -116,14 +118,14 @@ class OpFromGraph(gof.Op):
 
     .. code-block:: python
 
-        from thenao import funciton, op_from_graph, tensor, grad
+        from thenao import funciton, OpFromGraph, tensor, grad
         x, y, z = tensor.scalars('xyz')
         e = x + y * z
         def rescale_dy(inps, grads):
             x, y, z = inps
             g = grads
             return z*2
-        op = op_from_graph(
+        op = OpFromGraph(
             [x, y, z], [e], grad_overrides=[None, rescale_dy, None])
         e2 = op(x, y, z)
         dx, dy, dz = grad(e2, [x, y, z])
@@ -260,15 +262,13 @@ class OpFromGraph(gof.Op):
             odefaults_l = [
                 lo for lo, rov in izip(self.local_outputs, roverrides_l)
                 if not rov]
-            # compute non-overriding downsteam grads from upstreams grads
-            # it's normal some input may be disconnected, thus the 'ignore'
             rdefaults_li = theano.gradient.Rop(
                 f=odefaults_l,
                 wrt=self.local_inputs,
                 eval_points=eval_points
                 )
             rdefaults = iter(rdefaults_li if odefaults_l else [])
-            # combine overriding gradients
+            # combine overriding Rops
             all_rops_l = []
             for out, rov in izip(self.local_outputs, roverrides_l):
                 if rov is None:
