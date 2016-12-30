@@ -97,6 +97,11 @@ def dnn_present():
         dnn_present.avail = False
         return False
 
+    if config.dnn.enabled == "mkl":
+        dnn_present.msg = "Disabled by dnn.enabled flag"
+        dnn_present.avail = False
+        return False
+
     if pygpu is None:
         dnn_present.msg = "PyGPU not available"
         dnn_present.avail = False
@@ -108,7 +113,7 @@ def dnn_present():
         if not dnn_present.avail:
             raise RuntimeError(dnn_present.msg)
 
-    if config.dnn.enabled == "True":
+    if config.dnn.enabled == "cudnn":
         if not dnn_present.avail:
             raise RuntimeError(
                 "You enabled cuDNN, but we aren't able to use it: %s" %
