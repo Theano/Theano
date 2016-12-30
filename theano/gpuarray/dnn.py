@@ -116,9 +116,6 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
         params.extend(['-I%s%s%s' % (path_wrapper, config.dnn.include_path, path_wrapper)])
     if config.dnn.library_path:
         params.extend(['-L%s%s%s' % (path_wrapper, config.dnn.library_path, path_wrapper)])
-    if config.nvcc.compiler_bindir:
-        params.extend(['--compiler-bindir',
-                       '%s%s%s' % (path_wrapper, config.nvcc.compiler_bindir, path_wrapper)])
     # Do not run here the test program. It would run on the
     # default gpu, not the one selected by the user. If mixed
     # GPU are installed or if the GPUs are configured in
@@ -138,7 +135,7 @@ def _dnn_check_version():
     if v < 5000:
         return False, "cuDNN version is too old. Update to v5, was %d." % v
     # 5200 should not print warning with cudnn 5.1 final.
-    if version >= 5200:
+    if v >= 5200:
         warnings.warn("Your cuDNN version is more recent than "
                       "Theano. If you encounter problems, try "
                       "updating Theano or downgrading cuDNN to "
