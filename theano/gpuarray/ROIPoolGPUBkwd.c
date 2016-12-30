@@ -1,12 +1,12 @@
 
 #section kernels
 
-#kernel ROIPoolGPUBkwd_kernel : size, *, *, size, size, size, size, size, size, size, *, * :
+#kernel ROIPoolGPUBkwd_kernel : size, *, *, size, size, size, size, size, size, size, * :
 KERNEL void ROIPoolGPUBkwd_kernel(
     ga_size nloops, DTYPE_i0* top_diff,
     DTYPE_i0* argmax_data, ga_size num_rois, DTYPE_i0 spatial_scale,
     ga_size channels, ga_size height, ga_size width,
-    ga_size pooled_height, ga_size pooled_width, DTYPE_i0* bottom_diff,
+    ga_size pooled_height, ga_size pooled_width,
     DTYPE_i0* bottom_rois) {
     for (ga_size index = 0; index < nloops; ++index) {
         // (n, c, h, w) coords in bottom data
@@ -71,7 +71,6 @@ KERNEL void ROIPoolGPUBkwd_kernel(
                 }
             }
         }
-        bottom_diff[index] = gradient;
     }
 }
 
@@ -80,9 +79,9 @@ KERNEL void ROIPoolGPUBkwd_kernel(
 int APPLY_SPECIFIC(ROIPoolGPUBkwd)(PyGpuArrayObject* data,
                            PyGpuArrayObject* rois,
                            PyGpuArrayObject* argmaxes,
-                           PyGpuArrayObject* out_grad,
-                           PyGpuArrayObject** data_grad) {
-    size_t num_kernel = gpuarray_get_elsize(data);
+                           PyGpuArrayObject** out_grad,
+                           PyGpuContextObject* data_grad) {
+    size_t num_kernel = PyGpuArray_SIZE(data);
     size_t batch_size = PyGpuArray_DIMS(rois)[0];
     size_t channels = PyGpuArray_DIMS(data)[1];
     size_t height = PyGpuArray_DIMS(data)[2];
@@ -91,9 +90,8 @@ int APPLY_SPECIFIC(ROIPoolGPUBkwd)(PyGpuArrayObject* data,
 
 
   err = ROIPoolGPUBkwd_kernel_scall(1, &num_kernel, 0,
-    num_kernel, out_grad->ga.data, argmaxes->ga.data, batch_size,
-    SPATIAL_SCALE, channels, height, width, POOLED_HEIGHT, POOLED_WIDTH,
-    (*data_grad)->ga.data, rois->ga.data);
+    num_kernel, (*out_grad)->ga.data, argmaxes->ga.data, batch_size,
+    SPATIAL_SCALE, channels, height, width, POOLED_HEIGHT, POOLED_WIDTH, rois->ga.data);
   if (err != GA_NO_ERROR) {
     PyErr_Format(PyExc_RuntimeError,
                  "gpuarray error: ROIPoolGPUFwd_kernel: %s.",

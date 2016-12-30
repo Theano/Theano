@@ -18,7 +18,8 @@ from theano.tests import unittest_tools as utt
 from theano.tensor.signal.pool import (Pool, pool_2d, pool_3d,
                                        MaxPoolGrad, AveragePoolGrad,
                                        max_pool_2d_same_size,
-                                       DownsampleFactorMaxGradGrad)
+                                       DownsampleFactorMaxGradGrad,
+                                       RoIPoolOp)
 
 from theano import function
 
@@ -1159,6 +1160,46 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         for o, n in zip(old_out, new_out):
             utt.assert_allclose(o, n)
 
+class TestRoIPool(unittest.InferShapeTester):
+
+    def setUp(self):
+        super(test_Double, self).setUp()
+        self.op_class = RoIPoolOp
+        self.op = RoIPoolOp()
+
+    def test_basic(self):
+        t_data = tensor.ftensor4()
+        t_rois = tensor.fmatrix()
+
+        t_outs = op(t_data, t_rois)
+        t_c = t_outs[0].sum()
+
+        t_g_data = T.grad(t_c, t_data)[0]
+
+        f = theano.function([t_data, t_rois], t_outs + [t_g_data])
+
+        data = numpy.asarray(numpy.random.rand(1, 2, 32, 32), dtype=config.floatX)
+        rois = numpy.array([[0, 0, 0, 3, 3],
+                         [0, 0, 0, 7, 7]], dtype=config.floatX)
+
+        outs = f(data, rois)
+
+    def test_infer_shape(self):
+        t_data = tensor.ftensor4()
+        t_rois = tensor.fmatrix()
+
+        data = numpy.asarray(numpy.random.rand(1, 2, 32, 32), dtype=config.floatX)
+        rois = numpy.array([[0, 0, 0, 3, 3],
+                            [0, 0, 0, 7, 7]], dtype=config.floatX)
+
+        self._compile_and_check([t_data, t_rois],
+                                [self.op(t_data, t_rois)],
+                                [data, rois],
+                                self.op_class)
+
+    def test_grad(self):
+        theano.tests.unittest_tools.verify_grad(self.op,
+                                            [numpy.random.rand(5, 7, 2)])
 
 if __name__ == '__main__':
     unittest.main()
