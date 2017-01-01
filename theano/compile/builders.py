@@ -19,16 +19,20 @@ class OpFromGraph(gof.Op):
     `Op`'s perform will do the same operation as::
 
         orig_function(inputs, outputs, **kwargs)
+
     Currently does not support 'updates' or 'givens' argument.
 
     Parameters
     ----------
 
     inputs: list of variables
+
     outputs: list of variables
+
     inline: bool, optional
         if True, will cause the Op's original graph being used during
         compilation, otherwise will use a pre-compiled function inside.
+
     grad_overrides: None | undef | OpFromGraph instance | function | \
         list of (None|undef|function), optional
         Used to override default gradient routine.
@@ -44,17 +48,19 @@ class OpFromGraph(gof.Op):
         - function : must return list of Variable.
         - list : each function must return a single Variable. The order
             of the list must corresponds to inputs
+
     rop_overrides: None | undef | OpFromGraph instance | function | \
         list of (None|undef|function), optional
         similar to grad_overrides, list order should match two list of "inputs"
         concatenated.
+
     **kwargs: optional
         Whenever this OfG instance is precompiled instead of inline, a call to
         theano.compile.function_module.orig_function during precompile phase
         will take the extra keyword args
 
 
-    TODO:
+    .. TODO:
         - examples for a multi-layer mlp. where?
         - __hash__, __eq__ otherwise won't merge, try
           gof.opt.is_same_graph_with_merge(op1.local_outputs, op2,
