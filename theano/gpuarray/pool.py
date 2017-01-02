@@ -334,3 +334,4 @@ class GpuDownsampleFactorMaxGradGrad(CGpuKernelBase):
 
     def connection_pattern(self, node):
         return [[1], [1], [1], [0], [0], [0]]
+
