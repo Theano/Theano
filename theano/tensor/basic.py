@@ -4218,7 +4218,7 @@ def roll(x, shift, axis=None):
             return roll(y, shift, axis=0).reshape(x.shape)
         else:
             axis = 0
-            
+
     if axis < 0:
         if x.ndim == 0:
             axis = 0
