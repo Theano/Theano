@@ -1,3 +1,11 @@
+Date: 2017/0103/
+Autho: Ciyong
+Changes:
+----------------------------------
+1. Add try when importing sandbox.mkl in theano/__init__.py.
+2. Change to link mkl_rt when checking mkl available.
+
+
 Date: 2016/12/28
 Autho: lvtao
 Changes:

@@ -127,7 +127,10 @@ if (config.device.startswith('cuda') or
 # This was added for using Intel MKL dnn primitive,
 # which contains optimal implementaion Ops.
 if config.device.startswith('cpu'):
-    import theano.sandbox.mkl
+    try:
+        import theano.sandbox.mkl
+    except Exception as e:
+        pass
 
 # Use config.numpy to call numpy.seterr
 import numpy

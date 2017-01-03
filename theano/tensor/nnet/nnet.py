@@ -2222,10 +2222,7 @@ def relu(x, alpha=0):
     # the graph.
     # Otherwise, Use the default relu function as it was.
 
-    if theano.sandbox.mkl.mkl_available.avail is None:
-        theano.sandbox.mkl.mkl_available()
-
-    if theano.sandbox.mkl.mkl_available.avail and \
+    if theano.sandbox.mkl.mkl_available() and \
        isinstance(x, theano.Variable) and x.type.ndim == 4:
         from theano.sandbox.mkl.mkl_relu import AbstractRelu
         return AbstractRelu(slope=alpha)(x)

@@ -5,9 +5,8 @@ import textwrap
 import theano
 from theano import config, gof
 from six import integer_types
-from theano.tensor.blas import ldflags
 from theano.gof.cmodule import Compiler
-from theano.sandbox.mkl import mkl_helper
+from theano.sandbox.mkl.mkl_helper import header_text
 
 from theano.gof import EquilibriumDB, SequenceDB
 
@@ -37,13 +36,13 @@ class MKLVersion(gof.Op):
         return super(MKLVersion, self).c_headers()
 
     def c_libraries(self):
-        return ldflags()
+        return ['mkl_rt']
 
     def make_node(self):
         return gof.Apply(self, [], [gof.Generic()()])
 
     def c_support_code(self):
-        return mkl_helper.header_text()
+        return header_text()
 
     def c_code(self, node, name, inputs, outputs, sub):
         o = outputs[0]
@@ -108,7 +107,7 @@ def mkl_available():
             preambule = """
                 #include <stdio.h>
              """
-            preambule += textwrap.dedent(mkl_helper.header_text())
+            preambule += textwrap.dedent(header_text())
 
             body = textwrap.dedent(
                 """
@@ -122,7 +121,8 @@ def mkl_available():
                     return (-1);
                 }
                 """)
-            params = [theano.config.blas.ldflags]
+
+            params = ['-l', 'mkl_rt']
 
             comp, out, err = Compiler._try_flags(
                 flag_list=params, preambule=preambule, body=body,
@@ -131,7 +131,7 @@ def mkl_available():
             mkl_available.avail = comp
             if mkl_available.avail is False:
                 mkl_available.msg = (
-                    "Can not compile with MKL. We got this error:\n" +
+                    "Can not compile with MKL. We got this error: " +
                     str(err))
             else:
                 # If we can compile, check that we can import and run.
