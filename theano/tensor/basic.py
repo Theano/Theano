@@ -4218,6 +4218,12 @@ def roll(x, shift, axis=None):
             return roll(y, shift, axis=0).reshape(x.shape)
         else:
             axis = 0
+            
+    if axis < 0:
+        if x.ndim == 0:
+            axis = 0
+        else:
+            axis = axis % x.ndim + 1
 
     # Shift may be larger than the size of the axis. If so, since the
     # roll operation is cyclic, we can take the shift modulo the size
