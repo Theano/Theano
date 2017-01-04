@@ -155,8 +155,22 @@ class ReplaceConvBias(Optimizer):
 
         return None
 
+    def _check_attributes_(self, node1, node2):
+        attr = ['imshp', 'kshp', 'border_mode', 'subsample', 'filter_dilation']
+
+        v1 = [getattr(node1.op, a, None) for a in attr]
+        v2 = [getattr(node2.op, a, None) for a in attr]
+        if v1 == v2:
+            return True
+        else:
+            return False
+
     def apply(self, fgraph):
         global uniq_id
+
+        if not mkl_available():
+            return
+
         did_something = True
         while did_something:
             did_something = False
@@ -234,7 +248,7 @@ class ReplaceConvBias(Optimizer):
 
                     assert len(inp) == 3 and len(out) == 1
                     for i, c in enumerate(inp[0].clients):
-                        if hasattr(c[0], 'op') and isinstance(c[0].op, U2IConv):
+                        if hasattr(c[0], 'op') and isinstance(c[0].op, U2IConv) and self._check_attributes_(c[0], node):
                             for cc in c[0].outputs[0].clients:
                                 if isinstance(cc[0].op, mkl_conv.Conv2D) and len(cc[0].inputs) == 3:
                                     weight, bias = cc[0].inputs[1:3]
@@ -282,10 +296,9 @@ class ReplaceConvBias(Optimizer):
                     assert len(inp) == 3 and len(out) == 1
                     list_Conv2D = [c[0] for c in inp[0].clients if (hasattr(c[0], 'op') and
                                                                     isinstance(c[0].op, mkl_conv.Conv2D) and
-                                                                    len(c[0].inputs) == 3)]
+                                                                    len(c[0].inputs) == 3 and
+                                                                    self._check_attributes_(c[0], node))]
                     if 3 > len(list_Conv2D) > 0:
-                        if len(list_Conv2D) == 2:
-                            assert list_Conv2D[0].op == list_Conv2D[1].op  # Can be merged in later optimization phase
                         x = list_Conv2D[0].inputs[0].owner.inputs[0]
                         bias = list_Conv2D[0].inputs[2]
                         inp_0 = list_Conv2D[0].inputs[0]
@@ -335,6 +348,9 @@ class ReplaceElemwise(Optimizer):
 
     def apply(self, fgraph):
         global uniq_id
+
+        if not mkl_available():
+            return
 
         def getElemwiseInput(node, inputs, coeffs, co):
             inp = inputs
@@ -574,7 +590,7 @@ def local_lrn_mkl(node):
     global uniq_id
     uniq_id += 1
 
-    if not mkl_available.avail:
+    if not mkl_available():
         return
 
     if not isinstance(node.op, mkl_lrn.AbstractLRN):
@@ -611,7 +627,7 @@ def local_lrnGrad_mkl(node):
     global uniq_id
     uniq_id += 1
 
-    if not mkl_available.avail:
+    if not mkl_available():
         return
 
     if not isinstance(node.op, mkl_lrn.AbstractLRNGrad):
@@ -823,7 +839,7 @@ def local_bn_mkl(node):
     global uniq_id
     uniq_id += 1
 
-    if not mkl_available.avail:
+    if not mkl_available():
         return
 
     if not isinstance(node.op, mkl_bn.AbstractBatchNormalization):
@@ -856,7 +872,7 @@ def local_bnGrad_mkl(node):
     global uniq_id
     uniq_id += 1
 
-    if not mkl_available.avail:
+    if not mkl_available():
         return
 
     if not isinstance(node.op, mkl_bn.AbstractBatchNormalizationGrad):
@@ -894,7 +910,7 @@ def local_ConvGroup_mkl(node):
     global uniq_id
     uniq_id += 1
 
-    if not mkl_available.avail:
+    if not mkl_available():
         return
 
     if not isinstance(node.op, mkl_conv.AbstractConvGroup):
@@ -944,7 +960,7 @@ def local_ConvGroupGrad_mkl(node):
     global uniq_id
     uniq_id += 1
 
-    if not mkl_available.avail:
+    if not mkl_available():
         return
 
     if not isinstance(node.op, mkl_conv.AbstractConvGroupGrad):

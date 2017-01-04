@@ -120,9 +120,9 @@ class ConvPoolLayer(object):
         # Pooling
         if self.poolsize != 1:
             self.output = pool.pool_2d(input=self.output,
-                                       ws=(poolsize, poolsize),
+                                       ds=(poolsize, poolsize),
                                        ignore_border=True,
-                                       stride=(poolstride, poolstride),
+                                       st=(poolstride, poolstride),
                                        mode='max')
         self.params = [self.W.val, self.b.val]
         self.weight_type = ['W', 'b']

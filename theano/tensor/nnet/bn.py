@@ -65,10 +65,9 @@ def batch_normalization(inputs, gamma, beta, mean, std,
         between implementation is likely to be less important on the full model fprop/bprop.
     """
     # Add support for MKLDNN
-    if theano.sandbox.mkl.mkl_available.avail is None:
-        theano.sandbox.mkl.mkl_available()
-
-    if (theano.sandbox.mkl.mkl_available.avail is True) and (inputs.type.ndim == 4):
+    if theano.sandbox.mkl.mkl_available() and \
+       isinstance(inputs, theano.Variable) and \
+       (inputs.type.ndim == 4) and (gamma.type.ndim == 1) and (beta.type.ndim == 1):
         from theano.sandbox.mkl import mkl_bn
         return mkl_bn.AbstractBatchNormalization()(inputs, gamma, beta, mean, std)
 
