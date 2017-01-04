@@ -4,5 +4,5 @@ sock_data: 5001
 batch_size: 256 # def: 256
 
 # Directories
-train_folder: /data/user/ciyong/dataset/alexnet_full_dataset_for_cpu/train_hkl_b256_b256_bchw/
-val_folder: /data/user/ciyong/dataset/alexnet_full_dataset_for_cpu/val_hkl_b256_b256_bchw/
+train_folder:  imagenet/ilsvrc2012/train_hkl_b256_b256_bchw/
+val_folder: imagenet/ilsvrc2012/val_hkl_b256_b256_bchw/

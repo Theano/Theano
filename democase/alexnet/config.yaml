@@ -26,8 +26,8 @@ momentum: 0.9 # def: 0.9
 weight_decay: 0.0005 # def: 0.0005
 
 # Directories
-label_folder: /data/user/ciyong/dataset/alexnet_full_dataset_for_cpu/labels/
-mean_file: /data/user/ciyong/dataset/alexnet_full_dataset_for_cpu/misc/img_mean.npy
+label_folder: imagenet/ilsvrc2012/labels/
+mean_file: imagenet/ilsvrc2012/misc/img_mean.npy
 weights_dir: ./weight/  # directory for saving weights and results
 
 snapshot_freq: 1  # frequency of saving weights

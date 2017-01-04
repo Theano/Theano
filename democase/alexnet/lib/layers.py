@@ -222,7 +222,6 @@ class SoftmaxLayer(object):
             # represents a mistake in prediction
             y_pred_top_x = T.argsort(self.p_y_given_x, axis=1)[:, -num_top:]
             y_top_x = y.reshape((y.shape[0], 1)).repeat(num_top, axis=1)
-            return T.mean(T.neq(y_pred_top_x, y_top_x))
-            #return T.mean(T.min(T.neq(y_pred_top_x, y_top_x), axis=1))
+            return T.mean(T.min(T.neq(y_pred_top_x, y_top_x), axis=1))
         else:
             raise NotImplementedError()
