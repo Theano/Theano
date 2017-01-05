@@ -682,6 +682,7 @@ class CDataType(Type):
             with change_flags(compute_test_value='off'):
                 v = get_scalar_type('int64')()
                 self._fn = theano.function([v], _make_cdata(self)(v),
+                                           mode=theano.Mode(optimizer=None),
                                            profile=False)
         return self._fn
 
