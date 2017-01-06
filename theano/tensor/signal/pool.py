@@ -255,14 +255,14 @@ def pool_3d(input, ws=None, ignore_border=None, stride=None, pad=(0, 0, 0),
     return output
 
 
-def spp_pooling(image, image_shape, out_dimension):
+def spp_pooling(image, out_dimension, image_shape):
 
     input_size = image_shape[2:]
     pooled_data_list = []
     for pool_dim in out_dimension:
-        pool_size = tuple((i + pool_dim -1) // pool_dim for i in input_size)
+        pool_size = tuple((i + pool_dim - 1) // pool_dim for i in input_size)
         stride_size = tuple((i // pool_dim) for i in input_size)
-        pooled_part = pool_2d(data, pool_size, ignore_border=True, st=stride_size, padding=(0, 0), mode='max')
+        pooled_part = pool_2d(image, pool_size, ignore_border=True, st=stride_size, padding=(0, 0), mode='max')
         pooled_part = pooled_part.flatten(3)
         pooled_data_list.append(pooled_part)
 

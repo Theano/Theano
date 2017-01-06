@@ -1513,12 +1513,13 @@ def dnn_pool(img, ws, stride=None, mode='max', pad=None):
         return as_gpuarray_variable(ret * window_elem, context_name)
     return GpuDnnPool(mode=mode)(img, ws, stride, pad)
 
+
 def spp_pooling(data, out_dimension, data_shape):
 
     input_size = data_shape[2:]
     pooled_data_list = []
     for pool_dim in out_dimension:
-        pool_size = tuple((i + pool_dim -1) // pool_dim for i in input_size)
+        pool_size = tuple((i + pool_dim - 1) // pool_dim for i in input_size)
         stride_size = tuple((i // pool_dim) for i in input_size)
         pooled_part = dnn_pool(data, pool_size, ignore_border=True, st=stride_size, padding=(0, 0), mode='max')
         pooled_part = pooled_part.flatten(3)
