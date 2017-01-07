@@ -8,7 +8,7 @@ cat <<EOF
 
 NVIDIA Release ${NVIDIA_THEANO_VERSION} (build ${NVIDIA_BUILD_ID})
 
-Container image Copyright (c) 2016, NVIDIA CORPORATION.  All rights reserved.
+Container image Copyright (c) 2017, NVIDIA CORPORATION.  All rights reserved.
 Copyright (c) 2008--2016, Theano Development Team
 All rights reserved.
 
