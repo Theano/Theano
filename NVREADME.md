@@ -25,10 +25,10 @@ This container has the Theano Python package installed and ready to use.
 
 ## Getting Started
 
-The basic command for running containers is to use the ```nvidia-docker run```
+The basic command for running containers is to use the `nvidia-docker run`
 command, specifying the URL for the container, which includes the registry
 address, repository name, and a version tag, similar to the following:
-```$ nvidia-docker run nvcr.io/nvidia/theano:16.12```
+`$ nvidia-docker run nvcr.io/nvidia/theano:17.01`
 There are additional flags and settings that should be used with this command,
 as described in the next sections.
 
@@ -39,8 +39,8 @@ pull/run operations use up more and more space on the local disk, even after
 exiting the container.  Therefore, it is important to clean up the Docker
 containers after exiting.
 
-To automatically remove a container when exiting, use the ```--rm``` flag:
-```$ nvidia-docker run --rm nvcr.io/nvidia/theano:16.12```
+To automatically remove a container when exiting, use the `--rm` flag:
+`$ nvidia-docker run --rm nvcr.io/nvidia/theano:17.01`
 
 ### Batch versus Interactive mode
 
@@ -48,18 +48,18 @@ By default, containers run in batch mode; that is, the container is run once
 and then exited without any user interaction. Containers can also be run in
 interactive mode.
 
-To run in interactive mode, add the ```-ti``` flag to the run command:
-```$ nvidia-docker run --rm -ti nvcr.io/nvidia/theano:16.12```
+To run in interactive mode, add the `-ti` flag to the run command:
+`$ nvidia-docker run --rm -ti nvcr.io/nvidia/theano:17.01`
 
-To run in batch mode, leave out the ```-ti``` flag, and instead append the
+To run in batch mode, leave out the `-ti` flag, and instead append the
 command to be run in the container to the nvidia-docker run command line:
-```$ nvidia-docker run --rm nvcr.io/nvidia/theano:16.12 python myscript.py```
+`$ nvidia-docker run --rm nvcr.io/nvidia/theano:17.01 python myscript.py`
 
 In both cases, it will often be desirable to pull in data and model
 descriptions from locations outside the container (e.g., "myscript.py" in the
 example above).  To accomplish this, the easiest method is to mount one or more
 host directories as [Docker data volumes](https://docs.docker.com/engine/tutorials/dockervolumes/#/mount-a-host-directory-as-a-data-volume)
-using the ```-v``` flag of ```nvidia-docker run```.
+using the `-v` flag of `nvidia-docker run`.
 
 ## Invoking Theano
 
@@ -96,7 +96,7 @@ Related Projects:
 
 If you would like to modify the source code of the version of Theano in this
 container and run your customized version, or if you would like to install
-additional packages into the container, you can easily use ```docker build``` to
+additional packages into the container, you can easily use `docker build` to
 add your customizations on top of this container.
 
 First, create a file called "Dockerfile" describing the modifications you wish
@@ -108,16 +108,16 @@ Then run a command like the following from the directory containing this new Doc
 docker build -t my-custom-theano:version .
 ```
 
-This will allow you to ```nvidia-docker run ... my-custom-theano:version ...``` in the
+This will allow you to `nvidia-docker run ... my-custom-theano:version ...` in the
 same way as you would otherwise have run the stock NVIDIA Theano container.  Further,
 it will allow you to "replay" your modifications on top of later NVIDIA Theano containers
 simply by updating the NVIDIA version tag in the "FROM" line of your Dockerfile and
-rerunning ```docker build```.
+rerunning `docker build`.
 
 ### Adding packages
 To install additional packages, create a Dockerfile similar to the following:
 ```
-FROM nvcr.io/nvidia/theano:16.12
+FROM nvcr.io/nvidia/theano:17.01
 
 # Install my-extra-package-1 and my-extra-package-2
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -131,7 +131,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 To modify and rebuild Theano, create a Dockerfile similar to the following:
 
 ```
-FROM nvcr.io/nvidia/theano:16.12
+FROM nvcr.io/nvidia/theano:17.01
 
 # Bring in changes from outside container to /tmp
 # (assumes my-theano-modifications.patch is in same directory as Dockerfile)
