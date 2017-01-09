@@ -1023,9 +1023,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
     @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
     def test_conv_gradw(self, border_mode, conv_mode):
-        self._test_conv_gradw(T.tensor4('img'),
-                              T.tensor4('topgrad'),
-                              T.tensor4('kerns'),
+        self._test_conv_gradw(T.ftensor4('img'),
+                              T.ftensor4('topgrad'),
+                              T.ftensor4('kerns'),
                               (5, 2, 6, 13),
                               (1, 2, 3, 7),
                               border_mode,
@@ -1071,9 +1071,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
 
     @parameterized.expand(product(border_modes, conv_modes), utt.custom_name_func)
     def test_conv3d_gradw(self, border_mode, conv_mode):
-        self._test_conv3d_gradw(T.tensor5('img'),
-                                T.tensor5('topgrad'),
-                                T.tensor5('kerns'),
+        self._test_conv3d_gradw(T.ftensor5('img'),
+                                T.ftensor5('topgrad'),
+                                T.ftensor5('kerns'),
                                 (5, 2, 6, 13, 21),
                                 (1, 2, 3, 7, 9),
                                 border_mode,
