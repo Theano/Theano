@@ -967,7 +967,7 @@ class SubtensorPrinter:
         elif isinstance(r.owner.op, Subtensor):
             idxs = r.owner.op.idx_list
             inputs = list(r.owner.inputs)
-            input = inputs.pop()
+            input = inputs.pop(0)
             sidxs = []
             old_precedence = getattr(pstate, 'precedence', None)
             try:
