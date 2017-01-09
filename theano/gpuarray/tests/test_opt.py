@@ -17,9 +17,9 @@ from ..basic_ops import (
 from ..blas import GpuGemm
 from ..elemwise import GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise
 from ..subtensor import GpuSubtensor
-from ..linalg import GpuCusolverSolve
+from ..linalg import GpuCusolverSolve, cusolver_available
 
-from .config import mode_with_gpu, test_ctx_name
+from .config import mode_with_gpu, test_ctx_name, SkipTest
 
 
 def test_local_assert():
@@ -501,6 +501,8 @@ def test_no_complex():
 
 
 def test_local_lift_solve():
+    if not cusolver_available:
+        raise SkipTest('No cuSolver')
     A = tensor.fmatrix()
     b = tensor.fmatrix()
     o = slinalg.solve(A, b)
