@@ -969,33 +969,41 @@ class SubtensorPrinter:
             inputs = list(r.owner.inputs)
             input = inputs.pop()
             sidxs = []
-            inbrack_pstate = pstate.clone(precedence=-1000)
-            for entry in idxs:
-                if isinstance(entry, integer_types):
-                    sidxs.append(str(entry))
-                elif isinstance(entry, scal.Scalar):
-                    sidxs.append(inbrack_pstate.pprinter.process(inputs.pop()))
-                elif isinstance(entry, slice):
-                    if entry.start is None or entry.start == 0:
-                        msg1 = ""
-                    else:
-                        msg1 = entry.start
+            old_precedence = getattr(pstate, 'precedence', None)
+            try:
+                pstate.precedence = -1000
 
-                    if entry.stop is None or entry.stop == sys.maxsize:
-                        msg2 = ""
-                    else:
-                        msg2 = entry.stop
+                for entry in idxs:
+                    if isinstance(entry, integer_types):
+                        sidxs.append(str(entry))
+                    elif isinstance(entry, scal.Scalar):
+                        sidxs.append(pstate.pprinter.process(inputs.pop()))
+                    elif isinstance(entry, slice):
+                        if entry.start is None or entry.start == 0:
+                            msg1 = ""
+                        else:
+                            msg1 = entry.start
 
-                    if entry.step is None:
-                        msg3 = ""
-                    else:
-                        msg3 = ":%s" % entry.step
+                        if entry.stop is None or entry.stop == sys.maxsize:
+                            msg2 = ""
+                        else:
+                            msg2 = entry.stop
 
-                    sidxs.append("%s:%s%s" % (msg1, msg2, msg3))
-            return "%s[%s]" % (pstate.pprinter.process(
-                input,
-                pstate.clone(precedence=1000)),
-                ", ".join(sidxs))
+                        if entry.step is None:
+                            msg3 = ""
+                        else:
+                            msg3 = ":%s" % entry.step
+
+                        sidxs.append("%s:%s%s" % (msg1, msg2, msg3))
+            finally:
+                pstate.precedence = old_precedence
+
+            try:
+                pstate.precedence = 1000
+                sub = pstate.pprinter.process(input, pstate)
+            finally:
+                pstate.precedence = old_precedence
+            return "%s[%s]" % (sub, ", ".join(sidxs))
         else:
             raise TypeError("Can only print Subtensor.")
 
