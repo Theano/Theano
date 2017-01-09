@@ -271,6 +271,11 @@ def gammaln_inplace(a):
 
 
 @_scal_inplace
+def polygamma_inplace(k, a):
+    """polygamma function"""
+
+
+@_scal_inplace
 def psi_inplace(a):
     """derivative of log gamma function"""
 

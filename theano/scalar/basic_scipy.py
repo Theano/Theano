@@ -272,6 +272,36 @@ class GammaLn(UnaryScalarOp):
         raise NotImplementedError('only floating point is implemented')
 gammaln = GammaLn(upgrade_to_float, name='gammaln')
 
+class Polygamma(BinaryScalarOp):
+    """
+    Polygamma function, derivative of Psi (digamma function)
+    """
+    @staticmethod
+    def st_impl(k, x):
+        if k < 0:
+            raise ValueError('polygamma order must be non-negative', k)
+        return scipy.special.polygamma(k, x)
+
+    def impl(self, k, x):
+        if imported_scipy_special:
+            return Polygamma.st_impl(k, x)
+        else:
+            super(Polygamma, self).impl(k, x)
+
+    def grad(self, inputs, gout):
+        (k,x,) = inputs
+        (gz,) = gout
+        if x.type in complex_types:
+            raise NotImplementedError()
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        return gz * polygamma(k+1, x),
+
+polygamma = Polygamma(upgrade_to_float, name='polygamma')
 
 class Psi(UnaryScalarOp):
     """
@@ -288,8 +318,18 @@ class Psi(UnaryScalarOp):
         else:
             super(Psi, self).impl(x)
 
-    def grad(self, inputs, outputs_gradients):
-        raise NotImplementedError()
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
+        if x.type in complex_types:
+            raise NotImplementedError()
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+        return gz * polygamma(1, x),
+
 
     def c_support_code(self):
         return (

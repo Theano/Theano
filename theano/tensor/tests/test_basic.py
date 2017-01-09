@@ -1682,6 +1682,7 @@ if imported_scipy_special:
     expected_erfcinv = scipy.special.erfcinv
     expected_gamma = scipy.special.gamma
     expected_gammaln = scipy.special.gammaln
+    expected_polygamma = lambda k, x: scipy.special.polygamma(k, x)
     expected_psi = scipy.special.psi
     expected_chi2sf = lambda x, df: scipy.stats.chi2.sf(x, df).astype(x.dtype)
     expected_j0 = scipy.special.j0
@@ -1701,6 +1702,7 @@ else:
     expected_erfcinv = []
     expected_gamma = []
     expected_gammaln = []
+    expected_polygamma = []
     expected_psi = []
     expected_chi2sf = []
     expected_j0 = []
@@ -1825,14 +1827,43 @@ GammalnInplaceTester = makeBroadcastTester(
     inplace=True,
     skip=skip_scipy)
 
+_good_broadcast_binary_polygamma = dict(
+    normal=(randint_ranged(0, 3, (2, 3)), rand_ranged(1, 10, (2, 3)),),
+    empty=(numpy.asarray([], dtype=config.floatX), numpy.asarray([], dtype=config.floatX),),)
+_grad_broadcast_binary_polygamma = dict(
+    normal=(randint_ranged(0, 3, (2, 3)), rand_ranged(1, 10, (2, 3)),),)
+
+PolygammaTester = makeBroadcastTester(
+    op=tensor.polygamma,
+    expected=expected_polygamma,
+    good=_good_broadcast_binary_polygamma,
+    grad=_grad_broadcast_binary_polygamma,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    skip=skip_scipy,
+    name='Polygamma')
+PolygammaInplaceTester = makeBroadcastTester(
+    op=inplace.polygamma_inplace,
+    expected=expected_polygamma,
+    good=_good_broadcast_binary_polygamma,
+    grad=_grad_broadcast_binary_polygamma,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy,
+    name='Polygamma')
+
 _good_broadcast_unary_psi = dict(
     normal=(rand_ranged(1, 10, (2, 3)),),
     empty=(numpy.asarray([], dtype=config.floatX),),)
+_grad_broadcast_unary_psi = dict(
+    normal=(rand_ranged(1, 10, (2, 3)),),)
 
 PsiTester = makeBroadcastTester(
     op=tensor.psi,
     expected=expected_psi,
     good=_good_broadcast_unary_psi,
+    grad=_grad_broadcast_unary_psi,
     eps=2e-10,
     mode=mode_no_scipy,
     skip=skip_scipy)
@@ -1840,6 +1871,7 @@ PsiInplaceTester = makeBroadcastTester(
     op=inplace.psi_inplace,
     expected=expected_psi,
     good=_good_broadcast_unary_psi,
+    grad=_grad_broadcast_unary_psi,
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True,
