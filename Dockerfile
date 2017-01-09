@@ -1,8 +1,8 @@
-FROM nvdl.githost.io:4678/dgx/cuda:8.0-cudnn5.1-devel-ubuntu14.04--17.01
+FROM nvdl.githost.io:4678/dgx/cuda:8.0-cudnn5.1-devel-ubuntu14.04--17.02
 
 ENV THEANO_VERSION 0.8.X
 LABEL com.nvidia.theano.version="${THEANO_VERSION}"
-ENV NVIDIA_THEANO_VERSION 17.01
+ENV NVIDIA_THEANO_VERSION 17.02
 
 ARG NVIDIA_BUILD_ID
 ENV NVIDIA_BUILD_ID ${NVIDIA_BUILD_ID:-<unknown>}
