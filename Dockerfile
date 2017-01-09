@@ -12,8 +12,8 @@ LABEL com.nvidia.build.ref="${NVIDIA_BUILD_REF}"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git \
-		ca-certificates \
-		curl \
+        ca-certificates \
+        curl \
         libopenblas-dev \
         python-dev && \
     rm -rf /var/lib/apt/lists/*
