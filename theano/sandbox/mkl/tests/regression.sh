@@ -57,7 +57,6 @@ fi
 ################################
 echo "##################################################" 2>&1 | tee -a $LOG_FILE
 echo "Start unit test..." 2>&1 | tee -a $LOG_FILE
-python test_mkl_dummy.py 2>&1 | tee -a $LOG_FILE
 
 # opt
 echo "run test_opt.py..." 2>&1 | tee -a $LOG_FILE
