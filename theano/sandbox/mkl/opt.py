@@ -809,7 +809,8 @@ def local_ConvGradWeights_mkl(node):
         gradWeight = mkl_conv.ConvGradWeights(border_mode=node.op.border_mode,
                                               subsample=node.op.subsample,
                                               imshp=node.op.imshp,
-                                              kshp=node.op.kshp)(image_internal, weight, gz_internal)
+                                              kshp=node.op.kshp,
+                                              uniq_id=uniq_id)(image_internal, weight, gz_internal)
         rval = gradWeight
         return [rval]
     except Exception as e:
