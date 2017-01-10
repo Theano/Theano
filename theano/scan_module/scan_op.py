@@ -434,8 +434,8 @@ class Scan(PureOp):
         argoffset += len(self.outer_seqs(inputs))
         # Check that this 3 things have the same dtype for mit_mot:
         #   - initial state of the output
-        #   - variable representing an input slice of the otuput
-        #   - variable representing an output slice of the otuput
+        #   - variable representing an input slice of the output
+        #   - variable representing an output slice of the output
         ipos = 0
         opos = 0
         inner_mitmot = self.inner_mitmot(self.inputs)
@@ -610,16 +610,17 @@ class Scan(PureOp):
         # The vector_seqs and vector_outs are just a workaround
         # strange NumPy behavior: vector_ndarray[int] return a NumPy
         # scalar and not a NumPy ndarray of 0 dimensions.
-        self.vector_seqs = [isinstance(seq, (tensor.TensorVariable,
-                                             tensor.TensorConstant)) and
-                            seq.ndim == 1 for seq in
-                            new_inputs[1:1 + self.n_seqs]]
-        self.vector_outs = [isinstance(arg, (tensor.TensorVariable,
-                                             tensor.TensorConstant)) and
-                            arg.ndim == 1 for arg in
-                            new_inputs[1 + self.n_seqs: (1 + self.n_seqs +
-                                                         self.n_outs)]]
-        self.vector_outs += [False] * self.n_nit_sot
+        def is_cpu_vector(s):
+            return isinstance(s.type, tensor.TensorType) and s.ndim == 1
+
+        self.vector_seqs = [
+            is_cpu_vector(seq) for seq in new_inputs[1:1 + self.n_seqs]]
+        self.vector_outs = [
+            is_cpu_vector(arg) for arg in new_inputs[
+                1 + self.n_seqs: (1 + self.n_seqs + self.n_outs)]]
+        self.vector_outs += [
+            isinstance(t.type, tensor.TensorType) and t.ndim == 0
+            for t in self.outer_nitsot_outs(self.outputs)]
 
         apply_node = Apply(self,
                            new_inputs,
@@ -1461,8 +1462,6 @@ class Scan(PureOp):
                     jout = j + offset_out
                     shape = (store_steps[j],) + \
                         output_storage[jout].storage[0].shape
-                    if len(output_storage[jout].storage[0].shape) == 0:
-                        self.vector_outs[j] = True
                     dtype = output_storage[jout].storage[0].dtype
                     if (outs[j][0] is None or
                             outs[j][0].shape[0] < store_steps[j] or

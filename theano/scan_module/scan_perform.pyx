@@ -62,7 +62,7 @@ import copy
 
 
 def get_version():
-    return 0.295
+    return 0.296
 
 @cython.boundscheck(False)
 def perform(
@@ -514,8 +514,6 @@ def perform(
             if i == 0:
                 jout = j+offset_out
                 shape = (store_steps[j],) + output_storage[jout].storage[0].shape
-                if len(output_storage[jout].storage[0].shape) == 0:
-                    vector_outs[j] = 1
                 dtype = output_storage[jout].storage[0].dtype
                 if (outs[j][0] is None or
                         outs[j][0].shape[0] < store_steps[j] or
