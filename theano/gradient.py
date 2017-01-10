@@ -151,6 +151,8 @@ class DisconnectedType(theano.gof.type.Type):
 
     def __str__(self):
         return 'DisconnectedType'
+
+
 disconnected_type = DisconnectedType()
 
 
@@ -1749,6 +1751,7 @@ Exception args: %s""" % (self.err_pos, self.arg,
                          self.rel_err, self.rel_tol,
                          args_msg)
 
+
 verify_grad.E_grad = GradientError
 
 
@@ -1994,6 +1997,7 @@ class DisconnectedGrad(ViewOp):
     def connection_pattern(self, node):
         return [[False]]
 
+
 disconnected_grad_ = DisconnectedGrad()
 
 
@@ -2065,14 +2069,14 @@ def grad_clip(x, lower_bound, upper_bound):
 
 
 class GradScale(ViewOp):
-    def __init__(self,multiplier):
-        self.multiplier=multiplier
+    def __init__(self, multiplier):
+        self.multiplier = multiplier
 
     def grad(self, args, g_outs):
-        return [self.multiplier*g_out for g_out in g_outs]
+        return [self.multiplier * g_out for g_out in g_outs]
 
 
-def grad_scale(x,multiplier):
+def grad_scale(x, multiplier):
     """
     This op scale or inverse the gradient in the backpropagation.
 
@@ -2093,4 +2097,3 @@ def grad_scale(x,multiplier):
     print(fpprime(2))#0.416
     """
     return GradScale(multiplier)(x)
-
