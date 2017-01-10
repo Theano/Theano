@@ -153,6 +153,17 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         assert numpy.all(numpy.asarray(gx0) == 0.)
         assert numpy.all(numpy.asarray(gy0) == 1.)
 
+    def test_grad_cast_input(self):
+        # Tests the gradient when both inputs are on the GPU.
+        x = tensor.vector('x', dtype=self.dtype)
+        y = tensor.vector('y', dtype=self.dtype)
+        c = tensor.iscalar('c')
+        z = ifelse(c, self.cast_output(x), self.cast_output(y))
+        gx, gy = tensor.grad(z.sum(), [x, y])
+
+        theano.function([c, x, y], [gx, gy],
+                        mode=self.mode)
+
     def test_multiple_out(self):
         x1 = tensor.vector('x1', dtype=self.dtype)
         x2 = tensor.vector('x2', dtype=self.dtype)

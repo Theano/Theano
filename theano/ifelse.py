@@ -173,7 +173,9 @@ class IfElse(Op):
             # to keep them be cuda ndarrays
             nw_args = []
             for x in args:
-                if isinstance(x, theano.Variable):
+                if hasattr(x, '_as_TensorVariable'):
+                    nw_args.append(x._as_TensorVariable())
+                elif isinstance(x, theano.Variable):
                     nw_args.append(x)
                 else:
                     nw_args.append(theano.tensor.as_tensor_variable(x))
