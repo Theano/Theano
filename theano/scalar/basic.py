@@ -854,6 +854,14 @@ def upgrade_to_float(*types):
                                            for type in types])),
 
 
+def upgrade_to_float64(*types):
+    """
+    Upgrade any int and float32 to float64 to do as SciPy.
+
+    """
+    return get_scalar_type('float64'),
+
+
 def same_out(type):
     return type,
 
