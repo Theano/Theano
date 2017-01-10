@@ -738,3 +738,9 @@ def test_printing_scan():
                         allow_input_downcast=True)
     theano.printing.pydotprint(output, scan_graphs=True)
     theano.printing.pydotprint(f, scan_graphs=True)
+
+
+def test_subtensor():
+    x = theano.tensor.dvector()
+    y = x[1]
+    assert theano.pp(y) == "<TensorType(float64, vector)>[Constant{1}]"
