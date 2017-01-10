@@ -1118,6 +1118,26 @@ def test_version():
     assert isinstance(dnn.version(), int)
 
 
+def test_nvcc_compiler_bindir_and_flags():
+    # This tests if the options nvcc.compiler_bindir and nvcc.flags from
+    # the old sandbox.cuda backend are not passed to the g++ compiler in
+    # the new backend. (Regression test for issues GH-4978 and GH-5373.)
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    old_nvcc_compiler_bindir = theano.config.nvcc.compiler_bindir
+    old_nvcc_flags = theano.config.nvcc.flags
+    try:
+        theano.config.nvcc.compiler_bindir = "/usr/bin"
+        theano.config.nvcc.flags = "--cuda"
+        # compiling should still work, which means that the options
+        # have not been passed to the compiler
+        ret, msg = dnn._dnn_check_compile()
+        assert ret, msg
+    finally:
+        theano.config.nvcc.compiler_bindir = old_nvcc_compiler_bindir
+        theano.config.nvcc.flags = old_nvcc_flags
+
+
 class test_SoftMax(test_nnet.test_SoftMax):
     gpu_op = dnn.GpuDnnSoftmax
     gpu_grad_op = dnn.GpuDnnSoftmaxGrad
