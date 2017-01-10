@@ -323,8 +323,8 @@ after each step of scan. If we write :
 .. testoutput:: scan2
    :hide:
 
-   Elemwise{add,no_inplace}.0
-   Elemwise{add,no_inplace}.0
+   Elemwise{Add,no_inplace}.0
+   Elemwise{Add,no_inplace}.0
    1
 
 We will see that because ``b`` does not use the updated version of

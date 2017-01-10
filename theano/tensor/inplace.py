@@ -13,10 +13,10 @@ def _scal_inplace(symbol):
     if inplace:
         scalar_op = getattr(scal, symbolname[:-len('_inplace')])
         inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
-        rval = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name=symbolname)
+        rval = elemwise.Elemwise(inplace_scalar_op, {0: 0})
     else:
         scalar_op = getattr(scal, symbolname)
-        rval = elemwise.Elemwise(scalar_op, name=symbolname)
+        rval = elemwise.Elemwise(scalar_op)
 
     if getattr(symbol, '__doc__', False):
         rval.__doc__ = symbol.__doc__ + '\n' + rval.__doc__

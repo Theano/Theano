@@ -2453,7 +2453,7 @@ class ScalarSoftsign(theano.scalar.UnaryScalarOp):
 
 scalar_softsign = ScalarSoftsign(theano.scalar.upgrade_to_float,
                                  name='scalar_softsign')
-softsign = elemwise.Elemwise(scalar_softsign, name='softsign')
+softsign = elemwise.Elemwise(scalar_softsign)
 
 
 def confusion_matrix(actual, pred):

@@ -945,21 +945,15 @@ def _scal_elemwise_with_nfunc(nfunc, nin, nout):
     def construct(symbol):
         symbolname = symbol.__name__
         inplace = symbolname.endswith('_inplace')
-        if inplace:
-            msg = "inplace"
-        else:
-            msg = "no_inplace"
-
-        n = "Elemwise{%s,%s}" % (symbolname, msg)
 
         if inplace:
             scalar_op = getattr(scal, symbolname[:-len('_inplace')])
             inplace_scalar_op = scalar_op.__class__(scal.transfer_type(0))
-            rval = elemwise.Elemwise(inplace_scalar_op, {0: 0}, name=n,
+            rval = elemwise.Elemwise(inplace_scalar_op, {0: 0},
                                      nfunc_spec=(nfunc and (nfunc, nin, nout)))
         else:
             scalar_op = getattr(scal, symbolname)
-            rval = elemwise.Elemwise(scalar_op, name=n,
+            rval = elemwise.Elemwise(scalar_op,
                                      nfunc_spec=(nfunc and (nfunc, nin, nout)))
 
         if getattr(symbol, '__doc__', False):

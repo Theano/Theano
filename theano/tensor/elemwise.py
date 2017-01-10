@@ -473,15 +473,13 @@ second dimension
 
     __props__ = ("scalar_op", "inplace_pattern")
 
-    def __init__(self, scalar_op, inplace_pattern=None, name=None,
+    def __init__(self, scalar_op, inplace_pattern=None,
                  nfunc_spec=None, openmp=None):
         if inplace_pattern is None:
             inplace_pattern = frozendict({})
-        self.name = name
         self.scalar_op = scalar_op
         self.inplace_pattern = frozendict(inplace_pattern)
         self.destroy_map = dict((o, [i]) for o, i in self.inplace_pattern.items())
-
         self.ufunc = None
         self.nfunc = None
         if nfunc_spec is None:
@@ -583,15 +581,30 @@ second dimension
         return Apply(self, inputs, outputs)
 
     def __str__(self):
-        if self.name is None:
+        name = None
+
+        scalar_op_name = str(self.scalar_op)
+        if self.scalar_op.name:
+            if hasattr(scalar, self.scalar_op.name.replace("scalar_", "")):
+                scalar_op_name = getattr(scalar, self.scalar_op.name.replace("scalar_", "")).__class__.__name__
+            else:
+                scalar_op_name = self.scalar_op.name.replace("scalar_", "")
+
+        if str(self.scalar_op).endswith("_inplace"):
+            inplace_string = "inplace"
+        else:
+            inplace_string = "no_inplace"
+
+        if not name:
             if self.inplace_pattern:
                 items = list(self.inplace_pattern.items())
                 items.sort()
-                return "Elemwise{%s}%s" % (self.scalar_op, str(items))
+                return "Elemwise{%s,%s}" % (scalar_op_name, inplace_string)
             else:
-                return "Elemwise{%s}" % (self.scalar_op)
+                return "Elemwise{%s,%s}" % (scalar_op_name, inplace_string)
+
         else:
-            return self.name
+            return name
 
     def R_op(self, inputs, eval_points):
         outs = self(*inputs, **dict(return_list=True))

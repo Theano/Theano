@@ -165,12 +165,11 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
 
 
 scalar_sigmoid = ScalarSigmoid(scalar.upgrade_to_float, name='scalar_sigmoid')
-sigmoid = elemwise.Elemwise(scalar_sigmoid, name='sigmoid')
+sigmoid = elemwise.Elemwise(scalar_sigmoid)
 
 sigmoid_inplace = elemwise.Elemwise(
     ScalarSigmoid(scalar.transfer_type(0)),
-    inplace_pattern={0: 0},
-    name='sigmoid_inplace',
+    inplace_pattern={0: 0}
 )
 
 pprint.assign(sigmoid, printing.FunctionPrinter('sigmoid'))
@@ -232,13 +231,11 @@ class UltraFastScalarSigmoid(scalar.UnaryScalarOp):
 
 ultra_fast_scalar_sigmoid = UltraFastScalarSigmoid(
     scalar.upgrade_to_float, name='ultra_fast_scalar_sigmoid')
-ultra_fast_sigmoid = elemwise.Elemwise(ultra_fast_scalar_sigmoid,
-                                       name='ultra_fast_sigmoid')
+ultra_fast_sigmoid = elemwise.Elemwise(ultra_fast_scalar_sigmoid)
 
 ultra_fast_sigmoid_inplace = elemwise.Elemwise(
     UltraFastScalarSigmoid(scalar.transfer_type(0)),
-    inplace_pattern={0: 0},
-    name='ultra_fast_sigmoid_inplace',
+    inplace_pattern={0: 0}
 )
 
 pprint.assign(ultra_fast_sigmoid,
@@ -369,7 +366,7 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
             return v
 scalar_softplus = ScalarSoftplus(scalar.upgrade_to_float,
                                  name='scalar_softplus')
-softplus = elemwise.Elemwise(scalar_softplus, name='softplus')
+softplus = elemwise.Elemwise(scalar_softplus)
 
 pprint.assign(softplus, printing.FunctionPrinter('softplus'))
 

@@ -823,7 +823,7 @@ This will output something like this:
            0.016s - in 69 optimization that where not used (display only those with a runtime > 0)
              0.004s - crossentropy_to_crossentropy_with_softmax_with_bias
              0.002s - local_one_minus_erf
-             0.002s - Elemwise{sub,no_inplace}(z, Elemwise{mul,no_inplace}(alpha subject to <function <lambda> at 0x7f475e4da050>, SparseDot(x, y))) -> Usmm{no_inplace}(Elemwise{neg,no_inplace}(alpha), x, y, z)
+             0.002s - Elemwise{Sub,no_inplace}(z, Elemwise{Mul,no_inplace}(alpha subject to <function <lambda> at 0x7f475e4da050>, SparseDot(x, y))) -> Usmm{no_inplace}(Elemwise{Neg,no_inplace}(alpha), x, y, z)
              0.002s - local_add_specialize
              0.001s - local_func_inv
              0.001s - local_useless_elemwise
@@ -834,7 +834,7 @@ This will output something like this:
              0.000s - local_elemwise_sub_zeros
              0.000s - local_cast_cast
              0.000s - local_alloc_unary
-             0.000s - Elemwise{log,no_inplace}(Softmax(x)) -> <function make_out_pattern at 0x7f47619a8410>(x)
+             0.000s - Elemwise{Log,no_inplace}(Softmax(x)) -> <function make_out_pattern at 0x7f47619a8410>(x)
              0.000s - local_sum_div_dimshuffle
              0.000s - local_sum_alloc
              0.000s - local_dimshuffle_lift
