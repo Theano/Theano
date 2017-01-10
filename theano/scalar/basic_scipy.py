@@ -6,6 +6,7 @@ import numpy
 import theano
 from theano.scalar.basic import (UnaryScalarOp, BinaryScalarOp,
                                  exp, upgrade_to_float,
+                                 upgrade_to_float64,
                                  float_types)
 from theano.scalar.basic import (upgrade_to_float_no_complex,
                                  complex_types, discrete_types,
@@ -369,7 +370,7 @@ class Chi2SF(BinaryScalarOp):
             return Chi2SF.st_impl(x, k)
         else:
             super(Chi2SF, self).impl(x, k)
-chi2sf = Chi2SF(upgrade_to_float, name='chi2sf')
+chi2sf = Chi2SF(upgrade_to_float64, name='chi2sf')
 
 
 class J1(UnaryScalarOp):

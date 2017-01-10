@@ -1718,7 +1718,7 @@ if imported_scipy_special:
     expected_gamma = scipy.special.gamma
     expected_gammaln = scipy.special.gammaln
     expected_psi = scipy.special.psi
-    expected_chi2sf = lambda x, df: scipy.stats.chi2.sf(x, df).astype(x.dtype)
+    expected_chi2sf = scipy.stats.chi2.sf
     expected_j0 = scipy.special.j0
     expected_j1 = scipy.special.j1
     skip_scipy = False
