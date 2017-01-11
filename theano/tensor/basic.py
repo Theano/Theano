@@ -4219,6 +4219,9 @@ def roll(x, shift, axis=None):
         else:
             axis = 0
 
+    if axis < 0:
+        axis += x.ndim
+
     # Shift may be larger than the size of the axis. If so, since the
     # roll operation is cyclic, we can take the shift modulo the size
     # of the axis

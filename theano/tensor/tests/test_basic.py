@@ -3839,6 +3839,15 @@ class T_Join_and_Split(unittest.TestCase):
             out = theano.function([], b)()
 
             assert (out == want).all()
+                
+            # Test example when axis < 0 - ensure that behavior matches numpy.roll behavior
+            a = self.shared(numpy.arange(24).reshape((3, 2, 4)).astype(self.floatX))
+            b = roll(a, get_shift(-2), -2)
+
+            want = numpy.roll(a.get_value(borrow=True), -2, -2)
+            out = theano.function([], b)()
+
+            assert (out == want).all()
 
             # Test rolling on axis 0
             want = numpy.roll(a.get_value(borrow=True), -2, 0)
