@@ -454,6 +454,7 @@ def test_hostfromgpu_shape_i():
     assert isinstance(topo[2].op, theano.tensor.opt.MakeVector)
     assert tuple(f(cv)) == (5, 4)
 
+
 def test_Gpujoin_inplace():
     """Test Gpujoin to work inplace.
 
