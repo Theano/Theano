@@ -3897,9 +3897,12 @@ class Join(Op):
 
     def __str__(self):
         if self.view == -1:
-            return "Join"
+            return self.__class__.__name__
         else:
-            return super(Join, self).__str__()
+            return "%s{%s}" % (
+                self.__class__.__name__,
+                ", ".join("%s=%r" % (p, getattr(self, p))
+                          for p in self.__props__))
 
     def __setstate__(self, d):
         self.__dict__.update(d)
