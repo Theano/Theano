@@ -257,6 +257,50 @@ def pool_3d(input, ws=None, ignore_border=None, stride=None, pad=(0, 0, 0),
 
 def spp_pooling(image, out_dimension, image_shape):
 
+    # Docstring Credits : Lasagne
+    '''
+
+    Performs spatial pyramid pooling (SPP) over the input.
+    It will turn a 2D input of arbitrary size into an output of fixed
+    dimension.
+
+    The pooling is performed over :math:`l` pooling levels.
+    Each pooling level :math:`i` will create :math:`M_i` output features.
+    :math:`M_i` is given by :math:`n_i * n_i`,
+    with :math:`n_i` as the number of pooling operation per dimension in
+    level :math:`i`, and we use a list of the :math:`n_i`'s as a
+    parameter for SPP-Layer.
+
+    Parameters
+    ----------
+    image : a :class:`Variable` instance
+        The image over which pooling has to be performed
+
+    out_dimension : list of integers
+        The list of :math:`n_i`'s that define the output dimension of each
+        pooling level :math:`i`. The length of out_dimension is the level of
+        the spatial pyramid.
+
+    image_shape : a :class:`Shape` instance or tuple of integers
+
+    Notes
+    -----
+    This layer should be inserted between the convolutional part of a
+    DNN and its dense part. Convolutions can be used for
+    arbitrary input dimensions, but the size of their output will
+    depend on their input dimensions. Connecting the output of the
+    convolutional to the dense part then usually demands us to fix
+    the dimensions of the network's InputLayer.
+
+    References
+    ----------
+    .. [1] He, Kaiming et al (2015):
+           Spatial Pyramid Pooling in Deep Convolutional Networks
+           for Visual Recognition.
+           http://arxiv.org/pdf/1406.4729.pdf.
+
+    '''
+
     input_size = image_shape[2:]
     pooled_data_list = []
     for pool_dim in out_dimension:
