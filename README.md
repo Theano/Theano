@@ -1,13 +1,23 @@
 #Intel Software Optimization for Theano*
 ---
 
-This repo is dedicated to improving Theano performance when running on CPU, in particular Intel® Xeon® processors (HSW+).
+This repo is dedicated to improving Theano performance when running on CPU, in particular Intel® Xeon® processors and Intel® Xeon Phi™ processors. 
 
 Please refer to the document [Install_Guide.pdf](https://github.com/intel/theano/blob/master/Install_Guide.pdf) for the installation guide.
 
 Get Optimized Theano Source Code
 
-* Branch **master** is a special optimized version for CNN topologies which requires Intel® Math Kernel Library (Intel® MKL, after version 2017.0.0) based on 0.9.0dev1,, get and install it via below commands:
+* Branch **master** is a optimal version for CNN topologies which requires Intel® Math Kernel Library (Intel® MKL, **version >= 2017.0**) based on 0.9.0dev2. 
+
+  **Currently, we support the following optimal Ops: convolution (with or without bias, and group convolution), relu, pool (max and average_exc_pad mode), lrn, bn, elemwise (add).**
+  
+  **Note: Tips for enabling optimal Ops:**
+
+	* Add bias directly with convolution output will calling optimal convolution with bias Op
+	* theano/sandbox/mkl/mkl_conv.py:AbstractConvGroup will calling group convolution Op
+	* theano/tensor/nnet/lrn.py:lrn will calling optimal LRN Op  
+
+* get and install it via below commands:
 ```
 git clone https://github.com/intel/theano.git intel-theano
 ```
@@ -32,10 +42,10 @@ cp intel-theano/theanorc_gcc_openblas ~/.theanorc  #use default configuration fo
 Install Theano
 ```
 python setup.py build 
-python setup.py install --user --mkl    #will check and download MKL if it is not available
+python setup.py install --user
 ```
 
-You can get and install the self-contained MKL manulally from [here](https://github.com/01org/mkl-dnn/releases), or use "--mkl" when installing Theano to check and download it automatically.
+You can get and install the self-contained MKL manulally from [here](https://github.com/01org/mkl-dnn/releases).
 We also provide an optimized Numpy and some demo cases, you can find optimized Numpy in [here](https://github.com/pcs-theano/numpy), and demo cases in Theano's root directory.
  
 

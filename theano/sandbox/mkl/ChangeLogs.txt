@@ -8,7 +8,7 @@ Date: 2017/0111/
 Autho: Ciyong
 Changes:
 ----------------------------------
-1. Update pool unit test
+1. Update pool and relu unit test
 
 
 Date: 2017/0110/
