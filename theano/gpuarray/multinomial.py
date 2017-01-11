@@ -315,8 +315,11 @@ KERNEL void k_multi_warp_multinomial_wor(
                     done = true;
                 }
             }
-            // renormalize the multinomial
-            for (ga_int k = 0; k < nb_outcomes; ++k)
+            // No need to renormalize after the last samples.
+            if (c == (n_samples - 1))
+                break;
+            // parallel renormalize the multinomial
+            for (ga_int k = LID_1; k < nb_outcomes; k+=LDIM_1)
             {
                 global_pvals_copy[k * pvals_col_stride + n * pvals_row_stride] /= cummul;
             }
@@ -385,7 +388,8 @@ KERNEL void k_multi_warp_multinomial_wor(
 
     if (theano_prep_output(&out, 2, dims, GA_LONG,
                            GA_C_ORDER, %(ctx)s) != 0){
-      %(fail)s
+        Py_DECREF(pvals_copy);
+        %(fail)s
     }
 
     %(out)s = out;
@@ -413,6 +417,7 @@ KERNEL void k_multi_warp_multinomial_wor(
                 PyExc_ValueError,
                 "Multinomial is not implemented for so many rows in the matrix (%%i)",
                 nb_multi);
+            Py_DECREF(pvals_copy);
             %(fail)s
         }
 
@@ -439,23 +444,36 @@ KERNEL void k_multi_warp_multinomial_wor(
         args[9] = (void*)&strides[3];
         args[10] = (void*)&strides[4];
 
-        err = GpuKernel_call(&%(kname)s, 1, &nb_threads, &nb_blocks, 0, args);
+        size_t nb_threads2[2], nb_blocks2[2];
+        nb_threads2[0] = nb_threads;
+        nb_threads2[1] = 1;
+        // If we can't schedule enough threads parallelize the renormalization.
+        // I do this because we don't always use those extra threads.
+        if (nb_threads * nb_blocks < 2048)
+            nb_threads2[1] = 1024 / nb_threads;
+
+        nb_blocks2[0] = nb_blocks;
+        nb_blocks2[1] = 1;
+
+        err = GpuKernel_call(&%(kname)s, 2, nb_threads2, nb_blocks2, 0, args);
         if (err != GA_NO_ERROR) {
            PyErr_Format(
                 PyExc_RuntimeError,
                 "gpuarray error: %%s: %%s.\\n",
                 "k_multi_warp_%(name)s",
                 GpuKernel_error(&%(kname)s, err));
-            %(fail)s;
+           Py_DECREF(pvals_copy);
+           %(fail)s;
         }
         if(%(sync)d)
             GpuArray_sync(&(out->ga));
+        Py_DECREF(pvals_copy);
     } // END NESTED SCOPE
         """ % locals()
         return s
 
     def c_code_cache_version(self):
-        return (1,)
+        return (4,)
 
 
 @register_opt('fast_compile')
