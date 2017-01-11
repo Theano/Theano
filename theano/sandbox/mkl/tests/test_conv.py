@@ -6,8 +6,10 @@ from theano import tensor as T
 from theano.tensor.nnet import conv2d
 from theano.sandbox import mkl
 from theano.sandbox.mkl.basic_ops import U2IConv, I2U
+from theano.sandbox.mkl.mkl_conv import Conv2D
 
 numpy.random.seed(123)
+uniq_id = 123
 
 if not mkl.mkl_available:
     raise SkipTest('Optional package MKL disabled')
@@ -35,13 +37,20 @@ class test_mkl_conv_forward(unittest.TestCase):
     def test_conv_no_bias(self):
         images = T.ftensor4('inputs')
         weights = T.ftensor4('weights')
-        convOut = conv2d(images, weights, input_shape=(12, 3, 256, 256), filter_shape=(12, 3, 3, 3), filter_flip=False)
+        global uniq_id
+        uniq_id += 1
+
+        images_internal = U2IConv(imshp=(12, 3, 256, 256), kshp=(12, 3, 3, 3), uniq_id=uniq_id)(images)
+        convOut_internal = Conv2D(imshp=(12, 3, 256, 256), kshp=(12, 3, 3, 3), filter_flip=False, uniq_id=uniq_id)(images_internal, weights)
+        convOut_user = I2U(uniq_id=uniq_id)(convOut_internal)
+
         ival = numpy.random.rand(12, 3, 256, 256).astype(numpy.float32)
         wval = numpy.random.rand(12, 3, 3, 3).astype(numpy.float32)
 
-        fopt = theano.function(inputs=[images, weights], outputs=convOut, mode=mode_with_mkl)
+        fopt = theano.function(inputs=[images, weights], outputs=convOut_user, mode=mode_with_mkl)
         new_out = fopt(ival, wval)
 
+        convOut = conv2d(images, weights, input_shape=(12, 3, 256, 256), filter_shape=(12, 3, 3, 3), filter_flip=False)
         fori = theano.function(inputs=[images, weights], outputs=convOut, mode=mode_without_mkl)
         old_out = fori(ival, wval)
 
@@ -52,15 +61,19 @@ class test_mkl_conv_forward(unittest.TestCase):
         weights = T.ftensor4('weights')
         bias = T.vector('bias')
 
-        convOut = conv2d(images, weights, input_shape=(12, 3, 256, 256), filter_shape=(12, 3, 3, 3), filter_flip=False)
-        convOutBias = convOut + bias.dimshuffle('x', 0, 'x', 'x')
+        images_internal = U2IConv(imshp=(12, 3, 256, 256), kshp=(12, 3, 3, 3), uniq_id=uniq_id)(images)
+        convOutBias_internal = Conv2D(imshp=(12, 3, 256, 256), kshp=(12, 3, 3, 3), filter_flip=False, uniq_id=uniq_id)(images_internal, weights, bias)
+        convOutBias_user = I2U(uniq_id=uniq_id)(convOutBias_internal)
+
         ival = numpy.random.rand(12, 3, 256, 256).astype(numpy.float32)
         wval = numpy.random.rand(12, 3, 3, 3).astype(numpy.float32)
         bval = numpy.random.rand(12).astype(numpy.float32)
 
-        fopt = theano.function(inputs=[images, weights, bias], outputs=convOutBias, mode=mode_with_mkl)
+        fopt = theano.function(inputs=[images, weights, bias], outputs=convOutBias_user, mode=mode_with_mkl)
         new_old = fopt(ival, wval, bval)
 
+        convOut = conv2d(images, weights, input_shape=(12, 3, 256, 256), filter_shape=(12, 3, 3, 3), filter_flip=False)
+        convOutBias = convOut + bias.dimshuffle('x', 0, 'x', 'x')
         fori = theano.function(inputs=[images, weights, bias], outputs=convOutBias, mode=mode_without_mkl)
         old_out = fori(ival, wval, bval)
 

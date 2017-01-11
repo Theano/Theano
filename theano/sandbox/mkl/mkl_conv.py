@@ -323,9 +323,6 @@ class Conv2D(MKLConvBase):
             sub['bias'] = 'NULL'
 
         ccode = """
-            #if __DEBUG__
-            std::cout << "conv forward, c_code start" << std::endl;
-            #endif
             if (NULL == pConvolutionFwd) {
                 convStride[0] = %(dW)s;
                 convStride[1] = %(dH)s;
@@ -361,7 +358,6 @@ class Conv2D(MKLConvBase):
                 zStride[2] = zSize[0] * zSize[1];
                 zStride[3] = zSize[0] * zSize[1] * zSize[2];
 
-                //printf("Bias = :", %(withBias)s);
                 if(%(withBias)s) {
                     biasSize[0] = %(o_c)s;
                     biasStride[0] = 1;
@@ -528,7 +524,7 @@ class Conv2D(MKLConvBase):
             }
             conv_res[dnnResourceDst] = z_buf;
 
-            #if __DEBUG__
+            #if __MKL_DEBUG__
                 _image_size = dnnLayoutGetMemorySize_%(precision)s(*image_internal_layout_buf);
                 _weight_size = dnnLayoutGetMemorySize_%(precision)s(weight_internal_layout);
                 _z_size = dnnLayoutGetMemorySize_%(precision)s(z_internal_layout);
@@ -555,12 +551,6 @@ class Conv2D(MKLConvBase):
             ((void**)PyArray_DATA(%(z)s))[1] = z_buf;
 
             first_run = 0;
-            #if __DEBUG__
-                printf(\"convFw z:%%x, %%x, %%x\\n\",%(z)s,z_internal_layout,z_buf);
-                std::cout <<"conv forward, z_internal_layout: @" <<z_internal_layout<<std::endl;
-                std::cout <<"conv forward, z_buf: @" <<z_buf<<std::endl;
-                std::cout << "forward, c_code end\\n" << std::endl;
-            #endif
         """ % sub
         return ccode
 
@@ -582,12 +572,12 @@ class Conv2D(MKLConvBase):
                                 imshp=self.imshp,
                                 kshp=self.kshp)(image, weights, gz, bias)
 
-        if len(dlist) > 1:
-            d_weights, d_bias = dlist
-            return d_images, d_weights, d_bias
-        else:
+        if isinstance(type(dlist), TensorType):
             d_weights = dlist
             return d_images, d_weights
+        else:
+            d_weights, d_bias = dlist
+            return d_images, d_weights, d_bias
 
 
 class ConvGradInputs(MKLConvBase):
@@ -697,9 +687,6 @@ class ConvGradInputs(MKLConvBase):
         sub.update(locals())
 
         ccode = """
-            #if __DEBUG__
-                std::cout << "gradInput, c_code start " << std::endl;
-            #endif
             if (NULL == pConvolutionBwdData) {
                 convStride[0] = %(dW)s;
                 convStride[1] = %(dH)s;
@@ -1192,7 +1179,6 @@ class ConvGradWeights(MKLConvBase):
             #if __SUPPORT_USER_PARAMS__
                 if(NULL == weight_usr_layout) {
                     dnnLayoutCreate_%(precision)s(&weight_usr_layout, fdimension, weightSize, weightStride);
-                    //printf(\"gradweight, weightstride: %%d, %%d, %%d, %%d\\n\", weightStride[0], weightStride[1], weightStride[2], weightStride[3]);
                 }
 
                 if(%(withBias)s && NULL == bias_usr_layout) {
