@@ -476,8 +476,10 @@ class GpuArrayType(Type):
         return ['gpuarray']
 
     def c_code_cache_version(self):
+        # import pdb; pdb.set_trace()
         ver = pygpu.gpuarray.abi_version()
-        return (2,) + ver
+        # we only use the major version since the minor revision are compatible.
+        return (2, ver[0])
 
 
 class _operators(_tensor_py_operators):
