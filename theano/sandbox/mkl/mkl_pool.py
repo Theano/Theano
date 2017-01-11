@@ -18,13 +18,10 @@ class PoolBase(MKLOp):
                 'ignore_border only allows to be True in MKL currently')
         self.ignore_border = ignore_border
 
-        if mode.startswith('average'):
-            mode = 'average'
-
-        if mode not in ['max', 'min', 'average']:
+        if mode not in ['max', 'min', 'average_exc_pad']:
             raise ValueError(
                 "Pool mode parameter only support 'max', 'min',"
-                " 'average'. Got %s" % mode)
+                " 'average_exc_pad'. Got %s" % mode)
         self.mode = mode
 
     def c_libraries(self):
@@ -262,7 +259,6 @@ class Pool(PoolBase):
         r = tensor.extract_constant(r)
         c = tensor.extract_constant(c)
 
-        # TODO CY, looks like no need to make it float then ceil
         out_r = numpy.ceil(((r + 2 * padding[0] - ds[0])) / (st[0])) + 1
         out_c = numpy.ceil(((c + 2 * padding[1] - ds[1])) / (st[1])) + 1
 
@@ -338,19 +334,11 @@ class Pool(PoolBase):
             algo = "dnnAlgorithmPoolingMax"
         elif 'min' == self.mode:
             algo = 'dnnAlgorithmPoolingMin'
-        elif self.mode.startswith('average'):
+        elif 'average_exc_pad' == self.mode:
             algo = "dnnAlgorithmPoolingAvg"
         else:
-            raise ValueError("mode must be one of 'max', 'min', 'average'")
+            raise ValueError("mode must be one of 'max', 'min', 'average_exc_pad'")
 
-        '''
-        ignore_border = int(self.ignore_border)
-        if self.ignore_border:
-            borderType = 'dnnBorderZeros'
-        else:
-            borderType = 'dnnBorderExtrapolation'
-        '''
-        # FIXME, current mkl only support this type
         borderType = 'dnnBorderZeros'
 
         if node.inputs[0].type.dtype == "float32":
@@ -637,7 +625,6 @@ class PoolGrad(PoolBase):
         r = tensor.extract_constant(r)
         c = tensor.extract_constant(c)
 
-        # TODO CY, looks like no need to make it float then ceil
         out_r = numpy.ceil(((r + 2 * padding[0] - ds[0])) / (st[0])) + 1
         out_c = numpy.ceil(((c + 2 * padding[1] - ds[1])) / (st[1])) + 1
 
@@ -704,21 +691,14 @@ class PoolGrad(PoolBase):
             algo = "dnnAlgorithmPoolingMax"
         elif 'min' == self.mode:
             algo = 'dnnAlgorithmPoolingMin'
-        elif self.mode.startswith('average'):
+        elif 'average_exc_pad' == self.mode:
             algo = "dnnAlgorithmPoolingAvg"
         else:
-            raise ValueError("mode must be one of 'max', 'min', 'average'")
+            raise ValueError("mode must be one of 'max', 'min', 'average_exc_pad'")
 
-        '''
-        ignore_border = int(self.ignore_border)
-        if self.ignore_border:
-            borderType = 'dnnBorderZeros'
-        else:
-            borderType = 'dnnBorderExtrapolation'
-        '''
         borderType = 'dnnBorderZeros'
 
-        if node.inputs[0].type.dtype == "float32":  # FIXME, remove if it's defined in other place
+        if node.inputs[0].type.dtype == "float32":
             sub['precision'] = 'F32'
             sub['dtype'] = 'float'
         elif node.inputs[0].type.dtype == "float64":

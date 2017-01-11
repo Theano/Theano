@@ -199,6 +199,9 @@ class U2IPool(MKLOp):
         """ % locals()
         return ccode
 
+    def connection_pattern(self, node):
+        return [[1], [0], [0], [0]]
+
 
 class I2U(MKLOp):
     __props__ = ('uniq_id',)
