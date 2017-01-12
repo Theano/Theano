@@ -1620,13 +1620,13 @@ def test_dnn_rnn_gru_bidi():
     cudnn_grad_fns = [cudnn_grad_fn, cudnn2_grad_fn, cudnn3_grad_fn]
 
     x_val = numpy.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
-    y_val = numpy.random.random((timesteps, batch_size, 2*hidden_dim)).astype(theano.config.floatX)
-    h0_val = numpy.random.random((2*depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+    y_val = numpy.random.random((timesteps, batch_size, 2 * hidden_dim)).astype(theano.config.floatX)
+    h0_val = numpy.random.random((2 * depth, batch_size, hidden_dim)).astype(theano.config.floatX)
 
-    cudnn_out = cudnn_fn(x_val, h0_val)
+    cudnn_fn(x_val, h0_val)
 
     for cudnn_grad_fn in cudnn_grad_fns:
-        cudnn_grads = cudnn_grad_fn(x_val, y_val, h0_val)
+        cudnn_grad_fn(x_val, y_val, h0_val)
 
 
 def test_dnn_rnn_lstm():
