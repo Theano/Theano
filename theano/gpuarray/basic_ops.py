@@ -1349,23 +1349,23 @@ class GpuJoin(HideC, Join):
                     %(fail)s
                 }
             }
-        int tensors_lens_sum;
-        if(%(view)s != -1){
-        tensors_lens_sum = 0""" % locals()
 
-        for inp in tensors:
-            code += """ + PyGpuArray_DIM(%(inp)s, axis)""" % locals()
-        code += """;\n
-        tensors_lens_sum -= PyGpuArray_DIM(%(non_empty_tensor)s, axis);
-        }
-        if(%(view)s != -1 && tensors_lens_sum == 0){
-            Py_INCREF(%(non_empty_tensor)s);
-            %(out)s = %(non_empty_tensor)s;
-        }
-        else{
-            %(out)s = pygpu_concatenate(als, %(n)s, axis,
-                                        %(restype)s, (PyObject *)&PyGpuArrayType,
-                                        %(ctx)s);
+            int tensors_lens_sum;
+            if(%(view)s != -1) {
+                tensors_lens_sum = 0;
+                for(int i=0; i < %(n)s; i++){
+                    tensors_lens_sum += als[i]->dimensions[axis];
+                }
+                tensors_lens_sum -= PyGpuArray_DIM(%(non_empty_tensor)s, axis);
+            }
+
+            if(%(view)s != -1 && tensors_lens_sum == 0) {
+                Py_INCREF(%(non_empty_tensor)s);
+                %(out)s = %(non_empty_tensor)s;
+            }else{
+                %(out)s = pygpu_concatenate(als, %(n)s, axis,
+                                            %(restype)s, (PyObject *)&PyGpuArrayType,
+                                            %(ctx)s);
             }
         }
         PyMem_Free(als);
