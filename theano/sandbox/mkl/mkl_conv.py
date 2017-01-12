@@ -16,7 +16,7 @@ from theano.sandbox.mkl import mkl_helper
 class MKLConvBase(gof.Op):
     __props__ = ('imshp', 'kshp', 'border_mode', 'subsample')
 
-    def __init__(self, imshp=None, kshp=None, border_mode="valid", subsample=(1, 1), uniq_id=0):
+    def __init__(self, imshp=None, kshp=None, border_mode="valid", subsample=(1, 1)):
         if (not theano.config.blas.ldflags) or ('mkl' not in theano.config.blas.ldflags):
             raise NotImplementedError("MKL Convolution requires MKL library.")
 
@@ -46,7 +46,6 @@ class MKLConvBase(gof.Op):
         self.subsample = tuple(subsample)
         self.imshp = imshp
         self.kshp = kshp
-        self.uniq_id = uniq_id
 
     def c_libraries(self):
         return ldflags()
@@ -69,7 +68,7 @@ class MKLConvBase(gof.Op):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (1, 0, self.uniq_id)
+        return (1, 0, 1)
 
     def c_support_code(self):
         ccode = mkl_helper.header_text()
@@ -87,7 +86,7 @@ class MKLConvBase(gof.Op):
         """
         return ccode
 
-    def c_support_code_apply(self, node, name):
+    def c_support_code_struct(self, node, name):
         dtype = node.inputs[0].dtype
         assert dtype in ('float32', 'float64')
 
@@ -101,94 +100,197 @@ class MKLConvBase(gof.Op):
         sub['name'] = name
 
         ccode = """
-            static int first_run = 1;
-            static size_t imageSize[dimension] = {0}; //w, h, c, n
-            static size_t imageStride[dimension] = {0};
-            static size_t weightSize[dimension+1] = {0}; //w, h, c, n, group
-            static size_t weightStride[dimension+1] = {0};
-            static size_t zSize[dimension] = {0}; //w, h, c, n
-            static size_t zStride[dimension] = {0};
-            static size_t biasSize[1] = {0}; //w, h, c, n
-            static size_t biasStride[1] = {0};
-            static size_t groups = 1;
-            static size_t fdimension = 0;
+            int first_run;
+            size_t imageSize[dimension]; //w, h, c, n
+            size_t imageStride[dimension];
+            size_t weightSize[dimension+1]; //w, h, c, n, group
+            size_t weightStride[dimension+1];
+            size_t zSize[dimension]; //w, h, c, n
+            size_t zStride[dimension];
+            size_t biasSize[1]; //w, h, c, n
+            size_t biasStride[1];
+            size_t groups;
+            size_t fdimension;
 
             ////////// debug only //////////
-            static size_t _image_size;
-            static size_t _weight_size;
-            static size_t _z_size;
+            size_t _image_size;
+            size_t _weight_size;
+            size_t _z_size;
             ///////////////////////////////
 
-            static size_t convStride[2] = {0};
-            static int convPadding[2] = {0};
+            size_t convStride[2];
+            int convPadding[2];
 
-            static void *conv_res[dnnResourceNumber] = {0};
-            static void *conv_res_bias[dnnResourceNumber] = {0};
+            void *conv_res[dnnResourceNumber];
+            void *conv_res_bias[dnnResourceNumber];
 
-            static void *image_buf = NULL;
-            static void *image_buf_from_previous = NULL;
-            static void *image_buf_to_previous = NULL;
+            void *image_buf;
+            void *image_buf_from_previous;
+            void *image_buf_to_previous;
 
-            static void *z_buf = NULL;
+            void *z_buf;
 
-            static void *weight_buf = NULL;
-            static void *weight_buf_tmp = NULL;
+            void *weight_buf;
+            void *weight_buf_tmp;
 
-            static void *bwdf2fwd_weight_buf = NULL;
-            static void *bias_buf = NULL;
-            static void *bias_buf_tmp = NULL;
+            void *bwdf2fwd_weight_buf;
+            void *bias_buf;
+            void *bias_buf_tmp;
 
-            static void *gradz_buf = NULL;
-            static void *gradz_buf_for_weight = NULL;
-            static void *gradz_buf_for_bias = NULL;
+            void *gradz_buf;
+            void *gradz_buf_for_weight;
+            void *gradz_buf_for_bias;
 
-            static dnnError_t err;
-            static dnnPrimitive_t pConvolutionFwd = NULL;
-            static dnnPrimitive_t pConvolutionBwdData = NULL;
-            static dnnPrimitive_t pConvolutionBwdFilter = NULL;
-            static dnnPrimitive_t pConvolutionBwdBias = NULL;
+            dnnError_t err;
+            dnnPrimitive_t pConvolutionFwd;
+            dnnPrimitive_t pConvolutionBwdData;
+            dnnPrimitive_t pConvolutionBwdFilter;
+            dnnPrimitive_t pConvolutionBwdBias;
 
-            static dnnPrimitive_t bwdf_weight_to_fwd_internal = NULL;
-            static dnnPrimitive_t bwdf_wegith_to_usr = NULL;
-            static dnnPrimitive_t bwdd_weight_to_bwdd_internal = NULL;
+            dnnPrimitive_t bwdf_weight_to_fwd_internal;
+            dnnPrimitive_t bwdf_wegith_to_usr;
+            dnnPrimitive_t bwdd_weight_to_bwdd_internal;
 
-            static dnnLayout_t bwdf_weight_internal_layout = NULL;
-            static dnnLayout_t image_user_layout = NULL;
-            static dnnLayout_t weight_usr_layout = NULL;
-            static dnnLayout_t z_user_layout = NULL;
-            static dnnLayout_t image_internal_layout = NULL;
-            static dnnLayout_t *image_internal_layout_buf = NULL;
-            static dnnLayout_t image_internal_layout_from_previous = NULL;
-            static dnnLayout_t weight_internal_layout = NULL;
-            static dnnLayout_t z_internal_layout = NULL;
-            static dnnLayout_t gradz_internal_layout = NULL;
-            static dnnLayout_t gradz_internal_layout_for_weight = NULL;
-            static dnnLayout_t gradz_internal_layout_for_bias = NULL;
-            static dnnLayout_t fwd_weight_internal_layout = NULL;
+            dnnLayout_t bwdf_weight_internal_layout;
+            dnnLayout_t image_user_layout;
+            dnnLayout_t weight_usr_layout;
+            dnnLayout_t z_user_layout;
+            dnnLayout_t image_internal_layout;
+            dnnLayout_t *image_internal_layout_buf;
+            dnnLayout_t image_internal_layout_from_previous;
+            dnnLayout_t weight_internal_layout;
+            dnnLayout_t z_internal_layout;
+            dnnLayout_t gradz_internal_layout;
+            dnnLayout_t gradz_internal_layout_for_weight;
+            dnnLayout_t gradz_internal_layout_for_bias;
+            dnnLayout_t fwd_weight_internal_layout;
 
-            static dnnLayout_t bias_internal_layout = NULL;
-            static dnnLayout_t bias_usr_layout = NULL;
+            dnnLayout_t bias_internal_layout;
+            dnnLayout_t bias_usr_layout;
 
-            static dnnPrimitive_t image_to_internal = NULL;
-            static dnnPrimitive_t weight_to_internal = NULL;
-            static dnnPrimitive_t z_to_internal = NULL;
-            static dnnPrimitive_t weight_from_internal = NULL;
-            static dnnPrimitive_t image_from_internal = NULL;
-            static dnnPrimitive_t z_from_internal = NULL;
-            static dnnPrimitive_t internal_to_internal_image = NULL;
-            static dnnPrimitive_t internal_to_internal_gradz_for_weight = NULL;
-            static dnnPrimitive_t internal_to_internal_gradz_bias = NULL;
-            static dnnPrimitive_t bias_to_internal = NULL;
-            static dnnPrimitive_t bias_from_internal = NULL;
+            dnnPrimitive_t image_to_internal;
+            dnnPrimitive_t weight_to_internal;
+            dnnPrimitive_t z_to_internal;
+            dnnPrimitive_t weight_from_internal;
+            dnnPrimitive_t image_from_internal;
+            dnnPrimitive_t z_from_internal;
+            dnnPrimitive_t internal_to_internal_image;
+            dnnPrimitive_t internal_to_internal_gradz_for_weight;
+            dnnPrimitive_t internal_to_internal_gradz_bias;
+            dnnPrimitive_t bias_to_internal;
+            dnnPrimitive_t bias_from_internal;
         """ % sub
+        return ccode
+
+    def c_init_code_struct(self, node, name, sub):
+        ccode = """
+            first_run = 1;
+            imageSize[0] = 0; //w, h, c, n
+            imageSize[1] = 0; //w, h, c, n
+            imageSize[2] = 0; //w, h, c, n
+            imageSize[3] = 0; //w, h, c, n
+
+            imageStride[0] = 0;
+            imageStride[1] = 0;
+            imageStride[2] = 0;
+            imageStride[3] = 0;
+
+            weightSize[0] = 0; //w, h, c, n, group
+            weightSize[1] = 0; //w, h, c, n, group
+            weightSize[2] = 0; //w, h, c, n, group
+            weightSize[3] = 0; //w, h, c, n, group
+            weightSize[4] = 0;
+
+            weightStride[0] = 0;
+            weightStride[1] = 0;
+            weightStride[2] = 0;
+            weightStride[3] = 0;
+            weightStride[4] = 0;
+
+            zSize[0] = 0; //w, h, c, n
+            zSize[1] = 0; //w, h, c, n
+            zSize[2] = 0; //w, h, c, n
+            zSize[3] = 0; //w, h, c, n
+
+            zStride[0] = 0;
+            zStride[1] = 0;
+            zStride[2] = 0;
+            zStride[3] = 0;
+
+            biasSize[0] = 0; //w, h, c, n
+            biasStride[0] = 0;
+
+            groups = 1;
+            fdimension = 0;
+
+            convStride[0] = 0;
+            convStride[1] = 0;
+            convPadding[0] = 0;
+            convPadding[1] = 0;
+
+            image_buf = NULL;
+            image_buf_from_previous = NULL;
+            image_buf_to_previous = NULL;
+
+            z_buf = NULL;
+
+            weight_buf = NULL;
+            weight_buf_tmp = NULL;
+
+            bwdf2fwd_weight_buf = NULL;
+            bias_buf = NULL;
+            bias_buf_tmp = NULL;
+
+            gradz_buf = NULL;
+            gradz_buf_for_weight = NULL;
+            gradz_buf_for_bias = NULL;
+
+            pConvolutionFwd = NULL;
+            pConvolutionBwdData = NULL;
+            pConvolutionBwdFilter = NULL;
+            pConvolutionBwdBias = NULL;
+
+            bwdf_weight_to_fwd_internal = NULL;
+            bwdf_wegith_to_usr = NULL;
+            bwdd_weight_to_bwdd_internal = NULL;
+
+            bwdf_weight_internal_layout = NULL;
+            image_user_layout = NULL;
+            weight_usr_layout = NULL;
+            z_user_layout = NULL;
+            image_internal_layout = NULL;
+            image_internal_layout_buf = NULL;
+            image_internal_layout_from_previous = NULL;
+            weight_internal_layout = NULL;
+            z_internal_layout = NULL;
+            gradz_internal_layout = NULL;
+            gradz_internal_layout_for_weight = NULL;
+            gradz_internal_layout_for_bias = NULL;
+            fwd_weight_internal_layout = NULL;
+
+            bias_internal_layout = NULL;
+            bias_usr_layout = NULL;
+
+            image_to_internal = NULL;
+            weight_to_internal = NULL;
+            z_to_internal = NULL;
+            weight_from_internal = NULL;
+            image_from_internal = NULL;
+            z_from_internal = NULL;
+            internal_to_internal_image = NULL;
+            internal_to_internal_gradz_for_weight = NULL;
+            internal_to_internal_gradz_bias = NULL;
+            bias_to_internal = NULL;
+            bias_from_internal = NULL;
+        """
         return ccode
 
 
 class Conv2D(MKLConvBase):
     __props__ = ('imshp', 'kshp', 'border_mode', 'subsample', 'filter_flip', 'filter_dilation')
 
-    def __init__(self, imshp=None, kshp=None, border_mode='valid', subsample=(1, 1), filter_flip=False, filter_dilation=(1, 1), uniq_id=0):
-        super(Conv2D, self).__init__(imshp=imshp, kshp=kshp, border_mode=border_mode, subsample=subsample, uniq_id=uniq_id)
+    def __init__(self, imshp=None, kshp=None, border_mode='valid', subsample=(1, 1), filter_flip=False, filter_dilation=(1, 1)):
+        super(Conv2D, self).__init__(imshp=imshp, kshp=kshp, border_mode=border_mode, subsample=subsample)
         self.filter_flip = filter_flip
         self.filter_dilation = filter_dilation
 
@@ -583,8 +685,8 @@ class Conv2D(MKLConvBase):
 class ConvGradInputs(MKLConvBase):
     __props__ = ('imshp', 'kshp', 'border_mode', 'subsample', 'filter_flip', 'filter_dilation')
 
-    def __init__(self, imshp=None, kshp=None, border_mode='valid', subsample=(1, 1), filter_flip=True, filter_dilation=(1, 1), uniq_id=0):
-        super(ConvGradInputs, self).__init__(imshp=imshp, kshp=kshp, border_mode=border_mode, subsample=subsample, uniq_id=uniq_id)
+    def __init__(self, imshp=None, kshp=None, border_mode='valid', subsample=(1, 1), filter_flip=True, filter_dilation=(1, 1)):
+        super(ConvGradInputs, self).__init__(imshp=imshp, kshp=kshp, border_mode=border_mode, subsample=subsample)
         self.filter_flip = filter_flip
         self.filter_dilation = filter_dilation
 
@@ -847,8 +949,8 @@ class ConvGradInputs(MKLConvBase):
 class ConvGradWeights(MKLConvBase):
     __props__ = ('imshp', 'kshp', 'border_mode', 'subsample', 'filter_flip', 'filter_dilation')
 
-    def __init__(self, imshp=None, kshp=None, border_mode='valid', subsample=(1, 1), filter_flip=False, filter_dilation=(1, 1), uniq_id=0):
-        super(ConvGradWeights, self).__init__(imshp=imshp, kshp=kshp, border_mode=border_mode, subsample=subsample, uniq_id=uniq_id)
+    def __init__(self, imshp=None, kshp=None, border_mode='valid', subsample=(1, 1), filter_flip=False, filter_dilation=(1, 1)):
+        super(ConvGradWeights, self).__init__(imshp=imshp, kshp=kshp, border_mode=border_mode, subsample=subsample)
         self.filter_flip = filter_flip
         self.filter_dilation = filter_dilation
 

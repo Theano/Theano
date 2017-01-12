@@ -9,7 +9,6 @@ from theano.sandbox.mkl.basic_ops import U2IConv, I2U
 from theano.sandbox.mkl.mkl_conv import Conv2D
 
 numpy.random.seed(123)
-uniq_id = 123
 
 if not mkl.mkl_available:
     raise SkipTest('Optional package MKL disabled')
@@ -36,11 +35,9 @@ class test_mkl_conv_forward(unittest.TestCase):
     def test_conv_no_bias(self):
         images = T.ftensor4('inputs')
         weights = T.ftensor4('weights')
-        global uniq_id
-        uniq_id += 1
 
         images_internal = U2IConv(imshp=(12, 3, 256, 256), kshp=(12, 3, 3, 3))(images)
-        convOut_internal = Conv2D(imshp=(12, 3, 256, 256), kshp=(12, 3, 3, 3), filter_flip=False, uniq_id=uniq_id)(images_internal, weights)
+        convOut_internal = Conv2D(imshp=(12, 3, 256, 256), kshp=(12, 3, 3, 3), filter_flip=False)(images_internal, weights)
         convOut_user = I2U()(convOut_internal)
 
         ival = numpy.random.rand(12, 3, 256, 256).astype(numpy.float32)
@@ -61,7 +58,7 @@ class test_mkl_conv_forward(unittest.TestCase):
         bias = T.vector('bias')
 
         images_internal = U2IConv(imshp=(12, 3, 256, 256), kshp=(12, 3, 3, 3))(images)
-        convOutBias_internal = Conv2D(imshp=(12, 3, 256, 256), kshp=(12, 3, 3, 3), filter_flip=False, uniq_id=uniq_id)(images_internal, weights, bias)
+        convOutBias_internal = Conv2D(imshp=(12, 3, 256, 256), kshp=(12, 3, 3, 3), filter_flip=False)(images_internal, weights, bias)
         convOutBias_user = I2U()(convOutBias_internal)
 
         ival = numpy.random.rand(12, 3, 256, 256).astype(numpy.float32)

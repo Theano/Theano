@@ -1,7 +1,6 @@
 from theano.gof import Apply
 from theano.tensor import as_tensor_variable, TensorType
 from theano.tensor.basic import Join
-from theano.tensor.blas import ldflags
 from theano.sandbox.mkl import mkl_helper, basic_ops
 
 
@@ -11,9 +10,8 @@ class ElemwiseSum(basic_ops.MKLOp, Join):
     """
     __props__ = ('inp_num', 'coeff')
 
-    def __init__(self, inp_num=1, coeff=[1.0, ], uniq_id=0):
+    def __init__(self, inp_num=1, coeff=[1.0, ]):
         super(ElemwiseSum, self).__init__()
-        self.uniq_id = uniq_id
         self.inp_num = inp_num
         self.coeff = coeff
         assert isinstance(self.coeff, list)
@@ -40,42 +38,52 @@ class ElemwiseSum(basic_ops.MKLOp, Join):
 
     def grad(self, inp, grads):
         gz, = grads
-        return ElemwiseSumGrad(inp_num=self.inp_num, coeff=self.coeff, uniq_id=self.uniq_id)(gz, inp)
+        return ElemwiseSumGrad(inp_num=self.inp_num, coeff=self.coeff)(gz, inp)
 
     def c_code_cache_version(self):
-        return (1, 0, hash(self.uniq_id))
-
-    def c_headers(self):
-        return super(ElemwiseSum, self).c_headers()
-
-    def c_lib_dirs(self):
-        return ldflags(libs=False, libs_dir=True)
-
-    def c_libraries(self):
-        return ldflags()
-
-    def c_compile_args(self):
-        compile_args = ldflags(libs=False, flags=True)
-        compile_args += super(ElemwiseSum, self).c_compile_args()
-        return compile_args
+        return (1, 0, 1)
 
     def c_support_code(self):
         final_code = mkl_helper.header_text()
         final_code += """
-              // #define _DEBUG_
-               static dnnPrimitive_t pSum = NULL;
-               static void* internal_ptr = NULL;
-               static void** internal_x_ptr = NULL;
-               static dnnLayout_t out_layer = NULL;
-               static void *eltwise_res[dnnResourceNumber];
-               static dnnLayout_t* layerout_int = NULL;
-               static dnnPrimitive_t*convert_int2int_bottom = NULL;
-                    """
+        #define DIMENSION 4
+        #define CHECK_ERR(f, err) \\
+                do { \\
+                    (err) = (f); \\
+                    if ((err) != E_SUCCESS) { \\
+                        printf("Error in file [%s:%d], err code (%d)", \\
+                                __FILE__, __LINE__, err); \\
+                        exit(1); \\
+                    } \\
+                } while(0)
+        """
         return final_code
+
+    def c_support_code_struct(self, node, name):
+        support_code = """
+        dnnPrimitive_t pSum;
+        void* internal_ptr;
+        void** internal_x_ptr;
+        dnnLayout_t out_layer;
+        void *eltwise_res[dnnResourceNumber];
+        dnnLayout_t* layerout_int;
+        dnnPrimitive_t* convert_int2int_bottom;
+        """
+        return support_code
+
+    def c_init_code_struct(self, node, name, sub):
+        init_code = """
+        pSum = NULL;
+        internal_ptr = NULL;
+        internal_x_ptr = NULL;
+        out_layer = NULL;
+        layerout_int = NULL;
+        convert_int2int_bottom = NULL;
+        """
+        return init_code
 
     def c_cleanup_code_struct(self, node, name):
         sub = {}
-        sub['uid'] = self.uniq_id
         sub['L'] = len(node.inputs)
         if 'float32' == node.inputs[1].type.dtype:
             sub['type'] = "float"
@@ -324,8 +332,7 @@ class ElemwiseSumGrad(basic_ops.MKLOp):
     """
     __props__ = ('inp_num', 'coeff')
 
-    def __init__(self, inp_num=1, coeff=[1.0, ], uniq_id=0):
-        self.uniq_id = uniq_id
+    def __init__(self, inp_num=1, coeff=[1.0, ]):
         self.inp_num = inp_num
         self.coeff = coeff
         assert isinstance(coeff, list)
@@ -346,32 +353,46 @@ class ElemwiseSumGrad(basic_ops.MKLOp):
         return Apply(self, [gz] + list(map(agv, *tensors)), list(map(ago, *tensors)))
 
     def c_code_cache_version(self):
-        return (1, 0, hash(self.uniq_id))
-
-    def c_headers(self):
-        return super(ElemwiseSumGrad, self).c_headers()
-
-    def c_lib_dirs(self):
-        return ldflags()
-
-    def c_compile_args(self):
-        compile_args = ldflags(libs=False, flags=True)
-        compile_args += super(ElemwiseSumGrad, self).c_compile_args()
-        return compile_args
+        return (1, 0, 1)
 
     def c_support_code(self):
         final_code = mkl_helper.header_text()
+        final_code += """
+        #define DIMENSION 4
+        #define CHECK_ERR(f, err) \\
+                do { \\
+                    (err) = (f); \\
+                    if ((err) != E_SUCCESS) { \\
+                        printf("Error in file [%s:%d], err code (%d)", \\
+                                __FILE__, __LINE__, err); \\
+                        exit(1); \\
+                    } \\
+                } while(0)
+        """
         final_code += """
             static void** internal_ptr = NULL;
             static dnnPrimitive_t* convert_int2int_top = NULL;
             """
         return final_code
 
+    def c_support_code_struct(self, node, name):
+        support_code = """
+        void** internal_ptr;
+        dnnPrimitive_t* convert_int2int_top;
+        """
+        return support_code
+
+    def c_init_code_struct(self, node, name, sub):
+        init_code = """
+        internal_ptr = NULL;
+        convert_int2int_top = NULL;
+        """
+        return init_code
+
     def c_cleanup_code_struct(self, node, name):
         L = len(node.outputs)
         d = {}
         d['L'] = L
-        d['uid'] = self.uniq_id
         if 'float32' == node.inputs[-1].type.dtype:
             d['type'] = 'float'
             d['precision'] = 'F32'
@@ -424,7 +445,6 @@ class ElemwiseSumGrad(basic_ops.MKLOp):
         L = len(tensors)
         sub['gz'] = gz
         sub['L'] = L
-        sub['uniq_id'] = self.uniq_id
         sub['x'] = tensors[0]
         if 'float32' == node.inputs[1].type.dtype:
             sub['type'] = 'float'
