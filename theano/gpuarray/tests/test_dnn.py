@@ -63,7 +63,6 @@ def test_dnn_conv_merge():
     out = T.tensor4('out')
     desc = dnn.GpuDnnConvDesc()(kern.shape, border_mode='valid')
 
-
     # Test forward op
     o1 = dnn.dnn_conv(img, kern)
     o2 = dnn.dnn_conv(img, kern)
@@ -641,7 +640,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         kerns_vals = numpy.zeros(kerns_shape, dtype=theano.config.floatX)
         kerns_shape = theano.shared(numpy.asarray(kerns_shape))
         desc = dnn.GpuDnnConvDesc()(
-            out.shape,
+            kerns_shape,
             border_mode=border_mode,
             subsample=subsample,
             conv_mode=conv_mode
@@ -942,18 +941,18 @@ def test_dnn_conv_grad():
 
     def dconv(img, kern, out):
         desc = dnn.GpuDnnConvDesc()(kern.shape, border_mode='valid', subsample=(1, 1),
-                                  conv_mode='conv', precision=set_precision(theano.config.floatX))
+                                    conv_mode='conv', precision=set_precision(theano.config.floatX))
         return dnn.GpuDnnConv()(img, kern, out, desc, alpha=0.5, beta=0.75)
 
     def dconvi(img, kern, out):
         desc = dnn.GpuDnnConvDesc()(kern.shape, border_mode='valid', subsample=(1, 1),
-                                  conv_mode='conv', precision=set_precision(theano.config.floatX))
+                                    conv_mode='conv', precision=set_precision(theano.config.floatX))
         return dnn.GpuDnnConvGradI()(kern, out, img, desc, alpha=-1.0,
                                      beta=0.0)
 
     def dconvw(img, kern, out):
         desc = dnn.GpuDnnConvDesc()(kern.shape, border_mode='valid', subsample=(1, 1),
-                                  conv_mode='conv', precision=set_precision(theano.config.floatX))
+                                    conv_mode='conv', precision=set_precision(theano.config.floatX))
         return dnn.GpuDnnConvGradW()(img, out, kern, desc, alpha=0.75,
                                      beta=-1.0)
 

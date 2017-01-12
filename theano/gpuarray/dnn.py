@@ -73,6 +73,7 @@ def _dnn_lib():
         cudnn.cudnnDestroy.restype = ctypes.c_int
     return _dnn_lib.handle
 
+
 _dnn_lib.handle = None
 
 
@@ -170,6 +171,7 @@ def dnn_present():
 
     return dnn_present.avail
 
+
 dnn_present.avail = None
 dnn_present.msg = None
 
@@ -190,8 +192,8 @@ def dnn_available(context_name):
     if ctx.bin_id[-2:] < b'30':
         dnn_available.msg = "Device not supported"
         return False
-
     return True
+
 
 dnn_available.msg = None
 
@@ -324,6 +326,8 @@ def version(raises=True):
                                "while the library is version %s." % v)
         version.v = v[1]
     return version.v
+
+
 version.v = None
 
 
@@ -435,6 +439,7 @@ def gpu_dnn_conv_desc():
     if 0 not in gpu_dnn_conv_desc.cache:
         gpu_dnn_conv_desc.cache[0] = GpuDnnConvDesc()
     return gpu_dnn_conv_desc.cache[0]
+
 
 gpu_dnn_conv_desc.cache = {}
 
@@ -616,6 +621,8 @@ def gpu_dnn_conv(algo=None, inplace=False):
     if key not in gpu_dnn_conv.cache:
         gpu_dnn_conv.cache[key] = GpuDnnConv(algo, inplace)
     return gpu_dnn_conv.cache[key]
+
+
 gpu_dnn_conv.cache = {}
 
 
@@ -743,6 +750,8 @@ def gpu_dnn_conv_gradW(algo=None, inplace=False):
     if key not in gpu_dnn_conv_gradW.cache:
         gpu_dnn_conv_gradW.cache[key] = GpuDnnConvGradW(inplace, algo)
     return gpu_dnn_conv_gradW.cache[key]
+
+
 gpu_dnn_conv_gradW.cache = {}
 
 
@@ -873,6 +882,8 @@ def gpu_dnn_conv_gradI(algo=None, inplace=False):
     if key not in gpu_dnn_conv_gradI.cache:
         gpu_dnn_conv_gradI.cache[key] = GpuDnnConvGradI(inplace, algo)
     return gpu_dnn_conv_gradI.cache[key]
+
+
 gpu_dnn_conv_gradI.cache = {}
 
 
@@ -1776,6 +1787,7 @@ class GpuDnnBatchNormGrad(DnnBase):
     def infer_shape(self, node, shape):
         return [shape[0], shape[2], shape[2]]
 
+
 gpudata_type = CDataType('gpudata *', 'gpudata_release')
 dropoutdesc_type = CDataType('cudnnDropoutDescriptor_t',
                              'cudnnDestroyDropoutDescriptor')
@@ -1845,6 +1857,7 @@ def dropout(x, dropout=0.0, seed=4242):
     desc, states = _make_dropout_desc(dropout, seed, x.type.context_name)
     y, odesc = GpuDnnDropoutOp()(x, desc)
     return y, desc, odesc, states
+
 
 rnndesc_type = CDataType('cudnnRNNDescriptor_t',
                          'cudnnDestroyRNNDescriptor')
@@ -2660,6 +2673,7 @@ def local_dnn_convgw_inplace(node, inputs):
 def local_dnn_convgi_inplace(node, inputs):
     return [gpu_dnn_conv_gradI(algo=node.op.algo, inplace=True)(*inputs)]
 
+
 optdb.register('local_dnna_conv_inplace',
                tensor.opt.in2out(local_dnn_conv_inplace,
                                  local_dnn_convgw_inplace,
@@ -2726,6 +2740,8 @@ def local_gpua_pool_dnn_alternative(op, ctx_name, inputs, outputs):
         img_padded = pad_dims(img, 2, nd)
         ret_padded = dnn_pool(img_padded, ws, stride=stride, pad=pad, mode=mode)
         return unpad_dims(ret_padded, img, 2, nd)
+
+
 pool_db.register("local_gpua_pool_dnn_alternative",
                  op_lifter([Pool])(local_gpua_pool_dnn_alternative),
                  'gpuarray', 'fast_compile', 'fast_run', 'cudnn',
@@ -2770,6 +2786,8 @@ def local_gpua_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
                                                stride,
                                                pad)
         return unpad_dims(ret_padded, inp, 2, nd)
+
+
 pool_db.register("local_gpua_pool_dnn_grad_stride",
                  op_lifter([MaxPoolGrad])(local_gpua_pool_dnn_grad_stride),
                  'gpuarray', 'fast_compile', 'fast_run', 'cudnn',
@@ -2810,6 +2828,8 @@ def local_gpua_avg_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
                                                stride,
                                                pad)
         return unpad_dims(ret_padded, inp, 2, nd)
+
+
 pool_db.register("local_gpua_avg_pool_dnn_grad_stride",
                  op_lifter([AveragePoolGrad])(local_gpua_avg_pool_dnn_grad_stride),
                  'gpuarray', 'fast_compile', 'fast_run', 'cudnn',
@@ -2885,6 +2905,7 @@ class NoCuDNNRaise(Optimizer):
                     "cuDNN optimization was enabled, but Theano was not able "
                     "to use it for context " + str(c) + ". We got this error: \n" +
                     dnn_available.msg)
+
 
 gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
 
