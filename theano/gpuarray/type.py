@@ -476,9 +476,8 @@ class GpuArrayType(Type):
         return ['gpuarray']
 
     def c_code_cache_version(self):
-        ver = pygpu.gpuarray.api_version()
-        # we only use the major version since the minor revision are
-        # API-compatible.
+        ver = pygpu.gpuarray.abi_version()
+        # we only use the major version since the minor revision are compatible.
         return (2, ver[0])
 
 
