@@ -10,29 +10,23 @@ from theano.tests import unittest_tools as utt
 from theano.sandbox.mkl.mkl_relu import Relu
 from theano.sandbox.mkl.basic_ops import (U2IRelu, I2U)
 
-uniq_id = 0
-
 
 class TestMKLRelu(unittest.TestCase):
-
     def mkl_relu_func(*inputs):
-        global uniq_id
-        uniq_id += 1
-
         if len(inputs) == 2:
             # self, image
             _, x, = inputs
 
-            x_internal = U2IRelu(uniq_id=uniq_id)(x)
-            reluOut = Relu(uniq_id=uniq_id)(x_internal)
-            output = I2U(uniq_id=uniq_id)(reluOut)
+            x_internal = U2IRelu()(x)
+            reluOut = Relu()(x_internal)
+            output = I2U()(reluOut)
         elif len(inputs) == 3:
             # self, image, slope
             _, x, slope, = inputs
 
-            x_internal = U2IRelu(slope=slope, uniq_id=uniq_id)(x)
-            reluOut = Relu(slope=slope, uniq_id=uniq_id)(x_internal)
-            output = I2U(uniq_id=uniq_id)(reluOut)
+            x_internal = U2IRelu(slope=slope)(x)
+            reluOut = Relu(slope=slope)(x_internal)
+            output = I2U()(reluOut)
         else:
             raise ValueError("incorrect inputs list, should be 2 ~ 3 parameters!")
 
@@ -118,4 +112,4 @@ class TestMKLRelu(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    test_relu()
+    unittest.main()

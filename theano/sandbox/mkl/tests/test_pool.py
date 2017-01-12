@@ -15,25 +15,22 @@ from theano.sandbox.mkl.mkl_pool import Pool
 from theano.sandbox.mkl.basic_ops import (U2IPool, I2U)
 
 
-uniq_id = 0
-
-
 class TestMKLPool(unittest.TestCase):
 
     @staticmethod
-    def numpy_max_pool_2d(input, ds, ignore_border=False, mode='max'):
+    def numpy_pool_2d(input, ds, ignore_border=False, mode='max'):
         '''Helper function, implementing pool_2d in pure numpy'''
         if len(input.shape) < 2:
             raise NotImplementedError('input should have at least 2 dim,'
                                       ' shape is %s'
                                       % str(input.shape))
-        # using Intel-Caffe style to calculate the output shape
         in_h = input.shape[-2]
         in_w = input.shape[-1]
         kernel_h = stride_h = ds[0]
         kernel_w = stride_w = ds[1]
         pad_h = pad_w = 0
 
+        # using Intel MKL style to calculate the output shape
         out_h = int(math.ceil((float)(in_h + 2 * pad_h - kernel_h) / stride_h)) + 1
         out_w = int(math.ceil((float)(in_w + 2 * pad_w - kernel_w) / stride_w)) + 1
 
@@ -57,8 +54,8 @@ class TestMKLPool(unittest.TestCase):
         return output_val
 
     @staticmethod
-    def numpy_max_pool_2d_stride(input, ds, ignore_border=False, st=None,
-                                 mode='max'):
+    def numpy_pool_2d_stride(input, ds, ignore_border=False, st=None,
+                             mode='max'):
         '''Helper function, implementing pool_2d in pure numpy
            this function provides st input to indicate the stide size
            for the pooling regions. if not indicated, st == sd.'''
@@ -70,7 +67,6 @@ class TestMKLPool(unittest.TestCase):
         if st is None:
             st = ds
 
-        # using Intel-Caffe style to calculate the output shape
         in_h = input.shape[-2]
         in_w = input.shape[-1]
         kernel_h = ds[0]
@@ -79,6 +75,7 @@ class TestMKLPool(unittest.TestCase):
         stride_w = st[1]
         pad_h = pad_w = 0
 
+        # using Intel MKL style to calculate the output shape
         out_h = int(math.ceil((float)(in_h + 2 * pad_h - kernel_h) / stride_h)) + 1
         out_w = int(math.ceil((float)(in_w + 2 * pad_w - kernel_w) / stride_w)) + 1
 
@@ -114,7 +111,7 @@ class TestMKLPool(unittest.TestCase):
         return output_val
 
     @staticmethod
-    def numpy_max_pool_2d_stride_padding(
+    def numpy_pool_2d_stride_padding(
             x, ds, ignore_border=True, st=None, padding=(0, 0), mode='max'):
         assert ignore_border
 
@@ -142,6 +139,7 @@ class TestMKLPool(unittest.TestCase):
         h = in_h + 2 * pad_h
         w = in_w + 2 * pad_w
 
+        # using Intel MKL style to calculate the output shape
         out_h = int(math.ceil((float)(h - kernel_h) / stride_h)) + 1
         out_w = int(math.ceil((float)(w - kernel_w) / stride_w)) + 1
 
@@ -182,33 +180,30 @@ class TestMKLPool(unittest.TestCase):
         return output_val
 
     def mkl_pool_func(*inputs):
-        global uniq_id
-        uniq_id += 1
-
         if len(inputs) == 5:
             # self, images, ignore_border, mode, ds
             _, images, ignore_border, mode, ds, = inputs
-            x_internal = U2IPool(ignore_border=ignore_border, mode=mode,
-                                 uniq_id=uniq_id)(images, ds)
-            poolOut = Pool(ignore_border=ignore_border, mode=mode,
-                           uniq_id=uniq_id)(x_internal, ds)
-            output = I2U(uniq_id=uniq_id)(poolOut)
+            x_internal = U2IPool(ignore_border=ignore_border,
+                                 mode=mode)(images, ds)
+            poolOut = Pool(ignore_border=ignore_border,
+                           mode=mode)(x_internal, ds)
+            output = I2U()(poolOut)
         elif len(inputs) == 6:
             # self, images, ignore_border, mode, ds, st,
             _, images, ignore_border, mode, ds, st, = inputs
-            x_internal = U2IPool(ignore_border=ignore_border, mode=mode,
-                                 uniq_id=uniq_id)(images, ds, st)
-            poolOut = Pool(ignore_border=ignore_border, mode=mode,
-                           uniq_id=uniq_id)(x_internal, ds, st)
-            output = I2U(uniq_id=uniq_id)(poolOut)
+            x_internal = U2IPool(ignore_border=ignore_border,
+                                 mode=mode)(images, ds, st)
+            poolOut = Pool(ignore_border=ignore_border,
+                           mode=mode)(x_internal, ds, st)
+            output = I2U()(poolOut)
         elif len(inputs) == 7:
             # self, images, ignore_border, mode, ds, st, pad
             _, images, ignore_border, mode, ds, st, pad = inputs
-            x_internal = U2IPool(ignore_border=ignore_border, mode=mode,
-                                 uniq_id=uniq_id)(images, ds, st, pad)
-            poolOut = Pool(ignore_border=ignore_border, mode=mode,
-                           uniq_id=uniq_id)(x_internal, ds, st, pad)
-            output = I2U(uniq_id=uniq_id)(poolOut)
+            x_internal = U2IPool(ignore_border=ignore_border,
+                                 mode=mode)(images, ds, st, pad)
+            poolOut = Pool(ignore_border=ignore_border,
+                           mode=mode)(x_internal, ds, st, pad)
+            output = I2U()(poolOut)
         else:
             raise ValueError("incorrect inputs list, should be 4 ~ 6 parameters!")
 
@@ -226,9 +221,9 @@ class TestMKLPool(unittest.TestCase):
                                                ['max',
                                                 'average_exc_pad']):
             # Pure Numpy computation
-            numpy_output_val = self.numpy_max_pool_2d(imval, ds,
-                                                      ignore_border,
-                                                      mode=mode)
+            numpy_output_val = self.numpy_pool_2d(imval, ds,
+                                                  ignore_border,
+                                                  mode=mode)
 
             # MKL Ops
             output = self.mkl_pool_func(images, ignore_border, mode, ds)
@@ -251,8 +246,8 @@ class TestMKLPool(unittest.TestCase):
                                                    ['max',
                                                     'average_exc_pad']):
             # Pure Numpy computation
-            numpy_output_val = self.numpy_max_pool_2d_stride(imval, ds,
-                                                             ignore_border, st, mode)
+            numpy_output_val = self.numpy_pool_2d_stride(imval, ds,
+                                                         ignore_border, st, mode)
 
             # MKL Ops
             output = self.mkl_pool_func(images, ignore_border, mode, ds, st)
@@ -285,9 +280,9 @@ class TestMKLPool(unittest.TestCase):
             pad = pad_list[idx]
 
             # Pure Numpy computation
-            numpy_output_val = self.numpy_max_pool_2d_stride_padding(imval, ds,
-                                                                     ignore_border, st,
-                                                                     pad, mode)
+            numpy_output_val = self.numpy_pool_2d_stride_padding(imval, ds,
+                                                                 ignore_border, st,
+                                                                 pad, mode)
 
             # MKL Ops
             output = self.mkl_pool_func(images, ignore_border, mode, ds, st, pad)

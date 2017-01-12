@@ -26,12 +26,12 @@ class test_mkl_elemwise(unittest.TestCase):
         b = theano.tensor.ftensor4('b')
         c = theano.tensor.ftensor4('c')
 
-        a_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0], uniq_id=1)(a)
-        b_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0], uniq_id=2)(b)
-        c_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0], uniq_id=3)(c)
+        a_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])(a)
+        b_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])(b)
+        c_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])(c)
 
         z_internal = mkl_elemwise.ElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0], uniq_id=4)(a_internal, b_internal, c_internal)
-        z = basic_ops.I2U(uniq_id=5)(z_internal)
+        z = basic_ops.I2U()(z_internal)
         f = theano.function([a, b, c], z)
 
         ival0 = numpy.random.rand(4, 4, 4, 4).astype(numpy.float32)
@@ -41,8 +41,8 @@ class test_mkl_elemwise(unittest.TestCase):
     
     def test_elemwise_U2I(self):
         a = theano.tensor.ftensor4('a')
-        a_internal = basic_ops.U2IElemwiseSum(inp_num=1, coeff=[1.0, ], uniq_id=1)(a)
-        a_out = basic_ops.I2U(uniq_id=2)(a_internal)
+        a_internal = basic_ops.U2IElemwiseSum(inp_num=1, coeff=[1.0, ])(a)
+        a_out = basic_ops.I2U()(a_internal)
         f = theano.function([a], a_out)
         ival = numpy.random.rand(4, 4, 4, 4).astype(numpy.float32)
         assert numpy.allclose(f(ival), ival)
@@ -50,7 +50,7 @@ class test_mkl_elemwise(unittest.TestCase):
     def test_elemwise_wrong_dim(self):
         a = theano.tensor.fmatrix('a')
         try:
-            basic_ops.U2IElemwiseSum(inp_num=1, coeff=[1.0, ], uniq_id=1)(a)
+            basic_ops.U2IElemwiseSum(inp_num=1, coeff=[1.0, ])(a)
             raise Exception('No Exception when ndim is 2.')
         except TypeError:
             pass

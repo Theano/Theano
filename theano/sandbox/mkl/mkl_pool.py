@@ -5,9 +5,9 @@ import numpy
 import theano
 from theano.tensor.blas import ldflags
 from theano import tensor, Apply
-from theano.sandbox.mkl import mkl_helper
 from theano.gradient import DisconnectedType
 from theano.sandbox.mkl.basic_ops import MKLOp
+from theano.sandbox.mkl.mkl_helper import header_text
 
 
 class PoolBase(MKLOp):
@@ -44,9 +44,24 @@ class PoolBase(MKLOp):
         return headers
 
     def c_support_code(self):
-        return mkl_helper.header_text()
+        ccode = header_text()
+        ccode += """
+        #define _MKL_DEBUG_ 0
+        #define USER_LAYOUT 0
+        #define DIMENSION (4)
+        #define CHECK_ERR(f, err) \\
+            do { \\
+                (err) = (f); \\
+                if ((err) != E_SUCCESS) { \\
+                    printf("Error in file [%s:%d], err code (%d)", \\
+                           __FILE__, __LINE__, err); \\
+                    exit(1); \\
+                } \\
+            } while(0)
+        """
+        return ccode
 
-    def c_support_code_apply(self, node, name):
+    def c_support_code_struct(self, node, name):
         dtype = str(node.__dict__['inputs'][0].dtype)
         assert dtype in ('float32', 'float64')
 
@@ -60,80 +75,60 @@ class PoolBase(MKLOp):
         sub['name'] = name
 
         ccode = """
-            #define __DEBUG__ 0
-            #define USER_LAYOUT 0
-            #define DIMENSION (4)
-            #define CHECK_ERR(f, err) \\
-                do { \\
-                    (err) = (f); \\
-                    if ((err) != E_SUCCESS) { \\
-                        printf("Error in file [%s:%d], err code (%d)", \\
-                               __FILE__, __LINE__, err); \\
-                        exit(1); \\
-                    } \\
-                } while(0)
-            """
+        int first_run;
+        size_t inputSize[DIMENSION] = {0};
+        size_t inputStrides[DIMENSION] = {0};
+        size_t outputSize[DIMENSION] = {0};
+        size_t outputStrides[DIMENSION] = {0};
+        size_t kernelSize[2] = {0};
+        size_t kernelStride[2] = {0};
+        int inputOffset[2] = {0};
 
-        ccode += """
-            static int first_run = 1;
-            static size_t inputSize[DIMENSION] = {0};
-            static size_t inputStrides[DIMENSION] = {0};
-            static size_t outputSize[DIMENSION] = {0};
-            static size_t outputStrides[DIMENSION] = {0};
-            static size_t kernelSize[2] = {0};
-            static size_t kernelStride[2] = {0};
-            static int inputOffset[2] = {0};
+        void *input_buffer_ptr = NULL;
+        void *input_buffer_ptr_from_previous = NULL;
+        void *input_buffer_ptr_to_previous = NULL;
+        void *output_buffer_ptr = NULL;
+        void *gz_buffer_ptr = NULL;
+        void *gz_buffer_tmp_ptr = NULL;
+        void *workspace_buffer_ptr = NULL;
 
-            static void *input_buffer_ptr = NULL;
-            static void *input_buffer_ptr_from_previous = NULL;
-            static void *input_buffer_ptr_to_previous = NULL;
-            static void *output_buffer_ptr = NULL;
-            static void *gz_buffer_ptr = NULL;
-            static void *gz_buffer_tmp_ptr = NULL;
-            static void *workspace_buffer_ptr = NULL;
+        dnnError_t err;
+        dnnPrimitive_t pPoolingFwd = NULL;
+        dnnPrimitive_t pPoolingBwd = NULL;
+        void *pool_res[dnnResourceNumber] = {0};
+        int input_buffer_size = 0;
 
-            static dnnError_t err;
-            static dnnPrimitive_t pPoolingFwd = NULL;
-            static dnnPrimitive_t pPoolingBwd = NULL;
-            static void *pool_res[dnnResourceNumber] = {0};
-            static int input_buffer_size = 0;
+        /////////////// only for debug usage ////////////////////
+        size_t input_bytes;
+        size_t output_bytes;
+        size_t workspace_bytes;
+        ////////////////////////////////////////////////////////
 
-            /////////////// only for debug usage ////////////////////
-            size_t input_bytes;
-            size_t output_bytes;
-            size_t workspace_bytes;
-            ////////////////////////////////////////////////////////
+        ////FIXME, remove below definition if it's handled in conversion Op
+        dnnLayout_t int_layout_input = NULL;
+        dnnLayout_t *int_layout_input_ptr = NULL;
+        dnnLayout_t int_layout_input_from_previous = NULL;
+        dnnLayout_t int_layout_output = NULL;
+        dnnLayout_t gz_int_layout_from_other = NULL;
+        dnnLayout_t gz_int_layout = NULL;
+        dnnLayout_t int_layout_workspace = NULL;
+        dnnLayout_t *int_layout_workspace_p = NULL;
+        dnnPrimitive_t cvt_gz_to_int = NULL;
+        dnnPrimitive_t convert_int2int_input = NULL;
 
-            ////FIXME, remove below definition if it's handled in conversion Op
-            static dnnLayout_t usr_layout_input = NULL;
-            static dnnLayout_t usr_layout_output = NULL;
-            static dnnLayout_t int_layout_input = NULL;
-            static dnnLayout_t *int_layout_input_ptr = NULL;
-            static dnnLayout_t int_layout_input_from_previous = NULL;
-            static dnnLayout_t int_layout_output = NULL;
-            static dnnLayout_t gz_int_layout_from_other = NULL;
-            static dnnLayout_t gz_int_layout = NULL;
-            static dnnLayout_t int_layout_workspace = NULL;
-            static dnnLayout_t *int_layout_workspace_p = NULL;
-            static dnnPrimitive_t cvt_to_int_input = NULL;
-            static dnnPrimitive_t cvt_gz_to_int = NULL;
-            static dnnPrimitive_t cvt_from_int_input = NULL;
-            static dnnPrimitive_t cvt_from_int_output = NULL;
-            static dnnPrimitive_t convert_int2int_input = NULL;
-
-            static void *workspace_ptr_ptr[2];
-            static void *workspace_ptr = NULL;
-            ////END
+        void *workspace_ptr_ptr[2];
+        void *workspace_ptr = NULL;
+        ////END
         """ % sub
         return ccode
 
-    '''
-    def c_support_code_struct(self, node, name):
+    def c_init_code_struct(self, node, name, sub):
         ccode = """
+        first_run = 1;
         """
         return ccode
-    '''
 
+    '''
     def c_cleanup_code_struct(self, node, name):
         if node.inputs[0].type.dtype == "float32":
             precision = "F32"
@@ -141,17 +136,13 @@ class PoolBase(MKLOp):
             precision = "F64"
 
         ccode = """
-            //dnnDelete_%(precision)s(cvt_to_int_input);
-            //dnnDelete_%(precision)s(cvt_gz_to_int);
-            //dnnDelete_%(precision)s(cvt_from_int_input);
-            //dnnDelete_%(precision)s(cvt_from_int_output);
-            //dnnLayoutDelete_%(precision)s(usr_layout_input);
-            //dnnLayoutDelete_%(precision)s(usr_layout_output);
-            //dnnLayoutDelete_%(precision)s(int_layout_input);
-            //dnnLayoutDelete_%(precision)s(int_layout_output);
-            //dnnLayoutDelete_%(precision)s(int_layout_workspace);
+        dnnDelete_%(precision)s(cvt_gz_to_int);
+        dnnLayoutDelete_%(precision)s(int_layout_input);
+        dnnLayoutDelete_%(precision)s(int_layout_output);
+        dnnLayoutDelete_%(precision)s(int_layout_workspace);
         """ % locals()
         return ccode
+    '''
 
     def connection_pattern(self, node):
         return [[1], [0], [0], [0]]
@@ -186,35 +177,7 @@ class Pool(PoolBase):
         'average_exc_pad' include it)
 
     """
-    __props__ = ('ignore_border', 'mode', 'uniq_id')
-
-    def __init__(self, ignore_border=True, mode='max', uniq_id=0):
-        super(Pool, self).__init__(ignore_border, mode)
-        self.uniq_id = uniq_id
-
-    def __eq__(self, other):
-        if hasattr(self, '__props__'):
-            if type(self) != type(other):
-                return False
-            else:
-                self_props = [getattr(self, p) for p in self.__props__ if p != 'uniq_id']
-                other_props = [getattr(other, p) for p in other.__props__ if p != 'uniq_id']
-                if self_props == other_props:
-                    return True
-                else:
-                    return False
-        else:
-            return NotImplemented
-
-    def __hash__(self):
-        return hash(self.ignore_border) ^ hash(self.mode)
-
-    def __str__(self):
-        if hasattr(self, '__props__'):
-            return '%s{%s}' % (self.__class__.__name__,
-                               ', '.join('%s=%r' % (p, getattr(self, p)) for p in self.__props__))
-        else:
-            return '%s' % (self.__class__.__name__)
+    __props__ = ('ignore_border', 'mode')
 
     @staticmethod
     def out_shape(imgshape, ds, ignore_border=False, st=None, padding=(0, 0)):
@@ -323,8 +286,7 @@ class Pool(PoolBase):
         disc = [DisconnectedType()() for i in inp[1:]]
 
         return [PoolGrad(ignore_border=self.ignore_border,
-                         mode=self.mode,
-                         uniq_id=self.uniq_id)(x, gz, ws, stride, pad)] + disc
+                         mode=self.mode)(x, gz, ws, stride, pad)] + disc
 
     def c_code(self, node, name, inp, out, sub):
         x, ws, stride, pad = inp
@@ -354,7 +316,7 @@ class Pool(PoolBase):
         sub.update(locals())
 
         ccode = """
-        #if __DEBUG__
+        #if _MKL_DEBUG_
         std::cout<<"pool start"<<std::endl;
         #endif
             ((void **)PyArray_DATA(%(x)s))[2] = (void*)workspace_ptr_ptr;
@@ -411,7 +373,7 @@ class Pool(PoolBase):
             outputStrides[2] = outputSize[0] * outputSize[1];
             outputStrides[3] = outputSize[0] * outputSize[1] * outputSize[2];
         }
-        #if __DEBUG__
+        #if _MKL_DEBUG_
             std::cout << "inputSize: " << inputSize[3] << "x" << inputSize[2] << "x" << inputSize[1] << "x" << inputSize[0] << std::endl;
             std::cout << "outputSize: " << outputSize[3] << "x" << outputSize[2] << "x" << outputSize[1] << "x" << outputSize[0] << std::endl;
             std::cout << "pooling region: " << kernelSize[0] << "x" << kernelSize[1] << std::endl;
@@ -424,7 +386,7 @@ class Pool(PoolBase):
         // get internal buffer for gz from previous op
         input_buffer_ptr_from_previous = ((void **)PyArray_DATA(%(x)s))[1];
 
-        #if __DEBUG__
+        #if _MKL_DEBUG_
             std::cout <<"pool forward, int_layout_input_from_previous: @"<<int_layout_input_from_previous<<std::endl;
             std::cout <<"pool forward, input_buffer_ptr_from_previous: @"<<input_buffer_ptr_from_previous<<std::endl;
         #endif
@@ -465,14 +427,6 @@ class Pool(PoolBase):
         out_dim[3] = outputSize[0];
         // Prepare output array
         int typenum;
-        //if ( !(%(z)s
-        //        && PyArray_NDIM(%(z)s) == 4
-        //        && PyArray_IS_C_CONTIGUOUS(%(z)s)
-        //        && PyArray_DIMS(%(z)s)[0] == out_dim[0]
-        //        && PyArray_DIMS(%(z)s)[1] == out_dim[1]
-        //        && PyArray_DIMS(%(z)s)[2] == out_dim[2]
-        //        && PyArray_DIMS(%(z)s)[3] == out_dim[3])) {
-        //    Py_XDECREF(%(z)s);
         if ( !(%(z)s) ) {
             typenum = PyArray_TYPE(%(x)s);
             %(z)s = (PyArrayObject*)PyArray_ZEROS(DIMENSION,
@@ -488,7 +442,7 @@ class Pool(PoolBase):
         }
 
         if (!dnnLayoutCompare_%(precision)s(int_layout_input_from_previous, int_layout_input)) {
-            #if __DEBUG__
+            #if _MKL_DEBUG_
                 std::cout<<"############ pool forward, input layout is not equal" <<std::endl;
             #endif
             if (NULL == convert_int2int_input) {
@@ -509,7 +463,7 @@ class Pool(PoolBase):
         pool_res[dnnResourceSrc] = input_buffer_ptr;
         pool_res[dnnResourceDst] = output_buffer_ptr;
 
-        #if __DEBUG__
+        #if _MKL_DEBUG_
         input_bytes = dnnLayoutGetMemorySize_%(precision)s(*int_layout_input_ptr);
         output_bytes = dnnLayoutGetMemorySize_%(precision)s(int_layout_output);
         workspace_bytes = dnnLayoutGetMemorySize_%(precision)s(int_layout_workspace);
@@ -526,7 +480,7 @@ class Pool(PoolBase):
         ((dnnLayout_t*)PyArray_DATA(%(z)s))[0] = int_layout_output;
         ((void**)PyArray_DATA(%(z)s))[1] = output_buffer_ptr;
 
-        #if __DEBUG__
+        #if _MKL_DEBUG_
             float *out_p = (float *)workspace_buffer_ptr;
             printf(\"pool forward, workspace; %%g, %%g, %%g, %%g, %%g\\n\", out_p[0], out_p[1],out_p[2],out_p[3],out_p[4]);
             if (dnnLayoutGetMemorySize_%(precision)s(int_layout_output) != (outputSize[0] * outputSize[1] * outputSize[2] * outputSize[3] * sizeof(%(dtype)s))) {
@@ -535,7 +489,7 @@ class Pool(PoolBase):
         #endif
 
         first_run = 0;
-        #if __DEBUG__
+        #if _MKL_DEBUG_
         std::cout<<"pool forward, output_buffer_ptr: @"<<output_buffer_ptr<<", output layout: @"<<int_layout_output<<std::endl;
         std::cout<<"pool end\\n"<<std::endl;
         #endif
@@ -544,41 +498,11 @@ class Pool(PoolBase):
         return ccode
 
     def c_code_cache_version(self):
-        return (1, 0, self.uniq_id)
+        return (1, 0)
 
 
 class PoolGrad(PoolBase):
-    __props__ = ('ignore_border', 'mode', 'uniq_id')
-
-    def __init__(self, ignore_border=False, mode='max', uniq_id=0):
-        super(PoolGrad, self).__init__(ignore_border, mode)
-        self.uniq_id = uniq_id
-
-    def __eq__(self, other):
-        if hasattr(self, '__props__'):
-            if type(self) != type(other):
-                return False
-            else:
-                self_props = [getattr(self, p) for p in self.__props__
-                              if p != 'uniq_id']
-                other_props = [getattr(other, p) for p in other.__props__
-                               if p != 'uniq_id']
-                if self_props == other_props:
-                    return True
-                else:
-                    return False
-        else:
-            return NotImplemented
-
-    def __hash__(self):
-        return hash(self.ignore_border) ^ hash(self.mode)
-
-    def __str__(self):
-        if hasattr(self, '__props__'):
-            return '%s{%s}' % (self.__class__.__name__,
-                               ', '.join('%s=%r' % (p, getattr(self, p)) for p in self.__props__))
-        else:
-            return '%s' % (self.__class__.__name__)
+    __props__ = ('ignore_border', 'mode')
 
     @staticmethod
     def out_shape(imgshape, ds, ignore_border=False, st=None, padding=(0, 0)):
@@ -709,7 +633,7 @@ class PoolGrad(PoolBase):
         sub.update(locals())
 
         ccode = """
-        #if __DEBUG__
+        #if _MKL_DEBUG_
         std::cout<<"poolgrad start"<<std::endl;
         #endif
             workspace_ptr = ((void**)PyArray_DATA(%(x)s))[2];
@@ -769,7 +693,7 @@ class PoolGrad(PoolBase):
             outputStrides[2] = outputSize[0] * outputSize[1];
             outputStrides[3] = outputSize[0] * outputSize[1] * outputSize[2];
 
-            #if __DEBUG__
+            #if _MKL_DEBUG_
             std::cout << "inputgradSize: " << inputSize[3] << "x" << inputSize[2] << "x" << inputSize[1] << "x" << inputSize[0] << std::endl;
             std::cout << "outputgradSize: " << outputSize[3] << "x" << outputSize[2] << "x" << outputSize[1] << "x" << outputSize[0] << std::endl;
             std::cout << "pooling region: " << kernelSize[0] << "x" << kernelSize[1] << std::endl;
@@ -837,7 +761,7 @@ class PoolGrad(PoolBase):
         if(first_run ==1)
         {
             if (!dnnLayoutCompare_%(precision)s(gz_int_layout_from_other, gz_int_layout)) {
-            #if __DEBUG__
+            #if _MKL_DEBUG_
                 std::cout<<"############ pool backward, gz layout is not equal" <<std::endl;
             #endif
                 if (NULL == cvt_gz_to_int) {
@@ -857,7 +781,7 @@ class PoolGrad(PoolBase):
         pool_res[dnnResourceDiffDst] = gz_buffer_tmp_ptr;
         pool_res[dnnResourceDiffSrc] = input_buffer_ptr;
 
-        #if __DEBUG__
+        #if _MKL_DEBUG_
         input_bytes = dnnLayoutGetMemorySize_%(precision)s(int_layout_input);
         output_bytes = dnnLayoutGetMemorySize_%(precision)s(gz_int_layout);
         workspace_bytes = dnnLayoutGetMemorySize_%(precision)s(int_layout_workspace);
@@ -869,7 +793,7 @@ class PoolGrad(PoolBase):
         CHECK_ERR( dnnExecute_%(precision)s(pPoolingBwd, (void**)pool_res), err );
 
         if (!dnnLayoutCompare_%(precision)s(int_layout_input, int_layout_input_from_previous)) {
-            #if __DEBUG__
+            #if _MKL_DEBUG_
                 std::cout<<"############ pool backward, input layout is not equal" <<std::endl;
             #endif
             if (NULL == convert_int2int_input) {
@@ -896,4 +820,4 @@ class PoolGrad(PoolBase):
         return ccode
 
     def c_code_cache_version(self):
-        return (1, 0, self.uniq_id)
+        return (1, 0)

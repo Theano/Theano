@@ -26,9 +26,8 @@ class test_mkl_conv_forward(unittest.TestCase):
     def test_conv_U2I(self):
         images = T.ftensor4('inputs')
         a_internal = U2IConv(imshp=(12, 3, 256, 256),
-                             kshp=(12, 3, 3, 3),
-                             uniq_id=1)(images)
-        out = I2U(uniq_id=2)(a_internal)
+                             kshp=(12, 3, 3, 3))(images)
+        out = I2U()(a_internal)
 
         fopt = theano.function([images], out, mode=mode_with_mkl)
         ival = numpy.random.rand(12, 3, 256, 256).astype(numpy.float32)
@@ -40,9 +39,9 @@ class test_mkl_conv_forward(unittest.TestCase):
         global uniq_id
         uniq_id += 1
 
-        images_internal = U2IConv(imshp=(12, 3, 256, 256), kshp=(12, 3, 3, 3), uniq_id=uniq_id)(images)
+        images_internal = U2IConv(imshp=(12, 3, 256, 256), kshp=(12, 3, 3, 3))(images)
         convOut_internal = Conv2D(imshp=(12, 3, 256, 256), kshp=(12, 3, 3, 3), filter_flip=False, uniq_id=uniq_id)(images_internal, weights)
-        convOut_user = I2U(uniq_id=uniq_id)(convOut_internal)
+        convOut_user = I2U()(convOut_internal)
 
         ival = numpy.random.rand(12, 3, 256, 256).astype(numpy.float32)
         wval = numpy.random.rand(12, 3, 3, 3).astype(numpy.float32)
@@ -61,9 +60,9 @@ class test_mkl_conv_forward(unittest.TestCase):
         weights = T.ftensor4('weights')
         bias = T.vector('bias')
 
-        images_internal = U2IConv(imshp=(12, 3, 256, 256), kshp=(12, 3, 3, 3), uniq_id=uniq_id)(images)
+        images_internal = U2IConv(imshp=(12, 3, 256, 256), kshp=(12, 3, 3, 3))(images)
         convOutBias_internal = Conv2D(imshp=(12, 3, 256, 256), kshp=(12, 3, 3, 3), filter_flip=False, uniq_id=uniq_id)(images_internal, weights, bias)
-        convOutBias_user = I2U(uniq_id=uniq_id)(convOutBias_internal)
+        convOutBias_user = I2U()(convOutBias_internal)
 
         ival = numpy.random.rand(12, 3, 256, 256).astype(numpy.float32)
         wval = numpy.random.rand(12, 3, 3, 3).astype(numpy.float32)
