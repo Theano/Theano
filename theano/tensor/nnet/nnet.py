@@ -289,7 +289,7 @@ class SoftmaxWithBias(gof.Op):
 softmax_with_bias = SoftmaxWithBias()
 
 
-class SoftmaxGrad(gof.Op):
+class SoftmaxGrad(gof.OpenMPOp):
     """
     Gradient wrt x of the Softmax Op.
 
@@ -409,7 +409,7 @@ class SoftmaxGrad(gof.Op):
 softmax_grad = SoftmaxGrad()
 
 
-class Softmax(gof.Op):
+class Softmax(gof.OpenMPOp):
     """
     Softmax activation function
     :math:`\\varphi(\\mathbf{x})_j =
