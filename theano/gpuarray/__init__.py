@@ -48,10 +48,10 @@ def init_dev(dev, name=None):
     if (pygpu.version.major, pygpu.version.minor) < (0, 6):
         raise ValueError(
             "Your installed version of pygpu is too old, please upgrade to 0.6 or later")
-    # This is for the C headers API
-    if pygpu.gpuarray.api_version()[0] < 0:
+    # This is for the C headers API, we need to match the exact version.
+    if pygpu.gpuarray.api_version()[0] != 1:
         raise ValueError(
-            "Your installed libgpuarray is too old, please update")
+            "Your installed libgpuarray is not in sync, please make sure to have the appropriate version")
     if dev not in init_dev.devmap:
         context = pygpu.init(
             dev,
