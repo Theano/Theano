@@ -656,6 +656,8 @@ class Stack(VM):
 
 
 try:
+    if not theano.config.cxx:
+        raise theano.gof.cmodule.MissingGXX('lazylinker will not be imported if theano.config.cxx is not set.')
     from . import lazylinker_c
 
     class CVM(lazylinker_c.CLazyLinker, VM):

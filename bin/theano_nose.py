@@ -25,7 +25,7 @@ import textwrap
 import sys
 from nose.plugins import Plugin
 
-def main():
+def main_function():
     # Handle the --theano arguments
     if "--theano" in sys.argv:
         i = sys.argv.index("--theano")
@@ -200,6 +200,14 @@ def help():
     print(textwrap.dedent(help_msg))
 
 
+def main(args=None):
+    if '--help' in sys.argv or '-h' in sys.argv:
+        help()
+    else:
+        result = main_function()
+        sys.exit(result)
+
+
 class DisabDocString(Plugin):
 
     """
@@ -258,8 +266,4 @@ class DisabDocString(Plugin):
         return False
 
 if __name__ == '__main__':
-    if '--help' in sys.argv or '-h' in sys.argv:
-        help()
-    else:
-        result = main()
-        sys.exit(result)
+    main()
