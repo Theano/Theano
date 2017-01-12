@@ -33,8 +33,8 @@ class OpFromGraph(gof.Op):
         if True, will cause the Op's original graph being used during
         compilation, otherwise will use a pre-compiled function inside.
 
-    grad_overrides: None | undef | OpFromGraph instance | function | \
-        list of (None|undef|function), optional
+    grad_overrides: None | undef | OpFromGraph instance | function \
+        list of (None | undef | function), optional
         Used to override default gradient routine.
         Overriding function(s) must take two list of variable(s) as inputs,
         the original inputs and ups gradients
@@ -49,9 +49,9 @@ class OpFromGraph(gof.Op):
         - list : each function must return a single Variable. The order
             of the list must corresponds to inputs
 
-    rop_overrides: None | undef | OpFromGraph instance | function | \
-        list of (None|undef|function), optional
-        similar to grad_overrides, list order should match two list of "inputs"
+    rop_overrides: None | undef | OpFromGraph instance | function \
+        list of (None | undef | function), optional
+        Similar to grad_overrides, list order should match two list of "inputs"
         concatenated.
 
     **kwargs: optional
@@ -72,7 +72,7 @@ class OpFromGraph(gof.Op):
         - Add support for the GPU? Probably just need an opt to remove transfer
         - Add support to pickle this Op.
         - Add support/test with random generator
-        - Add optimization prior to inilne expansion such as removing unused
+        - Add optimizations prior to inline expansion such as removing unused
           inputs/outputs
 
     Notes
@@ -82,7 +82,7 @@ class OpFromGraph(gof.Op):
       the inner graph.
     - We support unused inputs. This is needed for the grad.
     - `inline=True` will cause better runtime optimization at the cost
-      of compilation time. Like "inline" keyword in C, this is merely a
+      of compilation time. Like "inline" keyword in C/C++, this is merely a
       suggestion to compiler which is not guaranteed. Currently only
       works with "fast_compile" or "fast_run" mode.
     - The function(s) supplied for overrding gradient/rop will be called
