@@ -1349,15 +1349,16 @@ class GpuJoin(HideC, Join):
                     %(fail)s
                 }
             }
-
-        int tensors_lens_sum = 0""" % locals()
+        int tensors_lens_sum;
+        if(%(view)s != -1){
+        tensors_lens_sum = 0""" % locals()
 
         for inp in tensors:
             code += """ + PyGpuArray_DIM(%(inp)s, axis)""" % locals()
         code += """;\n
         tensors_lens_sum -= PyGpuArray_DIM(%(non_empty_tensor)s, axis);
+        }
         if(%(view)s != -1 && tensors_lens_sum == 0){
-            Py_XDECREF(%(out)s);
             Py_INCREF(%(non_empty_tensor)s);
             %(out)s = %(non_empty_tensor)s;
         }
@@ -1366,8 +1367,8 @@ class GpuJoin(HideC, Join):
                                         %(restype)s, (PyObject *)&PyGpuArrayType,
                                         %(ctx)s);
             }
-            PyMem_Free(als);
         }
+        PyMem_Free(als);
         if (%(out)s == NULL)
             %(fail)s
 

@@ -465,13 +465,12 @@ def test_Gpujoin_inplace():
     """
     s = T.lscalar()
     data = numpy.array([3, 4, 5], dtype=theano.config.floatX)
-    x = theano.shared(data, borrow=True)
+    x = gpuarray_shared_constructor(data, borrow=True)
     z = T.zeros((s,))
 
     join = GpuJoin(view=0)
     c = join(0, x, z)
 
     f = theano.function([s], theano.Out(c, borrow=True))
-
     assert x.get_value(borrow=True, return_internal_type=True) is f(0)
     assert numpy.allclose(f(0), [3, 4, 5])
