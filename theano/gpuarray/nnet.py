@@ -411,7 +411,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
                 (void *)&stride_YIDX0,
                 (void *)%(dx)s->ga.data, (void *)&%(dx)s->ga.offset,
                 (void *)&stride_DX0, (void *)&stride_DX1};
-            int err = GpuKernel_call(&%(k_var)s, 3, threads_per_block, n_blocks, 0, kernel_params);
+            int err = GpuKernel_call(&%(k_var)s, 3, n_blocks, threads_per_block, 0, kernel_params);
             %(err_check)s
             %(sync)s
         }
@@ -587,13 +587,13 @@ class GpuSoftmax(GpuKernelBase, Op):
               //TODO: read the information from the card.
               if(shmem_sz < (32 * 1024 - 500)){
                 err = GpuKernel_call(&kSoftmax_%(nodename)s, 3,
-                                     threads_per_block, n_blocks, shmem_sz,
+                                     n_blocks, threads_per_block, shmem_sz,
                                      kernel_params);
                 fmt_str = "gpuarray error: kSoftmax_%(nodename)s: %%s";
                 msg = GpuKernel_error(&kSoftmax_%(nodename)s, err);
               }else{
                 err = GpuKernel_call(&kSoftmax_fixed_shared%(nodename)s, 3,
-                                     threads_per_block, n_blocks,
+                                     n_blocks, threads_per_block,
                                      threads_per_block[0] * sizeof(npy_%(work_x)s),
                                      kernel_params);
                 fmt_str = "gpuarray error: kSoftmax_fixed_shared%(nodename)s: %%s";
@@ -801,13 +801,13 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
             {
               if(shmem_sz < (32 * 1024 - 500)){
                 err = GpuKernel_call(&kSoftmaxWithBias_%(nodename)s, 3,
-                                     threads_per_block, n_blocks, shmem_sz,
+                                     n_blocks, threads_per_block, shmem_sz,
                                      kernel_params);
                 fmt_str = "gpuarray error: kSoftmaxWithBias_%(nodename)s: %%s";
                 msg = GpuKernel_error(&kSoftmaxWithBias_%(nodename)s, err);
               }else{
                 err = GpuKernel_call(&kSoftmaxWithBias_fixed_shared%(nodename)s,
-                                     3, threads_per_block, n_blocks,
+                                     3, n_blocks, threads_per_block,
                                      threads_per_block[0] * sizeof(npy_%(work_x)s),
                                      kernel_params);
                 fmt_str = "gpuarray error: kSoftmaxWithBias_fixed_shared%(nodename)s: %%s";

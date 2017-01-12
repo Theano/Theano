@@ -786,7 +786,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                         (void *)%(z)s->ga.data,
                         (void *)&%(z)s->ga.offset,
                         (void *)&stride_Z0};
-                int err = GpuKernel_call(&%(k_var)s, 3, n_threads, n_blocks, n_shared, kernel_params);
+                int err = GpuKernel_call(&%(k_var)s, 3, n_blocks, n_threads, n_shared, kernel_params);
                 %(err_check)s
         """
         in_dtype = "npy_" + node.inputs[0].dtype
@@ -852,7 +852,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                                   n_blocks[0],n_blocks[1],n_blocks[2],
                                   n_blocks[0]*n_blocks[1]*n_blocks[2],
                                   n_shared, %(shapes_data)s);
-            int err = GpuKernel_call(&%(k_var)s, 3, n_threads, n_blocks, n_shared, kernel_params);
+            int err = GpuKernel_call(&%(k_var)s, 3, n_blocks, n_threads, n_shared, kernel_params);
             %(err_check)s
             """ % locals(), file=sio)
 
@@ -1254,7 +1254,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                                 n_threads, numEls,
                                 PyGpuArray_NDIM(%(x)s));
             size_t n_shared = sizeof(%(acc_dtype)s) * n_threads;
-            int err = GpuKernel_call(&%(k_var)s, 1, &n_threads, &n_blocks, n_shared, kernel_params);
+            int err = GpuKernel_call(&%(k_var)s, 1, &n_blocks, &n_threads, n_shared, kernel_params);
             %(err_check)s
             %(sync)s
          }
@@ -1424,7 +1424,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                         (void *)%(z)s->ga.data,
                         (void *)&%(z)s->ga.offset,
                         (void *)&stride_Z0, (void *)&stride_Z1};
-                int err = GpuKernel_call(%(k_var)s, 3, n_threads, n_blocks, 0, kernel_params);
+                int err = GpuKernel_call(%(k_var)s, 3, n_blocks, n_threads, 0, kernel_params);
                 %(err_check)s
                 %(sync)s
         }else{
@@ -1453,7 +1453,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                     (void *)&stride_A0, (void *)&stride_A1, (void *)&stride_A2,
                     (void *)%(z)s->ga.data, (void *)&%(z)s->ga.offset,
                     (void *)&stride_Z0, (void *)&stride_Z1};
-            int err = GpuKernel_call(%(k_var)s, 3, n_threads, n_blocks, n_shared, kernel_params);
+            int err = GpuKernel_call(%(k_var)s, 3, n_blocks, n_threads, n_shared, kernel_params);
             %(err_check)s
             %(sync)s
         }
@@ -1528,7 +1528,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                         (void *)%(z)s->ga.data,
                         (void *)&%(z)s->ga.offset,
                         (void *)&stride_Z0, (void *)&stride_Z1};
-                int err = GpuKernel_call(&%(k_var)s, 3, n_threads, n_blocks, 0, kernel_params);
+                int err = GpuKernel_call(&%(k_var)s, 3, n_blocks, n_threads, 0, kernel_params);
                 %(err_check)s
                 %(sync)s
             }
@@ -1662,7 +1662,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                         (void *)%(z)s->ga.data,
                         (void *)&%(z)s->ga.offset,
                         (void *)&stride_Z0, (void *)&stride_Z1};
-                int err = GpuKernel_call(&%(k_var)s, 3, n_threads, n_blocks, 0, kernel_params);
+                int err = GpuKernel_call(&%(k_var)s, 3, n_blocks, n_thread, 0, kernel_params);
                 %(err_check)s
                 %(sync)s
             }
@@ -2849,7 +2849,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
         if (gs == 0) gs = 1;
         n /= gs;
         ls = %(ls)s;
-        err = GpuKernel_call(&%(k_var)s, 1, &ls, &gs, 0, args);
+        err = GpuKernel_call(&%(k_var)s, 1, &gs, &ls, 0, args);
         if (err != GA_NO_ERROR) {
             PyErr_Format(PyExc_RuntimeError,
                          "gpuarray error: GpuCAReduceCPY: %%s.",

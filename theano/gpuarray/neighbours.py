@@ -470,7 +470,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                      (void *)&stride_Z1,
                                      (void *)%(z)s->ga.data,
                                      (void *)&%(z)s->ga.offset};
-            err = GpuKernel_call(fptr, 3, threads_per_block, n_blocks, 0, kernel_params);
+            err = GpuKernel_call(fptr, 3, n_blocks, threads_per_block, 0, kernel_params);
             %(err_check)s
             %(sync)s
         } // END NESTED SCOPE
