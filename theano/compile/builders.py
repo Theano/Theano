@@ -14,50 +14,68 @@ from theano.gof.utils import undef
 
 class OpFromGraph(gof.Op):
     """
-    This creates an `Op` from inputs and outputs lists of variables.
-    The signature is similar to theano.function() and the resulting
-    `Op`'s perform will do the same operation as::
+    This creates an ``Op`` from inputs and outputs lists of variables.
+    The signature is similar to :func:`theano.function <theano.function>`
+    and the resulting ``Op``'s perform will do the same operation as::
 
         orig_function(inputs, outputs, **kwargs)
 
-    Currently does not support 'updates' or 'givens' argument.
+    Currently does not support ``updates`` or ``givens`` argument.
 
     Parameters
     ----------
 
-    inputs: list of variables
+    inputs: list of :class:`Variable <theano.gof.Variable>`
 
-    outputs: list of variables
+    outputs: list of :class:`Variable <theano.gof.Variable>`
 
     inline: bool, optional
-        if True, will cause the Op's original graph being used during
-        compilation, otherwise will use a pre-compiled function inside.
+        Defaults to ``False``
 
-    grad_overrides: None | undef | OpFromGraph instance | function \
-        list of (None | undef | function), optional
-        Used to override default gradient routine.
-        Overriding function(s) must take two list of variable(s) as inputs,
-        the original inputs and ups gradients
-        For different `grad_overrides`:
+        ``True`` : Cause the Op's original graph being used during
+        compilation, the Op will not be visible in the compiled
+        graph but rather its internal graph.
 
-        - `None` : will use default gradient routine.
-        - theano.utils.undef : No gradient will be used (zero)
-        - OpFromGraph instance: the OfG instance should accept inputs with same
-            order and types of "inputs" and "output_grads" arguments as one would
-            specify in grad() method
-        - function : must return list of Variable.
-        - list : each function must return a single Variable. The order
-            of the list must corresponds to inputs
+        ``False`` : will use a pre-compiled function inside.
 
-    rop_overrides: None | undef | OpFromGraph instance | function \
-        list of (None | undef | function), optional
-        Similar to grad_overrides, list order should match two list of "inputs"
-        concatenated.
+    grad_overrides : single or list of {None, undef, OpFromGraph, callable}, optional
+        Defaults to ``None``.
 
-    **kwargs: optional
-        Whenever this OfG instance is precompiled instead of inline, a call to
-        theano.compile.function_module.orig_function during precompile phase
-        will take the extra keyword args
+        ``None`` : Do not override gradient
+        theano.utils.undef : No gradient will be used (zero)
+
+        OpFromGraph instance : Override with another OpFromGraph, should
+        accept inputs as the same order and types of "inputs" and "output_grads"
+        arguments as one would specify in grad() method.
+
+        callable : similar to OpFromGraph instance, must return list of
+        :class:`Variable <theano.gof.Variable>`.
+
+        list: Each OpFromGraph/callable must return a single
+        :class:`Variable <theano.gof.Variable>`. Each list element corresponds to gradient of
+        a specific input.
+
+    rop_overrides : single or list of {None, undef, OpFromGraph, callable}, optional
+        Defaults to ``None``.
+
+        ``None`` : Do not override gradient
+
+        theano.utils.undef : No gradient will be used (zero)
+        OpFromGraph instance : Override with another OpFromGraph, should
+        accept inputs as the same order and types of "inputs" and "output_grads"
+        arguments as one would specify in grad() method.
+
+        callable : similar to OpFromGraph instance, must return list of
+        :class:`Variable <theano.gof.Variable>`.
+
+        list: Each OpFromGraph/callable must return a single
+        :class:`Variable <theano.gof.Variable>`. Each list element corresponds
+        to a specific output of R_op.
+
+    **kwargs : optional
+        Check
+        :func:`orig_function <theano.compile.function_module.orig_function>`
+        for more arguments, only works when not inline.
 
 
     .. TODO:
@@ -72,8 +90,7 @@ class OpFromGraph(gof.Op):
         - Add support for the GPU? Probably just need an opt to remove transfer
         - Add support to pickle this Op.
         - Add support/test with random generator
-        - Add optimizations prior to inline expansion such as removing unused
-          inputs/outputs
+        - Add optimization to removing unused inputs/outputs
 
     Notes
     -----
@@ -81,14 +98,14 @@ class OpFromGraph(gof.Op):
       and invisible to the user. They can be as input to the node or in
       the inner graph.
     - We support unused inputs. This is needed for the grad.
-    - `inline=True` will cause better runtime optimization at the cost
-      of compilation time. Like "inline" keyword in C/C++, this is merely a
-      suggestion to compiler which is not guaranteed. Currently only
-      works with "fast_compile" or "fast_run" mode.
-    - The function(s) supplied for overrding gradient/rop will be called
-      only once at the first call to grad/R_op, and will be converted to
-      OfG instances. Any side effect (modifying non local states) of the
-      overriding function should not be relied on.
+    - We support nested OpFromGraph.
+    - ``inline=True`` will cause better runtime optimization at the cost
+      of compilation time. Currently only works with ``fast_compile`` or
+      ``fast_run`` mode.
+    - It's recommanded to provide pure functions (no side effects like
+      setting global variable) as callable(s). The callable(s) supplied
+      for overrding gradient/rop will be called only once at the first
+      call to grad/R_op, and will be converted to OpFromGraph instances.
 
     Examples
     --------
