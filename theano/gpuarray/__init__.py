@@ -126,14 +126,6 @@ def use(device,
         import theano.compile
         theano.compile.shared_constructor(gpuarray_shared_constructor)
 
-    from .basic_ops import (GpuAlloc, GpuAllocEmpty, GpuContiguous, GpuEye,
-                            GpuFromHost, GpuJoin, GpuReshape, GpuSplit,
-                            HostFromGpu)
-    from .basic_ops import host_from_gpu, GpuFromHost
-    from .elemwise import GpuElemwise
-    from .subtensor import (GpuSubtensor, GpuIncSubtensor,
-                            GpuAdvancedIncSubtensor1)
-
 
 if pygpu:
     try:
@@ -156,6 +148,15 @@ if pygpu:
 
     except Exception:
         error("Could not initialize pygpu, support disabled", exc_info=True)
+
+    from .basic_ops import (GpuAlloc, GpuAllocEmpty, GpuContiguous, GpuEye,
+                            GpuFromHost, GpuJoin, GpuReshape, GpuSplit,
+                            HostFromGpu)
+    from .basic_ops import host_from_gpu, GpuFromHost
+    from .elemwise import GpuElemwise
+    from .subtensor import (GpuSubtensor, GpuIncSubtensor,
+                            GpuAdvancedIncSubtensor1)
+
 else:
     if (config.init_gpu_device.startswith('cuda') or
             config.init_gpu_device.startswith('opencl') or
