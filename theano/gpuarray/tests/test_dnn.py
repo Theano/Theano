@@ -1580,6 +1580,55 @@ def test_dnn_rnn_gru():
                 utt.assert_allclose(ref_grad_layer[j], g)
 
 
+def test_dnn_rnn_gru_bidi():
+    # test params
+    input_dim = 32
+    hidden_dim = 16
+    batch_size = 2
+    depth = 3
+    timesteps = 5
+
+    # test code
+    X = T.tensor3('X')
+    Y = T.tensor3('Y')
+    h0 = T.tensor3('h0')
+
+    rnnb = dnn.RNNBlock(theano.config.floatX, hidden_dim, depth, 'gru', direction_mode='bidirectional')
+    psize = rnnb.get_param_size([batch_size, input_dim])
+    params_cudnn = gpuarray_shared_constructor(
+        numpy.random.random((psize,)).astype(theano.config.floatX))
+
+    def funcs(out, params, hy=None):
+        cost = 0
+        if out:
+            cost += T.mean((Y - out)**2)
+        if hy:
+            cost += T.mean(hy**2)
+        grad = T.grad(cost, [X, h0] + params)
+        grad_fn = theano.function([X, Y, h0], grad, mode=mode_with_gpu,
+                                  on_unused_input='ignore')
+        return grad_fn
+
+    y, hy = rnnb.apply(params_cudnn, X, h0)
+
+    cudnn_fn = theano.function([X, h0], y, mode=mode_with_gpu)
+
+    cudnn_grad_fn = funcs(y, [params_cudnn])
+    cudnn2_grad_fn = funcs(y, [params_cudnn], hy)
+    cudnn3_grad_fn = funcs(None, [params_cudnn], hy)
+
+    cudnn_grad_fns = [cudnn_grad_fn, cudnn2_grad_fn, cudnn3_grad_fn]
+
+    x_val = numpy.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
+    y_val = numpy.random.random((timesteps, batch_size, 2 * hidden_dim)).astype(theano.config.floatX)
+    h0_val = numpy.random.random((2 * depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+
+    cudnn_fn(x_val, h0_val)
+
+    for cudnn_grad_fn in cudnn_grad_fns:
+        cudnn_grad_fn(x_val, y_val, h0_val)
+
+
 def test_dnn_rnn_lstm():
     # test params
     input_dim = 32

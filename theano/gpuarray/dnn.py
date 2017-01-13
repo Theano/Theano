@@ -2183,7 +2183,7 @@ def _split_rnn_params(w, desc, layer, input_size, dtype, rnn_mode):
 
 class GpuDnnRNNOp(DnnBase):
     __props__ = ()
-    _cop_num_inputs = 5
+    _cop_num_inputs = 6
     _cop_num_outputs = 4
 
     def __init__(self, rnn_mode, direction_mode):
@@ -2208,7 +2208,7 @@ class GpuDnnRNNOp(DnnBase):
         w = as_gpuarray_variable(w, context_name)
         x = as_gpuarray_variable(x, context_name)
         hx = as_gpuarray_variable(hx, context_name)
-        inputs = [desc, w, x, hx]
+        inputs = [desc, as_i32(self.num_dirs), w, x, hx]
         assert w.ndim == 1
         assert x.ndim == 3  # seqLength, minibatch, inputSize
         assert hx.ndim == 3  # numLayers, minibatch, hiddenSize * bidi
@@ -2232,8 +2232,8 @@ class GpuDnnRNNOp(DnnBase):
         return Apply(self, inputs, outputs)
 
     def L_op(self, inputs, outputs, output_grads):
-        desc, w, x, hx = inputs[:4]
-        cx = inputs[4] if len(inputs) == 5 else None
+        desc, numDirs, w, x, hx = inputs[:5]
+        cx = inputs[5] if len(inputs) == 6 else None
         reserve, y, hy = outputs[:3]
         _, dy, dhy = output_grads[:3]
         dcy = output_grads[3] if len(output_grads) == 4 else None
@@ -2261,14 +2261,14 @@ class GpuDnnRNNOp(DnnBase):
         reserve2, dx, dhx = dinputs[:3]
         dw = GpuDnnRNNGradWeights()(
             desc, x, hx, y, reserve2, w)
-        res = [DisconnectedType()(), dw, dx, dhx]
+        res = [DisconnectedType()(), DisconnectedType()(), dw, dx, dhx]
         if cx is not None:
             res.append(dinputs[3])  # dcx
         return res
 
     def connection_pattern(self, node):
-        deconn = [[False] * len(node.outputs)]
-        conn = [[True] * len(node.outputs)] * (len(node.inputs) - 1)
+        deconn = [[False] * len(node.outputs)] * 2
+        conn = [[True] * len(node.outputs)] * (len(node.inputs) - 2)
         return deconn + conn
 
 
