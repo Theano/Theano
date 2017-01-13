@@ -3896,9 +3896,12 @@ class Join(Op):
 
     def __str__(self):
         if self.view == -1:
-            return "Join"
+            return self.__class__.__name__
         else:
-            return super(Join, self).__str__()
+            return "%s{%s}" % (
+                self.__class__.__name__,
+                ", ".join("%s=%r" % (p, getattr(self, p))
+                          for p in self.__props__))
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -4044,28 +4047,37 @@ class Join(Op):
         out, = outputs
         fail = sub['fail']
         adtype = node.inputs[0].type.dtype_specs()[1]
+        copy_to_list = []
+
+        for i, inp in enumerate(tensors):
+            copy_to_list.append(
+                """Py_INCREF(%s);
+                   PyList_SetItem(list, %s, (PyObject*)%s);"""
+                % (inp, i, inp))
+
+        copy_inputs_to_list = '\n'.join(copy_to_list)
+        n = len(tensors)
+        khar = "printf(\"tensors_lens_sum: %d\", tensors_lens_sum);"
+
         code = """
         int axis = ((%(adtype)s *)PyArray_DATA(%(axis)s))[0];
-        int tensors_lens_sum = 0""" % locals()
-        for i, inp in enumerate(tensors):
-            code += """ + PyArray_DIM(%(inp)s, axis) """ % locals()
-        code += """;\n
-        tensors_lens_sum -= PyArray_DIM(%(non_empty_tensor)s, axis);
+        PyObject* list = PyList_New(%(l)s);
+        %(copy_inputs_to_list)s
+        int tensors_lens_sum;
+        if(%(view)s != -1) {
+            tensors_lens_sum = 0;
 
-        if(%(view)s != -1 && tensors_lens_sum == 0){
+            for(int i=0; i < %(n)s; i++){
+                tensors_lens_sum += PyArray_DIM((PyArrayObject *)(PyList_GetItem(list, i)), axis);
+            }
+            %(khar)s
+            tensors_lens_sum -= PyArray_DIM(%(non_empty_tensor)s, axis);
+        }
+        if(%(view)s != -1 && tensors_lens_sum == 0) {
             Py_XDECREF(%(out)s);
             Py_INCREF(%(non_empty_tensor)s);
             %(out)s = %(non_empty_tensor)s;
-        }
-        else{
-            PyObject* list = PyList_New(%(l)s);
-        """ % locals()
-        for i, inp in enumerate(tensors):
-            code += """
-            Py_INCREF(%(inp)s);
-            PyList_SetItem(list, %(i)s, (PyObject*)%(inp)s);
-            """ % locals()
-        code += """
+        }else{
             //PyObject* PyArray_Concatenate(PyObject* obj, int axis)
             int ndim = PyArray_NDIM(%(input_1)s);
             if( axis < -ndim ){

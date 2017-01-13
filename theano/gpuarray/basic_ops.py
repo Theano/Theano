@@ -1245,7 +1245,18 @@ class GpuJoin(HideC, Join):
 
     """
     _f16_ok = True
+    __props__ = ("view",)
     params_type = gpu_context_type
+
+    def __init__(self, view=-1):
+        self.view = view
+        if view != -1:
+            # since the first input is always the axis, the tensors
+            # start from index 1.
+            self.view_map = {0: [1 + view]}
+
+    def __str__(self):
+        return Join.__str__(self)
 
     def make_node(self, axis, *tensors):
         node = Join.make_node(self, axis, *tensors)
@@ -1265,61 +1276,98 @@ class GpuJoin(HideC, Join):
 
     def perform(self, node, axis_and_tensors, out_, ctx):
         out, = out_
+        view = self.view
         axis = int(axis_and_tensors[0])
+        tensors = axis_and_tensors[1:]
+
         if axis < -axis_and_tensors[1].ndim:
             raise IndexError
         if axis < 0:
             axis += axis_and_tensors[1].ndim
-        tensors = axis_and_tensors[1:]
-        out[0] = pygpu.concatenate(tensors, axis=axis, context=ctx).astype(
-            node.outputs[0].dtype)
+        # we check these tensors for being empty.
+        if (view != -1) and numpy.all(
+                [tensor.shape[axis] == 0 for tensor in
+                 tensors[0:view] + tensors[view + 1:]]):
+            out[0] = tensors[view]
+        else:
+            out[0] = pygpu.concatenate(tensors, axis=axis, context=ctx).astype(
+                node.outputs[0].dtype)
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def c_support_code(self):
         return """
-#if PY_MAJOR_VERSION >= 3
-#define PyInt_AsLong PyLong_AsLong
-#endif
-"""
+        #if PY_MAJOR_VERSION >= 3
+        #define PyInt_AsLong PyLong_AsLong
+        #endif
+        """
+
+    def c_headers(self):
+        return ['<numpy_compat.h>']
 
     def c_code(self, node, name, inputs, out_, sub):
+        axis, tensors = inputs[0], inputs[1:]
         copy_to_list = []
         restype = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
-        for i, inp in enumerate(inputs[1:]):
+        view = self.view
+        non_empty_tensor = tensors[view]
+        for i, inp in enumerate(tensors):
             copy_to_list.append("als[%s] = &%s->ga;" % (i, inp))
-        return """
-const GpuArray **als = (const GpuArray **)PyMem_Malloc(sizeof(GpuArray *) *
+
+        n = len(tensors)
+        fail = sub['fail']
+        out = out_[0]
+        copy_inputs_to_list = '\n'.join(copy_to_list)
+        restype = restype
+        ctx = sub['params']
+
+        code = """
+        const GpuArray **als = (const GpuArray **)PyMem_Malloc(sizeof(GpuArray *) *
                                                        %(n)s);
-if (als == NULL) {
-  PyErr_NoMemory();
-  %(fail)s
-}
-%(copy_inputs_to_list)s
-Py_XDECREF(%(out)s);
-{
-int axis = PyInt_AsLong((PyObject *)%(axis)s);
-if (axis < 0) {
-  if (axis == -1 && PyErr_Occurred()) {
-    %(fail)s
-  }
-  axis += als[0]->nd;
-  if (axis < 0) {
-    PyErr_SetString(PyExc_IndexError, "invalid axis");
-    %(fail)s
-  }
-}
-%(out)s = pygpu_concatenate(als, %(n)s, axis,
-                            %(restype)s, (PyObject *)&PyGpuArrayType,
-                            %(ctx)s);
-}
-PyMem_Free(als);
-if (%(out)s == NULL)
-  %(fail)s
-        """ % dict(n=len(inputs[1:]), fail=sub['fail'], out=out_[0],
-                   axis=inputs[0], copy_inputs_to_list='\n'.join(copy_to_list),
-                   restype=restype, ctx=sub['params'])
+        if (als == NULL) {
+            PyErr_NoMemory();
+            %(fail)s
+        }
+        %(copy_inputs_to_list)s
+        Py_XDECREF(%(out)s);
+        {
+            int axis = PyInt_AsLong((PyObject *)%(axis)s);
+            if (axis < 0) {
+                if (axis == -1 && PyErr_Occurred()) {
+                    %(fail)s
+                }
+                axis += als[0]->nd;
+                if (axis < 0) {
+                    PyErr_SetString(PyExc_IndexError, "invalid axis");
+                    %(fail)s
+                }
+            }
+
+            int tensors_lens_sum;
+            if(%(view)s != -1) {
+                tensors_lens_sum = 0;
+                for(int i=0; i < %(n)s; i++){
+                    tensors_lens_sum += als[i]->dimensions[axis];
+                }
+                tensors_lens_sum -= PyGpuArray_DIM(%(non_empty_tensor)s, axis);
+            }
+
+            if(%(view)s != -1 && tensors_lens_sum == 0) {
+                Py_INCREF(%(non_empty_tensor)s);
+                %(out)s = %(non_empty_tensor)s;
+            }else{
+                %(out)s = pygpu_concatenate(als, %(n)s, axis,
+                                            %(restype)s, (PyObject *)&PyGpuArrayType,
+                                            %(ctx)s);
+            }
+        }
+        PyMem_Free(als);
+        if (%(out)s == NULL)
+            %(fail)s
+
+        """ % locals()
+        return code
 
 gpu_join = GpuJoin()
 
