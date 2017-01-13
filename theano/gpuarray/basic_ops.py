@@ -1256,13 +1256,7 @@ class GpuJoin(HideC, Join):
             self.view_map = {0: [1 + view]}
 
     def __str__(self):
-        if self.view == -1:
-            return self.__class__.__name__
-        else:
-            return "%s{%s}" % (
-                self.__class__.__name__,
-                ", ".join("%s=%r" % (p, getattr(self, p))
-                          for p in self.__props__))
+        return Join.__str__(self)
 
     def make_node(self, axis, *tensors):
         node = Join.make_node(self, axis, *tensors)
