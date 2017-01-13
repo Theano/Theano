@@ -1160,10 +1160,11 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         for o, n in zip(old_out, new_out):
             utt.assert_allclose(o, n)
 
+
 class TestRoIPool(unittest.InferShapeTester):
 
     def setUp(self):
-        super(test_Double, self).setUp()
+        super(TestRoIPool, self).setUp()
         self.op_class = RoIPoolOp
         self.op = RoIPoolOp()
 
@@ -1171,26 +1172,27 @@ class TestRoIPool(unittest.InferShapeTester):
         t_data = tensor.ftensor4()
         t_rois = tensor.fmatrix()
 
-        t_outs = op(t_data, t_rois)
+        t_outs = self.op(t_data, t_rois)
         t_c = t_outs[0].sum()
 
-        t_g_data = T.grad(t_c, t_data)[0]
+        t_g_data = tensor.grad(t_c, t_data)[0]
 
         f = theano.function([t_data, t_rois], t_outs + [t_g_data])
 
-        data = numpy.asarray(numpy.random.rand(1, 2, 32, 32), dtype=config.floatX)
+        data = numpy.asarray(numpy.random.rand(1, 2, 32, 32), dtype=theano.config.floatX)
         rois = numpy.array([[0, 0, 0, 3, 3],
-                         [0, 0, 0, 7, 7]], dtype=config.floatX)
+                           [0, 0, 0, 7, 7]], dtype=theano.config.floatX)
 
-        outs = f(data, rois)
+        f(data, rois)
+        # Checks to be added.
 
     def test_infer_shape(self):
         t_data = tensor.ftensor4()
         t_rois = tensor.fmatrix()
 
-        data = numpy.asarray(numpy.random.rand(1, 2, 32, 32), dtype=config.floatX)
+        data = numpy.asarray(numpy.random.rand(1, 2, 32, 32), dtype=theano.config.floatX)
         rois = numpy.array([[0, 0, 0, 3, 3],
-                            [0, 0, 0, 7, 7]], dtype=config.floatX)
+                            [0, 0, 0, 7, 7]], dtype=theano.config.floatX)
 
         self._compile_and_check([t_data, t_rois],
                                 [self.op(t_data, t_rois)],
@@ -1199,7 +1201,7 @@ class TestRoIPool(unittest.InferShapeTester):
 
     def test_grad(self):
         theano.tests.unittest_tools.verify_grad(self.op,
-                                            [numpy.random.rand(5, 7, 2)])
+                                                [numpy.random.rand(5, 7, 2)])
 
 if __name__ == '__main__':
     unittest.main()
