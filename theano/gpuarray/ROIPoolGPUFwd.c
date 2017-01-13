@@ -64,8 +64,8 @@ KERNEL void ROIPoolGPUFwd_kernel(
 int APPLY_SPECIFIC(ROIPoolGPUFwd)(PyGpuArrayObject* features,
                       PyGpuArrayObject* rois,
                       PyGpuArrayObject** argmaxes,
-                      PyGpuArrayObject** out,
-                      ) {
+		      PyGpuArrayObject** out,
+                      PyGpuContextObject *ctx) {
   size_t batch_size = PyGpuArray_DIMS(rois)[0];
   size_t channels = PyGpuArray_DIMS(features)[1];
   size_t height = PyGpuArray_DIMS(features)[2];
