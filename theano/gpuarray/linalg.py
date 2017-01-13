@@ -61,7 +61,7 @@ class GpuCusolverSolve(Op):
             self, [inp1, inp2],
             [GpuArrayType('float32',
                           broadcastable=inp1.broadcastable,
-                          context_name=self.context)()])
+                          context_name=context_name)()])
 
     def prepare_node(self, node, storage_map, compute_map, impl):
         ctx = node.inputs[0].type.context
@@ -118,7 +118,7 @@ class GpuCusolverSolve(Op):
 
         with context:
             workspace_size = cusolver.cusolverDnSgetrf_bufferSize(
-                cusolver_handle, n, n, A_ptr, lda)
+                context.cusolver_handle, n, n, A_ptr, lda)
 
         workspace = pygpu.zeros(workspace_size, dtype='float32',
                                 context=context)
@@ -127,17 +127,17 @@ class GpuCusolverSolve(Op):
 
         dev_info = pygpu.zeros((1,), dtype='int32', context=context)
 
-        workspace_ptr = thunk.workspace.gpudata
-        pivots_ptr = thunk.pivots.gpudata
-        dev_info_ptr = thunk.dev_info.gpudata
+        workspace_ptr = workspace.gpudata
+        pivots_ptr = pivots.gpudata
+        dev_info_ptr = dev_info.gpudata
 
         with context:
             cusolver.cusolverDnSgetrf(
-                cusolver_handle, n, n, A_ptr, lda, workspace_ptr,
+                context.cusolver_handle, n, n, A_ptr, lda, workspace_ptr,
                 pivots_ptr, dev_info_ptr)
 
             cusolver.cusolverDnSgetrs(
-                cusolver_handle, trans, n, m, A_ptr, lda,
+                context.cusolver_handle, trans, n, m, A_ptr, lda,
                 pivots_ptr, b_ptr, ldb, dev_info_ptr)
 
         z[0] = b
