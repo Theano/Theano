@@ -5,7 +5,7 @@ import theano
 import scipy.sparse
 
 from theano import gof, tensor
-from theano.tensor import discrete_dtypes
+from theano.tensor import discrete_dtypes, float_dtypes
 from theano.tensor.opt import register_specialize
 from theano.sparse.basic import (
     as_sparse_variable, SparseType, add_s_s, neg,
@@ -119,7 +119,7 @@ class Binomial(gof.op.Op):
         shape = tensor.as_tensor_variable(shape)
 
         assert n.dtype in discrete_dtypes
-        assert p.dtype not in discrete_dtypes
+        assert p.dtype in float_dtypes
         assert shape.dtype in discrete_dtypes
 
         return gof.Apply(self, [n, p, shape],
