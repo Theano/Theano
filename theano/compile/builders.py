@@ -75,7 +75,7 @@ class OpFromGraph(gof.Op):
     name : string, optional
         A name for debugging purposes
 
-    **kwargs : optional
+    \*\*kwargs : optional
         Check
         :func:`orig_function <theano.compile.function_module.orig_function>`
         for more arguments, only works when not inline.
