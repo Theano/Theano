@@ -110,15 +110,52 @@ def init_dev(dev, name=None):
 # This maps things like 'cuda0' to the context object on that device.
 init_dev.devmap = {}
 
+
+def use(device,
+        force=False,
+        default_to_move_computation_to_gpu=True,
+        move_shared_to_gpu=True):
+    """
+    Error and warning about CUDA should be displayed only when this
+    function is called. We need to be able to load this module only
+    to check if it is available!
+
+    Parameters
+    ----------
+    device : string
+        "cuda", "cuda0", "cudaN", "" (N is the device number to use).
+        "" mean do all the rest and don't init a device.
+    force
+        Will always raise an exception if we can't use the gpu.
+    default_to_move_computation_to_gpu
+        If gpu init succeeded, enable by default optimizations to move
+        computations to the gpu.
+    move_shared_to_gpu
+        If gpu init succeeded, put new shared variables on the gpu.
+
+    """
+    if force:
+        if not device.startswith('cuda'):
+            raise Exception("forced the init and bad device provided: " +
+                            device)
+        else:
+            # If we force, the device should not already be initialized.
+            assert device not in init_dev.devmap
+    if device:
+        init_dev(device)
+    if default_to_move_computation_to_gpu:
+        optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
+        optdb.add_tags('gpua_scanOp_make_inplace', 'fast_run')
+    if move_shared_to_gpu:
+        import theano.compile
+        theano.compile.shared_constructor(gpuarray_shared_constructor)
+
+
 if pygpu:
     try:
         if (config.device.startswith('cuda') or
             config.device.startswith('opencl')):
-            init_dev(config.device)
-            import theano.compile
-            theano.compile.shared_constructor(gpuarray_shared_constructor)
-            optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
-            optdb.add_tags('gpua_scanOp_make_inplace', 'fast_run')
+            use(config.device)
         elif (config.init_gpu_device.startswith('cuda') or
               config.init_gpu_device.startswith('opencl')):
             if config.device != 'cpu':
@@ -130,21 +167,20 @@ if pygpu:
         if config.contexts != '':
             for n, d in (c.split('->') for c in config.contexts.split(';')):
                 init_dev(d.strip(), n.strip())
-            import theano.compile
-            theano.compile.shared_constructor(gpuarray_shared_constructor)
-            optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
-            optdb.add_tags('gpua_scanOp_make_inplace', 'fast_run')
-
-        from .basic_ops import (GpuAlloc, GpuAllocEmpty, GpuContiguous, GpuEye,
-                                GpuFromHost, GpuJoin, GpuReshape, GpuSplit,
-                                HostFromGpu)
-        from .basic_ops import host_from_gpu, GpuFromHost
-        from .elemwise import GpuElemwise
-        from .subtensor import (GpuSubtensor, GpuIncSubtensor,
-                                GpuAdvancedIncSubtensor1)
+            # To have shared var default on the GPU and opt to move to the GPU.
+            use("")
 
     except Exception:
         error("Could not initialize pygpu, support disabled", exc_info=True)
+
+    from .basic_ops import (GpuAlloc, GpuAllocEmpty, GpuContiguous, GpuEye,
+                            GpuFromHost, GpuJoin, GpuReshape, GpuSplit,
+                            HostFromGpu)
+    from .basic_ops import host_from_gpu, GpuFromHost
+    from .elemwise import GpuElemwise
+    from .subtensor import (GpuSubtensor, GpuIncSubtensor,
+                            GpuAdvancedIncSubtensor1)
+
 else:
     if (config.init_gpu_device.startswith('cuda') or
             config.init_gpu_device.startswith('opencl') or
