@@ -306,7 +306,7 @@ def spp_pooling(image, out_dimension, image_shape):
     for pool_dim in out_dimension:
         pool_size = tuple((i + pool_dim - 1) // pool_dim for i in input_size)
         stride_size = tuple((i // pool_dim) for i in input_size)
-        pooled_part = pool_2d(image, pool_size, ignore_border=True, stride=stride_size, padding=(0, 0), mode='max')
+        pooled_part = pool_2d(image, pool_size, ignore_border=True, stride=stride_size, pad=(0, 0), mode='max')
         pooled_part = pooled_part.flatten(3)
         pooled_data_list.append(pooled_part)
 
@@ -540,9 +540,10 @@ class Pool(OpenMPOp):
                 raise NotImplementedError(
                     'padding works only with ignore_border=True')
             if isinstance(ws, (tuple, list)):
-                if not (isinstance(pad[i], theano.Variable) or isinstance(ws[i], theano.Variable) for i in range(nd)):
-                    if any(pad[i] >= ws[i] for i in range(nd)):
-                        raise NotImplementedError('padding must be smaller than strides')
+                for i in range(nd):
+                    if not (isinstance(pad[i], theano.Variable) or isinstance(ws[i], theano.Variable)):
+                        if any(pad[i] >= ws[i] for i in range(nd)):
+                            raise NotImplementedError('padding must be smaller than strides')
         ws = tensor.as_tensor_variable(ws)
         stride = tensor.as_tensor_variable(stride)
         pad = tensor.as_tensor_variable(pad)
