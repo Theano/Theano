@@ -124,9 +124,13 @@ class GpuPool(CGpuKernelBase):
         # return None for those.
         if eval_points[0] is None:
             return [None]
+        z = self(*inputs)
         x, ws, stride, pad = inputs
-        rop = GpuMaxPoolRop(ignore_border=self.ignore_border)
-        return [rop(x, eval_points[0], ws, stride=stride, pad=pad)]
+        return [
+            GpuDownsampleFactorMaxGradGrad(self.ignore_border, self.mode,
+                                           self.ndim)(x, z, eval_points[0], ws,
+                                                      stride, pad)
+        ]
 
 
 class GpuMaxPoolGrad(CGpuKernelBase):

@@ -8,13 +8,13 @@ import numpy
 import theano
 from theano import gradient
 from theano import tensor
-from theano.tensor.signal.pool import (Pool, MaxPoolGrad, AveragePoolGrad, MaxPoolRop,
+from theano.tensor.signal.pool import (Pool, MaxPoolGrad, AveragePoolGrad,
                                        DownsampleFactorMaxGradGrad)
 from theano.tests import unittest_tools as utt
 
 from .config import mode_with_gpu, mode_without_gpu
 from .test_basic_ops import rand
-from ..pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad, GpuMaxPoolRop,
+from ..pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad,
                     GpuDownsampleFactorMaxGradGrad)
 
 
@@ -144,11 +144,11 @@ def test_pool2d():
                 gr2 = theano.function([], tensor.Rop(a_pooled, a, ea), mode=ref_mode)
 
                 assert any([
-                    isinstance(node.op, GpuMaxPoolRop)
+                    isinstance(node.op, GpuDownsampleFactorMaxGradGrad)
                     for node in gr.maker.fgraph.toposort()
                 ])
                 assert any([
-                    isinstance(node.op, MaxPoolRop)
+                    isinstance(node.op, DownsampleFactorMaxGradGrad)
                     for node in gr2.maker.fgraph.toposort()
                 ])
                 assert numpy.allclose(gr(), gr2()), (shp, ws, st, pad, mode, ignore_border)
@@ -254,11 +254,11 @@ def test_pool3d():
                 gr2 = theano.function([], tensor.Rop(a_pooled, a, ea), mode=ref_mode)
 
                 assert any([
-                    isinstance(node.op, GpuMaxPoolRop)
+                    isinstance(node.op, GpuDownsampleFactorMaxGradGrad)
                     for node in gr.maker.fgraph.toposort()
                 ])
                 assert any([
-                    isinstance(node.op, MaxPoolRop)
+                    isinstance(node.op, DownsampleFactorMaxGradGrad)
                     for node in gr2.maker.fgraph.toposort()
                 ])
                 assert numpy.allclose(gr(), gr2()), (shp, ws, st, pad, mode, ignore_border)
