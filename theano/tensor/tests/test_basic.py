@@ -4386,13 +4386,9 @@ def test_join_oneInput():
     join_0 = theano.tensor.concatenate([x_0], axis=1)
     join_1 = theano.tensor.concatenate([x_0, x_1, theano.tensor.shape_padright(x_2)],
                                        axis=1)
-    f = theano.gof.FunctionGraph([x_0], [join_0])
-    g = theano.gof.FunctionGraph([x_0, x_1, x_2], [join_1])
 
-    assert isinstance(g.toposort()[1].op, Join)
-    assert not f.toposort()
-    assert join_0.ndim is 2
-    assert join_1.ndim is 2
+    assert join_0 is x_0
+    assert join_1 is not x_0
 
 
 class test_comparison(unittest.TestCase):

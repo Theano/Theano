@@ -4170,6 +4170,10 @@ def join(axis, *tensors_list):
     """
     Convenience function to concatenate `TensorType`s along the given axis.
 
+    This function will not add the op in the graph when it is not useful.
+    For example, in the case that the list of tensors to be concatenated
+    is one, it will just return the tensor.
+
     Parameters
     ----------
     tensors : list of tensors (or list-like)
