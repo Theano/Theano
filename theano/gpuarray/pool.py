@@ -97,7 +97,7 @@ class GpuPool(CGpuKernelBase):
 
         disc = [theano.gradient.DisconnectedType()() for i in inp[1:]]
         if self.mode == 'max':
-            out = self(inp, ws, stride, pad)
+            out = self(img, ws, stride, pad)
             g_out = GpuMaxPoolGrad(ndim=self.ndim,
                                    ignore_border=self.ignore_border)(
                                        img, out, grad, ws, stride, pad)
