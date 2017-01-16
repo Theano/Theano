@@ -488,19 +488,14 @@ else:
                  "Default linker used if the theano flags mode is Mode",
                  EnumStr('vm', 'py', 'vm_nogc'),
                  in_c_key=False)
-    try:
+    if type(config).cxx.is_default:
         # If the user provided an empty value for cxx, do not warn.
-        theano.configparser.fetch_val_for_key('cxx')
-    except KeyError:
-        # This warning is strangely showed on Windows even if cxx is set to an empty value in THEANO_FLAGS.
-        # I add this test to ensure we do not warn if it's the user who provided a value for cxx on Windows.
-        if sys.platform != 'win32' or 'THEANO_FLAGS' not in os.environ or 'cxx=' not in os.environ['THEANO_FLAGS']:
-            _logger.warning(
-                'g++ not detected ! Theano will be unable to execute '
-                'optimized C-implementations (for both CPU and GPU) and will '
-                'default to Python implementations. Performance will be severely '
-                'degraded. To remove this warning, set Theano flags cxx to an '
-                'empty string.')
+        _logger.warning(
+            'g++ not detected ! Theano will be unable to execute '
+            'optimized C-implementations (for both CPU and GPU) and will '
+            'default to Python implementations. Performance will be severely '
+            'degraded. To remove this warning, set Theano flags cxx to an '
+            'empty string.')
 
 
 # Keep the default value the same as the one for the mode FAST_RUN
