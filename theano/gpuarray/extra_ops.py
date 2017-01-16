@@ -396,7 +396,7 @@ class GpuCumOp(GpuKernelBase, Op):
                                              (void*) &offsetZ,
                                              (void*) deviceBlockSum->ga.data
                         };
-                    int err = GpuKernel_call(&k_blockCumOp_%(nodename)s, 3, dimBlock, dimGrid, sharedBytes, kernel_params);
+                    int err = GpuKernel_call(&k_blockCumOp_%(nodename)s, 3, dimGrid, dimBlock, sharedBytes, kernel_params);
                     if (err != GA_NO_ERROR){
                         PyErr_SetString(PyExc_RuntimeError, "blockCumOp call failed");
                         return -1;
@@ -421,7 +421,7 @@ class GpuCumOp(GpuKernelBase, Op):
                                                  (void*) &offsetY,
                                                  (void*) &offsetZ
                             };
-                        int err = GpuKernel_call(&k_finalCumOp_%(nodename)s, 3, dimBlock, dimGrid, sharedBytes, kernel_params);
+                        int err = GpuKernel_call(&k_finalCumOp_%(nodename)s, 3, dimGrid, dimBlock, sharedBytes, kernel_params);
                         if (err != GA_NO_ERROR){
                             PyErr_SetString(PyExc_RuntimeError, "finalCumOp call failed");
                             return -1;
@@ -446,7 +446,7 @@ class GpuCumOp(GpuKernelBase, Op):
                                                  (void*) &(tmp0),
                                                  (void*) &(tmp1)
                         };
-                        int err = GpuKernel_call(&k_cumadd_%(nodename)s, 3, dimBlock, dimGrid, sharedBytes, kernel_params);
+                        int err = GpuKernel_call(&k_cumadd_%(nodename)s, 3, dimGrid, dimBlock, sharedBytes, kernel_params);
                         if (err != GA_NO_ERROR){
                             PyErr_SetString(PyExc_RuntimeError, "cumadd call failed");
                             return -1;

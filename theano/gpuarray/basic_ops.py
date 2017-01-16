@@ -349,23 +349,23 @@ int {fname}(unsigned int _nd, size_t *_gdim, size_t *_ldim, size_t _shared,
                   {args}) {{
   {setargs}
 
-  return GpuKernel_call(&{kname}, _nd, _ldim, _gdim, _shared, NULL);
+  return GpuKernel_call(&{kname}, _nd, _gdim, _ldim, _shared, NULL);
 }}
 
 int {sname}(unsigned int _nd, size_t *_n, size_t _shared, {args}) {{
-  size_t _ls = 0;
   size_t _gs = 0;
+  size_t _ls = 0;
   int _err;
 
   if (_nd != 1) return GA_UNSUPPORTED_ERROR;
 
-  _err = GpuKernel_sched(&{kname}, _n[0], &_ls, &_gs);
+  _err = GpuKernel_sched(&{kname}, _n[0], &_gs, &_ls);
   if (_err != GA_NO_ERROR)
     return _err;
 
   {setargs}
 
-  return GpuKernel_call(&{kname}, 1, &_ls, &_gs, _shared, NULL);
+  return GpuKernel_call(&{kname}, 1, &_gs, &_ls, _shared, NULL);
 }}
         """.format(args=args, fname=k.fname, setargs=setargs, sname=k.sname,
                    kname=k.objvar)

@@ -205,7 +205,7 @@ KERNEL void k_multi_warp_multinomial(
         args[8] = (void*)&strides[3];
         args[9] = (void*)&strides[4];
 
-        err = GpuKernel_call(&%(kname)s, 1, &nb_threads, &nb_blocks, 0, args);
+        err = GpuKernel_call(&%(kname)s, 1, &nb_blocks, &nb_threads, 0, args);
         if (err != GA_NO_ERROR) {
            PyErr_Format(
                 PyExc_RuntimeError,
@@ -455,7 +455,7 @@ KERNEL void k_multi_warp_multinomial_wor(
         nb_blocks2[0] = nb_blocks;
         nb_blocks2[1] = 1;
 
-        err = GpuKernel_call(&%(kname)s, 2, nb_threads2, nb_blocks2, 0, args);
+        err = GpuKernel_call(&%(kname)s, 2, nb_blocks2, nb_threads2, 0, args);
         if (err != GA_NO_ERROR) {
            PyErr_Format(
                 PyExc_RuntimeError,

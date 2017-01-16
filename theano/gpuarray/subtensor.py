@@ -1055,7 +1055,7 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
                                        (void *)&indices_arr->ga.offset,
                                        (void *)&set_instead_of_inc,
                                        (void *)errbuf};
-              err = GpuKernel_call(&%(k_var)s, 3, threads_per_block, n_blocks, 0, kernel_params);
+              err = GpuKernel_call(&%(k_var)s, 3, n_blocks, threads_per_block, 0, kernel_params);
               if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError,
                              "gpuarray error: %(k_var)s: %%s.",

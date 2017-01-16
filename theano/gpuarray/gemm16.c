@@ -224,7 +224,7 @@ int gemm16(PyGpuArrayObject *C, float alpha,
   params[11] = &beta;
   params[12] = &flags;
 
-  if (GpuKernel_call(gk, 2, threads, grid, 0, params) != GA_NO_ERROR) {
+  if (GpuKernel_call(gk, 2, grid, threads, 0, params) != GA_NO_ERROR) {
     PyErr_SetString(PyExc_RuntimeError, "error in gemm16 kernel call");
     res = 1;
   }
