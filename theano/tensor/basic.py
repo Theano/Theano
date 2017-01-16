@@ -4163,6 +4163,7 @@ class Join(Op):
 
 
 join_ = Join()
+pprint.assign(Join, printing.FunctionPrinter('join'))
 
 
 def join(axis, *tensors_list):
