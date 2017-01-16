@@ -217,7 +217,7 @@ def perform(
     else:
         for idx in range(n_seqs):
             if args[<unsigned int>(1+idx)].shape[0] < n_steps:
-                raise ValueError(('Sequence is shorter then the required '
+                raise ValueError(('Sequence is shorter than the required '
                                  'number of steps : (n_steps, seq, '
                                   'seq.shape):'), n_steps,
                                   args[1+idx],
@@ -648,4 +648,3 @@ def perform(
     self.t_call = t_call
     self.t_fn   = t_fn
     # print 'Cython > timing', t_call, t_fn, 'in percentage', 100.*t_fn/t_call
-
