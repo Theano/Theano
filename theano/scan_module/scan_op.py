@@ -1931,8 +1931,7 @@ class Scan(PureOp):
         return mappings
 
     # GRAD FUNCTION
-    def grad(self, inputs, dC_douts):
-        outs = self(*inputs)
+    def L_op(self, inputs, outs, dC_douts):
         if not isinstance(outs, (list, tuple)):
             outs = [outs]
         # `grad_step` equals the number of steps the original scan node has
