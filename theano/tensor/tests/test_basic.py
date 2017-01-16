@@ -4372,6 +4372,29 @@ def test_join_inplace():
     assert numpy.allclose(f(data, 0), [3, 4, 5])
 
 
+def test_join_oneInput():
+    """Test join when only 1 input is given.
+
+    This functions tests the case when concatenate is called
+    on an array of tensors but the array has only one element.
+    In this case, we would like to avoid the computational
+    overhead of concatenation of one element.
+    """
+    x_0 = theano.tensor.fmatrix()
+    x_1 = theano.tensor.fmatrix()
+    x_2 = theano.tensor.fvector()
+    join_0 = theano.tensor.concatenate([x_0], axis=1)
+    join_1 = theano.tensor.concatenate([x_0, x_1, theano.tensor.shape_padright(x_2)],
+                                       axis=1)
+    f = theano.gof.FunctionGraph([x_0], [join_0])
+    g = theano.gof.FunctionGraph([x_0, x_1, x_2], [join_1])
+
+    assert isinstance(g.toposort()[1].op, Join)
+    assert not f.toposort()
+    assert join_0.ndim is 2
+    assert join_1.ndim is 2
+
+
 class test_comparison(unittest.TestCase):
     """Test <, >, <=, >=, == and !=
 
