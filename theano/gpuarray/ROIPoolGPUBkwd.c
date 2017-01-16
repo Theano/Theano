@@ -1,12 +1,13 @@
 
 #section kernels
 
-#kernel ROIPoolGPUBkwd_kernel : size, *, *, size, size, size, size, size, size, size, * :
+#kernel ROIPoolGPUBkwd_kernel : size, *, *, size, size, size, size, size, size, size, *, * :
 KERNEL void ROIPoolGPUBkwd_kernel(
     ga_size nloops, DTYPE_i0* top_diff,
     DTYPE_i0* argmax_data, ga_size num_rois, DTYPE_i0 spatial_scale,
     ga_size channels, ga_size height, ga_size width,
     ga_size pooled_height, ga_size pooled_width,
+    DTYPE_i0* bottom_diff,
     DTYPE_i0* bottom_rois) {
     for (ga_size index = 0; index < nloops; ++index) {
         // (n, c, h, w) coords in bottom data
@@ -71,16 +72,19 @@ KERNEL void ROIPoolGPUBkwd_kernel(
                 }
             }
         }
+
+        bottom_diff[index] = gradient;
     }
 }
 
 #section support_code_struct
 
-int APPLY_SPECIFIC(ROIPoolGPUBkwd)(PyGpuArrayObject* data,
-                           PyGpuArrayObject* rois,
-                           PyGpuArrayObject* argmaxes,
-                           PyGpuArrayObject** out_grad,
-                           PyGpuContextObject* data_grad) {
+int APPLY_SPECIFIC(ROIPoolGPUBkwd)(PyGpuArrayObject *data,
+                           PyGpuArrayObject *rois,
+                           PyGpuArrayObject *argmaxes,
+                           PyGpuArrayObject **out_grad,
+                           PyGpuArrayObject **out,
+                           PyGpuContextObject *ctx) {
     size_t num_kernel = PyGpuArray_SIZE(data);
     size_t batch_size = PyGpuArray_DIMS(rois)[0];
     size_t channels = PyGpuArray_DIMS(data)[1];
@@ -88,13 +92,29 @@ int APPLY_SPECIFIC(ROIPoolGPUBkwd)(PyGpuArrayObject* data,
     size_t width = PyGpuArray_DIMS(data)[3];
     int err;
 
+    if (!GpuArray_IS_C_CONTIGUOUS(&data->ga)
+      || !GpuArray_IS_C_CONTIGUOUS(&rois->ga)
+      || !GpuArray_IS_C_CONTIGUOUS(&argmaxes->ga))
+    {
+      PyErr_Format(PyExc_ValueError,
+                   "GpuRoIPoolGradOp: requires data to be C-contiguous");
+      return 1;
+    }
+
+    if (theano_prep_output(out, PyGpuArray_NDIM(data), PyGpuArray_DIMS(data),
+                         data->ga.typecode, GA_C_ORDER, ctx) != 0)
+    {
+      PyErr_SetString(PyExc_RuntimeError,
+                      "GpuRoIPoolGradOp: failed to allocate memory");
+      return 1;
+    }
 
   err = ROIPoolGPUBkwd_kernel_scall(1, &num_kernel, 0,
     num_kernel, (*out_grad)->ga.data, argmaxes->ga.data, batch_size,
-    SPATIAL_SCALE, channels, height, width, POOLED_HEIGHT, POOLED_WIDTH, rois->ga.data);
+    SPATIAL_SCALE, channels, height, width, POOLED_HEIGHT, POOLED_WIDTH, (*out)->ga.data, rois->ga.data);
   if (err != GA_NO_ERROR) {
     PyErr_Format(PyExc_RuntimeError,
-                 "gpuarray error: ROIPoolGPUFwd_kernel: %s.",
+                 "gpuarray error: ROIPoolGPUBkwd_kernel: %s.",
                  GpuKernel_error(&k_ROIPoolGPUBkwd_kernel, err));
     return -1;
   }

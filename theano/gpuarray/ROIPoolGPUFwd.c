@@ -61,10 +61,10 @@ KERNEL void ROIPoolGPUFwd_kernel(
 
 #section support_code_struct
 
-int APPLY_SPECIFIC(ROIPoolGPUFwd)(PyGpuArrayObject* features,
-                      PyGpuArrayObject* rois,
-                      PyGpuArrayObject** argmaxes,
-		      PyGpuArrayObject** out,
+int APPLY_SPECIFIC(ROIPoolGPUFwd)(PyGpuArrayObject *features,
+                      PyGpuArrayObject *rois,
+                      PyGpuArrayObject **argmaxes,
+		      PyGpuArrayObject **out,
                       PyGpuContextObject *ctx) {
   size_t batch_size = PyGpuArray_DIMS(rois)[0];
   size_t channels = PyGpuArray_DIMS(features)[1];
@@ -81,10 +81,25 @@ int APPLY_SPECIFIC(ROIPoolGPUFwd)(PyGpuArrayObject* features,
   size_t num_kernel = batch_size * channels * POOLED_HEIGHT * POOLED_WIDTH;
   int err;
 
+  if (!GpuArray_IS_C_CONTIGUOUS(&features->ga)
+      || !GpuArray_IS_C_CONTIGUOUS(&rois->ga))
+    {
+    PyErr_Format(PyExc_ValueError, "GpuRoIPoolOp: requires data to be C-contiguous");
+    return 1;
+    }
+
+  if (theano_prep_output(out, PyGpuArray_NDIM(features), PyGpuArray_DIMS(features),
+                         features->ga.typecode, GA_C_ORDER, ctx) != 0)
+    {
+      PyErr_SetString(PyExc_RuntimeError, "GpuRoIPoolOp: failed to allocate memory");
+      return 1;
+    }
+
   err = ROIPoolGPUFwd_kernel_scall(1, &num_kernel, 0,
           num_kernel, features->ga.data, SPATIAL_SCALE, channels, height, width,
           POOLED_HEIGHT, POOLED_WIDTH, rois->ga.data, (*out)->ga.data,
           (*argmaxes)->ga.data);
+
   if (err != GA_NO_ERROR) {
     PyErr_Format(PyExc_RuntimeError,
                  "gpuarray error: ROIPoolGPUFwd_kernel: %s.",

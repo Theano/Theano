@@ -436,14 +436,12 @@ class GpuRoIPoolOp(CGpuKernelBase):
 
     __props__ = ('spatial_scale', 'pooled_h', 'pooled_w')
     _f16_ok = True
-    func_file = './ROIPoolGPUFwd.c'
-    func_name = 'APPLY_SPECIFIC(ROIPoolGPUFwd)'
 
     def __init__(self, pooled_h, pooled_w, spatial_scale):
-        super(GpuRoIPoolOp, self).__init__(self.func_file, self.func_name)
         self.pooled_h = pooled_h
         self.pooled_w = pooled_w
         self.spatial_scale = spatial_scale
+        CGpuKernelBase.__init__(self, ['ROIPoolGPUFwd.c'], 'APPLY_SPECIFIC(ROIPoolGPUFwd)')
 
     def c_headers(self):
         return ['<gpuarray/types.h>', '<gpuarray/kernel.h>', 'math.h', 'stdbool.h', 'float.h', 'gpuarray_api.h', 'numpy_compat.h']
@@ -482,7 +480,7 @@ class GpuRoIPoolOp(CGpuKernelBase):
                                  self.spatial_scale)(*(inp + [self(*inp)[1], grads[0]])), grad_undefined(self, 1, inp[1])]
 
 
-class GpuRoIPoolGradOp(CGpuKernelBase, Op):
+class GpuRoIPoolGradOp(CGpuKernelBase):
 
     __props__ = ('spatial_scale', 'pooled_h', 'pooled_w')
     _f16_ok = True
