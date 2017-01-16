@@ -6,6 +6,9 @@ import theano
 from theano import Op
 from theano.gpuarray import basic_ops, GpuArrayType
 
+import numpy
+from numpy.linalg.linalg import LinAlgError
+
 try:
     import pygpu
 except ImportError:
@@ -17,6 +20,34 @@ try:
     cusolver_available = True
 except (ImportError, OSError, RuntimeError, pkg_resources.DistributionNotFound):
     pass
+
+if cusolver_available:
+    # Add cusolver call as it is missing in skcuda
+    # SPOTRS
+    cusolver._libcusolver.cusolverDnSpotrs.restype = int
+    cusolver._libcusolver.cusolverDnSpotrs.argtypes = [cusolver.ctypes.c_void_p,
+                                                       cusolver.ctypes.c_int,
+                                                       cusolver.ctypes.c_int,
+                                                       cusolver.ctypes.c_int,
+                                                       cusolver.ctypes.c_void_p,
+                                                       cusolver.ctypes.c_int,
+                                                       cusolver.ctypes.c_void_p,
+                                                       cusolver.ctypes.c_int,
+                                                       cusolver.ctypes.c_void_p]
+
+    def cusolverDnSpotrs(handle, uplo, n, nrhs, A, lda,
+                         B, ldb, devInfo):
+        """
+        Solve real single precision linear system for hermitian matrices.
+        References
+        ----------
+        `cusolverDn<t>potrs <http://docs.nvidia.com/cuda/cusolver/index.html#cuds-lt-t-gt-potrs>`_
+        """
+
+        status = cusolver._libcusolver.cusolverDnSpotrs(handle, uplo, n, nrhs,
+                                                        int(A), lda, int(B),
+                                                        ldb, int(devInfo))
+        cusolver.cusolverCheckStatus(status)
 
 
 class GpuCusolverSolve(Op):
@@ -30,11 +61,12 @@ class GpuCusolverSolve(Op):
 
     """
 
-    __props__ = ('trans', 'inplace')
+    __props__ = ('A_structure', 'trans', 'inplace')
 
-    def __init__(self, trans='N', inplace=False):
+    def __init__(self, A_structure='general', trans='N', inplace=False):
         self.trans = trans
         self.inplace = inplace
+        self.A_structure = A_structure
         if self.inplace:
             self.destroy_map = {0: [0, 1]}
         super(GpuCusolverSolve, self).__init__()
@@ -69,6 +101,11 @@ class GpuCusolverSolve(Op):
         if handle is None:
             with ctx:
                 ctx.cusolver_handle = cusolver.cusolverDnCreate()
+
+    def check_dev_info(self, dev_info):
+        val = numpy.asarray(dev_info)[0]
+        if val > 0:
+            raise LinAlgError('A is singular')
 
     def perform(self, node, inputs, outputs):
         context = inputs[0][0].context
@@ -116,32 +153,58 @@ class GpuCusolverSolve(Op):
         if A.flags['C_CONTIGUOUS']:
             trans = 1 - trans
 
-        with context:
-            workspace_size = cusolver.cusolverDnSgetrf_bufferSize(
-                context.cusolver_handle, n, n, A_ptr, lda)
+        if self.A_structure == 'symmetric':
+            with context:
+                workspace_size = cusolver.cusolverDnSpotrf_bufferSize(
+                    context.cusolver_handle, 0, n, A_ptr, lda)
 
-        workspace = pygpu.zeros(workspace_size, dtype='float32',
-                                context=context)
+            workspace = pygpu.zeros(workspace_size, dtype='float32',
+                                    context=context)
 
-        pivots = pygpu.zeros(n, dtype='int32', context=context)
+            dev_info = pygpu.zeros((1,), dtype='int32', context=context)
 
-        dev_info = pygpu.zeros((1,), dtype='int32', context=context)
+            workspace_ptr = workspace.gpudata
+            dev_info_ptr = dev_info.gpudata
 
-        workspace_ptr = workspace.gpudata
-        pivots_ptr = pivots.gpudata
-        dev_info_ptr = dev_info.gpudata
+            with context:
+                cusolver.cusolverDnSpotrf(
+                    context.cusolver_handle, 0, n, A_ptr, lda, workspace_ptr,
+                    workspace_size, dev_info_ptr)
+                self.check_dev_info(dev_info)
 
-        with context:
-            cusolver.cusolverDnSgetrf(
-                context.cusolver_handle, n, n, A_ptr, lda, workspace_ptr,
-                pivots_ptr, dev_info_ptr)
+                cusolverDnSpotrs(
+                    context.cusolver_handle, 0, n, m, A_ptr, lda,
+                    b_ptr, ldb, dev_info_ptr)
 
-            cusolver.cusolverDnSgetrs(
-                context.cusolver_handle, trans, n, m, A_ptr, lda,
-                pivots_ptr, b_ptr, ldb, dev_info_ptr)
+        else:
+            # general case for A
+            with context:
+                workspace_size = cusolver.cusolverDnSgetrf_bufferSize(
+                    context.cusolver_handle, n, n, A_ptr, lda)
+
+            workspace = pygpu.zeros(workspace_size, dtype='float32',
+                                    context=context)
+
+            pivots = pygpu.zeros(n, dtype='int32', context=context)
+
+            dev_info = pygpu.zeros((1,), dtype='int32', context=context)
+
+            workspace_ptr = workspace.gpudata
+            pivots_ptr = pivots.gpudata
+            dev_info_ptr = dev_info.gpudata
+
+            with context:
+                cusolver.cusolverDnSgetrf(
+                    context.cusolver_handle, n, n, A_ptr, lda, workspace_ptr,
+                    pivots_ptr, dev_info_ptr)
+                self.check_dev_info(dev_info)
+
+                cusolver.cusolverDnSgetrs(
+                    context.cusolver_handle, trans, n, m, A_ptr, lda,
+                    pivots_ptr, b_ptr, ldb, dev_info_ptr)
 
         z[0] = b
 
 
-def gpu_solve(A, b, trans='N'):
-    return GpuCusolverSolve(trans)(A, b)
+def gpu_solve(A, b, A_structure='general', trans='N'):
+    return GpuCusolverSolve(A_structure, trans)(A, b)
