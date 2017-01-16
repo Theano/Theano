@@ -200,7 +200,7 @@ def help():
     print(textwrap.dedent(help_msg))
 
 
-def main(args=None):
+def main():
     if '--help' in sys.argv or '-h' in sys.argv:
         help()
     else:

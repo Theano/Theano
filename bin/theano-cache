@@ -1,0 +1,3 @@
+#!/usr/bin/env python
+import theano_cache
+theano_cache.main()

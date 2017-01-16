@@ -1,0 +1,3 @@
+#!/usr/bin/env python
+import theano_nose
+theano_nose.main()
