@@ -1662,7 +1662,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                         (void *)%(z)s->ga.data,
                         (void *)&%(z)s->ga.offset,
                         (void *)&stride_Z0, (void *)&stride_Z1};
-                int err = GpuKernel_call(&%(k_var)s, 3, n_blocks, n_thread, 0, kernel_params);
+                int err = GpuKernel_call(&%(k_var)s, 3, n_blocks, n_threads, 0, kernel_params);
                 %(err_check)s
                 %(sync)s
             }
