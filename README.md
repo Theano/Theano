@@ -4,17 +4,24 @@
 This repo is dedicated to improving Theano performance on CPU, especially in Intel® Xeon® and Intel® Xeon Phi™ processors.
 
 **Key Features**
-  * New backend of Intel MKL (with neural network supports, version >= 2017.0)
+  * New backend of Intel® MKL (version >= 2017.0 which includes neural network primitives)
   * Further graph optimizations
   * CPU friendly OPs
-  * Switch to Intel MKL backend automatically in Intel Architecture
+  * Switch to Intel® MKL backend automatically in Intel Architecture
   * Out-of-box performance improvements and good portability
 
 **Benchmark**
-   * Hardware: Intel(R) Xeon(R) CPU E5-2699 v4 @ 2.20GHz, 128GB RAM 
-   * Software: **[convnet-benchmarks](https://github.com/soumith/convnet-benchmarks/blob/master/theano/benchmark_imagenet.py)** with stock and Intel optimized Theano
-   
-   | seconds/batch | Stock FWD | Intel FWD | Stock FWD+BWD | Intel FWD+BWD |
+  * Hardwares
+    - Intel® Xeon® CPU E5-2699 v4 @ 2.20GHz, 128GB RAM
+  * Softwares
+    - Script: **[convnet-benchmarks](https://github.com/soumith/convnet-benchmarks/blob/master/theano/benchmark_imagenet.py)**
+    - **[Stock Theano](https://github.com/theano/theano)**, commit ID: 2fa3cecb7572a5c884d3d3cb524ea7b7a741809a
+    - **[Intel Theano](https://github.com/intel/theano)**, commit ID: 3abfbe0d1691ed953621485612c21542a3bfef95
+  * Terminologies
+    - FWD, forward for inference
+    - FWD+BWD, forward and backward for training
+
+   | seconds/batch | Stock/FWD | Intel/FWD | Stock/FWD+BWD | Intel/FWD+BWD |
    |---------------|-----------|-----------|---------------|---------------|
    | alexnet       | 1.045     | 0.081     | 2.333         | 0.250         |
    | googlenet     | 2.228     |           | 5.866         |               |
@@ -22,14 +29,13 @@ This repo is dedicated to improving Theano performance on CPU, especially in Int
    | overfeat      | 6.105     | 0.268     | 13.202        | 0.857         |
 
 **Performance Tips**
-   * Combination of convolution with bias can be replaced by graphy optimier with high performance MKL Op
-   * Group convolution OP, AbstractConvGroup in theano/sandbox/mkl/mkl_conv.py
-   * Optimal LRN OP in theano/tensor/nnet/lrn.py
+  * Add bias after convolution to archieve high performance since this sub-graph can be replaced with MKL OP 
+  * Use group convolution OP, [AbstractConvGroup](https://github.com/intel/Theano/blob/master/theano/sandbox/mkl/mkl_conv.py)
+  * Use New MKL OP: [LRN](https://github.com/intel/Theano/blob/dev/theano/tensor/nnet/lrn.py)
 
 **Branch Information**
   * master, stable and fully tested version based on 0.9dev2 with Intel MKL backend
   * nomkl-optimized, based on 0.9.0dev1 with generic optimizations
-  * dev, develop repo with latest optimizations but bugs may be in the hair
   * others, experimental codes for different applications which may be merged into master and/or deleted soon
 
 **Installation**
@@ -51,8 +57,8 @@ This repo is dedicated to improving Theano performance on CPU, especially in Int
 
 
 **Other Optimized Software**
-   * Self-contained MKL in [here](https://github.com/01org/mkl-dnn/releases)
-   * Optimized Numpy in [here](https://github.com/pcs-theano/numpy)
+  * Self-contained MKL in [here](https://github.com/01org/mkl-dnn/releases)
+  * Optimized Numpy in [here](https://github.com/pcs-theano/numpy)
 
 ---
 >\* Other names and trademarks may be claimed as the property of others.
