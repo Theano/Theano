@@ -488,6 +488,8 @@ def use(device,
 
     """
     global cuda_enabled, cuda_initialization_error_message
+    _logger.warn("The cuda backend is deprecated and will be removed in "
+                  "the next release.  Please switch to the gpuarray backend.")
     if force and not cuda_available and device.startswith('gpu'):
         if not nvcc_compiler.is_nvcc_available():
             raise EnvironmentError("You forced the use of gpu device '%s', but"
