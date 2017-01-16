@@ -62,7 +62,7 @@ class PoissonTester(utt.InferShapeTester):
 
 
 class BinomialTester(utt.InferShapeTester):
-    n = tensor.scalar()
+    n = tensor.scalar(dtype='int64')
     p = tensor.scalar()
     shape = tensor.lvector()
     _n = 5
