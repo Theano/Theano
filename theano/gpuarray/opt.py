@@ -591,7 +591,7 @@ def local_gpua_alloc2(node):
         return
     if (isinstance(node.op, tensor.Alloc) and
         all(c != 'output' and
-            c.op == tensor.join and
+            isinstance(c.op, tensor.Join) and
             all(i.owner and
                 i.owner.op in [host_from_gpu, tensor.alloc]
                 for i in c.inputs[1:])
