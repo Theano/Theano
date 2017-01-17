@@ -1554,7 +1554,7 @@ class TestCompositeCodegen(unittest.TestCase):
 
         # Test unwrap Composite of only 1 node
         y = theano.scalar.float32()
-        c = theano.scalar.Composite([x, y], [x+y, x-y])
+        c = theano.scalar.Composite([x, y], [x + y, x - y])
         Y = tensor.matrix()
         o = tensor.Elemwise(scalar_op=c)(X, Y)
         f = theano.function([X, Y], o[0], mode=mode)
@@ -1567,7 +1567,7 @@ class TestCompositeCodegen(unittest.TestCase):
         utt.assert_allclose(f([[1.]], [[3.]]), [[4.]])
 
         # Test that we remove useless inputs
-        c = theano.scalar.Composite([x, y], [scal.tanh(x+1), scal.tanh(y)-1])
+        c = theano.scalar.Composite([x, y], [scal.tanh(x + 1), scal.tanh(y) - 1])
         o = tensor.Elemwise(scalar_op=c)(X, Y)
         f = theano.function([X, Y], o[0], mode=mode)
         topo = f.maker.fgraph.toposort()
@@ -1584,7 +1584,7 @@ class TestCompositeCodegen(unittest.TestCase):
         assert isinstance(topo[0].op, tensor.Elemwise)
         assert isinstance(topo[0].op.scalar_op, theano.scalar.Composite)
         assert len(topo[0].inputs) == 1
-        utt.assert_allclose(f([[1.]], [[2.]]), numpy.tanh(2)-1)
+        utt.assert_allclose(f([[1.]], [[2.]]), numpy.tanh(2) - 1)
 
 
 def test_log1p():
