@@ -318,12 +318,14 @@ class T_Scan(unittest.TestCase):
 
         state = theano.tensor.scalar('state')
         n_steps = theano.tensor.iscalar('nsteps')
+        # Test return_list at the same time.
         output, updates = theano.scan(f_pow2,
                                       [],
                                       state,
                                       [],
                                       n_steps=n_steps,
                                       truncate_gradient=-1,
+                                      return_list=True,
                                       go_backwards=False)
         my_f = theano.function([state, n_steps],
                                output,
@@ -337,7 +339,7 @@ class T_Scan(unittest.TestCase):
         numpy_values = numpy.array([state * (2 ** (k + 1)) for k
                                     in xrange(steps)])
         theano_values = my_f(state, steps)
-        utt.assert_allclose(numpy_values, theano_values)
+        utt.assert_allclose(numpy_values, theano_values[0])
 
     def test_subtensor_multiple_slices(self):
         # This addresses a bug reported by Matthias Zoehrer
@@ -4416,16 +4418,17 @@ class T_Scan(unittest.TestCase):
                 n_steps=1,
             )
             return sum_outer + result_inner[-1]
-
+        # Also test return_list for that case.
         result_outer, _ = theano.scan(
             fn=loss_outer,
             outputs_info=tensor.as_tensor_variable(
                 numpy.asarray(0, dtype=numpy.float32)),
             non_sequences=[W],
             n_steps=n_steps,
+            return_list=True,
         )
 
-        cost = result_outer[-1]
+        cost = result_outer[0][-1]
         H = theano.gradient.hessian(cost, W)
         print(".", file=sys.stderr)
         f = theano.function([W, n_steps], H)
