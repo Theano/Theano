@@ -4174,8 +4174,17 @@ class Join(Op):
         return [tuple(out_shapes)]
 
 
-"""
+join_ = Join()
+pprint.assign(Join, printing.FunctionPrinter('join'))
+
+
+def join(axis, *tensors_list):
+    """
     Convenience function to concatenate `TensorType`s along the given axis.
+
+    This function will not add the op in the graph when it is not useful.
+    For example, in the case that the list of tensors to be concatenated
+    is one, it will just return the tensor.
 
     Parameters
     ----------
@@ -4193,12 +4202,11 @@ class Join(Op):
         former case, the axis is fixed at construction, while in the
         latter it may vary over time depending on the value of the
         `axis` variable.
-
-"""
-
-join = Join()
-
-pprint.assign(Join, printing.FunctionPrinter('join'))
+    """
+    if len(tensors_list) == 1:
+        return tensors_list[0]
+    else:
+        return join_(axis, *tensors_list)
 
 
 def roll(x, shift, axis=None):

@@ -2207,7 +2207,7 @@ def local_gpualloc(node):
             # if all clients are on gpu
             replace = True
         elif all([c != 'output' and
-                  c.op == tensor.join and
+                  isinstance(c.op, tensor.Join) and
                   all(i.owner and
                       i.owner.op in [host_from_gpu, tensor.alloc]
                       for i in c.inputs[1:])

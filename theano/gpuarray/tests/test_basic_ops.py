@@ -378,7 +378,7 @@ def test_gpujoin_gpualloc():
                                             T.ones_like(b)) + 4,
                              mode=mode_with_gpu)
     assert sum([node.op == T.alloc for node in f.maker.fgraph.toposort()]) == 2
-    assert sum([node.op == T.join for node in f.maker.fgraph.toposort()]) == 1
+    assert sum([node.op == T.join_ for node in f.maker.fgraph.toposort()]) == 1
     assert sum([isinstance(node.op, GpuAlloc)
                 for node in f_gpu.maker.fgraph.toposort()]) == 2
     assert sum([node.op == gpu_join
