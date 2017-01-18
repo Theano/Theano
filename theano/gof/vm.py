@@ -656,6 +656,10 @@ class Stack(VM):
 
 
 try:
+    # If cxx is explicitely set to an empty string, we do not want to import neither lazylinker C code
+    # nor lazylinker compiled C code from cache.
+    if not theano.config.cxx:
+        raise theano.gof.cmodule.MissingGXX('lazylinker will not be imported if theano.config.cxx is not set.')
     from . import lazylinker_c
 
     class CVM(lazylinker_c.CLazyLinker, VM):

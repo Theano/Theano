@@ -488,10 +488,8 @@ else:
                  "Default linker used if the theano flags mode is Mode",
                  EnumStr('vm', 'py', 'vm_nogc'),
                  in_c_key=False)
-    try:
+    if type(config).cxx.is_default:
         # If the user provided an empty value for cxx, do not warn.
-        theano.configparser.fetch_val_for_key('cxx')
-    except KeyError:
         _logger.warning(
             'g++ not detected ! Theano will be unable to execute '
             'optimized C-implementations (for both CPU and GPU) and will '

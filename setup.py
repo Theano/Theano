@@ -173,7 +173,11 @@ def do_setup():
               'theano.misc': ['*.sh'],
               'theano.d3viz' : ['html/*','css/*','js/*']
           },
-          scripts=['bin/theano-cache', 'bin/theano-nose', 'bin/theano-test'],
+          entry_points={
+              'console_scripts': ['theano-cache = bin.theano_cache:main',
+                                  'theano-nose = bin.theano_nose:main',
+                                  'theano-test = bin.theano_test:main']
+          },
           keywords=' '.join([
               'theano', 'math', 'numerical', 'symbolic', 'blas',
               'numpy', 'gpu', 'autodiff', 'differentiation'
