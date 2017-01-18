@@ -224,6 +224,7 @@ class FunctionGraph(utils.object2):
                                 str(node.op), str(node.op.destroy_map)))
         node.fgraph = self
         node.deps = {}
+        node.disavowed = False
         # self.execute_callbacks('on_setup_node', node)
 
     def disown(self):
