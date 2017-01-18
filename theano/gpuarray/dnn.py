@@ -1135,6 +1135,11 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
                                     desc_op.subsample)
     out_shp = assert_conv_shape(out_shp)
     out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(*out_shp)
+    if config.dnn.conv.algo_bwd_filter != 'none':
+        warnings.warn('[new backend] cuDNN backward filter convolution computation for 3D convolutions '
+                      'may produce bad results with certain algorithms depending on the compute capability '
+                      'of your GPU. If you encounter problems, consider setting the theano flag '
+                      '"dnn.conv.algo_bwd_filter" to "none" (dnn.conv.algo_bwd_filter=none)')
     return gpu_dnn_conv(algo=algo)(img, kerns, out, desc)
 
 

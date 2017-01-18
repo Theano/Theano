@@ -763,12 +763,17 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
         good_algo = ['none', 'small',
                      'guess_once', 'guess_on_shape_change',
                      'time_once', 'time_on_shape_change']
+        if algo is None:
+            algo = config.dnn.conv.algo_bwd_filter
         if version() < (5000, 5000) and algo == 'small':
             algo = 'guess_once'
-        elif algo is None and config.dnn.conv.algo_bwd_filter not in good_algo:
+        elif algo not in good_algo:
             algo = 'guess_once'
-        elif algo is not None and algo not in good_algo:
-            algo = 'guess_once'
+        if algo != 'none':
+            warnings.warn('[old backend] cuDNN backward filter convolution computation for 3D convolutions '
+                          'may produce bad results with certain algorithms depending on the compute capability '
+                          'of your GPU. If you encounter problems, consider setting the theano flag '
+                          '"dnn.conv.algo_bwd_filter" to "none" (dnn.conv.algo_bwd_filter=none)')
         super(GpuDnnConv3dGradW, self).__init__(inplace=inplace,
                                                 algo=algo)
         assert self.algo in good_algo
