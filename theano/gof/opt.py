@@ -2430,25 +2430,20 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 if node is not current_node:
                     q.append(node)
 
-            def pruner(node):
-                if node is not current_node:
-                    try:
-                        q.remove(node)
-                    except ValueError:
-                        pass
             chin = None
             if self.tracks_on_change_inputs:
                 def chin(node, i, r, new_r, reason):
                     if node is not current_node and not isinstance(node, str):
                         q.append(node)
-            u = self.attach_updater(fgraph, importer, pruner,
+            u = self.attach_updater(fgraph, importer, None,
                                     chin=chin,
                                     name=getattr(self, 'name', None))
             try:
                 while q:
                     node = q.pop()
+                    if node not in fgraph.apply_nodes:
+                        continue
                     current_node = node
-
                     for lopt in (self.local_optimizers_all +
                                  self.local_optimizers_map.get(type(node.op), []) +
                                  self.local_optimizers_map.get(node.op, [])):
