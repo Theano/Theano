@@ -332,7 +332,7 @@ TensorType and TensorVariable
         A tuple of True/False values, one for each dimension.  True in
         position 'i' indicates that at evaluation-time, the ndarray will have
         size 1 in that 'i'-th dimension.  Such a dimension is called a
-        *broadcastable dimension* (see :ref:`libdoc_tensor_broadcastable`).
+        *broadcastable dimension* (see :ref:`tutbroadcasting`).
 
         The broadcastable pattern indicates both the number of dimensions and
         whether a particular dimension must have length 1.
