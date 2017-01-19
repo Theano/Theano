@@ -618,6 +618,7 @@ class Softmax(gof.OpenMPOp):
         """
         return (init_decl, parallel_check, begin_row_loop, inside_row_loop, end_row_loop, serial_check, begin_row_loop, inside_row_loop, end_row_loop, end_check)
 
+
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         sm, = out
