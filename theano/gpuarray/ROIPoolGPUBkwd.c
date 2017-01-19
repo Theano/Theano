@@ -82,7 +82,7 @@ KERNEL void ROIPoolGPUBkwd_kernel(
 int APPLY_SPECIFIC(ROIPoolGPUBkwd)(PyGpuArrayObject *data,
                            PyGpuArrayObject *rois,
                            PyGpuArrayObject *argmaxes,
-                           PyGpuArrayObject **out_grad,
+                           PyGpuArrayObject *out_grad,
                            PyGpuArrayObject **out,
                            PyGpuContextObject *ctx) {
     size_t num_kernel = PyGpuArray_SIZE(data);
@@ -110,7 +110,7 @@ int APPLY_SPECIFIC(ROIPoolGPUBkwd)(PyGpuArrayObject *data,
     }
 
   err = ROIPoolGPUBkwd_kernel_scall(1, &num_kernel, 0,
-    num_kernel, (*out_grad)->ga.data, argmaxes->ga.data, batch_size,
+    num_kernel, out_grad->ga.data, argmaxes->ga.data, batch_size,
     SPATIAL_SCALE, channels, height, width, POOLED_HEIGHT, POOLED_WIDTH, (*out)->ga.data, rois->ga.data);
   if (err != GA_NO_ERROR) {
     PyErr_Format(PyExc_RuntimeError,

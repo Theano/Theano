@@ -443,8 +443,11 @@ class GpuRoIPoolOp(CGpuKernelBase):
         self.spatial_scale = spatial_scale
         CGpuKernelBase.__init__(self, ['ROIPoolGPUFwd.c'], 'APPLY_SPECIFIC(ROIPoolGPUFwd)')
 
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__), pygpu.get_include()]
+
     def c_headers(self):
-        return ['<gpuarray/types.h>', '<gpuarray/kernel.h>', 'math.h', 'stdbool.h', 'float.h', 'gpuarray_api.h', 'numpy_compat.h']
+        return ['<gpuarray/types.h>', '<gpuarray/kernel.h>', 'gpuarray_helper.h','math.h', 'stdbool.h', 'float.h', 'gpuarray_api.h', 'numpy_compat.h']
 
     def make_node(self, feature_maps, roi):
         ctx_name = infer_context_name(feature_maps, roi)
@@ -492,8 +495,11 @@ class GpuRoIPoolGradOp(CGpuKernelBase):
         self.spatial_scale = spatial_scale
         CGpuKernelBase.__init__(self, ['ROIPoolGPUBkwd.c'], 'APPLY_SPECIFIC(ROIPoolGPUBkwd)')
 
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__), pygpu.get_include()]
+
     def c_headers(self):
-        return ['<gpuarray/types.h>', '<gpuarray/kernel.h>', 'math.h', 'stdbool.h', 'float.h', 'gpuarray_api.h', 'numpy_compat.h']
+        return ['<gpuarray/types.h>', '<gpuarray/kernel.h>', 'math.h', 'gpuarray_helper.h', 'stdbool.h', 'float.h', 'gpuarray_api.h', 'numpy_compat.h']
 
     def make_node(self, feature_maps, rois, argmaxes, out_grad):
         ctx_name = infer_context_name(feature_maps, rois, argmaxes, out_grad)
@@ -505,7 +511,7 @@ class GpuRoIPoolGradOp(CGpuKernelBase):
         assert rois.ndim == 2
         assert argmaxes.ndim == 4
         assert out_grad.ndim == 4
-        return Apply(self, [feature_maps, roi_tuples, out_grad], [feature_maps.type()])
+        return Apply(self, [feature_maps, roi_tuples, argmaxes, out_grad], [feature_maps.type()])
 
     def get_params(self, node):
         return node.inputs[0].type.context
