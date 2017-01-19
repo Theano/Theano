@@ -793,8 +793,7 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
             warnings.warn('cuDNN backward filter operation for 3D convolutions may produce bad results '
                           'with certain cuDNN algorithms depending on the compute capability of your GPU '
                           'if subsample is not (1, 1, 1). If you encounter problems, consider '
-                          'setting the theano flag "dnn.conv.algo_bwd_filter" to "none" '
-                          '(dnn.conv.algo_bwd_filter=none)')
+                          'setting the theano flag "dnn.conv.algo_bwd_filter" to "none".')
         img = as_cuda_ndarray_variable(img)
         topgrad = as_cuda_ndarray_variable(topgrad)
         output = as_cuda_ndarray_variable(output)
