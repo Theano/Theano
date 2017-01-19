@@ -1528,7 +1528,7 @@ class TestCompositeCodegen(unittest.TestCase):
 
     def test_local_useless_composite(self):
         x = theano.scalar.float32()
-        c = theano.scalar.Composite([x], [x+1, x-1])
+        c = theano.scalar.Composite([x], [x + 1, x - 1])
         X = theano.tensor.matrix()
         o = theano.tensor.Elemwise(scalar_op=c)(X)
         mode = theano.compile.mode.get_default_mode().including(
