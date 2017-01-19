@@ -342,8 +342,7 @@ class SoftmaxGrad(gof.OpenMPOp):
     def c_code(self, node, name, inp, out, sub):
         dy, sm = inp
         dx, = out
-
-        init_decl = """
+        return '''
         if ((PyArray_TYPE(%(dy)s) != NPY_DOUBLE) &&
             (PyArray_TYPE(%(dy)s) != NPY_FLOAT))
         {
@@ -384,19 +383,8 @@ class SoftmaxGrad(gof.OpenMPOp):
                 %(fail)s;
             }
         }
-        """
 
-        parallel_check = """
-        if (PyArray_DIMS(%(dx)s)[0] > 128 && PyArray_DIMS(%(dx)s)[1] > 25600) {
         #pragma omp parallel for schedule(static, 32)
-        """
-
-        serial_check = """
-        }
-        else {
-        """
-
-        loop = """
         for (size_t i = 0; i < PyArray_DIMS(%(dx)s)[0]; ++i)
         {
             const dtype_%(dy)s* __restrict__ dy_i = (dtype_%(dy)s*) (PyArray_BYTES(%(dy)s) + PyArray_STRIDES(%(dy)s)[0] * i);
@@ -417,16 +405,7 @@ class SoftmaxGrad(gof.OpenMPOp):
                 dx_i[j * Sdx] -= sum_dy_times_sm * sm_i[j * Ssm];
             }
         }
-        """
-
-        end_check = """
-        }
-        """
-
-        c_code = (init_decl, parallel_check, loop, serial_check, loop, end_check)
-        code_template = ''.join(c_code)
-
-        return code_template % dict(locals(), **sub)
+        ''' % dict(locals(), **sub)
 softmax_grad = SoftmaxGrad()
 
 
@@ -525,17 +504,8 @@ class Softmax(gof.OpenMPOp):
         Ssm1 = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
         """
 
-        parallel_check = """
-        if (Nx[0] > 128 && Nx[1] > 25600) {
-        #pragma omp parallel for schedule(static, 32)
-        """
-
-        serial_check = """
-        }
-        else {
-        """
-
         begin_row_loop = """
+        #pragma omp parallel for schedule(static, 32)
         for (size_t i = 0; i < Nx[0]; ++i)
         {
             size_t j;
@@ -612,12 +582,7 @@ class Softmax(gof.OpenMPOp):
         end_row_loop = """
         }
         """
-
-        end_check = """
-        }
-        """
-        return (init_decl, parallel_check, begin_row_loop, inside_row_loop, end_row_loop, serial_check, begin_row_loop, inside_row_loop, end_row_loop, end_check)
-
+        return (init_decl, begin_row_loop, inside_row_loop, end_row_loop)
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
