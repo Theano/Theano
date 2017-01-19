@@ -664,7 +664,7 @@ class Function(object):
         input_storage = [i.value for i in ins]
         # reinitialize new maker and create new function
         if profile is None:
-            profile = config.profile
+            profile = config.profile or config.print_global_stats
             # profile -> True or False
         if profile is True:
             if name:

@@ -50,66 +50,67 @@ def _atexit_print_fn():
     Print ProfileStat objects in _atexit_print_list to _atexit_print_file.
 
     """
-    to_sum = []
+    if config.profile:
+        to_sum = []
 
-    if config.profiling.destination == 'stderr':
-        destination_file = sys.stderr
-    elif config.profiling.destination == 'stdout':
-        destination_file = sys.stdout
-    else:
-        destination_file = open(config.profiling.destination, 'w')
-
-    # Reverse sort in the order of compile+exec time
-    for ps in sorted(_atexit_print_list,
-                     key=lambda a:a.compile_time + a.fct_call_time)[::-1]:
-        if ps.fct_callcount >= 1 or ps.compile_time > 1:
-            ps.summary(file=destination_file,
-                       n_ops_to_print=config.profiling.n_ops,
-                       n_apply_to_print=config.profiling.n_apply)
-            if not isinstance(ps, ScanProfileStats):
-                to_sum.append(ps)
+        if config.profiling.destination == 'stderr':
+            destination_file = sys.stderr
+        elif config.profiling.destination == 'stdout':
+            destination_file = sys.stdout
         else:
-            # TODO print the name if there is one!
-            print('Skipping empty Profile')
-    if len(to_sum) > 1:
-        # Make a global profile
-        cum = copy.copy(to_sum[0])
-        msg = ("Sum of all(%d) printed profiles at exit excluding Scan op"
-               " profile." % len(to_sum))
-        cum.message = msg
-        for ps in to_sum[1:]:
-            for attr in ["compile_time", "fct_call_time", "fct_callcount",
-                         "vm_call_time", "optimizer_time", "linker_time",
-                         "validate_time", "import_time",
-                         "linker_node_make_thunks"]:
-                setattr(cum, attr, getattr(cum, attr) + getattr(ps, attr))
+            destination_file = open(config.profiling.destination, 'w')
 
-            # merge dictonary
-            for attr in ["apply_time", "apply_callcount",
-                         "apply_cimpl", "variable_shape", "variable_strides",
-                         "linker_make_thunk_time"]:
-                cum_attr = getattr(cum, attr)
-                for key, val in iteritems(getattr(ps, attr)):
-                    assert key not in cum_attr
-                    cum_attr[key] = val
-
-            if cum.optimizer_profile and ps.optimizer_profile:
-                try:
-                    merge = cum.optimizer_profile[0].merge_profile(
-                        cum.optimizer_profile[1],
-                        ps.optimizer_profile[1])
-                    assert len(merge) == len(cum.optimizer_profile[1])
-                    cum.optimizer_profile = (cum.optimizer_profile[0], merge)
-                except Exception as e:
-                    print("Got an exception while merging profile")
-                    print(e)
-                    cum.optimizer_profile = None
+        # Reverse sort in the order of compile+exec time
+        for ps in sorted(_atexit_print_list,
+                         key=lambda a:a.compile_time + a.fct_call_time)[::-1]:
+            if ps.fct_callcount >= 1 or ps.compile_time > 1:
+                ps.summary(file=destination_file,
+                           n_ops_to_print=config.profiling.n_ops,
+                           n_apply_to_print=config.profiling.n_apply)
+                if not isinstance(ps, ScanProfileStats):
+                    to_sum.append(ps)
             else:
-                cum.optimizer_profile = None
+                # TODO print the name if there is one!
+                print('Skipping empty Profile')
+        if len(to_sum) > 1:
+            # Make a global profile
+            cum = copy.copy(to_sum[0])
+            msg = ("Sum of all(%d) printed profiles at exit excluding Scan op"
+                   " profile." % len(to_sum))
+            cum.message = msg
+            for ps in to_sum[1:]:
+                for attr in ["compile_time", "fct_call_time", "fct_callcount",
+                             "vm_call_time", "optimizer_time", "linker_time",
+                             "validate_time", "import_time",
+                             "linker_node_make_thunks"]:
+                    setattr(cum, attr, getattr(cum, attr) + getattr(ps, attr))
 
-        cum.summary(file=destination_file,
-                    n_ops_to_print=config.profiling.n_ops,
-                    n_apply_to_print=config.profiling.n_apply)
+                # merge dictonary
+                for attr in ["apply_time", "apply_callcount",
+                             "apply_cimpl", "variable_shape", "variable_strides",
+                             "linker_make_thunk_time"]:
+                    cum_attr = getattr(cum, attr)
+                    for key, val in iteritems(getattr(ps, attr)):
+                        assert key not in cum_attr
+                        cum_attr[key] = val
+
+                if cum.optimizer_profile and ps.optimizer_profile:
+                    try:
+                        merge = cum.optimizer_profile[0].merge_profile(
+                            cum.optimizer_profile[1],
+                            ps.optimizer_profile[1])
+                        assert len(merge) == len(cum.optimizer_profile[1])
+                        cum.optimizer_profile = (cum.optimizer_profile[0], merge)
+                    except Exception as e:
+                        print("Got an exception while merging profile")
+                        print(e)
+                        cum.optimizer_profile = None
+                else:
+                    cum.optimizer_profile = None
+
+            cum.summary(file=destination_file,
+                        n_ops_to_print=config.profiling.n_ops,
+                        n_apply_to_print=config.profiling.n_apply)
 
     if config.print_global_stats:
         print_global_stats()

@@ -482,7 +482,7 @@ class Stack(VM):
                     try:
                         _, dt = self.run_thunk_of_node(current_apply)
                         del _
-                        if config.profile:
+                        if config.profile or config.print_global_stats:
                             current_idx = self.node_idx[current_apply]
                             self.call_counts[current_idx] += 1
                             self.call_times[current_idx] += dt
@@ -596,7 +596,7 @@ class Stack(VM):
                         if current_apply.inputs[r].owner:
                             apply_stack.append(current_apply.inputs[r].owner)
                 else:
-                    if config.profile:
+                    if config.profile or config.print_global_stats:
                         for (idx, o) in enumerate(thunks[
                                 self.node_idx[current_apply]].outputs):
                             var = self.nodes[
@@ -757,7 +757,7 @@ class VM_Linker(link.LocalLinker):
         associated to self, else, a new VM_Linker associated to fgraph.
 
         """
-        if (config.profile and
+        if ((config.profile or config.print_global_stats) and
                 ((hasattr(theano, 'sandbox') and
                   hasattr(theano.sandbox, 'cuda') and
                   theano.sandbox.cuda.cuda_enabled) or
@@ -856,7 +856,7 @@ class VM_Linker(link.LocalLinker):
         pre_call_clear = [storage_map[v] for v in self.no_recycling]
 
         if (self.callback is not None or self.callback_input is not None or
-                (config.profile and config.profile_memory) or
+                ((config.profile or config.print_global_stats) and config.profile_memory) or
                 (self.allow_partial_eval and not self.use_cloop)):
 
             if self.use_cloop and (self.callback is not None or
@@ -1086,7 +1086,7 @@ class VM_Linker(link.LocalLinker):
             lazy = config.vm.lazy
         if lazy is None:
             lazy = not all([(not th.lazy) for th in thunks])
-        if not (lazy or (config.profile and config.profile_memory) or
+        if not (lazy or ((config.profile or config.print_global_stats) and config.profile_memory) or
                 self.use_cloop or self.callback or self.callback_input):
             for pair in itervalues(reallocated_info):
                 storage_map[pair[1]] = storage_map[pair[0]]
