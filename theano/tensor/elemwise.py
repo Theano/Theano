@@ -1926,10 +1926,8 @@ class Sum(CAReduceDtype):
             str(self.acc_dtype)
         )
 
-    def grad(self, inp, grads):
+    def L_op(self, inp, out, grads):
         x, = inp
-
-        out = self(*inp)
 
         if out.dtype not in theano.tensor.continuous_dtypes:
             return [x.zeros_like(dtype=theano.config.floatX)]
@@ -1984,7 +1982,7 @@ class Prod(CAReduceDtype):
         if 'no_zeros_in_input' not in dct:
             self.no_zeros_in_input = False
 
-    def grad(self, inp, grads):
+    def L_op(self, inp, out, grads):
         """
         The grad of this Op could be very easy, if it is was not for the case
         where zeros are present in a given "group" (ie. elements reduced
@@ -2033,7 +2031,6 @@ class Prod(CAReduceDtype):
         prod_in, = inp
         gz, = grads
 
-        out = self(*inp)
 
         if (out.dtype in theano.tensor.discrete_dtypes or
                 self.acc_dtype in theano.tensor.discrete_dtypes):
