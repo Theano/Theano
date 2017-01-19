@@ -34,6 +34,9 @@ information is given in the :ref:`type` of a *Variable*.
 
 The following code illustrates how rows and columns are broadcasted in order to perform an addition operation with a matrix:
 
+>>> import numpy as np
+>>> import theano
+>>> import theano.tensor as T
 >>> r = T.row()
 >>> r.broadcastable
 (True, False)
@@ -65,8 +68,8 @@ array([[0],
 >>> M = np.arange(9).reshape(3, 3)
 >>> f_col(C, M)
 [array([[  0.,   1.,   2.],
-        [  4.,   5.,   6.],
-        [  8.,   9.,  10.]])]
+       [  4.,   5.,   6.],
+       [  8.,   9.,  10.]])]
 
 In these examples, we can see that both the row vector and the column vector are broadcasted in order to be be added to the matrix.
 
