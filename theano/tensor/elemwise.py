@@ -636,9 +636,6 @@ second dimension
 
     def L_op(self, inputs, outs, ograds):
 
-        if not isinstance(outs, (list, tuple)):
-            outs = [outs]
-
         # compute grad with respect to broadcasted input
         rval = self._bgrad(inputs, ograds)
 
