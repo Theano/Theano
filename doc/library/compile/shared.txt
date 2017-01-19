@@ -31,14 +31,14 @@
        Changes to this value will be visible to all functions using this SharedVariable.
     
     .. method:: set_value(self, new_value, borrow=False)
-       :param new_value: 
-       :type new_value:
+       :param new_value: The new value.
+       :type new_value: A compatible type for this shared variable.
        
        :param borrow: True to use the new_value directly, potentially creating problems
             related to aliased memory.
        :type borrow: bool
        
-        Changes to this value will be visible to all functions using this SharedVariable.
+       Changes to this value will be visible to all functions using this SharedVariable.
         
 
     .. method:: __init__(self, name, type, value, strict, container=None)
