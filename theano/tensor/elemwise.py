@@ -634,9 +634,8 @@ second dimension
 
         return [[True for output in node.outputs] for ipt in node.inputs]
 
-    def grad(self, inputs, ograds):
+    def L_op(self, inputs, outs, ograds):
 
-        outs = self(*inputs)
         if not isinstance(outs, (list, tuple)):
             outs = [outs]
 
