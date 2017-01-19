@@ -212,8 +212,8 @@ class OpFromGraph(gof.Op):
 
     def __str__(self):
         name = self.__class__.__name__ if self.name is None else self.name
-        is_inline = 'inline' if self.is_inline else 'compiled'
-        return '%(name)s{%(is_inline)s}' % locals()
+        is_inline = self.is_inline
+        return '%(name)s{inline=%(is_inline)s}' % locals()
 
     def _recompute_grad_op(self):
         if isinstance(self._grad_op, OpFromGraph):
