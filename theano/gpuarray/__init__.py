@@ -93,6 +93,12 @@ def init_dev(dev, name=None):
                       (gmem//MB, context.total_gmem//MB,
                        gmem/context.total_gmem, dev),
                       file=sys.stderr)
+
+        # Initialise the blas kernels.  We do this after the
+        # preallocation to not fragment the heap accidentally.
+        tmp = pygpu.empty((2, 2), dtype='float32', context=context)
+        pygpu.blas.gemm(0, tmp, tmp, 0, tmp, overwrite_c=True)
+        del tmp
     else:
         context = init_dev.devmap[dev]
     # This will map the context name to the real context object.
