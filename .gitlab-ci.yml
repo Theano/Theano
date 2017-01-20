@@ -1,6 +1,5 @@
 stages:
     - build
-    - push
     - deploy
     - trigger
 
@@ -15,15 +14,7 @@ theano:
     - docker build --pull -t "${CI_REGISTRY_IMAGE}:${CI_BUILD_REF_NAME}"
                    --build-arg "NVIDIA_BUILD_REF=${CI_BUILD_REF}"
                    --build-arg "NVIDIA_BUILD_ID=${CI_BUILD_ID}" .
-    only:
-    - /^.*-devel$/
-    - /^.*-stage$/
-
-all:
-    stage: push
-    script:
-    - docker login -u gitlab-ci-token -p "${CI_BUILD_TOKEN}" "${CI_REGISTRY}"
-    - docker push "${CI_REGISTRY_IMAGE}"
+    - docker push "${CI_REGISTRY_IMAGE}:${CI_BUILD_REF_NAME}"
     only:
     - /^.*-devel$/
     - /^.*-stage$/
