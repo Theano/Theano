@@ -1215,9 +1215,10 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
         # Testing with symbolic Variable
         y = tensor.tensor4()
-        symbolic_spp = spp_pooling(y, pooling_dimensions, y.shape)
+        symbolic_spp = spp_pooling(y, pooling_dimensions)
         func = theano.function([y], symbolic_spp, allow_input_downcast=True)
         spp_values = func(random_image)
         utt.assert_allclose(tested_pool_values, spp_values)
+
 if __name__ == '__main__':
     unittest.main()

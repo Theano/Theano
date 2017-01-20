@@ -255,7 +255,7 @@ def pool_3d(input, ws=None, ignore_border=None, stride=None, pad=(0, 0, 0),
     return output
 
 
-def spp_pooling(image, out_dimension, image_shape):
+def spp_pooling(image, out_dimension, image_shape=None):
 
     # Docstring Credits : Lasagne
     '''
@@ -300,7 +300,8 @@ def spp_pooling(image, out_dimension, image_shape):
            http://arxiv.org/pdf/1406.4729.pdf.
 
     '''
-
+    if image_shape is None:
+        image_shape = image.shape
     input_size = image_shape[2:]
     pooled_data_list = []
     for pool_dim in out_dimension:
