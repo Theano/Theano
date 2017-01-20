@@ -1041,10 +1041,13 @@ class ShapeFeature(object):
                 rval.append(None)
         return rval
 
-    def unpack(self, s_i):
+    def unpack(self, s_i, var):
         """Return a symbolic integer scalar for the shape element s_i.
 
         The s_i argument was produced by the infer_shape() of an Op subclass.
+
+        var: the variable that correspond to s_i. This is just for
+        error reporting.
 
         """
         # unpack the s_i that the Op returned
@@ -1059,7 +1062,10 @@ class ShapeFeature(object):
                 isinstance(s_i, numpy.integer) or
                 (isinstance(s_i, numpy.ndarray) and s_i.ndim == 0)):
             # this shape is a constant
-            assert s_i >= 0
+            if s_i < 0:
+                msg = "There is a negative shape in the graph!"
+                msg += gof.utils.get_variable_trace_string(var)
+                raise ValueError(msg)
             return T.constant(s_i, dtype='int64')
         if type(s_i) in (tuple, list):
             # this dimension is the same as many of the inputs
@@ -1137,7 +1143,7 @@ class ShapeFeature(object):
                         r.type.broadcastable[i]):
                     shape_vars.append(self.lscalar_one)
                 else:
-                    shape_vars.append(self.unpack(s[i]))
+                    shape_vars.append(self.unpack(s[i], r))
             assert all([not hasattr(r.type, "broadcastable") or
                         not r.type.broadcastable[i] or
                         # The two following comparison are a speed optimization
@@ -1238,7 +1244,7 @@ class ShapeFeature(object):
         new_shape = []
         for j, s_j in enumerate(prev_shape):
             if j == i:
-                new_shape.append(self.unpack(s_i))
+                new_shape.append(self.unpack(s_i, r))
             else:
                 new_shape.append(s_j)
         assert all([not hasattr(r.type, "broadcastable") or
@@ -7001,6 +7007,10 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 32,
 
         if type(node.op) is not OP:
             return False
+
+        if len(node.outputs) > 1:
+            # We don't support the fusion for node with multiple outputs.
+            return
         inputs = []  # inputs of the new Elemwise op.
         s_inputs = []  # inputs of the new scalar op used by the Composite.
         # Inputs of the new scalar op that represents the current node.
@@ -7330,6 +7340,26 @@ else:
                            'fusion', 'local_elemwise_fusion',
                            'FusionOptimizer')
 
+
+@register_canonicalize
+@gof.local_optimizer([Elemwise])
+def local_useless_composite(node):
+    """For elemwise Composite that have multiple outputs, remove the
+    outputs that are not used.
+
+    """
+    if (not isinstance(node.op, Elemwise) or
+            not isinstance(node.op.scalar_op, scalar.Composite)):
+        return
+    comp = node.op.scalar_op
+    idx = [i for i, o_extern in enumerate(node.outputs)
+           if o_extern.clients]
+    if len(idx) < len(node.outputs):
+        new_outputs = [comp.outputs[i] for i in idx]
+        c = scalar.Composite(inputs=comp.inputs,
+                             outputs=new_outputs)
+        e = Elemwise(scalar_op=c)(*node.inputs, return_list=True)
+        return dict(zip([node.outputs[i] for i in idx], e))
 
 # ############################
 # # Remove consider_constant #

@@ -547,6 +547,7 @@ class Constant(Variable):
     def __init__(self, type, data, name=None):
         Variable.__init__(self, type, None, None, name)
         self.data = type.filter(data)
+        utils.add_tag_trace(self)
 
     def equals(self, other):
         # this does what __eq__ should do, but Variable and Apply should always be hashable by id

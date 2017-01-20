@@ -1045,8 +1045,8 @@ second dimension
             Py_XINCREF(%(oname)s);
             """ % locals()
             # We alias the scalar variables
-            defines += "#define %(oname)s_i %(iname)s_i" % locals()
-            undefs += "#undef %(oname)s_i" % locals()
+            defines += "#define %(oname)s_i %(iname)s_i\n" % locals()
+            undefs += "#undef %(oname)s_i\n" % locals()
 
         # Note: here, olv_index is either the index of the last output
         # which is allocated, OR, if there are any aliased outputs,

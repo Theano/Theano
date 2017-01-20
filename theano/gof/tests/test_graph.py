@@ -346,7 +346,14 @@ class TestAutoName:
         r1 = tensor.constant(1.5)
         r2 = tensor.constant(1.5)
         assert r1.auto_name == "auto_" + str(autoname_id)
-        assert r2.auto_name == "auto_" + str(autoname_id + 1)
+        # We reuse the same variable
+        assert r2.auto_name == "auto_" + str(autoname_id)
+        assert r1 is r2
+
+        r3 = tensor.constant(1.6)
+        # The cache still create a new object that we don't return.
+        # This is why we must increase by 2 and not 1.
+        assert r3.auto_name == "auto_" + str(autoname_id + 2)
 
     def test_tensorvariable(self):
         # Get counter value

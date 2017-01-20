@@ -488,5 +488,14 @@ def test_grad_abs():
 # in test_fusion, TestCompositeCodegen
 
 
+def test_constant():
+    c = constant(2, name='a')
+    assert c.name == 'a'
+    assert c.dtype == 'int8'
+    c = constant(2, dtype='float32')
+    assert c.name is None
+    assert c.dtype == 'float32'
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -276,7 +276,9 @@ def constant(x, name=None, ndim=None, dtype=None):
     if (sig not in constant_cache and ret.data.size == 1 and
         (-10) <= ret.data <= 10 and
         (ret.dtype in int_dtypes or ret.dtype in uint_dtypes or
-         (ret.dtype in float_dtypes and int(ret.data) == ret.data))):
+         (ret.dtype in float_dtypes and
+          # Limit the size of the cache.
+          len(constant_cache) < 10000))):
         constant_cache[sig] = ret
         # This is needed to raise a good error to the user.
         ret.cached = True
