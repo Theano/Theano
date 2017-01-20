@@ -1104,7 +1104,7 @@ AddConfigVar('optdb.position_cutoff',
 
 AddConfigVar('optdb.max_use_ratio',
              'A ratio that prevent infinite loop in EquilibriumOptimizer.',
-             FloatParam(5),
+             FloatParam(6),
              in_c_key=False)
 
 AddConfigVar('gcc.cxxflags',
