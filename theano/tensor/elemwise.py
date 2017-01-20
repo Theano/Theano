@@ -1926,7 +1926,7 @@ class Sum(CAReduceDtype):
     def L_op(self, inp, out, grads):
         x, = inp
 
-        if out.dtype not in theano.tensor.continuous_dtypes:
+        if out.type.dtype not in theano.tensor.continuous_dtypes:
             return [x.zeros_like(dtype=theano.config.floatX)]
 
         gz, = grads
