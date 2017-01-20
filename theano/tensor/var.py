@@ -711,7 +711,7 @@ class _tensor_py_operators(object):
         """See `theano.tensor.repeat`."""
         return theano.tensor.extra_ops.repeat(self, repeats, axis)
 
-    def round(self, mode="half_away_from_zero"):
+    def round(self, mode=None):
         """See `theano.tensor.round`."""
         return theano.tensor.basic.round(self, mode)
 
