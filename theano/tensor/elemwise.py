@@ -1926,7 +1926,7 @@ class Sum(CAReduceDtype):
     def L_op(self, inp, out, grads):
         x, = inp
 
-        if out.type.dtype not in theano.tensor.continuous_dtypes:
+        if out[0].dtype not in theano.tensor.continuous_dtypes:
             return [x.zeros_like(dtype=theano.config.floatX)]
 
         gz, = grads
@@ -2028,8 +2028,7 @@ class Prod(CAReduceDtype):
         prod_in, = inp
         gz, = grads
 
-
-        if (out.dtype in theano.tensor.discrete_dtypes or
+        if (out[0].dtype in theano.tensor.discrete_dtypes or
                 self.acc_dtype in theano.tensor.discrete_dtypes):
             # There is an int conversion in the way
             return [prod_in.zeros_like(dtype=theano.config.floatX)]
