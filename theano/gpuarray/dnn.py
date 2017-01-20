@@ -720,6 +720,11 @@ class GpuDnnConvGradW(DnnBase):
         return defs
 
     def make_node(self, img, topgrad, output, desc, alpha=None, beta=None):
+        if img.type.ndim == 5 and self.algo != 'none' and desc.owner.op.subsample != (1, 1, 1):
+            warnings.warn('cuDNN backward filter operation for 3D convolutions may produce bad results '
+                          'with certain cuDNN algorithms depending on the compute capability of your GPU '
+                          'if subsample is not (1, 1, 1). If you encounter problems, consider '
+                          'setting the theano flag "dnn.conv.algo_bwd_filter" to "none".')
         ctx_name = infer_context_name(img, topgrad, output)
         img = as_gpuarray_variable(img, ctx_name)
         topgrad = as_gpuarray_variable(topgrad, ctx_name)
