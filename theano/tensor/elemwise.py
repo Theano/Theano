@@ -1207,8 +1207,12 @@ second dimension
             dtype_%(x)s& %(x)s_i = ((dtype_%(x)s*) PyArray_DATA(%(x)s))[0];
                             """ % locals()
                     if self.openmp:
-                        contig += """#pragma omp parallel for if(n>=%d)
-                        """ % (config.openmp_elemwise_minsize)
+                        if 'icpc' in theano.config.cxx:
+                            contig += """#pragma omp parallel for simd schedule(static) if(n>=%d)
+                            """ % (config.openmp_elemwise_minsize)
+                        else:
+                            contig += """#pragma omp parallel for if(n>=%d)
+                            """ % (config.openmp_elemwise_minsize)
                     contig += """
                     for(int i=0; i<n; i++){
                         %(index)s

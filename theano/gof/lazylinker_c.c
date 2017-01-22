@@ -1,6 +1,7 @@
 #include <Python.h>
 #include "theano_mod_helper.h"
 #include "structmember.h"
+#include "xmmintrin.h"
 #include <sys/time.h>
 
 #if PY_VERSION_HEX >= 0x03000000
@@ -266,6 +267,15 @@ CLazyLinker_init(CLazyLinker *self, PyObject *args, PyObject *kwds)
              *node_output_size=NULL,
              *update_storage=NULL,
              *dependencies=NULL;
+    /*
+     * Set the FTZ (flush-to-zero) and DAT (denormals-are-zero) flags in the
+     * MXCSR register. This will avoid performance degradation after hundreds
+     * of epochs during training process, because of ML algorithm converge
+     * many parameters to denormals, which will cause the decoder generate
+     * extra assist uop, thus lower performance. FTZ flag will force the ALU
+     * flush the denormals to zero automatically.
+     */
+    _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
 
     assert(!self->nodes);
     if (! PyArg_ParseTupleAndKeywords(args, kwds, "OOOiOOOOOOOOOOOOOOOO", kwlist,
