@@ -4947,9 +4947,8 @@ class Canonizer(gof.LocalOptimizer):
             # theano/tensor/tests/test_opt.py:T_local_switch_sink
             new.tag.values_eq_approx = values_eq_approx_remove_inf_nan
 
-            # Julian: Pascal, maybe you can help me implement the copying of the stacktrace for this class?
-            # Because, it's so general I think we need to copy over the stacktraces of all ops being replaced
-            # to every new op?
+            # We need to implement the copy over of the stacktrace.
+            # See issue #5104.
             return [new]
         else:
             _logger.warning(' '.join(('CANONIZE FAILED: new, out = ',

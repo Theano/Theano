@@ -3482,7 +3482,7 @@ def test_local_fill_useless():
 
 def test_local_elemwise_sub_zeros():
     # Test opt local_elemwise_sub_zeros
-    # We test separetly for scalars, vectors and matrices
+    # We test separately for scalars, vectors and matrices
     scalar = T.scalar()
     vect = T.vector()
     mat = T.matrix()
@@ -3502,8 +3502,8 @@ def test_local_elemwise_sub_zeros():
     f = function([scalar], scalar - scalar, mode=mode)
     # Check optimized graph is correct
     assert isinstance(f.maker.fgraph.toposort()[0].op, T.Elemwise)
-    assert f.maker.fgraph.toposort()[0].op.name\
-        == 'Elemwise{second,no_inplace}'
+    assert isinstance(f.maker.fgraph.toposort()[0].op.scalar_op,
+                      theano.scalar.Second)
     assert isinstance(f.maker.fgraph.toposort()[0].inputs[1],
                       T.TensorConstant) or\
         isinstance(f.maker.fgraph.toposort()[0].inputs[1],
@@ -3516,8 +3516,8 @@ def test_local_elemwise_sub_zeros():
     f = function([vect], vect - vect, mode=mode)
     # Check optimized graph is correct
     assert isinstance(f.maker.fgraph.toposort()[0].op, T.Elemwise)
-    assert f.maker.fgraph.toposort()[0].op.name\
-        == 'Elemwise{second,no_inplace}'
+    assert isinstance(f.maker.fgraph.toposort()[0].op.scalar_op,
+                      theano.scalar.Second)
     assert isinstance(f.maker.fgraph.toposort()[0].inputs[1],
                       T.TensorConstant) or\
         isinstance(f.maker.fgraph.toposort()[0].inputs[1],
@@ -3530,8 +3530,8 @@ def test_local_elemwise_sub_zeros():
     f = function([mat], mat - mat, mode=mode)
     # Check optimized graph is correct
     assert isinstance(f.maker.fgraph.toposort()[0].op, T.Elemwise)
-    assert f.maker.fgraph.toposort()[0].op.name\
-        == 'Elemwise{second,no_inplace}'
+    assert isinstance(f.maker.fgraph.toposort()[0].op.scalar_op,
+                      theano.scalar.Second)
     assert isinstance(f.maker.fgraph.toposort()[0].inputs[1],
                       T.TensorConstant) or\
         isinstance(f.maker.fgraph.toposort()[0].inputs[1],
