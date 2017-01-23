@@ -488,6 +488,10 @@ def use(device,
 
     """
     global cuda_enabled, cuda_initialization_error_message
+    _logger.warn("The cuda backend is deprecated and will be removed in "
+                 "the next release.  Please switch to the gpuarray backend. "
+                 "You can get more information about how to switch at this "
+                 "URL:\n https://github.com/Theano/Theano/wiki/Converting-to-the-new-gpu-back-end%28gpuarray%29\n")
     if force and not cuda_available and device.startswith('gpu'):
         if not nvcc_compiler.is_nvcc_available():
             raise EnvironmentError("You forced the use of gpu device '%s', but"
