@@ -1,15 +1,12 @@
 import theano.tensor as T
 from theano.gof import Apply, Op
 from theano.tensor.blas import ldflags
-from theano.sandbox.mkl import mkl_helper
 from theano.gradient import DisconnectedType
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape
+from theano.sandbox.mkl.mkl_helper import header_text
 
 
 class MKLOp(Op):
-    def __init__(self, uniq_id=0):
-        self.uniq_id = uniq_id
-
     def c_lib_dirs(self):
         return ldflags(libs=False, libs_dir=True)
 
@@ -22,63 +19,108 @@ class MKLOp(Op):
         return compile_args
 
     def c_support_code(self):
-        ccode = mkl_helper.header_text()
+        ccode = header_text()
         ccode += """
-            #define DIMENSION  4
+        #define DIMENSION  4
 
-            #define CHECK_ERR(f, err) \\
-                do { \\
-                    (err) = (f); \\
-                    if ((err) != E_SUCCESS) { \\
-                        printf("Error in file [%s:%d], err code (%d)", \\
-                               __FILE__, __LINE__, err); \\
-                        exit(1); \\
-                    } \\
-                } while(0)
+        #define CHECK_ERR(f, err) \\
+            do { \\
+                (err) = (f); \\
+                if ((err) != E_SUCCESS) { \\
+                    printf("Error in file [%s:%d], err code (%d)", \\
+                           __FILE__, __LINE__, err); \\
+                    exit(1); \\
+                } \\
+            } while(0)
+        """
 
-            static dnnError_t err;
-            static int first_run = 1;
-            static void* internal_buf = NULL;
-            static void* user_buf = NULL;
-            static dnnLayout_t layout_internal = NULL;
-            static dnnLayout_t layout_usr = NULL;
-            static dnnPrimitive_t to_internal = NULL;
-            static dnnPrimitive_t from_internal = NULL;
-            static dnnPrimitive_t primitive = NULL;
-            void *convert_resources[dnnResourceNumber];
-            size_t bottomSize[DIMENSION] = {0};
-            size_t bottomStride[DIMENSION] = {0};
+        return ccode
+
+
+class BaseConvertOp(MKLOp):
+    def c_support_code_struct(self, node, name):
+        ccode = """
+        dnnError_t err;
+        int first_run;
+        void* internal_buf;
+        void* user_buf;
+        dnnLayout_t layout_internal;
+        dnnLayout_t layout_user;
+        dnnPrimitive_t to_internal;
+        dnnPrimitive_t from_internal;
+        dnnPrimitive_t primitive;
+        void *convert_resources[dnnResourceNumber];
+        size_t bottomSize[DIMENSION];
+        size_t bottomStride[DIMENSION];
         """
         return ccode
 
+    def c_init_code_struct(self, node, name, sub):
+        ccode = """
+        first_run = 1;
+        internal_buf = NULL;
+        user_buf = NULL;
+        layout_internal = NULL;
+        layout_user = NULL;
+        to_internal = NULL;
+        from_internal = NULL;
+        primitive = NULL;
+        """
+        return ccode
+
+    '''
+    def c_cleanup_code_struct(self, node, name):
+        if 'float32' == node.inputs[0].type.dtype:
+            precision = 'F32'
+        elif "float64" == node.inputs[0].type.dtype:
+            precision = 'F64'
+        else:
+            raise Exception("Type %s not implemented" %
+                            node.inputs[0].type.dtype)
+        ccode = """
+        if (layout_internal != NULL) {
+            CHECK_ERR(dnnLayoutDelete_%(precision)s(layout_internal), err);
+            layout_internal = NULL;
+        }
+
+        if (layout_user != NULL) {
+            CHECK_ERR(dnnLayoutDelete_%(precision)s(layout_user), err);
+            layout_user = NULL;
+        }
+
+        if (to_internal != NULL) {
+            CHECK_ERR(dnnDelete_%(precision)s(to_internal), err);
+            to_internal = NULL;
+        }
+
+        if (from_internal != NULL) {
+            CHECK_ERR(dnnDelete_%(precision)s(from_internal), err);
+            from_internal = NULL;
+        }
+
+        if (primitive != NULL) {
+            CHECK_ERR(dnnDelete_%(precision)s(primitive), err);
+            primitive = NULL;
+        }
+
+        if (internal_buf != NULL) {
+            CHECK_ERR(dnnReleaseBuffer_%(precision)s(internal_buf), err);
+            internal_buf = NULL;
+        }
+        """ % locals()
+        return ccode
+    '''
+
     def c_code_cache_version(self):
-        return (1, 0, self.uniq_id)
+        return (1, 0)
 
 
-class U2IPool(MKLOp):
-    __props__ = ('ignore_border', 'mode', 'uniq_id')
+class U2IPool(BaseConvertOp):
+    __props__ = ('ignore_border', 'mode')
 
-    def __init__(self, ignore_border=False, mode='max', uniq_id=0):
-        super(U2IPool, self).__init__(uniq_id)
+    def __init__(self, ignore_border=False, mode='max'):
         self.ignore_border = ignore_border
         self.mode = mode
-
-    def __eq__(self, other):
-        if hasattr(self, '__props__'):
-            if type(self) != type(other):
-                return False
-            else:
-                self_props = [getattr(self, p) for p in self.__props__ if p != 'uniq_id']
-                other_props = [getattr(other, p) for p in other.__props__ if p != 'uniq_id']
-                if self_props == other_props:
-                    return True
-                else:
-                    return False
-        else:
-            return NotImplemented
-
-    def __hash__(self):
-        return hash(self.ignore_border) ^ hash(self.mode)
 
     def make_node(self, x, ws, stride=None, pad=(0, 0)):
         x = T.as_tensor_variable(x)
@@ -98,10 +140,7 @@ class U2IPool(MKLOp):
         gz, = grads
         disc = [DisconnectedType()() for i in inp[1:]]
 
-        return [U2IGrad(uniq_id=self.uniq_id)(x, gz)] + disc
-
-    # def c_cleanup_code_struct(self, node, name):
-    #    pass
+        return [U2IGrad()(x, gz)] + disc
 
     def c_code(self, node, name, inp, out, sub):
         x, ws, stride, pad = inp
@@ -148,17 +187,17 @@ class U2IPool(MKLOp):
                 int inputOffset[2] = {pad_w, pad_h};
 
                 //create user layout
-                CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_usr, DIMENSION, bottomSize, bottomStride), err );
+                CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_user, DIMENSION, bottomSize, bottomStride), err );
 
                 CHECK_ERR( dnnPoolingCreateForward_%(precision)s(&primitive, NULL, %(algo)s,
-                           layout_usr, kernelSize, kernelStride, inputOffset, dnnBorderZeros), err );
+                           layout_user, kernelSize, kernelStride, inputOffset, dnnBorderZeros), err );
 
                 //create internal layout
                 CHECK_ERR( dnnLayoutCreateFromPrimitive_%(precision)s(&layout_internal, primitive, dnnResourceSrc), err );
 
-                if (!dnnLayoutCompare_%(precision)s(layout_usr, layout_internal)) {
+                if (!dnnLayoutCompare_%(precision)s(layout_user, layout_internal)) {
                     if(NULL == to_internal) {
-                        CHECK_ERR( dnnConversionCreate_%(precision)s(&to_internal, layout_usr, layout_internal), err );
+                        CHECK_ERR( dnnConversionCreate_%(precision)s(&to_internal, layout_user, layout_internal), err );
                     }
                 }
             }
@@ -199,36 +238,12 @@ class U2IPool(MKLOp):
         """ % locals()
         return ccode
 
+    def connection_pattern(self, node):
+        return [[1], [0], [0], [0]]
 
-class I2U(MKLOp):
-    __props__ = ('uniq_id',)
 
-    def __init__(self, uniq_id=0):
-        super(I2U, self).__init__(uniq_id)
-
-    def __eq__(self, other):
-        if hasattr(self, '__props__'):
-            if type(self) != type(other):
-                return False
-            else:
-                self_props = [getattr(self, p) for p in self.__props__ if p != 'uniq_id']
-                other_props = [getattr(other, p) for p in other.__props__ if p != 'uniq_id']
-                if self_props == other_props:
-                    return True
-                else:
-                    return False
-        else:
-            return NotImplemented
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        if hasattr(self, '__props__'):
-            return '%s{%s}' % (self.__class__.__name__,
-                               ', '.join('%s=%r' % (p, getattr(self, p)) for p in self.__props__))
-        else:
-            return '%s' % (self.__class__.__name__)
+class I2U(BaseConvertOp):
+    __props__ = ()
 
     def make_node(self, x):
         x = T.as_tensor_variable(x)
@@ -239,7 +254,7 @@ class I2U(MKLOp):
         x, = inp
         gz, = grads
 
-        return [I2UGrad(uniq_id=self.uniq_id)(x, gz)]
+        return [I2UGrad()(x, gz)]
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
@@ -284,7 +299,7 @@ class I2U(MKLOp):
                 }
 
                 //create usr layerout
-                CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_usr,
+                CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_user,
                                                      ndim, bottom_size,
                                                      out_stride), err );
 
@@ -295,7 +310,7 @@ class I2U(MKLOp):
                 layout_internal = ((dnnLayout_t*)PyArray_DATA(%(x)s))[0];
                 internal_buf = ((void**)PyArray_DATA(%(x)s))[1];
 
-                CHECK_ERR( dnnConversionCreate_%(precision)s(&from_internal, layout_internal, layout_usr), err );
+                CHECK_ERR( dnnConversionCreate_%(precision)s(&from_internal, layout_internal, layout_user), err );
             }
 
             //FIXME, compare internal and user layout, then decides whether to do the conversion
@@ -310,36 +325,11 @@ class I2U(MKLOp):
         return ccode
 
 
-class U2IRelu(MKLOp):
-    __props__ = ('slope', 'uniq_id')
+class U2IRelu(BaseConvertOp):
+    __props__ = ('slope', )
 
-    def __init__(self, slope=1, uniq_id=0):
-        super(U2IRelu, self).__init__(uniq_id)
+    def __init__(self, slope=1):
         self.slope = slope
-
-    def __eq__(self, other):
-        if hasattr(self, '__props__'):
-            if type(self) != type(other):
-                return False
-            else:
-                self_props = [getattr(self, p) for p in self.__props__ if p != 'uniq_id']
-                other_props = [getattr(other, p) for p in other.__props__ if p != 'uniq_id']
-                if self_props == other_props:
-                    return True
-                else:
-                    return False
-        else:
-            return NotImplemented
-
-    def __hash__(self):
-        return hash(self.slope)
-
-    def __str__(self):
-        if hasattr(self, '__props__'):
-            return '%s{%s}' % (self.__class__.__name__,
-                               ', '.join('%s=%r' % (p, getattr(self, p)) for p in self.__props__))
-        else:
-            return '%s' % (self.__class__.__name__)
 
     def make_node(self, x):
         x = T.as_tensor_variable(x)
@@ -350,10 +340,7 @@ class U2IRelu(MKLOp):
         x, = inp
         gz, = grads
 
-        return [U2IGrad(uniq_id=self.uniq_id)(x, gz)]
-
-    # def c_cleanup_code_struct(self, node, name):
-    #    pass
+        return [U2IGrad()(x, gz)]
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
@@ -382,16 +369,16 @@ class U2IRelu(MKLOp):
                 bottomStride[3] = bottomSize[0] * bottomSize[1] * bottomSize[2];
 
                 //create user layout
-                CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_usr, DIMENSION, bottomSize, bottomStride), err );
+                CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_user, DIMENSION, bottomSize, bottomStride), err );
 
-                CHECK_ERR( dnnReLUCreateForward_%(precision)s(&primitive, NULL, layout_usr, %(slope)s), err );
+                CHECK_ERR( dnnReLUCreateForward_%(precision)s(&primitive, NULL, layout_user, %(slope)s), err );
 
                 //create internal layout
                 CHECK_ERR( dnnLayoutCreateFromPrimitive_%(precision)s(&layout_internal, primitive, dnnResourceSrc), err );
 
-                if (!dnnLayoutCompare_%(precision)s(layout_usr, layout_internal)) {
+                if (!dnnLayoutCompare_%(precision)s(layout_user, layout_internal)) {
                     if(NULL == to_internal) {
-                        CHECK_ERR( dnnConversionCreate_%(precision)s(&to_internal, layout_usr, layout_internal), err );
+                        CHECK_ERR( dnnConversionCreate_%(precision)s(&to_internal, layout_user, layout_internal), err );
                     }
                 }
             }
@@ -433,86 +420,12 @@ class U2IRelu(MKLOp):
         return ccode
 
 
-class U2IGrad(MKLOp):
-    __props__ = ('uniq_id',)
-
-    def __init__(self, uniq_id=0):
-        super(U2IGrad, self).__init__(uniq_id)
-
-    def __eq__(self, other):
-        if hasattr(self, '__props__'):
-            if type(self) != type(other):
-                return False
-            else:
-                self_props = [getattr(self, p) for p in self.__props__ if p != 'uniq_id']
-                other_props = [getattr(other, p) for p in other.__props__ if p != 'uniq_id']
-                if self_props == other_props:
-                    return True
-                else:
-                    return False
-        else:
-            return NotImplemented
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        if hasattr(self, '__props__'):
-            return '%s{%s}' % (self.__class__.__name__,
-                               ', '.join('%s=%r' % (p, getattr(self, p)) for p in self.__props__))
-        else:
-            return '%s' % (self.__class__.__name__)
+class U2IGrad(BaseConvertOp):
+    __props__ = ()
 
     def make_node(self, x, gz):
         out = x.type()
         return Apply(self, [x, gz], [out])
-
-    def c_cleanup_code_struct(self, node, name):
-        d = {}
-        if 'float32' == node.inputs[0].type.dtype:
-            d['precision'] = "F32"
-        elif "float64" == node.inputs[0].type.dtype:
-            d['precision'] = "F64"
-        else:
-            raise Exception("Type %s not implemented" %
-                            node.inputs[0].type.dtype)
-        return """
-              //free buffer
-              int status = 0;
-
-              if(NULL != user_buf)
-              {
-                  status = dnnReleaseBuffer_%(precision)s(user_buf);
-                  if(0 != status)
-                  {
-                        printf(\"\\nERROR:dnnReleaseBuffer_%(precision)s user_buf in U2IGrad\\n\");
-                        exit(0);
-                  }
-
-                  user_buf = NULL;
-              }
-
-              if(NULL != from_internal)
-              {
-                  status = dnnDelete_%(precision)s(from_internal);
-                  if(0 != status)
-                  {
-                       printf(\"\\nERROR:dnnDelete_%(precision)s to_internal\\n\");
-                  }
-                  from_internal = NULL;
-              }
-
-              if(NULL != layout_usr)
-              {
-                  status = dnnLayoutDelete_%(precision)s(layout_usr);
-                  if(0 != status)
-                  {
-                        printf(\"\\nERROR:dnnLayoutDelete__%(precision)s layout_usr in U2IGrad\\n\");
-                        exit(0);
-                  }
-                  layout_usr = NULL;
-              }
-              """ % d
 
     def c_code(self, node, name, inp, out, sub):
         x, gz, = inp
@@ -561,11 +474,11 @@ class U2IGrad(MKLOp):
               }
 
               //create usr layerout
-              status = dnnLayoutCreate_%(precision)s(&layout_usr,
+              status = dnnLayoutCreate_%(precision)s(&layout_user,
                                                      ndim, bottom_size,
                                                      out_stride);
 
-              size_t size = dnnLayoutGetMemorySize_%(precision)s(layout_usr);
+              size_t size = dnnLayoutGetMemorySize_%(precision)s(layout_user);
               if(size != PyArray_DIMS(%(z)s)[0]*PyArray_STRIDES(%(z)s)[0])
               {
                       printf(\"ERROR:dnnLayoutCreate_%(precision)s: %%d , %%d in U2IGrad\\n\",size, dataSize);
@@ -578,7 +491,7 @@ class U2IGrad(MKLOp):
               layout_internal = ((dnnLayout_t*)PyArray_DATA(%(gz)s))[0]; //get internal layerout
               internal_buf = ((void **)PyArray_DATA(%(gz)s))[1];
 
-              status = dnnConversionCreate_%(precision)s(&from_internal, layout_internal, layout_usr);
+              status = dnnConversionCreate_%(precision)s(&from_internal, layout_internal, layout_user);
               if(0 != status)
               {
                      printf(\"ERROR:dnnConversionCreate_%(precision)s\\n\");
@@ -603,91 +516,12 @@ class U2IGrad(MKLOp):
         return ccode
 
 
-class I2UGrad(MKLOp):
-    __props__ = ('uniq_id',)
-
-    def __init__(self, uniq_id=0):
-        super(I2UGrad, self).__init__(uniq_id)
-
-    def __eq__(self, other):
-        if hasattr(self, '__props__'):
-            if type(self) != type(other):
-                return False
-            else:
-                self_props = [getattr(self, p) for p in self.__props__ if p != 'uniq_id']
-                other_props = [getattr(other, p) for p in other.__props__ if p != 'uniq_id']
-                if self_props == other_props:
-                    return True
-                else:
-                    return False
-        else:
-            return NotImplemented
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        if hasattr(self, '__props__'):
-            return '%s{%s}' % (self.__class__.__name__,
-                               ', '.join('%s=%r' % (p, getattr(self, p)) for p in self.__props__))
-        else:
-            return '%s' % (self.__class__.__name__)
+class I2UGrad(BaseConvertOp):
+    __props__ = ()
 
     def make_node(self, x, gz):
         out = x.type()
         return Apply(self, [x, gz], [out])
-
-    def c_cleanup_code_struct(self, node, name):
-        d = {}
-        d['name'] = I2UGrad.__name__
-        if 'float32' == node.inputs[0].type.dtype:
-            d['precision'] = "F32"
-        elif "float64" == node.inputs[0].type.dtype:
-            d['precision'] = "F64"
-        else:
-            raise Exception("Type %s not implemented" %
-                            node.inputs[0].type.dtype)
-        return """
-              //free buffer
-              int status = 0;
-       #ifdef _DEBUG_
-              printf(\"I2UGrad CleanUp\\n\");
-       #endif
-              if(NULL != to_internal)
-              {
-                    int status = dnnDelete_%(precision)s(to_internal);
-                    if(0 != status)
-                    {
-                          printf(\"\\nERROR:dnnDelete_%(precision)s to_internal\\n\");
-                    }
-                    to_internal = NULL;
-              }
-
-              if(NULL != internal_buf)
-              {
-                     status = dnnReleaseBuffer_%(precision)s(internal_buf);
-                     if(0 != status)
-                     {
-                             printf(\"\\nERROR:dnnReleaseBuffer_%(precision)s free internal buffer\\n\");
-                      }
-                      internal_buf = NULL;
-              }
-
-              if(NULL != layout_usr)
-              {
-                       status = dnnLayoutDelete_%(precision)s(layout_usr);
-                       if(0 != status)
-                       {
-                               printf(\"\\nERROR:dnnLayoutDelete__%(precision)s layout_usr in %(name)s\\n\");
-                               exit(0);
-                       }
-                       layout_usr = NULL;
-              }
-
-       #ifdef _DEBUG_
-              printf(\"I2UGrad CleanUp End\\n\");
-       #endif
-              """ % d
 
     def c_code(self, node, name, inp, out, sub):
         x, gz, = inp
@@ -745,7 +579,7 @@ class I2UGrad(MKLOp):
              }
 
               //create usr layerout for gz
-             status = dnnLayoutCreate_%(precision)s(&layout_usr,
+             status = dnnLayoutCreate_%(precision)s(&layout_user,
                                                      ndim, bottom_size,
                                                      out_stride);
              if(0 != status)
@@ -771,14 +605,14 @@ class I2UGrad(MKLOp):
                        }
               }
 
-              if(dnnLayoutGetMemorySize_%(precision)s(layout_usr) != dnnLayoutGetMemorySize_%(precision)s(layout_internal))
+              if(dnnLayoutGetMemorySize_%(precision)s(layout_user) != dnnLayoutGetMemorySize_%(precision)s(layout_internal))
               {
                             printf(\"ERROR:I2UGrad: usr space: %%d not equal to internal:%%d\\n\",
-                                            dnnLayoutGetMemorySize_%(precision)s(layout_usr), dnnLayoutGetMemorySize_%(precision)s(layout_internal));
+                                            dnnLayoutGetMemorySize_%(precision)s(layout_user), dnnLayoutGetMemorySize_%(precision)s(layout_internal));
                             exit(0);
               }
 
-              status = dnnConversionCreate_%(precision)s(&to_internal, layout_usr, layout_internal);
+              status = dnnConversionCreate_%(precision)s(&to_internal, layout_user, layout_internal);
               if(0 != status)
               {
                     printf(\"ERROR: dnnConversionCreate_%(precision)s in I2UGrad\\n\");
@@ -816,11 +650,10 @@ class I2UGrad(MKLOp):
         return ccode
 
 
-class U2ILRN(MKLOp):
+class U2ILRN(BaseConvertOp):
     __props__ = ('alpha', 'beta', 'k', 'size')
 
-    def __init__(self, alpha=1e-4, beta=0.75, k=2, n=5, uniq_id=0):
-        super(U2ILRN, self).__init__(uniq_id)
+    def __init__(self, alpha=1e-4, beta=0.75, k=2, n=5):
         self.alpha = alpha
         self.beta = beta
         self.k = k
@@ -836,7 +669,7 @@ class U2ILRN(MKLOp):
         x, = inp
         gz, = grads
 
-        return [U2IGrad(uniq_id=self.uniq_id)(x, gz)]
+        return [U2IGrad()(x, gz)]
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
@@ -869,13 +702,13 @@ class U2ILRN(MKLOp):
                 bottomStride[3] = bottomStride[2] * bottomSize[2];
 
                 //create user layout
-                CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_usr, DIMENSION, bottomSize, bottomStride), err );
-                CHECK_ERR( dnnLRNCreateForward_%(precision)s(&primitive, NULL, layout_usr, %(size)s, %(alpha)s, %(beta)s, %(k)s), err );
+                CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_user, DIMENSION, bottomSize, bottomStride), err );
+                CHECK_ERR( dnnLRNCreateForward_%(precision)s(&primitive, NULL, layout_user, %(size)s, %(alpha)s, %(beta)s, %(k)s), err );
                 CHECK_ERR( dnnLayoutCreateFromPrimitive_%(precision)s(&layout_internal, primitive, dnnResourceSrc), err );
 
-                if (!dnnLayoutCompare_%(precision)s(layout_usr, layout_internal)) {
+                if (!dnnLayoutCompare_%(precision)s(layout_user, layout_internal)) {
                     if (NULL == to_internal) {
-                        CHECK_ERR( dnnConversionCreate_%(precision)s(&to_internal, layout_usr, layout_internal), err );
+                        CHECK_ERR( dnnConversionCreate_%(precision)s(&to_internal, layout_user, layout_internal), err );
                     }
                 }
             }
@@ -918,39 +751,15 @@ class U2ILRN(MKLOp):
         return ccode
 
 
-class U2IConv(MKLOp):
+class U2IConv(BaseConvertOp):
     __props__ = ('imshp', 'kshp', 'border_mode', 'subsample', 'filter_dilation')
 
-    def __init__(self, imshp=None, kshp=None, border_mode='valid', subsample=(1, 1), filter_dilation=(1, 1), uniq_id=0):
-        super(U2IConv, self).__init__(uniq_id)
+    def __init__(self, imshp=None, kshp=None, border_mode='valid', subsample=(1, 1), filter_dilation=(1, 1)):
         self.border_mode = border_mode
         self.subsample = tuple(subsample)
         self.imshp = imshp
         self.kshp = kshp
         self.filter_dilation = filter_dilation
-
-    def __eq__(self, other):
-        if hasattr(self, '__props__'):
-            if type(self) != type(other):
-                return False
-            else:
-                self_props = [getattr(self, p) for p in self.__props__ if p != 'uniq_id']
-                other_props = [getattr(other, p) for p in other.__props__ if p != 'uniq_id']
-                if self_props == other_props:
-                    return True
-                else:
-                    return False
-        else:
-            return NotImplemented
-
-    def __hash__(self):
-        return hash(self.imshp) ^ hash(self.kshp) ^ hash(self.border_mode) ^ hash(self.subsample) ^ hash(self.filter_dilation)
-
-    def __str__(self):
-        if hasattr(self, '__props__'):
-            return '%s{%s}' % (self.__class__.__name__, ', '.join('%s=%r' % (p, getattr(self, p)) for p in self.__props__))
-        else:
-            return '%s' % (self.__class__.__name__)
 
     def make_node(self, x):
         x = T.as_tensor_variable(x)
@@ -959,7 +768,7 @@ class U2IConv(MKLOp):
     def grad(self, inp, grads):
         x, = inp
         gz, = grads
-        return [U2IGrad(uniq_id=self.uniq_id)(x, gz)]
+        return [U2IGrad()(x, gz)]
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
@@ -1045,18 +854,18 @@ class U2IConv(MKLOp):
 
                 const int group = %(grp)s;
                 //create user layout
-                CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_usr, DIMENSION, imageSize, imageStride), err );
+                CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_user, DIMENSION, imageSize, imageStride), err );
                 CHECK_ERR( dnnGroupsConvolutionCreateForward_%(precision)s(&primitive, NULL,
                            dnnAlgorithmConvolutionDirect, group, DIMENSION, imageSize, zSize,
                            weightSize, convStride, convPadding, dnnBorderZeros), err );
                 CHECK_ERR( dnnLayoutCreateFromPrimitive_%(precision)s(&layout_internal, primitive, dnnResourceSrc), err );
             }
 
-            if (!dnnLayoutCompare_%(precision)s(layout_usr, layout_internal))
+            if (!dnnLayoutCompare_%(precision)s(layout_user, layout_internal))
             {
                 if (NULL == to_internal)
                 {
-                    CHECK_ERR( dnnConversionCreate_%(precision)s(&to_internal, layout_usr, layout_internal), err );
+                    CHECK_ERR( dnnConversionCreate_%(precision)s(&to_internal, layout_user, layout_internal), err );
                 }
             }
 
@@ -1104,19 +913,19 @@ class U2IConv(MKLOp):
         return ccode
 
 
-class U2IElemwiseSum(MKLOp):
+class U2IElemwiseSum(BaseConvertOp):
     __props__ = ('inp_num', 'coeff')
 
-    def __init__(self, inp_num=1, coeff=[1.0, ], uniq_id=0):
-        super(U2IElemwiseSum, self).__init__(uniq_id)
-        self.coeff = coeff
+    def __init__(self, inp_num=1, coeff=(1.0, )):
         self.inp_num = inp_num
-        assert isinstance(self.coeff, (list, tuple))
+        if isinstance(coeff, tuple):
+            self.coeff = coeff
+        elif isinstance(coeff, list):
+            self.coeff = tuple(coeff)
+        else:
+            raise TypeError('Coeff should be a tuple or list.')
         if self.inp_num != len(self.coeff):
             raise ValueError('Number of ElemwiseSum inputs is not equal to number of coefficients.')
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inp_num) ^ hash(sum(self.coeff))
 
     def make_node(self, x):
         x = T.as_tensor_variable(x)
@@ -1127,7 +936,7 @@ class U2IElemwiseSum(MKLOp):
     def grad(self, inp, grads):
         x, = inp
         gz, = grads
-        return [U2IGrad(uniq_id=self.uniq_id)(x, gz)]
+        return [U2IGrad()(x, gz)]
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
@@ -1169,13 +978,13 @@ class U2IElemwiseSum(MKLOp):
                 bottomStride[3] = bottomStride[2] * bottomSize[2];
 
                 //create user layout
-                CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_usr, DIMENSION, bottomSize, bottomStride), err );
-                CHECK_ERR( dnnSumCreate_%(precision)s(&primitive, NULL, %(inp_num)s, layout_usr, coeffs), err);
+                CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_user, DIMENSION, bottomSize, bottomStride), err );
+                CHECK_ERR( dnnSumCreate_%(precision)s(&primitive, NULL, %(inp_num)s, layout_user, coeffs), err);
                 CHECK_ERR( dnnLayoutCreateFromPrimitive_%(precision)s(&layout_internal, primitive, dnnResourceMultipleSrc), err );
 
-                if (!dnnLayoutCompare_%(precision)s(layout_usr, layout_internal)) {
+                if (!dnnLayoutCompare_%(precision)s(layout_user, layout_internal)) {
                     if (NULL == to_internal) {
-                        CHECK_ERR( dnnConversionCreate_%(precision)s(&to_internal, layout_usr, layout_internal), err );
+                        CHECK_ERR( dnnConversionCreate_%(precision)s(&to_internal, layout_user, layout_internal), err );
                     }
                 }
             }
@@ -1216,12 +1025,10 @@ class U2IElemwiseSum(MKLOp):
         return ccode
 
 
-class U2IBatchNormalization(MKLOp):
+class U2IBatchNormalization(BaseConvertOp):
     __props__ = ('eps',)
 
-    def __init__(self, eps=1e-5, uniq_id=0):
-        super(U2IBatchNormalization, self).__init__(uniq_id=uniq_id)
-        self.uniq_id = uniq_id
+    def __init__(self, eps=1e-5):
         self.eps = eps
 
     def make_node(self, x):
@@ -1233,7 +1040,7 @@ class U2IBatchNormalization(MKLOp):
     def grad(self, inp, grads):
         x, = inp
         gz, = grads
-        return [U2IGrad(uniq_id=self.uniq_id)(x, gz)]
+        return [U2IGrad()(x, gz)]
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
@@ -1262,13 +1069,13 @@ class U2IBatchNormalization(MKLOp):
                 bottomStride[3] = bottomStride[2] * bottomSize[2];
 
                 //create user layout
-                CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_usr, DIMENSION, bottomSize, bottomStride), err );
-                CHECK_ERR( dnnBatchNormalizationCreateForward_%(precision)s(&primitive, NULL, layout_usr, %(eps)s), err);
+                CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_user, DIMENSION, bottomSize, bottomStride), err );
+                CHECK_ERR( dnnBatchNormalizationCreateForward_%(precision)s(&primitive, NULL, layout_user, %(eps)s), err);
                 CHECK_ERR( dnnLayoutCreateFromPrimitive_%(precision)s(&layout_internal, primitive, dnnResourceSrc), err );
 
-                if (!dnnLayoutCompare_%(precision)s(layout_usr, layout_internal)) {
+                if (!dnnLayoutCompare_%(precision)s(layout_user, layout_internal)) {
                     if (NULL == to_internal) {
-                        CHECK_ERR( dnnConversionCreate_%(precision)s(&to_internal, layout_usr, layout_internal), err );
+                        CHECK_ERR( dnnConversionCreate_%(precision)s(&to_internal, layout_user, layout_internal), err );
                     }
                 }
             }

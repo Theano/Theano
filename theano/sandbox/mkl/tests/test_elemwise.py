@@ -26,12 +26,12 @@ class test_mkl_elemwise(unittest.TestCase):
         b = theano.tensor.ftensor4('b')
         c = theano.tensor.ftensor4('c')
 
-        a_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0], uniq_id=1)(a)
-        b_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0], uniq_id=2)(b)
-        c_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0], uniq_id=3)(c)
+        a_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])(a)
+        b_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])(b)
+        c_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])(c)
 
-        z_internal = mkl_elemwise.ElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0], uniq_id=4)(a_internal, b_internal, c_internal)
-        z = basic_ops.I2U(uniq_id=5)(z_internal)
+        z_internal = mkl_elemwise.ElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])(a_internal, b_internal, c_internal)
+        z = basic_ops.I2U()(z_internal)
         f = theano.function([a, b, c], z)
 
         ival0 = numpy.random.rand(4, 4, 4, 4).astype(numpy.float32)
@@ -41,8 +41,8 @@ class test_mkl_elemwise(unittest.TestCase):
     
     def test_elemwise_U2I(self):
         a = theano.tensor.ftensor4('a')
-        a_internal = basic_ops.U2IElemwiseSum(inp_num=1, coeff=[1.0, ], uniq_id=1)(a)
-        a_out = basic_ops.I2U(uniq_id=2)(a_internal)
+        a_internal = basic_ops.U2IElemwiseSum(inp_num=1, coeff=[1.0, ])(a)
+        a_out = basic_ops.I2U()(a_internal)
         f = theano.function([a], a_out)
         ival = numpy.random.rand(4, 4, 4, 4).astype(numpy.float32)
         assert numpy.allclose(f(ival), ival)
@@ -50,7 +50,7 @@ class test_mkl_elemwise(unittest.TestCase):
     def test_elemwise_wrong_dim(self):
         a = theano.tensor.fmatrix('a')
         try:
-            basic_ops.U2IElemwiseSum(inp_num=1, coeff=[1.0, ], uniq_id=1)(a)
+            basic_ops.U2IElemwiseSum(inp_num=1, coeff=[1.0, ])(a)
             raise Exception('No Exception when ndim is 2.')
         except TypeError:
             pass
@@ -61,8 +61,8 @@ class test_mkl_elemwise(unittest.TestCase):
         a = theano.tensor.ftensor4('a')
         b = theano.tensor.ftensor4('b')
 
-        z = mkl_elemwise.ElemwiseSum(inp_num=2, coeff=[1.0, 1.0], uniq_id=1)(a, b)
-        z_out = basic_ops.I2U(uniq_id=2)(z)
+        z = mkl_elemwise.ElemwiseSum(inp_num=2, coeff=[1.0, 1.0])(a, b)
+        z_out = basic_ops.I2U()(z)
         f = theano.function([a, b], z_out, mode=mode_with_mkl)
         ival0 = numpy.random.rand(4, 4, 4, 4).astype(numpy.float32)
         ival1 = numpy.random.rand(4, 4, 4, 4).astype(numpy.float32)
@@ -76,12 +76,12 @@ class test_mkl_elemwise(unittest.TestCase):
         b = theano.tensor.dtensor4('b')
         c = theano.tensor.dtensor4('c')
 
-        a_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0], uniq_id=1)(a)
-        b_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0], uniq_id=2)(b)
-        c_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0], uniq_id=3)(c)
+        a_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])(a)
+        b_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])(b)
+        c_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])(c)
 
-        z_internal = mkl_elemwise.ElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0], uniq_id=4)(a_internal, b_internal, c_internal)
-        z = basic_ops.I2U(uniq_id=5)(z_internal)
+        z_internal = mkl_elemwise.ElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])(a_internal, b_internal, c_internal)
+        z = basic_ops.I2U()(z_internal)
         f = theano.function([a, b, c], z)
 
         ival0 = numpy.random.rand(4, 4, 4, 4).astype(theano.config.floatX)
@@ -92,11 +92,31 @@ class test_mkl_elemwise(unittest.TestCase):
         theano.config.floatX = old_floatX
 
     def test_elemwise_float32(self):
-        pass
+        old_floatX = theano.config.floatX
+        theano.config.floatX = 'float32'
+        
+        a = theano.tensor.ftensor4('a')
+        b = theano.tensor.ftensor4('b')
+        c = theano.tensor.ftensor4('c')
+
+        a_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])(a)
+        b_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])(b)
+        c_internal = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])(c)
+
+        z_internal = mkl_elemwise.ElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])(a_internal, b_internal, c_internal)
+        z = basic_ops.I2U()(z_internal)
+        f = theano.function([a, b, c], z)
+
+        ival0 = numpy.random.rand(4, 4, 4, 4).astype(theano.config.floatX)
+        ival1 = numpy.random.rand(4, 4, 4, 4).astype(theano.config.floatX)
+        ival2 = numpy.random.rand(4, 4, 4, 4).astype(theano.config.floatX)
+        assert numpy.allclose(f(ival0, ival1, ival2), ival0 + ival1 + ival2)
+        assert f(ival0, ival1, ival2).dtype == 'float32'
+        theano.config.floatX = old_floatX
 
     def test_elemwise_input_num(self):
         try:
-            op1 = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0], uniq_id=1)
+            op1 = basic_ops.U2IElemwiseSum(inp_num=3, coeff=[1.0, 1.0])
             raise Exception('U2IElemwiseSUm No Exception when inp_num != len(coeff)')
         except ValueError:
             pass
@@ -104,7 +124,7 @@ class test_mkl_elemwise(unittest.TestCase):
             raise Exception('test_elemwise_input_num ' + str(e))
 
         try:
-            op2 = mkl_elemwise.ElemwiseSum(inp_num=3, coeff=[1.0, 1.0], uniq_id=2)
+            op2 = mkl_elemwise.ElemwiseSum(inp_num=3, coeff=[1.0, 1.0])
             raise Exception('ElemwiseSum No Exception when inp_num != len(coeff)')
         except ValueError:
             pass
@@ -112,10 +132,10 @@ class test_mkl_elemwise(unittest.TestCase):
             raise Exception('test_elemwise_input_num ' + str(e))
 
     def test_elemwise_eq_hash(self):
-        op1 = mkl_elemwise.ElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0], uniq_id=99)
-        op2 = mkl_elemwise.ElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0], uniq_id=88)
-        op3 = mkl_elemwise.ElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 2.0], uniq_id=99)
-        op4 = mkl_elemwise.ElemwiseSum(inp_num=2, coeff=[1.0, 1.0], uniq_id=99)
+        op1 = mkl_elemwise.ElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])
+        op2 = mkl_elemwise.ElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 1.0])
+        op3 = mkl_elemwise.ElemwiseSum(inp_num=3, coeff=[1.0, 1.0, 2.0])
+        op4 = mkl_elemwise.ElemwiseSum(inp_num=2, coeff=[1.0, 1.0])
 
         assert op1 == op2
         assert op1 != op3

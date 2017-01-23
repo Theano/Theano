@@ -8,7 +8,8 @@ import theano.tensor as tensor
 
 import theano.sandbox.mkl as mkl
 from theano.sandbox.mkl import mkl_lrn
-from theano.tensor.nnet.lrn import lrn
+from theano.sandbox.mkl.basic_ops import U2ILRN, I2U, U2IGrad, I2UGrad
+
 
 if not mkl.mkl_available:
     raise SkipTest('Optional package MKL disabled')
@@ -66,7 +67,10 @@ class test_mkl_lrn(unittest.TestCase):
         beta = 0.75
 
         x = tensor.dtensor4('x')
-        z = lrn(x, alpha=alpha, beta=beta, k=k, n=n)
+        x_internal = U2ILRN()(x)
+        z_internal = mkl_lrn.LRN(alpha, beta, k, n)(x_internal)
+        z = I2U()(z_internal)
+
         fz = theano.function([x], z, mode=mode_with_mkl)
         # for shape[0]
         input_data = numpy.random.rand(*shape[0]).astype(theano.config.floatX)
@@ -95,7 +99,10 @@ class test_mkl_lrn(unittest.TestCase):
         theano.config.floatX = 'float32'
 
         x = tensor.ftensor4('x')
-        z = lrn(x)
+        x_internal = U2ILRN()(x)
+        z_internal = mkl_lrn.LRN()(x_internal)
+        z = I2U()(z_internal)
+
         f = theano.function([x], z, mode=mode_with_mkl)
         imval = numpy.random.rand(4, 2, 4, 4).astype(theano.config.floatX)
 
@@ -106,10 +113,13 @@ class test_mkl_lrn(unittest.TestCase):
 
     def test_lrn_float64(self):
         old_floatX = theano.config.floatX
-        theano.config.floatX == 'float64'
+        theano.config.floatX = 'float64'
 
         x = tensor.dtensor4('x')
-        z = lrn(x)
+        x_internal = U2ILRN()(x)
+        z_internal = mkl_lrn.LRN()(x_internal)
+        z = I2U()(z_internal)
+
         f = theano.function([x], z, mode=mode_with_mkl)
         imval = numpy.random.rand(4, 2, 4, 4).astype(theano.config.floatX)
 
@@ -119,24 +129,25 @@ class test_mkl_lrn(unittest.TestCase):
         theano.config.floatX = old_floatX
 
     def test_lrn_eq(self):
-        op1 = mkl_lrn.LRN(uniq_id=99)
-        op2 = mkl_lrn.LRN(uniq_id=88)
-        op3 = mkl_lrn.LRN(alpha=0.1, uniq_id=99)
+        op1 = mkl_lrn.LRN()
+        op2 = mkl_lrn.LRN()
+        op3 = mkl_lrn.LRN(alpha=0.1)
 
         assert op1 == op2
         assert not op1 == op3
 
     def test_lrn_hash(self):
-        op1 = mkl_lrn.LRN(uniq_id=99)
-        op2 = mkl_lrn.LRN(uniq_id=88)
-        op3 = mkl_lrn.LRN(alpha=0.1, uniq_id=99)
+        op1 = mkl_lrn.LRN()
+        op2 = mkl_lrn.LRN()
+        op3 = mkl_lrn.LRN(alpha=0.1)
 
         assert hash(op1) == hash(op2)
         assert not hash(op1) == hash(op3)
 
     def test_lrn_topo(self):
         x = tensor.ftensor4('x')
-        z = lrn(x)
+        z = mkl_lrn.AbstractLRN()(x)
+
         f = theano.function([x], z, mode=mode_with_mkl)
         inp = f.maker.fgraph.inputs
         out = f.maker.fgraph.outputs
@@ -145,9 +156,9 @@ class test_mkl_lrn(unittest.TestCase):
         assert len(inp) == 1
         assert len(out) == 1
         assert len(topo) == 3
-        assert isinstance(topo[0].op, mkl.basic_ops.U2ILRN)
+        assert isinstance(topo[0].op, U2ILRN)
         assert isinstance(topo[1].op, mkl_lrn.LRN)
-        assert isinstance(topo[2].op, mkl.basic_ops.I2U)
+        assert isinstance(topo[2].op, I2U)
 
 
 class test_lrn_grad(unittest.TestCase):
@@ -166,9 +177,11 @@ class test_lrn_grad(unittest.TestCase):
         theano.config.floatX = 'float32'
 
         x = tensor.ftensor4('x')
-        z = lrn(x)
-        zsum = tensor.sum(z)
-        g = tensor.grad(zsum, [x])
+        x_internal = U2ILRN()(x)
+        z_internal = mkl_lrn.LRN()(x_internal)
+        z = I2U()(z_internal)
+        z_sum = tensor.sum(z)
+        g = tensor.grad(z_sum, [x])
 
         f = theano.function([x], g, mode=mode_with_mkl)
         imval = numpy.random.rand(4, 2, 4, 4).astype(theano.config.floatX)
@@ -183,9 +196,11 @@ class test_lrn_grad(unittest.TestCase):
         theano.config.floatX = 'float64'
 
         x = tensor.dtensor4('x')
-        z = lrn(x)
-        zsum = tensor.sum(z)
-        g = tensor.grad(zsum, [x])
+        x_internal = U2ILRN()(x)
+        z_internal = mkl_lrn.LRN()(x_internal)
+        z = I2U()(z_internal)
+        z_sum = tensor.sum(z)
+        g = tensor.grad(z_sum, [x])
 
         f = theano.function([x], g, mode=mode_with_mkl)
         imval = numpy.random.rand(4, 2, 4, 4).astype(theano.config.floatX)
@@ -196,20 +211,43 @@ class test_lrn_grad(unittest.TestCase):
         theano.config.floatX = old_floatX
 
     def test_lrn_grad_eq(self):
-        op1 = mkl_lrn.LRNGrad(uniq_id=99)
-        op2 = mkl_lrn.LRNGrad(uniq_id=88)
-        op3 = mkl_lrn.LRNGrad(alpha=0.1, uniq_id=99)
+        op1 = mkl_lrn.LRNGrad()
+        op2 = mkl_lrn.LRNGrad()
+        op3 = mkl_lrn.LRNGrad(alpha=0.1)
 
         assert op1 == op2
         assert not op1 == op3
 
     def test_lrn_grad_hash(self):
-        op1 = mkl_lrn.LRNGrad(uniq_id=99)
-        op2 = mkl_lrn.LRNGrad(uniq_id=88)
-        op3 = mkl_lrn.LRNGrad(alpha=0.1, uniq_id=99)
+        op1 = mkl_lrn.LRNGrad()
+        op2 = mkl_lrn.LRNGrad()
+        op3 = mkl_lrn.LRNGrad(alpha=0.1)
 
         assert hash(op1) == hash(op2)
         assert not hash(op1) == hash(op3)
+
+    def test_lrn_grad_topo(self):
+        x = tensor.ftensor4('x')
+        z = mkl_lrn.AbstractLRN()(x)
+        z_sum = tensor.sum(z)
+        g = tensor.grad(z_sum, [x])
+
+        f = theano.function([x], g, mode=mode_with_mkl)
+
+        inp = f.maker.fgraph.inputs
+        out = f.maker.fgraph.outputs
+        topo = f.maker.fgraph.toposort()
+
+        assert len(inp) == 1
+        assert len(out) == 1
+        assert len(topo) == 11
+
+        assert isinstance(topo[0].op, U2ILRN)
+        assert isinstance(topo[1].op, mkl_lrn.LRN)
+        assert isinstance(topo[2].op, I2U)
+        assert isinstance(topo[8].op, I2UGrad)
+        assert isinstance(topo[9].op, mkl_lrn.LRNGrad)
+        assert isinstance(topo[10].op, U2IGrad)
 
 
 if __name__ == '__main__':

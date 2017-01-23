@@ -70,14 +70,13 @@ class AbstractBatchNormalizationGrad(basic_ops.MKLOp):
 class BatchNormalization(basic_ops.MKLOp):
     __props__ = ('eps', 'bias', 'term', 'inplace', 'train_stage')
 
-    def __init__(self, eps=1e-5, bias=1, term=1, inplace=1, train_stage=1, uniq_id=1):
-        super(BatchNormalization, self).__init__(uniq_id=uniq_id)
+    def __init__(self, eps=1e-5, bias=1, term=1, inplace=1, train_stage=1):
+        super(BatchNormalization, self).__init__()
         self.eps = eps
         self.bias = bias
         self.term = term
         self.inplace = inplace
         self.train_stage = train_stage
-        self.uniq_id = uniq_id
 
     def make_node(self, x, scale, shift):
         if x.type.ndim != 4:
@@ -90,44 +89,68 @@ class BatchNormalization(basic_ops.MKLOp):
     def grad(self, inp, grads):
         x, scale, shift, = inp
         gz, = grads
-        gx, g_scale, g_shift = BatchNormalizationGrad(uniq_id=self.uniq_id,
-                                                      eps=self.eps,
+        gx, g_scale, g_shift = BatchNormalizationGrad(eps=self.eps,
                                                       bias=self.bias,
                                                       term=self.term)(x, gz, scale, shift)
         return gx, g_scale, g_shift
 
     def c_support_code(self):
-        return mkl_helper.header_text() + """
-            static float* scale_buffer_ptr = NULL;
-            static float* shift_buffer_ptr = NULL;
-            static dnnLayout_t bn_buffer_l = NULL;
-            static dnnLayout_t fwd_top_l = NULL;
-            static dnnLayout_t bwd_top_l = NULL;
-            static dnnLayout_t bwd_bottom_l = NULL;
-            static dnnLayout_t scaleShift_buffer_l = NULL;
-            static int *bn_buffer = static_cast<int*>(NULL);
-            static void *scaleShift_buffer = static_cast<void*>(NULL);
-            static dnnPrimitive_t bnFwd  = static_cast<dnnPrimitive_t>(NULL);
-            static int first_run=1;
-            static int typenum;
-            static int count=0;
-            static int x_bs;
-            static int x_channels;
-            static int x_row;
-            static int x_col;
-            static int data_size;
-            static size_t dim = 4;
-            static size_t sizes[4];
-            static size_t strides[4];
-            static dnnError_t e;
-            static void* bn_res[dnnResourceNumber];
-            static dnnLayout_t layout_previous_layer = NULL;
-            static void *input = NULL;
-            static void* bp[4];
-            static float* input_copy = NULL;
-            static void* buffer = NULL;
-            #define __DEBUG__ 0
+        return mkl_helper.header_text()
+
+    def c_support_code_struct(self, node, name):
+        support_code = """
+            float* scale_buffer_ptr;
+            float* shift_buffer_ptr;
+            dnnLayout_t bn_buffer_l;
+            dnnLayout_t fwd_top_l;
+            dnnLayout_t bwd_top_l;
+            dnnLayout_t bwd_bottom_l;
+            dnnLayout_t scaleShift_buffer_l;
+            int *bn_buffer;
+            void *scaleShift_buffer;
+            dnnPrimitive_t bnFwd;
+            int first_run;
+            int typenum;
+            int count;
+            int x_bs;
+            int x_channels;
+            int x_row;
+            int x_col;
+            int data_size;
+            size_t dim;
+            size_t sizes[4];
+            size_t strides[4];
+            dnnError_t e;
+            void* bn_res[dnnResourceNumber];
+            dnnLayout_t layout_previous_layer;
+            void *input;
+            void* bp[4];
+            float* input_copy;
+            void* buffer;
         """
+        return support_code
+
+    def c_init_code_struct(self, node, name, sub):
+        init_code = """
+            scale_buffer_ptr = NULL;
+            shift_buffer_ptr = NULL;
+            bn_buffer_l = NULL;
+            fwd_top_l = NULL;
+            bwd_top_l = NULL;
+            bwd_bottom_l = NULL;
+            scaleShift_buffer_l = NULL;
+            bn_buffer = static_cast<int*>(NULL);
+            scaleShift_buffer = static_cast<void*>(NULL);
+            bnFwd  = static_cast<dnnPrimitive_t>(NULL);
+            first_run=1;
+            count=0;
+            dim = 4;
+            layout_previous_layer = NULL;
+            input = NULL;
+            input_copy = NULL;
+            buffer = NULL;
+        """
+        return init_code
 
     def c_code_cleanup_struct(self, node, name, input_names, output_names, sub):
         dtype = node.inputs[0].type.dtype
@@ -151,7 +174,6 @@ class BatchNormalization(basic_ops.MKLOp):
         eps = self.eps
         bias = self.bias
         term = self.term
-        uid = self.uniq_id
         inplace = self.inplace
         train_stage = self.train_stage
 
@@ -296,18 +318,17 @@ class BatchNormalization(basic_ops.MKLOp):
         return ret
 
     def c_code_cache_version(self):
-        return (0, 1, self.uniq_id)
+        return (0, 1, 1)
 
 
 class BatchNormalizationGrad(basic_ops.MKLOp):
     __props__ = ('eps', 'bias', 'term')
 
-    def __init__(self, eps=1e-5, bias=1, term=1, uniq_id=1):
-        super(BatchNormalizationGrad, self).__init__(uniq_id=uniq_id)
+    def __init__(self, eps=1e-5, bias=1, term=1):
+        super(BatchNormalizationGrad, self).__init__()
         self.eps = eps
         self.bias = bias
         self.term = term
-        self.uniq_id = uniq_id
 
     def c_code_cleanup_struct(self, node, name, input_names, output_names, sub):
         dtype = node.inputs[0].type.dtype
@@ -324,36 +345,61 @@ class BatchNormalizationGrad(basic_ops.MKLOp):
         """ % precision
 
     def c_support_code(self):
-        return mkl_helper.header_text() + """
-        static int first_run=1;
-        static int typenum;
-        static int x_bs;
-        static int x_channels;
-        static int x_row;
-        static int x_col;
-        static size_t dim = 4;
-        static size_t sizes[4];
-        static size_t strides[4];
-        static dnnError_t e;
-        static void *input_x=NULL;
-        static void *input_gz=NULL;
-        static void* buffer=NULL;
-        static void* z_buffer=NULL;
-        static void* bn_res[dnnResourceNumber];
-        static void* BatchNormBwdScaleShift_res[dnnResourceNumber];
-        static dnnPrimitive_t bnBwd  = static_cast<dnnPrimitive_t>(NULL);
-        static dnnPrimitive_t batchNormBwdScaleShift = static_cast<dnnPrimitive_t>(NULL);
-        static dnnPrimitive_t convert_int2int_topgrad_for_weight = NULL;
-        static void* ip=NULL;
-        static void* bias_weight_p=NULL;
-        static void* bias_term_p=NULL;
-        static void* scale_shfit_p=NULL;
-        static float* g_scale_buffer_ptr=NULL;
-        static float* g_shift_buffer_ptr=NULL;
-        static dnnLayout_t layout_previous_layer = NULL;
-        static int data_size;
-        #define __DEBUG__ 0
+        return mkl_helper.header_text()
+
+    def c_init_code_struct(self, node, name, sub):
+        init_code = """
+            bnBwd = static_cast<dnnPrimitive_t>(NULL);
+            batchNormBwdScaleShift = static_cast<dnnPrimitive_t>(NULL);
+            first_run = 1;
+            dim = 4;
+            layout_previous_layer = NULL;
+            input_x = NULL;
+            input_gz = NULL;
+            buffer = NULL;
+            z_buffer = NULL;
+            convert_int2int_topgrad_for_weight = NULL;
+            ip = NULL;
+            bias_weight_p = NULL;
+            bias_term_p = NULL;
+            scale_shfit_p = NULL;
+            g_scale_buffer_ptr = NULL;
+            g_shift_buffer_ptr = NULL;
+            layout_previous_layer = NULL;
         """
+        return init_code
+
+    def c_support_code_struct(self, node, name):
+        support_code = """
+        int first_run;
+        int typenum;
+        int x_bs;
+        int x_channels;
+        int x_row;
+        int x_col;
+        size_t dim;
+        size_t sizes[4];
+        size_t strides[4];
+        dnnError_t e;
+        void *input_x;
+        void *input_gz;
+        void* buffer;
+        void* z_buffer;
+        void* bn_res[dnnResourceNumber];
+        void* BatchNormBwdScaleShift_res[dnnResourceNumber];
+        dnnPrimitive_t bnBwd;
+        dnnPrimitive_t batchNormBwdScaleShift;
+        dnnPrimitive_t convert_int2int_topgrad_for_weight;
+        void* ip;
+        void* bias_weight_p;
+        void* bias_term_p;
+        void* scale_shfit_p;
+        float* g_scale_buffer_ptr;
+        float* g_shift_buffer_ptr;
+        dnnLayout_t layout_previous_layer;
+        int data_size;
+        """
+        return support_code
 
     def make_node(self, x, gz, scale, shift):
         scale = as_tensor_variable(scale)
@@ -368,7 +414,6 @@ class BatchNormalizationGrad(basic_ops.MKLOp):
         eps = self.eps
         bias = self.bias
         term = self.term
-        uid = self.uniq_id
 
         dtype = node.inputs[0].type.dtype
         assert dtype in ('float32', 'float64')
@@ -502,4 +547,4 @@ class BatchNormalizationGrad(basic_ops.MKLOp):
         return ret
 
     def c_code_cache_version(self):
-        return (0, 1, self.uniq_id)
+        return (0, 1, 1)

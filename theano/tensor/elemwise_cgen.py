@@ -215,7 +215,10 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub, openmp=None):
                 suitable_n = "%(var)s_n%(index)s" % locals()
         if openmp:
             openmp_elemwise_minsize = theano.config.openmp_elemwise_minsize
-            forloop = """#pragma omp parallel for if( %(suitable_n)s >=%(openmp_elemwise_minsize)s)\n""" % locals()
+            if 'icpc' in theano.config.cxx:
+                forloop = """#pragma omp parallel for simd schedule(static) if( %(suitable_n)s >=%(openmp_elemwise_minsize)s)\n""" % locals()
+            else:
+                forloop = """#pragma omp parallel for if( %(suitable_n)s >=%(openmp_elemwise_minsize)s)\n""" % locals()
         else:
             forloop = ""
         forloop += """for (int %(iterv)s = 0; %(iterv)s<%(suitable_n)s; %(iterv)s++)""" % locals()
@@ -405,10 +408,15 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
         # The pointers are defined only in the most inner loop
         if i == nnested - 1:
             update = pointer_update
+            if 'icpc' in theano.config.cxx:
+                forloop += """#pragma omp simd\n"""
         if i == 0:
             if openmp:
                 openmp_elemwise_minsize = theano.config.openmp_elemwise_minsize
-                forloop += """#pragma omp parallel for if( %(total)s >=%(openmp_elemwise_minsize)s)\n""" % locals()
+                if 'icpc' in theano.config.cxx:
+                    forloop += """#pragma omp parallel for schedule(static) if( %(total)s >=%(openmp_elemwise_minsize)s)\n""" % locals()
+                else:
+                    forloop += """#pragma omp parallel for if( %(total)s >=%(openmp_elemwise_minsize)s)\n""" % locals()
         forloop += "for(int %(iterv)s = 0; %(iterv)s<%(total)s; %(iterv)s++)" % locals()
 
         loop = """

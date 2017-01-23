@@ -10,6 +10,8 @@ from theano.sandbox.mkl.mkl_helper import header_text
 
 from theano.gof import EquilibriumDB, SequenceDB
 
+from theano.tensor.blas import ldflags
+
 _logger_name = 'theano.sandbox.mkl'
 _logger = logging.getLogger(_logger_name)
 
@@ -35,8 +37,14 @@ class MKLVersion(gof.Op):
     def c_headers(self):
         return super(MKLVersion, self).c_headers()
 
+    def c_header_dirs(self):
+        return [config.dnn.include_path]
+
     def c_libraries(self):
-        return ['mkl_rt']
+        return ldflags()
+
+    def c_lib_dirs(self):
+        return ldflags(libs=False, libs_dir=True)
 
     def make_node(self):
         return gof.Apply(self, [], [gof.Generic()()])
@@ -121,8 +129,10 @@ def mkl_available():
                     return (-1);
                 }
                 """)
-
-            params = ['-l', 'mkl_rt']
+            if 'mklml_intel' in config.blas.ldflags:
+                params = ['-l', 'mklml_intel']
+            else:
+                params = ['-l', 'mkl_rt']
 
             comp, out, err = Compiler._try_flags(
                 flag_list=params, preambule=preambule, body=body,

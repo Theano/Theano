@@ -52,35 +52,10 @@ class AbstractReluGrad(gof.Op):
 
 
 class Relu(basic_ops.MKLOp):
-    __props__ = ('slope', 'uniq_id')
+    __props__ = ('slope',)
 
-    def __init__(self, slope=0, uniq_id=0):
+    def __init__(self, slope=0):
         self.slope = slope
-        self.uniq_id = uniq_id
-
-    def __eq__(self, other):
-        if hasattr(self, '__props__'):
-            if type(self) != type(other):
-                return False
-            else:
-                self_props = [getattr(self, p) for p in self.__props__ if p != 'uniq_id']
-                other_props = [getattr(other, p) for p in other.__props__ if p != 'uniq_id']
-                if self_props == other_props:
-                    return True
-                else:
-                    return False
-        else:
-            return NotImplemented
-
-    def __hash__(self):
-        return hash(self.slope)
-
-    def __str__(self):
-        if hasattr(self, '__props__'):
-            return '%s{%s}' % (self.__class__.__name__,
-                               ','.join('%s=%r' % (p, getattr(self, p)) for p in self.__props__))
-        else:
-            return '%s' % (self.__class__.__name__)
 
     def make_node(self, x):
         if x.type.ndim != 4:
@@ -91,44 +66,47 @@ class Relu(basic_ops.MKLOp):
     def grad(self, inp, grads):
         x, = inp
         gz, = grads
-        return [ReluGrad(slope=self.slope, uniq_id=self.uniq_id)(x, gz)]
+        return [ReluGrad(slope=self.slope)(x, gz)]
 
     def c_support_code(self):
-        return mkl_helper.header_text() + """
-        static int first_run = 1;
-        static int count = 0;
-        static int typenum;
-        static int x_bs;
-        static int x_channels;
-        static int x_row;
-        static int x_col;
-        static dnnPrimitive_t batchNormBwdData;
-        static dnnPrimitive_t batchNormBwdScaleShift;
-        static size_t dim = 4;
-        static size_t sizes[4];
-        static size_t strides[4];
-        static dnnError_t e;
-        static dnnLayout_t *fwd_bottom_data_int_l_p;
-        static dnnLayout_t fwd_bottom_data_int_l;
-        static dnnLayout_t fwd_bottom_data_usr_l=NULL;
-        static dnnPrimitive_t fwd_bottom_convert_to_int=NULL;
-        static dnnPrimitive_t fwd_bottom_convert_from_int=NULL;
-        static dnnPrimitive_t fwd_bottom_convert_prv2prv=NULL;
-
-        static dnnLayout_t fwd_top_data_usr_l=NULL;
-        static dnnLayout_t fwd_top_data_int_l=NULL;
-        static dnnPrimitive_t fwd_top_convert_to_int=NULL;
-        static dnnPrimitive_t fwd_top_convert_from_int=NULL;
-        static dnnPrimitive_t fwd_top_convert_prv2prv=NULL;
-        static dnnPrimitive_t reluFwd  = static_cast<dnnPrimitive_t>(NULL);
-        static void* relu_res[dnnResourceNumber];
-        static void* output_buffer_ptr=NULL;
-        static void* input_buffer_ptr=NULL;
-        static int xy=0x10;
-        static PyArrayObject* real_buffer = NULL;
-        static dnnLayout_t* layout_p=NULL;
+        ccode = mkl_helper.header_text()
+        ccode += """
         #define L_PASS (1)
         #define __DEBUG__ 0
+        """
+        return ccode
+
+    def c_support_code_struct(self, node, name):
+        return """
+        int first_run;
+        int count;
+        int typenum;
+        int x_bs;
+        int x_channels;
+        int x_row;
+        int x_col;
+        dnnPrimitive_t batchNormBwdData;
+        dnnPrimitive_t batchNormBwdScaleShift;
+        size_t dim;
+        size_t sizes[4];
+        size_t strides[4];
+        dnnError_t e;
+        dnnLayout_t *fwd_bottom_data_int_l_p;
+        dnnLayout_t fwd_bottom_data_int_l;
+        dnnLayout_t fwd_bottom_data_usr_l=NULL;
+        dnnPrimitive_t fwd_bottom_convert_to_int=NULL;
+        dnnPrimitive_t fwd_bottom_convert_from_int=NULL;
+        dnnPrimitive_t fwd_bottom_convert_prv2prv=NULL;
+
+        dnnLayout_t fwd_top_data_usr_l=NULL;
+        dnnLayout_t fwd_top_data_int_l=NULL;
+        dnnPrimitive_t fwd_top_convert_to_int=NULL;
+        dnnPrimitive_t fwd_top_convert_from_int=NULL;
+        dnnPrimitive_t fwd_top_convert_prv2prv=NULL;
+        dnnPrimitive_t reluFwd  = static_cast<dnnPrimitive_t>(NULL);
+        void* relu_res[dnnResourceNumber];
+        void* output_buffer_ptr=NULL;
+        void* input_buffer_ptr=NULL;
         """
 
     def c_code_cleanup_struct(self, node, name, input_names, output_names, sub):
@@ -140,8 +118,16 @@ class Relu(basic_ops.MKLOp):
             raise TypeError('input must be float32 or float64')
 
         return """
-        dnnReleaseBuffer_%(precision)s(buffer);
+            dnnReleaseBuffer_%(precision)s(buffer);
         """ % sub
+
+    def c_init_code_struct(self, node, name, sub):
+        ccode = """
+        first_run = 1;
+        count = 0;
+        dim = 4;
+        """
+        return ccode
 
     def c_headers(self):
         return ['<math.h>', '<iostream>']
@@ -286,78 +272,59 @@ class Relu(basic_ops.MKLOp):
         return ret
 
     def c_code_cache_version(self):
-        return (1, 0, self.uniq_id)
+        return (1, 0)
 
 
 class ReluGrad(basic_ops.MKLOp):
-    __props__ = ('slope', 'uniq_id')
+    __props__ = ('slope',)
 
-    def __init__(self, slope=1, uniq_id=0):
+    def __init__(self, slope=1,):
         self.slope = slope
-        self.uniq_id = uniq_id
-
-    def __eq__(self, other):
-        if hasattr(self, '__props__'):
-            if type(self) != type(other):
-                return False
-            else:
-                self_props = [getattr(self, p) for p in self.__props__ if p != 'uniq_id']
-                other_props = [getattr(other, p) for p in other.__props__ if p != 'uniq_id']
-                if self_props == other_props:
-                    return True
-                else:
-                    return False
-        else:
-            return NotImplemented
-
-    def __hash__(self):
-        return hash(self.slope)
-
-    def __str__(self):
-        if hasattr(self, '__props__'):
-            return '%s{%s}' % (self.__class__.__name__,
-                               ','.join('%s=%r' % (p, getattr(self, p)) for p in self.__props__))
-        else:
-            return '%s' % (self.__class__.__name__)
 
     def c_headers(self):
         return ['<math.h>']
 
     def c_support_code(self):
-        return mkl_helper.header_text() + """
-            #define __DEBUG__ 0
-            static int first_run = 1;
-            static int count = 0;
-            static int typenum;
-            static int x_bs;
-            static int x_channels;
-            static int x_row;
-            static int x_col;
-            static dnnPrimitive_t batchNormBwdData;
-            static dnnPrimitive_t batchNormBwdScaleShift;
-            static size_t dim = 4;
-            static size_t sizes[4];
-            static size_t strides[4];
-            static dnnError_t e;
-            static dnnLayout_t bwd_bottom_diff_usr_l;
-            static dnnLayout_t bwd_bottom_diff_int_l;
-            static dnnPrimitive_t bwd_bottom_convert_to_int;
-            static dnnPrimitive_t bwd_bottom_convert_from_int;
-            static dnnPrimitive_t bwd_bottom_convert_prv2prv;
-            static dnnLayout_t bwd_top_diff_usr_l;
-            static dnnLayout_t bwd_top_diff_int_l;
-            static dnnPrimitive_t bwd_top_convert_to_int;
-            static dnnPrimitive_t bwd_top_convert_from_int;
-            static dnnPrimitive_t bwd_top_convert_prv2prv;
-            static dnnPrimitive_t* reluFwd_p  = static_cast<dnnPrimitive_t*>(NULL);
-            static dnnPrimitive_t reluFwd  = static_cast<dnnPrimitive_t>(NULL);
-            static dnnPrimitive_t reluBwd  = static_cast<dnnPrimitive_t>(NULL);
-            static void* relu_res[dnnResourceNumber];
-            static unsigned int long ip;
-            static int* tmp = NULL;
-            static void *output_buffer_ptr;
-            static void *input_buffer_ptr;
-            static void *input_gz;
+        ccode = mkl_helper.header_text()
+        ccode += """
+        #define __DEBUG__ 0
+        """
+
+        return ccode
+
+    def c_support_code_struct(self, node, name):
+        return """
+        int first_run;
+        int count;
+        int typenum;
+        int x_bs;
+        int x_channels;
+        int x_row;
+        int x_col;
+        dnnPrimitive_t batchNormBwdData;
+        dnnPrimitive_t batchNormBwdScaleShift;
+        size_t dim;
+        size_t sizes[4];
+        size_t strides[4];
+        dnnError_t e;
+        dnnLayout_t bwd_bottom_diff_usr_l;
+        dnnLayout_t bwd_bottom_diff_int_l;
+        dnnPrimitive_t bwd_bottom_convert_to_int;
+        dnnPrimitive_t bwd_bottom_convert_from_int;
+        dnnPrimitive_t bwd_bottom_convert_prv2prv;
+        dnnLayout_t bwd_top_diff_usr_l;
+        dnnLayout_t bwd_top_diff_int_l;
+        dnnPrimitive_t bwd_top_convert_to_int;
+        dnnPrimitive_t bwd_top_convert_from_int;
+        dnnPrimitive_t bwd_top_convert_prv2prv;
+        dnnPrimitive_t* reluFwd_p  = static_cast<dnnPrimitive_t*>(NULL);
+        dnnPrimitive_t reluFwd  = static_cast<dnnPrimitive_t>(NULL);
+        dnnPrimitive_t reluBwd  = static_cast<dnnPrimitive_t>(NULL);
+        void* relu_res[dnnResourceNumber];
+        unsigned int long ip;
+        void *output_buffer_ptr;
+        void *input_buffer_ptr;
+        void *input_gz;
         """
 
     def c_code_cleanup_struct(self, node, name, input_names, output_names, sub):
@@ -371,6 +338,14 @@ class ReluGrad(basic_ops.MKLOp):
         return """
         dnnReleaseBuffer_%(precision)s(output_buffer_ptr);
         """ % sub
+
+    def c_init_code_struct(self, node, name, sub):
+        ccode = """
+        first_run = 1;
+        count = 0;
+        dim = 4;
+        """
+        return ccode
 
     def c_lib_dirs(self):
         return ldflags(libs=False, libs_dir=True)
@@ -503,4 +478,4 @@ class ReluGrad(basic_ops.MKLOp):
         return ret
 
     def c_code_cache_version(self):
-        return (1, 0, self.uniq_id)
+        return (1, 0)

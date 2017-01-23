@@ -1,93 +1,83 @@
-#Intel Software Optimization for Theano*
+# intel software optimization for theano*
 ---
 
-This repo is dedicated to improving Theano performance when running on CPU, in particular Intel® Xeon® processors and Intel® Xeon Phi™ processors. 
+This repo is dedicated to improving Theano performance on CPU, especially in Intel® Xeon® and Intel® Xeon Phi™ processors.
 
-Please refer to the document [Install_Guide.pdf](https://github.com/intel/theano/blob/master/Install_Guide.pdf) for the installation guide.
+**Key Features**
+  * New backend of Intel® MKL (version >= 2017.0 which includes neural network primitives)
+  * Further graph optimizations
+  * CPU friendly OPs
+  * Switch to Intel® MKL backend automatically in Intel®  Architecture
+  * Out-of-box performance improvements and good portability
 
-Get Optimized Theano Source Code
-
-* Branch **master** is a optimal version for CNN topologies which requires Intel® Math Kernel Library (Intel® MKL, **version >= 2017.0**) based on 0.9.0dev2. 
-
-  **Currently, we support the following optimal Ops: convolution (with or without bias, and group convolution), relu, pool (max and average_exc_pad mode), lrn, bn, elemwise (add).**
-  
-  **Note: Tips for enabling optimal Ops:**
-
-	* Add bias directly with convolution output will calling optimal convolution with bias Op
-	* theano/sandbox/mkl/mkl_conv.py:AbstractConvGroup will calling group convolution Op
-	* theano/tensor/nnet/lrn.py:lrn will calling optimal LRN Op  
-
-* get and install it via below commands:
-```
-git clone https://github.com/intel/theano.git intel-theano
-```
-
-* Branch **nomkl-optimized** is a general optimized version based on 0.9.0dev1, get and install it via below commands:
-```
-git clone -b nomkl-optimized https://github.com/intel/theano.git intel-theano
-```
-
-* Branch **pcs-theano** is a general optimized codes based on 0.8.0rc1, get and install it via below commands:
-```
-git clone -b pcs-theano https://github.com/intel/theano.git intel-theano
-```
-
-Update Theano configuration based on your Compiler and BLAS:
-```
-cp intel-theano/theanorc_icc_mkl ~/.theanorc       #use default configuration for Intel Compiler and MKL
-cp intel-theano/theanorc_gcc_mkl ~/.theanorc       #use default configuration for GNU Compiler and MKL, optional
-cp intel-theano/theanorc_gcc_openblas ~/.theanorc  #use default configuration for GNU Compiler and OpenBLAS, optional
-```
-
-Install Theano
-```
-python setup.py build 
-python setup.py install --user
-```
-
-You can get and install the self-contained MKL manulally from [here](https://github.com/01org/mkl-dnn/releases).
-We also provide an optimized Numpy and some demo cases, you can find optimized Numpy in [here](https://github.com/pcs-theano/numpy), and demo cases in Theano's root directory.
+**Benchmark**
+  * Hardwares
+    - Intel® Xeon® CPU E5-2699 v4 @ 2.20GHz, 128GB RAM
+    - Intel® Xeon Phi™  CPU 7250F @ 1.40GHz, 98G RAM
+  * Softwares
+    - Script: **[convnet-benchmarks](https://github.com/soumith/convnet-benchmarks/blob/master/theano/benchmark_imagenet.py)**
+    - **[Stock Theano](https://github.com/theano/theano)**, commit ID: 2fa3cecb7572a5c884d3d3cb524ea7b7a741809a
+    - **[Intel Theano](https://github.com/intel/theano)**, commit ID: 3abfbe0d1691ed953621485612c21542a3bfef95
+  * Terminologies
+    - FWD, forward for inference
+    - FWD+BWD, forward and backward for training
+  * Results
+    
+| FWD:sec/batch | Stock Theano/Xeon | Intel Theano/Xeon | Intel Theano/Xeon Phi |
+|---------------|-------------------|-------------------|-----------------------|
+| AlexNet       | 1.045             | 0.081             | 0.057                 |
+| GoogLeNet     | 2.228             |                   |                       |
+| VGG           | 5.089             | 0.880             | 0.593                 |
+| OverFeat      | 6.105             | 0.268             | 0.192                 |
+   
+--
  
+| FWD+BWD: sec/batch | Stock Theano/Xeon | Intel Theano/Xeon | Intel Theano/Xeon Phi |
+|---------------|-------------------|-------------------|-----------------------|
+| AlexNet       | 2.333             | 0.250             | 0.199                 |
+| GoogLeNet     | 5.866             |                   |                       |
+| VGG           | 12.783            | 2.744             | 1.912                 |
+| OverFeat      | 13.202            | 0.857             | 0.654                 |
 
-#Theano
----
-To install the package, see this [page](http://deeplearning.net/software/theano/install.html)
+**Performance Tips**
+  * Add bias after convolution to archieve high performance since this sub-graph can be replaced with MKL OP 
+  * Use group convolution OP, [AbstractConvGroup](https://github.com/intel/Theano/blob/master/theano/sandbox/mkl/mkl_conv.py)
+  * Use New MKL OP: [LRN](https://github.com/intel/Theano/blob/dev/theano/tensor/nnet/lrn.py)
+  * Intel® Xeon Phi™ Environment Setting, example as below
+        
+        #!/bin/sh
+        export KMP_BLOCKTIME=1
+        export KMP_AFFINITY=verbose, granularity=core,noduplicates,compact,0,0
+        export OMP_NUM_THREADS=68
+        export MKL_DYNAMIC=false
+        pytthon xxx.py
 
-For the documentation, see the project website [here](http://deeplearning.net/software/theano/)
+**Branch Information**
+  * master, stable and fully tested version based on 0.9dev2 with Intel® MKL backend
+  * nomkl-optimized, based on 0.9.0dev1 with generic optimizations
+  * others, experimental codes for different applications which may be merged into master and/or deleted soon
 
-[Related Projects](https://github.com/Theano/Theano/wiki/Related-projects)
+**Installation**
 
-It is recommended that you look at the documentation on the website, as it will be more current than the documentation included with the package.
+  * Quick Commands
 
-In order to build the documentation yourself, you will need sphinx. Issue the following command:
-    `python ./doc/scripts/docgen.py`
+    ```
+    git clone https://github.com/intel/theano.git intel-theano
+    cd intel-theano
+    python setup.py build
+    python setup.py install --user
+    cp intel-theano/theanorc_icc_mkl ~/.theanorc
+    # run benchmark
+    democase/alexnet/benchmark.sh
+    ```
 
-Documentation is built into html/
+  * Install Guide (recommend to go througth this document and set up optimized softwares)
+    https://github.com/intel/theano/blob/master/Install_Guide.pdf
 
-The PDF of the documentation can be found at html/theano.pdf
 
-
-DIRECTORY LAYOUT
-
-Theano (current directory) is the distribution directory.
-
-* Theano/theano contains the package
-* Theano/theano has several submodules:
-    * gof + compile are the core
-    * scalar depends upon core
-    * tensor depends upon scalar
-    * sparse depends upon tensor
-    * sandbox can depend on everything else
-* Theano/examples are copies of the example found on the wiki
-* Theano/benchmark and Theano/examples are in the distribution, but not in
-  the Python package
-* Theano/bin contains executable scripts that are copied to the bin folder
-  when the Python package is installed
-* Tests are distributed and are part of the package, i.e. fall in
-  the appropriate submodules
-* Theano/doc contains files and scripts used to generate the documentation
-* Theano/html is where the documentation will be generated
+**Other Optimized Software**
+  * Self-contained MKL in [here](https://github.com/01org/mkl-dnn/releases)
+  * Optimized Numpy in [here](https://github.com/pcs-theano/numpy)
 
 ---
 >\* Other names and trademarks may be claimed as the property of others.
-

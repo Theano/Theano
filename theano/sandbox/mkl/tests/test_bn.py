@@ -24,8 +24,8 @@ else:
 class test_mkl_bn_forward(unittest.TestCase):
     def test_bn_U2I(self):
         x = T.ftensor4('x')
-        x_internal = U2IBatchNormalization(eps=1e-5, uniq_id=1)(x)
-        x_out = I2U(uniq_id=2)(x_internal)
+        x_internal = U2IBatchNormalization(eps=1e-5)(x)
+        x_out = I2U()(x_internal)
 
         fopt = theano.function([x], x_out, mode=with_mkl)
         ival = numpy.random.rand(64, 5, 128, 128).astype(numpy.float32)
@@ -34,7 +34,7 @@ class test_mkl_bn_forward(unittest.TestCase):
     def test_bn_U2I_wrong_dim(self):
         x = T.fmatrix('x')
         try:
-            U2IBatchNormalization(eps=1e-5, uniq_id=1)(x)
+            U2IBatchNormalization(eps=1e-5)(x)
             raise Exception('No exception when ndim is 2.')
         except TypeError:
             pass
@@ -46,9 +46,9 @@ class test_mkl_bn_forward(unittest.TestCase):
         Scale = T.vector('scale')
         Shift = T.vector('shift')
 
-        x_internal = U2IBatchNormalization(eps=0, uniq_id=1)(X)
-        z_bn = mkl_bn.BatchNormalization(eps=0, bias=1, term=1, uniq_id=2)(x_internal, Scale, Shift)
-        z_out = I2U(uniq_id=3)(z_bn)
+        x_internal = U2IBatchNormalization(eps=0)(X)
+        z_bn = mkl_bn.BatchNormalization(eps=0, bias=1, term=1)(x_internal, Scale, Shift)
+        z_out = I2U()(z_bn)
         f = theano.function([X, Scale, Shift], z_out, mode=with_mkl)
 
         ival = numpy.random.rand(16, 3, 4, 4).astype(numpy.float32)
@@ -76,9 +76,9 @@ class test_mkl_bn_backward(unittest.TestCase):
         Scale = T.vector('scale')
         Shift = T.vector('shift')
 
-        x_internal = U2IBatchNormalization(eps=1e-5, uniq_id=1)(X)
-        z_bn = mkl_bn.BatchNormalization(eps=1e-5, bias=1, term=1, uniq_id=2)(x_internal, Scale, Shift)
-        z_out = I2U(uniq_id=3)(z_bn)
+        x_internal = U2IBatchNormalization(eps=1e-5)(X)
+        z_bn = mkl_bn.BatchNormalization(eps=1e-5, bias=1, term=1)(x_internal, Scale, Shift)
+        z_out = I2U()(z_bn)
         z_sum = T.sum(z_out)
         z_grad = T.grad(z_sum, [X])
 
