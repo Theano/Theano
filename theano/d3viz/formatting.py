@@ -228,7 +228,6 @@ class PyDotFormatter(object):
                                            label=vparams['dtype']))
 
             # Create sub-graph for OpFromGraph nodes
-            # FIXME:
             if isinstance(node.op, builders.OpFromGraph):
                 subgraph = pd.Cluster(__node_id)
                 gf = PyDotFormatter()
