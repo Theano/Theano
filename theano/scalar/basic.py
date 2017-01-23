@@ -636,7 +636,7 @@ class Scalar(Type):
         return ["import_array();"]
 
     def c_code_cache_version(self):
-        return (13, numpy.__version__)
+        return (14, numpy.__version__)
 
     def get_shape_info(self, obj):
         return obj.itemsize
