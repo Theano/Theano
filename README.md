@@ -23,19 +23,19 @@ This repo is dedicated to improving Theano performance on CPU, especially in Int
     - FWD+BWD, forward and backward for training
   * Results
     
-| FWD:sec/batch | Stock Theaon/Xeon | Intel Theano/Xeon | Intel Theano/Xeon Phi |
+| FWD:sec/batch | Stock Theano/Xeon | Intel Theano/Xeon | Intel Theano/Xeon Phi |
 |---------------|-------------------|-------------------|-----------------------|
 | AlexNet       | 1.045             | 0.081             | 0.057                 |
-| GoogleNet     | 2.228             |                   |                       |
+| GoogLeNet     | 2.228             |                   |                       |
 | VGG           | 5.089             | 0.880             | 0.593                 |
 | OverFeat      | 6.105             | 0.268             | 0.192                 |
    
 --
  
-| FWD+BWD: sec/batch | Stock Theaon/Xeon | Intel Theano/Xeon | Intel Theano/Xeon Phi |
+| FWD+BWD: sec/batch | Stock Theano/Xeon | Intel Theano/Xeon | Intel Theano/Xeon Phi |
 |---------------|-------------------|-------------------|-----------------------|
 | AlexNet       | 2.333             | 0.250             | 0.199                 |
-| GoogleNet     | 5.866             |                   |                       |
+| GoogLeNet     | 5.866             |                   |                       |
 | VGG           | 12.783            | 2.744             | 1.912                 |
 | OverFeat      | 13.202            | 0.857             | 0.654                 |
 
