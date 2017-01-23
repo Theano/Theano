@@ -1,5 +1,16 @@
 Date: 2017/01/23
-Autor: lvtao
+Author: lvtao
+Changes:
+----------------------------------
+1. Add support for self-contained mkldnn lib. Users can choose to download and install
+mkldnn lib with '--mkl' option when installing Theano, Or to run
+get_self_contained_mkl.sh manually to set mkldnn environment.
+2. Update nnet/corr.py since mklml_intel lib does not support openmp now.
+3. Updata mkl/__init__.py to support mklml_intel lib.
+
+
+Date: 2017/01/23
+Author: lvtao
 Changes:
 ----------------------------------
 1. Update mkl_conv.py. Fix bugs in Conv2D.grad function.

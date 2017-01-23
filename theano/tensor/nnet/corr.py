@@ -67,7 +67,8 @@ class BaseCorrMM(gof.OpenMPOp):
         else:
             if 'openblas' in theano.config.blas.ldflags:
                 self.blas_type = 'openblas'
-            elif 'mkl' in theano.config.blas.ldflags:
+            elif 'mkl_rt' in theano.config.blas.ldflags:
+                # mklml_intel does not support openmp for now.
                 self.blas_type = 'mkl'
             else:
                 self.blas_type = ''
