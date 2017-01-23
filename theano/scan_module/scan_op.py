@@ -402,6 +402,32 @@ class Scan(PureOp):
                     'by using dimshuffle or shape_padleft. '
                     )
 
+        def _check_broadcast(v1, v2):
+            """ Checks that the broadcast pattern of v1 and v2.
+
+            Controls that the broadcast pattern of the variable provided as
+            input to `scan` matches the broadcast pattern provided in
+            `output_info`. It raises an error when they don't match. The
+            typical case is when the user provides either the input or the
+            `output_info` (but not both) with a dimension fixed to 1,
+            which may wrongly be interpreted as broadcastable.
+
+            """
+            msg = ("The broadcast pattern of the output of scan (%s) is "
+                   "inconsistent with the one provided in `output_info` "
+                   "(%s). The output on axis %d is `%r`, but it is `%r` on "
+                   "axis %d in `output_info`. This can happen if one of the "
+                   "dimension is fixed to 1 in the input, while it is still "
+                   "variable in the output, or vice-verca. You have to make "
+                   "them consistent.")
+            size = min(len(v1.broadcastable), len(v2.broadcastable))
+            for n, (b1, b2) in enumerate(zip(v1.broadcastable[-size:],
+                                             v2.broadcastable[-size:])):
+                if b1 != b2:
+                    a1 = n + size - len(v1.broadcastable) + 1
+                    a2 = n + size - len(v2.broadcastable) + 1
+                    raise TypeError(msg % (v1.type, v2.type, a1, b1, b2, a2))
+
         def format(var, as_var):
             """
             This functions ensures that ``out`` has the same dtype as
@@ -415,6 +441,7 @@ class Scan(PureOp):
             rval = var
             if rval.type.dtype != as_var.type.dtype:
                 rval = rval.astype(as_var.type.dtype)
+            _check_broadcast(var, as_var)
             if rval.ndim == as_var.ndim:
                 rval = as_var.type.filter_variable(rval)
             else:

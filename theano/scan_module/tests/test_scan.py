@@ -5495,3 +5495,23 @@ def test_default_value_broadcasted():
     updates = [(W_x, W_x - 0.1 * gW_x)]
     f = theano.function([X], outputs=cost, updates=updates)
     f(numpy.random.rand(10, in_size).astype(X.dtype))
+
+
+class TestInconsistentBroadcast(unittest.TestCase):
+
+    def test_raise_error(self):
+        x = tensor.tensor3()
+        initial_x = tensor.constant(numpy.zeros((1, 10)))
+        y, updates = theano.scan(fn=lambda x, prev_x: x + prev_x,
+                                 sequences=x,
+                                 outputs_info=[dict(initial=initial_x)])
+        # Error, because the broadcast patterns are inconsistent.
+        with self.assertRaises(TypeError):
+            gs = tensor.grad(y.sum(), x)
+
+        # No error here, because the broadcast patterns are consistent.
+        initial_x = tensor.unbroadcast(initial_x, 0, 1)
+        y, updates = theano.scan(fn=lambda x, prev_x: x + prev_x,
+                                 sequences=x,
+                                 outputs_info=[dict(initial=initial_x)])
+        gs = tensor.grad(y.sum(), x)
