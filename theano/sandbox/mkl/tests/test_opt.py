@@ -355,45 +355,6 @@ def test_mkl_lrn_backward():
     print('test_mkl_lrn_backward() pass..')
 
 
-def test_mkl_opt_with_wrong_dim():
-
-    if theano.config.floatX == 'float32':
-        x = tensor.ftensor3()
-    else:
-        x = tensor.dtensor3()
-
-    imval = numpy.random.rand(3, 4, 5).astype(theano.config.floatX)
-
-    try:
-        y = tensor.nnet.relu(x)
-        f = theano.function([x], y, mode=mode_with_mkl)
-
-        topo = f.maker.fgraph.toposort()
-        for node in topo:
-            if isinstance(node.op, U2IRelu) or isinstance(node.op, I2U):
-                raise ValueError('For 3D tensor, there should not have MKL OP in graph')
-            else:
-                f(imval)
-
-    except Exception as e:
-        raise Exception('nnet.relu(x) ' + str(e))
-
-    try:
-        z = pool.pool_2d(x, (2, 2), True, mode='max')
-        f1 = theano.function([x], z, mode=mode_with_mkl)
-
-        topo = f1.maker.fgraph.toposort()
-        for node in topo:
-            if isinstance(node.op, U2IPool) or isinstance(node.op, I2U):
-                raise ValueError('For 3D tensor, there should not have MKL OP in graph')
-            else:
-                f1(imval)
-    except Exception as e:
-        raise Exception('pool.pool_2d(x) ' + str(e))
-
-    print('test_mkl_opt_with_wrong_dim() pass..')
-
-
 def test_mkl_3_relu_forward():
 
     if theano.config.floatX == 'float32':
@@ -520,7 +481,6 @@ if __name__ == '__main__':
         test_mkl_pool_relu()
         test_mkl_lrn_forward()
         test_mkl_lrn_backward()
-        # test_mkl_opt_with_wrong_dim()
         test_mkl_3_relu_forward()
         test_mkl_3_relu_backward()
         test_mkl_elemwise_sum_forward()

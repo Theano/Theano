@@ -10,6 +10,8 @@ import theano.sandbox.mkl as mkl
 from theano.sandbox.mkl import mkl_lrn
 from theano.sandbox.mkl.basic_ops import U2ILRN, I2U, U2IGrad, I2UGrad
 
+theano.config.dnn.enabled = "mkl"
+
 
 if not mkl.mkl_available:
     raise SkipTest('Optional package MKL disabled')
@@ -145,6 +147,8 @@ class test_mkl_lrn(unittest.TestCase):
         assert not hash(op1) == hash(op3)
 
     def test_lrn_topo(self):
+        dnn = theano.config.dnn.enabled
+        theano.config.dnn.enabled = 'mkl'
         x = tensor.ftensor4('x')
         z = mkl_lrn.AbstractLRN()(x)
 
@@ -152,7 +156,7 @@ class test_mkl_lrn(unittest.TestCase):
         inp = f.maker.fgraph.inputs
         out = f.maker.fgraph.outputs
         topo = f.maker.fgraph.toposort()
-
+        theano.config.dnn.enabled = dnn
         assert len(inp) == 1
         assert len(out) == 1
         assert len(topo) == 3
@@ -227,6 +231,8 @@ class test_lrn_grad(unittest.TestCase):
         assert not hash(op1) == hash(op3)
 
     def test_lrn_grad_topo(self):
+        dnn = theano.config.dnn.enabled
+        theano.config.dnn.enabled = 'mkl'
         x = tensor.ftensor4('x')
         z = mkl_lrn.AbstractLRN()(x)
         z_sum = tensor.sum(z)
@@ -238,6 +244,7 @@ class test_lrn_grad(unittest.TestCase):
         out = f.maker.fgraph.outputs
         topo = f.maker.fgraph.toposort()
 
+        theano.config.dnn.enabled = dnn
         assert len(inp) == 1
         assert len(out) == 1
         assert len(topo) == 11

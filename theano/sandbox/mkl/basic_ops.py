@@ -184,7 +184,7 @@ class U2IPool(BaseConvertOp):
 
                 size_t kernelSize[2] = {kernel_w, kernel_h};
                 size_t kernelStride[2] = {stride_w, stride_h};
-                int inputOffset[2] = {pad_w, pad_h};
+                int inputOffset[2] = {-pad_w, -pad_h};
 
                 //create user layout
                 CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_user, DIMENSION, bottomSize, bottomStride), err );
@@ -233,7 +233,7 @@ class U2IPool(BaseConvertOp):
             first_run = 0;
 
             #ifdef _MKL_DEBUG_
-                printf(\"U2IPool: from_buffer %%x to_buffer %%x\\n\",convert_resources[dnnResourceFrom],convert_resources[dnnResourceTo]);
+                std::cout << "U2IPool: from buffer: " << convert_resources[dnnResourceFrom] << " to buffer: " << convert_resources[dnnResourceTo] << std::endl;
             #endif
         """ % locals()
         return ccode
@@ -288,13 +288,13 @@ class I2U(BaseConvertOp):
                 size_t *out_stride = (size_t *)malloc(ndim * sizeof(size_t));
                 if(NULL == bottom_size || NULL == out_stride) {
                     printf(\"ERROR: malloc buffer in I2U \\n\");
-                    exit(1);
+                    exit(-1);
                 }
 
                 npy_intp dataSize = 1;
                 for(int i = 0; i < ndim; i++) {
-                    bottom_size[i] = (size_t)PyArray_DIMS(%(z)s)[ndim-i-1];
-                    out_stride[i] = (size_t)PyArray_STRIDES(%(z)s)[ndim-i-1] / %(x_item_size)s;
+                    bottom_size[i] = (size_t)PyArray_DIMS(%(z)s)[ndim - i - 1];
+                    out_stride[i] = (size_t)PyArray_STRIDES(%(z)s)[ndim - i - 1] / %(x_item_size)s;
                     dataSize = dataSize * bottom_size[i];
                 }
 
@@ -313,13 +313,15 @@ class I2U(BaseConvertOp):
                 CHECK_ERR( dnnConversionCreate_%(precision)s(&from_internal, layout_internal, layout_user), err );
             }
 
-            //FIXME, compare internal and user layout, then decides whether to do the conversion
-
             convert_resources[dnnResourceTo] = reinterpret_cast<void *>(PyArray_DATA(%(z)s));
             convert_resources[dnnResourceFrom] = reinterpret_cast<void *>(internal_buf);
 
             //cvt
             CHECK_ERR( dnnExecute_%(precision)s(from_internal, convert_resources), err );
+
+            #ifdef _MKL_DEBUG_
+                std::cout << "I2U: from buffer: " << convert_resources[dnnResourceFrom] << " to buffer: " << convert_resources[dnnResourceTo] << std::endl;
+            #endif
         """ % locals()
 
         return ccode
@@ -414,7 +416,7 @@ class U2IRelu(BaseConvertOp):
             first_run = 0;
 
             #ifdef _MKL_DEBUG_
-                printf(\"U2IRelu: from_buffer %%x to_buffer %%x\\n\",convert_resources[dnnResourceFrom],convert_resources[dnnResourceTo]);
+                std::cout << "U2IRelu: from buffer: " << convert_resources[dnnResourceFrom] << " to buffer: " << convert_resources[dnnResourceTo] << std::endl;
             #endif
         """ % locals()
         return ccode
@@ -745,7 +747,7 @@ class U2ILRN(BaseConvertOp):
             first_run = 0;
 
             #ifdef _MKL_DEBUG_
-                printf(\"U2ILRN: from_buffer %%x to_buffer %%x\\n\", convert_resources[dnnResouceFrom], convert_resources[dnnResourceTo]);
+                std::cout << "U2ILRN: from buffer: " << convert_resources[dnnResourceFrom] << " to buffer: " << convert_resources[dnnResourceTo] << std::endl;
             #endif
         """ % locals()
         return ccode
@@ -907,7 +909,7 @@ class U2IConv(BaseConvertOp):
             first_run = 0;
 
             #ifdef _MKL_DEBUG_
-            printf(\"U2I_Conv: from_buffer %%x to_buffer %%x\\n\", convert_resources[dnnResouceFrom], convert_resources[dnnResourceTo]);
+                std::cout << "U2IConv2D: from buffer: " << convert_resources[dnnResourceFrom] << " to buffer: " << convert_resources[dnnResourceTo] << std::endl;
             #endif
         """ % locals()
         return ccode
@@ -1019,7 +1021,7 @@ class U2IElemwiseSum(BaseConvertOp):
 
             first_run = 0;
             #ifdef _MKL_DEBUG_
-                printf(\"U2IElemwiseSum: From buffer %%x to buffer %%x\\n\", convert_resources[dnnResouceFrom], convert_resources[dnnResourceTo]);
+                std::cout << "U2IElemwiseSum: from buffer: " << convert_resources[dnnResourceFrom] << " to buffer: " << convert_resources[dnnResourceTo] << std::endl;
             #endif
         """ % locals()
         return ccode
@@ -1110,7 +1112,7 @@ class U2IBatchNormalization(BaseConvertOp):
             }
             first_run = 0;
             #ifdef _MKL_DEBUG_
-                printf(\"U2IBatchNormalization: From buffer %%x to buffer %%x\\n\", convert_resources[dnnResouceFrom], convert_resources[dnnResourceTo]);
+                std::cout << "U2IBatchNormalization: from buffer: " << convert_resources[dnnResourceFrom] << " to buffer: " << convert_resources[dnnResourceTo] << std::endl;
             #endif
         """ % locals()
         return ccode
