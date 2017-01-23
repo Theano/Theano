@@ -6163,9 +6163,41 @@ def diagonal(a, offset=0, axis1=0, axis2=1):
     return ExtractDiag(offset, axis1, axis2)(a)
 
 
-class Diag(Op):
+class AllocDiag(Op):
+    """
+    An op that copies a vector to the diagonal of an empty matrix. It does the
+    inverse of ExtractDiag.
 
     __props__ = ()
+    Usage: T.AllocDiag()(x)
+
+    `x` should be a tensor vector. The parenthesis in the front should indicate
+    which main diagonal the vector value goes into. By default it is set to (
+    `0`, which corresponds to setting the values of x to the main diagonal in
+    the returned matrix. Currently the gradient is valid only when `offset=0`.
+
+    Parameters
+    ----------
+    offset : int
+        Indicates which diagonal to put `x` into. Defaults to `0`.
+
+    x: symbolic vector
+        A tensor vector consists of diagonal values.
+
+    Returns
+    -------
+    tensor : symbolic tenstor
+        A tensor with passed vector values at its corresponding diagonal.
+
+    """
+
+    __props__ = ("offset", )
+    default_offset = 0
+
+    def __init__(self, offset=0):
+        if numpy_diagonal_return_view:
+            self.view_map = {0: [0]}
+        self.offset = offset
 
     def make_node(self, diag):
         diag = as_tensor_variable(diag)
@@ -6176,24 +6208,50 @@ class Diag(Op):
 
     def perform(self, node, inputs, outputs):
         (z,) = outputs
-        z[0] = numpy.diag(inputs[0])
+        z[0] = numpy.diag(inputs[0], self.offset)
 
     def grad(self, inputs, gout):
         (gz,) = gout
-        return [diagonal(gz)]
+        if self.has_default_props():
+            return [diagonal(gz)]
+        else:
+            return [grad_not_implemented(self, 0, inputs[0])]
 
     def infer_shape(self, nodes, shapes):
         return [(shapes[0][0],) * 2]
 
+    def has_default_props(self):
+        return self.offset == self.default_offset
+
 
 def diag(v, k=0):
+    """
+    A helper function for two ops: theano.tensor.ExtractDiag and
+    theano.tensor.AllocDiag. It both accepts tensor vector and tensor matrix.
+     While the passed tensor variable `v` has `v.ndim>=2`, it builds a
+     ExtractDiag instance, and returns a vector with its entries equal to
+     `v`'s main diagonal; otherwise if `v.ndim` is `1`, it builds a AllocDiag
+     instance, and returns a matrix with `v` at its k-th diaogonal.
+
+    Parameters
+    ----------
+    v : symbolic tensor
+    k : int
+        offset
+
+    Returns
+    -------
+    tensor : symbolic tensor
+
+    """
+
     if v.ndim == 1:
         assert k == 0, "diagonals other than main are not implemented"
-        return Diag()(v)
-    elif v.ndim == 2:
+        return AllocDiag()(v)
+    elif v.ndim >= 2:
         return diagonal(v, k)
     else:
-        raise ValueError("Input must be 1- or 2-d.")
+        raise ValueError("Input must has v.dim >= 1.")
 
 
 def stacklists(arg):

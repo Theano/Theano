@@ -32,7 +32,7 @@ from theano.tensor import (_shared, wvector, bvector,
         horizontal_stack, vertical_stack, argmax, get_vector_length,
         fscalar, zeros_like, sum, tensor3, vector, add, addbroadcast,
         alloc, as_tensor_variable, tensor_from_scalar, ARange,
-        clip, constant, default, dot, batched_dot,
+        clip, constant, default, diag, diagonal, dot, batched_dot,
         dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
         tensor4, permute_row_elements, Flatten, fmatrix, fscalars, grad,
         inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
@@ -45,7 +45,7 @@ from theano.tensor import (_shared, wvector, bvector,
         tile, patternbroadcast, Eye, Shape, Dot, PermuteRowElements,
         ScalarFromTensor, TensorFromScalar, dtensor4, Rebroadcast, Alloc,
         dtensor3, SpecifyShape, Mean,
-        itensor3, Tile, switch, ExtractDiag, Diag,
+        itensor3, Tile, switch, ExtractDiag, AllocDiag,
         nonzero, flatnonzero, nonzero_values,
         stacklists, DimShuffle, hessian, ptp, power,
         swapaxes, choose, Choose, NoneConst, AllocEmpty,
@@ -7340,6 +7340,98 @@ class test_size(unittest.TestCase):
         assert y.size == function([], x.size)()
 
 
+class test_diag(unittest.TestCase):
+    """
+    Test that tensor.diag has the same behavior as numpy.diag.
+
+    numpy.diag has two behaviors:
+    (1) when given a vector, it returns a matrix with that vector as the
+    diagonal.
+    (2) when given a matrix, returns a vector which is the diagonal of the
+    matrix.
+
+    (1) and (2) are tested by test_alloc_diag and test_extract_diag
+    respectively.
+
+    test_diag test makes sure that linalg.diag instantiates
+    the right op based on the dimension of the input.
+
+    """
+    def __init__(self, name, mode=None, shared=tensor._shared,
+                 floatX=None, type=tensor.TensorType):
+        self.mode = mode
+        self.shared = shared
+        if floatX is None:
+            floatX = config.floatX
+        self.floatX = floatX
+        self.type = type
+        super(test_diag, self).__init__(name)
+
+    def test_diag(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        # test vector input
+        x = theano.tensor.vector()
+        g = diag(x)
+        assert isinstance(g.owner.op, AllocDiag)
+        f = theano.function([x], g)
+        for shp in [5, 0, 1]:
+            m = rng.rand(shp).astype(self.floatX)
+            v = numpy.diag(m)
+            r = f(m)
+            # The right matrix is created
+            assert (r == v).all()
+
+        # Test matrix input
+        xx = self.shared(rng.rand(3, 5))
+        g = diag(xx)
+        assert isinstance(g.owner.op, ExtractDiag)
+        f = theano.function([], g)
+        for shp in [(5, 3), (3, 5), (5, 1), (1, 5), (5, 0), (0, 5),
+                    (1, 0), (0, 1)]:
+            m = rng.rand(*shp).astype(self.floatX)
+            xx.set_value(m)
+            v = numpy.diag(m)
+            r = f()
+            # The right matrix is created
+            assert (r == v).all()
+        
+        # Test scalar input
+        xx = theano.tensor.scalar()
+        numpy.testing.assert_raises(ValueError, diag, xx)
+
+    def test_infer_shape(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        x = theano.tensor.vector()
+        g = diag(x)
+        f = theano.function([x], g.shape)
+        topo = f.maker.fgraph.toposort()
+        if config.mode != 'FAST_COMPILE':
+            assert sum([isinstance(node.op, AllocDiag) for node in topo]) == 0
+        for shp in [5, 0, 1]:
+            m = rng.rand(shp).astype(self.floatX)
+            assert (f(m) == numpy.diag(m).shape).all()
+
+        x = theano.tensor.matrix()
+        g = diag(x)
+        f = theano.function([x], g.shape)
+        topo = f.maker.fgraph.toposort()
+        if config.mode != 'FAST_COMPILE':
+            assert sum([isinstance(node.op, ExtractDiag) for node in topo]) == 0
+        for shp in [(5, 3), (3, 5), (5, 1), (1, 5), (5, 0), (0, 5),
+                    (1, 0), (0, 1)]:
+            m = rng.rand(*shp).astype(self.floatX)
+            assert (f(m) == numpy.diag(m).shape).all()
+
+    def test_diag_grad(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        x = rng.rand(5)
+        tensor.verify_grad(diag, [x], rng=rng)
+        x = rng.rand(5, 3)
+        tensor.verify_grad(diag, [x], rng=rng)
+
+
 class test_numpy_assumptions(unittest.TestCase):
     """
     Verify that some assumptions Theano makes on Numpy's behavior still hold.
@@ -7598,11 +7690,11 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([atens3], [atens3_diag],
                                 [atens3_val], ExtractDiag)
 
-        # Diag
+        # AllocDiag
         advec = dvector()
         advec_val = rand(4)
-        self._compile_and_check([advec], [Diag()(advec)],
-                                [advec_val], Diag)
+        self._compile_and_check([advec], [AllocDiag()(advec)],
+                                [advec_val], AllocDiag)
 
         # Shape
         # 'opt.Makevector' precludes optimizer from disentangling
