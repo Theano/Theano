@@ -916,15 +916,16 @@ class U2IConv(BaseConvertOp):
 class U2IElemwiseSum(BaseConvertOp):
     __props__ = ('inp_num', 'coeff')
 
-    def __init__(self, inp_num=1, coeff=[1.0, ]):
-        self.coeff = coeff
+    def __init__(self, inp_num=1, coeff=(1.0, )):
         self.inp_num = inp_num
-        assert isinstance(self.coeff, (list, tuple))
+        if isinstance(coeff, tuple):
+            self.coeff = coeff
+        elif isinstance(coeff, list):
+            self.coeff = tuple(coeff)
+        else:
+            raise TypeError('Coeff should be a tuple or list.')
         if self.inp_num != len(self.coeff):
             raise ValueError('Number of ElemwiseSum inputs is not equal to number of coefficients.')
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inp_num) ^ hash(sum(self.coeff))
 
     def make_node(self, x):
         x = T.as_tensor_variable(x)

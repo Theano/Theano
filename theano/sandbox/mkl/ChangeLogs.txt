@@ -1,3 +1,12 @@
+Date: 2017/01/23
+Autor: lvtao
+Changes:
+----------------------------------
+1. Update mkl_conv.py. Fix bugs in Conv2D.grad function.
+2. Update test_conv.py. Use float64 in convolution UTs.
+3. Clean code in mkl_elemwise.
+
+
 Date: 2017/0111/
 Autho: Patric 
 Changes:

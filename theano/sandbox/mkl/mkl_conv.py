@@ -667,14 +667,16 @@ class Conv2D(MKLConvBase):
         d_images = ConvGradInputs(border_mode=self.border_mode,
                                   subsample=self.subsample,
                                   imshp=self.imshp,
-                                  kshp=self.kshp)(image, weights, gz)
+                                  kshp=self.kshp,
+                                  filter_flip=self.filter_flip)(image, weights, gz)
 
         dlist = ConvGradWeights(border_mode=self.border_mode,
                                 subsample=self.subsample,
                                 imshp=self.imshp,
-                                kshp=self.kshp)(image, weights, gz, bias)
+                                kshp=self.kshp,
+                                filter_flip=self.filter_flip)(image, weights, gz, bias)
 
-        if isinstance(type(dlist), TensorType):
+        if bias is None:
             d_weights = dlist
             return d_images, d_weights
         else:
