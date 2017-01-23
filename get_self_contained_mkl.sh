@@ -68,7 +68,7 @@ else
     DST=$(cd `dirname $0`; pwd)
 fi
 OMP=0 
-VERSION_MATCH=20161001
+VERSION_MATCH=20160906
 ARCHIVE_BASENAME=mklml_lnx_2017.0.2.20170110.tgz
 MKL_CONTENT_DIR=`echo $ARCHIVE_BASENAME | rev | cut -d "." -f 2- | rev`
 GITHUB_RELEASE_TAG=v0.3
