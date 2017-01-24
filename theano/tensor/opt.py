@@ -4222,7 +4222,18 @@ def local_flatten_lift(node):
             isinstance(node.inputs[0].owner.op, T.Elemwise) and
             len(node.inputs[0].owner.inputs) == 1):
         f = node.op(node.inputs[0].owner.inputs[0])
+
+        # Copy over stacktrace from previous output node (flatten op),
+        # since this is the op which may cause an error for f.
+        copy_stack_trace(node.outputs, f)
+
         e = node.inputs[0].owner.op(f)
+
+        # Copy over stacktrace from previous output node and from unary
+        # elementwise output node since if there was an error, it would
+        # probably have come from that operation.
+        copy_stack_trace(node.outputs + [node.inputs[0]], e)
+
         return [e]
 
 ##################
@@ -4243,6 +4254,12 @@ def local_reshape_chain(op):
         # TODO: this can permit a failing program to run by eliminating
         #       the lower reshape
         rval = node.op(node.inputs[0].owner.inputs[0], node.inputs[1])
+
+        # Copy over stacktrace from previous output node, as any error
+        # in new computational graph would have been caused by last op
+        # in the old computational graph.
+        copy_stack_trace(node.outputs, rval)
+
         # It might happen that the desired output of this node has a
         # broadcastable pattern that does not match that of 'rval'. This is
         # when originally, we were able to figure out that one of the
@@ -4365,7 +4382,6 @@ def local_reshape_to_dimshuffle(node):
         - reshape(x, (1, n)) --> dimshuffle{x,0}(reshape(x, (n,))
         - reshape(x, (1, m, 1, n, 1, 1))
           --> dimshuffle{x,0,x,1,x,x}(reshape(x, (m, n)))
-
     """
     op = node.op
     if not isinstance(op, Reshape):
@@ -4414,16 +4430,33 @@ def local_reshape_lift(node):
             isinstance(node.inputs[0].owner.op, T.Elemwise) and
             len(node.inputs[0].owner.inputs) == 1):
         r = node.op(node.inputs[0].owner.inputs[0], node.inputs[1])
+        # Copy stacktrace from previous Reshape op, as an error in new
+        # Reshape op could only have been caused by old one.
+        copy_stack_trace(node.outputs, r)
+
         e = node.inputs[0].owner.op(r)
+        # Copy stacktrace from both previous Reshape and UnaryElemwise op
+        # because an error in new cg could have been caused by either ops.
+        copy_stack_trace(node.outputs + node.inputs, e)
+
         # In rare case the original broadcast was (False, True), but
         # the new one is (False, False). So don't crash in that case.
         if e.type != node.outputs[0].type:
-            e = T.patternbroadcast(e, node.outputs[0].broadcastable)
-        return [e]
+            re = T.patternbroadcast(e, node.outputs[0].broadcastable)
+
+            # Copy over stack trace.
+            # If the graph fails it is usually due to the fact that a dimension
+            # that should be broadcastable does not actually have length 1,
+            copy_stack_trace(e, re)
+        else:
+            re = e
+
+        return [re]
 
 
 if 0:
     # TODO: Test that this optimziation works.
+    # TODO: Once it works, copy over stacktrace appropriately.
     @register_canonicalize
     @gof.local_optimizer([T.Reshape])
     def local_scalar_reshape(node):
@@ -4440,6 +4473,7 @@ if 0:
     #       appropriately typed and broadcasted zero.
     # TODO: Remember to take into account the new sum dtype argument if this
     #       optimization is enabled.
+    # TODO: Once it works, copy over stacktrace appropriately.
     @register_canonicalize
     @gof.local_optimizer([T.Sum])
     def local_sum_over_empty(node):
@@ -4462,60 +4496,6 @@ if 0:
 ##################
 # Middleman cuts #
 ##################
-
-
-@gof.local_optimizer([T.Elemwise])
-def local_fill_cut(node):
-    """
-    f(fill(a,b), c) -> f(b, c)
-    If c.type == a.type.
-    """
-
-    # this optimization is essentially for getting broadcasting to
-    # replace fill.  This is always possible when using a Compound
-    # Elemwise operation, but it is not always possible without one
-    # (consider filling a large matrix with a scalar, and then adding
-    # another scalar.  The only numbers that count are the two
-    # scalars, but we can't ignore the large matrix because it gives
-    # the shape of the result.
-
-    if node.op != T.Elemwise:
-        return False
-
-    output = node.outputs[0]
-    try:
-        # reference is some input with the same type as the output but
-        # that is not produced by a fill
-        reference = [input
-                     for input in node.inputs
-                     if input.type == output.type and
-                     (not input.owner or input.owner.op != T.fill)][0]
-    except IndexError:
-        return False
-
-    new_inputs = []
-    new = False
-    for input in node.inputs:
-        if input.owner and input.owner.op == T.fill:
-            model, filling = input.owner.inputs
-            if encompasses_broadcastable(reference.type.broadcastable,
-                                         filling.type.broadcastable):
-                new_inputs.append(filling)
-                new = True
-                continue
-        new_inputs.append(input)
-
-    if not new:
-        return False
-
-    rval = node.op(*new_inputs)
-    if isinstance(rval, gof.Variable):
-        return rval.owner.outputs
-    else:
-        return rval[0].owner.outputs
-
-register_canonicalize(local_fill_cut)
-
 
 register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy')
 
@@ -4972,6 +4952,9 @@ class Canonizer(gof.LocalOptimizer):
             # This happen with test
             # theano/tensor/tests/test_opt.py:T_local_switch_sink
             new.tag.values_eq_approx = values_eq_approx_remove_inf_nan
+
+            # We need to implement the copy over of the stacktrace.
+            # See issue #5104.
             return [new]
         else:
             _logger.warning(' '.join(('CANONIZE FAILED: new, out = ',
@@ -5056,8 +5039,18 @@ def local_sum_prod_mul_by_scalar(node):
                 new_op_output = node.op(non_scalars[0])
             else:
                 new_op_input = T.mul(*non_scalars)
+                # We assume that errors always come from the prod/mul op in the
+                # original computational graph, and therefore need to only
+                # copy over its output stacktrace.
+                copy_stack_trace(node.outputs, new_op_input)
+
                 new_op_input_nb_elements = new_op_input.size
                 new_op_output = node.op(new_op_input)
+
+            if not len(non_scalars) == 0:
+                # Copy over stacktrace from previous output to new mul op,
+                # for same reason as above.
+                copy_stack_trace(node.outputs, new_op_output)
 
             # If node.op is a T.elemwise.Prod, then the scalars need to be
             # raised to the power of the number of elements in the input
@@ -5074,12 +5067,28 @@ def local_sum_prod_mul_by_scalar(node):
                 mul_inputs.append(new_op_output)
 
             if len(mul_inputs) == 1:
+                # Copy over stacktrace from previous output to new mul op,
+                # for same reason as above.
+                copy_stack_trace(node.outputs, mul_inputs)
+
                 return mul_inputs
             else:
-                return [T.mul(*mul_inputs)]
+                ret = T.mul(*mul_inputs)
+                # Copy over stacktrace from previous output to new mul op,
+                # for same reason as above.
+                copy_stack_trace(node.outputs, [ret] + mul_inputs)
+
+                return [ret]
 
         if isinstance(node.op, T.Sum) and node_inps.owner and node_inps.owner.op == T.neg:
-            return [T.neg(node.op(node_inps.owner.inputs[0]))]
+            s = node.op(node_inps.owner.inputs[0])
+            ret = T.neg(s)
+            # There are never errors in the negative op, thus
+            # we need only to copy over stacktrace from previous output node to
+            # the two new ops.
+            copy_stack_trace(node.outputs, [s, ret])
+
+            return [ret]
 
 
 @register_specialize
@@ -5092,7 +5101,11 @@ def local_elemwise_sub_zeros(node):
             node.op.scalar_op.nin == 2 and
             node.op.scalar_op == scalar.sub and
             node.inputs[0] == node.inputs[1]):
-        return [T.zeros_like(node.inputs[0])]
+        res = T.zeros_like(node.inputs[0])
+        # Copy over stacktrace from previous output.
+        # This could help for failures due to out-of-memory.
+        copy_stack_trace(node.outputs, res)
+        return [res]
 
 
 @register_useless
@@ -5139,54 +5152,77 @@ def local_useless_elemwise_comparison(node):
     # Elemwise[{LT,GT}](X, X) -> Elemwise[zeros](X)
     if isinstance(node.op.scalar_op, (scalar.LT, scalar.GT)) and \
        node.inputs[0] is node.inputs[1]:
-        return [T.zeros_like(node.inputs[0], dtype=dtype, opt=True)]
+        res = T.zeros_like(node.inputs[0], dtype=dtype, opt=True)
+        # Copy over stacktrace from previous output.
+        copy_stack_trace(node.outputs, res)
+        return [res]
     # Elemwise[{LE,GE}](X, X) -> Elemwise[ones](X)
     if isinstance(node.op.scalar_op, (scalar.LE, scalar.GE)) and \
        node.inputs[0] is node.inputs[1]:
-        return [T.ones_like(node.inputs[0], dtype=dtype, opt=True)]
+        res = T.ones_like(node.inputs[0], dtype=dtype, opt=True)
+
+        # Copy over stacktrace from previous output.
+        copy_stack_trace(node.outputs, res)
+        return [res]
     # Elemwise[{minimum,maximum}](X, X) -> X
     if isinstance(node.op.scalar_op, (scalar.Minimum, scalar.Maximum)) and \
        node.inputs[0] is node.inputs[1]:
-        return [node.inputs[0]]
+        res = node.inputs[0]
+        # Copy over stacktrace from previous output.
+        copy_stack_trace(node.outputs, res)
+        return [res]
 
     # Elemwise[LT](X.shape[i], 0) -> Elemwise[zeros](X)
     if isinstance(node.op.scalar_op, scalar.LT) and \
        node.inputs[0].owner and \
        isinstance(node.inputs[0].owner.op, Shape_i) and \
        T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
-        return [T.zeros_like(node.inputs[0], dtype=dtype, opt=True)]
+        res = T.zeros_like(node.inputs[0], dtype=dtype, opt=True)
+        # Copy over stacktrace from previous output.
+        copy_stack_trace(node.outputs, res)
+        return [res]
     # Elemwise[GE](X.shape[i], 0) -> Elemwise[ones](X)
     if isinstance(node.op.scalar_op, scalar.GE) and \
        node.inputs[0].owner and \
        isinstance(node.inputs[0].owner.op, Shape_i) and \
        T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
-        return [T.ones_like(node.inputs[0], dtype=dtype, opt=True)]
+        res = T.ones_like(node.inputs[0], dtype=dtype, opt=True)
+        # Copy over stacktrace from previous output.
+        copy_stack_trace(node.outputs, res)
+        return [res]
     # Elemwise[maximum](X.shape[i], 0) -> X.shape[i]
     if isinstance(node.op.scalar_op, scalar.Maximum) and \
        node.inputs[0].owner and \
        isinstance(node.inputs[0].owner.op, Shape_i) and \
        T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
+        # No need to copy over stacktrace.
         return [node.inputs[0]]
     # Elemwise[maximum](0, X.shape[i]) -> X.shape[i]
     if isinstance(node.op.scalar_op, scalar.Maximum) and \
        T.extract_constant(node.inputs[0], only_process_constants=True) == 0 and \
        node.inputs[1].owner and \
        isinstance(node.inputs[1].owner.op, Shape_i):
+        # No need to copy over stacktrace.
         return [node.inputs[1]]
     # Elemwise[minimum](X.shape[i], 0) -> 0
     if isinstance(node.op.scalar_op, scalar.Minimum) and \
        node.inputs[0].owner and \
        isinstance(node.inputs[0].owner.op, Shape_i) and \
        T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
-        return [T.zeros_like(node.inputs[0], dtype=dtype, opt=True)]
+        res = T.zeros_like(node.inputs[0], dtype=dtype, opt=True)
+        # Copy over stacktrace from previous output.
+        copy_stack_trace(node.outputs, res)
+        return [res]
 
-    # It don't detect case when the 0 is all zeros with ndim > 0.
     # Elemwise[minimum](0, X.shape[i]) -> 0
     if isinstance(node.op.scalar_op, scalar.Minimum) and \
        T.extract_constant(node.inputs[0], only_process_constants=True) == 0 and \
        node.inputs[1].owner and \
        isinstance(node.inputs[1].owner.op, Shape_i):
-        return [T.zeros_like(node.inputs[1], dtype=dtype, opt=True)]
+        res = T.zeros_like(node.inputs[1], dtype=dtype, opt=True)
+        # Copy over stacktrace from previous output.
+        copy_stack_trace(node.outputs, res)
+        return [res]
 
     # Elemwise[LT](add([anything that is shapes]), 0) -> Elemwise[zeros](X)
     if isinstance(node.op.scalar_op, scalar.LT) and \
@@ -5196,8 +5232,10 @@ def local_useless_elemwise_comparison(node):
        all([isinstance(var.owner and var.owner.op, Shape_i)
             for var in node.inputs[0].owner.inputs]) and \
        T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
-
-        return [T.zeros_like(node.inputs[0], dtype=dtype, opt=True)]
+        res = T.zeros_like(node.inputs[0], dtype=dtype, opt=True)
+        # Copy over stacktrace from previous output.
+        copy_stack_trace(node.outputs, res)
+        return [res]
     # Elemwise[GE](add([anything that is shapes]), 0) -> Elemwise[ones](X)
     if isinstance(node.op.scalar_op, scalar.GE) and \
        node.inputs[0].owner and \
@@ -5206,7 +5244,11 @@ def local_useless_elemwise_comparison(node):
        all([isinstance(var.owner and var.owner.op, Shape_i)
             for var in node.inputs[0].owner.inputs]) and \
        T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
-        return [T.ones_like(node.inputs[0], dtype=dtype, opt=True)]
+        res = T.ones_like(node.inputs[0], dtype=dtype, opt=True)
+
+        # Copy over stacktrace from previous output.
+        copy_stack_trace(node.outputs, res)
+        return [res]
 
     # Elemwise[EQ](Subtensor(Shape(x)), -N)
     # Elemwise[EQ](somegraph that only depend of shape, -N)
@@ -5238,9 +5280,15 @@ def local_useless_elemwise_comparison(node):
         try:
             cst = get_scalar_constant_value(node.inputs[1],
                                             only_process_constants=True)
+
+            res = T.zeros_like(node.inputs[0], dtype=dtype, opt=True)
+
             if cst < 0:
-                return [T.zeros_like(node.inputs[0],
-                                     dtype=dtype, opt=True)]
+                # Copy over stacktrace from previous output.
+                copy_stack_trace(node.outputs, res)
+
+                return [res]
+
         except NotScalarConstantError:
             pass
     return
@@ -6015,7 +6063,7 @@ def local_add_specialize(node):
         return False
 register_specialize(local_add_specialize)
 
-mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer, local_fill_cut,
+mul_canonizer = in2out(gof.LocalOptGroup(local_mul_canonizer,
                                          local_fill_sink, apply_all_opts=True),
                        name='mul_canonizer_groups')
 
@@ -6221,7 +6269,7 @@ def add_calculate(num, denum, aslist=False, out_type=None):
 
 
 local_add_canonizer = Canonizer(T.add, T.sub, T.neg, add_calculate)
-add_canonizer = in2out(gof.LocalOptGroup(local_add_canonizer, local_fill_cut,
+add_canonizer = in2out(gof.LocalOptGroup(local_add_canonizer,
                                          local_fill_sink, apply_all_opts=True),
                        name='add_canonizer_group')
 

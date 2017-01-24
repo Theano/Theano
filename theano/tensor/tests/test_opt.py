@@ -3451,7 +3451,7 @@ def test_local_subtensor_of_alloc():
 
 
 def test_local_fill_useless():
-    # Test opt local_fill_cut
+    # Test opt local_fill_useless
     x = dvector()
     y = dvector()
     z = lvector()
@@ -3498,6 +3498,67 @@ def test_local_fill_useless():
     ops = [node.op.__class__ for node in f.maker.fgraph.toposort()]
     assert T.Alloc in ops
     f(m_, x_)
+
+
+def test_local_elemwise_sub_zeros():
+    # Test opt local_elemwise_sub_zeros
+    # We test separately for scalars, vectors and matrices
+    scalar = T.scalar()
+    vect = T.vector()
+    mat = T.matrix()
+
+    rng = numpy.random.RandomState(seed=utt.fetch_seed())
+    scalar_val = rng.rand(1).astype(config.floatX)[0]
+    vect_val = rng.rand(5).astype(config.floatX)
+    mat_val = rng.rand(3, 2).astype(config.floatX)
+
+    mode = theano.compile.get_default_mode()\
+        .excluding('canonicalize', 'uncanonicalize',
+                   'ShapeOpt', 'local_fill_to_alloc',
+                   'local_elemwise_alloc')\
+        .including('local_elemwise_sub_zeros')
+
+    # Test scalar minus scalar
+    f = function([scalar], scalar - scalar, mode=mode)
+    # Check optimized graph is correct
+    assert isinstance(f.maker.fgraph.toposort()[0].op, T.Elemwise)
+    assert isinstance(f.maker.fgraph.toposort()[0].op.scalar_op,
+                      theano.scalar.Second)
+    assert isinstance(f.maker.fgraph.toposort()[0].inputs[1],
+                      T.TensorConstant) or\
+        isinstance(f.maker.fgraph.toposort()[0].inputs[1],
+                   T.TensorConstant)
+    utt.assert_allclose(f(scalar_val), 0.0)
+    # Check stack trace is copied over
+    assert check_stack_trace(f, ops_to_check='all')
+
+    # Test vector minus vector
+    f = function([vect], vect - vect, mode=mode)
+    # Check optimized graph is correct
+    assert isinstance(f.maker.fgraph.toposort()[0].op, T.Elemwise)
+    assert isinstance(f.maker.fgraph.toposort()[0].op.scalar_op,
+                      theano.scalar.Second)
+    assert isinstance(f.maker.fgraph.toposort()[0].inputs[1],
+                      T.TensorConstant) or\
+        isinstance(f.maker.fgraph.toposort()[0].inputs[1],
+                   T.TensorConstant)
+    utt.assert_allclose(f(vect_val), numpy.zeros(vect_val.shape))
+    # Check stack trace is copied over
+    assert check_stack_trace(f, ops_to_check='all')
+
+    # Test vector minus vector
+    f = function([mat], mat - mat, mode=mode)
+    # Check optimized graph is correct
+    assert isinstance(f.maker.fgraph.toposort()[0].op, T.Elemwise)
+    assert isinstance(f.maker.fgraph.toposort()[0].op.scalar_op,
+                      theano.scalar.Second)
+    assert isinstance(f.maker.fgraph.toposort()[0].inputs[1],
+                      T.TensorConstant) or\
+        isinstance(f.maker.fgraph.toposort()[0].inputs[1],
+                   T.TensorConstant)
+    utt.assert_allclose(f(mat_val), numpy.zeros(mat_val.shape))
+    # Check stack trace is copied over
+    assert check_stack_trace(f, ops_to_check='all')
 
 
 class Test_local_useless_elemwise_comparison(unittest.TestCase):
@@ -3742,6 +3803,17 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
         f = theano.function([x], T.xor(x, x), mode=mode)
         self.assert_eqs_const(f, 0)
+
+    def test_stacktrace(self):
+        mode = theano.compile.get_default_mode().including(
+            'local_useless_elemwise_comparison')
+
+        x = T.vector('x', dtype=config.floatX)
+        f = theano.function([x], T.gt(x, x), mode=mode)
+        self.assertTrue(check_stack_trace(f, ops_to_check='last'))
+
+        f = theano.function([x], T.le(x, x), mode=mode)
+        self.assertTrue(check_stack_trace(f, ops_to_check='last'))
 
 
 class Test_local_canonicalize_alloc(unittest.TestCase):
@@ -5604,6 +5676,35 @@ class T_local_sum_prod(unittest.TestCase):
         finally:
             config.on_opt_error = backup
 
+    def test_local_sum_prod_mul_by_scalar_stack_trace(self):
+        # Test that stack trace is copied over correctly for local_sum_prod_mul_by_scalar.
+        m0 = theano.compile.get_default_mode()\
+            .excluding('inplace_elemwise_opt')\
+            .including('canonicalize', 'specialize')
+
+        vect = T.dvector()
+        mat = T.dmatrix()
+        scalar = T.dscalar()
+
+        f = theano.function([vect, scalar], T.sum(vect * scalar), mode=m0)
+        assert check_stack_trace(f, ops_to_check='all')
+
+        f = theano.function([vect], T.sum(-vect), mode=m0)
+        assert check_stack_trace(f, ops_to_check=[T.Sum])
+
+        f = theano.function([vect, scalar],
+                            T.elemwise.Prod()(vect * scalar), mode=m0)
+        assert check_stack_trace(f, ops_to_check=[T.elemwise.Prod])
+
+        f = theano.function([vect], T.elemwise.Prod()(-vect), mode=m0)
+        assert check_stack_trace(f, ops_to_check=[T.elemwise.Prod])
+
+        f = theano.function([mat, scalar], T.sum(mat * scalar), mode=m0)
+        assert check_stack_trace(f, ops_to_check='all')
+
+        f = theano.function([mat], T.sum(-mat), mode=m0)
+        assert check_stack_trace(f, ops_to_check=[T.Sum])
+
 
 class T_local_opt_alloc(unittest.TestCase):
     def test_sum_upcast(self):
@@ -6287,6 +6388,9 @@ class Test_Reshape(unittest.TestCase):
         topo = f.maker.fgraph.toposort()
         assert sum(isinstance(node.op, self.op) for node in topo) == 1
 
+        # Check stack trace
+        self.assertTrue(check_stack_trace(f, ops_to_check=[self.op]))
+
 
 class Test_local_useless_reshape(unittest.TestCase):
     def setUp(self):
@@ -6315,6 +6419,9 @@ class Test_local_useless_reshape(unittest.TestCase):
         f2 = theano.function([x], r, mode=m2)
         topo = f2.maker.fgraph.toposort()
         assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
+
+        # We do not need tests checking that stack traces are copied over,
+        # because local_useless_reshape only removes nodes from the graph
 
     def test_2(self):
         x = theano.tensor.matrix('x')
@@ -6361,7 +6468,7 @@ class Test_local_reshape_to_dimshuffle(unittest.TestCase):
                                   "TensorConstant{[5 6]}))]")
 
         # Check stacktrace was copied over correctly after opt was applied
-        check_stack_trace(g, ops_to_check=(T.DimShuffle, T.Reshape))
+        assert check_stack_trace(g, ops_to_check=(T.DimShuffle, T.Reshape))
 
 
 def test_local_reshape_lift():
@@ -6375,6 +6482,8 @@ def test_local_reshape_lift():
     topo = f.maker.fgraph.toposort()
     assert isinstance(topo[-2].op, tensor.Reshape)
     assert isinstance(topo[-1].op, tensor.Elemwise)
+    # Check stacktrace was copied over correctly after opt was applied
+    assert check_stack_trace(f, ops_to_check='last')
 
 
 class Test_lift_transpose_through_dot(unittest.TestCase):
