@@ -413,6 +413,9 @@ class Scan(PureOp):
             which may wrongly be interpreted as broadcastable.
 
             """
+            if (not hasattr(v1, 'broadcastable') and
+                    not hasattr(v2, 'broadcastable')):
+                return
             msg = ("The broadcast pattern of the output of scan (%s) is "
                    "inconsistent with the one provided in `output_info` "
                    "(%s). The output on axis %d is `%r`, but it is `%r` on "
