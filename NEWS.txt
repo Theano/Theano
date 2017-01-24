@@ -31,7 +31,7 @@ Highlight:
    - ignore_border=False is now implemented for pooling.
 
 
-A total of 141 people contributed to this release, see the list at the bottom.
+A total of 112 people contributed to this release, see the list at the bottom.
 
 
 Interface changes:
@@ -92,3 +92,115 @@ Other more detailed changes:
 
 
 Committers since 0.8.0:
+ - Frederic Bastien
+ - Arnaud Bergeron
+ - Pascal Lamblin
+ - Ramana Subramanyam
+ - Simon Lefrancois
+ - Steven Bocco
+ - Gijs van Tulder
+ - Cesar Laurent
+ - Chiheb Trabelsi
+ - Chinnadhurai Sankar
+ - Mohammad Pezeshki
+ - Reyhane Askari
+ - Alexander Matyasko
+ - Alexandre de Brebisson
+ - Nan Rosemary Ke
+ - Pierre Luc Carrier
+ - Mathieu Germain
+ - Olivier Mastropietro
+ - khaotik
+ - Saizheng Zhang
+ - Thomas George
+ - Iulian Vlad Serban
+ - Benjamin Scellier
+ - Francesco Visin
+ - Caglar
+ - Harm de Vries
+ - Samira Shabanian
+ - Jakub Sygnowski
+ - Samira Ebrahimi Kahou
+ - Mikhail Korobov
+ - Faruk Ahmed
+ - Fei Wang
+ - Jan Schlüter
+ - Kv Manohar
+ - Jesse Livezey
+ - Kelvin Xu
+ - Matt Graham
+ - Ruslana Makovetsky
+ - Sina Honari
+ - Bryn Keller
+ - Ciyong Chen
+ - Nicolas Ballas
+ - Vitaliy Kurlin
+ - Zhouhan LIN
+ - Gokula Krishnan
+ - Kumar Krishna Agrawal
+ - Ozan Çağlayan
+ - Vincent Michalski
+ - Ray Donnelly
+ - Tim Cooijmans
+ - Vincent Dumoulin
+ - happygds
+ - mockingjamie
+ - Amjad Almahairi
+ - Christos Tsirigotis
+ - Ilya Kulikov
+ - RadhikaG
+ - Taesup (TS) Kim
+ - Ying Zhang
+ - Karthik Karanth
+ - Kirill Bobyrev
+ - Yang Zhang
+ - Yaroslav Ganin
+ - theano-bot
+ - Liwei Cai
+ - Morgan Stuart
+ - Tim Gasper
+ - Xavier Bouthillier
+ - p
+ - texot
+ - Andrés Gottlieb
+ - Ben Poole
+ - Bhavishya Pohani
+ - Carl Thomé
+ - Evelyn Mitchell
+ - Fei Zhan
+ - Fábio Perez
+ - Gennadiy Tupitsin
+ - Gilles Louppe
+ - Greg Ciccarelli
+ - He
+ - Huan Zhang
+ - Jonas Degrave
+ - Kaixhin
+ - Kevin Keraudren
+ - Maltimore
+ - Marc-Alexandre Cote
+ - Marco
+ - Marius F. Killinger
+ - Maxim Kochurov
+ - Neil
+ - Nizar Assaf
+ - Rithesh Kumar
+ - Rizky Luthfianto
+ - Robin Millette
+ - Roman Ring
+ - Sander Dieleman
+ - Sebastin Santy
+ - Shawn Tan
+ - Wazeer Zulfikar
+ - Wojciech Głogowski
+ - Yann N. Dauphin
+ - gw0 [http://gw.tnode.com/]
+ - hexahedria
+ - hsintone
+ - jakirkham
+ - joncrall
+ - root
+ - superantichrist
+ - tillahoffmann
+ - wazeerzulfikar
+ - you-n-g
