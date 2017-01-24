@@ -2128,14 +2128,23 @@ def trunc(a):
 
 
 @constructor
-def iround(a, mode="half_away_from_zero"):
+def iround(a, mode=None):
     """cast(round(a,mode),'int64')"""
     return cast(round(a, mode), 'int64')
 
 
 @constructor
-def round(a, mode="half_away_from_zero"):
-    """round_mode(a) with mode in [half_away_from_zero, half_to_even]"""
+def round(a, mode=None):
+    """round_mode(a) with mode in [half_away_from_zero, half_to_even].
+    Default to half_to_even."""
+    if mode is None:
+        mode = "half_to_even"
+        if config.warn.round:
+            warnings.warn(
+                "theano.tensor.round() changed its default from"
+                " `half_away_from_zero` to `half_to_even` to have"
+                " the same default as NumPy. Use the Theano flag"
+                " `warn.round=False` to disable this warning.")
     if mode == "half_away_from_zero":
         return round_half_away_from_zero(a)
     elif mode == "half_to_even":

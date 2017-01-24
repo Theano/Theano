@@ -692,7 +692,7 @@ AddConfigVar('warn.ignore_bug_before',
               "Warning for specific bugs can be configured with specific "
               "[warn] flags."),
              EnumStr('0.7', 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.6',
-                     '0.7', '0.8', '0.8.1', '0.8.2',
+                     '0.7', '0.8', '0.8.1', '0.8.2', '0.9',
                      allow_override=False),
              in_c_key=False)
 
@@ -795,6 +795,13 @@ AddConfigVar('warn.inc_set_subtensor1',
               'one vector or matrix of ints).'),
              BoolParam(warn_default('0.7')),
              in_c_key=False)
+
+AddConfigVar('warn.round',
+             "Round changed its default from Seed to use for randomized unit tests. "
+             "Special value 'random' means using a seed of None.",
+             BoolParam(warn_default('0.9')),
+             in_c_key=False)
+
 
 AddConfigVar(
     'compute_test_value',
