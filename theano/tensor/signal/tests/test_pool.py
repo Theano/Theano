@@ -1182,9 +1182,10 @@ class TestRoIPool(utt.InferShapeTester):
 
         f = theano.function([t_data, t_rois], t_outs + [t_g_data])
 
-        data = numpy.asarray(numpy.random.rand(1, 2, 32, 32), dtype=theano.config.floatX)
+        data = numpy.asarray(numpy.random.rand(1, 2, 32, 32),
+                             dtype='float32')
         rois = numpy.array([[0, 0, 0, 3, 3],
-                           [0, 0, 0, 7, 7]], dtype=theano.config.floatX)
+                           [0, 0, 0, 7, 7]], dtype='float32')
 
         f(data, rois)
         # Checks to be added.
@@ -1193,12 +1194,13 @@ class TestRoIPool(utt.InferShapeTester):
         t_data = tensor.ftensor4()
         t_rois = tensor.fmatrix()
 
-        data = numpy.asarray(numpy.random.rand(1, 2, 32, 32), dtype=theano.config.floatX)
+        data = numpy.asarray(numpy.random.rand(1, 2, 32, 32),
+                             dtype='float32')
         rois = numpy.array([[0, 0, 0, 3, 3],
-                            [0, 0, 0, 7, 7]], dtype=theano.config.floatX)
+                            [0, 0, 0, 7, 7]], dtype='float32')
 
         self._compile_and_check([t_data, t_rois],
-                                [self.op(t_data, t_rois)],
+                                self.op(t_data, t_rois),
                                 [data, rois],
                                 self.op_class)
 
