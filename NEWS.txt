@@ -16,18 +16,17 @@ Highlight:
  - More graph optimization (faster execution and smaller graph, so more readable)
  - Less c code compilation
  - Better Python 3.5 support
- - Better numpy 1.12.0rc2 support
+ - Better numpy 1.12 support
  - Support newer Mac and Windows version
  - Conda packages for Mac, Linux and Windows
  - Theano scripts now works on Windows
  - scan with checkpoint (trade off between speed and memory usage, useful for long sequences)
  - Added a bool dtype
- - Added a deprecation message for the old backend.
 
  - New back-end:
    - float16 storage
-   - print pci bus id
-   - More pooling support on GPU when cudnn isn't there.
+   - better mapping between theano device number and nvidia-smi number, using the PCI bus ID of graphic cards
+   - More pooling support on GPU when cuDNN isn't there.
    - ignore_border=False is now implemented for pooling.
 
 
@@ -50,14 +49,14 @@ Convolution updates:
  - Dilated convolution
 
 GPU:
- - CuDNN: support versoin 5.1 and wrap batch normalization (2d and 3d) and RNN functions
+ - cuDNN: support versoin 5.1 and wrap batch normalization (2d and 3d) and RNN functions
  - Multiple-GPU, synchrone update (via platoon, use NCCL)
  - GpuAdvancedSubtensor in new back-end
  - Gemv(matrix-vector product) speed up for special shape
  - Support for MaxAndArgMax for some axis combination
  - Support for solve (using cusolver), erfinv and erfcinv
  - cublas gemv workaround when we reduce on an axis with a dimensions size of 0
- - Warn user that some cudnn algorithms may produce unexpected results in certain environments
+ - Warn user that some cuDNN algorithms may produce unexpected results in certain environments
    for convolution backward filter operations.
 
 New features:
