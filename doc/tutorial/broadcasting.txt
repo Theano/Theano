@@ -1,5 +1,10 @@
-.. _tutbroadcasting:
+.. testsetup::
 
+   import numpy as np
+   import theano
+   import theano.tensor as T
+
+.. _tutbroadcasting:
 
 ============
 Broadcasting
@@ -34,9 +39,6 @@ information is given in the :ref:`type` of a *Variable*.
 
 The following code illustrates how rows and columns are broadcasted in order to perform an addition operation with a matrix:
 
->>> import numpy as np
->>> import theano
->>> import theano.tensor as T
 >>> r = T.row()
 >>> r.broadcastable
 (True, False)
