@@ -1,0 +1,301 @@
+Date: 2017/01/23
+Author: lvtao
+Changes:
+----------------------------------
+1. Add support for self-contained mkldnn lib. Users can choose to download and install
+mkldnn lib with '--mkl' option when installing Theano, Or to run
+get_self_contained_mkl.sh manually to set mkldnn environment.
+2. Update nnet/corr.py since mklml_intel lib does not support openmp now.
+3. Updata mkl/__init__.py to support mklml_intel lib.
+
+
+Date: 2017/01/23
+Author: lvtao
+Changes:
+----------------------------------
+1. Update mkl_conv.py. Fix bugs in Conv2D.grad function.
+2. Update test_conv.py. Use float64 in convolution UTs.
+3. Clean code in mkl_elemwise.
+
+
+Date: 2017/0111/
+Autho: Patric 
+Changes:
+----------------------------------
+1. Update conv  unit test
+
+Date: 2017/0111/
+Autho: Ciyong
+Changes:
+----------------------------------
+1. Update pool and relu unit test
+
+
+Date: 2017/0110/
+Autho: Patric
+Changes:
+----------------------------------
+1. Add uniq_id into OPT 
+
+
+Date: 2017/0103/
+Autho: Ciyong
+Changes:
+----------------------------------
+1. Add try when importing sandbox.mkl in theano/__init__.py.
+2. Change to link mkl_rt when checking mkl available.
+
+
+Date: 2016/12/28
+Autho: lvtao
+Changes:
+----------------------------------
+1. Add AbstractConvGroup and AbstractConvGroupGrad in mkl_conv.py.
+2. Update mkl/opt.py to support AbstractConvGroup optimization.
+3. Upate AlexNet model to use AbstractConvGroup in democase/alexnet/.
+4. Update 'broadcastable' variable in Conv2D, ConvGradInputs and
+ConvGradWeights to support the case with 5-dim weight.
+
+
+Date: 2016/12/28
+Author: Patric
+Changes:
+----------------------------------
+1. ConvGradWeight return tpye 
+
+
+Date: 2016/12/27
+Author: Patric
+Changes:
+----------------------------------
+1. Conv return if shape is None.
+2. Add testcase.
+
+
+Date: 2016/12/27
+Author: lvtao
+Changes:
+----------------------------------
+1. Update mkl/opt.py to support U2IBatchNormalization cutting.
+2. Fix 'border_mode' parameter bug of U2IConv function in Conv local opts.
+
+
+Date: 2016/12/26
+Author: Ciyong
+Changes:
+----------------------------------
+1. Remove useless var in lrn Op.
+2. Add democase for alexnet.
+
+
+Date: 2016/12/26
+Author: Patric 
+Changes:
+----------------------------------
+1. Fix code style issues.
+2. Add comments
+
+
+Date: 2016/12/25
+Author: lvtao
+Changes:
+----------------------------------
+1. Update mkl_bn to support F64.
+2. Update printing.py to support U2IElemwiseSum, U2IBatchNormalization color.
+3. Fix code style issues.
+
+
+Date: 2016/12/23
+Author: Ciyong 
+Changes:
+----------------------------------
+1. Fix gradient Bias graph error
+1. Fix U2I Conv error
+
+
+Date: 2016/12/23
+Author: Patric
+Changes:
+----------------------------------
+1. rm ws from U2IConv 
+2. rm connection
+
+
+Date: 2016/12/23
+Author: Ciyong
+Changes:
+----------------------------------
+1. Fix U2IConv grad error
+
+
+Date: 2016/12/22
+Author: Patric
+Changes:
+----------------------------------
+1. code clear and change variable's name
+2. cut LRN/ElemwiseSum
+3. Conv, group=2
+
+
+Date: 2016/12/22
+Author: Ciyong
+Changes:
+----------------------------------
+1. Add unit test for mkl_relu
+2. Update regression test script to skip graph generation if the machine
+didn't support it.
+
+
+Date: 2016/12/21
+Author: lvtao
+Changes:
+----------------------------------
+1. Update basic_ops.py, mkl_bn.py, opt.py to support Batch Normalization OP.
+2. Add test_bn.py for BN OP unit test.
+3. Update tensor/nnet/bn.py to choose BN OP of MKLDNN or orginal BN
+implementation.
+4. Fix bugs in LRN and LRNGrad OP's c_code function. Init the workspace
+pointer everytime, not just first run.
+
+
+Date: 2016/12/20
+Author: lvtao
+Changes:
+----------------------------------
+1. Update mkl_conv, mkl_elemwise and unit tests for the ops.
+2. Update opt.py for global optimizations of ReplaceConvBias and
+ReplaceElemwiseSum.
+3. Update regression test script to support test_conv.py, test_lrn.py and
+test_elemwise.py.
+
+
+Date: 2016/12/20
+Author: Ciyong
+Changes:
+----------------------------------
+1. Add regression test for mkl module
+2. Add retry for pool and relu opt
+3. Remove useless codes
+
+
+Date: 2016/12/16
+Author: lvtao
+Changes:
+----------------------------------
+1. Add test_lrn.py file to sandbox/mkl/tests/.
+2. Move AbstractLRN and AbstractLRNGrad from tensor/nnet/lrn.py to
+sandbox/mkl/mkl_lrn.py.
+3. Fix flake8 errors of sandbox/mkl/mkl_lrn.py.
+4. Fix Pooling Grad bug in sandbox/mkl/tests/test_opt.py.
+
+
+Date: 2016/12/14
+Author: Ciyong
+Changes:
+----------------------------------
+1. Update the condition of relu Op to enable MKL relu if necessary
+2. Add 4D and 2D tensor input for relu UT
+3. Fix typo in Pool Op
+
+
+Date: 2016/12/12
+Author: Ciyong
+Changes:
+----------------------------------
+1. Add AveragePoolGrad opt
+
+
+Data: 2016/12/2
+Auther: Patric
+Changes:
+----------------------------------
+1. change convOP name
+2. change ConvGradWeight output shape
+
+
+Data: 2016/11/30
+Auther: Patric
+Changes:
+----------------------------------
+1. Fix update issue
+
+
+----------------------------------
+Data: 2016/11/30
+Auther: Patric
+Changes:
+----------------------------------
+1. Add Conv OP/OPT mkl_conv.py/opt.py
+2. Add U2IConv basic_ops.py
+3. Fixed lots of style issues in the code 
+
+
+Date: 2016/11/29
+Author: Ciyong
+Changes:
+----------------------------------
+1. Fix flake8 error of theano/sandbox/mkl/mkl_pool.py and mkl_relu.py
+2. Fix warning from mkl_pool.py and basic_ops.py
+
+
+Date: 2016/11/28
+Author: Ciyong
+Changes:
+----------------------------------
+1. Add "False" option for config.dnn.enabled, with "False" option, both CuDNN
+   and MKL dnn functionality module will not be used.
+2. Fix flake8 error of theano/sandbox/mkl/basic_ops.py
+3. Fix the typo in infer_shape of Pool and PoolGrad Ops.
+
+
+Date: 2016/11/25
+Author: lvtao
+Changes:
+----------------------------------
+1. Modify the MKL OP class names. Add AbstractLRN and AbstractLRNGrad.
+2. Override eq and hash function for MKL OP classes to merge same OPs with
+differnt uniq_id in funtion graph.
+3. Update the code of CUT_U2I_I2U OPT.
+4. Add test_lrn.py for LRN OP UT, and gen_lrn_graph.py for generating function graph.
+
+
+Date: 2016/11/22
+Author: Ciyong
+Changes:
+----------------------------------
+1. Fix the issue of U2I_Pool and pool Gradient error
+2. Add FP64 support in mkl_relu, and format it from dos to unix 
+
+
+Date: 2016/11/21
+Author: Ciyong
+Changes:
+----------------------------------
+1. Fix the issue of error result from mkl_available() when it's executed multiple times.
+
+
+Date: 2016/11/21
+Author: lvtao
+Changes:
+----------------------------------
+1.	Add tensor/nnet/lrn.py, including two empty class to implement LRN and LRN Grad
+2.	Update basic_op.py to add U2I_LRN Class.
+3.	Update opt.py to add opts for LRN and LRN Grad.
+4.	Add tests/test_lrn.py to generate LRN graphics.
+5.	Add tests/test_opt.py for graphics UT.
+
+
+Date: 2016/11/19
+Author: Ciyong
+Changes:
+----------------------------------
+1.	Updated mkl_pool Op to enable infer_shape and removed file argument in Op
+2.	Update opt.py to fix the segment fault issue of backward pass.
+3.	Rename file names: 
+	tests/test_combination.py -> tests/gen_combination_graph.py
+	tests/test_pool.py -> tests/gen_pool_graph.py
+	tests/test_relu.py -> tests/gen_relu_graph.py
+	Made all this tests to cover both forward and backward pass by default.
+4.	Add a new file tests/test_pool.py for mkl_pool UT.
+5.	Removed mkl_available() check in mkl/basic_ops.py to avoid calling this function multiple times.
+6.	Change Relu and ReluGrad Op names to AbstractRelu and AbstractReluGrad.
