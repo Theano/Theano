@@ -1552,6 +1552,8 @@ class TestBilinearUpsampling(unittest.TestCase):
 
 
 class TestConv2dTranspose(unittest.TestCase):
+    mode = None
+
     def test_interface(self):
         """Test conv2d_transpose wrapper.
 
@@ -1565,7 +1567,8 @@ class TestConv2dTranspose(unittest.TestCase):
             outputs=conv2d_transpose(input=tensor.ones((2, 2, 4, 4)),
                                      filters=tensor.ones((2, 1, 4, 4)),
                                      output_shape=(2, 1, 10, 10),
-                                     input_dilation=(2, 2)))()
+                                     input_dilation=(2, 2)),
+            mode=self.mode)()
         expected_output = numpy.array(
             [[[[2, 2, 4, 4, 4, 4, 4, 4, 2, 2],
                [2, 2, 4, 4, 4, 4, 4, 4, 2, 2],
