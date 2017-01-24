@@ -2506,58 +2506,42 @@ class RoundHalfToEven(UnaryScalarOp):
 
         return [rval]
 
-    def c_code___(self, node, name, inputs, outputs, sub):
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
         (z,) = outputs
         typ = node.outputs[0].type.dtype
         if typ not in ['float32', 'float64']:
             raise NotImplementedError("The output should be float32 or float64")
-
-        return dedent("""
-            #ifndef ROUNDING_EPSILON
-            #define ROUNDING_EPSILON 0.0000001
-            #endif
-
-            if (%(x)s < 0.0){
-              // We implement the else part like that: -else( -%(x)s);
-              %(typ)s i;
-              std::modf( -%(x)s, &i );
-
-              // If %(x)s is exactly halfway between two integers
-              if ((-%(x)s -(i +0.5)) < epsilon){
-                  // If 'i' is even then return 'i'
-                if (std::fmod( i, 2.0 ) < epsilon){
-                  %(z)s = - i;
-                }else{
-                  // Else return the nearest even integer
-                  %(z)s = - ceil( i +0.5 );
-                }
-              }else{
-                // round to closest
-                %(z)s = - round(%(x)s+5);
-              }
-            }else{
-              %(typ)s i;
-              std::modf( %(x)s, &i );
-
-              // If %(x)s is exactly halfway between two integers
-              if ((%(x)s -(i +0.5)) < epsilon){
-                  // If 'i' is even then return 'i'
-                if (std::fmod( i, 2.0 ) < epsilon){
-                  %(z)s = i;
-                }else{
-                  // Else return the nearest even integer
-                  %(z)s =  ceil( i +0.5 );
-                }
-              }else{
-                // round to closest
-                %(z)s = round(%(x)s+5);
-              }
+        if typ == 'float32':
+            ctype = 'float'
+            floor_function = 'floorf'
+        else:
+            ctype = 'double'
+            floor_function = 'floor'
+        return """
+        /* Code inspired from NumPy npy_rint implementation. */
+        {
+            %(ctype)s y, r;
+            y = %(floor_function)s(%(x)s);
+            r = %(x)s - y;
+            if(r > 0.5) {
+                y += 1;
+            } else if(r == 0.5) {
+                r = y - 2.0*%(floor_function)s(0.5*y);
+                /*
+                If y is even, then r == 0
+                If y is odd,  then r == 1
+                So we can just add r to y, so that
+                y will be incremented only if he's odd.
+                */
+                y += (int)r;
             }
-
-            #undef ROUNDING_EPSILON
-
-            """ % locals())
+            %(z)s = y;
+        }
+        """ % locals()
 round_half_to_even = RoundHalfToEven(same_out_float_only)
 
 
