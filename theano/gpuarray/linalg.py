@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import pkg_resources
 import theano
+import warnings
 
 from theano import Op
 from theano.gpuarray import basic_ops, GpuArrayType
@@ -16,6 +17,7 @@ except ImportError:
 
 cusolver_available = False
 try:
+    import skcuda
     from skcuda import cusolver
     cusolver_available = True
 except (ImportError, OSError, RuntimeError, pkg_resources.DistributionNotFound):
@@ -75,6 +77,8 @@ class GpuCusolverSolve(Op):
         if not cusolver_available:
             raise RuntimeError('CUSOLVER is not available and '
                                'GpuCusolverSolve Op can not be constructed.')
+        if skcuda.__version__ <= '0.5.1':
+            warnings.warn('The GpuSolve op requires scikit-cuda > 0.5.1 to work with CUDA 8')
         context_name = basic_ops.infer_context_name(inp1, inp2)
 
         inp1 = basic_ops.as_gpuarray_variable(inp1, context_name)
