@@ -1161,12 +1161,15 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             utt.assert_allclose(o, n)
 
 
-class TestRoIPool(unittest.InferShapeTester):
+class TestRoIPool(utt.InferShapeTester):
 
     def setUp(self):
         super(TestRoIPool, self).setUp()
         self.op_class = RoIPoolOp
-        self.op = RoIPoolOp()
+        pooled_h=2
+        pooled_w=2
+        spatial_scale=1.0
+        self.op = RoIPoolOp(pooled_h, pooled_w, spatial_scale)
 
     def test_basic(self):
         t_data = tensor.ftensor4()
