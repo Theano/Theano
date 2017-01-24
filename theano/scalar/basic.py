@@ -347,8 +347,6 @@ class Scalar(Type):
         # we declare them here and they will be re-used by TensorType
         l.append('<numpy/arrayobject.h>')
         l.append('<numpy/arrayscalars.h>')
-        # npy_math header contains npy_rint() and npy_rintf() declarations for rounding operations.
-        l.append('<numpy/npy_math.h>')
         if config.lib.amdlibm and c_compiler.supports_amdlibm:
             l += ['<amdlibm.h>']
         return l
@@ -636,7 +634,7 @@ class Scalar(Type):
         return ["import_array();"]
 
     def c_code_cache_version(self):
-        return (14, numpy.__version__)
+        return (13, numpy.__version__)
 
     def get_shape_info(self, obj):
         return obj.itemsize
@@ -2508,14 +2506,42 @@ class RoundHalfToEven(UnaryScalarOp):
 
         return [rval]
 
+    def c_code_cache_version(self):
+        return (1,)
+
     def c_code(self, node, name, inputs, outputs, sub):
         (x,) = inputs
         (z,) = outputs
         typ = node.outputs[0].type.dtype
         if typ not in ['float32', 'float64']:
             raise NotImplementedError("The output should be float32 or float64")
-        round_function = 'npy_rint' if typ == 'float64' else 'npy_rintf'
-        return "%(z)s = %(round_function)s(%(x)s);" % locals()
+        if typ == 'float32':
+            ctype = 'float'
+            floor_function = 'floorf'
+        else:
+            ctype = 'double'
+            floor_function = 'floor'
+        return """
+        /* Code inspired from NumPy npy_rint implementation. */
+        {
+            %(ctype)s y, r;
+            y = %(floor_function)s(%(x)s);
+            r = %(x)s - y;
+            if(r > 0.5) {
+                y += 1;
+            } else if(r == 0.5) {
+                r = y - 2.0*%(floor_function)s(0.5*y);
+                /*
+                If y is even, then r == 0
+                If y is odd,  then r == 1
+                So we can just add r to y, so that
+                y will be incremented only if he's odd.
+                */
+                y += (int)r;
+            }
+            %(z)s = y;
+        }
+        """ % locals()
 round_half_to_even = RoundHalfToEven(same_out_float_only)
 
 
