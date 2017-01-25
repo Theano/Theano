@@ -92,7 +92,7 @@ would need to change NEWS.txt so it contains only ASCII characters (the
 problem usually comes from diacritics in people's names).
 
 On mloss.org (for final releases only)
-------------
+--------------------------------------
 
 Project page is at http://mloss.org/software/view/241/.
 Account jaberg is listed as submitter.
