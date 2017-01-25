@@ -93,42 +93,6 @@ class CudaNdarraySharedVariable(_operators, SharedVariable):
         """
         Assign `value` to the GPU-allocated array.
 
-        Parameters
-        ----------
-        borrow : bool
-            ``True`` permits reusing `value` itself, ``False`` requires that
-            this function copies `value` into internal storage.
-
-        Notes
-        -----
-        Prior to Theano 0.3.1, set_value did not work in-place on the GPU. This
-        meant that sometimes, GPU memory for the new value would be allocated
-        before the old memory was released. If you're running near the limits of
-        GPU memory, this could cause you to run out of GPU memory.
-
-        Beginning with Theano 0.3.1, set_value will work in-place on the GPU, if
-        the following conditions are met:
-
-            * The destination on the GPU must be c_contiguous.
-            * The source is on the CPU.
-            * The old value must have the same dtype as the new value
-              (which is a given for now, since only float32 is
-              supported).
-            * The old and new value must have the same shape.
-            * The old value is being completely replaced by the new
-              value (not partially modified, e.g. by replacing some
-              subtensor of it).
-            * You change the value of the shared variable via
-              set_value, not via the .value accessors. You should not
-              use the .value accessors anyway, since they will soon be
-              deprecated and removed.
-
-        It is also worth mentioning that, for efficient transfer to the GPU,
-        Theano will make the new data ``c_contiguous``. This can require an
-        extra copy of the data on the host.
-
-        The inplace on gpu memory work when borrow is either True or False.
-
         """
         if not borrow:
             # TODO: check for cuda_ndarray type
