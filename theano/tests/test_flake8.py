@@ -22,7 +22,10 @@ __contact__ = "Saizheng Zhang <saizhenglisa..at..gmail.com>"
 #    too complex to do with the C code
 # - "closing bracket does not match indentation of opening bracket's line"
 #    ignored by default by pep8
-ignore = ('E501', 'E123', 'E133')
+# - All errors from flake8-future-import
+ignore = ('E501', 'E123', 'E133',
+          'FI10', 'FI11', 'FI12', 'FI13', 'FI14', 'FI15', 'FI16', 'FI17',
+          'FI50', 'FI51', 'FI53')
 
 whitelist_flake8 = [
     "compat/six.py",  # This is bundled code that will be deleted, don't fix it
