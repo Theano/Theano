@@ -27,7 +27,7 @@ import sys
 import time
 from collections import defaultdict
 
-import numpy
+import numpy as np
 
 import theano
 from six import iteritems
@@ -440,7 +440,7 @@ class ProfileStats(object):
         hs += ['<#apply>']
         es += [' %4d  ']
 
-        upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
+        upto_length = np.sum([len(x) for x in hs]) + len(hs)
         maxlen = max(self.line_width - upto_length, 0)
         hs += ['<Class name>']
         es += ['%s']
@@ -522,7 +522,7 @@ class ProfileStats(object):
         hs += ['<#apply>']
         es += ['  %4d  ']
 
-        upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
+        upto_length = np.sum([len(x) for x in hs]) + len(hs)
         maxlen = max(self.line_width - upto_length, 0)
         hs += ['<Op name>']
         es += ['%s']
@@ -590,7 +590,7 @@ class ProfileStats(object):
         if self.variable_shape:
             hs += ['<Mflops>', '<Gflops/s>']
 
-        upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
+        upto_length = np.sum([len(x) for x in hs]) + len(hs)
         maxlen = max(self.line_width - upto_length, 0)
         hs += ['<Apply name>']
         es += ['%s']
@@ -892,7 +892,7 @@ class ProfileStats(object):
             node_list = list(node_list)
             mem_count = 0
             max_mem_count = 0
-            mem_bound = numpy.inf
+            mem_bound = np.inf
             # This take only the inputs/outputs dependencies.
             dependencies = fgraph.profile.dependencies
             done_set = set([])
