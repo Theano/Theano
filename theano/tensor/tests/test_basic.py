@@ -1722,12 +1722,7 @@ if imported_scipy_special:
     expected_j0 = scipy.special.j0
     expected_j1 = scipy.special.j1
     skip_scipy = False
-    if LooseVersion(scipy_version) >= LooseVersion("0.12.0"):
-        expected_erfcx = scipy.special.erfcx
-        skip_scipy12 = False
-    else:
-        expected_erfcx = []
-        skip_scipy12 = "the erfcx op requires scipy version >= 0.12, installed version is " + scipy_version
+    expected_erfcx = scipy.special.erfcx
 else:
     expected_erf = []
     expected_erfc = []
@@ -1741,7 +1736,6 @@ else:
     expected_j0 = []
     expected_j1 = []
     skip_scipy = "scipy is not present"
-    skip_scipy12 = "scipy is not present"
 
 ErfTester = makeBroadcastTester(
     op=tensor.erf,
@@ -1785,8 +1779,7 @@ ErfcxTester = makeBroadcastTester(
     good=_good_broadcast_unary_normal_float_no_complex_small_neg_range,
     grad=_grad_broadcast_unary_normal_small_neg_range,
     eps=2e-10,
-    mode=mode_no_scipy,
-    skip=skip_scipy12)
+    mode=mode_no_scipy)
 ErfcxInplaceTester = makeBroadcastTester(
     op=inplace.erfcx_inplace,
     expected=expected_erfcx,
@@ -1794,8 +1787,7 @@ ErfcxInplaceTester = makeBroadcastTester(
     grad=_grad_broadcast_unary_normal_small_neg_range,
     eps=2e-10,
     mode=mode_no_scipy,
-    inplace=True,
-    skip=skip_scipy12)
+    inplace=True)
 
 ErfinvTester = makeBroadcastTester(
     op=tensor.erfinv,
