@@ -579,6 +579,20 @@ class T_function(unittest.TestCase):
             if not isinstance(key, theano.gof.Constant):
                 assert (val[0] is None)
 
+    def test_default_values(self):
+        """
+        Check that default values are restored
+        when an exception occurs in interactive mode.
+        """
+        a, b = T.dscalars('a', 'b')
+        c = a + b
+        func = theano.function([theano.In(a, name='first'), theano.In(b, value=1, name='second')], c)
+        x = func(first=1)
+        try:
+            func(second=2)
+        except TypeError:
+            assert(func(first=1) == x)
+
 
 class T_picklefunction(unittest.TestCase):
 
