@@ -572,6 +572,8 @@ class TestEquilibrium(object):
         assert str(g) == '[Op2(x, y)]'
 
     def test_low_use_ratio(self):
+        backup = theano.config.on_opt_error
+        theano.config.on_opt_error = 'warn'
         x, y, z = map(MyVariable, 'xyz')
         e = op3(op4(x, y))
         g = FunctionGraph([x, y, z], [e])
@@ -590,6 +592,7 @@ class TestEquilibrium(object):
                 max_use_ratio=1. / len(g.apply_nodes))  # each opt can only be applied once
             opt.optimize(g)
         finally:
+            theano.config.on_opt_error = backup
             _logger.setLevel(oldlevel)
         # print 'after', g
         assert str(g) == '[Op1(x, y)]'
