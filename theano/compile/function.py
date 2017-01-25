@@ -13,7 +13,7 @@ from six import string_types
 from theano.compile.io import In
 from theano.compile.function_module import orig_function
 from theano.compile.pfunc import pfunc
-from numpy import any
+import numpy as np
 import warnings
 from theano import compat
 
@@ -286,7 +286,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                         "input.")
 
     # compute some features of the arguments:
-    uses_tuple = any([isinstance(i, (list, tuple)) for i in inputs])
+    uses_tuple = np.any([isinstance(i, (list, tuple)) for i in inputs])
     uses_updates = bool(updates)
     uses_givens = bool(givens)
 
