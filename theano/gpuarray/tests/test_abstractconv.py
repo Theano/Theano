@@ -256,8 +256,3 @@ class TestDnnConvTypes(test_abstract_conv.TestConvTypes):
 
 class TestConv2dTranspose(test_abstract_conv.TestConv2dTranspose):
     mode = mode_with_gpu
-
-    def test_interface(self):
-        if not dnn_available(test_ctx_name):
-            raise SkipTest(dnn_available.msg)
-        super(self, TestConv2dTranspose).test_interface()
