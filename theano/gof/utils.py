@@ -503,6 +503,8 @@ def hist(coll):
     return counts
 
 
+@deprecated("theano.gof.utils",
+            msg="Use a_theano_variable.auto_name instead")
 def give_variables_names(variables):
     """
     Gives unique names to an iterable of variables. Modifies input.
