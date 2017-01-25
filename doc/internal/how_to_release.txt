@@ -161,3 +161,8 @@ For release candidates, only e-mail:
 * theano-announce
 * theano-dev
 * theano-users
+
+For alpha and beta releases, only e-mail:
+
+* theano-dev
+* theano-users
