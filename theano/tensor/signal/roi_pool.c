@@ -11,6 +11,11 @@
 #define max(a,b) (a>b?a:b)
 #define min(a,b) (a<b?a:b)
 
+
+bool vector_same_shape(PyArrayObject* arr1, PyArrayObject* arr2){
+  return (PyArray_DIMS(arr1)[0] == PyArray_DIMS(arr2)[0]);
+  }
+
 void APPLY_SPECIFIC(ROIPoolForward)(
     int nloops, float* bottom_data,
     float spatial_scale, int channels, int height,
@@ -77,16 +82,38 @@ int APPLY_SPECIFIC(CPUFwd)(PyArrayObject* data,
   int channels = PyArray_DIMS(data)[1];
   int height = PyArray_DIMS(data)[2];
   int width = PyArray_DIMS(data)[3];
-
+  int data_typenum = PyArray_ObjectType((PyObject*)(data), 0);
   // Prepare outputs.
   int dims[] = {0, 0, 0, 0};
   dims[0] = batch_size;
   dims[1] = channels;
   dims[2] = POOLED_HEIGHT;
   dims[3] = POOLED_WIDTH;
-
+  int total_ndim = 4;
   int count = batch_size * channels * POOLED_HEIGHT * POOLED_WIDTH;
-
+  int mem_nc;
+  mem_nc = 0;
+  // Checking if contiguous
+  if(!PyArray_ISCONTIGUOUS(data) || !PyArray_ISCONTIGUOUS(rois)){
+    if (*out != NULL || *argmaxes != NULL || (!vector_same_shape(data, *out)) || (!vector_same_shape(data, *argmaxes))){
+      Py_XDECREF(*out);
+      Py_XDECREF(*argmaxes);
+      npy_intp dim[4];
+      for (int i=0; i<4; i++){
+        dim[i] = PyArray_DIMS(data)[i];
+      }
+      *out = (PyArrayObject*) PyArray_ZEROS(PyArray_NDIM(data), dim, data_typenum, 0);
+      *argmaxes = (PyArrayObject*) PyArray_ZEROS(PyArray_NDIM(data), dim, data_typenum, 0);
+      if (!*out || !*argmaxes) {
+        PyErr_Format(PyExc_ValueError, "Could not allocate output storage");
+        return 1;
+      }
+    }
+  }
+  else {
+    PyArray_FILLWBYTE(*out, 0);
+    PyArray_FILLWBYTE(*argmaxes, 0);
+  }
 
   APPLY_SPECIFIC(ROIPoolForward)(
           count, (float *)PyArray_DATA(data), SPATIAL_SCALE, channels, height, width,
@@ -170,22 +197,44 @@ void APPLY_SPECIFIC(ROIPoolBackward)(
 }
 
 
-int APPLY_SPECIFIC(CPUBackward)(PyArrayObject* datas,
+int APPLY_SPECIFIC(CPUBackward)(PyArrayObject* data,
                            PyArrayObject* rois,
                            PyArrayObject* argmaxes,
                            PyArrayObject* out_grad,
                            PyArrayObject** data_grad) {
-    int count = PyArray_SIZE(datas);
-    int batch_size = PyArray_DIMS(rois)[0];
-    int channels = PyArray_DIMS(datas)[1];
-    int height = PyArray_DIMS(datas)[2];
-    int width = PyArray_DIMS(datas)[3];
+  int count = PyArray_SIZE(data);
+  int batch_size = PyArray_DIMS(rois)[0];
+  int channels = PyArray_DIMS(data)[1];
+  int height = PyArray_DIMS(data)[2];
+  int width = PyArray_DIMS(data)[3];
+  int data_typenum = PyArray_ObjectType((PyObject*)(data), 0);
 
+  int mem_nc;
+  mem_nc = 0;
+  int total_ndim = 4;
+  //Checking Arrays are continious
+  if(!PyArray_ISCONTIGUOUS(data) || !PyArray_ISCONTIGUOUS(rois) || !PyArray_ISCONTIGUOUS(argmaxes)){
+    if (*data_grad == NULL || (!vector_same_shape(data, *data_grad))){
+      Py_XDECREF(*data_grad);
+      npy_intp dim[4];
+      for (int i=0; i<4; i++){
+        dim[i] = PyArray_DIMS(data)[i];
+      }
+      *data_grad = (PyArrayObject*) PyArray_ZEROS(PyArray_NDIM(data), dim, data_typenum, 0);
+      if (!*data_grad) {
+        PyErr_Format(PyExc_ValueError, "Could not allocate output storage");
+        return 1;
+      }
+    }
+  }
+  else{
+    PyArray_FILLWBYTE(*data_grad, 0);
+  }
 
-    APPLY_SPECIFIC(ROIPoolBackward)(
-        count, (float *)PyArray_DATA(out_grad), (float *)PyArray_DATA(argmaxes), batch_size , 
-        SPATIAL_SCALE, channels, height, width, POOLED_HEIGHT, POOLED_WIDTH, 
-        (float *)PyArray_DATA(*data_grad), (float *)PyArray_DATA(rois));
+  APPLY_SPECIFIC(ROIPoolBackward)(
+      count, (float *)PyArray_DATA(out_grad), (float *)PyArray_DATA(argmaxes), batch_size , 
+      SPATIAL_SCALE, channels, height, width, POOLED_HEIGHT, POOLED_WIDTH, 
+      (float *)PyArray_DATA(*data_grad), (float *)PyArray_DATA(rois));
 
   return 0;
 }

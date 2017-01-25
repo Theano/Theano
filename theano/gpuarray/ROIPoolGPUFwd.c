@@ -95,6 +95,13 @@ int APPLY_SPECIFIC(ROIPoolGPUFwd)(PyGpuArrayObject *features,
       return 1;
     }
 
+  if (theano_prep_output(argmaxes, PyGpuArray_NDIM(features), PyGpuArray_DIMS(features),
+                         features->ga.typecode, GA_C_ORDER, ctx) != 0)
+    {
+      PyErr_SetString(PyExc_RuntimeError, "GpuRoIPoolOp: failed to allocate memory");
+      return 1;
+    }
+
   err = ROIPoolGPUFwd_kernel_scall(1, &num_kernel, 0,
           num_kernel, features->ga.data, SPATIAL_SCALE, channels, height, width,
           POOLED_HEIGHT, POOLED_WIDTH, rois->ga.data, (*out)->ga.data,
