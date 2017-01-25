@@ -122,12 +122,7 @@ class SharedVariable(Variable):
 
         Notes
         -----
-        Prior to Theano 0.3.1, set_value did not work in-place on the GPU. This
-        meant that sometimes, GPU memory for the new value would be allocated
-        before the old memory was released. If you're running near the limits of
-        GPU memory, this could cause you to run out of GPU memory.
-
-        Beginning with Theano 0.3.1, set_value will work in-place on the GPU, if
+        Set_value will work in-place on the GPU, if
         the following conditions are met:
 
             * The destination on the GPU must be c_contiguous.
