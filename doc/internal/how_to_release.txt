@@ -64,10 +64,19 @@ The documentation will be automatically regenerated in the next few hours.
 Generate and upload the package
 ===============================
 
-For release candidates, only upload on PyPI.
+For non-final releases (e.g., release candidates, alpha, beta), upload on PyPI only.
 
 On PyPI
 -------
+
+Set your umask to ``0022`` to ensure that the package file will be readable from other people.
+To check your umask::
+
+    umask
+
+To set your umask::
+
+    umask 0022
 
 Now change ``ISRELEASED`` in ``setup.py`` to ``True``.
 
@@ -138,8 +147,10 @@ then run the script.
 Announce the release
 ====================
 
-Generate an e-mail from the template in in ``EMAIL.txt``, including content
-from ``NEWS.txt``, and send it to the following mailing lists:
+Generate an e-mail from the template in ``EMAIL.txt``, including content
+from ``NEWS.txt``.
+
+For final releases, send the e-mail to the following mailing lists:
 
 * theano-users
 * theano-announce
