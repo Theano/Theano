@@ -220,8 +220,7 @@ def conv2d_transpose(input, filters, output_shape, filter_shape=None,
         GPU. Otherwise, it is the *CorrMM* convolution that will be used
         "caffe style convolution".
 
-        This is only supported in Theano 0.8 or the development
-        version until it is released.
+        This operation is also sometimes called "deconvolution".
 
         The parameter filter_dilation is an implementation of `dilated
         convolution <https://arxiv.org/pdf/1511.07122v3.pdf>`_.
