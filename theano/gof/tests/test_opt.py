@@ -572,8 +572,6 @@ class TestEquilibrium(object):
         assert str(g) == '[Op2(x, y)]'
 
     def test_low_use_ratio(self):
-        backup = theano.config.on_opt_error
-        theano.config.on_opt_error = 'warn'
         x, y, z = map(MyVariable, 'xyz')
         e = op3(op4(x, y))
         g = FunctionGraph([x, y, z], [e])
@@ -583,6 +581,8 @@ class TestEquilibrium(object):
         _logger = logging.getLogger('theano.gof.opt')
         oldlevel = _logger.level
         _logger.setLevel(logging.CRITICAL)
+        backup = theano.config.on_opt_error
+        theano.config.on_opt_error = 'warn'
         try:
             opt = EquilibriumOptimizer(
                 [PatternSub((op1, 'x', 'y'), (op2, 'x', 'y')),
