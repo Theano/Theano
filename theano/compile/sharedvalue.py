@@ -120,6 +120,31 @@ class SharedVariable(Variable):
         Changes to this value will be visible to all functions using
         this SharedVariable.
 
+        Notes
+        -----
+        Set_value will work in-place on the GPU, if
+        the following conditions are met:
+
+            * The destination on the GPU must be c_contiguous.
+            * The source is on the CPU.
+            * The old value must have the same dtype as the new value
+              (which is a given for now, since only float32 is
+              supported).
+            * The old and new value must have the same shape.
+            * The old value is being completely replaced by the new
+              value (not partially modified, e.g. by replacing some
+              subtensor of it).
+            * You change the value of the shared variable via
+              set_value, not via the .value accessors. You should not
+              use the .value accessors anyway, since they will soon be
+              deprecated and removed.
+
+        It is also worth mentioning that, for efficient transfer to the GPU,
+        Theano will make the new data ``c_contiguous``. This can require an
+        extra copy of the data on the host.
+
+        The inplace on gpu memory work when borrow is either True or False.
+
         """
         if borrow:
             self.container.value = new_value

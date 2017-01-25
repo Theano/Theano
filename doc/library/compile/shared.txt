@@ -19,11 +19,34 @@
 
     The user-friendly constructor is :func:`shared`
 
-    .. attribute:: value
+    .. method:: get_value(self, borrow=False, return_internal_type=False)
+    
+       :param borrow: True to permit returning of an object aliased to internal memory.
+       :type borrow: bool
+               
+       :param return_internal_type: True to permit the returning of an arbitrary type object used
+               internally to store the shared variable.
+       :type return_internal_type: bool
 
-        Read/write access to the [non-symbolic] value/data associated with this SharedVariable.
-        
-        Changes to this value will be visible to all functions using this SharedVariable.  
+       By default, return a copy of the data. If ``borrow=True`` (and
+       ``return_internal_type=False``), maybe it will return a copy.
+       For tensor, it will always return a ndarray by default, so if
+       the data is on the GPU, it will return a copy, but if the data
+       is on the CPU, it will return the original data.  If you do
+       ``borrow=True`` and ``return_internal_type=True``, it will
+       always return the original data, not a copy, but this can be a
+       GPU object.
+    
+    .. method:: set_value(self, new_value, borrow=False)
+
+       :param new_value: The new value.
+       :type new_value: A compatible type for this shared variable.
+
+       :param borrow: True to use the new_value directly, potentially creating problems
+           related to aliased memory.
+       :type borrow: bool
+
+       The new value will be seen by all functions using this SharedVariable.
 
     .. method:: __init__(self, name, type, value, strict, container=None)
 
