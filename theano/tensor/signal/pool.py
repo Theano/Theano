@@ -580,6 +580,26 @@ class Pool(OpenMPOp):
     def connection_pattern(self, node):
         return [[1], [0], [0], [0]]
 
+    def R_op(self, inputs, eval_points):
+        if self.mode != 'max':
+            # Rop for average or sum is simply pooling evaluated at eval point
+            eval_inputs = [eval_points[0]] + inputs[1:]
+            return [self(*eval_inputs)]
+
+        # R_op can receive None as eval_points.
+        # That mean there is no diferientiable path through that input
+        # If this imply that you cannot compute some outputs,
+        # return None for those.
+        if eval_points[0] is None:
+            return [None]
+        z = self(*inputs)
+        x, ws, stride, pad = inputs
+        return [
+            DownsampleFactorMaxGradGrad(self.ignore_border, self.mode,
+                                        self.ndim)(x, z, eval_points[0], ws,
+                                                   stride, pad)
+        ]
+
     def c_headers(self):
         headers = ['<algorithm>']
         headers += super(Pool, self).c_headers()
@@ -2006,3 +2026,416 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
 
     def c_code_cache_version(self):
         return (0, 4, self.openmp)
+
+
+class MaxPoolRop(OpenMPOp):
+    """
+    Implements the R-operator for the downsample operation.
+
+    Parameters
+    ----------
+    ws : list or tuple of N ints
+        Downsample factor over rows, columns etc.
+        ws indicates the size of the pooling region.
+    ignore_border : bool
+        If ws doesn't divide imgshape, do we include an extra row/col/slice
+        of partial downsampling (False) or ignore it (True).
+    stride : list or tuple of N ints or None
+        Stride size, which is the number of shifts over rows/cols/slices to get the
+        next pool region. If stride is None, it is considered equal to ws
+        (no overlap on pooling regions).
+    pad : tuple of N ints or None
+        For each downsampling dimension, this specifies the number of zeros to
+        add as padding on both sides. For 2D and (pad_h, pad_w), pad_h specifies the
+        size of the top and bottom margins, pad_w specifies the size of the left and
+        right margins. No padding is added if pad is None.
+    mode : {'max', 'sum', 'average_inc_pad', 'average_exc_pad'}
+        ('average_inc_pad' excludes the padding from the count,
+        'average_exc_pad' include it)
+    ndim : int
+        The number of pooling dimensions N.
+        The default is 2.
+    """
+
+    __props__ = ('ignore_border', 'mode', 'ndim')
+
+    def __init__(self, ignore_border=False, mode='max', ndim=2, openmp=None):
+        super(MaxPoolRop, self).__init__(openmp=openmp)
+        self.ndim = ndim
+        self.ignore_border = ignore_border
+        self.mode = mode
+        assert mode == 'max'
+
+    def make_node(self, x, eval_point, ws, stride=None, pad=None):
+        # TODO: consider restricting the dtype?
+        x = tensor.as_tensor_variable(x)
+        eval_point = tensor.as_tensor_variable(eval_point)
+        nd = self.ndim
+        if stride is None:
+            stride = ws
+        if pad is None:
+            pad = (0,) * nd
+        elif isinstance(pad, (tuple, list)):
+            if max(pad) != 0 and not self.ignore_border:
+                raise NotImplementedError(
+                    'padding works only with ignore_border=True')
+            if isinstance(ws, (tuple, list)):
+                if any(pad[i] >= ws[i] for i in range(nd)):
+                    raise NotImplementedError(
+                        'padding must be smaller than strides')
+        ws = tensor.as_tensor_variable(ws)
+        stride = tensor.as_tensor_variable(stride)
+        pad = tensor.as_tensor_variable(pad)
+        assert ws.ndim == 1
+        assert stride.ndim == 1
+        assert pad.ndim == 1
+        if x.type.ndim < nd:
+            raise TypeError()
+        if not ws.dtype.startswith('int'):
+            raise TypeError('Pool downsample parameters must be ints.')
+        if not stride.dtype.startswith('int'):
+            raise TypeError('Stride parameters must be ints.')
+        if not pad.dtype.startswith('int'):
+            raise TypeError('Padding parameters must be ints.')
+        # If the input shape are broadcastable we can have 0 in the output shape
+        broad = x.broadcastable[:-nd] + (False,) * nd
+        out = tensor.TensorType(eval_point.dtype, broad)
+        return gof.Apply(self, [x, eval_point, ws, stride, pad], [out()])
+
+    def perform(self, node, inp, out):
+        x, ex, ws, stride, pad = inp
+        z, = out
+        nd = self.ndim
+        assert ws.shape == stride.shape == pad.shape == (nd,)
+        if len(x.shape) < nd:
+            raise NotImplementedError(
+                'Pool requires input with {} or more dimensions'.format(nd))
+        z_shape = Pool.out_shape(x.shape, ws, self.ignore_border, stride, pad, nd)
+        if not self.ignore_border:
+            assert all(z > 0 for z in z_shape[-nd:])
+        if (z[0] is None) or (z[0].shape != z_shape):
+            z[0] = numpy.empty(z_shape, dtype=x.dtype)
+        zz = z[0]
+        # size of pooling output
+        pool_out_shp = zz.shape[-nd:]
+        img_shp = tuple(x.shape[-nd + i] + 2 * pad[i] for i in xrange(nd))
+        inc_pad = self.mode == 'average_inc_pad'
+
+        # pad the image and the eval point
+        if max(pad) != 0:
+            y = numpy.zeros(x.shape[:-nd] + img_shp, dtype=x.dtype)
+            y[(slice(None),) * (len(x.shape) - nd) +
+              tuple(slice(pad[i], img_shp[i] - pad[i]) for i in xrange(nd))] = x
+            ey = numpy.zeros(ex.shape[:-nd] + img_shp, dtype=ex.dtype)
+            ey[(slice(None),) * (len(ex.shape) - nd) +
+               tuple(slice(pad[i], img_shp[i] - pad[i]) for i in xrange(nd))] = ex
+        else:
+            y = x
+            ey = ex
+
+        # precompute the region boundaries for each dimension
+        region_slices = [[] for i in xrange(nd)]
+        for i in xrange(nd):
+            for j in xrange(pool_out_shp[i]):
+                start = j * stride[i]
+                end = builtins.min(start + ws[i], img_shp[i])
+                if not inc_pad:
+                    start = builtins.max(start, pad[i])
+                    end = builtins.min(end, img_shp[i] - pad[i])
+                region_slices[i].append(slice(start, end))
+
+        # iterate over non-pooling dimensions
+        for k in numpy.ndindex(*x.shape[:-nd]):
+            zzk = zz[k]
+            yk = y[k]
+            eyk = ey[k]
+            # iterate over pooling regions
+            for r in numpy.ndindex(*pool_out_shp):
+                # current slice in padded input
+                ykslice = yk[[region_slices[i][r[i]] for i in xrange(nd)]]
+                # current slice in eval points
+                eykslice = eyk[[region_slices[i][r[i]] for i in xrange(nd)]]
+                # indices of maximum
+                idx = numpy.unravel_index(numpy.argmax(ykslice), ykslice.shape)
+                zzk[r] = eykslice[idx]
+
+    def c_headers(self):
+        headers = ['<algorithm>']
+        headers += super(MaxPoolRop, self).c_headers()
+        return headers
+
+    def c_code(self, node, name, inp, out, sub):
+        if self.mode != 'max':
+            raise theano.gof.utils.MethodNotDefined()
+        x, ex, ws, stride, pad = inp
+        z, = out
+        nd = self.ndim
+        total_ndim = node.inputs[0].ndim
+        non_pool_ndim = total_ndim - nd
+        fail = sub['fail']
+        ignore_border = int(self.ignore_border)
+        if self.openmp:
+            # run in parallel over each pooling block
+            omp_parallel = '#pragma omp parallel for private(r_st, r_end, r_idx, i_idx, o_idx, collector, eval_collector) schedule(static)'
+        else:
+            omp_parallel = ''
+        ccode = """
+        int typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
+        if(PyArray_NDIM(%(x)s)!=%(total_ndim)s)
+        {
+            PyErr_SetString(PyExc_ValueError, "x must be a %(total_ndim)sD ndarray");
+            %(fail)s;
+        }
+        if(PyArray_NDIM(%(ex)s)!=%(total_ndim)s)
+        {
+            PyErr_SetString(PyExc_ValueError, "eval_point must be a %(total_ndim)sD ndarray");
+            %(fail)s;
+        }
+        if(PyArray_DIM(%(ws)s, 0)!=%(nd)s)
+        {
+            PyErr_SetString(PyExc_ValueError, "ws must be a vector of size %(nd)s");
+            %(fail)s;
+        }
+        if(PyArray_DIM(%(stride)s, 0)!=%(nd)s)
+        {
+            PyErr_SetString(PyExc_ValueError, "stride must be a vector of size %(nd)s");
+            %(fail)s;
+        }
+        if(PyArray_DIM(%(pad)s, 0)!=%(nd)s)
+        {
+            PyErr_SetString(PyExc_ValueError, "pad must be a vector of size %(nd)s");
+            %(fail)s;
+        }
+        int z[%(nd)s]; // shape of the output
+        int r[%(nd)s]; // shape of the padded_input
+        int ws[%(nd)s];
+        int st[%(nd)s];
+        int pd[%(nd)s];
+        int nonzero_padding;
+        nonzero_padding = 0;
+        for (int i=0; i<%(nd)s; i++)
+        {
+            ws[i] = *((npy_intp*)PyArray_GETPTR1(%(ws)s, i));
+            st[i] = *((npy_intp*)PyArray_GETPTR1(%(stride)s, i));
+            pd[i] = *((npy_intp*)PyArray_GETPTR1(%(pad)s, i));
+            r[i] = PyArray_DIMS(%(x)s)[%(non_pool_ndim)s + i] + 2 * pd[i];
+            if (pd[i]>0)
+                nonzero_padding = 1;
+        }
+        if (!%(ignore_border)s && nonzero_padding)
+        {
+            PyErr_SetString(PyExc_ValueError,
+              "padding must be zero when ignore border is False");
+            %(fail)s;
+        }
+        if (%(ignore_border)s)
+        {
+            for (int i=0; i<%(nd)s; i++)
+            {
+                // '/' in C is different from '/' in python
+                if (r[i] - ws[i] < 0)
+                {
+                  z[i] = 0;
+                }
+                else
+                {
+                  z[i] = (r[i] - ws[i]) / st[i] + 1;
+                }
+            }
+        }
+        else
+        {
+            for (int i=0; i<%(nd)s; i++)
+            {
+                // decide how many rows/cols the output has
+                if (st[i] >= ws[i])
+                {
+                    z[i] = (r[i] - 1) / st[i] + 1;
+                }
+                else
+                {
+                    z[i] = std::max(0, (r[i] - 1 - ws[i] + st[i]) / st[i]) + 1;
+                }
+                assert(z[i] > 0);
+            }
+        }
+        // memory allocation of z if necessary
+        int mem_nec;
+        mem_nec = 0;
+        if ((!%(z)s) || *PyArray_DIMS(%(z)s)!=%(total_ndim)s)
+        {
+            mem_nec = 1;
+        }
+        if (!mem_nec)
+        {
+            for (int i=0; i<%(non_pool_ndim)s; i++)
+            {
+                if (PyArray_DIMS(%(z)s)[i] != PyArray_DIMS(%(x)s)[i])
+                {
+                    mem_nec = 1;
+                    break;
+                }
+            }
+        }
+        if (!mem_nec)
+        {
+            for (int i=0; i<%(nd)s; i++)
+            {
+                if (PyArray_DIMS(%(z)s)[%(non_pool_ndim)s + i] != z[i])
+                {
+                    mem_nec = 1;
+                    break;
+                }
+            }
+        }
+        if (mem_nec)
+        {
+          if (%(z)s) Py_XDECREF(%(z)s);
+          npy_intp dims[%(total_ndim)s];
+          for (int i=0; i<%(non_pool_ndim)s; i++)
+          {
+              dims[i] = PyArray_DIMS(%(x)s)[i];
+          }
+          for (int i=0; i<%(nd)s; i++)
+          {
+              dims[%(non_pool_ndim)s + i] = z[i];
+          }
+          //TODO: zeros not necessary
+          %(z)s = (PyArrayObject*) PyArray_ZEROS(%(total_ndim)s, dims, typenum,0);
+        }
+        // initialize temp var for the value in a region
+        dtype_%(x)s collector;
+        dtype_%(ex)s eval_collector;
+        int z_prod;
+        // do not run if any z[i] is zero
+        z_prod = 1;
+        for (int i=0; i<%(nd)s; i++)
+        {
+            z_prod *= z[i];
+        }
+        if (z_prod)
+        {
+            // will be used to hold start and end index of a region
+            int r_st[%(nd)s];
+            int r_end[%(nd)s];
+            // index for iterating over the pooling regions
+            int r_idx[%(nd)s];
+            // placeholder for PyArray indexing (output)
+            npy_intp o_idx[%(total_ndim)s];
+            // placeholder for PyArray indexing (input)
+            npy_intp i_idx[%(total_ndim)s];
+            // loop over non-pooling dimensions
+            int non_pooling_prod = 1;
+            for (int i=0; i<%(non_pool_ndim)s; i++)
+            {
+                non_pooling_prod *= PyArray_DIMS(%(x)s)[i];
+            }
+            %(omp_parallel)s
+            // first loop over non-pooling dimensions
+            for (int t=0; t<non_pooling_prod; t++)
+            {
+                // compute the non-pooling index in each dimension
+                if (%(non_pool_ndim)s!=0)
+                {
+                    o_idx[0] = t;
+                    i_idx[0] = t;
+                    for (int i=1; i<%(non_pool_ndim)s; i++)
+                    {
+                        o_idx[i] = o_idx[i - 1] / PyArray_DIMS(%(x)s)[i - 1];
+                        o_idx[i - 1] = o_idx[i - 1] %% PyArray_DIMS(%(x)s)[i - 1];
+                        i_idx[i] = o_idx[i];
+                        i_idx[i - 1] = o_idx[i - 1];
+                    }
+                }
+
+                // then loop over each region in each pooling dimension
+        """
+
+        for i in xrange(nd):
+            ccode += """
+                for (r_idx[%(i)s]=0; r_idx[%(i)s] < z[%(i)s]; r_idx[%(i)s]++) {
+                  r_st[%(i)s] = r_idx[%(i)s] * st[%(i)s];
+                  r_end[%(i)s] = r_st[%(i)s] + ws[%(i)s];
+                  // skip the padding
+                  r_st[%(i)s] = r_st[%(i)s] < pd[%(i)s] ? pd[%(i)s] : r_st[%(i)s];
+                  r_end[%(i)s] = r_end[%(i)s] > (r[%(i)s] - pd[%(i)s]) ? r[%(i)s] - pd[%(i)s] : r_end[%(i)s];
+                  // from padded_img space to img space
+                  r_st[%(i)s] -= pd[%(i)s];
+                  r_end[%(i)s] -= pd[%(i)s];
+                  // handle the case where no padding, ignore border is True
+                  if (%(ignore_border)s)
+                  {
+                    r_end[%(i)s] = r_end[%(i)s] > r[%(i)s] ? r[%(i)s] : r_end[%(i)s];
+                  }
+                  // use the index to find the correct position in the output
+                  o_idx[%(non_pool_ndim)s + %(i)s] = r_idx[%(i)s];
+            """ % dict(i=i, ignore_border=ignore_border, non_pool_ndim=non_pool_ndim)
+
+        ccode += """
+                  // get a pointer to the correct position in the output
+                  dtype_%(z)s * z;
+                  if (%(total_ndim)s == 4)
+                    z = ((dtype_%(z)s*)(PyArray_GETPTR4(%(z)s, o_idx[0], o_idx[1], o_idx[2], o_idx[3])));
+                  else
+                    z = ((dtype_%(z)s*)(PyArray_GetPtr(%(z)s, o_idx)));
+        """
+
+        for i in xrange(nd):
+            ccode += """
+              // set the first index of dimension %(i)s
+              i_idx[%(non_pool_ndim)s + %(i)s] = r_st[%(i)s];
+            """ % dict(i=i, non_pool_ndim=non_pool_ndim)
+        ccode += """
+              // use the first element as the initial value of collector
+              if (%(total_ndim)s == 4) {
+                collector = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,i_idx[0],i_idx[1],i_idx[2],i_idx[3])))[0];
+                eval_collector = ((dtype_%(ex)s*)(PyArray_GETPTR4(%(ex)s,i_idx[0],i_idx[1],i_idx[2],i_idx[3])))[0];
+              } else {
+                collector = ((dtype_%(x)s*)(PyArray_GetPtr(%(x)s,i_idx)))[0];
+                eval_collector = ((dtype_%(ex)s*)(PyArray_GetPtr(%(ex)s,i_idx)))[0];
+              }
+        """
+        for i in xrange(nd):
+            ccode += """
+              // go through the pooled region in the unpadded input
+              for(int m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s]; m%(i)s++)
+              {
+                i_idx[%(non_pool_ndim)s + %(i)s] = m%(i)s;
+            """ % dict(i=i, non_pool_ndim=non_pool_ndim)
+        ccode += """
+                // update maximum
+                dtype_%(x)s a;
+                dtype_%(ex)s ea;
+                if (%(total_ndim)s == 4) {
+                  a = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,i_idx[0],i_idx[1],i_idx[2],i_idx[3])))[0];
+                  ea = ((dtype_%(ex)s*)(PyArray_GETPTR4(%(ex)s,i_idx[0],i_idx[1],i_idx[2],i_idx[3])))[0];
+                }
+                else {
+                  a = ((dtype_%(x)s*)(PyArray_GetPtr(%(x)s,i_idx)))[0];
+                  ea = ((dtype_%(ex)s*)(PyArray_GetPtr(%(ex)s,i_idx)))[0];
+                }
+                if (a > collector) {
+                  collector = a;
+                  eval_collector = ea;
+                }
+        """
+        for i in xrange(nd):
+            ccode += """
+              } // for loop over region
+            """
+        ccode += """
+              z[0] = eval_collector;
+        """
+        for i in xrange(nd):
+            ccode += """
+            } // loop over pooling dimension
+            """
+
+        ccode += """
+          } // for loop over non-pooling dimensions
+        } // if z_prod
+        """
+        return ccode % locals()
+
+    def c_code_cache_version(self):
+        return (0, self.openmp)

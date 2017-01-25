@@ -17,10 +17,12 @@ from theano.tests import unittest_tools as utt
 from theano import function
 import theano
 from theano import tensor
+import itertools
 import numpy
 from theano.gof import Op, Apply
 from theano.gradient import grad_undefined
 from theano.tests.unittest_tools import SkipTest
+from theano.tensor.signal.pool import Pool
 from theano.tensor.nnet import conv, conv2d
 
 '''
@@ -254,6 +256,47 @@ class test_RopLop(RopLop_checker):
         self.check_rop_lop(tensor.unbroadcast(
             self.x[:4].dimshuffle('x', 0), 0).sum(axis=1),
             (1,))
+
+    def test_downsample(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        # ws, shp
+        examples = (
+            ((2,), (16,)),
+            ((2,), (4, 16,)),
+            ((2,), (4, 2, 16,)),
+            ((1, 1), (4, 2, 16, 16)),
+            ((2, 2), (4, 2, 16, 16)),
+            ((3, 3), (4, 2, 16, 16)),
+            ((3, 2), (4, 2, 16, 16)),
+            ((3, 2, 2), (3, 2, 16, 16, 16)),
+            ((2, 3, 2), (3, 2, 16, 16, 16)),
+            ((2, 2, 3), (3, 2, 16, 16, 16)),
+            ((2, 2, 3, 2), (3, 2, 6, 6, 6, 5)),
+        )
+
+        for example, ignore_border in itertools.product(examples, [True, False]):
+            (ws, shp) = example
+            vx = rng.rand(*shp)
+            vex = rng.rand(*shp)
+
+            x = theano.shared(vx)
+            ex = theano.shared(vex)
+
+            maxpool_op = Pool(ignore_border, ndim=len(ws))
+            a_pooled = maxpool_op(x, ws).flatten()
+            yv = tensor.Rop(a_pooled, x, ex)
+            mode = None
+            if theano.config.mode == "FAST_COMPILE":
+                mode = "FAST_RUN"
+            rop_f = function([], yv, on_unused_input='ignore', mode=mode)
+            sy, _ = theano.scan(lambda i, y, x, v:
+                                (tensor.grad(y[i], x) * v).sum(),
+                                sequences=tensor.arange(a_pooled.shape[0]),
+                                non_sequences=[a_pooled, x, ex])
+            scan_f = function([], sy, on_unused_input='ignore', mode=mode)
+            v1 = rop_f()
+            v2 = scan_f()
+            assert numpy.allclose(v1, v2), ("Rop mismatch: %s %s" % (v1, v2))
 
     def test_conv(self):
         for conv_op in [conv.conv2d, conv2d]:

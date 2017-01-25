@@ -133,10 +133,25 @@ def test_pool2d():
 
                 assert numpy.allclose(g(), g2()), (shp, ws, st, pad, mode, ignore_border)
 
-                # test grad grad for max pooling
+                # test rop and grad grad for max pooling
                 # for average pooling grad grad is just average pooling grad
                 if mode != 'max':
                     continue
+
+                ea = theano.shared(rand(*shp), 'ea')
+
+                gr = theano.function([], tensor.Rop(a_pooled, a, ea), mode=gpu_mode)
+                gr2 = theano.function([], tensor.Rop(a_pooled, a, ea), mode=ref_mode)
+
+                assert any([
+                    isinstance(node.op, GpuDownsampleFactorMaxGradGrad)
+                    for node in gr.maker.fgraph.toposort()
+                ])
+                assert any([
+                    isinstance(node.op, DownsampleFactorMaxGradGrad)
+                    for node in gr2.maker.fgraph.toposort()
+                ])
+                assert numpy.allclose(gr(), gr2()), (shp, ws, st, pad, mode, ignore_border)
 
                 ggf = gradient.Lop(tensor.grad((a_pooled**2).sum(), a), a, a)
 
@@ -228,10 +243,25 @@ def test_pool3d():
 
                 assert numpy.allclose(g(), g2()), (shp, ws, st, pad, mode, ignore_border)
 
-                # test grad grad for max pooling
+                # test rop and grad grad for max pooling
                 # for average pooling grad grad is just average pooling grad
                 if mode != 'max':
                     continue
+
+                ea = theano.shared(rand(*shp), 'ea')
+
+                gr = theano.function([], tensor.Rop(a_pooled, a, ea), mode=gpu_mode)
+                gr2 = theano.function([], tensor.Rop(a_pooled, a, ea), mode=ref_mode)
+
+                assert any([
+                    isinstance(node.op, GpuDownsampleFactorMaxGradGrad)
+                    for node in gr.maker.fgraph.toposort()
+                ])
+                assert any([
+                    isinstance(node.op, DownsampleFactorMaxGradGrad)
+                    for node in gr2.maker.fgraph.toposort()
+                ])
+                assert numpy.allclose(gr(), gr2()), (shp, ws, st, pad, mode, ignore_border)
 
                 ggf = gradient.Lop(tensor.grad((a_pooled**2).sum(), a), a, a)
 
