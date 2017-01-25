@@ -19,18 +19,22 @@ Highlight:
  - Many computation and compilation speed up
  - More numerical stability by default for some graph
  - Jenkins (gpu tests run on PR in addition to daily buildbot)
+ - Better handling of corner cases for theano functions and graph optimizations
  - More graph optimization (faster execution and smaller graph, so more readable)
  - Less c code compilation
  - Better Python 3.5 support
+ - Better numpy 1.12 support
  - Support newer Mac and Windows version
  - Conda packages for Mac, Linux and Windows
+ - Theano scripts now works on Windows
  - scan with checkpoint (trade off between speed and memory usage, useful for long sequences)
  - Added a bool dtype
 
  - New back-end:
    - float16 storage
-   - print pci bus id
-   - More pooling support on GPU when cudnn isn't there.
+   - better mapping between theano device number and nvidia-smi number, using the PCI bus ID of graphic cards
+   - More pooling support on GPU when cuDNN isn't there.
+   - ignore_border=False is now implemented for pooling.
 
 Interface changes:
  - New pooling interface
@@ -39,6 +43,8 @@ Interface changes:
  - The MRG random generator now try to infer the broadcast pattern of its output
  - Move softsign out of sandbox to theano.tensor.nnet.softsign
  - Roll make the shift be modulo the size of the axis we roll on
+ - Merge CumsumOp/CumprodOp into CumOp
+ - round() default to the same as NumPy: half_to_even.
 
 Convolution updates:
  - Multi-cores convolution and pooling on CPU
@@ -47,14 +53,17 @@ Convolution updates:
 
 
 GPU:
- - CuDNN: support versoin 5.1 and wrap batch normalization (2d and 3d) and RNN functions
+ - cuDNN: support versoin 5.1 and wrap batch normalization (2d and 3d) and RNN functions
  - Multiple-GPU, synchrone update (via platoon, use NCCL)
  - GpuAdvancedSubtensor in new back-end
  - Gemv(matrix-vector product) speed up for special shape
  - Support for MaxAndArgMax for some axis combination
+ - Support for solve (using cusolver), erfinv and erfcinv
  - cublas gemv workaround when we reduce on an axis with a dimensions size of 0
+ - Warn user that some cuDNN algorithms may produce unexpected results in certain environments
+   for convolution backward filter operations.
 
-New feature:
+New features:
  - Add gradient of solve, tensorinv (CPU), tensorsolve (CPU) searchsorted (CPU)
  - Add Multinomial Without Replacement
  - conv3d2d support full and half mode (REMOVE?)
@@ -64,6 +73,7 @@ New feature:
  - Indexing support ellipsis: a[..., 3], a[1,...,3]
  - Added theano.tensor.{tensor5,dtensor5, ...}
  - compiledir_format support device
+ - Added new Theano flag cmodule.age_thresh_use
 
 
 Others:
@@ -83,13 +93,73 @@ Other more detailed changes:
  - More support of negative axis
  - Added the keepdims parameter to the norm function
  - Crash fixes
- - Make scan gradiant more deterministic
+ - Make scan gradient more deterministic
  - Add support for space in path on Windows
  - remove ProfileMode (use Theano flag profile=True instead)
 
 
 
 ALL THE PR BELLOW HAVE BEEN CHECKED
+* https://github.com/Theano/Theano/pull/5421
+* https://github.com/Theano/Theano/pull/5343
+* https://github.com/Theano/Theano/pull/5437
+* https://github.com/Theano/Theano/pull/5441
+* https://github.com/Theano/Theano/pull/4659
+* https://github.com/Theano/Theano/pull/5419
+* https://github.com/Theano/Theano/pull/5436
+* https://github.com/Theano/Theano/pull/5427
+* https://github.com/Theano/Theano/pull/5434
+* https://github.com/Theano/Theano/pull/5428
+* https://github.com/Theano/Theano/pull/5412
+* https://github.com/Theano/Theano/pull/5417
+* https://github.com/Theano/Theano/pull/5420
+* https://github.com/Theano/Theano/pull/5422
+* https://github.com/Theano/Theano/pull/5406
+* https://github.com/Theano/Theano/pull/5403
+* https://github.com/Theano/Theano/pull/5410
+* https://github.com/Theano/Theano/pull/5415
+* https://github.com/Theano/Theano/pull/5407
+* https://github.com/Theano/Theano/pull/5321
+* https://github.com/Theano/Theano/pull/5405
+* https://github.com/Theano/Theano/pull/5400
+* https://github.com/Theano/Theano/pull/5346
+* https://github.com/Theano/Theano/pull/5380
+* https://github.com/Theano/Theano/pull/5399
+* https://github.com/Theano/Theano/pull/5182
+* https://github.com/Theano/Theano/pull/5389
+* https://github.com/Theano/Theano/pull/5351
+* https://github.com/Theano/Theano/pull/5377
+* https://github.com/Theano/Theano/pull/5385
+* https://github.com/Theano/Theano/pull/5390
+* https://github.com/Theano/Theano/pull/5387
+* https://github.com/Theano/Theano/pull/5373
+* https://github.com/Theano/Theano/pull/5357
+* https://github.com/Theano/Theano/pull/5363
+* https://github.com/Theano/Theano/pull/5320
+* https://github.com/Theano/Theano/pull/5359
+* https://github.com/Theano/Theano/pull/5362
+* https://github.com/Theano/Theano/pull/5358
+* https://github.com/Theano/Theano/pull/5350
+* https://github.com/Theano/Theano/pull/5317
+* https://github.com/Theano/Theano/pull/5356
+* https://github.com/Theano/Theano/pull/5355
+* https://github.com/Theano/Theano/pull/5353
+* https://github.com/Theano/Theano/pull/5352
+* https://github.com/Theano/Theano/pull/5349
+* https://github.com/Theano/Theano/pull/5267
+* https://github.com/Theano/Theano/pull/5342
+* https://github.com/Theano/Theano/pull/5336
+* https://github.com/Theano/Theano/pull/5335
+* https://github.com/Theano/Theano/pull/5301
+* https://github.com/Theano/Theano/pull/5332
+* https://github.com/Theano/Theano/pull/5299
+* https://github.com/Theano/Theano/pull/5331
+* https://github.com/Theano/Theano/pull/5314
+* https://github.com/Theano/Theano/pull/5276
+* https://github.com/Theano/Theano/pull/5318
+* https://github.com/Theano/Theano/pull/5315
+* https://github.com/Theano/Theano/pull/5313
+* https://github.com/Theano/Theano/pull/5311
 * https://github.com/Theano/Theano/pull/5309
 * https://github.com/Theano/Theano/pull/5306
 * https://github.com/Theano/Theano/pull/5289
