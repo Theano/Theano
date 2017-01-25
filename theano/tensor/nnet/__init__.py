@@ -178,7 +178,8 @@ def conv2d_transpose(input, filters, output_shape, filter_shape=None,
         ``conv2d``.**
 
     output_shape: tuple/list of len 4 of int or Constant variable
-        The shape of the output of ``conv2d_transpose``.
+        The shape of the output of ``conv2d_transpose``. The last two elements
+        are allowed to be ``tensor.scalar`` variables.
 
     filter_shape: None, tuple/list of len 4 of int or Constant variable
         The shape of the filters parameter.
