@@ -79,24 +79,6 @@ class CudaNdarraySharedVariable(_operators, SharedVariable):
         """
         Return the value of this SharedVariable's internal array.
 
-        Parameters
-        ----------
-        borrow
-            Permit the return of internal storage, when used in conjunction with
-            ``return_internal_type=True``.
-        return_internal_type
-            True to return the internal ``cuda_ndarray`` instance rather than a
-            ``numpy.ndarray`` (Default False).
-
-        By default ``get_value()`` copies from the GPU to a ``numpy.ndarray``
-        and returns that host-allocated array.
-
-        ``get_value(False,True)`` will return a GPU-allocated copy of the
-        original GPU array.
-
-        ``get_value(True,True)`` will return the original GPU-allocated array
-        without any copying.
-
         """
         if return_internal_type or not self.get_value_return_ndarray:
             # return a cuda_ndarray
