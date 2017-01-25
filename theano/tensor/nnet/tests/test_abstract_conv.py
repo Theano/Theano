@@ -1562,13 +1562,17 @@ class TestConv2dTranspose(unittest.TestCase):
         output shape.
 
         """
+        mode = self.mode
+        if theano.config.mode == "FAST_COMPILE":
+            mode = mode.excluding("conv_gemm").excluding('AbstractConvCheck')
+
         output = theano.function(
             inputs=[],
             outputs=conv2d_transpose(input=tensor.ones((2, 2, 4, 4)),
                                      filters=tensor.ones((2, 1, 4, 4)),
                                      output_shape=(2, 1, 10, 10),
                                      input_dilation=(2, 2)),
-            mode=self.mode)()
+            mode=mode)()
         expected_output = numpy.array(
             [[[[2, 2, 4, 4, 4, 4, 4, 4, 2, 2],
                [2, 2, 4, 4, 4, 4, 4, 4, 2, 2],
