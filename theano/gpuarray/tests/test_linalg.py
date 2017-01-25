@@ -41,6 +41,17 @@ class TestCusolver(unittest.TestCase):
                                      1)).astype("float32")
         self.run_gpu_solve(A_val, x_val)
 
+    def test_bshape_solve(self):
+        """
+        Test when shape of b (k, m) is such as m > k
+        """
+        numpy.random.seed(1)
+        A_val = numpy.asarray([[2, 0, 0], [0, 1, 0], [0, 0, 1]],
+                              dtype="float32")
+        x_val = numpy.random.uniform(-0.4, 0.4, (A_val.shape[1],
+                                     A_val.shape[1] + 1)).astype("float32")
+        self.run_gpu_solve(A_val, x_val)
+
     def test_sym_solve(self):
         numpy.random.seed(1)
         A_val = numpy.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")

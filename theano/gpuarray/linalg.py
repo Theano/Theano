@@ -7,7 +7,7 @@ from theano import Op
 from theano.gpuarray import basic_ops, GpuArrayType
 
 try:
-    from pygpu import gpuarray
+    import pygpu
 except ImportError:
     pass
 
@@ -17,8 +17,6 @@ try:
     cusolver_available = True
 except (ImportError, OSError, RuntimeError, pkg_resources.DistributionNotFound):
     pass
-
-cusolver_handle = None
 
 
 class GpuCusolverSolve(Op):
@@ -32,7 +30,7 @@ class GpuCusolverSolve(Op):
 
     """
 
-    __props__ = ('trans',)
+    __props__ = ('trans', 'inplace')
 
     def __init__(self, trans='N', inplace=False):
         self.trans = trans
@@ -42,10 +40,13 @@ class GpuCusolverSolve(Op):
         super(GpuCusolverSolve, self).__init__()
 
     def make_node(self, inp1, inp2):
-        self.context = basic_ops.infer_context_name(inp1, inp2)
+        if not cusolver_available:
+            raise RuntimeError('CUSOLVER is not available and '
+                               'GpuCusolverSolve Op can not be constructed.')
+        context_name = basic_ops.infer_context_name(inp1, inp2)
 
-        inp1 = basic_ops.as_gpuarray_variable(inp1, self.context)
-        inp2 = basic_ops.as_gpuarray_variable(inp2, self.context)
+        inp1 = basic_ops.as_gpuarray_variable(inp1, context_name)
+        inp2 = basic_ops.as_gpuarray_variable(inp2, context_name)
 
         inp1 = basic_ops.gpu_contiguous(inp1)
         inp2 = basic_ops.gpu_contiguous(inp2)
@@ -60,112 +61,86 @@ class GpuCusolverSolve(Op):
             self, [inp1, inp2],
             [GpuArrayType('float32',
                           broadcastable=inp1.broadcastable,
-                          context_name=self.context)()])
+                          context_name=context_name)()])
 
-    def make_thunk(self,
-                   node,
-                   storage_map, _,
-                   no_recycling=[],
-                   impl=None):
-        if not cusolver_available:
-            raise RuntimeError('CUSOLVER is not available and '
-                               'GpuCusolverSolve Op can not be constructed.')
+    def prepare_node(self, node, storage_map, compute_map, impl):
+        ctx = node.inputs[0].type.context
+        handle = getattr(ctx, 'cusolver_handle', None)
+        if handle is None:
+            with ctx:
+                ctx.cusolver_handle = cusolver.cusolverDnCreate()
 
-        inputs = [storage_map[v] for v in node.inputs]
-        outputs = [storage_map[v] for v in node.outputs]
+    def perform(self, node, inputs, outputs):
+        context = inputs[0][0].context
 
-        global cusolver_handle
-        if cusolver_handle is None:
-            cusolver_handle = cusolver.cusolverDnCreate()
+        # Size of the matrices to invert.
+        z = outputs[0]
 
-        def thunk():
-            context = inputs[0][0].context
+        # Matrix.
+        A = inputs[0]
 
-            # Size of the matrices to invert.
-            z = outputs[0]
+        # Solution vectors.
+        b = inputs[1]
 
-            # Matrix.
-            A = inputs[0][0]
+        assert(len(A.shape) == 2)
+        assert(len(b.shape) == 2)
 
-            # Solution vectors.
-            b = inputs[1][0]
+        if self.trans in ['T', 'C']:
+            trans = 1
+            l, n = A.shape
+            k, m = b.shape
+        elif self.trans == 'N':
+            trans = 0
+            n, l = A.shape
+            k, m = b.shape
+        else:
+            raise ValueError('Invalid value for trans')
+        if l != n:
+            raise ValueError('A must be a square matrix')
+        if n != k:
+            raise ValueError('A and b must be aligned.')
 
-            assert(len(A.shape) == 2)
-            assert(len(b.shape) == 2)
+        lda = max(1, n)
+        ldb = max(1, k)
 
-            if self.trans in ['T', 'C']:
-                trans = 1
-                l, n = A.shape
-                k, m = b.shape
-            elif self.trans == 'N':
-                trans = 0
-                n, l = A.shape
-                k, m = b.shape
-            else:
-                raise ValueError('Invalid value for trans')
-            if l != n:
-                raise ValueError('A must be a square matrix')
-            if n != k:
-                raise ValueError('A and b must be aligned.')
+        # We copy A and b as cusolver operates inplace
+        b = pygpu.array(b, copy=True, order='F')
+        if not self.inplace:
+            A = pygpu.array(A, copy=True)
+        A_ptr = A.gpudata
+        b_ptr = b.gpudata
 
-            lda = max(1, n)
-            ldb = max(1, k, m)
+        # cusolver expects a F ordered matrix, but A is not explicitly
+        # converted between C and F order, instead we switch the
+        # "transpose" flag.
+        if A.flags['C_CONTIGUOUS']:
+            trans = 1 - trans
 
-            # We copy A and b as cusolver operates inplace
-            b = gpuarray.array(b, copy=True, order='F')
-            if not self.inplace:
-                A = gpuarray.array(A, copy=True)
-            A_ptr = A.gpudata
-            b_ptr = b.gpudata
-
-            # cusolver expects a F ordered matrix, but A is not explicitly
-            # converted between C and F order, instead we switch the
-            # "transpose" flag.
-            if A.flags['C_CONTIGUOUS']:
-                trans = 1 - trans
-
+        with context:
             workspace_size = cusolver.cusolverDnSgetrf_bufferSize(
-                cusolver_handle, n, n, A_ptr, lda)
+                context.cusolver_handle, n, n, A_ptr, lda)
 
-            if (thunk.workspace is None or
-                    thunk.workspace.size != workspace_size):
-                thunk.workspace = gpuarray.zeros((workspace_size,),
-                                                 dtype='float32',
-                                                 context=context)
+        workspace = pygpu.zeros(workspace_size, dtype='float32',
+                                context=context)
 
-            if thunk.pivots is None or thunk.pivots.size != min(n, n):
-                thunk.pivots = gpuarray.zeros((min(n, n),),
-                                              dtype='float32',
-                                              context=context)
+        pivots = pygpu.zeros(n, dtype='int32', context=context)
 
-            if thunk.dev_info is None:
-                thunk.dev_info = gpuarray.zeros((1,),
-                                                dtype='float32',
-                                                context=context)
+        dev_info = pygpu.zeros((1,), dtype='int32', context=context)
 
-            workspace_ptr = thunk.workspace.gpudata
-            pivots_ptr = thunk.pivots.gpudata
-            dev_info_ptr = thunk.dev_info.gpudata
+        workspace_ptr = workspace.gpudata
+        pivots_ptr = pivots.gpudata
+        dev_info_ptr = dev_info.gpudata
 
+        with context:
             cusolver.cusolverDnSgetrf(
-                cusolver_handle, n, n, A_ptr, lda, workspace_ptr,
+                context.cusolver_handle, n, n, A_ptr, lda, workspace_ptr,
                 pivots_ptr, dev_info_ptr)
 
             cusolver.cusolverDnSgetrs(
-                cusolver_handle, trans, n, m, A_ptr, lda,
+                context.cusolver_handle, trans, n, m, A_ptr, lda,
                 pivots_ptr, b_ptr, ldb, dev_info_ptr)
 
-            z[0] = b
-
-        thunk.inputs = inputs
-        thunk.outputs = outputs
-        thunk.lazy = False
-
-        thunk.workspace = None
-        thunk.pivots = None
-        thunk.dev_info = None
-
-        return thunk
+        z[0] = b
 
 
 def gpu_solve(A, b, trans='N'):
