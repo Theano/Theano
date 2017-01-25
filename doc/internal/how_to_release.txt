@@ -64,8 +64,6 @@ The documentation will be automatically regenerated in the next few hours.
 Generate and upload the package
 ===============================
 
-For non-final releases (e.g., release candidates, alpha, beta), upload on PyPI only.
-
 On PyPI
 -------
 
@@ -93,7 +91,7 @@ UnicodeDecodeError if there are non-ASCII characters in NEWS.txt. You
 would need to change NEWS.txt so it contains only ASCII characters (the
 problem usually comes from diacritics in people's names).
 
-On mloss.org
+On mloss.org (for final releases only)
 ------------
 
 Project page is at http://mloss.org/software/view/241/.
