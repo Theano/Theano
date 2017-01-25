@@ -332,7 +332,7 @@ TensorType and TensorVariable
         A tuple of True/False values, one for each dimension.  True in
         position 'i' indicates that at evaluation-time, the ndarray will have
         size 1 in that 'i'-th dimension.  Such a dimension is called a
-        *broadcastable dimension* (see :ref:`libdoc_tensor_broadcastable`).
+        *broadcastable dimension* (see :ref:`tutbroadcasting`).
 
         The broadcastable pattern indicates both the number of dimensions and
         whether a particular dimension must have length 1.
@@ -1523,46 +1523,7 @@ Mathematical
 
 .. _libdoc_tensor_broadcastable:
 
-Broadcasting in Theano vs. Numpy
---------------------------------
-
-Broadcasting is a mechanism which allows tensors with
-different numbers of dimensions to be added or multiplied
-together by (virtually) replicating the smaller tensor along
-the dimensions that it is lacking.
-
-Broadcasting is the mechanism by which a scalar
-may be added to a matrix, a vector to a matrix or a scalar to
-a vector.
-
-.. figure:: bcast.png
-
-Broadcasting a row matrix. T and F respectively stand for
-True and False and indicate along which dimensions we allow
-broadcasting.
-
-If the second argument were a vector, its shape would be
-``(2,)`` and its broadcastable pattern ``(F,)``. They would
-be automatically expanded to the **left** to match the
-dimensions of the matrix (adding ``1`` to the shape and ``T``
-to the pattern), resulting in ``(1, 2)`` and ``(T, F)``.
-It would then behave just like the example above.
-
-
-Unlike numpy which does broadcasting dynamically, Theano needs
-to know, for any operation which supports broadcasting, which
-dimensions will need to be broadcasted. When applicable, this
-information is given in the :ref:`type` of a *Variable*.
-
-See also:
-
-* `SciPy documentation about numpy's broadcasting <http://www.scipy.org/EricsBroadcastingDoc>`_
-
-* `OnLamp article about numpy's broadcasting <http://www.onlamp.com/pub/a/python/2000/09/27/numerically.html>`_
-
-
-
-
+You can find more information about Broadcasting in the :ref:`tutbroadcasting` tutorial.
 
 Linear Algebra
 ==============

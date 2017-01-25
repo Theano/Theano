@@ -26,9 +26,6 @@ some of them might be outdated though:
 
 * :ref:`unittest` -- Tutorial on how to use unittest in testing Theano.
 
-* :ref:`sandbox_broadcasting` -- Short description of what a broadcastable
-  pattern is.
-
 * :ref:`sandbox_debugging_step_mode` -- How to step through the execution of
   a Theano function and print the inputs and outputs of each op.
 
