@@ -810,6 +810,7 @@ class Function(object):
                             e.args = ("Bad input " + argument_name + " to " +
                                       function_name + " at index %d (0-based). %s"
                                       % (i, where),) + e.args
+                        restore_defaults()
                         raise
                 s.provided += 1
                 i += 1
@@ -882,6 +883,7 @@ class Function(object):
                 self.fn() if output_subset is None else\
                 self.fn(output_subset=output_subset)
         except Exception:
+            restore_defaults()
             if hasattr(self.fn, 'position_of_error'):
                 # this is a new vm-provided function or c linker
                 # they need this because the exception manipulation
