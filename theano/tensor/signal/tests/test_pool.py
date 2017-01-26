@@ -1160,6 +1160,39 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         for o, n in zip(old_out, new_out):
             utt.assert_allclose(o, n)
 
+def generate_random_image(image_size, num_roi):
+    random_image = np.random.random((1, 3, image_size, image_size))
+    roi = np.array([[0, 0, image_size / 1, image_size / 1],
+                            [0, 0, image_size / 2, image_size / 2]])
+    reshaped_roi = np.reshape(roi, (1, num_roi, 4))
+    return random_image, roi, reshaped_roi
+
+def numpy_roi_pool(self):
+    # Pooling details
+    num_roi = 2
+    image_size = 16
+    pool_region = [1, 2, 4]
+    shape = (1, 3, 16, 16)
+    random_image, roi, reshaped_roi = generate_random_image(shape, num_roi)
+    spatial_scale = 1.
+
+    roi_coordinates = []
+    for i in range(num_roi):
+        region_interest = random_image[0, :, reshaped_roi[0, i, 0]:reshaped_roi[0, i, 2], reshaped_roi[0, i, 1]:reshaped_roi[0, i, 3]]
+        row_length = [float(region_interest.shape[1]) // i for i in pool_region]
+        col_length = [float(region_interest.shape[2]) // i for i in pool_region]
+        for pool_num, num_pool_regions in enumerate(pool_region):
+            for ix in range(num_pool_regions):
+                for jy in range(num_pool_regions):
+                    for cn in range(3):
+                        x1 = int(round(ix * col_length[pool_num] * spatial_scale))
+                        x2 = int(round(ix * col_length[pool_num] + col_length[pool_num] * spatial_scale))
+                        y1 = int(round(jy * row_length[pool_num] * spatial_scale))
+                        y2 = int(round(jy * row_length[pool_num] + row_length[pool_num] * spatial_scale))
+                        m_val = np.max(region_interest[cn, y1:y2, x1:x2])
+                        roi_coordinates.append(m_val)
+    return roi_coordinates
+
 
 class TestRoIPool(utt.InferShapeTester):
 
@@ -1172,23 +1205,19 @@ class TestRoIPool(utt.InferShapeTester):
         self.op = RoIPoolOp(pooled_h, pooled_w, spatial_scale)
 
     def test_basic(self):
-        t_data = tensor.ftensor4()
-        t_rois = tensor.fmatrix()
+        t_data = T.ftensor4()
+        t_rois = T.fmatrix()
+        num_roi = 2
+        # shape is (16, 16)
+        image_size = 16
+        random_image, roi, reshaped_roi = generate_random_image(image_size, num_roi)
+        max_coordinates_theano = []
+        for pool_dim in pool_region:
+            op = RoIPoolOp(pooled_h=pool_dim, pooled_w=pool_dim, spatial_scale=1.0)
+            t_outs = op(t_data, t_rois)
+            func = theano.function([t_data, t_rois], t_outs, allow_input_downcast=True)
+            max_coordinates_theano.append(func(random_image, roi))
 
-        t_outs = self.op(t_data, t_rois)
-        t_c = t_outs[0].sum()
-
-        t_g_data = tensor.grad(t_c, t_data)[0]
-
-        f = theano.function([t_data, t_rois], t_outs + [t_g_data])
-
-        data = numpy.asarray(numpy.random.rand(1, 2, 32, 32),
-                             dtype='float32')
-        rois = numpy.array([[0, 0, 0, 3, 3],
-                           [0, 0, 0, 7, 7]], dtype='float32')
-
-        f(data, rois)
-        # Checks to be added.
 
     def test_infer_shape(self):
         t_data = tensor.ftensor4()
