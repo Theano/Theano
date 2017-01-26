@@ -4,6 +4,7 @@ import copy
 import re
 import numpy as np
 
+import theano
 from theano import Op, Apply, Type, Variable
 from theano import tensor, config
 from theano.gradient import grad_undefined
