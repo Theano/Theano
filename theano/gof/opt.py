@@ -5,7 +5,8 @@ amount of useful generic optimization tools.
 """
 from __future__ import absolute_import, print_function, division
 
-from collections import deque, defaultdict, OrderedDict
+from collections import deque, defaultdict, OrderedDict, Counter
+
 import copy
 import inspect
 import logging
@@ -2357,6 +2358,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         global_sub_profs = []
         final_sub_profs = []
         cleanup_sub_profs = []
+        new_node = defaultdict(list)
+        opt_node_map = defaultdict()
         for opt in (self.global_optimizers +
                     list(self.get_local_optimizers()) +
                     self.final_optimizers +
@@ -2459,6 +2462,11 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         changed = True
                         node_created[lopt] += change_tracker.nb_imported - nb
                         changed |= apply_cleanup(iter_cleanup_sub_profs)
+                        new_node[lopt].append(node)
+                        try:
+                            opt_node_map[(lopt, tuple(node.tag.imported_by))] += 1
+                        except KeyError:
+                            opt_node_map[(lopt, tuple(node.tag.imported_by))] = 1
                         if global_process_count[lopt] > max_use:
                             max_use_abort = True
                             opt_name = (getattr(lopt, "name", None) or
@@ -2519,6 +2527,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             else:
                 _logger.error(msg)
         fgraph.remove_feature(change_tracker)
+        opt_node_map = Counter(opt_node_map).most_common(20)
+
         assert len(loop_process_count) == len(loop_timing)
         assert len(loop_process_count) == len(global_opt_timing)
         assert len(loop_process_count) == len(nb_nodes)
@@ -2530,7 +2540,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 (start_nb_nodes, end_nb_nodes, max_nb_nodes),
                 global_opt_timing, nb_nodes, time_opts, io_toposort_timing,
                 node_created, global_sub_profs, final_sub_profs,
-                cleanup_sub_profs)
+                cleanup_sub_profs, opt_node_map)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
@@ -2547,9 +2557,14 @@ class EquilibriumOptimizer(NavigatorOptimizer):
          (start_nb_nodes, end_nb_nodes, max_nb_nodes),
          global_opt_timing, nb_nodes, time_opts, io_toposort_timing,
          node_created, global_sub_profs, final_sub_profs,
-         cleanup_sub_profs) = prof
+         cleanup_sub_profs, opt_node_map) = prof
 
         blanc = ('    ' * level)
+        print (blanc, " Imported by and local_opt pairs : ", file=stream)
+        for k, v in opt_node_map:
+            print (blanc, "Opts Used on the node : " + str(k[0]), file=stream)
+            print (blanc, "Optimizer that introduced the Node: " + str(k[1]), file=stream)
+            print (blanc, " Number of pairs found : %s " % (str(v)), file=stream)   
         print(blanc, "EquilibriumOptimizer", end=' ', file=stream)
         print(blanc, getattr(opt, "name",
                              getattr(opt, "__name__", "")), file=stream)
