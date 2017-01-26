@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 import os
 import copy
 import re
-import numpy
+import numpy as np
 
 from theano import Op, Apply, Type, Variable
 from theano import tensor, config
@@ -206,7 +206,7 @@ class Kernel(object):
     def get_flags(*types):
         def get_dtype(t):
             if isinstance(t, string_types):
-                return numpy.dtype(t)
+                return np.dtype(t)
             elif isinstance(t, Type):
                 return t.dtype
             elif isinstance(t, Variable):
@@ -215,13 +215,13 @@ class Kernel(object):
                 raise TypeError("can't get a dtype from %s" % (type(t),))
         dtypes = [get_dtype(t) for t in types]
         flags = dict(cluda=True)
-        if any(d == numpy.float64 for d in dtypes):
+        if any(d == np.float64 for d in dtypes):
             flags['have_double'] = True
         if any(d.itemsize < 4 for d in dtypes):
             flags['have_small'] = True
         if any(d.kind == 'c' for d in dtypes):
             flags['have_complex'] = True
-        if any(d == numpy.float16 for d in dtypes):
+        if any(d == np.float16 for d in dtypes):
             flags['have_half'] = True
         return flags
 
@@ -275,8 +275,8 @@ def get_ctype(dtype):
     elif dtype == gpuarray.SSIZE:
         return "ssize_t"
     else:
-        if not isinstance(dtype, numpy.dtype):
-            dtype = numpy.dtype(dtype)
+        if not isinstance(dtype, np.dtype):
+            dtype = np.dtype(dtype)
         return 'npy_' + dtype.name
 
 
@@ -311,7 +311,7 @@ class GpuKernelBase(object):
         except MethodNotDefined:
             o = []
         # We rely on the input types for the directory to gpuarray includes
-        return o + [numpy.get_include()]
+        return o + [np.get_include()]
 
     def _generate_kernel_bin(self, k, ctx):
         gk = gpuarray.GpuKernel(k.code, k.name, k.params, context=ctx,
@@ -466,7 +466,7 @@ def get_dtype(s):
     if s == 'ssize':
         return gpuarray.SSIZE
     else:
-        return numpy.dtype(s)
+        return np.dtype(s)
 
 
 class CGpuKernelBase(COp, GpuKernelBase):
@@ -565,7 +565,7 @@ class HostFromGpu(Op):
     def perform(self, node, inp, out):
         x, = inp
         z, = out
-        z[0] = numpy.asarray(x)
+        z[0] = np.asarray(x)
 
     def c_code(self, node, name, inputs, outputs, sub):
         return """
@@ -1285,7 +1285,7 @@ class GpuJoin(HideC, Join):
         if axis < 0:
             axis += axis_and_tensors[1].ndim
         # we check these tensors for being empty.
-        if (view != -1) and numpy.all(
+        if (view != -1) and np.all(
                 [tensor.shape[axis] == 0 for tensor in
                  tensors[0:view] + tensors[view + 1:]]):
             out[0] = tensors[view]
