@@ -1959,6 +1959,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
         pad_w is the number of zero-valued pixels added to each of the left
         and right borders.
 
+
     .. warning:: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
       work with this Op.

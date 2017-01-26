@@ -23,19 +23,33 @@ from theano.compile import Function, debugmode, SharedVariable
 from theano.compile.profilemode import ProfileMode
 
 pydot_imported = False
+pydot_imported_msg = ""
 try:
     # pydot-ng is a fork of pydot that is better maintained
     import pydot_ng as pd
     if pd.find_graphviz():
         pydot_imported = True
+    else:
+        pydot_imported_msg = "pydot-ng can't find graphviz. Install graphviz."
 except ImportError:
     try:
         # fall back on pydot if necessary
         import pydot as pd
-        if pd.find_graphviz():
+        if hasattr(pd, 'find_graphviz'):
+            if pd.find_graphviz():
+                pydot_imported = True
+            else:
+                pydot_imported_msg = "pydot can't find graphviz"
+        else:
+            pd.Dot.create(pd.Dot())
             pydot_imported = True
     except ImportError:
-        pass  # tests should not fail on optional dependency
+        # tests should not fail on optional dependency
+        pydot_imported_msg = ("Install the python package pydot or pydot-ng."
+                              " Install graphviz.")
+    except Exception as e:
+        pydot_imported_msg = "An error happened while importing/trying pydot: "
+        pydot_imported_msg += str(e.args)
 
 _logger = logging.getLogger("theano.printing")
 VALID_ASSOC = set(['left', 'right', 'either'])
@@ -46,7 +60,7 @@ def debugprint(obj, depth=-1, print_type=False,
                done=None, print_storage=False):
     """Print a computation graph as text to stdout or a file.
 
-    :type obj: Variable, Apply, or Function instance
+    :type obj: :class:`~theano.gof.Variable`, Apply, or Function instance
     :param obj: symbolic thing to print
     :type depth: integer
     :param depth: print graph to this depth (-1 for unlimited)
@@ -728,7 +742,8 @@ def pydotprint(fct, outfile=None,
     if not pydot_imported:
         raise RuntimeError("Failed to import pydot. You must install graphviz"
                            " and either pydot or pydot-ng for "
-                           "`pydotprint` to work.")
+                           "`pydotprint` to work.",
+                           pydot_imported_msg)
 
     g = pd.Dot()
 

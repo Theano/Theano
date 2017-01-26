@@ -1205,28 +1205,37 @@ def default_blas_ldflags():
                     ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
                                           "mk2_rt"]])
 
-        # Anaconda
-        if "Anaconda" in sys.version and sys.platform == "win32":
-            # If the "mkl-service" conda package (available
-            # through Python package "mkl") is installed and
-            # importable, then the libraries (installed by conda
-            # package "mkl-rt") are actually available.  Using
-            # "conda install mkl" will install both, as well as
-            # optimized versions of numpy and scipy.
-            try:
-                import mkl  # noqa
-            except ImportError as e:
-                _logger.info('Conda mkl is not available: %s', e)
+        # MKL
+        # If mkl can be imported then use it. On conda:
+        # "conda install mkl-service" installs the Python wrapper and
+        # the low-level C libraries as well as optimised version of
+        # numpy and scipy.
+        try:
+            import mkl  # noqa
+        except ImportError as e:
+            if any([m for m in ('conda', 'Continuum') if m in sys.version]):
+                _logger.warning('install mkl with `conda install mkl-service`: %s', e)
+        else:
+            # This branch is executed if no exception was raised
+            if sys.platform == "win32":
+                lib_path = [os.path.join(sys.prefix, 'Library', 'bin')]
+                flags = ['-L"%s"' % lib_path]
             else:
-                # This branch is executed if no exception was raised
-                lib_path = os.path.join(sys.prefix, 'DLLs')
-                flags = ['-L%s' % lib_path]
-                flags += ['-l%s' % l for l in ["mkl_core",
-                                               "mkl_intel_thread",
-                                               "mkl_rt"]]
-                res = try_blas_flag(flags)
-                if res:
-                    return res
+                lib_path = blas_info.get('library_dirs', [])
+                flags = []
+                if lib_path:
+                    flags = ['-L%s' % lib_path[0]]
+            flags += ['-l%s' % l for l in ["mkl_core",
+                                           "mkl_intel_thread",
+                                           "mkl_rt"]]
+            res = try_blas_flag(flags)
+            if res:
+                return res
+            flags.extend(['-Wl,-rpath,' + l for l in
+                          blas_info.get('library_dirs', [])])
+            res = try_blas_flag(flags)
+            if res:
+                return res
 
         ret = (
             # TODO: the Gemm op below should separate the
