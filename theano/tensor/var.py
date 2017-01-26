@@ -501,6 +501,8 @@ class _tensor_py_operators(object):
             args[ellipsis_at: ellipsis_at + 1] = (
                 [slice(None)] * (self.ndim - (len(args) - 1 - new_axes)))
 
+        args = tuple([numpy.array(inp, dtype=numpy.int64)
+                      if(inp == [] or inp == ()) else inp for inp in args])
         # Convert python literals to theano constants
         args = theano.tensor.subtensor.make_constant(args)
         # Determine if advanced indexing is needed or not
