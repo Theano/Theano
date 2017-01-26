@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 import logging
 import os
 
-import numpy
+import numpy as np
 from theano import Apply, tensor
 from theano.gof import COp
 from theano.tensor import discrete_dtypes, as_tensor_variable
@@ -121,7 +121,7 @@ class GpuSparseBlockOuter(COp):
 
     def make_node(self, o, x, y, xIdx, yIdx, alpha=None):
         ctx = infer_context_name(o, x, y)
-        one = tensor.constant(numpy.asarray(1.0, dtype='float32'))
+        one = tensor.constant(np.asarray(1.0, dtype='float32'))
         o = as_gpuarray_variable(o, ctx)
         x = as_gpuarray_variable(x, ctx)
         y = as_gpuarray_variable(y, ctx)
