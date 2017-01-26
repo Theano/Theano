@@ -147,6 +147,12 @@ def print_global_stats():
     print('=' * 50, file=destination_file)
 
 
+_profiler_printers = []
+
+def register_profiler_printer(fct):
+    profiler_printers.append(fct)
+    return fct
+
 class ProfileStats(object):
 
     """
