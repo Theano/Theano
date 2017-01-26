@@ -7,7 +7,7 @@ import warnings
 from theano import Op
 from theano.gpuarray import basic_ops, GpuArrayType
 
-import numpy
+import numpy as np
 from numpy.linalg.linalg import LinAlgError
 
 try:
@@ -107,7 +107,7 @@ class GpuCusolverSolve(Op):
                 ctx.cusolver_handle = cusolver.cusolverDnCreate()
 
     def check_dev_info(self, dev_info):
-        val = numpy.asarray(dev_info)[0]
+        val = np.asarray(dev_info)[0]
         if val > 0:
             raise LinAlgError('A is singular')
 
