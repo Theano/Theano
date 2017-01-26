@@ -571,6 +571,7 @@ class TestEquilibrium(object):
         opt.optimize(g)
         assert str(g) == '[Op2(x, y)]'
 
+    @theano.configparser.change_flags(on_opt_error='ignore')
     def test_low_use_ratio(self):
         x, y, z = map(MyVariable, 'xyz')
         e = op3(op4(x, y))
@@ -581,8 +582,6 @@ class TestEquilibrium(object):
         _logger = logging.getLogger('theano.gof.opt')
         oldlevel = _logger.level
         _logger.setLevel(logging.CRITICAL)
-        backup = theano.config.on_opt_error
-        theano.config.on_opt_error = 'warn'
         try:
             opt = EquilibriumOptimizer(
                 [PatternSub((op1, 'x', 'y'), (op2, 'x', 'y')),
@@ -592,7 +591,6 @@ class TestEquilibrium(object):
                 max_use_ratio=1. / len(g.apply_nodes))  # each opt can only be applied once
             opt.optimize(g)
         finally:
-            theano.config.on_opt_error = backup
             _logger.setLevel(oldlevel)
         # print 'after', g
         assert str(g) == '[Op1(x, y)]'
