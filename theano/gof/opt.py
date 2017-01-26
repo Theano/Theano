@@ -2510,10 +2510,14 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         end_nb_nodes = len(fgraph.apply_nodes)
 
         if max_use_abort:
-            _logger.error("EquilibriumOptimizer max'ed out by '%s'" % opt_name +
-                          ". You can safely raise the current threshold of " +
-                          "%f with the theano flag 'optdb.max_use_ratio'." %
-                          config.optdb.max_use_ratio)
+            msg = ("EquilibriumOptimizer max'ed out by '%s'" % opt_name +
+                   ". You can safely raise the current threshold of " +
+                   "%f with the theano flag 'optdb.max_use_ratio'." %
+                   config.optdb.max_use_ratio)
+            if theano.config.on_opt_error == 'raise':
+                raise AssertionError(msg)
+            else:
+                _logger.error(msg)
         fgraph.remove_feature(change_tracker)
         assert len(loop_process_count) == len(loop_timing)
         assert len(loop_process_count) == len(global_opt_timing)
