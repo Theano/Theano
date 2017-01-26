@@ -1564,7 +1564,8 @@ class TestConv2dTranspose(unittest.TestCase):
         """
         mode = self.mode
         if theano.config.mode == "FAST_COMPILE":
-            mode = mode.excluding("conv_gemm").excluding('AbstractConvCheck')
+            mode = theano.compile.get_default_mode(
+                mode).excluding("conv_gemm").excluding("AbstractConvCheck")
 
         output = theano.function(
             inputs=[],
