@@ -30,19 +30,16 @@ If you encountered any trouble, head to the :ref:`troubleshooting` page.
 libgpuarray
 ^^^^^^^^^^^
 
-It is recommanded that you don't use 0.8.2 for the new back-end. Use
-the dev version of Theano or 0.9rc3.
-
-For the stable version of Theano(0.8.2) you need a specific version of libgpuarray,
-that has been tagged ``v-9998``.
+For the stable version of Theano you need a specific version of libgpuarray,
+that has been tagged ``v0.6.0``.
 Download it with:
 
 .. raw:: html
 
     <div class='highlight'><pre>
-    git clone https://github.com/Theano/libgpuarray.git --tags
-    git checkout origin/v-9998
+    git clone https://github.com/Theano/libgpuarray.git
     cd libgpuarray
+    git checkout tags/v0.6.0 -b v0.6.0
     </pre></div>
 
 and then follow the `Step-by-step instructions <http://deeplearning.net/software/libgpuarray/installation.html#step-by-step-install>`__.

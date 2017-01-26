@@ -12,6 +12,7 @@ CentOS 6 Installation Instructions
     page <http://deeplearning.net/software/theano_versions/dev/install_centos6.html>`_.
 
 .. |PlatformCompiler| replace:: ``python-dev``, ``g++`` >= 4.2
+.. |CompilerName| replace:: ``g++``
 
 .. include:: requirements.inc
 

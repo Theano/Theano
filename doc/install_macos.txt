@@ -20,6 +20,7 @@ alternative instructions here.
 .. _theano-users: http://groups.google.com/group/theano-users?pli=1
 
 .. |PlatformCompiler| replace:: ``clang`` (the system version)
+.. |CompilerName| replace:: ``Clang``
 
 .. include:: requirements.inc
 

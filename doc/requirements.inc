@@ -7,8 +7,13 @@ Requirements
 
 .. _BLAS: http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
 .. _Python: http://www.python.org/
+.. _LaTeX: http://www.latex-project.org/
+.. _dvipng: http://savannah.nongnu.org/projects/dvipng/
+.. _NVIDIA CUDA drivers and SDK: http://developer.nvidia.com/object/gpucomputing.html
+.. _libgpuarray: http://deeplearning.net/software/libgpuarray/installation.html
 
-    Python_ >= 2.7 or >= 3.3 The development package (python-dev or
+    Python_ >= 2.7 or >= 3.3
+        The development package (python-dev or
         python-devel on most Linux distributions) is recommended (see
         just below). Python 2.4 was supported up to and including the
         release 0.6. Python 2.6 was supported up to and including the
@@ -63,7 +68,7 @@ Follow this `link <http://conda.pydata.org/miniconda.html>`__ to install Minicon
 
 .. note::
 
-    If you want fast compiled code (recommended), make sure you have g++ (Windows/Linux) or Clang (OS X) installed.
+    If you want fast compiled code (recommended), make sure you have |CompilerName| installed.
 
 Install requirements and optional packages
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -109,9 +114,4 @@ Install and configure the GPU drivers (recommended)
     * add a ``cuda.root`` flag to :envvar:`THEANO_FLAGS`, as in ``THEANO_FLAGS='cuda.root=/path/to/cuda/root'``, or
     * add a [cuda] section to your .theanorc file containing the option ``root = /path/to/cuda/root``.
 
-.. _LaTeX: http://www.latex-project.org/
-.. _dvipng: http://savannah.nongnu.org/projects/dvipng/
-.. _NVIDIA CUDA drivers and SDK: http://developer.nvidia.com/object/gpucomputing.html
-.. _libgpuarray: http://deeplearning.net/software/libgpuarray/installation.html
-.. _pycuda: https://mathema.tician.de/software/pycuda/
-.. _skcuda: http://scikit-cuda.readthedocs.io/en/latest/
+
