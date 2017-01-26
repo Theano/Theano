@@ -4,7 +4,7 @@ import logging
 import os
 import shutil
 
-import numpy
+import numpy as np
 
 import theano
 from six import string_types, iteritems
@@ -42,7 +42,7 @@ def cleanup():
                         have_npy_abi_version = False
                         have_c_compiler = False
                         for obj in flatten(key):
-                            if isinstance(obj, numpy.ndarray):
+                            if isinstance(obj, np.ndarray):
                                 # Reuse have_npy_abi_version to
                                 # force the removing of key
                                 have_npy_abi_version = False
