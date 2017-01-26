@@ -701,7 +701,7 @@ class Test_aliasing_rules(unittest.TestCase):
 
         # rule #2 reading back from theano-managed memory
         assert not np.may_share_memory(A.get_value(borrow=False),
-                                          data_of(A))
+                                       data_of(A))
 
     def test_sparse_input_aliasing_affecting_inplace_operations(self):
         ##
@@ -773,20 +773,20 @@ class Test_aliasing_rules(unittest.TestCase):
         # Compute bogus values
         v = np.asarray([1, 2, 3, 4, 5], dtype='float64')
         m = np.asarray([[1, 0, 0, 0, 0],
-                           [0, 1, 0, 0, 0],
-                           [0, 0, 1, 0, 0],
-                           [0, 0, 0, 1, 0],
-                           [0, 0, 0, 0, 1]], dtype='float64')
+                        [0, 1, 0, 0, 0],
+                        [0, 0, 1, 0, 0],
+                        [0, 0, 0, 1, 0],
+                        [0, 0, 0, 0, 1]], dtype='float64')
         bogus_vals = f(v, v, m, m)
         # Since we used inplace operation v and m may be corrupted
         # so we need to recreate them
 
         v = np.asarray([1, 2, 3, 4, 5], dtype='float64')
         m = np.asarray([[1, 0, 0, 0, 0],
-                           [0, 1, 0, 0, 0],
-                           [0, 0, 1, 0, 0],
-                           [0, 0, 0, 1, 0],
-                           [0, 0, 0, 0, 1]], dtype='float64')
+                        [0, 1, 0, 0, 0],
+                        [0, 0, 1, 0, 0],
+                        [0, 0, 0, 1, 0],
+                        [0, 0, 0, 0, 1]], dtype='float64')
         m_copy = m.copy()
         v_copy = v.copy()
         vals = f(v, v_copy, m, m_copy)
@@ -824,14 +824,14 @@ class Test_aliasing_rules(unittest.TestCase):
         # Compute bogus values
         v = np.asarray([1, 2, 3, 4, 5], dtype='float64')
         m = np.asarray([[1, 0],
-                           [0, 1]], dtype='float64')
+                        [0, 1]], dtype='float64')
         bogus_vals = f(v[:2], v[1:3], v[2:4], m, m, m)
         # Since we used inplace operation v and m may be corrupted
         # so we need to recreate them
 
         v = np.asarray([1, 2, 3, 4, 5], dtype='float64')
         m = np.asarray([[1, 0],
-                           [0, 1]], dtype='float64')
+                        [0, 1]], dtype='float64')
         m_copy1 = m.copy()
         v_copy1 = v.copy()
         m_copy2 = m.copy()

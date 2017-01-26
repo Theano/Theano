@@ -579,7 +579,7 @@ class Test_check_isfinite(unittest.TestCase):
             'DEBUG_MODE'].check_isfinite = False
         # insert several Inf
         f(np.asarray(np.asarray([1.0, 1.0, 1.0]) / 0,
-                        dtype=config.floatX))
+                     dtype=config.floatX))
 
     def test_check_isfinite_disabled(self):
         x = theano.tensor.dvector()

@@ -830,8 +830,8 @@ class Function(object):
                             [self.input_storage[k].storage[0] for k
                              in args_share_memory[j]])
                         if np.any([(var.type is i_var.type and
-                                       var.type.may_share_memory(val, i_val))
-                                      for (var, val) in group_j]):
+                                  var.type.may_share_memory(val, i_val))
+                                  for (var, val) in group_j]):
 
                             is_aliased = True
                             args_share_memory[j].append(i)

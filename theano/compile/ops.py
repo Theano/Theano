@@ -836,7 +836,7 @@ class SpecifyShape(gof.Op):
         out, = out_
         assert x.ndim == shape.size
         assert np.all(x.shape == shape), ("got shape", x.shape,
-                                             "expected", shape)
+                                          "expected", shape)
         out[0] = x
 
     def infer_shape(self, node, shapes):

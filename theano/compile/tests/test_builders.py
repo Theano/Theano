@@ -108,7 +108,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         f = f - T.grad(T.sum(f), s)
         fn = function([x, y, z], f)
         assert np.allclose(15.0 + s.get_value(),
-                              fn(xv, yv, zv))
+                           fn(xv, yv, zv))
 
     def test_connection_pattern(self):
         # Basic case

@@ -287,7 +287,7 @@ class BadOptimization(DebugModeError):
             #      nv == ov == 0
             reldiff = (abs_diff /
                        np.maximum(np.absolute(nv) + np.absolute(ov),
-                                      1e-8))
+                                  1e-8))
             print("  Max Rel Diff: ", np.max(reldiff), file=ssio)
             print("  Mean Rel Diff: ", np.mean(reldiff), file=ssio)
             print("  Median Rel Diff: ", np.median(reldiff), file=ssio)
