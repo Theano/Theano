@@ -126,6 +126,12 @@ AddConfigVar(
     BoolParam(False, allow_override=False),
     in_c_key=False)
 
+AddConfigVar(
+    'print_global_stats',
+    "Print some global statistics (time spent) at the end",
+    BoolParam(False),
+    in_c_key=False)
+
 
 class ContextsParam(ConfigParam):
     def __init__(self):
