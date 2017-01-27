@@ -160,7 +160,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
 
         w, b = T.vectors('wb')
         # we make the 3rd gradient default (no override)
-        op_linear = cls_ofg([x, w, b], [x * w + b], grad_overrides=[go1, go2])
+        op_linear = cls_ofg([x, w, b], [x * w + b], grad_overrides=[go1, go2, Ellipsis])
         xx, ww, bb = T.vector('xx'), T.vector('yy'), T.vector('bb')
         zz = T.sum(op_linear(xx, ww, bb))
         dx, dw, db = T.grad(zz, [xx, ww, bb])
@@ -281,21 +281,19 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
                          [True, False, True]]
         assert results == expect_result
 
-    @test_params
-    def test_infer_shape(self, cls_ofg):
+    def test_infer_shape(self):
+        # test infer shape does not need to against inline case
+        # since the Op is remove during optimization phase
         x = T.matrix('x')
         y = T.matrix('y')
         o1 = x + y
         o2 = x * y
-        op_graph = cls_ofg([x, y], [o1, o2])
+        op_graph = OpFromGraph([x, y], [o1, o2])
 
         q = T.matrix('q')
         p = T.matrix('p')
-        # we don't want check_topo for inline ops
-        # since the inline op is replaced during optimization
         self._compile_and_check([q, p],
                                 op_graph(q, p),
                                 [np.ones([3, 4], dtype=config.floatX),
                                  np.ones([3, 4], dtype=config.floatX)],
-                                cls_ofg,
-                                check_topo=not op_graph.is_inline)
+                                OpFromGraph)
