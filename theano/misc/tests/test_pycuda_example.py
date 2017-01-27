@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 import theano
 import theano.misc.pycuda_init
@@ -58,11 +58,11 @@ def test_pycuda_elemwise_source_module():
                                    PycudaElemwiseSourceModuleMakeThunkOp)
                         for node in f4.maker.fgraph.toposort()])
 
-            val1 = numpy.asarray(numpy.random.rand(*shape), dtype='float32')
-            val2 = numpy.asarray(numpy.random.rand(*shape), dtype='float32')
-            assert numpy.allclose(f(val1, val2), f2(val1, val2))
-            assert numpy.allclose(f(val1, val2), f3(val1, val2))
-            assert numpy.allclose(f(val1, val2), f4(val1, val2))
+            val1 = np.asarray(np.random.rand(*shape), dtype='float32')
+            val2 = np.asarray(np.random.rand(*shape), dtype='float32')
+            assert np.allclose(f(val1, val2), f2(val1, val2))
+            assert np.allclose(f(val1, val2), f3(val1, val2))
+            assert np.allclose(f(val1, val2), f4(val1, val2))
             # print f(val1,val2)
             # print f2(val1,val2)
 
@@ -82,10 +82,10 @@ def test_pycuda_elemwise_kernel():
     assert any([isinstance(node.op, PycudaElemwiseKernelOp)
                 for node in f2.maker.fgraph.toposort()])
 
-    val1 = numpy.asarray(numpy.random.rand(5, 5), dtype='float32')
-    val2 = numpy.asarray(numpy.random.rand(5, 5), dtype='float32')
-    #val1 = numpy.ones((5,5))
-    #val2 = numpy.arange(25).reshape(5,5)
+    val1 = np.asarray(np.random.rand(5, 5), dtype='float32')
+    val2 = np.asarray(np.random.rand(5, 5), dtype='float32')
+    #val1 = np.ones((5,5))
+    #val2 = np.arange(25).reshape(5,5)
     assert (f(val1, val2) == f2(val1, val2)).all()
     print(f(val1, val2))
     print(f2(val1, val2))
@@ -99,8 +99,8 @@ def test_pycuda_elemwise_kernel():
     assert any([isinstance(node.op, PycudaElemwiseKernelOp)
                 for node in f4.maker.fgraph.toposort()])
 
-    val1 = numpy.random.rand(2, 2, 2)
+    val1 = np.random.rand(2, 2, 2)
     print(val1)
     print(f4(val1, val1, val1))
-    assert numpy.allclose(f4(val1, val1, val1), val1 * val1 + val1)
+    assert np.allclose(f4(val1, val1, val1), val1 * val1 + val1)
 """
