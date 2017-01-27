@@ -63,7 +63,7 @@ def test_multinomial_large():
                 for node in f.maker.fgraph.toposort()])
 
     pval = np.arange(10000 * 4,
-                        dtype='float32').reshape((10000, 4)) + 0.1
+                     dtype='float32').reshape((10000, 4)) + 0.1
     pval = pval / pval.sum(axis=1)[:, None]
     uval = np.ones_like(pval[:, 0]) * 0.5
     mval = f(pval, uval)

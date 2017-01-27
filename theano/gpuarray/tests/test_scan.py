@@ -214,7 +214,7 @@ class T_Scan(TestCase):
     def test_gpu4_gibbs_chain(self):
         rng = np.random.RandomState(utt.fetch_seed())
         v_vsample = np.array(rng.binomial(1, .5, size=(3, 20),),
-                                dtype='float32')
+                             dtype='float32')
         vsample = theano.shared(v_vsample)
         trng = theano.sandbox.rng_mrg.MRG_RandomStreams(
             utt.fetch_seed())

@@ -93,7 +93,7 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
                 for _ in range(len(inputs)):
                     if type(inputs[_]) is float:
                         inputs[_] = np.asarray(inputs[_],
-                                                  dtype=theano.config.floatX)
+                                               dtype=theano.config.floatX)
                 self.run_case(testname, inputs)
 
         def run_case(self, testname, inputs):

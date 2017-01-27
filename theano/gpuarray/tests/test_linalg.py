@@ -43,9 +43,9 @@ class TestCusolver(unittest.TestCase):
     def test_diag_solve(self):
         np.random.seed(1)
         A_val = np.asarray([[2, 0, 0], [0, 1, 0], [0, 0, 1]],
-                              dtype="float32")
+                           dtype="float32")
         x_val = np.random.uniform(-0.4, 0.4, (A_val.shape[1],
-                                     1)).astype("float32")
+                                  1)).astype("float32")
         self.run_gpu_solve(A_val, x_val)
 
     def test_bshape_solve(self):
