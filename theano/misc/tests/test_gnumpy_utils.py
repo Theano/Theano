@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 import theano
 from theano.misc.gnumpy_utils import gnumpy_available
@@ -31,11 +31,10 @@ def test(shape=(3, 4, 5)):
     B_cnd = ii(A_cnd)
     B = cudandarray_to_garray(B_cnd)
     assert A_cnd.shape == A.shape
-    from numpy import array
 
     u = (A + 1).asarray()
     v = B.asarray()
-    w = array(B_cnd)
+    w = np.array(B_cnd)
     assert (u == v).all()
     assert (u == w).all()
 
@@ -49,7 +48,7 @@ def test2(shape=(3, 4, 5)):
     U = gpu(theano.tensor.ftensor3('U'))
     theano.function([U], gpu(U + 1))
 
-    A = numpy.random.rand(*shape).astype('float32')
+    A = np.random.rand(*shape).astype('float32')
     A_cnd = theano.sandbox.cuda.CudaNdarray(A)
     A_gar = cudandarray_to_garray(A_cnd)
     assert A_cnd.shape == A_gar.shape
@@ -62,7 +61,7 @@ def test2(shape=(3, 4, 5)):
     # dtype always float32
     assert A_cnd._strides == B._strides
     assert A_cnd.gpudata == B.gpudata
-    v = numpy.asarray(B)
+    v = np.asarray(B)
     assert (v == A).all()
 
 
