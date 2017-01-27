@@ -22,7 +22,7 @@ TheanoElementwiseKernel.
 from __future__ import absolute_import, print_function, division
 from itertools import chain
 
-import numpy
+import numpy as np
 
 import theano
 from six.moves import xrange
@@ -257,13 +257,13 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
                             " inputs don't have the same shape!")
 
         if inputs[0].size > 512:
-            grid = (int(numpy.ceil(inputs[0].size / 512.)), 1)
+            grid = (int(np.ceil(inputs[0].size / 512.)), 1)
             block = (512, 1, 1)
         else:
             grid = (1, 1)
             block = (inputs[0].shape[0], inputs[0].shape[1], 1)
         self.pycuda_fct(inputs[0], inputs[1], z[0],
-                        numpy.intc(inputs[1].size), block=block, grid=grid)
+                        np.intc(inputs[1].size), block=block, grid=grid)
 
 
 class PycudaElemwiseSourceModuleMakeThunkOp(Op):
@@ -349,13 +349,13 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
                                 " inputs don't have the same shape!")
 
             if inputs[0][0].size > 512:
-                grid = (int(numpy.ceil(inputs[0][0].size / 512.)), 1)
+                grid = (int(np.ceil(inputs[0][0].size / 512.)), 1)
                 block = (512, 1, 1)
             else:
                 grid = (1, 1)
                 block = (inputs[0][0].shape[0], inputs[0][0].shape[1], 1)
             pycuda_fct(inputs[0][0], inputs[1][0], z[0],
-                       numpy.intc(inputs[1][0].size), block=block,
+                       np.intc(inputs[1][0].size), block=block,
                        grid=grid)
         thunk.inputs = inputs
         thunk.outputs = outputs
