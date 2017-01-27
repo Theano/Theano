@@ -41,6 +41,7 @@ install:
   - pip install flake8-future-import nose-parameterized==0.5.0 sphinx_rtd_theme
   # nose-exclude plugin allow us to tell nosetests to exclude folder with --exclude-dir=path/to/directory.
   - pip install nose-exclude
+  - pip install --upgrade numpy==1.12.0
 
 # command to run tests
 env:
