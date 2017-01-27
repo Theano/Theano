@@ -12,7 +12,7 @@ import six.moves.cPickle as pickle
 from itertools import chain
 import time
 import warnings
-import numpy
+import numpy as np
 
 import theano
 from theano import config, gof
@@ -837,9 +837,9 @@ class Function(object):
                              in args_share_memory[j]],
                             [self.input_storage[k].storage[0] for k
                              in args_share_memory[j]])
-                        if numpy.any([(var.type is i_var.type and
-                                       var.type.may_share_memory(val, i_val))
-                                      for (var, val) in group_j]):
+                        if np.any([(var.type is i_var.type and
+                                  var.type.may_share_memory(val, i_val))
+                                  for (var, val) in group_j]):
 
                             is_aliased = True
                             args_share_memory[j].append(i)
@@ -1028,9 +1028,9 @@ def _pickle_Function(f):
         all_data = input_storage + inputs_data
         for i, d_i in enumerate(all_data):
             for j, d_j in enumerate(all_data):
-                if ((i < j) and isinstance(d_i, numpy.ndarray) and
-                        isinstance(d_j, numpy.ndarray)):
-                    if numpy.may_share_memory(d_i, d_j):
+                if ((i < j) and isinstance(d_i, np.ndarray) and
+                        isinstance(d_j, np.ndarray)):
+                    if np.may_share_memory(d_i, d_j):
                         if f.pickle_aliased_memory_strategy == 'warn':
                             _logger.warning('aliased relationship between '
                                             'Function arguments %s, %s '
@@ -1050,7 +1050,7 @@ def _constructor_Function(maker, input_storage, inputs_data):
     assert len(f.input_storage) == len(inputs_data)
     for container, x in zip(f.input_storage, inputs_data):
         assert (container.data is x) or \
-            (isinstance(x, numpy.ndarray) and (container.data == x).all()) or \
+            (isinstance(x, np.ndarray) and (container.data == x).all()) or \
             (container.data == x)
     return f
 

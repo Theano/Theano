@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 import theano
 
@@ -12,7 +12,7 @@ def test_detect_nan():
 
     def detect_nan(i, node, fn):
         for output in fn.outputs:
-            if numpy.isnan(output[0]).any():
+            if np.isnan(output[0]).any():
                 print('*** NaN detected ***')
                 theano.printing.debugprint(node)
                 print('Inputs : %s' % [input[0] for input in fn.inputs])
@@ -36,7 +36,7 @@ def test_optimizer():
 
     def detect_nan(i, node, fn):
         for output in fn.outputs:
-            if numpy.isnan(output[0]).any():
+            if np.isnan(output[0]).any():
                 print('*** NaN detected ***')
                 theano.printing.debugprint(node)
                 print('Inputs : %s' % [input[0] for input in fn.inputs])
@@ -65,7 +65,7 @@ def test_not_inplace():
 
     def detect_nan(i, node, fn):
         for output in fn.outputs:
-            if numpy.isnan(output[0]).any():
+            if np.isnan(output[0]).any():
                 print('*** NaN detected ***')
                 theano.printing.debugprint(node)
                 print('Inputs : %s' % [input[0] for input in fn.inputs])

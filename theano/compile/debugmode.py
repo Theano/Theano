@@ -14,7 +14,7 @@ import six.moves.copyreg as copyreg
 from itertools import chain, product as itertools_product
 from theano.compat import izip
 
-import numpy
+import numpy as np
 
 import theano
 from theano import gof, config
@@ -270,15 +270,15 @@ class BadOptimization(DebugModeError):
             print("  New Value: ", str(self.new_r_val), file=sio)
 
         try:
-            ov = numpy.asarray(self.old_r_val)
-            nv = numpy.asarray(self.new_r_val)
+            ov = np.asarray(self.old_r_val)
+            nv = np.asarray(self.new_r_val)
             ssio = StringIO()
-            abs_diff = numpy.absolute(nv - ov)
-            print("  Max Abs Diff: ", numpy.max(abs_diff), file=ssio)
-            print("  Mean Abs Diff: ", numpy.mean(abs_diff), file=ssio)
-            print("  Median Abs Diff: ", numpy.median(abs_diff), file=ssio)
-            print("  Std Abs Diff: ", numpy.std(abs_diff), file=ssio)
-            arg_max_val = numpy.argmax(abs_diff)
+            abs_diff = np.absolute(nv - ov)
+            print("  Max Abs Diff: ", np.max(abs_diff), file=ssio)
+            print("  Mean Abs Diff: ", np.mean(abs_diff), file=ssio)
+            print("  Median Abs Diff: ", np.median(abs_diff), file=ssio)
+            print("  Std Abs Diff: ", np.std(abs_diff), file=ssio)
+            arg_max_val = np.argmax(abs_diff)
             values_at_max = (nv.flatten()[arg_max_val],
                              ov.flatten()[arg_max_val])
             print("  Value at Max Diff: ", values_at_max, file=ssio)
@@ -286,13 +286,13 @@ class BadOptimization(DebugModeError):
             # N.B. the maximum(..., 1e-8) protects against div by 0 when
             #      nv == ov == 0
             reldiff = (abs_diff /
-                       numpy.maaximum(numpy.absolute(nv) + numpy.absolute(ov),
-                                      1e-8))
-            print("  Max Rel Diff: ", numpy.max(reldiff), file=ssio)
-            print("  Mean Rel Diff: ", numpy.mean(reldiff), file=ssio)
-            print("  Median Rel Diff: ", numpy.median(reldiff), file=ssio)
-            print("  Std Rel Diff: ", numpy.std(reldiff), file=ssio)
-            arg_max_val = numpy.argmax(reldiff)
+                       np.maximum(np.absolute(nv) + np.absolute(ov),
+                                  1e-8))
+            print("  Max Rel Diff: ", np.max(reldiff), file=ssio)
+            print("  Mean Rel Diff: ", np.mean(reldiff), file=ssio)
+            print("  Median Rel Diff: ", np.median(reldiff), file=ssio)
+            print("  Std Rel Diff: ", np.std(reldiff), file=ssio)
+            arg_max_val = np.argmax(reldiff)
             values_at_max = (nv.flatten()[arg_max_val],
                              ov.flatten()[arg_max_val])
             print("  Value at Max Diff: ", values_at_max, file=ssio)
@@ -342,8 +342,8 @@ class BadDestroyMap(DebugModeError):
         print("  repr (old val):", repr(self.old_val), file=sio)
         print("  repr (new val):", repr(self.new_val), file=sio)
         try:
-            npy_old_val = numpy.asarray(self.old_val)
-            npy_new_val = numpy.asarray(self.new_val)
+            npy_old_val = np.asarray(self.old_val)
+            npy_new_val = np.asarray(self.new_val)
             print("  value dtype (new <space> old):", npy_new_val.dtype,
                   npy_old_val.dtype, file=sio)
             print("  value shape (new <space> old):", npy_new_val.shape,
@@ -356,13 +356,13 @@ class BadDestroyMap(DebugModeError):
             print("  value min (new-old):", delta.min(), file=sio)
             print("  value max (new-old):", delta.max(), file=sio)
             print("  value argmin (new-old):",
-                  numpy.unravel_index(delta.argmin(), npy_new_val.shape),
+                  np.unravel_index(delta.argmin(), npy_new_val.shape),
                   file=sio)
             print("  value argmax (new-old):",
-                  numpy.unravel_index(delta.argmax(), npy_new_val.shape),
+                  np.unravel_index(delta.argmax(), npy_new_val.shape),
                   file=sio)
             print("  location of first 10 mismatches:",
-                  numpy.transpose(numpy.nonzero(delta))[:10], file=sio)
+                  np.transpose(np.nonzero(delta))[:10], file=sio)
             print("", file=sio)
         except Exception as e:
             print("(Numpy-hints failed with: %s)" % str(e), file=sio)
@@ -453,7 +453,7 @@ class InvalidValueError(DebugModeError):
             v_dtype = v.dtype
             v_min = v.min()
             v_max = v.max()
-            v_isfinite = numpy.all(numpy.isfinite(v))
+            v_isfinite = np.all(np.isfinite(v))
         except Exception:
             pass
         client_node = self.client_node
@@ -1025,7 +1025,7 @@ def _lessbroken_deepcopy(a):
     # this exists because copy.deepcopy on numpy arrays is broken
     # This logic is also in link.py
     from theano.gof.type import _cdata_type
-    if type(a) in (numpy.ndarray, numpy.memmap):
+    if type(a) in (np.ndarray, np.memmap):
         rval = a.copy()
     elif type(a) is _cdata_type:
         # This is not copyable (and should be used for constant data).
@@ -1034,7 +1034,7 @@ def _lessbroken_deepcopy(a):
         rval = copy.deepcopy(a)
 
     assert type(rval) == type(a), (type(rval), type(a))
-    if isinstance(rval, numpy.ndarray):
+    if isinstance(rval, np.ndarray):
         assert rval.dtype == a.dtype
     return rval
 
@@ -1241,7 +1241,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
             # There is no risk to overwrite inputs, since r does not work
             # inplace.
             if isinstance(r.type, (TensorType, CudaNdarrayType)):
-                reuse_outputs[r][...] = numpy.asarray(
+                reuse_outputs[r][...] = np.asarray(
                     def_val).astype(r.type.dtype)
 
         if reuse_outputs:
@@ -1259,7 +1259,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                 new_buf = r.type.value_zeros(r_vals[r].shape)
                 # CudaNdarray don't have flags field
                 # assert new_buf.flags["C_CONTIGUOUS"]
-                new_buf[...] = numpy.asarray(def_val).astype(r.type.dtype)
+                new_buf[...] = np.asarray(def_val).astype(r.type.dtype)
 
                 c_cont_outputs[r] = new_buf
 
@@ -1273,7 +1273,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         f_cont_outputs = {}
         for r in considered_outputs:
             if isinstance(r.type, (TensorType, CudaNdarrayType)):
-                new_buf = numpy.zeros(
+                new_buf = np.zeros(
                     shape=r_vals[r].shape,
                     dtype=r_vals[r].dtype,
                     order='F')
@@ -1331,7 +1331,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                     else:
                         buf_shape.append(s * 2)
                 new_buf = r.type.value_zeros(buf_shape)
-                new_buf[...] = numpy.asarray(def_val).astype(r.type.dtype)
+                new_buf[...] = np.asarray(def_val).astype(r.type.dtype)
                 init_strided[r] = new_buf
 
         # The number of combinations is exponential in the number of
@@ -1377,7 +1377,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                             r_buf = r_buf[tuple(strides)][tuple(shapes)]
                         assert r_buf.shape == r_vals[r].shape
 
-                        r_buf[...] = numpy.asarray(def_val).astype(r_buf.dtype)
+                        r_buf[...] = np.asarray(def_val).astype(r_buf.dtype)
                         strided[r] = r_buf
 
                 if strided:
@@ -1405,7 +1405,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                                      for s, sd in zip(r_vals[r].shape,
                                                       r_shape_diff)]
                         new_buf = r.type.value_zeros(out_shape)
-                        new_buf[...] = numpy.asarray(
+                        new_buf[...] = np.asarray(
                             def_val).astype(r.type.dtype)
                         wrong_size[r] = new_buf
 
@@ -2261,7 +2261,7 @@ class _Linker(gof.link.LocalLinker):
                         # HACK TO LOOK LIKE A REAL DESTRUCTIVE ACTION
                         # TOOK PLACE
                         if ((type(dr_vals[r][0]) in
-                             (numpy.ndarray, numpy.memmap)) and
+                             (np.ndarray, np.memmap)) and
                             (dr_vals[r][0].dtype ==
                              storage_map[r][0].dtype) and
                             (dr_vals[r][0].shape ==
