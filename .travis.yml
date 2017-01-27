@@ -12,7 +12,7 @@ cache:
 language: python
 python:
   - "2.7"
-  - "3.3"
+  - "3.4"
 
 # NB:
 # In before_install and install sections below,
