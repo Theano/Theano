@@ -9,7 +9,7 @@ from __future__ import absolute_import, print_function, division
 import threading
 import time
 
-import numpy
+import numpy as np
 
 import theano
 from theano.gpuarray import init_dev
@@ -21,7 +21,7 @@ def main(dev1, dev2):
     init_dev(dev2, 'ctx2')
 
     size = 1024 * 16
-    data = numpy.random.randn(size, size).astype('float32')
+    data = np.random.randn(size, size).astype('float32')
     val1a = theano.shared(data, target='ctx1')
     val1b = theano.shared(data, target='ctx1')
     val1c = theano.shared(data, target='ctx1')
