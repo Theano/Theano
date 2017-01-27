@@ -1221,14 +1221,15 @@ def _populate_grad_dict(var_to_app_to_idx,
                                 "%s."
 
                             msg %= (node.op, term, type(term), i,
-                                   theano.get_scalar_constant_value(term))
+                                    theano.get_scalar_constant_value(term))
 
                             raise ValueError(msg)
 
             # Check that op.connection_pattern matches the connectivity
             # logic driving the op.grad method
             for i, (ipt, ig, connected) in enumerate(
-                zip(inputs, input_grads, inputs_connected)):
+                zip(inputs, input_grads, inputs_connected)
+            ):
                 actually_connected = \
                     not isinstance(ig.type, DisconnectedType)
 
