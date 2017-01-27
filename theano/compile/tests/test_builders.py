@@ -4,6 +4,8 @@ import numpy as np
 
 from theano import config, shared
 
+from theano.gradient import DisconnectedType
+from theano.gof.null_type import NullType
 from theano.compile import function
 
 from theano import tensor as T
@@ -172,6 +174,19 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         assert np.allclose(wv * 2, dxv)
         assert np.allclose(xv * 1.5, dwv)
         assert np.allclose(np.ones(16, dtype=config.floatX), dbv)
+
+        # NullType and DisconnectedType
+        op_linear2 = cls_ofg([x, w, b], [x * w + b], grad_overrides=[go1, None, 0])
+        zz2 = T.sum(op_linear2(xx, ww, bb))
+        dx2, dw2, db2 = T.grad(
+            zz2, [xx, ww, bb],
+            return_disconnected='Disconnected',
+            null_gradients='return')
+        fn2 = function([xx, ww, bb], [dx2, dw2, db2])
+        dxv2, dwv2, dbv2 = fn2(xv, wv, bv)
+        assert numpy.allclose(wv * 2, dxv)
+        assert isinstance(dwv2.type, NullType)
+        assert isinstance(dbv2.type, DisconnectedType)
 
     @test_params
     def test_rop(self, cls_ofg):
