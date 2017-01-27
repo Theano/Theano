@@ -181,12 +181,12 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         dx2, dw2, db2 = T.grad(
             zz2, [xx, ww, bb],
             return_disconnected='Disconnected',
+            disconnected_inputs='ignore',
             null_gradients='return')
-        fn2 = function([xx, ww, bb], [dx2, dw2, db2])
-        dxv2, dwv2, dbv2 = fn2(xv, wv, bv)
-        assert numpy.allclose(wv * 2, dxv)
-        assert isinstance(dwv2.type, NullType)
-        assert isinstance(dbv2.type, DisconnectedType)
+        assert isinstance(dx2.type, T.TensorType)
+        assert dx2.ndim == 1
+        assert isinstance(dw2.type, NullType)
+        assert isinstance(db2.type, DisconnectedType)
 
     @test_params
     def test_rop(self, cls_ofg):
