@@ -4,10 +4,10 @@ import numpy
 import numpy as np
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises, assert_true
-
+from theano.gof.opt import check_stack_trace
 import theano
 from theano import tensor
-from theano.gof.opt import check_stack_trace
+import theano.tensor as T
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import corr, corr3d, abstract_conv as conv
 from theano.tensor.nnet.abstract_conv import (get_conv_output_shape,
@@ -22,6 +22,8 @@ from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradWeights
 from theano.tensor.nnet.abstract_conv import bilinear_kernel_1D
 from theano.tensor.nnet.abstract_conv import bilinear_kernel_2D
 from theano.tensor.nnet.abstract_conv import bilinear_upsampling
+from theano.tensor.nnet.abstract_conv import conv2d_grad_wrt_weights
+from theano.tensor.nnet.abstract_conv import conv2d_grad_wrt_inputs
 from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet.corr import (CorrMM, CorrMM_gradWeights,
                                      CorrMM_gradInputs)
@@ -1548,3 +1550,77 @@ class TestBilinearUpsampling(unittest.TestCase):
         f_1D = theano.function([], mat_1D, mode=self.compile_mode)
         f_2D = theano.function([], mat_2D, mode=self.compile_mode)
         utt.assert_allclose(f_1D(), f_2D(), rtol=1e-06)
+
+
+def test_conv2d_grad_wrt_inputs():
+
+    inputs_shapes = [(8, 1, 12, 12), (8, 1, 18, 18), (2, 1, 4, 4),
+                     (6, 1, 10, 11), (2, 1, 6, 5), (1, 5, 9, 9)]
+    filters_shapes = [(5, 1, 2, 2), (4, 1, 3, 3), (2, 1, 3, 3),
+                      (1, 1, 2, 5), (4, 1, 2, 2), (4, 5, 2, 2)]
+    subsamples = [(1, 1), (2, 2)]
+    border_modes = ["valid", "full"]
+    filter_flip = [True, False]
+    x = T.cast(T.ftensor4('x'), theano.config.floatX)
+    for (in_shape, fltr_shape) in zip(inputs_shapes, filters_shapes):
+        input_val = np.random.rand(*in_shape).astype(theano.config.floatX)
+
+        filter_val = np.random.rand(*fltr_shape).astype(theano.config.floatX)
+        for bm in border_modes:
+            for ss in subsamples:
+                for ff in filter_flip:
+                    cgi = conv2d_grad_wrt_inputs(output_grad=input_val,
+                                                 filters=filter_val,
+                                                 filter_shape=fltr_shape,
+                                                 input_shape=in_shape,
+                                                 border_mode=bm,
+                                                 subsample=ss,
+                                                 filter_flip=ff)
+
+                    conv_func = T.nnet.conv.conv2d(x,
+                                                   filters=filter_val,
+                                                   border_mode=bm,
+                                                   filter_shape=fltr_shape,
+                                                   image_shape=in_shape,
+                                                   subsample=ss)
+
+                    f_prime = theano.grad(conv_func.sum(), x)
+                    f = theano.function([x], f_prime)
+                    T.allclose(cgi, f(input_val))
+
+
+def test_conv2d_grad_wrt_weights():
+
+    inputs_shapes = [(8, 1, 12, 12), (8, 1, 18, 18), (2, 1, 4, 4),
+                     (6, 1, 10, 11), (2, 1, 6, 5), (1, 5, 9, 9)]
+    filters_shapes = [(5, 1, 2, 2), (4, 1, 3, 3), (2, 1, 3, 3),
+                      (1, 1, 2, 5), (4, 1, 2, 2), (4, 5, 2, 2)]
+    subsamples = [(1, 1), (2, 2)]
+    border_modes = ["valid", "full"]
+    filter_flip = [True, False]
+    w = T.cast(T.ftensor4('w'), theano.config.floatX)
+    for (in_shape, fltr_shape) in zip(inputs_shapes, filters_shapes):
+        input_val = np.random.rand(*in_shape).astype(theano.config.floatX)
+        filter_val = np.random.rand(*fltr_shape).astype(theano.config.floatX)
+
+        for bm in border_modes:
+            for ss in subsamples:
+                for ff in filter_flip:
+                    cgw = conv2d_grad_wrt_weights(input_val,
+                                                  output_grad=filter_val,
+                                                  filter_shape=fltr_shape,
+                                                  input_shape=in_shape,
+                                                  border_mode=bm,
+                                                  subsample=ss,
+                                                  filter_flip=ff)
+
+                    conv_func = T.nnet.conv.conv2d(input_val,
+                                                   filters=w,
+                                                   border_mode=bm,
+                                                   filter_shape=fltr_shape,
+                                                   image_shape=in_shape,
+                                                   subsample=ss)
+
+                    f_prime = theano.grad(conv_func.sum(), w)
+                    f = theano.function([w], f_prime)
+                    T.allclose(cgw, f(filter_val))
