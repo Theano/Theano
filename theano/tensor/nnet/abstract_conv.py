@@ -17,7 +17,6 @@ from theano.gof import Apply, Op
 from six.moves import xrange
 
 import warnings
-import numpy
 import numpy as np
 
 try:
