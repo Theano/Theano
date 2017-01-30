@@ -194,7 +194,7 @@ def test_batch_normalization_train():
             f = theano.function([x, scale, bias, running_mean, running_var, dy],
                                 [out, x_mean, x_invstd, out_running_mean, out_running_var,
                                  out2, x_mean2, x_invstd2, out_running_mean2, out_running_var2] +
-                                grads + grads2, mode='FAST_RUN')
+                                grads + grads2)
             # check if the abstract Ops have been replaced
             assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
                                               bn.AbstractBatchNormInference,
@@ -238,7 +238,7 @@ def test_batch_normalization_train_without_running_averages():
     # backward pass
     grads = T.grad(None, wrt=[x, scale, bias], known_grads={out: dy})
     # compile
-    f = theano.function([x, scale, bias, dy], [out, x_mean, x_invstd] + grads, mode='FAST_RUN')
+    f = theano.function([x, scale, bias, dy], [out, x_mean, x_invstd] + grads)
     # check if the abstract Ops have been replaced
     assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
                                       bn.AbstractBatchNormInference,
@@ -322,7 +322,7 @@ def test_batch_normalization_train_broadcast():
 
             # compile to compute all differences
             f = theano.function([x, scale, bias, running_mean, running_var],
-                                T.sum(sum(results)), mode='FAST_RUN')
+                                T.sum(sum(results)))
 
             # the paired ops are exactly the same, so the optimizer should have
             # collapsed the sum of differences to a constant zero
@@ -366,7 +366,7 @@ def test_batch_normalization_test():
             grads2 = T.grad(None, wrt=[x, scale, bias, mean, var], known_grads={out2: dy})
             # compile
             f = theano.function([x, scale, bias, mean, var, dy],
-                                [out, out2] + grads + grads2, mode='FAST_RUN')
+                                [out, out2] + grads + grads2)
             # check if the abstract Ops have been replaced
             assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
                                               bn.AbstractBatchNormInference,
@@ -407,8 +407,7 @@ def test_batch_normalization_broadcastable():
     grads_test = T.grad(None, wrt=[x, scale, bias], known_grads={out_test: dy})
     # compile
     f = theano.function([x, scale, bias, mean, var, dy],
-                        [out_train, x_mean, x_invstd, out_test] + grads_train + grads_test,
-                        mode='FAST_RUN')
+                        [out_train, x_mean, x_invstd, out_test] + grads_train + grads_test)
     assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
                                       bn.AbstractBatchNormInference,
                                       bn.AbstractBatchNormTrainGrad))
