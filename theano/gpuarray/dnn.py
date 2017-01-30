@@ -2574,7 +2574,7 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
     if epsilon < 1e-5:
         raise ValueError("epsilon must be at least 1e-5, got %f" % epsilon)
 
-    running_averages = (running_var is not None and running_var is not None)
+    running_averages = (running_mean is not None and running_var is not None)
 
     if ndim < 4:
         inputs = theano.tensor.shape_padright(inputs, 4 - ndim)

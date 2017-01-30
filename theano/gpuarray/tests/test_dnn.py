@@ -1439,7 +1439,8 @@ def test_dnn_batchnorm_train():
                                          mode=mode_with_gpu)
             f_ref = theano.function([x, scale, bias, running_mean, running_var, dy],
                                     [out_ref, x_mean_ref, x_invstd_ref,
-                                     out_running_mean_ref, out_running_var_ref] + grads_ref)
+                                     out_running_mean_ref, out_running_var_ref] + grads_ref,
+                                    mode=mode_without_gpu)
             # check if the abstract Ops have been replaced
             assert any([isinstance(n.op, dnn.GpuDnnBatchNorm) for n
                         in f_abstract.maker.fgraph.toposort()])
