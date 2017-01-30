@@ -327,9 +327,13 @@ def test_batch_normalization_train_broadcast():
             # the paired ops are exactly the same, so the optimizer should have
             # collapsed the sum of differences to a constant zero
             nodes = f.maker.fgraph.toposort()
-            assert len(nodes) == 1
-            assert isinstance(nodes[0].op, theano.compile.DeepCopyOp)
-            assert 0.0 == theano.tensor.get_scalar_constant_value(nodes[0].inputs[0])
+            if theano.config.mode != "FAST_COMPILE":
+                assert len(nodes) == 1
+                assert isinstance(nodes[0].op, theano.compile.DeepCopyOp)
+            inputs = [numpy.asarray(numpy.random.rand(*((4,)*n)), x.dtype)
+                      for n in [x.ndim, scale.ndim, bias.ndim,
+                                running_mean.ndim, running_var.ndim]]
+            assert 0.0 == f(*inputs)
 
 
 def test_batch_normalization_test():
