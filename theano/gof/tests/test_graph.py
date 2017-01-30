@@ -345,9 +345,11 @@ class TestAutoName:
         Variable.__count__ = count(autoname_id)
         r1 = tensor.constant(1.5)
         r2 = tensor.constant(1.5)
-        assert r1.auto_name == "auto_" + str(autoname_id)
+        assert r1.auto_name == "auto_" + str(autoname_id), (
+            r1.auto_name, "auto_" + str(autoname_id))
         # We reuse the same variable
-        assert r2.auto_name == "auto_" + str(autoname_id)
+        assert r2.auto_name == "auto_" + str(autoname_id), (
+            r2.auto_name, "auto_" + str(autoname_id))
         assert r1 is r2
 
         r3 = tensor.constant(1.6)
