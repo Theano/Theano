@@ -431,10 +431,10 @@ class AbstractBatchNormTrain(Op):
             output_types.append(scale.type())
         return Apply(self, inputs, output_types)
 
-    def grad(self, inputs, grads):
+    def L_op(self, inputs, outputs, grads):
         x, scale, bias, epsilon, running_average_factor = inputs[:5]
         dy = grads[0]
-        _, x_mean, x_invstd = self(*inputs)[:3]
+        _, x_mean, x_invstd = outputs[:3]
         disconnected_outputs = [
             theano.gradient.DisconnectedType()(),  # epsilon
             theano.gradient.DisconnectedType()()]  # running_average_factor

@@ -1390,13 +1390,13 @@ class GpuDnnPool(DnnBase):
             res.append((shape[0][4] + 2 * p[2] - w[2]) // s[2] + 1)
         return [res]
 
-    def grad(self, inp, grads):
+    def L_op(self, inp, outputs, grads):
         img, ws, stride, pad = inp
         grad, = grads
 
         grad = gpu_contiguous(grad)
 
-        out = self(img, ws, stride, pad)
+        out, = outputs
 
         g_out = GpuDnnPoolGrad(mode=self.mode)(img, out, grad, ws, stride, pad)
 
@@ -1592,10 +1592,10 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
         assert x.ndim == 4
         return Apply(self, [x], [x.type()])
 
-    def grad(self, inp, grads):
+    def L_op(self, inp, outputs, grads):
         x, = inp
         g_sm, = grads
-        sm = self(x)
+        sm, = outputs
         return [GpuDnnSoftmaxGrad(
                 self.algo,
                 self.mode
@@ -1730,10 +1730,10 @@ class GpuDnnBatchNorm(DnnBase):
             output_types.append(scale.type())
         return Apply(self, inputs, output_types)
 
-    def grad(self, inputs, grads):
+    def L_op(self, inputs, outputs, grads):
         x, scale, bias, epsilon, running_average_factor = inputs[:5]
         dy = grads[0]
-        _, x_mean, x_invstd = self(*inputs)[:3]
+        _, x_mean, x_invstd = outputs[:3]
         disconnected_outputs = [
             DisconnectedType()(),  # epsilon
             DisconnectedType()()]  # running_average_factor
