@@ -242,7 +242,10 @@ class GpuArrayType(Type):
 
             up_dtype = scalar.upcast(self.dtype, data.dtype)
             if up_dtype == self.dtype:
-                data = numpy.array(data, dtype=self.dtype, copy=False)
+                if not isinstance(data, gpuarray.GpuArray):
+                    data = numpy.array(data, dtype=self.dtype, copy=False)
+                else:
+                    data = gpuarray.array(data, dtype=self.dtype, copy=False)
             else:
                 raise TypeError("%s cannot store a value of dtype %s "
                                 "without risking loss of precision." %
