@@ -2005,28 +2005,3 @@ abstractconv_groupopt.register('local_abstractconv3d_gradinputs',
                                local_abstractconv3d_gradinputs_gemm, 30,
                                'conv_gemm',
                                'gpuarray', 'fast_compile', 'fast_run')
-
-
-# Register cuDNN batch normalization implementation
-abstract_batch_norm_groupopt = theano.gof.optdb.LocalGroupDB()
-abstract_batch_norm_groupopt.__name__ = "gpuarray_batchnorm_opts"
-register_opt('fast_compile')(abstract_batch_norm_groupopt)
-
-# cuDNN optimizations are only registered if cuDNN is available.
-# (we import these opts here instead of at the top of this file
-# to avoid a circular dependency problem with dnn)
-from .dnn import (local_abstract_batch_norm_train_cudnn,
-                  local_abstract_batch_norm_train_grad_cudnn,
-                  local_abstract_batch_norm_inference_cudnn)     # noqa: 402
-abstract_batch_norm_groupopt.register('local_abstract_batch_norm_train_dnn',
-                                      local_abstract_batch_norm_train_cudnn, 20,
-                                      'batchnorm_dnn',
-                                      'gpuarray', 'fast_compile', 'fast_run', 'cudnn')
-abstract_batch_norm_groupopt.register('local_abstract_batch_norm_train_grad_dnn',
-                                      local_abstract_batch_norm_train_grad_cudnn, 20,
-                                      'batchnorm_dnn',
-                                      'gpuarray', 'fast_compile', 'fast_run', 'cudnn')
-abstract_batch_norm_groupopt.register('local_abstract_batch_norm_inference_dnn',
-                                      local_abstract_batch_norm_inference_cudnn, 20,
-                                      'batchnorm_dnn',
-                                      'gpuarray', 'fast_compile', 'fast_run', 'cudnn')

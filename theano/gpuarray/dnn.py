@@ -3081,23 +3081,16 @@ def local_gpua_softmax_dnn_grad(op, ctx_name, inputs, outputs):
     return [out.dimshuffle(0, 2)]
 
 
-@local_optimizer([bn.AbstractBatchNormTrain])
-def local_abstract_batch_norm_train_cudnn(node):
-    if not isinstance(node.op, bn.AbstractBatchNormTrain):
-        return None
-
-    x, scale, bias, epsilon, running_average_factor = node.inputs[:5]
-    running_mean = node.inputs[5] if len(node.inputs) > 5 else None
-    running_var = node.inputs[6] if len(node.inputs) > 6 else None
-
-    # input on gpu?  TODO what about the output?
-    x_on_gpu = (isinstance(x.type, GpuArrayType) or
-                (x.owner and isinstance(x.owner.op, HostFromGpu)))
-    if not x_on_gpu:
-        return None
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([bn.AbstractBatchNormTrain])
+@register_opt2([bn.AbstractBatchNormTrain], 'cudnn', 'fast_compile')
+def local_abstract_batch_norm_train_cudnn(op, ctx_name, inputs, outputs):
+    x, scale, bias, epsilon, running_average_factor = inputs[:5]
+    running_mean = inputs[5] if len(inputs) > 5 else None
+    running_var = inputs[6] if len(inputs) > 6 else None
 
     # convert axes to cuDNN mode
-    axes = tuple(node.op.axes)
+    axes = tuple(op.axes)
     if axes == (0,):
         mode = 'per-activation'
     elif axes == (0,) + tuple(range(2, x.ndim)):
@@ -3116,7 +3109,7 @@ def local_abstract_batch_norm_train_cudnn(node):
     except theano.tensor.NotScalarConstantError:
         return None
 
-    ctx = infer_context_name(*node.inputs)
+    ctx = infer_context_name(*inputs)
     if not dnn_available(ctx):
         # TODO should this raise_no_cudnn?
         return None
@@ -3131,11 +3124,6 @@ def local_abstract_batch_norm_train_cudnn(node):
 
     results = list(dnn_batch_normalization_train(*inputs))
 
-    # If the original output was on CPU, we have to transfer it
-    for i in range(len(node.outputs)):
-        if isinstance(node.outputs[i].type, tensor.TensorType):
-            results[i] = tensor.as_tensor_variable(results[i])
-    # TODO copy_stack_trace?
     return results
 
 
@@ -3179,12 +3167,11 @@ def local_batch_norm_inference_inplace(node):
         return [GpuDnnBatchNormInference(mode=node.op.mode, inplace=True)(*node.inputs)]
 
 
-@local_optimizer([bn.AbstractBatchNormTrainGrad])
-def local_abstract_batch_norm_train_grad_cudnn(node):
-    if not isinstance(node.op, bn.AbstractBatchNormTrainGrad):
-        return None
-
-    x, dy, scale, x_mean, x_invstd, epsilon = node.inputs
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([bn.AbstractBatchNormTrainGrad])
+@register_opt2([bn.AbstractBatchNormTrainGrad], 'cudnn', 'fast_compile')
+def local_abstract_batch_norm_train_grad_cudnn(op, ctx_name, inputs, outputs):
+    x, dy, scale, x_mean, x_invstd, epsilon = inputs
 
     # input on gpu?  TODO what about the output?
     x_on_gpu = (isinstance(x.type, GpuArrayType) or
@@ -3195,7 +3182,7 @@ def local_abstract_batch_norm_train_grad_cudnn(node):
         return None
 
     # convert axes to cuDNN mode
-    axes = tuple(node.op.axes)
+    axes = tuple(op.axes)
     if axes == (0,):
         mode = 'per-activation'
     elif axes == (0,) + tuple(range(2, x.ndim)):
@@ -3226,7 +3213,7 @@ def local_abstract_batch_norm_train_grad_cudnn(node):
     if eps < 1e-5:
         return None
 
-    ctx = infer_context_name(*node.inputs)
+    ctx = infer_context_name(*inputs)
     if not dnn_available(ctx):
         # TODO should this raise_no_cudnn?
         return None
@@ -3248,36 +3235,21 @@ def local_abstract_batch_norm_train_grad_cudnn(node):
         g_wrt_scale = theano.tensor.reshape(g_wrt_scale, params_shape)
         g_wrt_bias = theano.tensor.reshape(g_wrt_bias, params_shape)
 
-    # If the original output was on CPU, we have to transfer it
-    if isinstance(node.outputs[0].type, tensor.TensorType):
-        g_wrt_inputs = tensor.as_tensor_variable(g_wrt_inputs)
-    if isinstance(node.outputs[1].type, tensor.TensorType):
-        g_wrt_scale = tensor.as_tensor_variable(g_wrt_scale)
-    if isinstance(node.outputs[2].type, tensor.TensorType):
-        g_wrt_bias = tensor.as_tensor_variable(g_wrt_bias)
-    # TODO copy_stack_trace?
     return [g_wrt_inputs, g_wrt_scale, g_wrt_bias]
 
 
-@local_optimizer([bn.AbstractBatchNormInference])
-def local_abstract_batch_norm_inference_cudnn(node):
-    if not isinstance(node.op, bn.AbstractBatchNormInference):
-        return None
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([bn.AbstractBatchNormInference])
+@register_opt2([bn.AbstractBatchNormInference], 'cudnn', 'fast_compile')
+def local_abstract_batch_norm_inference_cudnn(op, ctx_name, inputs, outputs):
+    x, scale, bias, estimated_mean, estimated_variance, epsilon = inputs
 
-    x, scale, bias, estimated_mean, estimated_variance, epsilon = node.inputs
-
-    axes = tuple(node.op.axes)
+    axes = tuple(op.axes)
     if axes == (0,):
         mode = 'per-activation'
     elif axes == (0,) + tuple(range(2, x.ndim)):
         mode = 'spatial'
     else:
-        return None
-
-    # input on gpu?  TODO what about the output?
-    x_on_gpu = (isinstance(x.type, GpuArrayType) or
-                (x.owner and isinstance(x.owner.op, HostFromGpu)))
-    if not x_on_gpu:
         return None
 
     try:
@@ -3287,7 +3259,7 @@ def local_abstract_batch_norm_inference_cudnn(node):
     if eps < 1e-5:
         return None
 
-    ctx = infer_context_name(*node.inputs)
+    ctx = infer_context_name(*inputs)
     if not dnn_available(ctx):
         # TODO should this raise_no_cudnn?
         return None
@@ -3300,9 +3272,4 @@ def local_abstract_batch_norm_inference_cudnn(node):
     out = dnn_batch_normalization_test(x, scale, bias, estimated_mean, estimated_variance,
                                        mode, eps)
 
-    # If the original output was on CPU, we have to transfer it
-    # TODO copy_stack_trace?
-    if isinstance(node.outputs[0].type, tensor.TensorType):
-        return [tensor.as_tensor_variable(out)]
-    else:
-        return [out]
+    return [out]
