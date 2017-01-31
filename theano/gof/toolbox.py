@@ -355,6 +355,7 @@ class ReplaceValidate(History, Validator):
                     raise
                 elif (s1 not in msg and s2 not in msg):
                     out = sys.stderr
+                    import pdb;pdb.set_trace()
                     print("<<!! BUG IN FGRAPH.REPLACE OR A LISTENER !!>>",
                           type(e), e, reason, file=out)
                 # this might fail if the error is in a listener:
