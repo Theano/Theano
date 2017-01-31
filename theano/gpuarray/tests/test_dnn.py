@@ -1505,7 +1505,7 @@ def test_dnn_batchnorm_train_without_running_averages():
         bn.batch_normalization_train(x, scale, bias, 'per-activation')
     # backward pass
     grads_gpu = T.grad(None, wrt=[x, scale, bias], known_grads={out_gpu: dy})
-    grads_abstract = T.grad(None, wrt=[x, scale, bias], known_grads={out_gpu: dy})
+    grads_abstract = T.grad(None, wrt=[x, scale, bias], known_grads={out_abstract: dy})
     # compile
     f_gpu = theano.function([x, scale, bias, dy],
                             [out_gpu, x_mean_gpu, x_invstd_gpu] +
