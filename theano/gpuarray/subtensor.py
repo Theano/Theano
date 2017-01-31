@@ -405,7 +405,7 @@ class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
     """
     def make_node(self, x, ilist):
         ctx_name = infer_context_name(x, ilist)
-        x_ = gpu_contiguous(as_gpuarray_variable(x, ctx_name))
+        x_ = as_gpuarray_variable(x, ctx_name)
 
         ilist__ = tensor.as_tensor_variable(ilist)
         if ilist__.type.dtype not in tensor.integer_dtypes:
