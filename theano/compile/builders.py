@@ -213,7 +213,7 @@ class OpFromGraph(gof.Op):
             name=None, **kwargs
     ):
         if not isinstance(outputs, list):
-            raise TypeError('outputs must be list, got %s' % type(outputs), outputs)
+            raise TypeError('outputs must be list, got %s' % type(outputs))
         for i in inputs + outputs:
             if not isinstance(i, gof.Variable):
                 raise TypeError(
@@ -297,7 +297,7 @@ class OpFromGraph(gof.Op):
         elif grad_op is None:
             all_grads_l = [inp.zeros_like() for inp in local_inputs]
             all_grads_ov_l = [self.ofg_null_t()] * inp_len
-        elif grad_op is 0:
+        elif type(grad_op) is int and grad_op == 0:
             all_grads_l = [inp.zeros_like() for inp in local_inputs]
             all_grads_ov_l = [self.ofg_discon_t()] * inp_len
         elif isinstance(grad_op, list):
