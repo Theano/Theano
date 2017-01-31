@@ -28,19 +28,20 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               assert_conv_shape)
 from theano.tensor.signal.pool import (
     Pool, MaxPoolGrad, AveragePoolGrad)
+from theano.tensor.nnet import bn
 from . import pygpu
 from .type import (get_context, gpu_context_type, list_contexts,
                    GpuArraySharedVariable)
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         gpu_contiguous, gpu_alloc_empty,
-                        empty_like, GpuArrayType)
+                        empty_like, GpuArrayType, HostFromGpu)
 from .elemwise import GpuElemwise
 
 # These don't exist in gpuarray
 # GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
 from .nnet import GpuSoftmax
 from .opt import (gpu_seqopt, register_opt, pool_db, pool_db2,
-                  op_lifter, register_opt2)
+                  op_lifter, register_opt2, register_inplace)
 
 from .opt_util import alpha_merge, output_merge, inplace_allocempty, pad_dims, unpad_dims
 
@@ -1389,13 +1390,13 @@ class GpuDnnPool(DnnBase):
             res.append((shape[0][4] + 2 * p[2] - w[2]) // s[2] + 1)
         return [res]
 
-    def grad(self, inp, grads):
+    def L_op(self, inp, outputs, grads):
         img, ws, stride, pad = inp
         grad, = grads
 
         grad = gpu_contiguous(grad)
 
-        out = self(img, ws, stride, pad)
+        out, = outputs
 
         g_out = GpuDnnPoolGrad(mode=self.mode)(img, out, grad, ws, stride, pad)
 
@@ -1591,10 +1592,10 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
         assert x.ndim == 4
         return Apply(self, [x], [x.type()])
 
-    def grad(self, inp, grads):
+    def L_op(self, inp, outputs, grads):
         x, = inp
         g_sm, = grads
-        sm = self(x)
+        sm, = outputs
         return [GpuDnnSoftmaxGrad(
                 self.algo,
                 self.mode
@@ -1646,48 +1647,131 @@ class GpuDnnBatchNorm(DnnBase):
     epsilon
         Epsilon value used in the batch normalization formula. Minimum allowed
         value is 1e-5 (imposed by cuDNN).
+    running_average_factor : float
+        Factor for updating the values or `running_mean` and `running_var`.
+        If the factor is close to one, the running averages will update quickly,
+        if the factor is close to zero it will update slowly.
+    running_mean : tensor or None
+        Previous value of the running mean. If this is given, the new value
+        ``running_mean * (1 - r_a_factor) + batch mean * r_a_factor``
+        will be returned as one of the outputs of this function.
+        `running_mean` and `running_var` should either both be given or
+        both be None.
+    running_var : tensor or None
+        Previous value of the running variance. If this is given, the new value
+        ``running_var * (1 - r_a_factor) + (m / (m - 1)) * batch var * r_a_factor``
+        will be returned as one of the outputs of this function,
+        where `m` is the product of lengths of the averaged-over dimensions.
+        `running_mean` and `running_var` should either both be given or
+        both be None.
     """
 
-    __props__ = ('mode',)
+    __props__ = ('mode', 'running_averages', 'inplace_running_mean',
+                 'inplace_running_var', 'inplace_output')
 
-    def __init__(self, mode='per-activation'):
+    def __init__(self, mode='per-activation', running_averages=False,
+                 inplace_running_mean=False, inplace_running_var=False,
+                 inplace_output=False):
         DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm.c'],
                          'dnn_batchnorm_op')
 
         assert (mode in ('per-activation', 'spatial'))
         self.mode = mode
+        self.running_averages = running_averages
+        self.inplace_output = inplace_output
+        self.inplace_running_mean = inplace_running_mean
+        self.inplace_running_var = inplace_running_var
+        self.destroy_map = {}
+        if self.inplace_output:
+            self.destroy_map[0] = [0]
+        if self.running_averages and self.inplace_running_mean:
+            self.destroy_map[3] = [5]
+        if self.running_averages and self.inplace_running_var:
+            self.destroy_map[4] = [6]
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'running_average_factor'):
+            self.running_average_factor = 0
+        if not hasattr(self, 'running_averages'):
+            self.running_averages = False
+        if not (hasattr(self, 'inplace_running_mean') and
+                hasattr(self, 'inplace_running_var') and
+                hasattr(self, 'inplace_output')):
+            self.inplace_running_mean = False
+            self.inplace_running_var = False
+            self.inplace_output = False
+            self.destroy_map = {}
 
     def get_op_params(self):
         params = []
+        if self.inplace_output:
+            params.append(('INPLACE_OUTPUT', '1'))
+        if self.running_averages:
+            params.append(('RUNNING_AVERAGES', '1'))
+            if self.inplace_running_mean:
+                params.append(('INPLACE_RUNNING_MEAN', '1'))
+            if self.inplace_running_var:
+                params.append(('INPLACE_RUNNING_VAR', '1'))
         params.append(('MODE', ("CUDNN_BATCHNORM_SPATIAL"
                                 if self.mode == "spatial"
                                 else "CUDNN_BATCHNORM_PER_ACTIVATION")))
         return params
 
     def infer_shape(self, node, shape):
-        return [shape[0], shape[1], shape[1]]
+        return [shape[0]] + [shape[1]] * (len(node.outputs) - 1)
 
-    def make_node(self, x, scale, bias, epsilon=1e-4):
+    def make_node(self, x, scale, bias, epsilon=1e-4,
+                  running_average_factor=0.1,
+                  running_mean=None, running_var=None):
+        assert x.ndim == scale.ndim == bias.ndim
+        assert x.ndim in (4, 5)
+        assert self.running_averages == (running_mean is not None) == (running_var is not None)
+        assert (running_mean is None or running_mean.ndim == x.ndim)
+        assert (running_var is None or running_var.ndim == x.ndim)
         ctx_name = infer_context_name(x, scale, bias)
         x = as_gpuarray_variable(x, ctx_name)
         scale = as_gpuarray_variable(scale, ctx_name)
         bias = as_gpuarray_variable(bias, ctx_name)
         epsilon = as_scalar(epsilon).astype('float64')
-        assert x.ndim == scale.ndim == bias.ndim
-        assert x.ndim in (4, 5)
-        return Apply(self, [x, scale, bias, epsilon], [x.type(), scale.type(), scale.type()])
+        running_average_factor = as_scalar(running_average_factor).astype('float64')
+        inputs = [x, scale, bias, epsilon, running_average_factor]
+        output_types = [x.type(), scale.type(), scale.type()]
+        if running_mean is not None and running_var is not None:
+            inputs.append(as_gpuarray_variable(running_mean, ctx_name))
+            inputs.append(as_gpuarray_variable(running_var, ctx_name))
+            output_types.append(scale.type())
+            output_types.append(scale.type())
+        return Apply(self, inputs, output_types)
 
-    def grad(self, inputs, grads):
-        x, scale, bias, epsilon = inputs
+    def L_op(self, inputs, outputs, grads):
+        x, scale, bias, epsilon, running_average_factor = inputs[:5]
         dy = grads[0]
-        _, x_mean, x_invstd = self(x, scale, bias, epsilon)
-        return GpuDnnBatchNormGrad(self.mode)(x, dy, scale, x_mean,
-                                              x_invstd, epsilon) + [DisconnectedType()()]
+        _, x_mean, x_invstd = outputs[:3]
+        disconnected_outputs = [
+            DisconnectedType()(),  # epsilon
+            DisconnectedType()()]  # running_average_factor
+        # Optional running_mean and running_var.
+        for i in range(5, len(inputs)):
+            disconnected_outputs.append(DisconnectedType()())
+        return GpuDnnBatchNormGrad(self.mode)(
+            x, dy, scale, x_mean, x_invstd, epsilon) + disconnected_outputs
 
     def connection_pattern(self, node):
-        # Specificy that epsilon is not connected to outputs.
-        return [[True, True, True], [True, True, True], [True, True, True],
-                [False, False, False]]
+        # Specificy that epsilon and running_average_factor are not connected to outputs.
+        patterns = [[True, True, True],     # x
+                    [True, True, True],     # scale
+                    [True, True, True],     # bias
+                    [False, False, False],  # epsilon
+                    [False, False, False]]  # running_average_factor
+        # Optional running_mean and running_var are only
+        # connected to their new values.
+        for i in range(5, len(node.inputs)):
+            patterns[0].append(True)
+            for pattern in patterns[1:]:
+                pattern.append(False)
+            patterns.append([False] * (3 + i - 5) + [True])
+        return patterns
 
 
 class GpuDnnBatchNormInference(DnnBase):
@@ -1706,17 +1790,27 @@ class GpuDnnBatchNormInference(DnnBase):
         value is 1e-5 (imposed by cuDNN).
     """
 
-    __props__ = ('mode',)
+    __props__ = ('mode', 'inplace')
 
-    def __init__(self, mode='per-activation'):
+    def __init__(self, mode='per-activation', inplace=False):
         DnnBase.__init__(self, ['dnn_batchnorm_base.c', 'dnn_batchnorm_inf.c'],
                          'dnn_batchnorm_op')
 
         assert (mode in ('per-activation', 'spatial'))
         self.mode = mode
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'inplace'):
+            self.inplace = False
 
     def get_op_params(self):
         params = []
+        if self.inplace:
+            params.append(('INPLACE_OUTPUT', '1'))
         params.append(('MODE', ("CUDNN_BATCHNORM_SPATIAL"
                                 if self.mode == "spatial"
                                 else "CUDNN_BATCHNORM_PER_ACTIVATION")))
@@ -2404,7 +2498,8 @@ class RNNBlock(object):
 
 
 def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
-                                  epsilon=1e-4):
+                                  epsilon=1e-4, running_average_factor=0.1,
+                                  running_mean=None, running_var=None):
     """
     Performs batch normalization of the given inputs, using the mean and
     variance of the inputs.
@@ -2424,6 +2519,23 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
     epsilon : float
         Epsilon value used in the batch normalization formula. Minimum allowed
         value is 1e-5 (imposed by cuDNN).
+    running_average_factor : float
+        Factor for updating the values or `running_mean` and `running_var`.
+        If the factor is close to one, the running averages will update quickly,
+        if the factor is close to zero it will update slowly.
+    running_mean : tensor or None
+        Previous value of the running mean. If this is given, the new value
+        ``running_mean * (1 - r_a_factor) + batch mean * r_a_factor``
+        will be returned as one of the outputs of this function.
+        `running_mean` and `running_var` should either both be given or
+        both be None.
+    running_var : tensor or None
+        Previous value of the running variance. If this is given, the new value
+        ``running_var * (1 - r_a_factor) + (m / (m - 1)) * batch var * r_a_factor``
+        will be returned as one of the outputs of this function,
+        where `m` is the product of lengths of the averaged-over dimensions.
+        `running_mean` and `running_var` should either both be given or
+        both be None.
 
     Returns
     -------
@@ -2431,8 +2543,14 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
         Batch-normalized inputs.
     mean : tensor
         Means of `inputs` across the normalization axes.
-    stdinv : tensor
+    invstd : tensor
         Inverse standard deviations of `inputs` across the normalization axes.
+    new_running_mean : tensor
+        New value of the running mean (only if both `running_mean` and
+        `running_var` were given).
+    new_running_var : tensor
+        New value of the running variance (only if both `running_var` and
+        `running_mean` were given).
 
     Notes
     -----
@@ -2444,31 +2562,77 @@ def dnn_batch_normalization_train(inputs, gamma, beta, mode='per-activation',
 
         axes = 0 if mode == 'per-activation' else (0, 2, 3)
         mean = inputs.mean(axes, keepdims=True)
-        stdinv = T.inv(T.sqrt(inputs.var(axes, keepdims=True) + epsilon))
-        out = (inputs - mean) * gamma * stdinv + beta
+        var = inputs.var(axes, keepdims=True)
+        invstd = T.inv(T.sqrt(var + epsilon))
+        out = (inputs - mean) * gamma * invstd + beta
+
+        m = T.cast(T.prod(inputs.shape) / T.prod(mean.shape), 'float32')
+        running_mean = running_mean * (1 - running_average_factor) + \\
+                       mean * running_average_factor
+        running_var = running_var * (1 - running_average_factor) + \\
+                      (m / (m - 1)) * var * running_average_factor
 
     For 5d tensors, the axes are (0, 2, 3, 4).
     """
     ndim = inputs.ndim
-    if ndim > 5:
-        raise ValueError("dnn_batch_normalization_train currently supports "
-                         "up to 5-dimensional tensors only, got %d" % ndim)
     if gamma.ndim != ndim or beta.ndim != ndim:
         raise ValueError("gamma and beta must be of the same dimensionality "
                          "as inputs; got %d and %d instead of %d" %
                          (gamma.ndim, beta.ndim, ndim))
+    if (running_mean is None) != (running_var is None):
+        raise ValueError("running_mean and running_var must either both be "
+                         "given or both be None")
+    if running_mean is not None and running_mean.ndim != ndim:
+        raise ValueError("running_mean must be of the same dimensionality "
+                         "as inputs; got %d instead of %d" %
+                         (running_mean.ndim, ndim))
+    if running_var is not None and running_var.ndim != ndim:
+        raise ValueError("running_var must be of the same dimensionality "
+                         "as inputs; got %d instead of %d" %
+                         (running_var.ndim, ndim))
     if epsilon < 1e-5:
         raise ValueError("epsilon must be at least 1e-5, got %f" % epsilon)
+
+    running_averages = (running_mean is not None and running_var is not None)
 
     if ndim < 4:
         inputs = theano.tensor.shape_padright(inputs, 4 - ndim)
         gamma = theano.tensor.shape_padright(gamma, 4 - ndim)
         beta = theano.tensor.shape_padright(beta, 4 - ndim)
-    batchnorm_op = GpuDnnBatchNorm(mode=mode)
-    result = tuple(batchnorm_op(gpu_contiguous(inputs), gpu_contiguous(gamma),
-                                gpu_contiguous(beta), epsilon=epsilon))
+        if running_averages:
+            running_mean = theano.tensor.shape_padright(running_mean, 4 - ndim)
+            running_var = theano.tensor.shape_padright(running_var, 4 - ndim)
+    elif ndim > 5:
+        inputs_shape = inputs.shape
+        params_shape = gamma.shape
+        inputs = theano.tensor.flatten(inputs, 5)
+        gamma = theano.tensor.flatten(gamma, 5)
+        beta = theano.tensor.flatten(beta, 5)
+        if running_averages:
+            running_mean = theano.tensor.flatten(running_mean, 5)
+            running_var = theano.tensor.flatten(running_var, 5)
+
+    batchnorm_op = GpuDnnBatchNorm(mode=mode, running_averages=running_averages)
+    if running_averages:
+        out, mean, invstd, new_running_mean, new_running_var = batchnorm_op(
+            gpu_contiguous(inputs), gpu_contiguous(gamma),
+            gpu_contiguous(beta), epsilon=epsilon,
+            running_average_factor=running_average_factor,
+            running_mean=gpu_contiguous(running_mean),
+            running_var=gpu_contiguous(running_var))
+        if new_running_mean.broadcastable != running_mean.broadcastable:
+            new_running_mean = tensor.patternbroadcast(new_running_mean, running_mean.broadcastable)
+        if new_running_var.broadcastable != running_var.broadcastable:
+            new_running_var = tensor.patternbroadcast(new_running_var, running_var.broadcastable)
+        result = (out, mean, invstd, new_running_mean, new_running_var)
+    else:
+        result = batchnorm_op(gpu_contiguous(inputs), gpu_contiguous(gamma),
+                              gpu_contiguous(beta), epsilon=epsilon)
     if ndim < 4:
         result = tuple(theano.tensor.flatten(r, ndim) for r in result)
+    elif ndim > 5:
+        result = (theano.tensor.reshape(result[0], inputs_shape),) + tuple(
+            theano.tensor.reshape(r, params_shape) for r in result[1:])
     return result
 
 
@@ -2521,9 +2685,6 @@ def dnn_batch_normalization_test(inputs, gamma, beta, mean, var,
     For 5d tensors, the axes would be (0, 2, 3, 4).
     """
     ndim = inputs.ndim
-    if ndim > 5:
-        raise ValueError("dnn_batch_normalization_test currently supports "
-                         "up to 5-dimensional tensors only, got %d" % ndim)
     if gamma.ndim != ndim or beta.ndim != ndim:
         raise ValueError("gamma and beta must be of the same dimensionality "
                          "as inputs; got %d and %d instead of %d" %
@@ -2541,12 +2702,21 @@ def dnn_batch_normalization_test(inputs, gamma, beta, mean, var,
         beta = theano.tensor.shape_padright(beta, 4 - ndim)
         mean = theano.tensor.shape_padright(mean, 4 - ndim)
         var = theano.tensor.shape_padright(var, 4 - ndim)
+    elif ndim > 5:
+        inputs_shape = inputs.shape
+        inputs = theano.tensor.flatten(inputs, 5)
+        gamma = theano.tensor.flatten(gamma, 5)
+        beta = theano.tensor.flatten(beta, 5)
+        mean = theano.tensor.flatten(mean, 5)
+        var = theano.tensor.flatten(var, 5)
     batchnorm_op = GpuDnnBatchNormInference(mode=mode)
     result = batchnorm_op(gpu_contiguous(inputs), gpu_contiguous(gamma),
                           gpu_contiguous(beta), gpu_contiguous(mean),
                           gpu_contiguous(var), epsilon=epsilon)
     if ndim < 4:
         result = theano.tensor.flatten(result, ndim)
+    elif ndim > 5:
+        result = theano.tensor.reshape(result, inputs_shape)
     return result
 
 
@@ -2928,3 +3098,197 @@ def local_gpua_softmax_dnn_grad(op, ctx_name, inputs, outputs):
     out = GpuDnnSoftmaxGrad('accurate', 'instance')(
         gpu_contiguous(ins[0]), gpu_contiguous(ins[1]))
     return [out.dimshuffle(0, 2)]
+
+
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([bn.AbstractBatchNormTrain])
+@register_opt2([bn.AbstractBatchNormTrain], 'cudnn', 'fast_compile')
+def local_abstract_batch_norm_train_cudnn(op, ctx_name, inputs, outputs):
+    x, scale, bias, epsilon, running_average_factor = inputs[:5]
+    running_mean = inputs[5] if len(inputs) > 5 else None
+    running_var = inputs[6] if len(inputs) > 6 else None
+
+    # convert axes to cuDNN mode
+    axes = tuple(op.axes)
+    if axes == (0,):
+        mode = 'per-activation'
+    elif axes == (0,) + tuple(range(2, x.ndim)):
+        mode = 'spatial'
+    else:
+        return None
+
+    try:
+        eps = theano.tensor.get_scalar_constant_value(epsilon)
+    except theano.tensor.NotScalarConstantError:
+        return None
+    if eps < 1e-5:
+        return None
+    try:
+        running_average_factor = theano.tensor.get_scalar_constant_value(running_average_factor)
+    except theano.tensor.NotScalarConstantError:
+        return None
+
+    ctx = infer_context_name(*inputs)
+    if not dnn_available(ctx):
+        # TODO should this raise_no_cudnn?
+        return None
+    x = as_gpuarray_variable(x, context_name=ctx)
+    scale = as_gpuarray_variable(scale, context_name=ctx)
+    bias = as_gpuarray_variable(bias, context_name=ctx)
+
+    inputs = [x, scale, bias, mode, eps, running_average_factor]
+    if running_mean is not None and running_var is not None:
+        inputs.append(running_mean)
+        inputs.append(running_var)
+
+    results = list(dnn_batch_normalization_train(*inputs))
+
+    return results
+
+
+@register_inplace()
+@local_optimizer([GpuDnnBatchNorm], inplace=True)
+def local_batch_norm_inplace_output(node):
+    if isinstance(node.op, GpuDnnBatchNorm) and not node.op.inplace_output:
+        return GpuDnnBatchNorm(mode=node.op.mode,
+                               running_averages=node.op.running_averages,
+                               inplace_running_mean=node.op.inplace_running_mean,
+                               inplace_running_var=node.op.inplace_running_var,
+                               inplace_output=True)(*node.inputs)
+
+
+@register_inplace()
+@local_optimizer([GpuDnnBatchNorm], inplace=True)
+def local_batch_norm_inplace_running_mean(node):
+    if isinstance(node.op, GpuDnnBatchNorm) and node.op.running_averages and not node.op.inplace_running_mean:
+        return GpuDnnBatchNorm(mode=node.op.mode,
+                               running_averages=node.op.running_averages,
+                               inplace_running_mean=True,
+                               inplace_running_var=node.op.inplace_running_var,
+                               inplace_output=node.op.inplace_output)(*node.inputs)
+
+
+@register_inplace()
+@local_optimizer([GpuDnnBatchNorm], inplace=True)
+def local_batch_norm_inplace_running_var(node):
+    if isinstance(node.op, GpuDnnBatchNorm) and node.op.running_averages and not node.op.inplace_running_var:
+        return GpuDnnBatchNorm(mode=node.op.mode,
+                               running_averages=node.op.running_averages,
+                               inplace_running_mean=node.op.inplace_running_mean,
+                               inplace_running_var=True,
+                               inplace_output=node.op.inplace_output)(*node.inputs)
+
+
+@register_inplace()
+@local_optimizer([GpuDnnBatchNormInference], inplace=True)
+def local_batch_norm_inference_inplace(node):
+    if isinstance(node.op, GpuDnnBatchNormInference) and not node.op.inplace:
+        return [GpuDnnBatchNormInference(mode=node.op.mode, inplace=True)(*node.inputs)]
+
+
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([bn.AbstractBatchNormTrainGrad])
+@register_opt2([bn.AbstractBatchNormTrainGrad], 'cudnn', 'fast_compile')
+def local_abstract_batch_norm_train_grad_cudnn(op, ctx_name, inputs, outputs):
+    x, dy, scale, x_mean, x_invstd, epsilon = inputs
+
+    # input on gpu?  TODO what about the output?
+    x_on_gpu = (isinstance(x.type, GpuArrayType) or
+                (x.owner and isinstance(x.owner.op, HostFromGpu)))
+    dy_on_gpu = (isinstance(dy.type, GpuArrayType) or
+                 (dy.owner and isinstance(dy.owner.op, HostFromGpu)))
+    if not (x_on_gpu or dy_on_gpu):
+        return None
+
+    # convert axes to cuDNN mode
+    axes = tuple(op.axes)
+    if axes == (0,):
+        mode = 'per-activation'
+    elif axes == (0,) + tuple(range(2, x.ndim)):
+        mode = 'spatial'
+    else:
+        return None
+
+    ndim = x.ndim
+    if ndim < 4:
+        x = theano.tensor.shape_padright(x, 4 - ndim)
+        dy = theano.tensor.shape_padright(dy, 4 - ndim)
+        scale = theano.tensor.shape_padright(scale, 4 - ndim)
+        x_mean = theano.tensor.shape_padright(x_mean, 4 - ndim)
+        x_invstd = theano.tensor.shape_padright(x_invstd, 4 - ndim)
+    elif ndim > 5:
+        x_shape = x.shape
+        params_shape = scale.shape
+        x = theano.tensor.flatten(x, 5)
+        dy = theano.tensor.flatten(dy, 5)
+        scale = theano.tensor.flatten(scale, 5)
+        x_mean = theano.tensor.flatten(x_mean, 5)
+        x_invstd = theano.tensor.flatten(x_invstd, 5)
+
+    try:
+        eps = theano.tensor.get_scalar_constant_value(epsilon)
+    except theano.tensor.NotScalarConstantError:
+        return None
+    if eps < 1e-5:
+        return None
+
+    ctx = infer_context_name(*inputs)
+    if not dnn_available(ctx):
+        # TODO should this raise_no_cudnn?
+        return None
+    x = as_gpuarray_variable(x, context_name=ctx)
+    dy = as_gpuarray_variable(dy, context_name=ctx)
+    scale = as_gpuarray_variable(scale, context_name=ctx)
+    x_mean = as_gpuarray_variable(x_mean, context_name=ctx)
+    x_invstd = as_gpuarray_variable(x_invstd, context_name=ctx)
+
+    g_wrt_inputs, g_wrt_scale, g_wrt_bias = \
+        GpuDnnBatchNormGrad(mode)(x, dy, scale, x_mean, x_invstd, eps)
+
+    if ndim < 4:
+        g_wrt_inputs = theano.tensor.flatten(g_wrt_inputs, ndim)
+        g_wrt_scale = theano.tensor.flatten(g_wrt_scale, ndim)
+        g_wrt_bias = theano.tensor.flatten(g_wrt_bias, ndim)
+    elif ndim > 5:
+        g_wrt_inputs = theano.tensor.reshape(g_wrt_inputs, x_shape)
+        g_wrt_scale = theano.tensor.reshape(g_wrt_scale, params_shape)
+        g_wrt_bias = theano.tensor.reshape(g_wrt_bias, params_shape)
+
+    return [g_wrt_inputs, g_wrt_scale, g_wrt_bias]
+
+
+@register_opt('cudnn', 'fast_compile')
+@op_lifter([bn.AbstractBatchNormInference])
+@register_opt2([bn.AbstractBatchNormInference], 'cudnn', 'fast_compile')
+def local_abstract_batch_norm_inference_cudnn(op, ctx_name, inputs, outputs):
+    x, scale, bias, estimated_mean, estimated_variance, epsilon = inputs
+
+    axes = tuple(op.axes)
+    if axes == (0,):
+        mode = 'per-activation'
+    elif axes == (0,) + tuple(range(2, x.ndim)):
+        mode = 'spatial'
+    else:
+        return None
+
+    try:
+        eps = theano.tensor.get_scalar_constant_value(epsilon)
+    except theano.tensor.NotScalarConstantError:
+        return None
+    if eps < 1e-5:
+        return None
+
+    ctx = infer_context_name(*inputs)
+    if not dnn_available(ctx):
+        # TODO should this raise_no_cudnn?
+        return None
+    x = as_gpuarray_variable(x, context_name=ctx)
+    scale = as_gpuarray_variable(scale, context_name=ctx)
+    bias = as_gpuarray_variable(bias, context_name=ctx)
+    estimated_mean = as_gpuarray_variable(estimated_mean, context_name=ctx)
+    estimated_variance = as_gpuarray_variable(estimated_variance, context_name=ctx)
+
+    out = dnn_batch_normalization_test(x, scale, bias, estimated_mean, estimated_variance,
+                                       mode, eps)
+
+    return [out]

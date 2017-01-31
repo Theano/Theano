@@ -10,6 +10,9 @@
 .. moduleauthor:: LISA
 
 
-.. seealso:: cuDNN batch normalization: :class:`theano.gpuarray.dnn.dnn_batch_normalization_train`, :class:`theano.gpuarray.dnn.dnn_batch_normalization_test>`. They must be added manually as they do not have the same user interface.
+.. autofunction:: theano.tensor.nnet.bn.batch_normalization_train
+.. autofunction:: theano.tensor.nnet.bn.batch_normalization_test
+
+.. seealso:: cuDNN batch normalization: :class:`theano.gpuarray.dnn.dnn_batch_normalization_train`, :class:`theano.gpuarray.dnn.dnn_batch_normalization_test>`.
 
 .. autofunction:: theano.tensor.nnet.bn.batch_normalization
