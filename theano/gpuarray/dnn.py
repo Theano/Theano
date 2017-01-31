@@ -87,10 +87,6 @@ def _make_handle(ctx):
     return handle
 
 
-def raise_no_cudnn(msg="cuDNN is required for convolution and pooling"):
-    raise RuntimeError(msg)
-
-
 def _dnn_check_compile():
     preambule = """
 #include <stdio.h>
@@ -2733,7 +2729,7 @@ def local_abstractconv_cudnn_graph(op, context_name, inputs, outputs):
     inp2 = inputs[1]
 
     if not dnn_available(inp1.type.context_name):
-        raise_no_cudnn()
+        return
 
     if op.filter_flip:
         conv_mode = 'conv'
@@ -2776,7 +2772,7 @@ def local_abstractconv3d_cudnn_graph(op, context_name, inputs, outputs):
     inp2 = inputs[1]
 
     if not dnn_available(inp1.type.context_name):
-        raise_no_cudnn()
+        return
 
     if op.filter_flip:
         conv_mode = 'conv'
@@ -2902,7 +2898,7 @@ def local_dnn_convi_output_merge(node, *inputs):
 
 def local_gpua_pool_dnn_alternative(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
-        raise_no_cudnn()
+        return
     if not op.ignore_border:
         return
     img, ws, stride, pad = inputs
@@ -2931,7 +2927,7 @@ pool_db2.register("local_gpua_pool_dnn_alternative",
 
 def local_gpua_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
-        raise_no_cudnn()
+        return
     if not op.ignore_border:
         return
     inp, out, out_grad, ws, stride, pad = inputs
@@ -2975,7 +2971,7 @@ pool_db2.register("local_gpua_pool_dnn_grad_stride",
 
 def local_gpua_avg_pool_dnn_grad_stride(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
-        raise_no_cudnn()
+        return
     if not op.ignore_border:
         return
     inp, out_grad, ws, stride, pad = inputs
@@ -3018,7 +3014,7 @@ pool_db2.register("local_gpua_avg_pool_dnn_grad_stride",
 def local_softmax_dnn(node):
     if isinstance(node.op, GpuSoftmax):
         if not dnn_available(node.outputs[0].type.context_name):
-            raise_no_cudnn()
+            return
         ins = node.inputs[0].dimshuffle(0, 1, 'x', 'x')
         ins = gpu_contiguous(ins)
         out = GpuDnnSoftmax('accurate', 'channel')(ins)
@@ -3037,7 +3033,7 @@ def local_log_softmax_dnn(node):
             len(node.inputs[0].clients) == 1):
         if version(raises=False) < 3000:
             # No log-softmax before cudnn v3
-            raise_no_cudnn("Need cuDNN v3 for LogSoftmax")
+            return
         softmax_node = node.inputs[0].owner
         new_softmax = GpuDnnSoftmax('log', softmax_node.op.mode)
         return [new_softmax(softmax_node.inputs[0])]
@@ -3051,9 +3047,8 @@ def local_gpua_logsoftmax_to_dnn(op, ctx_name, inputs, outputs):
     inp = inputs[0]
     if inp.ndim != 2:
         return
-    if not dnn_available(ctx_name) or version(raises=False) < 3000:
-        # No log-softmax before cudnn v3
-        raise_no_cudnn("Need cuDNN v3 for LogSoftmax")
+    if not dnn_available(ctx_name):
+        return
 
     inp = inp.dimshuffle(0, 1, 'x', 'x')
     inp.tag.context_name = ctx_name
@@ -3087,7 +3082,7 @@ gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
 @register_opt2([SoftmaxGrad], 'cudnn', 'fast_compile')
 def local_gpua_softmax_dnn_grad(op, ctx_name, inputs, outputs):
     if not dnn_available(ctx_name):
-        raise_no_cudnn("cuDNN needed for SoftmaxGrad")
+        return
     ins = []
     for n in inputs:
         n = as_gpuarray_variable(n, ctx_name)
@@ -3127,8 +3122,7 @@ def local_abstract_batch_norm_train_cudnn(op, ctx_name, inputs, outputs):
 
     ctx = infer_context_name(*inputs)
     if not dnn_available(ctx):
-        # TODO should this raise_no_cudnn?
-        return None
+        return
     x = as_gpuarray_variable(x, context_name=ctx)
     scale = as_gpuarray_variable(scale, context_name=ctx)
     bias = as_gpuarray_variable(bias, context_name=ctx)
@@ -3228,8 +3222,7 @@ def local_abstract_batch_norm_train_grad_cudnn(op, ctx_name, inputs, outputs):
 
     ctx = infer_context_name(*inputs)
     if not dnn_available(ctx):
-        # TODO should this raise_no_cudnn?
-        return None
+        return
     x = as_gpuarray_variable(x, context_name=ctx)
     dy = as_gpuarray_variable(dy, context_name=ctx)
     scale = as_gpuarray_variable(scale, context_name=ctx)
@@ -3271,8 +3264,7 @@ def local_abstract_batch_norm_inference_cudnn(op, ctx_name, inputs, outputs):
 
     ctx = infer_context_name(*inputs)
     if not dnn_available(ctx):
-        # TODO should this raise_no_cudnn?
-        return None
+        return
     x = as_gpuarray_variable(x, context_name=ctx)
     scale = as_gpuarray_variable(scale, context_name=ctx)
     bias = as_gpuarray_variable(bias, context_name=ctx)
