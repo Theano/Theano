@@ -28,7 +28,6 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               assert_conv_shape)
 from theano.tensor.signal.pool import (
     Pool, MaxPoolGrad, AveragePoolGrad)
-from theano.tensor.nnet import bn
 from . import pygpu
 from .type import (get_context, gpu_context_type, list_contexts,
                    GpuArraySharedVariable)
