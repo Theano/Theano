@@ -5,11 +5,11 @@ import os
 import sys
 
 if sys.platform == 'win32':
-    config_cxx = 'cxx='
+    config_for_theano_cache_script = 'cxx=,device=cpu'
     theano_flags = os.environ['THEANO_FLAGS'] if 'THEANO_FLAGS' in os.environ else ''
     if theano_flags:
         theano_flags += ','
-    theano_flags += config_cxx
+    theano_flags += config_for_theano_cache_script
     os.environ['THEANO_FLAGS'] = theano_flags
 
 import theano
