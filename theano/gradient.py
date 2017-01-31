@@ -1201,24 +1201,24 @@ def _populate_grad_dict(var_to_app_to_idx,
                         is_zero = _is_zero(term)
                         assert is_zero in ['yes', 'no', 'maybe']
                         if is_zero == 'maybe':
-                            msg = "%s.grad returned %s of type %s for input" \
-                                " %d. This input's only connections to " \
-                                "the cost through this op are via " \
-                                "integer-valued outputs so it should be " \
-                                "NullType, DisconnectedType, or some form " \
-                                "of zeros. It is not NullType or " \
-                                "DisconnectedType and theano can't " \
-                                "simplify it to a constant, so it's not " \
-                                "verifiably zeros."
+                            msg = ("%s.grad returned %s of type %s for input"
+                                   " %d. This input's only connections to "
+                                   "the cost through this op are via "
+                                   "integer-valued outputs so it should be "
+                                   "NullType, DisconnectedType, or some form "
+                                   "of zeros. It is not NullType or "
+                                   "DisconnectedType and theano can't "
+                                   "simplify it to a constant, so it's not "
+                                   "verifiably zeros.")
 
                             msg %= (node.op, term, type(term), i)
 
                         elif is_zero == 'no':
-                            msg = "%s.grad returned %s of type %s for input" \
-                                " %d. Since this input is only connected " \
-                                "to integer-valued outputs, it should " \
-                                "evaluate to zeros, but it evaluates to" \
-                                "%s."
+                            msg = ("%s.grad returned %s of type %s for input"
+                                   " %d. Since this input is only connected "
+                                   "to integer-valued outputs, it should "
+                                   "evaluate to zeros, but it evaluates to"
+                                   "%s.")
 
                             msg %= (node.op, term, type(term), i,
                                     theano.get_scalar_constant_value(term))
@@ -1240,24 +1240,23 @@ def _populate_grad_dict(var_to_app_to_idx,
                             ov.type, DisconnectedType)
 
                 if actually_connected and not connected:
-                    msg = "%s.grad returned %s of type %s for input %d." \
-                        " Expected DisconnectedType instance based on " \
-                        " the output of the op's connection_pattern " \
-                        "method."
+                    msg = ("%s.grad returned %s of type %s for input %d."
+                           " Expected DisconnectedType instance based on "
+                           " the output of the op's connection_pattern "
+                           "method.")
                     msg %= (str(node.op), str(ig), str(ig.type), i)
                     raise TypeError(msg)
 
                 elif connected and not actually_connected:
-                    msg = "%s.grad returned DisconnectedType for input" \
-                        " %d."
-                    msg = msg % (str(node.op), i)
+                    msg = "%s.grad returned DisconnectedType for input %d."
+                    msg %= (str(node.op), i)
                     if hasattr(node.op, 'connection_pattern'):
-                        msg += ' Its connection_pattern method does not' \
-                            ' allow this.'
+                        msg += (' Its connection_pattern method does not'
+                                ' allow this.')
                         raise TypeError(msg)
                     else:
-                        msg += ' You may want to implement a ' \
-                            'connection_pattern method for it.'
+                        msg += (' You may want to implement a '
+                                'connection_pattern method for it.')
                         warnings.warn(msg)
 
             # cache the result
