@@ -1533,6 +1533,44 @@ def test_dnn_batchnorm_train_without_running_averages():
     f_abstract(X, Scale, Bias, Dy)
 
 
+def test_without_dnn_batchnorm_train_without_running_averages():
+    # compile and run batch_normalization_train without running averages
+    # But disable cudnn and make sure it run on the GPU.
+    utt.seed_rng()
+
+    x, scale, bias, dy = T.tensor4('x'), T.tensor4('scale'), T.tensor4('bias'), T.tensor4('dy')
+    data_shape = (5, 10, 30, 25)
+    param_shape = (1, 10, 30, 25)
+
+    # forward pass
+    out_abstract, x_mean_abstract, x_invstd_abstract = \
+        bn.batch_normalization_train(x, scale, bias, 'per-activation')
+    # backward pass
+    grads_abstract = T.grad(None, wrt=[x, scale, bias], known_grads={out_abstract: dy})
+    # compile
+    f_abstract = theano.function([x, scale, bias, dy],
+                                 [out_abstract, x_mean_abstract, x_invstd_abstract] +
+                                 grads_abstract,
+                                 mode=mode_with_gpu)
+    # check if the abstract Ops have been replaced
+    assert not any([isinstance(n.op, dnn.GpuDnnBatchNorm)
+                    for n in f_abstract.maker.fgraph.toposort()])
+    assert not any([isinstance(n.op, dnn.GpuDnnBatchNormGrad)
+                    for n in f_abstract.maker.fgraph.toposort()])
+    assert not any([isinstance(n.op, (bn.AbstractBatchNormTrain,
+                                      bn.AbstractBatchNormInference,
+                                      bn.AbstractBatchNormTrainGrad))
+                    for n in f_abstract.maker.fgraph.toposort()])
+    assert any([isinstance(n.op, dnn.GpuElemwise)
+                for n in f_abstract.maker.fgraph.toposort()])
+    # run
+    X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
+    Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
+    Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    f_abstract(X, Scale, Bias, Dy)
+
+
 def test_dnn_batchnorm_train_inplace():
     # test inplace_running_mean and inplace_running_var
     if not dnn.dnn_available(test_ctx_name):

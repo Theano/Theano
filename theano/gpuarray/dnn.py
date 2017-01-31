@@ -3100,9 +3100,6 @@ def local_gpua_softmax_dnn_grad(op, ctx_name, inputs, outputs):
     return [out.dimshuffle(0, 2)]
 
 
-@register_opt('cudnn', 'fast_compile')
-@op_lifter([bn.AbstractBatchNormTrain])
-@register_opt2([bn.AbstractBatchNormTrain], 'cudnn', 'fast_compile')
 def local_abstract_batch_norm_train_cudnn(op, ctx_name, inputs, outputs):
     x, scale, bias, epsilon, running_average_factor = inputs[:5]
     running_mean = inputs[5] if len(inputs) > 5 else None
@@ -3186,9 +3183,6 @@ def local_batch_norm_inference_inplace(node):
         return [GpuDnnBatchNormInference(mode=node.op.mode, inplace=True)(*node.inputs)]
 
 
-@register_opt('cudnn', 'fast_compile')
-@op_lifter([bn.AbstractBatchNormTrainGrad])
-@register_opt2([bn.AbstractBatchNormTrainGrad], 'cudnn', 'fast_compile')
 def local_abstract_batch_norm_train_grad_cudnn(op, ctx_name, inputs, outputs):
     x, dy, scale, x_mean, x_invstd, epsilon = inputs
 
@@ -3257,9 +3251,6 @@ def local_abstract_batch_norm_train_grad_cudnn(op, ctx_name, inputs, outputs):
     return [g_wrt_inputs, g_wrt_scale, g_wrt_bias]
 
 
-@register_opt('cudnn', 'fast_compile')
-@op_lifter([bn.AbstractBatchNormInference])
-@register_opt2([bn.AbstractBatchNormInference], 'cudnn', 'fast_compile')
 def local_abstract_batch_norm_inference_cudnn(op, ctx_name, inputs, outputs):
     x, scale, bias, estimated_mean, estimated_variance, epsilon = inputs
 
