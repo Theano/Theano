@@ -330,7 +330,7 @@ def test_batch_normalization_train_broadcast():
             if theano.config.mode != "FAST_COMPILE":
                 assert len(nodes) == 1
                 assert isinstance(nodes[0].op, theano.compile.DeepCopyOp)
-            inputs = [numpy.asarray(numpy.random.rand(*((4,)*n)), x.dtype)
+            inputs = [numpy.asarray(numpy.random.rand(*((4,) * n)), x.dtype)
                       for n in [x.ndim, scale.ndim, bias.ndim,
                                 running_mean.ndim, running_var.ndim]]
             assert 0.0 == f(*inputs)
