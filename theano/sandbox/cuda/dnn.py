@@ -2447,6 +2447,11 @@ class GpuDnnBatchNormInference(GpuDnnBatchNormBase):
         if self.inplace:
             self.destroy_map = {0: [0]}
 
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'inplace'):
+            self.inplace = False
+
     def get_op_params(self):
         params = []
         if self.inplace:
@@ -2582,9 +2587,9 @@ class GpuDnnBatchNorm(GpuDnnBatchNormBase):
     Note: scale and bias must follow the same tensor layout!
     """
 
-    __props__ = ('mode', 'epsilon', 'running_averages',
-                 'inplace_running_mean', 'inplace_running_var',
-                 'inplace_output')
+    __props__ = ('mode', 'epsilon', 'running_average_factor',
+                 'running_averages', 'inplace_running_mean',
+                 'inplace_running_var', 'inplace_output')
     tensor_descs = ['bn_input', 'bn_output', 'bn_params']
 
     def __init__(self, mode='per-activation', epsilon=1e-4,
@@ -2604,6 +2609,20 @@ class GpuDnnBatchNorm(GpuDnnBatchNormBase):
             self.destroy_map[3] = [3]
         if self.running_averages and self.inplace_running_var:
             self.destroy_map[4] = [4]
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'running_average_factor'):
+            self.running_average_factor = 0
+        if not hasattr(self, 'running_averages'):
+            self.running_averages = False
+        if not (hasattr(self, 'inplace_running_mean') and
+                hasattr(self, 'inplace_running_var') and
+                hasattr(self, 'inplace_output')):
+            self.inplace_running_mean = False
+            self.inplace_running_var = False
+            self.inplace_output = False
+            self.destroy_map = {}
 
     def get_op_params(self):
         params = []

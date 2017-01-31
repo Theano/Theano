@@ -1689,6 +1689,20 @@ class GpuDnnBatchNorm(DnnBase):
         if self.running_averages and self.inplace_running_var:
             self.destroy_map[4] = [6]
 
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'running_average_factor'):
+            self.running_average_factor = 0
+        if not hasattr(self, 'running_averages'):
+            self.running_averages = False
+        if not (hasattr(self, 'inplace_running_mean') and
+                hasattr(self, 'inplace_running_var') and
+                hasattr(self, 'inplace_output')):
+            self.inplace_running_mean = False
+            self.inplace_running_var = False
+            self.inplace_output = False
+            self.destroy_map = {}
+
     def get_op_params(self):
         params = []
         if self.inplace_output:
@@ -1787,6 +1801,11 @@ class GpuDnnBatchNormInference(DnnBase):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'inplace'):
+            self.inplace = False
 
     def get_op_params(self):
         params = []
