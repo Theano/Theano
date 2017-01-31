@@ -1551,7 +1551,7 @@ def test_without_dnn_batchnorm_train_without_running_averages():
     f_abstract = theano.function([x, scale, bias, dy],
                                  [out_abstract, x_mean_abstract, x_invstd_abstract] +
                                  grads_abstract,
-                                 mode=mode_with_gpu)
+                                 mode=mode_with_gpu.excluding('cudnn'))
     # check if the abstract Ops have been replaced
     assert not any([isinstance(n.op, dnn.GpuDnnBatchNorm)
                     for n in f_abstract.maker.fgraph.toposort()])
