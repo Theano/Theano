@@ -1451,7 +1451,7 @@ def test_dnn_batchnorm_train():
                                               bn.AbstractBatchNormTrainGrad)) for n
                             in f_abstract.maker.fgraph.toposort()])
             # run
-            for data_shape in ((5, 10, 30, 40, 10, 5), (4, 3, 1, 1, 1, 1), (1, 1, 5, 5, 5, 5)):
+            for data_shape in ((5, 10, 30, 4, 10, 5), (4, 3, 1, 1, 1, 1), (1, 1, 5, 5, 5, 5)):
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes else s
                                     for d, s in enumerate(data_shape))
@@ -1666,7 +1666,7 @@ def test_batchnorm_inference():
                                               bn.AbstractBatchNormTrainGrad)) for n
                             in f_abstract.maker.fgraph.toposort()])
             # run
-            for data_shape in ((10, 20, 30, 40, 10, 5), (4, 3, 1, 1, 1, 1), (1, 1, 5, 5, 5, 5)):
+            for data_shape in ((10, 2, 30, 4, 10, 5), (4, 3, 1, 1, 1, 1), (1, 1, 5, 5, 5, 5)):
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes else s
                                     for d, s in enumerate(data_shape))
