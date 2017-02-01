@@ -571,6 +571,7 @@ class TestEquilibrium(object):
         opt.optimize(g)
         assert str(g) == '[Op2(x, y)]'
 
+    @theano.configparser.change_flags(on_opt_error='ignore')
     def test_low_use_ratio(self):
         x, y, z = map(MyVariable, 'xyz')
         e = op3(op4(x, y))

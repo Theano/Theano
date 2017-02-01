@@ -12,7 +12,7 @@ import warnings
 import theano
 from theano.compat import get_unbound_function
 from theano.compile import optdb
-from theano.gof import EquilibriumDB, SequenceDB
+from theano.gof import EquilibriumDB, SequenceDB, TopoOptimizer
 from theano.gof.cmodule import get_lib_extension
 from theano.gof.compilelock import get_lock, release_lock
 from theano import config
@@ -36,6 +36,17 @@ def register_opt(*tags, **kwargs):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
         gpu_optimizer.register(name, local_opt, 'fast_run', 'fast_compile',
                                'gpu', *tags, **kwargs)
+        return local_opt
+    return f
+
+
+def register_inplace(*tags, **kwargs):
+    def f(local_opt):
+        name = (kwargs and kwargs.pop('name')) or local_opt.__name__
+        optdb.register(
+            name, TopoOptimizer(
+                local_opt, failure_callback=TopoOptimizer.warn_inplace),
+            60, 'fast_run', 'inplace', 'gpu', *tags)
         return local_opt
     return f
 

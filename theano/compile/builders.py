@@ -59,11 +59,11 @@ class OpFromGraph(gof.Op):
 
     .. code-block:: python
 
-        import numpy
+        import numpy as np
         import theano
         from theano import config, function, OpFromGraph, tensor
         x, y, z = tensor.scalars('xyz')
-        s = theano.shared(numpy.random.rand(2, 2).astype(config.floatX))
+        s = theano.shared(np.random.rand(2, 2).astype(config.floatX))
         e = x + y * z + s
         op = OpFromGraph([x, y, z], [e])
         # op behaves like a normal theano op

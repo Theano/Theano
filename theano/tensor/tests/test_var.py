@@ -26,6 +26,19 @@ def test_numpy_method():
                             np.nan_to_num(fct(data)))
 
 
+def test_empty_list_indexing():
+    ynp = np.zeros((2, 2))[:, []]
+    znp = np.zeros((2, 2))[:, ()]
+    data = [[0, 0], [0, 0]]
+    x = tt.dmatrix('x')
+    y = x[:, []]
+    z = x[:, ()]
+    fy = theano.function([x], y)
+    fz = theano.function([x], z)
+    assert_equal(fy(data).shape, ynp.shape)
+    assert_equal(fz(data).shape, znp.shape)
+
+
 def test_copy():
     x = tt.dmatrix('x')
     data = np.random.rand(5, 5)

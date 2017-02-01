@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import copy
 import six.moves.cPickle as pickle
-import numpy
+import numpy as np
 import unittest
 
 
@@ -17,8 +17,6 @@ from theano.tests.unittest_tools import SkipTest
 from theano import tensor
 from theano import tensor as T
 import theano
-
-import numpy as N
 
 
 def PatternOptimizer(p1, p2, ign=True):
@@ -281,7 +279,7 @@ class T_function(unittest.TestCase):
 
     def test_swap_SharedVariable(self):
         i = T.iscalar()
-        x_list = theano.shared(value=numpy.random.rand(10).astype(config.floatX))
+        x_list = theano.shared(value=np.random.rand(10).astype(config.floatX))
 
         x = T.scalar('x')
         # SharedVariable for tests, one of them has update
@@ -343,11 +341,11 @@ class T_function(unittest.TestCase):
         A special testcase for logistic_sgd.py in Deep Learning Tutorial
         This test assert that SharedVariable in different function have same storage
         """
-        train_x = theano.shared(value=numpy.random.rand(10, 10).astype(config.floatX))
-        test_x = theano.shared(value=numpy.random.rand(10, 10).astype(config.floatX))
+        train_x = theano.shared(value=np.random.rand(10, 10).astype(config.floatX))
+        test_x = theano.shared(value=np.random.rand(10, 10).astype(config.floatX))
 
-        train_y = theano.shared(value=numpy.random.rand(10, 1).astype(config.floatX))
-        test_y = theano.shared(value=numpy.random.rand(10, 1).astype(config.floatX))
+        train_y = theano.shared(value=np.random.rand(10, 1).astype(config.floatX))
+        test_y = theano.shared(value=np.random.rand(10, 1).astype(config.floatX))
 
         i = T.iscalar('index')
         x = T.vector('x')
@@ -500,42 +498,42 @@ class T_function(unittest.TestCase):
         when borrow=True is implemented.
         """
         a = T.dmatrix()
-        aval = numpy.random.rand(3, 3)
+        aval = np.random.rand(3, 3)
 
         # when borrow=False, test that a destroy map cannot alias output to input
         f = theano.function([In(a, borrow=False)], Out(a + 1, borrow=True))
-        assert numpy.all(f(aval) == aval + 1)
-        assert not numpy.may_share_memory(aval, f(aval))
+        assert np.all(f(aval) == aval + 1)
+        assert not np.may_share_memory(aval, f(aval))
 
         # when borrow=False, test that a viewmap cannot alias output to input
         f = theano.function([In(a, borrow=False)], Out(a[0, :], borrow=True))
-        assert numpy.all(f(aval) == aval[0, :])
-        assert not numpy.may_share_memory(aval, f(aval))
+        assert np.all(f(aval) == aval[0, :])
+        assert not np.may_share_memory(aval, f(aval))
 
     def test_borrow_output(self):
         a = T.dmatrix()
         f = function([a], Out(a, borrow=False))
-        o = N.ones((3, 3))
+        o = np.ones((3, 3))
         assert o is not f(o)  # function no longer permits aliasing outputs to inputs
 
         f = function([a], Out(a * 4, borrow=False))
-        o = N.ones((3, 3))
+        o = np.ones((3, 3))
         four = f(o)
-        assert numpy.all(four == 4)
+        assert np.all(four == 4)
         f(o + .1)  # should not clobber the memory used to store four
-        assert numpy.all(four == 4)
+        assert np.all(four == 4)
 
         f = function([a], Out(a * 4, borrow=True), mode=theano.Mode('c|py_nogc', 'fast_run'))
-        o = N.ones((3, 3))
+        o = np.ones((3, 3))
         four = f(o)
-        assert numpy.all(four == 4)
+        assert np.all(four == 4)
         f(o + .1)  # should clobber the memory used to store four
         if theano.config.cxx:
-            assert not numpy.all(four == 4)
+            assert not np.all(four == 4)
         else:
             # The Elemwise.perform method don't reuse memory
             # as some numpy version don't support that correctly.
-            assert numpy.all(four == 4)
+            assert np.all(four == 4)
 
     def test_disconnected_input(self):
         a = T.scalar('a')
@@ -578,6 +576,20 @@ class T_function(unittest.TestCase):
         for key, val in iteritems(func.fn.storage_map):
             if not isinstance(key, theano.gof.Constant):
                 assert (val[0] is None)
+
+    def test_default_values(self):
+        """
+        Check that default values are restored
+        when an exception occurs in interactive mode.
+        """
+        a, b = T.dscalars('a', 'b')
+        c = a + b
+        func = theano.function([theano.In(a, name='first'), theano.In(b, value=1, name='second')], c)
+        x = func(first=1)
+        try:
+            func(second=2)
+        except TypeError:
+            assert(func(first=1) == x)
 
 
 class T_picklefunction(unittest.TestCase):
@@ -753,7 +765,7 @@ class T_picklefunction(unittest.TestCase):
         assert f2.container[s].storage is f1.container[s].storage
 
         # now put in a function with non-scalar
-        v_value = numpy.asarray([2, 3, 4.], dtype=config.floatX)
+        v_value = np.asarray([2, 3, 4.], dtype=config.floatX)
         f3 = function([x, In(v, value=v_value)], x + v)
         list_of_things.append(f3)
 
@@ -800,13 +812,13 @@ class T_picklefunction(unittest.TestCase):
         assert nl[5](3) == ol[5](3)
         assert nl[4].value[nl[0]] == 6
 
-        assert numpy.all(nl[6][nl[2]] == numpy.asarray([2, 3., 4]))
+        assert np.all(nl[6][nl[2]] == np.asarray([2, 3., 4]))
 
     def test_broken_pickle_with_shared(self):
         saves = []
 
         def pers_save(obj):
-            if isinstance(obj, numpy.ndarray):
+            if isinstance(obj, np.ndarray):
                 saves.append(obj)
                 return len(saves) - 1
             else:
@@ -815,7 +827,7 @@ class T_picklefunction(unittest.TestCase):
         def pers_load(id):
             return saves[id]
 
-        b = numpy.random.rand(5, 4)
+        b = np.random.rand(5, 4)
 
         x = theano.tensor.matrix()
         y = theano.shared(b)

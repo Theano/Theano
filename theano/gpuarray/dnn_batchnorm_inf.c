@@ -11,11 +11,19 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
   if (c_set_tensorNd(scale, bn_params) != 0)
     return 1;
 
-  if (epsilon < 1e-5)
+  if (epsilon < 1e-5) {
+    PyErr_Format(PyExc_ValueError, "epsilon must be at least 1e-5, got %f", epsilon);
     return 1;
+  }
 
+#ifdef INPLACE_OUTPUT
+  Py_XDECREF(*outp);
+  *outp = inp;
+  Py_INCREF(*outp);
+#else
   if (theano_prep_output(outp, inp->ga.nd, inp->ga.dimensions, inp->ga.typecode, GA_C_ORDER, c) != 0)
     return 1;
+#endif
 
   if (c_set_tensorNd(*outp, bn_output) != 0)
     return 1;

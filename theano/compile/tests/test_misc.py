@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
-import numpy
+import numpy as np
 import unittest
 
 from theano.compile.pfunc import pfunc
@@ -20,8 +20,8 @@ class NNet(object):
         self.input = input
         self.target = target
         self.lr = shared(lr, 'learning_rate')
-        self.w1 = shared(numpy.zeros((n_hidden, n_input)), 'w1')
-        self.w2 = shared(numpy.zeros((n_output, n_hidden)), 'w2')
+        self.w1 = shared(np.zeros((n_hidden, n_input)), 'w1')
+        self.w2 = shared(np.zeros((n_output, n_hidden)), 'w2')
         # print self.lr.type
 
         self.hidden = sigmoid(tensor.dot(self.w1, self.input))
@@ -45,7 +45,7 @@ class NNet(object):
 class TestNnet(unittest.TestCase):
 
     def test_nnet(self):
-        rng = numpy.random.RandomState(1827)
+        rng = np.random.RandomState(1827)
         data = rng.rand(10, 4)
         nnet = NNet(n_input=3, n_hidden=10)
         for epoch in range(3):
@@ -60,4 +60,4 @@ class TestNnet(unittest.TestCase):
         self.assertTrue(abs(mean_cost - 0.20588975452) < 1e-6)
         # Just call functions to make sure they do not crash.
         nnet.compute_output(input)
-        nnet.output_from_hidden(numpy.ones(10))
+        nnet.output_from_hidden(np.ones(10))

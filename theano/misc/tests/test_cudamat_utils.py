@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import theano
 from theano.misc.cudamat_utils import cudamat_available
 
@@ -20,7 +20,7 @@ def test(shape=(3, 4)):
     U = gpu(theano.tensor.fmatrix('U'))
     ii = theano.function([U], gpu(U + 1))
 
-    A_cpu = numpy.asarray(numpy.random.rand(*shape), dtype="float32")
+    A_cpu = np.asarray(np.random.rand(*shape), dtype="float32")
     A_cnd = theano.sandbox.cuda.CudaNdarray(A_cpu)
     A_cmat = cudandarray_to_cudamat(A_cnd)
 
@@ -28,9 +28,9 @@ def test(shape=(3, 4)):
     B_cnd = ii(A_cnd)
 
     u = A_cnd.copy()
-    u += theano.sandbox.cuda.CudaNdarray(numpy.asarray([[1]], dtype='float32'))
-    u = numpy.asarray(u)
-    v = numpy.asarray(B_cnd)
+    u += theano.sandbox.cuda.CudaNdarray(np.asarray([[1]], dtype='float32'))
+    u = np.asarray(u)
+    v = np.asarray(B_cnd)
     w = A_cmat.add(1).asarray()
 
     assert abs(u - v).max() == 0

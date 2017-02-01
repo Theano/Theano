@@ -13,7 +13,7 @@ import time
 from optparse import OptionParser
 import subprocess
 
-import numpy
+import numpy as np
 import theano
 import theano.tensor as T
 
@@ -47,10 +47,10 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
         print()
         print('Numpy config: (used when the Theano flag'
               ' "blas.ldflags" is empty)')
-        numpy.show_config()
-        print('Numpy dot module:', numpy.dot.__module__)
-        print('Numpy location:', numpy.__file__)
-        print('Numpy version:', numpy.__version__)
+        np.show_config()
+        print('Numpy dot module:', np.dot.__module__)
+        print('Numpy location:', np.__file__)
+        print('Numpy version:', np.__version__)
         if (theano.config.device.startswith("gpu") or
                 theano.config.init_gpu_device.startswith("gpu")):
             print('nvcc version:')
@@ -58,12 +58,12 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
                              "--version"))
             print()
 
-    a = theano.shared(numpy.ones((M, N), dtype=theano.config.floatX,
-                                 order=order))
-    b = theano.shared(numpy.ones((N, K), dtype=theano.config.floatX,
-                                 order=order))
-    c = theano.shared(numpy.ones((M, K), dtype=theano.config.floatX,
-                                 order=order))
+    a = theano.shared(np.ones((M, N), dtype=theano.config.floatX,
+                              order=order))
+    b = theano.shared(np.ones((N, K), dtype=theano.config.floatX,
+                              order=order))
+    c = theano.shared(np.ones((M, K), dtype=theano.config.floatX,
+                              order=order))
     f = theano.function([], updates=[(c, 0.4 * c + .8 * T.dot(a, b))])
 
     if any([x.op.__class__.__name__ == 'Gemm' for x in

@@ -252,3 +252,7 @@ class TestDnnConvTypes(test_abstract_conv.TestConvTypes):
         self.constant_tensor = gpuarray.array(
             np.zeros((3, 5, 7, 11), dtype='float32'),
             context=get_context(test_ctx_name))
+
+
+class TestConv2dTranspose(test_abstract_conv.TestConv2dTranspose):
+    mode = mode_with_gpu

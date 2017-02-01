@@ -126,6 +126,12 @@ AddConfigVar(
     BoolParam(False, allow_override=False),
     in_c_key=False)
 
+AddConfigVar(
+    'print_global_stats',
+    "Print some global statistics (time spent) at the end",
+    BoolParam(False),
+    in_c_key=False)
+
 
 class ContextsParam(ConfigParam):
     def __init__(self):
@@ -1111,7 +1117,7 @@ AddConfigVar('optdb.position_cutoff',
 
 AddConfigVar('optdb.max_use_ratio',
              'A ratio that prevent infinite loop in EquilibriumOptimizer.',
-             FloatParam(5),
+             FloatParam(8),
              in_c_key=False)
 
 AddConfigVar('gcc.cxxflags',
