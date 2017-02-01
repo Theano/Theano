@@ -199,6 +199,13 @@ AddConfigVar(
     StrParam(default_cuda_root),
     in_c_key=False)
 
+# To be used as an internal config or for developers (i.e. not to be put in documentation)
+AddConfigVar(
+    'cuda.disable',
+    'If true, C code in old backend is not compiled.',
+    BoolParam(False),
+    in_c_key=False)
+
 
 def filter_nvcc_flags(s):
     assert isinstance(s, str)
