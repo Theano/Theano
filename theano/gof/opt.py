@@ -860,11 +860,36 @@ class MergeOptimizer(Optimizer):
 
                 try:
                     fgraph.replace_all_validate(pairs, 'MergeOptimizer')
-                except InconsistencyError:
-                    success = False
-                    nb_fail += 1
-                    fgraph.merge_feature.blacklist.append(
-                        (pairs[0][0].owner, pairs[0][1].owner))
+                except Exception as ex:
+                    if type(ex) is InconsistencyError:
+                        success = False
+                        nb_fail += 1
+                        fgraph.merge_feature.blacklist.append(
+                            (pairs[0][0].owner, pairs[0][1].owner))
+                    elif type(ex) is TypeError:
+                        if (not isinstance(pairs[0][1], pairs[0][0].__class__) or
+                                pairs[0][0].dtype != pairs[0][1].dtype or
+                                pairs[0][0].ndim != pairs[0][1].ndim or
+                                pairs[0][0].broadcastable == pairs[0][1].broadcastable or len(pairs) != 1):
+                            raise
+                        else:
+                            num_broadcastable_dims_0 = sum(pairs[0][0].broadcastable)
+                            num_broadcastable_dims_1 = sum(pairs[0][1].broadcastable)
+                            # select the variable to be removed from the fgraph
+                            if num_broadcastable_dims_0 <= num_broadcastable_dims_1:
+                                selected_var_ind = 1
+                            else:
+                                selected_var_ind = 0
+                            for i, j in zip(pairs[0][selected_var_ind].broadcastable,
+                                            pairs[0][1 - selected_var_ind].broadcastable):
+                                if not i and j:
+                                    raise
+                            new_broadcast_pattern = theano.tensor.patternbroadcast(
+                                pairs[0][selected_var_ind],
+                                pairs[0][1 - selected_var_ind].broadcastable)
+                            new_pairs = [(new_broadcast_pattern, pairs[0][1 - selected_var_ind])]
+                            fgraph.replace_all_validate(new_pairs, 'MergeOptimizer')
+
                 if success:
                     nb_merged += len(pairs)
                     if isinstance(pairs[0][0], graph.Constant):
