@@ -1584,7 +1584,12 @@ def std_include_dirs():
     python_inc_dirs = ([py_inc] if py_inc == py_plat_spec_inc
                        else [py_inc, py_plat_spec_inc])
     gof_inc_dir = os.path.abspath(os.path.dirname(__file__))
-    return numpy_inc_dirs + python_inc_dirs + [gof_inc_dir]
+    other_dirs = []
+    if sys.platform == 'win32':
+        alt_inc_dir = os.path.abspath(os.path.normpath(sys.exec_prefix + '\Library\include'))
+        if os.path.exists(alt_inc_dir) and os.path.isdir(alt_inc_dir):
+            other_dirs.append(alt_inc_dir)
+    return numpy_inc_dirs + python_inc_dirs + [gof_inc_dir] + other_dirs
 
 
 def std_lib_dirs_and_libs():
@@ -1602,6 +1607,9 @@ def std_lib_dirs_and_libs():
         # Also add directory containing the Python library to the library
         # directories.
         python_lib_dirs = [os.path.join(os.path.dirname(python_inc), 'libs')]
+        alt_inc_dir = os.path.abspath(os.path.normpath(sys.exec_prefix + '\Library\lib'))
+        if os.path.exists(alt_inc_dir) and os.path.isdir(alt_inc_dir):
+            python_lib_dirs.append(alt_inc_dir)
         if "Canopy" in python_lib_dirs[0]:
             # Canopy stores libpython27.a and libmsccr90.a in this directory.
             # For some reason, these files are needed when compiling Python
