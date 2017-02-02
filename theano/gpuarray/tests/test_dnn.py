@@ -1469,14 +1469,14 @@ def test_dnn_batchnorm_train():
                 utt.assert_allclose(outputs_gpu[1], outputs_ref[1])  # mean
                 utt.assert_allclose(outputs_gpu[2], outputs_ref[2])  # invstd
                 utt.assert_allclose(outputs_gpu[3], outputs_ref[3])  # running_mean
-                utt.assert_allclose(numpy.nan_to_num(outputs_gpu[4]),
-                                    numpy.nan_to_num(outputs_ref[4]))  # running_var
+                utt.assert_allclose(np.nan_to_num(outputs_gpu[4]),
+                                    np.nan_to_num(outputs_ref[4]))  # running_var
                 utt.assert_allclose(outputs_abstract[0], outputs_ref[0])  # out
                 utt.assert_allclose(outputs_abstract[1], outputs_ref[1])  # mean
                 utt.assert_allclose(outputs_abstract[2], outputs_ref[2])  # invstd
                 utt.assert_allclose(outputs_abstract[3], outputs_ref[3])  # running_mean
-                utt.assert_allclose(numpy.nan_to_num(outputs_abstract[4]),
-                                    numpy.nan_to_num(outputs_ref[4]))  # running_var
+                utt.assert_allclose(np.nan_to_num(outputs_abstract[4]),
+                                    np.nan_to_num(outputs_ref[4]))  # running_var
                 # compare gradients
                 utt.assert_allclose(outputs_gpu[5], outputs_ref[5], atol=2e-4)  # dx
                 utt.assert_allclose(outputs_gpu[6], outputs_ref[6], rtol=4e-4, atol=1e-4)  # dscale
@@ -1525,10 +1525,10 @@ def test_dnn_batchnorm_train_without_running_averages():
                                       bn.AbstractBatchNormTrainGrad))
                     for n in f_abstract.maker.fgraph.toposort()])
     # run
-    X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-    Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-    Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-    Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+    Dy = -1 + 2 * np.random.randn(*data_shape).astype(theano.config.floatX)
+    Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
     f_gpu(X, Scale, Bias, Dy)
     f_abstract(X, Scale, Bias, Dy)
 
@@ -1545,10 +1545,10 @@ def test_dnn_batchnorm_train_inplace():
     data_shape = (5, 10, 30, 25)
     param_shape = (1, 10, 30, 25)
     running_mean = gpuarray_shared_constructor(
-        numpy.random.randn(*param_shape).astype(theano.config.floatX),
+        np.random.randn(*param_shape).astype(theano.config.floatX),
         broadcastable=(True, False, False, False))
     running_var = gpuarray_shared_constructor(
-        numpy.random.randn(*param_shape).astype(theano.config.floatX),
+        np.random.randn(*param_shape).astype(theano.config.floatX),
         broadcastable=(True, False, False, False))
 
     # forward pass
@@ -1573,9 +1573,9 @@ def test_dnn_batchnorm_train_inplace():
     assert nodes[0].op.inplace_running_var
     assert nodes[0].op.inplace_output
     # run
-    X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-    Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-    Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+    Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
     f(X, Scale, Bias)
 
 
@@ -1679,11 +1679,11 @@ def test_batchnorm_inference_inplace():
     assert nodes[0].op.inplace
 
     # run
-    X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-    Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-    Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-    Mean = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-    Var = numpy.random.rand(*param_shape).astype(theano.config.floatX)
+    X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+    Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Mean = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Var = np.random.rand(*param_shape).astype(theano.config.floatX)
     f(X, Scale, Bias, Mean, Var)
 
 
