@@ -413,15 +413,20 @@ class AbstractBatchNormTrain(Op):
     def make_node(self, x, scale, bias, epsilon=1e-4,
                   running_average_factor=0.1,
                   running_mean=None, running_var=None):
+        x = as_tensor_variable(x)
+        scale = as_tensor_variable(scale)
+        bias = as_tensor_variable(bias)
+        epsilon = as_tensor_variable(epsilon)
+        running_average_factor = as_tensor_variable(running_average_factor)
+        if running_mean is not None:
+            running_mean = as_tensor_variable(running_mean)
+        if running_var is not None:
+            running_var = as_tensor_variable(running_var)
         assert x.ndim == scale.ndim == bias.ndim
         assert ((running_mean is None and running_var is None) or
                 (running_mean is not None and running_var is not None))
         assert (running_mean is None or running_mean.ndim == x.ndim)
         assert (running_var is None or running_var.ndim == x.ndim)
-        if not isinstance(epsilon, theano.Variable):
-            epsilon = as_tensor_variable(epsilon)
-        if not isinstance(running_average_factor, theano.Variable):
-            running_average_factor = as_tensor_variable(running_average_factor)
         inputs = [x, scale, bias, epsilon, running_average_factor]
         output_types = [x.type(), scale.type(), scale.type()]
         if running_mean is not None and running_var is not None:
@@ -513,9 +518,14 @@ class AbstractBatchNormInference(Op):
         return [shape[0]]
 
     def make_node(self, x, scale, bias, estimated_mean, estimated_variance, epsilon=1e-4):
+        x = as_tensor_variable(x)
+        scale = as_tensor_variable(scale)
+        bias = as_tensor_variable(bias)
+        estimated_mean = as_tensor_variable(estimated_mean)
+        estimated_variance = as_tensor_variable(estimated_variance)
+        epsilon = as_tensor_variable(epsilon)
         assert x.ndim == scale.ndim == bias.ndim == estimated_mean.ndim == estimated_variance.ndim
-        if not isinstance(epsilon, theano.Variable):
-            epsilon = as_tensor_variable(epsilon)
+
         return Apply(self, [x, scale, bias, estimated_mean, estimated_variance, epsilon], [x.type()])
 
     def grad(self, inputs, grads):
@@ -561,9 +571,14 @@ class AbstractBatchNormTrainGrad(Op):
         self.axes = axes
 
     def make_node(self, x, dy, scale, x_mean, x_invstd, epsilon=1e-4):
+        x = as_tensor_variable(x)
+        dy = as_tensor_variable(dy)
+        scale = as_tensor_variable(scale)
+        x_mean = as_tensor_variable(x_mean)
+        x_invstd = as_tensor_variable(x_invstd)
+        epsilon = as_tensor_variable(epsilon)
+
         assert x.ndim == dy.ndim == scale.ndim == x_mean.ndim == x_invstd.ndim
-        if not isinstance(epsilon, theano.Variable):
-            epsilon = as_tensor_variable(epsilon)
         return Apply(self, [x, dy, scale, x_mean, x_invstd, epsilon],
                      [x.type(), scale.type(), scale.type()])
 
