@@ -627,6 +627,9 @@ def local_abstract_batch_norm_train(node):
 
     mean = x.mean(axes, keepdims=True)
     var = x.var(axes, keepdims=True)
+    # The epsilon should not upcast the dtype.
+    if var.dtype == 'float32' and epsilon.dtype == 'float64':
+        epsilon = epsilon.astype('float32')
     invstd = T.inv(T.sqrt(var + epsilon))
     out = (x - mean) * (scale * invstd) + bias
     results = [out, mean, invstd]
@@ -701,6 +704,10 @@ def local_abstract_batch_norm_inference(node):
        not isinstance(estimated_variance.type, TensorType) or \
        not isinstance(epsilon.type, TensorType):
         return None
+
+    # The epsilon should not upcast the dtype.
+    if estimated_variance.dtype == 'float32' and epsilon.dtype == 'float64':
+        epsilon = epsilon.astype('float32')
 
     result = (x - estimated_mean) * (scale / T.sqrt(estimated_variance + epsilon)) + bias
     result = T.patternbroadcast(result, node.outputs[0].broadcastable)
