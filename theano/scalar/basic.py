@@ -88,6 +88,14 @@ def upcast(dtype, *dtypes):
     return rval
 
 
+def as_common_dtype(*vars):
+    """
+    For for theano.scalar.Scalar and TensorVariable.
+    """
+    dtype = upcast(*[v.dtype for v in vars])
+    return (v.astype(dtype) for v in vars)
+
+
 def get_scalar_type(dtype):
     """
     Return a Scalar(dtype) object.
