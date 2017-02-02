@@ -885,12 +885,11 @@ class MergeOptimizer(Optimizer):
 
                 try:
                     fgraph.replace_all_validate(pairs, 'MergeOptimizer')
-                except Exception as ex:
-                    if type(ex) is InconsistencyError:
-                        success = False
-                        nb_fail += 1
-                        fgraph.merge_feature.blacklist.append(
-                            (pairs[0][0].owner, pairs[0][1].owner))
+                except InconsistencyError:
+                    success = False
+                    nb_fail += 1
+                    fgraph.merge_feature.blacklist.append(
+                        (pairs[0][0].owner, pairs[0][1].owner))
 
                 if success:
                     nb_merged += len(pairs)
