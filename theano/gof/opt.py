@@ -858,29 +858,25 @@ class MergeOptimizer(Optimizer):
                                 hasattr(c.op, 'destroy_map')]) > 1:
                             continue
 
-                if pairs[0][0].type != pairs[0][1].type:
+                if len(pairs) == 1 and pairs[0][0].type != pairs[0][1].type:
                     res = pairs[0][0].type.convert_variable(pairs[0][1])
-                    if res is None or res.type != pairs[0][0].type:
-                        if (not isinstance(pairs[0][1], pairs[0][0].__class__) or
-                                pairs[0][0].dtype != pairs[0][1].dtype or
-                                pairs[0][0].ndim != pairs[0][1].ndim or
-                                pairs[0][0].broadcastable == pairs[0][1].broadcastable or len(pairs) != 1):
-                            raise TypeError
+                    if res is None:
+                        num_broadcastable_dims_0 = sum(pairs[0][0].broadcastable)
+                        num_broadcastable_dims_1 = sum(pairs[0][1].broadcastable)
+                        # select the variable to be removed from the fgraph
+                        if num_broadcastable_dims_0 <= num_broadcastable_dims_1:
+                            selected_var_ind = 1
                         else:
-                            num_broadcastable_dims_0 = sum(pairs[0][0].broadcastable)
-                            num_broadcastable_dims_1 = sum(pairs[0][1].broadcastable)
-                            # select the variable to be removed from the fgraph
-                            if num_broadcastable_dims_0 <= num_broadcastable_dims_1:
-                                selected_var_ind = 1
-                            else:
-                                selected_var_ind = 0
-                            for i, j in zip(pairs[0][selected_var_ind].broadcastable,
-                                            pairs[0][1 - selected_var_ind].broadcastable):
-                                if not i and j:
-                                    raise TypeError
-                            new_broadcast_pattern = theano.tensor.patternbroadcast(
-                                pairs[0][selected_var_ind],
-                                pairs[0][1 - selected_var_ind].broadcastable)
+                            selected_var_ind = 0
+                        for i, j in zip(pairs[0][selected_var_ind].broadcastable,
+                                        pairs[0][1 - selected_var_ind].broadcastable):
+                            if not i and j:
+                                raise TypeError
+                        new_broadcast_pattern = theano.tensor.patternbroadcast(
+                            pairs[0][selected_var_ind],
+                            pairs[0][1 - selected_var_ind].broadcastable)
+                        res = new_broadcast_pattern.type.convert_variable(pairs[0][1 - selected_var_ind])
+                        if res:
                             pairs = [(new_broadcast_pattern, pairs[0][1 - selected_var_ind])]
 
                 try:
