@@ -27,7 +27,7 @@ def is_nvcc_available():
     Return True iff the nvcc compiler is found.
 
     """
-    if config.cuda.disable:
+    if not config.cuda.enabled:
         return False
 
     def set_version():
