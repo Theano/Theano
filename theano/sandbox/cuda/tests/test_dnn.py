@@ -38,6 +38,8 @@ if theano.config.mode == 'FAST_COMPILE':
 else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
+    mode_with_gpu.check_py_code = False
+    mode_without_gpu.check_py_code = False
 
 
 def test_dnn_conv_desc_merge():
