@@ -860,24 +860,12 @@ class MergeOptimizer(Optimizer):
 
                 if len(pairs) == 1 and pairs[0][0].type != pairs[0][1].type:
                     res = pairs[0][0].type.convert_variable(pairs[0][1])
-                    if res is None:
-                        num_broadcastable_dims_0 = sum(pairs[0][0].broadcastable)
-                        num_broadcastable_dims_1 = sum(pairs[0][1].broadcastable)
-                        # select the variable to be removed from the fgraph
-                        if num_broadcastable_dims_0 <= num_broadcastable_dims_1:
-                            selected_var_ind = 1
-                        else:
-                            selected_var_ind = 0
-                        for i, j in zip(pairs[0][selected_var_ind].broadcastable,
-                                        pairs[0][1 - selected_var_ind].broadcastable):
-                            if not i and j:
-                                raise TypeError
-                        new_broadcast_pattern = theano.tensor.patternbroadcast(
-                            pairs[0][selected_var_ind],
-                            pairs[0][1 - selected_var_ind].broadcastable)
-                        res = new_broadcast_pattern.type.convert_variable(pairs[0][1 - selected_var_ind])
-                        if res:
-                            pairs = [(new_broadcast_pattern, pairs[0][1 - selected_var_ind])]
+
+                    # Since the fgraph.replace only checks the convert_variable
+                    # in one way, we change the order in the case that
+                    # convert_variable will not be successful.
+                    if not res:
+                        pairs = [(pairs[0][1], pairs[0][0])]
 
                 try:
                     fgraph.replace_all_validate(pairs, 'MergeOptimizer')
