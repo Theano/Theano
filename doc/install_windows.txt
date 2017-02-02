@@ -63,39 +63,6 @@ to install the CUDA driver and the CUDA Toolkit.
 
 You must reboot the computer after the driver installation.
 
-Microsoft Visual C++ Compiler for Python 2.7 (optional)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-If you plan to compile libgpuarray and pygpu yourself, you will
-need to install ``Microsoft Visual C++ Compiler for Python 2.7``.  It
-provides the now-obsolete compilers form Visual Studio 2008 that are
-required for compatibility with Python 2.7. To install the package for
-all users please:
-
-1. Download the installer for `Microsoft Visual C++ Compiler for Python 2.7
-   <http://www.microsoft.com/en-us/download/details.aspx?id=44266>`_.
-2. open an administrator's console (got to ``start``, then type ``cmd``,
-   right-click on the command prompt icon and select ``run as administrator``)
-3. ``cd`` to the directory when you downloaded the installer and execute ``msiexec /i
-   VCForPython27.msi ALLUSERS=1`` . The package will be installed to ``C:\Program Files
-   (x86)\Common Files\Microsoft\Visual C++ for Python\9.0``.
-4. Download the ``stdint.h`` header from
-   `here <https://sourceforge.net/p/mspgcc/msp430-libc/ci/master/tree/include/stdint.h>`_
-   and save it as ``C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for
-   Python\9.0\VC\include\stdint.h``.
-
-When you are ready to compile libgpuarray, open a console (got to ``start``, type ``cmd`` and click
-to the command prompt) and enter the following commands:
-
-.. code-block:: none
-
-   set VSFORPYTHON="C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0"
-
-   REM for a 32 bit installation change this line to
-   REM CALL %VSFORPYTHON%\vcvarsall.bat
-   CALL %VSFORPYTHON%\vcvarsall.bat amd64
-
-
 Installation of Theano and libgpuarray
 ======================================
 
@@ -131,24 +98,6 @@ libgpuarray
 .. comment: Installation instructions (libgpuarray for stable version, then full bleeding-edge and developer version instructions).
 .. include:: install_generic.inc
     :start-line: 32
-
-Configure CUDA and libgpuarray after installation
-=================================================
-
-Cuda
-----
-
-To ensure Theano cand find CUDA headers and libraries, create an environment variable named ``CUDA_ROOT``
-and set it to the CUDA directory. In a 64-bits computer, the CUDA directory should be something like
-``C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v8.0``.
-
-To create permanently an environment variable, look for ``system environment variables``
-in the Start search bar and then choose ``Set System Environment Variables`` (this works on Windows 8.1).
-
-libgpuarray
------------
-
-[TODO]
 
 Instructions for other Python distributions (not recommended)
 =============================================================

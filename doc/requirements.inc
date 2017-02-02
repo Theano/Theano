@@ -12,7 +12,7 @@ Requirements
 .. _NVIDIA CUDA drivers and SDK: http://developer.nvidia.com/object/gpucomputing.html
 .. _libgpuarray: http://deeplearning.net/software/libgpuarray/installation.html
 
-    Python_ >= 2.7 or >= 3.3
+    Python_ == 2.7 or >= 3.3
         The development package (python-dev or
         python-devel on most Linux distributions) is recommended (see
         just below). Python 2.4 was supported up to and including the
