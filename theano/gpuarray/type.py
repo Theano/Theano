@@ -261,7 +261,7 @@ class GpuArrayType(Type):
                 raise TypeError("Non-unit value on shape on a broadcastable"
                                 " dimension.", shp, self.broadcastable)
         if not isinstance(data, gpuarray.GpuArray):
-            if old_data and old_data.shape == data.shape:
+            if old_data is not None and old_data.shape == data.shape:
                 old_data.write(data)
                 data = old_data
             else:
