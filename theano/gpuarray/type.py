@@ -472,17 +472,15 @@ class GpuArrayType(Type):
 
     def c_header_dirs(self):
         other_dirs = []
-        if sys.platform == 'win32':
-            alt_inc_dir = os.path.abspath(os.path.normpath(sys.exec_prefix + '\Library\include'))
-            if os.path.exists(alt_inc_dir) and os.path.isdir(alt_inc_dir):
-                other_dirs.append(alt_inc_dir)
+        alt_inc_dir = os.path.abspath(os.path.normpath(sys.exec_prefix + '/Library/include'))
+        if os.path.exists(alt_inc_dir) and os.path.isdir(alt_inc_dir):
+            other_dirs.append(alt_inc_dir)
         return [pygpu.get_include(), numpy.get_include()] + other_dirs
 
     def c_lib_dirs(self):
-        if sys.platform == 'win32':
-            alt_lib_dir = os.path.abspath(os.path.normpath(sys.exec_prefix + '\Library\lib'))
-            if os.path.exists(alt_lib_dir) and os.path.isdir(alt_lib_dir):
-                return [alt_lib_dir]
+        alt_lib_dir = os.path.abspath(os.path.normpath(sys.exec_prefix + '/Library/lib'))
+        if os.path.exists(alt_lib_dir) and os.path.isdir(alt_lib_dir):
+            return [alt_lib_dir]
         return []
 
     def c_libraries(self):
