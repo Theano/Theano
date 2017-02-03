@@ -162,7 +162,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
 
         w, b = T.vectors('wb')
         # we make the 3rd gradient default (no override)
-        op_linear = cls_ofg([x, w, b], [x * w + b], grad_overrides=[go1, go2, Ellipsis])
+        op_linear = cls_ofg([x, w, b], [x * w + b], grad_overrides=[go1, go2, 'default'])
         xx, ww, bb = T.vector('xx'), T.vector('yy'), T.vector('bb')
         zz = T.sum(op_linear(xx, ww, bb))
         dx, dw, db = T.grad(zz, [xx, ww, bb])
@@ -176,7 +176,9 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         assert np.allclose(np.ones(16, dtype=config.floatX), dbv)
 
         # NullType and DisconnectedType
-        op_linear2 = cls_ofg([x, w, b], [x * w + b], grad_overrides=[go1, None, 0])
+        op_linear2 = cls_ofg(
+            [x, w, b], [x * w + b],
+            grad_overrides=[go1, NullType()(), DisconnectedType()()])
         zz2 = T.sum(op_linear2(xx, ww, bb))
         dx2, dw2, db2 = T.grad(
             zz2, [xx, ww, bb],
@@ -205,7 +207,6 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         duval = np.random.rand(16).astype(config.floatX)
         dvval = np.dot(duval, Wval)
         dvval2 = fn(xval, Wval, duval)
-        print(dvval, dvval2)
         assert np.allclose(dvval2, dvval)
 
     @test_params

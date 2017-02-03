@@ -1233,12 +1233,6 @@ def _populate_grad_dict(var_to_app_to_idx,
                 actually_connected = \
                     not isinstance(ig.type, DisconnectedType)
 
-                if isinstance(node.op, theano.OpFromGraph):
-                    ov = node.op._grad_op_overrides_l[i]
-                    if ov is not None:
-                        connected &= not isinstance(
-                            ov.type, DisconnectedType)
-
                 if actually_connected and not connected:
                     msg = ("%s.grad returned %s of type %s for input %d."
                            " Expected DisconnectedType instance based on "
