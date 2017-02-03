@@ -560,7 +560,8 @@ def local_gpu_lazy_ifelse(node):
             # Should not happen, but just in case
             if isinstance(c.type, CudaNdarrayType):
                 c = host_from_gpu(c)
-            if all([isinstance(o.type, CudaNdarrayType) or o.dtype != 'float32'
+            if all([isinstance(o.type, CudaNdarrayType) or
+                    getattr(o, 'dtype', None) != 'float32'
                     for o in outs]):
                 return
 
