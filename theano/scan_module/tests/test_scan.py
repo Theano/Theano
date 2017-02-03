@@ -4956,6 +4956,7 @@ class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
         super(T_Scan_Gpuarray, self).__init__(*args, **kwargs)
 
     def setUp(self):
+        import theano.gpuarray.tests.config
         # Skip the test if pygpu is not available
         if not self.gpu_backend.pygpu_activated:
             raise SkipTest('Optional package pygpu disabled')
