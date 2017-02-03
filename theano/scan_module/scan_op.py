@@ -778,8 +778,7 @@ class Scan(PureOp):
                         # broadcastable dimensions, 0 on the others).
                         default_shape = [1 if _b else 0
                                          for _b in inp.broadcastable]
-                        default_val = numpy.zeros(default_shape,
-                                                  dtype=inp.dtype)
+                        default_val = inp.type.value_zeros(default_shape)
                         wrapped_inp = In(variable=inp, value=default_val,
                                          update=self.outputs[output_idx])
                         wrapped_inputs.append(wrapped_inp)
