@@ -203,7 +203,8 @@ class TensorType(Type):
         """
         Convert a symbolic Variable into a TensorType, if compatible.
 
-        For the moment, only a TensorType or CudaNdarrayType will be
+        For the moment, only a TensorType, GpuArrayType and
+        CudaNdarrayType will be
         converted, provided they have the same number of dimensions and
         dtype and have "compatible" broadcastable pattern.
 

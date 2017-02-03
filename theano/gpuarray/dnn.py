@@ -3030,9 +3030,6 @@ def local_log_softmax_dnn(node):
             node.inputs[0].owner and
             isinstance(node.inputs[0].owner.op, GpuDnnSoftmax) and
             len(node.inputs[0].clients) == 1):
-        if version(raises=False) < 3000:
-            # No log-softmax before cudnn v3
-            return
         softmax_node = node.inputs[0].owner
         new_softmax = GpuDnnSoftmax('log', softmax_node.op.mode)
         return [new_softmax(softmax_node.inputs[0])]

@@ -27,9 +27,8 @@ from .rnn_support import Model, GRU, LSTM, WrapperLayer
 from theano.configdefaults import SUPPORTED_DNN_CONV_ALGO_FWD
 
 mode_with_gpu = mode_with_gpu.including()
-mode_without_gpu = mode_without_gpu.including()
+# Globally disabled for mode_without_gpu
 mode_with_gpu.check_py_code = False
-mode_without_gpu.check_py_code = False
 
 
 # If using float16, set CUDNN precision to float32

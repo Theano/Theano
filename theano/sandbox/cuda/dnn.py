@@ -3708,10 +3708,10 @@ def local_gpu_batch_norm_inference_inplace(node):
 def values_eq_approx_high_tol(a, b):
     """
     This fct is needed to don't have DebugMode raise useless
-    error due to ronding error.
+    errors due to rounding error.
 
-    This happen as We reduce on the two last dimensions, so this
-    can raise the absolute error if the number of element we
+    This happen as we reduce on the two last dimensions, so this
+    can raise the absolute error if the number of elements we
     reduce on is significant.
 
     """
