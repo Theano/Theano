@@ -63,7 +63,7 @@ def test_mkl_pool_forward():
         images = tensor.ftensor4()
     else:
         images = tensor.dtensor4()
-    ignore_border = True
+    ignore_border = False
     mode = 'max'
 
     poolOut = pool.pool_2d(images, maxpoolshps[0], ignore_border, mode=mode)
@@ -112,7 +112,7 @@ def test_mkl_pool_backward():
         images = tensor.ftensor4()
     else:
         images = tensor.dtensor4()
-    ignore_border = True
+    ignore_border = False
     mode = 'max'
 
     poolOut = pool.pool_2d(images, maxpoolshps[0], ignore_border, mode=mode)
@@ -240,7 +240,7 @@ def test_mkl_pool_relu():
     y = mkl.mkl_relu.AbstractRelu(slope=1)(x)
     maxpoolshps = ((1, 1), (2, 2), (3, 3), (2, 3))
     # imval = numpy.random.rand(4, 2, 16, 16).astype(theano.config.floatX)
-    ignore_border = True
+    ignore_border = False
     mode = 'max'
     poolOut = pool.pool_2d(y, maxpoolshps[0], ignore_border, mode=mode)
     f = theano.function(inputs=[x], outputs=[poolOut], mode=mode_with_mkl)
@@ -425,7 +425,7 @@ def test_mkl_3_relu_backward():
 def test_mkl_elemwise_sum_forward():
     x = tensor.ftensor4('x')
     y1 = tensor.nnet.relu(x)
-    y2 = pool.pool_2d(y1, (1, 1),  True, mode='max')
+    y2 = pool.pool_2d(y1, (1, 1), ignore_border=False, mode='max')
     z = tensor.nnet.relu(y1)
     out = y2 + z
 
@@ -437,7 +437,7 @@ def test_mkl_elemwise_sum_forward():
     assert isinstance(topo[4].op, mkl_elemwise.ElemwiseSum)
     assert isinstance(topo[5].op, basic_ops.I2U)
     
-    imval = numpy.random.rand(4, 2 ,4, 4).astype(numpy.float32)
+    imval = numpy.random.rand(4, 2, 4, 4).astype(numpy.float32)
     new_out = f(imval)
 
     forig = theano.function(inputs=[x], outputs=out, mode=mode_without_mkl)
@@ -452,7 +452,7 @@ def test_mkl_elemwise_sum_forward():
 def test_mkl_elemwise_sum_backward():
     x = tensor.ftensor4('x')
     y1 = tensor.nnet.relu(x)
-    y2 = pool.pool_2d(y1, (1, 1),  True, mode='max')
+    y2 = pool.pool_2d(y1, (1, 1), ignore_border=False, mode='max')
     z = tensor.nnet.relu(y1)
     out = y2 + z
     reluSum = tensor.sum(out)

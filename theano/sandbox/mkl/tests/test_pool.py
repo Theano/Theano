@@ -112,8 +112,8 @@ class TestMKLPool(unittest.TestCase):
 
     @staticmethod
     def numpy_pool_2d_stride_padding(
-            x, ds, ignore_border=True, st=None, padding=(0, 0), mode='max'):
-        assert ignore_border
+            x, ds, ignore_border=False, st=None, padding=(0, 0), mode='max'):
+        assert (ignore_border is False)
 
         in_h = x.shape[-2]
         in_w = x.shape[-1]
@@ -217,7 +217,7 @@ class TestMKLPool(unittest.TestCase):
         # generate random images
         imval = rng.rand(4, 2, 16, 16)
         for ds, ignore_border, mode in product(ds_list,
-                                               [True],
+                                               [False],
                                                ['max',
                                                 'average_exc_pad']):
             # Pure Numpy computation
@@ -242,7 +242,7 @@ class TestMKLPool(unittest.TestCase):
         images = T.dtensor4()
         for ds, st, ignore_border, mode in product(ds_list,
                                                    st_list,
-                                                   [True],
+                                                   [False],
                                                    ['max',
                                                     'average_exc_pad']):
             # Pure Numpy computation
@@ -270,7 +270,7 @@ class TestMKLPool(unittest.TestCase):
         images = T.dtensor4()
 
         for idx, ignore_border, mode in product(numpy.arange(len(ds_list)),
-                                                [True],
+                                                [False],
                                                 ['max',
                                                  'average_exc_pad']):
             imgsize = imgsize_list[idx]
@@ -298,7 +298,7 @@ class TestMKLPool(unittest.TestCase):
         imval = rng.rand(2, 3, 3, 4) * 10.0
 
         for ds, ignore_border, mode in product(ds_list,
-                                               [True],
+                                               [False],
                                                ['max',
                                                 'average_exc_pad']):
             def mp(input):
@@ -314,7 +314,7 @@ class TestMKLPool(unittest.TestCase):
 
         for ds, st, ignore_border, mode in product(ds_list,
                                                    st_list,
-                                                   [True],
+                                                   [False],
                                                    ['max',
                                                     'average_exc_pad']):
             def mp(input):
@@ -332,7 +332,7 @@ class TestMKLPool(unittest.TestCase):
         c = 3
 
         for idx, ignore_border, mode in product(numpy.arange(len(ds_list)),
-                                                [True],
+                                                [False],
                                                 ['max',
                                                  'average_exc_pad']):
             imgsize = imgsize_list[idx]

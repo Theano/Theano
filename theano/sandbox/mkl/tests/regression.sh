@@ -35,7 +35,7 @@ echo "" 2>&1 | tee -a $LOG_FILE
 ################################
 # Graph generating validation
 ################################
-python -c "import pydot; print pydot.find_graphviz()" >  /dev/null 2>&1
+python -c "import pydot_ng; print pydot_ng.find_graphviz()" >  /dev/null 2>&1
 graphSupportted=$?
 if [ "$graphSupportted" -eq 0 ]; then
     echo "##################################################" 2>&1 | tee -a $LOG_FILE

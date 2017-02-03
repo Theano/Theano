@@ -413,11 +413,12 @@ def local_pool_mkl(node):
     if node.inputs[0].type.ndim != 4:
         return
 
-    # Currently, MKL doesn't support 'average_inc_pad' mode
+    # MKL only support excluding pad for average mode
     if node.op.mode not in ('max', 'average_exc_pad'):
         return
 
-    if not node.op.ignore_border:
+    # ignore_border=True is NOT supported in MKL currently
+    if node.op.ignore_border:
         return
 
     x, ws, stride, pad = node.inputs
@@ -451,12 +452,12 @@ def local_poolGrad_mkl(node):
     if node.inputs[0].type.ndim != 4:
         return
 
-    # Currently, MKL doesn't support 'average_inc_pad' mode
+    # MKL only support excluding pad for average mode
     if node.op.mode not in ('max', 'average_exc_pad'):
         return
 
-    # currently, MKL only support this mode
-    if not node.op.ignore_border:
+    # ignore_border=True is NOT supported in MKL currently
+    if node.op.ignore_border:
         return
 
     if isinstance(node.op, pool.MaxPoolGrad):

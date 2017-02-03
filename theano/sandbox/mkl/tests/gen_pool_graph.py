@@ -11,7 +11,7 @@ def run_test(direction = 'forward'):
 
     images = T.ftensor4()
     maxpoolshp = (2, 2)
-    ignore_border = True
+    ignore_border = False
     mode = 'max'
 
     poolOut = pool.pool_2d(images, maxpoolshp, ignore_border, mode=mode)

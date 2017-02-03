@@ -121,7 +121,7 @@ class ConvPoolLayer(object):
         if self.poolsize != 1:
             self.output = pool.pool_2d(input=self.output,
                                        ds=(poolsize, poolsize),
-                                       ignore_border=True,
+                                       ignore_border=False,
                                        st=(poolstride, poolstride),
                                        mode='max')
         self.params = [self.W.val, self.b.val]

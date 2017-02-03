@@ -11,11 +11,11 @@ from theano.sandbox.mkl.mkl_helper import header_text
 
 
 class PoolBase(MKLOp):
-    def __init__(self, ignore_border=True, mode='max'):
+    def __init__(self, ignore_border=False, mode='max'):
 
-        if not ignore_border:
+        if ignore_border:
             raise NotImplementedError(
-                'ignore_border only allows to be True in MKL currently')
+                'ignore_border=True is NOT supported in MKL currently')
         self.ignore_border = ignore_border
 
         if mode not in ['max', 'min', 'average_exc_pad']:
