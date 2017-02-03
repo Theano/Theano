@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 from unittest import TestCase
 from nose.plugins.skip import SkipTest
 import itertools
-import numpy
+import numpy as np
 
 import theano
 from theano import tensor
@@ -138,8 +138,8 @@ def test_gemv_zeros():
 
     # Apply to an empty matrix shape (5,0) and an empty vector shape (0,)
     dim = 1000
-    A = numpy.zeros((dim, 0), dtype=theano.config.floatX)
-    b = numpy.zeros((0,), dtype=theano.config.floatX)
+    A = np.zeros((dim, 0), dtype=theano.config.floatX)
+    b = np.zeros((0,), dtype=theano.config.floatX)
     tmp = f(A, b)
-    assert numpy.allclose(tmp,
-                          numpy.zeros((dim,)))
+    assert np.allclose(tmp,
+                       np.zeros((dim,)))

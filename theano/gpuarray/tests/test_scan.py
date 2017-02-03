@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 from unittest import TestCase
 
-import numpy
+import numpy as np
 from six.moves import xrange
 import theano
 
@@ -43,19 +43,19 @@ class T_Scan(TestCase):
                              allow_input_downcast=True,
                              mode=mode)
 
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         v_u = rng.uniform(size=(4,), low=-5., high=5.)
         v_x0 = rng.uniform()
         W = rng.uniform()
         W_in = rng.uniform()
 
-        v_u = numpy.asarray(v_u, dtype='float32')
-        v_x0 = numpy.asarray(v_x0, dtype='float32')
-        W = numpy.asarray(W, dtype='float32')
-        W_in = numpy.asarray(W_in, dtype='float32')
+        v_u = np.asarray(v_u, dtype='float32')
+        v_x0 = np.asarray(v_x0, dtype='float32')
+        W = np.asarray(W, dtype='float32')
+        W_in = np.asarray(W_in, dtype='float32')
 
         # compute the output in numpy
-        v_out = numpy.zeros((4,))
+        v_out = np.zeros((4,))
         v_out[0] = v_u[0] * W_in + v_x0 * W
         for step in xrange(1, 4):
             v_out[step] = v_u[step] * W_in + v_out[step - 1] * W
@@ -115,14 +115,14 @@ class T_Scan(TestCase):
                              mode=mode_with_gpu)
 
         # get random initial values
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         v_u = rng.uniform(size=(4,), low=-5., high=5.)
         v_x0 = rng.uniform()
         W = rng.uniform()
         W_in = rng.uniform()
 
         # compute the output in numpy
-        v_out = numpy.zeros((4,))
+        v_out = np.zeros((4,))
         v_out[0] = v_u[0] * W_in + v_x0 * W
         for step in xrange(1, 4):
             v_out[step] = v_u[step] * W_in + v_out[step - 1] * W
@@ -177,20 +177,20 @@ class T_Scan(TestCase):
                              mode=mode_with_gpu)
 
         # get random initial values
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         v_u = rng.uniform(size=(4,), low=-5., high=5.)
         v_x0 = rng.uniform()
         W = rng.uniform()
         W_in = rng.uniform()
 
         # compute the output in numpy
-        v_out1 = numpy.zeros((4,))
-        v_out2 = numpy.zeros((4,), dtype='int64')
+        v_out1 = np.zeros((4,))
+        v_out2 = np.zeros((4,), dtype='int64')
         v_out1[0] = v_u[0] * W_in + v_x0 * W
         v_out2[0] = v_u[0] + v_x0
         for step in xrange(1, 4):
             v_out1[step] = v_u[step] * W_in + v_out1[step - 1] * W
-            v_out2[step] = numpy.int64(v_u[step] + v_out1[step - 1])
+            v_out2[step] = np.int64(v_u[step] + v_out1[step - 1])
 
         theano_out1, theano_out2 = f2(v_u, v_x0, W_in, W)
         utt.assert_allclose(theano_out1, v_out1)
@@ -212,9 +212,9 @@ class T_Scan(TestCase):
                         for node in scan_node_topo])
 
     def test_gpu4_gibbs_chain(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        v_vsample = numpy.array(rng.binomial(1, .5, size=(3, 20),),
-                                dtype='float32')
+        rng = np.random.RandomState(utt.fetch_seed())
+        v_vsample = np.array(rng.binomial(1, .5, size=(3, 20),),
+                             dtype='float32')
         vsample = theano.shared(v_vsample)
         trng = theano.sandbox.rng_mrg.MRG_RandomStreams(
             utt.fetch_seed())

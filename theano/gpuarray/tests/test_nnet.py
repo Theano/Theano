@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
-import numpy
+import numpy as np
 import unittest
 
 import theano
@@ -46,13 +46,13 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     # Seed numpy.random with config.unittests.rseed
     utt.seed_rng()
 
-    xx = numpy.asarray(numpy.random.rand(batch_size, n_in),
-                       dtype=numpy.float32)
-    yy = numpy.ones((batch_size,), dtype='int32')
-    b_values = numpy.zeros((n_out,), dtype='float32')
-    W_values = numpy.asarray(numpy.random.rand(n_in, n_out), dtype='float32')
+    xx = np.asarray(np.random.rand(batch_size, n_in),
+                    dtype=np.float32)
+    yy = np.ones((batch_size,), dtype='int32')
+    b_values = np.zeros((n_out,), dtype='float32')
+    W_values = np.asarray(np.random.rand(n_in, n_out), dtype='float32')
 
-    dot_value = numpy.asarray(numpy.dot(xx, W_values), dtype='float32')
+    dot_value = np.asarray(np.dot(xx, W_values), dtype='float32')
     del W_values
     p_y_given_x = T.nnet.softmax(dot_result + b)
     y_pred = T.argmax(p_y_given_x, axis=-1)
@@ -97,10 +97,10 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     # Seed numpy.random with config.unittests.rseed
     utt.seed_rng()
 
-    softmax_output_value = numpy.random.rand(batch_size,
-                                             n_out).astype('float32')
-    dnll_value = numpy.asarray(numpy.random.rand(batch_size), dtype='float32')
-    y_idx_value = numpy.random.randint(low=0, high=5, size=batch_size)
+    softmax_output_value = np.random.rand(batch_size,
+                                          n_out).astype('float32')
+    dnll_value = np.asarray(np.random.rand(batch_size), dtype='float32')
+    y_idx_value = np.random.randint(low=0, high=5, size=batch_size)
 
     softmax_output = T.fmatrix()
     softmax_output /= softmax_output.sum(axis=1).reshape(
@@ -174,8 +174,8 @@ def softmax_with_bias_unittest_template(dtypeInput, dtypeBias):
                       GpuSoftmaxWithBias)
 
     def cmp(n, m):
-        data = numpy.random.uniform(1e-7, 1, (n, m)).astype(dtype=dtypeInput)
-        b_data = numpy.random.uniform(1e-7, 1, (m,)).astype(dtype=dtypeBias)
+        data = np.random.uniform(1e-7, 1, (n, m)).astype(dtype=dtypeInput)
+        b_data = np.random.uniform(1e-7, 1, (m,)).astype(dtype=dtypeBias)
 
         out = f(data, b_data)
         gout = f_gpu(data, b_data)
@@ -227,7 +227,7 @@ def softmax_unittest_template(dtypeInput):
                       GpuSoftmax)
 
     def cmp(n, m):
-        data = numpy.random.uniform(0, 1, (n, m)).astype(dtype=dtypeInput)
+        data = np.random.uniform(0, 1, (n, m)).astype(dtype=dtypeInput)
 
         out = f(data)
         gout = f_gpu(data)
@@ -301,7 +301,7 @@ class test_SoftMax(unittest.TestCase):
         return f, f_gpu
 
     def _cmp(self, n, m, f, f_gpu):
-        data = numpy.arange(n * m, dtype='float32').reshape(n, m)
+        data = np.arange(n * m, dtype='float32').reshape(n, m)
         out = f(data)
         gout = f_gpu(data)
         utt.assert_allclose(out, gout)

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 import copy
-import numpy
+import numpy as np
 
 import theano
 from theano import Apply, scalar, config, Op
@@ -27,7 +27,7 @@ from .fp16_help import load_w, write_w
 
 
 def make_argument(v, name):
-    return ArrayArg(numpy.dtype(v.type.dtype), name)
+    return ArrayArg(np.dtype(v.type.dtype), name)
 
 
 def as_C_string_const(s):

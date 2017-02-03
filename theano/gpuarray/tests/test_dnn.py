@@ -4,7 +4,7 @@ from collections import OrderedDict
 
 from nose.plugins.skip import SkipTest
 from nose_parameterized import parameterized
-import numpy
+import numpy as np
 from itertools import product, chain
 
 import theano
@@ -40,7 +40,7 @@ def test_dnn_conv_desc_merge():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
     kern_shp = T.as_tensor_variable(
-        numpy.asarray([3, 1, 2, 2]).astype('int64'))
+        np.asarray([3, 1, 2, 2]).astype('int64'))
     desc1 = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(2, 2),
                                conv_mode='conv')(kern_shp)
     desc2 = dnn.GpuDnnConvDesc(border_mode='full', subsample=(1, 1),
@@ -71,8 +71,8 @@ def test_dnn_conv_merge():
     o1 = dnn.dnn_conv(img, kern)
     o2 = dnn.dnn_conv(img, kern)
     f = theano.function([img, kern], [o1, o2], mode=mode_with_gpu)
-    d1, d2 = f(numpy.random.rand(*img_shp).astype(theano.config.floatX),
-               numpy.random.rand(*kern_shp).astype(theano.config.floatX))
+    d1, d2 = f(np.random.rand(*img_shp).astype(theano.config.floatX),
+               np.random.rand(*kern_shp).astype(theano.config.floatX))
     topo = f.maker.fgraph.toposort()
     assert len([n for n in topo if isinstance(n.op, dnn.GpuDnnConv)]) == 1
 
@@ -112,8 +112,8 @@ def test_dnn_conv_inplace():
     o1 = dnn.dnn_conv(img, kern, conv_mode='conv')
     o2 = dnn.dnn_conv(img, kern, conv_mode='cross')
     f = theano.function([img, kern], [o1, o2], mode=mode_with_gpu)
-    d1, d2 = f(numpy.random.rand(*img_shp).astype(theano.config.floatX),
-               numpy.random.rand(*kern_shp).astype(theano.config.floatX))
+    d1, d2 = f(np.random.rand(*img_shp).astype(theano.config.floatX),
+               np.random.rand(*kern_shp).astype(theano.config.floatX))
     topo = f.maker.fgraph.toposort()
     convs = [n for n in topo if isinstance(n.op, dnn.GpuDnnConv)]
     assert len(convs) == 2
@@ -191,7 +191,7 @@ def test_pooling():
                             (1, 3, 99, 99),
                             (32, 1, 147, 197),
                             ]:
-                    data = numpy.random.normal(0, 1, shp).astype(theano.config.floatX)
+                    data = np.random.normal(0, 1, shp).astype(theano.config.floatX)
                     a = f_cpu(data).__array__()
                     b = f_gpu(data).__array__()
                     utt.assert_allclose(a, b)
@@ -199,7 +199,7 @@ def test_pooling():
         # Test the grad
         for shp in [(1, 1, 2, 2),
                     (1, 1, 3, 3)]:
-            data = numpy.random.normal(0, 1, shp).astype(theano.config.floatX) * 10
+            data = np.random.normal(0, 1, shp).astype(theano.config.floatX) * 10
 
             ws = 2
             stride = 2
@@ -238,9 +238,9 @@ def test_pooling_with_tensor_vars():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
     x = T.tensor4()
-    ws = theano.shared(numpy.array([2, 2], dtype='int32'))
-    stride = theano.shared(numpy.array([1, 1], dtype='int32'))
-    pad = theano.shared(numpy.array([0, 0], dtype='int32'))
+    ws = theano.shared(np.array([2, 2], dtype='int32'))
+    stride = theano.shared(np.array([1, 1], dtype='int32'))
+    pad = theano.shared(np.array([0, 0], dtype='int32'))
     mode = 'max'
 
     def fn(x):
@@ -253,7 +253,7 @@ def test_pooling_with_tensor_vars():
 
     for shp in [(1, 1, 2, 2),
                 (1, 1, 3, 3)]:
-        data = numpy.random.normal(0, 1, shp).astype(theano.config.floatX) * 10
+        data = np.random.normal(0, 1, shp).astype(theano.config.floatX) * 10
         theano.tests.unittest_tools.verify_grad(
             fn, [data], mode=mode_with_gpu)
 
@@ -277,10 +277,10 @@ def test_pooling_with_tensor_vars():
     for shp in [(1, 10, 100, 100),
                 (1, 3, 99, 99),
                 (32, 1, 147, 197)]:
-        data = numpy.random.normal(0, 1, shp).astype(theano.config.floatX)
+        data = np.random.normal(0, 1, shp).astype(theano.config.floatX)
 
         # Change the window size dynamically
-        ws.set_value(numpy.array([i, i]).astype('int32'))
+        ws.set_value(np.array([i, i]).astype('int32'))
         a = f_gpu(data).__array__()
         b = f_cpu(data).__array__()
         utt.assert_allclose(a, b)
@@ -338,11 +338,11 @@ def test_pooling3d():
                             (1, 3, 99, 99, 29),
                             (2, 1, 147, 97, 37),
                             ]:
-                    data = numpy.random.normal(0, 1, shp).astype(theano.config.floatX)
+                    data = np.random.normal(0, 1, shp).astype(theano.config.floatX)
                     a = f_cpu(data).__array__()
                     b = f_gpu(data).__array__()
                     utt.assert_allclose(a, b,
-                                        atol=numpy.finfo(theano.config.floatX).eps)
+                                        atol=np.finfo(theano.config.floatX).eps)
 
         # Test the grad
         for shp in [(1, 1, 2, 2, 2),
@@ -352,7 +352,7 @@ def test_pooling3d():
                     (1, 1, 4, 3, 3),
                     (1, 1, 4, 4, 4),
                     (1, 1, 5, 5, 5)]:
-            data = numpy.random.normal(0, 1, shp).astype(theano.config.floatX) * 10
+            data = np.random.normal(0, 1, shp).astype(theano.config.floatX) * 10
 
             ws = 2
             stride = 2
@@ -392,7 +392,7 @@ def test_pooling_opt():
     assert any([isinstance(n.op, dnn.GpuDnnPool)
                 for n in f.maker.fgraph.toposort()])
 
-    f(numpy.zeros((10, 10), dtype=theano.config.floatX))
+    f(np.zeros((10, 10), dtype=theano.config.floatX))
 
     # gradient of 2D pooling
     f = theano.function(
@@ -405,7 +405,7 @@ def test_pooling_opt():
     assert any([isinstance(n.op, dnn.GpuDnnPoolGrad)
                 for n in f.maker.fgraph.toposort()])
 
-    f(numpy.zeros((10, 10), dtype=theano.config.floatX))
+    f(np.zeros((10, 10), dtype=theano.config.floatX))
 
     # Test sum pooling
     f = theano.function(
@@ -416,7 +416,7 @@ def test_pooling_opt():
 
     assert any([isinstance(n.op, dnn.GpuDnnPool)
                 for n in f.maker.fgraph.toposort()])
-    data = numpy.random.rand(10, 10).astype(theano.config.floatX)
+    data = np.random.rand(10, 10).astype(theano.config.floatX)
     f(data)
 
     # 3D pooling
@@ -431,7 +431,7 @@ def test_pooling_opt():
     assert any([isinstance(n.op, dnn.GpuDnnPool)
                 for n in f.maker.fgraph.toposort()])
 
-    f(numpy.zeros((10, 10, 10), dtype=theano.config.floatX))
+    f(np.zeros((10, 10, 10), dtype=theano.config.floatX))
 
     # gradient of 3D pooling
     f = theano.function(
@@ -444,7 +444,7 @@ def test_pooling_opt():
     assert any([isinstance(n.op, dnn.GpuDnnPoolGrad)
                 for n in f.maker.fgraph.toposort()])
 
-    f(numpy.zeros((10, 10, 10), dtype=theano.config.floatX))
+    f(np.zeros((10, 10, 10), dtype=theano.config.floatX))
 
 
 def test_pooling_opt_arbitrary_dimensions():
@@ -465,7 +465,7 @@ def test_pooling_opt_arbitrary_dimensions():
             # create input shape: non-pooling dimensions
             # followed by 2 or 3 pooling dimensions
             shp = tuple(range(2, 2 + n_non_pool_dims)) + tuple(range(5, 5 + len(ws)))
-            data = numpy.random.normal(0, 1, shp).astype(theano.config.floatX)
+            data = np.random.normal(0, 1, shp).astype(theano.config.floatX)
             input = gpuarray_shared_constructor(data)
 
             for mode in modes:
@@ -545,8 +545,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
         t = T.tensor4('t')
-        rand_tensor = numpy.asarray(
-            numpy.random.rand(5, 4, 3, 2),
+        rand_tensor = np.asarray(
+            np.random.rand(5, 4, 3, 2),
             dtype=theano.config.floatX
         )
         self._compile_and_check(
@@ -575,11 +575,11 @@ class TestDnnInferShapes(utt.InferShapeTester):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
 
-        img_val = numpy.asarray(img_val, dtype=theano.config.floatX)
-        kern_vals = numpy.asarray(kern_vals, dtype=theano.config.floatX)
+        img_val = np.asarray(img_val, dtype=theano.config.floatX)
+        kern_vals = np.asarray(kern_vals, dtype=theano.config.floatX)
 
         for subsample in subsamples:
-            out_vals = numpy.zeros(
+            out_vals = np.zeros(
                 dnn.GpuDnnConv.get_out_shape(img_val.shape, kern_vals.shape,
                                              border_mode=border_mode,
                                              subsample=subsample),
@@ -609,8 +609,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         self._test_conv(T.tensor4('img'),
                         T.tensor4('kerns'),
                         T.tensor4('out'),
-                        numpy.random.rand(7, 2, 8, 4),
-                        numpy.random.rand(8, 2, 4, 3),
+                        np.random.rand(7, 2, 8, 4),
+                        np.random.rand(8, 2, 4, 3),
                         border_mode,
                         conv_mode,
                         [(1, 1), (2, 2)],
@@ -621,8 +621,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         self._test_conv(T.tensor5('img'),
                         T.tensor5('kerns'),
                         T.tensor5('out'),
-                        numpy.random.rand(10, 2, 6, 4, 11),
-                        numpy.random.rand(8, 2, 4, 3, 1),
+                        np.random.rand(10, 2, 6, 4, 11),
+                        np.random.rand(8, 2, 4, 3, 1),
                         border_mode,
                         conv_mode,
                         [(1, 1, 1), (2, 2, 2)],
@@ -635,17 +635,17 @@ class TestDnnInferShapes(utt.InferShapeTester):
         topgrad_shape = get_conv_output_shape(img_shape, kerns_shape,
                                               border_mode, subsample)
 
-        img_val = numpy.asarray(
-            numpy.random.rand(*img_shape),
+        img_val = np.asarray(
+            np.random.rand(*img_shape),
             dtype=theano.config.floatX
         )
-        topgrad_vals = numpy.asarray(
-            numpy.random.rand(*topgrad_shape),
+        topgrad_vals = np.asarray(
+            np.random.rand(*topgrad_shape),
             dtype=theano.config.floatX
         )
 
-        kerns_vals = numpy.zeros(kerns_shape, dtype=theano.config.floatX)
-        kerns_shape = theano.shared(numpy.asarray(kerns_shape))
+        kerns_vals = np.zeros(kerns_shape, dtype=theano.config.floatX)
+        kerns_shape = theano.shared(np.asarray(kerns_shape))
         desc = dnn.GpuDnnConvDesc(
             border_mode=border_mode,
             subsample=subsample,
@@ -682,12 +682,12 @@ class TestDnnInferShapes(utt.InferShapeTester):
         img = T.tensor4('img')
         kerns = T.tensor4('kerns')
         out = T.tensor4('out')
-        kern_vals = numpy.asarray(
-            numpy.random.rand(13, 14, 15, 16),
+        kern_vals = np.asarray(
+            np.random.rand(13, 14, 15, 16),
             dtype=theano.config.floatX
         )
-        out_vals = numpy.asarray(
-            numpy.random.rand(3, 13, 5, 6),
+        out_vals = np.asarray(
+            np.random.rand(3, 13, 5, 6),
             dtype=theano.config.floatX
         )
 
@@ -701,7 +701,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 out_vals.shape[2] + kern_vals.shape[2] - 1,
                 out_vals.shape[3] + kern_vals.shape[3] - 1
             )
-            img_vals = numpy.zeros(shape, dtype=theano.config.floatX)
+            img_vals = np.zeros(shape, dtype=theano.config.floatX)
             desc = dnn.GpuDnnConvDesc(
                 border_mode=params[0],
                 subsample=params[1],
@@ -725,8 +725,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
         img = T.tensor4('img')
-        img_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5),
+        img_val = np.asarray(
+            np.random.rand(2, 3, 4, 5),
             dtype=theano.config.floatX
         )
 
@@ -752,8 +752,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         if not dnn.dnn_available(test_ctx_name):
             raise SkipTest(dnn.dnn_available.msg)
         img = T.tensor5('img')
-        img_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5, 6),
+        img_val = np.asarray(
+            np.random.rand(2, 3, 4, 5, 6),
             dtype=theano.config.floatX
         )
 
@@ -781,16 +781,16 @@ class TestDnnInferShapes(utt.InferShapeTester):
         img = T.tensor4('img')
         img_grad = T.tensor4('img_grad')
         out = T.tensor4('out')
-        img_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5),
+        img_val = np.asarray(
+            np.random.rand(2, 3, 4, 5),
             dtype=theano.config.floatX
         )
-        img_grad_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5),
+        img_grad_val = np.asarray(
+            np.random.rand(2, 3, 4, 5),
             dtype=theano.config.floatX
         )
-        out_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5),
+        out_val = np.asarray(
+            np.random.rand(2, 3, 4, 5),
             dtype=theano.config.floatX
         )
 
@@ -820,16 +820,16 @@ class TestDnnInferShapes(utt.InferShapeTester):
         img = T.tensor5('img')
         img_grad = T.tensor5('img_grad')
         out = T.tensor5('out')
-        img_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5, 6),
+        img_val = np.asarray(
+            np.random.rand(2, 3, 4, 5, 6),
             dtype=theano.config.floatX
         )
-        img_grad_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5, 6),
+        img_grad_val = np.asarray(
+            np.random.rand(2, 3, 4, 5, 6),
             dtype=theano.config.floatX
         )
-        out_val = numpy.asarray(
-            numpy.random.rand(2, 3, 4, 5, 6),
+        out_val = np.asarray(
+            np.random.rand(2, 3, 4, 5, 6),
             dtype=theano.config.floatX
         )
 
@@ -882,16 +882,16 @@ def test_dnn_conv_alpha_output_merge():
     iw = 8
     kh = 2
     kw = 6
-    img_val = numpy.random.random((b, c, ih, iw)).astype(theano.config.floatX)
-    kern_val = numpy.random.random((f, c, kh, kw)).astype(theano.config.floatX)
-    out_val = numpy.random.random((b, f, ih - kh + 1,
-                                   iw - kw + 1)).astype(theano.config.floatX)
+    img_val = np.random.random((b, c, ih, iw)).astype(theano.config.floatX)
+    kern_val = np.random.random((f, c, kh, kw)).astype(theano.config.floatX)
+    out_val = np.random.random((b, f, ih - kh + 1,
+                                iw - kw + 1)).astype(theano.config.floatX)
 
     conv = dnn.dnn_conv(img, kern)
     gw = theano.grad(conv.sum(), kern)
     gi = theano.grad(conv.sum(), img)
 
-    lr = numpy.asarray(0.05, dtype=theano.config.floatX)
+    lr = np.asarray(0.05, dtype=theano.config.floatX)
 
     fr = lr * (conv + out)
     wr = kern + lr * gw
@@ -941,10 +941,10 @@ def test_dnn_conv_grad():
     iw = 8
     kh = 2
     kw = 2
-    img_val = numpy.random.random((b, c, ih, iw)).astype(theano.config.floatX)
-    kern_val = numpy.random.random((f, c, kh, kw)).astype(theano.config.floatX)
-    out_val = numpy.random.random((b, f, ih - kw + 1,
-                                   iw - kw + 1)).astype(theano.config.floatX)
+    img_val = np.random.random((b, c, ih, iw)).astype(theano.config.floatX)
+    kern_val = np.random.random((f, c, kh, kw)).astype(theano.config.floatX)
+    out_val = np.random.random((b, f, ih - kw + 1,
+                                iw - kw + 1)).astype(theano.config.floatX)
 
     def dconv(img, kern, out):
         desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
@@ -1010,8 +1010,8 @@ def test_conv3d_fwd():
     def run_conv3d_fwd(inputs_shape, filters_shape, subsample,
                        border_mode, conv_mode):
 
-        inputs_val = numpy.random.random(inputs_shape).astype(theano.config.floatX)
-        filters_val = numpy.random.random(filters_shape).astype(theano.config.floatX)
+        inputs_val = np.random.random(inputs_shape).astype(theano.config.floatX)
+        filters_val = np.random.random(filters_shape).astype(theano.config.floatX)
 
         # Scale down the input values to prevent very large absolute errors
         # due to float rounding
@@ -1064,8 +1064,8 @@ def test_conv3d_bwd():
     def run_conv3d_bwd(inputs_shape, filters_shape, subsample,
                        border_mode, conv_mode):
 
-        inputs_val = numpy.random.random(inputs_shape).astype(theano.config.floatX)
-        filters_val = numpy.random.random(filters_shape).astype(theano.config.floatX)
+        inputs_val = np.random.random(inputs_shape).astype(theano.config.floatX)
+        filters_val = np.random.random(filters_shape).astype(theano.config.floatX)
 
         inputs = theano.shared(inputs_val)
         filters = theano.shared(filters_val)
@@ -1150,8 +1150,8 @@ class test_SoftMax(test_nnet.test_SoftMax):
 
     def test_softmax_shape_0(self):
         dims = (2, 0, 4, 5)
-        data = numpy.arange(
-            numpy.product(dims),
+        data = np.arange(
+            np.product(dims),
             dtype=theano.config.floatX
         ).reshape(dims)
 
@@ -1178,22 +1178,22 @@ class test_SoftMax(test_nnet.test_SoftMax):
         )
 
         def cmp(n, m, f, f_gpu):
-            data = numpy.random.random((n, m)).astype('float16')
-            gdata = numpy.asarray(data)[:, :, None, None]
+            data = np.random.random((n, m)).astype('float16')
+            gdata = np.asarray(data)[:, :, None, None]
 
             out = f(data)
-            gout = numpy.asarray(f_gpu(gdata))[:, :, 0, 0]
+            gout = np.asarray(f_gpu(gdata))[:, :, 0, 0]
             utt.assert_allclose(out, gout)
 
         self._test_softmax(x, x_gpu, f_z, f_gpu, cmp)
 
     def test_softmax_grad(self):
         def cmp(n, m, f, f_gpu):
-            data = numpy.arange(n * m, dtype=theano.config.floatX).reshape(n, m)
-            gdata = numpy.asarray(data)[:, :, None, None]
+            data = np.arange(n * m, dtype=theano.config.floatX).reshape(n, m)
+            gdata = np.asarray(data)[:, :, None, None]
 
             out = f(data)
-            gout = numpy.asarray(f_gpu(gdata))[:, :, 0, 0]
+            gout = np.asarray(f_gpu(gdata))[:, :, 0, 0]
             utt.assert_allclose(out, gout)
 
         x = T.matrix('x')
@@ -1206,11 +1206,11 @@ class test_SoftMax(test_nnet.test_SoftMax):
 
         # Verify the grad operation
         dims = (2, 3, 4, 5)
-        gdata = numpy.arange(
-            numpy.product(dims),
+        gdata = np.arange(
+            np.product(dims),
             dtype=theano.config.floatX
         ).reshape(dims)
-        T.verify_grad(f_gpu, [gdata], rng=numpy.random,
+        T.verify_grad(f_gpu, [gdata], rng=np.random,
                       mode=mode_with_gpu)
 
         # Verify that the CPU and GPU implementations return the same results
@@ -1237,7 +1237,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
             mode=mode_with_gpu
         )
         sorted_f = f.maker.fgraph.toposort()
-        val = numpy.random.rand(5).astype(theano.config.floatX)
+        val = np.random.rand(5).astype(theano.config.floatX)
         out_dnn = f(val)
         assert(len([i
                     for i in sorted_f
@@ -1327,11 +1327,11 @@ class test_SoftMax(test_nnet.test_SoftMax):
                         (2, 3, 4, 66000)]
 
         for inp_shape in input_shapes:
-            input_val = numpy.random.normal(0, 1, inp_shape).astype(theano.config.floatX)
+            input_val = np.random.normal(0, 1, inp_shape).astype(theano.config.floatX)
 
             out = f(input_val)
-            expected_out = numpy.log(numpy.exp(input_val) /
-                                     numpy.exp(input_val).sum(1)[:, None, :, :])
+            expected_out = np.log(np.exp(input_val) /
+                                  np.exp(input_val).sum(1)[:, None, :, :])
 
             utt.assert_allclose(out, expected_out)
 
@@ -1359,7 +1359,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
         assert dnn_softmax_nodes[0].op.algo == "log"
 
         # Compare the output of the function with the reference function
-        inp = numpy.random.normal(0, 1, (5, 6)).astype(theano.config.floatX)
+        inp = np.random.normal(0, 1, (5, 6)).astype(theano.config.floatX)
         utt.assert_allclose(f(inp), f_ref(inp))
 
         # Build the first graph and ensure that the optimization is applied
@@ -1372,7 +1372,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
         assert dnn_softmax_nodes[0].op.algo == "log"
 
         # Compare the output of the function with the reference function
-        inp = numpy.random.normal(0, 1, (5, 6)).astype(theano.config.floatX)
+        inp = np.random.normal(0, 1, (5, 6)).astype(theano.config.floatX)
         utt.assert_allclose(f(inp), f_ref(inp))
 
 
@@ -1455,12 +1455,12 @@ def test_dnn_batchnorm_train():
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes else s
                                     for d, s in enumerate(data_shape))
-                X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-                Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Running_mean = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Running_var = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+                X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+                Dy = -1 + 2 * np.random.randn(*data_shape).astype(theano.config.floatX)
+                Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Running_mean = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Running_var = np.random.randn(*param_shape).astype(theano.config.floatX)
                 outputs_gpu = f_gpu(X, Scale, Bias, Running_mean, Running_var, Dy)
                 outputs_abstract = f_abstract(X, Scale, Bias, Running_mean, Running_var, Dy)
                 outputs_ref = f_ref(X, Scale, Bias, Running_mean, Running_var, Dy)
@@ -1469,14 +1469,14 @@ def test_dnn_batchnorm_train():
                 utt.assert_allclose(outputs_gpu[1], outputs_ref[1])  # mean
                 utt.assert_allclose(outputs_gpu[2], outputs_ref[2])  # invstd
                 utt.assert_allclose(outputs_gpu[3], outputs_ref[3])  # running_mean
-                utt.assert_allclose(numpy.nan_to_num(outputs_gpu[4]),
-                                    numpy.nan_to_num(outputs_ref[4]))  # running_var
+                utt.assert_allclose(np.nan_to_num(outputs_gpu[4]),
+                                    np.nan_to_num(outputs_ref[4]))  # running_var
                 utt.assert_allclose(outputs_abstract[0], outputs_ref[0])  # out
                 utt.assert_allclose(outputs_abstract[1], outputs_ref[1])  # mean
                 utt.assert_allclose(outputs_abstract[2], outputs_ref[2])  # invstd
                 utt.assert_allclose(outputs_abstract[3], outputs_ref[3])  # running_mean
-                utt.assert_allclose(numpy.nan_to_num(outputs_abstract[4]),
-                                    numpy.nan_to_num(outputs_ref[4]))  # running_var
+                utt.assert_allclose(np.nan_to_num(outputs_abstract[4]),
+                                    np.nan_to_num(outputs_ref[4]))  # running_var
                 # compare gradients
                 utt.assert_allclose(outputs_gpu[5], outputs_ref[5], atol=2e-4)  # dx
                 utt.assert_allclose(outputs_gpu[6], outputs_ref[6], rtol=4e-4, atol=1e-4)  # dscale
@@ -1525,10 +1525,10 @@ def test_dnn_batchnorm_train_without_running_averages():
                                       bn.AbstractBatchNormTrainGrad))
                     for n in f_abstract.maker.fgraph.toposort()])
     # run
-    X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-    Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-    Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-    Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+    Dy = -1 + 2 * np.random.randn(*data_shape).astype(theano.config.floatX)
+    Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
     f_gpu(X, Scale, Bias, Dy)
     f_abstract(X, Scale, Bias, Dy)
 
@@ -1545,10 +1545,10 @@ def test_dnn_batchnorm_train_inplace():
     data_shape = (5, 10, 30, 25)
     param_shape = (1, 10, 30, 25)
     running_mean = gpuarray_shared_constructor(
-        numpy.random.randn(*param_shape).astype(theano.config.floatX),
+        np.random.randn(*param_shape).astype(theano.config.floatX),
         broadcastable=(True, False, False, False))
     running_var = gpuarray_shared_constructor(
-        numpy.random.randn(*param_shape).astype(theano.config.floatX),
+        np.random.randn(*param_shape).astype(theano.config.floatX),
         broadcastable=(True, False, False, False))
 
     # forward pass
@@ -1573,9 +1573,9 @@ def test_dnn_batchnorm_train_inplace():
     assert nodes[0].op.inplace_running_var
     assert nodes[0].op.inplace_output
     # run
-    X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-    Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-    Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+    Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
     f(X, Scale, Bias)
 
 
@@ -1632,12 +1632,12 @@ def test_batchnorm_inference():
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes else s
                                     for d, s in enumerate(data_shape))
-                X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-                Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Mean = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Var = numpy.random.rand(*param_shape).astype(theano.config.floatX)
+                X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+                Dy = -1 + 2 * np.random.randn(*data_shape).astype(theano.config.floatX)
+                Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Mean = np.random.randn(*param_shape).astype(theano.config.floatX)
+                Var = np.random.rand(*param_shape).astype(theano.config.floatX)
                 outputs_gpu = f_gpu(X, Scale, Bias, Mean, Var, Dy)
                 outputs_abstract = f_abstract(X, Scale, Bias, Mean, Var, Dy)
                 outputs_ref = f_ref(X, Scale, Bias, Mean, Var, Dy)
@@ -1679,11 +1679,11 @@ def test_batchnorm_inference_inplace():
     assert nodes[0].op.inplace
 
     # run
-    X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-    Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-    Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-    Mean = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-    Var = numpy.random.rand(*param_shape).astype(theano.config.floatX)
+    X = 4 + 3 * np.random.randn(*data_shape).astype(theano.config.floatX)
+    Scale = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Bias = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Mean = np.random.randn(*param_shape).astype(theano.config.floatX)
+    Var = np.random.rand(*param_shape).astype(theano.config.floatX)
     f(X, Scale, Bias, Mean, Var)
 
 
@@ -1756,7 +1756,7 @@ def test_dnn_rnn_gru():
     rnnb = dnn.RNNBlock(theano.config.floatX, hidden_dim, depth, 'gru')
     psize = rnnb.get_param_size([batch_size, input_dim])
     params_cudnn = gpuarray_shared_constructor(
-        numpy.zeros((psize,), dtype=theano.config.floatX))
+        np.zeros((psize,), dtype=theano.config.floatX))
 
     model = Model()
     last_layer = WrapperLayer(X)
@@ -1811,9 +1811,9 @@ def test_dnn_rnn_gru():
     ref_grad_fns = [ref_grad_fn, ref2_grad_fn, ref3_grad_fn]
     cudnn_grad_fns = [cudnn_grad_fn, cudnn2_grad_fn, cudnn3_grad_fn]
 
-    x_val = numpy.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
-    y_val = numpy.random.random((timesteps, batch_size, hidden_dim)).astype(theano.config.floatX)
-    h0_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+    x_val = np.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
+    y_val = np.random.random((timesteps, batch_size, hidden_dim)).astype(theano.config.floatX)
+    h0_val = np.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
 
     ref_out = ref_fn(x_val, h0_val)
     cudnn_out = cudnn_fn(x_val, h0_val)
@@ -1855,7 +1855,7 @@ def test_dnn_rnn_gru_bidi():
     rnnb = dnn.RNNBlock(theano.config.floatX, hidden_dim, depth, 'gru', direction_mode='bidirectional')
     psize = rnnb.get_param_size([batch_size, input_dim])
     params_cudnn = gpuarray_shared_constructor(
-        numpy.random.random((psize,)).astype(theano.config.floatX))
+        np.random.random((psize,)).astype(theano.config.floatX))
 
     def funcs(out, params, hy=None):
         cost = 0
@@ -1878,9 +1878,9 @@ def test_dnn_rnn_gru_bidi():
 
     cudnn_grad_fns = [cudnn_grad_fn, cudnn2_grad_fn, cudnn3_grad_fn]
 
-    x_val = numpy.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
-    y_val = numpy.random.random((timesteps, batch_size, 2 * hidden_dim)).astype(theano.config.floatX)
-    h0_val = numpy.random.random((2 * depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+    x_val = np.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
+    y_val = np.random.random((timesteps, batch_size, 2 * hidden_dim)).astype(theano.config.floatX)
+    h0_val = np.random.random((2 * depth, batch_size, hidden_dim)).astype(theano.config.floatX)
 
     cudnn_fn(x_val, h0_val)
 
@@ -1905,7 +1905,7 @@ def test_dnn_rnn_lstm():
     rnnb = dnn.RNNBlock(theano.config.floatX, hidden_dim, depth, 'lstm')
     psize = rnnb.get_param_size([batch_size, input_dim])
     params_cudnn = gpuarray_shared_constructor(
-        numpy.zeros((psize,), dtype=theano.config.floatX))
+        np.zeros((psize,), dtype=theano.config.floatX))
 
     model = Model()
     last_layer = WrapperLayer(X)
@@ -1934,10 +1934,10 @@ def test_dnn_rnn_lstm():
     cudnn_fn, cudnn_grad_fn = funcs(rnnb.apply(params_cudnn, X, h0, c0)[0],
                                     [params_cudnn])
 
-    x_val = numpy.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
-    y_val = numpy.random.random((timesteps, batch_size, hidden_dim)).astype(theano.config.floatX)
-    h0_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
-    c0_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+    x_val = np.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
+    y_val = np.random.random((timesteps, batch_size, hidden_dim)).astype(theano.config.floatX)
+    h0_val = np.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+    c0_val = np.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
 
     ref_out = ref_fn(x_val, h0_val, c0_val)
     cudnn_out = cudnn_fn(x_val, h0_val, c0_val)
@@ -1980,7 +1980,7 @@ def test_dnn_rnn_lstm_grad_c():
     rnnb = dnn.RNNBlock(theano.config.floatX, hidden_dim, depth, 'lstm')
     psize = rnnb.get_param_size([batch_size, input_dim])
     params_cudnn = gpuarray_shared_constructor(
-        numpy.zeros((psize,), dtype=theano.config.floatX))
+        np.zeros((psize,), dtype=theano.config.floatX))
 
     model = Model()
     last_layer = WrapperLayer(X)
@@ -2011,10 +2011,10 @@ def test_dnn_rnn_lstm_grad_c():
     ref_grad_fn = funcs(ref_cy, model.get_params())
     cudnn_grad_fn = funcs(cy, [params_cudnn])
 
-    x_val = numpy.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
-    cy_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
-    h0_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
-    c0_val = numpy.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+    x_val = np.random.random((timesteps, batch_size, input_dim)).astype(theano.config.floatX)
+    cy_val = np.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+    h0_val = np.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
+    c0_val = np.random.random((depth, batch_size, hidden_dim)).astype(theano.config.floatX)
 
     ref_grads = ref_grad_fn(x_val, cy_val, h0_val, c0_val)
     cudnn_grads = cudnn_grad_fn(x_val, cy_val, h0_val, c0_val)

@@ -1,5 +1,5 @@
 from __future__ import division, absolute_import, print_function
-import numpy
+import numpy as np
 from six.moves import xrange
 
 import theano
@@ -69,4 +69,4 @@ def test_cgpukernelbase():
 
     r = f()
 
-    assert (numpy.asarray(r) == numpy.eye(4, 5, dtype='int32')).all()
+    assert (np.asarray(r) == np.eye(4, 5, dtype='int32')).all()

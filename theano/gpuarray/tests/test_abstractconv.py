@@ -3,7 +3,7 @@ from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
 
-import numpy
+import numpy as np
 
 from theano.tensor.nnet.tests import test_abstract_conv
 from ..type import GpuArrayType, gpuarray_shared_constructor, get_context
@@ -250,7 +250,7 @@ class TestDnnConvTypes(test_abstract_conv.TestConvTypes):
         self.filters = gpu_ftensor4()
         self.topgrad = gpu_ftensor4()
         self.constant_tensor = gpuarray.array(
-            numpy.zeros((3, 5, 7, 11), dtype='float32'),
+            np.zeros((3, 5, 7, 11), dtype='float32'),
             context=get_context(test_ctx_name))
 
 

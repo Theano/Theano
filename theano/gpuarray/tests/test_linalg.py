@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import unittest
-import numpy
+import numpy as np
 import theano
 
 from theano.tests import unittest_tools as utt
@@ -19,8 +19,8 @@ if not cusolver_available:
 
 class TestCusolver(unittest.TestCase):
     def run_gpu_solve(self, A_val, x_val, A_struct=None):
-        b_val = numpy.dot(A_val, x_val)
-        b_val_trans = numpy.dot(A_val.T, x_val)
+        b_val = np.dot(A_val, x_val)
+        b_val_trans = np.dot(A_val.T, x_val)
 
         A = theano.tensor.matrix("A", dtype="float32")
         b = theano.tensor.matrix("b", dtype="float32")
@@ -35,59 +35,59 @@ class TestCusolver(unittest.TestCase):
 
         fn = theano.function([A, b, b_trans], [solver, solver_trans], mode=mode_with_gpu)
         res = fn(A_val, b_val, b_val_trans)
-        x_res = numpy.array(res[0])
-        x_res_trans = numpy.array(res[1])
+        x_res = np.array(res[0])
+        x_res_trans = np.array(res[1])
         utt.assert_allclose(x_val, x_res)
         utt.assert_allclose(x_val, x_res_trans)
 
     def test_diag_solve(self):
-        numpy.random.seed(1)
-        A_val = numpy.asarray([[2, 0, 0], [0, 1, 0], [0, 0, 1]],
-                              dtype="float32")
-        x_val = numpy.random.uniform(-0.4, 0.4, (A_val.shape[1],
-                                     1)).astype("float32")
+        np.random.seed(1)
+        A_val = np.asarray([[2, 0, 0], [0, 1, 0], [0, 0, 1]],
+                           dtype="float32")
+        x_val = np.random.uniform(-0.4, 0.4, (A_val.shape[1],
+                                  1)).astype("float32")
         self.run_gpu_solve(A_val, x_val)
 
     def test_bshape_solve(self):
         """
         Test when shape of b (k, m) is such as m > k
         """
-        numpy.random.seed(1)
-        A_val = numpy.asarray([[2, 0, 0], [0, 1, 0], [0, 0, 1]],
-                              dtype="float32")
-        x_val = numpy.random.uniform(-0.4, 0.4, (A_val.shape[1],
-                                     A_val.shape[1] + 1)).astype("float32")
+        np.random.seed(1)
+        A_val = np.asarray([[2, 0, 0], [0, 1, 0], [0, 0, 1]],
+                           dtype="float32")
+        x_val = np.random.uniform(-0.4, 0.4, (A_val.shape[1],
+                                  A_val.shape[1] + 1)).astype("float32")
         self.run_gpu_solve(A_val, x_val)
 
     def test_sym_solve(self):
-        numpy.random.seed(1)
-        A_val = numpy.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
-        A_sym = numpy.dot(A_val, A_val.T)
-        x_val = numpy.random.uniform(-0.4, 0.4, (A_val.shape[1],
-                                     1)).astype("float32")
+        np.random.seed(1)
+        A_val = np.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
+        A_sym = np.dot(A_val, A_val.T)
+        x_val = np.random.uniform(-0.4, 0.4, (A_val.shape[1],
+                                  1)).astype("float32")
         self.run_gpu_solve(A_sym, x_val, 'symmetric')
 
     def test_orth_solve(self):
-        numpy.random.seed(1)
-        A_val = numpy.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
-        A_orth = numpy.linalg.svd(A_val)[0]
-        x_val = numpy.random.uniform(-0.4, 0.4, (A_orth.shape[1],
-                                     1)).astype("float32")
+        np.random.seed(1)
+        A_val = np.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
+        A_orth = np.linalg.svd(A_val)[0]
+        x_val = np.random.uniform(-0.4, 0.4, (A_orth.shape[1],
+                                  1)).astype("float32")
         self.run_gpu_solve(A_orth, x_val)
 
     def test_uni_rand_solve(self):
-        numpy.random.seed(1)
-        A_val = numpy.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
-        x_val = numpy.random.uniform(-0.4, 0.4,
-                                     (A_val.shape[1], 4)).astype("float32")
+        np.random.seed(1)
+        A_val = np.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
+        x_val = np.random.uniform(-0.4, 0.4,
+                                  (A_val.shape[1], 4)).astype("float32")
         self.run_gpu_solve(A_val, x_val)
 
     def test_linalgerrsym_solve(self):
-        numpy.random.seed(1)
-        A_val = numpy.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
-        x_val = numpy.random.uniform(-0.4, 0.4,
-                                     (A_val.shape[1], 4)).astype("float32")
-        A_val = numpy.dot(A_val.T, A_val)
+        np.random.seed(1)
+        A_val = np.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
+        x_val = np.random.uniform(-0.4, 0.4,
+                                  (A_val.shape[1], 4)).astype("float32")
+        A_val = np.dot(A_val.T, A_val)
         # make A singular
         A_val[:, 2] = A_val[:, 1] + A_val[:, 3]
 
@@ -99,10 +99,10 @@ class TestCusolver(unittest.TestCase):
         self.assertRaises(LinAlgError, fn, A_val, x_val)
 
     def test_linalgerr_solve(self):
-        numpy.random.seed(1)
-        A_val = numpy.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
-        x_val = numpy.random.uniform(-0.4, 0.4,
-                                     (A_val.shape[1], 4)).astype("float32")
+        np.random.seed(1)
+        A_val = np.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
+        x_val = np.random.uniform(-0.4, 0.4,
+                                  (A_val.shape[1], 4)).astype("float32")
         # make A singular
         A_val[:, 2] = 0
 

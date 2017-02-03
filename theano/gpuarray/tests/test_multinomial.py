@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
-import numpy
+import numpy as np
 
 import unittest
 
@@ -62,10 +62,10 @@ def test_multinomial_large():
     assert any([type(node.op) is GPUAMultinomialFromUniform
                 for node in f.maker.fgraph.toposort()])
 
-    pval = numpy.arange(10000 * 4,
-                        dtype='float32').reshape((10000, 4)) + 0.1
+    pval = np.arange(10000 * 4,
+                     dtype='float32').reshape((10000, 4)) + 0.1
     pval = pval / pval.sum(axis=1)[:, None]
-    uval = numpy.ones_like(pval[:, 0]) * 0.5
+    uval = np.ones_like(pval[:, 0]) * 0.5
     mval = f(pval, uval)
 
     assert mval.shape == pval.shape
@@ -78,7 +78,7 @@ def test_multinomial_large():
     else:
         raise NotImplementedError(config.cast_policy)
     utt.assert_allclose(mval.sum(axis=1), 2)
-    asdf = numpy.asarray([0, 0, 2, 0]) + 0 * pval
+    asdf = np.asarray([0, 0, 2, 0]) + 0 * pval
     utt.assert_allclose(mval, asdf)  # broadcast over all rows
 
 
@@ -92,9 +92,9 @@ def test_gpu_opt_dtypes():
         f = function([p, u], m, allow_input_downcast=True, mode=mode_with_gpu)
         assert any([type(node.op) is GPUAMultinomialFromUniform
                     for node in f.maker.fgraph.toposort()])
-        pval = numpy.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
+        pval = np.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
         pval = pval / pval.sum(axis=1)[:, None]
-        uval = numpy.ones_like(pval[:, 0]) * 0.5
+        uval = np.ones_like(pval[:, 0]) * 0.5
         samples = f(pval, uval)
         assert samples.dtype == dtype, "%s != %s" % (samples.dtype, dtype)
 
@@ -112,9 +112,9 @@ def test_gpu_opt():
     f = function([p, u], m, allow_input_downcast=True, mode=mode_with_gpu)
     assert any([type(node.op) is GPUAMultinomialFromUniform
                 for node in f.maker.fgraph.toposort()])
-    pval = numpy.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
+    pval = np.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
     pval = pval / pval.sum(axis=1)[:, None]
-    uval = numpy.ones_like(pval[:, 0]) * 0.5
+    uval = np.ones_like(pval[:, 0]) * 0.5
     f(pval, uval)
 
     # Test with a row, it was failing in the past.
@@ -125,9 +125,9 @@ def test_gpu_opt():
     f = function([r, u], m, allow_input_downcast=True, mode=mode_with_gpu)
     assert any([type(node.op) is GPUAMultinomialFromUniform
                 for node in f.maker.fgraph.toposort()])
-    pval = numpy.arange(1 * 4, dtype='float32').reshape((1, 4)) + 0.1
+    pval = np.arange(1 * 4, dtype='float32').reshape((1, 4)) + 0.1
     pval = pval / pval.sum(axis=1)[:, None]
-    uval = numpy.ones_like(pval[:, 0]) * 0.5
+    uval = np.ones_like(pval[:, 0]) * 0.5
     f(pval, uval)
 
 
@@ -146,15 +146,15 @@ class test_OP_wor(unittest.TestCase):
 
         n_elements = 1000
         all_indices = range(n_elements)
-        numpy.random.seed(12345)
+        np.random.seed(12345)
         for i in [5, 10, 50, 100, 500, n_elements]:
-            uni = numpy.random.rand(i).astype(config.floatX)
-            pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+            uni = np.random.rand(i).astype(config.floatX)
+            pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
             pvals /= pvals.sum(1)
             res = f(pvals, uni, i)
-            res = numpy.squeeze(res)
+            res = np.squeeze(res)
             assert len(res) == i, res
-            assert numpy.all(numpy.in1d(numpy.unique(res), all_indices)), res
+            assert np.all(np.in1d(np.unique(res), all_indices)), res
 
     def test_fail_select_alot(self):
         """
@@ -170,9 +170,9 @@ class test_OP_wor(unittest.TestCase):
 
         n_elements = 100
         n_selected = 200
-        numpy.random.seed(12345)
-        uni = numpy.random.rand(n_selected).astype(config.floatX)
-        pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+        np.random.seed(12345)
+        uni = np.random.rand(n_selected).astype(config.floatX)
+        pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
         self.assertRaises(ValueError, f, pvals, uni, n_selected)
 
@@ -191,18 +191,18 @@ class test_OP_wor(unittest.TestCase):
         n_elements = 100
         n_selected = 10
         mean_rtol = 0.0005
-        numpy.random.seed(12345)
-        pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+        np.random.seed(12345)
+        pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
-        avg_pvals = numpy.zeros((n_elements,), dtype=config.floatX)
+        avg_pvals = np.zeros((n_elements,), dtype=config.floatX)
 
         for rep in range(10000):
-            uni = numpy.random.rand(n_selected).astype(config.floatX)
+            uni = np.random.rand(n_selected).astype(config.floatX)
             res = f(pvals, uni, n_selected)
-            res = numpy.squeeze(res)
+            res = np.squeeze(res)
             avg_pvals[res] += 1
         avg_pvals /= avg_pvals.sum()
-        avg_diff = numpy.mean(abs(avg_pvals - pvals))
+        avg_diff = np.mean(abs(avg_pvals - pvals))
         assert avg_diff < mean_rtol, avg_diff
 
 
@@ -222,14 +222,14 @@ class test_function_wor(unittest.TestCase):
 
         n_elements = 1000
         all_indices = range(n_elements)
-        numpy.random.seed(12345)
+        np.random.seed(12345)
         for i in [5, 10, 50, 100, 500, n_elements]:
-            pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+            pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
             pvals /= pvals.sum(1)
             res = f(pvals, i)
-            res = numpy.squeeze(res)
+            res = np.squeeze(res)
             assert len(res) == i
-            assert numpy.all(numpy.in1d(numpy.unique(res), all_indices)), res
+            assert np.all(np.in1d(np.unique(res), all_indices)), res
 
     def test_fail_select_alot(self):
         """
@@ -246,8 +246,8 @@ class test_function_wor(unittest.TestCase):
 
         n_elements = 100
         n_selected = 200
-        numpy.random.seed(12345)
-        pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+        np.random.seed(12345)
+        pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
         self.assertRaises(ValueError, f, pvals, n_selected)
 
@@ -267,17 +267,17 @@ class test_function_wor(unittest.TestCase):
         n_elements = 100
         n_selected = 10
         mean_rtol = 0.0005
-        numpy.random.seed(12345)
-        pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
+        np.random.seed(12345)
+        pvals = np.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
-        avg_pvals = numpy.zeros((n_elements,), dtype=config.floatX)
+        avg_pvals = np.zeros((n_elements,), dtype=config.floatX)
 
         for rep in range(10000):
             res = f(pvals, n_selected)
-            res = numpy.squeeze(res)
+            res = np.squeeze(res)
             avg_pvals[res] += 1
         avg_pvals /= avg_pvals.sum()
-        avg_diff = numpy.mean(abs(avg_pvals - pvals))
+        avg_diff = np.mean(abs(avg_pvals - pvals))
         assert avg_diff < mean_rtol
 
 
@@ -294,9 +294,9 @@ def test_gpu_opt_wor():
     assert any([type(node.op) is GPUAMultinomialWOReplacementFromUniform
                 for node in f.maker.fgraph.toposort()])
     n_samples = 3
-    pval = numpy.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
+    pval = np.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
     pval = pval / pval.sum(axis=1)[:, None]
-    uval = numpy.ones(pval.shape[0] * n_samples) * 0.5
+    uval = np.ones(pval.shape[0] * n_samples) * 0.5
     f(pval, uval, n_samples)
 
     # Test with a row, it was failing in the past.
@@ -307,7 +307,7 @@ def test_gpu_opt_wor():
     f = function([r, u, n], m, allow_input_downcast=True, mode=mode_with_gpu)
     assert any([type(node.op) is GPUAMultinomialWOReplacementFromUniform
                 for node in f.maker.fgraph.toposort()])
-    pval = numpy.arange(1 * 4, dtype='float32').reshape((1, 4)) + 0.1
+    pval = np.arange(1 * 4, dtype='float32').reshape((1, 4)) + 0.1
     pval = pval / pval.sum(axis=1)[:, None]
-    uval = numpy.ones_like(pval[:, 0]) * 0.5
+    uval = np.ones_like(pval[:, 0]) * 0.5
     f(pval, uval, 1)
