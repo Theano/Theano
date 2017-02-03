@@ -1,5 +1,5 @@
 """Define new Ops from existing Ops"""
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 from functools import reduce, partial
 from collections import OrderedDict
 
@@ -20,7 +20,7 @@ class OpFromGraph(gof.Op):
     The signature is similar to :func:`theano.function <theano.function>`
     and the resulting ``Op``'s perform will do the same operation as::
 
-        orig_function(inputs, outputs, **kwargs)
+        orig_function(inputs, outputs, \*\*kwargs)
 
     Currently does not support ``updates`` or ``givens`` argument.
 
