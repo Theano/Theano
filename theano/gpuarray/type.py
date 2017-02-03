@@ -1,5 +1,6 @@
 from __future__ import absolute_import, print_function, division
-import sys, os
+import sys
+import os
 import numpy as np
 import six.moves.copyreg as copyreg
 from six import iteritems
