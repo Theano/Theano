@@ -224,7 +224,7 @@ class GpuArrayType(Type):
                type(data) == float and
                self.dtype == config.floatX)):
             if not isinstance(data, gpuarray.GpuArray):
-                data = numpy.array(data, dtype=self.dtype, copy=False,
+                data = np.array(data, dtype=self.dtype, copy=False,
                                    ndmin=len(self.broadcastable))
             else:
                 data = gpuarray.array(data, dtype=self.typecode, copy=False,
@@ -243,7 +243,7 @@ class GpuArrayType(Type):
             up_dtype = scalar.upcast(self.dtype, data.dtype)
             if up_dtype == self.dtype:
                 if not isinstance(data, gpuarray.GpuArray):
-                    data = numpy.array(data, dtype=self.dtype, copy=False)
+                    data = np.array(data, dtype=self.dtype, copy=False)
                 else:
                     data = gpuarray.array(data, dtype=self.dtype, copy=False)
             else:
