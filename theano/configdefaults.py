@@ -199,7 +199,6 @@ AddConfigVar(
     StrParam(default_cuda_root),
     in_c_key=False)
 
-# To be used as an internal config or for developers (i.e. not to be put in documentation)
 AddConfigVar(
     'cuda.enabled',
     'If false, C code in old backend is not compiled.',

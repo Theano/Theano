@@ -671,6 +671,14 @@ import theano and print the config variable, as in:
 
     A directory with bin/, lib/, include/ folders containing cuda utilities.
 
+.. attribute:: config.cuda.enabled
+
+    Bool value: either ``True`` of ``False``
+
+    Default: ``True``
+
+    If set to `False`, C code in old backend is not compiled.
+
 .. attribute:: config.dnn.enabled
 
     String value: ``'auto'``, ``'True'``, ``'False'``
