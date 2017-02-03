@@ -22,6 +22,7 @@ from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scalar.basic_scipy import Erfinv, Erfcinv
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
+from theano.tensor.nnet import bn
 from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet.blocksparse import SparseBlockGemv, SparseBlockOuter
 from theano.tensor.nnet.abstract_conv import (BaseAbstractConv,
@@ -1964,9 +1965,8 @@ abstractconv_groupopt = theano.gof.optdb.LocalGroupDB()
 abstractconv_groupopt.__name__ = "gpuarray_abstractconv_opts"
 register_opt('fast_compile')(abstractconv_groupopt)
 
-# cuDNN is first, but only registered if cuDNN is available.
-# (we import these opts here instead of at the top of this file
-# to avoid a circular dependency problem with dnn)
+# We import these opts here instead of at the top of this file
+# to avoid a circular dependency problem with dnn
 from .dnn import (local_abstractconv_cudnn, local_abstractconv_gw_cudnn,
                   local_abstractconv_gi_cudnn)     # noqa: 402
 abstractconv_groupopt.register('local_abstractconv_dnn',
@@ -2005,3 +2005,56 @@ abstractconv_groupopt.register('local_abstractconv3d_gradinputs',
                                local_abstractconv3d_gradinputs_gemm, 30,
                                'conv_gemm',
                                'gpuarray', 'fast_compile', 'fast_run')
+
+
+# Register cuDNN batch normalization implementation
+
+# We import these opts here instead of at the top of this file
+# to avoid a circular dependency problem with dnn
+from .dnn import (local_abstract_batch_norm_train_cudnn,
+                  local_abstract_batch_norm_train_grad_cudnn,
+                  local_abstract_batch_norm_inference_cudnn)     # noqa: 402
+
+abstract_batch_norm_groupopt = theano.gof.optdb.LocalGroupDB()
+abstract_batch_norm_groupopt.__name__ = "gpuarray_batchnorm_opts"
+register_opt('fast_compile')(abstract_batch_norm_groupopt)
+
+abstract_batch_norm_db = LocalGroupDB()
+abstract_batch_norm_db2 = LocalGroupDB(
+    local_opt=theano.gof.opt.GraphToGPULocalOptGroup)
+abstract_batch_norm_db2.__name__ = "abstract_batch_norm_db2"
+register_opt('fast_compile', name='abstract_batch_norm_db')(
+    abstract_batch_norm_db)
+register_opt2([bn.AbstractBatchNormTrain,
+               bn.AbstractBatchNormTrainGrad,
+               bn.AbstractBatchNormInference],
+              'fast_compile', name='abstract_batch_norm_db2')(
+    abstract_batch_norm_db2)
+
+for op, fct, cpu in [(bn.AbstractBatchNormTrain,
+                      local_abstract_batch_norm_train_cudnn,
+                      bn.local_abstract_batch_norm_train),
+                     (bn.AbstractBatchNormTrainGrad,
+                      local_abstract_batch_norm_train_grad_cudnn,
+                      bn.local_abstract_batch_norm_train_grad),
+                     (bn.AbstractBatchNormInference,
+                      local_abstract_batch_norm_inference_cudnn,
+                      bn.local_abstract_batch_norm_inference)]:
+    lifter = op_lifter([op])(fct)
+    abstract_batch_norm_db.register(fct.__name__,
+                                    lifter,
+                                    'gpuarray', 'fast_compile', 'fast_run',
+                                    'cudnn', 'batchnorm_dnn',
+                                    position=1)
+    abstract_batch_norm_db2.register(fct.__name__,
+                                     local_optimizer([op])(fct),
+                                     'gpuarray', 'fast_compile', 'fast_run',
+                                     'cudnn', 'batchnorm_dnn',
+                                     position=1)
+    # cpu is a normal optimization. We can't register it in
+    # GraphToGPU.  So for now, only add it to the slower EQ phase.  If
+    # there is no cuDNN, we still want to move it to the GPU now with
+    # a Theano graph so to have this graph on the GPU.
+    abstract_batch_norm_db.register(cpu.__name__, cpu,
+                                    'gpuarray', 'fast_compile', 'fast_run',
+                                    position='last')

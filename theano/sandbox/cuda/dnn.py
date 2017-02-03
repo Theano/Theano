@@ -3705,6 +3705,19 @@ def local_gpu_batch_norm_inference_inplace(node):
                                          inplace=True)(*node.inputs)]
 
 
+def values_eq_approx_high_tol(a, b):
+    """
+    This fct is needed to don't have DebugMode raise useless
+    errors due to rounding error.
+
+    This happen as we reduce on the two last dimensions, so this
+    can raise the absolute error if the number of elements we
+    reduce on is significant.
+
+    """
+    return tensor.TensorType.values_eq_approx(a, b, atol=0.015)
+
+
 @local_optimizer([bn.AbstractBatchNormTrainGrad])
 def local_abstract_batch_norm_train_grad_cudnn(node):
     if not isinstance(node.op, bn.AbstractBatchNormTrainGrad):
@@ -3781,6 +3794,9 @@ def local_abstract_batch_norm_train_grad_cudnn(node):
     if isinstance(node.outputs[2].type, tensor.TensorType):
         g_wrt_bias = tensor.as_tensor_variable(g_wrt_bias)
     # TODO copy_stack_trace?
+
+    g_wrt_inputs.tag.values_eq_approx = values_eq_approx_high_tol
+    g_wrt_scale.tag.values_eq_approx = values_eq_approx_high_tol
     return [g_wrt_inputs, g_wrt_scale, g_wrt_bias]
 
 

@@ -38,6 +38,8 @@ if theano.config.mode == 'FAST_COMPILE':
 else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
+    mode_with_gpu.check_py_code = False
+    mode_without_gpu.check_py_code = False
 
 
 def test_dnn_conv_desc_merge():
@@ -732,7 +734,7 @@ def test_batchnorm_train():
         raise SkipTest("batch normalization requires cudnn v5+")
     utt.seed_rng()
 
-    tensor6 = T.TensorType(theano.config.floatX, (False,) * 6)
+    tensor6 = T.TensorType('float32', (False,) * 6)
 
     for mode in ('per-activation', 'spatial'):
         for vartype in (tensor6, T.ftensor5, T.ftensor4, T.ftensor3, T.fmatrix, T.fvector):
@@ -766,7 +768,7 @@ def test_batchnorm_train():
             x_invstd_ref = T.inv(T.sqrt(x_var_ref + eps))
             scale_ref = T.addbroadcast(scale, *axes)
             bias_ref = T.addbroadcast(bias, *axes)
-            m = T.cast(T.prod(x.shape) / T.prod(scale.shape), theano.config.floatX)
+            m = T.cast(T.prod(x.shape) / T.prod(scale.shape), 'float32')
             out_ref = (x - x_mean_ref) * (scale_ref * x_invstd_ref) + bias_ref
             out_running_mean_ref = running_mean * (1 - running_average_factor) + \
                 x_mean_ref * running_average_factor
@@ -801,16 +803,16 @@ def test_batchnorm_train():
                                               bn.AbstractBatchNormTrainGrad)) for n
                             in f_abstract.maker.fgraph.toposort()])
             # run
-            for data_shape in ((5, 10, 30, 40, 10, 5), (4, 3, 1, 1, 1, 1), (1, 1, 5, 5, 5, 5)):
+            for data_shape in ((5, 2, 30, 4, 10, 5), (4, 3, 1, 1, 1, 1), (2, 3, 5, 5, 5, 5)):
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes else s
                                     for d, s in enumerate(data_shape))
-                X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-                Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Running_mean = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Running_var = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+                X = 4 + 3 * numpy.random.randn(*data_shape).astype('float32')
+                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype('float32')
+                Scale = numpy.random.randn(*param_shape).astype('float32')
+                Bias = numpy.random.randn(*param_shape).astype('float32')
+                Running_mean = numpy.random.randn(*param_shape).astype('float32')
+                Running_var = numpy.random.randn(*param_shape).astype('float32')
                 outputs_gpu = f_gpu(X, Scale, Bias, Running_mean, Running_var, Dy)
                 outputs_abstract = f_abstract(X, Scale, Bias, Running_mean, Running_var, Dy)
                 outputs_ref = f_ref(X, Scale, Bias, Running_mean, Running_var, Dy)
@@ -844,7 +846,7 @@ def test_dnn_batchnorm_train_without_running_averages():
         raise SkipTest("batch normalization requires cudnn v5+")
     utt.seed_rng()
 
-    x, scale, bias, dy = T.tensor4('x'), T.tensor4('scale'), T.tensor4('bias'), T.tensor4('dy')
+    x, scale, bias, dy = T.ftensor4('x'), T.ftensor4('scale'), T.ftensor4('bias'), T.ftensor4('dy')
     data_shape = (5, 10, 30, 25)
     param_shape = (1, 10, 30, 25)
 
@@ -875,10 +877,10 @@ def test_dnn_batchnorm_train_without_running_averages():
                                       bn.AbstractBatchNormTrainGrad))
                     for n in f_abstract.maker.fgraph.toposort()])
     # run
-    X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-    Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-    Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-    Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    X = 4 + 3 * numpy.random.randn(*data_shape).astype('float32')
+    Dy = -1 + 2 * numpy.random.randn(*data_shape).astype('float32')
+    Scale = numpy.random.randn(*param_shape).astype('float32')
+    Bias = numpy.random.randn(*param_shape).astype('float32')
     f_gpu(X, Scale, Bias, Dy)
     f_abstract(X, Scale, Bias, Dy)
 
@@ -891,14 +893,14 @@ def test_dnn_batchnorm_train_inplace():
         raise SkipTest("batch normalization requires cudnn v5+")
     utt.seed_rng()
 
-    x, scale, bias = T.tensor4('x'), T.tensor4('scale'), T.tensor4('bias')
+    x, scale, bias = T.ftensor4('x'), T.ftensor4('scale'), T.ftensor4('bias')
     data_shape = (5, 10, 30, 25)
     param_shape = (1, 10, 30, 25)
     running_mean = shared(
-        numpy.random.randn(*param_shape).astype(theano.config.floatX),
+        numpy.random.randn(*param_shape).astype('float32'),
         broadcastable=(True, False, False, False))
     running_var = shared(
-        numpy.random.randn(*param_shape).astype(theano.config.floatX),
+        numpy.random.randn(*param_shape).astype('float32'),
         broadcastable=(True, False, False, False))
 
     # forward pass
@@ -923,9 +925,9 @@ def test_dnn_batchnorm_train_inplace():
     assert nodes[0].op.inplace_running_var
     assert nodes[0].op.inplace_output
     # run
-    X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-    Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-    Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
+    X = 4 + 3 * numpy.random.randn(*data_shape).astype('float32')
+    Scale = numpy.random.randn(*param_shape).astype('float32')
+    Bias = numpy.random.randn(*param_shape).astype('float32')
     f(X, Scale, Bias)
 
 
@@ -936,10 +938,10 @@ def test_batchnorm_inference():
         raise SkipTest("batch normalization requires cudnn v5+")
     utt.seed_rng()
 
-    tensor6 = T.TensorType(theano.config.floatX, (False,) * 6)
+    tensor6 = T.TensorType('float32', (False,) * 6)
 
     for mode in ('per-activation', 'spatial'):
-        for vartype in (tensor6, T.tensor5, T.tensor4, T.tensor3, T.matrix, T.vector):
+        for vartype in (tensor6, T.ftensor5, T.ftensor4, T.ftensor3, T.fmatrix, T.fvector):
             x, scale, bias, mean, var = (vartype(n)
                                          for n in ('x', 'scale', 'bias', 'mean', 'var'))
             ndim = x.ndim
@@ -980,16 +982,16 @@ def test_batchnorm_inference():
                                               bn.AbstractBatchNormTrainGrad)) for n
                             in f_abstract.maker.fgraph.toposort()])
             # run
-            for data_shape in ((10, 20, 30, 40, 10, 5), (4, 3, 1, 1, 1, 1), (1, 1, 5, 5, 5, 5)):
+            for data_shape in ((10, 2, 15, 4, 6, 5), (4, 3, 1, 1, 1, 1), (1, 1, 5, 5, 5, 5)):
                 data_shape = data_shape[:ndim]
                 param_shape = tuple(1 if d in axes else s
                                     for d, s in enumerate(data_shape))
-                X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-                Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Mean = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-                Var = numpy.random.rand(*param_shape).astype(theano.config.floatX)
+                X = 4 + 3 * numpy.random.randn(*data_shape).astype('float32')
+                Dy = -1 + 2 * numpy.random.randn(*data_shape).astype('float32')
+                Scale = numpy.random.randn(*param_shape).astype('float32')
+                Bias = numpy.random.randn(*param_shape).astype('float32')
+                Mean = numpy.random.randn(*param_shape).astype('float32')
+                Var = numpy.random.rand(*param_shape).astype('float32')
                 outputs_gpu = f_gpu(X, Scale, Bias, Mean, Var, Dy)
                 outputs_abstract = f_abstract(X, Scale, Bias, Mean, Var, Dy)
                 outputs_ref = f_ref(X, Scale, Bias, Mean, Var, Dy)
@@ -1017,7 +1019,7 @@ def test_batchnorm_inference_inplace():
         raise SkipTest("batch normalization requires cudnn v5+")
     utt.seed_rng()
 
-    x, scale, bias, mean, var = (T.tensor4(n) for n in ('x', 'scale', 'bias', 'mean', 'var'))
+    x, scale, bias, mean, var = (T.ftensor4(n) for n in ('x', 'scale', 'bias', 'mean', 'var'))
     data_shape = (5, 10, 30, 25)
     param_shape = (1, 10, 30, 25)
 
@@ -1031,11 +1033,11 @@ def test_batchnorm_inference_inplace():
     assert nodes[0].op.inplace
 
     # run
-    X = 4 + 3 * numpy.random.randn(*data_shape).astype(theano.config.floatX)
-    Scale = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-    Bias = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-    Mean = numpy.random.randn(*param_shape).astype(theano.config.floatX)
-    Var = numpy.random.rand(*param_shape).astype(theano.config.floatX)
+    X = 4 + 3 * numpy.random.randn(*data_shape).astype('float32')
+    Scale = numpy.random.randn(*param_shape).astype('float32')
+    Bias = numpy.random.randn(*param_shape).astype('float32')
+    Mean = numpy.random.randn(*param_shape).astype('float32')
+    Var = numpy.random.rand(*param_shape).astype('float32')
     f(X, Scale, Bias, Mean, Var)
 
 
@@ -1045,7 +1047,7 @@ def test_dnn_batchnorm_valid_and_invalid_axes():
     if cuda.dnn.version() < (5000, 5000):
         raise SkipTest("batch normalization requires cudnn v5+")
 
-    for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix):
+    for vartype in (T.ftensor5, T.ftensor4, T.ftensor3, T.fmatrix):
         x, scale, bias, mean, var, dy = (vartype(n)
                                          for n in ('x', 'scale', 'bias', 'mean', 'var', 'dy'))
         ndim = x.ndim
