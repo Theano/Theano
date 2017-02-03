@@ -11,7 +11,7 @@ import os
 import sys
 import logging
 
-import numpy
+import numpy as np
 
 import theano
 from theano import config
@@ -1347,7 +1347,7 @@ class CLinker(link.Linker):
         # We must always add the numpy ABI version here as
         # DynamicModule always add the include <numpy/arrayobject.h>
         sig.append('NPY_ABI_VERSION=0x%X' %
-                   numpy.core.multiarray._get_ndarray_c_version())
+                   np.core.multiarray._get_ndarray_c_version())
         if c_compiler:
             sig.append('c_compiler_str=' + c_compiler.version_str())
 

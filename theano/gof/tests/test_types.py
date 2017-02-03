@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 import theano
 from theano import Op, Apply
@@ -72,7 +72,7 @@ def test_cdata():
     # This should be a passthrough function for vectors
     f = theano.function([i], i2, mode=mode)
 
-    v = numpy.random.randn(9).astype('float32')
+    v = np.random.randn(9).astype('float32')
 
     v2 = f(v)
     assert (v2 == v).all()
