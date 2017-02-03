@@ -476,7 +476,7 @@ class GpuArrayType(Type):
         alt_inc_dir = os.path.abspath(os.path.normpath(sys.exec_prefix + '/Library/include'))
         if os.path.exists(alt_inc_dir) and os.path.isdir(alt_inc_dir):
             other_dirs.append(alt_inc_dir)
-        return [pygpu.get_include(), numpy.get_include()] + other_dirs
+        return [pygpu.get_include(), np.get_include()] + other_dirs
 
     def c_lib_dirs(self):
         alt_lib_dir = os.path.abspath(os.path.normpath(sys.exec_prefix + '/Library/lib'))
