@@ -134,10 +134,6 @@ class SharedVariable(Variable):
             * The old value is being completely replaced by the new
               value (not partially modified, e.g. by replacing some
               subtensor of it).
-            * You change the value of the shared variable via
-              set_value, not via the .value accessors. You should not
-              use the .value accessors anyway, since they will soon be
-              deprecated and removed.
 
         It is also worth mentioning that, for efficient transfer to the GPU,
         Theano will make the new data ``c_contiguous``. This can require an
