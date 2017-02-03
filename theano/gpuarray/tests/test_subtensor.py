@@ -7,7 +7,7 @@ from theano import tensor
 from theano.compile import DeepCopyOp
 from theano.tensor.tests import test_subtensor
 
-from ..basic_ops import HostFromGpu, GpuFromHost
+from ..basic_ops import HostFromGpu, GpuFromHost, GpuContiguous
 from ..elemwise import GpuDimShuffle
 from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuAdvancedSubtensor1,
@@ -37,7 +37,7 @@ class G_subtensor(test_subtensor.T_subtensor):
             # avoid errors with limited devices
             dtype='float32',
             ignore_topo=(HostFromGpu, GpuFromHost,
-                         DeepCopyOp))
+                         DeepCopyOp, GpuContiguous))
         # GPU opt can't run in fast_compile only.
         self.fast_compile = False
         assert self.sub == GpuSubtensor

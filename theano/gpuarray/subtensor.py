@@ -19,7 +19,7 @@ except ImportError:
 
 from .type import GpuArrayType, gpu_context_type
 from .basic_ops import (as_gpuarray_variable, HideC, GpuKernelBase, Kernel,
-                        infer_context_name)
+                        infer_context_name, gpu_contiguous)
 
 
 iadd_reg = {}
@@ -413,7 +413,7 @@ class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
         if ilist__.type.dtype != 'int64':
             ilist__ = tensor.cast(ilist__, 'int64')
 
-        ilist_ = as_gpuarray_variable(ilist__, ctx_name)
+        ilist_ = gpu_contiguous(as_gpuarray_variable(ilist__, ctx_name))
 
         if ilist_.type.dtype != 'int64':
             raise TypeError('index must be int64')
