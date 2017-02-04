@@ -20,7 +20,7 @@ class OpFromGraph(gof.Op):
     The signature is similar to :func:`theano.function <theano.function>`
     and the resulting ``Op``'s perform will do the same operation as::
 
-        orig_function(inputs, outputs, \*\*kwargs)
+        orig_function(inputs, outputs, **kwargs)
 
     Currently does not support ``updates`` or ``givens`` argument.
 
@@ -43,7 +43,7 @@ class OpFromGraph(gof.Op):
     grad_overrides : single or list of {'default', OpFromGraph, callable, Variable with special type}, optional
         Defaults to ``'default'``.
 
-        ``'default' : Do not override, use default grad() result
+        ``'default'`` : Do not override, use default grad() result
 
         OpFromGraph instance : Override with another OpFromGraph, should
         accept inputs as the same order and types of "inputs" and "output_grads"
@@ -63,7 +63,7 @@ class OpFromGraph(gof.Op):
     rop_overrides : single or list of {'default', OpFromGraph, callable, Variable with special type}, optional
         Defaults to ``default``.
 
-        ``default : Do not override, use default R_op() result
+        ``'default'`` : Do not override, use default R_op() result
 
         OpFromGraph instance : Override with another OpFromGraph, should
         accept inputs as the same order and types of "inputs" and "output_grads"
