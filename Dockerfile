@@ -32,6 +32,7 @@ RUN pip install -e .
 
 WORKDIR /workspace
 COPY NVREADME.md README.md
+COPY docker-examples docker-examples
 COPY benchmark benchmark
 COPY theanorc /workspace/.theanorc
 ENV THEANORC /workspace/.theanorc

@@ -1,0 +1,30 @@
+#
+# This example Dockerfile illustrates a method to apply
+# patches to the source code in NVIDIA's Theano container image.
+#
+# By applying customizations through a Dockerfile and
+# `docker build` in this manner rather than modifying the
+# container interactively, it will be straightforward to
+# apply the same changes to later versions of the Theano
+# container image.
+#
+# https://docs.docker.com/engine/reference/builder/
+#
+FROM nvcr.io/nvidia/theano:17.02
+
+# Bring in changes from outside container to /tmp
+# (assumes my-theano-modifications.patch is in same directory as Dockerfile)
+COPY my-theano-modifications.patch /tmp
+
+# Change working directory to Theano source path
+WORKDIR /opt/theano
+
+# Apply modifications
+RUN patch -p1 < /tmp/my-theano-modifications.patch
+
+# Rebuild of Theano is unnecessary because it was originally
+# installed in pip's editable mode using "pip install -e ."
+
+# Reset default working directory
+WORKDIR /workspace
+

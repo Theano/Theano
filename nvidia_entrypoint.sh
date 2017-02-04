@@ -18,8 +18,9 @@ EOF
 
 if [[ "$(find /usr -name libcuda.so.1) " == " " || "$(ls /dev/nvidiactl) " == " " ]]; then
   echo
-  echo "WARNING: NVIDIA Driver not detected.  GPU functionality will not be available."
-  echo "   Please use 'nvidia-docker run' to invoke this container; see /workspace/README.md for details."
+  echo "WARNING: The NVIDIA Driver was not detected.  GPU functionality will not be available."
+  echo "   Use 'nvidia-docker run' to start this container; see"
+  echo "   https://github.com/NVIDIA/nvidia-docker/wiki/nvidia-docker ."
 fi
 
 echo

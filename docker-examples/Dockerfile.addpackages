@@ -1,0 +1,17 @@
+#
+# This example Dockerfile illustrates a method to install
+# additional packages on top of NVIDIA's Theano container image.
+#
+# To use this Dockerfile, use the `docker build` command.
+# See https://docs.docker.com/engine/reference/builder/
+# for more information.
+#
+FROM nvcr.io/nvidia/theano:17.02
+
+# Install my-extra-package-1 and my-extra-package-2
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        my-extra-package-1 \
+        my-extra-package-2 \
+      && \
+    rm -rf /var/lib/apt/lists/
+
