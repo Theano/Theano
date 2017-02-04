@@ -99,15 +99,14 @@ class SoftmaxWithBias(gof.Op):
         # data type matches.
         output_storage[0][0] = e_x.astype(x_dtype, copy=False)
 
-    def grad(self, inp, grads):
+    def L_op(self, inp, outputs, grads):
         x, b = inp
         g_sm, = grads
 
         if isinstance(g_sm.type, DisconnectedType):
             return [DisconnectedType()(), DisconnectedType()()]
 
-        sm = softmax_with_bias(x, b)
-        dx = softmax_grad(g_sm, sm)
+        dx = softmax_grad(g_sm, outputs[0])
         db = tensor.sum(dx, axis=0)
         return dx, db
 
@@ -439,11 +438,10 @@ class Softmax(gof.Op):
         sm = e_x / e_x.sum(axis=1)[:, None]
         output_storage[0][0] = sm
 
-    def grad(self, inp, grads):
+    def L_op(self, inp, outputs, grads):
         x, = inp
         g_sm, = grads
-        sm = softmax_op(x)
-        return [softmax_grad(g_sm, sm)]
+        return [softmax_grad(g_sm, outputs[0])]
 
     def R_op(self, inputs, eval_points):
         # I think the Jacobian is symmetric so the R_op
