@@ -1384,7 +1384,131 @@ class GpuSplit(HideC, Split):
                              context_name=x.type.context_name)()
                 for o in node.outputs]
         return Apply(self, [x] + node.inputs[1:], outs)
+
     # we reuse the perform of the CPU op, which is suitable
+
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_headers(self):
+        return ['<numpy_compat.h>', '<gpuarray_helper.h>']
+
+    def c_header_dirs(self):
+        return [pygpu.get_include(), os.path.dirname(__file__)]
+
+    def c_support_code(self):
+        # We want to hide the definition of this method from tensor.Split.
+        return ''
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        x, axis, splits = inputs
+        fail = sub['fail']
+        x_typecode = pygpu.gpuarray.dtype_to_typecode(node.inputs[0].dtype)
+        splits_dtype = node.inputs[2].type.dtype_specs()[1]
+        axis_dtype = node.inputs[1].type.dtype_specs()[1]
+        expected_splits_count = self.len_splits
+        codes_for_checking_outputs = []  # filled later.
+        code_for_preparing_outputs_list = []  # filled later.
+        code_if_sync = []  # filled later.
+        full_code_for_checking_outputs = ''  # defined later.
+        full_code_for_preparing_outputs_list = ''  # defined later.
+        full_code_if_sync = ''  # defined later.
+
+        main_code = """
+        ga_order x_order = (%(x)s->ga.flags & GA_C_ORDER) ? GA_C_ORDER : GA_F_ORDER;
+        int ndim = PyGpuArray_NDIM(%(x)s);
+        int axis = (int)(*(%(axis_dtype)s*)PyArray_GETPTR1(%(axis)s, 0));
+        int splits_count = PyArray_SIZE(%(splits)s);
+        size_t len_along_axis, sum_of_splits = 0, current_split_start = 0;
+        %(splits_dtype)s current_split_length = 0;
+        size_t* split_dims = NULL;
+        size_t* split_points = NULL;
+        GpuArray** outputs_list = NULL;
+        int i;
+
+        /* Check inputs. */
+
+        if (splits_count != %(expected_splits_count)s) {
+            PyErr_Format(PyExc_ValueError,
+                "GpuSplit: splits count (%%d) != expected count (%%d).", splits_count, %(expected_splits_count)s);
+            %(fail)s
+        }
+        if (axis < 0) {
+            axis += ndim;
+        }
+        if (axis < 0 || axis >= ndim) {
+            PyErr_Format(PyExc_IndexError, "GpuSplit: invalid axis %%d for a %%d-D array.", axis, ndim);
+            %(fail)s
+        }
+        len_along_axis = PyGpuArray_DIM(%(x)s, axis);
+        for (i = 0; i < splits_count; ++i) {
+            current_split_length = *(%(splits_dtype)s*)PyArray_GETPTR1(%(splits)s, i);
+            if (current_split_length < 0) {
+                PyErr_Format(PyExc_ValueError,
+                    "GpuSplit: you try to take a negative number (%%ld) of elements.", current_split_length);
+                %(fail)s
+            }
+            sum_of_splits += current_split_length;
+        }
+        if (sum_of_splits != len_along_axis) {
+            PyErr_Format(PyExc_ValueError, "GpuSplit: the splits sums to %%ld, expected %%ld.", sum_of_splits, len_along_axis);
+            %(fail)s
+        }
+
+        /* Check outputs. */
+
+        split_dims = (size_t*) malloc(ndim * sizeof(size_t));
+        memcpy(split_dims, PyGpuArray_DIMS(%(x)s), ndim * sizeof(size_t));
+        %(full_code_for_checking_outputs)s
+
+        /* Compute splits. */
+
+        split_points = (size_t*) malloc((splits_count - 1) * sizeof(size_t));
+        current_split_start = (size_t) (* (%(splits_dtype)s*) PyArray_GETPTR1(%(splits)s, 0) );
+        for(i = 1; i < splits_count; ++i) {
+            split_points[i - 1] = current_split_start;
+            current_split_start += (size_t) (* (%(splits_dtype)s*) PyArray_GETPTR1(%(splits)s, i) );
+        }
+        outputs_list = (GpuArray**) malloc(splits_count * sizeof(GpuArray*));
+        %(full_code_for_preparing_outputs_list)s
+        if (GpuArray_split(outputs_list, &%(x)s->ga, splits_count - 1, split_points, axis) != GA_NO_ERROR) {
+            PyErr_SetString(PyExc_RuntimeError, "GpuSplit: unable to compute split.");
+            free(outputs_list);
+            free(split_points);
+            free(split_dims);
+            %(fail)s
+        }
+
+        free(outputs_list);
+        free(split_points);
+        free(split_dims);
+
+        /* Code added if synchronization is enabled. */
+        %(full_code_if_sync)s
+        """
+
+        for split_index, output in enumerate(outputs):
+
+            codes_for_checking_outputs.append("""
+            current_split_length = * (%(splits_dtype)s*) PyArray_GETPTR1(%(splits)s, %(split_index)s);
+            split_dims[axis] = current_split_length;
+            if (theano_prep_output(&%(output)s, ndim, split_dims, %(x_typecode)s, x_order, %(x)s->context) != 0) {
+                PyErr_Format(PyExc_RuntimeError, "GpuSplit: unable to prepare an output.");
+                free(split_dims);
+                %(fail)s
+            }
+            """ % locals())
+
+            code_for_preparing_outputs_list.append("outputs_list[%(split_index)s] = &%(output)s->ga;" % locals())
+
+            if config.gpuarray.sync:
+                code_if_sync.append("GpuArray_sync(&%(output)s->ga);" % locals())
+
+        full_code_for_checking_outputs = '\r\n'.join(codes_for_checking_outputs)
+        full_code_for_preparing_outputs_list = '\r\n'.join(code_for_preparing_outputs_list)
+        full_code_if_sync = '\r\n'.join(code_if_sync)
+
+        return main_code % locals()
 
 
 class GpuEye(GpuKernelBase, Op):
