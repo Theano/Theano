@@ -27,6 +27,9 @@ def is_nvcc_available():
     Return True iff the nvcc compiler is found.
 
     """
+    if not config.cuda.enabled:
+        return False
+
     def set_version():
         p_out = output_subprocess_Popen([nvcc_path, '--version'])
         ver_line = decode(p_out[0]).strip().split('\n')[-1]

@@ -199,6 +199,12 @@ AddConfigVar(
     StrParam(default_cuda_root),
     in_c_key=False)
 
+AddConfigVar(
+    'cuda.enabled',
+    'If false, C code in old backend is not compiled.',
+    BoolParam(True),
+    in_c_key=False)
+
 
 def filter_nvcc_flags(s):
     assert isinstance(s, str)
