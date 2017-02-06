@@ -20,7 +20,7 @@ import platform
 import distutils.sysconfig
 import warnings
 
-import numpy as np  # TODO: TensorType should handle nunpy.distutils
+import numpy.distutils
 
 import theano
 from theano.compat import PY3, decode, decode_iter
@@ -1578,7 +1578,7 @@ def get_gcc_shared_library_arg():
 
 
 def std_include_dirs():
-    numpy_inc_dirs = np.distutils.misc_util.get_numpy_include_dirs()
+    numpy_inc_dirs = numpy.distutils.misc_util.get_numpy_include_dirs()
     py_inc = distutils.sysconfig.get_python_inc()
     py_plat_spec_inc = distutils.sysconfig.get_python_inc(plat_specific=True)
     python_inc_dirs = ([py_inc] if py_inc == py_plat_spec_inc
