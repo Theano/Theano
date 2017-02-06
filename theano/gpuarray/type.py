@@ -225,7 +225,7 @@ class GpuArrayType(Type):
                self.dtype == config.floatX)):
             if not isinstance(data, gpuarray.GpuArray):
                 data = np.array(data, dtype=self.dtype, copy=False,
-                                   ndmin=len(self.broadcastable))
+                                ndmin=len(self.broadcastable))
             else:
                 data = gpuarray.array(data, dtype=self.typecode, copy=False,
                                       ndmin=len(self.broadcastable),
