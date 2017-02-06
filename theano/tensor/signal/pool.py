@@ -1156,7 +1156,8 @@ class MaxPoolGrad(PoolGrad):
                 for c in itertools.product(*[region_ranges[i][r[i]]
                                              for i in xrange(nd)]):
                     if maxout_value == yk[c]:
-                        gxk[c] += gzk[r]
+                        gxk[c] = gzk[r]
+                        break
 
         # unpad the image
         gx = gx[(slice(None),) * (len(x.shape) - nd) +
@@ -1231,8 +1232,8 @@ class MaxPoolGrad(PoolGrad):
             PyErr_SetString(PyExc_ValueError, "pad must be a vector of size %(nd)s");
             %(fail)s;
         }
+        int x[%(nd)s]; // shape of the input
         int z[%(nd)s]; // shape of the output
-        int r[%(nd)s]; // shape of the padded_input
         int ws[%(nd)s];
         int st[%(nd)s];
         int pd[%(nd)s];
@@ -1243,8 +1244,8 @@ class MaxPoolGrad(PoolGrad):
             ws[i] = *((npy_intp*)PyArray_GETPTR1(%(ws)s, i));
             st[i] = *((npy_intp*)PyArray_GETPTR1(%(stride)s, i));
             pd[i] = *((npy_intp*)PyArray_GETPTR1(%(pad)s, i));
+            x[i] = PyArray_DIMS(%(x)s)[%(non_pool_ndim)s + i];
             z[i] = PyArray_DIMS(%(z)s)[%(non_pool_ndim)s + i];
-            r[i] = PyArray_DIMS(%(x)s)[%(non_pool_ndim)s + i] + 2 * pd[i];
             if (pd[i]>0)
                 nonzero_padding = 1;
         }
@@ -1324,14 +1325,9 @@ class MaxPoolGrad(PoolGrad):
         for i in xrange(nd):
             ccode += """
                 for (r_idx[%(i)s]=0; r_idx[%(i)s] < z[%(i)s]; r_idx[%(i)s]++) {
-                  r_st[%(i)s] = r_idx[%(i)s] * st[%(i)s];
-                  r_end[%(i)s] = r_st[%(i)s] + ws[%(i)s];
-                  // skip the padding
-                  r_st[%(i)s] = r_st[%(i)s] < pd[%(i)s] ? pd[%(i)s] : r_st[%(i)s];
-                  r_end[%(i)s] = r_end[%(i)s] > (r[%(i)s] - pd[%(i)s]) ? r[%(i)s] - pd[%(i)s] : r_end[%(i)s];
-                  // from padded_img space to img space
-                  r_st[%(i)s] -= pd[%(i)s];
-                  r_end[%(i)s] -= pd[%(i)s];
+                  r_st[%(i)s] = r_idx[%(i)s] * st[%(i)s] - pd[%(i)s];
+                  r_end[%(i)s] = std::min(r_st[%(i)s] + ws[%(i)s], x[%(i)s]);
+                  r_st[%(i)s] = std::max(r_st[%(i)s], 0);
                   // use the index to find the correct position in the output
                   o_idx[%(non_pool_ndim)s + %(i)s] = r_idx[%(i)s];
             """ % dict(i=i, non_pool_ndim=non_pool_ndim)
@@ -1352,11 +1348,12 @@ class MaxPoolGrad(PoolGrad):
                     // the gradient corresponding to this maximum value in z
                     gz = ((dtype_%(gz)s*)(PyArray_GetPtr(%(gz)s, o_idx)));
                   }
+                  bool maximum_found = false;
         """
         for i in xrange(nd):
             ccode += """
                   // go through the pooled region in the unpadded input
-                  for(int m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s]; m%(i)s++)
+                  for(int m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s] && !maximum_found; m%(i)s++)
                   {
                     i_idx[%(non_pool_ndim)s + %(i)s] = m%(i)s;
                 """ % dict(i=i, non_pool_ndim=non_pool_ndim)
@@ -1375,6 +1372,7 @@ class MaxPoolGrad(PoolGrad):
                     }
                     if (a == maximum){
                       gx[0] = gx[0] + gz[0];
+                      maximum_found = true;
                     }
         """
         for i in xrange(nd):
@@ -1823,7 +1821,8 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
                 for c in itertools.product(*[region_ranges[i][r[i]]
                                              for i in xrange(nd)]):
                     if maxout_value == yk[c]:
-                        ggzk[r] += ggxk[c]
+                        ggzk[r] = ggxk[c]
+                        break
 
     def infer_shape(self, node, in_shapes):
         return [in_shapes[1]]
@@ -1985,10 +1984,11 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
                     z = ((dtype_%(z)s*)(PyArray_GetPtr(%(z)s,o_idx)));
                   }
         """
+        ccode += "bool maximum_found = false;"
         for i in xrange(nd):
             ccode += """
                   // go through the pooled region in the unpadded input
-                  for(int m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s]; m%(i)s++)
+                  for(int m%(i)s=r_st[%(i)s]; m%(i)s<r_end[%(i)s] && !maximum_found; m%(i)s++)
                   {
                     i_idx[%(non_pool_ndim)s + %(i)s] = m%(i)s;
                 """ % dict(i=i, non_pool_ndim=non_pool_ndim)
@@ -2007,6 +2007,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
                     }
                     if (a == maximum){
                       z[0] += ggx[0];
+                      maximum_found = true;
                     }
         """
         for i in xrange(nd):
