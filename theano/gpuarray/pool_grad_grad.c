@@ -28,17 +28,17 @@ KERNEL void max_pool2d_grad_grad_kernel(const ga_size nthreads,
 
     GLOBAL_MEM const DTYPE_INPUT_0* x_slice = x + offset;
     GLOBAL_MEM const DTYPE_INPUT_2* gx_slice = gx + offset;
-    DTYPE_OUTPUT_0 gradient = 0;
 
-    for (ga_size h=hstart; h < hend; ++h) {
-      for (ga_size w=wstart; w < wend; ++w) {
+    bool maximum_found = false;
+    for (ga_size h=hstart; h < hend && !maximum_found; ++h) {
+      for (ga_size w=wstart; w < wend && !maximum_found; ++w) {
         // maximum in the region
         if (z[index] == x_slice[h * width + w]) {
-          gradient += gx_slice[h * width + w];
+          gz[index] = gx_slice[h * width + w];
+          maximum_found = true;
         }
       }
     }
-    gz[index] = gradient;
   }
 }
 
@@ -76,19 +76,19 @@ KERNEL void max_pool3d_grad_grad_kernel(const ga_size nthreads,
 
     GLOBAL_MEM const DTYPE_INPUT_0* x_slice = x + offset;
     GLOBAL_MEM const DTYPE_INPUT_2* gx_slice = gx + offset;
-    DTYPE_OUTPUT_0 gradient = 0;
 
-    for (ga_size d=dstart; d < dend; ++d) {
-      for (ga_size h=hstart; h < hend; ++h) {
-        for (ga_size w=wstart; w < wend; ++w) {
+    bool maximum_found = false;
+    for (ga_size d=dstart; d < dend && !maximum_found; ++d) {
+      for (ga_size h=hstart; h < hend && !maximum_found; ++h) {
+        for (ga_size w=wstart; w < wend && !maximum_found; ++w) {
           // maximum in the region
           if (z[index] == x_slice[(d * height + h) * width + w]) {
-            gradient += gx_slice[(d * height + h)* width + w];
+            gz[index] = gx_slice[(d * height + h)* width + w];
+            maximum_found = true;
           }
         }
       }
     }
-    gz[index] = gradient;
   }
 }
 
