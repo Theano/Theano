@@ -2467,6 +2467,7 @@ class MaxPoolRop(OpenMPOp):
     def c_code_cache_version(self):
         return (1, self.openmp)
 
+
 class RoIPoolOp(gof.COp):
 
     __props__ = ('spatial_scale', 'pooled_h', 'pooled_w')
@@ -2493,13 +2494,14 @@ class RoIPoolOp(gof.COp):
         return Apply(self, [feature_maps, roi_tuples], [feature_maps.type(), feature_maps.type()])
 
     def infer_shape(self, node, in_shapes):
-        feature_maps_shape = tensor.shape(node.inputs[0])
+        data_shape = tensor.shape(node.inputs[0])
         rois_shape = tensor.shape(node.inputs[1])
-        batch_size = rois_shape[0]
-        num_maps = feature_maps_shape[1]
+        batch_size = data_shape[0]
+        num_rois = rois_shape[0]
         h = self.pooled_h
         w = self.pooled_w
-        out_shape = [batch_size, num_maps, h, w]
+        channels = data_shape[1]
+        out_shape = [batch_size, num_rois, channels, h * w]
         return [out_shape, out_shape]
 
     def c_code_cache_version(self):

@@ -3969,6 +3969,7 @@ def local_abstract_batch_norm_train_grad_cudnn(op, ctx_name, inputs, outputs):
 
     return [g_wrt_inputs, g_wrt_scale, g_wrt_bias]
 
+
 def local_abstract_batch_norm_inference_cudnn(op, ctx_name, inputs, outputs):
     x, scale, bias, estimated_mean, estimated_variance, epsilon = inputs
 

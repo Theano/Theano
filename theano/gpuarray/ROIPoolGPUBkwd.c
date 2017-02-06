@@ -9,7 +9,7 @@ KERNEL void ROIPoolGPUBkwd_kernel(
     ga_size pooled_height, ga_size pooled_width,
     DTYPE_i0* bottom_diff,
     DTYPE_i0* bottom_rois) {
-    for (ga_size index = 0; index < nloops; ++index) {
+    for (ga_size index = GID_0 * LDIM_0 + LID_0;; index < nloops; index += LDIM_0 * GDIM_0) {
         // (n, c, h, w) coords in bottom data
         ga_size w = index % width;
         ga_size h = (index / width) % height;
@@ -94,7 +94,8 @@ int APPLY_SPECIFIC(ROIPoolGPUBkwd)(PyGpuArrayObject *data,
 
     if (!GpuArray_IS_C_CONTIGUOUS(&data->ga)
       || !GpuArray_IS_C_CONTIGUOUS(&rois->ga)
-      || !GpuArray_IS_C_CONTIGUOUS(&argmaxes->ga))
+      || !GpuArray_IS_C_CONTIGUOUS(&argmaxes->ga)
+      || !GpuArray_IS_C_CONTIGUOUS(&out_grad->ga))
     {
       PyErr_Format(PyExc_ValueError,
                    "GpuRoIPoolGradOp: requires data to be C-contiguous");

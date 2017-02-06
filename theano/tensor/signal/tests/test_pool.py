@@ -19,7 +19,7 @@ from theano.tensor.signal.pool import (Pool, pool_2d, pool_3d,
                                        MaxPoolGrad, AveragePoolGrad,
                                        max_pool_2d_same_size,
                                        DownsampleFactorMaxGradGrad,
-                                       RoIPoolOp)
+                                       RoIPoolOp, RoIPoolGradOp)
 
 from theano import function
 
@@ -638,7 +638,6 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                         ndim=len(maxpoolshp),
                         ignore_border=ignore_border)
                     return grad_op(input, out, grad, maxpoolshp)
-
                 utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
     def test_AveragePoolGrad_grad(self):
@@ -672,7 +671,6 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                             ndim=len(avgpoolshp),
                             ignore_border=ignore_border, mode=mode)
                         return grad_op(input, grad, avgpoolshp)
-
                     utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
     @parameterized.expand(product(pool_grad_stride_examples,
@@ -700,7 +698,6 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                     ndim=len(maxpoolshp),
                     ignore_border=ignore_border)
                 return grad_op(input, out, grad, maxpoolshp, stride)
-
                 utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
     @parameterized.expand(product(pool_grad_stride_examples,
@@ -1160,38 +1157,48 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         for o, n in zip(old_out, new_out):
             utt.assert_allclose(o, n)
 
-def generate_random_image(image_size, num_roi):
-    random_image = np.random.random((1, 3, image_size, image_size))
-    roi = np.array([[0, 0, image_size / 1, image_size / 1],
-                            [0, 0, image_size / 2, image_size / 2]])
-    reshaped_roi = np.reshape(roi, (1, num_roi, 4))
-    return random_image, roi, reshaped_roi
 
-def numpy_roi_pool(self):
-    # Pooling details
-    num_roi = 2
-    image_size = 16
-    pool_region = [1, 2, 4]
-    shape = (1, 3, 16, 16)
-    random_image, roi, reshaped_roi = generate_random_image(shape, num_roi)
-    spatial_scale = 1.
+def generate_random_image(batch_length, channels, y, x):
 
-    roi_coordinates = []
+    # A separate method as will make it standard for all the other random images in this test suite.
+    # Since Spatial Pyramid Poling and ROI pooling are a special case of Max Pooling, they could be tested
+    # with Max Pooling's test itself.
+
+    random_image = numpy.random.random((batch_length, channels, y, x)).astype(numpy.single)
+    return random_image
+
+
+def numpy_roi_pool(image_val, num_roi, pool_height, pool_width, roi, spatial_scale=1.0):
+
+    maxval_coordinates = []
+    max_vals = []
     for i in range(num_roi):
-        region_interest = random_image[0, :, reshaped_roi[0, i, 0]:reshaped_roi[0, i, 2], reshaped_roi[0, i, 1]:reshaped_roi[0, i, 3]]
-        row_length = [float(region_interest.shape[1]) // i for i in pool_region]
-        col_length = [float(region_interest.shape[2]) // i for i in pool_region]
-        for pool_num, num_pool_regions in enumerate(pool_region):
-            for ix in range(num_pool_regions):
-                for jy in range(num_pool_regions):
-                    for cn in range(3):
-                        x1 = int(round(ix * col_length[pool_num] * spatial_scale))
-                        x2 = int(round(ix * col_length[pool_num] + col_length[pool_num] * spatial_scale))
-                        y1 = int(round(jy * row_length[pool_num] * spatial_scale))
-                        y2 = int(round(jy * row_length[pool_num] + row_length[pool_num] * spatial_scale))
-                        m_val = np.max(region_interest[cn, y1:y2, x1:x2])
-                        roi_coordinates.append(m_val)
-    return roi_coordinates
+
+        x_start = numpy.floor((roi[i, 0] * spatial_scale) + 0.5)
+        y_start = numpy.floor((roi[i, 1] * spatial_scale) + 0.5)
+        x_end = numpy.floor((roi[i, 2] * spatial_scale) + 0.5)
+        y_end = numpy.floor((roi[i, 3] * spatial_scale) + 0.5)
+
+        roi_height = max(y_end - y_start + 1, 1)
+        roi_width = max(x_end - x_start + 1, 1)
+        row_length = roi_width / pool_width
+        col_length = roi_height / pool_height
+
+        for cn in range(3):
+            for jy in range(pool_height):
+                for ix in range(pool_width):
+                    x1 = int(round(x_start + ix * row_length))
+                    x2 = int(round(x1 + row_length))
+                    y1 = int(round(y_start + jy * col_length))
+                    y2 = int(round(y1 + col_length))
+                    interest_region = image_val[:, cn, y1:y2, x1:x2]
+                    m_val = numpy.max(interest_region)
+                    max_vals.append(m_val)
+                    maxval_coordinates.append(numpy.argmax(interest_region))
+    # Reshaped as (batch_index, num_roi, channels, pool_h * pool_w)
+    max_vals = numpy.reshape(numpy.asarray(max_vals), (1, num_roi, image_val.shape[1], pool_height * pool_width))
+    maxval_coordinates = numpy.reshape(numpy.asarray(maxval_coordinates), (1, num_roi, image_val.shape[1], pool_height * pool_width))
+    return max_vals, maxval_coordinates
 
 
 class TestRoIPool(utt.InferShapeTester):
@@ -1199,43 +1206,48 @@ class TestRoIPool(utt.InferShapeTester):
     def setUp(self):
         super(TestRoIPool, self).setUp()
         self.op_class = RoIPoolOp
-        pooled_h=2
-        pooled_w=2
-        spatial_scale=1.0
-        self.op = RoIPoolOp(pooled_h, pooled_w, spatial_scale)
 
     def test_basic(self):
-        t_data = T.ftensor4()
-        t_rois = T.fmatrix()
-        num_roi = 2
-        # shape is (16, 16)
-        image_size = 16
-        random_image, roi, reshaped_roi = generate_random_image(image_size, num_roi)
-        max_coordinates_theano = []
-        for pool_dim in pool_region:
-            op = RoIPoolOp(pooled_h=pool_dim, pooled_w=pool_dim, spatial_scale=1.0)
-            t_outs = op(t_data, t_rois)
-            func = theano.function([t_data, t_rois], t_outs, allow_input_downcast=True)
-            max_coordinates_theano.append(func(random_image, roi))
-
-
-    def test_infer_shape(self):
         t_data = tensor.ftensor4()
         t_rois = tensor.fmatrix()
+        num_roi = 2
+        # Image shape is (16, 16) with 3 channels
+        random_image = generate_random_image(1, 3, 16, 16)
+        # The difference in shape is because the first element is batch index in
+        # theano implementation
+        # The value 7 is used in Fast RCNN network
+        roi_theano = numpy.asarray([[0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]])
+        roi_numpy = numpy.asarray([[0., 0., 3., 3.], [0., 0., 7., 7.]])
+        pool_w = 2
+        pool_h = 2
+        maxvals_np, maxloc_np = numpy_roi_pool(random_image, num_roi, pool_h, pool_w, roi_numpy, spatial_scale=1.0)
 
-        data = numpy.asarray(numpy.random.rand(1, 2, 32, 32),
-                             dtype='float32')
-        rois = numpy.array([[0, 0, 0, 3, 3],
-                            [0, 0, 0, 7, 7]], dtype='float32')
+        op = self.op_class(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=1.0)
+        t_outs = op(t_data, t_rois)
+        func = theano.function([t_data, t_rois], t_outs, allow_input_downcast=True)
+        roi_outs = func(random_image, roi_theano)
+
+        def mp(inp, roi, argmax, grad):
+            grad_op = RoIPoolGradOp(2, 2, 1)
+            return grad_op(inp, roi, argmax, grad)
+
+        maxvals_theano, maxloc_theano = roi_outs[0], roi_outs[1]
+        utt.assert_allclose(maxvals_theano, maxvals_np)
+
+        # func_grad(random_image, roi_theano, roi_outs[1], roi_outs[0] * 10)
+        utt.verify_grad(mp, [random_image, roi_theano, maxloc_theano, maxvals_theano])
+
+    def test_infer_shape(self):
+        t_data = tensor.dtensor4()
+        t_rois = tensor.dmatrix()
+        roi_theano = numpy.asarray([[0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]])
+
+        random_image = generate_random_image(1, 3, 16, 16)
 
         self._compile_and_check([t_data, t_rois],
-                                self.op(t_data, t_rois),
-                                [data, rois],
+                                self.op_class(2, 2, 1.0)(t_data, t_rois),
+                                [random_image, roi_theano],
                                 self.op_class)
-
-    def test_grad(self):
-        theano.tests.unittest_tools.verify_grad(self.op,
-                                                [numpy.random.rand(5, 7, 2)])
 
 if __name__ == '__main__':
     unittest.main()

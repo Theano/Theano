@@ -15,7 +15,8 @@ from theano.tests import unittest_tools as utt
 from .config import mode_with_gpu, mode_without_gpu
 from .test_basic_ops import rand
 from ..pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad,
-                    GpuDownsampleFactorMaxGradGrad, GpuRoIPoolOp, generate_random_image, numpy_roi_pool)
+                    GpuDownsampleFactorMaxGradGrad, GpuRoIPoolOp)
+from theano.tensor.signal.tests.test_pool import (generate_random_image, numpy_roi_pool)
 
 
 class TestPool(unittest.TestCase):
@@ -289,7 +290,7 @@ def test_pool3d():
                     isinstance(node.op, DownsampleFactorMaxGradGrad)
                     for node in gg2.maker.fgraph.toposort()
                 ])
-                assert numpy.allclose(gg(), gg2()), (shp, ws, st, pad, mode, ignore_border)
+                assert np.allclose(gg(), gg2()), (shp, ws, st, pad, mode, ignore_border)
 
 
 class TestGpuRoIPool(utt.InferShapeTester):
@@ -297,41 +298,38 @@ class TestGpuRoIPool(utt.InferShapeTester):
     def setUp(self):
         super(TestGpuRoIPool, self).setUp()
         self.op_class = GpuRoIPoolOp
-        pooled_h=2
-        pooled_w=2
-        spatial_scale=1.0
-        self.op = GpuRoIPoolOp(pooled_h, pooled_w, spatial_scale)
 
     def test_basic(self):
-        t_data = T.ftensor4()
-        t_rois = T.fmatrix()
-        max_coordinates_theano = []
-        random_image, roi, reshaped_roi = generate_random_image(shape, num_roi)
-        for pool_dim in pool_region:
-            op = GpuRoIPoolOp(pooled_h=pool_dim, pooled_w=pool_dim, spatial_scale=1.0)
-            t_outs = op(t_data, t_rois)
-            # Testing if Gpu Op is present
-            func = theano.function([t_data, t_rois], t_outs, allow_input_downcast=True, mode=mode_with_gpu)
-            assert any([isinstance(node.op, GpuRoIPoolOp) for node in func.maker.fgraph.toposort()])
-            max_coordinates_theano.append(func(random_image, roi))
-
-        # Testing Values
-        assert np.allclose(np.asarray(max_coordinates_theano), random_image)
-
-    def test_infer_shape(self):
         t_data = tensor.ftensor4()
         t_rois = tensor.fmatrix()
+        # Image shape is (16, 16) with 3 channels
+        random_image = generate_random_image(1, 3, 16, 16)
+        # The difference in shape is because the first element is batch index in
+        # theano implementation
+        # The value 7 is used in Fast RCNN network
+        roi_theano = np.asarray([[0, 0, 0, 3, 3], [0, 0, 0, 7, 7]], dtype='float32')
+        roi_numpy = np.asarray([[0, 0, 3, 3], [0, 0, 7, 7]], dtype='float32')
+        pool_w = 2
+        pool_h = 2
+        # Testing if Gpu Op is present
+        # assert any([isinstance(node.op, GpuRoIPoolOp) for node in func.maker.fgraph.toposort()])
+        roi_op = GpuRoIPoolOp(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=1.)
+        t_outs = roi_op(t_data, t_rois)
+        func = theano.function([t_data, t_rois], t_outs)
+        roi_outs = func(random_image, roi_theano)
+        maxloc_theano, maxvals_theano = roi_outs[0], roi_outs[1]
+        n_maxval, n_maxloc = numpy_roi_pool(random_image, 1, pool_h, pool_w, roi_numpy, spatial_scale=1.0)
+        utt.assert_allclose(n_maxloc, maxloc_theano)
+        utt.assert_allclose(n_maxval, maxvals_theano)
 
-        data = numpy.asarray(numpy.random.rand(1, 2, 32, 32),
-                             dtype='float32')
-        rois = numpy.array([[0, 0, 0, 3, 3],
-                            [0, 0, 0, 7, 7]], dtype='float32')
+    def test_infer_shape(self):
+        t_data = tensor.dtensor4()
+        t_rois = tensor.dmatrix()
+        roi_theano = np.asarray([[0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]])
+
+        random_image = generate_random_image(1, 3, 16, 16)
 
         self._compile_and_check([t_data, t_rois],
-                                self.op(t_data, t_rois),
-                                [data, rois],
+                                self.op_class(2, 2, 1.0)(t_data, t_rois),
+                                [random_image, roi_theano],
                                 self.op_class)
-
-    def test_grad(self):
-        theano.tests.unittest_tools.verify_grad(self.op,
-                                                [numpy.random.rand(5, 7, 2)])

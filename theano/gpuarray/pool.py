@@ -1,18 +1,18 @@
 from __future__ import absolute_import, print_function, division
 
 import theano
-<<<<<<< 46b40cb73f0b75d5fdaadadb17d07c2cd27a442e
+
 from theano import Apply
 from theano.gof import ParamsType
 from theano.scalar import bool as bool_t
 from theano.tensor.basic import as_tensor_variable
 from theano.tensor.signal.pool import Pool, PoolingMode_t
-=======
-from theano import Apply, Op, tensor, config
+
+from theano import tensor, config
+
 from theano.tensor.basic import as_tensor_variable
 from theano.tensor.signal.pool import Pool
 from theano.gradient import grad_undefined
->>>>>>> Moved the Op to pool.py after rebasing
 
 from .type import gpu_context_type
 from .basic_ops import (CGpuKernelBase, infer_context_name, gpuarray_helper_inc_dir,
@@ -429,8 +429,6 @@ class GpuMaxPoolRop(CGpuKernelBase):
 
         return Apply(self, [inp, eval_point, ws, stride, pad], [eval_point.type()])
 
-<<<<<<< 46b40cb73f0b75d5fdaadadb17d07c2cd27a442e
-=======
 
 class GpuRoIPoolOp(CGpuKernelBase):
 
@@ -447,15 +445,15 @@ class GpuRoIPoolOp(CGpuKernelBase):
         return [os.path.dirname(__file__), pygpu.get_include()]
 
     def c_headers(self):
-        return ['<gpuarray/types.h>', '<gpuarray/kernel.h>', 'gpuarray_helper.h','math.h', 'stdbool.h', 'float.h', 'gpuarray_api.h', 'numpy_compat.h']
+        return ['<gpuarray/types.h>', '<gpuarray/kernel.h>', 'gpuarray_helper.h', 'math.h', 'stdbool.h', 'float.h', 'gpuarray_api.h', 'numpy_compat.h', 'limits.h']
 
-    def make_node(self, feature_maps, roi):
-        ctx_name = infer_context_name(feature_maps, roi)
-        feature_maps = as_gpuarray_variable(feature_maps, ctx_name)
-        roi_tuples = as_gpuarray_variable(roi, ctx_name)
-        assert feature_maps.ndim == 4
+    def make_node(self, data, roi):
+        ctx_name = infer_context_name(data, roi)
+        data = as_gpuarray_variable(data, ctx_name)
+        roi = as_gpuarray_variable(roi, ctx_name)
+        assert data.ndim == 4
         assert roi.ndim == 2
-        return Apply(self, [feature_maps, roi_tuples], [feature_maps.type(), feature_maps.type()])
+        return Apply(self, [data, roi], [data.type(), data.type()])
 
     def get_op_params(self):
         return [('POOLED_HEIGHT', str(self.pooled_h)),
@@ -468,11 +466,12 @@ class GpuRoIPoolOp(CGpuKernelBase):
     def infer_shape(self, node, in_shapes):
         data_shape = tensor.shape(node.inputs[0])
         rois_shape = tensor.shape(node.inputs[1])
-        batch_size = rois_shape[0]
-        num_maps = data_shape[1]
+        batch_size = data_shape[0]
+        num_rois = rois_shape[0]
         h = self.pooled_h
         w = self.pooled_w
-        out_shape = [batch_size, num_maps, h, w]
+        channels = data_shape[1]
+        out_shape = [batch_size, num_rois, channels, h * w]
         return [out_shape, out_shape]
 
     def c_code_cache_version(self):
@@ -521,7 +520,6 @@ class GpuRoIPoolGradOp(CGpuKernelBase):
                 ('POOLED_WIDTH', str(self.pooled_w)),
                 ('SPATIAL_SCALE', str(self.spatial_scale))]
 
->>>>>>> Moved the Op to pool.py after rebasing
     def infer_shape(self, node, in_shapes):
         return [in_shapes[0]]
 
