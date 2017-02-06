@@ -1170,6 +1170,7 @@ AddConfigVar('cmodule.age_thresh_use',
 
 def default_blas_ldflags():
     global numpy
+    warn_record = []
     try:
         if (hasattr(numpy.distutils, '__config__') and
                 numpy.distutils.__config__):
@@ -1284,7 +1285,7 @@ def default_blas_ldflags():
             import mkl  # noqa
         except ImportError as e:
             if any([m for m in ('conda', 'Continuum') if m in sys.version]):
-                _logger.warning('install mkl with `conda install mkl-service`: %s', e)
+                warn_record.append(('install mkl with `conda install mkl-service`: %s', e))
         else:
             # This branch is executed if no exception was raised
             if sys.platform == "win32":
@@ -1326,6 +1327,10 @@ def default_blas_ldflags():
         res = try_blas_flag(ret)
         if res:
             return res
+
+        for warn in warn_record:
+            _logger.warning(*warn)
+        del warn_record
 
         # Some environment don't have the lib dir in LD_LIBRARY_PATH.
         # So add it.
