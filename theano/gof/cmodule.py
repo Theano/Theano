@@ -21,6 +21,7 @@ import distutils.sysconfig
 import warnings
 
 import numpy as np  # TODO: TensorType should handle nunpy.distutils
+import numpy.distutils
 
 import theano
 from theano.compat import PY3, decode, decode_iter
