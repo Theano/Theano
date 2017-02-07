@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 (cd ../third_party/lasagne && pip install --no-deps -e .)
 
