@@ -1,4 +1,6 @@
 from __future__ import absolute_import, print_function, division
+import sys
+import os
 import numpy as np
 import six.moves.copyreg as copyreg
 from six import iteritems
@@ -486,7 +488,20 @@ class GpuArrayType(Type):
                 '<gpuarray_api.h>']
 
     def c_header_dirs(self):
-        return [pygpu.get_include(), np.get_include()]
+        other_dirs = []
+        for dir_to_add in ['Library/include', 'include']:
+            alt_inc_dir = os.path.abspath(os.path.normpath(sys.exec_prefix + '/' + dir_to_add))
+            if os.path.exists(alt_inc_dir) and os.path.isdir(alt_inc_dir):
+                other_dirs.append(alt_inc_dir)
+        return [pygpu.get_include(), np.get_include()] + other_dirs
+
+    def c_lib_dirs(self):
+        dirs = []
+        for dir_to_add in ['Library/lib', 'lib']:
+            alt_lib_dir = os.path.abspath(os.path.normpath(sys.exec_prefix + '/' + dir_to_add))
+            if os.path.exists(alt_lib_dir) and os.path.isdir(alt_lib_dir):
+                dirs.append(alt_lib_dir)
+        return dirs
 
     def c_libraries(self):
         return ['gpuarray']
