@@ -79,7 +79,7 @@ def get_dataset_file(dataset, default_dataset, origin):
     return dataset
 
 
-def load_data(path="imdb.pkl", n_words=100000, valid_portion=0.1, maxlen=None,
+def load_data(path="imdb.pkl.gz", n_words=100000, valid_portion=0.1, maxlen=None,
               sort_by_len=True):
     '''Loads the dataset
 
@@ -107,8 +107,8 @@ def load_data(path="imdb.pkl", n_words=100000, valid_portion=0.1, maxlen=None,
 
     # Load the dataset
     path = get_dataset_file(
-        path, "imdb.pkl",
-        "http://www.iro.umontreal.ca/~lisa/deep/data/imdb.pkl")
+        path, "imdb.pkl.gz",
+        "http://www.iro.umontreal.ca/~lisa/deep/data/imdb.pkl.gz")
 
     if path.endswith(".gz"):
         f = gzip.open(path, 'rb')

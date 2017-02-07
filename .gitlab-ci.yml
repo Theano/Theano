@@ -58,7 +58,6 @@ theano:
               "COPY .git/ /opt/${CI_PROJECT_NAME}/.git/\n"
               "COPY qa/   /opt/${CI_PROJECT_NAME}/qa/\n"
         > Dockerfile.${CI_PROJECT_NAME}.${CI_BUILD_REF_NAME}
-    - git remote set-url origin ${ORIGIN}
     - docker build --pull -t "${DEVEL_IMAGE_NAME}" -t "${DEVEL_IMAGE_NAME_VERSIONED}"
                    -f Dockerfile.${CI_PROJECT_NAME}.${CI_BUILD_REF_NAME} .
     - docker push "${DEVEL_IMAGE_NAME}"
