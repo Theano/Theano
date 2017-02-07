@@ -19,7 +19,8 @@ stages:
     - L0
     - L1
     - L2
-    - L3 and staging
+    - L3
+    - staging
 
 before_script:
     - export NV_DOCKER_ARGS="curl -s http://localhost:3476/docker/cli?dev=${RUNNER_GPUS//,/+}"     && echo "${NV_DOCKER_ARGS}"
@@ -65,8 +66,8 @@ theano:
     except:
     - tags
 
-stage-after-L2: &STAGE_TEMPLATE
-    stage: L3 and staging
+stage:
+    stage: staging
     environment: staging
     script:
     - git remote set-url origin ${ORIGIN}
@@ -79,9 +80,6 @@ stage-after-L2: &STAGE_TEMPLATE
     - /^.*-devel$/
     except:
     - tags
-
-stage-manually:
-    <<: *STAGE_TEMPLATE
     when: manual
 
 .test_template: &TEST_TEMPLATE
@@ -114,7 +112,7 @@ stage-manually:
     when: manual
 
 .L3_test: &L3_TEST
-    stage: L3 and staging
+    stage: L3
     <<: *TEST_TEMPLATE
     when: manual
 
