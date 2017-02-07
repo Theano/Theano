@@ -2,6 +2,36 @@
 
 #kernel max_pool2d_grad_kernel : size, size, size, size, size, size, size, *, *, *, size, size, size, size, size, size, * :
 
+#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 600
+#else
+
+__device__ ga_double atomicAdd(ga_double *addr, ga_double val) {
+  unsigned long long int *address_as_ull = (unsigned long long int *)addr;
+  unsigned long long int old = *address_as_ull, assumed;
+  do {
+    assumed = old;
+    old = atomicCAS(address_as_ull, assumed,
+                    __double_as_longlong(val + __longlong_as_double(assumed)));
+  } while (assumed != old);
+  return __longlong_as_double(old);
+}
+
+__device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
+  ga_uint *base = (ga_uint *)((ga_size)addr & ~2);
+  ga_uint old, assumed, sum, new_;
+  old = *base;
+  do {
+    assumed = old;
+    sum = __float2half_rn(__half2float(val) +
+                          __half2float((ga_half)__byte_perm(
+                              old, 0, ((ga_size)addr & 2) ? 0x4432 : 0x4410)));
+    new_ = __byte_perm(old, sum, ((ga_size)addr & 2) ? 0x5410 : 0x3254);
+    old = atomicCAS(base, assumed, new_);
+  } while (assumed != old);
+  return (ga_half)__byte_perm(old, 0, ((ga_size)addr & 2) ? 0x4432 : 0x4410);
+}
+#endif
+
 // (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/pooling_layer.cu)
 KERNEL void max_pool2d_grad_kernel(const ga_size nthreads,
    const ga_size num, const ga_size channels, const ga_size height,
@@ -39,12 +69,41 @@ KERNEL void max_pool2d_grad_kernel(const ga_size nthreads,
       }
     }
     if (maxidx != -1) {
-      gx_slice[maxidx] = gz[index];
+      atomicAdd(&gx_slice[maxidx], gz[index]);
     }
   }
 }
 
 #kernel max_pool3d_grad_kernel : size, size, size, size, size, size, size, size, size, *, *, *, size, size, size, size, size, size, size, size, size, * :
+
+#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 600
+#else
+__device__ ga_double atomicAdd(ga_double *addr, ga_double val) {
+  unsigned long long int *address_as_ull = (unsigned long long int *)addr;
+  unsigned long long int old = *address_as_ull, assumed;
+  do {
+    assumed = old;
+    old = atomicCAS(address_as_ull, assumed,
+                    __double_as_longlong(val + __longlong_as_double(assumed)));
+  } while (assumed != old);
+  return __longlong_as_double(old);
+}
+
+__device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
+  ga_uint *base = (ga_uint *)((ga_size)addr & ~2);
+  ga_uint old, assumed, sum, new_;
+  old = *base;
+  do {
+    assumed = old;
+    sum = __float2half_rn(__half2float(val) +
+                          __half2float((ga_half)__byte_perm(
+                              old, 0, ((ga_size)addr & 2) ? 0x4432 : 0x4410)));
+    new_ = __byte_perm(old, sum, ((ga_size)addr & 2) ? 0x5410 : 0x3254);
+    old = atomicCAS(base, assumed, new_);
+  } while (assumed != old);
+  return (ga_half)__byte_perm(old, 0, ((ga_size)addr & 2) ? 0x4432 : 0x4410);
+}
+#endif
 
 // (adopted from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/pooling_layer.cu)
 KERNEL void max_pool3d_grad_kernel(const ga_size nthreads,
@@ -92,7 +151,7 @@ KERNEL void max_pool3d_grad_kernel(const ga_size nthreads,
       }
     }
     if (maxidx != -1) {
-      gx_slice[maxidx] = gz[index];
+      atomicAdd(&gx_slice[maxidx], gz[index]);
     }
   }
 }
