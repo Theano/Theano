@@ -932,10 +932,10 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                                                           ignore_border,
                                                           mode=mode)
                 output = pool_3d(input=images,
-                                 ds=maxpoolshp,
+                                 ws=maxpoolshp,
                                  ignore_border=ignore_border,
-                                 st=maxpoolshp,
-                                 padding=(0, 0, 0),
+                                 stride=maxpoolshp,
+                                 pad=(0, 0, 0),
                                  mode=mode)
                 output_val = function([images], output)(imval)
                 utt.assert_allclose(output_val, numpy_output_val)
@@ -1116,10 +1116,10 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         for ignore_border in [True, False]:
             for mode in ['max', 'sum', 'average_inc_pad', 'average_exc_pad']:
                 y = pool_2d(input=x,
-                            ds=window_size,
+                            ws=window_size,
                             ignore_border=ignore_border,
-                            st=stride,
-                            padding=padding,
+                            stride=stride,
+                            pad=padding,
                             mode=mode)
                 dx = theano.gradient.grad(y.sum(), x)
                 var_fct = theano.function([x, window_size, stride, padding],
@@ -1132,10 +1132,10 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                         (mode == 'average_exc_pad' and pad != 0)):
                     continue
                 y = pool_2d(input=x,
-                            ds=(ws, ws),
+                            ws=(ws, ws),
                             ignore_border=ignore_border,
-                            st=(st, st),
-                            padding=(pad, pad),
+                            stride=(st, st),
+                            pad=(pad, pad),
                             mode=mode)
                 dx = theano.gradient.grad(y.sum(), x)
                 fix_fct = theano.function([x], [y, dx])
