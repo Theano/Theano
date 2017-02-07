@@ -340,14 +340,22 @@ class TestAutoName:
         assert r2.auto_name == "auto_" + str(autoname_id + 1)
 
     def test_constant(self):
+        # Make sure the value we will use for the test aren't yet in the cache.
+        r1 = tensor.constant(1.5)
+        del tensor.constant_cache[r1.signature()]
+        r1 = tensor.constant(1.6)
+        del tensor.constant_cache[r1.signature()]
+
         # Get counter value
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         r1 = tensor.constant(1.5)
         r2 = tensor.constant(1.5)
-        assert r1.auto_name == "auto_" + str(autoname_id)
+        assert r1.auto_name == "auto_" + str(autoname_id), (
+            r1.auto_name, "auto_" + str(autoname_id))
         # We reuse the same variable
-        assert r2.auto_name == "auto_" + str(autoname_id)
+        assert r2.auto_name == "auto_" + str(autoname_id), (
+            r2.auto_name, "auto_" + str(autoname_id))
         assert r1 is r2
 
         r3 = tensor.constant(1.6)

@@ -244,15 +244,14 @@ class PyDotFormatter(object):
                 # Inputs mapping
                 ext_inputs = [self.__node_id(x) for x in node.inputs]
                 int_inputs = [gf.__node_id(x)
-                              for x in node.op.fn.maker.fgraph.inputs]
+                              for x in node.op.local_inputs]
                 assert len(ext_inputs) == len(int_inputs)
                 h = format_map(zip(ext_inputs, int_inputs))
                 pd_node.get_attributes()['subg_map_inputs'] = h
 
                 # Outputs mapping
                 ext_outputs = [self.__node_id(x) for x in node.outputs]
-                int_outputs = node.op.fn.maker.fgraph.outputs
-                int_outputs = [gf.__node_id(x) for x in int_outputs]
+                int_outputs = [gf.__node_id(x) for x in node.op.local_outputs]
                 assert len(ext_outputs) == len(int_outputs)
                 h = format_map(zip(int_outputs, ext_outputs))
                 pd_node.get_attributes()['subg_map_outputs'] = h

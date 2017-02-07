@@ -1201,58 +1201,56 @@ def _populate_grad_dict(var_to_app_to_idx,
                         is_zero = _is_zero(term)
                         assert is_zero in ['yes', 'no', 'maybe']
                         if is_zero == 'maybe':
-                            msg = "%s.grad returned %s of type %s for input"
-                            msg += " %d. This input's only connections to "
-                            msg += "the cost through this op are via "
-                            msg += "integer-valued outputs so it should be "
-                            msg += "NullType, DisconnectedType, or some form "
-                            msg += "of zeros. It is not NullType or "
-                            msg += "DisconnectedType and theano can't "
-                            msg += "simplify it to a constant, so it's not "
-                            msg += "verifiably zeros."
+                            msg = ("%s.grad returned %s of type %s for input"
+                                   " %d. This input's only connections to "
+                                   "the cost through this op are via "
+                                   "integer-valued outputs so it should be "
+                                   "NullType, DisconnectedType, or some form "
+                                   "of zeros. It is not NullType or "
+                                   "DisconnectedType and theano can't "
+                                   "simplify it to a constant, so it's not "
+                                   "verifiably zeros.")
 
-                            msg = msg % (str(node.op), str(term),
-                                         str(type(term)), i)
+                            msg %= (node.op, term, type(term), i)
 
-                        if is_zero == 'no':
-                            msg = "%s.grad returned %s of type %s for input"
-                            msg += " %d. Since this input is only connected "
-                            msg += "to integer-valued outputs, it should "
-                            msg += "evaluate to zeros, but it evaluates to"
-                            msg += "%s."
+                        elif is_zero == 'no':
+                            msg = ("%s.grad returned %s of type %s for input"
+                                   " %d. Since this input is only connected "
+                                   "to integer-valued outputs, it should "
+                                   "evaluate to zeros, but it evaluates to"
+                                   "%s.")
 
-                            msg % (node.op, term, type(term), i,
-                                   theano.get_scalar_constant_value(term))
+                            msg %= (node.op, term, type(term), i,
+                                    theano.get_scalar_constant_value(term))
 
                             raise ValueError(msg)
 
             # Check that op.connection_pattern matches the connectivity
             # logic driving the op.grad method
-            for i, packed in enumerate(zip(inputs, input_grads,
-                                           inputs_connected)):
-                ipt, ig, connected = packed
+            for i, (ipt, ig, connected) in enumerate(
+                zip(inputs, input_grads, inputs_connected)
+            ):
                 actually_connected = \
                     not isinstance(ig.type, DisconnectedType)
 
                 if actually_connected and not connected:
-                    msg = "%s.grad returned %s of type %s for input %d."
-                    msg += " Expected DisconnectedType instance based on "
-                    msg += " the output of the op's connection_pattern "
-                    msg += "method."
-                    msg = msg % (str(node.op), str(ig), str(ig.type), i)
+                    msg = ("%s.grad returned %s of type %s for input %d."
+                           " Expected DisconnectedType instance based on "
+                           " the output of the op's connection_pattern "
+                           "method.")
+                    msg %= (str(node.op), str(ig), str(ig.type), i)
                     raise TypeError(msg)
 
-                if connected and not actually_connected:
-                    msg = "%s.grad returned DisconnectedType for input"
-                    msg += " %d."
-                    msg = msg % (str(node.op), i)
+                elif connected and not actually_connected:
+                    msg = "%s.grad returned DisconnectedType for input %d."
+                    msg %= (str(node.op), i)
                     if hasattr(node.op, 'connection_pattern'):
-                        msg += ' Its connection_pattern method does not'
-                        msg += ' allow this.'
+                        msg += (' Its connection_pattern method does not'
+                                ' allow this.')
                         raise TypeError(msg)
                     else:
-                        msg += ' You may want to implement a '
-                        msg += 'connection_pattern method for it.'
+                        msg += (' You may want to implement a '
+                                'connection_pattern method for it.')
                         warnings.warn(msg)
 
             # cache the result

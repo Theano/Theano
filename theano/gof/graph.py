@@ -1099,7 +1099,10 @@ def io_connection_pattern(inputs, outputs):
     # connnection patterns of the individual outputs
     global_connection_pattern = [[] for o in range(len(inputs))]
     for out in outputs:
-        out_connection_pattern = connect_pattern_by_var[out]
+        out_connection_pattern = connect_pattern_by_var.get(out)
+        if out_connection_pattern is None:
+            # the output is completely isolated from inputs
+            out_connection_pattern = [False] * len(inputs)
         for i in range(len(inputs)):
             global_connection_pattern[i].append(out_connection_pattern[i])
 

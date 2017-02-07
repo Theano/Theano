@@ -68,7 +68,8 @@ from theano.compile import (
     SymbolicOutput, Out,
     Mode,
     predefined_modes, predefined_linkers, predefined_optimizers,
-    FunctionMaker, function, function_dump, OpFromGraph,
+    FunctionMaker, function, function_dump,
+    OpFromGraph,
     ProfileStats,
     Param, shared, as_op)
 
