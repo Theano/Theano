@@ -3599,7 +3599,7 @@ class GpuJoin(tensor.Join, GpuOp):
 gpu_join = GpuJoin()
 
 
-class GpuSplit(tensor.Split, GpuOp):
+class GpuSplit(gof.HideC, tensor.Split, GpuOp):
     def make_node(self, x, axis, splits):
         x = as_cuda_ndarray_variable(x)
         node = tensor.Split.make_node(self, x, axis, splits)
