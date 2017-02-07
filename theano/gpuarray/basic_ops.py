@@ -1388,7 +1388,7 @@ class GpuSplit(HideC, Split):
     # we reuse the perform of the CPU op, which is suitable
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray_helper.h>']
@@ -1408,10 +1408,10 @@ class GpuSplit(HideC, Split):
         axis_dtype = node.inputs[1].type.dtype_specs()[1]
         expected_splits_count = self.len_splits
         codes_for_checking_outputs = []  # filled later.
-        code_for_preparing_outputs_list = []  # filled later.
+        code_for_splitting = []  # filled later.
         code_if_sync = []  # filled later.
         full_code_for_checking_outputs = ''  # defined later.
-        full_code_for_preparing_outputs_list = ''  # defined later.
+        full_code_for_splitting = ''  # defined later.
         full_code_if_sync = ''  # defined later.
 
         main_code = """
@@ -1422,8 +1422,7 @@ class GpuSplit(HideC, Split):
         size_t len_along_axis, sum_of_splits = 0, current_split_start = 0;
         %(splits_dtype)s current_split_length = 0;
         size_t* split_dims = NULL;
-        size_t* split_points = NULL;
-        GpuArray** outputs_list = NULL;
+        GpuArray view;
         int i;
 
         /* Check inputs. */
@@ -1463,24 +1462,16 @@ class GpuSplit(HideC, Split):
 
         /* Compute splits. */
 
-        split_points = (size_t*) malloc((splits_count - 1) * sizeof(size_t));
-        current_split_start = (size_t) (* (%(splits_dtype)s*) PyArray_GETPTR1(%(splits)s, 0) );
-        for(i = 1; i < splits_count; ++i) {
-            split_points[i - 1] = current_split_start;
-            current_split_start += (size_t) (* (%(splits_dtype)s*) PyArray_GETPTR1(%(splits)s, i) );
-        }
-        outputs_list = (GpuArray**) malloc(splits_count * sizeof(GpuArray*));
-        %(full_code_for_preparing_outputs_list)s
-        if (GpuArray_split(outputs_list, &%(x)s->ga, splits_count - 1, split_points, axis) != GA_NO_ERROR) {
-            PyErr_SetString(PyExc_RuntimeError, "GpuSplit: unable to compute split.");
-            free(outputs_list);
-            free(split_points);
+        if (GpuArray_view(&view, &%(x)s->ga) != GA_NO_ERROR) {
+            PyErr_SetString(PyExc_RuntimeError, "GpuSplit: unable to create a view of the input.");
             free(split_dims);
             %(fail)s
         }
+        %(full_code_for_splitting)s
 
-        free(outputs_list);
-        free(split_points);
+        /* Free memory. */
+
+        GpuArray_clear(&view);
         free(split_dims);
 
         /* Code added if synchronization is enabled. */
@@ -1493,19 +1484,31 @@ class GpuSplit(HideC, Split):
             current_split_length = * (%(splits_dtype)s*) PyArray_GETPTR1(%(splits)s, %(split_index)s);
             split_dims[axis] = current_split_length;
             if (theano_prep_output(&%(output)s, ndim, split_dims, %(x_typecode)s, x_order, %(x)s->context) != 0) {
-                PyErr_Format(PyExc_RuntimeError, "GpuSplit: unable to prepare an output.");
+                PyErr_SetString(PyExc_RuntimeError, "GpuSplit: unable to prepare an output.");
                 free(split_dims);
                 %(fail)s
             }
             """ % locals())
 
-            code_for_preparing_outputs_list.append("outputs_list[%(split_index)s] = &%(output)s->ga;" % locals())
+            code_for_splitting.append("""
+            current_split_length = * (%(splits_dtype)s*) PyArray_GETPTR1(%(splits)s, %(split_index)s);
+            view.offset = PyGpuArray_STRIDE(%(x)s, axis) * current_split_start;
+            view.dimensions[axis] = current_split_length;
+            GpuArray_fix_flags(&view);
+            if (GpuArray_move(&%(output)s->ga, &view) != GA_NO_ERROR) {
+                PyErr_SetString(PyExc_RuntimeError, "GpuSplit: unable to copy a view into an output.");
+                GpuArray_clear(&view);
+                free(split_dims);
+                %(fail)s
+            }
+            current_split_start += current_split_length;
+            """ % locals())
 
             if config.gpuarray.sync:
                 code_if_sync.append("GpuArray_sync(&%(output)s->ga);" % locals())
 
         full_code_for_checking_outputs = '\r\n'.join(codes_for_checking_outputs)
-        full_code_for_preparing_outputs_list = '\r\n'.join(code_for_preparing_outputs_list)
+        full_code_for_splitting = '\r\n'.join(code_for_splitting)
         full_code_if_sync = '\r\n'.join(code_if_sync)
 
         return main_code % locals()
