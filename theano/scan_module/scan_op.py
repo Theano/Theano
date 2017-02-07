@@ -422,7 +422,8 @@ class Scan(PureOp):
                    "axis %d in `output_info`. This can happen if one of the "
                    "dimension is fixed to 1 in the input, while it is still "
                    "variable in the output, or vice-verca. You have to make "
-                   "them consistent.")
+                   "them consistent, e.g. using theano.tensor."
+                   "{patternbroadcast,unbroadcast,addbroadcast}.")
             size = min(len(v1.broadcastable), len(v2.broadcastable))
             for n, (b1, b2) in enumerate(zip(v1.broadcastable[-size:],
                                              v2.broadcastable[-size:])):
