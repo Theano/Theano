@@ -93,7 +93,7 @@ stage-manually:
              -v $DATADIR:/data
              $(eval echo ${EXTRA_DOCKER_RUN_ARGS})
              ${DEVEL_IMAGE_NAME_VERSIONED}
-             /bin/bash -c "cd ${TEST_WORK_DIR} && bash -ex ${TEST_SCRIPT}"
+             /bin/bash -c "cd ${TEST_WORK_DIR} && exec bash -ex ${TEST_SCRIPT}"
     tags:
     - has_gpu
     except:
