@@ -643,6 +643,8 @@ class MergeFeature(object):
                 continue
             if len(node.inputs) != len(candidate.inputs):
                 continue
+            if node.op != candidate.op:
+                continue
 
             cand_has_assert = False
 
@@ -679,7 +681,7 @@ class MergeFeature(object):
                                in zip(node_inputs_assert_removed,
                                       cand_inputs_assert_removed))
 
-            if inputs_match and node.op == candidate.op:
+            if inputs_match:
                 if (node, candidate) in self.blacklist:
                     # They were already tried, and there was an error
                     continue
