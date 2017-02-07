@@ -66,7 +66,7 @@ from theano.gof import PureOp, Apply
 from theano.gof.graph import io_connection_pattern
 from theano.gof.toolbox import NoOutputFromInplace
 from theano.compat import izip
-from theano.tensor import TensorType
+from theano.tensor import as_tensor_variable, TensorType
 from theano.tensor.opt import Shape_i
 from theano.gradient import grad_undefined, DisconnectedType, NullType
 from six import string_types
@@ -349,7 +349,8 @@ class Scan(PureOp):
         assert n_outer_ins == n_inner_ins, \
             ("The number of inputs given to the inner function of scan"
              " does not match the number of inputs given to scan.")
-        new_inputs = [inputs[0]]
+        # Force the inputs to be on the CPU
+        new_inputs = [as_tensor_variable(inputs[0])]
         # assert dtype is consistent
         err_msg1 = ('When compiling the inner function of scan (the '
                     'function called by scan in each of its iterations) '

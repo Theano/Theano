@@ -834,9 +834,14 @@ class MakeVectorPrinter:
         if r.owner is None:
             raise TypeError("Can only print make_vector.")
         elif isinstance(r.owner.op, MakeVector):
-            return "[%s]" % ", ".join(
-                pstate.pprinter.process(input, pstate.clone(precedence=1000))
-                for input in r.owner.inputs)
+            old_precedence = getattr(pstate, 'precedence', None)
+            try:
+                pstate.precedence = 1000
+                s = [pstate.pprinter.process(input)
+                     for input in r.owner.inputs]
+            finally:
+                pstate.precedence = old_precedence
+            return "[%s]" % ", ".join(s)
         else:
             raise TypeError("Can only print make_vector.")
 
