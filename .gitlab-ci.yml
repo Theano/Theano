@@ -1,48 +1,203 @@
-stages:
-    - build
-    - deploy
-    - trigger
 
-theano:
-    stage: build
-    script:
+######################################################
+## Variables used by the test runs
+######################################################
+
+variables:
+    EXTRA_DOCKER_RUN_ARGS: "--shm-size=1G --ulimit memlock=-1 --ulimit stack=$$((1024*65536))"
+    DATADIR: /raid/dldata
+
+
+######################################################
+## Build steps.
+##    DO NOT MODIFY THIS SECTION
+######################################################
+
+stages:
+    - build base
+    - build devel
+    - L0
+    - L1
+    - L2
+    - L3 and staging
+
+before_script:
+    - export NV_DOCKER_ARGS="curl -s http://localhost:3476/docker/cli?dev=${RUNNER_GPUS//,/+}"     && echo "${NV_DOCKER_ARGS}"
+    - export RELEASE_BRANCH_NAME=${CI_BUILD_REF_NAME%%-devel}                                      && echo "${RELEASE_BRANCH_NAME}"
+    - export BASE_IMAGE_NAME="${CI_REGISTRY_IMAGE}:${RELEASE_BRANCH_NAME}.${CI_PIPELINE_ID}"       && echo "${BASE_IMAGE_NAME}"
+    - export DEVEL_IMAGE_NAME="${CI_REGISTRY_IMAGE}:${CI_BUILD_REF_NAME}"                          && echo "${DEVEL_IMAGE_NAME}"
+    - export DEVEL_IMAGE_NAME_VERSIONED="${BASE_IMAGE_NAME}-devel"                                 && echo "${DEVEL_IMAGE_NAME_VERSIONED}"
+    - export STAGE_IMAGE_NAME="${CI_REGISTRY_IMAGE}:${CI_BUILD_REF_NAME/%-devel/-stage}"           && echo "${STAGE_IMAGE_NAME}"
+    - ORIGIN1="${CI_BUILD_REPO##*@}" && export ORIGIN=git@${ORIGIN1/\//:}                          && echo "${ORIGIN}"
+    - git submodule sync --recursive
+    - git submodule update --init --recursive
     - docker login -u gitlab-ci-token -p "${CI_BUILD_TOKEN}" "${CI_REGISTRY}"
-    - ORIGIN="${CI_BUILD_REPO##*@}" && git remote set-url origin git@${ORIGIN/\//:}
-    - if [[ "${CI_BUILD_REF_NAME}" == *-stage ]]; then
-        echo -e 'Dockerfile*\n.git*\n.dockerignore' > .dockerignore;
-      fi
-    - docker build --pull -t "${CI_REGISTRY_IMAGE}:${CI_BUILD_REF_NAME}"
+
+theano-base:
+    stage: build base
+    script:
+    - echo -e "Dockerfile*\n"
+              ".git*\n"
+              ".dockerignore\n"
+              "qa" > .dockerignore
+    - docker build --pull -t "${BASE_IMAGE_NAME}"
                    --build-arg "NVIDIA_BUILD_REF=${CI_BUILD_REF}"
                    --build-arg "NVIDIA_BUILD_ID=${CI_BUILD_ID}" .
-    - docker push "${CI_REGISTRY_IMAGE}:${CI_BUILD_REF_NAME}"
-    only:
-    - /^.*-devel$/
-    - /^.*-stage$/
+    - docker push "${BASE_IMAGE_NAME}"
+    except:
+    - tags
 
-stage:
-    stage: deploy
+theano:
+    stage: build devel
+    script:
+    - echo -e "FROM ${BASE_IMAGE_NAME}\n"
+              "COPY Dockerfile* /opt/${CI_PROJECT_NAME}/\n"
+              "COPY .gitignore /opt/${CI_PROJECT_NAME}/\n"
+              "COPY .gitmodules /opt/${CI_PROJECT_NAME}/\n"
+              "COPY .gitlab-ci.yml /opt/${CI_PROJECT_NAME}/\n"
+              "COPY .git/ /opt/${CI_PROJECT_NAME}/.git/\n"
+              "COPY qa/   /opt/${CI_PROJECT_NAME}/qa/\n"
+        > Dockerfile.${CI_PROJECT_NAME}.${CI_BUILD_REF_NAME}
+    - git remote set-url origin ${ORIGIN}
+    - docker build --pull -t "${DEVEL_IMAGE_NAME}" -t "${DEVEL_IMAGE_NAME_VERSIONED}"
+                   -f Dockerfile.${CI_PROJECT_NAME}.${CI_BUILD_REF_NAME} .
+    - docker push "${DEVEL_IMAGE_NAME}"
+    - docker push "${DEVEL_IMAGE_NAME_VERSIONED}"
+    except:
+    - tags
+
+stage-after-L2: &STAGE_TEMPLATE
+    stage: L3 and staging
     environment: staging
     script:
-    - ORIGIN="${CI_BUILD_REPO##*@}" && git remote set-url origin git@${ORIGIN/\//:}
+    - git remote set-url origin ${ORIGIN}
     - git push --delete origin refs/tags/${CI_BUILD_REF_NAME/%-devel/-stage}
     - git push origin HEAD:refs/tags/${CI_BUILD_REF_NAME/%-devel/-stage}
-    when: manual
+    - docker pull "${BASE_IMAGE_NAME}"
+    - docker tag "${BASE_IMAGE_NAME}" "${STAGE_IMAGE_NAME}"
+    - docker push "${STAGE_IMAGE_NAME}"
     only:
     - /^.*-devel$/
+    except:
+    - tags
 
-qa:
-    stage: trigger
+stage-manually:
+    <<: *STAGE_TEMPLATE
+    when: manual
+
+.test_template: &TEST_TEMPLATE
+    variables:
+      TEST_WORK_DIR: "/opt/${CI_PROJECT_NAME}/qa/${CI_BUILD_NAME}/"
+      TEST_SCRIPT: "./test.sh"
     script:
-    - ORIGIN="${CI_BUILD_REPO##*@}" &&
-      REPO="${ORIGIN/dgx/qa}" &&
-      mkdir triggers && cd triggers &&
-      git config --global user.name "gitlab-runner" &&
-      git config --global user.email "gitlab-runner@${REPO%%/*}" &&
-      git config --global push.default simple &&
-      git clone git@${REPO/\//:} --branch ${CI_BUILD_REF_NAME} qa &&
-      cd qa &&
-      FROM1=${ORIGIN#*/} && FROM=${FROM1%.git} &&
-      git commit --allow-empty -m "Trigger build from ${FROM} at ${CI_BUILD_REF}" &&
-      git push
-    only:
-    - /^.*-stage$/
+    - docker run --rm $(eval ${NV_DOCKER_ARGS})
+             -v $DATADIR:/data
+             $(eval echo ${EXTRA_DOCKER_RUN_ARGS})
+             ${DEVEL_IMAGE_NAME_VERSIONED}
+             /bin/bash -c "cd ${TEST_WORK_DIR} && bash ${TEST_SCRIPT}"
+    tags:
+    - has_gpu
+    except:
+    - tags
+
+.L0_test: &L0_TEST
+    stage: L0
+    <<: *TEST_TEMPLATE
+
+.L1_test: &L1_TEST
+    stage: L1
+    <<: *TEST_TEMPLATE
+    when: manual
+
+.L2_test: &L2_TEST
+    stage: L2
+    <<: *TEST_TEMPLATE
+    when: manual
+
+.L3_test: &L3_TEST
+    stage: L3 and staging
+    <<: *TEST_TEMPLATE
+    when: manual
+
+
+######################################################
+##
+## Test definitions.
+##
+##   By convention, test names should be prefixed
+##   with "L0_" or "L1_" etc.
+##
+##   Normally qa/ will be a submodule that pulls in
+##   all of the stuff needed to run the tests into the
+##   *-devel images.
+##
+##   The CI script templates above expect each test to
+##   be defined in /opt/<project>/qa/<testname>/test.sh.
+##   This behavior is specified by the variables
+##   $TEST_WORK_DIR and $TEST_SCRIPT.  You can override
+##   either of those variables for a given test, but if
+##   you do, you have to override them both together,
+##   like this:
+##
+##   L0_mytest:
+##      <<: *L0_TEST
+##      variables:
+##        TEST_WORK_DIR: "/some/other/path"
+##        TEST_SCRIPT: "./test.sh"
+##
+######################################################
+
+L0_imdb_lstm:
+    <<: *L0_TEST
+
+L0_mnist_sgd:
+    <<: *L0_TEST
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_mnist"
+      TEST_SCRIPT: "./test-sgd.sh"
+
+L0_mnist_mlp:
+    <<: *L0_TEST
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_mnist"
+      TEST_SCRIPT: "./test-mlp.sh"
+
+L0_mnist_lenet:
+    <<: *L0_TEST
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_mnist"
+      TEST_SCRIPT: "./test-lenet.sh"
+
+L1_convnet_benchmarks_alexnet:
+    <<: *L1_TEST
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_convnet_benchmarks"
+      TEST_SCRIPT: "./test-alexnet.sh"
+
+L1_convnet_benchmarks_overfeat:
+    <<: *L1_TEST
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_convnet_benchmarks"
+      TEST_SCRIPT: "./test-overfeat.sh"
+
+L1_convnet_benchmarks_vgga:
+    <<: *L1_TEST
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_convnet_benchmarks"
+      TEST_SCRIPT: "./test-vgga.sh"
+
+L1_convnet_benchmarks_googlenet:
+    <<: *L1_TEST
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_convnet_benchmarks"
+      TEST_SCRIPT: "./test-googlenet.sh"
+
+L1_convnet_benchmarks_pylearn2:
+    <<: *L1_TEST
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_convnet_benchmarks"
+      TEST_SCRIPT: "./test-pylearn2.sh"
+
+L2_self_test:
+    <<: *L2_TEST
+
