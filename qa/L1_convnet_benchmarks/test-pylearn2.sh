@@ -4,4 +4,4 @@
 (cd ../third_party/scikits.cuda && pip install --no-deps -e .)
 
 cd ../third_party/convnet-benchmarks/theano
-SKIP=legacy python pylearn2_benchmark.py
+SKIP=legacy exec python pylearn2_benchmark.py

@@ -4,4 +4,4 @@
 # curl -fsSL -O http://deeplearning.net/tutorial/code/mlp.py
 # curl -fsSL -O http://deeplearning.net/tutorial/code/convolutional_mlp.py
 
-python mlp.py
+exec python mlp.py
