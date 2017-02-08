@@ -1194,10 +1194,9 @@ class LogicalComparison(BinaryScalarOp):
     def output_types(self, *input_dtypes):
         return [bool] if getattr(self, 'bool', False) else [int8]
 
-    def grad(self, inputs, output_gradients):
+    def L_op(self, inputs, outputs, output_gradients):
         x, y = inputs
-        out = self(x, y)
-        assert out.type == bool
+        assert outputs[0].type == bool
         return [x.zeros_like().astype(theano.config.floatX),
                 y.zeros_like().astype(theano.config.floatX)]
 
@@ -1436,7 +1435,7 @@ class InRange(LogicalComparison):
         else:
             return elem.zeros_like()
 
-    def grad(self, inputs, gout):
+    def L_op(self, inputs, outputs, gout):
         (x, low, hi) = inputs
         (gz,) = gout
         grads = []
@@ -1605,7 +1604,7 @@ class Maximum(BinaryScalarOp):
         return ('%(z)s = ((%(y)s)>(%(x)s)? (%(y)s): '
                 '((%(x)s)>=(%(y)s)? (%(x)s): nan("")));' % locals())
 
-    def grad(self, inputs, gout):
+    def L_op(self, inputs, outputs, gout):
         (x, y) = inputs
         (gz,) = gout
         if gz.type in complex_types:
@@ -1613,14 +1612,12 @@ class Maximum(BinaryScalarOp):
             # but the gradient for complex is not.
             raise NotImplementedError()
 
-        output = self(x, y)
-
-        if output.type in discrete_types:
+        if outputs[0].type in discrete_types:
             return [x.zeros_like().astype(theano.config.floatX),
                     y.zeros_like().astype(theano.config.floatX)]
 
-        gx = eq(output, x) * gz
-        gy = eq(output, y) * gz
+        gx = eq(outputs[0], x) * gz
+        gy = eq(outputs[0], y) * gz
         return (gx, gy)
 
 maximum = Maximum(upcast_out, name='maximum')
@@ -1643,7 +1640,7 @@ class Minimum(BinaryScalarOp):
         return ('%(z)s = ((%(y)s)<(%(x)s)? (%(y)s): '
                 '((%(x)s)<=(%(y)s)? (%(x)s): nan("")));' % locals())
 
-    def grad(self, inputs, gout):
+    def L_op(self, inputs, outputs, gout):
         (x, y) = inputs
         (gz,) = gout
         if gz.type in complex_types:
@@ -1651,12 +1648,11 @@ class Minimum(BinaryScalarOp):
             # but the gradient for complex is not.
             raise NotImplementedError()
 
-        output = minimum(x, y)
-        if output.type in discrete_types:
+        if outputs[0].type in discrete_types:
             return [x.zeros_like().astype(theano.config.floatX),
                     y.zeros_like().astype(theano.config.floatX)]
-        gx = eq(output, x) * gz
-        gy = eq(output, y) * gz
+        gx = eq(outputs[0], x) * gz
+        gy = eq(outputs[0], y) * gz
         return (gx, gy)
 minimum = Minimum(upcast_out, name='minimum')
 
