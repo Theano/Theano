@@ -3779,7 +3779,7 @@ class Split(Op):
         return self.make_node(eval_points[0], *inputs[1:]).outputs
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_support_code(self):
         return """
@@ -3876,13 +3876,13 @@ class Split(Op):
         for split_index, output in enumerate(outputs):
 
             codes_for_checking_outputs.append("""
-            current_split_length = (npy_intp) (* (%(splits_dtype)s*) PyArray_GETPTR1(%(splits)s, %(split_index)s) );
+            current_split_length = (npy_intp) (* (%(splits_dtype)s*) PyArray_GETPTR1(%(splits)s, %(split_index)s));
             if (%(output)s == NULL || !split_output_shape_is_correct(%(output)s, %(x)s, axis, current_split_length)) {
                 Py_XDECREF(%(output)s);
                 split_dims[axis] = current_split_length;
                 %(output)s = (PyArrayObject*)PyArray_EMPTY(ndim, split_dims, %(x_typenum)s, PyArray_IS_F_CONTIGUOUS(%(x)s));
                 if (%(output)s == NULL) {
-                    PyErr_Format(PyExc_RuntimeError, "Split: unable to allocate an output.");
+                    PyErr_SetString(PyExc_RuntimeError, "Split: unable to allocate an output.");
                     free(split_dims);
                     %(fail)s
                 }
@@ -3902,12 +3902,12 @@ class Split(Op):
                                     PyArray_FLAGS(%(x)s),
                                     NULL);
             if (split_view == NULL) {
-                PyErr_Format(PyExc_RuntimeError, "Split: unable to create a view for a split.");
+                PyErr_SetString(PyExc_RuntimeError, "Split: unable to create a view for a split.");
                 free(split_dims);
                 %(fail)s
             }
             if (PyArray_CopyInto(%(output)s, (PyArrayObject*)split_view) != 0) {
-                PyErr_Format(PyExc_RuntimeError, "Split: unable to copy a split view into the output.");
+                PyErr_SetString(PyExc_RuntimeError, "Split: unable to copy a split view into the output.");
                 Py_XDECREF(split_view);
                 free(split_dims);
                 %(fail)s
