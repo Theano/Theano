@@ -1328,6 +1328,9 @@ def default_blas_ldflags():
         if res:
             return res
 
+        # If we are using conda and can't reuse numpy blas, then doing
+        # the fallback and test -lblas could give slow computation, so
+        # warn about this.
         for warn in warn_record:
             _logger.warning(*warn)
         del warn_record
