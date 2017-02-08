@@ -923,7 +923,7 @@ def local_gpua_lazy_ifelse(op, context_name, inputs, outputs):
     c = inputs[0]
     inps = []
     for v in inputs[1:]:
-        if isinstance(v.type, tensor.TensorType):
+        if isinstance(v.type, tensor.TensorType) and move_to_gpu(v):
             inps.append(as_gpuarray_variable(v, context_name))
         else:
             inps.append(v)
