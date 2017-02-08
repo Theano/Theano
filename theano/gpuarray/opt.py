@@ -193,7 +193,8 @@ def op_lifter(OP, cuda_only=False):
                 context_name = None
                 # We replace if any input is a host_from_gpu
                 for i in node.inputs:
-                    if i.owner and i.owner.op == host_from_gpu:
+                    if (i.owner and i.owner.op == host_from_gpu and
+                            move_to_gpu(i)):
                         context_name = i.owner.inputs[0].type.context_name
                         replace = True
                         break
