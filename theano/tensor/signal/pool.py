@@ -1391,7 +1391,7 @@ class MaxPoolGrad(PoolGrad):
         return ccode % locals()
 
     def c_code_cache_version(self):
-        return (0, 10, self.openmp)
+        return (0, 11, self.openmp)
 
 
 class AveragePoolGrad(PoolGrad):
@@ -2025,7 +2025,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
         return ccode % locals()
 
     def c_code_cache_version(self):
-        return (0, 4, self.openmp)
+        return (0, 5, self.openmp)
 
 
 class MaxPoolRop(OpenMPOp):
