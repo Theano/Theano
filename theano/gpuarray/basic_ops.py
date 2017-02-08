@@ -1377,6 +1377,13 @@ class GpuSplit(HideC, Split):
     Split for GPU.
 
     """
+    def __init__(self, len_splits):
+        super(GpuSplit, self).__init__(len_splits)
+        # The GPU version of Split returns splits as views of the input.
+        self.view_map = {}
+        for i in xrange(self.len_splits):
+            self.view_map[i] = [0]
+
     def make_node(self, x, axis, splits):
         node = Split.make_node(self, x, axis, splits)
         x = as_gpuarray_variable(x, infer_context_name(x))
@@ -1388,7 +1395,7 @@ class GpuSplit(HideC, Split):
     # we reuse the perform of the CPU op, which is suitable
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray_helper.h>']
@@ -1421,7 +1428,6 @@ class GpuSplit(HideC, Split):
         int splits_count = PyArray_SIZE(%(splits)s);
         size_t len_along_axis, sum_of_splits = 0, current_split_start = 0;
         %(splits_dtype)s current_split_length = 0;
-        size_t* split_dims = NULL;
         GpuArray view;
         int i;
 
@@ -1455,37 +1461,29 @@ class GpuSplit(HideC, Split):
         }
 
         /* Check outputs. */
-
-        split_dims = (size_t*) malloc(ndim * sizeof(size_t));
-        memcpy(split_dims, PyGpuArray_DIMS(%(x)s), ndim * sizeof(size_t));
         %(full_code_for_checking_outputs)s
 
         /* Compute splits. */
-
         if (GpuArray_view(&view, &%(x)s->ga) != GA_NO_ERROR) {
             PyErr_SetString(PyExc_RuntimeError, "GpuSplit: unable to create a view of the input.");
-            free(split_dims);
             %(fail)s
         }
         %(full_code_for_splitting)s
 
         /* Free memory. */
-
         GpuArray_clear(&view);
-        free(split_dims);
 
         /* Code added if synchronization is enabled. */
         %(full_code_if_sync)s
         """
 
         for split_index, output in enumerate(outputs):
-
+            # When checking output, we allocate a PyGpuArrayObject with 0 dims
+            # (that is, an object with as few memory as possible), as its GpuArray field
+            # will be cleared and re-used as a view during split operations.
             codes_for_checking_outputs.append("""
-            current_split_length = * (%(splits_dtype)s*) PyArray_GETPTR1(%(splits)s, %(split_index)s);
-            split_dims[axis] = current_split_length;
-            if (theano_prep_output(&%(output)s, ndim, split_dims, %(x_typecode)s, x_order, %(x)s->context) != 0) {
+            if (theano_prep_output(&%(output)s, 0, NULL, %(x_typecode)s, x_order, %(x)s->context) != 0) {
                 PyErr_SetString(PyExc_RuntimeError, "GpuSplit: unable to prepare an output.");
-                free(split_dims);
                 %(fail)s
             }
             """ % locals())
@@ -1495,12 +1493,12 @@ class GpuSplit(HideC, Split):
             view.offset = PyGpuArray_STRIDE(%(x)s, axis) * current_split_start;
             view.dimensions[axis] = current_split_length;
             GpuArray_fix_flags(&view);
-            if (GpuArray_move(&%(output)s->ga, &view) != GA_NO_ERROR) {
-                PyErr_SetString(PyExc_RuntimeError, "GpuSplit: unable to copy a view into an output.");
+            GpuArray_clear(&%(output)s->ga);
+            if (GpuArray_view(&%(output)s->ga, &view) != GA_NO_ERROR) {
+                PyErr_SetString(PyExc_RuntimeError, "GpuSplit: unable to transfer a view into an output.");
                 GpuArray_clear(&view);
-                free(split_dims);
                 %(fail)s
-            }
+            };
             current_split_start += current_split_length;
             """ % locals())
 
