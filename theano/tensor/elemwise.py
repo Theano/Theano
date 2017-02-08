@@ -695,7 +695,10 @@ second dimension
 
             scalar_inputs = list(map(as_scalar, inputs))
             scalar_ograds = list(map(as_scalar, ograds))
-            scalar_igrads = self.scalar_op.L_op(scalar_inputs, outputs, scalar_ograds)
+            scalar_outputs = self.scalar_op.make_node(
+                *[get_scalar_type(dtype=i.type.dtype).make_variable()
+                    for i in inputs]).outputs
+            scalar_igrads = self.scalar_op.L_op(scalar_inputs, scalar_outputs, scalar_ograds)
             for igrad in scalar_igrads:
                 assert igrad is not None, self.scalar_op
 
@@ -711,6 +714,8 @@ second dimension
                 return r
             if r in scalar_inputs:
                 return inputs[scalar_inputs.index(r)]
+            if r in scalar_outputs:
+                return outputs[scalar_outputs.index(r)]
             if r in scalar_ograds:
                 return ograds[scalar_ograds.index(r)]
             node = r.owner
