@@ -203,10 +203,10 @@ class BatchNormalization(basic_ops.MKLOp):
                 strides[1] = sizes[0];
                 strides[2] = sizes[0]*sizes[1];
                 strides[3] = sizes[0]*sizes[1]*sizes[2];
-                if(%(bias)s) {
-                    scale_buffer_ptr = (float*)PyArray_DATA(%(scale)s);
-                    shift_buffer_ptr = (float*)PyArray_DATA(%(shift)s);
-                }
+            }
+            if(%(bias)s) {
+                scale_buffer_ptr = (float*)PyArray_DATA(%(scale)s);
+                shift_buffer_ptr = (float*)PyArray_DATA(%(shift)s);
             }
 
             if ((!%(bn_fwd_out)s) || (PyArray_DIMS(%(bn_fwd_out)s)[0] != PyArray_DIMS(%(x)s)[0]) ||
