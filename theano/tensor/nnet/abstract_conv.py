@@ -1,5 +1,5 @@
 """
-Abstract conv interface updated
+Abstract conv interface
 """
 from __future__ import absolute_import, print_function, division
 
