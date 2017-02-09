@@ -333,9 +333,9 @@ class test_Broadcast(unittest.TestCase):
 def reduce_bitwise_and(x, axis=-1, dtype='int8'):
     identity = numpy.array((-1,), dtype=dtype)[0]
 
-    if 0 in x.shape and x.shape[axis] != 0:
-        new_shape = tuple([s for i, s in enumerate(x.shape) if i != axis])
-        return numpy.empty(shape=new_shape, dtype=x.dtype)
+    shape_without_axis = tuple([s for i, s in enumerate(x.shape) if i != axis])
+    if 0 in shape_without_axis:
+        return numpy.empty(shape=shape_without_axis, dtype=x.dtype)
 
     def custom_reduce(a):
         out = identity
