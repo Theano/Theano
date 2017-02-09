@@ -42,6 +42,7 @@ install:
   # nose-exclude plugin allow us to tell nosetests to exclude folder with --exclude-dir=path/to/directory.
   - pip install nose-exclude
   - pip install --upgrade numpy==1.12.0
+  - pip install --upgrade scipy==0.18.1
 
 # command to run tests
 env:
