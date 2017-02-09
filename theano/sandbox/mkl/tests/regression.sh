@@ -11,7 +11,7 @@ fi
 # Check the coding style
 ################################
 PY_FILE_DIR=../
-PY_FILES=`find $PY_FILE_DIR -maxdepth 1 -name "*.py"`
+PY_FILES=`find $PY_FILE_DIR -maxdepth 2 -name "*.py"`
 
 echo "##################################################" 2>&1 | tee -a $LOG_FILE
 echo "Start coding style check..." 2>&1 | tee -a $LOG_FILE

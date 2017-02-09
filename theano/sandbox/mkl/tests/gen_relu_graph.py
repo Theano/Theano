@@ -1,6 +1,12 @@
+import numpy as np
+from nose.plugins.skip import SkipTest
+
 import theano
 from theano import tensor as T
-import numpy as np
+from theano.sandbox import mkl
+
+if not mkl.mkl_available:
+    raise SkipTest('Optional package MKL disabled')
 
 
 def run_test(direction='forward', x=T.ftensor4('x')):
@@ -31,7 +37,6 @@ def run_test(direction='forward', x=T.ftensor4('x')):
         f(imval)
     else:
         print ("Invalid direction, only forward or backward allowed!")
-
 
 if __name__ == '__main__':
     x = T.ftensor4('x_4D')

@@ -3,12 +3,17 @@ from __future__ import absolute_import, print_function, division
 import numpy
 import unittest
 from itertools import product
+from nose.plugins.skip import SkipTest
 
 import theano.tensor as T
 from theano import function
 from theano.tests import unittest_tools as utt
+from theano.sandbox import mkl
 from theano.sandbox.mkl.mkl_relu import Relu
 from theano.sandbox.mkl.basic_ops import (U2IRelu, I2U)
+
+if not mkl.mkl_available:
+    raise SkipTest('Optional package MKL disabled')
 
 
 class TestMKLRelu(unittest.TestCase):

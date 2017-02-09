@@ -3,6 +3,7 @@ from __future__ import absolute_import, print_function, division
 from itertools import product
 import unittest
 import six.moves.builtins as builtins
+from nose.plugins.skip import SkipTest
 
 import numpy
 import math
@@ -11,8 +12,12 @@ import theano.tensor as T
 from theano.tests import unittest_tools as utt
 
 from theano import function
+from theano.sandbox import mkl
 from theano.sandbox.mkl.mkl_pool import Pool
 from theano.sandbox.mkl.basic_ops import (U2IPool, I2U)
+
+if not mkl.mkl_available:
+    raise SkipTest('Optional package MKL disabled')
 
 
 class TestMKLPool(unittest.TestCase):

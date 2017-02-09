@@ -166,6 +166,19 @@ AddConfigVar(
     BoolParam(True, allow_override=False),
     in_c_key=False)
 
+AddConfigVar('mkl.lib',
+             "'mkl', use Intel MKL library for dnn primitive functionality.",
+             EnumStr("mkl"),
+             in_c_key=False)
+
+AddConfigVar('mkl.nn.enabled',
+             "'auto', use MKL dnn primitive if available, but silently fall back"
+             " to not using it if not present."
+             " If True and MKL dnn can not be used, raise an error."
+             " If False, disable MKL dnn",
+             EnumStr("auto", "True", "False"),
+             in_c_key=False)
+
 
 def default_cuda_root():
     v = os.getenv('CUDA_ROOT', "")
@@ -380,17 +393,11 @@ AddConfigVar('dnn.library_path',
              in_c_key=False)
 
 AddConfigVar('dnn.enabled',
-             "'auto', When device is CPU, use mkl if it's available, but"
-             " silently fall back to not using it if it's not present."
-             " When device is NOT GPU/CUDA, use cuDNN if it's available,"
-             " but silently fall back to not using it if not present."
-             " 'cudnn',  use cuDNN and raise an error if cuDNN can not be used."
-             " 'mkl',  use mkl and raise an error if mkl can not be used."
-             " 'False', both mkl and cuDNN are disabled, use original function",
-             # leave mkl-dnn here for future use.
-             # " 'mkl-dnn',  use mkl-dnn and raise an error if mkl-dnn can not be used."
-             # EnumStr("auto", "cudnn", "mkl", "mkl-dnn"),
-             EnumStr("auto", "cudnn", "mkl", "False"),
+             "'auto', use cuDNN if available, but silently fall back"
+             " to not using it if not present."
+             " If True and cuDNN can not be used, raise an error."
+             " If False, disable cudnn",
+             EnumStr("auto", "True", "False"),
              in_c_key=False)
 
 # This flag determines whether or not to raise error/warning message if

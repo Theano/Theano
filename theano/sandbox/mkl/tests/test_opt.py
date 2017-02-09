@@ -15,7 +15,6 @@ from theano.sandbox.mkl.basic_ops import (U2IGrad,
                                           U2IPool,
                                           U2IRelu,
                                           U2ILRN,
-                                          U2IElemwiseSum
                                           )
 
 from theano.tensor.nnet.lrn import lrn
@@ -436,7 +435,7 @@ def test_mkl_elemwise_sum_forward():
     assert len(topo) == 6
     assert isinstance(topo[4].op, mkl_elemwise.ElemwiseSum)
     assert isinstance(topo[5].op, basic_ops.I2U)
-    
+
     imval = numpy.random.rand(4, 2, 4, 4).astype(numpy.float32)
     new_out = f(imval)
 
@@ -461,8 +460,8 @@ def test_mkl_elemwise_sum_backward():
     topo = f.maker.fgraph.toposort()
     inputs = f.maker.fgraph.inputs
     outputs = f.maker.fgraph.outputs
-    
-    #assert len(topo.op) == 18
+
+    # assert len(topo.op) == 18
     assert isinstance(topo[4].op, mkl_elemwise.ElemwiseSum)
 
     imval = numpy.random.rand(4, 2, 4, 4).astype(numpy.float32)

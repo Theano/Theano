@@ -1,7 +1,13 @@
-import theano
 import numpy as np
+from nose.plugins.skip import SkipTest
+
+import theano
 from theano import tensor as T
 from theano.tensor.signal import pool
+from theano.sandbox import mkl
+
+if not mkl.mkl_available:
+    raise SkipTest('Optional package MKL disabled')
 
 
 def run_test(direction='forward'):

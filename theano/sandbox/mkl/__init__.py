@@ -93,79 +93,65 @@ def mkl_available():
                             "Set the device to 'CPU' if you want to use MKL."
         return mkl_available.avail
 
-    if config.dnn.enabled == "False":
+    if config.mkl.lib != "mkl":
+        raise NotImplementedError("MKL lib only supports 'mkl', got %s." % config.mkl.lib)
+
+    if config.mkl.nn.enabled == "False":
         mkl_available.avail = False
-        mkl_available.msg = "MKL is disabled by the 'dnn.enabled' setting."
+        mkl_available.msg = "MKL is disabled by the 'mkl.nn.enabled' setting."
         return mkl_available.avail
+    elif mkl_available.avail is not True:
+        preambule = """
+            #include <stdio.h>
+         """
+        preambule += textwrap.dedent(header_text())
 
-    if config.dnn.enabled == "cudnn":
-        if config.device == "cpu":
-            mkl_available.avail = None
-            config.dnn.enabled = "auto"
-            print('WARNING: when device is cpu, config.dnn.enabled=cudnn is not supported, '
-                  'Swithch to "auto" flag.')
-            # FIXME call python warning module
+        body = textwrap.dedent(
+            """
+            dnnError_t err;
+            dnnLayout_t usr_layout = NULL;
+            size_t size[1] = {256};
+            size_t stride[1] = {1};
+
+            if ((err = dnnLayoutCreate_F32(&usr_layout, 1, size, stride)) != E_SUCCESS) {
+                fprintf(stderr, "Failed to create user layout with mkl: %s", err);
+                return (-1);
+            }
+            """)
+        if 'mklml_intel' in config.blas.ldflags:
+            params = ['-l', 'mklml_intel']
         else:
-            mkl_available.avail = False
-            mkl_available.msg = "Disabled by dnn.enabled flag"
-            return mkl_available.avail
+            params = ['-l', 'mkl_rt']
 
-    if (config.dnn.enabled == "auto" and config.device == "cpu") or config.dnn.enabled == "mkl":
-        if mkl_available.avail is None:
-            preambule = """
-                #include <stdio.h>
-             """
-            preambule += textwrap.dedent(header_text())
+        comp, out, err = Compiler._try_flags(
+            flag_list=params, preambule=preambule, body=body,
+            try_run=False, output=True, compiler=theano.config.cxx, comp_args=False)
 
-            body = textwrap.dedent(
-                """
-                dnnError_t err;
-                dnnLayout_t usr_layout = NULL;
-                size_t size[1] = {256};
-                size_t stride[1] = {1};
-
-                if ((err = dnnLayoutCreate_F32(&usr_layout, 1, size, stride)) != E_SUCCESS) {
-                    fprintf(stderr, "Failed to create user layout with mkl: %s", err);
-                    return (-1);
-                }
-                """)
-            if 'mklml_intel' in config.blas.ldflags:
-                params = ['-l', 'mklml_intel']
-            else:
-                params = ['-l', 'mkl_rt']
-
-            comp, out, err = Compiler._try_flags(
-                flag_list=params, preambule=preambule, body=body,
-                try_run=False, output=True, compiler=theano.config.cxx, comp_args=False)
-
-            mkl_available.avail = comp
-            if mkl_available.avail is False:
-                mkl_available.msg = (
-                    "Can not compile with MKL. We got this error: " +
-                    str(err))
-            else:
-                # If we can compile, check that we can import and run.
-                v = mkl_version()
-                if not isinstance(v, integer_types):
-                    mkl_available.avail = False
-                    mkl_available.msg = ("Got incorrect mkl version format")
-                    raise RuntimeError(mkl_available.msg)
-                if v == -1 or v < 20160701:  # FIXME, check the version for first mkl primitive
-                    mkl_available.avail = False
-                    mkl_available.msg = "Version(%d) is too old, please update the newer one after version %d." % (v, int(20160701))  # FIXME, check the version for the first mkl primitive
-                    raise RuntimeError(mkl_available.msg)
-                else:
-                    mkl_available.avail = comp
+        mkl_available.avail = comp
+        if mkl_available.avail is False:
+            mkl_available.msg = (
+                "Can not compile with MKL. We got this error: " +
+                str(err))
         else:
-            return mkl_available.avail
+            # If we can compile, check that we can import and run.
+            v = theano.function([], MKLVersion()(),
+                                theano.Mode(optimizer=None),
+                                profile=False)()
+            if not isinstance(v, integer_types):
+                mkl_available.avail = False
+                mkl_available.msg = ("Got incorrect mkl version format")
+                raise RuntimeError(mkl_available.msg)
+            if v == -1 or v < 20160802:
+                mkl_available.avail = False
+                mkl_available.msg = "Version(%d) is too old, please use the version of %d or newer one." % (v, int(20160802))
+                raise RuntimeError(mkl_available.msg)
+            else:
+                mkl_available.avail = comp
 
-    '''
-    ## leave mkl-dnn here for future use
-    if config.dnn.enabled == "mkl-dnn":
+    if config.mkl.nn.enabled == "True":
         if not mkl_available.avail:
-            raise NotImplemented(
-                "mkl-dnn is not supported, %s" % mkl_available.msg)
-    '''
+            raise RuntimeError(
+                "You enabled MKL, but we aren't able to use it, %s" % mkl_available.msg)
     return mkl_available.avail
 
 

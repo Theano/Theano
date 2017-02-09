@@ -49,7 +49,7 @@ class test_mkl_conv_forward(unittest.TestCase):
         convOut = conv2d(images, weights, input_shape=(12, 3, 256, 256), filter_shape=(12, 3, 3, 3), filter_flip=False)
         fori = theano.function(inputs=[images, weights], outputs=convOut, mode=mode_without_mkl)
         old_out = fori(ival, wval)
-        
+
         assert str(fopt.maker.fgraph.toposort()) != str(fori.maker.fgraph.toposort())
         assert numpy.allclose(old_out, new_out)
 
@@ -91,7 +91,7 @@ class test_mkl_conv_forward(unittest.TestCase):
         fopt = theano.function(inputs=[images, weights], outputs=convOut, mode=mode_with_mkl)
 
         fori = theano.function(inputs=[images, weights], outputs=convOut, mode=mode_without_mkl)
-        
+
         # No optimization for the case image shape is None
         assert all([not isinstance(n, (Conv2D, U2IConv, I2U)) for n in fopt.maker.fgraph.toposort()])
         assert str(fopt.maker.fgraph.toposort()) == str(fori.maker.fgraph.toposort())
@@ -116,16 +116,16 @@ class test_mkl_conv_backward(unittest.TestCase):
 
         fopt = theano.function(inputs=[images, weights], outputs=convOutBack, mode=mode_with_mkl)
         new_out = fopt(ival, wval)
-        
+
         convOut = conv2d(images, weights, input_shape=(12, 3, 256, 256), filter_shape=(12, 3, 3, 3), filter_flip=False)
         convOutLoss = T.mean(convOut)
         conv_op_di = T.grad(convOutLoss, images)
         conv_op_dk = T.grad(convOutLoss, weights)
         convOutBack = [conv_op_di, conv_op_dk]
-        
+
         fori = theano.function(inputs=[images, weights], outputs=convOutBack, mode=mode_without_mkl)
         old_out = fori(ival, wval)
-        
+
         assert len(fopt.maker.fgraph.toposort()) != len(fori.maker.fgraph.toposort())
         assert numpy.allclose(old_out[0], new_out[0])
         assert new_out[0].dtype == 'float64'
