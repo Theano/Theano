@@ -26,7 +26,7 @@ from .ConvGrad3D import *
 from .ConvTransp3D import *
 from .sigm import (softplus, sigmoid, sigmoid_inplace,
                    scalar_sigmoid, ultra_fast_sigmoid,
-                   hard_sigmoid)
+                   hard_sigmoid, softsign)
 from .bn import batch_normalization
 
 
