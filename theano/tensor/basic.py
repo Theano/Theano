@@ -3779,7 +3779,7 @@ class Split(Op):
         return self.make_node(eval_points[0], *inputs[1:]).outputs
 
     def c_code_cache_version(self):
-        return (2,)
+        return (1,)
 
     def c_support_code(self):
         return """
@@ -3787,25 +3787,27 @@ class Split(Op):
         int split_output_shape_is_correct (
             PyArrayObject* output, PyArrayObject* array_to_split, int axis_to_split, npy_intp split_size
         ) {
-            if (PyArray_NDIM(output) == PyArray_NDIM(array_to_split)) {
-                int i;
-                for (i = 0; i < axis_to_split; ++i) {
-                    if (PyArray_DIM(output, i) != PyArray_DIM(array_to_split, i)) {
-                        return 0;
-                    }
-                }
-                for (i = axis_to_split + 1; i < PyArray_NDIM(array_to_split); ++i) {
-                    if (PyArray_DIM(output, i) != PyArray_DIM(array_to_split, i)) {
-                        return 0;
-                    }
-                }
-                return split_size == PyArray_DIM(output, axis_to_split);
-            }
-            return 0;
+            return
+                PyArray_NDIM(output) == PyArray_NDIM(array_to_split)
+                && memcmp(
+                    PyArray_DIMS(output),
+                    PyArray_DIMS(array_to_split),
+                    axis_to_split * sizeof(npy_intp)
+                ) == 0
+                && memcmp(
+                    PyArray_DIMS(output) + axis_to_split + 1,
+                    PyArray_DIMS(array_to_split) + axis_to_split + 1,
+                    (PyArray_NDIM(array_to_split) - axis_to_split - 1) * sizeof(npy_intp)
+                ) == 0
+                && split_size == PyArray_DIM(output, axis_to_split);
         }
         """
 
     def c_code(self, node, name, inputs, outputs, sub):
+        if self.len_splits == 0:
+            # There are no outputs, then nothing to do.
+            return ''
+
         x, axis, splits = inputs
         fail = sub['fail']
         x_typenum = numpy.dtype(node.inputs[0].dtype).num
@@ -3821,7 +3823,7 @@ class Split(Op):
         main_code = """
         int ndim = PyArray_NDIM(%(x)s);
         int axis = (int)(*(%(axis_dtype)s*)PyArray_GETPTR1(%(axis)s, 0));
-        int splits_count = PyArray_SIZE(%(splits)s);
+        int splits_count = PyArray_DIM(%(splits)s, 0);
         npy_intp len_along_axis, sum_of_splits = 0, current_split_length = 0, current_split_start = 0;
         npy_intp* split_dims = NULL;
         PyObject* split_view = NULL;
@@ -3862,6 +3864,11 @@ class Split(Op):
         /* Check outputs. */
 
         split_dims = (npy_intp*) malloc(ndim * sizeof(npy_intp));
+        if (split_dims == NULL) {
+            PyErr_NoMemory();
+            %(fail)s
+        }
+
         memcpy(split_dims, PyArray_DIMS(%(x)s), ndim * sizeof(npy_intp));
 
         %(full_code_for_checking_outputs)s
@@ -3916,8 +3923,8 @@ class Split(Op):
             current_split_start += current_split_length;
             """ % locals())
 
-        full_code_for_checking_outputs = '\r\n'.join(codes_for_checking_outputs)
-        full_code_for_splitting = '\r\n'.join(codes_for_splitting)
+        full_code_for_checking_outputs = '\n'.join(codes_for_checking_outputs)
+        full_code_for_splitting = '\n'.join(codes_for_splitting)
 
         return main_code % locals()
 
