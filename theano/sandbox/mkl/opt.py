@@ -3,6 +3,7 @@ Optimizations addressing the convolution for mkl
 """
 from __future__ import absolute_import, print_function, division
 import logging
+from six import integer_types
 import theano
 from theano import gof, tensor, scalar
 from theano.compile import optdb
@@ -413,12 +414,18 @@ def local_pool_mkl(node):
     if node.inputs[0].type.ndim != 4:
         return
 
-    # MKL only support excluding pad for average mode
-    if node.op.mode not in ('max', 'average_exc_pad'):
+    mkl_ver = theano.sandbox.mkl.mkl_version()
+
+    mkl_pool_modes = ['min', 'max', 'average_exc_pad']
+    mkl_ignore_border = [False]
+    if isinstance(mkl_ver, integer_types) and (mkl_ver >= 20170206):
+        mkl_pool_modes.append('average_inc_pad')
+        mkl_ignore_border.append(True)
+
+    if node.op.mode not in mkl_pool_modes:
         return
 
-    # ignore_border=True is NOT supported in MKL currently
-    if node.op.ignore_border:
+    if node.op.ignore_border not in mkl_ignore_border:
         return
 
     x, ws, stride, pad = node.inputs
@@ -452,12 +459,18 @@ def local_poolGrad_mkl(node):
     if node.inputs[0].type.ndim != 4:
         return
 
-    # MKL only support excluding pad for average mode
-    if node.op.mode not in ('max', 'average_exc_pad'):
+    mkl_ver = theano.sandbox.mkl.mkl_version()
+
+    mkl_pool_modes = ['min', 'max', 'average_exc_pad']
+    mkl_ignore_border = [False]
+    if isinstance(mkl_ver, integer_types) and (mkl_ver >= 20170206):
+        mkl_pool_modes.append('average_inc_pad')
+        mkl_ignore_border.append(True)
+
+    if node.op.mode not in mkl_pool_modes:
         return
 
-    # ignore_border=True is NOT supported in MKL currently
-    if node.op.ignore_border:
+    if node.op.ignore_border not in mkl_ignore_border:
         return
 
     if isinstance(node.op, pool.MaxPoolGrad):

@@ -2,12 +2,14 @@ from __future__ import absolute_import, print_function, division
 
 from itertools import product
 import unittest
-import six.moves.builtins as builtins
 from nose.plugins.skip import SkipTest
+import six.moves.builtins as builtins
+from six import integer_types
 
 import numpy
 import math
 
+import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
 
@@ -29,19 +31,16 @@ class TestMKLPool(unittest.TestCase):
             raise NotImplementedError('input should have at least 2 dim,'
                                       ' shape is %s'
                                       % str(input.shape))
-        in_h = input.shape[-2]
-        in_w = input.shape[-1]
-        kernel_h = stride_h = ds[0]
-        kernel_w = stride_w = ds[1]
-        pad_h = pad_w = 0
-
-        # using Intel MKL style to calculate the output shape
-        out_h = int(math.ceil((float)(in_h + 2 * pad_h - kernel_h) / stride_h)) + 1
-        out_w = int(math.ceil((float)(in_w + 2 * pad_w - kernel_w) / stride_w)) + 1
-
+        xi = 0
+        yi = 0
+        if not ignore_border:
+            if input.shape[-2] % ds[0]:
+                xi += 1
+            if input.shape[-1] % ds[1]:
+                yi += 1
         out_shp = list(input.shape[:-2])
-        out_shp.extend([out_h, out_w])
-
+        out_shp.append(input.shape[-2] // ds[0] + xi)
+        out_shp.append(input.shape[-1] // ds[1] + yi)
         output_val = numpy.zeros(out_shp)
         func = numpy.max
         if mode == 'sum':
@@ -71,21 +70,37 @@ class TestMKLPool(unittest.TestCase):
 
         if st is None:
             st = ds
+        img_rows = input.shape[-2]
+        img_cols = input.shape[-1]
 
-        in_h = input.shape[-2]
-        in_w = input.shape[-1]
-        kernel_h = ds[0]
-        kernel_w = ds[1]
-        stride_h = st[0]
-        stride_w = st[1]
-        pad_h = pad_w = 0
+        out_r = 0
+        out_c = 0
+        if img_rows - ds[0] >= 0:
+            out_r = (img_rows - ds[0]) // st[0] + 1
+        if img_cols - ds[1] >= 0:
+            out_c = (img_cols - ds[1]) // st[1] + 1
 
-        # using Intel MKL style to calculate the output shape
-        out_h = int(math.ceil((float)(in_h + 2 * pad_h - kernel_h) / stride_h)) + 1
-        out_w = int(math.ceil((float)(in_w + 2 * pad_w - kernel_w) / stride_w)) + 1
+        if not ignore_border:
+            if out_r > 0:
+                if img_rows - ((out_r - 1) * st[0] + ds[0]) > 0:
+                    rr = img_rows - out_r * st[0]
+                    if rr > 0:
+                        out_r += 1
+            else:
+                if img_rows > 0:
+                        out_r += 1
+            if out_c > 0:
+                if img_cols - ((out_c - 1) * st[1] + ds[1]) > 0:
+                    cr = img_cols - out_c * st[1]
+                    if cr > 0:
+                        out_c += 1
+            else:
+                if img_cols > 0:
+                        out_c += 1
 
         out_shp = list(input.shape[:-2])
-        out_shp.extend([out_h, out_w])
+        out_shp.append(out_r)
+        out_shp.append(out_c)
 
         func = numpy.max
         if mode == 'sum':
@@ -97,27 +112,17 @@ class TestMKLPool(unittest.TestCase):
         for k in numpy.ndindex(*input.shape[:-2]):
             for i in range(output_val.shape[-2]):
                 ii_st = i * st[0]
-                if ii_st > in_h:
-                    print ('ii_st > in_h!!!')
-                    continue
-                ii_end = builtins.min(ii_st + ds[0], in_h)
-                if ii_st == ii_end:
-                    continue
+                ii_end = builtins.min(ii_st + ds[0], img_rows)
                 for j in range(output_val.shape[-1]):
                     jj_st = j * st[1]
-                    if jj_st > in_w:
-                        print ('jj_st > in_w!!!')
-                        continue
-                    jj_end = builtins.min(jj_st + ds[1], in_w)
-                    if jj_st == jj_end:
-                        continue
+                    jj_end = builtins.min(jj_st + ds[1], img_cols)
                     patch = input[k][ii_st:ii_end, jj_st:jj_end]
                     output_val[k][i, j] = func(patch)
         return output_val
 
     @staticmethod
     def numpy_pool_2d_stride_padding(
-            x, ds, ignore_border=False, st=None, padding=(0, 0), mode='max'):
+            x, ds, ignore_border=True, st=None, padding=(0, 0), mode='max'):
         assert (ignore_border is False)
 
         in_h = x.shape[-2]
@@ -144,7 +149,6 @@ class TestMKLPool(unittest.TestCase):
         h = in_h + 2 * pad_h
         w = in_w + 2 * pad_w
 
-        # using Intel MKL style to calculate the output shape
         out_h = int(math.ceil((float)(h - kernel_h) / stride_h)) + 1
         out_w = int(math.ceil((float)(w - kernel_w) / stride_w)) + 1
 
@@ -185,6 +189,10 @@ class TestMKLPool(unittest.TestCase):
         return output_val
 
     def mkl_pool_func(*inputs):
+        mkl_ver = theano.sandbox.mkl.mkl_version()
+        if inputs[2] and isinstance(mkl_ver, integer_types) and (mkl_ver < 20170206):
+            raise SkipTest("Need newer MKL to support 'ignore_border=True'.")
+
         if len(inputs) == 5:
             # self, images, ignore_border, mode, ds
             _, images, ignore_border, mode, ds, = inputs
@@ -222,7 +230,7 @@ class TestMKLPool(unittest.TestCase):
         # generate random images
         imval = rng.rand(4, 2, 16, 16)
         for ds, ignore_border, mode in product(ds_list,
-                                               [False],
+                                               [False, True],
                                                ['max',
                                                 'average_exc_pad']):
             # Pure Numpy computation
@@ -247,7 +255,7 @@ class TestMKLPool(unittest.TestCase):
         images = T.dtensor4()
         for ds, st, ignore_border, mode in product(ds_list,
                                                    st_list,
-                                                   [False],
+                                                   [False, True],
                                                    ['max',
                                                     'average_exc_pad']):
             # Pure Numpy computation
@@ -294,7 +302,6 @@ class TestMKLPool(unittest.TestCase):
 
             f = function([images, ], [output, ])
             output_val = f(imval)
-
             utt.assert_allclose(output_val, numpy_output_val)
 
     def test_pool_grad(self):
@@ -303,7 +310,7 @@ class TestMKLPool(unittest.TestCase):
         imval = rng.rand(2, 3, 3, 4) * 10.0
 
         for ds, ignore_border, mode in product(ds_list,
-                                               [False],
+                                               [False, True],
                                                ['max',
                                                 'average_exc_pad']):
             def mp(input):
@@ -319,7 +326,7 @@ class TestMKLPool(unittest.TestCase):
 
         for ds, st, ignore_border, mode in product(ds_list,
                                                    st_list,
-                                                   [False],
+                                                   [False, True],
                                                    ['max',
                                                     'average_exc_pad']):
             def mp(input):

@@ -159,10 +159,15 @@ class U2IPool(BaseConvertOp):
         ignore_border = self.ignore_border
         if 'max' == self.mode:
             algo = "dnnAlgorithmPoolingMax"
-        elif self.mode.startswith('average'):
-            algo = "dnnAlgorithmPoolingAvg"
+        elif 'min' == self.mode:
+            algo = 'dnnAlgorithmPoolingMin'
+        elif 'average_exc_pad' == self.mode:
+            algo = "dnnAlgorithmPoolingAvgExcludePadding"
+        elif 'average_inc_pad' == self.mode:
+            algo = "dnnAlgorithmPoolingAvgIncludePadding"
         else:
-            raise NotImplementedError('%s is not implemented' % self.mode)
+            raise ValueError("mode must be one of 'max', 'min', "
+                             "'average_exc_pad', and 'average_inc_pad'")
 
         ccode = """
             if (1 == first_run) {
@@ -609,9 +614,8 @@ class I2UGrad(BaseConvertOp):
 
               if(dnnLayoutGetMemorySize_%(precision)s(layout_user) != dnnLayoutGetMemorySize_%(precision)s(layout_internal))
               {
-                            printf(\"ERROR:I2UGrad: usr space: %%d not equal to internal:%%d\\n\",
+                            printf(\"Warning:I2UGrad: usr space: %%d not equal to internal:%%d\\n\",
                                             dnnLayoutGetMemorySize_%(precision)s(layout_user), dnnLayoutGetMemorySize_%(precision)s(layout_internal));
-                            exit(0);
               }
 
               status = dnnConversionCreate_%(precision)s(&to_internal, layout_user, layout_internal);
