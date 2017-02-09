@@ -18,7 +18,7 @@ from .nnet import (
     logsoftmax, logsoftmax_op, prepend_0_to_each_row, prepend_1_to_each_row,
     prepend_scalar_to_each_row, relu, softmax, softmax_grad, softmax_graph,
     softmax_op, softmax_simplifier, softmax_with_bias, elu,
-    confusion_matrix)
+    confusion_matrix, softsign)
 from . import opt
 from .conv import ConvOp
 from .Conv3D import *
@@ -26,7 +26,7 @@ from .ConvGrad3D import *
 from .ConvTransp3D import *
 from .sigm import (softplus, sigmoid, sigmoid_inplace,
                    scalar_sigmoid, ultra_fast_sigmoid,
-                   hard_sigmoid, softsign)
+                   hard_sigmoid)
 from .bn import batch_normalization
 
 
