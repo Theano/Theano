@@ -1156,7 +1156,7 @@ class MaxPoolGrad(PoolGrad):
                 for c in itertools.product(*[region_ranges[i][r[i]]
                                              for i in xrange(nd)]):
                     if maxout_value == yk[c]:
-                        gxk[c] = gzk[r]
+                        gxk[c] += gzk[r]
                         break
 
         # unpad the image
@@ -2006,7 +2006,7 @@ class DownsampleFactorMaxGradGrad(OpenMPOp):
                       ggx = ((dtype_%(ggx)s*)(PyArray_GetPtr(%(ggx)s,i_idx)));
                     }
                     if (a == maximum){
-                      z[0] += ggx[0];
+                      z[0] = ggx[0];
                       maximum_found = true;
                     }
         """
