@@ -1182,3 +1182,32 @@ class GpuDiagonal(Subtensor):
             diag_size = T.minimum(dim1, dim2)
         out_shape.append(diag_size)
         return [tuple(out_shape)]
+
+
+class GpuAllocDiag(Subtensor):
+    __props__ = ("offset",)
+
+    def __init__(self, offset=0, axis1=0, axis2=1, view=False):
+        self.offset = offset
+
+    def make_node(self, _x):
+        ctx_name = infer_context_name(_x)
+        x = as_gpuarray_variable(_x, ctx_name)
+
+        if x.ndim != 1:
+            raise ValueError('AllocDiag argument must be a vector!', x)
+        return gof.Apply(self, [x], [x.type.__class__(dtype=x.dtype)()])
+
+    def perform(self, node, inputs, outputs):
+        (x,) = inputs
+        (z,) = outputs
+        
+        z = alloc zero mtx in cudandarray
+        z = set subtensor
+
+    def grad(self, inputs, gout):
+        (input_x,) = inputs
+        return [grad_not_implemented(self, 0, input_x)]
+
+    def infer_shape(self, node, shapes):
+        return [(shapes[0][0],) * 2]
