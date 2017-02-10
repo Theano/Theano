@@ -408,9 +408,11 @@ Using the original Gibbs sampling example, with ``strict=True`` added to the
 
 .. testoutput:: scan1
 
+    Traceback (most recent call last):
+    ...
     MissingInputError: An input of the graph, used to compute
-    InplaceDimShuffle{1,0}(<TensorType(float64, matrix)>), was not provided
-    and not given a value.Use the Theano flag exception_verbosity='high',for
+    DimShuffle{1,0}(<TensorType(float64, matrix)>), was not provided and
+    not given a value.Use the Theano flag exception_verbosity='high',for
     more information on this error.
 
 The error indicates that ``OneStep`` relies on variables that are not passed
