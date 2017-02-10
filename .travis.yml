@@ -50,7 +50,8 @@ env:
   - PART="-e test_flake8.py theano/compat theano/compile theano/d3viz theano/gof theano/misc theano/sandbox theano/scalar theano/scan_module theano/sparse theano/tests theano/typed_list"
   - PART="theano/tensor -e test_basic.py --exclude-dir=theano/tensor/nnet"
   - PART="theano/tensor/tests/test_basic.py"
-  - PART="theano/tensor/nnet"
+  - PART="theano/tensor/nnet -e test_abstract_conv.py"
+  - PART="theano/tensor/nnet/tests/test_abstract_conv.py"
 
 matrix:
   fast_finish: true
