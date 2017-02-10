@@ -1446,7 +1446,7 @@ class MRG_RandomStreams(object):
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"
                                        " implemented for pvals.ndim = 2"))
 
-    def choice(self, size=1, a=None, replace=True, p=None, ndim=None,
+    def choice(self, size=1, a=2, replace=True, p=None, ndim=None,
                dtype='int64', nstreams=None):
         """
         Sample `size` times from a multinomial distribution defined by
@@ -1456,10 +1456,13 @@ class MRG_RandomStreams(object):
         Parameters
         ----------
         size: integer or integer tensor (default 1)
-            The number of samples. It should be between 1 and `p.shape[1]-1`
-        a: None
+            The number of samples. It should be between 1 and `p.shape[1]-1`.
+        a: None (default 2)
             For now, a should be None. This function will sample
-            values between 0 and `p.shape[1]-1`.
+            values between 0 and `p.shape[1]-1`. When a != None will be
+            implemented, if `a` is a scalar, the samples are drawn from the
+            range 0,...,a-1. We default to 2 as to have the same interface as
+            RandomStream.
         replace: bool (default True)
             Whether the sample is with or without replacement.
             Only replace=False is implemented for now.
@@ -1473,7 +1476,7 @@ class MRG_RandomStreams(object):
 
         Notes
         -----
-        -`size` and `ndim` are only there keep the same signature as other
+        -`ndim` are only there keep the same signature as other
         uniform, binomial, normal, etc.
 
         -Does not do any value checking on pvals, i.e. there is no
@@ -1518,6 +1521,7 @@ class MRG_RandomStreams(object):
         warnings.warn('MRG_RandomStreams.multinomial_wo_replacement() is '
                       'deprecated and will be removed in the next release of '
                       'Theano. Please use MRG_RandomStreams.choice() instead.')
+        assert size is None
         return self.choice(size=n, a=None, replace=False, p=pvals,
                            dtype=dtype, nstreams=nstreams, ndim=ndim)
 
