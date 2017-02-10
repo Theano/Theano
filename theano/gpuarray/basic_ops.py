@@ -1408,15 +1408,13 @@ class GpuSplit(HideC, Split):
             # There are no outputs, then nothing to do.
             return ''
 
+        # outputs_pointers lists the addresses of the pointers to the outputs.
+        outputs_pointers = '&' + (', &'.join(outputs))
         x, axis, splits = inputs
         fail = sub['fail']
         splits_dtype = node.inputs[2].type.dtype_specs()[1]
         axis_dtype = node.inputs[1].type.dtype_specs()[1]
         expected_splits_count = self.len_splits
-        code_for_updating_output = []  # filled later.
-        code_if_sync = []  # filled later.
-        full_code_for_updating_output = ''  # defined later.
-        full_code_if_sync = ''  # defined later.
 
         main_code = """
         int ndim = PyGpuArray_NDIM(%(x)s);
@@ -1427,7 +1425,8 @@ class GpuSplit(HideC, Split):
         size_t* split_points = NULL;
         GpuArray* split_views = NULL;
         GpuArray** split_views_pointers = NULL;
-        int i;
+        int i, j;
+        PyGpuArrayObject** outputs[] = {%(outputs_pointers)s};
 
         /* Check inputs. */
 
@@ -1493,7 +1492,31 @@ class GpuSplit(HideC, Split):
         }
 
         /* Put split views into outputs. */
-        %(full_code_for_updating_output)s
+        for (i = 0; i < splits_count; ++i) {
+            PyGpuArrayObject** output = outputs[i];
+            Py_XDECREF(*output);
+            *output = pygpu_fromgpudata(
+                split_views[i].data,
+                split_views[i].offset,
+                split_views[i].typecode,
+                split_views[i].nd,
+                split_views[i].dimensions,
+                split_views[i].strides,
+                %(x)s->context,
+                1, // output is writable
+                Py_None, Py_None
+            );
+            if (*output == NULL) {
+                PyErr_SetString(PyExc_RuntimeError, "GpuSplit: unable to update an output from a split view.");
+                for (j = 0; j < splits_count; ++j) {
+                    GpuArray_clear(split_views_pointers[j]);
+                }
+                free(split_views_pointers);
+                free(split_views);
+                free(split_points);
+                %(fail)s
+            }
+        }
 
         /* Free memory. */
         for (i = 0; i < splits_count; ++i) {
@@ -1502,43 +1525,14 @@ class GpuSplit(HideC, Split):
         free(split_views_pointers);
         free(split_views);
         free(split_points);
-
-        /* Code added if synchronization is enabled. */
-        %(full_code_if_sync)s
         """
 
-        for split_index, output in enumerate(outputs):
-
-            code_for_updating_output.append("""
-            Py_XDECREF(%(output)s);
-            %(output)s = pygpu_fromgpudata(
-                split_views[%(split_index)s].data,
-                split_views[%(split_index)s].offset,
-                split_views[%(split_index)s].typecode,
-                split_views[%(split_index)s].nd,
-                split_views[%(split_index)s].dimensions,
-                split_views[%(split_index)s].strides,
-                %(x)s->context,
-                1, // output is writable
-                Py_None, Py_None
-            );
-            if (%(output)s == NULL) {
-                PyErr_SetString(PyExc_RuntimeError, "GpuSplit: unable to update an output from a split view.");
-                for (i = 0; i < splits_count; ++i) {
-                    GpuArray_clear(split_views_pointers[i]);
-                }
-                free(split_views_pointers);
-                free(split_views);
-                free(split_points);
-                %(fail)s
-            }
-            """ % locals())
-
-            if config.gpuarray.sync:
-                code_if_sync.append("GpuArray_sync(&%(output)s->ga);" % locals())
-
-        full_code_for_updating_output = '\n'.join(code_for_updating_output)
-        full_code_if_sync = '\n'.join(code_if_sync)
+        if config.gpuarray.sync:
+            main_code += """
+        for (i = 0; i < splits_count; ++i) {
+            GpuArray_sync(&((*outputs[i])->ga));
+        }
+        """
 
         return main_code % locals()
 
