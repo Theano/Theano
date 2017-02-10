@@ -12,7 +12,7 @@ cache:
 language: python
 python:
   - "2.7"
-  - "3.4"
+  - "3.3"
 
 # NB:
 # In before_install and install sections below,
@@ -41,8 +41,6 @@ install:
   - pip install flake8-future-import nose-parameterized==0.5.0 sphinx_rtd_theme
   # nose-exclude plugin allow us to tell nosetests to exclude folder with --exclude-dir=path/to/directory.
   - pip install nose-exclude
-  - pip install --upgrade numpy==1.12.0
-  - pip install --upgrade scipy==0.18.1
 
 # command to run tests
 env:
@@ -56,11 +54,11 @@ env:
 matrix:
   fast_finish: true
   include:
-    - python: "3.4"
+    - python: "3.3"
       env: PART="--exclude-dir=theano/tensor -e test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE"
-    - python: "3.4"
+    - python: "3.3"
       env: PART="theano/tensor --exclude-dir=theano/tensor/nnet" THEANO_FLAGS="mode=FAST_COMPILE"
-    - python: "3.4"
+    - python: "3.3"
       env: PART="theano/tensor/nnet" THEANO_FLAGS="mode=FAST_COMPILE"
     - python: "2.7"
       env: PART="--exclude-dir=theano/tensor -e test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
@@ -83,7 +81,7 @@ script:
   - echo "$PART"
   - cd -; cd Theano
   - python -c 'import theano; print(theano.config.__str__(print_doc=False))'
-  # python -c 'import theano; assert(theano.config.blas.ldflags != "")'
+  - python -c 'import theano; assert(theano.config.blas.ldflags != "")'
   - theano-nose -v $PART
   - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --nopdf --check; fi
   - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --test --check; fi
