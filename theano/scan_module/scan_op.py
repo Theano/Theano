@@ -1983,10 +1983,8 @@ class Scan(PureOp):
         if self.truncate_gradient != -1:
             grad_steps = tensor.minimum(grad_steps, self.truncate_gradient)
 
-        rval = scan_utils.reconstruct_graph(self.inputs,
-                                            self.outputs)
-        self_inputs = rval[0]
-        self_outputs = rval[1]
+        self_inputs = self.inputs
+        self_outputs = self.outputs
         # differentiable inputs
         diff_inputs = (self.inner_seqs(self_inputs) +
                        self.inner_mitmot(self_inputs) +
@@ -2645,13 +2643,13 @@ class Scan(PureOp):
         return gradients
 
     def R_op(self, inputs, eval_points):
-        # Step 0. Don't work on the orignal tensor variables
-        rval = scan_utils.reconstruct_graph(self.inputs,
-                                            self.outputs, '_rop')
-        self_inputs = rval[0]
-        rop_of_inputs = rval[0][:self.n_seqs + self.n_outs] + \
-            rval[0][self.n_seqs + self.n_outs + self.n_shared_outs:]
-        self_outputs = rval[1]
+        # Step 0. Prepare some shortcut variable
+        self_inputs = self.inputs
+        rop_of_inputs = (self_inputs[:self.n_seqs + self.n_outs] +
+                         self_inputs[self.n_seqs + self.n_outs +
+                                     self.n_shared_outs:])
+        self_outputs = self.outputs
+
         # Step 1. Compute the R_op of the inner function
         inner_eval_points = [scan_utils.safe_new(x, '_evalpoint')
                              for x in rop_of_inputs]
