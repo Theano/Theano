@@ -1549,7 +1549,8 @@ class AND(BinaryBitOp):
         return "%(z)s = (%(x)s & %(y)s);" % locals()
 
     def c_code_cache_version(self):
-        return (3,)
+        super_version = super(AND, self).c_code_cache_version()
+        return super_version + (3,)
 and_ = AND()
 
 

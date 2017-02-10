@@ -1640,6 +1640,7 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
              for input in node.inputs],
             [get_scalar_type(dtype=output.type.dtype).make_variable()
              for output in node.outputs])
+        version.append(self.scalar_op.c_code_cache_version())
         version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
             version.append(
