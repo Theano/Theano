@@ -4488,8 +4488,8 @@ class T_Scan(unittest.TestCase):
                                n_steps=n,
                                strict=True)
 
-        f_strict = theano.function([x0_], ret_strict[0][-1])
-        result_strict = f_strict(x0)
+#        f_strict = theano.function([x0_], ret_strict[0][-1])
+#        result_strict = f_strict(x0)
 
     def test_monitor_mode(self):
         # Test that it is possible to pass an instance of MonitorMode
