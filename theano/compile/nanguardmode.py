@@ -331,7 +331,8 @@ class NanGuardMode(Mode):
 
         def nan_check(node, thunk, storage_map, compute_map):
             for var in node.outputs:
-                if getattr(var.tag, 'nan_guard_mode_check', True):
+                if (compute_map[var][0] and
+                        getattr(var.tag, 'nan_guard_mode_check', True)):
                     do_check_on(storage_map[var][0], node)
 
         def nan_check_input(var, value):
