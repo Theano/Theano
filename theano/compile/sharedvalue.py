@@ -227,7 +227,7 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
     This function iterates over constructor functions to find a
     suitable SharedVariable subclass.  The suitable one is the first
     constructor that accept the given value.  See the documentation of
-    :func:`shared_constructor` for the definition of a contructor
+    :func:`shared_constructor` for the definition of a constructor
     function.
 
     This function is meant as a convenient default.  If you want to use a
