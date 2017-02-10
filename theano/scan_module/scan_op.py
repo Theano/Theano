@@ -207,10 +207,6 @@ class Scan(PureOp):
         if self.info['gpu'] or self.info['gpua']:
             self._hash_inner_graph = self.info['gpu_hash']
         else:
-            tmp_in, tmp_out = scan_utils.reconstruct_graph(self.inputs,
-                                                           self.outputs)
-            # This is actually required for the line just after.
-            gof.FunctionGraph(tmp_in, tmp_out, clone=False)
             self._cmodule_key = gof.CLinker().cmodule_key_variables(self.inputs,
                                                                     self.outputs,
                                                                     [])
