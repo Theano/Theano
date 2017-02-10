@@ -34,7 +34,7 @@ oscillates due to the box function being shifted to the middle of the array.
 
     N = 1024
     box = np.zeros((1, N), dtype='float64')
-    box[:, N/2-10: N/2+10] = 1
+    box[:, N//2-10: N//2+10] = 1
 
     out = f_rfft(box)
     c_out = np.asarray(out[0, :, 0] + 1j*out[0, :, 1])

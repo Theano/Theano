@@ -1543,7 +1543,7 @@ xor = XOR()
 
 
 class AND(BinaryBitOp):
-    identity = 1
+    identity = -1
     commutative = True
     associative = True
     nfunc_spec = ('bitwise_and', 2, 1)
@@ -1555,6 +1555,10 @@ class AND(BinaryBitOp):
         (x, y) = inputs
         (z,) = outputs
         return "%(z)s = (%(x)s & %(y)s);" % locals()
+
+    def c_code_cache_version(self):
+        super_version = super(AND, self).c_code_cache_version()
+        return super_version + (3,)
 and_ = AND()
 
 
