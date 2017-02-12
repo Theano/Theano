@@ -546,6 +546,22 @@ def test_pooling_opt_arbitrary_dimensions():
                 utt.assert_allclose(res_gpu[1], res_cpu[1])
 
 
+def test_pooling_empty_batch():
+    img_shp = (0, 5, 6, 8)
+    img = T.ftensor4('img')
+
+    o = dnn.dnn_pool(img, (2, 2), (2, 2))
+    f = theano.function([img], o, mode=mode_with_gpu)
+    d = f(numpy.random.rand(*img_shp).astype('float32'))
+    assert d.shape == (0, 5, 3, 4)
+
+    g = T.grad(T.sum(o), wrt=img)
+    f = theano.function([img], g, mode=mode_with_gpu)
+    d = f(numpy.random.rand(*img_shp).astype('float32'))
+    # Not sure what to assert, it should just pass, that's all.
+    assert d.shape == (0, 5, 6, 8)
+
+
 class test_DnnSoftMax(test_nnet.test_SoftMax):
     gpu_op = dnn.GpuDnnSoftmax
     gpu_grad_op = dnn.GpuDnnSoftmaxGrad
