@@ -2493,6 +2493,46 @@ class RoIPoolOp(gof.COp):
         assert roi.ndim == 2
         return Apply(self, [feature_maps, roi_tuples], [feature_maps.type(), feature_maps.type()])
 
+    def perform(self, node, inp, out):
+        image_data, roi = inp
+        top_data, argmax_data, = out
+        num_roi = roi.shape[0]
+        spatial_scale = self.spatial_scale
+        pool_height = self.pooled_h
+        pool_width = self.pooled_w
+        n_channels = image_data.shape[1]
+        assert image_data.ndim == 4
+        assert roi.ndim == 2
+        maxval_coordinates = []
+        max_vals = []
+        for i in range(num_roi):
+
+            x_start = numpy.floor((roi[i, 1] * spatial_scale) + 0.5)
+            y_start = numpy.floor((roi[i, 2] * spatial_scale) + 0.5)
+            x_end = numpy.floor((roi[i, 3] * spatial_scale) + 0.5)
+            y_end = numpy.floor((roi[i, 4] * spatial_scale) + 0.5)
+
+            roi_height = max(y_end - y_start + 1, 1)
+            roi_width = max(x_end - x_start + 1, 1)
+            row_length = roi_width / pool_width
+            col_length = roi_height / pool_height
+
+            for cn in range(n_channels):
+                for jy in range(pool_height):
+                    for ix in range(pool_width):
+                        x1 = int(round(x_start + ix * row_length))
+                        x2 = int(round(x1 + row_length))
+                        y1 = int(round(y_start + jy * col_length))
+                        y2 = int(round(y1 + col_length))
+                        interest_region = image_data[:, cn, y1:y2, x1:x2]
+                        max_vals.append(numpy.max(interest_region))
+                        maxval_coordinates.append(numpy.argmax(interest_region))
+        # Reshaped as (batch_index, num_roi, channels, pool_h * pool_w)
+        max_vals = numpy.reshape(numpy.asarray(max_vals), (1, num_roi, n_channels, pool_height * pool_width))
+        maxval_coordinates = numpy.reshape(numpy.asarray(maxval_coordinates), (1, num_roi, n_channels, pool_height * pool_width))
+        top_data[0] = max_vals
+        argmax_data[0] = maxval_coordinates
+
     def infer_shape(self, node, in_shapes):
         data_shape = tensor.shape(node.inputs[0])
         rois_shape = tensor.shape(node.inputs[1])
@@ -2543,6 +2583,7 @@ class RoIPoolGradOp(gof.COp):
         return [('POOLED_HEIGHT', str(self.pooled_h)),
                 ('POOLED_WIDTH', str(self.pooled_w)),
                 ('SPATIAL_SCALE', str(self.spatial_scale))]
+
 
     def c_code_cache_version(self):
         return (1, 0)

@@ -82,6 +82,7 @@ int APPLY_SPECIFIC(ROIPoolGPUFwd)(PyGpuArrayObject *data,
 
     // Prepare outputs.
     int err;
+    float spatial_scale = SPATIAL_SCALE;
 
     if (!GpuArray_IS_C_CONTIGUOUS(&data->ga) || !GpuArray_IS_C_CONTIGUOUS(&rois->ga)){
         PyErr_Format(PyExc_ValueError, "GpuRoIPoolOp: requires data to be C-contiguous");
@@ -105,7 +106,7 @@ int APPLY_SPECIFIC(ROIPoolGPUFwd)(PyGpuArrayObject *data,
   }
 
   err = ROIPoolGPUFwd_kernel_scall(1, &address, 0,
-          num_rois, data->ga.data, SPATIAL_SCALE, channels, height, width,
+          num_rois, data->ga.data, spatial_scale, channels, height, width,
           POOLED_HEIGHT, POOLED_WIDTH, rois->ga.data, (*out)->ga.data,
           (*argmaxes)->ga.data);
 

@@ -1216,7 +1216,7 @@ class TestRoIPool(utt.InferShapeTester):
         # The difference in shape is because the first element is batch index in
         # theano implementation
         # The value 7 is used in Fast RCNN network
-        roi_theano = numpy.asarray([[0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]])
+        roi_theano = numpy.asarray([[0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]], dtype='float32')
         roi_numpy = numpy.asarray([[0., 0., 3., 3.], [0., 0., 7., 7.]])
         pool_w = 2
         pool_h = 2
@@ -1231,7 +1231,7 @@ class TestRoIPool(utt.InferShapeTester):
             grad_op = RoIPoolGradOp(2, 2, 1)
             return grad_op(inp, roi, argmax, grad)
 
-        maxvals_theano, maxloc_theano = roi_outs[0], roi_outs[1]
+        maxvals_theano, maxloc_theano = roi_outs[0], numpy.asarray(roi_outs[1], dtype='float32')
         utt.assert_allclose(maxvals_theano, maxvals_np)
 
         # func_grad(random_image, roi_theano, roi_outs[1], roi_outs[0] * 10)
