@@ -619,7 +619,8 @@ class Scan(PureOp):
         # in this case is just a int saying how many steps of this output we
         # need to store. This input does not have the same dtype, nor is it the same
         # type of tensor as the output, it is always a scalar int.
-        new_inputs += self.outer_nitsot(inputs)
+        new_inputs += [as_tensor_variable(ons)
+                       for ons in self.outer_nitsot(inputs)]
         for inner_nonseq, _outer_nonseq in zip(self.inner_non_seqs(self.inputs),
                                                self.outer_non_seqs(inputs)):
             outer_nonseq = format(_outer_nonseq, as_var=inner_nonseq)

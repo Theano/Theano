@@ -193,7 +193,8 @@ def op_lifter(OP, cuda_only=False):
                 context_name = None
                 # We replace if any input is a host_from_gpu
                 for i in node.inputs:
-                    if i.owner and i.owner.op == host_from_gpu:
+                    if (i.owner and i.owner.op == host_from_gpu and
+                            move_to_gpu(i)):
                         context_name = i.owner.inputs[0].type.context_name
                         replace = True
                         break
@@ -922,7 +923,7 @@ def local_gpua_lazy_ifelse(op, context_name, inputs, outputs):
     c = inputs[0]
     inps = []
     for v in inputs[1:]:
-        if isinstance(v.type, tensor.TensorType):
+        if isinstance(v.type, tensor.TensorType) and move_to_gpu(v):
             inps.append(as_gpuarray_variable(v, context_name))
         else:
             inps.append(v)
