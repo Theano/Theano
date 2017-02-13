@@ -1446,7 +1446,7 @@ class MRG_RandomStreams(object):
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"
                                        " implemented for pvals.ndim = 2"))
 
-    def choice(self, size=1, a=2, replace=True, p=None, ndim=None,
+    def choice(self, size=1, a=None, replace=True, p=None, ndim=None,
                dtype='int64', nstreams=None):
         """
         Sample `size` times from a multinomial distribution defined by
@@ -1458,7 +1458,7 @@ class MRG_RandomStreams(object):
         ----------
         size: integer or integer tensor (default 1)
             The number of samples. It should be between 1 and `p.shape[1]-1`.
-        a: int or None (default 2)
+        a: int or None (default None)
             For now, a should be None. This function will sample
             values between 0 and `p.shape[1]-1`. When a != None will be
             implemented, if `a` is a scalar, the samples are drawn from the
