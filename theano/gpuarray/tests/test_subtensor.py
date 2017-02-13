@@ -14,7 +14,8 @@ from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuAdvancedSubtensor,
                          GpuAdvancedIncSubtensor1,
                          GpuAdvancedIncSubtensor1_dev20,
-                         GpuDiagonal)
+                         GpuDiagonal,
+                         GpuAllocDiag)
 from ..type import gpuarray_shared_constructor
 
 from .config import mode_with_gpu
@@ -195,3 +196,15 @@ class test_gpudiagonal(unittest.TestCase):
             assert np.allclose(
                 GpuDiagonal(offset, axis1, axis2)(x).eval({x: np_x}),
                 np_x.diagonal(offset, axis1, axis2))
+
+            
+class test_gpuallocdiag(unittest.TestCase):
+    def test_matrix(self):
+        x = tensor.matrix()
+        np_x = numpy.arange(7).astype(theano.config.floatX)
+        fn = theano.function([x], GpuAllocDiag()(x), mode=mode_with_gpu)
+        assert numpy.allclose(fn(np_x), numpy.diag(np_x))
+        fn = theano.function([x], GpuAllocDiag(2)(x), mode=mode_with_gpu)
+        assert numpy.allclose(fn(np_x), numpy.diag(np_x, 2))
+        fn = theano.function([x], GpuAllocDiag(-3)(x), mode=mode_with_gpu)
+        assert numpy.allclose(fn(np_x), numpy.diag(np_x, -3))

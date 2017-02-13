@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 
 import logging
-
+import warnings
 import numpy
 from six.moves import xrange
 
@@ -145,6 +145,10 @@ class AllocDiag(Op):
     __props__ = ()
 
     def make_node(self, _x):
+        warnings.warn("DeprecationWarning: theano.tensor.nlinalg.AllocDiag"
+                      "is deprecated, please use theano.tensor.AllocDiag"
+                      "instead.",
+                      category=DeprecationWarning)
         x = as_tensor_variable(_x)
         if x.type.ndim != 1:
             raise TypeError('AllocDiag only works on vectors', _x)
@@ -184,6 +188,10 @@ class ExtractDiag(Op):
             self.view_map = {0: [0]}
 
     def make_node(self, _x):
+        warnings.warn("DeprecationWarning: theano.tensor.nlinalg.ExtractDiag"
+                      "is deprecated, please use theano.tensor.ExtractDiag"
+                      "instead.",
+                      category=DeprecationWarning)
         if not isinstance(_x, theano.Variable):
             x = as_tensor_variable(_x)
         else:
