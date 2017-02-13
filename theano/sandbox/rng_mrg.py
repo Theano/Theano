@@ -1450,14 +1450,15 @@ class MRG_RandomStreams(object):
                dtype='int64', nstreams=None):
         """
         Sample `size` times from a multinomial distribution defined by
-        probabilities `p`. Sampled values are between 0 and `p.shape[1]-1`.
+        probabilities `p`, and returns the indices of the sampled elements.
+        Sampled values are between 0 and `p.shape[1]-1`.
         Only sampling without replacement is implemented for now.
 
         Parameters
         ----------
         size: integer or integer tensor (default 1)
             The number of samples. It should be between 1 and `p.shape[1]-1`.
-        a: None (default 2)
+        a: int or None (default 2)
             For now, a should be None. This function will sample
             values between 0 and `p.shape[1]-1`. When a != None will be
             implemented, if `a` is a scalar, the samples are drawn from the
@@ -1476,7 +1477,7 @@ class MRG_RandomStreams(object):
 
         Notes
         -----
-        -`ndim` are only there keep the same signature as other
+        -`ndim` is only there keep the same signature as other
         uniform, binomial, normal, etc.
 
         -Does not do any value checking on pvals, i.e. there is no
