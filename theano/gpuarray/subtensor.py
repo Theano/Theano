@@ -1201,9 +1201,14 @@ class GpuAllocDiag(Subtensor):
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
+
+        pdb.set_trace()
         
-        z = alloc zero mtx in cudandarray
-        z = set subtensor
+        dim = x.shape[0] + self.offset
+        z = gpuarray.zeros((dim, dim))
+        # z.subtensor
+        # alloc zero mtx in cudandarray
+        # z = set subtensor
 
     def grad(self, inputs, gout):
         (input_x,) = inputs
