@@ -858,6 +858,15 @@ class MergeOptimizer(Optimizer):
                                 hasattr(c.op, 'destroy_map')]) > 1:
                             continue
 
+                if len(pairs) == 1 and pairs[0][0].type != pairs[0][1].type:
+                    res = pairs[0][0].type.convert_variable(pairs[0][1])
+
+                    # Since the fgraph.replace only checks the convert_variable
+                    # in one way, we change the order in the case that
+                    # convert_variable will not be successful.
+                    if not res:
+                        pairs = [(pairs[0][1], pairs[0][0])]
+
                 try:
                     fgraph.replace_all_validate(pairs, 'MergeOptimizer')
                 except InconsistencyError:
@@ -865,6 +874,7 @@ class MergeOptimizer(Optimizer):
                     nb_fail += 1
                     fgraph.merge_feature.blacklist.append(
                         (pairs[0][0].owner, pairs[0][1].owner))
+
                 if success:
                     nb_merged += len(pairs)
                     if isinstance(pairs[0][0], graph.Constant):
