@@ -3781,6 +3781,145 @@ class Split(Op):
             return [None for i in self.len_splits]
         return self.make_node(eval_points[0], *inputs[1:]).outputs
 
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_support_code(self):
+        return """
+        /* Return 1 if output has the correct shape. */
+        int split_output_shape_is_correct (
+            PyArrayObject* output, PyArrayObject* array_to_split, int axis_to_split, npy_intp split_size
+        ) {
+            return
+                PyArray_NDIM(output) == PyArray_NDIM(array_to_split)
+                && memcmp(
+                    PyArray_DIMS(output),
+                    PyArray_DIMS(array_to_split),
+                    axis_to_split * sizeof(npy_intp)
+                ) == 0
+                && memcmp(
+                    PyArray_DIMS(output) + axis_to_split + 1,
+                    PyArray_DIMS(array_to_split) + axis_to_split + 1,
+                    (PyArray_NDIM(array_to_split) - axis_to_split - 1) * sizeof(npy_intp)
+                ) == 0
+                && split_size == PyArray_DIM(output, axis_to_split);
+        }
+        """
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        if self.len_splits == 0:
+            # There are no outputs, then nothing to do.
+            return ''
+
+        # outputs_pointers lists the addresses of the pointers to the outputs.
+        outputs_pointers = '&' + (', &'.join(outputs))
+        x, axis, splits = inputs
+        fail = sub['fail']
+        x_typenum = numpy.dtype(node.inputs[0].dtype).num
+        x_itemsize = numpy.dtype(node.inputs[0].dtype).itemsize
+        axis_dtype = node.inputs[1].type.dtype_specs()[1]
+        splits_dtype = node.inputs[2].type.dtype_specs()[1]
+        expected_splits_count = self.len_splits
+
+        return """
+        int ndim = PyArray_NDIM(%(x)s);
+        int axis = (int)(*(%(axis_dtype)s*)PyArray_GETPTR1(%(axis)s, 0));
+        int splits_count = PyArray_DIM(%(splits)s, 0);
+        npy_intp len_along_axis, sum_of_splits = 0, current_split_length = 0, current_split_start = 0;
+        npy_intp* split_dims = NULL;
+        PyObject* split_view = NULL;
+        npy_intp data_offset;
+        int i;
+        PyArrayObject** outputs[] = {%(outputs_pointers)s};
+
+        /* Check inputs. */
+
+        if (splits_count != %(expected_splits_count)s) {
+            PyErr_Format(PyExc_ValueError,
+                "Split: splits count (%%d) != expected count (%%d).", splits_count, %(expected_splits_count)s);
+            %(fail)s
+        }
+
+        if (axis < 0) {
+            axis += ndim;
+        }
+        if (axis < 0 || axis >= ndim) {
+            PyErr_Format(PyExc_IndexError, "Split: invalid axis %%d for a %%d-D array.", axis, ndim);
+            %(fail)s
+        }
+        len_along_axis = PyArray_DIM(%(x)s, axis);
+
+        for (i = 0; i < splits_count; ++i) {
+            current_split_length = (npy_intp)(*(%(splits_dtype)s*)PyArray_GETPTR1(%(splits)s, i));
+            if (current_split_length < 0) {
+                PyErr_Format(PyExc_ValueError,
+                    "Split: you try to take a negative number (%%ld) of elements.", current_split_length);
+                %(fail)s
+            }
+            sum_of_splits += current_split_length;
+        }
+        if (sum_of_splits != len_along_axis) {
+            PyErr_Format(PyExc_ValueError, "Split: the splits sums to %%ld, expected %%ld.", sum_of_splits, len_along_axis);
+            %(fail)s
+        }
+
+        /* Check outputs. */
+
+        split_dims = (npy_intp*) malloc(ndim * sizeof(npy_intp));
+        if (split_dims == NULL) {
+            PyErr_NoMemory();
+            %(fail)s
+        }
+
+        memcpy(split_dims, PyArray_DIMS(%(x)s), ndim * sizeof(npy_intp));
+
+        for (i = 0; i < splits_count; ++i) {
+            PyArrayObject** output = outputs[i];
+            current_split_length = (npy_intp) (* (%(splits_dtype)s*) PyArray_GETPTR1(%(splits)s, i));
+            if (*output == NULL || !split_output_shape_is_correct(*output, %(x)s, axis, current_split_length)) {
+                Py_XDECREF(*output);
+                split_dims[axis] = current_split_length;
+                *output = (PyArrayObject*)PyArray_EMPTY(ndim, split_dims, %(x_typenum)s, PyArray_IS_F_CONTIGUOUS(%(x)s));
+                if (outputs == NULL) {
+                    PyErr_SetString(PyExc_RuntimeError, "Split: unable to allocate an output.");
+                    free(split_dims);
+                    %(fail)s
+                }
+            }
+        }
+
+        /* Compute split. */
+
+        for (i = 0; i < splits_count; ++i) {
+            current_split_length = (npy_intp) (* (%(splits_dtype)s*) PyArray_GETPTR1(%(splits)s, i));
+            data_offset = PyArray_STRIDE(%(x)s, axis) * current_split_start;
+            split_dims[axis] = current_split_length;
+            split_view = PyArray_New(&PyArray_Type,
+                                    ndim, split_dims,
+                                    %(x_typenum)s,
+                                    PyArray_STRIDES(%(x)s),
+                                    PyArray_DATA(%(x)s) + data_offset,
+                                    %(x_itemsize)s,
+                                    PyArray_FLAGS(%(x)s),
+                                    NULL);
+            if (split_view == NULL) {
+                PyErr_SetString(PyExc_RuntimeError, "Split: unable to create a view for a split.");
+                free(split_dims);
+                %(fail)s
+            }
+            if (PyArray_CopyInto(*outputs[i], (PyArrayObject*)split_view) != 0) {
+                PyErr_SetString(PyExc_RuntimeError, "Split: unable to copy a split view into the output.");
+                Py_XDECREF(split_view);
+                free(split_dims);
+                %(fail)s
+            }
+            Py_XDECREF(split_view);
+            current_split_start += current_split_length;
+        }
+
+        free(split_dims);
+        """ % locals()
+
 
 def addbroadcast(x, *axes):
     """

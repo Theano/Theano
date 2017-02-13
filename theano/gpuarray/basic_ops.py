@@ -1377,6 +1377,13 @@ class GpuSplit(HideC, Split):
     Split for GPU.
 
     """
+    def __init__(self, len_splits):
+        super(GpuSplit, self).__init__(len_splits)
+        # The GPU version of Split returns splits as views of the input.
+        self.view_map = {}
+        for i in xrange(self.len_splits):
+            self.view_map[i] = [0]
+
     def make_node(self, x, axis, splits):
         node = Split.make_node(self, x, axis, splits)
         x = as_gpuarray_variable(x, infer_context_name(x))
@@ -1384,7 +1391,150 @@ class GpuSplit(HideC, Split):
                              context_name=x.type.context_name)()
                 for o in node.outputs]
         return Apply(self, [x] + node.inputs[1:], outs)
+
     # we reuse the perform of the CPU op, which is suitable
+
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_headers(self):
+        return ['<numpy_compat.h>', '<gpuarray_helper.h>']
+
+    def c_header_dirs(self):
+        return [pygpu.get_include(), os.path.dirname(__file__)]
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        if self.len_splits == 0:
+            # There are no outputs, then nothing to do.
+            return ''
+
+        # outputs_pointers lists the addresses of the pointers to the outputs.
+        outputs_pointers = '&' + (', &'.join(outputs))
+        x, axis, splits = inputs
+        fail = sub['fail']
+        splits_dtype = node.inputs[2].type.dtype_specs()[1]
+        axis_dtype = node.inputs[1].type.dtype_specs()[1]
+        expected_splits_count = self.len_splits
+
+        main_code = """
+        int ndim = PyGpuArray_NDIM(%(x)s);
+        int axis = (int)(*(%(axis_dtype)s*)PyArray_GETPTR1(%(axis)s, 0));
+        int splits_count = PyArray_DIM(%(splits)s, 0);
+        size_t len_along_axis, sum_of_splits = 0;
+        %(splits_dtype)s current_split_length;
+        size_t* split_points = NULL;
+        GpuArray* split_views = NULL;
+        GpuArray** split_views_pointers = NULL;
+        int i, j;
+        PyGpuArrayObject** outputs[] = {%(outputs_pointers)s};
+
+        /* Check inputs. */
+
+        if (splits_count != %(expected_splits_count)s) {
+            PyErr_Format(PyExc_ValueError,
+                "GpuSplit: splits count (%%d) != expected count (%%d).", splits_count, %(expected_splits_count)s);
+            %(fail)s
+        }
+        if (axis < 0) {
+            axis += ndim;
+        }
+        if (axis < 0 || axis >= ndim) {
+            PyErr_Format(PyExc_IndexError, "GpuSplit: invalid axis %%d for a %%d-D array.", axis, ndim);
+            %(fail)s
+        }
+        len_along_axis = PyGpuArray_DIM(%(x)s, axis);
+        for (i = 0; i < splits_count; ++i) {
+            current_split_length = *(%(splits_dtype)s*)PyArray_GETPTR1(%(splits)s, i);
+            if (current_split_length < 0) {
+                PyErr_Format(PyExc_ValueError,
+                    "GpuSplit: you try to take a negative number (%%ld) of elements.", current_split_length);
+                %(fail)s
+            }
+            sum_of_splits += current_split_length;
+        }
+        if (sum_of_splits != len_along_axis) {
+            PyErr_Format(PyExc_ValueError, "GpuSplit: the splits sums to %%ld, expected %%ld.", sum_of_splits, len_along_axis);
+            %(fail)s
+        }
+
+        /* Compute splits views. */
+
+        split_points = (size_t*) malloc((splits_count - 1) * sizeof(size_t));
+        if (split_points == NULL) {
+            PyErr_NoMemory();
+            %(fail)s
+        }
+        split_points[0] = (size_t) (* (%(splits_dtype)s*) PyArray_GETPTR1(%(splits)s, 0) );
+        for(i = 1; i < splits_count - 1; ++i) {
+            split_points[i] = split_points[i - 1] + (size_t) (* (%(splits_dtype)s*) PyArray_GETPTR1(%(splits)s, i) );
+        }
+        split_views = (GpuArray*) malloc(splits_count * sizeof(GpuArray));
+        split_views_pointers = (GpuArray**) malloc(splits_count * sizeof(GpuArray*));
+        if (split_views == NULL || split_views_pointers == NULL) {
+            PyErr_NoMemory();
+            free(split_views_pointers);
+            free(split_views);
+            free(split_points);
+            %(fail)s
+        }
+        for (i = 0; i < splits_count; ++i) {
+            split_views_pointers[i] = split_views + i;
+        }
+        if (GpuArray_split(split_views_pointers, &%(x)s->ga, splits_count - 1, split_points, axis) != GA_NO_ERROR) {
+            PyErr_SetString(PyExc_RuntimeError, "GpuSplit: unable to compute split.");
+            for (i = 0; i < splits_count; ++i) {
+                GpuArray_clear(split_views_pointers[i]);
+            }
+            free(split_views_pointers);
+            free(split_views);
+            free(split_points);
+            %(fail)s
+        }
+
+        /* Put split views into outputs. */
+        for (i = 0; i < splits_count; ++i) {
+            PyGpuArrayObject** output = outputs[i];
+            Py_XDECREF(*output);
+            *output = pygpu_fromgpudata(
+                split_views[i].data,
+                split_views[i].offset,
+                split_views[i].typecode,
+                split_views[i].nd,
+                split_views[i].dimensions,
+                split_views[i].strides,
+                %(x)s->context,
+                1, // output is writable
+                Py_None, Py_None
+            );
+            if (*output == NULL) {
+                PyErr_SetString(PyExc_RuntimeError, "GpuSplit: unable to update an output from a split view.");
+                for (j = 0; j < splits_count; ++j) {
+                    GpuArray_clear(split_views_pointers[j]);
+                }
+                free(split_views_pointers);
+                free(split_views);
+                free(split_points);
+                %(fail)s
+            }
+        }
+
+        /* Free memory. */
+        for (i = 0; i < splits_count; ++i) {
+           GpuArray_clear(split_views_pointers[i]);
+        }
+        free(split_views_pointers);
+        free(split_views);
+        free(split_points);
+        """
+
+        if config.gpuarray.sync:
+            main_code += """
+        for (i = 0; i < splits_count; ++i) {
+            GpuArray_sync(&((*outputs[i])->ga));
+        }
+        """
+
+        return main_code % locals()
 
 
 class GpuEye(GpuKernelBase, Op):
