@@ -21,6 +21,9 @@ from theano.misc.frozendict import frozendict
 config = theano.config
 
 
+_numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+
+
 # tensor depends on elemwise to provide definitions for several ops
 # but elemwise needs to make TensorType instances, so we have these as
 # placeholders and the tensor module fills them
@@ -1315,7 +1318,12 @@ class CAReduce(Op):
             self.ufunc = numpy.maximum
         elif isinstance(scalar_op, theano.scalar.basic.Minimum):
             self.ufunc = numpy.minimum
-        elif isinstance(scalar_op, theano.scalar.basic.AND):
+        elif (isinstance(scalar_op, theano.scalar.basic.AND) and
+                _numpy_ver >= [1, 12]):
+            # numpy.bitwise_and.identity was incorrect for versions before
+            # 1.12 (it was 1 instead of -1), so we skip it in that case.
+            # We will fall back to the "else:" case, which defines a
+            # ufunc without identity.
             self.ufunc = numpy.bitwise_and
         elif isinstance(scalar_op, theano.scalar.basic.OR):
             self.ufunc = numpy.bitwise_or
@@ -1615,7 +1623,8 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
         return ['<vector>', '<algorithm>']
 
     def c_code_cache_version_apply(self, node):
-        version = (6,)  # the version corresponding to the c code in this Op
+        # the version corresponding to the c code in this Op
+        version = [6]
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(

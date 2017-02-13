@@ -1232,7 +1232,10 @@ class MaxAndArgmax(Op):
         transposed_x = numpy.transpose(x, numpy.concatenate((keep_axes, axes)))
         kept_shape = transposed_x.shape[:len(keep_axes)]
         reduced_shape = transposed_x.shape[len(keep_axes):]
-        new_shape = kept_shape + (numpy.prod(reduced_shape),)
+
+        # Numpy.prod returns 1.0 when arg is empty, so we cast it to int64
+        # Otherwise reshape would complain citing float arg
+        new_shape = kept_shape + (numpy.prod(reduced_shape, dtype='int64'),)
         reshaped_x = transposed_x.reshape(new_shape)
 
         max_idx[0] = theano._asarray(numpy.argmax(reshaped_x, axis=-1),

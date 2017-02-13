@@ -2885,8 +2885,8 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
 
         return code
 
-    def c_code_cache_version(self):
-        return (2, self.GpuKernelBase_version)
+    def c_code_cache_version_apply(self, node):
+        return (2, self.kernel_version(node))
 
     def generate_kernel(self, node, odtype, redux):
         if isinstance(self.scalar_op, scalar.basic.Add):
