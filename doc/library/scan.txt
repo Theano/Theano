@@ -383,23 +383,59 @@ Using shared variables - the strict flag
 As we just saw, passing the shared variables to scan may result in a simpler
 computational graph, which speeds up the optimization and the execution. A
 good way to remember to pass every shared variable used during scan is to use
-the ``strict`` flag. When set to true, scan assumes that all the necessary
-shared variables in ``fn`` are passed as a part of ``non_sequences``. This has
-to be ensured by the user. Otherwise, it will result in an error.
+the ``strict`` flag. When set to true, scan checks that all the necessary shared
+variables in ``fn`` are passed as explicit arguments to ``fn``. This has to be
+ensured by the user. Otherwise, it will result in an error.
 
-Using the previous Gibbs sampling example:
+Using the original Gibbs sampling example, with ``strict=True`` added to the
+``scan()`` call:
 
 .. testcode:: scan1
 
-    # The new scan, using strict=True
-    values, updates = theano.scan(fn=OneStep,
+    # Same OneStep as in original example.
+    def OneStep(vsample) :
+        hmean = T.nnet.sigmoid(theano.dot(vsample, W) + bhid)
+        hsample = trng.binomial(size=hmean.shape, n=1, p=hmean)
+        vmean = T.nnet.sigmoid(theano.dot(hsample, W.T) + bvis)
+        return trng.binomial(size=vsample.shape, n=1, p=vmean,
+                             dtype=theano.config.floatX)
+
+    # The new scan, adding strict=True to the original call.
+    values, updates = theano.scan(OneStep,
+                                  outputs_info=sample,
+                                  n_steps=10,
+                                  strict=True)
+
+.. testoutput:: scan1
+
+    Traceback (most recent call last):
+    ...
+    MissingInputError: An input of the graph, used to compute
+    DimShuffle{1,0}(<TensorType(float64, matrix)>), was not provided and
+    not given a value.Use the Theano flag exception_verbosity='high',for
+    more information on this error.
+
+The error indicates that ``OneStep`` relies on variables that are not passed
+as arguments explicitly. Here is the correct version, with the shared
+variables passed explicitly to ``OneStep`` and to scan: 
+
+.. testcode:: scan1
+
+    # OneStep, with explicit use of the shared variables (W, bvis, bhid)
+    def OneStep(vsample, W, bvis, bhid) :
+        hmean = T.nnet.sigmoid(theano.dot(vsample, W) + bhid)
+        hsample = trng.binomial(size=hmean.shape, n=1, p=hmean)
+        vmean = T.nnet.sigmoid(theano.dot(hsample, W.T) + bvis)
+        return trng.binomial(size=vsample.shape, n=1, p=vmean,
+                             dtype=theano.config.floatX)
+
+    # The new scan, adding strict=True to the original call, and passing
+    # expicitly W, bvis and bhid.
+    values, updates = theano.scan(OneStep,
                                   outputs_info=sample,
                                   non_sequences=[W, bvis, bhid],
                                   n_steps=10,
                                   strict=True)
-
-If you omit to pass ``W``, ``bvis`` or ``bhid`` as a ``non_sequence``, it will
-result in an error.
 
 
 Multiple outputs, several taps values - Recurrent Neural Network with Scan
