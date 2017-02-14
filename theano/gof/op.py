@@ -1296,7 +1296,8 @@ class COp(Op):
         func_files = [self.get_path(f) for f in func_files]
         self.func_codes = []
         for func_file in func_files:
-            with open(func_file, 'r') as f:
+            # U (universal) will convert all new lines format to \n.
+            with open(func_file, 'U') as f:
                 self.func_codes.append(f.read())
 
         # If both the old section markers and the new section markers are
