@@ -6889,19 +6889,32 @@ class test_arithmetic_cast(unittest.TestCase):
 
 class T_long_tensor(unittest.TestCase):
     def test_fit_int64(self):
-        for exp in xrange(theano.configdefaults.python_int_bitwidth()):
-            val = L(2 ** exp - 1)
+        bitwidth = theano.configdefaults.python_int_bitwidth()
+        for exponent in xrange(bitwidth):
+            val = L(2 ** exponent - 1)
             scalar_ct = constant(val)
 
-            assert scalar_ct.dtype in tensor.int_dtypes, (exp, val, scalar_ct.dtype)
+            assert scalar_ct.dtype in tensor.int_dtypes, (exponent, val, scalar_ct.dtype)
             assert scalar_ct.value == val
 
             vector_ct = constant([val, val])
-            assert vector_ct.dtype == 'int64'
+            # On Python 2, numpy.array() on a "long" returns int64,
+            # but on Python 3, all integers are long, and numpy.asarray
+            # will not force the upcasting, and return the native int width.
+            if PY3 and bitwidth == 32:
+                assert vector_ct.dtype == 'int32'
+            else:
+                assert vector_ct.dtype == 'int64'
             assert numpy.all(vector_ct.value == val)
 
             matrix_ct = constant([[val, val]])
-            assert matrix_ct.dtype == 'int64'
+            # On Python 2, numpy.array() on a "long" returns int64,
+            # but on Python 3, all integers are long, and numpy.asarray
+            # will not force the upcasting, and return the native int width.
+            if PY3 and bitwidth == 32:
+                assert matrix_ct.dtype == 'int32'
+            else:
+                assert matrix_ct.dtype == 'int64'
             assert numpy.all(matrix_ct.value == val)
 
     def test_too_big(self):
