@@ -731,6 +731,9 @@ class _tensor_py_operators(object):
     def zeros_like(model, dtype=None):
         return theano.tensor.basic.zeros_like(model, dtype=dtype)
 
+    def ones_like(model, dtype=None):
+        return theano.tensor.basic.ones_like(model, dtype=dtype)
+
     def cumsum(self, axis=None):
         return theano.tensor.extra_ops.cumsum(self, axis)
 

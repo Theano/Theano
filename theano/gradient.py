@@ -1339,7 +1339,7 @@ def _float_ones_like(x):
     if dtype not in tensor.float_dtypes:
         dtype = theano.config.floatX
 
-    return tensor.ones_like(x, dtype=dtype)
+    return x.ones_like(dtype=dtype)
 
 
 class numeric_grad(object):

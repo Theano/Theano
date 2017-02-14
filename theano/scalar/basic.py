@@ -790,6 +790,12 @@ class _scalar_py_operators:
             dtype = str(self.type.dtype)
         return second(self, ScalarConstant(get_scalar_type(dtype), 0))
 
+    def ones_like(self, dtype=None):
+        # The second is needed for Elemwise ops to work right
+        if dtype is None:
+            dtype = str(self.type.dtype)
+        return second(self, ScalarConstant(get_scalar_type(dtype), 1))
+
     def astype(self, dtype):
         return cast(self, dtype)
 
