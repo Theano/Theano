@@ -233,17 +233,23 @@ class DnnBase(COp):
                 'gpuarray_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), pygpu.get_include(),
-                config.dnn.include_path]
+        dirs = [os.path.dirname(__file__), pygpu.get_include()]
+        if config.dnn.include_path:
+            dirs.append(config.dnn.include_path)
+        return dirs
 
     def c_libraries(self):
         return ['cudnn', 'gpuarray']
 
     def c_lib_dirs(self):
-        return [config.dnn.library_path]
+        if config.dnn.library_path:
+            return [config.dnn.library_path]
+        return []
 
     def c_compile_args(self):
-        return ['-Wl,-rpath,' + config.dnn.library_path]
+        if config.dnn.library_path:
+            return ['-Wl,-rpath,"' + config.dnn.library_path + '"']
+        return []
 
     def c_code_cache_version(self):
         return (super(DnnBase, self).c_code_cache_version(), version(), 1)
@@ -256,16 +262,20 @@ class DnnVersion(Op):
         return ['cudnn.h']
 
     def c_header_dirs(self):
-        return [config.dnn.include_path]
+        return [config.dnn.include_path] if config.dnn.include_path else []
 
     def c_libraries(self):
         return ['cudnn']
 
     def c_lib_dirs(self):
-        return [config.dnn.library_path]
+        if config.dnn.library_path:
+            return [config.dnn.library_path]
+        return []
 
     def c_compile_args(self):
-        return ['-Wl,-rpath,' + config.dnn.library_path]
+        if config.dnn.library_path:
+            return ['-Wl,-rpath,"' + config.dnn.library_path + '"']
+        return []
 
     def c_support_code(self):
         return """
