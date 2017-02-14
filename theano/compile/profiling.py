@@ -150,7 +150,7 @@ def print_global_stats():
 _profiler_printers = []
 
 def register_profiler_printer(fct):
-    profiler_printers.append(fct)
+    _profiler_printers.append(fct)
     return fct
 
 class ProfileStats(object):
@@ -1324,6 +1324,7 @@ class ProfileStats(object):
             print("-----------------", file=file)
             self.optimizer_profile[0].print_profile(file,
                                                     self.optimizer_profile[1])
+        self.print_extra()
         self.print_tips(file)
 
     def print_tips(self, file):
@@ -1470,7 +1471,11 @@ class ProfileStats(object):
         if not printed_tip:
             print("  Sorry, no tip for today.", file=file)
 
-
+    def print_extra(self):
+        params = [None, None, None, None, self.apply_time, None, None, None, None]
+        for f in _profiler_printers:
+            f(*params)
+        
 class ScanProfileStats(ProfileStats):
     callcount = 0.0
     nbsteps = 0.0
