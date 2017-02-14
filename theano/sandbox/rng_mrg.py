@@ -1446,55 +1446,85 @@ class MRG_RandomStreams(object):
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"
                                        " implemented for pvals.ndim = 2"))
 
-    def multinomial_wo_replacement(self, size=None, n=1, pvals=None,
-                                   ndim=None, dtype='int64', nstreams=None):
-        # TODO : need description for parameter
+    def choice(self, size=1, a=None, replace=True, p=None, ndim=None,
+               dtype='int64', nstreams=None):
         """
-        Sample `n` times *WITHOUT replacement* from a multinomial distribution
-        defined by probabilities pvals, and returns the indices of the sampled
-        elements.
-        `n` needs to be in [1, m], where m is the number of elements to select
-        from, i.e. m == pvals.shape[1]. By default n = 1.
+        Sample `size` times from a multinomial distribution defined by
+        probabilities `p`, and returns the indices of the sampled elements.
+        Sampled values are between 0 and `p.shape[1]-1`.
+        Only sampling without replacement is implemented for now.
 
-        Example : pvals = [[.98, .01, .01], [.01, .49, .50]] and n=1 will
-        probably result in [[0],[2]]. When setting n=2, this
+        Parameters
+        ----------
+        size: integer or integer tensor (default 1)
+            The number of samples. It should be between 1 and `p.shape[1]-1`.
+        a: int or None (default None)
+            For now, a should be None. This function will sample
+            values between 0 and `p.shape[1]-1`. When a != None will be
+            implemented, if `a` is a scalar, the samples are drawn from the
+            range 0,...,a-1. We default to 2 as to have the same interface as
+            RandomStream.
+        replace: bool (default True)
+            Whether the sample is with or without replacement.
+            Only replace=False is implemented for now.
+        p: 2d numpy array or theano tensor
+            the probabilities of the distribution, corresponding to values
+            0 to `p.shape[1]-1`.
+
+        Example : p = [[.98, .01, .01], [.01, .49, .50]] and size=1 will
+        probably result in [[0],[2]]. When setting size=2, this
         will probably result in [[0,1],[2,1]].
 
         Notes
         -----
-        -`size` and `ndim` are only there keep the same signature as other
+        -`ndim` is only there keep the same signature as other
         uniform, binomial, normal, etc.
-        TODO : adapt multinomial to take that into account
 
         -Does not do any value checking on pvals, i.e. there is no
         check that the elements are non-negative, less than 1, or
         sum to 1. passing pvals = [[-2., 2.]] will result in
         sampling [[0, 0]]
 
-        """
-        if pvals is None:
-            raise TypeError("You have to specify pvals")
-        pvals = as_tensor_variable(pvals)
+        -Only replace=False is implemented for now.
 
-        if size is not None:
-            raise ValueError("Provided a size argument to "
-                             "MRG_RandomStreams.multinomial_wo_replacement, "
-                             "which does not use the size argument.")
-        if ndim is not None:
-            raise ValueError("Provided an ndim argument to "
-                             "MRG_RandomStreams.multinomial_wo_replacement, "
-                             "which does not use the ndim argument.")
-        if pvals.ndim == 2:
-            # size = [pvals.shape[0], as_tensor_variable(n)]
-            size = pvals[:, 0].shape * n
-            unis = self.uniform(size=size, ndim=1, nstreams=nstreams)
-            op = multinomial.MultinomialWOReplacementFromUniform(dtype)
-            n_samples = as_tensor_variable(n)
-            return op(pvals, unis, n_samples)
-        else:
+        """
+        if replace:
             raise NotImplementedError(
-                "MRG_RandomStreams.multinomial_wo_replacement only implemented"
-                " for pvals.ndim = 2")
+                "MRG_RandomStreams.choice only works without replacement "
+                "for now.")
+
+        if a is not None:
+            raise TypeError("For now, a has to be None in "
+                            "MRG_RandomStreams.choice. Sampled values are "
+                            "beween 0 and p.shape[1]-1")
+
+        if p is None:
+            raise TypeError("For now, p has to be specified in "
+                            "MRG_RandomStreams.choice.")
+        p = as_tensor_variable(p)
+
+        if ndim is not None:
+            raise ValueError("ndim argument to "
+                             "MRG_RandomStreams.choice "
+                             "is not used.")
+
+        if p.ndim != 2:
+            raise NotImplementedError(
+                "MRG_RandomStreams.choice is only implemented for p.ndim = 2")
+
+        shape = p[:, 0].shape * size
+        unis = self.uniform(size=shape, ndim=1, nstreams=nstreams)
+        op = multinomial.MultinomialWOReplacementFromUniform(dtype)
+        return op(p, unis, as_tensor_variable(size))
+
+    def multinomial_wo_replacement(self, size=None, n=1, pvals=None,
+                                   ndim=None, dtype='int64', nstreams=None):
+        warnings.warn('MRG_RandomStreams.multinomial_wo_replacement() is '
+                      'deprecated and will be removed in the next release of '
+                      'Theano. Please use MRG_RandomStreams.choice() instead.')
+        assert size is None
+        return self.choice(size=n, a=None, replace=False, p=pvals,
+                           dtype=dtype, nstreams=nstreams, ndim=ndim)
 
     def normal(self, size, avg=0.0, std=1.0, ndim=None,
                dtype=None, nstreams=None):

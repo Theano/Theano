@@ -22,11 +22,21 @@ class test_OP(unittest.TestCase):
         n_elements = 1000
         all_indices = range(n_elements)
         numpy.random.seed(12345)
+        expected = [
+            numpy.asarray([[931, 318, 185, 209, 559]]),
+            numpy.asarray([[477, 887, 2, 717, 333, 665, 159, 559, 348, 136]]),
+            numpy.asarray([[546, 28, 79, 665, 295, 779, 433, 531, 411, 716, 244, 234, 70, 88, 612, 639, 383, 335,
+                            451, 100, 175, 492, 848, 771, 559, 214, 568, 596, 370, 486, 855, 925, 138, 300, 528, 507,
+                            730, 199, 882, 357, 58, 195, 705, 900, 66, 468, 513, 410, 816, 672]])]
+
         for i in [5, 10, 50, 100, 500, n_elements]:
             uni = numpy.random.rand(i).astype(config.floatX)
             pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
             pvals /= pvals.sum(1)
             res = f(pvals, uni, i)
+            for ii in range(len(expected)):
+                if expected[ii].shape == res.shape:
+                    assert (expected[ii] == res).all()
             res = numpy.squeeze(res)
             assert len(res) == i
             assert numpy.all(numpy.in1d(numpy.unique(res), all_indices)), res
