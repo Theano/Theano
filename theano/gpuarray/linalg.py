@@ -19,6 +19,7 @@ cusolver_available = False
 try:
     import skcuda
     from skcuda import cusolver
+    from skcuda import linalg
     cusolver_available = True
 except (ImportError, OSError, RuntimeError, pkg_resources.DistributionNotFound):
     pass
@@ -50,6 +51,13 @@ if cusolver_available:
                                                         int(A), lda, int(B),
                                                         ldb, int(devInfo))
         cusolver.cusolverCheckStatus(status)
+
+
+def attach_handle_to_context(ctx):
+    handle = getattr(ctx, 'cusolver_handle', None)
+    if handle is None:
+        with ctx:
+            ctx.cusolver_handle = cusolver.cusolverDnCreate()
 
 
 class GpuCusolverSolve(Op):
@@ -101,10 +109,7 @@ class GpuCusolverSolve(Op):
 
     def prepare_node(self, node, storage_map, compute_map, impl):
         ctx = node.inputs[0].type.context
-        handle = getattr(ctx, 'cusolver_handle', None)
-        if handle is None:
-            with ctx:
-                ctx.cusolver_handle = cusolver.cusolverDnCreate()
+        attach_handle_to_context(ctx)
 
     def check_dev_info(self, dev_info):
         val = np.asarray(dev_info)[0]
@@ -212,3 +217,114 @@ class GpuCusolverSolve(Op):
 
 def gpu_solve(A, b, A_structure='general', trans='N'):
     return GpuCusolverSolve(A_structure, trans)(A, b)
+
+
+class GpuCholesky(Op):
+    """
+    CUSOLVER GPU Cholesky Op.
+
+    Given a real positive definite matrix `A` returns either a lower
+    triangular matrix `L` such that `A == dot(L, L.T)` if `lower == True`
+    else returns an upper triangular matrix `U` such that `A == dot(U.T, U)`
+    if `lower == False`.
+
+    Parameters
+    ----------
+    lower
+        Whether to return a lower rather than upper triangular decomposition.
+
+    """
+
+    __props__ = ('lower', 'inplace')
+
+    def __init__(self, lower=True, inplace=False):
+        self.lower = lower
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0, 1]}
+        super(GpuCholesky, self).__init__()
+
+    def make_node(self, inp):
+        if not cusolver_available:
+            raise RuntimeError('CUSOLVER is not available and '
+                               'GpuCusolverSolve Op can not be constructed.')
+        if skcuda.__version__ <= '0.5.1':
+            warnings.warn('The GpuSolve op requires scikit-cuda > 0.5.1 to work with CUDA 8')
+        context_name = basic_ops.infer_context_name(inp)
+
+        inp = basic_ops.as_gpuarray_variable(inp, context_name)
+
+        inp = basic_ops.gpu_contiguous(inp)
+
+        # this op can only operate on float32 matrices
+        assert inp.ndim == 2
+        assert inp.dtype == 'float32'
+
+        return theano.Apply(
+            self, [inp],
+            [GpuArrayType('float32',
+                          broadcastable=inp.broadcastable,
+                          context_name=context_name)()])
+
+    def prepare_node(self, node, storage_map, compute_map, impl):
+        ctx = node.inputs[0].type.context
+        attach_handle_to_context(ctx)
+
+    def perform(self, node, inputs, outputs):
+        context = inputs[0][0].context
+
+        # Input matrix.
+        A = inputs[0]
+
+        assert(len(A.shape) == 2)
+
+        l, n = A.shape
+        if l != n:
+            raise ValueError('A must be a square matrix')
+
+        lda = max(1, n)
+
+        # cusolver operates on F ordered matrices, but A is expected
+        # to be symmetric so it does not matter.
+        # We copy A if needed
+        if self.inplace:
+            L = A
+        else:
+            L = pygpu.array(A, copy=True)
+
+        # The output matrix will contain only the upper or lower
+        # triangular factorization of A. If L is C ordered (it
+        # probably is as it is the default in Theano) we just switch
+        # the fill mode parameter of cusolver
+        l_parameter = 0 if self.lower else 1
+        if L.flags['C_CONTIGUOUS']:
+            l_parameter = 1 - l_parameter
+
+        L_ptr = L.gpudata
+
+        with context:
+            workspace_size = cusolver.cusolverDnSpotrf_bufferSize(
+                context.cusolver_handle, l_parameter, n, L_ptr, lda)
+
+        workspace = pygpu.zeros(workspace_size, dtype='float32',
+                                context=context)
+
+        dev_info = pygpu.zeros((1,), dtype='int32', context=context)
+
+        workspace_ptr = workspace.gpudata
+        dev_info_ptr = dev_info.gpudata
+
+        with context:
+            cusolver.cusolverDnSpotrf(
+                context.cusolver_handle, l_parameter, n, L_ptr, lda, workspace_ptr,
+                workspace_size, dev_info_ptr)
+
+        # cusolver leaves the elements in the matrix outside the considered
+        # upper or lower triangle unchanged, so we need to put zeros outside
+        # the triangle
+        if self.lower:
+            linalg.tril(L, overwrite=True)
+        else:
+            linalg.triu(L, overwrite=True)
+
+        outputs[0][0] = L
