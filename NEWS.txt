@@ -3,12 +3,83 @@ Release Notes
 =============
 
 
+Theano 0.9.0rc1 (15th of February, 2017)
+========================================
+
+This release extends the 0.9.0beta1 and announces the upcoming final release 0.9.
+
+Highlights (since 0.9.0beta1):
+ - Better integration of Theano+libgpuarray packages into conda distribution
+ - Better handling of Windows end-lines into C codes.
+ - Better compatibility with NumPy 1.12
+ - Faster scan optimizations
+ - Fixed broadcast checking in scan
+ - Bug fixes related to merge optimizer
+ - many other bug fixes and improvements
+ - Updated documentation
+
+ - Old GPU back-end:
+   * In MRG, replaced method `multinomial_wo_replacement()` with new method `choice()`
+
+ - New GPU back-end:
+   * Value of a shared variable is now set inplace
+
+A total of 25 people contributed to this release, see the list at the bottom.
+
+Convolution updates:
+ - Implement conv2d_transpose convenience function
+
+GPU:
+ - GPUMultinomialFromUniform op now supports multiple dtypes
+
+New features:
+ - OpFromGraph now allows gradient overriding for every input
+ - Added Abstract Ops for batch normalization that use cuDNN when available and pure Theano CPU/GPU alternative otherwise
+ - Added new Theano flag cuda.enabled
+ - Added new Theano flag print_global_stats to print some global statistics (time spent) at the end
+
+Others:
+ - Split op now has C code for CPU and GPU
+ - "theano-cache list" now includes compilation times
+
+Other more detailed changes:
+ - Changed optdb.max_use_ratio to 6
+
+
+Committers since 0.8.0:
+ - Benjamin Scellier
+ - Frederic Bastien
+ - khaotik
+ - Steven Bocco
+ - Arnaud Bergeron
+ - Gijs van Tulder
+ - Reyhane Askari
+ - Pascal Lamblin
+ - Chinnadhurai Sankar
+ - Vincent Dumoulin
+ - Alexander Matyasko
+ - Cesar Laurent
+ - Nicolas Ballas
+ - affanv14
+ - Faruk Ahmed
+ - Anton Chechetka
+ - Alexandre de Brebisson
+ - bscellier
+ - Amjad Almahairi
+ - Dimitar Dimitrov
+ - Fuchai
+ - Jan Schlüter
+ - Jonas Degrave
+ - Mathieu Germain
+ - Simon Lefrancois
+
+
 Theano 0.9.0beta1 (24th of January, 2017)
 =========================================
 
 This release contains a lot of bug fixes and improvements + new features, to prepare the upcoming release candidate.
 
-Highlight:
+Highlights:
  - Many computation and compilation speed up
  - More numerical stability by default for some graph
  - Jenkins (gpu tests run on PR in addition to daily buildbot)
@@ -23,11 +94,11 @@ Highlight:
  - scan with checkpoint (trade off between speed and memory usage, useful for long sequences)
  - Added a bool dtype
 
- - New back-end:
-   - float16 storage
-   - better mapping between theano device number and nvidia-smi number, using the PCI bus ID of graphic cards
-   - More pooling support on GPU when cuDNN isn't there.
-   - ignore_border=False is now implemented for pooling.
+ - New GPU back-end:
+   * float16 storage
+   * better mapping between theano device number and nvidia-smi number, using the PCI bus ID of graphic cards
+   * More pooling support on GPU when cuDNN isn't there.
+   * ignore_border=False is now implemented for pooling.
 
 
 A total of 112 people contributed to this release, see the list at the bottom.
