@@ -14,7 +14,7 @@ from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuAdvancedSubtensor,
                          GpuAdvancedIncSubtensor1,
                          GpuAdvancedIncSubtensor1_dev20,
-                         GpuDiagonal,
+                         GpuExtractDiag,
                          GpuAllocDiag)
 from ..type import gpuarray_shared_constructor
 
@@ -181,11 +181,11 @@ class test_gpudiagonal(unittest.TestCase):
     def test_matrix(self):
         x = tensor.matrix()
         np_x = np.arange(77).reshape(7, 11).astype(theano.config.floatX)
-        fn = theano.function([x], GpuDiagonal()(x), mode=mode_with_gpu)
+        fn = theano.function([x], GpuExtractDiag()(x), mode=mode_with_gpu)
         assert np.allclose(fn(np_x), np_x.diagonal())
-        fn = theano.function([x], GpuDiagonal(2)(x), mode=mode_with_gpu)
+        fn = theano.function([x], GpuExtractDiag(2)(x), mode=mode_with_gpu)
         assert np.allclose(fn(np_x), np_x.diagonal(2))
-        fn = theano.function([x], GpuDiagonal(-3)(x), mode=mode_with_gpu)
+        fn = theano.function([x], GpuExtractDiag(-3)(x), mode=mode_with_gpu)
         assert np.allclose(fn(np_x), np_x.diagonal(-3))
 
     def test_tensor(self):
@@ -196,7 +196,7 @@ class test_gpudiagonal(unittest.TestCase):
                 (-3, 1, 0), (-2, 2, 0), (3, 3, 0), (-1, 3, 2),
                 (2, 2, 3), (-1, 2, 1), (1, 3, 1), (-1, 1, 3)]:
             assert np.allclose(
-                GpuDiagonal(offset, axis1, axis2)(x).eval({x: np_x}),
+                GpuExtractDiag(offset, axis1, axis2)(x).eval({x: np_x}),
                 np_x.diagonal(offset, axis1, axis2))
 
             
@@ -210,3 +210,11 @@ class test_gpuallocdiag(unittest.TestCase):
         assert np.allclose(fn(np_x), np.diag(np_x, 2))
         fn = theano.function([x], GpuAllocDiag(-3)(x), mode=mode_with_gpu)
         assert np.allclose(fn(np_x), np.diag(np_x, -3))
+
+    def test_grad(self):
+        x = tensor.vector()
+        np_x = np.arange(7).astype(theano.config.floatX)
+        mtx_x = GpuAllocDiag()(x)
+        sum_mtx_x = tensor.sum(mtx_x)
+        grad = tensor.grad(sum_mtx_x, x)
+        # assert

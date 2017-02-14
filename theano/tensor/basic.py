@@ -6167,8 +6167,6 @@ class ExtractDiag(Op):
 
 
 def diagonal(a, offset=0, axis1=0, axis2=1):
-    if (offset, axis1, axis2) == (0, 0, 1):
-        return theano.tensor.nlinalg.extract_diag(a)
     return ExtractDiag(offset, axis1, axis2)(a)
 
 
@@ -6177,7 +6175,6 @@ class AllocDiag(Op):
     An op that copies a vector to the diagonal of an empty matrix. It does the
     inverse of ExtractDiag.
 
-    __props__ = ()
     Usage: T.AllocDiag()(x)
 
     `x` should be a tensor vector. The parenthesis in the front should indicate
@@ -6210,9 +6207,6 @@ class AllocDiag(Op):
 
     def make_node(self, diag):
         diag = as_tensor_variable(diag)
-        if diag.type.ndim != 1:
-            raise TypeError('data argument must be a vector', diag.type)
-
         return Apply(self, [diag], [matrix(dtype=diag.dtype)])
 
     def perform(self, node, inputs, outputs):
@@ -6221,16 +6215,10 @@ class AllocDiag(Op):
 
     def grad(self, inputs, gout):
         (gz,) = gout
-        if self.has_default_props():
-            return [diagonal(gz)]
-        else:
-            return [grad_not_implemented(self, 0, inputs[0])]
+        return [diagonal(gz, offset=self.offset, axis1=0, axis2=1)]
 
     def infer_shape(self, nodes, shapes):
         return [(shapes[0][0],) * 2]
-
-    def has_default_props(self):
-        return self.offset == self.default_offset
 
 
 def diag(v, k=0):
@@ -6255,10 +6243,9 @@ def diag(v, k=0):
     """
 
     if v.ndim == 1:
-        assert k == 0, "diagonals other than main are not implemented"
         return AllocDiag()(v)
     elif v.ndim >= 2:
-        return diagonal(v, k)
+        return diagonal(v, offset=k)
     else:
         raise ValueError("Input must has v.dim >= 1.")
 

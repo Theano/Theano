@@ -1080,7 +1080,7 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
         """ % locals()
 
 
-class GpuDiagonal(Subtensor):
+class GpuExtractDiag(Subtensor):
     __props__ = ("offset", "axis1", "axis2", "view")
 
     def __init__(self, offset=0, axis1=0, axis2=1, view=False):
@@ -1185,7 +1185,7 @@ class GpuDiagonal(Subtensor):
         return [tuple(out_shape)]
 
 
-class GpuAllocDiag(Subtensor):
+class GpuAllocDiag(Op):
     __props__ = ("offset",)
 
     def __init__(self, offset=0):
@@ -1206,20 +1206,20 @@ class GpuAllocDiag(Subtensor):
         (z,) = outputs
 
         dim = x.shape[0] + abs(self.offset)
-        z = gpuarray.zeros((dim, dim), dtype=x.dtype, context=x.context)
+        z[0] = gpuarray.zeros((dim, dim), dtype=x.dtype, context=x.context)
 
         if self.offset <= 0:  # diag in the lower triangle
-            diag_z = z[-self.offset, :(dim + self.offset)]
+            diag_z = z[0][-self.offset, :(dim + self.offset)]
         else:  # diag in the upper triangle
-            diag_z = z[:(dim - self.offset), self.offset]
-        diag_z.strides = (sum(z.strides),)
+            diag_z = z[0][:(dim - self.offset), self.offset]
+        diag_z.strides = (sum(z[0].strides),)
 
         diag_z[:] = x[:]
 
     def grad(self, inputs, gout):
-        (input_x,) = inputs
-        return [grad_not_implemented(self, 0, input_x)]
+        (gz,) = gout
+        return [GpuExtractDiag(offset=self.offset, axis1=0, axis2=1, view=False)(gz)]
 
     def infer_shape(self, node, shapes):
         dim = shapes[0][0] + abs(self.offset)
-        return [dim, dim]
+        return [[dim, dim]]
