@@ -20,6 +20,8 @@ from ..type import gpuarray_shared_constructor
 
 from .config import mode_with_gpu
 
+import pdb
+
 
 class G_subtensor(test_subtensor.T_subtensor):
     def shortDescription(self):
@@ -200,11 +202,11 @@ class test_gpudiagonal(unittest.TestCase):
             
 class test_gpuallocdiag(unittest.TestCase):
     def test_matrix(self):
-        x = tensor.matrix()
-        np_x = numpy.arange(7).astype(theano.config.floatX)
+        x = tensor.vector()
+        np_x = np.arange(7).astype(theano.config.floatX)
         fn = theano.function([x], GpuAllocDiag()(x), mode=mode_with_gpu)
-        assert numpy.allclose(fn(np_x), numpy.diag(np_x))
+        assert np.allclose(fn(np_x), np.diag(np_x))
         fn = theano.function([x], GpuAllocDiag(2)(x), mode=mode_with_gpu)
-        assert numpy.allclose(fn(np_x), numpy.diag(np_x, 2))
+        assert np.allclose(fn(np_x), np.diag(np_x, 2))
         fn = theano.function([x], GpuAllocDiag(-3)(x), mode=mode_with_gpu)
-        assert numpy.allclose(fn(np_x), numpy.diag(np_x, -3))
+        assert np.allclose(fn(np_x), np.diag(np_x, -3))

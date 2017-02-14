@@ -21,6 +21,7 @@ from .type import GpuArrayType, gpu_context_type
 from .basic_ops import (as_gpuarray_variable, HideC, GpuKernelBase, Kernel,
                         infer_context_name, gpu_contiguous)
 
+import pdb
 
 iadd_reg = {}
 
@@ -1187,7 +1188,7 @@ class GpuDiagonal(Subtensor):
 class GpuAllocDiag(Subtensor):
     __props__ = ("offset",)
 
-    def __init__(self, offset=0, axis1=0, axis2=1, view=False):
+    def __init__(self, offset=0):
         self.offset = offset
 
     def make_node(self, _x):
@@ -1196,23 +1197,29 @@ class GpuAllocDiag(Subtensor):
 
         if x.ndim != 1:
             raise ValueError('AllocDiag argument must be a vector!', x)
-        return gof.Apply(self, [x], [x.type.__class__(dtype=x.dtype)()])
+        
+        return gof.Apply(self, [x], [x.type.__class__(dtype=x.dtype,
+            broadcastable=x.broadcastable)()])
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
 
-        pdb.set_trace()
-        
-        dim = x.shape[0] + self.offset
-        z = gpuarray.zeros((dim, dim))
-        # z.subtensor
-        # alloc zero mtx in cudandarray
-        # z = set subtensor
+        dim = x.shape[0] + abs(self.offset)
+        z = gpuarray.zeros((dim, dim), dtype=x.dtype, context=x.context)
+
+        if self.offset <= 0:  # diag in the lower triangle
+            diag_z = z[-self.offset, :(dim + self.offset)]
+        else:  # diag in the upper triangle
+            diag_z = z[:(dim - self.offset), self.offset]
+        diag_z.strides = (sum(z.strides),)
+
+        diag_z[:] = x[:]
 
     def grad(self, inputs, gout):
         (input_x,) = inputs
         return [grad_not_implemented(self, 0, input_x)]
 
     def infer_shape(self, node, shapes):
-        return [(shapes[0][0],) * 2]
+        dim = shapes[0][0] + abs(self.offset)
+        return [dim, dim]
