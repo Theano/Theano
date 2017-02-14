@@ -16,15 +16,14 @@ from ..multinomial import (GPUAMultinomialFromUniform,
                            GPUAMultinomialWOReplacementFromUniform)
 
 
-def test_multinomial_0():
+def test_multinomial_output_dtype():
     # This tests the MultinomialFromUniform Op directly, not going through the
     # multinomial() call in GPU random generation.
 
     p = tensor.fmatrix()
     u = tensor.fvector()
 
-    for dtype in ['int64', 'float32', 'auto']:
-
+    for dtype in ['int64', 'float32', 'float16', 'float64', 'int32', 'auto']:
         m = theano.sandbox.multinomial.MultinomialFromUniform(dtype)(p, u)
 
         # the m*2 allows the multinomial to reuse output
@@ -50,6 +49,44 @@ def test_multinomial_0():
         # transposed-ness
         r = f([[.2, .8]], [.25])
         utt.assert_allclose(r, [[0, 2]])
+
+
+def test_multinomial_input_dtype():
+    # This tests the MultinomialFromUniform Op directly, not going through the
+    # multinomial() call in GPU random generation.
+
+    for idtype in ['float32', 'float16', 'float64']:
+        for odtype in ['float32', 'float16', 'float64', 'int32']:
+
+            p = tensor.matrix('p', idtype)
+            u = tensor.vector('u', idtype)
+            # p = tensor.dmatrix('p')
+            # u = tensor.dvector('u')
+            m = theano.sandbox.multinomial.MultinomialFromUniform(odtype)(p, u)
+
+            # the m*2 allows the multinomial to reuse output
+            f = function([p, u], m * 2, allow_input_downcast=True, mode=mode_with_gpu)
+
+            assert any([type(node.op) is GPUAMultinomialFromUniform
+                        for node in f.maker.fgraph.toposort()])
+
+            # test that both first and second samples can be drawn
+            utt.assert_allclose(f([[1, 0], [0, 1]], [.1, .1]),
+                                [[2, 0], [0, 2]])
+
+            # test that both second labels can be drawn
+            r = f([[.2, .8], [.3, .7]], [.31, .31])
+            utt.assert_allclose(r, [[0, 2], [0, 2]])
+
+            # test that both first labels can be drawn
+            r = f([[.2, .8], [.3, .7]], [.21, .21])
+            utt.assert_allclose(r, [[0, 2], [2, 0]])
+
+            # change the size to make sure output gets reallocated ok
+            # and also make sure that the GPU version doesn't screw up the
+            # transposed-ness
+            r = f([[.2, .8]], [.25])
+            utt.assert_allclose(r, [[0, 2]])
 
 
 # TODO: check a bigger example (make sure blocking on GPU is handled correctly)
