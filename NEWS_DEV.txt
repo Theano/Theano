@@ -17,7 +17,7 @@ TODO: better Theano conv doc
 
 Highlights:
  - Better integration of Theano+libgpuarray packages into conda distribution
- - Better handling of Windows end-lines into C codes.
+ - Better handling of Windows end-lines into C codes
  - Better compatibility with NumPy 1.12
  - Faster scan optimizations
  - Fixed broadcast checking in scan
@@ -79,7 +79,7 @@ GPU:
 
 New features:
  - OpFromGraph now allows gradient overriding for every input
- - Added Abstract Ops for batch normalization that use cuDNN when available and pure Theano CPU/GPU alternative otherwise
+ - Added Abstract Ops for batch normalization that use cuDNN when available and pure Theano CPU/GPU alternatives otherwise
  - Added new Theano flag cuda.enabled
  - Added new Theano flag print_global_stats to print some global statistics (time spent) at the end
  - Add gradient of solve, tensorinv (CPU), tensorsolve (CPU) searchsorted (CPU)

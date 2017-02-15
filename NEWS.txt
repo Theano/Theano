@@ -10,7 +10,7 @@ This release extends the 0.9.0beta1 and announces the upcoming final release 0.9
 
 Highlights (since 0.9.0beta1):
  - Better integration of Theano+libgpuarray packages into conda distribution
- - Better handling of Windows end-lines into C codes.
+ - Better handling of Windows end-lines into C codes
  - Better compatibility with NumPy 1.12
  - Faster scan optimizations
  - Fixed broadcast checking in scan
@@ -24,7 +24,7 @@ Highlights (since 0.9.0beta1):
  - New GPU back-end:
    * Value of a shared variable is now set inplace
 
-A total of 25 people contributed to this release, see the list at the bottom.
+A total of 24 people contributed to this release, see the list at the bottom.
 
 Convolution updates:
  - Implement conv2d_transpose convenience function
@@ -34,7 +34,7 @@ GPU:
 
 New features:
  - OpFromGraph now allows gradient overriding for every input
- - Added Abstract Ops for batch normalization that use cuDNN when available and pure Theano CPU/GPU alternative otherwise
+ - Added Abstract Ops for batch normalization that use cuDNN when available and pure Theano CPU/GPU alternatives otherwise
  - Added new Theano flag cuda.enabled
  - Added new Theano flag print_global_stats to print some global statistics (time spent) at the end
 
@@ -46,7 +46,7 @@ Other more detailed changes:
  - Changed optdb.max_use_ratio to 6
 
 
-Committers since 0.8.0:
+Committers since 0.9.0beta1:
  - Benjamin Scellier
  - Frederic Bastien
  - khaotik
@@ -64,7 +64,6 @@ Committers since 0.8.0:
  - Faruk Ahmed
  - Anton Chechetka
  - Alexandre de Brebisson
- - bscellier
  - Amjad Almahairi
  - Dimitar Dimitrov
  - Fuchai
