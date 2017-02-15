@@ -1102,9 +1102,7 @@ class GpuExtractDiag(Subtensor):
         broadcastable = x.broadcastable[:axis_small] + \
             x.broadcastable[axis_small + 1:axis_large] + \
             x.broadcastable[axis_large + 1:] + (False,)
-        return gof.Apply(self, [x], [x.type.__class__(
-            dtype=x.dtype,
-            broadcastable=broadcastable)()])
+        return gof.Apply(self, [x], [x.type.clone(broadcastable=broadcastable)()])
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
@@ -1197,9 +1195,8 @@ class GpuAllocDiag(Op):
 
         if x.ndim != 1:
             raise ValueError('AllocDiag argument must be a vector!', x)
-        
-        return gof.Apply(self, [x], [x.type.__class__(dtype=x.dtype,
-            broadcastable=x.broadcastable)()])
+
+        return gof.Apply(self, [x], [x.type.clone(broadcastable=(False, False))()])
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
@@ -1218,7 +1215,7 @@ class GpuAllocDiag(Op):
 
     def grad(self, inputs, gout):
         (gz,) = gout
-        return [GpuExtractDiag(offset=self.offset, axis1=0, axis2=1, view=False)(gz)]
+        return [GpuExtractDiag(offset=self.offset, axis1=0, axis2=1)(gz)]
 
     def infer_shape(self, node, shapes):
         dim = shapes[0][0] + abs(self.offset)

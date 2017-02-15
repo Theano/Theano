@@ -6167,6 +6167,24 @@ class ExtractDiag(Op):
 
 
 def diagonal(a, offset=0, axis1=0, axis2=1):
+    """
+    A helper function for `theano.tensor.ExtractDiag`. It accepts tensor with
+    `ndim >= 2` as input. The name `diagonal` is just meant to keep it
+    consistent with numpy.
+
+    Parameters
+    ----------
+    a : symbolic tensor
+    offset : int
+        offset
+    axis1 : int
+    axis2 : int
+
+    Returns
+    -------
+    tensor : symbolic tensor
+
+    """
     return ExtractDiag(offset, axis1, axis2)(a)
 
 
@@ -6223,12 +6241,13 @@ class AllocDiag(Op):
 
 def diag(v, k=0):
     """
-    A helper function for two ops: theano.tensor.ExtractDiag and
-    theano.tensor.AllocDiag. It both accepts tensor vector and tensor matrix.
-     While the passed tensor variable `v` has `v.ndim>=2`, it builds a
-     ExtractDiag instance, and returns a vector with its entries equal to
-     `v`'s main diagonal; otherwise if `v.ndim` is `1`, it builds a AllocDiag
-     instance, and returns a matrix with `v` at its k-th diaogonal.
+    A helper function for two ops: `theano.tensor.ExtractDiag` and
+    `theano.tensor.AllocDiag`. The name `diag` is meant to keep it consistent
+    with numpy. It both accepts tensor vector and tensor matrix.
+    While the passed tensor variable `v` has `v.ndim>=2`, it builds a
+    `ExtractDiag` instance, and returns a vector with its entries equal to
+    `v`'s main diagonal; otherwise if `v.ndim` is `1`, it builds an `AllocDiag`
+    instance, and returns a matrix with `v` at its k-th diaogonal.
 
     Parameters
     ----------
