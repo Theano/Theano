@@ -21,7 +21,7 @@ Highlights:
  - Better compatibility with NumPy 1.12
  - Faster scan optimizations
  - Fixed broadcast checking in scan
- - Bug fixes related to merge optimizer
+ - Bug fixes related to merge optimizer and shape inference
  - many other bug fixes and improvements
  - Updated documentation
  - Many computation and compilation speed up
@@ -38,17 +38,16 @@ Highlights:
  - scan with checkpoint (trade off between speed and memory usage, useful for long sequences)
  - Added a bool dtype
 
- - Old GPU back-end:
-   * In MRG, replaced method `multinomial_wo_replacement()` with new method `choice()`
-
  - New GPU back-end:
-   * Value of a shared variable is now set inplace
-   * float16 storage
-   * better mapping between theano device number and nvidia-smi number, using the PCI bus ID of graphic cards
-   * More pooling support on GPU when cuDNN isn't there.
-   * ignore_border=False is now implemented for pooling.
+
+   - Value of a shared variable is now set inplace
+   - float16 storage
+   - better mapping between theano device number and nvidia-smi number, using the PCI bus ID of graphic cards
+   - More pooling support on GPU when cuDNN isn't there
+   - ignore_border=False is now implemented for pooling
 
 Interface changes:
+ - In MRG, replaced method `multinomial_wo_replacement()` with new method `choice()`
  - New pooling interface
  - Pooling parameters can change at run time
  - When converting empty list/tuple, now we use floatX dtype
@@ -56,7 +55,7 @@ Interface changes:
  - Move softsign out of sandbox to theano.tensor.nnet.softsign
  - Roll make the shift be modulo the size of the axis we roll on
  - Merge CumsumOp/CumprodOp into CumOp
- - round() default to the same as NumPy: half_to_even.
+ - round() default to the same as NumPy: half_to_even
 
 Convolution updates:
  - Implement conv2d_transpose convenience function
@@ -75,7 +74,7 @@ GPU:
  - Support for solve (using cusolver), erfinv and erfcinv
  - cublas gemv workaround when we reduce on an axis with a dimensions size of 0
  - Warn user that some cuDNN algorithms may produce unexpected results in certain environments
-   for convolution backward filter operations.
+   for convolution backward filter operations
 
 New features:
  - OpFromGraph now allows gradient overriding for every input
@@ -105,7 +104,6 @@ Others:
 
 
 Other more detailed changes:
- - Changed optdb.max_use_ratio to 6
  - Allow more then one output to be an destructive inplace
  - Add flag profiling.ignore_first_call, useful to profile the new gpu back-end
  - Doc/error message fixes/updates

@@ -14,17 +14,18 @@ Highlights (since 0.9.0beta1):
  - Better compatibility with NumPy 1.12
  - Faster scan optimizations
  - Fixed broadcast checking in scan
- - Bug fixes related to merge optimizer
+ - Bug fixes related to merge optimizer and shape inference
  - many other bug fixes and improvements
  - Updated documentation
 
- - Old GPU back-end:
-   * In MRG, replaced method `multinomial_wo_replacement()` with new method `choice()`
-
  - New GPU back-end:
-   * Value of a shared variable is now set inplace
 
-A total of 24 people contributed to this release, see the list at the bottom.
+   - Value of a shared variable is now set inplace
+
+A total of 24 people contributed to this release since 0.9.0beta1 and 116 since 0.8.0, see the list at the bottom.
+
+Interface changes:
+ - In MRG, replaced method `multinomial_wo_replacement()` with new method `choice()`
 
 Convolution updates:
  - Implement conv2d_transpose convenience function
@@ -41,9 +42,6 @@ New features:
 Others:
  - Split op now has C code for CPU and GPU
  - "theano-cache list" now includes compilation times
-
-Other more detailed changes:
- - Changed optdb.max_use_ratio to 6
 
 
 Committers since 0.9.0beta1:
@@ -94,13 +92,14 @@ Highlights:
  - Added a bool dtype
 
  - New GPU back-end:
-   * float16 storage
-   * better mapping between theano device number and nvidia-smi number, using the PCI bus ID of graphic cards
-   * More pooling support on GPU when cuDNN isn't there.
-   * ignore_border=False is now implemented for pooling.
+
+   - float16 storage
+   - better mapping between theano device number and nvidia-smi number, using the PCI bus ID of graphic cards
+   - More pooling support on GPU when cuDNN isn't there
+   - ignore_border=False is now implemented for pooling
 
 
-A total of 112 people contributed to this release, see the list at the bottom.
+A total of 112 people contributed to this release since 0.8.0, see the list at the bottom.
 
 
 Interface changes:
@@ -111,7 +110,7 @@ Interface changes:
  - Move softsign out of sandbox to theano.tensor.nnet.softsign
  - Roll make the shift be modulo the size of the axis we roll on
  - Merge CumsumOp/CumprodOp into CumOp
- - round() default to the same as NumPy: half_to_even.
+ - round() default to the same as NumPy: half_to_even
 
 Convolution updates:
  - Multi-cores convolution and pooling on CPU
@@ -127,7 +126,7 @@ GPU:
  - Support for solve (using cusolver), erfinv and erfcinv
  - cublas gemv workaround when we reduce on an axis with a dimensions size of 0
  - Warn user that some cuDNN algorithms may produce unexpected results in certain environments
-   for convolution backward filter operations.
+   for convolution backward filter operations
 
 New features:
  - Add gradient of solve, tensorinv (CPU), tensorsolve (CPU) searchsorted (CPU)
