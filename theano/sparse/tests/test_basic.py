@@ -3172,6 +3172,20 @@ class SamplingDotTester(utt.InferShapeTester):
         assert tested.format == 'csr'
         assert tested.dtype == expected.dtype
 
+    def test_negative_stride(self):
+        f = theano.function(
+            self.x,
+            sampling_dot(*self.x))
+
+        a2 = [self.a[0][::-1,:], self.a[1][:,::-1], self.a[2]]
+        tested = f(*a2)
+        x, y, p = a2
+        expected = p.multiply(np.dot(x, y.T))
+
+        utt.assert_allclose(as_ndarray(expected), tested.toarray())
+        assert tested.format == 'csr'
+        assert tested.dtype == expected.dtype
+
     def test_infer_shape(self):
         self._compile_and_check(self.x,
                                 [sampling_dot(*self.x)],
