@@ -165,11 +165,13 @@ Note: There is no short term plan to support multi-node computation.
 Theano Vision State
 ===================
 
-Here is the state of that vision as of January 24th, 2017 (after Theano 0.9.0beta1):
+Here is the state of that vision as of February 15th, 2017 (after Theano 0.9.0rc1):
 
 * We support tensors using the `numpy.ndarray` object and we support many operations on them.
 * We support sparse types by using the `scipy.{csc,csr,bsr}_matrix` object and support some operations on them.
 * We have implementing/wrapping more advanced linear algebra operations. Still many more possible.
+* We support the creation of new operations from graphs at runtime, which allow gradient overload for every input
+  and inlining at the start of compilation.
 * We have many graph transformations that cover the 4 categories listed above.
 * We can improve the graph transformation with better storage optimization
   and instruction selection.
@@ -195,7 +197,9 @@ Here is the state of that vision as of January 24th, 2017 (after Theano 0.9.0bet
 
 * No multi-node support.
 * Most, but not all NumPy functions/aliases are implemented.
+
   * https://github.com/Theano/Theano/issues/1080
+
 * Wrapping an existing Python function in easy and documented.
 * We know how to separate the shared variable memory
   storage location from its object type (tensor, sparse, dtype, broadcast
