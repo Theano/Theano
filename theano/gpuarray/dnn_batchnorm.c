@@ -45,7 +45,7 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
 
 #ifdef RUNNING_AVERAGES
 #ifdef INPLACE_RUNNING_MEAN
-  Py_XDECREF(out_running_mean);
+  Py_XDECREF(*out_running_mean);
   PyGpuArrayObject *running_mean = in_running_mean;
   Py_INCREF(running_mean);
 #else
@@ -56,7 +56,7 @@ int dnn_batchnorm_op(PyGpuArrayObject *inp, PyGpuArrayObject *scale,
   }
 #endif
 #ifdef INPLACE_RUNNING_VAR
-  Py_XDECREF(out_running_var);
+  Py_XDECREF(*out_running_var);
   PyGpuArrayObject *running_var = in_running_var;
   Py_INCREF(running_var);
 #else
