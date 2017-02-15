@@ -1216,8 +1216,8 @@ def apply_meth(tag):
             code = self.code_sections[tag]
 
             define_macros, undef_macros = self.get_c_macros(node, name)
-            return os.linesep.join(['', define_macros, code,
-                                    undef_macros])
+            return '\n'.join(['', define_macros, code,
+                              undef_macros])
         else:
             raise utils.MethodNotDefined(
                 'c_' + tag, type(self), type(self).__name__)
@@ -1458,7 +1458,7 @@ class COp(Op):
             define_macros.append(define_template % (n, v))
             undef_macros.append(undef_template % (n,))
 
-        return os.linesep.join(define_macros), os.linesep.join(undef_macros)
+        return '\n'.join(define_macros), '\n'.join(undef_macros)
 
     def _lquote_macro(self, txt):
         res = []
@@ -1466,7 +1466,7 @@ class COp(Op):
         for l in spl[:-1]:
             res.append(l + ' \\')
         res.append(spl[-1])
-        return os.linesep.join(res)
+        return '\n'.join(res)
 
     def get_sub_macros(self, sub):
         define_macros = []
@@ -1478,7 +1478,7 @@ class COp(Op):
             define_macros.append("#define PARAMS %s" % (sub['params'],))
             undef_macros.append("#undef PARAMS")
 
-        return os.linesep.join(define_macros), os.linesep.join(undef_macros)
+        return '\n'.join(define_macros), '\n'.join(undef_macros)
 
     def get_io_macros(self, inputs, outputs):
         define_macros = []
@@ -1503,9 +1503,9 @@ class COp(Op):
             def_macros, undef_macros = self.get_c_macros(node, name)
             def_sub, undef_sub = self.get_sub_macros(sub)
 
-            return os.linesep.join(['', def_macros, def_sub,
-                                    op_code,
-                                    undef_sub, undef_macros])
+            return '\n'.join(['', def_macros, def_sub,
+                              op_code,
+                              undef_sub, undef_macros])
         else:
             raise utils.MethodNotDefined(
                 'c_init_code_struct', type(self), type(self).__name__)
@@ -1543,9 +1543,9 @@ class COp(Op):
                 def_sub, undef_sub = self.get_sub_macros(sub)
                 def_io, undef_io = self.get_io_macros(inp, out)
 
-                return os.linesep.join([def_macros, def_sub, def_io,
-                                        op_code,
-                                        undef_io, undef_sub, undef_macros])
+                return '\n'.join([def_macros, def_sub, def_io,
+                                  op_code,
+                                  undef_io, undef_sub, undef_macros])
             else:
                 raise utils.MethodNotDefined(
                     'c_code', type(self), type(self).__name__)
@@ -1561,9 +1561,9 @@ class COp(Op):
             def_sub, undef_sub = self.get_sub_macros(sub)
             def_io, undef_io = self.get_io_macros(inputs, outputs)
 
-            return os.linesep.join([def_macros, def_sub, def_io,
-                                    op_code,
-                                    undef_io, undef_sub, undef_macros])
+            return '\n'.join([def_macros, def_sub, def_io,
+                              op_code,
+                              undef_io, undef_sub, undef_macros])
         else:
             raise utils.MethodNotDefined(
                 'c_code_cleanup', type(self), type(self).__name__)
