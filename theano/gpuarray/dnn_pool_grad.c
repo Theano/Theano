@@ -83,18 +83,23 @@ int APPLY_SPECIFIC(dnn_pool_grad)(PyGpuArrayObject *inp,
     return 1;
   }
 
+  if (theano_prep_output(inp_grad, PyGpuArray_NDIM(inp),
+                         PyGpuArray_DIMS(inp), inp->ga.typecode,
+                         GA_C_ORDER, c) != 0) {
+    return 1;
+  }
+
+  // if input batch is empty, we return the empty output without calling cuDNN
+  // (which will fail on zero batch size).
+  if (PyGpuArray_DIM(*inp_grad, 0) == 0)
+    return 0;
+
   if (c_set_tensorNd(inp, APPLY_SPECIFIC(input)) != 0)
     return 1;
   if (c_set_tensorNd(out_grad, APPLY_SPECIFIC(output_grad)) != 0)
     return 1;
   if (c_set_tensorNd(out, APPLY_SPECIFIC(output)) != 0)
     return 1;
-
-  if (theano_prep_output(inp_grad, PyGpuArray_NDIM(inp),
-                         PyGpuArray_DIMS(inp), inp->ga.typecode,
-                         GA_C_ORDER, c) != 0) {
-    return 1;
-  }
 
   int w[3];
   int p[3];
