@@ -1217,7 +1217,7 @@ def apply_meth(tag):
 
             define_macros, undef_macros = self.get_c_macros(node, name)
             return '\n'.join(['', define_macros, code,
-                                    undef_macros])
+                              undef_macros])
         else:
             raise utils.MethodNotDefined(
                 'c_' + tag, type(self), type(self).__name__)
@@ -1504,8 +1504,8 @@ class COp(Op):
             def_sub, undef_sub = self.get_sub_macros(sub)
 
             return '\n'.join(['', def_macros, def_sub,
-                                    op_code,
-                                    undef_sub, undef_macros])
+                              op_code,
+                              undef_sub, undef_macros])
         else:
             raise utils.MethodNotDefined(
                 'c_init_code_struct', type(self), type(self).__name__)
@@ -1544,8 +1544,8 @@ class COp(Op):
                 def_io, undef_io = self.get_io_macros(inp, out)
 
                 return '\n'.join([def_macros, def_sub, def_io,
-                                        op_code,
-                                        undef_io, undef_sub, undef_macros])
+                                  op_code,
+                                  undef_io, undef_sub, undef_macros])
             else:
                 raise utils.MethodNotDefined(
                     'c_code', type(self), type(self).__name__)
@@ -1562,8 +1562,8 @@ class COp(Op):
             def_io, undef_io = self.get_io_macros(inputs, outputs)
 
             return '\n'.join([def_macros, def_sub, def_io,
-                                    op_code,
-                                    undef_io, undef_sub, undef_macros])
+                              op_code,
+                              undef_io, undef_sub, undef_macros])
         else:
             raise utils.MethodNotDefined(
                 'c_code_cleanup', type(self), type(self).__name__)
