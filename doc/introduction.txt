@@ -170,8 +170,8 @@ Here is the state of that vision as of February 15th, 2017 (after Theano 0.9.0rc
 * We support tensors using the `numpy.ndarray` object and we support many operations on them.
 * We support sparse types by using the `scipy.{csc,csr,bsr}_matrix` object and support some operations on them.
 * We have implementing/wrapping more advanced linear algebra operations. Still many more possible.
-* We support the creation of new operations from graphs at runtime, which allow gradient overload for every input
-  and inlining at the start of compilation.
+* We have basic support for the creation of new operations from graphs at runtime. It supports well gradient overload
+  for every input and inlining at the start of compilation. We don't cover well the case when it is not inlined.
 * We have many graph transformations that cover the 4 categories listed above.
 * We can improve the graph transformation with better storage optimization
   and instruction selection.
