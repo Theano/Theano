@@ -1588,8 +1588,6 @@ class TestConv2dTranspose(unittest.TestCase):
         numpy.testing.assert_equal(output, expected_output)
 
 
-
-# TM copying the TestConvTypes setup, not sure exactly what unittest.TestCase is
 class TestConv2dGrads(unittest.TestCase):
 
     def setUp(self):
