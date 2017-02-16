@@ -102,6 +102,8 @@ def test_dnn_conv_inplace():
     """
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
     img_shp = [2, 5, 6, 8]
     kern_shp = [3, 5, 5, 6]
     img = T.tensor4('img')
@@ -150,6 +152,7 @@ def test_dnn_conv_inplace():
 def test_pooling():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
 
     # 'average_exc_pad' is disabled for versions < 4004
     if dnn.version(raises=False) < 4004:
@@ -241,6 +244,8 @@ def test_pooling():
 def test_pooling_with_tensor_vars():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
     x = T.tensor4()
     ws = theano.shared(np.array([2, 2], dtype='int32'))
     stride = theano.shared(np.array([1, 1], dtype='int32'))
@@ -295,6 +300,7 @@ def test_pooling3d():
     # 3d pooling requires version 3 or newer.
     if not dnn.dnn_available(test_ctx_name) or dnn.version(raises=False) < 3000:
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
 
     # We force the FAST_RUN as we don't want the reference to run in DebugMode.
     mode_without_gpu_ref = theano.compile.mode.get_mode(
@@ -383,6 +389,7 @@ def test_pooling3d():
 def test_pooling_opt():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
 
     # 2D pooling
     x = T.matrix()
@@ -457,6 +464,7 @@ def test_pooling_opt_arbitrary_dimensions():
 
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
 
     # 'average_exc_pad' is disabled for versions < 4004
     if dnn.version(raises=False) < 4004:
@@ -875,6 +883,8 @@ def test_dnn_conv_border_mode():
 def test_dnn_conv_alpha_output_merge():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
     img = T.tensor4()
     kern = T.tensor4()
     out = T.tensor4()
@@ -938,6 +948,8 @@ def test_dnn_conv_alpha_output_merge():
 def test_dnn_conv_grad():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
     b = 1
     c = 4
     f = 3
@@ -1010,6 +1022,7 @@ def test_conv3d_fwd():
 
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
 
     def run_conv3d_fwd(inputs_shape, filters_shape, subsample,
                        border_mode, conv_mode):
@@ -1064,6 +1077,7 @@ def test_conv3d_bwd():
 
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
 
     def run_conv3d_bwd(inputs_shape, filters_shape, subsample,
                        border_mode, conv_mode):
@@ -1494,8 +1508,6 @@ def test_dnn_batchnorm_train_without_running_averages():
     # compile and run batch_normalization_train without running averages
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
-    if dnn.version(raises=False) < 5000:
-        raise SkipTest("batch normalization requires cudnn v5+")
     utt.seed_rng()
 
     x, scale, bias, dy = T.tensor4('x'), T.tensor4('scale'), T.tensor4('bias'), T.tensor4('dy')
@@ -1579,8 +1591,6 @@ def test_dnn_batchnorm_train_inplace():
     # test inplace_running_mean and inplace_running_var
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
-    if dnn.version(raises=False) < 5000:
-        raise SkipTest("batch normalization requires cudnn v5+")
     utt.seed_rng()
 
     x, scale, bias = T.tensor4('x'), T.tensor4('scale'), T.tensor4('bias')
@@ -1703,8 +1713,6 @@ def test_batchnorm_inference_inplace():
     # test inplace
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
-    if dnn.version(raises=False) < 5000:
-        raise SkipTest("batch normalization requires cudnn v5+")
     utt.seed_rng()
 
     x, scale, bias, mean, var = (T.tensor4(n) for n in ('x', 'scale', 'bias', 'mean', 'var'))
@@ -1732,8 +1740,6 @@ def test_batchnorm_inference_inplace():
 def test_dnn_batchnorm_valid_and_invalid_axes():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
-    if dnn.version(raises=False) < 5000:
-        raise SkipTest("batch normalization requires cudnn v5+")
 
     for vartype in (T.tensor5, T.tensor4, T.tensor3, T.matrix):
         x, scale, bias, mean, var, dy = (vartype(n)
@@ -1783,6 +1789,10 @@ def test_dnn_batchnorm_valid_and_invalid_axes():
 
 
 def test_dnn_rnn_gru():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
     # test params
     input_dim = 32
     hidden_dim = 16
@@ -1882,6 +1892,10 @@ def test_dnn_rnn_gru():
 
 
 def test_dnn_rnn_gru_bidi():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
     # test params
     input_dim = 32
     hidden_dim = 16
@@ -1931,6 +1945,10 @@ def test_dnn_rnn_gru_bidi():
 
 
 def test_dnn_rnn_lstm():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
     # test params
     input_dim = 32
     hidden_dim = 16
@@ -2006,6 +2024,10 @@ def test_dnn_rnn_lstm():
 
 
 def test_dnn_rnn_lstm_grad_c():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
+    utt.seed_rng()
+
     # test params
     input_dim = 32
     hidden_dim = 16

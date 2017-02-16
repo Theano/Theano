@@ -2217,6 +2217,7 @@ class _RNNSplitParams(DnnBase):
   %(b)s = pygpu_view(%(w)s, Py_None);
   %(b)s->ga.offset = off;
   %(b)s->ga.dimensions[0] = dims[0];
+  GpuArray_fix_flags(&%(b)s->ga);
   bshp = dims[0];
 
   err = cudnnGetRNNLinLayerMatrixParams(%(handle)s, %(desc)s, %(layer)s, xdesc, wdesc, w, %(id)s, odesc, &o);
@@ -2249,6 +2250,7 @@ class _RNNSplitParams(DnnBase):
   %(m)s->ga.dimensions[0] = dims[0] / bshp;
   %(m)s->ga.dimensions[1] = bshp;
   %(m)s->ga.strides[1] = %(m)s->ga.dimensions[0] * gpuarray_get_elsize(%(m)s->ga.typecode);
+  GpuArray_fix_flags(&%(m)s->ga);
             """ % kw2
 
         for i in range(len(outputs) // 2):
@@ -2262,7 +2264,7 @@ class _RNNSplitParams(DnnBase):
         return code
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 
 def _split_rnn_params(w, desc, layer, input_size, dtype, rnn_mode):

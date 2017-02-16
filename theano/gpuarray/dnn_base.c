@@ -30,7 +30,7 @@ c_set_tensorNd(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
 
   for (unsigned int _i = nd; _i > 0; _i--) {
     unsigned int i = _i - 1;
-    strs[i] = PyGpuArray_STRIDE(var, i) ?
+    strs[i] = (PyGpuArray_DIM(var, i) != 1 && PyGpuArray_STRIDE(var, i)) ?
       PyGpuArray_STRIDE(var, i)/ds : default_stride;
     default_stride *= PyGpuArray_DIM(var, i);
     dims[i] = PyGpuArray_DIM(var, i);
