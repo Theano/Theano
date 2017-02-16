@@ -63,7 +63,8 @@ from .nnet import (gpu_crossentropy_softmax_1hot_with_bias_dx,
                    gpu_softmax_with_bias, gpu_softmax)
 
 from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
-                       GpuCAReduceCPY, gpu_ca_reduce_cuda, gpu_erfinv, gpu_erfcinv)
+                       GpuCAReduceCPY, gpu_ca_reduce_cuda, gpu_erfinv, gpu_erfcinv,
+                       max_inputs_to_GpuElemwise)
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedSubtensor,
                         GpuAdvancedSubtensor1,
@@ -752,26 +753,38 @@ def local_gpua_elemwise(op, context_name, inputs, outputs):
         # cpu.
         gpu_output = res(*new_inputs)
         return [gpu_output]
+    elif op.scalar_op in (scalar.add, scalar.mul):
+        max_nb_inputs = max_inputs_to_GpuElemwise(outputs)
+        while len(inputs) > max_nb_inputs:
+            inputs = inputs[:-max_nb_inputs] + [res(*inputs[-max_nb_inputs:])]
+        return res(*inputs)
     else:
         return res
 
 
-def max_inputs_to_GpuElemwise(node):
-    ptr_size = 8
-    int_size = 4
+def split_huge_add_or_mul(node):
+    """
+    For add and mul, it can happen that we have too much input
+    That will make nvcc fail compilation of our current code.
+    We don't want node in the graph that can't execute
+    as this break DebugMode.
 
-    # we take the limit from CUDA for now
-    argument_limit = 232
-    ndim = node.inputs[0].type.ndim
-    # number of elements and shape
-    size_param_mandatory = (int_size * (ndim + 1)) + \
-        (ptr_size + int_size * ndim) * len(node.outputs)
+    This should not happen for other GpuElemwise as their is only the fusion
+    that can generate op with too much input and it check for that.
 
-    nb_bytes_avail = argument_limit - size_param_mandatory
-    nb_bytes_per_input = ptr_size + ndim * int_size
-    max_nb_inputs = nb_bytes_avail // nb_bytes_per_input
-
-    return max_nb_inputs
+    """
+    if node.op.scalar_op in (scal.add, scal.mul):
+        max_nb_inputs = max_inputs_to_GpuElemwise(node)
+        if max_nb_inputs <= 1 and len(node.inputs) > 1:
+            return False
+        while len(node.inputs) > max_nb_inputs:
+            inner_op = []
+            for i in xrange(0,
+                            len(node.inputs),
+                            max_nb_inputs):
+                inner_op.append(node.op(*node.inputs[i: i + max_nb_inputs]))
+            node = node.op(*inner_op).owner
+    return node
 
 gpu_local_elemwise_fusion = tensor.opt.local_elemwise_fusion_op(
     GpuElemwise,

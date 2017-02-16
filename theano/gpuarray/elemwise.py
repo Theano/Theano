@@ -41,6 +41,27 @@ def get_scal(dt):
     return scalar.get_scalar_type(dt)
 
 
+def max_inputs_to_GpuElemwise(node_or_outputs):
+    if isinstance(node_or_outputs, Apply):
+        outputs = node_or_outputs.outputs
+    else:
+        outputs = node_or_outputs
+    ptr_size = 8
+    int_size = 4
+
+    # we take the limit from CUDA for now
+    argument_limit = 232
+    ndim = outputs[0].type.ndim
+    # number of elements and shape
+    size_param_mandatory = (int_size * (ndim + 1)) + \
+        (ptr_size + int_size * ndim) * len(outputs)
+
+    nb_bytes_avail = argument_limit - size_param_mandatory
+    nb_bytes_per_input = ptr_size + ndim * int_size
+    max_nb_inputs = nb_bytes_avail // nb_bytes_per_input
+    return max_nb_inputs
+
+
 class GpuElemwise(HideC, Elemwise):
     """
     Elemwise on the GPU.
@@ -56,6 +77,9 @@ class GpuElemwise(HideC, Elemwise):
             return self.name
         items = str(sorted(self.inplace_pattern.items()))
         return "GpuElemwise{%s}%s<gpuarray>" % (self.scalar_op, items)
+
+    def max_inputs(self, node_or_outputs):
+        return max_inputs_to_GpuElemwise(node_or_outputs)
 
     def make_node(self, *inputs):
         ctx_name = infer_context_name(*inputs)
