@@ -228,45 +228,53 @@ class SeqOptimizer(Optimizer, list):
         nb_node_before = len(fgraph.apply_nodes)
         sub_profs = []
         nb_nodes = []
-        for optimizer in self:
-            try:
-                nb_nodes_before = len(fgraph.apply_nodes)
-                t0 = time.time()
-                sub_prof = optimizer.optimize(fgraph)
-                l.append(float(time.time() - t0))
-                sub_profs.append(sub_prof)
-                nb_nodes.append((nb_nodes_before,
-                                 len(fgraph.apply_nodes)))
-                if fgraph.profile:
-                    sub_validate_time.append(fgraph.profile.validate_time)
-            except AssertionError:
-                # do not catch Assertion failures
-                raise
-            except Exception as e:
-                if self.failure_callback:
-                    self.failure_callback(e, self, optimizer)
-                    continue
-                else:
+
+        self.pre_profile = (
+            self, l, -1, -1, nb_node_before,
+            -1, sub_profs, sub_validate_time,
+            nb_nodes, {})
+        try:
+            for optimizer in self:
+                try:
+                    nb_nodes_before = len(fgraph.apply_nodes)
+                    t0 = time.time()
+                    sub_prof = optimizer.optimize(fgraph)
+                    l.append(float(time.time() - t0))
+                    sub_profs.append(sub_prof)
+                    nb_nodes.append((nb_nodes_before,
+                                     len(fgraph.apply_nodes)))
+                    if fgraph.profile:
+                        sub_validate_time.append(fgraph.profile.validate_time)
+                except AssertionError:
+                    # do not catch Assertion failures
                     raise
+                except Exception as e:
+                    if self.failure_callback:
+                        self.failure_callback(e, self, optimizer)
+                        continue
+                    else:
+                        raise
+        finally:
 
-        if fgraph.profile:
-            validate_time = fgraph.profile.validate_time - validate_before
-            callbacks_time = {}
-            for k, v in iteritems(fgraph.execute_callbacks_times):
-                if k in callbacks_before:
-                    t = v - callbacks_before[k]
-                    if t > 0:
-                        callbacks_time[k] = t
-                else:
-                    callbacks_time[k] = v
-        else:
-            validate_time = None
-            callbacks_time = {}
-
-        callback_time = fgraph.execute_callbacks_time - callback_before
-        return (self, l, validate_time, callback_time, nb_node_before,
+            if fgraph.profile:
+                validate_time = fgraph.profile.validate_time - validate_before
+                callbacks_time = {}
+                for k, v in iteritems(fgraph.execute_callbacks_times):
+                    if k in callbacks_before:
+                        t = v - callbacks_before[k]
+                        if t > 0:
+                            callbacks_time[k] = t
+                    else:
+                        callbacks_time[k] = v
+            else:
+                validate_time = None
+                callbacks_time = {}
+            callback_time = fgraph.execute_callbacks_time - callback_before
+            self.pre_profile = (
+                self, l, validate_time, callback_time, nb_node_before,
                 len(fgraph.apply_nodes), sub_profs, sub_validate_time,
                 nb_nodes, callbacks_time)
+        return self.pre_profile
 
     def __str__(self):
         return "SeqOpt(%s)" % list.__str__(self)
