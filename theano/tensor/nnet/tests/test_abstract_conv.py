@@ -1620,18 +1620,12 @@ class TestConv2dGrads(unittest.TestCase):
             for bm in self.border_modes:
                 for ss in self.subsamples:
                     for ff in self.filter_flip:
-                        if self.filter_flip:
-                            fltr_shape = fltr_shape[::1]  # conv2d doesn't seem to have filter_flip
-
-                        # get random values of the right shapes
                         filter_val = self.random_stream.random_sample(fltr_shape).astype(theano.config.floatX)
                         out_grad_shape = theano.tensor.nnet.abstract_conv.get_conv_output_shape(image_shape=in_shape,
                                                                                                 kernel_shape=fltr_shape,
                                                                                                 border_mode=bm,
                                                                                                 subsample=ss)
                         out_grad_val = self.random_stream.random_sample(out_grad_shape).astype(theano.config.floatX)
-
-                        # old conv
                         conv_out = theano.tensor.nnet.conv2d(self.x,
                                                              filters=self.w,
                                                              border_mode=bm,
@@ -1640,11 +1634,9 @@ class TestConv2dGrads(unittest.TestCase):
                                                              filter_shape=fltr_shape,
                                                              filter_flip=ff
                                                              )
-                        # grad of old conv
                         conv_grad = theano.grad(conv_out.sum(), wrt=self.x, known_grads={conv_out: self.output_grad})
                         f_old = theano.function([self.w, self.output_grad], conv_grad)
 
-                        # new conv + grad (wrt i)
                         conv_wrt_i_out = theano.tensor.nnet.abstract_conv.conv2d_grad_wrt_inputs(output_grad=self.output_grad_wrt,
                                                                                                  filters=self.w,
                                                                                                  border_mode=bm,
