@@ -165,8 +165,10 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     }
 
     err = cudnnFindConvolutionBackwardDataAlgorithmEx(
-      _handle, APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output), desc,
-      APPLY_SPECIFIC(input), 1, &count, &choice, *(void **)tmpmem, free);
+      _handle, APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(kerns),
+      APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(output), desc,
+      APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(input),
+      1, &count, &choice, *(void **)tmpmem, free);
     gpudata_release(tmpmem);
 
     if (err != CUDNN_STATUS_SUCCESS) {
