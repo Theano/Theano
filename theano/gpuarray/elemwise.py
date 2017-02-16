@@ -93,6 +93,10 @@ class GpuElemwise(HideC, Elemwise):
         if len(outputs) > 1:
             raise NotImplementedError()
 
+        if len(inputs) > max_inputs_to_GpuElemwise(outputs):
+            raise NotImplementedError(
+                "Can not make this GpuElemwise with that much inputs")
+
         # Try to generate the kernel to catch SupportCodeErrors
         scal_ins = [get_scal(i.dtype) for i in inputs]
         fake_node = self.scalar_op.make_node(*[i() for i in scal_ins])
