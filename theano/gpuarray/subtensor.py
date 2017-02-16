@@ -21,8 +21,6 @@ from .type import GpuArrayType, gpu_context_type
 from .basic_ops import (as_gpuarray_variable, HideC, GpuKernelBase, Kernel,
                         infer_context_name, gpu_contiguous)
 
-import pdb
-
 iadd_reg = {}
 
 

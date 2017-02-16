@@ -20,8 +20,6 @@ from ..type import gpuarray_shared_constructor
 
 from .config import mode_with_gpu
 
-import pdb
-
 
 class G_subtensor(test_subtensor.T_subtensor):
     def shortDescription(self):
@@ -199,7 +197,7 @@ class test_gpuextractdiag(unittest.TestCase):
                 GpuExtractDiag(offset, axis1, axis2)(x).eval({x: np_x}),
                 np_x.diagonal(offset, axis1, axis2))
 
-            
+
 class test_gpuallocdiag(unittest.TestCase):
     def test_matrix(self):
         x = tensor.vector()
@@ -214,7 +212,7 @@ class test_gpuallocdiag(unittest.TestCase):
     def test_grad(self):
         x = tensor.vector()
         np_x = np.random.randn(7).astype(theano.config.floatX)
-        
+
         # offset = 0 case:
         mtx_x = GpuAllocDiag()(x)
         sum_mtx_x = tensor.sum(mtx_x)
