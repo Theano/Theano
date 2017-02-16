@@ -1,29 +1,57 @@
 #section support_code_apply
 
-int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
+int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp, PyArrayObject *subsample, PyArrayObject *padding,
+                              PyObject *bmode, PyObject *conv_flag, PyObject *precision_flag,
                               cudnnConvolutionDescriptor_t *desc) {
   cudnnStatus_t err;
-  int pad[3] = {PAD_0, PAD_1, PAD_2};
-  int strides[3] = {SUB_0, SUB_1, SUB_2};
+  int pad[3] = {0,0,0};
+  int strides[3] = {0,0,0};
   int upscale[3] = {1, 1, 1};
+  char *precision_flag;
+  char *conv_mode;
 
-#if BORDER_MODE == 0
+strides[0] = *(npy_int64 *)PyArray_GETPTR1(subsample, 0);
+strides[1] = *(npy_int64 *)PyArray_GETPTR1(subsample, 1);
+strides[2] = *(npy_int64 *)PyArray_GETPTR1(subsample, 2);
+
+if (PyInt_asLong(bmode) == 0L)
+{
   pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) - 1;
   pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) - 1;
-#if NB_DIMS > 2
   pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) - 1;
-#endif
-#elif BORDER_MODE == 2
+}
+else if (PyInt_asLong(bmode) == 2L)
+{
   pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) / 2;
   pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) / 2;
-#if NB_DIMS > 2
   pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) / 2;
-#endif
-#endif
+}
 
-  if (PyArray_DIM(filt_shp, 0) - 2 != NB_DIMS) {
+if (PyInt_asLong(conv_flag) == 1L)
+{
+  conv_mode = "CUDNN_CONVOLUTION";
+}
+else if (PyInt_asLong(conv_flag) == 2L)
+{
+  conv_mode = "CUDNN_CROSS_CORRELATION";
+}
+
+if (PyInt_asLong(precision_flag) == 1L)
+{
+  precision_flag = "CUDNN_DATA_HALF" ;
+}
+else if (PyInt_asLong(precision_flag) == 2L)
+{
+  precision_flag = "CUDNN_DATA_FLOAT";
+}
+else if (PyInt_asLong(precision_flag) == 3L)
+{
+  precision_flag = "CUDNN_DATA_DOUBLE";
+}
+
+  if (PyArray_DIM(filt_shp, 0) - 2 != 3) {
     PyErr_Format(PyExc_ValueError, "Filter shape has too many dimensions: "
-                 "expected %d, got %lld.", NB_DIMS,
+                 "expected 3, got %lld.", 
                  (long long)PyArray_DIM(filt_shp, 0));
     return -1;
   }
@@ -35,7 +63,7 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
     return -1;
   }
 
-  err = cudnnSetConvolutionNdDescriptor(*desc, NB_DIMS, pad, strides,
-                                        upscale, CONV_MODE, PRECISION);
+  err = cudnnSetConvolutionNdDescriptor(*desc, 3, pad, strides,
+                                        upscale, conv_mode, precision_flag);
   return 0;
 }

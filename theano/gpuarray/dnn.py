@@ -350,10 +350,12 @@ class GpuDnnConvDesc(COp):
     def do_constant_folding(self, node):
         return False
 
-    def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv',
-                 precision="float32"):
+    def __init__(self):
         COp.__init__(self, ["conv_desc.c"], "APPLY_SPECIFIC(conv_desc)")
 
+    def make_node(self, border_mode, kern_shape, precision="float32", subsample=(1, 1, 0), conv_mode='conv'):
+        if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
+            raise TypeError('kern must be 1D shape tensor')
         if isinstance(border_mode, integer_types):
             border_mode = (border_mode,) * len(subsample)
         if isinstance(border_mode, tuple):
@@ -368,17 +370,42 @@ class GpuDnnConvDesc(COp):
         self.border_mode = border_mode
         assert len(subsample) in (2, 3)
         self.subsample = subsample
+        if len(subsample) == 2:
+            subsample += (0,)
+        padding = [0, 0, 0]
+        bmode = 1
+        if isinstance(self.border_mode, tuple):
+            padding[0] = self.border_mode[0]
+            padding[1] = self.border_mode[1]
+            if len(self.border_mode) > 2:
+                padding[2] = self.border_mode[2]
+            bmode = 1
+        elif self.border_mode == "valid":
+            bmode = 1
+        elif self.border_mode == "half":
+            bmode = 2
+        elif self.border_mode == "full":
+            bmode = 0
+        else:
+            raise ValueError("Invalid value for border_mode")
         assert conv_mode in ('conv', 'cross')
         self.conv_mode = conv_mode
-
+        if self.conv_mode == 'conv':
+            conv_flag = 1  # 'CUDNN_CONVOLUTION'
+        elif self.conv_mode == 'cross':
+            conv_flag = 2  # 'CUDNN_CROSS_CORRELATION'
         assert precision in ['float16', 'float32', 'float64']
         self.precision = precision
+        precision_flag = 0
+        if self.precision == 'float16':
+            precision_flag = 1  # 'CUDNN_DATA_HALF'
+        elif self.precision == 'float32':
+            precision_flag = 2  # 'CUDNN_DATA_FLOAT'
+        else:
+            assert self.precision == 'float64'
+            precision_flag = 3  # 'CUDNN_DATA_DOUBLE'
 
-    def make_node(self, kern_shape):
-        if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
-            raise TypeError('kern must be 1D shape tensor')
-
-        node = Apply(self, [kern_shape],
+        node = Apply(self, [kern_shape, subsample, padding, bmode, conv_flag, precision_flag],
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
         # DebugMode cannot compare the values of CDataType variables, so by
@@ -388,52 +415,6 @@ class GpuDnnConvDesc(COp):
         out = node.outputs[0]
         out.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
         return node
-
-    def get_op_params(self):
-        pad0 = '0'
-        pad1 = '0'
-        pad2 = '0'
-        if isinstance(self.border_mode, tuple):
-            pad0 = str(self.border_mode[0])
-            pad1 = str(self.border_mode[1])
-            if len(self.border_mode) > 2:
-                pad2 = str(self.border_mode[2])
-            bmode = '1'
-        elif self.border_mode == "valid":
-            bmode = '1'
-        elif self.border_mode == "half":
-            bmode = '2'
-        elif self.border_mode == "full":
-            bmode = '0'
-        else:
-            raise ValueError("Invalid value for border_mode")
-
-        if self.conv_mode == 'conv':
-            conv_flag = 'CUDNN_CONVOLUTION'
-        else:
-            conv_flag = 'CUDNN_CROSS_CORRELATION'
-
-        sub0 = str(self.subsample[0])
-        sub1 = str(self.subsample[1])
-        if len(self.subsample) > 2:
-            sub2 = str(self.subsample[2])
-        else:
-            sub2 = '0'
-
-        if self.precision == 'float16':
-            precision = 'CUDNN_DATA_HALF'
-        elif self.precision == 'float32':
-            precision = 'CUDNN_DATA_FLOAT'
-        else:
-            assert self.precision == 'float64'
-            precision = 'CUDNN_DATA_DOUBLE'
-
-        return [('NB_DIMS', str(len(self.subsample))),
-                ('BORDER_MODE', bmode),
-                ('PAD_0', pad0), ('PAD_1', pad1), ('PAD_2', pad2),
-                ('CONV_MODE', conv_flag),
-                ('SUB_0', sub0), ('SUB_1', sub1), ('SUB_2', sub2),
-                ('PRECISION', precision)]
 
     def c_code_cache_version(self):
         return (super(GpuDnnConvDesc, self).c_code_cache_version(), version())
