@@ -831,6 +831,10 @@ class UsmmCscDense(gof.Op):
             npy_intp Sptr = PyArray_STRIDES(%(x_ptr)s)[0] / PyArray_DESCR(%(x_ptr)s)->elsize;
             npy_intp Sy = PyArray_STRIDES(%(y)s)[1] / PyArray_DESCR(%(y)s)->elsize;
 
+            // blas expects ints; convert here (rather than just making N etc ints) to avoid potential overflow in the negative-stride correction
+            int N32 = N;
+            int Sy32 = Sy;
+            int Szn32 = Szn;
 
             if (!(%(inplace)s))
             {
@@ -860,7 +864,7 @@ class UsmmCscDense(gof.Op):
                     if (Szn < 0)
                         z_row += (N - 1) * Szn;
 
-                    %(axpy)s((int*)&N, (%(conv_type)s*)&Amk, (%(conv_type)s*)y_row, (int*)&Sy, (%(conv_type)s*)z_row, (int*)&Szn);
+                    %(axpy)s(&N32, (%(conv_type)s*)&Amk, (%(conv_type)s*)y_row, &Sy32, (%(conv_type)s*)z_row, &Szn32);
                 }
             }
         }
@@ -869,7 +873,7 @@ class UsmmCscDense(gof.Op):
         return rval
 
     def c_code_cache_version(self):
-        return (1, blas.blas_header_version())
+        return (2, blas.blas_header_version())
 usmm_csc_dense = UsmmCscDense(inplace=False)
 usmm_csc_dense_inplace = UsmmCscDense(inplace=True)
 
@@ -1749,7 +1753,7 @@ class SamplingDotCSR(gof.Op):
         ])
 
     def c_code_cache_version(self):
-        return (2, blas.blas_header_version())
+        return (3, blas.blas_header_version())
 
     def c_support_code(self):
         return blas.blas_header_text()
@@ -1892,6 +1896,11 @@ PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
             memcpy(Dzi, Dpi, PyArray_DIMS(%(p_ind)s)[0]*sizeof(dtype_%(p_ind)s));
             memcpy(Dzp, Dpp, PyArray_DIMS(%(p_ptr)s)[0]*sizeof(dtype_%(p_ptr)s));
 
+            // blas expects ints; convert here (rather than just making K etc ints) to avoid potential overflow in the negative-stride correction
+            int K32 = K;
+            int Sdx32 = Sdx;
+            int Sdy32 = Sdy;
+
             for (npy_int32 m = 0; m < M; ++m) {
                 for (npy_int32 n_idx = Dpp[m * Sdpp]; n_idx < Dpp[(m+1)*Sdpp]; ++n_idx) {
                     const npy_int32 n = Dpi[n_idx * Sdpi]; // row index of non-null value for column K
@@ -1899,8 +1908,15 @@ PyErr_SetString(PyExc_NotImplementedError, "rank(y) != 2"); %(fail)s;}
                     const dtype_%(x)s* x_row = (dtype_%(x)s*)(PyArray_BYTES(%(x)s) + PyArray_STRIDES(%(x)s)[0] * m);
 
                     const dtype_%(y)s* y_col = (dtype_%(y)s*)(PyArray_BYTES(%(y)s) + PyArray_STRIDES(%(y)s)[0] * n);
+                    // dot expects pointer to the beginning of memory arrays,
+                    // so when the stride is negative, we need to get the
+                    // last element
+                    if (Sdx < 0)
+                        x_row += (K - 1) * Sdx;
+                    if (Sdy < 0)
+                        y_col += (K - 1) * Sdy;
 
-                    Dzd[n_idx * Sdzd] = Dpd[n_idx * Sdpd] * %(cdot)s((int*)&K, (const %(conv_type)s*)x_row, (int*)&Sdx, (const %(conv_type)s*)y_col, (int*)&Sdy);
+                    Dzd[n_idx * Sdzd] = Dpd[n_idx * Sdpd] * %(cdot)s(&K32, (const %(conv_type)s*)x_row, &Sdx32, (const %(conv_type)s*)y_col, &Sdy32);
                 }
             }
         }
