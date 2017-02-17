@@ -1721,6 +1721,8 @@ if imported_scipy_special:
     expected_chi2sf = scipy.stats.chi2.sf
     expected_j0 = scipy.special.j0
     expected_j1 = scipy.special.j1
+    expected_i0 = scipy.special.i0
+    expected_i1 = scipy.special.i1
     skip_scipy = False
     expected_erfcx = scipy.special.erfcx
 else:
@@ -1735,6 +1737,8 @@ else:
     expected_chi2sf = []
     expected_j0 = []
     expected_j1 = []
+    expected_i0 = []
+    expected_i1 = []
     skip_scipy = "scipy is not present"
 
 ErfTester = makeBroadcastTester(

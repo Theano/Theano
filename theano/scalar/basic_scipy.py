@@ -429,3 +429,61 @@ class J0(UnaryScalarOp):
                 j0(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')
 j0 = J0(upgrade_to_float, name='j0')
+
+
+class I1(UnaryScalarOp):
+    """
+    Modified Bessel function of order 1.
+    """
+
+    @staticmethod
+    def st_impl(x):
+        return scipy.special.i1(x)
+
+    def impl(self, x):
+        if imported_scipy_special:
+            return self.st_impl(x)
+        else:
+            super(I1, self).impl(x)
+
+    def grad(self, inp, grads):
+        raise NotImplementedError()
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        if node.inputs[0].type in float_types:
+            return """%(z)s =
+                i1(%(x)s);""" % locals()
+        raise NotImplementedError('only floating point is implemented')
+i1 = I1(upgrade_to_float, name='i1')
+
+
+class I0(UnaryScalarOp):
+    """
+    Modified Bessel function of order 0.
+    """
+
+    @staticmethod
+    def st_impl(x):
+        return scipy.special.i0(x)
+
+    def impl(self, x):
+        if imported_scipy_special:
+            return self.st_impl(x)
+        else:
+            super(I0, self).impl(x)
+
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
+        return [gz * i1(x)]
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        if node.inputs[0].type in float_types:
+            return """%(z)s =
+                i0(%(x)s);""" % locals()
+        raise NotImplementedError('only floating point is implemented')
+i0 = I0(upgrade_to_float, name='i0')

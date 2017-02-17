@@ -291,6 +291,16 @@ def j1_inplace(a):
 
 
 @_scal_inplace
+def i0_inplace(a):
+    """Modified Bessel function of order 0."""
+
+
+@_scal_inplace
+def i1_inplace(a):
+    "Modified Bessel function of order 1."
+
+
+@_scal_inplace
 def second_inplace(a):
     """Fill `a` with `b`"""
 
