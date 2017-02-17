@@ -2501,6 +2501,7 @@ class RoIPoolOp(gof.COp):
         pool_height = self.pooled_h
         pool_width = self.pooled_w
         n_channels = image_data.shape[1]
+        image_width = image_data.shape[3]
         assert image_data.ndim == 4
         assert roi.ndim == 2
         maxval_coordinates = []
@@ -2526,7 +2527,7 @@ class RoIPoolOp(gof.COp):
                         y2 = int(round(y1 + col_length))
                         interest_region = image_data[:, cn, y1:y2, x1:x2]
                         max_vals.append(numpy.max(interest_region))
-                        maxval_coordinates.append(numpy.argmax(interest_region))
+                        maxval_coordinates.append(numpy.argmax(interest_region) + image_width * y1 + x1)
         # Reshaped as (batch_index, num_roi, channels, pool_h * pool_w)
         max_vals = numpy.reshape(numpy.asarray(max_vals), (1, num_roi, n_channels, pool_height * pool_width))
         maxval_coordinates = numpy.reshape(numpy.asarray(maxval_coordinates), (1, num_roi, n_channels, pool_height * pool_width))
@@ -2584,6 +2585,45 @@ class RoIPoolGradOp(gof.COp):
                 ('POOLED_WIDTH', str(self.pooled_w)),
                 ('SPATIAL_SCALE', str(self.spatial_scale))]
 
+    def perform(self, node, inp, out):
+        image_data, roi, argmax_data, out_grad = inp
+        gx, = out
+        num_roi = roi.shape[0]
+        spatial_scale = self.spatial_scale
+        pool_height = self.pooled_h
+        pool_width = self.pooled_w
+        n_channels = image_data.shape[1]
+        image_height = image_data.shape[2]
+        image_width = image_data.shape[3]
+        assert image_data.ndim == 4
+        assert roi.ndim == 2
+        assert argmax_data.shape == out_grad.shape
+        gx[0] = numpy.zeros(image_data.shape)
+        gxx = gx[0]
+        for i in range(num_roi):
+            x_start = numpy.floor((roi[i, 1] * spatial_scale) + 0.5)
+            y_start = numpy.floor((roi[i, 2] * spatial_scale) + 0.5)
+            x_end = numpy.floor((roi[i, 3] * spatial_scale) + 0.5)
+            y_end = numpy.floor((roi[i, 4] * spatial_scale) + 0.5)
+
+            roi_height = max(y_end - y_start + 1, 1)
+            roi_width = max(x_end - x_start + 1, 1)
+            row_length = roi_width / pool_width
+            col_length = roi_height / pool_height
+
+            for cn in range(n_channels):
+                gxxx = gxx[0][cn]
+                for jy in range(image_height):
+                    for ix in range(image_width):
+                        x1 = int(round((ix - x_start) / row_length))
+                        x2 = int(round(x1 + (1 / row_length)))
+                        y1 = int(round((jy - y_start) / col_length))
+                        y2 = int(round(y1 + (1 / col_length)))
+                        interest_region = image_data[:, cn, y1:y2, x1:x2]
+                        for pr in range(pool_width * pool_height):
+                            mp_index = numpy.nonzero(interest_region == out_grad[0][i][cn][pr])
+                            if numpy.all([emp.size for emp in mp_index]):
+                                gxxx[jy][ix] += interest_region[mp_index]
 
     def c_code_cache_version(self):
         return (1, 0)
