@@ -246,15 +246,11 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
 
     try:
         if rtype is TensorConstant:
-            rval = rtype(
-                TensorType(dtype=x_.dtype, broadcastable=bcastable),
-                x_.copy(),
-                name=name)
-            return rval
-        else:
-            # leave the shape out of the type
-            return rtype(TensorType(dtype=x_.dtype, broadcastable=bcastable),
-                         x_, name=name)
+            x_ = x_.copy()
+        rval = rtype(
+            TensorType(dtype=x_.dtype, broadcastable=bcastable),
+            x_, name=name)
+        return rval
     except Exception:
         raise TypeError("Could not convert %s to TensorType" % x, type(x))
 
