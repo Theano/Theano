@@ -449,13 +449,6 @@ class I1(UnaryScalarOp):
     def grad(self, inp, grads):
         raise NotImplementedError()
 
-    def c_code(self, node, name, inp, out, sub):
-        x, = inp
-        z, = out
-        if node.inputs[0].type in float_types:
-            return """%(z)s =
-                i1(%(x)s);""" % locals()
-        raise NotImplementedError('only floating point is implemented')
 i1 = I1(upgrade_to_float, name='i1')
 
 
@@ -479,11 +472,4 @@ class I0(UnaryScalarOp):
         gz, = grads
         return [gz * i1(x)]
 
-    def c_code(self, node, name, inp, out, sub):
-        x, = inp
-        z, = out
-        if node.inputs[0].type in float_types:
-            return """%(z)s =
-                i0(%(x)s);""" % locals()
-        raise NotImplementedError('only floating point is implemented')
 i0 = I0(upgrade_to_float, name='i0')
