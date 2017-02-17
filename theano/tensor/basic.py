@@ -1262,7 +1262,6 @@ class MaxAndArgmax(Op):
         } else if(PyTuple_GET_SIZE(%(axis)s) == 1) {
             PyObject* axis_object = PyTuple_GET_ITEM(%(axis)s, 0);
             axis = (int)PyInt_AS_LONG(axis_object);
-            Py_XDECREF(axis_object);
             if (axis > PyArray_NDIM(%(x)s)-1 || axis < -PyArray_NDIM(%(x)s)) {
                 PyErr_SetString(PyExc_ValueError,
                 "MaxAndArgmax: bad axis argument");
@@ -1311,7 +1310,7 @@ class MaxAndArgmax(Op):
         return ret % locals()
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
     def infer_shape(self, node, shapes):
         ishape = shapes[0]
