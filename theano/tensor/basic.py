@@ -19,7 +19,7 @@ from theano.gof.type import Generic
 
 from theano.tensor import elemwise
 from theano.tensor.var import (AsTensorError, TensorVariable,
-                               TensorConstant,
+                               TensorConstant, TensorConstantSignature,
                                _tensor_py_operators)
 from theano.tensor.type import TensorType, values_eq_approx_always_true
 from theano.tensor.type_other import NoneConst
@@ -220,7 +220,7 @@ _as_tensor_variable = as_tensor_variable
 as_tensor = as_tensor_variable
 
 
-def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
+def constant(x, name=None, ndim=None, dtype=None):
     """Return a symbolic `Constant` with value `x`.
 
     Raises
@@ -229,6 +229,16 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
         `x` could not be converted to a numpy.ndarray.
     ValueError
         `x` could not be expanded to have ndim dimensions.
+
+    Note
+    ----
+    We create a small cache of frequently used constant.
+    This speed up the Merge optimization for big graph.
+    We want to cache all scalar to don't merge as frequently constants.
+    But we don't want to cache too much stuff.
+    So we cache integer with dtype [u]int and float where the value is
+    between -10 and 10.
+    We cache all broadcast pattern for scalar.
 
     """
     x_ = scal.convert(x, dtype=dtype)
@@ -245,41 +255,29 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
         assert len(bcastable) == ndim
 
     try:
-        if rtype is TensorConstant:
-            x_ = x_.copy()
-        rval = rtype(
-            TensorType(dtype=x_.dtype, broadcastable=bcastable),
-            x_, name=name)
-        return rval
+        type = TensorType(dtype=x_.dtype, broadcastable=bcastable)
+        if not constant.enable:
+            return TensorConstant(type, x_, name=name)
+
+        sig = TensorConstantSignature((type, x_))
+        if sig in constant_cache:
+            return constant_cache[sig]
+
+        ret = TensorConstant(type, x_, name=name)
+        if (x_.size == 1 and
+            (-10) <= x_ <= 10 and
+            (x_.dtype in int_dtypes or x_.dtype in uint_dtypes or
+             (x_.dtype in float_dtypes and
+              # Limit the size of the cache.
+              len(constant_cache) < 10000))):
+            constant_cache[sig] = ret
+            # This is needed to raise a good error to the user.
+            ret.cached = True
+        return ret
     except Exception:
         raise TypeError("Could not convert %s to TensorType" % x, type(x))
 
 
-def constant(x, name=None, ndim=None, dtype=None):
-    ret = constant_or_value(x, rtype=TensorConstant, name=name, ndim=ndim,
-                            dtype=dtype)
-
-    # We create a small cache of frequently used constant.
-    # This speed up the Merge optimization for big graph.
-    # We want to cache all scalar to don't merge as frequently constants.
-    # But we don't want to cache too much stuff
-    # So we cache integer with dtype [u]int and float where the value is
-    # between -10 and 10
-    # We want to cache all broadcast pattern for scalar.
-    if not constant.enable:
-        return ret
-    sig = ret.signature()
-    if (sig not in constant_cache and ret.data.size == 1 and
-        (-10) <= ret.data <= 10 and
-        (ret.dtype in int_dtypes or ret.dtype in uint_dtypes or
-         (ret.dtype in float_dtypes and
-          # Limit the size of the cache.
-          len(constant_cache) < 10000))):
-        constant_cache[sig] = ret
-        # This is needed to raise a good error to the user.
-        ret.cached = True
-
-    return constant_cache.get(sig, ret)
 constant.enable = True
 constant_cache = {}
 
