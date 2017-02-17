@@ -657,7 +657,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         kerns_vals = np.zeros(kerns_shape, dtype=theano.config.floatX)
-        kerns_shape = theano.shared(np.asarray(kerns_shape))
+        kerns_shape = theano.shared(np.asarray(kerns_shape, dtype=np.int64))
         desc = dnn.GpuDnnConvDesc(
             border_mode=border_mode,
             subsample=subsample,

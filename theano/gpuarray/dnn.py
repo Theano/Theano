@@ -386,7 +386,7 @@ class GpuDnnConvDesc(COp):
 
     def make_node(self, kern_shape):
         if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
-            raise TypeError('kern must be 1D shape tensor')
+            raise TypeError('kern must be an int64 1D shape tensor')
 
         node = Apply(self, [kern_shape],
                      [CDataType("cudnnConvolutionDescriptor_t",
