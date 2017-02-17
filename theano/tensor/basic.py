@@ -255,15 +255,15 @@ def constant(x, name=None, ndim=None, dtype=None):
         assert len(bcastable) == ndim
 
     try:
-        type = TensorType(dtype=x_.dtype, broadcastable=bcastable)
+        ttype = TensorType(dtype=x_.dtype, broadcastable=bcastable)
         if not constant.enable:
-            return TensorConstant(type, x_, name=name)
+            return TensorConstant(ttype, x_, name=name)
 
-        sig = TensorConstantSignature((type, x_))
+        sig = TensorConstantSignature((ttype, x_))
         if sig in constant_cache:
             return constant_cache[sig]
 
-        ret = TensorConstant(type, x_, name=name)
+        ret = TensorConstant(ttype, x_, name=name)
         if (x_.size == 1 and
             (-10) <= x_ <= 10 and
             (x_.dtype in int_dtypes or x_.dtype in uint_dtypes or
