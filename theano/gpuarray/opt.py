@@ -773,7 +773,7 @@ def split_huge_add_or_mul(node):
     that can generate op with too much input and it check for that.
 
     """
-    if node.op.scalar_op in (scal.add, scal.mul):
+    if node.op.scalar_op in (scalar.add, scalar.mul):
         max_nb_inputs = max_inputs_to_GpuElemwise(node)
         if max_nb_inputs <= 1 and len(node.inputs) > 1:
             return False

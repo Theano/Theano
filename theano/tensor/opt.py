@@ -7357,7 +7357,7 @@ def local_add_mul_fusion(node):
                 isinstance(inp.owner.op.scalar_op, s_op) and
                 # Do not duplicate the operation.
                 len(inp.clients) == 1 and
-                (nb_inputs+len(inp.owner.inputs) - 1) <= max_inputs):
+                (nb_inputs + len(inp.owner.inputs) - 1) <= max_inputs):
             new_inp.extend(inp.owner.inputs)
             fused = True
         else:
