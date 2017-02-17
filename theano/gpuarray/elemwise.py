@@ -47,7 +47,8 @@ def max_inputs_to_GpuElemwise(node_or_outputs):
     else:
         outputs = node_or_outputs
     ptr_size = 8
-    int_size = 4
+    # We compile code that would do indexing in int64
+    int_size = 8
 
     # we take the limit from CUDA for now
     argument_limit = 232
