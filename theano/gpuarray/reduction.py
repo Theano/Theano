@@ -66,7 +66,6 @@ class GpuMaxAndArgmax(Op):
         for (unsigned i = 0; i < %(name)s_redux_len; ++i) {
             PyObject* axis_object = PyTuple_GET_ITEM(%(axes)s, i);
             %(name)s_axes_to_reduce[i] = (unsigned) PyInt_AS_LONG(axis_object);
-            Py_XDECREF(axis_object);
         }
 
         size_t  %(name)s_input_ndim = PyGpuArray_NDIM(%(X)s);
@@ -136,3 +135,6 @@ class GpuMaxAndArgmax(Op):
         free(%(name)s_output_dims);
         free(%(name)s_axes_to_reduce);
         """ % {'name': name, 'X': inputs[0]}
+
+    def c_code_cache_version(self):
+        return (1,)
