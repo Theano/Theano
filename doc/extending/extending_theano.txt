@@ -99,7 +99,7 @@ possibilities you may encounter or need.  For that refer to
             pass
 
         # Other implementations (pycuda, ...):
-        def make_thunk(self, node, storage_map, _, _2):
+        def make_thunk(self, node, storage_map, _, _2, impl=None):
             pass
 
         # optional:
@@ -122,8 +122,6 @@ An op has to implement some methods defined in the the interface of
 the method :func:`make_node` or :attr:`itypes`, :attr:`otypes` and one of the 
 implementation methods, either :func:`perform`, :meth:`Op.c_code` 
 or :func:`make_thunk`.
-method :func:`make_node` and one of the implementation methods, either 
-:func:`perform`, :meth:`Op.c_code` or :func:`make_thunk`.
 
   :func:`make_node` method creates an Apply node representing the application
   of the op on the inputs provided. This method is reponsible for three things:
@@ -192,11 +190,12 @@ method :func:`make_node` and one of the implementation methods, either
       valid, but shouldn't be required anymore for this call.
       The returned function must ensure that it sets the computed
       variables as computed in the `compute_map`.
-
+    - ``impl`` allow to select between multiple implementation.
+      It should have a default value of None.
 
   :func:`make_thunk` is useful if you want to generate code and compile
   it yourself. For example, this allows you to use PyCUDA to compile GPU
-  code.
+  code and keep state in the thunk.
 
   If :func:`make_thunk()` is defined by an op, it will be used by Theano
   to obtain the op's implementation.
@@ -502,9 +501,6 @@ and ``b`` are equal.
             super(AXPBOp, self).__init__()
 
         def make_node(self, x):
-            # check that the theano version has support for __props__.
-            assert hasattr(self, '_props'), ("Your version of theano is too"
-                                             "old to support __props__.")
             x = theano.tensor.as_tensor_variable(x)
             return theano.Apply(self, [x], [x.type()])
 
@@ -681,8 +677,8 @@ For instance, to verify the Rop method of the DoubleOp, you can use this:
 Testing GPU Ops
 ^^^^^^^^^^^^^^^
 
-Ops to be executed on the GPU should inherit from the
-``theano.sandbox.cuda.GpuOp`` and not ``theano.Op``. This allows
+When using the old GPU backend, Ops to be executed on the GPU should inherit
+from ``theano.sandbox.cuda.GpuOp`` and not ``theano.Op``. This allows
 Theano to distinguish them. Currently, we use this to test if the
 NVIDIA driver works correctly with our sum reduction code on the GPU.
 

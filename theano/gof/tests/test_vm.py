@@ -1,11 +1,11 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import gc
 import sys
 import time
 import unittest
 
 from nose.plugins.skip import SkipTest
-import numpy
+import numpy as np
 from six import itervalues
 
 from theano import function
@@ -92,7 +92,7 @@ def test_speed():
     def time_numpy():
         steps_a = 5
         steps_b = 100
-        x = numpy.asarray([2.0, 3.0], dtype=theano.config.floatX)
+        x = np.asarray([2.0, 3.0], dtype=theano.config.floatX)
 
         numpy_version(x, steps_a)
         t0 = time.time()
@@ -194,6 +194,63 @@ def test_speed_lazy():
                                                        use_cloop=True))
 
 
+def test_partial_function():
+    from theano.tests import unittest_tools as utt
+
+    def check_partial_function(linker_name):
+        x = tensor.scalar('input')
+        y = x ** 2
+        f = theano.function([x], [y + 7, y - 9, y / 14.], mode=Mode(
+            optimizer=None, linker=linker_name))
+
+        assert f(3, output_subset=[0, 1, 2]) == f(3)
+        assert f(4, output_subset=[0, 2]) == [f(4)[0], f(4)[2]]
+        utt.assert_allclose(f(5), np.array([32., 16., 1.7857142857142858]))
+
+    check_partial_function(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
+    if not theano.config.cxx:
+        raise SkipTest("Need cxx for this test")
+    check_partial_function('cvm')
+
+
+def test_partial_function_with_output_keys():
+
+    def check_partial_function_output_keys(linker_name):
+        x = tensor.scalar('input')
+        y = 3 * x
+        f = theano.function([x], {'a': y * 5, 'b': y - 7}, mode=Mode(
+            optimizer=None, linker=linker_name))
+
+        assert f(5, output_subset=['a'])['a'] == f(5)['a']
+
+    check_partial_function_output_keys(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
+    if not theano.config.cxx:
+        raise SkipTest("Need cxx for this test")
+    check_partial_function_output_keys('cvm')
+
+
+def test_partial_function_with_updates():
+
+    def check_updates(linker_name):
+        x = tensor.lscalar('input')
+        y = theano.shared(np.asarray(1, 'int64'), name='global')
+        f = theano.function([x], [x, x + 34], updates=[(y, x + 1)], mode=Mode(
+            optimizer=None, linker=linker_name))
+        g = theano.function([x], [x - 6], updates=[(y, y + 3)], mode=Mode(
+            optimizer=None, linker=linker_name))
+
+        assert f(3, output_subset=[]) == []
+        assert y.get_value() == 4
+        assert g(30, output_subset=[0]) == [24]
+        assert g(40, output_subset=[]) == []
+        assert y.get_value() == 10
+
+    check_updates(vm.VM_Linker(allow_partial_eval=True, use_cloop=False))
+    if not theano.config.cxx:
+        raise SkipTest("Need cxx for this test")
+    check_updates('cvm')
+
+
 def test_allow_gc_cvm():
     mode = theano.config.mode
     if mode in ['DEBUG_MODE', 'DebugMode']:
@@ -225,7 +282,7 @@ if run_memory_usage_tests:
     def test_leak2():
         import theano.sandbox.cuda as cuda
         for i in xrange(1000000):
-            n = numpy.asarray([2.3, 4.5], dtype='f')
+            n = np.asarray([2.3, 4.5], dtype='f')
             c = sys.getrefcount(n)
             a = cuda.CudaNdarray(n)
             a.sum()
@@ -280,7 +337,7 @@ if run_memory_usage_tests:
             f_a = function([x], a,
                            mode=Mode(optimizer=None,
                                      linker=linker()))
-            inp = numpy.random.rand(1000000)
+            inp = np.random.rand(1000000)
             for i in xrange(100):
                 f_a(inp)
             if 0:  # this doesn't seem to work, prints 0 for everything
@@ -317,7 +374,7 @@ if run_memory_usage_tests:
             f_a = function([x], a,
                            mode=Mode(optimizer=None,
                                      linker=linker()))
-            inp = numpy.random.rand(1000000)
+            inp = np.random.rand(1000000)
             for i in xrange(500):
                 f_a(inp)
         print(1)

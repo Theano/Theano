@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import logging
 
@@ -191,8 +191,8 @@ class ExtractDiag(Op):
 
         if x.type.ndim != 2:
             raise TypeError('ExtractDiag only works on matrices', _x)
-        return Apply(self, [x], [x.type.__class__(broadcastable=(False,),
-                                                  dtype=x.type.dtype)()])
+        y = x.type.clone(broadcastable=(False,))()
+        return Apply(self, [x], [y])
 
     def perform(self, node, ins, outs):
         """ For some reason numpy.diag(x) is really slow, so we
@@ -456,10 +456,8 @@ class EighGrad(Op):
         # implements the necessary logic.
         out = self.tri0(g) + self.tri1(g).T
 
-        # The call to self.tri0 in perform upcast from float32 to
-        # float64 or from int* to int64 in numpy 1.6.1 but not in
-        # 1.6.2. We do not want version dependent dtype in Theano.
-        # We think it should be the same as the output.
+        # Make sure we return the right dtype even if NumPy performed
+        # upcasting in self.tri0.
         outputs[0][0] = numpy.asarray(out, dtype=node.outputs[0].dtype)
 
     def infer_shape(self, node, shapes):
@@ -533,7 +531,7 @@ class QRIncomplete(Op):
                            self.mode)
 
 
-def qr(a, mode="full"):
+def qr(a, mode="reduced"):
     """
     Computes the QR decomposition of a matrix.
     Factor the matrix a as qr, where q
@@ -544,7 +542,7 @@ def qr(a, mode="full"):
     a : array_like, shape (M, N)
         Matrix to be factored.
 
-    mode : {'reduced', 'complete', 'r', 'raw', 'full', 'economic'}, optional
+    mode : {'reduced', 'complete', 'r', 'raw'}, optional
         If K = min(M, N), then
 
         'reduced'
@@ -559,27 +557,10 @@ def qr(a, mode="full"):
         'raw'
           returns h, tau with dimensions (N, M), (K,)
 
-        'full'
-          alias of 'reduced', deprecated (default)
+        Note that array h returned in 'raw' mode is
+        transposed for calling Fortran.
 
-        'economic'
-          returns h from 'raw', deprecated.
-
-        The options 'reduced', 'complete', and 'raw' are new in numpy
-        1.8, see the notes for more information. The default is
-        'reduced' and to maintain backward compatibility with earlier
-        versions of numpy both it and the old default 'full' can be
-        omitted. Note that array h returned in 'raw' mode is
-        transposed for calling Fortran. The 'economic' mode is
-        deprecated. The modes 'full' and 'economic' may be passed
-        using only the first letter for backwards compatibility, but
-        all others must be spelled out.
-
-        Default mode is 'full' which is also default for numpy 1.6.1.
-
-        :note: Default mode was left to full as full and reduced are
-           both doing the same thing in the new numpy version but only
-           full works on the old previous numpy version.
+        Default mode is 'reduced'
 
     Returns
     -------
@@ -685,6 +666,14 @@ class lstsq(Op):
 
 
 def matrix_power(M, n):
+    """
+    Raise a square matrix to the (integer) power n.
+
+    Parameters
+    ----------
+    M : Tensor variable
+    n : Python int
+    """
     result = 1
     for i in xrange(n):
         result = theano.dot(result, M)
@@ -726,3 +715,121 @@ def norm(x, ord):
             raise ValueError(0)
     elif ndim > 2:
         raise NotImplementedError("We don't support norm witn ndim > 2")
+
+
+class TensorInv(Op):
+    """
+    Class wrapper for tensorinv() function;
+    Theano utilization of numpy.linalg.tensorinv;
+    """
+    _numop = staticmethod(numpy.linalg.tensorinv)
+    __props__ = ('ind',)
+
+    def __init__(self, ind=2):
+        self.ind = ind
+
+    def make_node(self, a):
+        a = as_tensor_variable(a)
+        out = a.type()
+        return Apply(self, [a], [out])
+
+    def perform(self, node, inputs, outputs):
+        (a,) = inputs
+        (x,) = outputs
+        x[0] = self._numop(a, self.ind)
+
+    def infer_shape(self, node, shapes):
+        sp = shapes[0][self.ind:] + shapes[0][:self.ind]
+        return [sp]
+
+
+def tensorinv(a, ind=2):
+    """
+    Does not run on GPU;
+    Theano utilization of numpy.linalg.tensorinv;
+
+    Compute the 'inverse' of an N-dimensional array.
+    The result is an inverse for `a` relative to the tensordot operation
+    ``tensordot(a, b, ind)``, i. e., up to floating-point accuracy,
+    ``tensordot(tensorinv(a), a, ind)`` is the "identity" tensor for the
+    tensordot operation.
+
+    Parameters
+    ----------
+    a : array_like
+        Tensor to 'invert'. Its shape must be 'square', i. e.,
+        ``prod(a.shape[:ind]) == prod(a.shape[ind:])``.
+    ind : int, optional
+        Number of first indices that are involved in the inverse sum.
+        Must be a positive integer, default is 2.
+
+    Returns
+    -------
+    b : ndarray
+        `a`'s tensordot inverse, shape ``a.shape[ind:] + a.shape[:ind]``.
+
+    Raises
+    ------
+    LinAlgError
+        If `a` is singular or not 'square' (in the above sense).
+    """
+    return TensorInv(ind)(a)
+
+
+class TensorSolve(Op):
+    """
+    Theano utilization of numpy.linalg.tensorsolve
+    Class wrapper for tensorsolve function.
+
+    """
+    _numop = staticmethod(numpy.linalg.tensorsolve)
+    __props__ = ('axes', )
+
+    def __init__(self, axes=None):
+        self.axes = axes
+
+    def make_node(self, a, b):
+        a = as_tensor_variable(a)
+        b = as_tensor_variable(b)
+        out_dtype = theano.scalar.upcast(a.dtype, b.dtype)
+        x = theano.tensor.matrix(dtype=out_dtype)
+        return Apply(self, [a, b], [x])
+
+    def perform(self, node, inputs, outputs):
+        (a, b,) = inputs
+        (x,) = outputs
+        x[0] = self._numop(a, b, self.axes)
+
+
+def tensorsolve(a, b, axes=None):
+    """
+    Theano utilization of numpy.linalg.tensorsolve. Does not run on GPU!
+
+    Solve the tensor equation ``a x = b`` for x.
+    It is assumed that all indices of `x` are summed over in the product,
+    together with the rightmost indices of `a`, as is done in, for example,
+    ``tensordot(a, x, axes=len(b.shape))``.
+
+    Parameters
+    ----------
+    a : array_like
+        Coefficient tensor, of shape ``b.shape + Q``. `Q`, a tuple, equals
+        the shape of that sub-tensor of `a` consisting of the appropriate
+        number of its rightmost indices, and must be such that
+        ``prod(Q) == prod(b.shape)`` (in which sense `a` is said to be
+        'square').
+    b : array_like
+        Right-hand tensor, which can be of any shape.
+    axes : tuple of ints, optional
+        Axes in `a` to reorder to the right, before inversion.
+        If None (default), no reordering is done.
+    Returns
+    -------
+    x : ndarray, shape Q
+    Raises
+    ------
+    LinAlgError
+        If `a` is singular or not 'square' (in the above sense).
+    """
+
+    return TensorSolve(axes)(a, b)

@@ -1,0 +1,47 @@
+.. _libdoc_gpuarray_op:
+
+================================
+List of gpuarray Ops implemented
+================================
+
+.. moduleauthor:: LISA
+
+Normally you should not call directly those Ops! Theano should
+automatically transform cpu ops to their gpu equivalent. So this list
+is just useful to let people know what is implemented on the gpu.
+
+Basic Op
+========
+
+.. automodule:: theano.gpuarray.basic_ops
+    :members:
+
+Blas Op
+=======
+
+.. automodule:: theano.gpuarray.blas
+    :members:
+
+.. automodule:: theano.gpuarray.nerv
+    :members:
+
+Elemwise Op
+===========
+
+.. automodule:: theano.gpuarray.elemwise
+    :members:
+
+Subtensor Op
+============
+
+.. automodule:: theano.gpuarray.subtensor
+    :members:
+
+Nnet Op
+=======
+
+.. automodule:: theano.gpuarray.nnet
+    :members:
+
+.. automodule:: theano.gpuarray.neighbours
+    :members:

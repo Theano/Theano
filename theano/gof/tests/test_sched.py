@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 from theano.gof.sched import (make_dependence_cmp, sort_apply_nodes,
                               reverse_dict, _toposort, posort)
 

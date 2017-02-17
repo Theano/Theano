@@ -1,12 +1,13 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 from functools import partial
+from collections import OrderedDict
+
 import sys
 import time
 import inspect
 
 import theano
 from theano import config
-from theano.compat import OrderedDict
 from theano.gof import graph
 
 
@@ -114,10 +115,20 @@ class Feature(object):
 class Bookkeeper(Feature):
 
     def on_attach(self, fgraph):
+        """
+        Called by FunctionGraph.attach_feature, the method that attaches
+        the feature to the FunctionGraph. Since this is called after the
+        FunctionGraph is initially populated, this is where you should
+        run checks on the initial contents of the FunctionGraph.
+        """
         for node in graph.io_toposort(fgraph.inputs, fgraph.outputs):
             self.on_import(fgraph, node, "on_attach")
 
     def on_detach(self, fgraph):
+        """
+        Should remove any dynamically added functionality
+        that it installed into the function_graph
+        """
         for node in graph.io_toposort(fgraph.inputs, fgraph.outputs):
             self.on_prune(fgraph, node, 'Bookkeeper.detach')
 
@@ -178,6 +189,10 @@ class History(Feature):
         fgraph.revert = partial(self.revert, fgraph)
 
     def on_detach(self, fgraph):
+        """
+        Should remove any dynamically added functionality
+        that it installed into the function_graph
+        """
         del fgraph.checkpoint
         del fgraph.revert
         del self.history[fgraph]
@@ -223,10 +238,19 @@ class Validator(Feature):
         fgraph.consistent = partial(self.consistent_, fgraph)
 
     def on_detach(self, fgraph):
+        """
+        Should remove any dynamically added functionality
+        that it installed into the function_graph
+        """
         del fgraph.validate
         del fgraph.consistent
 
     def validate_(self, fgraph):
+        """
+        If the caller is replace_all_validate, just raise the
+        exception. replace_all_validate will print out the
+        verbose output. Or it has to be done here before raise.
+        """
         t0 = time.time()
         try:
             ret = fgraph.execute_callbacks('validate')
@@ -289,6 +313,10 @@ class ReplaceValidate(History, Validator):
             self.replace_all_validate_remove, fgraph)
 
     def on_detach(self, fgraph):
+        """
+        Should remove any dynamically added functionality
+        that it installed into the function_graph
+        """
         History.on_detach(self, fgraph)
         Validator.on_detach(self, fgraph)
         del self._nodes_removed
@@ -304,6 +332,9 @@ class ReplaceValidate(History, Validator):
         chk = fgraph.checkpoint()
         if verbose is None:
             verbose = config.optimizer_verbose
+        if config.scan.debug:
+            scans = [n for n in fgraph.apply_nodes if isinstance(n.op, theano.scan_module.scan_op.Scan)]
+
         for r, new_r in replacements:
             try:
                 fgraph.replace(r, new_r, reason=reason, verbose=False)
@@ -337,6 +368,14 @@ class ReplaceValidate(History, Validator):
             if verbose:
                 print("validate failed on node %s.\n Reason: %s, %s" % (r, reason, e))
             raise
+        if config.scan.debug:
+            scans2 = [n for n in fgraph.apply_nodes if isinstance(n.op, theano.scan_module.scan_op.Scan)]
+            nb = len(scans)
+            nb2 = len(scans2)
+            if nb2 > nb:
+                print("Extra scan introduced", nb, nb2, getattr(reason, 'name', reason), r, new_r)
+            elif nb2 < nb:
+                print("Scan removed", nb, nb2, getattr(reason, 'name', reason), r, new_r)
         if verbose:
             print(reason, r, new_r)
         # The return is needed by replace_all_validate_remove
@@ -401,6 +440,10 @@ class NodeFinder(Bookkeeper):
         Bookkeeper.on_attach(self, fgraph)
 
     def on_detach(self, fgraph):
+        """
+        Should remove any dynamically added functionality
+        that it installed into the function_graph
+        """
         if self.fgraph is not fgraph:
             raise Exception("This NodeFinder instance was not attached to the"
                             " provided fgraph.")
@@ -450,6 +493,10 @@ class PrintListener(Feature):
             print("-- attaching to: ", fgraph)
 
     def on_detach(self, fgraph):
+        """
+        Should remove any dynamically added functionality
+        that it installed into the function_graph
+        """
         if self.active:
             print("-- detaching from: ", fgraph)
 

@@ -49,17 +49,17 @@ scan_eqopt2 -> They are all global optimizer. (in2out convert local to global).
                ScanSaveMem,
                in2out(remove_constants_and_unused_inputs_scan3)
 """
-
+from __future__ import absolute_import, print_function, division
 import logging
 import copy
 from sys import maxsize
+from collections import OrderedDict
 import numpy
 
 import theano
 from theano import tensor, scalar
 from theano.tensor import opt, get_scalar_constant_value, Alloc, AllocEmpty
 from theano import gof
-from theano.compat import OrderedDict
 from six import integer_types, iteritems
 from six.moves import xrange
 from theano.compile import optdb
@@ -202,7 +202,7 @@ def remove_constants_and_unused_inputs_scan(node):
         # DEBUG CHECK
         nwScan = scan_op.Scan(nw_inner, op_outs, nw_info)
         nw_outs = nwScan(*nw_outer, **dict(return_list=True))
-        return nw_outs
+        return OrderedDict([("remove", [node])] + list(zip(node.outputs, nw_outs)))
     else:
         return False
 
@@ -1008,8 +1008,8 @@ class ScanInplaceOptimizer(Optimizer):
             # gpuarray might be imported but not its GpuAlloc and
             # GpuAllopEmpty ops.
             try:
-                alloc_ops += (theano.sandbox.gpuarray.GpuAlloc,
-                              theano.sandbox.gpuarray.GpuAllocEmpty)
+                alloc_ops += (theano.gpuarray.GpuAlloc,
+                              theano.gpuarray.GpuAllocEmpty)
             except:
                 pass
 
@@ -1818,7 +1818,11 @@ class ScanMerge(gof.Optimizer):
 
         """
         rep = set_nodes[0]
-        if rep.op.as_while != node.op.as_while:
+        if (rep.op.as_while != node.op.as_while or
+                len(rep.inputs) != len(node.inputs) or
+                len(rep.outputs) != len(node.outputs) or
+                node.op.truncate_gradient != rep.op.truncate_gradient or
+                node.op.mode != rep.op.mode):
             return False
 
         nsteps = node.inputs[0]
@@ -1834,22 +1838,18 @@ class ScanMerge(gof.Optimizer):
             pass
 
         # Check to see if it is an input of a different node
-        can_add = True
         for nd in set_nodes:
             if find_up(node, nd) or find_up(nd, node):
-                can_add = False
+                return False
 
-        can_add = can_add and (node.op.truncate_gradient ==
-                               rep.op.truncate_gradient)
-        can_add = can_add and (node.op.mode == rep.op.mode)
         if not node.op.as_while:
-            return nsteps == rep_nsteps and can_add
+            return nsteps == rep_nsteps
         cond = node.op.outputs[-1]
         rep_cond = rep.op.outputs[-1]
         same_cond = scan_utils.equal_computations([cond], [rep_cond],
                                                   node.op.inputs,
                                                   rep.op.inputs)
-        return same_cond and (nsteps == rep_nsteps) and can_add
+        return same_cond and (nsteps == rep_nsteps)
 
     def apply(self, fgraph):
         # Collect all scan nodes ordered according to toposort
@@ -1964,8 +1964,10 @@ def scan_merge_inouts(node):
             outputs = [outputs]
 
         na = scan_args(outer_inputs, outputs, op.inputs, op.outputs, op.info)
+        remove = [node]
     else:
         na = a
+        remove = []
 
     # Now that the identical external inputs have been merged, we do a new
     # loop in order to merge external outputs that compute the same things
@@ -2069,7 +2071,9 @@ def scan_merge_inouts(node):
             seen.append((outer_imm, inner_omm, outer_omm, osl))
             new_outer_out_mit_mot.append(outer_omm)
     na.outer_out_mit_mot = new_outer_out_mit_mot
-
+    if remove:
+        return OrderedDict([("remove", remove)] +
+                           list(zip(node.outputs, na.outer_outputs)))
     return na.outer_outputs
 
 
@@ -2253,11 +2257,14 @@ class PushOutDot1(gof.Optimizer):
 # general I do not expect the sequence to run more then once
 scan_eqopt1 = theano.gof.EquilibriumDB()
 scan_seqopt1 = theano.gof.SequenceDB()
-
 scan_eqopt2 = theano.gof.EquilibriumDB()
+
+# scan_eqopt1 before ShapeOpt at 0.1
+# This is needed to don't have ShapeFeature trac old Scan that we
+# don't want to reintroduce.
+optdb.register('scan_eqopt1', scan_eqopt1, .05, 'fast_run', 'scan')
 # We run before blas opt at 1.7 and specialize 2.0
 # but after stabilize at 1.5. Should we put it before stabilize?
-optdb.register('scan_eqopt1', scan_eqopt1, .1, 'fast_run', 'scan')
 optdb.register('scan_eqopt2', scan_eqopt2, 1.6, 'fast_run', 'scan')
 optdb.register('scanOp_make_inplace',
                ScanInplaceOptimizer(typeInfer=None,

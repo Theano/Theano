@@ -289,13 +289,13 @@ functions but with different shared variables or updates. This is done using
 the :func:`copy()<theano.compile.function_module.Function.copy>` method of ``function`` objects. The optimized graph of the original function is copied,
 so compilation only needs to be performed once.
 
-Let's start from the accumulator defined above. Let's add the ``on_unused_input='ignore'`` parameter in case we don't want to use both of our current arguments in a future copy of the function (this isn't necessary on versions > 0.8.2):
+Let's start from the accumulator defined above:
 
 >>> import theano
 >>> import theano.tensor as T
 >>> state = theano.shared(0)
 >>> inc = T.iscalar('inc')
->>> accumulator = theano.function([inc], state, updates=[(state, state+inc)], on_unused_input='ignore')
+>>> accumulator = theano.function([inc], state, updates=[(state, state+inc)])
 
 We can use it to increment the state as usual:
 
@@ -320,7 +320,7 @@ The state of the first function is left untouched:
 10
 
 We now create a copy with updates removed using the ``delete_updates``
-parameter, which is set to ``False`` by default. Notice our new copy doesn't actually use the ``inc`` argument after removing the ``updates`` parameter:
+parameter, which is set to ``False`` by default:
 
 >>> null_accumulator = accumulator.copy(delete_updates=True)
 

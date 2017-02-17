@@ -4,6 +4,7 @@
 #   * Figure out how to compile and install documentation automatically
 #   * Add download_url
 
+from __future__ import absolute_import, print_function, division
 import os
 import subprocess
 import codecs
@@ -30,7 +31,6 @@ Operating System :: POSIX
 Operating System :: Unix
 Operating System :: MacOS
 Programming Language :: Python :: 2
-Programming Language :: Python :: 2.6
 Programming Language :: Python :: 2.7
 Programming Language :: Python :: 3
 Programming Language :: Python :: 3.3
@@ -51,9 +51,9 @@ AUTHOR              = "LISA laboratory, University of Montreal"
 AUTHOR_EMAIL        = "theano-dev@googlegroups.com"
 PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
-MINOR               = 8
-MICRO               = 2
-SUFFIX              = ""  # Should be blank except for rc's, betas, etc.
+MINOR               = 9
+MICRO               = 0
+SUFFIX              = "beta1"  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
 
 VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
@@ -161,11 +161,10 @@ def do_setup():
           license=LICENSE,
           platforms=PLATFORMS,
           packages=find_packages(),
-          # 1.7.0 give too much warning related to numpy.diagonal.
-          install_requires=['numpy>=1.7.1', 'scipy>=0.11', 'six>=1.9.0'],
+          install_requires=['numpy>=1.9.1', 'scipy>=0.14', 'six>=1.9.0'],
           # pygments is a dependency for Sphinx code highlight
           extras_require={
-              'test': ['nose>=1.3.0', 'nose-parameterized>=0.5.0'],
+              'test': ['nose>=1.3.0', 'nose-parameterized>=0.5.0', 'flake8<3'],
               'doc': ['Sphinx>=0.5.1', 'pygments']
           },
           package_data={
@@ -174,7 +173,11 @@ def do_setup():
               'theano.misc': ['*.sh'],
               'theano.d3viz' : ['html/*','css/*','js/*']
           },
-          scripts=['bin/theano-cache', 'bin/theano-nose', 'bin/theano-test'],
+          entry_points={
+              'console_scripts': ['theano-cache = bin.theano_cache:main',
+                                  'theano-nose = bin.theano_nose:main',
+                                  'theano-test = bin.theano_test:main']
+          },
           keywords=' '.join([
               'theano', 'math', 'numerical', 'symbolic', 'blas',
               'numpy', 'gpu', 'autodiff', 'differentiation'

@@ -4,17 +4,22 @@ WRITEME
 Defines the `Type` class.
 
 """
-from theano.compat import PY3
+from __future__ import absolute_import, print_function, division
+
+import ctypes
+
 from six import string_types
 
+import theano
 from theano.gof import utils
 from theano.gof.utils import MethodNotDefined, object2
 from theano.gof import graph
+from theano.configparser import change_flags
 
 ########
 # Type #
 ########
-from theano.gof.op import CLinkerObject
+from theano.gof.op import CLinkerObject, Op
 
 __docformat__ = "restructuredtext en"
 
@@ -587,6 +592,35 @@ class Generic(SingletonType):
 
 generic = Generic()
 
+_cdata_type = ctypes.py_object.from_address(
+    ctypes.addressof(ctypes.pythonapi.PyCapsule_Type)).value
+
+
+class _make_cdata(Op):
+    __props__ = ('rtype',)
+
+    def __init__(self, rtype):
+        assert isinstance(rtype, CDataType)
+        self.rtype = rtype
+
+    def do_constant_folding(self, node):
+        return False
+
+    def make_node(self, val):
+        from theano.scalar import as_scalar
+        from theano import Apply
+
+        val = as_scalar(val).astype('uint64')
+        return Apply(self, [val], [self.rtype()])
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        return """
+        %(out)s = (%(ctype)s)%(inp)s;
+        """ % dict(ctype=self.rtype.ctype, out=outputs[0], inp=inputs[0])
+
+    def c_code_cache_version(self):
+        return (0,)
+
 
 class CDataType(Type):
     """
@@ -601,39 +635,68 @@ class CDataType(Type):
         The type of the pointer (complete with the `*`).
 
     freefunc
-        A function to call to free the pointer. This function must have a `void`
-        return and take a single pointer argument.
+        A function to call to free the pointer. This function must
+        have a `void` return and take a single pointer argument.
 
     """
+    __props__ = ('ctype', 'freefunc', 'headers', 'header_dirs',
+                 'libraries', 'lib_dirs', 'extra_support_code')
 
-    import ctypes
-    if PY3:
-        _cdata_type = ctypes.py_object.from_address(
-            ctypes.addressof(ctypes.pythonapi.PyCapsule_Type)).value
-    else:
-        _cdata_type = ctypes.py_object.from_address(
-            ctypes.addressof(ctypes.pythonapi.PyCObject_Type)).value
-    del ctypes
-
-    def __init__(self, ctype, freefunc=None):
+    def __init__(self, ctype, freefunc=None, headers=None, header_dirs=None,
+                 libraries=None, lib_dirs=None, extra_support_code=""):
         assert isinstance(ctype, string_types)
         self.ctype = ctype
         if freefunc is not None:
             assert isinstance(freefunc, string_types)
         self.freefunc = freefunc
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.ctype == other.ctype and
-                self.freefunc == other.freefunc)
-
-    def __hash__(self):
-        return hash((type(self), self.ctype, self.freefunc))
+        if headers is None:
+            headers = ()
+        self.headers = tuple(headers)
+        if header_dirs is None:
+            header_dirs = ()
+        self.header_dirs = tuple(header_dirs)
+        if libraries is None:
+            libraries = ()
+        self.libraries = tuple(libraries)
+        if lib_dirs is None:
+            lib_dirs = ()
+        self.lib_dirs = tuple(lib_dirs)
+        self.extra_support_code = extra_support_code
+        self._fn = None
 
     def filter(self, data, strict=False, allow_downcast=None):
-        if data is not None and not isinstance(data, self._cdata_type):
-            raise TypeError("expected None or PyCObject/PyCapsule")
+        if data is not None and not isinstance(data, _cdata_type):
+            raise TypeError("expected None or a PyCapsule")
         return data
+
+    def _get_func(self):
+        """
+        Return a function that makes a value from an integer.
+
+        The integer value is assumed to be a valid pointer for the
+        type and no check is done to ensure that.
+        """
+        from theano.scalar import get_scalar_type
+
+        if self._fn is None:
+            with change_flags(compute_test_value='off'):
+                v = get_scalar_type('int64')()
+                self._fn = theano.function([v], _make_cdata(self)(v),
+                                           mode=theano.Mode(optimizer=None),
+                                           profile=False)
+        return self._fn
+
+    def make_value(self, ptr):
+        """
+        Make a value of this type.
+
+        Parameters
+        ----------
+        ptr : int
+            Integer representation of a valid pointer value
+
+        """
+        return self._get_func()(ptr)
 
     def c_declare(self, name, sub, check_input=True):
         return """
@@ -644,29 +707,20 @@ class CDataType(Type):
         return "%(name)s = NULL;" % dict(name=name)
 
     def c_extract(self, name, sub, check_input=True):
-        if PY3:
-            s = """
+        return """
   %(name)s = (%(ctype)s)PyCapsule_GetPointer(py_%(name)s, NULL);
   if (%(name)s == NULL) %(fail)s
-"""
-        else:
-            s = """
-  %(name)s = (%(ctype)s)PyCObject_AsVoidPtr(py_%(name)s);
-"""
-        return s % dict(name=name, ctype=self.ctype, fail=sub['fail'])
+        """ % dict(name=name, ctype=self.ctype, fail=sub['fail'])
 
     def c_support_code(self):
-        if PY3:
-            return """
-void _py3_destructor(PyObject *o) {
+        return """
+void _capsule_destructor(PyObject *o) {
     void *d = PyCapsule_GetContext(o);
     void *p = PyCapsule_GetPointer(o, NULL);
     void (*f)(void *) = (void (*)(void *))d;
     if (f != NULL) f(p);
 }
-"""
-        else:
-            return ""
+""" + self.extra_support_code
 
     def c_sync(self, name, sub):
         freefunc = self.freefunc
@@ -677,11 +731,9 @@ Py_XDECREF(py_%(name)s);
 if (%(name)s == NULL) {
   py_%(name)s = Py_None;
   Py_INCREF(py_%(name)s);
-} else """
-        if PY3:
-            s += """{
+} else {
   py_%(name)s = PyCapsule_New((void *)%(name)s, NULL,
-                              _py3_destructor);
+                              _capsule_destructor);
   if (py_%(name)s != NULL) {
     if (PyCapsule_SetContext(py_%(name)s, (void *)%(freefunc)s) != 0) {
       /* This won't trigger a call to freefunc since it could not be
@@ -691,11 +743,6 @@ if (%(name)s == NULL) {
       py_%(name)s = NULL;
     }
   }
-}"""
-        else:
-            s += """{
-  py_%(name)s = PyCObject_FromVoidPtr((void *)%(name)s,
-                                      (void (*)(void *))%(freefunc)s);
 }"""
         if self.freefunc is not None:
             s += """
@@ -708,11 +755,32 @@ if (py_%(name)s == NULL) { %(freefunc)s(%(name)s); }
         # free the data for us when released.
         return ""
 
+    def c_headers(self):
+        return self.headers
+
+    def c_header_dirs(self):
+        return self.header_dirs
+
+    def c_libraries(self):
+        return self.libraries
+
+    def c_lib_dirs(self):
+        return self.lib_dirs
+
     def c_code_cache_version(self):
-        return (2, self.ctype, self.freefunc)
+        return (3,)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.ctype)
+
+    def __setstate__(self, dct):
+        self.__dict__.update(dct)
+        if not hasattr(self, 'headers'):
+            self.headers = ()
+            self.header_dirs = ()
+            self.libraries = ()
+            self.lib_dirs = ()
+            self.extra_support_code = ""
 
 
 class CDataTypeConstant(graph.Constant):
@@ -725,4 +793,5 @@ class CDataTypeConstant(graph.Constant):
         # There is no way to put the data in the signature, so we
         # don't even try
         return (self.type,)
+
 CDataType.Constant = CDataTypeConstant

@@ -1,3 +1,5 @@
+from __future__ import absolute_import, print_function, division
+
 import numpy as np
 import os.path as pt
 import tempfile
@@ -9,9 +11,9 @@ import theano.d3viz as d3v
 from theano.d3viz.tests import models
 
 from nose.plugins.skip import SkipTest
-from theano.d3viz.formatting import pydot_imported
+from theano.d3viz.formatting import pydot_imported, pydot_imported_msg
 if not pydot_imported:
-    raise SkipTest('Missing requirements')
+    raise SkipTest('pydot not available: ' + pydot_imported_msg)
 
 
 class TestD3Viz(unittest.TestCase):
@@ -50,5 +52,10 @@ class TestD3Viz(unittest.TestCase):
 
     def test_ofg_nested(self):
         m = models.OfgNested()
+        f = th.function(m.inputs, m.outputs)
+        self.check(f)
+
+    def test_ofg_simple(self):
+        m = models.OfgSimple()
         f = th.function(m.inputs, m.outputs)
         self.check(f)

@@ -19,19 +19,20 @@ pycuda.elementwise.ElementwiseKernel. It must be wrapper by
 TheanoElementwiseKernel.
 
 """
+from __future__ import absolute_import, print_function, division
 from itertools import chain
 
-import numpy
+import numpy as np
 
 import theano
 from six.moves import xrange
 from theano.compat import izip
 from theano.gof import Op, Apply, local_optimizer, EquilibriumDB
-from theano.gof.utils import hash_from_dict
 from theano.sandbox.cuda import GpuElemwise, CudaNdarrayType, GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous)
 from theano.sandbox.cuda.opt import gpu_seqopt
+from theano.misc.frozendict import frozendict
 
 import pycuda
 from pycuda.compiler import SourceModule
@@ -182,13 +183,14 @@ class PycudaElemwiseKernelOp(GpuOp):
 class PycudaElemwiseSourceModuleOp(GpuOp):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
+    __props__ = ("scalar_op", "inplace_pattern")
 
     def __init__(self, scalar_op, inplace_pattern=None, name=None):
         if inplace_pattern is None:
-            inplace_pattern = {}
+            inplace_pattern = frozendict({})
         self.name = name
         self.scalar_op = scalar_op
-        self.inplace_pattern = inplace_pattern
+        self.inplace_pattern = frozendict(inplace_pattern)
 
     def __str__(self):
         if self.name is None:
@@ -201,15 +203,6 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
                 return self.__class__.__name__ + "{%s}" % (self.scalar_op)
         else:
             return self.name
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.scalar_op == other.scalar_op and
-                self.inplace_pattern == other.inplace_pattern)
-
-    def __hash__(self):
-        return (hash(type(self)) ^ hash(self.scalar_op) ^
-                hash_from_dict(self.inplace_pattern))
 
     def make_node(self, *inputs):
         _inputs = [gpu_contiguous(as_cuda_ndarray_variable(i)) for i in inputs]
@@ -264,13 +257,13 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
                             " inputs don't have the same shape!")
 
         if inputs[0].size > 512:
-            grid = (int(numpy.ceil(inputs[0].size / 512.)), 1)
+            grid = (int(np.ceil(inputs[0].size / 512.)), 1)
             block = (512, 1, 1)
         else:
             grid = (1, 1)
             block = (inputs[0].shape[0], inputs[0].shape[1], 1)
         self.pycuda_fct(inputs[0], inputs[1], z[0],
-                        numpy.intc(inputs[1].size), block=block, grid=grid)
+                        np.intc(inputs[1].size), block=block, grid=grid)
 
 
 class PycudaElemwiseSourceModuleMakeThunkOp(Op):
@@ -283,12 +276,7 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
             inplace_pattern = {}
         self.name = name
         self.scalar_op = scalar_op
-        self.inplace_pattern = inplace_pattern
-
-    # As we have a dict in props, we need to implement __hash__
-    def __hash__(self):
-        return hash((type(self), hash(self.scalar_op),
-                    hash_from_dict(self.inplace_pattern)))
+        self.inplace_pattern = frozendict(inplace_pattern)
 
     def __str__(self):
         if self.name is None:
@@ -319,7 +307,7 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
         out_node = Apply(self, _inputs, [otype() for o in xrange(self.nout)])
         return out_node
 
-    def make_thunk(self, node, storage_map, _, _2):
+    def make_thunk(self, node, storage_map, _, _2, impl=None):
         # TODO support broadcast!
         # TODO assert all input have the same shape
         fct_name = "pycuda_elemwise_%s" % str(self.scalar_op)
@@ -361,13 +349,13 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
                                 " inputs don't have the same shape!")
 
             if inputs[0][0].size > 512:
-                grid = (int(numpy.ceil(inputs[0][0].size / 512.)), 1)
+                grid = (int(np.ceil(inputs[0][0].size / 512.)), 1)
                 block = (512, 1, 1)
             else:
                 grid = (1, 1)
                 block = (inputs[0][0].shape[0], inputs[0][0].shape[1], 1)
             pycuda_fct(inputs[0][0], inputs[1][0], z[0],
-                       numpy.intc(inputs[1][0].size), block=block,
+                       np.intc(inputs[1][0].size), block=block,
                        grid=grid)
         thunk.inputs = inputs
         thunk.outputs = outputs

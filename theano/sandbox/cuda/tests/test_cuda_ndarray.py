@@ -1,5 +1,6 @@
-from __future__ import print_function
-import time, copy, sys, unittest
+from __future__ import absolute_import, print_function, division
+import copy
+import unittest
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
 
@@ -32,7 +33,7 @@ def advantage(cpu_dt, gpu_dt):
 
 
 def test_host_to_device():
-    #print >>sys.stdout, 'starting test_host_to_dev'
+    # print >>sys.stdout, 'starting test_host_to_dev'
     for shape in ((), (3,), (2, 3), (3, 4, 5, 6)):
         a = theano._asarray(numpy.random.rand(*shape), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
@@ -52,30 +53,29 @@ def test_host_to_device():
 
 
 def test_add_iadd_idiv():
-    for shapes in (
-                  [(5, 5), (5, 1)],
-                  [(5, 5), (1, 5)],
-                  (), (0,), (3,), (2, 3),
-                  (1, 10000000), (10000, 1000), (1000000, 10),
-                  (4100, 33, 34), (33, 4100, 34), (33, 34, 4100),
-                  (4100, 33, 3, 6), (33, 4100, 3, 6), (33, 3, 4100, 6), (33, 3, 6, 4100),
-                  (4100, 3, 34, 6), (3, 4100, 34, 6), (3, 34, 4100, 6), (3, 34, 6, 4100),
-                  (4100, 3, 4, 36), (3, 4100, 4, 36), (3, 4, 4100, 36), (3, 4, 36, 4100),
-                  (0, 0, 0, 0, 0),
-                  (3, 34, 35, 36, 37),
-                  (33, 34, 3, 36, 37),
-                  (33, 34, 35, 36, 3),
-                  (0, 0, 0, 0, 0, 0),
-                  (3, 34, 35, 36, 37, 2),
-                  (33, 34, 3, 36, 37, 2),
-                  (33, 34, 35, 36, 3, 2),
-                  (3, 4, 5, 6, 7, 1025),
-                  (3, 4, 5, 6, 1025, 7),
-                  (3, 4, 5, 1025, 6, 7),
-                  (3, 4, 1025, 5, 6, 7),
-                  (3, 1025, 4, 5, 6, 7),
-                  (1025, 3, 4, 5, 6, 7),
-                  ):
+    for shapes in ([(5, 5), (5, 1)],
+                   [(5, 5), (1, 5)],
+                   (), (0,), (3,), (2, 3),
+                   (1, 10000000), (10000, 1000), (1000000, 10),
+                   (4100, 33, 34), (33, 4100, 34), (33, 34, 4100),
+                   (4100, 33, 3, 6), (33, 4100, 3, 6), (33, 3, 4100, 6), (33, 3, 6, 4100),
+                   (4100, 3, 34, 6), (3, 4100, 34, 6), (3, 34, 4100, 6), (3, 34, 6, 4100),
+                   (4100, 3, 4, 36), (3, 4100, 4, 36), (3, 4, 4100, 36), (3, 4, 36, 4100),
+                   (0, 0, 0, 0, 0),
+                   (3, 34, 35, 36, 37),
+                   (33, 34, 3, 36, 37),
+                   (33, 34, 35, 36, 3),
+                   (0, 0, 0, 0, 0, 0),
+                   (3, 34, 35, 36, 37, 2),
+                   (33, 34, 3, 36, 37, 2),
+                   (33, 34, 35, 36, 3, 2),
+                   (3, 4, 5, 6, 7, 1025),
+                   (3, 4, 5, 6, 1025, 7),
+                   (3, 4, 5, 1025, 6, 7),
+                   (3, 4, 1025, 5, 6, 7),
+                   (3, 1025, 4, 5, 6, 7),
+                   (1025, 3, 4, 5, 6, 7),
+                   ):
         if isinstance(shapes, tuple):
             shape = shapes
             shape2 = shapes
@@ -98,18 +98,12 @@ def test_add_iadd_idiv():
 
         # add don't support stride
         if shape == shape2:
-            t0 = time.time()
             bsum = b0 + b1
             bsum = b0 + b1
-            t1 = time.time()
-            gpu_dt = t1 - t0
-            t0 = time.time()
             asum = a0 + a1
             asum = a0 + a1
-            t1 = time.time()
-            cpu_dt = t1 - t0
             # print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
-            assert numpy.allclose(asum,  numpy.asarray(bsum))
+            assert numpy.allclose(asum, numpy.asarray(bsum))
 
         # test not contiguous version.
         # should raise not implemented.
@@ -133,23 +127,9 @@ def test_add_iadd_idiv():
             raise Exception("You need to modify this case!")
         # TODO: b0[...,::-1] don't work
 
-        if shape == shape2:
-            t = False
-            try:
-                _c = _b+b1
-            except TypeError:
-                t = True
-            assert t
-
         # test inplace version
-        t0 = time.time()
         b0 += b1
-        t1 = time.time()
-        gpu_dt = t1 - t0
-        t0 = time.time()
         a0 += a1
-        t1 = time.time()
-        cpu_dt = t1 - t0
         # print shape, 'adding inplace', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
         assert numpy.allclose(a0, numpy.asarray(b0))
         assert numpy.allclose(a0, a0_orig + a1)
@@ -157,14 +137,14 @@ def test_add_iadd_idiv():
         b0 /= b1
         a0 /= a1
         assert numpy.allclose(a0, numpy.asarray(b0))
-        assert numpy.allclose(a0, (a0_orig + a1)/a1)
+        assert numpy.allclose(a0, (a0_orig + a1) / a1)
 
         # test inplace version
         # for not contiguous input
         b0 += _b
         a0 += a1[..., ::-1]
         assert numpy.allclose(a0, numpy.asarray(b0))
-        assert numpy.allclose(a0, (a0_orig+a1)/a1+a1[..., ::-1])
+        assert numpy.allclose(a0, (a0_orig + a1) / a1 + a1[..., ::-1])
 
         b0 /= _b
         a0 /= a1[..., ::-1]
@@ -174,48 +154,42 @@ def test_add_iadd_idiv():
 
 
 def test_exp():
-    #print >>sys.stdout, 'starting test_exp'
+    # print >>sys.stdout, 'starting test_exp'
     for shape in ((), (3,), (2, 3),
                   (1, 10000000), (10, 1000000),
                   (100, 100000), (1000, 10000), (10000, 1000)):
         a0 = theano._asarray(numpy.random.rand(*shape), dtype='float32')
         a1 = a0.copy()
         b0 = cuda_ndarray.CudaNdarray(a0)
-        b1 = cuda_ndarray.CudaNdarray(a1)
-        t0 = time.time()
+        cuda_ndarray.CudaNdarray(a1)
         bsum = b0.exp()
-        t1 = time.time()
-        gpu_dt = t1 - t0
-        t0 = time.time()
         asum = numpy.exp(a1)
-        t1 = time.time()
-        cpu_dt = t1 - t0
         # print shape, 'adding ', a0.size, 'cpu', cpu_dt, 'advantage', advantage(cpu_dt, gpu_dt)
-        #c = numpy.asarray(b0+b1)
+        # c = numpy.asarray(b0+b1)
         if asum.shape:
             assert numpy.allclose(asum, numpy.asarray(bsum))
 
 
 def test_copy():
-    #print >>sys.stdout, 'starting test_copy'
+    # print >>sys.stdout, 'starting test_copy'
     shape = (500, 499)
     a = theano._asarray(numpy.random.rand(*shape), dtype='float32')
 
-    #print >>sys.stdout, '.. creating device object'
+    # print >>sys.stdout, '.. creating device object'
     b = cuda_ndarray.CudaNdarray(a)
 
-    #print >>sys.stdout, '.. copy'
+    # print >>sys.stdout, '.. copy'
     c = copy.copy(b)
-    #print >>sys.stdout, '.. deepcopy'
+    # print >>sys.stdout, '.. deepcopy'
     d = copy.deepcopy(b)
 
-    #print >>sys.stdout, '.. comparisons'
+    # print >>sys.stdout, '.. comparisons'
     assert numpy.allclose(a, numpy.asarray(b))
     assert numpy.allclose(a, numpy.asarray(c))
     assert numpy.allclose(a, numpy.asarray(d))
     b += b
-    assert numpy.allclose(a+a, numpy.asarray(b))
-    assert numpy.allclose(a+a, numpy.asarray(c))
+    assert numpy.allclose(a + a, numpy.asarray(b))
+    assert numpy.allclose(a + a, numpy.asarray(c))
     assert numpy.allclose(a, numpy.asarray(d))
 
 
@@ -237,8 +211,8 @@ def test_nvcc_bug():
     assert numpy.allclose(a, numpy.asarray(c))
     assert numpy.allclose(a, numpy.asarray(d))
     b += b
-    assert numpy.allclose(a+a, numpy.asarray(b))
-    assert numpy.allclose(a+a, numpy.asarray(c))
+    assert numpy.allclose(a + a, numpy.asarray(b))
+    assert numpy.allclose(a + a, numpy.asarray(c))
     assert numpy.allclose(a, numpy.asarray(d))
 
 
@@ -318,7 +292,7 @@ class test_DimShuffle(unittest.TestCase):
 
 
 def test_dot():
-    #print >>sys.stdout, 'starting test_dot'
+    # print >>sys.stdout, 'starting test_dot'
 
     utt.seed_rng()
     rng = numpy.random.RandomState(utt.fetch_seed())
@@ -336,7 +310,7 @@ def test_dot():
 
     numpy_version = numpy.dot(a0, a1.T)
     transposed = cuda_ndarray.dimshuffle(b1, (1, 0))
-    cuda_version = cuda_ndarray.dot(b0,  transposed)
+    cuda_version = cuda_ndarray.dot(b0, transposed)
 
     assert _allclose(numpy_version, cuda_version)
 
@@ -347,14 +321,16 @@ def test_dot():
     b0 = cuda_ndarray.CudaNdarray(a0)
 
     assert _allclose(numpy.dot(a0.T, a1),
-            cuda_ndarray.dot(cuda_ndarray.dimshuffle(b0, (1, 0)), b1))
+                     cuda_ndarray.dot(
+                         cuda_ndarray.dimshuffle(b0, (1, 0)), b1))
 
     a1 = theano._asarray(rng.randn(6, 7), dtype='float32')
     b1 = cuda_ndarray.CudaNdarray(a1)
 
-    assert _allclose(numpy.dot(a0.T, a1.T),
-            cuda_ndarray.dot(cuda_ndarray.dimshuffle(b0, (1, 0)),
-                             cuda_ndarray.dimshuffle(b1, (1, 0))))
+    assert _allclose(
+        numpy.dot(a0.T, a1.T),
+        cuda_ndarray.dot(cuda_ndarray.dimshuffle(b0, (1, 0)),
+                         cuda_ndarray.dimshuffle(b1, (1, 0))))
 
 
 def test_sum():
@@ -367,8 +343,8 @@ def test_sum():
     assert numpy.allclose(a0.sum(),
                           numpy.asarray(b0.reduce_sum([1, 1])))
 
-    a0sum = a0.sum(axis=0)
-    b0sum = b0.reduce_sum([1, 0])
+    a0.sum(axis=0)
+    b0.reduce_sum([1, 0])
 
     # print 'asum\n',a0sum
     # print 'bsum\n',numpy.asarray(b0sum)
@@ -399,31 +375,30 @@ def test_sum():
 
 
 def test_reshape():
-    shapelist = [
-            ((1, 2, 3), (1, 2, 3)),
-            ((1,), (1,)),
-            ((1, 2, 3), (3, 2, 1)),
-            ((1, 2, 3), (6,)),
-            ((1, 2, 3, 2), (6, 2)),
-            ((2, 3, 2), (6, 2)),
-            ((2, 3, 2), (12,))
-             ]
+    shapelist = [((1, 2, 3), (1, 2, 3)),
+                 ((1,), (1,)),
+                 ((1, 2, 3), (3, 2, 1)),
+                 ((1, 2, 3), (6,)),
+                 ((1, 2, 3, 2), (6, 2)),
+                 ((2, 3, 2), (6, 2)),
+                 ((2, 3, 2), (12,))
+                 ]
 
     bad_shapelist = [
-            ((1, 2, 3), (1, 2, 4)),
-            ((1,), (2,)),
-            ((1, 2, 3), (2, 2, 1)),
-            ((1, 2, 3), (5,)),
-            ((1, 2, 3, 2), (6, 3)),
-            ((2, 3, 2), (5, 2)),
-            ((2, 3, 2), (11,))
-            ]
+        ((1, 2, 3), (1, 2, 4)),
+        ((1,), (2,)),
+        ((1, 2, 3), (2, 2, 1)),
+        ((1, 2, 3), (5,)),
+        ((1, 2, 3, 2), (6, 3)),
+        ((2, 3, 2), (5, 2)),
+        ((2, 3, 2), (11,))
+        ]
 
     utt.seed_rng()
     rng = numpy.random.RandomState(utt.fetch_seed())
 
     def subtest(shape_1, shape_2, rng):
-        #print >> sys.stdout, "INFO: shapes", shape_1, shape_2
+        # print >> sys.stdout, "INFO: shapes", shape_1, shape_2
         a = theano._asarray(rng.randn(*shape_1), dtype='float32')
         b = cuda_ndarray.CudaNdarray(a)
 
@@ -459,8 +434,8 @@ def test_reshape():
         b = cuda_ndarray.CudaNdarray(a)
 
         try:
-            bb = b.reshape(shape_2)
-        except Exception as ValueError:
+            b.reshape(shape_2)
+        except Exception:
             return
         assert False
 
@@ -477,13 +452,13 @@ def test_reshape():
 
 def test_getshape():
     shapelist = [
-            ((1, 2, 3), (1, 2, 3)),
-            ((1,), (1,)),
-            ((1, 2, 3), (3, 2, 1)),
-            ((1, 2, 3), (6,)),
-            ((1, 2, 3, 2), (6, 2)),
-            ((2, 3, 2), (6, 2))
-             ]
+        ((1, 2, 3), (1, 2, 3)),
+        ((1,), (1,)),
+        ((1, 2, 3), (3, 2, 1)),
+        ((1, 2, 3), (6,)),
+        ((1, 2, 3, 2), (6, 2)),
+        ((2, 3, 2), (6, 2))
+        ]
 
     def subtest(shape):
         a = theano._asarray(numpy.random.rand(*shape_1), dtype='float32')
@@ -509,7 +484,7 @@ def test_stride_manipulation():
 
     b_strides = b._strides
     for i in xrange(len(b.shape)):
-        offset += (b.shape[i]-1) * b_strides[i]
+        offset += (b.shape[i] - 1) * b_strides[i]
         v._set_stride(i, -b_strides[i])
 
     v._dev_data += offset * sizeof_float
@@ -699,8 +674,8 @@ def test_setitem_matrixvector1():
     assert numpy.allclose(a, numpy.asarray(_a))
 
     # test direct transfert from numpy
-    _a[:, 1] =  b*100
-    a[:, 1] =  b*100
+    _a[:, 1] = b * 100
+    a[:, 1] = b * 100
     assert numpy.allclose(a, numpy.asarray(_a))
 
     row = theano._asarray([777, 888, 999], dtype='float32')
@@ -725,8 +700,8 @@ def test_setitem_matrix_tensor3():
     assert numpy.allclose(a, numpy.asarray(_a))
 
     # test direct transfert from numpy
-    _a[:, 1, 1] = b*100
-    a[:, 1, 1] = b*100
+    _a[:, 1, 1] = b * 100
+    a[:, 1, 1] = b * 100
     assert numpy.allclose(a, numpy.asarray(_a))
 
     row = theano._asarray([777, 888, 999], dtype='float32')
@@ -752,7 +727,7 @@ def test_setitem_matrix_bad_shape():
         # attempt to assign the ndarray b with setitem
         _a[:, 1, 1] = _b
         assert False
-    except ValueError as e:
+    except ValueError:
         # print e
         assert True
 
@@ -761,7 +736,7 @@ def test_setitem_matrix_bad_shape():
         # attempt to assign the ndarray b with setitem
         _a[1, 1, :] = b
         assert False
-    except ValueError as e:
+    except ValueError:
         # print e
         assert True
 
@@ -779,7 +754,7 @@ def test_setitem_matrix_bad_ndim():
         # attempt to assign the ndarray b with setitem
         _a[:, :, 1] = _b
         assert False
-    except ValueError as e:
+    except ValueError:
         # print e
         assert True
 
@@ -788,7 +763,7 @@ def test_setitem_matrix_bad_ndim():
         # attempt to assign the ndarray b with setitem
         _a[1, :, :] = b
         assert False
-    except ValueError as e:
+    except ValueError:
         # print e
         assert True
 
@@ -806,7 +781,7 @@ def test_setitem_matrix_bad_type():
         # attempt to assign the ndarray b with setitem
         _a[1, :, :] = b
         assert False
-    except TypeError as e:
+    except TypeError:
         # print e
         assert True
 
@@ -832,8 +807,8 @@ def test_setitem_assign_to_slice():
 
     # test direct transfert from numpy
     _d = _a[1, :, :]
-    _d[1, :] = b*10
-    a[1, :, :][1, :] = b*10
+    _d[1, :] = b * 10
+    a[1, :, :][1, :] = b * 10
     assert numpy.allclose(a, numpy.asarray(_a))
 
 
@@ -923,7 +898,7 @@ def test_setitem_rightvalue_ndarray_fails():
     b = theano._asarray([7, 8, 9, 10], dtype='float32')
     _b = cuda_ndarray.CudaNdarray(b)
     b5 = theano._asarray([7, 8, 9, 10, 11], dtype='float32')
-    _b5 = cuda_ndarray.CudaNdarray(b)
+    cuda_ndarray.CudaNdarray(b)
 
     # attempt to assign the ndarray b with setitem
     _a[:, :, 1] = _b
@@ -941,9 +916,9 @@ def test_setitem_rightvalue_ndarray_fails():
     # without same number of dim
     try:
         _a[0, :, :] = mat
-        #a[0, :, :] = mat
-        #assert numpy.allclose(numpy.asarray(_a), a)
-    except ValueError as e:
+        # a[0, :, :] = mat
+        # assert numpy.allclose(numpy.asarray(_a), a)
+    except ValueError:
         pass
 
     # test direct transfert from numpy with broadcast
@@ -964,7 +939,7 @@ def test_zeros_basic():
         _n = numpy.zeros(shp, dtype="float32")
         assert numpy.allclose(numpy.asarray(_a), _n)
         assert _a.shape == _n.shape
-        assert all(_a._strides == numpy.asarray(_n.strides)/4)
+        assert all(_a._strides == numpy.asarray(_n.strides) / 4)
 
     # TODO:The following don't have the same stride!
     #      This should be fixed with the new GpuNdArray.
@@ -1039,10 +1014,7 @@ def test_is_c_contiguous():
     assert not a[::2].is_c_contiguous()
 
 if __name__ == '__main__':
-    test_zeros_basic_3d_tensor()
-    test_zeros_basic_vector()
     test_setitem_matrixvector1()
     test_setitem_matrix_tensor3()
-    test_setitem_broadcast_must_fail()
     test_setitem_assign_to_slice()
     test_setitem_rightvalue_ndarray_fails()

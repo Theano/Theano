@@ -1,7 +1,7 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 from copy import deepcopy
 
-import numpy
+import numpy as np
 
 import theano
 from theano.gof.op import PureOp
@@ -25,7 +25,7 @@ class IfElseIfElseIf(PureOp):
         assert t3.type == f3.type
         return Apply(self, [c1, t1, c2, t2, c3, t3, f3], [t1.type()])
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def make_thunk(self, node, storage_map, compute_map, no_recycling, impl):
 
         input_computed = [compute_map[v] for v in node.inputs]
         output_computed = [compute_map[v] for v in node.outputs]
@@ -93,7 +93,7 @@ class NotImplementedOp(PureOp):
     def make_node(self, x):
         return Apply(self, [x], [x.type()])
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def make_thunk(self, node, storage_map, compute_map, no_recycling, impl):
         def thunk():
             raise self.E()
         thunk.lazy = False
@@ -154,13 +154,13 @@ def more_complex_test():
                                                  optimizer='fast_run'))
     if theano.config.vm.lazy is False:
         try:
-            f(1, 0, numpy.array(10, dtype=x1.dtype), 0)
+            f(1, 0, np.array(10, dtype=x1.dtype), 0)
             assert False
         except NotImplementedOp.E:
             pass
     else:
-        print(f(1, 0, numpy.array(10, dtype=x1.dtype), 0))
-        assert f(1, 0, numpy.array(10, dtype=x1.dtype), 0) == 20.5
+        print(f(1, 0, np.array(10, dtype=x1.dtype), 0))
+        assert f(1, 0, np.array(10, dtype=x1.dtype), 0) == 20.5
     print('... passed')
 
 if __name__ == '__main__':

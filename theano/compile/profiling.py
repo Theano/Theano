@@ -2,14 +2,15 @@
 ProfileStats object for runtime and memory profiling.
 
 """
-from __future__ import print_function
 #
-# TODO: measure memory usage like ProfileMode did
-# TODO: put the optimization tips into a tips section??
 # TODO: add tip to use specify_shape (is specify_shape even in library doc?)
 # TODO: ensure field width for string fields makes columns line up
 # TODO: what to do about 'diff summary'? (ask Fred?)
 #
+from __future__ import absolute_import, print_function, division
+
+import logging
+
 __authors__ = "James Bergstra"
 __reviewer__ = "Razvan Pascanu"
 __copyright__ = "(c) 2011, Universite de Montreal"
@@ -17,20 +18,27 @@ __license__ = "3-clause BSD License"
 __contact__ = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
+
 import atexit
 import copy
+import operator
 import os
 import sys
 import time
 from collections import defaultdict
 
-import numpy
+import numpy as np
 
 import theano
 from six import iteritems
 from theano.gof import graph
 
+logger = logging.getLogger('theano.compile.profiling')
+
 theano_imported_time = time.time()
+total_fct_exec_time = 0.
+total_graph_opt_time = 0.
+total_time_linker = 0.
 config = theano.config
 
 _atexit_print_list = []
@@ -42,7 +50,80 @@ def _atexit_print_fn():
     Print ProfileStat objects in _atexit_print_list to _atexit_print_file.
 
     """
-    to_sum = []
+    if config.profile:
+        to_sum = []
+
+        if config.profiling.destination == 'stderr':
+            destination_file = sys.stderr
+        elif config.profiling.destination == 'stdout':
+            destination_file = sys.stdout
+        else:
+            destination_file = open(config.profiling.destination, 'w')
+
+        # Reverse sort in the order of compile+exec time
+        for ps in sorted(_atexit_print_list,
+                         key=lambda a:a.compile_time + a.fct_call_time)[::-1]:
+            if ps.fct_callcount >= 1 or ps.compile_time > 1:
+                ps.summary(file=destination_file,
+                           n_ops_to_print=config.profiling.n_ops,
+                           n_apply_to_print=config.profiling.n_apply)
+                if not isinstance(ps, ScanProfileStats):
+                    to_sum.append(ps)
+            else:
+                # TODO print the name if there is one!
+                print('Skipping empty Profile')
+        if len(to_sum) > 1:
+            # Make a global profile
+            cum = copy.copy(to_sum[0])
+            msg = ("Sum of all(%d) printed profiles at exit excluding Scan op"
+                   " profile." % len(to_sum))
+            cum.message = msg
+            for ps in to_sum[1:]:
+                for attr in ["compile_time", "fct_call_time", "fct_callcount",
+                             "vm_call_time", "optimizer_time", "linker_time",
+                             "validate_time", "import_time",
+                             "linker_node_make_thunks"]:
+                    setattr(cum, attr, getattr(cum, attr) + getattr(ps, attr))
+
+                # merge dictonary
+                for attr in ["apply_time", "apply_callcount",
+                             "apply_cimpl", "variable_shape", "variable_strides",
+                             "linker_make_thunk_time"]:
+                    cum_attr = getattr(cum, attr)
+                    for key, val in iteritems(getattr(ps, attr)):
+                        assert key not in cum_attr
+                        cum_attr[key] = val
+
+                if cum.optimizer_profile and ps.optimizer_profile:
+                    try:
+                        merge = cum.optimizer_profile[0].merge_profile(
+                            cum.optimizer_profile[1],
+                            ps.optimizer_profile[1])
+                        assert len(merge) == len(cum.optimizer_profile[1])
+                        cum.optimizer_profile = (cum.optimizer_profile[0], merge)
+                    except Exception as e:
+                        print("Got an exception while merging profile")
+                        print(e)
+                        cum.optimizer_profile = None
+                else:
+                    cum.optimizer_profile = None
+
+            cum.summary(file=destination_file,
+                        n_ops_to_print=config.profiling.n_ops,
+                        n_apply_to_print=config.profiling.n_apply)
+
+    if config.print_global_stats:
+        print_global_stats()
+
+def print_global_stats():
+    """
+    Print the following stats:
+      -- Time elapsed since Theano was imported
+      -- Time spent inside Theano functions
+      -- Time spent in compiling Theano functions
+           -- on graph optimization
+           -- on linker
+    """
 
     if config.profiling.destination == 'stderr':
         destination_file = sys.stderr
@@ -51,47 +132,18 @@ def _atexit_print_fn():
     else:
         destination_file = open(config.profiling.destination, 'w')
 
-    for ps in _atexit_print_list:
-        if ps.fct_callcount or ps.compile_time > 0:
-            ps.summary(file=destination_file,
-                       n_ops_to_print=config.profiling.n_ops,
-                       n_apply_to_print=config.profiling.n_apply)
-            if not isinstance(ps, ScanProfileStats):
-                to_sum.append(ps)
-        else:
-            # TODO print the name if there is one!
-            print('Skipping empty Profile')
-    if len(to_sum) > 1:
-        # Make a global profile
-        cum = copy.copy(to_sum[0])
-        msg = ("Sum of all(%d) printed profiles at exit excluding Scan op"
-               " profile." % len(to_sum))
-        cum.message = msg
-        for ps in to_sum[1:]:
-            for attr in ["compile_time", "fct_call_time", "fct_callcount",
-                         "vm_call_time", "optimizer_time", "linker_time",
-                         "validate_time", "import_time"]:
-                setattr(cum, attr, getattr(cum, attr) + getattr(ps, attr))
-
-            # merge dictonary
-            for attr in ["apply_time", "apply_callcount",
-                         "apply_cimpl", "variable_shape", "variable_strides"]:
-                cum_attr = getattr(cum, attr)
-                for key, val in iteritems(getattr(ps, attr)):
-                    assert key not in cum_attr
-                    cum_attr[key] = val
-
-            if cum.optimizer_profile and ps.optimizer_profile:
-                merge = cum.optimizer_profile[0].merge_profile(
-                    cum.optimizer_profile[1],
-                    ps.optimizer_profile[1])
-                cum.optimizer_profile = (cum.optimizer_profile[0], merge)
-            else:
-                cum.optimizer_profile = None
-
-        cum.summary(file=destination_file,
-                    n_ops_to_print=config.profiling.n_ops,
-                    n_apply_to_print=config.profiling.n_apply)
+    print('='*50, file=destination_file)
+    print('Global stats: ',
+          'Time elasped since Theano import = %6.3fs, '
+          'Time spent in Theano functions = %6.3fs, '
+          'Time spent compiling Theano functions: '
+          ' optimzation = %6.3fs, linker = %6.3fs ' %
+          (time.time() - theano_imported_time,
+           total_fct_exec_time,
+           total_graph_opt_time,
+           total_time_linker),
+          file=destination_file)
+    print('='*50, file=destination_file)
 
 
 class ProfileStats(object):
@@ -110,7 +162,16 @@ class ProfileStats(object):
         in this class.
 
     """
-
+    def reset(self):
+        """ Ignore previous function call"""
+        # self.compile_time = 0.
+        self.fct_call_time = 0.
+        self.fct_callcount = 0
+        self.vm_call_time = 0.
+        self.apply_time = {}
+        self.apply_callcount = {}
+        # self.apply_cimpl = None
+        # self.messge = None
     #
     # Note on implementation:
     # Class variables are used here so that each one can be
@@ -173,6 +234,10 @@ class ProfileStats(object):
     import_time = 0.0
     # time spent in importing compiled python module.
 
+    linker_node_make_thunks = 0.0
+
+    linker_make_thunk_time = {}
+
     line_width = config.profiling.output_line_width
 
     nb_nodes = -1
@@ -186,9 +251,12 @@ class ProfileStats(object):
     # param is called flag_time_thunks because most other attributes with time
     # in the name are times *of* something, rather than configuration flags.
     def __init__(self, atexit_print=True, flag_time_thunks=None, **kwargs):
-        if (hasattr(theano, 'sandbox') and
-                hasattr(theano.sandbox, 'cuda') and
-                theano.sandbox.cuda.cuda_enabled):
+        if (config.profile and
+                ((hasattr(theano, 'sandbox') and
+                  hasattr(theano.sandbox, 'cuda') and
+                  theano.sandbox.cuda.cuda_enabled) or (
+                      hasattr(theano, 'gpuarray') and
+                      theano.gpuarray.pygpu_activated))):
             if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
                 raise Exception(
                     "You are running the Theano profiler with CUDA enabled."
@@ -197,6 +265,14 @@ class ProfileStats(object):
                     " You must set the environment variable"
                     " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA driver to"
                     " synchronize the execution to get a meaningful profile.")
+        if (config.profile and
+                hasattr(theano, 'gpuarray') and
+                theano.gpuarray.pygpu_activated and
+                not config.profiling.ignore_first_call):
+            logger.warn(
+                "Theano flag profiling.ignore_first_call is False."
+                " This cause bad profiling result in the new gpu"
+                " back-end, we as sometimes we compile at the first call.")
 
         self.apply_callcount = {}
         self.output_size = {}
@@ -216,6 +292,7 @@ class ProfileStats(object):
             if not _atexit_registered:
                 atexit.register(_atexit_print_fn)
                 _atexit_registered = True
+        self.ignore_first_call = theano.config.profiling.ignore_first_call
 
     def class_time(self):
         """
@@ -355,7 +432,7 @@ class ProfileStats(object):
         else:
             local_time = 0
         if local_time == 0:
-            print(('ProfileMode.summary_class: total time 0'
+            print(('ProfileStats.summary_class: total time 0'
                    ' (did you forget to enable counters?)'), file=file)
             return
         class_time = self.class_time()
@@ -400,7 +477,7 @@ class ProfileStats(object):
         hs += ['<#apply>']
         es += [' %4d  ']
 
-        upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
+        upto_length = np.sum([len(x) for x in hs]) + len(hs)
         maxlen = max(self.line_width - upto_length, 0)
         hs += ['<Class name>']
         es += ['%s']
@@ -439,7 +516,7 @@ class ProfileStats(object):
         else:
             local_time = 0
         if local_time == 0:
-            print(('ProfileMode.summary_ops: total time 0'
+            print(('ProfileStats.summary_ops: total time 0'
                    ' (did you forget to enable counters?)'), file=file)
             return
         op_time = self.op_time()
@@ -482,7 +559,7 @@ class ProfileStats(object):
         hs += ['<#apply>']
         es += ['  %4d  ']
 
-        upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
+        upto_length = np.sum([len(x) for x in hs]) + len(hs)
         maxlen = max(self.line_width - upto_length, 0)
         hs += ['<Op name>']
         es += ['%s']
@@ -517,7 +594,7 @@ class ProfileStats(object):
         else:
             local_time = 0
         if local_time == 0:
-            print(('ProfileMode.summary_nodes: total time 0'
+            print(('ProfileStats.summary_nodes: total time 0'
                    ' (did you forget to enable counters?)'), file=file)
             return
 
@@ -550,7 +627,7 @@ class ProfileStats(object):
         if self.variable_shape:
             hs += ['<Mflops>', '<Gflops/s>']
 
-        upto_length = numpy.sum([len(x) for x in hs]) + len(hs)
+        upto_length = np.sum([len(x) for x in hs]) + len(hs)
         maxlen = max(self.line_width - upto_length, 0)
         hs += ['<Apply name>']
         es += ['%s']
@@ -647,6 +724,13 @@ class ProfileStats(object):
         print('    Theano Linker time (includes C, CUDA code '
               'generation/compiling): %es' % self.linker_time, file=file)
         print('       Import time %es' % self.import_time, file=file)
+        print('       Node make_thunk time %es' % self.linker_node_make_thunks,
+              file=file)
+
+        for node, t in sorted(self.linker_make_thunk_time.items(),
+                                 key=operator.itemgetter(1))[::-1][:5]:
+            print('           Node %s time %es' % (node, t),
+                  file=file)
         print('', file=file)
 
         # The validation time is a subset of optimizer_time
@@ -692,10 +776,10 @@ class ProfileStats(object):
         max_sum_size = 0
 
         # statistics with the old and new order
-        stats = [[[0, 0, 0], [0, 0, 0], 0, 0], # old, with dmap
-                 [[0, 0, 0], [0, 0, 0], 0, 0], # old, without dmap
-                 [[0, 0, 0], [0, 0, 0], 0, 0], # new, with dmap
-                 [[0, 0, 0], [0, 0, 0], 0, 0]] # new, without dmap
+        stats = [[[0, 0, 0], [0, 0, 0], 0, 0],  # old, with dmap
+                 [[0, 0, 0], [0, 0, 0], 0, 0],  # old, without dmap
+                 [[0, 0, 0], [0, 0, 0], 0, 0],  # new, with dmap
+                 [[0, 0, 0], [0, 0, 0], 0, 0]]  # new, without dmap
 
         # track min peak memory usage
         min_max_peak = 0
@@ -810,7 +894,7 @@ class ProfileStats(object):
                                                  running_memory_size[1])
 
                 # Mimic the combination of Theano and Python gc
-                for ins in node.inputs:
+                for ins in set(node.inputs):
                     assert not (ins in view_of and viewed_by[ins])
                     # we trac the original var, so this shouldn't happen
                     if isinstance(ins.type, CudaNdarrayType):
@@ -845,7 +929,7 @@ class ProfileStats(object):
             node_list = list(node_list)
             mem_count = 0
             max_mem_count = 0
-            mem_bound = numpy.inf
+            mem_bound = np.inf
             # This take only the inputs/outputs dependencies.
             dependencies = fgraph.profile.dependencies
             done_set = set([])
@@ -1047,6 +1131,7 @@ class ProfileStats(object):
 
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
+            
             def compute_max_stats(running_memory, stats):
                 (max_node_memory_size,
                  max_running_max_memory_size,
@@ -1083,7 +1168,7 @@ class ProfileStats(object):
                                                     (order, True),
                                                     (new_order, False),
                                                     (new_order, True)]):
-                running_memory =  count_running_memory(
+                running_memory = count_running_memory(
                     ord, fgraph, nodes_mem, ignore_dmap=ignore_dmap)
 
                 stats[i] = compute_max_stats(running_memory, stats[i])
@@ -1236,8 +1321,9 @@ class ProfileStats(object):
     def print_tips(self, file):
         print("""Here are tips to potentially make your code run faster
                  (if you think of new ones, suggest them on the mailing list).
-                 Test them first, as they are not guaranteed to always provide a speedup.""", file = file)
+                 Test them first, as they are not guaranteed to always provide a speedup.""", file=file)
 
+        import theano
         RandomFunction = theano.tensor.raw_random.RandomFunction
         scal = theano.scalar
         T = theano.tensor
@@ -1285,7 +1371,7 @@ class ProfileStats(object):
                         return True
                     elif s_op.__class__ not in scalar_op_amdlibm_no_speed_up:
                         print("We don't know if amdlibm will accelerate "
-                              "this scalar op.", s_op , file = file)
+                              "this scalar op.", s_op, file=file)
                 return False
 
         def exp_float32_op(op):
@@ -1298,7 +1384,7 @@ class ProfileStats(object):
         printed_tip = False
         # tip 1
         if config.floatX == 'float64':
-            print("  - Try the Theano flag floatX=float32", file = file)
+            print("  - Try the Theano flag floatX=float32", file=file)
             printed_tip = True
 
         # tip 2
@@ -1306,7 +1392,7 @@ class ProfileStats(object):
                                            in self.apply_time]):
             print("  - Try installing amdlibm and set the Theano flag "
                   "lib.amdlibm=True. This speeds up only some Elemwise "
-                  "operation.", file = file)
+                  "operation.", file=file)
             printed_tip = True
 
         # tip 3
@@ -1315,7 +1401,7 @@ class ProfileStats(object):
                                            for a in self.apply_time]):
             print("  - With the default gcc libm, exp in float32 is slower "
                   "than in float64! Try Theano flag floatX=float64, or "
-                  "install amdlibm and set the theano flags lib.amdlibm=True", file = file)
+                  "install amdlibm and set the theano flags lib.amdlibm=True", file=file)
             printed_tip = True
 
         # tip 4
@@ -1328,7 +1414,7 @@ class ProfileStats(object):
                       " dot22 (which is faster). Make sure the inputs are "
                       "float32 or float64, and are the same for both inputs. "
                       "Currently they are: %s" %
-                      [i.type for i in node.inputs], file = file)
+                      [i.type for i in node.inputs], file=file)
                 printed_tip = True
 
         # tip 5
@@ -1339,24 +1425,42 @@ class ProfileStats(object):
                 print("  - Replace the default random number generator by "
                       "'from theano.sandbox.rng_mrg import MRG_RandomStreams "
                       "as RandomStreams', as this is is faster. It is still "
-                      "experimental, but seems to work correctly.", file = file)
+                      "experimental, but seems to work correctly.", file=file)
                 if config.device.startswith("gpu"):
                     print("     - MRG_RandomStreams is the only random number"
-                          " generator supported on the GPU.", file = file)
+                          " generator supported on the GPU.", file=file)
                 break
 
         # tip 6
         for a in self.apply_time:
             node = a
-            if (isinstance(node.op, T.Dot) and
-                len(set(i.dtype for i in node.inputs)) != 1):
+            if (isinstance(node.op, T.Dot) and len(set(i.dtype for i in node.inputs)) != 1):
                 print("  - You have a dot operation that has different dtype "
                       " for inputs (%s). Make sure that the inputs have same "
-                      " dtype." % [i.type for i in node.inputs], file = file)
+                      " dtype." % [i.type for i in node.inputs], file=file)
                 printed_tip = True
 
+        # tip 7
+        import theano.sandbox.cuda as cuda
+        from theano.tensor.nnet import LogSoftmax
+        import theano.tensor.signal.pool as pool
+        import theano.gpuarray
+
+        for a in self.apply_time:
+            node = a
+            if (isinstance(node.op, pool.Pool)):
+                if (not cuda.dnn.dnn_available() and not theano.gpuarray.dnn.dnn_present()):
+                    print("Install CuDNN to do pooling faster"
+                          "this allows the operation to run on GPU")
+                    printed_tip = True
+            if (isinstance(node.op, LogSoftmax)):
+                if (not cuda.dnn.dnn_available() and not theano.gpuarray.dnn.dnn_present()):
+                    print("Install CuDNN to do LogSoftmax faster"
+                          "this allows the operation to run on GPU")
+                    printed_tip = True
+
         if not printed_tip:
-            print("  Sorry, no tip for today.", file = file)
+            print("  Sorry, no tip for today.", file=file)
 
 
 class ScanProfileStats(ProfileStats):

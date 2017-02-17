@@ -4,18 +4,20 @@ building class (:class:`FromFunctionOp`) and decorator (:func:`as_op`) that
 help make new Ops more rapidly.
 
 """
+from __future__ import absolute_import, print_function, division
+from collections import OrderedDict
+
 import copy
 import six.moves.cPickle as pickle
 import warnings
 
 import theano
 from theano import gof
-from theano.compat import OrderedDict
 from six import iteritems, integer_types
 from six.moves import xrange
 
 
-import numpy
+import numpy as np
 
 
 def register_view_op_c_code(type, code, version=()):
@@ -336,8 +338,8 @@ class Shape_i(gof.Op):
     def __init__(self, i):
         # As i will be used in the hash and that ndarray are not hashable,
         # we need to convert it to an int as it is hashable.
-        if isinstance(i, numpy.ndarray):
-            assert "int" in str(i.dtype)
+        if isinstance(i, np.ndarray):
+            assert i.dtype in theano.tensor.integer_dtypes
         assert i == int(i)
         i = int(i)
         self.i = i
@@ -400,6 +402,14 @@ class Shape_i(gof.Op):
     def infer_shape(self, node, input_shapes):
         return [()]
 
+    def connection_pattern(self, node):
+        # the grad returns the gradient with respect to the
+        # elements of a tensor variable
+        # the elements of the tensor variable do not participate
+        # in the computation of the shape, so they are not really
+        # part of the graph
+        return [[False]]
+
     def grad(self, inp, grads):
         return [theano.gradient.grad_not_implemented(
                 op=self, x_pos=0, x=inp[0],
@@ -435,12 +445,12 @@ def shape_i(var, i, fgraph=None):
         shape_of = shape_feature.shape_of
 
         def recur(node):
-            if not hasattr(node.outputs[0], 'fgraph'):
+            if not node.outputs[0] in shape_of:
                 for inp in node.inputs:
                     if inp.owner:
                         recur(inp.owner)
                 # If the output var isn't marked as being in the graph,
-                # we need to att it in the ShapeFeature.
+                # we need to add it in the ShapeFeature.
                 shape_feature.on_import(fgraph, node,
                                         'gof.ops.shape_i')
         if var not in shape_of:
@@ -451,6 +461,14 @@ def shape_i(var, i, fgraph=None):
     # Shape_i in the graph. Otherwise, the shape feature optimization
     # won't get applied.
     return var.shape[i]
+
+
+def shape_i_op(i):
+    key = i
+    if key not in shape_i_op.cache:
+        shape_i_op.cache[key] = Shape_i(i)
+    return shape_i_op.cache[key]
+shape_i_op.cache = {}
 
 
 def register_shape_i_c_code(typ, code, check_input, version=()):
@@ -647,11 +665,11 @@ class Rebroadcast(gof.Op):
         items = sorted(axis)
         self.axis = OrderedDict(items)
         for axis, broad in iteritems(self.axis):
-            if not isinstance(axis, (numpy.integer, integer_types)):
+            if not isinstance(axis, (np.integer, integer_types)):
                 raise TypeError("Rebroadcast needs integer axes. "
                                 "Got {}".format(axis))
 
-            if not isinstance(broad, (numpy.bool_, bool)):
+            if not isinstance(broad, (np.bool_, bool)):
                 raise TypeError("Rebroadcast needs bool for new broadcast "
                                 "pattern. Got {}".format(broad))
 
@@ -808,7 +826,7 @@ class SpecifyShape(gof.Op):
             x = theano.tensor.as_tensor_variable(x)
         shape = theano.tensor.as_tensor_variable(shape)
         assert shape.ndim == 1
-        assert "int" in shape.dtype
+        assert shape.dtype in theano.tensor.integer_dtypes
         if isinstance(shape, theano.tensor.TensorConstant):
             assert shape.data.size == x.ndim
         return gof.Apply(self, [x, shape], [x.type()])
@@ -817,8 +835,8 @@ class SpecifyShape(gof.Op):
         x, shape = inp
         out, = out_
         assert x.ndim == shape.size
-        assert numpy.all(x.shape == shape), ("got shape", x.shape,
-                                             "expected", shape)
+        assert np.all(x.shape == shape), ("got shape", x.shape,
+                                          "expected", shape)
         out[0] = x
 
     def infer_shape(self, node, shapes):

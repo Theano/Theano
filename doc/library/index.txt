@@ -16,6 +16,7 @@ Types and Ops that you can use to build and compile expression graphs.
    config
    d3viz/index
    gof/index
+   gpuarray/index
    gradient
    misc/pkl_utils
    printing
@@ -26,6 +27,7 @@ Types and Ops that you can use to build and compile expression graphs.
    sparse/sandbox
    tensor/index
    typed_list
+   tests
 
 There are also some top-level imports that you might find more convenient:
 
@@ -37,7 +39,7 @@ There are also some top-level imports that you might find more convenient:
 
 .. function:: function(...)
     
-    Alias for :func:`function.function`
+    Alias for :func:`theano.compile.function.function`
 
 
 .. function:: function_dump(...)

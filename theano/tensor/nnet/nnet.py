@@ -12,6 +12,7 @@ fast_compile, we register them as needed for the GPU. This can be
 revisited later when all the intermediate part are on the GPU.
 
 """
+from __future__ import absolute_import, print_function, division
 import logging
 import numpy
 from six.moves import xrange
@@ -19,10 +20,11 @@ from six.moves import xrange
 import theano
 from theano import gof
 from theano import scalar
-from theano.tensor import basic as tensor, subtensor, opt
+from theano.tensor import extra_ops
+from theano.gof.opt import copy_stack_trace
+from theano.tensor import basic as tensor, subtensor, opt, elemwise
 from theano.tensor.type import (values_eq_approx_remove_inf,
                                 values_eq_approx_remove_nan)
-from theano.tensor.opt import copy_stack_trace
 from theano.compile import optdb
 from theano.gof import Apply
 
@@ -30,7 +32,6 @@ from theano.tensor.nnet.sigm import sigmoid, softplus
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
 from theano.tensor.nnet.blocksparse import sparse_block_dot
-
 
 ############
 #
@@ -772,7 +773,7 @@ def local_logsoftmax_grad(node):
     if (isinstance(node.op, SoftmaxGrad) and
         len(node.inputs) == 2 and
         node.inputs[0].owner is not None and
-        isinstance(node.inputs[0].owner.op, tensor.Elemwise) and
+        node.inputs[0].owner.op == tensor.true_div and
         len(node.inputs[0].owner.inputs) >= 2 and
         node.inputs[0].owner.inputs[1].owner is not None and
         node.inputs[0].owner.inputs[1].owner.op == softmax_op and
@@ -904,9 +905,11 @@ def softmax_simplifier(numerators, denominators):
                                 matching_denom = denominator
                                 break
         if matching_denom:
+            softmax = softmax_op(x)
+            copy_stack_trace(numerator, softmax)
             numerators.remove(numerator)
             denominators.remove(matching_denom)
-            numerators.append(softmax_op(x))
+            numerators.append(softmax)
 
     return numerators, denominators
 opt.local_mul_canonizer.add_simplifier(softmax_simplifier, 'softmax_simplifier')
@@ -1565,9 +1568,9 @@ def local_softmax_grad_to_crossentropy_with_softmax_grad(node):
 
 
 @opt.register_specialize('fast_compile_gpu')
-@gof.local_optimizer([tensor._max_and_argmax])
+@gof.local_optimizer([tensor.MaxAndArgmax])
 def local_argmax_pushdown(node):
-    if node.op == tensor._max_and_argmax and node.inputs[0].owner and \
+    if isinstance(node.op, tensor.MaxAndArgmax) and node.inputs[0].owner and \
             len(node.outputs[0].clients) > 0 and node.inputs[0].owner.op in \
             (softmax_op, softplus, tensor.exp, tensor.log, tensor.tanh, sigmoid,
              softmax_with_bias):
@@ -1581,23 +1584,24 @@ def local_argmax_pushdown(node):
                 "warning set the Theano flags 'warn.argmax_pushdown_bug' "
                 "to False")
 
-    if (node.op == tensor._max_and_argmax and
+    if (isinstance(node.op, tensor.MaxAndArgmax) and
             node.inputs[0].owner and len(node.outputs[0].clients) == 0):
         x_max, x_argmax = node.outputs
-        x, axis = node.inputs
+        x = node.inputs[0]
+        axis = node.op.get_params(node)
         # TODO: Make a list/set of monotonic ops...
         if x.owner and x.owner.op in (softmax_op, softplus, tensor.exp,
                                       tensor.log, tensor.tanh, sigmoid):
             pre_x, = x.owner.inputs
-            ret = tensor._max_and_argmax(pre_x, axis)
+            ret = tensor.max_and_argmax(pre_x, axis)
             copy_stack_trace(x_max, ret)
             return ret
         if x.owner and x.owner.op == softmax_with_bias:
             pre_x, pre_bias = x.owner.inputs
-            ret = tensor._max_and_argmax(pre_x +
-                                         tensor.DimShuffle(
-                                             pre_bias.broadcastable,
-                                             ('x', 0))(pre_bias), axis)
+            ret = tensor.max_and_argmax(pre_x +
+                                        tensor.DimShuffle(
+                                            pre_bias.broadcastable,
+                                            ('x', 0))(pre_bias), axis)
             # copy both stack traces
             copy_stack_trace(x_max, ret)
             return ret
@@ -1724,21 +1728,6 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
             x_var = sm.owner.inputs[0]
     else:
         return
-
-    # If the arg to softmax is a broadcasted vector, d_sm has the form:
-    #   DimShuffle{x,0}(Sum{0}(...))
-    # we consider what's inside of the sum instead
-    vector_softmax = False
-    if d_sm.owner and isinstance(d_sm.owner.op, tensor.DimShuffle):
-        ds_op = d_sm.owner.op
-        if ds_op.input_broadcastable == (False,) and ds_op.new_order == ('x', 0):
-            maybe_sum = d_sm.owner.inputs[0]
-            if maybe_sum.owner and isinstance(maybe_sum.owner.op, tensor.Sum):
-                if sm.broadcastable == (True, False)\
-                        and maybe_sum.owner.op.axis == (0,)\
-                        and len(maybe_sum.owner.inputs) == 1:
-                    vector_softmax = True
-                    d_sm = maybe_sum.owner.inputs[0]
 
     # Two cases are supported:
     # 1. AdvancedIncSubtensor(
@@ -1882,8 +1871,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
             # Check z is zeros_like(log(sm))
             if not _is_const(z, 0):
                 return
-            if z.broadcastable != (False, False):
-                if not (vector_softmax and z.broadcastable == (True, False)):
+            if z.broadcastable not in [(False, False), (True, False)]:
                     return
             # here we know that we are incrementing a matrix of zeros
             # (or a broadcasted vector).
@@ -2193,7 +2181,7 @@ def relu(x, alpha=0):
     ----------
     x : symbolic tensor
         Tensor to compute the activation function for.
-    alpha : scalar or tensor, optional
+    alpha : `scalar or tensor, optional`
         Slope for negative input, usually between 0 and 1. The default value
         of 0 will lead to the standard rectifier, 1 will lead to
         a linear activation function, and any value in between will give a
@@ -2219,6 +2207,10 @@ def relu(x, alpha=0):
     if alpha == 0:
         return 0.5 * (x + abs(x))
     else:
+        # We can't use 0.5 and 1 for one and half.  as if alpha is a
+        # numpy dtype, they will be considered as float64, so would
+        # cause upcast to float64.
+        alpha = tensor.as_tensor_variable(alpha)
         f1 = 0.5 * (1 + alpha)
         f2 = 0.5 * (1 - alpha)
         return f1 * x + f2 * abs(x)
@@ -2228,16 +2220,25 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
               W1, b1, W2, b2, target=None):
     """ Two-level hierarchical softmax.
 
-    The architecture is composed of two softmax layers: the first predicts the
-    class of the input x while the second predicts the output of the input x in
-    the predicted class.
-    More explanations can be found in the original paper [1]_.
+    This function implements a two-layer hierarchical softmax. It is commonly
+    used as an alternative of the softmax when the number of outputs is
+    important (it is common to use it for millions of outputs). See
+    reference [1]_ for more information about the computational gains.
 
-    If target is specified, it will only compute the outputs of the
-    corresponding targets. Otherwise, if target is None, it will compute all
-    the outputs.
+    The `n_outputs` outputs are organized in `n_classes` classes, each class
+    containing the same number `n_outputs_per_class` of outputs.
+    For an input `x` (last hidden activation), the first softmax layer predicts
+    its class and the second softmax layer predicts its output among its class.
 
-    The outputs are grouped in the same order as they are initially defined.
+    If `target` is specified, it will only compute the outputs of the
+    corresponding targets. Otherwise, if `target` is `None`, it will compute
+    all the outputs.
+
+    The outputs are grouped in classes in the same order as they are initially
+    defined: if `n_outputs=10` and `n_classes=2`, then the first class is
+    composed of the outputs labeled `{0,1,2,3,4}` while the second class is
+    composed of `{5,6,7,8,9}`. If you need to change the classes, you have to
+    re-label your outputs.
 
     .. versionadded:: 0.7.1
 
@@ -2260,7 +2261,8 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
         probabilities of the classes.
     b1: tensor of shape (n_classes,)
         the bias vector of the first softmax layer.
-    W2: tensor of shape (n_classes, number of features of the input x, n_outputs_per_class)
+    W2: tensor of shape (n_classes, number of features of the input x,
+            n_outputs_per_class)
         the weight matrix of the second softmax, which maps the input x to
         the probabilities of the outputs.
     b2: tensor of shape (n_classes, n_outputs_per_class)
@@ -2274,22 +2276,74 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
 
     Returns
     -------
-    output_probs: tensor of shape (batch_size, n_outputs) or (batch_size, 1)
-        Output of the two-layer hierarchical softmax for input x. If target is
-        not specified (None), then all the outputs are computed and the
-        returned tensor has shape (batch_size, n_outputs). Otherwise, when
-        target is specified, only the corresponding outputs are computed and
-        the returned tensor has thus shape (batch_size, 1).
+    tensor of shape (`batch_size`, `n_outputs`) or (`batch_size`, 1)
+        Output tensor of the two-layer hierarchical softmax for input `x`.
+        Depending on argument `target`, it can have two different shapes.
+        If `target` is not specified (`None`), then all the outputs are
+        computed and the returned tensor has shape (`batch_size`, `n_outputs`).
+        Otherwise, when `target` is specified, only the corresponding outputs
+        are computed and the returned tensor has thus shape (`batch_size`, 1).
 
     Notes
     -----
-    The product of n_outputs_per_class and n_classes has to be greater or equal
-    to n_outputs. If it is strictly greater, then the irrelevant outputs will
-    be ignored.
-    n_outputs_per_class and n_classes have to be the same as the corresponding
-    dimensions of the tensors of W1, b1, W2 and b2.
-    The most computational efficient configuration is when n_outputs_per_class
-    and n_classes are equal to the square root of n_outputs.
+    The product of `n_outputs_per_class` and `n_classes` has to be greater or
+    equal to `n_outputs`. If it is strictly greater, then the irrelevant
+    outputs will be ignored.
+    `n_outputs_per_class` and `n_classes` have to be the same as the
+    corresponding dimensions of the tensors of `W1`, `b1`, `W2` and `b2`.
+    The most computational efficient configuration is when
+    `n_outputs_per_class` and `n_classes` are equal to the square root of
+    `n_outputs`.
+
+    Examples
+    --------
+    The following example builds a simple hierarchical softmax layer.
+
+    >>> import numpy as np
+    >>> import theano
+    >>> from theano import tensor
+    >>> from theano.tensor.nnet import h_softmax
+    >>>
+    >>> # Parameters
+    >>> batch_size = 32
+    >>> n_outputs = 100
+    >>> dim_x = 10  # dimension of the input
+    >>> n_classes = int(np.ceil(np.sqrt(n_outputs)))
+    >>> n_outputs_per_class = n_classes
+    >>> output_size = n_outputs_per_class * n_outputs_per_class
+    >>>
+    >>> # First level of h_softmax
+    >>> floatX = theano.config.floatX
+    >>> W1 = theano.shared(
+    ...     np.random.normal(0, 0.001, (dim_x, n_classes)).astype(floatX))
+    >>> b1 = theano.shared(np.zeros((n_classes,), floatX))
+    >>>
+    >>> # Second level of h_softmax
+    >>> W2 = np.random.normal(0, 0.001,
+    ...     size=(n_classes, dim_x, n_outputs_per_class)).astype(floatX)
+    >>> W2 = theano.shared(W2)
+    >>> b2 = theano.shared(np.zeros((n_classes, n_outputs_per_class), floatX))
+    >>>
+    >>> # We can now build the graph to compute a loss function, typically the
+    >>> # negative log-likelihood:
+    >>>
+    >>> x = tensor.imatrix('x')
+    >>> target = tensor.imatrix('target')
+    >>>
+    >>> # This only computes the output corresponding to the target.
+    >>> # The complexity is O(n_classes + n_outputs_per_class).
+    >>> y_hat_tg = h_softmax(x, batch_size, output_size, n_classes,
+    ...                      n_outputs_per_class, W1, b1, W2, b2, target)
+    >>>
+    >>> negll = -tensor.mean(tensor.log(y_hat_tg))
+    >>>
+    >>> # We may need to compute all the outputs (at test time usually):
+    >>>
+    >>> # This computes all the outputs.
+    >>> # The complexity is O(n_classes * n_outputs_per_class).
+    >>> output = h_softmax(x, batch_size, output_size, n_classes,
+    ...                    n_outputs_per_class, W1, b1, W2, b2)
+
 
     References
     ----------
@@ -2365,3 +2419,91 @@ def elu(x, alpha=1):
         Exponential Linear Units (ELUs)" <http://arxiv.org/abs/1511.07289>`.
     """
     return tensor.switch(x > 0, x, alpha * (tensor.exp(x) - 1))
+
+
+class ScalarSoftsign(theano.scalar.UnaryScalarOp):
+    """
+    Softsign activation function
+    :math:`\\varphi(\\mathbf{x}) = \\frac{1}{1+|x|}`
+
+    """
+    @staticmethod
+    def static_impl(x):
+        return x / (1.0 + abs(x))
+
+    def impl(self, x):
+        return ScalarSoftsign.static_impl(x)
+
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
+        if 'float' in x.type.dtype:
+            d = (1.0 + abs(x))
+            return [gz / (d * d)]
+        else:
+            return NotImplemented
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        if node.inputs[0].type in [theano.scalar.float32,
+                                   theano.scalar.float64]:
+            return "%(z)s = %(x)s / (1.0+fabs(%(x)s));" % locals()
+        raise NotImplementedError('only floating point x is implemented')
+
+scalar_softsign = ScalarSoftsign(theano.scalar.upgrade_to_float,
+                                 name='scalar_softsign')
+softsign = elemwise.Elemwise(scalar_softsign, name='softsign')
+
+
+def confusion_matrix(actual, pred):
+    """
+    Computes the confusion matrix of given vectors containing
+    actual observations and predicted observations.
+
+    Parameters
+    ----------
+    actual : 1-d tensor variable
+    pred : 1-d tensor variable
+
+    Returns
+    -------
+    conf_mat : Confusion matrix of actual and predictions observations as shown below.
+
+               | Predicted
+    ___________|___________
+       Actual  |
+               |
+
+    order : 1-d array of order of entries in rows and columns
+
+    Examples
+    --------
+    >>> import theano
+    >>> from theano.tensor.nnet import confusion_matrix
+
+    >>> x = theano.tensor.vector()
+    >>> y = theano.tensor.vector()
+    >>> f = theano.function([x, y], confusion_matrix(x, y))
+    >>> y_true = [2, 0, 2, 2, 0, 1]
+    >>> y_pred = [0, 0, 2, 2, 0, 2]
+    >>> print(f(y_true, y_pred))
+    [array([[2, 0, 0],
+       [0, 0, 1],
+       [1, 0, 2]]), array([ 0.,  1.,  2.])]
+    """
+    if actual.ndim != 1:
+        raise ValueError('actual must be 1-d tensor variable')
+    if pred.ndim != 1:
+        raise ValueError('pred must be 1-d tensor variable')
+
+    order = extra_ops.Unique(False, False, False)(tensor.concatenate([actual, pred]))
+
+    colA = actual.dimshuffle(0, 'x')
+    colP = pred.dimshuffle(0, 'x')
+
+    oneHotA = tensor.eq(colA, order).astype('int64')
+    oneHotP = tensor.eq(colP, order).astype('int64')
+
+    conf_mat = tensor.dot(oneHotA.T, oneHotP)
+    return [conf_mat, order]

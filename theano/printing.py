@@ -3,12 +3,11 @@
 They all allow different way to print a graph or the result of an Op
 in a graph(Print Op)
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 from copy import copy
 import logging
 import os
 import sys
-import warnings
 import hashlib
 
 import numpy as np
@@ -20,22 +19,36 @@ from theano import gof
 from theano import config
 from theano.gof import Op, Apply
 from theano.compile import Function, debugmode, SharedVariable
-from theano.compile.profilemode import ProfileMode
 
 pydot_imported = False
+pydot_imported_msg = ""
 try:
     # pydot-ng is a fork of pydot that is better maintained
     import pydot_ng as pd
     if pd.find_graphviz():
         pydot_imported = True
+    else:
+        pydot_imported_msg = "pydot-ng can't find graphviz. Install graphviz."
 except ImportError:
     try:
         # fall back on pydot if necessary
         import pydot as pd
-        if pd.find_graphviz():
+        if hasattr(pd, 'find_graphviz'):
+            if pd.find_graphviz():
+                pydot_imported = True
+            else:
+                pydot_imported_msg = "pydot can't find graphviz"
+        else:
+            pd.Dot.create(pd.Dot())
             pydot_imported = True
     except ImportError:
-        pass  # tests should not fail on optional dependency
+        # tests should not fail on optional dependency
+        pydot_imported_msg = ("Install the python package pydot or pydot-ng."
+                              " Install graphviz.")
+    except Exception as e:
+        pydot_imported_msg = "An error happened while importing/trying pydot: "
+        pydot_imported_msg += str(e.args)
+
 
 _logger = logging.getLogger("theano.printing")
 VALID_ASSOC = set(['left', 'right', 'either'])
@@ -43,10 +56,11 @@ VALID_ASSOC = set(['left', 'right', 'either'])
 
 def debugprint(obj, depth=-1, print_type=False,
                file=None, ids='CHAR', stop_on_name=False,
-               done=None, print_storage=False):
+               done=None, print_storage=False, print_clients=False,
+               used_ids=None):
     """Print a computation graph as text to stdout or a file.
 
-    :type obj: Variable, Apply, or Function instance
+    :type obj: :class:`~theano.gof.Variable`, Apply, or Function instance
     :param obj: symbolic thing to print
     :type depth: integer
     :param depth: print graph to this depth (-1 for unlimited)
@@ -69,6 +83,13 @@ def debugprint(obj, depth=-1, print_type=False,
     :param print_storage: If True, this will print the storage map
         for Theano functions. Combined with allow_gc=False, after the
         execution of a Theano function, we see the intermediate result.
+    :type print_clients: bool
+    :param print_clients: If True, this will print for Apply node that
+         have more then 1 clients its clients. This help find who use
+         an Apply node.
+    :type used_ids: dict or None
+    :param used_ids: the id to use for some object, but maybe we only
+         refered to it yet.
 
     :returns: string if `file` == 'str', else file arg
 
@@ -98,6 +119,9 @@ def debugprint(obj, depth=-1, print_type=False,
         _file = file
     if done is None:
         done = dict()
+    if used_ids is None:
+        used_ids = dict()
+    used_ids = dict()
     results_to_print = []
     profile_list = []
     order = []  # Toposort
@@ -178,7 +202,8 @@ N.B.:
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=o, ids=ids,
                              scan_ops=scan_ops, stop_on_name=stop_on_name,
-                             profile=p, smap=s)
+                             profile=p, smap=s, used_ids=used_ids,
+                             print_clients=print_clients)
 
     if len(scan_ops) > 0:
         print("", file=_file)
@@ -208,7 +233,8 @@ N.B.:
                 file=_file, ids=ids,
                 scan_ops=scan_ops,
                 stop_on_name=stop_on_name,
-                scan_inner_to_outer_inputs=inner_to_outer_inputs)
+                scan_inner_to_outer_inputs=inner_to_outer_inputs,
+                print_clients=print_clients, used_ids=used_ids)
             if hasattr(s.owner.op, 'fn'):
                 # If the op was compiled, print the optimized version.
                 outputs = s.owner.op.fn.maker.fgraph.outputs
@@ -227,7 +253,8 @@ N.B.:
                     ids=ids, stop_on_name=stop_on_name,
                     prefix_child=new_prefix_child,
                     scan_ops=scan_ops,
-                    scan_inner_to_outer_inputs=inner_to_outer_inputs)
+                    scan_inner_to_outer_inputs=inner_to_outer_inputs,
+                    print_clients=print_clients, used_ids=used_ids)
 
     if file is _file:
         return file
@@ -311,16 +338,16 @@ class PrinterState(gof.utils.scratchpad):
     def __init__(self, props=None, **more_props):
         if props is None:
             props = {}
-        if isinstance(props, gof.utils.scratchpad):
+        elif isinstance(props, gof.utils.scratchpad):
             self.__update__(props)
         else:
             self.__dict__.update(props)
         self.__dict__.update(more_props)
-
-    def clone(self, props=None, **more_props):
-        if props is None:
-            props = {}
-        return PrinterState(self, **dict(props, **more_props))
+        # A dict from the object to print to its string
+        # representation. If it is a dag and not a tree, it allow to
+        # parse each node of the graph only once. They will still be
+        # printed many times
+        self.memo = {}
 
 
 class OperatorPrinter:
@@ -332,6 +359,8 @@ class OperatorPrinter:
         assert self.assoc in VALID_ASSOC
 
     def process(self, output, pstate):
+        if output in pstate.memo:
+            return pstate.memo[output]
         pprinter = pstate.pprinter
         node = output.owner
         if node is None:
@@ -351,22 +380,27 @@ class OperatorPrinter:
         input_strings = []
         max_i = len(node.inputs) - 1
         for i, input in enumerate(node.inputs):
+            new_precedence = self.precedence
             if (self.assoc == 'left' and i != 0 or self.assoc == 'right' and
                     i != max_i):
-                s = pprinter.process(input, pstate.clone(
-                    precedence=self.precedence + 1e-6))
-            else:
-                s = pprinter.process(input, pstate.clone(
-                    precedence=self.precedence))
+                new_precedence += 1e-6
+            try:
+                old_precedence = getattr(pstate, 'precedence', None)
+                pstate.precedence = new_precedence
+                s = pprinter.process(input, pstate)
+            finally:
+                pstate.precedence = old_precedence
             input_strings.append(s)
         if len(input_strings) == 1:
             s = self.operator + input_strings[0]
         else:
             s = (" %s " % self.operator).join(input_strings)
         if parenthesize:
-            return "(%s)" % s
+            r = "(%s)" % s
         else:
-            return s
+            r = s
+        pstate.memo[output] = r
+        return r
 
 
 class PatternPrinter:
@@ -380,6 +414,8 @@ class PatternPrinter:
                 self.patterns.append((pattern[0], pattern[1:]))
 
     def process(self, output, pstate):
+        if output in pstate.memo:
+            return pstate.memo[output]
         pprinter = pstate.pprinter
         node = output.owner
         if node is None:
@@ -389,14 +425,23 @@ class PatternPrinter:
         pattern, precedences = self.patterns[idx]
         precedences += (1000,) * len(node.inputs)
 
-        def pp_process(input, precedence):
-            return pprinter.process(input, pstate.clone(precedence=precedence))
+        def pp_process(input, new_precedence):
+            try:
+                old_precedence = getattr(pstate, 'precedence', None)
+                pstate.precedence = new_precedence
+                r = pprinter.process(input, pstate)
+            finally:
+                pstate.precedence = old_precedence
+
+            return r
 
         d = dict((str(i), x)
                  for i, x in enumerate(pp_process(input, precedence)
                                        for input, precedence in
                                        zip(node.inputs, precedences)))
-        return pattern % d
+        r = pattern % d
+        pstate.memo[output] = r
+        return r
 
 
 class FunctionPrinter:
@@ -405,6 +450,8 @@ class FunctionPrinter:
         self.names = names
 
     def process(self, output, pstate):
+        if output in pstate.memo:
+            return pstate.memo[output]
         pprinter = pstate.pprinter
         node = output.owner
         if node is None:
@@ -412,74 +459,81 @@ class FunctionPrinter:
                             "not the result of an operation" % self.names)
         idx = node.outputs.index(output)
         name = self.names[idx]
-        return "%s(%s)" % (name, ", ".join(
-            [pprinter.process(input, pstate.clone(precedence=-1000))
-             for input in node.inputs]))
+        new_precedence = -1000
+        try:
+            old_precedence = getattr(pstate, 'precedence', None)
+            pstate.precedence = new_precedence
+            r = "%s(%s)" % (name, ", ".join(
+                [pprinter.process(input, pstate) for input in node.inputs]))
+        finally:
+            pstate.precedence = old_precedence
 
-
-class MemberPrinter:
-
-    def __init__(self, *names):
-        self.names = names
-
-    def process(self, output, pstate):
-        pprinter = pstate.pprinter
-        node = output.owner
-        if node is None:
-            raise TypeError("function %s cannot represent a variable that is"
-                            " not the result of an operation" % self.function)
-        idx = node.outputs.index(output)
-        name = self.names[idx]
-        input = node.inputs[0]
-        return "%s.%s" % (pprinter.process(input,
-                                           pstate.clone(precedence=1000)),
-                          name)
+        pstate.memo[output] = r
+        return r
 
 
 class IgnorePrinter:
 
     def process(self, output, pstate):
+        if output in pstate.memo:
+            return pstate.memo[output]
         pprinter = pstate.pprinter
         node = output.owner
         if node is None:
             raise TypeError("function %s cannot represent a variable that is"
                             " not the result of an operation" % self.function)
         input = node.inputs[0]
-        return "%s" % pprinter.process(input, pstate)
-
-
-class DefaultPrinter:
-
-    def __init__(self):
-        pass
-
-    def process(self, r, pstate):
-        pprinter = pstate.pprinter
-        node = r.owner
-        if node is None:
-            return LeafPrinter().process(r, pstate)
-        return "%s(%s)" % (str(node.op), ", ".join(
-            [pprinter.process(input, pstate.clone(precedence=-1000))
-             for input in node.inputs]))
+        r = "%s" % pprinter.process(input, pstate)
+        pstate.memo[output] = r
+        return r
 
 
 class LeafPrinter:
-    def process(self, r, pstate):
-        if r.name in greek:
-            return greek[r.name]
+    def process(self, output, pstate):
+        if output in pstate.memo:
+            return pstate.memo[output]
+        if output.name in greek:
+            r = greek[output.name]
         else:
-            return str(r)
+            r = str(output)
+        pstate.memo[output] = r
+        return r
+leaf_printer = LeafPrinter()
+
+
+class DefaultPrinter:
+    def process(self, output, pstate):
+        if output in pstate.memo:
+            return pstate.memo[output]
+        pprinter = pstate.pprinter
+        node = output.owner
+        if node is None:
+            return leaf_printer.process(output, pstate)
+        new_precedence = -1000
+        try:
+            old_precedence = getattr(pstate, 'precedence', None)
+            pstate.precedence = new_precedence
+            r = "%s(%s)" % (str(node.op), ", ".join(
+                [pprinter.process(input, pstate)
+                 for input in node.inputs]))
+        finally:
+            pstate.precedence = old_precedence
+
+        pstate.memo[output] = r
+        return r
+default_printer = DefaultPrinter()
 
 
 class PPrinter:
     def __init__(self):
         self.printers = []
+        self.printers_dict = {}
 
     def assign(self, condition, printer):
-        if isinstance(condition, gof.Op):
-            op = condition
-            condition = (lambda pstate, r: r.owner is not None and
-                         r.owner.op == op)
+        # condition can be a class or an instance of an Op.
+        if isinstance(condition, (gof.Op, type)):
+            self.printers_dict[condition] = printer
+            return
         self.printers.insert(0, (condition, printer))
 
     def process(self, r, pstate=None):
@@ -487,6 +541,11 @@ class PPrinter:
             pstate = PrinterState(pprinter=self)
         elif isinstance(pstate, dict):
             pstate = PrinterState(pprinter=self, **pstate)
+        if getattr(r, 'owner', None) is not None:
+            if r.owner.op in self.printers_dict:
+                return self.printers_dict[r.owner.op].process(r, pstate)
+            if type(r.owner.op) in self.printers_dict:
+                return self.printers_dict[type(r.owner.op)].process(r, pstate)
         for condition, printer in self.printers:
             if condition(pstate, r):
                 return printer.process(r, pstate)
@@ -494,6 +553,7 @@ class PPrinter:
     def clone(self):
         cp = copy(self)
         cp.printers = list(self.printers)
+        cp.printers_dict = dict(self.printers_dict)
         return cp
 
     def clone_assign(self, condition, printer):
@@ -516,7 +576,7 @@ class PPrinter:
         else:
             strings = []
         pprinter = self.clone_assign(lambda pstate, r: r.name is not None and
-                                     r is not current, LeafPrinter())
+                                     r is not current, leaf_printer)
         inv_updates = dict((b, a) for (a, b) in iteritems(updates))
         i = 1
         for node in gof.graph.io_toposort(list(inputs) + updates.keys(),
@@ -585,10 +645,7 @@ else:
 
 
 pprint = PPrinter()
-pprint.assign(lambda pstate, r: True, DefaultPrinter())
-pprint.assign(lambda pstate, r: hasattr(pstate, 'target') and
-              pstate.target is not r and r.name is not None,
-              LeafPrinter())
+pprint.assign(lambda pstate, r: True, default_printer)
 
 pp = pprint
 """
@@ -700,15 +757,10 @@ def pydotprint(fct, outfile=None,
                                config.device + '.' + format)
 
     if isinstance(fct, Function):
-        mode = fct.maker.mode
         profile = getattr(fct, "profile", None)
-        if (not isinstance(mode, ProfileMode) or
-                fct not in mode.profile_stats):
-                mode = None
         outputs = fct.maker.fgraph.outputs
         topo = fct.maker.fgraph.toposort()
     elif isinstance(fct, gof.FunctionGraph):
-        mode = None
         profile = None
         outputs = fct.outputs
         topo = fct.toposort()
@@ -721,14 +773,14 @@ def pydotprint(fct, outfile=None,
         assert all(isinstance(v, gof.Variable) for v in fct)
         fct = gof.FunctionGraph(inputs=gof.graph.inputs(fct),
                                 outputs=fct)
-        mode = None
         profile = None
         outputs = fct.outputs
         topo = fct.toposort()
     if not pydot_imported:
         raise RuntimeError("Failed to import pydot. You must install graphviz"
                            " and either pydot or pydot-ng for "
-                           "`pydotprint` to work.")
+                           "`pydotprint` to work.",
+                           pydot_imported_msg)
 
     g = pd.Dot()
 
@@ -808,19 +860,7 @@ def pydotprint(fct, outfile=None,
         if node in apply_name_cache:
             return apply_name_cache[node], apply_name_id[node]
         prof_str = ''
-        if mode:
-            time = mode.profile_stats[fct].apply_time.get(node, 0)
-            # second, % total time in profiler, %fct time in profiler
-            if mode.local_time == 0:
-                pt = 0
-            else:
-                pt = time * 100 / mode.local_time
-            if mode.profile_stats[fct].fct_callcount == 0:
-                pf = 0
-            else:
-                pf = time * 100 / mode.profile_stats[fct].fct_call_time
-            prof_str = '   (%.3fs,%.3f%%,%.3f%%)' % (time, pt, pf)
-        elif profile:
+        if profile:
             time = profile.apply_time.get(node, 0)
             # second, %fct time in profiler
             if profile.fct_callcount == 0:
@@ -1037,174 +1077,6 @@ def pydotprint(fct, outfile=None,
 
         if print_output_file:
             print('The output file is available at', outfile)
-
-
-def pydotprint_variables(vars,
-                         outfile=None,
-                         format='png',
-                         depth=-1,
-                         high_contrast=True, colorCodes=None,
-                         max_label_size=50,
-                         var_with_name_simple=False):
-    '''DEPRECATED: use pydotprint() instead.
-
-    Identical to pydotprint just that it starts from a variable
-    instead of a compiled function. Could be useful ?
-
-    '''
-
-    warnings.warn("pydotprint_variables() is deprecated."
-                  " Use pydotprint() instead.")
-
-    if colorCodes is None:
-        colorCodes = default_colorCodes
-    if outfile is None:
-        outfile = os.path.join(config.compiledir, 'theano.pydotprint.' +
-                               config.device + '.' + format)
-    if not pydot_imported:
-        raise RuntimeError("Failed to import pydot. You must install pydot"
-                           " and graphviz for `pydotprint_variables` to work.")
-    if pd.__name__ == "pydot_ng":
-        raise RuntimeError("pydotprint_variables do not support pydot_ng."
-                           "pydotprint_variables is also deprecated, "
-                           "use pydotprint() that support pydot_ng")
-    g = pd.Dot()
-    my_list = {}
-    orphanes = []
-    if type(vars) not in (list, tuple):
-        vars = [vars]
-    var_str = {}
-
-    def var_name(var):
-        if var in var_str:
-            return var_str[var]
-
-        if var.name is not None:
-            if var_with_name_simple:
-                varstr = var.name
-            else:
-                varstr = 'name=' + var.name + " " + str(var.type)
-        elif isinstance(var, gof.Constant):
-            dstr = 'val=' + str(var.data)
-            if '\n' in dstr:
-                dstr = dstr[:dstr.index('\n')]
-            varstr = '%s %s' % (dstr, str(var.type))
-        else:
-            # a var id is needed as otherwise var with the same type will be
-            # merged in the graph.
-            varstr = str(var.type)
-
-        varstr += ' ' + str(len(var_str))
-        if len(varstr) > max_label_size:
-            varstr = varstr[:max_label_size - 3] + '...'
-        var_str[var] = varstr
-        return varstr
-
-    def apply_name(node):
-        name = str(node.op).replace(':', '_')
-        if len(name) > max_label_size:
-            name = name[:max_label_size - 3] + '...'
-        return name
-
-    def plot_apply(app, d):
-        if d == 0:
-            return
-        if app in my_list:
-            return
-        astr = apply_name(app) + '_' + str(len(my_list.keys()))
-        if len(astr) > max_label_size:
-            astr = astr[:max_label_size - 3] + '...'
-        my_list[app] = astr
-
-        use_color = None
-        for opName, color in iteritems(colorCodes):
-            if opName in app.op.__class__.__name__:
-                use_color = color
-
-        if use_color is None:
-            g.add_node(pd.Node(astr, shape='box'))
-        elif high_contrast:
-            g.add_node(pd.Node(astr, style='filled', fillcolor=use_color,
-                               shape='box'))
-        else:
-            g.add_node(pd.Nonde(astr, color=use_color, shape='box'))
-
-        for i, nd in enumerate(app.inputs):
-            if nd not in my_list:
-                varastr = var_name(nd) + '_' + str(len(my_list.keys()))
-                if len(varastr) > max_label_size:
-                    varastr = varastr[:max_label_size - 3] + '...'
-                my_list[nd] = varastr
-                if nd.owner is not None:
-                    g.add_node(pd.Node(varastr))
-                elif high_contrast:
-                    g.add_node(pd.Node(varastr, style='filled',
-                                       fillcolor='green'))
-                else:
-                    g.add_node(pd.Node(varastr, color='green'))
-            else:
-                varastr = my_list[nd]
-            label = None
-            if len(app.inputs) > 1:
-                label = str(i)
-            g.add_edge(pd.Edge(varastr, astr, label=label))
-
-        for i, nd in enumerate(app.outputs):
-            if nd not in my_list:
-                varastr = var_name(nd) + '_' + str(len(my_list.keys()))
-                if len(varastr) > max_label_size:
-                    varastr = varastr[:max_label_size - 3] + '...'
-                my_list[nd] = varastr
-                color = None
-                if nd in vars:
-                    color = colorCodes['Output']
-                elif nd in orphanes:
-                    color = 'gray'
-                if color is None:
-                    g.add_node(pd.Node(varastr))
-                elif high_contrast:
-                    g.add_node(pd.Node(varastr, style='filled',
-                                       fillcolor=color))
-                else:
-                    g.add_node(pd.Node(varastr, color=color))
-            else:
-                varastr = my_list[nd]
-            label = None
-            if len(app.outputs) > 1:
-                label = str(i)
-            g.add_edge(pd.Edge(astr, varastr, label=label))
-        for nd in app.inputs:
-            if nd.owner:
-                plot_apply(nd.owner, d - 1)
-
-    for nd in vars:
-        if nd.owner:
-            for k in nd.owner.outputs:
-                if k not in vars:
-                    orphanes.append(k)
-
-    for nd in vars:
-        if nd.owner:
-            plot_apply(nd.owner, depth)
-    try:
-        g.write(outfile, prog='dot', format=format)
-    except pd.InvocationException as e:
-        # Some version of pydot are bugged/don't work correctly with
-        # empty label. Provide a better user error message.
-        version = getattr(pd, '__version__', "")
-        if version == "1.0.28" and "label=]" in e.message:
-            raise Exception("pydot 1.0.28 is know to be bugged. Use another "
-                            "working version of pydot")
-        elif "label=]" in e.message:
-            raise Exception("Your version of pydot " + version +
-                            " returned an error. Version 1.0.28 is known"
-                            " to be bugged and 1.0.25 to be working with"
-                            " Theano. Using another version of pydot could"
-                            " fix this problem. The pydot error is: " +
-                            e.message)
-        raise
-
-    print('The output file is available at', outfile)
 
 
 class _TagGenerator:

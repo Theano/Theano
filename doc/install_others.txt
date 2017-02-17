@@ -1,0 +1,52 @@
+.. _install_others:
+
+
+Other Platform-specific Installations
+=====================================
+
+.. warning::
+
+    These instructions are not kept up to date.
+
+NVIDIA Jetson TX1 embedded platform
+-----------------------------------
+
+.. code-block:: bash
+
+    sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libblas-dev git
+    pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git --user  # Need Theano 0.8 or more recent
+
+Gentoo
+------
+
+Brian Vandenberg emailed `installation instructions on Gentoo
+<http://groups.google.com/d/msg/theano-dev/-8WCMn2FMR0/bJPasoZXaqoJ>`_,
+focusing on how to install the appropriate dependencies.
+
+Nicolas Pinto provides `ebuild scripts <https://github.com/npinto/sekyfsr-gentoo-overlay/tree/master/sci-libs/Theano>`_.
+
+AWS Marketplace with Bitfusion AMI
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+AWS EC2 AMI pre-installed with Nvidia drivers, CUDA, cuDNN, Theano, Keras, Lasagne, Python 2, Python 3, PyCuda, Scikit-Learn, Pandas, Enum34, iPython, and Jupyter. Note, as always there is no charge for Theano and other open software, however there is a charge for AWS hosting + Bitfusion.
+
+`Launch <https://aws.amazon.com/marketplace/pp/B01IRAMCM8/ref=_ptnr_referral_docs_theano>`_ an instance from the AWS Marketplace.
+
+Docker
+~~~~~~
+
+Builds of Theano are available as `Docker <https://www.docker.com>`_
+images: `Theano Docker (CPU) <https://hub.docker.com/r/kaixhin/theano/>`_ or
+`Theano Docker (CUDA) <https://hub.docker.com/r/kaixhin/cuda-theano/>`_. These
+are updated on a weekly basis with bleeding-edge builds of Theano.
+Examples of running bash in a Docker container are as follows:
+
+.. code-block:: bash
+
+    sudo docker run -it kaixhin/theano
+    sudo nvidia-docker run -it kaixhin/cuda-theano:7.0
+
+For a guide to Docker, see the `official docs <https://docs.docker.com>`_.
+CUDA support requires `NVIDIA Docker <https://github.com/NVIDIA/nvidia-docker>`_.
+For more details on how to use the Theano Docker images,
+consult the `source project <https://github.com/Kaixhin/dockerfiles>`_.

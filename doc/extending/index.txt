@@ -45,6 +45,7 @@ with Theano itself.
     ctype
     cop
     using_params
+    extending_theano_gpu
     optimization
     tips
     unittest

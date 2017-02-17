@@ -2,8 +2,9 @@
 Function to detect memory sharing for ndarray AND sparse type AND CudaNdarray.
 numpy version support only ndarray.
 """
+from __future__ import absolute_import, print_function, division
 
-import numpy
+import numpy as np
 from theano.tensor.basic import TensorType
 
 try:
@@ -18,7 +19,7 @@ except ImportError:
         return False
 
 from theano.sandbox import cuda
-from theano.sandbox import gpuarray
+from theano import gpuarray
 
 if cuda.cuda_available:
     from theano.sandbox.cuda.type import CudaNdarrayType
@@ -41,8 +42,8 @@ else:
 
 
 def may_share_memory(a, b, raise_other_type=True):
-    a_ndarray = isinstance(a, numpy.ndarray)
-    b_ndarray = isinstance(b, numpy.ndarray)
+    a_ndarray = isinstance(a, np.ndarray)
+    b_ndarray = isinstance(b, np.ndarray)
     if a_ndarray and b_ndarray:
         return TensorType.may_share_memory(a, b)
     a_cuda = _is_cuda(a)

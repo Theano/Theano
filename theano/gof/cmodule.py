@@ -2,9 +2,10 @@
 Generate and compile C modules for Python.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import atexit
+import textwrap
 import six.moves.cPickle as pickle
 import logging
 import os
@@ -19,11 +20,12 @@ import platform
 import distutils.sysconfig
 import warnings
 
-import numpy.distutils  # TODO: TensorType should handle this
+import numpy.distutils
 
 import theano
 from theano.compat import PY3, decode, decode_iter
 from six import b, BytesIO, StringIO, string_types, iteritems
+from six.moves import xrange
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.utils import hash_from_code
@@ -125,6 +127,7 @@ class ExtFunction(object):
 
 
 class DynamicModule(object):
+
     def __init__(self, name=None):
         assert name is None, (
             "The 'name' parameter of DynamicModule"
@@ -186,7 +189,7 @@ static struct PyModuleDef moduledef = {{
 
     def add_support_code(self, code):
         assert not self.finalized
-        if code not in self.support_code:  # TODO: KLUDGE
+        if code and code not in self.support_code:  # TODO: KLUDGE
             self.support_code.append(code)
 
     def add_function(self, fn):
@@ -532,14 +535,24 @@ class KeyData(object):
         """
         entry = self.get_entry()
         for key in self.keys:
-            del entry_from_key[key]
+            try:
+                del entry_from_key[key]
+            except KeyError:
+                # This happen if the compiledir was deleted during
+                # this process execution.
+                pass
         if do_manual_check:
             to_del = []
             for key, key_entry in iteritems(entry_from_key):
                 if key_entry == entry:
                     to_del.append(key)
             for key in to_del:
-                del entry_from_key[key]
+                try:
+                    del entry_from_key[key]
+                except KeyError:
+                    # This happen if the compiledir was deleted during
+                    # this process execution.
+                    pass
 
 
 class ModuleCache(object):
@@ -656,7 +669,7 @@ class ModuleCache(object):
         if do_refresh:
             self.refresh()
 
-    age_thresh_use = 60 * 60 * 24 * 24    # 24 days
+    age_thresh_use = config.cmodule.age_thresh_use  # default 24 days
     """
     The default age threshold (in seconds) for cache files we want to use.
 
@@ -1228,7 +1241,8 @@ class ModuleCache(object):
 
         self.time_spent_in_check_key += time.time() - start_time
 
-    age_thresh_del = 60 * 60 * 24 * 31  # 31 days
+    # default 31 days
+    age_thresh_del = config.cmodule.age_thresh_use + 60 * 60 * 24 * 7
     age_thresh_del_unversioned = 60 * 60 * 24 * 7  # 7 days
     """
     The default age threshold for `clear_old` (in seconds).
@@ -1471,10 +1485,25 @@ class ModuleCache(object):
 
 def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
             ignore_if_missing=False):
-    # On NFS filesystems, it is impossible to delete a directory with open
-    # files in it.  So instead, some commands in this file will respond to a
-    # failed rmtree() by touching a 'delete.me' file.  This file is a message
-    # for a future process to try deleting the directory.
+    """
+    On NFS filesystems, it is impossible to delete a directory with open
+    files in it.
+
+    So instead, some commands in this file will respond to a
+    failed rmtree() by touching a 'delete.me' file.  This file is a message
+    for a future process to try deleting the directory.
+
+    Parameters:
+    ----------
+    parent
+        Root node to start deleting from
+    ignore_nocleanup
+        Delete the tree if flag is TRUE
+    level
+        Python Logging level. Set to "DEBUG" by default
+    ignore_if_missing
+        If set to True, just return without any issue if parent is NULL
+    """
     if ignore_if_missing and not os.path.exists(parent):
         return
     try:
@@ -1501,6 +1530,7 @@ _module_cache = None
 
 def get_module_cache(dirname, init_args=None):
     """
+    Create a new module_cache with the (k, v) pairs in this dictionary
 
     Parameters
     ----------
@@ -1692,9 +1722,10 @@ class Compiler(object):
 
     """
 
-    @staticmethod
-    def _try_compile_tmp(src_code, tmp_prefix='', flags=(),
-                         try_run=False, output=False, compiler=None):
+    @classmethod
+    def _try_compile_tmp(cls, src_code, tmp_prefix='', flags=(),
+                         try_run=False, output=False, compiler=None,
+                         comp_args=True):
         """
         Try to compile (and run) a test program.
 
@@ -1708,11 +1739,17 @@ class Compiler(object):
         If try_run is True, returns a (compile_status, run_status) pair.
         If output is there, we append the stdout and stderr to the output.
 
+        Compile arguments from the Compiler's compile_args() method are added
+        if comp_args=True.
         """
         if not compiler:
             return False
-
         flags = list(flags)
+        # Get compile arguments from compiler method if required
+        if comp_args:
+            args = cls.compile_args()
+        else:
+            args = []
         compilation_ok = True
         run_ok = False
         out, err = None, None
@@ -1729,7 +1766,7 @@ class Compiler(object):
                 os.close(fd)
                 fd = None
                 out, err, p_ret = output_subprocess_Popen(
-                    [compiler, path, '-o', exe_path] + flags)
+                    [compiler] + args + [path, '-o', exe_path] + flags)
                 if p_ret != 0:
                     compilation_ok = False
                 elif try_run:
@@ -1762,14 +1799,18 @@ class Compiler(object):
         else:
             return (compilation_ok, run_ok, out, err)
 
-    @staticmethod
-    def _try_flags(flag_list, preambule="", body="",
-                   try_run=False, output=False, compiler=None):
+    @classmethod
+    def _try_flags(cls, flag_list, preambule="", body="",
+                   try_run=False, output=False, compiler=None,
+                   comp_args=True):
         """
         Try to compile a dummy file with these flags.
 
         Returns True if compilation was successful, False if there
         were errors.
+
+        Compile arguments from the Compiler's compile_args() method are added
+        if comp_args=True.
 
         """
         if not compiler:
@@ -1783,9 +1824,38 @@ class Compiler(object):
             return 0;
         }
         """ % locals())
-        return Compiler._try_compile_tmp(code, tmp_prefix='try_flags_',
-                                         flags=flag_list, try_run=try_run,
-                                         output=output, compiler=compiler)
+        return cls._try_compile_tmp(code, tmp_prefix='try_flags_',
+                                    flags=flag_list, try_run=try_run,
+                                    output=output, compiler=compiler,
+                                    comp_args=comp_args)
+
+
+def try_march_flag(flags):
+    """
+        Try to compile and run a simple C snippet using current flags.
+        Return: compilation success (True/False), execution success (True/False)
+    """
+    test_code = textwrap.dedent("""\
+            #include <cmath>
+            using namespace std;
+            int main(int argc, char** argv)
+            {
+                float Nx = -1.3787706641;
+                float Sx = 25.0;
+                double r = Nx + sqrt(Sx);
+                if (abs(r - 3.621229) > 0.01)
+                {
+                    return -1;
+                }
+                return 0;
+            }
+            """)
+
+    cflags = flags + ['-L' + d for d in theano.gof.cmodule.std_lib_dirs()]
+    compilation_result, execution_result = GCC_compiler.try_compile_tmp(
+        test_code, tmp_prefix='try_march_',
+        flags=cflags, try_run=True)
+    return compilation_result, execution_result
 
 
 class GCC_compiler(Compiler):
@@ -1799,7 +1869,7 @@ class GCC_compiler(Compiler):
         return theano.config.cxx + " " + gcc_version_str
 
     @staticmethod
-    def compile_args():
+    def compile_args(march_flags=True):
         cxxflags = [flag for flag in config.gcc.cxxflags.split(' ') if flag]
 
         # Add the equivalent of -march=native flag.  We can't use
@@ -1810,7 +1880,7 @@ class GCC_compiler(Compiler):
         # Those URL discuss how to find witch flags are used by -march=native.
         # http://en.gentoo-wiki.com/wiki/Safe_Cflags#-march.3Dnative
         # http://en.gentoo-wiki.com/wiki/Hardware_CFLAGS
-        detect_march = GCC_compiler.march_flags is None
+        detect_march = GCC_compiler.march_flags is None and march_flags
         if detect_march:
             for f in cxxflags:
                 # If the user give an -march=X parameter, don't add one ourself
@@ -1826,7 +1896,8 @@ class GCC_compiler(Compiler):
 
         if ('g++' not in theano.config.cxx and
                 'clang++' not in theano.config.cxx and
-                'clang-omp++' not in theano.config.cxx):
+                'clang-omp++' not in theano.config.cxx and
+                'icpc' not in theano.config.cxx):
             _logger.warn(
                 "OPTIMIZATION WARNING: your Theano flag `cxx` seems not to be"
                 " the g++ compiler. So we disable the compiler optimization"
@@ -1864,12 +1935,10 @@ class GCC_compiler(Compiler):
                                 "CXXFLAGS=" in line or
                                 "-march=native" in line):
                             continue
-                        elif "-march=" in line:
-                            selected_lines.append(line.strip())
-                        elif "-mtune=" in line:
-                            selected_lines.append(line.strip())
-                        elif "-target-cpu" in line:
-                            selected_lines.append(line.strip())
+                        for reg in ["-march=", "-mtune=",
+                                    "-target-cpu", "-mabi="]:
+                            if reg in line:
+                                selected_lines.append(line.strip())
                     lines = list(set(selected_lines))  # to remove duplicate
 
                 return lines
@@ -2008,27 +2077,62 @@ class GCC_compiler(Compiler):
                     _logger.info("g++ -march=native equivalent flags: %s",
                                  GCC_compiler.march_flags)
 
+            # Find working march flag:
+            #   -- if current GCC_compiler.march_flags works, we're done.
+            #   -- else replace -march and -mtune with ['core-i7-avx', 'core-i7', 'core2']
+            #      and retry with all other flags and arguments intact.
+            #   -- else remove all other flags and only try with -march = default + flags_to_try.
+            #   -- if none of that worked, set GCC_compiler.march_flags = [] (for x86).
+
+            default_compilation_result, default_execution_result = try_march_flag(GCC_compiler.march_flags)
+            if not default_compilation_result or not default_execution_result:
+                march_success = False
+                march_ind = None
+                mtune_ind = None
+                default_detected_flag = []
+                march_flags_to_try = ['corei7-avx', 'corei7', 'core2']
+
+                for m_ in xrange(len(GCC_compiler.march_flags)):
+                    march_flag = GCC_compiler.march_flags[m_]
+                    if 'march' in march_flag:
+                        march_ind = m_
+                        default_detected_flag = [march_flag]
+                    elif 'mtune' in march_flag:
+                        mtune_ind = m_
+
+                for march_flag in march_flags_to_try:
+                    if march_ind is not None:
+                        GCC_compiler.march_flags[march_ind] = '-march=' + march_flag
+                    if mtune_ind is not None:
+                        GCC_compiler.march_flags[mtune_ind] = '-mtune=' + march_flag
+
+                    compilation_result, execution_result = try_march_flag(GCC_compiler.march_flags)
+
+                    if compilation_result and execution_result:
+                        march_success = True
+                        break
+
+                if not march_success:
+                    # perhaps one of the other flags was problematic; try default flag in isolation again:
+                    march_flags_to_try = default_detected_flag + march_flags_to_try
+                    for march_flag in march_flags_to_try:
+                        compilation_result, execution_result = try_march_flag(['-march=' + march_flag])
+                        if compilation_result and execution_result:
+                            march_success = True
+                            GCC_compiler.march_flags = ['-march=' + march_flag]
+                            break
+
+                if not march_success:
+                    GCC_compiler.march_flags = []
+
         # Add the detected -march=native equivalent flags
-        if GCC_compiler.march_flags:
+        if march_flags and GCC_compiler.march_flags:
             cxxflags.extend(GCC_compiler.march_flags)
 
-        # NumPy 1.7 Deprecate the old API. I updated most of the places
-        # to use the new API, but not everywhere. When finished, enable
-        # the following macro to assert that we don't bring new code
+        # NumPy 1.7 Deprecate the old API.
+        # The following macro asserts that we don't bring new code
         # that use the old API.
         cxxflags.append("-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
-        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-
-        # numpy 1.7 deprecated the following macro but the new one didn't
-        # existed in the past
-        if bool(numpy_ver < [1, 7]):
-            cxxflags.append("-DNPY_ARRAY_ENSUREARRAY=NPY_ENSUREARRAY")
-            cxxflags.append("-DNPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
-            cxxflags.append("-DNPY_ARRAY_ALIGNED=NPY_ALIGNED")
-            cxxflags.append("-DNPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
-            cxxflags.append("-DNPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
-            cxxflags.append("-DNPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
-            cxxflags.append("-DNPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
 
         # Platform-specific flags.
         # We put them here, rather than in compile_str(), so they en up
@@ -2062,25 +2166,24 @@ class GCC_compiler(Compiler):
 
         return cxxflags
 
-    @staticmethod
-    def try_compile_tmp(src_code, tmp_prefix='', flags=(),
-                        try_run=False, output=False):
-        return Compiler._try_compile_tmp(src_code, tmp_prefix, flags,
-                                         try_run, output,
-                                         theano.config.cxx)
+    @classmethod
+    def try_compile_tmp(cls, src_code, tmp_prefix='', flags=(),
+                        try_run=False, output=False, comp_args=True):
+        return cls._try_compile_tmp(src_code, tmp_prefix, flags,
+                                    try_run, output, theano.config.cxx,
+                                    comp_args)
 
-    @staticmethod
-    def try_flags(flag_list, preambule="", body="",
-                  try_run=False, output=False):
-        return Compiler._try_flags(flag_list, preambule, body, try_run, output,
-                                   theano.config.cxx)
+    @classmethod
+    def try_flags(cls, flag_list, preambule="", body="",
+                  try_run=False, output=False, comp_args=True):
+        return cls._try_flags(flag_list, preambule, body, try_run, output,
+                              theano.config.cxx, comp_args)
 
     @staticmethod
     def compile_str(module_name, src_code, location=None,
                     include_dirs=None, lib_dirs=None, libs=None,
                     preargs=None, py_module=True, hide_symbols=True):
         """
-
         Parameters
         ----------
         module_name : str
@@ -2156,7 +2259,10 @@ class GCC_compiler(Compiler):
             cmd.extend(p for p in preargs if not p.startswith('-O'))
         else:
             cmd.extend(preargs)
-        cmd.extend('-I%s' % idir for idir in include_dirs)
+        # to support path that includes spaces, we need to wrap it with double quotes on Windows
+        path_wrapper = "\"" if os.name == 'nt' else ""
+        cmd.extend(['-I%s%s%s' % (path_wrapper, idir, path_wrapper) for idir in include_dirs])
+        cmd.extend(['-L%s%s%s' % (path_wrapper, ldir, path_wrapper) for ldir in lib_dirs])
         if hide_symbols and sys.platform != 'win32':
             # This has been available since gcc 4.0 so we suppose it
             # is always available. We pass it here since it
@@ -2167,7 +2273,6 @@ class GCC_compiler(Compiler):
             cmd.append('-fvisibility=hidden')
         cmd.extend(['-o', lib_filename])
         cmd.append(cppfilename)
-        cmd.extend(['-L%s' % ldir for ldir in lib_dirs])
         cmd.extend(['-l%s' % l for l in libs])
         # print >> sys.stderr, 'COMPILING W CMD', cmd
         _logger.debug('Running cmd: %s', ' '.join(cmd))

@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import numpy
 
 import theano.tensor as T
@@ -37,9 +37,10 @@ class GpuConvTransp3D(GpuOp):
         else:
             RShape_ = T.as_tensor_variable([-1, -1, -1])
 
-        return theano.Apply(self, inputs=[W_, b_, d_, H_, RShape_],
-                            outputs=[CudaNdarrayType(dtype=H_.dtype,
-                                                     broadcastable=(False,)*5)()])
+        return theano.Apply(
+            self, inputs=[W_, b_, d_, H_, RShape_],
+            outputs=[CudaNdarrayType(
+                dtype=H_.dtype, broadcastable=(False,) * 5)()])
 
     def infer_shape(self, node, input_shapes):
         W, b, d, H, RShape = node.inputs
@@ -382,9 +383,9 @@ def computeR(W, b, d, H, Rshape=None):
         assert dc > 0
         assert dt > 0
 
-        videoHeight = (outputHeight-1) * dr + filterHeight
-        videoWidth = (outputWidth-1) * dc + filterWidth
-        videoDur = (outputDur-1) * dt + filterDur
+        videoHeight = (outputHeight - 1) * dr + filterHeight
+        videoWidth = (outputWidth - 1) * dc + filterWidth
+        videoDur = (outputDur - 1) * dt + filterDur
 
         if Rshape is not None and Rshape[0] != -1:
             if Rshape[0] < videoHeight:
@@ -399,26 +400,46 @@ def computeR(W, b, d, H, Rshape=None):
         # else:
         #    print "No Rshape passed in"
 
-        # print "video size: "+str((videoHeight, videoWidth, videoDur))
+        # print "video size: " + str((videoHeight, videoWidth, videoDur))
 
-        R =  numpy.zeros( (batchSize, inputChannels, videoHeight,
-            videoWidth, videoDur ) , dtype=H.dtype)
+        R = numpy.zeros((batchSize, inputChannels, videoHeight,
+                         videoWidth, videoDur),
+                        dtype=H.dtype)
 
-        # R[i,j,r,c,t] = b_j + sum_{rc,rk | d \circ rc + rk = r} sum_{cc,ck | ...} sum_{tc,tk | ...} sum_k W[k, j, rk, ck, tk] * H[i,k,rc,cc,tc]
+        # R[i,j,r,c,t] = b_j + sum_{rc,rk | d \circ rc + rk = r} sum_{cc,ck | ...} \
+        # sum_{tc,tk | ...} sum_k W[k, j, rk, ck, tk] * H[i,k,rc,cc,tc]
         for i in xrange(0, batchSize):
             # print '\texample '+str(i+1)+'/'+str(batchSize)
             for j in xrange(0, inputChannels):
-                # print '\t\tfeature map '+str(j+1)+'/'+str(inputChannels)
+                # print '\t\tfeature map ' + str(j+1) + '/' + str(inputChannels)
                 for r in xrange(0, videoHeight):
-                    # print '\t\t\trow '+str(r+1)+'/'+str(videoHeight)
+                    # print '\t\t\trow ' + str(r+1) + '/'+str(videoHeight)
                     for c in xrange(0, videoWidth):
                         for t in xrange(0, videoDur):
                             R[i, j, r, c, t] = b[j]
 
-                            ftc = max([0, int(numpy.ceil(float(t-filterDur + 1  )/float(dt))) ])
-                            fcc = max([0, int(numpy.ceil(float(c-filterWidth + 1)/float(dc))) ])
+                            ftc = max(
+                                [0,
+                                 int(numpy.ceil(
+                                     float(t - filterDur + 1) / float(dt)
+                                     ))
+                                 ]
+                            )
+                            fcc = max(
+                                [0,
+                                 int(numpy.ceil(
+                                     float(c - filterWidth + 1) / float(dc)
+                                     ))
+                                 ]
+                            )
 
-                            rc =  max([0, int(numpy.ceil(float(r-filterHeight+1)/float(dr))) ])
+                            rc = max(
+                                [0,
+                                 int(numpy.ceil(
+                                     float(r - filterHeight + 1) / float(dr)
+                                     ))
+                                 ]
+                            )
                             while rc < outputHeight:
                                 rk = r - rc * dr
                                 if rk < 0:
@@ -436,7 +457,9 @@ def computeR(W, b, d, H, Rshape=None):
                                         if tk < 0:
                                             break
 
-                                        R[i, j, r, c, t] += numpy.dot(W[:, j, rk, ck, tk], H[i, :, rc, cc, tc] )
+                                        R[i, j, r, c, t] += numpy.dot(
+                                            W[:, j, rk, ck, tk],
+                                            H[i, :, rc, cc, tc])
 
                                         tc += 1
                                     ""  # close loop over tc

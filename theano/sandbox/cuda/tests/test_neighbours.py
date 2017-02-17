@@ -1,12 +1,13 @@
 # Skip test if cuda_ndarray is not available.
+from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
-
-import theano.sandbox.cuda as cuda_ndarray
-if cuda_ndarray.cuda_available == False:
-    raise SkipTest('Optional package cuda disabled')
-
+import unittest
 import theano.tensor.nnet.tests.test_neighbours
 from theano.sandbox.cuda.neighbours import GpuImages2Neibs
+import theano.sandbox.cuda as cuda_ndarray
+if cuda_ndarray.cuda_available is False:
+    raise SkipTest('Optional package cuda disabled')
+
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')

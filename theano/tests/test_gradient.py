@@ -1,4 +1,5 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
+from collections import OrderedDict
 #
 # UNIT TEST
 #
@@ -9,11 +10,10 @@ from six.moves import xrange
 
 import theano
 from theano import gof
-from theano.compat import OrderedDict, izip
+from theano.compat import izip
 from theano.tests import unittest_tools as utt
 
 from theano import gradient
-from theano.tensor.nnet.Conv3D import conv3D
 from theano import config
 from theano.gof.null_type import NullType
 
@@ -186,16 +186,19 @@ class test_grad(unittest.TestCase):
     def test_undefined_grad_grad(self):
         # tests that undefined grads are caught in the grad method
 
-        V = theano.tensor.TensorType(dtype=config.floatX,
-                                     broadcastable=(False, False, False, False, False))()
-        W = theano.tensor.TensorType(dtype=config.floatX,
-                                     broadcastable=(False, False, False, False, False))()
-        b = theano.tensor.vector()
-        d = theano.tensor.ivector()
+        class DummyOp(gof.Op):
+            __props__ = ()
 
-        Z = conv3D(V, W, b, d)
+            def make_node(self, x):
+                return gof.Apply(self, [x], [x.type()])
 
-        self.assertRaises(TypeError, theano.gradient.grad, Z.sum(), d)
+            def grad(self, inputs, output_grads):
+                return [theano.gradient.grad_undefined(self, 0, inputs[0])]
+
+        a = theano.tensor.scalar()
+        b = DummyOp()(a)
+
+        self.assertRaises(TypeError, theano.gradient.grad, b, a)
 
     def test_grad_name(self):
         A = theano.tensor.matrix('A')
@@ -472,9 +475,8 @@ def test_known_grads():
     true_grads = true_grads(*values)
 
     for layer in layers:
-        print('Testing by separately computing ', layer)
         first = theano.tensor.grad(cost, layer, disconnected_inputs='ignore')
-        known = dict(izip(layer, first))
+        known = OrderedDict(izip(layer, first))
         full = theano.tensor.grad(cost=None, known_grads=known, wrt=inputs, disconnected_inputs='ignore')
         full = theano.function(inputs, full)
         full = full(*values)

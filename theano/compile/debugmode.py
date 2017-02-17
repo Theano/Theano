@@ -4,7 +4,7 @@ Provides `DebugMode`, an evaluation mode for debugging theano internals.
 TODO: add support for IfElse Op, LazyLinker, PureOp, etc.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import copy
 import sys
@@ -14,7 +14,7 @@ import six.moves.copyreg as copyreg
 from itertools import chain, product as itertools_product
 from theano.compat import izip
 
-import numpy
+import numpy as np
 
 import theano
 from theano import gof, config
@@ -25,7 +25,7 @@ from theano.gof import (graph, utils, link, ops_with_inner_function)
 from theano.gof.link import raise_with_op
 from theano.compile.function_module import (
     FunctionMaker, Function, infer_reuse_pattern,
-    SymbolicInputKit, SymbolicOutput, Supervisor, std_fgraph)
+    SymbolicOutput, Supervisor, std_fgraph)
 from theano.compile.mode import Mode, register_mode
 from theano.compile.ops import OutputGuard
 
@@ -147,7 +147,7 @@ class BadThunkOutput(DebugModeError):
         print("  thunk2  :", self.thunk2, file=sio)
 
         # Don't import it at the top of the file to prevent circular import.
-        utt = theano.tests.unittest_tools
+        import theano.tests.unittest_tools as utt
         print(utt.str_diagnostic(self.val1, self.val2, None, None), file=sio)
         ret = sio.getvalue()
         return ret
@@ -270,15 +270,15 @@ class BadOptimization(DebugModeError):
             print("  New Value: ", str(self.new_r_val), file=sio)
 
         try:
-            ov = numpy.asarray(self.old_r_val)
-            nv = numpy.asarray(self.new_r_val)
+            ov = np.asarray(self.old_r_val)
+            nv = np.asarray(self.new_r_val)
             ssio = StringIO()
-            abs_diff = numpy.absolute(nv - ov)
-            print("  Max Abs Diff: ", numpy.max(abs_diff), file=ssio)
-            print("  Mean Abs Diff: ", numpy.mean(abs_diff), file=ssio)
-            print("  Median Abs Diff: ", numpy.median(abs_diff), file=ssio)
-            print("  Std Abs Diff: ", numpy.std(abs_diff), file=ssio)
-            arg_max_val = numpy.argmax(abs_diff)
+            abs_diff = np.absolute(nv - ov)
+            print("  Max Abs Diff: ", np.max(abs_diff), file=ssio)
+            print("  Mean Abs Diff: ", np.mean(abs_diff), file=ssio)
+            print("  Median Abs Diff: ", np.median(abs_diff), file=ssio)
+            print("  Std Abs Diff: ", np.std(abs_diff), file=ssio)
+            arg_max_val = np.argmax(abs_diff)
             values_at_max = (nv.flatten()[arg_max_val],
                              ov.flatten()[arg_max_val])
             print("  Value at Max Diff: ", values_at_max, file=ssio)
@@ -286,13 +286,13 @@ class BadOptimization(DebugModeError):
             # N.B. the maximum(..., 1e-8) protects against div by 0 when
             #      nv == ov == 0
             reldiff = (abs_diff /
-                       numpy.maaximum(numpy.absolute(nv) + numpy.absolute(ov),
-                                      1e-8))
-            print("  Max Rel Diff: ", numpy.max(reldiff), file=ssio)
-            print("  Mean Rel Diff: ", numpy.mean(reldiff), file=ssio)
-            print("  Median Rel Diff: ", numpy.median(reldiff), file=ssio)
-            print("  Std Rel Diff: ", numpy.std(reldiff), file=ssio)
-            arg_max_val = numpy.argmax(reldiff)
+                       np.maximum(np.absolute(nv) + np.absolute(ov),
+                                  1e-8))
+            print("  Max Rel Diff: ", np.max(reldiff), file=ssio)
+            print("  Mean Rel Diff: ", np.mean(reldiff), file=ssio)
+            print("  Median Rel Diff: ", np.median(reldiff), file=ssio)
+            print("  Std Rel Diff: ", np.std(reldiff), file=ssio)
+            arg_max_val = np.argmax(reldiff)
             values_at_max = (nv.flatten()[arg_max_val],
                              ov.flatten()[arg_max_val])
             print("  Value at Max Diff: ", values_at_max, file=ssio)
@@ -342,8 +342,8 @@ class BadDestroyMap(DebugModeError):
         print("  repr (old val):", repr(self.old_val), file=sio)
         print("  repr (new val):", repr(self.new_val), file=sio)
         try:
-            npy_old_val = numpy.asarray(self.old_val)
-            npy_new_val = numpy.asarray(self.new_val)
+            npy_old_val = np.asarray(self.old_val)
+            npy_new_val = np.asarray(self.new_val)
             print("  value dtype (new <space> old):", npy_new_val.dtype,
                   npy_old_val.dtype, file=sio)
             print("  value shape (new <space> old):", npy_new_val.shape,
@@ -356,13 +356,13 @@ class BadDestroyMap(DebugModeError):
             print("  value min (new-old):", delta.min(), file=sio)
             print("  value max (new-old):", delta.max(), file=sio)
             print("  value argmin (new-old):",
-                  numpy.unravel_index(delta.argmin(), npy_new_val.shape),
+                  np.unravel_index(delta.argmin(), npy_new_val.shape),
                   file=sio)
             print("  value argmax (new-old):",
-                  numpy.unravel_index(delta.argmax(), npy_new_val.shape),
+                  np.unravel_index(delta.argmax(), npy_new_val.shape),
                   file=sio)
             print("  location of first 10 mismatches:",
-                  numpy.transpose(numpy.nonzero(delta))[:10], file=sio)
+                  np.transpose(np.nonzero(delta))[:10], file=sio)
             print("", file=sio)
         except Exception as e:
             print("(Numpy-hints failed with: %s)" % str(e), file=sio)
@@ -453,7 +453,7 @@ class InvalidValueError(DebugModeError):
             v_dtype = v.dtype
             v_min = v.min()
             v_max = v.max()
-            v_isfinite = numpy.all(numpy.isfinite(v))
+            v_isfinite = np.all(np.isfinite(v))
         except Exception:
             pass
         client_node = self.client_node
@@ -512,7 +512,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                print_view_map=False, order=None, ids='CHAR',
                stop_on_name=False, prefix_child=None,
                scan_ops=None, profile=None,
-               scan_inner_to_outer_inputs=None, smap=None):
+               scan_inner_to_outer_inputs=None, smap=None,
+               used_ids=None, print_clients=False):
     """
     Print the graph leading to `r` to given depth.
 
@@ -525,7 +526,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
     depth
         Maximum recursion depth (Default -1 for unlimited).
     done
-        dict of Apply instances that have already been printed and their
+        Internal. Used to pass information when recursing.
+        Dict of Apply instances that have already been printed and their
         associated printed ids.
     print_type
         Whether to print the Variable type after the other infos.
@@ -554,6 +556,12 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         inputs (outer inputs) for printing purposes.
     smap
         None or the storage_map when printing an Theano function.
+    used_ids
+        Internal. Used to pass information when recursing.
+        It is a dict from obj to the id used for it.
+        It wasn't always printed, but at least a reference to it was printed.
+    print_clients
+        If True, we will print the clients of nodes when they have more then one clients.
     """
     if depth == 0:
         return
@@ -575,19 +583,25 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
     if prefix_child is None:
         prefix_child = prefix
 
-    def get_id_str(obj):
-        if obj in done:
-            id_str = done[obj]
+    if used_ids is None:
+        used_ids = dict()
+
+    def get_id_str(obj, get_printed=True):
+        if obj in used_ids:
+            id_str = used_ids[obj]
+        elif obj == 'output':
+            id_str = 'output'
         elif ids == "id":
             id_str = "[id %s]" % str(id(r))
         elif ids == "int":
-            id_str = "[id %s]" % str(len(done))
+            id_str = "[id %s]" % str(len(used_ids))
         elif ids == "CHAR":
-            id_str = "[id %s]" % char_from_number(len(done))
+            id_str = "[id %s]" % char_from_number(len(used_ids))
         elif ids == "":
             id_str = ""
-        done[obj] = id_str
-
+        if get_printed:
+            done[obj] = id_str
+        used_ids[obj] = id_str
         return id_str
 
     if hasattr(r.owner, 'op'):
@@ -629,14 +643,23 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         data = ""
         if smap:
             data = " " + str(smap.get(a.outputs[0], ''))
+        clients = ''
+        if print_clients and len(getattr(r, 'clients', [])) > 1:
+            def get_index(c):
+                try:
+                    return order.index(c)
+                except ValueError:
+                    return ""
+            clients = " clients:" + str([(get_id_str(c, False), get_index(c))
+                                         for c, i in r.clients])
         if profile is None or a not in profile.apply_time:
-            print('%s%s%s %s%s \'%s\' %s %s %s%s' % (prefix, a.op,
-                                                     idx,
-                                                     id_str, type_str,
-                                                     r_name,
-                                                     destroy_map_str,
-                                                     view_map_str,
-                                                     o, data), file=file)
+            print('%s%s%s %s%s \'%s\' %s %s %s%s%s' % (prefix, a.op,
+                                                       idx,
+                                                       id_str, type_str,
+                                                       r_name,
+                                                       destroy_map_str,
+                                                       view_map_str,
+                                                       o, data, clients), file=file)
         else:
             op_time = profile.apply_time[a]
             op_time_percent = (op_time / profile.fct_call_time) * 100
@@ -648,7 +671,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                 idx = ""
             else:
                 idx = ".%i" % a.outputs.index(r)
-            print("%s%s%s %s%s '%s' %s %s %s%s --> "
+            print("%s%s%s %s%s '%s' %s %s %s%s%s --> "
                   "%8.2es %4.1f%% %8.2es %4.1f%%"
                   % (prefix, a.op,
                      idx,
@@ -656,7 +679,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                      r_name,
                      destroy_map_str,
                      view_map_str,
-                     o, data,
+                     o, data, clients,
                      op_time,
                      op_time_percent,
                      tot_time,
@@ -684,7 +707,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                         prefix_child=new_prefix_child, scan_ops=scan_ops,
                         profile=profile,
                         scan_inner_to_outer_inputs=scan_inner_to_outer_inputs,
-                        smap=smap)
+                        smap=smap, used_ids=used_ids, print_clients=print_clients)
     else:
         if scan_inner_to_outer_inputs is not None and\
            r in scan_inner_to_outer_inputs:
@@ -1001,17 +1024,17 @@ def _lessbroken_deepcopy(a):
     """
     # this exists because copy.deepcopy on numpy arrays is broken
     # This logic is also in link.py
-    from theano.gof.type import CDataType
-    if type(a) in (numpy.ndarray, numpy.memmap):
+    from theano.gof.type import _cdata_type
+    if type(a) in (np.ndarray, np.memmap):
         rval = a.copy()
-    elif type(a) is CDataType._cdata_type:
+    elif type(a) is _cdata_type:
         # This is not copyable (and should be used for constant data).
         rval = a
     else:
         rval = copy.deepcopy(a)
 
     assert type(rval) == type(a), (type(rval), type(a))
-    if isinstance(rval, numpy.ndarray):
+    if isinstance(rval, np.ndarray):
         assert rval.dtype == a.dtype
     return rval
 
@@ -1218,7 +1241,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
             # There is no risk to overwrite inputs, since r does not work
             # inplace.
             if isinstance(r.type, (TensorType, CudaNdarrayType)):
-                reuse_outputs[r][...] = numpy.asarray(
+                reuse_outputs[r][...] = np.asarray(
                     def_val).astype(r.type.dtype)
 
         if reuse_outputs:
@@ -1236,7 +1259,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                 new_buf = r.type.value_zeros(r_vals[r].shape)
                 # CudaNdarray don't have flags field
                 # assert new_buf.flags["C_CONTIGUOUS"]
-                new_buf[...] = numpy.asarray(def_val).astype(r.type.dtype)
+                new_buf[...] = np.asarray(def_val).astype(r.type.dtype)
 
                 c_cont_outputs[r] = new_buf
 
@@ -1250,7 +1273,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         f_cont_outputs = {}
         for r in considered_outputs:
             if isinstance(r.type, (TensorType, CudaNdarrayType)):
-                new_buf = numpy.zeros(
+                new_buf = np.zeros(
                     shape=r_vals[r].shape,
                     dtype=r_vals[r].dtype,
                     order='F')
@@ -1308,7 +1331,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                     else:
                         buf_shape.append(s * 2)
                 new_buf = r.type.value_zeros(buf_shape)
-                new_buf[...] = numpy.asarray(def_val).astype(r.type.dtype)
+                new_buf[...] = np.asarray(def_val).astype(r.type.dtype)
                 init_strided[r] = new_buf
 
         # The number of combinations is exponential in the number of
@@ -1354,7 +1377,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                             r_buf = r_buf[tuple(strides)][tuple(shapes)]
                         assert r_buf.shape == r_vals[r].shape
 
-                        r_buf[...] = numpy.asarray(def_val).astype(r_buf.dtype)
+                        r_buf[...] = np.asarray(def_val).astype(r_buf.dtype)
                         strided[r] = r_buf
 
                 if strided:
@@ -1382,7 +1405,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                                      for s, sd in zip(r_vals[r].shape,
                                                       r_shape_diff)]
                         new_buf = r.type.value_zeros(out_shape)
-                        new_buf[...] = numpy.asarray(
+                        new_buf[...] = np.asarray(
                             def_val).astype(r.type.dtype)
                         wrong_size[r] = new_buf
 
@@ -1672,13 +1695,16 @@ class _VariableEquivalenceTracker(object):
             # N.B. compute the debugprint now, because future
             # optimizations will change the graph
             done = dict()
+            used_ids = dict()
             self.reasons[new_r].append(
                 (reason,
                  r,
                  debugprint(r, prefix='  ', depth=6,
-                            file=StringIO(), done=done).getvalue(),
+                            file=StringIO(), done=done,
+                            used_ids=used_ids).getvalue(),
                  debugprint(new_r, prefix='  ', depth=6,
-                            file=StringIO(), done=done).getvalue()))
+                            file=StringIO(), done=done,
+                            used_ids=used_ids).getvalue()))
             self.replaced_by[r].append((reason, new_r))
 
         if r in self.equiv:
@@ -1743,12 +1769,13 @@ class _Linker(gof.link.LocalLinker):
         if schedule:
             self.schedule = schedule
 
-    def accept(self, fgraph, no_recycling=None):
+    def accept(self, fgraph, no_recycling=None, profile=None):
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
             assert type(self) is _Linker
-            return type(self)(maker=self.maker).accept(fgraph, no_recycling)
+            return type(self)(maker=self.maker).accept(
+                fgraph, no_recycling, profile)
         self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self
@@ -1810,10 +1837,6 @@ class _Linker(gof.link.LocalLinker):
                 thunk.inputs = [storage_map[v] for v in node.inputs]
                 thunk.outputs = [storage_map[v] for v in node.outputs]
                 thunk_other = thunk
-            else:
-                new_node = node.op.prepare_node(node, storage_map, compute_map)
-                if new_node is not None:
-                    node = new_node
 
             debug = hasattr(node.op, 'debug_perform')
 
@@ -1827,6 +1850,7 @@ class _Linker(gof.link.LocalLinker):
                 if not isinstance(node.op, gof.op.Op):
                     raise utils.MethodNotDefined()
 
+                node.op.prepare_node(node, storage_map, compute_map, 'c')
                 thunk = node.op.make_c_thunk(node, storage_map, compute_map,
                                              no_recycling)
                 thunks_c.append(thunk)
@@ -1839,6 +1863,7 @@ class _Linker(gof.link.LocalLinker):
             if (((self.maker.mode.check_py_code or thunks_c[-1] is None) and
                  node.op.perform.__code__ != gof.op.PureOp.perform.__code__) or
                     debug):
+                node.op.prepare_node(node, storage_map, compute_map, 'py')
                 thunk = node.op.make_py_thunk(node, storage_map, compute_map,
                                               no_recycling, debug=debug)
                 thunks_py.append(thunk)
@@ -1848,6 +1873,7 @@ class _Linker(gof.link.LocalLinker):
             if not self.maker.mode.check_c_code and thunks_py[-1] is None:
                 _logger.warn("Op %s doesn't have a perform, "
                              "forcing check of the C code" % node.op)
+                node.op.prepare_node(node, storage_map, compute_map, 'c')
                 thunk = node.op.make_c_thunk(node, storage_map, compute_map,
                                              no_recycling)
                 thunks_c[-1] = thunk
@@ -2235,7 +2261,7 @@ class _Linker(gof.link.LocalLinker):
                         # HACK TO LOOK LIKE A REAL DESTRUCTIVE ACTION
                         # TOOK PLACE
                         if ((type(dr_vals[r][0]) in
-                             (numpy.ndarray, numpy.memmap)) and
+                             (np.ndarray, np.memmap)) and
                             (dr_vals[r][0].dtype ==
                              storage_map[r][0].dtype) and
                             (dr_vals[r][0].shape ==
@@ -2491,27 +2517,9 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                 # default.storage to input_storage.
                 if indices is not None:
                     raise TypeError("Cannot take a Container instance as "
-                                    "default for a SymbolicInputKit.")
+                                    "default for a SymbolicInput.")
                 input_storage.append(default.storage)
                 default = None
-            elif isinstance(input, SymbolicInputKit):
-                # If the input is a SymbolicInputKit, it represents more than
-                # one storage unit. The indices and subinputs lists represent
-                # which of the kit's inputs are active in this graph, so we
-                # make as many storage units as needed
-                if isinstance(default, (list, tuple)) \
-                        and all(isinstance(x, gof.Container) for x in default):
-                    if len(default) == len(indices):
-                        input_storage += [x.storage for x in default]
-                    elif len(default) > len(indices):
-                        input_storage += [default[i].storage for i in indices]
-                    else:
-                        raise ValueError(
-                            'Not enough storage for SymbolicInputKit',
-                            input, indices, default)
-                    default = _NODEFAULT
-                else:
-                    input_storage += [[None] for i in indices]
             else:
                 # Normal case: one new, independent storage unit
                 input_storage.append([None])
@@ -2524,16 +2532,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
             #   storage after each function call
             # - value is the value that will be put in the storage initially
 
-            # Even though a SymbolicInputKit represents more than one input,
-            # we still only have one entry for the defaults list.
-            if isinstance(input, SymbolicInputKit):
-                if default is _NODEFAULT:
-                    _defaults.append((False, False, None))
-                elif default is None:
-                    _defaults.append((True, True, None))
-                else:
-                    _defaults.append((False, False, default))
-            elif input.update is not None:
+            if input.update is not None:
                 # If the input has an update, then (logically) it is
                 # not required since it is just a parameter and of
                 # course we don't want to refeed the default back into

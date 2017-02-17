@@ -1,15 +1,13 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import distutils
 import logging
 import os
 import subprocess
 import sys
-import warnings
-
-import numpy
+from locale import getpreferredencoding
 
 from theano import config
-from theano.compat import decode, decode_iter
+from theano.compat import decode, decode_with
 from theano.configdefaults import local_bitwidth
 from theano.gof.utils import hash_from_file
 from theano.gof.cmodule import (std_libs, std_lib_dirs,
@@ -29,6 +27,9 @@ def is_nvcc_available():
     Return True iff the nvcc compiler is found.
 
     """
+    if not config.cuda.enabled:
+        return False
+
     def set_version():
         p_out = output_subprocess_Popen([nvcc_path, '--version'])
         ver_line = decode(p_out[0]).strip().split('\n')[-1]
@@ -65,18 +66,17 @@ def add_standard_rpath(rpath):
 class NVCC_compiler(Compiler):
     supports_amdlibm = False
 
-    @staticmethod
-    def try_compile_tmp(src_code, tmp_prefix='', flags=(),
-                        try_run=False, output=False):
-        return Compiler._try_compile_tmp(src_code, tmp_prefix, flags,
-                                         try_run, output,
-                                         nvcc_path)
+    @classmethod
+    def try_compile_tmp(cls, src_code, tmp_prefix='', flags=(),
+                        try_run=False, output=False, comp_args=False):
+        return cls._try_compile_tmp(src_code, tmp_prefix, flags,
+                                    try_run, output, nvcc_path, comp_args)
 
-    @staticmethod
-    def try_flags(flag_list, preambule="", body="",
-                  try_run=False, output=False):
-        return Compiler._try_flags(flag_list, preambule, body, try_run, output,
-                                   nvcc_path)
+    @classmethod
+    def try_flags(cls, flag_list, preambule="", body="",
+                  try_run=False, output=False, comp_args=False):
+        return cls._try_flags(flag_list, preambule, body, try_run, output,
+                              nvcc_path, comp_args)
 
     @staticmethod
     def version_str():
@@ -96,22 +96,10 @@ class NVCC_compiler(Compiler):
             os.path.join(os.path.split(__file__)[0], 'cuda_ndarray.cuh'))
         flags.append('-DCUDA_NDARRAY_CUH=' + cuda_ndarray_cuh_hash)
 
-        # NumPy 1.7 Deprecate the old API. I updated most of the places
-        # to use the new API, but not everywhere. When finished, enable
-        # the following macro to assert that we don't bring new code
+        # NumPy 1.7 Deprecate the old API.
+        # The following macro asserts that we don't bring new code
         # that use the old API.
         flags.append("-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
-
-        # numpy 1.7 deprecated the following macro but the didn't
-        # existed in the past
-        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-        if bool(numpy_ver < [1, 7]):
-            flags.append("-DNPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
-            flags.append("-DNPY_ARRAY_ALIGNED=NPY_ALIGNED")
-            flags.append("-DNPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
-            flags.append("-DNPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
-            flags.append("-DNPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
-            flags.append("-DNPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
 
         # If the user didn't specify architecture flags add them
         if not any(['-arch=sm_' in f for f in flags]):
@@ -248,8 +236,9 @@ class NVCC_compiler(Compiler):
             _logger.debug('Writing module C++ code to %s', cppfilename)
             cppfile.write(src_code)
 
-        lib_filename = os.path.join(location, '%s.%s' %
-                (module_name, get_lib_extension()))
+        lib_filename = os.path.join(
+            location, '%s.%s' %
+            (module_name, get_lib_extension()))
 
         _logger.debug('Generating shared lib %s', lib_filename)
         # TODO: Why do these args cause failure on gtx285 that has 1.3
@@ -267,10 +256,10 @@ class NVCC_compiler(Compiler):
                 continue
             for pattern in ['-O', '-arch=', '-ccbin=', '-G', '-g', '-I',
                             '-L', '--fmad', '--ftz', '--maxrregcount',
-                            '--prec-div', '--prec-sqrt',  '--use_fast_math',
+                            '--prec-div', '--prec-sqrt', '--use_fast_math',
                             '-fmad', '-ftz', '-maxrregcount',
                             '-prec-div', '-prec-sqrt', '-use_fast_math',
-                            '--use-local-env', '--cl-version=']:
+                            '--use-local-env', '--cl-version=', '-std=']:
 
                 if pa.startswith(pattern):
                     preargs1.append(pa)
@@ -310,7 +299,7 @@ class NVCC_compiler(Compiler):
         # https://wiki.debian.org/RpathIssue for details.
 
         if (not type(config.cuda).root.is_default and
-            os.path.exists(os.path.join(config.cuda.root, 'lib'))):
+                os.path.exists(os.path.join(config.cuda.root, 'lib'))):
 
             rpaths.append(os.path.join(config.cuda.root, 'lib'))
             if sys.platform != 'darwin':
@@ -320,10 +309,12 @@ class NVCC_compiler(Compiler):
             # the -rpath option is not understood by the Microsoft linker
             for rpath in rpaths:
                 cmd.extend(['-Xlinker', ','.join(['-rpath', rpath])])
-        cmd.extend('-I%s' % idir for idir in include_dirs)
+        # to support path that includes spaces, we need to wrap it with double quotes on Windows
+        path_wrapper = "\"" if os.name == 'nt' else ""
+        cmd.extend(['-I%s%s%s' % (path_wrapper, idir, path_wrapper) for idir in include_dirs])
+        cmd.extend(['-L%s%s%s' % (path_wrapper, ldir, path_wrapper) for ldir in lib_dirs])
         cmd.extend(['-o', lib_filename])
         cmd.append(os.path.split(cppfilename)[-1])
-        cmd.extend(['-L%s' % ldir for ldir in lib_dirs])
         cmd.extend(['-l%s' % l for l in libs])
         if sys.platform == 'darwin':
             # This tells the compiler to use the already-loaded python
@@ -340,7 +331,7 @@ class NVCC_compiler(Compiler):
                 indexof = cmd.index('-u')
                 cmd.pop(indexof)  # Remove -u
                 cmd.pop(indexof)  # Remove argument to -u
-            except ValueError as e:
+            except ValueError:
                 done = True
 
         # CUDA Toolkit v4.1 Known Issues:
@@ -358,8 +349,11 @@ class NVCC_compiler(Compiler):
         try:
             os.chdir(location)
             p = subprocess.Popen(
-                    cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            nvcc_stdout, nvcc_stderr = decode_iter(p.communicate()[:2])
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            nvcc_stdout_raw, nvcc_stderr_raw = p.communicate()[:2]
+            console_encoding = getpreferredencoding()
+            nvcc_stdout = decode_with(nvcc_stdout_raw, console_encoding)
+            nvcc_stderr = decode_with(nvcc_stderr_raw, console_encoding)
         finally:
             os.chdir(orig_dir)
 
@@ -400,7 +394,8 @@ class NVCC_compiler(Compiler):
         elif config.cmodule.compilation_warning and nvcc_stdout:
             print(nvcc_stdout)
 
-        if nvcc_stdout:
+        # On Windows, nvcc print useless stuff by default
+        if sys.platform != 'win32' and nvcc_stdout:
             # this doesn't happen to my knowledge
             print("DEBUG: nvcc STDOUT", nvcc_stdout, file=sys.stderr)
 

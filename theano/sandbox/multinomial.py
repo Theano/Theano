@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import numpy
 
 import theano
@@ -8,11 +9,10 @@ from theano.tensor import NotScalarConstantError, get_scalar_constant_value
 from theano.scalar import as_scalar
 import copy
 
-from theano.sandbox.cuda import cuda_available, GpuOp
+from theano.sandbox.cuda import cuda_available, GpuOp, register_opt
 if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType
     from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
-    from theano.sandbox.cuda.opt import register_opt
 
 
 class MultinomialFromUniform(Op):
@@ -172,28 +172,43 @@ class MultinomialFromUniform(Op):
                              unis.shape[0], pvals.shape[0], n_samples)
         if z[0] is None or z[0].shape != pvals.shape:
             z[0] = numpy.zeros(pvals.shape, dtype=node.outputs[0].dtype)
+        else:
+            z[0].fill(0)
 
         nb_multi = pvals.shape[0]
-        nb_outcomes = pvals.shape[1]
+        # Original version that is not vectorized. I keep it here as
+        # it is more readable.
         # For each multinomial, loop over each possible outcome
+        # nb_outcomes = pvals.shape[1]
+        # for c in range(n_samples):
+        #    for n in range(nb_multi):
+        #        waiting = True
+        #        cummul = 0
+        #        unis_n = unis[c * nb_multi + n]
+        #        for m in range(nb_outcomes):
+        #            cummul += pvals[n, m]
+        #            if c == 0:
+        #                if (waiting and (cummul > unis_n)):
+        #                    z[0][n, m] = 1
+        #                    waiting = False
+        #                else:
+        #                    # Only needed if we don't init the output to 0
+        #                    z[0][n, m] = 0
+        #            else:
+        #                if (cummul > unis_n):
+        #                    z[0][n, m] += 1
+        #                    break
+
+        # Vectorized version that is much faster as all the looping is
+        # done in C even if this make extra work.
         for c in range(n_samples):
             for n in range(nb_multi):
-                waiting = True
-                cummul = 0
                 unis_n = unis[c * nb_multi + n]
-
-                for m in range(nb_outcomes):
-                    cummul += pvals[n, m]
-                    if c == 0:
-                        if (waiting and (cummul > unis_n)):
-                            z[0][n, m] = 1
-                            waiting = False
-                        else:
-                            z[0][n, m] = 0
-                    else:
-                        if (cummul > unis_n):
-                            z[0][n, m] += 1
-                            break
+                # The dtype='float64' is important. Otherwise we don't
+                # have the same answer as the c code as in the c code
+                # the cumul is in double precission.
+                cumsum = pvals[n].cumsum(dtype='float64')
+                z[0][n, numpy.searchsorted(cumsum, unis_n)] += 1
 
 
 class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
@@ -314,6 +329,9 @@ class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
                     if (cummul > *unis_n)
                     {
                         *z_nc = m;
+                        // No need to renormalize after the last samples.
+                        if (c == (n_samples - 1))
+                            break;
                         // renormalize the nth row of pvals, reuse (cummul-*pvals_nm) to initialize the sum
                         dtype_%(pvals)s sum = cummul - *pvals_nm;
                         dtype_%(pvals)s* pvals_n = (dtype_%(pvals)s*)PyArray_GETPTR2(pvals_copy, n, m);
@@ -419,7 +437,7 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
         return Op.perform(self, node, ins, outs)
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
     def c_support_code_apply(self, node, nodename):
         return """
@@ -564,6 +582,7 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
         """ % locals()
 
 
+@register_opt()
 @local_optimizer([MultinomialFromUniform])
 def local_gpu_multinomial(node):
     # TODO : need description for function
@@ -607,7 +626,3 @@ def local_gpu_multinomial(node):
             # The dimshuffle is on the cpu, but will be moved to the
             # gpu by an opt.
             return [gpu_from_host(ret)]
-
-if cuda_available:
-    register_opt()(local_gpu_multinomial)
-    pass

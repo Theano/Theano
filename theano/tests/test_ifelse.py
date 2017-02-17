@@ -2,7 +2,7 @@
  Tests fof the lazy conditiona
 """
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import unittest
 import numpy
 from nose.plugins.skip import SkipTest
@@ -152,6 +152,17 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         assert numpy.allclose(gy0.shape, vy.shape)
         assert numpy.all(numpy.asarray(gx0) == 0.)
         assert numpy.all(numpy.asarray(gy0) == 1.)
+
+    def test_grad_cast_input(self):
+        # Tests the gradient when both inputs are on the GPU.
+        x = tensor.vector('x', dtype=self.dtype)
+        y = tensor.vector('y', dtype=self.dtype)
+        c = tensor.iscalar('c')
+        z = ifelse(c, self.cast_output(x), self.cast_output(y))
+        gx, gy = tensor.grad(z.sum(), [x, y])
+
+        theano.function([c, x, y], [gx, gy],
+                        mode=self.mode)
 
     def test_multiple_out(self):
         x1 = tensor.vector('x1', dtype=self.dtype)
@@ -481,6 +492,21 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
             tensor.grad(ifelse(0, x, x), x)
         finally:
             theano.config.compute_test_value = backup
+
+    def test_grad_int_value(self):
+        w = theano.shared(numpy.random.rand(10))
+        b = theano.shared(numpy.random.rand())
+        params = [w, b]
+
+        x = tensor.vector()
+        y = tensor.scalar()
+
+        score = w.dot(x) + b
+        correct = (score * y > 0)
+
+        loss = ifelse(correct, 0, 1)
+        [(param, param - 0.5 * tensor.grad(cost=loss, wrt=param))
+         for param in params]
 
 
 if __name__ == '__main__':

@@ -15,10 +15,10 @@ Looking for an idea for a first contribution? Check the `github issues
 with a label ``easy fix``. They are good starter. It is recommanded
 that you write on the issue you want to work on it. This help make
 sure it is up to date and see if nobody else is working on it. Also,
-we can sometimes provides more information about it. There is also
+we can sometimes provides more information about it.  There is also
 the label `NeedSomeoneToFinish
 <https://github.com/Theano/Theano/labels/NeedSomeoneToFinish>`_ that is
-interesting to check. The difficulty level is variable.
+interresting to check. The difficulty level is variable.
 
 Resources
 =========
@@ -55,7 +55,7 @@ Requirements for Quality Contributions
 
 * All the code should be properly tested. 
 
-* The code should be compatible with Python 2.6 and above, as well as Python 
+* The code should be compatible with Python 2.7 and above, as well as Python
   3.3 and above (using `six` if needed).
 
 * All the code should respect the 
@@ -85,8 +85,8 @@ make sure there are no global impacts.
 Also, if you are changing GPU code, travis doesn't test that, because
 there are no GPUs on the test nodes.
 
-To run the test suite with the default options, you can follow the
-instructions of :ref:`testing_installation`.
+To run the test suite with the default options, see 
+:ref:`test_theano`.
 
 Each night we execute all the unit tests automatically, with several
 sets of options. The result is sent by email to the `theano-buildbot`_
@@ -126,7 +126,11 @@ To setup VIM:
 
 #. Install flake8 (if not already installed) with::
 
-    pip install flake8
+    pip install "flake8<3"
+
+   .. warning:: Starting version 3.0.0, flake8 changed its dependancies and 
+      moved its Python API to a legacy module, breaking Theano's flake8 tests.
+      We recommend using a version prior to 3.  
 
    .. note:: You can use ``easy_install`` instead of ``pip``, and ``pep8``
       instead of ``flake8`` if you prefer. The important thing is that the
@@ -138,7 +142,7 @@ To setup VIM:
 
 #. Edit ``~/.vimrc`` and add the lines:
 
-    .. code-block:: vim
+    .. code-block:: python
 
         set nocompatible              " be iMproved, required
         filetype off                  " required
@@ -362,7 +366,7 @@ You can choose another name than "central" to reference Theano/Theano
 to "central."
 
 You can then test your installation of Theano by following the steps of
-:ref:`testing_installation`.
+:ref:`test_theano`.
 
 
 Using your local copy

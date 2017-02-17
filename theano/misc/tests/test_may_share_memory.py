@@ -2,7 +2,8 @@
 test the tensor and sparse type. The CudaNdarray type is tested in
 sandbox/cuda/tests/test_tensor_op.py.test_may_share_memory_cuda
 """
-import numpy
+from __future__ import absolute_import, print_function, division
+import numpy as np
 import theano
 
 try:
@@ -15,8 +16,8 @@ from theano.misc.may_share_memory import may_share_memory
 
 
 def test_may_share_memory():
-    a = numpy.random.rand(5, 4)
-    b = numpy.random.rand(5, 4)
+    a = np.random.rand(5, 4)
+    b = np.random.rand(5, 4)
     va = a.view()
     vb = b.view()
     ra = a.reshape((4, 5))

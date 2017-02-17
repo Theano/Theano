@@ -35,6 +35,8 @@ For more details and discussion, see the theano-dev
 e-mail thread "What is gof?".
 
 """
+from __future__ import absolute_import, print_function, division
+
 from theano.gof.cc import \
     CLinker, OpWiseCLinker, DualLinker, HideC
 
@@ -64,7 +66,7 @@ from theano.gof.opt import (
     OpKeyOptimizer)
 
 from theano.gof.optdb import \
-    DB, Query, \
+    DB, LocalGroupDB, Query, \
     EquilibriumDB, SequenceDB, ProxyDB
 
 from theano.gof.toolbox import \

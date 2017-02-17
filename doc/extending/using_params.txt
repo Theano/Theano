@@ -29,6 +29,13 @@ Making a purpose-built class may require more upfront work, but can
 pay off if you reuse the type for a lot of Ops, by not having to re-do
 all of the python manipulation.
 
+The params object
+-----------------
+
+The object that you use to store your param values must be hashable
+and comparable for equality, because it will be stored in a dictionary
+at some point.  Apart from those requirements it can be anything that
+matches what you have declared as the params type.
 
 Defining a params type
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -174,6 +181,14 @@ weights.
        def __init__(self, alpha, beta):
            self.alpha = alpha
            self.beta = beta
+
+       def __hash__(self):
+           return hash((type(self), self.alpha, self.beta))
+
+       def __eq__(self, other):
+           return (type(self) == type(other) and
+                   self.alpha == other.alpha and
+                   self.beta == other.beta)
 
 
    class Mix(Op):

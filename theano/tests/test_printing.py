@@ -1,7 +1,7 @@
 """
 Tests of printing functionality
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import logging
 
 from nose.plugins.skip import SkipTest
@@ -58,37 +58,6 @@ def test_pydotprint_return_image():
     assert isinstance(ret, (str, bytes))
 
 
-def test_pydotprint_variables():
-    """
-    This is a REALLY PARTIAL TEST.
-
-    I did them to help debug stuff.
-
-    It make sure the code run.
-    """
-
-    # Skip test if pydot is not available.
-    if not theano.printing.pydot_imported:
-        raise SkipTest('pydot not available')
-
-    x = tensor.dvector()
-
-    s = StringIO()
-    new_handler = logging.StreamHandler(s)
-    new_handler.setLevel(logging.DEBUG)
-    orig_handler = theano.logging_default_handler
-
-    theano.theano_logger.removeHandler(orig_handler)
-    theano.theano_logger.addHandler(new_handler)
-    try:
-        theano.printing.pydotprint(x * 2)
-        if not theano.printing.pd.__name__ == "pydot_ng":
-            theano.printing.pydotprint_variables(x * 2)
-    finally:
-        theano.theano_logger.addHandler(orig_handler)
-        theano.theano_logger.removeHandler(new_handler)
-
-
 def test_pydotprint_long_name():
     """This is a REALLY PARTIAL TEST.
 
@@ -115,14 +84,17 @@ def test_pydotprint_long_name():
 
 
 def test_pydotprint_profile():
-    """Just check that pydotprint does not crash with ProfileMode."""
+    """Just check that pydotprint does not crash with profile."""
 
     # Skip test if pydot is not available.
     if not theano.printing.pydot_imported:
         raise SkipTest('pydot not available')
 
     A = tensor.matrix()
-    f = theano.function([A], A + 1, mode='ProfileMode')
+    prof = theano.compile.ProfileStats(atexit_print=False)
+    f = theano.function([A], A + 1, profile=prof)
+    theano.printing.pydotprint(f, print_output_file=False)
+    f([[1]])
     theano.printing.pydotprint(f, print_output_file=False)
 
 
@@ -169,7 +141,8 @@ def test_debugprint():
     g = theano.function([A, B, D, E], G, mode=mode)
 
     # just test that it work
-    debugprint(G)
+    s = StringIO()
+    debugprint(G, file=s)
 
     # test ids=int
     s = StringIO()
@@ -270,6 +243,28 @@ def test_debugprint():
 
     assert s == reference
 
+    # test clients
+    s = StringIO()
+    # We must force the mode as otherwise it can change the clients order
+    f = theano.function([A, B, D], [A + B, A + B - D],
+                        mode='FAST_COMPILE')
+    debugprint(f, file=s, print_clients=True)
+    s = s.getvalue()
+    # The additional white space are needed!
+    reference = '\n'.join([
+        "Elemwise{add,no_inplace} [id A] ''   0 clients:[('[id B]', 1), ('output', '')]",
+        " |A [id D]",
+        " |B [id E]",
+        "Elemwise{sub,no_inplace} [id B] ''   1",
+        " |Elemwise{add,no_inplace} [id A] ''   0 clients:[('[id B]', 1), ('output', '')]",
+        " |D [id F]",
+    ]) + '\n'
+    if s != reference:
+        print('--' + s + '--')
+        print('--' + reference + '--')
+
+    assert s == reference
+
 
 def test_scan_debugprint1():
     k = tensor.iscalar("k")
@@ -298,10 +293,10 @@ def test_scan_debugprint1():
      | | | | | |Subtensor{int64} [id H] ''
      | | | | |   |Shape [id I] ''
      | | | | |   | |Rebroadcast{0} [id J] ''
-     | | | | |   |   |DimShuffle{x,0} [id K] ''
+     | | | | |   |   |InplaceDimShuffle{x,0} [id K] ''
      | | | | |   |     |Elemwise{second,no_inplace} [id L] ''
      | | | | |   |       |A [id M]
-     | | | | |   |       |DimShuffle{x} [id N] ''
+     | | | | |   |       |InplaceDimShuffle{x} [id N] ''
      | | | | |   |         |TensorConstant{1.0} [id O]
      | | | | |   |Constant{0} [id P]
      | | | | |Subtensor{int64} [id Q] ''
@@ -467,7 +462,7 @@ def test_scan_debugprint3():
 
     for{cpu,scan_fn} [id B] ''
      >Elemwise{mul,no_inplace} [id Y] ''
-     > |DimShuffle{x} [id Z] ''
+     > |InplaceDimShuffle{x} [id Z] ''
      > | |coefficients[t] [id BA] -> [id S]
      > |Elemwise{pow,no_inplace} [id BB] ''
      >   |Subtensor{int64} [id BC] ''
@@ -481,10 +476,10 @@ def test_scan_debugprint3():
      >   | | | | | | |Subtensor{int64} [id BJ] ''
      >   | | | | | |   |Shape [id BK] ''
      >   | | | | | |   | |Rebroadcast{0} [id BL] ''
-     >   | | | | | |   |   |DimShuffle{x,0} [id BM] ''
+     >   | | | | | |   |   |InplaceDimShuffle{x,0} [id BM] ''
      >   | | | | | |   |     |Elemwise{second,no_inplace} [id BN] ''
      >   | | | | | |   |       |A_copy [id BO] -> [id W]
-     >   | | | | | |   |       |DimShuffle{x} [id BP] ''
+     >   | | | | | |   |       |InplaceDimShuffle{x} [id BP] ''
      >   | | | | | |   |         |TensorConstant{1.0} [id BQ]
      >   | | | | | |   |Constant{0} [id BR]
      >   | | | | | |Subtensor{int64} [id BS] ''
@@ -497,7 +492,7 @@ def test_scan_debugprint3():
      >   | | | |A_copy [id BO] -> [id W]
      >   | | |Constant{1} [id BW]
      >   | |Constant{-1} [id BX]
-     >   |DimShuffle{x} [id BY] ''
+     >   |InplaceDimShuffle{x} [id BY] ''
      >     |<TensorType(int64, scalar)> [id BZ] -> [id U]
 
     for{cpu,scan_fn} [id BE] ''
@@ -613,10 +608,10 @@ def test_scan_debugprint5():
     | | | |   | | | |Subtensor{int64} [id K] ''
     | | | |   | | |   |Shape [id L] ''
     | | | |   | | |   | |Rebroadcast{0} [id M] ''
-    | | | |   | | |   |   |DimShuffle{x,0} [id N] ''
+    | | | |   | | |   |   |InplaceDimShuffle{x,0} [id N] ''
     | | | |   | | |   |     |Elemwise{second,no_inplace} [id O] ''
     | | | |   | | |   |       |A [id P]
-    | | | |   | | |   |       |DimShuffle{x} [id Q] ''
+    | | | |   | | |   |       |InplaceDimShuffle{x} [id Q] ''
     | | | |   | | |   |         |TensorConstant{1.0} [id R]
     | | | |   | | |   |Constant{0} [id S]
     | | | |   | | |Subtensor{int64} [id T] ''
@@ -648,73 +643,70 @@ def test_scan_debugprint5():
     | |Subtensor{::int64} [id BL] ''
     | | |IncSubtensor{Inc;int64::} [id BM] ''
     | | | |Elemwise{second,no_inplace} [id BN] ''
-    | | | | |for{cpu,scan_fn} [id BO] ''
-    | | | | | |k [id G]
-    | | | | | |IncSubtensor{Set;:int64:} [id H] ''
-    | | | | | |A [id P]
-    | | | | |DimShuffle{x,x} [id BP] ''
-    | | | |   |TensorConstant{0.0} [id BQ]
-    | | | |IncSubtensor{Inc;int64} [id BR] ''
-    | | | | |Elemwise{second,no_inplace} [id BS] ''
-    | | | | | |Subtensor{int64::} [id BT] ''
-    | | | | | | |for{cpu,scan_fn} [id BO] ''
-    | | | | | | |Constant{1} [id BU]
-    | | | | | |DimShuffle{x,x} [id BV] ''
-    | | | | |   |TensorConstant{0.0} [id BQ]
-    | | | | |Elemwise{second} [id BW] ''
-    | | | | | |Subtensor{int64} [id BX] ''
-    | | | | | | |Subtensor{int64::} [id BT] ''
-    | | | | | | |Constant{-1} [id BY]
-    | | | | | |DimShuffle{x} [id BZ] ''
-    | | | | |   |Elemwise{second,no_inplace} [id CA] ''
-    | | | | |     |Sum{acc_dtype=float64} [id CB] ''
-    | | | | |     | |Subtensor{int64} [id BX] ''
+    | | | | |for{cpu,scan_fn} [id F] ''
+    | | | | |InplaceDimShuffle{x,x} [id BO] ''
+    | | | |   |TensorConstant{0.0} [id BP]
+    | | | |IncSubtensor{Inc;int64} [id BQ] ''
+    | | | | |Elemwise{second,no_inplace} [id BR] ''
+    | | | | | |Subtensor{int64::} [id BS] ''
+    | | | | | | |for{cpu,scan_fn} [id F] ''
+    | | | | | | |Constant{1} [id BT]
+    | | | | | |InplaceDimShuffle{x,x} [id BU] ''
+    | | | | |   |TensorConstant{0.0} [id BP]
+    | | | | |Elemwise{second} [id BV] ''
+    | | | | | |Subtensor{int64} [id BW] ''
+    | | | | | | |Subtensor{int64::} [id BS] ''
+    | | | | | | |Constant{-1} [id BX]
+    | | | | | |InplaceDimShuffle{x} [id BY] ''
+    | | | | |   |Elemwise{second,no_inplace} [id BZ] ''
+    | | | | |     |Sum{acc_dtype=float64} [id CA] ''
+    | | | | |     | |Subtensor{int64} [id BW] ''
     | | | | |     |TensorConstant{1.0} [id R]
-    | | | | |Constant{-1} [id BY]
-    | | | |Constant{1} [id BU]
-    | | |Constant{-1} [id CC]
-    | |Alloc [id CD] ''
-    | | |TensorConstant{0.0} [id BQ]
-    | | |Elemwise{add,no_inplace} [id CE] ''
+    | | | | |Constant{-1} [id BX]
+    | | | |Constant{1} [id BT]
+    | | |Constant{-1} [id CB]
+    | |Alloc [id CC] ''
+    | | |TensorConstant{0.0} [id BP]
+    | | |Elemwise{add,no_inplace} [id CD] ''
     | | | |Elemwise{sub,no_inplace} [id C] ''
     | | | |TensorConstant{1} [id Y]
-    | | |Subtensor{int64} [id CF] ''
-    | |   |Shape [id CG] ''
+    | | |Subtensor{int64} [id CE] ''
+    | |   |Shape [id CF] ''
     | |   | |A [id P]
-    | |   |Constant{0} [id CH]
+    | |   |Constant{0} [id CG]
     | |A [id P]
-    |Constant{-1} [id CI]
+    |Constant{-1} [id CH]
 
     Inner graphs of the scan ops:
 
     for{cpu,grad_of_scan_fn}.1 [id B] ''
-    >Elemwise{add,no_inplace} [id CJ] ''
-    > |Elemwise{mul} [id CK] ''
-    > | |<TensorType(float64, vector)> [id CL] -> [id BL]
-    > | |A_copy [id CM] -> [id P]
-    > |<TensorType(float64, vector)> [id CN] -> [id BL]
-    >Elemwise{add,no_inplace} [id CO] ''
-    > |Elemwise{mul} [id CP] ''
-    > | |<TensorType(float64, vector)> [id CL] -> [id BL]
-    > | |<TensorType(float64, vector)> [id CQ] -> [id Z]
-    > |<TensorType(float64, vector)> [id CR] -> [id CD]
+    >Elemwise{add,no_inplace} [id CI] ''
+    > |Elemwise{mul} [id CJ] ''
+    > | |<TensorType(float64, vector)> [id CK] -> [id BL]
+    > | |A_copy [id CL] -> [id P]
+    > |<TensorType(float64, vector)> [id CM] -> [id BL]
+    >Elemwise{add,no_inplace} [id CN] ''
+    > |Elemwise{mul} [id CO] ''
+    > | |<TensorType(float64, vector)> [id CK] -> [id BL]
+    > | |<TensorType(float64, vector)> [id CP] -> [id Z]
+    > |<TensorType(float64, vector)> [id CQ] -> [id CC]
 
     for{cpu,scan_fn} [id F] ''
-    >Elemwise{mul,no_inplace} [id CS] ''
-    > |<TensorType(float64, vector)> [id CT] -> [id H]
-    > |A_copy [id CU] -> [id P]
+    >Elemwise{mul,no_inplace} [id CR] ''
+    > |<TensorType(float64, vector)> [id CS] -> [id H]
+    > |A_copy [id CT] -> [id P]
 
     for{cpu,scan_fn} [id F] ''
-    >Elemwise{mul,no_inplace} [id CS] ''
+    >Elemwise{mul,no_inplace} [id CR] ''
 
     for{cpu,scan_fn} [id F] ''
-    >Elemwise{mul,no_inplace} [id CS] ''
+    >Elemwise{mul,no_inplace} [id CR] ''
 
-    for{cpu,scan_fn} [id BO] ''
-    >Elemwise{mul,no_inplace} [id CS] ''
+    for{cpu,scan_fn} [id F] ''
+    >Elemwise{mul,no_inplace} [id CR] ''
 
-    for{cpu,scan_fn} [id BO] ''
-    >Elemwise{mul,no_inplace} [id CS] ''"""
+    for{cpu,scan_fn} [id F] ''
+    >Elemwise{mul,no_inplace} [id CR] ''"""
 
     for truth, out in zip(expected_output.split("\n"), lines):
         assert truth.strip() == out.strip()
@@ -743,3 +735,9 @@ def test_printing_scan():
                         allow_input_downcast=True)
     theano.printing.pydotprint(output, scan_graphs=True)
     theano.printing.pydotprint(f, scan_graphs=True)
+
+
+def test_subtensor():
+    x = theano.tensor.dvector()
+    y = x[1]
+    assert theano.pp(y) == "<TensorType(float64, vector)>[Constant{1}]"

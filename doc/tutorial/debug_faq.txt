@@ -284,7 +284,7 @@ First, make sure you're running in ``FAST_RUN`` mode. Even though
 to ``theano.function`` (or ``theano.make``) or by setting :attr:`config.mode`
 to ``FAST_RUN``.
 
-Second, try the Theano :ref:`using_profilemode`.  This will tell you which
+Second, try the Theano :ref:`profiling <tut_profiling>`.  This will tell you which
 ``Apply`` nodes, and which ops are eating up your CPU cycles.
 
 Tips:
@@ -573,4 +573,8 @@ the Ops from Theano and Pylearn2.
 Then send us filename.
 
 
-.. autoclass:: theano.tests.breakpoint.PdbBreakpoint
+Breakpoint during Theano function execution
+-------------------------------------------
+
+You can set breakpoing during the execution of a Theano function with
+:class:`PdbBreakpoint <theano.tests.breakpoint.PdbBreakpoint>`.

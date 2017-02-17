@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -34,7 +34,6 @@
     <Compile Include="theano\compile\mode.py" />
     <Compile Include="theano\compile\module.py" />
     <Compile Include="theano\compile\pfunc.py" />
-    <Compile Include="theano\compile\profilemode.py" />
     <Compile Include="theano\compile\profiling.py" />
     <Compile Include="theano\compile\sandbox\__init__.py" />
     <Compile Include="theano\compile\sharedvalue.py" />
@@ -134,14 +133,12 @@
     <Compile Include="theano\sandbox\linalg\__init__.py" />
     <Compile Include="theano\sandbox\minimal.py" />
     <Compile Include="theano\sandbox\multinomial.py" />
-    <Compile Include="theano\sandbox\neighbourhoods.py" />
     <Compile Include="theano\sandbox\neighbours.py" />
     <Compile Include="theano\sandbox\rng_mrg.py" />
     <Compile Include="theano\sandbox\softsign.py" />
     <Compile Include="theano\sandbox\solve.py" />
     <Compile Include="theano\sandbox\symbolic_module.py" />
     <Compile Include="theano\sandbox\test_multinomial.py" />
-    <Compile Include="theano\sandbox\test_neighbourhoods.py" />
     <Compile Include="theano\sandbox\test_neighbours.py" />
     <Compile Include="theano\sandbox\test_rng_mrg.py" />
     <Compile Include="theano\sandbox\test_theano_object.py" />
@@ -189,7 +186,7 @@
     <Compile Include="theano\tensor\sharedvar.py" />
     <Compile Include="theano\tensor\shared_randomstreams.py" />
     <Compile Include="theano\tensor\signal\conv.py" />
-    <Compile Include="theano\tensor\signal\downsample.py" />
+    <Compile Include="theano\tensor\signal\pool.py" />
     <Compile Include="theano\tensor\signal\__init__.py" />
     <Compile Include="theano\tensor\tensor_grad.py" />
     <Compile Include="theano\tensor\xlogx.py" />

@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import numpy
 import theano
 
@@ -5,7 +6,7 @@ import theano
 try:
     from nose.plugins.skip import SkipTest
     import theano.sandbox.cuda as cuda_ndarray
-    if cuda_ndarray.cuda_available == False:
+    if cuda_ndarray.cuda_available is False:
         raise SkipTest('Optional package cuda disabled')
 except ImportError:
     # To have the GPU back-end work without nose, we need this file to
@@ -32,8 +33,9 @@ def test_nvidia_driver1():
     topo = f.maker.fgraph.toposort()
     assert len(topo) == 2
     if sum(isinstance(node.op, B.GpuCAReduce) for node in topo) != 1:
-        msg = '\n\t'.join(['Expected exactly one occurrence of GpuCAReduce ' +
-            'but got:']+[str(app) for app in topo])
+        msg = '\n\t'.join(
+            ['Expected exactly one occurrence of GpuCAReduce ' +
+             'but got:'] + [str(app) for app in topo])
         raise AssertionError(msg)
     if not numpy.allclose(f(), a.sum()):
         raise Exception("The nvidia driver version installed with this OS "

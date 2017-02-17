@@ -51,11 +51,11 @@ Environment Variables
 
     .. code-block:: bash
 
-        THEANO_FLAGS='floatX=float32,device=gpu0,lib.cnmem=1'  python <myscript>.py
+        THEANO_FLAGS='floatX=float32,device=cuda0,lib.cnmem=1'  python <myscript>.py
 
     If a value is defined several times in ``THEANO_FLAGS``,
     the right-most definition is used. So, for instance, if
-    ``THEANO_FLAGS='device=cpu,device=gpu0'``, then gpu0 will be used.
+    ``THEANO_FLAGS='device=cpu,device=cuda0'``, then cuda0 will be used.
 
 .. envvar:: THEANORC
 
@@ -70,7 +70,7 @@ Environment Variables
 
         [global]
         floatX = float32
-        device = gpu0
+        device = cuda0
 
         [lib]
         cnmem = 1
@@ -87,7 +87,9 @@ Environment Variables
     with later (right-most) files taking priority over earlier files in the
     case that multiple files specify values for a common configuration option.
     For example, to override system-wide settings with personal ones,
-    set ``THEANORC=/etc/theanorc:~/.theanorc``.
+    set ``THEANORC=/etc/theanorc:~/.theanorc``. To load configuration files in
+    the current working directory, append ``.theanorc`` to the list of configuration
+    files, e.g. ``THEANORC=~/.theanorc:.theanorc``.
 
 Config Attributes
 =====================
@@ -102,22 +104,21 @@ import theano and print the config variable, as in:
 
 .. attribute:: device
 
-    String value: either ``'cpu'``, ``'gpu'``, ``'gpu0'``, ``'gpu1'``,
-    ``'gpu2'``, or ``'gpu3'``
+    String value: either ``'cpu'``, ``'cuda'``, ``'cuda0'``, ``'cuda1'``,
+    ``'opencl0:0'``, ``'opencl0:1'``, ``'gpu'``, ``'gpu0'`` ...
 
-    Default device for computations. If ``gpu*``, change the default to try
-    to move computation to it and to put shared variable of float32 on
-    it.
-    Choose the default compute device for theano graphs.  Setting this to a
-    ``gpu*`` string will make theano to try by default to move computation to it.
-    Also it will make theano put by default shared variable of float32 on it.
-    ``'gpu'`` lets the driver select the GPU to use, while ``'gpu?'`` makes Theano try
-    to use a specific device. If we are not able to use the GPU, either we fall back
-    on the CPU, or an error is raised, depending on the :attr:`force_device` flag.
+    Default device for computations. If ``'cuda*``, change the default to try
+    to move computation to the GPU using CUDA libraries. If ``'opencl*'``,
+    the openCL libraries will be used. To let the driver select the device,
+    use ``'cuda'`` or ``'opencl'``. If ``'gpu*'``, the old gpu backend will
+    be used, although users are encouraged to migrate to the new GpuArray 
+    backend. If we are not able to use the GPU,
+    either we fall back on the CPU, or an error is raised, depending
+    on the :attr:`force_device` flag.
 
     This flag's value cannot be modified during the program execution.
 
-    Do not use upper case letters, only lower case even if NVIDIA use
+    Do not use upper case letters, only lower case even if NVIDIA uses
     capital letters.
 
 .. attribute:: force_device
@@ -138,11 +139,12 @@ import theano and print the config variable, as in:
 
 .. attribute:: init_gpu_device
 
-    String value: either ``''``, ``'gpu'``, ``'gpu0'``, ``'gpu1'``, ``'gpu2'``,
-    or ``'gpu3'``
+    String value: either ``''``, ``'cuda'``, ``'cuda0'``, ``'cuda1'``,
+    ``'opencl0:0'``, ``'opencl0:1'``, ``'gpu'``, ``'gpu0'`` ...
 
     Initialize the gpu device to use.
-    When its value is gpu*, the theano flag :attr:`device` must be ``"cpu"``.
+    When its value is ``'cuda*'``, ``'opencl*'`` or ``'gpu*'``, the theano
+    flag :attr:`device` must be ``'cpu'``.
     Unlike :attr:`device`, setting this flag to a specific GPU will not
     try to use this device by default, in particular it will **not** move
     computations, nor shared variables, to the specified GPU.
@@ -239,6 +241,14 @@ import theano and print the config variable, as in:
     ``False``, then we will gc the inner of scan after all
     iterations. This is the default.
 
+.. attribute:: config.scan.debug
+
+    Bool value, either ``True`` or ``False``
+
+    Default: ``False``
+
+    If True, we will print extra scan debug information.
+
 .. attribute:: openmp
 
     Bool value: either ``True`` or ``False``
@@ -305,7 +315,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: mode
 
-    String value: ``'Mode'``, ``'ProfileMode'`` (deprecated), ``'DebugMode'``, ``'FAST_RUN'``,
+    String value: ``'Mode'``, ``'DebugMode'``, ``'FAST_RUN'``,
     ``'FAST_COMPILE'``
 
     Default: ``'Mode'``
@@ -388,6 +398,14 @@ import theano and print the config variable, as in:
 
     Do a debugprint of the profiled functions
 
+.. attribute:: config.profiling.ignore_first_call
+
+    Bool value: either ``True`` or ``False``
+
+    Default: ``False``
+
+    Do we ignore the first call to a Theano function while profiling.
+
 .. attribute:: config.lib.amdlibm
 
     Bool value: either ``True`` or ``False``
@@ -398,13 +416,59 @@ import theano and print the config variable, as in:
     `amdlibm <http://developer.amd.com/cpu/libraries/libm/>`__
     library, which is faster than the standard libm.
 
+.. attribute:: config.gpuarray.preallocate
+
+    Float value
+
+    Default: 0 (Preallocation of size 0, only cache the allocation)
+
+    Controls the preallocation of memory with the gpuarray backend.
+
+    The value represents the start size (either in MB or the fraction
+    of total GPU memory) of the memory pool. If more memory is needed,
+    Theano will try to obtain more, but this can cause memory
+    fragmentation.
+
+    A negative value will completely disable the allocation cache.
+    This can have a severe impact on performance and so should not be
+    done outside of debugging.
+
+        * < 0: disabled
+        * 0 <= N <= 1: use this fraction of the total GPU memory (clipped to .95 for driver memory).
+        * > 1: use this number in megabytes (MB) of memory.
+
+    .. note::
+
+        This value allocates GPU memory ONLY when using (:ref:`gpuarray`).
+        For the old backend, please see ``config.lib.cnmem``
+
+    .. note::
+
+        This could cause memory fragmentation. So if you have a memory
+        error while using the cache, try to allocate more memory at
+        the start or disable it. If you try this, report your result
+        on :ref`theano-dev`.
+
+    .. note::
+
+        The clipping at 95% can be bypassed by specifing the exact
+        number of megabytes. If more then 95% are needed, it will try
+        automatically to get more memory. But this can cause
+        fragmentation, see note above.
+
 .. attribute:: config.lib.cnmem
+
+    .. note::
+
+        This value allocates GPU memory ONLY when using (:ref:`cuda`)
+        and has no effect when the GPU backend is (:ref:`gpuarray`).
+        For the new backend, please see ``config.gpuarray.preallocate``
 
     Float value: >= 0
 
     Controls the use of `CNMeM <https://github.com/NVIDIA/cnmem>`_ (a
-    faster CUDA memory allocator). In Theano dev version until 0.8
-    is released.
+    faster CUDA memory allocator). Applies to the old GPU backend 
+    :ref:`cuda` up to Theano release 0.8.
 
     The CNMeM library is included in Theano and does not need to be
     separately installed.
@@ -418,7 +482,7 @@ import theano and print the config variable, as in:
         * > 1: use this number in megabytes (MB) of memory.
 
 
-    Default: 0 (but should change later)
+    Default: 0
 
     .. note::
 
@@ -433,6 +497,37 @@ import theano and print the config variable, as in:
         number of megabytes. If more then 95% are needed, it will try
         automatically to get more memory. But this can cause
         fragmentation, see note above.
+
+.. attribute:: config.gpuarray.sched
+
+    String value: ``'default'``, ``'multi'``, ``'single'``
+
+    Default: ``'default'``
+
+    Control the stream mode of contexts.
+
+    The sched parameter passed for context creation to pygpu.  With
+    CUDA, using "multi" mean using the parameter
+    cudaDeviceScheduleYield. This is useful to lower the CPU overhead
+    when waiting for GPU. One user found that it speeds up his other
+    processes that was doing data augmentation.
+
+
+.. attribute:: config.gpuarray.single_stream
+
+    Boolean value
+
+    Default: ``True``
+
+    Control the stream mode of contexts.
+
+    If your computations are mostly lots of small elements, using
+    single-stream will avoid the synchronization overhead and usually
+    be faster.  For larger elements it does not make a difference yet.
+    In the future when true multi-stream is enabled in libgpuarray,
+    this may change.  If you want to make sure to have optimal
+    performance, check both options.
+
 
 .. attribute:: linker
 
@@ -490,7 +585,7 @@ import theano and print the config variable, as in:
 .. attribute:: config.warn.ignore_bug_before
 
     String value: ``'None'``, ``'all'``, ``'0.3'``, ``'0.4'``, ``'0.4.1'``, ``'0.5'``,
-    ``'0.6'``, ``'0.7'``, ``'0.8'``, ``'0.8.1'``, ``'0.8.2'``
+    ``'0.6'``, ``'0.7'``, ``'0.8'``, ``'0.8.1'``, ``'0.8.2'``, ``'0.9'``
 
     Default: ``'0.7'``
 
@@ -575,6 +670,14 @@ import theano and print the config variable, as in:
     Default: $CUDA_ROOT or failing that, ``"/usr/local/cuda"``
 
     A directory with bin/, lib/, include/ folders containing cuda utilities.
+
+.. attribute:: config.cuda.enabled
+
+    Bool value: either ``True`` of ``False``
+
+    Default: ``True``
+
+    If set to `False`, C code in old backend is not compiled.
 
 .. attribute:: config.dnn.enabled
 
@@ -803,7 +906,7 @@ import theano and print the config variable, as in:
 
     Controls whether NanGuardMode generates an error when it sees an inf.
 
-.. attribute:: config.NanGuardMode.nan_is_error
+.. attribute:: config.NanGuardMode.big_is_error
 
     Bool value, default: ``True``
 
@@ -956,13 +1059,6 @@ import theano and print the config variable, as in:
     code that can't be cached because there is no ``c_code_cache_version()``
     function associated to at least one of those Ops.
 
-.. attribute:: config.cmodule.mac_framework_link
-
-    Bool value, default: False
-
-    If set to True, breaks certain MacOS installations with the infamous
-    Bus Error.
-
 .. attribute:: config.cmodule.remove_gxx_opt
 
     Bool value, default: ``False``
@@ -983,8 +1079,24 @@ import theano and print the config variable, as in:
 
     If set to True, will preload the C module cache at import time
 
+.. attribute:: config.cmodule.age_thresh_use
+
+    Int value, default: ``60 * 60 * 24 * 24``  # 24 days
+
+    In seconds. The time after which a compiled c module won't be
+    reused by Theano. Automatic deletion of those c module 7 days
+    after that time.
+
 .. attribute:: config.traceback.limit
 
     Int value, default: 8
 
     The number of user stack level to keep for variables.
+
+.. attribute:: config.traceback.compile_limit
+
+    Bool value, default: 0
+
+    The number of user stack level to keep for variables during Theano
+    compilation. If higher then 0, will make us keep Theano internal
+    stack trace.

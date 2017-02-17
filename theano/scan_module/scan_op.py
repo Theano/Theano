@@ -46,7 +46,34 @@ relies on the following elements to work properly :
   needed to compute another output.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
+
+import copy
+import itertools
+import logging
+import time
+from collections import OrderedDict
+
+import numpy
+from six import iteritems, integer_types, raise_from
+from six.moves import xrange
+
+import theano
+from theano.compile import function, In, Out
+from theano.compile.mode import AddFeatureOptimizer
+from theano import compile, config, gradient, gof, tensor
+from theano.gof import PureOp, Apply
+from theano.gof.graph import io_connection_pattern
+from theano.gof.toolbox import NoOutputFromInplace
+from theano.compat import izip
+from theano.tensor import as_tensor_variable, TensorType
+from theano.tensor.opt import Shape_i
+from theano.gradient import grad_undefined, DisconnectedType, NullType
+from six import string_types
+from theano.compile.profiling import ScanProfileStats
+
+from theano.scan_module import scan_utils
+from theano.scan_module.scan_utils import safe_new, forced_replace
 
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu "
@@ -55,33 +82,6 @@ __authors__ = ("Razvan Pascanu "
                "Pascal Lamblin ")
 __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
-
-import copy
-import itertools
-import logging
-import time
-
-import numpy
-from six import iteritems, integer_types
-from six.moves import xrange
-
-import theano
-from theano.compat import exc_message
-from theano.compile import function, In, Out
-from theano.compile.mode import AddFeatureOptimizer
-from theano import compile, config, gradient, gof, tensor
-from theano.gof import PureOp, Apply
-from theano.gof.graph import io_connection_pattern
-from theano.gof.toolbox import NoOutputFromInplace
-from theano.compat import OrderedDict, izip
-from theano.tensor import TensorType
-from theano.tensor.opt import Shape_i
-from theano.gradient import grad_undefined, DisconnectedType, NullType
-from six import string_types
-from theano.compile.profiling import ScanProfileStats
-
-from theano.scan_module import scan_utils
-from theano.scan_module.scan_utils import safe_new, forced_replace
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan_op')
@@ -124,7 +124,7 @@ class Scan(PureOp):
                  outputs,
                  info,
                  typeConstructor=None,
-                ):
+                 ):
         if 'gpua' not in info:
             info['gpua'] = False
         # adding properties into self
@@ -139,8 +139,9 @@ class Scan(PureOp):
         self.output_types = []
         idx = 0
         jdx = 0
-        tensorConstructor = lambda broadcastable, dtype: TensorType(
-            broadcastable=broadcastable, dtype=dtype)
+
+        def tensorConstructor(broadcastable, dtype):
+            return TensorType(broadcastable=broadcastable, dtype=dtype)
         if typeConstructor is None:
             typeConstructor = tensorConstructor
 
@@ -174,7 +175,7 @@ class Scan(PureOp):
 
         mode_instance = compile.mode.get_mode(self.mode)
         # Clone mode_instance, altering "allow_gc" for the linker,
-        # and adding a message if the mode is a ProfileMode.
+        # and adding a message if we profile
         if self.name:
             message = self.name + " sub profile"
         else:
@@ -208,7 +209,8 @@ class Scan(PureOp):
         else:
             tmp_in, tmp_out = scan_utils.reconstruct_graph(self.inputs,
                                                            self.outputs)
-            local_fgraph = gof.FunctionGraph(tmp_in, tmp_out, clone=False)
+            # This is actually required for the line just after.
+            gof.FunctionGraph(tmp_in, tmp_out, clone=False)
             self._cmodule_key = gof.CLinker().cmodule_key_variables(self.inputs,
                                                                     self.outputs,
                                                                     [])
@@ -272,7 +274,7 @@ class Scan(PureOp):
         # If scan has the flag 'gpua' set to false (meaning that is shouldn't
         # use the gpuarray gpu backend ), ensure that is has no input and no
         # output with type GpuArrayType
-        from theano.sandbox.gpuarray import GpuArrayType
+        from theano.gpuarray import GpuArrayType
         if not self.info.get("gpua", False):
             for inp in self.inputs:
                 if isinstance(inp.type, GpuArrayType):
@@ -345,9 +347,10 @@ class Scan(PureOp):
                        len(self.inner_shared(self.inputs)) +
                        len(self.inner_non_seqs(self.inputs)))
         assert n_outer_ins == n_inner_ins, \
-                ("The number of inputs given to the inner function of scan"
-                 " does not match the number of inputs given to scan.")
-        new_inputs = [inputs[0]]
+            ("The number of inputs given to the inner function of scan"
+             " does not match the number of inputs given to scan.")
+        # Force the inputs to be on the CPU
+        new_inputs = [as_tensor_variable(inputs[0])]
         # assert dtype is consistent
         err_msg1 = ('When compiling the inner function of scan (the '
                     'function called by scan in each of its iterations) '
@@ -371,7 +374,7 @@ class Scan(PureOp):
                     'have the same dimensionality, you can increase the '
                     'dimensionality of the varialbe in the initial state of scan '
                     'by using dimshuffle or shape_padleft. '
-                   )
+                    )
         err_msg2 = ('When compiling the inner function of scan the '
                     'following error has been encountered: The '
                     'initial state (`outputs_info` in scan nomenclature) '
@@ -398,7 +401,37 @@ class Scan(PureOp):
                     'have the same dimensionality, you can increase the '
                     'dimensionality of the variable in the initial state of scan '
                     'by using dimshuffle or shape_padleft. '
-                   )
+                    )
+
+        def check_broadcast(v1, v2):
+            """ Checks that the broadcast pattern of v1 and v2.
+
+            Controls that the broadcast pattern of the variable provided as
+            input to `scan` matches the broadcast pattern provided in
+            `output_info`. It raises an error when they don't match. The
+            typical case is when the user provides either the input or the
+            `output_info` (but not both) with a dimension fixed to 1,
+            which may wrongly be interpreted as broadcastable.
+
+            """
+            if (not hasattr(v1, 'broadcastable') and
+                    not hasattr(v2, 'broadcastable')):
+                return
+            msg = ("The broadcast pattern of the output of scan (%s) is "
+                   "inconsistent with the one provided in `output_info` "
+                   "(%s). The output on axis %d is `%r`, but it is `%r` on "
+                   "axis %d in `output_info`. This can happen if one of the "
+                   "dimension is fixed to 1 in the input, while it is still "
+                   "variable in the output, or vice-verca. You have to make "
+                   "them consistent, e.g. using theano.tensor."
+                   "{patternbroadcast,unbroadcast,addbroadcast}.")
+            size = min(len(v1.broadcastable), len(v2.broadcastable))
+            for n, (b1, b2) in enumerate(zip(v1.broadcastable[-size:],
+                                             v2.broadcastable[-size:])):
+                if b1 != b2:
+                    a1 = n + size - len(v1.broadcastable) + 1
+                    a2 = n + size - len(v2.broadcastable) + 1
+                    raise TypeError(msg % (v1.type, v2.type, a1, b1, b2, a2))
 
         def format(var, as_var):
             """
@@ -427,37 +460,38 @@ class Scan(PureOp):
         argoffset = 0
         for inner_seq, outer_seq in zip(self.inner_seqs(self.inputs),
                                         self.outer_seqs(inputs)):
+            check_broadcast(outer_seq, inner_seq)
             new_inputs.append(format(outer_seq, as_var=inner_seq))
 
         argoffset += len(self.outer_seqs(inputs))
         # Check that this 3 things have the same dtype for mit_mot:
         #   - initial state of the output
-        #   - variable representing an input slice of the otuput
-        #   - variable representing an output slice of the otuput
+        #   - variable representing an input slice of the output
+        #   - variable representing an output slice of the output
         ipos = 0
         opos = 0
         inner_mitmot = self.inner_mitmot(self.inputs)
         inner_mitmot_outs = self.inner_mitmot_outs(self.outputs)
         for idx, (itaps, otaps, _outer_mitmot) in enumerate(
-                                     zip(self.mitmot_taps(),
-                                         self.mitmot_out_taps(),
-                                         self.outer_mitmot(inputs))):
+                zip(self.mitmot_taps(),
+                    self.mitmot_out_taps(),
+                    self.outer_mitmot(inputs))):
             outer_mitmot = format(_outer_mitmot, as_var=inner_mitmot[ipos])
             new_inputs.append(outer_mitmot)
             for k in xrange(len(itaps)):
                 if (inner_mitmot[ipos + k].type.dtype !=
-                    outer_mitmot.type.dtype or
-                    inner_mitmot[ipos + k].ndim != outer_mitmot.ndim - 1):
+                        outer_mitmot.type.dtype or
+                        inner_mitmot[ipos + k].ndim != outer_mitmot.ndim - 1):
                     raise ValueError(err_msg1 % ('initial state (outputs_info'
-                                           ' in scan nomenclature) ',
-                                           str(outer_mitmot),
-                                           argoffset + idx,
-                                           outer_mitmot.type.dtype,
-                                           outer_mitmot.type.ndim,
-                                           str(inner_mitmot[ipos + k]),
-                                           inner_mitmot[ipos +
-                                                        k].type.dtype,
-                                           inner_mitmot[ipos + k].type.ndim))
+                                                 ' in scan nomenclature) ',
+                                                 str(outer_mitmot),
+                                                 argoffset + idx,
+                                                 outer_mitmot.type.dtype,
+                                                 outer_mitmot.type.ndim,
+                                                 str(inner_mitmot[ipos + k]),
+                                                 inner_mitmot[ipos +
+                                                              k].type.dtype,
+                                                 inner_mitmot[ipos + k].type.ndim))
             ipos += len(itaps)
             for k in xrange(len(otaps)):
                 if (inner_mitmot_outs[opos + k].type.dtype !=
@@ -486,18 +520,18 @@ class Scan(PureOp):
             new_inputs.append(outer_mitsot)
 
             for k in xrange(len(itaps)):
-                if (inner_mitsots[ipos + k].type.dtype != \
-                    outer_mitsot.type.dtype or
-                    inner_mitsots[ipos + k].ndim != outer_mitsot.ndim - 1):
+                if (inner_mitsots[ipos + k].type.dtype !=
+                        outer_mitsot.type.dtype or
+                        inner_mitsots[ipos + k].ndim != outer_mitsot.ndim - 1):
                     raise ValueError(err_msg1 % ('initial state (outputs_info'
-                                               ' in scan nomenclature) ',
-                                           str(outer_mitsot),
-                                           argoffset + idx,
-                                           outer_mitsot.type.dtype,
-                                           outer_mitsot.type.ndim,
-                                           str(inner_mitsots[ipos + k]),
-                                           inner_mitsots[ipos + k].type.dtype,
-                                           inner_mitsots[ipos + k].type.ndim))
+                                                 ' in scan nomenclature) ',
+                                                 str(outer_mitsot),
+                                                 argoffset + idx,
+                                                 outer_mitsot.type.dtype,
+                                                 outer_mitsot.type.ndim,
+                                                 str(inner_mitsots[ipos + k]),
+                                                 inner_mitsots[ipos + k].type.dtype,
+                                                 inner_mitsots[ipos + k].type.ndim))
             ipos += len(itaps)
             if inner_mitsot_out.type.dtype != outer_mitsot.type.dtype:
                 raise ValueError(err_msg2 %
@@ -522,14 +556,14 @@ class Scan(PureOp):
             new_inputs.append(outer_sitsot)
             if (inner_sitsot.ndim != outer_sitsot.ndim - 1):
                 raise ValueError(err_msg1 % ('initial state (outputs_info'
-                                           ' in scan nomenclature) ',
-                                str(outer_sitsot),
-                                argoffset + idx,
-                                outer_sitsot.type.dtype,
-                                outer_sitsot.type.ndim,
-                                str(inner_sitsot),
-                                inner_sitsot.type.dtype,
-                                inner_sitsot.type.ndim))
+                                             ' in scan nomenclature) ',
+                                             str(outer_sitsot),
+                                             argoffset + idx,
+                                             outer_sitsot.type.dtype,
+                                             outer_sitsot.type.ndim,
+                                             str(inner_sitsot),
+                                             inner_sitsot.type.dtype,
+                                             inner_sitsot.type.ndim))
             if inner_sitsot_out.type.dtype != outer_sitsot.type.dtype:
                 raise ValueError(err_msg2 %
                                  (str(outer_sitsot),
@@ -569,14 +603,14 @@ class Scan(PureOp):
                 (outer_shared.dtype != inner_shared.dtype or
                  outer_shared.ndim != inner_shared.ndim)):
                 raise ValueError(err_msg1 % ('initial state (outputs_info'
-                                           ' in scan nomenclature) ',
-                                           str(outer_shared),
-                                           argoffset + idx,
-                                           outer_shared.dtype,
-                                           outer_shared.ndim,
-                                           str(inner_shared),
-                                           inner_shared.dtype,
-                                           inner_shared.ndim))
+                                             ' in scan nomenclature) ',
+                                             str(outer_shared),
+                                             argoffset + idx,
+                                             outer_shared.dtype,
+                                             outer_shared.ndim,
+                                             str(inner_shared),
+                                             inner_shared.dtype,
+                                             inner_shared.ndim))
         # We do not need to call `format` on outer_nisot arguments.
         # outer_nitsot stands for no input tap single output tap. This means
         # these are states that do not feed anything back in the recurrent
@@ -585,23 +619,23 @@ class Scan(PureOp):
         # in this case is just a int saying how many steps of this output we
         # need to store. This input does not have the same dtype, nor is it the same
         # type of tensor as the output, it is always a scalar int.
-        new_inputs += self.outer_nitsot(inputs)
-        for inner_nonseq, _outer_nonseq in zip(
-                            self.inner_non_seqs(self.inputs),
-                            self.outer_non_seqs(inputs)):
+        new_inputs += [as_tensor_variable(ons)
+                       for ons in self.outer_nitsot(inputs)]
+        for inner_nonseq, _outer_nonseq in zip(self.inner_non_seqs(self.inputs),
+                                               self.outer_non_seqs(inputs)):
             outer_nonseq = format(_outer_nonseq, as_var=inner_nonseq)
             new_inputs.append(outer_nonseq)
             if inner_nonseq.type != outer_nonseq.type:
                 raise ValueError(('Argument %s given to scan node does not'
                                  ' match its correspondance %s') %
-                                  (str(outer_nonseq), str(inner_nonseq)))
+                                 (str(outer_nonseq), str(inner_nonseq)))
 
         for outer_nitsot in self.outer_nitsot(inputs):
             # For every nit_sot input we get as input a int/uint that
             # depicts the size in memory for that sequence. This feature is
             # used by truncated BPTT and by scan space optimization
-            if (str(outer_nitsot.type.dtype)[:3] not in ('uin', 'int') or
-                outer_nitsot.ndim != 0):
+            if (str(outer_nitsot.type.dtype) not in tensor.integer_dtypes or
+                    outer_nitsot.ndim != 0):
                 raise ValueError('For output %s you need to provide a '
                                  'scalar int !', str(outer_nitsot))
         assert len(new_inputs) == len(inputs)
@@ -609,16 +643,17 @@ class Scan(PureOp):
         # The vector_seqs and vector_outs are just a workaround
         # strange NumPy behavior: vector_ndarray[int] return a NumPy
         # scalar and not a NumPy ndarray of 0 dimensions.
-        self.vector_seqs = [isinstance(seq, (tensor.TensorVariable,
-                                             tensor.TensorConstant)) and
-                            seq.ndim == 1 for seq in
-                            new_inputs[1:1 + self.n_seqs]]
-        self.vector_outs = [isinstance(arg, (tensor.TensorVariable,
-                                             tensor.TensorConstant)) and
-                            arg.ndim == 1 for arg in
-                            new_inputs[1 + self.n_seqs: (1 + self.n_seqs +
-                                                         self.n_outs)]]
-        self.vector_outs += [False] * self.n_nit_sot
+        def is_cpu_vector(s):
+            return isinstance(s.type, tensor.TensorType) and s.ndim == 1
+
+        self.vector_seqs = [
+            is_cpu_vector(seq) for seq in new_inputs[1:1 + self.n_seqs]]
+        self.vector_outs = [
+            is_cpu_vector(arg) for arg in new_inputs[
+                1 + self.n_seqs: (1 + self.n_seqs + self.n_outs)]]
+        self.vector_outs += [
+            isinstance(t.type, tensor.TensorType) and t.ndim == 0
+            for t in self.outer_nitsot_outs(self.outputs)]
 
         apply_node = Apply(self,
                            new_inputs,
@@ -629,9 +664,9 @@ class Scan(PureOp):
         # Check if we are dealing with same type of objects
         if not type(self) == type(other):
             return False
-        if not 'destroy_map' in self.info:
+        if 'destroy_map' not in self.info:
             self.info['destroy_map'] = OrderedDict()
-        if not 'destroy_map' in other.info:
+        if 'destroy_map' not in other.info:
             other.info['destroy_map'] = OrderedDict()
         keys_to_check = ['truncate_gradient', 'profile',
                          'n_seqs', 'tap_array',
@@ -674,7 +709,7 @@ class Scan(PureOp):
             self.destroy_map = OrderedDict()
         if len(self.destroy_map.keys()) > 0:
             # Check if all outputs are inplace
-            if (sorted(self.destroy_map.keys()) == \
+            if (sorted(self.destroy_map.keys()) ==
                sorted(range(self.n_mit_mot +
                             self.n_mit_sot +
                             self.n_sit_sot))):
@@ -696,7 +731,8 @@ class Scan(PureOp):
                      self._hash_inner_graph,
                      scan_utils.hash_listsDictsTuples(self.info)))
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def make_thunk(self, node, storage_map, compute_map, no_recycling,
+                   impl=None):
         """
 
         Parameters
@@ -714,7 +750,8 @@ class Scan(PureOp):
         no_recycling
             List of variables for which it is forbidden to reuse memory
             allocated by a previous call.
-
+        impl
+            Use 'py' if we want python execution.
         Notes
         -----
         If the thunk consults the storage_map on every call, it is safe
@@ -734,9 +771,6 @@ class Scan(PureOp):
 
         node_input_storage = [storage_map[r] for r in node.inputs]
         node_output_storage = [storage_map[r] for r in node.outputs]
-        node_input_compute = [compute_map[r] for r in node.inputs]
-        node_output_compute = [compute_map[r] for r in node.outputs]
-        #_logger.debug('Compiling node %i of graph' % node_idx)
         # If a shared variable is the result of a ViewOp it is a clear
         # indication that we need to copy that value after the perform of
         # scan is done
@@ -773,9 +807,11 @@ class Scan(PureOp):
                         # function exectution. Also, since an update is
                         # defined, a default value must also be (this is
                         # verified by DebugMode). Use an array of size 0 but
-                        # the right ndim and dtype.
-                        default_val = numpy.zeros([0] * inp.ndim,
-                                                  dtype=inp.dtype)
+                        # the right ndim and dtype (use a shape of 1 on
+                        # broadcastable dimensions, 0 on the others).
+                        default_shape = [1 if _b else 0
+                                         for _b in inp.broadcastable]
+                        default_val = inp.type.value_zeros(default_shape)
                         wrapped_inp = In(variable=inp, value=default_val,
                                          update=self.outputs[output_idx])
                         wrapped_inputs.append(wrapped_inp)
@@ -785,7 +821,7 @@ class Scan(PureOp):
                         # Wrap the corresponding input as usual. Leave the
                         # output as-is.
                         wrapped_inputs.append(In(self.inputs[input_idx],
-                                                    borrow=False))
+                                                 borrow=False))
                     input_idx += 1
 
             # Wrap the inputs not associated to mitmots and wrap the remaining
@@ -837,8 +873,8 @@ class Scan(PureOp):
 
         profile = None
         if (theano.config.profile or
-            (isinstance(self.profile, (string_types, bool, integer_types))
-                                      and self.profile)):
+            (isinstance(self.profile, (string_types, bool, integer_types)) and
+             self.profile)):
             if isinstance(self.profile, string_types):
                 profile = ScanProfileStats(name=self.profile)
             else:
@@ -863,6 +899,8 @@ class Scan(PureOp):
                                for out in self.fn.maker.fgraph.outputs]
 
         try:
+            if impl == 'py':
+                raise theano.gof.cmodule.MissingGXX
             cython_mintaps = numpy.asarray(self.mintaps, dtype='int32')
             cython_tap_array_len = \
                 numpy.asarray([len(x) for x in self.tap_array],
@@ -885,16 +923,16 @@ class Scan(PureOp):
                 d1 = numpy.max(cython_mit_mot_out_nslices)
             d0 = len(self.mit_mot_out_slices)
             cython_mit_mot_out_slices = numpy.zeros((d0, d1),
-                                                      dtype='int32')
+                                                    dtype='int32')
             for _d0 in xrange(d0):
                 for _d1 in xrange(cython_mit_mot_out_nslices[_d0]):
                     cython_mit_mot_out_slices[_d0, _d1] = \
                         self.mit_mot_out_slices[_d0][_d1]
 
             cython_vector_seqs = numpy.asarray(self.vector_seqs,
-                                                    dtype='int32')
+                                               dtype='int32')
             cython_vector_outs = numpy.asarray(self.vector_outs,
-                                                    dtype='int32')
+                                               dtype='int32')
             cython_mitmots_preallocated = numpy.asarray(self.mitmots_preallocated,
                                                         dtype='int32')
 
@@ -905,39 +943,39 @@ class Scan(PureOp):
 
             if hasattr(self, 'destroy_map'):
                 cython_destroy_map = [x in self.destroy_map
-                                  for x in xrange(len(node.outputs))]
+                                      for x in xrange(len(node.outputs))]
             else:
                 cython_destroy_map = [0 for x in xrange(len(node.outputs))]
             cython_destroy_map = numpy.asarray(cython_destroy_map,
                                                dtype='int32')
             from . import scan_perform_ext
-            p = lambda node, args, outs:\
-                    scan_perform_ext.perform(
-                        self.n_shared_outs,
-                        self.n_mit_mot_outs,
-                        self.n_seqs,
-                        self.n_mit_mot,
-                        self.n_mit_sot,
-                        self.n_sit_sot,
-                        self.n_nit_sot,
-                        args[0],
-                        self.as_while,
-                        cython_mintaps,
-                        cython_tap_array,
-                        cython_tap_array_len,
-                        cython_vector_seqs,
-                        cython_vector_outs,
-                        cython_mit_mot_out_slices,
-                        cython_mit_mot_out_nslices,
-                        cython_mitmots_preallocated,
-                        cython_inps_is_tensor,
-                        cython_outs_is_tensor,
-                        self.fn.fn,
-                        self.fn,
-                        cython_destroy_map,
-                        args,
-                        outs,
-                        self, node)
+
+            def p(node, args, outs):
+                return scan_perform_ext.perform(self.n_shared_outs,
+                                                self.n_mit_mot_outs,
+                                                self.n_seqs,
+                                                self.n_mit_mot,
+                                                self.n_mit_sot,
+                                                self.n_sit_sot,
+                                                self.n_nit_sot,
+                                                args[0],
+                                                self.as_while,
+                                                cython_mintaps,
+                                                cython_tap_array,
+                                                cython_tap_array_len,
+                                                cython_vector_seqs,
+                                                cython_vector_outs,
+                                                cython_mit_mot_out_slices,
+                                                cython_mit_mot_out_nslices,
+                                                cython_mitmots_preallocated,
+                                                cython_inps_is_tensor,
+                                                cython_outs_is_tensor,
+                                                self.fn.fn,
+                                                self.fn,
+                                                cython_destroy_map,
+                                                args,
+                                                outs,
+                                                self, node)
         except (ImportError, theano.gof.cmodule.MissingGXX):
             p = self.execute
         # default arguments are stored in the closure of `rval`
@@ -999,8 +1037,8 @@ class Scan(PureOp):
     def inner_mitsot(self, list_inputs):
         n_mitmot_taps = sum(len(x) for x in self.tap_array[:self.n_mit_mot])
         ntaps_upto_sit_sot = sum(len(x) for x in
-                                  self.tap_array[:(self.n_mit_mot +
-                                                   self.n_mit_sot)])
+                                 self.tap_array[:(self.n_mit_mot +
+                                                  self.n_mit_sot)])
         return list_inputs[self.n_seqs + n_mitmot_taps:
                            self.n_seqs + ntaps_upto_sit_sot]
 
@@ -1089,7 +1127,7 @@ class Scan(PureOp):
         if isinstance(list_outputs, Apply):
             list_outputs = list_outputs.outputs
         offset = (self.n_mit_mot + self.n_mit_sot + self.n_sit_sot +
-                    self.n_nit_sot)
+                  self.n_nit_sot)
         return list_outputs[offset:offset + self.n_shared_outs]
 
     def inner_non_seqs(self, list_inputs):
@@ -1148,10 +1186,10 @@ class Scan(PureOp):
             for idx, seq in enumerate(args[1:self.seqs_arg_offset]):
                 if seq.shape[0] < n_steps:
                     raise ValueError(('Sequence is shorter then the required '
-                                     'number of steps : (n_steps, seq, '
+                                      'number of steps : (n_steps, seq, '
                                       'seq.shape):'), n_steps,
-                                      node.inputs[1 + idx],
-                                      seq.shape)
+                                     node.inputs[1 + idx],
+                                     seq.shape)
                 seqs.append(seq)
 
         # 2. Allocate memory for the outputs. Construct the list:
@@ -1160,15 +1198,15 @@ class Scan(PureOp):
         #                       output
 
         store_steps = [arg.shape[0] for arg
-                               in args[self.seqs_arg_offset:
-                                       self.shared_arg_offset]]
+                       in args[self.seqs_arg_offset:
+                               self.shared_arg_offset]]
         store_steps += [arg for arg in
-                            args[self.nit_sot_arg_offset:
-                                   self.nit_sot_arg_offset + self.n_nit_sot]
-                       ]
+                        args[self.nit_sot_arg_offset:
+                             self.nit_sot_arg_offset + self.n_nit_sot]
+                        ]
 
         pos = [(-self.mintaps[idx]) % store_steps[idx] for idx
-                         in xrange(self.n_outs + self.n_nit_sot)]
+               in xrange(self.n_outs + self.n_nit_sot)]
         if not getattr(self, 'destroy_map', None):
             self.destroy_map = OrderedDict()
         # 2.1 Create storage space for outputs
@@ -1179,8 +1217,8 @@ class Scan(PureOp):
                 outs[idx][0] = args[self.seqs_arg_offset + idx]
             elif (outs[idx][0] is not None and
                   outs[idx][0].shape[1:] == args[self.seqs_arg_offset +
-                                                 idx].shape[1:]
-                  and outs[idx][0].shape[0] >= store_steps[idx]):
+                                                 idx].shape[1:] and
+                  outs[idx][0].shape[0] >= store_steps[idx]):
                 # Put in the values of the initial state
                 outs[idx][0] = outs[idx][0][:store_steps[idx]]
                 if idx > self.n_mit_mot:
@@ -1202,13 +1240,13 @@ class Scan(PureOp):
         old_output_data = [None] * len(output_storage)
         fn = self.fn.fn
         offset = (self.n_seqs + sum(map(len, self.tap_array[:self.n_outs])) +
-                    self.n_shared_outs)
+                  self.n_shared_outs)
         for idx in xrange(len(other_args)):
             input_storage[idx + offset].storage[0] = other_args[idx]
 
         i = 0
         cond = True
-        ############## THE MAIN LOOP #########################
+        # ############# THE MAIN LOOP ##############
         # for i in xrange(n_steps):
         while (i < n_steps) and cond:
             # sequences over which scan iterates
@@ -1216,7 +1254,7 @@ class Scan(PureOp):
             for idx in xrange(self.n_seqs):
                 if self.vector_seqs[idx]:
                     input_storage[idx].storage[0] = \
-                            seqs[idx][i:i + 1].reshape(())
+                        seqs[idx][i:i + 1].reshape(())
                 else:
                     input_storage[idx].storage[0] = seqs[idx][i]
 
@@ -1226,7 +1264,7 @@ class Scan(PureOp):
                     for tap in self.tap_array[idx]:
                         _idx = (pos[idx] + tap) % store_steps[idx]
                         input_storage[offset].storage[0] =\
-                                outs[idx][0][_idx:_idx + 1].reshape(())
+                            outs[idx][0][_idx:_idx + 1].reshape(())
                         offset += 1
                 else:
                     for tap in self.tap_array[idx]:
@@ -1259,7 +1297,7 @@ class Scan(PureOp):
                 for idx in xrange(self.n_outs + self.n_nit_sot -
                                   self.n_mit_mot):
                     if (store_steps[idx + self.n_mit_mot] == 1 or
-                        self.vector_outs[idx + self.n_mit_mot]):
+                            self.vector_outs[idx + self.n_mit_mot]):
                         output_storage[idx + offset].storage[0] = None
                     else:
                         _pos0 = idx + self.n_mit_mot
@@ -1395,7 +1433,7 @@ class Scan(PureOp):
                         # This output tap has not been preallocated, recover
                         # its value as usual
                         outs[j][0][k + pos[j]] = \
-                                output_storage[offset_out].storage[0]
+                            output_storage[offset_out].storage[0]
                         offset_out += 1
 
                     mitmot_out_idx += 1
@@ -1412,7 +1450,7 @@ class Scan(PureOp):
                 # Copy the output value to `outs`, if necessary
                 if store_steps[j] == 1 or self.vector_outs[j]:
                     outs[j][0][pos[j]] = \
-                            output_storage[offset_out + j].storage[0]
+                        output_storage[offset_out + j].storage[0]
                 else:
                     # Check whether the initialization of the output storage
                     # map for this output has been reused.
@@ -1430,8 +1468,22 @@ class Scan(PureOp):
                         output_reused = False
 
                     if not output_reused:
-                        outs[j][0][pos[j]] = \
-                            output_storage[offset_out + j].storage[0]
+                        try:
+                            outs[j][0][pos[j]] = \
+                                output_storage[offset_out + j].storage[0]
+                        except ValueError as e:
+                            if i == 0:
+                                # First iteration, so don't change the
+                                # error message as it can't be the
+                                # case we write about.
+                                raise
+                            ne = ValueError(
+                                "An output of the scan has changed shape. "
+                                "This may be caused by a pushout optimization."
+                                " Try adding "
+                                "'optimizer_excluding=scanOp_pushout_output' "
+                                "to your Theano flags.")
+                            raise_from(ne, e)
 
             # 5.5 Copy over the values for nit_sot outputs
             begin = end
@@ -1441,9 +1493,7 @@ class Scan(PureOp):
                 if i == 0:
                     jout = j + offset_out
                     shape = (store_steps[j],) + \
-                            output_storage[jout].storage[0].shape
-                    if len(output_storage[jout].storage[0].shape) == 0:
-                        self.vector_outs[j] = True
+                        output_storage[jout].storage[0].shape
                     dtype = output_storage[jout].storage[0].dtype
                     if (outs[j][0] is None or
                             outs[j][0].shape[0] < store_steps[j] or
@@ -1485,7 +1535,7 @@ class Scan(PureOp):
                 outs[j][0] = output_storage[jout].storage[0]
 
             pos = [(idx + 1) % store for idx, store in
-                               izip(pos, store_steps)]
+                   izip(pos, store_steps)]
             i = i + 1
 
         # 6. Check if you need to re-order output buffers
@@ -1493,7 +1543,7 @@ class Scan(PureOp):
         end = self.n_outs + self.n_nit_sot
         for idx in xrange(begin, end):
             if (store_steps[idx] < i - self.mintaps[idx] and
-                pos[idx] < store_steps[idx]):
+                    pos[idx] < store_steps[idx]):
 
                 pdx = pos[idx]
                 if pdx >= store_steps[idx] // 2:
@@ -1563,14 +1613,6 @@ class Scan(PureOp):
             if hasattr(self.fn.fn, 'update_profile'):
                 self.fn.fn.update_profile(profile)
 
-        #/* Old ProfileMode
-        # if hasattr(self.fn.maker.mode,'fct_call_time'):
-        #    self.fn.maker.mode.fct_call_time[self.fn] += t_fn
-        #    self.fn.maker.mode.fct_call[self.fn] += n_steps
-
-        #self.fn.maker.mode.call_time += t_fn
-        #self.fn.maker.mode.fn_time += t_fn
-        # Old Profile Mode */
         self.t_call = t_call
         self.t_fn = t_fn
 
@@ -1649,17 +1691,15 @@ class Scan(PureOp):
             self_outs = self.outputs[:-1]
         else:
             self_outs = self.outputs
-        outs_shape = scan_utils.infer_shape(
-                outs=self_outs,
-                inputs=self.inputs,
-                input_shapes=inner_ins_shapes)
+        outs_shape = scan_utils.infer_shape(outs=self_outs,
+                                            inputs=self.inputs,
+                                            input_shapes=inner_ins_shapes)
         # Will be used to check if outs_shape can be expressed without using
         # variables in self.inputs.
         # The shapes of node.inputs are valid.
-        validator = scan_utils.Validator(
-                valid=input_shapes,
-                invalid=self.inputs,
-                valid_equivalent=out_equivalent)
+        validator = scan_utils.Validator(valid=input_shapes,
+                                         invalid=self.inputs,
+                                         valid_equivalent=out_equivalent)
 
         offset = 1 + self.n_seqs
         scan_outs = [x for x in input_shapes[offset:offset + n_outs]]
@@ -1694,7 +1734,7 @@ class Scan(PureOp):
                 scan_outs.append(tuple(shp))
 
         scan_outs += [x for x in
-                     input_shapes[offset:offset + self.n_shared_outs]]
+                      input_shapes[offset:offset + self.n_shared_outs]]
         # if we are dealing with a repeat-until, then we do not know the
         # leading dimension so we replace it for every entry with Shape_i
         if self.as_while:
@@ -1758,7 +1798,7 @@ class Scan(PureOp):
                     j_inp_idx = self.var_mappings["outer_inp_from_outer_out"][jidx]
 
                     if j_inp_idx != -1:
-                       if connection_pattern[j_inp_idx][iidx] == True:
+                        if connection_pattern[j_inp_idx][iidx] is True:
                             for k in xrange(len(connection_pattern)):
                                 if connection_pattern[k][jidx]:
                                     connection_pattern[k][iidx] = True
@@ -1882,18 +1922,18 @@ class Scan(PureOp):
 
         # With the global mapping inferred, the individual mappings
         # can be produced
-        mappings = {"outer_inp_from_outer_out" : {},
-                    "inner_inp_from_outer_out" : {},
-                    "inner_out_from_outer_out" : {},
-                    "inner_inp_from_outer_inp" : {},
-                    "inner_out_from_outer_inp" : {},
-                    "outer_out_from_outer_inp" : {},
-                    "outer_inp_from_inner_inp" : {},
-                    "inner_out_from_inner_inp" : {},
-                    "outer_out_from_inner_inp" : {},
-                    "outer_inp_from_inner_out" : {},
-                    "inner_inp_from_inner_out" : {},
-                    "outer_out_from_inner_out" : {}}
+        mappings = {"outer_inp_from_outer_out": {},
+                    "inner_inp_from_outer_out": {},
+                    "inner_out_from_outer_out": {},
+                    "inner_inp_from_outer_inp": {},
+                    "inner_out_from_outer_inp": {},
+                    "outer_out_from_outer_inp": {},
+                    "outer_inp_from_inner_inp": {},
+                    "inner_out_from_inner_inp": {},
+                    "outer_out_from_inner_inp": {},
+                    "outer_inp_from_inner_out": {},
+                    "inner_inp_from_inner_out": {},
+                    "outer_out_from_inner_out": {}}
 
         for (oinp, iinp, iout, oout) in izip(outer_input_indices,
                                              inner_input_indices,
@@ -1923,8 +1963,7 @@ class Scan(PureOp):
         return mappings
 
     # GRAD FUNCTION
-    def grad(self, inputs, dC_douts):
-        outs = self(*inputs)
+    def L_op(self, inputs, outs, dC_douts):
         if not isinstance(outs, (list, tuple)):
             outs = [outs]
         # `grad_step` equals the number of steps the original scan node has
@@ -1939,7 +1978,7 @@ class Scan(PureOp):
             grad_steps = self.outer_sitsot_outs(outs)[0].shape[0] - 1
         elif self.n_mit_sot > 0:
             grad_steps = self.outer_mitsot_outs(outs)[0].shape[0] +\
-                    self.mintaps[self.n_mit_mot]
+                self.mintaps[self.n_mit_mot]
         else:
             grad_steps = inputs[0]
 
@@ -2003,7 +2042,7 @@ class Scan(PureOp):
             g_y_s = known_grads.values()
 
             for g_y in g_y_s:
-                if 'int' in str(g_y.dtype):
+                if str(g_y.dtype) in tensor.integer_dtypes:
                     raise TypeError("Gradients may never be integers but g_y "
                                     "has type " + str(g_y.type))
 
@@ -2024,16 +2063,15 @@ class Scan(PureOp):
             # it will be the sum of the external gradient signal and the
             # gradient obtained by propagating Y's external gradient signal
             # to X.
-            known_grads = dict([(k.copy(), v) for (k, v) in known_grads.items()])
+            known_grads = OrderedDict([(k.copy(), v) for (k, v) in known_grads.items()])
 
-            grads = gradient.grad(
-                        cost=None,
-                        known_grads=known_grads,
-                        wrt=wrt,
-                        consider_constant=wrt,
-                        disconnected_inputs='ignore',
-                        return_disconnected='None',
-                        null_gradients='return')
+            grads = gradient.grad(cost=None,
+                                  known_grads=known_grads,
+                                  wrt=wrt,
+                                  consider_constant=wrt,
+                                  disconnected_inputs='ignore',
+                                  return_disconnected='None',
+                                  null_gradients='return')
 
             for i in range(len(wrt)):
                 gmp[wrt[i]] = grads[i]
@@ -2093,8 +2131,7 @@ class Scan(PureOp):
                 dC_dXt = safe_new(dC_douts[idx][0])
             dC_dXts.append(dC_dXt)
 
-
-        known_grads = {}
+        known_grads = OrderedDict()
         dc_dxts_idx = 0
         for i in range(len(diff_outputs)):
             if i < idx_nitsot_start or i >= idx_nitsot_end:
@@ -2113,7 +2150,6 @@ class Scan(PureOp):
                         known_grads[diff_outputs[i]] = dC_dXts[dc_dxts_idx]
                     dc_dxts_idx += 1
         dC_dinps_t = compute_all_gradients(known_grads)
-
 
         # mask inputs that get no gradients
         for dx in xrange(len(dC_dinps_t)):
@@ -2148,7 +2184,7 @@ class Scan(PureOp):
                 dC_dXtm1s.append(safe_new(dC_dXts[opos]))
                 if hasattr(x, 'dtype') and x.dtype != dC_dXts[opos].dtype:
                     dC_dinps_t[pos + self.n_seqs] = \
-                            x.astype(dC_dXts[opos].dtype)
+                        x.astype(dC_dXts[opos].dtype)
             else:
                 dC_dXtm1s.append(safe_new(x))
 
@@ -2167,7 +2203,6 @@ class Scan(PureOp):
         outer_inp_seqs = [x[::-1] for x in inputs[1:1 + self.n_seqs]]
         for idx in xrange(self.n_mit_mot + self.n_mit_sot):
             mintap = numpy.min(self.tap_array[idx])
-            maxtap = numpy.max(self.tap_array[idx])
             if idx < self.n_mit_mot:
                 outmaxtap = numpy.max(self.mitmot_out_taps()[idx])
             else:
@@ -2175,7 +2210,7 @@ class Scan(PureOp):
             seq = outs[idx]
             for k in self.tap_array[idx]:
                 if outmaxtap - k != 0:
-                    nw_seq = seq[k - mintap: -(outmaxtap-k)][::-1]
+                    nw_seq = seq[k - mintap: -(outmaxtap - k)][::-1]
                 else:
                     nw_seq = seq[k - mintap:][::-1]
                 outer_inp_seqs.append(nw_seq)
@@ -2213,7 +2248,7 @@ class Scan(PureOp):
 
         # Restrict the length of the outer sequences to the number of grad
         # steps
-        outer_inp_seqs = [seq[:grad_steps] for seq in outer_inp_seqs]
+        outer_inp_seqs = [s_[:grad_steps] for s_ in outer_inp_seqs]
 
         inner_inp_seqs = self.inner_seqs(self_inputs)
         inner_inp_seqs += self.inner_mitmot(self_inputs)
@@ -2223,7 +2258,6 @@ class Scan(PureOp):
         inner_inp_seqs += Xts
         # mitmot
         outer_inp_mitmot = []
-        outer_out_mitmot = []
         inner_inp_mitmot = []
         inner_out_mitmot = []
         mitmot_inp_taps = []
@@ -2282,7 +2316,6 @@ class Scan(PureOp):
                         self.tap_array[idx]
                         new_inner_out_mitmot = theano.clone(new_inner_out_mitmot,
                                                             replace=[(to_replace, replacement)])
-
 
                     inner_out_mitmot.append(new_inner_out_mitmot)
 
@@ -2505,11 +2538,10 @@ class Scan(PureOp):
                         outer_inp_seqs +
                         outer_inp_mitmot +
                         outer_inp_sitsot +
-                        [inputs[0] for x in xrange(n_nit_sot)] +
+                        [inputs[0] for _ in xrange(n_nit_sot)] +
                         self.outer_shared(inputs) +
                         self.outer_non_seqs(inputs))
 
-        inner_other_args = self_inputs[offset:]
         inner_gfn_ins = (inner_inp_seqs +
                          inner_inp_mitmot +
                          inner_inp_sitsot +
@@ -2548,8 +2580,7 @@ class Scan(PureOp):
                 gradients.append(NullType(t)())
 
         end = self.n_mit_mot + self.n_mit_sot + self.n_sit_sot
-        for p, (x, t) in enumerate(
-            zip(outputs[:end], type_outs[:end])):
+        for p, (x, t) in enumerate(zip(outputs[:end], type_outs[:end])):
             if t == 'connected':
                 gradients.append(x[::-1])
             elif t == 'disconnected':
@@ -2582,12 +2613,11 @@ class Scan(PureOp):
 
         start = len(gradients)
         gradients += [DisconnectedType()()
-                for x in xrange(self.n_nit_sot)]
+                      for x in xrange(self.n_nit_sot)]
         begin = end
 
         end = begin + n_sitsot_outs
-        for p, (x, t) in enumerate(
-            zip(outputs[begin:end], type_outs[begin:end])):
+        for p, (x, t) in enumerate(zip(outputs[begin:end], type_outs[begin:end])):
             if t == 'connected':
                 gradients.append(x[-1])
             elif t == 'disconnected':
@@ -2624,7 +2654,7 @@ class Scan(PureOp):
                                             self.outputs, '_rop')
         self_inputs = rval[0]
         rop_of_inputs = rval[0][:self.n_seqs + self.n_outs] + \
-                rval[0][self.n_seqs + self.n_outs + self.n_shared_outs:]
+            rval[0][self.n_seqs + self.n_outs + self.n_shared_outs:]
         self_outputs = rval[1]
         # Step 1. Compute the R_op of the inner function
         inner_eval_points = [scan_utils.safe_new(x, '_evalpoint')
@@ -2635,8 +2665,7 @@ class Scan(PureOp):
             rop_self_outputs = self_outputs
         if self.info['n_shared_outs'] > 0:
             rop_self_outputs = rop_self_outputs[:-self.info['n_shared_outs']]
-        rop_outs = tensor.Rop(rop_self_outputs, rop_of_inputs,
-             inner_eval_points)
+        rop_outs = tensor.Rop(rop_self_outputs, rop_of_inputs, inner_eval_points)
         if type(rop_outs) not in (list, tuple):
             rop_outs = [rop_outs]
         # Step 2. Figure out what corresponds to what in the scan
@@ -2716,8 +2745,8 @@ class Scan(PureOp):
         e = e + self.n_mit_sot
         ib = ie
         ie = ie + int(numpy.sum([len(x) for x in
-                         self.tap_array[self.n_mit_mot:\
-                                        self.n_mit_mot + self.n_mit_sot]]))
+                                 self.tap_array[self.n_mit_mot:
+                                                self.n_mit_mot + self.n_mit_sot]]))
         clean_eval_points = []
         for inp, evp in zip(inputs[b:e], eval_points[b:e]):
             if evp is not None:
@@ -2838,7 +2867,8 @@ class Scan(PureOp):
 gof.ops_with_inner_function[Scan] = 'fn'
 
 
-@theano.compile.profilemode.register_profiler_printer
+# TODO: move that to the new back-end and new profiling.py print_tips
+# @theano.compile.profilemode.register_profiler_printer
 def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
                     apply_time, apply_cimpl, message, outputs_size,
                     other_time):
@@ -2847,9 +2877,9 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
             apply_time.items()]):
         print()
         print('Scan overhead:')
-        print ('<Scan op time(s)> <sub scan fct time(s)> <sub scan op '
-               'time(s)> <sub scan fct time(% scan op time)> <sub scan '
-               'op time(% scan op time)> <node>')
+        print('<Scan op time(s)> <sub scan fct time(s)> <sub scan op '
+              'time(s)> <sub scan fct time(% scan op time)> <sub scan '
+              'op time(% scan op time)> <node>')
         total_super_scan_time = 0
         total_scan_fct_time = 0
         total_scan_op_time = 0

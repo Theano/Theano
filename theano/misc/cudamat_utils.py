@@ -6,6 +6,7 @@ same gpu as theano.
 WARNING: In the test of this file there is a transpose that is used...
          So there can be problem with shape and stride order...
 """
+from __future__ import absolute_import, print_function, division
 
 import six
 

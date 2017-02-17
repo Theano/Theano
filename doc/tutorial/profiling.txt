@@ -27,7 +27,7 @@ functions using either of the following two options:
       :attr:`profiling.n_ops` and :attr:`profiling.min_memory_size`
       to modify the quantity of information printed.
 
-2. Pass the argument :attr:`profile=True` to the function :func:`theano.function <function.function>`. And then call :attr:`f.profile.print_summary()` for a single function.
+2. Pass the argument :attr:`profile=True` to the function :func:`theano.function <function.function>`. And then call :attr:`f.profile.summary()` for a single function.
     - Use this option when you want to profile not all the
       functions but one or more specific function(s).
     - You can also combine the profile of many functions: 
@@ -39,7 +39,7 @@ functions using either of the following two options:
           f = theano.function(..., profile=profile)  # doctest: +SKIP
           g = theano.function(..., profile=profile)  # doctest: +SKIP
           ...  # doctest: +SKIP
-          profile.print_summary()
+          profile.summary()
 
 
 

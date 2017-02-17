@@ -2,6 +2,8 @@
 Provides Ops for FFT and DCT.
 
 """
+
+from __future__ import absolute_import, print_function, division
 import numpy
 import numpy.fft
 
@@ -9,6 +11,14 @@ from six.moves import xrange
 
 from theano import tensor
 from theano.gof import Op, Apply, generic
+
+# This module will soon be deprecated.
+import warnings
+
+message = ("The module theano.sandbox.fourier will soon be deprecated."
+           " Please use theano.tensor.fft, which supports gradients and "
+           "automatic optimization transfers to the GPU ops.")
+warnings.warn(message)
 
 
 class GradTodo(Op):

@@ -1,0 +1,336 @@
+.. _troubleshooting:
+
+Troubleshooting
+###############
+
+Here are Linux troubleshooting instructions. There is a specific `MacOS`_ section.
+
+- :ref:`network_error_proxy`
+- :ref:`slow_or_memory`
+- :ref:`TensorVariable_TypeError`
+- :ref:`out_of_memory`
+- :ref:`float64_output`
+- :ref:`test_theano`
+- :ref:`test_BLAS`
+
+.. _network_error_proxy:
+
+Why do I get a network error when I install Theano
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you are behind a proxy, you must do some extra configuration steps
+before starting the installation. You must set the environment
+variable ``http_proxy`` to the proxy address. Using bash this is
+accomplished with the command
+``export http_proxy="http://user:pass@my.site:port/"``
+You can also provide the ``--proxy=[user:pass@]url:port`` parameter
+to pip. The ``[user:pass@]`` portion is optional.
+
+.. _TensorVariable_TypeError:
+ 
+How to solve TypeError: object of type 'TensorVariable' has no len()
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you receive the following error, it is because the Python function *__len__* cannot
+be implemented on Theano variables:
+
+.. code-block:: python
+
+   TypeError: object of type 'TensorVariable' has no len()
+
+Python requires that *__len__* returns an integer, yet it cannot be done as Theano's variables are symbolic. However, `var.shape[0]` can be used as a workaround.
+
+This error message cannot be made more explicit because the relevant aspects of Python's
+internals cannot be modified.
+
+.. _out_of_memory:
+
+How to solve Out of memory Error
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Occasionally Theano may fail to allocate memory when there appears to be more
+than enough reporting:
+
+    Error allocating X bytes of device memory (out of memory). Driver report Y
+    bytes free and Z total.
+
+where X is far less than Y and Z (i.e. X << Y < Z).
+
+This scenario arises when an operation requires allocation of a large contiguous
+block of memory but no blocks of sufficient size are available.
+
+GPUs do not have virtual memory and as such all allocations must be assigned to
+a continuous memory region. CPUs do not have this limitation because or their
+support for virtual memory. Multiple allocations on a GPU can result in memory
+fragmentation which can makes it more difficult to find contiguous regions
+of memory of sufficient size during subsequent memory allocations.
+
+A known example is related to writing data to shared variables. When updating a
+shared variable Theano will allocate new space if the size of the data does not
+match the size of the space already assigned to the variable. This can lead to
+memory fragmentation which means that a continugous block of memory of
+sufficient capacity may not be available even if the free memory overall is
+large enough.
+
+.. _float64_output:
+
+theano.function returns a float64 when the inputs are float32 and int{32, 64}
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It should be noted that using float32 and int{32, 64} together
+inside a function would provide float64 as output.
+
+Since the GPU can't compute this kind of output, it would be
+preferable not to use those dtypes together.
+
+To help you find where float64 are created, see the
+:attr:`warn_float64` Theano flag.
+
+.. _test_theano:
+
+How to test that Theano works properly
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+An easy way to check something that could be wrong is by making sure ``THEANO_FLAGS``
+have the desired values as well as the ``~/.theanorc``
+
+Also, check the following outputs :
+
+.. code-block:: bash
+
+    ipython
+
+.. code-block:: python
+
+    import theano
+    theano.__file__
+    theano.__version__
+
+
+Once you have installed Theano, you should run the test suite.
+ 
+.. code-block:: bash
+ 
+    python -c "import numpy; numpy.test()"
+    python -c "import scipy; scipy.test()"
+    THEANO_FLAGS=''; python -c "import theano; theano.test()"
+ 
+All Theano tests should pass (skipped tests and known failures are normal). If
+some test fails on your machine, you are encouraged to tell us what went
+wrong on the ``theano-users@googlegroups.com`` mailing list.
+
+.. warning::
+    Theano's test should **NOT** be run with ``device=cuda`` or ``device=gpu``
+    or they will fail. The tests automatically use the gpu, if any, when
+    needed. If you don't want Theano to ever use the gpu when running tests,
+    you can set :attr:`config.device` to ``cpu`` and
+    :attr:`config.force_device` to ``True``.
+ 
+.. _slow_or_memory:
+
+Why is my code so slow/uses so much memory
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+There is a few things you can easily do to change the trade-off
+between speed and memory usage. It nothing is said, this affect the
+CPU and GPU memory usage.
+
+Could speed up and lower memory usage:
+
+- :ref:`cuDNN <libdoc_cuda_dnn>` default cuDNN convolution use less
+   memory then Theano version. But some flags allow it to use more
+   memory. GPU only.
+- Shortly avail, multi-GPU.
+
+Could raise memory usage but speed up computation:
+
+- :attr:`config.gpuarray.preallocate` =1  # Preallocates the GPU memory for the new backend(:ref:`gpuarray`) 
+  and then manages it in a smart way. Does not raise much the memory usage, but if
+  you are at the limit of GPU memory available you might need to specify a
+  lower value. GPU only.
+- :attr:`config.lib.cnmem` =1  # Equivalent on the old backend (:ref:`cuda`). GPU only.
+- :attr:`config.allow_gc` =False
+- :attr:`config.optimizer_excluding` =low_memory , GPU only for now.
+
+Could lower the memory usage, but raise computation time:
+
+- :attr:`config.scan.allow_gc` =True # Probably not significant slowdown if config.lib.cnmem is used.
+- :attr:`config.scan.allow_output_prealloc` =False
+- Use :func:`batch_normalization()
+  <theano.tensor.nnet.bn.batch_normalization>`. It use less memory
+  then building a corresponding Theano graph.
+- Disable one or scan more optimizations:
+    - ``optimizer_excluding=scanOp_pushout_seqs_ops``
+    - ``optimizer_excluding=scan_pushout_dot1``
+    - ``optimizer_excluding=scanOp_pushout_output``
+- Disable all optimization tagged as raising memory usage:
+  ``optimizer_excluding=more_mem`` (currently only the 3 scan optimizations above)
+- `float16 <https://github.com/Theano/Theano/issues/2908>`_.
+
+If you want to analyze the memory usage during computation, the
+simplest is to let the memory error happen during Theano execution and
+use the Theano flags :attr:`exception_verbosity=high`.
+
+.. _test_BLAS:
+
+How do I configure/test my BLAS library
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+There are many ways to configure BLAS for Theano. This is done with the Theano
+flags ``blas.ldflags`` (:ref:`libdoc_config`). The default is to use the BLAS
+installation information in NumPy, accessible via
+``numpy.distutils.__config__.show()``.  You can tell theano to use a different
+version of BLAS, in case you did not compile NumPy with a fast BLAS or if NumPy
+was compiled with a static library of BLAS (the latter is not supported in
+Theano).
+
+The short way to configure the Theano flags ``blas.ldflags`` is by setting the
+environment variable :envvar:`THEANO_FLAGS` to ``blas.ldflags=XXX`` (in bash
+``export THEANO_FLAGS=blas.ldflags=XXX``)
+
+The ``${HOME}/.theanorc`` file is the simplest way to set a relatively
+permanent option like this one.  Add a ``[blas]`` section with an ``ldflags``
+entry like this:
+
+.. code-block:: cfg
+
+    # other stuff can go here
+    [blas]
+    ldflags = -lf77blas -latlas -lgfortran #put your flags here
+
+    # other stuff can go here
+
+For more information on the formatting of ``~/.theanorc`` and the
+configuration options that you can put there, see :ref:`libdoc_config`.
+
+Here are some different way to configure BLAS:
+
+0) Do nothing and use the default config, which is to link against the same
+BLAS against which NumPy was built. This does not work in the case NumPy was
+compiled with a static library (e.g. ATLAS is compiled by default only as a
+static library).
+
+1) Disable the usage of BLAS and fall back on NumPy for dot products. To do
+this, set the value of ``blas.ldflags`` as the empty string (ex: ``export
+THEANO_FLAGS=blas.ldflags=``). Depending on the kind of matrix operations your
+Theano code performs, this might slow some things down (vs. linking with BLAS
+directly).
+
+2) You can install the default (reference) version of BLAS if the NumPy version
+(against which Theano links) does not work. If you have root or sudo access in
+fedora you can do ``sudo yum install blas blas-devel``. Under Ubuntu/Debian
+``sudo apt-get install libblas-dev``. Then use the Theano flags
+``blas.ldflags=-lblas``. Note that the default version of blas is not optimized.
+Using an optimized version can give up to 10x speedups in the BLAS functions
+that we use.
+
+3) Install the ATLAS library. ATLAS is an open source optimized version of
+BLAS. You can install a precompiled version on most OSes, but if you're willing
+to invest the time, you can compile it to have a faster version (we have seen
+speed-ups of up to 3x, especially on more recent computers, against the
+precompiled one). On Fedora, ``sudo yum install atlas-devel``. Under Ubuntu,
+``sudo apt-get install libatlas-base-dev libatlas-base`` or
+``libatlas3gf-sse2`` if your CPU supports SSE2 instructions. Then set the
+Theano flags ``blas.ldflags`` to ``-lf77blas -latlas -lgfortran``. Note that
+these flags are sometimes OS-dependent.
+
+4) Use a faster version like MKL, GOTO, ... You are on your own to install it.
+See the doc of that software and set the Theano flags ``blas.ldflags``
+correctly (for example, for MKL this might be ``-lmkl -lguide -lpthread`` or
+``-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -lguide -liomp5 -lmkl_mc
+-lpthread``).
+
+.. note::
+
+    Make sure your BLAS
+    libraries are available as dynamically-loadable libraries.
+    ATLAS is often installed only as a static library.  Theano is not able to
+    use this static library. Your ATLAS installation might need to be modified
+    to provide dynamically loadable libraries.  (On Linux this
+    typically means a library whose name ends with .so. On Windows this will be
+    a .dll, and on OS-X it might be either a .dylib or a .so.)
+
+    This might be just a problem with the way Theano passes compilation
+    arguments to g++, but the problem is not fixed yet.
+
+.. note::
+
+    If you have problems linking with MKL, `Intel Line Advisor
+    <http://software.intel.com/en-us/articles/intel-mkl-link-line-advisor>`_
+    and the `MKL User Guide
+    <http://software.intel.com/sites/products/documentation/doclib/mkl_sa/11/mkl_userguide_lnx/index.htm>`_
+    can help you find the correct flags to use.
+
+.. note::
+
+    If you have error that contain "gfortran" in it, like this one:
+
+        ImportError: ('/home/Nick/.theano/compiledir_Linux-2.6.35-31-generic-x86_64-with-Ubuntu-10.10-maverick--2.6.6/tmpIhWJaI/0c99c52c82f7ddc775109a06ca04b360.so: undefined symbol: _gfortran_st_write_done'
+
+    The problem is probably that NumPy is linked with a different blas
+    then then one currently available (probably ATLAS). There is 2
+    possible fixes:
+
+    1) Uninstall ATLAS and install OpenBLAS.
+    2) Use the Theano flag "blas.ldflags=-lblas -lgfortran"
+
+    1) is better as OpenBLAS is faster then ATLAS and NumPy is
+    probably already linked with it. So you won't need any other
+    change in Theano files or Theano configuration.
+
+Testing BLAS
+------------
+
+It is recommended to test your Theano/BLAS integration. There are many versions 
+of BLAS that exist and there can be up to 10x speed difference between them.
+Also, having Theano link directly against BLAS instead of using NumPy/SciPy as
+an intermediate layer reduces the computational overhead. This is
+important for BLAS calls to ``ger``, ``gemv`` and small ``gemm`` operations
+(automatically called when needed when you use ``dot()``). To run the
+Theano/BLAS speed test:
+
+.. code-block:: bash
+
+    python `python -c "import os, theano; print os.path.dirname(theano.__file__)"`/misc/check_blas.py
+
+This will print a table with different versions of BLAS/numbers of
+threads on multiple CPUs and GPUs. It will also print some Theano/NumPy
+configuration information. Then, it will print the running time of the same
+benchmarks for your installation. Try to find a CPU similar to yours in
+the table, and check that the single-threaded timings are roughly the same.
+
+Theano should link to a parallel version of Blas and use all cores
+when possible. By default it should use all cores. Set the environment
+variable "OMP_NUM_THREADS=N" to specify to use N threads.
+
+
+.. _MacOS:
+
+Mac OS
+------
+
+Although the above steps should be enough, running Theano on a Mac may
+sometimes cause unexpected crashes, typically due to multiple versions of
+Python or other system libraries. If you encounter such problems, you may
+try the following.
+
+- You can ensure MacPorts shared libraries are given priority at run-time
+  with ``export LD_LIBRARY_PATH=/opt/local/lib:$LD_LIBRARY_PATH``. In order
+  to do the same at compile time, you can add to your ``~/.theanorc``:
+
+    .. code-block:: cfg
+
+      [gcc]
+      cxxflags = -L/opt/local/lib
+
+- More generally, to investigate libraries issues, you can use the ``otool -L``
+  command on ``.so`` files found under your ``~/.theano`` directory. This will
+  list shared libraries dependencies, and may help identify incompatibilities.
+
+.. _theano-users: http://groups.google.com/group/theano-users?pli=1
+
+Please inform us if you have trouble installing and running Theano on your Mac.
+We would be especially interested in dependencies that we missed listing,
+alternate installation steps, GPU instructions, as well as tests that fail on
+your platform (use the ``theano-users@googlegroups.com`` mailing list, but
+note that you must first register to it, by going to `theano-users`_).

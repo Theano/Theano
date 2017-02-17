@@ -1,5 +1,4 @@
-from __future__ import print_function
-
+from __future__ import absolute_import, print_function, division
 import sys
 import os
 import shutil
@@ -55,6 +54,10 @@ if __name__ == '__main__':
     pythonpath = os.pathsep.join([throot, pythonpath])
     sys.path[0:0] = [throot]  # We must not use os.environ.
 
+    # Make sure we don't use gpu to compile documentation
+    env_th_flags = os.environ.get('THEANO_FLAGS', '')
+    os.environ['THEANO_FLAGS'] = 'device=cpu,force_device=True'
+
     def call_sphinx(builder, workdir):
         import sphinx
         if options['--check']:
@@ -100,3 +103,6 @@ if __name__ == '__main__':
 
     # To go back to the original current directory.
     os.chdir(currentdir)
+
+    # Reset THEANO_FLAGS
+    os.environ['THEANO_FLAGS'] = env_th_flags

@@ -1,4 +1,3 @@
-from __future__ import print_function
 #! /usr/bin/env python
 
 # Released to the public domain, by Tim Peters, 03 October 2000.
@@ -39,6 +38,8 @@ file is generated with shutil.copy(), but some corner cases regarding
 user/group and permissions could leave the backup file more readable that
 you'd prefer. You can always use the --nobackup option to prevent this.
 """
+
+from __future__ import absolute_import, print_function, division
 
 __version__ = "1"
 

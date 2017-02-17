@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import numpy
 import unittest
 import warnings
@@ -597,6 +598,8 @@ def makeSharedTester(shared_constructor_,
 
     assert name is not None
     SharedTester.__name__ = name
+    if hasattr(SharedTester, '__qualname__'):
+        SharedTester.__qualname__ = name
 
     return SharedTester
 

@@ -4,13 +4,13 @@ This file is based on hpu.nns.driver_kouh of Oct 22 2009.
 It is meant to be used to benchmark loop fusion optimizations.
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 # this experiments are designed to use file-based configuration
 # rather than db-based configuration.
 # so state is ignored
 
 # since this job is not restartable, channel is also ignored
-import logging, time, sys
+import logging
 
 import numpy
 from six.moves import xrange
@@ -18,17 +18,22 @@ from six.moves import xrange
 import theano
 from theano.compile import shared, pfunc
 from theano import tensor
-from theano.tensor.nnet import softplus
-from theano.sandbox.softsign import softsign
+from theano.tensor.nnet.nnet import softsign
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
+# from PIL import Image
 
 _logger = logging.getLogger('theano.sandbox.cuda.tests.test_bench_loopfusion')
 
 
 def _shared_uniform(rng, low, high, size, dtype, name=None):
     return shared(
-            theano._asarray(
-                rng.uniform(low=low, high=high, size=size),
-                dtype=dtype), name)
+        theano._asarray(
+            rng.uniform(low=low, high=high, size=size),
+            dtype=dtype),
+        name)
 
 
 class Kouh2008(object):
@@ -49,8 +54,10 @@ class Kouh2008(object):
         """
         if len(w_list) != len(x_list):
             raise ValueError('w_list must have same len as x_list')
-        output = (sum(w * tensor.pow(x, p) for (w, x) in zip(w_list, x_list)))\
-                / (theano._asarray(eps, dtype=k.type.dtype) + k + tensor.pow(sum(tensor.pow(x, q) for x in x_list), r))
+        output = ((sum(w * tensor.pow(x, p)
+                       for (w, x) in zip(w_list, x_list))) /
+                  (theano._asarray(eps, dtype=k.type.dtype) + k +
+                   tensor.pow(sum(tensor.pow(x, q) for x in x_list), r)))
 
         assert output.type.ndim == 2
         self.__dict__.update(locals())
@@ -80,10 +87,15 @@ class Kouh2008(object):
             w_sm = theano.tensor.nnet.softmax(w)
             w_list = [w_sm[:, i] for i in xrange(n_terms)]
             w_l1 = abs(w).sum()
-            w_l2_sqr = (w**2).sum()
+            w_l2_sqr = (w ** 2).sum()
         else:
-            w_list = [shared_uniform(low=-2.0/n_terms, high=2.0/n_terms, size=(n_out,), name='w_%i'%i)
-                    for i in xrange(n_terms)]
+            w_list = [
+                shared_uniform(
+                    low=-2.0 / n_terms,
+                    high=2.0 / n_terms,
+                    size=(n_out,),
+                    name='w_%i' % i)
+                for i in xrange(n_terms)]
             w_l1 = sum(abs(wi).sum() for wi in w_list)
             w_l2_sqr = sum((wi**2).sum() for wi in w_list)
 
@@ -102,19 +114,27 @@ class Kouh2008(object):
         p = tensor.nnet.sigmoid(p_unbounded) * e_range_mag + e_range_low
         q = tensor.nnet.sigmoid(q_unbounded) * e_range_mag + e_range_low
         r = tensor.nnet.sigmoid(r_unbounded) * \
-                theano._asarray(1.0/e_range_low - 1.0/e_range_high, dtype=dtype) \
-                + theano._asarray(1.0/e_range_high, dtype=dtype)
+            theano._asarray(1.0 / e_range_low - 1.0 / e_range_high,
+                            dtype=dtype) + \
+            theano._asarray(1.0 / e_range_high, dtype=dtype)
 
         k = softsign(k_unbounded)
 
         if use_softmax_w:
             rval = cls(w_list, x_list, p, q, r, k,
-                    params=[p_unbounded, q_unbounded, r_unbounded, k_unbounded, w] + params,
-                    updates=updates)
+                       params=[p_unbounded,
+                               q_unbounded,
+                               r_unbounded,
+                               k_unbounded,
+                               w] + params,
+                       updates=updates)
         else:
             rval = cls(w_list, x_list, p, q, r, k,
-                    params=[p_unbounded, q_unbounded, r_unbounded, k_unbounded] + w_list + params,
-                    updates=updates)
+                       params=[p_unbounded,
+                               q_unbounded,
+                               r_unbounded,
+                               k_unbounded] + w_list + params,
+                       updates=updates)
         rval.p_unbounded = p_unbounded
         rval.q_unbounded = q_unbounded
         rval.r_unbounded = r_unbounded
@@ -126,8 +146,10 @@ class Kouh2008(object):
         return rval
 
     @classmethod
-    def new_filters_expbounds(cls, rng, input, n_in, n_out, n_terms, dtype=None, eps=1e-1,
-            exponent_range=(1.0, 3.0), filter_range=1.0):
+    def new_filters_expbounds(cls, rng, input, n_in, n_out, n_terms,
+                              dtype=None, eps=1e-1,
+                              exponent_range=(1.0, 3.0),
+                              filter_range=1.0):
         """Return a KouhLayer instance with random parameters
 
         The parameters are drawn on a range [typically] suitable for fine-tuning by gradient
@@ -161,19 +183,30 @@ class Kouh2008(object):
         def shared_uniform(low, high, size, name):
             return _shared_uniform(rng, low, high, size, dtype, name)
 
-        f_list = [shared_uniform(low=-2.0/numpy.sqrt(n_in), high=2.0/numpy.sqrt(n_in), size=(n_in, n_out), name='f_%i'%i)
-                for i in xrange(n_terms)]
+        f_list = [shared_uniform(low=-2.0 / numpy.sqrt(n_in),
+                                 high=2.0 / numpy.sqrt(n_in),
+                                 size=(n_in, n_out),
+                                 name='f_%i' % i)
+                  for i in xrange(n_terms)]
 
-        b_list = [shared_uniform(low=0, high=.01, size=(n_out,), name='b_%i'%i)
-                for i in xrange(n_terms)]
-        #x_list = [theano._asarray(eps, dtype=dtype)+softplus(tensor.dot(input, f_list[i])) for i in xrange(n_terms)]
+        b_list = [shared_uniform(low=0,
+                                 high=.01,
+                                 size=(n_out,),
+                                 name='b_%i' % i)
+                  for i in xrange(n_terms)]
+        # x_list = [theano._asarray(eps, dtype=dtype) + softplus(tensor.dot(input, f_list[i])) for i in xrange(n_terms)]
         filter_range = theano._asarray(filter_range, dtype=dtype)
-        half_filter_range = theano._asarray(filter_range/2, dtype=dtype)
-        x_list = [theano._asarray(filter_range + eps, dtype=dtype)+half_filter_range * softsign(tensor.dot(input, f_list[i]) +
-            b_list[i]) for i in xrange(n_terms)]
+        half_filter_range = theano._asarray(filter_range / 2,
+                                            dtype=dtype)
+        x_list = [
+            theano._asarray(filter_range + eps, dtype=dtype) +
+            half_filter_range * softsign(
+                tensor.dot(input, f_list[i]) + b_list[i])
+            for i in xrange(n_terms)]
 
-        rval = cls.new_expbounds(rng, x_list, n_out, dtype=dtype, params=f_list + b_list,
-                exponent_range=exponent_range)
+        rval = cls.new_expbounds(
+            rng, x_list, n_out, dtype=dtype, params=f_list + b_list,
+            exponent_range=exponent_range)
         rval.f_list = f_list
         rval.input = input  # add the input to the returned object
         rval.filter_l1 = sum(abs(fi).sum() for fi in f_list)
@@ -183,6 +216,8 @@ class Kouh2008(object):
     def img_from_weights(self, rows=None, cols=None, row_gap=1, col_gap=1, eps=1e-4):
         """ Return an image that visualizes all the weights in the layer.
         """
+        if Image is None:
+            raise ImportError("No module named PIL")
 
         n_in, n_out = self.f_list[0].value.shape
 
@@ -190,10 +225,12 @@ class Kouh2008(object):
             rows = int(numpy.sqrt(n_out))
         if cols is None:
             cols = n_out // rows
-            if n_out % rows: cols += 1
+            if n_out % rows:
+                cols += 1
         if rows is None:
             rows = n_out // cols
-            if n_out % cols: rows += 1
+            if n_out % cols:
+                rows += 1
 
         filter_shape = self.filter_shape
         height = rows * (row_gap + filter_shape[0]) - row_gap
@@ -203,34 +240,40 @@ class Kouh2008(object):
 
         w = self.w.value
         w_col = 0
+
         def pixel_range(x):
             return 255 * (x - x.min()) / (x.max() - x.min() + eps)
 
         for r in xrange(rows):
-            out_r_low = r*(row_gap + filter_shape[0])
+            out_r_low = r * (row_gap + filter_shape[0])
             out_r_high = out_r_low + filter_shape[0]
             for c in xrange(cols):
-                out_c_low = c*(col_gap + filter_shape[1])
+                out_c_low = c * (col_gap + filter_shape[1])
                 out_c_high = out_c_low + filter_shape[1]
-                out_tile = out_array[out_r_low:out_r_high, out_c_low:out_c_high, :]
+                out_tile = out_array[out_r_low:out_r_high,
+                                     out_c_low:out_c_high,
+                                     :]
 
                 if c % 3 == 0:  # linear filter
                     if w_col < w.shape[1]:
-                        out_tile[...] = pixel_range(w[:, w_col]).reshape(filter_shape+(1,))
+                        out_tile[...] = pixel_range(
+                            w[:, w_col]).reshape(filter_shape + (1,))
                         w_col += 1
                 if c % 3 == 1:  # E filters
                     if w_col < w.shape[1]:
                         # filters after the 3rd do not get rendered, but are skipped over.
                         #  there are only 3 colour channels.
                         for i in xrange(min(self.n_E_quadratic, 3)):
-                            out_tile[:, :, i] = pixel_range(w[:, w_col+i]).reshape(filter_shape)
+                            out_tile[:, :, i] = pixel_range(
+                                w[:, w_col + i]).reshape(filter_shape)
                         w_col += self.n_E_quadratic
                 if c % 3 == 2:  # S filters
                     if w_col < w.shape[1]:
                         # filters after the 3rd do not get rendered, but are skipped over.
                         #  there are only 3 colour channels.
                         for i in xrange(min(self.n_S_quadratic, 3)):
-                            out_tile[:, :, 2-i] = pixel_range(w[:, w_col+i]).reshape(filter_shape)
+                            out_tile[:, :, 2 - i] = pixel_range(
+                                w[:, w_col + i]).reshape(filter_shape)
                         w_col += self.n_S_quadratic
         return Image.fromarray(out_array, 'RGB')
 
@@ -264,8 +307,9 @@ class Config(object):
 
     ft_batchsize = 30
     ft_epoch_len = 50000
-    ft_status_interval = 50  # property( lambda s:s.ft_epoch_len/s.ft_batchsize)
-    ft_validation_interval = property( lambda s: s.ft_epoch_len/s.ft_batchsize)
+    ft_status_interval = 50  # property(lambda s:s.ft_epoch_len/s.ft_batchsize)
+    ft_validation_interval = property(
+        lambda s: s.ft_epoch_len / s.ft_batchsize)
     ft_ntrain_limit = 0
     ft_test_lag1 = True
 
@@ -290,14 +334,15 @@ if 0:
 
         debug = False
         if isinstance(theano.compile.mode.get_default_mode(),
-                theano.compile.debugmode.DebugMode):
+                      theano.compile.debugmode.DebugMode):
             debug = True
 
         # get symbolic train set
         s_lr = theano.tensor.fscalar()
         if not debug:
             sshape = (None, 784)
-        else: sshape = (None, 3)
+        else:
+            sshape = (None, 3)
         x = theano.tensor.TensorType(dtype=conf.dtype, broadcastable=(0, 0), shape=sshape)()
         y = theano.tensor.lvector()
 
@@ -315,7 +360,8 @@ if 0:
         print(layer.params)
 
         gparams = theano.tensor.grad(cost, layer.params)
-        updates = [(p, p - s_lr*gp) for p, gp in zip(layer.params, gparams)]
+        updates = [
+            (p, p - s_lr * gp) for p, gp in zip(layer.params, gparams)]
 
         train_nll = pfunc([x, y, s_lr], [], updates=updates)
 

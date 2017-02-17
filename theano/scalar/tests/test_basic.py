@@ -9,6 +9,7 @@ If you do want to rewrite these tests, bear in mind:
   * FunctionGraph and DualLinker are old, use compile.function instead.
 """
 
+
 from __future__ import absolute_import, print_function, division
 
 import unittest
@@ -19,11 +20,12 @@ from theano.gof import FunctionGraph
 from theano import gof
 from theano.tests import unittest_tools as utt
 
-from theano.scalar.basic import (floats, float32, float64,
-                                 ints, int8, int32, complex64,
+from theano.scalar.basic import (floats, float16, float32, float64,
+                                 ints, int8, int32, complex64, uint8,
                                  ComplexError, IntDiv, TrueDiv,
                                  Composite, add, div_proxy,
-                                 and_, eq, neq, invert, mul, Scalar, InRange)
+                                 and_, eq, neq, invert, mul, Scalar, InRange,
+                                 cast, constant, switch)
 from theano.scalar.basic import (
     true_div, inv, log, log2, log10, log1p, exp, exp2, expm1, sqrt, deg2rad,
     rad2deg, cos, arccos, sin, arcsin, tan, arctan, arctan2, cosh, arccosh,
@@ -57,15 +59,45 @@ class test_ScalarOps(unittest.TestCase):
         as Python. That is what we want.
         """
         x, y = ints('xy')
-        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x%y])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x % y])).make_function()
         for a, b in ((0, 1), (1, 1), (0, -1), (1, -1), (-1, -1),
-                    (1, 2), (-1, 2), (1, -2), (-1, -2),
-                    (5, 3), (-5, 3), (5, -3), (-5, -3)
-                    ):
-            self.assertTrue(fn(a, b) == a%b, (a,))
+                     (1, 2), (-1, 2), (1, -2), (-1, -2),
+                     (5, 3), (-5, 3), (5, -3), (-5, -3)
+                     ):
+            self.assertTrue(fn(a, b) == a % b, (a,))
+
+
+def has_f16(comp):
+    if any(v.type == float16 for v in comp.fgraph.variables):
+        return True
+    return False
 
 
 class test_composite(unittest.TestCase):
+    def test_composite_clone_float32(self):
+        w = int8()
+        x = float16()
+        y = float32()
+        cz = Composite([x, y], [tanh(x + cast(y, 'float16'))])
+        c = Composite([w, x, y], [cz(x, y) - cz(x, y)**2 +
+                                  cast(x, 'int16') + cast(x, 'float32') +
+                                  cast(w, 'float16') -
+                                  constant(np.float16(1.0))])
+        assert has_f16(c)
+        nc = c.clone_float32()
+        assert not has_f16(nc)
+
+        v = uint8()
+        w = float16()
+        x = float16()
+        y = float16()
+        z = float16()
+
+        c = Composite([v, w, x, y, z], [switch(v, mul(w, x, y), z)])
+
+        assert has_f16(c)
+        nc = c.clone_float32()
+        assert not has_f16(nc)
 
     def test_straightforward(self):
         x, y, z = inputs()
@@ -125,7 +157,7 @@ class test_composite(unittest.TestCase):
         C = Composite([x, y, z], [e0, e1, e2, e3, e4, e5, e6, e7])
         c = C.make_node(x, y, z)
         g = FunctionGraph([x, y, z], c.outputs)
-        fn = gof.DualLinker().accept(g).make_function()
+        gof.DualLinker().accept(g).make_function()
 
         assert str(g) == ('[*1 -> Composite{((i0 + i1) + i2),'
                           ' (i0 + (i1 * i2)), (i0 / i1), '
@@ -205,13 +237,13 @@ class test_logical(unittest.TestCase):
 
     def test_or(self):
         x, y, z = ints('xyz')
-        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x|y])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x | y])).make_function()
         for a, b in ((0, 1), (0, 0), (1, 0), (1, 1)):
-            self.assertTrue(fn(a, b) == (a|b), (a, b))
+            self.assertTrue(fn(a, b) == (a | b), (a, b))
 
     def test_xor(self):
         x, y, z = ints('xyz')
-        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x^y])).make_function()
+        fn = gof.DualLinker().accept(FunctionGraph([x, y], [x ^ y])).make_function()
         for a, b in ((0, 1), (0, 0), (1, 0), (1, 1)):
             self.assertTrue(fn(a, b) == (a ^ b), (a, b))
 
@@ -345,8 +377,9 @@ class test_upgrade_to_float(object):
         # Automatically define all individual unary tests
         for unary_op, x_range in self.unary_ops_vals:
             test_name = 'test_%s' % unary_op.name
-            # Make a lambda function so we can name the test
-            test = lambda: self._test_unary(unary_op, x_range)
+
+            def test():
+                self._test_unary(unary_op, x_range)
             test.description = test_name
             yield test
 
@@ -354,8 +387,9 @@ class test_upgrade_to_float(object):
         # Automatically define all individual binary tests
         for binary_op, x_range, y_range in self.binary_ops_vals:
             test_name = 'test_%s' % binary_op.name
-            # Make a lambda function so we can name the test
-            test = lambda: self._test_binary(binary_op, x_range, y_range)
+
+            def test():
+                self._test_binary(binary_op, x_range, y_range)
             test.description = test_name
             yield test
 
@@ -381,16 +415,15 @@ class test_div(unittest.TestCase):
         d = float64()
         f = float32()
 
-        #print (a//b).owner.op
-        assert isinstance((a//b).owner.op, IntDiv)
-        assert isinstance((b//a).owner.op, IntDiv)
-        assert isinstance((b/d).owner.op, TrueDiv)
-        assert isinstance((b/f).owner.op, TrueDiv)
-        assert isinstance((f/a).owner.op, TrueDiv)
-        assert isinstance((d/b).owner.op, TrueDiv)
-        assert isinstance((d/f).owner.op, TrueDiv)
-        assert isinstance((f/c).owner.op, TrueDiv)
-        assert isinstance((a/c).owner.op, TrueDiv)
+        assert isinstance((a // b).owner.op, IntDiv)
+        assert isinstance((b // a).owner.op, IntDiv)
+        assert isinstance((b / d).owner.op, TrueDiv)
+        assert isinstance((b / f).owner.op, TrueDiv)
+        assert isinstance((f / a).owner.op, TrueDiv)
+        assert isinstance((d / b).owner.op, TrueDiv)
+        assert isinstance((d / f).owner.op, TrueDiv)
+        assert isinstance((f / c).owner.op, TrueDiv)
+        assert isinstance((a / c).owner.op, TrueDiv)
 
 
 def test_grad_gt():
@@ -398,7 +431,7 @@ def test_grad_gt():
     y = float32(name='y')
     z = x > y
     g = theano.gradient.grad(z, y)
-    assert g.eval({ y : 1. }) == 0.
+    assert g.eval({y: 1.}) == 0.
 
 
 def test_grad_switch():
@@ -452,8 +485,27 @@ def test_grad_inrange():
         utt.assert_allclose(f(7, 1, 5), [0, 0, 0])
 
 
+def test_grad_abs():
+    a = theano.tensor.fscalar("a")
+    b = theano.tensor.nnet.relu(a)
+    c = theano.grad(b, a)
+    f = theano.function([a], c, mode=theano.Mode(optimizer=None))
+    # Currently Theano return 0.5, but it isn't sure it won't change
+    # in the futur.
+    ret = f(0.)
+    assert ret == 0.5, ret
+
 # Testing of Composite is done in tensor/tests/test_opt.py
 # in test_fusion, TestCompositeCodegen
+
+
+def test_constant():
+    c = constant(2, name='a')
+    assert c.name == 'a'
+    assert c.dtype == 'int8'
+    c = constant(2, dtype='float32')
+    assert c.name is None
+    assert c.dtype == 'float32'
 
 
 if __name__ == '__main__':

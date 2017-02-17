@@ -1,9 +1,10 @@
+from __future__ import absolute_import, print_function, division
 import theano
 from theano.gradient import DisconnectedType
 from theano.gof import Op, Apply, TopoOptimizer
+from theano.gof.opt import copy_stack_trace
 from theano import tensor
 import theano.sandbox.cuda as cuda
-from theano.tensor.opt import copy_stack_trace
 
 
 def get_diagonal_subtensor_view(x, i0, i1):
@@ -25,8 +26,9 @@ def get_diagonal_subtensor_view(x, i0, i1):
     idx[i0] = slice(x.shape[i1] - 1, None, None)
     xview = x.__getitem__(tuple(idx))
     strides = list(xview.strides)
-    strides[i1] -= strides[i0]
-    xview.strides = strides
+    if x.shape[i1] != 1:
+        strides[i1] -= strides[i0]
+        xview.strides = strides
     return xview
 
 
@@ -189,7 +191,7 @@ def conv3d(signals, filters,
     filters_shape
         None or a tuple/list with the shape of filters.
     border_mode
-        The only one tested is 'valid'.
+        One of 'valid', 'full' or 'half'.
 
     Notes
     -----
@@ -220,18 +222,11 @@ def conv3d(signals, filters,
     else:
         _filters_shape_5d = filters_shape
 
-    _signals_shape_4d = (
-        _signals_shape_5d[0] * _signals_shape_5d[1],
-        _signals_shape_5d[2],
-        _signals_shape_5d[3],
-        _signals_shape_5d[4],
-    )
-    _filters_shape_4d = (
-        _filters_shape_5d[0] * _filters_shape_5d[1],
-        _filters_shape_5d[2],
-        _filters_shape_5d[3],
-        _filters_shape_5d[4],
-    )
+    Ns, Ts, C, Hs, Ws = _signals_shape_5d
+    Nf, Tf, C, Hf, Wf = _filters_shape_5d
+
+    _signals_shape_4d = (Ns * Ts, C, Hs, Ws)
+    _filters_shape_4d = (Nf * Tf, C, Hf, Wf)
 
     if border_mode[1] != border_mode[2]:
         raise NotImplementedError('height and width bordermodes must match')
@@ -249,48 +244,54 @@ def conv3d(signals, filters,
         filter_shape=conv2d_filter_shape,
         border_mode=border_mode[1])  # ignoring border_mode[2]
 
-    # reshape the output to restore its original size
-    # shape = Ns, Ts, Nf, Tf, W-Wf+1, H-Hf+1
+    # compute the intended output size
     if border_mode[1] == 'valid':
-        out_tmp = out_4d.reshape((
-            _signals_shape_5d[0],  # Ns
-            _signals_shape_5d[1],  # Ts
-            _filters_shape_5d[0],  # Nf
-            _filters_shape_5d[1],  # Tf
-            _signals_shape_5d[3] - _filters_shape_5d[3] + 1,
-            _signals_shape_5d[4] - _filters_shape_5d[4] + 1,
-        ))
+        Hout = Hs - Hf + 1
+        Wout = Ws - Wf + 1
     elif border_mode[1] == 'full':
-        out_tmp = out_4d.reshape((
-            _signals_shape_5d[0],  # Ns
-            _signals_shape_5d[1],  # Ts
-            _filters_shape_5d[0],  # Nf
-            _filters_shape_5d[1],  # Tf
-            _signals_shape_5d[3] + _filters_shape_5d[3] - 1,
-            _signals_shape_5d[4] + _filters_shape_5d[4] - 1,
-        ))
+        Hout = Hs + Hf - 1
+        Wout = Ws + Wf - 1
+    elif border_mode[1] == 'half':
+        Hout = Hs - (Hf % 2) + 1
+        Wout = Ws - (Wf % 2) + 1
     elif border_mode[1] == 'same':
         raise NotImplementedError()
     else:
         raise ValueError('invalid border mode', border_mode[1])
 
+    # reshape the temporary output to restore its original size
+    out_tmp = out_4d.reshape((Ns, Ts, Nf, Tf, Hout, Wout))
+
     # now sum out along the Tf to get the output
     # but we have to sum on a diagonal through the Tf and Ts submatrix.
-    if border_mode[0] == 'valid':
-        if _filters_shape_5d[1] != 1:
-            out_5d = diagonal_subtensor(out_tmp, 1, 3).sum(axis=3)
-        else:  # for Tf==1, no sum along Tf, the Ts-axis of the output is unchanged!
-            out_5d = out_tmp.reshape((
-                _signals_shape_5d[0],
-                _signals_shape_5d[1],
-                _filters_shape_5d[0],
-                _signals_shape_5d[3] - _filters_shape_5d[3] + 1,
-                _signals_shape_5d[4] - _filters_shape_5d[4] + 1,
-            ))
-    elif border_mode[0] in ('full', 'same'):
-        raise NotImplementedError('sequence border mode', border_mode[0])
+    if Tf == 1:
+        # for Tf==1, no sum along Tf, the Ts-axis of the output is unchanged!
+        out_5d = out_tmp.reshape((Ns, Ts, Nf, Hout, Wout))
     else:
-        raise ValueError('invalid border mode', border_mode[1])
+        # for some types of convolution, pad out_tmp with zeros
+        if border_mode[0] == 'valid':
+            Tpad = 0
+        elif border_mode[0] == 'full':
+            Tpad = Tf - 1
+        elif border_mode[0] == 'half':
+            Tpad = Tf // 2
+        elif border_mode[0] == 'same':
+            raise NotImplementedError()
+        else:
+            raise ValueError('invalid border mode', border_mode[0])
+
+        if Tpad == 0:
+            out_5d = diagonal_subtensor(out_tmp, 1, 3).sum(axis=3)
+        else:
+            # pad out_tmp with zeros before summing over the diagonal
+            out_tmp_padded = tensor.zeros(dtype=out_tmp.dtype, shape=(
+                Ns, Ts + 2 * Tpad, Nf, Tf, Hout, Wout
+            ))
+            out_tmp_padded = tensor.set_subtensor(
+                out_tmp_padded[:, Tpad:(Ts + Tpad), :, :, :, :],
+                out_tmp)
+            out_5d = diagonal_subtensor(out_tmp_padded, 1, 3).sum(axis=3)
+
     return out_5d
 
 

@@ -10,7 +10,7 @@ which value to report. Note also that `switch` is an elemwise operation (so
 it picks each entry of a matrix according to the condition) while `ifelse`
 is a global operation with a scalar condition.
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 from copy import deepcopy
 from theano.compat import izip
 import logging
@@ -20,7 +20,7 @@ import numpy
 import theano.tensor
 from theano.tensor import TensorType
 from theano import gof
-from theano.gof import PureOp, Apply
+from theano.gof import Op, Apply
 
 from six import iteritems
 from six.moves import xrange
@@ -41,7 +41,7 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 _logger = logging.getLogger('theano.ifelse')
 
 
-class IfElse(PureOp):
+class IfElse(Op):
     """
     Op that provides conditional graph evaluation if used with the CVM/VM
     linkers. Note that there exist a helpful function `ifelse` that should
@@ -167,13 +167,15 @@ class IfElse(PureOp):
             "Wrong number of arguments to make_node: "
             "expected %d, got %d" % (2 * self.n_outs, len(args))
         )
+        c = theano.tensor.as_tensor_variable(c)
         if not self.gpu:
             # When gpu is true, we are given only cuda ndarrays, and we want
             # to keep them be cuda ndarrays
-            c = theano.tensor.as_tensor_variable(c)
             nw_args = []
             for x in args:
-                if isinstance(x, theano.Variable):
+                if hasattr(x, '_as_TensorVariable'):
+                    nw_args.append(x._as_TensorVariable())
+                elif isinstance(x, theano.Variable):
                     nw_args.append(x)
                 else:
                     nw_args.append(theano.tensor.as_tensor_variable(x))
@@ -213,22 +215,29 @@ class IfElse(PureOp):
                              gpu=self.gpu,
                              name=nw_name_f)
 
-        if_true = ([ins[0]] + grads + [theano.tensor.zeros_like(t)
-                                       for t in ts])
-        if_false = ([ins[0]] + [theano.tensor.zeros_like(f)
-                                for f in fs] + grads)
+        # The grads can have a different dtype then the inputs.
+        # As inputs true/false pair must have the same dtype,
+        # we must cast the zeros to the corresponding grad dtype
+        # and not the input dtype.
+        if_true = ([ins[0]] +
+                   grads +
+                   [theano.tensor.zeros_like(t, dtype=grads[i].dtype)
+                    for i, t in enumerate(ts)])
+        if_false = ([ins[0]] +
+                    [theano.tensor.zeros_like(f, dtype=grads[i].dtype)
+                     for i, f in enumerate(fs)] +
+                    grads)
 
         condition = ins[0]
         # condition does affect the elements of the output so it is connected.
         # For the sake of making the gradient convenient we assume that
         # condition + epsilon always triggers the same branch as condition
         condition_grad = condition.zeros_like().astype(theano.config.floatX)
-
         return ([condition_grad] +
                 if_true_op(*if_true, **dict(return_list=True)) +
                 if_false_op(*if_false, **dict(return_list=True)))
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def make_thunk(self, node, storage_map, compute_map, no_recycling, impl=None):
         cond = node.inputs[0]
         ts = node.inputs[1:][:self.n_outs]
         fs = node.inputs[1:][self.n_outs:]

@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 from theano import scalar as scal
 from . import elemwise
 from theano import printing
@@ -25,12 +26,7 @@ def _scal_inplace(symbol):
     rval.__epydoc_asRoutine = symbol
     rval.__module__ = 'theano.tensor.inplace'
 
-    def chk(pstate, r):
-        if not r.owner:
-            return False
-        return r.owner.op == rval
-
-    pprint.assign(chk, printing.FunctionPrinter(symbolname.replace('_inplace', '=')))
+    pprint.assign(rval, printing.FunctionPrinter(symbolname.replace('_inplace', '=')))
     return rval
 
 

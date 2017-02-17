@@ -21,10 +21,8 @@ Theano defines the following modes by name:
 - ``'FAST_COMPILE'``: Apply just a few graph optimizations and only use Python implementations.
 - ``'FAST_RUN'``: Apply all optimizations, and use C implementations where possible.
 - ``'DebugMode'``: A mode for debugging. See :ref:`DebugMode <debugmode>` for details.
-- ``'ProfileMode'``: Deprecated, use the Theano flag :attr:`config.profile`.
 - ``'NanGuardMode``: :ref:`Nan detector <nanguardmode>`
 - ``'DEBUG_MODE'``: Deprecated. Use the string DebugMode.
-- ``'PROFILE_MODE'``: Deprecated, use the Theano flag :attr:`config.profile`.
 
 The default mode is typically ``FAST_RUN``, but it can be controlled via the
 configuration variable :attr:`config.mode`, which can be

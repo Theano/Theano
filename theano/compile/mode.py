@@ -2,10 +2,8 @@
 WRITEME
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import logging
-
-import numpy
 
 import theano
 from theano import gof
@@ -16,35 +14,6 @@ from six import string_types
 
 
 _logger = logging.getLogger('theano.compile.mode')
-
-
-def check_equal(x, y):
-    """
-    Returns True iff x[0] and y[0] are equal (checks the dtype and shape if x
-    and y are numpy.ndarray instances). Used internally.
-
-    """
-    # I put the import here to allow using theano without scipy.
-    import scipy.sparse as sp
-    x, y = x[0], y[0]
-
-    # TODO: bug in current scipy, two sparse matrices are never equal,
-    # remove when moving to 0.7
-    if sp.issparse(x):
-        x = x.todense()
-    if sp.issparse(y):
-        y = y.todense()
-
-    if isinstance(x, numpy.ndarray) and isinstance(y, numpy.ndarray):
-        if (x.dtype != y.dtype or
-                x.shape != y.shape or
-                numpy.any(abs(x - y) > 1e-10)):
-            raise Exception("Output mismatch.",
-                            {'performlinker': x, 'clinker': y})
-    else:
-        if x != y:
-            raise Exception("Output mismatch.",
-                            {'performlinker': x, 'clinker': y})
 
 
 # If a string is passed as the linker argument in the constructor for
@@ -180,6 +149,21 @@ class PrintCurrentFunctionGraph(gof.Optimizer):
 optdb = gof.SequenceDB()
 optdb.register('merge1', gof.MergeOptimizer(),
                0, 'fast_run', 'fast_compile', 'merge')
+
+# After scan1 opt at 0.5 and before ShapeOpt at 1
+# This should only remove nodes.
+# The opt should not do anything that need shape inference.
+# New nodes that don't have infer_shape need that the original node
+# also don't have infer_shape
+local_useless = gof.optdb.LocalGroupDB(apply_all_opts=True, profile=True)
+optdb.register(
+    'useless',
+    gof.optdb.TopoDB(local_useless,
+                     failure_callback=gof.opt.NavigatorOptimizer.warn_inplace),
+    0.6, 'fast_run', 'fast_compile')
+
+optdb.register('merge1.1', gof.MergeOptimizer(),
+               0.65, 'fast_run', 'fast_compile', 'merge')
 
 # rearranges elemwise expressions
 optdb.register('canonicalize', gof.EquilibriumDB(ignore_newtrees=False),
@@ -384,7 +368,7 @@ predefined_modes = {'FAST_COMPILE': FAST_COMPILE,
                     'FAST_RUN': FAST_RUN,
                     }
 
-instanciated_default_mode = None
+instantiated_default_mode = None
 
 
 def get_mode(orig_string):
@@ -395,19 +379,19 @@ def get_mode(orig_string):
     if not isinstance(string, string_types):
         return string  # it is hopefully already a mode...
 
-    global instanciated_default_mode
+    global instantiated_default_mode
     # The default mode is cached. However, config.mode can change
-    # If instanciated_default_mode has the right class, use it.
-    if orig_string is None and instanciated_default_mode:
+    # If instantiated_default_mode has the right class, use it.
+    if orig_string is None and instantiated_default_mode:
         if string in predefined_modes:
             default_mode_class = predefined_modes[string].__class__.__name__
         else:
             default_mode_class = string
-        if (instanciated_default_mode.__class__.__name__ ==
+        if (instantiated_default_mode.__class__.__name__ ==
                 default_mode_class):
-            return instanciated_default_mode
+            return instantiated_default_mode
 
-    if string in ['Mode', 'ProfileMode', 'DebugMode', 'NanGuardMode']:
+    if string in ['Mode', 'DebugMode', 'NanGuardMode']:
         if string == 'DebugMode':
             # need to import later to break circular dependency.
             from .debugmode import DebugMode
@@ -419,9 +403,7 @@ def get_mode(orig_string):
             # NanGuardMode use its own linker.
             ret = NanGuardMode(True, True, True, optimizer=config.optimizer)
         else:
-            # This might be required if the string is 'ProfileMode'
-            from .profilemode import ProfileMode  # noqa
-            from .profilemode import prof_mode_instance_to_print
+            # TODO: Can't we look up the name and invoke it rather than using eval here?
             ret = eval(string +
                        '(linker=config.linker, optimizer=config.optimizer)')
     elif string in predefined_modes:
@@ -437,12 +419,7 @@ def get_mode(orig_string):
             ret = ret.including(*theano.config.optimizer_including.split(':'))
         if theano.config.optimizer_requiring:
             ret = ret.requiring(*theano.config.optimizer_requiring.split(':'))
-        instanciated_default_mode = ret
-
-    # must tell python to print the summary at the end.
-    if string == 'ProfileMode':
-        # need to import later to break circular dependency.
-        prof_mode_instance_to_print.append(ret)
+        instantiated_default_mode = ret
 
     return ret
 

@@ -8,7 +8,7 @@ tensor.signal and tensor.signal.pool.
 See especially conv2d().
 """
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import logging
 
@@ -609,7 +609,7 @@ class ConvOp(OpenMPOp):
 
     def flops(self, inputs, outputs):
         """
-        Useful with the hack in profilemode to print the MFlops.
+        Useful with the hack in profiling to print the MFlops.
 
         """
         images, kerns = inputs

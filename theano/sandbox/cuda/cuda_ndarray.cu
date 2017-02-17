@@ -74,7 +74,6 @@ void * device_malloc(size_t size)
     return device_malloc(size, VERBOSE_DEVICE_MALLOC);
 }
 
-///@TODO: thejaswi: link this option to a theano config variable?
 static bool g_use_cnmem = false;
 static const int g_max_devices = 8;
 int initCnmem(int card_number_provided, int card_nb, size_t mem) {
@@ -2219,7 +2218,7 @@ static PyNumberMethods CudaNdarrayNumberMethods =
     0,  //binaryfunc nb_floor_divide;          __floordiv__
     0,  //binaryfunc nb_true_divide;           __truediv__
     0,  //binaryfunc nb_inplace_floor_divide;  __ifloordiv__
-    0,  //binaryfunc nb_inplace_true_divide;   __itruediv__
+    (binaryfunc)CudaNdarray_inplace_div,  //binaryfunc nb_inplace_true_divide;   __itruediv__
 
 #if PY_MINOR_VERSION > 4
     /* Added in release 2.5 */
@@ -2963,11 +2962,11 @@ CudaNdarray_select_a_gpu(PyObject* _unused, PyObject* dummy)
     for (int device = 0; device < num_gpus; device++) {
         cudaSetDevice(device);
         err = cudaDeviceSynchronize(); // << CUDA context gets created here.
-        cudaGetLastError(); // reset the error state     
+        cudaGetLastError(); // reset the error state
         if (cudaSuccess == err)
             break;
     }
-        
+
     if (cudaSuccess != err){
             printf("ERR!\\n");
                 PyErr_Format(PyExc_RuntimeError,
@@ -3310,7 +3309,6 @@ CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
             }
         }
     }
-    cudaThreadExit();
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -3800,9 +3798,11 @@ CudaNdarray_CopyFromArray(CudaNdarray * self, PyArrayObject*obj)
     {
         PyErr_Format(PyExc_RuntimeError,
                      "Cuda error '%s' while copying %lli data element"
-                     " to device memory",
+                     " to device memory. str ptr=%p. dst ptr=%p",
                      cudaGetErrorString(cerr),
-                     (long long)py_src_size);
+                     (long long)py_src_size,
+                     py_src_data,
+                     self->devdata);
         Py_DECREF(py_src);
         return -1;
     }
@@ -4392,15 +4392,31 @@ int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B,
     int sb_0 = (CudaNdarray_HOST_DIMS(B)[0] > 1) ? CudaNdarray_HOST_STRIDES(B)[0] : 1;
     int sc_0 = (CudaNdarray_HOST_DIMS(C)[0] > 1) ? CudaNdarray_HOST_STRIDES(C)[0] : 1;
 
-    if (sa_0 == 0)
-        sa_0 = 1;
-    if (sa_1 == 0)
-        sa_1 = 1;
+    if (sa_0 == 0) sa_0 = 1;
+    if (sa_1 == 0) sa_1 = 1;
+
+    int used_dot = 0;
 
     // This is important because we can end up not calling Sgemv at all
     cublasStatus_t err = CUBLAS_STATUS_SUCCESS;
     if (CudaNdarray_SIZE(C)) {
-        if ((CudaNdarray_HOST_DIMS(A)[0] <= 1)
+        // A is row vector & alpha==1 & beta==0 -> use cublasSdot
+        if (CudaNdarray_HOST_DIMS(A)[0] == 1 && alpha==1.f && beta==0.f) {
+            //replace this with custom inner product kernel with alpha and beta parameter?
+            cublasPointerMode_t pmode;
+            //set pointer mode to make sure cublas not storing on host pointer
+            cublasGetPointerMode(handle, &pmode);
+            cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_DEVICE);
+            err = cublasSdot(
+                    handle, CudaNdarray_HOST_DIMS(A)[1],
+                    CudaNdarray_DEV_DATA(A), sa_1,
+                    CudaNdarray_DEV_DATA(B), sb_0,
+                    CudaNdarray_DEV_DATA(C));
+            cublasSetPointerMode(handle, pmode);
+            used_dot = 1;
+        }
+        // A is row-contiguous | row vector
+        else if ((CudaNdarray_HOST_DIMS(A)[0] <= 1)
             || ((CudaNdarray_HOST_STRIDES(A)[0] == 1)
                 && (CudaNdarray_HOST_STRIDES(A)[1] > 0)))
         {
@@ -4412,6 +4428,7 @@ int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B,
                     &beta,
                     CudaNdarray_DEV_DATA(C), sc_0);
         }
+        // A is column-contiguous | column vector
         else if ((CudaNdarray_HOST_DIMS(A)[1] <= 1)
                 || ((CudaNdarray_HOST_STRIDES(A)[1] == 1)
                     && (CudaNdarray_HOST_STRIDES(A)[0] > 0)))
@@ -4424,6 +4441,7 @@ int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B,
                     &beta,
                     CudaNdarray_DEV_DATA(C), sc_0);
         }
+        // A is non vector and have malformed strides
         else
         {
             PyErr_Format(PyExc_AssertionError,
@@ -4449,9 +4467,16 @@ int CudaNdarray_sgemv(float alpha, const CudaNdarray * A, const CudaNdarray * B,
 
     if (CUBLAS_STATUS_SUCCESS != err)
     {
+        if (!used_dot)
+        {
+            PyErr_Format(PyExc_RuntimeError,
+                         "cublasSgemv failed (%i)",
+                         err);
+        } else {
         PyErr_Format(PyExc_RuntimeError,
-                     "cublasSgemv failed (%i)",
+                     "cublasSdot failed (%i)",
                      err);
+        }
         return -1;
     }
     return 0;

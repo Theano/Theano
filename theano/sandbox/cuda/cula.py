@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import pkg_resources
 
 import theano
@@ -50,10 +51,7 @@ class GpuSolve(GpuOp):
         assert inp2.ndim == 2
         return theano.Apply(self, [inp1, inp2], [self.output_type(inp1)()])
 
-    def make_thunk(self,
-                   node,
-                   storage_map, _,
-                   no_recycling=[]):
+    def make_thunk(self, node, storage_map, _, no_recycling, impl=None):
 
         # Initialize CULA the first time it is needed
         global cula_initialized

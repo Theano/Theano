@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import unittest
 
 from nose.plugins.skip import SkipTest
@@ -33,10 +34,10 @@ def random_lil(shape, dtype, nnz):
     huge = 2 ** 30
     for k in range(nnz):
         # set non-zeros in random locations (row x, col y)
-        idx = numpy.random.random_integers(huge, size=2) % shape
+        idx = numpy.random.randint(1, huge + 1, size=2) % shape
         value = numpy.random.rand()
         # if dtype *int*, value will always be zeros!
-        if "int" in dtype:
+        if dtype in theano.tensor.integer_dtypes:
             value = int(value * 100)
         # The call to tuple is needed as scipy 0.13.1 do not support
         # ndarray with lenght 2 as idx tuple.

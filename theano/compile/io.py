@@ -2,6 +2,8 @@
 Define `SymbolicInput`, `SymbolicOutput`, `In`, `Out`.
 
 """
+from __future__ import absolute_import, print_function, division
+
 from theano import gof
 from .sharedvalue import SharedVariable
 
@@ -93,69 +95,6 @@ class SymbolicInput(object):
 
     def __repr__(self):
         return str(self)
-
-
-# TODO: FB: I think this isn't used, confirm this and remove.
-class SymbolicInputKit(object):
-    """
-    Represents a group ("kit") of SymbolicInputs. If fed into function or
-    FunctionMaker, only the inputs which are needed to compile the function
-    properly will be taken.
-
-    A SymbolicInputKit provides the distribute function in order to set or
-    initialize several inputs from a single value. Specialized Kits should
-    override it.
-
-    """
-
-    def __init__(self, name):
-        if not isinstance(name, string_types):
-            raise TypeError('name must be a string (got: %s)' % name)
-        self.name = name
-        self.sinputs = []
-        self.variables = []
-
-    def add_input(self, sinput):
-        """
-        Add a SymbolicInput to this SymbolicInputKit.
-
-        It will be given the next available index.
-
-        """
-        self.sinputs.append(sinput)
-        self.variables.append(sinput.variable)
-
-    def distribute(self, value, indices, containers):
-        """
-        Given a list of indices corresponding to SymbolicInputs in this kit
-        as well as a corresponding list of containers, initialize all the
-        containers using the provided value.
-
-        """
-        raise NotImplementedError
-
-    def complete(self, inputs):
-        """
-        Given inputs (a list of Variable instances), checks through all the
-        SymbolicInputs in the kit and return a sorted list of indices and a list
-        of their corresponding SymbolicInputs such that each of them represents
-        some variable in the inputs list.
-
-        Not all the provided inputs will have a corresponding SymbolicInput in
-        the kit.
-
-        """
-        ret = []
-        for input in inputs:
-            try:
-                i = self.variables.index(input)
-                ret.append((i, self.sinputs[i]))
-            except ValueError:
-                pass
-        ret.sort()
-        if not ret:
-            return [[], []]
-        return list(zip(*ret))
 
 
 class In(SymbolicInput):

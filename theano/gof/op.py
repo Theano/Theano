@@ -5,13 +5,14 @@ The `Op` class is the base interface for all operations
 compatible with `gof`'s :doc:`graph` routines.
 
 """
+from __future__ import absolute_import, print_function, division
+
 import inspect
 import logging
-import numpy
+import numpy as np
 import os
 import re
 import sys
-import traceback
 import warnings
 
 import theano
@@ -19,7 +20,6 @@ from theano import config
 
 import theano.gof.cc
 from six import itervalues
-from six.moves import StringIO
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof.cmodule import GCC_compiler
@@ -31,6 +31,8 @@ __license__ = "3-clause BSD License"
 __contact__ = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
+
+_logger = logging.getLogger('theano.gof.op.Op')
 
 
 class CLinkerObject(object):
@@ -552,16 +554,7 @@ class PureOp(object):
                 detailed_err_msg = (
                     "For compute_test_value, one input test value does not"
                     " have the requested type.\n")
-                tr = getattr(v.tag, 'trace', [])
-                if isinstance(tr, list) and len(tr) > 0:
-                    detailed_err_msg += (
-                        " \nBacktrace when that variable is created:\n")
-                    # Print separate message for each element in the list
-                    # of batcktraces
-                    sio = StringIO()
-                    for subtr in tr:
-                        traceback.print_list(subtr, sio)
-                    detailed_err_msg += str(sio.getvalue())
+                detailed_err_msg += utils.get_variable_trace_string(v)
 
                 detailed_err_msg += (
                     "\nThe error when converting the test value to that"
@@ -573,8 +566,8 @@ class PureOp(object):
                 e.args = ("\n".join(args),)
                 raise
             return ret
-
-        raise AttributeError('%s has no test value' % v)
+        detailed_err_msg = utils.get_variable_trace_string(v)
+        raise AttributeError('%s has no test value %s' % (v, detailed_err_msg))
 
     def __call__(self, *inputs, **kwargs):
         """
@@ -628,9 +621,11 @@ class PureOp(object):
                             (i, ins, node), stacklevel=2)
                         run_perform = False
                     elif config.compute_test_value == 'raise':
+                        detailed_err_msg = utils.get_variable_trace_string(ins)
+
                         raise ValueError(
-                            'Cannot compute test value: input %i (%s) of Op %s missing default value' %
-                            (i, ins, node))
+                            'Cannot compute test value: input %i (%s) of Op %s missing default value. %s' %
+                            (i, ins, node, detailed_err_msg))
                     elif config.compute_test_value == 'ignore':
                         # silently skip test
                         run_perform = False
@@ -700,6 +695,9 @@ class PureOp(object):
     #########################
     # Python implementation #
     #########################
+
+    def L_op(self, inputs, outputs, output_grads):
+        return self.grad(inputs, output_grads)
 
     def R_op(self, inputs, eval_points):
         """
@@ -786,73 +784,24 @@ class Op(utils.object2, PureOp, CLinkerOp):
     Convenience class to bundle `PureOp` and `CLinkerOp`.
 
     """
-    def __new__(cls, *args, **kwargs):
-        # this function exists to silently and transparently ensure that all
-        # existing Ops get a _op_use_c_code attribute
-        obj = object.__new__(cls)
-        if not hasattr(obj, '_op_use_c_code'):
-            obj._op_use_c_code = theano.config.cxx
-        return obj
-
-    def __init__(self, use_c_code=theano.config.cxx):
-        self._op_use_c_code = use_c_code
-
-    def _props(self):
-        return tuple(getattr(self, a) for a in self.__props__)
-
-    def _props_dict(self):
-        """This return a dict of all ``__props__`` key-> value.
-
-        This is useful in optimization to swap op that should have the
-        same props. This help detect error that the new op have at
-        least all the original props.
-
-        """
-        return dict([(a, getattr(self, a))
-                     for a in self.__props__])
-
-    def __hash__(self):
-        if hasattr(self, '__props__'):
-            return hash((type(self), self._props()))
-        else:
-            return super(Op, self).__hash__()
-
-    def __str__(self):
-        if hasattr(self, '__props__'):
-            if len(self.__props__) == 0:
-                return "%s" % (self.__class__.__name__,)
-            else:
-                return "%s{%s}" % (
-                    self.__class__.__name__,
-                    ", ".join("%s=%r" % (p, getattr(self, p))
-                              for p in self.__props__))
-        else:
-            return super(Op, self).__str__()
-
-    def __eq__(self, other):
-        if hasattr(self, '__props__'):
-            return (type(self) == type(other) and self._props() ==
-                    other._props())
-        else:
-            return NotImplemented
-
-    def prepare_node(self, node, storage_map, compute_map):
+    def prepare_node(self, node, storage_map, compute_map, impl):
         """
         Make any special modifications that the Op needs before doing
         make_thunk().
 
-        This can either modify the node inplace or return a new one.
+        This can modify the node inplace and should return nothing.
+
+        It can be called multiple time with different impl. It is the
+        op responsability to don't re-prepare the node when it isn't
+        good to do so.
 
         """
         pass
 
     def make_c_thunk(self, node, storage_map, compute_map, no_recycling):
-        """
-        Like make_thunk, but will only try to make a C thunk.
+        """Like make_thunk, but will only try to make a C thunk.
 
         """
-        logger = logging.getLogger('theano.gof.op.Op')
-
         node_input_storage = [storage_map[r] for r in node.inputs]
         node_output_storage = [storage_map[r] for r in node.outputs]
 
@@ -874,7 +823,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         cl = theano.gof.cc.CLinker().accept(e,
                                             no_recycling=e_no_recycling)
 
-        logger.debug('Trying CLinker.make_thunk')
+        _logger.debug('Trying CLinker.make_thunk')
         outputs = cl.make_thunk(input_storage=node_input_storage,
                                 output_storage=node_output_storage)
         fill_storage, node_input_filters, node_output_filters = outputs
@@ -929,8 +878,12 @@ class Op(utils.object2, PureOp, CLinkerOp):
         rval.lazy = False
         return rval
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def make_thunk(self, node, storage_map, compute_map, no_recycling,
+                   impl=None):
         """
+        This function must return a thunk, that is a zero-arguments
+        function that encapsulates the computation to be performed
+        by this op on the arguments of the node.
 
         Parameters
         ----------
@@ -947,6 +900,9 @@ class Op(utils.object2, PureOp, CLinkerOp):
         no_recycling
             List of variables for which it is forbidden to reuse memory
             allocated by a previous call.
+        impl
+            Currently, None, 'c' or 'py'. If 'c' or 'py' we will only try
+            that version of the code.
 
         Notes
         -----
@@ -956,26 +912,32 @@ class Op(utils.object2, PureOp, CLinkerOp):
         the thunk can potentially cache return values (like CLinker does),
         then it must not do so for variables in the no_recycling list.
 
+        self.prepare_node(node, ...) is always called. If we try 'c' and it
+        fail and we try again 'py', prepare_node will be called twice.
         """
-        logger = logging.getLogger('theano.gof.op.Op')
 
-        new_node = self.prepare_node(node, storage_map=storage_map,
-                                     compute_map=compute_map)
-        if new_node is not None:
-            node = new_node
-
-        if self._op_use_c_code:
+        if (impl is None and theano.config.cxx) or impl == 'c':
+            self.prepare_node(node, storage_map=storage_map,
+                              compute_map=compute_map, impl='c')
             try:
                 return self.make_c_thunk(node, storage_map, compute_map,
                                          no_recycling)
             except (NotImplementedError, utils.MethodNotDefined):
-                logger.debug('Falling back on perform')
+                # We requested the c code, so don't catch the error.
+                if impl == 'c':
+                    raise
+                _logger.debug('Falling back on perform')
 
-        # condition: either there was no c_code, or it failed
+        # condition: either there was no c_code, or it failed or
+        # python code was requested.
+        self.prepare_node(node, storage_map=storage_map,
+                          compute_map=compute_map, impl='py')
         return self.make_py_thunk(node, storage_map, compute_map, no_recycling)
 
     def make_node(self, *inputs):
-
+        """
+        Create a "apply" nodes for the inputs in that order.
+        """
         if not hasattr(self, 'itypes'):
             raise NotImplementedError("You can either define itypes and otypes,\
              or implement make_node")
@@ -990,7 +952,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         if not all(inp.type == it for inp, it in zip(inputs, self.itypes)):
             raise TypeError(
                 "We expected inputs of types '%s' but got types '%s' " %
-                (str([inp.type for inp in inputs]), str(self.itypes)))
+                (str(self.itypes), str([inp.type for inp in inputs])))
         return theano.Apply(self, inputs, [o() for o in self.otypes])
 
 
@@ -1059,6 +1021,10 @@ def debug_error_message(msg):
 
 
 def debug_assert(condition, msg=None):
+    """
+    Customized assert with options to ignore the assert
+    with just a warning
+    """
     if msg is None:
         msg = 'debug_assert failed'
     if not condition:
@@ -1166,12 +1132,18 @@ class OpenMPOp(Op):
             self.openmp = False
 
     def c_compile_args(self):
+        """
+        Return the compilation arg "fopenmp" if openMP is supported
+        """
         self.update_self_openmp()
         if self.openmp:
             return ['-fopenmp']
         return []
 
     def c_headers(self):
+        """
+        Return the header file name "omp.h" if openMP is supported
+        """
         self.update_self_openmp()
         if self.openmp:
             return ["omp.h"]
@@ -1179,6 +1151,9 @@ class OpenMPOp(Op):
 
     @staticmethod
     def test_gxx_support():
+        """
+        Check if openMP is supported
+        """
         code = """
         #include <omp.h>
 int main( int argc, const char* argv[] )
@@ -1219,9 +1194,9 @@ int main( int argc, const char* argv[] )
                 self.openmp = False
                 theano.config.openmp = False
 
-    def prepare_node(self, node, storage_map,
-                     compute_map):
-        self.update_self_openmp()
+    def prepare_node(self, node, storage_map, compute_map, impl):
+        if impl == 'c':
+            self.update_self_openmp()
 
 
 def simple_meth(tag):
@@ -1241,8 +1216,8 @@ def apply_meth(tag):
             code = self.code_sections[tag]
 
             define_macros, undef_macros = self.get_c_macros(node, name)
-            return os.linesep.join(['', define_macros, code,
-                                    undef_macros])
+            return '\n'.join(['', define_macros, code,
+                              undef_macros])
         else:
             raise utils.MethodNotDefined(
                 'c_' + tag, type(self), type(self).__name__)
@@ -1295,10 +1270,11 @@ class COp(Op):
         if not isinstance(func_files, list):
             func_files = [func_files]
 
-        self.func_files = [self.get_path(f) for f in func_files]
         self.func_name = func_name
-
-        self.load_c_code()
+        # Keep the original name. If we reload old pickle, we want to
+        # find the new path and new version of the file in Theano.
+        self.func_files = func_files
+        self.load_c_code(func_files)
 
         if len(self.code_sections) == 0:
             raise ValueError("No sections where defined in C files")
@@ -1313,10 +1289,15 @@ class COp(Op):
                 raise ValueError('Cannot have an "op_code_cleanup" section '
                                  'and specify the func_name')
 
-    def load_c_code(self):
+    def load_c_code(self, func_files):
+        """
+        Loads the c code to perform the Op
+        """
+        func_files = [self.get_path(f) for f in func_files]
         self.func_codes = []
-        for func_file in self.func_files:
-            with open(func_file, 'r') as f:
+        for func_file in func_files:
+            # U (universal) will convert all new lines format to \n.
+            with open(func_file, 'U') as f:
                 self.func_codes.append(f.read())
 
         # If both the old section markers and the new section markers are
@@ -1358,7 +1339,7 @@ class COp(Op):
                 if split[0].strip() != '':
                     raise ValueError('Stray code before first #section '
                                      'statement (in file %s): %s' %
-                                     (self.func_files[i], split[0]))
+                                     (func_files[i], split[0]))
 
                 # Separate the code into the proper sections
                 n = 1
@@ -1366,7 +1347,7 @@ class COp(Op):
                     if split[n] not in self.SECTIONS:
                         raise ValueError(
                             "Unknown section type (in file %s): %s" %
-                            (self.func_files[i], split[n]))
+                            (func_files[i], split[n]))
                     if split[n] not in self.code_sections:
                         self.code_sections[split[n]] = ""
                     self.code_sections[split[n]] += split[n + 1]
@@ -1374,7 +1355,7 @@ class COp(Op):
 
             else:
                 raise ValueError("No valid section marker was found in file "
-                                 "%s" % self.func_files[i])
+                                 "%s" % func_files[i])
 
     def get_op_params(self):
         """
@@ -1392,6 +1373,9 @@ class COp(Op):
         return hash(tuple(self.func_codes))
 
     def c_init_code(self):
+        """
+        Get the code section for init_code
+        """
         if 'init_code' in self.code_sections:
             return [self.code_sections['init_code']]
         else:
@@ -1408,7 +1392,15 @@ class COp(Op):
         # Generate an string containing the arguments sent to the external C
         # function. The argstring will be of format :
         # "input0, input1, input2, &output0, &output1"
-        return ", ".join(list(inp) + ["&%s" % o for o in out])
+        inp = list(inp)
+        numi = getattr(self, '_cop_num_inputs', len(inp))
+        while len(inp) < numi:
+            inp.append('NULL')
+        out = ["&%s" % o for o in out]
+        numo = getattr(self, '_cop_num_outputs', len(out))
+        while len(out) < numo:
+            out.append('NULL')
+        return ", ".join(inp + out)
 
     def get_c_macros(self, node, name, check_input=None):
         define_template = "#define %s %s"
@@ -1439,7 +1431,7 @@ class COp(Op):
                     (macro_name, macro_value))
                 undef_macros.append(undef_template % macro_name)
 
-                d = numpy.dtype(v.dtype)
+                d = np.dtype(v.dtype)
 
                 macro_name = "TYPENUM_" + vname
                 macro_value = d.num
@@ -1466,7 +1458,7 @@ class COp(Op):
             define_macros.append(define_template % (n, v))
             undef_macros.append(undef_template % (n,))
 
-        return os.linesep.join(define_macros), os.linesep.join(undef_macros)
+        return '\n'.join(define_macros), '\n'.join(undef_macros)
 
     def _lquote_macro(self, txt):
         res = []
@@ -1474,7 +1466,7 @@ class COp(Op):
         for l in spl[:-1]:
             res.append(l + ' \\')
         res.append(spl[-1])
-        return os.linesep.join(res)
+        return '\n'.join(res)
 
     def get_sub_macros(self, sub):
         define_macros = []
@@ -1486,7 +1478,7 @@ class COp(Op):
             define_macros.append("#define PARAMS %s" % (sub['params'],))
             undef_macros.append("#undef PARAMS")
 
-        return os.linesep.join(define_macros), os.linesep.join(undef_macros)
+        return '\n'.join(define_macros), '\n'.join(undef_macros)
 
     def get_io_macros(self, inputs, outputs):
         define_macros = []
@@ -1501,15 +1493,19 @@ class COp(Op):
             undef_macros.append("#undef OUTPUT_%d", (i,))
 
     def c_init_code_struct(self, node, name, sub):
+        """
+        Stitches all the macros and "init_code" together
+
+        """
         if 'init_code_struct' in self.code_sections:
             op_code = self.code_sections['init_code_struct']
 
             def_macros, undef_macros = self.get_c_macros(node, name)
             def_sub, undef_sub = self.get_sub_macros(sub)
 
-            return os.linesep.join(['', def_macros, def_sub,
-                                    op_code,
-                                    undef_sub, undef_macros])
+            return '\n'.join(['', def_macros, def_sub,
+                              op_code,
+                              undef_sub, undef_macros])
         else:
             raise utils.MethodNotDefined(
                 'c_init_code_struct', type(self), type(self).__name__)
@@ -1547,14 +1543,17 @@ class COp(Op):
                 def_sub, undef_sub = self.get_sub_macros(sub)
                 def_io, undef_io = self.get_io_macros(inp, out)
 
-                return os.linesep.join([def_macros, def_sub, def_io,
-                                        op_code,
-                                        undef_io, undef_sub, undef_macros])
+                return '\n'.join([def_macros, def_sub, def_io,
+                                  op_code,
+                                  undef_io, undef_sub, undef_macros])
             else:
                 raise utils.MethodNotDefined(
                     'c_code', type(self), type(self).__name__)
 
     def c_code_cleanup(self, node, name, inputs, outputs, sub):
+        """
+        Stitches all the macros and "code_cleanup" together
+        """
         if 'code_cleanup' in self.code_sections:
             op_code = self.code_sections['code_cleanup']
 
@@ -1562,9 +1561,9 @@ class COp(Op):
             def_sub, undef_sub = self.get_sub_macros(sub)
             def_io, undef_io = self.get_io_macros(inputs, outputs)
 
-            return os.linesep.join([def_macros, def_sub, def_io,
-                                    op_code,
-                                    undef_io, undef_sub, undef_macros])
+            return '\n'.join([def_macros, def_sub, def_io,
+                              op_code,
+                              undef_io, undef_sub, undef_macros])
         else:
             raise utils.MethodNotDefined(
                 'c_code_cleanup', type(self), type(self).__name__)

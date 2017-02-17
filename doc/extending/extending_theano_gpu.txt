@@ -1,0 +1,246 @@
+
+.. _extending_theano_gpu:
+
+==============================
+Extending Theano with a GPU Op
+==============================
+
+.. note::
+
+    This covers the :ref:`gpuarray <gpuarray>` back-end for the GPU.
+
+This tutorial covers how to extend Theano with an op that offers a GPU
+implementation.  It assumes you are familiar with how to write new
+Theano ops.  If that is not the case you should probably follow the
+:ref:`extending_theano` and :ref:`extending_theano_c` sections before
+continuing on.
+
+Writing a new GPU op can be done in Python for some simple tasks, but
+will usually done in C to access the complete API and avoid paying the
+overhead of a Python function call.
+
+Dealing With the Context
+========================
+
+One of the major differences with GPU ops is that they require a
+context (a.k.a. device) to execute.  Most of the time you can infer
+the context to run on from your inputs.  There is a way for the user
+to transfer things between contexts and to tag certain variables for
+transfer.  It might also be the case that your inputs are not all from
+the same context and you would have to choose which one to run on.
+
+In order to support all of those options and have a consistent
+interface, :func:`theano.gpuarray.basic_ops.infer_context_name` was
+written.  An example usage is below::
+
+    def make_node(self, a, b, c):
+        ctx = infer_context_name(a, b, c)
+        a = as_gpuarray_variable(a, ctx)
+        b = as_gpuarray_variable(b, ctx)
+        c = as_gpuarray_variable(c, ctx)
+        return Apply(self, [a, b, c], [a.type()])
+
+In this example the Op takes three inputs, all on the GPU.  In case
+one or more of your inputs is not supposed to be on the GPU, you
+should not pass it to :func:`infer_context_name` or call
+:func:`as_gpuarray_variable` on it.
+
+Also note that :func:`theano.gpuarray.basic_ops.as_gpuarray_variable`
+takes ``context_name`` as a mandatory parameter.  This is because it's
+not enough to know you want the value to be on the GPU, you also want
+to know which GPU to put it on.  In almost all cases, you can pass in
+the return value of :func:`infer_context_name` there.
+
+If you also need the context during runtime (for example to allocate
+the output), you can use the context of one of your inputs to know
+which one to use.  Here is another example::
+
+    def perform(self, node, inputs, output_storage):
+        A, B = inputs
+        C, = output_storage
+        C[0] = pygpu.empty([A.shape[0], B.shape[1]], dtype=A.dtype, A.context)
+        pygpu.blas.gemm(1, A, B, 0, C, overwrite_c=True)
+
+Finally if you require the context before perform, such as during
+make_thunk() to initialize kernels and such, you can access the
+context of your inputs through the type of the variables::
+
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        ctx = node.inputs[0].type.context
+
+Note that ``GpuArrayType`` objects also have a ``context_name``
+attribute which is the symbolic equivalent of ``context``.  It can't
+be used for calls to pygpu or libgpuarray, but it should be used for
+theano operations and variables.
+
+The last place where you might need the context is in the C
+initialization code.  For that you will have to use the :ref:`params
+<extending_op_params>`.  The params type should be
+:data:`theano.gpuarray.type.gpu_context_type` and the params object
+should be a context object from one of your input variables::
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
+If you don't have any input variables on the GPU you can follow the
+the example of :class:`GpuFromHost
+<theano.gpuarray.basic_ops.GpuFromHost>` or :class:`GpuEye
+<theano.gpuarray.basic_ops.GpuEye>`.  This is not a case that you
+should encounter often, so it will not be covered further.
+
+Defining New Kernels
+====================
+
+If your op needs to do some transformation on the data, chances are
+that you will need to write a new kernel.  The best way to do this is
+to leverage :class:`GpuKernelBase
+<theano.gpuarray.basic_ops.GpuKernelBase>` (or :class:`CGpuKernelBase
+<theano.gpuarray.basic_ops.CGpuKernelBase>` if you want to use the
+:class:`COp <theano.gof.op.COp>` functionality).
+
+For plain :class:`GpuKernelBase
+<theano.gpuarray.basic_ops.GpuKernelBase>`, you have to define a
+method called ``gpu_kernels`` which returns a list of :class:`Kernel
+<theano.gpuarray.basic_ops.Kernel>` objects.  You can define as many
+kernels as you want for a single op.  An example would look like
+this::
+
+    def gpu_kernels(self, node, name):
+        code = """
+    KERNEL void k(GLOBAL_MEM ga_double *a, ga_size n, ga_size m) {
+        ga_size nb = n < m ? n : m;
+        for (ga_size i = LID_0; i < nb; i += LDIM_0) {
+            a[i*m + i] = 1;
+        }
+    }"""
+        return [Kernel(
+                code=code, name="k",
+                params=[gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE],
+                flags=Kernel.get_flags('float64'))]
+
+If you want to use ``COp``, then you should use ``CGpuKernelBase``
+instead.  It adds a new section to the parsed files whose tag is
+``kernels``.  Inside that section you can define some kernels with
+``#kernel name:params:flags``.
+
+Here ``name`` is the name of the kernel function in the following
+code, ``params`` is a comma-separeted list of numpy typecode names.
+There are three exceptions for ``size_t`` which should be noted as
+``size``, ``ssize_t`` which should be noted as ``ssize`` and a pointer
+which should be noted as ``*``.
+
+``flags`` is a ``|``-separated list of C kernel flag values (can be
+empty).  The same kernel definition as above would look like this with
+``CGpuKernelBase``::
+
+    #section kernels
+
+    #kernel k : *, size, size : GA_USE_DOUBLE
+
+    KERNEL void k(GLOBAL_MEM ga_double *a, ga_size n, ga_size m) {
+        ga_size nb = n < m ? n : m;
+        for (ga_size i = LID_0; i < nb; i += LDIM_0) {
+        a[i*m + i] = 1;
+        }
+    }
+
+The second method is to handle the kernel compilation and cache on
+your own.  This is not recommended because there are lots of details
+to pay attention to that can cripple your performance if not done
+right, which GpuKernelBase handles for you.  But if you really want to
+go this way, then you can look up the C API for kernels in
+libgpuarray.
+
+In any case you will need to call your compiled kernel with some data,
+in most cases in your :meth:`c_code` method.  This is done by using
+the provided wrapper function. An example calling the above kernel
+would be::
+
+    size_t ls, gs;
+    size_t dims[2];
+
+    // ...
+
+    ls = 1;
+    gs = 256;
+    err = k_call(1, &gs, &ls, 0, input->ga.data, dims[0], dims[1]);
+
+    // ...
+
+The name of the wrapper function depends on the name you passed to
+``Kernel()`` when you declared it (or the name in your `#kernel`
+statement).  It defaults to `name + '_call'`.
+
+For other operations in the C code you should refer to the
+`libgpuarray documentation
+<http://deeplearning.net/software/libgpuarray/>`_.
+
+A Complete Example
+==================
+
+This is a complete example using both approches for a implementation
+of the Eye operation.
+
+GpuKernelBase
+-------------
+
+Python File
+~~~~~~~~~~~
+
+.. literalinclude:: ../../theano/gpuarray/basic_ops.py
+    :language: python
+    :pyobject: GpuEye
+
+CGpuKernelBase
+--------------
+
+Python File
+~~~~~~~~~~~
+
+.. literalinclude:: ../../theano/gpuarray/tests/test_cgpukernelbase.py
+    :language: python
+    :pyobject: GpuEye
+
+``tstgpueye.c``
+~~~~~~~~~~~~~~~
+
+.. literalinclude:: ../../theano/gpuarray/tests/tstgpueye.c
+    :language: C
+
+Wrapping Exisiting Libraries
+============================
+
+PyCUDA
+------
+
+For things in PyCUDA (or things wrapped with PyCUDA), we usually need
+to create a PyCUDA context.  This can be done with the following
+code::
+
+    with gpuarray_cuda_context:
+        pycuda_context = pycuda.driver.Context.attach()
+
+If you don't need to create a context, because the library doesn't
+require it, you can also just use the pygpu context and a `with`
+statement like above for all your code which will make the context the
+current context on the cuda stack.
+
+GpuArray objects are compatible with PyCUDA and will expose the
+necessary interface so that they can be used in most things.  One
+notable exception is PyCUDA kernels which require native objects.  If
+you need to convert a pygpu GpuArray to a PyCUDA GPUArray, this code
+should do the trick::
+
+    assert pygpu_array.flags['IS_C_CONTIGUOUS']
+    pycuda_array = pycuda.gpuarray.GPUArray(pygpu_array.shape,
+                                            pygpu_array.dtype,
+                                            base=pygpu_array,
+                                            gpudata=(pygpu_array.gpudata +
+                                                     pygpu_array.offset))
+
+As long as the computations happen on the NULL stream there are no
+special considerations to watch for with regards to synchronization.
+Otherwise, you will have to make sure that you synchronize the pygpu
+objects by calling the `.sync()` method before scheduling any work and
+synchronize with the work that happends in the library after all the
+work is scheduled.

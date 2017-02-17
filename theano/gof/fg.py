@@ -4,8 +4,8 @@ Contains the FunctionGraph class and exception
 types that it can raise.
 
 """
-from __future__ import print_function
-import sys
+from __future__ import absolute_import, print_function, division
+from collections import OrderedDict
 import time
 import traceback
 
@@ -15,11 +15,10 @@ from theano.gof import utils
 from theano.gof import toolbox
 from theano import config
 
-from theano.compat import OrderedDict
 from six import iteritems, itervalues
 from six.moves import StringIO
+from theano.gof.utils import get_variable_trace_string
 from theano.misc.ordered_set import OrderedSet
-
 NullType = None
 
 
@@ -49,13 +48,23 @@ class MissingInputError(Exception):
     A symbolic input needed to compute the outputs is missing.
 
     """
-
-    pass
+    def __init__(self, *args, **kwargs):
+        if kwargs:
+            # The call to list is needed for Python 3
+            assert list(kwargs.keys()) == ["variable"]
+            tr = getattr(list(kwargs.values())[0].tag, 'trace', [])
+            if isinstance(tr, list) and len(tr) > 0:
+                sio = StringIO()
+                print("\nBacktrace when the variable is created:", file=sio)
+                for subtr in list(kwargs.values())[0].tag.trace:
+                    traceback.print_list(subtr, sio)
+                args = args + (str(sio.getvalue()),)
+        s = '\n'.join(args)  # Needed to have the new line print correctly
+        Exception.__init__(self, s)
 
 
 class FunctionGraph(utils.object2):
     """
-    WRITEME
     A FunctionGraph represents a subgraph bound by a set of input variables and
     a set of output variables, ie a subgraph that specifies a theano function.
     The inputs list should contain all the inputs on which the outputs depend.
@@ -250,121 +259,106 @@ class FunctionGraph(utils.object2):
         """
         return r.clients
 
-    def __add_clients__(self, r, new_clients):
+    def __add_client__(self, r, new_client):
         """
         Updates the list of clients of r with new_clients.
-
-        WRITEME
 
         Parameters
         ----------
         r
             Variable.
-        new_clients
-            List of (node, i) pairs such that node.inputs[i] is r.
+        new_client
+            (node, i) pair such that node.inputs[i] is r.
 
         """
-        if set(r.clients).intersection(set(new_clients)):
-            print('ERROR: clients intersect!', file=sys.stderr)
-            print('  RCLIENTS of', r, [(n, i, type(n), id(n))
-                                       for n, i in r.clients], file=sys.stderr)
-            print('  NCLIENTS of', r, [(n, i, type(n), id(n))
-                                       for n, i in new_clients], file=sys.stderr)
-        assert not set(r.clients).intersection(set(new_clients))
-        r.clients += new_clients
+        # Ne need to do the assert as it is always True. The logic
+        # that call __add_client__ is valid. When the client list is
+        # long, the check it time consuming, so we don't enable it by
+        # default.
+        # assert not new_client in r.clients
+        r.clients.append(new_client)
 
-    def __remove_clients__(self, r, clients_to_remove,
-                           prune=True, reason=None):
+    def __remove_client__(self, r, client_to_remove,
+                          reason=None):
         """
         Removes all from the clients list of r.
 
         This is the main method to remove variable or apply node from
         an FunctionGraph.
 
-        If called with an empty list of clients and prune=True, this
-        will remove the owner of the variable (so an apply_node).
+        Remove r from this fgraph if it don't have clients left. If it
+        have an owner and all the outputs of the owner have no
+        clients, it will be removed.
 
         Parameters
         ----------
         r : Variable
             The clients of r will be removed.
-        clients_to_remove : List of (op, i) pairs
-            List of (op, i) pairs such that node.inputs[i] is not r anymore.
-        prune : bool
-            If prune is True, it remove r from this fgraph if it don't
-            have clients left.
-
-        Returns
-        -------
-        bool
-            True if r is still in the fgraph and need to be pruned
-            later. This can happen only when prune is False. A second
-            call to this method with an empty list for
-            clients_to_remove and prune=True will remove r.
+        client_to_remove : (op, i) pair
+            (op, i) pair such that node.inputs[i] is not r anymore.
 
         """
-        for entry in clients_to_remove:
-            r.clients.remove(entry)
-            assert entry not in r.clients  # an op,i pair should be unique
-        if r.clients:
-            return False
-        if not prune:
-            return True
-        variable = r
-        if variable.owner:
-            apply_node = variable.owner
-            used_or_output = [output for output in apply_node.outputs
-                              if output.clients or output in self.outputs]
-            # If the apply node is not used and is not an output
-            if not used_or_output:
-                self.apply_nodes.remove(apply_node)
-                self.variables.difference_update(apply_node.outputs)
-                self.execute_callbacks('on_prune', apply_node, reason)
+        l = [(r, client_to_remove)]
+        while l:
+            r, client_to_remove = l.pop()
+            r.clients.remove(client_to_remove)
+            # entry should be uniq in r. No need to assert it as it is
+            # already asserted in __add_client__.
+            # assert entry not in r.clients
+            if r.clients:
+                continue
 
-                for i, input in enumerate(apply_node.inputs):
-                    self.__remove_clients__(input, [(apply_node, i)],
-                                            reason=reason)
-        # variable should not have any clients.
-        # assert not variable.clients
-
-        # variable should be in self.variables
-        # Why this assert fail? Making it True could cause opt speed up
-        # I think this is caused as we remove var in self.variables in
-        # another place.
-        # assert variable in self.variables
-
-        if variable in self.variables:
-            # If the owner have other outputs still used,
-            # then we must keep that variable in the graph.
-            if not variable.owner or not any(
-                [var for var in variable.owner.outputs
-                 if var.clients]):
-
+            # r have no more clients, so check if we need to remove it
+            # and its parent.
+            variable = r
+            if not variable.owner:
+                # A Constant or input without client. Remove it.
                 self.variables.remove(variable)
                 # This allow to quickly know if a var is still in the fgraph
                 # or not.
                 del variable.fgraph
-        return False
+            else:
+                apply_node = variable.owner
+                used = [output for output in apply_node.outputs
+                        if output.clients]
+                # If the apply node is not used and is not an output
+                if not used:
+                    if not hasattr(apply_node.tag, 'removed_by'):
+                        apply_node.tag.removed_by = []
+                    apply_node.tag.removed_by.append(str(reason))
+                    self.apply_nodes.remove(apply_node)
+                    # del apply_node.fgraph
+                    self.variables.difference_update(apply_node.outputs)
+                    # for var in apply_node.outputs:
+                    #     del var.fgraph
+                    self.execute_callbacks('on_prune', apply_node, reason)
 
-    # import #
+                    for i, input in enumerate(apply_node.inputs):
+                        l.append((input, (apply_node, i)))
+
     def __import_r__(self, variable, reason):
         """
         Import variables to this FunctionGraph and also their apply_node,
         if those nodes are not in this graph.
+
+        Parameters:
+        ----------
+        reason
+            reason is the name of the optimization or operation in progress.
         """
-        global NullType
-        if NullType is None:
-            from .null_type import NullType
         # Imports the owners of the variables
         if variable.owner and variable.owner not in self.apply_nodes:
                 self.__import__(variable.owner, reason=reason)
-        if (variable.owner is None and
+        elif (variable.owner is None and
                 not isinstance(variable, graph.Constant) and
                 variable not in self.inputs):
+            global NullType
+            if NullType is None:
+                from .null_type import NullType
             if isinstance(variable.type, NullType):
                 raise TypeError("Computation graph contains a NaN. " +
                                 variable.type.why_null)
-            raise MissingInputError("Undeclared input", variable)
+            raise MissingInputError("Undeclared input", variable=variable)
         if not getattr(variable, 'fgraph', None) is self:
             self.__setup_r__(variable)
         self.variables.add(variable)
@@ -392,91 +386,23 @@ class FunctionGraph(utils.object2):
                     if (r.owner is None and
                             not isinstance(r, graph.Constant) and
                             r not in self.inputs):
-                        # Verbose error message
-                        # Show a complete chain of variables from the missing input to an output
-                        if config.exception_verbosity == 'high':
-
-                            def find_path_to(output_var, input_var):
-                                """
-                                Returns a list of each variable on a (not
-                                necessarily unique) path from input_var to
-                                output_var, where each variable in the list has
-                                the preceding variable as one of its inputs.
-                                Returns None if no path exists.
-
-                                """
-                                # If output and input are the same we have a singleton path
-                                if output_var is input_var:
-                                    return [output_var]
-
-                                # If output has no inputs then there is no path
-                                owner = output_var.owner
-
-                                if owner is None:
-                                    return None
-
-                                # If input_var is an input to the output node, there is a
-                                # simple two element path
-                                inputs = owner.inputs
-
-                                if input_var in inputs:
-                                    return [input_var, output_var]
-
-                                # Otherwise we must recurse by searching for a path to one
-                                # of our inputs, then appending the output to that path
-                                for ipt in inputs:
-                                    path = find_path_to(ipt, input_var)
-
-                                    if path is not None:
-                                        path.append(output_var)
-
-                                        return path
-
-                                # Since none of the above methods returned a path, there is none
-                                return None
-
-                            # Try different outputs until we find one that has a path to the missing input
-                            for output in self.outputs:
-                                path = find_path_to(output, r)
-
-                                if path is not None:
-                                    break
-
-                            # if there is no path then r isn't really a graph input so we shouldn't be running error
-                            # handler code in the first place
-                            assert path is not None
-                            tr = getattr(r.tag, 'trace', [])
-                            detailed_err_msg = ""
-                            if type(tr) is list and len(tr) > 0:
-                                detailed_err_msg += "\nBacktrace when the variable is created:\n"
-
-                                # Print separate message for each element in
-                                # the list of batcktraces
-                                sio = StringIO()
-                                for subtr in tr:
-                                    traceback.print_list(subtr, sio)
-                                detailed_err_msg += str(sio.getvalue())
-                            raise MissingInputError(
-                                'A variable that is an input to the graph was '
-                                'neither provided as an input to the function '
-                                'nor given a value. A chain of variables '
-                                'leading from this input to an output is %s. '
-                                'This chain may not be unique' % str(path) +
-                                detailed_err_msg)
-
                         # Standard error message
-                        raise MissingInputError((
-                            "An input of the graph, used to compute %s, "
-                            "was not provided and not given a value."
-                            "Use the Theano flag exception_verbosity='high',"
-                            "for more information on this error."
-                            % str(node)),
-                            r)
+                        error_msg = ("Input %d of the graph (indices start "
+                                     "from 0), used to compute %s, was not "
+                                     "provided and not given a value. Use the "
+                                     "Theano flag exception_verbosity='high', "
+                                     "for more information on this error."
+                                     % (node.inputs.index(r), str(node)))
+                        error_msg += get_variable_trace_string(r)
+                        raise MissingInputError(error_msg, variable=r)
 
         for node in new_nodes:
             assert node not in self.apply_nodes
             self.__setup_node__(node)
             self.apply_nodes.add(node)
+            if not hasattr(node.tag, 'imported_by'):
+                node.tag.imported_by = []
+            node.tag.imported_by.append(str(reason))
             for output in node.outputs:
                 self.__setup_r__(output)
                 self.variables.add(output)
@@ -484,7 +410,7 @@ class FunctionGraph(utils.object2):
                 if input not in self.variables:
                     self.__setup_r__(input)
                     self.variables.add(input)
-                self.__add_clients__(input, [(node, i)])
+                self.__add_client__(input, (node, i))
             assert node.fgraph is self
             self.execute_callbacks('on_import', node, reason)
 
@@ -492,8 +418,6 @@ class FunctionGraph(utils.object2):
     def change_input(self, node, i, new_r, reason=None):
         """
         Changes node.inputs[i] to new_r.
-
-        WRITEME
 
         new_r.type == old_r.type must be True, where old_r is the
         current value of node.inputs[i] which we want to replace.
@@ -525,21 +449,17 @@ class FunctionGraph(utils.object2):
             return
 
         self.__import_r__(new_r, reason=reason)
-        self.__add_clients__(new_r, [(node, i)])
-        prune = self.__remove_clients__(r, [(node, i)], False)
+        self.__add_client__(new_r, (node, i))
+        self.__remove_client__(r, (node, i), reason=reason)
         # Precondition: the substitution is semantically valid
         # However it may introduce cycles to the graph,  in which case the
         # transaction will be reverted later.
         self.execute_callbacks('on_change_input', node, i,
                                r, new_r, reason=reason)
-        if prune:
-            self.__remove_clients__(r, [], True)
 
     # replace #
     def replace(self, r, new_r, reason=None, verbose=None):
         """
-        WRITEME
-
         This is the main interface to manipulate the subgraph in FunctionGraph.
         For every node that uses r as input, makes it use new_r instead.
 
@@ -595,7 +515,7 @@ class FunctionGraph(utils.object2):
 
     def replace_all(self, pairs, reason=None):
         """
-        WRITEME
+        For every node that uses r as input, makes it use new_r instead
 
         """
         for r, new_r in pairs:
@@ -633,8 +553,6 @@ class FunctionGraph(utils.object2):
 
     def remove_feature(self, feature):
         """
-        WRITEME
-
         Removes the feature from the graph.
 
         Calls feature.on_detach(function_graph) if an on_detach method
@@ -755,8 +673,6 @@ class FunctionGraph(utils.object2):
 
     def check_integrity(self):
         """
-        WRITEME
-
         Call this for a diagnosis if things go awry.
 
         """
@@ -816,7 +732,7 @@ class FunctionGraph(utils.object2):
     # clone #
     def clone(self, check_integrity=True):
         """
-        WRITEME
+        Clone the graph and get a memo( a dict )that map old node to new node
 
         """
         return self.clone_get_equiv(check_integrity)[0]

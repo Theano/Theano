@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import numpy as np
 
 from six import integer_types
@@ -52,6 +53,18 @@ class Ofg(object):
         e = T.nnet.sigmoid((x + y + z)**2)
         op = th.OpFromGraph([x, y, z], [e])
         e2 = op(x, y, z) + op(z, y, x)
+
+        self.inputs = [x, y, z]
+        self.outputs = [e2]
+
+
+class OfgSimple(object):
+
+    def __init__(self):
+        x, y, z = T.scalars('xyz')
+        e = T.nnet.sigmoid((x + y + z)**2)
+        op = th.OpFromGraph([x, y, z], [e])
+        e2 = op(x, y, z)
 
         self.inputs = [x, y, z]
         self.outputs = [e2]

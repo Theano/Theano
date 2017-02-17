@@ -99,7 +99,7 @@ multiplication is done between the inputs:
 >>> y.owner.inputs[0]
 x
 >>> y.owner.inputs[1]
-DimShuffle{x,x}.0
+InplaceDimShuffle{x,x}.0
 
 Note that the second input is not 2 as we would have expected. This is
 because 2 was first :term:`broadcasted <broadcasting>` to a matrix of

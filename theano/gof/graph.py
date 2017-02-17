@@ -1,7 +1,7 @@
 """
 Node classes (`Apply`, `Variable`) and expression graph algorithms.
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 from collections import deque
 from copy import copy
@@ -481,12 +481,12 @@ class Variable(Node):
         Examples
         --------
 
-        >>> import numpy
+        >>> import numpy as np
         >>> import theano.tensor as T
         >>> x = T.dscalar('x')
         >>> y = T.dscalar('y')
         >>> z = x + y
-        >>> numpy.allclose(z.eval({x : 16.3, y : 12.1}), 28.4)
+        >>> np.allclose(z.eval({x : 16.3, y : 12.1}), 28.4)
         True
 
         We passed :func:`eval` a dictionary mapping symbolic theano
@@ -547,6 +547,7 @@ class Constant(Variable):
     def __init__(self, type, data, name=None):
         Variable.__init__(self, type, None, None, name)
         self.data = type.filter(data)
+        utils.add_tag_trace(self)
 
     def equals(self, other):
         # this does what __eq__ should do, but Variable and Apply should always be hashable by id
@@ -697,7 +698,15 @@ def inputs(variable_list, blockers=None):
 
 def variables_and_orphans(i, o):
     """
-    WRITEME
+    Extract list of variables between i and o nodes via
+    dfs traversal and chooses the orphans among them
+
+    Parameters
+    ----------
+    i : list
+         Input variables.
+    o : list
+         Output variables.
 
     """
     def expand(r):
@@ -712,21 +721,21 @@ def variables_and_orphans(i, o):
 
 def ops(i, o):
     """
-    WRITEME
+    Set of Ops contained within the subgraph between i and o
 
     Parameters
     ----------
     i : list
-        Input L{Variable}s.
+        Input variables.
     o : list
-        Output L{Variable}s.
+        Output variables.
 
     Returns
     -------
     object
         The set of ops that are contained within the subgraph that lies
-        between i and o, including the owners of the L{Variable}s in o and
-        intermediary ops between i and o, but not the owners of the L{Variable}s
+        between i and o, including the owners of the variables in o and
+        intermediary ops between i and o, but not the owners of the variables
         in i.
 
     """
@@ -741,14 +750,14 @@ def ops(i, o):
 
 def variables(i, o):
     """
-    WRITEME
+    Extracts list of variables within input and output nodes via dfs travesal
 
     Parameters
     ----------
     i : list
-        Input L{Variable}s.
+        Input variables.
     o : list
-        Output L{Variable}s.
+        Output variables.
 
     Returns
     -------
@@ -763,14 +772,15 @@ def variables(i, o):
 
 def orphans(i, o):
     """
-    WRITEME
+    Extracts list of variables within input and output nodes
+    via dfs travesal and returns the orphans among them
 
     Parameters
     ----------
     i : list
-        Input L{Variable}s.
+        Input Variables.
     o : list
-        Output L{Variable}s.
+        Output Variables.
 
     Returns
     -------
@@ -793,9 +803,9 @@ def clone(i, o, copy_inputs=True):
     Parameters
     ----------
     i : list
-        Input L{Variable}s.
+        Input Variables.
     o : list
-        Output L{Variable}s.
+        Output Variables.
     copy_inputs : bool
         If True, the inputs will be copied (defaults to True).
 
@@ -815,7 +825,7 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
     original graph to a new node (a clone) in a new graph.
 
     This function works by recursively cloning inputs... rebuilding a directed
-    graph from the bottom (inputs) up to eventually building new outputs.
+    graph from the inputs up to eventually building new outputs.
 
     Parameters
     ----------
@@ -955,7 +965,7 @@ def general_toposort(r_out, deps, debug_print=False,
 
 def io_toposort(inputs, outputs, orderings=None, clients=None):
     """
-    WRITEME
+    Perform topological sort from input and output nodes
 
     Parameters
     ----------
@@ -1089,7 +1099,10 @@ def io_connection_pattern(inputs, outputs):
     # connnection patterns of the individual outputs
     global_connection_pattern = [[] for o in range(len(inputs))]
     for out in outputs:
-        out_connection_pattern = connect_pattern_by_var[out]
+        out_connection_pattern = connect_pattern_by_var.get(out)
+        if out_connection_pattern is None:
+            # the output is completely isolated from inputs
+            out_connection_pattern = [False] * len(inputs)
         for i in range(len(inputs)):
             global_connection_pattern[i].append(out_connection_pattern[i])
 
@@ -1214,8 +1227,8 @@ def op_as_string(i, op,
                  leaf_formatter=default_leaf_formatter,
                  node_formatter=default_node_formatter):
     """
-    WRITEME
-
+    Op to return a string representation of the subgraph
+    between i and o
     """
     strs = as_string(i, op.inputs, leaf_formatter, node_formatter)
     return node_formatter(op, strs)
@@ -1225,7 +1238,7 @@ def as_string(i, o,
               leaf_formatter=default_leaf_formatter,
               node_formatter=default_node_formatter):
     """
-    WRITEME
+    Returns a string representation of the subgraph between i and o
 
     Parameters
     ----------
@@ -1233,7 +1246,7 @@ def as_string(i, o,
         Input `Variable` s.
     o : list
         Output `Variable` s.
-    leaf_formatter : theano.function
+    leaf_formatter : callable
         Takes a `Variable`  and returns a string to describe it.
     node_formatter : callable
         Takes an `Op`  and the list of strings corresponding to its arguments

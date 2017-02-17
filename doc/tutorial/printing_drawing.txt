@@ -69,10 +69,10 @@ The pre-compilation graph:
 >>> theano.printing.debugprint(prediction) # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
 Elemwise{gt,no_inplace} [id A] ''
  |Elemwise{true_div,no_inplace} [id B] ''
- | |DimShuffle{x} [id C] ''
+ | |InplaceDimShuffle{x} [id C] ''
  | | |TensorConstant{1} [id D]
  | |Elemwise{add,no_inplace} [id E] ''
- |   |DimShuffle{x} [id F] ''
+ |   |InplaceDimShuffle{x} [id F] ''
  |   | |TensorConstant{1} [id D]
  |   |Elemwise{exp,no_inplace} [id G] ''
  |     |Elemwise{sub,no_inplace} [id H] ''
@@ -80,9 +80,9 @@ Elemwise{gt,no_inplace} [id A] ''
  |       | |dot [id J] ''
  |       |   |x [id K]
  |       |   |w [id L]
- |       |DimShuffle{x} [id M] ''
+ |       |InplaceDimShuffle{x} [id M] ''
  |         |b [id N]
- |DimShuffle{x} [id O] ''
+ |InplaceDimShuffle{x} [id O] ''
    |TensorConstant{0.5} [id P]
 
 The post-compilation graph:

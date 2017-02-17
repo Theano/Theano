@@ -1,15 +1,15 @@
 .. _libdoc_cuda_dnn:
 
-================================
-:mod:`sandbox.cuda.dnn` -- cuDNN
-================================
+=======================================
+:mod:`theano.sandbox.cuda.dnn` -- cuDNN
+=======================================
 
 .. moduleauthor:: LISA
 
 `cuDNN <https://developer.nvidia.com/cuDNN>`_ is an NVIDIA library with
 functionality used by deep neural network. It provides optimized versions
 of some operations like the convolution. cuDNN is not currently
-installed with CUDA 6.5. You must download and install it
+installed with CUDA. You must download and install it
 yourself.
 
 To install it, decompress the downloaded file and make the ``*.h`` and
@@ -29,7 +29,7 @@ There are at least three possible ways of doing so:
 
       export LD_LIBRARY_PATH=/home/user/path_to_CUDNN_folder/lib64:$LD_LIBRARY_PATH
       export CPATH=/home/user/path_to_CUDNN_folder/include:$CPATH
-      export LIBRARY_PATH=/home/user/path_to_CUDNN_folder/lib64:$LD_LIBRARY_PATH
+      export LIBRARY_PATH=/home/user/path_to_CUDNN_folder/lib64:$LIBRARY_PATH
 
 - And as a third way, also on Linux, you can copy the ``*.h`` files
   to ``/usr/include`` and the ``*.so*`` files to ``/lib64``.
@@ -46,7 +46,7 @@ get an error when cuDNN can not be used with them, use this flag:
 
 .. note::
 
-   cuDNN v5rc is supported in Theano master version. So it dropped cuDNN v3 support.
+   cuDNN v5.1 is supported in Theano master version. So it dropped cuDNN v3 support.
    Theano 0.8.0 and 0.8.1 support only cuDNN v3 and v4.
    Theano 0.8.2 will support only v4 and v5.
 
@@ -64,9 +64,9 @@ get an error when cuDNN can not be used with them, use this flag:
      usage
    * ``none`` : use a slower implementation with minimal memory usage
    * ``large`` : use a sometimes faster implementation with large memory usage
-   * ``fft`` : use the Fast Fourrier Transform implementation of convolution
+   * ``fft`` : use the Fast Fourier Transform implementation of convolution
      (very high memory usage)
-   * ``fft_tiling`` : use the Fast Fourrier Transform implementation of convolution
+   * ``fft_tiling`` : use the Fast Fourier Transform implementation of convolution
      with tiling (high memory usage, but less then fft)
    * ``guess_once`` : the first time a convolution is executed, the
      implementation to use is chosen according to cuDNN's heuristics and reused
@@ -89,7 +89,7 @@ get an error when cuDNN can not be used with them, use this flag:
    * ``none`` (default) : use the default non-deterministic convolution
      implementation
    * ``deterministic`` : use a slower but deterministic implementation
-   * ``fft`` : use the Fast Fourrier Transform implementation of convolution
+   * ``fft`` : use the Fast Fourier Transform implementation of convolution
      (very high memory usage)
    * ``guess_once`` : the first time a convolution is executed, the
      implementation to use is chosen according to cuDNN's heuristics and reused
@@ -104,7 +104,7 @@ get an error when cuDNN can not be used with them, use this flag:
      implementation selected every time the shapes of the inputs and kernels
      don't match the shapes from the last execution.
 
-   * (algo_bwd_data only) ``fft_tiling`` : use the Fast Fourrier
+   * (algo_bwd_data only) ``fft_tiling`` : use the Fast Fourier
      Transform implementation of convolution with tiling (high memory
      usage, but less then fft)
 
@@ -145,31 +145,24 @@ get an error when cuDNN can not be used with them, use this flag:
     cudnn.h must be readable by everybody.
 
 
-Functions
-=========
+- Convolution:
+    - :func:`theano.sandbox.cuda.dnn.dnn_conv`, :func:`theano.sandbox.cuda.dnn.dnn_conv3d`.
+    - :func:`theano.sandbox.cuda.dnn.dnn_gradweight`.
+    - :func:`theano.sandbox.cuda.dnn.dnn_gradinput`.
+- Pooling:
+    - :func:`theano.sandbox.cuda.dnn.dnn_pool`.
+- Batch Normalization:
+    - :func:`theano.sandbox.cuda.dnn.dnn_batch_normalization_train`
+    - :func:`theano.sandbox.cuda.dnn.dnn_batch_normalization_test`.
+- RNN:
+    - :class:`New back-end only! <theano.gpuarray.dnn.RNNBlock>`.
+- Softmax:
+    - You can manually use the op :class:`GpuDnnSoftmax
+      <theano.sandbox.cuda.dnn.GpuDnnSoftmax>` to use its extra feature.
+
+
+List of Implemented Operations
+==============================
 
 .. automodule:: theano.sandbox.cuda.dnn
-   :noindex:
-   :members: dnn_conv, dnn_pool
-
-Convolution Ops
-===============
-
-.. automodule:: theano.sandbox.cuda.dnn
-   :noindex:
-   :members: GpuDnnConvDesc, GpuDnnConv, GpuDnnConv3d, GpuDnnConvGradW,
-             GpuDnnConv3dGradW, GpuDnnConvGradI, GpuDnnConv3dGradI
-
-Pooling Ops
-===========
-
-.. automodule:: theano.sandbox.cuda.dnn
-   :noindex:
-   :members: GpuDnnPoolDesc, GpuDnnPool, GpuDnnPoolGrad
-
-Softmax Ops
-===========
-
-.. automodule:: theano.sandbox.cuda.dnn
-   :noindex:
-   :members: GpuDnnSoftmax, GpuDnnSoftmaxGrad
+   :members:

@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 from theano.tensor.xlogx import xlogx, xlogy0
 
 import unittest

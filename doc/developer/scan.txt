@@ -1,153 +1,329 @@
 .. _scan_internals:
 
-Internal documentation of the scan op
-=====================================
+Developper documentation for Scan
++++++++++++++++++++++++++++++++++
 
-Top-level description of scan
------------------------------
+Context
+=======
 
-The `scan` operation is meant to be able to describe symbolically loops,
-recurrent relations or dynamical systems. In general, we will say that the
-scan op implements system of equations of the following form:
+This document is meant to act as reference material for developers working
+on Theano's loop mechanism. This mechanism is called Scan and its internals
+are highly complex, hence the need for a centralized repository of knowledge
+regarding its inner workings.
 
-.. math::
+The ``theano.scan()`` function is the public-facing interface for looping in
+Theano. Under the hood, this function will perform some processing on its
+inputs and instantiate the ``Scan`` op class which implements the looping
+mechanism. It achieves this by compiling its own Theano function representing
+the computation to be done at every iteration of the loop and calling it as
+many times as necessary.
 
-    \mathbf{x}_1(t) = f_{\mathbf{x}_1}
-        (\mathbf{u}_1(t), \mathbf{u}_1(t-1), \ldots, \mathbf{u}_1(t-l_1), 
-         \mathbf{u}_2(t), \ldots, \mathbf{u}_2(t-l_2),
-         \ldots,
-         \mathbf{u}_M(t), \ldots, \mathbf{u}_M(t - l_M),
-         \mathbf{x}_1(t-1), \ldots, \mathbf{x}_1(t-k_1),
-         \ldots,
-         \mathbf{x}_N(t-1), \ldots, \mathbf{x}_N(t-k_N), 
-         \mathbf{w}_1, \ldots, \mathbf{w}_Q)
-
-    \vdots
-
-    \mathbf{x}_N(t) = f_{\mathbf{x}_N}
-        (\mathbf{u}_1(t), \mathbf{u}_1(t-1), \ldots, \mathbf{u}_1(t-l_1), 
-         \mathbf{u}_2(t), \ldots, \mathbf{u}_2(t-l_2),
-         \ldots,
-         \mathbf{u}_M(t), \ldots, \mathbf{u}_M(t - l_M),
-         \mathbf{x}_1(t-1), \ldots, \mathbf{x}_1(t-k_1),
-         \ldots,
-         \mathbf{x}_N(t-1), \ldots, \mathbf{x}_N(t-k_N), 
-         \mathbf{w}_1, \ldots, \mathbf{w}_Q)
-    
-    \mathbf{y}_1(t) = f_{\mathbf{y}_1}
-        (\mathbf{u}_1(t), \mathbf{u}_1(t-1), \ldots, \mathbf{u}_1(t-l_1), 
-         \mathbf{u}_2(t), \ldots, \mathbf{u}_2(t-l_2),
-         \ldots,
-         \mathbf{u}_M(t), \ldots, \mathbf{u}_M(t - l_M),
-         \mathbf{x}_1(t-1), \ldots, \mathbf{x}_1(t-k_1),
-         \ldots,
-         \mathbf{x}_N(t-1), \ldots, \mathbf{x}_N(t-k_N), 
-         \mathbf{w}_1, \ldots, \mathbf{w}_Q)
-
-      \vdots
-
-    \mathbf{y}_M(t) = f_{\mathbf{y}_M}
-        (\mathbf{u}_1(t), \mathbf{u}_1(t-1), \ldots, \mathbf{u}_1(t-l_1), 
-         \mathbf{u}_2(t), \ldots, \mathbf{u}_2(t-l_2),
-         \ldots,
-         \mathbf{u}_M(t), \ldots, \mathbf{u}_M(t - l_M),
-         \mathbf{x}_1(t-1), \ldots, \mathbf{x}_1(t-k_1),
-         \ldots,
-         \mathbf{x}_N(t-1), \ldots, \mathbf{x}_N(t-k_N), 
-         \mathbf{w}_1, \ldots, \mathbf{w}_Q)
-
-The equations describe a system evolving in time, where :math:`t` represents the
-current step. The system is described by inputs, states, outputs and
-parameteres. 
-
-The inputs, denoted by :math:`\mathbf{u}` are time-varying quantities, 
-hence indexed by :math:`t`. They however only influence the system, but are
-not influenced by the system. 
-
-The states :math:`\mathbf{x}` are time-varying quantities, whose value at
-time :math:`t` depends on its (or other state) previous values as well as
-the inputs and parameters. Note that the first few values of the states are
-always provided, otherwise we could not imploy the recurrent equation to
-generate these sequence of values without a starting point. 
-
-The outputs, :math:`\mathbf{y}` are outputs of the system, i.e. values that
-depend on the previous values of the states and inputs. The difference
-between outputs and states is that outputs do not feed back into the system. 
-
-The parameters :math:`\mathbf{w}` are fixed quantities that are re-used at
-every time step of the evolution of the system. 
-
-Each of the equations above are implemented by the **inner function** of scan. You 
-can think of the **inner function** as a theano function that gets executed
-at each step to get the new values. This **inner function** should not be
-confused with the **constructive function**, which is what the user gives to
-the scan function. The **constructive function** is used to construct the
-computational graph that is afterwards compiled into the **inner function**.
+The correspondence between the parameters and behaviors of the function and the
+op is not always simple since the former is meant for usability and the second
+for performance. Since this document is intended to be used by developers
+working inside Scan itself, it will mostly discuss things from the point of view
+of the ``Scan`` op class. Nonetheless, it will attempt to link those elements to
+their corresponding concepts in the scan function as often as is reasonably
+practical.
 
 
-Naming conventions
-------------------
+Pre-requisites
+==============
 
-* ``input_state`` will stand for a state :math:`\mathbf{x}`, when it is
-  provided as an input to the recurrent formula (the inner function) that 
-  will generate the new value of the state
-* ``output_state`` will stand for a state :math:`\mathbf{x}` when it refers 
-  to the result of the recurrent formula (the output of the inner function)
-* ``output`` will stand for an output :math:`\mathbf{y}`
-* ``input`` will be an input :math:`\mathbf{u}`
-* ``parameter`` will stand for a parameter tensor :math:`\mathbf{w}` that stays 
-  constant at each step of the inner function 
-* ``non_numeric_input_state`` will stand for states that are not numeric in nature, 
-  more specifically *random states*, when they are provided as an input. The
-  same holds for ``non_numeric_output_state``.
-* ``t`` is the time index (the current step in the evolution of the system).
-* ``T`` is the total number of steps in the evolution of the system.
-* the suffix ``_slices`` added to either ``x`` or ``u`` will mean the list of
-  variables representing slices of states or inputs. These are the arguments
-  given to the constructive function of scan (see above). 
-* the suffix ``_inner`` added to ``x``, ``y``, ``xy``, ``u``, ``w`` or ``z``
-  will mean the variables representing the state/output/input/weights in the
-  inner function
-* the suffix ``_outer`` added to ``x``, ``y``, ``xy``, ``u``, ``w`` or ``z``
-  will mean the variables representing the state/output/input/weights in the
-  main computational graph (the one containing the scan op).
+The following sections assumes the reader is familiar with the following :
 
-Files 
------
+1. Theano's :ref:`graph structure <extending_theano>` (Apply nodes, Variable nodes and Ops)
 
-The implementation of scan is spread over several files. The different
-files, and section of the code they deal with, are :
+2. The interface and usage of Theano's :ref:`scan() <lib_scan>` function
+
+Additionally, the :ref:`scan_internals_optimizations` section below assumes
+knowledge of:
+
+3. Theano's :ref:`graph optimizations <optimization>`
+
+
+Relevant code files
+===================
+
+The implementation of Scan is spread over several files in
+``theano/scan_module``.  The different files, and sections of the code they
+deal with, are :
 
 * ``scan.py`` implements the ``scan`` function. The ``scan`` function
   arranges the arguments of scan correctly, constructs the scan op and
   afterwards calls the constructed scan op on the arguments. This function
-  takes care of figuring out missing inputs and shared variables. 
+  takes care of figuring out missing inputs and shared variables.
 
-* ``scan_op.py`` implements the ``scanOp`` class. The ``scanOp`` respects
+* ``scan_op.py`` implements the ``Scan`` op class. The ``Scan`` respects
   the ``Op`` interface, and contains most of the logic of the scan operator.
 
-* ``scan_utils.py`` contains several helpful functions used through out the
+* ``scan_utils.py`` contains several helpful functions used throughout out the
   other files that are specific of the scan operator.
 
 * ``scan_views.py`` contains different views of the scan op that have
   simpler and easier signatures to be used in specific cases.
 
-* ``scan_opt.py`` contains the list of all optimizations for the scan
-  operator.
+* ``scan_opt.py`` contains the list of all Theano graph optimizations for the
+  scan operator.
 
-The logical flow
-----------------
 
-First the scan arguments are parsed by the function ``canonical_arguments``, 
-that wraps them into lists and adds default values for the arguments. One
-important step that happens in this function is that the inputs arguments
-are converted such that they all have a single tap, namely 0. For example 
-if you have ``[{'input':u, 'taps':[0, 4]}]`` as the list of inputs arguments
-to scan, it gets converted into ``[{'input':u, 'taps':[0]}, {'input':u[4:],
-'taps':[0]}]``.
+Notation
+========
 
-The second step is to check if ``n_steps`` is a constant and has the value 1
-or -1. If that is true then the function ``one_step_scan`` is called which 
-unwraps the computation of the inner function into the outer graph without 
-adding any scan op in the graph.
+Scan being a sizeable and complex module, it has its own naming convention for
+functions and variables which this section will attempt to introduce.
 
+A scan op contains a Theano function representing the computation
+that is done in a single iteration of the loop represented by the scan op (in
+other words, the computation given by the function provided as value to
+``theano.scan``'s ``fn`` argument ). Whenever we discuss a scan op, the **outer
+function** refers to the Theano function that *contains* the scan op whereas the
+**inner function** refers to the Theano function that is *contained* inside the
+scan op.
+
+In the same spirit, the inputs and outputs of the *Apply node wrapping the scan
+op* (or *scan node* for short) are referred to as **outer inputs** and **outer
+outputs**, respectively, because these inputs and outputs are variables in the
+outer function graph. The inputs and outputs of scan's inner function are
+designated **inner inputs** and **inner outputs**, respectively.
+
+
+Scan variables
+==============
+
+The following are the different types of variables that Scan has the capacity to
+handle, along with their various caracteristics.
+
+**Sequence** : A sequence is a Theano variable which Scan will iterate over and
+give sub-elements to its inner function as input. A sequence has no associated
+output. For a sequence variable ``X``, at timestep ``t``, the inner function will
+receive as input the sequence element ``X[t]``. These variables are used through
+the argument ``sequences`` of the ``theano.scan()`` function.
+
+**Non-sequences** : A non-sequence is a Theano variable which Scan will provide
+*as-is* to its inner function. Like a sequence, a non-sequence has no
+associated output. For a non-sequence variable ``X``, at timestep ``t``, the inner
+function will receive as input the variable ``X``. These variables are used through
+the argument ``non_sequences`` of the ``theano.scan()`` function.
+
+**Nitsot (no input tap, single output tap)** : A nitsot is an output variable of
+the inner function that is not fed back as an input to the next iteration of the
+inner function. Nitsots are typically encountered in situations where Scan is
+used to perform a 'map' operation (every element in a tensor is independently
+altered using a given operation to produce a new tensor) such as squaring every
+number in a vector.
+
+**Sitsot (single input tap, single output tap)** : A sitsot is an output
+variable of the inner function that is fed back as an input to the next
+iteration of the inner function. A typical setting where a sitsot might be
+encountered is the case where Scan is used to compute the cumulative sum over
+the elements of a vector and a sitsot output is employed to act as an
+accumulator.
+
+**Mitsot (multiple input taps, single output tap)** : A mitsot is an output
+variable of the inner function that is fed back as an input to future iterations
+of the inner function (either multiple future iterations or a single one that
+isn't the immediate next one). For example, a mitsot might be used in the case
+where Scan is used to compute the Fibonacci sequence, one term of the sequence
+at every timestep, since every computed term needs to be reused to compute
+the two next terms of the sequence.
+
+**Mitmot (multiple input taps, multiple output taps)** : These outputs exist
+but they cannot be directly created by the user. They can appear in a theano
+graph as a result of taking the gradient of the output of a Scan with respect
+to its inputs: This will result in the creation of a new scan node used to
+compute the gradients of the first scan node. If the original Scan had sitsots
+or mitsots variables, the new Scan will use mitmots to compute the gradients
+through time for these variables.
+
+
+To synthesize :
+
+===========================================================  =====================================================  ==========================================================  ===========================================================  =========================================================  ======================================================
+Type of scan variables                                       Corresponding outer input                              Corresponding inner input at timestep `t` (indexed from 0)  Corresponding inner output at timestep `t` (indexed from 0)  Corresponding outer output `t`                             Corresponding argument of the `theano.scan()` function
+===========================================================  =====================================================  ==========================================================  ===========================================================  =========================================================  ======================================================
+Sequence                                                     Sequence of elements X                                 Individual sequence element X[t]                            *No corresponding inner output*                              *No corresponding outer output*                            `sequences`
+Non-Sequence                                                 Any variable X                                         Variable identical to X                                     *No corresponding inner output*                              *No corresponding outer output*                            `non_sequences`
+Non-recurring output (nitsot)                                *No corresponding outer input*                         *No corresponding inner input*                              Output value at timestep `t`                                 Concatenation of the values of the output at all timestep  `outputs_info`
+Singly-recurrent output (sitsot)                             Initial value (value at timestep `-1`)                 Output value at previous timestep (`t-1`)                   Output value at timestep `t`                                 Concatenation of the values of the output at all timestep  `outputs_info`
+Multiply-recurrent output (mitsot)                           Initial values for the required timesteps where `t<0`  Output value at previous required timesteps                 Output value at timestep `t`                                 Concatenation of the values of the output at all timestep  `outputs_info`
+Multiply-recurrent multiple outputs (mitmot)                 Initial values for the required timesteps where `t<0`  Output value at previous required timesteps                 Output values for current and multiple future timesteps      Concatenation of the values of the output at all timestep  *No corresponding argument*
+===========================================================  =====================================================  ==========================================================  ===========================================================  =========================================================  ======================================================
+
+
+.. _scan_internals_optimizations:
+
+Optimizations
+=============
+
+remove_constants_and_unused_inputs_scan
+---------------------------------------
+
+This optimization serves two purposes, The first is to remove a scan op's
+unused inputs. The second is to take a scan op's constant inputs and remove
+them, instead injecting the constants directly into the graph or the scan
+op's inner function. This will allow constant folding to happen inside the
+inner function.
+
+
+PushOutNonSeqScan
+-----------------
+
+This optimizations pushes, out of Scan's inner function and into the outer
+function, computation that depends only on non-sequence inputs. Such
+computation ends up being done every iteration on the same values so moving
+it to the outer function to be executed only once, before the scan op,
+reduces the amount of computation that needs to be performed.
+
+
+PushOutSeqScan
+--------------
+
+This optimization resembles PushOutNonSeqScan but it tries to push, out of
+the inner function, the computation that only relies on sequence and
+non-sequence inputs. The idea behing this optimization is that, when it is
+possible to do so, it is generally more computationally efficient to perform
+a single operation on a large tensor rather then perform that same operation
+many times on many smaller tensors. In many cases, this optimization can
+increase memory usage but, in some specific cases, it can also decrease it.
+
+
+PushOutScanOutput
+-----------------
+
+This optimizations attempts to push out some of the computation at the end
+of the inner function to the outer function, to be executed after the scan
+node. Like PushOutSeqScan, this optimization aims to replace many operations
+on small tensors by few operations on large tensors. It can also lead to
+increased memory usage.
+
+
+PushOutDot1
+-----------
+
+This is another optimization that attempts to detect certain patterns of
+computation in a scan op's inner function and move this computation to the
+outer graph.
+
+
+ScanInplaceOptimizer
+--------------------
+
+This optimization attempts to make Scan compute its recurrent outputs inplace
+on the input tensors that contain their initial states. This optimization can
+improve runtime performance as well as reduce memory usage.
+
+
+ScanSaveMem
+-----------
+
+This optimizations attempts to determine if a scan node, during its execution,
+for any of its outputs, can get away with allocating a memory buffer that is
+large enough to contain some of the computed timesteps of that output but not
+all of them.
+
+By default, during the execution of a scan node, memory buffers will be
+allocated to store the values computed for every output at every iteration.
+However, in some cases, there are outputs for which there is only really a
+need to store the most recent N values, not all of them.
+
+For instance, if a scan node has a sitsot output (last computed value is
+fed back as an input at the next iteration) and only the last timestep of
+that output is ever used in the outer function, the ScanSaveMem optimization
+could determine that there is no need to store all computed timesteps for
+that sitsot output. Only the most recently computed timestep ever needs to
+be kept in memory.
+
+
+ScanMerge
+---------
+
+This optimization attempts to fuse distinct scan ops into a single scan op
+that performs all the computation. The main advantage of merging scan ops
+together comes from the possibility of both original ops having some
+computation in common. In such a setting, this computation ends up being done
+twice. The fused scan op, however, would only need to do it once and could
+therefore be more computationally efficient. Also, since every scan node
+involves a certain overhead, at runtime, reducing the number of scan nodes in
+the graph can improve performance.
+
+
+scan_merge_inouts
+-----------------
+
+This optimization attempts to merge a scan op's identical outer inputs as well
+as merge its identical outer outputs (outputs that perform the same
+computation on the same inputs). This can reduce the amount of computation as
+well as result in a simpler graph for both the inner function and the outer
+function.
+
+
+Helper classes and functions
+============================
+
+Because of the complexity involved in dealing with Scan, a large number of
+helper classes and functions have been developped over time to implement
+operations commonly needed when dealing with the scan op. The scan op
+itself defines a large number of them and others can be found in the file
+``scan_utils.py``. This sections aims to point out the most useful ones sorted
+by usage.
+
+
+Accessing/manipulating Scan's inputs and outputs by type
+--------------------------------------------------------
+
+Declared in ``scan_utils.py``, the class ``scan_args`` handles the parsing
+of the inputs and outputs (both inner and outer) to a format that is easier to
+analyse and manipulate. Without this class, analysing Scan's inputs and
+outputs often required convoluted logic which make for code that is hard to
+read and to maintain. Because of this, you should favor using ``scan_args`` when
+it is practical and appropriate to do so.
+
+The scan op also defines a few helper functions for this purpose, such as
+``inner_nitsot_outs()`` or ``mitmot_out_taps()``, but they are often poorly
+documented and easy to misuse. These should be used with great care.
+
+
+Navigating between outer inputs/outputs and inner inputs/outputs
+----------------------------------------------------------------
+
+Navigation between these four sets of variables can be done in two ways,
+depending on the type of navigation that is required.
+
+If the goal is to navigate between variables that are associated with the same
+states (ex : going from an outer sequence input to the corresponding inner
+sequence input, going from an inner output associated with a recurrent state
+to the inner input(s) associated with that same recurrent state, etc.), then
+the ``var_mappings`` attribute of the scan op can be used.
+
+This attribute is a dictionnary with 12 {key/value} pairs. The keys are listed
+below :
+
+*   "outer_inp_from_outer_out"
+*   "inner_inp_from_outer_out"
+*   "inner_out_from_outer_out"
+*   "inner_inp_from_outer_inp"
+*   "inner_out_from_outer_inp"
+*   "outer_out_from_outer_inp"
+*   "outer_inp_from_inner_inp"
+*   "inner_out_from_inner_inp"
+*   "outer_out_from_inner_inp"
+*   "outer_inp_from_inner_out"
+*   "inner_inp_from_inner_out"
+*   "outer_out_from_inner_out"
+
+Every corresponding value is a dictionary detailing a mapping from one set of
+variables to another. For each of those dictionaries the keys are indices of
+variables in one set and the values are the indices of the corresponding
+variables in another set. For mappings to outer variables, the values are
+individual indices or -1 if there is not corresponding outer variable.
+For mappings to inner variables, the values are list of indices because
+multiple inner variables may be associated with the same state.
+
+If the goal is to navigate between variables that are *connected* (meaning
+that one of them is used to compute the other), the methods
+``connection_pattern()`` and ``inner_connection_pattern()`` can be used.
+The method ``connection_pattern()`` returns a list of lists detailing, for every
+pair of outer input and outer output whether they are connected or not. The
+method ``inner_connection_pattern()`` accomplishes the same goal but for every
+possible pair of inner output and inner input.

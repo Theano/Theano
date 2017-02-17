@@ -4,10 +4,12 @@ There is no standard name or location for this header, so we just insert it
 ourselves into the C code.
 
 """
+from __future__ import absolute_import, print_function, division
 import logging
 import textwrap
 import sys
 import os
+from os.path import dirname, normpath
 
 from theano import config
 from theano.gof.cmodule import GCC_compiler
@@ -728,6 +730,31 @@ def cblas_header_text():
 
 def blas_header_text():
     """C header for the fortran blas interface"""
+
+    gemm_code = ""
+    const = "const"
+    if not config.blas.ldflags:
+        # Include the Numpy version implementation of [sd]gemm_.
+        current_filedir = dirname(__file__)
+        gemm_common_filepath = normpath(current_filedir + "/alt_gemm_common.c")
+        gemm_template_filepath = normpath(current_filedir + "/alt_gemm_template.c")
+        common_code = ""
+        sgemm_code = ""
+        dgemm_code = ""
+        with open(gemm_common_filepath) as code:
+            common_code = code.read()
+        with open(gemm_template_filepath) as code:
+            template_code = code.read()
+            sgemm_code = template_code % {"float_type": "float", "float_size": 4, "npy_float": "NPY_FLOAT32", "name": "sgemm_"}
+            dgemm_code = template_code % {"float_type": "double", "float_size": 8, "npy_float": "NPY_FLOAT64", "name": "dgemm_"}
+        if not common_code or not sgemm_code:
+            raise IOError("Unable to load NumPy implementation of gemm code from C source files.")
+        else:
+            const = ""
+        gemm_code += common_code
+        gemm_code += sgemm_code
+        gemm_code += dgemm_code
+
     header = """
     extern "C"
     {
@@ -889,7 +916,7 @@ def blas_header_text():
 
     /* Single Precision */
 
-        void sgemm_(char*, char*, const int*, const int*, const int*, const float *, const float *, const int*, const float *, const int*, const float *, float *, const int*);
+        void sgemm_(char*, char*, const int*, const int*, const int*, const float *, %(const)s float *, const int*, %(const)s float *, const int*, const float *, float *, const int*);
         void ssymm_(char*, char*, const int*, const int*, const float *, const float *, const int*, const float *, const int*, const float *, float *, const int*);
         void ssyrk_(char*, char*, const int*, const int*, const float *, const float *, const int*, const float *, float *, const int*);
         void ssyr2k_(char*, char*, const int*, const int*, const float *, const float *, const int*, const float *, const int*, const float *, float *, const int*);
@@ -898,7 +925,7 @@ def blas_header_text():
 
     /* Double Precision */
 
-        void dgemm_(char*, char*, const int*, const int*, const int*, const double *, const double *, const int*, const double *, const int*, const double *, double *, const int*);
+        void dgemm_(char*, char*, const int*, const int*, const int*, const double *, %(const)s double *, const int*, %(const)s double *, const int*, const double *, double *, const int*);
         void dsymm_(char*, char*, const int*, const int*, const double *, const double *, const int*, const double *, const int*, const double *, double *, const int*);
         void dsyrk_(char*, char*, const int*, const int*, const double *, const double *, const int*, const double *, double *, const int*);
         void dsyr2k_(char*, char*, const int*, const int*, const double *, const double *, const int*, const double *, const int*, const double *, double *, const int*);
@@ -957,6 +984,49 @@ def blas_header_text():
                     }
                     """)
 
+    return (header % {'const': const}) + gemm_code
+
+
+def mkl_threads_text():
+    """C header for MKL threads interface"""
+    header = """
+    extern "C"
+    {
+        int     MKL_Set_Num_Threads_Local(int);
+        #define mkl_set_num_threads_local   MKL_Set_Num_Threads_Local
+
+        void    MKL_Set_Num_Threads(int);
+        #define mkl_set_num_threads         MKL_Set_Num_Threads
+
+        int     MKL_Get_Max_Threads(void);
+        #define mkl_get_max_threads         MKL_Get_Max_Threads
+
+        int     MKL_Domain_Set_Num_Threads(int, int);
+        #define mkl_domain_set_num_threads  MKL_Domain_Set_Num_Threads
+
+        int     MKL_Domain_Get_Max_Threads(int);
+        #define mkl_domain_get_max_threads  MKL_Domain_Get_Max_Threads
+
+        void    MKL_Set_Dynamic(int);
+        #define mkl_set_dynamic             MKL_Set_Dynamic
+
+        int     MKL_Get_Dynamic(void);
+        #define mkl_get_dynamic             MKL_Get_Dynamic
+    }
+    """
+    return header
+
+
+def openblas_threads_text():
+    """C header for OpenBLAS threads interface"""
+    header = """
+    extern "C"
+    {
+        void openblas_set_num_threads(int);
+        void goto_set_num_threads(int);
+        int openblas_get_num_threads(void);
+    }
+    """
     return header
 
 

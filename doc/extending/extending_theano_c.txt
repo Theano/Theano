@@ -893,6 +893,14 @@ If you pass a function name to the ``__init__()`` method of the
         types for the argument is dependant on the Types (that is
         theano Types) of your inputs and outputs.
 
+*       You can sepcify the number of inputs and outputs for your op
+        by setting the `_cop_num_inputs` and `_cop_num_outputs`
+        attributes on your op.  The main function will always be
+        called with that number of arguments, using NULL to fill in
+        for missing values at the end.  This can be used if your op
+        has a variable number of inputs or outputs, but with a fixed
+        maximum.
+
 For example, the main C function of an op that takes two TensorTypes
 (which has ``PyArrayObject *`` as its C type) as inputs and returns
 both their sum and the difference between them would have four

@@ -6,13 +6,13 @@ Copyright (c) 2014, The Regents of the University of California (Regents)
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met: 
+modification, are permitted provided that the following conditions are met:
 
 1. Redistributions of source code must retain the above copyright notice, this
-   list of conditions and the following disclaimer. 
+   list of conditions and the following disclaimer.
 2. Redistributions in binary form must reproduce the above copyright notice,
    this list of conditions and the following disclaimer in the documentation
-   and/or other materials provided with the distribution. 
+   and/or other materials provided with the distribution.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -26,25 +26,28 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-
 // (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/util/im2col.cpp)
 // Loops for fast unfold + copy
 void im2col(const %(float_type)s* data_im, const int channels,
     const int height, const int width, const int kernel_h, const int kernel_w,
+    const int dilation_h, const int dilation_w,
     const int pad_h, const int pad_w,
     const int stride_h, const int stride_w,
     %(float_type)s* data_col) {
-  int height_col = (height + 2 * pad_h - kernel_h) / stride_h + 1;
-  int width_col = (width + 2 * pad_w - kernel_w) / stride_w + 1;
+  // Implicit dilated kernel size
+  int dil_kernel_h = (kernel_h - 1) * dilation_h + 1;
+  int dil_kernel_w = (kernel_w - 1) * dilation_w + 1;
+  int height_col = (height + 2 * pad_h - dil_kernel_h) / stride_h + 1;
+  int width_col = (width + 2 * pad_w - dil_kernel_w) / stride_w + 1;
   int channels_col = channels * kernel_h * kernel_w;
   for (int c = 0; c < channels_col; ++c) {
     int w_offset = c %% kernel_w;
     int h_offset = (c / kernel_w) %% kernel_h;
     int c_im = c / kernel_h / kernel_w;
     for (int h = 0; h < height_col; ++h) {
+      int h_pad = h * stride_h - pad_h + h_offset * dilation_h;
       for (int w = 0; w < width_col; ++w) {
-        int h_pad = h * stride_h - pad_h + h_offset;
-        int w_pad = w * stride_w - pad_w + w_offset;
+        int w_pad = w * stride_w - pad_w + w_offset * dilation_w;
         if (h_pad >= 0 && h_pad < height && w_pad >= 0 && w_pad < width)
           data_col[(npy_intp)(c * height_col + h) * width_col + w] =
             data_im[(npy_intp)(c_im * height + h_pad) * width + w_pad];
@@ -60,10 +63,14 @@ void im2col(const %(float_type)s* data_im, const int channels,
 // accumulated into data_im.
 void col2im(const %(float_type)s* data_col, const int channels,
     const int height, const int width, const int patch_h, const int patch_w,
+    const int dilation_h, const int dilation_w,
     const int pad_h, const int pad_w, const int stride_h,
     const int stride_w, %(float_type)s* data_im) {
-  int height_col = (height + 2 * pad_h - patch_h) / stride_h + 1;
-  int width_col = (width + 2 * pad_w - patch_w) / stride_w + 1;
+  // Implicit dilated patch
+  int dil_patch_h = (patch_h - 1) * dilation_h + 1;
+  int dil_patch_w = (patch_w - 1) * dilation_w + 1;
+  int height_col = (height + 2 * pad_h - dil_patch_h) / stride_h + 1;
+  int width_col = (width + 2 * pad_w - dil_patch_w) / stride_w + 1;
   int num_kernels = channels * height * width;
   int channels_col = channels * patch_h * patch_w;
   for (int c = 0; c < channels_col; ++c) {
@@ -71,9 +78,9 @@ void col2im(const %(float_type)s* data_col, const int channels,
     int h_offset = (c / patch_w) %% patch_h;
     int c_im = c / patch_h / patch_w;
     for (int h = 0; h < height_col; ++h) {
+      int h_pad = h * stride_h - pad_h + h_offset * dilation_h;
       for (int w = 0; w < width_col; ++w) {
-        int h_pad = h * stride_h - pad_h + h_offset;
-        int w_pad = w * stride_w - pad_w + w_offset;
+        int w_pad = w * stride_w - pad_w + w_offset * dilation_w;
         if (h_pad >= 0 && h_pad < height && w_pad >= 0 && w_pad < width)
           data_im[(npy_intp)(c_im * height + h_pad) * width + w_pad] +=
             data_col[(npy_intp)(c * height_col + h) * width_col + w];
@@ -91,13 +98,15 @@ void col2im(const %(float_type)s* data_col, const int channels,
 // CPU version author: Jesse Livezey
 // CPU version adapted from GPU version
 PyArrayObject* corrMM(PyArrayObject* bottom,
-                           PyArrayObject* weight,
-                           PyArrayObject* top,
-                           const int direction,
-                           const int dH = 1,
-                           const int dW = 1,
-                           const int padH = 0,
-                           const int padW = 0)
+                      PyArrayObject* weight,
+                      PyArrayObject* top,
+                      const int direction,
+                      const int dH = 1,
+                      const int dW = 1,
+                      const int dilH = 1,
+                      const int dilW = 1,
+                      const int padH = 0,
+                      const int padW = 0)
 {
     if (PyArray_NDIM(bottom) != 4)
     {
@@ -109,7 +118,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         PyErr_SetString(PyExc_ValueError, "CorrMM received bottom with wrong type.");
         return NULL;
     }
-    
+
     if (PyArray_NDIM(weight) != 4)
     {
         PyErr_SetString(PyExc_ValueError, "CorrMM requires weight of 4D");
@@ -151,9 +160,19 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                 "CorrMM images and kernel must have the same stack size\n");
         return NULL;
     }
+    // implicit dilated filter
+    const int dil_kH = (kH - 1) * dilH + 1;
+    const int dil_kW = (kW - 1) * dilW + 1;
     // top: (batchSize, nFilters, topHeight, topWidth)
-    const int topHeight = (bottomHeight + 2*padH - kH) / dH + 1;
-    const int topWidth  = (bottomWidth + 2*padW - kW) / dW + 1;
+    const int topHeightNoDH = (bottomHeight + 2*padH - dil_kH);
+    const int topWidthNoDW  = (bottomWidth + 2*padW - dil_kW);
+    // the above values might be negative so we need to use Python-like
+    // flooring integer division to be compatible with get_conv_output.
+    // note: this macro implements Python's // for negative x only
+#define _CONV_FLOORDIV_X(x,y) ((x < 0) ? (- ((-x) / y) - (((-x) %% y) == 0 ? 0 : 1)) : (x / y))
+    const int topHeight = _CONV_FLOORDIV_X(topHeightNoDH, dH) + 1;
+    const int topWidth  = _CONV_FLOORDIV_X(topWidthNoDW, dW) + 1;
+#undef _CONV_FLOORDIV
     if (batchSize != PyArray_DIMS(top)[0] ||
             nFilters != PyArray_DIMS(top)[1] ||
             topHeight != PyArray_DIMS(top)[2] ||
@@ -172,50 +191,83 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     }
 
     // Create temporary columns
-    npy_intp col_dim[2];
-    col_dim[0] = (npy_intp)(nChannels * kW * kH);
-    col_dim[1] = (npy_intp)(topHeight * topWidth);
-    PyArrayObject* col = (PyArrayObject*)PyArray_EMPTY(2,
-		                           col_dim,
-                                           PyArray_TYPE(top),
-					   0);
-    if (NULL == col)
-    {
+    int max_threads = %(omp_get_max_threads)s;
+    if (batchSize < max_threads) {
+        max_threads = batchSize;
+    }
+    npy_intp col_dim[3];
+    col_dim[0] = (npy_intp)max_threads;
+    col_dim[1] = (npy_intp)(nChannels * kW * kH);
+    col_dim[2] = (npy_intp)(topHeight * topWidth);
+
+    //Change to PyArray_ZEROS which is faster than PyArray_EMPTY.
+    PyArrayObject* col = (PyArrayObject*)PyArray_ZEROS(3,
+            col_dim,
+            PyArray_TYPE(top),
+            0); 
+    if (NULL == col) {
         PyErr_Format(PyExc_RuntimeError,
-                "CorrMM failed to allocate working memory of %%ld x %%ld\n",
-                col_dim[0], col_dim[1]);
+                "CorrMM failed to allocate working memory of"
+                " %%ld x %%ld x %%ld\n",
+                col_dim[0], col_dim[1], col_dim[2]);
         return NULL;
     }
 
     // Define some useful variables
     const int bottom_stride = PyArray_STRIDES(bottom)[0]/%(n_bytes)f;
     const int top_stride = PyArray_STRIDES(top)[0]/%(n_bytes)f;
-    const int K_ = col_dim[0];
-    const int N_ = col_dim[1];
+    const int K_ = col_dim[1];
+    const int N_ = col_dim[2];
+    const int col_stride = (K_ * N_);
     const int M_ = nFilters;
     const %(c_float_type)s one = 1.0;
     const %(c_float_type)s zero = 0.0;
     char NTrans = 'N';
     char Trans = 'T';
-
     PyArrayObject *output;
-    if (direction == 0) {  // forward pass
+
+    if (batchSize == 0 || nChannels == 0 || nFilters == 0) {
+        switch(direction) {
+        case 0:
+            output = top;
+            break;
+        case 1:
+            output = weight;
+            break;
+        case 2:
+            output = bottom;
+            break;
+        default:
+            return NULL;
+        }
+        PyArray_FILLWBYTE(output, 0);
+    }
+    else if (direction == 0) {  // forward pass
         output = top;
         // valid correlation: im2col, then gemm
         // Iterate over batch
-        for (int n = 0; n < batchSize; n++) {
+        int blas_threads_saved = %(blas_get_num_threads)s;
+        // Always forcing gemm to one thread when OpenMP is enalbed for best and stable performance.
+        %(blas_set_num_threads)s(1);
+        %(omp_flags)s
+        for (int n = 0; n < batchSize; ++n) {
+            int tid = %(omp_get_thread_num)s;
             // First, im2col
             im2col((%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride, nChannels, bottomHeight,
-                    bottomWidth, kH, kW, padH, padW, dH, dW, (%(float_type)s*)PyArray_DATA(col));
+                   bottomWidth, kH, kW, dilH, dilW, padH, padW, dH, dW,
+                   (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride);
             // Second, gemm
             %(gemm)s(&NTrans, &NTrans,
                    &N_, &M_, &K_,
                    &one,
-                   (%(float_type)s*)PyArray_DATA(col), &N_,
+                   (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride, &N_,
                    (%(float_type)s*)PyArray_DATA(weight), &K_,
                    &zero,
                    (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_);
         }
+        // Restore to previous blas threads
+        %(blas_set_num_threads)s(blas_threads_saved);
+
         /*
         // Original caffe code for comparison
         // Note that this code was translated from the Theano GPU code,
@@ -250,12 +302,33 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     }
     else if (direction == 1) {  // backprop wrt. weights
         output = weight;
+        npy_intp weight_dim[2];
+        weight_dim[0] = (npy_intp)max_threads;
+        weight_dim[1] = (npy_intp)(M_ * K_);
+        PyArrayObject* local_weight = (PyArrayObject*)PyArray_ZEROS(2,
+                                   weight_dim, PyArray_TYPE(weight), 0);
+
+        if (NULL == local_weight)
+        {
+            PyErr_Format(PyExc_RuntimeError,
+                    "CorrMM failed to allocate weight memory of %%ld x %%ld\n",
+                    weight_dim[0], weight_dim[1]);
+            return NULL;
+        }
+        
         // valid convolution: im2col, then gemm
         // Iterate over batch
-        for (int n = 0; n < batchSize; n++) {
+        int blas_threads_saved = %(blas_get_num_threads)s;
+        // Always forcing gemm to one thread when OpenMP is enalbed for best and stable performance.
+        %(blas_set_num_threads)s(1);
+        // OMP for batch-level paralization
+        %(omp_flags)s
+        for (int n = 0; n < batchSize; ++n) {
+            int tid = %(omp_get_thread_num)s;
             // First, im2col
             im2col((%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride, nChannels, bottomHeight,
-                    bottomWidth, kH, kW, padH, padW, dH, dW, (%(float_type)s*)PyArray_DATA(col));
+                   bottomWidth, kH, kW, dilH, dilW, padH, padW, dH, dW,
+                   (%(float_type)s*)PyArray_DATA(col)+ tid * col_stride);
             // Second, gemm
             // Note that we accumulate into weight. We do so by setting beta = 0
             // for the first iteration and beta = 1 for subsequent ones. (This
@@ -263,11 +336,30 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
             %(gemm)s(&Trans, &NTrans,
                    &K_, &M_, &N_,
                    &one,
-                   (%(float_type)s*)PyArray_DATA(col), &N_,
+                   (%(float_type)s*)PyArray_DATA(col) + tid * col_stride, &N_,
                    (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_,
                    (n == 0) ? &zero : &one,
-                   (%(float_type)s*)PyArray_DATA(weight), &K_);
+                   (%(float_type)s*)PyArray_DATA(local_weight) + 
+                   tid * weight_dim[1], &K_);
         }
+        // Restore to previous blas threads
+        %(blas_set_num_threads)s(blas_threads_saved);
+
+        //aggregate weights
+        memset((%(float_type)s*)PyArray_DATA(weight), 0, M_ * K_*sizeof(%(float_type)s));
+        /*
+         * Put index "j" into outer loop to get the
+         * correct result when openmp is used.
+         */
+        %(omp_flags)s
+        for(int j = 0; j < weight_dim[1]; ++j){
+            for(int i = 0; i < max_threads; ++i){
+                ((%(float_type)s*)PyArray_DATA(weight))[j] += 
+                    *((%(float_type)s*)PyArray_DATA(local_weight) +
+                    i * weight_dim[1] + j);
+            }
+        }
+        Py_DECREF(local_weight);
         /*
         // Original caffe code for comparison
         // Note that this code was translated from the Theano GPU code,
@@ -299,23 +391,32 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     }
     else if (direction == 2) {  // backprop wrt. inputs
         output = bottom;
-	// bottom is set to zero here rather than inside of col2im
+        // bottom is set to zero here rather than inside of col2im
         PyArray_FILLWBYTE(bottom, 0);
         // full convolution: gemm, then col2im
         // Iterate over batch
-        for (int n = 0; n < batchSize; n++) {
+
+        int blas_threads_saved = %(blas_get_num_threads)s;
+        // Always forcing gemm to one thread when OpenMP is enalbed for best and stable performance.
+        %(blas_set_num_threads)s(1);
+        %(omp_flags)s
+        for (int n = 0; n < batchSize; ++n) {
             // gemm into columns
+            int tid = %(omp_get_thread_num)s;
             %(gemm)s(&NTrans, &Trans,
                    &N_, &K_, &M_,
                    &one,
                    (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_,
                    (%(float_type)s*)PyArray_DATA(weight), &K_,
                    &zero,
-                   (%(float_type)s*)PyArray_DATA(col), &N_);
+                   (%(float_type)s*)PyArray_DATA(col) + tid * col_stride, &N_);
             // col2im back to the data
-            col2im((%(float_type)s*)PyArray_DATA(col), nChannels, bottomHeight, bottomWidth,
-                    kH, kW, padH, padW, dH, dW, (%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride);
+            col2im((%(float_type)s*)PyArray_DATA(col) + tid * col_stride, nChannels, bottomHeight, bottomWidth,
+                   kH, kW, dilH, dilW, padH, padW,
+                   dH, dW, (%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride);
         }
+        // Restore to previous blas threads
+        %(blas_set_num_threads)s(blas_threads_saved);
         /*
         // Original caffe code for comparison
         // Note that this code was translated from the Theano GPU code,

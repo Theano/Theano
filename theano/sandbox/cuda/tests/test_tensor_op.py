@@ -1,19 +1,21 @@
 """
 This file test tensor op that should also operate on CudaNdaray.
 """
-import copy
+from __future__ import absolute_import, print_function, division
 from nose.plugins.skip import SkipTest
+from nose_parameterized import parameterized
 
 import numpy
 
 import theano
 from theano import tensor
 import theano.tensor as T
+import theano.tests.unittest_tools as utt
 
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda
 from theano.tensor.nnet.tests import test_conv3d2d
-if cuda.cuda_available == False:
+if cuda.cuda_available is False:
     raise SkipTest('Optional package cuda disabled')
 
 
@@ -56,7 +58,7 @@ def test_softmax_optimizations():
     one_of_n = tensor.lvector('one_of_n')
     op = crossentropy_categorical_1hot
 
-    xe = op(x, one_of_n)
+    op(x, one_of_n)
 
     fgraph = theano.gof.FunctionGraph(
         [x, one_of_n],
@@ -83,10 +85,10 @@ def test_may_share_memory_cuda():
 
     # can't test the transpose as ta._strides = is not implemented
     # manual transpose of a
-    #ta = a.reshape((4,3))
+    # ta = a.reshape((4,3))
     # ta._strides = (ta._strides[1],ta._strides[0])#not implemented
-    #elem_size=elem_size = numpy.zeros(0,dtype=a.dtype).dtype.itemsize
-    #ta.gpudata += ta.size*elem_size
+    # elem_size=elem_size = numpy.zeros(0,dtype=a.dtype).dtype.itemsize
+    # ta.gpudata += ta.size*elem_size
 
     for a_, b_, rep in [(a, a, True), (b, b, True), (a, b, False),
                         (a, na, False), (b, nb, False),
@@ -94,8 +96,7 @@ def test_may_share_memory_cuda():
                         (a, va, True), (b, vb, True),
                         (va, b, False), (a, vb, False),
                         (a, ra, True), (b, rb, True),
-                        (ra, b, False), (a, rb, False),
-                      ]:
+                        (ra, b, False), (a, rb, False), ]:
         assert may_share_memory(a_, b_) == rep
         assert may_share_memory(b_, a_) == rep
 
@@ -140,6 +141,8 @@ def test_get_diagonal_subtensor_view():
     test_conv3d2d.test_get_diagonal_subtensor_view(wrap=cuda.CudaNdarray)
 
 
-def test_conv3d():
-    test_conv3d2d.test_conv3d(mode=mode_with_gpu,
-                              shared=cuda.shared_constructor)
+@parameterized.expand(('valid', 'full'), utt.custom_name_func)
+def test_conv3d(border_mode):
+    test_conv3d2d.check_conv3d(border_mode=border_mode,
+                               mode=mode_with_gpu,
+                               shared=cuda.shared_constructor)

@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import copy
 import gc
 
@@ -11,7 +11,7 @@ from theano import ifelse
 
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
-if cuda.cuda_available == False:
+if cuda.cuda_available is False:
     raise SkipTest('Optional package cuda disabled')
 
 
@@ -39,7 +39,7 @@ def freemem(extra_alloc=0):
         theano_alloc = cuda.cuda_ndarray.cuda_ndarray.theano_allocated()
         return ("(n malloc/theano mem allocated in KB)",
                 n_mallocs + extra_alloc,
-                int(theano_alloc / 1024) + extra_size)
+                int(theano_alloc / 1024))
 
     return ("n malloc on the gpu", n_mallocs + extra_alloc)
     # I don't use the following by default as if there is other stuff running
@@ -83,9 +83,12 @@ def test_memory():
         variables = cuda.shared_constructor(np.ones((shapes[1],),
                                                     dtype='float32'))
         derp = tensor.sum(tensor.dot(some_matrix[:shapes[0]], variables))
-        print("Shared took ", np.prod(variables.get_value(
-                borrow=True,
-                return_internal_type=True).shape) * 4 / 1024, "kB")
+        print("Shared took ",
+              np.prod(variables.get_value(
+                  borrow=True,
+                  return_internal_type=True).shape) *
+              4 / 1024,
+              "kB")
 
         mem2 = freemem()
         print("Before compilation", mem2)
@@ -112,7 +115,7 @@ def test_memory():
 
         del obj
         # print "After deleting function 1", freemem()
-        #assert mem2 == freemem(), (mem2, freemem())
+        # assert mem2 == freemem(), (mem2, freemem())
 
         del grad
         print("After deleting function 2", freemem())
@@ -155,16 +158,19 @@ def test_memory_lazy():
         derp = ifelse.IfElse(1)(branch_select,
                                 derp, some_matrix[:shapes[0]].sum())
         derp += 1
-        print("Shared took ", np.prod(variables.get_value(
-                borrow=True,
-                return_internal_type=True).shape) * 4 / 1024, "kB")
+        print("Shared took ",
+              np.prod(variables.get_value(
+                  borrow=True,
+                  return_internal_type=True).shape) *
+              4 / 1024,
+              "kB")
 
         mem2 = freemem()
         print("Before compilation", mem2)
         mem2_1 = freemem(extra_alloc=more_alloc1)
         obj = theano.function([some_vector, branch_select], derp,
                               mode=mode_with_gpu)
-        #theano.printing.debugprint(obj, print_type=True)
+        # theano.printing.debugprint(obj, print_type=True)
         mem3 = freemem()
         print("After function compilation 1", mem3)
         assert mem2_1 == mem3, (mem2_1, mem3)

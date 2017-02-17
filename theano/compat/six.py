@@ -1,4 +1,5 @@
 """Utilities for writing code that runs on Python 2 and 3"""
+from __future__ import absolute_import, print_function, division
 
 # Copyright (c) 2010-2015 Benjamin Peterson
 #

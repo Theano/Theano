@@ -3,18 +3,18 @@ Classes and functions for validating graphs that contain view
 and inplace operations.
 
 """
-from collections import deque
+from __future__ import absolute_import, print_function, division
+
+from collections import deque, OrderedDict
 
 from six import iteritems
 
 import theano
 from . import toolbox
 from . import graph
-from theano.compat import OrderedDict
 from theano.misc.ordered_set import OrderedSet
 
 from .fg import InconsistencyError
-from six.moves.queue import Queue
 
 
 class ProtocolError(Exception):
@@ -30,6 +30,7 @@ class ProtocolError(Exception):
 
 def _contains_cycle(fgraph, orderings):
     """
+    Function to check if the given graph contains a cycle
 
     Parameters
     ----------
@@ -208,13 +209,14 @@ def _build_droot_impact(destroy_handler):
             # The code here add all the variables that are views of r into
             # an OrderedSet input_impact
             input_impact = OrderedSet()
-            queue = Queue()
-            queue.put(input_root)
-            while not queue.empty():
-                v = queue.get()
+
+            q = deque()
+            q.append(input_root)
+            while len(q) > 0:
+                v = q.popleft()
                 for n in destroy_handler.view_o.get(v, []):
                     input_impact.add(n)
-                    queue.put(n)
+                    q.append(n)
 
             for v in input_impact:
                 assert v not in droot
@@ -948,6 +950,8 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
             # add destroyed variable clients as computational dependencies
             for app in self.destroyers:
+                # keep track of clients that should run before the current Apply
+                root_clients = OrderedSet()
                 # for each destroyed input...
                 for output_idx, input_idx_list in iteritems(app.op.destroy_map):
                     destroyed_idx = input_idx_list[0]
@@ -1013,12 +1017,14 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
                     # add the rule: app must be preceded by all other Apply instances that
                     # depend on destroyed_input
-                    root_clients = OrderedSet()
                     for r in root_impact:
                         assert not [a for a, c in self.clients[r].items() if not c]
                         root_clients.update([a for a, c in self.clients[r].items() if c])
-                    root_clients.remove(app)
-                    if root_clients:
-                        rval[app] = root_clients
+
+                # app itself is a client of the destroyed inputs,
+                # but should not run before itself
+                root_clients.remove(app)
+                if root_clients:
+                    rval[app] = root_clients
 
         return rval

@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import unittest
 import theano
 import theano.tensor as T

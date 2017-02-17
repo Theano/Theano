@@ -9,7 +9,7 @@ Update files
 
 Update the NEWS.txt and move the old stuff in the HISTORY.txt file.
 To update the NEWS.txt file, check all ticket closed for this release
-and all commit log messages. Update the index.txt *News* section.
+and all commit log messages. Update the ``Theano/doc/index.txt`` *News* section.
 
 Update the "Vision"/"Vision State" in the file
 ``Theano/doc/introduction.txt``.
@@ -64,10 +64,17 @@ The documentation will be automatically regenerated in the next few hours.
 Generate and upload the package
 ===============================
 
-For release candidates, only upload on PyPI.
-
 On PyPI
 -------
+
+Set your umask to ``0022`` to ensure that the package file will be readable from other people.
+To check your umask::
+
+    umask
+
+To set your umask::
+
+    umask 0022
 
 Now change ``ISRELEASED`` in ``setup.py`` to ``True``.
 
@@ -84,8 +91,8 @@ UnicodeDecodeError if there are non-ASCII characters in NEWS.txt. You
 would need to change NEWS.txt so it contains only ASCII characters (the
 problem usually comes from diacritics in people's names).
 
-On mloss.org
-------------
+On mloss.org (for final releases only)
+--------------------------------------
 
 Project page is at http://mloss.org/software/view/241/.
 Account jaberg is listed as submitter.
@@ -138,8 +145,10 @@ then run the script.
 Announce the release
 ====================
 
-Generate an e-mail from the template in in ``EMAIL.txt``, including content
-from ``NEWS.txt``, and send it to the following mailing lists:
+Generate an e-mail from the template in ``EMAIL.txt``, including content
+from ``NEWS.txt``.
+
+For final releases, send the e-mail to the following mailing lists:
 
 * theano-users
 * theano-announce
@@ -150,5 +159,10 @@ from ``NEWS.txt``, and send it to the following mailing lists:
 For release candidates, only e-mail:
 
 * theano-announce
+* theano-dev
+* theano-users
+
+For alpha and beta releases, only e-mail:
+
 * theano-dev
 * theano-users

@@ -1,0 +1,8 @@
+.. _libdoc_gpuarray_type:
+
+===================================================
+:mod:`gpuarray.type` -- Type classes
+===================================================
+
+.. automodule:: theano.gpuarray.type
+   :members:

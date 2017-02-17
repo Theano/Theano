@@ -261,52 +261,6 @@ combination of ``return_internal_type=True`` and ``borrow=True`` arguments to
 hints that give more flexibility to the compilation and optimization of the
 graph.
 
-For GPU graphs, this borrowing can have a major speed impact.  See the following code:
-
-.. code-block:: python
-
-   from theano import function, config, shared, sandbox, tensor, Out
-   import numpy
-   import time
-
-   vlen = 10 * 30 * 768  # 10 x # cores x # threads per core
-   iters = 1000
-
-   rng = numpy.random.RandomState(22)
-   x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
-   f1 = function([], sandbox.cuda.basic_ops.gpu_from_host(tensor.exp(x)))
-   f2 = function([],
-                 Out(sandbox.cuda.basic_ops.gpu_from_host(tensor.exp(x)),
-                     borrow=True))
-   t0 = time.time()
-   for i in range(iters):
-       r = f1()
-   t1 = time.time()
-   no_borrow = t1 - t0
-   t0 = time.time()
-   for i in range(iters):
-       r = f2()
-   t1 = time.time()
-   print(
-       "Looping %s times took %s seconds without borrow "
-       "and %s seconds with borrow" % (iters, no_borrow, (t1 - t0))
-   )
-   if numpy.any([isinstance(x.op, tensor.Elemwise) and
-                 ('Gpu' not in type(x.op).__name__)
-                 for x in f1.maker.fgraph.toposort()]):
-       print('Used the cpu')
-   else:
-       print('Used the gpu')
-
-Which produces this output:
-
-.. code-block:: none
-
-   $ THEANO_FLAGS=device=gpu0,floatX=float32 python test1.py
-   Using gpu device 0: GeForce GTX 275
-   Looping 1000 times took 0.368273973465 seconds without borrow and 0.0240728855133 seconds with borrow.
-   Used the gpu
-
 *Take home message:*
 
 When an input *x* to a function is not needed after the function
@@ -317,4 +271,3 @@ requirement.  When a return value *y* is large (in terms of memory
 footprint), and you only need to read from it once, right away when
 it's returned, then consider marking it with an ``Out(y,
 borrow=True)``.
-

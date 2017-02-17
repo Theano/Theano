@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import copy
 import scipy.sparse
 from theano.compile import shared_constructor, SharedVariable

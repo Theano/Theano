@@ -1,10 +1,11 @@
+from __future__ import absolute_import, print_function, division
 import theano
 import copy
 from theano import Op
 from theano.gof import local_optimizer
 from theano.sandbox.cuda import cuda_available, GpuOp
 from theano.sandbox.cuda.basic_ops import gpu_flatten
-from theano.tensor.extra_ops import CumsumOp
+from theano.tensor.extra_ops import CumOp
 
 if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType
@@ -12,7 +13,7 @@ if cuda_available:
     from theano.sandbox.cuda import register_opt as register_gpu_opt
 
 
-class GpuCumsum(CumsumOp, GpuOp):
+class GpuCumsum(CumOp, GpuOp):
     """
 
     Parameters
@@ -48,7 +49,7 @@ class GpuCumsum(CumsumOp, GpuOp):
 
         return theano.Apply(self, [x], [x.type()])
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def make_thunk(self, node, storage_map, compute_map, no_recycling, impl=None):
         node_ = copy.copy(node)
         assert node.op is node_.op
         if node_.op.max_threads_dim0 is None or node_.op.max_grid_size1 is None or node_.op.max_grid_size2 is None:
@@ -69,7 +70,7 @@ class GpuCumsum(CumsumOp, GpuOp):
             node_.op.max_grid_size2 = prop['maxGridSize2']
 
         return super(GpuCumsum, node_.op).make_thunk(node_, storage_map,
-                                                     compute_map, no_recycling)
+                                                     compute_map, no_recycling, impl)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.axis)
@@ -437,12 +438,15 @@ def values_eq_approx_high_tol(a, b):
 
 
 @register_gpu_opt()
-@local_optimizer([CumsumOp])
+@local_optimizer([CumOp])
 def use_gpu_cumsum(node):
-    if type(node.op) is CumsumOp \
+    if type(node.op) is CumOp \
        and node.inputs[0].dtype == 'float32' \
        and node.inputs[0].owner \
        and isinstance(node.inputs[0].owner.op, HostFromGpu):
+
+        if node.op.mode != 'add':
+            return None
 
         axis = node.op.axis
         x = node.inputs[0]

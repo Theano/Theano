@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import errno
 import os
 import sys
@@ -18,6 +19,7 @@ from theano.configparser import (AddConfigVar, BoolParam, ConfigParam, EnumStr,
                                  TheanoConfigParser, THEANO_FLAGS_DICT)
 from theano.misc.cpucount import cpuCount
 from theano.misc.windows import call_subprocess_Popen, output_subprocess_Popen
+from theano.compat import maybe_add_to_os_environ_pathlist
 
 
 _logger = logging.getLogger('theano.configdefaults')
@@ -41,6 +43,8 @@ AddConfigVar('floatX',
              "Note: float16 support is experimental, use at your own risk.",
              EnumStr('float64', 'float32', 'float16',
                      convert=floatX_convert,),
+             # TODO: see gh-4466 for how to remove it.
+             in_c_key=True
              )
 
 AddConfigVar('warn_float64',
@@ -101,10 +105,9 @@ class DeviceParam(ConfigParam):
 
 AddConfigVar(
     'device',
-    ("Default device for computations. If gpu*, change the default to try "
-     "to move computation to it and to put shared variable of float32 "
-     "on it. Do not use upper case letters, only lower case even if "
-     "NVIDIA use capital letters."),
+    ("Default device for computations. If cuda* or opencl*, change the"
+     "default to try to move computation to the GPU. Do not use upper case"
+     "letters, only lower case even if NVIDIA uses capital letters."),
     DeviceParam('cpu', allow_override=False),
     in_c_key=False)
 
@@ -121,6 +124,12 @@ AddConfigVar(
     'force_device',
     "Raise an error if we can't use the specified device",
     BoolParam(False, allow_override=False),
+    in_c_key=False)
+
+AddConfigVar(
+    'print_global_stats',
+    "Print some global statistics (time spent) at the end",
+    BoolParam(False),
     in_c_key=False)
 
 
@@ -190,6 +199,12 @@ AddConfigVar(
     StrParam(default_cuda_root),
     in_c_key=False)
 
+AddConfigVar(
+    'cuda.enabled',
+    'If false, C code in old backend is not compiled.',
+    BoolParam(True),
+    in_c_key=False)
+
 
 def filter_nvcc_flags(s):
     assert isinstance(s, str)
@@ -232,11 +247,34 @@ AddConfigVar('gpuarray.sync',
              in_c_key=True)
 
 AddConfigVar('gpuarray.preallocate',
-             """If 0 it doesn't do anything.  If between 0 and 1 it
-             will preallocate that fraction of the total GPU memory.
-             If 1 or greater it will preallocate that amount of memory
-             (in megabytes).""",
-             FloatParam(0, lambda i: i >= 0),
+             """If negative it disables the allocation cache. If
+             between 0 and 1 it enables the allocation cache and
+             preallocates that fraction of the total GPU memory.  If 1
+             or greater it will preallocate that amount of memory (in
+             megabytes).""",
+             FloatParam(0, allow_override=False),
+             in_c_key=False)
+
+AddConfigVar('gpuarray.sched',
+             """The sched parameter passed for context creation to pygpu.
+                With CUDA, using "multi" is equivalent to using the parameter
+                cudaDeviceScheduleYield. This is useful to lower the
+                CPU overhead when waiting for GPU. One user found that it
+                speeds up his other processes that was doing data augmentation.
+             """,
+             EnumStr("default", "multi", "single"))
+
+AddConfigVar('gpuarray.single_stream',
+             """
+             If your computations are mostly lots of small elements,
+             using single-stream will avoid the synchronization
+             overhead and usually be faster.  For larger elements it
+             does not make a difference yet.  In the future when true
+             multi-stream is enabled in libgpuarray, this may change.
+             If you want to make sure to have optimal performance,
+             check both options.
+             """,
+             BoolParam(True),
              in_c_key=False)
 
 
@@ -329,8 +367,9 @@ AddConfigVar('dnn.conv.algo_bwd_filter',
 AddConfigVar('dnn.conv.precision',
              "Default data precision to use for the computation in cuDNN "
              "convolutions (defaults to the same dtype as the inputs of the "
-             "convolutions).",
-             EnumStr('as_input', 'float16', 'float32', 'float64'),
+             "convolutions, or float32 if inputs are float16).",
+             EnumStr('as_input_f32', 'as_input', 'float16', 'float32',
+                     'float64'),
              in_c_key=False)
 
 
@@ -343,18 +382,22 @@ def default_dnn_path(suffix):
 
 AddConfigVar('dnn.include_path',
              "Location of the cudnn header (defaults to the cuda root)",
-             StrParam(default_dnn_path('include')))
+             StrParam(default_dnn_path('include')),
+             # Added elsewhere in the c key only when needed.
+             in_c_key=False)
 
 AddConfigVar('dnn.library_path',
              "Location of the cudnn header (defaults to the cuda root)",
-             StrParam(default_dnn_path('lib' if sys.platform == 'darwin' else 'lib64')))
+             StrParam(default_dnn_path('lib' if sys.platform == 'darwin' else 'lib64')),
+             # Added elsewhere in the c key only when needed.
+             in_c_key=False)
 
 AddConfigVar('dnn.enabled',
              "'auto', use cuDNN if available, but silently fall back"
              " to not using it if not present."
              " If True and cuDNN can not be used, raise an error."
              " If False, disable cudnn",
-             StrParam("auto", "True", "False"),
+             EnumStr("auto", "True", "False"),
              in_c_key=False)
 
 # This flag determines whether or not to raise error/warning message if
@@ -375,9 +418,9 @@ AddConfigVar(
 AddConfigVar(
     'mode',
     "Default compilation mode",
-    EnumStr('Mode', 'ProfileMode', 'DebugMode', 'FAST_RUN',
+    EnumStr('Mode', 'DebugMode', 'FAST_RUN',
             'NanGuardMode',
-            'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'),
+            'FAST_COMPILE', 'DEBUG_MODE'),
     in_c_key=False)
 
 param = "g++"
@@ -387,6 +430,19 @@ try:
     rc = call_subprocess_Popen(['g++', '-v'])
 except OSError:
     rc = 1
+
+# Anaconda on Windows has mingw-w64 packages including GCC, but it may not be on PATH.
+if rc != 0:
+    if sys.platform == "win32":
+        mingw_w64_gcc = os.path.join(os.path.dirname(sys.executable), "Library", "mingw-w64", "bin", "g++")
+        try:
+            rc = call_subprocess_Popen([mingw_w64_gcc, '-v'])
+            if rc == 0:
+                maybe_add_to_os_environ_pathlist('PATH', os.path.dirname(mingw_w64_gcc))
+        except OSError:
+            rc = 1
+        if rc != 0:
+            _logger.warning("g++ not available, if using conda: `conda install m2w64-toolchain`")
 
 if rc != 0:
     param = ""
@@ -409,20 +465,31 @@ if param != "":
     del newp
     del distutils
 
+# to support path that includes spaces, we need to wrap it with double quotes on Windows
+if param and os.name == 'nt':
+    param = '"%s"' % param
+
+
+def warn_cxx(val):
+    """We only support clang++ as otherwise we hit strange g++/OSX bugs."""
+    if sys.platform == 'darwin' and 'clang++' not in val:
+        _logger.warning("Only clang++ is supported. With g++,"
+                        " we end up with strange g++/OSX bugs.")
+    return True
+
 AddConfigVar('cxx',
              "The C++ compiler to use. Currently only g++ is"
              " supported, but supporting additional compilers should not be "
              "too difficult. "
              "If it is empty, no C++ code is compiled.",
-             StrParam(param),
+             StrParam(param, is_valid=warn_cxx),
              in_c_key=False)
 del param
 
 if rc == 0 and config.cxx != "":
     # Keep the default linker the same as the one for the mode FAST_RUN
     AddConfigVar('linker',
-                 ("Default linker used if the theano flags mode is Mode "
-                  "or ProfileMode(deprecated)"),
+                 "Default linker used if the theano flags mode is Mode",
                  EnumStr('cvm', 'c|py', 'py', 'c', 'c|py_nogc',
                          'vm', 'vm_nogc', 'cvm_nogc'),
                  in_c_key=False)
@@ -430,14 +497,11 @@ else:
     # g++ is not present or the user disabled it,
     # linker should default to python only.
     AddConfigVar('linker',
-                 ("Default linker used if the theano flags mode is Mode "
-                  "or ProfileMode(deprecated)"),
+                 "Default linker used if the theano flags mode is Mode",
                  EnumStr('vm', 'py', 'vm_nogc'),
                  in_c_key=False)
-    try:
+    if type(config).cxx.is_default:
         # If the user provided an empty value for cxx, do not warn.
-        theano.configparser.fetch_val_for_key('cxx')
-    except KeyError:
         _logger.warning(
             'g++ not detected ! Theano will be unable to execute '
             'optimized C-implementations (for both CPU and GPU) and will '
@@ -459,8 +523,7 @@ AddConfigVar('allow_gc',
 # Keep the default optimizer the same as the one for the mode FAST_RUN
 AddConfigVar(
     'optimizer',
-    ("Default optimizer. If not None, will use this linker with the Mode "
-     "object (not ProfileMode(deprecated) or DebugMode)"),
+    "Default optimizer. If not None, will use this optimizer with the Mode",
     EnumStr('fast_run', 'merge', 'fast_compile', 'None'),
     in_c_key=False)
 
@@ -543,7 +606,9 @@ AddConfigVar(
 AddConfigVar(
     'lib.amdlibm',
     "Use amd's amdlibm numerical library",
-    BoolParam(False))
+    BoolParam(False),
+    # Added elsewhere in the c key only when needed.
+    in_c_key=False)
 
 AddConfigVar(
     'gpuelemwise.sync',
@@ -564,9 +629,12 @@ AddConfigVar(
     IntParam(8),
     in_c_key=False)
 
-AddConfigVar('experimental.mrg',
-             "Another random number generator that work on the gpu",
-             BoolParam(False))
+AddConfigVar(
+    'traceback.compile_limit',
+    "The number of stack to trace to keep during compilation. -1 mean all."
+    " If greater then 0, will also make us save Theano internal stack trace.",
+    IntParam(0),
+    in_c_key=False)
 
 AddConfigVar('experimental.unpickle_gpu_on_cpu',
              "Allow unpickling of pickled CudaNdarrays as numpy.ndarrays."
@@ -636,7 +704,7 @@ AddConfigVar('warn.ignore_bug_before',
               "Warning for specific bugs can be configured with specific "
               "[warn] flags."),
              EnumStr('0.7', 'None', 'all', '0.3', '0.4', '0.4.1', '0.5', '0.6',
-                     '0.7', '0.8', '0.8.1', '0.8.2',
+                     '0.7', '0.8', '0.8.1', '0.8.2', '0.9',
                      allow_override=False),
              in_c_key=False)
 
@@ -739,6 +807,13 @@ AddConfigVar('warn.inc_set_subtensor1',
               'one vector or matrix of ints).'),
              BoolParam(warn_default('0.7')),
              in_c_key=False)
+
+AddConfigVar('warn.round',
+             "Round changed its default from Seed to use for randomized unit tests. "
+             "Special value 'random' means using a seed of None.",
+             BoolParam(warn_default('0.9')),
+             in_c_key=False)
+
 
 AddConfigVar(
     'compute_test_value',
@@ -854,7 +929,8 @@ AddConfigVar(
     "It can be used to speed up compilation, reduce overhead "
     "(particularly for scalars) and reduce the number of generated C "
     "files.",
-    BoolParam(True))
+    BoolParam(True),
+    in_c_key=True)
 
 AddConfigVar(
     'cache_optimizations',
@@ -863,7 +939,8 @@ AddConfigVar(
     "any optimized graph and its optimization. Actually slow downs a lot "
     "the first optimization, and could possibly still contains some bugs. "
     "Use at your own risks.",
-    BoolParam(False))
+    BoolParam(False),
+    in_c_key=False)
 
 
 def good_seed_param(seed):
@@ -900,27 +977,6 @@ AddConfigVar('NanGuardMode.big_is_error',
 AddConfigVar('NanGuardMode.action',
              "What NanGuardMode does when it finds a problem",
              EnumStr('raise', 'warn', 'pdb'),
-             in_c_key=False)
-
-AddConfigVar('ProfileMode.n_apply_to_print',
-             "Number of apply instances to print by default",
-             IntParam(15, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('ProfileMode.n_ops_to_print',
-             "Number of ops to print by default",
-             IntParam(20, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('ProfileMode.min_memory_size',
-             "For the memory profile, do not print apply nodes if the size "
-             "of their outputs (in bytes) is lower then this threshold",
-             IntParam(1024, lambda i: i >= 0),
-             in_c_key=False)
-
-AddConfigVar('ProfileMode.profile_memory',
-             """Enable profiling of memory used by Theano functions""",
-             BoolParam(False),
              in_c_key=False)
 
 AddConfigVar('optimizer_excluding',
@@ -1052,6 +1108,13 @@ AddConfigVar('profiling.debugprint',
              BoolParam(False),
              in_c_key=False)
 
+AddConfigVar('profiling.ignore_first_call',
+             """
+             Do we ignore the first call of a Theano function.
+             """,
+             BoolParam(False),
+             in_c_key=False)
+
 AddConfigVar('optdb.position_cutoff',
              'Where to stop eariler during optimization. It represent the'
              ' position of the optimizer where to stop.',
@@ -1060,18 +1123,14 @@ AddConfigVar('optdb.position_cutoff',
 
 AddConfigVar('optdb.max_use_ratio',
              'A ratio that prevent infinite loop in EquilibriumOptimizer.',
-             FloatParam(5),
+             FloatParam(8),
              in_c_key=False)
 
 AddConfigVar('gcc.cxxflags',
              "Extra compiler flags for gcc",
-             StrParam(""))
-
-AddConfigVar(
-    'cmodule.mac_framework_link',
-    "If set to True, breaks certain MacOS installations with the infamous "
-    "Bus Error",
-    BoolParam(False))
+             StrParam(""),
+             # Added elsewhere in the c key only when needed.
+             in_c_key=False)
 
 AddConfigVar('cmodule.warn_no_version',
              "If True, will print a warning when compiling one or more Op "
@@ -1085,11 +1144,15 @@ AddConfigVar('cmodule.remove_gxx_opt',
              "If True, will remove the -O* parameter passed to g++."
              "This is useful to debug in gdb modules compiled by Theano."
              "The parameter -g is passed by default to g++",
-             BoolParam(False))
+             BoolParam(False),
+             # TODO: change so that this isn't needed.
+             # This can be done by handing this in compile_args()
+             in_c_key=True)
 
 AddConfigVar('cmodule.compilation_warning',
              "If True, will print compilation warnings.",
-             BoolParam(False))
+             BoolParam(False),
+             in_c_key=False)
 
 
 AddConfigVar('cmodule.preload_cache',
@@ -1097,9 +1160,17 @@ AddConfigVar('cmodule.preload_cache',
              BoolParam(False, allow_override=False),
              in_c_key=False)
 
+AddConfigVar('cmodule.age_thresh_use',
+             "In seconds. The time after which "
+             "Theano won't reuse a compile c module.",
+             # 24 days
+             IntParam(60 * 60 * 24 * 24, allow_override=False),
+             in_c_key=False)
+
 
 def default_blas_ldflags():
     global numpy
+    warn_record = []
     try:
         if (hasattr(numpy.distutils, '__config__') and
                 numpy.distutils.__config__):
@@ -1129,7 +1200,7 @@ def default_blas_ldflags():
             use_unix_epd = True
             if sys.platform == 'win32':
                 return ' '.join(
-                    ['-L%s' % os.path.join(sys.prefix, "Scripts")] +
+                    ['-L"%s"' % os.path.join(sys.prefix, "Scripts")] +
                     # Why on Windows, the library used are not the
                     # same as what is in
                     # blas_info['libraries']?
@@ -1199,42 +1270,54 @@ def default_blas_ldflags():
                     ['-l%s' % l for l in blas_info['libraries']])
             elif sys.platform == 'win32':
                 return ' '.join(
-                    ['-L%s' % lib_path] +
+                    ['-L"%s"' % lib_path] +
                     # Why on Windows, the library used are not the
                     # same as what is in blas_info['libraries']?
                     ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
                                           "mk2_rt"]])
 
-        # Anaconda
-        if "Anaconda" in sys.version and sys.platform == "win32":
-            # If the "mkl-service" conda package (available
-            # through Python package "mkl") is installed and
-            # importable, then the libraries (installed by conda
-            # package "mkl-rt") are actually available.  Using
-            # "conda install mkl" will install both, as well as
-            # optimized versions of numpy and scipy.
-            try:
-                import mkl  # noqa
-            except ImportError as e:
-                _logger.info('Conda mkl is not available: %s', e)
+        # MKL
+        # If mkl can be imported then use it. On conda:
+        # "conda install mkl-service" installs the Python wrapper and
+        # the low-level C libraries as well as optimised version of
+        # numpy and scipy.
+        try:
+            import mkl  # noqa
+        except ImportError as e:
+            if any([m for m in ('conda', 'Continuum') if m in sys.version]):
+                warn_record.append(('install mkl with `conda install mkl-service`: %s', e))
+        else:
+            # This branch is executed if no exception was raised
+            if sys.platform == "win32":
+                lib_path = [os.path.join(sys.prefix, 'Library', 'bin')]
+                flags = ['-L"%s"' % lib_path]
             else:
-                # This branch is executed if no exception was raised
-                lib_path = os.path.join(sys.prefix, 'DLLs')
-                flags = ['-L%s' % lib_path]
-                flags += ['-l%s' % l for l in ["mkl_core",
-                                               "mkl_intel_thread",
-                                               "mkl_rt"]]
-                res = try_blas_flag(flags)
-                if res:
-                    return res
+                lib_path = blas_info.get('library_dirs', [])
+                flags = []
+                if lib_path:
+                    flags = ['-L%s' % lib_path[0]]
+            flags += ['-l%s' % l for l in ["mkl_core",
+                                           "mkl_intel_thread",
+                                           "mkl_rt"]]
+            res = try_blas_flag(flags)
+            if res:
+                return res
+            flags.extend(['-Wl,-rpath,' + l for l in
+                          blas_info.get('library_dirs', [])])
+            res = try_blas_flag(flags)
+            if res:
+                maybe_add_to_os_environ_pathlist('PATH', lib_path[0])
+                return res
 
+        # to support path that includes spaces, we need to wrap it with double quotes on Windows
+        path_wrapper = "\"" if os.name == 'nt' else ""
         ret = (
             # TODO: the Gemm op below should separate the
             # -L and -l arguments into the two callbacks
             # that CLinker uses for that stuff.  for now,
             # we just pass the whole ldflags as the -l
             # options part.
-            ['-L%s' % l for l in blas_info.get('library_dirs', [])] +
+            ['-L%s%s%s' % (path_wrapper, l, path_wrapper) for l in blas_info.get('library_dirs', [])] +
             ['-l%s' % l for l in blas_info.get('libraries', [])] +
             blas_info.get('extra_link_args', []))
         # For some very strange reason, we need to specify -lm twice
@@ -1245,6 +1328,13 @@ def default_blas_ldflags():
         if res:
             return res
 
+        # If we are using conda and can't reuse numpy blas, then doing
+        # the fallback and test -lblas could give slow computation, so
+        # warn about this.
+        for warn in warn_record:
+            _logger.warning(*warn)
+        del warn_record
+
         # Some environment don't have the lib dir in LD_LIBRARY_PATH.
         # So add it.
         ret.extend(['-Wl,-rpath,' + l for l in
@@ -1253,13 +1343,10 @@ def default_blas_ldflags():
         if res:
             return res
 
-        # Try to add the anaconda lib directory to runtime loading of lib.
-        # This fix some case with Anaconda 2.3 on Linux.
-        # Newer Anaconda still have this problem but only have
-        # Continuum in sys.version.
-        if (("Anaconda" in sys.version or
-             "Continuum" in sys.version) and
-                "linux" in sys.platform):
+        # Add sys.prefix/lib to the runtime search path. On
+        # non-system installations of Python that use the
+        # system linker, this is generally neccesary.
+        if sys.platform in ("linux", "darwin"):
             lib_path = os.path.join(sys.prefix, 'lib')
             ret.append('-Wl,-rpath,' + lib_path)
             res = try_blas_flag(ret)
@@ -1295,7 +1382,11 @@ def try_blas_flag(flags):
             return 0;
         }
         """)
-    cflags = flags + ['-L' + d for d in theano.gof.cmodule.std_lib_dirs()]
+    cflags = list(flags)
+    # to support path that includes spaces, we need to wrap it with double quotes on Windows
+    path_wrapper = "\"" if os.name == 'nt' else ""
+    cflags.extend(['-L%s%s%s' % (path_wrapper, d, path_wrapper) for d in theano.gof.cmodule.std_lib_dirs()])
+
     res = GCC_compiler.try_compile_tmp(
         test_code, tmp_prefix='try_blas_',
         flags=cflags, try_run=True)
@@ -1308,7 +1399,9 @@ def try_blas_flag(flags):
 
 AddConfigVar('blas.ldflags',
              "lib[s] to include for [Fortran] level-3 blas implementation",
-             StrParam(default_blas_ldflags))
+             StrParam(default_blas_ldflags),
+             # Added elsewhere in the c key only when needed.
+             in_c_key=False)
 
 AddConfigVar(
     'metaopt.verbose',
@@ -1392,12 +1485,19 @@ AddConfigVar(
 
 AddConfigVar('scan.allow_gc',
              "Allow/disallow gc inside of Scan (default: False)",
-             BoolParam(False))
+             BoolParam(False),
+             in_c_key=False)
 
 AddConfigVar('scan.allow_output_prealloc',
              "Allow/disallow memory preallocation for outputs inside of scan "
              "(default: True)",
-             BoolParam(True))
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('scan.debug',
+             "If True, enable extra verbose output related to scan",
+             BoolParam(False),
+             in_c_key=False)
 
 AddConfigVar('pycuda.init',
              """If True, always initialize PyCUDA when Theano want to
@@ -1412,7 +1512,9 @@ AddConfigVar('pycuda.init',
 
 AddConfigVar('cublas.lib',
              """Name of the cuda blas library for the linker.""",
-             StrParam('cublas'))
+             StrParam('cublas'),
+             # Added elsewhere in the c key only when needed.
+             in_c_key=False)
 
 AddConfigVar('lib.cnmem',
              """Do we enable CNMeM or not (a faster CUDA memory allocator).
@@ -1571,6 +1673,8 @@ def short_platform(r=None, p=None):
 
     return p
 compiledir_format_dict['short_platform'] = short_platform()
+# Allow to have easily one compiledir per device.
+compiledir_format_dict['device'] = config.device
 compiledir_format_keys = ", ".join(sorted(compiledir_format_dict.keys()))
 default_compiledir_format = ("compiledir_%(short_platform)s-%(processor)s-"
                              "%(python_version)s-%(python_bitwidth)s")

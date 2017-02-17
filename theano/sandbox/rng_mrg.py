@@ -5,7 +5,7 @@ Generator code in SSJ package (L'Ecuyer & Simard).
 http://www.iro.umontreal.ca/~simardr/ssj/indexe.html
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import warnings
 
 import numpy
@@ -24,11 +24,13 @@ from . import multinomial
 
 import theano.sandbox.cuda
 from theano.sandbox.cuda import GpuOp
-from theano.sandbox.gpuarray.basic_ops import GpuKernelBase, Kernel
-from theano.sandbox.gpuarray.type import GpuArrayType
-from theano.sandbox.gpuarray.fp16_help import write_w
-from theano.sandbox.gpuarray.opt import (register_opt as register_gpua,
-                                         host_from_gpu as host_from_gpua)
+from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
+from theano.gpuarray.basic_ops import GpuKernelBase, Kernel, infer_context_name, as_gpuarray_variable
+from theano.gpuarray.type import GpuArrayType
+from theano.gpuarray.fp16_help import write_w
+from theano.gpuarray.opt import (register_opt as register_gpua,
+                                 register_opt2,
+                                 host_from_gpu as host_from_gpua)
 if theano.sandbox.cuda.cuda_available:
     from theano.sandbox.cuda import (CudaNdarrayType,
                                      float32_shared_constructor)
@@ -311,15 +313,6 @@ class mrg_uniform_base(Op):
             s = "no_inplace"
         return self.__class__.__name__ + "{%s,%s}" % (self.output_type, s)
 
-    def make_node(self, rstate, size):
-        # error checking slightly redundant here, since
-        # this op should not be called directly.
-        #
-        # call through MRG_RandomStreams instead.
-        return Apply(self,
-                     [rstate, size],
-                     [rstate.type(), self.output_type()])
-
     def grad(self, inputs, ograd):
         return [gradient.grad_undefined(self, k, inp,
                                         'No gradient defined through '
@@ -332,6 +325,20 @@ class mrg_uniform_base(Op):
 
 class mrg_uniform(mrg_uniform_base):
     # CPU VERSION
+
+    def make_node(self, rstate, size):
+        # error checking slightly redundant here, since
+        # this op should not be called directly.
+        #
+        # call through MRG_RandomStreams instead.
+        broad = []
+        for i in range(self.output_type.ndim):
+                broad.append(tensor.extract_constant(size[i]) == 1)
+        output_type = self.output_type.clone(broadcastable=broad)()
+        rstate = as_tensor_variable(rstate)
+        return Apply(self,
+                     [rstate, size],
+                     [rstate.type(), output_type])
 
     @classmethod
     def new(cls, rstate, ndim, dtype, size):
@@ -558,6 +565,20 @@ class mrg_uniform(mrg_uniform_base):
 
 class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
     # GPU VERSION
+
+    def make_node(self, rstate, size):
+        # error checking slightly redundant here, since
+        # this op should not be called directly.
+        #
+        # call through MRG_RandomStreams instead.
+        broad = []
+        for i in range(self.output_type.ndim):
+                broad.append(tensor.extract_constant(size[i]) == 1)
+        output_type = self.output_type.clone(broadcastable=broad)()
+        rstate = as_cuda_ndarray_variable(rstate)
+        return Apply(self,
+                     [rstate, size],
+                     [rstate.type(), output_type])
 
     @classmethod
     def new(cls, rstate, ndim, dtype, size):
@@ -804,6 +825,20 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
     # GpuArray version
     _f16_ok = True
 
+    def make_node(self, rstate, size):
+        # error checking slightly redundant here, since
+        # this op should not be called directly.
+        #
+        # call through MRG_RandomStreams instead.
+        broad = []
+        for i in range(self.output_type.ndim):
+                broad.append(tensor.extract_constant(size[i]) == 1)
+        output_type = self.output_type.clone(broadcastable=broad)()
+        rstate = as_gpuarray_variable(rstate, infer_context_name(rstate))
+        return Apply(self,
+                     [rstate, size],
+                     [rstate.type(), output_type])
+
     def get_params(self, node):
         return node.inputs[0].type.context
 
@@ -1032,21 +1067,18 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
           n_streams = n_elements;
 
         {
-          void *args[4];
           size_t ls = 0, gs = 0;
-          args[0] = %(o_sample)s->ga.data;
-          args[1] = %(o_rstate)s->ga.data;
-          args[2] = &n_elements;
-          args[3] = &n_streams;
-          int err = GpuKernel_sched(&%(kname)s, n_elements, &ls, &gs);
+          int err = GpuKernel_sched(&%(kname)s, n_streams, &ls, &gs);
           if (err != GA_NO_ERROR) {
               PyErr_Format(PyExc_RuntimeError, "GpuKernel_sched: %%s\\n",
                            GpuKernel_error(&%(kname)s, err));
               %(fail)s
           }
-          err = GpuKernel_call(&%(kname)s, 1, &ls, &gs, 0, args);
+          // Make sure we run as many blocks as we need to cover the whole n_streams
+          gs = (n_streams + ls - 1)/ls;
+          err = mrg_uniform_call(1, &ls, &gs, 0, %(o_sample)s->ga.data, %(o_rstate)s->ga.data, n_elements, n_streams);
           if (err != GA_NO_ERROR) {
-              PyErr_Format(PyExc_RuntimeError, "GpuKernel_call: %%s\\n",
+              PyErr_Format(PyExc_RuntimeError, "mrg_uniform_call: %%s\\n",
                            GpuKernel_error(&%(kname)s, err));
               %(fail)s
           }
@@ -1054,7 +1086,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (11,)
+        return (12,)
 
 
 def guess_n_streams(size, warn=False):
@@ -1205,6 +1237,7 @@ class MRG_RandomStreams(object):
         self.rstate = multMatVect(self.rstate, A1p134, M1, A2p134, M2)
         assert self.rstate.dtype == numpy.int32
 
+    @theano.configparser.change_flags(compute_test_value='off')
     def get_substream_rstates(self, n_streams, dtype, inc_rstate=True):
         # TODO : need description for parameter and return
         """
@@ -1413,55 +1446,85 @@ class MRG_RandomStreams(object):
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"
                                        " implemented for pvals.ndim = 2"))
 
-    def multinomial_wo_replacement(self, size=None, n=1, pvals=None,
-                                   ndim=None, dtype='int64', nstreams=None):
-        # TODO : need description for parameter
+    def choice(self, size=1, a=None, replace=True, p=None, ndim=None,
+               dtype='int64', nstreams=None):
         """
-        Sample `n` times *WITHOUT replacement* from a multinomial distribution
-        defined by probabilities pvals, and returns the indices of the sampled
-        elements.
-        `n` needs to be in [1, m], where m is the number of elements to select
-        from, i.e. m == pvals.shape[1]. By default n = 1.
+        Sample `size` times from a multinomial distribution defined by
+        probabilities `p`, and returns the indices of the sampled elements.
+        Sampled values are between 0 and `p.shape[1]-1`.
+        Only sampling without replacement is implemented for now.
 
-        Example : pvals = [[.98, .01, .01], [.01, .49, .50]] and n=1 will
-        probably result in [[0],[2]]. When setting n=2, this
+        Parameters
+        ----------
+        size: integer or integer tensor (default 1)
+            The number of samples. It should be between 1 and `p.shape[1]-1`.
+        a: int or None (default None)
+            For now, a should be None. This function will sample
+            values between 0 and `p.shape[1]-1`. When a != None will be
+            implemented, if `a` is a scalar, the samples are drawn from the
+            range 0,...,a-1. We default to 2 as to have the same interface as
+            RandomStream.
+        replace: bool (default True)
+            Whether the sample is with or without replacement.
+            Only replace=False is implemented for now.
+        p: 2d numpy array or theano tensor
+            the probabilities of the distribution, corresponding to values
+            0 to `p.shape[1]-1`.
+
+        Example : p = [[.98, .01, .01], [.01, .49, .50]] and size=1 will
+        probably result in [[0],[2]]. When setting size=2, this
         will probably result in [[0,1],[2,1]].
 
         Notes
         -----
-        -`size` and `ndim` are only there keep the same signature as other
+        -`ndim` is only there keep the same signature as other
         uniform, binomial, normal, etc.
-        TODO : adapt multinomial to take that into account
 
         -Does not do any value checking on pvals, i.e. there is no
         check that the elements are non-negative, less than 1, or
         sum to 1. passing pvals = [[-2., 2.]] will result in
         sampling [[0, 0]]
 
-        """
-        if pvals is None:
-            raise TypeError("You have to specify pvals")
-        pvals = as_tensor_variable(pvals)
+        -Only replace=False is implemented for now.
 
-        if size is not None:
-            raise ValueError("Provided a size argument to "
-                             "MRG_RandomStreams.multinomial_wo_replacement, "
-                             "which does not use the size argument.")
-        if ndim is not None:
-            raise ValueError("Provided an ndim argument to "
-                             "MRG_RandomStreams.multinomial_wo_replacement, "
-                             "which does not use the ndim argument.")
-        if pvals.ndim == 2:
-            # size = [pvals.shape[0], as_tensor_variable(n)]
-            size = pvals[:, 0].shape * n
-            unis = self.uniform(size=size, ndim=1, nstreams=nstreams)
-            op = multinomial.MultinomialWOReplacementFromUniform(dtype)
-            n_samples = as_tensor_variable(n)
-            return op(pvals, unis, n_samples)
-        else:
+        """
+        if replace:
             raise NotImplementedError(
-                "MRG_RandomStreams.multinomial_wo_replacement only implemented"
-                " for pvals.ndim = 2")
+                "MRG_RandomStreams.choice only works without replacement "
+                "for now.")
+
+        if a is not None:
+            raise TypeError("For now, a has to be None in "
+                            "MRG_RandomStreams.choice. Sampled values are "
+                            "beween 0 and p.shape[1]-1")
+
+        if p is None:
+            raise TypeError("For now, p has to be specified in "
+                            "MRG_RandomStreams.choice.")
+        p = as_tensor_variable(p)
+
+        if ndim is not None:
+            raise ValueError("ndim argument to "
+                             "MRG_RandomStreams.choice "
+                             "is not used.")
+
+        if p.ndim != 2:
+            raise NotImplementedError(
+                "MRG_RandomStreams.choice is only implemented for p.ndim = 2")
+
+        shape = p[:, 0].shape * size
+        unis = self.uniform(size=shape, ndim=1, nstreams=nstreams)
+        op = multinomial.MultinomialWOReplacementFromUniform(dtype)
+        return op(p, unis, as_tensor_variable(size))
+
+    def multinomial_wo_replacement(self, size=None, n=1, pvals=None,
+                                   ndim=None, dtype='int64', nstreams=None):
+        warnings.warn('MRG_RandomStreams.multinomial_wo_replacement() is '
+                      'deprecated and will be removed in the next release of '
+                      'Theano. Please use MRG_RandomStreams.choice() instead.')
+        assert size is None
+        return self.choice(size=n, a=None, replace=False, p=pvals,
+                           dtype=dtype, nstreams=nstreams, ndim=ndim)
 
     def normal(self, size, avg=0.0, std=1.0, ndim=None,
                dtype=None, nstreams=None):
@@ -1550,17 +1613,22 @@ class MRG_RandomStreams(object):
         return final_samples
 
 
+@register_opt2([mrg_uniform], 'fast_compile')
+def local_gpua_mrg_graph(op, context_name, inputs, outputs):
+    if (type(op) == mrg_uniform and
+            isinstance(inputs[0].type, GpuArrayType)):
+        outs = GPUA_mrg_uniform.new(inputs[0],
+                                    op.output_type.ndim,
+                                    op.output_type.dtype,
+                                    inputs[1])
+        return [outs[0], host_from_gpua(outs[1])]
+
+
 @register_gpua('fast_compile')
 @local_optimizer([mrg_uniform])
 def local_gpua_mrg(node):
-    # TODO : need description for function
-    if (type(node.op) == mrg_uniform and
-            isinstance(node.inputs[0].type, GpuArrayType)):
-        outs = GPUA_mrg_uniform.new(node.inputs[0],
-                                    node.op.output_type.ndim,
-                                    node.op.output_type.dtype,
-                                    node.inputs[1])
-        return [outs[0], host_from_gpua(outs[1])]
+    context_name = infer_context_name(*node.inputs)
+    return local_gpua_mrg_graph(node.op, context_name, node.inputs, node.outputs)
 
 
 MRG_RNGs = (mrg_uniform, GPU_mrg_uniform, GPUA_mrg_uniform)

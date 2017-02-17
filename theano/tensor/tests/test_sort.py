@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import unittest
 from theano.tests import unittest_tools as utt
 
@@ -83,14 +84,13 @@ class test_sort(unittest.TestCase):
         data = np.random.rand(2, 3, 4).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, None), [data])
 
-    def test_grad_negative_axis(self):
-        # test 2D
+    def test_grad_negative_axis_2d(self):
         data = np.random.rand(2, 3).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, -1), [data])
         data = np.random.rand(2, 3).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, -2), [data])
 
-        # test 3D
+    def test_grad_negative_axis_3d(self):
         data = np.random.rand(2, 3, 4).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, -1), [data])
         data = np.random.rand(2, 3, 4).astype(theano.config.floatX)
@@ -98,7 +98,7 @@ class test_sort(unittest.TestCase):
         data = np.random.rand(2, 3, 4).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, -3), [data])
 
-        # test 4D
+    def test_grad_negative_axis_4d(self):
         data = np.random.rand(2, 3, 4, 2).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, -1), [data])
         data = np.random.rand(2, 3, 4, 2).astype(theano.config.floatX)
@@ -108,14 +108,13 @@ class test_sort(unittest.TestCase):
         data = np.random.rand(2, 3, 4, 2).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, -4), [data])
 
-    def test_grad_nonnegative_axis(self):
-        # test 2D
+    def test_grad_nonnegative_axis_2d(self):
         data = np.random.rand(2, 3).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, 0), [data])
         data = np.random.rand(2, 3).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, 1), [data])
 
-        # test 3D
+    def test_grad_nonnegative_axis_3d(self):
         data = np.random.rand(2, 3, 4).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, 0), [data])
         data = np.random.rand(2, 3, 4).astype(theano.config.floatX)
@@ -123,7 +122,7 @@ class test_sort(unittest.TestCase):
         data = np.random.rand(2, 3, 4).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, 2), [data])
 
-        # test 4D
+    def test_grad_nonnegative_axis_4d(self):
         data = np.random.rand(2, 3, 4, 2).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, 0), [data])
         data = np.random.rand(2, 3, 4, 2).astype(theano.config.floatX)

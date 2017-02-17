@@ -21,12 +21,15 @@ which may be rendered with Sphinx. A rendered version is
 maintained at http://www.deeplearning.net/software/theano/library/
 
 """
+from __future__ import absolute_import, print_function, division
 
 __docformat__ = "restructuredtext en"
 
 # Set a default logger. It is important to do this before importing some other
 # theano code, since this code may want to log some messages.
 import logging
+
+import sys
 
 theano_logger = logging.getLogger("theano")
 logging_default_handler = logging.StreamHandler()
@@ -65,15 +68,17 @@ from theano.compile import (
     SymbolicOutput, Out,
     Mode,
     predefined_modes, predefined_linkers, predefined_optimizers,
-    FunctionMaker, function, function_dump, OpFromGraph,
-    ProfileMode, ProfileStats,
+    FunctionMaker, function, function_dump,
+    OpFromGraph,
+    ProfileStats,
     Param, shared, as_op)
 
 from theano.misc.safe_asarray import _asarray
 
 from theano.printing import pprint, pp
 
-from theano.scan_module import scan, map, reduce, foldl, foldr, clone
+from theano.scan_module import (scan, map, reduce, foldl, foldr, clone,
+                                scan_checkpoints)
 
 from theano.updates import OrderedUpdates
 
@@ -115,7 +120,7 @@ if (config.device.startswith('cuda') or
         config.init_gpu_device.startswith('cuda') or
         config.init_gpu_device.startswith('opencl') or
         config.contexts != ''):
-    import theano.sandbox.gpuarray
+    import theano.gpuarray
 
 # Use config.numpy to call numpy.seterr
 import numpy

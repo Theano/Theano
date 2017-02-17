@@ -2,6 +2,7 @@
 This code can only work if gnumpy and theano are initialized on the
 same gpu as theano.
 """
+from __future__ import absolute_import, print_function, division
 
 import six
 from six.moves import reduce

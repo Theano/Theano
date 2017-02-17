@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import numpy
 import theano
 from theano.tensor import constant
@@ -8,7 +8,7 @@ from theano.sandbox.rng_mrg import MRG_RandomStreams
 # Skip tests if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda_ndarray
-if cuda_ndarray.cuda_available == False:
+if cuda_ndarray.cuda_available is False:
     raise SkipTest('Optional package cuda disabled')
 
 # The PyCObject that represents the cuda random stream object
@@ -168,13 +168,13 @@ def compare_speed():
     dest = theano.shared(numpy.zeros(N, dtype=theano.config.floatX))
 
     mrg_u = theano.function([], [], updates={dest: mrg.uniform((N,))},
-            profile='mrg uniform')
+                            profile='mrg uniform')
     crn_u = theano.function([], [], updates={dest: crn.uniform((N,))},
-            profile='crn uniform')
+                            profile='crn uniform')
     mrg_n = theano.function([], [], updates={dest: mrg.normal((N,))},
-            profile='mrg normal')
+                            profile='mrg normal')
     crn_n = theano.function([], [], updates={dest: crn.normal((N,))},
-            profile='crn normal')
+                            profile='crn normal')
 
     for f in mrg_u, crn_u, mrg_n, crn_n:
         # don't time the first call, it has some startup cost

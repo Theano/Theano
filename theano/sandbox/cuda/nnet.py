@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 from theano import Op, Apply
 from six import StringIO
 
@@ -578,45 +578,46 @@ class GpuSoftmax(GpuOp):
         """ % locals()
 
     def c_support_code_apply(self, node, nodename):
-        ret1 = nvcc_kernel("kSoftmax_%s" % nodename,
-                params=['int M', 'int N',
-                        'const float * x', 'const int sx0', 'const int sx1',
-                        'float * sm', 'const int sm_s0', 'const int sm_s1'],
-                body=[
-                    "extern __shared__ float buf[]",
-                    "float * buf2 = buf + N",
-                    "for (int blockIDX = blockIdx.x; blockIDX < M;"
-                    "     blockIDX += gridDim.x){",
-                      "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
-                        "buf[tx] = x[blockIDX * sx0 + tx * sx1]",
-                        "buf2[tx] = buf[tx]",
-                      "}",
-                      "__syncthreads()",
-                      inline_softmax('N', 'buf', 'buf2',
-                                     'threadIdx.x', 'blockDim.x'),
-                      "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
-                        # This set all value correctly
-                        "sm[blockIDX * sm_s0 + tx * sm_s1] = buf[tx]",
-                      "}",
-                      "__syncthreads()",
-                    "}",
-                ])
-        ret2 = nvcc_kernel("kSoftmax_fixed_shared%s" % nodename,
-                params=['int M', 'int N',
-                        'const float * x', 'const int sx0', 'const int sx1',
-                        'float * sm', 'const int sm_s0', 'const int sm_s1'],
-                body=[
-                    "extern __shared__ float buf[]",
-                    "for (int blockIDX = blockIdx.x; blockIDX < M;"
-                    "     blockIDX += gridDim.x){",
-                      "const float *x_ptr = &x[blockIDX * sx0]",
-                      "float *sm_ptr = &sm[blockIDX * sm_s0]",
-                      inline_softmax_fixed_shared('N', 'buf', 'x_ptr', 'sx1',
-                                                  'sm_ptr', 'sm_s1',
-                                                  'threadIdx.x', 'blockDim.x'),
-                      "__syncthreads()",
-                    "}",
-                    ])
+        ret1 = nvcc_kernel(
+            "kSoftmax_%s" % nodename,
+            params=['int M', 'int N',
+                    'const float * x',
+                    'const int sx0',
+                    'const int sx1',
+                    'float * sm',
+                    'const int sm_s0',
+                    'const int sm_s1'],
+            body=["extern __shared__ float buf[]",
+                  "float * buf2 = buf + N",
+                  "for (int blockIDX = blockIdx.x; blockIDX < M;"
+                  "     blockIDX += gridDim.x){",
+                  "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
+                  "buf[tx] = x[blockIDX * sx0 + tx * sx1]",
+                  "buf2[tx] = buf[tx]", "}", "__syncthreads()",
+                  inline_softmax('N',
+                                 'buf',
+                                 'buf2',
+                                 'threadIdx.x',
+                                 'blockDim.x'),
+                  "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
+                  # This set all value correctly
+                  "sm[blockIDX * sm_s0 + tx * sm_s1] = buf[tx]", "}",
+                  "__syncthreads()", "}", ])
+        ret2 = nvcc_kernel(
+            "kSoftmax_fixed_shared%s" % nodename,
+            params=['int M', 'int N',
+                    'const float * x', 'const int sx0', 'const int sx1',
+                    'float * sm', 'const int sm_s0', 'const int sm_s1'],
+            body=["extern __shared__ float buf[]",
+                  "for (int blockIDX = blockIdx.x; blockIDX < M;"
+                  "     blockIDX += gridDim.x){",
+                  "const float *x_ptr = &x[blockIDX * sx0]",
+                  "float *sm_ptr = &sm[blockIDX * sm_s0]",
+                  inline_softmax_fixed_shared('N', 'buf', 'x_ptr', 'sx1',
+                                              'sm_ptr', 'sm_s1',
+                                              'threadIdx.x',
+                                              'blockDim.x'),
+                  "__syncthreads()", "}", ])
         return ret1 + "\n" + ret2
 
 gpu_softmax = GpuSoftmax()
@@ -768,25 +769,20 @@ class GpuSoftmaxWithBias(GpuOp):
                     'const float * x', 'const int sx0', 'const int sx1',
                     'const float * b', 'const int sb0',
                     'float * sm', 'const int sm_s0', 'const int sm_s1'],
-            body=[
-                    "extern __shared__ float buf[]",
-                    "float * buf2 = buf + N",
-                    "for (int blockIDX = blockIdx.x; blockIDX < M;"
-                    "     blockIDX += gridDim.x){",
-                      "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
-                         "buf[tx] = x[blockIDX * sx0 + tx * sx1]",
-                         "buf[tx] += b[tx * sb0]",
-                         "buf2[tx] = buf[tx]",
-                      "}",
-                       "__syncthreads()",
-                       inline_softmax('N', 'buf', 'buf2',
-                                      'threadIdx.x', 'blockDim.x'),
-                      "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
-                         "sm[blockIDX * sm_s0 + tx * sm_s1] = buf[tx]",
-                      "}",
-                      "__syncthreads()",
-                    "}",
-            ])
+            body=["extern __shared__ float buf[]",
+                  "float * buf2 = buf + N",
+                  "for (int blockIDX = blockIdx.x; blockIDX < M;"
+                  "     blockIDX += gridDim.x){",
+                  "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
+                  "buf[tx] = x[blockIDX * sx0 + tx * sx1]",
+                  "buf[tx] += b[tx * sb0]",
+                  "buf2[tx] = buf[tx]", "}",
+                  "__syncthreads()", inline_softmax('N', 'buf', 'buf2',
+                                                    'threadIdx.x',
+                                                    'blockDim.x'),
+                  "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
+                  "sm[blockIDX * sm_s0 + tx * sm_s1] = buf[tx]", "}",
+                  "__syncthreads()", "}", ])
         ret2 = nvcc_kernel("kSoftmaxWithBias_fixed_shared%s" % nodename,
                            params=['int M', 'int N',
                                    'const float * x',
@@ -802,7 +798,8 @@ class GpuSoftmaxWithBias(GpuOp):
                                "float *sm_ptr = &sm[blockIDX * sm_s0]",
                                inline_softmax_fixed_shared('N', 'buf',
                                                            'x_ptr', 'sx1',
-                                                           'sm_ptr', 'sm_s1',
+                                                           'sm_ptr',
+                                                           'sm_s1',
                                                            'threadIdx.x',
                                                            'blockDim.x',
                                                            'b', 'sb0'),

@@ -62,7 +62,7 @@ import copy
 
 
 def get_version():
-    return 0.293
+    return 0.296
 
 @cython.boundscheck(False)
 def perform(
@@ -217,7 +217,7 @@ def perform(
     else:
         for idx in range(n_seqs):
             if args[<unsigned int>(1+idx)].shape[0] < n_steps:
-                raise ValueError(('Sequence is shorter then the required '
+                raise ValueError(('Sequence is shorter than the required '
                                  'number of steps : (n_steps, seq, '
                                   'seq.shape):'), n_steps,
                                   args[1+idx],
@@ -514,8 +514,6 @@ def perform(
             if i == 0:
                 jout = j+offset_out
                 shape = (store_steps[j],) + output_storage[jout].storage[0].shape
-                if len(output_storage[jout].storage[0].shape) == 0:
-                    vector_outs[j] = 1
                 dtype = output_storage[jout].storage[0].dtype
                 if (outs[j][0] is None or
                         outs[j][0].shape[0] < store_steps[j] or
@@ -544,7 +542,17 @@ def perform(
                     output_reused = False
 
                 if not output_reused:
-                    outs[j][0][pos[j]] = output_storage[j+offset_out].storage[0]
+                    try:
+                        outs[j][0][pos[j]] = output_storage[j+offset_out].storage[0]
+                    except ValueError as e:
+                        if i == 0:
+                            raise
+                        raise ValueError(
+                            "An output of the scan has changed shape. "
+                            "This may be caused by a pushout optimization."
+                            " Try adding "
+                            "'optimizer_excluding=scanOp_pushout_output' "
+                            "to your Theano flags.")
 
         # 5.6 Copy over the values for outputs corresponding to shared
         # variables
@@ -640,4 +648,3 @@ def perform(
     self.t_call = t_call
     self.t_fn   = t_fn
     # print 'Cython > timing', t_call, t_fn, 'in percentage', 100.*t_fn/t_call
-

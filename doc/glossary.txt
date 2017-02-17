@@ -23,7 +23,7 @@ Glossary
         (virtually) replicating the smaller tensor along
         the dimensions that it is lacking.  
         
-        For more detail, see :ref:`libdoc_tensor_broadcastable`, and also
+        For more detail, see :ref:`tutbroadcasting`, and also
         * `SciPy documentation about numpy's broadcasting <http://www.scipy.org/EricsBroadcastingDoc>`_
         * `OnLamp article about numpy's broadcasting <http://www.onlamp.com/pub/a/python/2000/09/27/numerically.html>`_
 

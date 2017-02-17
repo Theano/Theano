@@ -1,5 +1,5 @@
 """Define random number Type (`RandomStateType`) and Op (`RandomFunction`)."""
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import sys
 from copy import copy
@@ -133,15 +133,27 @@ class RandomFunction(gof.Op):
         self.__setstate__([fn, outtype, inplace, ndim_added])
 
     def __getstate__(self):
-        return self.state
+        d = dict(self.__dict__)
+        del d['exec_fn']
+        if 'destroy_map' in d:
+            del d['destroy_map']
+        return d
 
-    def __setstate__(self, state):
-        self.state = state
-        fn, outtype, inplace, ndim_added = state
-        if isinstance(fn, string_types):
-            self.fn = getattr(numpy.random.RandomState, fn)
+    def __setstate__(self, dct):
+        if isinstance(dct, dict):
+            state = [dct['fn'],
+                     dct['outtype'],
+                     dct['inplace'],
+                     dct['ndim_added']]
+            self.__dict__.update(dct)
         else:
-            self.fn = fn
+            state = dct
+        fn, outtype, inplace, ndim_added = state
+        self.fn = fn
+        if isinstance(fn, string_types):
+            self.exec_fn = getattr(numpy.random.RandomState, fn)
+        else:
+            self.exec_fn = fn
         self.outtype = outtype
         self.inplace = inplace
         if self.inplace:
@@ -149,7 +161,7 @@ class RandomFunction(gof.Op):
         self.ndim_added = ndim_added
 
     def __str__(self):
-        return 'RandomFunction{%s}' % self.fn.__name__
+        return 'RandomFunction{%s}' % self.exec_fn.__name__
 
     def make_node(self, r, shape, *args):
         """
@@ -247,7 +259,7 @@ class RandomFunction(gof.Op):
         if not self.inplace:
             r = copy(r)
         rout[0] = r
-        rval = self.fn(r, *(args + [shape]))
+        rval = self.exec_fn(r, *(args + [shape]))
         if (not isinstance(rval, numpy.ndarray) or
                 str(rval.dtype) != node.outputs[1].type.dtype):
             rval = theano._asarray(rval, dtype=node.outputs[1].type.dtype)
@@ -391,8 +403,7 @@ def _infer_ndim_bcast(ndim, shape, *args):
         raise TypeError("shape must be a vector or list of scalar, got '%s'" %
                         v_shape)
 
-    if (not (v_shape.dtype.startswith('int') or
-             v_shape.dtype.startswith('uint'))):
+    if v_shape.dtype not in theano.tensor.integer_dtypes:
         raise TypeError('shape must be an integer vector or list',
                         v_shape.dtype)
 
@@ -539,6 +550,8 @@ def random_integers_helper(random_state, low, high, size):
     This is a generalization of numpy.random.random_integers to the case where
     low and high are tensors.
 
+    Since random_integers is deprecated it calls randint() instead.
+
     """
     # Figure out the output shape
     if size is not None:
@@ -575,7 +588,7 @@ def random_integers_helper(random_state, low, high, size):
                                                    high.shape)
     # Iterate over these indices, drawing one sample at a time from numpy
     for oi, li, hi in zip(*broadcast_ind):
-        out[oi] = random_state.random_integers(low=low[li], high=high[hi])
+        out[oi] = random_state.randint(low=low[li], high=high[hi] + 1)
 
     return out
 
@@ -633,11 +646,6 @@ def choice(random_state, size=None, a=2, replace=True, p=None, ndim=None,
     If size is None, a scalar will be returned.
 
     """
-    # numpy.random.choice is only available for numpy versions >= 1.7
-    major, minor, _ = numpy.version.short_version.split('.')
-    if (int(major), int(minor)) < (1, 7):
-        raise ImportError('choice requires at NumPy version >= 1.7 '
-                          '(%s)' % numpy.__version__)
     a = tensor.as_tensor_variable(a)
     if isinstance(replace, bool):
         replace = tensor.constant(replace, dtype='int8')
@@ -904,7 +912,7 @@ def random_make_inplace(node):
     if isinstance(op, RandomFunction) and not op.inplace:
         # Read op_fn from op.state, not from op.fn, since op.fn
         # may not be picklable.
-        op_fn, op_outtype, op_inplace, op_ndim_added = op.__getstate__()
+        op_fn, op_outtype, op_inplace, op_ndim_added = op._props()
         new_op = RandomFunction(op_fn, op_outtype, inplace=True,
                                 ndim_added=op_ndim_added)
         return new_op.make_node(*node.inputs).outputs

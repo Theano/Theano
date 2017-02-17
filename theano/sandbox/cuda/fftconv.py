@@ -1,12 +1,12 @@
-import string
+from __future__ import absolute_import, print_function, division
 
 import numpy as np
 import theano
 import theano.tensor as T
 
+from theano.misc.pycuda_init import pycuda_available
 from theano.sandbox.cuda import cuda_available, GpuOp
 from theano.ifelse import ifelse
-from theano.misc.pycuda_init import pycuda_available
 
 if cuda_available:
     from theano.sandbox.cuda import (basic_ops, CudaNdarrayType,
@@ -48,7 +48,7 @@ class ScikitsCudaOp(GpuOp):
 
         return theano.Apply(self, [inp], [self.output_type(inp)()])
 
-    def make_thunk(self, node, storage_map, _, _2):
+    def make_thunk(self, node, storage_map, _, _2, impl=None):
         if not scikits_cuda_available:
             raise RuntimeError(
                 "scikits.cuda is needed for all GPU fft implementation,"
@@ -61,7 +61,7 @@ class CuFFTOp(ScikitsCudaOp):
         return CudaNdarrayType(
             broadcastable=[False] * (inp.type.ndim + 1))
 
-    def make_thunk(self, node, storage_map, _, _2):
+    def make_thunk(self, node, storage_map, _, _2, impl=None):
         super(CuFFTOp, self).make_thunk(node, storage_map, _, _2)
 
         from theano.misc.pycuda_utils import to_gpuarray
@@ -118,7 +118,7 @@ class CuIFFTOp(ScikitsCudaOp):
         return CudaNdarrayType(
             broadcastable=[False] * (inp.type.ndim - 1))
 
-    def make_thunk(self, node, storage_map, _, _2):
+    def make_thunk(self, node, storage_map, _, _2, impl=None):
         super(CuIFFTOp, self).make_thunk(node, storage_map, _, _2)
 
         from theano.misc.pycuda_utils import to_gpuarray
@@ -246,8 +246,8 @@ def sc_complex_dot_batched(bx_gpu, by_gpu, bc_gpu, transa='N', transb='N',
     alpha = np.complex64(1.0)
     beta = np.complex64(0.0)
 
-    transa = string.lower(transa)
-    transb = string.lower(transb)
+    transa = transa.lower()
+    transb = transb.lower()
 
     if transb in ['t', 'c']:
         N, m, k = by_shape
@@ -314,7 +314,7 @@ class BatchedComplexDotOp(ScikitsCudaOp):
     def output_type(self, inp):
         return CudaNdarrayType(broadcastable=[False] * inp.type.ndim)
 
-    def make_thunk(self, node, storage_map, _, _2):
+    def make_thunk(self, node, storage_map, _, _2, impl=None):
         super(BatchedComplexDotOp, self).make_thunk(node, storage_map, _, _2)
 
         inputs = [storage_map[v] for v in node.inputs]
@@ -447,7 +447,7 @@ def conv2d_fft(input, filters, image_shape=None, filter_shape=None,
             o1 = i1 + 1
             input_padded = T.zeros((b, ic, o0, o1), dtype='float32')
             input_padded = T.set_subtensor(input_padded[:, :, :i0, :i1],
-                                       input)
+                                           input)
         else:
             o1 = i1
             input_padded = input
@@ -522,9 +522,11 @@ def conv2d_fft(input, filters, image_shape=None, filter_shape=None,
     # special way because we specify explicitly here
     # how much values are expected.
     if border_mode == 'valid':
-        output = output_circ[:, :, (f0-1):(f0-1 + i0-f0+1), (f1-1):(f1-1 + i1-f1+1)]
+        output = output_circ[:, :, (f0 - 1):(f0 - 1 + i0 - f0 + 1),
+                             (f1 - 1):(f1 - 1 + i1 - f1 + 1)]
     elif border_mode == 'full':
-        output = output_circ[:, :, (f0-1):(f0-1 + i0+f0-1), (f1-1):(f1-1 + i1+f1-1)]
+        output = output_circ[:, :, (f0 - 1):(f0 - 1 + i0 + f0 - 1),
+                             (f1 - 1):(f1 - 1 + i1 + f1 - 1)]
     else:
         raise ValueError('invalid mode')
 
@@ -654,7 +656,7 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
     output_fft_s = mult_and_reduce(input_fft_v, filters_fft_v,
                                    input_shape=input_fft_v_shape,
                                    filter_shape=filters_fft_v_shape)
-    #output_fft_s = input_fft_v
+    # output_fft_s = input_fft_v
 
     # reshape for IFFT
     output_fft_flat = output_fft_s.reshape((b * oc, o0, o1, o2 // 2 + 1, 2))
@@ -672,12 +674,16 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
     # special way because we specify explicitly here
     # how much values are expected.
     if border_mode == 'valid':
-        output = output_circ[:, :, (f0-1):(f0-1 + i0-f0+1), (f1-1):(f1-1 + i1-f1+1), (f2-1):(f2-1 + i2-f2+1)]
+        output = output_circ[:, :, (f0 - 1):(f0 - 1 + i0 - f0 + 1),
+                             (f1 - 1):(f1 - 1 + i1 - f1 + 1),
+                             (f2 - 1):(f2 - 1 + i2 - f2 + 1)]
     elif border_mode == 'full':
-        output = output_circ[:, :, (f0-1):(f0-1 + i0+f0-1), (f1-1):(f1-1 + i1+f1-1), (f2-1):(f2-1 + i2+f2-1)]
+        output = output_circ[:, :, (f0 - 1):(f0 - 1 + i0 + f0 - 1),
+                             (f1 - 1):(f1 - 1 + i1 + f1 - 1),
+                             (f2 - 1):(f2 - 1 + i2 + f2 - 1)]
     else:
         raise ValueError('invalid mode')
-    #output = output_circ[:, :, :, :, :]
+    # output = output_circ[:, :, :, :, :]
 
     # Rescale manually. This is just a factor that comes in during the
     # trip through FFT and inverse FFT.

@@ -7,6 +7,7 @@ from tempfile import mkdtemp
 import time
 import unittest
 import copy
+from collections import OrderedDict
 
 import six.moves.cPickle as pickle
 from six.moves import xrange
@@ -23,7 +24,7 @@ from theano.compile.pfunc import rebuild_collect_shared
 from theano.tests import unittest_tools as utt
 import theano.scalar.sharedvar
 from theano.scan_module.scan_op import Scan
-from theano.compat import PY3, OrderedDict
+from theano.compat import PY3
 from theano.tests.unittest_tools import attr
 
 
@@ -317,12 +318,14 @@ class T_Scan(unittest.TestCase):
 
         state = theano.tensor.scalar('state')
         n_steps = theano.tensor.iscalar('nsteps')
+        # Test return_list at the same time.
         output, updates = theano.scan(f_pow2,
                                       [],
                                       state,
                                       [],
                                       n_steps=n_steps,
                                       truncate_gradient=-1,
+                                      return_list=True,
                                       go_backwards=False)
         my_f = theano.function([state, n_steps],
                                output,
@@ -336,7 +339,7 @@ class T_Scan(unittest.TestCase):
         numpy_values = numpy.array([state * (2 ** (k + 1)) for k
                                     in xrange(steps)])
         theano_values = my_f(state, steps)
-        utt.assert_allclose(numpy_values, theano_values)
+        utt.assert_allclose(numpy_values, theano_values[0])
 
     def test_subtensor_multiple_slices(self):
         # This addresses a bug reported by Matthias Zoehrer
@@ -1820,7 +1823,7 @@ class T_Scan(unittest.TestCase):
 
     def test_grad_multiple_outs_some_disconnected(self):
         final_cost = self._grad_mout_helper(100, mode_nodebug)
-        assert final_cost < 0.02
+        assert final_cost < 0.02, final_cost
 
     def test_grad_multiple_outs_some_disconnected_2(self):
         # This is to try the network in DEBUG_MODE, but not fully
@@ -4415,16 +4418,17 @@ class T_Scan(unittest.TestCase):
                 n_steps=1,
             )
             return sum_outer + result_inner[-1]
-
+        # Also test return_list for that case.
         result_outer, _ = theano.scan(
             fn=loss_outer,
             outputs_info=tensor.as_tensor_variable(
                 numpy.asarray(0, dtype=numpy.float32)),
             non_sequences=[W],
             n_steps=n_steps,
+            return_list=True,
         )
 
-        cost = result_outer[-1]
+        cost = result_outer[0][-1]
         H = theano.gradient.hessian(cost, W)
         print(".", file=sys.stderr)
         f = theano.function([W, n_steps], H)
@@ -4829,7 +4833,7 @@ class ScanGpuTests:
         # The grad scan is always the 2nd one according to toposort. If the
         # optimization has been applied, it has 2 outputs, otherwise 3.
         grad_scan_node = scan_nodes[1]
-        assert len(grad_scan_node.outputs) == 2
+        assert len(grad_scan_node.outputs) == 2, len(grad_scan_node.outputs)
 
         # Call the theano function to ensure the absence of a memory error
         feval_backprop(numpy.zeros((mb_length, mb_size, n_in),
@@ -4939,7 +4943,7 @@ class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
     """
 
     def __init__(self, *args, **kwargs):
-        from theano.sandbox import gpuarray
+        from theano import gpuarray
         self.gpu_backend = gpuarray
 
         # This is unfortunate, but required
@@ -4952,6 +4956,9 @@ class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
         super(T_Scan_Gpuarray, self).__init__(*args, **kwargs)
 
     def setUp(self):
+        # Make sure to activate the new backend, if possible otherwise
+        # tesing this class directly will always skip.
+        import theano.gpuarray.tests.config
         # Skip the test if pygpu is not available
         if not self.gpu_backend.pygpu_activated:
             raise SkipTest('Optional package pygpu disabled')
@@ -5453,3 +5460,61 @@ def test_constant_folding_n_steps():
         theano.function([], res)()
     finally:
         theano.config.on_opt_error = on_opt_error
+
+
+def test_outputs_taps_check():
+    """Checks that errors are raised with bad output_info taps."""
+    x = tensor.fvector('x')
+    y = tensor.fvector('y')
+    f = lambda x, y: [x]
+    outputs_info = {'initial': y, 'taps': [0]}
+    assert_raises(ValueError, theano.scan, f, x, outputs_info)
+    outputs_info = {'initial': y, 'taps': [-1, -1]}
+    assert_raises(ValueError, theano.scan, f, x, outputs_info)
+    print('done')
+
+
+def test_default_value_broadcasted():
+    def floatx(X):
+        return numpy.asarray(X, dtype=theano.config.floatX)
+
+    def init_weights(shape, name):
+        return theano.shared(floatx(numpy.random.randn(*shape) * 0.1), name)
+
+    X = theano.tensor.matrix('X')
+    in_size = 2
+    out_size = 4
+    W_x = init_weights((in_size, out_size), "W_x")
+
+    def _active(x, pre_h):
+        x = theano.tensor.reshape(x, (1, in_size))
+        pre_h = theano.tensor.dot(x, W_x)
+        return pre_h
+
+    value, scan_updates = theano.scan(_active, sequences=X,
+                                      outputs_info=[theano.tensor.alloc(floatx(0.), 1, out_size)])
+    cost = theano.tensor.mean(value)
+    gW_x = theano.tensor.grad(cost, W_x)
+    updates = [(W_x, W_x - 0.1 * gW_x)]
+    f = theano.function([X], outputs=cost, updates=updates)
+    f(numpy.random.rand(10, in_size).astype(X.dtype))
+
+
+class TestInconsistentBroadcast(unittest.TestCase):
+
+    def test_raise_error(self):
+        x = tensor.tensor3()
+        initial_x = tensor.constant(numpy.zeros((1, 10)))
+        y, updates = theano.scan(fn=lambda x, prev_x: x + prev_x,
+                                 sequences=x,
+                                 outputs_info=[dict(initial=initial_x)])
+        # Error, because the broadcast patterns are inconsistent.
+        with self.assertRaises(TypeError):
+            gs = tensor.grad(y.sum(), x)
+
+        # No error here, because the broadcast patterns are consistent.
+        initial_x = tensor.unbroadcast(initial_x, 0, 1)
+        y, updates = theano.scan(fn=lambda x, prev_x: x + prev_x,
+                                 sequences=x,
+                                 outputs_info=[dict(initial=initial_x)])
+        gs = tensor.grad(y.sum(), x)

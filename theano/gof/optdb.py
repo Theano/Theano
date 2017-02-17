@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import copy
 import sys
 
@@ -168,7 +168,7 @@ class Query(object):
     """
 
     def __init__(self, include, require=None, exclude=None,
-                 subquery=None, position_cutoff=None,
+                 subquery=None, position_cutoff=float('inf'),
                  extra_optimizations=None):
         self.include = OrderedSet(include)
         self.require = require or OrderedSet()
@@ -185,7 +185,7 @@ class Query(object):
 
     def __str__(self):
         return ("Query{inc=%s,ex=%s,require=%s,subquery=%s,"
-                "position_cutoff=%d,extra_opts=%s}" %
+                "position_cutoff=%f,extra_opts=%s}" %
                 (self.include, self.exclude, self.require, self.subquery,
                  self.position_cutoff, self.extra_optimizations))
 
@@ -244,16 +244,26 @@ class EquilibriumDB(DB):
         optimization application. This could result in less fgraph iterations,
         but this doesn't mean it will be faster globally.
 
+    tracks_on_change_inputs
+        If True, we will re-apply local opt on nodes whose inputs
+        changed during local optimization application. This could
+        result in less fgraph iterations, but this doesn't mean it
+        will be faster globally.
+
     Notes
     -----
     We can put LocalOptimizer and Optimizer as EquilibriumOptimizer
     suppor both.
 
+    It is probably not a good idea to have ignore_newtrees=False and
+    tracks_on_change_inputs=True
+
     """
 
-    def __init__(self, ignore_newtrees=True):
+    def __init__(self, ignore_newtrees=True, tracks_on_change_inputs=False):
         super(EquilibriumDB, self).__init__()
         self.ignore_newtrees = ignore_newtrees
+        self.tracks_on_change_inputs = tracks_on_change_inputs
         self.__final__ = {}
         self.__cleanup__ = {}
 
@@ -281,6 +291,7 @@ class EquilibriumDB(DB):
             opts,
             max_use_ratio=config.optdb.max_use_ratio,
             ignore_newtrees=self.ignore_newtrees,
+            tracks_on_change_inputs=self.tracks_on_change_inputs,
             failure_callback=opt.NavigatorOptimizer.warn_inplace,
             final_optimizers=final_opts,
             cleanup_optimizers=cleanup_opts)
@@ -310,8 +321,14 @@ class SequenceDB(DB):
 
     def register(self, name, obj, position, *tags):
         super(SequenceDB, self).register(name, obj, *tags)
-        assert isinstance(position, (integer_types, float))
-        self.__position__[name] = position
+        if position == 'last':
+            if len(self.__position__) == 0:
+                self.__position__[name] = 0
+            else:
+                self.__position__[name] = max(self.__position__.values()) + 1
+        else:
+            assert isinstance(position, (integer_types, float))
+            self.__position__[name] = position
 
     def query(self, *tags, **kwtags):
         """
@@ -379,7 +396,7 @@ class SequenceDB(DB):
         return sio.getvalue()
 
 
-class LocalGroupDB(SequenceDB):
+class LocalGroupDB(DB):
     """
     Generate a local optimizer of type LocalOptGroup instead
     of a global optimizer.
@@ -388,11 +405,58 @@ class LocalGroupDB(SequenceDB):
 
     """
 
-    seq_opt = opt.LocalOptGroup
-
-    def __init__(self, failure_callback=opt.SeqOptimizer.warn):
+    def __init__(self, apply_all_opts=False, profile=False,
+                 local_opt=opt.LocalOptGroup):
         super(LocalGroupDB, self).__init__()
         self.failure_callback = None
+        self.apply_all_opts = apply_all_opts
+        self.profile = profile
+        self.__position__ = {}
+        self.local_opt = local_opt
+
+    def register(self, name, obj, *tags, **kwargs):
+        super(LocalGroupDB, self).register(name, obj, *tags)
+        position = kwargs.pop('position', 'last')
+        if position == 'last':
+            if len(self.__position__) == 0:
+                self.__position__[name] = 0
+            else:
+                self.__position__[name] = max(self.__position__.values()) + 1
+        else:
+            assert isinstance(position, (integer_types, float))
+            self.__position__[name] = position
+
+    def query(self, *tags, **kwtags):
+        # For the new `useless` optimizer
+        opts = list(super(LocalGroupDB, self).query(*tags, **kwtags))
+        opts.sort(key=lambda obj: (self.__position__[obj.name], obj.name))
+
+        ret = self.local_opt(*opts,
+                             apply_all_opts=self.apply_all_opts,
+                             profile=self.profile)
+        return ret
+
+
+class TopoDB(DB):
+    """
+
+    Generate a Global Optimizer of type TopoOptimizer.
+
+    """
+
+    def __init__(self, db, order='in_to_out', ignore_newtrees=False,
+                 failure_callback=None):
+        super(TopoDB, self).__init__()
+        self.db = db
+        self.order = order
+        self.ignore_newtrees = ignore_newtrees
+        self.failure_callback = failure_callback
+
+    def query(self, *tags, **kwtags):
+        return opt.TopoOptimizer(self.db.query(*tags, **kwtags),
+                                 self.order,
+                                 self.ignore_newtrees,
+                                 self.failure_callback)
 
 
 class ProxyDB(DB):

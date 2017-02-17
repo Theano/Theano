@@ -2,14 +2,16 @@
 This is a minimized version of the mlp.py in the tutorial. We removed stuff that make this mlp don't work.
 But this test a bug that we saw. This bug made the Shape_i object not being lifted, that caused the CrossentropySoftmax... op not being inserted.
 """
+from __future__ import absolute_import, print_function, division
+
 __docformat__ = 'restructedtext en'
 
 
+from collections import OrderedDict
 import numpy
 
 import theano
 import theano.tensor as T
-from theano.compat import OrderedDict
 
 
 def gen_data():

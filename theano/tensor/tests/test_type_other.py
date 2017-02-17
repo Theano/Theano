@@ -1,4 +1,5 @@
 """ This file don't test everything. It only test one past crash error."""
+from __future__ import absolute_import, print_function, division
 import theano
 from theano.gof import Constant
 from theano.tensor.type_other import MakeSlice, make_slice, NoneTypeT, NoneConst

@@ -1,13 +1,15 @@
+from __future__ import absolute_import, print_function, division
 import numpy as np
 import numpy
-import warnings
 from six.moves import xrange
 
 import theano
 from theano.tensor import basic
 from theano.tensor import nlinalg  # noqa
 from theano import gof, scalar
-from theano.gradient import DisconnectedType
+from theano.gof import Generic
+from theano import gradient
+from theano.gradient import DisconnectedType, disconnected_type
 tensor = basic
 
 
@@ -33,6 +35,9 @@ class CpuContiguous(theano.Op):
             x = x.copy()
         assert x.flags['C_CONTIGUOUS']
         y[0] = x
+
+    def grad(self, inputs, dout):
+        return [theano.tensor.as_tensor_variable(dout[0])]
 
     def c_code(self, node, name, inames, onames, sub):
         x, = inames
@@ -64,13 +69,189 @@ class CpuContiguous(theano.Op):
 cpu_contiguous = CpuContiguous()
 
 
-class CumsumOp(theano.Op):
-    # See function cumsum for docstring
+class SearchsortedOp(theano.Op):
+    """Wrapper of numpy.searchsorted.
 
-    __props__ = ("axis",)
+    For full documentation, see :func:`searchsorted`.
 
-    def __init__(self, axis=None):
+    See Also
+    --------
+    searchsorted : numpy-like function to use the SearchsortedOp
+
+    """
+
+    params_type = Generic()
+    __props__ = ("side", )
+
+    def __init__(self, side='left'):
+        if side == 'left' or side == 'right':
+            self.side = side
+        else:
+            raise ValueError('\'%(side)s\' is an invalid value for keyword \'side\''
+                             % locals())
+
+    def get_params(self, node):
+        return self.side
+
+    def make_node(self, x, v, sorter=None):
+        x = basic.as_tensor(x, ndim=1)
+        v = basic.as_tensor(v)
+        out_type = v.type.clone(dtype='int64')
+        if sorter is None:
+            return theano.Apply(self, [x, v], [out_type()])
+        else:
+            sorter = basic.as_tensor(sorter, ndim=1)
+            if (theano.configdefaults.python_int_bitwidth() == 32 and
+                    sorter.dtype == 'int64'):
+                raise TypeError(
+                    "numpy.searchsorted with Python 32bit do not support a"
+                    " sorter of int64.")
+            if sorter.type not in basic.int_vector_types:
+                raise TypeError('sorter must be an integer vector',
+                                sorter.type)
+            return theano.Apply(self, [x, v, sorter], [out_type()])
+
+    def infer_shape(self, node, shapes):
+        return [shapes[1]]
+
+    def perform(self, node, inputs, output_storage, params):
+        x = inputs[0]
+        v = inputs[1]
+        if len(node.inputs) == 3:
+            sorter = inputs[2]
+        else:
+            sorter = None
+        z = output_storage[0]
+
+        z[0] = np.searchsorted(x, v, side=params, sorter=sorter).astype(
+            node.outputs[0].dtype)
+
+    def c_support_code_struct(self, node, name):
+        return """
+            int right_%(name)s;
+        """ % locals()
+
+    def c_init_code_struct(self, node, name, sub):
+        side = sub['params']
+        fail = sub['fail']
+        return """
+            PyObject* tmp_%(name)s = PyUnicode_FromString("right");
+            if (tmp_%(name)s == NULL)
+                %(fail)s;
+            right_%(name)s = PyUnicode_Compare(%(side)s, tmp_%(name)s);
+            Py_DECREF(tmp_%(name)s);
+        """ % locals()
+
+    def c_code(self, node, name, inames, onames, sub):
+        sorter = None
+        if len(node.inputs) == 3:
+            x, v, sorter = inames
+        else:
+            x, v = inames
+        if not sorter:
+            sorter = "NULL"
+        z, = onames
+        fail = sub['fail']
+
+        return """
+            Py_XDECREF(%(z)s);
+            %(z)s = (PyArrayObject*) PyArray_SearchSorted(%(x)s, (PyObject*) %(v)s,
+                                                          right_%(name)s ? NPY_SEARCHLEFT : NPY_SEARCHRIGHT, (PyObject*) %(sorter)s);
+            if (!%(z)s)
+                %(fail)s;
+            if (PyArray_TYPE(%(z)s) != NPY_INT64){
+                PyObject * tmp = PyArray_Cast(%(z)s, NPY_INT64);
+                Py_XDECREF(%(z)s);
+                %(z)s = (PyArrayObject*) tmp;
+            }
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (2,)
+
+    def grad(self, inputs, output_gradients):
+        num_ins = len(inputs)
+        if num_ins == 3:
+            x, v, sorter = inputs
+        else:
+            x, v = inputs
+
+        x_grad = gradient._float_zeros_like(x)
+        v_grad = gradient._float_zeros_like(v)
+        if num_ins == 3:
+            return [x_grad, v_grad, disconnected_type()]
+        else:
+            return [x_grad, v_grad]
+
+
+def searchsorted(x, v, side='left', sorter=None):
+    """Find indices where elements should be inserted to maintain order.
+
+    Wrapping of numpy.searchsorted. Find the indices into a sorted array
+    `x` such that, if the corresponding elements in `v` were inserted
+    before the indices, the order of `x` would be preserved.
+
+    Parameters
+    ----------
+    x: 1-D tensor (array-like)
+        Input array. If `sorter` is None, then it must be sorted in
+        ascending order, otherwise `sorter` must be an array of indices
+        which sorts it.
+    v: tensor (array-like)
+        Contains the values to be inserted into `x`.
+    side: {'left', 'right'}, optional.
+        If 'left' (default), the index of the first suitable
+        location found is given. If 'right', return the last such index. If
+        there is no suitable index, return either 0 or N (where N is the length
+        of `x`).
+    sorter: 1-D tensor of integers (array-like), optional
+        Contains indices that sort array `x` into ascending order.
+        They are typically the result of argsort.
+
+    Returns
+    -------
+    indices : tensor of integers (int64)
+        Array of insertion points with the same shape as `v`.
+
+    See Also
+    --------
+    `numpy.searchsorted <https://docs.scipy.org/doc/numpy-1.10.0/reference/generated/numpy.searchsorted.html>`_
+
+    Notes
+    -----
+    * Binary search is used to find the required insertion points.
+    * This Op is working **only on CPU** currently.
+
+    Examples
+    --------
+    >>> from theano import tensor
+    >>> x = tensor.dvector()
+    >>> idx = x.searchsorted(3)
+    >>> idx.eval({x: [1,2,3,4,5]})
+    array(2)
+    >>> tensor.extra_ops.searchsorted([1,2,3,4,5], 3).eval()
+    array(2)
+    >>> tensor.extra_ops.searchsorted([1,2,3,4,5], 3, side='right').eval()
+    array(3)
+    >>> tensor.extra_ops.searchsorted([1,2,3,4,5], [-10, 10, 2, 3]).eval()
+    array([0, 5, 1, 2])
+
+    .. versionadded:: 0.9
+
+    """
+    return SearchsortedOp(side=side)(x, v, sorter)
+
+
+class CumOp(theano.Op):
+    # See function cumsum/cumprod for docstring
+
+    __props__ = ("axis", "mode")
+
+    def __init__(self, axis=None, mode='add'):
+        if mode not in ('add', 'mul'):
+            raise ValueError('%s: Unknown mode "%s"' % (type(self).__name__, mode))
         self.axis = axis
+        self.mode = mode
 
     def make_node(self, x):
         x = basic.as_tensor_variable(x)
@@ -86,20 +267,39 @@ class CumsumOp(theano.Op):
     def perform(self, node, inputs, output_storage):
         x = inputs[0]
         z = output_storage[0]
-        z[0] = np.cumsum(x, axis=self.axis)
+        z[0] = {'add': np.cumsum, 'mul': np.cumprod}[self.mode](x, axis=self.axis)
 
     def grad(self, inputs, output_gradients):
-        [gi] = output_gradients
+        x, = inputs
+        gi, = output_gradients
 
         if self.axis is None:
-            return [cumsum(gi[::-1])[::-1].reshape(inputs[0].shape)]
+            if self.mode == 'add':
+                return [cumsum(gi[::-1])[::-1].reshape(x.shape)]
+            elif self.mode == 'mul':
+                fx = cumprod(x, axis=self.axis)
+                return [cumsum(
+                    (fx * gi)[::-1])[::-1].reshape(x.shape) / x]
+            else:
+                raise NotImplementedError(
+                    '%s: unknown gradient for mode "%s"' %
+                    (type(self).__name__, self.mode))
 
-        # We need to reverse the gradients along ``self.axis``,
-        #  compute cumsum, then reverse again
         reverse_slicing = [slice(None, None, None)] * gi.ndim
         reverse_slicing[self.axis] = slice(None, None, -1)
         reverse_slicing = tuple(reverse_slicing)
-        return [cumsum(gi[reverse_slicing], self.axis)[reverse_slicing]]
+        # We need to reverse the gradients along ``self.axis``,
+        #  compute cumsum, then reverse again
+        if self.mode == 'add':
+            return [cumsum(gi[reverse_slicing], self.axis)[reverse_slicing]]
+        elif self.mode == 'mul':
+            fx = cumprod(x, axis=self.axis)
+            return [cumsum(
+                (fx * gi)[reverse_slicing], self.axis)[reverse_slicing] / x]
+        else:
+            raise NotImplementedError(
+                '%s: unknown gradient for mode "%s"' %
+                (type(self).__name__, self.mode))
 
     def infer_shape(self, node, shapes):
         if self.axis is None:
@@ -112,6 +312,7 @@ class CumsumOp(theano.Op):
         z, = onames
         axis = self.axis
         fail = sub['fail']
+        func = dict(mul='CumProd', add='CumSum')[self.mode]
 
         if self.axis is None or (self.axis == 0 and node.inputs[0].ndim == 1):
             code = """
@@ -125,13 +326,13 @@ class CumsumOp(theano.Op):
                 if (!%(z)s)
                     %(fail)s;
                 {
-                    PyObject * t = PyArray_CumSum(
+                    PyObject * t = PyArray_%(func)s(
                         %(x)s, NPY_MAXDIMS,
                         PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
                     if (!t){
                        %(fail)s;
                     }
-                    // Because PyArray_CumSum returns a newly created reference on t.
+                    // Because PyArray_%(func)s returns a newly created reference on t.
                     Py_XDECREF(t);
                 }
             """ % locals()
@@ -147,13 +348,13 @@ class CumsumOp(theano.Op):
                     %(fail)s;
                 {
 
-                    PyObject * t = PyArray_CumSum(
+                    PyObject * t = PyArray_%(func)s(
                         %(x)s, %(axis)s,
                         PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
                     if (!t){
                        %(fail)s;
                     }
-                    // Because PyArray_CumSum returns a newly created reference on t.
+                    // Because PyArray_%(func)s returns a newly created reference on t.
                     Py_XDECREF(t);
                 }
             """ % locals()
@@ -161,10 +362,10 @@ class CumsumOp(theano.Op):
         return code
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
     def __str__(self):
-        return "%s{%s}" % (self.__class__.__name__, self.axis)
+        return "%s{%s, %s}" % (self.__class__.__name__, self.axis, self.mode)
 
 
 def cumsum(x, axis=None):
@@ -180,115 +381,11 @@ def cumsum(x, axis=None):
         The axis along which the cumulative sum is computed.
         The default (None) is to compute the cumsum over the flattened array.
 
+
     .. versionadded:: 0.7
 
     """
-    return CumsumOp(axis=axis)(x)
-
-
-class CumprodOp(theano.Op):
-    # See function cumprod for docstring
-
-    __props__ = ("axis",)
-
-    def __init__(self, axis=None):
-        self.axis = axis
-
-    def make_node(self, x):
-        x = basic.as_tensor_variable(x)
-        out_type = x.type()
-
-        if self.axis is None:
-            out_type = theano.tensor.vector(dtype=x.dtype)  # Flatten
-        elif self.axis >= x.ndim or self.axis < -x.ndim:
-            raise ValueError('axis(={0}) out of bounds'.format(self.axis))
-
-        return theano.Apply(self, [x], [out_type])
-
-    def perform(self, node, inputs, output_storage):
-        x = inputs[0]
-        z = output_storage[0]
-        z[0] = np.cumprod(x, axis=self.axis)
-
-    def grad(self, inputs, output_gradients):
-        x, = inputs
-        gi, = output_gradients
-        fx = cumprod(x, axis=self.axis)
-
-        if self.axis is None:
-            return [cumsum((fx * gi)[::-1])[::-1].reshape(inputs[0].shape) / x]
-
-        # We need to reverse the gradients along ``self.axis``,
-        #  compute cumsum, then reverse again
-        reverse_slicing = [slice(None, None, None)] * gi.ndim
-        reverse_slicing[self.axis] = slice(None, None, -1)
-        reverse_slicing = tuple(reverse_slicing)
-        return [cumsum((fx * gi)[reverse_slicing],
-                       self.axis)[reverse_slicing] / x]
-
-    def infer_shape(self, node, shapes):
-        if self.axis is None:
-            return [(tensor.prod(shapes[0]),)]  # Flatten
-
-        return shapes
-
-    def c_code(self, node, name, inames, onames, sub):
-        x, = inames
-        z, = onames
-        axis = self.axis
-        fail = sub['fail']
-
-        if self.axis is None or (self.axis == 0 and node.inputs[0].ndim == 1):
-            code = """
-                npy_intp shape[1] = { PyArray_SIZE(%(x)s) };
-                if(!(%(z)s && PyArray_DIMS(%(z)s)[0] == shape[0]))
-                {
-                    Py_XDECREF(%(z)s);
-                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(1, shape, PyArray_TYPE((PyArrayObject*) py_%(x)s));
-                }
-
-                if (!%(z)s)
-                    %(fail)s;
-                {
-                    PyObject * t = PyArray_CumProd(
-                        %(x)s, NPY_MAXDIMS,
-                        PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
-                    if (!t){
-                       %(fail)s;
-                    }
-                    // Because PyArray_CumSum returns a newly created reference on t.
-                    Py_XDECREF(t);
-                }
-            """ % locals()
-        else:
-            code = """
-                if(!(%(z)s && PyArray_CompareLists(PyArray_DIMS(%(z)s), PyArray_DIMS(%(x)s), PyArray_NDIM(%(x)s)) ))
-                {
-                    Py_XDECREF(%(z)s);
-                    %(z)s = (PyArrayObject*) PyArray_SimpleNew(PyArray_NDIM(%(x)s), PyArray_DIMS(%(x)s), PyArray_TYPE((PyArrayObject*) py_%(x)s));
-                }
-
-                if (!%(z)s)
-                    %(fail)s;
-                {
-                    PyObject * t = PyArray_CumProd(
-                        %(x)s, %(axis)s,
-                        PyArray_TYPE((PyArrayObject*) py_%(x)s), %(z)s);
-                    if (!t){
-                       %(fail)s;
-                    }
-                    // Because PyArray_CumSum returns a newly created reference on t.
-                    Py_XDECREF(t);
-                }
-            """ % locals()
-
-        return code
-
-    def c_code_cache_version(self):
-        return (4,)
-
-    def __str__(self):
-        return "%s{%s}" % (self.__class__.__name__, self.axis)
+    return CumOp(axis=axis, mode='add')(x)
 
 
 def cumprod(x, axis=None):
@@ -305,10 +402,31 @@ def cumprod(x, axis=None):
         The axis along which the cumulative product is computed.
         The default (None) is to compute the cumprod over the flattened array.
 
+
     .. versionadded:: 0.7
 
     """
-    return CumprodOp(axis=axis)(x)
+    return CumOp(axis=axis, mode='mul')(x)
+
+
+# CumsumOp and CumprodOp are for compatibility with old version,
+# just in case unpickling a theano function with old Ops.
+class CumsumOp(theano.Op):
+    __props__ = ("axis",)
+
+    def __new__(typ, *args, **kwargs):
+        obj = object.__new__(CumOp, *args, **kwargs)
+        obj.mode = 'add'
+        return obj
+
+
+class CumprodOp(theano.Op):
+    __props__ = ("axis",)
+
+    def __new__(typ, *args, **kwargs):
+        obj = object.__new__(CumOp, *args, **kwargs)
+        obj.mode = 'mul'
+        return obj
 
 
 class DiffOp(theano.Op):
@@ -376,107 +494,11 @@ def diff(x, n=1, axis=-1):
     axis
         The axis along which the difference is taken, default is the last axis.
 
+
     .. versionadded:: 0.6
 
     """
     return DiffOp(n=n, axis=axis)(x)
-
-
-class BinCountOp(theano.Op):
-    """
-    .. note:: Deprecated
-              Use bincount() instead.
-              See function bincount for docstring.
-
-    """
-    compatible_type = ('int8', 'int16', 'int32', 'int64',
-                       'uint8', 'uint16', 'uint32', 'uint64')
-    """Tuple of all compatible dtype for the parameter of this op."""
-    __props__ = ("minlength",)
-
-    def __init__(self, minlength=None):
-        self.minlength = minlength
-        if minlength is not None:
-            numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-            if not bool(numpy_ver >= [1, 6]):
-                raise NotImplementedError(
-                    "BinCountOp with minlength attribute"
-                    " requires NumPy 1.6 or higher.")
-
-    def make_node(self, x, weights):
-        warnings.warn((
-            "Tile op is deprecated, use tile function instead."),
-            stacklevel=3)
-
-        x = basic.as_tensor_variable(x)
-
-        if x.dtype not in BinCountOp.compatible_type:
-            raise TypeError("Inputs dtype must be an integer.")
-
-        # Some dtypes are not supported by numpy's implementation of bincount.
-        # Until another one is available, we should fail at graph construction
-        # time, not wait for execution.
-        int_bitwidth = theano.configdefaults.python_int_bitwidth()
-        if int_bitwidth == 64:
-            numpy_unsupported_dtypes = ('uint64',)
-        if int_bitwidth == 32:
-            numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
-        intp_bitwidth = theano.configdefaults.local_bitwidth()
-        if intp_bitwidth == 32:
-            out_type = basic.ivector()
-        elif intp_bitwidth == 64:
-            out_type = basic.lvector()
-
-        if x.dtype in numpy_unsupported_dtypes:
-            raise TypeError(
-                ("Input dtypes %s are not supported by numpy.bincount, "
-                 % numpy_unsupported_dtypes), x.dtype)
-
-        if x.ndim != 1:
-            raise TypeError("Inputs must be of dimension 1.")
-
-        if weights is None:
-            weights = theano.gof.Constant(theano.gof.Generic(), None)
-        else:
-            weights = basic.as_tensor_variable(weights)
-            out_type = basic.dvector()
-            if weights.ndim != 1:
-                raise TypeError("Weights cannot have a number of"
-                                "dimension different of 1.")
-
-        return theano.Apply(self, [x, weights], [out_type])
-
-    def perform(self, node, inputs, output_storage):
-        x = inputs[0]
-        weights = inputs[1]
-        z = output_storage[0]
-
-        if weights is not None and weights.shape != x.shape:
-            raise TypeError("All inputs must have the same shape.")
-
-        # Needed for numpy 1.4.1 compatibility
-        if self.minlength:
-            out = np.bincount(x, weights=weights, minlength=self.minlength)
-        else:
-            out = np.bincount(x, weights=weights)
-
-        z[0] = theano._asarray(out, dtype=node.outputs[0].dtype)
-
-    def grad(self, inputs, outputs_gradients):
-        output = self(*inputs)
-
-        if output.dtype.find('int') != -1:
-            return [inp.zeros_like().astype(theano.config.floatX)
-                    for inp in inputs]
-
-        raise NotImplementedError()
-
-    def infer_shape(self, node, ins_shapes):
-        x = node.inputs[0]
-        m = basic.max(x) + 1
-        if self.minlength is not None:
-            m = basic.maximum(m, self.minlength)
-        return [[m]]
 
 
 def bincount(x, weights=None, minlength=None, assert_nonneg=False):
@@ -501,6 +523,7 @@ def bincount(x, weights=None, minlength=None, assert_nonneg=False):
         every input x is nonnegative.
         Optional.
 
+
     .. versionadded:: 0.6
 
     """
@@ -517,12 +540,14 @@ def bincount(x, weights=None, minlength=None, assert_nonneg=False):
     if minlength is not None:
         max_value = theano.tensor.maximum(max_value, minlength)
 
+    # Note: we do not use inc_subtensor(out[x], ...) in the following lines,
+    # since out[x] raises an exception if the indices (x) are int8.
     if weights is None:
         out = theano.tensor.zeros([max_value], dtype=x.dtype)
-        out = theano.tensor.inc_subtensor(out[x], 1)
+        out = theano.tensor.advanced_inc_subtensor1(out, 1, x)
     else:
         out = theano.tensor.zeros([max_value], dtype=weights.dtype)
-        out = theano.tensor.inc_subtensor(out[x], weights)
+        out = theano.tensor.advanced_inc_subtensor1(out, weights, x)
     return out
 
 
@@ -592,7 +617,7 @@ class RepeatOp(theano.Op):
         x = basic.as_tensor_variable(x)
         repeats = basic.as_tensor_variable(repeats)
 
-        if repeats.dtype not in tensor.discrete_dtypes:
+        if repeats.dtype not in tensor.integer_dtypes:
             raise TypeError("repeats.dtype must be an integer.")
 
         # Some dtypes are not supported by numpy's implementation of repeat.
@@ -705,7 +730,8 @@ def repeat(x, repeats, axis=None):
     ----------
     x
         Input data, tensor variable.
-    repeats : int, scalar or tensor variable
+    repeats
+        int, scalar or tensor variable
     axis : int, optional
 
     See Also
@@ -771,8 +797,7 @@ class Bartlett(gof.Op):
         if M.ndim != 0:
             raise TypeError('%s only works on scalar input'
                             % self.__class__.__name__)
-        elif (not M.dtype.startswith('int') and
-              not M.dtype.startswith('uint')):
+        elif M.dtype not in theano.tensor.integer_dtypes:
             # dtype is a theano attribute here
             raise TypeError('%s only works on integer input'
                             % self.__class__.__name__)
@@ -941,7 +966,7 @@ class FillDiagonalOffset(gof.Op):
         if val.dtype != a.dtype:
             raise TypeError('%s: type of second parameter must be the same'
                             ' as the first\'s' % self.__class__.__name__)
-        elif offset.dtype[:3] != 'int':
+        elif offset.dtype not in theano.tensor.integer_dtypes:
             raise TypeError('%s: type of third parameter must be as integer'
                             ' use theano.tensor.cast( input, \'int32/int64\')'
                             % self.__class__.__name__)

@@ -1,0 +1,3 @@
+.. |PlatformCompiler| replace:: ``g++`` (Linux and Windows), ``clang`` (OS X)
+
+.. include:: requirements.inc

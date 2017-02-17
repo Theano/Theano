@@ -383,23 +383,59 @@ Using shared variables - the strict flag
 As we just saw, passing the shared variables to scan may result in a simpler
 computational graph, which speeds up the optimization and the execution. A
 good way to remember to pass every shared variable used during scan is to use
-the ``strict`` flag. When set to true, scan assumes that all the necessary
-shared variables in ``fn`` are passed as a part of ``non_sequences``. This has
-to be ensured by the user. Otherwise, it will result in an error.
+the ``strict`` flag. When set to true, scan checks that all the necessary shared
+variables in ``fn`` are passed as explicit arguments to ``fn``. This has to be
+ensured by the user. Otherwise, it will result in an error.
 
-Using the previous Gibbs sampling example:
+Using the original Gibbs sampling example, with ``strict=True`` added to the
+``scan()`` call:
 
 .. testcode:: scan1
 
-    # The new scan, using strict=True
-    values, updates = theano.scan(fn=OneStep,
+    # Same OneStep as in original example.
+    def OneStep(vsample) :
+        hmean = T.nnet.sigmoid(theano.dot(vsample, W) + bhid)
+        hsample = trng.binomial(size=hmean.shape, n=1, p=hmean)
+        vmean = T.nnet.sigmoid(theano.dot(hsample, W.T) + bvis)
+        return trng.binomial(size=vsample.shape, n=1, p=vmean,
+                             dtype=theano.config.floatX)
+
+    # The new scan, adding strict=True to the original call.
+    values, updates = theano.scan(OneStep,
+                                  outputs_info=sample,
+                                  n_steps=10,
+                                  strict=True)
+
+.. testoutput:: scan1
+
+    Traceback (most recent call last):
+    ...
+    MissingInputError: An input of the graph, used to compute
+    DimShuffle{1,0}(<TensorType(float64, matrix)>), was not provided and
+    not given a value.Use the Theano flag exception_verbosity='high',for
+    more information on this error.
+
+The error indicates that ``OneStep`` relies on variables that are not passed
+as arguments explicitly. Here is the correct version, with the shared
+variables passed explicitly to ``OneStep`` and to scan: 
+
+.. testcode:: scan1
+
+    # OneStep, with explicit use of the shared variables (W, bvis, bhid)
+    def OneStep(vsample, W, bvis, bhid) :
+        hmean = T.nnet.sigmoid(theano.dot(vsample, W) + bhid)
+        hsample = trng.binomial(size=hmean.shape, n=1, p=hmean)
+        vmean = T.nnet.sigmoid(theano.dot(hsample, W.T) + bvis)
+        return trng.binomial(size=vsample.shape, n=1, p=vmean,
+                             dtype=theano.config.floatX)
+
+    # The new scan, adding strict=True to the original call, and passing
+    # expicitly W, bvis and bhid.
+    values, updates = theano.scan(OneStep,
                                   outputs_info=sample,
                                   non_sequences=[W, bvis, bhid],
                                   n_steps=10,
                                   strict=True)
-
-If you omit to pass ``W``, ``bvis`` or ``bhid`` as a ``non_sequence``, it will
-result in an error.
 
 
 Multiple outputs, several taps values - Recurrent Neural Network with Scan
@@ -529,6 +565,40 @@ As a rule, scan always expects the condition to be the last thing returned
 by the inner function, otherwise an error will be raised.
 
 
+Reducing Scan's memory usage
+----------------------------
+
+This section presents the ``scan_checkpoints`` function. In short, this
+function reduces the memory usage of scan (at the cost of more computation
+time) by not keeping in memory all the intermediate time steps of the loop,
+and recomputing them when computing the gradients. This function is therefore
+only useful if you need to compute the gradient of the ouptut of scan with
+respect to its inputs, and shouldn't be used otherwise.
+
+Before going more into the details, here are its current limitations:
+
+* It only works in the case where only the output of the last time step is
+  needed, like when computing ``A**k`` or in an `encoder-decoder` setup.
+* It only accepts sequences of the same length.
+* If ``n_steps`` is specified, it has the same value as the length of any
+  sequences.
+* It is signly-recurrent, meaning that only the previous time step can be used
+  to compute the current one (ie ``h[t]`` can only depend on ``h[t-1]``). In
+  other words, ``taps`` can not be used in ``sequences`` and ``outputs_info``.
+
+Often, in order to be able to compute the gradients through scan operations,
+Theano needs to keep in memory some intermediate computations of scan. This
+can sometimes use a prohibitively large amount of memory.
+``scan_checkpoints`` allows to discard some of those intermediate steps and
+recompute them again when computing the gradients. Its ``save_every_N`` argument
+specifies the number time steps to do without storing the intermediate results.
+For example, ``save_every_N = 4`` will reduce the memory usage by 4, while having
+to recompute 3/4 time steps of the forward loop. Since the grad of scan is
+about 6x slower than the forward, a ~20% slowdown is expected. Apart from the
+``save_every_N`` argument and the current limitations, the usage of this function
+is similar to the classic ``scan`` function.
+
+
 Optimizing Scan's performance
 -----------------------------
 
@@ -612,4 +682,4 @@ reference
 .. autofunction:: theano.foldl
 .. autofunction:: theano.foldr
 .. autofunction:: theano.scan
-
+.. autofunction:: theano.scan_checkpoints

@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import unittest
 
 import numpy
@@ -36,7 +37,10 @@ from theano.tensor.nlinalg import ( MatrixInverse,
                                     qr,
                                     matrix_power,
                                     norm,
-                                    svd
+                                    svd,
+                                    TensorInv,
+                                    tensorinv,
+                                    tensorsolve
                                     )
 from nose.plugins.attrib import attr
 
@@ -126,7 +130,7 @@ def test_qr_modes():
     n_qr = numpy.linalg.qr(a)
     assert _allclose(n_qr, t_qr)
 
-    for mode in ["reduced", "r", "raw", "full", "economic"]:
+    for mode in ["reduced", "r", "raw"]:
         f = function([A], qr(A, mode))
         t_qr = f(a)
         n_qr = numpy.linalg.qr(a, mode)
@@ -157,6 +161,52 @@ def test_svd():
     assert _allclose(n_u, t_u)
     assert _allclose(n_v, t_v)
     assert _allclose(n_t, t_t)
+
+
+def test_tensorsolve():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+
+    A = tensor.tensor4("A", dtype=theano.config.floatX)
+    B = tensor.matrix("B", dtype=theano.config.floatX)
+    X = tensorsolve(A, B)
+    fn = function([A, B], [X])
+
+    # slightly modified example from numpy.linalg.tensorsolve docstring
+    a = numpy.eye(2 * 3 * 4).astype(theano.config.floatX)
+    a.shape = (2 * 3, 4, 2, 3 * 4)
+    b = rng.rand(2 * 3, 4).astype(theano.config.floatX)
+
+    n_x = numpy.linalg.tensorsolve(a, b)
+    t_x = fn(a, b)
+    assert _allclose(n_x, t_x)
+
+    # check the type upcast now
+    C = tensor.tensor4("C", dtype='float32')
+    D = tensor.matrix("D", dtype='float64')
+    Y = tensorsolve(C, D)
+    fn = function([C, D], [Y])
+
+    c = numpy.eye(2 * 3 * 4, dtype='float32')
+    c.shape = (2 * 3, 4, 2, 3 * 4)
+    d = rng.rand(2 * 3, 4).astype('float64')
+    n_y = numpy.linalg.tensorsolve(c, d)
+    t_y = fn(c, d)
+    assert _allclose(n_y, t_y)
+    assert n_y.dtype == Y.dtype
+
+    # check the type upcast now
+    E = tensor.tensor4("E", dtype='int32')
+    F = tensor.matrix("F", dtype='float64')
+    Z = tensorsolve(E, F)
+    fn = function([E, F], [Z])
+
+    e = numpy.eye(2 * 3 * 4, dtype='int32')
+    e.shape = (2 * 3, 4, 2, 3 * 4)
+    f = rng.rand(2 * 3, 4).astype('float64')
+    n_z = numpy.linalg.tensorsolve(e, f)
+    t_z = fn(e, f)
+    assert _allclose(n_z, t_z)
+    assert n_z.dtype == Z.dtype
 
 
 def test_inverse_singular():
@@ -516,3 +566,41 @@ class T_NormTests(unittest.TestCase):
             t_n = f(A[2][i])
             n_n = numpy.linalg.norm(A[2][i], A[3][i])
             assert _allclose(n_n, t_n)
+
+
+class test_TensorInv(utt.InferShapeTester):
+    def setUp(self):
+        super(test_TensorInv, self).setUp()
+        self.A = tensor.tensor4("A", dtype=theano.config.floatX)
+        self.B = tensor.tensor3("B", dtype=theano.config.floatX)
+        self.a = numpy.random.rand(4, 6, 8, 3).astype(theano.config.floatX)
+        self.b = numpy.random.rand(2, 15, 30).astype(theano.config.floatX)
+        self.b1 = numpy.random.rand(30, 2, 15).astype(theano.config.floatX)  # for ind=1 since we need prod(b1.shape[:ind]) == prod(b1.shape[ind:])
+
+    def test_infer_shape(self):
+        A = self.A
+        Ai = tensorinv(A)
+        self._compile_and_check([A],  # theano.function inputs
+                                [Ai],  # theano.function outputs
+                                [self.a],  # value to substitute
+                                TensorInv)
+
+    def test_eval(self):
+        A = self.A
+        Ai = tensorinv(A)
+        n_ainv = numpy.linalg.tensorinv(self.a)
+        tf_a = function([A], [Ai])
+        t_ainv = tf_a(self.a)
+        assert _allclose(n_ainv, t_ainv)
+
+        B = self.B
+        Bi = tensorinv(B)
+        Bi1 = tensorinv(B, ind=1)
+        n_binv = numpy.linalg.tensorinv(self.b)
+        n_binv1 = numpy.linalg.tensorinv(self.b1, ind=1)
+        tf_b = function([B], [Bi])
+        tf_b1 = function([B], [Bi1])
+        t_binv = tf_b(self.b)
+        t_binv1 = tf_b1(self.b1)
+        assert _allclose(t_binv, n_binv)
+        assert _allclose(t_binv1, n_binv1)

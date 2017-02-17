@@ -2,11 +2,12 @@
 Provide a simple user friendly API.
 
 """
+from __future__ import absolute_import, print_function, division
 import warnings
 
+from theano import config
 from six import iteritems
 
-from theano import config
 from theano.compile import orig_function, In, Out
 from theano.compile import UnusedInputError
 from theano.compile.sharedvalue import SharedVariable, shared
@@ -305,6 +306,10 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
         If False (default), perform them all. Else, perform automatic updates
         on all Variables that are neither in "updates" nor in
         "no_default_updates".
+    accept_inplace : bool
+        True iff the graph can contain inplace operations prior to the
+        optimization phase (default is False). *Note* this parameter is unsupported,
+        and its use is not recommended.
     name : None or string
         Attaches a name to the profiling result of this function.
     allow_input_downcast : bool
@@ -359,8 +364,10 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
     if givens is None:
         givens = []
     if profile is None:
-        profile = config.profile
+        profile = config.profile or config.print_global_stats
         # profile -> True or False
+        if profile is False:
+            profile = None
     if profile is True:
         profile = ProfileStats(message=name)
         # profile -> object

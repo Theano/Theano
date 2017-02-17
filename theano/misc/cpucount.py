@@ -29,7 +29,7 @@
 # This function was modified from the original code
 # We can't use the multiprocessing module as it was included in python2.6
 # and we support python 2.4
-
+from __future__ import absolute_import, print_function, division
 import os
 import sys
 

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-from __future__ import print_function
-from __future__ import absolute_import
-import numpy
+from __future__ import absolute_import, print_function, division
+import numpy as np
 import sys
 import time
 
@@ -9,7 +8,7 @@ import theano
 import theano.tensor as T
 import theano.sandbox
 from six.moves import xrange
-from theano.compile import module, Mode, ProfileMode
+from theano.compile import module, Mode
 from theano import gof, Op, Apply
 
 from theano.tensor import blas, opt
@@ -192,7 +191,6 @@ class M(module.Module):
 
 mod = M()
 mode = 'FAST_RUN'
-#mode = ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
 mode = Mode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker(nice_errors=True))
 mode = Mode(optimizer='fast_run', linker='c')
 mode = Mode(optimizer='fast_run', linker='c|py')
@@ -200,7 +198,7 @@ print(mod.pretty(mode=mode))
 m = mod.make(mode=mode)
 
 neg, nout, nhid, niter = [int(a) for a in sys.argv[1:]]
-rng = numpy.random.RandomState(342)
+rng = np.random.RandomState(342)
 m.w = rng.rand(nout, nhid)
 m.a = rng.randn(nhid) * 0.0
 m.b = rng.randn(nout) * 0.0
