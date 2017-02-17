@@ -779,9 +779,7 @@ def split_huge_add_or_mul(node):
             return False
         while len(node.inputs) > max_nb_inputs:
             inner_op = []
-            for i in xrange(0,
-                            len(node.inputs),
-                            max_nb_inputs):
+            for i in range(0, len(node.inputs), max_nb_inputs):
                 inner_op.append(node.op(*node.inputs[i: i + max_nb_inputs]))
             node = node.op(*inner_op).owner
     return node
