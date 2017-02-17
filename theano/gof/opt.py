@@ -885,7 +885,13 @@ class MergeOptimizer(Optimizer):
                         pairs = [(pairs[0][1], pairs[0][0])]
 
                 try:
-                    fgraph.replace_all_validate(pairs, 'MergeOptimizer')
+                    # If all Constants, no need to call validate.
+                    # Only need to check one of the var of each pairs.
+                    # If it is a Constant, the other must also be a Constant as we merge them.
+                    if all([isinstance(old, graph.Constant) for old, new in pairs]):
+                        fgraph.replace_all(pairs, 'MergeOptimizer')
+                    else:
+                        fgraph.replace_all_validate(pairs, 'MergeOptimizer')
                 except InconsistencyError:
                     success = False
                     nb_fail += 1
