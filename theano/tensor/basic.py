@@ -2309,12 +2309,12 @@ def j1(a):
     """Bessel function of the 1'th kind"""
 
 
-@scal_elemwise
+@_scal_elemwise
 def i0(a):
     """Modified Bessel function of order 0."""
 
 
-@scal_elemwise
+@_scal_elemwise
 def i1(a):
     "Modified Bessel function of order 1."
 
