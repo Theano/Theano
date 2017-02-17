@@ -303,7 +303,7 @@ class TestGpuRoIPool(utt.InferShapeTester):
         t_data = tensor.ftensor4()
         t_rois = tensor.fmatrix()
         # Image shape is (16, 16) with 3 channels
-        random_image = generate_random_image(1, 3, 16, 16)
+        random_image = generate_random_image(2, 3, 16, 16)
         # The difference in shape is because the first element is batch index in
         # theano implementation
         # The value 7 is used in Fast RCNN network
@@ -318,7 +318,7 @@ class TestGpuRoIPool(utt.InferShapeTester):
         func = theano.function([t_data, t_rois], t_outs)
         roi_outs = func(random_image, roi_theano)
         maxloc_theano, maxvals_theano = roi_outs[0], roi_outs[1]
-        n_maxval, n_maxloc = numpy_roi_pool(random_image, 1, pool_h, pool_w, roi_numpy, spatial_scale=1.0)
+        n_maxval, n_maxloc = numpy_roi_pool(random_image, 2, 3, 2, pool_h, pool_w, roi_numpy, spatial_scale=1.0)
         utt.assert_allclose(n_maxloc, maxloc_theano)
         utt.assert_allclose(n_maxval, maxvals_theano)
 

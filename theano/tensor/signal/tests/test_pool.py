@@ -1168,36 +1168,36 @@ def generate_random_image(batch_length, channels, y, x):
     return random_image
 
 
-def numpy_roi_pool(image_val, num_roi, pool_height, pool_width, roi, spatial_scale=1.0):
+def numpy_roi_pool(image_val, batch_size, channel, num_roi, pool_height, pool_width, roi, spatial_scale=1.0):
 
     maxval_coordinates = []
     max_vals = []
-    for i in range(num_roi):
+    for b_in in range(batch_size):
+        for i in range(num_roi):
+            x_start = numpy.floor((roi[i, 0] * spatial_scale) + 0.5)
+            y_start = numpy.floor((roi[i, 1] * spatial_scale) + 0.5)
+            x_end = numpy.floor((roi[i, 2] * spatial_scale) + 0.5)
+            y_end = numpy.floor((roi[i, 3] * spatial_scale) + 0.5)
 
-        x_start = numpy.floor((roi[i, 0] * spatial_scale) + 0.5)
-        y_start = numpy.floor((roi[i, 1] * spatial_scale) + 0.5)
-        x_end = numpy.floor((roi[i, 2] * spatial_scale) + 0.5)
-        y_end = numpy.floor((roi[i, 3] * spatial_scale) + 0.5)
+            roi_height = max(y_end - y_start + 1, 1)
+            roi_width = max(x_end - x_start + 1, 1)
+            row_length = roi_width / pool_width
+            col_length = roi_height / pool_height
 
-        roi_height = max(y_end - y_start + 1, 1)
-        roi_width = max(x_end - x_start + 1, 1)
-        row_length = roi_width / pool_width
-        col_length = roi_height / pool_height
-
-        for cn in range(3):
-            for jy in range(pool_height):
-                for ix in range(pool_width):
-                    x1 = int(round(x_start + ix * row_length))
-                    x2 = int(round(x1 + row_length))
-                    y1 = int(round(y_start + jy * col_length))
-                    y2 = int(round(y1 + col_length))
-                    interest_region = image_val[:, cn, y1:y2, x1:x2]
-                    m_val = numpy.max(interest_region)
-                    max_vals.append(m_val)
-                    maxval_coordinates.append(numpy.argmax(interest_region))
+            for cn in range(channel):
+                for jy in range(pool_height):
+                    for ix in range(pool_width):
+                        x1 = int(round(x_start + ix * row_length))
+                        x2 = int(round(x1 + row_length))
+                        y1 = int(round(y_start + jy * col_length))
+                        y2 = int(round(y1 + col_length))
+                        interest_region = image_val[b_in, cn, y1:y2, x1:x2]
+                        m_val = numpy.max(interest_region)
+                        max_vals.append(m_val)
+                        maxval_coordinates.append(numpy.argmax(interest_region))
     # Reshaped as (batch_index, num_roi, channels, pool_h * pool_w)
-    max_vals = numpy.reshape(numpy.asarray(max_vals), (1, num_roi, image_val.shape[1], pool_height * pool_width))
-    maxval_coordinates = numpy.reshape(numpy.asarray(maxval_coordinates), (1, num_roi, image_val.shape[1], pool_height * pool_width))
+    max_vals = numpy.reshape(numpy.asarray(max_vals), (batch_size, num_roi, image_val.shape[1], pool_height * pool_width))
+    maxval_coordinates = numpy.reshape(numpy.asarray(maxval_coordinates), (batch_size, num_roi, image_val.shape[1], pool_height * pool_width))
     return max_vals, maxval_coordinates
 
 
@@ -1212,7 +1212,7 @@ class TestRoIPool(utt.InferShapeTester):
         t_rois = tensor.fmatrix()
         num_roi = 2
         # Image shape is (16, 16) with 3 channels
-        random_image = generate_random_image(1, 3, 16, 16)
+        random_image = generate_random_image(2, 3, 16, 16)
         # The difference in shape is because the first element is batch index in
         # theano implementation
         # The value 7 is used in Fast RCNN network
@@ -1220,7 +1220,7 @@ class TestRoIPool(utt.InferShapeTester):
         roi_numpy = numpy.asarray([[0., 0., 3., 3.], [0., 0., 7., 7.]])
         pool_w = 2
         pool_h = 2
-        maxvals_np, maxloc_np = numpy_roi_pool(random_image, num_roi, pool_h, pool_w, roi_numpy, spatial_scale=1.0)
+        maxvals_np, maxloc_np = numpy_roi_pool(random_image, 2, 3, num_roi, pool_h, pool_w, roi_numpy, spatial_scale=1.0)
 
         op = self.op_class(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=1.0)
         t_outs = op(t_data, t_rois)
@@ -1242,7 +1242,7 @@ class TestRoIPool(utt.InferShapeTester):
         t_rois = tensor.dmatrix()
         roi_theano = numpy.asarray([[0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]])
 
-        random_image = generate_random_image(1, 3, 16, 16)
+        random_image = generate_random_image(2, 3, 16, 16)
 
         self._compile_and_check([t_data, t_rois],
                                 self.op_class(2, 2, 1.0)(t_data, t_rois),
