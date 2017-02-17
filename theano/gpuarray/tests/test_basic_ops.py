@@ -482,7 +482,7 @@ def test_many_arg_elemwise():
     i.e., it is a test of the optimization theano/sandbox/cuda/opt.py:local_gpu_huge_add_or_mul """
     rng = np.random.RandomState([1, 2, 3])
 
-    for num_args in [55]:
+    for num_args in [25]:
         for op_to_test in [theano.tensor.add, theano.tensor.mul]:
             for nb_dim in [2, 3, 4, 5]:
                 shapes = [rng.randint(1, 5) for i in range(nb_dim)]
