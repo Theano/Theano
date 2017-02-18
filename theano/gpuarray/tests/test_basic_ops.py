@@ -477,9 +477,11 @@ def test_Gpujoin_inplace():
 
 
 def test_many_arg_elemwise():
-    """this test checks whether the + and * elemwise ops can handle extremely large numbers of
-    arguments on gpu
-    i.e., it is a test of the optimization theano/sandbox/cuda/opt.py:local_gpu_huge_add_or_mul """
+    # this test checks whether the + and * elemwise ops can handle extremely large numbers of
+    # arguments on gpu
+    # i.e., it is a test of the optimization theano/sandbox/cuda/opt.py:local_gpu_huge_add_or_mul """
+    # Disabled temporarily to figure out memory usage on Jenkins
+    return
     rng = np.random.RandomState([1, 2, 3])
 
     for num_args in [25]:
