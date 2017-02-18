@@ -5,6 +5,9 @@
 # Print commands as they are executed
 set -x
 
+# Try to print the actual test before the crash
+export PYTHONUNBUFFERED=1
+
 # Anaconda python
 export PATH=/usr/local/miniconda2/bin:$PATH
 
