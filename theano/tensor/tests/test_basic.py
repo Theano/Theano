@@ -1954,6 +1954,50 @@ J1InplaceTester = makeBroadcastTester(
     inplace=True,
     skip=skip_scipy)
 
+_good_broadcast_unary_i = dict(
+    normal=(rand_ranged(-10, 10, (2, 3)),),
+    empty=(numpy.asarray([], dtype=config.floatX),),
+    int=(randint_ranged(-10, 10, (2, 3)),),
+    uint8=(randint_ranged(0, 10, (2, 3)).astype('uint8'),),
+    uint16=(randint_ranged(0, 10, (2, 3)).astype('uint16'),)
+)
+
+I0Tester = makeBroadcastTester(
+    op=tensor.i0,
+    expected=expected_i0,
+    good=_good_broadcast_unary_i,
+    grad=_good_broadcast_unary_i,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    skip=skip_scipy)
+
+I0InplaceTester = makeBroadcastTester(
+    op=inplace.i0_inplace,
+    expected=expected_j0,
+    good=_good_broadcast_unary_i,
+    grad=_good_broadcast_unary_i,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy)
+
+I1Tester = makeBroadcastTester(
+    op=tensor.i1,
+    expected=expected_i1,
+    good=_good_broadcast_unary_i,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    skip=skip_scipy)
+
+I1InplaceTester = makeBroadcastTester(
+    op=inplace.i1_inplace,
+    expected=expected_i1,
+    good=_good_broadcast_unary_i,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy)
+
 ZerosLikeTester = makeBroadcastTester(
         op=tensor.zeros_like,
         expected=numpy.zeros_like,
