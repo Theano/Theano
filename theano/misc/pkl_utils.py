@@ -40,7 +40,7 @@ __license__ = "3-clause BSD"
 
 min_recursion = 3000
 if sys.getrecursionlimit() < min_recursion:
-  sys.setrecursionlimit(min_recursion)
+    sys.setrecursionlimit(min_recursion)
 
 Pickler = pickle.Pickler
 
