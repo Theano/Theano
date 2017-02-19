@@ -448,7 +448,7 @@ class Softmax(gof.Op):
         # is the same as the grad
         if None in eval_points:
             return [None]
-        return self.grad(inputs, eval_points)
+        return self.L_op(inputs, [self(*inputs)], eval_points)
 
     def infer_shape(self, node, shape):
         return shape
@@ -1054,7 +1054,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
             db_terms.append(db)
 
         if not isinstance(g_sm.type, DisconnectedType):
-            dx, db = softmax_with_bias.grad((x, b), (g_sm, ))
+            dx, db = softmax_with_bias.L_op((x, b), [softmax_with_bias(x, b)], (g_sm, ))
             dx_terms.append(dx)
             db_terms.append(db)
 
