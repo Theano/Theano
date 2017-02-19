@@ -755,8 +755,9 @@ def local_gpua_elemwise(op, context_name, inputs, outputs):
         return [gpu_output]
     elif op.scalar_op in (scalar.add, scalar.mul):
         max_nb_inputs = max_inputs_to_GpuElemwise(outputs)
-        while len(inputs) > max_nb_inputs:
-            inputs = inputs[:-max_nb_inputs] + [res(*inputs[-max_nb_inputs:])]
+        if max_nb_inputs > 1:
+            while len(inputs) > max_nb_inputs:
+                inputs = inputs[:-max_nb_inputs] + [res(*inputs[-max_nb_inputs:])]
         return res(*inputs)
     else:
         return res
