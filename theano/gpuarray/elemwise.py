@@ -42,24 +42,44 @@ def get_scal(dt):
 
 
 def max_inputs_to_GpuElemwise(node_or_outputs):
+    """
+    Compute the maximum number of inputs that fit in a kernel call.
+    """
     if isinstance(node_or_outputs, Apply):
         outputs = node_or_outputs.outputs
     else:
         outputs = node_or_outputs
+
+    n_out = len(outputs)
+    ndim = outputs[0].type.ndim
+
     ptr_size = 8
-    # We compile code that would do indexing in int64
+    # Even with call32, the interface does not change, and shapes,
+    # strides, and offset are passed as 64-bits (8 bytes)
     int_size = 8
 
     # we take the limit from CUDA for now
-    argument_limit = 232
-    ndim = outputs[0].type.ndim
-    # number of elements and shape
-    size_param_mandatory = (int_size * (ndim + 1)) + \
-        (ptr_size + int_size * ndim) * len(outputs)
+    nb_bytes_total = 4096
 
-    nb_bytes_avail = argument_limit - size_param_mandatory
-    nb_bytes_per_input = ptr_size + ndim * int_size
-    max_nb_inputs = nb_bytes_avail // nb_bytes_per_input
+    # Regardless of the number of arguments, we have:
+    # - The total number of elements (int)
+    # - The shape (int) on each dimension
+    fixed_size = int_size + int_size * ndim
+
+    # Each argument (input or output) has:
+    # - 1 pointer (ptr)
+    # - 1 offset (int)
+    # - 1 stride (int) per dimension
+    # Even if the tensor ends up being contiguous, code for the
+    # non-contiguous case still needs to be generated.
+    param_size = ptr_size + int_size + int_size * ndim
+
+    # Remaining for inputs
+    nb_bytes_for_inputs = nb_bytes_total - fixed_size - param_size * n_out
+
+    # Maximum number of inputs
+    max_nb_inputs = nb_bytes_for_inputs // param_size
+
     return max_nb_inputs
 
 
