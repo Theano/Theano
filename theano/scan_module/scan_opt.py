@@ -2266,6 +2266,7 @@ optdb.register('scan_eqopt1', scan_eqopt1, .05, 'fast_run', 'scan')
 # We run before blas opt at 1.7 and specialize 2.0
 # but after stabilize at 1.5. Should we put it before stabilize?
 optdb.register('scan_eqopt2', scan_eqopt2, 1.6, 'fast_run', 'scan')
+optdb.register('scanOp_save_mem', ScanSaveMem(), 1.61, 'fast_run', 'scan')
 optdb.register('scanOp_make_inplace',
                ScanInplaceOptimizer(typeInfer=None,
                                     gpu_flag=False),
@@ -2356,15 +2357,6 @@ scan_eqopt2.register('scanOp_merge_inouts',
                      opt.in2out(scan_merge_inouts, ignore_newtrees=True),
                      6,
                      'scan_merge_inouts',
-                     'fast_run',
-                     'scan')
-
-# Just before specialize to have the other optimization
-# like constant folding being applied
-# This don't introduce inplace.
-scan_eqopt2.register('scanOp_save_mem',
-                     ScanSaveMem(),
-                     7,
                      'fast_run',
                      'scan')
 
