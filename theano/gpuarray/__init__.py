@@ -45,9 +45,9 @@ def init_dev(dev, name=None):
     global pygpu_activated
     if not config.cxx:
         raise RuntimeError("The new gpu-backend need a c++ compiler.")
-    if (pygpu.version.major, pygpu.version.minor) < (0, 6):
+    if (pygpu.version.major, pygpu.version.minor, pygpu.version.patch) < (0, 6, 1):
         raise ValueError(
-            "Your installed version of pygpu is too old, please upgrade to 0.6 or later")
+            "Your installed version of pygpu is too old, please upgrade to 0.6.1 or later")
     # This is for the C headers API, we need to match the exact version.
     if pygpu.gpuarray.api_version()[0] != 1:
         raise ValueError(
