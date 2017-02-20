@@ -1819,8 +1819,6 @@ class ScanMerge(gof.Optimizer):
         """
         rep = set_nodes[0]
         if (rep.op.as_while != node.op.as_while or
-                len(rep.inputs) != len(node.inputs) or
-                len(rep.outputs) != len(node.outputs) or
                 node.op.truncate_gradient != rep.op.truncate_gradient or
                 node.op.mode != rep.op.mode):
             return False
