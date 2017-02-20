@@ -691,11 +691,11 @@ def test_udefined_grad():
     srng = MRG_RandomStreams(seed=1234)
 
     # checking uniform distribution
-    low = T.scalar()
+    low = tensor.scalar()
     out = srng.uniform((), low=low)
     assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, low)
 
-    high = T.scalar()
+    high = tensor.scalar()
     out = srng.uniform((), low=0, high=high)
     assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, high)
 
@@ -704,13 +704,13 @@ def test_udefined_grad():
                   (low, high))
 
     # checking binomial distribution
-    prob = T.scalar()
+    prob = tensor.scalar()
     out = srng.binomial((), p=prob)
     assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, prob)
 
     # checking multinomial distribution
-    prob1 = T.scalar()
-    prob2 = T.scalar()
+    prob1 = tensor.scalar()
+    prob2 = tensor.scalar()
     out = srng.multinomial((), pvals=[prob1, 0.5, 0.25], n=4)
     assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, prob1)
 
@@ -724,11 +724,11 @@ def test_udefined_grad():
                   (prob1, prob2))
 
     # checking normal distribution
-    avg = T.scalar()
+    avg = tensor.scalar()
     out = srng.normal((), avg=avg)
     assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, avg)
 
-    std = T.scalar()
+    std = tensor.scalar()
     out = srng.normal((), avg=0, std=std)
     assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, std)
 
