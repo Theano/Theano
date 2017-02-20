@@ -3,12 +3,82 @@ Release Notes
 =============
 
 
+Theano 0.9.0rc1 (20th of February, 2017)
+========================================
+
+This release extends the 0.9.0beta1 and announces the upcoming final release 0.9.
+
+Highlights (since 0.9.0beta1):
+ - Better integration of Theano+libgpuarray packages into conda distribution
+ - Better handling of Windows end-lines into C codes
+ - Better compatibility with NumPy 1.12
+ - Faster scan optimizations
+ - Fixed broadcast checking in scan
+ - Bug fixes related to merge optimizer and shape inference
+ - many other bug fixes and improvements
+ - Updated documentation
+
+ - New GPU back-end:
+
+   - Value of a shared variable is now set inplace
+
+A total of 26 people contributed to this release since 0.9.0beta1 and 118 since 0.8.0, see the list at the bottom.
+
+Interface changes:
+ - In MRG, replaced method `multinomial_wo_replacement()` with new method `choice()`
+
+Convolution updates:
+ - Implement conv2d_transpose convenience function
+
+GPU:
+ - GPUMultinomialFromUniform op now supports multiple dtypes
+
+New features:
+ - OpFromGraph now allows gradient overriding for every input
+ - Added Abstract Ops for batch normalization that use cuDNN when available and pure Theano CPU/GPU alternatives otherwise
+ - Added new Theano flag cuda.enabled
+ - Added new Theano flag print_global_stats to print some global statistics (time spent) at the end
+
+Others:
+ - Split op now has C code for CPU and GPU
+ - "theano-cache list" now includes compilation times
+
+
+Committers since 0.9.0beta1:
+ - Frederic Bastien
+ - Benjamin Scellier
+ - khaotik
+ - Steven Bocco
+ - Arnaud Bergeron
+ - Pascal Lamblin
+ - Gijs van Tulder
+ - Reyhane Askari
+ - Chinnadhurai Sankar
+ - Vincent Dumoulin
+ - Alexander Matyasko
+ - Cesar Laurent
+ - Nicolas Ballas
+ - affanv14
+ - Faruk Ahmed
+ - Anton Chechetka
+ - Alexandre de Brebisson
+ - Amjad Almahairi
+ - Dimitar Dimitrov
+ - Fuchai
+ - Jan Schlüter
+ - Jonas Degrave
+ - Mathieu Germain
+ - Rebecca N. Palmer
+ - Simon Lefrancois
+ - valtron
+
+
 Theano 0.9.0beta1 (24th of January, 2017)
 =========================================
 
 This release contains a lot of bug fixes and improvements + new features, to prepare the upcoming release candidate.
 
-Highlight:
+Highlights:
  - Many computation and compilation speed up
  - More numerical stability by default for some graph
  - Jenkins (gpu tests run on PR in addition to daily buildbot)
@@ -23,14 +93,15 @@ Highlight:
  - scan with checkpoint (trade off between speed and memory usage, useful for long sequences)
  - Added a bool dtype
 
- - New back-end:
+ - New GPU back-end:
+
    - float16 storage
    - better mapping between theano device number and nvidia-smi number, using the PCI bus ID of graphic cards
-   - More pooling support on GPU when cuDNN isn't there.
-   - ignore_border=False is now implemented for pooling.
+   - More pooling support on GPU when cuDNN isn't there
+   - ignore_border=False is now implemented for pooling
 
 
-A total of 112 people contributed to this release, see the list at the bottom.
+A total of 112 people contributed to this release since 0.8.0, see the list at the bottom.
 
 
 Interface changes:
@@ -41,7 +112,7 @@ Interface changes:
  - Move softsign out of sandbox to theano.tensor.nnet.softsign
  - Roll make the shift be modulo the size of the axis we roll on
  - Merge CumsumOp/CumprodOp into CumOp
- - round() default to the same as NumPy: half_to_even.
+ - round() default to the same as NumPy: half_to_even
 
 Convolution updates:
  - Multi-cores convolution and pooling on CPU
@@ -57,7 +128,7 @@ GPU:
  - Support for solve (using cusolver), erfinv and erfcinv
  - cublas gemv workaround when we reduce on an axis with a dimensions size of 0
  - Warn user that some cuDNN algorithms may produce unexpected results in certain environments
-   for convolution backward filter operations.
+   for convolution backward filter operations
 
 New features:
  - Add gradient of solve, tensorinv (CPU), tensorsolve (CPU) searchsorted (CPU)
