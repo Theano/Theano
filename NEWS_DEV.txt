@@ -117,6 +117,14 @@ Other more detailed changes:
 
 
 ALL THE PR BELLOW HAVE BEEN CHECKED
+* https://github.com/Theano/Theano/pull/5559
+* https://github.com/Theano/Theano/pull/5568
+* https://github.com/Theano/Theano/pull/5553
+* https://github.com/Theano/Theano/pull/5561
+* https://github.com/Theano/Theano/pull/5558
+* https://github.com/Theano/Theano/pull/5544
+* https://github.com/Theano/Theano/pull/5552
+* https://github.com/Theano/Theano/pull/5547
 * https://github.com/Theano/Theano/pull/5542
 * https://github.com/Theano/Theano/pull/5451
 * https://github.com/Theano/Theano/pull/5520

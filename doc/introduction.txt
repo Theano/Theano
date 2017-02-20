@@ -165,7 +165,7 @@ Note: There is no short term plan to support multi-node computation.
 Theano Vision State
 ===================
 
-Here is the state of that vision as of February 15th, 2017 (after Theano 0.9.0rc1):
+Here is the state of that vision as of February 20th, 2017 (after Theano 0.9.0rc1):
 
 * We support tensors using the `numpy.ndarray` object and we support many operations on them.
 * We support sparse types by using the `scipy.{csc,csr,bsr}_matrix` object and support some operations on them.

@@ -3,7 +3,7 @@ Release Notes
 =============
 
 
-Theano 0.9.0rc1 (15th of February, 2017)
+Theano 0.9.0rc1 (20th of February, 2017)
 ========================================
 
 This release extends the 0.9.0beta1 and announces the upcoming final release 0.9.
@@ -22,7 +22,7 @@ Highlights (since 0.9.0beta1):
 
    - Value of a shared variable is now set inplace
 
-A total of 24 people contributed to this release since 0.9.0beta1 and 116 since 0.8.0, see the list at the bottom.
+A total of 26 people contributed to this release since 0.9.0beta1 and 118 since 0.8.0, see the list at the bottom.
 
 Interface changes:
  - In MRG, replaced method `multinomial_wo_replacement()` with new method `choice()`
@@ -45,14 +45,14 @@ Others:
 
 
 Committers since 0.9.0beta1:
- - Benjamin Scellier
  - Frederic Bastien
+ - Benjamin Scellier
  - khaotik
  - Steven Bocco
  - Arnaud Bergeron
+ - Pascal Lamblin
  - Gijs van Tulder
  - Reyhane Askari
- - Pascal Lamblin
  - Chinnadhurai Sankar
  - Vincent Dumoulin
  - Alexander Matyasko
@@ -68,7 +68,9 @@ Committers since 0.9.0beta1:
  - Jan Schlüter
  - Jonas Degrave
  - Mathieu Germain
+ - Rebecca N. Palmer
  - Simon Lefrancois
+ - valtron
 
 
 Theano 0.9.0beta1 (24th of January, 2017)
