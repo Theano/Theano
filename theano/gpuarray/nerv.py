@@ -157,7 +157,7 @@ def local_gpua_dot_to_gemm16(op, ctx_name, inputs, outputs):
     B = inputs[1]
     if (A.ndim == 2 and B.ndim == 2 and
             A.dtype == 'float16' and B.dtype == 'float16'):
-        fgraph = inputs[0].fgraph
+        fgraph = getattr(outputs[0], 'fgraph', None)
         C = GpuAllocEmpty('float16', ctx_name)(
             shape_i(A, 0, fgraph), shape_i(B, 1, fgraph))
         return Gemm16()(C, 1.0, A, B, 0.0)

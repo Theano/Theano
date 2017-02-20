@@ -954,7 +954,7 @@ class GpuAllocEmpty(HideC, AllocEmpty):
     _f16_ok = True
     params_type = gpu_context_type
 
-    def __init__(self, dtype, context_name=None):
+    def __init__(self, dtype, context_name):
         self.dtype = dtype
         self.context_name = context_name
 
