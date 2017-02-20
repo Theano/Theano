@@ -430,7 +430,7 @@ class GraphToGPU(Optimizer):
                         new_o.owner.inputs[0].type == o.type):
                     new_o = new_o.owner.inputs[0]
                 else:
-                    new_o = new_o.transfer('cpu')
+                    new_o = safe_to_cpu(new_o)
             new_nodes.append(new_o)
         fgraph.replace_all_validate(zip(fgraph.outputs, new_nodes),
                                     reason=self.__class__.__name__)
