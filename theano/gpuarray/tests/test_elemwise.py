@@ -18,7 +18,7 @@ from ..type import GpuArrayType, get_context
 from pygpu import ndgpuarray as gpuarray
 
 
-# This is acutally a test for GpuElemwise
+# This is actually a test for GpuElemwise
 class test_gpu_Broadcast(test_elemwise.test_Broadcast):
     cop = GpuElemwise
     ctype = GpuArrayType

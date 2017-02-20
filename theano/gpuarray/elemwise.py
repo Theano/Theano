@@ -41,6 +41,48 @@ def get_scal(dt):
     return scalar.get_scalar_type(dt)
 
 
+def max_inputs_to_GpuElemwise(node_or_outputs):
+    """
+    Compute the maximum number of inputs that fit in a kernel call.
+    """
+    if isinstance(node_or_outputs, Apply):
+        outputs = node_or_outputs.outputs
+    else:
+        outputs = node_or_outputs
+
+    n_out = len(outputs)
+    ndim = outputs[0].type.ndim
+
+    ptr_size = 8
+    # Even with call32, the interface does not change, and shapes,
+    # strides, and offset are passed as 64-bits (8 bytes)
+    int_size = 8
+
+    # we take the limit from CUDA for now
+    nb_bytes_total = 4096
+
+    # Regardless of the number of arguments, we have:
+    # - The total number of elements (int)
+    # - The shape (int) on each dimension
+    fixed_size = int_size + int_size * ndim
+
+    # Each argument (input or output) has:
+    # - 1 pointer (ptr)
+    # - 1 offset (int)
+    # - 1 stride (int) per dimension
+    # Even if the tensor ends up being contiguous, code for the
+    # non-contiguous case still needs to be generated.
+    param_size = ptr_size + int_size + int_size * ndim
+
+    # Remaining for inputs
+    nb_bytes_for_inputs = nb_bytes_total - fixed_size - param_size * n_out
+
+    # Maximum number of inputs
+    max_nb_inputs = nb_bytes_for_inputs // param_size
+
+    return max_nb_inputs
+
+
 class GpuElemwise(HideC, Elemwise):
     """
     Elemwise on the GPU.
@@ -57,6 +99,9 @@ class GpuElemwise(HideC, Elemwise):
         items = str(sorted(self.inplace_pattern.items()))
         return "GpuElemwise{%s}%s<gpuarray>" % (self.scalar_op, items)
 
+    def max_inputs(self, node_or_outputs):
+        return max_inputs_to_GpuElemwise(node_or_outputs)
+
     def make_node(self, *inputs):
         ctx_name = infer_context_name(*inputs)
         inputs = [as_gpuarray_variable(i, ctx_name) for i in inputs]
@@ -68,6 +113,10 @@ class GpuElemwise(HideC, Elemwise):
                    zip(out_info[0], out_info[1])]
         if len(outputs) > 1:
             raise NotImplementedError()
+
+        if len(inputs) > max_inputs_to_GpuElemwise(outputs):
+            raise NotImplementedError(
+                "Can not make this GpuElemwise with that much inputs")
 
         # Try to generate the kernel to catch SupportCodeErrors
         scal_ins = [get_scal(i.dtype) for i in inputs]

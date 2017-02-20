@@ -7347,18 +7347,23 @@ def local_add_mul_fusion(node):
     s_op = node.op.scalar_op.__class__
     new_inp = []
     fused = False
+    nb_inputs = len(node.inputs)
+    max_inputs = float('inf')
+    if hasattr(node.op, 'max_inputs'):
+        max_inputs = node.op.max_inputs(node)
     for inp in node.inputs:
         if (inp.owner and
                 isinstance(inp.owner.op, Elemwise) and
                 isinstance(inp.owner.op.scalar_op, s_op) and
                 # Do not duplicate the operation.
-                len(inp.clients) == 1):
+                len(inp.clients) == 1 and
+                (nb_inputs + len(inp.owner.inputs) - 1) <= max_inputs):
             new_inp.extend(inp.owner.inputs)
             fused = True
         else:
             new_inp.append(inp)
 
-    # We ca not compare the number of inputs as Mul and Add could have
+    # We can not compare the number of inputs as Mul and Add could have
     # 0 or 1 inputs in some corner cases.
     if fused:
         output = node.op(*new_inp)
