@@ -385,8 +385,10 @@ class GpuDnnConvDesc(COp):
         self.precision = precision
 
     def make_node(self, kern_shape):
-        if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
-            raise TypeError('kern must be 1D shape tensor')
+        kern_shape = as_tensor_variable(kern_shape)
+        if kern_shape.type.ndim != 1 or kern_shape.dtype not in theano.tensor.basic.int_dtypes:
+            raise TypeError('kern must be an int64 1D shape tensor')
+        kern_shape = theano.tensor.basic.cast(kern_shape, 'int64')
 
         node = Apply(self, [kern_shape],
                      [CDataType("cudnnConvolutionDescriptor_t",
