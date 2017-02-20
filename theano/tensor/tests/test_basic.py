@@ -7400,7 +7400,8 @@ class test_diag(unittest.TestCase):
         f = theano.function([x], g.shape)
         topo = f.maker.fgraph.toposort()
         if config.mode != 'FAST_COMPILE':
-            assert sum([isinstance(node.op, AllocDiag) for node in topo]) == 0
+            assert numpy.sum(
+                [isinstance(node.op, AllocDiag) for node in topo]) == 0
         for shp in [5, 0, 1]:
             m = rng.rand(shp).astype(self.floatX)
             assert (f(m) == numpy.diag(m).shape).all()
@@ -7410,7 +7411,8 @@ class test_diag(unittest.TestCase):
         f = theano.function([x], g.shape)
         topo = f.maker.fgraph.toposort()
         if config.mode != 'FAST_COMPILE':
-            assert sum([isinstance(node.op, ExtractDiag) for node in topo]) == 0
+            assert numpy.sum(
+                [isinstance(node.op, ExtractDiag) for node in topo]) == 0
         for shp in [(5, 3), (3, 5), (5, 1), (1, 5), (5, 0), (0, 5),
                     (1, 0), (0, 1)]:
             m = rng.rand(*shp).astype(self.floatX)

@@ -33,7 +33,6 @@ from theano.compile import Rebroadcast, Shape, shape
 # We use these exceptions as well.
 import theano.scalar.sharedvar
 from theano.gradient import grad_undefined
-from theano.gradient import grad_not_implemented
 from theano.gradient import DisconnectedType
 
 # set up the external interface
@@ -6144,9 +6143,18 @@ class ExtractDiag(Op):
             z[0] = z[0].copy()
 
     def grad(self, inputs, gout):
+        """
+        The following code is moved from tensor.nlinalg.ExtractDiag, only works
+        for matrices.
+        """
+        warnings.warn("gradient of theano.tensor.nlinalg.ExtractDiag only"
+                      "works for matrices.")
         (x,) = inputs
         (gz,) = gout
-        return [grad_not_implemented(self, 0, x)]
+        x = theano.tensor.zeros_like(x)
+        xdiag = theano.tensor.AllocDiag(offset=self.offset)(gz)
+        return [theano.tensor.set_subtensor(
+            x[:xdiag.shape[0], :xdiag.shape[1]], xdiag)]
 
     def infer_shape(self, node, shapes):
         in_shape, = shapes
