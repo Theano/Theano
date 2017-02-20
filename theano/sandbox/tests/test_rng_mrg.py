@@ -687,6 +687,56 @@ def test_overflow_cpu():
     rng_mrg_overflow(sizes, fct, config.mode, should_raise_error=False)
 
 
+def test_udefined_grad():
+    srng = MRG_RandomStreams(seed=1234)
+
+    # checking uniform distribution
+    low = T.scalar()
+    out = srng.uniform((), low=low)
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, low)
+
+    high = T.scalar()
+    out = srng.uniform((), low=0, high=high)
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, high)
+
+    out = srng.uniform((), low=low, high=high)
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out,
+                  (low, high))
+
+    # checking binomial distribution
+    prob = T.scalar()
+    out = srng.binomial((), p=prob)
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, prob)
+
+    # checking multinomial distribution
+    prob1 = T.scalar()
+    prob2 = T.scalar()
+    out = srng.multinomial((), pvals=[prob1, 0.5, 0.25], n=4)
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, prob1)
+
+    out = srng.multinomial((), pvals=[prob1, prob2])
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out,
+                  (prob1, prob2))
+
+    # checking choice
+    out = srng.choice((), p=[[prob1, prob2]], replace=False)
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out,
+                  (prob1, prob2))
+
+    # checking normal distribution
+    avg = T.scalar()
+    out = srng.normal((), avg=avg)
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, avg)
+
+    std = T.scalar()
+    out = srng.normal((), avg=0, std=std)
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, std)
+
+    out = srng.normal((), avg=avg, std=std)
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out,
+                  (avg, std))
+
+
 if __name__ == "__main__":
     rng = MRG_RandomStreams(np.random.randint(2147462579))
     print(theano.__file__)

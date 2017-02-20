@@ -937,6 +937,7 @@ class MRG_RandomStreams(object):
             raise TypeError("For now, p has to be specified in "
                             "MRG_RandomStreams.choice.")
         p = as_tensor_variable(p)
+        p = undefined_grad(p)
 
         if ndim is not None:
             raise ValueError("ndim argument to "
