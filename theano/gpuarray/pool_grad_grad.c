@@ -132,9 +132,9 @@ int APPLY_SPECIFIC(pool_grad_grad)(PyGpuArrayObject *x,
     size_t s[3];
     size_t p[3];
     for(int i = 0; i < ndims; i++) {
-      w[i] = *((npy_intp*)PyArray_GETPTR1(ws, i));
-      s[i] = *((npy_intp*)PyArray_GETPTR1(stride, i));
-      p[i] = *((npy_intp*)PyArray_GETPTR1(pad, i));
+      w[i] = *((npy_int64*)PyArray_GETPTR1(ws, i));
+      s[i] = *((npy_int64*)PyArray_GETPTR1(stride, i));
+      p[i] = *((npy_int64*)PyArray_GETPTR1(pad, i));
     }
 
     int err;
