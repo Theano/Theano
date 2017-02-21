@@ -1078,7 +1078,7 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
         """ % locals()
 
 
-class GpuExtractDiag(Subtensor):
+class GpuExtractDiag(Op):
     __props__ = ("offset", "axis1", "axis2", "view")
 
     def __init__(self, offset=0, axis1=0, axis2=1, view=False):
