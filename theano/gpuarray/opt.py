@@ -1056,7 +1056,8 @@ def local_gpua_advanced_incsubtensor(op, context_name, inputs, outputs):
         x = x.dimshuffle(0, 'x')
         y = y.dimshuffle('x', 'x')
         ret = GpuAdvancedIncSubtensor1_dev20(
-            set_instead_of_inc=set_instead_of_inc)(x, y, ilist).dimshuffle(0)
+            set_instead_of_inc=set_instead_of_inc)(x, y, ilist)
+        ret = GpuDimShuffle(ret.type.broadcastable, [0])(ret)
         return ret
     elif compute_capability < 2 or x.ndim != 2 or y.ndim != 2:
         return GpuAdvancedIncSubtensor1(
