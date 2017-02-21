@@ -1673,9 +1673,6 @@ if (!CudaNdarray_is_c_contiguous(%(input)s)) {
   %(fail)s
 }
 
-if (c_set_tensorNd(%(input)s, %(input_desc)s) != 0)
-  %(fail)s
-
 int win[%(nd)d];
 int pad[%(nd)d];
 int str[%(nd)d];
@@ -1711,6 +1708,15 @@ if (CudaNdarray_prep_output(&%(out)s, %(nd)s+2, %(out)s_dims) != 0)
   %(fail)s
 }
 
+// if input batch is empty, we return the empty output without calling cuDNN
+// (which will fail on zero batch size).
+// Ideally, "return success" here, but we don't have a %%(done)s, so just skip the call.
+if (CudaNdarray_DIMS(%(input)s)[0] > 0) {
+// Don't indent for keeping history
+
+if (c_set_tensorNd(%(input)s, %(input_desc)s) != 0)
+  %(fail)s
+
 if (c_set_tensorNd(%(out)s, %(output_desc)s) != 0)
   %(fail)s
 
@@ -1732,6 +1738,8 @@ if (err != CUDNN_STATUS_SUCCESS) {
                cudnnGetErrorString(err));
   %(fail)s
 }
+
+} // Closes the batchdim > 0 check.
 """ % dict(out=out, fail=sub['fail'],
            name=name, input=inputs[0],
            ws=ws, pad=pad, str=stride,
@@ -1756,7 +1764,7 @@ if (err != CUDNN_STATUS_SUCCESS) {
         return [[1], [0], [0], [0]]
 
     def c_code_cache_version(self):
-        return (8, version())
+        return (9, version())
 
 
 class GpuDnnPoolGrad(DnnBase):
@@ -1938,13 +1946,6 @@ if (!CudaNdarray_is_c_contiguous(%(output)s)) {
   %(fail)s
 }
 
-if (c_set_tensorNd(%(input)s, %(input_desc)s) != 0)
-  %(fail)s
-if (c_set_tensorNd(%(input_grad)s, %(input_grad_desc)s) != 0)
-  %(fail)s
-if (c_set_tensorNd(%(output)s, %(output_desc)s) != 0)
-  %(fail)s
-
 if (CudaNdarray_prep_output(&%(output_grad)s,
                             %(output)s->nd,
                             CudaNdarray_HOST_DIMS(%(output)s)) != 0)
@@ -1952,6 +1953,18 @@ if (CudaNdarray_prep_output(&%(output_grad)s,
   %(fail)s
 }
 
+// if input batch is empty, we return the empty output without calling cuDNN
+// (which will fail on zero batch size).
+// Ideally, "return success" here, but we don't have a %%(done)s, so just skip the call.
+if (CudaNdarray_DIMS(%(input)s)[0] > 0) {
+// Don't indent for keeping history
+
+if (c_set_tensorNd(%(input)s, %(input_desc)s) != 0)
+  %(fail)s
+if (c_set_tensorNd(%(input_grad)s, %(input_grad_desc)s) != 0)
+  %(fail)s
+if (c_set_tensorNd(%(output)s, %(output_desc)s) != 0)
+  %(fail)s
 
 int win[%(nd)d];
 int pad[%(nd)d];
@@ -1999,6 +2012,8 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
                cudnnGetErrorString(err%(name)s));
  %(fail)s
 }
+
+} // Closes the batchdim > 0 check.
 """ % dict(output_grad=out_grad,
            fail=sub['fail'], name=name,
            input=inp, input_grad=inp_grad, output=out,
@@ -2010,7 +2025,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            ws=ws, pad=pad, str=stride)
 
     def c_code_cache_version(self):
-        return (8, version())
+        return (9, version())
 
     def infer_shape(self, node, shape):
         return [shape[0]]
