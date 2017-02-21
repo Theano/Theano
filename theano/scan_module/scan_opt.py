@@ -1516,15 +1516,10 @@ class ScanSaveMem(gof.Optimizer):
                         node_ins]
             node_ins = pre_constant_merge(node_ins)
             # 3.6 Compose the new scan
-            # I need to make sure I'm not reapplying the same optimization
-            # twice since bad things usually happen if I do that
-            # TODO: why not check if save mem was done on any of merged nodes?
-            #       That way, if none of them had save mem applied, it would
-            #       be applied later.
-            info['_scan_savemem_visited'] = True
-
             # TODO: currently we don't support scan with 0 step. So
             # don't create one.
+            # For test, mark that savemem have optimized this node
+            info['_scan_savemem_visited'] = True
             if theano.tensor.extract_constant(node_ins[0]) == 0:
                 return
 
@@ -1627,8 +1622,7 @@ class ScanSaveMem(gof.Optimizer):
         nodelist = [x for x in fgraph.toposort() if isinstance(x.op,
                                                                scan_op.Scan)]
         for node in nodelist:
-            if not hasattr(node.op, '_scan_savemem_visited'):
-                self.process_node(fgraph, node)
+            self.process_node(fgraph, node)
 
 
 class ScanMerge(gof.Optimizer):
@@ -1819,8 +1813,6 @@ class ScanMerge(gof.Optimizer):
         """
         rep = set_nodes[0]
         if (rep.op.as_while != node.op.as_while or
-                len(rep.inputs) != len(node.inputs) or
-                len(rep.outputs) != len(node.outputs) or
                 node.op.truncate_gradient != rep.op.truncate_gradient or
                 node.op.mode != rep.op.mode):
             return False
@@ -2266,6 +2258,8 @@ optdb.register('scan_eqopt1', scan_eqopt1, .05, 'fast_run', 'scan')
 # We run before blas opt at 1.7 and specialize 2.0
 # but after stabilize at 1.5. Should we put it before stabilize?
 optdb.register('scan_eqopt2', scan_eqopt2, 1.6, 'fast_run', 'scan')
+# ScanSaveMem should execute only once per node.
+optdb.register('scanOp_save_mem', ScanSaveMem(), 1.61, 'fast_run', 'scan')
 optdb.register('scanOp_make_inplace',
                ScanInplaceOptimizer(typeInfer=None,
                                     gpu_flag=False),
@@ -2356,15 +2350,6 @@ scan_eqopt2.register('scanOp_merge_inouts',
                      opt.in2out(scan_merge_inouts, ignore_newtrees=True),
                      6,
                      'scan_merge_inouts',
-                     'fast_run',
-                     'scan')
-
-# Just before specialize to have the other optimization
-# like constant folding being applied
-# This don't introduce inplace.
-scan_eqopt2.register('scanOp_save_mem',
-                     ScanSaveMem(),
-                     7,
                      'fast_run',
                      'scan')
 
