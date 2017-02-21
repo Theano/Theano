@@ -47,7 +47,7 @@ Requirements
         **Highly recommended** Required for GPU code generation/execution on NVIDIA gpus. See instruction below.
 
     `libgpuarray`_
-        Required for GPU/CPU code generation on CUDA and OpenCL devices (see: :ref:`gpuarray`.)
+        Required for GPU/CPU code generation on CUDA and OpenCL devices (see: :ref:`gpuarray`).
 
     `pycuda`_ and `skcuda`_
 

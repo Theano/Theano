@@ -24,7 +24,7 @@ Install requirements and optional packages
 .. note::
 
     * Arguments between <...> are optional.
-    * ``m2w64-toolchain`` package provides a fully-compatible version of GCC and is then highly-recommended.
+    * ``m2w64-toolchain`` package provides a fully-compatible version of GCC and is then highly recommended.
 
 For Python 2*
 :::::::::::::
@@ -123,4 +123,3 @@ a working environment:
     * Install CUDA with the same instructions as above.
     * Install the latest, development version of libgpuarray following the
       `Step-by-step instructions <http://deeplearning.net/software/libgpuarray/installation.html#step-by-step-install>`__.
-    * Configure libgpuarray with the same instructions as above.
