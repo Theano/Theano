@@ -607,11 +607,20 @@ class MergeFeature(object):
         # properly.
         # The clients should at least contain `node` itself!
         if node.inputs:
-            assert len(node.inputs[0].clients) > 0
-            assert (node, 0) in node.inputs[0].clients
+            # Take the smallest clients list. Some ops like elemwise
+            # have optimization that put constant as the first inputs.
+            # As constant have in general more clients then other type of nodes
+            # using always inputs[0] make us look at more nodes.
+            # Always pick the smallest clints list between inputs 0
+            # and -1 speed up optimization.
 
-            merge_candidates = [c for (c, i) in node.inputs[0].clients
-                                if c in self.nodes_seen]
+            if len(node.inputs[0].clients) < len(node.inputs[-1].clients):
+                clients = node.inputs[0].clients
+            else:
+                clients = node.inputs[-1].clients
+            assert len(clients) > 0
+
+            merge_candidates = [c for c, i in clients if c in self.nodes_seen]
 
             # Put all clients of Assert inputs (if exist) into merge_candidates
             # TODO: Deactivated for now as this cause cycle in the graph.
