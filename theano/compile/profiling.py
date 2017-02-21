@@ -63,7 +63,8 @@ def _atexit_print_fn():
         # Reverse sort in the order of compile+exec time
         for ps in sorted(_atexit_print_list,
                          key=lambda a:a.compile_time + a.fct_call_time)[::-1]:
-            if ps.fct_callcount >= 1 or ps.compile_time > 1:
+            if (ps.fct_callcount >= 1 or ps.compile_time > 1 or
+                    getattr(ps, 'callcount', 0) > 1):
                 ps.summary(file=destination_file,
                            n_ops_to_print=config.profiling.n_ops,
                            n_apply_to_print=config.profiling.n_apply)
