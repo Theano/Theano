@@ -113,10 +113,7 @@ class TestGaussNewton(unittest.TestCase):
     def test_nobatch(self):
         # This used to give an error due to optimization "scan_merge_inouts".
         # The batch size is set to 1 and the data is represented by a matrix.
-        # As of 2013-10-24, it still triggers an optimization error due to
-        # "remove_constants_and_unused_inputs_scan".
-        mode_exc = mode.excluding("remove_constants_and_unused_inputs_scan")
-        self._run(100, 10, batch_size=1, mode=mode_exc)
+        self._run(100, 10, batch_size=1, mode=mode)
 
 
 class GaussNewtonMatrix(object):
