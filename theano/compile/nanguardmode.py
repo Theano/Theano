@@ -23,7 +23,7 @@ except ImportError:
 logger = logging.getLogger("theano.compile.nanguardmode")
 
 
-def _non_numeric_value(arr, var):
+def _is_numeric_value(arr, var):
     """
     Checks a variable against non-numeric types such as types, slices,
     empty arrays, and None, that need not be checked for NaN and Inf values.
@@ -40,18 +40,18 @@ def _non_numeric_value(arr, var):
 
     """
     if isinstance(arr, theano.gof.type._cdata_type):
-        return True
+        return False
     elif isinstance(arr, np.random.mtrand.RandomState):
-        return True
+        return False
     elif var and getattr(var.tag, 'is_rng', False):
         return False
     elif isinstance(arr, slice):
-        return True
+        return False
     elif arr is None:
-        return True
+        return False
     elif arr.size == 0:
-        return True
-    return False
+        return False
+    return True
 
 
 def flatten(l):
@@ -105,7 +105,7 @@ def contains_nan(arr, node=None, var=None):
     construction of a boolean array with the same shape as the input array.
 
     """
-    if _non_numeric_value(arr, var):
+    if not _is_numeric_value(arr, var):
         return False
     elif cuda.cuda_available and isinstance(arr, cuda.CudaNdarray):
         if (node and hasattr(theano.sandbox, 'rng_mrg') and
@@ -148,7 +148,7 @@ def contains_inf(arr, node=None, var=None):
     boolean array with the same shape as the input array.
 
     """
-    if _non_numeric_value(arr, var):
+    if not _is_numeric_value(arr, var):
         return False
     elif cuda.cuda_available and isinstance(arr, cuda.CudaNdarray):
         if (node and hasattr(theano.sandbox, 'rng_mrg') and
@@ -302,7 +302,7 @@ class NanGuardMode(Mode):
                     error = True
             if big_is_error:
                 err = False
-                if _non_numeric_value(value, var):
+                if not _is_numeric_value(value, var):
                     err = False
                 elif cuda.cuda_available and isinstance(value, cuda.CudaNdarray):
                     compile_gpu_func(False, False, True)
