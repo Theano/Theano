@@ -9,7 +9,7 @@ KERNEL void ROIPoolGPUBkwd_kernel(
     ga_size pooled_height, ga_size pooled_width,
     DTYPE_i0* bottom_diff,
     DTYPE_i0* bottom_rois) {
-    for (ga_size index = GID_0 * LDIM_0 + LID_0;; index < nloops; index += LDIM_0 * GDIM_0) {
+    for (ga_size index = GID_0 * LDIM_0 + LID_0; index < nloops; index += LDIM_0 * GDIM_0) {
         // (n, c, h, w) coords in bottom data
         ga_size w = index % width;
         ga_size h = (index / width) % height;

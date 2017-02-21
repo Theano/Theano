@@ -15,7 +15,7 @@ from theano.tests import unittest_tools as utt
 from .config import mode_with_gpu, mode_without_gpu
 from .test_basic_ops import rand
 from ..pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad,
-                    GpuDownsampleFactorMaxGradGrad, GpuRoIPoolOp)
+                    GpuDownsampleFactorMaxGradGrad, GpuRoIPoolOp, GpuRoIPoolGradOp)
 from theano.tensor.signal.tests.test_pool import (generate_random_image, numpy_roi_pool)
 
 
@@ -313,21 +313,26 @@ class TestGpuRoIPool(utt.InferShapeTester):
         pool_h = 2
         # Testing if Gpu Op is present
         # assert any([isinstance(node.op, GpuRoIPoolOp) for node in func.maker.fgraph.toposort()])
-        roi_op = GpuRoIPoolOp(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=1.)
+        roi_op = GpuRoIPoolOp(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=1)
         t_outs = roi_op(t_data, t_rois)
         func = theano.function([t_data, t_rois], t_outs)
         roi_outs = func(random_image, roi_theano)
         maxloc_theano, maxvals_theano = roi_outs[0], roi_outs[1]
         n_maxval, n_maxloc = numpy_roi_pool(random_image, 2, 3, 2, pool_h, pool_w, roi_numpy, spatial_scale=1.0)
-        utt.assert_allclose(n_maxloc, maxloc_theano)
         utt.assert_allclose(n_maxval, maxvals_theano)
+        def mp(inp, roi):
+            out, argmax = self.op_class(pool_h, pool_w, 1)(inp, roi)
+            grad_op = GpuRoIPoolGradOp(2, 2, 1)(inp, roi, argmax, out)
+            return grad_op
+        utt.verify_grad(mp, [random_image, roi_theano])
+
 
     def test_infer_shape(self):
         t_data = tensor.dtensor4()
         t_rois = tensor.dmatrix()
         roi_theano = np.asarray([[0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]])
 
-        random_image = generate_random_image(1, 3, 16, 16)
+        random_image = generate_random_image(1, 3, 20, 16)
 
         self._compile_and_check([t_data, t_rois],
                                 self.op_class(2, 2, 1.0)(t_data, t_rois),
