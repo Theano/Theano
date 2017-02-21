@@ -1518,6 +1518,8 @@ class ScanSaveMem(gof.Optimizer):
             # 3.6 Compose the new scan
             # TODO: currently we don't support scan with 0 step. So
             # don't create one.
+            # For test, mark that savemem have optimized this node
+            info['_scan_savemem_visited'] = True
             if theano.tensor.extract_constant(node_ins[0]) == 0:
                 return
 
