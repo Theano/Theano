@@ -560,3 +560,13 @@ def test_local_lift_solve():
     A_val = np.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
     b_val = np.random.uniform(-0.4, 0.4, (5, 3)).astype("float32")
     utt.assert_allclose(f_cpu(A_val, b_val), f_gpu(A_val, b_val))
+
+
+def test_local_gpua_advanced_incsubtensor():
+    # test a corner case reported at gh-5589
+    target = tensor.ftensor4()
+    y = target.dimshuffle(1, 0, 2, 3).flatten(ndim=1)
+    w = tensor.ones_like(y)
+    w = tensor.set_subtensor(w[tensor.eq(y, 1.0).nonzero()], 100)
+    w = tensor.set_subtensor(w[tensor.eq(y, -1.0).nonzero()], 0)
+    theano.function([target], w)

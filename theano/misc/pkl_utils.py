@@ -37,7 +37,11 @@ __authors__ = "Pascal Lamblin"
 __copyright__ = "Copyright 2013, Universite de Montreal"
 __license__ = "3-clause BSD"
 
-sys.setrecursionlimit(3000)
+
+min_recursion = 3000
+if sys.getrecursionlimit() < min_recursion:
+    sys.setrecursionlimit(min_recursion)
+
 Pickler = pickle.Pickler
 
 

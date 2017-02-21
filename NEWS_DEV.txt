@@ -15,7 +15,15 @@ git shortlog -sn rel-0.8.0..
 
 TODO: better Theano conv doc
 
-Highlight:
+Highlights:
+ - Better integration of Theano+libgpuarray packages into conda distribution
+ - Better handling of Windows end-lines into C codes
+ - Better compatibility with NumPy 1.12
+ - Faster scan optimizations
+ - Fixed broadcast checking in scan
+ - Bug fixes related to merge optimizer and shape inference
+ - many other bug fixes and improvements
+ - Updated documentation
  - Many computation and compilation speed up
  - More numerical stability by default for some graph
  - Jenkins (gpu tests run on PR in addition to daily buildbot)
@@ -30,13 +38,16 @@ Highlight:
  - scan with checkpoint (trade off between speed and memory usage, useful for long sequences)
  - Added a bool dtype
 
- - New back-end:
+ - New GPU back-end:
+
+   - Value of a shared variable is now set inplace
    - float16 storage
    - better mapping between theano device number and nvidia-smi number, using the PCI bus ID of graphic cards
-   - More pooling support on GPU when cuDNN isn't there.
-   - ignore_border=False is now implemented for pooling.
+   - More pooling support on GPU when cuDNN isn't there
+   - ignore_border=False is now implemented for pooling
 
 Interface changes:
+ - In MRG, replaced method `multinomial_wo_replacement()` with new method `choice()`
  - New pooling interface
  - Pooling parameters can change at run time
  - When converting empty list/tuple, now we use floatX dtype
@@ -44,15 +55,17 @@ Interface changes:
  - Move softsign out of sandbox to theano.tensor.nnet.softsign
  - Roll make the shift be modulo the size of the axis we roll on
  - Merge CumsumOp/CumprodOp into CumOp
- - round() default to the same as NumPy: half_to_even.
+ - round() default to the same as NumPy: half_to_even
 
 Convolution updates:
+ - Implement conv2d_transpose convenience function
  - Multi-cores convolution and pooling on CPU
  - New abstract 3d convolution interface similar to the 2d convolution interface
  - Dilated convolution
 
 
 GPU:
+ - GPUMultinomialFromUniform op now supports multiple dtypes
  - cuDNN: support versoin 5.1 and wrap batch normalization (2d and 3d) and RNN functions
  - Multiple-GPU, synchrone update (via platoon, use NCCL)
  - GpuAdvancedSubtensor in new back-end
@@ -61,9 +74,13 @@ GPU:
  - Support for solve (using cusolver), erfinv and erfcinv
  - cublas gemv workaround when we reduce on an axis with a dimensions size of 0
  - Warn user that some cuDNN algorithms may produce unexpected results in certain environments
-   for convolution backward filter operations.
+   for convolution backward filter operations
 
 New features:
+ - OpFromGraph now allows gradient overriding for every input
+ - Added Abstract Ops for batch normalization that use cuDNN when available and pure Theano CPU/GPU alternatives otherwise
+ - Added new Theano flag cuda.enabled
+ - Added new Theano flag print_global_stats to print some global statistics (time spent) at the end
  - Add gradient of solve, tensorinv (CPU), tensorsolve (CPU) searchsorted (CPU)
  - Add Multinomial Without Replacement
  - conv3d2d support full and half mode (REMOVE?)
@@ -77,13 +94,13 @@ New features:
 
 
 Others:
+ - Split op now has C code for CPU and GPU
+ - "theano-cache list" now includes compilation times
  - Speed up argmax only on gpu (without also needing the max)
  - A few unfrequent bugfix 
  - More stack trace in error message
  - Speed up cholesky grad
  - log(sum(exp(...))) now get stability optimized
-
-
 
 
 Other more detailed changes:
@@ -100,6 +117,58 @@ Other more detailed changes:
 
 
 ALL THE PR BELLOW HAVE BEEN CHECKED
+* https://github.com/Theano/Theano/pull/5559
+* https://github.com/Theano/Theano/pull/5568
+* https://github.com/Theano/Theano/pull/5553
+* https://github.com/Theano/Theano/pull/5561
+* https://github.com/Theano/Theano/pull/5558
+* https://github.com/Theano/Theano/pull/5544
+* https://github.com/Theano/Theano/pull/5552
+* https://github.com/Theano/Theano/pull/5547
+* https://github.com/Theano/Theano/pull/5542
+* https://github.com/Theano/Theano/pull/5451
+* https://github.com/Theano/Theano/pull/5520
+* https://github.com/Theano/Theano/pull/5539
+* https://github.com/Theano/Theano/pull/5532
+* https://github.com/Theano/Theano/pull/5457
+* https://github.com/Theano/Theano/pull/5477
+* https://github.com/Theano/Theano/pull/5499
+* https://github.com/Theano/Theano/pull/5518
+* https://github.com/Theano/Theano/pull/5527
+* https://github.com/Theano/Theano/pull/5522
+* https://github.com/Theano/Theano/pull/5505
+* https://github.com/Theano/Theano/pull/5523
+* https://github.com/Theano/Theano/pull/5516
+* https://github.com/Theano/Theano/pull/5511
+* https://github.com/Theano/Theano/pull/5443
+* https://github.com/Theano/Theano/pull/5255
+* https://github.com/Theano/Theano/pull/5508
+* https://github.com/Theano/Theano/pull/5479
+* https://github.com/Theano/Theano/pull/5462
+* https://github.com/Theano/Theano/pull/5490
+* https://github.com/Theano/Theano/pull/5480
+* https://github.com/Theano/Theano/pull/5497
+* https://github.com/Theano/Theano/pull/5489
+* https://github.com/Theano/Theano/pull/5474
+* https://github.com/Theano/Theano/pull/5454
+* https://github.com/Theano/Theano/pull/5469
+* https://github.com/Theano/Theano/pull/5458
+* https://github.com/Theano/Theano/pull/5481
+* https://github.com/Theano/Theano/pull/5190
+* https://github.com/Theano/Theano/pull/5473
+* https://github.com/Theano/Theano/pull/5456
+* https://github.com/Theano/Theano/pull/5398
+* https://github.com/Theano/Theano/pull/5468
+* https://github.com/Theano/Theano/pull/5459
+* https://github.com/Theano/Theano/pull/5452
+* https://github.com/Theano/Theano/pull/5298
+* https://github.com/Theano/Theano/pull/5442
+* https://github.com/Theano/Theano/pull/5450
+* https://github.com/Theano/Theano/pull/5435
+* https://github.com/Theano/Theano/pull/5446
+* https://github.com/Theano/Theano/pull/5447
+* https://github.com/Theano/Theano/pull/5445
+* https://github.com/Theano/Theano/pull/5323
 * https://github.com/Theano/Theano/pull/5421
 * https://github.com/Theano/Theano/pull/5343
 * https://github.com/Theano/Theano/pull/5437
