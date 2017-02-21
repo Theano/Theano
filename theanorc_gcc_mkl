@@ -6,8 +6,6 @@ mode = FAST_RUN
 openmp = True
 openmp_elemwise_minsize = 10
 allow_gc = False
-[dnn]
-enabled = mkl
 [gcc]
 cxxflags = -fopenmp -O3 -opt-prefetch=2 -funroll-loops
 [blas]

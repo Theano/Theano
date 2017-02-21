@@ -25,24 +25,24 @@ This repo is dedicated to improving Theano performance on CPU, especially in Int
     
 | FWD:sec/batch | Stock Theano/Xeon | Intel Theano/Xeon | Intel Theano/Xeon Phi |
 |---------------|-------------------|-------------------|-----------------------|
-| AlexNet       | 1.045             | 0.081             | 0.057                 |
-| GoogLeNet     | 2.228             |                   |                       |
-| VGG           | 5.089             | 0.880             | 0.593                 |
-| OverFeat      | 6.105             | 0.268             | 0.192                 |
+| AlexNet       | 1.045             | 0.077             | 0.054                 |
+| GoogLeNet     | 2.228             | 0.065             | 0.610                 |
+| VGG           | 5.089             | 0.836             | 0.570                 |
+| OverFeat      | 6.105             | 0.265             | 0.204                 |
    
 --
  
 | FWD+BWD: sec/batch | Stock Theano/Xeon | Intel Theano/Xeon | Intel Theano/Xeon Phi |
 |---------------|-------------------|-------------------|-----------------------|
-| AlexNet       | 2.333             | 0.250             | 0.199                 |
-| GoogLeNet     | 5.866             |                   |                       |
-| VGG           | 12.783            | 2.744             | 1.912                 |
-| OverFeat      | 13.202            | 0.857             | 0.654                 |
+| AlexNet       | 2.333             | 0.236             | 0.192                 |
+| GoogLeNet     | 5.866             | 1.535             | 1.314                 |
+| VGG           | 12.783            | 2.721             | 1.894                 |
+| OverFeat      | 13.202            | 0.830             | 0.691                 |
 
 **Performance Tips**
-  * Add bias after convolution to archieve high performance since this sub-graph can be replaced with MKL OP 
+  * Add bias after convolution to archieve high performance since this sub-graph can be replaced with MKL Op
   * Use group convolution OP, [AbstractConvGroup](https://github.com/intel/Theano/blob/master/theano/sandbox/mkl/mkl_conv.py)
-  * Use New MKL OP: [LRN](https://github.com/intel/Theano/blob/dev/theano/tensor/nnet/lrn.py)
+  * Use New MKL OP: [LRN](https://github.com/intel/Theano/blob/master/theano/tensor/nnet/lrn.py)
   * Intel® Xeon Phi™ Environment Setting, example as below
         
         #!/bin/sh
@@ -50,7 +50,7 @@ This repo is dedicated to improving Theano performance on CPU, especially in Int
         export KMP_AFFINITY=verbose, granularity=core,noduplicates,compact,0,0
         export OMP_NUM_THREADS=68
         export MKL_DYNAMIC=false
-        pytthon xxx.py
+        python xxx.py
 
 **Branch Information**
   * master, stable and fully tested version based on 0.9dev2 with Intel® MKL backend
@@ -65,7 +65,7 @@ This repo is dedicated to improving Theano performance on CPU, especially in Int
     git clone https://github.com/intel/theano.git intel-theano
     cd intel-theano
     python setup.py build
-    python setup.py install --user
+    python setup.py install --user [--mkl]   # Note: using 'mkl' option will check and download MKL if it is not available
     cp intel-theano/theanorc_icc_mkl ~/.theanorc
     # run benchmark
     democase/alexnet/benchmark.sh
