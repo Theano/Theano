@@ -3639,7 +3639,7 @@ class StructuredDotGradCSC(gof.Op):
         out[0] = g_a_data
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub):
 
@@ -3658,10 +3658,10 @@ class StructuredDotGradCSC(gof.Op):
         if (PyArray_NDIM(%(_indptr)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1"); %(fail)s;}
 
         if( PyArray_TYPE(%(_indices)s) != NPY_INT32) {
-        PyErr_SetString(PyExc_NotImplementedError, "C"); %(fail)s;}
+        PyErr_SetString(PyExc_NotImplementedError, "array too big (indices.dtype not int32)"); %(fail)s;}
 
         if( PyArray_TYPE(%(_indptr)s) != NPY_INT32)
-        {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
+        {PyErr_SetString(PyExc_NotImplementedError, "array too big (indptr.dtype not int32)"); %(fail)s;}
 
         if( PyArray_DIMS(%(_d)s)[1] != PyArray_DIMS(%(_g)s)[1])
         {PyErr_SetString(PyExc_NotImplementedError, "d and g have different numbers of columns"); %(fail)s;}
@@ -3689,7 +3689,7 @@ class StructuredDotGradCSC(gof.Op):
             const npy_int32 * __restrict__ indices = (npy_int32 *)PyArray_DATA(%(_indices)s);
 
             // loop over columns
-            for (npy_int32 j = 0; j < N; ++j)
+            for (npy_intp j = 0; j < N; ++j)
             {
                 // extract j-th row of dense matrix
                 const dtype_%(_d)s* __restrict__ d_row = (dtype_%(_d)s*)(PyArray_BYTES(%(_d)s) + PyArray_STRIDES(%(_d)s)[0] * j);
@@ -3712,7 +3712,7 @@ class StructuredDotGradCSC(gof.Op):
                     {PyErr_SetString(PyExc_NotImplementedError, "H"); %(fail)s;}
 
                     // perform dot product of dense and sparse rows
-                    for(int k = 0; k < K; ++k)
+                    for(npy_intp k = 0; k < K; ++k)
                     {
                         ip += d_row[k * Sd1] * g_row[k*Sg1];
                     }
@@ -3771,7 +3771,7 @@ class StructuredDotGradCSR(gof.Op):
         out[0] = g_a_data
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub):
 
@@ -3790,10 +3790,10 @@ class StructuredDotGradCSR(gof.Op):
         if (PyArray_NDIM(%(_indptr)s) != 1) {PyErr_SetString(PyExc_NotImplementedError, "rank(indptr) != 1"); %(fail)s;}
 
         if( PyArray_TYPE(%(_indices)s) != NPY_INT32) {
-        PyErr_SetString(PyExc_NotImplementedError, "C"); %(fail)s;}
+        PyErr_SetString(PyExc_NotImplementedError, "array too big (indices.dtype not int32)"); %(fail)s;}
 
         if( PyArray_TYPE(%(_indptr)s) != NPY_INT32)
-        {PyErr_SetString(PyExc_NotImplementedError, "D"); %(fail)s;}
+        {PyErr_SetString(PyExc_NotImplementedError, "array too big (indptr.dtype not int32)"); %(fail)s;}
 
         if( PyArray_DIMS(%(_d)s)[1] != PyArray_DIMS(%(_g)s)[1])
         {PyErr_SetString(PyExc_NotImplementedError, "d and g have different numbers of columns"); %(fail)s;}
@@ -3822,7 +3822,7 @@ class StructuredDotGradCSR(gof.Op):
             const npy_int32 * __restrict__ indices = (npy_int32 *)PyArray_DATA(%(_indices)s);
 
             // loop over columns of sparse matrix
-            for (npy_int32 i = 0; i < N; ++i)
+            for (npy_intp i = 0; i < N; ++i)
             {
                 // for each non-null value in the sparse row
                 for (npy_int32 j_idx = indptr[i * Sindptr]; j_idx < indptr[(i+1) * Sindptr]; ++j_idx)
@@ -3845,7 +3845,7 @@ class StructuredDotGradCSR(gof.Op):
                     {PyErr_SetString(PyExc_NotImplementedError, "H"); %(fail)s;}
 
                     // perform dot product of dense and sparse rows
-                    for(int k = 0; k < K; ++k)
+                    for(npy_intp k = 0; k < K; ++k)
                     {
                         ip += d_row[k * Sd1] * g_row[k*Sg1];
                     }
