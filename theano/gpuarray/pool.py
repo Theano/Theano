@@ -2,6 +2,7 @@ from __future__ import absolute_import, print_function, division
 import os.path
 
 import theano
+import numpy as np
 from theano import Apply
 from theano.tensor.basic import as_tensor_variable
 from theano.tensor.signal.pool import Pool
@@ -67,6 +68,12 @@ class GpuPool(CGpuKernelBase):
             raise TypeError('Stride parameters must be ints.')
         if pad.dtype not in theano.tensor.int_dtypes:
             raise TypeError('Padding parameters must be ints.')
+        # I can't assume that npy_intp is 64 bits, as it can be 32 bits on some computers (according to NumPy doc),
+        # so I prefer to use the "bit-width name for this data-type" for casting.
+        dtype_name_for_casting = np.dtype(np.intp).name
+        ws = theano.tensor.cast(ws, dtype_name_for_casting)
+        stride = theano.tensor.cast(stride, dtype_name_for_casting)
+        pad = theano.tensor.cast(pad, dtype_name_for_casting)
 
         return Apply(self, [inp, ws, stride, pad], [inp.type()])
 
@@ -183,6 +190,12 @@ class GpuMaxPoolGrad(CGpuKernelBase):
             raise TypeError('Stride parameters must be ints.')
         if pad.dtype not in theano.tensor.int_dtypes:
             raise TypeError('Padding parameters must be ints.')
+
+        dtype_name_for_casting = np.dtype(np.intp).name
+        ws = theano.tensor.cast(ws, dtype_name_for_casting)
+        stride = theano.tensor.cast(stride, dtype_name_for_casting)
+        pad = theano.tensor.cast(pad, dtype_name_for_casting)
+
         return Apply(self, [inp, out, out_grad, ws, stride, pad], [inp.type()])
 
     def get_params(self, node):
@@ -257,6 +270,12 @@ class GpuAveragePoolGrad(CGpuKernelBase):
             raise TypeError('Stride parameters must be ints.')
         if pad.dtype not in theano.tensor.int_dtypes:
             raise TypeError('Padding parameters must be ints.')
+
+        dtype_name_for_casting = np.dtype(np.intp).name
+        ws = theano.tensor.cast(ws, dtype_name_for_casting)
+        stride = theano.tensor.cast(stride, dtype_name_for_casting)
+        pad = theano.tensor.cast(pad, dtype_name_for_casting)
+
         return Apply(self, [inp, out_grad, ws, stride, pad], [inp.type()])
 
     def get_params(self, node):
