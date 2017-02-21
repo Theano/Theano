@@ -1163,7 +1163,7 @@ second dimension
                         contig += """#pragma omp parallel for if(n>=%d)
                         """ % (config.openmp_elemwise_minsize)
                     contig += """
-                    for(int i=0; i<n; i++){
+                    for(npy_intp i=0; i<n; i++){
                         %(index)s
                         %(task_code)s;
                     }
@@ -1207,7 +1207,7 @@ second dimension
         return support_code
 
     def c_code_cache_version_apply(self, node):
-        version = [12]  # the version corresponding to the c code in this Op
+        version = [13]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(
@@ -1624,7 +1624,7 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
 
     def c_code_cache_version_apply(self, node):
         # the version corresponding to the c code in this Op
-        version = [6]
+        version = [7]
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(
@@ -2107,7 +2107,7 @@ class Prod(CAReduceDtype):
             return [final_grad]
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 
 class MulWithoutZeros(scalar.BinaryScalarOp):
