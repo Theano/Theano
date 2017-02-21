@@ -85,8 +85,6 @@ class Relu(basic_ops.MKLOp):
         int x_channels;
         int x_row;
         int x_col;
-        dnnPrimitive_t batchNormBwdData;
-        dnnPrimitive_t batchNormBwdScaleShift;
         size_t dim;
         size_t sizes[4];
         size_t strides[4];
@@ -301,8 +299,6 @@ class ReluGrad(basic_ops.MKLOp):
         int x_channels;
         int x_row;
         int x_col;
-        dnnPrimitive_t batchNormBwdData;
-        dnnPrimitive_t batchNormBwdScaleShift;
         size_t dim;
         size_t sizes[4];
         size_t strides[4];
