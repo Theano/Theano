@@ -12,7 +12,7 @@ from theano.tensor.basic import (
     Alloc, AllocEmpty, alloc_validate_shape, Join, Split)
 
 from theano.gof import HideC, COp
-from theano.gof.utils import MethodNotDefined
+from theano.gof.utils import MethodNotDefined, CacheClass
 
 from collections import deque
 
@@ -629,7 +629,7 @@ class HostFromGpu(Op):
 host_from_gpu = HostFromGpu()
 
 
-class GpuFromHost(Op):
+class GpuFromHost(CacheClass, Op):
     """
     Transfer data to GPU.
 
@@ -783,7 +783,7 @@ class GpuToGpu(Op):
         return (1,)
 
 
-class GpuAlloc(HideC, Alloc):
+class GpuAlloc(CacheClass, HideC, Alloc):
     """
     Allocate initialized memory on the GPU.
 
@@ -945,7 +945,7 @@ class GpuAlloc(HideC, Alloc):
         return True
 
 
-class GpuAllocEmpty(HideC, AllocEmpty):
+class GpuAllocEmpty(CacheClass, HideC, AllocEmpty):
     """
     Allocate uninitialized memory on the GPU.
 

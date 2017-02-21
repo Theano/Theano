@@ -1,33 +1,7 @@
 from __future__ import absolute_import, print_function, division
-import numpy
 
 import theano
 from theano.compat import izip
-from theano.gof.utils import hash_from_code
-
-
-def hash_from_ndarray(data):
-    """
-    Return a hash from an ndarray.
-
-    It takes care of the data, shapes, strides and dtype.
-
-    """
-    # We need to hash the shapes and strides as hash_from_code only hashes
-    # the data buffer. Otherwise, this will cause problem with shapes like:
-    # (1, 0) and (2, 0) and problem with inplace transpose.
-    # We also need to add the dtype to make the distinction between
-    # uint32 and int32 of zeros with the same shape and strides.
-
-    # python hash are not strong, so I always use md5 in order not to have a
-    # too long hash, I call it again on the concatenation of all parts.
-    if not data.flags["C_CONTIGUOUS"]:
-        # hash_from_code needs a C-contiguous array.
-        data = numpy.ascontiguousarray(data)
-    return hash_from_code(hash_from_code(data) +
-                          hash_from_code(str(data.shape)) +
-                          hash_from_code(str(data.strides)) +
-                          hash_from_code(str(data.dtype)))
 
 
 def shape_of_variables(fgraph, input_shapes):

@@ -346,6 +346,7 @@ class InplaceElemwiseOptimizer(Optimizer):
 
                     inplace_pattern = dict(baseline)
                     inplace_pattern[candidate_output] = candidate_input
+                    inplace_pattern = theano.misc.frozendict.frozendict(inplace_pattern)
                     try:
                         if hasattr(op.scalar_op, "make_new_inplace"):
                             new_scal = op.scalar_op.make_new_inplace(
@@ -7270,7 +7271,14 @@ your code will run correctly, but may be slower.""")
         # Do not call make_node to have test_value
         n = maker(node, C)(*inputs).owner
         assert len(n.outputs) == 1
-        assert node.outputs[0].dtype == n.outputs[0].dtype
+        assert node.outputs[0].dtype == n.outputs[0].dtype, (
+            "node.outputs[0].dtype: %r" % node.outputs[0].dtype,
+            "n.outputs[0].dtype: %r" % n.outputs[0].dtype,
+            "n.op: %r" % n.op, "node.op: %r" % node.op,
+            "n.outputs %r" % n.outputs, "n: %r" % n,
+            "node.outputs %r" % node.outputs, "node %r" % node,
+            "inputs: %r" % n.inputs, "s_inputs: %r" % s_inputs,
+            "s_new_out: %r" % s_new_out, "OP: %r" % OP)
 
         if len(n.inputs) > max_nb_input:
             _logger.info('loop fusion failed because Op would exceed'

@@ -13,6 +13,7 @@ from theano.scalar import as_scalar, constant, Log, get_scalar_type
 from theano.tensor import as_tensor_variable
 from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp
+from theano.gof.utils import CacheClass
 from theano.gof.cmodule import GCC_compiler
 from theano.gof.type import CDataType, Generic
 from theano.compile import optdb
@@ -348,7 +349,7 @@ def version(raises=True):
 version.v = None
 
 
-class GpuDnnConvDesc(COp):
+class GpuDnnConvDesc(CacheClass, COp):
 
     """
     This Op builds a convolution descriptor for use in the other convolution
@@ -639,7 +640,7 @@ class GpuDnnConv(DnnBase):
         return [shape[2]]
 
 
-class GpuDnnConvGradW(DnnBase):
+class GpuDnnConvGradW(CacheClass, DnnBase):
 
     """
     The convolution gradient with respect to the weights.
@@ -770,7 +771,7 @@ class GpuDnnConvGradW(DnnBase):
         return [shape[2]]
 
 
-class GpuDnnConvGradI(DnnBase):
+class GpuDnnConvGradI(CacheClass, DnnBase):
     """
     The convolution gradient with respect to the inputs.
 
@@ -1137,9 +1138,8 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
     precision = get_precision(precision, [img, topgrad])
 
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
-                             conv_mode=conv_mode, precision=precision)(
-                                 kerns_shp)
-    out = GpuAllocEmpty(ctx_name, dtype=img.dtype)(*kerns_shp)
+                          conv_mode=conv_mode, precision=precision)(kerns_shp)
+    out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*kerns_shp)
     return GpuDnnConvGradW()(img, topgrad, out, desc)
 
 
@@ -1150,6 +1150,7 @@ def dnn_gradweight3d(img, topgrad, kerns_shp, border_mode='valid',
     """
     return dnn_gradweight(img, topgrad, kerns_shp, border_mode,
                           subsample, conv_mode, precision)
+
 
 def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
                   subsample=(1, 1), conv_mode='conv', precision=None):
@@ -1165,9 +1166,8 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
     precision = get_precision(precision, [kerns, topgrad])
 
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
-                             conv_mode=conv_mode, precision=precision)(
-                                 kerns.shape)
-    out = GpuAllocEmpty(ctx_name, kerns.dtype)(*img_shp)
+                          conv_mode=conv_mode, precision=precision)(kerns.shape)
+    out = GpuAllocEmpty(dtype=kerns.dtype, context_name=ctx_name)(*img_shp)
     return GpuDnnConvGradI()(kerns, topgrad, out, desc)
 
 
@@ -1178,6 +1178,7 @@ def dnn_gradinput3d(kerns, topgrad, img_shp, border_mode='valid',
     """
     return dnn_gradinput(kerns, topgrad, img_shp, border_mode, subsample,
                          conv_mode, precision)
+
 
 class GpuDnnPoolDesc(Op):
 
