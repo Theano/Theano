@@ -9,7 +9,20 @@ ProfileStats object for runtime and memory profiling.
 #
 from __future__ import absolute_import, print_function, division
 
+import atexit
+import copy
 import logging
+import operator
+import os
+import sys
+import time
+from collections import defaultdict
+from six import iteritems
+
+import numpy as np
+
+import theano
+from theano.gof import graph
 
 __authors__ = "James Bergstra"
 __reviewer__ = "Razvan Pascanu"
@@ -18,20 +31,6 @@ __license__ = "3-clause BSD License"
 __contact__ = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
-
-import atexit
-import copy
-import operator
-import os
-import sys
-import time
-from collections import defaultdict
-
-import numpy as np
-
-import theano
-from six import iteritems
-from theano.gof import graph
 
 logger = logging.getLogger('theano.compile.profiling')
 
@@ -62,7 +61,7 @@ def _atexit_print_fn():
 
         # Reverse sort in the order of compile+exec time
         for ps in sorted(_atexit_print_list,
-                         key=lambda a:a.compile_time + a.fct_call_time)[::-1]:
+                         key=lambda a: a.compile_time + a.fct_call_time)[::-1]:
             if (ps.fct_callcount >= 1 or ps.compile_time > 1 or
                     getattr(ps, 'callcount', 0) > 1):
                 ps.summary(file=destination_file,
@@ -116,6 +115,7 @@ def _atexit_print_fn():
     if config.print_global_stats:
         print_global_stats()
 
+
 def print_global_stats():
     """
     Print the following stats:
@@ -133,7 +133,7 @@ def print_global_stats():
     else:
         destination_file = open(config.profiling.destination, 'w')
 
-    print('='*50, file=destination_file)
+    print('=' * 50, file=destination_file)
     print('Global stats: ',
           'Time elasped since Theano import = %6.3fs, '
           'Time spent in Theano functions = %6.3fs, '
@@ -144,7 +144,7 @@ def print_global_stats():
            total_graph_opt_time,
            total_time_linker),
           file=destination_file)
-    print('='*50, file=destination_file)
+    print('=' * 50, file=destination_file)
 
 
 class ProfileStats(object):
@@ -729,7 +729,7 @@ class ProfileStats(object):
               file=file)
 
         for node, t in sorted(self.linker_make_thunk_time.items(),
-                                 key=operator.itemgetter(1))[::-1][:5]:
+                              key=operator.itemgetter(1))[::-1][:5]:
             print('           Node %s time %es' % (node, t),
                   file=file)
         print('', file=file)
@@ -1132,7 +1132,7 @@ class ProfileStats(object):
 
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
-            
+
             def compute_max_stats(running_memory, stats):
                 (max_node_memory_size,
                  max_running_max_memory_size,
