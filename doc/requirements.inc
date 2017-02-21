@@ -19,7 +19,7 @@ Requirements
         release 0.6. Python 2.6 was supported up to and including the
         release 0.8.2. Python 3 is supported past the 3.3 release.
 
-    `NumPy <http://numpy.scipy.org/>`_ >= 1.9.1 < 1.11.1
+    `NumPy <http://numpy.scipy.org/>`_ >= 1.9.1 <= 1.12
         Earlier versions could work, but we don’t test it.
 
     `SciPy <http://scipy.org>`_ >= 0.14 < 0.17.1
