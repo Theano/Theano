@@ -6159,7 +6159,6 @@ class ExtractDiag(Op):
                           "works for matrices.")
             return [grad_not_implemented(self, 0, x)]
 
-
     def infer_shape(self, node, shapes):
         in_shape, = shapes
         dim1 = in_shape[self.axis1]
