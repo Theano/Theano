@@ -141,4 +141,4 @@ class GpuMaxAndArgmax(Op):
         """ % {'name': name, 'X': inputs[0]}
 
     def c_code_cache_version(self):
-        return (1,1)
+        return (1, 1)
