@@ -61,6 +61,8 @@ class GpuMaxAndArgmax(Op):
             #endif
         #endif
 
+        int err = 0;
+
         unsigned  %(name)s_redux_len = PyTuple_GET_SIZE(%(axes)s);
         unsigned* %(name)s_axes_to_reduce = (unsigned*)malloc(%(name)s_redux_len * sizeof(unsigned));
         for (unsigned i = 0; i < %(name)s_redux_len; ++i) {
@@ -114,10 +116,12 @@ class GpuMaxAndArgmax(Op):
                 PyErr_SetString(PyExc_RuntimeError, "GpuMaxAndArgmax: unable to set argmax to 0 when input is a scalar.");
                 %(fail)s
             }
-        } else if (GA_NO_ERROR !=
+        } else if (GA_NO_ERROR != (err =
             GpuArray_maxandargmax(&%(max)s->ga, &%(argmax)s->ga, &%(X)s->ga, %(name)s_redux_len, %(name)s_axes_to_reduce)
-        ) {
-            PyErr_SetString(PyExc_RuntimeError, "GpuMaxAndArgmax: unable to compute gpuarray maxandargmax.");
+        )) {
+            PyErr_Format(PyExc_RuntimeError,
+                "GpuMaxAndArgmax: unable to compute gpuarray maxandargmax: error %%d: %%s (%%s).",
+                err, gpuarray_error_str(err), GpuArray_error(&%(X)s->ga, err));
             %(fail)s
         }
         """
@@ -137,4 +141,4 @@ class GpuMaxAndArgmax(Op):
         """ % {'name': name, 'X': inputs[0]}
 
     def c_code_cache_version(self):
-        return (1,)
+        return (1, 1)

@@ -14,7 +14,7 @@ from .. import GpuArrayType
 import math
 
 # Number of values to be used in test tensors (except with 0-D tensors!).
-test_size = 10000000
+test_size = 10000
 
 # NB: This order of "unsorted axes" is arbitrary and is here
 # just to have the same informations on profile output
