@@ -2917,7 +2917,7 @@ GetDeviceMemInfo(PyObject* _unused, PyObject* dummy)
                      cudaGetErrorString(err));
         return NULL;
     }
-    return PyTuple_Pack(2, PyLong_FromLong(free), PyLong_FromLong(total));
+    return PyTuple_Pack(2, PyLong_FromSize_t(free), PyLong_FromSize_t(total));
 }
 
 /*
@@ -2986,8 +2986,8 @@ CudaNdarray_select_a_gpu(PyObject* _unused, PyObject* dummy)
 PyObject *
 GetTheanoAllocInfo(PyObject* _unused, PyObject* dummy)
 {
-    PyObject* a = PyLong_FromLong(_allocated_size);
-    PyObject* b = PyLong_FromLong(_max_allocated_size);
+    PyObject* a = PyLong_FromSize_t(_allocated_size);
+    PyObject* b = PyLong_FromSize_t(_max_allocated_size);
 
     PyObject* tuple = PyTuple_New(2);
     PyTuple_SetItem(tuple, 0, a);
@@ -5038,7 +5038,7 @@ CudaNdarray_Dimshuffle(PyObject* _unused, PyObject* args)
 
     for (Py_ssize_t i = 0; i < pattern_dim; i++)
     {
-        PyObject * idx = PyLong_FromLong(i);
+        PyObject * idx = PyLong_FromSsize_t(i);
 
         if (idx == NULL)
         {
