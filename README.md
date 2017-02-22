@@ -26,7 +26,7 @@ This repo is dedicated to improving Theano performance on CPU, especially in Int
 | FWD:sec/batch | Stock Theano/Xeon | Intel Theano/Xeon | Intel Theano/Xeon Phi |
 |---------------|-------------------|-------------------|-----------------------|
 | AlexNet       | 1.045             | 0.077             | 0.054                 |
-| GoogLeNet     | 2.228             | 0.065             | 0.610                 |
+| GoogLeNet     | 2.228             | 0.655             | 0.610                 |
 | VGG           | 5.089             | 0.836             | 0.570                 |
 | OverFeat      | 6.105             | 0.265             | 0.204                 |
    
