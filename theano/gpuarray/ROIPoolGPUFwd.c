@@ -1,9 +1,9 @@
 #section kernels
 
-#kernel ROIPoolGPUFwd_kernel : ssize, ssize, *, ssize, ssize, ssize, ssize, ssize, ssize, *, *, * :
+#kernel ROIPoolGPUFwd_kernel : int32, int32, *, float32, int32, int32, int32, int32, int32, *, *, * :
 KERNEL void ROIPoolGPUFwd_kernel(
     const ga_int batch_n, const ga_int num_rois, GLOBAL_MEM DTYPE_i0 *bottom_data,
-    const ga_int spatial_scale, const ga_int channels, const ga_int height,
+    const ga_float spatial_scale, const ga_int channels, const ga_int height,
     const ga_int width, const ga_int pooled_height, const ga_int pooled_width,
     GLOBAL_MEM DTYPE_i1 *bottom_rois, GLOBAL_MEM DTYPE_o0 *top_data, GLOBAL_MEM DTYPE_o1 *argmax_data) {
     
