@@ -23,7 +23,6 @@ class GpuEye(CGpuKernelBase, Op):
 
     """
     __props__ = ('dtype', 'context_name')
-    _f16_ok = True
 
     def __init__(self, dtype=None, context_name=None):
         if dtype is None:
