@@ -313,12 +313,12 @@ class TestGpuRoIPool(utt.InferShapeTester):
         pool_h = 2
         # Testing if Gpu Op is present
         # assert any([isinstance(node.op, GpuRoIPoolOp) for node in func.maker.fgraph.toposort()])
-        roi_op = GpuRoIPoolOp(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=1)
+        roi_op = GpuRoIPoolOp(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=.5)
         t_outs = roi_op(t_data, t_rois)
         func = theano.function([t_data, t_rois], t_outs)
         roi_outs = func(random_image, roi_theano)
         maxloc_theano, maxvals_theano = roi_outs[0], roi_outs[1]
-        n_maxval, n_maxloc = numpy_roi_pool(random_image, 2, 3, 2, pool_h, pool_w, roi_numpy, spatial_scale=1.0)
+        n_maxval, n_maxloc = numpy_roi_pool(random_image, 2, 3, 2, pool_h, pool_w, roi_numpy, spatial_scale=.5)
         utt.assert_allclose(n_maxval, maxvals_theano)
         def mp(inp, roi):
             out, argmax = self.op_class(pool_h, pool_w, 1)(inp, roi)
