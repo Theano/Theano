@@ -2470,7 +2470,7 @@ class MaxPoolRop(OpenMPOp):
 
 class RoIPoolOp(gof.COp):
 
-    __props__ = ('spatial_scale', 'pooled_h', 'pooled_w')
+    __props__ = ('pooled_h', 'pooled_w', 'spatial_scale')
     func_file = "./roi_pool.c"
     func_name = "APPLY_SPECIFIC(CPUFwd)"
 
@@ -2509,7 +2509,6 @@ class RoIPoolOp(gof.COp):
         max_vals = []
         for b_in in range(batch_size):
             for i in range(num_roi):
-
                 x_start = numpy.floor((roi[i, 1] * spatial_scale) + 0.5)
                 y_start = numpy.floor((roi[i, 2] * spatial_scale) + 0.5)
                 x_end = numpy.floor((roi[i, 3] * spatial_scale) + 0.5)
@@ -2523,10 +2522,10 @@ class RoIPoolOp(gof.COp):
                 for cn in range(n_channels):
                     for jy in range(pool_height):
                         for ix in range(pool_width):
-                            x1 = int(round(x_start + ix * row_length))
-                            x2 = int(round(x1 + row_length))
-                            y1 = int(round(y_start + jy * col_length))
-                            y2 = int(round(y1 + col_length))
+                            x1 = int(numpy.floor(x_start + ix * row_length))
+                            x2 = int(numpy.ceil(x1 + row_length))
+                            y1 = int(numpy.floor(y_start + jy * col_length))
+                            y2 = int(numpy.ceil(y1 + col_length))
                             interest_region = image_data[b_in, cn, y1:y2, x1:x2]
                             max_vals.append(numpy.max(interest_region))
                             maxval_coordinates.append(numpy.argmax(interest_region) + image_width * y1 + x1)
@@ -2547,9 +2546,6 @@ class RoIPoolOp(gof.COp):
         out_shape = [batch_size, num_rois, channels, h * w]
         return [out_shape, out_shape]
 
-    def c_code_cache_version(self):
-        return (1, 0)
-
     def grad(self, inp, grads):
         return [RoIPoolGradOp(self.pooled_h, self.pooled_w,
                               self.spatial_scale)(*(inp + [self(*inp)[1], grads[0]])), grad_undefined(self, 1, inp[1])]
@@ -2557,7 +2553,7 @@ class RoIPoolOp(gof.COp):
 
 class RoIPoolGradOp(gof.COp):
 
-    __props__ = ('spatial_scale', 'pooled_h', 'pooled_w')
+    __props__ = ('pooled_h', 'pooled_w', 'spatial_scale')
     func_file = "./roi_pool.c"
     func_name = "APPLY_SPECIFIC(CPUBackward)"
 
@@ -2600,7 +2596,6 @@ class RoIPoolGradOp(gof.COp):
         image_width = image_data.shape[3]
         assert image_data.ndim == 4
         assert roi.ndim == 2
-        assert argmax_data.shape == out_grad.shape
         gx[0] = numpy.zeros(image_data.shape)
         gxx = gx[0]
         for b_in in range(batch_size):
@@ -2619,18 +2614,15 @@ class RoIPoolGradOp(gof.COp):
                     gxxx = gxx[b_in][cn]
                     for jy in range(image_height):
                         for ix in range(image_width):
-                            x1 = int(round((ix - x_start) / row_length))
-                            x2 = int(round(x1 + (1 / row_length)))
-                            y1 = int(round((jy - y_start) / col_length))
-                            y2 = int(round(y1 + (1 / col_length)))
+                            x1 = int(numpy.floor((ix - x_start) / row_length))
+                            x2 = int(numpy.ceil(x1 + (1 / row_length)))
+                            y1 = int(numpy.floor((jy - y_start) / col_length))
+                            y2 = int(numpy.ceil(y1 + (1 / col_length)))
                             interest_region = image_data[b_in, cn, y1:y2, x1:x2]
                             for pr in range(pool_width * pool_height):
                                 mp_index = numpy.nonzero(interest_region == out_grad[b_in][i][cn][pr])
                                 if numpy.all([emp.size for emp in mp_index]):
                                     gxxx[jy][ix] += interest_region[mp_index]
-
-    def c_code_cache_version(self):
-        return (1, 0)
 
     def grad(self, inp, grads):
         return [grad_undefined(self, i, inp[i]) for i in range(3)]

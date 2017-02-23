@@ -433,7 +433,6 @@ class GpuMaxPoolRop(CGpuKernelBase):
 class GpuRoIPoolOp(CGpuKernelBase):
 
     __props__ = ('spatial_scale', 'pooled_h', 'pooled_w')
-    _f16_ok = True
 
     def __init__(self, pooled_h, pooled_w, spatial_scale):
         self.pooled_h = pooled_h
@@ -482,7 +481,6 @@ class GpuRoIPoolOp(CGpuKernelBase):
 class GpuRoIPoolGradOp(CGpuKernelBase):
 
     __props__ = ('spatial_scale', 'pooled_h', 'pooled_w')
-    _f16_ok = True
 
     def __init__(self, pooled_h, pooled_w, spatial_scale):
         self.dtype = config.floatX

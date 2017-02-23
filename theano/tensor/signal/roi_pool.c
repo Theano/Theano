@@ -170,8 +170,8 @@ void APPLY_SPECIFIC(ROIPoolBackward)(
           for(int w = 0; w < width; ++w){
             int roi_start_w = floorf(batch_roi[1] * spatial_scale + 0.5);
             int roi_start_h = floorf(batch_roi[2] * spatial_scale + 0.5 );
-            int roi_end_w = floorf(batch_roi[3] * spatial_scale + 0.5);
-            int roi_end_h = floorf(batch_roi[4] * spatial_scale + 0.5);
+            int roi_end_w = ceil(batch_roi[3] * spatial_scale + 0.5);
+            int roi_end_h = ceil(batch_roi[4] * spatial_scale + 0.5);
             int roi_width = max(roi_end_w - roi_start_w + 1, 1);
             int roi_height = max(roi_end_h - roi_start_h + 1, 1);
 
