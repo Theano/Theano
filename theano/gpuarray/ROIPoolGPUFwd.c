@@ -97,26 +97,38 @@ int APPLY_SPECIFIC(ROIPoolGPUFwd)(PyGpuArrayObject *data,
         return 1;
     }
 
-    if (*out != NULL || *argmaxes != NULL || (!vector_same_shape(data, *out)) || (!vector_same_shape(data, *argmaxes))){
+  if (*out == NULL || !vector_same_shape(data, *out)){
     Py_XDECREF(*out);
-    Py_XDECREF(*argmaxes);
     size_t dim[4];
     dim[0] = batch_size;
     dim[1] = num_rois;
     dim[2] = channels;
     dim[3] = POOLED_HEIGHT * POOLED_WIDTH;
     *out = (PyGpuArrayObject*) pygpu_zeros(4, dim, data->ga.typecode, GA_C_ORDER, ctx, Py_None);
+    if (*out == NULL) {
+      PyErr_Format(PyExc_ValueError, "Could not allocate output storage");
+      return 1;
+    }
+  }
+
+  if (*argmaxes == NULL || !vector_same_shape(data, *argmaxes)){
+    Py_XDECREF(*argmaxes);
+    size_t dim[4];
+    dim[0] = batch_size;
+    dim[1] = num_rois;
+    dim[2] = channels;
+    dim[3] = POOLED_HEIGHT * POOLED_WIDTH;
     *argmaxes = (PyGpuArrayObject*) pygpu_zeros(4, dim, data->ga.typecode, GA_C_ORDER, ctx, Py_None);
-    if (*out == NULL || *argmaxes == NULL) {
+    if (*argmaxes == NULL) {
       PyErr_Format(PyExc_ValueError, "Could not allocate output storage");
       return 1;
     }
   }
 
   err = ROIPoolGPUFwd_kernel_scall(1, &address, 0, batch_size,
-          num_rois, data->ga.data, SPATIAL_SCALE, channels, height, width,
-          POOLED_HEIGHT, POOLED_WIDTH, rois->ga.data, (*out)->ga.data,
-          (*argmaxes)->ga.data);
+				   num_rois, data->ga.data, SPATIAL_SCALE, channels, height, width,
+				   POOLED_HEIGHT, POOLED_WIDTH, rois->ga.data, (*out)->ga.data,
+				   (*argmaxes)->ga.data);
 
   if (err != GA_NO_ERROR) {
     PyErr_Format(PyExc_RuntimeError,
