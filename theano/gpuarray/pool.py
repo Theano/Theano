@@ -474,9 +474,6 @@ class GpuRoIPoolOp(CGpuKernelBase):
         out_shape = [batch_size, num_rois, channels, h * w]
         return [out_shape, out_shape]
 
-    def c_code_cache_version(self):
-        return (1, 0)
-
     def grad(self, inp, grads):
         return [GpuRoIPoolGradOp(self.pooled_h, self.pooled_w,
                                  self.spatial_scale)(*(inp + [self(*inp)[1], grads[0]])), grad_undefined(self, 1, inp[1])]
@@ -522,9 +519,6 @@ class GpuRoIPoolGradOp(CGpuKernelBase):
 
     def infer_shape(self, node, in_shapes):
         return [in_shapes[0]]
-
-    def c_code_cache_version(self):
-        return (1, 0)
 
     def grad(self, inp, grads):
         return [grad_undefined(self, i, inp[i]) for i in range(3)]
