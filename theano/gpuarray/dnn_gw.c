@@ -34,7 +34,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
 
   if (PyGpuArray_DIMS(input)[1] != PyGpuArray_DIMS(km)[1]) {
     PyErr_SetString(PyExc_ValueError,
-		    "GpuDnnConv images and kernel must have the same stack size");
+                    "GpuDnnConv images and kernel must have the same stack size");
     return 1;
   }
 
@@ -165,8 +165,10 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
     }
 
     err = cudnnFindConvolutionBackwardFilterAlgorithmEx(
-      _handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(output), desc,
-      APPLY_SPECIFIC(kerns), 1, &count, &choice, *(void **)tmpmem, free);
+      _handle, APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(input),
+      APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(output), desc,
+      APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(*kerns),
+      1, &count, &choice, *(void **)tmpmem, free);
     gpudata_release(tmpmem);
 
     if (err != CUDNN_STATUS_SUCCESS) {
