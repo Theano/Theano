@@ -241,9 +241,9 @@ int APPLY_SPECIFIC(pool)(PyGpuArrayObject *x,
   size_t p[3]; z_dims[0] = x_dims[0]; z_dims[1] = x_dims[1];
   int nonzero_padding = 0;
   for (int i = 0; i < ndims; i++) {
-    w[i] = *((npy_intp*)PyArray_GETPTR1(ws, i));
-    s[i] = *((npy_intp*)PyArray_GETPTR1(stride, i));
-    p[i] = *((npy_intp*)PyArray_GETPTR1(pad, i));
+    w[i] = *((npy_int64*)PyArray_GETPTR1(ws, i));
+    s[i] = *((npy_int64*)PyArray_GETPTR1(stride, i));
+    p[i] = *((npy_int64*)PyArray_GETPTR1(pad, i));
     z_dims[2 + i] = OUTPUT_DIMS(x_dims[2 + i] + 2*p[i], w[i], s[i]);
     if (p[i] > 0) {
       nonzero_padding = 1;

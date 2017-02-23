@@ -533,7 +533,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         data = rand(4, 2, 3)
         idx = [2, 2, 0, 0, 1, 1]
         n = self.shared(data)
-        t = n[self.shared(numpy.asarray(idx))[::2]]
+        t = n[self.shared(numpy.asarray(idx).astype('int64'))[::2]]
         self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
         val = self.eval_output_and_check(t, op_type=self.adv_sub1, length=2)
         utt.assert_allclose(data[idx[::2]], val)

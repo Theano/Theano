@@ -77,4 +77,4 @@ THEANO_GPUARRAY_TESTS="theano/gpuarray/tests \
                        theano/sandbox/tests/test_rng_mrg.py:test_GPUA_full_fill \
                        theano/scan_module/tests/test_scan.py:T_Scan_Gpuarray"
 FLAGS="init_gpu_device=$DEVICE,gpuarray.preallocate=1000,mode=FAST_RUN,on_opt_error=raise,on_shape_error=raise,cmodule.age_thresh_use=604800"
-THEANO_FLAGS=${FLAGS} time nosetests -v --with-xunit --xunit-file=theanogpuarray_tests.xml ${THEANO_GPUARRAY_TESTS}
+THEANO_FLAGS=${FLAGS} time nosetests --with-xunit --xunit-file=theanogpuarray_tests.xml ${THEANO_GPUARRAY_TESTS}

@@ -37,7 +37,6 @@ whitelist_flake8 = [
     "__init__.py",
     "tests/__init__.py",
     "compile/__init__.py",
-    "compile/profiling.py",
     "compile/sandbox/__init__.py",
     "compile/tests/__init__.py",
     "gpuarray/__init__.py",
