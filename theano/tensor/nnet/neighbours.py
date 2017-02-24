@@ -152,7 +152,7 @@ class Images2Neibs(Op):
                 grad_undefined(self, 2, neib_step)]
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
     def perform(self, node, inp, out_):
         ten4, neib_shape, neib_step = inp
@@ -317,8 +317,24 @@ class Images2Neibs(Op):
         const npy_intp c = (npy_intp) *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
         const npy_intp d = (npy_intp) *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
         // (step_x,step_y) = neib_step
-        const npy_intp step_x = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 0);
-        const npy_intp step_y = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 1);
+        const dtype_%(neib_step)s step_x = *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 0);
+        const dtype_%(neib_step)s step_y = *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 1);
+
+        if (step_x <=0 || step_y <=0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "neib_step wrong step ; values <= 0. Got %%d %%d.",
+                         step_x, step_y);
+            %(fail)s;
+        }
+
+        if (c <=0 || d <=0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "neib_shape values <= 0. Got %%d %%d.",
+                         c, d);
+            %(fail)s;
+        }
 
         if ( "%(mode)s" == "wrap_centered") {
             if (c%%2!=1 || d%%2!=1){
