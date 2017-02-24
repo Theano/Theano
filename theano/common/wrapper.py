@@ -29,6 +29,7 @@ See theano/common/tests/test_wrapper.py for a complete working example.
 from __future__ import absolute_import, print_function, division
 import re
 import hashlib
+import numpy
 from theano.gof.utils import MethodNotDefined
 from theano.gof import Type
 from theano.gof.cmodule import GCC_compiler as compiler
@@ -71,10 +72,40 @@ class Wrap(object):
         self.data[key] = value
 
     def __hash__(self):
-        return hash(frozenset(self.data.items()))
+        keys = sorted(self.data.keys())
+        types = []
+        attributes = []
+        for k in keys:
+            types += (type(self.data[k]),)
+            if isinstance(self.data[k], numpy.ndarray):
+                if len(self.data[k].shape) == 0:
+                    attributes += (numpy.asscalar(self.data[k]),)
+                else:
+                    attributes += tuple(self.data[k])
+            else:
+                try:
+                    iter(self.data[k])
+                except TypeError:
+                    attributes += (self.data[k],)
+                else:
+                    attributes += tuple(self.data[k])
+        return hash((type(self),) + tuple(keys) + tuple(types) + tuple(attributes))
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.data == other.data
+        if type(self) != type(other):
+            return False
+        for k in self.data:
+            if (k not in other.data or
+                    not isinstance(self.data[k], type(other.data[k])) or
+                    not isinstance(other.data[k], type(self.data[k]))):
+                return False
+            if isinstance(self.data[k], numpy.ndarray):
+                if not numpy.allclose(self.data[k], other.data[k]):
+                    return False
+            elif self.data[k] != other.data[k]:
+                return False
+        return True
+        # return type(self) == type(other) and self.data == other.data
 
 
 class Wrapper(Type):
@@ -178,7 +209,7 @@ class Wrapper(Type):
         a = self.filter(a, strict=False)
         b = self.filter(b, strict=False)
         for i in range(self.length):
-            if not self.types[i].value_eq(getattr(a, self.fields[i]), getattr(b, self.fields[i])):
+            if not self.types[i].values_eq(getattr(a, self.fields[i]), getattr(b, self.fields[i])):
                 return False
         return True
 
@@ -186,7 +217,7 @@ class Wrapper(Type):
         a = self.filter(a, strict=False)
         b = self.filter(b, strict=False)
         for i in range(self.length):
-            if not self.types[i].value_eq_approx(getattr(a, self.fields[i]), getattr(b, self.fields[i])):
+            if not self.types[i].values_eq_approx(getattr(a, self.fields[i]), getattr(b, self.fields[i])):
                 return False
         return True
 
