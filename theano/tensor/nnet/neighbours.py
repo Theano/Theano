@@ -152,7 +152,7 @@ class Images2Neibs(Op):
                 grad_undefined(self, 2, neib_step)]
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
     def perform(self, node, inp, out_):
         ten4, neib_shape, neib_step = inp
@@ -323,16 +323,16 @@ class Images2Neibs(Op):
         if (step_x <=0 || step_y <=0)
         {
             PyErr_Format(PyExc_ValueError,
-                         "neib_step wrong step ; values <= 0. Got %%d %%d.",
-                         step_x, step_y);
+                         "neib_step wrong step ; values <= 0. Got %%lld %%lld.",
+                         (long long) step_x, (long long) step_y);
             %(fail)s;
         }
 
         if (c <=0 || d <=0)
         {
             PyErr_Format(PyExc_ValueError,
-                         "neib_shape values <= 0. Got %%d %%d.",
-                         c, d);
+                         "neib_shape values <= 0. Got %%lld %%lld.",
+                         (long long)c, (long long)d);
             %(fail)s;
         }
 
