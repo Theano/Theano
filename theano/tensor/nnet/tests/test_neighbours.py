@@ -144,8 +144,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         shape = (2, 3, 10, 10)
         for dtype in self.dtypes:
             images = shared(numpy.arange(
-                numpy.prod(shape), dtype=dtype
-                ).reshape(shape))
+                numpy.prod(shape), dtype=dtype).reshape(shape))
 
             for neib_shape in [(3, 2), (2, 3)]:
                 neib_shape = T.as_tensor_variable(neib_shape)
@@ -362,7 +361,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
             f(neibs, im_val.shape)
             # Wrong number of dimensions
             self.assertRaises(ValueError, f, neibs,
-                          (1, 1, 3, 320, 320))
+                              (1, 1, 3, 320, 320))
             # End up with a step of 0
             self.assertRaises(ValueError, f, neibs,
                               (3, 320, 320, 1))
