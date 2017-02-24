@@ -876,19 +876,20 @@ class Validator(object):
 
             if out.owner is None:
                 if isinstance(out, tensor.TensorConstant):
-                    # This might be a constant from the outer graph or a constant
-                    # from the inner graph. In all cases, we can clone it to be
-                    # certain we have a valid constant
-
-                    # TODO: FRED I think the clone is not needed.
-                    cloned_out = out.clone()
-                    self.valid.add(cloned_out)
-                    self.invalid.add(out)
-                    self.valid_equivalent[out] = cloned_out
+                    if hasattr(out, 'fgraph'):
+                        # If out have an fgraph, we aren't sure if it
+                        # is from the inner graph or outer graph, so
+                        # clone it.
+                        cloned_out = out.clone()
+                        self.valid.add(cloned_out)
+                        self.invalid.add(out)
+                        self.valid_equivalent[out] = cloned_out
+                    else:
+                        self.valid.add(out)
                     continue
                 else:
-                    # This is an input node and it has not been explicitly marked
-                    # as invalid so we can use it
+                    # This is an input node and it has not been
+                    # explicitly marked as invalid so we can use it
                     self.valid.add(out)
                     continue
 
