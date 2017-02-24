@@ -48,9 +48,9 @@ Requirements
 
         Required for some extra operations on the GPU like fft and
         solvers. We use them to wrap cufft and cusolver. Quick install
-        ``pip install pycuda scikit-cuda``. For
-        cuda 8, the dev version of skcuda is needed for cusolver:
-        ``pip install pycuda; pip install
+        ``pip install pycuda scikit-cuda``. For cuda 8, the dev
+        version of skcuda (will be released as 0.5.2) is needed for
+        cusolver: ``pip install pycuda; pip install
         git+https://github.com/lebedov/scikit-cuda.git#egg=scikit-cuda``.
 
 Requirements installation through Conda (recommended)
