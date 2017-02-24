@@ -36,7 +36,8 @@ void APPLY_SPECIFIC(ROIPoolForward)(
       // Incrementing the output pointers and the ROI by respective ROI channel.
       batch_out += out_inc;
       batch_argmax += out_inc;
-      batch_roi += index * 5;
+      batch_roi = bottom_rois + index * 5;
+
       int roi_start_w = floorf(batch_roi[1] * spatial_scale + 0.5);
       int roi_start_h = floorf(batch_roi[2] * spatial_scale + 0.5 );
       int roi_end_w = floorf(batch_roi[3] * spatial_scale + 0.5);
@@ -53,15 +54,15 @@ void APPLY_SPECIFIC(ROIPoolForward)(
         float* channel_argmax = batch_argmax + out_channel_inc;
         for (int ph = 0; ph < pooled_height; ++ph) {
           for (int pw = 0; pw < pooled_width; ++pw) {
-            int hstart = static_cast<int>(floor(static_cast<float>(ph) * bin_size_h));
-            int wstart = static_cast<int>(floor(static_cast<float>(pw) * bin_size_w));
-            int hend = static_cast<int>(ceil(static_cast<float>(ph + 1) * bin_size_h));
-            int wend = static_cast<int>(ceil(static_cast<float>(pw + 1) * bin_size_w));
+            int hstart = static_cast<int>(floor(static_cast<float>(ph) * bin_size_h)) + roi_start_h;
+            int wstart = static_cast<int>(floor(static_cast<float>(pw) * bin_size_w)) + roi_start_w;
+            int hend = static_cast<int>(ceil(bin_size_h)) + hstart;
+            int wend = static_cast<int>(ceil(bin_size_w)) + wstart;
             // Add roi offsets and clip to input boundaries
-            hstart = min(max(hstart + roi_start_h, 0), height);
-            hend = min(max(hend + roi_start_h, 0), height);
-            wstart = min(max(wstart + roi_start_w, 0), width);
-            wend = min(max(wend + roi_start_w, 0), width);
+            hstart = min(max(hstart, 0), height);
+            hend = min(max(hend, 0), height);
+            wstart = min(max(wstart, 0), width);
+            wend = min(max(wend, 0), width);
             bool is_empty = (hend <= hstart) || (wend <= wstart);
             const int pool_index = ph * pooled_width + pw;
             if (is_empty) {
@@ -102,13 +103,13 @@ int APPLY_SPECIFIC(CPUFwd)(PyArrayObject* data,
   dims[1] = channels;
   dims[2] = POOLED_HEIGHT;
   dims[3] = POOLED_WIDTH;
-
+  printf("Num rooi is %d\n", num_rois);
   // Checking if contiguous
   if(!PyArray_ISCONTIGUOUS(data) || !PyArray_ISCONTIGUOUS(rois)){
     PyErr_Format(PyExc_ValueError, "RoIPoolGradOp: requires data to be C-contiguous");
     return 1;
   }
-  if (*out != NULL || *argmaxes != NULL || (!vector_same_shape(data, *out)) || (!vector_same_shape(data, *argmaxes))){
+  if (*out == NULL){
     Py_XDECREF(*out);
     Py_XDECREF(*argmaxes);
     npy_intp dim[4];
@@ -170,8 +171,8 @@ void APPLY_SPECIFIC(ROIPoolBackward)(
           for(int w = 0; w < width; ++w){
             int roi_start_w = floorf(batch_roi[1] * spatial_scale + 0.5);
             int roi_start_h = floorf(batch_roi[2] * spatial_scale + 0.5 );
-            int roi_end_w = ceil(batch_roi[3] * spatial_scale + 0.5);
-            int roi_end_h = ceil(batch_roi[4] * spatial_scale + 0.5);
+            int roi_end_w = floorf(batch_roi[3] * spatial_scale + 0.5);
+            int roi_end_h = floorf(batch_roi[4] * spatial_scale + 0.5);
             int roi_width = max(roi_end_w - roi_start_w + 1, 1);
             int roi_height = max(roi_end_h - roi_start_h + 1, 1);
 
