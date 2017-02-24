@@ -14,3 +14,6 @@
 	path = qa/third_party/scikits.cuda
 	url = https://github.com/lebedov/scikits.cuda
 	branch = master
+[submodule "libgpuarray"]
+	path = libgpuarray
+	url = https://github.com/Theano/libgpuarray.git

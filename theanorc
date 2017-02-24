@@ -1,6 +1,6 @@
 [global]
 base_compiledir=/tmp
-device=gpu
+device=cuda
 floatX=float32
 
 [lib]
