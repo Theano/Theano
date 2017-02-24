@@ -177,6 +177,12 @@ class Images2Neibs(Op):
         c, d = neib_shape
         step_x, step_y = neib_step
         mode = self.mode
+        if step_x <= 0 or step_y <= 0:
+            raise ValueError(
+                "neib_step wrong step ; values <= 0. Got " + str(neib_step))
+        if c <= 0 or d <= 0:
+            raise ValueError(
+                "neib_shape values <=0. Got " + str(neib_shape))
 
         if mode == "wrap_centered":
             if (c % 2 != 1) or (d % 2 != 1):
