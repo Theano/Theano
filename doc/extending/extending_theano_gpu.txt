@@ -198,6 +198,47 @@ by :function:`load_w`. Similarly writes should be wrapped in the
 function returned by :function:`write_w`.  Finally working data should
 have the type returned by :function:`work_dtype`.
 
+Here is a +1 kernel that is not ready to deal with float16 input::
+
+    type_x = dtype_to_ctype(x.dtype)
+    type_y = dtype_to_ctype(y.dtype)
+    """
+    KERNEL void k(const ga_size n, %(type_x)s *x, %(type_y)s *y) {
+        ga_size i = GID_0 * LDIM_0 + LID_0;
+        %(type_x) z = x[i];
+        z += 1;
+        y[i] = z;
+    }
+    """ % dict(dtype_x=dtype_x, dtype_y=dtype_y)
+
+Here is the same kernel, but now ready to handle float16::
+
+    type_x = dtype_to_ctype(x.dtype)
+    type_y = dtype_to_ctype(y.dtype)
+    work_x = dtype_to_ctype(work_dtype(x.dtype))
+    load_x = load_w(x.dtype)
+    write_y = write_w(y.dtype)
+    """
+    KERNEL void k(const ga_size n, %(type_x)s *x, %(type_y)s *y) {
+        ga_size i = GID_0 * LDIM_0 + LID_0;
+        %(work_x) z = %(load_w)(x[i]);
+        z += 1;
+        y[i] = %(write_w)(z);
+    }
+    """ % dict(dtype_x=dtype_x, dtype_y=dtype_y, work_x=work_x, load_x=load_x,
+               write_y=write_y)
+
+Once you have converted your kernels for float16 support you need to
+tag your op with ``_f16_ok = True`` so that the linker will accept to
+generate C code on float16 types.  This is done by inserting it as a
+class property like this::
+
+    class SomeOp(Op):
+        _f16_ok = True
+
+If this attribute is not present or is False, the linker will print a
+message saying that it's refusing to use C code for float16.
+
 A Complete Example
 ==================
 
