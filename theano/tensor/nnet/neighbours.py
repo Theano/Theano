@@ -620,7 +620,7 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
         valid_shape = list(original_shape)
         valid_shape[2] = (valid_shape[2] // neib_shape[0]) * neib_shape[0]
         valid_shape[3] = (valid_shape[3] // neib_shape[1]) * neib_shape[1]
-        output_4d = output_2d.reshape(valid_shape)
+        output_4d = output_2d.reshape(valid_shape, ndim=4)
         # padding the borders with zeros
         for d in [2, 3]:
             pad_shape = list(output_4d.shape)
@@ -629,7 +629,7 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
     elif mode == 'valid':
         # TODO: we do not implement all mode with this code.
         # Add a check for the good cases.
-        output_4d = output_2d.reshape(original_shape)
+        output_4d = output_2d.reshape(original_shape, ndim=4)
     else:
         raise NotImplementedError("neibs2images do not support mode=%s" % mode)
 
