@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         libopenblas-dev \
         python-dev \
-	numpy && \
+	apt-utils && \
     rm -rf /var/lib/apt/lists/*
 
 RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
