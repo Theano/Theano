@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
         libopenblas-dev \
-        python-dev 
+        python-dev \
 	numpy && \
     rm -rf /var/lib/apt/lists/*
 
