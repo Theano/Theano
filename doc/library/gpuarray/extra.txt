@@ -15,3 +15,9 @@ Kernel generation
 
 .. automodule:: theano.gpuarray.kernel_codegen
    :members:
+
+float16
+-------
+
+.. automodule:: theano.gpuarray.fp16_help
+   :members:

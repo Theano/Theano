@@ -191,12 +191,14 @@ Dealing with float16
 To support limited-precision storage in a kernel you have to be
 careful to load values properly, declare working memory in float32 and
 write results properly.  To help with that some functions have been
-declared in `theano.gpuarray.fp16_help`.
+declared in :mod:`theano.gpuarray.fp16_help`.
 
 To load the inputs you should wrap the read with the function returned
-by :function:`load_w`. Similarly writes should be wrapped in the
-function returned by :function:`write_w`.  Finally working data should
-have the type returned by :function:`work_dtype`.
+by :func:`load_w() <theano.gpuarray.fp16_help.load_w>`. Similarly writes
+should be wrapped in the function returned by :func:`write_w()
+<theano.gpuarray.fp16_help.write_w>`.  Finally working data should
+have the type returned by :func:`work_dtype()
+<theano.gpuarray.fp16_help.work_dtype>`.
 
 Here is a +1 kernel that is not ready to deal with float16 input::
 
