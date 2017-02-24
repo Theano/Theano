@@ -633,9 +633,16 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
                              new_neib_shape, mode=mode)
 
     if mode == 'ignore_borders':
-        valid_shape = list(original_shape)
-        valid_shape[2] = (valid_shape[2] // neib_shape[0]) * neib_shape[0]
-        valid_shape[3] = (valid_shape[3] // neib_shape[1]) * neib_shape[1]
+        # We use set_subtensor to accept original_shape we can't infer
+        # the shape and still raise error when it don't have the right
+        # shape.
+        valid_shape = original_shape
+        valid_shape = T.set_subtensor(
+            valid_shape[2],
+            (valid_shape[2] // neib_shape[0]) * neib_shape[0])
+        valid_shape = T.set_subtensor(
+            valid_shape[3],
+            (valid_shape[3] // neib_shape[1]) * neib_shape[1])
         output_4d = output_2d.reshape(valid_shape, ndim=4)
         # padding the borders with zeros
         for d in [2, 3]:

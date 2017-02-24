@@ -352,18 +352,20 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         patsRecovery = T.matrix('patsRecovery')
         original_size = T.ivector('original_size')
 
-        out = neibs2images(patsRecovery, (16, 16), original_size)
-        f = theano.function([patsRecovery, original_size], out)
+        for mode in ['valid', 'ignore_borders']:
+            out = neibs2images(patsRecovery, (16, 16),
+                               original_size, mode=mode)
+            f = theano.function([patsRecovery, original_size], out)
 
-        im_val = numpy.ones((1, 3, 320, 320), dtype=numpy.float32)
-        neibs = extractPatches(im_val)
-        f(neibs, im_val.shape)
-        # Wrong number of dimensions
-        self.assertRaises(ValueError, f, neibs,
+            im_val = numpy.ones((1, 3, 320, 320), dtype=numpy.float32)
+            neibs = extractPatches(im_val)
+            f(neibs, im_val.shape)
+            # Wrong number of dimensions
+            self.assertRaises(ValueError, f, neibs,
                           (1, 1, 3, 320, 320))
-        # End up with a step of 0
-        self.assertRaises(ValueError, f, neibs,
-                          (3, 320, 320, 1))
+            # End up with a step of 0
+            self.assertRaises(ValueError, f, neibs,
+                              (3, 320, 320, 1))
 
     def speed_neibs(self):
         shape = (100, 40, 18, 18)
