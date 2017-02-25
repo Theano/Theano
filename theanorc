@@ -2,9 +2,15 @@
 base_compiledir=/tmp
 device=cuda
 floatX=float32
-
-[lib]
-cnmem=0.9
+contexts="GPU#0->cuda0;GPU#1->cuda1;GPU#2->cuda2;GPU#3->cuda3;GPU#4->cuda4"
 
 [dnn]
 enabled=True
+
+[gpuarray]
+preallocate=90
+single_stream=False
+
+[nvcc]
+fastmath=True
+flags=-D_FORCE_INLINES
