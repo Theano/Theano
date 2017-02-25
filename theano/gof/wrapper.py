@@ -56,6 +56,9 @@ class Wrap(object):
     def __init__(self, **kwargs):
         if len(kwargs) == 0:
             raise TypeError('Wrap: cannot wrap empty data.')
+        # We want to use only the params provided in kwargs to hash the object,
+        # so I prefer to put them into a separate attribute (self.data) instead
+        # of directly in self.__dict__, to avoid confusion with builtin fields.
         super(Wrap, self).__setattr__('data', kwargs)
 
     def __repr__(self):
@@ -79,16 +82,20 @@ class Wrap(object):
             types += (type(self.data[k]),)
             if isinstance(self.data[k], numpy.ndarray):
                 if len(self.data[k].shape) == 0:
+                    # NumPy scalar is not iterable, so we put it into a tuple.
                     attributes += (numpy.asscalar(self.data[k]),)
                 else:
+                    # NumPy non-0-D arrays are iterable, so we append it as a tuple.
                     attributes += tuple(self.data[k])
             else:
                 try:
                     iter(self.data[k])
                 except TypeError:
+                    # Not iterable: we put it into a tuple.
                     attributes += (self.data[k],)
                 else:
-                    attributes += tuple(self.data[k])
+                    # Iterable: we append it directly.
+                    attributes += self.data[k]
         return hash((type(self),) + tuple(keys) + tuple(types) + tuple(attributes))
 
     def __eq__(self, other):

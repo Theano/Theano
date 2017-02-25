@@ -36,7 +36,6 @@ whitelist_flake8 = [
     "compat/six.py",  # This is bundled code that will be deleted, don't fix it
     "__init__.py",
     "tests/__init__.py",
-    "common/__init__.py",
     "compile/__init__.py",
     "compile/sandbox/__init__.py",
     "compile/tests/__init__.py",
