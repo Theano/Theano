@@ -9,6 +9,12 @@ SUDO=${SUDO:-""}
 echo "=== Installing requirements..."
 cat requirement-rtd.txt | xargs -n1 ${SUDO} pip install --no-cache-dir || exit 1
 
+echo "=== Builing pycuda ..."
+cd ${THIS_DIR}/pycuda \
+    && ./configure.py --cuda-root=${CUDA_HOME} --no-use-shipped-boost \
+    && VERBOSE=1 make \
+    && ${SUDO} make install
+
 echo "=== Builing gpuarray ..."
 cd ${THIS_DIR}/libgpuarray \
     && cmake -E make_directory build && cd build \

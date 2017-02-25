@@ -1,8 +1,13 @@
 FROM nvdl.githost.io:4678/dgx/cuda:8.0-cudnn5.1-devel-ubuntu16.04--17.03
 
-ENV THEANO_VERSION 0.8.X
+ENV THEANO_VERSION 0.9.0
 LABEL com.nvidia.theano.version="${THEANO_VERSION}"
 ENV NVIDIA_THEANO_VERSION 17.03
+
+ENV CUDA_ROOT /usr/local/cuda-8.0
+ENV CUDA_HOME ${CUDA_ROOT}
+ENV PATH ${CUDA_ROOT}/bin:${PATH}
+ENV GPUARRAY_FORCE_CUDA_DRIVER_LOAD YES
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         git \

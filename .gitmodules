@@ -17,3 +17,6 @@
 [submodule "libgpuarray"]
 	path = libgpuarray
 	url = https://github.com/Theano/libgpuarray.git
+[submodule "pycuda"]
+	path = pycuda
+	url = https://github.com/inducer/pycuda
