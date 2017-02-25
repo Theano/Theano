@@ -44,6 +44,15 @@ Requirements
     `libgpuarray`_
         Required for GPU/CPU code generation on CUDA and OpenCL devices (see: :ref:`gpuarray`.)
 
+    `pycuda`_ and `skcuda`_
+
+        Required for some extra operations on the GPU like fft and
+        solvers. We use them to wrap cufft and cusolver. Quick install
+        ``pip install pycuda scikit-cuda``. For cuda 8, the dev
+        version of skcuda (will be released as 0.5.2) is needed for
+        cusolver: ``pip install pycuda; pip install
+        git+https://github.com/lebedov/scikit-cuda.git#egg=scikit-cuda``.
+
 Requirements installation through Conda (recommended)
 -----------------------------------------------------
 
@@ -104,3 +113,5 @@ Install and configure the GPU drivers (recommended)
 .. _dvipng: http://savannah.nongnu.org/projects/dvipng/
 .. _NVIDIA CUDA drivers and SDK: http://developer.nvidia.com/object/gpucomputing.html
 .. _libgpuarray: http://deeplearning.net/software/libgpuarray/installation.html
+.. _pycuda: https://mathema.tician.de/software/pycuda/
+.. _skcuda: http://scikit-cuda.readthedocs.io/en/latest/

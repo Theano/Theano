@@ -733,6 +733,13 @@ class GpuDnnConvGradW(DnnBase):
                           'with certain cuDNN algorithms depending on the compute capability of your GPU '
                           'if subsample is not (1, 1, 1). If you encounter problems, consider '
                           'setting the theano flag "dnn.conv.algo_bwd_filter" to "none".')
+        if (self.algo not in ('none', 'deterministic', 'fft', 'small') and
+                beta is not None and theano.tensor.extract_constant(beta) != 1):
+            warnings.warn('cuDNN backward filter operation for convolutions may produce bad results '
+                          'with certain cuDNN algorithms depending on the compute capability of your GPU '
+                          'if beta != 1. If you encounter problems, consider '
+                          'setting the theano flag "dnn.conv.algo_bwd_filter" to '
+                          '"none", "deterministic", "fft", or "small".')
         ctx_name = infer_context_name(img, topgrad, output)
         img = as_gpuarray_variable(img, ctx_name)
         topgrad = as_gpuarray_variable(topgrad, ctx_name)
