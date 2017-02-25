@@ -103,7 +103,7 @@ int APPLY_SPECIFIC(CPUFwd)(PyArrayObject* data,
   dims[1] = channels;
   dims[2] = POOLED_HEIGHT;
   dims[3] = POOLED_WIDTH;
-  printf("Num rooi is %d\n", num_rois);
+
   // Checking if contiguous
   if(!PyArray_ISCONTIGUOUS(data) || !PyArray_ISCONTIGUOUS(rois)){
     PyErr_Format(PyExc_ValueError, "RoIPoolGradOp: requires data to be C-contiguous");

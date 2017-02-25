@@ -12,41 +12,41 @@ KERNEL void ROIPoolGPUFwd_kernel(
         const int out_bn = bn * num_rois * channels * pooled_width * pooled_height;
         // Incrementing the input and output pointers by a batch
         DTYPE_i0* batch_data = bottom_data + inp_bn;
-        DTYPE_i0* batch_out = top_data + out_bn;
-        DTYPE_i0* batch_argmax = argmax_data + out_bn;
+        DTYPE_o0* batch_out = top_data + out_bn;
+        DTYPE_o1* batch_argmax = argmax_data + out_bn;
         // Assigning to a separate variable as the ROIs doesn't change per batch
-        DTYPE_i0* batch_rois = bottom_rois;
+        DTYPE_i1* batch_rois = bottom_rois;
         for (ga_int index = 0; index < num_rois; ++index) {
             ga_int out_inc = index * channels * pooled_width * pooled_height;
             // Incrementing the pointers by respective ROI channel.
             batch_out += out_inc;
             batch_argmax += out_inc;
-            batch_rois += index * 5;
-            ga_int roi_start_w = floor(batch_rois[1] * spatial_scale + 0.5);
-            ga_int roi_start_h = floor(batch_rois[2] * spatial_scale + 0.5);
-            ga_int roi_end_w = floor(batch_rois[3] * spatial_scale + 0.5);
-            ga_int roi_end_h = floor(batch_rois[4] * spatial_scale + 0.5);
+            batch_rois = bottom_rois + index * 5;
+            ga_int roi_start_w = floorf(batch_rois[1] * spatial_scale + 0.5);
+            ga_int roi_start_h = floorf(batch_rois[2] * spatial_scale + 0.5);
+            ga_int roi_end_w = floorf(batch_rois[3] * spatial_scale + 0.5);
+            ga_int roi_end_h = floorf(batch_rois[4] * spatial_scale + 0.5);
             ga_int roi_width = max(roi_end_w - roi_start_w + 1, 1);
             ga_int roi_height = max(roi_end_h - roi_start_h + 1, 1);
-            DTYPE_i0 bin_size_h = static_cast<DTYPE_i0>(roi_height) / static_cast<DTYPE_i0>(pooled_height);
-            DTYPE_i0 bin_size_w = static_cast<DTYPE_i0>(roi_width) / static_cast<DTYPE_i0>(pooled_width);
+            ga_float bin_size_h = static_cast<ga_float>(roi_height) / static_cast<ga_float>(pooled_height);
+            ga_float bin_size_w = static_cast<ga_float>(roi_width) / static_cast<ga_float>(pooled_width);
             for (ga_int c = 0; c < channels; ++c) {
                 ga_int data_inc = c * height * width;
                 ga_int out_channel_inc = c * pooled_height * pooled_width;
                 DTYPE_i0* channel_data = batch_data + data_inc;
-                DTYPE_i0* channel_out = batch_out + out_channel_inc;
-                DTYPE_i0* channel_argmax = batch_argmax + out_channel_inc;
+                DTYPE_o0* channel_out = batch_out + out_channel_inc;
+                DTYPE_o1* channel_argmax = batch_argmax + out_channel_inc;
                 for (ga_int ph = 0; ph < pooled_height; ++ph) {
                     for (ga_int pw = 0; pw < pooled_width; ++pw) {
-                        ga_int hstart = static_cast<ga_int>(floor(static_cast<DTYPE_i0>(ph) * bin_size_h));
-                        ga_int wstart = static_cast<ga_int>(floor(static_cast<DTYPE_i0>(pw) * bin_size_w));
-                        ga_int hend = static_cast<ga_int>(ceil(static_cast<DTYPE_i0>(ph + 1) * bin_size_h));
-                        ga_int wend = static_cast<ga_int>(ceil(static_cast<DTYPE_i0>(pw + 1) * bin_size_w));
+                        ga_int hstart = static_cast<ga_int>(floor(static_cast<ga_float>(ph) * bin_size_h)) + roi_start_h;
+                        ga_int wstart = static_cast<ga_int>(floor(static_cast<ga_float>(pw) * bin_size_w)) + roi_start_w;
+                        ga_int hend = static_cast<ga_int>(ceil(bin_size_h)) + hstart;
+                        ga_int wend = static_cast<ga_int>(ceil(bin_size_w)) + wstart;
                         // Add roi offsets and clip to input boundaries
-                        hstart = min(max(hstart + roi_start_h, 0), height);
-                        hend = min(max(hend + roi_start_h, 0), height);
-                        wstart = min(max(wstart + roi_start_w, 0), width);
-                        wend = min(max(wend + roi_start_w, 0), width);
+                        hstart = min(max(hstart, 0), height);
+                        hend = min(max(hend, 0), height);
+                        wstart = min(max(wstart, 0), width);
+                        wend = min(max(wend, 0), width);
                         bool is_empty = (hend <= hstart) || (wend <= wstart);
                         ga_int pool_index = ph * pooled_width + pw;
                         if (is_empty) {

@@ -1157,17 +1157,6 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         for o, n in zip(old_out, new_out):
             utt.assert_allclose(o, n)
 
-
-def generate_random_image(batch_length, channels, y, x):
-
-    # A separate method as will make it standard for all the other random images in this test suite.
-    # Since Spatial Pyramid Poling and ROI pooling are a special case of Max Pooling, they could be tested
-    # with Max Pooling's test itself.
-
-    random_image = numpy.random.random((batch_length, channels, y, x)).astype(numpy.single)
-    return random_image
-
-
 def numpy_roi_pool(image_val, pool_height, pool_width, roi, spatial_scale):
 
     batch_size = image_val.shape[0]
@@ -1214,8 +1203,6 @@ class TestRoIPool(utt.InferShapeTester):
         rng = numpy.random.RandomState(utt.fetch_seed())
         t_data = tensor.ftensor4()
         t_rois = tensor.fmatrix()
-        num_roi = 2
-        # Image shape is (16, 16) with 3 channels
         image_shapes = ((1, 3, 16, 16), (1, 3, 16, 20), (1, 3, 20, 16),
                         (1, 2, 16, 16), (1, 2, 16, 20), (1, 2, 20, 16),
                         (2, 3, 16, 16), (2, 3, 16, 20), (2, 3, 20, 16),
@@ -1230,7 +1217,7 @@ class TestRoIPool(utt.InferShapeTester):
         pool_heights = [2, 3, 4]
         spatial_scales = [0.5, 1.0, 1.5]
 
-        for index, im_shp in enumerate(image_shapes):
+        for im_shp in image_shapes:
             for pool_h, pool_w, sp_scale in zip(pool_heights, pool_widths, spatial_scales):
                 random_image = rng.rand(*im_shp).astype(numpy.single)
                 maxvals_np, maxloc_np = numpy_roi_pool(random_image, pool_h, pool_w, roi_numpy, sp_scale)
@@ -1238,12 +1225,11 @@ class TestRoIPool(utt.InferShapeTester):
                 t_outs = roi_op(t_data, t_rois)
                 func = theano.function([t_data, t_rois], t_outs)
                 maxvals_theano, maxloc_theano = func(random_image, roi_theano)
-                print("run " + str(index))
-                utt.assert_allclose(maxvals_theano, maxvals_np)
-        
-        def mp(inp, grad):
-            out, argmax = self.op_class(pool_heights[0], pool_widths[0], spatial_scales[0])(inp, roi_theano)
-            in_grad = RoIPoolGradOp(pool_heights[0], pool_widths[0], spatial_scales[0])(inp, roi_theano, out, grad)
+                utt.assert_allclose(maxvals_np, maxvals_theano)
+
+        def mp(input, grad):
+            out, argmax = self.op_class(pool_heights[0], pool_widths[0], spatial_scales[0])(input, roi_theano)
+            in_grad = RoIPoolGradOp(pool_heights[0], pool_widths[0], spatial_scales[0])(input, roi_theano, out, grad)
             return in_grad
 
         in_shape = random_image.shape
