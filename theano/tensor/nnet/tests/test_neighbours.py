@@ -144,8 +144,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         shape = (2, 3, 10, 10)
         for dtype in self.dtypes:
             images = shared(numpy.arange(
-                numpy.prod(shape), dtype=dtype
-                ).reshape(shape))
+                numpy.prod(shape), dtype=dtype).reshape(shape))
 
             for neib_shape in [(3, 2), (2, 3)]:
                 neib_shape = T.as_tensor_variable(neib_shape)
@@ -339,6 +338,33 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                             T.sqr(images2neibs(images, (2, 2), mode='valid')),
                             mode=self.mode)
         self.assertRaises(TypeError, f, images_val)
+
+    def test_can_not_infer_nb_dim(self):
+        # Was reported in gh-5613. Test that we do not crash
+        # or that we crash in a few other case found while
+        # investigating that case
+
+        img = T.tensor4('img')
+        patches = T.nnet.neighbours.images2neibs(img, [16, 16])
+        extractPatches = theano.function([img], patches)
+
+        patsRecovery = T.matrix('patsRecovery')
+        original_size = T.ivector('original_size')
+
+        for mode in ['valid', 'ignore_borders']:
+            out = neibs2images(patsRecovery, (16, 16),
+                               original_size, mode=mode)
+            f = theano.function([patsRecovery, original_size], out)
+
+            im_val = numpy.ones((1, 3, 320, 320), dtype=numpy.float32)
+            neibs = extractPatches(im_val)
+            f(neibs, im_val.shape)
+            # Wrong number of dimensions
+            self.assertRaises(ValueError, f, neibs,
+                              (1, 1, 3, 320, 320))
+            # End up with a step of 0
+            self.assertRaises(ValueError, f, neibs,
+                              (3, 320, 320, 1))
 
     def speed_neibs(self):
         shape = (100, 40, 18, 18)
