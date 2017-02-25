@@ -2,13 +2,12 @@
 base_compiledir=/tmp
 device=cuda
 floatX=float32
-contexts="GPU#0->cuda0;GPU#1->cuda1;GPU#2->cuda2;GPU#3->cuda3;GPU#4->cuda4"
 
 [dnn]
 enabled=True
 
 [gpuarray]
-preallocate=90
+preallocate=0.9
 single_stream=False
 
 [nvcc]
