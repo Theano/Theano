@@ -4,29 +4,30 @@ import numpy
 from unittest import TestCase
 from theano.gof import Op, Apply
 from theano import Generic
+from theano.scalar import Scalar
 from theano.tensor import TensorType
-from theano.common import Wrapper, Wrap
+from theano.gof.wrapper import Wrapper, Wrap
 from theano import config
 from theano import tensor
 from theano.tests import unittest_tools as utt
 
 dtype = config.floatX
-scalar_type = TensorType(dtype, tuple())
+tensor_type_0d = TensorType(dtype, tuple())
+scalar_type = Scalar(dtype)
+generic_type = Generic()
 
 
-# A test op to compute `y = a*x^2 + bx + c` for any tensor x,
-# such that a, b, c are parameters of that op.
+# A test op to compute `y = a*x^2 + bx + c` for any tensor x, with a, b, c as parameters of that op.
 class QuadraticFunction(Op):
     __props__ = ('a', 'b', 'c')
-    params_type = Wrapper(a=scalar_type, b=scalar_type, c=scalar_type)
+    params_type = Wrapper(a=tensor_type_0d,
+                          b=scalar_type,
+                          c=generic_type)
 
     def __init__(self, a, b, c):
         self.a = a
         self.b = b
         self.c = c
-
-    def get_params(self, node):
-        return Wrap(a=self.a, b=self.b, c=self.c)
 
     def make_node(self, x):
         x = tensor.as_tensor_variable(x)
@@ -38,7 +39,7 @@ class QuadraticFunction(Op):
         y[0] = coefficients.a * (x**2) + coefficients.b * x + coefficients.c
 
     def c_code_cache_version(self):
-        return (1, 1)
+        return (1, 2)
 
     def c_support_code_apply(self, node, name):
         float_type = node.inputs[0].type.dtype_specs()[1]
@@ -81,12 +82,9 @@ class QuadraticFunction(Op):
         float_typenum = numpy.dtype(node.inputs[0].type.dtype).num
         coeff_type = 'npy_' + numpy.dtype(dtype).name
         return """
-        PyArrayObject* o_a = %(coeff)s.a;
-        PyArrayObject* o_b = %(coeff)s.b;
-        PyArrayObject* o_c = %(coeff)s.c;
-        %(float_type)s a = (%(float_type)s) (*(%(coeff_type)s*) PyArray_GETPTR1(o_a, 0));
-        %(float_type)s b = (%(float_type)s) (*(%(coeff_type)s*) PyArray_GETPTR1(o_b, 0));
-        %(float_type)s c = (%(float_type)s) (*(%(coeff_type)s*) PyArray_GETPTR1(o_c, 0));
+        %(float_type)s a = (%(float_type)s) (*(%(coeff_type)s*) PyArray_GETPTR1(%(coeff)s.a, 0)); // 0-D TensorType.
+        %(float_type)s b =                                                      %(coeff)s.b;      // Scalar.
+        %(float_type)s c =                     (%(float_type)s)PyFloat_AsDouble(%(coeff)s.c);     // Generic.
         Py_XDECREF(%(Y)s);
         %(Y)s = (PyArrayObject*)PyArray_EMPTY(PyArray_NDIM(%(X)s), PyArray_DIMS(%(X)s), %(float_typenum)s, PyArray_IS_F_CONTIGUOUS(%(X)s));
         if (PyArray_CopyInto(%(Y)s, %(X)s) != 0) {
@@ -102,7 +100,7 @@ class QuadraticFunction(Op):
 
 class TestWrapper(TestCase):
 
-    def test_wrap_instances(self):
+    def test_wrap_hash_and_eq(self):
         w1 = Wrap(a=1, b='test string', array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
         w2 = Wrap(a=1, b='test string', array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
         assert w1 == w2
@@ -121,7 +119,7 @@ class TestWrapper(TestCase):
         w2 = Wrap(a=1, b='test string', array=numpy.asarray([1, 2, 4, -5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
         assert w1 != w2
 
-    def test_wrapper_instances(self):
+    def test_wrapper_hash_and_eq(self):
         w1 = Wrapper(a1=TensorType('int64', (False, False)),
                      a2=TensorType('int64', (False, True, False, False, True)),
                      a3=Generic())
@@ -150,44 +148,44 @@ class TestWrapper(TestCase):
     def test_wrapper_filtering(self):
         shape_tensor5 = (1, 2, 2, 3, 2)
         size_tensor5 = shape_tensor5[0] * shape_tensor5[1] * shape_tensor5[2] * shape_tensor5[3] * shape_tensor5[4]
-        random_tensor = numpy.random.normal(size=size_tensor5).astype('float64').reshape(shape_tensor5)
+        random_tensor = numpy.random.normal(size=size_tensor5).reshape(shape_tensor5)
 
-        # With a wrapper that does not match the value.
-        w = Wrapper(a1=TensorType('int64', (False, False)),
-                    a2=TensorType('float32', (False, False, False, False, False)),
+        w = Wrapper(a1=TensorType('int32', (False, False)),
+                    a2=TensorType('float64', (False, False, False, False, False)),
                     a3=Generic())
+
+        # With a value that does not match the wrapper.
         o = Wrap(a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int64'),
-                 a2=random_tensor,
+                 a2=random_tensor.astype('float32'),
                  a3=2000)
-        # should fail (a2 is not float32)
+        # should fail (o.a1 is not int32, o.a2 is not float64)
         self.assertRaises(TypeError, w.filter, o, True)
-        # should fail (a2 is float64, but downcast to float32 is disallowed)
+        # should fail (o.a1 is not int32, o.a2 is not float64, and downcast is disallowed)
         self.assertRaises(TypeError, w.filter, o, False, False)
         # Should pass.
         w.filter(o, strict=False, allow_downcast=True)
 
-        # With a wrapper that matches the value.
-        w = Wrapper(a1=TensorType('int64', (False, False)),
-                    a2=TensorType('float64', (False, False, False, False, False)),
-                    a3=Generic())
+        # With a value that matches the wrapper.
+        o1 = Wrap(a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int32'),
+                  a2=random_tensor.astype('float64'),
+                  a3=2000)
         # All should pass.
-        w.filter(o, strict=True)
-        w.filter(o, strict=False, allow_downcast=False)
-        w.filter(o, strict=False, allow_downcast=True)
+        w.filter(o1, strict=True)
+        w.filter(o1, strict=False, allow_downcast=False)
+        w.filter(o1, strict=False, allow_downcast=True)
 
         # Check value_eq and value_eq_approx.
-        o2 = Wrap(a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int64'),
-                  a2=random_tensor,
+        o2 = Wrap(a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int32'),
+                  a2=random_tensor.astype('float64'),
                   a3=2000)
-        assert w.values_eq(o, o2)
-        assert w.values_eq_approx(o, o2)
+        assert w.values_eq(o1, o2)
+        assert w.values_eq_approx(o1, o2)
 
         # Check value_eq_approx.
-        o3 = Wrap(a1=numpy.asarray([[1, 2.0, 3.000, 4, 5.0, 6], [7, 8, 9, 10, 11, 12]]).astype('int32'),
-                  a2=random_tensor.astype('float32'),
+        o3 = Wrap(a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('float32'),
+                  a2=random_tensor.astype('float64'),
                   a3=2000.0)
-
-        assert w.values_eq_approx(o, o3)
+        assert w.values_eq_approx(o1, o3)
 
     def test_op_params(self):
         a, b, c = 2, 3, -7

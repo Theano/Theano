@@ -33,6 +33,7 @@ import numpy
 from theano.gof.utils import MethodNotDefined
 from theano.gof import Type
 from theano.gof.cmodule import GCC_compiler as compiler
+from theano.tensor.utils import hash_from_ndarray
 
 # NB: Maybe we should check if an attribute name is a C/C++ keyword, and raise an error if so.
 # These are some lists of C/C++ keywords:
@@ -42,7 +43,8 @@ from theano.gof.cmodule import GCC_compiler as compiler
 
 class Wrap(object):
     """
-    Convenient class to wrap many Python objects into one.
+    Internal convenient class to wrap many Python objects into one
+    (this class is not safe as the hash method does not check if values are effectively hashable).
 
     Example:
         >>> w = Wrap(attr1=var1, attr2=var2, attri=vari)
@@ -62,7 +64,7 @@ class Wrap(object):
         super(Wrap, self).__setattr__('data', kwargs)
 
     def __repr__(self):
-        return 'Wrap(%s)' % ', '.join([('%s:%s' % (k, self.data[k])) for k in sorted(self.data.keys())])
+        return 'Wrap(%s)' % ', '.join([('%s:%s' % (k, type(self.data[k]))) for k in sorted(self.data.keys())])
 
     def __getattr__(self, key):
         if key not in self.data:
@@ -81,21 +83,12 @@ class Wrap(object):
         for k in keys:
             types += (type(self.data[k]),)
             if isinstance(self.data[k], numpy.ndarray):
-                if len(self.data[k].shape) == 0:
-                    # NumPy scalar is not iterable, so we put it into a tuple.
-                    attributes += (numpy.asscalar(self.data[k]),)
-                else:
-                    # NumPy non-0-D arrays are iterable, so we append it as a tuple.
-                    attributes += tuple(self.data[k])
+                # Note: hash_from_ndarray returns a string, so the hash is not yet complete
+                # (__hash__ must return an integer).
+                attributes += (hash_from_ndarray(self.data[k]),)
             else:
-                try:
-                    iter(self.data[k])
-                except TypeError:
-                    # Not iterable: we put it into a tuple.
-                    attributes += (self.data[k],)
-                else:
-                    # Iterable: we append it directly.
-                    attributes += self.data[k]
+                # No checking, data should be hashable.
+                attributes += (self.data[k],)
         return hash((type(self),) + tuple(keys) + tuple(types) + tuple(attributes))
 
     def __eq__(self, other):
@@ -166,13 +159,13 @@ class Wrapper(Type):
 
     def generate_struct_name(self):
         """"
-        This method try to generate an unique name for the current instance.
-        This name is intended to be used as struct name in C code and
-        as constant definition to check if a similar Wrapper has already been created
+        This method tries to generate an unique name for the current instance.
+        This name is intended to be used as struct name in C code and as constant
+        definition to check if a similar Wrapper has already been created
         (see c_support_code() below).
         """
-        fields_string = ','.join(self.fields)
-        types_string = ','.join(str(t) for t in self.types)
+        fields_string = ','.join(self.fields).encode('utf-8')
+        types_string = ','.join(str(t) for t in self.types).encode('utf-8')
         fields_hex = hashlib.md5(fields_string).hexdigest()
         types_hex = hashlib.md5(types_string).hexdigest()
         return '_wrapper_struct_%s_%s' % (fields_hex, types_hex)
@@ -213,16 +206,14 @@ class Wrapper(Type):
             return wrapped_data
 
     def values_eq(self, a, b):
-        a = self.filter(a, strict=False)
-        b = self.filter(b, strict=False)
         for i in range(self.length):
             if not self.types[i].values_eq(getattr(a, self.fields[i]), getattr(b, self.fields[i])):
                 return False
         return True
 
     def values_eq_approx(self, a, b):
-        a = self.filter(a, strict=False)
-        b = self.filter(b, strict=False)
+        a = self.filter(a, strict=False, allow_downcast=True)
+        b = self.filter(b, strict=False, allow_downcast=True)
         for i in range(self.length):
             if not self.types[i].values_eq_approx(getattr(a, self.fields[i]), getattr(b, self.fields[i])):
                 return False
