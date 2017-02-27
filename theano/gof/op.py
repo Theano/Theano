@@ -797,7 +797,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
     """
 
     # We add a default get_params() implementation which will try to detect params from the op
-    # if params_type is set to a Wrapper. If not, we raise a MethodNodDefined exception.
+    # if params_type is set to a Wrapper. If not, we raise a MethodNotDefined exception.
     def get_params(self, node):
         if hasattr(self, 'params_type'):
             # If params_type is a Wrapper, we try to extract params from the op.
