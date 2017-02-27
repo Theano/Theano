@@ -17,7 +17,7 @@ scalar_type = Scalar(dtype)
 generic_type = Generic()
 
 
-# A test op to compute `y = a*x^2 + bx + c` for any tensor x, with a, b, c as parameters of that op.
+# A test op to compute `y = a*x^2 + bx + c` for any tensor x, with a, b, c as op params.
 class QuadraticFunction(Op):
     __props__ = ('a', 'b', 'c')
     params_type = Wrapper(a=tensor_type_0d,
