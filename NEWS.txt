@@ -11,7 +11,7 @@ This release extends the 0.9.0rc1 and announces the upcoming final release 0.9.
 Highlights (since 0.9.0rc1):
  - Fixed dnn conv grad issues
  - Allowed pooling of empty batch
- - Use of 64-bit indices in sparse.AddSD where necessary
+ - Use of 64-bit indexing in sparse ops to allow matrix with more then 2\ :sup:`31`\ -1 elements.
  - Removed old benchmark directory
  - Crash fixes, bug fixes, warnings improvements, and documentation update
 
