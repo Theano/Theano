@@ -15,7 +15,7 @@ from theano.tests import unittest_tools as utt
 from .config import mode_with_gpu, mode_without_gpu
 from .test_basic_ops import rand
 from ..pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad,
-                    GpuDownsampleFactorMaxGradGrad, GpuRoIPoolOp, GpuRoIPoolGradOp)
+                    GpuDownsampleFactorMaxGradGrad, GpuRoIPoolOp)
 from theano.tensor.signal.tests.test_pool import numpy_roi_pool
 
 
@@ -330,10 +330,11 @@ class TestGpuRoIPool(utt.InferShapeTester):
                     utt.assert_allclose(maxvals_np, maxvals_theano)
                     shared_image = theano.shared(random_image)
                     shared_roi = theano.shared(roi_theano)
-                    roi_pooled = RoIPoolOp(pool_h, pool_w, sp_scale)(shared_image, shared_roi)
+                    roi_pooled = GpuRoIPoolOp(pool_h, pool_w, sp_scale)(shared_image, shared_roi)
                     roi_pooled_grad = tensor.grad(roi_pooled[0].sum(), shared_image)
                     f = theano.function([], roi_pooled_grad, mode=gpu_mode)
                     assert any([isinstance(node.op, self.op_class) for node in f.maker.fgraph.toposort()])
+
 
     def test_infer_shape(self):
         rng = np.random.RandomState(utt.fetch_seed())

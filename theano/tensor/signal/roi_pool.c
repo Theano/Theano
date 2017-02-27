@@ -134,48 +134,48 @@ int APPLY_SPECIFIC(CPUFwd)(PyArrayObject* data,
 
 
 void APPLY_SPECIFIC(ROIPoolBackward)(
-    float* top_diff,
-    float* argmax_data, int batch_n, int num_rois, float spatial_scale,
+    double* top_diff, float* argmax_data, double* bottom_diff,float* bottom_rois,
+    int batch_n, int num_rois, float spatial_scale,
     int channels, int height, int width,
-    int pooled_height, int pooled_width, float* bottom_diff,
-    float* bottom_rois) {
+    int pooled_height, int pooled_width) {
 
   // (n, c, h, w) coords in bottom data
-  float gradient = 0;
   // Accumulate gradient over all ROIs that pooled this element
   for (int bn = 0; bn < batch_n; ++bn){
     const int inp_bn = bn * channels * height * width;
     const int out_bn = bn * num_rois * channels * pooled_width * pooled_height;
     // Incrementing the input and output pointers by a batch
-    float* batch_grad = bottom_diff + inp_bn;
-    float* batch_out = top_diff + out_bn;
+    double* batch_grad = bottom_diff + inp_bn;
+    double* batch_out = top_diff + out_bn;
     float* batch_argmax = argmax_data + out_bn;
-    float* batch_roi = bottom_rois;
-    for (int roi_n = 0; roi_n < num_rois; ++roi_n) {
 
+    for (int roi_n = 0; roi_n < num_rois; ++roi_n) {
       const int out_inc = roi_n * channels * pooled_width * pooled_height;
       // Incrementing the pointers by respective ROI channel.
       batch_out += out_inc;
       batch_argmax += out_inc;
-      batch_roi += roi_n * 5;
+      float* batch_roi = bottom_rois + roi_n * 5;
+
+      int roi_start_w = floorf(batch_roi[1] * spatial_scale + 0.5);
+      int roi_start_h = floorf(batch_roi[2] * spatial_scale + 0.5);
+      int roi_end_w = floorf(batch_roi[3] * spatial_scale + 0.5);
+      int roi_end_h = floorf(batch_roi[4] * spatial_scale + 0.5);
+      int roi_width = max(roi_end_w - roi_start_w + 1, 1);
+      int roi_height = max(roi_end_h - roi_start_h + 1, 1);
+
       for (int c = 0; c < channels; ++c) {
         const int data_inc = c * height * width;
         const int out_channel_inc = c * pooled_height * pooled_width;
         // incrementing the output dimension pointers
-        float* channel_out = batch_out + out_channel_inc;
+        double* channel_out = batch_out + out_channel_inc;
         float* channel_argmax = batch_argmax + out_channel_inc;
         // increment input dimension pointers
-        float* channel_grad = batch_grad + data_inc;
+        double* channel_grad = batch_grad + data_inc;
 
         for (int h = 0; h < height; ++h){
           for(int w = 0; w < width; ++w){
-            int roi_start_w = floorf(batch_roi[1] * spatial_scale + 0.5);
-            int roi_start_h = floorf(batch_roi[2] * spatial_scale + 0.5 );
-            int roi_end_w = floorf(batch_roi[3] * spatial_scale + 0.5);
-            int roi_end_h = floorf(batch_roi[4] * spatial_scale + 0.5);
-            int roi_width = max(roi_end_w - roi_start_w + 1, 1);
-            int roi_height = max(roi_end_h - roi_start_h + 1, 1);
 
+            int bottom_index = h * width + w;
             // Skip if ROI doesn't include (h, w)
             const bool in_roi = (w >= roi_start_w && w <= roi_end_w &&
                                h >= roi_start_h && h <= roi_end_h);
@@ -189,24 +189,25 @@ void APPLY_SPECIFIC(ROIPoolBackward)(
 
             float bin_size_h = static_cast<float>(roi_height) / static_cast<float>(pooled_height);
             float bin_size_w = static_cast<float>(roi_width) / static_cast<float>(pooled_width);
-            int phstart = static_cast<int>(floor(static_cast<float>(h - roi_start_h) / bin_size_h));
-            int phend = static_cast<int>(ceil(static_cast<float>(h - roi_start_h + 1) / bin_size_h));
-            int pwstart = static_cast<int>(floor(static_cast<float>(w - roi_start_w) / bin_size_w));
-            int pwend = static_cast<int>(ceil(static_cast<float>(w - roi_start_w + 1) / bin_size_w));
+            int phstart = floor(static_cast<float>(h - roi_start_h) / bin_size_h);
+            int phend = ceil(static_cast<float>(h - roi_start_h + 1) / bin_size_h);
+            int pwstart = floor(static_cast<float>(w - roi_start_w) / bin_size_w);
+            int pwend = ceil(static_cast<float>(w - roi_start_w + 1) / bin_size_w);
 
             phstart = min(max(phstart, 0), pooled_height);
             phend = min(max(phend, 0), pooled_height);
             pwstart = min(max(pwstart, 0), pooled_width);
             pwend = min(max(pwend, 0), pooled_width);
+
             for (int ph = phstart; ph < phend; ++ph) {
               for (int pw = pwstart; pw < pwend; ++pw) {
-                if (channel_argmax[ph * pooled_width + pw] == 
-                    (h * width + w)) {
-                  gradient += channel_out[ph * pooled_width + pw];
+                int pool_index = ph * pooled_width + pw;
+                if (static_cast<int>(channel_argmax[pool_index]) == 
+                    bottom_index) {
+                  channel_grad[bottom_index] += channel_out[pool_index];
                 }
               }
             }
-          channel_grad[h * width + w] = gradient;
           }
         }
       }
@@ -225,8 +226,9 @@ int APPLY_SPECIFIC(CPUBackward)(PyArrayObject* data,
   int channels = PyArray_DIMS(data)[1];
   int height = PyArray_DIMS(data)[2];
   int width = PyArray_DIMS(data)[3];
-  int data_typenum = PyArray_ObjectType((PyObject*)(data), 0);
+  int data_typenum = PyArray_ObjectType((PyObject*)(out_grad), 0);
   int batch_n = PyArray_DIMS(data)[0];
+
   int mem_nc;
   mem_nc = 0;
   int total_ndim = 4;
@@ -249,9 +251,8 @@ int APPLY_SPECIFIC(CPUBackward)(PyArrayObject* data,
   }
 
   APPLY_SPECIFIC(ROIPoolBackward)(
-      (float *)PyArray_DATA(out_grad), (float *)PyArray_DATA(argmaxes), batch_n, num_rois , 
-      SPATIAL_SCALE, channels, height, width, POOLED_HEIGHT, POOLED_WIDTH, 
-      (float *)PyArray_DATA(*data_grad), (float *)PyArray_DATA(rois));
+      (double *)PyArray_DATA(out_grad), (float *)PyArray_DATA(argmaxes),(double *)PyArray_DATA(*data_grad), (float *)PyArray_DATA(rois),
+      batch_n, num_rois, SPATIAL_SCALE, channels, height, width, POOLED_HEIGHT, POOLED_WIDTH);
 
   return 0;
 }

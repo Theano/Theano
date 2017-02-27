@@ -72,7 +72,6 @@ KERNEL void ROIPoolGPUBkwd_kernel(
                 }
             }
         }
-
         bottom_diff[index] = gradient;
     }
 }

@@ -1157,6 +1157,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         for o, n in zip(old_out, new_out):
             utt.assert_allclose(o, n)
 
+
 def numpy_roi_pool(image_val, pool_height, pool_width, roi, spatial_scale):
 
     batch_size = image_val.shape[0]
@@ -1224,19 +1225,15 @@ class TestRoIPool(utt.InferShapeTester):
                 roi_op = self.op_class(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=sp_scale)
                 t_outs = roi_op(t_data, t_rois)
                 func = theano.function([t_data, t_rois], t_outs)
-                maxvals_theano, maxloc_theano = func(random_image, roi_theano)
+                maxvals_theano = func(random_image, roi_theano)[0]
                 utt.assert_allclose(maxvals_np, maxvals_theano)
 
-        def mp(input, grad):
-            out, argmax = self.op_class(pool_heights[0], pool_widths[0], spatial_scales[0])(input, roi_theano)
-            in_grad = RoIPoolGradOp(pool_heights[0], pool_widths[0], spatial_scales[0])(input, roi_theano, out, grad)
-            return in_grad
-
-        in_shape = random_image.shape
-        out_grad = rng.rand(*in_shape)
-        imval = rng.rand(*in_shape)
-        # func_grad(random_image, roi_theano, roi_outs[1], roi_outs[0] * 10)
-        utt.verify_grad(mp, [imval, out_grad])
+                def mp(input):
+                    out, argmax = self.op_class(pool_heights[0], pool_widths[0], spatial_scales[0])(input, roi_theano)
+                    return out
+                # Because the gradient is of double type
+                imval = rng.rand(*im_shp)
+                utt.verify_grad(mp, [imval], rng=rng)
 
     def test_infer_shape(self):
         rng = numpy.random.RandomState(utt.fetch_seed())

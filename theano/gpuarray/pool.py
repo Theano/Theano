@@ -474,8 +474,12 @@ class GpuRoIPoolOp(CGpuKernelBase):
         return [out_shape, out_shape]
 
     def grad(self, inp, grads):
+        data, roi = inp
+        gz1, gz2 = grads
+        maxout, argmax = self(data, roi)
+        disc = [theano.gradient.DisconnectedType()() for i in inp[1:]]
         return [GpuRoIPoolGradOp(self.pooled_h, self.pooled_w,
-                                 self.spatial_scale)(*(inp + [self(*inp)[1], grads[0]])), grad_undefined(self, 1, inp[1])]
+                              self.spatial_scale)(data, roi, gz1, argmax)] + disc
 
 
 class GpuRoIPoolGradOp(CGpuKernelBase):
@@ -495,7 +499,7 @@ class GpuRoIPoolGradOp(CGpuKernelBase):
     def c_headers(self):
         return ['<gpuarray/types.h>', '<gpuarray/kernel.h>', 'math.h', 'gpuarray_helper.h', 'stdbool.h', 'float.h', 'gpuarray_api.h', 'numpy_compat.h']
 
-    def make_node(self, feature_maps, rois, argmaxes, out_grad):
+    def make_node(self, feature_maps, rois, out_grad, argmaxes):
         ctx_name = infer_context_name(feature_maps, rois, argmaxes, out_grad)
         feature_maps = as_gpuarray_variable(feature_maps, ctx_name)
         roi_tuples = as_gpuarray_variable(rois, ctx_name)
@@ -519,4 +523,4 @@ class GpuRoIPoolGradOp(CGpuKernelBase):
         return [in_shapes[0]]
 
     def grad(self, inp, grads):
-        return [grad_undefined(self, i, inp[i]) for i in range(3)]
+        return [grad_undefined(self, i, inp[i]) for i in range(4)]

@@ -2547,8 +2547,12 @@ class RoIPoolOp(gof.COp):
         return [out_shape, out_shape]
 
     def grad(self, inp, grads):
+        data, roi = inp
+        gz1, gz2 = grads
+        maxout, argmax = self(data, roi)
+        disc = [DisconnectedType()() for i in inp[1:]]
         return [RoIPoolGradOp(self.pooled_h, self.pooled_w,
-                              self.spatial_scale)(*(inp + [self(*inp)[1], grads[0]])), grad_undefined(self, 1, inp[1])]
+                              self.spatial_scale)(data, roi, gz1, argmax)] + disc
 
 
 class RoIPoolGradOp(gof.COp):
@@ -2564,16 +2568,16 @@ class RoIPoolGradOp(gof.COp):
         self.pooled_w = pooled_w
         self.spatial_scale = spatial_scale
 
-    def make_node(self, feature_maps, rois, argmaxes, out_grad):
+    def make_node(self, feature_maps, rois, out_grad, argmax_data):
         feature_maps = tensor.as_tensor_variable(feature_maps)
         roi_tuples = tensor.as_tensor_variable(rois)
-        argmaxes = tensor.as_tensor_variable(argmaxes)
+        argmax_data = tensor.as_tensor_variable(argmax_data)
         out_grad = tensor.as_tensor_variable(out_grad)
         assert feature_maps.ndim == 4
         assert rois.ndim == 2
-        assert argmaxes.ndim == 4
+        assert argmax_data.ndim == 4
         assert out_grad.ndim == 4
-        return Apply(self, [feature_maps, roi_tuples, argmaxes, out_grad], [feature_maps.type()])
+        return Apply(self, [feature_maps, roi_tuples, argmax_data, out_grad], [feature_maps.type()])
 
     def infer_shape(self, node, in_shapes):
         return [in_shapes[0]]
@@ -2584,7 +2588,7 @@ class RoIPoolGradOp(gof.COp):
                 ('SPATIAL_SCALE', str(self.spatial_scale))]
 
     def perform(self, node, inp, out):
-        image_data, roi, argmax_data, out_grad = inp
+        image_data, roi, argmax, out_grad = inp
         gx, = out
         num_roi = roi.shape[0]
         spatial_scale = self.spatial_scale
@@ -2611,18 +2615,25 @@ class RoIPoolGradOp(gof.COp):
                 col_length = roi_height / pool_height
 
                 for cn in range(n_channels):
+                    channel_grad = out_grad[b_in, i, cn]
                     gxxx = gxx[b_in][cn]
+                    gxxx.shape = (image_height * image_width, )
                     for jy in range(image_height):
                         for ix in range(image_width):
+                            bottom_index = jy * image_width + ix
                             x1 = int(numpy.floor((ix - x_start) / row_length))
-                            x2 = int(numpy.ceil(x1 + (1 / row_length)))
+                            x2 = int(numpy.ceil((ix - x_start + 1) / row_length))
                             y1 = int(numpy.floor((jy - y_start) / col_length))
-                            y2 = int(numpy.ceil(y1 + (1 / col_length)))
-                            interest_region = image_data[b_in, cn, y1:y2, x1:x2]
-                            for pr in range(pool_width * pool_height):
-                                mp_index = numpy.nonzero(interest_region == out_grad[b_in][i][cn][pr])
-                                if numpy.all([emp.size for emp in mp_index]):
-                                    gxxx[jy][ix] += interest_region[mp_index]
+                            y2 = int(numpy.ceil((jy - y_start + 1) / col_length))
+                            interest_region = argmax[b_in, i, cn, y1 * x1 : y2 * x2]
+                            mp_index = numpy.nonzero(interest_region == bottom_index)
+                            if numpy.all([emp.size for emp in mp_index]):
+                                # Since mp_index is a tuple
+                                mp_index = mp_index[0]
+                                # incrementing cause it was extracted from sliced array
+                                mp_index += x1 * y1
+                                gxxx[bottom_index] += channel_grad[mp_index].sum()
 
     def grad(self, inp, grads):
-        return [grad_undefined(self, i, inp[i]) for i in range(3)]
+        disc = [tensor.zeros_like(i) for i in inp]
+        return disc
