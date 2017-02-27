@@ -3,6 +3,33 @@ Release Notes
 =============
 
 
+Theano 0.9.0rc2 (27th of February, 2017)
+========================================
+
+This release extends the 0.9.0rc1 and announces the upcoming final release 0.9.
+
+Highlights (since 0.9.0rc1):
+ - Fixed dnn conv grad issues
+ - Allowed pooling of empty batch
+ - Use of 64-bit indices in sparse.AddSD where necessary
+ - Removed old benchmark directory
+ - Crash fixes, bug fixes, warnings improvements, and documentation update
+
+A total of 9 people contributed to this release since 0.9.0rc1 and 121 since 0.8.0, see the lists below.
+
+
+Committers since 0.9.0rc1:
+ - Frederic Bastien
+ - Pascal Lamblin
+ - Steven Bocco
+ - Simon Lefrancois
+ - Lucas Beyer
+ - Michael Harradon
+ - Rebecca N. Palmer
+ - David Bau
+ - Micah Bojrab
+
+
 Theano 0.9.0rc1 (20th of February, 2017)
 ========================================
 
@@ -22,7 +49,7 @@ Highlights (since 0.9.0beta1):
 
    - Value of a shared variable is now set inplace
 
-A total of 26 people contributed to this release since 0.9.0beta1 and 118 since 0.8.0, see the list at the bottom.
+A total of 26 people contributed to this release since 0.9.0beta1 and 117 since 0.8.0, see the list at the bottom.
 
 Interface changes:
  - In MRG, replaced method `multinomial_wo_replacement()` with new method `choice()`
@@ -101,7 +128,7 @@ Highlights:
    - ignore_border=False is now implemented for pooling
 
 
-A total of 112 people contributed to this release since 0.8.0, see the list at the bottom.
+A total of 111 people contributed to this release since 0.8.0, see the list at the bottom.
 
 
 Interface changes:
@@ -225,7 +252,6 @@ Committers since 0.8.0:
  - Kirill Bobyrev
  - Yang Zhang
  - Yaroslav Ganin
- - theano-bot
  - Liwei Cai
  - Morgan Stuart
  - Tim Gasper
