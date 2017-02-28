@@ -104,6 +104,7 @@ class TestWrapper(TestCase):
         w1 = Wrap(a=1, b='test string', array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
         w2 = Wrap(a=1, b='test string', array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
         assert w1 == w2
+        assert not (w1 != w2)
         assert hash(w1) == hash(w2)
         assert all(hasattr(w1, key) for key in ('a', 'b', 'array', 'floatting', 'npy_scalar'))
         # Changing attributes names only.
@@ -127,6 +128,7 @@ class TestWrapper(TestCase):
                      a2=TensorType('int64', (False, True, False, False, True)),
                      a3=Generic())
         assert w1 == w2
+        assert not (w1 != w2)
         assert hash(w1) == hash(w2)
         assert w1.name == w2.name
         # Changing attributes names only.

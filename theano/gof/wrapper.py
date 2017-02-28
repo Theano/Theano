@@ -103,7 +103,7 @@ class Wrap(dict):
         for k in self:
             if k not in other or not (isinstance(self[k], type(other[k])) and isinstance(other[k], type(self[k]))):
                 return False
-            if isinstance(self[k], numpy.ndarray) or isinstance(other[k], numpy.ndarray):
+            if isinstance(self[k], numpy.ndarray):
                 if not numpy.allclose(self[k], other[k]):
                     return False
             elif self[k] != other[k]:
