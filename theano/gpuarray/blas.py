@@ -50,8 +50,9 @@ class GpuGemv(BlasOp):
         A = as_gpuarray_variable(A, ctx_name)
         x = as_gpuarray_variable(x, ctx_name)
         y = as_gpuarray_variable(y, ctx_name)
-        alpha = as_tensor_variable(alpha).astype('float64')
-        beta = as_tensor_variable(beta).astype('float64')
+        with theano.configparser.change_flags(warn_float64='ignore'):
+            alpha = as_tensor_variable(alpha).astype('float64')
+            beta = as_tensor_variable(beta).astype('float64')
 
         assert alpha.ndim == 0
         assert beta.ndim == 0
@@ -162,8 +163,9 @@ class GpuGemm(BlasOp):
         A = as_gpuarray_variable(A, ctx_name)
         B = as_gpuarray_variable(B, ctx_name)
         C = as_gpuarray_variable(C, ctx_name)
-        alpha = as_tensor_variable(alpha).astype('float64')
-        beta = as_tensor_variable(beta).astype('float64')
+        with theano.configparser.change_flags(warn_float64='ignore'):
+            alpha = as_tensor_variable(alpha).astype('float64')
+            beta = as_tensor_variable(beta).astype('float64')
         assert alpha.ndim == 0
         assert beta.ndim == 0
         assert A.ndim == 2
@@ -242,7 +244,8 @@ class GpuGer(BlasOp):
         A = as_gpuarray_variable(A, ctx_name)
         x = as_gpuarray_variable(x, ctx_name)
         y = as_gpuarray_variable(y, ctx_name)
-        alpha = as_tensor_variable(alpha).astype('float64')
+        with theano.configparser.change_flags(warn_float64='ignore'):
+            alpha = as_tensor_variable(alpha).astype('float64')
         assert alpha.ndim == 0
         assert A.ndim == 2
         assert x.ndim == 1
@@ -380,8 +383,9 @@ class GpuGemmBatch(BlasOp):
         A = as_gpuarray_variable(A, ctx_name)
         B = as_gpuarray_variable(B, ctx_name)
         C = as_gpuarray_variable(C, ctx_name)
-        alpha = as_tensor_variable(alpha).astype('float64')
-        beta = as_tensor_variable(beta).astype('float64')
+        with theano.configparser.change_flags(warn_float64='ignore'):
+            alpha = as_tensor_variable(alpha).astype('float64')
+            beta = as_tensor_variable(beta).astype('float64')
         assert alpha.ndim == 0
         assert beta.ndim == 0
         assert A.ndim == 3

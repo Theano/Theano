@@ -152,7 +152,7 @@ class Images2Neibs(Op):
                 grad_undefined(self, 2, neib_step)]
 
     def c_code_cache_version(self):
-        return (5,)
+        return (7,)
 
     def perform(self, node, inp, out_):
         ten4, neib_shape, neib_step = inp
@@ -177,6 +177,12 @@ class Images2Neibs(Op):
         c, d = neib_shape
         step_x, step_y = neib_step
         mode = self.mode
+        if step_x <= 0 or step_y <= 0:
+            raise ValueError(
+                "neib_step wrong step ; values <= 0. Got " + str(neib_step))
+        if c <= 0 or d <= 0:
+            raise ValueError(
+                "neib_shape values <=0. Got " + str(neib_shape))
 
         if mode == "wrap_centered":
             if (c % 2 != 1) or (d % 2 != 1):
@@ -317,8 +323,24 @@ class Images2Neibs(Op):
         const npy_intp c = (npy_intp) *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 0);
         const npy_intp d = (npy_intp) *(dtype_%(neib_shape)s*) PyArray_GETPTR1(%(neib_shape)s, 1);
         // (step_x,step_y) = neib_step
-        const npy_intp step_x = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 0);
-        const npy_intp step_y = (npy_intp) *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 1);
+        const dtype_%(neib_step)s step_x = *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 0);
+        const dtype_%(neib_step)s step_y = *(dtype_%(neib_step)s*) PyArray_GETPTR1(%(neib_step)s, 1);
+
+        if (step_x <=0 || step_y <=0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "neib_step wrong step ; values <= 0. Got %%lld %%lld.",
+                         (long long) step_x, (long long) step_y);
+            %(fail)s;
+        }
+
+        if (c <=0 || d <=0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "neib_shape values <= 0. Got %%lld %%lld.",
+                         (long long)c, (long long)d);
+            %(fail)s;
+        }
 
         if ( "%(mode)s" == "wrap_centered") {
             if (c%%2!=1 || d%%2!=1){
@@ -617,10 +639,17 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
                              new_neib_shape, mode=mode)
 
     if mode == 'ignore_borders':
-        valid_shape = list(original_shape)
-        valid_shape[2] = (valid_shape[2] // neib_shape[0]) * neib_shape[0]
-        valid_shape[3] = (valid_shape[3] // neib_shape[1]) * neib_shape[1]
-        output_4d = output_2d.reshape(valid_shape)
+        # We use set_subtensor to accept original_shape we can't infer
+        # the shape and still raise error when it don't have the right
+        # shape.
+        valid_shape = original_shape
+        valid_shape = T.set_subtensor(
+            valid_shape[2],
+            (valid_shape[2] // neib_shape[0]) * neib_shape[0])
+        valid_shape = T.set_subtensor(
+            valid_shape[3],
+            (valid_shape[3] // neib_shape[1]) * neib_shape[1])
+        output_4d = output_2d.reshape(valid_shape, ndim=4)
         # padding the borders with zeros
         for d in [2, 3]:
             pad_shape = list(output_4d.shape)
@@ -629,7 +658,7 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
     elif mode == 'valid':
         # TODO: we do not implement all mode with this code.
         # Add a check for the good cases.
-        output_4d = output_2d.reshape(original_shape)
+        output_4d = output_2d.reshape(original_shape, ndim=4)
     else:
         raise NotImplementedError("neibs2images do not support mode=%s" % mode)
 

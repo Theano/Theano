@@ -58,6 +58,7 @@ Interface changes:
  - round() default to the same as NumPy: half_to_even
 
 Convolution updates:
+ - Allowed pooling of empty batch
  - Implement conv2d_transpose convenience function
  - Multi-cores convolution and pooling on CPU
  - New abstract 3d convolution interface similar to the 2d convolution interface
@@ -104,6 +105,7 @@ Others:
 
 
 Other more detailed changes:
+ - Use of 64-bit indexing in sparse ops to allow matrix with more then 2\ :sup:`31`\ -1 elements.
  - Allow more then one output to be an destructive inplace
  - Add flag profiling.ignore_first_call, useful to profile the new gpu back-end
  - Doc/error message fixes/updates
@@ -117,6 +119,23 @@ Other more detailed changes:
 
 
 ALL THE PR BELLOW HAVE BEEN CHECKED
+* https://github.com/Theano/Theano/pull/5626
+* https://github.com/Theano/Theano/pull/5625
+* https://github.com/Theano/Theano/pull/5616
+* https://github.com/Theano/Theano/pull/5619
+* https://github.com/Theano/Theano/pull/5614
+* https://github.com/Theano/Theano/pull/5605
+* https://github.com/Theano/Theano/pull/5599
+* https://github.com/Theano/Theano/pull/5609
+* https://github.com/Theano/Theano/pull/5597
+* https://github.com/Theano/Theano/pull/5596
+* https://github.com/Theano/Theano/pull/5550
+* https://github.com/Theano/Theano/pull/5595
+* https://github.com/Theano/Theano/pull/5537
+* https://github.com/Theano/Theano/pull/5593
+* https://github.com/Theano/Theano/pull/5576
+* https://github.com/Theano/Theano/pull/5577
+* https://github.com/Theano/Theano/pull/5587
 * https://github.com/Theano/Theano/pull/5559
 * https://github.com/Theano/Theano/pull/5568
 * https://github.com/Theano/Theano/pull/5553
