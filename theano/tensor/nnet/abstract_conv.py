@@ -493,7 +493,7 @@ def assert_shape(x, expected_shape, msg='Unexpected shape.'):
         will return `x` directly.
 
     """
-    if expected_shape is None:
+    if expected_shape is None or not theano.config.conv.assert_shape:
         return x
     shape = x.shape
     tests = []
