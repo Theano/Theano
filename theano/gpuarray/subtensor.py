@@ -1144,7 +1144,7 @@ class GpuDiagonal(Subtensor):
         # This is also in consistence with the interface of numpy.diagonal.
         if slice_axis < stride_axis:
             stride_axis -= 1
-        new_dim_order = range(x[slicer].ndim)
+        new_dim_order = list(range(x[slicer].ndim))
         new_dim_order = tuple(new_dim_order[:stride_axis] +
                               new_dim_order[stride_axis + 1:] +
                               [stride_axis, ])

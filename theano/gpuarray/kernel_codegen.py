@@ -57,7 +57,7 @@ def code_version(version):
 UNVERSIONED = ()
 
 
-@code_version((1,))
+@code_version((2,))
 def inline_reduce(N, buf, pos, count, manner_fn):
     """
     Return C++ code for a function that reduces a contiguous buffer.
@@ -89,37 +89,25 @@ def inline_reduce(N, buf, pos, count, manner_fn):
 
     """
     loop_line = manner_fn("%s[%s]" % (buf, pos), "%s[i]" % (buf))
-    r_16 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+16]" % (buf, pos))
-    r_8 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+8]" % (buf, pos))
-    r_4 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+4]" % (buf, pos))
-    r_2 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+2]" % (buf, pos))
-    r_1 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+1]" % (buf, pos))
+    r_n = manner_fn("%s[%s]" % (buf, pos), "%s[%s+_n]" % (buf, pos))
 
     return """
     {
         // This function trashes buf[1..warpSize],
         // leaving the reduction result in buf[0].
 
-        if (%(pos)s < warpSize)
-        {
+        if (%(pos)s < warpSize) {
             for (int i = %(pos)s + warpSize; i < %(N)s; i += warpSize)
             {
                 %(buf)s[%(pos)s] = %(loop_line)s;
             }
-            if (%(pos)s < 16)
-            {
-                //reduce so that %(pos)s 0 has the sum of everything
-                if(%(pos)s + 16 < %(N)s)
-                    %(buf)s[%(pos)s] = %(r_16)s;
-                if(%(pos)s + 8 < %(N)s)
-                    %(buf)s[%(pos)s] = %(r_8)s;
-                if(%(pos)s + 4 < %(N)s)
-                    %(buf)s[%(pos)s] = %(r_4)s;
-                if(%(pos)s + 2 < %(N)s)
-                    %(buf)s[%(pos)s] = %(r_2)s;
-                if(%(pos)s + 1 < %(N)s)
-                    %(buf)s[%(pos)s] = %(r_1)s;
-            }
+        }
+        __syncthreads();
+        //reduce so that %(pos)s 0 has the reduction of everything
+        for (unsigned int _n = warpSize / 2; _n > 0; _n /= 2) {
+          if (%(pos)s < _n && %(pos)s + _n < %(N)s)
+            %(buf)s[%(pos)s] = %(r_n)s;
+          __syncthreads();
         }
     }
     """ % locals()
@@ -205,7 +193,7 @@ def inline_softmax(N, buf, buf2, threadPos, threadCount, dtype="float32"):
             ]
 
 
-@code_version((2,))
+@code_version((3,))
 def inline_reduce_fixed_shared(N, buf, x, stride_x, load_x, pos, count,
                                manner_fn, manner_init,
                                b='', stride_b='', load_b='', dtype='float32'):
@@ -231,14 +219,6 @@ def inline_reduce_fixed_shared(N, buf, x, stride_x, load_x, pos, count,
         Index of executing thread.
     count
         Number of executing threads.
-    b
-        Optional, pointer to the bias.
-    stride_b
-        Optional, the stride of b if b is provided.
-    load_b
-        Optional, wrapper to read from b if b is provided.
-    dtype
-        Optional, the dtype of the output.
     manner_fn
         A function that accepts strings of arguments a and b, and
         returns c code for their reduction.
@@ -249,6 +229,14 @@ def inline_reduce_fixed_shared(N, buf, x, stride_x, load_x, pos, count,
     manner_init
         A function that accepts strings of arguments a and return c
         code for its initialization.
+    b
+        Optional, pointer to the bias.
+    stride_b
+        Optional, the stride of b if b is provided.
+    load_b
+        Optional, wrapper to read from b if b is provided.
+    dtype
+        Optional, the dtype of the output.
 
     Notes
     -----
@@ -268,11 +256,7 @@ def inline_reduce_fixed_shared(N, buf, x, stride_x, load_x, pos, count,
                                                  locals()))
     loop_line2 = manner_fn("%s[%s]" % (buf, pos),
                            "%s[i]" % buf)
-    r_16 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+16]" % (buf, pos))
-    r_8 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+8]" % (buf, pos))
-    r_4 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+4]" % (buf, pos))
-    r_2 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+2]" % (buf, pos))
-    r_1 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+1]" % (buf, pos))
+    r_n = manner_fn("%s[%s]" % (buf, pos), "%s[%s+_n]" % (buf, pos))
 
     ctype = gpuarray.dtype_to_ctype(dtype)
     return """
@@ -281,31 +265,22 @@ def inline_reduce_fixed_shared(N, buf, x, stride_x, load_x, pos, count,
         // leaving the reduction result in buf[0].
         %(ctype)s red = %(init)s;
         #pragma unroll 16
-        for (int i = %(pos)s + %(count)s; i<%(N)s; i += %(count)s){
+        for (int i = %(pos)s + %(count)s; i<%(N)s; i += %(count)s) {
           red = %(loop_line)s;
         }
         buf[%(pos)s] = red;
         __syncthreads();
-        if (%(pos)s < warpSize)
-        {
-            for (int i = %(pos)s + warpSize; i < %(count)s; i += warpSize)
-            {
+        if (%(pos)s < warpSize) {
+            for (int i = %(pos)s + warpSize; i < %(count)s; i += warpSize) {
                 %(buf)s[%(pos)s] = %(loop_line2)s;
             }
-            if (%(pos)s < 16)
-            {
-                //reduce so that %(pos)s 0 has the reduction of everything
-                if(%(pos)s + 16 < %(N)s)
-                    %(buf)s[%(pos)s] = %(r_16)s;
-                if(%(pos)s + 8 < %(N)s)
-                    %(buf)s[%(pos)s] = %(r_8)s;
-                if(%(pos)s + 4 < %(N)s)
-                    %(buf)s[%(pos)s] = %(r_4)s;
-                if(%(pos)s + 2 < %(N)s)
-                    %(buf)s[%(pos)s] = %(r_2)s;
-                if(%(pos)s + 1 < %(N)s)
-                    %(buf)s[%(pos)s] = %(r_1)s;
-            }
+        }
+        __syncthreads();
+        //reduce so that %(pos)s 0 has the reduction of everything
+        for (unsigned int _n = warpSize / 2; _n > 0; _n /= 2) {
+          if (%(pos)s < _n && %(pos)s + _n < %(N)s)
+            %(buf)s[%(pos)s] = %(r_n)s;
+          __syncthreads();
         }
     }
     """ % locals()

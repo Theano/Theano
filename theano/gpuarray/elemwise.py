@@ -1005,15 +1005,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 %(acc_type)s myresult = 0;
                 A = (const %(in_type)s *)(((char *)A)+offset_A);
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
-
-                //This is caught in cuda/init.py when we init the gpu. I keep
-                //it here to ease finding code that rely on this.
-                if (warpSize != 32)
-                {
-                    Z[0] = -666;
-                    return;
-                }
-
         """ % locals()
 
     def _assign_init(self, first_item):
@@ -1117,67 +1108,13 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         acc_dtype = "npy_" + self._acc_dtype(node.inputs[0].dtype)
         write_out = write_w(node.outputs[0].dtype)
 
-        # This code (the code in new_version) is currently ignored.
-        # Code produced later in this function is returned instead.
-        # The code here works with all nvidia driver
-        # But only for powers or multiples of 2!
-        new_version = """
-        __syncthreads(); // some kernel do multiple reduction.
-        buf[threadNum] = myresult;
-        __syncthreads();
-
-
-        if (threadNum >= ((threadCount >> 1) * 2))
-        {
-            int idx = threadNum - (threadCount >> 1) * 2;"""
-
-        new_version += self._assign_reduce(node, name, 'buf[idx]',
-                                           'buf[threadNum]', sub, False)
-
-        new_version += """
-        }
-        __syncthreads();
-
-        // Works for power of 2 only.
-        int nTotalThreads = threadCount; // Total number of active threads
-        while(nTotalThreads > 1)
-        {
-            int halfPoint = (nTotalThreads >> 1);        // divide by two
-            // only the first half of the threads will be active.
-
-            if (threadNum < halfPoint)
-            {
-              // Get the shared value stored by another thread
-              %(acc_dtype)s temp = buf[threadNum + halfPoint];
-              """
-
-        new_version += self._assign_reduce(node, name,
-                                           'buf[threadNum]', 'temp', sub, False)
-
-        new_version += """
-            }
-            __syncthreads();
-
-            nTotalThreads = (nTotalThreads >> 1);        // divide by two.
-        }
-            __syncthreads();
-
-        if (threadNum == 0)
-        {
-            %(z_pos)s = %(write_out)s(buf[0]);
-        }
-            __syncthreads();"""
-
-        new_version = new_version % locals()
-
         current_version = """
         __syncthreads(); // some kernel do multiple reduction.
         buf[threadNum] = myresult;
         __syncthreads();
 
         // rest of function is handled by one warp
-        if (threadNum < warpSize)
-        {
+        if (threadNum < warpSize) {
             //round up all the partial sums into the first `warpSize` elements
             for (int i = threadNum + warpSize; i < threadCount; i += warpSize)
             {
@@ -1187,44 +1124,19 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                                                sub, False) + """
             }
             buf[threadNum] = myresult;
-        /*Comment this optimization as it don't work on Fermi GPU.
-        TODO: find why it don't work or put the GPU compute capability into the version
-            // no sync because only one warp is running
-            if(threadCount >32)
-            {"""
-        for num in [16, 8, 4, 2, 1]:
-            current_version += self._assign_reduce(node, name,
-                                                   'buf[threadNum]',
-                                                   'buf[threadNum+%d]' % num,
-                                                   sub, False)
-            current_version += """
+        }
+        __syncthreads();
+        for (unsigned int _n = warpSize / 2; _n > 0; _n /= 2) {
+            if (threadNum < _n && threadNum + _n < threadCount)
             """
-        current_version += """
-                if (threadNum == 0)
-                {
-                    %(z_pos)s = %(write_out)s(buf[0]);
-                }
+        current_version += self._assign_reduce(node, name, 'buf[threadNum]',
+                                               'buf[threadNum+_n]', sub, False)
 
-            }
-            else */
-            if (threadNum < 16)
-            {
-                //reduce so that threadNum 0 has the reduction of everything
-                """
-        for num in [16, 8, 4, 2, 1]:
-            this_if = "if (threadNum + %d < threadCount) " % num + \
-                self._assign_reduce(node, name,
-                                    'buf[threadNum]', 'buf[threadNum+%d]' % num,
-                                    sub, False)
-            current_version += this_if
-            current_version += """
-            """
         current_version += """
-                if (threadNum == 0)
-                {
-                    %(z_pos)s = %(write_out)s(buf[0]);
-                }
-            }
+            __syncthreads();
+        }
+        if (threadNum == 0) {
+          %(z_pos)s = %(write_out)s(buf[0]);
         }
         """
 
@@ -1900,7 +1812,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_cache_version_apply(self, node):
-        version = [18]  # the version corresponding to the c code in this Op
+        version = [19]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(
@@ -1953,11 +1865,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 A = (const %(in_type)s *)(((char *)A)+offset_A);
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
 
-                if (warpSize != 32)
-                {
-                    return;  //TODO: set error code
-                }
-
                 for (int i0 = threadIdx.x; i0 < d0; i0 += blockDim.x)
                 {
                     %(reduce_fct)s
@@ -1996,11 +1903,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 %(acc_type)s myresult = %(reduce_init)s;
                 A = (const %(in_type)s *)(((char *)A)+offset_A);
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
-
-                if (warpSize != 32)
-                {
-                    return;  //TODO: set error code
-                }
 
                 for (int i0 = threadIdx.x; i0 < d0; i0 += blockDim.x)
                 {
@@ -2041,11 +1943,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 %(acc_type)s myresult = %(reduce_init)s;
                 A = (const %(in_type)s *)(((char *)A)+offset_A);
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
-
-                if (warpSize != 32)
-                {
-                    return;  //TODO: set error code
-                }
 
                 for (int i0 = threadIdx.y; i0 < d0; i0 += blockDim.y)
                 {
@@ -2169,12 +2066,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 A = (const %(in_type)s *)(((char *)A)+offset_A);
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
 
-                if (warpSize != 32)
-                {
-                    return;  //TODO: set error code
-                }
-
-
                 for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x)
                 {
                     for (int i2 = blockIdx.y; i2 < d2; i2 += gridDim.y)
@@ -2220,11 +2111,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 %(acc_type)s myresult = 0;
                 X = (const %(in_type)s *)(((char *)X)+offset_X);
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
-
-                if (warpSize != 32)
-                {
-                    return;  //TODO: set error code
-                }
 
                 for (int a = blockIdx.x; a < A; a += gridDim.x)
                 {
@@ -2279,12 +2165,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             print("""
             %(decl)s
             {
-             if(warpSize<blockDim.x){
-               //TODO: set error code
-               Z[0] = -666;
-               return;
-              }
-
               %(init)s
               for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x)
               {
@@ -2331,13 +2211,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 %(acc_type)s myresult = %(reduce_init)s;
                 A = (const %(in_type)s *)(((char *)A)+offset_A);
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
-
-                if (warpSize != 32)
-                {
-                    //TODO: set error code
-                    Z[blockIdx.x * sZ0] = %(write_out)s(-666);
-                    return;
-                }
 
                 for (int i0 = threadIdx.y; i0 < d0; i0 += blockDim.y)
                 {
@@ -2444,11 +2317,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 extern __shared__ %(acc_type)s buf[];
                 A = (const %(in_type)s *)(((char *)A)+offset_A);
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
-
-                if (warpSize != 32)
-                {
-                    return;  //TODO: set error code
-                }
 
                 for (int i0 = blockIdx.x; i0 < d0; i0 += gridDim.x)
                 {
@@ -2600,11 +2468,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                 %(acc_type)s myresult = %(reduce_init)s;
                 A = (const %(in_type)s *)(((char *)A)+offset_A);
                 Z = (%(out_type)s *)(((char *)Z)+offset_Z);
-
-                if (warpSize != 32)
-                {
-                    return;  //TODO: set error code
-                }
 
                 for (int i0 = threadIdx.z; i0 < d0; i0 += blockDim.z)
                 {
