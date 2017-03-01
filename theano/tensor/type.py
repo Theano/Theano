@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 import logging
 import warnings
 
-import numpy
+import numpy as np
 
 import theano
 from theano import config
@@ -14,7 +14,7 @@ _logger = logging.getLogger("theano.tensor.type")
 
 class TensorType(Type):
     """
-    Symbolic `Type` representing a numpy.ndarray value.
+    Symbolic `Type` representing a np.ndarray value.
 
     Initialize self.dtype and self.broadcastable.
 
@@ -50,7 +50,7 @@ class TensorType(Type):
         self.broadcastable = tuple(bool(b) for b in broadcastable)
         self.dtype_specs()  # error checking is done there
         self.name = name
-        self.numpy_dtype = numpy.dtype(self.dtype)
+        self.numpy_dtype = np.dtype(self.dtype)
         self.sparse_grad = sparse_grad
         if sparse_grad:
             warnings.warn(
@@ -88,12 +88,12 @@ class TensorType(Type):
                 'maybe you are trying to call a function on a (possibly '
                 'shared) variable instead of a numeric array?')
 
-        if ((type(data) is numpy.ndarray) and
+        if ((type(data) is np.ndarray) and
                 (data.dtype == self.numpy_dtype)):
             if data.dtype.num != self.numpy_dtype.num:
                 data = theano._asarray(data, dtype=self.dtype)
             # -- now fall through to ndim check
-        elif ((type(data) is numpy.memmap) and
+        elif ((type(data) is np.memmap) and
               (data.dtype == self.numpy_dtype)):
             # numpy.memmap is a "safe" subclass of ndarray,
             # so we can use it whereever we expect a base ndarray.
@@ -103,7 +103,7 @@ class TensorType(Type):
         elif strict:
             # If any of the two conditions above was not met,
             # we raise a meaningful TypeError.
-            if not (type(data) is numpy.ndarray):
+            if not (type(data) is np.ndarray):
                 raise TypeError("%s expected a ndarray object." % self,
                                 data, type(data))
             if data.dtype != self.numpy_dtype:
