@@ -163,7 +163,8 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
 
         w, b = T.vectors('wb')
         # we make the 3rd gradient default (no override)
-        op_linear = cls_ofg([x, w, b], [x * w + b], grad_overrides=[go1, go2, 'default'])
+        op_linear = cls_ofg(
+            [x, w, b], [x * w + b], grad_overrides=[go1, go2, 'default'])
         xx, ww, bb = T.vector('xx'), T.vector('yy'), T.vector('bb')
         zz = T.sum(op_linear(xx, ww, bb))
         dx, dw, db = T.grad(zz, [xx, ww, bb])
