@@ -8,7 +8,7 @@ __docformat__ = 'restructedtext en'
 
 
 from collections import OrderedDict
-import numpy
+import numpy as np
 
 import theano
 import theano.tensor as T
@@ -17,12 +17,12 @@ import theano.tensor as T
 def gen_data():
 
     # generate the dataset
-    train_set = (numpy.asarray(numpy.random.rand(10000, 784), dtype='float32'),
-               numpy.asarray(numpy.random.rand(10000)*10, dtype='int64'))
-    valid_set = (numpy.asarray(numpy.random.rand(10000, 784), dtype='float32'),
-               numpy.asarray(numpy.random.rand(10000)*10, dtype='int64'))
-    test_set = (numpy.asarray(numpy.random.rand(10000, 784), dtype='float32'),
-               numpy.asarray(numpy.random.rand(10000)*10, dtype='int64'))
+    train_set = (np.asarray(np.random.rand(10000, 784), dtype='float32'),
+               np.asarray(np.random.rand(10000)*10, dtype='int64'))
+    valid_set = (np.asarray(np.random.rand(10000, 784), dtype='float32'),
+               np.asarray(np.random.rand(10000)*10, dtype='int64'))
+    test_set = (np.asarray(np.random.rand(10000, 784), dtype='float32'),
+               np.asarray(np.random.rand(10000)*10, dtype='int64'))
     def shared_dataset(data_xy):
         """ Function that loads the dataset into shared variables
 
@@ -33,8 +33,8 @@ def gen_data():
         variable) would lead to a large decrease in performance.
         """
         data_x, data_y = data_xy
-        shared_x = theano.shared(numpy.asarray(data_x, dtype=theano.config.floatX))
-        shared_y = theano.shared(numpy.asarray(data_y, dtype=theano.config.floatX))
+        shared_x = theano.shared(np.asarray(data_x, dtype=theano.config.floatX))
+        shared_y = theano.shared(np.asarray(data_y, dtype=theano.config.floatX))
         # When storing data on the GPU it has to be stored as floats
         # therefore we will store the labels as ``floatX`` as well
         # (``shared_y`` does exactly that). But during our computations
@@ -79,7 +79,7 @@ class LogisticRegression(object):
         """
 
         # initialize with 0 the weights W as a matrix of shape (n_in, n_out)
-        self.W = theano.shared(value=numpy.zeros((n_in, n_out), dtype=theano.config.floatX),
+        self.W = theano.shared(value=np.zeros((n_in, n_out), dtype=theano.config.floatX),
                                 name=name_prefix+'W')
 
         # compute vector of class-membership probabilities in symbolic form
@@ -129,7 +129,7 @@ class HiddenLayer(object):
 
         Hidden unit activation is given by: tanh(dot(input,W) + b)
 
-        :type rng: numpy.random.RandomState
+        :type rng: np.random.RandomState
         :param rng: a random number generator used to initialize weights
 
         :type input: theano.tensor.dmatrix
@@ -151,9 +151,9 @@ class HiddenLayer(object):
         # from -6./sqrt(n_in+n_hidden) and 6./sqrt(n_in+n_hidden)
         # the output of uniform if converted using asarray to dtype
         # theano.config.floatX so that the code is runable on GPU
-        W_values = numpy.asarray( rng.uniform( \
-              low=-numpy.sqrt(6./(n_in+n_out)), \
-              high=numpy.sqrt(6./(n_in+n_out)), \
+        W_values = np.asarray( rng.uniform( \
+              low=-np.sqrt(6./(n_in+n_out)), \
+              high=np.sqrt(6./(n_in+n_out)), \
               size=(n_in, n_out)), dtype=theano.config.floatX)
         self.W = theano.shared(value=W_values, name=name_prefix+'W')
 
@@ -176,7 +176,7 @@ class MLP(object):
     def __init__(self, rng, input, n_in, n_hidden, n_out):
         """Initialize the parameters for the multilayer perceptron
 
-        :type rng: numpy.random.RandomState
+        :type rng: np.random.RandomState
         :param rng: a random number generator used to initialize weights
 
         :type input: theano.tensor.TensorType
@@ -265,7 +265,7 @@ def test_mlp():
     y     = T.ivector('y')  # the labels are presented as 1D vector of
                            # [int] labels
 
-    rng = numpy.random.RandomState(1234)
+    rng = np.random.RandomState(1234)
 
     # construct the MLP class
     classifier = MLP( rng=rng, input=x, n_in=28*28, n_hidden=500, n_out=10)
