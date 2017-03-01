@@ -1,6 +1,5 @@
 from __future__ import absolute_import, print_function, division
 import unittest
-import numpy
 import numpy as np
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises, assert_true
@@ -238,8 +237,8 @@ class TestAssertShape(unittest.TestCase):
         expected_shape = [None, s1, s2, None]
         f = theano.function([x, s1, s2], assert_shape(x, expected_shape))
 
-        v = numpy.zeros((3, 5, 7, 11), dtype='float32')
-        self.assertEqual(0, numpy.sum(f(v, 5, 7)))
+        v = np.zeros((3, 5, 7, 11), dtype='float32')
+        self.assertEqual(0, np.sum(f(v, 5, 7)))
 
         assert_raises(AssertionError, f, v, 5, 0)
         assert_raises(AssertionError, f, v, 5, 9)
@@ -257,12 +256,12 @@ class TestAssertShape(unittest.TestCase):
         f = theano.function([input, filters], out)
         # mismatched input_shape
         assert_raises(AssertionError, f,
-                      numpy.zeros((3, 5, 9, 11), dtype='float32'),
-                      numpy.zeros((7, 5, 3, 3), dtype='float32'))
+                      np.zeros((3, 5, 9, 11), dtype='float32'),
+                      np.zeros((7, 5, 3, 3), dtype='float32'))
         # mismatched filter_shape
         assert_raises(AssertionError, f,
-                      numpy.zeros((3, 5, 7, 11), dtype='float32'),
-                      numpy.zeros((7, 5, 2, 2), dtype='float32'))
+                      np.zeros((3, 5, 7, 11), dtype='float32'),
+                      np.zeros((7, 5, 2, 2), dtype='float32'))
 
     @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv3d(self):
@@ -275,12 +274,12 @@ class TestAssertShape(unittest.TestCase):
         f = theano.function([input, filters], out)
         # mismatched input_shape
         assert_raises(AssertionError, f,
-                      numpy.zeros((3, 5, 9, 11, 13), dtype='float32'),
-                      numpy.zeros((7, 5, 3, 3, 3), dtype='float32'))
+                      np.zeros((3, 5, 9, 11, 13), dtype='float32'),
+                      np.zeros((7, 5, 3, 3, 3), dtype='float32'))
         # mismatched filter_shape
         assert_raises(AssertionError, f,
-                      numpy.zeros((3, 5, 7, 11, 13), dtype='float32'),
-                      numpy.zeros((7, 5, 2, 2, 2), dtype='float32'))
+                      np.zeros((3, 5, 7, 11, 13), dtype='float32'),
+                      np.zeros((7, 5, 2, 2, 2), dtype='float32'))
 
     @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv2d_grad_wrt_inputs(self):
@@ -293,8 +292,8 @@ class TestAssertShape(unittest.TestCase):
         f = theano.function([output_grad, filters], out)
         # mismatched filter_shape
         assert_raises(AssertionError, f,
-                      numpy.zeros((3, 6, 5, 9), dtype='float32'),
-                      numpy.zeros((7, 6, 3, 3), dtype='float32'))
+                      np.zeros((3, 6, 5, 9), dtype='float32'),
+                      np.zeros((7, 6, 3, 3), dtype='float32'))
 
     @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv3d_grad_wrt_inputs(self):
@@ -307,8 +306,8 @@ class TestAssertShape(unittest.TestCase):
         f = theano.function([output_grad, filters], out)
         # mismatched filter_shape
         assert_raises(AssertionError, f,
-                      numpy.zeros((3, 6, 5, 9, 11), dtype='float32'),
-                      numpy.zeros((7, 6, 3, 3, 3), dtype='float32'))
+                      np.zeros((3, 6, 5, 9, 11), dtype='float32'),
+                      np.zeros((7, 6, 3, 3, 3), dtype='float32'))
 
     @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv2d_grad_wrt_weights(self):
@@ -321,8 +320,8 @@ class TestAssertShape(unittest.TestCase):
         f = theano.function([input, output_grad], out)
         # mismatched filter_shape
         assert_raises(AssertionError, f,
-                      numpy.zeros((3, 6, 7, 11), dtype='float32'),
-                      numpy.zeros((3, 7, 5, 9), dtype='float32'))
+                      np.zeros((3, 6, 7, 11), dtype='float32'),
+                      np.zeros((3, 7, 5, 9), dtype='float32'))
 
     @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv3d_grad_wrt_weights(self):
@@ -335,8 +334,8 @@ class TestAssertShape(unittest.TestCase):
         f = theano.function([input, output_grad], out)
         # mismatched filter_shape
         assert_raises(AssertionError, f,
-                      numpy.zeros((3, 6, 7, 11, 13), dtype='float32'),
-                      numpy.zeros((3, 7, 5, 9, 11), dtype='float32'))
+                      np.zeros((3, 6, 7, 11, 13), dtype='float32'),
+                      np.zeros((3, 7, 5, 9, 11), dtype='float32'))
 
 
 class BaseTestConv(object):
@@ -371,8 +370,8 @@ class BaseTestConv(object):
         if filter_dilation is None:
             filter_dilation = (1,) * (len(inputs_shape) - 2)
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
 
         # scale down values to prevent rounding errors
         inputs_val /= 10
@@ -414,8 +413,8 @@ class BaseTestConv(object):
             if check_trace:
                 assert_true(check_stack_trace(f, ops_to_check=target_op))
 
-        res_ref = numpy.array(f_ref())
-        res = numpy.array(f())
+        res_ref = np.array(f_ref())
+        res = np.array(f())
         utt.assert_allclose(res_ref, res)
         if verify_grad and inputs_val.size > 0 and filters_val.size > 0 and res.size > 0:
             utt.verify_grad(conv_op(border_mode=border_mode,
@@ -436,8 +435,8 @@ class BaseTestConv(object):
         if filter_dilation is None:
             filter_dilation = (1,) * (len(inputs_shape) - 2)
 
-        inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        output_val = numpy.random.random(output_shape).astype('float32')
+        inputs_val = np.random.random(inputs_shape).astype('float32')
+        output_val = np.random.random(output_shape).astype('float32')
 
         inputs = self.shared(inputs_val)
         output = self.shared(output_val)
@@ -473,8 +472,8 @@ class BaseTestConv(object):
             if check_trace:
                 assert_true(check_stack_trace(f, ops_to_check=target_op))
 
-        res_ref = numpy.array(f_ref())
-        res = numpy.array(f())
+        res_ref = np.array(f_ref())
+        res = np.array(f())
         utt.assert_allclose(res_ref, res)
 
         def abstract_conv_gradweight(inputs_val, output_val):
@@ -499,8 +498,8 @@ class BaseTestConv(object):
         if filter_dilation is None:
             filter_dilation = (1,) * (len(inputs_shape) - 2)
 
-        output_val = numpy.random.random(output_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        output_val = np.random.random(output_shape).astype('float32')
+        filters_val = np.random.random(filters_shape).astype('float32')
         output = self.shared(output_val)
         filters = self.shared(filters_val)
 
@@ -537,10 +536,10 @@ class BaseTestConv(object):
             if check_trace:
                 assert_true(check_stack_trace(f, ops_to_check=target_op))
 
-        res = numpy.array(f())
+        res = np.array(f())
 
         if ref is not None:
-            res_ref = numpy.array(f_ref())
+            res_ref = np.array(f_ref())
             utt.assert_allclose(res_ref, res)
 
         def abstract_conv_gradinputs(filters_val, output_val):
@@ -1272,7 +1271,7 @@ class TestConvTypes(unittest.TestCase):
         self.filters = tensor.ftensor4()
         self.topgrad = tensor.ftensor4()
 
-        self.constant_tensor = numpy.zeros((3, 5, 7, 11), dtype='float32')
+        self.constant_tensor = np.zeros((3, 5, 7, 11), dtype='float32')
 
     def test_grad_types(self):
         # This function simply tests the behaviour of the AbstractConv
@@ -1582,7 +1581,7 @@ class TestConv2dTranspose(unittest.TestCase):
                                      output_shape=(2, 1, 10, 10),
                                      input_dilation=(2, 2)),
             mode=mode)()
-        expected_output = numpy.array(
+        expected_output = np.array(
             [[[[2, 2, 4, 4, 4, 4, 4, 4, 2, 2],
                [2, 2, 4, 4, 4, 4, 4, 4, 2, 2],
                [4, 4, 8, 8, 8, 8, 8, 8, 4, 4],
@@ -1700,3 +1699,4 @@ class TestConv2dGrads(unittest.TestCase):
                                                                                                   )
                         f_new = theano.function([self.x, self.output_grad_wrt], conv_wrt_w_out)
                         utt.assert_allclose(f_new(input_val, out_grad_val), f_old(input_val, filter_val, out_grad_val))
+        numpy.testing.assert_equal(output, expected_output)
