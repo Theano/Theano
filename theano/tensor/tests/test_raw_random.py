@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import pickle
 
 from theano.tests import unittest_tools as utt
@@ -19,7 +19,7 @@ class T_random_function(utt.InferShapeTester):
         utt.seed_rng()
 
     def test_basic_usage(self):
-        rf = RandomFunction(numpy.random.RandomState.uniform, tensor.dvector)
+        rf = RandomFunction(np.random.RandomState.uniform, tensor.dvector)
         assert not rf.inplace
         assert getattr(rf, 'destroy_map', {}) == {}
 
@@ -33,23 +33,23 @@ class T_random_function(utt.InferShapeTester):
 
         f = compile.function([rng_R], out)
 
-        rng_state0 = numpy.random.RandomState(utt.fetch_seed())
+        rng_state0 = np.random.RandomState(utt.fetch_seed())
 
         f_0 = f(rng_state0)
         f_1 = f(rng_state0)
 
-        assert numpy.all(f_0 == f_1)
+        assert np.all(f_0 == f_1)
 
     def test_inplace_norun(self):
-        rf = RandomFunction(numpy.random.RandomState.uniform, tensor.dvector,
+        rf = RandomFunction(np.random.RandomState.uniform, tensor.dvector,
                             inplace=True)
         assert rf.inplace
         assert getattr(rf, 'destroy_map', {}) != {}
 
     def test_args(self):
         """Test that arguments to RandomFunction are honored"""
-        rf2 = RandomFunction(numpy.random.RandomState.uniform, tensor.dvector)
-        rf4 = RandomFunction(numpy.random.RandomState.uniform, tensor.dvector,
+        rf2 = RandomFunction(np.random.RandomState.uniform, tensor.dvector)
+        rf4 = RandomFunction(np.random.RandomState.uniform, tensor.dvector,
                              inplace=True)
         rng_R = random_state_type()
 
@@ -64,7 +64,7 @@ class T_random_function(utt.InferShapeTester):
         # be maintained by post_r4
         f = compile.function(
                 [compile.In(rng_R,
-                            value=numpy.random.RandomState(utt.fetch_seed()),
+                            value=np.random.RandomState(utt.fetch_seed()),
                             update=post_r4,
                             mutable=True)],
                 [out2, out4, out2_4, out2_4_4],
@@ -84,19 +84,19 @@ class T_random_function(utt.InferShapeTester):
         # print f2_4_4b
 
         # setting bounds is same as multiplying by 2
-        assert numpy.allclose(f2 * 2, f4), (f2, f4)
+        assert np.allclose(f2 * 2, f4), (f2, f4)
 
         # retrieving from non-inplace generator
         # is same as inplace one for first call
-        assert numpy.allclose(f2_4_4, f4), (f2_4_4, f4)
+        assert np.allclose(f2_4_4, f4), (f2_4_4, f4)
 
         # f4 changes from call to call, that the update has worked
-        assert not numpy.allclose(f4, f4b), (f4, f4b)
+        assert not np.allclose(f4, f4b), (f4, f4b)
 
     def test_inplace_optimization(self):
         """Test that FAST_RUN includes the random_make_inplace optimization"""
         #inplace = False
-        rf2 = RandomFunction(numpy.random.RandomState.uniform, tensor.dvector)
+        rf2 = RandomFunction(np.random.RandomState.uniform, tensor.dvector)
         rng_R = random_state_type()
 
         # If calling RandomFunction directly, all args have to be specified,
@@ -105,7 +105,7 @@ class T_random_function(utt.InferShapeTester):
 
         f = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=post_r2,
                     mutable=True)],
                 out2,
@@ -121,7 +121,7 @@ class T_random_function(utt.InferShapeTester):
         val1 = f()
         assert id0 == id(f[rng_R])
 
-        assert not numpy.allclose(val0, val1)
+        assert not np.allclose(val0, val1)
 
     def test_no_inplace(self):
         """Test that when not running inplace, the RandomState is
@@ -131,10 +131,10 @@ class T_random_function(utt.InferShapeTester):
 
         post_r, out = rf(rng_R, (3,), 0., 1.)
         f = compile.function([rng_R], [post_r, out])
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
 
         rng0, val0 = f(rng)
-        rng_ = numpy.random.RandomState(utt.fetch_seed())
+        rng_ = np.random.RandomState(utt.fetch_seed())
         # rng should still be in a fresh state
         self.assertTrue(rng_R.type.values_eq(rng, rng_))
         # rng0 should be in an updated state
@@ -178,7 +178,7 @@ class T_random_function(utt.InferShapeTester):
 
         f_ok = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=post_out2_4_4,
                     mutable=True)],
                 [out4, out1_4, out2_4_4],
@@ -188,8 +188,8 @@ class T_random_function(utt.InferShapeTester):
         o4, o1_4, o2_4_4 = f_ok()
 
         # Check the sanity of the answers
-        self.assertTrue(numpy.allclose(o4, o1_4))
-        self.assertTrue(numpy.allclose(o4, o2_4_4[0]))
+        self.assertTrue(np.allclose(o4, o1_4))
+        self.assertTrue(np.allclose(o4, o2_4_4[0]))
 
     def test_random_function_noshape_args(self):
         '''Test if random_function helper works with args but without shape'''
@@ -199,7 +199,7 @@ class T_random_function(utt.InferShapeTester):
         post_out, out = uniform(rng_R, size=None, ndim=2)
         f = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=post_out,
                     mutable=True)],
                 [out],
@@ -219,7 +219,7 @@ class T_random_function(utt.InferShapeTester):
                 [low,
                  high,
                  compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=post_out2,
                     mutable=True)],
                 [out2],
@@ -242,7 +242,7 @@ class T_random_function(utt.InferShapeTester):
         # If using numpy's uniform distribution, ndim_added should be 0,
         # because the shape provided as argument is the output shape.
         # Specifying a different ndim_added will change the Op's output ndim,
-        # so numpy.uniform will produce a result of incorrect shape,
+        # so np.uniform will produce a result of incorrect shape,
         # and a ValueError should be raised.
         def ndim_added_deco(ndim_added):
             def randomfunction(random_state, size=(), low=0.0, high=0.0,
@@ -282,27 +282,27 @@ class T_random_function(utt.InferShapeTester):
 
         f11 = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=p_uni11, mutable=True)],
                 [uni11], accept_inplace=True)
         f12 = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=p_uni12, mutable=True)],
                 [uni12], accept_inplace=True)
         fm11 = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=p_unim11, mutable=True)],
                 [unim11], accept_inplace=True)
         fm12 = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=p_unim12, mutable=True)],
                 [unim12], accept_inplace=True)
         f0 = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=p_uni02, mutable=True)],
                 [uni01, uni02], accept_inplace=True)
         self.assertRaises(ValueError, f11)
@@ -310,7 +310,7 @@ class T_random_function(utt.InferShapeTester):
         self.assertRaises(ValueError, fm11)
         self.assertRaises(ValueError, fm12)
         u01, u02 = f0()
-        self.assertTrue(numpy.allclose(u01, u02[0]))
+        self.assertTrue(np.allclose(u01, u02[0]))
 
     def test_uniform(self):
         """Test that raw_random.uniform generates the same results as numpy."""
@@ -321,17 +321,17 @@ class T_random_function(utt.InferShapeTester):
 
         f = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=post_r, mutable=True)],
                 [out], accept_inplace=True)
 
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
         val0 = f()
         val1 = f()
         numpy_val0 = numpy_rng.uniform(-2.0, 2.0, size=(4,))
         numpy_val1 = numpy_rng.uniform(-2.0, 2.0, size=(4,))
-        self.assertTrue(numpy.allclose(val0, numpy_val0))
-        self.assertTrue(numpy.allclose(val1, numpy_val1))
+        self.assertTrue(np.allclose(val0, numpy_val0))
+        self.assertTrue(np.allclose(val1, numpy_val1))
 
     def test_binomial(self):
         """Test that raw_random.binomial generates the same results
@@ -344,17 +344,17 @@ class T_random_function(utt.InferShapeTester):
 
         f = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=post_r, mutable=True)],
                 [bin], accept_inplace=True)
 
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
         val0 = f()
         val1 = f()
         numpy_val0 = numpy_rng.binomial(5, 0.8, size=(7, 12))
         numpy_val1 = numpy_rng.binomial(5, 0.8, size=(7, 12))
-        self.assertTrue(numpy.all(val0 == numpy_val0))
-        self.assertTrue(numpy.all(val1 == numpy_val1))
+        self.assertTrue(np.all(val0 == numpy_val0))
+        self.assertTrue(np.all(val1 == numpy_val1))
 
     def test_normal(self):
         """Test that raw_random.normal generates the same results as numpy."""
@@ -365,17 +365,17 @@ class T_random_function(utt.InferShapeTester):
 
         f = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=post_r, mutable=True)],
                 [out], accept_inplace=True)
 
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
         val0 = f()
         val1 = f()
         numpy_val0 = numpy_rng.normal(4.0, 2.0, size=(2, 3))
         numpy_val1 = numpy_rng.normal(4.0, 2.0, size=(2, 3))
-        self.assertTrue(numpy.allclose(val0, numpy_val0))
-        self.assertTrue(numpy.allclose(val1, numpy_val1))
+        self.assertTrue(np.allclose(val0, numpy_val0))
+        self.assertTrue(np.allclose(val1, numpy_val1))
 
     def test_random_integers(self):
         # Test that raw_random.random_integers generates the same
@@ -390,17 +390,17 @@ class T_random_function(utt.InferShapeTester):
 
         f = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=post_r, mutable=True)],
                 [out], accept_inplace=True)
 
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
         val0 = f()
         val1 = f()
         numpy_val0 = numpy_rng.randint(-3, 17, size=(11, 8))
         numpy_val1 = numpy_rng.randint(-3, 17, size=(11, 8))
-        self.assertTrue(numpy.allclose(val0, numpy_val0))
-        self.assertTrue(numpy.allclose(val1, numpy_val1))
+        self.assertTrue(np.allclose(val0, numpy_val0))
+        self.assertTrue(np.allclose(val1, numpy_val1))
 
     def test_permutation_helper(self):
         """Test that raw_random.permutation_helper generates the same
@@ -418,21 +418,21 @@ class T_random_function(utt.InferShapeTester):
 
         f = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=post_r, mutable=True)],
                 [out], accept_inplace=True)
 
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
         val0 = f()
         val1 = f()
         # numpy_rng.permutation outputs one vector at a time,
         # so we call it iteratively to generate all the samples.
-        numpy_val0 = numpy.asarray([numpy_rng.permutation(8)
+        numpy_val0 = np.asarray([numpy_rng.permutation(8)
                                     for i in range(7)])
-        numpy_val1 = numpy.asarray([numpy_rng.permutation(8)
+        numpy_val1 = np.asarray([numpy_rng.permutation(8)
                                     for i in range(7)])
-        self.assertTrue(numpy.all(val0 == numpy_val0))
-        self.assertTrue(numpy.all(val1 == numpy_val1))
+        self.assertTrue(np.all(val0 == numpy_val0))
+        self.assertTrue(np.all(val1 == numpy_val1))
 
         # This call lacks "ndim_added=1", so ndim_added defaults to 0.
         # A ValueError should be raised.
@@ -440,7 +440,7 @@ class T_random_function(utt.InferShapeTester):
         post_r0, out0 = rf0(rng_R, (7,), 8)
         f0 = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=post_r0, mutable=True)],
                 [out0], accept_inplace=True)
         self.assertRaises(ValueError, f0)
@@ -451,11 +451,11 @@ class T_random_function(utt.InferShapeTester):
         post_r2, out2 = rf2(rng_R, (7,), 8)
         f2 = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=post_r2, mutable=True)],
                 [out2], accept_inplace=True)
         self.assertRaises(ValueError, f2)
-    
+
     def test_choice(self):
         """Test that raw_random.choice generates the same
         results as numpy."""
@@ -467,17 +467,17 @@ class T_random_function(utt.InferShapeTester):
 
         f = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=post_r, mutable=True)],
                 [out], accept_inplace=True)
 
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
         val0 = f()
         val1 = f()
         numpy_val0 = numpy_rng.choice(10, (11, 8), True, None)
         numpy_val1 = numpy_rng.choice(10, (11, 8), True, None)
-        self.assertTrue(numpy.allclose(val0, numpy_val0))
-        self.assertTrue(numpy.allclose(val1, numpy_val1))
+        self.assertTrue(np.allclose(val0, numpy_val0))
+        self.assertTrue(np.allclose(val1, numpy_val1))
 
     def test_poisson(self):
         """Test that raw_random.poisson generates the same
@@ -490,17 +490,17 @@ class T_random_function(utt.InferShapeTester):
 
         f = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=post_r, mutable=True)],
                 [out], accept_inplace=True)
 
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
         val0 = f()
         val1 = f()
         numpy_val0 = numpy_rng.poisson(5, size=(11, 8))
         numpy_val1 = numpy_rng.poisson(5, size=(11, 8))
-        self.assertTrue(numpy.allclose(val0, numpy_val0))
-        self.assertTrue(numpy.allclose(val1, numpy_val1))
+        self.assertTrue(np.allclose(val0, numpy_val0))
+        self.assertTrue(np.allclose(val1, numpy_val1))
 
     def test_permutation(self):
         """Test that raw_random.permutation generates the same
@@ -509,33 +509,33 @@ class T_random_function(utt.InferShapeTester):
         post_r, out = permutation(rng_R, size=(9,), n=6)
         f = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=post_r, mutable=True)],
                 [out], accept_inplace=True)
 
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
         # Check over two calls to see if the random state is correctly updated.
         # numpy_rng.permutation outputs one vector at a time,
         # so we call it iteratively to generate all the samples.
         val0 = f()
         val1 = f()
-        numpy_val0 = numpy.asarray([numpy_rng.permutation(6)
+        numpy_val0 = np.asarray([numpy_rng.permutation(6)
                                     for i in range(9)])
-        numpy_val1 = numpy.asarray([numpy_rng.permutation(6)
+        numpy_val1 = np.asarray([numpy_rng.permutation(6)
                                     for i in range(9)])
-        self.assertTrue(numpy.all(val0 == numpy_val0))
-        self.assertTrue(numpy.all(val1 == numpy_val1))
+        self.assertTrue(np.all(val0 == numpy_val0))
+        self.assertTrue(np.all(val1 == numpy_val1))
 
         # Test that we can generate a list: have size=None or ().
         for ndim in [1, None]:
             post_r, out = permutation(rng_R, n=10, size=None, ndim=ndim)
             inp = compile.In(rng_R,
-                             value=numpy.random.RandomState(utt.fetch_seed()),
+                             value=np.random.RandomState(utt.fetch_seed()),
                              update=post_r, mutable=True)
             f = theano.function([inp], out)
             o = f()
             assert o.shape == (10,)
-            assert (numpy.sort(o) == numpy.arange(10)).all()
+            assert (np.sort(o) == np.arange(10)).all()
         # Wrong number of dimensions asked
         self.assertRaises(TypeError, permutation, rng_R, size=None, ndim=2)
 
@@ -548,17 +548,17 @@ class T_random_function(utt.InferShapeTester):
 
         f = compile.function(
                 [compile.In(rng_R,
-                    value=numpy.random.RandomState(utt.fetch_seed()),
+                    value=np.random.RandomState(utt.fetch_seed()),
                     update=post_r, mutable=True)],
                 [out], accept_inplace=True)
 
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
         val0, = f()
         val1, = f()
         numpy_val0 = numpy_rng.multinomial(6, [0.2] * 5, (7, 3))
         numpy_val1 = numpy_rng.multinomial(6, [0.2] * 5, (7, 3))
-        self.assertTrue(numpy.all(val0 == numpy_val0))
-        self.assertTrue(numpy.all(val1 == numpy_val1))
+        self.assertTrue(np.all(val0 == numpy_val0))
+        self.assertTrue(np.all(val1 == numpy_val1))
 
         self.assertTrue(val0.shape == (7, 3, 5))
         self.assertTrue(val1.shape == (7, 3, 5))
@@ -568,7 +568,7 @@ class T_random_function(utt.InferShapeTester):
         shape = tensor.lvector()
         post_r, out = uniform(rng_R, shape, ndim=2)
         f = compile.function([rng_R, shape], out)
-        rng_state0 = numpy.random.RandomState(utt.fetch_seed())
+        rng_state0 = np.random.RandomState(utt.fetch_seed())
 
         assert f(rng_state0, [2, 3]).shape == (2, 3)
         assert f(rng_state0, [4, 8]).shape == (4, 8)
@@ -583,7 +583,7 @@ class T_random_function(utt.InferShapeTester):
         shape = (shape0, 3)
         post_r, u = uniform(rng_R, size=shape, ndim=2)
         f = compile.function([rng_R, shape0], u)
-        rng_state0 = numpy.random.RandomState(utt.fetch_seed())
+        rng_state0 = np.random.RandomState(utt.fetch_seed())
 
         assert f(rng_state0, 2).shape == (2, 3)
         assert f(rng_state0, 8).shape == (8, 3)
@@ -601,7 +601,7 @@ class T_random_function(utt.InferShapeTester):
         post_r, u = uniform(rng_R, size=shape, ndim=2)
         assert u.broadcastable == (False, True)
         f = compile.function([rng_R, shape0], u)
-        rng_state0 = numpy.random.RandomState(utt.fetch_seed())
+        rng_state0 = np.random.RandomState(utt.fetch_seed())
 
         assert f(rng_state0, 2).shape == (2, 1)
         assert f(rng_state0, 8).shape == (8, 1)
@@ -617,25 +617,25 @@ class T_random_function(utt.InferShapeTester):
         post_r, out = uniform(rng_R)
         f = compile.function([rng_R], [post_r, out], accept_inplace=True)
 
-        rng_state0 = numpy.random.RandomState(utt.fetch_seed())
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        rng_state0 = np.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
         post0, val0 = f(rng_state0)
         post1, val1 = f(post0)
-        numpy_val0 = numpy.asarray(numpy_rng.uniform(),
+        numpy_val0 = np.asarray(numpy_rng.uniform(),
                                    dtype=theano.config.floatX)
-        numpy_val1 = numpy.asarray(numpy_rng.uniform(),
+        numpy_val1 = np.asarray(numpy_rng.uniform(),
                                    dtype=theano.config.floatX)
 
-        assert numpy.all(val0 == numpy_val0)
-        assert numpy.all(val1 == numpy_val1)
+        assert np.all(val0 == numpy_val0)
+        assert np.all(val1 == numpy_val1)
 
         post_r, out = multinomial(rng_R)
         g = compile.function([rng_R], [post_r, out], accept_inplace=True)
         post2, val2 = g(post1)
-        numpy_val2 = numpy.asarray(numpy_rng.multinomial(n=1, pvals=[.5, .5]),
+        numpy_val2 = np.asarray(numpy_rng.multinomial(n=1, pvals=[.5, .5]),
                 dtype=theano.config.floatX)
 
-        assert numpy.all(val2 == numpy_val2)
+        assert np.all(val2 == numpy_val2)
 
     def test_vector_arguments(self):
         rng_R = random_state_type()
@@ -645,17 +645,17 @@ class T_random_function(utt.InferShapeTester):
         f = compile.function([rng_R, low], [post_r, out], accept_inplace=True)
 
         def as_floatX(thing):
-            return numpy.asarray(thing, dtype=theano.config.floatX)
+            return np.asarray(thing, dtype=theano.config.floatX)
 
-        rng_state0 = numpy.random.RandomState(utt.fetch_seed())
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        rng_state0 = np.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
         post0, val0 = f(rng_state0, [-5, .5, 0, 1])
         post1, val1 = f(post0, as_floatX([.9]))
         numpy_val0 = as_floatX(numpy_rng.uniform(low=[-5, .5, 0, 1], high=1))
         numpy_val1 = as_floatX(numpy_rng.uniform(low=as_floatX([.9]), high=1))
 
-        assert numpy.all(val0 == numpy_val0)
-        assert numpy.all(val1 == numpy_val1)
+        assert np.all(val0 == numpy_val0)
+        assert np.all(val1 == numpy_val1)
 
         high = tensor.vector()
         post_rb, outb = uniform(rng_R, low=low, high=high)
@@ -667,8 +667,8 @@ class T_random_function(utt.InferShapeTester):
         post1b, val1b = fb(post0b, [-4.], [-1])
         numpy_val0b = as_floatX(numpy_rng.uniform(low=[-4., -2], high=[-1, 0]))
         numpy_val1b = as_floatX(numpy_rng.uniform(low=[-4.], high=[-1]))
-        assert numpy.all(val0b == numpy_val0b)
-        assert numpy.all(val1b == numpy_val1b)
+        assert np.all(val0b == numpy_val0b)
+        assert np.all(val1b == numpy_val1b)
         self.assertRaises(ValueError, fb, post1b, [-4., -2], [-1, 0, 1])
         # TODO: do we want that?
         #self.assertRaises(ValueError, fb, post1b, [-4., -2], [-1])
@@ -681,8 +681,8 @@ class T_random_function(utt.InferShapeTester):
         post1c, val1c = fc(post0c, [-4.], [-1], [1])
         numpy_val0c = as_floatX(numpy_rng.uniform(low=[-4., -2], high=[-1, 0]))
         numpy_val1c = as_floatX(numpy_rng.uniform(low=[-4.], high=[-1]))
-        assert numpy.all(val0c == numpy_val0c)
-        assert numpy.all(val1c == numpy_val1c)
+        assert np.all(val0c == numpy_val0c)
+        assert np.all(val1c == numpy_val1c)
         self.assertRaises(ValueError, fc, post1c, [-4., -2], [-1, 0], [1])
         self.assertRaises(ValueError, fc, post1c, [-4., -2], [-1, 0], [1, 2])
         self.assertRaises(ValueError, fc, post1c, [-4., -2], [-1, 0], [2, 1])
@@ -699,8 +699,8 @@ class T_random_function(utt.InferShapeTester):
         f = compile.function([rng_R, low, high], [post_r, out],
                              accept_inplace=True)
 
-        rng_state0 = numpy.random.RandomState(utt.fetch_seed())
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        rng_state0 = np.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
         post0, val0 = f(rng_state0, [-5, .5, 0, 1], [[1.]])
         post1, val1 = f(post0, [.9], [[1.], [1.1], [1.5]])
         post2, val2 = f(post1, [-5, .5, 0, 1], [[1.], [1.1], [1.5]])
@@ -710,9 +710,9 @@ class T_random_function(utt.InferShapeTester):
         numpy_val2 = numpy_rng.uniform(low=[-5, .5, 0, 1],
                                        high=[[1.], [1.1], [1.5]])
 
-        assert numpy.all(val0 == numpy_val0), (val0, numpy_val0)
-        assert numpy.all(val1 == numpy_val1)
-        assert numpy.all(val2 == numpy_val2)
+        assert np.all(val0 == numpy_val0), (val0, numpy_val0)
+        assert np.all(val1 == numpy_val1)
+        assert np.all(val2 == numpy_val2)
 
     def test_uniform_vector(self):
         rng_R = random_state_type()
@@ -724,22 +724,22 @@ class T_random_function(utt.InferShapeTester):
                              accept_inplace=True)
 
         def as_floatX(thing):
-            return numpy.asarray(thing, dtype=theano.config.floatX)
+            return np.asarray(thing, dtype=theano.config.floatX)
         low_val = as_floatX([.1, .2, .3])
         high_val = as_floatX([1.1, 2.2, 3.3])
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
 
         # Arguments of size (3,)
         rng0, val0 = f(rng, low_val, high_val)
         numpy_val0 = as_floatX(numpy_rng.uniform(low=low_val, high=high_val))
-        assert numpy.all(val0 == numpy_val0)
+        assert np.all(val0 == numpy_val0)
 
         # arguments of size (2,)
         rng1, val1 = f(rng0, low_val[:-1], high_val[:-1])
         numpy_val1 = as_floatX(numpy_rng.uniform(low=low_val[:-1],
                                                  high=high_val[:-1]))
-        assert numpy.all(val1 == numpy_val1)
+        assert np.all(val1 == numpy_val1)
 
         # Specifying the size explicitly
         g = compile.function([rng_R, low, high],
@@ -748,7 +748,7 @@ class T_random_function(utt.InferShapeTester):
         rng2, val2 = g(rng1, low_val, high_val)
         numpy_val2 = as_floatX(numpy_rng.uniform(low=low_val, high=high_val,
                                                  size=(3,)))
-        assert numpy.all(val2 == numpy_val2)
+        assert np.all(val2 == numpy_val2)
         self.assertRaises(ValueError, g, rng2, low_val[:-1], high_val[:-1])
 
     def test_binomial_vector(self):
@@ -761,19 +761,19 @@ class T_random_function(utt.InferShapeTester):
                              accept_inplace=True)
 
         n_val = [1, 2, 3]
-        prob_val = numpy.asarray([.1, .2, .3], dtype=config.floatX)
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        prob_val = np.asarray([.1, .2, .3], dtype=config.floatX)
+        rng = np.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
 
         # Arguments of size (3,)
         rng0, val0 = f(rng, n_val, prob_val)
         numpy_val0 = numpy_rng.binomial(n=n_val, p=prob_val)
-        assert numpy.all(val0 == numpy_val0)
+        assert np.all(val0 == numpy_val0)
 
         # arguments of size (2,)
         rng1, val1 = f(rng0, n_val[:-1], prob_val[:-1])
         numpy_val1 = numpy_rng.binomial(n=n_val[:-1], p=prob_val[:-1])
-        assert numpy.all(val1 == numpy_val1)
+        assert np.all(val1 == numpy_val1)
 
         # Specifying the size explicitly
         g = compile.function([rng_R, n, prob],
@@ -781,7 +781,7 @@ class T_random_function(utt.InferShapeTester):
                 accept_inplace=True)
         rng2, val2 = g(rng1, n_val, prob_val)
         numpy_val2 = numpy_rng.binomial(n=n_val, p=prob_val, size=(3,))
-        assert numpy.all(val2 == numpy_val2)
+        assert np.all(val2 == numpy_val2)
         self.assertRaises(ValueError, g, rng2, n_val[:-1], prob_val[:-1])
 
     def test_normal_vector(self):
@@ -794,35 +794,35 @@ class T_random_function(utt.InferShapeTester):
                              accept_inplace=True)
 
         def as_floatX(thing):
-            return numpy.asarray(thing, dtype=theano.config.floatX)
+            return np.asarray(thing, dtype=theano.config.floatX)
 
         avg_val = [1, 2, 3]
         std_val = as_floatX([.1, .2, .3])
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
 
         # Arguments of size (3,)
         rng0, val0 = f(rng, avg_val, std_val)
         numpy_val0 = as_floatX(numpy_rng.normal(loc=as_floatX(avg_val),
             scale=as_floatX(std_val)))
-        assert numpy.all(val0 == numpy_val0)
+        assert np.all(val0 == numpy_val0)
 
         # arguments of size (2,)
         rng1, val1 = f(rng0, avg_val[:-1], std_val[:-1])
-        numpy_val1 = numpy.asarray(numpy_rng.normal(loc=avg_val[:-1],
+        numpy_val1 = np.asarray(numpy_rng.normal(loc=avg_val[:-1],
                                                     scale=std_val[:-1]),
                 dtype=theano.config.floatX)
-        assert numpy.all(val1 == numpy_val1)
+        assert np.all(val1 == numpy_val1)
 
         # Specifying the size explicitly
         g = compile.function([rng_R, avg, std],
                 normal(rng_R, avg=avg, std=std, size=(3,)),
                 accept_inplace=True)
         rng2, val2 = g(rng1, avg_val, std_val)
-        numpy_val2 = numpy.asarray(numpy_rng.normal(loc=avg_val, scale=std_val,
+        numpy_val2 = np.asarray(numpy_rng.normal(loc=avg_val, scale=std_val,
                                                     size=(3,)),
                 dtype=theano.config.floatX)
-        assert numpy.all(val2 == numpy_val2)
+        assert np.all(val2 == numpy_val2)
         self.assertRaises(ValueError, g, rng2, avg_val[:-1], std_val[:-1])
 
     def test_random_integers_vector(self):
@@ -836,29 +836,29 @@ class T_random_function(utt.InferShapeTester):
 
         low_val = [100, 200, 300]
         high_val = [110, 220, 330]
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
 
         # Arguments of size (3,)
         rng0, val0 = f(rng, low_val, high_val)
-        numpy_val0 = numpy.asarray([numpy_rng.randint(low=lv, high=hv+1)
+        numpy_val0 = np.asarray([numpy_rng.randint(low=lv, high=hv+1)
             for lv, hv in zip(low_val, high_val)])
-        assert numpy.all(val0 == numpy_val0)
+        assert np.all(val0 == numpy_val0)
 
         # arguments of size (2,)
         rng1, val1 = f(rng0, low_val[:-1], high_val[:-1])
-        numpy_val1 = numpy.asarray([numpy_rng.randint(low=lv, high=hv+1)
+        numpy_val1 = np.asarray([numpy_rng.randint(low=lv, high=hv+1)
             for lv, hv in zip(low_val[:-1], high_val[:-1])])
-        assert numpy.all(val1 == numpy_val1)
+        assert np.all(val1 == numpy_val1)
 
         # Specifying the size explicitly
         g = compile.function([rng_R, low, high],
                 random_integers(rng_R, low=low, high=high, size=(3,)),
                 accept_inplace=True)
         rng2, val2 = g(rng1, low_val, high_val)
-        numpy_val2 = numpy.asarray([numpy_rng.randint(low=lv, high=hv+1)
+        numpy_val2 = np.asarray([numpy_rng.randint(low=lv, high=hv+1)
             for lv, hv in zip(low_val, high_val)])
-        assert numpy.all(val2 == numpy_val2)
+        assert np.all(val2 == numpy_val2)
         self.assertRaises(ValueError, g, rng2, low_val[:-1], high_val[:-1])
 
     # Vectorized permutation don't make sense: the only parameter, n,
@@ -875,30 +875,30 @@ class T_random_function(utt.InferShapeTester):
 
         n_val = [1, 2, 3]
         pvals_val = [[.1, .9], [.2, .8], [.3, .7]]
-        pvals_val = numpy.asarray(pvals_val, dtype=config.floatX)
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        pvals_val = np.asarray(pvals_val, dtype=config.floatX)
+        rng = np.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
 
         # Arguments of size (3,)
         rng0, val0 = f(rng, n_val, pvals_val)
-        numpy_val0 = numpy.asarray([numpy_rng.multinomial(n=nv, pvals=pv)
+        numpy_val0 = np.asarray([numpy_rng.multinomial(n=nv, pvals=pv)
             for nv, pv in zip(n_val, pvals_val)])
-        assert numpy.all(val0 == numpy_val0)
+        assert np.all(val0 == numpy_val0)
 
         # arguments of size (2,)
         rng1, val1 = f(rng0, n_val[:-1], pvals_val[:-1])
-        numpy_val1 = numpy.asarray([numpy_rng.multinomial(n=nv, pvals=pv)
+        numpy_val1 = np.asarray([numpy_rng.multinomial(n=nv, pvals=pv)
             for nv, pv in zip(n_val[:-1], pvals_val[:-1])])
-        assert numpy.all(val1 == numpy_val1)
+        assert np.all(val1 == numpy_val1)
 
         # Specifying the size explicitly
         g = compile.function([rng_R, n, pvals],
                 multinomial(rng_R, n=n, pvals=pvals, size=(3,)),
                 accept_inplace=True)
         rng2, val2 = g(rng1, n_val, pvals_val)
-        numpy_val2 = numpy.asarray([numpy_rng.multinomial(n=nv, pvals=pv)
+        numpy_val2 = np.asarray([numpy_rng.multinomial(n=nv, pvals=pv)
             for nv, pv in zip(n_val, pvals_val)])
-        assert numpy.all(val2 == numpy_val2)
+        assert np.all(val2 == numpy_val2)
         self.assertRaises(ValueError, g, rng2, n_val[:-1], pvals_val[:-1])
 
     def test_multinomial_tensor3_a(self):
@@ -914,15 +914,15 @@ class T_random_function(utt.InferShapeTester):
         f = compile.function([rng_R, pvals], [post_r, out],
                              accept_inplace=True)
 
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
 
-        pvals_val = numpy.asarray([[[.1, .9], [.2, .8], [.3, .7]]])
+        pvals_val = np.asarray([[[.1, .9], [.2, .8], [.3, .7]]])
         assert pvals_val.shape == (1, 3, 2)
 
         new_rng, draw = f(rng, pvals_val)
         assert draw.shape == (1, 3, 2)
-        assert numpy.allclose(draw.sum(axis=2), 9)
+        assert np.allclose(draw.sum(axis=2), 9)
 
     def test_multinomial_tensor3_b(self):
         # Test the examples given in the multinomial documentation regarding
@@ -937,15 +937,15 @@ class T_random_function(utt.InferShapeTester):
         f = compile.function([rng_R, pvals], [post_r, out],
                              accept_inplace=True)
 
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        numpy_rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
+        numpy_rng = np.random.RandomState(utt.fetch_seed())
 
-        pvals_val = numpy.asarray([[[.1, .9], [.2, .8], [.3, .7]]])
+        pvals_val = np.asarray([[[.1, .9], [.2, .8], [.3, .7]]])
         assert pvals_val.shape == (1, 3, 2)
 
         out_rng, draw = f(rng, pvals_val)
         assert draw.shape == (10, 1, 3, 2)
-        assert numpy.allclose(draw.sum(axis=3), 9)
+        assert np.allclose(draw.sum(axis=3), 9)
 
     def test_dtype(self):
         rng_R = random_state_type()
@@ -956,13 +956,13 @@ class T_random_function(utt.InferShapeTester):
         assert out.dtype == 'int8'
         f = compile.function([rng_R, low, high], [post_r, out])
 
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         rng0, val0 = f(rng, 0, 9)
         assert val0.dtype == 'int8'
 
         rng1, val1 = f(rng0, 255, 257)
         assert val1.dtype == 'int8'
-        assert numpy.all(abs(val1) <= 1)
+        assert np.all(abs(val1) <= 1)
 
     def test_dtype_normal_uniform_687(self):
         # Regression test for #687.
@@ -978,7 +978,7 @@ class T_random_function(utt.InferShapeTester):
 
     def test_infer_shape(self):
         rng_R = random_state_type()
-        rng_R_val = numpy.random.RandomState(utt.fetch_seed())
+        rng_R_val = np.random.RandomState(utt.fetch_seed())
 
         # no shape specified, default args
         post_r, out = uniform(rng_R)
