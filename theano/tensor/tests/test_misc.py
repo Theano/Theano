@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import copy
 import sys
-import numpy
+import numpy as np
 import theano
 from theano import tensor
 from theano.tensor.nnet import crossentropy_softmax_argmax_1hot_with_bias
@@ -12,7 +12,7 @@ def test_bug_2009_06_02_trac_387():
     f = theano.function([y],
             tensor.int_div(
                 tensor.DimShuffle(y[0].broadcastable, ['x'])(y[0]), 2))
-    print(f(numpy.ones(1, dtype='int64') * 3))
+    print(f(np.ones(1, dtype='int64') * 3))
     # XXX: there is no assert, nor comment that DEBUGMODE is to do the
     #      checking. What was the bug, and how is it being tested?
 
@@ -25,15 +25,15 @@ def test_bug_2009_07_17_borrowed_output():
     g = theano.function([a, b],
             theano.Out(theano.tensor.dot(a, b), borrow=False))
 
-    x = numpy.zeros((1, 2))
-    y = numpy.ones((2, 5))
+    x = np.zeros((1, 2))
+    y = np.ones((2, 5))
 
     z = g(x, y)
     print(z)         # Should be zero.
     x.fill(1)
     print(g(x, y))   # Should be non-zero.
     print(z)         # Should still be zero.
-    assert numpy.linalg.norm(z) == 0
+    assert np.linalg.norm(z) == 0
 
     # The code above was supposed to fail when it was written (or, more
     # accurately, on the next revision, i.e. when it was merged with the
@@ -55,9 +55,9 @@ def test_bug_2009_07_17_borrowed_output():
     g = theano.function([test_output_activation_no_bias, test_b2, test_target],
             theano.Out(output, borrow=False))
 
-    a = numpy.zeros((1, 5))
-    b = numpy.ones(5)
-    c = numpy.zeros(1, dtype=numpy.int32)
+    a = np.zeros((1, 5))
+    b = np.ones(5)
+    c = np.zeros(1, dtype=np.int32)
 
     z = g(a, b, c)
     z_backup = copy.copy(z)
@@ -80,5 +80,5 @@ def test_deepcopied_type_filter():
     # As of commit 731e2d2fa68487733320d341d08b454a50c90d12
     # it was failing.
     a.type.filter(
-            numpy.ones((2, 2), dtype=a.dtype),
+            np.ones((2, 2), dtype=a.dtype),
             strict=True)
