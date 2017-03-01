@@ -162,6 +162,12 @@ L0_mnist_mlp:
       TEST_WORK_DIR: "/opt/theano/qa/L0_mnist"
       TEST_SCRIPT: "./test-mlp.sh"
 
+L0_regression:
+    <<: *L0_TEST
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_regression"
+      TEST_SCRIPT: "./test.sh"
+
 L0_mnist_lenet:
     <<: *L0_TEST
     variables:
