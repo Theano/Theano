@@ -111,7 +111,7 @@ class GpuCumOp(GpuKernelBase, Op):
             for (unsigned int stride = 1; stride <= blockDim.x; stride *= 2) {
                 local_barrier();
                 unsigned int index = (threadIdx.x + 1) * (stride * 2) - 1;
-                if(index < blockDim.x*2) {
+                if (index < blockDim.x*2) {
                     partialCumOp[index] %(op)s= partialCumOp[index - stride];
                 }
             }
@@ -136,7 +136,7 @@ class GpuCumOp(GpuKernelBase, Op):
             for (unsigned int stride = exp2(ceil(log2((float)blockDim.x))); stride > 0; stride /= 2) {
                 local_barrier();
                 unsigned int index = (threadIdx.x + 1) * (stride * 2) - 1;
-                if(index + stride < blockDim.x*2) {
+                if (index + stride < blockDim.x*2) {
                     partialCumOp[index + stride] %(op)s= partialCumOp[index];
                 }
             }
