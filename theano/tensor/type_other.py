@@ -3,7 +3,7 @@ from __future__ import absolute_import, print_function, division
 # Slice type and Op. None Type and NoneConst.
 #
 
-import numpy
+import numpy as np
 
 import theano
 from theano.gof import Apply, Constant, Generic, Op, Type, hashtype
@@ -78,15 +78,15 @@ class SliceConstant(Constant):
     def __init__(self, type, data, name=None):
         assert isinstance(data, slice)
         # Numpy ndarray aren't hashable, so get rid of them.
-        if isinstance(data.start, numpy.ndarray):
+        if isinstance(data.start, np.ndarray):
             assert data.start.ndim == 0
             assert str(data.start.dtype) in theano.tensor.integer_dtypes
             data = slice(int(data.start), data.stop, data.step)
-        elif isinstance(data.stop, numpy.ndarray):
+        elif isinstance(data.stop, np.ndarray):
             assert data.stop.ndim == 0
             assert str(data.stop.dtype) in theano.tensor.integer_dtypes
             data = slice(data.start, int(data.stop), data.step)
-        elif isinstance(data.step, numpy.ndarray):
+        elif isinstance(data.step, np.ndarray):
             assert data.step.ndim == 0
             assert str(data.step.dtype) in theano.tensor.integer_dtypes
             data = slice(data.start, int(data.stop), data.step)
