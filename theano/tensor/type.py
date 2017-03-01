@@ -118,7 +118,7 @@ class TensorType(Type):
                 # TODO: consider to pad shape with ones to make it consistent
                 # with self.broadcastable... like vector->row type thing
             else:
-                if isinstance(data, numpy.ndarray):
+                if isinstance(data, np.ndarray):
                     # Check if self.dtype can accurately represent data
                     # (do not try to convert the data)
                     up_dtype = scal.upcast(self.dtype, data.dtype)
@@ -150,7 +150,7 @@ class TensorType(Type):
                     converted_data = theano._asarray(data, self.dtype)
                     # We use the `values_eq` static function from TensorType
                     # to handle NaN values.
-                    if TensorType.values_eq(numpy.asarray(data),
+                    if TensorType.values_eq(np.asarray(data),
                                             converted_data,
                                             force_same_dtype=False):
                         data = converted_data
@@ -181,7 +181,7 @@ class TensorType(Type):
                 msg = "object buffer" + str(data.data)
             except AttributeError:
                 msg = ""
-            raise TypeError("The numpy.ndarray object is not aligned."
+            raise TypeError("The np.ndarray object is not aligned."
                             " Theano C code does not support that.",
                             msg,
                             "object shape", data.shape,
@@ -195,7 +195,7 @@ class TensorType(Type):
                                 " dimension.", data.shape, self.broadcastable)
             i += 1
         if (self.filter_checks_isfinite and
-                not numpy.all(numpy.isfinite(data))):
+                not np.all(np.isfinite(data))):
             raise ValueError("non-finite elements not allowed")
         return data
 
@@ -294,8 +294,8 @@ class TensorType(Type):
     @staticmethod
     def may_share_memory(a, b):
         # This is a method of TensorType, so both a and b should be ndarrays
-        if isinstance(a, numpy.ndarray) and isinstance(b, numpy.ndarray):
-            return numpy.may_share_memory(a, b)
+        if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
+            return np.may_share_memory(a, b)
         else:
             return False
 
@@ -308,14 +308,14 @@ class TensorType(Type):
         if force_same_dtype and a.dtype != b.dtype:
             return False
         a_eq_b = (a == b)
-        r = numpy.all(a_eq_b)
+        r = np.all(a_eq_b)
         if r:
             return True
         # maybe the trouble is that there are NaNs
-        a_missing = numpy.isnan(a)
+        a_missing = np.isnan(a)
         if a_missing.any():
-            b_missing = numpy.isnan(b)
-            return numpy.all(a_eq_b + (a_missing == b_missing))
+            b_missing = np.isnan(b)
+            return np.all(a_eq_b + (a_missing == b_missing))
         else:
             return False
 
@@ -553,7 +553,7 @@ class TensorType(Type):
         Create an numpy ndarray full of 0 values.
 
         """
-        return numpy.zeros(shape, dtype=self.dtype)
+        return np.zeros(shape, dtype=self.dtype)
 
     def get_shape_info(self, obj):
         """
@@ -601,9 +601,9 @@ class TensorType(Type):
 
         """
         if shape_info:
-            return numpy.prod(shape_info) * numpy.dtype(self.dtype).itemsize
+            return np.prod(shape_info) * np.dtype(self.dtype).itemsize
         else:  # a scalar
-            return numpy.dtype(self.dtype).itemsize
+            return np.dtype(self.dtype).itemsize
 theano.compile.ops.expandable_types += (TensorType,)
 
 
@@ -624,13 +624,13 @@ def values_eq_approx(a, b, allow_remove_inf=False, allow_remove_nan=False,
         Absolute tolerance, passed to _allclose.
 
     """
-    if isinstance(a, numpy.ndarray) and isinstance(b, numpy.ndarray):
+    if isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
         if a.shape != b.shape:
             return False
         if a.dtype != b.dtype:
             return False
         if str(a.dtype) not in theano.tensor.continuous_dtypes:
-            return numpy.all(a == b)
+            return np.all(a == b)
         else:
             cmp = theano.tensor.basic._allclose(a, b, rtol=rtol, atol=atol)
             if cmp:
@@ -644,38 +644,38 @@ def values_eq_approx(a, b, allow_remove_inf=False, allow_remove_nan=False,
             # core recently, so it may not be available to everyone. Thus,
             # for now we use a home-made recipe, that should probably be
             # revisited in the future.
-            a_missing = numpy.isnan(a)
-            a_inf = numpy.isinf(a)
+            a_missing = np.isnan(a)
+            a_inf = np.isinf(a)
 
             if not (a_missing.any() or (allow_remove_inf and a_inf.any())):
                 # There are no missing values in a, thus this is not the
                 # reason why numpy.allclose(a, b) returned False.
                 _logger.info(
                     'numpy allclose failed for abs_err %f and rel_err %f',
-                    numpy.max(abs(a - b)),
-                    numpy.max(abs(a - b) / (abs(a) + abs(b))))
+                    np.max(abs(a - b)),
+                    np.max(abs(a - b) / (abs(a) + abs(b))))
                 return False
             # The following line is what numpy.allclose bases its decision
             # upon, according to its documentation.
             rtol = 1.0000000000000001e-05
             atol = 1e-8
-            cmp_elemwise = (numpy.absolute(a - b) <=
-                            (atol + rtol * numpy.absolute(b)))
+            cmp_elemwise = (np.absolute(a - b) <=
+                            (atol + rtol * np.absolute(b)))
             # Find places where both a and b have missing values.
-            both_missing = a_missing * numpy.isnan(b)
+            both_missing = a_missing * np.isnan(b)
 
             # Find places where both a and b have inf of the same sign.
-            both_inf = a_inf * numpy.isinf(b)
+            both_inf = a_inf * np.isinf(b)
 
             # cmp_elemwise is weird when we have inf and -inf.
             # set it to False
-            cmp_elemwise = numpy.where(
+            cmp_elemwise = np.where(
                 both_inf & cmp_elemwise,
                 a == b,
                 cmp_elemwise)
 
             # check the sign of the inf
-            both_inf = numpy.where(both_inf, (a == b), both_inf)
+            both_inf = np.where(both_inf, (a == b), both_inf)
 
             if allow_remove_inf:
                 both_inf += a_inf
