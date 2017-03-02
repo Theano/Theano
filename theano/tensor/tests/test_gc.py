@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import six.moves.cPickle as pickle
 from six.moves import xrange
 import theano
@@ -13,10 +13,10 @@ def test_no_reuse():
     f = theano.function([x, y], x + y)
 
     # provide both inputs in the first call
-    f(numpy.ones(10, dtype='int64'), numpy.ones(10, dtype='int64'))
+    f(np.ones(10, dtype='int64'), np.ones(10, dtype='int64'))
 
     try:
-        f(numpy.ones(10))
+        f(np.ones(10))
     except TypeError:
         return
     assert not 'should not get here'
@@ -78,8 +78,8 @@ def test_gc_never_pickles_temporaries():
 
         # now run the function once to create temporaries within the no-gc
         # linker
-        f(numpy.ones(100, dtype='float64'))
-        g(numpy.ones(100, dtype='float64'))
+        f(np.ones(100, dtype='float64'))
+        g(np.ones(100, dtype='float64'))
 
         # serialize the functions again
         post_f = pickle.dumps(f)
