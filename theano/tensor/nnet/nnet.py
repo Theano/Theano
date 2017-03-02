@@ -14,13 +14,14 @@ revisited later when all the intermediate part are on the GPU.
 """
 from __future__ import absolute_import, print_function, division
 import logging
+import warnings
 import numpy
 from six.moves import xrange
 
 import theano
 from theano import gof
 from theano import scalar
-from theano.tensor import extra_ops
+from theano.tensor import extra_ops, as_tensor_variable
 from theano.gof.opt import copy_stack_trace
 from theano.tensor import basic as tensor, subtensor, opt, elemwise
 from theano.tensor.type import (values_eq_approx_remove_inf,
