@@ -1,6 +1,9 @@
 #
 # This example Dockerfile illustrates a method to apply
-# patches to the source code in NVIDIA's Theano container image.
+# patches to the source code in NVIDIA's Theano
+# container image and to rebuild Theano.  The RUN command
+# included below will rebuild Theano in the same way as
+# it was built in the original image.
 #
 # By applying customizations through a Dockerfile and
 # `docker build` in this manner rather than modifying the
@@ -22,8 +25,11 @@ WORKDIR /opt/theano
 # Apply modifications
 RUN patch -p1 < /tmp/my-theano-modifications.patch
 
-# Rebuild of Theano is unnecessary because it was originally
-# installed in pip's editable mode using "pip install -e ."
+# Rebuild Theano
+RUN MAKEFLAGS="-j$(nproc)" \
+    THEANO_CUDA_ARCH_LIST="3.5 5.2 6.0 6.1+PTX" \
+    PREFIX=/usr/local \
+    ./install.sh
 
 # Reset default working directory
 WORKDIR /workspace
