@@ -127,6 +127,13 @@ AddConfigVar(
     in_c_key=False)
 
 AddConfigVar(
+    'conv.assert_shape',
+    "If False, AbstractConv* ops won't add assert that verify that"
+    " the user provided shapes are also the one at run time",
+    BoolParam(True),
+    in_c_key=False)
+
+AddConfigVar(
     'print_global_stats',
     "Print some global statistics (time spent) at the end",
     BoolParam(False),

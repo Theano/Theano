@@ -693,6 +693,13 @@ import theano and print the config variable, as in:
 
     If ``'False'``, do not use cuDNN or check if it is available.
 
+.. attribute:: config.conv.assert_shape
+
+    If False, AbstractConv* ops won't add assert that verify that
+    the user provided shapes are also the one at run time.
+
+    This can speed up compilation time and/or execution time.
+
 .. attribute:: config.dnn.conv.workmem
 
     Deprecated, use :attr:`config.dnn.conv.algo_fwd`.
