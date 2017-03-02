@@ -34,7 +34,7 @@ class TestPool(unittest.TestCase):
             ds_op(inp, [2, 2], pad=[1, 1])
 
     def test_pool_c_interface(self):
-        gpu_mode = copy.copy(mode_with_gpu).excluding("cudnn")
+        gpu_mode = mode_with_gpu.excluding("cudnn")
         gpu_mode.check_py_code = False
 
         shp = (2, 2, 2, 2)
@@ -46,6 +46,19 @@ class TestPool(unittest.TestCase):
             pad = tensor.as_tensor_variable([1, 1])
             f = theano.function([], ds_op(inp, [2, 2], pad=pad), mode=gpu_mode)
             f()
+
+    def test_pool_big_ws(self):
+        gpu_mode = mode_with_gpu.excluding("cudnn")
+        gpu_mode.check_py_code = False
+
+        shp = (2, 2, 2, 2)
+        inp = theano.shared(rand(*shp), 'a')
+        inp = tensor.as_tensor_variable(inp)
+        ds_op = GpuPool(ignore_border=False, mode='average_exc_pad', ndim=2)
+        pad = tensor.as_tensor_variable([0, 0])
+        f = theano.function([], ds_op(inp, [5, 5], stride=[1, 1], pad=pad),
+                            mode=gpu_mode)
+        f()
 
 
 def test_pool2d():
@@ -88,7 +101,7 @@ def test_pool2d():
 
     ref_mode = copy.copy(mode_without_gpu)
     ref_mode.check_py_code = False
-    gpu_mode = copy.copy(mode_with_gpu).excluding("cudnn")
+    gpu_mode = mode_with_gpu.excluding("cudnn")
     gpu_mode.check_py_code = False
 
     for shp in shps:
@@ -198,7 +211,7 @@ def test_pool3d():
 
     ref_mode = copy.copy(mode_without_gpu)
     ref_mode.check_py_code = False
-    gpu_mode = copy.copy(mode_with_gpu).excluding("cudnn")
+    gpu_mode = mode_with_gpu.excluding("cudnn")
     gpu_mode.check_py_code = False
 
     for shp in shps:

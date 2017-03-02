@@ -106,7 +106,7 @@ KERNEL void max_pool3d_rop_kernel(const ga_size nthreads,
 #define OUTPUT_DIMS(in_dim, ws, st)                       \
   (IGNORE_BORDER ? (in_dim - ws)/st + 1 :                 \
    (st > ws ? (in_dim - 1)/st + 1 :                       \
-    std::max<size_t>(0, (in_dim - 1 - ws + st)/st) + 1))
+    std::max<ssize_t>(0, (in_dim - 1 - ws + st)/st) + 1))
 
 #section support_code_struct
 
