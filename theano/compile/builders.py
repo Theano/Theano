@@ -42,13 +42,13 @@ class OpFromGraph(gof.Op):
 
     grad_overrides : single or list of {'default', OpFromGraph, callable, Variable with special type}, optional
         Defaults to ``'default'``.
+        This argument is mutually exclusive with lop_overrides.
 
         ``'default'`` : Do not override, use default grad() result
 
         OpFromGraph instance : Override with another OpFromGraph, should
         accept inputs as the same order and types of ``inputs`` and ``output_grads``
-        arguments as one would specify in grad() method. This argument is mutually
-        exclusive to lop_overrides.
+        arguments as one would specify in grad() method.
 
         callable : Should take two args: ``inputs`` and ``output_grads``.
         Each argument is expected to be a list of :class:`Variable <theano.gof.Variable>`.
@@ -64,13 +64,13 @@ class OpFromGraph(gof.Op):
 
     lop_overrides : single or list of {'default', OpFromGraph, callable, Variable with special type}, optional
         Defaults to ``'default'``.
+        This argument is mutually exclusive with ``grad_overrides``.
 
         ``'default'`` : Do not override, use default L_op() result
 
         OpFromGraph instance : Override with another OpFromGraph, should
         accept inputs as the same order and types of ``inputs``, ``outputs`` and ``output_grads``
-        arguments as one would specify in grad() method. This argument is mutually exclusive with
-        ``grad_overrides``.
+        arguments as one would specify in grad() method.
 
         callable : Should take three args: ``inputs``, ``outputs`` and ``output_grads``.
         Each argument is expected to be a list of :class:`Variable <theano.gof.Variable>`.
