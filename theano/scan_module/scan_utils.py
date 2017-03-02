@@ -1353,4 +1353,6 @@ def forced_replace(out, x, y):
         elif graph.owner:
             q.extendleft(graph.owner.inputs)
 
+    if len(to_replace) == 0:
+        return out
     return clone(out, replace=to_replace)
