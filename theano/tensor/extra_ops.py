@@ -777,7 +777,7 @@ def repeat(x, repeats, axis=None):
         shape[axis] = shape[axis] * repeats
 
         # dims_ is the dimension of that intermediate tensor.
-        dims_ = list(numpy.arange(x.ndim))
+        dims_ = list(np.arange(x.ndim))
         dims_.insert(axis + 1, 'x')
 
         # After the original tensor is duplicated along the additional
@@ -805,7 +805,7 @@ class Bartlett(gof.Op):
     def perform(self, node, inputs, out_):
         M = inputs[0]
         out, = out_
-        out[0] = numpy.bartlett(M)
+        out[0] = np.bartlett(M)
 
     def infer_shape(self, node, in_shapes):
         temp = node.inputs[0]
@@ -881,7 +881,7 @@ class FillDiagonal(gof.Op):
             # Write the value out into the diagonal.
             a.flat[:end:step] = val
         else:
-            numpy.fill_diagonal(a, val)
+            np.fill_diagonal(a, val)
 
         output_storage[0][0] = a
 
@@ -1131,7 +1131,7 @@ class Unique(theano.Op):
         self.return_index = return_index
         self.return_inverse = return_inverse
         self.return_counts = return_counts
-        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+        numpy_ver = [int(n) for n in np.__version__.split('.')[:2]]
         if self.return_counts and bool(numpy_ver < [1, 9]):
             raise RuntimeError(
                 "Numpy version = " + np.__version__ +
