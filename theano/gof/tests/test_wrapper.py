@@ -120,13 +120,18 @@ class QuadraticCOpFunc(COp):
         x = tensor.as_tensor_variable(x)
         return Apply(self, [x], [x.type()])
 
+    def perform(self, node, inputs, output_storage, coefficients):
+        x = inputs[0]
+        y = output_storage[0]
+        y[0] = coefficients.a * (x**2) + coefficients.b * x + coefficients.c
+
 
 class TestWrapper(TestCase):
 
     def test_hash_and_eq_wrap(self):
-        wp1 = Wrapper(a=Generic(), array=TensorType('int32', (False,)), floatting=Scalar('float32'),
+        wp1 = Wrapper(a=Generic(), array=TensorType('int64', (False,)), floatting=Scalar('float64'),
                       npy_scalar=TensorType('float64', tuple()))
-        wp2 = Wrapper(a=Generic(), array=TensorType('int32', (False,)), floatting=Scalar('float32'),
+        wp2 = Wrapper(a=Generic(), array=TensorType('int64', (False,)), floatting=Scalar('float64'),
                       npy_scalar=TensorType('float64', tuple()))
         w1 = Wrap(wp1, a=1, array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
         w2 = Wrap(wp2, a=1, array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
@@ -134,7 +139,7 @@ class TestWrapper(TestCase):
         assert not (w1 != w2)
         assert hash(w1) == hash(w2)
         # Changing attributes names only (a -> other_name).
-        wp2_other = Wrapper(other_name=Generic(), array=TensorType('int32', (False,)), floatting=Scalar('float32'),
+        wp2_other = Wrapper(other_name=Generic(), array=TensorType('int64', (False,)), floatting=Scalar('float64'),
                             npy_scalar=TensorType('float64', tuple()))
         w2 = Wrap(wp2_other, other_name=1, array=numpy.asarray([1, 2, 4, 5, 7]), floatting=-4.5, npy_scalar=numpy.asarray(12))
         assert w1 != w2

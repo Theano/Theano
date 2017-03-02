@@ -574,6 +574,7 @@ def hash_from_file(file_path):
         file_content = f.read()
     return hash_from_code(file_content)
 
+
 # Set of C and C++ keywords as defined (at March 2nd, 2017) in the pages below:
 # - http://fr.cppreference.com/w/c/keyword
 # - http://fr.cppreference.com/w/cpp/keyword
