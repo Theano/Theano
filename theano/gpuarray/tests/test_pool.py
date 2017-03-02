@@ -34,7 +34,7 @@ class TestPool(unittest.TestCase):
             ds_op(inp, [2, 2], pad=[1, 1])
 
     def test_pool_c_interface(self):
-        gpu_mode = copy.copy(mode_with_gpu).excluding("cudnn")
+        gpu_mode = mode_with_gpu.excluding("cudnn")
         gpu_mode.check_py_code = False
 
         shp = (2, 2, 2, 2)
@@ -48,7 +48,7 @@ class TestPool(unittest.TestCase):
             f()
 
     def test_pool_big_ws(self):
-        gpu_mode = copy.copy(mode_with_gpu).excluding("cudnn")
+        gpu_mode = mode_with_gpu.excluding("cudnn")
         gpu_mode.check_py_code = False
 
         shp = (2, 2, 2, 2)
@@ -101,7 +101,7 @@ def test_pool2d():
 
     ref_mode = copy.copy(mode_without_gpu)
     ref_mode.check_py_code = False
-    gpu_mode = copy.copy(mode_with_gpu).excluding("cudnn")
+    gpu_mode = mode_with_gpu.excluding("cudnn")
     gpu_mode.check_py_code = False
 
     for shp in shps:
@@ -211,7 +211,7 @@ def test_pool3d():
 
     ref_mode = copy.copy(mode_without_gpu)
     ref_mode.check_py_code = False
-    gpu_mode = copy.copy(mode_with_gpu).excluding("cudnn")
+    gpu_mode = mode_with_gpu.excluding("cudnn")
     gpu_mode.check_py_code = False
 
     for shp in shps:
