@@ -193,6 +193,33 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         assert isinstance(db2.type, DisconnectedType)
 
     @test_params
+    def test_lop_override(self, cls_ofg):
+        x = T.vector()
+        y = 1. / (1. + T.exp(-x))
+
+        def lop_ov(inps, outs, grads):
+            y_, = outs
+            dedy_, = grads
+            return [2. * y_ * (1. - y_) * dedy_]
+
+        y_, dedy = T.vector(), T.vector()
+        op_lop_ov = cls_ofg([x, y_, dedy], [2. * y_ * (1. - y_) * dedy])
+
+        xx = T.vector()
+        yy1 = T.sum(T.nnet.sigmoid(xx))
+        gyy1 = 2. * T.grad(yy1, xx)
+
+        for ov in [lop_ov, op_lop_ov]:
+            op = cls_ofg([x], [y], lop_overrides=ov)
+            yy2 = T.sum(op(xx))
+            gyy2 = T.grad(yy2, xx)
+            fn = function([xx], [gyy1, gyy2])
+
+            xval = np.random.rand(32).astype(config.floatX)
+            y1val, y2val = fn(xval)
+            assert np.allclose(y1val, y2val)
+
+    @test_params
     def test_rop(self, cls_ofg):
         a = T.vector()
         M = T.matrix()
