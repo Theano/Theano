@@ -28,17 +28,16 @@ before_script:
     - export BASE_IMAGE_NAME="${CI_REGISTRY_IMAGE}:${RELEASE_BRANCH_NAME}.${CI_PIPELINE_ID}"       && echo "${BASE_IMAGE_NAME}"
     - export DEVEL_IMAGE_NAME="${CI_REGISTRY_IMAGE}:${CI_BUILD_REF_NAME}"                          && echo "${DEVEL_IMAGE_NAME}"
     - export DEVEL_IMAGE_NAME_VERSIONED="${BASE_IMAGE_NAME}-devel"                                 && echo "${DEVEL_IMAGE_NAME_VERSIONED}"
-    - export STAGE_IMAGE_NAME="${CI_REGISTRY_IMAGE}:${CI_BUILD_REF_NAME/%-devel/-stage}"           && echo "${STAGE_IMAGE_NAME}"
     - export ORIGIN1="${CI_BUILD_REPO##*@}"
     - export ORIGIN_SSH=git@${ORIGIN1/\//:}                                                        && echo "${ORIGIN_SSH}"
     - export ORIGIN_HTTPS=https://${ORIGIN1}                                                       && echo "${ORIGIN_HTTPS}"
-    - git submodule sync --recursive
-    - git submodule update --init --recursive
     - docker login -u gitlab-ci-token -p "${CI_BUILD_TOKEN}" "${CI_REGISTRY}"
 
 theano-base:
     stage: build base
     script:
+    - git submodule sync --recursive
+    - git submodule update --init --recursive
     - echo -e "Dockerfile*\n"
               ".git*\n"
               ".dockerignore\n"
@@ -53,6 +52,8 @@ theano-base:
 theano:
     stage: build devel
     script:
+    - git submodule sync --recursive
+    - git submodule update --init --recursive
     - echo -e "FROM ${BASE_IMAGE_NAME}\n"
               "COPY Dockerfile* /opt/${CI_PROJECT_NAME}/\n"
               "COPY .gitignore /opt/${CI_PROJECT_NAME}/\n"
@@ -73,12 +74,24 @@ stage:
     stage: staging
     environment: staging
     script:
+    - export STAGE_IMAGE_NAME="${CI_REGISTRY_IMAGE}:${CI_BUILD_REF_NAME/%-devel/-stage}"           && echo "${STAGE_IMAGE_NAME}"
+    - export QA_IMAGE_NAME="${CI_REGISTRY_IMAGE}:${CI_BUILD_REF_NAME/%-devel/-qa}"                 && echo "${QA_IMAGE_NAME}"
+    - git submodule sync --recursive
+    - git submodule update --init --recursive
+    # push a xx.yy-stage tag that records the commit we staged from
     - git remote set-url origin ${ORIGIN_SSH}
     - git push --delete origin refs/tags/${CI_BUILD_REF_NAME/%-devel/-stage}
     - git push origin HEAD:refs/tags/${CI_BUILD_REF_NAME/%-devel/-stage}
+    # create xx.yy-stage image
     - docker pull "${BASE_IMAGE_NAME}"
     - docker tag "${BASE_IMAGE_NAME}" "${STAGE_IMAGE_NAME}"
     - docker push "${STAGE_IMAGE_NAME}"
+    # create xx.yy-qa image on top of -stage that adds the qa/* tests back in
+    - echo -e "FROM ${STAGE_IMAGE_NAME}\n"
+              "COPY qa/   /opt/${CI_PROJECT_NAME}/qa/\n"
+        > Dockerfile.${CI_PROJECT_NAME}.${CI_BUILD_REF_NAME/%-devel/-qa}
+    - docker build --pull -t "${QA_IMAGE_NAME}" -f Dockerfile.${CI_PROJECT_NAME}.${CI_BUILD_REF_NAME/%-devel/-qa} .
+    - docker push "${QA_IMAGE_NAME}"
     only:
     - /^.*-devel$/
     except:
