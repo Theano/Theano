@@ -15,33 +15,12 @@ from theano.tests.test_rop import break_op
 from theano.tests import unittest_tools as utt
 from theano import config
 
-from theano.tensor.nlinalg import ( MatrixInverse,
-                                    matrix_inverse,
-                                    MatrixPinv,
-                                    pinv,
-                                    AllocDiag,
-                                    alloc_diag,
-                                    ExtractDiag,
-                                    extract_diag,
-                                    diag,
-                                    trace,
-                                    Det,
-                                    det,
-                                    Eig,
-                                    eig,
-                                    Eigh,
-                                    EighGrad,
-                                    eigh,
-                                    matrix_dot,
-                                    _zero_disconnected,
-                                    qr,
-                                    matrix_power,
-                                    norm,
-                                    svd,
-                                    TensorInv,
-                                    tensorinv,
-                                    tensorsolve
-                                    )
+from theano.tensor.nlinalg import (
+    MatrixInverse, matrix_inverse, MatrixPinv, pinv,
+    AllocDiag, alloc_diag, ExtractDiag, extract_diag, diag,
+    trace, Det, det, Eig, eig, Eigh, EighGrad, eigh,
+    matrix_dot, _zero_disconnected, qr, matrix_power,
+    norm, svd, TensorInv, tensorinv, tensorsolve)
 from nose.plugins.attrib import attr
 
 from nose.plugins.skip import SkipTest
@@ -462,9 +441,9 @@ class test_Eigh(test_Eig):
     def test_grad(self):
         S = self.S
         utt.verify_grad(lambda x: self.op(x)[0], [S], rng=self.rng)
-        utt.verify_grad(lambda x: self.op(x)[1], [S], rng=self.rng)
+        utt.verify_grad(lambda x: self.op(x)[1], [S], rng=self.rng, eps=1e-4)
         utt.verify_grad(lambda x: self.op(x, 'U')[0], [S], rng=self.rng)
-        utt.verify_grad(lambda x: self.op(x, 'U')[1], [S], rng=self.rng)
+        utt.verify_grad(lambda x: self.op(x, 'U')[1], [S], rng=self.rng, eps=1e-4)
 
 
 class test_Eigh_float32(test_Eigh):
