@@ -1,11 +1,22 @@
 [global]
 base_compiledir=/tmp
+
+# ’gpu0[1…]’ in context of ‘config.device’ corresponds to  old ‘sandbox/cuda’ backend  (config.cuda or [cuda] below)
+# device=gpu0 # example of old config
+
+# ’device=cuda’ in context of ‘config. or [global]’ corresponds to  new ‘gpuarray’ backend 
+# (config.gpuarray or [gpuarray] below)
 device=cuda
 floatX=float32
 
 [dnn]
 enabled=True
 
+# config.cuda means old ‘sandbox/cuda’ backend!
+[cuda]
+enabled=False
+
+# this is new 'gpuarray' backend (device=cuda in global section above)
 [gpuarray]
 preallocate=0.9
 single_stream=False
