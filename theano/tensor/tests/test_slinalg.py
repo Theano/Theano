@@ -80,7 +80,7 @@ def test_cholesky_grad():
     if not imported_scipy:
         raise SkipTest("Scipy needed for the Cholesky op.")
     rng = numpy.random.RandomState(utt.fetch_seed())
-    r = rng.randn(5, 5).astype(config.floatX)
+    r = rng.rand(5, 5).astype(config.floatX)
     pd = numpy.dot(r, r.T)
     eps = None
     if config.floatX == "float64":
