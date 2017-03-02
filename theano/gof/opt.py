@@ -609,7 +609,7 @@ class MergeFeature(object):
         if node.inputs:
             # Take the smallest clients list. Some ops like elemwise
             # have optimization that put constant as the first inputs.
-            # As constant have in general more clients then other type of nodes
+            # As constant have in general more clients than other type of nodes
             # using always inputs[0] make us look at more nodes.
             # Always pick the smallest clints list between inputs 0
             # and -1 speed up optimization.
