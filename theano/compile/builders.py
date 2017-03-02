@@ -336,7 +336,7 @@ class OpFromGraph(gof.Op):
                     raise ValueError(
                         self.OV_INP_LEN_ERR_MSG % (needed_ninps, ninps))
                 # make a wrapper callable
-                lop_op = lambda inps, grads: self._lop_op(*(inps + grads))  # noqa: 731
+                lop_op = lambda inps, grads: self._lop_op(*(inps + grads))  # flake8: noqa
             elif self._lop_type == 'lop':
                 # OfG can be directly used in L_op format
                 needed_ninps = inp_len + 2 * len(local_outputs)
