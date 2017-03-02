@@ -5,6 +5,7 @@ THIS_DIR=$(cd $(dirname $0); pwd)
 PREFIX=${PREFIX:-"/usr/local"}
 MAKE=${MAKE:-"make"}
 SUDO=${SUDO:-""} 
+CUDA_HOME=${CUDA_HOME:-"/usr/local/cuda"}
 
 echo "=== Installing requirements..."
 cat requirement-rtd.txt | xargs -n1 ${SUDO} pip install --no-cache-dir || exit 1
