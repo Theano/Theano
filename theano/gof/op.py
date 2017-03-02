@@ -799,22 +799,15 @@ class Op(utils.object2, PureOp, CLinkerOp):
     # We add a default get_params() implementation which will try to detect params from the op
     # if params_type is set to a Wrapper. If not, we raise a MethodNotDefined exception.
     def get_params(self, node):
-        if hasattr(self, 'params_type'):
-            # If params_type is a Wrapper, we try to extract params from the op.
-            if isinstance(self.params_type, theano.gof.wrapper.Wrapper):
-                wrapper = self.params_type
-                op_has_wrap_attributes = True
-                for field in wrapper.fields:
-                    if not hasattr(self, field):
-                        op_has_wrap_attributes = False
-                        break
-                if op_has_wrap_attributes:
-                    wrap_dict = dict()
-                    for i in range(wrapper.length):
-                        field = wrapper.fields[i]
-                        _type = wrapper.types[i]
-                        wrap_dict[field] = _type.filter(getattr(self, field), strict=False, allow_downcast=True)
-                    return theano.gof.wrapper.Wrap(**wrap_dict)
+        if hasattr(self, 'params_type') and isinstance(self.params_type, theano.gof.wrapper.Wrapper):
+            wrapper = self.params_type
+            if hasattr(self, '__props__') and all(field in self.__props__ for field in wrapper.fields):
+                wrap_dict = dict()
+                for i in range(wrapper.length):
+                    field = wrapper.fields[i]
+                    _type = wrapper.types[i]
+                    wrap_dict[field] = _type.filter(getattr(self, field), strict=False, allow_downcast=True)
+                return theano.gof.wrapper.Wrap(wrapper, **wrap_dict)
         raise theano.gof.utils.MethodNotDefined('get_params')
 
     def prepare_node(self, node, storage_map, compute_map, impl):
