@@ -241,7 +241,7 @@ class GpuCholesky(Op):
         self.lower = lower
         self.inplace = inplace
         if self.inplace:
-            self.destroy_map = {0: [0, 1]}
+            self.destroy_map = {0: [0]}
         super(GpuCholesky, self).__init__()
 
     def make_node(self, inp):
@@ -322,9 +322,16 @@ class GpuCholesky(Op):
         # cusolver leaves the elements in the matrix outside the considered
         # upper or lower triangle unchanged, so we need to put zeros outside
         # the triangle
+        """
+        with context:
+            if self.lower:
+                linalg.tril(L, overwrite=True, handle=context.cudnn_handle)
+            else:
+                linalg.triu(L, overwrite=True, handle=context.cudnn_handle)
+        """
         if self.lower:
-            linalg.tril(L, overwrite=True)
+            L.write(numpy.tril(L))
         else:
-            linalg.triu(L, overwrite=True)
+            L.write(numpy.triu(L))
 
         outputs[0][0] = L
