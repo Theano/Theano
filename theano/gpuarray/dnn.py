@@ -1179,21 +1179,10 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
 def dnn_gradweight3d(img, topgrad, kerns_shp, border_mode='valid',
                      subsample=(1, 1, 1), conv_mode='conv', precision=None):
     """
-    TODO: document this
+    3d version of dnn_gradweight
     """
-    ctx_name = infer_context_name(img, topgrad)
-    img = as_gpuarray_variable(img, ctx_name)
-    topgrad = as_gpuarray_variable(topgrad, ctx_name)
-    img = gpu_contiguous(img)
-    topgrad = gpu_contiguous(topgrad)
-    kerns_shp = as_tensor_variable(kerns_shp)
-    precision = get_precision(precision, [img, topgrad])
-
-    desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
-                             conv_mode=conv_mode, precision=precision)(
-                                 kerns_shp)
-    out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(*kerns_shp)
-    return gpu_dnn_conv_gradW()(img, topgrad, out, desc)
+    return dnn_gradweight(img, topgrad, kerns_shp, border_mode,
+                          subsample, conv_mode, precision)
 
 
 def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
@@ -1219,21 +1208,10 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
 def dnn_gradinput3d(kerns, topgrad, img_shp, border_mode='valid',
                     subsample=(1, 1, 1), conv_mode='conv', precision=None):
     """
-    TODO: document this
+    3d version of `dnn_gradinput`.
     """
-    ctx_name = infer_context_name(kerns, topgrad)
-    kerns = as_gpuarray_variable(kerns, ctx_name)
-    topgrad = as_gpuarray_variable(topgrad, ctx_name)
-    kerns = gpu_contiguous(kerns)
-    topgrad = gpu_contiguous(topgrad)
-    img_shp = as_tensor_variable(img_shp)
-    precision = get_precision(precision, [kerns, topgrad])
-
-    desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
-                             conv_mode=conv_mode, precision=precision)(
-                                 kerns.shape)
-    out = gpu_alloc_empty(ctx_name, kerns.dtype)(*img_shp)
-    return gpu_dnn_conv_gradI()(kerns, topgrad, out, desc)
+    return dnn_gradinput(kerns, topgrad, img_shp, border_mode, subsample,
+                         conv_mode, precision)
 
 
 class GpuDnnPoolDesc(Op):
