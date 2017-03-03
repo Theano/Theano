@@ -26,7 +26,7 @@ cd ${THIS_DIR}/libgpuarray \
 echo "=== Installing pygpu ..."
 cd ${THIS_DIR}/libgpuarray \
     python setup.py build_ext \
-    -L ${PREFIX}/lib -I ${MY_PREFIX}/include \
+    -L ${PREFIX}/lib -I ${PREFIX}/include \
     && ${SUDO} python setup.py install || exit 1
 
 
@@ -34,7 +34,7 @@ cd ${THIS_DIR}
 
 echo "=== Running setup.py ..."
 python setup.py build_ext \
-    -L ${PREFIX}/lib -I ${MY_PREFIX}/include \
+    -L ${PREFIX}/lib -I ${PREFIX}/include \
     && ${SUDO} python setup.py install || exit 1
 
 # Install Theano via PIP

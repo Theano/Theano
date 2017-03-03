@@ -229,7 +229,7 @@ AddConfigVar('nvcc.flags',
              ConfigParam("", filter_nvcc_flags),
              # Not needed in c key as it is already added.
              # We remove it as we don't make the md5 of config to change
-             # if theano.sandbox.cuda is loaded or not.
+             # if theano.cuda is loaded or not.
              in_c_key=False)
 
 AddConfigVar('nvcc.compiler_bindir',
@@ -243,7 +243,7 @@ AddConfigVar('nvcc.fastmath',
              BoolParam(False),
              # Not needed in c key as it is already added.
              # We remove it as we don't make the md5 of config to change
-             # if theano.sandbox.cuda is loaded or not.
+             # if theano.cuda is loaded or not.
              in_c_key=False)
 
 AddConfigVar('gpuarray.sync',

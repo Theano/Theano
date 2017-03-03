@@ -1,5 +1,5 @@
 [global]
-base_compiledir=/tmp
+base_compiledir=/tmp/theano
 
 # ’gpu0[1…]’ in context of ‘config.device’ corresponds to  old ‘sandbox/cuda’ backend  (config.cuda or [cuda] below)
 # device=gpu0 # example of old config
@@ -13,8 +13,9 @@ floatX=float32
 enabled=True
 
 # config.cuda means old ‘sandbox/cuda’ backend!
-[cuda]
-enabled=False
+# Note: can't really disable as a lot of modules still depend on this.
+#[cuda]
+#enabled=False
 
 # this is new 'gpuarray' backend (device=cuda in global section above)
 [gpuarray]

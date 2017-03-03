@@ -613,8 +613,8 @@ def use(device,
                     if dnn_available():
                         (hdr_v, runtime_v) = dnn_version()
                         cudnn_version = runtime_v
-                        # 5200 should not print warning with cudnn 5 final.
-                        if cudnn_version >= 5200:
+                        # 6100 should not print warning with cudnn 6 final.
+                        if cudnn_version >= 6100:
                             warn = ("Your cuDNN version is more recent than the one"
                                     " Theano officially supports."
                                     " If you see any problems, try updating Theano or"
