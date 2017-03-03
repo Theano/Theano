@@ -404,7 +404,7 @@ class test_Eig(utt.InferShapeTester):
         self.rng = numpy.random.RandomState(utt.fetch_seed())
         self.A = theano.tensor.matrix(dtype=self.dtype)
         self.X = numpy.asarray(self.rng.rand(5, 5),
-                          dtype=self.dtype)
+                               dtype=self.dtype)
         self.S = self.X.dot(self.X.T)
 
     def test_infer_shape(self):
@@ -440,6 +440,8 @@ class test_Eigh(test_Eig):
 
     def test_grad(self):
         X = self.X
+        # We need to do the dot inside the graph because Eigh needs a
+        # matrix that is hermitian
         utt.verify_grad(lambda x: self.op(x.dot(x.T))[0], [X], rng=self.rng)
         utt.verify_grad(lambda x: self.op(x.dot(x.T))[1], [X], rng=self.rng)
         utt.verify_grad(lambda x: self.op(x.dot(x.T), 'U')[0], [X], rng=self.rng)

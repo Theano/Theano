@@ -74,6 +74,9 @@ def test_cholesky_grad():
         raise SkipTest("Scipy needed for the Cholesky op.")
     rng = numpy.random.RandomState(utt.fetch_seed())
     r = rng.randn(5, 5).astype(config.floatX)
+
+    # The dots are inside the graph since Cholesky needs separable matrices
+
     # Check the default.
     yield (lambda: utt.verify_grad(lambda r: cholesky(r.dot(r.T)),
                                    [r], 3, rng))
