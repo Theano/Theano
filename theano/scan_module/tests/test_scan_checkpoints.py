@@ -58,7 +58,7 @@ class TestScanCheckpoint(unittest.TestCase):
         f_check = theano.function(inputs=[self.A, self.k],
                                   outputs=self.grad_A_check)
         free_gmem = theano.gpuarray.type._context_reg[None].free_gmem
-        data = numpy.ones(free_gmem / 3000, dtype=numpy.float32)
+        data = numpy.ones(free_gmem // 3000, dtype=numpy.float32)
         # Check that it works with the checkpoints
         f_check(data, 1000)
         # Check that the basic scan fails in that case
