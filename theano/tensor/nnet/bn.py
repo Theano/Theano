@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import theano
 from theano import Apply, Op
 from theano.gof import local_optimizer
@@ -89,7 +89,7 @@ def _prepare_batch_normalization_axes(axes, ndim):
         axes = (0,)
     elif axes == 'spatial':
         axes = (0,) + tuple(range(2, ndim))
-    elif isinstance(axes, (tuple, list, numpy.ndarray)):
+    elif isinstance(axes, (tuple, list, np.ndarray)):
         axes = tuple(int(a) for a in axes)
     else:
         raise ValueError('invalid axes: %s', str(axes))
@@ -215,7 +215,7 @@ def batch_normalization_train(inputs, gamma, beta, axes='per-activation',
 
     # epsilon will be converted to floatX later. we need to check
     # for rounding errors now, since numpy.float32(1e-5) < 1e-5.
-    epsilon = numpy.cast[theano.config.floatX](epsilon)
+    epsilon = np.cast[theano.config.floatX](epsilon)
     if epsilon < 1e-5:
         raise ValueError("epsilon must be at least 1e-5, got %s" % str(epsilon))
 
@@ -337,7 +337,7 @@ def batch_normalization_test(inputs, gamma, beta, mean, var,
 
     # epsilon will be converted to floatX later. we need to check
     # for rounding errors now, since numpy.float32(1e-5) < 1e-5.
-    epsilon = numpy.cast[theano.config.floatX](epsilon)
+    epsilon = np.cast[theano.config.floatX](epsilon)
     if epsilon < 1e-5:
         raise ValueError("epsilon must be at least 1e-5, got %s" % str(epsilon))
 
@@ -480,7 +480,7 @@ class AbstractBatchNormTrain(Op):
 
         mean = x.mean(axes, keepdims=True)
         var = x.var(axes, keepdims=True)
-        invstd = 1.0 / numpy.sqrt(var + epsilon)
+        invstd = 1.0 / np.sqrt(var + epsilon)
         out = (x - mean) * (scale * invstd) + bias
 
         output_storage[0][0] = out
@@ -493,7 +493,7 @@ class AbstractBatchNormTrain(Op):
                 mean * running_average_factor
             output_storage[3][0] = running_mean
         if len(inputs) > 6:
-            m = float(numpy.prod(x.shape) / numpy.prod(scale.shape))
+            m = float(np.prod(x.shape) / np.prod(scale.shape))
             running_var = inputs[6]
             running_var = running_var * (1.0 - running_average_factor) + \
                 (m / (m - 1)) * var * running_average_factor
@@ -568,7 +568,7 @@ class AbstractBatchNormInference(Op):
 
     def perform(self, node, inputs, output_storage):
         x, scale, bias, estimated_mean, estimated_variance, epsilon = inputs
-        out = (x - estimated_mean) * (scale / numpy.sqrt(estimated_variance + epsilon)) + bias
+        out = (x - estimated_mean) * (scale / np.sqrt(estimated_variance + epsilon)) + bias
         output_storage[0][0] = out
 
 
@@ -607,12 +607,12 @@ class AbstractBatchNormTrainGrad(Op):
             raise ValueError('axes should be less than ndim (<%d), but %s given' % (x.ndim, str(axes)))
 
         x_diff = x - x_mean
-        mean_dy_x_diff = numpy.mean(dy * x_diff, axis=axes, keepdims=True)
+        mean_dy_x_diff = np.mean(dy * x_diff, axis=axes, keepdims=True)
         c = (dy * x_invstd) - (x_diff * mean_dy_x_diff * (x_invstd ** 3))
 
-        g_wrt_inputs = scale * (c - numpy.mean(c, axis=axes, keepdims=True))
-        g_wrt_scale = numpy.sum(dy * x_invstd * x_diff, axis=axes, keepdims=True)
-        g_wrt_bias = numpy.sum(dy, axis=axes, keepdims=True)
+        g_wrt_inputs = scale * (c - np.mean(c, axis=axes, keepdims=True))
+        g_wrt_scale = np.sum(dy * x_invstd * x_diff, axis=axes, keepdims=True)
+        g_wrt_bias = np.sum(dy, axis=axes, keepdims=True)
 
         output_storage[0][0] = g_wrt_inputs
         output_storage[1][0] = g_wrt_scale

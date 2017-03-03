@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import unittest
 
-import numpy
+import numpy as np
 from nose.plugins.skip import SkipTest
 from six.moves import xrange
 
@@ -47,7 +47,7 @@ class T_sigmoid(unittest.TestCase):
         utt.seed_rng()
 
     def test_elemwise(self):
-        utt.verify_grad(sigmoid, [numpy.random.rand(3, 4)])
+        utt.verify_grad(sigmoid, [np.random.rand(3, 4)])
 
 
 class T_softplus(unittest.TestCase):
@@ -56,7 +56,7 @@ class T_softplus(unittest.TestCase):
         utt.seed_rng()
 
     def test_elemwise(self):
-        utt.verify_grad(softplus, [numpy.random.rand(3, 4)])
+        utt.verify_grad(softplus, [np.random.rand(3, 4)])
 
 
 class T_Softmax(utt.InferShapeTester):
@@ -64,26 +64,26 @@ class T_Softmax(utt.InferShapeTester):
     def test0(self):
         def f(a):
             return softmax_op(a)[:, 0]
-        utt.verify_grad(f, [numpy.random.rand(3, 4)])
+        utt.verify_grad(f, [np.random.rand(3, 4)])
 
     def test1(self):
         def f(a):
             return softmax_op(a)[:, 1]
-        utt.verify_grad(f, [numpy.random.rand(3, 4)])
+        utt.verify_grad(f, [np.random.rand(3, 4)])
 
     def test2(self):
         def f(a):
             return softmax_op(a)[:, 2]
-        utt.verify_grad(f, [numpy.random.rand(3, 4)])
+        utt.verify_grad(f, [np.random.rand(3, 4)])
 
     def test3(self):
         def f(a):
             return softmax_op(a)[:, 3]
-        utt.verify_grad(f, [numpy.random.rand(3, 4)])
+        utt.verify_grad(f, [np.random.rand(3, 4)])
 
     def test_infer_shape(self):
         admat = matrix()
-        admat_val = numpy.random.rand(3, 4).astype(config.floatX)
+        admat_val = np.random.rand(3, 4).astype(config.floatX)
         self._compile_and_check([admat], [Softmax()(admat)],
                                 [admat_val], Softmax)
 
@@ -91,13 +91,13 @@ class T_Softmax(utt.InferShapeTester):
         x = T.vector()
         f = theano.function([x], softmax_op(x))
 
-        xv = numpy.random.randn(6).astype(config.floatX)
-        assert numpy.allclose(f(xv), numpy.exp(xv) / numpy.exp(xv).sum())
+        xv = np.random.randn(6).astype(config.floatX)
+        assert np.allclose(f(xv), np.exp(xv) / np.exp(xv).sum())
 
     def test_vector_grad(self):
         def f(a):
             return softmax_op(a)
-        utt.verify_grad(f, [numpy.random.rand(4)])
+        utt.verify_grad(f, [np.random.rand(4)])
 
 
 class T_SoftmaxWithBias(utt.InferShapeTester):
@@ -105,32 +105,32 @@ class T_SoftmaxWithBias(utt.InferShapeTester):
     def test0(self):
         def f(a, b):
             return softmax_with_bias(a, b)[:, 0]
-        utt.verify_grad(f, [numpy.random.rand(3, 4),
-                        numpy.random.rand(4)])
+        utt.verify_grad(f, [np.random.rand(3, 4),
+                        np.random.rand(4)])
 
     def test1(self):
         def f(a, b):
             return softmax_with_bias(a, b)[:, 1]
-        utt.verify_grad(f, [numpy.random.rand(3, 4),
-                        numpy.random.rand(4)])
+        utt.verify_grad(f, [np.random.rand(3, 4),
+                        np.random.rand(4)])
 
     def test2(self):
         def f(a, b):
             return softmax_with_bias(a, b)[:, 2]
-        utt.verify_grad(f, [numpy.random.rand(3, 4),
-                        numpy.random.rand(4)])
+        utt.verify_grad(f, [np.random.rand(3, 4),
+                        np.random.rand(4)])
 
     def test3(self):
         def f(a, b):
             return softmax_with_bias(a, b)[:, 3]
-        utt.verify_grad(f, [numpy.random.rand(3, 4),
-                        numpy.random.rand(4)])
+        utt.verify_grad(f, [np.random.rand(3, 4),
+                        np.random.rand(4)])
 
     def test_broadcast(self):
         # test that we don't raise an error during optimization for no good
         # reason as softmax_with_bias don't support correctly some/all
         # broadcasted inputs pattern
-        initial_W = numpy.asarray([[0.1, 0.1, 0.1],
+        initial_W = np.asarray([[0.1, 0.1, 0.1],
                                    [0.1, 0.1, 0.1],
                                    [0.1, 0.1, 0.1]],
                                   dtype=theano.config.floatX)
@@ -148,8 +148,8 @@ class T_SoftmaxWithBias(utt.InferShapeTester):
 
     def test_softmax_with_bias_trace(self):
         a = theano.shared(
-            numpy.random.randn(3).astype(config.floatX))
-        b = theano.shared(numpy.float32(numpy.random.randn()))
+            np.random.randn(3).astype(config.floatX))
+        b = theano.shared(np.float32(np.random.randn()))
         sm = T.nnet.softmax(a + b)
         f = theano.function([], sm)
         assert check_stack_trace(f, ops_to_check='last')
@@ -157,8 +157,8 @@ class T_SoftmaxWithBias(utt.InferShapeTester):
     def test_infer_shape(self):
         admat = matrix()
         advec = vector()
-        admat_val = numpy.random.rand(3, 4).astype(config.floatX)
-        advec_val = numpy.random.rand(4).astype(config.floatX)
+        admat_val = np.random.rand(3, 4).astype(config.floatX)
+        advec_val = np.random.rand(4).astype(config.floatX)
         self._compile_and_check([admat, advec],
                                 [SoftmaxWithBias()(admat, advec)],
                                 [admat_val, advec_val], SoftmaxWithBias)
@@ -169,40 +169,40 @@ class T_LogSoftmax(utt.InferShapeTester):
     def test0(self):
         def f(a):
             return logsoftmax_op(a)[:, 0]
-        utt.verify_grad(f, [numpy.random.rand(3, 4)])
+        utt.verify_grad(f, [np.random.rand(3, 4)])
 
     def test1(self):
         def f(a):
             return logsoftmax_op(a)[:, 1]
-        utt.verify_grad(f, [numpy.random.rand(3, 4)])
+        utt.verify_grad(f, [np.random.rand(3, 4)])
 
     def test2(self):
         def f(a):
             return logsoftmax_op(a)[:, 2]
-        utt.verify_grad(f, [numpy.random.rand(3, 4)])
+        utt.verify_grad(f, [np.random.rand(3, 4)])
 
     def test3(self):
         def f(a):
             return logsoftmax_op(a)[:, 3]
-        utt.verify_grad(f, [numpy.random.rand(3, 4)])
+        utt.verify_grad(f, [np.random.rand(3, 4)])
 
     def test_matrix(self):
         def f(a):
             return logsoftmax_op(a)
-        utt.verify_grad(f, [numpy.random.rand(3, 4)])
+        utt.verify_grad(f, [np.random.rand(3, 4)])
 
     def test_vector(self):
         x = T.vector()
         f = theano.function([x], logsoftmax_op(x))
 
-        xv = numpy.random.randn(6).astype(config.floatX)
-        assert numpy.allclose(f(xv),
-                              numpy.log(numpy.exp(xv) / numpy.exp(xv).sum()))
+        xv = np.random.randn(6).astype(config.floatX)
+        assert np.allclose(f(xv),
+                              np.log(np.exp(xv) / np.exp(xv).sum()))
 
     def test_vector_grad(self):
         def f(a):
             return logsoftmax_op(a)
-        utt.verify_grad(f, [numpy.random.rand(4)])
+        utt.verify_grad(f, [np.random.rand(4)])
 
     def test_allclose(self):
         m = theano.config.mode
@@ -220,9 +220,9 @@ class T_LogSoftmax(utt.InferShapeTester):
         grad = tensor.grad(cm2.mean(), x)
 
         # create some inputs into a softmax that are large and labels
-        a = numpy.exp(10 * numpy.random.rand(5, 10).astype(theano.config.floatX))
+        a = np.exp(10 * np.random.rand(5, 10).astype(theano.config.floatX))
         # create some one-hot coded labels
-        b = numpy.eye(5, 10).astype(theano.config.floatX)
+        b = np.eye(5, 10).astype(theano.config.floatX)
 
         # show equivalence of softmax and exponentiated numerically stable
         # log-softmax
@@ -241,7 +241,7 @@ class T_LogSoftmax(utt.InferShapeTester):
         # while in the log-softmax case they don't
         f3 = theano.function([x, y], [grad])
         grad_ = f3(a, b)
-        assert not numpy.any(numpy.isnan(grad_))
+        assert not np.any(np.isnan(grad_))
 
     def test_isclose(self):
         def f(a):
@@ -274,8 +274,8 @@ class T_LogSoftmax(utt.InferShapeTester):
         m.check_isfinite = False
         # some inputs that are large to make the gradient explode in the non
         # optimized case
-        a = numpy.exp(
-            10 * numpy.random.rand(5, 10).astype(theano.config.floatX))
+        a = np.exp(
+            10 * np.random.rand(5, 10).astype(theano.config.floatX))
 
         def myfunc(x):
             sm = tensor.nnet.softmax(x)
@@ -317,8 +317,8 @@ class T_SoftmaxGrad(utt.InferShapeTester):
     def test_infer_shape(self):
         admat = matrix()
         bdmat = matrix()
-        admat_val = numpy.random.rand(3, 4).astype(config.floatX)
-        bdmat_val = numpy.random.rand(3, 4).astype(config.floatX)
+        admat_val = np.random.rand(3, 4).astype(config.floatX)
+        bdmat_val = np.random.rand(3, 4).astype(config.floatX)
         self._compile_and_check([admat, bdmat], [SoftmaxGrad()(admat, bdmat)],
                                 [admat_val, bdmat_val], SoftmaxGrad)
 
@@ -333,29 +333,29 @@ class T_CrossentropySoftmax1Hot(unittest.TestCase):
 
         def f(a, b):
             return crossentropy_softmax_1hot_with_bias(a, b, y_idx)[0]
-        utt.verify_grad(f, [numpy.random.rand(3, 4),
-                            numpy.random.rand(4)])
+        utt.verify_grad(f, [np.random.rand(3, 4),
+                            np.random.rand(4)])
 
     def test1(self):
         y_idx = [0, 1, 3]
 
         def f(a):
             return crossentropy_softmax_1hot(a, y_idx)[0]
-        utt.verify_grad(f, [numpy.random.rand(3, 4)])
+        utt.verify_grad(f, [np.random.rand(3, 4)])
 
     def test_vector(self):
         y_idx = [3]
 
         def f(a):
             return crossentropy_softmax_1hot(T.shape_padleft(a), y_idx)[0]
-        utt.verify_grad(f, [numpy.random.rand(4)])
+        utt.verify_grad(f, [np.random.rand(4)])
 
     def test_vectors(self):
         y_idx = [3]
 
         def f(a, b):
             return crossentropy_softmax_1hot(T.shape_padleft(a) + b, y_idx)[0]
-        utt.verify_grad(f, [numpy.random.rand(4), numpy.random.rand(4)])
+        utt.verify_grad(f, [np.random.rand(4), np.random.rand(4)])
 
 
 class T_CrossentropySoftmax1HotWithBiasDx(utt.InferShapeTester):
@@ -364,20 +364,20 @@ class T_CrossentropySoftmax1HotWithBiasDx(utt.InferShapeTester):
         def ff(class_dtype):
             def f(sm):
                 # Class indices
-                y = numpy.random.randint(low=0, high=5, size=10).astype(class_dtype)
+                y = np.random.randint(low=0, high=5, size=10).astype(class_dtype)
                 return theano.tensor.nnet.crossentropy_softmax_1hot_with_bias_dx(
-                    numpy.random.rand(10),  # Gradient w.r.t. NLL.
+                    np.random.rand(10),  # Gradient w.r.t. NLL.
                     sm,                     # Softmax output.
                     y)
             return f
         # Build a random softmax output whose rows sum to 1.
-        softmax_output = numpy.random.rand(10, 5)
+        softmax_output = np.random.rand(10, 5)
         softmax_output /= softmax_output.sum(axis=1).reshape(10, 1)
         for dtype in ['uint8', 'int8', 'uint64', 'int64']:
             utt.verify_grad(ff(dtype), [softmax_output])
 
     def test1(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         softmax_output = rng.rand(10, 5)
         softmax_output /= softmax_output.sum(axis=1).reshape(10, 1)
 
@@ -392,7 +392,7 @@ class T_CrossentropySoftmax1HotWithBiasDx(utt.InferShapeTester):
         admat = matrix()
         advec = vector()
         alvec = lvector()
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         admat_val = rng.rand(10, 5).astype(config.floatX)
         admat_val /= admat_val.sum(axis=1).reshape(10, 1)
         advec_val = rng.rand(10).astype(config.floatX)
@@ -407,7 +407,7 @@ class T_CrossentropySoftmax1HotWithBiasDx(utt.InferShapeTester):
         admat = matrix()
         advec = vector()
         alvec = lvector()
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         admat_val = rng.rand(10, 5).astype(config.floatX)
         admat_val /= admat_val.sum(axis=1).reshape(10, 1)
         advec_val = rng.rand(10).astype(config.floatX)
@@ -431,28 +431,28 @@ class T_CrossentropySoftmaxArgmax1HotWithBias(utt.InferShapeTester):
         # First test gradient when getting a gradient on the NLL output.
         def grad_on_nll_dtype(dtype):
             def grad_on_nll(x, b):
-                y_idx = numpy.random.randint(low=0, high=n_classes, size=n_samples).astype(dtype)
+                y_idx = np.random.randint(low=0, high=n_classes, size=n_samples).astype(dtype)
                 return self.op(x, b, y_idx=y_idx)[0]
             return grad_on_nll
         for dtype in ['uint8', 'int8', 'uint64', 'int64']:
             utt.verify_grad(grad_on_nll_dtype(dtype),
-                            [numpy.random.rand(n_samples, n_classes),
-                             numpy.random.rand(n_classes)])
+                            [np.random.rand(n_samples, n_classes),
+                             np.random.rand(n_classes)])
 
         # Then test gradient when getting a gradient on the softmax output.
         def grad_on_softmax(x, b):
-            return self.op(x, b, y_idx=numpy.random.randint(
+            return self.op(x, b, y_idx=np.random.randint(
                 low=0, high=n_classes, size=n_samples))[1]
         utt.verify_grad(
             grad_on_softmax,
-            [numpy.random.rand(n_samples, n_classes),
-                numpy.random.rand(n_classes)])
+            [np.random.rand(n_samples, n_classes),
+                np.random.rand(n_classes)])
 
     def test_infer_shape(self):
         admat = matrix()
         advec = vector()
         alvec = lvector()
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         admat_val = rng.rand(3, 5).astype(config.floatX)
         advec_val = rng.rand(5).astype(config.floatX)
         alvec_val = rng.randint(low=0, high=5, size=3)
@@ -466,7 +466,7 @@ class T_CrossentropySoftmaxArgmax1HotWithBias(utt.InferShapeTester):
         admat = matrix()
         advec = vector()
         alvec = lvector()
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         admat_val = rng.rand(3, 5).astype(config.floatX)
         advec_val = rng.rand(5).astype(config.floatX)
         alvec_val = rng.randint(low=0, high=5, size=3)
@@ -482,27 +482,27 @@ class T_prepend(utt.InferShapeTester):
         x = tensor.matrix('x')
         y = Prepend_scalar_constant_to_each_row(4.)(x)
         f = theano.function([x], y)
-        m = numpy.random.rand(3, 5).astype(config.floatX)
+        m = np.random.rand(3, 5).astype(config.floatX)
         my = f(m)
         self.assertTrue(my.shape == (3, 6), my.shape)
-        self.assertTrue(numpy.all(my[:, 0] == 4.0))
+        self.assertTrue(np.all(my[:, 0] == 4.0))
 
     def test1(self):
         "basic functionality"
         x = tensor.matrix('x')
         y = Prepend_scalar_to_each_row()(5., x)
         f = theano.function([x], y)
-        m = numpy.ones((3, 5), dtype="float32")
+        m = np.ones((3, 5), dtype="float32")
         my = f(m)
         self.assertTrue(my.shape == (3, 6))
-        self.assertTrue(numpy.all(my[:, 0] == 5.0))
+        self.assertTrue(np.all(my[:, 0] == 5.0))
 
     def test_infer_shape(self):
         admat = matrix()
         adscal = scalar()
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         admat_val = rng.rand(3, 5).astype(config.floatX)
-        adscal_val = numpy.asarray(rng.rand(), dtype=config.floatX).item()
+        adscal_val = np.asarray(rng.rand(), dtype=config.floatX).item()
         self._compile_and_check(
             [admat],
             [Prepend_scalar_constant_to_each_row(adscal_val)(admat)],
@@ -522,7 +522,7 @@ class T_CrossentropyCategorical1HotGrad(utt.InferShapeTester):
         advec = vector()
         admat = matrix()
         alvec = lvector()
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         advec_val = rng.rand(3).astype(config.floatX)
         admat_val = rng.rand(3, 2).astype(config.floatX)
         alvec_val = [0, 1, 0]
@@ -541,21 +541,21 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         op = crossentropy_categorical_1hot
         xe = op(x, one_of_n)
         f = theano.function([x, one_of_n], xe)
-        x_val = numpy.asarray(
+        x_val = np.asarray(
             [[.4, .6, .0], [.1, .8, .1]],
             dtype=config.floatX)
         xe_val = f(x_val, [0, 1])
-        assert numpy.allclose(xe_val, -numpy.log([.4, .8]))
+        assert np.allclose(xe_val, -np.log([.4, .8]))
 
         def oplike(x):
             return op(x, [0, 1])
 
-        tensor.verify_grad(oplike, [x_val], rng=numpy.random)
+        tensor.verify_grad(oplike, [x_val], rng=np.random)
 
     def test_infer_shape(self):
         admat = matrix()
         alvec = lvector()
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         admat_val = rng.rand(3, 2).astype(config.floatX)
         alvec_val = [0, 1, 0]
         self._compile_and_check(
@@ -775,10 +775,10 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         mode = theano.compile.mode.get_default_mode()
         if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
             mode = 'FAST_RUN'
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         x_val = rng.randn(3, 5).astype(config.floatX)
         b_val = rng.randn(5).astype(config.floatX)
-        y_val = numpy.asarray([2, 4, 1])
+        y_val = np.asarray([2, 4, 1])
         x = T.matrix('x')
         b = T.vector('b')
         y = T.lvector('y')
@@ -954,9 +954,9 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         mode = theano.compile.mode.get_default_mode()
         if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
             mode = 'FAST_RUN'
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         x_val = rng.randn(3, 5).astype(config.floatX)
-        y_val = numpy.asarray([2, 4, 1], dtype='int64')
+        y_val = np.asarray([2, 4, 1], dtype='int64')
         x = T.matrix('x')
         y = T.lvector('y')
         yi = T.cast(y, 'int32')
@@ -1002,9 +1002,9 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         mode = theano.compile.mode.get_default_mode()
         if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
             mode = 'FAST_RUN'
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         x_val = rng.randn(5).astype(config.floatX)
-        y_val = numpy.asarray([2])
+        y_val = np.asarray([2])
 
         x = T.vector('x')
         y = T.lvector('y')
@@ -1047,10 +1047,10 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         mode = theano.compile.mode.get_default_mode()
         if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
             mode = 'FAST_RUN'
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         x_val = rng.randn(5).astype(config.floatX)
         b_val = rng.randn(5).astype(config.floatX)
-        y_val = numpy.asarray([2])
+        y_val = np.asarray([2])
 
         x = T.vector('x')
         b = T.vector('b')
@@ -1107,10 +1107,10 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         mode = theano.compile.mode.get_default_mode()
         if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
             mode = 'FAST_RUN'
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         x_val = rng.randn(5).astype(config.floatX)
         b_val = rng.randn(5).astype(config.floatX)
-        y_val = numpy.asarray([2])
+        y_val = np.asarray([2])
 
         x = T.vector('x')
         b = T.vector('b')
@@ -1169,10 +1169,10 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         mode = theano.compile.mode.get_default_mode()
         if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
             mode = 'FAST_RUN'
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         x_val = rng.randn(5).astype(config.floatX)
         b_val = rng.randn(5).astype(config.floatX)
-        y_val = numpy.asarray([2])
+        y_val = np.asarray([2])
 
         x = T.vector('x')
         b = T.vector('b')
@@ -1228,9 +1228,9 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         mode = theano.compile.mode.get_default_mode()
         if mode == theano.compile.mode.get_mode('FAST_COMPILE'):
             mode = 'FAST_RUN'
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
         x_val = rng.randn(3, 5).astype(config.floatX)
-        y_val = numpy.asarray([2, 4, 1])
+        y_val = np.asarray([2, 4, 1])
         x = T.matrix('x')
         y = T.lvector('y')
         a = T.scalar('a')
@@ -1445,21 +1445,21 @@ def test_asymptotic_32():
             for i, n in enumerate(f.maker.fgraph.toposort()):
                 print(i, n)
 
-        xval = numpy.zeros((5, 5), dtype=dtype).astype(dtype)
-        x2val = numpy.zeros(5, dtype=xval.dtype).astype(dtype)
+        xval = np.zeros((5, 5), dtype=dtype).astype(dtype)
+        x2val = np.zeros(5, dtype=xval.dtype).astype(dtype)
         for i in xrange(100):
-            cval, gxval = f(xval, numpy.arange(5), x2val)
+            cval, gxval = f(xval, np.arange(5), x2val)
             xval -= 100.3 * gxval
             # print cval, gxval
         assert cval == 0  # no problem going to zero error
 
         # what about when x gets really big?
 
-        xval = numpy.zeros((5, 5), dtype=dtype)
-        x2val = numpy.zeros(5, dtype=xval.dtype)
+        xval = np.zeros((5, 5), dtype=dtype)
+        x2val = np.zeros(5, dtype=xval.dtype)
         for i in xrange(100):
 
-            cval, gxval = f(xval, numpy.arange(5), x2val)
+            cval, gxval = f(xval, np.arange(5), x2val)
             xval += 100000.3 * gxval
             # print cval, gxval
 
@@ -1480,7 +1480,7 @@ class Test_softmax_opt:
 
     def setUp(self):
         utt.seed_rng()
-        self.rng = numpy.random.RandomState(utt.fetch_seed())
+        self.rng = np.random.RandomState(utt.fetch_seed())
         self.mode = theano.compile.mode.get_default_mode()
         self.mode = self.mode.including('canonicalize')
 
@@ -1584,7 +1584,7 @@ class Test_softmax_opt:
 
 
 def test_softmax_graph():
-    rng = numpy.random.RandomState(utt.fetch_seed())
+    rng = np.random.RandomState(utt.fetch_seed())
     x = theano.shared(rng.normal(size=(3, 4)))
 
     def f(inputs):
@@ -1595,7 +1595,7 @@ def test_softmax_graph():
 
 
 def test_grad_softmax_grad():
-    rng = numpy.random.RandomState(utt.fetch_seed())
+    rng = np.random.RandomState(utt.fetch_seed())
     x = theano.shared(rng.normal(size=(3, 4)))
 
     def f(inputs):
@@ -1621,39 +1621,39 @@ def test_stabilize_log_softmax():
 
     # call the function so debug mode can verify the optimized
     # version matches the unoptimized version
-    rng = numpy.random.RandomState([2012, 8, 22])
-    f(numpy.cast[config.floatX](rng.randn(2, 3)))
+    rng = np.random.RandomState([2012, 8, 22])
+    f(np.cast[config.floatX](rng.randn(2, 3)))
 
 
 def test_relu():
     x = matrix('x')
     seed = theano.tests.unittest_tools.fetch_seed()
-    rng = numpy.random.RandomState(seed)
+    rng = np.random.RandomState(seed)
     X = rng.randn(20, 30).astype(config.floatX)
 
     # test the base case, without custom alpha value
     y = relu(x).eval({x: X})
-    assert numpy.allclose(y, numpy.maximum(X, 0))
+    assert np.allclose(y, np.maximum(X, 0))
 
     # test for different constant alpha values (also outside of [0, 1])
     for alpha in 0, 0.3, 1, 2, -0.3, -1, -2:
         y = relu(x, alpha).eval({x: X})
-        assert numpy.allclose(y, numpy.where(X > 0, X, alpha * X))
+        assert np.allclose(y, np.where(X > 0, X, alpha * X))
 
     # test for variable alpha (scalar, vector and matrix)
     for alpha in scalar(), vector(), matrix():
         # create value for alpha (correct ndim and broadcastable against X)
-        A = numpy.array(rng.randn(*X.shape[::-1][:alpha.ndim][::-1]),
+        A = np.array(rng.randn(*X.shape[::-1][:alpha.ndim][::-1]),
                         dtype=config.floatX)
         y = relu(x, alpha).eval({x: X, alpha: A})
-        assert numpy.allclose(y, numpy.where(X > 0, X, A * X), rtol=3e-5)
+        assert np.allclose(y, np.where(X > 0, X, A * X), rtol=3e-5)
         # test that for alpha of ndarray don't cause upcast.
         x = matrix('x', dtype='float32')
-        rng = numpy.random.RandomState(seed)
+        rng = np.random.RandomState(seed)
         X = rng.randn(20, 30).astype('float32')
-        alpha = numpy.asarray(.123, dtype='float32')
+        alpha = np.asarray(.123, dtype='float32')
         y = relu(x, alpha).eval({x: X})
-        assert numpy.allclose(y, numpy.where(X > 0, X, alpha * X))
+        assert np.allclose(y, np.where(X > 0, X, alpha * X))
         assert y.dtype == 'float32'
 
 
@@ -1681,19 +1681,19 @@ def test_h_softmax():
     shared = theano.shared
 
     # First level of h_softmax
-    W1 = numpy.asarray(numpy.random.normal(
+    W1 = np.asarray(np.random.normal(
         size=(input_size, h_softmax_level1_size)), dtype=floatX)
     W1 = shared(W1)
-    b1 = shared(numpy.asarray(numpy.zeros((h_softmax_level1_size,)),
+    b1 = shared(np.asarray(np.zeros((h_softmax_level1_size,)),
                               dtype=floatX))
 
     # Second level of h_softmax
-    W2 = numpy.asarray(numpy.random.normal(
+    W2 = np.asarray(np.random.normal(
         size=(h_softmax_level1_size, input_size, h_softmax_level2_size)),
         dtype=floatX)
     W2 = shared(W2)
     b2 = shared(
-        numpy.asarray(numpy.zeros((h_softmax_level1_size,
+        np.asarray(np.zeros((h_softmax_level1_size,
                                    h_softmax_level2_size)), dtype=floatX))
 
     #############
@@ -1719,8 +1719,8 @@ def test_h_softmax():
     #############
     # Test
     #############
-    x_mat = numpy.random.normal(size=(batch_size, input_size)).astype(floatX)
-    y_mat = numpy.random.randint(0, output_size, batch_size).astype('int32')
+    x_mat = np.random.normal(size=(batch_size, input_size)).astype(floatX)
+    y_mat = np.random.randint(0, output_size, batch_size).astype('int32')
     tg_output = fun_output_tg(x_mat, y_mat)
     all_outputs = fun_output(x_mat)
 
@@ -1730,23 +1730,23 @@ def test_h_softmax():
     # Verifies that the outputs computed by fun_output_tg are the same as those
     # computed by fun_output.
     utt.assert_allclose(
-        all_outputs[numpy.arange(0, batch_size), y_mat], tg_output)
+        all_outputs[np.arange(0, batch_size), y_mat], tg_output)
 
 
 def test_elu():
     x = matrix('x')
     seed = theano.tests.unittest_tools.fetch_seed()
-    rng = numpy.random.RandomState(seed)
+    rng = np.random.RandomState(seed)
     X = rng.randn(20, 30).astype(config.floatX)
 
     # test the base case, without custom alpha value
     y = elu(x).eval({x: X})
-    utt.assert_allclose(y, numpy.where(X > 0, X, numpy.exp(X) - 1))
+    utt.assert_allclose(y, np.where(X > 0, X, np.exp(X) - 1))
 
     # test for different constant alpha values
     for alpha in 1.5, 2, -1, -1.5, -2:
         y = elu(x, alpha).eval({x: X})
-        utt.assert_allclose(y, numpy.where(X > 0, X, alpha * (numpy.exp(X) - 1)))
+        utt.assert_allclose(y, np.where(X > 0, X, alpha * (np.exp(X) - 1)))
 
 
 def test_binary_crossentropy_reshape():
@@ -1759,13 +1759,13 @@ def test_binary_crossentropy_reshape():
         # This only works when "specialize" options are included
         mode = theano.compile.get_default_mode().including('fast_run')
         fga = theano.function([a], ga, mode=mode)
-        utt.assert_allclose(fga(numpy.array([[[[30.]]]], dtype=config.floatX)),
-                            numpy.zeros((1, 1, 1, 1), dtype=config.floatX))
+        utt.assert_allclose(fga(np.array([[[[30.]]]], dtype=config.floatX)),
+                            np.zeros((1, 1, 1, 1), dtype=config.floatX))
 
 SoftsignTester = makeBroadcastTester(
     op=softsign,
     expected=upcast_int8_nfunc(lambda inputs: check_floatX(
-        inputs, inputs / (1.0 + numpy.fabs(inputs)))),
+        inputs, inputs / (1.0 + np.fabs(inputs)))),
     good=_good_broadcast_unary_normal_float_no_complex,
     name='SoftsignTester',
 )
@@ -1774,13 +1774,13 @@ SoftsignTester = makeBroadcastTester(
 def test_confusion_matrix():
     # Defining numpy implementation of confusion matrix
     def numpy_conf_mat(actual, pred):
-        order = numpy.union1d(actual, pred)
-        colA = numpy.matrix(actual).T
-        colP = numpy.matrix(pred).T
+        order = np.union1d(actual, pred)
+        colA = np.matrix(actual).T
+        colP = np.matrix(pred).T
         oneHotA = colA.__eq__(order).astype('int64')
         oneHotP = colP.__eq__(order).astype('int64')
-        conf_mat = numpy.dot(oneHotA.T, oneHotP)
-        conf_mat = numpy.asarray(conf_mat)
+        conf_mat = np.dot(oneHotA.T, oneHotP)
+        conf_mat = np.asarray(conf_mat)
         return [conf_mat, order]
 
     x = tensor.vector()
@@ -1790,8 +1790,8 @@ def test_confusion_matrix():
                    [[2, 0, 2, 2, 0, 1], [0, 0, 2, 2, 0, 2]]]
 
     for case in list_inputs:
-        a = numpy.asarray(case[0])
-        b = numpy.asarray(case[1])
+        a = np.asarray(case[0])
+        b = np.asarray(case[1])
         out_exp = numpy_conf_mat(a, b)
         outs = f(case[0], case[1])
         for exp, out in zip(out_exp, outs):

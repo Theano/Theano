@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 import unittest
 
 from nose.plugins.skip import SkipTest
-import numpy
+import numpy as np
 
 import theano
 import theano.tensor as T
@@ -41,13 +41,13 @@ class TestSignalConv2D(unittest.TestCase):
         theano_conv = theano.function([input, filters], output)
 
         # initialize input and compute result
-        image_data = numpy.random.random(image_shape)
-        filter_data = numpy.random.random(filter_shape)
+        image_data = np.random.random(image_shape)
+        filter_data = np.random.random(filter_shape)
         theano_output = theano_conv(image_data, filter_data)
 
         # REFERENCE IMPLEMENTATION ############
-        out_shape2d = numpy.array(image_shape[-2:]) - numpy.array(filter_shape[-2:]) + 1
-        ref_output = numpy.zeros(tuple(out_shape2d))
+        out_shape2d = np.array(image_shape[-2:]) - np.array(filter_shape[-2:]) + 1
+        ref_output = np.zeros(tuple(out_shape2d))
 
         # reshape as 3D input tensors to make life easier
         image_data3d = image_data.reshape((bsize,) + image_shape[-2:])
@@ -64,7 +64,7 @@ class TestSignalConv2D(unittest.TestCase):
 
                 image2d = image_data3d[b, :, :]
                 filter2d = filter_data3d[k, :, :]
-                output2d = numpy.zeros(ref_output.shape)
+                output2d = np.zeros(ref_output.shape)
                 for row in range(ref_output.shape[0]):
                     for col in range(ref_output.shape[1]):
                         output2d[row, col] += (

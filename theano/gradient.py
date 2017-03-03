@@ -6,7 +6,7 @@ import logging
 import time
 import warnings
 
-import numpy  # for numeric_grad
+import numpy as np # for numeric_grad
 from six import itervalues
 
 import theano
@@ -19,7 +19,7 @@ from theano.gof.null_type import NullType, null_type
 from theano.gof.op import get_debug_values
 from theano.compile import ViewOp, FAST_RUN, DebugMode
 
-np = numpy
+
 __authors__ = "James Bergstra, Razvan Pascanu, Arnaud Bergeron, Ian Goodfellow"
 __copyright__ = "(c) 2011, Universite de Montreal"
 __license__ = "3-clause BSD License"
@@ -1374,9 +1374,9 @@ class numeric_grad(object):
     type_eps = {'float64': 1e-7,
                 'float32': 3e-4,
                 'float16': 1e-1,
-                numpy.dtype('float64'): 1e-7,
-                numpy.dtype('float32'): 3e-4,
-                numpy.dtype('float16'): 1e-1}
+                np.dtype('float64'): 1e-7,
+                np.dtype('float32'): 3e-4,
+                np.dtype('float16'): 1e-1}
 
     def __init__(self, f, pt, eps=None, out_type=None):
         """Return the gradient of f at pt.
@@ -1389,7 +1389,7 @@ class numeric_grad(object):
         differences of a fixed step size (eps).
 
         It is assumed that f(...) will return a scalar.
-        It is assumed that all f's inputs are numpy.ndarray objects.
+        It is assumed that all f's inputs are np.ndarray objects.
 
         :param eps: the stepsize for the finite differencing.  None means
           input dtype-dependent. See `type_eps`.
@@ -1406,7 +1406,7 @@ class numeric_grad(object):
             pt = [pt]
             packed_pt = True
 
-        apt = [numpy.array(p) for p in pt]
+        apt = [np.array(p) for p in pt]
 
         shapes = [p.shape for p in apt]
         dtypes = [str(p.dtype) for p in apt]
@@ -1423,12 +1423,12 @@ class numeric_grad(object):
             (self.type_eps[dt], dt) for dt in dtypes)[1]
 
         # create un-initialized memory
-        x = numpy.ndarray((total_size,), dtype=working_dtype)
+        x = np.ndarray((total_size,), dtype=working_dtype)
         # (not out_type is None) --> (out_type is not None) ???
         if (out_type is not None) and (out_type.startswith('complex')):
-            gx = numpy.ndarray((total_size,), dtype=out_type)
+            gx = np.ndarray((total_size,), dtype=out_type)
         else:
-            gx = numpy.ndarray((total_size,), dtype=working_dtype)
+            gx = np.ndarray((total_size,), dtype=working_dtype)
 
         if eps is None:
             eps = builtins.max(self.type_eps[dt] for dt in dtypes)
@@ -1459,7 +1459,7 @@ class numeric_grad(object):
             # TODO: remove this when it is clear that the next
             # replacemement does not pose problems of its own.  It was replaced
             # for its inability to handle complex variables.
-            # gx[i] = numpy.asarray((f_eps - f_x) / eps)
+            # gx[i] = np.asarray((f_eps - f_x) / eps)
 
             gx[i] = ((f_eps - f_x) / eps)
 
@@ -1483,13 +1483,13 @@ class numeric_grad(object):
         The tuple (abs_err, rel_err) is returned
         """
         abs_err = abs(a - b)
-        rel_err = abs_err / numpy.maximum(abs(a) + abs(b), 1e-8)
-        # The numpy.asarray are needed as if a or b is a sparse matrix
-        # this would result in a numpy.matrix and not a numpy.ndarray
+        rel_err = abs_err / np.maximum(abs(a) + abs(b), 1e-8)
+        # The np.asarray are needed as if a or b is a sparse matrix
+        # this would result in a np.matrix and not a np.ndarray
         # and the behave differently causing problem later.
         # In particular a_npy_matrix.flatten().shape == (1, n_element)
-        abs_err = numpy.asarray(abs_err)
-        rel_err = numpy.asarray(rel_err)
+        abs_err = np.asarray(abs_err)
+        rel_err = np.asarray(rel_err)
         return (abs_err, rel_err)
 
     def abs_rel_errors(self, g_pt):
@@ -1530,11 +1530,11 @@ class numeric_grad(object):
 
         abs_rel_errs = self.abs_rel_errors(g_pt)
         for abs_err, rel_err in abs_rel_errs:
-            if not numpy.all(numpy.isfinite(abs_err)):
+            if not np.all(np.isfinite(abs_err)):
                 raise ValueError('abs_err not finite', repr(abs_err))
-            if not numpy.all(numpy.isfinite(rel_err)):
+            if not np.all(np.isfinite(rel_err)):
                 raise ValueError('rel_err not finite', repr(rel_err))
-            scaled_err = numpy.minimum(abs_err / abs_tol, rel_err / rel_tol)
+            scaled_err = np.minimum(abs_err / abs_tol, rel_err / rel_tol)
             max_i = scaled_err.argmax()
 
             pos.append(max_i)
@@ -1543,7 +1543,7 @@ class numeric_grad(object):
             rel_errs.append(rel_err.flatten()[max_i])
 
         # max over the arrays in g_pt
-        max_arg = numpy.argmax(errs)
+        max_arg = np.argmax(errs)
         max_pos = pos[max_arg]
         return (max_arg, max_pos, abs_errs[max_arg], rel_errs[max_arg])
 
@@ -1564,8 +1564,8 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
 
     Example:
         >>> verify_grad(theano.tensor.tanh,
-        ...             (numpy.asarray([[2,3,4], [-1, 3.3, 9.9]]),),
-        ...             rng=numpy.random)
+        ...             (np.asarray([[2,3,4], [-1, 3.3, 9.9]]),),
+        ...             rng=np.random)
 
     Raises an Exception if the difference between the analytic gradient and
     numerical gradient (computed through the Finite Difference Method) of a
@@ -1575,7 +1575,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
     :param fun: a Python function that takes Theano variables as inputs,
         and returns a Theano variable. For instance, an Op instance with
         a single output.
-    :param pt: the list of numpy.ndarrays to use as input values.
+    :param pt: the list of np.ndarrays to use as input values.
         These arrays must be either float16, float32, or float64 arrays.
     :param n_tests: number of times to run the test
     :param rng: random number generator used to sample u, we test gradient
@@ -1609,7 +1609,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
     import theano.tensor
     from theano.tensor import as_tensor_variable, TensorType
     assert isinstance(pt, (list, tuple))
-    pt = [numpy.array(p) for p in pt]
+    pt = [np.array(p) for p in pt]
 
     for i, p in enumerate(pt):
         if p.dtype not in ('float16', 'float32', 'float64'):
@@ -1629,7 +1629,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
 
     if rng is None:
         raise TypeError(('rng should be a valid instance of '
-                        'numpy.random.RandomState. You may '
+                        'np.random.RandomState. You may '
                          'want to use theano.tests.unittest'
                          '_tools.verify_grad instead of '
                          'theano.gradient.verify_grad.'))
@@ -1672,7 +1672,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
     def random_projection():
         plain = rng.rand(*o_fn_out.shape) + 0.5
         if cast_to_output_type and o_output.dtype == "float32":
-            return numpy.array(plain, o_output.dtype)
+            return np.array(plain, o_output.dtype)
         return plain
 
     t_r = shared(random_projection())

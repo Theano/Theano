@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import unittest
 
-import numpy
+import numpy as np
 
 import theano
 from theano.tensor.utils import (hash_from_ndarray, shape_of_variables)
@@ -9,22 +9,22 @@ from theano.tensor.utils import (hash_from_ndarray, shape_of_variables)
 
 def test_hash_from_ndarray():
     hashs = []
-    rng = numpy.random.rand(5, 5)
+    rng = np.random.rand(5, 5)
 
-    for data in [-2, -1, 0, 1, 2, numpy.zeros((1, 5)), numpy.zeros((1, 6)),
+    for data in [-2, -1, 0, 1, 2, np.zeros((1, 5)), np.zeros((1, 6)),
                  # Data buffer empty but different shapes
-                 numpy.zeros((1, 0)), numpy.zeros((2, 0)),
+                 np.zeros((1, 0)), np.zeros((2, 0)),
                  # Same data buffer and shapes but different strides
-                 numpy.arange(25).reshape(5, 5),
-                 numpy.arange(25).reshape(5, 5).T,
+                 np.arange(25).reshape(5, 5),
+                 np.arange(25).reshape(5, 5).T,
                  # Same data buffer, shapes and strides but different dtypes
-                 numpy.zeros((5, 5), dtype="uint32"),
-                 numpy.zeros((5, 5), dtype="int32"),
+                 np.zeros((5, 5), dtype="uint32"),
+                 np.zeros((5, 5), dtype="int32"),
 
                  # Test slice
                  rng, rng[1:], rng[:4], rng[1:3], rng[::2], rng[::-1]
                  ]:
-        data = numpy.asarray(data)
+        data = np.asarray(data)
         hashs.append(hash_from_ndarray(data))
 
     assert len(set(hashs)) == len(hashs)
