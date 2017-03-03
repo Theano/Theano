@@ -403,9 +403,9 @@ class test_Eig(utt.InferShapeTester):
         super(test_Eig, self).setUp()
         self.rng = numpy.random.RandomState(utt.fetch_seed())
         self.A = theano.tensor.matrix(dtype=self.dtype)
-        X = numpy.asarray(self.rng.rand(5, 5),
+        self.X = numpy.asarray(self.rng.rand(5, 5),
                           dtype=self.dtype)
-        self.S = X.dot(X.T)
+        self.S = self.X.dot(self.X.T)
 
     def test_infer_shape(self):
         A = self.A
@@ -439,21 +439,19 @@ class test_Eigh(test_Eig):
                                   vl * numpy.sign(vl[0, :]))
 
     def test_grad(self):
-        S = self.S
-        utt.verify_grad(lambda x: self.op(x)[0], [S], rng=self.rng)
-        utt.verify_grad(lambda x: self.op(x)[1], [S], rng=self.rng, eps=1e-4)
-        utt.verify_grad(lambda x: self.op(x, 'U')[0], [S], rng=self.rng)
-        utt.verify_grad(lambda x: self.op(x, 'U')[1], [S], rng=self.rng, eps=1e-4)
+        X = self.X
+        utt.verify_grad(lambda x: self.op(x.dot(x.T))[0], [X], rng=self.rng)
+        utt.verify_grad(lambda x: self.op(x.dot(x.T))[1], [X], rng=self.rng)
+        utt.verify_grad(lambda x: self.op(x.dot(x.T), 'U')[0], [X], rng=self.rng)
+        utt.verify_grad(lambda x: self.op(x.dot(x.T), 'U')[1], [X], rng=self.rng)
 
 
 class test_Eigh_float32(test_Eigh):
     dtype = 'float32'
 
-    @utt.AttemptManyTimes(n_attempts=3, n_req_successes=2)
     def test_uplo(self):
         super(test_Eigh_float32, self).test_uplo()
 
-    @utt.AttemptManyTimes(n_attempts=3, n_req_successes=2)
     def test_grad(self):
         super(test_Eigh_float32, self).test_grad()
 
