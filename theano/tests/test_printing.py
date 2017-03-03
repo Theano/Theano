@@ -91,7 +91,7 @@ def test_pydotprint_profile():
         raise SkipTest('pydot not available')
 
     A = tensor.matrix()
-    prof = theano.compile.ProfileStats(atexit_print=False)
+    prof = theano.compile.ProfileStats(atexit_print=False, gpu_checks=False)
     f = theano.function([A], A + 1, profile=prof)
     theano.printing.pydotprint(f, print_output_file=False)
     f([[1]])

@@ -757,21 +757,6 @@ class VM_Linker(link.LocalLinker):
         associated to self, else, a new VM_Linker associated to fgraph.
 
         """
-        if ((config.profile or config.print_global_stats) and
-                ((hasattr(theano, 'sandbox') and
-                  hasattr(theano.sandbox, 'cuda') and
-                  theano.sandbox.cuda.cuda_enabled) or
-                 (hasattr(theano, 'gpuarray') and
-                  theano.gpuarray.pygpu_activated))):
-            if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
-                raise Exception(
-                    "You are running the Theano profiler with CUDA enabled."
-                    " Theano GPU ops execution is asynchronous by default."
-                    " So by default, the profile is useless."
-                    " You must set the environment variable"
-                    " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA driver to"
-                    " synchronize the execution to get a meaningful profile.")
-
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
