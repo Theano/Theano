@@ -251,8 +251,9 @@ class ProfileStats(object):
 
     # param is called flag_time_thunks because most other attributes with time
     # in the name are times *of* something, rather than configuration flags.
-    def __init__(self, atexit_print=True, flag_time_thunks=None, **kwargs):
-        if (config.profile and
+    def __init__(self, atexit_print=True, flag_time_thunks=None,
+                 gpu_checks=True, **kwargs):
+        if (config.profile and gpu_checks and
                 ((hasattr(theano, 'sandbox') and
                   hasattr(theano.sandbox, 'cuda') and
                   theano.sandbox.cuda.cuda_enabled) or (
@@ -266,7 +267,7 @@ class ProfileStats(object):
                     " You must set the environment variable"
                     " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA driver to"
                     " synchronize the execution to get a meaningful profile.")
-        if (config.profile and
+        if (config.profile and gpu_checks and
                 hasattr(theano, 'gpuarray') and
                 theano.gpuarray.pygpu_activated and
                 not config.profiling.ignore_first_call):
