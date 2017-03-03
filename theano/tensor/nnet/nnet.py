@@ -805,7 +805,7 @@ def softmax_graph(c):
 def softmax(c):
     c = as_tensor_variable(c)
     if c.broadcastable[-1]:
-        warnings.warn("The softmax is appllied on a dimension of shape 1, which doesn't have a semantic meaning.")
+        warnings.warn("The softmax is applied on a dimension of shape 1, which does not have a semantic meaning.")
     return softmax_op(c)
 
 
