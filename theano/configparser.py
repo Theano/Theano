@@ -98,9 +98,9 @@ class change_flags(object):
 
     Useful during tests.
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, args=[], **kwargs):
         confs = dict()
-        args = dict(*args)
+        args = dict(args)
         args.update(kwargs)
         for k in args:
             l = [v for v in theano.configparser._config_var_list
