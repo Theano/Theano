@@ -102,7 +102,6 @@ def _atexit_print_fn():
                         assert len(merge) == len(cum.optimizer_profile[1])
                         cum.optimizer_profile = (cum.optimizer_profile[0], merge)
                     except Exception as e:
-                        print("Got an exception while merging profile")
                         print(e)
                         cum.optimizer_profile = None
                 else:
@@ -178,7 +177,7 @@ class ProfileStats(object):
         self.apply_time = {}
         self.apply_callcount = {}
         # self.apply_cimpl = None
-        # self.messge = None
+        # self.message = None
     #
     # Note on implementation:
     # Class variables are used here so that each one can be
@@ -1472,7 +1471,8 @@ class ProfileStats(object):
             print("  Sorry, no tip for today.", file=file)
 
     def print_extra(self):
-        params = [None, None, None, None, self.apply_time, None, None, None, None]
+        params = [self.message, self.compile_time, self.fct_call_time,
+                  self.apply_time, self.apply_cimpl, self.output_size]
         for f in _profiler_printers:
             f(*params)
         

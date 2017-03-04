@@ -2868,17 +2868,21 @@ gof.ops_with_inner_function[Scan] = 'fn'
 
 
 @theano.compile.profiling.register_profiler_printer
-def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
-                    apply_time, apply_cimpl, message, outputs_size,
-                    other_time):
+def profile_printer(message, compile_time, fct_call_time, 
+                    apply_time, apply_cimpl, outputs_size):
     # Scan overhead profile
-    if any([isinstance(node.op, Scan) and v > 0 for (_, node), v in
+    if any([isinstance(node.op, Scan) and v > 0 for node, v in
             apply_time.items()]):
         print()
         print('Scan overhead:')
         print('<Scan op time(s)> <sub scan fct time(s)> <sub scan op '
               'time(s)> <sub scan fct time(% scan op time)> <sub scan '
               'op time(% scan op time)> <node>')
+
+        fct_call = set()
+        for node in apply_time.keys():
+            fct_call.add(node.fgraph)
+
         total_super_scan_time = 0
         total_scan_fct_time = 0
         total_scan_op_time = 0

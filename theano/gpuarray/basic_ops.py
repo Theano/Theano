@@ -1540,14 +1540,17 @@ class GpuSplit(HideC, Split):
 
 
 @theano.compile.profiling.register_profiler_printer
-def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
-                    apply_time, apply_cimpl, message, outputs_size,
-                    other_time):
-    if any([x[1].op.__class__.__name__.lower().startswith("gpu")
+def profile_printer(message, compile_time, fct_call_time, 
+                    apply_time, apply_cimpl, outputs_size):
+    if any([x.op.__class__.__name__.lower().startswith("gpu")
             for x in apply_time.keys()]):
         local_time = sum(apply_time.values())
         print()
         print('Some info useful for gpu:')
+
+        fct_call = set()
+        for node in apply_time.keys():
+            fct_call.add(node.fgraph)
 
         cpu = 0
         gpu = 0
