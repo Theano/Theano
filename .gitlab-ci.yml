@@ -1,4 +1,3 @@
-
 ######################################################
 ## Variables used by the test runs
 ######################################################
@@ -214,12 +213,11 @@ L1_convnet_benchmarks_pylearn2:
       TEST_WORK_DIR: "/opt/theano/qa/L1_convnet_benchmarks"
       TEST_SCRIPT: "./test-pylearn2.sh"
 
-L2_theano_nose:
+L2_self_test:
+    <<: *L2_TEST
+
+L2_nose_tests:
     <<: *L2_TEST
     variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L2_self_test/"
       TEST_SCRIPT: "./test-nose.sh"
-
-L2_run_tests_in_batch:
-    <<: *L2_TEST
-
-
