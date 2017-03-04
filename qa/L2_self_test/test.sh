@@ -10,6 +10,6 @@ THEANO_FLAGS="floatX=float32,device=cpu" theano-cache clear
 # THEANO_FLAGS="floatX=float32,device=cpu" theano-nose --verbose --exclude theano/sandbox/cuda
 
 # ignore failures for now
-python run_tests_in_batch.py
+THEANO_FLAGS="floatX=float32,device=cpu" python run_tests_in_batch.py
 
 exit ${STATUS}
