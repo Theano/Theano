@@ -1,10 +1,8 @@
-FROM nvdl.githost.io:4678/dgx/cuda:8.0-cudnn5.1-devel-ubuntu16.04--17.03
+FROM nvdl.githost.io:4678/dgx/cuda:8.0-cudnn6-devel-ubuntu16.04--17.03
 
 ENV THEANO_VERSION 0.9.0rc2
 LABEL com.nvidia.theano.version="${THEANO_VERSION}"
 ENV NVIDIA_THEANO_VERSION 17.03
-
-ENV GPUARRAY_FORCE_CUDA_DRIVER_LOAD YES
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
@@ -40,6 +38,8 @@ COPY docker-examples docker-examples
 COPY theanorc /workspace/.theanorc
 ENV THEANORC /workspace/.theanorc
 RUN chmod -R a+w /workspace
+
+ENV GPUARRAY_FORCE_CUDA_DRIVER_LOAD YES
 
 COPY nvidia_entrypoint.sh /usr/local/bin
 ENTRYPOINT ["/usr/local/bin/nvidia_entrypoint.sh"]
