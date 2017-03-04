@@ -198,6 +198,18 @@ handle_type = CDataType('cudnnHandle_t', 'cudnnDestroy',
                         lib_dirs=[config.dnn.library_path])
 
 
+def get_precision(precision, inputs):
+    if precision is None:
+        precision = theano.config.dnn.conv.precision
+    if precision == 'as_input' or precision == 'as_input_f32':
+        nprec = theano.scalar.upcast(*[i.dtype for i in inputs])
+        if nprec == 'float16' and precision == 'as_input_f32':
+            precision = 'float32'
+        else:
+            precision = nprec
+    return precision
+
+
 class DnnBase(COp):
 
     """
@@ -963,14 +975,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     """
 
     # Establish dtype in which to perform the computation of the convolution
-    if precision is None:
-        precision = theano.config.dnn.conv.precision
-    if precision == 'as_input' or precision == 'as_input_f32':
-        nprec = theano.scalar.upcast(img.dtype, kerns.dtype)
-        if nprec == 'float16' and precision == 'as_input_f32':
-            precision = 'float32'
-        else:
-            precision = nprec
+    precision = get_precision(precision, [img, kerns])
 
     if workmem is not None:
         if algo is not None:
@@ -1086,14 +1091,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     """
 
     # Establish dtype in which to perform the computation of the convolution
-    if precision is None:
-        precision = theano.config.dnn.conv.precision
-    if precision == 'as_input' or precision == 'as_input_f32':
-        nprec = theano.scalar.upcast(img.dtype, kerns.dtype)
-        if nprec == 'float16' and precision == 'as_input_f32':
-            precision = 'float32'
-        else:
-            precision = nprec
+    precision = get_precision(precision, [img, kerns])
 
     fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
     ctx_name = infer_context_name(img, kerns)
@@ -1159,7 +1157,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
 
 
 def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
-                   subsample=(1, 1), conv_mode='conv'):
+                   subsample=(1, 1), conv_mode='conv', precision=None):
     """
     TODO: document this
     """
@@ -1169,31 +1167,26 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
     img = gpu_contiguous(img)
     topgrad = gpu_contiguous(topgrad)
     kerns_shp = as_tensor_variable(kerns_shp)
+    precision = get_precision(precision, [img, topgrad])
+
     desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
-                             conv_mode=conv_mode)(kerns_shp)
+                             conv_mode=conv_mode, precision=precision)(
+                                 kerns_shp)
     out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(*kerns_shp)
     return gpu_dnn_conv_gradW()(img, topgrad, out, desc)
 
 
 def dnn_gradweight3d(img, topgrad, kerns_shp, border_mode='valid',
-                     subsample=(1, 1, 1), conv_mode='conv'):
+                     subsample=(1, 1, 1), conv_mode='conv', precision=None):
     """
-    TODO: document this
+    3d version of dnn_gradweight
     """
-    ctx_name = infer_context_name(img, topgrad)
-    img = as_gpuarray_variable(img, ctx_name)
-    topgrad = as_gpuarray_variable(topgrad, ctx_name)
-    img = gpu_contiguous(img)
-    topgrad = gpu_contiguous(topgrad)
-    kerns_shp = as_tensor_variable(kerns_shp)
-    desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
-                             conv_mode=conv_mode)(kerns_shp)
-    out = gpu_alloc_empty(ctx_name, dtype=img.dtype)(*kerns_shp)
-    return gpu_dnn_conv_gradW()(img, topgrad, out, desc)
+    return dnn_gradweight(img, topgrad, kerns_shp, border_mode,
+                          subsample, conv_mode, precision)
 
 
 def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
-                  subsample=(1, 1), conv_mode='conv'):
+                  subsample=(1, 1), conv_mode='conv', precision=None):
     """
     TODO: document this
     """
@@ -1203,27 +1196,22 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
     kerns = gpu_contiguous(kerns)
     topgrad = gpu_contiguous(topgrad)
     img_shp = as_tensor_variable(img_shp)
+    precision = get_precision(precision, [kerns, topgrad])
+
     desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
-                             conv_mode=conv_mode)(kerns.shape)
+                             conv_mode=conv_mode, precision=precision)(
+                                 kerns.shape)
     out = gpu_alloc_empty(ctx_name, kerns.dtype)(*img_shp)
     return gpu_dnn_conv_gradI()(kerns, topgrad, out, desc)
 
 
 def dnn_gradinput3d(kerns, topgrad, img_shp, border_mode='valid',
-                    subsample=(1, 1, 1), conv_mode='conv'):
+                    subsample=(1, 1, 1), conv_mode='conv', precision=None):
     """
-    TODO: document this
+    3d version of `dnn_gradinput`.
     """
-    ctx_name = infer_context_name(kerns, topgrad)
-    kerns = as_gpuarray_variable(kerns, ctx_name)
-    topgrad = as_gpuarray_variable(topgrad, ctx_name)
-    kerns = gpu_contiguous(kerns)
-    topgrad = gpu_contiguous(topgrad)
-    img_shp = as_tensor_variable(img_shp)
-    desc = gpu_dnn_conv_desc(border_mode=border_mode, subsample=subsample,
-                             conv_mode=conv_mode)(kerns.shape)
-    out = gpu_alloc_empty(ctx_name, kerns.dtype)(*img_shp)
-    return gpu_dnn_conv_gradI()(kerns, topgrad, out, desc)
+    return dnn_gradinput(kerns, topgrad, img_shp, border_mode, subsample,
+                         conv_mode, precision)
 
 
 class GpuDnnPoolDesc(Op):
