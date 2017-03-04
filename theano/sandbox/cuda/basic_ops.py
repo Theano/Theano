@@ -4,7 +4,6 @@ import logging
 import sys
 import warnings
 import numpy
-from six import iteritems
 from six.moves import StringIO, xrange
 
 import theano

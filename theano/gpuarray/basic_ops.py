@@ -18,6 +18,7 @@ from collections import deque
 
 from six import string_types, iterbytes
 from six.moves import xrange
+from six import iteritems
 
 try:
     import pygpu
@@ -1540,7 +1541,7 @@ class GpuSplit(HideC, Split):
 
 
 @theano.compile.profiling.register_profiler_printer
-def profile_printer(message, compile_time, fct_call_time, 
+def profile_printer(message, compile_time, fct_call_time,
                     apply_time, apply_cimpl, outputs_size):
     if any([x.op.__class__.__name__.lower().startswith("gpu")
             for x in apply_time.keys()]):

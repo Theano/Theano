@@ -147,10 +147,10 @@ def print_global_stats():
 
 
 _profiler_printers = []
-
 def register_profiler_printer(fct):
     _profiler_printers.append(fct)
     return fct
+
 
 class ProfileStats(object):
 
@@ -1475,7 +1475,8 @@ class ProfileStats(object):
                   self.apply_time, self.apply_cimpl, self.output_size]
         for f in _profiler_printers:
             f(*params)
-        
+
+
 class ScanProfileStats(ProfileStats):
     callcount = 0.0
     nbsteps = 0.0
