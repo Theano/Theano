@@ -8,5 +8,3 @@ gnumpy
 pydot
 Cython
 scikit-cuda
-
-
