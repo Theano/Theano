@@ -213,11 +213,13 @@ L1_convnet_benchmarks_pylearn2:
       TEST_WORK_DIR: "/opt/theano/qa/L1_convnet_benchmarks"
       TEST_SCRIPT: "./test-pylearn2.sh"
 
-L2_self_test:
+L2_self_test_verbose:
     <<: *L2_TEST
 
-L2_nose_tests:
-    <<: *L2_TEST
-    variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L2_self_test/"
-      TEST_SCRIPT: "./test-nose.sh"
+##
+## Same as the verbose test, except collects all the tests first and then
+## runs them in batches of 100 at a time, non-verbose
+##
+#L2_self_test_batches:
+#    <<: *L2_TEST
+#
