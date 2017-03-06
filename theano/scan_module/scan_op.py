@@ -2868,7 +2868,7 @@ gof.ops_with_inner_function[Scan] = 'fn'
 
 
 @theano.compile.profiling.register_profiler_printer
-def profile_printer(message, compile_time, fct_call_time, 
+def profile_printer(message, compile_time, fct_call_time,
                     apply_time, apply_cimpl, outputs_size):
     # Scan overhead profile
     if any([isinstance(node.op, Scan) and v > 0 for node, v in

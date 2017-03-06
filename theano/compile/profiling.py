@@ -147,6 +147,8 @@ def print_global_stats():
 
 
 _profiler_printers = []
+
+
 def register_profiler_printer(fct):
     _profiler_printers.append(fct)
     return fct
