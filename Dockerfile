@@ -7,6 +7,7 @@ ENV NVIDIA_THEANO_VERSION 17.03
 RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
         libopenblas-dev \
+	libboost-dev \
         python-dev \
         apt-utils && \
     rm -rf /var/lib/apt/lists/*

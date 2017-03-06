@@ -14,7 +14,7 @@ echo "=== Builing pycuda ..."
 cd ${THIS_DIR}/pycuda \
     && ./configure.py --cuda-root=${CUDA_HOME} --no-use-shipped-boost \
     && VERBOSE=1 make \
-    && ${SUDO} make install
+    && ${SUDO} make install || exit 1
 
 echo "=== Builing gpuarray ..."
 cd ${THIS_DIR}/libgpuarray \
