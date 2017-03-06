@@ -7,12 +7,6 @@ ENV NVIDIA_THEANO_VERSION 17.03
 RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
         libopenblas-dev \
-	libboost-dev \
-	libboost-python1.58-dev \
-        libboost-thread1.58-dev libboost-system1.58-dev libboost-chrono1.58-dev \
-	libboost-filesystem1.58-dev libboost-program-options1.58-dev \
-	libboost-random1.58-dev libboost-regex1.58-dev \
-	libboost-log1.58-dev libboost-date-time1.58-dev \ 
         python-dev \
         apt-utils && \
     rm -rf /var/lib/apt/lists/*
@@ -44,8 +38,6 @@ COPY docker-examples docker-examples
 COPY theanorc /workspace/.theanorc
 ENV THEANORC /workspace/.theanorc
 RUN chmod -R a+w /workspace
-
-ENV GPUARRAY_FORCE_CUDA_DRIVER_LOAD YES
 
 COPY nvidia_entrypoint.sh /usr/local/bin
 ENTRYPOINT ["/usr/local/bin/nvidia_entrypoint.sh"]

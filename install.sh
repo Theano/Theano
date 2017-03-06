@@ -12,7 +12,7 @@ cat requirement-rtd.txt | xargs -n1 ${SUDO} pip install --no-cache-dir || exit 1
 
 echo "=== Builing pycuda ..."
 cd ${THIS_DIR}/pycuda \
-    && ./configure.py --cuda-root=${CUDA_HOME} --no-use-shipped-boost \
+    && ./configure.py --cuda-root=${CUDA_HOME} \
     && VERBOSE=1 make \
     && ${SUDO} make install || exit 1
 
