@@ -128,9 +128,10 @@ AddConfigVar(
 
 AddConfigVar(
     'conv.assert_shape',
-    "If False, AbstractConv* ops won't add assert that verify that"
-    " the user provided shapes are also the one at run time",
-    BoolParam(True),
+    "If True, AbstractConv* ops will verify that user-provided"
+    " shapes match the runtime shapes (debugging option,"
+    " may slow down compilation)",
+    BoolParam(False),
     in_c_key=False)
 
 AddConfigVar(
