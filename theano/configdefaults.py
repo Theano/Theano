@@ -246,6 +246,16 @@ AddConfigVar('nvcc.fastmath',
              # if theano.sandbox.cuda is loaded or not.
              in_c_key=False)
 
+AddConfigVar('nvcc.cudafe',
+             "If 'always' (the default), cudafe will be called for every GPU"
+             " Op compilation. If 'heuristic', it will only be called if the"
+             " source code appears to contain CUDA code. This can speed up"
+             " compilation and importing theano, but might fail to compile"
+             " some custom GPU Ops.",
+             EnumStr('always', 'heuristic'),
+             # Not needed in c key, does not affect the compilation result.
+             in_c_key=False)
+
 AddConfigVar('gpuarray.sync',
              """If True, every op will make sure its work is done before
                 returning.  Setting this to True will slow down execution,

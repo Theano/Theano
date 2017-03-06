@@ -230,7 +230,19 @@ class NVCC_compiler(Compiler):
             if python_lib not in lib_dirs:
                 lib_dirs.append(python_lib)
 
-        cppfilename = os.path.join(location, 'mod.cu')
+        if (config.nvcc.cudafe == 'heuristic' and not
+            any(marker in src_code for marker in ("__global__", "__device__",
+                                                  "__host__", "<<<",
+                                                  "nvmatrix.cuh"))):
+            # only calls existing CUDA functions, can compile much faster
+            cppfilename = os.path.join(location, 'mod.cpp')
+            src_code = ("#include <cuda.h>\n"
+                        "#include <cuda_runtime_api.h>\n" +
+                        src_code)
+        else:
+            # contains CUDA host code or device functions, needs .cu extension
+            cppfilename = os.path.join(location, 'mod.cu')
+
         with open(cppfilename, 'w') as cppfile:
 
             _logger.debug('Writing module C++ code to %s', cppfilename)
