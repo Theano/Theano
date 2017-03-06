@@ -487,7 +487,7 @@ second dimension
             nfunc_spec = getattr(scalar_op, 'nfunc_spec', None)
         self.nfunc_spec = nfunc_spec
         if nfunc_spec:
-            self.nfunc = getattr(numpy, nfunc_spec[0])
+            self.nfunc = getattr(np, nfunc_spec[0])
 
         super(Elemwise, self).__init__(openmp=openmp)
 
@@ -504,7 +504,7 @@ second dimension
         self.nfunc = None
         self.inplace_pattern = frozendict(self.inplace_pattern)
         if getattr(self, 'nfunc_spec', None):
-            self.nfunc = getattr(numpy, self.nfunc_spec[0])
+            self.nfunc = getattr(np, self.nfunc_spec[0])
         elif 0 < self.scalar_op.nin < 32:
             self.ufunc = np.frompyfunc(self.scalar_op.impl,
                                           self.scalar_op.nin,
