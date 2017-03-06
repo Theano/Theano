@@ -19,7 +19,7 @@ import theano
 from theano import config
 
 import theano.gof.cc
-from six import itervalues
+from six import itervalues, PY3
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof.cmodule import GCC_compiler
@@ -33,6 +33,17 @@ __contact__ = "theano-dev <theano-dev@googlegroups.com>"
 __docformat__ = "restructuredtext en"
 
 _logger = logging.getLogger('theano.gof.op.Op')
+
+
+# Open file in "universal newline mode".
+# In Python 2, this is done by calling open(..., 'U'), but this is
+# deprected in Python 3 (where we would need to pass "newline=None",
+# which is the default).
+if PY3:
+    _open_u = open
+else:
+    def _open_u(file):
+        return open(file, 'U')
 
 
 class CLinkerObject(object):
@@ -1297,7 +1308,7 @@ class COp(Op):
         self.func_codes = []
         for func_file in func_files:
             # U (universal) will convert all new lines format to \n.
-            with open(func_file, 'U') as f:
+            with _open_u(func_file) as f:
                 self.func_codes.append(f.read())
 
         # If both the old section markers and the new section markers are
