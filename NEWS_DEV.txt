@@ -104,11 +104,10 @@ Others:
  - More stack trace in error message
  - Speed up cholesky grad
  - log(sum(exp(...))) now get stability optimized
- - Some useless optimizations are now marked as unsafe
 
 
 Other more detailed changes:
- - Faster compilation and import with old CUDA backend
+ - Added new Theano flag nvcc.cudafe to enable faster compilation and import with old CUDA back-end
  - Use of 64-bit indexing in sparse ops to allow matrix with more then 2\ :sup:`31`\ -1 elements.
  - Allow more then one output to be an destructive inplace
  - Add flag profiling.ignore_first_call, useful to profile the new gpu back-end

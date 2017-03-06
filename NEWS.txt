@@ -10,15 +10,15 @@ This release extends the 0.9.0rc2 and announces the upcoming final release 0.9.
 
 Highlights (since 0.9.0rc2):
  - Graph clean up and faster compilation
- - Removed warp-synchronous programming
  - New Theano flag conv.assert_shape
- - Fix precision in cuDNN
  - Fix overflow in pooling
- - Test fixes
- - Some useless optimizations are now marked as unsafe
  - Warn if taking softmax over broadcastable dimension
  - Removed old files not used anymore
+ - Test fixes and crash fixes
 
+ - New GPU back-end:
+
+   - Removed warp-synchronous programming, to get good results with newer CUDA drivers
 
 A total of 5 people contributed to this release since 0.9.0rc2 and 122 since 0.8.0, see the lists below.
 
