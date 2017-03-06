@@ -8,13 +8,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
         libopenblas-dev \
 	libboost-dev \
+	libboost-python1.58-dev \
+        libboost-thread1.58-dev libboost-system1.58-dev libboost-chrono1.58-dev \
+	libboost-filesystem1.58-dev libboost-program-options1.58-dev \
+	libboost-random1.58-dev libboost-regex1.58-dev \
+	libboost-log1.58-dev libboost-date-time1.58-dev \ 
         python-dev \
         apt-utils && \
     rm -rf /var/lib/apt/lists/*
 
 RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
     python get-pip.py && \
-    rm get-pip.py
+    rm -f get-pip.py
 
 RUN pip install --upgrade --no-cache-dir pip setuptools wheel
 
