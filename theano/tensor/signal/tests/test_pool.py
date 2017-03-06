@@ -19,7 +19,7 @@ from theano.tensor.signal.pool import (Pool, pool_2d, pool_3d,
                                        MaxPoolGrad, AveragePoolGrad,
                                        max_pool_2d_same_size,
                                        DownsampleFactorMaxGradGrad,
-                                       RoIPoolOp, RoIPoolGradOp)
+                                       RoIPoolOp)
 
 from theano import function
 
@@ -1231,9 +1231,8 @@ class TestRoIPool(utt.InferShapeTester):
                 def mp(input):
                     out, argmax = self.op_class(pool_heights[0], pool_widths[0], spatial_scales[0])(input, roi_theano)
                     return out
-                # Because the gradient is of double type
-                imval = rng.rand(*im_shp)
-                utt.verify_grad(mp, [imval], rng=rng)
+
+                utt.verify_grad(mp, [random_image], rng=rng)
 
     def test_infer_shape(self):
         rng = numpy.random.RandomState(utt.fetch_seed())

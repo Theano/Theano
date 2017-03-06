@@ -14,8 +14,8 @@ from six.moves import xrange
 import six.moves.builtins as builtins
 import theano
 from theano import gof, OpenMPOp, tensor, Variable, Apply
+
 from theano.gof import ParamsType, EnumList
-from theano.gradient import grad_undefined
 
 from theano.gradient import DisconnectedType
 from theano.scalar import bool as bool_t
@@ -2625,7 +2625,7 @@ class RoIPoolGradOp(gof.COp):
                             x2 = int(numpy.ceil((ix - x_start + 1) / row_length))
                             y1 = int(numpy.floor((jy - y_start) / col_length))
                             y2 = int(numpy.ceil((jy - y_start + 1) / col_length))
-                            interest_region = argmax[b_in, i, cn, y1 * x1 : y2 * x2]
+                            interest_region = argmax[b_in, i, cn, y1 * x1:y2 * x2]
                             mp_index = numpy.nonzero(interest_region == bottom_index)
                             if numpy.all([emp.size for emp in mp_index]):
                                 # Since mp_index is a tuple

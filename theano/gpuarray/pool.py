@@ -479,7 +479,7 @@ class GpuRoIPoolOp(CGpuKernelBase):
         maxout, argmax = self(data, roi)
         disc = [theano.gradient.DisconnectedType()() for i in inp[1:]]
         return [GpuRoIPoolGradOp(self.pooled_h, self.pooled_w,
-                              self.spatial_scale)(data, roi, gz1, argmax)] + disc
+                                 self.spatial_scale)(data, roi, gz1, argmax)] + disc
 
 
 class GpuRoIPoolGradOp(CGpuKernelBase):

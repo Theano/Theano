@@ -134,7 +134,7 @@ int APPLY_SPECIFIC(CPUFwd)(PyArrayObject* data,
 
 
 void APPLY_SPECIFIC(ROIPoolBackward)(
-    double* top_diff, float* argmax_data, double* bottom_diff,float* bottom_rois,
+    float* top_diff, float* argmax_data, float* bottom_diff,float* bottom_rois,
     int batch_n, int num_rois, float spatial_scale,
     int channels, int height, int width,
     int pooled_height, int pooled_width) {
@@ -145,8 +145,8 @@ void APPLY_SPECIFIC(ROIPoolBackward)(
     const int inp_bn = bn * channels * height * width;
     const int out_bn = bn * num_rois * channels * pooled_width * pooled_height;
     // Incrementing the input and output pointers by a batch
-    double* batch_grad = bottom_diff + inp_bn;
-    double* batch_out = top_diff + out_bn;
+    float* batch_grad = bottom_diff + inp_bn;
+    float* batch_out = top_diff + out_bn;
     float* batch_argmax = argmax_data + out_bn;
 
     for (int roi_n = 0; roi_n < num_rois; ++roi_n) {
@@ -167,10 +167,10 @@ void APPLY_SPECIFIC(ROIPoolBackward)(
         const int data_inc = c * height * width;
         const int out_channel_inc = c * pooled_height * pooled_width;
         // incrementing the output dimension pointers
-        double* channel_out = batch_out + out_channel_inc;
+        float* channel_out = batch_out + out_channel_inc;
         float* channel_argmax = batch_argmax + out_channel_inc;
         // increment input dimension pointers
-        double* channel_grad = batch_grad + data_inc;
+        float* channel_grad = batch_grad + data_inc;
 
         for (int h = 0; h < height; ++h){
           for(int w = 0; w < width; ++w){
@@ -251,7 +251,7 @@ int APPLY_SPECIFIC(CPUBackward)(PyArrayObject* data,
   }
 
   APPLY_SPECIFIC(ROIPoolBackward)(
-      (double *)PyArray_DATA(out_grad), (float *)PyArray_DATA(argmaxes),(double *)PyArray_DATA(*data_grad), (float *)PyArray_DATA(rois),
+      (float *)PyArray_DATA(out_grad), (float *)PyArray_DATA(argmaxes),(float *)PyArray_DATA(*data_grad), (float *)PyArray_DATA(rois),
       batch_n, num_rois, SPATIAL_SCALE, channels, height, width, POOLED_HEIGHT, POOLED_WIDTH);
 
   return 0;
