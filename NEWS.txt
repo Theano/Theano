@@ -10,7 +10,7 @@ This release extends the 0.9.0rc2 and announces the upcoming final release 0.9.
 
 Highlights (since 0.9.0rc2):
  - Graph clean up and faster compilation
- - New Theano flag conv.assert_shape to speed up compilation when we are not debugging
+ - New Theano flag conv.assert_shape to check user-provided shapes at runtime (for debugging)
  - Fix overflow in pooling
  - Warn if taking softmax over broadcastable dimension
  - Removed old files not used anymore
