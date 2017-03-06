@@ -695,10 +695,9 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.conv.assert_shape
 
-    If False, AbstractConv* ops won't add assert that verify that
-    the user provided shapes are also the one at run time.
-
-    This can speed up compilation time and/or execution time.
+    If True, AbstractConv* ops will verify that user-provided
+    shapes match the runtime shapes (debugging option,
+    may slow down compilation)
 
 .. attribute:: config.dnn.conv.workmem
 

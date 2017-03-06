@@ -128,9 +128,10 @@ AddConfigVar(
 
 AddConfigVar(
     'conv.assert_shape',
-    "If False, AbstractConv* ops won't add assert that verify that"
-    " the user provided shapes are also the one at run time",
-    BoolParam(True),
+    "If True, AbstractConv* ops will verify that user-provided"
+    " shapes match the runtime shapes (debugging option,"
+    " may slow down compilation)",
+    BoolParam(False),
     in_c_key=False)
 
 AddConfigVar(
@@ -244,6 +245,16 @@ AddConfigVar('nvcc.fastmath',
              # Not needed in c key as it is already added.
              # We remove it as we don't make the md5 of config to change
              # if theano.cuda is loaded or not.
+             in_c_key=False)
+
+AddConfigVar('nvcc.cudafe',
+             "If 'always' (the default), cudafe will be called for every GPU"
+             " Op compilation. If 'heuristic', it will only be called if the"
+             " source code appears to contain CUDA code. This can speed up"
+             " compilation and importing theano, but might fail to compile"
+             " some custom GPU Ops.",
+             EnumStr('always', 'heuristic'),
+             # Not needed in c key, does not affect the compilation result.
              in_c_key=False)
 
 AddConfigVar('gpuarray.sync',

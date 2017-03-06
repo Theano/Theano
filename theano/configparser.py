@@ -98,15 +98,17 @@ class change_flags(object):
 
     Useful during tests.
     """
-    def __init__(self, **kwargs):
+    def __init__(self, args=(), **kwargs):
         confs = dict()
-        for k in kwargs:
+        args = dict(args)
+        args.update(kwargs)
+        for k in args:
             l = [v for v in theano.configparser._config_var_list
                  if v.fullname == k]
             assert len(l) == 1
             confs[k] = l[0]
         self.confs = confs
-        self.new_vals = kwargs
+        self.new_vals = args
 
     def __call__(self, f):
         @wraps(f)
