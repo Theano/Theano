@@ -1841,6 +1841,11 @@ def test_local_useless_subtensor():
         f([[0, 1, 2], [3, 4, 5]])  # let debugmode test something
 
 
+def check_function_fgraph(x, output, mode, fgraph):
+    f = theano.function([x], output, mode=mode)
+    assert str(f.maker.fgraph) == fgraph
+
+
 def test_local_subtensor_remove_broadcastable_index():
     # testing local_subtensor_remove_broadcastable_index optimization
     #
@@ -1855,6 +1860,8 @@ def test_local_subtensor_remove_broadcastable_index():
     y3 = x.dimshuffle('x', 1, 'x', 0, 'x')
 
     # testing for cases that the optimzation should be applied
+    # and only a dimshuffle should be done, resulting in removing
+    # broadcastable dimensions with index 0 or -1.
     z1 = y1[:, 0, :]
     z2 = y1[:, -1, :]
     z3 = y2[0, :, :, -1]
@@ -1874,8 +1881,9 @@ def test_local_subtensor_remove_broadcastable_index():
     xn = rng.rand(5, 5)
     f(xn)
 
-    # testing for cases that the optimzation should not be applied
-    # to verify that other subtensor usage are passed without errors
+    # testing for cases that the optimzation should be applied
+    # and in addition to dimshuffle a subtensor should be used
+    # to keep the indices of the not-broadcastable dimensions.
     w1 = y1[3, 0, :]
     w2 = y1[2:4, -1, :]
     w3 = y2[0, :, 4:, -1]
@@ -1892,13 +1900,71 @@ def test_local_subtensor_remove_broadcastable_index():
     w14 = y3[-1, 2:4, 0, 1:5, -1]
     w15 = y3[-1, 0, -1, 0, -1]
     w16 = y3[0, 2, 0, 4, 0]
-    w17 = y3[:, 0, :, 1]
+    w17 = y3[0, 2:5, 0, 4, 0]
     w18 = y3[0, :, :, 2]
     w19 = y3[:, 2, 0]
-    w20 = y3[:, 3]
-    f2 = theano.function([x], [w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11,
-                               w12, w13, w14, w15, w16, w17, w18, w19, w20],
-                         mode=mode)
+    w20 = y3[0, -1]
+
+    fgaphs = ["[DeepCopyOp(Subtensor{int64}(x, Constant{3}))]",
+              "[DeepCopyOp(Subtensor{int64:int64:}(x, Constant{2}, "
+              "Constant{4}))]",
+              "[DeepCopyOp(Subtensor{::, int64::}(InplaceDimShuffle{1,0}(x), "
+              "Constant{4}))]",
+              "[DeepCopyOp(Subtensor{::, ::, int64}(InplaceDimShuffle{x,1,0}(x), "
+              "Constant{0}))]",
+              "[DeepCopyOp(Subtensor{int64:int64:}(InplaceDimShuffle{1,0}(x), "
+              "Constant{2}, Constant{4}))]",
+              "[DeepCopyOp(Subtensor{int64}(InplaceDimShuffle{1,0}(x), "
+              "Constant{-1}))]",
+              "[DeepCopyOp(Subtensor{int64::}(InplaceDimShuffle{1,0}(x), "
+              "Constant{4}))]",
+              "[DeepCopyOp(Subtensor{::, :int64:}(InplaceDimShuffle{1,0}(x), "
+              "Constant{3}))]",
+              "[DeepCopyOp(Subtensor{::, int64}(InplaceDimShuffle{1,0}(x), "
+              "Constant{-1}))]",
+              "[DeepCopyOp(Subtensor{int64}(InplaceDimShuffle{1,0}(x), "
+              "Constant{2}))]",
+              "[DeepCopyOp(Subtensor{int64}(InplaceDimShuffle{1,0}(x), "
+              "Constant{0}))]",
+              "[DeepCopyOp(Subtensor{::, int64}(InplaceDimShuffle{1,0}(x), "
+              "Constant{-1}))]",
+              "[DeepCopyOp(Subtensor{int64}(InplaceDimShuffle{1,0}(x), "
+              "Constant{0}))]",
+              "[DeepCopyOp(Subtensor{int64:int64:, int64:int64:}(InplaceDimShuf"
+              "fle{1,0}(x), Constant{2}, Constant{4}, Constant{1}, Constant{5}))]",
+              "[DeepCopyOp(Subtensor{int64, int64}(InplaceDimShuffle{1,0}(x), "
+              "Constant{0}, Constant{0}))]",
+              "[DeepCopyOp(Subtensor{int64, int64}(InplaceDimShuffle{1,0}(x), "
+              "Constant{2}, Constant{4}))]",
+              "[DeepCopyOp(Subtensor{int64:int64:, int64}(InplaceDimShuffle"
+              "{1,0}(x), Constant{2}, Constant{5}, Constant{4}))]",
+              "[DeepCopyOp(Subtensor{::, ::, int64}(InplaceDimShuffle{1,x,0,x}"
+              "(x), Constant{2}))]",
+              "[DeepCopyOp(Subtensor{::, int64}(InplaceDimShuffle{x,1,0,x}(x), "
+              "Constant{2}))]",
+              "[DeepCopyOp(Subtensor{int64}(InplaceDimShuffle{1,x,0,x}(x), "
+              "Constant{-1}))]"]
+
+    ouputs = [w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11,
+              w12, w13, w14, w15, w16, w17, w18, w19, w20]
+
+    for output, fgraph in zip(ouputs, fgaphs):
+        check_function_fgraph(x, output, mode, fgraph)
+
+    # testing for cases that the optimzation should not be applied
+    # to verify that other subtensor usage are passed without errors.
+    w21 = y3[:, 0, :, 1]
+    w22 = y3[:, 3]
+    w23 = y3[:, 2:4, :, 3:5, :]
+    w24 = y3[:, :, :, :, :]
+    w25 = y3[:, :2:2, :, :3:3, :]
+    w26 = y3[:, 1::3, :, 2:3, :]
+    w27 = y2[:, 1:3:2, 2:6:1, :]
+    w28 = y2[:, 1, :]
+    w29 = y2[:, 0]
+    w30 = y2[:, -1]
+    f2 = theano.function([x], [w21, w22, w23, w24, w25, w26, w27, w28, w28,
+                               w29, w30], mode=mode)
     f2(xn)
 
 

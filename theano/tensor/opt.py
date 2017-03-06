@@ -1959,25 +1959,35 @@ def local_subtensor_remove_broadcastable_index(node):
         return
 
     remove_dim = []
+    kept_indices = []
+    kept_indices_values = []
     node_inputs_idx = 1
     for dim, elem in enumerate(idx):
         if isinstance(elem, (scalar.Scalar)):
             # The idx is a Scalar, ie a Type. This means the actual index
-            # is contained in node.inputs[1]
+            # is contained in node.inputs[node_inputs_idx]
             dim_index = node.inputs[node_inputs_idx]
+            node_inputs_idx += 1
             if type(dim_index) == theano.scalar.basic.ScalarConstant:
                 dim_index = dim_index.value
             if dim_index in [0, -1] and node.inputs[0].broadcastable[dim]:
                 remove_dim.append(dim)
-                node_inputs_idx += 1
             else:
-                return
+                kept_indices.append(elem)
+                kept_indices_values.append(dim_index)
         elif isinstance(elem, slice):
-            if elem != slice(None):
-                return
+            kept_indices.append(elem)
+            for slice_part in [elem.start, elem.stop, elem.step]:
+                if slice_part is not None:
+                    value = node.inputs[node_inputs_idx]
+                    node_inputs_idx += 1
+                    kept_indices_values.append(value)
         elif isinstance(elem, (integer_types, numpy.integer)):
             if elem in [0, -1] and node.inputs[0].broadcastable[dim]:
                 remove_dim.append(dim)
+            else:
+                kept_indices.append(elem)
+                kept_indices_values.append(elem)
         else:
             raise TypeError('case not expected')
 
@@ -1986,7 +1996,13 @@ def local_subtensor_remove_broadcastable_index(node):
     else:
         all_dim = range(node.inputs[0].ndim)
         remain_dim = [x for x in all_dim if x not in remove_dim]
-        return [node.inputs[0].dimshuffle(tuple(remain_dim))]
+        reduced_var = node.inputs[0].dimshuffle(tuple(remain_dim))
+        if all(elem == slice(None, None, None) for elem in kept_indices):
+            return [reduced_var]
+        else:
+            subtens = Subtensor(kept_indices)
+            out = subtens(reduced_var, *kept_indices_values)
+            return [out]
 
 
 @register_specialize
