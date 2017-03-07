@@ -7,20 +7,17 @@ ENV NVIDIA_THEANO_VERSION 17.03
 RUN apt-get update && apt-get install -y --upgrade --no-install-recommends \
         cmake \
         exuberant-ctags \
-	gfortran \
-        libopenblas-base libopenblas-dev \
-        python-numpy python-scipy \
-        python-pydot \
-        python-dev \
-        python-pip python-nose \
-        apt-utils && \
-        ldconfig
+        gfortran \
+        graphviz \
+        libopenblas-dev \
+        python-dev && \
+    rm -rf /var/lib/apt/lists/* 
 
-RUN rm -rf /var/lib/apt/lists/* 
+RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
+    python get-pip.py && \
+    rm get-pip.py
 
 RUN pip install --upgrade --no-cache-dir pip setuptools wheel
-
-RUN ldconfig
 
 ARG NVIDIA_BUILD_ID
 ENV NVIDIA_BUILD_ID ${NVIDIA_BUILD_ID:-<unknown>}
