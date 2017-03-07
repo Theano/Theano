@@ -20,3 +20,6 @@
 [submodule "pycuda"]
 	path = pycuda
 	url = https://github.com/inducer/pycuda
+[submodule "skcuda"]
+	path = skcuda
+	url = https://github.com/lebedov/scikit-cuda.git

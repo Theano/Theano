@@ -1994,7 +1994,8 @@ class _RNNDescriptor(DnnBase):
         hidden_size = as_i32(hidden_size)
         num_layers = as_i32(num_layers)
 
-        assert 5000 <= version(), "Constants only work for cudnn 5+"
+        if version() < 5005:
+            raise RuntimeError("cudnn RNN require cudnn v5 final or higher.")
 
         if input_mode == 'linear':
             input_mode = as_i32(0)
