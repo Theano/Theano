@@ -4,22 +4,22 @@ ENV THEANO_VERSION 0.9.0rc3
 LABEL com.nvidia.theano.version="${THEANO_VERSION}"
 ENV NVIDIA_THEANO_VERSION 17.03
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --upgrade --no-install-recommends \
         cmake \
 	exuberant-ctags \
-        libopenblas-dev \
-	cuda-cusolver-8-0 \
-	cuda-cusolver-dev-8-0 \
+	libopenblas-base libopenblas-dev \
+	cuda-cusolver-8-0 cuda-cusolver-dev-8-0 \
 	python-numpy python-scipy \
+	python-pydot \
         python-dev \
+        python-pip python-nose \
         apt-utils && \
+	ldconfig && \
     rm -rf /var/lib/apt/lists/*
 
-RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
-    python get-pip.py && \
-    rm -f get-pip.py
-
 RUN pip install --upgrade --no-cache-dir pip setuptools wheel
+
+RUN ldconfig
 
 ARG NVIDIA_BUILD_ID
 ENV NVIDIA_BUILD_ID ${NVIDIA_BUILD_ID:-<unknown>}
