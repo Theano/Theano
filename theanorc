@@ -1,13 +1,16 @@
 [global]
 base_compiledir=/tmp/theano
 
-# ’gpu0[1…]’ in context of ‘config.device’ corresponds to  old ‘sandbox/cuda’ backend  (config.cuda or [cuda] below)
+# "gpu0..." in context of "config.device" corresponds to  old "sandbox/cuda’ backend  (config.cuda or [cuda] below)
 # device=gpu0 # example of old config
 
 # ’device=cuda’ in context of ‘config. or [global]’ corresponds to  new ‘gpuarray’ backend 
 # (config.gpuarray or [gpuarray] below)
 device=cuda
 floatX=float32
+
+[blas]
+ldflags = -L/usr/lib/openblas-base -L/usr/lib/openblas -lopenblas -gfortran
 
 [dnn]
 enabled=True
@@ -17,11 +20,11 @@ enabled=True
 # [cuda]
 # enabled=False
 
-# this is new 'gpuarray' backend (device=cuda in global section above)
-[gpuarray]
+# this is new "gpuarray" backend (device=cuda in global section above)
 # Using CNmem at 0.9 with gpuarray backend breaks some tests. 
-# Disabling for now.
-# preallocate=0.9
+[gpuarray]
+preallocate=0.7
+
 single_stream=False
 
 [nvcc]
