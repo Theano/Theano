@@ -10,7 +10,7 @@ device=cuda
 floatX=float32
 
 [blas]
-ldflags = -L/usr/lib/openblas-base -L/usr/lib/openblas -lopenblas -gfortran
+ldflags = -lopenblas -gfortran
 
 [dnn]
 enabled=True

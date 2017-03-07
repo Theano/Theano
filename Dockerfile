@@ -7,6 +7,7 @@ ENV NVIDIA_THEANO_VERSION 17.03
 RUN apt-get update && apt-get install -y --upgrade --no-install-recommends \
         cmake \
         exuberant-ctags \
+	gfortran \
         libopenblas-base libopenblas-dev \
         python-numpy python-scipy \
         python-pydot \
