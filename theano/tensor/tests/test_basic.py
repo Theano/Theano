@@ -1721,8 +1721,10 @@ if imported_scipy_special:
     expected_chi2sf = scipy.stats.chi2.sf
     expected_j0 = scipy.special.j0
     expected_j1 = scipy.special.j1
+    expected_jv = scipy.special.jv
     expected_i0 = scipy.special.i0
     expected_i1 = scipy.special.i1
+    expected_iv = scipy.special.iv
     skip_scipy = False
     expected_erfcx = scipy.special.erfcx
 else:
@@ -1737,8 +1739,10 @@ else:
     expected_chi2sf = []
     expected_j0 = []
     expected_j1 = []
+    expected_jv = []
     expected_i0 = []
     expected_i1 = []
+    expected_iv = []
     skip_scipy = "scipy is not present"
 
 ErfTester = makeBroadcastTester(
@@ -1928,6 +1932,7 @@ J0Tester = makeBroadcastTester(
     eps=2e-10,
     mode=mode_no_scipy,
     skip=skip_scipy)
+
 J0InplaceTester = makeBroadcastTester(
     op=inplace.j0_inplace,
     expected=expected_j0,
@@ -1945,10 +1950,40 @@ J1Tester = makeBroadcastTester(
     eps=2e-10,
     mode=mode_no_scipy,
     skip=skip_scipy)
+
 J1InplaceTester = makeBroadcastTester(
     op=inplace.j1_inplace,
     expected=expected_j1,
     good=_good_broadcast_unary_j,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy)
+
+_good_broadcast_binary_jv = dict(
+    normal=(rand_ranged(-5, 5, (2, 3)),
+            rand_ranged(0.1, 8, (2, 3))),
+    empty=(numpy.asarray([], dtype=config.floatX),
+           numpy.asarray([], dtype=config.floatX)),
+    integers=(randint_ranged(-5, 5, (2, 3)),
+              randint_ranged(1, 8, (2, 3))),
+    uint8=(randint_ranged(-5, 5, (2, 3)).astype('uint8'),
+           randint_ranged(1, 8, (2, 3)).astype('uint8')),
+    uint16=(randint_ranged(-5, 5, (2, 3)).astype('uint16'),
+            randint_ranged(1, 8, (2, 3)).astype('uint16')))
+
+JvTester = makeBroadcastTester(
+    op=tensor.jv,
+    expected=expected_jv,
+    good=_good_broadcast_binary_jv,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    skip=skip_scipy)
+
+JvInplaceTester = makeBroadcastTester(
+    op=inplace.jv_inplace,
+    expected=expected_jv,
+    good=_good_broadcast_binary_jv,
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True,
@@ -1959,8 +1994,7 @@ _good_broadcast_unary_i = dict(
     empty=(numpy.asarray([], dtype=config.floatX),),
     int=(randint_ranged(-10, 10, (2, 3)),),
     uint8=(randint_ranged(0, 10, (2, 3)).astype('uint8'),),
-    uint16=(randint_ranged(0, 10, (2, 3)).astype('uint16'),)
-)
+    uint16=(randint_ranged(0, 10, (2, 3)).astype('uint16'),))
 
 I0Tester = makeBroadcastTester(
     op=tensor.i0,
@@ -1973,7 +2007,7 @@ I0Tester = makeBroadcastTester(
 
 I0InplaceTester = makeBroadcastTester(
     op=inplace.i0_inplace,
-    expected=expected_j0,
+    expected=expected_i0,
     good=_good_broadcast_unary_i,
     grad=_good_broadcast_unary_i,
     eps=2e-10,
@@ -1993,6 +2027,35 @@ I1InplaceTester = makeBroadcastTester(
     op=inplace.i1_inplace,
     expected=expected_i1,
     good=_good_broadcast_unary_i,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy)
+
+_good_broadcast_binary_iv = dict(
+    normal=(rand_ranged(-5, 5, (2, 3)),
+            rand_ranged(-10, 10, (2, 3))),
+    empty=(numpy.asarray([], dtype=config.floatX),
+           numpy.asarray([], dtype=config.floatX)),
+    integers=(randint_ranged(-5, 5, (2, 3)),
+              randint_ranged(-10, 10, (2, 3))),
+    uint8=(randint_ranged(-5, 5, (2, 3)).astype('uint8'),
+           randint_ranged(-10, 10, (2, 3)).astype('uint8')),
+    uint16=(randint_ranged(-5, 5, (2, 3)).astype('uint16'),
+            randint_ranged(-10, 10, (2, 3)).astype('uint16')))
+
+IvTester = makeBroadcastTester(
+    op=tensor.iv,
+    expected=expected_iv,
+    good=_good_broadcast_binary_iv,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    skip=skip_scipy)
+
+IvInplaceTester = makeBroadcastTester(
+    op=inplace.iv_inplace,
+    expected=expected_iv,
+    good=_good_broadcast_binary_iv,
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True,

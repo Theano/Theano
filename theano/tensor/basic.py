@@ -2300,23 +2300,33 @@ def chi2sf(x, k):
 
 
 @_scal_elemwise
-def j0(a):
-    """Bessel function of the 0'th kind"""
+def j0(x):
+    """Bessel function of the first kind of order 0."""
 
 
 @_scal_elemwise
-def j1(a):
-    """Bessel function of the 1'th kind"""
+def j1(x):
+    """Bessel function of the first kind of order 1."""
 
 
 @_scal_elemwise
-def i0(a):
-    """Modified Bessel function of order 0."""
+def jv(v, x):
+    """Bessel function of the first kind of order v (real)."""
 
 
 @_scal_elemwise
-def i1(a):
-    "Modified Bessel function of order 1."
+def i0(x):
+    """Modified Bessel function of the first kind of order 0."""
+
+
+@_scal_elemwise
+def i1(x):
+    """Modified Bessel function of the first kind of order 1."""
+
+
+@_scal_elemwise
+def iv(v, x):
+    """Modified Bessel function of the first kind of order v (real)."""
 
 
 @_scal_elemwise
