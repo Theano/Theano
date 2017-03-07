@@ -220,6 +220,5 @@ L2_self_test_verbose:
 ## Same as the verbose test, except collects all the tests first and then
 ## runs them in batches of 100 at a time, non-verbose
 ##
-#L2_self_test_batches:
-#    <<: *L2_TEST
-#
+L2_self_test_batches:
+    <<: *L2_TEST
