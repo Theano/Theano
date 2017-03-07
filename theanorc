@@ -10,7 +10,8 @@ device=cuda
 floatX=float32
 
 [blas]
-ldflags = -L/usr/lib/openblas-base -L/usr/lib/openblas -lopenblas -gfortran
+ldflags=
+#-lopenblas
 
 [dnn]
 enabled=True
@@ -21,12 +22,9 @@ enabled=True
 # enabled=False
 
 # this is new "gpuarray" backend (device=cuda in global section above)
-# Using CNmem at 0.9 with gpuarray backend breaks some tests. 
 [gpuarray]
-preallocate=0.7
+preallocate=0.9
 
-single_stream=False
 
 [nvcc]
-fastmath=True
 flags=-D_FORCE_INLINES
