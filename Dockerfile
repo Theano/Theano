@@ -6,9 +6,11 @@ ENV NVIDIA_THEANO_VERSION 17.03
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
+	exuberant-ctags \
         libopenblas-dev \
 	cuda-cusolver-8-0 \
 	cuda-cusolver-dev-8-0 \
+	python-numpy python-scipy \
         python-dev \
         apt-utils && \
     rm -rf /var/lib/apt/lists/*
