@@ -6,16 +6,16 @@ ENV NVIDIA_THEANO_VERSION 17.03
 
 RUN apt-get update && apt-get install -y --upgrade --no-install-recommends \
         cmake \
-	exuberant-ctags \
-	libopenblas-base libopenblas-dev \
-	cuda-cusolver-8-0 cuda-cusolver-dev-8-0 \
-	python-numpy python-scipy \
-	python-pydot \
+        exuberant-ctags \
+        libopenblas-base libopenblas-dev \
+        python-numpy python-scipy \
+        python-pydot \
         python-dev \
         python-pip python-nose \
         apt-utils && \
-	ldconfig && \
-    rm -rf /var/lib/apt/lists/*
+        ldconfig
+
+RUN rm -rf /var/lib/apt/lists/* 
 
 RUN pip install --upgrade --no-cache-dir pip setuptools wheel
 
@@ -32,8 +32,7 @@ COPY . .
 
 RUN MAKEFLAGS="-j$(nproc)" \
     PREFIX=/usr/local \
-    ./install.sh && \
-    ldconfig
+    ./install.sh 
 
 WORKDIR /workspace
 COPY NVREADME.md README.md
