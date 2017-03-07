@@ -13,9 +13,10 @@
 [submodule "libgpuarray"]
 	path = libgpuarray
 	url = https://github.com/Theano/libgpuarray.git
-[submodule "pycuda"]
-	path = pycuda
-	url = https://github.com/inducer/pycuda
-[submodule "skcuda"]
-	path = skcuda
+[submodule "third_party/scikit-cuda"]
+	path = third_party/scikit-cuda
 	url = https://github.com/lebedov/scikit-cuda.git
+	branch = master
+[submodule "third_party/pycuda"]
+	path = third_party/pycuda
+	url = https://github.com/inducer/pycuda
