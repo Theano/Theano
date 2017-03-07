@@ -16,7 +16,7 @@ Windows Installation Instructions
 
 .. comment: Requirements, optional requirements and installation of miniconda.
 .. include:: requirements.inc
-    :end-line: 58
+    :end-line: 74
 
 Install requirements and optional packages
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -90,7 +90,7 @@ theano
 .. comment: Installation instructions for theano for stable version.
 .. include:: install_generic.inc
     :start-line: 11
-    :end-line: 28
+    :end-line: 29
 
 libgpuarray
 :::::::::::

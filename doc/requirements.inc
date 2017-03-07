@@ -11,6 +11,8 @@ Requirements
 .. _dvipng: http://savannah.nongnu.org/projects/dvipng/
 .. _NVIDIA CUDA drivers and SDK: http://developer.nvidia.com/object/gpucomputing.html
 .. _libgpuarray: http://deeplearning.net/software/libgpuarray/installation.html
+.. _pycuda: https://mathema.tician.de/software/pycuda/
+.. _skcuda: http://scikit-cuda.readthedocs.io/en/latest/
 
     Python_ == 2.7 or >= 3.3
         The development package (python-dev or
@@ -26,7 +28,7 @@ Requirements
         Only currently required for sparse matrix and special functions support, but highly recommended. SciPy >=0.8 could work, but earlier versions have known bugs with sparse matrices.
 
     `BLAS`_ installation (with Level 3 functionality)
-        * **Recommended**: MKL, which is free through Conda. 
+        * **Recommended**: MKL, which is free through Conda.
         * Alternatively, we suggest to install OpenBLAS, with the development headers (``-dev``, ``-devel``, depending on your Linux distribution).
 
 **Optional requirements**
@@ -50,7 +52,6 @@ Requirements
         Required for GPU/CPU code generation on CUDA and OpenCL devices (see: :ref:`gpuarray`).
 
     `pycuda`_ and `skcuda`_
-
         Required for some extra operations on the GPU like fft and
         solvers. We use them to wrap cufft and cusolver. Quick install
         ``pip install pycuda scikit-cuda``. For cuda 8, the dev
