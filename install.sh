@@ -16,6 +16,10 @@ cd ${THIS_DIR}/pycuda \
     && VERBOSE=1 make \
     && ${SUDO} make install || exit 1
 
+echo "=== Builing skcuda ..."
+cd ${THIS_DIR}/skcuda \
+    && ${SUDO} python setup.py install || exit 1
+
 echo "=== Builing gpuarray ..."
 cd ${THIS_DIR}/libgpuarray \
     && cmake -E make_directory build && cd build \

@@ -1,12 +1,14 @@
 FROM nvdl.githost.io:4678/dgx/cuda:8.0-cudnn5.1-devel-ubuntu16.04--17.03
 
-ENV THEANO_VERSION 0.9.0rc2
+ENV THEANO_VERSION 0.9.0rc3
 LABEL com.nvidia.theano.version="${THEANO_VERSION}"
 ENV NVIDIA_THEANO_VERSION 17.03
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         cmake \
         libopenblas-dev \
+	cuda-cusolver-8-0 \
+	cuda-cusolver-dev-8-0 \
         python-dev \
         apt-utils && \
     rm -rf /var/lib/apt/lists/*
@@ -27,7 +29,6 @@ WORKDIR /opt/theano
 COPY . .
 
 RUN MAKEFLAGS="-j$(nproc)" \
-    THEANO_CUDA_ARCH_LIST="3.5 5.2 6.0 6.1+PTX" \
     PREFIX=/usr/local \
     ./install.sh && \
     ldconfig
