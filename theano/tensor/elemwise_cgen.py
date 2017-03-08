@@ -218,7 +218,7 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub, openmp=None):
             forloop = """#pragma omp parallel for if( %(suitable_n)s >=%(openmp_elemwise_minsize)s)\n""" % locals()
         else:
             forloop = ""
-        forloop += """for (int %(iterv)s = 0; %(iterv)s<%(suitable_n)s; %(iterv)s++)""" % locals()
+        forloop += """for (npy_intp %(iterv)s = 0; %(iterv)s<%(suitable_n)s; %(iterv)s++)""" % locals()
         return"""
         %(preloop)s
         %(forloop)s {
@@ -280,7 +280,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
     for i, index in enumerate(init_loop_orders[olv_index]):
         if index != 'x':
             order_loops += """
-            %(ovar)s_loops_it->first = abs(PyArray_STRIDES(%(ovar)s)[%(index)i]);
+            %(ovar)s_loops_it->first = llabs(PyArray_STRIDES(%(ovar)s)[%(index)i]);
             """ % locals()
         else:
             # Stride is 0 when dimension is broadcastable
@@ -320,7 +320,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
         totals.append(total)
 
     declare_totals = """
-    int init_totals[%(nnested)s] = {%(totals)s};
+    npy_intp init_totals[%(nnested)s] = {%(totals)s};
     """ % dict(nnested=nnested,
                totals=', '.join(totals))
 
@@ -501,7 +501,7 @@ def make_loop_careduce(loop_orders, dtypes, loop_tasks, sub):
                 suitable_n = "%(var)s_n%(index)s" % locals()
         return """
         %(preloop)s
-        for (int %(iterv)s = %(suitable_n)s; %(iterv)s; %(iterv)s--) {
+        for (npy_intp %(iterv)s = %(suitable_n)s; %(iterv)s; %(iterv)s--) {
             %(code)s
             %(update)s
         }
