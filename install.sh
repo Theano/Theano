@@ -24,9 +24,7 @@ echo "=== Building gpuarray ..."
 cd ${THIS_DIR}/libgpuarray \
     && cmake -E make_directory build \
     && cd build \
-    && cmake .. -DCMAKE_BUILD_TYPE=Release \
-         -DCMAKE_INSTALL_PREFIX="${PREFIX}" -DCUDA_ARCH_NAME=Manual \
-         -DCUDA_ARCH_BIN="35 52 60 61" -DCUDA_ARCH_PTX="61" \
+    && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
     && VERBOSE=1 ${SUDO} ${MAKE} ${MAKEFLAGS} install \
     && cd .. \
     && ${SUDO} pip install . \
