@@ -1921,14 +1921,33 @@ Chi2SFInplaceTester = makeBroadcastTester(
     skip=skip_scipy,
     name='Chi2SF')
 
-_good_broadcast_unary_j = dict(
-    normal=(rand_ranged(0.1, 8, (2, 3)),),)
+_good_broadcast_unary_bessel = dict(
+    normal=(rand_ranged(-10, 10, (2, 3)),),
+    empty=(numpy.asarray([], dtype=config.floatX),),
+    int=(randint_ranged(-10, 10, (2, 3)),),
+    uint8=(randint_ranged(0, 10, (2, 3)).astype('uint8'),),
+    uint16=(randint_ranged(0, 10, (2, 3)).astype('uint16'),))
+
+_grad_broadcast_unary_bessel = dict(
+    normal=(rand_ranged(-10., 10., (2, 3)),),)
+
+_good_broadcast_binary_bessel = dict(
+    normal=(rand_ranged(-5, 5, (2, 3)),
+            rand_ranged(0, 10, (2, 3))),
+    empty=(numpy.asarray([], dtype=config.floatX),
+           numpy.asarray([], dtype=config.floatX)),
+    integers=(randint_ranged(-5, 5, (2, 3)),
+              randint_ranged(-10, 10, (2, 3))),
+    uint8=(randint_ranged(0, 5, (2, 3)).astype('uint8'),
+           randint_ranged(0, 10, (2, 3)).astype('uint8')),
+    uint16=(randint_ranged(0, 5, (2, 3)).astype('uint16'),
+            randint_ranged(0, 10, (2, 3)).astype('uint16')))
 
 J0Tester = makeBroadcastTester(
     op=tensor.j0,
     expected=expected_j0,
-    good=_good_broadcast_unary_j,
-    grad=_good_broadcast_unary_j,
+    good=_good_broadcast_unary_bessel,
+    grad=_grad_broadcast_unary_bessel,
     eps=2e-10,
     mode=mode_no_scipy,
     skip=skip_scipy)
@@ -1936,8 +1955,8 @@ J0Tester = makeBroadcastTester(
 J0InplaceTester = makeBroadcastTester(
     op=inplace.j0_inplace,
     expected=expected_j0,
-    good=_good_broadcast_unary_j,
-    grad=_good_broadcast_unary_j,
+    good=_good_broadcast_unary_bessel,
+    grad=_grad_broadcast_unary_bessel,
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True,
@@ -1946,7 +1965,8 @@ J0InplaceTester = makeBroadcastTester(
 J1Tester = makeBroadcastTester(
     op=tensor.j1,
     expected=expected_j1,
-    good=_good_broadcast_unary_j,
+    good=_good_broadcast_unary_bessel,
+    grad=_grad_broadcast_unary_bessel,
     eps=2e-10,
     mode=mode_no_scipy,
     skip=skip_scipy)
@@ -1954,28 +1974,17 @@ J1Tester = makeBroadcastTester(
 J1InplaceTester = makeBroadcastTester(
     op=inplace.j1_inplace,
     expected=expected_j1,
-    good=_good_broadcast_unary_j,
+    good=_good_broadcast_unary_bessel,
+    grad=_grad_broadcast_unary_bessel,
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True,
     skip=skip_scipy)
 
-_good_broadcast_binary_jv = dict(
-    normal=(rand_ranged(-5, 5, (2, 3)),
-            rand_ranged(0.1, 8, (2, 3))),
-    empty=(numpy.asarray([], dtype=config.floatX),
-           numpy.asarray([], dtype=config.floatX)),
-    integers=(randint_ranged(-5, 5, (2, 3)),
-              randint_ranged(1, 8, (2, 3))),
-    uint8=(randint_ranged(-5, 5, (2, 3)).astype('uint8'),
-           randint_ranged(1, 8, (2, 3)).astype('uint8')),
-    uint16=(randint_ranged(-5, 5, (2, 3)).astype('uint16'),
-            randint_ranged(1, 8, (2, 3)).astype('uint16')))
-
 JvTester = makeBroadcastTester(
     op=tensor.jv,
     expected=expected_jv,
-    good=_good_broadcast_binary_jv,
+    good=_good_broadcast_binary_bessel,
     eps=2e-10,
     mode=mode_no_scipy,
     skip=skip_scipy)
@@ -1983,24 +1992,17 @@ JvTester = makeBroadcastTester(
 JvInplaceTester = makeBroadcastTester(
     op=inplace.jv_inplace,
     expected=expected_jv,
-    good=_good_broadcast_binary_jv,
+    good=_good_broadcast_binary_bessel,
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True,
     skip=skip_scipy)
 
-_good_broadcast_unary_i = dict(
-    normal=(rand_ranged(-10, 10, (2, 3)),),
-    empty=(numpy.asarray([], dtype=config.floatX),),
-    int=(randint_ranged(-10, 10, (2, 3)),),
-    uint8=(randint_ranged(0, 10, (2, 3)).astype('uint8'),),
-    uint16=(randint_ranged(0, 10, (2, 3)).astype('uint16'),))
-
 I0Tester = makeBroadcastTester(
     op=tensor.i0,
     expected=expected_i0,
-    good=_good_broadcast_unary_i,
-    grad=_good_broadcast_unary_i,
+    good=_good_broadcast_unary_bessel,
+    grad=_grad_broadcast_unary_bessel,
     eps=2e-10,
     mode=mode_no_scipy,
     skip=skip_scipy)
@@ -2008,8 +2010,8 @@ I0Tester = makeBroadcastTester(
 I0InplaceTester = makeBroadcastTester(
     op=inplace.i0_inplace,
     expected=expected_i0,
-    good=_good_broadcast_unary_i,
-    grad=_good_broadcast_unary_i,
+    good=_good_broadcast_unary_bessel,
+    grad=_grad_broadcast_unary_bessel,
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True,
@@ -2018,7 +2020,8 @@ I0InplaceTester = makeBroadcastTester(
 I1Tester = makeBroadcastTester(
     op=tensor.i1,
     expected=expected_i1,
-    good=_good_broadcast_unary_i,
+    good=_good_broadcast_unary_bessel,
+    grad=_grad_broadcast_unary_bessel,
     eps=2e-10,
     mode=mode_no_scipy,
     skip=skip_scipy)
@@ -2026,28 +2029,17 @@ I1Tester = makeBroadcastTester(
 I1InplaceTester = makeBroadcastTester(
     op=inplace.i1_inplace,
     expected=expected_i1,
-    good=_good_broadcast_unary_i,
+    good=_good_broadcast_unary_bessel,
+    grad=_grad_broadcast_unary_bessel,
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True,
     skip=skip_scipy)
 
-_good_broadcast_binary_iv = dict(
-    normal=(rand_ranged(-5, 5, (2, 3)),
-            rand_ranged(-10, 10, (2, 3))),
-    empty=(numpy.asarray([], dtype=config.floatX),
-           numpy.asarray([], dtype=config.floatX)),
-    integers=(randint_ranged(-5, 5, (2, 3)),
-              randint_ranged(-10, 10, (2, 3))),
-    uint8=(randint_ranged(-5, 5, (2, 3)).astype('uint8'),
-           randint_ranged(-10, 10, (2, 3)).astype('uint8')),
-    uint16=(randint_ranged(-5, 5, (2, 3)).astype('uint16'),
-            randint_ranged(-10, 10, (2, 3)).astype('uint16')))
-
 IvTester = makeBroadcastTester(
     op=tensor.iv,
     expected=expected_iv,
-    good=_good_broadcast_binary_iv,
+    good=_good_broadcast_binary_bessel,
     eps=2e-10,
     mode=mode_no_scipy,
     skip=skip_scipy)
@@ -2055,7 +2047,7 @@ IvTester = makeBroadcastTester(
 IvInplaceTester = makeBroadcastTester(
     op=inplace.iv_inplace,
     expected=expected_iv,
-    good=_good_broadcast_binary_iv,
+    good=_good_broadcast_binary_bessel,
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True,
