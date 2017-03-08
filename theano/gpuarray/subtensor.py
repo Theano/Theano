@@ -552,7 +552,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         # build the strides
         strides = [1]
         for i in range(p - 1, 0, -1):
-            stride = x.shape[i] * strides[-1]
+            stride = x.shape[i] * strides[0]
             strides.insert(0, stride)
 
         # build the indices and use it
