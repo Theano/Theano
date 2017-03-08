@@ -423,7 +423,7 @@ class J1(UnaryScalarOp):
             gz, = grads
             return [gz * (j0(x) - jv(2, x)) / 2.]
         else:
-            super(J1, self).grad(v, x)
+            super(J1, self).grad(x)
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
@@ -515,7 +515,7 @@ class I1(UnaryScalarOp):
             gz, = grads
             return [gz * (i0(x) + iv(2, x)) / 2.]
         else:
-            super(I1, self).grad(v, x)
+            super(I1, self).grad(x)
 
 i1 = I1(upgrade_to_float, name='i1')
 
