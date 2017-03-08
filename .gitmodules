@@ -10,13 +10,13 @@
 	path = qa/third_party/pylearn2
 	url = https://github.com/lisa-lab/pylearn2.git
 	branch = master
-[submodule "third_party/scikits.cuda"]
-	path = qa/third_party/scikits.cuda
-	url = https://github.com/lebedov/scikits.cuda
-	branch = master
 [submodule "libgpuarray"]
 	path = libgpuarray
 	url = https://github.com/Theano/libgpuarray.git
-[submodule "pycuda"]
-	path = pycuda
+[submodule "third_party/scikit-cuda"]
+	path = third_party/scikit-cuda
+	url = https://github.com/lebedov/scikit-cuda.git
+	branch = master
+[submodule "third_party/pycuda"]
+	path = third_party/pycuda
 	url = https://github.com/inducer/pycuda

@@ -27,7 +27,6 @@ RUN patch -p1 < /tmp/my-theano-modifications.patch
 
 # Rebuild Theano
 RUN MAKEFLAGS="-j$(nproc)" \
-    THEANO_CUDA_ARCH_LIST="3.5 5.2 6.0 6.1+PTX" \
     PREFIX=/usr/local \
     ./install.sh
 

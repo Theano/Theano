@@ -35,7 +35,7 @@ class Test_profiling(unittest.TestCase):
             z += [T.outer(x[i], x[i + 1]).sum(axis=1) for i in range(len(x) - 1)]
             z += [x[i] + x[i + 1] for i in range(len(x) - 1)]
 
-            p = theano.ProfileStats(False)
+            p = theano.ProfileStats(False, gpu_checks=False)
 
             if theano.config.mode in ["DebugMode", "DEBUG_MODE", "FAST_COMPILE"]:
                 m = "FAST_RUN"
@@ -87,7 +87,7 @@ class Test_profiling(unittest.TestCase):
 
             z = ifelse(T.lt(a, b), x * 2, y * 2)
 
-            p = theano.ProfileStats(False)
+            p = theano.ProfileStats(False, gpu_checks=False)
 
             if theano.config.mode in ["DebugMode", "DEBUG_MODE", "FAST_COMPILE"]:
                 m = "FAST_RUN"

@@ -217,7 +217,8 @@ def op_lifter(OP, cuda_only=False):
                 if (not replace or
                         (cuda_only and
                          get_context(context_name).kind != b'cuda') or
-                        any(["complex" in i.dtype for i in node.inputs])):
+                        any(["complex" in getattr(i, 'dtype', "")
+                             for i in node.inputs])):
                     return False
 
                 # tag the inputs with the context in case

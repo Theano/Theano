@@ -511,6 +511,8 @@ def test_pooling_opt_arbitrary_dimensions():
 
 
 def test_pooling_empty_batch():
+    if not dnn.dnn_available(test_ctx_name):
+        raise SkipTest(dnn.dnn_available.msg)
     img_shp = (0, 5, 6, 8)
     img = T.ftensor4('img')
 

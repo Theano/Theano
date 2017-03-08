@@ -1,7 +1,7 @@
 [global]
-base_compiledir=/tmp
+base_compiledir=/tmp/theano
 
-# ’gpu0[1…]’ in context of ‘config.device’ corresponds to  old ‘sandbox/cuda’ backend  (config.cuda or [cuda] below)
+# "gpu0..." in context of "config.device" corresponds to  old "sandbox/cuda’ backend  (config.cuda or [cuda] below)
 # device=gpu0 # example of old config
 
 # ’device=cuda’ in context of ‘config. or [global]’ corresponds to  new ‘gpuarray’ backend 
@@ -9,18 +9,20 @@ base_compiledir=/tmp
 device=cuda
 floatX=float32
 
+[blas]
+ldflags=
+
 [dnn]
 enabled=True
 
 # config.cuda means old ‘sandbox/cuda’ backend!
-[cuda]
-enabled=False
+# Keeping it enabled for now
+# [cuda]
+# enabled=False
 
-# this is new 'gpuarray' backend (device=cuda in global section above)
+# This is the new "gpuarray" backend (device=cuda in global section above)
 [gpuarray]
 preallocate=0.9
-single_stream=False
 
 [nvcc]
-fastmath=True
 flags=-D_FORCE_INLINES

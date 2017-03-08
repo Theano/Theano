@@ -7,6 +7,7 @@ from nose.tools import assert_raises, assert_true
 
 import theano
 from theano import tensor
+from theano.configparser import change_flags
 from theano.gof.opt import check_stack_trace
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import (corr, corr3d, conv2d_transpose,
@@ -229,6 +230,7 @@ class TestAssertConvShape(unittest.TestCase):
 
 
 class TestAssertShape(unittest.TestCase):
+    @change_flags([("conv.assert_shape", True)])
     def test_basic(self):
         x = tensor.tensor4()
         s1 = tensor.iscalar()
@@ -244,6 +246,7 @@ class TestAssertShape(unittest.TestCase):
         assert_raises(AssertionError, f, v, 0, 7)
         assert_raises(AssertionError, f, v, 7, 7)
 
+    @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv2d(self):
         input = tensor.tensor4()
         filters = tensor.tensor4()
@@ -261,6 +264,7 @@ class TestAssertShape(unittest.TestCase):
                       numpy.zeros((3, 5, 7, 11), dtype='float32'),
                       numpy.zeros((7, 5, 2, 2), dtype='float32'))
 
+    @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv3d(self):
         input = tensor.tensor5()
         filters = tensor.tensor5()
@@ -278,6 +282,7 @@ class TestAssertShape(unittest.TestCase):
                       numpy.zeros((3, 5, 7, 11, 13), dtype='float32'),
                       numpy.zeros((7, 5, 2, 2, 2), dtype='float32'))
 
+    @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv2d_grad_wrt_inputs(self):
         output_grad = tensor.tensor4()
         filters = tensor.tensor4()
@@ -291,6 +296,7 @@ class TestAssertShape(unittest.TestCase):
                       numpy.zeros((3, 6, 5, 9), dtype='float32'),
                       numpy.zeros((7, 6, 3, 3), dtype='float32'))
 
+    @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv3d_grad_wrt_inputs(self):
         output_grad = tensor.tensor5()
         filters = tensor.tensor5()
@@ -304,6 +310,7 @@ class TestAssertShape(unittest.TestCase):
                       numpy.zeros((3, 6, 5, 9, 11), dtype='float32'),
                       numpy.zeros((7, 6, 3, 3, 3), dtype='float32'))
 
+    @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv2d_grad_wrt_weights(self):
         input = tensor.tensor4()
         output_grad = tensor.tensor4()
@@ -317,6 +324,7 @@ class TestAssertShape(unittest.TestCase):
                       numpy.zeros((3, 6, 7, 11), dtype='float32'),
                       numpy.zeros((3, 7, 5, 9), dtype='float32'))
 
+    @change_flags([("conv.assert_shape", True)])
     def test_shape_check_conv3d_grad_wrt_weights(self):
         input = tensor.tensor5()
         output_grad = tensor.tensor5()

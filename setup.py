@@ -53,7 +53,7 @@ PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
 MINOR               = 9
 MICRO               = 0
-SUFFIX              = "rc2"  # Should be blank except for rc's, betas, etc.
+SUFFIX              = "rc3"  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
 
 VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
@@ -175,8 +175,7 @@ def do_setup():
           },
           entry_points={
               'console_scripts': ['theano-cache = bin.theano_cache:main',
-                                  'theano-nose = bin.theano_nose:main',
-                                  'theano-test = bin.theano_test:main']
+                                  'theano-nose = bin.theano_nose:main']
           },
           keywords=' '.join([
               'theano', 'math', 'numerical', 'symbolic', 'blas',

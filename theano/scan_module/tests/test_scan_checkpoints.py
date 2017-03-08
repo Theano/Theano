@@ -53,12 +53,13 @@ class TestScanCheckpoint(unittest.TestCase):
         """Test that scan_checkpoint reduces memory usage."""
         if None not in theano.gpuarray.type.list_contexts():
             return unittest.SkipTest('Requires gpuarray backend.')
+        from theano.gpuarray.tests.config import mode_with_gpu  # noqa
         f = theano.function(inputs=[self.A, self.k],
-                            outputs=self.grad_A)
+                            outputs=self.grad_A, mode=mode_with_gpu)
         f_check = theano.function(inputs=[self.A, self.k],
-                                  outputs=self.grad_A_check)
+                                  outputs=self.grad_A_check, mode=mode_with_gpu)
         free_gmem = theano.gpuarray.type._context_reg[None].free_gmem
-        data = numpy.ones(free_gmem / 3000, dtype=numpy.float32)
+        data = numpy.ones(free_gmem // 3000, dtype=numpy.float32)
         # Check that it works with the checkpoints
         f_check(data, 1000)
         # Check that the basic scan fails in that case

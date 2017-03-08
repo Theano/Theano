@@ -863,7 +863,7 @@ def pydotprint(fct, outfile=None,
         if profile:
             time = profile.apply_time.get(node, 0)
             # second, %fct time in profiler
-            if profile.fct_callcount == 0:
+            if profile.fct_callcount == 0 or profile.fct_call_time == 0:
                 pf = 0
             else:
                 pf = time * 100 / profile.fct_call_time

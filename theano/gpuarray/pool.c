@@ -208,10 +208,11 @@ KERNEL void ave_pool3d_kernel(const ga_size nthreads,
 #section support_code
 
 // output shape for a given input padded shape, window shape and stride
+// We use ssize_t in the max since this is done to avoid negative results.
 #define OUTPUT_DIMS(in_dim, ws, st)                       \
   (IGNORE_BORDER ? (in_dim - ws)/st + 1 :                 \
    (st > ws ? (in_dim - 1)/st + 1 :                       \
-    std::max<size_t>(0, (in_dim - 1 - ws + st)/st) + 1))
+    std::max<ssize_t>(0, (in_dim - 1 - ws + st)/st) + 1))
 
 #section support_code_struct
 

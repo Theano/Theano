@@ -3781,7 +3781,7 @@ class Split(Op):
         return self.make_node(eval_points[0], *inputs[1:]).outputs
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_support_code(self):
         return """
@@ -3897,7 +3897,7 @@ class Split(Op):
                                     ndim, split_dims,
                                     %(x_typenum)s,
                                     PyArray_STRIDES(%(x)s),
-                                    PyArray_DATA(%(x)s) + data_offset,
+                                    PyArray_BYTES(%(x)s) + data_offset,
                                     %(x_itemsize)s,
                                     PyArray_FLAGS(%(x)s),
                                     NULL);

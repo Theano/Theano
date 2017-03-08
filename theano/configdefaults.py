@@ -127,6 +127,14 @@ AddConfigVar(
     in_c_key=False)
 
 AddConfigVar(
+    'conv.assert_shape',
+    "If True, AbstractConv* ops will verify that user-provided"
+    " shapes match the runtime shapes (debugging option,"
+    " may slow down compilation)",
+    BoolParam(False),
+    in_c_key=False)
+
+AddConfigVar(
     'print_global_stats',
     "Print some global statistics (time spent) at the end",
     BoolParam(False),
@@ -222,7 +230,7 @@ AddConfigVar('nvcc.flags',
              ConfigParam("", filter_nvcc_flags),
              # Not needed in c key as it is already added.
              # We remove it as we don't make the md5 of config to change
-             # if theano.sandbox.cuda is loaded or not.
+             # if theano.cuda is loaded or not.
              in_c_key=False)
 
 AddConfigVar('nvcc.compiler_bindir',
@@ -236,7 +244,17 @@ AddConfigVar('nvcc.fastmath',
              BoolParam(False),
              # Not needed in c key as it is already added.
              # We remove it as we don't make the md5 of config to change
-             # if theano.sandbox.cuda is loaded or not.
+             # if theano.cuda is loaded or not.
+             in_c_key=False)
+
+AddConfigVar('nvcc.cudafe',
+             "If 'always' (the default), cudafe will be called for every GPU"
+             " Op compilation. If 'heuristic', it will only be called if the"
+             " source code appears to contain CUDA code. This can speed up"
+             " compilation and importing theano, but might fail to compile"
+             " some custom GPU Ops.",
+             EnumStr('always', 'heuristic'),
+             # Not needed in c key, does not affect the compilation result.
              in_c_key=False)
 
 AddConfigVar('gpuarray.sync',

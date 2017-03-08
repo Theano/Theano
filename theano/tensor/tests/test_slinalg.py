@@ -15,16 +15,9 @@ from theano.tensor.basic import _allclose
 from theano.tests.test_rop import break_op
 from theano.tests import unittest_tools as utt
 from theano import config
-from theano.tensor.slinalg import ( Cholesky,
-                                    cholesky,
-                                    CholeskyGrad,
-                                    Solve,
-                                    solve,
-                                    Eigvalsh,
-                                    EigvalshGrad,
-                                    eigvalsh,
-                                    expm,
-                                    kron)
+from theano.tensor.slinalg import (
+    Cholesky, cholesky, CholeskyGrad, Solve, solve,
+    Eigvalsh, EigvalshGrad, eigvalsh, expm, kron)
 from theano.tests.unittest_tools import attr
 
 from nose.plugins.skip import SkipTest
@@ -81,18 +74,18 @@ def test_cholesky_grad():
         raise SkipTest("Scipy needed for the Cholesky op.")
     rng = numpy.random.RandomState(utt.fetch_seed())
     r = rng.randn(5, 5).astype(config.floatX)
-    pd = numpy.dot(r, r.T)
-    eps = None
-    if config.floatX == "float64":
-        eps = 2e-8
+
+    # The dots are inside the graph since Cholesky needs separable matrices
+
     # Check the default.
-    yield (lambda: utt.verify_grad(cholesky, [pd], 3, rng, eps=eps))
+    yield (lambda: utt.verify_grad(lambda r: cholesky(r.dot(r.T)),
+                                   [r], 3, rng))
     # Explicit lower-triangular.
-    yield (lambda: utt.verify_grad(Cholesky(lower=True), [pd], 3,
-                                   rng, eps=eps))
+    yield (lambda: utt.verify_grad(lambda r: Cholesky(lower=True)(r.dot(r.T)),
+                                   [r], 3, rng))
     # Explicit upper-triangular.
-    yield (lambda: utt.verify_grad(Cholesky(lower=False), [pd], 3,
-                                   rng, eps=eps))
+    yield (lambda: utt.verify_grad(lambda r: Cholesky(lower=False)(r.dot(r.T)),
+                                   [r], 3, rng))
 
 
 @attr('slow')
