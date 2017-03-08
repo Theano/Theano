@@ -45,6 +45,7 @@ Highlights:
    - better mapping between theano device number and nvidia-smi number, using the PCI bus ID of graphic cards
    - More pooling support on GPU when cuDNN isn't there
    - ignore_border=False is now implemented for pooling
+   - Removed warp-synchronous programming
 
 Interface changes:
  - In MRG, replaced method `multinomial_wo_replacement()` with new method `choice()`
@@ -78,6 +79,7 @@ GPU:
    for convolution backward filter operations
 
 New features:
+ - Added new Theano flag conv.assert_shape
  - OpFromGraph now allows gradient overriding for every input
  - Added Abstract Ops for batch normalization that use cuDNN when available and pure Theano CPU/GPU alternatives otherwise
  - Added new Theano flag cuda.enabled
@@ -105,6 +107,7 @@ Others:
 
 
 Other more detailed changes:
+ - Added new Theano flag nvcc.cudafe to enable faster compilation and import with old CUDA back-end
  - Use of 64-bit indexing in sparse ops to allow matrix with more then 2\ :sup:`31`\ -1 elements.
  - Allow more then one output to be an destructive inplace
  - Add flag profiling.ignore_first_call, useful to profile the new gpu back-end
@@ -119,6 +122,17 @@ Other more detailed changes:
 
 
 ALL THE PR BELLOW HAVE BEEN CHECKED
+* https://github.com/Theano/Theano/pull/5666
+* https://github.com/Theano/Theano/pull/5643
+* https://github.com/Theano/Theano/pull/5631
+* https://github.com/Theano/Theano/pull/5651
+* https://github.com/Theano/Theano/pull/5652
+* https://github.com/Theano/Theano/pull/5646
+* https://github.com/Theano/Theano/pull/5634
+* https://github.com/Theano/Theano/pull/5650
+* https://github.com/Theano/Theano/pull/5636
+* https://github.com/Theano/Theano/pull/5635
+* https://github.com/Theano/Theano/pull/5632
 * https://github.com/Theano/Theano/pull/5626
 * https://github.com/Theano/Theano/pull/5625
 * https://github.com/Theano/Theano/pull/5616
