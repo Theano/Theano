@@ -2232,6 +2232,8 @@ def local_cast_cast(node):
         else:
             # Apply the second cast only
             v = node.op(base)
+            # Copy stack trace from the output of the original cast
+            copy_stack_trace(node.outputs[0], v)
             return [v]
 
 
@@ -2240,39 +2242,21 @@ def upcast(type1, type2):
     type2 from type1 constitutes an upcast.
 
     """
-    upcast_pairs = (
-        ('int8', 'int16'), ('int8', 'int32'), ('int8', 'int64'),
-        ('int16', 'int32'), ('int16', 'int64'),
-        ('int32', 'int64'),
-        ('uint8', 'uint16'), ('uint8', 'uint32'), ('uint8', 'uint64'),
-        ('uint16', 'uint32'), ('uint16', 'uint64'),
-        ('uint32', 'uint64'),
-        ('float16', 'float32'), ('float16', 'float32'), ('float16', 'float64'),
-        ('float32', 'float64'),
-        ('complex64', 'complex128'),
+    category = {
+        # Pair of numbers : the 'super-index' and 'sub-index'
+        'uint8': (0, 0), 'uint16': (0, 1), 'uint32': (0, 2), 'uint64': (0, 3),
+        'int8': (1, 0), 'int16': (1, 1), 'int32': (1, 2), 'int64': (1, 3),
+        'float16': (2, 0.5), 'float32': (2, 1.5), 'float64': (2, 2.5),
+        'complex64': (3, 2), 'complex128': (3, 3)
+    }
 
-        ('uint8', 'int16'), ('uint8', 'int32'), ('uint8', 'int64'),
-        ('uint16', 'int32'), ('uint16', 'int64'),
-        ('uint32', 'int64'),
-        ('int8', 'float16'), ('int8', 'float32'), ('int8', 'float64'),
-        ('int16', 'float32'), ('int16', 'float64'),
-        ('int32', 'float64'),
-        ('uint8', 'float16'), ('uint8', 'float32'), ('uint8', 'float64'),
-        ('uint16', 'float32'), ('uint16', 'float64'),
-        ('uint32', 'float64'),
+    cat1 = category[type1]
+    cat2 = category[type2]
 
-        ('int8', 'complex64'), ('int16', 'complex64'),
-        ('uint8', 'complex64'), ('uint16', 'complex64'),
-        ('float32', 'complex64'),
-        ('int8', 'complex128'), ('int16', 'complex128'), ('int32', 'complex128'),
-        ('uint8', 'complex128'), ('uint16', 'complex128'), ('uint32', 'complex128'),
-        ('float32', 'complex128'), ('float64', 'complex128')
-    )
-
-    for pair in upcast_pairs:
-        if(type1 == pair[0] and type2 == pair[1]):
-            return True
-    return False
+    if(cat2[0] >= cat1[0] and cat2[1] > cat1[1]):
+        return True
+    else:
+        return False
 
 
 @register_canonicalize

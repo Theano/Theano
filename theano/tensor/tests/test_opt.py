@@ -4650,7 +4650,7 @@ class T_cast_cast(unittest.TestCase):
         mode = theano.compile.get_default_mode()
         self.mode = mode.including('local_cast_cast')
 
-    def test(self):
+    def test_consecutive(self):
         x = T.fmatrix()
         o = T.Elemwise(scal.Cast(scal.Scalar("float64")))(x.astype("float64"))
         f = theano.function([x], o, mode=self.mode)
@@ -4658,7 +4658,7 @@ class T_cast_cast(unittest.TestCase):
         f(dx)
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
-        assert isinstance(topo[0].op, T.Elemwise)
+        assert isinstance(topo[0].op.scalar_op, scal.basic.Cast)
 
         x = T.dmatrix()
         o = T.Elemwise(scal.Cast(scal.Scalar("float32")))(x.astype("float32"))
@@ -4667,7 +4667,38 @@ class T_cast_cast(unittest.TestCase):
         f(dx)
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
-        assert isinstance(topo[0].op, T.Elemwise)
+        assert isinstance(topo[0].op.scalar_op, scal.basic.Cast)
+
+    def test_upcast(self):
+        # Upcast followed by any other cast
+        x = T.fmatrix()
+        o = T.Elemwise(scal.Cast(scal.Scalar("complex128")))(x.astype("complex64"))
+        f = theano.function([x], o, mode=self.mode)
+        dx = numpy.random.rand(5, 4).astype("float32")
+        f(dx)
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op.scalar_op, scal.basic.Cast)
+
+        # Upcast followed by a downcast back to the base type
+        x = T.fmatrix()
+        o = T.Elemwise(scal.Cast(scal.Scalar("float32")))(x.astype("float64"))
+        f = theano.function([x], o, mode=self.mode)
+        dx = numpy.random.rand(5, 4).astype('float32')
+        f(dx)
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, DeepCopyOp)
+
+        # Downcast followed by an upcast back to the base type
+        x = T.dmatrix()
+        o = T.Elemwise(scal.Cast(scal.Scalar("float64")))(x.astype("float32"))
+        f = theano.function([x], o, mode=self.mode)
+        dx = numpy.random.rand(5, 4)
+        f(dx)
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op.scalar_op, scal.basic.Composite)
 
 
 class T_func_inverse(unittest.TestCase):
