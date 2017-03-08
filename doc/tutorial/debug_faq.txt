@@ -239,6 +239,7 @@ It is also possible to override variables ``__repr__`` method to have them retur
 Running the code above returns the following output:
 
 .. testoutput:: printtestvalue
+
    x
    array(42.0)
    x
