@@ -162,7 +162,6 @@ class Wrapper(Type):
             if re.match('^[A-Za-z_][A-Za-z0-9_]*$', attribute_name) is None:
                 raise AttributeError('Wrapper: attribute "%s" should be a valid identifier.' % attribute_name)
             if attribute_name in c_cpp_keywords:
-                print(len(c_cpp_keywords))
                 raise SyntaxError('Wrapper: "%s" is a potential C/C++ keyword and should not be used as attribute name.'
                                   % attribute_name)
             type_instance = kwargs[attribute_name]
