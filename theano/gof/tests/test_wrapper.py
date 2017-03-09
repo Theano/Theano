@@ -217,10 +217,12 @@ class TestWrapper(TestCase):
         assert w.values_eq_approx(o1, o2)
 
         # Check value_eq_approx.
+        # NB: I don't know exactly which kind of differences is rejected by values_eq but accepted by values_eq_approx.
+        # So, I just play a little with float values.
         o3 = Wrap(w,
-                  a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('float32'),
-                  a2=random_tensor.astype('float64'),
-                  a3=2000.0)
+                  a1=numpy.asarray([[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]]).astype('int32'),
+                  a2=(random_tensor.astype('float32') * 10 / 2.2 * 2.19999999999 / 10).astype('float64'),
+                  a3=2000.0 - 0.00000000000000001)
         assert w.values_eq_approx(o1, o3)
 
     def test_op_params(self):

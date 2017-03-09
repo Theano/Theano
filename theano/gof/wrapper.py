@@ -142,16 +142,16 @@ class Wrapper(Type):
 
         structObject.key
 
-    In a C code, attributes created to represent an instance of the type associated to ``key`` will be available via:
+    In a C code, any attribute named ``key`` will be available via:
 
     .. code-block:: c
 
         structObject->key;
-        structObject->dtype_key; // e.g. from TensorType C code.
-        structObject->other_attribute_named_from_key;
-        /* etc. */
 
-    **NB**: This Type is not a complete type and should never be used for regular graph operations.
+    .. note::
+
+        This Type is not complete and should never be used for regular graph operations.
+
     """
 
     def __init__(self, **kwargs):
@@ -160,7 +160,7 @@ class Wrapper(Type):
 
         for attribute_name in kwargs:
             if re.match('^[A-Za-z_][A-Za-z0-9_]*$', attribute_name) is None:
-                raise SyntaxError('Wrapper: attribute "%s" should be a valid identifier.' % attribute_name)
+                raise AttributeError('Wrapper: attribute "%s" should be a valid identifier.' % attribute_name)
             if attribute_name in c_cpp_keywords:
                 print(len(c_cpp_keywords))
                 raise SyntaxError('Wrapper: "%s" is a potential C/C++ keyword and should not be used as attribute name.'
@@ -180,7 +180,6 @@ class Wrapper(Type):
         return 'Wrapper<%s>' % ', '.join([('%s:%s' % (self.fields[i], self.types[i])) for i in range(self.length)])
 
     def __eq__(self, other):
-        # To be checked.
         return (type(self) == type(other) and self.fields == other.fields and self.types == other.types)
 
     def __hash__(self):
@@ -211,18 +210,10 @@ class Wrapper(Type):
         return self.wrap_data(data, strict, allow_downcast)
 
     def values_eq(self, a, b):
-        # We check that a and b have expected attributes and strict values.
-        a = self.filter(a, strict=True)
-        b = self.filter(b, strict=True)
-        # Then we compare.
         return all(self.types[i].values_eq(getattr(a, self.fields[i]), getattr(b, self.fields[i]))
                    for i in range(self.length))
 
     def values_eq_approx(self, a, b):
-        # We check, wrap and round a and b if necessary.
-        a = self.filter(a, strict=False, allow_downcast=True)
-        b = self.filter(b, strict=False, allow_downcast=True)
-        # Then we compare.
         return all(self.types[i].values_eq_approx(getattr(a, self.fields[i]), getattr(b, self.fields[i]))
                    for i in range(self.length))
 
