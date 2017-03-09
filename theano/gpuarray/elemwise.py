@@ -1581,7 +1581,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         {
             int verbose = 0;
             if (PyGpuArray_STRIDES(%(x)s)[2] != sizeof(%(in_dtype)s)){
-              printf("slow\\n");
                 size_t n_threads[3] = {std::min(PyGpuArray_DIMS(%(x)s)[0], (size_t) 256), 1, 1};
                 size_t n_blocks[3] = {std::min(PyGpuArray_DIMS(%(x)s)[1], (size_t)4096), 1, 1};
                 while (n_blocks[0] * (n_blocks[1]+1) <= 4096 &&
@@ -1812,7 +1811,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_cache_version_apply(self, node):
-        version = [19]  # the version corresponding to the c code in this Op
+        version = [20]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(
