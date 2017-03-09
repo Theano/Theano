@@ -414,8 +414,9 @@ AddConfigVar('dnn.enabled',
              "'auto', use cuDNN if available, but silently fall back"
              " to not using it if not present."
              " If True and cuDNN can not be used, raise an error."
-             " If False, disable cudnn",
-             EnumStr("auto", "True", "False"),
+             " If False, disable cudnn even if present."
+             " If no_check, assume present and the version between heasers and linked match (so less compilation at context init)",
+             EnumStr("auto", "True", "False", "no_check"),
              in_c_key=False)
 
 # This flag determines whether or not to raise error/warning message if

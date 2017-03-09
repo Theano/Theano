@@ -282,6 +282,8 @@ def dnn_available():
     if dnn_available.avail is None and not cuda_available:
         dnn_available.msg = "CUDA not available"
         dnn_available.avail = False
+    elif config.dnn.enabled == "no_check":
+        raise RuntimeException("The old gpu back-end do not support the flag dnn.enabled=no_check")
     elif dnn_available.avail is None:
         dev = active_device_number()
         if device_properties(dev)['major'] < 3:
