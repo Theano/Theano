@@ -18,6 +18,7 @@ import sys
 import time
 from collections import defaultdict
 from six import iteritems
+import warnings
 
 import numpy as np
 
@@ -253,20 +254,25 @@ class ProfileStats(object):
     # in the name are times *of* something, rather than configuration flags.
     def __init__(self, atexit_print=True, flag_time_thunks=None,
                  gpu_checks=True, **kwargs):
-        if (config.profile and gpu_checks and
+        if (gpu_checks and
                 ((hasattr(theano, 'sandbox') and
                   hasattr(theano.sandbox, 'cuda') and
                   theano.sandbox.cuda.cuda_enabled) or (
                       hasattr(theano, 'gpuarray') and
-                      theano.gpuarray.pygpu_activated))):
-            if os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1':
-                raise Exception(
-                    "You are running the Theano profiler with CUDA enabled."
-                    " Theano GPU ops execution is asynchronous by default."
-                    " So by default, the profile is useless."
-                    " You must set the environment variable"
-                    " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA driver to"
-                    " synchronize the execution to get a meaningful profile.")
+                      theano.gpuarray.pygpu_activated)) and
+                os.environ.get('CUDA_LAUNCH_BLOCKING', '0') != '1'):
+            msg = (
+                "You are running the Theano profiler with CUDA enabled."
+                " Theano GPU ops execution is asynchronous by default."
+                " So by default, the profile is useless."
+                " You must set the environment variable"
+                " CUDA_LAUNCH_BLOCKING to 1 to tell the CUDA driver to"
+                " synchronize the execution to get a meaningful profile.")
+            if config.profile:
+                raise Exception(msg)
+            else:
+                warnings.warn(msg)
+
         if (config.profile and gpu_checks and
                 hasattr(theano, 'gpuarray') and
                 theano.gpuarray.pygpu_activated and
