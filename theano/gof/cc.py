@@ -476,12 +476,11 @@ def apply_policy(policy, r, name, sub):
         C{policy[0](r) + policy[1](r) + ...}.
 
     """
-    if not isinstance(policy, (list, tuple)):
-        policy = [policy]
-    ret = ""
-    for sub_policy in policy:
-        ret += sub_policy(r, name, sub)
-    return ret
+    if isinstance(policy, (list, tuple)):
+        ret = ""
+        for sub_policy in policy:
+            ret += sub_policy(r, name, sub)
+        return ret
     return policy(r, name, sub)
 
 
