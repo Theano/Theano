@@ -670,7 +670,7 @@ class Function(object):
             if name:
                 message = name
             else:
-                message = str(maker.profile.message) + " copy"
+                message = str(profile.message) + " copy"
             profile = theano.compile.profiling.ProfileStats(message=message)
             # profile -> object
         elif type(profile) == str:
