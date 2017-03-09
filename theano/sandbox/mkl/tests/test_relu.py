@@ -58,7 +58,7 @@ class TestMKLRelu(unittest.TestCase):
             f = function([image, ], [output, ])
             output_val = f(imval)
 
-        utt.assert_allclose(output_val, output_ref)
+            utt.assert_allclose(output_val, output_ref)
 
     def test_relu_slope(self):
         def ref(input, slope):
@@ -82,7 +82,7 @@ class TestMKLRelu(unittest.TestCase):
             f = function([image, ], [output, ])
             output_val = f(imval)
 
-        utt.assert_allclose(output_val, output_ref)
+            utt.assert_allclose(output_val, output_ref)
 
     def test_relu_grad(self):
         seed = utt.fetch_seed()

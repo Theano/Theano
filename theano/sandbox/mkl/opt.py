@@ -19,12 +19,13 @@ from theano.sandbox.mkl.basic_ops import (U2IGrad,
                                           U2IConv,
                                           U2IElemwiseSum,
                                           U2IBatchNormalization,
+                                          U2IConcatenate,
                                           )
 from theano.sandbox.mkl import (mkl_relu, mkl_pool, mkl_lrn,
-                                mkl_conv, mkl_elemwise, mkl_bn)
+                                mkl_conv, mkl_elemwise, mkl_bn, mkl_concatenate)
 
 from theano.tensor.signal import pool
-
+from theano.tensor.basic import Join, Split
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs)
@@ -54,10 +55,29 @@ class CutMKLDataConversionChain(Optimizer):
         fgraph.attach_feature(toolbox.ReplaceValidate())
 
     def apply(self, fgraph):
-        list_forward = ['Relu', 'Pool', 'Conv2D', 'LRN', 'ElemwiseSum', 'BatchNormalization']
+        list_forward = ['Relu',
+                        'Pool',
+                        'Conv2D',
+                        'LRN',
+                        'ElemwiseSum',
+                        'BatchNormalization',
+                        'Concatenate']
         list_i2u = ['I2U']
-        list_u2i = ['U2IPool', 'U2IRelu', 'U2IConv', 'U2IElemwiseSum', 'U2ILRN', 'U2IBatchNormalization']
-        list_backward = ['ReluGrad', 'PoolGrad', 'ConvGradInputs', 'ConvGradWeights', 'LRNGrad', 'ElemwiseSum', 'BatchNormalizationGrad']
+        list_u2i = ['U2IPool',
+                    'U2IRelu',
+                    'U2IConv',
+                    'U2IElemwiseSum',
+                    'U2ILRN',
+                    'U2IBatchNormalization',
+                    'U2IConcatenate']
+        list_backward = ['ReluGrad',
+                         'PoolGrad',
+                         'ConvGradInputs',
+                         'ConvGradWeights',
+                         'LRNGrad',
+                         'ElemwiseSum',
+                         'BatchNormalizationGrad',
+                         'ConcatenateGrad']
         list_i2u_back = ['I2UGrad', 'U2IElemwiseSum']
         list_u2i_back = ['U2IGrad', 'I2U']
         try:
@@ -69,9 +89,14 @@ class CutMKLDataConversionChain(Optimizer):
                         if isinstance(inp.owner, gof.Apply) and inp.owner.op.__class__.__name__ in list_u2i_back:
                             for inpOP in list(inp.owner.inputs):
                                 if isinstance(inpOP.owner, gof.Apply) and inpOP.owner.op.__class__.__name__ in list_backward:
-                                    fgraph.replace_validate(out, inpOP.owner.outputs[0])
+                                    # FIXME, concateGrad Op, has multiple ouputs, so we can't hard code outputs[0] here
+                                    # otherwise, it will always reuse outputs[0], while keep others others dangling!!!
+                                    #fgraph.replace_validate(out, inpOP.owner.outputs[0])
+                                    fgraph.replace_validate(out, inpOP)
                 # forward
                 if node.op.__class__.__name__ in list_u2i:
+                    # FIXME, concate Op hase multiple inputs, U2IConcate Op is a multiple inputs/outputs
+                    # So, can't hard code outputs[0] here.
                     out = node.outputs[0]
                     for inp in node.inputs:
                         if isinstance(inp.owner, gof.Apply) and inp.owner.op.__class__.__name__ in list_i2u:
@@ -83,7 +108,6 @@ class CutMKLDataConversionChain(Optimizer):
                    'Exception message: %s\n') % str(e)
             _logger.warning(msg)
             return
-
 
 mkl_seqopt.register('CutMKLDataConversionChain', CutMKLDataConversionChain(),
                     40,
@@ -843,6 +867,84 @@ def local_bnGrad_mkl(node):
                                                    term=node.op.term)(x_u2i, gz_u2i, scale, shift)
         gx_i2u = U2IGrad()(x, bn_GradOut[0])
         rval = [gx_i2u, bn_GradOut[1], bn_GradOut[2]]
+        return rval
+    except Exception as e:
+        msg = ('Failed to apply local opt to Op %s. '
+               'Exception message: %s\n') % (node.op, str(e))
+        _logger.warning(msg)
+        return
+
+
+@register_opt()
+@local_optimizer([Join])
+def local_concatenate_mkl(node):
+    if not mkl_available():
+        return
+
+    if not isinstance(node.op, Join):
+        return
+
+    # if node.inputs[0].type.ndim != 4:
+    #    return
+
+    try:
+        axis, tensors = node.inputs[0], node.inputs[1:]
+        tensors_internal = [U2IConcatenate()(x) for x in tensors]
+        new_inputs = [axis] + tensors_internal
+        concatenateOut = mkl_concatenate.Concatenate()(*new_inputs)
+        z_user = I2U()(concatenateOut)
+        rval = z_user
+
+        return [rval]
+    except Exception as e:
+        msg = ('Failed to apply local opt to Op %s. '
+               'Exception message: %s\n') % (node.op, str(e))
+        _logger.warning(msg)
+        return
+
+
+@register_opt()
+@local_optimizer([Split])
+def local_concatenateGrad_mkl(node):
+    if not mkl_available():
+        return
+
+    if not isinstance(node.op, Split):
+        return
+
+    # if node.inputs[0].type.ndim != 4:
+    #    return
+
+    try:
+        gz, axis, splits, = node.inputs
+        # Retrieve the inputs to Join op
+        #                         inp_0             inp_1    inp
+        #                         |                 |        |
+        # Splits <- MakeVector <- [Subtensor...] <- Shape <- inputs
+        if not isinstance(splits.owner.op, theano.tensor.opt.MakeVector):
+            return
+
+        tensors = []
+        for inp_0 in splits.owner.inputs:
+            if not isinstance(inp_0.owner.op, theano.tensor.subtensor.Subtensor):
+                return
+
+            inp_1 = inp_0.owner.inputs[0]
+            if not isinstance(inp_1.owner.op, theano.compile.ops.Shape):
+                return
+
+            inp = inp_1.owner.inputs[0]
+            tensors.append(inp)
+
+        tensors_internal = [U2IConcatenate()(x) for x in tensors]
+        new_inputs = [axis] + tensors_internal
+        z_internal = mkl_concatenate.Concatenate()(*new_inputs)
+        gz_internal = I2UGrad()(z_internal, gz)
+
+        concatenateGradOut = mkl_concatenate.ConcatenateGrad()(gz_internal, axis, *tensors_internal)
+        gx_user = [U2IGrad()(_x, _gz) for _x, _gz in zip(tensors, concatenateGradOut)]
+
+        rval = gx_user
         return rval
     except Exception as e:
         msg = ('Failed to apply local opt to Op %s. '

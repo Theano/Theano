@@ -1120,3 +1120,77 @@ class U2IBatchNormalization(BaseConvertOp):
             #endif
         """ % locals()
         return ccode
+
+
+class U2IConcatenate(BaseConvertOp):
+    __props__ = ()
+
+    def make_node(self, x):
+        x = T.as_tensor_variable(x)
+        if x.type.ndim != 4:
+            raise TypeError('The input should be a 4-dim tensor.')
+        return Apply(self, [x], [x.type()])
+
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
+        return [U2IGrad()(x, gz)]
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+
+        if 'float32' == node.inputs[0].type.dtype:
+            sub['type'] = 'float'
+            sub['precision'] = 'F32'
+        elif "float64" == node.inputs[0].type.dtype:
+            sub['type'] = 'double'
+            sub['precision'] = 'F64'
+        else:
+            raise Exception("Type %s not implemented" %
+                            node.inputs[0].type.dtype)
+
+        sub = sub.copy()
+        sub.update(locals())
+
+        ccode = """
+        if (1 == first_run) {
+            bottomSize[0] = PyArray_DIMS(%(x)s)[3]; //w
+            bottomSize[1] = PyArray_DIMS(%(x)s)[2]; //h
+            bottomSize[2] = PyArray_DIMS(%(x)s)[1]; //c
+            bottomSize[3] = PyArray_DIMS(%(x)s)[0]; //n
+
+            bottomStride[0] = 1;
+            bottomStride[1] = bottomStride[0] * bottomSize[0];
+            bottomStride[2] = bottomStride[1] * bottomSize[1];
+            bottomStride[3] = bottomStride[2] * bottomSize[2];
+
+            //create user layout
+            CHECK_ERR( dnnLayoutCreate_%(precision)s(&layout_user,
+                                                     DIMENSION,
+                                                     bottomSize,
+                                                     bottomStride), err );
+        }
+
+        if (NULL == %(z)s) {
+            //Create PyArrayObject for output
+            %(z)s = (PyArrayObject*)PyArray_ZEROS(DIMENSION,
+                                                  PyArray_DIMS(%(x)s),
+                                                  PyArray_TYPE(%(x)s),
+                                                  0);
+
+            if (NULL == %(z)s) {
+                %(fail)s
+            }
+        }
+
+        ((dnnLayout_t*)PyArray_DATA(%(z)s))[0] = layout_user;
+        if (NULL == internal_buf) {
+            CHECK_ERR( dnnAllocateBuffer_%(precision)s((void**)&internal_buf, layout_user), err );
+        }
+        memcpy(internal_buf, PyArray_DATA(%(x)s), dnnLayoutGetMemorySize_%(precision)s(layout_user));
+        ((void**)PyArray_DATA(%(z)s))[1] = internal_buf;
+
+        first_run = 0;
+        """ % sub
+        return ccode
