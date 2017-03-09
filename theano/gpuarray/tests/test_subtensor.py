@@ -6,6 +6,7 @@ import theano
 from theano import tensor
 from theano.compile import DeepCopyOp
 from theano.tensor.tests import test_subtensor
+from theano.tests import unittest_tools as utt
 
 from ..basic_ops import HostFromGpu, GpuFromHost, GpuContiguous
 from ..elemwise import GpuDimShuffle
@@ -134,6 +135,22 @@ def test_incsub_f16():
     rep = xval.copy()
     rep[1:] += yval
     assert np.allclose(rval, rep)
+
+
+def test_incsub_offset():
+    # Test for https://github.com/Theano/Theano/issues/5670
+
+    # Build a GPU variable which value will have an offset (x1)
+    x = gpuarray_shared_constructor(np.zeros(5, dtype=theano.config.floatX))
+    x1 = x[1:]
+    # Use inc_subtensor on it
+    y = tensor.vector()
+    z = tensor.inc_subtensor(x1[2:], y)
+    # Use updates so that inc_subtensor can happen inplace
+    f = theano.function([y], z, updates={x: z}, mode=mode_with_gpu)
+    utt.assert_allclose(
+        f([1, 2]),
+        np.array([0, 0, 1, 2], dtype=theano.config.floatX))
 
 
 class G_advancedsubtensor(test_subtensor.TestAdvancedSubtensor):
