@@ -77,19 +77,25 @@ KERNEL void ROIPoolGPUBkwd_kernel(
 
 #section support_code_struct
 
+bool vector_same_shape(PyGpuArrayObject* arr1, PyGpuArrayObject* arr2){
+  return (PyGpuArray_DIMS(arr1)[0] == PyGpuArray_DIMS(arr2)[0]);
+  }
+
+
 int APPLY_SPECIFIC(ROIPoolGPUBkwd)(PyGpuArrayObject *data,
                            PyGpuArrayObject *rois,
                            PyGpuArrayObject *argmaxes,
                            PyGpuArrayObject *out_grad,
                            PyGpuArrayObject **out,
                            PyGpuContextObject *ctx) {
-    size_t num_kernel = PyGpuArray_SIZE(data);
+
     size_t num_rois = PyGpuArray_DIMS(rois)[0];
     size_t channels = PyGpuArray_DIMS(data)[1];
     size_t height = PyGpuArray_DIMS(data)[2];
     size_t width = PyGpuArray_DIMS(data)[3];
     int err;
     size_t batch_size = PyGpuArray_DIMS(data)[0];
+    size_t num_kernel = batch_size * channels * height * width;
 
     if (!GpuArray_IS_C_CONTIGUOUS(&data->ga)
       || !GpuArray_IS_C_CONTIGUOUS(&rois->ga)
@@ -101,13 +107,19 @@ int APPLY_SPECIFIC(ROIPoolGPUBkwd)(PyGpuArrayObject *data,
       return 1;
     }
 
-    if (theano_prep_output(out, PyGpuArray_NDIM(data), PyGpuArray_DIMS(data),
-                         data->ga.typecode, GA_C_ORDER, ctx) != 0)
-    {
-      PyErr_SetString(PyExc_RuntimeError,
-                      "GpuRoIPoolGradOp: failed to allocate memory");
+  if (*out == NULL || !vector_same_shape(data, *out)){
+    Py_XDECREF(*out);
+    size_t dim[4];
+    dim[0] = batch_size;
+    dim[1] = channels;
+    dim[2] = height;
+    dim[3] = width;
+    *out = (PyGpuArrayObject*) pygpu_zeros(4, dim, out_grad->ga.typecode, GA_C_ORDER, ctx, Py_None);
+    if (*out == NULL) {
+      PyErr_Format(PyExc_ValueError, "Could not allocate output storage");
       return 1;
     }
+  }
 
   err = ROIPoolGPUBkwd_kernel_scall(1, &num_kernel, 0,
     out_grad->ga.data, argmaxes->ga.data, (*out)->ga.data, rois->ga.data, batch_size, num_rois,

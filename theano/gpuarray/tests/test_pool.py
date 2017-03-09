@@ -9,7 +9,7 @@ import theano
 from theano import gradient
 from theano import tensor
 from theano.tensor.signal.pool import (Pool, MaxPoolGrad, AveragePoolGrad,
-                                       DownsampleFactorMaxGradGrad)
+                                       DownsampleFactorMaxGradGrad, RoIPoolGradOp, RoIPoolOp)
 from theano.tests import unittest_tools as utt
 
 from .config import mode_with_gpu, mode_without_gpu
@@ -326,7 +326,7 @@ class TestGpuRoIPool(utt.InferShapeTester):
                     roi_op = self.op_class(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=sp_scale)
                     t_outs = roi_op(t_data, t_rois)
                     func = theano.function([t_data, t_rois], t_outs)
-                    maxloc_theano, maxvals_theano = func(random_image, roi_theano)
+                    maxvals_theano, maxloc_theano = func(random_image, roi_theano)
                     utt.assert_allclose(maxvals_np, maxvals_theano)
                     shared_image = theano.shared(random_image)
                     shared_roi = theano.shared(roi_theano)

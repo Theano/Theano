@@ -79,8 +79,8 @@ bool vector_same_shape(PyGpuArrayObject* arr1, PyGpuArrayObject* arr2){
 
 int APPLY_SPECIFIC(ROIPoolGPUFwd)(PyGpuArrayObject *data,
                       PyGpuArrayObject *rois,
-                      PyGpuArrayObject **argmaxes,
-		              PyGpuArrayObject **out,
+                      PyGpuArrayObject **out,
+		              PyGpuArrayObject **argmaxes,
                       PyGpuContextObject *ctx) {
     size_t address = 1;
     int num_rois = PyGpuArray_DIMS(rois)[0];

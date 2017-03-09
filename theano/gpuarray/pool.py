@@ -477,9 +477,10 @@ class GpuRoIPoolOp(CGpuKernelBase):
         data, roi = inp
         gz1, gz2 = grads
         maxout, argmax = self(data, roi)
+
         disc = [theano.gradient.DisconnectedType()() for i in inp[1:]]
         return [GpuRoIPoolGradOp(self.pooled_h, self.pooled_w,
-                                 self.spatial_scale)(data, roi, gz1, argmax)] + disc
+                                 self.spatial_scale)(data, roi, argmax, gz1)] + disc
 
 
 class GpuRoIPoolGradOp(CGpuKernelBase):
@@ -499,17 +500,18 @@ class GpuRoIPoolGradOp(CGpuKernelBase):
     def c_headers(self):
         return ['<gpuarray/types.h>', '<gpuarray/kernel.h>', 'math.h', 'gpuarray_helper.h', 'stdbool.h', 'float.h', 'gpuarray_api.h', 'numpy_compat.h']
 
-    def make_node(self, feature_maps, rois, out_grad, argmaxes):
-        ctx_name = infer_context_name(feature_maps, rois, argmaxes, out_grad)
-        feature_maps = as_gpuarray_variable(feature_maps, ctx_name)
-        roi_tuples = as_gpuarray_variable(rois, ctx_name)
-        out_grad = as_gpuarray_variable(out_grad, ctx_name)
+    def make_node(self, data, rois, argmaxes, out_grad):
+        ctx_name = infer_context_name(data, rois, argmaxes, out_grad)
+        data = as_gpuarray_variable(data, ctx_name)
+        rois = as_gpuarray_variable(rois, ctx_name)
         argmaxes = as_gpuarray_variable(argmaxes, ctx_name)
-        assert feature_maps.ndim == 4
+        out_grad = as_gpuarray_variable(out_grad, ctx_name)
+        assert data.ndim == 4
         assert rois.ndim == 2
         assert argmaxes.ndim == 4
         assert out_grad.ndim == 4
-        return Apply(self, [feature_maps, roi_tuples, argmaxes, out_grad], [feature_maps.type()])
+
+        return Apply(self, [data, rois, argmaxes, out_grad], [data.type()])
 
     def get_params(self, node):
         return node.inputs[0].type.context
