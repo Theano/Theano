@@ -13,7 +13,7 @@ Importation:
 
 .. code-block:: python
 
-    from theano.gof.wrapper import Wrapper
+    from theano.gof import Wrapper
 
 In an op you create:
 
@@ -71,7 +71,7 @@ class Wrap(dict):
 
     .. code-block:: python
 
-        from theano.gof.wrapper import *
+        from theano.gof import Wrapper, Wrap
         from theano.scalar import Scalar
         # You must create a Wrapper first:
         wp = Wrapper(attr1=Scalar('int32'), key2=Scalar('float32'), field3=Scalar('int64'))

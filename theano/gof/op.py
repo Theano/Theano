@@ -799,7 +799,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
     # We add a default get_params() implementation which will try to detect params from the op
     # if params_type is set to a Wrapper. If not, we raise a MethodNotDefined exception.
     def get_params(self, node):
-        if hasattr(self, 'params_type') and isinstance(self.params_type, theano.gof.wrapper.Wrapper):
+        if hasattr(self, 'params_type') and isinstance(self.params_type, theano.gof.Wrapper):
             wrapper = self.params_type
             if all(hasattr(self, field) for field in wrapper.fields):
                 wrap_dict = dict()
@@ -807,7 +807,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
                     field = wrapper.fields[i]
                     _type = wrapper.types[i]
                     wrap_dict[field] = _type.filter(getattr(self, field), strict=False, allow_downcast=True)
-                return theano.gof.wrapper.Wrap(wrapper, **wrap_dict)
+                return theano.gof.Wrap(wrapper, **wrap_dict)
         raise theano.gof.utils.MethodNotDefined('get_params')
 
     def prepare_node(self, node, storage_map, compute_map, impl):
@@ -1392,7 +1392,7 @@ class COp(Op):
         The names must be strings that are not a C keyword and the
         values must be strings of literal C representations.
 
-        If op uses a :class:`theano.gof.wrapper.Wrapper` as ``params_type``,
+        If op uses a :class:`theano.gof.Wrapper` as ``params_type``,
         it returns:
          - a default macro ``APPLY_SPECIFIC_WRAPPER`` which defines the class name of the
            corresponding C struct.
@@ -1402,7 +1402,7 @@ class COp(Op):
            associated to ``key``.
 
         """
-        if hasattr(self, 'params_type') and isinstance(self.params_type, theano.gof.wrapper.Wrapper):
+        if hasattr(self, 'params_type') and isinstance(self.params_type, theano.gof.Wrapper):
             wrapper = self.params_type
             params = [('APPLY_SPECIFIC_WRAPPER', wrapper.name)]
             for i in range(wrapper.length):

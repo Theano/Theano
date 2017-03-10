@@ -6,7 +6,7 @@ from theano.gof import Op, COp, Apply
 from theano import Generic
 from theano.scalar import Scalar
 from theano.tensor import TensorType
-from theano.gof.wrapper import Wrapper, Wrap
+from theano.gof import Wrapper, Wrap
 from theano import tensor
 from theano.tests import unittest_tools as utt
 
