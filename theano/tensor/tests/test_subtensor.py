@@ -1617,7 +1617,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         b_idx[0, 1] = 1
         b_idx[1, 1] = 2
 
-        r_idx = numpy.arange(xx.shape[1])[numpy.newaxis, :]
+        r_idx = numpy.arange(xx.shape[1])[:, numpy.newaxis]
         c_idx = numpy.arange(xx.shape[2])[numpy.newaxis, :]
 
         out = X[b_idx, r_idx, c_idx].eval({X: xx})
