@@ -15,7 +15,7 @@ from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB, TopoOptimizer,
                         LocalGroupDB,
                         SequenceDB, Optimizer, DB, toolbox, graph)
-from theano.gof.opt import LocalMetaOptimizer
+from theano.gof.opt import LocalMetaOptimizer, copy_stack_trace
 from theano.ifelse import IfElse
 from theano.misc.ordered_set import OrderedSet
 
@@ -252,12 +252,22 @@ def op_lifter(OP, cuda_only=False):
                 # This is needed as sometimes new_op inherits from OP.
                 if new_op and new_op != node.op:
                     if isinstance(new_op, theano.Op):
-                        return [safe_to_cpu(o) for o in
-                                new_op(*node.inputs, return_list=True)]
+                        new_outputs = new_op(*node.inputs, return_list=True)
+                        to_cpu_fn = safe_to_cpu
                     elif isinstance(new_op, (tuple, list)):
-                        return [safe_to_cpu(o) for o in new_op]
+                        new_outputs = new_op
+                        to_cpu_fn = safe_to_cpu
                     else:  # suppose it is a variable on the GPU
-                        return [new_op.transfer('cpu')]
+                        new_outputs = new_op]
+                        to_cpu_fn = lambda x: x.transfer('cpu')
+                    # copy stack traces onto gpu outputs
+                    for old_output, new_output in zip(node.outputs, new_outputs):
+                        copy_stack_trace(old_output, new_output)
+                    new_outputs = [to_cpu_fn(o) for o in new_outputs]
+                    # also copy the stack traces onto HostFromGpu outputs
+                    for old_output, new_output in zip(node.outputs, new_outputs):
+                        copy_stack_trace(old_output, new_output)
+                    return new_outputs
             return False
         local_opt.__name__ = maker.__name__
         return local_optimizer(OP)(local_opt)
@@ -650,7 +660,9 @@ def local_gpualloc_memset_0(node):
                 inp.data.size == 1 and
                 (np.asarray(inp.data) == 0).all()):
             new_op = GpuAlloc(node.op.context_name, memset_0=True)
-            return [new_op(*node.inputs)]
+            new_output = new_op(*node.inputs)
+            copy_stack_trace(node.outputs[0], new_output)
+            return [new_output]
 
 
 # Don't register by default.
@@ -680,6 +692,8 @@ def local_gpu_contiguous_gpu_contiguous(node):
     if isinstance(node.op, GpuContiguous):
         inp = node.inputs[0]
         if inp.owner and isinstance(inp.owner.op, GpuContiguous):
+            if not getattr(inp.tag, 'trace', None):
+                copy_stack_trace(node.outputs[0], inp)
             return [inp]
 
 
