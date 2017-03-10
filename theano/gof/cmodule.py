@@ -337,7 +337,11 @@ def module_name_from_dir(dirname, err=True, files=None):
 
     """
     if files is None:
-        files = os.listdir(dirname)
+        try:
+            files = os.listdir(dirname)
+        except OSError as e:
+            if e.errno == 2 and not err:  # No such file or directory
+                return None
     names = [file for file in files
              if file.endswith('.so') or file.endswith('.pyd')]
     if len(names) == 0 and not err:
@@ -1443,7 +1447,15 @@ class ModuleCache(object):
                     # If it don't exist, use any file in the directory.
                     if path is None:
                         path = os.path.join(self.dirname, filename)
-                        files = os.listdir(path)
+                        try:
+                            files = os.listdir(path)
+                        except OSError as e:
+                            if e.errno == 2:  # No such file or directory
+                                # if it don't exist anymore, it mean
+                                # the clean up was already done by
+                                # someone else, so nothing to do about
+                                # it.
+                                continue
                         if files:
                             path = os.path.join(path, files[0])
                         else:
