@@ -6214,6 +6214,54 @@ def outer(x, y):
         y.dimshuffle('x', 0))
 
 
+def _matmul2(x, y):
+    """numpy.matmul() equivalent for 2D-or-more tensors only."""
+
+    # Make number of dimensions match, prepend broadcastable axes if needed.
+    newdims = abs(x.ndim - y.ndim)
+    if x.ndim < y.ndim:
+        x = x.dimshuffle(*(['x'] * newdims + list(range(x.ndim))))
+        dims = y.ndim
+    else:
+        y = y.dimshuffle(*(['x'] * newdims + list(range(y.ndim))))
+        dims = x.ndim
+
+    # Align the last axis of @x with the last second axis of @y
+    x = x.dimshuffle(*(list(range(dims)) + ['x']))
+    y = y.dimshuffle(*(list(range(dims - 2)) + ['x', dims - 2, dims - 1]))
+
+    # Compute the "elementwise" matrix product
+    return (x * y).sum(axis=-2)
+
+
+def matmul(x, y):
+    """Theano equivalent of numpy.matmul()."""
+
+    if (x.ndim == 0) or (y.ndim == 0):
+        raise ValueError("Scalar operands are not allowed, use '*' instead")
+
+    prepend = False
+    append = False
+
+    if x.ndim == 1:
+        # Prepend an axis to x and remove the last second axis afterwards.
+        x = x.dimshuffle('x', 0)
+        prepend = True
+    if y.ndim == 1:
+        # Append an axis to y and remove the last axis afterwards.
+        y = y.dimshuffle(0, 'x')
+        append = True
+
+    r = _matmul2(x, y)
+
+    if prepend:
+        r = r.dimshuffle(*(list(range(r.ndim - 2)) + [r.ndim - 1]))
+    if append:
+        r = r.dimshuffle(*(list(range(r.ndim - 1))))
+
+    return r
+
+
 def any(x, axis=None, keepdims=False):
     out = elemwise.Any(axis)(x)
 
