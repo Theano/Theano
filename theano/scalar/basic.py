@@ -349,6 +349,9 @@ class Scalar(Type):
             return True
         return abs(diff) <= (abs(a) * tolerance) + (abs(b) * tolerance)
 
+    def c_element_type(self):
+        return self.dtype_specs()[1]
+
     def c_headers(self, c_compiler):
         l = ['<math.h>']
         # These includes are needed by Scalar and TensorType,

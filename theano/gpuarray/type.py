@@ -430,6 +430,9 @@ class GpuArrayType(Type):
         else:
             return np.dtype(self.dtype).itemsize
 
+    def c_element_type(self):
+        return pygpu.gpuarray.dtype_to_ctype(self.dtype)
+
     def c_declare(self, name, sub, check_input=True):
         return """
         PyGpuArrayObject *%(name)s;

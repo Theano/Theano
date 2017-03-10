@@ -35,6 +35,19 @@ class CLinkerType(CLinkerObject):
 
     """
 
+    def c_element_type(self):
+        """
+        Optional: Return the name of the primitive C type of items into variables
+        handled by this type.
+
+        e.g:
+
+         - For ``TensorType(dtype='int64', ...)``: should return ``"npy_int64"``.
+         - For ``GpuArrayType(dtype='int32', ...)``: should return ``"ga_int"``.
+
+        """
+        return ''
+
     def c_is_simple(self):
         """
         Optional: Return True for small or builtin C types.
