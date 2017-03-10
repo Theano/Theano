@@ -73,8 +73,34 @@ if config.mode == "FAST_COMPILE":
 else:
     mode_opt = get_default_mode()
 
-### seed random number generator so that unittests are deterministic ###
+
+# Use a seeded random number generator so that unittests are deterministic
 utt.seed_rng()
+test_rng = numpy.random.RandomState(seed=utt.fetch_seed())
+
+
+# A helpful class to check random values close to the boundaries
+# when designing new tests
+class MockRandomState:
+    def __init__(self, val):
+        self.val = val
+
+    def rand(self, *shape):
+        return numpy.zeros(shape, dtype='float64') + self.val
+
+    def randint(self, minval, maxval=None, size=1):
+        if maxval is None:
+            minval, maxval = 0, minval
+        out = numpy.zeros(size, dtype='int64')
+        if self.val == 0:
+            return out + minval
+        else:
+            return out + maxval - 1
+# Examples of use:
+# test_rng = MockRandomState(0)
+# test_rng = MockRandomState(0.99999982)
+# test_rng = MockRandomState(1)
+
 
 if PY3:
     def L(i):
@@ -82,6 +108,7 @@ if PY3:
 else:
     def L(i):
         return long(i)
+
 
 def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False,
                  on_unused_input='raise', name=None):
@@ -546,14 +573,14 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
 
 
 def rand(*shape):
-    r = numpy.random.rand(*shape) * 2 - 1
+    r = test_rng.rand(*shape) * 2 - 1
     return numpy.asarray(r, dtype=config.floatX)
 
 
 def rand_nonzero(shape, eps=3e-4):
     """Like rand, but the absolute value has to be at least eps"""
     # covers [0, 1)
-    r = numpy.asarray(numpy.random.rand(*shape), dtype=config.floatX)
+    r = numpy.asarray(test_rng.rand(*shape), dtype=config.floatX)
     # covers [0, (1 - eps) / 2) U [(1 + eps) / 2, 1)
     r = r * (1 - eps) + eps * (r >= 0.5)
     # covers [-1, -eps) U [eps, 1)
@@ -562,17 +589,20 @@ def rand_nonzero(shape, eps=3e-4):
 
 
 def randint(*shape):
-    return numpy.random.randint(-5, 6, shape)
+    return test_rng.randint(-5, 6, shape)
+
 
 def randuint32(*shape):
-    return numpy.array(numpy.random.randint(5, size=shape), dtype=numpy.uint32)
+    return numpy.array(test_rng.randint(5, size=shape), dtype=numpy.uint32)
+
 
 def randuint16(*shape):
-    return numpy.array(numpy.random.randint(5, size=shape), dtype=numpy.uint16)
+    return numpy.array(test_rng.randint(5, size=shape), dtype=numpy.uint16)
+
 
 # XXX: this so-called complex random array as all-zero imaginary parts
 def randcomplex(*shape):
-    r = numpy.asarray(numpy.random.rand(*shape), dtype=config.floatX)
+    r = numpy.asarray(test_rng.rand(*shape), dtype=config.floatX)
     return numpy.complex128(2 * r - 1)
 
 
@@ -581,21 +611,21 @@ def randcomplex_nonzero(shape, eps=1e-4):
 
 
 def randint_nonzero(*shape):
-    r = numpy.random.randint(-5, 5, shape)
+    r = test_rng.randint(-5, 5, shape)
     return r + (r == 0) * 5
 
 
 def rand_ranged(min, max, shape):
-    return numpy.asarray(numpy.random.rand(*shape) * (max - min) + min,
+    return numpy.asarray(test_rng.rand(*shape) * (max - min) + min,
                          dtype=config.floatX)
 
 
 def randint_ranged(min, max, shape):
-    return numpy.random.randint(min, max+1, shape)
+    return test_rng.randint(min, max+1, shape)
 
 
 def randc128_ranged(min, max, shape):
-    return numpy.asarray(numpy.random.rand(*shape) * (max - min) + min,
+    return numpy.asarray(test_rng.rand(*shape) * (max - min) + min,
                          dtype='complex128')
 
 
@@ -609,6 +639,8 @@ def rand_of_dtype(shape, dtype):
     else:
         raise TypeError()
 
+# Used to exclude random numbers too close to certain values
+_eps = 1e-2
 
 def makeBroadcastTester(op, expected, checks=None, name=None, **kwargs):
     if checks is None:
@@ -1144,6 +1176,11 @@ _grad_broadcast_unary_normal = dict(
         # empty = [numpy.asarray([])] # XXX: should this be included?
         )
 
+# Avoid epsilon around integer values
+_grad_broadcast_unary_normal_noint = dict(
+    normal=[(rand_ranged(_eps, 1 - _eps, (2, 3)) + randint(2, 3))
+            .astype(floatX)])
+
 _grad_broadcast_unary_normal_small_neg_range = dict(
         normal=[numpy.asarray(rand_ranged(-2, 5, (2, 3)), dtype=floatX)],
         corner_case=[corner_case_grad])
@@ -1153,12 +1190,12 @@ _grad_broadcast_unary_normal_no_complex_no_corner_case = copymod(
         without=['corner_case'])
 
 _grad_broadcast_unary_abs1_no_complex = dict(
-        normal=[numpy.asarray(rand_ranged(-1, 1, (2, 3)), dtype=floatX)],
+        normal=[numpy.asarray(rand_ranged(-1 + _eps, 1 - _eps, (2, 3)), dtype=floatX)],
         )
 
 _grad_broadcast_unary_0_2_no_complex = dict(
-    # Don't go too close to 2 for tests in float32
-        normal=[numpy.asarray(rand_ranged(0, 1.9, (2, 3)), dtype=floatX)],
+    # Don't go too close to 0 or 2 for tests in float32
+        normal=[numpy.asarray(rand_ranged(_eps, 1 - _eps, (2, 3)), dtype=floatX)],
         )
 
 # inplace ops when the input is integer and the output is float*
@@ -1222,9 +1259,7 @@ IntDivInplaceTester = makeBroadcastTester(
 CeilTester = makeBroadcastTester(op=tensor.ceil,
         expected=upcast_float16_ufunc(numpy.ceil),
         good=_good_broadcast_unary_normal_no_complex,
-        grad=copymod(_grad_broadcast_unary_normal,
-            without=['corner_case'],
-            # corner_case includes ints where ceil is not differentiable
+        grad=copymod(_grad_broadcast_unary_normal_noint,
             extra=[numpy.asarray([-2.5, -1.5, -1.51, 0.49, .98, 1.02],
                 dtype=floatX)]))
 
@@ -1233,9 +1268,7 @@ CeilInplaceTester = makeBroadcastTester(op=inplace.ceil_inplace,
         good=_good_broadcast_unary_normal_no_complex,
         # corner cases includes a lot of integers: points where Ceil is not
         # continuous (not differentiable)
-        grad=copymod(_grad_broadcast_unary_normal,
-            without=['corner_case'],
-            # corner_case includes ints where ceil is not differentiable
+        grad=copymod(_grad_broadcast_unary_normal_noint,
             extra=[numpy.asarray([-2.5, -1.5, -1.51, 0.49, .98, 1.02],
                 dtype=floatX)]),
         inplace=True)
@@ -1243,16 +1276,12 @@ CeilInplaceTester = makeBroadcastTester(op=inplace.ceil_inplace,
 FloorTester = makeBroadcastTester(op=tensor.floor,
         expected=upcast_float16_ufunc(numpy.floor),
         good=_good_broadcast_unary_normal_no_complex,
-        # XXX: why does grad of floor not give huge values at
-        #      the integer points in the 'corner_case' in
-        #      _grad_broadcast_unary_normal?  It seems this test should fail,
-        #      yet it does not...
-        grad=_grad_broadcast_unary_normal)
+        grad=_grad_broadcast_unary_normal_noint)
 
 FloorInplaceTester = makeBroadcastTester(op=inplace.floor_inplace,
         expected=upcast_float16_ufunc(numpy.floor),
         good=_good_broadcast_unary_normal_no_complex,
-        grad=_grad_broadcast_unary_normal,
+        grad=_grad_broadcast_unary_normal_noint,
         inplace=True)
 
 TruncInplaceTester = makeBroadcastTester(
@@ -1362,7 +1391,7 @@ _good_broadcast_unary_positive_float = copymod(
     _good_broadcast_unary_positive,
     without=['integers', 'uint8'])
 
-_grad_broadcast_unary_positive = dict(normal=(rand_ranged(0.001, 5, (2, 3)),),)
+_grad_broadcast_unary_positive = dict(normal=(rand_ranged(_eps, 5, (2, 3)),),)
 
 LogTester = makeBroadcastTester(op=tensor.log,
                                 expected=upcast_float16_ufunc(numpy.log),
@@ -1629,7 +1658,7 @@ _good_broadcast_unary_arccosh = dict(
     uint8=[numpy.arange(1, 256, dtype='uint8')],
     complex=(randc128_ranged(1, 1000, (2, 3)),),
     empty=(numpy.asarray([], dtype=config.floatX),),)
-_grad_broadcast_unary_arccosh = dict(normal=(rand_ranged(1, 1000, (2, 3)),),)
+_grad_broadcast_unary_arccosh = dict(normal=(rand_ranged(1 + _eps, 1000, (2, 3)),),)
 
 ArccoshTester = makeBroadcastTester(
     op=tensor.arccosh,
@@ -1681,7 +1710,6 @@ TanhInplaceTester = makeBroadcastTester(
     grad=_grad_broadcast_unary_normal,
     inplace=True)
 
-_eps = 1e-2
 _good_broadcast_unary_arctanh = dict(
     normal=(rand_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
     integers=(randint_ranged(-1 + _eps, 1 - _eps, (2, 3)),),
@@ -4768,9 +4796,6 @@ class T_mean(unittest.TestCase):
 
 class test_matinv(unittest.TestCase):
 
-    def setUp(self):
-        utt.seed_rng()
-
     def mat_reciprocal(self, dim):
         # symbolic program
         # broadcastable=[False,False] means that the shape of matrix is two dimensional,
@@ -4778,7 +4803,7 @@ class test_matinv(unittest.TestCase):
         # Note that TensorType's constructor does not actually allocate any memory.
         # TODO: Make TensorType syntax more explicit, and maybe give shape or number of dimensions.
 
-        utt.seed_rng()
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
 
         a, b = matrices('ab')
         ab = a * b
@@ -4795,8 +4820,8 @@ class test_matinv(unittest.TestCase):
         fn = inplace_func([a, b], [ssdiff, g_b])
 
         # use the function
-        x = rand(dim, dim) + 0.1      # Initialized s.t. x is not too tiny
-        w = rand(dim, dim)
+        x = rng.rand(dim, dim) + 0.1      # Initialized s.t. x is not too tiny
+        w = rng.rand(dim, dim)
         x = numpy.asarray(x, dtype=config.floatX)
         w = numpy.asarray(w, dtype=config.floatX)
 
@@ -4813,10 +4838,10 @@ class test_matinv(unittest.TestCase):
         """Matrix reciprocal by gradient descent"""
         ssd0, ssd = self.mat_reciprocal(3)
 
-        utt.seed_rng()
+        rng = numpy.random.RandomState(seed=utt.fetch_seed())
         # hand-coded numpy implementation for verification
-        x = rand(3, 3) + 0.1
-        w = rand(3, 3)
+        x = rng.rand(3, 3) + 0.1
+        w = rng.rand(3, 3)
         x = numpy.asarray(x, dtype=config.floatX)
         w = numpy.asarray(w, dtype=config.floatX)
         ones = numpy.ones((3, 3), dtype=config.floatX)
