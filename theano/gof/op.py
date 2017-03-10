@@ -1392,7 +1392,7 @@ class COp(Op):
         The names must be strings that are not a C keyword and the
         values must be strings of literal C representations.
 
-        If op uses a :class:`theano.gof.Wrapper` as ``params_type``,
+        If op uses a :class:`theano.gof.wrapper.Wrapper` as ``params_type``,
         it returns:
          - a default macro ``APPLY_SPECIFIC_WRAPPER`` which defines the class name of the
            corresponding C struct.
