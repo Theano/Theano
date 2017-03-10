@@ -1392,7 +1392,24 @@ class COp(Op):
         The names must be strings that are not a C keyword and the
         values must be strings of literal C representations.
 
+        If op uses a :class:`theano.gof.wrapper.Wrapper` as ``params_type``,
+        it returns:
+         - a default macro ``APPLY_SPECIFIC_WRAPPER`` which defines the class name of the
+           corresponding C struct.
+         - a macro ``DTYPE_PARAM_key`` for every ``key`` in the Wrapper for which associated
+           type implements the method :func:`theano.gof.type.CLinkerType.c_element_type`.
+           ``DTYPE_PARAM_key`` defines the primitive C type name of an item in a variable
+           associated to ``key``.
+
         """
+        if hasattr(self, 'params_type') and isinstance(self.params_type, theano.gof.wrapper.Wrapper):
+            wrapper = self.params_type
+            params = [('APPLY_SPECIFIC_WRAPPER', wrapper.name)]
+            for i in range(wrapper.length):
+                field_c_element_type = wrapper.types[i].c_element_type()
+                if field_c_element_type:
+                    params.append(('DTYPE_PARAM_' + wrapper.fields[i], field_c_element_type))
+            return params
         return []
 
     def c_code_cache_version(self):
