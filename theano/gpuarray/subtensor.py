@@ -300,8 +300,9 @@ class GpuIncSubtensor(IncSubtensor):
         size_t dims[%(view_ndim)s];
         for(int i=0; i<%(view_ndim)s; i++)
             dims[i] = xview_dims[i];
+
         zview = pygpu_fromgpudata(%(x)s->ga.data,
-                                  xview_offset,
+                                  %(x)s->ga.offset + xview_offset,
                                   %(x)s->ga.typecode,
                                   %(view_ndim)s,
                                   dims,
@@ -396,7 +397,7 @@ int sub_setarray(GpuArray *dst, GpuArray *src) {
         parent_version = super(GpuIncSubtensor, self).c_code_cache_version()
         if not parent_version:
             return
-        return parent_version + (8,)
+        return parent_version + (9,)
 
 
 class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
