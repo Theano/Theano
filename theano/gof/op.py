@@ -801,7 +801,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
     def get_params(self, node):
         if hasattr(self, 'params_type') and isinstance(self.params_type, theano.gof.wrapper.Wrapper):
             wrapper = self.params_type
-            if hasattr(self, '__props__') and all(field in self.__props__ for field in wrapper.fields):
+            if all(hasattr(self, field) for field in wrapper.fields):
                 wrap_dict = dict()
                 for i in range(wrapper.length):
                     field = wrapper.fields[i]
