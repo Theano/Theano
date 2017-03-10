@@ -7,13 +7,11 @@ from theano import Generic
 from theano.scalar import Scalar
 from theano.tensor import TensorType
 from theano.gof.wrapper import Wrapper, Wrap
-from theano import config
 from theano import tensor
 from theano.tests import unittest_tools as utt
 
-dtype = config.floatX
-tensor_type_0d = TensorType(dtype, tuple())
-scalar_type = Scalar(dtype)
+tensor_type_0d = TensorType('float64', tuple())
+scalar_type = Scalar('float64')
 generic_type = Generic()
 
 
@@ -39,13 +37,13 @@ class QuadraticOpFunc(Op):
         y[0] = coefficients.a * (x**2) + coefficients.b * x + coefficients.c
 
     def c_code_cache_version(self):
-        return (1, 3)
+        return (1, 5)
 
     def c_support_code_apply(self, node, name):
         float_type = node.inputs[0].type.dtype_specs()[1]
         return """
         /* Computes: x = a*x*x + b*x + c for x in tensor. */
-        int quadratic_%(float_type)s(PyArrayObject* tensor, %(float_type)s a, %(float_type)s b, %(float_type)s c) {
+        int quadratic_%(name)s(PyArrayObject* tensor, %(float_type)s a, %(float_type)s b, %(float_type)s c) {
             NpyIter* iterator = NpyIter_New(tensor,
                 NPY_ITER_READWRITE | NPY_ITER_EXTERNAL_LOOP | NPY_ITER_REFS_OK,
                 NPY_KEEPORDER, NPY_NO_CASTING, NULL);
@@ -71,7 +69,7 @@ class QuadraticOpFunc(Op):
             NpyIter_Deallocate(iterator);
             return 0;
         }
-        """ % {'float_type': float_type}
+        """ % {'name': name, 'float_type': float_type}
 
     def c_code(self, node, name, inputs, outputs, sub):
         X = inputs[0]
@@ -79,19 +77,18 @@ class QuadraticOpFunc(Op):
         coeff = sub['params']
         fail = sub['fail']
         float_type = node.inputs[0].type.dtype_specs()[1]
-        float_typenum = numpy.dtype(node.inputs[0].type.dtype).num
-        coeff_type = 'npy_' + numpy.dtype(dtype).name
+        float_typenum = node.inputs[0].type.dtype_specs()[2]
         return """
-        %(float_type)s a = (%(float_type)s) (*(%(coeff_type)s*) PyArray_GETPTR1(%(coeff)s->a, 0)); // 0-D TensorType.
-        %(float_type)s b =                                                      %(coeff)s->b;      // Scalar.
-        %(float_type)s c =                     (%(float_type)s)PyFloat_AsDouble(%(coeff)s->c);     // Generic.
+        %(float_type)s a = (%(float_type)s) (*(npy_float64*) PyArray_GETPTR1(%(coeff)s->a, 0)); // 0-D TensorType.
+        %(float_type)s b =                                                   %(coeff)s->b;      // Scalar.
+        %(float_type)s c =                 (%(float_type)s) PyFloat_AsDouble(%(coeff)s->c);     // Generic.
         Py_XDECREF(%(Y)s);
         %(Y)s = (PyArrayObject*)PyArray_EMPTY(PyArray_NDIM(%(X)s), PyArray_DIMS(%(X)s), %(float_typenum)s, PyArray_IS_F_CONTIGUOUS(%(X)s));
         if (PyArray_CopyInto(%(Y)s, %(X)s) != 0) {
             PyErr_SetString(PyExc_RuntimeError, "Unable to copy input into output.");
             %(fail)s
         };
-        if (quadratic_%(float_type)s(%(Y)s, a, b, c) != 0) {
+        if (quadratic_%(name)s(%(Y)s, a, b, c) != 0) {
             PyErr_SetString(PyExc_RuntimeError, "Unable to compute quadratic function.");
             %(fail)s
         }
@@ -104,10 +101,6 @@ class QuadraticCOpFunc(COp):
     params_type = Wrapper(a=tensor_type_0d,
                           b=scalar_type,
                           c=generic_type)
-
-    def get_op_params(self):
-        return [('QUADRATIC_WRAPPER', self.params_type.name),
-                ('COEFF_TYPE', 'npy_' + numpy.dtype(dtype).name)]
 
     def __init__(self, a, b, c):
         super(QuadraticCOpFunc, self).__init__('test_quadratic_function.c',
@@ -227,19 +220,15 @@ class TestWrapper(TestCase):
 
     def test_op_params(self):
         a, b, c = 2, 3, -7
-        x = tensor.matrix()
+        x = tensor.matrix(dtype='float64')
         y1 = QuadraticOpFunc(a, b, c)(x)
         y2 = QuadraticCOpFunc(a, b, c)(x)
         f1 = theano.function([x], y1)
         f2 = theano.function([x], y2)
         shape = (100, 100)
-        # The for-loop is here just to force profiling print something interesting.
-        # When running this test without this loop, profiling does not print neither list of classes nor list of ops
-        # (maybe because the function is extremely fast ?).
-        for i in range(50):
-            vx = numpy.random.normal(size=shape[0] * shape[1]).astype(dtype).reshape(*shape)
-            vy1 = f1(vx)
-            vy2 = f2(vx)
-            ref = a * (vx**2) + b * vx + c
-            utt.assert_allclose(vy1, vy2)
-            utt.assert_allclose(ref, vy1)
+        vx = numpy.random.normal(size=shape[0] * shape[1]).astype('float64').reshape(*shape)
+        vy1 = f1(vx)
+        vy2 = f2(vx)
+        ref = a * (vx**2) + b * vx + c
+        utt.assert_allclose(vy1, vy2)
+        utt.assert_allclose(ref, vy1)
