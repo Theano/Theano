@@ -432,7 +432,7 @@ class GpuMaxPoolRop(CGpuKernelBase):
 
 class GpuRoIPoolOp(CGpuKernelBase):
 
-    __props__ = ('spatial_scale', 'pooled_h', 'pooled_w')
+    __props__ = ('pooled_h', 'pooled_w', 'spatial_scale')
 
     def __init__(self, pooled_h, pooled_w, spatial_scale):
         self.pooled_h = pooled_h
@@ -477,7 +477,6 @@ class GpuRoIPoolOp(CGpuKernelBase):
         data, roi = inp
         gz1, gz2 = grads
         maxout, argmax = self(data, roi)
-
         disc = [theano.gradient.DisconnectedType()() for i in inp[1:]]
         return [GpuRoIPoolGradOp(self.pooled_h, self.pooled_w,
                                  self.spatial_scale)(data, roi, argmax, gz1)] + disc
@@ -485,7 +484,7 @@ class GpuRoIPoolOp(CGpuKernelBase):
 
 class GpuRoIPoolGradOp(CGpuKernelBase):
 
-    __props__ = ('spatial_scale', 'pooled_h', 'pooled_w')
+    __props__ = ('pooled_h', 'pooled_w', 'spatial_scale')
 
     def __init__(self, pooled_h, pooled_w, spatial_scale):
         self.dtype = config.floatX

@@ -1229,7 +1229,7 @@ class TestRoIPool(utt.InferShapeTester):
                 utt.assert_allclose(maxvals_np, maxvals_theano)
 
                 def mp(input):
-                    out, argmax = self.op_class(pool_heights[0], pool_widths[0], spatial_scales[0])(input, roi_theano)
+                    out, argmax = self.op_class(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=sp_scale)(input, roi_theano)
                     return out
 
                 utt.verify_grad(mp, [random_image], rng=rng)

@@ -1,12 +1,11 @@
 
 #section kernels
 
-#kernel ROIPoolGPUBkwd_kernel : *, *, *, *, int32, int32, float32, int32, int32, int32, int32, int32 :
+#kernel ROIPoolGPUBkwd_kernel : int32, int32, *, *, *, float32, int32, int32, int32, int32, int32, * :
 KERNEL void ROIPoolGPUBkwd_kernel(
-  DTYPE_i3* top_diff, DTYPE_i2* argmax_data, DTYPE_o0* bottom_diff, DTYPE_i1* bottom_rois,
-  ga_int batch_n, ga_int num_rois, ga_float spatial_scale,
-  ga_int channels, ga_int height, ga_int width,
-  ga_int pooled_height, ga_int pooled_width) {
+  const ga_int batch_n, const ga_int num_rois, GLOBAL_MEM DTYPE_i1* bottom_rois, GLOBAL_MEM DTYPE_i2* argmax_data,
+  GLOBAL_MEM DTYPE_i3* top_diff, const ga_float spatial_scale, const ga_int channels, const ga_int height,
+  const ga_int width, const ga_int pooled_height, const ga_int pooled_width, GLOBAL_MEM DTYPE_o0* bottom_diff) {
 
   // (n, c, h, w) coords in bottom data
   // Accumulate gradient over all ROIs that pooled this element
@@ -95,7 +94,7 @@ int APPLY_SPECIFIC(ROIPoolGPUBkwd)(PyGpuArrayObject *data,
     size_t width = PyGpuArray_DIMS(data)[3];
     int err;
     size_t batch_size = PyGpuArray_DIMS(data)[0];
-    size_t num_kernel = batch_size * channels * height * width;
+    size_t num_kernel = 1;
 
     if (!GpuArray_IS_C_CONTIGUOUS(&data->ga)
       || !GpuArray_IS_C_CONTIGUOUS(&rois->ga)
@@ -121,9 +120,10 @@ int APPLY_SPECIFIC(ROIPoolGPUBkwd)(PyGpuArrayObject *data,
     }
   }
 
-  err = ROIPoolGPUBkwd_kernel_scall(1, &num_kernel, 0,
-    out_grad->ga.data, argmaxes->ga.data, (*out)->ga.data, rois->ga.data, batch_size, num_rois,
-    SPATIAL_SCALE, channels, height, width, POOLED_HEIGHT, POOLED_WIDTH);
+  err = ROIPoolGPUBkwd_kernel_scall(1, &num_kernel, 0, batch_size, num_rois,
+    rois->ga.data, argmaxes->ga.data, out_grad->ga.data, SPATIAL_SCALE, channels,
+    height, width, POOLED_HEIGHT, POOLED_WIDTH, (*out)->ga.data);
+
   if (err != GA_NO_ERROR) {
     PyErr_Format(PyExc_RuntimeError,
                  "gpuarray error: ROIPoolGPUBkwd_kernel: %s.",

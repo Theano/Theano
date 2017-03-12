@@ -60,7 +60,7 @@ from .blas import (gpu_dot22, GpuGemm, GpuGer, GpuGemmBatch,
                    GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights,
                    GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
 from .pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad, GpuMaxPoolRop,
-                   GpuDownsampleFactorMaxGradGrad)
+                   GpuDownsampleFactorMaxGradGrad, GpuRoIPoolGradOp, GpuRoIPoolOp)
 from .blocksparse import (GpuSparseBlockGemv, GpuSparseBlockOuter,
                           gpu_sparse_block_outer,
                           gpu_sparse_block_outer_inplace,
@@ -2389,6 +2389,52 @@ def local_gpu_max_pool_rop(op, ctx_name, inputs, outputs):
         eval_inp_padded = pad_dims(eval_inp, 2, nd)
         ret_padded = op(inp_padded, eval_inp_padded, ws, stride, pad)
         return unpad_dims(ret_padded, inp, 2, nd)
+
+
+def local_gpu_roi_pool_op(op, ctx_name, inputs, outputs):
+    assert op.__props__ == ('pooled_h', 'pooled_w', 'spatial_scale')
+    image_data, roi = inputs
+    top_data, argmax_data, = outputs
+    assert image_data.ndim == 4
+    assert roi.ndim == 2
+    assert top_data.ndim == 4
+    assert argmax_data.ndim == 4
+    image_data = gpu_contiguous(as_gpuarray_variable(image_data, ctx_name))
+    roi = gpu_contiguous(as_gpuarray_variable(roi, ctx_name))
+    roi_op = GpuRoIPoolOp(op.pooled_h, op.pooled_w, op.spatial_scale)
+    return roi_op(image_data, roi)
+lifter = op_lifter([pool.RoIPoolOp])(local_gpu_roi_pool_op)
+pool_db.register("local_gpu_roi_pool_op", lifter,
+                 'gpuarray', 'fast_compile', 'fast_run',
+                 position=1)
+pool_db2.register("local_gpu_roi_pool_op",
+                  local_optimizer([pool.RoIPoolOp])(local_gpu_roi_pool_op),
+                  'gpuarray', 'fast_compile', 'fast_run',
+                  position=1)
+
+
+def local_gpu_roi_pool_grad_op(op, ctx_name, inputs, outputs):
+    assert op.__props__ == ('pooled_h', 'pooled_w', 'spatial_scale')
+    image_data, roi, argmax, out_grad = inputs
+    assert image_data.ndim == 4
+    assert roi.ndim == 2
+    assert argmax.ndim == 4
+    assert out_grad.ndim == 4
+    image_data = gpu_contiguous(as_gpuarray_variable(image_data, ctx_name))
+    roi = gpu_contiguous(as_gpuarray_variable(roi, ctx_name))
+    argmax = gpu_contiguous(as_gpuarray_variable(argmax, ctx_name))
+    out_grad = gpu_contiguous(as_gpuarray_variable(out_grad, ctx_name))
+    roi_grad_op = GpuRoIPoolGradOp(op.pooled_h, op.pooled_w, op.spatial_scale)
+    return roi_grad_op(image_data, roi, argmax, out_grad)
+
+lifter = op_lifter([pool.RoIPoolGradOp])(local_gpu_roi_pool_grad_op)
+pool_db.register("local_gpu_roi_pool_grad_op", lifter,
+                 'gpuarray', 'fast_compile', 'fast_run',
+                 position=1)
+pool_db2.register("local_gpu_roi_pool_grad_op",
+                  local_optimizer([pool.RoIPoolGradOp])(local_gpu_roi_pool_grad_op),
+                  'gpuarray', 'fast_compile', 'fast_run',
+                  position=1)
 
 
 @register_opt("low_memory")

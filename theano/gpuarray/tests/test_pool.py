@@ -9,13 +9,13 @@ import theano
 from theano import gradient
 from theano import tensor
 from theano.tensor.signal.pool import (Pool, MaxPoolGrad, AveragePoolGrad,
-                                       DownsampleFactorMaxGradGrad, RoIPoolGradOp, RoIPoolOp)
+                                       DownsampleFactorMaxGradGrad, RoIPoolOp)
 from theano.tests import unittest_tools as utt
 
 from .config import mode_with_gpu, mode_without_gpu
 from .test_basic_ops import rand
 from ..pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad,
-                    GpuDownsampleFactorMaxGradGrad, GpuRoIPoolOp)
+                    GpuDownsampleFactorMaxGradGrad, GpuRoIPoolOp, GpuRoIPoolGradOp)
 from theano.tensor.signal.tests.test_pool import numpy_roi_pool
 
 
@@ -303,37 +303,43 @@ class TestGpuRoIPool(utt.InferShapeTester):
         gpu_mode = copy.copy(mode_with_gpu).excluding("cudnn")
         gpu_mode.check_py_code = False
         rng = np.random.RandomState(utt.fetch_seed())
-        t_data = tensor.ftensor4()
-        t_rois = tensor.fmatrix()
         image_shapes = ((1, 3, 16, 16), (1, 3, 16, 20), (1, 3, 20, 16),
                         (1, 2, 16, 16), (1, 2, 16, 20), (1, 2, 20, 16),
                         (2, 3, 16, 16), (2, 3, 16, 20), (2, 3, 20, 16),
-                        (2, 2, 16, 16), (2, 2, 16, 20), (2, 2, 20, 16))
+                        (2, 2, 16, 16), (3, 2, 16, 20), (4, 2, 20, 16))
         # The difference in ROI shape is because the first element is batch index in
         # theano implementation.
-        roi_theano = np.asarray([[0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]], dtype='float32')
+        roi_theano = theano.shared(np.asarray([[0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]], dtype='float32'))
         roi_numpy = np.asarray([[0., 0., 3., 3.], [0., 0., 7., 7.]], dtype='float32')
         pool_widths = [2, 3, 4]
         pool_heights = [2, 3, 4]
         spatial_scales = [1.0, 1.5, 2.0]
         # Testing if Gpu Op is present
         # assert any([isinstance(node.op, GpuRoIPoolOp) for node in func.maker.fgraph.toposort()])
-        for im_shp in image_shapes:
-            for pool_h, pool_w in zip(pool_heights, pool_widths):
-                for sp_scale in spatial_scales:
+        for image_n, im_shp in enumerate(image_shapes):
+            for pool_h, pool_w, sp_scale in zip(pool_heights, pool_widths, spatial_scales):
                     random_image = rng.rand(*im_shp).astype(np.single)
-                    maxvals_np, maxloc_np = numpy_roi_pool(random_image, pool_h, pool_w, roi_numpy, sp_scale)
-                    roi_op = self.op_class(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=sp_scale)
-                    t_outs = roi_op(t_data, t_rois)
-                    func = theano.function([t_data, t_rois], t_outs)
-                    maxvals_theano, maxloc_theano = func(random_image, roi_theano)
-                    utt.assert_allclose(maxvals_np, maxvals_theano)
                     shared_image = theano.shared(random_image)
-                    shared_roi = theano.shared(roi_theano)
-                    roi_pooled = GpuRoIPoolOp(pool_h, pool_w, sp_scale)(shared_image, shared_roi)
-                    roi_pooled_grad = tensor.grad(roi_pooled[0].sum(), shared_image)
+                    # Testing the computation accuracy
+                    maxvals_np, maxloc_np = numpy_roi_pool(random_image, pool_h, pool_w, roi_numpy, sp_scale)
+                    roi_op = RoIPoolOp(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=sp_scale)
+                    t_outs = roi_op(tensor.as_tensor_variable(shared_image),
+                                    tensor.as_tensor_variable(roi_theano))
+                    func = theano.function([], t_outs, mode=gpu_mode)
+                    maxvals_theano, maxloc_theano = func()
+                    utt.assert_allclose(maxvals_np, maxvals_theano)
+                    # Checking if the CPU Op has been lifted to GPU
+                    assert any([isinstance(node.op, self.op_class) for node in func.maker.fgraph.toposort()])
+                    # Checking if the CPU GradOp has been lifted to GPU
+                    roi_pooled_grad = tensor.grad(t_outs[0].sum(), shared_image)
                     f = theano.function([], roi_pooled_grad, mode=gpu_mode)
-                    assert any([isinstance(node.op, self.op_class) for node in f.maker.fgraph.toposort()])
+                    assert any([isinstance(node.op, GpuRoIPoolGradOp) for node in f.maker.fgraph.toposort()])
+                    # Testing the computation accuracy of gradient
+
+                    def mp(inp):
+                        out, argmax = self.op_class(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=sp_scale)(inp, roi_theano)
+                        return out
+                    utt.verify_grad(mp, [random_image], rng=rng)
 
     def test_infer_shape(self):
         rng = np.random.RandomState(utt.fetch_seed())

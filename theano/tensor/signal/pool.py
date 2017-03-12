@@ -2552,7 +2552,7 @@ class RoIPoolOp(gof.COp):
         maxout, argmax = self(data, roi)
         disc = [DisconnectedType()() for i in inp[1:]]
         return [RoIPoolGradOp(self.pooled_h, self.pooled_w,
-                              self.spatial_scale)(data, roi, gz1, argmax)] + disc
+                              self.spatial_scale)(data, roi, argmax, gz1)] + disc
 
 
 class RoIPoolGradOp(gof.COp):
@@ -2568,7 +2568,7 @@ class RoIPoolGradOp(gof.COp):
         self.pooled_w = pooled_w
         self.spatial_scale = spatial_scale
 
-    def make_node(self, feature_maps, rois, out_grad, argmax_data):
+    def make_node(self, feature_maps, rois, argmax_data, out_grad):
         feature_maps = tensor.as_tensor_variable(feature_maps)
         roi_tuples = tensor.as_tensor_variable(rois)
         argmax_data = tensor.as_tensor_variable(argmax_data)
