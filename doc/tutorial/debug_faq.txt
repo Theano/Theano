@@ -216,10 +216,12 @@ The ``compute_test_value`` mechanism works as follows:
 * ``ignore``: Silently ignore the computation of intermediate test values, if a
   variable is missing a test value.
 
-.. note::
-  This feature is currently incompatible with ``Scan`` and also with ops
-  which do not implement a ``perform`` method.
+Theano also provides the ``print_test_value`` print flag which can hold a boolean value.The default value is ``false``.If ``True``, Theano will override the ‘__str__’ method of its variables to also print the tag.test_value when this is available.
+It can be used as 
 
+.. code-block:: none
+
+    theano.config.print_test_value = 'True'
 
 "How do I Print an Intermediate Value in a Function?"
 -----------------------------------------------------
