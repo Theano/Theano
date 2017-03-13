@@ -148,6 +148,14 @@ class _tensor_py_operators(object):
         except (NotImplementedError, AsTensorError):
             return NotImplemented
 
+    def __matmul__(self, other):
+        # See explanation in __add__ for the error catched
+        # and the return value in that case
+        try:
+            return theano.tensor.matmul(self, other)
+        except (NotImplementedError, AsTensorError):
+            return NotImplemented
+
     def __mul__(self, other):
         # See explanation in __add__ for the error catched
         # and the return value in that case
@@ -228,6 +236,9 @@ class _tensor_py_operators(object):
 
     def __rsub__(self, other):
         return theano.tensor.basic.sub(other, self)
+
+    def __rmatmul__(self, other):
+        return theano.tensor.basic.matmul(other, self)
 
     def __rmul__(self, other):
         return theano.tensor.basic.mul(other, self)

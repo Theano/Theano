@@ -32,7 +32,7 @@ from theano.tensor import (_shared, wvector, bvector,
         horizontal_stack, vertical_stack, argmax, get_vector_length,
         fscalar, zeros_like, sum, tensor3, vector, add, addbroadcast,
         alloc, as_tensor_variable, tensor_from_scalar, ARange,
-        clip, constant, default, dot, batched_dot,
+        clip, constant, default, dot, batched_dot, matmul,
         dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
         tensor4, permute_row_elements, Flatten, fmatrix, fscalars, grad,
         inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
@@ -1999,6 +1999,42 @@ ConjInplaceTester = makeBroadcastTester(
     expected=numpy.conj,
     good=_good_broadcast_unary_normal,
     inplace=True)
+
+
+# the reference function in numpy is new in version 1.10.0
+# skip the test if numpy version is lower
+skip_matmul = tuple(int(v) for v in numpy.version.version.split('.')) < (1, 10, 0)
+MatmulTester = makeTester(name='MatmulTester',
+                       skip=skip_matmul,
+                       op=matmul,
+                       expected=lambda x, y: numpy.matmul(x, y),
+                       checks={},
+                       good=dict(correct4x4_1=(rand(2, 5, 5, 7), rand(2, 5, 7, 5)),
+                                 correct4x4_2=(rand(2, 5, 5, 7), rand(2, 5, 7, 9)),
+                                 correct3x3_1=(rand(5, 5, 7), rand(5, 7, 5)),
+                                 correct3x3_2=(rand(5, 5, 7), rand(5, 7, 9)),
+                                 correct2x2_1=(rand(5, 7), rand(7, 5)),
+                                 correct2x2_2=(rand(5, 7), rand(7, 9)),
+                                 # matrix matrix w. bc
+                                 correct4x5_1=(rand(2, 5, 5, 7), rand(3, 2, 5, 7, 9)),
+                                 correct5x4_2=(rand(3, 2, 5, 5, 7), rand(2, 5, 7, 9)),
+                                 correct3x4_1=(rand(5, 5, 7), rand(2, 5, 7, 9)),
+                                 correct4x3_2=(rand(2, 5, 5, 7), rand(5, 7, 9)),
+                                 # matrix vector
+                                 correct2x1=(rand(5, 7), rand(7)),
+                                 correct1x2=(rand(5), rand(5, 7)),
+                                 # vector vector
+                                 correct1x1_1=(rand(5), rand(5)),
+                                 correct1x1_2=(rand(1, 5), rand(5)),
+                                 correct1x1_3=(rand(5), rand(5, 1)),
+                                 ),
+                       bad_build=dict(badscalar=(1, rand(2, 2))
+                                      ),
+                       bad_runtime=dict(bad2x2_1=(rand(5, 7), rand(5, 7)),
+                                        bad2x2_2=(rand(5, 7), rand(8, 3)),
+                                        bad3x3_1=(rand(5, 5, 7), rand(5, 8, 3)),
+                                        bad4x4_1=(rand(2, 5, 5, 7), rand(2, 5, 8, 3)),
+                                        bad4x4_2=(rand(3, 5, 5, 7), rand(2, 5, 7, 9))))
 
 
 DotTester = makeTester(name='DotTester',
