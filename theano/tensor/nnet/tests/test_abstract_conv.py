@@ -1618,6 +1618,7 @@ class TestConv2dGrads(unittest.TestCase):
             for bm in self.border_modes:
                 for ss in self.subsamples:
                     for ff in self.filter_flip:
+                        input_val = self.random_stream.random_sample(in_shape).astype(theano.config.floatX)
                         filter_val = self.random_stream.random_sample(fltr_shape).astype(theano.config.floatX)
                         out_grad_shape = theano.tensor.nnet.abstract_conv.get_conv_output_shape(image_shape=in_shape,
                                                                                                 kernel_shape=fltr_shape,
@@ -1633,7 +1634,7 @@ class TestConv2dGrads(unittest.TestCase):
                                                              filter_flip=ff
                                                              )
                         conv_grad = theano.grad(conv_out.sum(), wrt=self.x, known_grads={conv_out: self.output_grad})
-                        f_old = theano.function([self.w, self.output_grad], conv_grad)
+                        f_old = theano.function([self.x, self.w, self.output_grad], conv_grad)
 
                         conv_wrt_i_out = theano.tensor.nnet.abstract_conv.conv2d_grad_wrt_inputs(output_grad=self.output_grad_wrt,
                                                                                                  filters=self.w,
@@ -1646,7 +1647,7 @@ class TestConv2dGrads(unittest.TestCase):
                         f_new = theano.function([self.w, self.output_grad_wrt], conv_wrt_i_out)
 
                         # check that they're equal
-                        utt.assert_allclose(f_new(filter_val, out_grad_val), f_old(filter_val, out_grad_val))
+                        utt.assert_allclose(f_new(filter_val, out_grad_val), f_old(input_val, filter_val, out_grad_val))
 
     def test_conv2d_grad_wrt_weights(self):
         """Compares calculated abstract grads wrt weights with the fwd grads
@@ -1660,6 +1661,7 @@ class TestConv2dGrads(unittest.TestCase):
                 for ss in self.subsamples:
                     for ff in self.filter_flip:
                         input_val = self.random_stream.random_sample(in_shape).astype(theano.config.floatX)
+                        filter_val = self.random_stream.random_sample(fltr_shape).astype(theano.config.floatX)
                         out_grad_shape = theano.tensor.nnet.abstract_conv.get_conv_output_shape(image_shape=in_shape,
                                                                                                 kernel_shape=fltr_shape,
                                                                                                 border_mode=bm,
@@ -1674,7 +1676,7 @@ class TestConv2dGrads(unittest.TestCase):
                                                              filter_flip=ff
                                                              )
                         conv_grad = theano.grad(conv_out.sum(), wrt=self.w, known_grads={conv_out: self.output_grad})
-                        f_old = theano.function([self.x, self.output_grad], conv_grad)
+                        f_old = theano.function([self.x, self.w, self.output_grad], conv_grad)
 
                         conv_wrt_w_out = theano.tensor.nnet.abstract_conv.conv2d_grad_wrt_weights(self.x,
                                                                                                   output_grad=self.output_grad_wrt,
@@ -1685,4 +1687,4 @@ class TestConv2dGrads(unittest.TestCase):
                                                                                                   filter_flip=ff
                                                                                                   )
                         f_new = theano.function([self.x, self.output_grad_wrt], conv_wrt_w_out)
-                        utt.assert_allclose(f_new(input_val, out_grad_val), f_old(input_val, out_grad_val))
+                        utt.assert_allclose(f_new(input_val, out_grad_val), f_old(input_val, filter_val, out_grad_val))
