@@ -223,9 +223,9 @@ Here is the same kernel, but now ready to handle float16::
     """
     KERNEL void k(const ga_size n, %(type_x)s *x, %(type_y)s *y) {
         ga_size i = GID_0 * LDIM_0 + LID_0;
-        %(work_x) z = %(load_w)(x[i]);
+        %(work_x) z = %(load_x)(x[i]);
         z += 1;
-        y[i] = %(write_w)(z);
+        y[i] = %(write_y)(z);
     }
     """ % dict(dtype_x=dtype_x, dtype_y=dtype_y, work_x=work_x, load_x=load_x,
                write_y=write_y)
@@ -239,7 +239,8 @@ class property like this::
         _f16_ok = True
 
 If this attribute is not present or is False, the linker will print a
-message saying that it's refusing to use C code for float16.
+message saying that it's refusing to use C code for float16 for the
+op.
 
 A Complete Example
 ==================

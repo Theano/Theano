@@ -18,7 +18,7 @@ def load_w(dtype):
 
     This should be used like this::
 
-        code = '%(load_f)s(ival)' % (load_w(input_type),)
+        code = '%s(ival)' % (load_w(input_type),)
 
     """
     if dtype == 'float16':
@@ -33,7 +33,7 @@ def write_w(dtype):
 
     This should be used like this::
 
-        code = 'res = %(write_f)s(oval)' % (write_w(output_type),)
+        code = 'res = %s(oval)' % (write_w(output_type),)
 
     """
     if dtype == 'float16':
