@@ -4658,7 +4658,7 @@ class T_cast_cast(unittest.TestCase):
         f(dx)
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
-        assert isinstance(topo[0].op.scalar_op, scal.basic.Cast)
+        assert isinstance(topo[0].op, T.Elemwise)
 
         x = T.dmatrix()
         o = T.Elemwise(scal.Cast(scal.Scalar("float32")))(x.astype("float32"))
@@ -4667,7 +4667,7 @@ class T_cast_cast(unittest.TestCase):
         f(dx)
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
-        assert isinstance(topo[0].op.scalar_op, scal.basic.Cast)
+        assert isinstance(topo[0].op, T.Elemwise)
 
     def test_upcast(self):
         # Upcast followed by any other cast
@@ -4691,14 +4691,14 @@ class T_cast_cast(unittest.TestCase):
         assert isinstance(topo[0].op, DeepCopyOp)
 
         # Downcast followed by an upcast back to the base type
+        # Optimization shouldn't be applied
         x = T.dmatrix()
         o = T.Elemwise(scal.Cast(scal.Scalar("float64")))(x.astype("float32"))
         f = theano.function([x], o, mode=self.mode)
         dx = numpy.random.rand(5, 4)
         f(dx)
         topo = f.maker.fgraph.toposort()
-        assert len(topo) == 1
-        assert isinstance(topo[0].op.scalar_op, scal.basic.Composite)
+        assert (len(topo) == 1 and isinstance(topo[0].op.scalar_op, scal.basic.Composite)) or (len(topo) > 1)
 
 
 class T_func_inverse(unittest.TestCase):
