@@ -5,7 +5,11 @@ import theano
 import warnings
 
 from theano import Op
+
 from theano.gpuarray import basic_ops, GpuArrayType
+
+from pygpu.gpuarray import GpuKernel, GpuArray
+from string import Template
 
 import numpy as np
 from numpy.linalg.linalg import LinAlgError
@@ -19,7 +23,6 @@ cusolver_available = False
 try:
     import skcuda
     from skcuda import cusolver
-    from skcuda import linalg
     cusolver_available = True
 except (ImportError, OSError, RuntimeError, pkg_resources.DistributionNotFound):
     pass
@@ -53,11 +56,49 @@ if cusolver_available:
         cusolver.cusolverCheckStatus(status)
 
 
-def attach_handle_to_context(ctx):
+def attach_cusolver_handle_to_context(ctx):
     handle = getattr(ctx, 'cusolver_handle', None)
     if handle is None:
         with ctx:
             ctx.cusolver_handle = cusolver.cusolverDnCreate()
+
+
+def tril(A, ctx):
+    tmpl = Template("""
+    KERNEL void tril(GLOBAL_MEM ga_float *a, ga_uint N) {
+        unsigned int idx = blockIdx.y*blockDim.x*gridDim.x+
+                           blockIdx.x*blockDim.x+threadIdx.x;
+        unsigned int ix = idx/${cols};
+        unsigned int iy = idx%${cols};
+        if (idx < N) {
+            if (ix < iy)
+                a[idx] = 0.0;
+        }
+    }
+    """)
+    src = tmpl.substitute(cols=A.shape[0])
+    spec = [GpuArray, 'uint32']
+    k = GpuKernel(src, "tril", spec, context=ctx)
+    return k(A, A.shape[0] * A.shape[1], n=A.shape[0])
+
+
+def triu(A, ctx):
+    tmpl = Template("""
+    KERNEL void triu(GLOBAL_MEM ga_float *a, ga_uint N) {
+        unsigned int idx = blockIdx.y*blockDim.x*gridDim.x+
+                           blockIdx.x*blockDim.x+threadIdx.x;
+        unsigned int ix = idx/${cols};
+        unsigned int iy = idx%${cols};
+        if (idx < N) {
+            if (ix > iy)
+                a[idx] = 0.0;
+        }
+    }
+    """)
+    src = tmpl.substitute(cols=A.shape[0])
+    spec = [GpuArray, 'uint32']
+    k = GpuKernel(src, "triu", spec, context=ctx)
+    return k(A, A.shape[0] * A.shape[1], n=A.shape[0])
 
 
 class GpuCusolverSolve(Op):
@@ -109,7 +150,7 @@ class GpuCusolverSolve(Op):
 
     def prepare_node(self, node, storage_map, compute_map, impl):
         ctx = node.inputs[0].type.context
-        attach_handle_to_context(ctx)
+        attach_cusolver_handle_to_context(ctx)
 
     def check_dev_info(self, dev_info):
         val = np.asarray(dev_info)[0]
@@ -268,7 +309,7 @@ class GpuCholesky(Op):
 
     def prepare_node(self, node, storage_map, compute_map, impl):
         ctx = node.inputs[0].type.context
-        attach_handle_to_context(ctx)
+        attach_cusolver_handle_to_context(ctx)
 
     def perform(self, node, inputs, outputs):
         context = inputs[0][0].context
@@ -306,32 +347,29 @@ class GpuCholesky(Op):
             workspace_size = cusolver.cusolverDnSpotrf_bufferSize(
                 context.cusolver_handle, l_parameter, n, L_ptr, lda)
 
-        workspace = pygpu.zeros(workspace_size, dtype='float32',
-                                context=context)
+            workspace = pygpu.zeros(workspace_size, dtype='float32',
+                                    context=context)
 
-        dev_info = pygpu.zeros((1,), dtype='int32', context=context)
+            dev_info = pygpu.zeros((1,), dtype='int32', context=context)
 
-        workspace_ptr = workspace.gpudata
-        dev_info_ptr = dev_info.gpudata
+            workspace_ptr = workspace.gpudata
+            dev_info_ptr = dev_info.gpudata
 
-        with context:
             cusolver.cusolverDnSpotrf(
                 context.cusolver_handle, l_parameter, n, L_ptr, lda, workspace_ptr,
                 workspace_size, dev_info_ptr)
 
+            val_dev_info = np.asarray(dev_info)[0]
+            if val_dev_info > 0:
+                raise LinAlgError('Cholesky decomposition failed (is A SPD?)')
+
         # cusolver leaves the elements in the matrix outside the considered
         # upper or lower triangle unchanged, so we need to put zeros outside
         # the triangle
-        """
-        with context:
-            if self.lower:
-                linalg.tril(L, overwrite=True, handle=context.cudnn_handle)
-            else:
-                linalg.triu(L, overwrite=True, handle=context.cudnn_handle)
-        """
-        if self.lower:
-            L.write(numpy.tril(L))
+        # Note : we should probably check for c or f order in triu instead of here
+        if self.lower and L.flags['C_CONTIGUOUS'] or (not self.lower and L.flags['F_CONTIGUOUS']):
+            tril(L, context)
         else:
-            L.write(numpy.triu(L))
+            triu(L, context)
 
         outputs[0][0] = L

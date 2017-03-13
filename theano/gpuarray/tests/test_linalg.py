@@ -196,11 +196,7 @@ class TestGpuCholesky(unittest.TestCase):
         A_val = M_val.dot(M_val.T)
         self.compare_gpu_cholesky_to_numpy(A_val, lower=False, inplace=True)
 
-
-class nothing:
-
     def test_invalid_input_fail_non_symmetric(self):
-        pass
         """ Invalid Cholesky input test with non-symmetric input.
             (Non-symmetric real input must also be non-positive definite). """
         A_val = numpy.random.normal(size=(3, 3)).astype("float32")
@@ -208,14 +204,13 @@ class nothing:
         # not being the case even with finite precision should be negligible
         assert not numpy.allclose(A_val, A_val.T)
         fn = self.get_gpu_cholesky_func(True, False)
-        self.assertRaises(cula.cula.culaError, fn, A_val)
+        self.assertRaises(LinAlgError, fn, A_val)
 
     def test_invalid_input_fail_negative_definite(self):
-        pass
         """ Invalid Cholesky input test with negative-definite input. """
         M_val = numpy.random.normal(size=(3, 3)).astype("float32")
         # A = -M.dot(M) will be negative definite for all non-singular M
         A_val = -M_val.dot(M_val.T)
         fn = self.get_gpu_cholesky_func(True, False)
-        self.assertRaises(cula.cula.culaError, fn, A_val)
+        self.assertRaises(LinAlgError, fn, A_val)
 
