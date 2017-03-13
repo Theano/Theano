@@ -1592,6 +1592,10 @@ class TestConv2dGrads(unittest.TestCase):
 
     def setUp(self):
 
+        if (not theano.config.cxx or
+                theano.config.mode == "FAST_COMPILE"):
+            raise SkipTest("Need blas to test conv2d")
+
         self.random_stream = numpy.random.RandomState(utt.fetch_seed())
 
         self.inputs_shapes = [(8, 1, 12, 12), (1, 1, 5, 5), (1, 1, 5, 6), (1, 1, 6, 6)]
