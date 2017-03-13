@@ -3,6 +3,31 @@ Release Notes
 =============
 
 
+Theano 0.9.0rc4 (13th of March, 2017)
+=====================================
+
+This release extends the 0.9.0rc3 and announces the upcoming final release 0.9.
+
+Highlights (since 0.9.0rc3):
+ - Documentation updates
+ - DebugMode fixes, cache cleanup fixes and other small fixes
+
+ - New GPU back-end:
+
+   - Fixed offset error in GpuIncSubtensor
+   - Fixed indexing error in GpuAdvancedSubtensor for more than 2 dimensions
+
+A total of 5 people contributed to this release since 0.9.0rc3 and 123 since 0.8.0, see the lists below.
+
+
+Committers since 0.9.0rc3:
+ - Frederic Bastien
+ - Pascal Lamblin
+ - Arnaud Bergeron
+ - Cesar Laurent
+ - Martin Drawitsch
+
+
 Theano 0.9.0rc3 (6th of March, 2017)
 ====================================
 
