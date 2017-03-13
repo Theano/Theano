@@ -4188,7 +4188,7 @@ class Join(Op):
                                      dtype=node.outputs[0].type.dtype)
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         axis, tensors = inputs[0], inputs[1:]
@@ -4209,7 +4209,6 @@ class Join(Op):
 
         copy_inputs_to_list = '\n'.join(copy_to_list)
         n = len(tensors)
-        khar = "printf(\"tensors_lens_sum: %d\", tensors_lens_sum);"
 
         code = """
         int axis = ((%(adtype)s *)PyArray_DATA(%(axis)s))[0];
@@ -4222,7 +4221,6 @@ class Join(Op):
             for(int i=0; i < %(n)s; i++){
                 tensors_lens_sum += PyArray_DIM((PyArrayObject *)(PyList_GetItem(list, i)), axis);
             }
-            %(khar)s
             tensors_lens_sum -= PyArray_DIM(%(non_empty_tensor)s, axis);
         }
         if(%(view)s != -1 && tensors_lens_sum == 0) {
