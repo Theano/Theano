@@ -2304,7 +2304,7 @@ class GCC_compiler(Compiler):
                     py_string = re.search('-lpython["."0-9]*', nf_lib, re.IGNORECASE).group()[8:]
                     if py_string != '':
                         print(
-                            'Check if package python-dev ' +  py_string + ' or python-devel ' +  py_string + ' is installed.'
+                            'Check if package python-dev ' + py_string + ' or python-devel ' + py_string + ' is installed.'
                         )
                     else:
                         print(
