@@ -40,6 +40,8 @@ Highlights:
 
  - New GPU back-end:
 
+   - Fixed offset error in GpuIncSubtensor
+   - Fixed indexing error in GpuAdvancedSubtensor for more than 2 dimensions
    - Value of a shared variable is now set inplace
    - float16 storage
    - better mapping between theano device number and nvidia-smi number, using the PCI bus ID of graphic cards
@@ -122,6 +124,14 @@ Other more detailed changes:
 
 
 ALL THE PR BELLOW HAVE BEEN CHECKED
+* https://github.com/Theano/Theano/pull/5693
+* https://github.com/Theano/Theano/pull/5702
+* https://github.com/Theano/Theano/pull/5697
+* https://github.com/Theano/Theano/pull/5684
+* https://github.com/Theano/Theano/pull/5673
+* https://github.com/Theano/Theano/pull/5680
+* https://github.com/Theano/Theano/pull/5678
+* https://github.com/Theano/Theano/pull/5675
 * https://github.com/Theano/Theano/pull/5666
 * https://github.com/Theano/Theano/pull/5643
 * https://github.com/Theano/Theano/pull/5631
