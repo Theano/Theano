@@ -18,6 +18,7 @@ import sys
 import time
 from collections import defaultdict
 from six import iteritems
+import warnings
 
 import numpy as np
 
@@ -278,10 +279,10 @@ class ProfileStats(object):
                 hasattr(theano, 'gpuarray') and
                 theano.gpuarray.pygpu_activated and
                 not config.profiling.ignore_first_call):
-            logger.warn(
+            warnings.warn(
                 "Theano flag profiling.ignore_first_call is False."
                 " This cause bad profiling result in the new gpu"
-                " back-end, we as sometimes we compile at the first call.")
+                " back-end, as sometimes we compile at the first call.")
 
         self.apply_callcount = {}
         self.output_size = {}
