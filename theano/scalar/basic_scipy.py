@@ -391,13 +391,10 @@ class Jv(BinaryScalarOp):
             super(Jv, self).impl(v, x)
 
     def grad(self, inputs, grads):
-        if imported_scipy_special:
-            v, x = inputs
-            gz, = grads
-            return [grad_not_implemented(self, 0, v),
-                    gz * (jv(v - 1, x) - jv(v + 1, x)) / 2.]
-        else:
-            super(Jv, self).grad(v, x)
+        v, x = inputs
+        gz, = grads
+        return [grad_not_implemented(self, 0, v),
+                gz * (jv(v - 1, x) - jv(v + 1, x)) / 2.]
 
 jv = Jv(upgrade_to_float, name='jv')
 
@@ -418,12 +415,9 @@ class J1(UnaryScalarOp):
             super(J1, self).impl(x)
 
     def grad(self, inputs, grads):
-        if imported_scipy_special:
-            x, = inputs
-            gz, = grads
-            return [gz * (j0(x) - jv(2, x)) / 2.]
-        else:
-            super(J1, self).grad(x)
+        x, = inputs
+        gz, = grads
+        return [gz * (j0(x) - jv(2, x)) / 2.]
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
@@ -483,13 +477,10 @@ class Iv(BinaryScalarOp):
             super(Iv, self).impl(v, x)
 
     def grad(self, inputs, grads):
-        if imported_scipy_special:
-            v, x = inputs
-            gz, = grads
-            return [grad_not_implemented(self, 0, v),
-                    gz * (iv(v - 1, x) + iv(v + 1, x)) / 2.]
-        else:
-            super(Iv, self).grad(v, x)
+        v, x = inputs
+        gz, = grads
+        return [grad_not_implemented(self, 0, v),
+                gz * (iv(v - 1, x) + iv(v + 1, x)) / 2.]
 
 iv = Iv(upgrade_to_float, name='iv')
 
@@ -510,12 +501,9 @@ class I1(UnaryScalarOp):
             super(I1, self).impl(x)
 
     def grad(self, inputs, grads):
-        if imported_scipy_special:
-            x, = inputs
-            gz, = grads
-            return [gz * (i0(x) + iv(2, x)) / 2.]
-        else:
-            super(I1, self).grad(x)
+        x, = inputs
+        gz, = grads
+        return [gz * (i0(x) + iv(2, x)) / 2.]
 
 i1 = I1(upgrade_to_float, name='i1')
 
