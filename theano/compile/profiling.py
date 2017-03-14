@@ -18,6 +18,7 @@ import sys
 import time
 from collections import defaultdict
 from six import iteritems
+import warnings
 
 import numpy as np
 
@@ -102,7 +103,6 @@ def _atexit_print_fn():
                         assert len(merge) == len(cum.optimizer_profile[1])
                         cum.optimizer_profile = (cum.optimizer_profile[0], merge)
                     except Exception as e:
-                        print("Got an exception while merging profile")
                         print(e)
                         cum.optimizer_profile = None
                 else:
@@ -147,6 +147,14 @@ def print_global_stats():
     print('=' * 50, file=destination_file)
 
 
+_profiler_printers = []
+
+
+def register_profiler_printer(fct):
+    _profiler_printers.append(fct)
+    return fct
+
+
 class ProfileStats(object):
 
     """
@@ -172,7 +180,7 @@ class ProfileStats(object):
         self.apply_time = {}
         self.apply_callcount = {}
         # self.apply_cimpl = None
-        # self.messge = None
+        # self.message = None
     #
     # Note on implementation:
     # Class variables are used here so that each one can be
@@ -271,10 +279,10 @@ class ProfileStats(object):
                 hasattr(theano, 'gpuarray') and
                 theano.gpuarray.pygpu_activated and
                 not config.profiling.ignore_first_call):
-            logger.warn(
+            warnings.warn(
                 "Theano flag profiling.ignore_first_call is False."
                 " This cause bad profiling result in the new gpu"
-                " back-end, we as sometimes we compile at the first call.")
+                " back-end, as sometimes we compile at the first call.")
 
         self.apply_callcount = {}
         self.output_size = {}
@@ -1318,6 +1326,7 @@ class ProfileStats(object):
             print("-----------------", file=file)
             self.optimizer_profile[0].print_profile(file,
                                                     self.optimizer_profile[1])
+        self.print_extra(file)
         self.print_tips(file)
 
     def print_tips(self, file):
@@ -1463,6 +1472,12 @@ class ProfileStats(object):
 
         if not printed_tip:
             print("  Sorry, no tip for today.", file=file)
+
+    def print_extra(self, file):
+        params = [self.message, self.compile_time, self.fct_call_time,
+                  self.apply_time, self.apply_cimpl, self.output_size]
+        for f in _profiler_printers:
+            f(*params, file=file)
 
 
 class ScanProfileStats(ProfileStats):
