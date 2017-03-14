@@ -5518,3 +5518,17 @@ class TestInconsistentBroadcast(unittest.TestCase):
                                  sequences=x,
                                  outputs_info=[dict(initial=initial_x)])
         gs = tensor.grad(y.sum(), x)
+
+
+class TestMissingInputError(unittest.TestCase):
+
+    @raises(theano.gof.fg.MissingInputError)
+    def test_raise_error(self):
+        c = theano.shared(0.)
+        inc = tensor.scalar('inc')
+
+        def count_up():
+            return tensor.zeros(()), {c: c + inc}
+
+        _, updates = theano.scan(count_up, n_steps=20)
+        func = theano.function(inputs=[inc], outputs=[], updates=updates)

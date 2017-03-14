@@ -7,7 +7,6 @@ types that it can raise.
 from __future__ import absolute_import, print_function, division
 from collections import OrderedDict
 import time
-import traceback
 
 import theano
 from theano.gof import graph
@@ -16,7 +15,6 @@ from theano.gof import toolbox
 from theano import config
 
 from six import iteritems, itervalues
-from six.moves import StringIO
 from theano.gof.utils import get_variable_trace_string
 from theano.misc.ordered_set import OrderedSet
 NullType = None
@@ -52,13 +50,9 @@ class MissingInputError(Exception):
         if kwargs:
             # The call to list is needed for Python 3
             assert list(kwargs.keys()) == ["variable"]
-            tr = getattr(list(kwargs.values())[0].tag, 'trace', [])
-            if isinstance(tr, list) and len(tr) > 0:
-                sio = StringIO()
-                print("\nBacktrace when the variable is created:", file=sio)
-                for subtr in list(kwargs.values())[0].tag.trace:
-                    traceback.print_list(subtr, sio)
-                args = args + (str(sio.getvalue()),)
+            error_msg = get_variable_trace_string(kwargs["variable"])
+            if error_msg:
+                args = args + (error_msg,)
         s = '\n'.join(args)  # Needed to have the new line print correctly
         Exception.__init__(self, s)
 
@@ -393,7 +387,6 @@ class FunctionGraph(utils.object2):
                                      "Theano flag exception_verbosity='high', "
                                      "for more information on this error."
                                      % (node.inputs.index(r), str(node)))
-                        error_msg += get_variable_trace_string(r)
                         raise MissingInputError(error_msg, variable=r)
 
         for node in new_nodes:
