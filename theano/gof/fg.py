@@ -7,7 +7,6 @@ types that it can raise.
 from __future__ import absolute_import, print_function, division
 from collections import OrderedDict
 import time
-import traceback
 
 import theano
 from theano.gof import graph
@@ -16,7 +15,6 @@ from theano.gof import toolbox
 from theano import config
 
 from six import iteritems, itervalues
-from six.moves import StringIO
 from theano.gof.utils import get_variable_trace_string
 from theano.misc.ordered_set import OrderedSet
 NullType = None
