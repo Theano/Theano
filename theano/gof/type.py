@@ -10,6 +10,7 @@ import ctypes
 
 from six import string_types
 
+import re
 import theano
 from theano.gof import utils
 from theano.gof.utils import MethodNotDefined, object2
@@ -808,3 +809,137 @@ class CDataTypeConstant(graph.Constant):
         return (self.type,)
 
 CDataType.Constant = CDataTypeConstant
+
+
+class EnumType(Type, dict):
+    """
+    Class that allows to create enumerations of constant values.
+    Constants are available as object attributes in Python code and as macro-defined constants in C code.
+    Constants can be floating values, integers, or booleans (automatically converted to integers).
+    Constants name must start with a capital letter and contain capital letters, underscores or digits.
+    This type is intended to be used as op parameter type.
+
+    Example::
+
+        enum = EnumType(CONSTANT_1=0, CONSTANT_2=1, CONSTANT_3=2.5, CONSTANT_4=False, CONSTANT_5=True)
+        print (enum.CONSTANT_1, enum.CONSTANT_2, enum.CONSTANT_3, enum.CONSTANT_4, enum.CONSTANT_5)
+
+    In C code:
+
+    .. code-block:: c
+
+        int constant_1 = CONSTANT_1;
+        int constant_2 = CONSTANT_2;
+        double constant_3 = CONSTANT_3;
+        int constant_4 = CONSTANT_4; // constant_4 == 0
+        int constant_5 = CONSTANT_5; // constant_5 == 1
+
+
+    ..note::
+
+        This Type is not complete and should never be used for regular graph operations.
+
+    """
+
+    def __init__(self, **kwargs):
+        for k in kwargs:
+            if re.match('^[A-Z][A-Z0-9_]*$', k) is None:
+                raise AttributeError('EnumType: invalid enum name: "%s". '
+                                     'Only capital letters, underscores and digits '
+                                     'are allowed.' % k)
+            if isinstance(kwargs[k], bool):
+                kwargs[k] = int(kwargs[k])
+            elif not isinstance(kwargs[k], (int, float)):
+                raise ValueError('EnumType: enum "%s": expected integer or floating value, got "%s".'
+                                 % (k, type(kwargs[k]).__name__))
+        super(EnumType, self).__init__(**kwargs)
+
+    def __repr__(self):
+        return 'EnumType(%s)' % ', '.join('%s:%s' % (k, self[k]) for k in sorted(self.keys()))
+
+    def __getattr__(self, key):
+        if key in self:
+            return self[key]
+        return Type.__getattr__(self, key)
+
+    def __setattr__(self, key, value):
+        if key in self:
+            raise NotImplementedError('EnumType values are immutable.')
+        Type.__setattr__(self, key, value)
+
+    def __setitem__(self, key, value):
+        raise NotImplementedError('EnumType values are immutable.')
+
+    def __delitem__(self, key):
+        raise NotImplementedError('EnumType values are immutable.')
+
+    def __hash__(self):
+        # All values are Python basic types, then easy to hash.
+        return hash((type(self),) + tuple((k, self[k]) for k in sorted(self.keys())))
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                len(self) == len(other) and
+                all(k in other for k in self) and
+                all(self[k] == other[k] for k in self))
+
+    # EnumType should be used to create constants available in both Python and C code.
+    # However, for convenience, we make sure EnumType can have a value, like other common types,
+    # such that it could be used as-is as an op param.
+    # As we currently allow enum constants to be booleans, integers or floating values,
+    # we choose the biggest basic type (i.e. float) as type of enum values.
+
+    def filter(self, data, strict=False, allow_downcast=None):
+        if strict:
+            assert isinstance(data, float)
+            return data
+        assert isinstance(data, (bool, int, float))
+        return float(data)
+
+    def values_eq(self, a, b):
+        return a == b
+
+    def values_eq_approx(self, a, b):
+        return float(a) == float(b)
+
+    def c_support_code(self):
+        return ''.join("""
+        #define %s %s
+        """ % (k, str(self[k])) for k in sorted(self.keys()))
+
+    def c_declare(self, name, sub, check_input=True):
+        return """double %(name)s;""" % locals()
+
+    def c_init(self, name, sub):
+        return "%(name)s = 0;" % locals()
+
+    def c_cleanup(self, name, sub):
+        return ""
+
+    def c_extract(self, name, sub, check_input=True):
+        return """
+        %(name)s = PyFloat_AsDouble(py_%(name)s);
+        if (PyErr_Occurred()) {
+            %(name)s = 0;
+        }
+        """ % locals()
+
+
+class EnumList(EnumType):
+    """"
+    Class that allows to create enumeration of constant integer values.
+    Same as :class:`EnumType`, but automatically gives an unique integer value to each constant in a list of
+    constants names (constant at index i in the list will receive value i, i from ``0`` to ``len(constants)-1``).
+
+    Example::
+
+        enum = EnumList(CONSTANT_1, CONSTANT_2, CONSTANT_3, CONSTANT_4, CONSTANT_5)
+        print (enum.CONSTANT_1, enum.CONSTANT_2, enum.CONSTANT_3, enum.CONSTANT_4, enum.CONSTANT_5)
+        # will print: 0 1 2 3 4
+
+    """
+
+    def __init__(self, *args):
+        if len(args) > len(set(args)):
+            raise AttributeError('EnumList: some constants names are duplicated.')
+        super(EnumList, self).__init__(**{const_name: const_rank for (const_rank, const_name) in enumerate(args)})

@@ -55,6 +55,8 @@ from theano.gof.link import \
 from theano.gof.op import \
     Op, OpenMPOp, PureOp, COp, ops_with_inner_function
 
+from theano.gof.type import EnumType, EnumList
+
 from theano.gof.opt import (
     Optimizer,
     optimizer, inplace_optimizer,
