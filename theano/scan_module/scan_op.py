@@ -2879,22 +2879,18 @@ def profile_printer(message, compile_time, fct_call_time,
               'time(s)> <sub scan fct time(% scan op time)> <sub scan '
               'op time(% scan op time)> <node>', file=file)
 
-        fct_call = set()
-        for node in apply_time.keys():
-            fct_call.add(node.fgraph)
-
         total_super_scan_time = 0
         total_scan_fct_time = 0
         total_scan_op_time = 0
-        for (_, node), v in iteritems(apply_time):
-            if isinstance(node.op, Scan):
+        for node, v in iteritems(apply_time):
+            if isinstance(node.op, Scan) and node.op.fn.profile:
                 if v > 0:
-                    scan_fct_time = node.op.mode_instance.fn_time
-                    scan_op_time = node.op.mode_instance.local_time
+                    scan_fct_time = node.op.fn.profile.call_time
+                    scan_op_time = sum(node.op.fn.profile.apply_time.values())
                     total_super_scan_time += v
                     total_scan_fct_time += scan_fct_time
                     total_scan_op_time += scan_op_time
-                    print('    %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%' % (
+                    print('      %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%' % (
                         v,
                         scan_fct_time,
                         scan_op_time,
@@ -2903,7 +2899,7 @@ def profile_printer(message, compile_time, fct_call_time,
                 else:
                     print((' The node took 0s, so we can not '
                            'compute the overhead'), node, file=file)
-        print('    total %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%' % (
+        print('total %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%' % (
             total_super_scan_time,
             total_scan_fct_time,
             total_scan_op_time,
