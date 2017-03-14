@@ -1325,7 +1325,7 @@ class ProfileStats(object):
             print("-----------------", file=file)
             self.optimizer_profile[0].print_profile(file,
                                                     self.optimizer_profile[1])
-        self.print_extra()
+        self.print_extra(file)
         self.print_tips(file)
 
     def print_tips(self, file):
@@ -1472,11 +1472,11 @@ class ProfileStats(object):
         if not printed_tip:
             print("  Sorry, no tip for today.", file=file)
 
-    def print_extra(self):
+    def print_extra(self, file):
         params = [self.message, self.compile_time, self.fct_call_time,
                   self.apply_time, self.apply_cimpl, self.output_size]
         for f in _profiler_printers:
-            f(*params)
+            f(*params, file=file)
 
 
 class ScanProfileStats(ProfileStats):

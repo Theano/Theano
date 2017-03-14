@@ -2869,15 +2869,15 @@ gof.ops_with_inner_function[Scan] = 'fn'
 
 @theano.compile.profiling.register_profiler_printer
 def profile_printer(message, compile_time, fct_call_time,
-                    apply_time, apply_cimpl, outputs_size):
+                    apply_time, apply_cimpl, outputs_size, file):
     # Scan overhead profile
     if any([isinstance(node.op, Scan) and v > 0 for node, v in
             apply_time.items()]):
-        print()
-        print('Scan overhead:')
+        print('', file=file)
+        print('Scan overhead:', file=file)
         print('<Scan op time(s)> <sub scan fct time(s)> <sub scan op '
               'time(s)> <sub scan fct time(% scan op time)> <sub scan '
-              'op time(% scan op time)> <node>')
+              'op time(% scan op time)> <node>', file=file)
 
         fct_call = set()
         for node in apply_time.keys():
@@ -2899,13 +2899,13 @@ def profile_printer(message, compile_time, fct_call_time,
                         scan_fct_time,
                         scan_op_time,
                         scan_fct_time / v * 100,
-                        scan_op_time / v * 100), node)
+                        scan_op_time / v * 100), node, file=file)
                 else:
                     print((' The node took 0s, so we can not '
-                           'compute the overhead'), node)
+                           'compute the overhead'), node, file=file)
         print('    total %5.1fs  %5.1fs  %5.1fs  %5.1f%%  %5.1f%%' % (
             total_super_scan_time,
             total_scan_fct_time,
             total_scan_op_time,
             total_scan_fct_time / total_super_scan_time * 100,
-            total_scan_op_time / total_super_scan_time * 100))
+            total_scan_op_time / total_super_scan_time * 100), file=file)

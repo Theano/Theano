@@ -1542,12 +1542,12 @@ class GpuSplit(HideC, Split):
 
 @theano.compile.profiling.register_profiler_printer
 def profile_printer(message, compile_time, fct_call_time,
-                    apply_time, apply_cimpl, outputs_size):
+                    apply_time, apply_cimpl, outputs_size, file):
     if any([x.op.__class__.__name__.lower().startswith("gpu")
             for x in apply_time.keys()]):
         local_time = sum(apply_time.values())
-        print()
-        print('Some info useful for gpu:')
+        print('', file=file)
+        print('Some info useful for gpu:', file=file)
 
         fgraphs = set()
         for node in apply_time.keys():
@@ -1563,23 +1563,23 @@ def profile_printer(message, compile_time, fct_call_time,
                 gpu += t
             else:
                 cpu += t
-        print()
+        print('', file=file)
         print("    Spent %.3fs(%.2f%%) in cpu Op, %.3fs(%.2f%%) in gpu Op and %.3fs(%.2f%%) transfert Op" % (
             cpu, cpu / local_time * 100, gpu, gpu / local_time * 100,
-            trans, trans / local_time * 100))
+            trans, trans / local_time * 100), file=file)
 
-        print()
-        print("    Theano function input that are float64")
-        print("    <fct name> <input name> <input type> <str input>")
+        print('', file=file)
+        print("    Theano function input that are float64", file=file)
+        print("    <fct name> <input name> <input type> <str input>", file=file)
         for fg in fgraphs:
             for i in fg.inputs:
                 if hasattr(i.type, 'dtype') and i.type.dtype == 'float64':
-                    print('        ', fg.name, i.name, i.type, i)
+                    print('        ', fg.name, i.name, i.type, i, file=file)
 
-        print()
-        print("    List of apply that don't have float64 as input but have float64 in outputs")
-        print("    (Useful to know if we forgot some cast when using floatX=float32 or gpu code)")
-        print('    <Apply> <Apply position> <fct name> <inputs type> <outputs type>')
+        print('', file=file)
+        print("    List of apply that don't have float64 as input but have float64 in outputs", file=file)
+        print("    (Useful to know if we forgot some cast when using floatX=float32 or gpu code)", file=file)
+        print('    <Apply> <Apply position> <fct name> <inputs type> <outputs type>', file=file)
         for fg in fgraphs:
             for idx, node in enumerate(fg.toposort()):
                 if (any(hasattr(i, 'dtype') and i.dtype == 'float64'
@@ -1587,11 +1587,13 @@ def profile_printer(message, compile_time, fct_call_time,
                     not any(hasattr(i, 'dtype') and i.dtype == 'float64'
                             for i in node.inputs)):
 
-                    print('        ', str(node), idx, fg.name, end=' ')
+                    print('        ', str(node), idx, fg.name, end=' ',
+                          file=file)
                     print(str([getattr(i, 'dtype', None)
-                               for i in node.inputs]), end=' ')
+                               for i in node.inputs]), end=' ', file=file)
                     print(str([getattr(i, 'dtype', None)
-                               for i in node.outputs]))
+                               for i in node.outputs]), file=file)
+        print('', file=file)
 
 
 class GpuEye(GpuKernelBase, Op):
