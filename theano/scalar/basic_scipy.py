@@ -32,12 +32,12 @@ class Erf(UnaryScalarOp):
         else:
             super(Erf, self).impl(x)
 
-    def grad(self, inp, grads):
-        x, = inp
+    def L_op(self, inputs, outputs, grads):
+        x, = inputs
         gz, = grads
         if x.type in complex_types:
             raise NotImplementedError()
-        if self(x).type in discrete_types:
+        if outputs[0].type in discrete_types:
             if x.type in discrete_types:
                 return [x.zeros_like(dtype=theano.config.floatX)]
             else:
@@ -63,12 +63,12 @@ class Erfc(UnaryScalarOp):
         else:
             super(Erfc, self).impl(x)
 
-    def grad(self, inp, grads):
-        x, = inp
+    def L_op(self, inputs, outputs, grads):
+        x, = inputs
         gz, = grads
         if x.type in complex_types:
             raise NotImplementedError()
-        if self(x).type in discrete_types:
+        if outputs[0].type in discrete_types:
             if x.type in discrete_types:
                 return [x.zeros_like(dtype=theano.config.floatX)]
             else:
@@ -110,12 +110,12 @@ class Erfcx(UnaryScalarOp):
         else:
             super(Erfcx, self).impl(x)
 
-    def grad(self, inp, grads):
-        x, = inp
+    def L_op(self, inputs, outputs, grads):
+        x, = inputs
         gz, = grads
         if x.type in complex_types:
             raise NotImplementedError()
-        if self(x).type in discrete_types:
+        if outputs[0].type in discrete_types:
             if x.type in discrete_types:
                 return [x.zeros_like(dtype=theano.config.floatX)]
             else:
@@ -146,12 +146,12 @@ class Erfinv(UnaryScalarOp):
         else:
             super(Erfinv, self).impl(x)
 
-    def grad(self, inp, grads):
-        x, = inp
+    def L_op(self, inputs, outputs, grads):
+        x, = inputs
         gz, = grads
         if x.type in complex_types:
             raise NotImplementedError()
-        if self(x).type in discrete_types:
+        if outputs[0].type in discrete_types:
             if x.type in discrete_types:
                 return [x.zeros_like(dtype=theano.config.floatX)]
             else:
@@ -179,12 +179,12 @@ class Erfcinv(UnaryScalarOp):
         else:
             super(Erfcinv, self).impl(x)
 
-    def grad(self, inp, grads):
-        x, = inp
+    def L_op(self, inputs, outputs, grads):
+        x, = inputs
         gz, = grads
         if x.type in complex_types:
             raise NotImplementedError()
-        if self(x).type in discrete_types:
+        if outputs[0].type in discrete_types:
             if x.type in discrete_types:
                 return [x.zeros_like(dtype=theano.config.floatX)]
             else:
@@ -216,12 +216,12 @@ class Gamma(UnaryScalarOp):
         else:
             super(Gamma, self).impl(x)
 
-    def grad(self, inputs, gout):
+    def L_op(self, inputs, outputs, gout):
         (x,) = inputs
         (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
-        if self(x).type in discrete_types:
+        if outputs[0].type in discrete_types:
             if x.type in discrete_types:
                 return [x.zeros_like(dtype=theano.config.floatX)]
             else:
@@ -253,12 +253,12 @@ class GammaLn(UnaryScalarOp):
         else:
             super(GammaLn, self).impl(x)
 
-    def grad(self, inp, grads):
-        x, = inp
+    def L_op(self, inputs, outputs, grads):
+        x, = inputs
         gz, = grads
         if x.type in complex_types:
             raise NotImplementedError()
-        if self(x).type in discrete_types:
+        if outputs[0].type in discrete_types:
             if x.type in discrete_types:
                 return [x.zeros_like(dtype=theano.config.floatX)]
             else:

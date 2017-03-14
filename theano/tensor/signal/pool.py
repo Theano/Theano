@@ -562,15 +562,14 @@ class Pool(OpenMPOp):
                              pad, self.ndim)
         return [shp]
 
-    def grad(self, inp, grads):
-        x, ws, stride, pad = inp
+    def L_op(self, inputs, outputs, grads):
+        x, ws, stride, pad = inputs
         gz, = grads
-        disc = [DisconnectedType()() for i in inp[1:]]
+        disc = [DisconnectedType()() for i in inputs[1:]]
         if self.mode == 'max':
-            maxout = self(x, ws, stride, pad)
             return [MaxPoolGrad(ndim=self.ndim,
                                 ignore_border=self.ignore_border)(
-                x, maxout, gz, ws=ws, stride=stride, pad=pad)] + disc
+                x, outputs[0], gz, ws=ws, stride=stride, pad=pad)] + disc
         else:
             return [AveragePoolGrad(ndim=self.ndim,
                                     ignore_border=self.ignore_border,

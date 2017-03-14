@@ -602,7 +602,7 @@ second dimension
             ograds = [x.zeros_like() for x in outs]
             ograds[idx] = theano.tensor.ones_like(out)
 
-            bgrads = self._bgrad(inputs, ograds)
+            bgrads = self._bgrad(inputs, outs, ograds)
             rop_out = None
 
             for jdx, (inp, eval_point) in enumerate(izip(inputs,
@@ -636,7 +636,7 @@ second dimension
     def L_op(self, inputs, outs, ograds):
 
         # compute grad with respect to broadcasted input
-        rval = self._bgrad(inputs, ograds)
+        rval = self._bgrad(inputs, outs, ograds)
 
         # TODO: make sure that zeros are clearly identifiable
         # to the gradient.grad method when the outputs have
@@ -684,7 +684,7 @@ second dimension
 
         return rval
 
-    def _bgrad(self, inputs, ograds):
+    def _bgrad(self, inputs, outputs, ograds):
         # returns grad, with respect to broadcasted versions of inputs
 
         with change_flags(compute_test_value='off'):
@@ -695,7 +695,10 @@ second dimension
 
             scalar_inputs = list(map(as_scalar, inputs))
             scalar_ograds = list(map(as_scalar, ograds))
-            scalar_igrads = self.scalar_op.grad(scalar_inputs, scalar_ograds)
+            scalar_outputs = self.scalar_op.make_node(
+                *[get_scalar_type(dtype=i.type.dtype).make_variable()
+                    for i in inputs]).outputs
+            scalar_igrads = self.scalar_op.L_op(scalar_inputs, scalar_outputs, scalar_ograds)
             for igrad in scalar_igrads:
                 assert igrad is not None, self.scalar_op
 
@@ -711,6 +714,8 @@ second dimension
                 return r
             if r in scalar_inputs:
                 return inputs[scalar_inputs.index(r)]
+            if r in scalar_outputs:
+                return outputs[scalar_outputs.index(r)]
             if r in scalar_ograds:
                 return ograds[scalar_ograds.index(r)]
             node = r.owner
