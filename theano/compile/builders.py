@@ -338,6 +338,7 @@ class OpFromGraph(gof.Op):
                     raise ValueError(
                         self.OV_INP_LEN_ERR_MSG % (needed_ninps, ninps))
                 # make a wrapper callable
+
                 def lop_op(inps, grads):
                     return self._lop_op(*(inps + grads))
             elif self._lop_type == 'lop':
