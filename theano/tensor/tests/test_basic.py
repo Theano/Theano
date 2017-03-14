@@ -1943,6 +1943,10 @@ _good_broadcast_binary_bessel = dict(
     uint16=(randint_ranged(0, 5, (2, 3)).astype('uint16'),
             randint_ranged(0, 10, (2, 3)).astype('uint16')))
 
+_grad_broadcast_binary_bessel = dict(
+    normal=(rand_ranged(1, 5, (2, 3)),
+            rand_ranged(0, 10, (2, 3))))
+
 J0Tester = makeBroadcastTester(
     op=tensor.j0,
     expected=expected_j0,
@@ -1998,6 +2002,21 @@ JvInplaceTester = makeBroadcastTester(
     inplace=True,
     skip=skip_scipy)
 
+
+def test_verify_jv_grad():
+    """Verify Jv gradient.
+
+    Implemented separately due to need to fix first input for which grad is
+    not defined.
+    """
+    v_val, x_val = _grad_broadcast_binary_bessel['normal']
+
+    def fixed_first_input_jv(x):
+        return tensor.jv(v_val, x)
+
+    utt.verify_grad(fixed_first_input_jv, [x_val])
+
+
 I0Tester = makeBroadcastTester(
     op=tensor.i0,
     expected=expected_i0,
@@ -2052,6 +2071,21 @@ IvInplaceTester = makeBroadcastTester(
     mode=mode_no_scipy,
     inplace=True,
     skip=skip_scipy)
+
+
+def test_verify_iv_grad():
+    """Verify Iv gradient.
+
+    Implemented separately due to need to fix first input for which grad is
+    not defined.
+    """
+    v_val, x_val = _grad_broadcast_binary_bessel['normal']
+
+    def fixed_first_input_iv(x):
+        return tensor.iv(v_val, x)
+
+    utt.verify_grad(fixed_first_input_iv, [x_val])
+
 
 ZerosLikeTester = makeBroadcastTester(
         op=tensor.zeros_like,
