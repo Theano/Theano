@@ -30,7 +30,7 @@ For Ubuntu 16.04 with cuda 7.5
 
 .. code-block:: bash
 
-    sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git
+    sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libopenblas-dev git graphviz
     sudo pip install Theano
 
     # cuda 7.5 don't support the default g++ version. Install an supported version and make it the default.

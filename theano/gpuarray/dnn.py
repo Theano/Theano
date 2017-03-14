@@ -152,7 +152,10 @@ def dnn_present():
         dnn_present.avail = False
         return False
 
-    dnn_present.avail, dnn_present.msg = _dnn_check_compile()
+    if config.dnn.enabled == "no_check":
+        dnn_present.avail, dnn_present.msg = True, "presence check disabled by dnn.enabled flag"
+    else:
+        dnn_present.avail, dnn_present.msg = _dnn_check_compile()
     if dnn_present.avail:
         dnn_present.avail, dnn_present.msg = _dnn_check_version()
         if not dnn_present.avail:
