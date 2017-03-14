@@ -21,7 +21,6 @@ from .type import GpuArrayType, gpu_context_type
 from .basic_ops import (as_gpuarray_variable, HideC, GpuKernelBase, Kernel,
                         infer_context_name, gpu_contiguous)
 
-
 iadd_reg = {}
 
 
@@ -300,8 +299,9 @@ class GpuIncSubtensor(IncSubtensor):
         size_t dims[%(view_ndim)s];
         for(int i=0; i<%(view_ndim)s; i++)
             dims[i] = xview_dims[i];
+
         zview = pygpu_fromgpudata(%(x)s->ga.data,
-                                  xview_offset,
+                                  %(x)s->ga.offset + xview_offset,
                                   %(x)s->ga.typecode,
                                   %(view_ndim)s,
                                   dims,
@@ -396,7 +396,7 @@ int sub_setarray(GpuArray *dst, GpuArray *src) {
         parent_version = super(GpuIncSubtensor, self).c_code_cache_version()
         if not parent_version:
             return
-        return parent_version + (8,)
+        return parent_version + (9,)
 
 
 class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
@@ -552,7 +552,7 @@ class GpuAdvancedSubtensor(HideC, tensor.AdvancedSubtensor):
         # build the strides
         strides = [1]
         for i in range(p - 1, 0, -1):
-            stride = x.shape[i] * strides[-1]
+            stride = x.shape[i] * strides[0]
             strides.insert(0, stride)
 
         # build the indices and use it
@@ -1079,7 +1079,7 @@ __device__ ga_half atomicExch(ga_half *addr, ga_half val) {
         """ % locals()
 
 
-class GpuDiagonal(Subtensor):
+class GpuExtractDiag(Op):
     __props__ = ("offset", "axis1", "axis2", "view")
 
     def __init__(self, offset=0, axis1=0, axis2=1, view=False):
@@ -1101,9 +1101,7 @@ class GpuDiagonal(Subtensor):
         broadcastable = x.broadcastable[:axis_small] + \
             x.broadcastable[axis_small + 1:axis_large] + \
             x.broadcastable[axis_large + 1:] + (False,)
-        return gof.Apply(self, [x], [x.type.__class__(
-            dtype=x.dtype,
-            broadcastable=broadcastable)()])
+        return gof.Apply(self, [x], [x.type.clone(broadcastable=broadcastable)()])
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
@@ -1182,3 +1180,42 @@ class GpuDiagonal(Subtensor):
             diag_size = T.minimum(dim1, dim2)
         out_shape.append(diag_size)
         return [tuple(out_shape)]
+
+
+class GpuAllocDiag(Op):
+    __props__ = ("offset",)
+
+    def __init__(self, offset=0):
+        self.offset = offset
+
+    def make_node(self, _x):
+        ctx_name = infer_context_name(_x)
+        x = as_gpuarray_variable(_x, ctx_name)
+
+        if x.ndim != 1:
+            raise ValueError('AllocDiag argument must be a vector!', x)
+
+        return gof.Apply(self, [x], [x.type.clone(broadcastable=(False, False))()])
+
+    def perform(self, node, inputs, outputs):
+        (x,) = inputs
+        (z,) = outputs
+
+        dim = x.shape[0] + abs(self.offset)
+        z[0] = gpuarray.zeros((dim, dim), dtype=x.dtype, context=x.context)
+
+        if self.offset <= 0:  # diag in the lower triangle
+            diag_z = z[0][-self.offset, :(dim + self.offset)]
+        else:  # diag in the upper triangle
+            diag_z = z[0][:(dim - self.offset), self.offset]
+        diag_z.strides = (sum(z[0].strides),)
+
+        diag_z[:] = x[:]
+
+    def grad(self, inputs, gout):
+        (gz,) = gout
+        return [GpuExtractDiag(offset=self.offset, axis1=0, axis2=1)(gz)]
+
+    def infer_shape(self, node, shapes):
+        dim = shapes[0][0] + abs(self.offset)
+        return [[dim, dim]]

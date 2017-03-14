@@ -4188,7 +4188,7 @@ class Join(Op):
                                      dtype=node.outputs[0].type.dtype)
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         axis, tensors = inputs[0], inputs[1:]
@@ -4209,7 +4209,6 @@ class Join(Op):
 
         copy_inputs_to_list = '\n'.join(copy_to_list)
         n = len(tensors)
-        khar = "printf(\"tensors_lens_sum: %d\", tensors_lens_sum);"
 
         code = """
         int axis = ((%(adtype)s *)PyArray_DATA(%(axis)s))[0];
@@ -4222,7 +4221,6 @@ class Join(Op):
             for(int i=0; i < %(n)s; i++){
                 tensors_lens_sum += PyArray_DIM((PyArrayObject *)(PyList_GetItem(list, i)), axis);
             }
-            %(khar)s
             tensors_lens_sum -= PyArray_DIM(%(non_empty_tensor)s, axis);
         }
         if(%(view)s != -1 && tensors_lens_sum == 0) {
@@ -6287,7 +6285,18 @@ class ExtractDiag(Op):
     def grad(self, inputs, gout):
         (x,) = inputs
         (gz,) = gout
-        return [grad_not_implemented(self, 0, x)]
+
+        if x.ndim == 2:
+            # The following code is moved from tensor.nlinalg.ExtractDiag, only
+            # works for matrices.
+            x = theano.tensor.zeros_like(x)
+            xdiag = theano.tensor.AllocDiag(offset=self.offset)(gz)
+            return [theano.tensor.set_subtensor(
+                x[:xdiag.shape[0], :xdiag.shape[1]], xdiag)]
+        else:
+            warnings.warn("gradient of theano.tensor.nlinalg.ExtractDiag only"
+                          "works for matrices.")
+            return [grad_not_implemented(self, 0, x)]
 
     def infer_shape(self, node, shapes):
         in_shape, = shapes
@@ -6308,42 +6317,108 @@ class ExtractDiag(Op):
 
 
 def diagonal(a, offset=0, axis1=0, axis2=1):
-    if (offset, axis1, axis2) == (0, 0, 1):
-        return theano.tensor.nlinalg.extract_diag(a)
+    """
+    A helper function for `theano.tensor.ExtractDiag`. It accepts tensor with
+    `ndim >= 2` as input. The name `diagonal` is just meant to keep it
+    consistent with numpy.
+
+    Parameters
+    ----------
+    a : symbolic tensor
+    offset : int
+        offset
+    axis1 : int
+    axis2 : int
+
+    Returns
+    -------
+    tensor : symbolic tensor
+
+    """
     return ExtractDiag(offset, axis1, axis2)(a)
 
 
-class Diag(Op):
+class AllocDiag(Op):
+    """
+    An op that copies a vector to the diagonal of an empty matrix. It does the
+    inverse of ExtractDiag.
 
-    __props__ = ()
+    Usage: T.AllocDiag()(x)
+
+    `x` should be a tensor vector. The parenthesis in the front should indicate
+    which main diagonal the vector value goes into. By default it is set to
+    `0`, which corresponds to setting the values of x to the main diagonal in
+    the returned matrix.
+
+    Parameters
+    ----------
+    offset : int
+        Indicates which diagonal to put `x` into. Defaults to `0`.
+
+    x: symbolic vector
+        A tensor vector consists of diagonal values.
+
+    Returns
+    -------
+    tensor : symbolic tenstor
+        A tensor with passed vector values at its corresponding diagonal.
+
+    """
+
+    __props__ = ("offset", )
+    default_offset = 0
+
+    def __init__(self, offset=0):
+        if numpy_diagonal_return_view:
+            self.view_map = {0: [0]}
+        self.offset = offset
 
     def make_node(self, diag):
         diag = as_tensor_variable(diag)
         if diag.type.ndim != 1:
             raise TypeError('data argument must be a vector', diag.type)
-
         return Apply(self, [diag], [matrix(dtype=diag.dtype)])
 
     def perform(self, node, inputs, outputs):
         (z,) = outputs
-        z[0] = numpy.diag(inputs[0])
+        z[0] = numpy.diag(inputs[0], self.offset)
 
     def grad(self, inputs, gout):
         (gz,) = gout
-        return [diagonal(gz)]
+        return [diagonal(gz, offset=self.offset, axis1=0, axis2=1)]
 
     def infer_shape(self, nodes, shapes):
         return [(shapes[0][0],) * 2]
 
 
 def diag(v, k=0):
+    """
+    A helper function for two ops: `theano.tensor.ExtractDiag` and
+    `theano.tensor.AllocDiag`. The name `diag` is meant to keep it consistent
+    with numpy. It both accepts tensor vector and tensor matrix.
+    While the passed tensor variable `v` has `v.ndim>=2`, it builds a
+    `ExtractDiag` instance, and returns a vector with its entries equal to
+    `v`'s main diagonal; otherwise if `v.ndim` is `1`, it builds an `AllocDiag`
+    instance, and returns a matrix with `v` at its k-th diaogonal.
+
+    Parameters
+    ----------
+    v : symbolic tensor
+    k : int
+        offset
+
+    Returns
+    -------
+    tensor : symbolic tensor
+
+    """
+
     if v.ndim == 1:
-        assert k == 0, "diagonals other than main are not implemented"
-        return Diag()(v)
-    elif v.ndim == 2:
-        return diagonal(v, k)
+        return AllocDiag(k)(v)
+    elif v.ndim >= 2:
+        return diagonal(v, offset=k)
     else:
-        raise ValueError("Input must be 1- or 2-d.")
+        raise ValueError("Input must has v.ndim >= 1.")
 
 
 def stacklists(arg):

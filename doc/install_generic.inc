@@ -30,7 +30,10 @@ If you encountered any trouble, head to the :ref:`troubleshooting` page.
 libgpuarray
 ^^^^^^^^^^^
 
-For the stable version of Theano you need a specific version of libgpuarray, 
+It is recommanded that you don't use 0.8.2 for the new back-end. Use
+the dev version of Theano or 0.9rc3.
+
+For the stable version of Theano(0.8.2) you need a specific version of libgpuarray,
 that has been tagged ``v-9998``.
 Download it with:
 

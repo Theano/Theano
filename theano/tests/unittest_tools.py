@@ -103,6 +103,29 @@ def verify_grad(op, pt, n_tests=2, rng=None, *args, **kwargs):
 verify_grad.E_grad = T.verify_grad.E_grad
 
 
+# A helpful class to check random values close to the boundaries
+# when designing new tests
+class MockRandomState:
+    def __init__(self, val):
+        self.val = val
+
+    def rand(self, *shape):
+        return numpy.zeros(shape, dtype='float64') + self.val
+
+    def randint(self, minval, maxval=None, size=1):
+        if maxval is None:
+            minval, maxval = 0, minval
+        out = numpy.zeros(size, dtype='int64')
+        if self.val == 0:
+            return out + minval
+        else:
+            return out + maxval - 1
+# Examples of use:
+# test_rng = MockRandomState(0)
+# test_rng = MockRandomState(0.99999982)
+# test_rng = MockRandomState(1)
+
+
 class TestOptimizationMixin(object):
 
     def assertFunctionContains(self, f, op, min=1, max=sys.maxsize):

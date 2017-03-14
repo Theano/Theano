@@ -1026,7 +1026,7 @@ def _lessbroken_deepcopy(a):
     # This logic is also in link.py
     from theano.gof.type import _cdata_type
     if type(a) in (np.ndarray, np.memmap):
-        rval = a.copy()
+        rval = a.copy(order='K')
     elif type(a) is _cdata_type:
         # This is not copyable (and should be used for constant data).
         rval = a

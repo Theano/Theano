@@ -91,27 +91,30 @@ designated **inner inputs** and **inner outputs**, respectively.
 Scan variables
 ==============
 
-The following are the different types of variables that Scan has the capacity to
-handle, along with their various caracteristics.
+The following are the different types of variables that Scan has the
+capacity to handle, along with their various caracteristics.
 
-**Sequence** : A sequence is a Theano variable which Scan will iterate over and
-give sub-elements to its inner function as input. A sequence has no associated
-output. For a sequence variable ``X``, at timestep ``t``, the inner function will
-receive as input the sequence element ``X[t]``. These variables are used through
-the argument ``sequences`` of the ``theano.scan()`` function.
+**Sequence** : A sequence is a Theano variable which Scan will iterate
+over and give sub-elements to its inner function as input. A sequence
+has no associated output. For a sequence variable ``X``, at timestep
+``t``, the inner function will receive as input the sequence element
+``X[t]``. These variables are used through the argument ``sequences``
+of the ``theano.scan()`` function.
 
-**Non-sequences** : A non-sequence is a Theano variable which Scan will provide
-*as-is* to its inner function. Like a sequence, a non-sequence has no
-associated output. For a non-sequence variable ``X``, at timestep ``t``, the inner
-function will receive as input the variable ``X``. These variables are used through
-the argument ``non_sequences`` of the ``theano.scan()`` function.
+**Non-sequences** : A non-sequence is a Theano variable which Scan
+*will provide as-is* to its inner function. Like a sequence, a
+non-sequence has no associated output. For a non-sequence variable
+``X``, at timestep ``t``, the inner function will receive as input
+the variable ``X``. These variables are used through the argument
+``non_sequences`` of the ``theano.scan()`` function.
 
-**Nitsot (no input tap, single output tap)** : A nitsot is an output variable of
-the inner function that is not fed back as an input to the next iteration of the
-inner function. Nitsots are typically encountered in situations where Scan is
-used to perform a 'map' operation (every element in a tensor is independently
-altered using a given operation to produce a new tensor) such as squaring every
-number in a vector.
+**Nitsot (no input tap, single output tap)** : A nitsot is an output
+variable of the inner function that is not fed back as an input to the
+next iteration of the inner function. Nitsots are typically
+encountered in situations where Scan is used to perform a 'map'
+operation (every element in a tensor is independently altered using a
+given operation to produce a new tensor) such as squaring every number
+in a vector.
 
 **Sitsot (single input tap, single output tap)** : A sitsot is an output
 variable of the inner function that is fed back as an input to the next
@@ -120,13 +123,14 @@ encountered is the case where Scan is used to compute the cumulative sum over
 the elements of a vector and a sitsot output is employed to act as an
 accumulator.
 
-**Mitsot (multiple input taps, single output tap)** : A mitsot is an output
-variable of the inner function that is fed back as an input to future iterations
-of the inner function (either multiple future iterations or a single one that
-isn't the immediate next one). For example, a mitsot might be used in the case
-where Scan is used to compute the Fibonacci sequence, one term of the sequence
-at every timestep, since every computed term needs to be reused to compute
-the two next terms of the sequence.
+**Mitsot (multiple input taps, single output tap)** : A mitsot is an
+output variable of the inner function that is fed back as an input to
+future iterations of the inner function (either multiple future
+iterations or a single one that isn't the immediate next one). For
+example, a mitsot might be used in the case where Scan is used to
+compute the Fibonacci sequence, one term of the sequence at every
+timestep, since every computed term needs to be reused to compute the
+two next terms of the sequence.
 
 **Mitmot (multiple input taps, multiple output taps)** : These outputs exist
 but they cannot be directly created by the user. They can appear in a theano
@@ -272,12 +276,13 @@ by usage.
 Accessing/manipulating Scan's inputs and outputs by type
 --------------------------------------------------------
 
-Declared in ``scan_utils.py``, the class ``scan_args`` handles the parsing
-of the inputs and outputs (both inner and outer) to a format that is easier to
-analyse and manipulate. Without this class, analysing Scan's inputs and
-outputs often required convoluted logic which make for code that is hard to
-read and to maintain. Because of this, you should favor using ``scan_args`` when
-it is practical and appropriate to do so.
+Declared in ``scan_utils.py``, the class ``scan_args`` handles the
+parsing of the inputs and outputs (both inner and outer) to a format
+that is easier to analyse and manipulate. Without this class,
+analysing Scan's inputs and outputs often required convoluted logic
+which make for code that is hard to read and to maintain. Because of
+this, you should favor using ``scan_args`` when it is practical and
+appropriate to do so.
 
 The scan op also defines a few helper functions for this purpose, such as
 ``inner_nitsot_outs()`` or ``mitmot_out_taps()``, but they are often poorly
@@ -320,10 +325,11 @@ individual indices or -1 if there is not corresponding outer variable.
 For mappings to inner variables, the values are list of indices because
 multiple inner variables may be associated with the same state.
 
-If the goal is to navigate between variables that are *connected* (meaning
-that one of them is used to compute the other), the methods
-``connection_pattern()`` and ``inner_connection_pattern()`` can be used.
-The method ``connection_pattern()`` returns a list of lists detailing, for every
-pair of outer input and outer output whether they are connected or not. The
-method ``inner_connection_pattern()`` accomplishes the same goal but for every
-possible pair of inner output and inner input.
+If the goal is to navigate between variables that are *connected*
+(meaning that one of them is used to compute the other), the methods
+``connection_pattern()`` and ``inner_connection_pattern()`` can be
+used.  The method ``connection_pattern()`` returns a list of lists
+detailing, for every pair of outer input and outer output whether they
+are connected or not. The method ``inner_connection_pattern()``
+accomplishes the same goal but for every possible pair of inner output
+and inner input.

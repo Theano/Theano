@@ -337,7 +337,11 @@ def module_name_from_dir(dirname, err=True, files=None):
 
     """
     if files is None:
-        files = os.listdir(dirname)
+        try:
+            files = os.listdir(dirname)
+        except OSError as e:
+            if e.errno == 2 and not err:  # No such file or directory
+                return None
     names = [file for file in files
              if file.endswith('.so') or file.endswith('.pyd')]
     if len(names) == 0 and not err:
@@ -1443,7 +1447,15 @@ class ModuleCache(object):
                     # If it don't exist, use any file in the directory.
                     if path is None:
                         path = os.path.join(self.dirname, filename)
-                        files = os.listdir(path)
+                        try:
+                            files = os.listdir(path)
+                        except OSError as e:
+                            if e.errno == 2:  # No such file or directory
+                                # if it don't exist anymore, it mean
+                                # the clean up was already done by
+                                # someone else, so nothing to do about
+                                # it.
+                                continue
                         if files:
                             path = os.path.join(path, files[0])
                         else:
@@ -2297,6 +2309,20 @@ class GCC_compiler(Compiler):
             print_command_line_error()
             # Print errors just below the command line.
             print(compile_stderr)
+            not_found_libraries = re.findall('-l["."-_a-zA-Z0-9]*', compile_stderr)
+            for nf_lib in not_found_libraries:
+                print('library ' + nf_lib[2:] + ' is not found.')
+                if re.search('-lPYTHON["."0-9]*', nf_lib, re.IGNORECASE):
+                    py_string = re.search('-lpython["."0-9]*', nf_lib, re.IGNORECASE).group()[8:]
+                    if py_string != '':
+                        print(
+                            'Check if package python-dev ' + py_string + ' or python-devel ' + py_string + ' is installed.'
+                        )
+                    else:
+                        print(
+                            'Check if package python-dev or python-devel is installed.'
+                        )
+
             # We replace '\n' by '. ' in the error message because when Python
             # prints the exception, having '\n' in the text makes it more
             # difficult to read.
