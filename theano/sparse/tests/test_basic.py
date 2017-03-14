@@ -2965,7 +2965,8 @@ TruncTester = elemwise_checker(
     sparse.trunc,
     np.trunc,
     test_dtypes=[m for m in sparse.all_dtypes
-                 if not m in sparse.complex_dtypes])
+                 if not m in sparse.complex_dtypes],
+    grad_test=False)
 
 
 SqrTester = elemwise_checker(
