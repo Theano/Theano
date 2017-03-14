@@ -207,7 +207,7 @@ class Scan(PureOp):
         if self.info['gpu'] or self.info['gpua']:
             self._hash_inner_graph = self.info['gpu_hash']
         else:
-            # gof don't know about SharedVariable. So add them as inputs.
+            # Do the missing inputs check here to have the error early.
             for var in theano.gof.graph.inputs(self.outputs, self.inputs):
                 if var not in self.inputs and not isinstance(var, theano.Constant):
                     raise theano.gof.MissingInputError("ScanOp is missing an input.")
