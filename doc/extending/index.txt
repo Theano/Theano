@@ -49,4 +49,5 @@ with Theano itself.
     optimization
     tips
     unittest
+    scan
     extending_faq

@@ -156,24 +156,91 @@ in most cases in your :meth:`c_code` method.  This is done by using
 the provided wrapper function. An example calling the above kernel
 would be::
 
-    size_t ls, gs;
     size_t dims[2];
+    size_t n = 256;
 
     // ...
 
-    ls = 1;
-    gs = 256;
+    err = k_scall(1, &n, 0, input->ga.data, dims[0], dims[1]);
+
+    // ...
+
+If you want explicit control over the scheduling, you can use the
+`_call` wrapper instead which works like this::
+
+    size_t ls, gs;
+
+    // ...
+
+    gs = 1;
+    ls = 256;
     err = k_call(1, &gs, &ls, 0, input->ga.data, dims[0], dims[1]);
 
-    // ...
 
 The name of the wrapper function depends on the name you passed to
 ``Kernel()`` when you declared it (or the name in your `#kernel`
-statement).  It defaults to `name + '_call'`.
+statement).  It defaults to `name + '_call' or '_scall'`.
 
 For other operations in the C code you should refer to the
 `libgpuarray documentation
 <http://deeplearning.net/software/libgpuarray/>`_.
+
+Dealing with float16
+====================
+
+To support limited-precision storage in a kernel you have to be
+careful to load values properly, declare working memory in float32 and
+write results properly.  To help with that some functions have been
+declared in :mod:`theano.gpuarray.fp16_help`.
+
+To load the inputs you should wrap the read with the function returned
+by :func:`load_w() <theano.gpuarray.fp16_help.load_w>`. Similarly writes
+should be wrapped in the function returned by :func:`write_w()
+<theano.gpuarray.fp16_help.write_w>`.  Finally working data should
+have the type returned by :func:`work_dtype()
+<theano.gpuarray.fp16_help.work_dtype>`.
+
+Here is a +1 kernel that is not ready to deal with float16 input::
+
+    type_x = dtype_to_ctype(x.dtype)
+    type_y = dtype_to_ctype(y.dtype)
+    """
+    KERNEL void k(const ga_size n, %(type_x)s *x, %(type_y)s *y) {
+        ga_size i = GID_0 * LDIM_0 + LID_0;
+        %(type_x) z = x[i];
+        z += 1;
+        y[i] = z;
+    }
+    """ % dict(dtype_x=dtype_x, dtype_y=dtype_y)
+
+Here is the same kernel, but now ready to handle float16::
+
+    type_x = dtype_to_ctype(x.dtype)
+    type_y = dtype_to_ctype(y.dtype)
+    work_x = dtype_to_ctype(work_dtype(x.dtype))
+    load_x = load_w(x.dtype)
+    write_y = write_w(y.dtype)
+    """
+    KERNEL void k(const ga_size n, %(type_x)s *x, %(type_y)s *y) {
+        ga_size i = GID_0 * LDIM_0 + LID_0;
+        %(work_x) z = %(load_x)(x[i]);
+        z += 1;
+        y[i] = %(write_y)(z);
+    }
+    """ % dict(dtype_x=dtype_x, dtype_y=dtype_y, work_x=work_x, load_x=load_x,
+               write_y=write_y)
+
+Once you have converted your kernels for float16 support you need to
+tag your op with ``_f16_ok = True`` so that the linker will accept to
+generate C code on float16 types.  This is done by inserting it as a
+class property like this::
+
+    class SomeOp(Op):
+        _f16_ok = True
+
+If this attribute is not present or is False, the linker will print a
+message saying that it's refusing to use C code for float16 for the
+op.
 
 A Complete Example
 ==================
