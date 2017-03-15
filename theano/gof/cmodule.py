@@ -2301,14 +2301,22 @@ class GCC_compiler(Compiler):
         status = p_out[2]
 
         if status:
-            print('===============================')
+            tf = tempfile.NamedTemporaryFile(
+                prefix='theano_compilation_error_',
+                delete=False
+            )
+            # gcc put its messages to stderr, so we add ours now
+            tf.write('===============================\n')
             for i, l in enumerate(src_code.split('\n')):
-                # gcc put its messages to stderr, so we add ours now
-                print('%05i\t%s' % (i + 1, l), file=sys.stderr)
-            print('===============================')
-            print_command_line_error()
+                tf.write('%05i\t%s\n' % (i + 1, l))
+            tf.write('===============================\n')
+            tf.write("Problem occurred during compilation with the "
+                     "command line below:\n")
+            tf.write(' '.join(cmd))
             # Print errors just below the command line.
-            print(compile_stderr)
+            tf.write(compile_stderr)
+            tf.close()
+            print('\nYou can find the C code in this temporary file: ' + tf.name)
             not_found_libraries = re.findall('-l["."-_a-zA-Z0-9]*', compile_stderr)
             for nf_lib in not_found_libraries:
                 print('library ' + nf_lib[2:] + ' is not found.')
