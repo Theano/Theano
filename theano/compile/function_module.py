@@ -1481,7 +1481,8 @@ class FunctionMaker(object):
                     if theano.config.profile_optimizer:
                         profile.optimizer_profile = (optimizer,
                                                      optimizer_profile)
-                elif theano.config.profile_optimizer:
+                # IF False, if mean the profile for that function was explicitly disabled
+                elif theano.config.profile_optimizer and profile is not False:
                     warnings.warn((
                         "config.profile_optimizer requires config.profile to "
                         " be set to True as well"), stacklevel=3)
