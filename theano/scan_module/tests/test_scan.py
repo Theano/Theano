@@ -4483,13 +4483,10 @@ class T_Scan(unittest.TestCase):
             return tensor.dot(x, w_)
 
         ret_strict = theano.scan(_scan_loose,
-                               sequences=[],
-                               outputs_info=[x0_],
-                               n_steps=n,
-                               strict=True)
-
-        f_strict = theano.function([x0_], ret_strict[0][-1])
-        result_strict = f_strict(x0)
+                                 sequences=[],
+                                 outputs_info=[x0_],
+                                 n_steps=n,
+                                 strict=True)
 
     def test_monitor_mode(self):
         # Test that it is possible to pass an instance of MonitorMode

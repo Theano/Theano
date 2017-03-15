@@ -693,8 +693,8 @@ def test_scan_debugprint5():
 
     for{cpu,scan_fn} [id F] ''
     >Elemwise{mul,no_inplace} [id CR] ''
-    > |<TensorType(float64, vector)> [id CS] -> [id H]
-    > |A_copy [id CT] -> [id P]
+    > |<TensorType(float64, vector)> [id CP] -> [id H]
+    > |A_copy [id CL] -> [id P]
 
     for{cpu,scan_fn} [id F] ''
     >Elemwise{mul,no_inplace} [id CR] ''
