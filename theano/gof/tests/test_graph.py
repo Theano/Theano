@@ -212,7 +212,7 @@ class TestToposort:
         o0 = MyOp.make_node(r1, r2)
         o1 = MyOp.make_node(r3, r4)
         all = io_toposort([r1, r2, r3, r4], o0.outputs + o1.outputs)
-        assert all == [o1, o0]
+        assert all == [o1, o0] or all == [o0, o1]
 
     def test_4(self):
         """Test inputs and outputs mixed together in a chain graph"""
