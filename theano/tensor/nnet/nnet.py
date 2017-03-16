@@ -308,7 +308,6 @@ class SoftmaxGrad(gof.Op):
         if (dy.shape != sm.shape):
             raise ValueError('dy and the softmax output should have the same shape.')
         dx = numpy.zeros_like(sm)
-        dx_tmp = numpy.zeros_like(sm)
         dy_times_sm = dy * sm
         dx = dy_times_sm - (numpy.sum(dy_times_sm, axis=-1, keepdims=True) * sm)
         output_storage[0][0] = dx
