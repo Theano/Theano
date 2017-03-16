@@ -1544,9 +1544,11 @@ class _VariableEquivalenceTracker(object):
                  r,
                  debugprint(r, prefix='  ', depth=6,
                             file=StringIO(), done=done,
+                            print_type=True,
                             used_ids=used_ids).getvalue(),
                  debugprint(new_r, prefix='  ', depth=6,
                             file=StringIO(), done=done,
+                            print_type=True,
                             used_ids=used_ids).getvalue()))
             self.replaced_by[r].append((reason, new_r))
 
