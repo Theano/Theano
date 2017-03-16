@@ -426,6 +426,9 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             elif scalar_op == scalar.add:
                 for axis in reversed(sorted(tosum)):
                     zv = numpy.add.reduce(zv, axis)
+                if dtype == 'bool':
+                    # numpy.add of a bool upcast, while CAReduce don't
+                    zv = zv.astype(dtype)
             elif scalar_op == scalar.mul:
                 for axis in reversed(sorted(tosum)):
                     zv = numpy.multiply.reduce(zv, axis)
