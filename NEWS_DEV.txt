@@ -15,115 +15,147 @@ git shortlog -sn rel-0.8.0..
 
 TODO: better Theano conv doc
 
+# NB: Following notes are related to final release 0.9.0.
+
 Highlights:
- - Better integration of Theano+libgpuarray packages into conda distribution
- - Better handling of Windows end-lines into C codes
- - Better compatibility with NumPy 1.12
- - Faster scan optimizations
- - Fixed broadcast checking in scan
- - Bug fixes related to merge optimizer and shape inference
- - many other bug fixes and improvements
- - Updated documentation
- - Many computation and compilation speed up
- - More numerical stability by default for some graph
- - Jenkins (gpu tests run on PR in addition to daily buildbot)
- - Better handling of corner cases for theano functions and graph optimizations
- - More graph optimization (faster execution and smaller graph, so more readable)
- - Less c code compilation
  - Better Python 3.5 support
  - Better numpy 1.12 support
- - Support newer Mac and Windows version
  - Conda packages for Mac, Linux and Windows
- - Theano scripts now works on Windows
- - scan with checkpoint (trade off between speed and memory usage, useful for long sequences)
- - Added a bool dtype
+ - Support newer Mac and Windows versions
+ - More Windows integration:
+
+   - Theano scripts (``theano-cache`` and ``theano-nose``) now works on Windows
+   - Better support for Windows end-lines into C codes
+   - Support for space in paths on Windows
+
+ - Scan improvements:
+
+   - More scan optimizations, with faster compilation and gradient computation
+   - Support for checkpoint in scan (trade off between speed and memory usage, useful for long sequences)
+   - Fixed broadcast checking in scan
+
+ - Graphs improvements:
+
+   - More numerical stability by default for some graphs
+   - Better handling of corner cases for theano functions and graph optimizations
+   - More graph optimizations with faster toposort, compilation and execution
+   - smaller and more readable graph
+
+ - Less C code compilation
+ - Added support for bool dtype
+ - Updated and more complete documentation
+ - Bug fixes related to merge optimizer and shape inference
+ - Bug fixes related to Debug mode
+ - Lot of other bug fixes, crashes fixes and warning improvements
 
  - New GPU back-end:
 
-   - Fixed offset error in GpuIncSubtensor
-   - Fixed indexing error in GpuAdvancedSubtensor for more than 2 dimensions
-   - Value of a shared variable is now set inplace
+   - Removed warp-synchronous programming to get good results with newer CUDA drivers
+   - More pooling support on GPU when cuDNN isn't available
+   - Full support of ignore_border option for pooling
+   - Inplace storage for shared variables
    - float16 storage
-   - better mapping between theano device number and nvidia-smi number, using the PCI bus ID of graphic cards
-   - More pooling support on GPU when cuDNN isn't there
-   - ignore_border=False is now implemented for pooling
-   - Removed warp-synchronous programming
+   - Using PCI bus ID of graphic cards for a better mapping between theano device number and nvidia-smi number
+   - Added useful stats for GPU in profile mode
+   - Added documentation for GPU float16 ops
+   - Fixed offset error in GpuIncSubtensor
+
 
 Interface changes:
- - In MRG, replaced method `multinomial_wo_replacement()` with new method `choice()`
+ - Merged duplicated diagonal functions into two ops: ExtractDiag (extract a diagonal to a vector),
+   and AllocDiag (set a vector as a diagonal of an empty array)
+ - Merged CumsumOp/CumprodOp into CumOp
+ - Changed grad() method to L_op in many ops that need the outputs to compute gradient
+ - In MRG module:
+
+   - Replaced method ``multinomial_wo_replacement()`` with new method ``choice()``
+   - Random generator now tries to infer the broadcast pattern of its output
+
  - New pooling interface
  - Pooling parameters can change at run time
- - When converting empty list/tuple, now we use floatX dtype
- - The MRG random generator now try to infer the broadcast pattern of its output
- - Move softsign out of sandbox to theano.tensor.nnet.softsign
+ - Moved softsign out of sandbox to theano.tensor.nnet.softsign
+ - Using floatX dtype when converting empty list/tuple
  - Roll make the shift be modulo the size of the axis we roll on
- - Merge CumsumOp/CumprodOp into CumOp
  - round() default to the same as NumPy: half_to_even
 
 Convolution updates:
  - Allowed pooling of empty batch
- - Implement conv2d_transpose convenience function
+ - Implement ``conv2d_transpose`` convenience function
  - Multi-cores convolution and pooling on CPU
  - New abstract 3d convolution interface similar to the 2d convolution interface
  - Dilated convolution
 
 
 GPU:
- - GPUMultinomialFromUniform op now supports multiple dtypes
  - cuDNN: support versoin 5.1 and wrap batch normalization (2d and 3d) and RNN functions
  - Multiple-GPU, synchrone update (via platoon, use NCCL)
- - GpuAdvancedSubtensor in new back-end
  - Gemv(matrix-vector product) speed up for special shape
- - Support for MaxAndArgMax for some axis combination
- - Support for solve (using cusolver), erfinv and erfcinv
  - cublas gemv workaround when we reduce on an axis with a dimensions size of 0
  - Warn user that some cuDNN algorithms may produce unexpected results in certain environments
    for convolution backward filter operations
+ - GPUMultinomialFromUniform op now supports multiple dtypes
+ - Support for MaxAndArgMax for some axis combination
+ - Support for solve (using cusolver), erfinv and erfcinv
+ - Implemented GpuAdvancedSubtensor
 
 New features:
- - Added new Theano flag conv.assert_shape
+ - Added scalar and elemwise ops for modified Bessel function of order 0 and 1 from scipy.special
  - OpFromGraph now allows gradient overriding for every input
  - Added Abstract Ops for batch normalization that use cuDNN when available and pure Theano CPU/GPU alternatives otherwise
- - Added new Theano flag cuda.enabled
- - Added new Theano flag print_global_stats to print some global statistics (time spent) at the end
- - Add gradient of solve, tensorinv (CPU), tensorsolve (CPU) searchsorted (CPU)
- - Add Multinomial Without Replacement
+ - Added gradient of solve, tensorinv (CPU), tensorsolve (CPU), searchsorted (CPU), DownsampleFactorMaxGradGrad (CPU)
+ - Added Multinomial Without Replacement
  - conv3d2d support full and half mode (REMOVE?)
- - Add DownsampleFactorMaxGradGrad.grad
- - Allow partial evaluation of compiled function
+ - Allowed partial evaluation of compiled function
  - More Rop support
  - Indexing support ellipsis: a[..., 3], a[1,...,3]
  - Added theano.tensor.{tensor5,dtensor5, ...}
  - compiledir_format support device
+ - Extended  Theano flag dnn.enabled with new option ``no_check`` to help speed up cuDNN importation
+ - Added New Theano flag conv.assert_shape to check user-provided shapes at runtime (for debugging)
+ - Added new Theano flag cuda.enabled
+ - Added new Theano flag print_global_stats to print some global statistics (time spent) at the end
  - Added new Theano flag cmodule.age_thresh_use
+ - Added new Theano flag nvcc.cudafe to enable faster compilation and import with old CUDA back-end
+ - Added new Theano flag profiling.ignore_first_call, useful to profile the new gpu back-end
+ - remove ProfileMode (use Theano flag ``profile=True`` instead)
 
 
 Others:
  - Split op now has C code for CPU and GPU
- - "theano-cache list" now includes compilation times
- - Speed up argmax only on gpu (without also needing the max)
- - A few unfrequent bugfix 
- - More stack trace in error message
+ - ``theano-cache list`` now includes compilation times
+ - Speed up argmax only on GPU (without also needing the max)
+ - More stack trace in error messages
  - Speed up cholesky grad
- - log(sum(exp(...))) now get stability optimized
+ - ``log(sum(exp(...)))`` now get stability optimized
 
 
 Other more detailed changes:
- - Added new Theano flag nvcc.cudafe to enable faster compilation and import with old CUDA back-end
- - Use of 64-bit indexing in sparse ops to allow matrix with more then 2\ :sup:`31`\ -1 elements.
- - Allow more then one output to be an destructive inplace
- - Add flag profiling.ignore_first_call, useful to profile the new gpu back-end
- - Doc/error message fixes/updates
+ - Added Jenkins (gpu tests run on pull requests in addition to daily buildbot)
+ - Removed old benchmark directory and other old files not used anymore
+ - Use of 64-bit indexing in sparse ops to allow matrix with more then 2\ :sup:`31`\ -1 elements
+ - Allowed more then one output to be an destructive inplace
  - More support of negative axis
  - Added the keepdims parameter to the norm function
- - Crash fixes
  - Make scan gradient more deterministic
- - Add support for space in path on Windows
- - remove ProfileMode (use Theano flag profile=True instead)
 
 
 
 ALL THE PR BELLOW HAVE BEEN CHECKED
+* https://github.com/Theano/Theano/pull/5715
+* https://github.com/Theano/Theano/pull/5502
+* https://github.com/Theano/Theano/pull/5533
+* https://github.com/Theano/Theano/pull/5660
+* https://github.com/Theano/Theano/pull/5682
+* https://github.com/Theano/Theano/pull/5704
+* https://github.com/Theano/Theano/pull/5687
+* https://github.com/Theano/Theano/pull/5455
+* https://github.com/Theano/Theano/pull/5667
+* https://github.com/Theano/Theano/pull/5554
+* https://github.com/Theano/Theano/pull/5486
+* https://github.com/Theano/Theano/pull/5567
+* https://github.com/Theano/Theano/pull/5615
+* https://github.com/Theano/Theano/pull/5672
+* https://github.com/Theano/Theano/pull/5524
 * https://github.com/Theano/Theano/pull/5693
 * https://github.com/Theano/Theano/pull/5702
 * https://github.com/Theano/Theano/pull/5697

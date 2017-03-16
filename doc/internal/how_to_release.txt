@@ -33,7 +33,7 @@ Edit ``setup.py`` to contain the newest version number ::
     cd Theano-0.X
     vi setup.py     # Edit the MAJOR, MINOR, MICRO and SUFFIX
 
-``conf.py`` in the ``doc/`` directory should be updated in the following ways:
+``Theano/doc/conf.py`` should be updated in the following ways:
 
  * Change the ``version`` and ``release`` variables to new version number.
  * Change the upper copyright year to the current year if necessary.
