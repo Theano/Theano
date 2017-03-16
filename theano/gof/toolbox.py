@@ -40,6 +40,9 @@ class BadOptimization(Exception):
     """
     Exception: some variable and its substitute take different runtime values.
 
+    Note: If there is only 1 parameter and it is a string, we will use
+    it as the error message.
+
     """
 
     new_r = None
@@ -90,8 +93,8 @@ class BadOptimization(Exception):
 
     """
 
-    def __init__(self, old_r, new_r, old_r_val, new_r_val, reason,
-                 old_graph, new_graph):
+    def __init__(self, old_r, new_r=None, old_r_val=None, new_r_val=None, reason=None,
+                 old_graph=None, new_graph=None):
         super(BadOptimization, self).__init__()
         self.old_r = old_r
         self.new_r = new_r
@@ -100,8 +103,15 @@ class BadOptimization(Exception):
         self.reason = reason
         self.old_graph = old_graph
         self.new_graph = new_graph
+        self.full_err = None
+        if isinstance(old_r, str):
+            assert (new_r is None and old_r_val is None and new_r_val is None and
+                    reason is None and old_graph is None and new_graph is None)
+            self.full_err = old_r
 
     def __str__(self):
+        if getattr(self, 'full_err', None) is not None:
+            return self.full_err
         return self.str_diagnostic()
 
     def str_diagnostic(self):
