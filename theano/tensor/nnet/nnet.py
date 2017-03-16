@@ -447,7 +447,7 @@ class Softmax(gof.Op):
         # is the same as the grad
         if None in eval_points:
             return [None]
-        return self.grad(inputs, eval_points)
+        return self.L_op(inputs, [self(*inputs)], eval_points)
 
     def infer_shape(self, node, shape):
         return shape
