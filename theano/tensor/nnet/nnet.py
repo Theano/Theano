@@ -510,8 +510,8 @@ class Softmax(gof.Op):
                 // Get the maximum value on this dimenson
                 for (j = 1; j < input_shape[ndim - 1]; ++j)
                 {
-                    dtype_%(sm)s row_ij = x_i[j] ;
-                    row_max   = (row_ij > row_max) ? row_ij : row_max;
+                    dtype_%(sm)s row_ij = x_i[j];
+                    row_max = (row_ij > row_max) ? row_ij : row_max;
                 }
         """
 
@@ -536,8 +536,7 @@ class Softmax(gof.Op):
         """
         # Get the vectorized version of exp if it exist
         try:
-            vec_exp = theano.scalar.exp.c_code_contiguous_raw(dtype,
-                    "input_shape[ndim - 1]", "sm_i", "sm_i")
+            vec_exp = theano.scalar.exp.c_code_contiguous_raw(dtype, "input_shape[ndim - 1]", "sm_i", "sm_i")
             inside_row_loop_contig = """
                 // Substract the max
                 for (j = 0; j < input_shape[ndim - 1]; ++j)
