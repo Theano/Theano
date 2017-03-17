@@ -1086,20 +1086,6 @@ def compress_outs(op, not_required, inputs):
     return (op_inputs, op_outputs, info, node_inputs, map_old_new)
 
 
-def find_up(l_node, f_node):
-    r"""
-    Goes up in the graph and returns True if a node in nodes is found.
-
-    """
-    if isinstance(l_node, gof.Apply):
-        l_outs = l_node.outputs
-    else:
-        l_outs = l_node
-    l_ins = gof.graph.inputs(l_outs)
-    nodes = gof.graph.io_toposort(l_ins, l_outs)
-    return f_node in nodes
-
-
 def reconstruct_graph(inputs, outputs, tag=None):
     """
     Different interface to clone, that allows you to pass inputs.
