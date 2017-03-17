@@ -2075,13 +2075,7 @@ class TopoOptimizer(NavigatorOptimizer):
             if node is not current_node:
                 q.append(node)
 
-        def pruner(node):
-            if node is not current_node:
-                try:
-                    q.remove(node)
-                except ValueError:
-                    pass
-        u = self.attach_updater(fgraph, importer, pruner,
+        u = self.attach_updater(fgraph, importer, None,
                                 name=getattr(self, 'name', None))
         nb = 0
         try:
@@ -2091,6 +2085,8 @@ class TopoOptimizer(NavigatorOptimizer):
                     node = q.pop()
                 else:
                     node = q.popleft()
+                if node not in fgraph.apply_nodes:
+                    continue
                 current_node = node
                 nb += self.process_node(fgraph, node)
             loop_t = time.time() - t0
@@ -2203,17 +2199,13 @@ class OpKeyOptimizer(NavigatorOptimizer):
                 if node.op == op:
                     q.append(node)
 
-        def pruner(node):
-            if node is not current_node and node.op == op:
-                try:
-                    q.remove(node)
-                except ValueError:
-                    pass
-        u = self.attach_updater(fgraph, importer, pruner,
+        u = self.attach_updater(fgraph, importer, None,
                                 name=getattr(self, 'name', None))
         try:
             while q:
                 node = q.pop()
+                if node not in fgraph.apply_nodes:
+                    continue
                 current_node = node
                 self.process_node(fgraph, node)
         finally:
