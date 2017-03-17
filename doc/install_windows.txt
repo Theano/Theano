@@ -16,7 +16,7 @@ Windows Installation Instructions
 
 .. comment: Requirements, optional requirements and installation of miniconda.
 .. include:: requirements.inc
-    :end-line: 74
+    :end-before: .. comment: install_requirements_and_optional_packages
 
 Install requirements and optional packages
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -87,17 +87,17 @@ If you use pip, you have to install Theano and libgpuarray separately.
 theano
 ::::::
 
-.. comment: Installation instructions for theano for stable version.
+.. comment: Installation instructions for theano stable version.
 .. include:: install_generic.inc
-    :start-line: 11
-    :end-line: 29
+    :start-after: .. comment: install_theano_stable_version
+    :end-before: .. comment: end_install_theano_stable_version
 
 libgpuarray
 :::::::::::
 
 .. comment: Installation instructions (libgpuarray for stable version, then full bleeding-edge and developer version instructions).
 .. include:: install_generic.inc
-    :start-line: 32
+    :start-after: .. comment: install_libgpuarray_stable_version
 
 Instructions for other Python distributions (not recommended)
 =============================================================

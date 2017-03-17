@@ -71,6 +71,8 @@ Follow this `link <http://conda.pydata.org/miniconda.html>`__ to install Minicon
 
     If you want fast compiled code (recommended), make sure you have |CompilerName| installed.
 
+.. comment: install_requirements_and_optional_packages
+
 Install requirements and optional packages
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
