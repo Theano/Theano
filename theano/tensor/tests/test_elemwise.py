@@ -426,6 +426,9 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             elif scalar_op == scalar.add:
                 for axis in reversed(sorted(tosum)):
                     zv = numpy.add.reduce(zv, axis)
+                if dtype == 'bool':
+                    # numpy.add of a bool upcast, while CAReduce don't
+                    zv = zv.astype(dtype)
             elif scalar_op == scalar.mul:
                 for axis in reversed(sorted(tosum)):
                     zv = numpy.multiply.reduce(zv, axis)
@@ -503,7 +506,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                     assert xv.size == 0
 
     def test_perform(self):
-        for dtype in ["floatX", "complex64", "complex128", "int8", "uint8"]:
+        for dtype in ["bool", "floatX", "complex64", "complex128", "int8", "uint8"]:
             self.with_linker(gof.PerformLinker(), scalar.add, dtype=dtype)
             self.with_linker(gof.PerformLinker(), scalar.mul, dtype=dtype)
             self.with_linker(gof.PerformLinker(), scalar.maximum, dtype=dtype)
@@ -537,17 +540,17 @@ class test_CAReduce(unittest_tools.InferShapeTester):
         if not theano.config.cxx:
             raise SkipTest("G++ not available, so we need to skip this test.")
 
-        for dtype in ["floatX", "complex64", "complex128", "int8", "uint8"]:
+        for dtype in ["bool", "floatX", "complex64", "complex128", "int8", "uint8"]:
             self.with_linker(gof.CLinker(), scalar.add, dtype=dtype)
             self.with_linker(gof.CLinker(), scalar.mul, dtype=dtype)
-        for dtype in ["floatX", "int8", "uint8"]:
+        for dtype in ["bool", "floatX", "int8", "uint8"]:
             self.with_linker(gof.CLinker(), scalar.minimum, dtype=dtype)
             self.with_linker(gof.CLinker(), scalar.maximum, dtype=dtype)
             self.with_linker(gof.CLinker(), scalar.and_, dtype=dtype,
                              tensor_op=tensor.all)
             self.with_linker(gof.CLinker(), scalar.or_, dtype=dtype,
                              tensor_op=tensor.any)
-        for dtype in ["int8", "uint8"]:
+        for dtype in ["bool", "int8", "uint8"]:
             self.with_linker(gof.CLinker(), scalar.or_, dtype=dtype)
             self.with_linker(gof.CLinker(), scalar.and_, dtype=dtype)
             self.with_linker(gof.CLinker(), scalar.xor, dtype=dtype)

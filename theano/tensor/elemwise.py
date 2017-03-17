@@ -1539,8 +1539,8 @@ class CAReduce(Op):
                 scal_name = 'maximum'
                 if input.type.dtype in ["float32", "float64"]:
                     identity = "-__builtin_inf()"
-                elif input.type.dtype.startswith("uint"):
-                    # numpy does not define NPY_MIN_UINT*
+                elif input.type.dtype.startswith("uint") or input.type.dtype == 'bool':
+                    # numpy does not define NPY_MIN_UINT* and NPY_MIN_BOOL
                     identity = "0"
                 else:
                     identity = "NPY_MIN_" + str(input.type.dtype).upper()
@@ -1548,6 +1548,9 @@ class CAReduce(Op):
                 scal_name = 'minimum'
                 if input.type.dtype in ["float32", "float64"]:
                     identity = "__builtin_inf()"
+                elif input.type.dtype == 'bool':
+                    # numpy does not define NPY_MAX_BOOL
+                    identity = "1"
                 else:
                     identity = "NPY_MAX_" + str(input.type.dtype).upper()
             fail = sub["fail"]
