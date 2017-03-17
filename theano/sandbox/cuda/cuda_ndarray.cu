@@ -3261,7 +3261,7 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
                              cudaGetErrorString(err));
                 return NULL;
             }
-            mem = free * cnmem;
+            mem = total * cnmem;
         }
         if(initCnmem(card_number_provided, card_nb, mem) == -1){
             return NULL;
