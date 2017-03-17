@@ -32,7 +32,7 @@ Highlights (since 0.8.0):
 
    - More numerical stability by default for some graphs
    - Better handling of corner cases for theano functions and graph optimizations
-   - More graph optimizations with faster toposort, compilation and execution
+   - More graph optimizations with faster compilation and execution
    - smaller and more readable graph
 
  - New GPU back-end:
@@ -43,24 +43,18 @@ Highlights (since 0.8.0):
    - Inplace storage for shared variables
    - float16 storage
    - Using PCI bus ID of graphic cards for a better mapping between theano device number and nvidia-smi number
-   - Added useful stats for GPU in profile mode
-   - Added documentation for GPU float16 ops
    - Fixed offset error in ``GpuIncSubtensor``
 
  - Less C code compilation
  - Added support for bool dtype
  - Updated and more complete documentation
  - Bug fixes related to merge optimizer and shape inference
- - Bug fixes related to Debug mode
  - Lot of other bug fixes, crashes fixes and warning improvements
 
-A total of 12 people contributed to this release since 0.9.0rc4 and 125 since 0.8.0, see the lists below.
+A total of 123 people contributed to this release since 0.8.0, see list below.
 
 Interface changes:
- - Merged duplicated diagonal functions into two ops: ``ExtractDiag`` (extract a diagonal to a vector),
-   and ``AllocDiag`` (set a vector as a diagonal of an empty array)
  - Merged ``CumsumOp/CumprodOp`` into ``CumOp``
- - Changed grad() method to L_op in many ops that need the outputs to compute gradient
  - In MRG module:
 
    - Replaced method ``multinomial_wo_replacement()`` with new method ``choice()``
@@ -74,7 +68,7 @@ Interface changes:
  - ``round()`` default to the same as NumPy: half_to_even
 
 Convolution updates:
- - Support of full and half modes for 2D and 3D convolutions
+ - Support of full and half modes for 2D and 3D convolutions including in ``conv3d2d``
  - Allowed pooling of empty batch
  - Implement ``conv2d_transpose`` convenience function
  - Multi-cores convolution and pooling on CPU
@@ -95,7 +89,6 @@ GPU:
  - Implemented ``GpuAdvancedSubtensor``
 
 New features:
- - Added scalar and elemwise ops for modified Bessel function of order 0 and 1 from scipy.special
  - ``OpFromGraph`` now allows gradient overriding for every input
  - Added Abstract Ops for batch normalization that use cuDNN when available and pure Theano CPU/GPU alternatives otherwise
  - Added gradient of solve, tensorinv (CPU), tensorsolve (CPU), searchsorted (CPU), DownsampleFactorMaxGradGrad (CPU)
@@ -105,7 +98,6 @@ New features:
  - Indexing support ellipsis: ``a[..., 3]```, ``a[1,...,3]``
  - Added ``theano.tensor.{tensor5,dtensor5, ...}``
  - compiledir_format support device
- - Extended  Theano flag ``dnn.enabled`` with new option ``no_check`` to help speed up cuDNN importation
  - Added New Theano flag ``conv.assert_shape`` to check user-provided shapes at runtime (for debugging)
  - Added new Theano flag ``cmodule.age_thresh_use``
  - Added new Theano flag ``cuda.enabled``
@@ -133,20 +125,6 @@ Other more detailed changes:
  - Added the keepdims parameter to the norm function
  - Make scan gradient more deterministic
 
-Commiters since 0.9.0rc4:
- - Frederic Bastien
- - Zhouhan LIN
- - Tegan Maharaj
- - Arnaud Bergeron
- - Matt Graham
- - Saizheng Zhang
- - affanv14
- - Chiheb Trabelsi
- - Pascal Lamblin
- - Cesar Laurent
- - Reyhane Askari
- - Aarni Koskela
-
 Commiters since 0.8.0:
  - Frederic Bastien
  - Arnaud Bergeron
@@ -158,21 +136,19 @@ Commiters since 0.8.0:
  - Benjamin Scellier
  - khaotik
  - Chiheb Trabelsi
- - Cesar Laurent
  - Chinnadhurai Sankar
+ - Cesar Laurent
  - Reyhane Askari
  - Mohammad Pezeshki
  - Alexander Matyasko
  - Alexandre de Brebisson
- - Saizheng Zhang
  - Mathieu Germain
  - Nan Rosemary Ke
  - Pierre Luc Carrier
  - Olivier Mastropietro
  - Thomas George
- - Zhouhan LIN
+ - Saizheng Zhang
  - Iulian Vlad Serban
- - Matt Graham
  - Francesco Visin
  - Caglar
  - Faruk Ahmed
@@ -180,25 +156,26 @@ Commiters since 0.8.0:
  - Samira Shabanian
  - Vincent Dumoulin
  - Nicolas Ballas
- - affanv14
  - Jakub Sygnowski
  - Jan Schlüter
  - Samira Ebrahimi Kahou
  - Mikhail Korobov
  - Fei Wang
  - Kv Manohar
- - Tegan Maharaj
  - Jesse Livezey
  - Kelvin Xu
+ - Matt Graham
  - Ruslana Makovetsky
  - Sina Honari
  - Bryn Keller
  - Ciyong Chen
  - Vitaliy Kurlin
+ - Zhouhan LIN
  - Gokula Krishnan
  - Kumar Krishna Agrawal
  - Ozan Çağlayan
  - Vincent Michalski
+ - affanv14
  - Amjad Almahairi
  - Ray Donnelly
  - Tim Cooijmans
@@ -225,7 +202,6 @@ Commiters since 0.8.0:
  - Xavier Bouthillier
  - p
  - texot
- - Aarni Koskela
  - Andrés Gottlieb
  - Ben Poole
  - Bhavishya Pohani
