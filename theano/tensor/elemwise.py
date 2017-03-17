@@ -1549,7 +1549,7 @@ class CAReduce(Op):
                 if input.type.dtype in ["float32", "float64"]:
                     identity = "__builtin_inf()"
                 elif input.type.dtype == 'bool':
-                    # numpy does not define NPY_MIN_UINT* and NPY_MAX_BOOL
+                    # numpy does not define NPY_MAX_BOOL
                     identity = "1"
                 else:
                     identity = "NPY_MAX_" + str(input.type.dtype).upper()
