@@ -2,7 +2,7 @@
 
 cd /opt/theano
 
-export THEANO_FLAGS="floatX=float32,device=cpu,gpuarray.preallocate=0.45"
+export THEANO_FLAGS="floatX=float32,device=cpu,gpuarray.preallocate=0.45,lib.cnmem=0.45"
 
 #
 # theano-nose doesn't appear to support any of the variants of "exclude"
