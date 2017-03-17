@@ -70,7 +70,7 @@ from theano.gof.opt import pre_constant_merge, pre_greedy_local_optimizer
 
 from theano.scan_module import scan_op
 from theano.scan_module import scan_utils
-from theano.scan_module.scan_utils import equal_computations, find_up, scan_args
+from theano.scan_module.scan_utils import equal_computations, scan_args
 
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu "
@@ -1605,7 +1605,7 @@ class ScanSaveMem(gof.Optimizer):
                         nw_pos = compress_map[idx]
                         old_new += [(o, new_outs[nw_pos])]
                 # Check if the new outputs depend on the old scan node
-                old_scan_is_used = [scan_utils.find_up(new.owner, node)
+                old_scan_is_used = [gof.graph.is_in_ancestors(new.owner, node)
                                     for old, new in old_new]
                 if any(old_scan_is_used):
                     return False
@@ -1831,7 +1831,7 @@ class ScanMerge(gof.Optimizer):
 
         # Check to see if it is an input of a different node
         for nd in set_nodes:
-            if find_up(node, nd) or find_up(nd, node):
+            if gof.graph.is_in_ancestors(node, nd) or gof.graph.is_in_ancestors(nd, node):
                 return False
 
         if not node.op.as_while:
