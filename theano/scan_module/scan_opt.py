@@ -1829,19 +1829,21 @@ class ScanMerge(gof.Optimizer):
         except tensor.NotScalarConstantError:
             pass
 
+        if nsteps != rep_nsteps:
+            return False
+
         # Check to see if it is an input of a different node
         for nd in set_nodes:
             if gof.graph.is_in_ancestors(node, nd) or gof.graph.is_in_ancestors(nd, node):
                 return False
 
         if not node.op.as_while:
-            return nsteps == rep_nsteps
+            return True
         cond = node.op.outputs[-1]
         rep_cond = rep.op.outputs[-1]
-        same_cond = scan_utils.equal_computations([cond], [rep_cond],
-                                                  node.op.inputs,
-                                                  rep.op.inputs)
-        return same_cond and (nsteps == rep_nsteps)
+        return scan_utils.equal_computations([cond], [rep_cond],
+                                             node.op.inputs,
+                                             rep.op.inputs)
 
     def apply(self, fgraph):
         # Collect all scan nodes ordered according to toposort
