@@ -2902,26 +2902,6 @@ class T_Clip(unittest.TestCase):
 #      gradient numerically
 
 
-# useful mostly for unit tests
-def _approx_eq(a, b, eps=1.0e-4):
-    a = numpy.asarray(a)
-    b = numpy.asarray(b)
-    if a.shape != b.shape:
-        if _approx_eq.debug:
-            print(a.shape, b.shape)
-        return False
-    abs_rel_err = numeric_grad.abs_rel_err(a, b)
-    # numpy.max don't like empty ndarray.
-    if a.size == b.size == 0:
-        return True
-    if numpy.max(abs_rel_err) >= eps:
-        if _approx_eq.debug:
-            print(a, b)
-        return False
-    return True
-_approx_eq.debug = 0
-
-
 def test_batched_dot():
     first = theano.tensor.tensor3("first")
     second = theano.tensor.tensor3("second")
@@ -4945,7 +4925,7 @@ class t_dot(unittest.TestCase):
         self.assertTrue(tz.dtype == nz.dtype,
                 (tz.dtype, tz.dtype.num, nz.dtype, nz.dtype.num))
         self.assertTrue(tz.shape == nz.shape, (tz.shape, nz.shape))
-        self.assertTrue(_approx_eq(nz, tz))
+        utt.assert_allclose(nz, tz, rtol=1e-4, atol=1e-4)
 
     def test_Op_dims(self):
         # _dot is a Dot op instance
