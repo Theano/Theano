@@ -19,8 +19,8 @@ KERNEL void ROIPoolGPUBkwd_kernel(
     for (ga_int roi_n = 0; roi_n < num_rois; ++roi_n) {
       const ga_int out_inc = roi_n * channels * pooled_width * pooled_height;
       // Incrementing the pointers by respective ROI channel.
-      batch_out += out_inc;
-      batch_argmax += out_inc;
+      DTYPE_i3* roi_out = batch_out + out_inc;
+      DTYPE_i2* roi_argmax = batch_argmax + out_inc;
       DTYPE_i1* batch_roi = bottom_rois + roi_n * 5;
       ga_int roi_start_w = floorf(batch_roi[1] * spatial_scale + 0.5);
       ga_int roi_start_h = floorf(batch_roi[2] * spatial_scale + 0.5);
@@ -34,8 +34,8 @@ KERNEL void ROIPoolGPUBkwd_kernel(
         const ga_int data_inc = c * height * width;
         const ga_int out_channel_inc = c * pooled_height * pooled_width;
         // incrementing the output dimension pointers
-        DTYPE_i3* channel_out = batch_out + out_channel_inc;
-        DTYPE_i2* channel_argmax = batch_argmax + out_channel_inc;
+        DTYPE_i3* channel_out = roi_out + out_channel_inc;
+        DTYPE_i2* channel_argmax = roi_argmax + out_channel_inc;
         // increment input dimension pointers
         DTYPE_o0* channel_grad = batch_grad + data_inc;
         for (ga_int h = 0; h < height; ++h){

@@ -306,7 +306,8 @@ class TestGpuRoIPool(utt.InferShapeTester):
         image_shapes = ((1, 3, 16, 16), (1, 3, 16, 20), (1, 3, 20, 16),
                         (1, 2, 16, 16), (1, 2, 16, 20), (1, 2, 20, 16),
                         (2, 3, 16, 16), (2, 3, 16, 20), (2, 3, 20, 16),
-                        (2, 2, 16, 16), (3, 2, 16, 20), (4, 2, 20, 16))
+                        (2, 2, 16, 16), (3, 2, 16, 20), (4, 2, 20, 16),
+                        (10, 3, 16, 16), (20, 3, 16, 20), (30, 3, 20, 16))
         # The difference in ROI shape is because the first element is batch index in
         # theano implementation.
         roi_theano = theano.shared(np.asarray([[0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]], dtype='float32'))
@@ -334,12 +335,12 @@ class TestGpuRoIPool(utt.InferShapeTester):
                     roi_pooled_grad = tensor.grad(t_outs[0].sum(), shared_image)
                     f = theano.function([], roi_pooled_grad, mode=gpu_mode)
                     assert any([isinstance(node.op, GpuRoIPoolGradOp) for node in f.maker.fgraph.toposort()])
-                    # Testing the computation accuracy of gradient
 
+                    # Testing the computation accuracy of gradient
                     def mp(inp):
                         out, argmax = self.op_class(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=sp_scale)(inp, roi_theano)
                         return out
-                    utt.verify_grad(mp, [random_image], rng=rng)
+                    utt.verify_grad(mp, [random_image])
 
     def test_infer_shape(self):
         rng = np.random.RandomState(utt.fetch_seed())

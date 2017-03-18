@@ -1207,13 +1207,14 @@ class TestRoIPool(utt.InferShapeTester):
         image_shapes = ((1, 3, 16, 16), (1, 3, 16, 20), (1, 3, 20, 16),
                         (1, 2, 16, 16), (1, 2, 16, 20), (1, 2, 20, 16),
                         (2, 3, 16, 16), (2, 3, 16, 20), (2, 3, 20, 16),
-                        (2, 2, 16, 16), (2, 2, 16, 20), (2, 2, 20, 16))
+                        (2, 2, 16, 16), (2, 2, 16, 20), (2, 2, 20, 16),
+                        (10, 3, 16, 16), (20, 3, 16, 20), (30, 3, 20, 16))
 
         # The difference in shape is because the first element is batch index in
         # theano implementation
         # The value 7 is used in Fast RCNN network
-        roi_theano = numpy.asarray([[0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]], dtype='float32')
-        roi_numpy = numpy.asarray([[0., 0., 3., 3.], [0., 0., 7., 7.]], dtype='float32')
+        roi_theano = numpy.asarray([[0., 0., 0., 1., 1.], [0., 0., 0., 2., 2.], [0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]], dtype='float32')
+        roi_numpy = numpy.asarray([[0., 0., 1., 1.], [0., 0., 2., 2.], [0., 0., 3., 3.], [0., 0., 7., 7.]], dtype='float32')
         pool_widths = [2, 3, 4]
         pool_heights = [2, 3, 4]
         spatial_scales = [0.5, 1.0, 1.5]
@@ -1229,10 +1230,10 @@ class TestRoIPool(utt.InferShapeTester):
                 utt.assert_allclose(maxvals_np, maxvals_theano)
 
                 def mp(input):
-                    out, argmax = self.op_class(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=sp_scale)(input, roi_theano)
+                    out, argmax = RoIPoolOp(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=sp_scale)(input, roi_theano)
                     return out
 
-                utt.verify_grad(mp, [random_image], rng=rng)
+                utt.verify_grad(mp, [random_image])
 
     def test_infer_shape(self):
         rng = numpy.random.RandomState(utt.fetch_seed())

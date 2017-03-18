@@ -14,14 +14,13 @@ KERNEL void ROIPoolGPUFwd_kernel(
         DTYPE_i0* batch_data = bottom_data + inp_bn;
         DTYPE_o0* batch_out = top_data + out_bn;
         DTYPE_o1* batch_argmax = argmax_data + out_bn;
-        // Assigning to a separate variable as the ROIs doesn't change per batch
-        DTYPE_i1* batch_rois = bottom_rois;
+
         for (ga_int index = 0; index < num_rois; ++index) {
             ga_int out_inc = index * channels * pooled_width * pooled_height;
             // Incrementing the pointers by respective ROI channel.
-            batch_out += out_inc;
-            batch_argmax += out_inc;
-            batch_rois = bottom_rois + index * 5;
+            DTYPE_o0* roi_out = batch_out + out_inc;
+            DTYPE_o1* roi_argmax = batch_argmax + out_inc;
+            DTYPE_i1* batch_rois = bottom_rois + index * 5;
             ga_int roi_start_w = floorf(batch_rois[1] * spatial_scale + 0.5);
             ga_int roi_start_h = floorf(batch_rois[2] * spatial_scale + 0.5);
             ga_int roi_end_w = floorf(batch_rois[3] * spatial_scale + 0.5);
@@ -34,8 +33,8 @@ KERNEL void ROIPoolGPUFwd_kernel(
                 ga_int data_inc = c * height * width;
                 ga_int out_channel_inc = c * pooled_height * pooled_width;
                 DTYPE_i0* channel_data = batch_data + data_inc;
-                DTYPE_o0* channel_out = batch_out + out_channel_inc;
-                DTYPE_o1* channel_argmax = batch_argmax + out_channel_inc;
+                DTYPE_o0* channel_out = roi_out + out_channel_inc;
+                DTYPE_o1* channel_argmax = roi_argmax + out_channel_inc;
                 for (ga_int ph = 0; ph < pooled_height; ++ph) {
                     for (ga_int pw = 0; pw < pooled_width; ++pw) {
                         ga_int hstart = static_cast<ga_int>(floor(static_cast<ga_float>(ph) * bin_size_h)) + roi_start_h;

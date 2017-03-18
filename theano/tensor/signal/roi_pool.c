@@ -30,13 +30,12 @@ void APPLY_SPECIFIC(ROIPoolForward)(
     float* batch_data = bottom_data + inp_bn;
     float* batch_out = top_data + out_bn;
     float* batch_argmax = argmax_data + out_bn;
-    float* batch_roi = bottom_rois;
     for (int index = 0; index < num_rois; ++index) {
       const int out_inc = index * channels * pooled_width * pooled_height;
       // Incrementing the output pointers and the ROI by respective ROI channel.
-      batch_out += out_inc;
-      batch_argmax += out_inc;
-      batch_roi = bottom_rois + index * 5;
+      float* roi_out = batch_out + out_inc;
+      float* roi_argmax = batch_argmax + out_inc;
+      float* batch_roi = bottom_rois + index * 5;
 
       int roi_start_w = floorf(batch_roi[1] * spatial_scale + 0.5);
       int roi_start_h = floorf(batch_roi[2] * spatial_scale + 0.5 );
@@ -50,8 +49,8 @@ void APPLY_SPECIFIC(ROIPoolForward)(
         const int data_inc = c * height * width;
         const int out_channel_inc = c * pooled_height * pooled_width;
         float* channel_data = batch_data + data_inc;
-        float* channel_out = batch_out + out_channel_inc;
-        float* channel_argmax = batch_argmax + out_channel_inc;
+        float* channel_out = roi_out + out_channel_inc;
+        float* channel_argmax = roi_argmax + out_channel_inc;
         for (int ph = 0; ph < pooled_height; ++ph) {
           for (int pw = 0; pw < pooled_width; ++pw) {
             int hstart = static_cast<int>(floor(static_cast<float>(ph) * bin_size_h)) + roi_start_h;
@@ -152,8 +151,8 @@ void APPLY_SPECIFIC(ROIPoolBackward)(
     for (int roi_n = 0; roi_n < num_rois; ++roi_n) {
       const int out_inc = roi_n * channels * pooled_width * pooled_height;
       // Incrementing the pointers by respective ROI channel.
-      batch_out += out_inc;
-      batch_argmax += out_inc;
+      float* roi_out = batch_out + out_inc;
+      float* roi_argmax = batch_argmax + out_inc;
       float* batch_roi = bottom_rois + roi_n * 5;
 
       int roi_start_w = floorf(batch_roi[1] * spatial_scale + 0.5);
@@ -167,8 +166,8 @@ void APPLY_SPECIFIC(ROIPoolBackward)(
         const int data_inc = c * height * width;
         const int out_channel_inc = c * pooled_height * pooled_width;
         // incrementing the output dimension pointers
-        float* channel_out = batch_out + out_channel_inc;
-        float* channel_argmax = batch_argmax + out_channel_inc;
+        float* channel_out = roi_out + out_channel_inc;
+        float* channel_argmax = roi_argmax + out_channel_inc;
         // increment input dimension pointers
         float* channel_grad = batch_grad + data_inc;
 

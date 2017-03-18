@@ -2554,6 +2554,9 @@ class RoIPoolOp(gof.COp):
         return [RoIPoolGradOp(self.pooled_h, self.pooled_w,
                               self.spatial_scale)(data, roi, argmax, gz1)] + disc
 
+    def connection_pattern(self, node):
+        return [[1, 0], [0, 0]]
+
 
 class RoIPoolGradOp(gof.COp):
 
