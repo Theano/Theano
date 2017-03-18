@@ -79,6 +79,11 @@ else:
 # Use a seeded random number generator so that unittests are deterministic
 utt.seed_rng()
 test_rng = numpy.random.RandomState(seed=utt.fetch_seed())
+# In order to check random values close to the boundaries when designing
+# new tests, you can use utt.MockRandomState, for instance:
+# test_rng = MockRandomState(0)
+# test_rng = MockRandomState(0.99999982)
+# test_rng = MockRandomState(1)
 
 
 if PY3:

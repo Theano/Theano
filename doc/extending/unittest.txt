@@ -390,6 +390,11 @@ is incompatible with the method of hard-coding the baseline variables
 determined "algorithmically". Although this represents more work, the
 test suite will be better because of it.
 
+To help you check that the boundaries provided to ``numpy.random`` are
+correct and your tests will pass those corner cases, you can check
+``utt.MockRandomState``. Code using ``utt.MockRandomState`` should not
+be committed, it is just a tool to help adjust the sampling range.
+
 
 Creating an Op UnitTest
 =======================

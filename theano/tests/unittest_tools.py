@@ -120,10 +120,6 @@ class MockRandomState:
             return out + minval
         else:
             return out + maxval - 1
-# Examples of use:
-# test_rng = MockRandomState(0)
-# test_rng = MockRandomState(0.99999982)
-# test_rng = MockRandomState(1)
 
 
 class TestOptimizationMixin(object):
