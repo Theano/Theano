@@ -15,9 +15,10 @@ ldflags=
 enabled=True
 
 #### Configure the new 'gpuarray' backend
-[gpuarray]
-## Preallocate 20% of space for the new gpuarray backend; its cache will grow automatically as needed
-preallocate=0.2
+## Preallocate space for the new gpuarray backend
+## by default since its cache will grow automatically as needed
+#[gpuarray]
+#preallocate=0.2
 
 #### Configure the old 'sandbox/cuda' backend (config.cuda means 'sandbox/cuda')
 ##
