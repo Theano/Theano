@@ -4658,7 +4658,7 @@ class T_cast_cast(unittest.TestCase):
         f(dx)
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
-       assert isinstance(topo[0].op.scalar_op, scal.basic.Cast)
+        assert isinstance(topo[0].op.scalar_op, scal.basic.Cast)
 
         x = T.dmatrix()
         o = T.Elemwise(scal.Cast(scal.Scalar("float32")))(x.astype("float32"))
