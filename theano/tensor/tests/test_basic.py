@@ -242,7 +242,7 @@ def upcast_int8_nfunc(fn):
 def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                bad_runtime=None, grad=None, mode=None, grad_rtol=None,
                eps=1e-10, skip=False, test_memmap=True, check_name=True,
-               grad_eps=None):
+               grad_eps=None, skip_verify_grad=False):
     # :param check_name:
     #     Use only for tester that aren't in Theano.
     if checks is None:
@@ -465,24 +465,25 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
             if skip:
                 raise SkipTest(skip)
             # Disable old warning that may be triggered by this test.
-            backup = config.warn.sum_div_dimshuffle_bug
-            config.warn.sum_div_dimshuffle_bug = False
-            try:
-                for testname, inputs in iteritems(self.grad):
-                    inputs = [copy(input) for input in inputs]
-                    try:
-                        utt.verify_grad(self.op, inputs,
-                                        mode=self.mode,
-                                        rel_tol=_grad_rtol,
-                                        eps=_grad_eps)
-                    except Exception as exc:
-                        err_msg = ("Test %s::%s: Error occurred while"
-                            " computing the gradient on the following"
-                            " inputs: %s") % (self.op, testname, inputs)
-                        exc.args += (err_msg,)
-                        raise
-            finally:
-                config.warn.sum_div_dimshuffle_bug = backup
+            if(not skip_verify_grad):
+                backup = config.warn.sum_div_dimshuffle_bug
+                config.warn.sum_div_dimshuffle_bug = False
+                try:
+                    for testname, inputs in iteritems(self.grad):
+                        inputs = [copy(input) for input in inputs]
+                        try:
+                            utt.verify_grad(self.op, inputs,
+                                            mode=self.mode,
+                                            rel_tol=_grad_rtol,
+                                            eps=_grad_eps)
+                        except Exception as exc:
+                            err_msg = ("Test %s::%s: Error occurred while"
+                                " computing the gradient on the following"
+                                " inputs: %s") % (self.op, testname, inputs)
+                            exc.args += (err_msg,)
+                            raise
+                finally:
+                    config.warn.sum_div_dimshuffle_bug = backup
 
         def test_grad_none(self):
             # Check that None is never returned as input gradient
@@ -633,6 +634,7 @@ def makeBroadcastTester(op, expected, checks=None, name=None, **kwargs):
         name += "Tester"
     if 'inplace' in kwargs:
         if kwargs['inplace']:
+            kwargs['skip_verify_grad']=True
             _expected = expected
             if not isinstance(_expected, dict):
                 expected = lambda *inputs: numpy.array(_expected(*inputs),
@@ -3192,7 +3194,7 @@ class T_max_and_argmax(unittest.TestCase):
             # We make sure epsilon is less than the minimum absolute value found
             # in the matrix of pairwise differences between all elements in the
             # data. This way, the argmax will not change when adding epsilon.
-            
+
             # 'data' is a one-element list.
             data_tensor, = data
             # Flatten it into a 1D vector.
@@ -3924,7 +3926,7 @@ class T_Join_and_Split(unittest.TestCase):
             out = theano.function([], b)()
 
             assert (out == want).all()
-                
+
             # Test example when axis < 0 - ensure that behavior matches numpy.roll behavior
             a = self.shared(numpy.arange(24).reshape((3, 2, 4)).astype(self.floatX))
             b = roll(a, get_shift(-2), -2)
@@ -5647,7 +5649,7 @@ def test_is_flat():
     # tests is_flat method for constant and symbolic variables,
     # as well as reshaped constant and symbolic variables on the
     # given outdim
-    
+
     # Constant variable
     assert tensor.is_flat(tensor.as_tensor_variable(numpy.zeros((10))))
     assert tensor.is_flat(tensor.as_tensor_variable(numpy.zeros((10, 10, 10))),
@@ -7453,7 +7455,7 @@ class test_diag(unittest.TestCase):
             r = f()
             # The right matrix is created
             assert (r == v).all()
-        
+
         # Test scalar input
         xx = theano.tensor.scalar()
         numpy.testing.assert_raises(ValueError, diag, xx)
