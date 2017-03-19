@@ -711,17 +711,31 @@ def test_udefined_grad():
     # checking multinomial distribution
     prob1 = tensor.scalar()
     prob2 = tensor.scalar()
-    out = srng.multinomial((), pvals=[prob1, 0.5, 0.25], n=4)
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out, prob1)
+    p = [theano.tensor.as_tensor_variable([prob1, 0.5, 0.25])]
+    out = srng.multinomial(size=None, pvals=p, n=4)[0]
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad,
+                  theano.tensor.sum(out), prob1)
 
-    out = srng.multinomial((), pvals=[prob1, prob2])
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out,
-                  (prob1, prob2))
+    p = [theano.tensor.as_tensor_variable([prob1, prob2])]
+    out = srng.multinomial(size=None, pvals=p, n=4)[0]
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad,
+                  theano.tensor.sum(out), (prob1, prob2))
 
     # checking choice
-    out = srng.choice((), p=[[prob1, prob2]], replace=False)
-    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out,
+    p = [theano.tensor.as_tensor_variable([prob1, prob2, 0.1, 0.2])]
+    out = srng.choice(a=None, size=1, p=p, replace=False)[0]
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out[0],
                   (prob1, prob2))
+
+    p = [theano.tensor.as_tensor_variable([prob1, prob2])]
+    out = srng.choice(a=None, size=1, p=p, replace=False)[0]
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out[0],
+                  (prob1, prob2))
+
+    p = [theano.tensor.as_tensor_variable([prob1, 0.2, 0.3])]
+    out = srng.choice(a=None, size=1, p=p, replace=False)[0]
+    assert_raises(theano.gradient.NullTypeGradError, theano.grad, out[0],
+                  prob1)
 
     # checking normal distribution
     avg = tensor.scalar()
