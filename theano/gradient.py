@@ -6,7 +6,7 @@ import logging
 import time
 import warnings
 
-import numpy as np # for numeric_grad
+import numpy as np  # for numeric_grad
 from six import itervalues
 
 import theano
@@ -18,7 +18,6 @@ from six.moves import xrange, reduce
 from theano.gof.null_type import NullType, null_type
 from theano.gof.op import get_debug_values
 from theano.compile import ViewOp, FAST_RUN, DebugMode
-
 
 __authors__ = "James Bergstra, Razvan Pascanu, Arnaud Bergeron, Ian Goodfellow"
 __copyright__ = "(c) 2011, Universite de Montreal"
