@@ -2,6 +2,11 @@
 base_compiledir=/tmp/theano
 floatX=float32
 
+#### Default device selection
+## 'device=cuda' corresponds to the new 'gpuarray' backend (config.gpuarray or [gpuarray] below)
+device=cuda
+## 'device="gpu0..." corresponds to the old 'sandbox/cuda' backend (config.cuda or [cuda] below)
+#device=gpu
 
 [blas]
 ldflags=
@@ -9,20 +14,32 @@ ldflags=
 [dnn]
 enabled=True
 
-# ’device=cuda’ in context of ‘config. or [global]’ corresponds to  new ‘gpuarray’ backend 
-# (config.gpuarray or [gpuarray] below)
-# device=cuda
-# "gpu0..." in context of "config.device" corresponds to  old "sandbox/cuda’ backend  (config.cuda or [cuda] below)
-# device=gpu
+#### Configure the new 'gpuarray' backend
+## Preallocate space for the new gpuarray backend
+## by default since its cache will grow automatically as needed
+#[gpuarray]
+#preallocate=0.2
 
-# [gpuarray]
-# preallocate=0.9
-
-# config.cuda means old ‘sandbox/cuda’ backend - very confusing!
-# [cuda]
-# Keeping it enabled for now - uncomment to disable
-# enabled=False
-# lib.cmnen is sandbox/cuda only setting : disable if not using old backend
+#### Configure the old 'sandbox/cuda' backend (config.cuda means 'sandbox/cuda')
+##
+## This backend remains enabled for now, though it is not selected by default
+## Uncomment below to disable the old backend.
+#
+#[cuda]
+#enabled=False
+#
+#
+## Configure memory allocation for the old 'sandbox/cuda' backend (using the CNMem allocator)
+##
+## lib.cnmem is a sandbox/cuda-only setting; it has no effect on new backend.
+## However, be aware that a simple 'import sandbox.cuda' immediately allocates the
+## percent of memory specified below to the old backend using CNMem, so avoid
+## importing the old backend unless you intend to use it.
+##
+## To use both backends together, you will likely want to change the setting below
+## so that less than the default 90% of memory is reserved for the old backend immediately
+## upon importing it.  For example, you might select cnmem=0.45 (i.e., 45% for the
+## old backend), and you might change the gpuarray.preallocate above to 45% as well.
 [lib]
 cnmem=0.9
 
