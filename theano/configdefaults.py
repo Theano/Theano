@@ -1681,12 +1681,21 @@ def default_compiledir():
 AddConfigVar(
     'compiledir',
     "platform-dependent cache directory for compiled modules",
-
     ConfigParam(
         default_compiledir,
         filter=filter_compiledir,
         allow_override=False),
     in_c_key=False)
+
+AddConfigVar(
+    'gpuarray.cache_path',
+    'Directory to cache pre-compiled kernels for the gpuarray backend.',
+    ConfigParam(
+        lambda: os.path.join(config.compiledir, 'gpuarray_kernels'),
+        filter=filter_base_compiledir,
+        allow_override=False)
+    in_c_key=False)
+
 
 # Check if there are remaining flags provided by the user through THEANO_FLAGS.
 for key in THEANO_FLAGS_DICT.keys():

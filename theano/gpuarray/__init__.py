@@ -41,7 +41,7 @@ def transfer(x, target):
 register_transfer(transfer)
 
 
-def init_dev(dev, name=None):
+def init_dev(dev, name=None, preallocate=None):
     global pygpu_activated
     if not config.cxx:
         raise RuntimeError("The new gpu-backend need a c++ compiler.")
@@ -53,9 +53,13 @@ def init_dev(dev, name=None):
         raise ValueError(
             "Your installed libgpuarray is not in sync, please make sure to have the appropriate version")
     if dev not in init_dev.devmap:
+        if config.gpuarray.cache_path != '':
+            os.environ['GPUARRAY_CACHE_PATH'] = config.gpuarray.cache_path
+        if preallocate is None:
+            preallocate = config.gpuarray.preallocate
         context = pygpu.init(
             dev,
-            disable_alloc_cache=config.gpuarray.preallocate < 0,
+            disable_alloc_cache=preallocate < 0,
             single_stream=config.gpuarray.single_stream,
             sched=config.gpuarray.sched)
         context.dev = dev
@@ -73,14 +77,14 @@ def init_dev(dev, name=None):
                 else:
                     print("Can not use cuDNN on context %s: %s" % (name, dnn.dnn_available.msg),
                           file=sys.stderr)
-        if config.gpuarray.preallocate < 0:
+        if preallocate < 0:
             print("Disabling allocation cache on %s" % (dev,))
-        elif config.gpuarray.preallocate > 0:
+        elif preallocate > 0:
             MB = (1024 * 1024)
-            if config.gpuarray.preallocate <= 1:
-                gmem = min(config.gpuarray.preallocate, 0.95) * context.total_gmem
+            if preallocate <= 1:
+                gmem = min(preallocate, 0.95) * context.total_gmem
             else:
-                gmem = config.gpuarray.preallocate * MB
+                gmem = preallocate * MB
             if gmem > context.free_gmem - 50 * MB:
                 print(
                     "WARNING: Preallocating too much memory can prevent cudnn and cublas from working properly")
@@ -122,7 +126,8 @@ init_dev.devmap = {}
 def use(device,
         force=False,
         default_to_move_computation_to_gpu=True,
-        move_shared_to_gpu=True):
+        move_shared_to_gpu=True,
+        preallocate=None):
     """
     Error and warning about CUDA should be displayed only when this
     function is called. We need to be able to load this module only
@@ -140,17 +145,20 @@ def use(device,
         computations to the gpu.
     move_shared_to_gpu
         If gpu init succeeded, put new shared variables on the gpu.
+    preallocate
+        If specified, will use this value for preallocation instead of
+        gpuarray.preallocate.
 
     """
     if force:
-        if not device.startswith('cuda'):
+        if not (device.startswith('cuda') or device.startswith('opencl')):
             raise Exception("forced the init and bad device provided: " +
                             device)
         else:
             # If we force, the device should not already be initialized.
             assert device not in init_dev.devmap
     if device:
-        init_dev(device)
+        init_dev(device, preallocate=preallocate)
     if default_to_move_computation_to_gpu:
         optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
         optdb.add_tags('gpua_scanOp_make_inplace', 'fast_run')
