@@ -16,7 +16,7 @@ from six.moves.builtins import min as builtin_min
 from nose.tools import assert_raises
 from nose.plugins.skip import SkipTest
 import numpy as np
-from np.testing import dec, assert_array_equal, assert_allclose
+from numpy.testing import dec, assert_array_equal, assert_allclose
 from distutils.version import LooseVersion
 from functools import partial
 
@@ -5697,28 +5697,28 @@ def test_tile():
 
         # error raising test: ndim not specified when reps is vector
         reps = ivector()
-        np.testing.assert_raises(ValueError, tile, x, reps)
+        numpy.testing.assert_raises(ValueError, tile, x, reps)
 
         # error raising test: not a integer
         for reps in [2.5, fscalar(), fvector()]:
-            np.testing.assert_raises(ValueError, tile, x, reps)
+            numpy.testing.assert_raises(ValueError, tile, x, reps)
 
         # error raising test: the dimension of reps exceeds 1
         reps = imatrix()
-        np.testing.assert_raises(ValueError, tile, x, reps)
+        numpy.testing.assert_raises(ValueError, tile, x, reps)
 
         # error raising test: ndim is not None, ndim < x.ndim
         # 3 cases below (reps is list/tensor.scalar/tensor.vector):
         for reps in [[2,3,4], iscalar(), ivector()]:
             if k > 1:
                 ndim = k-1
-                np.testing.assert_raises(ValueError, tile, x, reps, ndim)
+                numpy.testing.assert_raises(ValueError, tile, x, reps, ndim)
 
         # error raising test: reps is list, len(reps) > ndim
         r = [2, 3, 4, 5, 6]
         reps = r[:k+1]
         ndim = k
-        np.testing.assert_raises(ValueError, tile, x, reps, ndim)
+        numpy.testing.assert_raises(ValueError, tile, x, reps, ndim)
 
         # error raising test:
         # reps is tensor.vector and len(reps_value) > ndim,
@@ -5728,7 +5728,7 @@ def test_tile():
         reps_ = r[:k+2]
         ndim_ = k+1
         f = function([x, reps], tile(x, reps, ndim_))
-        np.testing.assert_raises(AssertionError, f, x_, reps_)
+        numpy.testing.assert_raises(AssertionError, f, x_, reps_)
 
 def test_tile_grad():
 
