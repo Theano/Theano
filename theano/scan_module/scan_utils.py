@@ -855,50 +855,77 @@ class Validator(object):
         If out is not valid and has no equivalent, None is returned.
 
         """
-        if out in self.valid:
-            return out, True
-        elif out in self.valid_equivalent:
-            return self.valid_equivalent[out], False
-        elif out in self.invalid:
-            return None
 
-        if out.owner is None:
-            if isinstance(out, tensor.TensorConstant):
-                # This might be a constant from the outer graph or a constant
-                # from the inner graph. In all cases, we can clone it to be
-                # certain we have a valid constant
-                cloned_out = out.clone()
-                self.valid.add(cloned_out)
-                self.invalid.add(out)
-                self.valid_equivalent[out] = cloned_out
-                return cloned_out, False
-            else:
-                # This is an input node and it has not been explicitly marked
-                # as invalid so we can use it
+        def get_value(out):
+            if out in self.valid:
                 return out, True
+            elif out in self.valid_equivalent:
+                return self.valid_equivalent[out], False
+            elif out in self.invalid:
+                return None
+            else:
+                raise RuntimeError("This should not happen")
 
-        # Recurse over inputs
-        inputs = [self.check(i) for i in out.owner.inputs]
+        q = [out]
+        while q:
+            out = q.pop()
+            if out in self.valid:
+                continue
+            elif out in self.invalid:
+                continue
 
-        # If some inputs are invalid without equivalent, so is out
-        if None in inputs:
-            self.invalid.add(out)
-            return None
+            if out.owner is None:
+                if isinstance(out, tensor.TensorConstant):
+                    if hasattr(out, 'fgraph'):
+                        # If out have an fgraph, we aren't sure if it
+                        # is from the inner graph or outer graph, so
+                        # clone it.
+                        cloned_out = out.clone()
+                        self.valid.add(cloned_out)
+                        self.invalid.add(out)
+                        self.valid_equivalent[out] = cloned_out
+                    else:
+                        self.valid.add(out)
+                    continue
+                else:
+                    # This is an input node and it has not been
+                    # explicitly marked as invalid so we can use it
+                    self.valid.add(out)
+                    continue
 
-        # If some inputs are invalid with equivalent,
-        # an equivalent out should be built and returned
-        all_inputs = [inp for (inp, is_valid) in inputs]
-        equiv_inputs = [inp for (inp, is_valid) in inputs if not is_valid]
-        if equiv_inputs:
-            cloned_node = out.owner.clone_with_new_inputs(all_inputs)
-            cloned_out = cloned_node.outputs[out.index]
-            self.invalid.add(out)
-            self.valid.add(cloned_out)
-            self.valid_equivalent[out] = cloned_out
-            return cloned_out, False
+            # Process the input if needed
+            continue_while = False
+            for inp in out.owner.inputs:
+                if inp not in self.valid and inp not in self.invalid:
+                    q.append(out)
+                    q.extend(out.owner.inputs)
+                    continue_while = True
+                    break
+            if continue_while:
+                continue
+            inputs = [get_value(i) for i in out.owner.inputs]
 
-        # All inputs are valid, so is out
-        return out, True
+            # If some inputs are invalid without equivalent, so is out
+            if None in inputs:
+                self.invalid.add(out)
+                continue
+
+            # If some inputs are invalid with equivalent,
+            # an equivalent out should be built and returned
+            all_inputs = [inp for (inp, is_valid) in inputs]
+            equiv_inputs = [inp for (inp, is_valid) in inputs if not is_valid]
+            if equiv_inputs:
+                cloned_node = out.owner.clone_with_new_inputs(all_inputs)
+                cloned_out = cloned_node.outputs[out.index]
+                self.invalid.add(out)
+                self.valid.add(cloned_out)
+                self.valid_equivalent[out] = cloned_out
+                continue
+
+            # All inputs are valid, so is out
+            self.valid.add(out)
+
+        return get_value(out)
 
 
 def scan_can_remove_outs(op, out_idxs):
