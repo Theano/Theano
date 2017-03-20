@@ -1233,7 +1233,7 @@ class MaxAndArgmax(Op):
         kept_shape = transposed_x.shape[:len(keep_axes)]
         reduced_shape = transposed_x.shape[len(keep_axes):]
 
-        # Numpy.prod returns 1.0 when arg is empty, so we cast it to int64
+        # np.prod returns 1.0 when arg is empty, so we cast it to int64
         # Otherwise reshape would complain citing float arg
         new_shape = kept_shape + (np.prod(reduced_shape, dtype='int64'),)
         reshaped_x = transposed_x.reshape(new_shape)
@@ -5246,7 +5246,7 @@ def tile(x, reps, ndim=None):
     """
     Tile input array `x` according to `reps`.
 
-    See the docstring of `numpy.tile` for details.
+    See the docstring of `np.tile` for details.
 
     'reps' can be constant integer (e.g. 3), constant vector(e.g. [2 3]),
     symbolic scalar (e.g. tensor.iscalar()), symbolic vector (e.g. tensor.ivector())
@@ -5428,7 +5428,7 @@ def arange(start, stop=None, step=1, dtype=None):
             # `config.cast_policy` is 'numpy+floatX' and we want to use float32
             # rather than float64.
             # As an example, if `start`, `stop` and `step` are all int32,
-            # `numpy.arange` returns an int64 array (on 64-bit platforms),
+            # `np.arange` returns an int64 array (on 64-bit platforms),
             # while the upcast above returns int32.
             numpy_dtype = np.arange(
                 start=np.array(0, dtype=start.dtype),
@@ -6211,7 +6211,7 @@ def tensordot(a, b, axes=2):
     >>> print(c.shape)
     (2,3,4,5,6,4,3)
 
-    See the documentation of numpy.tensordot for more examples.
+    See the documentation of np.tensordot for more examples.
 
     """
     return _tensordot_as_dot(a, b, axes, dot=dot, batched=False)
@@ -6248,7 +6248,7 @@ def all(x, axis=None, keepdims=False):
     return out
 
 
-# Some NumPy version like 1.9.2 return a view for numpy.diagonal
+# Some NumPy version like 1.9.2 return a view for np.diagonal
 x = np.zeros((4, 4))
 numpy_diagonal_return_view = np.may_share_memory(np.diagonal(x), x)
 del x
