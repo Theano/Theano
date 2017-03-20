@@ -1,4 +1,4 @@
-"""A `Type` and `Op` classes to work with numpy.ndarrays symbolically."""
+"""A `Type` and `Op` classes to work with np.ndarrays symbolically."""
 from __future__ import absolute_import, print_function, division
 
 from six.moves import builtins
@@ -5246,7 +5246,7 @@ def tile(x, reps, ndim=None):
     """
     Tile input array `x` according to `reps`.
 
-    See the docstring of `np.tile` for details.
+    See the docstring of `numpy.tile` for details.
 
     'reps' can be constant integer (e.g. 3), constant vector(e.g. [2 3]),
     symbolic scalar (e.g. tensor.iscalar()), symbolic vector (e.g. tensor.ivector())
