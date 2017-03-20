@@ -1693,7 +1693,7 @@ AddConfigVar(
     ConfigParam(
         lambda: os.path.join(config.compiledir, 'gpuarray_kernels'),
         filter=filter_base_compiledir,
-        allow_override=False)
+        allow_override=False),
     in_c_key=False)
 
 
