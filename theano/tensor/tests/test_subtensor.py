@@ -1607,18 +1607,18 @@ class TestAdvancedSubtensor(unittest.TestCase):
         # Reported in https://github.com/Theano/Theano/issues/5674
         X = tensor.tensor3("X")
 
-        xx = numpy.zeros((3, 2, 2), config.floatX)
+        xx = np.zeros((3, 2, 2), config.floatX)
         for i in range(3):
             for j in range(2):
                 for k in range(2):
                     xx[i, j, k] = 100 * i + 10 * j + k
 
-        b_idx = numpy.zeros((2, 2), 'int32')
+        b_idx = np.zeros((2, 2), 'int32')
         b_idx[0, 1] = 1
         b_idx[1, 1] = 2
 
-        r_idx = numpy.arange(xx.shape[1])[:, numpy.newaxis]
-        c_idx = numpy.arange(xx.shape[2])[numpy.newaxis, :]
+        r_idx = np.arange(xx.shape[1])[:, np.newaxis]
+        c_idx = np.arange(xx.shape[2])[np.newaxis, :]
 
         out = X[b_idx, r_idx, c_idx].eval({X: xx})
         utt.assert_allclose(out, xx[b_idx, r_idx, c_idx])
