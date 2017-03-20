@@ -1584,4 +1584,4 @@ class TestConv2dTranspose(unittest.TestCase):
                [4, 4, 8, 8, 8, 8, 8, 8, 4, 4],
                [2, 2, 4, 4, 4, 4, 4, 4, 2, 2],
                [2, 2, 4, 4, 4, 4, 4, 4, 2, 2]]]] * 2)
-        np.testing.assert_equal(output, expected_output)
+        numpy.testing.assert_equal(output, expected_output)
