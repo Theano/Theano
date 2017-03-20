@@ -427,7 +427,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 for axis in reversed(sorted(tosum)):
                     zv = np.add.reduce(zv, axis)
                 if dtype == 'bool':
-                    # numpy.add of a bool upcast, while CAReduce don't
+                    # np.add of a bool upcast, while CAReduce don't
                     zv = zv.astype(dtype)
             elif scalar_op == scalar.mul:
                 for axis in reversed(sorted(tosum)):
@@ -784,7 +784,7 @@ class test_IsInf_IsNan(unittest.TestCase):
             theano_isfunc = theano.function([input],
                                             getattr(tensor, isfunc)(input),
                                             mode=self.mode)
-            numpy_isfunc = getattr(numpy, isfunc)
+            numpy_isfunc = getattr(np, isfunc)
             for x in self.test_vals:
                 if ((x.ndim == 0 and input is not self.scalar) or
                         (x.ndim == 1 and input is not self.vector)):
