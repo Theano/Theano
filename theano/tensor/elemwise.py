@@ -487,7 +487,7 @@ second dimension
             nfunc_spec = getattr(scalar_op, 'nfunc_spec', None)
         self.nfunc_spec = nfunc_spec
         if nfunc_spec:
-            self.nfunc = getattr(np, nfunc_spec[0])
+            self.nfunc = getattr(numpy, nfunc_spec[0])
 
         super(Elemwise, self).__init__(openmp=openmp)
 
@@ -504,7 +504,7 @@ second dimension
         self.nfunc = None
         self.inplace_pattern = frozendict(self.inplace_pattern)
         if getattr(self, 'nfunc_spec', None):
-            self.nfunc = getattr(np, self.nfunc_spec[0])
+            self.nfunc = getattr(numpy, self.nfunc_spec[0])
         elif 0 < self.scalar_op.nin < 32:
             self.ufunc = np.frompyfunc(self.scalar_op.impl,
                                           self.scalar_op.nin,
@@ -868,7 +868,7 @@ second dimension
         for variable, storage, nout in izip(variables, output_storage,
                                             node.outputs):
             if getattr(variable, "dtype", "") == 'object':
-                # Since numpy 1.6, function created with numpy.frompyfunc
+                # Since numpy 1.6, function created with np.frompyfunc
                 # always return an ndarray with dtype object
                 variable = np.asarray(variable, dtype=nout.dtype)
 
@@ -890,7 +890,7 @@ second dimension
                 if np.dtype(nout.dtype).num != variable.dtype.num:
                     variable = variable.view(dtype=nout.dtype)
                 storage[0] = variable
-            # numpy.real return a view!
+            # np.real return a view!
             elif not variable.flags.owndata:
                 storage[0] = variable.copy()
             else:
@@ -1325,7 +1325,7 @@ class CAReduce(Op):
             self.ufunc = np.minimum
         elif (isinstance(scalar_op, theano.scalar.basic.AND) and
                 _numpy_ver >= [1, 12]):
-            # numpy.bitwise_and.identity was incorrect for versions before
+            # np.bitwise_and.identity was incorrect for versions before
             # 1.12 (it was 1 instead of -1), so we skip it in that case.
             # We will fall back to the "else:" case, which defines a
             # ufunc without identity.
