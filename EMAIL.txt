@@ -66,8 +66,7 @@ features:
 
  * tight integration with NumPy: a similar interface to NumPy's.
    numpy.ndarrays are also used internally in Theano-compiled functions.
- * transparent use of a GPU: perform data-intensive computations up to
-   140x faster than on a CPU (support for float32 only).
+ * transparent use of a GPU: perform data-intensive computations much faster than on a CPU.
  * efficient symbolic differentiation: Theano can compute derivatives
    for functions of one or many inputs.
  * speed and stability optimizations: avoid nasty bugs when computing
