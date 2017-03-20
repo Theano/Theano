@@ -5775,28 +5775,28 @@ def test_tile():
 
         # error raising test: ndim not specified when reps is vector
         reps = ivector()
-        numpy.testing.assert_raises(ValueError, tile, x, reps)
+        np.testing.assert_raises(ValueError, tile, x, reps)
 
         # error raising test: not a integer
         for reps in [2.5, fscalar(), fvector()]:
-            numpy.testing.assert_raises(ValueError, tile, x, reps)
+            np.testing.assert_raises(ValueError, tile, x, reps)
 
         # error raising test: the dimension of reps exceeds 1
         reps = imatrix()
-        numpy.testing.assert_raises(ValueError, tile, x, reps)
+        np.testing.assert_raises(ValueError, tile, x, reps)
 
         # error raising test: ndim is not None, ndim < x.ndim
         # 3 cases below (reps is list/tensor.scalar/tensor.vector):
         for reps in [[2,3,4], iscalar(), ivector()]:
             if k > 1:
                 ndim = k-1
-                numpy.testing.assert_raises(ValueError, tile, x, reps, ndim)
+                np.testing.assert_raises(ValueError, tile, x, reps, ndim)
 
         # error raising test: reps is list, len(reps) > ndim
         r = [2, 3, 4, 5, 6]
         reps = r[:k+1]
         ndim = k
-        numpy.testing.assert_raises(ValueError, tile, x, reps, ndim)
+        np.testing.assert_raises(ValueError, tile, x, reps, ndim)
 
         # error raising test:
         # reps is tensor.vector and len(reps_value) > ndim,
@@ -5806,7 +5806,7 @@ def test_tile():
         reps_ = r[:k+2]
         ndim_ = k+1
         f = function([x, reps], tile(x, reps, ndim_))
-        numpy.testing.assert_raises(AssertionError, f, x_, reps_)
+        np.testing.assert_raises(AssertionError, f, x_, reps_)
 
 def test_tile_grad():
 
@@ -7456,10 +7456,10 @@ class test_diag(unittest.TestCase):
         
         # Test scalar input
         xx = theano.tensor.scalar()
-        numpy.testing.assert_raises(ValueError, diag, xx)
+        np.testing.assert_raises(ValueError, diag, xx)
 
     def test_infer_shape(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
 
         x = theano.tensor.vector()
         g = diag(x)

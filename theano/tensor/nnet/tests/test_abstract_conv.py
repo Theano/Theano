@@ -1592,7 +1592,7 @@ class TestConv2dTranspose(unittest.TestCase):
                [4, 4, 8, 8, 8, 8, 8, 8, 4, 4],
                [2, 2, 4, 4, 4, 4, 4, 4, 2, 2],
                [2, 2, 4, 4, 4, 4, 4, 4, 2, 2]]]] * 2)
-        numpy.testing.assert_equal(output, expected_output)
+        np.testing.assert_equal(output, expected_output)
 
 
 class TestConv2dGrads(unittest.TestCase):
@@ -1699,4 +1699,4 @@ class TestConv2dGrads(unittest.TestCase):
                                                                                                   )
                         f_new = theano.function([self.x, self.output_grad_wrt], conv_wrt_w_out)
                         utt.assert_allclose(f_new(input_val, out_grad_val), f_old(input_val, filter_val, out_grad_val))
-        numpy.testing.assert_equal(output, expected_output)
+        np.testing.assert_equal(output, expected_output)
