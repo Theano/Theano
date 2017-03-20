@@ -117,7 +117,7 @@ class TestOpEnumList(Op):
             raise NotImplementedError('Unknown op id ' + str(op))
 
     def c_code_cache_version(self):
-        return None
+        return (1,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         a, b = inputs
@@ -125,7 +125,7 @@ class TestOpEnumList(Op):
         fail = sub['fail']
         op = sub['params']
         return """
-        switch((int)%(op)s) {
+        switch(%(op)s) {
             case ADD:
                 %(o)s = %(a)s + %(b)s;
                 break;
@@ -175,14 +175,14 @@ class TestOpCEnumType(Op):
         return Apply(self, [], [scalar.uint32()])
 
     def c_code_cache_version(self):
-        return None
+        return (1,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         o, =  outputs
-        ctype_index = sub['params']
+        # params in C code will already contains expected C constant value.
+        sizeof_ctype = sub['params']
         return """
-        /* ctype_index already contains expected C constant value. */
-        %(o)s = %(ctype_index)s;
+        %(o)s = %(sizeof_ctype)s;
         """ % locals()
 
 
@@ -205,7 +205,7 @@ def test_enum_class():
 
     # Check that invalid enum value raises exception.
     try:
-        EnumType(INVALID_VALUE='string is not allowe.')
+        EnumType(INVALID_VALUE='string is not allowed.')
     except ValueError:
         pass
     else:
@@ -220,7 +220,6 @@ def test_enum_class():
 
 
 def test_op_with_enumlist():
-    # Test an op with EnumList.
     a = scalar.int32()
     b = scalar.int32()
     c_add = TestOpEnumList('+')(a, b)
@@ -241,4 +240,4 @@ def test_op_with_cenumtype():
     sizeof_long_long = TestOpCEnumType('long long')()
     f = theano.function([], [sizeof_int, sizeof_float, sizeof_long_long])
     out = f()
-    print('(sizeof(int): ', out[0], ', sizeof(float): ', out[1], ', sizeof(long long): ', out[2], ') ', sep='', end='')
+    print('(sizeof(int): ', out[0], ', sizeof(float): ', out[1], ', sizeof(long long): ', out[2], ') ', sep='')

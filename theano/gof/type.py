@@ -813,46 +813,44 @@ CDataType.Constant = CDataTypeConstant
 
 class EnumType(Type, dict):
     """
-    Class that allows to create enumerations of constant values.
+    Op parameter class that allows to create enumerations of constant values.
 
      - Constants are available as object attributes in Python code and as macro-defined constants in C code.
      - Constants can be floating values, integers, or booleans (automatically converted to integers).
      - Constants name must start with a capital letter and contain capital letters, underscores or digits.
 
-    This type is intended to be used as op parameter type.
-
     Example::
 
-        enum = EnumType(CONSTANT_1=0, CONSTANT_2=1, CONSTANT_3=2.5, CONSTANT_4=False, CONSTANT_5=True)
-        print (enum.CONSTANT_1, enum.CONSTANT_2, enum.CONSTANT_3, enum.CONSTANT_4, enum.CONSTANT_5)
-        # will print 0 1 2.5 0 1
+        enum = EnumType(CONSTANT_1=1, CONSTANT_2=2.5, CONSTANT_3=False, CONSTANT_4=True)
+        print (enum.CONSTANT_1, enum.CONSTANT_2, enum.CONSTANT_3, enum.CONSTANT_4)
+        # will print 1 2.5 0 1
 
     In C code:
 
     .. code-block:: c
 
         int constant_1 = CONSTANT_1;
-        int constant_2 = CONSTANT_2;
-        double constant_3 = CONSTANT_3;
-        int constant_4 = CONSTANT_4; // constant_4 == 0
-        int constant_5 = CONSTANT_5; // constant_5 == 1
+        double constant_2 = CONSTANT_2;
+        int constant_3 = CONSTANT_3; // constant_3 == 0
+        int constant_4 = CONSTANT_4; // constant_4 == 1
 
-    You can also specify a C type if you want to use an op param to handle these enum values.
+    You can also specify a C type for the op param if you want to pass one of these constant values at runtime.
     Default C type is ``double``.
 
     .. code-block:: python
 
         enum = EnumType(CONSTANT_1=0, CONSTANT_2=1, CONSTANT_3=2, ctype='size_t')
+        op_param_value = enum.CONSTANT_1
 
     In C code:
 
     .. code-block:: c
 
-        size_t op_param = CONSTANT_1;
+        size_t value = op_param_value; // contains enum.CONSTANT_1, i.e 0
 
     .. note::
 
-        This Type is not complete and should never be used for regular graph operations.
+        This Type (and subclasses) is not complete and should never be used for regular graph operations.
 
     """
 
@@ -971,7 +969,7 @@ class EnumType(Type, dict):
 
 class EnumList(EnumType):
     """
-    Class that allows to create enumeration of constant values.
+    Op parameter class that allows to create enumeration of constant values.
     Same as :class:`EnumType`, but automatically gives an unique integer value for each constant in a list of
     constants names (constant at index ``i`` in the list will receive value ``i``,
     with ``i`` from ``0`` to ``len(constants) - 1``).
@@ -982,10 +980,12 @@ class EnumList(EnumType):
         print (enum.CONSTANT_1, enum.CONSTANT_2, enum.CONSTANT_3, enum.CONSTANT_4, enum.CONSTANT_5)
         # will print: 0 1 2 3 4
 
-    Like :class:`EnumType`, you can also define the C type for a variable able to handle these enum values.
+    Like :class:`EnumType`, you can also define the C type for the op param.
     Default C type is ``int``::
 
         enum = EnumList('CONSTANT_1', 'CONSTANT_2', 'CONSTANT_3', 'CONSTANT_4', ctype='unsigned int')
+
+    See test class :class:`theano.gof.tests.test_types.TestOpEnumList` for a working example.
 
     """
 
@@ -1004,7 +1004,7 @@ class EnumList(EnumType):
 
 class CEnumType(EnumList):
     """
-    Class that allows to create enumeration of constant values that represent C-defined constants.
+    Op parameter class that allows to create enumeration of constant values that represent C-defined constants.
 
      - Constant should have same names as in C.
      - In Python, constants will have arbitrary-defined values.
@@ -1012,17 +1012,19 @@ class CEnumType(EnumList):
      - In C code, the real values defined in C will be used.
        They could be used either for choices or for its real values.
 
-    Like :class:`EnumList`, you can also define the C type for a variable able to handle these enum values.
+    Like :class:`EnumList`, you can also define the C type for the op param.
     Default C type is ``int``.
 
     .. code-block:: python
 
         enum = CEnumType('CONSTANT_CNAME_1', 'CONSTANT_CNAME_2', 'CONSTANT_CNAME_3', ctype='long')
 
+    See test class :class:`theano.gof.tests.test_types.TestOpCEnumType` for a working example.
+
     .. note::
 
         Be sure C constants are available in your C code. If they come from a C header, consider implementing
-        ``c_headers()`` and ``c_header_dirs()`` in the Op class which you use CEnumType as op parameters type.
+        ``c_headers()`` and ``c_header_dirs()`` in the Op class where you use CEnumType as op parameter type.
 
     """
 
