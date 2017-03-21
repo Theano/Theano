@@ -824,7 +824,7 @@ class MRG_RandomStreams(object):
                  nstreams=None):
         # TODO : need description for method, parameter and return
         if n == 1:
-            p = undefined_grad(p)
+            p = undefined_grad(as_tensor_variable(p))
             x = self.uniform(size=size, nstreams=nstreams)
             return cast(x < p, dtype)
         else:
