@@ -292,7 +292,7 @@ class Wrapper(Type):
         return c_init_code_list
 
     def c_support_code(self):
-        sub = {'fail': '{this->setErrorOccurred(); this->cleanup(); return;}'}
+        sub = {'fail': '{this->setErrorOccurred(); return;}'}
         struct_name = self.name
         struct_name_defined = struct_name.upper()
         struct_declare = ''
@@ -333,7 +333,6 @@ class Wrapper(Type):
                 default:
                     PyErr_Format(PyExc_TypeError, "Wrapper: no extraction defined for a field %%d.", field_pos);
                     this->setErrorOccurred();
-                    this->cleanup();
                     break;
             }
         }
@@ -383,7 +382,8 @@ class Wrapper(Type):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (1, 5)
+        wrapper_c_code_version = (1, 6)
+        return (wrapper_c_code_version, tuple(t.c_code_cache_version() for t in self.types))
 
     # As this struct has constructor and destructor, it could be instanciated on stack,
     # but current implementations of C ops will then pass the instance by value at functions,
