@@ -14,37 +14,21 @@ Windows Installation Instructions
 .. |PlatformCompiler| replace:: ``python-dev``, ``g++`` >= 4.2
 .. |CompilerName| replace:: ``g++``
 
-.. comment: Requirements, optional requirements and installation of miniconda.
+.. List of requirements, optional requirements, and installation of miniconda.
 .. include:: requirements.inc
-    :end-before: .. comment: install_requirements_and_optional_packages
+    :end-before: .. install_requirements_and_optional_packages
 
 Install requirements and optional packages
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. note::
-
-    * Arguments between <...> are optional.
-    * ``m2w64-toolchain`` package provides a fully-compatible version of GCC and is then highly recommended.
-
-For Python 2*
-:::::::::::::
 
 .. code-block:: bash
 
     conda install numpy scipy mkl-service libpython <m2w64-toolchain> <nose> <nose-parameterized> <sphinx> <pydot-ng>
 
-For Python 3*
-:::::::::::::
+.. note::
 
-.. code-block:: bash
-
-    conda install numpy scipy mkl-service libpython <m2w64-toolchain> <nose> <nose-parameterized> <sphinx>
-
-To install ``pydot`` (optional):
-
-.. code-block:: bash
-
-    pip install pydot-ng
+    * Arguments between <...> are optional.
+    * ``m2w64-toolchain`` package provides a fully-compatible version of GCC and is then highly recommended.
 
 .. _gpu_windows:
 
@@ -63,41 +47,9 @@ to install the CUDA driver and the CUDA Toolkit.
 
 You must reboot the computer after the driver installation.
 
-Installation of Theano and libgpuarray
-======================================
-
-Stable Installation
--------------------
-
-With ``conda``
-^^^^^^^^^^^^^^
-
-If you use conda, you can directly install both theano and pygpu. Libgpuarray
-will be automatically installed as a dependency.
-
-.. code-block:: bash
-
-    conda install theano pygpu
-
-With ``pip``
-^^^^^^^^^^^^
-
-If you use pip, you have to install Theano and libgpuarray separately.
-
-theano
-::::::
-
-.. comment: Installation instructions for theano stable version.
+.. Installation of Theano and libgpuarray.
 .. include:: install_generic.inc
-    :start-after: .. comment: install_theano_stable_version
-    :end-before: .. comment: end_install_theano_stable_version
-
-libgpuarray
-:::::::::::
-
-.. comment: Installation instructions (libgpuarray for stable version, then full bleeding-edge and developer version instructions).
-.. include:: install_generic.inc
-    :start-after: .. comment: install_libgpuarray_stable_version
+    :start-after: .. _install_generic:
 
 Instructions for other Python distributions (not recommended)
 =============================================================

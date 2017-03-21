@@ -14,7 +14,7 @@ Requirements
 .. _pycuda: https://mathema.tician.de/software/pycuda/
 .. _skcuda: http://scikit-cuda.readthedocs.io/en/latest/
 
-    Python_ == 2.7 or >= 3.3
+    Python_ == 2.7 or ( >= 3.3 and <= 3.5 )
         The development package (python-dev or
         python-devel on most Linux distributions) is recommended (see
         just below). Python 2.4 was supported up to and including the
@@ -71,7 +71,7 @@ Follow this `link <http://conda.pydata.org/miniconda.html>`__ to install Minicon
 
     If you want fast compiled code (recommended), make sure you have |CompilerName| installed.
 
-.. comment: install_requirements_and_optional_packages
+.. install_requirements_and_optional_packages
 
 Install requirements and optional packages
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

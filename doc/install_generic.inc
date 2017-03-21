@@ -9,7 +9,23 @@ Installation
 Stable Installation
 -------------------
 
-.. comment: install_theano_stable_version
+With ``conda``
+^^^^^^^^^^^^^^
+
+If you use conda, you can directly install both theano and pygpu. Libgpuarray
+will be automatically installed as a dependency.
+
+.. code-block:: bash
+
+    conda install theano pygpu
+
+With ``pip``
+^^^^^^^^^^^^
+
+If you use pip, you have to install Theano and libgpuarray separately.
+
+theano
+::::::
 
 Install the latest stable version of Theano with:
 
@@ -31,12 +47,8 @@ If you encountered any trouble, head to the :ref:`troubleshooting` page.
 
 The latest stable version of Theano is ``0.9.0`` (tagged with ``rel-0.9.0``).
 
-.. comment: end_install_theano_stable_version
-
 libgpuarray
-^^^^^^^^^^^
-
-.. comment: install_libgpuarray_stable_version
+:::::::::::
 
 For the stable version of Theano you need a specific version of libgpuarray,
 that has been tagged ``v0.6.2``.
