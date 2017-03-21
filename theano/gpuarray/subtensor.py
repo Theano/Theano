@@ -871,7 +871,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, HideC,
         return super(GpuAdvancedIncSubtensor1_dev20, self).perform(node, inp, out)
 
     def c_code_cache_version(self):
-        return (13,)
+        return (14,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray_helper.h>',
@@ -924,9 +924,8 @@ if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s, %(params)s->set_instead_of
  */
 #if __CUDA_ARCH__ < 600
 __device__ ga_double atomicAdd(ga_double* address, ga_double val) {
-    unsigned long long int* address_as_ull =
-                                          (unsigned long long int*)address;
-    unsigned long long int old = *address_as_ull, assumed;
+    ga_ulong *address_as_ull = (ga_ulong *)address;
+    ga_ulong old = *address_as_ull, assumed;
     do {
         assumed = old;
         old = atomicCAS(address_as_ull, assumed,
@@ -938,17 +937,35 @@ __device__ ga_double atomicAdd(ga_double* address, ga_double val) {
 #endif
 
 __device__ ga_double atomicExch(ga_double *address, ga_double val) {
-    return atomicExch((unsigned long long int *)address,
+    return atomicExch((ga_ulong *)address,
                       __double_as_longlong(val));
 }
 
-/*
- * This is a version of atomicAdd that works for half-floats.  It may
- * read and write 2 bytes more than the size of the array if the array
- * has an uneven number of elements.  The actual value at that spot
- * will not be modified.
- */
+/* GA_LONG */
 
+__device__ ga_long atomicAdd(ga_long* address, ga_long val) {
+    ga_ulong *address_as_ull = (ga_ulong *)address;
+    ga_ulong old = *address_as_ull, assumed;
+    do {
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed,
+                        (ga_ulong)(val + (ga_long)assumed));
+    } while (assumed != old);
+    return (ga_long)old;
+}
+
+__device__ ga_long atomicExch(ga_long *address, ga_long val) {
+    return (ga_long)atomicExch((ga_ulong *)address, (ga_ulong)val);
+}
+
+
+/* GA_HALF */
+
+/*
+ * This may read and write 2 bytes more than the size of the array
+ * if the array has an uneven number of elements.  The actual value
+ * at that spot will not be modified.
+ */
 __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
   ga_uint *base = (ga_uint *)((ga_size)addr & ~2);
   ga_uint old, assumed, sum, new_;
