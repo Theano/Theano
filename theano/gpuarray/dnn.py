@@ -348,6 +348,9 @@ def version(raises=True):
 version.v = None
 
 
+
+
+
 class GpuDnnConvDesc(COp):
 
     """
@@ -360,6 +363,9 @@ class GpuDnnConvDesc(COp):
 
     __props__ = ('border_mode', 'subsample', 'conv_mode', 'precision')
 
+    prec_GpuDnn = get_precision(precision, [img, kerns])
+    
+    
     def c_headers(self):
         return ['cudnn.h', 'cudnn_helper.h']
 
@@ -376,7 +382,7 @@ class GpuDnnConvDesc(COp):
         return False
 
     def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv',
-                 precision="float32"):
+                 precision=prec_GpuDnn):
         COp.__init__(self, ["conv_desc.c"], "APPLY_SPECIFIC(conv_desc)")
 
         if isinstance(border_mode, integer_types):
@@ -467,7 +473,7 @@ class GpuDnnConvDesc(COp):
 
 
 def gpu_dnn_conv_desc(border_mode, subsample=(1, 1), conv_mode='conv',
-                      precision="float32"):
+                      precision=prec_GpuDnn):
     key = (border_mode, subsample, conv_mode, precision)
     if key not in gpu_dnn_conv_desc.cache:
         gpu_dnn_conv_desc.cache[key] = GpuDnnConvDesc(border_mode,
