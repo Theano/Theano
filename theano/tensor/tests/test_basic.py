@@ -249,7 +249,7 @@ def upcast_int8_nfunc(fn):
 def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                bad_runtime=None, grad=None, mode=None, grad_rtol=None,
                eps=1e-10, skip=False, test_memmap=True, check_name=True,
-               grad_eps=None):
+               grad_eps=None, inplace=False):
     # :param check_name:
     #     Use only for tester that aren't in Theano.
     if checks is None:
@@ -260,10 +260,10 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
         bad_build = {}
     if bad_runtime is None:
         bad_runtime = {}
-    if grad is None:
-        grad = {}
     if grad is True:
         grad = good
+    if grad is None or inplace is True:
+        grad = {}
 
     _op, _expected, _checks, _good = op, expected, checks, good
     _bad_build, _bad_runtime, _grad = bad_build, bad_runtime, grad
@@ -653,7 +653,6 @@ def makeBroadcastTester(op, expected, checks=None, name=None, **kwargs):
                 return numpy.all(inputs[0] == outputs[0])
 
             checks = dict(checks, inplace_check=inplace_check)
-        del kwargs['inplace']
     return makeTester(name, op, expected, checks, **kwargs)
 
 
