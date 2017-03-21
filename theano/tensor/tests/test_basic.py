@@ -745,7 +745,7 @@ AddInplaceTester = makeBroadcastTester(
     good=_good_broadcast_binary_normal,
     bad_build=_bad_build_broadcast_binary_normal,
     bad_runtime=_bad_runtime_broadcast_binary_normal,
-    grad=None
+    grad=None,
     inplace=True)
 
 SubTester = makeBroadcastTester(
