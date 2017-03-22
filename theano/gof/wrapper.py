@@ -1,10 +1,14 @@
 """
-Module for wrapping many Theano variables into one C struct for op params.
+Module for wrapping many Op parameters into one object available in both Python and C code.
 
-This module contains two classes:
+The module provides the main public class :class:`Wrapper` that allows to bundle many Theano types
+into one parameter type, and an internal convenient class :class:`Wrap` which will be automatically
+used to create a Wrap object that is compatible with the Wrapper-defined type.
 
- - :class:`Wrapper`: main class to define the op params type.
- - :class:`Wrap`: internal convenient class to create an object that is compatible with Wrapper-defined op params.
+The Wrap object will be available in both Python code (as a standard Python object) and C code
+(as a specific struct with parameters as struct fields). To be fully-available in C code, Theano
+types wrapped into Wrapper must provide a C interface (e.g. TensorType, Scalar, GpuArrayType,
+or your own type. See :ref:`extending_op_params` for more details).
 
 Example of usage
 ----------------
@@ -13,23 +17,29 @@ Importation:
 
 .. code-block:: python
 
+    # Import wrapper class.
     from theano.gof import Wrapper
+
+    # If you want to use a tensor and a scalar as parameters,
+    # you should import required Theano types.
+    from theano.tensor import TensorType
+    from theano.scalar import Scalar
 
 In an op you create:
 
 .. code-block:: python
 
-    from theano.tensor import TensorType, dmatrix
-    params_type = Wrapper(attr1=TensorType('int32', (False, False)), attr2=dmatrix)
+    params_type = Wrapper(attr1=TensorType('int32', (False, False)), attr2=Scalar('float64'))
 
-If your op contains props ``attr1`` *and* ``attr2``, the default ``op.get_params()`` implementation
-will automatically try to look for it and generate an appropriate wrapped struct.
-Props must be compatible with the corresponding types defined into the Wrapper
-(we will try to convert and downcast if needed).
+If your op contains attributes ``attr1`` **and** ``attr2``, the default ``op.get_params()``
+implementation will automatically try to look for it and generate an appropriate Wrap object.
+Attributes must be compatible with the corresponding types defined into the Wrapper
+(we will try to convert and downcast if needed). For example, ``your_op.attr1``
+should be a matrix of integers, and ``your_op.attr2``
+should be a real number (integer or floating value).
 
 .. code-block:: python
 
-    __props__ = ('attr1', 'attr2')
     def __init__(value_attr1, value_attr2):
         self.attr1 = value_attr1
         self.attr2 = value_attr2
@@ -38,15 +48,15 @@ In ``perform()`` implementation (with params named ``param``):
 
 .. code-block:: python
 
-    var1 = param.attr1
-    var2 = param.attr2
+    matrix_param = param.attr1
+    number_param = param.attr2
 
 In ``c_code()`` implementation (with ``param = sub['params']``):
 
 .. code-block:: c
 
-    PyArrayObject* attr1 = param->attr1;
-    PyArrayObject* attr2 = param->attr2;
+    PyArrayObject* matrix = param->attr1;
+    npy_float64    number = param->attr2;
     /* You won't need to free them or whatever else. */
 
 
