@@ -125,13 +125,10 @@ class Apply(Node):
         Returns the params for the node, or NoParams if no params is set.
 
         """
-        if hasattr(self.op, 'params_type'):
-            try:
-                return self.op.get_params(self)
-            except theano.gof.utils.MethodNotDefined:
-                # If get_params if not defined, we will return NoParams.
-                pass
-        return NoParams
+        try:
+            return self.op.get_params(self)
+        except theano.gof.utils.MethodNotDefined:
+            return NoParams
 
     def __getstate__(self):
         d = self.__dict__
