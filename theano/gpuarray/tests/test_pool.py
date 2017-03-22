@@ -60,6 +60,30 @@ class TestPool(unittest.TestCase):
                             mode=gpu_mode)
         f()
 
+    def test_corner_cases(self):
+        ref_mode = copy.copy(mode_with_gpu).including("cudnn")
+        ref_mode.check_py_code = False
+
+        gpu_mode = copy.copy(mode_with_gpu).excluding("cudnn")
+        gpu_mode.check_py_code = False
+
+        test_values = [(2, (5, 5, 5)),
+                       (2, (5, 5, 5, 5)),
+                       (3, (5, 5, 5, 5, 5))]
+        for nd, shp in test_values:
+            for a_v in [np.zeros(shp), np.ones(shp)]:
+                a = tensor.as_tensor_variable(theano.shared(a_v, 'a'))
+                ds_op = Pool(ndim=nd, mode='max', ignore_border=True)
+                a_p = ds_op(a, (2, ) * nd)
+                f_ref = theano.function([], a_p, mode=ref_mode)
+                f_gpu = theano.function([], a_p, mode=gpu_mode)
+                assert np.allclose(f_ref(), f_gpu())
+
+                a_pg = tensor.grad(a_p.sum(), a)
+                g_ref = theano.function([], a_pg, mode=ref_mode)
+                g_gpu = theano.function([], a_pg, mode=gpu_mode)
+                assert np.allclose(g_ref(), g_gpu())
+
 
 def test_pool2d():
     shps = [(1, 12),
