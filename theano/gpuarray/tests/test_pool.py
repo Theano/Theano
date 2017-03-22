@@ -6,6 +6,7 @@ import itertools
 
 import numpy as np
 import theano
+from theano import config
 from theano import gradient
 from theano import tensor
 from theano.tensor.signal.pool import (Pool, MaxPoolGrad, AveragePoolGrad,
@@ -14,6 +15,7 @@ from theano.tests import unittest_tools as utt
 
 from .config import mode_with_gpu, mode_without_gpu
 from .test_basic_ops import rand
+from ..dnn import GpuDnnPool, GpuDnnPoolGrad
 from ..pool import (GpuPool, GpuMaxPoolGrad, GpuAveragePoolGrad,
                     GpuDownsampleFactorMaxGradGrad)
 
@@ -60,28 +62,67 @@ class TestPool(unittest.TestCase):
                             mode=gpu_mode)
         f()
 
-    def test_corner_cases(self):
+    def test_corner_cases_compatibility(self):
         ref_mode = copy.copy(mode_with_gpu).including("cudnn")
         ref_mode.check_py_code = False
 
         gpu_mode = copy.copy(mode_with_gpu).excluding("cudnn")
         gpu_mode.check_py_code = False
 
-        test_values = [(2, (5, 5, 5)),
-                       (2, (5, 5, 5, 5)),
-                       (3, (5, 5, 5, 5, 5))]
-        for nd, shp in test_values:
-            for a_v in [np.zeros(shp), np.ones(shp)]:
+        test_values = (
+            ((1, 1), (1, 1), (0, 0), (1, 2, 16, 16)),
+            ((1, 1), (3, 3), (0, 0), (1, 2, 16, 16)),
+            ((1, 1), (5, 7), (0, 0), (1, 2, 16, 16)),
+            ((3, 3), (1, 1), (0, 0), (1, 2, 16, 16)),
+            ((3, 3), (3, 3), (1, 1), (1, 2, 16, 16)),
+            ((3, 3), (5, 7), (2, 2), (1, 2, 16, 16)),
+            ((5, 3), (1, 1), (4, 2), (1, 2, 16, 16)),
+            ((5, 3), (3, 3), (2, 1), (1, 2, 16, 16)),
+            ((5, 3), (5, 7), (3, 2), (1, 2, 16, 16)),
+            ((5, 1, 2), (1, 1, 1), (4, 0, 1), (16, 3, 16)),
+            ((5, 1, 2), (3, 1, 2), (3, 0, 0), (1, 16, 3, 16)),
+            ((5, 1, 2), (5, 1, 4), (2, 0, 1), (1, 2, 16, 3, 16)),
+            ((5, 3), (3, 2), (4, 2), (1, 2, 16, 16)),
+            ((5, 3), (7, 5), (4, 2), (1, 2, 16, 16)),
+            ((5, 3), (10, 6), (2, 2), (1, 2, 16, 16)),
+            ((5, 5), (1, 1), (4, 4), (1, 2, 8, 5)),
+            ((3, 2), (2, 3), (2, 1), (1, 2, 8, 5)),
+            ((7, 7), (10, 10), (5, 5), (1, 2, 8, 5)),
+            ((9, 9), (1, 1), (3, 4), (1, 2, 8, 5)),
+            ((3, 3, 3), (1, 1, 1), (0, 0, 0), (1, 2, 16, 16, 16)),
+            ((3, 3, 3), (3, 3, 2), (0, 1, 2), (1, 2, 16, 16, 16)),
+            ((3, 3, 3), (5, 7, 4), (2, 1, 0), (1, 2, 16, 16, 16)),)
+        for ws, st, pad, shp in test_values:
+            for init_fn in [np.zeros, np.ones]:
+                ds_op = Pool(ndim=len(ws), mode='max', ignore_border=True)
+                a_v = init_fn(shp, dtype=config.floatX)
                 a = tensor.as_tensor_variable(theano.shared(a_v, 'a'))
-                ds_op = Pool(ndim=nd, mode='max', ignore_border=True)
-                a_p = ds_op(a, (2, ) * nd)
+                a_p = ds_op(a, ws, st, pad)
                 f_ref = theano.function([], a_p, mode=ref_mode)
                 f_gpu = theano.function([], a_p, mode=gpu_mode)
+                print(f_ref.maker.fgraph.toposort())
+                print(f_gpu.maker.fgraph.toposort())
+                assert any([
+                    isinstance(node.op, GpuDnnPool)
+                    for node in f_ref.maker.fgraph.toposort()
+                ])
+                assert any([
+                    isinstance(node.op, GpuPool)
+                    for node in f_gpu.maker.fgraph.toposort()
+                ])
                 assert np.allclose(f_ref(), f_gpu())
 
                 a_pg = tensor.grad(a_p.sum(), a)
                 g_ref = theano.function([], a_pg, mode=ref_mode)
                 g_gpu = theano.function([], a_pg, mode=gpu_mode)
+                assert any([
+                    isinstance(node.op, GpuDnnPoolGrad)
+                    for node in g_ref.maker.fgraph.toposort()
+                ])
+                assert any([
+                    isinstance(node.op, GpuMaxPoolGrad)
+                    for node in g_gpu.maker.fgraph.toposort()
+                ])
                 assert np.allclose(g_ref(), g_gpu())
 
 
