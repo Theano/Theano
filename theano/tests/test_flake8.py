@@ -73,8 +73,6 @@ whitelist_flake8 = [
     "scalar/__init__.py",
     "scalar/tests/__init__.py",
     "sandbox/__init__.py",
-    "sandbox/tests/test_theano_object.py",
-    "sandbox/tests/test_scan.py",
     "sandbox/tests/__init__.py",
     "sandbox/cuda/__init__.py",
     "sandbox/cuda/tests/__init__.py",
