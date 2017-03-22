@@ -26,18 +26,18 @@ This repo is dedicated to improving Theano performance on CPU, especially in Int
 | FWD:sec/batch | Stock Theano/Xeon | Intel Theano/Xeon | Intel Theano/Xeon Phi |
 |---------------|-------------------|-------------------|-----------------------|
 | AlexNet       | 1.045             | 0.077             | 0.054                 |
-| GoogLeNet     | 2.228             | 0.655             | 0.610                 |
+| GoogLeNet     | 2.228             | 0.280             | 0.169                 |
 | VGG           | 5.089             | 0.836             | 0.570                 |
-| OverFeat      | 6.105             | 0.265             | 0.204                 |
+| OverFeat      | 6.105             | 0.273             | 0.185                 |
    
 --
  
 | FWD+BWD: sec/batch | Stock Theano/Xeon | Intel Theano/Xeon | Intel Theano/Xeon Phi |
 |---------------|-------------------|-------------------|-----------------------|
-| AlexNet       | 2.333             | 0.236             | 0.192                 |
-| GoogLeNet     | 5.866             | 1.535             | 1.314                 |
-| VGG           | 12.783            | 2.721             | 1.894                 |
-| OverFeat      | 13.202            | 0.830             | 0.691                 |
+| AlexNet       | 2.333             | 0.239             | 0.186                 |
+| GoogLeNet     | 5.866             | 0.860             | 0.568                 |
+| VGG           | 12.783            | 2.699             | 1.902                 |
+| OverFeat      | 13.202            | 0.865             | 0.636                 |
 
 **Performance Tips**
   * Add bias after convolution to archieve high performance since this sub-graph can be replaced with MKL Op
