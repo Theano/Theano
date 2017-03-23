@@ -104,9 +104,9 @@ class RopLop_checker(unittest.TestCase):
         after the Op you want to test.
         """
         vx = np.asarray(self.rng.uniform(size=self.mat_in_shape),
-                           theano.config.floatX)
+                        theano.config.floatX)
         vv = np.asarray(self.rng.uniform(size=self.mat_in_shape),
-                           theano.config.floatX)
+                        theano.config.floatX)
         yv = tensor.Rop(y, self.mx, self.mv)
         rop_f = function([self.mx, self.mv], yv, on_unused_input='ignore')
         sy, _ = theano.scan(lambda i, y, x, v:
@@ -141,9 +141,9 @@ class RopLop_checker(unittest.TestCase):
         """
         # TEST ROP
         vx = np.asarray(self.rng.uniform(size=self.in_shape),
-                           theano.config.floatX)
+                        theano.config.floatX)
         vv = np.asarray(self.rng.uniform(size=self.in_shape),
-                           theano.config.floatX)
+                        theano.config.floatX)
 
         yv = tensor.Rop(y, self.x, self.v)
         rop_f = function([self.x, self.v], yv, on_unused_input='ignore')
@@ -166,9 +166,9 @@ class RopLop_checker(unittest.TestCase):
         # TEST LOP
 
         vx = np.asarray(self.rng.uniform(size=self.in_shape),
-                           theano.config.floatX)
+                        theano.config.floatX)
         vv = np.asarray(self.rng.uniform(size=out_shape),
-                           theano.config.floatX)
+                        theano.config.floatX)
 
         yv = tensor.Lop(y, self.x, self.v)
         lop_f = function([self.x, self.v], yv, on_unused_input='ignore')
@@ -214,21 +214,21 @@ class test_RopLop(RopLop_checker):
 
     def test_incsubtensor1(self):
         tv = np.asarray(self.rng.uniform(size=(3,)),
-                           theano.config.floatX)
+                        theano.config.floatX)
         t = theano.shared(tv)
         out = tensor.inc_subtensor(self.x[:3], t)
         self.check_rop_lop(out, self.in_shape)
 
     def test_incsubtensor2(self):
         tv = np.asarray(self.rng.uniform(size=(10,)),
-                           theano.config.floatX)
+                        theano.config.floatX)
         t = theano.shared(tv)
         out = tensor.inc_subtensor(t[:4], self.x[:4])
         self.check_rop_lop(out, (10,))
 
     def test_setsubtensor1(self):
         tv = np.asarray(self.rng.uniform(size=(3,)),
-                           theano.config.floatX)
+                        theano.config.floatX)
         t = theano.shared(tv)
         out = tensor.set_subtensor(self.x[:3], t)
         self.check_rop_lop(out, self.in_shape)
@@ -239,7 +239,7 @@ class test_RopLop(RopLop_checker):
 
     def test_setsubtensor2(self):
         tv = np.asarray(self.rng.uniform(size=(10,)),
-                           theano.config.floatX)
+                        theano.config.floatX)
         t = theano.shared(tv)
         out = tensor.set_subtensor(t[:4], self.x[:4])
         self.check_rop_lop(out, (10,))
@@ -347,7 +347,7 @@ class test_RopLop(RopLop_checker):
 
     def test_join(self):
         tv = np.asarray(self.rng.uniform(size=(10,)),
-                           theano.config.floatX)
+                        theano.config.floatX)
         t = theano.shared(tv)
         out = tensor.join(0, self.x, t)
         self.check_rop_lop(out, (self.in_shape[0] + 10,))
@@ -355,7 +355,7 @@ class test_RopLop(RopLop_checker):
     def test_dot(self):
         insh = self.in_shape[0]
         vW = np.asarray(self.rng.uniform(size=(insh, insh)),
-                           theano.config.floatX)
+                        theano.config.floatX)
         W = theano.shared(vW)
         self.check_rop_lop(tensor.dot(self.x, W), self.in_shape)
 
