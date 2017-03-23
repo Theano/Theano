@@ -507,13 +507,13 @@ class ExpmGrad(Op):
         # this expression.
         (A, gA) = inputs
         (out,) = outputs
-        w, V = scipy.linalg.eig(A, right=True)
-        U = scipy.linalg.inv(V).T
 
+        w, V = scipy.linalg.eig(A, right=True)
+        U = scipy.linalg.inv(V)
         exp_w = numpy.exp(w)
         X = numpy.subtract.outer(exp_w, exp_w) / numpy.subtract.outer(w, w)
         numpy.fill_diagonal(X, exp_w)
-        Y = U.dot(V.T.dot(gA).dot(U) * X).dot(V.T)
+        Y = V.dot(U.dot(gA).dot(V) * X).dot(U)
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", numpy.ComplexWarning)
