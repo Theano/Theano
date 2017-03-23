@@ -31,13 +31,35 @@ import logging
 
 import sys
 
+def has_handlers(logger):
+    # copied from Logger.hasHandlers() (introduced in Python 3.2)
+    _logger = logger
+    _has_handler = False
+    while _logger:
+        if _logger.handlers:
+            _has_handler = True
+            break
+        if not _logger.propagate:
+            break
+        else:
+            _logger = _logger.parent
+    return _has_handler
+
 theano_logger = logging.getLogger("theano")
 logging_default_handler = logging.StreamHandler()
 logging_default_formatter = logging.Formatter(
     fmt='%(levelname)s (%(name)s): %(message)s')
 logging_default_handler.setFormatter(logging_default_formatter)
-theano_logger.addHandler(logging_default_handler)
 theano_logger.setLevel(logging.WARNING)
+
+if has_handlers(theano_logger) is False:
+    theano_logger.addHandler(logging_default_handler)
+
+# Disable default log handler added to theano_logger when the module
+# is imported.
+def disable_log_handler(logger=theano_logger, handler=logging_default_handler):
+    if has_handlers(logger):
+        logger.removeHandler(handler)
 
 # Version information.
 from theano.version import version as __version__
