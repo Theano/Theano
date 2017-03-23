@@ -222,6 +222,12 @@ The ``compute_test_value`` mechanism works as follows:
 
 It is also possible to override variables ``__repr__`` method to have them return tag.test_value.
 
+.. testsetup:: printtestvalue
+
+   import theano
+   import theano.tensor as T
+
+               
 .. testcode:: printtestvalue
 
    x = T.scalar('x')
