@@ -231,13 +231,13 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
     def test_multiple_out_crash(self):
         # This test failed up to commit 2faeb62c38
         p0 = self.shared(np.asarray(np.random.random([4, 8]),
-                                       dtype=self.dtype))
+                                    dtype=self.dtype))
         p1 = self.shared(np.asarray(np.random.random(8),
-                                       dtype=self.dtype))
+                                    dtype=self.dtype))
         p2 = self.shared(np.asarray(np.random.random([8, 3]),
-                                       dtype=self.dtype))
+                                    dtype=self.dtype))
         p3 = self.shared(np.asarray(np.random.random(3),
-                                       dtype=self.dtype))
+                                    dtype=self.dtype))
         p = [p0, p1, p2, p3]
 
         # in my code these vars are the result of applying scan
@@ -384,9 +384,9 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         vw2 = rng.uniform()
 
         assert np.allclose(f(vx1, vx2, vy1, vy2, vw1, vw2, 1),
-                              vx1 * vy1 * vw1)
+                           vx1 * vy1 * vw1)
         assert np.allclose(f(vx1, vx2, vy1, vy2, vw1, vw2, 0),
-                              vx2 * vy2 * vw2)
+                           vx2 * vy2 * vw2)
 
     def test_pushout3(self):
         raise SkipTest("Optimization temporarily disabled")
@@ -440,14 +440,14 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         else:
             vw = vw2
         assert np.allclose(f(vx1, vx2, vy1, vy2, vw1, vw2, 1),
-                              vx1 * vy1 * vw)
+                           vx1 * vy1 * vw)
 
         if vx2 > vy2:
             vw = vw1
         else:
             vw = vw2
         assert np.allclose(f(vx1, vx2, vy1, vy2, vw1, vw2, 0),
-                              vx2 * vy2 * vw)
+                           vx2 * vy2 * vw)
 
     def test_merge_ifs_true_false(self):
         raise SkipTest("Optimization temporarily disabled")
@@ -475,9 +475,9 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         vw1 = rng.uniform()
         vw2 = rng.uniform()
         assert np.allclose(f(vx1, vx2, vy1, vy2, vw1, vw2, 1),
-                              vx1 + vy1 + vw1)
+                           vx1 + vy1 + vw1)
         assert np.allclose(f(vx1, vx2, vy1, vy2, vw1, vw2, 0),
-                              vx2 + vy2 + vw2)
+                           vx2 + vy2 + vw2)
 
     def test_grad_test_values(self):
         """
