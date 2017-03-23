@@ -4,8 +4,8 @@ import unittest
 import numpy
 
 import theano
-from theano.tensor.utils import shape_of_variables
-from theano.gof.utils import hash_from_ndarray
+from theano.tensor.utils import (hash_from_ndarray, shape_of_variables)
+
 
 def test_hash_from_ndarray():
     hashs = []

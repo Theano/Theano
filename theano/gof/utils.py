@@ -9,7 +9,6 @@ from six.moves import StringIO
 
 from theano import config
 from theano.compat import PY3
-from theano.misc.frozendict import frozendict
 
 
 def simple_extract_stack(f=None, limit=None, skips=[]):
@@ -210,49 +209,6 @@ class MetaObject(type):
                 dct['__str__'] = __str__
 
         return type.__new__(cls, name, bases, dct)
-
-
-class MetaObject_caching(MetaObject):
-    _cache = {}
-
-    def __call__(cls, *args, **kwargs):
-        key = [cls]
-        for arg in args:
-            arg = make_hashable(arg)
-            key.append(arg)
-        for k, v in sorted(kwargs.items()):
-            key.append(k)
-            v = make_hashable(v)
-            key.append(v)
-        key = tuple(key)
-        if key not in cls._cache:
-            cls._cache[key] = super(MetaObject_caching, cls).__call__(*args, **kwargs)
-        return cls._cache[key]
-
-
-class CacheClass(with_metaclass(MetaObject_caching, object)):
-    pass
-
-
-def make_hashable(argument):
-    try:
-        hash(argument)
-        return argument
-    except:
-        if isinstance(argument, (list, tuple)):
-            argument = list(argument)
-            for index, instance in enumerate(argument):
-                argument[index] = make_hashable(instance)
-            argument = tuple(argument)
-        elif isinstance(argument, dict):
-            for k, v in argument.items():
-                argument[k] = make_hashable(v)
-            argument = frozendict(argument)
-        elif isinstance(argument, slice):
-            argument = argument.__reduce__()
-        elif isinstance(argument, np.ndarray):
-            argument = hash_from_ndarray(argument)
-        return argument
 
 
 class object2(with_metaclass(MetaObject, object)):
@@ -607,30 +563,6 @@ else:
         except TypeError:
             assert isinstance(msg, np.ndarray)
             return hashlib.md5(np.getbuffer(msg)).hexdigest()
-
-
-def hash_from_ndarray(data):
-                """
-                Return a hash from an ndarray.
-
-                It takes care of the data, shapes, strides and dtype.
-
-                """
-                # We need to hash the shapes and strides as hash_from_code only hashes
-                # the data buffer. Otherwise, this will cause problem with shapes like:
-                # (1, 0) and (2, 0) and problem with inplace transpose.
-                # We also need to add the dtype to make the distinction between
-                # uint32 and int32 of zeros with the same shape and strides.
-
-                # python hash are not strong, so I always use md5 in order not to have a
-                # too long hash, I call it again on the concatenation of all parts.
-                if not data.flags["C_CONTIGUOUS"]:
-                    # hash_from_code needs a C-contiguous array.
-                    data = np.ascontiguousarray(data)
-                return hash_from_code(hash_from_code(data) +
-                                      hash_from_code(str(data.shape)) +
-                                      hash_from_code(str(data.strides)) +
-                                      hash_from_code(str(data.dtype)))
 
 
 def hash_from_file(file_path):

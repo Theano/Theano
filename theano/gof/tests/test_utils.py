@@ -1,6 +1,5 @@
 from __future__ import absolute_import, print_function, division
 import theano
-from theano.gof.utils import CacheClass
 from theano.gof.utils import (
     give_variables_names, remove, unique)
 
@@ -62,17 +61,3 @@ def test_stack_trace():
         assert len(v.tag.trace[0]) == 2
     finally:
         theano.config.traceback.limit = orig
-
-
-class CachingClassExample(CacheClass, theano.Op):
-    __props__ = ('value',)
-    __cache_instance__ = True
-
-    def __init__(self, value):
-        self.value = value
-
-
-def test_caching():
-        obj_1 = CachingClassExample(3)
-        obj_2 = CachingClassExample(3)
-        assert obj_1 is obj_2
