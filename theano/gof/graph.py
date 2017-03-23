@@ -1382,12 +1382,13 @@ def is_in_ancestors(l_node, f_node):
     Goes up in the graph and returns True if the apply node f_node is found.
 
     Use a stack implementation as the vm algo.
+    We suppose all nodes are not lazy
+    (i.e. for IfElse we suppose all inputs are computed)
     """
     computed = set()
     todo = [l_node]
     while todo:
         cur = todo.pop()
-        # We suppose that all outputs are always computed
         if cur.outputs[0] in computed:
             continue
         if all([i in computed or i.owner is None for i in cur.inputs]):
