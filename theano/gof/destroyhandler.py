@@ -54,29 +54,6 @@ def _contains_cycle(fgraph, orderings):
         True if the graph contains a cycle, False otherwise.
 
     """
-    if False:
-        import pdb;pdb.set_trace()
-        for n in fgraph.apply_nodes:
-            dm = getattr(n.op, 'destroy_map', None)
-            if not dm:
-                continue
-            inputs = sum(dm.values())
-            for inp_idx in inputs:
-                inp = n.inputs[inp_idx]
-                while inp.owner:
-                    if len(inp.clients() > 1):
-                        return True
-                    n2 = inp.owner
-                    inp_idx2 = n2.outputs.index(inp)
-                    d = getattr(n2, 'destroy_map', {}).get(inp_idx2, [])
-                    d += getattr(n2, 'view_map', {}).get(inp_idx2, [])
-                    assert len(d) <= 1
-                    if len(d) == 0:
-                        continue
-                    inp_idx3 = d[0]
-                    inp = n2.inputs[above]
-
-        return False
     # These are lists of Variable instances
     outputs = fgraph.outputs
 
