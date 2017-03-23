@@ -14,7 +14,7 @@ The config option is in configdefaults.py
 This note is written by Li Yao.
 """
 from collections import OrderedDict
-import numpy
+import numpy as np
 import six.moves.cPickle as pickle
 import theano
 import theano.tensor as T
@@ -28,8 +28,8 @@ def test_pickle_unpickle_with_reoptimization():
         mode = "FAST_RUN"
     x1 = T.fmatrix('x1')
     x2 = T.fmatrix('x2')
-    x3 = theano.shared(numpy.ones((10, 10), dtype=floatX))
-    x4 = theano.shared(numpy.ones((10, 10), dtype=floatX))
+    x3 = theano.shared(np.ones((10, 10), dtype=floatX))
+    x4 = theano.shared(np.ones((10, 10), dtype=floatX))
     y = T.sum(T.sum(T.sum(x1 ** 2 + x2) + x3) + x4)
 
     updates = OrderedDict()
@@ -40,8 +40,8 @@ def test_pickle_unpickle_with_reoptimization():
     # now pickle the compiled theano fn
     string_pkl = pickle.dumps(f, -1)
 
-    in1 = numpy.ones((10, 10), dtype=floatX)
-    in2 = numpy.ones((10, 10), dtype=floatX)
+    in1 = np.ones((10, 10), dtype=floatX)
+    in2 = np.ones((10, 10), dtype=floatX)
 
     # test unpickle with optimization
     default = theano.config.reoptimize_unpickled_function
@@ -60,8 +60,8 @@ def test_pickle_unpickle_without_reoptimization():
         mode = "FAST_RUN"
     x1 = T.fmatrix('x1')
     x2 = T.fmatrix('x2')
-    x3 = theano.shared(numpy.ones((10, 10), dtype=floatX))
-    x4 = theano.shared(numpy.ones((10, 10), dtype=floatX))
+    x3 = theano.shared(np.ones((10, 10), dtype=floatX))
+    x4 = theano.shared(np.ones((10, 10), dtype=floatX))
     y = T.sum(T.sum(T.sum(x1**2 + x2) + x3) + x4)
 
     updates = OrderedDict()
@@ -73,8 +73,8 @@ def test_pickle_unpickle_without_reoptimization():
     string_pkl = pickle.dumps(f, -1)
 
     # compute f value
-    in1 = numpy.ones((10, 10), dtype=floatX)
-    in2 = numpy.ones((10, 10), dtype=floatX)
+    in1 = np.ones((10, 10), dtype=floatX)
+    in2 = np.ones((10, 10), dtype=floatX)
 
     # test unpickle without optimization
     default = theano.config.reoptimize_unpickled_function
