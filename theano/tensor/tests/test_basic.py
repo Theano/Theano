@@ -745,7 +745,6 @@ AddInplaceTester = makeBroadcastTester(
     good=_good_broadcast_binary_normal,
     bad_build=_bad_build_broadcast_binary_normal,
     bad_runtime=_bad_runtime_broadcast_binary_normal,
-    grad=None,
     inplace=True)
 
 SubTester = makeBroadcastTester(
@@ -761,7 +760,6 @@ SubInplaceTester = makeBroadcastTester(op=inplace.sub_inplace,
                                        good=_good_broadcast_binary_normal,
                                        bad_build=_bad_build_broadcast_binary_normal,
                                        bad_runtime=_bad_runtime_broadcast_binary_normal,
-                                       grad=None,
                                        inplace=True)
 
 
@@ -808,7 +806,6 @@ MaximumInplaceTester = makeBroadcastTester(
     good=_good_broadcast_binary_normal,
     bad_build=_bad_build_broadcast_binary_normal,
     bad_runtime=_bad_runtime_broadcast_binary_normal,
-    grad=None,
     inplace=True)
 
 MinimumTester = makeBroadcastTester(
@@ -825,7 +822,6 @@ MinimumInplaceTester = makeBroadcastTester(
     good=_good_broadcast_binary_normal,
     bad_build=_bad_build_broadcast_binary_normal,
     bad_runtime=_bad_runtime_broadcast_binary_normal,
-    grad=None,
     inplace=True)
 
 MulTester = makeBroadcastTester(
@@ -846,7 +842,6 @@ MulInplaceTester = makeBroadcastTester(
     good=_good_broadcast_binary_normal,
     bad_build=_bad_build_broadcast_binary_normal,
     bad_runtime=_bad_runtime_broadcast_binary_normal,
-    grad=None,
     inplace=True)
 
 
@@ -955,7 +950,6 @@ TrueDivInplaceTester = makeBroadcastTester(
         _good_broadcast_div_mod_normal_float_inplace,
         # The output is now in float, we cannot work inplace on an int.
         without=['integer', 'uint8', 'uint16', 'int8']),
-    grad=None,
     grad_rtol=div_grad_rtol,
     inplace=True)
 
@@ -993,7 +987,6 @@ InvInplaceTester = makeBroadcastTester(
     expected=lambda x: _numpy_true_div(numpy.int8(1), x),
     good=_good_inv_inplace,
     bad_runtime=_bad_runtime_inv,
-    grad=None,
     grad_rtol=div_grad_rtol,
     inplace=True)
 
@@ -1025,7 +1018,6 @@ ModInplaceTester = makeBroadcastTester(
         x % y, dtype=theano.scalar.basic.upcast(x.dtype, y.dtype)),
     good=copymod(_good_broadcast_div_mod_normal_float_inplace,
                  ["complex1", "complex2"]),
-    grad=None,
     grad_eps=1e-5,
     inplace=True)
 
@@ -1081,7 +1073,6 @@ PowInplaceTester = makeBroadcastTester(
     op=inplace.pow_inplace,
     expected=lambda x, y: x ** y,
     good=_good_broadcast_pow_normal_float_pow,
-    grad=None,
     inplace=True,
     mode=m
 )
@@ -1192,7 +1183,6 @@ AbsInplaceTester = makeBroadcastTester(
     op=inplace.abs__inplace,
     expected=lambda x: numpy.abs(x),
     good=_good_broadcast_unary_normal_abs,
-    grad=None,
     inplace=True)
 
 NegTester = makeBroadcastTester(
@@ -1204,7 +1194,6 @@ NegInplaceTester = makeBroadcastTester(
     op=inplace.neg_inplace,
     expected=lambda x: -x,
     good=_good_broadcast_unary_normal,
-    grad=None,
     inplace=True)
 
 SgnTester = makeBroadcastTester(
@@ -1216,7 +1205,6 @@ SgnInplaceTester = makeBroadcastTester(
     op=inplace.sgn_inplace,
     expected=numpy.sign,
     good=_good_broadcast_unary_normal_no_complex,
-    grad=None,
     inplace=True)
 
 IntDivTester = makeBroadcastTester(
@@ -1235,7 +1223,6 @@ IntDivInplaceTester = makeBroadcastTester(
     # I don't test the grad as the output is always an integer
     # (this is not a continuous output).
     # grad=_grad_broadcast_div_mod_normal,
-    grad=None,
     inplace=True
     )
 
@@ -1254,7 +1241,6 @@ CeilInplaceTester = makeBroadcastTester(
     good=_good_broadcast_unary_normal_no_complex,
     # corner cases includes a lot of integers: points where Ceil is not
     # continuous (not differentiable)
-    grad=None,
     inplace=True)
 
 FloorTester = makeBroadcastTester(
@@ -1267,14 +1253,12 @@ FloorInplaceTester = makeBroadcastTester(
     op=inplace.floor_inplace,
     expected=upcast_float16_ufunc(numpy.floor),
     good=_good_broadcast_unary_normal_no_complex,
-    grad=None,
     inplace=True)
 
 TruncInplaceTester = makeBroadcastTester(
     op=inplace.trunc_inplace,
     expected=upcast_float16_ufunc(numpy.trunc),
     good=_good_broadcast_unary_normal_no_complex,
-    grad=None,
     inplace=True)
 
 TruncTester = makeBroadcastTester(
@@ -1292,7 +1276,6 @@ RoundHalfToEvenInplaceTester = makeBroadcastTester(
     op=inplace.round_half_to_even_inplace,
     expected=numpy.round,
     good=_good_broadcast_unary_normal_float_no_complex,
-    grad=None,
     inplace=True)
 
 # numpy.vectorize don't handle correctly empty ndarray.
@@ -1308,7 +1291,6 @@ RoundHalfAwayFromZeroInplaceTester = makeBroadcastTester(
     op=inplace.round_half_away_from_zero_inplace,
     expected=lambda a: theano.scalar.basic.round_half_away_from_zero_vec(a),
     good=_good_broadcast_unary_normal_float_no_empty_no_complex,
-    grad=None,
     inplace=True)
 
 SqrTester = makeBroadcastTester(
@@ -1321,7 +1303,6 @@ SqrInplaceTester = makeBroadcastTester(
     op=inplace.sqr_inplace,
     expected=numpy.square,
     good=_good_broadcast_unary_normal,
-    grad=None,
     inplace=True)
 
 ExpTester = makeBroadcastTester(
@@ -1336,7 +1317,6 @@ ExpInplaceTester = makeBroadcastTester(
     op=inplace.exp_inplace,
     expected=numpy.exp,
     good=_good_broadcast_unary_normal_float,
-    grad=None,
     inplace=True)
 
 Exp2Tester = makeBroadcastTester(
@@ -1348,7 +1328,6 @@ Exp2InplaceTester = makeBroadcastTester(
     op=inplace.exp2_inplace,
     expected=numpy.exp2,
     good=_good_broadcast_unary_normal_float,
-    grad=None,
     inplace=True)
 
 
@@ -1364,7 +1343,6 @@ Expm1InplaceTester = makeBroadcastTester(
     op=inplace.expm1_inplace,
     expected=numpy.expm1,
     good=_good_broadcast_unary_normal_float,
-    grad=None,
     inplace=True)
 
 
@@ -1391,7 +1369,6 @@ LogInplaceTester = makeBroadcastTester(
     op=inplace.log_inplace,
     expected=numpy.log,
     good=_good_broadcast_unary_positive_float,
-    grad=None,
     inplace=True)
 
 Log2Tester = makeBroadcastTester(
@@ -1403,7 +1380,6 @@ Log2InplaceTester = makeBroadcastTester(
     op=inplace.log2_inplace,
     expected=numpy.log2,
     good=_good_broadcast_unary_positive_float,
-    grad=None,
     inplace=True)
 
 Log10Tester = makeBroadcastTester(
@@ -1415,7 +1391,6 @@ Log10InplaceTester = makeBroadcastTester(
     op=inplace.log10_inplace,
     expected=numpy.log10,
     good=_good_broadcast_unary_positive_float,
-    grad=None,
     inplace=True)
 
 Log1pTester = makeBroadcastTester(
@@ -1427,7 +1402,6 @@ Log1pInplaceTester = makeBroadcastTester(
     op=inplace.log1p_inplace,
     expected=numpy.log1p,
     good=_good_broadcast_unary_positive_float,
-    grad=None,
     inplace=True)
 
 SqrtTester = makeBroadcastTester(
@@ -1439,7 +1413,6 @@ SqrtInplaceTester = makeBroadcastTester(
     op=inplace.sqrt_inplace,
     expected=numpy.sqrt,
     good=_good_broadcast_unary_positive_float,
-    grad=None,
     inplace=True)
 
 _good_broadcast_unary_wide = dict(
@@ -1470,7 +1443,6 @@ Deg2radInplaceTester = makeBroadcastTester(
     op=inplace.deg2rad_inplace,
     expected=numpy.deg2rad,
     good=_good_broadcast_unary_normal_float_no_complex,
-    grad=None,
     inplace=True,
     eps=angle_eps)
 
@@ -1484,7 +1456,6 @@ Rad2degInplaceTester = makeBroadcastTester(
     op=inplace.rad2deg_inplace,
     expected=numpy.rad2deg,
     good=_good_broadcast_unary_normal_float_no_complex,
-    grad=None,
     inplace=True,
     eps=angle_eps)
 
@@ -1497,7 +1468,6 @@ SinInplaceTester = makeBroadcastTester(
     op=inplace.sin_inplace,
     expected=numpy.sin,
     good=_good_broadcast_unary_wide_float,
-    grad=None,
     inplace=True)
 
 _good_broadcast_unary_arcsin = dict(
@@ -1526,7 +1496,6 @@ ArcsinInplaceTester = makeBroadcastTester(
     op=inplace.arcsin_inplace,
     expected=numpy.arcsin,
     good=_good_broadcast_unary_arcsin_float,
-    grad=None,
     inplace=True)
 
 CosTester = makeBroadcastTester(
@@ -1538,7 +1507,6 @@ CosInplaceTester = makeBroadcastTester(
     op=inplace.cos_inplace,
     expected=numpy.cos,
     good=_good_broadcast_unary_wide_float,
-    grad=None,
     inplace=True)
 
 
@@ -1557,7 +1525,6 @@ ArccosInplaceTester = makeBroadcastTester(
     op=inplace.arccos_inplace,
     expected=numpy.arccos,
     good=_good_broadcast_unary_arcsin_float,
-    grad=None,
     inplace=True)
 
 _good_broadcast_unary_tan = dict(
@@ -1583,7 +1550,6 @@ TanInplaceTester = makeBroadcastTester(
     op=inplace.tan_inplace,
     expected=numpy.tan,
     good=copymod(_good_broadcast_unary_tan, without=['integers', 'int8', 'uint8', 'uint16']),
-    grad=None,
     inplace=True)
 
 ArctanTester = makeBroadcastTester(
@@ -1595,7 +1561,6 @@ ArctanInplaceTester = makeBroadcastTester(
     op=inplace.arctan_inplace,
     expected=numpy.arctan,
     good=_good_broadcast_unary_wide_float,
-    grad=None,
     inplace=True)
 
 _good_broadcast_binary_arctan2 = dict(
@@ -1635,7 +1600,6 @@ Arctan2InplaceTester = makeBroadcastTester(
     expected=numpy.arctan2,
     good=copymod(_good_broadcast_binary_arctan2,
                  without=['integers', 'int8', 'uint8', 'uint16']),
-    grad=None,
     inplace=True)
 
 CoshTester = makeBroadcastTester(
@@ -1650,7 +1614,6 @@ CoshInplaceTester = makeBroadcastTester(
     op=inplace.cosh_inplace,
     expected=numpy.cosh,
     good=_good_broadcast_unary_normal_float,
-    grad=None,
     inplace=True)
 
 _good_broadcast_unary_arccosh = dict(
@@ -1670,7 +1633,6 @@ ArccoshInplaceTester = makeBroadcastTester(
     op=inplace.arccosh_inplace,
     expected=numpy.arccosh,
     good=copymod(_good_broadcast_unary_arccosh, without=['integers', 'uint8']),
-    grad=None,
     inplace=True)
 
 SinhTester = makeBroadcastTester(
@@ -1685,7 +1647,6 @@ SinhInplaceTester = makeBroadcastTester(
     op=inplace.sinh_inplace,
     expected=numpy.sinh,
     good=_good_broadcast_unary_normal_float,
-    grad=None,
     inplace=True)
 
 ArcsinhTester = makeBroadcastTester(
@@ -1697,7 +1658,6 @@ ArcsinhInplaceTester = makeBroadcastTester(
     op=inplace.arcsinh_inplace,
     expected=numpy.arcsinh,
     good=_good_broadcast_unary_normal_float,
-    grad=None,
     inplace=True)
 
 TanhTester = makeBroadcastTester(
@@ -1709,7 +1669,6 @@ TanhInplaceTester = makeBroadcastTester(
     op=inplace.tanh_inplace,
     expected=numpy.tanh,
     good=_good_broadcast_unary_normal_float,
-    grad=None,
     inplace=True)
 
 _good_broadcast_unary_arctanh = dict(
@@ -1732,7 +1691,6 @@ ArctanhInplaceTester = makeBroadcastTester(
     op=inplace.arctanh_inplace,
     expected=numpy.arctanh,
     good=copymod(_good_broadcast_unary_arctanh, without=['integers', 'int8', 'uint8', 'uint16']),
-    grad=None,
     inplace=True)
 
 
@@ -1787,7 +1745,6 @@ ErfInplaceTester = makeBroadcastTester(
     op=inplace.erf_inplace,
     expected=expected_erf,
     good=_good_broadcast_unary_normal_float,
-    grad=None,
     mode=mode_no_scipy,
     eps=2e-10,
     inplace=True,
@@ -1805,7 +1762,6 @@ ErfcInplaceTester = makeBroadcastTester(
     op=inplace.erfc_inplace,
     expected=expected_erfc,
     good=_good_broadcast_unary_normal_float_no_complex,
-    grad=None,
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True,
@@ -1822,7 +1778,6 @@ ErfcxInplaceTester = makeBroadcastTester(
     op=inplace.erfcx_inplace,
     expected=expected_erfcx,
     good=_good_broadcast_unary_normal_float_no_complex_small_neg_range,
-    grad=None,
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True)
@@ -1869,7 +1824,6 @@ GammaInplaceTester = makeBroadcastTester(
     op=inplace.gamma_inplace,
     expected=expected_gamma,
     good=_good_broadcast_unary_gammaln,
-    grad=None,
     mode=mode_no_scipy,
     eps=1e-5,
     inplace=True,
@@ -1887,7 +1841,6 @@ GammalnInplaceTester = makeBroadcastTester(
     op=inplace.gammaln_inplace,
     expected=expected_gammaln,
     good=_good_broadcast_unary_gammaln,
-    grad=None,
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True,
@@ -1913,7 +1866,6 @@ PsiInplaceTester = makeBroadcastTester(
     good=_good_broadcast_unary_psi,
     eps=2e-10,
     mode=mode_no_scipy,
-    grad=None,
     inplace=True,
     skip=skip_scipy)
 
@@ -1948,7 +1900,6 @@ Chi2SFInplaceTester = makeBroadcastTester(
     good=_good_broadcast_unary_chi2sf,
     eps=2e-10,
     mode=mode_no_scipy,
-    grad=None,
     inplace=True,
     skip=skip_scipy,
     name='Chi2SF')
@@ -1992,7 +1943,6 @@ J0InplaceTester = makeBroadcastTester(
     op=inplace.j0_inplace,
     expected=expected_j0,
     good=_good_broadcast_unary_bessel,
-    grad=None,
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True,
@@ -2011,7 +1961,6 @@ J1InplaceTester = makeBroadcastTester(
     op=inplace.j1_inplace,
     expected=expected_j1,
     good=_good_broadcast_unary_bessel,
-    grad=None,
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True,
@@ -2031,7 +1980,6 @@ JvInplaceTester = makeBroadcastTester(
     good=_good_broadcast_binary_bessel,
     eps=2e-10,
     mode=mode_no_scipy,
-    grad=None,
     inplace=True,
     skip=skip_scipy)
 
@@ -2065,7 +2013,6 @@ I0InplaceTester = makeBroadcastTester(
     good=_good_broadcast_unary_bessel,
     eps=2e-10,
     mode=mode_no_scipy,
-    grad=None,
     inplace=True,
     skip=skip_scipy)
 
@@ -2084,7 +2031,6 @@ I1InplaceTester = makeBroadcastTester(
     good=_good_broadcast_unary_bessel,
     eps=2e-10,
     mode=mode_no_scipy,
-    grad=None,
     inplace=True,
     skip=skip_scipy)
 
@@ -2102,7 +2048,6 @@ IvInplaceTester = makeBroadcastTester(
     good=_good_broadcast_binary_bessel,
     eps=2e-10,
     mode=mode_no_scipy,
-    grad=None,
     inplace=True,
     skip=skip_scipy)
 
@@ -2164,7 +2109,6 @@ ConjInplaceTester = makeBroadcastTester(
     op=inplace.conj_inplace,
     expected=numpy.conj,
     good=_good_broadcast_unary_normal,
-    grad=None,
     inplace=True)
 
 
