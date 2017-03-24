@@ -1138,7 +1138,7 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
 
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode, precision=precision)(kerns_shp)
-    out = GpuAllocEmpty(ctx_name, dtype=img.dtype)(*kerns_shp)
+    out = GpuAllocEmpty(dtype=img.dtype, context_name=ctx_name)(*kerns_shp)
     return GpuDnnConvGradW()(img, topgrad, out, desc)
 
 
@@ -1166,7 +1166,7 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
 
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode, precision=precision)(kerns.shape)
-    out = GpuAllocEmpty(ctx_name, kerns.dtype)(*img_shp)
+    out = GpuAllocEmpty(dtype=kerns.dtype, context_name=ctx_name)(*img_shp)
     return GpuDnnConvGradI()(kerns, topgrad, out, desc)
 
 
