@@ -1712,6 +1712,9 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
             if max_abs_err > abs_tol and max_rel_err > rel_tol:
 
                 raise verify_grad.E_grad(max_arg, max_err_pos,
+                                         analytic_grad[max_arg].shape,
+                                         analytic_grad[max_arg].flatten()[max_err_pos],
+                                         num_grad.gf[max_arg].flatten()[max_err_pos],
                                          max_abs_err, max_rel_err,
                                          abs_tol, rel_tol)
 
@@ -1727,10 +1730,14 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
 
 class GradientError(Exception):
     """This error is raised when a gradient is calculated, but incorrect."""
-    def __init__(self, arg, err_pos, abs_err, rel_err, abs_tol, rel_tol):
+    def __init__(self, arg, err_pos, shape, val1, val2,
+                 abs_err, rel_err, abs_tol, rel_tol):
         Exception.__init__(self)  # to be compatible with python2.4
         self.arg = arg
         self.err_pos = err_pos
+        self.shape = shape
+        self.val1 = val1
+        self.val2 = val2
         self.abs_err = abs_err
         self.rel_err = rel_err
         self.abs_tol = abs_tol
@@ -1741,10 +1748,13 @@ class GradientError(Exception):
         args_msg = ", ".join(str(a) for a in self.args)
         return """\
 GradientError: numeric gradient and analytic gradient exceed tolerance:
-        At position %i of argument %i,
+        At position %i of argument %i with shape %s,
+            val1 = %f      ,  val2 = %f
             abs. error = %f,  abs. tolerance = %f
             rel. error = %f,  rel. tolerance = %f
 Exception args: %s""" % (self.err_pos, self.arg,
+                         self.shape,
+                         self.val1, self.val2,
                          self.abs_err, self.abs_tol,
                          self.rel_err, self.rel_tol,
                          args_msg)
