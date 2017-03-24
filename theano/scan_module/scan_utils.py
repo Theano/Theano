@@ -876,10 +876,13 @@ class Validator(object):
 
             if out.owner is None:
                 if isinstance(out, tensor.TensorConstant):
-                    if hasattr(out, 'fgraph'):
+                    if hasattr(out, 'fgraph') or getattr(out, 'cached', False):
                         # If out have an fgraph, we aren't sure if it
                         # is from the inner graph or outer graph, so
                         # clone it.
+                        # As it will be used as is in an FunctionGraph
+                        # (won't be cloned later), it can't be a
+                        # cached variable
                         cloned_out = out.clone()
                         self.valid.add(cloned_out)
                         self.invalid.add(out)
