@@ -14,6 +14,7 @@ Ubuntu Installation Instructions
 .. _gpu_linux:
 
 .. |PlatformCompiler| replace:: ``python-dev``, ``g++`` >= 4.2
+.. |CompilerName| replace:: ``g++``
 
 .. include:: requirements.inc
 
