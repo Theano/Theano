@@ -64,12 +64,12 @@ void APPLY_SPECIFIC(ROIPoolForward)(
             wend = min(max(wend, 0), width);
             bool is_empty = (hend <= hstart) || (wend <= wstart);
             const int pool_index = ph * pooled_width + pw;
+            // Define an empty pooling region to be zero
+            // If nothing is pooled, argmax = -1 causes nothing to be backprop'd
             if (is_empty) {
               channel_out[pool_index] = 0;
               channel_argmax[pool_index] = -1;
             }
-            // Define an empty pooling region to be zero
-            // If nothing is pooled, argmax = -1 causes nothing to be backprop'd
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
                 int bottom_index = h * width + w;

@@ -306,8 +306,7 @@ class TestGpuRoIPool(utt.InferShapeTester):
         image_shapes = ((1, 3, 16, 16), (1, 3, 16, 20), (1, 3, 20, 16),
                         (1, 2, 16, 16), (1, 2, 16, 20), (1, 2, 20, 16),
                         (2, 3, 16, 16), (2, 3, 16, 20), (2, 3, 20, 16),
-                        (2, 2, 16, 16), (3, 2, 16, 20), (4, 2, 20, 16),
-                        (10, 3, 16, 16), (20, 3, 16, 20), (30, 3, 20, 16))
+                        (2, 2, 16, 16), (4, 2, 16, 20), (3, 2, 20, 16))
         # The difference in ROI shape is because the first element is batch index in
         # theano implementation.
         roi_theano = theano.shared(np.asarray([[0., 0., 0., 3., 3.], [0., 0., 0., 7., 7.]], dtype='float32'))
@@ -319,7 +318,7 @@ class TestGpuRoIPool(utt.InferShapeTester):
         # assert any([isinstance(node.op, GpuRoIPoolOp) for node in func.maker.fgraph.toposort()])
         for image_n, im_shp in enumerate(image_shapes):
             for pool_h, pool_w, sp_scale in zip(pool_heights, pool_widths, spatial_scales):
-                    random_image = rng.rand(*im_shp).astype(np.single)
+                    random_image = rng.rand(*im_shp).astype(np.single) * 40.0
                     shared_image = theano.shared(random_image)
                     # Testing the computation accuracy
                     maxvals_np, maxloc_np = numpy_roi_pool(random_image, pool_h, pool_w, roi_numpy, sp_scale)
@@ -329,6 +328,7 @@ class TestGpuRoIPool(utt.InferShapeTester):
                     func = theano.function([], t_outs, mode=gpu_mode)
                     maxvals_theano, maxloc_theano = func()
                     utt.assert_allclose(maxvals_np, maxvals_theano)
+                    utt.assert_allclose(maxloc_np, maxloc_theano)
                     # Checking if the CPU Op has been lifted to GPU
                     assert any([isinstance(node.op, self.op_class) for node in func.maker.fgraph.toposort()])
                     # Checking if the CPU GradOp has been lifted to GPU

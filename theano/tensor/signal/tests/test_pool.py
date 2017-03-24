@@ -1162,6 +1162,7 @@ def numpy_roi_pool(image_val, pool_height, pool_width, roi, spatial_scale):
 
     batch_size = image_val.shape[0]
     channels = image_val.shape[1]
+    im_width = image_val.shape[3]
     num_roi = roi.shape[0]
     maxval_coordinates = []
     max_vals = []
@@ -1187,7 +1188,9 @@ def numpy_roi_pool(image_val, pool_height, pool_width, roi, spatial_scale):
                         interest_region = image_val[b_in, cn, y1:y2, x1:x2]
                         m_val = numpy.max(interest_region)
                         max_vals.append(m_val)
-                        maxval_coordinates.append(numpy.argmax(interest_region))
+                        argmax = numpy.unravel_index(numpy.argmax(interest_region), interest_region.shape)
+                        maxloc = argmax[1] + x1 + (argmax[0] + y1) * im_width
+                        maxval_coordinates.append(maxloc)
     # Reshaped as (batch_index, num_roi, channels, pool_h * pool_w)
     max_vals = numpy.reshape(numpy.asarray(max_vals), (batch_size, num_roi, channels, pool_height * pool_width))
     maxval_coordinates = numpy.reshape(numpy.asarray(maxval_coordinates), (batch_size, num_roi, channels, pool_height * pool_width))
@@ -1207,8 +1210,7 @@ class TestRoIPool(utt.InferShapeTester):
         image_shapes = ((1, 3, 16, 16), (1, 3, 16, 20), (1, 3, 20, 16),
                         (1, 2, 16, 16), (1, 2, 16, 20), (1, 2, 20, 16),
                         (2, 3, 16, 16), (2, 3, 16, 20), (2, 3, 20, 16),
-                        (2, 2, 16, 16), (2, 2, 16, 20), (2, 2, 20, 16),
-                        (10, 3, 16, 16), (20, 3, 16, 20), (30, 3, 20, 16))
+                        (2, 2, 16, 16), (4, 2, 16, 20), (3, 2, 20, 16))
 
         # The difference in shape is because the first element is batch index in
         # theano implementation
@@ -1221,13 +1223,14 @@ class TestRoIPool(utt.InferShapeTester):
 
         for im_shp in image_shapes:
             for pool_h, pool_w, sp_scale in zip(pool_heights, pool_widths, spatial_scales):
-                random_image = rng.rand(*im_shp).astype(numpy.single)
+                random_image = rng.rand(*im_shp).astype(numpy.single) * 40.0
                 maxvals_np, maxloc_np = numpy_roi_pool(random_image, pool_h, pool_w, roi_numpy, sp_scale)
                 roi_op = self.op_class(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=sp_scale)
                 t_outs = roi_op(t_data, t_rois)
                 func = theano.function([t_data, t_rois], t_outs)
-                maxvals_theano = func(random_image, roi_theano)[0]
+                maxvals_theano, maxloc_theano = func(random_image, roi_theano)
                 utt.assert_allclose(maxvals_np, maxvals_theano)
+                utt.assert_allclose(maxloc_np, maxloc_theano)
 
                 def mp(input):
                     out, argmax = RoIPoolOp(pooled_h=pool_h, pooled_w=pool_w, spatial_scale=sp_scale)(input, roi_theano)

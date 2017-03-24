@@ -2500,6 +2500,7 @@ class RoIPoolOp(gof.COp):
         spatial_scale = self.spatial_scale
         pool_height = self.pooled_h
         pool_width = self.pooled_w
+
         batch_size = image_data.shape[0]
         n_channels = image_data.shape[1]
         image_width = image_data.shape[3]
@@ -2528,10 +2529,12 @@ class RoIPoolOp(gof.COp):
                             y2 = int(numpy.ceil(y1 + col_length))
                             interest_region = image_data[b_in, cn, y1:y2, x1:x2]
                             max_vals.append(numpy.max(interest_region))
-                            maxval_coordinates.append(numpy.argmax(interest_region) + image_width * y1 + x1)
+                            argmax = numpy.unravel_index(numpy.argmax(interest_region), interest_region.shape)
+                            maxloc = argmax[1] + x1 + (argmax[0] + y1) * image_width
+                            maxval_coordinates.append(maxloc)
         # Reshaped as (batch_index, num_roi, channels, pool_h * pool_w)
-        max_vals = numpy.reshape(numpy.asarray(max_vals), (batch_size, num_roi, n_channels, pool_height * pool_width))
-        maxval_coordinates = numpy.reshape(numpy.asarray(maxval_coordinates), (batch_size, num_roi, n_channels, pool_height * pool_width))
+        max_vals = numpy.reshape(numpy.array(max_vals), (batch_size, num_roi, n_channels, pool_height * pool_width))
+        maxval_coordinates = numpy.reshape(numpy.array(maxval_coordinates), (batch_size, num_roi, n_channels, pool_height * pool_width))
         top_data[0] = max_vals
         argmax_data[0] = maxval_coordinates
 
@@ -2623,19 +2626,24 @@ class RoIPoolGradOp(gof.COp):
                     gxxx.shape = (image_height * image_width, )
                     for jy in range(image_height):
                         for ix in range(image_width):
-                            bottom_index = jy * image_width + ix
+                            in_roi = (ix >= x_start and ix <= x_end and jy >= y_start and jy <= y_end)
+                            if not in_roi:
+                                continue
+                            bottom_index = (jy * image_width) + ix
                             x1 = int(numpy.floor((ix - x_start) / row_length))
                             x2 = int(numpy.ceil((ix - x_start + 1) / row_length))
                             y1 = int(numpy.floor((jy - y_start) / col_length))
                             y2 = int(numpy.ceil((jy - y_start + 1) / col_length))
-                            interest_region = argmax[b_in, i, cn, y1 * x1:y2 * x2]
-                            mp_index = numpy.nonzero(interest_region == bottom_index)
-                            if numpy.all([emp.size for emp in mp_index]):
-                                # Since mp_index is a tuple
-                                mp_index = mp_index[0]
-                                # incrementing cause it was extracted from sliced array
-                                mp_index += x1 * y1
-                                gxxx[bottom_index] += channel_grad[mp_index].sum()
+
+                            interest_region = argmax[b_in, i, cn, x1 + int(pool_width) * y1:x2 + int(pool_width) * y2]
+
+                            mp_index = numpy.where(interest_region == bottom_index)[0]
+                            if mp_index.size == 0:
+                                continue
+
+                            # incrementing cause it was extracted from sliced array
+                            mp_index = numpy.add(mp_index, x1 + (pool_width * y1))
+                            gxxx[bottom_index] += channel_grad[mp_index].sum()
 
     def grad(self, inp, grads):
         disc = [tensor.zeros_like(i) for i in inp]

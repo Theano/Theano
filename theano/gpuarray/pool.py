@@ -12,7 +12,6 @@ from theano import tensor, config
 
 from theano.tensor.basic import as_tensor_variable
 from theano.tensor.signal.pool import Pool
-from theano.gradient import grad_undefined
 
 from .type import gpu_context_type
 from .basic_ops import (CGpuKernelBase, infer_context_name, gpuarray_helper_inc_dir,
@@ -392,6 +391,9 @@ class GpuMaxPoolRop(CGpuKernelBase):
     def c_header_dirs(self):
         return [gpuarray_helper_inc_dir(), pygpu.get_include()]
 
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
     def make_node(self, inp, eval_point, ws, stride=None, pad=None):
         ctx_name = infer_context_name(inp)
         nd = self.ndim
@@ -527,4 +529,4 @@ class GpuRoIPoolGradOp(CGpuKernelBase):
         return [in_shapes[0]]
 
     def grad(self, inp, grads):
-        return [grad_undefined(self, i, inp[i]) for i in range(4)]
+        return [theano.tensor.zeros_like(self, i, inp[i]) for i in range(4)]
