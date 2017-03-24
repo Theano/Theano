@@ -4073,8 +4073,8 @@ class T_Join_and_Split(unittest.TestCase):
         c = as_tensor_variable(cv)
         s = horizontal_stack(a, b, c)
         want = np.array([[.1, .2, .3, .7, .3, .2, .1],
-                            [.4, .5, .6, .8, .6, .5, .4]],
-                           dtype='float32')
+                         [.4, .5, .6, .8, .6, .5, .4]],
+                        dtype='float32')
         out = self.eval_outputs_and_check_join([s])
         self.assertTrue((out == want).all())
 
@@ -4095,7 +4095,7 @@ class T_Join_and_Split(unittest.TestCase):
                 if isinstance(node.op, type(self.join_op))]
 
         want = np.array([[.1, .2, .3], [.4, .5, .6],
-                            [.1, .2, .3], [.4, .5, .6]])
+                         [.1, .2, .3], [.4, .5, .6]])
         got = f(0)
         assert np.allclose(got, want)
 
