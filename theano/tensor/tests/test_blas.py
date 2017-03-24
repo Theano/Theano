@@ -3,7 +3,7 @@ from copy import copy
 from itertools import product as itertools_product
 from unittest import TestCase
 
-import numpy
+import numpy as np
 from numpy import (arange, array, common_type, complex64, complex128, float32,
                   float64, newaxis, shape, transpose, zeros)
 from numpy.testing import assert_array_almost_equal
@@ -42,7 +42,7 @@ def test_dot_eq():
 
 
 def sharedX(x, name):
-    return theano.shared(numpy.asarray(x, config.floatX), name=name)
+    return theano.shared(np.asarray(x, config.floatX), name=name)
 
 
 class t_gemm(TestCase):
@@ -58,22 +58,22 @@ class t_gemm(TestCase):
     def _gemm(z, a, x, y, b):
         assert a.shape == ()
         assert b.shape == ()
-        return b * z + a * numpy.dot(x, y)
+        return b * z + a * np.dot(x, y)
 
     @staticmethod
     def rand(*args):
-        return numpy.random.rand(*args)
+        return np.random.rand(*args)
 
     def cmp(self, z_, a_, x_, y_, b_):
         for dtype in ['float32', 'float64', 'complex64', 'complex128']:
-            z = numpy.asarray(z_, dtype=dtype)
-            a = numpy.asarray(a_, dtype=dtype)
-            x = numpy.asarray(x_, dtype=dtype)
-            y = numpy.asarray(y_, dtype=dtype)
-            b = numpy.asarray(b_, dtype=dtype)
+            z = np.asarray(z_, dtype=dtype)
+            a = np.asarray(a_, dtype=dtype)
+            x = np.asarray(x_, dtype=dtype)
+            y = np.asarray(y_, dtype=dtype)
+            b = np.asarray(b_, dtype=dtype)
 
             def cmp_linker(z, a, x, y, b, l):
-                z, a, x, y, b = [numpy.asarray(p) for p in (z, a, x, y, b)]
+                z, a, x, y, b = [np.asarray(p) for p in (z, a, x, y, b)]
                 z_orig = z.copy()
                 tz, ta, tx, ty, tb = [as_tensor_variable(p).type()
                                       for p in (z, a, x, y, b)]
@@ -91,7 +91,7 @@ class t_gemm(TestCase):
                 elif z_orig.size == 0:
                     self.assertTrue(z.size == 0)
                 else:
-                    self.assertFalse(numpy.all(z_orig == z))
+                    self.assertFalse(np.all(z_orig == z))
 
             cmp_linker(copy(z), a, x, y, b, 'c|py')
             cmp_linker(copy(z), a, x, y, b, 'py')
@@ -172,7 +172,7 @@ class t_gemm(TestCase):
         a = T.matrix()
         b = T.matrix()
         c = T.matrix()
-        s = theano.shared(numpy.zeros((5, 5)).astype(config.floatX))
+        s = theano.shared(np.zeros((5, 5)).astype(config.floatX))
 
         lr1 = T.constant(0.01).astype(config.floatX)
         lr2 = T.constant(2).astype(config.floatX)
@@ -331,7 +331,7 @@ class t_gemm(TestCase):
             z, a, x, y, b = [theano._asarray(p, dtype=dt)
                              for p in (z, a, x, y, b)]
             z_orig = z.copy()
-            z_after = numpy.zeros_like(z_orig)
+            z_after = np.zeros_like(z_orig)
             for i in xrange(3):
                 z_after[:, :, i] = self._gemm(z[:, :, i], a,
                                               x[:, :, i], y[:, :, i], b)
@@ -388,7 +388,7 @@ class t_as_scalar(TestCase):
     def test0(self):
         """Test that it works on scalar constants"""
         a = T.constant(2.5)
-        b = T.constant(numpy.asarray([[[0.5]]]))
+        b = T.constant(np.asarray([[[0.5]]]))
         b2 = b.dimshuffle()
         assert b2.ndim == 0
         d_a = T.DimShuffle([], [])(a)
@@ -403,7 +403,7 @@ class t_as_scalar(TestCase):
 
     def test1(self):
         """Test that it fails on nonscalar constants"""
-        a = T.constant(numpy.ones(5))
+        a = T.constant(np.ones(5))
         self.assertTrue(None == _as_scalar(a))
         self.assertTrue(None == _as_scalar(T.DimShuffle([False], [0, 'x'])(a)))
 
@@ -482,13 +482,13 @@ def just_gemm(i, o, ishapes=[(4, 3), (3, 5), (4, 5), (), ()],
             # theano.printing.debugprint(f)
             assert False, 'graphlen=%i>%i' % (graphlen, max_graphlen)
 
-        rng = numpy.random.RandomState(unittest_tools.fetch_seed(234))
-        r0 = f(*[numpy.asarray(rng.randn(*sh), config.floatX)
+        rng = np.random.RandomState(unittest_tools.fetch_seed(234))
+        r0 = f(*[np.asarray(rng.randn(*sh), config.floatX)
                  for sh in ishapes])
-        rng = numpy.random.RandomState(unittest_tools.fetch_seed(234))
-        r1 = g(*[numpy.asarray(rng.randn(*sh), config.floatX)
+        rng = np.random.RandomState(unittest_tools.fetch_seed(234))
+        r1 = g(*[np.asarray(rng.randn(*sh), config.floatX)
                  for sh in ishapes])
-        max_abs_err = numpy.max(numpy.abs(r0[0] - r1[0]))
+        max_abs_err = np.max(np.abs(r0[0] - r1[0]))
         eps = 1.0e-8
         if config.floatX == 'float32':
             eps = 1.0e-6
@@ -556,13 +556,13 @@ def test_gemm_opt_double_gemm():
         # for node in g.maker.fgraph.apply_nodes:
         #    if node.op == gemm_inplace: raise Failure('gemm_inplace in graph')
 
-        rng = numpy.random.RandomState(unittest_tools.fetch_seed(234))
-        r0 = f(*[numpy.asarray(rng.randn(*sh), config.floatX)
+        rng = np.random.RandomState(unittest_tools.fetch_seed(234))
+        r0 = f(*[np.asarray(rng.randn(*sh), config.floatX)
              for sh in ishapes])
-        rng = numpy.random.RandomState(unittest_tools.fetch_seed(234))
-        r1 = g(*[numpy.asarray(rng.randn(*sh), config.floatX)
+        rng = np.random.RandomState(unittest_tools.fetch_seed(234))
+        r1 = g(*[np.asarray(rng.randn(*sh), config.floatX)
              for sh in ishapes])
-        max_abs_err = numpy.max(numpy.abs(r0[0] - r1[0]))
+        max_abs_err = np.max(np.abs(r0[0] - r1[0]))
         eps = 1.0e-8
         if config.floatX == 'float32':
             eps = 1.0e-6
@@ -652,7 +652,7 @@ def test_upcasting_scalar_nogemm():
 
     f = theano.function([w, v, t, alpha], rval)
     t = f.maker.fgraph.toposort()
-    assert numpy.sum([isinstance(n.op, Gemm) for n in t]) == 0
+    assert np.sum([isinstance(n.op, Gemm) for n in t]) == 0
     #theano.printing.debugprint(f, print_type=True)
 
     v = T.fmatrix('v')
@@ -669,7 +669,7 @@ def test_upcasting_scalar_nogemm():
         config.on_opt_error = on_opt_error
 
     t = f.maker.fgraph.toposort()
-    assert numpy.sum([isinstance(n.op, Gemm) for n in t]) == 0
+    assert np.sum([isinstance(n.op, Gemm) for n in t]) == 0
     #theano.printing.debugprint(f, print_type=True)
 
 
@@ -763,13 +763,13 @@ def test_gemm_unrolled():
     """
     batch_size = 100
     rep_size = 40
-    rng = numpy.random.RandomState([1, 2, 3])
+    rng = np.random.RandomState([1, 2, 3])
 
     for num_rounds in range(1, 10):
         W = sharedX(rng.randn(rep_size, rep_size), name='W')
-        V = sharedX(numpy.zeros((batch_size, rep_size)), name='V')
-        H = sharedX(numpy.zeros((batch_size, rep_size)), name='H')
-        G = sharedX(numpy.zeros((batch_size, rep_size)), name='G')
+        V = sharedX(np.zeros((batch_size, rep_size)), name='V')
+        H = sharedX(np.zeros((batch_size, rep_size)), name='H')
+        G = sharedX(np.zeros((batch_size, rep_size)), name='G')
 
         init_V = sharedX(rng.uniform(0, 1, (batch_size, rep_size)), name='init_V')
         init_H = sharedX(rng.uniform(0, 1, (batch_size, rep_size)), name='init_H')
@@ -844,7 +844,7 @@ def test_dot22():
             else:
                 check = [isinstance(x.op, T.Dot) for x in topo]
                 assert any(check), (dtype1, dtype2)
-            rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+            rng = np.random.RandomState(unittest_tools.fetch_seed())
 
             def cmp(a_shp, b_shp):
                 av = rng.uniform(size=a_shp).astype(dtype1)
@@ -867,7 +867,7 @@ def test_dot22scalar():
     # m = theano.compile.get_default_mode().including('local_dot_to_dot22',
     #                           'local_dot22_to_dot22scalar','specialize')
     #m = theano.compile.get_default_mode().including('BlasOpt', 'specialize')
-    rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+    rng = np.random.RandomState(unittest_tools.fetch_seed())
     for dtype1 in ['complex64', 'complex128']:
         a = T.matrix('a', dtype=dtype1)
         for dtype2 in ['complex64', 'complex128']:
@@ -1069,7 +1069,7 @@ def test_dot_w_self():
     # normally be a gemm must not be because the output is aliased to
     # one of the inputs.
 
-    A = shared(value=numpy.ones((2, 2)))
+    A = shared(value=np.ones((2, 2)))
     B = T.matrix()
 
     p = T.dot(A, A) * B
@@ -1078,7 +1078,7 @@ def test_dot_w_self():
     f = theano.function([B], p, updates=[(A, A - grad)])
 
     # tests correctness in debugmode
-    f(numpy.asarray([[0, 1], [2, 3]], dtype=config.floatX))
+    f(np.asarray([[0, 1], [2, 3]], dtype=config.floatX))
 
 
 ###############################################################################
@@ -1088,9 +1088,9 @@ def test_dot_w_self():
 class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
     def test_dot_vv(self):
         ''' Currently we generate a gemv for that case'''
-        rng = numpy.random.RandomState(unittest_tools.fetch_seed())
-        v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
-        w = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
+        rng = np.random.RandomState(unittest_tools.fetch_seed())
+        v = theano.shared(np.array(rng.uniform(size=(2,)), dtype='float32'))
+        w = theano.shared(np.array(rng.uniform(size=(2,)), dtype='float32'))
         f = theano.function([], theano.dot(v, w), mode=mode_blas_opt)
 
         # Assert that the dot was optimized somehow
@@ -1098,13 +1098,13 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         self.assertFunctionContains1(f, Gemv(True))
 
         # Assert they produce the same output
-        assert numpy.allclose(f(), numpy.dot(v.get_value(), w.get_value()))
+        assert np.allclose(f(), np.dot(v.get_value(), w.get_value()))
 
     def test_dot_vm(self):
         ''' Test vector dot matrix '''
-        rng = numpy.random.RandomState(unittest_tools.fetch_seed())
-        v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
-        m = theano.shared(numpy.array(rng.uniform(size=(2, 3)),
+        rng = np.random.RandomState(unittest_tools.fetch_seed())
+        v = theano.shared(np.array(rng.uniform(size=(2,)), dtype='float32'))
+        m = theano.shared(np.array(rng.uniform(size=(2, 3)),
              dtype='float32'))
         f = theano.function([], theano.dot(v, m), mode=mode_blas_opt)
 
@@ -1113,18 +1113,18 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         self.assertFunctionContains1(f, Gemv(True))
 
         # Assert they produce the same output
-        assert numpy.allclose(f(), numpy.dot(v.get_value(), m.get_value()))
+        assert np.allclose(f(), np.dot(v.get_value(), m.get_value()))
         # Assert it works when m has no contiguous dimension
         m.set_value(
                 m.get_value(borrow=True)[::-1, ::-1],
                 borrow=True)
-        assert numpy.allclose(f(), numpy.dot(v.get_value(), m.get_value()))
+        assert np.allclose(f(), np.dot(v.get_value(), m.get_value()))
 
     def test_dot_mv(self):
         ''' Test matrix dot vector '''
-        rng = numpy.random.RandomState(unittest_tools.fetch_seed())
-        v = theano.shared(numpy.array(rng.uniform(size=(2,)), dtype='float32'))
-        m = theano.shared(numpy.array(rng.uniform(size=(3, 2)),
+        rng = np.random.RandomState(unittest_tools.fetch_seed())
+        v = theano.shared(np.array(rng.uniform(size=(2,)), dtype='float32'))
+        m = theano.shared(np.array(rng.uniform(size=(3, 2)),
                                        dtype='float32'))
         f = theano.function([], theano.dot(m, v), mode=mode_blas_opt)
 
@@ -1133,29 +1133,29 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         self.assertFunctionContains1(f, Gemv(True))
 
         # Assert they produce the same output
-        assert numpy.allclose(f(), numpy.dot(m.get_value(), v.get_value()))
+        assert np.allclose(f(), np.dot(m.get_value(), v.get_value()))
         # Assert it works when m has no contiguous dimension
         m.set_value(
                 m.get_value(borrow=True)[::-1, ::-1],
                 borrow=True)
-        assert numpy.allclose(f(), numpy.dot(m.get_value(), v.get_value()))
+        assert np.allclose(f(), np.dot(m.get_value(), v.get_value()))
 
     @staticmethod
     def t_gemv1(m_shp):
         ''' test vector2+dot(matrix,vector1) '''
-        rng = numpy.random.RandomState(unittest_tools.fetch_seed())
-        v1 = theano.shared(numpy.array(rng.uniform(size=(m_shp[1],)
+        rng = np.random.RandomState(unittest_tools.fetch_seed())
+        v1 = theano.shared(np.array(rng.uniform(size=(m_shp[1],)
             ), dtype='float32'))
-        v2_orig = numpy.array(rng.uniform(size=(m_shp[0],)), dtype='float32')
+        v2_orig = np.array(rng.uniform(size=(m_shp[0],)), dtype='float32')
         v2 = theano.shared(v2_orig)
-        m = theano.shared(numpy.array(rng.uniform(size=m_shp),
+        m = theano.shared(np.array(rng.uniform(size=m_shp),
              dtype='float32'))
 
         f = theano.function([], v2 + theano.dot(m, v1), mode=mode_blas_opt)
 
         # Assert they produce the same output
-        assert numpy.allclose(f(),
-                numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
+        assert np.allclose(f(),
+                np.dot(m.get_value(), v1.get_value()) + v2_orig)
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op, Gemv)
@@ -1167,8 +1167,8 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
 
         # Assert they produce the same output
         g()
-        assert numpy.allclose(v2.get_value(),
-                numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
+        assert np.allclose(v2.get_value(),
+                np.dot(m.get_value(), v1.get_value()) + v2_orig)
         topo = g.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op, Gemv)
@@ -1180,11 +1180,11 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
                 m.get_value(borrow=True)[::-1, ::-1],
                 borrow=True)
         v2.set_value(v2_orig)
-        assert numpy.allclose(f(),
-                numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
+        assert np.allclose(f(),
+                np.dot(m.get_value(), v1.get_value()) + v2_orig)
         g()
-        assert numpy.allclose(v2.get_value(),
-                numpy.dot(m.get_value(), v1.get_value()) + v2_orig)
+        assert np.allclose(v2.get_value(),
+                np.dot(m.get_value(), v1.get_value()) + v2_orig)
 
     @attr('slow')
     def test_gemv1(self):
@@ -1195,19 +1195,19 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
 
     def test_gemv2(self):
         ''' test vector2+dot(vector1,matrix) '''
-        rng = numpy.random.RandomState(unittest_tools.fetch_seed())
-        v1 = theano.shared(numpy.array(rng.uniform(size=(2,)),
+        rng = np.random.RandomState(unittest_tools.fetch_seed())
+        v1 = theano.shared(np.array(rng.uniform(size=(2,)),
              dtype='float32'))
-        v2_orig = numpy.array(rng.uniform(size=(3,)), dtype='float32')
+        v2_orig = np.array(rng.uniform(size=(3,)), dtype='float32')
         v2 = theano.shared(v2_orig)
-        m = theano.shared(numpy.array(rng.uniform(size=(2, 3)),
+        m = theano.shared(np.array(rng.uniform(size=(2, 3)),
              dtype='float32'))
 
         f = theano.function([], v2 + theano.dot(v1, m), mode=mode_blas_opt)
 
         # Assert they produce the same output
-        assert numpy.allclose(f(),
-                numpy.dot(v1.get_value(), m.get_value()) + v2.get_value())
+        assert np.allclose(f(),
+                np.dot(v1.get_value(), m.get_value()) + v2.get_value())
         topo = f.maker.fgraph.toposort()
         assert sum(isinstance(node.op, Gemv) for node in topo) == 1
         assert topo[-1].op.inplace == False
@@ -1218,8 +1218,8 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
 
         # Assert they produce the same output
         g()
-        assert numpy.allclose(v2.get_value(),
-                numpy.dot(v1.get_value(), m.get_value()) + v2_orig)
+        assert np.allclose(v2.get_value(),
+                np.dot(v1.get_value(), m.get_value()) + v2_orig)
         topo = g.maker.fgraph.toposort()
         assert sum(isinstance(node.op, Gemv) for node in topo) == 1
         if config.mode != 'FAST_COMPILE':
@@ -1230,38 +1230,38 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
                 m.get_value(borrow=True)[::-1, ::-1],
                 borrow=True)
         v2.set_value(v2_orig)
-        assert numpy.allclose(f(),
-                numpy.dot(v1.get_value(), m.get_value()) + v2.get_value())
+        assert np.allclose(f(),
+                np.dot(v1.get_value(), m.get_value()) + v2.get_value())
         g()
-        assert numpy.allclose(v2.get_value(),
-                numpy.dot(v1.get_value(), m.get_value()) + v2_orig)
+        assert np.allclose(v2.get_value(),
+                np.dot(v1.get_value(), m.get_value()) + v2_orig)
 
     def test_gemv_broadcast(self):
         ''' test gemv with some broadcasted input '''
-        rng = numpy.random.RandomState(unittest_tools.fetch_seed())
-        v1 = theano.shared(numpy.array(rng.uniform(size=(2,)),
+        rng = np.random.RandomState(unittest_tools.fetch_seed())
+        v1 = theano.shared(np.array(rng.uniform(size=(2,)),
                                        dtype='float32'))
-        v2_orig = numpy.array(rng.uniform(size=(1,)), dtype='float32')
+        v2_orig = np.array(rng.uniform(size=(1,)), dtype='float32')
         v2 = theano.shared(v2_orig)
-        m = theano.shared(numpy.array(rng.uniform(size=(1, 2)),
+        m = theano.shared(np.array(rng.uniform(size=(1, 2)),
                                       dtype='float32'),
                           broadcastable=(True, False))
         o = theano.dot(m, v1)
         f = theano.function([], o + v2, mode=mode_blas_opt)
 
         # Assert they produce the same output
-        assert numpy.allclose(
+        assert np.allclose(
             f(),
-            numpy.dot(m.get_value(), v1.get_value()) + v2.get_value())
+            np.dot(m.get_value(), v1.get_value()) + v2.get_value())
         topo = f.maker.fgraph.toposort()
         assert sum(isinstance(node.op, Gemv) for node in topo) == 1
 
         # call gemv directly for mixed broadcast pattern.
         o = theano.tensor.blas.gemv_no_inplace(v2, 0.5, m, v1, 0.25)
         f = theano.function([], o, mode=mode_blas_opt)
-        assert numpy.allclose(
+        assert np.allclose(
             f(),
-            0.5*numpy.dot(m.get_value(), v1.get_value()) + 0.25*v2.get_value())
+            0.5*np.dot(m.get_value(), v1.get_value()) + 0.25*v2.get_value())
         topo = f.maker.fgraph.toposort()
         assert sum(isinstance(node.op, Gemv) for node in topo) == 1
 
@@ -1277,12 +1277,12 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         f = theano.function([A, x, y], z)
 
         # Matrix value
-        A_val = numpy.ones((5, 3), dtype=config.floatX)
+        A_val = np.ones((5, 3), dtype=config.floatX)
         # Different vector length
-        ones_3 = numpy.ones(3, dtype=config.floatX)
-        ones_4 = numpy.ones(4, dtype=config.floatX)
-        ones_5 = numpy.ones(5, dtype=config.floatX)
-        ones_6 = numpy.ones(6, dtype=config.floatX)
+        ones_3 = np.ones(3, dtype=config.floatX)
+        ones_4 = np.ones(4, dtype=config.floatX)
+        ones_5 = np.ones(5, dtype=config.floatX)
+        ones_6 = np.ones(6, dtype=config.floatX)
 
         f(A_val, ones_3, ones_5)
         f(A_val[::-1, ::-1], ones_3, ones_5)
@@ -1322,7 +1322,7 @@ class BaseGemv(object):
     shared = staticmethod(theano.shared)
 
     def get_data(self, x_stride=1, y_stride=1):
-        rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+        rng = np.random.RandomState(unittest_tools.fetch_seed())
         mult = array(1, dtype=self.dtype)
         if self.dtype in [complex64, complex128]:
             mult = array(1 + 1j, dtype=self.dtype)
@@ -1652,7 +1652,7 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
         return theano.function(inputs, outputs, self.mode, updates=updates)
 
     def b(self, bval):
-        return T.as_tensor_variable(numpy.asarray(bval, dtype=self.dtype))
+        return T.as_tensor_variable(np.asarray(bval, dtype=self.dtype))
 
     def test_b_0_triggers_ger(self):
         """ test local_gemm_to_ger opt"""
@@ -1685,45 +1685,45 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
     def test_outer(self):
         f = self.function([self.x, self.y], T.outer(self.x, self.y))
         self.assertFunctionContains(f, self.ger_destructive)
-        f(numpy.random.rand(5).astype(self.dtype),
-          numpy.random.rand(4).astype(self.dtype))
+        f(np.random.rand(5).astype(self.dtype),
+          np.random.rand(4).astype(self.dtype))
 
     def test_A_plus_outer(self):
         f = self.function([self.A, self.x, self.y],
                 self.A + T.outer(self.x, self.y))
         self.assertFunctionContains(f, self.ger)
-        f(numpy.random.rand(5, 4).astype(self.dtype),
-          numpy.random.rand(5).astype(self.dtype),
-          numpy.random.rand(4).astype(self.dtype))
-        f(numpy.random.rand(5, 4).astype(self.dtype)[::-1, ::-1],
-          numpy.random.rand(5).astype(self.dtype),
-          numpy.random.rand(4).astype(self.dtype))
+        f(np.random.rand(5, 4).astype(self.dtype),
+          np.random.rand(5).astype(self.dtype),
+          np.random.rand(4).astype(self.dtype))
+        f(np.random.rand(5, 4).astype(self.dtype)[::-1, ::-1],
+          np.random.rand(5).astype(self.dtype),
+          np.random.rand(4).astype(self.dtype))
 
     def test_A_plus_scaled_outer(self):
         f = self.function([self.A, self.x, self.y],
                 self.A + 0.1 * T.outer(self.x, self.y))
         self.assertFunctionContains(f, self.ger)
-        f(numpy.random.rand(5, 4).astype(self.dtype),
-          numpy.random.rand(5).astype(self.dtype),
-          numpy.random.rand(4).astype(self.dtype))
-        f(numpy.random.rand(5, 4).astype(self.dtype)[::-1, ::-1],
-          numpy.random.rand(5).astype(self.dtype),
-          numpy.random.rand(4).astype(self.dtype))
+        f(np.random.rand(5, 4).astype(self.dtype),
+          np.random.rand(5).astype(self.dtype),
+          np.random.rand(4).astype(self.dtype))
+        f(np.random.rand(5, 4).astype(self.dtype)[::-1, ::-1],
+          np.random.rand(5).astype(self.dtype),
+          np.random.rand(4).astype(self.dtype))
 
     def test_scaled_A_plus_scaled_outer(self):
         f = self.function([self.A, self.x, self.y],
-                          numpy.asarray(0.2, self.dtype) * self.A +
-                          numpy.asarray(0.1, self.dtype) * T.outer(
+                          np.asarray(0.2, self.dtype) * self.A +
+                          np.asarray(0.1, self.dtype) * T.outer(
                 self.x, self.y))
         # Why gemm? This make the graph simpler did we test that it
         # make it faster?
         self.assertFunctionContains(f, self.gemm)
-        f(numpy.random.rand(5, 4).astype(self.dtype),
-          numpy.random.rand(5).astype(self.dtype),
-          numpy.random.rand(4).astype(self.dtype))
-        f(numpy.random.rand(5, 4).astype(self.dtype)[::-1, ::-1],
-          numpy.random.rand(5).astype(self.dtype),
-          numpy.random.rand(4).astype(self.dtype))
+        f(np.random.rand(5, 4).astype(self.dtype),
+          np.random.rand(5).astype(self.dtype),
+          np.random.rand(4).astype(self.dtype))
+        f(np.random.rand(5, 4).astype(self.dtype)[::-1, ::-1],
+          np.random.rand(5).astype(self.dtype),
+          np.random.rand(4).astype(self.dtype))
 
     def given_dtype(self, dtype, M, N):
         """ test corner case shape and dtype"""
@@ -1731,12 +1731,12 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
         f = self.function([self.A, self.x, self.y],
                 self.A + 0.1 * T.outer(self.x, self.y))
         self.assertFunctionContains(f, self.ger)
-        f(numpy.random.rand(M, N).astype(self.dtype),
-          numpy.random.rand(M).astype(self.dtype),
-          numpy.random.rand(N).astype(self.dtype))
-        f(numpy.random.rand(M, N).astype(self.dtype)[::-1, ::-1],
-          numpy.random.rand(M).astype(self.dtype),
-          numpy.random.rand(N).astype(self.dtype))
+        f(np.random.rand(M, N).astype(self.dtype),
+          np.random.rand(M).astype(self.dtype),
+          np.random.rand(N).astype(self.dtype))
+        f(np.random.rand(M, N).astype(self.dtype)[::-1, ::-1],
+          np.random.rand(M).astype(self.dtype),
+          np.random.rand(N).astype(self.dtype))
 
     def test_f32_0_0(self):
         return self.given_dtype('float32', 0, 0)
@@ -1769,19 +1769,19 @@ class TestGer(TestCase, unittest_tools.TestOptimizationMixin):
         return self.given_dtype('complex128', 1, 9)
 
     def test_inplace(self):
-        A = self.shared(numpy.random.rand(4, 5).astype(self.dtype))
+        A = self.shared(np.random.rand(4, 5).astype(self.dtype))
         f = self.function([self.x, self.y], [],
                           updates=[(A, A + T.constant(0.1, dtype=self.dtype) *
                                    T.outer(self.x, self.y))])
         self.assertFunctionContains(f, self.ger_destructive)
-        f(numpy.random.rand(4).astype(self.dtype),
-          numpy.random.rand(5).astype(self.dtype))
+        f(np.random.rand(4).astype(self.dtype),
+          np.random.rand(5).astype(self.dtype))
 
         A.set_value(
             A.get_value(borrow=True, return_internal_type=True)[::-1, ::-1],
             borrow=True)
-        f(numpy.random.rand(4).astype(self.dtype),
-          numpy.random.rand(5).astype(self.dtype))
+        f(np.random.rand(4).astype(self.dtype),
+          np.random.rand(5).astype(self.dtype))
 
 
 class TestBlasStrides(TestCase):
@@ -1789,13 +1789,13 @@ class TestBlasStrides(TestCase):
     shared = staticmethod(tensor._shared)
     mode = theano.compile.get_default_mode()
     mode = mode.including('fast_run').excluding('gpu', 'c_blas', 'scipy_blas')
-    rng = numpy.random.RandomState(seed=unittest_tools.fetch_seed())
+    rng = np.random.RandomState(seed=unittest_tools.fetch_seed())
 
     def rand(self, *shape):
         return theano._asarray(self.rng.rand(*shape), dtype=self.dtype)
 
     def cmp_dot22(self, b_shp, c_shp):
-        av = numpy.zeros((0, 0), dtype=self.dtype)
+        av = np.zeros((0, 0), dtype=self.dtype)
         bv = self.rand(*b_shp)
         cv = self.rand(*c_shp)
 
@@ -1834,20 +1834,20 @@ class TestBlasStrides(TestCase):
                 c_t.set_value(ct_dev.copy()[::c_step2, ::c_step1], borrow=True)
 
                 # Numpy result
-                a_n = numpy.dot(bv[::b_step1, ::b_step2],
+                a_n = np.dot(bv[::b_step1, ::b_step2],
                                 cv[::c_step1, ::c_step2])
 
                 f_nn()
-                assert numpy.allclose(a.get_value(), a_n)
+                assert np.allclose(a.get_value(), a_n)
 
                 f_nt()
-                assert numpy.allclose(a.get_value(), a_n)
+                assert np.allclose(a.get_value(), a_n)
 
                 f_tn()
-                assert numpy.allclose(a.get_value(), a_n)
+                assert np.allclose(a.get_value(), a_n)
 
                 f_tt()
-                assert numpy.allclose(a.get_value(), a_n)
+                assert np.allclose(a.get_value(), a_n)
 
     def test_dot22(self):
         self.cmp_dot22((3, 4), (4, 5))
@@ -1865,10 +1865,10 @@ class TestBlasStrides(TestCase):
         self.cmp_dot22((0, 0), (0, 0))
 
     def cmp_dot22scalar(self, b_shp, c_shp):
-        av = numpy.zeros((0, 0), dtype=self.dtype)
+        av = np.zeros((0, 0), dtype=self.dtype)
         bv = self.rand(*b_shp)
         cv = self.rand(*c_shp)
-        l = numpy.float32(0.2)
+        l = np.float32(0.2)
 
         a = self.shared(av, 'a')
         b = self.shared(bv, 'b')
@@ -1904,20 +1904,20 @@ class TestBlasStrides(TestCase):
                 c_t.set_value(ct_dev.copy()[::c_step2, ::c_step1], borrow=True)
 
                 # Numpy result
-                a_n = l * numpy.dot(bv[::b_step1, ::b_step2],
+                a_n = l * np.dot(bv[::b_step1, ::b_step2],
                                     cv[::c_step1, ::c_step2])
 
                 f_nn()
-                assert numpy.allclose(a.get_value(), a_n)
+                assert np.allclose(a.get_value(), a_n)
 
                 f_nt()
-                assert numpy.allclose(a.get_value(), a_n)
+                assert np.allclose(a.get_value(), a_n)
 
                 f_tn()
-                assert numpy.allclose(a.get_value(), a_n)
+                assert np.allclose(a.get_value(), a_n)
 
                 f_tt()
-                assert numpy.allclose(a.get_value(), a_n)
+                assert np.allclose(a.get_value(), a_n)
 
     def test_dot22scalar(self):
         self.cmp_dot22scalar((3, 4), (4, 5))
@@ -1938,7 +1938,7 @@ class TestBlasStrides(TestCase):
         av = self.rand(*a_shp)
         bv = self.rand(*b_shp)
         cv = self.rand(*c_shp)
-        l = numpy.float32(0.2)
+        l = np.float32(0.2)
 
         a = self.shared(av, 'a')
         b = self.shared(bv, 'b')
@@ -1992,48 +1992,48 @@ class TestBlasStrides(TestCase):
 
                 # Numpy results
                 a_n = (l * av[::a_step1, ::a_step2]
-                       + numpy.dot(bv[::b_step1, ::b_step2],
+                       + np.dot(bv[::b_step1, ::b_step2],
                                    cv[::c_step1, ::c_step2]))
                 at_n = (l * av[::a_step1, ::a_step2].T
-                        + numpy.dot(bv[::b_step1, ::b_step2],
+                        + np.dot(bv[::b_step1, ::b_step2],
                                     cv[::c_step1, ::c_step2]).T)
 
                 # a's value is updated, so we need to reinitialize it each time
                 a.set_value(a_dev.copy()[::a_step1, ::a_step2], borrow=True)
                 f_nnn()
-                assert numpy.allclose(a.get_value(), a_n)
+                assert np.allclose(a.get_value(), a_n)
 
                 a.set_value(a_dev.copy()[::a_step1, ::a_step2], borrow=True)
                 f_nnt()
-                assert numpy.allclose(a.get_value(), a_n)
+                assert np.allclose(a.get_value(), a_n)
 
                 a.set_value(a_dev.copy()[::a_step1, ::a_step2], borrow=True)
                 f_ntn()
-                assert numpy.allclose(a.get_value(), a_n)
+                assert np.allclose(a.get_value(), a_n)
 
                 a.set_value(a_dev.copy()[::a_step1, ::a_step2], borrow=True)
                 f_ntt()
-                assert numpy.allclose(a.get_value(), a_n)
+                assert np.allclose(a.get_value(), a_n)
 
                 a_t.set_value(transpose(a_dev.copy())[::a_step2, ::a_step1],
                         borrow=True)
                 f_tnn()
-                assert numpy.allclose(a_t.get_value(), at_n)
+                assert np.allclose(a_t.get_value(), at_n)
 
                 a_t.set_value(transpose(a_dev.copy())[::a_step2, ::a_step1],
                         borrow=True)
                 f_tnt()
-                assert numpy.allclose(a_t.get_value(), at_n)
+                assert np.allclose(a_t.get_value(), at_n)
 
                 a_t.set_value(transpose(a_dev.copy())[::a_step2, ::a_step1],
                         borrow=True)
                 f_ttn()
-                assert numpy.allclose(a_t.get_value(), at_n)
+                assert np.allclose(a_t.get_value(), at_n)
 
                 a_t.set_value(transpose(a_dev.copy())[::a_step2, ::a_step1],
                         borrow=True)
                 f_ttt()
-                assert numpy.allclose(a_t.get_value(), at_n)
+                assert np.allclose(a_t.get_value(), at_n)
 
     def test_gemm(self):
         self.cmp_gemm((3, 5), (3, 4), (4, 5))
@@ -2054,7 +2054,7 @@ class TestBlasStrides(TestCase):
         av = self.rand(a_shp)
         bv = self.rand(*b_shp)
         cv = self.rand(c_shp)
-        l = numpy.float32(0.2)
+        l = np.float32(0.2)
 
         a = self.shared(av, 'a')
         b = self.shared(bv, 'b')
@@ -2086,14 +2086,14 @@ class TestBlasStrides(TestCase):
                 c.set_value(c_dev.copy()[::c_step], borrow=True)
 
                 a_n = (av[::a_step]
-                        + l * numpy.dot(bv[::b_step1, ::b_step2],
+                        + l * np.dot(bv[::b_step1, ::b_step2],
                                         cv[::c_step]))
                 f_n()
-                assert numpy.allclose(a.get_value(), a_n), (a.get_value(), a_n)
+                assert np.allclose(a.get_value(), a_n), (a.get_value(), a_n)
 
                 a.set_value(a_dev.copy()[::a_step], borrow=True)
                 f_t()
-                assert numpy.allclose(a.get_value(), a_n), (a.get_value(), a_n)
+                assert np.allclose(a.get_value(), a_n), (a.get_value(), a_n)
 
     def test_gemv(self):
         self.cmp_gemv(3, (3, 5), 5)
@@ -2109,7 +2109,7 @@ class TestBlasStrides(TestCase):
         av = self.rand(*a_shp)
         bv = self.rand(b_shp)
         cv = self.rand(c_shp)
-        l = numpy.float32(0.2)
+        l = np.float32(0.2)
 
         a = self.shared(av, 'a')
         b = self.shared(bv, 'b')
@@ -2142,13 +2142,13 @@ class TestBlasStrides(TestCase):
 
                 f_n()
                 n_n = (av[::a_step1, ::a_step2]
-                        + l * numpy.outer(bv[::b_step], cv[::c_step]))
-                assert numpy.allclose(a.get_value(), n_n), (a.get_value(), n_n)
+                        + l * np.outer(bv[::b_step], cv[::c_step]))
+                assert np.allclose(a.get_value(), n_n), (a.get_value(), n_n)
 
                 f_t()
                 n_t = (av.T[::a_step1, ::a_step2]
-                        + l * numpy.outer(bv[::b_step], cv[::c_step]).T)
-                assert numpy.allclose(a_t.get_value(), n_t),\
+                        + l * np.outer(bv[::b_step], cv[::c_step]).T)
+                assert np.allclose(a_t.get_value(), n_t),\
                         (a_t.get_value(), n_t)
 
     def test_ger_strides(self):
@@ -2163,9 +2163,9 @@ class TestBlasStrides(TestCase):
 
     def test_gemm_non_contiguous(self):
         """test_gemm_non_contiguous: Test if GEMM works well with non-contiguous matrices."""
-        aval = numpy.ones((6, 2))
-        bval = numpy.ones((2, 7))
-        cval = numpy.arange(7) + numpy.arange(0, .6, .1)[:, numpy.newaxis]
+        aval = np.ones((6, 2))
+        bval = np.ones((2, 7))
+        cval = np.arange(7) + np.arange(0, .6, .1)[:, np.newaxis]
 
         a = theano.shared(aval[:3], borrow=True)
         b = theano.shared(bval[:, :5], borrow=True)
@@ -2176,7 +2176,7 @@ class TestBlasStrides(TestCase):
         f = theano.function([s], [], updates={c: upd_c})
 
         f(0)
-        ref_output = numpy.ones((3, 5)) * 2
+        ref_output = np.ones((3, 5)) * 2
         unittest_tools.assert_allclose(c.get_value(), ref_output)
 
 
@@ -2185,8 +2185,8 @@ class test_infer_shape(unittest_tools.InferShapeTester):
         x, y = T.matrices('xy')
         self._compile_and_check(
             [x, y], [T.blas._dot22(x, y)],
-            [numpy.random.random((2, 3)).astype(config.floatX),
-             numpy.random.random((3, 4)).astype(config.floatX)],
+            [np.random.random((2, 3)).astype(config.floatX),
+             np.random.random((3, 4)).astype(config.floatX)],
             T.blas.Dot22)
 
     def test_dot22scalar(self):
@@ -2194,9 +2194,9 @@ class test_infer_shape(unittest_tools.InferShapeTester):
         a = T.scalar('a')
         self._compile_and_check(
             [x, y, a], [T.blas._dot22scalar(x, y, a)],
-            [numpy.random.random((2, 3)).astype(config.floatX),
-             numpy.random.random((3, 4)).astype(config.floatX),
-             numpy.asarray(0.5, dtype=config.floatX)],
+            [np.random.random((2, 3)).astype(config.floatX),
+             np.random.random((3, 4)).astype(config.floatX),
+             np.asarray(0.5, dtype=config.floatX)],
             T.blas.Dot22Scalar)
 
     def test_gemm(self):
@@ -2205,11 +2205,11 @@ class test_infer_shape(unittest_tools.InferShapeTester):
         b = T.scalar('b')
         self._compile_and_check(
             [x, y, a, z, b], [T.blas.gemm(z, a, x, y, b)],
-            [numpy.random.random((2, 3)).astype(config.floatX),
-             numpy.random.random((3, 4)).astype(config.floatX),
-             numpy.asarray(0.5, dtype=config.floatX),
-             numpy.random.random((2, 4)).astype(config.floatX),
-             numpy.asarray(0.5, dtype=config.floatX)],
+            [np.random.random((2, 3)).astype(config.floatX),
+             np.random.random((3, 4)).astype(config.floatX),
+             np.asarray(0.5, dtype=config.floatX),
+             np.random.random((2, 4)).astype(config.floatX),
+             np.asarray(0.5, dtype=config.floatX)],
             T.blas.Gemm)
 
     def test_gemv(self):
@@ -2219,11 +2219,11 @@ class test_infer_shape(unittest_tools.InferShapeTester):
         b = T.scalar('b')
         self._compile_and_check(
             [y, a, A, x, b], [T.blas.gemv(y, a, A, x, b)],
-            [numpy.random.random((2,)).astype(config.floatX),
-             numpy.asarray(0.5, dtype=config.floatX),
-             numpy.random.random((2, 3)).astype(config.floatX),
-             numpy.random.random((3,)).astype(config.floatX),
-             numpy.asarray(0.5, dtype=config.floatX)],
+            [np.random.random((2,)).astype(config.floatX),
+             np.asarray(0.5, dtype=config.floatX),
+             np.random.random((2, 3)).astype(config.floatX),
+             np.random.random((3,)).astype(config.floatX),
+             np.asarray(0.5, dtype=config.floatX)],
             T.blas.Gemv)
 
     def test_ger(self):
@@ -2232,8 +2232,8 @@ class test_infer_shape(unittest_tools.InferShapeTester):
         a = T.scalar('a')
         self._compile_and_check(
             [A, a, x, y], [T.blas.ger(A, a, x, y)],
-            [numpy.random.random((2, 3)).astype(config.floatX),
-             numpy.asarray(0.5, dtype=config.floatX),
-             numpy.random.random((2,)).astype(config.floatX),
-             numpy.random.random((3,)).astype(config.floatX)],
+            [np.random.random((2, 3)).astype(config.floatX),
+             np.asarray(0.5, dtype=config.floatX),
+             np.random.random((2,)).astype(config.floatX),
+             np.random.random((3,)).astype(config.floatX)],
             T.blas.Ger)
