@@ -681,9 +681,9 @@ class test_Prod(unittest.TestCase):
                             [51840., 45360., 40320.]])
         fn = theano.function([x], gg, mode=self.mode)
         assert np.allclose(fn(x_val),
-                            [[663696., 422568., 301872.],
-                             [233964., 190800., 161016.],
-                             [139248., 122652., 109584.]])
+                           [[663696., 422568., 301872.],
+                            [233964., 190800., 161016.],
+                            [139248., 122652., 109584.]])
         unittest_tools.verify_grad(Prod(axis=1, no_zeros_in_input=True),
                                    [x_val],
                                    mode=self.mode)
