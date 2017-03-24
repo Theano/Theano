@@ -24,7 +24,9 @@ from theano.tensor.nlinalg import (MatrixInverse,
 from theano.tensor.slinalg import (Cholesky,
                                    cholesky,
                                    Solve,
-                                   solve)
+                                   solve,
+                                   imported_scipy)
+
 
 logger = logging.getLogger(__name__)
 
@@ -244,6 +246,8 @@ def transinv_to_invtrans(node):
 @register_stabilize
 @local_optimizer([Dot, Dot22])
 def inv_as_solve(node):
+    if not imported_scipy:
+        return False
     if isinstance(node.op, (Dot, Dot22)):
         l, r = node.inputs
         if l.owner and l.owner.op == matrix_inverse:
