@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 import unittest
 from theano.tests import unittest_tools as utt
 import theano
@@ -43,13 +43,13 @@ class Test_inc_subtensor(unittest.TestCase):
 
             f = theano.function([a, increment, sl2_end], resut)
 
-            val_a = numpy.ones((5, 5))
+            val_a = np.ones((5, 5))
             val_inc = 2.3
             val_sl2_end = 2
 
             result = f(val_a, val_inc, val_sl2_end)
 
-            expected_result = numpy.copy(val_a)
+            expected_result = np.copy(val_a)
             if do_set:
                 expected_result[:, :val_sl2_end] = val_inc
             else:
@@ -71,7 +71,7 @@ class Test_inc_subtensor(unittest.TestCase):
 
         # These symbolic graphs legitimate, as long as increment has exactly
         # one element. So it should fail at runtime, not at compile time.
-        rng = numpy.random.RandomState(utt.fetch_seed())
+        rng = np.random.RandomState(utt.fetch_seed())
 
         def rng_randX(*shape):
             return rng.rand(*shape).astype(theano.config.floatX)
@@ -101,7 +101,7 @@ class Test_inc_subtensor(unittest.TestCase):
         sl2 = slice(sl2_end)
         sl3 = 2
 
-        val_a = numpy.ones((5, 3, 4))
+        val_a = np.ones((5, 3, 4))
         val_inc = 2.3
         val_sl2_end = 2
 
@@ -112,7 +112,7 @@ class Test_inc_subtensor(unittest.TestCase):
 
             f = theano.function([a, increment, sl2_end], resut)
 
-            expected_result = numpy.copy(val_a)
+            expected_result = np.copy(val_a)
             result = f(val_a, val_inc, val_sl2_end)
 
             if method is tt.set_subtensor:
@@ -127,7 +127,7 @@ class Test_inc_subtensor(unittest.TestCase):
 
             f = theano.function([a, increment, sl2_end], resut)
 
-            expected_result = numpy.copy(val_a)
+            expected_result = np.copy(val_a)
             result = f(val_a, val_inc, val_sl2_end)
 
             if method is tt.set_subtensor:
@@ -152,23 +152,23 @@ class Test_inc_subtensor(unittest.TestCase):
             # vector
             utt.verify_grad(
                 f_slice(slice(2, 4, None)),
-                (numpy.asarray([0, 1, 2, 3, 4, 5.]),
-                 numpy.asarray([9, 9.]), ))
+                (np.asarray([0, 1, 2, 3, 4, 5.]),
+                 np.asarray([9, 9.]), ))
 
             # matrix
             utt.verify_grad(
                 f_slice(slice(1, 2, None), slice(None, None, None)),
-                (numpy.asarray([[0, 1], [2, 3], [4, 5.]]),
-                 numpy.asarray([[9, 9.]]), ))
+                (np.asarray([[0, 1], [2, 3], [4, 5.]]),
+                 np.asarray([[9, 9.]]), ))
 
             # single element
             utt.verify_grad(
                 f_slice(2, 1),
-                (numpy.asarray([[0, 1], [2, 3], [4, 5.]]),
-                 numpy.asarray(9.),))
+                (np.asarray([[0, 1], [2, 3], [4, 5.]]),
+                 np.asarray(9.),))
 
             # broadcast
             utt.verify_grad(
                 f_slice(2),
-                (numpy.asarray([[0, 1], [2, 3], [4, 5.]]),
-                 numpy.asarray(9.),))
+                (np.asarray([[0, 1], [2, 3], [4, 5.]]),
+                 np.asarray(9.),))
