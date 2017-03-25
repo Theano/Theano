@@ -507,8 +507,8 @@ second dimension
             self.nfunc = getattr(np, self.nfunc_spec[0])
         elif 0 < self.scalar_op.nin < 32:
             self.ufunc = np.frompyfunc(self.scalar_op.impl,
-                                          self.scalar_op.nin,
-                                          self.scalar_op.nout)
+                                       self.scalar_op.nin,
+                                       self.scalar_op.nout)
 
     def get_output_info(self, dim_shuffle, *inputs):
         """Return the outputs dtype and broadcastable pattern and the
@@ -751,8 +751,8 @@ second dimension
                 impl == 'py'):
 
             ufunc = np.frompyfunc(self.scalar_op.impl,
-                                     len(node.inputs),
-                                     self.scalar_op.nout)
+                                  len(node.inputs),
+                                  self.scalar_op.nout)
             if self.scalar_op.nin > 0:
                 # We can reuse it for many nodes
                 self.ufunc = ufunc
@@ -1416,7 +1416,7 @@ class CAReduce(Op):
                         v_shape = list(variable.shape)
                         del v_shape[dimension]
                         variable = np.empty(tuple(v_shape),
-                                               dtype=acc_dtype)
+                                            dtype=acc_dtype)
                         variable.fill(self.scalar_op.identity)
                     else:
                         raise ValueError((
@@ -1437,7 +1437,7 @@ class CAReduce(Op):
         else:
             # Force a copy
             output[0] = np.array(variable, copy=True,
-                                    dtype=node.outputs[0].type.dtype)
+                                 dtype=node.outputs[0].type.dtype)
 
     def infer_shape(self, node, shapes):
         ishape, = shapes
