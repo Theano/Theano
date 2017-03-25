@@ -10,14 +10,16 @@ from .config import mode_with_gpu
 from numpy.linalg.linalg import LinAlgError
 
 # Skip tests if cuda_ndarray is not available.
-from nose.plugins.skip import SkipTest
-from theano.gpuarray.linalg import (cusolver_available, gpu_solve, GpuCholesky)
-
-if not cusolver_available:
-    raise SkipTest('Optional package scikits.cuda.cusolver not available')
+from theano.gpuarray.linalg import (cusolver_available, gpu_solve, GpuCholesky,
+                                    gpu_matrix_inverse)
 
 
 class TestCusolver(unittest.TestCase):
+
+    def setUp(self):
+        if not cusolver_available:
+            self.skipTest('Optional package scikits.cuda.cusolver not available')
+
     def run_gpu_solve(self, A_val, x_val, A_struct=None):
         b_val = np.dot(A_val, x_val)
         b_val_trans = np.dot(A_val.T, x_val)
@@ -117,6 +119,8 @@ class TestCusolver(unittest.TestCase):
 class TestGpuCholesky(unittest.TestCase):
 
     def setUp(self):
+        if not cusolver_available:
+            self.skipTest('Optional package scikits.cuda.cusolver not available')
         utt.seed_rng()
 
     def get_gpu_cholesky_func(self, lower=True, inplace=False):
@@ -191,3 +195,14 @@ class TestGpuCholesky(unittest.TestCase):
         A_val = -M_val.dot(M_val.T)
         fn = self.get_gpu_cholesky_func(True, False)
         self.assertRaises(LinAlgError, fn, A_val)
+
+
+class TestMagma(unittest.TestCase):
+    def test_gpu_matrix_inverse(self):
+        A = theano.tensor.fmatrix("A")
+
+        fn = theano.function([A], gpu_matrix_inverse(A), mode=mode_with_gpu)
+        N = 1000
+        A_val = np.random.rand(N, N).astype(np.float32)
+        A_val_inv = fn(A_val)
+        utt.assert_allclose(np.dot(A_val_inv, A_val), np.eye(N), atol=1e-3)

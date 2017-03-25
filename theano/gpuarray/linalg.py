@@ -1,14 +1,19 @@
 from __future__ import absolute_import, division, print_function
 
-import pkg_resources
-import theano
+import os
 import warnings
 
-from theano import Op
-from theano.gpuarray import basic_ops, GpuArrayType
-
 import numpy as np
+import pkg_resources
 from numpy.linalg.linalg import LinAlgError
+
+import theano
+from theano import Op
+from theano.gof import COp
+from theano.gpuarray import GpuArrayType
+
+from .basic_ops import as_gpuarray_variable, gpu_contiguous, infer_context_name
+from .type import gpu_context_type
 
 try:
     import pygpu
@@ -94,13 +99,13 @@ class GpuCusolverSolve(Op):
                                'GpuCusolverSolve Op can not be constructed.')
         if skcuda.__version__ <= '0.5.1':
             warnings.warn('The GpuSolve op requires scikit-cuda > 0.5.1 to work with CUDA 8')
-        context_name = basic_ops.infer_context_name(inp1, inp2)
+        context_name = infer_context_name(inp1, inp2)
 
-        inp1 = basic_ops.as_gpuarray_variable(inp1, context_name)
-        inp2 = basic_ops.as_gpuarray_variable(inp2, context_name)
+        inp1 = as_gpuarray_variable(inp1, context_name)
+        inp2 = as_gpuarray_variable(inp2, context_name)
 
-        inp1 = basic_ops.gpu_contiguous(inp1)
-        inp2 = basic_ops.gpu_contiguous(inp2)
+        inp1 = gpu_contiguous(inp1)
+        inp2 = gpu_contiguous(inp2)
 
         # this op can only operate on float32 matrices
         assert inp1.ndim == 2
@@ -260,11 +265,11 @@ class GpuCholesky(Op):
         if not pygpu_available:
             raise RuntimeError('Missing pygpu or triu/tril functions.'
                                'Install or update libgpuarray.')
-        context_name = basic_ops.infer_context_name(inp)
+        context_name = infer_context_name(inp)
 
-        inp = basic_ops.as_gpuarray_variable(inp, context_name)
+        inp = as_gpuarray_variable(inp, context_name)
 
-        inp = basic_ops.gpu_contiguous(inp)
+        inp = gpu_contiguous(inp)
 
         # this op can only operate on float32 matrices
         # because of current implementation of triu/tril.
@@ -341,3 +346,46 @@ class GpuCholesky(Op):
 
 def gpu_cholesky(A, lower=True):
     return GpuCholesky(lower)(A)
+
+
+class GpuMagmaMatrixInverse(COp):
+    """Computes the inverse of a matrix :math:`A` using magma library.
+    """
+    __props__ = ('inplace', )
+    params_type = gpu_context_type
+
+    def __init__(self, inplace=False):
+        COp.__init__(self, ['magma_linalg.c'],
+                     'APPLY_SPECIFIC(magma_matrix_inv)')
+        self.inplace = inplace
+
+    def c_headers(self):
+        return ['gpuarray/array.h', 'gpuarray/blas.h', 'gpuarray_helper.h', 'magma.h']
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__), pygpu.get_include()]
+
+    def c_libraries(self):
+        return ['magma']
+
+    def make_node(self, x):
+        if x.ndim != 2:
+            raise LinAlgError("Matrix rank error")
+        context_name = infer_context_name(x)
+        x = as_gpuarray_variable(x, context_name)
+        return theano.Apply(self, [x], [x.type()])
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
+    def get_op_params(self):
+        if self.inplace:
+            return [('INPLACE', '1')]
+        else:
+            return []
+
+    def infer_shape(self, node, shapes):
+        return shapes
+
+
+gpu_matrix_inverse = GpuMagmaMatrixInverse()
