@@ -164,8 +164,8 @@ def get_numeric_types(with_int=True, with_float=True, with_complex=False,
         # Return True if scalars defined from `cls1` are within the hierarchy
         # starting from `cls2`.
         # The third test below is to catch for instance the fact that
-        # one can use ``dtype=np.number`` and obtain a float64 scalar, even
-        # though `np.number` is not under `np.floating` in the class
+        # one can use ``dtype=numpy.number`` and obtain a float64 scalar, even
+        # though `numpy.number` is not under `numpy.floating` in the class
         # hierarchy.
         return (cls1 is cls2 or
                 issubclass(cls1, cls2) or
