@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 
 import logging
 import warnings
-import numpy as np as np as np as np
+import numpy as np
 from six.moves import xrange
 
 import theano
