@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function, division
 
 import logging
 import warnings
-import numpy
+import numpy as np as np as np as np
 from six.moves import xrange
 
 import theano
@@ -44,7 +44,7 @@ class MatrixPinv(Op):
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
-        z[0] = numpy.linalg.pinv(x).astype(x.dtype)
+        z[0] = np.linalg.pinv(x).astype(x.dtype)
 
 pinv = MatrixPinv()
 
@@ -76,7 +76,7 @@ class MatrixInverse(Op):
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (z,) = outputs
-        z[0] = numpy.linalg.inv(x).astype(x.dtype)
+        z[0] = np.linalg.inv(x).astype(x.dtype)
 
     def grad(self, inputs, g_outputs):
         r"""The gradient function should return
@@ -162,7 +162,7 @@ class AllocDiag(Op):
         (z,) = outputs
         if x.ndim != 1:
             raise TypeError(x)
-        z[0] = numpy.diag(x)
+        z[0] = np.diag(x)
 
     def infer_shape(self, node, shapes):
         x_s, = shapes
@@ -289,7 +289,7 @@ class Det(Op):
         (x,) = inputs
         (z,) = outputs
         try:
-            z[0] = numpy.asarray(numpy.linalg.det(x), dtype=x.dtype)
+            z[0] = np.asarray(np.linalg.det(x), dtype=x.dtype)
         except Exception:
             print('Failed to compute determinant', x)
             raise
@@ -313,7 +313,7 @@ class Eig(Op):
 
     """
 
-    _numop = staticmethod(numpy.linalg.eig)
+    _numop = staticmethod(np.linalg.eig)
     __props__ = ()
 
     def make_node(self, x):
@@ -341,7 +341,7 @@ class Eigh(Eig):
 
     """
 
-    _numop = staticmethod(numpy.linalg.eigh)
+    _numop = staticmethod(np.linalg.eigh)
     __props__ = ('UPLO',)
 
     def __init__(self, UPLO='L'):
@@ -356,7 +356,7 @@ class Eigh(Eig):
         # LAPACK.  Rather than trying to reproduce the (rather
         # involved) logic, we just probe linalg.eigh with a trivial
         # input.
-        w_dtype = self._numop([[numpy.dtype(x.dtype).type()]])[0].dtype.name
+        w_dtype = self._numop([[np.dtype(x.dtype).type()]])[0].dtype.name
         w = theano.tensor.vector(dtype=w_dtype)
         v = theano.tensor.matrix(dtype=x.dtype)
         return Apply(self, [x], [w, v])
@@ -419,11 +419,11 @@ class EighGrad(Op):
         assert UPLO in ['L', 'U']
         self.UPLO = UPLO
         if UPLO == 'L':
-            self.tri0 = numpy.tril
-            self.tri1 = lambda a: numpy.triu(a, 1)
+            self.tri0 = np.tril
+            self.tri1 = lambda a: np.triu(a, 1)
         else:
-            self.tri0 = numpy.triu
-            self.tri1 = lambda a: numpy.tril(a, -1)
+            self.tri0 = np.triu
+            self.tri1 = lambda a: np.tril(a, -1)
 
     def make_node(self, x, w, v, gw, gv):
         x, w, v, gw, gv = map(as_tensor_variable, (x, w, v, gw, gv))
@@ -445,7 +445,7 @@ class EighGrad(Op):
         """
         x, w, v, W, V = inputs
         N = x.shape[0]
-        outer = numpy.outer
+        outer = np.outer
 
         def G(n):
             return sum(v[:, m] * V.T[n].dot(v[:, m]) / (w[n] - w[m])
@@ -466,7 +466,7 @@ class EighGrad(Op):
 
         # Make sure we return the right dtype even if NumPy performed
         # upcasting in self.tri0.
-        outputs[0][0] = numpy.asarray(out, dtype=node.outputs[0].dtype)
+        outputs[0][0] = np.asarray(out, dtype=node.outputs[0].dtype)
 
     def infer_shape(self, node, shapes):
         return [shapes[0]]
@@ -486,7 +486,7 @@ class QRFull(Op):
 
     """
 
-    _numop = staticmethod(numpy.linalg.qr)
+    _numop = staticmethod(np.linalg.qr)
     __props__ = ('mode',)
 
     def __init__(self, mode):
@@ -519,7 +519,7 @@ class QRIncomplete(Op):
 
     """
 
-    _numop = staticmethod(numpy.linalg.qr)
+    _numop = staticmethod(np.linalg.qr)
     __props__ = ('mode',)
 
     def __init__(self, mode):
@@ -583,7 +583,7 @@ def qr(a, mode="reduced"):
     """
 
     x = [[2, 1], [3, 4]]
-    if isinstance(numpy.linalg.qr(x, mode), tuple):
+    if isinstance(np.linalg.qr(x, mode), tuple):
         return QRFull(mode)(a)
     else:
         return QRIncomplete(mode)(a)
@@ -606,7 +606,7 @@ class SVD(Op):
     """
 
     # See doc in the docstring of the function just after this class.
-    _numop = staticmethod(numpy.linalg.svd)
+    _numop = staticmethod(np.linalg.svd)
     __props__ = ('full_matrices', 'compute_uv')
 
     def __init__(self, full_matrices=True, compute_uv=True):
@@ -666,10 +666,10 @@ class lstsq(Op):
                              theano.tensor.lscalar(), theano.tensor.dvector()])
 
     def perform(self, node, inputs, outputs):
-        zz = numpy.linalg.lstsq(inputs[0], inputs[1], inputs[2])
+        zz = np.linalg.lstsq(inputs[0], inputs[1], inputs[2])
         outputs[0][0] = zz[0]
         outputs[1][0] = zz[1]
-        outputs[2][0] = numpy.array(zz[2])
+        outputs[2][0] = np.array(zz[2])
         outputs[3][0] = zz[3]
 
 
@@ -730,7 +730,7 @@ class TensorInv(Op):
     Class wrapper for tensorinv() function;
     Theano utilization of numpy.linalg.tensorinv;
     """
-    _numop = staticmethod(numpy.linalg.tensorinv)
+    _numop = staticmethod(np.linalg.tensorinv)
     __props__ = ('ind',)
 
     def __init__(self, ind=2):
@@ -790,7 +790,7 @@ class TensorSolve(Op):
     Class wrapper for tensorsolve function.
 
     """
-    _numop = staticmethod(numpy.linalg.tensorsolve)
+    _numop = staticmethod(np.linalg.tensorsolve)
     __props__ = ('axes', )
 
     def __init__(self, axes=None):
