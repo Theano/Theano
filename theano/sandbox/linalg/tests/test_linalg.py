@@ -163,4 +163,4 @@ def test_matrix_inverse_solve():
     b = theano.tensor.dmatrix('b')
     node = matrix_inverse(A).dot(b).owner
     [out] = inv_as_solve.transform(node)
-    assert isinstance(out.owner.op, Solve)               
+    assert isinstance(out.owner.op, Solve)
