@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 from theano import gof
 from theano.gof import Constant, Generic, Op
 from theano.gof.sched import key_to_cmp
@@ -27,7 +27,7 @@ class LoadFromDisk(Op):
     __props__ = ("dtype", "broadcastable", "mmap_mode")
 
     def __init__(self, dtype, broadcastable, mmap_mode=None):
-        self.dtype = numpy.dtype(dtype)  # turn "float64" into numpy.float64
+        self.dtype = np.dtype(dtype)  # turn "float64" into np.float64
         self.broadcastable = broadcastable
         if mmap_mode not in (None, 'c'):
             raise ValueError("The only supported values for mmap_mode "
@@ -44,7 +44,7 @@ class LoadFromDisk(Op):
         path = inp[0]
         if (path.split('.')[-1] == 'npz'):
             raise ValueError("Expected a .npy file, got %s instead" % path)
-        result = numpy.load(path, mmap_mode=self.mmap_mode)
+        result = np.load(path, mmap_mode=self.mmap_mode)
         if result.dtype != self.dtype:
             raise TypeError("Expected an array of type %s, got %s instead" %
                             (self.dtype, result.dtype))
@@ -125,7 +125,7 @@ class MPIRecv(Op):
         self.source = source
         self.tag = tag
         self.shape = shape
-        self.dtype = numpy.dtype(dtype)  # turn "float64" into numpy.float64
+        self.dtype = np.dtype(dtype)  # turn "float64" into numpy.float64
         self.broadcastable = (False,) * len(shape)
 
     def make_node(self):
@@ -135,7 +135,7 @@ class MPIRecv(Op):
 
     def perform(self, node, inp, out):
 
-        data = numpy.zeros(self.shape, dtype=self.dtype)
+        data = np.zeros(self.shape, dtype=self.dtype)
         request = comm.Irecv(data, self.source, self.tag)
 
         out[0][0] = request
