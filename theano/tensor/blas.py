@@ -130,7 +130,7 @@ import logging
 import os
 import time
 
-import numpy
+import numpy as np
 import numpy.distutils
 try:
     import numpy.distutils.__config__
@@ -166,10 +166,10 @@ try:
         # `scipy.linalg.blas.fblas` with `scipy.linalg.blas`.
         # See http://github.com/scipy/scipy/pull/358
         fblas = scipy.linalg.blas
-    _blas_gemv_fns = {numpy.dtype('float32'): fblas.sgemv,
-                      numpy.dtype('float64'): fblas.dgemv,
-                      numpy.dtype('complex64'): fblas.cgemv,
-                      numpy.dtype('complex128'): fblas.zgemv}
+    _blas_gemv_fns = {np.dtype('float32'): fblas.sgemv,
+                      np.dtype('float64'): fblas.dgemv,
+                      np.dtype('complex64'): fblas.cgemv,
+                      np.dtype('complex128'): fblas.zgemv}
 except ImportError as e:
     have_fblas = False
     # This is used in Gemv and ScipyGer. We use CGemv and CGer
@@ -190,12 +190,12 @@ def check_init_y():
         if not have_fblas:
             check_init_y._result = False
 
-        y = float('NaN') * numpy.ones((2,))
-        x = numpy.ones((2,))
-        A = numpy.ones((2, 2))
+        y = float('NaN') * np.ones((2,))
+        x = np.ones((2,))
+        A = np.ones((2, 2))
         gemv = _blas_gemv_fns[y.dtype]
         gemv(1.0, A.T, x, 0.0, y, overwrite_y=True, trans=True)
-        check_init_y._result = numpy.isnan(y).any()
+        check_init_y._result = np.isnan(y).any()
 
     return check_init_y._result
 
@@ -269,7 +269,7 @@ class Gemv(Op):
             out_storage[0][0] = gemv(alpha, A.T, x, beta, y,
                                      overwrite_y=self.inplace, trans=True)
         else:
-            out = numpy.dot(A, x)
+            out = np.dot(A, x)
             if alpha != 1:
                 out *= alpha
             if beta != 0:
@@ -277,7 +277,7 @@ class Gemv(Op):
                     out += beta * y
                 else:
                     out += y
-            out_storage[0][0] = numpy.asarray(out, dtype=y.dtype)
+            out_storage[0][0] = np.asarray(out, dtype=y.dtype)
 
     def infer_shape(self, node, input_shapes):
         return [input_shapes[0]]
@@ -341,9 +341,9 @@ class Ger(Op):
         else:
             A = cA.copy()
         if calpha != 1:
-            A += calpha * numpy.outer(cx, cy)
+            A += calpha * np.outer(cx, cy)
         else:
-            A += numpy.outer(cx, cy)
+            A += np.outer(cx, cy)
         cZ[0] = A
 
     def infer_shape(self, node, input_shapes):
@@ -902,26 +902,26 @@ class Gemm(GemmRelated):
         if not self.inplace:
             z = z.copy()  # the original z will not be changed
         if z.shape == ():
-            z.itemset(z * a + b * numpy.dot(x, y))
+            z.itemset(z * a + b * np.dot(x, y))
             zout[0] = z
         else:
             if b == 0.0:
                 if a == 1.0:
-                    z[:] = numpy.dot(x, y)
+                    z[:] = np.dot(x, y)
                 elif a == -1.0:
-                    z[:] = -numpy.dot(x, y)
+                    z[:] = -np.dot(x, y)
                 else:
-                    z[:] = a * numpy.dot(x, y)
+                    z[:] = a * np.dot(x, y)
             elif b == 1.0:
                 if a == 1.0:
-                    z += numpy.dot(x, y)
+                    z += np.dot(x, y)
                 elif a == -1.0:
-                    z -= numpy.dot(x, y)
+                    z -= np.dot(x, y)
                 else:
-                    z += a * numpy.dot(x, y)
+                    z += a * np.dot(x, y)
             else:
                 z *= b
-                z += a * numpy.dot(x, y)
+                z += a * np.dot(x, y)
             zout[0] = z
 
     def infer_shape(self, node, input_shapes):
@@ -1068,7 +1068,7 @@ def _as_scalar(res, dtype=None):
     """Return None or a TensorVariable whose type is in T.float_scalar_types"""
     if dtype is None:
         dtype = config.floatX
-    if numpy.all(res.type.broadcastable):
+    if np.all(res.type.broadcastable):
         while res.owner and isinstance(res.owner.op, T.DimShuffle):
             res = res.owner.inputs[0]
         # may still have some number of True's
@@ -1218,7 +1218,7 @@ def _gemm_canonicalize(r, scale, rval, maxclients):
         vectors = []
         matrices = []
         for i in r.owner.inputs:
-            if numpy.all(i.type.broadcastable):
+            if np.all(i.type.broadcastable):
                 while i.owner and isinstance(i.owner.op, T.DimShuffle):
                     i = i.owner.inputs[0]
                 if i.type.broadcastable:
@@ -1541,7 +1541,7 @@ class Dot22(GemmRelated):
         x, y = inp
         z, = out
         try:
-            z[0] = numpy.asarray(numpy.dot(x, y))
+            z[0] = np.asarray(np.dot(x, y))
         except ValueError as e:
             # The error raised by numpy has no shape information, we mean to
             # add that
@@ -1706,8 +1706,8 @@ def local_dot22_to_ger_or_gemv(node):
         x, y = node.inputs
         xb = x.broadcastable
         yb = y.broadcastable
-        one = T.as_tensor_variable(numpy.asarray(1, dtype=x.dtype))
-        zero = T.as_tensor_variable(numpy.asarray(0, dtype=x.dtype))
+        one = T.as_tensor_variable(np.asarray(1, dtype=x.dtype))
+        zero = T.as_tensor_variable(np.asarray(0, dtype=x.dtype))
         if xb[1] and yb[0]:
             # x and y are both vectors so this might qualifies for a GER
             xv = x.dimshuffle(0)
@@ -1812,7 +1812,7 @@ class Dot22Scalar(GemmRelated):
         x, y, scalar = inp
         z, = out
         try:
-            z[0] = numpy.asarray(scalar * numpy.dot(x, y))
+            z[0] = np.asarray(scalar * np.dot(x, y))
         except ValueError as e:
             # The error raised by numpy has no shape information, we
             # mean to add that
@@ -2036,9 +2036,9 @@ class BatchedDot(Op):
 
         shape = self.infer_shape(node, [i.shape for i in inp])[0]
         dtype = node.outputs[0].dtype
-        z0 = z[0] = numpy.empty(shape, dtype=dtype)
+        z0 = z[0] = np.empty(shape, dtype=dtype)
         for i in xrange(z0.shape[0]):
-            z0[i] = numpy.dot(x[i], y[i])
+            z0[i] = np.dot(x[i], y[i])
 
     def c_support_code(self):
         batch_gemm_defn = """
