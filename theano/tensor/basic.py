@@ -1221,7 +1221,7 @@ class MaxAndArgmax(Op):
         # Numpy does not support multiple axes for argmax
         # Work around
         keep_axes = np.array([i for i in range(x.ndim) if i not in axes],
-                                dtype='int64')
+                             dtype='int64')
         # Not-reduced axes in front
         transposed_x = np.transpose(x, np.concatenate((keep_axes, axes)))
         kept_shape = transposed_x.shape[:len(keep_axes)]
@@ -1467,10 +1467,10 @@ class Argmax(Op):
         # Numpy does not support multiple axes for argmax
         # Work around
         keep_axes = np.array([i for i in range(x.ndim) if i not in axes],
-                                dtype='int64')
+                             dtype='int64')
         # Not-reduced axes in front
         transposed_x = np.transpose(x, np.concatenate((keep_axes,
-                                                             axes)))
+                                                       axes)))
         kept_shape = transposed_x.shape[:len(keep_axes)]
         reduced_shape = transposed_x.shape[len(keep_axes):]
         new_shape = kept_shape + (np.prod(reduced_shape),)
@@ -3140,7 +3140,7 @@ class Mean(elemwise.CAReduce):
         # numpy.asarray is needed as otherwise we can end up with a
         # numpy scalar.
         output[0] = np.asarray(np.mean(input, dtype='float64',
-                                             axis=axis))
+                                       axis=axis))
 
     def c_code(self, node, name, inames, onames, sub):
         if self.axis is not None:
@@ -5290,8 +5290,8 @@ def tile(x, reps, ndim=None):
         if ndim is not None and len(reps) > ndim:
             raise ValueError("len(reps) should be equal or less than ndim")
         if not np.all([isinstance(r, integer_types) or
-                          (isinstance(r, TensorVariable) and
-                           r.dtype in theano.tensor.discrete_dtypes) for r in reps]):
+                       (isinstance(r, TensorVariable) and
+                        r.dtype in theano.tensor.discrete_dtypes) for r in reps]):
             raise ValueError("elements of reps must be scalars of integer dtype")
 
     # if reps.ndim is less than x.ndim, we pad the reps with
