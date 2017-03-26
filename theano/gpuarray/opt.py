@@ -2006,13 +2006,10 @@ def local_inplace_cholesky(node):
         return [GpuCholesky(lower=node.op.lower, inplace=True)(*node.inputs)]
 
 
-@register_opt('fast_compile')
+@register_opt('magma', 'fast_compile')
 @op_lifter([nlinalg.MatrixInverse])
-@register_opt2([theano.tensor.nlinalg.MatrixInverse], 'fast_compile')
+@register_opt2([theano.tensor.nlinalg.MatrixInverse], 'magma', 'fast_compile')
 def local_gpu_matrix_inverse(op, context_name, inputs, outputs):
-    magma_available = True
-    if not magma_available:
-        return
     return GpuMagmaMatrixInverse()
 
 

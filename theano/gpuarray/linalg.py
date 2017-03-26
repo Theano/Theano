@@ -355,12 +355,13 @@ class GpuMagmaMatrixInverse(COp):
     params_type = gpu_context_type
 
     def __init__(self, inplace=False):
-        COp.__init__(self, ['magma_linalg.c'],
-                     'APPLY_SPECIFIC(magma_matrix_inv)')
+        COp.__init__(self, ['magma_inv.c'],
+                     'APPLY_SPECIFIC(magma_inv)')
         self.inplace = inplace
 
     def c_headers(self):
-        return ['gpuarray/array.h', 'gpuarray/blas.h', 'gpuarray_helper.h', 'magma.h']
+        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
+                'gpuarray_helper.h', 'magma.h']
 
     def c_header_dirs(self):
         return [os.path.dirname(__file__), pygpu.get_include()]
@@ -371,8 +372,8 @@ class GpuMagmaMatrixInverse(COp):
     def make_node(self, x):
         if x.ndim != 2:
             raise LinAlgError("Matrix rank error")
-        context_name = infer_context_name(x)
-        x = as_gpuarray_variable(x, context_name)
+        ctx_name = infer_context_name(x)
+        x = as_gpuarray_variable(x, ctx_name)
         return theano.Apply(self, [x], [x.type()])
 
     def get_params(self, node):
