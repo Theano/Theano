@@ -702,6 +702,13 @@ def local_gpua_elemwise(op, context_name, inputs, outputs):
         name = 'Gpu' + name
     if len(outputs) > 1:
         return
+
+    # We move float* scalar only if the outputs is used on the GPU.
+    # This will trigger a backward pass when needed, but will prevent
+    # many useless transfer to only compute GpuElemwise on scalar.
+    if outputs[0].ndim == 0 and len([c for c, _ in outputs[0].clients
+                                     if isinstance(c.op, GpuFromHost)]) == 0:
+        return
     have_cuda = False
     have_opencl = False
     if inputs and isinstance(inputs[0].type, GpuArrayType):
