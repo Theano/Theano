@@ -72,7 +72,7 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
 from .opt_util import alpha_merge, output_merge, pad_dims, unpad_dims
 from .reduction import GpuMaxAndArgmax
 from .linalg import (GpuCusolverSolve, MATRIX_STRUCTURES_SOLVE, GpuCholesky,
-                     cusolver_available, GpuMagmaMatrixInverse)
+                     cusolver_available, GpuMagmaMatrixInverse, GpuMagmaSVD)
 
 _logger = logging.getLogger("theano.gpuarray.opt")
 
@@ -2011,6 +2011,15 @@ def local_inplace_cholesky(node):
 @register_opt2([theano.tensor.nlinalg.MatrixInverse], 'magma', 'fast_compile')
 def local_gpu_matrix_inverse(op, context_name, inputs, outputs):
     return GpuMagmaMatrixInverse()
+
+
+@register_opt('magma', 'fast_compile')
+@op_lifter([nlinalg.SVD])
+@register_opt2([theano.tensor.nlinalg.SVD], 'magma', 'fast_compile')
+def local_gpu_svd(op, context_name, inputs, outputs):
+    import pudb; pudb.set_trace()
+    return GpuMagmaSVD(full_matrices=op.full_matrices,
+                       compute_uv=op.compute_uv)
 
 
 # Do not register in fast_run or fast_compile.

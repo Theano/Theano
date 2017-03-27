@@ -348,6 +348,72 @@ def gpu_cholesky(A, lower=True):
     return GpuCholesky(lower)(A)
 
 
+class GpuMagmaSVD(COp):
+    """Computes the svd of a matrix :math:`A` using magma library.
+    """
+    __props__ = ('full_matrices', 'compute_uv')
+    params_type = gpu_context_type
+
+    def __init__(self, full_matrices=True, compute_uv=True):
+        self.full_matrices = full_matrices
+        self.compute_uv = compute_uv
+        COp.__init__(self, ['magma_svd.c'],
+                     'APPLY_SPECIFIC(magma_svd)')
+
+    def c_headers(self):
+        return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
+                'gpuarray_helper.h', 'magma.h']
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__), pygpu.get_include()]
+
+    def c_libraries(self):
+        return ['magma']
+
+    def make_node(self, A):
+        if A.ndim != 2:
+            raise LinAlgError("Matrix rank error")
+        ctx_name = infer_context_name(A)
+        A = as_gpuarray_variable(A, ctx_name)
+        return theano.Apply(self, [A],
+                            [A.type(),
+                             GpuArrayType(A.dtype, broadcastable=[False],
+                                          context_name=ctx_name)(),
+                             A.type()])
+
+    def get_params(self, node):
+        return node.inputs[0].type.context
+
+    def get_op_params(self):
+        compute_uv = int(self.compute_uv)
+        full_matrices = int(self.full_matrices)
+        return [('COMPUTE_UV', compute_uv),
+                ('FULL_MATRICES', full_matrices)]
+
+
+def gpu_svd(a, full_matrices=1, compute_uv=1):
+    """
+    This function performs the SVD on GPU.
+
+    Parameters
+    ----------
+    full_matrices : bool, optional
+        If True (default), u and v have the shapes (M, M) and (N, N),
+        respectively.
+        Otherwise, the shapes are (M, K) and (K, N), respectively,
+        where K = min(M, N).
+    compute_uv : bool, optional
+        Whether or not to compute u and v in addition to s.
+        True by default.
+
+    Returns
+    -------
+    U, V,  D : matrices
+
+    """
+    return GpuMagmaSVD(full_matrices, compute_uv)(a)
+
+
 class GpuMagmaMatrixInverse(COp):
     """Computes the inverse of a matrix :math:`A` using magma library.
     """

@@ -5,13 +5,13 @@ import numpy as np
 import theano
 
 from theano.tests import unittest_tools as utt
-from .config import mode_with_gpu
+from .config import mode_with_gpu, mode_without_gpu
 
 from numpy.linalg.linalg import LinAlgError
 
 # Skip tests if cuda_ndarray is not available.
 from theano.gpuarray.linalg import (cusolver_available, gpu_solve, GpuCholesky,
-                                    gpu_matrix_inverse)
+                                    gpu_matrix_inverse, gpu_svd)
 
 
 class TestCusolver(unittest.TestCase):
@@ -201,8 +201,30 @@ class TestMagma(unittest.TestCase):
     def test_gpu_matrix_inverse(self):
         A = theano.tensor.fmatrix("A")
 
-        fn = theano.function([A], gpu_matrix_inverse(A), mode=mode_with_gpu)
+        fn = theano.function([A], gpu_matrix_inverse(A), mode=mode_with_gpu.including('magma'))
         N = 1000
         A_val = np.random.rand(N, N).astype(np.float32)
         A_val_inv = fn(A_val)
         utt.assert_allclose(np.dot(A_val_inv, A_val), np.eye(N), atol=1e-3)
+
+    def test_gpu_svd(self):
+        A = theano.tensor.fmatrix("A")
+        N, M = 50, 100
+        A_val = np.random.rand(M, N).astype(np.float32)
+
+        f = theano.function([A], gpu_svd(A), mode=mode_with_gpu.including('magma'))
+        U, S, VT = f(A_val)
+        utt.assert_allclose(np.dot(U.T, U), np.eye(M))
+        utt.assert_allclose(np.dot(VT.T, VT), np.eye(N))
+        S_m = np.zeros_like(A_val)
+        np.fill_diagonal(S_m, S)
+        utt.assert_allclose(np.dot(np.dot(U, S_m), VT), A_val)
+
+        f = theano.function([A], gpu_svd(A, full_matrices=False), mode=mode_with_gpu.including('magma'))
+        U, _, VT = f(A_val)
+        utt.assert_allclose(np.dot(U.T, U), np.eye(N))
+        utt.assert_allclose(np.dot(VT.T, VT), np.eye(N))
+
+        f = theano.function([A], theano.tensor.nlinalg.svd(A, compute_uv=False), mode=mode_without_gpu)
+        f2 = theano.function([A], gpu_svd(A, compute_uv=False), mode=mode_with_gpu.including('magma'))
+        utt.assert_allclose(f(A_val)[1], f2(A_val)[1], 1)
