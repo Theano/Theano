@@ -625,9 +625,13 @@ class SVD(Op):
         (x,) = inputs
         (w, u, v) = outputs
         assert x.ndim == 2, "The input of svd function should be a matrix."
-        w[0], u[0], v[0] = self._numop(x,
-                                       self.full_matrices,
-                                       self.compute_uv)
+        if self.compute_uv:
+            w[0], u[0], v[0] = self._numop(x,
+                                           self.full_matrices,
+                                           self.compute_uv)
+        else:
+            u[0] = self._numop(x, self.full_matrices, self.compute_uv)
+
 
 
 def svd(a, full_matrices=1, compute_uv=1):
