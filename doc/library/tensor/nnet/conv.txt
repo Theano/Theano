@@ -219,13 +219,13 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       It flip the kernel.
 
 .. autofunction:: theano.tensor.nnet.conv2d
+.. autofunction:: theano.tensor.nnet.conv2d_transpose
 .. autofunction:: theano.tensor.nnet.conv3d
 .. autofunction:: theano.sandbox.cuda.fftconv.conv2d_fft
 .. autofunction:: theano.tensor.nnet.Conv3D.conv3D
 .. autofunction:: theano.sandbox.cuda.fftconv.conv3d_fft
 .. autofunction:: theano.tensor.nnet.conv3d2d.conv3d
 .. autofunction:: theano.tensor.nnet.conv.conv2d
-.. autofunction:: theano.tensor.nnet.conv2d_transpose
 
 .. automodule:: theano.tensor.nnet.abstract_conv
     :members:
