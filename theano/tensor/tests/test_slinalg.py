@@ -332,6 +332,16 @@ def test_expm_grad_3():
     tensor.verify_grad(expm, [A], rng=rng)
 
 
+def test_expm_grad_4():
+    # with zero matrix
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the expm op.")
+    # Always test in float64 for better numerical stability.
+    A = numpy.zeros((5, 5))
+
+    utt.verify_grad(expm, [A])
+
+
 class TestKron(utt.InferShapeTester):
 
     rng = np.random.RandomState(43)

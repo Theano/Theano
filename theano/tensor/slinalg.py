@@ -511,7 +511,12 @@ class ExpmGrad(Op):
         U = scipy.linalg.inv(V).T
 
         exp_w = numpy.exp(w)
-        X = numpy.subtract.outer(exp_w, exp_w) / numpy.subtract.outer(w, w)
+        exp_diff = numpy.subtract.outer(exp_w, exp_w)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            X = exp_diff / numpy.subtract.outer(w, w)
+        X[exp_diff == 0] = 1
+
         numpy.fill_diagonal(X, exp_w)
         Y = U.dot(V.T.dot(gA).dot(U) * X).dot(V.T)
 
