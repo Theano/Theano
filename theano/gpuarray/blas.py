@@ -50,16 +50,15 @@ class GpuGemv(BlasOp):
         A = as_gpuarray_variable(A, ctx_name)
         x = as_gpuarray_variable(x, ctx_name)
         y = as_gpuarray_variable(y, ctx_name)
-        with theano.configparser.change_flags(warn_float64='ignore'):
-            alpha = as_tensor_variable(alpha).astype('float64')
-            beta = as_tensor_variable(beta).astype('float64')
+        alpha = as_tensor_variable(alpha)
+        beta = as_tensor_variable(beta)
 
         assert alpha.ndim == 0
         assert beta.ndim == 0
         assert A.ndim == 2
         assert x.ndim == 1
         assert y.ndim == 1
-        assert A.dtype == x.dtype == y.dtype
+        assert A.dtype == x.dtype == y.dtype == alpha.dtype == beta.dtype
         return Apply(self, [y, alpha, A, x, beta], [y.type()])
 
     def perform(self, node, inputs, out_storage):
@@ -163,9 +162,15 @@ class GpuGemm(BlasOp):
         A = as_gpuarray_variable(A, ctx_name)
         B = as_gpuarray_variable(B, ctx_name)
         C = as_gpuarray_variable(C, ctx_name)
-        with theano.configparser.change_flags(warn_float64='ignore'):
-            alpha = as_tensor_variable(alpha).astype('float64')
-            beta = as_tensor_variable(beta).astype('float64')
+        alpha = as_tensor_variable(alpha)
+        beta = as_tensor_variable(beta)
+
+        if not (A.dtype == B.dtype == C.dtype == alpha.dtype == beta.dtype):
+            raise TypeError(Gemm.E_mixed,
+                            (A.dtype, B.dtype, C.dtype,
+                             alpha.dtype, beta.dtype))
+        if not A.dtype.startswith('float'):
+            raise TypeError(Gemm.E_float, (A.dtype))
         assert alpha.ndim == 0
         assert beta.ndim == 0
         assert A.ndim == 2
@@ -244,8 +249,11 @@ class GpuGer(BlasOp):
         A = as_gpuarray_variable(A, ctx_name)
         x = as_gpuarray_variable(x, ctx_name)
         y = as_gpuarray_variable(y, ctx_name)
-        with theano.configparser.change_flags(warn_float64='ignore'):
-            alpha = as_tensor_variable(alpha).astype('float64')
+        alpha = as_tensor_variable(alpha)
+        if len(set([A.dtype, alpha.dtype, x.dtype, y.dtype])) != 1:
+            raise TypeError('ger requires matching dtypes',
+                            (A.dtype, alpha.dtype, x.dtype, y.dtype))
+
         assert alpha.ndim == 0
         assert A.ndim == 2
         assert x.ndim == 1
@@ -383,15 +391,14 @@ class GpuGemmBatch(BlasOp):
         A = as_gpuarray_variable(A, ctx_name)
         B = as_gpuarray_variable(B, ctx_name)
         C = as_gpuarray_variable(C, ctx_name)
-        with theano.configparser.change_flags(warn_float64='ignore'):
-            alpha = as_tensor_variable(alpha).astype('float64')
-            beta = as_tensor_variable(beta).astype('float64')
+        alpha = as_tensor_variable(alpha)
+        beta = as_tensor_variable(beta)
         assert alpha.ndim == 0
         assert beta.ndim == 0
         assert A.ndim == 3
         assert B.ndim == 3
         assert C.ndim == 3
-        assert A.dtype == B.dtype == C.dtype
+        assert A.dtype == B.dtype == C.dtype == alpha.dtype == beta.dtype
         return Apply(self, [C, alpha, A, B, beta], [C.type()])
 
     def c_headers(self):

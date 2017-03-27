@@ -59,7 +59,9 @@ GpuGemmTester = makeTester(
                test6=[rand(3, 4), 0.0, rand(3, 5), rand(5, 4), -1.0],
                test7=[rand(3, 4), -1.0, rand(3, 5), rand(5, 4), 0.0],
                test8=[rand(3, 4), -1.0, rand(3, 5), rand(5, 4), 1.1],
-               test9=[rand(3, 4), -1.0, rand(3, 5), rand(5, 4), -1.1],
+               test9=[rand(3, 4).astype('float32'), np.float32(-1.0),
+                      rand(3, 5).astype('float32'),
+                      rand(5, 4).astype('float32'), np.float32(-1.1)],
                # test10=[rand(0, 4), -1.0, rand(0, 5), rand(5, 4), 0.0],
                # test11=[rand(3, 0), -1.0, rand(3, 5), rand(5, 0), 1.1],
                # test12=[rand(3, 4), -1.0, rand(3, 0), rand(0, 4), -1.1],
@@ -68,14 +70,23 @@ GpuGemmTester = makeTester(
     )
 
 
+gemm_batched_tests = dict(
+    ("test_b%im%ik%in%i" % (b, m, k, n),
+     [rand(b, m, n), rand(), rand(b, m, k), rand(b, k, n), rand()])
+    for b, m, k, n in itertools.combinations([2, 3, 5, 7, 11, 13], 4))
+gemm_batched_tests['float32'] = [rand(3, 4, 7).astype('float32'),
+                                 rand().astype('float32'),
+                                 rand(3, 4, 4).astype('float32'),
+                                 rand(3, 4, 7).astype('float32'),
+                                 rand().astype('float32')]
+
+
 GpuGemmBatchTester = makeTester(
     'GpuGemmBatchTester',
     op=lambda z, alpha, x, y, beta: alpha * batched_dot(x, y) + beta * z,
     gpu_op=gpugemmbatch_no_inplace,
-    cases=dict(
-        ("test_b%im%ik%in%i" % (b, m, k, n),
-         [rand(b, m, n), rand(), rand(b, m, k), rand(b, k, n), rand()])
-        for b, m, k, n in itertools.combinations([2, 3, 5, 7, 11, 13], 4)))
+    cases=gemm_batched_tests
+    )
 
 
 class TestGpuSger(TestGer):
