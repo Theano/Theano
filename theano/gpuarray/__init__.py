@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import sys
+import os
 import logging
-import sys
 import warnings
 
 import theano
@@ -30,6 +30,7 @@ from .type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
                    reg_context, get_context, ContextNotDefined)
 from .basic_ops import as_gpuarray_variable
 from . import fft, dnn, opt, nerv, extra_ops, multinomial, reduction
+
 
 def transfer(x, target):
     try:
@@ -94,8 +95,8 @@ def init_dev(dev, name=None, preallocate=None):
             pygpu.empty((gmem,), dtype='int8', context=context)
             if config.print_active_device:
                 print("Preallocating %d/%d Mb (%f) on %s" %
-                      (gmem//MB, context.total_gmem//MB,
-                       gmem/context.total_gmem, dev),
+                      (gmem // MB, context.total_gmem // MB,
+                       gmem / context.total_gmem, dev),
                       file=sys.stderr)
 
         # Initialise the blas kernels.  We do this after the
@@ -170,7 +171,7 @@ def use(device,
 if pygpu:
     try:
         if (config.device.startswith('cuda') or
-            config.device.startswith('opencl')):
+                config.device.startswith('opencl')):
             use(config.device)
         elif (config.init_gpu_device.startswith('cuda') or
               config.init_gpu_device.startswith('opencl')):
@@ -191,8 +192,7 @@ if pygpu:
 
     from .basic_ops import (GpuAlloc, GpuAllocEmpty, GpuContiguous, GpuEye,
                             GpuFromHost, GpuJoin, GpuReshape, GpuSplit,
-                            HostFromGpu)
-    from .basic_ops import host_from_gpu, GpuFromHost
+                            HostFromGpu, host_from_gpu)
     from .elemwise import GpuElemwise
     from .subtensor import (GpuSubtensor, GpuIncSubtensor,
                             GpuAdvancedIncSubtensor1)
