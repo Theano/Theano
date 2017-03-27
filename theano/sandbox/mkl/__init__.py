@@ -50,7 +50,13 @@ class MKLVersion(gof.Op):
         return gof.Apply(self, [], [gof.Generic()()])
 
     def c_support_code(self):
-        return header_text()
+        ccode = header_text()
+        ccode += """
+        #if PY_MAJOR_VERSION >= 3
+            #define PyInt_FromLong PyLong_FromLong
+        #endif
+        """
+        return ccode
 
     def c_code(self, node, name, inputs, outputs, sub):
         o = outputs[0]
