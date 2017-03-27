@@ -192,6 +192,20 @@ AddConfigVar(
     BoolParam(True, allow_override=False),
     in_c_key=False)
 
+# Currently, only support "mkl" option.
+# Plan to support other library such as mkl-dnn in future.
+AddConfigVar('mkl.lib',
+             "'mkl', choose MKL as the default dnn library for CPU.",
+             EnumStr("mkl"),
+             in_c_key=False)
+
+AddConfigVar('mkl.nn.enabled',
+             "'auto', use MKL dnn primitive if available, but silently fall back"
+             " to not using it if not present."
+             " If True and MKL dnn can not be used, raise an error."
+             " If False, disable MKL dnn",
+             EnumStr("auto", "True", "False"),
+             in_c_key=False)
 
 AddConfigVar('gpuarray.sync',
              """If True, every op will make sure its work is done before
