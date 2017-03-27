@@ -101,6 +101,7 @@ def test_advinc_subtensor1_dtype():
     # Test the mixed dtype case
     shp = (3, 4)
     for dtype1, dtype2 in [('float32', 'int8'), ('float32', 'float64'),
+                           ('uint64', 'int8'), ('int64', 'uint8'),
                            ('float16', 'int8'), ('float16', 'float64'),
                            ('float16', 'float16')]:
         shared = gpuarray_shared_constructor
