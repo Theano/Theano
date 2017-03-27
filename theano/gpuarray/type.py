@@ -38,8 +38,8 @@ def move_to_gpu(data):
     # We don't support complex on the GPU
     if str(data.dtype) in tensor.basic.complex_dtypes:
         return False
-    # We don't want scalar int on the GPU.
-    if data.ndim == 0 and str(data.dtype) in tensor.basic.discrete_dtypes:
+    # We don't want scalars on the GPU.
+    if data.ndim == 0:
         return False
     return True
 

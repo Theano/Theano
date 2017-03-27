@@ -502,10 +502,10 @@ def test_not_useless_scalar_gpuelemwise():
         x = np.random.randn(32, 32).astype(np.float32)
         m1 = theano.shared(np.random.randn(32, 32).astype(np.float32))
         loss = (X - tensor.dot(X, m1)).norm(L=2)
-        lr0 = .001
+        lr = theano.shared(np.asarray(.001, dtype=np.float32))
         grad = tensor.grad(loss, m1)
 
-        train = theano.function(inputs=[X], updates=[(m1, m1 - lr1 * grad)],
+        train = theano.function(inputs=[X], updates=[(m1, m1 - lr * grad)],
                                 mode=mode_with_gpu)
         train(x)
         topo = train.maker.fgraph.toposort()
