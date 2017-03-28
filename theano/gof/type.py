@@ -881,8 +881,6 @@ class EnumType(Type, dict):
     def __getattr__(self, key):
         if key in self:
             return self[key]
-        if key == 'ctype':
-            return self.ctype
         return Type.__getattr__(self, key)
 
     def __setattr__(self, key, value):
@@ -915,7 +913,7 @@ class EnumType(Type, dict):
     def filter(self, data, strict=False, allow_downcast=None):
         if not strict and isinstance(data, bool):
             data = int(data)
-        assert isinstance(data, (int, float))
+        assert data in self.values()
         return data
 
     def values_eq(self, a, b):
@@ -949,7 +947,7 @@ class EnumType(Type, dict):
         return """%(ctype)s %(name)s;""" % dict(ctype=self.ctype, name=name)
 
     def c_init(self, name, sub):
-        return "%(name)s = 0;" % locals()
+        return "%(name)s = 0;" % dict(name=name)
 
     def c_cleanup(self, name, sub):
         return ""
@@ -965,6 +963,9 @@ class EnumType(Type, dict):
             %(fail)s
         }
         """ % dict(ctype=self.ctype, name=name, fail=sub['fail'])
+
+    def c_code_cache_version(self):
+        return (1,)
 
 
 class EnumList(EnumType):
@@ -1039,6 +1040,7 @@ class CEnumType(EnumList):
         switch(PyInt_AsLong(py_%(name)s)) {
             %(cases)s
             default:
+                PyErr_SetString(PyExc_ValueError, "CEnumType: invalid value to map to C constants.");
                 {%(fail)s}
                 break;
         }
@@ -1047,3 +1049,6 @@ class CEnumType(EnumList):
                    case %(i)d: %(name)s = %(constant_cname)s; break;
                    """ % dict(i=i, name=name, constant_cname=swapped_dict[i]) for i in sorted(swapped_dict.keys())),
                    fail=sub['fail'])
+
+    def c_code_cache_version(self):
+        return (1, super(CEnumType, self).c_code_cache_version())
