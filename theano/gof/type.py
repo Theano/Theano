@@ -922,22 +922,20 @@ class EnumType(Type, dict):
     def values_eq_approx(self, a, b):
         return float(a) == float(b)
 
-    @staticmethod
-    def c_support_macro_code():
-        return """
-        #if PY_MAJOR_VERSION >= 3
-            #ifndef PyInt_Check
-                #define PyInt_Check PyLong_Check
-            #endif
-            #ifndef PyInt_AsLong
-                #define PyInt_AsLong PyLong_AsLong
-            #endif
+    pyint_compat_code = """
+    #if PY_MAJOR_VERSION >= 3
+        #ifndef PyInt_Check
+            #define PyInt_Check PyLong_Check
         #endif
-        """
+        #ifndef PyInt_AsLong
+            #define PyInt_AsLong PyLong_AsLong
+        #endif
+    #endif
+    """
 
     def c_support_code(self):
         return (
-            self.c_support_macro_code() +
+            self.pyint_compat_code +
             ''.join("""
             #define %s %s
             """ % (k, str(self[k])) for k in sorted(self.keys()))
@@ -1030,7 +1028,7 @@ class CEnumType(EnumList):
     """
 
     def c_support_code(self):
-        return self.c_support_macro_code()
+        return self.pyint_compat_code
 
     def c_extract(self, name, sub, check_input=True):
         swapped_dict = dict((v, k) for (k, v) in self.items())
