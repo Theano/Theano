@@ -58,7 +58,11 @@ class GpuGemv(BlasOp):
         assert A.ndim == 2
         assert x.ndim == 1
         assert y.ndim == 1
-        assert A.dtype == x.dtype == y.dtype == alpha.dtype == beta.dtype
+        assert A.dtype == x.dtype == y.dtype
+        if A.dtype == 'float16':
+            assert alpha.dtype == beta.dtype == 'float32'
+        else:
+            assert alpha.dtype == beta.dtype == A.dtype
         return Apply(self, [y, alpha, A, x, beta], [y.type()])
 
     def perform(self, node, inputs, out_storage):
@@ -165,10 +169,14 @@ class GpuGemm(BlasOp):
         alpha = as_tensor_variable(alpha)
         beta = as_tensor_variable(beta)
 
-        if not (A.dtype == B.dtype == C.dtype == alpha.dtype == beta.dtype):
+        if not (A.dtype == B.dtype == C.dtype):
             raise TypeError(Gemm.E_mixed,
                             (A.dtype, B.dtype, C.dtype,
                              alpha.dtype, beta.dtype))
+        if A.dtype == 'float16':
+            assert alpha.dtype == beta.dtype == 'float32'
+        else:
+            assert alpha.dtype == beta.dtype == A.dtype
         if not A.dtype.startswith('float'):
             raise TypeError(Gemm.E_float, (A.dtype))
         assert alpha.ndim == 0
@@ -176,7 +184,6 @@ class GpuGemm(BlasOp):
         assert A.ndim == 2
         assert B.ndim == 2
         assert C.ndim == 2
-        assert A.dtype == B.dtype == C.dtype
         return Apply(self, [C, alpha, A, B, beta], [C.type()])
 
     def perform(self, node, inputs, outputs):
