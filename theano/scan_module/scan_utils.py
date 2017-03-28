@@ -152,7 +152,7 @@ def traverse(out, x, x_copy, d, visited=None):
         return d
     visited.add(out)
     from theano.sandbox import cuda
-    from theano.gpuarray.basic_ops import gpu_from_host, host_from_gpu
+    from theano.gpuarray.basic_ops import GpuFromHost, host_from_gpu
     from theano.gpuarray import pygpu_activated
     from theano.gpuarray.type import GpuArrayType
     if out == x:
@@ -160,7 +160,7 @@ def traverse(out, x, x_copy, d, visited=None):
             d[out] = cuda.gpu_from_host(x_copy)
         else:
             assert isinstance(x.type, GpuArrayType)
-            d[out] = gpu_from_host(x.type.context_name)(x_copy)
+            d[out] = GpuFromHost(x.type.context_name)(x_copy)
         return d
     elif out.owner is None:
         return d
@@ -876,10 +876,13 @@ class Validator(object):
 
             if out.owner is None:
                 if isinstance(out, tensor.TensorConstant):
-                    if hasattr(out, 'fgraph'):
+                    if hasattr(out, 'fgraph') or getattr(out, 'cached', False):
                         # If out have an fgraph, we aren't sure if it
                         # is from the inner graph or outer graph, so
                         # clone it.
+                        # As it will be used as is in an FunctionGraph
+                        # (won't be cloned later), it can't be a
+                        # cached variable
                         cloned_out = out.clone()
                         self.valid.add(cloned_out)
                         self.invalid.add(out)
@@ -1111,20 +1114,6 @@ def compress_outs(op, not_required, inputs):
         #map_old_new[len(op_outputs)-1] = o_offset
 
     return (op_inputs, op_outputs, info, node_inputs, map_old_new)
-
-
-def find_up(l_node, f_node):
-    r"""
-    Goes up in the graph and returns True if a node in nodes is found.
-
-    """
-    if isinstance(l_node, gof.Apply):
-        l_outs = l_node.outputs
-    else:
-        l_outs = l_node
-    l_ins = gof.graph.inputs(l_outs)
-    nodes = gof.graph.io_toposort(l_ins, l_outs)
-    return f_node in nodes
 
 
 def reconstruct_graph(inputs, outputs, tag=None):

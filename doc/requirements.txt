@@ -1,3 +1,4 @@
 .. |PlatformCompiler| replace:: ``g++`` (Linux and Windows), ``clang`` (OS X)
 
+.. |CompilerName| replace:: ``g++`` (Windows/Linux) or ``Clang`` (OS X)
 .. include:: requirements.inc
