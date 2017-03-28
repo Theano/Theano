@@ -14,11 +14,11 @@ echo "=== Building pycuda ..."
 cd ${THIS_DIR}/third_party/pycuda \
     && ./configure.py --cuda-root=${CUDA_HOME} \
     && ${SUDO} ${MAKE} ${MAKEFLAGS} install \
-    && ${SUDO} ldconfig
+    && ${SUDO} ldconfig || exit 1
 
 echo "=== Building skcuda ..."
 cd ${THIS_DIR}/third_party/scikit-cuda \
-    && ${SUDO} pip install .
+    && ${SUDO} pip install . || exit 1
 
 echo "=== Building gpuarray ..."
 cd ${THIS_DIR}/libgpuarray \
@@ -28,11 +28,11 @@ cd ${THIS_DIR}/libgpuarray \
     && VERBOSE=1 ${SUDO} ${MAKE} ${MAKEFLAGS} install \
     && cd .. \
     && ${SUDO} pip install . \
-    && ${SUDO} ldconfig
+    && ${SUDO} ldconfig || exit 1
 
 echo "=== Installing Theano ..."
 cd ${THIS_DIR} \
-    && ${SUDO} pip install -e .
+    && ${SUDO} pip install -e . || exit 1
 
 echo "=== Finished installing Theano."
 
