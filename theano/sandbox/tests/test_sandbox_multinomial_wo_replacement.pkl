@@ -1,0 +1,16 @@
+ccopy_reg
+_reconstructor
+p1
+(ctheano.sandbox.multinomial
+MultinomialWOReplacementFromUniform
+p2
+c__builtin__
+object
+p3
+NtRp4
+(dp5
+S'odtype'
+p6
+S'auto'
+p7
+sb.
