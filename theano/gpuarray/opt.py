@@ -1163,6 +1163,8 @@ def local_gpua_careduce(op, context_name, inputs, outputs):
 @op_lifter([tensor.blas.Gemv, tensor.blas_c.CGemv])
 @register_opt2([tensor.blas.Gemv], 'fast_compile')
 def local_gpua_gemv(op, context_name, inputs, outputs):
+    if inputs[0].dtype not in ['float32', 'float64']:
+        return
     if op.inplace:
         return gpugemv_inplace
     else:
@@ -1183,6 +1185,8 @@ def local_gpua_gemm(op, context_name, inputs, outputs):
 @op_lifter([tensor.blas.BatchedDot])
 @register_opt2([tensor.blas.BatchedDot], 'fast_compile')
 def local_gpua_gemmbatch(op, context_name, inputs, outputs):
+    if inputs[0].dtype not in ['float32', 'float64']:
+        return
     a, b = inputs
     c = tensor.AllocEmpty(a.dtype)(a.shape[0], a.shape[1], b.shape[2])
     return gpugemmbatch_no_inplace(c, np.asarray(1.0, dtype=a.dtype),
@@ -1217,6 +1221,8 @@ def local_gpua_gemmbatch_output_merge(node, *inputs):
 @op_lifter([tensor.blas.Ger, tensor.blas_c.CGer, tensor.blas_scipy.ScipyGer])
 @register_opt2([tensor.blas.Ger, tensor.blas_c.CGer, tensor.blas_scipy.ScipyGer], 'fast_compile')
 def local_gpua_ger(op, context_name, inputs, outputs):
+    if inputs[0].dtype not in ['float32', 'float64']:
+        return
     return GpuGer(inplace=op.destructive)
 
 
