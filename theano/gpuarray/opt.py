@@ -2010,6 +2010,8 @@ def local_inplace_cholesky(node):
 @op_lifter([nlinalg.MatrixInverse])
 @register_opt2([theano.tensor.nlinalg.MatrixInverse], 'magma', 'fast_compile')
 def local_gpu_matrix_inverse(op, context_name, inputs, outputs):
+    if not config.magma.enabled:
+        return
     return GpuMagmaMatrixInverse()
 
 
@@ -2017,7 +2019,8 @@ def local_gpu_matrix_inverse(op, context_name, inputs, outputs):
 @op_lifter([nlinalg.SVD])
 @register_opt2([theano.tensor.nlinalg.SVD], 'magma', 'fast_compile')
 def local_gpu_svd(op, context_name, inputs, outputs):
-    import pudb; pudb.set_trace()
+    if not config.magma.enabled:
+        return
     return GpuMagmaSVD(full_matrices=op.full_matrices,
                        compute_uv=op.compute_uv)
 

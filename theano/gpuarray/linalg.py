@@ -8,7 +8,7 @@ import pkg_resources
 from numpy.linalg.linalg import LinAlgError
 
 import theano
-from theano import Op
+from theano import Op, config
 from theano.gof import COp
 from theano.gpuarray import GpuArrayType
 
@@ -365,10 +365,18 @@ class GpuMagmaSVD(COp):
                 'gpuarray_helper.h', 'magma.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), pygpu.get_include()]
+        dirs = [os.path.dirname(__file__), pygpu.get_include()]
+        if config.magma.include_path:
+            dirs.append(config.magma.include_path)
+        return dirs
 
     def c_libraries(self):
         return ['magma']
+
+    def c_lib_dirs(self):
+        if config.magma.library_path:
+            return [config.magma.library_path]
+        return []
 
     def make_node(self, A):
         if A.ndim != 2:
@@ -430,10 +438,18 @@ class GpuMagmaMatrixInverse(COp):
                 'gpuarray_helper.h', 'magma.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), pygpu.get_include()]
+        dirs = [os.path.dirname(__file__), pygpu.get_include()]
+        if config.magma.include_path:
+            dirs.append(config.magma.include_path)
+        return dirs
 
     def c_libraries(self):
         return ['magma']
+
+    def c_lib_dirs(self):
+        if config.magma.library_path:
+            return [config.magma.library_path]
+        return []
 
     def make_node(self, x):
         if x.ndim != 2:
