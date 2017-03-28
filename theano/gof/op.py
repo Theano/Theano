@@ -1406,9 +1406,10 @@ class COp(Op):
             wrapper = self.params_type
             params = [('APPLY_SPECIFIC_WRAPPER', wrapper.name)]
             for i in range(wrapper.length):
-                field_c_element_type = wrapper.types[i].c_element_type()
-                if field_c_element_type:
-                    params.append(('DTYPE_PARAM_' + wrapper.fields[i], field_c_element_type))
+                try:
+                    params.append(('DTYPE_PARAM_' + wrapper.fields[i], wrapper.types[i].c_element_type()))
+                except utils.MethodNotDefined:
+                    pass
             return params
         return []
 

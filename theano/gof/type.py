@@ -46,7 +46,7 @@ class CLinkerType(CLinkerObject):
          - For ``GpuArrayType(dtype='int32', ...)``: should return ``"ga_int"``.
 
         """
-        return ''
+        raise MethodNotDefined("c_element_type", type(self), self.__class__.__name__)
 
     def c_is_simple(self):
         """
