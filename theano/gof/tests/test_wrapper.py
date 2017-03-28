@@ -72,18 +72,12 @@ class QuadraticOpFunc(Op):
         """ % {'name': name, 'float_type': float_type}
 
     def c_code(self, node, name, inputs, outputs, sub):
-        X = inputs[0]
-        Y = outputs[0]
-        coeff = sub['params']
-        fail = sub['fail']
-        float_type = node.inputs[0].type.dtype_specs()[1]
-        float_typenum = node.inputs[0].type.dtype_specs()[2]
         return """
         %(float_type)s a = (%(float_type)s) (*(npy_float64*) PyArray_GETPTR1(%(coeff)s->a, 0)); // 0-D TensorType.
         %(float_type)s b =                                                   %(coeff)s->b;      // Scalar.
         %(float_type)s c =                 (%(float_type)s) PyFloat_AsDouble(%(coeff)s->c);     // Generic.
         Py_XDECREF(%(Y)s);
-        %(Y)s = (PyArrayObject*)PyArray_EMPTY(PyArray_NDIM(%(X)s), PyArray_DIMS(%(X)s), %(float_typenum)s, PyArray_IS_F_CONTIGUOUS(%(X)s));
+        %(Y)s = (PyArrayObject*)PyArray_EMPTY(PyArray_NDIM(%(X)s), PyArray_DIMS(%(X)s), PyArray_TYPE(%(X)s), PyArray_IS_F_CONTIGUOUS(%(X)s));
         if (PyArray_CopyInto(%(Y)s, %(X)s) != 0) {
             PyErr_SetString(PyExc_RuntimeError, "Unable to copy input into output.");
             %(fail)s
@@ -92,7 +86,8 @@ class QuadraticOpFunc(Op):
             PyErr_SetString(PyExc_RuntimeError, "Unable to compute quadratic function.");
             %(fail)s
         }
-        """ % locals()
+        """ % dict(name=name, coeff=sub['params'], fail=sub['fail'],
+                   X=inputs[0], Y=outputs[0], float_type=node.inputs[0].type.c_element_type())
 
 
 # Same op as above, but implemented as a COp (with C code in an external file).

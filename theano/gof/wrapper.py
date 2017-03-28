@@ -305,10 +305,6 @@ class Wrapper(Type):
         sub = {'fail': '{this->setErrorOccurred(); return;}'}
         struct_name = self.name
         struct_name_defined = struct_name.upper()
-        struct_declare = ''
-        struct_init = ''
-        struct_cleanup = ''
-        struct_extract = ''
         c_declare_list = []
         c_init_list = []
         c_cleanup_list = []
@@ -389,7 +385,9 @@ class Wrapper(Type):
             }
         };
         #endif
-        """ % locals()
+        """ % dict(struct_name_defined=struct_name_defined, struct_name=struct_name, struct_declare=struct_declare,
+                   struct_init=struct_init, struct_cleanup=struct_cleanup, struct_extract=struct_extract,
+                   struct_extract_method=struct_extract_method)
 
     def c_code_cache_version(self):
         wrapper_c_code_version = (1, 6)
@@ -400,29 +398,24 @@ class Wrapper(Type):
     # so it's better to work directly with pointers.
 
     def c_declare(self, name, sub, check_input=True):
-        struct_name = self.name
         return """
         %(struct_name)s* %(name)s;
-        """ % locals()
+        """ % dict(struct_name=self.name, name=name)
 
     def c_init(self, name, sub):
         # NB: It seems c_init() is not called for an op param.
         # So the real initialization is done at top of c_extract.
         return """
-        %(nams)s = NULL;
-        """ % locals()
+        %(name)s = NULL;
+        """ % dict(name=name)
 
     def c_cleanup(self, name, sub):
         return """
         delete %(name)s;
         %(name)s = NULL;
-        """ % locals()
+        """ % dict(name=name)
 
     def c_extract(self, name, sub, check_input=True):
-        struct_name = self.name
-        fail = sub['fail']
-        length = self.length
-        fields_list = '"%s"' % '", "'.join(self.fields)
         return """
         /* Seems c_init() is not called for a op param. So I call `new` here. */
         %(name)s = new %(struct_name)s;
@@ -446,4 +439,5 @@ class Wrapper(Type):
                 %(fail)s
             }
         }
-        """ % locals()
+        """ % dict(name=name, struct_name=self.name, length=self.length, fail=sub['fail'],
+                   fields_list='"%s"' % '", "'.join(self.fields))
