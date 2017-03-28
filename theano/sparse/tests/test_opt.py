@@ -3,7 +3,6 @@ from nose.plugins.skip import SkipTest
 import numpy as np
 try:
     import scipy.sparse as sp
-    import scipy.sparse
 except ImportError:
     pass  # The variable enable_sparse will be used to disable the test file.
 
@@ -11,10 +10,9 @@ import theano
 from theano import sparse, config, tensor
 from theano.sparse import enable_sparse
 from theano.tests import unittest_tools as utt
+from theano.sparse.tests.test_basic import random_lil
 if not enable_sparse:
     raise SkipTest('Optional package sparse disabled')
-
-from theano.sparse.tests.test_basic import random_lil
 
 
 def test_local_csm_properties_csm():
@@ -76,9 +74,13 @@ def test_local_mul_s_d():
         f = theano.function(inputs,
                             sparse.mul_s_d(*inputs),
                             mode=mode)
+        if (theano.config.mode == "FAST_COMPILE"):
 
-        assert not any(isinstance(node.op, sparse.MulSD) for node
+            assert any(isinstance(node.op, sparse.MulSD) for node
                        in f.maker.fgraph.toposort())
+        else:
+            assert not any(isinstance(node.op, sparse.MulSD) for node
+                           in f.maker.fgraph.toposort())
 
 
 def test_local_mul_s_v():
@@ -95,8 +97,12 @@ def test_local_mul_s_v():
                             sparse.mul_s_v(*inputs),
                             mode=mode)
 
-        assert not any(isinstance(node.op, sparse.MulSV) for node
+        if (theano.config.mode == "FAST_COMPILE"):
+            assert any(isinstance(node.op, sparse.MulSV) for node
                        in f.maker.fgraph.toposort())
+        else:
+            assert not any(isinstance(node.op, sparse.MulSV) for node
+                           in f.maker.fgraph.toposort())
 
 
 def test_local_structured_add_s_v():
@@ -113,8 +119,12 @@ def test_local_structured_add_s_v():
                             sparse.structured_add_s_v(*inputs),
                             mode=mode)
 
-        assert not any(isinstance(node.op, sparse.StructuredAddSV) for node
+        if (theano.config.mode == "FAST_COMPILE"):
+            assert any(isinstance(node.op, sparse.StructuredAddSV) for node
                        in f.maker.fgraph.toposort())
+        else:
+            assert not any(isinstance(node.op, sparse.StructuredAddSV) for node
+                           in f.maker.fgraph.toposort())
 
 
 def test_local_sampling_dot_csr():
@@ -132,14 +142,14 @@ def test_local_sampling_dot_csr():
                             sparse.sampling_dot(*inputs),
                             mode=mode)
 
-        if theano.config.blas.ldflags:
+        if theano.config.blas.ldflags and theano.config.mode != "FAST_COMPILE":
             assert not any(isinstance(node.op, sparse.SamplingDot) for node
-                       in f.maker.fgraph.toposort())
+                           in f.maker.fgraph.toposort())
         else:
             # SamplingDotCSR's C implementation needs blas, so it should not
             # be inserted
             assert not any(isinstance(node.op, sparse.opt.SamplingDotCSR) for node
-                       in f.maker.fgraph.toposort())
+                           in f.maker.fgraph.toposort())
 
 
 def test_local_dense_from_sparse_sparse_from_dense():
@@ -155,19 +165,19 @@ def test_local_dense_from_sparse_sparse_from_dense():
         assert len(f.maker.fgraph.apply_nodes) == 1
         f([[1, 2], [3, 4]])
 
+
 def test_sd_csc():
 
     A = sp.rand(4, 5, density=0.60, format='csc', dtype=np.float32)
     b = np.random.rand(5,2).astype(np.float32)
     target = A*b
-    
+
     a_val = theano.tensor.as_tensor_variable(A.data)
     a_ind = theano.tensor.as_tensor_variable(A.indices)
     a_ptr = theano.tensor.as_tensor_variable(A.indptr)
     nrows = theano.tensor.as_tensor_variable(np.int32(A.shape[0]))
     b = theano.tensor.as_tensor_variable(b)
-    
-    res = theano.sparse.opt.sd_csc(a_val, a_ind, a_ptr, nrows, b).eval()
-    
-    utt.assert_allclose(res, target)
 
+    res = theano.sparse.opt.sd_csc(a_val, a_ind, a_ptr, nrows, b).eval()
+
+    utt.assert_allclose(res, target)
