@@ -1,5 +1,5 @@
 from __future__ import absolute_import, print_function, division
-import numpy
+import numpy as np
 
 import theano
 from theano.compat import izip
@@ -23,7 +23,7 @@ def hash_from_ndarray(data):
     # too long hash, I call it again on the concatenation of all parts.
     if not data.flags["C_CONTIGUOUS"]:
         # hash_from_code needs a C-contiguous array.
-        data = numpy.ascontiguousarray(data)
+        data = np.ascontiguousarray(data)
     return hash_from_code(hash_from_code(data) +
                           hash_from_code(str(data.shape)) +
                           hash_from_code(str(data.strides)) +

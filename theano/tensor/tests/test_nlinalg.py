@@ -239,8 +239,8 @@ def test_det_shape():
 
 class test_diag(unittest.TestCase):
     """
-    Test that linalg.diag has the same behavior as np.diag.
-    np.diag has two behaviors:
+    Test that linalg.diag has the same behavior as numpy.diag.
+    numpy.diag has two behaviors:
     (1) when given a vector, it returns a matrix with that vector as the
     diagonal.
     (2) when given a matrix, returns a vector which is the diagonal of the
