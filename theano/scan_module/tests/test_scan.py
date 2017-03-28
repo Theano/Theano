@@ -4872,68 +4872,6 @@ class ScanGpuTests:
         utt.assert_allclose(output, expected_output)
 
 
-class T_Scan_Cuda(unittest.TestCase, ScanGpuTests):
-    """This class takes the gpu tests for scan that are defined in
-    class ScanGpuTests and runs them using the cuda backend. It also adds
-    tests specific to the cuda backend
-    """
-
-    def __init__(self, *args, **kwargs):
-        from theano.sandbox import cuda
-        self.gpu_backend = cuda
-        self.mode_with_gpu = mode_with_gpu
-        self.mode_with_gpu_nodebug = mode_with_gpu_nodebug
-        super(T_Scan_Cuda, self).__init__(*args, **kwargs)
-
-    def setUp(self):
-        # Skip the test if cuda is not available
-        if not self.gpu_backend.cuda_available:
-            raise SkipTest('Optional package cuda disabled')
-
-        utt.seed_rng()
-        super(T_Scan_Cuda, self).setUp()
-
-    def is_scan_on_gpu(self, node):
-        return node.op.info.get('gpu', False)
-
-    def test_inconsistent_inner_fct(self):
-        # Test that scan can detect inconsistencies in the inner graph and
-        # raises an appropriate exception. The pickled file used in this test
-        # relies on the cuda backend.
-
-        # This test has not been extensively tested for Python 3 so it should
-        # be skipped if python version is >=3
-        version = sys.version_info
-        if version >= (3,):
-            raise SkipTest("This test relies on a pickled file produced with "
-                           "Python 2. The current python version "
-                           "(%i.%i.%i.%i) is >= 3 so the test will be "
-                           "skipped." % (version.major, version.minor,
-                           version.micro, version.serial))
-
-        # When unpickled, the scan op should perform validation on its inner
-        # graph, detect the inconsistencies and raise a TypeError
-        folder = os.path.dirname(os.path.abspath(__file__))
-        path = os.path.join(folder, "inconsistent_scan.pkl")
-        assert_raises(TypeError, pickle.load, open(path, "r"))
-
-    def test_consistent_inner_fct(self):
-        # Test that scan does not falsely detect inconsistencies in a valid
-        # inner graph
-
-        rs = theano.sandbox.rng_mrg.MRG_RandomStreams(use_cuda=True)
-        output, _ = theano.scan(lambda : rs.uniform((3,), dtype="float32"),
-                                n_steps=3)
-        pickle.loads(pickle.dumps(output))
-
-        # Also ensure that, after compilation, the Scan has been moved
-        # on the gpu
-        fct = theano.function([], output, mode=self.mode_with_gpu)
-        scan_nodes = scan_nodes_from_fct(fct)
-        assert len(scan_nodes) == 1
-        assert self.is_scan_on_gpu(scan_nodes[0])
-
-
 class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
     """This class takes the gpu tests for scan that are defined in
     class ScanGpuTests and runs them using the gpuarray backend.
