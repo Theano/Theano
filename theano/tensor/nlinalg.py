@@ -633,7 +633,6 @@ class SVD(Op):
             u[0] = self._numop(x, self.full_matrices, self.compute_uv)
 
 
-
 def svd(a, full_matrices=1, compute_uv=1):
     """
     This function performs the SVD on CPU.
