@@ -25,13 +25,24 @@ _context_reg = {}
 
 
 def do_gpu_support(data):
+    """
+    Is the following data supported on the GPU?
+
+    Currently, only complex aren't supported.
+
+    Parameters
+    ----------
+    data : numpy.ndarray or TensorVariable
+           (it must have dtype and ndim parameter)
+    """
     return str(data.dtype) not in tensor.basic.complex_dtypes
+
 
 def move_to_gpu(data):
     """
     Do we want to move this computation to the GPU?
 
-    Currently, we don't move complex and scalar int.
+    Currently, we don't move complex and scalar.
 
     Parameters
     ----------

@@ -170,7 +170,7 @@ class GpuGemm(BlasOp):
         beta = as_tensor_variable(beta)
 
         if not (A.dtype == B.dtype == C.dtype):
-            raise TypeError(Gemm.E_mixed,
+            raise TypeError(theano.tensor.blas.Gemm.E_mixed,
                             (A.dtype, B.dtype, C.dtype,
                              alpha.dtype, beta.dtype))
         if A.dtype == 'float16':
@@ -178,7 +178,7 @@ class GpuGemm(BlasOp):
         else:
             assert alpha.dtype == beta.dtype == A.dtype
         if not A.dtype.startswith('float'):
-            raise TypeError(Gemm.E_float, (A.dtype))
+            raise TypeError(theano.tensor.blas.Gemm.E_float, (A.dtype))
         assert alpha.ndim == 0
         assert beta.ndim == 0
         assert A.ndim == 2

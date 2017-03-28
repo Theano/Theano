@@ -25,9 +25,9 @@ GpuGemvTester = makeTester(
     op=gemv_inplace, gpu_op=gpugemv_inplace,
     cases=dict(dot_vv=[rand(1), 1, rand(1, 2), rand(2), 0],
                dot_vm=[rand(3), 1, rand(3, 2), rand(2), 0],
-#               float16=[rand(3).astype('float16'), np.float32(1),
-#                        rand(3, 2).astype('float16'),
-#                        rand(2).astype('float16'), np.float32(0)],
+               # float16=[rand(3).astype('float16'), np.float32(1),
+               # rand(3, 2).astype('float16'),
+               # rand(2).astype('float16'), np.float32(0)],
                float32=[rand(3).astype('float32'), np.float32(1),
                         rand(3, 2).astype('float32'),
                         rand(2).astype('float32'), np.float32(0)],
@@ -40,6 +40,21 @@ GpuGemvTester = makeTester(
                test_stride=[rand(3)[::-1], 1, rand(3, 2)[::-1], rand(2)[::-1], 0],
                )
     )
+
+
+def test_gemv_float16():
+    float16 = [rand(3).astype('float16'),
+               np.asarray(1, dtype=np.float32),
+               rand(3, 2).astype('float16'),
+               rand(2).astype('float16'),
+               np.asarray(0.5, dtype=np.float32)]
+    float16 = [gpuarray_shared_constructor(val)
+               for val in float16]
+    o = gpugemv_no_inplace(*float16)
+    f = theano.function([], o)
+    y, alpha, A, x, beta = float16
+    out = f()
+    utt.assert_asclose(out, alpha * np.dot(A, x) + beta * y)
 
 
 class TestGpuSgemv(TestCase, BaseGemv, utt.TestOptimizationMixin):
@@ -68,9 +83,9 @@ GpuGemmTester = makeTester(
                test6=[rand(3, 4), 0.0, rand(3, 5), rand(5, 4), -1.0],
                test7=[rand(3, 4), -1.0, rand(3, 5), rand(5, 4), 0.0],
                test8=[rand(3, 4), -1.0, rand(3, 5), rand(5, 4), 1.1],
-#               float16=[rand(3, 4).astype('float16'), np.float32(-1.0),
-#                        rand(3, 5).astype('float16'),
-#                        rand(5, 4).astype('float16'), np.float32(-1.1)],
+               # float16=[rand(3, 4).astype('float16'), np.float32(-1.0),
+               # rand(3, 5).astype('float16'),
+               # rand(5, 4).astype('float16'), np.float32(-1.1)],
                float32=[rand(3, 4).astype('float32'), np.float32(-1.0),
                         rand(3, 5).astype('float32'),
                         rand(5, 4).astype('float32'), np.float32(-1.1)],
