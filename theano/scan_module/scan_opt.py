@@ -149,8 +149,7 @@ def remove_constants_and_unused_inputs_scan(node):
     all_ins = gof.graph.inputs(op_outs)
     for idx in xrange(op.n_seqs):
         node_inp = node.inputs[idx + 1]
-        if (isinstance(node_inp, tensor.TensorConstant) and
-                node_inp.tag.unique_value is not None):
+        if isinstance(node_inp, tensor.TensorConstant) and node_inp.ndim == 0:
             try:
                 # This works if input is a constant that has all entries
                 # equal
