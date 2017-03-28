@@ -113,7 +113,7 @@ class MKLVersion(gof.Op):
         return super(MKLVersion, self).c_headers()
 
     def c_header_dirs(self):
-        return [config.dnn.include_path]
+        return ldflags(libs=False, include_dir=True)
 
     def c_libraries(self):
         return ldflags()
@@ -222,9 +222,9 @@ def mkl_available():
                 mkl_available.avail = False
                 mkl_available.msg = ("Got incorrect mkl version format")
                 raise RuntimeError(mkl_available.msg)
-            if v == -1 or v < 20160802:
+            if v == -1 or v < 20160801:
                 mkl_available.avail = False
-                mkl_available.msg = "Version(%d) is too old, please use the version of %d or newer one." % (v, int(20160802))
+                mkl_available.msg = "Version(%d) is too old, please use the version of %d or newer one." % (v, int(20160801))
                 raise RuntimeError(mkl_available.msg)
             else:
                 mkl_available.avail = comp
