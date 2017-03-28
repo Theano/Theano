@@ -3411,6 +3411,24 @@ def local_incsubtensor_of_zeros(node):
             return
 
 
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([IncSubtensor])
+def incsubtensor_of_zeros_to_setsubtensor(node):
+    """
+    IncSubtensor(zeros, x, ...) -> SetSubtensor(zeros, x, ...)
+    """
+    if (isinstance(node.op, (IncSubtensor)) and not node.op.set_instead_of_inc):
+        x = node.inputs[0]
+
+        if isinstance(x, T.Constant) and not numpy.any(x.data):
+            return [IncSubtensor(node.op.idx_list,
+                                 node.op.inplace,
+                                 set_instead_of_inc=True,
+                                 destroyhandler_tolerate_aliased=node.op.destroyhandler_tolerate_aliased,
+                                 )(*node.inputs)]
+
+
 @register_canonicalize('local_setsubtensor_of_allocs')
 @register_stabilize('local_setsubtensor_of_allocs')
 @gof.local_optimizer([IncSubtensor])
