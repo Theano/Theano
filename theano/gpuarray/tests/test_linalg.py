@@ -6,6 +6,7 @@ import theano
 
 from theano.tests import unittest_tools as utt
 from .config import mode_with_gpu, mode_without_gpu
+from .test_basic_ops import rand
 
 from numpy.linalg.linalg import LinAlgError
 
@@ -207,24 +208,63 @@ class TestMagma(unittest.TestCase):
         A_val_inv = fn(A_val)
         utt.assert_allclose(np.dot(A_val_inv, A_val), np.eye(N), atol=1e-3)
 
-    def test_gpu_svd(self):
+    def run_gpu_svd(self, A_val, full_matrices=True, compute_uv=True):
         A = theano.tensor.fmatrix("A")
-        N, M = 50, 100
-        A_val = np.random.rand(M, N).astype(np.float32)
+        f = theano.function(
+            [A], gpu_svd(A, full_matrices=full_matrices, compute_uv=compute_uv),
+            mode=mode_with_gpu.including('magma'))
+        return f(A_val)
 
-        f = theano.function([A], gpu_svd(A), mode=mode_with_gpu.including('magma'))
-        U, S, VT = f(A_val)
-        utt.assert_allclose(np.dot(U.T, U), np.eye(M))
-        utt.assert_allclose(np.dot(VT.T, VT), np.eye(N))
-        S_m = np.zeros_like(A_val)
+    def assert_column_orthonormal(self, Ot):
+        utt.assert_allclose(np.dot(Ot.T, Ot), np.eye(Ot.shape[1]))
+
+    def check_svd(self, A, U, S, VT, rtol=None, atol=None):
+        S_m = np.zeros_like(A)
         np.fill_diagonal(S_m, S)
-        utt.assert_allclose(np.dot(np.dot(U, S_m), VT), A_val)
+        utt.assert_allclose(
+            np.dot(np.dot(U, S_m), VT), A, rtol=rtol, atol=atol)
 
-        f = theano.function([A], gpu_svd(A, full_matrices=False), mode=mode_with_gpu.including('magma'))
-        U, _, VT = f(A_val)
-        utt.assert_allclose(np.dot(U.T, U), np.eye(N))
-        utt.assert_allclose(np.dot(VT.T, VT), np.eye(N))
+    def test_gpu_svd_wide(self):
+        A = rand(100, 50)
+        M, N = A.shape
 
-        f = theano.function([A], theano.tensor.nlinalg.svd(A, compute_uv=False), mode=mode_without_gpu)
-        f2 = theano.function([A], gpu_svd(A, compute_uv=False), mode=mode_with_gpu.including('magma'))
-        utt.assert_allclose(f(A_val)[1], f2(A_val)[1], 1)
+        U, S, VT = self.run_gpu_svd(A)
+        self.assert_column_orthonormal(U)
+        self.assert_column_orthonormal(VT.T)
+        self.check_svd(A, U, S, VT)
+
+        U, S, VT = self.run_gpu_svd(A, full_matrices=False)
+        self.assertEqual(U.shape[1], min(M, N))
+        self.assert_column_orthonormal(U)
+        self.assertEqual(VT.shape[0], min(M, N))
+        self.assert_column_orthonormal(VT.T)
+
+    def test_gpu_svd_tall(self):
+        A = rand(50, 100)
+        M, N = A.shape
+
+        U, S, VT = self.run_gpu_svd(A)
+        self.assert_column_orthonormal(U)
+        self.assert_column_orthonormal(VT.T)
+        self.check_svd(A, U, S, VT)
+
+        U, S, VT = self.run_gpu_svd(A, full_matrices=False)
+        self.assertEqual(U.shape[1], min(M, N))
+        self.assert_column_orthonormal(U)
+        self.assertEqual(VT.shape[0], min(M, N))
+        self.assert_column_orthonormal(VT.T)
+
+    def test_gpu_singular_values(self):
+        A = theano.tensor.fmatrix("A")
+        f_cpu = theano.function(
+            [A], theano.tensor.nlinalg.svd(A, compute_uv=False),
+            mode=mode_without_gpu)
+        f_gpu = theano.function(
+            [A], gpu_svd(A, compute_uv=False),
+            mode=mode_with_gpu.including('magma'))
+
+        A_val = rand(50, 100)
+        utt.assert_allclose(f_cpu(A_val)[1], f_gpu(A_val)[1])
+
+        A_val = rand(100, 50)
+        utt.assert_allclose(f_cpu(A_val)[1], f_gpu(A_val)[1])

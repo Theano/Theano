@@ -46,7 +46,7 @@ int APPLY_SPECIFIC(magma_inv)(PyGpuArrayObject *A, PyGpuArrayObject **_A_inv,
 #else
   A_inv = theano_try_copy(A_inv, A);
   if (A_inv == NULL) {
-    PyEr_SetString(
+    PyErr_SetString(
         PyExc_RuntimeError,
         "GpuMagmaMatrixInverse: failed to allocate memory for the output");
     goto fail;

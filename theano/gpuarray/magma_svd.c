@@ -37,9 +37,10 @@ int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A, PyGpuArrayObject **U,
   }
 
   // magma matrix svd
-  M = PyGpuArray_DIM(A, 0);
-  N = PyGpuArray_DIM(A, 1);
-  K = M < N ? M : N;
+  // reverse dimensions because MAGMA expects column-major matrices:
+  M = PyGpuArray_DIM(A, 1);
+  N = PyGpuArray_DIM(A, 0);
+  K = std::min(M, N);
 
   if (MAGMA_SUCCESS !=  magma_smalloc_pinned(&a_data, M * N)) {
     PyErr_SetString(PyExc_RuntimeError,
@@ -69,12 +70,12 @@ int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A, PyGpuArrayObject **U,
     ldu = M;
     ldv = N_VT;
 
-    if (MAGMA_SUCCESS != magma_smalloc_pinned(&u_data, M * M_U)) {
+    if (MAGMA_SUCCESS != magma_smalloc_pinned(&u_data, M_U * M)) {
       PyErr_SetString(PyExc_RuntimeError,
                       "GpuMagmaSVD: failed to allocate memory");
       goto fail;
     }
-    if (MAGMA_SUCCESS != magma_smalloc_pinned(&vt_data, ldv * N)) {
+    if (MAGMA_SUCCESS != magma_smalloc_pinned(&vt_data, N * N_VT)) {
       PyErr_SetString(PyExc_RuntimeError,
                       "GpuMagmaSVD: failed to allocate memory");
       goto fail;
@@ -123,27 +124,27 @@ int APPLY_SPECIFIC(magma_svd)(PyGpuArrayObject *A, PyGpuArrayObject **U,
   cudaMemcpy(PyGpuArray_DEV_DATA(*S), s_data, K * sizeof(float),
              cudaMemcpyDeviceToDevice);
 
-  u_dims[0] = M; u_dims[1] = ldu;
-  // choose fortran order to avoid transpose
-  if (theano_prep_output(U, 2, u_dims, A->ga.typecode, GA_F_ORDER, c) != 0){
+  u_dims[0] = N; u_dims[1] = N_VT;
+  if (theano_prep_output(U, 2, u_dims, A->ga.typecode, GA_C_ORDER, c) != 0){
     PyErr_SetString(PyExc_RuntimeError,
                     "GpuMagmaSVD: failed to allocate memory");
     goto fail;
   }
-  cudaMemcpy(PyGpuArray_DEV_DATA(*U), u_data, M * ldu * sizeof(float),
+  // magma expects column-major matrices. Exchange u_data -> VT and vt_data -> U
+  // to match numpy.linalg.svd output
+  cudaMemcpy(PyGpuArray_DEV_DATA(*U), vt_data, N * N_VT * sizeof(float),
              cudaMemcpyDeviceToDevice);
-  /* GpuArray_transpose_inplace(&(*U)->ga, NULL); */
 
-  vt_dims[0] = ldv; vt_dims[1] = N;
-  // choose fortran order to avoid transpose
-  if (theano_prep_output(VT, 2, vt_dims, A->ga.typecode, GA_F_ORDER, c) != 0){
+  vt_dims[0] = M_U; vt_dims[1] = M;
+  if (theano_prep_output(VT, 2, vt_dims, A->ga.typecode, GA_C_ORDER, c) != 0){
     PyErr_SetString(PyExc_RuntimeError,
                     "GpuMagmaSVD: failed to allocate memory");
     goto fail;
   }
-  cudaMemcpy(PyGpuArray_DEV_DATA(*VT), vt_data, ldv * N * sizeof(float),
+  // magma expects column-major matrices. Exchange u_data -> VT and vt_data -> U
+  // to match numpy.linalg.svd output
+  cudaMemcpy(PyGpuArray_DEV_DATA(*VT), u_data, M_U * M * sizeof(float),
              cudaMemcpyDeviceToDevice);
-  /* GpuArray_transpose_inplace(&(*VT)->ga, NULL); */
 
   res = 0;
 fail:
