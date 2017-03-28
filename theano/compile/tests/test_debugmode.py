@@ -713,7 +713,6 @@ class VecAsRowAndCol(gof.Op):
         if (c[0] is None) or (c[0].shape != (lv, 1)):
             c[0] = node.outputs[1].type.value_zeros((lv, 1))
 
-        # Python loop because CudaNdarrays do not support newaxis
         for i in range(lv):
             r[0][0, i] = v[i]
             c[0][i, 0] = v[i]
@@ -793,25 +792,4 @@ class Test_preallocated_output(unittest.TestCase):
         f = theano.function([v], [c, r])
 
         v_val = self.rng.randn(5).astype('float32')
-        f(v_val)
-
-    def test_output_broadcast_cuda(self):
-        from theano.sandbox import cuda
-        if not cuda.cuda_available:
-            raise SkipTest("Optional package Cuda disabled")
-        if cuda.use.device_number is None:
-            # We should normally set VecAsRowAndCol as a GPUOp But we
-            # don't want to do this here as this will disable others
-            # tests in this file.  So we manually init the GPU if
-            # needed to remove warning.
-            cuda.use("gpu",
-                     force=True,
-                     default_to_move_computation_to_gpu=False,
-                     move_shared_float32_to_gpu=False,
-                     enable_cuda=False)
-        v = cuda.fvector('v')
-        c, r = VecAsRowAndCol()(v)
-        f = theano.function([v], [c, r])
-
-        v_val = cuda.CudaNdarray(self.rng.randn(5).astype('float32'))
         f(v_val)

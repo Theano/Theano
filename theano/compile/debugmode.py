@@ -1198,10 +1198,11 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
 
     # To avoid circular imports
     from theano.tensor import TensorType
-    from theano.sandbox.cuda import cuda_available, CudaNdarrayType
-    if cuda_available:
-        from theano.sandbox.cuda import CudaNdarray
-        from theano.sandbox.cuda import dimshuffle as cuda_dimshuffle
+    from theano.gpuarray import GpuArrayType
+    try:
+        import pygpu
+    except ImportError:
+        pass
 
     # TODO: Sparse? Scalar does not really make sense.
 
@@ -1240,7 +1241,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         for r in considered_outputs:
             # There is no risk to overwrite inputs, since r does not work
             # inplace.
-            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            if isinstance(r.type, (TensorType, GpuArrayType)):
                 reuse_outputs[r][...] = np.asarray(
                     def_val).astype(r.type.dtype)
 
@@ -1250,15 +1251,14 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         del reuse_outputs
 
     # c_cont_output: use a c-continuous array
-    # (for TensorType and CudaNdarray, else None)
+    # (for TensorType, else None)
     if 'c_contiguous' in prealloc_modes or 'ALL' in prealloc_modes:
         c_cont_outputs = {}
         for r in considered_outputs:
-            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            if isinstance(r.type, (TensorType, GpuArrayType)):
                 # Build a C-contiguous buffer
                 new_buf = r.type.value_zeros(r_vals[r].shape)
-                # CudaNdarray don't have flags field
-                # assert new_buf.flags["C_CONTIGUOUS"]
+                assert new_buf.flags["C_CONTIGUOUS"]
                 new_buf[...] = np.asarray(def_val).astype(r.type.dtype)
 
                 c_cont_outputs[r] = new_buf
@@ -1272,18 +1272,14 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
     if 'f_contiguous' in prealloc_modes or 'ALL' in prealloc_modes:
         f_cont_outputs = {}
         for r in considered_outputs:
-            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            if isinstance(r.type, (TensorType, GpuArrayType)):
                 new_buf = np.zeros(
                     shape=r_vals[r].shape,
                     dtype=r_vals[r].dtype,
                     order='F')
                 new_buf[...] = def_val
-                if isinstance(r.type, CudaNdarrayType):
-                    # When the CudaNdarray is built, the underlying memory
-                    # is c-contiguous, so we transpose it before and after.
-                    new_buf = CudaNdarray(new_buf.T)
-                    new_buf = cuda_dimshuffle(
-                        new_buf, reversed(list(range(new_buf.ndim))))
+                if isinstance(r.type, GpuArrayType):
+                    new_buf = pygpu.array(new_buf)
 
                 f_cont_outputs[r] = new_buf
 
@@ -1305,7 +1301,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         max_ndim = 0
         rev_out_broadcastable = []
         for r in considered_outputs:
-            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            if isinstance(r.type, (TensorType, GpuArrayType)):
                 if max_ndim < r.ndim:
                     rev_out_broadcastable += [True] * (r.ndim - max_ndim)
                     max_ndim = r.ndim
@@ -1320,7 +1316,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
         # Initial allocation
         init_strided = {}
         for r in considered_outputs:
-            if isinstance(r.type, (TensorType, CudaNdarrayType)):
+            if isinstance(r.type, (TensorType, GpuArrayType)):
                 # Create a buffer twice as large in every dimension,
                 # except if broadcastable, or for dimensions above
                 # config.DebugMode.check_preallocated_output_ndim
@@ -1399,7 +1395,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                 name = 'wrong_size%s' % str(tuple(shape_diff))
 
                 for r in considered_outputs:
-                    if isinstance(r.type, (TensorType, CudaNdarrayType)):
+                    if isinstance(r.type, (TensorType, GpuArrayType)):
                         r_shape_diff = shape_diff[:r.ndim]
                         out_shape = [max((s + sd), 0)
                                      for s, sd in zip(r_vals[r].shape,
@@ -1741,7 +1737,6 @@ class _VariableEquivalenceTracker(object):
 
 # List of default version of make thunk.
 # This is needed to know if the user overrided it.
-# The GpuOp will be added here when theano.sandbox.cuda is imported.
 default_make_thunk = [get_unbound_function(theano.gof.Op.make_thunk)]
 
 

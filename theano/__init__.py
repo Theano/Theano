@@ -126,17 +126,6 @@ else:
         raise ImportError("The nose module is not installed."
                           " It is needed for Theano tests.")
 
-if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
-    import theano.sandbox.cuda
-    # We can't test the driver during import of theano.sandbox.cuda as
-    # this cause circular import dependency. So we also test it manually
-    # after the import
-    if theano.sandbox.cuda.cuda_available:
-        import theano.sandbox.cuda.tests.test_driver
-
-        if config.enable_initial_driver_test:
-            theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
-
 if (config.device.startswith('cuda') or
         config.device.startswith('opencl') or
         config.init_gpu_device.startswith('cuda') or
