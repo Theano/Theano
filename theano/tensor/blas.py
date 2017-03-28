@@ -317,7 +317,7 @@ class Ger(Op):
         y = T.as_tensor_variable(y)
         x = T.as_tensor_variable(x)
         alpha = T.as_tensor_variable(alpha)
-        if len(set([A.dtype, alpha.dtype, x.dtype, y.dtype])) != 1:
+        if not(A.dtype == x.dtype == y.dtype == alpha.dtype):
             raise TypeError('ger requires matching dtypes',
                             (A.dtype, alpha.dtype, x.dtype, y.dtype))
         if alpha.ndim != 0:

@@ -257,7 +257,7 @@ class GpuGer(BlasOp):
         x = as_gpuarray_variable(x, ctx_name)
         y = as_gpuarray_variable(y, ctx_name)
         alpha = as_tensor_variable(alpha)
-        if len(set([A.dtype, alpha.dtype, x.dtype, y.dtype])) != 1:
+        if not(A.dtype == x.dtype == y.dtype == alpha.dtype):
             raise TypeError('ger requires matching dtypes',
                             (A.dtype, alpha.dtype, x.dtype, y.dtype))
 
@@ -265,7 +265,6 @@ class GpuGer(BlasOp):
         assert A.ndim == 2
         assert x.ndim == 1
         assert y.ndim == 1
-        assert A.dtype == x.dtype == y.dtype
         return Apply(self, [A, alpha, x, y], [A.type()])
 
     def perform(self, node, inp, out):

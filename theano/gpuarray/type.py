@@ -24,7 +24,7 @@ except ImportError:
 _context_reg = {}
 
 
-def do_gpu_support(data):
+def gpu_supported(data):
     """
     Is the following data supported on the GPU?
 
@@ -50,7 +50,7 @@ def move_to_gpu(data):
            (it must have dtype and ndim parameter)
     """
     # We don't support complex on the GPU
-    if not do_gpu_support(data):
+    if not gpu_supported(data):
         return False
     # We don't want scalars on the GPU.
     if data.ndim == 0:
@@ -651,7 +651,7 @@ def gpuarray_shared_constructor(value, name=None, strict=False,
 
     if target is notset:
         target = None
-        if not do_gpu_support(value):
+        if not gpu_supported(value):
             raise TypeError('We do not move that data by default to the GPU')
     try:
         get_context(target)

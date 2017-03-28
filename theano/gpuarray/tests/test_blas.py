@@ -24,7 +24,7 @@ from ..blas import (gpugemv_inplace, gpugemv_no_inplace,
 GpuGemvTester = makeTester(
     'GpuGemvTester',
     op=gemv_inplace, gpu_op=gpugemv_inplace,
-    # It don't support float16
+    # It doesn't support float16
     cases=dict(dot_vv=[rand(1), 1, rand(1, 2), rand(2), 0],
                dot_vm=[rand(3), 1, rand(3, 2), rand(2), 0],
                float32=[rand(3).astype('float32'), np.float32(1),

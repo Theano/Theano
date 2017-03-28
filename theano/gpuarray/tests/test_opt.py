@@ -495,7 +495,7 @@ def test_many_arg_elemwise():
 
 def test_not_useless_scalar_gpuelemwise():
     # We don't want to move elemwise on scalar on the GPU when the
-    # result will be used on the GPU!
+    # result will not be used on the GPU!
 
     with theano.configparser.change_flags(warn_float64='ignore'):
         X = tensor.fmatrix()
