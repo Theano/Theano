@@ -1,5 +1,7 @@
 from __future__ import absolute_import, print_function, division
-from .ops import (cholesky, matrix_inverse, solve,
-        diag, extract_diag, alloc_diag,
-        det, psd, eig, eigh, eigvalsh,
-        trace, spectral_radius_bound)
+from theano.tensor.slinalg import (cholesky, solve, eigvalsh)
+from theano.tensor.nlinalg import (matrix_inverse,
+                                   diag, extract_diag, alloc_diag,
+                                   det, eig, eigh,
+                                   trace)
+from theano.sandbox.linalg.ops import psd, spectral_radius_bound

@@ -9,6 +9,24 @@ Installation
 Stable Installation
 -------------------
 
+With ``conda``
+^^^^^^^^^^^^^^
+
+If you use conda, you can directly install both theano and pygpu. Libgpuarray
+will be automatically installed as a dependency.
+
+.. code-block:: bash
+
+    conda install theano pygpu
+
+With ``pip``
+^^^^^^^^^^^^
+
+If you use pip, you have to install Theano and libgpuarray separately.
+
+theano
+::::::
+
 Install the latest stable version of Theano with:
 
 .. raw:: html
@@ -27,23 +45,18 @@ Install the latest stable version of Theano with:
 
 If you encountered any trouble, head to the :ref:`troubleshooting` page.
 
+The latest stable version of Theano is ``0.9.0`` (tagged with ``rel-0.9.0``).
+
 libgpuarray
-^^^^^^^^^^^
+:::::::::::
 
-It is recommanded that you don't use 0.8.2 for the new back-end. Use
-the dev version of Theano or 0.9rc3.
+For the stable version of Theano you need a specific version of libgpuarray,
+that has been tagged ``v0.6.2``.
+Download it with::
 
-For the stable version of Theano(0.8.2) you need a specific version of libgpuarray,
-that has been tagged ``v-9998``.
-Download it with:
-
-.. raw:: html
-
-    <div class='highlight'><pre>
-    git clone https://github.com/Theano/libgpuarray.git --tags
-    git checkout origin/v-9998
+    git clone https://github.com/Theano/libgpuarray.git
     cd libgpuarray
-    </pre></div>
+    git checkout tags/v0.6.2 -b v0.6.2
 
 and then follow the `Step-by-step instructions <http://deeplearning.net/software/libgpuarray/installation.html#step-by-step-install>`__.
 

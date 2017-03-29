@@ -1375,3 +1375,27 @@ def list_of_nodes(inputs, outputs):
         lambda o: [inp.owner for inp in o.inputs
                    if inp.owner and
                    not any(i in inp.owner.outputs for i in inputs)])
+
+
+def is_in_ancestors(l_node, f_node):
+    r"""
+    Goes up in the graph and returns True if the apply node f_node is found.
+
+    Use a stack implementation as the vm algo.
+    We suppose all nodes are not lazy
+    (i.e. for IfElse we suppose all inputs are computed)
+    """
+    computed = set()
+    todo = [l_node]
+    while todo:
+        cur = todo.pop()
+        if cur.outputs[0] in computed:
+            continue
+        if all([i in computed or i.owner is None for i in cur.inputs]):
+            computed.update(cur.outputs)
+            if cur is f_node:
+                return True
+        else:
+            todo.append(cur)
+            todo.extend(i.owner for i in cur.inputs if i.owner)
+    return False

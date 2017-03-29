@@ -26,7 +26,6 @@ from six import iteritems
 from six.moves import xrange
 from theano.compile import optdb
 from theano.tensor import opt
-from theano.scan_module.scan_utils import find_up
 from theano.scan_module.scan_utils import clone
 
 
@@ -578,7 +577,7 @@ class CondMerge(gof.Optimizer):
         merging_node = cond_nodes[0]
         for proposal in cond_nodes[1:]:
             if (proposal.inputs[0] == merging_node.inputs[0] and
-                    not find_up(proposal, merging_node)):
+                    not gof.graph.is_in_ancestors(proposal, merging_node)):
                 # Create a list of replacements for proposal
                 mn_ts = merging_node.inputs[1:][:merging_node.op.n_outs]
                 mn_fs = merging_node.inputs[1:][merging_node.op.n_outs:]
@@ -683,8 +682,8 @@ def cond_merge_random_op(main_node):
     merging_node = cond_nodes[0]
     for proposal in cond_nodes[1:]:
         if (proposal.inputs[0] == merging_node.inputs[0] and
-                not find_up(proposal, merging_node) and
-                not find_up(merging_node, proposal)):
+                not gof.graph.is_in_ancestors(proposal, merging_node) and
+                not gof.graph.is_in_ancestors(merging_node, proposal)):
             # Create a list of replacements for proposal
             mn_ts = merging_node.inputs[1:][:merging_node.op.n_outs]
             mn_fs = merging_node.inputs[1:][merging_node.op.n_outs:]

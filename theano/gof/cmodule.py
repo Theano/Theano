@@ -2302,6 +2302,7 @@ class GCC_compiler(Compiler):
 
         if status:
             tf = tempfile.NamedTemporaryFile(
+                mode='w',
                 prefix='theano_compilation_error_',
                 delete=False
             )

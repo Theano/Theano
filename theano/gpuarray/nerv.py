@@ -10,7 +10,7 @@ from theano.scalar import as_scalar, constant
 
 from . import opt
 from .basic_ops import (as_gpuarray_variable, GpuAllocEmpty,
-                        infer_context_name, gpu_alloc_empty)
+                        infer_context_name)
 from .type import gpu_context_type
 from .opt_util import alpha_merge, output_merge
 
@@ -158,7 +158,7 @@ def local_gpua_dot_to_gemm16(op, ctx_name, inputs, outputs):
     if (A.ndim == 2 and B.ndim == 2 and
             A.dtype == 'float16' and B.dtype == 'float16'):
         fgraph = getattr(outputs[0], 'fgraph', None)
-        C = gpu_alloc_empty(ctx_name, dtype='float16')(
+        C = GpuAllocEmpty('float16', ctx_name)(
             shape_i(A, 0, fgraph), shape_i(B, 1, fgraph))
         return Gemm16()(C, 1.0, A, B, 0.0)
 

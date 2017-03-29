@@ -228,45 +228,53 @@ class SeqOptimizer(Optimizer, list):
         nb_node_before = len(fgraph.apply_nodes)
         sub_profs = []
         nb_nodes = []
-        for optimizer in self:
-            try:
-                nb_nodes_before = len(fgraph.apply_nodes)
-                t0 = time.time()
-                sub_prof = optimizer.optimize(fgraph)
-                l.append(float(time.time() - t0))
-                sub_profs.append(sub_prof)
-                nb_nodes.append((nb_nodes_before,
-                                 len(fgraph.apply_nodes)))
-                if fgraph.profile:
-                    sub_validate_time.append(fgraph.profile.validate_time)
-            except AssertionError:
-                # do not catch Assertion failures
-                raise
-            except Exception as e:
-                if self.failure_callback:
-                    self.failure_callback(e, self, optimizer)
-                    continue
-                else:
+
+        self.pre_profile = (
+            self, l, -1, -1, nb_node_before,
+            -1, sub_profs, sub_validate_time,
+            nb_nodes, {})
+        try:
+            for optimizer in self:
+                try:
+                    nb_nodes_before = len(fgraph.apply_nodes)
+                    t0 = time.time()
+                    sub_prof = optimizer.optimize(fgraph)
+                    l.append(float(time.time() - t0))
+                    sub_profs.append(sub_prof)
+                    nb_nodes.append((nb_nodes_before,
+                                     len(fgraph.apply_nodes)))
+                    if fgraph.profile:
+                        sub_validate_time.append(fgraph.profile.validate_time)
+                except AssertionError:
+                    # do not catch Assertion failures
                     raise
+                except Exception as e:
+                    if self.failure_callback:
+                        self.failure_callback(e, self, optimizer)
+                        continue
+                    else:
+                        raise
+        finally:
 
-        if fgraph.profile:
-            validate_time = fgraph.profile.validate_time - validate_before
-            callbacks_time = {}
-            for k, v in iteritems(fgraph.execute_callbacks_times):
-                if k in callbacks_before:
-                    t = v - callbacks_before[k]
-                    if t > 0:
-                        callbacks_time[k] = t
-                else:
-                    callbacks_time[k] = v
-        else:
-            validate_time = None
-            callbacks_time = {}
-
-        callback_time = fgraph.execute_callbacks_time - callback_before
-        return (self, l, validate_time, callback_time, nb_node_before,
+            if fgraph.profile:
+                validate_time = fgraph.profile.validate_time - validate_before
+                callbacks_time = {}
+                for k, v in iteritems(fgraph.execute_callbacks_times):
+                    if k in callbacks_before:
+                        t = v - callbacks_before[k]
+                        if t > 0:
+                            callbacks_time[k] = t
+                    else:
+                        callbacks_time[k] = v
+            else:
+                validate_time = None
+                callbacks_time = {}
+            callback_time = fgraph.execute_callbacks_time - callback_before
+            self.pre_profile = (
+                self, l, validate_time, callback_time, nb_node_before,
                 len(fgraph.apply_nodes), sub_profs, sub_validate_time,
                 nb_nodes, callbacks_time)
+        return self.pre_profile
 
     def __str__(self):
         return "SeqOpt(%s)" % list.__str__(self)
@@ -877,7 +885,13 @@ class MergeOptimizer(Optimizer):
                         pairs = [(pairs[0][1], pairs[0][0])]
 
                 try:
-                    fgraph.replace_all_validate(pairs, 'MergeOptimizer')
+                    # If all Constants, no need to call validate.
+                    # Only need to check one of the var of each pairs.
+                    # If it is a Constant, the other must also be a Constant as we merge them.
+                    if all([isinstance(old, graph.Constant) for old, new in pairs]):
+                        fgraph.replace_all(pairs, 'MergeOptimizer')
+                    else:
+                        fgraph.replace_all_validate(pairs, 'MergeOptimizer')
                 except InconsistencyError:
                     success = False
                     nb_fail += 1
@@ -2075,13 +2089,7 @@ class TopoOptimizer(NavigatorOptimizer):
             if node is not current_node:
                 q.append(node)
 
-        def pruner(node):
-            if node is not current_node:
-                try:
-                    q.remove(node)
-                except ValueError:
-                    pass
-        u = self.attach_updater(fgraph, importer, pruner,
+        u = self.attach_updater(fgraph, importer, None,
                                 name=getattr(self, 'name', None))
         nb = 0
         try:
@@ -2091,6 +2099,8 @@ class TopoOptimizer(NavigatorOptimizer):
                     node = q.pop()
                 else:
                     node = q.popleft()
+                if node not in fgraph.apply_nodes:
+                    continue
                 current_node = node
                 nb += self.process_node(fgraph, node)
             loop_t = time.time() - t0
@@ -2203,17 +2213,13 @@ class OpKeyOptimizer(NavigatorOptimizer):
                 if node.op == op:
                     q.append(node)
 
-        def pruner(node):
-            if node is not current_node and node.op == op:
-                try:
-                    q.remove(node)
-                except ValueError:
-                    pass
-        u = self.attach_updater(fgraph, importer, pruner,
+        u = self.attach_updater(fgraph, importer, None,
                                 name=getattr(self, 'name', None))
         try:
             while q:
                 node = q.pop()
+                if node not in fgraph.apply_nodes:
+                    continue
                 current_node = node
                 self.process_node(fgraph, node)
         finally:

@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function, division
 import unittest
 
-import numpy
+import numpy as np
 from six import integer_types
 
 import theano
@@ -42,7 +42,7 @@ class TestKeepDims(unittest.TestCase):
     def test_keepdims(self):
 
         x = tensor.dtensor3()
-        a = numpy.random.rand(3, 2, 4)
+        a = np.random.rand(3, 2, 4)
         # We don't need to test all opt and C code, as this is tested
         # by the ops tests.
         mode = theano.compile.Mode(optimizer="fast_compile", linker="py")
@@ -60,7 +60,7 @@ class TestKeepDims(unittest.TestCase):
                                    axis)],
                          mode=mode)
             ans1, ans2 = f(a)
-            assert numpy.allclose(ans1, ans2)
+            assert np.allclose(ans1, ans2)
             assert ans1.shape == ans2.shape
 
             f = function([x], [op(x, axis=axis, keepdims=True)[1],
@@ -69,7 +69,7 @@ class TestKeepDims(unittest.TestCase):
                                    axis)],
                          mode=mode)
             ans1, ans2 = f(a)
-            assert numpy.allclose(ans1, ans2)
+            assert np.allclose(ans1, ans2)
             assert ans1.shape == ans2.shape
 
         # the following ops can be specified with either a single axis or every
@@ -84,7 +84,7 @@ class TestKeepDims(unittest.TestCase):
                                        axis)],
                              mode=mode)
                 ans1, ans2 = f(a)
-                assert numpy.allclose(ans1, ans2)
+                assert np.allclose(ans1, ans2)
                 assert ans1.shape == ans2.shape
 
         # the following ops can be specified with a freely specified axis
@@ -103,13 +103,13 @@ class TestKeepDims(unittest.TestCase):
                              mode=mode)
 
                 ans1, ans2 = f(a)
-                assert numpy.allclose(ans1, ans2)
+                assert np.allclose(ans1, ans2)
                 assert ans1.shape == ans2.shape
 
     def test_norm(self):
 
         x = tensor.dtensor3()
-        a = numpy.random.rand(3, 2, 4).astype(theano.config.floatX)
+        a = np.random.rand(3, 2, 4).astype(theano.config.floatX)
         mode = theano.compile.Mode(optimizer="fast_compile", linker="py")
 
         for axis in [0, 1, 2, [0], [1], [2], None,
@@ -121,7 +121,7 @@ class TestKeepDims(unittest.TestCase):
                                ], mode=mode)
 
             ans1, ans2 = f(a)
-            assert numpy.allclose(ans1, ans2)
+            assert np.allclose(ans1, ans2)
             assert ans1.shape == ans2.shape
 
             g = function([x], [x.norm(L=2, axis=axis, keepdims=True),
@@ -129,5 +129,5 @@ class TestKeepDims(unittest.TestCase):
                                ], mode=mode)
 
             ans1, ans2 = g(a)
-            assert numpy.allclose(ans1, ans2)
+            assert np.allclose(ans1, ans2)
             assert ans1.shape == ans2.shape

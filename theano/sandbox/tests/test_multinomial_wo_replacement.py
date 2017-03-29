@@ -1,6 +1,9 @@
 from __future__ import absolute_import, print_function, division
 import numpy
+import os
 from theano import config, function, tensor
+from theano.compat import PY3
+from theano.misc.pkl_utils import CompatUnpickler
 from theano.sandbox import multinomial
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 import unittest
@@ -10,12 +13,12 @@ class test_OP(unittest.TestCase):
 
     def test_select_distinct(self):
         """
-        Tests that MultinomialWOReplacementFromUniform always selects distinct elements
+        Tests that ChoiceFromUniform always selects distinct elements
         """
         p = tensor.fmatrix()
         u = tensor.fvector()
         n = tensor.iscalar()
-        m = multinomial.MultinomialWOReplacementFromUniform('auto')(p, u, n)
+        m = multinomial.ChoiceFromUniform('auto')(p, u, n)
 
         f = function([p, u, n], m, allow_input_downcast=True)
 
@@ -43,13 +46,13 @@ class test_OP(unittest.TestCase):
 
     def test_fail_select_alot(self):
         """
-        Tests that MultinomialWOReplacementFromUniform fails when asked to sample more
+        Tests that ChoiceFromUniform fails when asked to sample more
         elements than the actual number of elements
         """
         p = tensor.fmatrix()
         u = tensor.fvector()
         n = tensor.iscalar()
-        m = multinomial.MultinomialWOReplacementFromUniform('auto')(p, u, n)
+        m = multinomial.ChoiceFromUniform('auto')(p, u, n)
 
         f = function([p, u, n], m, allow_input_downcast=True)
 
@@ -63,13 +66,13 @@ class test_OP(unittest.TestCase):
 
     def test_select_proportional_to_weight(self):
         """
-        Tests that MultinomialWOReplacementFromUniform selects elements, on average,
+        Tests that ChoiceFromUniform selects elements, on average,
         proportional to the their probabilities
         """
         p = tensor.fmatrix()
         u = tensor.fvector()
         n = tensor.iscalar()
-        m = multinomial.MultinomialWOReplacementFromUniform('auto')(p, u, n)
+        m = multinomial.ChoiceFromUniform('auto')(p, u, n)
 
         f = function([p, u, n], m, allow_input_downcast=True)
 
@@ -164,3 +167,14 @@ class test_function(unittest.TestCase):
         avg_pvals /= avg_pvals.sum()
         avg_diff = numpy.mean(abs(avg_pvals - pvals))
         assert avg_diff < mean_rtol
+
+    def test_unpickle_legacy_op(self):
+        testfile_dir = os.path.dirname(os.path.realpath(__file__))
+        fname = 'test_sandbox_multinomial_wo_replacement.pkl'
+
+        if not PY3:
+            with open(os.path.join(testfile_dir, fname), 'r') as fp:
+                u = CompatUnpickler(fp)
+                m = u.load()
+                print(m)
+                assert isinstance(m, multinomial.ChoiceFromUniform)
