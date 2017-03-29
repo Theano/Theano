@@ -10,7 +10,7 @@ from .test_basic_ops import rand
 
 from numpy.linalg.linalg import LinAlgError
 
-# Skip tests if cuda_ndarray is not available.
+from theano import config
 from theano.gpuarray.linalg import (cusolver_available, gpu_solve, GpuCholesky,
                                     gpu_matrix_inverse, gpu_svd)
 
@@ -199,6 +199,10 @@ class TestGpuCholesky(unittest.TestCase):
 
 
 class TestMagma(unittest.TestCase):
+    def setUp(self):
+        if not config.magma.enabled:
+            self.skipTest('Magma is not enabled, skipping test')
+
     def test_gpu_matrix_inverse(self):
         A = theano.tensor.fmatrix("A")
 
