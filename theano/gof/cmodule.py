@@ -796,12 +796,6 @@ class ModuleCache(object):
                                msg='broken cache directory [EOF]',
                                level=logging.WARNING)
                         continue
-                    except ValueError:
-                        # This can happen when we have bad config value
-                        # in the cuda.nvcc_compiler.py file.
-                        # We should not hide it here, as this will cause
-                        # an unrelated error to appear.
-                        raise
                     except Exception:
                         unpickle_failure()
                         if delete_if_problem:
@@ -1323,7 +1317,7 @@ class ModuleCache(object):
             to -1 in order to delete all unversioned cached modules regardless
             of their age.
         clear_base_files : bool
-            If True, then delete base directories 'cuda_ndarray', 'cutils_ext',
+            If True, then delete base directories 'cutils_ext',
             'lazylinker_ext' and 'scan_perform' if they are present.
             If False, those directories are left intact.
         delete_if_problem
@@ -1340,8 +1334,8 @@ class ModuleCache(object):
 
     def clear_base_files(self):
         """
-        Remove base directories 'cuda_ndarray', 'cutils_ext', 'lazylinker_ext'
-        and 'scan_perform' if present.
+        Remove base directories 'cutils_ext', 'lazylinker_ext' and
+        'scan_perform' if present.
 
         Note that we do not delete them outright because it may not work on
         some systems due to these modules being currently in use. Instead we
@@ -1350,8 +1344,7 @@ class ModuleCache(object):
 
         """
         with compilelock.lock_ctx():
-            for base_dir in ('cuda_ndarray', 'cutils_ext', 'lazylinker_ext',
-                             'scan_perform'):
+            for base_dir in ('cutils_ext', 'lazylinker_ext', 'scan_perform'):
                 to_delete = os.path.join(self.dirname, base_dir + '.delete.me')
                 if os.path.isdir(to_delete):
                     try:

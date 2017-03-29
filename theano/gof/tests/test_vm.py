@@ -279,21 +279,6 @@ if run_memory_usage_tests:
     # these are not normal unit tests, do not run them as part of standard
     # suite.  I ran them while looking at top, and stopped when memory usage
     # was stable.
-    def test_leak2():
-        import theano.sandbox.cuda as cuda
-        for i in xrange(1000000):
-            n = np.asarray([2.3, 4.5], dtype='f')
-            c = sys.getrefcount(n)
-            a = cuda.CudaNdarray(n)
-            a.sum()
-            assert c == sys.getrefcount(n)
-            del a
-            if not i % 1000:
-                print('.', end=' ')
-                print(gc.collect(), end=' ')
-                print(gc.collect())
-            sys.stdout.flush()
-
     def test_no_leak_many_graphs():
         # Verify no memory leaks when creating and deleting a lot of functions
 
