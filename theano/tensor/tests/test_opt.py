@@ -1285,108 +1285,6 @@ class test_fusion(unittest.TestCase):
         print("time", self.do(self.mode, self._shared, shp=(1000, 1000),
                               assert_len_topo=False, slice=s, nb_repeat=100))
 
-    def tes_memory_leak(self, mode=compile.mode.Mode('c', 'merge'),
-                        shared_fn=shared, shp=(3000, 3000), gpu=False,
-                        nb_repeat=30, assert_len_topo=True, slice=None):
-        """
-        param shared_fn: if None, will use compile.function
-        verify that the elemwise fusion work
-        Test with and without DimShuffle
-        """
-        # TODO: disable the canonizer?
-        fx = fmatrices('x')
-        fy = fmatrices('y')
-        fxv = np.zeros(shp, dtype='float32') + 2
-        cases = [
-            (fx, (fx), (fxv), 'float32'),  # 1
-            ]
-        import gc
-        import pdb
-        import objgraph
-        import weakref
-        d = {}
-        dl = []
-        v1 = None
-        mode = compile.mode.Mode('c', 'merge')
-        # TODO: if mode is Mode('py','merge') then their is no memory leak!
-        from theano.compile.function_module import orig_function
-        for id, [g, sym_inputs, val_inputs, out_dtype] in enumerate(cases):
-            for zzzz in xrange(nb_repeat):
-                v = np.zeros(shp, dtype=out_dtype)
-                gc.collect()
-                gc.collect()
-                gc.collect()
-                v1 = weakref.ref(v)  # noqa
-                pdb.set_trace()
-                # no memory leak
-                # f = orig_function([compile.In(fx),compile.In(variable=fy, value=None)],
-                #            [fy+fx],mode=mode)
-                # memory leak
-                f = orig_function(  # noqa
-                    [compile.In(fx), compile.In(variable=fy, value=v)],
-                    [fy + fx], mode=mode)
-                del v
-                gc.collect()
-                gc.collect()
-                gc.collect()
-                pdb.set_trace()
-
-                if False:
-                    gc.collect()
-                    gc.collect()
-                    gc.collect()
-                    nd = objgraph.typestats()
-                    print('key, old val, new val, diff')
-                    for key in set(d.keys() + nd.keys()):
-                        if key in d and key in nd and nd[key] != d[key]:
-                            print(key, d.get(key), nd.get(key), end=' ')
-                            if key in d and key in nd:
-                                    print(nd[key] - d[key])
-                            else:
-                                print(None)
-                    gc.collect()
-                    gc.collect()
-                    gc.collect()
-                    d = nd
-
-#                pdb.set_trace()
-                if False:
-                    gc.collect()
-                    gc.collect()
-                    gc.collect()
-                    ndl = objgraph.by_type('list')
-                    ll = []
-                    if len(dl) > 0:
-                        nb = 0
-                        for x in ndl:
-                            cmp = not isinstance(x, list)
-                            if not cmp and x:
-                                cmp = (x[0].__class__.__name__ != 'array_converter')
-                                if cmp:
-                                    cmp = x[0] != 'Option'
-                                if cmp:
-                                    cmp = x[0] != 270
-                                cmp = False
-                            if cmp and x in dl:
-                                nb += 1
-                                ll.append(x)
-#                                pdb.set_trace()
-                                pass
-                        pdb.set_trace()
-                    dl = ndl
-
-                gc.collect()
-                gc.collect()
-                gc.collect()
-#                objgraph.show_most_common_types(limit=40)
-#                f(*val_inputs)
-                gc.collect()
-                gc.collect()
-                gc.collect()
-
-#            cases[id]=None #to remove g, that link to out that link to the ndarray!
-            # g.owner.inputs[0] is out... make owner a weakref?
-
 
 class TimesN(theano.scalar.basic.UnaryScalarOp):
     """Used in test TestCompositeCodegen
@@ -1506,19 +1404,10 @@ def test_log1p():
 
     f([1e-7, 10], [[0, 0], [0, 0]])  # debugmode will verify values
 
-    if 0:
-        # at one point this worked, but it has been broken since
-        # the constant up-casting made 1 -> 1.0+0.0j
-        # I was never sure if this optimization should work on complex numbers or not.
-        z = tensor.zmatrix()
-        f = function([z], T.log(1 + (z)), mode=m)
-        assert [node.op for node in f.maker.fgraph.toposort()] == [T.log1p]
-
-    if 1:
-        # should work for int
-        z = tensor.imatrix()
-        f = function([z], T.log(1 + (z)), mode=m)
-        assert [node.op for node in f.maker.fgraph.toposort()] == [T.log1p]
+    # should work for int
+    z = tensor.imatrix()
+    f = function([z], T.log(1 + (z)), mode=m)
+    assert [node.op for node in f.maker.fgraph.toposort()] == [T.log1p]
 
 
 def test_log_add():

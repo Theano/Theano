@@ -927,46 +927,14 @@ class ConvOp(OpenMPOp):
 
         filters = filters[:, :, ::-1, ::-1]  # flip them
 
-        if 0:  # find good value for the unroll
-
-            if all_shape and un_b != 0 and bsize % un_b != 0:
-                if bsize < un_b:
-                    un_b = bsize
-                else:
-                    un_b = 1
-                    _logger.warn(
-                        "Optimization Warning: in ConvOp.grad() we can't "
-                        " determine a good unroll value for the batch."
-                        " Maybe you can optimize this!")
-
-            if all_shape and un_k != 0 and nkern % un_k != 0:
-                if nkern < un_k:
-                    un_k = nkern
-                else:
-                    un_k = 1
-                    _logger.warn(
-                        "Optimization Warning: in ConvOp.grad() we can't"
-                        " determine a good unroll value for the kernel. Maybe"
-                        " you can optimize this!")
-
-            dw = ConvOp(imshp, kshp, nkern, bsize, 1, 1, output_mode='valid',
-                        unroll_batch=un_b, unroll_kern=un_k, unroll_patch=un_p,
-                        imshp_logical=imshp_logical,
-                        kshp_logical=kshp_logical,
-                        kshp_logical_top_aligned=kshp_logical_top_aligned,
-                        version=self.version,
-                        direction_hint='bprop weights',
-                        verbose=self.verbose)
-
-        else:  # let __init__ choose c params be chosen automatically from shapes
-            dw = ConvOp(imshp, kshp, nkern, bsize, 1, 1, output_mode='valid',
-                        unroll_batch=None, unroll_kern=None, unroll_patch=None,
-                        imshp_logical=imshp_logical,
-                        kshp_logical=kshp_logical,
-                        kshp_logical_top_aligned=kshp_logical_top_aligned,
-                        version=self.version,
-                        direction_hint='bprop weights',
-                        verbose=self.verbose)
+        dw = ConvOp(imshp, kshp, nkern, bsize, 1, 1, output_mode='valid',
+                    unroll_batch=None, unroll_kern=None, unroll_patch=None,
+                    imshp_logical=imshp_logical,
+                    kshp_logical=kshp_logical,
+                    kshp_logical_top_aligned=kshp_logical_top_aligned,
+                    version=self.version,
+                    direction_hint='bprop weights',
+                    verbose=self.verbose)
 
         dw = dw(img, filters)
 
@@ -990,26 +958,15 @@ class ConvOp(OpenMPOp):
         imshp_logical = (self.nkern, self.fulloutshp[0],
                          self.fulloutshp[1])
 
-        if 0:  # hard-code c generation parameters
-            din = ConvOp(imshp, self.kshp, nkern, self.bsize,
-                         1, 1, output_mode=mode,
-                         unroll_batch=un_b, unroll_kern=un_k,
-                         unroll_patch=un_p,
-                         imshp_logical=imshp_logical,
-                         kshp_logical=None,
-                         version=-1,  # we we change the mode, we don't forward the version.
-                         direction_hint='bprop inputs',
-                         verbose=self.verbose)
-        else:  # let __init__ figure out the unrolling / patch sizes
-            din = ConvOp(imshp, self.kshp, nkern, self.bsize,
-                         1, 1, output_mode=mode,
-                         unroll_batch=None, unroll_kern=None,
-                         unroll_patch=None,
-                         imshp_logical=imshp_logical,
-                         kshp_logical=None,
-                         version=-1,  # we we change the mode, we don't forward the version.
-                         direction_hint='bprop inputs',
-                         verbose=self.verbose)
+        din = ConvOp(imshp, self.kshp, nkern, self.bsize,
+                     1, 1, output_mode=mode,
+                     unroll_batch=None, unroll_kern=None,
+                     unroll_patch=None,
+                     imshp_logical=imshp_logical,
+                     kshp_logical=None,
+                     version=-1,  # we we change the mode, we don't forward the version.
+                     direction_hint='bprop inputs',
+                     verbose=self.verbose)
 
         din = din(gz, filters)
 
