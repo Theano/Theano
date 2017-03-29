@@ -162,56 +162,56 @@ stage:
 L0_imdb_lstm:
     <<: *L0_TEST
 
-L0_mnist_sgd:
-    <<: *L0_TEST
-    variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L0_mnist"
-      TEST_SCRIPT: "./test-sgd.sh"
-
-L0_mnist_mlp:
-    <<: *L0_TEST
-    variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L0_mnist"
-      TEST_SCRIPT: "./test-mlp.sh"
-
-L0_mnist_lenet:
-    <<: *L0_TEST
-    variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L0_mnist"
-      TEST_SCRIPT: "./test-lenet.sh"
-
 L0_regression:
     <<: *L0_TEST
 
-L1_convnet_benchmarks_alexnet:
-    <<: *L1_TEST
+L0_convnet_benchmarks_alexnet:
+    <<: *L0_TEST
     variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L1_convnet_benchmarks"
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
       TEST_SCRIPT: "./test-alexnet.sh"
 
-L1_convnet_benchmarks_overfeat:
-    <<: *L1_TEST
+L0_convnet_benchmarks_overfeat:
+    <<: *L0_TEST
     variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L1_convnet_benchmarks"
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
       TEST_SCRIPT: "./test-overfeat.sh"
 
-L1_convnet_benchmarks_vgga:
-    <<: *L1_TEST
+L0_convnet_benchmarks_vgga:
+    <<: *L0_TEST
     variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L1_convnet_benchmarks"
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
       TEST_SCRIPT: "./test-vgga.sh"
 
-L1_convnet_benchmarks_googlenet:
-    <<: *L1_TEST
+L0_convnet_benchmarks_googlenet:
+    <<: *L0_TEST
     variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L1_convnet_benchmarks"
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
       TEST_SCRIPT: "./test-googlenet.sh"
 
-L1_convnet_benchmarks_pylearn2:
+L0_convnet_benchmarks_pylearn2:
+    <<: *L0_TEST
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L0_convnet_benchmarks"
+      TEST_SCRIPT: "./test-pylearn2.sh"
+
+L1_mnist_sgd:
     <<: *L1_TEST
     variables:
-      TEST_WORK_DIR: "/opt/theano/qa/L1_convnet_benchmarks"
-      TEST_SCRIPT: "./test-pylearn2.sh"
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-sgd.sh"
+
+L1_mnist_mlp:
+    <<: *L1_TEST
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-mlp.sh"
+
+L1_mnist_lenet:
+    <<: *L1_TEST
+    variables:
+      TEST_WORK_DIR: "/opt/theano/qa/L1_mnist"
+      TEST_SCRIPT: "./test-lenet.sh"
 
 L2_self_test_verbose:
     <<: *L2_TEST
