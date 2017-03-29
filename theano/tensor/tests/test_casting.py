@@ -16,7 +16,7 @@ class test_casting(unittest.TestCase):
                 x = type_fn()
                 f = function([x], op_fn(x))
 
-                xval = theano._asarray(numpy.random.rand(10) * 10,
+                xval = theano._asarray(np.random.rand(10) * 10,
                                        dtype=type_fn.dtype)
                 yval = f(xval)
                 assert (str(yval.dtype) ==
@@ -25,7 +25,7 @@ class test_casting(unittest.TestCase):
     def test_illegal(self):
         try:
             x = zmatrix()
-            function([x], cast(x, 'float64'))(numpy.ones((2, 3),
+            function([x], cast(x, 'float64'))(np.ones((2, 3),
                                                          dtype='complex128'))
         except TypeError:
             return
@@ -44,13 +44,13 @@ class test_casting(unittest.TestCase):
                                          _convert_to_float64]):
                 y = converter(x)
                 f = function([compile.In(x, strict=True)], y)
-                a = numpy.arange(10, dtype=type1)
+                a = np.arange(10, dtype=type1)
                 b = f(a)
-                self.assertTrue(numpy.all(b == numpy.arange(10, dtype=type2)))
+                self.assertTrue(np.all(b == np.arange(10, dtype=type2)))
 
     def test_convert_to_complex(self):
-        val64 = numpy.ones(3, dtype='complex64') + 0.5j
-        val128 = numpy.ones(3, dtype='complex128') + 0.5j
+        val64 = np.ones(3, dtype='complex64') + 0.5j
+        val128 = np.ones(3, dtype='complex128') + 0.5j
 
         vec64 = TensorType('complex64', (False, ))()
         vec128 = TensorType('complex128', (False, ))()
@@ -70,22 +70,22 @@ class test_casting(unittest.TestCase):
 
         # upcasting to complex128
         for t in ['int8', 'int16', 'int32', 'int64', 'float32', 'float64']:
-            a = theano.shared(numpy.ones(3, dtype=t))
-            b = theano.shared(numpy.ones(3, dtype='complex128'))
+            a = theano.shared(np.ones(3, dtype=t))
+            b = theano.shared(np.ones(3, dtype='complex128'))
             f = function([], basic._convert_to_complex128(a))
             assert a.type.values_eq_approx(b.get_value(), f())
 
         # upcasting to complex64
         for t in ['int8', 'int16', 'int32', 'int64', 'float32']:
-            a = theano.shared(numpy.ones(3, dtype=t))
-            b = theano.shared(numpy.ones(3, dtype='complex64'))
+            a = theano.shared(np.ones(3, dtype=t))
+            b = theano.shared(np.ones(3, dtype='complex64'))
             f = function([], basic._convert_to_complex64(a))
             assert a.type.values_eq_approx(b.get_value(), f())
 
         # downcast to complex64
         for t in ['float64']:
-            a = theano.shared(numpy.ones(3, dtype=t))
-            b = theano.shared(numpy.ones(3, dtype='complex64'))
+            a = theano.shared(np.ones(3, dtype=t))
+            b = theano.shared(np.ones(3, dtype='complex64'))
             f = function([], basic._convert_to_complex64(a))
             assert a.type.values_eq_approx(b.get_value(), f())
 
@@ -96,5 +96,5 @@ class test_casting(unittest.TestCase):
         inputs = [v0]
         outputs = [v1]
         f = function(inputs, outputs)
-        i = numpy.zeros((2, 2))
-        assert (f(i) == numpy.zeros((2, 2))).all()
+        i = np.zeros((2, 2))
+        assert (f(i) == np.zeros((2, 2))).all()

@@ -332,7 +332,7 @@ def make_gpu_optimizer(op, to_gpu):
                     new_inp[idx] = cuda.gpu_from_host(new_inp[idx])
                 result_node = op()(*new_inp)
                 copy_stack_trace(node.outputs[0], result_node)
-                transfer_node = cuda.host_from_gpu(result_node)
+                transfer_node = result_node.transfer('cpu')
                 copy_stack_trace(node.outputs[0], transfer_node)
                 return [transfer_node]
         if node.op == cuda.gpu_from_host:

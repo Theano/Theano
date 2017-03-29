@@ -129,7 +129,7 @@ class HiddenLayer(object):
 
         Hidden unit activation is given by: tanh(dot(input,W) + b)
 
-        :type rng: np.random.RandomState
+        :type rng: numpy.random.RandomState
         :param rng: a random number generator used to initialize weights
 
         :type input: theano.tensor.dmatrix
@@ -176,7 +176,7 @@ class MLP(object):
     def __init__(self, rng, input, n_in, n_hidden, n_out):
         """Initialize the parameters for the multilayer perceptron
 
-        :type rng: np.random.RandomState
+        :type rng: numpy.random.RandomState
         :param rng: a random number generator used to initialize weights
 
         :type input: theano.tensor.TensorType

@@ -1,6 +1,7 @@
 # TODO test dtype != float32
 from __future__ import absolute_import, print_function, division
 import os
+import warnings
 
 try:
     import pygpu
@@ -232,7 +233,7 @@ KERNEL void k_multi_warp_multinomial(
         return (3,)
 
 
-class GPUAMultinomialWOReplacementFromUniform(GpuKernelBase, Op):
+class GPUAChoiceFromUniform(GpuKernelBase, Op):
     """
     The output is transposed compared to MultinomialWOReplacementFromUniform.
     We must insert a Transpose op after it.
@@ -506,13 +507,22 @@ def local_gpua_multinomial(op, context_name, inputs, outputs):
 
 
 @register_opt('fast_compile')
-@op_lifter([theano.sandbox.multinomial.MultinomialWOReplacementFromUniform])
-@register_opt2([theano.sandbox.multinomial.MultinomialWOReplacementFromUniform], 'fast_compile')
+@op_lifter([theano.sandbox.multinomial.ChoiceFromUniform])
+@register_opt2([theano.sandbox.multinomial.ChoiceFromUniform], 'fast_compile')
 def local_gpua_multinomial_wor(op, context_name, inputs, outputs):
     # TODO : need description for function
     p, u, n = inputs
     m, = outputs
     if ((p.dtype == u.dtype == 'float32') and (m.dtype == 'int64')):
-        gpu_op = GPUAMultinomialWOReplacementFromUniform(op.odtype)
+        gpu_op = GPUAChoiceFromUniform(op.odtype)
         return GpuDimShuffle([False, False], [1, 0])(
             gpu_op(p, u, n))
+
+
+class GPUAMultinomialWOReplacementFromUniform(GPUAChoiceFromUniform):
+    def __init__(self, *args, **kwargs):
+        warnings.warn("GPUAMultinomialWOReplacementFromUniform is deprecated, "
+                      "use GPUAChoiceFromUniform instead.",
+                      DeprecationWarning,
+                      stacklevel=2)
+        super(GPUAMultinomialWOReplacementFromUniform, self).__init__(*args, **kwargs)

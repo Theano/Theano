@@ -1,6 +1,6 @@
 from __future__ import absolute_import, print_function, division
 
-import numpy
+import numpy as np
 
 from theano.tensor.elemwise import Elemwise
 from theano import scalar
@@ -15,7 +15,7 @@ class XlogX(scalar.UnaryScalarOp):
     def st_impl(x):
         if x == 0.0:
             return 0.0
-        return x * numpy.log(x)
+        return x * np.log(x)
 
     def impl(self, x):
         return XlogX.st_impl(x)
@@ -48,7 +48,7 @@ class XlogY0(scalar.BinaryScalarOp):
     def st_impl(x, y):
         if x == 0.0:
             return 0.0
-        return x * numpy.log(y)
+        return x * np.log(y)
 
     def impl(self, x, y):
         return XlogY0.st_impl(x, y)
