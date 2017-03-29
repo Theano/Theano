@@ -373,8 +373,7 @@ AddConfigVar('magma.library_path',
 
 AddConfigVar('magma.enabled',
              " If True, use magma for matrix computation."
-             " If False, disable magma"
-             " If no_check, assume present and the version between header and library match (so less compilation at context init)",
+             " If False, disable magma",
              BoolParam(False),
              in_c_key=False)
 
