@@ -59,10 +59,13 @@ class GpuGemv(BlasOp):
         assert x.ndim == 1
         assert y.ndim == 1
         assert A.dtype == x.dtype == y.dtype
-        if A.dtype == 'float16':
-            assert alpha.dtype == beta.dtype == 'float32'
-        else:
-            assert alpha.dtype == beta.dtype == A.dtype
+
+        # float16 not supported
+        expected = A.dtype
+        assert theano.scalar.upcast(alpha.dtype,
+                                    beta.dtype, expected) == expected
+        alpha = alpha.astype(expected)
+        beta = beta.astype(expected)
         return Apply(self, [y, alpha, A, x, beta], [y.type()])
 
     def perform(self, node, inputs, out_storage):
@@ -173,12 +176,18 @@ class GpuGemm(BlasOp):
             raise TypeError(theano.tensor.blas.Gemm.E_mixed,
                             (A.dtype, B.dtype, C.dtype,
                              alpha.dtype, beta.dtype))
-        if A.dtype == 'float16':
-            assert alpha.dtype == beta.dtype == 'float32'
-        else:
-            assert alpha.dtype == beta.dtype == A.dtype
         if not A.dtype.startswith('float'):
             raise TypeError(theano.tensor.blas.Gemm.E_float, (A.dtype))
+
+        if A.dtype == 'float16':
+            expected = 'float32'
+        else:
+            expected = A.dtype
+        assert theano.scalar.upcast(alpha.dtype,
+                                    beta.dtype, expected) == expected
+        alpha = alpha.astype(expected)
+        beta = beta.astype(expected)
+
         assert alpha.ndim == 0
         assert beta.ndim == 0
         assert A.ndim == 2
@@ -257,10 +266,12 @@ class GpuGer(BlasOp):
         x = as_gpuarray_variable(x, ctx_name)
         y = as_gpuarray_variable(y, ctx_name)
         alpha = as_tensor_variable(alpha)
-        if not(A.dtype == x.dtype == y.dtype == alpha.dtype):
+        if not(A.dtype == x.dtype == y.dtype):
             raise TypeError('ger requires matching dtypes',
                             (A.dtype, alpha.dtype, x.dtype, y.dtype))
 
+        assert theano.scalar.upcast(alpha.dtype, A.dtype) == A.dtype
+        alpha = alpha.astype(A.dtype)
         assert alpha.ndim == 0
         assert A.ndim == 2
         assert x.ndim == 1
