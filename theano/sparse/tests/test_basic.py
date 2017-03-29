@@ -1395,22 +1395,6 @@ class DotTests(utt.InferShapeTester):
                 assert sum([isinstance(node.op, (Dot, Usmm, UsmmCscDense))
                             for node in topo]) == nb
 
-    def test_cuda(self):
-        import theano.sandbox.cuda as cuda
-        if not cuda.cuda_available:
-            raise SkipTest("Optional package cuda not available")
-
-        a = sparse.csr_matrix('a', dtype='float32')
-        b = cuda.float32_shared_constructor(
-            np.random.rand(3, 4).astype('float32'))
-        d = sparse.dot(a, b)
-        f = theano.function([a], d)
-
-        a_val = scipy.sparse.csr_matrix(random_lil((5, 3), 'float32', 5))
-        d_theano = f(a_val)
-        d_numpy = a_val * b.get_value()
-        utt.assert_allclose(d_numpy, d_theano)
-
     def test_int32_dtype(self):
         # Reported on the theano-user mailing-list:
         # https://groups.google.com/d/msg/theano-users/MT9ui8LtTsY/rwatwEF9zWAJ
