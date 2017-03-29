@@ -25,8 +25,8 @@ GpuGemvTester = makeTester(
     'GpuGemvTester',
     op=gemv_inplace, gpu_op=gpugemv_inplace,
     # It doesn't support float16
-    cases=dict(dot_vv=[rand(1), 1, rand(1, 2), rand(2), 0],
-               dot_vm=[rand(3), 1, rand(3, 2), rand(2), 0],
+    cases=dict(dot_vv=[rand(1), 1., rand(1, 2), rand(2), 0.],
+               dot_vm=[rand(3), 1., rand(3, 2), rand(2), 0.],
                float32=[rand(3).astype('float32'), np.float32(1),
                         rand(3, 2).astype('float32'),
                         rand(2).astype('float32'), np.float32(0)],
@@ -36,7 +36,7 @@ GpuGemvTester = makeTester(
                # test_02=[rand(0), 1, rand(0, 2), rand(2), 0],
                # test_30=[rand(3), 1, rand(3, 0), rand(0), 0],
                # test_00=[rand(0), 1, rand(0, 0), rand(0), 0],
-               test_stride=[rand(3)[::-1], 1, rand(3, 2)[::-1], rand(2)[::-1], 0],
+               test_stride=[rand(3)[::-1], 1., rand(3, 2)[::-1], rand(2)[::-1], 0.],
                )
     )
 

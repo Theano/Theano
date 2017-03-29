@@ -510,8 +510,8 @@ def test_not_useless_scalar_gpuelemwise():
         train(x)
         topo = train.maker.fgraph.toposort()
         gemms = [app for app in topo if isinstance(app.op, GpuGemm)]
-        assert len(gemms) == 1
-        assert isinstance(gemms[0].inputs[1].owner.op, tensor.Elemwise)
+        assert len(gemms) == 2
+        assert isinstance(gemms[1].inputs[1].owner.op, tensor.Elemwise)
 
 
 def test_local_lift_abstractconv_gpu_shape():
