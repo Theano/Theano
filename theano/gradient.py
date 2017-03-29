@@ -219,7 +219,7 @@ def Rop(f, wrt, eval_points):
                                  str(eval_point.type.ndim))
         except AttributeError:
             # wrt_elem and eval_point don't always have ndim like random type
-            # Tensor, Sparse and CudaNdArray have the ndim attribute
+            # Tensor, Sparse and GpuArray have the ndim attribute
             pass
 
     seen_nodes = OrderedDict()
