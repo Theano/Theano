@@ -5,13 +5,9 @@ import unittest
 from tempfile import mkdtemp
 
 import numpy as np
-from nose.plugins.skip import SkipTest
 
 import theano
-import theano.sandbox.cuda as cuda_ndarray
 
-from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda.var import CudaNdarraySharedVariable
 from theano.sandbox.rng_mrg import MRG_RandomStreams
 from theano.misc.pkl_utils import dump, load, StripPickler
 
@@ -29,24 +25,8 @@ class T_dump_load(unittest.TestCase):
         if self.tmpdir is not None:
             shutil.rmtree(self.tmpdir)
 
-    def test_dump_load(self):
-        if not cuda_ndarray.cuda_enabled:
-            raise SkipTest('Optional package cuda disabled')
-
-        x = CudaNdarraySharedVariable('x', CudaNdarrayType((1, 1), name='x'),
-                                      [[1]], False)
-
-        with open('test', 'wb') as f:
-            dump(x, f)
-
-        with open('test', 'rb') as f:
-            x = load(f)
-
-        assert x.name == 'x'
-        np.testing.assert_allclose(x.get_value(), [[1]])
-
     def test_dump_load_mrg(self):
-        rng = MRG_RandomStreams(use_cuda=cuda_ndarray.cuda_enabled)
+        rng = MRG_RandomStreams()
 
         with open('test', 'wb') as f:
             dump(rng, f)

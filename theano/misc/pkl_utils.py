@@ -26,11 +26,11 @@ from theano import config
 from theano.compat import PY3
 from six import string_types
 from theano.compile.sharedvalue import SharedVariable
-try:
-    from theano.sandbox.cuda import cuda_ndarray
-except ImportError:
-    cuda_ndarray = None
 
+try:
+    import pygpu
+except ImportError:
+    pygpu = None
 
 __docformat__ = "restructuredtext en"
 __authors__ = "Pascal Lamblin"
@@ -202,21 +202,21 @@ class PersistentNdarrayID(object):
             return self.seen[id(obj)]
 
 
-class PersistentCudaNdarrayID(PersistentNdarrayID):
+class PersistentGpuArrayID(PersistentNdarrayID):
     def __call__(self, obj):
-        if (cuda_ndarray is not None and
-                type(obj) is cuda_ndarray.cuda_ndarray.CudaNdarray):
+        if (pygpu and
+                isinstance(obj, pygpu.gpuarray.GpuArray)):
             if id(obj) not in self.seen:
                 def write_array(f):
                     np.lib.format.write_array(f, np.asarray(obj))
                 name = self._resolve_name(obj)
                 zipadd(write_array, self.zip_file, name)
-                self.seen[id(obj)] = 'cuda_ndarray.{0}'.format(name)
+                self.seen[id(obj)] = 'gpuarray.{0}'.format(name)
             return self.seen[id(obj)]
-        return super(PersistentCudaNdarrayID, self).__call__(obj)
+        return super(PersistentGpuArrayID, self).__call__(obj)
 
 
-class PersistentSharedVariableID(PersistentCudaNdarrayID):
+class PersistentSharedVariableID(PersistentGpuArrayID):
     """Uses shared variable names when persisting to zip file.
 
     If a shared variable has a name, this name is used as the name of the
@@ -288,18 +288,16 @@ class PersistentNdarrayLoad(object):
             return self.cache[name]
         ret = None
         array = np.lib.format.read_array(self.zip_file.open(name))
-        if array_type == 'cuda_ndarray':
+        if array_type == 'gpuarray':
             if config.experimental.unpickle_gpu_on_cpu:
                 # directly return numpy array
                 warnings.warn("config.experimental.unpickle_gpu_on_cpu is set "
-                              "to True. Unpickling CudaNdarray as "
-                              "numpy.ndarray")
+                              "to True. Unpickling GpuArray as numpy.ndarray")
                 ret = array
-            elif cuda_ndarray:
-                ret = cuda_ndarray.cuda_ndarray.CudaNdarray(array)
+            elif pygpu:
+                ret = pygpu.array(array)
             else:
-                raise ImportError("Cuda not found. Cannot unpickle "
-                                  "CudaNdarray")
+                raise ImportError("pygpu not found. Cannot unpickle GpuArray")
         else:
             ret = array
         self.cache[name] = ret

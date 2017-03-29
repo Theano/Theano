@@ -168,8 +168,8 @@ class IfElse(Op):
         )
         c = theano.tensor.as_tensor_variable(c)
         if not self.gpu:
-            # When gpu is true, we are given only cuda ndarrays, and we want
-            # to keep them be cuda ndarrays
+            # When gpu is true, we are given only gpuarrays, and we want
+            # to keep them as gpuarrays
             nw_args = []
             for x in args:
                 if hasattr(x, '_as_TensorVariable'):
