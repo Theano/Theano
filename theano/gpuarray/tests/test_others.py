@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 from .config import test_ctx_name, mode_with_gpu
 
 from ..type import (get_context, GpuArrayType, GpuArraySharedVariable,
@@ -10,6 +11,7 @@ from theano.misc.tests.test_may_share_memory import may_share_memory_core
 from theano.misc.pkl_utils import dump, load
 
 from theano.tensor.tests.test_opt import test_fusion as t_fusion
+
 
 class test_fusion(t_fusion):
     mode = mode_with_gpu
