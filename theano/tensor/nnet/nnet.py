@@ -464,7 +464,7 @@ class Softmax(gof.Op):
     __props__ = ()
 
     def make_node(self, x):
-        x = theano.tensor.as_tensor_variable(x)
+        x = tensor.as_tensor_variable(x)
         # TODO : Delete this and modify the test accordly
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
