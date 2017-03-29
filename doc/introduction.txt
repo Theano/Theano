@@ -228,7 +228,7 @@ theano-dev_ mailing list.
 .. _numpy: http://numpy.scipy.org/
 .. _BLAS: http://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
 
-.. _sympy: http://code.google.com/p/sympy/
+.. _sympy: http://www.sympy.org/
 .. _MATLAB: http://www.mathworks.com/products/matlab/
 .. _Mathematica: http://www.wolfram.com/products/mathematica/index.html
 
