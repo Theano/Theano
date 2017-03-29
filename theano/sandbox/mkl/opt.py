@@ -884,8 +884,8 @@ def local_concatenate_mkl(node):
     if not isinstance(node.op, Join):
         return
 
-    # if node.inputs[0].type.ndim != 4:
-    #    return
+    if node.inputs[1].type.ndim != 4:
+        return
 
     try:
         axis, tensors = node.inputs[0], node.inputs[1:]
@@ -912,8 +912,8 @@ def local_concatenateGrad_mkl(node):
     if not isinstance(node.op, Split):
         return
 
-    # if node.inputs[0].type.ndim != 4:
-    #    return
+    if node.inputs[0].type.ndim != 4:
+        return
 
     try:
         gz, axis, splits, = node.inputs
