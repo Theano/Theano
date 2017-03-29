@@ -21,6 +21,9 @@ learning/machine learning <https://mila.umontreal.ca/en/cours/>`_ classes).
 News
 ====
 
+* Removed support for the old (device=gpu) backend.  Use the new
+  backend (device=cuda) for gpu computing.
+
 * 2017/03/20: Release of Theano 0.9.0. Everybody is encouraged to update.
 
 * 2017/03/13: Release of Theano 0.9.0rc4, with crash fixes and bug fixes.
@@ -37,7 +40,7 @@ News
   `Theano: A Python framework for fast computation of mathematical expressions <http://arxiv.org/abs/1605.02688>`_.
   This is the new preferred reference.
 
-* 2016/04/21: Release of Theano 0.8.2, adding support for :ref:`CuDNN v5 <libdoc_cuda_dnn>`.
+* 2016/04/21: Release of Theano 0.8.2, adding support for CuDNN v5.
 
 * 2016/03/29: Release of Theano 0.8.1, fixing a compilation issue on MacOS X with XCode 7.3.
 
@@ -45,12 +48,11 @@ News
 
 * Multi-GPU.
 
-* We added support for :attr:`CNMeM <config.lib.cnmem>` to speed up
-  the GPU memory allocation.
+* We added support for CNMeM to speed up the GPU memory allocation.
 
 * Theano 0.7 was released 26th March 2015. Everybody is encouraged to update.
 
-* We support `cuDNN <http://deeplearning.net/software/theano/library/sandbox/cuda/dnn.html>`_ if it is installed by the user.
+* We support cuDNN if it is installed by the user.
 
 * Open Machine Learning Workshop 2014 `presentation <omlw2014/omlw_presentation.pdf>`_.
 

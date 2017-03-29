@@ -527,8 +527,8 @@ You can implement c_code for this op. You register it like this:
 
 In your C code, you should use %(iname)s and %(oname)s to represent
 the C variable names of the DeepCopyOp input and output
-respectively. See an example for the type ``CudaNdarrayType`` (GPU
-array) in the file `theano/sandbox/cuda/type.py`. The version
+respectively. See an example for the type ``GpuArrayType`` (GPU
+array) in the file `theano/gpuarray/type.py`. The version
 parameter is what is returned by DeepCopyOp.c_code_cache_version(). By
 default, it will recompile the c code for each process.
 
@@ -549,8 +549,8 @@ calling:
 
 In your C code, you should use %(iname)s and %(oname)s to represent
 the C variable names of the ViewOp input and output
-respectively. See an example for the type ``CudaNdarrayType`` (GPU
-array) in the file `theano/sandbox/cuda/type.py`. The version
+respectively. See an example for the type ``GpuArrayType`` (GPU
+array) in the file `thean/gpuarray/type.py`. The version
 parameter is what is returned by ViewOp.c_code_cache_version(). By
 default, it will recompile the c code for each process.
 

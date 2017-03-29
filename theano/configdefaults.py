@@ -176,12 +176,6 @@ AddConfigVar(
     in_c_key=False)
 
 
-AddConfigVar(
-    'enable_initial_driver_test',
-    "Tests the nvidia driver when a GPU device is initialized.",
-    BoolParam(True, allow_override=False),
-    in_c_key=False)
-
 AddConfigVar('gpuarray.sync',
              """If True, every op will make sure its work is done before
                 returning.  Setting this to True will slow down execution,
