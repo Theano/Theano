@@ -24,11 +24,25 @@ except ImportError:
 _context_reg = {}
 
 
+def gpu_supported(data):
+    """
+    Is the following data supported on the GPU?
+
+    Currently, only complex aren't supported.
+
+    Parameters
+    ----------
+    data : numpy.ndarray or TensorVariable
+           (it must have dtype and ndim parameter)
+    """
+    return str(data.dtype) not in tensor.basic.complex_dtypes
+
+
 def move_to_gpu(data):
     """
     Do we want to move this computation to the GPU?
 
-    Currently, we don't move complex and scalar int.
+    Currently, we don't move complex and scalar.
 
     Parameters
     ----------
@@ -36,10 +50,10 @@ def move_to_gpu(data):
            (it must have dtype and ndim parameter)
     """
     # We don't support complex on the GPU
-    if str(data.dtype) in tensor.basic.complex_dtypes:
+    if not gpu_supported(data):
         return False
-    # We don't want scalar int on the GPU.
-    if data.ndim == 0 and str(data.dtype) in tensor.basic.discrete_dtypes:
+    # We don't want scalars on the GPU.
+    if data.ndim == 0:
         return False
     return True
 
@@ -637,7 +651,7 @@ def gpuarray_shared_constructor(value, name=None, strict=False,
 
     if target is notset:
         target = None
-        if not move_to_gpu(value):
+        if not gpu_supported(value):
             raise TypeError('We do not move that data by default to the GPU')
     try:
         get_context(target)

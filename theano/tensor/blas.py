@@ -317,7 +317,7 @@ class Ger(Op):
         y = T.as_tensor_variable(y)
         x = T.as_tensor_variable(x)
         alpha = T.as_tensor_variable(alpha)
-        if len(set([A.dtype, alpha.dtype, x.dtype, y.dtype])) != 1:
+        if not(A.dtype == x.dtype == y.dtype == alpha.dtype):
             raise TypeError('ger requires matching dtypes',
                             (A.dtype, alpha.dtype, x.dtype, y.dtype))
         if alpha.ndim != 0:
@@ -852,9 +852,6 @@ class Gemm(GemmRelated):
                 (self, len(inputs)))
         z, a, x, y, b = inputs
 
-        # For the consistency check we don't want z to be a cached constant.
-        if getattr(z, 'cached', False):
-            z = copy.copy(z)
         zr, xr, yr = [set(view_roots(i)) for i in (z, x, y)]
 
         # We want the gemm to be inplace. When this op is inplace, it
@@ -867,10 +864,11 @@ class Gemm(GemmRelated):
         # think there is another mechanism that would prevent this,
         # but I don't what to modify old code and have chance to break
         # something.
-        if zr.intersection(xr):
-            raise InconsistencyError(Gemm.E_z_uniq, (z, x))
-        if zr.intersection(yr):
-            raise InconsistencyError(Gemm.E_z_uniq, (z, y))
+        if self.inplace:
+            if zr.intersection(xr):
+                raise InconsistencyError(Gemm.E_z_uniq, (z, x))
+            if zr.intersection(yr):
+                raise InconsistencyError(Gemm.E_z_uniq, (z, y))
 
         if z.ndim != 2:
             raise TypeError(Gemm.E_rank, z)
