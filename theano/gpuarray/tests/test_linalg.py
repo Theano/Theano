@@ -1,18 +1,21 @@
 from __future__ import absolute_import, division, print_function
 
 import unittest
+
 import numpy as np
-import theano
-
-from theano.tests import unittest_tools as utt
-from .config import mode_with_gpu, mode_without_gpu
-from .test_basic_ops import rand
-
 from numpy.linalg.linalg import LinAlgError
 
+import theano
 from theano import config
-from theano.gpuarray.linalg import (cusolver_available, gpu_solve, GpuCholesky,
-                                    gpu_matrix_inverse, gpu_svd)
+from theano.gpuarray.linalg import (GpuCholesky, GpuMagmaMatrixInverse,
+                                    cusolver_available, gpu_matrix_inverse,
+                                    gpu_solve, gpu_svd)
+from theano.tensor.nlinalg import matrix_inverse
+from theano.tests import unittest_tools as utt
+
+from .. import gpuarray_shared_constructor
+from .config import mode_with_gpu, mode_without_gpu
+from .test_basic_ops import rand
 
 
 class TestCusolver(unittest.TestCase):
@@ -199,6 +202,7 @@ class TestGpuCholesky(unittest.TestCase):
 
 
 class TestMagma(unittest.TestCase):
+
     def setUp(self):
         if not config.magma.enabled:
             self.skipTest('Magma is not enabled, skipping test')
@@ -208,9 +212,29 @@ class TestMagma(unittest.TestCase):
 
         fn = theano.function([A], gpu_matrix_inverse(A), mode=mode_with_gpu.including('magma'))
         N = 1000
-        A_val = np.random.rand(N, N).astype(np.float32)
+        A_val = rand(N, N)
         A_val_inv = fn(A_val)
         utt.assert_allclose(np.dot(A_val_inv, A_val), np.eye(N), atol=1e-3)
+
+    def test_gpu_matrix_inverse_inplace(self):
+        N = 1000
+        A_val_gpu = gpuarray_shared_constructor(rand(N, N))
+        A_val_copy = A_val_gpu.get_value()
+        fn = theano.function([], gpu_matrix_inverse(A_val_gpu, inplace=True),
+                             mode=mode_with_gpu.including('magma'),
+                             accept_inplace=True)
+        fn()
+        utt.assert_allclose(np.dot(A_val_gpu.get_value(), A_val_copy), np.eye(N), atol=1e-3)
+
+    def test_gpu_matrix_inverse_inplace_opt(self):
+        A = theano.tensor.fmatrix("A")
+        fn = theano.function([A], matrix_inverse(A),
+                             mode=mode_with_gpu.including('magma'))
+        assert any([
+            node.op.inplace
+            for node in fn.maker.fgraph.toposort() if
+            isinstance(node.op, GpuMagmaMatrixInverse)
+        ])
 
     def run_gpu_svd(self, A_val, full_matrices=True, compute_uv=True):
         A = theano.tensor.fmatrix("A")

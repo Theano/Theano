@@ -357,8 +357,7 @@ class GpuMagmaSVD(COp):
     def __init__(self, full_matrices=True, compute_uv=True):
         self.full_matrices = full_matrices
         self.compute_uv = compute_uv
-        COp.__init__(self, ['magma_svd.c'],
-                     'APPLY_SPECIFIC(magma_svd)')
+        COp.__init__(self, ['magma_svd.c'], 'APPLY_SPECIFIC(magma_svd)')
 
     def c_headers(self):
         return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
@@ -429,9 +428,10 @@ class GpuMagmaMatrixInverse(COp):
     params_type = gpu_context_type
 
     def __init__(self, inplace=False):
-        COp.__init__(self, ['magma_inv.c'],
-                     'APPLY_SPECIFIC(magma_inv)')
+        COp.__init__(self, ['magma_inv.c'], 'APPLY_SPECIFIC(magma_inv)')
         self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
 
     def c_headers(self):
         return ['gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/ext_cuda.h',
@@ -450,6 +450,9 @@ class GpuMagmaMatrixInverse(COp):
         if config.magma.library_path:
             return [config.magma.library_path]
         return []
+
+    def clone_inplace(self):
+        return self.__class__(inplace=True)
 
     def make_node(self, x):
         ctx_name = infer_context_name(x)
@@ -471,4 +474,18 @@ class GpuMagmaMatrixInverse(COp):
         return shapes
 
 
-gpu_matrix_inverse = GpuMagmaMatrixInverse()
+def gpu_matrix_inverse(a, inplace=False):
+    """
+    This function performs the matrix inverse on GPU.
+
+    Parameters
+    ----------
+    inplace : bool, optional
+        Whether or not to compute matrix inverse inplace.
+
+    Returns
+    -------
+    a_inv: matrix
+
+    """
+    return GpuMagmaMatrixInverse(inplace=inplace)(a)

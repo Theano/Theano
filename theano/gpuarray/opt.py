@@ -2015,6 +2015,14 @@ def local_gpu_matrix_inverse(op, context_name, inputs, outputs):
     return GpuMagmaMatrixInverse()
 
 
+@register_inplace()
+@local_optimizer([GpuMagmaMatrixInverse])
+def local_inplace_matrix_inverse_inplace(node):
+    if isinstance(node.op, GpuMagmaMatrixInverse):
+        if not node.op.inplace:
+            return [node.op.clone_inplace()(*node.inputs)]
+
+
 @register_opt('magma', 'fast_compile')
 @op_lifter([nlinalg.SVD])
 @register_opt2([theano.tensor.nlinalg.SVD], 'magma', 'fast_compile')

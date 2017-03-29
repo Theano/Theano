@@ -40,9 +40,9 @@ int APPLY_SPECIFIC(magma_inv)(PyGpuArrayObject *A, PyGpuArrayObject **_A_inv,
     goto fail;
   }
 #ifdef INPLACE
-  Py_XDECREF(out);
+  Py_XDECREF(A_inv);
   A_inv = A;
-  Py_INCREF(out);
+  Py_INCREF(A_inv);
 #else
   A_inv = theano_try_copy(A_inv, A);
   if (A_inv == NULL) {
