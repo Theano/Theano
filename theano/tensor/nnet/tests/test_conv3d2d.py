@@ -16,12 +16,6 @@ from theano.tensor.nnet.conv3d2d import conv3d, get_diagonal_subtensor_view, Dia
 import theano.tests.unittest_tools as utt
 
 
-if theano.config.mode == 'FAST_COMPILE':
-    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpu')
-else:
-    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
-
-
 def test_get_diagonal_subtensor_view(wrap=lambda a: a):
     x = numpy.arange(20).reshape(5, 4).astype('float32')
     x = wrap(x)
@@ -106,16 +100,10 @@ def check_diagonal_subtensor_view_traces(fn):
 
 @parameterized.expand(('valid', 'full', 'half'), utt.custom_name_func)
 def test_conv3d(border_mode):
-    check_conv3d(border_mode=border_mode,
-                 mode=mode_without_gpu,
-                 shared=theano.tensor._shared)
-
-
-# This function will also be used in theano/sandbox/cuda/tests/test_tensor_op.py,
-# which is not possible if it is decorated by @parameterized.expand
-def check_conv3d(border_mode, mode=mode_without_gpu, shared=theano.tensor._shared):
     if ndimage is None or not theano.config.cxx:
         raise SkipTest("conv3d2d tests need SciPy and a c++ compiler")
+
+    shared = theano.tensor._shared
 
     Ns, Ts, C, Hs, Ws = 3, 10, 3, 32, 32
     Nf, Tf, C, Hf, Wf = 32, 5, 3, 5, 5
@@ -137,8 +125,7 @@ def check_conv3d(border_mode, mode=mode_without_gpu, shared=theano.tensor._share
                  border_mode=border_mode)
 
     newconv3d = theano.function([], [],
-                                updates={s_output: out},
-                                mode=mode)
+                                updates={s_output: out})
 
     check_diagonal_subtensor_view_traces(newconv3d)
     t0 = time.time()
@@ -149,7 +136,6 @@ def check_conv3d(border_mode, mode=mode_without_gpu, shared=theano.tensor._share
     gnewconv3d = theano.function([], [],
                                  updates=[(s_filters, gfilters),
                                           (s_signals, gsignals)],
-                                 mode=mode,
                                  name='grad')
     check_diagonal_subtensor_view_traces(gnewconv3d)
 
@@ -163,7 +149,7 @@ def check_conv3d(border_mode, mode=mode_without_gpu, shared=theano.tensor._share
     signals = numpy.random.rand(Ns, Ts, C, Hs, Ws).astype('float32')
     filters = numpy.random.rand(Nf, Tf, C, Hf, Wf).astype('float32')
     utt.verify_grad(lambda s, f: conv3d(s, f, border_mode=border_mode),
-                    [signals, filters], eps=1e-1, mode=mode)
+                    [signals, filters], eps=1e-1)
 
     # Additional Test that covers the case of patched implementation for filter with Tf=1
     Ns, Ts, C, Hs, Ws = 3, 10, 3, 32, 32
@@ -186,8 +172,7 @@ def check_conv3d(border_mode, mode=mode_without_gpu, shared=theano.tensor._share
                  border_mode=border_mode)
 
     newconv3d = theano.function([], [],
-                                updates={s_output: out},
-                                mode=mode)
+                                updates={s_output: out})
 
     t0 = time.time()
     newconv3d()
@@ -197,7 +182,6 @@ def check_conv3d(border_mode, mode=mode_without_gpu, shared=theano.tensor._share
     gnewconv3d = theano.function([], [],
                                  updates=[(s_filters, gfilters),
                                           (s_signals, gsignals)],
-                                 mode=mode,
                                  name='grad')
 
     t0 = time.time()
@@ -210,4 +194,4 @@ def check_conv3d(border_mode, mode=mode_without_gpu, shared=theano.tensor._share
     signals = numpy.random.rand(Ns, Ts, C, Hs, Ws).astype('float32')
     filters = numpy.random.rand(Nf, Tf, C, Hf, Wf).astype('float32')
     utt.verify_grad(lambda s, f: conv3d(s, f, border_mode=border_mode),
-                    [signals, filters], eps=1e-1, mode=mode)
+                    [signals, filters], eps=1e-1)

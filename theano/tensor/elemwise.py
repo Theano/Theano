@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-import sys
 from copy import copy
 
 import numpy as np

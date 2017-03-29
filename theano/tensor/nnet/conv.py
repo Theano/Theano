@@ -903,7 +903,6 @@ class ConvOp(OpenMPOp):
         newin = inputs.dimshuffle((1, 0, 2, 3))
         newgz = gz.dimshuffle((1, 0, 2, 3))
 
-        un_p = self.unroll_patch
         if self.out_mode == 'valid':
             (img, filters) = (newin, newgz)
             kshp_logical = self.fulloutshp
@@ -912,8 +911,6 @@ class ConvOp(OpenMPOp):
             (bsize, nkern) = (self.imshp[0], self.nkern)
             imshp = (self.bsize, self.imshp[1], self.imshp[2])
             kshp = self.outshp
-            un_b = self.unroll_batch
-            un_k = self.unroll_kern
         elif self.out_mode == 'full':
             (img, filters) = (newgz, newin)
             kshp_logical = None
@@ -924,8 +921,6 @@ class ConvOp(OpenMPOp):
             (bsize, nkern) = (self.nkern, self.imshp[0])
             imshp = (self.bsize, self.outshp[0], self.outshp[1])
             kshp = self.imshp[1:]
-            un_b = self.unroll_kern
-            un_k = self.unroll_batch
         else:
             raise NotImplementedError(
                 'Only [full,valid] modes are currently supported.')

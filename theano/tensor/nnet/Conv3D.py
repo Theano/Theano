@@ -573,10 +573,7 @@ def conv3D(V, W, b, d):
     The order of dimensions does not correspond to the one in `conv2d`.
     This is for optimization.
 
-    The GPU implementation is very slow. You should use
-    :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>` or
-    :func:`conv3d_fft <theano.sandbox.cuda.fftconv.conv3d_fft>` for a
-    GPU graph instead.
+    Please use nnet.conv3d instead of this for a faster GPU implementation.
 
     See Also
     --------

@@ -1,13 +1,19 @@
-from .config import test_ctx_name
+from .config import test_ctx_name, mode_with_gpu
 
-from ..type import get_context, GpuArrayType, GpuArraySharedVariable
+from ..type import (get_context, GpuArrayType, GpuArraySharedVariable,
+                    gpuarray_shared_constructor)
 
 import pygpu
 import numpy as np
 
 from theano.misc.tests.test_may_share_memory import may_share_memory_core
-
 from theano.misc.pkl_utils import dump, load
+
+from theano.tensor.tests.test_opt import test_fusion as t_fusion
+
+class test_fusion(t_fusion):
+    mode = mode_with_gpu
+    shared = gpuarray_shared_constructor
 
 
 def test_may_share_memory():

@@ -640,7 +640,7 @@ class Subtensor(Op):
                       strides_mul=None):
         """
         The parameters c_prefix are there to allow reusing this
-        function on PyArray and CudaNdarray object.
+        function on PyArray and GpuArray object.
 
         This fct take as input the x.
 
@@ -1373,7 +1373,7 @@ class IncSubtensor(Op):
         # but subclasses may override the helper methods
         # to change the particulars, e.g. GpuIncSubtensor
         # turns the view/copy operations on numpy arrays
-        # into the same operations on cuda arrays.
+        # into the same operations on gpu arrays.
 
         self.do_type_checking(node)
 
