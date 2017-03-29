@@ -2,7 +2,7 @@
 
 BUILDBOT_DIR=$WORKSPACE/nightly_build
 THEANO_PARAM="theano --with-timer --timer-top-n 10 -v"
-export THEANO_FLAGS=init_gpu_device=gpu
+export THEANO_FLAGS=init_gpu_device=cuda
 
 # CUDA
 export PATH=/usr/local/cuda/bin:$PATH
